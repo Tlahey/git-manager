@@ -55,7 +55,12 @@ export const useGitGraphColumnsStore = create<GitGraphColumnsState>()(
           (persisted as Partial<GitGraphColumnsState> | undefined)?.columns ??
           ({} as Partial<Record<ColumnKey, ColumnState>>)
         const columns = COLUMN_ORDER.reduce((acc, key) => {
-          acc[key] = { ...defaults[key], ...saved[key] }
+          const def = COLUMN_DEFS[key]
+          const savedCol = saved[key]
+          acc[key] = {
+            visible: savedCol?.visible ?? defaults[key].visible,
+            width: Math.max(def.minWidth, savedCol?.width ?? defaults[key].width),
+          }
           return acc
         }, {} as Record<ColumnKey, ColumnState>)
         return { ...current, columns }
