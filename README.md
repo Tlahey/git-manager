@@ -160,12 +160,15 @@ ollama serve
 ollama pull llama3.2         # recommended general model
 # or: ollama pull qwen2.5-coder:7b  (smaller, faster for code diffs)
 
-# 4. Run in development mode
+# 4. Run in development mode (launches the Tauri desktop app)
 pnpm dev
 
-# 5. Build for production
+# 5. Build for production desktop binary
 pnpm build
 ```
+
+> [!IMPORTANT]
+> Since this is a Tauri desktop application that interacts with a Rust backend, it cannot be run or opened in a web browser. Running `pnpm dev` starts the native desktop client window.
 
 ---
 

@@ -19,8 +19,38 @@ export function RefLabelGroup({ refs }: RefLabelGroupProps) {
 
   if (refs.length === 0) return null
 
-  const first = refs[0]
-  const extra = refs.length - 1
+  // Trier les références pour afficher les branches clés (main) en premier et les tags en dernier
+  const sortedRefs = [...refs].sort((a, b) => {
+    // 1. Local main branch first
+    const isLocalMainA = a.type === 'branch' && a.shortName === 'main'
+    const isLocalMainB = b.type === 'branch' && b.shortName === 'main'
+    if (isLocalMainA && !isLocalMainB) return -1
+    if (!isLocalMainA && isLocalMainB) return 1
+
+    // 2. Remote main branch second
+    const isRemoteMainA = a.type === 'remote' && a.shortName.endsWith('/main')
+    const isRemoteMainB = b.type === 'remote' && b.shortName.endsWith('/main')
+    if (isRemoteMainA && !isRemoteMainB) return -1
+    if (!isRemoteMainA && isRemoteMainB) return 1
+
+    // 3. Other local branches
+    if (a.type === 'branch' && b.type !== 'branch') return -1
+    if (a.type !== 'branch' && b.type === 'branch') return 1
+
+    // 4. Other remote branches
+    if (a.type === 'remote' && b.type !== 'remote') return -1
+    if (a.type !== 'remote' && b.type === 'remote') return 1
+
+    // 5. HEAD
+    if (a.type === 'HEAD' && b.type !== 'HEAD') return -1
+    if (a.type !== 'HEAD' && b.type === 'HEAD') return 1
+
+    // 6. Tags last
+    return 0
+  })
+
+  const first = sortedRefs[0]
+  const extra = sortedRefs.length - 1
 
   function show() {
     const el = badgeRef.current
@@ -57,8 +87,8 @@ export function RefLabelGroup({ refs }: RefLabelGroupProps) {
             onMouseLeave={hide}
             className="z-50 flex max-w-xs flex-col items-start gap-1 rounded-md border border-border bg-popover p-1.5 shadow-lg"
           >
-            {refs.slice(1).map((ref, i) => (
-              <RefLabel key={i} gitRef={ref} />
+            {sortedRefs.slice(1).map((ref, i) => (
+              <RefLabel key={i} gitRef={ref} alwaysVisible />
             ))}
           </div>,
           document.body,

@@ -90,12 +90,15 @@ cd git-manager
 # Installer les dépendances
 pnpm install
 
-# Lancer en développement
+# Lancer en développement (lance l'application desktop native)
 pnpm dev
 
-# Construire l'application
+# Construire l'application (génère le binaire desktop)
 pnpm build
 ```
+
+> [!IMPORTANT]
+> L'application s'appuie sur un backend Rust via Tauri et ne peut donc pas être lancée dans un simple navigateur web. La commande `pnpm dev` lancera directement la fenêtre de l'application desktop.
 
 ---
 

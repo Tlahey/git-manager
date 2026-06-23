@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @git-manager/desktop dev:frontend",
+    "dev": "pnpm --filter @git-manager/desktop dev",
     "dev:desktop": "turbo dev",
     "build": "turbo build",
     "build:desktop": "pnpm --filter @git-manager/desktop build",

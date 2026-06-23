@@ -29,9 +29,9 @@
 | 0.6 | `packages/ui` — shadcn/ui base components | ✅ |
 | 0.7 | `apps/desktop` — Tauri v2 + Vite + React 18 | ✅ |
 | 0.8 | Tauri commands de base : `open_repo`, `get_status`, `scan_repos` | ✅ |
-| 0.9 | Scripts `pnpm dev` (frontend) / `pnpm dev:desktop` (Tauri complet) | ✅ |
+| 0.9 | Scripts `pnpm dev` (Tauri complet) / `pnpm dev:frontend` (Vite uniquement) | ✅ |
 
-**Critère de validation** : `pnpm dev:desktop` compile et lance l'app. ✅ (build Rust OK, build Vite OK)
+**Critère de validation** : `pnpm dev` compile et lance l'app desktop. ✅ (build Rust OK, build Vite OK)
 
 > **⚠️ Bug connu** : L'ouverture d'un repo/dossier via le file picker ne fonctionne pas. À corriger en M0-fix avant de valider M1.
 
