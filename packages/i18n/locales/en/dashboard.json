@@ -1,0 +1,13 @@
+{
+  "dashboard.title": "Dashboard",
+  "dashboard.openRepo": "Open repository",
+  "dashboard.scanFolder": "Scan folder",
+  "dashboard.scanning": "Scanning…",
+  "dashboard.noRepos": "No repositories registered",
+  "dashboard.repoNotFound": "Repository not found",
+  "dashboard.dirty": "{{count}} uncommitted change(s)",
+  "dashboard.aheadBehind": "{{ahead}} ahead, {{behind}} behind",
+  "dashboard.lastCommit": "Last commit",
+  "dashboard.fetch": "Fetch",
+  "dashboard.pull": "Pull"
+}

@@ -1,0 +1,43 @@
+{
+  "name": "@git-manager/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tauri dev",
+    "dev:frontend": "vite",
+    "build": "tauri build",
+    "build:frontend": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext ts,tsx",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@git-manager/git-types": "workspace:*",
+    "@git-manager/i18n": "workspace:*",
+    "@git-manager/ui": "workspace:*",
+    "@tanstack/react-query": "^5.62.7",
+    "@tanstack/react-virtual": "^3.11.1",
+    "@tauri-apps/api": "^2.1.1",
+    "@tauri-apps/plugin-dialog": "^2.0.1",
+    "@tauri-apps/plugin-shell": "^2.3.5",
+    "@tauri-apps/plugin-store": "^2.1.0",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@git-manager/config": "workspace:*",
+    "@tauri-apps/cli": "^2.1.0",
+    "@types/node": "^26.0.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.3"
+  }
+}

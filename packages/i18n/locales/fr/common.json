@@ -1,0 +1,23 @@
+{
+  "app.name": "Git Manager",
+  "actions.confirm": "Confirmer",
+  "actions.cancel": "Annuler",
+  "actions.save": "Enregistrer",
+  "actions.delete": "Supprimer",
+  "actions.close": "Fermer",
+  "actions.open": "Ouvrir",
+  "actions.add": "Ajouter",
+  "actions.create": "Créer",
+  "actions.edit": "Modifier",
+  "actions.rename": "Renommer",
+  "actions.refresh": "Rafraîchir",
+  "actions.copy": "Copier",
+  "actions.copied": "Copié !",
+  "status.loading": "Chargement...",
+  "status.error": "Une erreur est survenue",
+  "status.empty": "Aucun élément",
+  "time.justNow": "À l'instant",
+  "time.minutesAgo": "Il y a {{count}} minute(s)",
+  "time.hoursAgo": "Il y a {{count}} heure(s)",
+  "time.daysAgo": "Il y a {{count}} jour(s)"
+}

@@ -1,0 +1,13 @@
+{
+  "errors.REPO_NOT_FOUND": "Dépôt Git introuvable dans ce dossier.",
+  "errors.NOT_A_REPO": "Ce dossier n'est pas un dépôt Git.",
+  "errors.PERMISSION_DENIED": "Permission refusée.",
+  "errors.MERGE_CONFLICT": "Conflit lors du merge.",
+  "errors.DIRTY_WORKING_TREE": "Des modifications non commitées existent.",
+  "errors.BRANCH_NOT_FOUND": "Branche introuvable.",
+  "errors.COMMIT_NOT_FOUND": "Commit introuvable.",
+  "errors.PROTECTED_BRANCH": "Cette branche est protégée.",
+  "errors.OLLAMA_NOT_RUNNING": "Ollama n'est pas démarré.",
+  "errors.OLLAMA_MODEL_NOT_FOUND": "Modèle Ollama introuvable.",
+  "errors.UNKNOWN": "Erreur inconnue."
+}

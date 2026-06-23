@@ -1,0 +1,9 @@
+{
+  "extends": "@git-manager/config/typescript",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "vite.config.ts"]
+}

@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tauri-specific: disable default browser behaviors for desktop */
+* {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input, textarea, [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+}
+
+#root {
+  height: 100vh;
+  overflow: hidden;
+}

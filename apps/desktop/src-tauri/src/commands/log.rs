@@ -1,0 +1,519 @@
+use crate::error::AppError;
+use crate::models::{GitCommit, GitGraphEdge, GitSignature};
+use git2::{DiffOptions, Oid, Repository, Sort};
+use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
+use std::collections::HashMap;
+
+// ─── Palette de couleurs ──────────────────────────────────────────────────────
+
+const COLORS: &[&str] = &[
+    "#7c3aed", "#2563eb", "#16a34a", "#d97706", "#dc2626", "#0891b2", "#be185d", "#65a30d",
+];
+
+// ─── Structs locaux (match exact avec les types TypeScript) ───────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LogRef {
+    pub name: String,
+    pub short_name: String,
+    #[serde(rename = "type")]
+    pub ref_type: String,
+    pub commit_oid: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LogGraphNode {
+    pub commit: GitCommit,
+    pub column: usize,
+    pub color: String,
+    pub connections: Vec<GitGraphEdge>,
+    pub refs: Vec<LogRef>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DiffLine {
+    origin: String,
+    content: String,
+    old_lineno: Option<i32>,
+    new_lineno: Option<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DiffHunk {
+    header: String,
+    lines: Vec<DiffLine>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DiffFile {
+    old_path: String,
+    new_path: String,
+    status: String,
+    additions: usize,
+    deletions: usize,
+    hunks: Vec<DiffHunk>,
+    is_binary: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitDiff {
+    files: Vec<DiffFile>,
+    total_additions: usize,
+    total_deletions: usize,
+}
+
+// ─── Commandes Tauri ──────────────────────────────────────────────────────────
+
+/// Retourne l'historique paginé sous forme de nœuds de graphe
+#[tauri::command]
+pub async fn get_log(
+    path: String,
+    limit: Option<usize>,
+    skip: Option<usize>,
+    branch: Option<String>,
+) -> Result<Vec<LogGraphNode>, String> {
+    let repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
+
+    let mut revwalk = repo.revwalk().map_err(|e| AppError::Git(e))?;
+    revwalk
+        .set_sorting(Sort::TOPOLOGICAL | Sort::TIME)
+        .map_err(|e| AppError::Git(e))?;
+
+    if let Some(ref branch_name) = branch {
+        let branch_ref = repo
+            .find_branch(branch_name, git2::BranchType::Local)
+            .or_else(|_| repo.find_branch(branch_name, git2::BranchType::Remote))
+            .map_err(|e| AppError::Git(e))?;
+        let target = branch_ref
+            .get()
+            .target()
+            .ok_or_else(|| "Branch has no target".to_string())?;
+        revwalk.push(target).map_err(|e| AppError::Git(e))?;
+    } else {
+        // Parcourir toutes les branches et remotes
+        let _ = revwalk.push_glob("refs/heads/*");
+        let _ = revwalk.push_glob("refs/remotes/*");
+        // Fallback HEAD
+        if let Ok(head) = repo.head() {
+            if let Some(oid) = head.target() {
+                let _ = revwalk.push(oid);
+            }
+        }
+    }
+
+    // ── Construction de la map refs (oid → Vec<LogRef>) ──────────────────────
+    let mut refs_map: HashMap<String, Vec<LogRef>> = HashMap::new();
+
+    // HEAD
+    if let Ok(head_ref) = repo.head() {
+        if let Some(oid) = head_ref.target() {
+            refs_map
+                .entry(oid.to_string())
+                .or_default()
+                .push(LogRef {
+                    name: "HEAD".to_string(),
+                    short_name: "HEAD".to_string(),
+                    ref_type: "HEAD".to_string(),
+                    commit_oid: oid.to_string(),
+                });
+        }
+    }
+
+    if let Ok(references) = repo.references() {
+        for reference in references.flatten() {
+            let target_oid = match reference.target() {
+                Some(o) => o,
+                None => {
+                    // Tag annoté : déréférencer
+                    match reference.peel_to_commit() {
+                        Ok(c) => c.id(),
+                        Err(_) => continue,
+                    }
+                }
+            };
+
+            let name = match reference.name() {
+                Some(n) => n.to_string(),
+                None => continue,
+            };
+            let short_name = reference.shorthand().unwrap_or("").to_string();
+
+            let ref_type = if reference.is_branch() {
+                "branch"
+            } else if reference.is_tag() {
+                "tag"
+            } else if reference.is_remote() {
+                "remote"
+            } else {
+                continue;
+            };
+
+            refs_map
+                .entry(target_oid.to_string())
+                .or_default()
+                .push(LogRef {
+                    name: name.clone(),
+                    short_name,
+                    ref_type: ref_type.to_string(),
+                    commit_oid: target_oid.to_string(),
+                });
+        }
+    }
+
+    // ── Collecte des OIDs avec pagination ────────────────────────────────────
+    let skip_n = skip.unwrap_or(0);
+    let limit_n = limit.unwrap_or(200);
+
+    let oids: Vec<Oid> = revwalk
+        .skip(skip_n)
+        .take(limit_n)
+        .filter_map(|r| r.ok())
+        .collect();
+
+    // ── Algorithme de layout de colonnes ─────────────────────────────────────
+    // active_lanes[i] = Some(oid) signifie que la lane i attend ce commit
+    let mut active_lanes: Vec<Option<String>> = Vec::new();
+    let mut color_map: HashMap<String, String> = HashMap::new();
+    let mut color_counter: usize = 0;
+    let mut nodes: Vec<LogGraphNode> = Vec::new();
+
+    for oid in &oids {
+        let commit = repo.find_commit(*oid).map_err(|e| AppError::Git(e))?;
+        let oid_str = oid.to_string();
+        let short_oid = oid_str[..7.min(oid_str.len())].to_string();
+        let parent_oids: Vec<String> = commit.parent_ids().map(|p| p.to_string()).collect();
+
+        // S'assurer que ce commit est dans active_lanes (nouveau nœud non attendu)
+        if !active_lanes
+            .iter()
+            .any(|l| l.as_deref() == Some(oid_str.as_str()))
+        {
+            if let Some(empty_idx) = active_lanes.iter().position(|l| l.is_none()) {
+                active_lanes[empty_idx] = Some(oid_str.clone());
+            } else {
+                active_lanes.push(Some(oid_str.clone()));
+            }
+        }
+
+        // Trouver toutes les colonnes de ce commit (merge possible de plusieurs lanes)
+        let merge_cols: Vec<usize> = active_lanes
+            .iter()
+            .enumerate()
+            .filter(|(_, l)| l.as_deref() == Some(oid_str.as_str()))
+            .map(|(i, _)| i)
+            .collect();
+
+        let col = merge_cols[0];
+
+        // Assigner la couleur (stable par lane, propagée au 1er parent)
+        let color = color_map
+            .entry(oid_str.clone())
+            .or_insert_with(|| {
+                let c = COLORS[color_counter % COLORS.len()].to_string();
+                color_counter += 1;
+                c
+            })
+            .clone();
+
+        // ── Calcul de next_lanes ──────────────────────────────────────────────
+        let mut next_lanes = active_lanes.clone();
+
+        // Effacer toutes les occurrences de ce commit
+        for &mc in &merge_cols {
+            next_lanes[mc] = None;
+        }
+
+        // Premier parent : prend la colonne principale (col)
+        if let Some(p0) = parent_oids.first() {
+            if !next_lanes
+                .iter()
+                .any(|l| l.as_deref() == Some(p0.as_str()))
+            {
+                next_lanes[col] = Some(p0.clone());
+                // Propager la couleur au premier parent
+                color_map.entry(p0.clone()).or_insert_with(|| color.clone());
+            }
+        }
+
+        // Parents supplémentaires : nouvelles lanes
+        for p in parent_oids.iter().skip(1) {
+            if !next_lanes
+                .iter()
+                .any(|l| l.as_deref() == Some(p.as_str()))
+            {
+                let new_idx = next_lanes
+                    .iter()
+                    .position(|l| l.is_none())
+                    .unwrap_or_else(|| {
+                        next_lanes.push(None);
+                        next_lanes.len() - 1
+                    });
+                next_lanes[new_idx] = Some(p.clone());
+                color_map.entry(p.clone()).or_insert_with(|| {
+                    let c = COLORS[color_counter % COLORS.len()].to_string();
+                    color_counter += 1;
+                    c
+                });
+            }
+        }
+
+        // Nettoyer les None en fin de vecteur
+        while next_lanes.last() == Some(&None) {
+            next_lanes.pop();
+        }
+
+        // ── Calcul des connexions (lignes full-row pour le SVG) ───────────────
+        let mut connections: Vec<GitGraphEdge> = Vec::new();
+
+        // 1. Lanes pass-through (non liées à ce commit)
+        for (from_col, lane_oid) in active_lanes.iter().enumerate() {
+            if let Some(ref oid) = lane_oid {
+                if oid == &oid_str {
+                    continue; // La lane de ce commit : gérée via merge/outgoing
+                }
+                if let Some(to_col) = next_lanes
+                    .iter()
+                    .position(|l| l.as_deref() == Some(oid.as_str()))
+                {
+                    let edge_color = color_map
+                        .get(oid.as_str())
+                        .cloned()
+                        .unwrap_or_else(|| "#888888".to_string());
+                    connections.push(GitGraphEdge {
+                        from_column: from_col,
+                        to_column: to_col,
+                        color: edge_color,
+                    });
+                }
+            }
+        }
+
+        // 2. Lignes de merge entrant (colonnes secondaires → col principal)
+        for &mc in &merge_cols {
+            if mc != col {
+                connections.push(GitGraphEdge {
+                    from_column: mc,
+                    to_column: col,
+                    color: color.clone(),
+                });
+            }
+        }
+
+        // 3. Lignes sortantes vers les parents
+        for p_oid in &parent_oids {
+            if let Some(to_col) = next_lanes
+                .iter()
+                .position(|l| l.as_deref() == Some(p_oid.as_str()))
+            {
+                let edge_color = color_map
+                    .get(p_oid.as_str())
+                    .cloned()
+                    .unwrap_or_else(|| color.clone());
+                connections.push(GitGraphEdge {
+                    from_column: col,
+                    to_column: to_col,
+                    color: edge_color,
+                });
+            }
+        }
+
+        active_lanes = next_lanes;
+
+        // ── Construction du commit ────────────────────────────────────────────
+        let author = commit.author();
+        let committer = commit.committer();
+        let raw_message = commit.message().unwrap_or("").to_string();
+        let subject = raw_message.lines().next().unwrap_or("").to_string();
+        let body = raw_message
+            .lines()
+            .skip(2)
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let git_commit = GitCommit {
+            oid: oid_str.clone(),
+            short_oid,
+            message: raw_message,
+            subject,
+            body,
+            author: GitSignature {
+                name: author.name().unwrap_or("").to_string(),
+                email: author.email().unwrap_or("").to_string(),
+                timestamp: author.when().seconds(),
+            },
+            committer: GitSignature {
+                name: committer.name().unwrap_or("").to_string(),
+                email: committer.email().unwrap_or("").to_string(),
+                timestamp: committer.when().seconds(),
+            },
+            parent_oids,
+        };
+
+        let refs = refs_map.get(&oid_str).cloned().unwrap_or_default();
+
+        nodes.push(LogGraphNode {
+            commit: git_commit,
+            column: col,
+            color,
+            connections,
+            refs,
+        });
+    }
+
+    Ok(nodes)
+}
+
+/// Retourne le diff complet d'un commit vs son premier parent
+#[tauri::command]
+pub async fn get_commit_diff(path: String, oid: String) -> Result<CommitDiff, String> {
+    let repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
+    let commit_oid = Oid::from_str(&oid).map_err(|e| AppError::Git(e))?;
+    let commit = repo.find_commit(commit_oid).map_err(|e| AppError::Git(e))?;
+
+    let commit_tree = commit.tree().map_err(|e| AppError::Git(e))?;
+    let parent_tree = if commit.parent_count() > 0 {
+        let parent = commit.parent(0).map_err(|e| AppError::Git(e))?;
+        Some(parent.tree().map_err(|e| AppError::Git(e))?)
+    } else {
+        None
+    };
+
+    let mut diff_opts = DiffOptions::new();
+    diff_opts.context_lines(3).ignore_whitespace_change(false);
+
+    let diff = repo
+        .diff_tree_to_tree(
+            parent_tree.as_ref(),
+            Some(&commit_tree),
+            Some(&mut diff_opts),
+        )
+        .map_err(|e| AppError::Git(e))?;
+
+    let files: RefCell<Vec<DiffFile>> = RefCell::new(Vec::new());
+
+    diff.foreach(
+        &mut |delta, _progress| {
+            let old_path = delta
+                .old_file()
+                .path()
+                .and_then(|p| p.to_str())
+                .unwrap_or("")
+                .to_string();
+            let new_path = delta
+                .new_file()
+                .path()
+                .and_then(|p| p.to_str())
+                .unwrap_or("")
+                .to_string();
+            let status = match delta.status() {
+                git2::Delta::Added => "added",
+                git2::Delta::Deleted => "deleted",
+                git2::Delta::Renamed => "renamed",
+                git2::Delta::Copied => "copied",
+                git2::Delta::Typechange => "typechange",
+                _ => "modified",
+            };
+            let is_binary =
+                delta.old_file().is_binary() || delta.new_file().is_binary();
+
+            files.borrow_mut().push(DiffFile {
+                old_path,
+                new_path,
+                status: status.to_string(),
+                additions: 0,
+                deletions: 0,
+                hunks: Vec::new(),
+                is_binary,
+            });
+            true
+        },
+        None,
+        Some(&mut |_delta, hunk| {
+            let header = std::str::from_utf8(hunk.header())
+                .unwrap_or("")
+                .trim_end_matches('\n')
+                .to_string();
+            if let Some(file) = files.borrow_mut().last_mut() {
+                file.hunks.push(DiffHunk {
+                    header,
+                    lines: Vec::new(),
+                });
+            }
+            true
+        }),
+        Some(&mut |_delta, _hunk, line| {
+            let content = std::str::from_utf8(line.content())
+                .unwrap_or("")
+                .trim_end_matches('\n')
+                .to_string();
+            let origin = match line.origin() {
+                '+' => "+",
+                '-' => "-",
+                ' ' => " ",
+                _ => "\\",
+            };
+            let mut f = files.borrow_mut();
+            if let Some(file) = f.last_mut() {
+                match origin {
+                    "+" => file.additions += 1,
+                    "-" => file.deletions += 1,
+                    _ => {}
+                }
+                if let Some(hunk) = file.hunks.last_mut() {
+                    hunk.lines.push(DiffLine {
+                        origin: origin.to_string(),
+                        content,
+                        old_lineno: line.old_lineno().map(|n| n as i32),
+                        new_lineno: line.new_lineno().map(|n| n as i32),
+                    });
+                }
+            }
+            true
+        }),
+    )
+    .map_err(|e| AppError::Git(e))?;
+
+    let files_out = files.into_inner();
+    let total_additions = files_out.iter().map(|f| f.additions).sum();
+    let total_deletions = files_out.iter().map(|f| f.deletions).sum();
+
+    Ok(CommitDiff {
+        files: files_out,
+        total_additions,
+        total_deletions,
+    })
+}
+
+/// Retourne le contenu brut d'un fichier à un commit donné
+#[tauri::command]
+pub async fn get_commit_file(
+    path: String,
+    oid: String,
+    file_path: String,
+) -> Result<String, String> {
+    let repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
+    let commit_oid = Oid::from_str(&oid).map_err(|e| AppError::Git(e))?;
+    let commit = repo.find_commit(commit_oid).map_err(|e| AppError::Git(e))?;
+    let tree = commit.tree().map_err(|e| AppError::Git(e))?;
+
+    let entry = tree
+        .get_path(std::path::Path::new(&file_path))
+        .map_err(|e| AppError::Git(e))?;
+
+    let blob = repo
+        .find_blob(entry.id())
+        .map_err(|e| AppError::Git(e))?;
+
+    let content = std::str::from_utf8(blob.content())
+        .map_err(|_| AppError::Unknown("File content is not valid UTF-8".to_string()))?
+        .to_string();
+
+    Ok(content)
+}

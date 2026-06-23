@@ -1,0 +1,187 @@
+import { useState } from 'react'
+import { useTranslation } from '@git-manager/i18n'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Button, Spinner, Input } from '@git-manager/ui'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@git-manager/ui'
+import { getCommitsBetween, resetToCommit } from '../../lib/tauri'
+
+type ResetMode = 'soft' | 'mixed' | 'hard'
+
+interface ResetDialogProps {
+  repoPath: string
+  targetOid: string
+  targetSubject: string
+  open: boolean
+  onClose: () => void
+  onSuccess: () => void
+  protectedBranches?: string[]
+  currentBranch?: string
+}
+
+export function ResetDialog({
+  repoPath,
+  targetOid,
+  targetSubject,
+  open,
+  onClose,
+  onSuccess,
+  protectedBranches = [],
+  currentBranch = '',
+}: ResetDialogProps) {
+  const { t } = useTranslation('git')
+  const queryClient = useQueryClient()
+  const [mode, setMode] = useState<ResetMode>('mixed')
+  const [hardConfirm, setHardConfirm] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const isProtected =
+    currentBranch !== '' && protectedBranches.includes(currentBranch)
+
+  const { data: commits = [], isLoading: isLoadingCommits } = useQuery({
+    queryKey: ['commits-between', repoPath, 'HEAD', targetOid],
+    queryFn: () => getCommitsBetween(repoPath, 'HEAD', targetOid),
+    enabled: open,
+  })
+
+  const canConfirm =
+    !isProtected &&
+    !isLoading &&
+    (mode !== 'hard' || hardConfirm === 'RESET')
+
+  async function handleConfirm() {
+    setIsLoading(true)
+    setError(null)
+    try {
+      await resetToCommit(repoPath, targetOid, mode)
+      queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+      queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+      onSuccess()
+      onClose()
+    } catch (err) {
+      setError(String(err))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  function handleOpenChange(isOpen: boolean) {
+    if (!isOpen) {
+      setError(null)
+      setHardConfirm('')
+      setMode('mixed')
+      onClose()
+    }
+  }
+
+  const modeOptions: { value: ResetMode; label: string }[] = [
+    { value: 'soft', label: t('rollback.reset.soft') },
+    { value: 'mixed', label: t('rollback.reset.mixed') },
+    { value: 'hard', label: t('rollback.reset.hard') },
+  ]
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>
+            {t('rollback.reset.title', { message: targetSubject })}
+          </DialogTitle>
+        </DialogHeader>
+
+        {isProtected && (
+          <p className="rounded bg-destructive/20 px-3 py-2 text-xs text-destructive">
+            {t('rollback.protected.branch', { branch: currentBranch })}
+          </p>
+        )}
+
+        {/* Commits list */}
+        <div className="space-y-1">
+          {isLoadingCommits ? (
+            <p className="text-xs text-muted-foreground">Loading commits…</p>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">
+                {t('rollback.reset.commitsAffected', { count: commits.length })}
+              </p>
+              <div className="max-h-32 overflow-y-auto rounded border border-border bg-muted/30 p-2 space-y-0.5">
+                {commits.map((c) => (
+                  <div key={c.oid} className="flex items-center gap-2 text-xs">
+                    <code className="shrink-0 font-mono text-muted-foreground">{c.shortOid}</code>
+                    <span className="truncate text-foreground">{c.subject}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Reset mode radio */}
+        <div className="space-y-2">
+          {modeOptions.map((opt) => (
+            <label
+              key={opt.value}
+              className={`flex items-center gap-2 rounded border px-3 py-2 text-sm cursor-pointer transition-colors ${
+                mode === opt.value
+                  ? 'border-primary bg-primary/10 text-foreground'
+                  : 'border-border text-muted-foreground hover:bg-accent'
+              }`}
+            >
+              <input
+                type="radio"
+                name="reset-mode"
+                value={opt.value}
+                checked={mode === opt.value}
+                onChange={() => setMode(opt.value)}
+                className="h-3.5 w-3.5"
+              />
+              {opt.label}
+            </label>
+          ))}
+        </div>
+
+        {/* Hard reset warning */}
+        {mode === 'hard' && (
+          <div className="space-y-2 rounded border border-destructive/50 bg-destructive/10 p-3">
+            <p className="text-xs text-destructive font-medium">
+              {t('rollback.reset.hardWarning')}
+            </p>
+            <Input
+              value={hardConfirm}
+              onChange={(e) => setHardConfirm(e.target.value)}
+              placeholder={t('rollback.reset.hardConfirmPlaceholder')}
+              className="h-7 text-xs"
+            />
+          </div>
+        )}
+
+        {error && (
+          <p className="rounded bg-destructive/20 px-3 py-2 text-xs text-destructive">
+            {error}
+          </p>
+        )}
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" size="sm" onClick={onClose} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            variant={mode === 'hard' ? 'destructive' : 'default'}
+            onClick={handleConfirm}
+            disabled={!canConfirm}
+          >
+            {isLoading && <Spinner className="mr-1 h-3 w-3" />}
+            {t('rollback.reset.confirm')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}

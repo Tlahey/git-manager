@@ -1,0 +1,219 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ─── Fallback (dark) ──────────────────────────────────────────────────────── */
+  :root,
+  html[data-theme="dark"] {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222 55% 9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 45% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+    --radius: 0.5rem;
+  }
+
+  /* ─── Light ────────────────────────────────────────────────────────────────── */
+  html[data-theme="light"] {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 210 25% 97%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 217.2 91.2% 59.8%;
+    --radius: 0.5rem;
+  }
+
+  /* ─── GitHub Light ─────────────────────────────────────────────────────────── */
+  html[data-theme="github-light"] {
+    --background: 0 0% 100%;
+    --foreground: 222 6% 15%;
+    --card: 210 17% 97.6%;
+    --card-foreground: 222 6% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 6% 15%;
+    --primary: 212 97% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 17% 97.6%;
+    --secondary-foreground: 222 6% 15%;
+    --muted: 210 17% 95%;
+    --muted-foreground: 210 9% 45%;
+    --accent: 210 17% 94%;
+    --accent-foreground: 222 6% 15%;
+    --destructive: 4 72% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 18% 85%;
+    --input: 210 18% 85%;
+    --ring: 212 97% 45%;
+    --radius: 0.375rem;
+  }
+
+  /* ─── GitHub Dark ──────────────────────────────────────────────────────────── */
+  html[data-theme="github-dark"] {
+    --background: 220 10% 7%;
+    --foreground: 210 19% 92%;
+    --card: 220 13% 11%;
+    --card-foreground: 210 19% 92%;
+    --popover: 218 13% 13%;
+    --popover-foreground: 210 19% 92%;
+    --primary: 212 91% 57%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 216 11% 21%;
+    --secondary-foreground: 210 19% 85%;
+    --muted: 216 11% 18%;
+    --muted-foreground: 215 14% 60%;
+    --accent: 216 11% 18%;
+    --accent-foreground: 210 19% 92%;
+    --destructive: 4 66% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 216 11% 21%;
+    --input: 216 11% 21%;
+    --ring: 212 91% 57%;
+    --radius: 0.375rem;
+  }
+
+  /* ─── Nord ─────────────────────────────────────────────────────────────────── */
+  html[data-theme="nord"] {
+    --background: 220 16% 22%;
+    --foreground: 218 27% 94%;
+    --card: 222 16% 28%;
+    --card-foreground: 218 27% 94%;
+    --popover: 221 16% 26%;
+    --popover-foreground: 218 27% 94%;
+    --primary: 193 43% 68%;
+    --primary-foreground: 220 16% 22%;
+    --secondary: 220 16% 32%;
+    --secondary-foreground: 218 27% 94%;
+    --muted: 221 16% 31%;
+    --muted-foreground: 220 12% 60%;
+    --accent: 213 32% 63%;
+    --accent-foreground: 220 16% 22%;
+    --destructive: 354 42% 60%;
+    --destructive-foreground: 218 27% 94%;
+    --border: 220 16% 36%;
+    --input: 220 16% 36%;
+    --ring: 193 43% 68%;
+    --radius: 0.5rem;
+  }
+
+  /* ─── Dracula ───────────────────────────────────────────────────────────────── */
+  html[data-theme="dracula"] {
+    --background: 231 15% 18%;
+    --foreground: 60 30% 96%;
+    --card: 231 14% 21%;
+    --card-foreground: 60 30% 96%;
+    --popover: 232 14% 22%;
+    --popover-foreground: 60 30% 96%;
+    --primary: 265 89% 78%;
+    --primary-foreground: 231 15% 18%;
+    --secondary: 232 14% 31%;
+    --secondary-foreground: 60 30% 96%;
+    --muted: 232 14% 26%;
+    --muted-foreground: 232 35% 65%;
+    --accent: 232 14% 31%;
+    --accent-foreground: 60 30% 96%;
+    --destructive: 0 100% 67%;
+    --destructive-foreground: 60 30% 96%;
+    --border: 232 14% 31%;
+    --input: 232 14% 31%;
+    --ring: 265 89% 78%;
+    --radius: 0.5rem;
+  }
+
+  /* ─── Catppuccin Mocha ──────────────────────────────────────────────────────── */
+  html[data-theme="catppuccin-mocha"] {
+    --background: 240 21% 14%;
+    --foreground: 226 64% 88%;
+    --card: 237 14% 23%;
+    --card-foreground: 226 64% 88%;
+    --popover: 240 21% 17%;
+    --popover-foreground: 226 64% 88%;
+    --primary: 267 83% 81%;
+    --primary-foreground: 240 21% 14%;
+    --secondary: 234 11% 31%;
+    --secondary-foreground: 226 64% 88%;
+    --muted: 237 14% 23%;
+    --muted-foreground: 233 21% 63%;
+    --accent: 234 11% 31%;
+    --accent-foreground: 226 64% 88%;
+    --destructive: 343 81% 75%;
+    --destructive-foreground: 240 21% 14%;
+    --border: 237 14% 23%;
+    --input: 237 14% 23%;
+    --ring: 267 83% 81%;
+    --radius: 0.5rem;
+  }
+
+  /* ─── Solarized Light ───────────────────────────────────────────────────────── */
+  html[data-theme="solarized-light"] {
+    --background: 44 87% 94%;
+    --foreground: 192 81% 14%;
+    --card: 46 40% 88%;
+    --card-foreground: 192 81% 14%;
+    --popover: 44 87% 94%;
+    --popover-foreground: 192 81% 14%;
+    --primary: 205 69% 49%;
+    --primary-foreground: 44 87% 94%;
+    --secondary: 46 40% 88%;
+    --secondary-foreground: 192 81% 14%;
+    --muted: 46 40% 91%;
+    --muted-foreground: 194 14% 45%;
+    --accent: 46 40% 88%;
+    --accent-foreground: 192 81% 14%;
+    --destructive: 1 71% 52%;
+    --destructive-foreground: 44 87% 94%;
+    --border: 46 18% 82%;
+    --input: 46 18% 82%;
+    --ring: 205 69% 49%;
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-border;
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "productName": "git-manager",
+  "version": "0.1.0",
+  "identifier": "com.git-manager.app",
+  "build": {
+    "beforeDevCommand": "pnpm --filter @git-manager/desktop run dev:frontend",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build:frontend",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Git Manager",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600,
+        "decorations": true,
+        "transparent": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {}
+}

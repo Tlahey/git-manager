@@ -1,0 +1,74 @@
+mod commands;
+mod error;
+mod models;
+mod state;
+
+use commands::branch::{get_branches, get_tags};
+use commands::submodule::list_submodules;
+use commands::themes::get_user_themes;
+use commands::fixup::{autosquash_preview, create_fixup_commit, get_pending_fixups, run_autosquash};
+use commands::rollback::{get_commits_between, reset_to_commit, revert_commit};
+use commands::commit::{
+    create_commit, get_file_diff, get_staged_diff, stage_all, stage_file, unstage_all,
+    unstage_file,
+};
+use commands::log::{get_commit_diff, get_commit_file, get_log};
+use commands::ollama::{cancel_generation, check_ollama_status, generate_commit_message};
+use commands::remote::{fetch_remote, pull_branch, push_branch};
+use commands::repo::{get_repo_status, open_repo, scan_repos, clone_repo, init_repo};
+use state::AppState;
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_shell::init())
+        .manage(AppState::new())
+        .invoke_handler(tauri::generate_handler![
+            // Repo
+            open_repo,
+            get_repo_status,
+            scan_repos,
+            clone_repo,
+            init_repo,
+            // Log / Graph
+            get_log,
+            get_commit_diff,
+            get_commit_file,
+            // Branches & Tags
+            get_branches,
+            get_tags,
+            // Ollama
+            check_ollama_status,
+            generate_commit_message,
+            cancel_generation,
+            // Working Tree
+            stage_file,
+            unstage_file,
+            stage_all,
+            unstage_all,
+            create_commit,
+            get_staged_diff,
+            get_file_diff,
+            // Remote
+            fetch_remote,
+            pull_branch,
+            push_branch,
+            // Rollback
+            revert_commit,
+            reset_to_commit,
+            get_commits_between,
+            // Fixup
+            create_fixup_commit,
+            get_pending_fixups,
+            autosquash_preview,
+            run_autosquash,
+            // Themes
+            get_user_themes,
+            // Submodules
+            list_submodules,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}

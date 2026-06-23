@@ -1,0 +1,13 @@
+{
+  "dashboard.title": "Tableau de bord",
+  "dashboard.openRepo": "Ouvrir un repo",
+  "dashboard.scanFolder": "Scanner un dossier",
+  "dashboard.scanning": "Scan en cours…",
+  "dashboard.noRepos": "Aucun dépôt enregistré",
+  "dashboard.repoNotFound": "Dépôt introuvable",
+  "dashboard.dirty": "{{count}} modification(s) non commitée(s)",
+  "dashboard.aheadBehind": "{{ahead}} en avance, {{behind}} en retard",
+  "dashboard.lastCommit": "Dernier commit",
+  "dashboard.fetch": "Fetch",
+  "dashboard.pull": "Pull"
+}

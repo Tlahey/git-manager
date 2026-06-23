@@ -1,0 +1,13 @@
+{
+  "errors.REPO_NOT_FOUND": "Git repository not found in this folder.",
+  "errors.NOT_A_REPO": "This folder is not a Git repository.",
+  "errors.PERMISSION_DENIED": "Permission denied.",
+  "errors.MERGE_CONFLICT": "Merge conflict.",
+  "errors.DIRTY_WORKING_TREE": "Uncommitted changes exist.",
+  "errors.BRANCH_NOT_FOUND": "Branch not found.",
+  "errors.COMMIT_NOT_FOUND": "Commit not found.",
+  "errors.PROTECTED_BRANCH": "This branch is protected.",
+  "errors.OLLAMA_NOT_RUNNING": "Ollama is not running.",
+  "errors.OLLAMA_MODEL_NOT_FOUND": "Ollama model not found.",
+  "errors.UNKNOWN": "Unknown error."
+}

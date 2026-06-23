@@ -1,0 +1,215 @@
+import {
+  ChevronDown,
+  ChevronRight,
+  FolderGit2,
+  Globe,
+  GitBranch as BranchIcon,
+  HardDrive,
+  GitPullRequest,
+  Tag as TagIcon,
+  GitFork,
+  Plus,
+} from 'lucide-react'
+import { Spinner } from '@git-manager/ui'
+import type { GitBranch, PullRequest } from '@git-manager/git-types'
+import type { SidebarRow, SectionKey } from './types'
+import { SectionHeader } from './SectionHeader'
+import { BranchItem } from './BranchItem'
+import { PullRequestItem } from './PullRequestItem'
+import { HoverExpandLabel } from './HoverExpandLabel'
+
+const SECTION_ICONS: Record<SectionKey, React.ReactNode> = {
+  local: <HardDrive className="h-3 w-3" />,
+  remotes: <Globe className="h-3 w-3" />,
+  prs: <GitPullRequest className="h-3 w-3" />,
+  tags: <TagIcon className="h-3 w-3" />,
+  submodules: <GitFork className="h-3 w-3" />,
+}
+
+interface SidebarRowViewProps {
+  row: SidebarRow
+  onToggleOpen: (id: string) => void
+  onSelectBranch: (name: string) => void
+  onTogglePin: (shortName: string) => void
+  onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
+  onOpenPr?: (pr: PullRequest) => void
+  onCreateBranch?: () => void
+}
+
+export function SidebarRowView({
+  row,
+  onToggleOpen,
+  onSelectBranch,
+  onTogglePin,
+  onContextMenu,
+  onOpenPr,
+  onCreateBranch,
+}: SidebarRowViewProps) {
+  switch (row.kind) {
+    case 'section':
+      return (
+        <SectionHeader
+          title={row.title}
+          icon={SECTION_ICONS[row.sectionKey]}
+          count={row.count}
+          isOpen={row.isOpen}
+          onToggle={() => onToggleOpen(row.id)}
+          action={
+            row.sectionKey === 'local' && onCreateBranch ? (
+              <button
+                onClick={onCreateBranch}
+                className="mr-1 rounded p-0.5 transition-colors hover:bg-accent"
+                aria-label="Créer une branche"
+                title="Créer une branche"
+              >
+                <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            ) : undefined
+          }
+        />
+      )
+
+    case 'branch':
+      return (
+        <BranchItem
+          branch={row.branch}
+          isSelected={row.isSelected}
+          depth={row.depth}
+          isPinned={row.isPinned}
+          onSelect={onSelectBranch}
+          onTogglePin={onTogglePin}
+          onContextMenu={onContextMenu}
+        />
+      )
+
+    case 'folder':
+      return (
+        <button
+          onClick={() => onToggleOpen(row.id)}
+          className="flex w-full items-center gap-1.5 py-[3px] pl-4 pr-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
+        >
+          <span className="shrink-0">
+            {row.isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          </span>
+          <FolderGit2 className="h-3 w-3 shrink-0 opacity-50" />
+          <span className="flex-1 truncate font-medium">
+            {row.hasHead && <span className="mr-1 text-[9px] text-emerald-400">●</span>}
+            {row.prefix}
+          </span>
+          <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground/40">
+            {row.count}
+          </span>
+        </button>
+      )
+
+    case 'remote-group':
+      return (
+        <button
+          onClick={() => onToggleOpen(row.id)}
+          className="flex w-full items-center gap-1.5 py-[3px] pl-4 pr-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
+        >
+          <span className="shrink-0">
+            {row.isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          </span>
+          <Globe className="h-3 w-3 shrink-0 opacity-50" />
+          <span className="flex-1 truncate font-medium">{row.remoteName}</span>
+          <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground/40">
+            {row.count}
+          </span>
+        </button>
+      )
+
+    case 'remote-branch': {
+      const displayName = row.branch.shortName.replace(
+        new RegExp(`^${row.remoteName}/`),
+        ''
+      )
+      return (
+        <div
+          className={`group/rbranch relative flex items-center gap-1.5 py-[3px] pl-10 pr-2 text-xs transition-colors ${
+            row.isSelected
+              ? 'bg-accent text-foreground'
+              : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+          }`}
+          onClick={() => onSelectBranch(row.branch.shortName)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && onSelectBranch(row.branch.shortName)}
+        >
+          <BranchIcon className="h-3 w-3 shrink-0 opacity-30" />
+          <HoverExpandLabel>{displayName}</HoverExpandLabel>
+          {(row.branch.aheadCount > 0 || row.branch.behindCount > 0) && (
+            <span className="shrink-0 tabular-nums text-[10px]">
+              {row.branch.aheadCount > 0 && (
+                <span className="text-blue-400">↑{row.branch.aheadCount}</span>
+              )}
+              {row.branch.behindCount > 0 && (
+                <span className="ml-0.5 text-orange-400">↓{row.branch.behindCount}</span>
+              )}
+            </span>
+          )}
+        </div>
+      )
+    }
+
+    case 'subgroup':
+      return (
+        <button
+          onClick={() => onToggleOpen(row.id)}
+          className="flex w-full items-center gap-1 px-4 py-[3px] text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 transition-colors hover:bg-accent/30 hover:text-muted-foreground"
+        >
+          <span className="shrink-0">
+            {row.isOpen ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronRight className="h-2.5 w-2.5" />}
+          </span>
+          <span className="flex-1">{row.label}</span>
+          <span className="tabular-nums">{row.count}</span>
+        </button>
+      )
+
+    case 'pr':
+      return <PullRequestItem pr={row.pr} onOpen={onOpenPr} />
+
+    case 'tag':
+      return (
+        <div className="group/tag relative flex items-center gap-1.5 py-[3px] pl-6 pr-2 text-xs text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground">
+          <TagIcon className="h-3 w-3 shrink-0 opacity-30" />
+          <HoverExpandLabel>{row.tag.shortName}</HoverExpandLabel>
+          <span className="shrink-0 tabular-nums text-[10px] font-mono text-muted-foreground/40">
+            {row.tag.commitOid.slice(0, 7)}
+          </span>
+        </div>
+      )
+
+    case 'submodule':
+      return (
+        <div className="group/sm relative flex items-start gap-1.5 py-[3px] pl-6 pr-2 text-xs text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground">
+          <GitFork className="mt-0.5 h-3 w-3 shrink-0 opacity-30" />
+          <div className="min-w-0 flex-1">
+            <HoverExpandLabel className="font-medium">{row.sm.path}</HoverExpandLabel>
+            <span className="block truncate text-[10px] text-muted-foreground/50">
+              {row.sm.url.replace(/^(https?:\/\/|git@)/, '').replace(/\.git$/, '')}
+            </span>
+          </div>
+          {row.sm.headOid && (
+            <span className="shrink-0 tabular-nums text-[10px] font-mono text-muted-foreground/30">
+              {row.sm.headOid.slice(0, 7)}
+            </span>
+          )}
+        </div>
+      )
+
+    case 'message':
+      return (
+        <div className="flex items-center gap-2 px-4 py-1.5 text-[11px] text-muted-foreground/70">
+          {row.loading && <Spinner className="h-3 w-3 text-muted-foreground" />}
+          <span>{row.text}</span>
+        </div>
+      )
+
+    case 'divider':
+      return <div className="my-1 border-t border-border/50" />
+
+    default:
+      return null
+  }
+}

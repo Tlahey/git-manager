@@ -1,0 +1,39 @@
+[package]
+name = "git-manager"
+version = "0.1.0"
+description = "Git Manager Desktop"
+authors = ["git-manager"]
+license = "MIT"
+repository = ""
+edition = "2021"
+rust-version = "1.77"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "git_manager_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-store = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+git2 = { version = "0.19", features = ["ssh", "https"] }
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
+futures-util = "0.3"
+thiserror = "1"
+chrono = { version = "0.4", features = ["serde"] }
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
