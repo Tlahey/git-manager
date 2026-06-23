@@ -5,6 +5,7 @@ import { GitCommitHorizontal, Check, Laptop } from 'lucide-react'
 interface RefLabelProps {
   gitRef: GitRef
   alwaysVisible?: boolean
+  color?: string
 }
 
 function GithubIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -32,24 +33,35 @@ const cleanName = (ref: GitRef) => {
   return ref.shortName
 }
 
-export function RefLabel({ gitRef, alwaysVisible = false }: RefLabelProps) {
+export function RefLabel({ gitRef, alwaysVisible = false, color }: RefLabelProps) {
   const isHEAD = gitRef.type === 'HEAD'
   const isRemote = gitRef.type === 'remote'
   const isTag = gitRef.type === 'tag'
 
   const displayName = cleanName(gitRef)
 
+  const isMainOrMaster =
+    gitRef.shortName === 'main' ||
+    gitRef.shortName === 'master' ||
+    gitRef.shortName.endsWith('/main') ||
+    gitRef.shortName.endsWith('/master')
+
+  const refColor = isMainOrMaster ? '#2563eb' : color || '#2563eb'
+
   let badgeClasses = cn(
-    'inline-flex min-w-0 max-w-[180px] items-center gap-0.5 rounded px-1.5 py-0 text-[10px] leading-5 font-medium border transition-all duration-150',
+    'inline-flex min-w-0 max-w-[180px] items-center gap-0.5 rounded px-1.5 py-0 text-[10px] leading-5 font-medium border bg-background transition-all duration-150',
   )
 
+  // Custom inline styles for coloring (non-HEAD)
+  const customStyle: React.CSSProperties = {}
+
   if (isHEAD) {
-    badgeClasses = cn(badgeClasses, 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-semibold')
-  } else if (isRemote) {
-    badgeClasses = cn(badgeClasses, 'bg-blue-500/20 text-blue-300 border-blue-500/40')
+    badgeClasses = cn(badgeClasses, 'text-emerald-300 border-emerald-500/40 font-semibold')
+    customStyle.backgroundImage = 'linear-gradient(rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.2))'
   } else {
-    // Local branch or tag
-    badgeClasses = cn(badgeClasses, 'bg-teal-500/20 text-teal-300 border-teal-500/40')
+    customStyle.backgroundImage = `linear-gradient(${refColor}25, ${refColor}25)` // ~15% opacity overlay over solid bg-background
+    customStyle.borderColor = `${refColor}50` // ~30% opacity
+    customStyle.color = refColor
   }
 
   // Tags are hidden by default and only shown on hover with low opacity, unless in portal (alwaysVisible)
@@ -62,16 +74,16 @@ export function RefLabel({ gitRef, alwaysVisible = false }: RefLabelProps) {
   }
 
   return (
-    <span className={badgeClasses}>
+    <span className={badgeClasses} style={customStyle}>
       {isHEAD && <GitCommitHorizontal className="h-2.5 w-2.5 shrink-0" />}
-      {!isHEAD && !isRemote && <Check className="h-2.5 w-2.5 shrink-0 text-teal-400" />}
+      {!isHEAD && !isRemote && <Check className="h-2.5 w-2.5 shrink-0" />}
       
       <span className="truncate">
         {isHEAD ? 'HEAD' : displayName}
       </span>
 
-      {isRemote && <GithubIcon className="h-2.5 w-2.5 shrink-0 text-blue-400 ml-0.5" />}
-      {!isHEAD && !isRemote && <Laptop className="h-2.5 w-2.5 shrink-0 text-teal-400 ml-0.5" />}
+      {isRemote && <GithubIcon className="h-2.5 w-2.5 shrink-0 ml-0.5" />}
+      {!isHEAD && !isRemote && <Laptop className="h-2.5 w-2.5 shrink-0 ml-0.5" />}
     </span>
   )
 }

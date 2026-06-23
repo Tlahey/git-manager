@@ -27,7 +27,7 @@ interface GitGraphProps {
   onSelectCommit?: (oid: string) => void
 }
 
-const ROW_HEIGHT = 26
+const ROW_HEIGHT = 40
 
 interface WaterlineMark {
   id: string
@@ -275,6 +275,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                     return (
                       <div
                         key={virtualItem.key}
+                        className="hover:z-[60]"
                         style={{
                           position: 'absolute',
                           top: 0,

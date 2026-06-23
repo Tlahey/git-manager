@@ -5,6 +5,7 @@ import { RefLabel } from './RefLabel'
 
 interface RefLabelGroupProps {
   refs: GitRef[]
+  color?: string
 }
 
 /**
@@ -12,7 +13,7 @@ interface RefLabelGroupProps {
  * ajouté ; au survol, l'ensemble des refs est révélé dans un panneau flottant
  * (portal) positionné juste en dessous.
  */
-export function RefLabelGroup({ refs }: RefLabelGroupProps) {
+export function RefLabelGroup({ refs, color }: RefLabelGroupProps) {
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState({ top: 0, left: 0 })
   const badgeRef = useRef<HTMLSpanElement>(null)
@@ -65,7 +66,7 @@ export function RefLabelGroup({ refs }: RefLabelGroupProps) {
 
   return (
     <div className="flex min-w-0 items-center gap-1 overflow-hidden">
-      <RefLabel gitRef={first} />
+      <RefLabel gitRef={first} color={color} />
 
       {extra > 0 && (
         <span
@@ -88,7 +89,7 @@ export function RefLabelGroup({ refs }: RefLabelGroupProps) {
             className="z-50 flex max-w-xs flex-col items-start gap-1 rounded-md border border-border bg-popover p-1.5 shadow-lg"
           >
             {sortedRefs.slice(1).map((ref, i) => (
-              <RefLabel key={i} gitRef={ref} alwaysVisible />
+              <RefLabel key={i} gitRef={ref} alwaysVisible color={color} />
             ))}
           </div>,
           document.body,

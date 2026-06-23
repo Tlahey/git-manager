@@ -1,4 +1,5 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { MoreVertical } from 'lucide-react'
 import type { GitGraphNode } from '@git-manager/git-types'
 import { cn } from '@git-manager/ui'
@@ -81,26 +82,109 @@ function AuthorAvatar({ name }: { name: string }) {
   )
 }
 
+export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
+  const [isHovered, setIsHovered] = useState(false)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const { commit } = node
+  const initials = getAuthorInitials(commit.author.name)
+
+  const COL_WIDTH = 36
+  const nodeX = node.column * COL_WIDTH + COL_WIDTH / 2
+
+  function handleMouseEnter(e: React.MouseEvent) {
+    const r = e.currentTarget.getBoundingClientRect()
+    setPos({ top: r.top, left: r.left + r.width / 2 })
+    setIsHovered(true)
+  }
+
+  function handleMouseLeave() {
+    setIsHovered(false)
+  }
+
+  return (
+    <div
+      className="absolute h-full flex items-center justify-center pointer-events-none"
+      style={{ left: nodeX - 16, width: 32 }}
+    >
+      <div
+        className="pointer-events-auto"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        {/* Avatar Circle */}
+        <div
+          className="flex h-[32px] w-[32px] items-center justify-center rounded-full text-[11px] font-bold text-white select-none cursor-pointer border border-background shadow-sm hover:scale-110 hover:shadow-md transition-all duration-150"
+          style={{ backgroundColor: node.color }}
+        >
+          {initials}
+        </div>
+      </div>
+
+      {isHovered &&
+        createPortal(
+          <div
+            style={{
+              position: 'fixed',
+              top: pos.top - 10,
+              left: pos.left,
+              transform: 'translate(-50%, -100%)',
+            }}
+            className="z-[100] pointer-events-none flex flex-col gap-0.5 rounded-md border border-border bg-popover/95 backdrop-blur-md px-2.5 py-1.5 shadow-xl text-popover-foreground whitespace-nowrap animate-in fade-in-0 zoom-in-95 duration-100"
+          >
+            <span className="text-[10px] font-semibold leading-none">{commit.author.name}</span>
+            <span className="text-[9px] text-muted-foreground/90 leading-none mt-0.5">{commit.author.email}</span>
+            {/* Petit triangle en bas */}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-popover/95" />
+          </div>,
+          document.body,
+        )}
+    </div>
+  )
+}
+
 // ── Cellules ──────────────────────────────────────────────────────────────────
 
-function CellContent({ col, node }: { col: ColumnKey; node: GitGraphNode }) {
+function CellContent({ col, node, refsWidth }: { col: ColumnKey; node: GitGraphNode; refsWidth: number }) {
   const { commit } = node
 
   switch (col) {
     case 'refs':
-      return node.refs.length > 0 ? <RefLabelGroup refs={node.refs} /> : null
+      return node.refs.length > 0 ? <RefLabelGroup refs={node.refs} color={node.color} /> : null
 
     case 'graph':
       return (
-        <div className="h-full overflow-hidden">
-          <GraphSvg column={node.column} color={node.color} connections={node.connections} />
+        <div className="w-full h-full relative overflow-visible flex items-center">
+          {/* Conteneur de découpe (clip) élargi pour le graph uniquement */}
+          <div
+            className="absolute overflow-hidden pointer-events-none"
+            style={{ left: -refsWidth, right: 0, top: -4, bottom: -4 }}
+          >
+            {/* Conteneur interne réaligné sur la colonne graph */}
+            <div
+              className="absolute pointer-events-none"
+              style={{ left: refsWidth, right: 0, top: 4, bottom: 4 }}
+            >
+              <GraphSvg
+                column={node.column}
+                connections={node.connections}
+                hasRefs={node.refs.length > 0}
+                branchColor={node.color}
+                tagLineStart={-refsWidth}
+              />
+            </div>
+          </div>
+
+          {/* Conteneur de découpe simple et direct pour les avatars */}
+          <div className="absolute inset-y-0 left-0 right-0 overflow-hidden pointer-events-none">
+            <GraphAvatarTooltip node={node} />
+          </div>
         </div>
       )
 
     case 'message': {
       const body = commit.body?.replace(/\s+/g, ' ').trim()
       return (
-        <span className="min-w-0 flex-1 truncate text-[10px] leading-tight">
+        <span className="min-w-0 flex-1 truncate text-[11px] leading-tight">
           <span className="text-foreground">{commit.subject}</span>
           {body && <span className="ml-2 text-muted-foreground/70">{body}</span>}
         </span>
@@ -145,23 +229,49 @@ export const GraphRow = memo(function GraphRow({
   onContextMenu,
   onOpenMenu,
 }: GraphRowProps) {
+  const refsColumn = columns.find((c) => c.key === 'refs')
+  const refsWidth = refsColumn ? refsColumn.width : 160
+  const graphColumn = columns.find((c) => c.key === 'graph')
+  const graphWidth = graphColumn ? graphColumn.width : 120
+  const COL_WIDTH = 36
+  const nodeX = node.column * COL_WIDTH + COL_WIDTH / 2
+  // Left edge of the avatar is nodeX - 16. Shifted by 8px cell padding: refsWidth + 8 + nodeX - 16 = refsWidth + nodeX - 8
+  const startX = refsWidth + nodeX - 8
+  const endX = refsWidth + graphWidth
+
   return (
     <div
       onClick={onSelect}
       onContextMenu={onContextMenu}
       className={cn(
-        'group relative flex h-[26px] cursor-pointer select-none items-center border-b border-transparent transition-colors hover:bg-accent/50',
+        'group relative flex h-[40px] cursor-pointer select-none items-center border-b border-transparent transition-colors hover:bg-accent/50 hover:z-[60]',
         isSelected && 'bg-accent/70',
         isPrimary && 'bg-accent',
       )}
     >
+      {/* Background colored band starting from the avatar to the right boundary of the graph column, with border-right */}
+      <div
+        className="absolute pointer-events-none border-r-[3px] transition-colors"
+        style={{
+          left: startX,
+          width: Math.max(0, endX - startX),
+          top: 4,
+          height: 32,
+          backgroundColor: `${node.color}15`, // ~8% opacity
+          borderRightColor: node.color,
+        }}
+      />
+
       {columns.map((col) => (
         <div
           key={col.key}
-          className="flex h-full min-w-0 items-center px-2"
+          className={cn(
+            "flex h-full min-w-0 items-center px-2",
+            col.key === 'refs' && 'relative z-10 justify-start'
+          )}
           style={col.flex ? { flex: '1 1 0%' } : { width: col.width, flexShrink: 0 }}
         >
-          <CellContent col={col.key} node={node} />
+          <CellContent col={col.key} node={node} refsWidth={refsWidth} />
         </div>
       ))}
 
