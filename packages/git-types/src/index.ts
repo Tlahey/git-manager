@@ -42,6 +42,9 @@ export interface GitGraphEdge {
   fromColumn: number
   toColumn: number
   color: string
+  dashed?: boolean
+  startsAtNode?: boolean
+  endsAtNode?: boolean
 }
 
 // ─── Refs ─────────────────────────────────────────────────────────────────────

@@ -180,6 +180,7 @@ pub async fn get_log(
     // ── Algorithme de layout de colonnes ─────────────────────────────────────
     // active_lanes[i] = Some(oid) signifie que la lane i attend ce commit
     let mut active_lanes: Vec<Option<String>> = Vec::new();
+    let mut lane_colors: Vec<String> = Vec::new();
     let mut color_map: HashMap<String, String> = HashMap::new();
     let mut color_counter: usize = 0;
     let mut nodes: Vec<LogGraphNode> = Vec::new();
@@ -190,15 +191,35 @@ pub async fn get_log(
         let short_oid = oid_str[..7.min(oid_str.len())].to_string();
         let parent_oids: Vec<String> = commit.parent_ids().map(|p| p.to_string()).collect();
 
+        // Assigner la couleur du commit courant (stable par lane, propagée au 1er parent)
+        let color = color_map
+            .entry(oid_str.clone())
+            .or_insert_with(|| {
+                let c = COLORS[color_counter % COLORS.len()].to_string();
+                color_counter += 1;
+                c
+            })
+            .clone();
+
+        let mut is_new_lane = false;
+
         // S'assurer que ce commit est dans active_lanes (nouveau nœud non attendu)
         if !active_lanes
             .iter()
             .any(|l| l.as_deref() == Some(oid_str.as_str()))
         {
+            is_new_lane = true;
             if let Some(empty_idx) = active_lanes.iter().position(|l| l.is_none()) {
                 active_lanes[empty_idx] = Some(oid_str.clone());
+                if empty_idx < lane_colors.len() {
+                    lane_colors[empty_idx] = color.clone();
+                } else {
+                    lane_colors.resize(empty_idx + 1, String::new());
+                    lane_colors[empty_idx] = color.clone();
+                }
             } else {
                 active_lanes.push(Some(oid_str.clone()));
+                lane_colors.push(color.clone());
             }
         }
 
@@ -212,61 +233,58 @@ pub async fn get_log(
 
         let col = merge_cols[0];
 
-        // Assigner la couleur (stable par lane, propagée au 1er parent)
-        let color = color_map
-            .entry(oid_str.clone())
-            .or_insert_with(|| {
-                let c = COLORS[color_counter % COLORS.len()].to_string();
-                color_counter += 1;
-                c
-            })
-            .clone();
-
         // ── Calcul de next_lanes ──────────────────────────────────────────────
         let mut next_lanes = active_lanes.clone();
+        let mut next_lane_colors = lane_colors.clone();
 
         // Effacer toutes les occurrences de ce commit
         for &mc in &merge_cols {
             next_lanes[mc] = None;
         }
 
+        let mut parent_to_col = HashMap::new();
+
         // Premier parent : prend la colonne principale (col)
         if let Some(p0) = parent_oids.first() {
-            if !next_lanes
-                .iter()
-                .any(|l| l.as_deref() == Some(p0.as_str()))
-            {
-                next_lanes[col] = Some(p0.clone());
-                // Propager la couleur au premier parent
-                color_map.entry(p0.clone()).or_insert_with(|| color.clone());
-            }
+            next_lanes[col] = Some(p0.clone());
+            next_lane_colors[col] = color.clone();
+            parent_to_col.insert(p0.clone(), col);
+            // Propager la couleur au premier parent
+            color_map.entry(p0.clone()).or_insert_with(|| color.clone());
         }
 
         // Parents supplémentaires : nouvelles lanes
         for p in parent_oids.iter().skip(1) {
-            if !next_lanes
+            let target_col = if let Some(existing_idx) = next_lanes
                 .iter()
-                .any(|l| l.as_deref() == Some(p.as_str()))
+                .position(|l| l.as_deref() == Some(p.as_str()))
             {
+                existing_idx
+            } else {
                 let new_idx = next_lanes
                     .iter()
                     .position(|l| l.is_none())
                     .unwrap_or_else(|| {
                         next_lanes.push(None);
+                        next_lane_colors.push(String::new());
                         next_lanes.len() - 1
                     });
                 next_lanes[new_idx] = Some(p.clone());
-                color_map.entry(p.clone()).or_insert_with(|| {
+                let p_color = color_map.entry(p.clone()).or_insert_with(|| {
                     let c = COLORS[color_counter % COLORS.len()].to_string();
                     color_counter += 1;
                     c
-                });
-            }
+                }).clone();
+                next_lane_colors[new_idx] = p_color;
+                new_idx
+            };
+            parent_to_col.insert(p.clone(), target_col);
         }
 
         // Nettoyer les None en fin de vecteur
         while next_lanes.last() == Some(&None) {
             next_lanes.pop();
+            next_lane_colors.pop();
         }
 
         // ── Calcul des connexions (lignes full-row pour le SVG) ───────────────
@@ -278,53 +296,57 @@ pub async fn get_log(
                 if oid == &oid_str {
                     continue; // La lane de ce commit : gérée via merge/outgoing
                 }
-                if let Some(to_col) = next_lanes
-                    .iter()
-                    .position(|l| l.as_deref() == Some(oid.as_str()))
-                {
-                    let edge_color = color_map
-                        .get(oid.as_str())
-                        .cloned()
-                        .unwrap_or_else(|| "#888888".to_string());
-                    connections.push(GitGraphEdge {
-                        from_column: from_col,
-                        to_column: to_col,
-                        color: edge_color,
-                    });
-                }
+                // Une lane pass-through reste toujours dans la même colonne et garde sa couleur
+                let edge_color = lane_colors.get(from_col).cloned().unwrap_or_else(|| "#888888".to_string());
+                connections.push(GitGraphEdge {
+                    from_column: from_col,
+                    to_column: from_col,
+                    color: edge_color,
+                    starts_at_node: None,
+                    ends_at_node: None,
+                });
             }
         }
 
         // 2. Lignes de merge entrant (colonnes secondaires → col principal)
         for &mc in &merge_cols {
+            let edge_color = lane_colors.get(mc).cloned().unwrap_or_else(|| color.clone());
             if mc != col {
                 connections.push(GitGraphEdge {
                     from_column: mc,
                     to_column: col,
-                    color: color.clone(),
+                    color: edge_color,
+                    starts_at_node: None,
+                    ends_at_node: None,
+                });
+            } else if !is_new_lane {
+                connections.push(GitGraphEdge {
+                    from_column: col,
+                    to_column: col,
+                    color: edge_color,
+                    starts_at_node: None,
+                    ends_at_node: Some(true),
                 });
             }
         }
 
         // 3. Lignes sortantes vers les parents
         for p_oid in &parent_oids {
-            if let Some(to_col) = next_lanes
-                .iter()
-                .position(|l| l.as_deref() == Some(p_oid.as_str()))
-            {
-                let edge_color = color_map
-                    .get(p_oid.as_str())
-                    .cloned()
-                    .unwrap_or_else(|| color.clone());
+            if let Some(&to_col) = parent_to_col.get(p_oid) {
+                let edge_color = next_lane_colors.get(to_col).cloned().unwrap_or_else(|| color.clone());
+                let starts_at_node = if to_col == col { Some(true) } else { None };
                 connections.push(GitGraphEdge {
                     from_column: col,
                     to_column: to_col,
                     color: edge_color,
+                    starts_at_node,
+                    ends_at_node: None,
                 });
             }
         }
 
         active_lanes = next_lanes;
+        lane_colors = next_lane_colors;
 
         // ── Construction du commit ────────────────────────────────────────────
         let author = commit.author();

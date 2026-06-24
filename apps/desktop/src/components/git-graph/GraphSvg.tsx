@@ -6,12 +6,13 @@ interface GraphSvgProps {
   hasRefs?: boolean
   branchColor?: string
   tagLineStart?: number
+  isWip?: boolean
 }
 
 const COL_WIDTH = 36
 const ROW_HEIGHT = 40
 
-export function GraphSvg({ column, connections, hasRefs, branchColor, tagLineStart }: GraphSvgProps) {
+export function GraphSvg({ column, connections, hasRefs, branchColor, tagLineStart, isWip }: GraphSvgProps) {
   const maxCol = connections.reduce(
     (m, c) => Math.max(m, c.fromColumn, c.toColumn),
     column,
@@ -50,7 +51,25 @@ export function GraphSvg({ column, connections, hasRefs, branchColor, tagLineSta
         let d = ''
         if (x1 === x2) {
           // Ligne droite verticale : passe à travers toute la ligne pour assurer la continuité
-          d = `M ${x1} ${yStart} L ${x1} ${yEnd}`
+          let yS = yStart
+          let yE = yEnd
+          if (edge.dashed) {
+            if (isWip) {
+              // Dans la ligne WIP, la ligne part du bas du rond (y = 20 + 16 = 36)
+              yS = nodeY + 16
+            } else if (edge.toColumn === column) {
+              // Dans la ligne HEAD, la ligne vient du haut et s'arrête au haut du rond (y = 20 - 16 = 4)
+              yE = nodeY - 16
+            }
+          } else {
+            if (edge.startsAtNode) {
+              yS = nodeY
+            }
+            if (edge.endsAtNode) {
+              yE = nodeY
+            }
+          }
+          d = `M ${x1} ${yS} L ${x1} ${yE}`
         } else {
           // Transition droite avec angles arrondis R = 4
           const sign = x2 > x1 ? 1 : -1
@@ -61,10 +80,10 @@ export function GraphSvg({ column, connections, hasRefs, branchColor, tagLineSta
             d = `M ${x1} -2 L ${x1} 16 Q ${x1} 20, ${x1 + R * sign} 20 L ${x2 - R * sign} 20 Q ${x2} 20, ${x2} 24 L ${x2} ${ROW_HEIGHT + 2}`
           } else if (edge.fromColumn === column) {
             // Split (départ du milieu/avatar à y = 20)
-            d = `M ${x1} ${nodeY} L ${x1} 22 Q ${x1} 26, ${x1 + R * sign} 26 L ${x2 - R * sign} 26 Q ${x2} 26, ${x2} 30 L ${x2} ${ROW_HEIGHT + 2}`
+            d = `M ${x1} 20 L ${x2 - R * sign} 20 Q ${x2} 20, ${x2} 24 L ${x2} ${ROW_HEIGHT + 2}`
           } else {
             // Merge (arrivée au milieu/avatar à y = 20)
-            d = `M ${x1} -2 L ${x1} 10 Q ${x1} 14, ${x1 + R * sign} 14 L ${x2 - R * sign} 14 Q ${x2} 14, ${x2} 18 L ${x2} ${nodeY}`
+            d = `M ${x1} -2 L ${x1} 16 Q ${x1} 20, ${x1 + R * sign} 20 L ${x2} 20`
           }
         }
 
@@ -85,6 +104,7 @@ export function GraphSvg({ column, connections, hasRefs, branchColor, tagLineSta
               stroke={edge.color}
               strokeWidth={2}
               strokeLinecap="round"
+              strokeDasharray={edge.dashed ? '4 4' : undefined}
             />
           </g>
         )
