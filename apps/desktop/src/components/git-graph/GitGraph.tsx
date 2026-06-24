@@ -11,7 +11,8 @@ import { useSettingsStore } from '../../stores/settings.store'
 import { createFixupCommit, createCommit, stageAll } from '../../lib/tauri'
 import { GraphRow } from './GraphRow'
 import { GraphHeader } from './GraphHeader'
-import { CommitPanel } from './CommitPanel'
+import { CommitDetailsPanel } from './CommitDetailsPanel'
+import { DiffViewCenter } from './DiffViewCenter'
 import { CommitContextMenu } from './CommitContextMenu'
 import { CreateBranchHereDialog } from './CreateBranchHereDialog'
 import { Waterline } from './Waterline'
@@ -46,6 +47,12 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [primaryOid, setPrimaryOid] = useState<string | null>(null)
   const [anchorOid, setAnchorOid] = useState<string | null>(null)
+  const [activeDiffFile, setActiveDiffFile] = useState<{ path: string; staged: boolean; oid?: string } | null>(null)
+
+  // Reset active diff on commit selection or repo changes
+  useEffect(() => {
+    setActiveDiffFile(null)
+  }, [primaryOid, repoPath])
 
   // ── Status detection & WIP Node ──────────────────────────────────────────
   const { data: status } = useGitStatus(repoPath)
@@ -177,7 +184,10 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
   function handleRowSelect(e: React.MouseEvent, index: number) {
     const oid = filteredNodes[index].commit.oid
-    if (oid === 'WIP') return
+    if (oid === 'WIP') {
+      selectSingle('WIP')
+      return
+    }
     if (e.shiftKey && anchorOid) {
       const fromIndex = filteredNodes.findIndex((n) => n.commit.oid === anchorOid)
       const start = fromIndex === -1 ? index : Math.min(fromIndex, index)
@@ -271,7 +281,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   function handleResizeMove(e: React.PointerEvent<HTMLDivElement>) {
     if (!isResizing.current) return
     const delta = resizeStartX.current - e.clientX
-    const newWidth = Math.max(250, Math.min(700, resizeStartWidth.current + delta))
+    const newWidth = Math.max(350, Math.min(700, resizeStartWidth.current + delta))
     panelWidth.current = newWidth
     setPanelWidthState(newWidth)
   }
@@ -287,9 +297,11 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     overscan: 20,
   })
 
-  const primaryNode = primaryOid
-    ? nodes.find((n) => n.commit.oid === primaryOid) ?? null
-    : null
+  const primaryNode = useMemo(() => {
+    if (!primaryOid) return null
+    if (primaryOid === 'WIP') return wipNode
+    return nodes.find((n) => n.commit.oid === primaryOid) ?? null
+  }, [primaryOid, nodes, wipNode])
   const resetNode = resetOid ? nodes.find((n) => n.commit.oid === resetOid) ?? null : null
   const revertNode = revertOid ? nodes.find((n) => n.commit.oid === revertOid) ?? null : null
   const branchNode = branchOid ? nodes.find((n) => n.commit.oid === branchOid) ?? null : null
@@ -301,108 +313,122 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
       onPointerUp={handleResizeEnd}
       onPointerLeave={handleResizeEnd}
     >
-      {/* Zone principale : tableau virtualisé — min-w pour éviter que le panel écrase la liste */}
+      {/* Zone principale : tableau virtualisé ou DiffViewCenter */}
       <div className="flex min-w-[280px] flex-1 flex-col overflow-hidden">
-        {isLoading && (
-          <div className="flex flex-1 items-center justify-center">
-            <Spinner className="h-5 w-5 text-muted-foreground" />
-            <span className="ml-2 text-sm text-muted-foreground">{t('gitTree.loading')}</span>
-          </div>
-        )}
-
-        {isError && (
-          <div className="flex flex-1 items-center justify-center">
-            <p className="text-sm text-destructive">Failed to load history</p>
-          </div>
-        )}
-
-        {!isLoading && !isError && nodes.length === 0 && (
-          <div className="flex flex-1 items-center justify-center">
-            <p className="text-sm text-muted-foreground">{t('gitTree.noCommits')}</p>
-          </div>
-        )}
-
-        {!isLoading && !isError && nodes.length > 0 && (
+        {activeDiffFile ? (
+          <DiffViewCenter
+            repoPath={repoPath}
+            file={activeDiffFile}
+            onClose={() => setActiveDiffFile(null)}
+            onRefresh={() => {
+              queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+              queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+            }}
+          />
+        ) : (
           <>
-            <GraphHeader columns={visibleColumns} />
-
-            {filteredNodes.length === 0 ? (
+            {isLoading && (
               <div className="flex flex-1 items-center justify-center">
-                <p className="text-sm text-muted-foreground">{t('gitTree.noResults')}</p>
+                <Spinner className="h-5 w-5 text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">{t('gitTree.loading')}</span>
               </div>
-            ) : (
-              <div ref={parentRef} className="flex-1 overflow-y-auto overflow-x-hidden">
-                <div
-                  style={{
-                    height: virtualizer.getTotalSize(),
-                    width: '100%',
-                    position: 'relative',
-                  }}
-                >
-                  {virtualizer.getVirtualItems().map((virtualItem) => {
-                    const node = filteredNodes[virtualItem.index]
-                    const oid = node.commit.oid
+            )}
 
-                    let nodeToRender = node
-                    if (totalChanges > 0 && virtualItem.index === 1) {
-                      nodeToRender = {
-                        ...node,
-                        connections: [
-                          ...node.connections,
-                          {
-                            fromColumn: node.column,
-                            toColumn: node.column,
-                            color: node.color,
-                            dashed: true,
-                          },
-                        ],
-                      }
-                    }
+            {isError && (
+              <div className="flex flex-1 items-center justify-center">
+                <p className="text-sm text-destructive">Failed to load history</p>
+              </div>
+            )}
 
-                    return (
-                      <div
-                        key={virtualItem.key}
-                        className="hover:z-[60]"
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: ROW_HEIGHT,
-                          transform: `translateY(${virtualItem.start}px)`,
-                        }}
-                      >
-                        <GraphRow
-                          node={nodeToRender}
-                          columns={visibleColumns}
-                          isSelected={selected.has(oid)}
-                          isPrimary={oid === primaryOid}
-                          onSelect={(e) => handleRowSelect(e, virtualItem.index)}
-                          onContextMenu={(e) => openMenuAt(e, oid)}
-                          onOpenMenu={(e) => openMenuAt(e, oid)}
-                          totalChanges={totalChanges}
-                          onCommitWip={handleCommitWip}
-                        />
-                      </div>
-                    )
-                  })}
+            {!isLoading && !isError && nodes.length === 0 && (
+              <div className="flex flex-1 items-center justify-center">
+                <p className="text-sm text-muted-foreground">{t('gitTree.noCommits')}</p>
+              </div>
+            )}
 
-                  {/* Waterlines : overlays plein-largeur sur les frontières, hors flux */}
-                  {waterlines.map((wl) => (
+            {!isLoading && !isError && nodes.length > 0 && (
+              <>
+                <GraphHeader columns={visibleColumns} />
+
+                {filteredNodes.length === 0 ? (
+                  <div className="flex flex-1 items-center justify-center">
+                    <p className="text-sm text-muted-foreground">{t('gitTree.noResults')}</p>
+                  </div>
+                ) : (
+                  <div ref={parentRef} className="flex-1 overflow-y-auto overflow-x-hidden">
                     <div
-                      key={wl.id}
-                      className="pointer-events-none absolute left-0 z-10 w-full"
                       style={{
-                        top: 0,
-                        height: ROW_HEIGHT,
-                        transform: `translateY(${wl.index * ROW_HEIGHT - ROW_HEIGHT / 2}px)`,
+                        height: virtualizer.getTotalSize(),
+                        width: '100%',
+                        position: 'relative',
                       }}
                     >
-                      <Waterline label={wl.label} />
+                      {virtualizer.getVirtualItems().map((virtualItem) => {
+                        const node = filteredNodes[virtualItem.index]
+                        const oid = node.commit.oid
+
+                        let nodeToRender = node
+                        if (totalChanges > 0 && virtualItem.index === 1) {
+                          nodeToRender = {
+                            ...node,
+                            connections: [
+                              ...node.connections,
+                              {
+                                fromColumn: node.column,
+                                toColumn: node.column,
+                                color: node.color,
+                                dashed: true,
+                              },
+                            ],
+                          }
+                        }
+
+                        return (
+                          <div
+                            key={virtualItem.key}
+                            className="hover:z-[60]"
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: ROW_HEIGHT,
+                              transform: `translateY(${virtualItem.start}px)`,
+                            }}
+                          >
+                            <GraphRow
+                              node={nodeToRender}
+                              columns={visibleColumns}
+                              isSelected={selected.has(oid)}
+                              isPrimary={oid === primaryOid}
+                              onSelect={(e) => handleRowSelect(e, virtualItem.index)}
+                              onContextMenu={(e) => openMenuAt(e, oid)}
+                              onOpenMenu={(e) => openMenuAt(e, oid)}
+                              totalChanges={totalChanges}
+                              onCommitWip={handleCommitWip}
+                            />
+                          </div>
+                        )
+                      })}
+
+                      {/* Waterlines : overlays plein-largeur sur les frontières, hors flux */}
+                      {waterlines.map((wl) => (
+                        <div
+                          key={wl.id}
+                          className="pointer-events-none absolute left-0 z-10 w-full"
+                          style={{
+                            top: 0,
+                            height: ROW_HEIGHT,
+                            transform: `translateY(${wl.index * ROW_HEIGHT - ROW_HEIGHT / 2}px)`,
+                          }}
+                        >
+                          <Waterline label={wl.label} />
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
@@ -418,8 +444,13 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
           >
             <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
           </div>
-          <div className="h-full shrink-0 overflow-hidden" style={{ width: panelWidthState }}>
-            <CommitPanel node={primaryNode} repoPath={repoPath} />
+          <div className="h-full shrink-0 overflow-hidden min-w-[350px]" style={{ width: panelWidthState }}>
+            <CommitDetailsPanel
+              node={primaryNode}
+              repoPath={repoPath}
+              onSelectCommit={selectSingle}
+              onSelectFileDiff={(file) => setActiveDiffFile(file)}
+            />
           </div>
         </>
       )}

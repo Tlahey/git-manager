@@ -118,6 +118,10 @@ export const stageFile = (path: string, filePath: string) =>
 export const unstageFile = (path: string, filePath: string) =>
   invoke<void>('unstage_file', { path, filePath })
 
+export const discardFileChanges = (path: string, filePath: string) =>
+  invoke<void>('discard_file_changes', { path, filePath })
+
+
 export const stageAll = (path: string) => invoke<void>('stage_all', { path })
 
 export const unstageAll = (path: string) => invoke<void>('unstage_all', { path })
