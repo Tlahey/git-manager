@@ -31,6 +31,8 @@ function PinnedTab({ icon, label, active, onClick }: PinnedTabProps) {
   )
 }
 
+const isMac = typeof window !== 'undefined' && navigator.userAgent.includes('Mac')
+
 export function TabBar({ onOpenSettings }: TabBarProps) {
   const { openTabs, activeTab, repoCache, setActiveTab, closeTab, reorderTabs } = useReposStore()
   const [dragIndex, setDragIndex] = useState<number | null>(null)
@@ -45,7 +47,12 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
   }
 
   return (
-    <div className="flex h-9 shrink-0 items-stretch border-b border-border bg-card">
+    <div
+      data-tauri-drag-region
+      className={`flex h-9 shrink-0 items-stretch border-b border-border bg-card ${
+        isMac ? 'pl-[72px]' : ''
+      }`}
+    >
       {/* Onglet Dashboard (épinglé) */}
       <PinnedTab
         icon={<LayoutDashboard className="h-3.5 w-3.5" />}
@@ -63,7 +70,10 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
       />
 
       {/* Onglets repos (fermables, réordonnables, style Chrome) */}
-      <div className="flex min-w-0 flex-1 items-stretch overflow-x-auto overflow-y-hidden">
+      <div
+        data-tauri-drag-region
+        className="flex min-w-0 flex-1 items-stretch overflow-x-auto overflow-y-hidden"
+      >
         {openTabs.map((path, index) => {
           const name = repoCache[path]?.name ?? path.split('/').pop() ?? path
           const isActive = path === activeTab

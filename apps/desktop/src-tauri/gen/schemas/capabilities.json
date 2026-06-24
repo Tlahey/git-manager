@@ -1,1 +1,1 @@
-{"default":{"identifier":"default","description":"Permissions par défaut pour la fenêtre principale","local":true,"windows":["main"],"permissions":["core:default","dialog:default","shell:default"]}}
+{"default":{"identifier":"default","description":"Permissions par défaut pour la fenêtre principale","local":true,"windows":["main"],"permissions":["core:default","dialog:default","shell:default","core:window:allow-start-dragging"]}}

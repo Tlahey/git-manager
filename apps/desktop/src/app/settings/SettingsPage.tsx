@@ -676,6 +676,8 @@ function AdvancedSection() {
 
 // ─── SettingsPage ─────────────────────────────────────────────────────────────
 
+const isMac = typeof window !== 'undefined' && navigator.userAgent.includes('Mac')
+
 export function SettingsPage({ onClose }: SettingsPageProps) {
   const { t } = useTranslation('settings')
   const [activeSection, setActiveSection] = useState<Section>('llm')
@@ -691,7 +693,12 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
       {/* Header */}
-      <header className="flex items-center gap-3 border-b border-border px-4 py-3 shrink-0">
+      <header
+        data-tauri-drag-region
+        className={`flex items-center gap-3 border-b border-border px-4 py-3 shrink-0 ${
+          isMac ? 'pl-[72px]' : ''
+        }`}
+      >
         <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={onClose}>
           <ArrowLeft className="h-3.5 w-3.5" />
           Back
