@@ -94,6 +94,57 @@ pub async fn unstage_file(path: String, file_path: String) -> Result<(), String>
     Ok(())
 }
 
+// ─── discard_file_changes ─────────────────────────────────────────────────────
+
+/// Discards all unstaged changes to a file in the working directory.
+#[tauri::command]
+pub async fn discard_file_changes(path: String, file_path: String) -> Result<(), String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+
+    // Check if the file is untracked
+    let status = repo.status_file(Path::new(&file_path)).ok();
+    let is_untracked = status.map(|s| s.is_wt_new() || s.is_index_new()).unwrap_or(false);
+
+    if is_untracked {
+        let full_path = Path::new(&path).join(&file_path);
+        if full_path.exists() {
+            if full_path.is_dir() {
+                std::fs::remove_dir_all(&full_path).map_err(|e| e.to_string())?;
+            } else {
+                std::fs::remove_file(&full_path).map_err(|e| e.to_string())?;
+            }
+        }
+        // Also remove from index if it was staged as new
+        let mut index = repo.index().map_err(AppError::Git)?;
+        let _ = index.remove_path(Path::new(&file_path));
+        let _ = index.write();
+        return Ok(());
+    }
+
+    // Otherwise, unstage it first if it is staged
+    if let Ok(head_ref) = repo.head() {
+        if let Ok(head_commit) = head_ref.peel_to_commit() {
+            let obj = head_commit.as_object();
+            let _ = repo.reset_default(Some(obj), [&file_path]);
+        }
+    } else {
+        let mut index = repo.index().map_err(AppError::Git)?;
+        let _ = index.remove_path(Path::new(&file_path));
+        let _ = index.write();
+    }
+
+    // Now checkout the file to discard working directory changes
+    let mut checkout_opts = git2::build::CheckoutBuilder::new();
+    checkout_opts.force();
+    checkout_opts.path(&file_path);
+
+    repo.checkout_index(None, Some(&mut checkout_opts))
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+
 // ─── stage_all ────────────────────────────────────────────────────────────────
 
 /// Stage tous les fichiers modifiés
