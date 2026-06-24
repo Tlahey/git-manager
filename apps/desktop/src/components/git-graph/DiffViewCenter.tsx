@@ -149,7 +149,8 @@ export function DiffViewCenter({
   const { data: diffData, isLoading, refetch } = useFileDiff(
     repoPath,
     file.path,
-    file.staged
+    file.staged,
+    file.oid
   )
 
   const isWip = !file.oid
@@ -160,6 +161,16 @@ export function DiffViewCenter({
       ? `${diffData.oldPath} → ${diffData.newPath}`
       : diffData.newPath || diffData.oldPath
   }, [diffData, file.path])
+
+  const parsedPath = useMemo(() => {
+    const lastSlash = displayPath.lastIndexOf('/')
+    if (lastSlash === -1) {
+      return { dir: '', name: displayPath }
+    }
+    const dir = displayPath.substring(0, lastSlash + 1)
+    const name = displayPath.substring(lastSlash + 1)
+    return { dir, name }
+  }, [displayPath])
 
   async function handleCopyPath() {
     await navigator.clipboard.writeText(file.path)
@@ -244,11 +255,17 @@ export function DiffViewCenter({
           </Button>
 
           <div className="flex flex-col min-w-0">
+            {parsedPath.dir && (
+              <span data-testid="diff-header-path" className="font-mono text-[10px] text-muted-foreground/60 truncate select-none leading-none mb-0.5">
+                {parsedPath.dir}
+              </span>
+            )}
             <div className="flex items-center gap-2">
-              <span className="font-mono text-sm font-bold text-foreground truncate select-all">
-                {displayPath}
+              <span data-testid="diff-header-name" className="font-mono text-xs text-foreground truncate select-all leading-tight">
+                {parsedPath.name}
               </span>
               <Button
+                data-testid="diff-copy-path-btn"
                 variant="ghost"
                 size="icon"
                 className="h-5 w-5 hover:bg-accent shrink-0"
@@ -358,7 +375,7 @@ export function DiffViewCenter({
       </div>
 
       {/* ── DIFF CONTENT AREA ─────────────────────────────────────────────────── */}
-      <ScrollArea className="flex-1 bg-card/45 select-text font-mono text-xs">
+      <div data-testid="diff-content-area" className="flex-1 bg-card/45 select-text font-mono text-xs flex flex-col overflow-hidden">
         {isLoading && (
           <div className="flex h-40 w-full items-center justify-center">
             <Spinner className="h-5 w-5 text-muted-foreground mr-2" />
@@ -373,182 +390,190 @@ export function DiffViewCenter({
         )}
 
         {!isLoading && diffData && (
-          <div className="p-4">
+          <div className="flex-1 p-4 overflow-hidden flex flex-col min-h-0">
             {diffData.isBinary ? (
-              <div className="rounded-lg border border-border bg-muted/20 px-4 py-8 text-center text-muted-foreground italic">
+              <div data-testid="diff-binary-placeholder" className="rounded-lg border border-border bg-muted/20 px-4 py-8 text-center text-muted-foreground italic">
                 Binary file diff content cannot be displayed.
               </div>
             ) : (
-              <div ref={codeContainerRef} className="relative rounded-lg border border-border/80 bg-background overflow-hidden min-w-[800px] w-full">
-                {/* Split View Header: Before / After labels */}
-                {viewMode === 'split' && (
-                  <div className="flex items-stretch border-b border-border bg-muted/30 select-none text-[10px] uppercase font-bold tracking-wider text-muted-foreground sticky top-0 z-20 divide-x divide-border/30">
-                    <div
-                      className="px-4 py-2 flex items-center justify-between"
-                      style={{ width: `${leftWidthPercent}%` }}
-                    >
-                      <span>Avant / Before (Original)</span>
-                      <Badge variant="destructive" className="text-[8px] py-0 px-1 font-bold">OLD</Badge>
-                    </div>
-                    <div
-                      className="px-4 py-2 flex items-center justify-between"
-                      style={{ width: `${100 - leftWidthPercent}%` }}
-                    >
-                      <span>Après / After (Modified)</span>
-                      <Badge variant="success" className="text-[8px] py-0 px-1 font-bold">NEW</Badge>
-                    </div>
-                  </div>
-                )}
-                {diffData.hunks.map((hunk, hi) => {
-                  const alignedRows = alignHunkLines(hunk.lines)
-
-                  return (
-                    <div key={hi} className="border-b border-border/40 last:border-b-0">
-                      {/* Hunk Header */}
-                      <div className="px-3 py-1 bg-blue-500/5 text-blue-400/80 text-[10px] border-b border-border/30 select-none select-none tracking-tight">
-                        {hunk.header}
+              <ScrollArea data-testid="diff-code-scroll-area" className="flex-1 rounded-lg border border-border/80 bg-background">
+                <div
+                  ref={codeContainerRef}
+                  data-testid="diff-code-container"
+                  className="relative min-w-full w-max"
+                >
+                  {/* Split View Header: Before / After labels */}
+                  {viewMode === 'split' && (
+                    <div className="flex items-stretch border-b border-border bg-muted/30 select-none text-[10px] uppercase font-bold tracking-wider text-muted-foreground sticky top-0 z-20 divide-x divide-border/30">
+                      <div
+                        className="px-4 py-2 flex items-center justify-between"
+                        style={{ width: `${leftWidthPercent}%` }}
+                      >
+                        <span>Avant / Before (Original)</span>
+                        <Badge variant="destructive" className="text-[8px] py-0 px-1 font-bold">OLD</Badge>
                       </div>
-
-                      {/* Unified (Inline) Render */}
-                      {viewMode === 'inline' && (
-                        <div className="divide-y divide-border/10">
-                          {hunk.lines.map((line, li) => {
-                            const isAdded = line.origin === '+'
-                            const isDeleted = line.origin === '-'
-                            const isUnchanged = line.origin === ' '
-
-                            return (
-                              <div
-                                key={li}
-                                className={cn(
-                                  'flex items-stretch leading-5 min-h-[20px]',
-                                  isAdded && 'bg-green-500/10 text-green-300 hover:bg-green-500/15',
-                                  isDeleted && 'bg-red-500/10 text-red-300 hover:bg-red-500/15'
-                                )}
-                              >
-                                {/* Old Line No */}
-                                <span className="w-11 shrink-0 text-right pr-2.5 text-muted-foreground/40 select-none border-r border-border/25 py-0.5">
-                                  {line.oldLineno ?? ''}
-                                </span>
-                                {/* New Line No */}
-                                <span className="w-11 shrink-0 text-right pr-2.5 text-muted-foreground/40 select-none border-r border-border/25 py-0.5">
-                                  {line.newLineno ?? ''}
-                                </span>
-                                {/* Origin mark */}
-                                <span
-                                  className={cn(
-                                    'w-6 shrink-0 text-center select-none py-0.5 border-r border-border/10',
-                                    isAdded && 'text-green-400 font-bold',
-                                    isDeleted && 'text-red-400 font-bold',
-                                    isUnchanged && 'text-muted-foreground/20'
-                                  )}
-                                >
-                                  {line.origin === ' ' ? '' : line.origin}
-                                </span>
-                                {/* Code content */}
-                                <pre
-                                  className="flex-1 whitespace-pre pl-3 pr-2 py-0.5 overflow-hidden text-[11px] leading-tight font-mono select-text"
-                                  dangerouslySetInnerHTML={{
-                                    __html: highlightCode(line.content)
-                                  }}
-                                />
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
-
-                      {/* Side-by-Side (Split) Render */}
-                      {viewMode === 'split' && (
-                        <div className="flex flex-col divide-y divide-border/10">
-                          {alignedRows.map((row, ri) => {
-                            const left = row.left
-                            const right = row.right
-
-                            const leftDeleted = left?.origin === '-'
-                            const rightAdded = right?.origin === '+'
-
-                            return (
-                              <div key={ri} className="flex items-stretch divide-x divide-border/30">
-                                {/* LEFT COLUMN (OLD FILE / DELETIONS) */}
-                                <div
-                                  className={cn(
-                                    'flex items-stretch leading-5 min-h-[20px] min-w-0 overflow-hidden',
-                                    leftDeleted && 'bg-red-500/10 text-red-300',
-                                    !left && 'bg-muted/15 select-none pointer-events-none'
-                                  )}
-                                  style={{ width: `${leftWidthPercent}%` }}
-                                >
-                                  <span className="w-11 shrink-0 text-right pr-2 text-muted-foreground/40 select-none border-r border-border/25 py-0.5">
-                                    {left?.oldLineno ?? ''}
-                                  </span>
-                                  <span
-                                    className={cn(
-                                      'w-5 shrink-0 text-center select-none py-0.5 border-r border-border/10',
-                                      leftDeleted && 'text-red-400 font-bold'
-                                    )}
-                                  >
-                                    {leftDeleted ? '-' : ''}
-                                  </span>
-                                  <pre
-                                    className="flex-1 whitespace-pre pl-3 pr-2 py-0.5 overflow-hidden text-[11px] leading-tight font-mono select-text"
-                                    dangerouslySetInnerHTML={{
-                                      __html: left ? highlightCode(left.content) : ''
-                                    }}
-                                  />
-                                </div>
-
-                                {/* RIGHT COLUMN (NEW FILE / ADDITIONS) */}
-                                <div
-                                  className={cn(
-                                    'flex items-stretch leading-5 min-h-[20px] min-w-0 overflow-hidden',
-                                    rightAdded && 'bg-green-500/10 text-green-300',
-                                    !right && 'bg-muted/15 select-none pointer-events-none'
-                                  )}
-                                  style={{ width: `${100 - leftWidthPercent}%` }}
-                                >
-                                  <span className="w-11 shrink-0 text-right pr-2 text-muted-foreground/40 select-none border-r border-border/25 py-0.5">
-                                    {right?.newLineno ?? ''}
-                                  </span>
-                                  <span
-                                    className={cn(
-                                      'w-5 shrink-0 text-center select-none py-0.5 border-r border-border/10',
-                                      rightAdded && 'text-green-400 font-bold'
-                                    )}
-                                  >
-                                    {rightAdded ? '+' : ''}
-                                  </span>
-                                  <pre
-                                    className="flex-1 whitespace-pre pl-3 pr-2 py-0.5 overflow-hidden text-[11px] leading-tight font-mono select-text"
-                                    dangerouslySetInnerHTML={{
-                                      __html: right ? highlightCode(right.content) : ''
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
+                      <div
+                        className="px-4 py-2 flex items-center justify-between"
+                        style={{ width: `${100 - leftWidthPercent}%` }}
+                      >
+                        <span>Après / After (Modified)</span>
+                        <Badge variant="success" className="text-[8px] py-0 px-1 font-bold">NEW</Badge>
+                      </div>
                     </div>
-                  )
-                })}
-                {/* Vertical resize handle */}
-                {viewMode === 'split' && (
-                  <div
-                    onPointerDown={handleResizeStart}
-                    className="absolute inset-y-0 w-2.5 -ml-1.25 cursor-col-resize z-30 group"
-                    style={{ left: `${leftWidthPercent}%` }}
-                  >
-                    <div className="w-0.5 h-full bg-border/60 group-hover:bg-primary/80 group-hover:w-[3px] transition-all mx-auto" />
-                  </div>
-                )}
-              </div>
+                  )}
+
+                  {diffData.hunks.map((hunk, hi) => {
+                    const alignedRows = alignHunkLines(hunk.lines)
+
+                    return (
+                      <div key={hi} className="border-b border-border/40 last:border-b-0">
+                        {/* Hunk Header */}
+                        <div className="px-3 py-1 bg-blue-500/5 text-blue-400/80 text-[10px] border-b border-border/30 select-none select-none tracking-tight">
+                          {hunk.header}
+                        </div>
+
+                        {/* Unified (Inline) Render */}
+                        {viewMode === 'inline' && (
+                          <div className="divide-y divide-border/10">
+                            {hunk.lines.map((line, li) => {
+                              const isAdded = line.origin === '+'
+                              const isDeleted = line.origin === '-'
+                              const isUnchanged = line.origin === ' '
+
+                              return (
+                                <div
+                                  key={li}
+                                  className={cn(
+                                    'flex items-stretch leading-5 min-h-[20px]',
+                                    isAdded && 'bg-green-500/10 text-green-300 hover:bg-green-500/15',
+                                    isDeleted && 'bg-red-500/10 text-red-300 hover:bg-red-500/15'
+                                  )}
+                                >
+                                  {/* Old Line No */}
+                                  <span className="w-11 shrink-0 text-right pr-2.5 text-muted-foreground/40 select-none border-r border-border/25 py-0.5">
+                                    {line.oldLineno ?? ''}
+                                  </span>
+                                  {/* New Line No */}
+                                  <span className="w-11 shrink-0 text-right pr-2.5 text-muted-foreground/40 select-none border-r border-border/25 py-0.5">
+                                    {line.newLineno ?? ''}
+                                  </span>
+                                  {/* Origin mark */}
+                                  <span
+                                    className={cn(
+                                      'w-6 shrink-0 text-center select-none py-0.5 border-r border-border/10',
+                                      isAdded && 'text-green-400 font-bold',
+                                      isDeleted && 'text-red-400 font-bold',
+                                      isUnchanged && 'text-muted-foreground/20'
+                                    )}
+                                  >
+                                    {line.origin === ' ' ? '' : line.origin}
+                                  </span>
+                                  {/* Code content */}
+                                  <pre
+                                    className="flex-1 whitespace-pre pl-3 pr-2 py-0.5 text-[11px] leading-tight font-mono select-text"
+                                    dangerouslySetInnerHTML={{
+                                      __html: highlightCode(line.content)
+                                    }}
+                                  />
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+
+                        {/* Side-by-Side (Split) Render */}
+                        {viewMode === 'split' && (
+                          <div className="flex flex-col divide-y divide-border/10">
+                            {alignedRows.map((row, ri) => {
+                              const left = row.left
+                              const right = row.right
+
+                              const leftDeleted = left?.origin === '-'
+                              const rightAdded = right?.origin === '+'
+
+                              return (
+                                <div key={ri} className="flex items-stretch divide-x divide-border/30">
+                                  {/* LEFT COLUMN (OLD FILE / DELETIONS) */}
+                                  <div
+                                    className={cn(
+                                      'flex items-stretch leading-5 min-h-[20px] min-w-0',
+                                      leftDeleted && 'bg-red-500/10 text-red-300',
+                                      !left && 'bg-muted/15 select-none pointer-events-none'
+                                    )}
+                                    style={{ width: `${leftWidthPercent}%` }}
+                                  >
+                                    <span className="w-11 shrink-0 text-right pr-2 text-muted-foreground/40 select-none border-r border-border/25 py-0.5">
+                                      {left?.oldLineno ?? ''}
+                                    </span>
+                                    <span
+                                      className={cn(
+                                        'w-5 shrink-0 text-center select-none py-0.5 border-r border-border/10',
+                                        leftDeleted && 'text-red-400 font-bold'
+                                      )}
+                                    >
+                                      {leftDeleted ? '-' : ''}
+                                    </span>
+                                    <pre
+                                      className="flex-1 whitespace-pre pl-3 pr-2 py-0.5 text-[11px] leading-tight font-mono select-text"
+                                      dangerouslySetInnerHTML={{
+                                        __html: left ? highlightCode(left.content) : ''
+                                      }}
+                                    />
+                                  </div>
+
+                                  {/* RIGHT COLUMN (NEW FILE / ADDITIONS) */}
+                                  <div
+                                    className={cn(
+                                      'flex items-stretch leading-5 min-h-[20px] min-w-0',
+                                      rightAdded && 'bg-green-500/10 text-green-300',
+                                      !right && 'bg-muted/15 select-none pointer-events-none'
+                                    )}
+                                    style={{ width: `${100 - leftWidthPercent}%` }}
+                                  >
+                                    <span className="w-11 shrink-0 text-right pr-2 text-muted-foreground/40 select-none border-r border-border/25 py-0.5">
+                                      {right?.newLineno ?? ''}
+                                    </span>
+                                    <span
+                                      className={cn(
+                                        'w-5 shrink-0 text-center select-none py-0.5 border-r border-border/10',
+                                        rightAdded && 'text-green-400 font-bold'
+                                      )}
+                                    >
+                                      {rightAdded ? '+' : ''}
+                                    </span>
+                                    <pre
+                                      className="flex-1 whitespace-pre pl-3 pr-2 py-0.5 text-[11px] leading-tight font-mono select-text"
+                                      dangerouslySetInnerHTML={{
+                                        __html: right ? highlightCode(right.content) : ''
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+
+                  {/* Vertical resize handle */}
+                  {viewMode === 'split' && (
+                    <div
+                      onPointerDown={handleResizeStart}
+                      className="absolute inset-y-0 w-2.5 -ml-1.25 cursor-col-resize z-30 group"
+                      style={{ left: `${leftWidthPercent}%` }}
+                    >
+                      <div className="w-0.5 h-full bg-border/60 group-hover:bg-primary/80 group-hover:w-[3px] transition-all mx-auto" />
+                    </div>
+                  )}
+                </div>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
             )}
           </div>
         )}
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+      </div>
     </div>
   )
 }

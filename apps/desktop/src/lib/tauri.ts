@@ -131,8 +131,8 @@ export const createCommit = (path: string, message: string, amend = false, amend
 
 export const getStagedDiff = (path: string) => invoke<GitDiff>('get_staged_diff', { path })
 
-export const getFileDiff = (path: string, filePath: string, staged: boolean) =>
-  invoke<import('@git-manager/git-types').GitDiffFile>('get_file_diff', { path, filePath, staged })
+export const getFileDiff = (path: string, filePath: string, staged: boolean, oid?: string) =>
+  invoke<import('@git-manager/git-types').GitDiffFile>('get_file_diff', { path, filePath, staged, oid })
 
 // ─── Remote ───────────────────────────────────────────────────────────────────
 

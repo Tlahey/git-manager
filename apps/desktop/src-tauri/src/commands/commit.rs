@@ -334,14 +334,40 @@ pub async fn get_staged_diff(path: String) -> Result<GitDiff, String> {
 
 // ─── get_file_diff ────────────────────────────────────────────────────────────
 
-/// Retourne le diff d'un fichier spécifique (staged ou unstaged)
+/// Retourne le diff d'un fichier spécifique (staged, unstaged, ou d'un commit historique)
 #[tauri::command]
 pub async fn get_file_diff(
     path: String,
     file_path: String,
     staged: bool,
+    oid: Option<String>,
 ) -> Result<GitDiffFile, String> {
-    let full_diff = if staged {
+    let full_diff = if let Some(oid_str) = oid {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        let commit_oid = Oid::from_str(&oid_str).map_err(AppError::Git)?;
+        let commit = repo.find_commit(commit_oid).map_err(AppError::Git)?;
+
+        let commit_tree = commit.tree().map_err(AppError::Git)?;
+        let parent_tree = if commit.parent_count() > 0 {
+            let parent = commit.parent(0).map_err(AppError::Git)?;
+            Some(parent.tree().map_err(AppError::Git)?)
+        } else {
+            None
+        };
+
+        let mut diff_opts = DiffOptions::new();
+        diff_opts.context_lines(3).ignore_whitespace_change(false);
+
+        let diff = repo
+            .diff_tree_to_tree(
+                parent_tree.as_ref(),
+                Some(&commit_tree),
+                Some(&mut diff_opts),
+            )
+            .map_err(AppError::Git)?;
+
+        build_diff(diff)?
+    } else if staged {
         get_staged_diff(path).await?
     } else {
         workdir_diff(path).await?
