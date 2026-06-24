@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { ScrollArea, Button, Badge, Textarea, Spinner, cn } from '@git-manager/ui'
+import { ScrollArea, Button, Badge, Textarea, Spinner, cn, Input } from '@git-manager/ui'
 import {
   Copy,
   Check,
@@ -15,7 +15,8 @@ import {
   GitCommit,
   Layers,
   History,
-  Square
+  Square,
+  Pencil
 } from 'lucide-react'
 import { useCommitDiff } from '../../hooks/useCommitDiff'
 import { useGitStatus } from '../../hooks/useGitStatus'
@@ -43,6 +44,7 @@ interface ProcessedFileItem {
 interface CommitDetailsPanelProps {
   node: GitGraphNode
   repoPath: string
+  isHead?: boolean
   onSelectCommit?: (oid: string) => void
   onSelectFileDiff?: (file: { path: string; staged: boolean; oid?: string }) => void
 }
@@ -149,6 +151,7 @@ function getAuthorInitials(name: string): string {
 export function CommitDetailsPanel({
   node,
   repoPath,
+  isHead: isHeadProp,
   onSelectCommit,
   onSelectFileDiff
 }: CommitDetailsPanelProps) {
@@ -160,6 +163,41 @@ export function CommitDetailsPanel({
   const [copied, setCopied] = useState(false)
   const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree')
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
+
+  // Commit editing states
+  const [isEditingMessage, setIsEditingMessage] = useState(false)
+  const [editSubject, setEditSubject] = useState('')
+  const [editBody, setEditBody] = useState('')
+  const [isSavingMessage, setIsSavingMessage] = useState(false)
+
+  // Reset/populate states when selected commit changes
+  useEffect(() => {
+    setIsEditingMessage(false)
+    setEditSubject(commit?.subject ?? '')
+    setEditBody(commit?.body ?? '')
+  }, [commit?.oid, commit?.subject, commit?.body])
+
+  // Check if selected commit is HEAD (can be amended)
+  // isHeadProp is always passed from GitGraph.tsx (it is the reliable source of truth)
+  const isHead = isHeadProp ?? node.refs.some((r) => r.type === 'HEAD')
+  console.log('[CommitDetailsPanel] isHead:', isHead, '| isHeadProp:', isHeadProp, '| oid:', commit?.oid?.slice(0, 8), '| refs:', node.refs.map(r => `${r.type}:${r.shortName}`))
+
+  async function handleUpdateCommitMessage() {
+    if (!editSubject.trim()) return
+    setIsSavingMessage(true)
+    try {
+      const fullMessage = editBody.trim()
+        ? `${editSubject.trim()}\n\n${editBody.trim()}`
+        : editSubject.trim()
+      await createCommit(repoPath, fullMessage, true)
+      setIsEditingMessage(false)
+      invalidate()
+    } catch (err) {
+      alert(String(err))
+    } finally {
+      setIsSavingMessage(false)
+    }
+  }
 
   // WIP panel States
   const [commitMessage, setCommitMessage] = useState('')
@@ -714,16 +752,100 @@ export function CommitDetailsPanel({
         <div className="px-4 py-4 space-y-4 min-w-0 w-full overflow-hidden">
           {/* Commit Message Box */}
           {!isWip && (
-            <div className="bg-muted/15 border border-border/30 rounded-lg p-3 space-y-2">
-              <h4 className="text-xs font-bold text-foreground leading-snug break-words">
-                {commit.subject}
-              </h4>
-              {commit.body && (
-                <div className="text-[11px] space-y-1.5 pt-1 border-t border-border/20 font-normal">
-                  {messageBodyParsed}
+            isEditingMessage ? (
+              <div data-testid="commit-amend-form" className="border border-border bg-muted/5 rounded-lg p-3 space-y-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                      Subject
+                    </span>
+                    <span
+                      data-testid="commit-subject-counter"
+                      className={cn("text-[10px] font-mono", 72 - editSubject.length < 10 ? "text-destructive font-bold" : "text-muted-foreground")}
+                    >
+                      {72 - editSubject.length} chars remaining
+                    </span>
+                  </div>
+                  <Input
+                    data-testid="commit-subject-input"
+                    autoFocus
+                    value={editSubject}
+                    onChange={(e) => setEditSubject(e.target.value)}
+                    maxLength={72}
+                    placeholder="Commit subject..."
+                    className="text-xs font-mono font-bold h-8"
+                  />
                 </div>
-              )}
-            </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                    Description
+                  </span>
+                  <Textarea
+                    data-testid="commit-body-textarea"
+                    value={editBody}
+                    onChange={(e) => setEditBody(e.target.value)}
+                    placeholder="Commit description (optional)..."
+                    rows={4}
+                    className="resize-none text-xs font-mono"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    data-testid="commit-amend-submit"
+                    size="sm"
+                    className="flex-1 text-xs h-8 font-semibold"
+                    onClick={handleUpdateCommitMessage}
+                    disabled={!editSubject.trim() || isSavingMessage}
+                  >
+                    {isSavingMessage ? <Spinner className="mr-1.5 h-3 w-3" /> : null}
+                    {t('commitDetails.updateMessage')}
+                  </Button>
+                  <Button
+                    data-testid="commit-amend-cancel"
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs h-8 font-semibold"
+                    onClick={() => setIsEditingMessage(false)}
+                    disabled={isSavingMessage}
+                  >
+                    {t('commitDetails.cancelAmend')}
+                  </Button>
+                </div>
+              </div>
+            ) : isHead ? (
+              <div
+                data-testid="commit-message-clickable"
+                role="button"
+                tabIndex={0}
+                onClick={() => setIsEditingMessage(true)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setIsEditingMessage(true) }}
+                className="bg-muted/15 border border-border/30 hover:border-primary/50 hover:bg-accent/15 cursor-pointer rounded-lg p-3 space-y-2 group transition-all"
+                title="Click to edit commit message (amend)"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h4 data-testid="commit-subject-display" className="text-xs font-bold text-foreground leading-snug break-words flex-1">
+                    {commit.subject}
+                  </h4>
+                  <Pencil className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground/60 shrink-0 mt-0.5 transition-all duration-200" />
+                </div>
+                {commit.body && (
+                  <div className="text-[11px] space-y-1.5 pt-1 border-t border-border/20 font-normal">
+                    {messageBodyParsed}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div data-testid="commit-message-readonly" className="bg-muted/15 border border-border/30 rounded-lg p-3 space-y-2">
+                <h4 className="text-xs font-bold text-foreground leading-snug break-words">
+                  {commit.subject}
+                </h4>
+                {commit.body && (
+                  <div className="text-[11px] space-y-1.5 pt-1 border-t border-border/20 font-normal">
+                    {messageBodyParsed}
+                  </div>
+                )}
+              </div>
+            )
           )}
 
           {/* Parents display */}

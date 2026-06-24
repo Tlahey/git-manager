@@ -111,9 +111,13 @@ pub async fn get_log(
     // ── Construction de la map refs (oid → Vec<LogRef>) ──────────────────────
     let mut refs_map: HashMap<String, Vec<LogRef>> = HashMap::new();
 
-    // HEAD
+    // HEAD – resolve through symbolic refs (normal non-detached HEAD is symbolic: HEAD → refs/heads/main → oid)
     if let Ok(head_ref) = repo.head() {
-        if let Some(oid) = head_ref.target() {
+        // target() returns None for symbolic refs; peel_to_commit resolves them
+        let head_oid = head_ref
+            .target()
+            .or_else(|| head_ref.peel_to_commit().ok().map(|c| c.id()));
+        if let Some(oid) = head_oid {
             refs_map
                 .entry(oid.to_string())
                 .or_default()

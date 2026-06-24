@@ -8,6 +8,7 @@ import { useGitStatus } from '../../hooks/useGitStatus'
 import { useContextMenu } from '../../hooks/useContextMenu'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
 import { useSettingsStore } from '../../stores/settings.store'
+import { useReposStore } from '../../stores/repos.store'
 import { createFixupCommit, createCommit, stageAll } from '../../lib/tauri'
 import { GraphRow } from './GraphRow'
 import { GraphHeader } from './GraphHeader'
@@ -42,6 +43,8 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   const { t } = useTranslation('git')
   const queryClient = useQueryClient()
   const protectedBranches = useSettingsStore((s) => s.settings.git.protectedBranches)
+  // Current HEAD branch name from repo cache (e.g. "main", "feat/xyz")
+  const headBranchName = useReposStore((s) => s.repoCache[repoPath]?.head)
 
   // ── Sélection (multiple) ──────────────────────────────────────────────────
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -302,6 +305,33 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     if (primaryOid === 'WIP') return wipNode
     return nodes.find((n) => n.commit.oid === primaryOid) ?? null
   }, [primaryOid, nodes, wipNode])
+
+  const isSelectedCommitHead = useMemo(() => {
+    if (!primaryNode || primaryNode.commit.oid === 'WIP') return false
+    // Strategy 1: a ref with type 'HEAD' is directly on this commit (detached HEAD)
+    const hasHeadRef = primaryNode.refs.some((r) => r.type === 'HEAD')
+    // Strategy 2: the commit carries the branch that HEAD currently points to
+    const hasBranchRef = headBranchName
+      ? primaryNode.refs.some(
+          (r) => r.type === 'branch' && (r.shortName === headBranchName || r.name === headBranchName),
+        )
+      : false
+    // Strategy 3: fallback – first node in the walk is typically HEAD
+    const isFirstNode = primaryNode.commit.oid === nodes[0]?.commit?.oid
+
+    const result = hasHeadRef || hasBranchRef || isFirstNode
+    console.log('[isSelectedCommitHead]', {
+      oid: primaryNode.commit.oid.slice(0, 8),
+      headBranchName,
+      hasHeadRef,
+      hasBranchRef,
+      isFirstNode,
+      result,
+      refs: primaryNode.refs.map((r) => `${r.type}:${r.shortName}`),
+      nodes0oid: nodes[0]?.commit?.oid?.slice(0, 8),
+    })
+    return result
+  }, [primaryNode, nodes, headBranchName])
   const resetNode = resetOid ? nodes.find((n) => n.commit.oid === resetOid) ?? null : null
   const revertNode = revertOid ? nodes.find((n) => n.commit.oid === revertOid) ?? null : null
   const branchNode = branchOid ? nodes.find((n) => n.commit.oid === branchOid) ?? null : null
@@ -448,6 +478,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
             <CommitDetailsPanel
               node={primaryNode}
               repoPath={repoPath}
+              isHead={isSelectedCommitHead}
               onSelectCommit={selectSingle}
               onSelectFileDiff={(file) => setActiveDiffFile(file)}
             />

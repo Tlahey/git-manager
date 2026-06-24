@@ -198,5 +198,7 @@
   "toolbar.fromHead": "From {{ref}}",
   "toolbar.branchCreated": "Branch \"{{name}}\" created",
   "toolbar.stashSuccess": "Changes stashed",
-  "toolbar.popSuccess": "Stash applied"
+  "toolbar.popSuccess": "Stash applied",
+  "commitDetails.updateMessage": "Update Message",
+  "commitDetails.cancelAmend": "Cancel Amend"
 }

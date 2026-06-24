@@ -192,5 +192,7 @@
   "toolbar.fromHead": "Depuis {{ref}}",
   "toolbar.branchCreated": "Branche « {{name}} » créée",
   "toolbar.stashSuccess": "Modifications mises de côté",
-  "toolbar.popSuccess": "Stash appliqué"
+  "toolbar.popSuccess": "Stash appliqué",
+  "commitDetails.updateMessage": "Mettre à jour",
+  "commitDetails.cancelAmend": "Annuler"
 }
