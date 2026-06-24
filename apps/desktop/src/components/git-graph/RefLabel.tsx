@@ -49,7 +49,7 @@ export function RefLabel({ gitRef, alwaysVisible = false, color }: RefLabelProps
   const refColor = isMainOrMaster ? '#2563eb' : color || '#2563eb'
 
   let badgeClasses = cn(
-    'inline-flex min-w-0 max-w-[180px] items-center gap-0.5 rounded px-1.5 py-0 text-[10px] leading-5 font-medium border bg-background transition-all duration-150',
+    'inline-flex min-w-0 max-w-[180px] items-center gap-1 rounded px-1.5 py-0 text-[11px] leading-5 font-medium border bg-background transition-all duration-150',
   )
 
   // Custom inline styles for coloring (non-HEAD)
@@ -62,6 +62,10 @@ export function RefLabel({ gitRef, alwaysVisible = false, color }: RefLabelProps
     customStyle.backgroundImage = `linear-gradient(${refColor}25, ${refColor}25)` // ~15% opacity overlay over solid bg-background
     customStyle.borderColor = `${refColor}50` // ~30% opacity
     customStyle.color = refColor
+    if (isRemote) {
+      customStyle.borderStyle = 'dashed'
+      badgeClasses = cn(badgeClasses, 'opacity-80')
+    }
   }
 
   // Tags are hidden by default and only shown on hover with low opacity, unless in portal (alwaysVisible)
@@ -75,15 +79,15 @@ export function RefLabel({ gitRef, alwaysVisible = false, color }: RefLabelProps
 
   return (
     <span className={badgeClasses} style={customStyle}>
-      {isHEAD && <GitCommitHorizontal className="h-2.5 w-2.5 shrink-0" />}
-      {!isHEAD && !isRemote && <Check className="h-2.5 w-2.5 shrink-0" />}
+      {isHEAD && <GitCommitHorizontal className="h-3 w-3 shrink-0" />}
+      {!isHEAD && !isRemote && <Check className="h-3 w-3 shrink-0" />}
       
       <span className="truncate">
         {isHEAD ? 'HEAD' : displayName}
       </span>
 
-      {isRemote && <GithubIcon className="h-2.5 w-2.5 shrink-0 ml-0.5" />}
-      {!isHEAD && !isRemote && <Laptop className="h-2.5 w-2.5 shrink-0 ml-0.5" />}
+      {isRemote && <GithubIcon className="h-3 w-3 shrink-0 ml-0.5" />}
+      {!isHEAD && !isRemote && <Laptop className="h-3 w-3 shrink-0 ml-0.5" />}
     </span>
   )
 }

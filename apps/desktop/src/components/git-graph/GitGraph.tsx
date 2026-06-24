@@ -4,10 +4,11 @@ import { useTranslation } from '@git-manager/i18n'
 import { useQueryClient } from '@tanstack/react-query'
 import { Spinner } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
+import { useGitStatus } from '../../hooks/useGitStatus'
 import { useContextMenu } from '../../hooks/useContextMenu'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
 import { useSettingsStore } from '../../stores/settings.store'
-import { createFixupCommit } from '../../lib/tauri'
+import { createFixupCommit, createCommit, stageAll } from '../../lib/tauri'
 import { GraphRow } from './GraphRow'
 import { GraphHeader } from './GraphHeader'
 import { CommitPanel } from './CommitPanel'
@@ -46,6 +47,18 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   const [primaryOid, setPrimaryOid] = useState<string | null>(null)
   const [anchorOid, setAnchorOid] = useState<string | null>(null)
 
+  // ── Status detection & WIP Node ──────────────────────────────────────────
+  const { data: status } = useGitStatus(repoPath)
+  const totalChanges = useMemo(() => {
+    if (!status) return 0
+    return (
+      (status.staged?.length || 0) +
+      (status.unstaged?.length || 0) +
+      (status.untracked?.length || 0) +
+      (status.conflicted?.length || 0)
+    )
+  }, [status])
+
   // ── Colonnes ──────────────────────────────────────────────────────────────
   const columnState = useGitGraphColumnsStore((s) => s.columns)
   const visibleColumns: ResolvedColumn[] = useMemo(
@@ -62,11 +75,51 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     branch: branch || undefined,
   })
 
+  const wipNode = useMemo(() => {
+    if (totalChanges === 0 || nodes.length === 0) return null
+    const firstNode = nodes[0]
+    return {
+      commit: {
+        oid: 'WIP',
+        shortOid: 'WIP',
+        message: '',
+        subject: '',
+        body: '',
+        author: {
+          name: '',
+          email: '',
+          timestamp: Date.now() / 1000,
+        },
+        committer: {
+          name: '',
+          email: '',
+          timestamp: Date.now() / 1000,
+        },
+        parentOids: [firstNode.commit.oid],
+      },
+      column: firstNode.column,
+      color: firstNode.color,
+      connections: [
+        {
+          fromColumn: firstNode.column,
+          toColumn: firstNode.column,
+          color: firstNode.color,
+          dashed: true,
+        },
+      ],
+      refs: [],
+    }
+  }, [totalChanges, nodes])
+
   // ── Filtrage (recherche globale uniquement) ────────────────────────────────
   const filteredNodes = useMemo(() => {
     const search = searchQuery?.trim().toLowerCase() ?? ''
-    if (!search) return nodes
-    return nodes.filter((node) => {
+    const baseNodes = wipNode ? [wipNode, ...nodes] : nodes
+    if (!search) return baseNodes
+    return baseNodes.filter((node) => {
+      if (node.commit.oid === 'WIP') {
+        return 'wip'.includes(search)
+      }
       const { commit } = node
       const haystack = [
         commit.subject,
@@ -79,7 +132,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
         .toLowerCase()
       return haystack.includes(search)
     })
-  }, [nodes, searchQuery])
+  }, [nodes, searchQuery, wipNode])
 
   // ── Waterlines : overlays plein-largeur posés sur la frontière entre groupes ──
   // Elles n'occupent PAS de hauteur (le graphe reste continu derrière). On émet
@@ -124,6 +177,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
   function handleRowSelect(e: React.MouseEvent, index: number) {
     const oid = filteredNodes[index].commit.oid
+    if (oid === 'WIP') return
     if (e.shiftKey && anchorOid) {
       const fromIndex = filteredNodes.findIndex((n) => n.commit.oid === anchorOid)
       const start = fromIndex === -1 ? index : Math.min(fromIndex, index)
@@ -149,6 +203,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   }
 
   function openMenuAt(e: React.MouseEvent, oid: string) {
+    if (oid === 'WIP') return
     e.preventDefault()
     e.stopPropagation()
     let targets: string[]
@@ -178,6 +233,21 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
       queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
       queryClient.invalidateQueries({ queryKey: ['pending-fixups', repoPath] })
       setToast({ kind: 'ok', msg: t('gitTree.contextMenu.fixupCreated') })
+    } catch (err) {
+      setToast({ kind: 'error', msg: String(err) })
+    }
+  }
+
+  async function handleCommitWip(message: string) {
+    if (!message.trim()) return
+    try {
+      const stagedCount = status?.staged?.length || 0
+      if (stagedCount === 0) {
+        await stageAll(repoPath)
+      }
+      await createCommit(repoPath, message)
+      queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+      queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
     } catch (err) {
       setToast({ kind: 'error', msg: String(err) })
     }
@@ -272,6 +342,23 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                   {virtualizer.getVirtualItems().map((virtualItem) => {
                     const node = filteredNodes[virtualItem.index]
                     const oid = node.commit.oid
+
+                    let nodeToRender = node
+                    if (totalChanges > 0 && virtualItem.index === 1) {
+                      nodeToRender = {
+                        ...node,
+                        connections: [
+                          ...node.connections,
+                          {
+                            fromColumn: node.column,
+                            toColumn: node.column,
+                            color: node.color,
+                            dashed: true,
+                          },
+                        ],
+                      }
+                    }
+
                     return (
                       <div
                         key={virtualItem.key}
@@ -286,13 +373,15 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                         }}
                       >
                         <GraphRow
-                          node={node}
+                          node={nodeToRender}
                           columns={visibleColumns}
                           isSelected={selected.has(oid)}
                           isPrimary={oid === primaryOid}
                           onSelect={(e) => handleRowSelect(e, virtualItem.index)}
                           onContextMenu={(e) => openMenuAt(e, oid)}
                           onOpenMenu={(e) => openMenuAt(e, oid)}
+                          totalChanges={totalChanges}
+                          onCommitWip={handleCommitWip}
                         />
                       </div>
                     )

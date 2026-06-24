@@ -1,6 +1,6 @@
 import { memo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { MoreVertical } from 'lucide-react'
+import { MoreVertical, FileText } from 'lucide-react'
 import type { GitGraphNode } from '@git-manager/git-types'
 import { cn } from '@git-manager/ui'
 import { GraphSvg } from './GraphSvg'
@@ -18,6 +18,8 @@ interface GraphRowProps {
   onContextMenu: (e: React.MouseEvent) => void
   /** Clic sur l'icône ⋮ : ouvre le menu contextuel d'actions. */
   onOpenMenu: (e: React.MouseEvent) => void
+  totalChanges?: number
+  onCommitWip?: (message: string) => void
 }
 
 function formatRelativeDate(timestamp: number): string {
@@ -142,16 +144,70 @@ export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
   )
 }
 
+function WipCommitInput({
+  totalChanges,
+  onCommit,
+}: {
+  totalChanges: number
+  onCommit?: (message: string) => void
+}) {
+  const [value, setValue] = useState('')
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      e.stopPropagation()
+      if (value.trim()) {
+        onCommit?.(value)
+      }
+    }
+  }
+
+  return (
+    <div className="flex items-center w-full gap-2 pr-4" onClick={(e) => e.stopPropagation()}>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder="// WIP"
+        className="flex-1 min-w-0 bg-transparent text-foreground placeholder-muted-foreground/60 text-[11px] h-6 px-2 rounded border border-border/40 focus:border-primary/60 focus:outline-none transition-colors"
+      />
+      <div
+        className="flex items-center gap-1 shrink-0 text-[10px] font-semibold text-muted-foreground bg-muted/40 px-2 py-0.5 rounded border border-border/30"
+        title={`${totalChanges} files changed`}
+      >
+        <FileText className="h-3 w-3 text-muted-foreground/60" />
+        <span>{totalChanges}</span>
+      </div>
+    </div>
+  )
+}
+
 // ── Cellules ──────────────────────────────────────────────────────────────────
 
-function CellContent({ col, node, refsWidth }: { col: ColumnKey; node: GitGraphNode; refsWidth: number }) {
+function CellContent({
+  col,
+  node,
+  refsWidth,
+  totalChanges,
+  onCommitWip,
+}: {
+  col: ColumnKey
+  node: GitGraphNode
+  refsWidth: number
+  totalChanges?: number
+  onCommitWip?: (message: string) => void
+}) {
   const { commit } = node
 
   switch (col) {
     case 'refs':
       return node.refs.length > 0 ? <RefLabelGroup refs={node.refs} color={node.color} /> : null
 
-    case 'graph':
+    case 'graph': {
+      const COL_WIDTH = 36
+      const nodeX = node.column * COL_WIDTH + COL_WIDTH / 2
       return (
         <div className="w-full h-full relative overflow-visible flex items-center">
           {/* Conteneur de découpe (clip) élargi pour le graph uniquement */}
@@ -170,18 +226,35 @@ function CellContent({ col, node, refsWidth }: { col: ColumnKey; node: GitGraphN
                 hasRefs={node.refs.length > 0}
                 branchColor={node.color}
                 tagLineStart={-refsWidth}
+                isWip={node.commit.oid === 'WIP'}
               />
             </div>
           </div>
 
           {/* Conteneur de découpe simple et direct pour les avatars */}
           <div className="absolute inset-y-0 left-0 right-0 overflow-hidden pointer-events-none">
-            <GraphAvatarTooltip node={node} />
+            {node.commit.oid === 'WIP' ? (
+              <div
+                className="absolute h-full flex items-center justify-center pointer-events-none"
+                style={{ left: nodeX - 16, width: 32 }}
+              >
+                <div
+                  className="flex h-[32px] w-[32px] items-center justify-center rounded-full border border-dashed select-none shadow-sm transition-all duration-150"
+                  style={{ borderColor: node.color, backgroundColor: 'transparent' }}
+                />
+              </div>
+            ) : (
+              <GraphAvatarTooltip node={node} />
+            )}
           </div>
         </div>
       )
+    }
 
     case 'message': {
+      if (node.commit.oid === 'WIP') {
+        return <WipCommitInput totalChanges={totalChanges ?? 0} onCommit={onCommitWip} />
+      }
       const body = commit.body?.replace(/\s+/g, ' ').trim()
       return (
         <span className="min-w-0 flex-1 truncate text-[11px] leading-tight">
@@ -192,6 +265,7 @@ function CellContent({ col, node, refsWidth }: { col: ColumnKey; node: GitGraphN
     }
 
     case 'author':
+      if (node.commit.oid === 'WIP') return null
       return (
         <div className="flex min-w-0 items-center gap-1.5">
           <AuthorAvatar name={commit.author.name} />
@@ -200,6 +274,7 @@ function CellContent({ col, node, refsWidth }: { col: ColumnKey; node: GitGraphN
       )
 
     case 'date':
+      if (node.commit.oid === 'WIP') return null
       return (
         <span
           className="truncate text-[10px] text-muted-foreground/70"
@@ -210,6 +285,7 @@ function CellContent({ col, node, refsWidth }: { col: ColumnKey; node: GitGraphN
       )
 
     case 'sha':
+      if (node.commit.oid === 'WIP') return null
       return (
         <code className="truncate font-mono text-[10px] text-muted-foreground" title={commit.oid}>
           {commit.shortOid}
@@ -228,6 +304,8 @@ export const GraphRow = memo(function GraphRow({
   onSelect,
   onContextMenu,
   onOpenMenu,
+  totalChanges,
+  onCommitWip,
 }: GraphRowProps) {
   const refsColumn = columns.find((c) => c.key === 'refs')
   const refsWidth = refsColumn ? refsColumn.width : 160
@@ -271,7 +349,13 @@ export const GraphRow = memo(function GraphRow({
           )}
           style={col.flex ? { flex: '1 1 0%' } : { width: col.width, flexShrink: 0 }}
         >
-          <CellContent col={col.key} node={node} refsWidth={refsWidth} />
+          <CellContent
+            col={col.key}
+            node={node}
+            refsWidth={refsWidth}
+            totalChanges={totalChanges}
+            onCommitWip={onCommitWip}
+          />
         </div>
       ))}
 
