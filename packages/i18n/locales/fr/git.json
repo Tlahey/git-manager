@@ -194,5 +194,12 @@
   "toolbar.stashSuccess": "Modifications mises de côté",
   "toolbar.popSuccess": "Stash appliqué",
   "commitDetails.updateMessage": "Mettre à jour",
-  "commitDetails.cancelAmend": "Annuler"
+  "commitDetails.cancelAmend": "Annuler",
+  "commitDetails.expandAll": "Tout développer",
+  "commitDetails.collapseAll": "Tout réduire",
+  "commitDetails.searchFiles": "Filtrer les fichiers...",
+  "commitDetails.stats.added": "ajoutés",
+  "commitDetails.stats.modified": "modifiés",
+  "commitDetails.stats.deleted": "supprimés",
+  "commitDetails.stats.renamed": "renommés"
 }

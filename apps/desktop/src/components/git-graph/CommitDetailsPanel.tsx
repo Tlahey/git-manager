@@ -16,7 +16,11 @@ import {
   Layers,
   History,
   Square,
-  Pencil
+  Pencil,
+  Search,
+  X,
+  FolderTree,
+  List
 } from 'lucide-react'
 import { useCommitDiff } from '../../hooks/useCommitDiff'
 import { useGitStatus } from '../../hooks/useGitStatus'
@@ -71,6 +75,12 @@ interface TreeNode {
   deletions?: number
   staged?: boolean
   children?: Record<string, TreeNode>
+  stats?: {
+    added: number
+    modified: number
+    deleted: number
+    renamed: number
+  }
 }
 
 function buildFileTree(
@@ -113,7 +123,51 @@ function buildFileTree(
     }
   }
 
+  function computeFolderStats(node: TreeNode) {
+    if (!node.isFolder) return
+
+    const stats = { added: 0, modified: 0, deleted: 0, renamed: 0 }
+
+    if (node.children) {
+      for (const childName in node.children) {
+        const child = node.children[childName]
+        computeFolderStats(child)
+
+        if (child.isFolder && child.stats) {
+          stats.added += child.stats.added
+          stats.modified += child.stats.modified
+          stats.deleted += child.stats.deleted
+          stats.renamed += child.stats.renamed
+        } else if (!child.isFolder) {
+          if (child.status === 'added' || child.status === 'untracked') {
+            stats.added++
+          } else if (child.status === 'modified') {
+            stats.modified++
+          } else if (child.status === 'deleted') {
+            stats.deleted++
+          } else if (child.status === 'renamed') {
+            stats.renamed++
+          }
+        }
+      }
+    }
+
+    node.stats = stats
+  }
+
+  for (const key in root) {
+    computeFolderStats(root[key])
+  }
+
   return root
+}
+
+function getSortedNodes(nodes: Record<string, TreeNode>): TreeNode[] {
+  return Object.values(nodes).sort((a, b) => {
+    if (a.isFolder && !b.isFolder) return -1
+    if (!a.isFolder && b.isFolder) return 1
+    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true })
+  })
 }
 
 // ── Avatar Color Helper ───────────────────────────────────────────────────────
@@ -163,6 +217,8 @@ export function CommitDetailsPanel({
   const [copied, setCopied] = useState(false)
   const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree')
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
+  const [buttonState, setButtonState] = useState<'expand' | 'collapse'>('expand')
+  const [fileSearchQuery, setFileSearchQuery] = useState('')
 
   // Commit editing states
   const [isEditingMessage, setIsEditingMessage] = useState(false)
@@ -175,6 +231,9 @@ export function CommitDetailsPanel({
     setIsEditingMessage(false)
     setEditSubject(commit?.subject ?? '')
     setEditBody(commit?.body ?? '')
+    setExpandedFolders(new Set())
+    setButtonState('expand')
+    setFileSearchQuery('')
   }, [commit?.oid, commit?.subject, commit?.body])
 
   // Check if selected commit is HEAD (can be amended)
@@ -483,12 +542,20 @@ export function CommitDetailsPanel({
   // ── Folder Tree Collapse/Expand toggle ──────────────────────────────────────
 
   function toggleFolder(folderPath: string) {
+    let wasExpanded = false
     setExpandedFolders((prev) => {
       const next = new Set(prev)
-      if (next.has(folderPath)) next.delete(folderPath)
-      else next.add(folderPath)
+      if (next.has(folderPath)) {
+        next.delete(folderPath)
+        wasExpanded = true
+      } else {
+        next.add(folderPath)
+      }
       return next
     })
+    if (wasExpanded) {
+      setButtonState('expand')
+    }
   }
 
   // ── Render Recursive Tree Node ──────────────────────────────────────────────
@@ -538,10 +605,34 @@ export function CommitDetailsPanel({
               <Folder className="h-3.5 w-3.5 text-blue-400 shrink-0" />
             )}
             <span className="truncate text-foreground/90 flex-1 min-w-0">{node.name}</span>
+            {node.stats && (
+              <div className="flex items-center gap-1 shrink-0 ml-2 select-none text-[9px] font-bold">
+                {node.stats.added > 0 && (
+                  <span className="text-green-500 bg-green-500/10 px-1 rounded">
+                    +{node.stats.added}
+                  </span>
+                )}
+                {node.stats.modified > 0 && (
+                  <span className="text-yellow-500 bg-yellow-500/10 px-1 rounded">
+                    ~{node.stats.modified}
+                  </span>
+                )}
+                {node.stats.deleted > 0 && (
+                  <span className="text-red-500 bg-red-500/10 px-1 rounded">
+                    -{node.stats.deleted}
+                  </span>
+                )}
+                {node.stats.renamed > 0 && (
+                  <span className="text-blue-500 bg-blue-500/10 px-1 rounded">
+                    →{node.stats.renamed}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           {isExpanded && node.children && (
             <div className="flex flex-col">
-              {Object.values(node.children).map((child) =>
+              {getSortedNodes(node.children).map((child) =>
                 renderTreeNode(child, depth + 1)
               )}
             </div>
@@ -640,9 +731,75 @@ export function CommitDetailsPanel({
     }))
   }, [isWip, diff, allWipChanges])
 
-  const fileTreeRoot = useMemo(() => {
-    return buildFileTree(processedFiles)
+  // File stats
+  const fileStats = useMemo(() => {
+    let added = 0
+    let modified = 0
+    let deleted = 0
+    let renamed = 0
+
+    processedFiles.forEach((file) => {
+      if (file.status === 'added' || file.status === 'untracked') added++
+      else if (file.status === 'modified') modified++
+      else if (file.status === 'deleted') deleted++
+      else if (file.status === 'renamed') renamed++
+    })
+
+    return { added, modified, deleted, renamed }
   }, [processedFiles])
+
+  // Search filtering
+  const filteredFiles = useMemo(() => {
+    if (!fileSearchQuery.trim()) return processedFiles
+    const query = fileSearchQuery.toLowerCase()
+    return processedFiles.filter((file) => file.path.toLowerCase().includes(query))
+  }, [processedFiles, fileSearchQuery])
+
+  // Expandable folder paths calculation
+  const allFolderPaths = useMemo(() => {
+    const folders = new Set<string>()
+    processedFiles.forEach((file) => {
+      const parts = file.path.split('/')
+      let current = ''
+      for (let i = 0; i < parts.length - 1; i++) {
+        current = current ? `${current}/${parts[i]}` : parts[i]
+        folders.add(current)
+      }
+    })
+    return folders
+  }, [processedFiles])
+
+  // Auto-expand folders when typing search query
+  useEffect(() => {
+    if (fileSearchQuery.trim()) {
+      const foldersToExpand = new Set<string>()
+      filteredFiles.forEach((file) => {
+        const parts = file.path.split('/')
+        let current = ''
+        for (let i = 0; i < parts.length - 1; i++) {
+          current = current ? `${current}/${parts[i]}` : parts[i]
+          foldersToExpand.add(current)
+        }
+      })
+      setExpandedFolders(foldersToExpand)
+      setButtonState('collapse')
+    }
+  }, [fileSearchQuery, filteredFiles])
+
+  // Toggle expand/collapse all
+  function handleToggleExpandAll() {
+    if (buttonState === 'expand') {
+      setExpandedFolders(new Set(allFolderPaths))
+      setButtonState('collapse')
+    } else {
+      setExpandedFolders(new Set())
+      setButtonState('expand')
+    }
+  }
+
+  const fileTreeRoot = useMemo(() => {
+    return buildFileTree(filteredFiles)
+  }, [filteredFiles])
 
   // Simple Markdown Parser for messages
   const messageBodyParsed = useMemo(() => {
@@ -683,41 +840,7 @@ export function CommitDetailsPanel({
               </>
             )}
           </h3>
-
-          {!isWip && remoteUrl && (
-            <a
-              href={`${remoteUrl}/commit/${commit.oid}`}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1 text-[10px] text-primary hover:underline transition-all"
-            >
-              <span>GitHub</span>
-              <ExternalLink className="h-2.5 w-2.5" />
-            </a>
-          )}
         </div>
-
-        {/* SHA complete / Copy */}
-        {!isWip && (
-          <div className="flex items-center gap-1 bg-muted/65 p-1 rounded-md max-w-fit border border-border/40">
-            <code className="text-[10px] font-mono text-foreground font-bold tracking-tight px-1.5 selection:bg-primary/30">
-              {commit.oid}
-            </code>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-5 w-5 p-0 hover:bg-accent/80 transition-colors"
-              onClick={handleCopySha}
-              title={t('gitTree.detailPanel.copy')}
-            >
-              {copied ? (
-                <Check className="h-2.5 w-2.5 text-green-400 animate-bounce" />
-              ) : (
-                <Copy className="h-2.5 w-2.5" />
-              )}
-            </Button>
-          </div>
-        )}
 
         {/* Author Avatar + Author Name + Email + Date */}
         {!isWip && (
@@ -862,62 +985,166 @@ export function CommitDetailsPanel({
             )
           )}
 
-          {/* Parents display */}
-          {!isWip && parentOids.length > 0 && (
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                {t('commitDetails.parents')}
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {parentOids.map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => onSelectCommit?.(p)}
-                    className="text-[10px] font-mono bg-accent/60 hover:bg-primary/15 hover:text-primary hover:border-primary/45 border border-border px-2 py-0.5 rounded transition-all font-semibold"
+          {/* Commit SHA, Parents Display, and Statistics */}
+          {!isWip && (
+            <div className="space-y-2.5 pt-1 border-t border-border/20">
+              {/* Commit SHA & GitHub Link */}
+              <div className="flex items-center gap-2 flex-wrap text-xs">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  {t('commitDetails.sha') || 'SHA'}:
+                </span>
+                <div className="flex items-center gap-1 bg-muted/65 p-0.5 rounded border border-border/40">
+                  <code className="text-[10px] font-mono text-foreground font-semibold px-1 select-all truncate max-w-[200px]" title={commit.oid}>
+                    {commit.oid}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-4 w-4 p-0 hover:bg-accent/80 transition-colors"
+                    onClick={handleCopySha}
+                    title={t('gitTree.detailPanel.copy')}
                   >
-                    {p.substring(0, 7)}
-                  </button>
-                ))}
+                    {copied ? (
+                      <Check className="h-2 w-2 text-green-500 shrink-0" />
+                    ) : (
+                      <Copy className="h-2 w-2 text-muted-foreground shrink-0" />
+                    )}
+                  </Button>
+                </div>
+                
+                {remoteUrl && (
+                  <a
+                    href={`${remoteUrl}/commit/${commit.oid}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1 text-[10px] text-primary hover:underline transition-all font-semibold shrink-0"
+                  >
+                    <span>GitHub</span>
+                    <ExternalLink className="h-2.5 w-2.5" />
+                  </a>
+                )}
               </div>
+
+              {/* Parents display */}
+              {parentOids.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider shrink-0">
+                    {t('commitDetails.parents') || 'Parents'}:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {parentOids.map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => onSelectCommit?.(p)}
+                        className="text-[10px] font-mono bg-accent/60 hover:bg-primary/15 hover:text-primary hover:border-primary/45 border border-border px-2 py-0.5 rounded transition-all font-semibold"
+                      >
+                        {p.substring(0, 7)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Normal statistics summary */}
-          {!isWip && diff && (
-            <div className="flex items-center justify-between border-b border-border/30 pb-2">
-              <span className="text-[11px] font-semibold text-muted-foreground">
-                {t('gitTree.detailPanel.filesChanged', { count: diff.files.length })}
+          {/* Global Statistics Summary */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                Stats Summary
               </span>
-              <span className="text-[11px] font-bold">
-                <span className="text-green-500">+{diff.totalAdditions}</span>
-                {' '}
-                <span className="text-red-500">-{diff.totalDeletions}</span>
+              <span className="text-[10px] font-semibold text-muted-foreground bg-muted/65 px-1.5 py-0.5 rounded border border-border/40 font-mono">
+                {filteredFiles.length} {filteredFiles.length === 1 ? 'file' : 'files'} changed
               </span>
             </div>
-          )}
+            <div className="flex flex-wrap gap-2 text-[10px] font-medium text-muted-foreground bg-muted/5 p-2 rounded-md border border-border/20">
+              {fileStats.added > 0 && (
+                <span className="flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-green-500" />
+                  <span>{fileStats.added} {t('commitDetails.stats.added') || 'added'}</span>
+                </span>
+              )}
+              {fileStats.modified > 0 && (
+                <span className="flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-yellow-500" />
+                  <span>{fileStats.modified} {t('commitDetails.stats.modified') || 'modified'}</span>
+                </span>
+              )}
+              {fileStats.deleted > 0 && (
+                <span className="flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-red-500" />
+                  <span>{fileStats.deleted} {t('commitDetails.stats.deleted') || 'deleted'}</span>
+                </span>
+              )}
+              {fileStats.renamed > 0 && (
+                <span className="flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-blue-500" />
+                  <span>{fileStats.renamed} {t('commitDetails.stats.renamed') || 'renamed'}</span>
+                </span>
+              )}
+              {processedFiles.length === 0 && (
+                <span className="italic text-muted-foreground/60">{t('workingTree.noChanges')}</span>
+              )}
+            </div>
+          </div>
+
+          {/* Search bar inside files */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder={t('commitDetails.searchFiles') || "Filter files..."}
+              value={fileSearchQuery}
+              onChange={(e) => setFileSearchQuery(e.target.value)}
+              className="pl-8 h-8 text-xs font-mono"
+            />
+            {fileSearchQuery && (
+              <button
+                onClick={() => setFileSearchQuery('')}
+                className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
 
           {/* ── FILES TREE OR LIST VIEW ────────────────────────────────────────── */}
           <div className="space-y-2">
             <div className="flex items-center justify-between bg-muted/10 p-1.5 rounded-lg border border-border/30">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider pl-1 select-none">
-                Modifications ({processedFiles.length})
-              </span>
-              <div className="flex items-center border border-border/55 rounded overflow-hidden">
+              <div className="flex items-center gap-2 pl-1">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider select-none">
+                  Modifications
+                </span>
+                {viewMode === 'tree' && allFolderPaths.size > 0 && (
+                  <>
+                    <span className="text-muted-foreground/30 text-[10px] select-none">•</span>
+                    <button
+                      onClick={handleToggleExpandAll}
+                      className="text-[10px] text-primary hover:underline font-semibold"
+                    >
+                      {buttonState === 'expand' ? t('commitDetails.expandAll') : t('commitDetails.collapseAll')}
+                    </button>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center border border-border/55 rounded overflow-hidden bg-card">
                 <button
                   onClick={() => setViewMode('tree')}
-                  className={`text-[9px] px-2 py-0.5 font-bold transition-all ${
+                  className={`p-1.5 transition-all ${
                     viewMode === 'tree' ? 'bg-primary text-white' : 'hover:bg-accent text-muted-foreground'
                   }`}
+                  title={t('commitDetails.viewModeTree') || "Tree structure"}
                 >
-                  {t('commitDetails.viewModeTree')}
+                  <FolderTree className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`text-[9px] px-2 py-0.5 font-bold transition-all ${
+                  className={`p-1.5 transition-all ${
                     viewMode === 'list' ? 'bg-primary text-white' : 'hover:bg-accent text-muted-foreground'
                   }`}
+                  title={t('commitDetails.viewModeList') || "Flat list"}
                 >
-                  {t('commitDetails.viewModeList')}
+                  <List className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>
@@ -925,12 +1152,12 @@ export function CommitDetailsPanel({
             {/* Tree rendering */}
             {viewMode === 'tree' && (
               <div className="space-y-0.5">
-                {processedFiles.length === 0 ? (
+                {filteredFiles.length === 0 ? (
                   <p className="text-[11px] text-muted-foreground/70 italic px-2 py-1">
                     {t('workingTree.noChanges')}
                   </p>
                 ) : (
-                  Object.values(fileTreeRoot).map((node) => renderTreeNode(node))
+                  getSortedNodes(fileTreeRoot).map((node) => renderTreeNode(node))
                 )}
               </div>
             )}
@@ -938,12 +1165,12 @@ export function CommitDetailsPanel({
             {/* List rendering */}
             {viewMode === 'list' && (
               <div className="space-y-0.5">
-                {processedFiles.length === 0 ? (
+                {filteredFiles.length === 0 ? (
                   <p className="text-[11px] text-muted-foreground/70 italic px-2 py-1">
                     {t('workingTree.noChanges')}
                   </p>
                 ) : (
-                  processedFiles.map((file) => (
+                  filteredFiles.map((file) => (
                     <div
                       key={file.path}
                       className="group/file flex items-center justify-between py-1 px-2 text-xs hover:bg-accent rounded transition-colors cursor-pointer w-full min-w-0"

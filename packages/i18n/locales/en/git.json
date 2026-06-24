@@ -200,5 +200,12 @@
   "toolbar.stashSuccess": "Changes stashed",
   "toolbar.popSuccess": "Stash applied",
   "commitDetails.updateMessage": "Update Message",
-  "commitDetails.cancelAmend": "Cancel Amend"
+  "commitDetails.cancelAmend": "Cancel Amend",
+  "commitDetails.expandAll": "Expand All",
+  "commitDetails.collapseAll": "Collapse All",
+  "commitDetails.searchFiles": "Filter files...",
+  "commitDetails.stats.added": "added",
+  "commitDetails.stats.modified": "modified",
+  "commitDetails.stats.deleted": "deleted",
+  "commitDetails.stats.renamed": "renamed"
 }
