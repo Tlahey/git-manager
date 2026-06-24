@@ -189,7 +189,10 @@ export function CommitDetailsPanel({
       const fullMessage = editBody.trim()
         ? `${editSubject.trim()}\n\n${editBody.trim()}`
         : editSubject.trim()
-      await createCommit(repoPath, fullMessage, true)
+      
+      // Utiliser l'OID du commit actuel pour l'amend
+      const commitOidToAmend = commit.oid !== 'WIP' ? commit.oid : undefined
+      await createCommit(repoPath, fullMessage, true, commitOidToAmend)
       setIsEditingMessage(false)
       invalidate()
     } catch (err) {
@@ -835,10 +838,21 @@ export function CommitDetailsPanel({
                 )}
               </div>
             ) : (
-              <div data-testid="commit-message-readonly" className="bg-muted/15 border border-border/30 rounded-lg p-3 space-y-2">
-                <h4 className="text-xs font-bold text-foreground leading-snug break-words">
-                  {commit.subject}
-                </h4>
+              <div 
+                data-testid="commit-message-readonly" 
+                role="button"
+                tabIndex={0}
+                onClick={() => setIsEditingMessage(true)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setIsEditingMessage(true) }}
+                className="bg-muted/15 border border-border/30 hover:border-primary/50 hover:bg-accent/15 cursor-pointer rounded-lg p-3 space-y-2 group transition-all"
+                title="Click to edit commit message"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h4 className="text-xs font-bold text-foreground leading-snug break-words flex-1">
+                    {commit.subject}
+                  </h4>
+                  <Pencil className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground/60 shrink-0 mt-0.5 transition-all duration-200" />
+                </div>
                 {commit.body && (
                   <div className="text-[11px] space-y-1.5 pt-1 border-t border-border/20 font-normal">
                     {messageBodyParsed}

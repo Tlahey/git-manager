@@ -1,8 +1,9 @@
 use crate::error::AppError;
-use git2::{DiffOptions, Repository};
+use git2::{DiffOptions, Oid, Repository};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::path::Path;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 // ─── Structs locales (miroir des types TypeScript GitDiff / GitDiffFile) ──────
@@ -229,6 +230,7 @@ pub async fn create_commit(
     path: String,
     message: String,
     amend: Option<bool>,
+    amend_oid: Option<String>,
 ) -> Result<String, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
 
@@ -248,8 +250,28 @@ pub async fn create_commit(
     let tree = repo.find_tree(tree_oid).map_err(AppError::Git)?;
 
     let do_amend = amend.unwrap_or(false);
+    let amend_oid_str = amend_oid.as_deref();
 
-    let oid = if do_amend {
+    let oid = if do_amend && amend_oid_str.is_some() {
+        // Amend d'un commit spécifique - crée un nouveau commit avec le nouveau message
+        let target_oid = Oid::from_str(amend_oid_str.unwrap()).map_err(AppError::Git)?;
+        let target_commit = repo.find_commit(target_oid).map_err(AppError::Git)?;
+
+        // Créer un nouveau commit avec le nouveau message et les mêmes parents
+        let parents: Vec<git2::Commit> = target_commit.parents().collect();
+        
+        let parent_refs: Vec<&git2::Commit> = parents.iter().collect();
+
+        repo.commit(
+            None,
+            &sig,
+            &sig,
+            &message,
+            &tree,
+            &parent_refs,
+        ).map_err(AppError::Git)?
+    } else if do_amend {
+        // Amend du HEAD (comportement existant)
         let head = repo.head().map_err(AppError::Git)?;
         let head_oid = head
             .target()

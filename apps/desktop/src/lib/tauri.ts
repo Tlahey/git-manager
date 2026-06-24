@@ -126,8 +126,8 @@ export const stageAll = (path: string) => invoke<void>('stage_all', { path })
 
 export const unstageAll = (path: string) => invoke<void>('unstage_all', { path })
 
-export const createCommit = (path: string, message: string, amend = false) =>
-  invoke<string>('create_commit', { path, message, amend })
+export const createCommit = (path: string, message: string, amend = false, amendOid?: string) =>
+  invoke<string>('create_commit', { path, message, amend, amendOid })
 
 export const getStagedDiff = (path: string) => invoke<GitDiff>('get_staged_diff', { path })
 
