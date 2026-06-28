@@ -20,4 +20,7 @@ export default defineConfig(async () => ({
       ignored: ['**/src-tauri/**'],
     },
   },
+  worker: {
+    format: 'es',
+  },
 }))

@@ -16,6 +16,7 @@
     "@git-manager/git-types": "workspace:*",
     "@git-manager/i18n": "workspace:*",
     "@git-manager/ui": "workspace:*",
+    "@monaco-editor/react": "^4.6.0",
     "@tanstack/react-query": "^5.62.7",
     "@tanstack/react-virtual": "^3.11.1",
     "@tauri-apps/api": "^2.1.1",
@@ -23,6 +24,7 @@
     "@tauri-apps/plugin-shell": "^2.3.5",
     "@tauri-apps/plugin-store": "^2.1.0",
     "lucide-react": "^0.468.0",
+    "monaco-editor": "^0.52.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "zustand": "^5.0.2"
@@ -38,6 +40,7 @@
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.6.3",
-    "vite": "^6.0.3"
+    "vite": "^6.0.3",
+    "vite-plugin-monaco-editor": "^1.1.0"
   }
 }

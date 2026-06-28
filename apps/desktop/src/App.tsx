@@ -7,6 +7,7 @@ import { PullRequestsPage } from './app/pull-requests/PullRequestsPage'
 import { SettingsPage } from './app/settings/SettingsPage'
 import { TabBar } from './components/tab-bar'
 import { useTheme } from './hooks/useTheme'
+import { useMonacoTheme } from './hooks/useMonacoTheme'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,6 +23,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
 
   useTheme()
+  useMonacoTheme()
 
   return (
     <QueryClientProvider client={queryClient}>

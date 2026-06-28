@@ -322,21 +322,40 @@ export const GraphRow = memo(function GraphRow({
       onClick={onSelect}
       onContextMenu={onContextMenu}
       className={cn(
-        'group relative flex h-[40px] cursor-pointer select-none items-center border-b border-transparent transition-colors hover:bg-accent/50 hover:z-[60]',
-        isSelected && 'bg-accent/70',
-        isPrimary && 'bg-accent',
+        'group relative flex h-[32px] my-[4px] cursor-pointer select-none items-center border-b border-transparent transition-colors hover:z-[60]',
       )}
     >
       {/* Background colored band starting from the avatar to the right boundary of the graph column, with border-right */}
       <div
-        className="absolute pointer-events-none border-r-[3px] transition-colors"
+        className="absolute inset-y-0 pointer-events-none border-r-[3px] transition-colors"
         style={{
           left: startX,
           width: Math.max(0, endX - startX),
-          top: 4,
-          height: 32,
           backgroundColor: `${node.color}15`, // ~8% opacity
           borderRightColor: node.color,
+        }}
+      />
+
+      {/* Selection background starting from the end of the graph column to the right end of the row */}
+      {(isSelected || isPrimary) && (
+        <div
+          className={cn(
+            "absolute inset-y-0 pointer-events-none transition-colors",
+            isPrimary ? "bg-accent" : "bg-accent/70"
+          )}
+          style={{
+            left: endX,
+            right: 0,
+          }}
+        />
+      )}
+
+      {/* Hover background starting from the end of the graph column to the right end of the row */}
+      <div
+        className="absolute inset-y-0 pointer-events-none bg-accent/50 transition-opacity opacity-0 group-hover:opacity-100"
+        style={{
+          left: endX,
+          right: 0,
         }}
       />
 
@@ -344,8 +363,9 @@ export const GraphRow = memo(function GraphRow({
         <div
           key={col.key}
           className={cn(
-            "flex h-full min-w-0 items-center px-2",
-            col.key === 'refs' && 'relative z-10 justify-start'
+            "relative z-10 flex h-full min-w-0 items-center",
+            col.key === 'refs' ? 'justify-start' : 'mx-2',
+            col.key === 'graph' && 'px-0'
           )}
           style={col.flex ? { flex: '1 1 0%' } : { width: col.width, flexShrink: 0 }}
         >
