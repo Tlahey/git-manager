@@ -32,6 +32,10 @@ const DEFAULT_SETTINGS: AppSettings = {
     scanExclusions: ['node_modules', '.pnpm-store', 'dist', 'build', 'target'],
     maxScanDepth: 3,
   },
+  github: {
+    accounts: [],
+    activeAccountId: null,
+  },
 }
 
 interface SettingsState {

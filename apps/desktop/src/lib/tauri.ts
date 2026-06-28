@@ -205,3 +205,48 @@ export const runAutosquash = (path: string) =>
 
 export const listSubmodules = (path: string) =>
   invoke<GitSubmodule[]>('list_submodules', { path })
+
+// ─── GitHub OAuth ─────────────────────────────────────────────────────────────
+
+export interface DeviceCodeResponse {
+  device_code: string
+  user_code: string
+  verification_uri: string
+  expires_in: number
+  interval: number
+}
+
+export interface PollTokenResponse {
+  access_token: string | null
+  error: string | null
+  error_description: string | null
+}
+
+export interface GitHubUserInfo {
+  login: string
+  name: string | null
+  email: string | null
+  avatarUrl: string
+}
+
+export const githubDeviceCode = (scope: string) =>
+  invoke<DeviceCodeResponse>('github_device_code', { scope })
+
+export const githubPollToken = (deviceCode: string) =>
+  invoke<PollTokenResponse>('github_poll_token', { deviceCode })
+
+export const githubGetUser = (token: string) =>
+  invoke<GitHubUserInfo>('github_get_user', { token })
+
+export interface GitHubRepoInfo {
+  id: number
+  name: string
+  fullName: string
+  private: boolean
+  htmlUrl: string
+  description: string | null
+  updatedAt: string
+}
+
+export const githubListRepos = (token: string) =>
+  invoke<GitHubRepoInfo[]>('github_list_repos', { token })

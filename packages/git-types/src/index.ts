@@ -199,13 +199,33 @@ export interface RebaseState {
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
+export interface GitHubUser {
+  login: string
+  name: string | null
+  email: string | null
+  avatarUrl: string
+}
+
+export interface GitHubAccount {
+  id: string
+  token: string
+  user: GitHubUser
+}
+
+export interface GitHubSettings {
+  accounts: GitHubAccount[]
+  activeAccountId: string | null
+}
+
 export interface AppSettings {
   ollama: OllamaSettings
   git: GitSettings
   appearance: AppearanceSettings
   language: 'fr' | 'en'
   advanced: AdvancedSettings
+  github?: GitHubSettings
 }
+
 
 export interface OllamaSettings {
   url: string

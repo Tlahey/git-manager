@@ -21,25 +21,31 @@ const queryClient = new QueryClient({
 export default function App() {
   const activeTab = useReposStore((s) => s.activeTab)
   const [showSettings, setShowSettings] = useState(false)
+  const [settingsSection, setSettingsSection] = useState<'llm' | 'github' | 'git' | 'appearance' | 'language' | 'advanced'>('llm')
 
   useTheme()
   useMonacoTheme()
+
+  function handleOpenSettings(section?: 'llm' | 'github' | 'git' | 'appearance' | 'language' | 'advanced') {
+    setSettingsSection(section || 'llm')
+    setShowSettings(true)
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
       <div className="flex h-screen flex-col bg-background text-foreground">
         {showSettings ? (
-          <SettingsPage onClose={() => setShowSettings(false)} />
+          <SettingsPage initialSection={settingsSection} onClose={() => setShowSettings(false)} />
         ) : (
           <>
-            <TabBar onOpenSettings={() => setShowSettings(true)} />
+            <TabBar onOpenSettings={handleOpenSettings} />
             <div className="flex-1 overflow-hidden">
               {activeTab === DASHBOARD_TAB ? (
-                <DashboardPage onOpenSettings={() => setShowSettings(true)} />
+                <DashboardPage onOpenSettings={() => handleOpenSettings('llm')} />
               ) : activeTab === PULL_REQUESTS_TAB ? (
                 <PullRequestsPage />
               ) : (
-                <RepoView onOpenSettings={() => setShowSettings(true)} />
+                <RepoView />
               )}
             </div>
           </>

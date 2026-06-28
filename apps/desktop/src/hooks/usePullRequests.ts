@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import type { PullRequest } from '@git-manager/git-types'
+import { useSettingsStore } from '../stores/settings.store'
 
 interface GitHubPrResponse {
   number: number
@@ -82,6 +83,11 @@ export function usePullRequests({
   githubToken,
   enabled = true,
 }: UsePullRequestsOptions): UsePullRequestsResult {
+  const githubSettings = useSettingsStore((s) => s.settings.github)
+  const activeAccount = githubSettings?.accounts?.find((a) => a.id === githubSettings.activeAccountId) || null
+  const resolvedToken = githubToken || (activeAccount?.token ?? undefined)
+  const resolvedUser = currentUser || (activeAccount?.user?.login ?? undefined)
+
   // Détecte le premier remote GitHub
   const ownerRepo = remoteUrls
     .map((url) => parseGitHubUrl(url))
@@ -90,17 +96,17 @@ export function usePullRequests({
   const isGithub = ownerRepo !== null
 
   const query = useQuery<PullRequest[], Error>({
-    queryKey: ['pull-requests', ownerRepo?.owner, ownerRepo?.repo],
+    queryKey: ['pull-requests', ownerRepo?.owner, ownerRepo?.repo, resolvedToken],
     queryFn: () =>
-      fetchPullRequests(ownerRepo!.owner, ownerRepo!.repo, githubToken),
+      fetchPullRequests(ownerRepo!.owner, ownerRepo!.repo, resolvedToken),
     enabled: enabled && isGithub,
     staleTime: 60_000,
     retry: 1,
   })
 
   const allPrs = query.data ?? []
-  const myPrs = currentUser
-    ? allPrs.filter((pr) => pr.author === currentUser)
+  const myPrs = resolvedUser
+    ? allPrs.filter((pr) => pr.author === resolvedUser)
     : []
 
   return {

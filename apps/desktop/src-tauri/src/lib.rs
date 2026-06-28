@@ -4,6 +4,7 @@ mod models;
 mod state;
 
 use commands::branch::{get_branches, get_tags};
+use commands::github::{github_device_code, github_get_user, github_list_repos, github_poll_token};
 use commands::submodule::list_submodules;
 use commands::themes::get_user_themes;
 use commands::fixup::{autosquash_preview, create_fixup_commit, get_pending_fixups, run_autosquash};
@@ -69,6 +70,11 @@ pub fn run() {
             get_user_themes,
             // Submodules
             list_submodules,
+            // GitHub OAuth
+            github_device_code,
+            github_poll_token,
+            github_get_user,
+            github_list_repos,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

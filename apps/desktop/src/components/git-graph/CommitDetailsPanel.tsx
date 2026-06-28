@@ -26,6 +26,7 @@ import { useCommitDiff } from '../../hooks/useCommitDiff'
 import { useGitStatus } from '../../hooks/useGitStatus'
 import { useOllamaGeneration } from '../../hooks/useOllamaGeneration'
 import { useCommitMessageHistory } from '../../hooks/useCommitMessageHistory'
+import { getAvatarUrl } from '../../lib/avatar'
 import {
   stageFile,
   unstageFile,
@@ -200,6 +201,34 @@ function getAuthorInitials(name: string): string {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
   }
   return name.slice(0, 2).toUpperCase()
+}
+
+function CommitDetailsAvatar({ name, email }: { name: string; email: string }) {
+  const avatarUrl = getAvatarUrl(email, name)
+  const [imgError, setImgError] = useState(false)
+
+  useEffect(() => {
+    setImgError(false)
+  }, [email, name])
+
+  return (
+    <div
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-md overflow-hidden ${
+        avatarUrl && !imgError ? '' : getAuthorAvatarStyle(name)
+      }`}
+    >
+      {avatarUrl && !imgError ? (
+        <img
+          src={avatarUrl}
+          alt={name}
+          className="h-full w-full object-cover"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        getAuthorInitials(name)
+      )}
+    </div>
+  )
 }
 
 export function CommitDetailsPanel({
@@ -845,13 +874,7 @@ export function CommitDetailsPanel({
         {/* Author Avatar + Author Name + Email + Date */}
         {!isWip && (
           <div className="flex items-center gap-2.5 mt-1 border-t border-border/20 pt-2">
-            <div
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white bg-gradient-to-tr ${getAuthorAvatarStyle(
-                commit.author.name
-              )} shadow-md`}
-            >
-              {getAuthorInitials(commit.author.name)}
-            </div>
+            <CommitDetailsAvatar name={commit.author.name} email={commit.author.email} />
             <div className="flex flex-col min-w-0">
               <span className="text-xs font-semibold text-foreground truncate">
                 {commit.author.name}

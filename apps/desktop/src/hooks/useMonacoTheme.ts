@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useSettingsStore } from '../stores/settings.store'
 import { resolveSystemTheme } from '../lib/themes'
-import { registerMonacoThemes, monacoThemes } from '../lib/monacoThemes'
+import { registerMonacoThemes } from '../lib/monacoThemes'
 
 // Map of application theme IDs to Monaco theme IDs
 const THEME_MAP: Record<string, string> = {

@@ -4,12 +4,9 @@ import { openRepo } from '../../lib/tauri'
 import { GitGraph } from '../../components/git-graph/GitGraph'
 import { RepositorySidebar } from '../../components/repository-sidebar'
 import { ActionToolbar } from '../../components/action-toolbar'
+import { useSettingsStore } from '../../stores/settings.store'
 
-interface RepoViewProps {
-  onOpenSettings: () => void
-}
-
-export function RepoView({ onOpenSettings }: RepoViewProps) {
+export function RepoView() {
   const { activeRepo, repoCache, setRepoCache } = useReposStore()
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -26,13 +23,14 @@ export function RepoView({ onOpenSettings }: RepoViewProps) {
     }
   }, [activeRepo, repoCache, setRepoCache])
 
+  const github = useSettingsStore((s) => s.settings.github)
+  const activeAccount = github?.accounts?.find((a) => a.id === github.activeAccountId) || null
+
   if (!activeRepo) return null
 
   return (
     <div className="flex h-full flex-col">
-      {/* ── Barre d'actions principale (Partie 2) ───────────────── */}
       <ActionToolbar
-        onOpenSettings={onOpenSettings}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
@@ -45,6 +43,8 @@ export function RepoView({ onOpenSettings }: RepoViewProps) {
           remoteUrls={repoCache[activeRepo]?.remotes ?? []}
           selectedBranch={selectedBranch}
           onSelectBranch={(name) => setSelectedBranch(name)}
+          currentUser={activeAccount?.user?.login}
+          githubToken={activeAccount?.token ?? undefined}
         />
 
         {/* Zone centrale — historique plein largeur */}

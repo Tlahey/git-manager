@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { useReposStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../../stores/repos.store'
 import { LayoutDashboard, GitPullRequest, Settings, X, GitBranch } from 'lucide-react'
 import { NewTabMenu } from './NewTabMenu'
+import { UserProfile } from '../action-toolbar/UserProfile'
 
 interface TabBarProps {
-  onOpenSettings: () => void
+  onOpenSettings: (section?: 'llm' | 'github' | 'git' | 'appearance' | 'language' | 'advanced') => void
 }
 
 interface PinnedTabProps {
@@ -126,14 +127,17 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
         </div>
       </div>
 
-      {/* Réglages (extrême droite) */}
-      <button
-        onClick={onOpenSettings}
-        className="flex h-9 w-9 shrink-0 items-center justify-center border-l border-border text-muted-foreground transition-colors hover:bg-background/40 hover:text-foreground"
-        title="Réglages"
-      >
-        <Settings className="h-3.5 w-3.5" />
-      </button>
+      {/* Réglages & Profil (extrême droite) */}
+      <div className="flex shrink-0 items-center gap-2 border-l border-border px-3">
+        <button
+          onClick={() => onOpenSettings('llm')}
+          className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          title="Réglages"
+        >
+          <Settings className="h-3.5 w-3.5" />
+        </button>
+        <UserProfile onOpenSettings={onOpenSettings} />
+      </div>
     </div>
   )
 }

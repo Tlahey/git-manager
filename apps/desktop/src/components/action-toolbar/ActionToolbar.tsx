@@ -6,7 +6,6 @@ import {
   ChevronRight,
   GitPullRequest,
   Redo2,
-  Settings,
   Terminal as TerminalIcon,
   Undo2,
   Archive,
@@ -29,10 +28,8 @@ import { FetchButton } from './FetchButton'
 import { BranchButton } from './BranchButton'
 import { ToolbarButton } from './ToolbarButton'
 import { ToolbarSearch } from './ToolbarSearch'
-import { UserProfile } from './UserProfile'
 
 interface ActionToolbarProps {
-  onOpenSettings: () => void
   searchQuery: string
   onSearchChange: (value: string) => void
 }
@@ -45,7 +42,7 @@ interface Notification {
 type LoadingKey = 'fetch' | 'pull' | 'push' | 'stash' | 'pop'
 
 /** Barre d'actions principale (Partie 2) située sous les onglets. */
-export function ActionToolbar({ onOpenSettings, searchQuery, onSearchChange }: ActionToolbarProps) {
+export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProps) {
   const { t } = useTranslation('git')
   const queryClient = useQueryClient()
   const { activeRepo, repoCache } = useReposStore()
@@ -235,15 +232,6 @@ export function ActionToolbar({ onOpenSettings, searchQuery, onSearchChange }: A
       {/* ── Section droite : recherche & outils ───────────────── */}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         <ToolbarSearch value={searchQuery} onChange={onSearchChange} />
-        <button
-          type="button"
-          onClick={onOpenSettings}
-          title={t('toolbar.preferences')}
-          className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        >
-          <Settings className="h-4 w-4" />
-        </button>
-        <UserProfile onOpenSettings={onOpenSettings} />
       </div>
 
       {/* Toast transitoire */}

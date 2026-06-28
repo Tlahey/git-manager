@@ -1,6 +1,7 @@
 pub mod branch;
 pub mod commit;
 pub mod fixup;
+pub mod github;
 pub mod log;
 pub mod ollama;
 pub mod remote;

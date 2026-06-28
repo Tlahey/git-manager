@@ -6,6 +6,7 @@ import { cn } from '@git-manager/ui'
 import { GraphSvg } from './GraphSvg'
 import { RefLabelGroup } from './RefLabelGroup'
 import type { ColumnKey, ResolvedColumn } from './columns'
+import { getAvatarUrl } from '../../lib/avatar'
 
 interface GraphRowProps {
   node: GitGraphNode
@@ -72,14 +73,26 @@ function getAuthorInitials(name: string): string {
   return name.slice(0, 2).toUpperCase()
 }
 
-function AuthorAvatar({ name }: { name: string }) {
+function AuthorAvatar({ name, email }: { name: string; email?: string }) {
+  const avatarUrl = getAvatarUrl(email, name)
+  const [imgError, setImgError] = useState(false)
+
   return (
     <div
-      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[7px] font-bold text-white"
-      style={{ backgroundColor: getAuthorColor(name) }}
+      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[7px] font-bold text-white overflow-hidden"
+      style={{ backgroundColor: avatarUrl && !imgError ? undefined : getAuthorColor(name) }}
       title={name}
     >
-      {getAuthorInitials(name)}
+      {avatarUrl && !imgError ? (
+        <img
+          src={avatarUrl}
+          alt={name}
+          className="h-full w-full object-cover"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        getAuthorInitials(name)
+      )}
     </div>
   )
 }
@@ -89,6 +102,8 @@ export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
   const [pos, setPos] = useState({ top: 0, left: 0 })
   const { commit } = node
   const initials = getAuthorInitials(commit.author.name)
+  const avatarUrl = getAvatarUrl(commit.author.email, commit.author.name)
+  const [imgError, setImgError] = useState(false)
 
   const COL_WIDTH = 36
   const nodeX = node.column * COL_WIDTH + COL_WIDTH / 2
@@ -115,10 +130,19 @@ export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
       >
         {/* Avatar Circle */}
         <div
-          className="flex h-[32px] w-[32px] items-center justify-center rounded-full text-[11px] font-bold text-white select-none cursor-pointer border border-background shadow-sm hover:scale-110 hover:shadow-md transition-all duration-150"
-          style={{ backgroundColor: node.color }}
+          className="flex h-[32px] w-[32px] items-center justify-center rounded-full text-[11px] font-bold text-white select-none cursor-pointer border border-background shadow-sm hover:scale-110 hover:shadow-md transition-all duration-150 overflow-hidden"
+          style={{ backgroundColor: avatarUrl && !imgError ? undefined : node.color }}
         >
-          {initials}
+          {avatarUrl && !imgError ? (
+            <img
+              src={avatarUrl}
+              alt={commit.author.name}
+              className="h-full w-full object-cover"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            initials
+          )}
         </div>
       </div>
 
@@ -277,7 +301,7 @@ function CellContent({
       if (node.commit.oid === 'WIP') return null
       return (
         <div className="flex min-w-0 items-center gap-1.5">
-          <AuthorAvatar name={commit.author.name} />
+          <AuthorAvatar name={commit.author.name} email={commit.author.email} />
           <span className="truncate text-[10px] text-muted-foreground">{commit.author.name}</span>
         </div>
       )
