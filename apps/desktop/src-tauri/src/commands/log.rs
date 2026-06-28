@@ -132,15 +132,12 @@ pub async fn get_log(
 
     if let Ok(references) = repo.references() {
         for reference in references.flatten() {
-            let target_oid = match reference.target() {
-                Some(o) => o,
-                None => {
-                    // Tag annoté : déréférencer
-                    match reference.peel_to_commit() {
-                        Ok(c) => c.id(),
-                        Err(_) => continue,
-                    }
-                }
+            let target_oid = match reference.peel_to_commit() {
+                Ok(c) => c.id(),
+                Err(_) => match reference.target() {
+                    Some(o) => o,
+                    None => continue,
+                },
             };
 
             let name = match reference.name() {

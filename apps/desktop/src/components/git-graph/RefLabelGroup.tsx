@@ -89,7 +89,7 @@ export function RefLabelGroup({ refs, color }: RefLabelGroupProps) {
             className="z-50 flex max-w-xs flex-col items-start gap-1 rounded-md border border-border bg-popover p-1.5 shadow-lg"
           >
             {sortedRefs.slice(1).map((ref, i) => (
-              <RefLabel key={i} gitRef={ref} alwaysVisible color={color} />
+              <RefLabel key={i} gitRef={ref} color={color} />
             ))}
           </div>,
           document.body,

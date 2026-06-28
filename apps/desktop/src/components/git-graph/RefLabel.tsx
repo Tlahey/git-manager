@@ -1,10 +1,9 @@
 import type { GitRef } from '@git-manager/git-types'
 import { cn } from '@git-manager/ui'
-import { GitCommitHorizontal, Check, Laptop } from 'lucide-react'
+import { GitCommitHorizontal, Check, Laptop, Tag } from 'lucide-react'
 
 interface RefLabelProps {
   gitRef: GitRef
-  alwaysVisible?: boolean
   color?: string
 }
 
@@ -33,7 +32,7 @@ const cleanName = (ref: GitRef) => {
   return ref.shortName
 }
 
-export function RefLabel({ gitRef, alwaysVisible = false, color }: RefLabelProps) {
+export function RefLabel({ gitRef, color }: RefLabelProps) {
   const isHEAD = gitRef.type === 'HEAD'
   const isRemote = gitRef.type === 'remote'
   const isTag = gitRef.type === 'tag'
@@ -68,26 +67,23 @@ export function RefLabel({ gitRef, alwaysVisible = false, color }: RefLabelProps
     }
   }
 
-  // Tags are hidden by default and only shown on hover with low opacity, unless in portal (alwaysVisible)
+  // Tags are always visible with high opacity
   if (isTag) {
-    if (!alwaysVisible) {
-      badgeClasses = cn(badgeClasses, 'hidden group-hover:inline-flex opacity-60')
-    } else {
-      badgeClasses = cn(badgeClasses, 'opacity-60')
-    }
+    badgeClasses = cn(badgeClasses, 'opacity-90')
   }
 
   return (
     <span className={badgeClasses} style={customStyle}>
       {isHEAD && <GitCommitHorizontal className="h-3 w-3 shrink-0" />}
-      {!isHEAD && !isRemote && <Check className="h-3 w-3 shrink-0" />}
+      {!isHEAD && !isRemote && !isTag && <Check className="h-3 w-3 shrink-0" />}
+      {isTag && <Tag className="h-3 w-3 shrink-0" />}
       
       <span className="truncate">
         {isHEAD ? 'HEAD' : displayName}
       </span>
 
       {isRemote && <GithubIcon className="h-3 w-3 shrink-0 ml-0.5" />}
-      {!isHEAD && !isRemote && <Laptop className="h-3 w-3 shrink-0 ml-0.5" />}
+      {!isHEAD && !isRemote && !isTag && <Laptop className="h-3 w-3 shrink-0 ml-0.5" />}
     </span>
   )
 }
