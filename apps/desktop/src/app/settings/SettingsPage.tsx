@@ -907,6 +907,37 @@ function GitSection() {
           <span className="text-xs text-foreground">{t('settings.git.confirmForcePush')}</span>
         </label>
       </div>
+
+      <Separator />
+
+      <div className="space-y-4">
+        <h4 className="text-xs font-semibold text-foreground">{t('settings.git.externalEditor')}</h4>
+        <div className="space-y-1.5">
+          <select
+            value={git.externalEditor ?? 'vscode'}
+            onChange={(e) => updateGit({ externalEditor: e.target.value })}
+            className="w-full h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-sans"
+          >
+            <option value="vscode">VS Code</option>
+            <option value="cursor">Cursor</option>
+            <option value="sublime">Sublime Text</option>
+            <option value="intellij">IntelliJ IDEA</option>
+            <option value="custom">Commande personnalisée</option>
+          </select>
+        </div>
+
+        {git.externalEditor === 'custom' && (
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-medium text-muted-foreground">{t('settings.git.externalEditorCommand')}</label>
+            <Input
+              value={git.externalEditorCommand ?? ''}
+              onChange={(e) => updateGit({ externalEditorCommand: e.target.value })}
+              placeholder={t('settings.git.externalEditorCommandPlaceholder')}
+              className="h-8 text-xs font-sans"
+            />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

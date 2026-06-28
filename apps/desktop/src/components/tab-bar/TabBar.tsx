@@ -13,22 +13,29 @@ interface PinnedTabProps {
   label: string
   active: boolean
   onClick: () => void
+  hideLabel?: boolean
 }
 
-function PinnedTab({ icon, label, active, onClick }: PinnedTabProps) {
+function PinnedTab({ icon, label, active, onClick, hideLabel }: PinnedTabProps) {
   return (
-    <button
-      onClick={onClick}
-      className={`group relative flex h-9 items-center gap-2 border-r border-border px-3 text-xs transition-colors ${
-        active
-          ? 'bg-background text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary'
-          : 'text-muted-foreground hover:bg-background/40 hover:text-foreground'
-      }`}
-      title={label}
-    >
-      {icon}
-      <span className="font-medium">{label}</span>
-    </button>
+    <div className="relative group/tab flex items-stretch">
+      <button
+        onClick={onClick}
+        className={`group relative flex h-9 items-center gap-2 border-r border-border px-3 text-xs transition-colors ${
+          active
+            ? 'bg-background text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary'
+            : 'text-muted-foreground hover:bg-background/40 hover:text-foreground'
+        }`}
+      >
+        {icon}
+        {!hideLabel && <span className="font-medium">{label}</span>}
+      </button>
+      {hideLabel && (
+        <div className="absolute top-[38px] left-1/2 -translate-x-1/2 hidden group-hover/tab:block bg-popover text-popover-foreground border border-border text-[10px] rounded px-1.5 py-0.5 whitespace-nowrap shadow-md z-50 pointer-events-none">
+          {label}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -60,6 +67,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
         label="Accueil"
         active={activeTab === DASHBOARD_TAB}
         onClick={() => setActiveTab(DASHBOARD_TAB)}
+        hideLabel={true}
       />
 
       {/* Onglet Pull Requests (épinglé) */}

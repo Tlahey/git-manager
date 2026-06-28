@@ -82,5 +82,8 @@
   "settings.advanced.exclusions": "Scan exclusions",
   "settings.dangerZone": "Danger zone",
   "commit.history": "Recent messages",
-  "commit.historyEmpty": "No recent messages"
+  "commit.historyEmpty": "No recent messages",
+  "settings.git.externalEditor": "External Editor",
+  "settings.git.externalEditorCommand": "Editor Command",
+  "settings.git.externalEditorCommandPlaceholder": "E.g.: /usr/local/bin/code, cursor, subl, idea..."
 }

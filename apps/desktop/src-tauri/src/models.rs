@@ -176,3 +176,20 @@ pub struct OllamaStatus {
     pub models: Vec<String>,
     pub version: Option<String>,
 }
+
+// ─── Repo Summary ─────────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GitRepoSummary {
+    pub path: String,
+    pub name: String,
+    pub head: String,
+    pub is_detached: bool,
+    pub staged_count: usize,
+    pub unstaged_count: usize,
+    pub untracked_count: usize,
+    pub conflicted_count: usize,
+    pub ahead_count: usize,
+    pub behind_count: usize,
+}

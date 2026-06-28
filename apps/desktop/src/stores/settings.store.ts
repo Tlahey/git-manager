@@ -19,6 +19,8 @@ const DEFAULT_SETTINGS: AppSettings = {
     autoFetchIntervalMinutes: null,
     showRemoteBranches: true,
     confirmBeforeForcePush: true,
+    externalEditor: 'vscode',
+    externalEditorCommand: '',
   },
   appearance: {
     theme: 'dark',

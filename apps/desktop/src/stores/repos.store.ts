@@ -12,12 +12,18 @@ interface SavedRepo {
   pinned: boolean
 }
 
+interface DiscoveredRepo {
+  path: string
+  name: string
+}
+
 interface ReposState {
   savedRepos: SavedRepo[]
   openTabs: string[]       // paths des repos ouverts en onglet
   activeRepo: string | null
   activeTab: string        // 'dashboard' | 'pull-requests' | <repoPath>
   repoCache: Record<string, GitRepo>
+  discoveredRepos: DiscoveredRepo[]
 
   addRepo: (repo: GitRepo) => void
   removeRepo: (path: string) => void
@@ -28,6 +34,8 @@ interface ReposState {
   reorderTabs: (from: number, to: number) => void
   setRepoCache: (path: string, repo: GitRepo) => void
   togglePin: (path: string) => void
+  addDiscoveredRepo: (path: string, name: string) => void
+  removeDiscoveredRepo: (path: string) => void
 }
 
 export const useReposStore = create<ReposState>()(
@@ -38,13 +46,20 @@ export const useReposStore = create<ReposState>()(
       activeRepo: null,
       activeTab: DASHBOARD_TAB,
       repoCache: {},
+      discoveredRepos: [],
 
       addRepo: (repo) =>
         set((state) => {
           const exists = state.savedRepos.some((r) => r.path === repo.path)
-          if (exists) return state
+          const discovered = state.discoveredRepos || []
+          const discoveredExists = discovered.some((r) => r.path === repo.path)
           return {
-            savedRepos: [...state.savedRepos, { path: repo.path, name: repo.name, pinned: false }],
+            savedRepos: exists
+              ? state.savedRepos
+              : [...state.savedRepos, { path: repo.path, name: repo.name, pinned: false }],
+            discoveredRepos: discoveredExists
+              ? discovered
+              : [...discovered, { path: repo.path, name: repo.name }],
           }
         }),
 
@@ -108,6 +123,21 @@ export const useReposStore = create<ReposState>()(
             r.path === path ? { ...r, pinned: !r.pinned } : r
           ),
         })),
+
+      addDiscoveredRepo: (path, name) =>
+        set((state) => {
+          const discovered = state.discoveredRepos || []
+          const exists = discovered.some((r) => r.path === path)
+          if (exists) return state
+          return {
+            discoveredRepos: [...discovered, { path, name }],
+          }
+        }),
+
+      removeDiscoveredRepo: (path) =>
+        set((state) => ({
+          discoveredRepos: (state.discoveredRepos || []).filter((r) => r.path !== path),
+        })),
     }),
     {
       name: 'git-manager-repos',
@@ -117,6 +147,7 @@ export const useReposStore = create<ReposState>()(
         openTabs: state.openTabs,
         activeRepo: state.activeRepo,
         activeTab: state.activeTab,
+        discoveredRepos: state.discoveredRepos || [],
       }),
     }
   )

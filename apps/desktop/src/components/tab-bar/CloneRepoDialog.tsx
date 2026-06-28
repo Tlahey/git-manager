@@ -33,6 +33,8 @@ export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogP
   const [parentDir, setParentDir] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [shallow, setShallow] = useState(false)
+  const [sparse, setSparse] = useState(false)
 
   const folderName = url.trim() ? deriveFolderName(url) : ''
 
@@ -41,6 +43,8 @@ export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogP
     setParentDir('')
     setError(null)
     setLoading(false)
+    setShallow(false)
+    setSparse(false)
   }
 
   function handleClose(next: boolean) {
@@ -59,7 +63,7 @@ export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogP
     setLoading(true)
     try {
       const destPath = `${parentDir}/${folderName}`
-      const repo = await cloneRepo(url.trim(), destPath)
+      const repo = await cloneRepo(url.trim(), destPath, shallow, sparse)
       addRepo(repo)
       openTab(repo.path)
       handleClose(false)
@@ -109,6 +113,27 @@ export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogP
                 Destination : {parentDir}/{folderName}
               </p>
             )}
+          </div>
+
+          <div className="flex gap-4 mt-1 font-sans">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={shallow}
+                onChange={(e) => setShallow(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-border bg-card text-primary focus:ring-primary focus:ring-offset-background"
+              />
+              <span className="text-xs text-muted-foreground hover:text-foreground transition-colors font-medium">Shallow clone</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={sparse}
+                onChange={(e) => setSparse(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-border bg-card text-primary focus:ring-primary focus:ring-offset-background"
+              />
+              <span className="text-xs text-muted-foreground hover:text-foreground transition-colors font-medium">Sparse checkout</span>
+            </label>
           </div>
 
           {error && (

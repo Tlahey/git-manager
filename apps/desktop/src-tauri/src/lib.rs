@@ -16,7 +16,10 @@ use commands::commit::{
 use commands::log::{get_commit_diff, get_commit_file, get_log};
 use commands::ollama::{cancel_generation, check_ollama_status, generate_commit_message};
 use commands::remote::{fetch_remote, pull_branch, push_branch};
-use commands::repo::{get_repo_status, open_repo, scan_repos, clone_repo, init_repo};
+use commands::repo::{
+    get_repo_status, open_repo, scan_repos, clone_repo, init_repo, get_repo_summary,
+    open_in_editor, get_repo_readme,
+};
 use state::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -33,6 +36,9 @@ pub fn run() {
             scan_repos,
             clone_repo,
             init_repo,
+            get_repo_summary,
+            open_in_editor,
+            get_repo_readme,
             // Log / Graph
             get_log,
             get_commit_diff,

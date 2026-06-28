@@ -244,6 +244,8 @@ export interface GitSettings {
   autoFetchIntervalMinutes: number | null
   showRemoteBranches: boolean
   confirmBeforeForcePush: boolean
+  externalEditor: string
+  externalEditorCommand: string
 }
 
 export interface AppearanceSettings {
@@ -279,4 +281,17 @@ export interface OllamaStatus {
   connected: boolean
   models: string[]
   version?: string
+}
+
+export interface GitRepoSummary {
+  path: string
+  name: string
+  head: string
+  isDetached: boolean
+  stagedCount: number
+  unstagedCount: number
+  untrackedCount: number
+  conflictedCount: number
+  aheadCount: number
+  behindCount: number
 }

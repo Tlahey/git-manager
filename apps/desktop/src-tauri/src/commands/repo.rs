@@ -94,31 +94,46 @@ fn build_git_repo(repo: &Repository, path: String) -> GitRepo {
     }
 }
 
-/// Clone un dépôt distant vers un chemin local (auth SSH via agent)
+/// Clone un dépôt distant vers un chemin local
 #[tauri::command]
 pub async fn clone_repo(
     url: String,
     dest_path: String,
+    shallow: Option<bool>,
+    sparse: Option<bool>,
     state: State<'_, AppState>,
 ) -> Result<GitRepo, String> {
-    use git2::build::RepoBuilder;
-    use git2::{Cred, FetchOptions, RemoteCallbacks};
+    use std::process::Command;
 
-    let mut callbacks = RemoteCallbacks::new();
-    callbacks.credentials(|_url, username_from_url, _allowed| {
-        Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"))
-    });
+    let mut args = vec!["clone".to_string()];
+    if shallow.unwrap_or(false) {
+        args.push("--depth".to_string());
+        args.push("1".to_string());
+    }
+    if sparse.unwrap_or(false) {
+        args.push("--sparse".to_string());
+    }
+    args.push(url.clone());
+    args.push(dest_path.clone());
 
-    let mut fetch_options = FetchOptions::new();
-    fetch_options.remote_callbacks(callbacks);
+    #[cfg(target_os = "windows")]
+    let mut cmd = Command::new("cmd");
+    #[cfg(target_os = "windows")]
+    cmd.args(&["/C", "git"]);
 
-    let mut builder = RepoBuilder::new();
-    builder.fetch_options(fetch_options);
+    #[cfg(not(target_os = "windows"))]
+    let mut cmd = Command::new("git");
 
-    let repo = builder
-        .clone(&url, std::path::Path::new(&dest_path))
-        .map_err(AppError::Git)?;
+    let output = cmd.args(&args)
+        .output()
+        .map_err(|e| format!("Failed to run git clone: {}", e))?;
 
+    if !output.status.success() {
+        let err_msg = String::from_utf8_lossy(&output.stderr).into_owned();
+        return Err(format!("Git clone failed: {}", err_msg));
+    }
+
+    let repo = Repository::open(&dest_path).map_err(|e| format!("Failed to open cloned repository: {}", e))?;
     let git_repo = build_git_repo(&repo, dest_path.clone());
 
     state
@@ -264,4 +279,188 @@ fn scan_dir(path: &str, depth: usize, max_depth: usize, found: &mut Vec<String>)
             }
         }
     }
+}
+
+/// Obtient un résumé rapide (branche, modifications, commits ahead/behind) d'un dépôt Git
+#[tauri::command]
+pub async fn get_repo_summary(path: String) -> Result<GitRepoSummary, String> {
+    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+
+    let name = std::path::Path::new(&path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+
+    let head = repo
+        .head()
+        .ok()
+        .and_then(|h| {
+            if h.is_branch() {
+                h.shorthand().map(|s| s.to_string())
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| "HEAD".to_string());
+
+    let is_detached = repo.head_detached().unwrap_or(false);
+
+    // Get status counts
+    let mut opts = git2::StatusOptions::new();
+    opts.include_untracked(true).recurse_untracked_dirs(true);
+    let statuses = repo.statuses(Some(&mut opts)).ok();
+
+    let mut staged_count = 0;
+    let mut unstaged_count = 0;
+    let mut untracked_count = 0;
+    let mut conflicted_count = 0;
+
+    if let Some(statuses) = statuses {
+        for entry in statuses.iter() {
+            let status = entry.status();
+            if status.contains(git2::Status::CONFLICTED) {
+                conflicted_count += 1;
+                continue;
+            }
+            if status.contains(git2::Status::WT_NEW) {
+                untracked_count += 1;
+                continue;
+            }
+            if status.intersects(
+                git2::Status::INDEX_NEW
+                    | git2::Status::INDEX_MODIFIED
+                    | git2::Status::INDEX_DELETED
+                    | git2::Status::INDEX_RENAMED,
+            ) {
+                staged_count += 1;
+            }
+            if status.intersects(
+                git2::Status::WT_MODIFIED | git2::Status::WT_DELETED | git2::Status::WT_RENAMED,
+            ) {
+                unstaged_count += 1;
+            }
+        }
+    }
+
+    // Get ahead/behind counts for current HEAD branch vs upstream
+    let mut ahead_count = 0;
+    let mut behind_count = 0;
+    if let Ok(head_branch) = repo.find_branch(&head, git2::BranchType::Local) {
+        if let Ok(upstream_branch) = head_branch.upstream() {
+            if let Some(head_oid) = head_branch.get().target() {
+                if let Some(upstream_oid) = upstream_branch.get().target() {
+                    if let Ok((ahead, behind)) = repo.graph_ahead_behind(head_oid, upstream_oid) {
+                        ahead_count = ahead;
+                        behind_count = behind;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(GitRepoSummary {
+        path,
+        name,
+        head,
+        is_detached,
+        staged_count,
+        unstaged_count,
+        untracked_count,
+        conflicted_count,
+        ahead_count,
+        behind_count,
+    })
+}
+
+/// Ouvre un dépôt Git dans un éditeur externe configuré
+#[tauri::command]
+pub async fn open_in_editor(
+    path: String,
+    editor: String,
+    custom_command: Option<String>,
+) -> Result<(), String> {
+    let program = match editor.as_str() {
+        "vscode" => "code".to_string(),
+        "cursor" => "cursor".to_string(),
+        "sublime" => "subl".to_string(),
+        "intellij" => "idea".to_string(),
+        "custom" => {
+            if let Some(cmd) = custom_command {
+                if cmd.is_empty() {
+                    return Err("Custom editor command is empty".to_string());
+                }
+                cmd
+            } else {
+                return Err("No custom editor command specified".to_string());
+            }
+        }
+        _ => return Err(format!("Unknown editor: {}", editor)),
+    };
+
+    #[cfg(target_os = "windows")]
+    let status = std::process::Command::new("cmd")
+        .args(&["/C", &program, &path])
+        .spawn();
+
+    #[cfg(not(target_os = "windows"))]
+    let status = std::process::Command::new(&program)
+        .arg(&path)
+        .spawn();
+
+    match status {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            #[cfg(target_os = "macos")]
+            {
+                let app_name = match editor.as_str() {
+                    "vscode" => Some("Visual Studio Code"),
+                    "cursor" => Some("Cursor"),
+                    "sublime" => Some("Sublime Text"),
+                    "intellij" => Some("IntelliJ IDEA"),
+                    _ => None,
+                };
+                if let Some(app) = app_name {
+                    if std::process::Command::new("open")
+                        .args(&["-a", app, &path])
+                        .spawn()
+                        .is_ok()
+                    {
+                        return Ok(());
+                    }
+                }
+            }
+            Err(format!("Failed to open editor: {}", e))
+        }
+    }
+}
+
+/// Lit le contenu du fichier README du dépôt s'il existe
+#[tauri::command]
+pub async fn get_repo_readme(path: String) -> Result<String, String> {
+    let dir = std::path::Path::new(&path);
+    if !dir.exists() {
+        return Err("Repository path does not exist".to_string());
+    }
+
+    let candidates = [
+        "README.md",
+        "readme.md",
+        "README.markdown",
+        "README",
+        "Readme.md",
+        "README.txt",
+    ];
+
+    for candidate in &candidates {
+        let file_path = dir.join(candidate);
+        if file_path.exists() && file_path.is_file() {
+            match std::fs::read_to_string(&file_path) {
+                Ok(content) => return Ok(content),
+                Err(e) => return Err(format!("Failed to read README: {}", e)),
+            }
+        }
+    }
+
+    Err("No README file found in this repository".to_string())
 }

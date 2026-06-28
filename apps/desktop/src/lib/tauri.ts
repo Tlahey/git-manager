@@ -14,6 +14,7 @@ import type {
   OllamaStatus,
   AppSettings,
   UserTheme,
+  GitRepoSummary,
 } from '@git-manager/git-types'
 
 // ─── Repository ───────────────────────────────────────────────────────────────
@@ -25,8 +26,8 @@ export const getRepoStatus = (path: string) => invoke<GitStatus>('get_repo_statu
 export const scanRepos = (rootPath: string, maxDepth: number) =>
   invoke<string[]>('scan_repos', { rootPath, maxDepth })
 
-export const cloneRepo = (url: string, destPath: string) =>
-  invoke<GitRepo>('clone_repo', { url, destPath })
+export const cloneRepo = (url: string, destPath: string, shallow?: boolean, sparse?: boolean) =>
+  invoke<GitRepo>('clone_repo', { url, destPath, shallow, sparse })
 
 export const initRepo = (path: string) => invoke<GitRepo>('init_repo', { path })
 
@@ -250,3 +251,14 @@ export interface GitHubRepoInfo {
 
 export const githubListRepos = (token: string) =>
   invoke<GitHubRepoInfo[]>('github_list_repos', { token })
+
+// ─── Extended Repo Stats & Tools ─────────────────────────────────────────────
+
+export const getRepoSummary = (path: string) =>
+  invoke<GitRepoSummary>('get_repo_summary', { path })
+
+export const openInEditor = (path: string, editor: string, customCommand?: string) =>
+  invoke<void>('open_in_editor', { path, editor, customCommand })
+
+export const getRepoReadme = (path: string) =>
+  invoke<string>('get_repo_readme', { path })
