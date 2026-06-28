@@ -88,25 +88,15 @@ export function GraphSvg({ column, connections, hasRefs, branchColor, tagLineSta
         }
 
         return (
-          <g key={i}>
-            {/* Background band with opacity */}
-            <path
-              d={d}
-              fill="none"
-              stroke={edge.color}
-              strokeWidth={COL_WIDTH}
-              opacity={0.08}
-            />
-            {/* Foreground main line */}
-            <path
-              d={d}
-              fill="none"
-              stroke={edge.color}
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeDasharray={edge.dashed ? '4 4' : undefined}
-            />
-          </g>
+          <path
+            key={i}
+            d={d}
+            fill="none"
+            stroke={edge.color}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeDasharray={edge.dashed ? '4 4' : undefined}
+          />
         )
       })}
     </svg>

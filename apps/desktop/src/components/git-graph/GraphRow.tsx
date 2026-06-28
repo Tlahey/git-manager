@@ -213,12 +213,12 @@ function CellContent({
           {/* Conteneur de découpe (clip) élargi pour le graph uniquement */}
           <div
             className="absolute overflow-hidden pointer-events-none"
-            style={{ left: -refsWidth, right: 0, top: -4, bottom: -4 }}
+            style={{ left: -refsWidth, right: 0, top: -4, bottom: -5 }}
           >
             {/* Conteneur interne réaligné sur la colonne graph */}
             <div
               className="absolute pointer-events-none"
-              style={{ left: refsWidth, right: 0, top: 4, bottom: 4 }}
+              style={{ left: refsWidth, right: 0, top: 0, bottom: 0 }}
             >
               <GraphSvg
                 column={node.column}
