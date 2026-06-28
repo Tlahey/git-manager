@@ -203,7 +203,19 @@ function CellContent({
 
   switch (col) {
     case 'refs':
-      return node.refs.length > 0 ? <RefLabelGroup refs={node.refs} color={node.color} /> : null
+      if (node.refs.length === 0) return null
+      return (
+        <div className="flex items-center w-full h-full min-w-0 overflow-visible">
+          <RefLabelGroup refs={node.refs} color={node.color} />
+          <div
+            className="flex-1 h-[2px] ml-2 pointer-events-none"
+            style={{
+              backgroundColor: node.color,
+              marginRight: `-${node.column * 36 + 26}px`,
+            }}
+          />
+        </div>
+      )
 
     case 'graph': {
       const COL_WIDTH = 36
@@ -223,9 +235,6 @@ function CellContent({
               <GraphSvg
                 column={node.column}
                 connections={node.connections}
-                hasRefs={node.refs.length > 0}
-                branchColor={node.color}
-                tagLineStart={-refsWidth}
                 isWip={node.commit.oid === 'WIP'}
               />
             </div>
@@ -364,7 +373,7 @@ export const GraphRow = memo(function GraphRow({
           key={col.key}
           className={cn(
             "relative z-10 flex h-full min-w-0 items-center",
-            col.key === 'refs' ? 'justify-start' : 'mx-2',
+            col.key === 'refs' ? 'justify-start pl-2' : 'mx-2',
             col.key === 'graph' && 'px-0'
           )}
           style={col.flex ? { flex: '1 1 0%' } : { width: col.width, flexShrink: 0 }}

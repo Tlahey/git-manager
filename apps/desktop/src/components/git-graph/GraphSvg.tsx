@@ -3,16 +3,13 @@ import type { GitGraphEdge } from '@git-manager/git-types'
 interface GraphSvgProps {
   column: number
   connections: GitGraphEdge[]
-  hasRefs?: boolean
-  branchColor?: string
-  tagLineStart?: number
   isWip?: boolean
 }
 
 const COL_WIDTH = 36
 const ROW_HEIGHT = 40
 
-export function GraphSvg({ column, connections, hasRefs, branchColor, tagLineStart, isWip }: GraphSvgProps) {
+export function GraphSvg({ column, connections, isWip }: GraphSvgProps) {
   const maxCol = connections.reduce(
     (m, c) => Math.max(m, c.fromColumn, c.toColumn),
     column,
@@ -28,17 +25,6 @@ export function GraphSvg({ column, connections, hasRefs, branchColor, tagLineSta
       style={{ flexShrink: 0 }}
       className="overflow-visible"
     >
-      {/* Ligne horizontale reliant le tag à gauche au nœud de commit */}
-      {hasRefs && branchColor && (
-        <line
-          x1={tagLineStart ?? -24}
-          y1={nodeY}
-          x2={column * COL_WIDTH + COL_WIDTH / 2}
-          y2={nodeY}
-          stroke={branchColor}
-          strokeWidth={2}
-        />
-      )}
 
       {/* Lignes de connexion (full-row, avec angles droits arrondis et background coloré) */}
       {connections.map((edge, i) => {
