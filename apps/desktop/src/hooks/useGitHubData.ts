@@ -19,6 +19,7 @@ interface GitHubData {
   commitDays: DayCommit[]
   yearDays: DayCommit[]
   loading: boolean
+  isValidating: boolean
   error: string | null
   hasToken: boolean
   username: string | null
@@ -46,7 +47,7 @@ export function useGitHubData(): GitHubData {
 
   const swrKey = hasToken ? ['github-data', token, username] : null
 
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate, isValidating } = useSWR(
     swrKey,
     async ([_, tok, user]) => {
       // 1. Fetch lists
@@ -215,6 +216,7 @@ export function useGitHubData(): GitHubData {
       yearDays: fallbackContributions,
       commitDays: fallbackCommitDays,
       loading: false,
+      isValidating: false,
       error: null,
       hasToken: false,
       username: null,
@@ -229,6 +231,7 @@ export function useGitHubData(): GitHubData {
     yearDays: data?.yearDays ?? [],
     commitDays: data?.commitDays ?? [],
     loading: !data && !error,
+    isValidating,
     error: error ? String(error) : null,
     hasToken: true,
     username,

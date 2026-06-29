@@ -38,6 +38,7 @@ export function PullRequestsPage() {
     commitDays,
     yearDays,
     loading,
+    isValidating,
     error,
     hasToken,
     username,
@@ -94,7 +95,7 @@ export function PullRequestsPage() {
         <div className="h-4 w-px bg-border" />
         {hasToken ? (
           <span className="text-xs text-muted-foreground flex items-center gap-1">
-            {loading ? (
+            {loading || isValidating ? (
               <>
                 <Loader2 className="h-3 w-3 animate-spin" /> Fetching…
               </>
@@ -123,14 +124,22 @@ export function PullRequestsPage() {
           )}
           <button
             onClick={refresh}
-            disabled={loading}
+            disabled={isValidating}
+            data-testid="manual-refresh-button"
             className="flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-accent/40 transition-colors disabled:opacity-40"
             title="Refresh now"
           >
-            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            <RefreshCw className={`h-3 w-3 ${isValidating ? 'animate-spin' : ''}`} /> Refresh
           </button>
         </div>
       </header>
+
+      {/* Loading progress bar container - fixed height to prevent CLS */}
+      <div className="h-[2px] w-full bg-border/10 overflow-hidden shrink-0 relative" data-testid="refresh-progress-bar">
+        {isValidating && (
+          <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent animate-shimmer" />
+        )}
+      </div>
 
       {/* Overview KPI Bar */}
       <div className="flex items-stretch gap-3 px-5 py-3 border-b border-border bg-card/20 shrink-0">
