@@ -9,17 +9,16 @@ import { useContextMenu } from '../../hooks/useContextMenu'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useReposStore } from '../../stores/repos.store'
-import { createFixupCommit, createCommit, stageAll } from '../../lib/tauri'
+import { useCommitSelection } from '../../hooks/useCommitSelection'
+import { useCommitDetailsResize } from '../../hooks/useCommitDetailsResize'
+import { apiCreateFixupCommit, apiCreateCommit, apiStageAll } from '../../api/git.api'
 import { GraphRow } from './GraphRow'
 import { GraphHeader } from './GraphHeader'
 import { CommitDetailsPanel } from './CommitDetailsPanel'
 import { DiffViewCenter } from './DiffViewCenter'
-import { CommitContextMenu } from './CommitContextMenu'
-import { CreateBranchHereDialog } from './CreateBranchHereDialog'
+import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
 import { Waterline } from './Waterline'
 import { getWaterlineBucket, bucketLabel } from './waterlineBuckets'
-import { RevertDialog } from '../rollback/RevertDialog'
-import { ResetDialog } from '../rollback/ResetDialog'
 import { COLUMN_DEFS, COLUMN_ORDER, type ResolvedColumn } from './columns'
 
 interface GitGraphProps {
@@ -46,16 +45,10 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   // Current HEAD branch name from repo cache (e.g. "main", "feat/xyz")
   const headBranchName = useReposStore((s) => s.repoCache[repoPath]?.head)
 
-  // ── Sélection (multiple) ──────────────────────────────────────────────────
-  const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [primaryOid, setPrimaryOid] = useState<string | null>(null)
-  const [anchorOid, setAnchorOid] = useState<string | null>(null)
-  const [activeDiffFile, setActiveDiffFile] = useState<{ path: string; staged: boolean; oid?: string } | null>(null)
+  // ── Sizing / Resizing details panel hook ───────────────────────────────────
+  const { width: panelWidthState, resizeProps } = useCommitDetailsResize(400)
 
-  // Reset active diff on commit selection or repo changes
-  useEffect(() => {
-    setActiveDiffFile(null)
-  }, [primaryOid, repoPath])
+  const [activeDiffFile, setActiveDiffFile] = useState<{ path: string; staged: boolean; oid?: string } | null>(null)
 
   // ── Status detection & WIP Node ──────────────────────────────────────────
   const { data: status } = useGitStatus(repoPath)
@@ -144,6 +137,20 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     })
   }, [nodes, searchQuery, wipNode])
 
+  // ── Sélection (multiple) hook ──────────────────────────────────────────────
+  const {
+    selected,
+    primaryOid,
+    setPrimaryOid,
+    selectSingle,
+    handleRowSelect,
+  } = useCommitSelection(filteredNodes, onSelectCommit)
+
+  // Reset active diff on commit selection or repo changes
+  useEffect(() => {
+    setActiveDiffFile(null)
+  }, [primaryOid, repoPath])
+
   // ── Waterlines : overlays plein-largeur posés sur la frontière entre groupes ──
   // Elles n'occupent PAS de hauteur (le graphe reste continu derrière). On émet
   // de façon MONOTONE (rang croissant) : un palier n'apparaît qu'en entrant dans
@@ -166,9 +173,6 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   // ── Menu contextuel + dialogs ──────────────────────────────────────────────
   const menu = useContextMenu()
   const [menuTargets, setMenuTargets] = useState<string[]>([])
-  const [resetOid, setResetOid] = useState<string | null>(null)
-  const [revertOid, setRevertOid] = useState<string | null>(null)
-  const [branchOid, setBranchOid] = useState<string | null>(null)
   const [toast, setToast] = useState<{ kind: 'ok' | 'error'; msg: string } | null>(null)
 
   useEffect(() => {
@@ -176,44 +180,6 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     const id = setTimeout(() => setToast(null), 3000)
     return () => clearTimeout(id)
   }, [toast])
-
-  // ── Handlers de sélection ──────────────────────────────────────────────────
-  function selectSingle(oid: string) {
-    setSelected(new Set([oid]))
-    setPrimaryOid(oid)
-    setAnchorOid(oid)
-    onSelectCommit?.(oid)
-  }
-
-  function handleRowSelect(e: React.MouseEvent, index: number) {
-    const oid = filteredNodes[index].commit.oid
-    if (oid === 'WIP') {
-      selectSingle('WIP')
-      return
-    }
-    if (e.shiftKey && anchorOid) {
-      const fromIndex = filteredNodes.findIndex((n) => n.commit.oid === anchorOid)
-      const start = fromIndex === -1 ? index : Math.min(fromIndex, index)
-      const end = fromIndex === -1 ? index : Math.max(fromIndex, index)
-      const next = new Set<string>()
-      for (let i = start; i <= end; i++) next.add(filteredNodes[i].commit.oid)
-      setSelected(next)
-      setPrimaryOid(oid)
-      onSelectCommit?.(oid)
-    } else if (e.metaKey || e.ctrlKey) {
-      setSelected((prev) => {
-        const next = new Set(prev)
-        if (next.has(oid)) next.delete(oid)
-        else next.add(oid)
-        return next
-      })
-      setPrimaryOid(oid)
-      setAnchorOid(oid)
-      onSelectCommit?.(oid)
-    } else {
-      selectSingle(oid)
-    }
-  }
 
   function openMenuAt(e: React.MouseEvent, oid: string) {
     if (oid === 'WIP') return
@@ -241,7 +207,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   async function handleFixup() {
     if (!primaryOid) return
     try {
-      await createFixupCommit(repoPath, primaryOid)
+      await apiCreateFixupCommit(repoPath, primaryOid)
       queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
       queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
       queryClient.invalidateQueries({ queryKey: ['pending-fixups', repoPath] })
@@ -256,9 +222,9 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     try {
       const stagedCount = status?.staged?.length || 0
       if (stagedCount === 0) {
-        await stageAll(repoPath)
+        await apiStageAll(repoPath)
       }
-      await createCommit(repoPath, message)
+      await apiCreateCommit(repoPath, message)
       queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
       queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
     } catch (err) {
@@ -266,32 +232,8 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     }
   }
 
-  // ── Virtualisation + resize du panneau de détails ──────────────────────────
+  // ── Virtualisation ─────────────────────────────────────────────────────────
   const parentRef = useRef<HTMLDivElement>(null)
-
-  const panelWidth = useRef(400)
-  const [panelWidthState, setPanelWidthState] = useState(400)
-  const isResizing = useRef(false)
-  const resizeStartX = useRef(0)
-  const resizeStartWidth = useRef(400)
-
-  function handleResizeStart(e: React.PointerEvent<HTMLDivElement>) {
-    isResizing.current = true
-    resizeStartX.current = e.clientX
-    resizeStartWidth.current = panelWidth.current
-  }
-
-  function handleResizeMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (!isResizing.current) return
-    const delta = resizeStartX.current - e.clientX
-    const newWidth = Math.max(350, Math.min(700, resizeStartWidth.current + delta))
-    panelWidth.current = newWidth
-    setPanelWidthState(newWidth)
-  }
-
-  function handleResizeEnd() {
-    isResizing.current = false
-  }
 
   const virtualizer = useVirtualizer({
     count: filteredNodes.length,
@@ -332,17 +274,9 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     })
     return result
   }, [primaryNode, nodes, headBranchName])
-  const resetNode = resetOid ? nodes.find((n) => n.commit.oid === resetOid) ?? null : null
-  const revertNode = revertOid ? nodes.find((n) => n.commit.oid === revertOid) ?? null : null
-  const branchNode = branchOid ? nodes.find((n) => n.commit.oid === branchOid) ?? null : null
 
   return (
-    <div
-      className="flex h-full overflow-hidden select-none"
-      onPointerMove={handleResizeMove}
-      onPointerUp={handleResizeEnd}
-      onPointerLeave={handleResizeEnd}
-    >
+    <div className="flex h-full overflow-hidden select-none">
       {/* Zone principale : tableau virtualisé ou DiffViewCenter */}
       <div className="flex min-w-[280px] flex-1 flex-col overflow-hidden">
         {activeDiffFile ? (
@@ -467,10 +401,10 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
       {/* Panneau latéral du commit primaire */}
       {primaryNode && (
         <>
-          {/* Handle de redimensionnement — onPointerMove/Up gérés par le container root */}
+          {/* Handle de redimensionnement */}
           <div
-            onPointerDown={handleResizeStart}
-            className="group relative w-2 shrink-0 cursor-col-resize transition-colors hover:bg-primary/40"
+            {...resizeProps}
+            className="group relative w-2 shrink-0 cursor-col-resize transition-colors hover:bg-primary/40 select-none"
           >
             <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
           </div>
@@ -486,52 +420,20 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
         </>
       )}
 
-      {/* Menu contextuel d'actions */}
-      {menu.isOpen && menu.position && (
-        <CommitContextMenu
-          position={menu.position}
-          menuRef={menu.menuRef}
-          targetCount={menuTargets.length}
-          onClose={menu.close}
-          onReset={() => setResetOid(primaryOid)}
-          onRevert={() => setRevertOid(primaryOid)}
-          onCreateBranch={() => setBranchOid(primaryOid)}
-          onCopySha={handleCopySha}
-          onFixup={handleFixup}
-        />
-      )}
-
-      {/* Dialogs d'actions */}
-      {resetNode && (
-        <ResetDialog
-          repoPath={repoPath}
-          targetOid={resetNode.commit.oid}
-          targetSubject={resetNode.commit.subject}
-          open
-          onClose={() => setResetOid(null)}
-          onSuccess={() => setResetOid(null)}
-          protectedBranches={protectedBranches}
-        />
-      )}
-      {revertNode && (
-        <RevertDialog
-          repoPath={repoPath}
-          commitOid={revertNode.commit.oid}
-          commitSubject={revertNode.commit.subject}
-          open
-          onClose={() => setRevertOid(null)}
-          onSuccess={() => setRevertOid(null)}
-        />
-      )}
-      {branchNode && (
-        <CreateBranchHereDialog
-          repoPath={repoPath}
-          oid={branchNode.commit.oid}
-          shortOid={branchNode.commit.shortOid}
-          open
-          onClose={() => setBranchOid(null)}
-        />
-      )}
+      {/* Overlays (menus contextuels & dialogs) */}
+      <GitGraphOverlayManager
+        repoPath={repoPath}
+        nodes={nodes}
+        primaryOid={primaryOid}
+        protectedBranches={protectedBranches}
+        menuIsOpen={menu.isOpen}
+        menuPosition={menu.position}
+        menuRef={menu.menuRef}
+        menuTargets={menuTargets}
+        menuClose={menu.close}
+        onCopySha={handleCopySha}
+        onFixup={handleFixup}
+      />
 
       {/* Toast discret */}
       {toast && (
