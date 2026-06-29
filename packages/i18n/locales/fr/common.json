@@ -38,5 +38,17 @@
   "notifications.messages.review_status_changed": "Le statut de revue de \"{{title}}\" a changé pour : {{status}}",
   "notifications.messages.new_pr": "La PR \"{{title}}\" a été créée par {{author}} dans {{repo}}",
   "notifications.status.approved": "approuvée",
-  "notifications.status.changes_requested": "modifications demandées"
+  "notifications.status.changes_requested": "modifications demandées",
+  "footer.dashboard": "Tableau de bord",
+  "footer.launchpad": "Launchpad",
+  "footer.totalRepos": "{{count}} dépôt enregistré",
+  "footer.totalRepos_plural": "{{count}} dépôts enregistrés",
+  "footer.keyboardShortcuts": "Raccourcis clavier",
+  "footer.copiedPath": "Chemin du dépôt copié !",
+  "footer.notConnected": "GitHub non connecté",
+  "footer.connectedAs": "GitHub : {{name}}",
+  "footer.version": "v{{version}}",
+  "footer.dirty": "Modifié",
+  "footer.clean": "Propre",
+  "footer.remotes": "Remotes"
 }

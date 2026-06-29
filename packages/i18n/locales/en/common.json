@@ -38,5 +38,17 @@
   "notifications.messages.review_status_changed": "\"{{title}}\" review status changed to {{status}}",
   "notifications.messages.new_pr": "\"{{title}}\" was created by {{author}} in {{repo}}",
   "notifications.status.approved": "approved",
-  "notifications.status.changes_requested": "changes requested"
+  "notifications.status.changes_requested": "changes requested",
+  "footer.dashboard": "Dashboard",
+  "footer.launchpad": "Launchpad",
+  "footer.totalRepos": "{{count}} registered repo",
+  "footer.totalRepos_plural": "{{count}} registered repos",
+  "footer.keyboardShortcuts": "Keyboard Shortcuts",
+  "footer.copiedPath": "Repository path copied!",
+  "footer.notConnected": "GitHub disconnected",
+  "footer.connectedAs": "GitHub: {{name}}",
+  "footer.version": "v{{version}}",
+  "footer.dirty": "Modified",
+  "footer.clean": "Clean",
+  "footer.remotes": "Remotes"
 }

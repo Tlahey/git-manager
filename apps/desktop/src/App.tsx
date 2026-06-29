@@ -9,6 +9,8 @@ import { TabBar } from './components/tab-bar'
 import { useTheme } from './hooks/useTheme'
 import { useMonacoTheme } from './hooks/useMonacoTheme'
 import { useNotificationWatcher } from './hooks/useNotificationWatcher'
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { Footer } from './components/footer/Footer'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,6 +29,12 @@ export default function App() {
   useTheme()
   useMonacoTheme()
   useNotificationWatcher()
+
+  useKeyboardShortcuts({
+    onOpenSettings: () => handleOpenSettings('general'),
+    onCloseSettings: () => setShowSettings(false),
+    showSettings,
+  })
 
   function handleOpenSettings(section?: 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization') {
     setSettingsSection(section || 'general')
@@ -50,6 +58,7 @@ export default function App() {
                 <RepoView />
               )}
             </div>
+            <Footer onOpenSettings={handleOpenSettings} />
           </>
         )}
       </div>
