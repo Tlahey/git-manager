@@ -12,6 +12,7 @@ import {
   BarChart2,
   Sliders,
   GitCommit,
+  BookOpen,
 } from 'lucide-react'
 import { useGitHubData } from '../../hooks/useGitHubData'
 import { useLaunchpadStore } from '../../stores/launchpad.store'
@@ -19,6 +20,7 @@ import { timeAgo } from './utils'
 import { InnerTab } from './components/InnerTab'
 import { KpiCard } from './components/KpiCard'
 import { PullRequestsTab } from './components/PullRequestsTab'
+import { FollowedPRsTab } from './components/FollowedPRsTab'
 import { IssuesTab } from './components/IssuesTab'
 import { WaitingForReviewTab } from './components/WaitingForReviewTab'
 import { CommitStatsTab } from './components/CommitStatsTab'
@@ -73,9 +75,8 @@ export function PullRequestsPage() {
   const weekCommits = commitDays.slice(-7).reduce((s, d) => s + d.commits, 0)
 
   const tabCounts: Record<InnerTabType, number | undefined> = {
-    prs:
-      prs.filter((p) => p.status !== 'closed' && p.status !== 'merged').length +
-      followedPRs.length,
+    prs: prs.filter((p) => p.status !== 'closed' && p.status !== 'merged').length,
+    followed: followedPRs.length,
     issues: issues.filter((i) => i.status === 'open').length,
     waiting: needsReviewCount,
     stats: undefined,
@@ -177,6 +178,14 @@ export function PullRequestsPage() {
           <GitPullRequest className="h-3.5 w-3.5" /> My Pull Requests
         </InnerTab>
         <InnerTab
+          active={activeTab === 'followed'}
+          onClick={() => setActiveTab('followed')}
+          count={tabCounts.followed}
+          loading={loading}
+        >
+          <BookOpen className="h-3.5 w-3.5" /> Followed PRs
+        </InnerTab>
+        <InnerTab
           active={activeTab === 'issues'}
           onClick={() => setActiveTab('issues')}
           count={tabCounts.issues}
@@ -210,6 +219,13 @@ export function PullRequestsPage() {
         {activeTab === 'prs' && (
           <PullRequestsTab
             allPRs={prs}
+            pinnedIds={pinnedIds}
+            onTogglePin={togglePin}
+            loading={loading}
+          />
+        )}
+        {activeTab === 'followed' && (
+          <FollowedPRsTab
             followedPRs={followedPRs}
             pinnedIds={pinnedIds}
             onTogglePin={togglePin}

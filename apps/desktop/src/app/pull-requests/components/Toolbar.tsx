@@ -20,6 +20,7 @@ interface ToolbarProps {
   repos: string[]
   statuses: string[]
   authors: string[]
+  children?: React.ReactNode
 }
 
 export function Toolbar({
@@ -40,6 +41,7 @@ export function Toolbar({
   repos,
   statuses,
   authors,
+  children,
 }: ToolbarProps) {
   const totalActiveFilters = statusFilter.size + repoFilter.size + authorFilter.size
 
@@ -143,6 +145,7 @@ export function Toolbar({
           </button>
         ))}
       </div>
+      {children && <div className="ml-auto flex items-center gap-2">{children}</div>}
     </div>
   )
 }
