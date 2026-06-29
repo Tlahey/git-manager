@@ -39,7 +39,7 @@ import {
 } from 'lucide-react'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useLaunchpadStore, type SavedFilter, type FilterType, type FilterStatus } from '../../stores/launchpad.store'
-import { useImperativeTooltip } from '../../components/ui/Tooltip'
+import { Tooltip, useImperativeTooltip } from '../../components/ui/Tooltip'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,6 +49,12 @@ type ReviewStatus = 'pending' | 'approved' | 'changes_requested' | 'commented'
 
 interface Collaborator { login: string; avatar: string }
 
+interface CiDetail {
+  name: string
+  status: 'success' | 'failure' | 'running' | 'skipped' | 'unknown'
+  url?: string
+}
+
 interface MockPR {
   id: string; number: number; title: string; repo: string; repoUrl: string; url: string
   status: PRStatus; ciStatus: CiStatus; author: string; authorAvatar: string
@@ -56,6 +62,8 @@ interface MockPR {
   createdAt: Date; updatedAt: Date
   reviewStatus: ReviewStatus; isDraft: boolean; isFollowed?: boolean; needsMyReview?: boolean
   labels: string[]; comments: number
+  ciDetails?: CiDetail[]
+  needsRebase?: boolean
 }
 
 interface MockIssue {
@@ -225,12 +233,36 @@ const AVATARS = [
 ]
 
 const MOCK_PRS: MockPR[] = [
-  { id:'pr-1', number:247, title:'feat: Add Launchpad page with PR overview', repo:'git-manager', repoUrl:'https://github.com/Tlahey/git-manager', url:'https://github.com/Tlahey/git-manager/pull/247', status:'open', ciStatus:'running', author:'antoine', authorAvatar:AVATARS[0], collaborators:[{login:'marie',avatar:AVATARS[1]}], filesChanged:12, additions:342, deletions:58, createdAt:daysAgo(1), updatedAt:daysAgo(0), reviewStatus:'pending', isDraft:false, needsMyReview:true, labels:['feature','ui'], comments:3 },
-  { id:'pr-2', number:244, title:'fix: Memory leak in GraphRow', repo:'git-manager', repoUrl:'https://github.com/Tlahey/git-manager', url:'https://github.com/Tlahey/git-manager/pull/244', status:'approved', ciStatus:'success', author:'marie', authorAvatar:AVATARS[1], collaborators:[{login:'antoine',avatar:AVATARS[0]}], filesChanged:4, additions:23, deletions:67, createdAt:daysAgo(3), updatedAt:daysAgo(1), reviewStatus:'approved', isDraft:false, needsMyReview:false, labels:['bugfix'], comments:7 },
-  { id:'pr-3', number:241, title:'chore: Bump Tauri to v2.2', repo:'git-manager', repoUrl:'https://github.com/Tlahey/git-manager', url:'https://github.com/Tlahey/git-manager/pull/241', status:'draft', ciStatus:'skipped', author:'lucas', authorAvatar:AVATARS[2], collaborators:[], filesChanged:8, additions:156, deletions:89, createdAt:daysAgo(5), updatedAt:daysAgo(2), reviewStatus:'pending', isDraft:true, needsMyReview:false, labels:['chore'], comments:0 },
-  { id:'pr-4', number:238, title:'feat: GitHub OAuth integration', repo:'git-manager', repoUrl:'https://github.com/Tlahey/git-manager', url:'https://github.com/Tlahey/git-manager/pull/238', status:'changes_requested', ciStatus:'failure', author:'sophie', authorAvatar:AVATARS[3], collaborators:[{login:'antoine',avatar:AVATARS[0]}], filesChanged:23, additions:891, deletions:203, createdAt:daysAgo(7), updatedAt:daysAgo(1), reviewStatus:'changes_requested', isDraft:false, needsMyReview:true, labels:['feature','auth'], comments:14 },
-  { id:'pr-5', number:235, title:'refactor: Extract sidebar component', repo:'git-manager', repoUrl:'https://github.com/Tlahey/git-manager', url:'https://github.com/Tlahey/git-manager/pull/235', status:'open', ciStatus:'success', author:'antoine', authorAvatar:AVATARS[0], collaborators:[{login:'lucas',avatar:AVATARS[2]}], filesChanged:6, additions:112, deletions:98, createdAt:daysAgo(10), updatedAt:daysAgo(3), reviewStatus:'commented', isDraft:false, needsMyReview:false, labels:['refactor'], comments:5 },
-  { id:'pr-6', number:230, title:'fix: Dark mode color tokens', repo:'analytics-lib', repoUrl:'https://github.com/Tlahey/analytics-lib', url:'https://github.com/Tlahey/analytics-lib/pull/230', status:'closed', ciStatus:'failure', author:'tom', authorAvatar:AVATARS[4], collaborators:[], filesChanged:2, additions:14, deletions:8, createdAt:daysAgo(14), updatedAt:daysAgo(10), reviewStatus:'pending', isDraft:false, needsMyReview:false, labels:['bugfix','ui'], comments:2 },
+  { id:'pr-1', number:247, title:'feat: Add Launchpad page with PR overview', repo:'git-manager', repoUrl:'https://github.com/Tlahey/git-manager', url:'https://github.com/Tlahey/git-manager/pull/247', status:'open', ciStatus:'running', author:'antoine', authorAvatar:AVATARS[0], collaborators:[{login:'marie',avatar:AVATARS[1]}], filesChanged:12, additions:342, deletions:58, createdAt:daysAgo(1), updatedAt:daysAgo(0), reviewStatus:'pending', isDraft:false, needsMyReview:true, labels:['feature','ui'], comments:3, ciDetails: [
+    { name: 'Build Desktop App', status: 'success' },
+    { name: 'Run Unit Tests', status: 'running' },
+    { name: 'ESLint & Prettier', status: 'success' },
+  ] },
+  { id:'pr-2', number:244, title:'fix: Memory leak in GraphRow', repo:'git-manager', repoUrl:'https://github.com/Tlahey/git-manager', url:'https://github.com/Tlahey/git-manager/pull/244', status:'approved', ciStatus:'success', author:'marie', authorAvatar:AVATARS[1], collaborators:[{login:'antoine',avatar:AVATARS[0]}], filesChanged:4, additions:23, deletions:67, createdAt:daysAgo(3), updatedAt:daysAgo(1), reviewStatus:'approved', isDraft:false, needsMyReview:false, labels:['bugfix'], comments:7, ciDetails: [
+    { name: 'Build Desktop App', status: 'success' },
+    { name: 'Run Unit Tests', status: 'success' },
+    { name: 'ESLint & Prettier', status: 'success' },
+  ] },
+  { id:'pr-3', number:241, title:'chore: Bump Tauri to v2.2', repo:'git-manager', repoUrl:'https://github.com/Tlahey/git-manager', url:'https://github.com/Tlahey/git-manager/pull/241', status:'draft', ciStatus:'skipped', author:'lucas', authorAvatar:AVATARS[2], collaborators:[], filesChanged:8, additions:156, deletions:89, createdAt:daysAgo(5), updatedAt:daysAgo(2), reviewStatus:'pending', isDraft:true, needsMyReview:false, labels:['chore'], comments:0, ciDetails: [
+    { name: 'Build Desktop App', status: 'skipped' },
+    { name: 'Run Unit Tests', status: 'skipped' },
+    { name: 'ESLint & Prettier', status: 'skipped' },
+  ] },
+  { id:'pr-4', number:238, title:'feat: GitHub OAuth integration', repo:'git-manager', repoUrl:'https://github.com/Tlahey/git-manager', url:'https://github.com/Tlahey/git-manager/pull/238', status:'changes_requested', ciStatus:'failure', author:'sophie', authorAvatar:AVATARS[3], collaborators:[{login:'antoine',avatar:AVATARS[0]}], filesChanged:23, additions:891, deletions:203, createdAt:daysAgo(7), updatedAt:daysAgo(1), reviewStatus:'changes_requested', isDraft:false, needsMyReview:true, labels:['feature','auth'], comments:14, needsRebase: true, ciDetails: [
+    { name: 'Build Desktop App', status: 'failure' },
+    { name: 'Run Unit Tests', status: 'success' },
+    { name: 'ESLint & Prettier', status: 'success' },
+  ] },
+  { id:'pr-5', number:235, title:'refactor: Extract sidebar component', repo:'git-manager', repoUrl:'https://github.com/Tlahey/git-manager', url:'https://github.com/Tlahey/git-manager/pull/235', status:'open', ciStatus:'success', author:'antoine', authorAvatar:AVATARS[0], collaborators:[{login:'lucas',avatar:AVATARS[2]}], filesChanged:6, additions:112, deletions:98, createdAt:daysAgo(10), updatedAt:daysAgo(3), reviewStatus:'commented', isDraft:false, needsMyReview:false, labels:['refactor'], comments:5, ciDetails: [
+    { name: 'Build Desktop App', status: 'success' },
+    { name: 'Run Unit Tests', status: 'success' },
+    { name: 'ESLint & Prettier', status: 'success' },
+  ] },
+  { id:'pr-6', number:230, title:'fix: Dark mode color tokens', repo:'analytics-lib', repoUrl:'https://github.com/Tlahey/analytics-lib', url:'https://github.com/Tlahey/analytics-lib/pull/230', status:'closed', ciStatus:'failure', author:'tom', authorAvatar:AVATARS[4], collaborators:[], filesChanged:2, additions:14, deletions:8, createdAt:daysAgo(14), updatedAt:daysAgo(10), reviewStatus:'pending', isDraft:false, needsMyReview:false, labels:['bugfix','ui'], comments:2, ciDetails: [
+    { name: 'Build Desktop App', status: 'failure' },
+    { name: 'Run Unit Tests', status: 'failure' },
+    { name: 'ESLint & Prettier', status: 'success' },
+  ] },
 ]
 
 const MOCK_ISSUES: MockIssue[] = [
@@ -323,6 +355,94 @@ function useGitHubData(): GitHubData {
             pr.additions = full.additions ?? 0
             pr.deletions = full.deletions ?? 0
             pr.filesChanged = full.changed_files ?? pr.filesChanged
+
+            // Check if PR needs rebase
+            pr.needsRebase = (full.mergeable === false) || (full.mergeable_state === 'behind')
+
+            // Fetch CI status
+            const owner = full.base?.repo?.owner?.login
+            const repo = full.base?.repo?.name
+            const sha = full.head?.sha
+            if (owner && repo && sha) {
+              const [checkRunsRes, statusRes] = await Promise.all([
+                ghFetch(`https://api.github.com/repos/${owner}/${repo}/commits/${sha}/check-runs`, token!).catch(() => null),
+                ghFetch(`https://api.github.com/repos/${owner}/${repo}/commits/${sha}/status`, token!).catch(() => null)
+              ])
+
+              const checkRuns = checkRunsRes?.check_runs ?? []
+              const totalCheckRuns = checkRunsRes?.total_count ?? 0
+              const statuses = statusRes?.statuses ?? []
+              const commitStatusState = statusRes?.state
+              const totalStatuses = statusRes?.total_count ?? 0
+
+              const hasCheckRuns = totalCheckRuns > 0
+              const hasStatuses = totalStatuses > 0
+
+              let resolvedCiStatus: CiStatus = null
+
+              if (hasCheckRuns || hasStatuses) {
+                const hasFailure = (hasCheckRuns && checkRuns.some((run: any) =>
+                  ['failure', 'timed_out', 'cancelled'].includes(run.conclusion)
+                )) || (hasStatuses && ['failure', 'error'].includes(commitStatusState))
+
+                if (hasFailure) {
+                  resolvedCiStatus = 'failure'
+                } else {
+                  const hasRunning = (hasCheckRuns && checkRuns.some((run: any) =>
+                    ['in_progress', 'queued'].includes(run.status)
+                  )) || (hasStatuses && commitStatusState === 'pending')
+
+                  if (hasRunning) {
+                    resolvedCiStatus = 'running'
+                  } else {
+                    const hasSuccess = (hasCheckRuns && checkRuns.some((run: any) =>
+                      run.conclusion === 'success'
+                    )) || (hasStatuses && commitStatusState === 'success')
+
+                    if (hasSuccess) {
+                      resolvedCiStatus = 'success'
+                    } else {
+                      const allSkipped = hasCheckRuns && checkRuns.every((run: any) =>
+                        ['skipped', 'neutral'].includes(run.conclusion)
+                      )
+                      resolvedCiStatus = allSkipped ? 'skipped' : null
+                    }
+                  }
+                }
+
+                // Construct detailed check runs list
+                const checkRunsDetails: CiDetail[] = checkRuns.map((run: any) => {
+                  let s: CiDetail['status'] = 'unknown'
+                  if (run.status === 'in_progress' || run.status === 'queued') {
+                    s = 'running'
+                  } else if (run.status === 'completed') {
+                    if (run.conclusion === 'success') s = 'success'
+                    else if (['failure', 'timed_out', 'cancelled'].includes(run.conclusion)) s = 'failure'
+                    else if (['skipped', 'neutral'].includes(run.conclusion)) s = 'skipped'
+                  }
+                  return {
+                    name: run.name ?? 'Check run',
+                    status: s,
+                    url: run.html_url
+                  }
+                })
+
+                const statusesDetails: CiDetail[] = statuses.map((status: any) => {
+                  let s: CiDetail['status'] = 'unknown'
+                  if (status.state === 'success') s = 'success'
+                  else if (['failure', 'error'].includes(status.state)) s = 'failure'
+                  else if (status.state === 'pending') s = 'running'
+                  return {
+                    name: status.context ?? 'Status check',
+                    status: s,
+                    url: status.target_url
+                  }
+                })
+
+                pr.ciDetails = [...checkRunsDetails, ...statusesDetails]
+              }
+              pr.ciStatus = resolvedCiStatus
+            }
           } catch { /* keep defaults */ }
           return pr
         })
@@ -433,12 +553,52 @@ function StatusBadge({ status }: { status: PRStatus }) {
   return <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${cfg.className}`}>{cfg.label}</span>
 }
 
-function CiBadge({ status }: { status: CiStatus }) {
-  if (!status) return <span className="text-[9px] text-muted-foreground/40">—</span>
-  if (status === 'success') return <span className="flex items-center gap-0.5 text-[9px] text-green-400"><CheckCircle2 className="h-3 w-3" />Pass</span>
-  if (status === 'failure') return <span className="flex items-center gap-0.5 text-[9px] text-red-400"><XCircle className="h-3 w-3" />Fail</span>
-  if (status === 'running') return <span className="flex items-center gap-0.5 text-[9px] text-amber-400"><Loader2 className="h-3 w-3 animate-spin" />Running</span>
-  return <span className="text-[9px] text-muted-foreground/40">Skip</span>
+function CiBadge({ status, details }: { status: CiStatus; details?: CiDetail[] }) {
+  let badgeEl = <span className="text-[9px] text-muted-foreground/40">—</span>
+
+  if (status === 'success') {
+    badgeEl = <span className="flex items-center gap-0.5 text-[9px] text-green-400 cursor-help"><CheckCircle2 className="h-3 w-3" />Pass</span>
+  } else if (status === 'failure') {
+    badgeEl = <span className="flex items-center gap-0.5 text-[9px] text-red-400 cursor-help"><XCircle className="h-3 w-3" />Fail</span>
+  } else if (status === 'running') {
+    badgeEl = <span className="flex items-center gap-0.5 text-[9px] text-amber-400 cursor-help"><Loader2 className="h-3 w-3 animate-spin" />Running</span>
+  } else if (status === 'skipped') {
+    badgeEl = <span className="text-[9px] text-muted-foreground/40 cursor-help">Skip</span>
+  }
+
+  if (details && details.length > 0) {
+    const tooltipContent = (
+      <div className="flex flex-col gap-1 p-1 max-w-[280px]">
+        <div className="font-bold text-[10px] text-muted-foreground/85 border-b border-border/40 pb-1 mb-1.5 flex items-center justify-between">
+          <span>CI Check Steps</span>
+          <span className="text-[8px] opacity-60 normal-case font-normal">hover to see status</span>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          {details.map((d, idx) => (
+            <div key={idx} className="flex items-center justify-between gap-4 text-[10px]">
+              <div className="flex items-center gap-1.5 min-w-0">
+                {d.status === 'success' && <CheckCircle2 className="h-3 w-3 text-green-400 shrink-0" />}
+                {d.status === 'failure' && <XCircle className="h-3 w-3 text-red-400 shrink-0" />}
+                {d.status === 'running' && <Loader2 className="h-3 w-3 animate-spin text-amber-400 shrink-0" />}
+                {d.status === 'skipped' && <Circle className="h-3 w-3 text-muted-foreground/30 shrink-0" />}
+                {d.status === 'unknown' && <Circle className="h-3 w-3 text-muted-foreground/50 shrink-0" />}
+                <span className="truncate text-foreground/90 font-medium">{d.name}</span>
+              </div>
+              <span className="text-[9px] uppercase font-semibold text-muted-foreground/60 shrink-0">{d.status}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+
+    return (
+      <Tooltip content={tooltipContent} className="whitespace-normal min-w-[220px]">
+        {badgeEl}
+      </Tooltip>
+    )
+  }
+
+  return badgeEl
 }
 
 function PRRowSkeleton() {
@@ -764,6 +924,11 @@ function PRRow({ pr, pinned, onTogglePin }: { pr: MockPR; pinned: boolean; onTog
             <span className="text-[10px] font-mono text-muted-foreground/60">{pr.filesChanged} files</span>
           ) : null}
           {pr.labels.slice(0, 2).map(l => <span key={l} className="text-[9px] bg-muted/60 text-muted-foreground border border-border/50 rounded px-1 py-px">{l}</span>)}
+          {pr.needsRebase && (
+            <span className="text-[9px] bg-amber-500/15 text-amber-500 border border-amber-500/35 rounded px-1 py-0.5 flex items-center gap-0.5 font-medium shrink-0">
+              <AlertCircle className="h-2.5 w-2.5 text-amber-500" /> Rebase required
+            </span>
+          )}
         </div>
       </div>
       <div className="shrink-0 text-[10px] text-muted-foreground min-w-[52px] text-right">{timeAgo(pr.updatedAt)}</div>
@@ -774,7 +939,7 @@ function PRRow({ pr, pinned, onTogglePin }: { pr: MockPR; pinned: boolean; onTog
       </div>
       <div className="shrink-0 w-[60px] flex justify-center">{pr.collaborators.length > 0 ? <AvatarStack users={pr.collaborators} max={3} /> : <span className="text-muted-foreground/30 text-[10px]">—</span>}</div>
       <div className="shrink-0 w-[110px]"><span className="text-[10px] font-mono text-muted-foreground/70 truncate block">{pr.repo}</span></div>
-      <div className="shrink-0 w-[60px] flex justify-center"><CiBadge status={pr.ciStatus} /></div>
+      <div className="shrink-0 w-[60px] flex justify-center"><CiBadge status={pr.ciStatus} details={pr.ciDetails} /></div>
       <div className="shrink-0 relative" onClick={e => e.stopPropagation()}>
         <button onClick={() => setMenuOpen(v => !v)} className="h-6 w-6 flex items-center justify-center rounded border border-transparent hover:border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"><MoreHorizontal className="h-3.5 w-3.5" /></button>
         {menuOpen && <ActionMenu items={[
