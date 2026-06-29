@@ -60,6 +60,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     notifyOnPull: true,
     notifyOnPush: true,
     enableSound: false,
+    soundName: 'default',
     notifyOnPrMerged: true,
     notifyOnReviewRequested: true,
     notifyOnReviewStatusChanged: true,

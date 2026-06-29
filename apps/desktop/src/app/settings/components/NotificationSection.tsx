@@ -159,27 +159,55 @@ export function NotificationSection() {
 
           {/* Sounds */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {notifications.enableSound ? (
-                  <Volume2 className="h-4 w-4 text-primary" />
-                ) : (
-                  <VolumeX className="h-4 w-4 text-muted-foreground" />
-                )}
-                <div>
-                  <h4 className="text-xs font-semibold text-foreground">Effets sonores</h4>
-                  <p className="text-[10px] text-muted-foreground font-sans">Jouer un son lors d'une notification ou d'une erreur critique.</p>
+            <div className="flex flex-col gap-2 py-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {notifications.enableSound ? (
+                    <Volume2 className="h-4 w-4 text-primary" />
+                  ) : (
+                    <VolumeX className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <div className="flex flex-col">
+                    <h4 className="text-xs font-semibold text-foreground">Effets sonores</h4>
+                    <p className="text-[10px] text-muted-foreground font-sans">Jouer un son lors d'une notification.</p>
+                  </div>
                 </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notifications.enableSound}
+                    onChange={(e) => updateNotifications({ enableSound: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                </label>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={notifications.enableSound}
-                  onChange={(e) => updateNotifications({ enableSound: e.target.checked })}
-                  className="sr-only peer"
-                />
-                <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-              </label>
+
+              {notifications.enableSound && (
+                <div className="flex items-center justify-between pl-7 mt-1.5">
+                  <span className="text-[10px] text-muted-foreground">Type de son macOS</span>
+                  <select
+                    value={notifications.soundName || 'default'}
+                    onChange={(e) => updateNotifications({ soundName: e.target.value })}
+                    className="h-7 rounded border border-border bg-background px-2 text-[10px] font-medium text-foreground outline-none transition-colors hover:border-accent-foreground/30 focus:border-primary min-w-[120px]"
+                  >
+                    <option value="default">Default</option>
+                    <option value="Glass">Glass</option>
+                    <option value="Hero">Hero</option>
+                    <option value="Basso">Basso</option>
+                    <option value="Blow">Blow</option>
+                    <option value="Bottle">Bottle</option>
+                    <option value="Frog">Frog</option>
+                    <option value="Funk">Funk</option>
+                    <option value="Morse">Morse</option>
+                    <option value="Ping">Ping</option>
+                    <option value="Pop">Pop</option>
+                    <option value="Purr">Purr</option>
+                    <option value="Submarine">Submarine</option>
+                    <option value="Tink">Tink</option>
+                  </select>
+                </div>
+              )}
             </div>
           </div>
 

@@ -268,6 +268,7 @@ export interface NotificationSettings {
   notifyOnPull: boolean
   notifyOnPush: boolean
   enableSound: boolean
+  soundName?: string
   notifyOnPrMerged?: boolean
   notifyOnReviewRequested?: boolean
   notifyOnReviewStatusChanged?: boolean

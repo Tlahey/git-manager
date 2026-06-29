@@ -23,10 +23,15 @@ export async function showNativeNotification(notif: AppNotification, t: any) {
 
     if (permissionGranted) {
       const { title, message } = getNotificationText(notif, t)
+      const settings = useSettingsStore.getState().settings
+      const soundEnabled = settings.notifications?.enableSound ?? false
+      const soundName = settings.notifications?.soundName ?? 'default'
+
       sendNotification({
         id: notif.id,
         title,
         body: message,
+        ...(soundEnabled ? { sound: soundName } : {}),
       })
     }
   } catch (e) {
