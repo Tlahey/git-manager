@@ -145,6 +145,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     setPrimaryOid,
     selectSingle,
     handleRowSelect,
+    clearSelection,
   } = useCommitSelection(filteredNodes, onSelectCommit)
 
   // Reset active diff on commit selection or repo changes
@@ -416,6 +417,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
               isHead={isSelectedCommitHead}
               onSelectCommit={selectSingle}
               onSelectFileDiff={(file) => setActiveDiffFile(file)}
+              onClose={clearSelection}
             />
           </div>
         </>

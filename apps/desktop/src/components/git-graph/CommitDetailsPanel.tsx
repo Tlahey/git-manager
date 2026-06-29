@@ -15,6 +15,7 @@ interface CommitDetailsPanelProps {
   isHead?: boolean
   onSelectCommit?: (oid: string) => void
   onSelectFileDiff?: (file: { path: string; staged: boolean; oid?: string }) => void
+  onClose?: () => void
 }
 
 export function CommitDetailsPanel({
@@ -22,7 +23,8 @@ export function CommitDetailsPanel({
   repoPath,
   isHead: isHeadProp,
   onSelectCommit,
-  onSelectFileDiff
+  onSelectFileDiff,
+  onClose
 }: CommitDetailsPanelProps) {
   const queryClient = useQueryClient()
   const { commit } = node
@@ -110,6 +112,7 @@ export function CommitDetailsPanel({
         remoteUrl={remoteUrl}
         onSelectCommit={onSelectCommit}
         onRefresh={handleRefresh}
+        onClose={onClose}
       />
 
       {/* ── SCROLLABLE FILE LIST ── */}

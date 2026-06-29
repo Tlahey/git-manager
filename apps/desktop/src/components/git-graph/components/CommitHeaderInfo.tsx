@@ -8,6 +8,7 @@ import {
   GitCommit,
   Layers,
   Pencil,
+  X,
 } from 'lucide-react'
 import { CommitDetailsAvatar } from './CommitDetailsAvatar'
 import { apiCreateCommit } from '../../../api/git.api'
@@ -32,6 +33,7 @@ interface CommitHeaderInfoProps {
   remoteUrl: string | null
   onSelectCommit?: (oid: string) => void
   onRefresh?: () => void
+  onClose?: () => void
 }
 
 export function CommitHeaderInfo({
@@ -42,6 +44,7 @@ export function CommitHeaderInfo({
   remoteUrl,
   onSelectCommit,
   onRefresh,
+  onClose,
 }: CommitHeaderInfoProps) {
   const { t } = useTranslation('git')
 
@@ -122,6 +125,15 @@ export function CommitHeaderInfo({
               </>
             )}
           </h3>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="rounded p-1 hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              title="Close"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
 
         {!isWip && (

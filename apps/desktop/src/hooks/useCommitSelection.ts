@@ -16,10 +16,21 @@ export function useCommitSelection(
     onSelectCommit?.(oid)
   }, [onSelectCommit])
 
+  const clearSelection = useCallback(() => {
+    setSelected(new Set())
+    setPrimaryOid(null)
+    setAnchorOid(null)
+    onSelectCommit?.('')
+  }, [onSelectCommit])
+
   const handleRowSelect = useCallback((e: React.MouseEvent, index: number) => {
     const oid = filteredNodes[index].commit.oid
     if (oid === 'WIP') {
-      selectSingle('WIP')
+      if (primaryOid === 'WIP') {
+        clearSelection()
+      } else {
+        selectSingle('WIP')
+      }
       return
     }
     if (e.shiftKey && anchorOid) {
@@ -42,9 +53,13 @@ export function useCommitSelection(
       setAnchorOid(oid)
       onSelectCommit?.(oid)
     } else {
-      selectSingle(oid)
+      if (primaryOid === oid) {
+        clearSelection()
+      } else {
+        selectSingle(oid)
+      }
     }
-  }, [filteredNodes, anchorOid, selectSingle, onSelectCommit])
+  }, [filteredNodes, anchorOid, selectSingle, onSelectCommit, primaryOid, clearSelection])
 
   return {
     selected,
@@ -53,5 +68,7 @@ export function useCommitSelection(
     setPrimaryOid,
     selectSingle,
     handleRowSelect,
+    clearSelection,
   }
 }
+
