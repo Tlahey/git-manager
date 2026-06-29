@@ -16,7 +16,7 @@ import {
   Plus,
   MoreHorizontal,
   ArrowUpDown,
-  Filter,
+
   ExternalLink,
   Link,
   GitCommit,
@@ -69,7 +69,7 @@ interface DayCommit { date: string; commits: number }
 type SortKey = 'date' | 'status' | 'author' | 'repo' | 'files'
 type SortDir = 'asc' | 'desc'
 type InnerTab = 'prs' | 'issues' | 'waiting' | 'stats' | 'views'
-type StatusFilter = 'open' | 'all'
+// StatusFilter removed — now using multi-select sets
 
 const PAGE_SIZE = 20
 const REFRESH_INTERVAL = 60_000  // 1 minute
@@ -469,63 +469,144 @@ function InnerTab({ active, onClick, children, count }: { active: boolean; onCli
   )
 }
 
+// ─── Multi-Select Dropdown Filter ─────────────────────────────────────────────
+
+function MultiSelectDropdown({ label, icon, options, selected, onToggle, onClear }: {
+  label: string; icon: React.ReactNode; options: string[]; selected: Set<string>
+  onToggle: (value: string) => void; onClear: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = React.useRef<HTMLDivElement>(null)
+  const activeCount = selected.size
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen(v => !v)}
+        className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-[11px] font-medium transition-all duration-150 ${
+          activeCount > 0
+            ? 'bg-primary/10 border-primary/30 text-primary shadow-sm shadow-primary/5'
+            : open
+              ? 'bg-accent/60 border-border/80 text-foreground'
+              : 'border-border text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-accent/30'
+        }`}
+      >
+        <span className="text-muted-foreground/70">{icon}</span>
+        {label}
+        {activeCount > 0 && (
+          <span className="flex items-center justify-center min-w-[16px] h-4 rounded-full bg-primary/20 text-primary text-[9px] font-bold px-1 leading-none">
+            {activeCount}
+          </span>
+        )}
+        <ChevronDown className={`h-2.5 w-2.5 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1.5 min-w-[180px] max-h-[280px] rounded-lg border border-border bg-popover shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+          {/* Header with clear button */}
+          {activeCount > 0 && (
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-muted/10">
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{activeCount} selected</span>
+              <button onClick={(e) => { e.stopPropagation(); onClear() }}
+                className="text-[9px] text-muted-foreground/60 hover:text-primary underline transition-colors"
+              >Clear all</button>
+            </div>
+          )}
+
+          {/* Options list */}
+          <div className="overflow-y-auto max-h-[240px] py-1">
+            {options.length === 0 ? (
+              <div className="px-3 py-3 text-[10px] text-muted-foreground/50 text-center italic">No options available</div>
+            ) : options.map(opt => {
+              const isActive = selected.has(opt)
+              return (
+                <button key={opt} onClick={() => onToggle(opt)}
+                  className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs transition-colors hover:bg-accent/50 group/opt"
+                >
+                  <div className={`flex items-center justify-center w-3.5 h-3.5 rounded border transition-all duration-100 ${
+                    isActive
+                      ? 'bg-primary border-primary text-primary-foreground'
+                      : 'border-border/80 bg-transparent group-hover/opt:border-muted-foreground/50'
+                  }`}>
+                    {isActive && <CheckCircle2 className="h-2.5 w-2.5" />}
+                  </div>
+                  <span className={`truncate transition-colors ${isActive ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>{opt}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Toolbar ─────────────────────────────────────────────────────────────────
 
 interface ToolbarProps {
   search: string; onSearch: (v: string) => void
   sortKey: SortKey; sortDir: SortDir; onSort: (k: SortKey) => void
-  statusFilter: StatusFilter; onStatusFilter: (f: StatusFilter) => void
-  repoFilter: string; onRepoFilter: (r: string) => void
-  repos: string[]
+  statusFilter: Set<string>; onToggleStatus: (s: string) => void; onClearStatus: () => void
+  repoFilter: Set<string>; onToggleRepo: (r: string) => void; onClearRepo: () => void
+  authorFilter: Set<string>; onToggleAuthor: (a: string) => void; onClearAuthor: () => void
+  repos: string[]; statuses: string[]; authors: string[]
 }
 
-function Toolbar({ search, onSearch, sortKey, sortDir, onSort, statusFilter, onStatusFilter, repoFilter, onRepoFilter, repos }: ToolbarProps) {
-  const [showFilters, setShowFilters] = useState(false)
+function Toolbar({ search, onSearch, sortKey, sortDir, onSort, statusFilter, onToggleStatus, onClearStatus, repoFilter, onToggleRepo, onClearRepo, authorFilter, onToggleAuthor, onClearAuthor, repos, statuses, authors }: ToolbarProps) {
+  const totalActiveFilters = statusFilter.size + repoFilter.size + authorFilter.size
+  function clearAll() { onClearStatus(); onClearRepo(); onClearAuthor() }
+
   return (
-    <div className="flex flex-col gap-2 px-4 py-2 border-b border-border bg-muted/5 shrink-0">
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
-          <input type="text" value={search} onChange={e => onSearch(e.target.value)} placeholder="Search…"
-            className="w-full pl-7 pr-6 h-7 rounded-md border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
-          />
-          {search && <button onClick={() => onSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>}
-        </div>
-        <div className="flex items-center gap-1">
-          {(['date','status','author','repo','files'] as SortKey[]).map(k => (
-            <button key={k} onClick={() => onSort(k)}
-              className={`flex items-center gap-1 h-7 px-2 rounded border text-[10px] transition-colors ${sortKey === k ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border text-muted-foreground hover:text-foreground'}`}
-            >
-              {k === 'date' ? 'Date' : k === 'status' ? 'Status' : k === 'author' ? 'Author' : k === 'repo' ? 'Repo' : 'Files'}
-              {sortKey === k && <ArrowUpDown className="h-2.5 w-2.5" style={{ transform: sortDir === 'asc' ? 'scaleY(1)' : 'scaleY(-1)' }} />}
-            </button>
-          ))}
-        </div>
-        <button onClick={() => setShowFilters(v => !v)}
-          className={`flex items-center gap-1 h-7 px-2 rounded border text-[10px] transition-colors ${showFilters || statusFilter !== 'open' || repoFilter !== '' ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border text-muted-foreground hover:text-foreground'}`}
-        >
-          <Filter className="h-3 w-3" /> Filters
-        </button>
+    <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-muted/5 shrink-0">
+      {/* Search */}
+      <div className="relative flex-1 max-w-xs">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+        <input type="text" value={search} onChange={e => onSearch(e.target.value)} placeholder="Search…"
+          className="w-full pl-7 pr-6 h-7 rounded-md border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+        />
+        {search && <button onClick={() => onSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>}
       </div>
-      {showFilters && (
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-muted-foreground">Status:</span>
-            {(['open','all'] as StatusFilter[]).map(f => (
-              <button key={f} onClick={() => onStatusFilter(f)}
-                className={`h-6 px-2 rounded border text-[10px] transition-colors ${statusFilter === f ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border text-muted-foreground hover:text-foreground'}`}
-              >
-                {f === 'open' ? 'Open only' : 'Open + Closed'}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-muted-foreground">Repo:</span>
-            <button onClick={() => onRepoFilter('')} className={`h-6 px-2 rounded border text-[10px] transition-colors ${repoFilter === '' ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border text-muted-foreground hover:text-foreground'}`}>All</button>
-            {repos.map(r => <button key={r} onClick={() => onRepoFilter(r === repoFilter ? '' : r)} className={`h-6 px-2 rounded border text-[10px] transition-colors ${repoFilter === r ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border text-muted-foreground hover:text-foreground'}`}>{r}</button>)}
-          </div>
-        </div>
+
+      {/* Separator */}
+      <div className="h-4 w-px bg-border/60 mx-0.5" />
+
+      {/* Quick filter dropdowns */}
+      <MultiSelectDropdown label="Repo" icon={<Layers className="h-3 w-3" />} options={repos} selected={repoFilter} onToggle={onToggleRepo} onClear={onClearRepo} />
+      <MultiSelectDropdown label="Status" icon={<Circle className="h-3 w-3" />} options={statuses} selected={statusFilter} onToggle={onToggleStatus} onClear={onClearStatus} />
+      <MultiSelectDropdown label="Author" icon={<Pencil className="h-3 w-3" />} options={authors} selected={authorFilter} onToggle={onToggleAuthor} onClear={onClearAuthor} />
+
+      {/* Clear all badge */}
+      {totalActiveFilters > 0 && (
+        <button onClick={clearAll}
+          className="flex items-center gap-1 h-6 px-2 rounded-md text-[10px] text-muted-foreground hover:text-destructive hover:bg-destructive/5 border border-transparent hover:border-destructive/20 transition-all"
+        >
+          <X className="h-2.5 w-2.5" /> Clear all ({totalActiveFilters})
+        </button>
       )}
+
+      {/* Separator */}
+      <div className="h-4 w-px bg-border/60 mx-0.5" />
+
+      {/* Sort buttons */}
+      <div className="flex items-center gap-1">
+        {(['date','status','author','repo','files'] as SortKey[]).map(k => (
+          <button key={k} onClick={() => onSort(k)}
+            className={`flex items-center gap-1 h-7 px-2 rounded border text-[10px] transition-colors ${sortKey === k ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border text-muted-foreground hover:text-foreground'}`}
+          >
+            {k === 'date' ? 'Date' : k === 'status' ? 'Status' : k === 'author' ? 'Author' : k === 'repo' ? 'Repo' : 'Files'}
+            {sortKey === k && <ArrowUpDown className="h-2.5 w-2.5" style={{ transform: sortDir === 'asc' ? 'scaleY(1)' : 'scaleY(-1)' }} />}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -703,6 +784,15 @@ function usePRSort(prs: MockPR[], sortKey: SortKey, sortDir: SortDir): MockPR[] 
   }), [prs, sortKey, sortDir])
 }
 
+// ─── Multi-select filter toggle helper ────────────────────────────────────────
+
+function useSetFilter(): [Set<string>, (v: string) => void, () => void] {
+  const [set, setSet] = useState<Set<string>>(new Set())
+  const toggle = useCallback((v: string) => setSet(prev => { const n = new Set(prev); if (n.has(v)) n.delete(v); else n.add(v); return n }), [])
+  const clear = useCallback(() => setSet(new Set()), [])
+  return [set, toggle, clear]
+}
+
 // ─── Pull Requests Tab ────────────────────────────────────────────────────────
 
 function PullRequestsTab({ allPRs, followedPRs, pinnedIds, onTogglePin, onAddFollowed, onRemoveFollowed }: {
@@ -712,8 +802,9 @@ function PullRequestsTab({ allPRs, followedPRs, pinnedIds, onTogglePin, onAddFol
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('open')
-  const [repoFilter, setRepoFilter] = useState('')
+  const [statusFilter, toggleStatus, clearStatus] = useSetFilter()
+  const [repoFilter, toggleRepo, clearRepo] = useSetFilter()
+  const [authorFilter, toggleAuthor, clearAuthor] = useSetFilter()
   const [gNeedsOpen, setGNeedsOpen] = useState(true)
   const [gOtherOpen, setGOtherOpen] = useState(true)
   const [gPinnedOpen, setGPinnedOpen] = useState(true)
@@ -728,13 +819,16 @@ function PullRequestsTab({ allPRs, followedPRs, pinnedIds, onTogglePin, onAddFol
   }
 
   const combined = useMemo(() => [...allPRs, ...followedPRs], [allPRs, followedPRs])
-  const repos = useMemo(() => [...new Set(combined.map(p => p.repo))], [combined])
+  const repos = useMemo(() => [...new Set(combined.map(p => p.repo))].sort(), [combined])
+  const statuses = useMemo(() => [...new Set(combined.map(p => p.status))].sort(), [combined])
+  const authors = useMemo(() => [...new Set(combined.map(p => p.author))].sort(), [combined])
   const filtered = useMemo(() => combined.filter(pr => {
-    if (statusFilter === 'open' && (pr.status === 'closed' || pr.status === 'merged')) return false
-    if (repoFilter && pr.repo !== repoFilter) return false
+    if (statusFilter.size > 0 && !statusFilter.has(pr.status)) return false
+    if (repoFilter.size > 0 && !repoFilter.has(pr.repo)) return false
+    if (authorFilter.size > 0 && !authorFilter.has(pr.author)) return false
     if (search) { const q = search.toLowerCase(); return pr.title.toLowerCase().includes(q) || pr.author.toLowerCase().includes(q) || pr.repo.toLowerCase().includes(q) || String(pr.number).includes(q) }
     return true
-  }), [combined, search, statusFilter, repoFilter])
+  }), [combined, search, statusFilter, repoFilter, authorFilter])
 
   const pinnedPRs = usePRSort(filtered.filter(pr => pinnedIds.has(pr.id)), sortKey, sortDir)
   const followedFiltered = usePRSort(filtered.filter(pr => pr.isFollowed && !pinnedIds.has(pr.id)), sortKey, sortDir)
@@ -743,7 +837,7 @@ function PullRequestsTab({ allPRs, followedPRs, pinnedIds, onTogglePin, onAddFol
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <Toolbar search={search} onSearch={setSearch} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} statusFilter={statusFilter} onStatusFilter={setStatusFilter} repoFilter={repoFilter} onRepoFilter={setRepoFilter} repos={repos} />
+      <Toolbar search={search} onSearch={setSearch} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} statusFilter={statusFilter} onToggleStatus={toggleStatus} onClearStatus={clearStatus} repoFilter={repoFilter} onToggleRepo={toggleRepo} onClearRepo={clearRepo} authorFilter={authorFilter} onToggleAuthor={toggleAuthor} onClearAuthor={clearAuthor} repos={repos} statuses={statuses} authors={authors} />
       <TableHeader />
       <div className="flex-1 overflow-y-auto">
         {pinnedPRs.length > 0 && (<>
@@ -799,18 +893,24 @@ function PullRequestsTab({ allPRs, followedPRs, pinnedIds, onTogglePin, onAddFol
 
 function IssuesTab({ allIssues }: { allIssues: MockIssue[] }) {
   const [search, setSearch] = useState(''); const [sortKey, setSortKey] = useState<SortKey>('date'); const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('open'); const [repoFilter, setRepoFilter] = useState(''); const [shown, setShown] = useState(PAGE_SIZE)
-  const repos = useMemo(() => [...new Set(allIssues.map(i => i.repo))], [allIssues])
+  const [statusFilter, toggleStatus, clearStatus] = useSetFilter()
+  const [repoFilter, toggleRepo, clearRepo] = useSetFilter()
+  const [authorFilter, toggleAuthor, clearAuthor] = useSetFilter()
+  const [shown, setShown] = useState(PAGE_SIZE)
+  const repos = useMemo(() => [...new Set(allIssues.map(i => i.repo))].sort(), [allIssues])
+  const statuses = useMemo(() => [...new Set(allIssues.map(i => i.status))].sort(), [allIssues])
+  const authors = useMemo(() => [...new Set(allIssues.map(i => i.author))].sort(), [allIssues])
   function handleSort(k: SortKey) { if (k === sortKey) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortKey(k); setSortDir('desc') } }
   const filtered = useMemo(() => allIssues.filter(issue => {
-    if (statusFilter === 'open' && issue.status === 'closed') return false
-    if (repoFilter && issue.repo !== repoFilter) return false
+    if (statusFilter.size > 0 && !statusFilter.has(issue.status)) return false
+    if (repoFilter.size > 0 && !repoFilter.has(issue.repo)) return false
+    if (authorFilter.size > 0 && !authorFilter.has(issue.author)) return false
     if (search) { const q = search.toLowerCase(); return issue.title.toLowerCase().includes(q) || issue.author.toLowerCase().includes(q) || String(issue.number).includes(q) }
     return true
-  }).sort((a, b) => { let cmp = 0; if (sortKey === 'date') cmp = a.updatedAt.getTime() - b.updatedAt.getTime(); else if (sortKey === 'author') cmp = a.author.localeCompare(b.author); else if (sortKey === 'repo') cmp = a.repo.localeCompare(b.repo); else if (sortKey === 'status') cmp = a.status.localeCompare(b.status); return sortDir === 'desc' ? -cmp : cmp }), [allIssues, search, statusFilter, repoFilter, sortKey, sortDir])
+  }).sort((a, b) => { let cmp = 0; if (sortKey === 'date') cmp = a.updatedAt.getTime() - b.updatedAt.getTime(); else if (sortKey === 'author') cmp = a.author.localeCompare(b.author); else if (sortKey === 'repo') cmp = a.repo.localeCompare(b.repo); else if (sortKey === 'status') cmp = a.status.localeCompare(b.status); return sortDir === 'desc' ? -cmp : cmp }), [allIssues, search, statusFilter, repoFilter, authorFilter, sortKey, sortDir])
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <Toolbar search={search} onSearch={setSearch} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} statusFilter={statusFilter} onStatusFilter={setStatusFilter} repoFilter={repoFilter} onRepoFilter={setRepoFilter} repos={repos} />
+      <Toolbar search={search} onSearch={setSearch} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} statusFilter={statusFilter} onToggleStatus={toggleStatus} onClearStatus={clearStatus} repoFilter={repoFilter} onToggleRepo={toggleRepo} onClearRepo={clearRepo} authorFilter={authorFilter} onToggleAuthor={toggleAuthor} onClearAuthor={clearAuthor} repos={repos} statuses={statuses} authors={authors} />
       <div className="flex items-center gap-3 px-4 py-1.5 bg-muted/10 border-b border-border text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60 shrink-0">
         <div className="w-4 shrink-0" /><div className="flex-1 min-w-0">Item</div><div className="shrink-0 w-[52px] text-right">Updated</div><div className="shrink-0 w-[70px] text-center">Status</div><div className="shrink-0 w-[90px]">Author</div><div className="shrink-0 w-[60px] text-center">Assigned</div><div className="shrink-0 w-[110px]">Repo</div><div className="shrink-0 w-6" />
       </div>
@@ -826,18 +926,24 @@ function IssuesTab({ allIssues }: { allIssues: MockIssue[] }) {
 
 function WaitingForReviewTab({ allPRs, pinnedIds, onTogglePin }: { allPRs: MockPR[]; pinnedIds: Set<string>; onTogglePin: (id: string) => void }) {
   const [search, setSearch] = useState(''); const [sortKey, setSortKey] = useState<SortKey>('date'); const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('open'); const [repoFilter, setRepoFilter] = useState(''); const [shown, setShown] = useState(PAGE_SIZE)
-  const repos = useMemo(() => [...new Set(allPRs.map(p => p.repo))], [allPRs])
+  const [statusFilter, toggleStatus, clearStatus] = useSetFilter()
+  const [repoFilter, toggleRepo, clearRepo] = useSetFilter()
+  const [authorFilter, toggleAuthor, clearAuthor] = useSetFilter()
+  const [shown, setShown] = useState(PAGE_SIZE)
+  const repos = useMemo(() => [...new Set(allPRs.map(p => p.repo))].sort(), [allPRs])
+  const statuses = useMemo(() => [...new Set(allPRs.map(p => p.status))].sort(), [allPRs])
+  const authors = useMemo(() => [...new Set(allPRs.map(p => p.author))].sort(), [allPRs])
   function handleSort(k: SortKey) { if (k === sortKey) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortKey(k); setSortDir('desc') } }
   const waitingPRs = useMemo(() => allPRs.filter(pr => pr.needsMyReview).filter(pr => {
-    if (statusFilter === 'open' && (pr.status === 'closed' || pr.status === 'merged')) return false
-    if (repoFilter && pr.repo !== repoFilter) return false
+    if (statusFilter.size > 0 && !statusFilter.has(pr.status)) return false
+    if (repoFilter.size > 0 && !repoFilter.has(pr.repo)) return false
+    if (authorFilter.size > 0 && !authorFilter.has(pr.author)) return false
     if (search) { const q = search.toLowerCase(); return pr.title.toLowerCase().includes(q) || pr.author.toLowerCase().includes(q) || pr.repo.toLowerCase().includes(q) }
     return true
-  }).sort((a, b) => { let cmp = 0; if (sortKey === 'date') cmp = a.updatedAt.getTime() - b.updatedAt.getTime(); else if (sortKey === 'author') cmp = a.author.localeCompare(b.author); else if (sortKey === 'repo') cmp = a.repo.localeCompare(b.repo); return sortDir === 'desc' ? -cmp : cmp }), [allPRs, search, statusFilter, repoFilter, sortKey, sortDir])
+  }).sort((a, b) => { let cmp = 0; if (sortKey === 'date') cmp = a.updatedAt.getTime() - b.updatedAt.getTime(); else if (sortKey === 'author') cmp = a.author.localeCompare(b.author); else if (sortKey === 'repo') cmp = a.repo.localeCompare(b.repo); return sortDir === 'desc' ? -cmp : cmp }), [allPRs, search, statusFilter, repoFilter, authorFilter, sortKey, sortDir])
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <Toolbar search={search} onSearch={setSearch} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} statusFilter={statusFilter} onStatusFilter={setStatusFilter} repoFilter={repoFilter} onRepoFilter={setRepoFilter} repos={repos} />
+      <Toolbar search={search} onSearch={setSearch} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} statusFilter={statusFilter} onToggleStatus={toggleStatus} onClearStatus={clearStatus} repoFilter={repoFilter} onToggleRepo={toggleRepo} onClearRepo={clearRepo} authorFilter={authorFilter} onToggleAuthor={toggleAuthor} onClearAuthor={clearAuthor} repos={repos} statuses={statuses} authors={authors} />
       <TableHeader />
       <div className="flex-1 overflow-y-auto">
         {waitingPRs.length === 0 ? <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground/50"><CheckSquare className="h-6 w-6 opacity-30" /><p className="text-xs">You're all caught up</p></div>
