@@ -262,3 +262,16 @@ export const openInEditor = (path: string, editor: string, customCommand?: strin
 
 export const getRepoReadme = (path: string) =>
   invoke<string>('get_repo_readme', { path })
+
+// ─── SSH ─────────────────────────────────────────────────────────────────────
+
+export const generateSshKey = (
+  keyType: string,
+  bits: number | null,
+  comment: string,
+  path: string,
+  passphrase?: string
+) => invoke<string>('generate_ssh_key', { keyType, bits, comment, path, passphrase })
+
+export const readSshPublicKey = (path: string) =>
+  invoke<string>('read_ssh_public_key', { path })

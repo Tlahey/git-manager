@@ -20,6 +20,7 @@ use commands::repo::{
     get_repo_status, open_repo, scan_repos, clone_repo, init_repo, get_repo_summary,
     open_in_editor, get_repo_readme,
 };
+use commands::ssh::{generate_ssh_key, read_ssh_public_key};
 use state::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -81,6 +82,9 @@ pub fn run() {
             github_poll_token,
             github_get_user,
             github_list_repos,
+            // SSH
+            generate_ssh_key,
+            read_ssh_public_key,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

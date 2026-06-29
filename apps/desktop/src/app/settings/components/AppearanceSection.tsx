@@ -177,6 +177,23 @@ export function AppearanceSection() {
         </div>
       </div>
 
+      {/* Notification location */}
+      <div className="space-y-1.5 font-sans">
+        <label className="text-xs font-medium text-foreground">
+          Emplacement des notifications
+        </label>
+        <select
+          value={appearance.notificationLocation || 'top-right'}
+          onChange={(e) => updateAppearance({ notificationLocation: e.target.value as any })}
+          className="w-full h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-sans"
+        >
+          <option value="top-right">Haut droit (Top Right)</option>
+          <option value="top-left">Haut gauche (Top Left)</option>
+          <option value="bottom-right">Bas droit (Bottom Right)</option>
+          <option value="bottom-left">Bas gauche (Bottom Left)</option>
+        </select>
+      </div>
+
       {/* Checkboxes */}
       <div className="space-y-2">
         <label className="flex items-center gap-2 cursor-pointer">

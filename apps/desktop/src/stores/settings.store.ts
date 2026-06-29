@@ -28,6 +28,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     density: 'normal',
     showAvatars: true,
     enableAnimations: true,
+    notificationLocation: 'top-right',
   },
   language: 'fr',
   advanced: {
@@ -37,6 +38,34 @@ const DEFAULT_SETTINGS: AppSettings = {
   github: {
     accounts: [],
     activeAccountId: null,
+  },
+  ssh: {
+    privateKeyPath: '~/.ssh/id_ed25519',
+    publicKeyPath: '~/.ssh/id_ed25519.pub',
+    useSystemAgent: true,
+  },
+  externalTools: {
+    mergeTool: 'integrated',
+    mergeToolCommand: '',
+    diffTool: 'integrated',
+    diffToolCommand: '',
+    externalEditor: 'vscode',
+    externalEditorCommand: '',
+    externalTerminal: 'system',
+    externalTerminalCommand: '',
+  },
+  notifications: {
+    enabled: true,
+    notifyOnFetch: true,
+    notifyOnPull: true,
+    notifyOnPush: true,
+    enableSound: false,
+  },
+  integrations: {
+    gitlabAccounts: [],
+    gitlabActiveAccountId: null,
+    bitbucketAccounts: [],
+    bitbucketActiveAccountId: null,
   },
 }
 

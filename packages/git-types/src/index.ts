@@ -224,8 +224,51 @@ export interface AppSettings {
   language: 'fr' | 'en'
   advanced: AdvancedSettings
   github?: GitHubSettings
+  ssh?: SSHSettings
+  externalTools?: ExternalToolsSettings
+  notifications?: NotificationSettings
+  integrations?: IntegrationSettings
 }
 
+export interface ProviderAccount {
+  id: string
+  host: string
+  token: string
+  username: string
+  avatarUrl?: string
+}
+
+export interface IntegrationSettings {
+  gitlabAccounts: ProviderAccount[]
+  gitlabActiveAccountId: string | null
+  bitbucketAccounts: ProviderAccount[]
+  bitbucketActiveAccountId: string | null
+}
+
+export interface SSHSettings {
+  privateKeyPath: string
+  publicKeyPath: string
+  useSystemAgent: boolean
+}
+
+export interface ExternalToolsSettings {
+  mergeTool: string
+  mergeToolCommand: string
+  diffTool: string
+  diffToolCommand: string
+  externalEditor: string
+  externalEditorCommand: string
+  externalTerminal: string
+  externalTerminalCommand: string
+}
+
+export interface NotificationSettings {
+  enabled: boolean
+  notifyOnFetch: boolean
+  notifyOnPull: boolean
+  notifyOnPush: boolean
+  enableSound: boolean
+}
 
 export interface OllamaSettings {
   url: string
@@ -254,6 +297,7 @@ export interface AppearanceSettings {
   density: 'compact' | 'normal' | 'comfortable'
   showAvatars: boolean
   enableAnimations: boolean
+  notificationLocation?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
 }
 
 export interface UserTheme {
