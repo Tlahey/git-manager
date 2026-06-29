@@ -1,0 +1,36 @@
+import React from 'react'
+
+interface InnerTabProps {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+  count?: number
+  loading?: boolean
+}
+
+export function InnerTab({ active, onClick, children, count, loading }: InnerTabProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={`relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors border-b-2 ${
+        active
+          ? 'border-primary text-foreground'
+          : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+      }`}
+    >
+      {children}
+      {count !== undefined &&
+        (loading ? (
+          <span className="w-5 h-3.5 rounded-full bg-muted/65 animate-pulse" />
+        ) : (
+          <span
+            className={`rounded-full px-1.5 py-px text-[9px] font-semibold leading-none ${
+              active ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            {count}
+          </span>
+        ))}
+    </button>
+  )
+}

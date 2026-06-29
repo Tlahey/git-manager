@@ -1,0 +1,271 @@
+import type { MockPR, MockIssue, DayCommit } from './types'
+
+function daysAgo(n: number): Date {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d
+}
+
+function dateKey(d: Date): string {
+  return d.toISOString().slice(0, 10)
+}
+
+const AVATARS = [
+  'https://avatars.githubusercontent.com/u/1?v=4',
+  'https://avatars.githubusercontent.com/u/2?v=4',
+  'https://avatars.githubusercontent.com/u/3?v=4',
+  'https://avatars.githubusercontent.com/u/4?v=4',
+  'https://avatars.githubusercontent.com/u/5?v=4',
+]
+
+export const MOCK_PRS: MockPR[] = [
+  {
+    id: 'pr-1',
+    number: 247,
+    title: 'feat: Add Launchpad page with PR overview',
+    repo: 'git-manager',
+    repoUrl: 'https://github.com/Tlahey/git-manager',
+    url: 'https://github.com/Tlahey/git-manager/pull/247',
+    status: 'open',
+    ciStatus: 'running',
+    author: 'antoine',
+    authorAvatar: AVATARS[0],
+    collaborators: [{ login: 'marie', avatar: AVATARS[1] }],
+    filesChanged: 12,
+    additions: 342,
+    deletions: 58,
+    createdAt: daysAgo(1),
+    updatedAt: daysAgo(0),
+    reviewStatus: 'pending',
+    isDraft: false,
+    needsMyReview: true,
+    labels: ['feature', 'ui'],
+    comments: 3,
+    ciDetails: [
+      { name: 'Build Desktop App', status: 'success' },
+      { name: 'Run Unit Tests', status: 'running' },
+      { name: 'ESLint & Prettier', status: 'success' },
+    ],
+  },
+  {
+    id: 'pr-2',
+    number: 244,
+    title: 'fix: Memory leak in GraphRow',
+    repo: 'git-manager',
+    repoUrl: 'https://github.com/Tlahey/git-manager',
+    url: 'https://github.com/Tlahey/git-manager/pull/244',
+    status: 'approved',
+    ciStatus: 'success',
+    author: 'marie',
+    authorAvatar: AVATARS[1],
+    collaborators: [{ login: 'antoine', avatar: AVATARS[0] }],
+    filesChanged: 4,
+    additions: 23,
+    deletions: 67,
+    createdAt: daysAgo(3),
+    updatedAt: daysAgo(1),
+    reviewStatus: 'approved',
+    isDraft: false,
+    needsMyReview: false,
+    labels: ['bugfix'],
+    comments: 7,
+    ciDetails: [
+      { name: 'Build Desktop App', status: 'success' },
+      { name: 'Run Unit Tests', status: 'success' },
+      { name: 'ESLint & Prettier', status: 'success' },
+    ],
+  },
+  {
+    id: 'pr-3',
+    number: 241,
+    title: 'chore: Bump Tauri to v2.2',
+    repo: 'git-manager',
+    repoUrl: 'https://github.com/Tlahey/git-manager',
+    url: 'https://github.com/Tlahey/git-manager/pull/241',
+    status: 'draft',
+    ciStatus: 'skipped',
+    author: 'lucas',
+    authorAvatar: AVATARS[2],
+    collaborators: [],
+    filesChanged: 8,
+    additions: 156,
+    deletions: 89,
+    createdAt: daysAgo(5),
+    updatedAt: daysAgo(2),
+    reviewStatus: 'pending',
+    isDraft: true,
+    needsMyReview: false,
+    labels: ['chore'],
+    comments: 0,
+    ciDetails: [
+      { name: 'Build Desktop App', status: 'skipped' },
+      { name: 'Run Unit Tests', status: 'skipped' },
+      { name: 'ESLint & Prettier', status: 'skipped' },
+    ],
+  },
+  {
+    id: 'pr-4',
+    number: 238,
+    title: 'feat: GitHub OAuth integration',
+    repo: 'git-manager',
+    repoUrl: 'https://github.com/Tlahey/git-manager',
+    url: 'https://github.com/Tlahey/git-manager/pull/238',
+    status: 'changes_requested',
+    ciStatus: 'failure',
+    author: 'sophie',
+    authorAvatar: AVATARS[3],
+    collaborators: [{ login: 'antoine', avatar: AVATARS[0] }],
+    filesChanged: 23,
+    additions: 891,
+    deletions: 203,
+    createdAt: daysAgo(7),
+    updatedAt: daysAgo(1),
+    reviewStatus: 'changes_requested',
+    isDraft: false,
+    needsMyReview: true,
+    labels: ['feature', 'auth'],
+    comments: 14,
+    needsRebase: true,
+    ciDetails: [
+      { name: 'Build Desktop App', status: 'failure' },
+      { name: 'Run Unit Tests', status: 'success' },
+      { name: 'ESLint & Prettier', status: 'success' },
+    ],
+  },
+  {
+    id: 'pr-5',
+    number: 235,
+    title: 'refactor: Extract sidebar component',
+    repo: 'git-manager',
+    repoUrl: 'https://github.com/Tlahey/git-manager',
+    url: 'https://github.com/Tlahey/git-manager/pull/235',
+    status: 'open',
+    ciStatus: 'success',
+    author: 'antoine',
+    authorAvatar: AVATARS[0],
+    collaborators: [{ login: 'lucas', avatar: AVATARS[2] }],
+    filesChanged: 6,
+    additions: 112,
+    deletions: 98,
+    createdAt: daysAgo(10),
+    updatedAt: daysAgo(3),
+    reviewStatus: 'commented',
+    isDraft: false,
+    needsMyReview: false,
+    labels: ['refactor'],
+    comments: 5,
+    ciDetails: [
+      { name: 'Build Desktop App', status: 'success' },
+      { name: 'Run Unit Tests', status: 'success' },
+      { name: 'ESLint & Prettier', status: 'success' },
+    ],
+  },
+  {
+    id: 'pr-6',
+    number: 230,
+    title: 'fix: Dark mode color tokens',
+    repo: 'analytics-lib',
+    repoUrl: 'https://github.com/Tlahey/analytics-lib',
+    url: 'https://github.com/Tlahey/analytics-lib/pull/230',
+    status: 'closed',
+    ciStatus: 'failure',
+    author: 'tom',
+    authorAvatar: AVATARS[4],
+    collaborators: [],
+    filesChanged: 2,
+    additions: 14,
+    deletions: 8,
+    createdAt: daysAgo(14),
+    updatedAt: daysAgo(10),
+    reviewStatus: 'pending',
+    isDraft: false,
+    needsMyReview: false,
+    labels: ['bugfix', 'ui'],
+    comments: 2,
+    ciDetails: [
+      { name: 'Build Desktop App', status: 'failure' },
+      { name: 'Run Unit Tests', status: 'failure' },
+      { name: 'ESLint & Prettier', status: 'success' },
+    ],
+  },
+]
+
+export const MOCK_ISSUES: MockIssue[] = [
+  {
+    id: 'issue-1',
+    number: 312,
+    title: 'Tab close button overlaps text on narrow screens',
+    repo: 'git-manager',
+    url: 'https://github.com/Tlahey/git-manager/issues/312',
+    status: 'open',
+    author: 'sophie',
+    authorAvatar: AVATARS[3],
+    assignees: [{ login: 'antoine', avatar: AVATARS[0] }],
+    labels: ['bug', 'ui'],
+    createdAt: daysAgo(2),
+    updatedAt: daysAgo(0),
+    comments: 3,
+  },
+  {
+    id: 'issue-2',
+    number: 308,
+    title: 'Graph line glitches on Retina displays',
+    repo: 'git-manager',
+    url: 'https://github.com/Tlahey/git-manager/issues/308',
+    status: 'open',
+    author: 'tom',
+    authorAvatar: AVATARS[4],
+    assignees: [{ login: 'marie', avatar: AVATARS[1] }],
+    labels: ['bug', 'performance'],
+    createdAt: daysAgo(5),
+    updatedAt: daysAgo(2),
+    comments: 7,
+  },
+  {
+    id: 'issue-3',
+    number: 301,
+    title: 'Add keyboard shortcuts for common operations',
+    repo: 'git-manager',
+    url: 'https://github.com/Tlahey/git-manager/issues/301',
+    status: 'open',
+    author: 'marie',
+    authorAvatar: AVATARS[1],
+    assignees: [],
+    labels: ['enhancement', 'ux'],
+    createdAt: daysAgo(8),
+    updatedAt: daysAgo(3),
+    comments: 12,
+  },
+  {
+    id: 'issue-4',
+    number: 298,
+    title: 'Support SSH key passphrase on clone',
+    repo: 'git-manager',
+    url: 'https://github.com/Tlahey/git-manager/issues/298',
+    status: 'closed',
+    author: 'lucas',
+    authorAvatar: AVATARS[2],
+    assignees: [{ login: 'antoine', avatar: AVATARS[0] }],
+    labels: ['feature', 'security'],
+    createdAt: daysAgo(12),
+    updatedAt: daysAgo(5),
+    comments: 4,
+  },
+]
+
+export function getMockContributions(): DayCommit[] {
+  return Array.from({ length: 365 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (364 - i))
+    const dow = d.getDay()
+    const commits =
+      dow === 0 || dow === 6
+        ? Math.random() < 0.3
+          ? Math.floor(Math.random() * 4)
+          : 0
+        : Math.random() < 0.7
+          ? Math.floor(Math.random() * 10) + 1
+          : 0
+    return { date: dateKey(d), commits }
+  })
+}
