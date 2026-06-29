@@ -254,11 +254,11 @@ function useGitHubData(): GitHubData {
   const token = activeAccount?.token ?? null
   const username = activeAccount?.user?.login ?? null
 
-  const [prs, setPrs] = useState<MockPR[]>(MOCK_PRS)
-  const [issues, setIssues] = useState<MockIssue[]>(MOCK_ISSUES)
+  const [prs, setPrs] = useState<MockPR[]>((token && username) ? [] : MOCK_PRS)
+  const [issues, setIssues] = useState<MockIssue[]>((token && username) ? [] : MOCK_ISSUES)
   const [commitDays, setCommitDays] = useState<DayCommit[]>([])
   const [yearDays, setYearDays] = useState<DayCommit[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(!!token && !!username)
   const [error, setError] = useState<string | null>(null)
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
   const [refreshTick, setRefreshTick] = useState(0)
@@ -287,6 +287,7 @@ function useGitHubData(): GitHubData {
       setYearDays(fakeYear)
       setCommitDays(fakeYear.slice(-14))
       setLastRefreshed(new Date())
+      setLoading(false)
       return
     }
 
@@ -440,6 +441,70 @@ function CiBadge({ status }: { status: CiStatus }) {
   return <span className="text-[9px] text-muted-foreground/40">Skip</span>
 }
 
+function PRRowSkeleton() {
+  return (
+    <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border/30 last:border-0 animate-pulse">
+      <div className="w-3 h-3 rounded-full bg-muted/60 shrink-0" />
+      <div className="w-4 h-4 rounded bg-muted/60 shrink-0" />
+      <div className="flex-1 min-w-0 space-y-2">
+        <div className="h-3 w-2/3 bg-muted/80 rounded" />
+        <div className="flex gap-2">
+          <div className="h-2 w-16 bg-muted/40 rounded" />
+          <div className="h-2.5 w-12 bg-muted/40 rounded" />
+        </div>
+      </div>
+      <div className="w-[52px] h-2.5 bg-muted/40 rounded shrink-0" />
+      <div className="w-[80px] flex justify-center shrink-0">
+        <div className="w-14 h-4 bg-muted/60 rounded" />
+      </div>
+      <div className="w-[90px] flex items-center gap-1.5 shrink-0">
+        <div className="w-[18px] h-[18px] rounded-full bg-muted/60" />
+        <div className="h-2 w-12 bg-muted/40 rounded" />
+      </div>
+      <div className="w-[60px] flex justify-center shrink-0">
+        <div className="w-[18px] h-[18px] rounded-full bg-muted/40" />
+      </div>
+      <div className="w-[110px] shrink-0">
+        <div className="h-2 w-16 bg-muted/40 rounded" />
+      </div>
+      <div className="w-[60px] flex justify-center shrink-0">
+        <div className="w-8 h-2.5 bg-muted/40 rounded" />
+      </div>
+      <div className="w-6 h-6 rounded bg-muted/30 shrink-0" />
+    </div>
+  )
+}
+
+function IssueRowSkeleton() {
+  return (
+    <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border/30 last:border-0 animate-pulse">
+      <div className="w-4 h-4 rounded bg-muted/60 shrink-0" />
+      <div className="flex-1 min-w-0 space-y-2">
+        <div className="h-3 w-1/2 bg-muted/80 rounded" />
+        <div className="flex gap-2">
+          <div className="h-2.5 w-12 bg-muted/40 rounded" />
+          <div className="h-2 w-6 bg-muted/40 rounded" />
+        </div>
+      </div>
+      <div className="w-[52px] h-2.5 bg-muted/40 rounded shrink-0" />
+      <div className="w-[70px] flex justify-center shrink-0">
+        <div className="w-12 h-4 bg-muted/60 rounded" />
+      </div>
+      <div className="w-[90px] flex items-center gap-1.5 shrink-0">
+        <div className="w-[18px] h-[18px] rounded-full bg-muted/60" />
+        <div className="h-2 w-12 bg-muted/40 rounded" />
+      </div>
+      <div className="w-[60px] flex justify-center shrink-0">
+        <div className="w-[18px] h-[18px] rounded-full bg-muted/40" />
+      </div>
+      <div className="w-[110px] shrink-0">
+        <div className="h-2 w-16 bg-muted/40 rounded" />
+      </div>
+      <div className="w-6 h-6 rounded bg-muted/30 shrink-0" />
+    </div>
+  )
+}
+
 function AvatarStack({ users, max = 3 }: { users: Collaborator[]; max?: number }) {
   const shown = users.slice(0, max); const extra = users.length - max
   return (
@@ -450,21 +515,31 @@ function AvatarStack({ users, max = 3 }: { users: Collaborator[]; max?: number }
   )
 }
 
-function KpiCard({ icon, label, value, sub, accent }: { icon: React.ReactNode; label: string; value: string | number; sub?: string; accent?: string }) {
+function KpiCard({ icon, label, value, sub, accent, loading }: { icon: React.ReactNode; label: string; value: string | number; sub?: string; accent?: string; loading?: boolean }) {
   return (
     <div className={`flex flex-col gap-1.5 rounded-xl border border-border bg-card/60 px-4 py-3 backdrop-blur-sm shadow-sm flex-1 min-w-0 transition-all hover:border-border/80 hover:shadow-md ${accent ?? ''}`}>
       <div className="flex items-center gap-2 text-muted-foreground">{icon}<span className="text-[10px] font-medium uppercase tracking-wider">{label}</span></div>
-      <span className="text-2xl font-bold text-foreground leading-none">{value}</span>
+      {loading ? (
+        <div className="h-6 w-12 bg-muted/60 animate-pulse rounded my-1" />
+      ) : (
+        <span className="text-2xl font-bold text-foreground leading-none">{value}</span>
+      )}
       {sub && <span className="text-[10px] text-muted-foreground">{sub}</span>}
     </div>
   )
 }
 
-function InnerTab({ active, onClick, children, count }: { active: boolean; onClick: () => void; children: React.ReactNode; count?: number }) {
+function InnerTab({ active, onClick, children, count, loading }: { active: boolean; onClick: () => void; children: React.ReactNode; count?: number; loading?: boolean }) {
   return (
     <button onClick={onClick} className={`relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors border-b-2 ${active ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}`}>
       {children}
-      {count !== undefined && <span className={`rounded-full px-1.5 py-px text-[9px] font-semibold leading-none ${active ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>{count}</span>}
+      {count !== undefined && (
+        loading ? (
+          <span className="w-5 h-3.5 rounded-full bg-muted/65 animate-pulse" />
+        ) : (
+          <span className={`rounded-full px-1.5 py-px text-[9px] font-semibold leading-none ${active ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>{count}</span>
+        )
+      )}
     </button>
   )
 }
@@ -795,9 +870,10 @@ function useSetFilter(): [Set<string>, (v: string) => void, () => void] {
 
 // ─── Pull Requests Tab ────────────────────────────────────────────────────────
 
-function PullRequestsTab({ allPRs, followedPRs, pinnedIds, onTogglePin, onAddFollowed, onRemoveFollowed }: {
+function PullRequestsTab({ allPRs, followedPRs, pinnedIds, onTogglePin, onAddFollowed, onRemoveFollowed, loading }: {
   allPRs: MockPR[]; followedPRs: MockPR[]; pinnedIds: Set<string>
   onTogglePin: (id: string) => void; onAddFollowed: (pr: MockPR) => void; onRemoveFollowed: (id: string) => void
+  loading: boolean
 }) {
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('date')
@@ -840,49 +916,60 @@ function PullRequestsTab({ allPRs, followedPRs, pinnedIds, onTogglePin, onAddFol
       <Toolbar search={search} onSearch={setSearch} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} statusFilter={statusFilter} onToggleStatus={toggleStatus} onClearStatus={clearStatus} repoFilter={repoFilter} onToggleRepo={toggleRepo} onClearRepo={clearRepo} authorFilter={authorFilter} onToggleAuthor={toggleAuthor} onClearAuthor={clearAuthor} repos={repos} statuses={statuses} authors={authors} />
       <TableHeader />
       <div className="flex-1 overflow-y-auto">
-        {pinnedPRs.length > 0 && (<>
-          <GroupHeader label="Pinned" count={pinnedPRs.length} open={gPinnedOpen} onToggle={() => setGPinnedOpen(v => !v)} accent="text-amber-400" />
-          {gPinnedOpen && pinnedPRs.map(pr => <PRRow key={pr.id} pr={pr} pinned onTogglePin={onTogglePin} />)}
-        </>)}
-        <GroupHeader label="Needs my review" count={needsReview.length} open={gNeedsOpen} onToggle={() => setGNeedsOpen(v => !v)} accent="text-orange-400" />
-        {gNeedsOpen && (<>
-          {needsReview.length === 0 && <div className="flex items-center justify-center py-6 text-xs text-muted-foreground/50"><Eye className="h-4 w-4 mr-2 opacity-30" /> No PRs waiting for your review</div>}
-          {needsReview.slice(0, shownNeeds).map(pr => <PRRow key={pr.id} pr={pr} pinned={false} onTogglePin={onTogglePin} />)}
-          <LoadMore total={needsReview.length} shown={shownNeeds} onLoadMore={() => setShownNeeds(n => n + PAGE_SIZE)} />
-        </>)}
-        <GroupHeader label="Other pull requests" count={other.length} open={gOtherOpen} onToggle={() => setGOtherOpen(v => !v)} />
-        {gOtherOpen && (<>
-          {other.length === 0 && <div className="flex items-center justify-center py-6 text-xs text-muted-foreground/50"><GitPullRequest className="h-4 w-4 mr-2 opacity-30" /> No pull requests</div>}
-          {other.slice(0, shownOther).map(pr => <PRRow key={pr.id} pr={pr} pinned={false} onTogglePin={onTogglePin} />)}
-          <LoadMore total={other.length} shown={shownOther} onLoadMore={() => setShownOther(n => n + PAGE_SIZE)} />
-        </>)}
-        {/* Followed */}
-        <div className="flex items-center border-b border-border/50">
-          <button onClick={() => setGFollowedOpen(v => !v)} className="flex flex-1 items-center gap-2 px-4 py-2 bg-muted/20 hover:bg-muted/30 transition-colors">
-            {gFollowedOpen ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-400">Followed PRs</span>
-            <span className="rounded-full px-1.5 py-px text-[9px] font-bold leading-none bg-sky-500/20 text-sky-400">{followedFiltered.length}</span>
-          </button>
-          <button onClick={() => setShowFollowDialog(true)} className="flex items-center gap-1 mx-2 h-6 px-2 rounded border border-dashed border-border hover:border-primary/40 hover:bg-primary/5 text-muted-foreground hover:text-primary text-[10px] transition-colors">
-            <Plus className="h-3 w-3" /> Add by URL
-          </button>
-        </div>
-        {gFollowedOpen && (<>
-          {followedFiltered.length === 0 && <div className="flex flex-col items-center justify-center py-6 gap-2 text-muted-foreground/50">
-            <BookOpen className="h-5 w-5 opacity-30" />
-            <p className="text-xs">No followed PRs yet.</p>
-            <button onClick={() => setShowFollowDialog(true)} className="flex items-center gap-1 text-[10px] text-primary hover:underline"><Plus className="h-3 w-3" /> Add PR by URL</button>
-          </div>}
-          {followedFiltered.map(pr => (
-            <div key={pr.id} className="relative group/followed">
-              <PRRow pr={pr} pinned={pinnedIds.has(pr.id)} onTogglePin={onTogglePin} />
-              <button onClick={e => { e.stopPropagation(); onRemoveFollowed(pr.id) }}
-                className="absolute right-10 top-1/2 -translate-y-1/2 opacity-0 group-hover/followed:opacity-100 h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive transition-all"
-                title="Remove"><Trash2 className="h-3 w-3" />
+        {loading ? (
+          <>
+            <PRRowSkeleton />
+            <PRRowSkeleton />
+            <PRRowSkeleton />
+            <PRRowSkeleton />
+          </>
+        ) : (
+          <>
+            {pinnedPRs.length > 0 && (<>
+              <GroupHeader label="Pinned" count={pinnedPRs.length} open={gPinnedOpen} onToggle={() => setGPinnedOpen(v => !v)} accent="text-amber-400" />
+              {gPinnedOpen && pinnedPRs.map(pr => <PRRow key={pr.id} pr={pr} pinned onTogglePin={onTogglePin} />)}
+            </>)}
+            <GroupHeader label="Needs my review" count={needsReview.length} open={gNeedsOpen} onToggle={() => setGNeedsOpen(v => !v)} accent="text-orange-400" />
+            {gNeedsOpen && (<>
+              {needsReview.length === 0 && <div className="flex items-center justify-center py-6 text-xs text-muted-foreground/50"><Eye className="h-4 w-4 mr-2 opacity-30" /> No PRs waiting for your review</div>}
+              {needsReview.slice(0, shownNeeds).map(pr => <PRRow key={pr.id} pr={pr} pinned={false} onTogglePin={onTogglePin} />)}
+              <LoadMore total={needsReview.length} shown={shownNeeds} onLoadMore={() => setShownNeeds(n => n + PAGE_SIZE)} />
+            </>)}
+            <GroupHeader label="Other pull requests" count={other.length} open={gOtherOpen} onToggle={() => setGOtherOpen(v => !v)} />
+            {gOtherOpen && (<>
+              {other.length === 0 && <div className="flex items-center justify-center py-6 text-xs text-muted-foreground/50"><GitPullRequest className="h-4 w-4 mr-2 opacity-30" /> No pull requests</div>}
+              {other.slice(0, shownOther).map(pr => <PRRow key={pr.id} pr={pr} pinned={false} onTogglePin={onTogglePin} />)}
+              <LoadMore total={other.length} shown={shownOther} onLoadMore={() => setShownOther(n => n + PAGE_SIZE)} />
+            </>)}
+            {/* Followed */}
+            <div className="flex items-center border-b border-border/50">
+              <button onClick={() => setGFollowedOpen(v => !v)} className="flex flex-1 items-center gap-2 px-4 py-2 bg-muted/20 hover:bg-muted/30 transition-colors">
+                {gFollowedOpen ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-400">Followed PRs</span>
+                <span className="rounded-full px-1.5 py-px text-[9px] font-bold leading-none bg-sky-500/20 text-sky-400">{followedFiltered.length}</span>
+              </button>
+              <button onClick={() => setShowFollowDialog(true)} className="flex items-center gap-1 mx-2 h-6 px-2 rounded border border-dashed border-border hover:border-primary/40 hover:bg-primary/5 text-muted-foreground hover:text-primary text-[10px] transition-colors">
+                <Plus className="h-3 w-3" /> Add by URL
               </button>
             </div>
-          ))}
-        </>)}
+            {gFollowedOpen && (<>
+              {followedFiltered.length === 0 && <div className="flex flex-col items-center justify-center py-6 gap-2 text-muted-foreground/50">
+                <BookOpen className="h-5 w-5 opacity-30" />
+                <p className="text-xs">No followed PRs yet.</p>
+                <button onClick={() => setShowFollowDialog(true)} className="flex items-center gap-1 text-[10px] text-primary hover:underline"><Plus className="h-3 w-3" /> Add PR by URL</button>
+              </div>}
+              {followedFiltered.map(pr => (
+                <div key={pr.id} className="relative group/followed">
+                  <PRRow pr={pr} pinned={pinnedIds.has(pr.id)} onTogglePin={onTogglePin} />
+                  <button onClick={e => { e.stopPropagation(); onRemoveFollowed(pr.id) }}
+                    className="absolute right-10 top-1/2 -translate-y-1/2 opacity-0 group-hover/followed:opacity-100 h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive transition-all"
+                    title="Remove"><Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </>)}
+          </>
+        )}
       </div>
       {showFollowDialog && <FollowPRDialog onAdd={url => { const pr = parseFollowedPR(url); if (pr) onAddFollowed(pr) }} onClose={() => setShowFollowDialog(false)} />}
     </div>
@@ -891,7 +978,7 @@ function PullRequestsTab({ allPRs, followedPRs, pinnedIds, onTogglePin, onAddFol
 
 // ─── Issues Tab ───────────────────────────────────────────────────────────────
 
-function IssuesTab({ allIssues }: { allIssues: MockIssue[] }) {
+function IssuesTab({ allIssues, loading }: { allIssues: MockIssue[]; loading: boolean }) {
   const [search, setSearch] = useState(''); const [sortKey, setSortKey] = useState<SortKey>('date'); const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [statusFilter, toggleStatus, clearStatus] = useSetFilter()
   const [repoFilter, toggleRepo, clearRepo] = useSetFilter()
@@ -915,7 +1002,14 @@ function IssuesTab({ allIssues }: { allIssues: MockIssue[] }) {
         <div className="w-4 shrink-0" /><div className="flex-1 min-w-0">Item</div><div className="shrink-0 w-[52px] text-right">Updated</div><div className="shrink-0 w-[70px] text-center">Status</div><div className="shrink-0 w-[90px]">Author</div><div className="shrink-0 w-[60px] text-center">Assigned</div><div className="shrink-0 w-[110px]">Repo</div><div className="shrink-0 w-6" />
       </div>
       <div className="flex-1 overflow-y-auto">
-        {filtered.length === 0 ? <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground/50"><AlertCircle className="h-6 w-6 opacity-30" /><p className="text-xs">No issues match your filters</p></div>
+        {loading ? (
+          <>
+            <IssueRowSkeleton />
+            <IssueRowSkeleton />
+            <IssueRowSkeleton />
+            <IssueRowSkeleton />
+          </>
+        ) : filtered.length === 0 ? <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground/50"><AlertCircle className="h-6 w-6 opacity-30" /><p className="text-xs">No issues match your filters</p></div>
           : <>{filtered.slice(0, shown).map(issue => <IssueRow key={issue.id} issue={issue} />)}<LoadMore total={filtered.length} shown={shown} onLoadMore={() => setShown(n => n + PAGE_SIZE)} /></>}
       </div>
     </div>
@@ -924,7 +1018,7 @@ function IssuesTab({ allIssues }: { allIssues: MockIssue[] }) {
 
 // ─── Waiting for Review Tab ───────────────────────────────────────────────────
 
-function WaitingForReviewTab({ allPRs, pinnedIds, onTogglePin }: { allPRs: MockPR[]; pinnedIds: Set<string>; onTogglePin: (id: string) => void }) {
+function WaitingForReviewTab({ allPRs, pinnedIds, onTogglePin, loading }: { allPRs: MockPR[]; pinnedIds: Set<string>; onTogglePin: (id: string) => void; loading: boolean }) {
   const [search, setSearch] = useState(''); const [sortKey, setSortKey] = useState<SortKey>('date'); const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [statusFilter, toggleStatus, clearStatus] = useSetFilter()
   const [repoFilter, toggleRepo, clearRepo] = useSetFilter()
@@ -946,7 +1040,14 @@ function WaitingForReviewTab({ allPRs, pinnedIds, onTogglePin }: { allPRs: MockP
       <Toolbar search={search} onSearch={setSearch} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} statusFilter={statusFilter} onToggleStatus={toggleStatus} onClearStatus={clearStatus} repoFilter={repoFilter} onToggleRepo={toggleRepo} onClearRepo={clearRepo} authorFilter={authorFilter} onToggleAuthor={toggleAuthor} onClearAuthor={clearAuthor} repos={repos} statuses={statuses} authors={authors} />
       <TableHeader />
       <div className="flex-1 overflow-y-auto">
-        {waitingPRs.length === 0 ? <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground/50"><CheckSquare className="h-6 w-6 opacity-30" /><p className="text-xs">You're all caught up</p></div>
+        {loading ? (
+          <>
+            <PRRowSkeleton />
+            <PRRowSkeleton />
+            <PRRowSkeleton />
+            <PRRowSkeleton />
+          </>
+        ) : waitingPRs.length === 0 ? <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground/50"><CheckSquare className="h-6 w-6 opacity-30" /><p className="text-xs">You're all caught up</p></div>
           : <>{waitingPRs.slice(0, shown).map(pr => <PRRow key={pr.id} pr={pr} pinned={pinnedIds.has(pr.id)} onTogglePin={onTogglePin} />)}<LoadMore total={waitingPRs.length} shown={shown} onLoadMore={() => setShown(n => n + PAGE_SIZE)} /></>}
       </div>
     </div>
@@ -1046,7 +1147,7 @@ function YearHeatmap({ yearDays }: { yearDays: DayCommit[] }) {
 
 // ─── Commit Stats Tab ─────────────────────────────────────────────────────────
 
-function CommitStatsTab({ commitDays, yearDays }: { commitDays: DayCommit[]; yearDays: DayCommit[] }) {
+function CommitStatsTab({ commitDays, yearDays, loading }: { commitDays: DayCommit[]; yearDays: DayCommit[]; loading: boolean }) {
   const max14 = Math.max(...commitDays.map(d => d.commits), 1)
   const total14 = commitDays.reduce((s, d) => s + d.commits, 0)
   const avg14 = commitDays.length ? (total14 / commitDays.length).toFixed(1) : '0'
@@ -1057,45 +1158,69 @@ function CommitStatsTab({ commitDays, yearDays }: { commitDays: DayCommit[]; yea
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex-1 overflow-y-auto p-5 space-y-5">
         <div className="grid grid-cols-4 gap-3">
-          <KpiCard icon={<GitCommit className="h-3.5 w-3.5" />} label="Total commits" value={totalYear} sub="Last 365 days" />
-          <KpiCard icon={<Activity className="h-3.5 w-3.5" />} label="Daily avg (14d)" value={avg14} sub="Commits / day" />
-          <KpiCard icon={<TrendingUp className="h-3.5 w-3.5" />} label="Last 14 days" value={total14} sub="Push events" />
-          <KpiCard icon={<Star className="h-3.5 w-3.5" />} label="Current streak" value={`${streak}d`} sub="Consecutive days" />
+          <KpiCard icon={<GitCommit className="h-3.5 w-3.5" />} label="Total commits" value={totalYear} sub="Last 365 days" loading={loading} />
+          <KpiCard icon={<Activity className="h-3.5 w-3.5" />} label="Daily avg (14d)" value={avg14} sub="Commits / day" loading={loading} />
+          <KpiCard icon={<TrendingUp className="h-3.5 w-3.5" />} label="Last 14 days" value={total14} sub="Push events" loading={loading} />
+          <KpiCard icon={<Star className="h-3.5 w-3.5" />} label="Current streak" value={`${streak}d`} sub="Consecutive days" loading={loading} />
         </div>
         <div className="rounded-xl border border-border bg-card/50 p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /><h3 className="text-sm font-semibold">Contribution activity</h3></div>
-            <span className="text-[10px] text-muted-foreground">{totalYear} contributions in the last year</span>
+            {loading ? (
+              <div className="w-32 h-3 bg-muted/40 animate-pulse rounded" />
+            ) : (
+              <span className="text-[10px] text-muted-foreground">{totalYear} contributions in the last year</span>
+            )}
           </div>
-          <div className="heatmap-container relative overflow-x-auto pb-1"><YearHeatmap yearDays={yearDays} /></div>
+          <div className="heatmap-container relative overflow-x-auto pb-1">
+            {loading ? (
+              <div className="w-full h-[100px] bg-muted/20 animate-pulse rounded-lg flex items-center justify-center text-[10px] text-muted-foreground/40">Loading contribution map...</div>
+            ) : (
+              <YearHeatmap yearDays={yearDays} />
+            )}
+          </div>
         </div>
         <div className="rounded-xl border border-border bg-card/50 p-5">
           <div className="flex items-center justify-between mb-4"><div className="flex items-center gap-2"><BarChart2 className="h-4 w-4 text-primary" /><h3 className="text-sm font-semibold">Last 14 days — daily activity</h3></div></div>
-          <div className="flex items-end gap-1" style={{ height: 100 }}>
-            {commitDays.map((day, i) => { const pct = max14 > 0 ? (day.commits / max14) * 100 : 0; return (
-              <div key={i} className="flex flex-col items-center gap-1 flex-1 group/bar">
-                <div className="relative w-full flex items-end justify-center" style={{ height: 80 }}>
-                  {day.commits > 0 ? <div className="w-full rounded-t bg-primary/70 group-hover/bar:bg-primary transition-all duration-200 relative" style={{ height: `${Math.max(pct, 4)}%` }}><div className="absolute -top-5 left-1/2 -translate-x-1/2 hidden group-hover/bar:block text-[9px] bg-popover border border-border rounded px-1 py-px text-foreground whitespace-nowrap shadow">{day.commits}</div></div> : <div className="w-full rounded-t bg-muted/30" style={{ height: '4%' }} />}
-                </div>
-                <span className="text-[8px] text-muted-foreground/50">{fmtDate(day.date).split(' ')[1]}</span>
+          {loading ? (
+            <div className="w-full h-24 bg-muted/20 animate-pulse rounded-lg" />
+          ) : (
+            <>
+              <div className="flex items-end gap-1" style={{ height: 100 }}>
+                {commitDays.map((day, i) => { const pct = max14 > 0 ? (day.commits / max14) * 100 : 0; return (
+                  <div key={i} className="flex flex-col items-center gap-1 flex-1 group/bar">
+                    <div className="relative w-full flex items-end justify-center" style={{ height: 80 }}>
+                      {day.commits > 0 ? <div className="w-full rounded-t bg-primary/70 group-hover/bar:bg-primary transition-all duration-200 relative" style={{ height: `${Math.max(pct, 4)}%` }}><div className="absolute -top-5 left-1/2 -translate-x-1/2 hidden group-hover/bar:block text-[9px] bg-popover border border-border rounded px-1 py-px text-foreground whitespace-nowrap shadow">{day.commits}</div></div> : <div className="w-full rounded-t bg-muted/30" style={{ height: '4%' }} />}
+                    </div>
+                    <span className="text-[8px] text-muted-foreground/50">{fmtDate(day.date).split(' ')[1]}</span>
+                  </div>
+                )})}
               </div>
-            )})}
-          </div>
-          <div className="flex justify-between mt-1">
-            {commitDays.length > 0 && <><span className="text-[8px] text-muted-foreground/40">{fmtDate(commitDays[0].date)}</span><span className="text-[8px] text-muted-foreground/40">{fmtDate(commitDays[commitDays.length - 1].date)}</span></>}
-          </div>
+              <div className="flex justify-between mt-1">
+                {commitDays.length > 0 && <><span className="text-[8px] text-muted-foreground/40">{fmtDate(commitDays[0].date)}</span><span className="text-[8px] text-muted-foreground/40">{fmtDate(commitDays[commitDays.length - 1].date)}</span></>}
+              </div>
+            </>
+          )}
         </div>
         <div className="rounded-xl border border-border bg-card/50 overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/10"><GitCommit className="h-3.5 w-3.5 text-primary/60" /><h3 className="text-xs font-semibold">Daily breakdown — last 14 days</h3></div>
-          <div className="divide-y divide-border/30">
-            {[...commitDays].reverse().map((day, i) => (
-              <div key={i} className="flex items-center gap-4 px-4 py-2.5 hover:bg-accent/20 transition-colors">
-                <span className="text-xs text-muted-foreground w-20 shrink-0">{fmtDate(day.date)}</span>
-                <div className="flex-1 bg-muted/20 rounded-full h-1.5 overflow-hidden"><div className="bg-primary/70 h-full rounded-full transition-all duration-500" style={{ width: max14 > 0 ? `${(day.commits / max14) * 100}%` : '0%' }} /></div>
-                <span className="text-xs font-mono text-foreground w-8 text-right shrink-0">{day.commits}</span>
-              </div>
-            ))}
-          </div>
+          {loading ? (
+            <div className="p-4 space-y-3">
+              <div className="h-3 bg-muted/40 animate-pulse rounded w-full" />
+              <div className="h-3 bg-muted/40 animate-pulse rounded w-5/6" />
+              <div className="h-3 bg-muted/40 animate-pulse rounded w-4/5" />
+            </div>
+          ) : (
+            <div className="divide-y divide-border/30">
+              {[...commitDays].reverse().map((day, i) => (
+                <div key={i} className="flex items-center gap-4 px-4 py-2.5 hover:bg-accent/20 transition-colors">
+                  <span className="text-xs text-muted-foreground w-20 shrink-0">{fmtDate(day.date)}</span>
+                  <div className="flex-1 bg-muted/20 rounded-full h-1.5 overflow-hidden"><div className="bg-primary/70 h-full rounded-full transition-all duration-500" style={{ width: max14 > 0 ? `${(day.commits / max14) * 100}%` : '0%' }} /></div>
+                  <span className="text-xs font-mono text-foreground w-8 text-right shrink-0">{day.commits}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -1258,9 +1383,10 @@ function FilterEditorDialog({ initial, onSave, onClose }: {
 
 // ─── Single Custom View ───────────────────────────────────────────────────────
 
-function CustomViewResults({ filter, allPRs, allIssues, pinnedIds, onTogglePin }: {
+function CustomViewResults({ filter, allPRs, allIssues, pinnedIds, onTogglePin, loading }: {
   filter: SavedFilter; allPRs: MockPR[]; allIssues: MockIssue[]
   pinnedIds: Set<string>; onTogglePin: (id: string) => void
+  loading: boolean
 }) {
   const [shownPRs, setShownPRs] = useState(PAGE_SIZE)
   const [shownIssues, setShownIssues] = useState(PAGE_SIZE)
@@ -1299,42 +1425,75 @@ function CustomViewResults({ filter, allPRs, allIssues, pinnedIds, onTogglePin }
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {total === 0 && (
+        {loading ? (
+          <>
+            {filter.type !== 'issues' && (
+              <>
+                {filter.type === 'both' && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-muted/15 border-b border-border/50 shrink-0">
+                    <GitPullRequest className="h-3 w-3 text-green-400" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pull Requests</span>
+                  </div>
+                )}
+                <TableHeader />
+                <PRRowSkeleton />
+                <PRRowSkeleton />
+              </>
+            )}
+            {filter.type !== 'prs' && (
+              <>
+                {filter.type === 'both' && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-muted/15 border-b border-border/50 shrink-0 mt-4">
+                    <AlertCircle className="h-3 w-3 text-blue-400" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Issues</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-3 px-4 py-1.5 bg-muted/10 border-b border-border text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60 shrink-0">
+                  <div className="w-4 shrink-0" /><div className="flex-1 min-w-0">Item</div><div className="shrink-0 w-[52px] text-right">Updated</div><div className="shrink-0 w-[70px] text-center">Status</div><div className="shrink-0 w-[90px]">Author</div><div className="shrink-0 w-[60px] text-center">Assigned</div><div className="shrink-0 w-[110px]">Repo</div><div className="shrink-0 w-6" />
+                </div>
+                <IssueRowSkeleton />
+                <IssueRowSkeleton />
+              </>
+            )}
+          </>
+        ) : total === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground/50">
             <span className="text-3xl">{filter.emoji}</span>
             <p className="text-xs">No results match this filter</p>
           </div>
-        )}
-
-        {matchedPRs.length > 0 && (
+        ) : (
           <>
-            {filter.type === 'both' && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-muted/15 border-b border-border/50 shrink-0">
-                <GitPullRequest className="h-3 w-3 text-green-400" />
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pull Requests</span>
-                <span className="rounded-full px-1.5 py-px text-[9px] font-bold leading-none bg-muted text-muted-foreground">{matchedPRs.length}</span>
-              </div>
+            {matchedPRs.length > 0 && (
+              <>
+                {filter.type === 'both' && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-muted/15 border-b border-border/50 shrink-0">
+                    <GitPullRequest className="h-3 w-3 text-green-400" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pull Requests</span>
+                    <span className="rounded-full px-1.5 py-px text-[9px] font-bold leading-none bg-muted text-muted-foreground">{matchedPRs.length}</span>
+                  </div>
+                )}
+                <TableHeader />
+                {matchedPRs.slice(0, shownPRs).map(pr => <PRRow key={pr.id} pr={pr} pinned={pinnedIds.has(pr.id)} onTogglePin={onTogglePin} />)}
+                <LoadMore total={matchedPRs.length} shown={shownPRs} onLoadMore={() => setShownPRs(n => n + PAGE_SIZE)} />
+              </>
             )}
-            <TableHeader />
-            {matchedPRs.slice(0, shownPRs).map(pr => <PRRow key={pr.id} pr={pr} pinned={pinnedIds.has(pr.id)} onTogglePin={onTogglePin} />)}
-            <LoadMore total={matchedPRs.length} shown={shownPRs} onLoadMore={() => setShownPRs(n => n + PAGE_SIZE)} />
-          </>
-        )}
 
-        {matchedIssues.length > 0 && (
-          <>
-            {filter.type === 'both' && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-muted/15 border-b border-border/50 shrink-0">
-                <AlertCircle className="h-3 w-3 text-blue-400" />
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Issues</span>
-                <span className="rounded-full px-1.5 py-px text-[9px] font-bold leading-none bg-muted text-muted-foreground">{matchedIssues.length}</span>
-              </div>
+            {matchedIssues.length > 0 && (
+              <>
+                {filter.type === 'both' && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-muted/15 border-b border-border/50 shrink-0">
+                    <AlertCircle className="h-3 w-3 text-blue-400" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Issues</span>
+                    <span className="rounded-full px-1.5 py-px text-[9px] font-bold leading-none bg-muted text-muted-foreground">{matchedIssues.length}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-3 px-4 py-1.5 bg-muted/10 border-b border-border text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60 shrink-0">
+                  <div className="w-4 shrink-0" /><div className="flex-1 min-w-0">Item</div><div className="shrink-0 w-[52px] text-right">Updated</div><div className="shrink-0 w-[70px] text-center">Status</div><div className="shrink-0 w-[90px]">Author</div><div className="shrink-0 w-[60px] text-center">Assigned</div><div className="shrink-0 w-[110px]">Repo</div><div className="shrink-0 w-6" />
+                </div>
+                {matchedIssues.slice(0, shownIssues).map(issue => <IssueRow key={issue.id} issue={issue} />)}
+                <LoadMore total={matchedIssues.length} shown={shownIssues} onLoadMore={() => setShownIssues(n => n + PAGE_SIZE)} />
+              </>
             )}
-            <div className="flex items-center gap-3 px-4 py-1.5 bg-muted/10 border-b border-border text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60 shrink-0">
-              <div className="w-4 shrink-0" /><div className="flex-1 min-w-0">Item</div><div className="shrink-0 w-[52px] text-right">Updated</div><div className="shrink-0 w-[70px] text-center">Status</div><div className="shrink-0 w-[90px]">Author</div><div className="shrink-0 w-[60px] text-center">Assigned</div><div className="shrink-0 w-[110px]">Repo</div><div className="shrink-0 w-6" />
-            </div>
-            {matchedIssues.slice(0, shownIssues).map(issue => <IssueRow key={issue.id} issue={issue} />)}
-            <LoadMore total={matchedIssues.length} shown={shownIssues} onLoadMore={() => setShownIssues(n => n + PAGE_SIZE)} />
           </>
         )}
       </div>
@@ -1344,8 +1503,9 @@ function CustomViewResults({ filter, allPRs, allIssues, pinnedIds, onTogglePin }
 
 // ─── Custom Views Tab ─────────────────────────────────────────────────────────
 
-function CustomViewsTab({ allPRs, allIssues, pinnedIds, onTogglePin }: {
+function CustomViewsTab({ allPRs, allIssues, pinnedIds, onTogglePin, loading }: {
   allPRs: MockPR[]; allIssues: MockIssue[]; pinnedIds: Set<string>; onTogglePin: (id: string) => void
+  loading: boolean
 }) {
   const { savedFilters, addFilter, updateFilter, deleteFilter } = useLaunchpadStore()
   const [activeFilterId, setActiveFilterId] = useState<string | null>(savedFilters[0]?.id ?? null)
@@ -1454,7 +1614,7 @@ function CustomViewsTab({ allPRs, allIssues, pinnedIds, onTogglePin }: {
               <span className="text-sm font-semibold text-foreground">{activeFilter.name}</span>
               <span className="text-[10px] text-muted-foreground/60 capitalize">— {activeFilter.type === 'both' ? 'PRs & Issues' : activeFilter.type === 'prs' ? 'Pull Requests' : 'Issues'}</span>
             </div>
-            <CustomViewResults filter={activeFilter} allPRs={allPRs} allIssues={allIssues} pinnedIds={pinnedIds} onTogglePin={onTogglePin} />
+            <CustomViewResults filter={activeFilter} allPRs={allPRs} allIssues={allIssues} pinnedIds={pinnedIds} onTogglePin={onTogglePin} loading={loading} />
           </>
         ) : (
           <div className="flex flex-col items-center justify-center flex-1 gap-4 text-muted-foreground/50">
@@ -1555,29 +1715,29 @@ export function PullRequestsPage() {
 
       {/* Overview KPI Bar */}
       <div className="flex items-stretch gap-3 px-5 py-3 border-b border-border bg-card/20 shrink-0">
-        <KpiCard icon={<GitPullRequest className="h-3.5 w-3.5 text-green-400" />} label="Open PRs" value={openPRsCount} sub="Across all repos" />
-        <KpiCard icon={<Eye className="h-3.5 w-3.5 text-orange-400" />} label="Needs review" value={needsReviewCount} sub="Waiting for you" accent="hover:border-orange-500/20" />
-        <KpiCard icon={<AlertCircle className="h-3.5 w-3.5 text-blue-400" />} label="Open issues" value={openIssuesCount} sub="Assigned or watching" />
-        <KpiCard icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />} label="CI pass rate" value={`${ciPassRate}%`} sub="Last 30 days" />
-        <KpiCard icon={<GitCommit className="h-3.5 w-3.5 text-purple-400" />} label="Commits" value={weekCommits} sub="This week" />
+        <KpiCard icon={<GitPullRequest className="h-3.5 w-3.5 text-green-400" />} label="Open PRs" value={openPRsCount} sub="Across all repos" loading={loading} />
+        <KpiCard icon={<Eye className="h-3.5 w-3.5 text-orange-400" />} label="Needs review" value={needsReviewCount} sub="Waiting for you" accent="hover:border-orange-500/20" loading={loading} />
+        <KpiCard icon={<AlertCircle className="h-3.5 w-3.5 text-blue-400" />} label="Open issues" value={openIssuesCount} sub="Assigned or watching" loading={loading} />
+        <KpiCard icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />} label="CI pass rate" value={`${ciPassRate}%`} sub="Last 30 days" loading={loading} />
+        <KpiCard icon={<GitCommit className="h-3.5 w-3.5 text-purple-400" />} label="Commits" value={weekCommits} sub="This week" loading={loading} />
       </div>
-
+ 
       {/* Inner Tab Bar */}
       <div className="flex items-center border-b border-border bg-card/30 shrink-0 px-3">
-        <InnerTab active={activeTab === 'prs'} onClick={() => setActiveTab('prs')} count={tabCounts.prs}><GitPullRequest className="h-3.5 w-3.5" /> My Pull Requests</InnerTab>
-        <InnerTab active={activeTab === 'issues'} onClick={() => setActiveTab('issues')} count={tabCounts.issues}><AlertCircle className="h-3.5 w-3.5" /> My Issues</InnerTab>
-        <InnerTab active={activeTab === 'waiting'} onClick={() => setActiveTab('waiting')} count={tabCounts.waiting}><Eye className="h-3.5 w-3.5" /> Waiting for Review</InnerTab>
+        <InnerTab active={activeTab === 'prs'} onClick={() => setActiveTab('prs')} count={tabCounts.prs} loading={loading}><GitPullRequest className="h-3.5 w-3.5" /> My Pull Requests</InnerTab>
+        <InnerTab active={activeTab === 'issues'} onClick={() => setActiveTab('issues')} count={tabCounts.issues} loading={loading}><AlertCircle className="h-3.5 w-3.5" /> My Issues</InnerTab>
+        <InnerTab active={activeTab === 'waiting'} onClick={() => setActiveTab('waiting')} count={tabCounts.waiting} loading={loading}><Eye className="h-3.5 w-3.5" /> Waiting for Review</InnerTab>
         <InnerTab active={activeTab === 'stats'} onClick={() => setActiveTab('stats')}><BarChart2 className="h-3.5 w-3.5" /> Commit Stats</InnerTab>
-        <InnerTab active={activeTab === 'views'} onClick={() => setActiveTab('views')} count={tabCounts.views}><Sliders className="h-3.5 w-3.5" /> Custom Views</InnerTab>
+        <InnerTab active={activeTab === 'views'} onClick={() => setActiveTab('views')} count={tabCounts.views} loading={loading}><Sliders className="h-3.5 w-3.5" /> Custom Views</InnerTab>
       </div>
-
+ 
       {/* Tab Content */}
       <div className="flex-1 min-h-0">
-        {activeTab === 'prs' && <PullRequestsTab allPRs={prs} followedPRs={followedPRs} pinnedIds={pinnedIds} onTogglePin={togglePin} onAddFollowed={addFollowed} onRemoveFollowed={removeFollowed} />}
-        {activeTab === 'issues' && <IssuesTab allIssues={issues} />}
-        {activeTab === 'waiting' && <WaitingForReviewTab allPRs={prs} pinnedIds={pinnedIds} onTogglePin={togglePin} />}
-        {activeTab === 'stats' && <CommitStatsTab commitDays={commitDays} yearDays={yearDays} />}
-        {activeTab === 'views' && <CustomViewsTab allPRs={prs} allIssues={issues} pinnedIds={pinnedIds} onTogglePin={togglePin} />}
+        {activeTab === 'prs' && <PullRequestsTab allPRs={prs} followedPRs={followedPRs} pinnedIds={pinnedIds} onTogglePin={togglePin} onAddFollowed={addFollowed} onRemoveFollowed={removeFollowed} loading={loading} />}
+        {activeTab === 'issues' && <IssuesTab allIssues={issues} loading={loading} />}
+        {activeTab === 'waiting' && <WaitingForReviewTab allPRs={prs} pinnedIds={pinnedIds} onTogglePin={togglePin} loading={loading} />}
+        {activeTab === 'stats' && <CommitStatsTab commitDays={commitDays} yearDays={yearDays} loading={loading} />}
+        {activeTab === 'views' && <CustomViewsTab allPRs={prs} allIssues={issues} pinnedIds={pinnedIds} onTogglePin={togglePin} loading={loading} />}
       </div>
     </div>
   )
