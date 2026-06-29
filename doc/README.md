@@ -1,6 +1,14 @@
-# git-manager
+<div align="center">
 
-> Application desktop macOS pour gérer vos dépôts Git avec une interface moderne et des outils puissants.
+<img src="../apps/desktop/src-tauri/icons/icon.png" alt="Git Manager Logo" width="128" height="128" />
+
+# Git Manager
+
+**Application desktop macOS pour gérer vos dépôts Git avec une interface moderne et des outils puissants.**
+
+</div>
+
+---
 
 ## Vue d'ensemble
 

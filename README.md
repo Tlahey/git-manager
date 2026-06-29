@@ -1,6 +1,8 @@
 <div align="center">
 
-# git-manager
+<img src="apps/desktop/src-tauri/icons/icon.png" alt="Git Manager Logo" width="128" height="128" />
+
+# Git Manager
 
 **A modern desktop Git client built with Tauri, React and Rust**
 
