@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useReposStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../../stores/repos.store'
-import { LayoutDashboard, GitPullRequest, Settings, X, GitBranch } from 'lucide-react'
+import { LayoutDashboard, Rocket, Settings, X, GitBranch } from 'lucide-react'
 import { NewTabMenu } from './NewTabMenu'
 import { UserProfile } from '../action-toolbar/UserProfile'
 
@@ -70,10 +70,10 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
         hideLabel={true}
       />
 
-      {/* Onglet Pull Requests (épinglé) */}
+      {/* Onglet Launchpad (épinglé) */}
       <PinnedTab
-        icon={<GitPullRequest className="h-3.5 w-3.5" />}
-        label="Pull Requests"
+        icon={<Rocket className="h-3.5 w-3.5" />}
+        label="Launchpad"
         active={activeTab === PULL_REQUESTS_TAB}
         onClick={() => setActiveTab(PULL_REQUESTS_TAB)}
       />
