@@ -65,6 +65,8 @@ pub struct GitGraphEdge {
     pub to_column: usize,
     pub color: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub dashed: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub starts_at_node: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ends_at_node: Option<bool>,

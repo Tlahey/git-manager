@@ -170,9 +170,11 @@ export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
 
 function WipCommitInput({
   totalChanges,
+  color,
   onCommit,
 }: {
   totalChanges: number
+  color?: string
   onCommit?: (message: string) => void
 }) {
   const [value, setValue] = useState('')
@@ -195,7 +197,8 @@ function WipCommitInput({
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="// WIP"
-        className="flex-1 min-w-0 bg-transparent text-foreground placeholder-muted-foreground/60 text-[11px] h-6 px-2 rounded border border-border/40 focus:border-primary/60 focus:outline-none transition-colors"
+        style={{ color, borderColor: color ? `${color}40` : undefined }}
+        className="flex-1 min-w-0 bg-transparent placeholder-muted-foreground/60 text-[11px] h-6 px-2 rounded border focus:border-primary/60 focus:outline-none transition-colors"
       />
       <div
         className="flex items-center gap-1 shrink-0 text-[10px] font-semibold text-muted-foreground bg-muted/40 px-2 py-0.5 rounded border border-border/30"
@@ -292,7 +295,7 @@ function CellContent({
 
     case 'message': {
       if (node.commit.oid === 'WIP') {
-        return <WipCommitInput totalChanges={totalChanges ?? 0} onCommit={onCommitWip} />
+        return <WipCommitInput totalChanges={totalChanges ?? 0} color={node.color} onCommit={onCommitWip} />
       }
       const body = commit.body?.replace(/\s+/g, ' ').trim()
       return (

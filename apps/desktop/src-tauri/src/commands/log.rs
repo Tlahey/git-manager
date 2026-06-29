@@ -384,6 +384,7 @@ pub async fn get_log(
                     from_column: from_col,
                     to_column: from_col,
                     color: edge_color,
+                    dashed: None,
                     starts_at_node: None,
                     ends_at_node: None,
                 });
@@ -398,6 +399,7 @@ pub async fn get_log(
                     from_column: mc,
                     to_column: col,
                     color: edge_color,
+                    dashed: None,
                     starts_at_node: None,
                     ends_at_node: None,
                 });
@@ -406,6 +408,7 @@ pub async fn get_log(
                     from_column: col,
                     to_column: col,
                     color: edge_color,
+                    dashed: None,
                     starts_at_node: None,
                     ends_at_node: Some(true),
                 });
@@ -421,6 +424,7 @@ pub async fn get_log(
                     from_column: col,
                     to_column: to_col,
                     color: edge_color,
+                    dashed: None,
                     starts_at_node,
                     ends_at_node: None,
                 });
@@ -482,6 +486,7 @@ pub async fn get_log(
                         from_column: 0,
                         to_column: 0,
                         color: "#7c3aed".to_string(), // Purple
+                        dashed: Some(true),
                         starts_at_node: None,
                         ends_at_node: None,
                     });
@@ -497,6 +502,7 @@ pub async fn get_log(
                         from_column: 0,
                         to_column: 0,
                         color: "#7c3aed".to_string(), // Purple
+                        dashed: Some(true),
                         starts_at_node: None,
                         ends_at_node: None,
                     });

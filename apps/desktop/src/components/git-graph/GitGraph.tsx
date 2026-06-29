@@ -102,7 +102,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
         parentOids: [firstNode.commit.oid],
       },
       column: 0,
-      color: firstNode.color,
+      color: '#7c3aed',
       connections: [
         {
           fromColumn: 0,
@@ -334,20 +334,45 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                         const oid = node.commit.oid
 
                         let nodeToRender = node
+
+                        // Trouve l'index du commit origin/main ou origin/master
+                        const originMainIndex = filteredNodes.findIndex((n) =>
+                          n.refs.some((r) => r.shortName === 'origin/main' || r.shortName === 'origin/master')
+                        )
+
+                        // 1. Si on est sur le premier commit réel (sous le WIP) et que sa colonne est 0,
+                        // on doit ajouter la connexion verticale vers le WIP.
                         if (totalChanges > 0 && virtualItem.index === 1) {
                           if (node.column === 0) {
-                            nodeToRender = {
-                              ...node,
-                              connections: [
-                                ...node.connections,
-                                {
-                                  fromColumn: 0,
-                                  toColumn: 0,
-                                  color: node.color,
-                                  dashed: true,
-                                },
-                              ],
+                            const hasCol0 = node.connections.some((c) => c.fromColumn === 0 && c.toColumn === 0)
+                            if (!hasCol0) {
+                              nodeToRender = {
+                                ...nodeToRender,
+                                connections: [
+                                  ...nodeToRender.connections,
+                                  {
+                                    fromColumn: 0,
+                                    toColumn: 0,
+                                    color: '#7c3aed',
+                                    dashed: true,
+                                  },
+                                ],
+                              }
                             }
+                          }
+                        }
+
+                        // 2. Si le nœud est situé au-dessus ou au niveau du commit origin/main,
+                        // on s'assure que toutes ses connexions verticales sur la colonne 0 soient en pointillés.
+                        if (originMainIndex !== -1 && virtualItem.index <= originMainIndex) {
+                          nodeToRender = {
+                            ...nodeToRender,
+                            connections: nodeToRender.connections.map((conn) => {
+                              if (conn.fromColumn === 0 && conn.toColumn === 0) {
+                                return { ...conn, dashed: true }
+                              }
+                              return conn
+                            }),
                           }
                         }
 
