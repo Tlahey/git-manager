@@ -127,6 +127,23 @@ function getSortedNodes(nodes: Record<string, TreeNode>): TreeNode[] {
   })
 }
 
+function findNodeByPath(root: Record<string, TreeNode>, path: string): TreeNode | null {
+  if (!path) return null
+  const parts = path.split('/')
+  let current: Record<string, TreeNode> | undefined = root
+  let node: TreeNode | null = null
+
+  for (const part of parts) {
+    if (!part) continue
+    if (!current || !current[part]) {
+      return null
+    }
+    node = current[part]
+    current = node.children
+  }
+  return node
+}
+
 interface CommitFileListProps {
   repoPath: string
   isWip: boolean
@@ -205,6 +222,12 @@ export function CommitFileList({
     }
   }, [fileSearchQuery, filteredFiles])
 
+  // Reset expanded folders when switching commits or repos
+  useEffect(() => {
+    setExpandedFolders(new Set())
+    setButtonState('expand')
+  }, [commitOid, repoPath, isWip])
+
   // Toggle expand/collapse all
   function handleToggleExpandAll() {
     if (buttonState === 'expand') {
@@ -221,17 +244,45 @@ export function CommitFileList({
   }, [filteredFiles])
 
   function toggleFolder(folderPath: string) {
+    const isExpanding = !expandedFolders.has(folderPath)
     let wasExpanded = false
+
+    const foldersToToggle = new Set<string>()
+    foldersToToggle.add(folderPath)
+
+    if (isExpanding) {
+      // Auto-expand single-child folders recursively
+      const node = findNodeByPath(fileTreeRoot, folderPath)
+      if (node) {
+        let current = node
+        while (current.isFolder && current.children) {
+          const keys = Object.keys(current.children)
+          if (keys.length === 1) {
+            const child = current.children[keys[0]]
+            if (child && child.isFolder) {
+              foldersToToggle.add(child.path)
+              current = child
+            } else {
+              break
+            }
+          } else {
+            break
+          }
+        }
+      }
+    }
+
     setExpandedFolders((prev) => {
       const next = new Set(prev)
-      if (next.has(folderPath)) {
+      if (isExpanding) {
+        foldersToToggle.forEach((path) => next.add(path))
+      } else {
         next.delete(folderPath)
         wasExpanded = true
-      } else {
-        next.add(folderPath)
       }
       return next
     })
+
     if (wasExpanded) {
       setButtonState('expand')
     }
@@ -283,6 +334,7 @@ export function CommitFileList({
             className="flex items-center gap-1.5 py-1 px-2 text-xs hover:bg-accent/40 rounded transition-colors text-left font-medium cursor-pointer w-full min-w-0"
             role="button"
             tabIndex={0}
+            data-testid={`file-tree-folder-${node.path}`}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 toggleFolder(node.path)
@@ -352,6 +404,7 @@ export function CommitFileList({
         }
         role="button"
         tabIndex={0}
+        data-testid={`file-tree-file-${node.path}`}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             onSelectFileDiff?.({
@@ -364,6 +417,7 @@ export function CommitFileList({
       >
         {/* Left: File Icon and Filename */}
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <div className="w-3 shrink-0" />
           <FileText className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
           <span className="font-mono text-foreground truncate min-w-0 flex-1">{node.name}</span>
         </div>
