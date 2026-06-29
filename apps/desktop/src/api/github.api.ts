@@ -177,3 +177,28 @@ export async function fetchGitHubContributions(username: string, token: string):
 export async function fetchRepoPRs(owner: string, repo: string, token?: string): Promise<any> {
   return ghFetch(`https://api.github.com/repos/${owner}/${repo}/pulls?state=open&per_page=100`, token)
 }
+
+// Tauri backend GitHub integration wrappers
+import {
+  githubDeviceCode,
+  githubPollToken,
+  githubGetUser,
+  githubListRepos
+} from '../lib/tauri'
+
+export async function apiGithubDeviceCode(scope: string) {
+  return githubDeviceCode(scope)
+}
+
+export async function apiGithubPollToken(deviceCode: string) {
+  return githubPollToken(deviceCode)
+}
+
+export async function apiGithubGetUser(token: string) {
+  return githubGetUser(token)
+}
+
+export async function apiGithubListRepos(token: string) {
+  return githubListRepos(token)
+}
+
