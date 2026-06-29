@@ -43,6 +43,7 @@ export function RepoView() {
           remoteUrls={repoCache[activeRepo]?.remotes ?? []}
           selectedBranch={selectedBranch}
           onSelectBranch={(name) => setSelectedBranch(name)}
+          onOpenPr={(pr) => setSelectedBranch(pr.headRef)}
           currentUser={activeAccount?.user?.login}
           githubToken={activeAccount?.token ?? undefined}
         />

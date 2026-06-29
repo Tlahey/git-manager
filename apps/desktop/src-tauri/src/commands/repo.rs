@@ -32,10 +32,16 @@ pub async fn open_repo(path: String, state: State<'_, AppState>) -> Result<GitRe
     let statuses = repo.statuses(None).map_err(AppError::Git)?;
     let is_dirty = !statuses.is_empty();
 
-    let remotes = repo
-        .remotes()
-        .map(|r| r.iter().flatten().map(|s| s.to_string()).collect())
-        .unwrap_or_default();
+    let mut remotes = Vec::new();
+    if let Ok(repo_remotes) = repo.remotes() {
+        for remote_name in repo_remotes.iter().flatten() {
+            if let Ok(remote) = repo.find_remote(remote_name) {
+                if let Some(url) = remote.url() {
+                    remotes.push(url.to_string());
+                }
+            }
+        }
+    }
 
     // Enregistrer le repo dans l'état
     state
@@ -79,10 +85,16 @@ fn build_git_repo(repo: &Repository, path: String) -> GitRepo {
         .statuses(None)
         .map(|s| !s.is_empty())
         .unwrap_or(false);
-    let remotes = repo
-        .remotes()
-        .map(|r| r.iter().flatten().map(|s| s.to_string()).collect())
-        .unwrap_or_default();
+    let mut remotes = Vec::new();
+    if let Ok(repo_remotes) = repo.remotes() {
+        for remote_name in repo_remotes.iter().flatten() {
+            if let Ok(remote) = repo.find_remote(remote_name) {
+                if let Some(url) = remote.url() {
+                    remotes.push(url.to_string());
+                }
+            }
+        }
+    }
 
     GitRepo {
         path,

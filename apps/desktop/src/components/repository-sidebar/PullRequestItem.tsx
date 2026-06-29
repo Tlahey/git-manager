@@ -5,6 +5,7 @@ import { HoverExpandLabel } from './HoverExpandLabel'
 interface PullRequestItemProps {
   pr: PullRequest
   onOpen?: (pr: PullRequest) => void
+  isSelected?: boolean
 }
 
 const STATE_STYLES: Record<string, string> = {
@@ -28,10 +29,14 @@ function CiIcon({ status }: { status: PullRequest['ciStatus'] }) {
   return <Loader2 className="h-3 w-3 animate-spin text-orange-400" />
 }
 
-export function PullRequestItem({ pr, onOpen }: PullRequestItemProps) {
+export function PullRequestItem({ pr, onOpen, isSelected = false }: PullRequestItemProps) {
   return (
     <div
-      className="group/pr relative flex cursor-pointer items-start gap-2 py-1.5 pl-6 pr-2 transition-colors hover:bg-accent/60"
+      className={`group/pr relative flex cursor-pointer items-start gap-2 py-1.5 pl-6 pr-2 transition-colors ${
+        isSelected
+          ? 'bg-accent text-foreground font-medium'
+          : 'hover:bg-accent/60'
+      }`}
       onClick={() => onOpen?.(pr)}
       role="button"
       tabIndex={0}
@@ -53,7 +58,7 @@ export function PullRequestItem({ pr, onOpen }: PullRequestItemProps) {
       {/* Contenu */}
       <div className="min-w-0 flex-1">
         {/* Titre avec hover-expand */}
-        <HoverExpandLabel className="text-xs text-foreground">
+        <HoverExpandLabel className={`text-xs ${isSelected ? 'text-foreground font-medium' : 'text-foreground'}`}>
           #{pr.number} {pr.title}
         </HoverExpandLabel>
 

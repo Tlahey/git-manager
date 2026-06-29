@@ -87,15 +87,43 @@ pub async fn get_log(
         .map_err(|e| AppError::Git(e))?;
 
     if let Some(ref branch_name) = branch {
-        let branch_ref = repo
-            .find_branch(branch_name, git2::BranchType::Local)
-            .or_else(|_| repo.find_branch(branch_name, git2::BranchType::Remote))
-            .map_err(|e| AppError::Git(e))?;
-        let target = branch_ref
-            .get()
-            .target()
-            .ok_or_else(|| "Branch has no target".to_string())?;
-        revwalk.push(target).map_err(|e| AppError::Git(e))?;
+        let mut target = None;
+        if let Ok(b) = repo.find_branch(branch_name, git2::BranchType::Local) {
+            target = b.get().target();
+        }
+        if target.is_none() {
+            if let Ok(b) = repo.find_branch(branch_name, git2::BranchType::Remote) {
+                target = b.get().target();
+            }
+        }
+        if target.is_none() {
+            if let Ok(remotes) = repo.remotes() {
+                for remote in remotes.iter().flatten() {
+                    let full_remote_branch = format!("{}/{}", remote, branch_name);
+                    if let Ok(b) = repo.find_branch(&full_remote_branch, git2::BranchType::Remote) {
+                        target = b.get().target();
+                        break;
+                    }
+                }
+            }
+        }
+        if target.is_none() {
+            if let Ok(obj) = repo.revparse_single(branch_name) {
+                target = Some(obj.id());
+            }
+        }
+        if target.is_none() {
+            let tag_ref = format!("refs/tags/{}", branch_name);
+            if let Ok(obj) = repo.revparse_single(&tag_ref) {
+                target = Some(obj.id());
+            }
+        }
+
+        if let Some(oid) = target {
+            revwalk.push(oid).map_err(|e| AppError::Git(e))?;
+        } else {
+            return Err(format!("Could not resolve branch/reference '{}'", branch_name));
+        }
     } else {
         // Parcourir toutes les branches et remotes
         let _ = revwalk.push_glob("refs/heads/*");

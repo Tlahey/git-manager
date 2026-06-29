@@ -62,6 +62,7 @@ export function RepositorySidebar({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: (index) => ROW_HEIGHT[rows[index].kind],
+    getItemKey: (index) => rows[index].id,
     overscan: 12,
   })
 

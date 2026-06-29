@@ -30,13 +30,30 @@ fn make_auth_callbacks<'a>() -> RemoteCallbacks<'a> {
     callbacks
 }
 
+fn resolve_remote_name(repo: &Repository, remote: Option<String>) -> String {
+    let name_or_url = match remote {
+        Some(name) => name,
+        None => return "origin".to_string(),
+    };
+    if let Ok(remotes) = repo.remotes() {
+        for r_name in remotes.iter().flatten() {
+            if let Ok(r) = repo.find_remote(r_name) {
+                if r.url() == Some(&name_or_url) {
+                    return r_name.to_string();
+                }
+            }
+        }
+    }
+    name_or_url
+}
+
 // ─── fetch_remote ─────────────────────────────────────────────────────────────
 
 /// Fetch depuis un remote (défaut : "origin")
 #[tauri::command]
 pub async fn fetch_remote(path: String, remote: Option<String>) -> Result<FetchResult, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
-    let remote_name = remote.unwrap_or_else(|| "origin".to_string());
+    let remote_name = resolve_remote_name(&repo, remote);
     let mut remote_obj = repo.find_remote(&remote_name).map_err(AppError::Git)?;
 
     let updated_refs: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
@@ -84,7 +101,7 @@ pub async fn pull_branch(
     fetch_remote(path.clone(), remote.clone()).await?;
 
     let repo = Repository::open(&path).map_err(AppError::Git)?;
-    let remote_name = remote.unwrap_or_else(|| "origin".to_string());
+    let remote_name = resolve_remote_name(&repo, remote);
 
     // 2. Branche courante
     let head = repo.head().map_err(AppError::Git)?;
@@ -204,7 +221,7 @@ pub async fn push_branch(
     force: Option<bool>,
 ) -> Result<(), String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
-    let remote_name = remote.unwrap_or_else(|| "origin".to_string());
+    let remote_name = resolve_remote_name(&repo, remote);
 
     let head = repo.head().map_err(AppError::Git)?;
     let branch_name = head

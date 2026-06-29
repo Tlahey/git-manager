@@ -244,6 +244,28 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     overscan: 20,
   })
 
+  // Auto-select commit when branch/reference or repository changes
+  useEffect(() => {
+    if (!nodes || nodes.length === 0) return
+
+    // Find a node that has a ref matching the branch name, or default to the first node
+    const matchNode = nodes.find((node) =>
+      node.refs.some((r) => r.name === branch || r.shortName === branch)
+    ) || nodes[0]
+
+    if (matchNode && matchNode.commit.oid !== 'WIP') {
+      selectSingle(matchNode.commit.oid)
+
+      const index = filteredNodes.findIndex((n) => n.commit.oid === matchNode.commit.oid)
+      if (index !== -1) {
+        setTimeout(() => {
+          virtualizer.scrollToIndex(index, { align: 'center' })
+        }, 50)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branch, repoPath, nodes])
+
   const primaryNode = useMemo(() => {
     if (!primaryOid) return null
     if (primaryOid === 'WIP') return wipNode

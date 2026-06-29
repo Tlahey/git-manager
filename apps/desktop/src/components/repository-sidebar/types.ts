@@ -54,8 +54,8 @@ export type SidebarRow =
       count: number
       isOpen: boolean
     }
-  | { kind: 'pr'; id: string; pr: PullRequest }
-  | { kind: 'tag'; id: string; tag: GitRef }
+  | { kind: 'pr'; id: string; pr: PullRequest; isSelected: boolean }
+  | { kind: 'tag'; id: string; tag: GitRef; isSelected: boolean }
   | { kind: 'submodule'; id: string; sm: GitSubmodule }
   | { kind: 'message'; id: string; text: string; loading?: boolean }
   | { kind: 'divider'; id: string }

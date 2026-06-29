@@ -248,22 +248,16 @@ export function useSidebarRows({
             text: 'Connectez un dépôt GitHub pour voir les PRs.',
           })
         } else {
-          if (myPrs.length > 0) {
-            const mid = 'pr:my'
-            const mopen = subOpen(mid, true)
-            out.push({ kind: 'subgroup', id: mid, label: 'Mes PRs', count: myPrs.length, isOpen: mopen })
-            if (mopen) {
-              for (const pr of myPrs) out.push({ kind: 'pr', id: `pr-my:${pr.number}`, pr })
-            }
-          }
-          const aid = 'pr:all'
-          const aopen = subOpen(aid, true)
-          out.push({ kind: 'subgroup', id: aid, label: 'Toutes les PRs', count: allPrs.length, isOpen: aopen })
-          if (aopen) {
-            if (allPrs.length === 0) {
-              out.push({ kind: 'message', id: 'pr:empty', text: 'Aucune PR ouverte.' })
-            } else {
-              for (const pr of allPrs) out.push({ kind: 'pr', id: `pr-all:${pr.number}`, pr })
+          if (allPrs.length === 0) {
+            out.push({ kind: 'message', id: 'pr:empty', text: 'Aucune PR ouverte.' })
+          } else {
+            for (const pr of allPrs) {
+              out.push({
+                kind: 'pr',
+                id: `pr:${pr.number}`,
+                pr,
+                isSelected: selectedBranch === pr.headRef,
+              })
             }
           }
         }
@@ -284,7 +278,12 @@ export function useSidebarRows({
       })
       if (open) {
         for (const tag of tags.slice(0, TAGS_LIMIT)) {
-          out.push({ kind: 'tag', id: `tag:${tag.name}`, tag })
+          out.push({
+            kind: 'tag',
+            id: `tag:${tag.name}`,
+            tag,
+            isSelected: selectedBranch === tag.name || selectedBranch === tag.shortName,
+          })
         }
         if (tags.length > TAGS_LIMIT) {
           out.push({

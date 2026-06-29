@@ -131,10 +131,10 @@ export function SidebarRowView({
               ? 'bg-accent text-foreground'
               : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
           }`}
-          onClick={() => onSelectBranch(row.branch.shortName)}
+          onClick={() => onSelectBranch(row.branch.name)}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && onSelectBranch(row.branch.shortName)}
+          onKeyDown={(e) => e.key === 'Enter' && onSelectBranch(row.branch.name)}
         >
           <BranchIcon className="h-3 w-3 shrink-0 opacity-30" />
           <HoverExpandLabel>{displayName}</HoverExpandLabel>
@@ -167,14 +167,24 @@ export function SidebarRowView({
       )
 
     case 'pr':
-      return <PullRequestItem pr={row.pr} onOpen={onOpenPr} />
+      return <PullRequestItem pr={row.pr} onOpen={onOpenPr} isSelected={row.isSelected} />
 
     case 'tag':
       return (
-        <div className="group/tag relative flex items-center gap-1.5 py-[3px] pl-6 pr-2 text-xs text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground">
+        <div
+          className={`group/tag relative flex items-center gap-1.5 py-[3px] pl-6 pr-2 text-xs transition-colors ${
+            row.isSelected
+              ? 'bg-accent text-foreground font-medium'
+              : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+          }`}
+          onClick={() => onSelectBranch(row.tag.name)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && onSelectBranch(row.tag.name)}
+        >
           <TagIcon className="h-3 w-3 shrink-0 opacity-30" />
           <HoverExpandLabel>{row.tag.shortName}</HoverExpandLabel>
-          <span className="shrink-0 tabular-nums text-[10px] font-mono text-muted-foreground/40">
+          <span className="shrink-0 tabular-nums text-[10px] font-mono text-muted-foreground/40 font-normal">
             {row.tag.commitOid.slice(0, 7)}
           </span>
         </div>
