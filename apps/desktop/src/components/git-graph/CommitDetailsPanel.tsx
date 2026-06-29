@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { ScrollArea } from '@git-manager/ui'
 import { useCommitDiff } from '../../hooks/useCommitDiff'
 import { useGitStatus } from '../../hooks/useGitStatus'
 import { useQueryClient } from '@tanstack/react-query'
 import type { GitGraphNode } from '@git-manager/git-types'
 import { CommitHeaderInfo } from './components/CommitHeaderInfo'
+import { useReposStore } from '../../stores/repos.store'
 import { CommitFileList } from './components/CommitFileList'
 import type { ProcessedFileItem } from './components/CommitFileList'
 import { WipStagingPanel } from './components/WipStagingPanel'
@@ -38,27 +39,20 @@ export function CommitDetailsPanel({
 
   const isHead = isHeadProp ?? node.refs.some((r) => r.type === 'HEAD')
 
-  const [remoteUrl, setRemoteUrl] = useState<string | null>(null)
+  const repoCache = useReposStore((s) => s.repoCache)
+  const cachedRepo = repoCache[repoPath]
 
-  useEffect(() => {
-    const getRemoteUrl = async () => {
-      try {
-        const repoData = queryClient.getQueryData<any>(['repo-cache', repoPath])
-        const remotes: string[] = repoData?.remotes ?? []
-        const origin = remotes.find((r) => r.includes('github.com') || r.includes('gitlab.com'))
-        if (origin) {
-          let url = origin.replace(/\.git$/, '')
-          if (url.startsWith('git@')) {
-            url = 'https://' + url.substring(4).replace(':', '/')
-          }
-          setRemoteUrl(url)
-        }
-      } catch (err) {
-        // Ignored
-      }
+  const remoteUrl = useMemo(() => {
+    if (!cachedRepo?.remotes) return null
+    const remotes = cachedRepo.remotes
+    const origin = remotes.find((r) => r.includes('github.com') || r.includes('gitlab.com'))
+    if (!origin) return null
+    let url = origin.replace(/\.git$/, '')
+    if (url.startsWith('git@')) {
+      url = 'https://' + url.substring(4).replace(':', '/')
     }
-    getRemoteUrl()
-  }, [repoPath, queryClient])
+    return url
+  }, [cachedRepo])
 
   function handleRefresh() {
     queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })

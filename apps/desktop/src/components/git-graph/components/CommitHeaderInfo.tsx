@@ -4,14 +4,16 @@ import { Button, Input, Textarea, cn } from '@git-manager/ui'
 import {
   Copy,
   Check,
-  ExternalLink,
   GitCommit,
   Layers,
   Pencil,
   X,
+  Github,
+  Gitlab,
 } from 'lucide-react'
 import { CommitDetailsAvatar } from './CommitDetailsAvatar'
 import { apiCreateCommit } from '../../../api/git.api'
+import { apiOpenUrl } from '../../../api/shell.api'
 import type { GitGraphNode } from '@git-manager/git-types'
 
 function formatDate(timestamp: number): string {
@@ -125,15 +127,18 @@ export function CommitHeaderInfo({
               </>
             )}
           </h3>
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="rounded p-1 hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-              title="Close"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="rounded p-1 hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                title="Close"
+                data-testid="commit-details-close-button"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {!isWip && (
@@ -298,15 +303,21 @@ export function CommitHeaderInfo({
               </div>
 
               {remoteUrl && (
-                <a
-                  href={`${remoteUrl}/commit/${commit.oid}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1 text-[10px] text-primary hover:underline transition-all font-semibold shrink-0"
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 hover:bg-accent text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 text-[11px] font-medium shrink-0"
+                  onClick={() => apiOpenUrl(`${remoteUrl}/commit/${commit.oid}`)}
+                  title={remoteUrl.includes('gitlab.com') ? 'Open commit on GitLab' : 'Open commit on GitHub'}
+                  data-testid="github-commit-link"
                 >
-                  <span>GitHub</span>
-                  <ExternalLink className="h-2.5 w-2.5" />
-                </a>
+                  {remoteUrl.includes('gitlab.com') ? (
+                    <Gitlab className="h-3.5 w-3.5 text-muted-foreground" />
+                  ) : (
+                    <Github className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                  <span>{remoteUrl.includes('gitlab.com') ? 'GitLab' : 'GitHub'}</span>
+                </Button>
               )}
             </div>
 

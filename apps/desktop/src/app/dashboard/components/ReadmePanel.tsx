@@ -1,7 +1,11 @@
+import { useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { BookOpen, X, RefreshCw, FileText } from 'lucide-react'
+import { BookOpen, X, RefreshCw, FileText, Github, Gitlab } from 'lucide-react'
+import { Button } from '@git-manager/ui'
 import { Markdown } from '../../../components/Markdown'
 import { useRepoReadme } from '../../../hooks/useRepoReadme'
+import { useReposStore } from '../../../stores/repos.store'
+import { apiOpenUrl } from '../../../api/shell.api'
 
 interface ReadmePanelProps {
   path: string
@@ -9,11 +13,26 @@ interface ReadmePanelProps {
 }
 
 export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
-  const { t } = useTranslation('dashboard')
+  const { t } = useTranslation(['dashboard', 'git'])
   const { data: content, isLoading, error } = useRepoReadme(path)
   const loading = isLoading || (content === undefined && !error)
 
   const name = path.split('/').pop() || path
+
+  const repoCache = useReposStore((s) => s.repoCache)
+  const cachedRepo = repoCache[path]
+
+  const remoteUrl = useMemo(() => {
+    if (!cachedRepo?.remotes) return null
+    const remotes = cachedRepo.remotes
+    const origin = remotes.find((r) => r.includes('github.com') || r.includes('gitlab.com'))
+    if (!origin) return null
+    let url = origin.replace(/\.git$/, '')
+    if (url.startsWith('git@')) {
+      url = 'https://' + url.substring(4).replace(':', '/')
+    }
+    return url
+  }, [cachedRepo])
 
   return (
     <div className="flex h-full w-full flex-col border-l border-border bg-card shadow-2xl min-w-0">
@@ -23,13 +42,35 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
           <BookOpen className="h-4 w-4 text-primary shrink-0" />
           <span className="font-semibold text-xs text-foreground truncate">{name}</span>
         </div>
-        <button
-          onClick={onClose}
-          className="rounded p-1 hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-          title="Fermer"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {remoteUrl && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 hover:bg-accent text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+              onClick={() => apiOpenUrl(remoteUrl)}
+              title={t('commitDetails.openRemote', { ns: 'git' }) || (remoteUrl.includes('gitlab.com') ? 'Open GitLab' : 'Open GitHub')}
+              data-testid="github-repo-button"
+            >
+              {remoteUrl.includes('gitlab.com') ? (
+                <Gitlab className="h-3.5 w-3.5 text-muted-foreground" />
+              ) : (
+                <Github className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
+              <span className="text-[11px] font-medium hidden sm:inline">
+                {remoteUrl.includes('gitlab.com') ? 'GitLab' : 'GitHub'}
+              </span>
+            </Button>
+          )}
+          <button
+            onClick={onClose}
+            className="rounded p-1 hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+            title="Fermer"
+            data-testid="readme-panel-close-button"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Pane content */}
