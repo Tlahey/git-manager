@@ -109,12 +109,13 @@ export function useNotificationWatcher() {
     if (loading || prs.length === 0) return
 
     // Build map of current PR states
-    const currentPRsMap: Record<string, { status: typeof prs[0]['status']; reviewStatus: typeof prs[0]['reviewStatus']; needsMyReview: boolean; updatedAt: string }> = {}
+    const currentPRsMap: Record<string, { status: typeof prs[0]['status']; reviewStatus: typeof prs[0]['reviewStatus']; needsMyReview: boolean; ciStatus: typeof prs[0]['ciStatus']; updatedAt: string }> = {}
     for (const pr of prs) {
       currentPRsMap[pr.id] = {
         status: pr.status,
         reviewStatus: pr.reviewStatus,
         needsMyReview: !!pr.needsMyReview,
+        ciStatus: pr.ciStatus,
         updatedAt: pr.updatedAt ? new Date(pr.updatedAt).toISOString() : '',
       }
     }
@@ -224,6 +225,41 @@ export function useNotificationWatcher() {
             })
             showNativeNotification(newNotif, t)
             shouldNotifyThisPR = true
+          }
+        }
+
+        // Check if CI status changed (green / red)
+        if (pr.ciStatus !== prev.ciStatus) {
+          if (pr.ciStatus === 'success') {
+            if (notificationsEnabled) {
+              const newNotif = addNotification({
+                type: 'ci_success',
+                repo: pr.repo,
+                prNumber: pr.number,
+                prTitle: pr.title,
+                prId: pr.id,
+                author: pr.author,
+                url: pr.url,
+                targetTab: 'prs',
+              })
+              showNativeNotification(newNotif, t)
+              shouldNotifyThisPR = true
+            }
+          } else if (pr.ciStatus === 'failure') {
+            if (notificationsEnabled) {
+              const newNotif = addNotification({
+                type: 'ci_failed',
+                repo: pr.repo,
+                prNumber: pr.number,
+                prTitle: pr.title,
+                prId: pr.id,
+                author: pr.author,
+                url: pr.url,
+                targetTab: 'prs',
+              })
+              showNativeNotification(newNotif, t)
+              shouldNotifyThisPR = true
+            }
           }
         }
 

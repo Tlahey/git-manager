@@ -48,7 +48,7 @@ export function NotificationDropdown() {
   
   // Simulator states
   const [simPrId, setSimPrId] = useState('')
-  const [simAction, setSimAction] = useState<'merge' | 'close' | 'request_review' | 'approve' | 'new_pr'>('merge')
+  const [simAction, setSimAction] = useState<'merge' | 'close' | 'request_review' | 'approve' | 'new_pr' | 'ci_success' | 'ci_failed'>('merge')
 
   const containerRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -258,9 +258,45 @@ export function NotificationDropdown() {
                           })
                           showNativeNotification(newNotif, t)
                         }}
-                        className="flex items-center justify-center h-5.5 rounded border border-green-500/20 bg-green-500/5 text-green-400 hover:bg-green-500/10 text-[8px] font-semibold transition-colors"
+                        className="flex items-center justify-center h-5.5 rounded border border-purple-500/20 bg-purple-500/5 text-purple-400 hover:bg-purple-500/10 text-[8px] font-semibold transition-colors"
                       >
                         Test Merge
+                      </button>
+                      <button
+                        onClick={() => {
+                          const newNotif = useNotificationStore.getState().addNotification({
+                            type: 'ci_success',
+                            repo: 'git-manager',
+                            prNumber: 250,
+                            prTitle: 'ci: Add automatic lint and code style check',
+                            prId: 'test-pr-ci-green',
+                            author: 'github-actions',
+                            url: 'https://github.com/Tlahey/git-manager/pull/250',
+                            targetTab: 'prs',
+                          })
+                          showNativeNotification(newNotif, t)
+                        }}
+                        className="flex items-center justify-center h-5.5 rounded border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 hover:bg-emerald-500/10 text-[8px] font-semibold transition-colors"
+                      >
+                        Test CI Green
+                      </button>
+                      <button
+                        onClick={() => {
+                          const newNotif = useNotificationStore.getState().addNotification({
+                            type: 'ci_failed',
+                            repo: 'git-manager',
+                            prNumber: 251,
+                            prTitle: 'test: Add integration tests for Tauri bridge',
+                            prId: 'test-pr-ci-red',
+                            author: 'github-actions',
+                            url: 'https://github.com/Tlahey/git-manager/pull/251',
+                            targetTab: 'prs',
+                          })
+                          showNativeNotification(newNotif, t)
+                        }}
+                        className="flex items-center justify-center h-5.5 rounded border border-rose-500/20 bg-rose-500/5 text-rose-400 hover:bg-rose-500/10 text-[8px] font-semibold transition-colors"
+                      >
+                        Test CI Red
                       </button>
                     </div>
                   )}
@@ -291,6 +327,8 @@ export function NotificationDropdown() {
                           <option value="request_review">{t('notifications.sim.reviewRequested')}</option>
                           <option value="approve">{t('notifications.sim.reviewApproved')}</option>
                           <option value="new_pr">{t('notifications.sim.newPR')}</option>
+                          <option value="ci_success">{t('notifications.sim.ciSuccess')}</option>
+                          <option value="ci_failed">{t('notifications.sim.ciFailed')}</option>
                         </select>
                       </div>
                       <button

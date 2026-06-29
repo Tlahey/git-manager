@@ -1,5 +1,13 @@
-import { Eye, MessageSquare, Check, X, Bell } from 'lucide-react'
 import type { AppNotification } from '../../stores/notification.store'
+import {
+  ReviewRequestedIcon,
+  PrGreenIcon,
+  PrRedIcon,
+  PrMergedIcon,
+  PrClosedIcon,
+  NewPrIcon,
+  DefaultIcon,
+} from './NotificationIcons'
 
 // Helper to translate notification texts
 export function getNotificationText(notif: AppNotification, t: any) {
@@ -57,6 +65,24 @@ export function getNotificationText(notif: AppNotification, t: any) {
           repo: notif.repo,
         }),
       }
+    case 'ci_success':
+      return {
+        title: t('notifications.types.ci_success', { number: notif.prNumber }),
+        message: t('notifications.messages.ci_success', {
+          number: notif.prNumber,
+          title: notif.prTitle,
+          repo: notif.repo,
+        }),
+      }
+    case 'ci_failed':
+      return {
+        title: t('notifications.types.ci_failed', { number: notif.prNumber }),
+        message: t('notifications.messages.ci_failed', {
+          number: notif.prNumber,
+          title: notif.prTitle,
+          repo: notif.repo,
+        }),
+      }
     default:
       return {
         title: t('notifications.title'),
@@ -69,34 +95,21 @@ export function getNotificationText(notif: AppNotification, t: any) {
 export function getNotificationIcon(type: string) {
   switch (type) {
     case 'pr_merged':
-      return (
-        <div className="flex h-7 w-7 items-center justify-center rounded bg-green-500/15 text-green-400 ring-1 ring-green-500/20">
-          <Check className="h-4 w-4" />
-        </div>
-      )
+      return <PrMergedIcon />
     case 'pr_closed':
-      return (
-        <div className="flex h-7 w-7 items-center justify-center rounded bg-destructive/15 text-destructive ring-1 ring-destructive/20">
-          <X className="h-4 w-4" />
-        </div>
-      )
+      return <PrClosedIcon />
     case 'review_requested':
-      return (
-        <div className="flex h-7 w-7 items-center justify-center rounded bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/20">
-          <Eye className="h-4 w-4" />
-        </div>
-      )
+      return <ReviewRequestedIcon />
     case 'review_status_changed':
-      return (
-        <div className="flex h-7 w-7 items-center justify-center rounded bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/20">
-          <MessageSquare className="h-4 w-4" />
-        </div>
-      )
+      return <ReviewRequestedIcon />
+    case 'new_pr':
+      return <NewPrIcon />
+    case 'ci_success':
+      return <PrGreenIcon />
+    case 'ci_failed':
+      return <PrRedIcon />
     default:
-      return (
-        <div className="flex h-7 w-7 items-center justify-center rounded bg-primary/15 text-primary ring-1 ring-primary/20">
-          <Bell className="h-4 w-4" />
-        </div>
-      )
+      return <DefaultIcon />
   }
 }
+

@@ -1,13 +1,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { MockPR, PRStatus, ReviewStatus } from '../app/pull-requests/types'
+import type { MockPR, PRStatus, ReviewStatus, CiStatus } from '../app/pull-requests/types'
 import { MOCK_PRS } from '../app/pull-requests/mockData'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface AppNotification {
   id: number
-  type: 'pr_merged' | 'pr_closed' | 'review_requested' | 'review_status_changed' | 'new_pr'
+  type: 'pr_merged' | 'pr_closed' | 'review_requested' | 'review_status_changed' | 'new_pr' | 'ci_success' | 'ci_failed'
   repo: string
   prNumber: number
   prTitle: string
@@ -22,7 +22,7 @@ export interface AppNotification {
 
 interface NotificationState {
   notifications: AppNotification[]
-  previousPRs: Record<string, { status: PRStatus; reviewStatus: ReviewStatus; needsMyReview: boolean; updatedAt: string }>
+  previousPRs: Record<string, { status: PRStatus; reviewStatus: ReviewStatus; needsMyReview: boolean; ciStatus?: CiStatus; updatedAt: string }>
   hasSessionInitialized: boolean
   mockPRs: MockPR[] // For simulation when offline/no GitHub token
   
@@ -33,11 +33,11 @@ interface NotificationState {
   clearNotifications: () => void
   
   // Watcher Actions
-  setPreviousPRs: (prs: Record<string, { status: PRStatus; reviewStatus: ReviewStatus; needsMyReview: boolean; updatedAt: string }>) => void
+  setPreviousPRs: (prs: Record<string, { status: PRStatus; reviewStatus: ReviewStatus; needsMyReview: boolean; ciStatus?: CiStatus; updatedAt: string }>) => void
   setSessionInitialized: (val: boolean) => void
   
   // Simulation Actions
-  simulateChange: (prId: string, actionType: 'merge' | 'close' | 'request_review' | 'approve' | 'new_pr') => void
+  simulateChange: (prId: string, actionType: 'merge' | 'close' | 'request_review' | 'approve' | 'new_pr' | 'ci_success' | 'ci_failed') => void
 }
 
 export const useNotificationStore = create<NotificationState>()(
@@ -128,6 +128,10 @@ export const useNotificationStore = create<NotificationState>()(
             } else if (actionType === 'approve') {
               updated.reviewStatus = 'approved'
               updated.status = 'approved'
+            } else if (actionType === 'ci_success') {
+              updated.ciStatus = 'success'
+            } else if (actionType === 'ci_failed') {
+              updated.ciStatus = 'failure'
             }
             return updated
           })
