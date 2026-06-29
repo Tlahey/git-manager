@@ -456,3 +456,146 @@ export function registerMonacoThemes() {
     }
   })
 }
+
+function hslToHex(h: number, s: number, l: number, a?: number): string {
+  s /= 100
+  l /= 100
+
+  const k = (n: number) => (n + h / 30) % 12
+  const f = (n: number) => {
+    const aVal = s * Math.min(l, 1 - l)
+    const color = l - aVal * Math.max(Math.min(k(n) - 3, 9 - k(n), 1), -1)
+    return Math.round(255 * color).toString(16).padStart(2, '0')
+  }
+
+  const hexRGB = `#${f(0)}${f(8)}${f(4)}`
+  
+  if (a !== undefined) {
+    const alphaHex = Math.round(a * 255).toString(16).padStart(2, '0')
+    return `${hexRGB}${alphaHex}`
+  }
+  
+  return hexRGB
+}
+
+function colorToHex(colorStr: string, alpha?: number): string {
+  const clean = colorStr.trim()
+  if (clean.startsWith('#')) {
+    let hex = clean
+    if (hex.length === 4) { // e.g. #fff
+      hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3]
+    }
+    if (alpha !== undefined) {
+      const alphaHex = Math.round(alpha * 255).toString(16).padStart(2, '0')
+      return `${hex.slice(0, 7)}${alphaHex}`
+    }
+    return hex
+  }
+
+  // Parse space-separated HSL components (e.g., "222.2 84% 4.9%")
+  const parts = clean.split(/\s+/)
+  if (parts.length >= 3) {
+    const h = parseFloat(parts[0])
+    const s = parseFloat(parts[1].replace('%', ''))
+    const l = parseFloat(parts[2].replace('%', ''))
+    if (!isNaN(h) && !isNaN(s) && !isNaN(l)) {
+      return hslToHex(h, s, l, alpha)
+    }
+  }
+
+  return clean
+}
+
+// Helper to retrieve and format CSS variables as colors
+function getMonacoColorFromCssVar(varName: string, alpha?: number): string {
+  if (typeof window === 'undefined') return ''
+  const rawValue = getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
+  if (!rawValue) {
+    if (varName === '--background') return '#000000'
+    if (varName === '--foreground') return '#ffffff'
+    return '#888888'
+  }
+
+  return colorToHex(rawValue, alpha)
+}
+
+function isBackgroundDark(): boolean {
+  if (typeof window === 'undefined') return true
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--background').trim()
+  const parts = bg.split(/\s+/)
+  if (parts.length >= 3) {
+    const lightnessStr = parts[2]
+    const lightness = parseFloat(lightnessStr)
+    if (!isNaN(lightness)) {
+      return lightness < 50
+    }
+  }
+  return true // fallback to dark
+}
+
+export function registerAndApplyDynamicTheme(monacoInstance: any) {
+  if (!monacoInstance) return
+
+  const isDark = isBackgroundDark()
+  const themeConfig = {
+    base: (isDark ? 'vs-dark' : 'vs') as 'vs-dark' | 'vs',
+    inherit: true,
+    rules: [],
+    colors: {
+      'editor.background': getMonacoColorFromCssVar('--background'),
+      'editor.foreground': getMonacoColorFromCssVar('--foreground'),
+      'editor.lineHighlightBackground': getMonacoColorFromCssVar('--muted', 0.3),
+      'editor.selectionBackground': getMonacoColorFromCssVar('--primary', 0.3),
+      'editor.inactiveSelectionBackground': getMonacoColorFromCssVar('--secondary', 0.5),
+      'editor.selectionHighlightBackground': getMonacoColorFromCssVar('--secondary', 0.5),
+      'editor.findMatchBackground': getMonacoColorFromCssVar('--secondary'),
+      'editor.findMatchHighlightBackground': getMonacoColorFromCssVar('--secondary', 0.5),
+      'editor.findRangeHighlightBackground': getMonacoColorFromCssVar('--secondary', 0.3),
+      'editor.hoverHighlightBackground': getMonacoColorFromCssVar('--secondary', 0.3),
+      'editor.lineHighlightBorder': '#00000000',
+      'editorLink.activeForeground': getMonacoColorFromCssVar('--primary'),
+      'editor.rangeHighlightBackground': getMonacoColorFromCssVar('--secondary', 0.3),
+      'editor.snippetTabstopHighlightBackground': getMonacoColorFromCssVar('--secondary', 0.5),
+      'editor.snippetTabstopHighlightBorder': getMonacoColorFromCssVar('--secondary'),
+      'editor.snippetFinalTabstopHighlightBackground': getMonacoColorFromCssVar('--primary', 0.3),
+      'editor.snippetFinalTabstopHighlightBorder': getMonacoColorFromCssVar('--primary'),
+      'editor.wordHighlightBackground': getMonacoColorFromCssVar('--secondary', 0.5),
+      'editor.wordHighlightStrongBackground': getMonacoColorFromCssVar('--secondary', 0.7),
+      'editor.wordHighlightTextBackground': getMonacoColorFromCssVar('--secondary', 0.5),
+      'editorBracketMatch.background': getMonacoColorFromCssVar('--secondary'),
+      'editorBracketMatch.border': getMonacoColorFromCssVar('--primary'),
+      'editorCursor.foreground': getMonacoColorFromCssVar('--primary'),
+      'editorWhitespace.foreground': getMonacoColorFromCssVar('--secondary'),
+      'editorIndentGuide.background': getMonacoColorFromCssVar('--secondary'),
+      'editorIndentGuide.activeBackground': getMonacoColorFromCssVar('--border'),
+      'editorLineNumber.foreground': getMonacoColorFromCssVar('--muted-foreground'),
+      'editorLineNumber.activeForeground': getMonacoColorFromCssVar('--foreground'),
+      'editorRuler.foreground': getMonacoColorFromCssVar('--secondary'),
+      'editorCodeLens.foreground': getMonacoColorFromCssVar('--muted-foreground'),
+      'editorBracketHighlight.foreground1': getMonacoColorFromCssVar('--primary'),
+      'editorBracketHighlight.foreground2': getMonacoColorFromCssVar('--destructive'),
+      'editorBracketHighlight.foreground3': getMonacoColorFromCssVar('--muted-foreground'),
+      'editorInlayHint.background': getMonacoColorFromCssVar('--secondary'),
+      'editorInlayHint.foreground': getMonacoColorFromCssVar('--muted-foreground'),
+      'editorInlayHint.typeForeground': getMonacoColorFromCssVar('--foreground'),
+      'editorInlayHint.parameterForeground': getMonacoColorFromCssVar('--foreground'),
+      // Diff editor colors
+      'diffEditor.insertedTextBackground': getMonacoColorFromCssVar('--primary', 0.15),
+      'diffEditor.removedTextBackground': getMonacoColorFromCssVar('--destructive', 0.15),
+      'diffEditor.insertedTextBorder': getMonacoColorFromCssVar('--primary', 0.4),
+      'diffEditor.removedTextBorder': getMonacoColorFromCssVar('--destructive', 0.4),
+      'diffEditorOverview.insertedForeground': getMonacoColorFromCssVar('--primary'),
+      'diffEditorOverview.removedForeground': getMonacoColorFromCssVar('--destructive'),
+      'diffEditor.diagonalFill': getMonacoColorFromCssVar('--secondary'),
+      'diffEditor.move.border': getMonacoColorFromCssVar('--border'),
+      'diffEditor.moveActive.border': getMonacoColorFromCssVar('--primary'),
+    }
+  }
+
+  try {
+    monacoInstance.editor.defineTheme('git-manager-dynamic', themeConfig)
+    monacoInstance.editor.setTheme('git-manager-dynamic')
+  } catch (error) {
+    console.error('Failed to define or apply dynamic Monaco theme', error)
+  }
+}

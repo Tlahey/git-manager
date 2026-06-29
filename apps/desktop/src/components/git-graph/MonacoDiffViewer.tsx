@@ -1,5 +1,12 @@
-import { lazy, Suspense, useMemo } from 'react'
+import { lazy, Suspense, useMemo, useRef, useEffect } from 'react'
 import type { GitDiffFile } from '@git-manager/git-types'
+import { useSettingsStore } from '../../stores/settings.store'
+import { registerAndApplyDynamicTheme } from '../../lib/monacoThemes'
+import { loader } from '@monaco-editor/react'
+import * as monaco from 'monaco-editor'
+
+// Configure @monaco-editor/react loader to use local monaco instance
+loader.config({ monaco })
 
 // Lazy load Monaco Diff Editor to avoid initial bundle bloat
 const MonacoDiffEditor = lazy(() => import('@monaco-editor/react').then(module => ({
@@ -12,6 +19,16 @@ interface MonacoDiffViewerProps {
 }
 
 export function MonacoDiffViewer({ file, viewMode }: MonacoDiffViewerProps) {
+  const theme = useSettingsStore((s) => s.settings.appearance.theme)
+  const monacoRef = useRef<any>(null)
+
+  // Re-apply theme when theme changes
+  useEffect(() => {
+    if (monacoRef.current) {
+      registerAndApplyDynamicTheme(monacoRef.current)
+    }
+  }, [theme])
+
   // Extract original and modified content from diff hunks
   const { originalContent, modifiedContent, language } = useMemo(() => {
     let originalLines: string[] = []
@@ -71,6 +88,11 @@ export function MonacoDiffViewer({ file, viewMode }: MonacoDiffViewerProps) {
       <MonacoDiffEditor
         height="100%"
         language={language}
+        theme="git-manager-dynamic"
+        onMount={(_, monacoInstance) => {
+          monacoRef.current = monacoInstance
+          registerAndApplyDynamicTheme(monacoInstance)
+        }}
         original={originalContent}
         modified={modifiedContent}
         originalModelPath={`${file.oldPath}.orig`}
