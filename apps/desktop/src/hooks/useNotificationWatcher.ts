@@ -27,9 +27,44 @@ export async function showNativeNotification(notif: AppNotification, t: any) {
       const soundEnabled = settings.notifications?.enableSound ?? false
       const soundName = settings.notifications?.soundName ?? 'default'
 
+      // Déterminer l'indicateur visuel de statut
+      let prefix = ''
+      switch (notif.type) {
+        case 'ci_success':
+          prefix = '🟢 [CI Success] '
+          break
+        case 'ci_failed':
+          prefix = '🔴 [CI Failed] '
+          break
+        case 'pr_merged':
+          prefix = '🎉 [Merged] '
+          break
+        case 'pr_closed':
+          prefix = '🛑 [Closed] '
+          break
+        case 'review_requested':
+          prefix = '👀 [Review] '
+          break
+        case 'review_status_changed':
+          if (notif.reviewStatus === 'approved') {
+            prefix = '🟢 [Approved] '
+          } else if (notif.reviewStatus === 'changes_requested') {
+            prefix = '🔴 [Changes Requested] '
+          } else {
+            prefix = '💬 [Review Update] '
+          }
+          break
+        case 'new_pr':
+          prefix = '🆕 [New PR] '
+          break
+        default:
+          prefix = 'ℹ️ '
+          break
+      }
+
       sendNotification({
         id: notif.id,
-        title,
+        title: `${prefix}${title}`,
         body: message,
         ...(soundEnabled ? { sound: soundName } : {}),
       })
