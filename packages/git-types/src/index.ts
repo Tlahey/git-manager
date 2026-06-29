@@ -268,6 +268,10 @@ export interface NotificationSettings {
   notifyOnPull: boolean
   notifyOnPush: boolean
   enableSound: boolean
+  notifyOnPrMerged?: boolean
+  notifyOnReviewRequested?: boolean
+  notifyOnReviewStatusChanged?: boolean
+  notifyOnNewPr?: boolean
 }
 
 export interface OllamaSettings {

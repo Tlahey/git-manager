@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useTranslation } from '@git-manager/i18n'
 import { Button, Input, Separator, Textarea } from '@git-manager/ui'
 import { Key, FolderOpen, Copy, Check, Plus, AlertCircle, RefreshCw } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settings.store'
@@ -8,7 +7,6 @@ import { apiGenerateSshKey } from '../../../api/ssh.api'
 import { useSshPublicKey } from '../../../hooks/useSshPublicKey'
 
 export function SshSection() {
-  const { t } = useTranslation('settings')
   const { settings, updateSettings } = useSettingsStore()
   
   const ssh = settings.ssh || {

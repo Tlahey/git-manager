@@ -1,10 +1,8 @@
-import { useTranslation } from '@git-manager/i18n'
 import { Input, Separator } from '@git-manager/ui'
 import { GitPullRequest, GitCompare, FileCode, Terminal } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settings.store'
 
 export function ExternalToolsSection() {
-  const { t } = useTranslation('settings')
   const { settings, updateSettings } = useSettingsStore()
 
   const tools = settings.externalTools || {

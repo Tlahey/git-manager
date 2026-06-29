@@ -8,6 +8,7 @@ import { SettingsPage } from './app/settings/SettingsPage'
 import { TabBar } from './components/tab-bar'
 import { useTheme } from './hooks/useTheme'
 import { useMonacoTheme } from './hooks/useMonacoTheme'
+import { useNotificationWatcher } from './hooks/useNotificationWatcher'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,13 +22,14 @@ const queryClient = new QueryClient({
 export default function App() {
   const activeTab = useReposStore((s) => s.activeTab)
   const [showSettings, setShowSettings] = useState(false)
-  const [settingsSection, setSettingsSection] = useState<'llm' | 'github' | 'git' | 'appearance' | 'language' | 'advanced'>('llm')
+  const [settingsSection, setSettingsSection] = useState<'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization'>('general')
 
   useTheme()
   useMonacoTheme()
+  useNotificationWatcher()
 
-  function handleOpenSettings(section?: 'llm' | 'github' | 'git' | 'appearance' | 'language' | 'advanced') {
-    setSettingsSection(section || 'llm')
+  function handleOpenSettings(section?: 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization') {
+    setSettingsSection(section || 'general')
     setShowSettings(true)
   }
 
@@ -41,7 +43,7 @@ export default function App() {
             <TabBar onOpenSettings={handleOpenSettings} />
             <div className="flex-1 overflow-hidden">
               {activeTab === DASHBOARD_TAB ? (
-                <DashboardPage onOpenSettings={() => handleOpenSettings('llm')} />
+                <DashboardPage onOpenSettings={() => handleOpenSettings('local_ai')} />
               ) : activeTab === PULL_REQUESTS_TAB ? (
                 <PullRequestsPage />
               ) : (

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { InnerTab } from '../app/pull-requests/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,8 @@ export interface SavedFilter {
 
 interface LaunchpadState {
   savedFilters: SavedFilter[]
+  activeTab: InnerTab
+  setActiveTab: (tab: InnerTab) => void
   addFilter: (filter: Omit<SavedFilter, 'id' | 'createdAt'>) => void
   updateFilter: (id: string, patch: Partial<Omit<SavedFilter, 'id' | 'createdAt'>>) => void
   deleteFilter: (id: string) => void
@@ -54,6 +57,8 @@ export const useLaunchpadStore = create<LaunchpadState>()(
           createdAt: Date.now(),
         },
       ],
+      activeTab: 'prs',
+      setActiveTab: (activeTab) => set({ activeTab }),
 
       addFilter: (filter) =>
         set((state) => ({

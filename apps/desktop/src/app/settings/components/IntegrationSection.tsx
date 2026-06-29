@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useTranslation } from '@git-manager/i18n'
 import { Button, Input, ScrollArea } from '@git-manager/ui'
 import { Github, Flame, Gitlab, Check, Trash2, Key, Globe, User, Plus, RefreshCw } from 'lucide-react'
 import { GithubSection } from './GithubSection'
@@ -9,7 +8,6 @@ import type { ProviderAccount } from '@git-manager/git-types'
 type Provider = 'github' | 'gitlab' | 'bitbucket'
 
 export function IntegrationSection() {
-  const { t } = useTranslation('settings')
   const [activeProvider, setActiveProvider] = useState<Provider>('github')
   const { settings, updateSettings } = useSettingsStore()
 

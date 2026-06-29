@@ -3,9 +3,10 @@ import { useReposStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../../stores/re
 import { LayoutDashboard, Rocket, Settings, X, GitBranch } from 'lucide-react'
 import { NewTabMenu } from './NewTabMenu'
 import { UserProfile } from '../action-toolbar/UserProfile'
+import { NotificationDropdown } from '../notification/NotificationDropdown'
 
 interface TabBarProps {
-  onOpenSettings: (section?: 'llm' | 'github' | 'git' | 'appearance' | 'language' | 'advanced') => void
+  onOpenSettings: (section?: 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization') => void
 }
 
 interface PinnedTabProps {
@@ -137,8 +138,9 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
 
       {/* Réglages & Profil (extrême droite) */}
       <div className="flex shrink-0 items-center gap-2 border-l border-border px-3">
+        <NotificationDropdown />
         <button
-          onClick={() => onOpenSettings('llm')}
+          onClick={() => onOpenSettings('general')}
           className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           title="Réglages"
         >

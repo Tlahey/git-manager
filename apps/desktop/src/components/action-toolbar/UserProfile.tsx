@@ -5,7 +5,7 @@ import { useSettingsStore } from '../../stores/settings.store'
 import { useAnchoredMenu } from './useAnchoredMenu'
 
 interface UserProfileProps {
-  onOpenSettings: (section?: 'llm' | 'github' | 'git' | 'appearance' | 'language' | 'advanced') => void
+  onOpenSettings: (section?: 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization') => void
 }
 
 function initials(name: string): string {
@@ -118,7 +118,7 @@ export function UserProfile({ onOpenSettings }: UserProfileProps) {
               type="button"
               onClick={() => {
                 setOpen(false)
-                onOpenSettings('github')
+                onOpenSettings('integrations')
               }}
               className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent font-medium text-primary hover:text-primary-hover"
             >

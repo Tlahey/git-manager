@@ -60,6 +60,10 @@ const DEFAULT_SETTINGS: AppSettings = {
     notifyOnPull: true,
     notifyOnPush: true,
     enableSound: false,
+    notifyOnPrMerged: true,
+    notifyOnReviewRequested: true,
+    notifyOnReviewStatusChanged: true,
+    notifyOnNewPr: true,
   },
   integrations: {
     gitlabAccounts: [],

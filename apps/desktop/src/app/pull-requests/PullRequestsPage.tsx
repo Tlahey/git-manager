@@ -26,7 +26,7 @@ import { CustomViewsTab } from './components/CustomViewsTab'
 import type { InnerTab as InnerTabType, MockPR } from './types'
 
 export function PullRequestsPage() {
-  const [activeTab, setActiveTab] = useState<InnerTabType>('prs')
+  const { activeTab, setActiveTab, savedFilters } = useLaunchpadStore()
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set())
   const [followedPRs, setFollowedPRs] = useState<MockPR[]>([])
 
@@ -42,8 +42,6 @@ export function PullRequestsPage() {
     lastRefreshed,
     refresh,
   } = useGitHubData()
-  
-  const { savedFilters } = useLaunchpadStore()
 
   const togglePin = useCallback((id: string) => {
     setPinnedIds((prev) => {

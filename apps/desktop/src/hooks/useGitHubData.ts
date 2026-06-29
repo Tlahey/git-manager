@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react'
 import useSWR from 'swr'
 import { useSettingsStore } from '../stores/settings.store'
+import { useNotificationStore } from '../stores/notification.store'
 import type { MockPR, MockIssue, DayCommit, CiStatus, CiDetail } from '../app/pull-requests/types'
-import { MOCK_PRS, MOCK_ISSUES, getMockContributions } from '../app/pull-requests/mockData'
+import { MOCK_ISSUES, getMockContributions } from '../app/pull-requests/mockData'
 import {
   fetchGitHubPRs,
   fetchGitHubReviewRequestedPRs,
@@ -31,6 +32,7 @@ const fallbackCommitDays = fallbackContributions.slice(-14)
 const fallbackRefreshed = new Date()
 
 export function useGitHubData(): GitHubData {
+  const mockPRs = useNotificationStore((s) => s.mockPRs)
   const githubSettings = useSettingsStore((s) => s.settings.github)
   const activeAccount =
     githubSettings?.accounts?.find((a) => a.id === githubSettings.activeAccountId) ?? null
@@ -208,7 +210,7 @@ export function useGitHubData(): GitHubData {
 
   if (!hasToken) {
     return {
-      prs: MOCK_PRS,
+      prs: mockPRs,
       issues: MOCK_ISSUES,
       yearDays: fallbackContributions,
       commitDays: fallbackCommitDays,
