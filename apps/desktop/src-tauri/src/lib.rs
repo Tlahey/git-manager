@@ -11,7 +11,7 @@ use commands::fixup::{autosquash_preview, create_fixup_commit, get_pending_fixup
 use commands::rollback::{get_commits_between, reset_to_commit, revert_commit};
 use commands::commit::{
     create_commit, get_file_diff, get_staged_diff, stage_all, stage_file, unstage_all,
-    unstage_file, discard_file_changes,
+    unstage_file, discard_file_changes, get_file_raw_contents,
 };
 use commands::log::{get_commit_diff, get_commit_file, get_log};
 use commands::ollama::{cancel_generation, check_ollama_status, generate_commit_message};
@@ -61,6 +61,7 @@ pub fn run() {
             create_commit,
             get_staged_diff,
             get_file_diff,
+            get_file_raw_contents,
             // Remote
             fetch_remote,
             pull_branch,

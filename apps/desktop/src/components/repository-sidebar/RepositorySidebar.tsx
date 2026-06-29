@@ -9,6 +9,8 @@ import { SidebarResizeHandle } from './SidebarResizeHandle'
 import { SidebarRail } from './SidebarRail'
 import { SidebarRowView } from './SidebarRowView'
 import { ROW_HEIGHT, DEFAULT_PINNED } from './types'
+import { useReposStore } from '../../stores/repos.store'
+import { BlameHistoryPanel } from './BlameHistoryPanel'
 
 interface RepositorySidebarProps {
   repoPath: string
@@ -35,6 +37,10 @@ export function RepositorySidebar({
 }: RepositorySidebarProps) {
   const { width, isCollapsed, collapse, expand, resizeHandleProps } = useSidebarResize()
   const [branchQuery, setBranchQuery] = useState('')
+
+  const activeLeftPanel = useReposStore((s) => s.activeLeftPanel)
+  const activeDiffFile = useReposStore((s) => s.activeDiffFile)
+  const setActiveLeftPanel = useReposStore((s) => s.setActiveLeftPanel)
   const [openState, setOpenState] = useState<Record<string, boolean>>({})
 
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -82,6 +88,26 @@ export function RepositorySidebar({
     }
     return m
   }, [rows])
+
+  // ── Blame / History panel overlay ──────────────────────────────────
+  const isBlameOrHistoryActive = activeLeftPanel === 'blame' || activeLeftPanel === 'history'
+
+  if (isBlameOrHistoryActive) {
+    return (
+      <div
+        className="relative flex h-full shrink-0 flex-col border-r border-border bg-card overflow-hidden"
+        style={{ width: isCollapsed ? 350 : width }}
+      >
+        <BlameHistoryPanel
+          mode={activeLeftPanel}
+          file={activeDiffFile}
+          onClose={() => setActiveLeftPanel('sidebar')}
+        />
+        {/* Handle de resize */}
+        <SidebarResizeHandle {...resizeHandleProps} />
+      </div>
+    )
+  }
 
   // ── Mode rail (collapsed) : icônes uniquement ──────────────────────
   if (isCollapsed) {

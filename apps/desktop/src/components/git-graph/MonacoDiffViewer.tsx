@@ -1,5 +1,4 @@
-import { lazy, Suspense, useMemo, useRef, useEffect } from 'react'
-import type { GitDiffFile } from '@git-manager/git-types'
+import { lazy, Suspense, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { useSettingsStore } from '../../stores/settings.store'
 import { registerAndApplyDynamicTheme } from '../../lib/monacoThemes'
 import { loader } from '@monaco-editor/react'
@@ -8,97 +7,174 @@ import * as monaco from 'monaco-editor'
 // Configure @monaco-editor/react loader to use local monaco instance
 loader.config({ monaco })
 
-// Lazy load Monaco Diff Editor to avoid initial bundle bloat
+// Lazy load Monaco Editor and Diff Editor to avoid initial bundle bloat
+const MonacoEditor = lazy(() => import('@monaco-editor/react'))
 const MonacoDiffEditor = lazy(() => import('@monaco-editor/react').then(module => ({
   default: module.DiffEditor
 })))
 
 interface MonacoDiffViewerProps {
-  file: GitDiffFile
+  original: string
+  modified: string
+  filePath: string
   viewMode: 'inline' | 'split'
+  activeTab: 'diff' | 'file'
+  ignoreWhitespace: boolean
 }
 
-export function MonacoDiffViewer({ file, viewMode }: MonacoDiffViewerProps) {
-  const theme = useSettingsStore((s) => s.settings.appearance.theme)
-  const monacoRef = useRef<any>(null)
+export interface MonacoDiffViewerRef {
+  goToNextChange: () => void
+  goToPreviousChange: () => void
+}
 
-  // Re-apply theme when theme changes
-  useEffect(() => {
-    if (monacoRef.current) {
-      registerAndApplyDynamicTheme(monacoRef.current)
-    }
-  }, [theme])
+export const MonacoDiffViewer = forwardRef<MonacoDiffViewerRef, MonacoDiffViewerProps>(
+  ({ original, modified, filePath, viewMode, activeTab, ignoreWhitespace }, ref) => {
+    const theme = useSettingsStore((s) => s.settings.appearance.theme)
+    const monacoRef = useRef<any>(null)
+    const diffEditorRef = useRef<any>(null)
 
-  // Extract original and modified content from diff hunks
-  const { originalContent, modifiedContent, language } = useMemo(() => {
-    let originalLines: string[] = []
-    let modifiedLines: string[] = []
-
-    file.hunks.forEach(hunk => {
-      hunk.lines.forEach(line => {
-        if (line.origin === '+' || line.origin === ' ') {
-          modifiedLines.push(line.content)
-        }
-        if (line.origin === '-' || line.origin === ' ') {
-          originalLines.push(line.content)
-        }
-      })
-    })
+    // Re-apply theme when theme changes
+    useEffect(() => {
+      if (monacoRef.current) {
+        registerAndApplyDynamicTheme(monacoRef.current)
+      }
+    }, [theme])
 
     // Determine language from file extension
-    const ext = file.newPath.split('.').pop()?.toLowerCase() || ''
-    const languageMap: Record<string, string> = {
-      ts: 'typescript',
-      tsx: 'typescript',
-      js: 'javascript',
-      jsx: 'javascript',
-      py: 'python',
-      rs: 'rust',
-      css: 'css',
-      html: 'html',
-      md: 'markdown',
-      json: 'json',
-      sh: 'shellscript',
-    }
-    const lang = languageMap[ext] || 'text'
+    const language = useMemo(() => {
+      const ext = filePath.split('.').pop()?.toLowerCase() || ''
+      const languageMap: Record<string, string> = {
+        ts: 'typescript',
+        tsx: 'typescript',
+        js: 'javascript',
+        jsx: 'javascript',
+        py: 'python',
+        rs: 'rust',
+        css: 'css',
+        html: 'html',
+        md: 'markdown',
+        json: 'json',
+        sh: 'shellscript',
+      }
+      return languageMap[ext] || 'text'
+    }, [filePath])
 
-    return {
-      originalContent: originalLines.join('\n') + '\n',
-      modifiedContent: modifiedLines.join('\n') + '\n',
-      language: lang
-    }
-  }, [file])
+    // Expose Next / Previous change functionality to parent container via ref
+    useImperativeHandle(ref, () => ({
+      goToNextChange() {
+        const diffEditor = diffEditorRef.current
+        if (!diffEditor) return
 
-  const editorOptions = useMemo(() => ({
-    renderSideBySide: viewMode === 'split',
-    diffWordWrap: 'inherit' as 'off' | 'on' | 'inherit',
-    renderOverviewRuler: true,
-    scrollBeyondLastLine: false,
-    minimap: { enabled: true },
-    glyphMargin: true,
-    readOnly: false,
-  }), [viewMode])
+        const changes = diffEditor.getLineChanges()
+        if (!changes || changes.length === 0) return
 
-  return (
-    <Suspense fallback={
-      <div className="flex h-full w-full items-center justify-center">
-        <span className="text-muted-foreground">Loading Monaco Editor...</span>
-      </div>
-    }>
-      <MonacoDiffEditor
-        height="100%"
-        language={language}
-        theme="git-manager-dynamic"
-        onMount={(_, monacoInstance) => {
-          monacoRef.current = monacoInstance
-          registerAndApplyDynamicTheme(monacoInstance)
-        }}
-        original={originalContent}
-        modified={modifiedContent}
-        originalModelPath={`${file.oldPath}.orig`}
-        modifiedModelPath={`${file.newPath}.mod`}
-        options={editorOptions}
-      />
-    </Suspense>
-  )
-}
+        // Sort changes by modifiedStartLineNumber to be linear
+        const sortedChanges = [...changes].sort((a, b) => a.modifiedStartLineNumber - b.modifiedStartLineNumber)
+
+        const modifiedEditor = diffEditor.getModifiedEditor()
+        const currentLine = modifiedEditor.getPosition()?.lineNumber || 1
+
+        // Find the first change after the current cursor line
+        let targetChange = sortedChanges.find(c => c.modifiedStartLineNumber > currentLine)
+        if (!targetChange) {
+          // Wrap around to first change
+          targetChange = sortedChanges[0]
+        }
+
+        if (targetChange) {
+          const line = targetChange.modifiedStartLineNumber || 1
+          modifiedEditor.revealLineInCenter(line)
+          modifiedEditor.setPosition({ lineNumber: line, column: 1 })
+          modifiedEditor.focus()
+        }
+      },
+      goToPreviousChange() {
+        const diffEditor = diffEditorRef.current
+        if (!diffEditor) return
+
+        const changes = diffEditor.getLineChanges()
+        if (!changes || changes.length === 0) return
+
+        // Sort changes by modifiedStartLineNumber
+        const sortedChanges = [...changes].sort((a, b) => a.modifiedStartLineNumber - b.modifiedStartLineNumber)
+
+        const modifiedEditor = diffEditor.getModifiedEditor()
+        const currentLine = modifiedEditor.getPosition()?.lineNumber || 1
+
+        // Find the last change before the current cursor line
+        const previousChanges = sortedChanges.filter(c => c.modifiedStartLineNumber < currentLine)
+        let targetChange = null
+        if (previousChanges.length > 0) {
+          targetChange = previousChanges[previousChanges.length - 1]
+        } else {
+          // Wrap around to last change
+          targetChange = sortedChanges[sortedChanges.length - 1]
+        }
+
+        if (targetChange) {
+          const line = targetChange.modifiedStartLineNumber || 1
+          modifiedEditor.revealLineInCenter(line)
+          modifiedEditor.setPosition({ lineNumber: line, column: 1 })
+          modifiedEditor.focus()
+        }
+      }
+    }), [])
+
+    const editorOptions = useMemo(() => ({
+      renderSideBySide: viewMode === 'split',
+      diffWordWrap: 'inherit' as 'off' | 'on' | 'inherit',
+      renderOverviewRuler: true,
+      scrollBeyondLastLine: false,
+      minimap: { enabled: true },
+      glyphMargin: true,
+      readOnly: false,
+      ignoreTrimWhitespace: ignoreWhitespace,
+    }), [viewMode, ignoreWhitespace])
+
+    return (
+      <Suspense fallback={
+        <div className="flex h-full w-full items-center justify-center">
+          <span className="text-muted-foreground">Loading Monaco Editor...</span>
+        </div>
+      }>
+        {activeTab === 'file' ? (
+          <MonacoEditor
+            height="100%"
+            language={language}
+            theme="git-manager-dynamic"
+            onMount={(_, monacoInstance) => {
+              monacoRef.current = monacoInstance
+              registerAndApplyDynamicTheme(monacoInstance)
+            }}
+            value={modified}
+            path={filePath}
+            options={{
+              readOnly: true,
+              minimap: { enabled: true },
+              scrollBeyondLastLine: false,
+              glyphMargin: true,
+            }}
+          />
+        ) : (
+          <MonacoDiffEditor
+            height="100%"
+            language={language}
+            theme="git-manager-dynamic"
+            onMount={(editor, monacoInstance) => {
+              diffEditorRef.current = editor
+              monacoRef.current = monacoInstance
+              registerAndApplyDynamicTheme(monacoInstance)
+            }}
+            original={original}
+            modified={modified}
+            originalModelPath={`${filePath}.orig`}
+            modifiedModelPath={`${filePath}.mod`}
+            options={editorOptions}
+          />
+        )}
+      </Suspense>
+    )
+  }
+)
+
+MonacoDiffViewer.displayName = 'MonacoDiffViewer'

@@ -48,7 +48,8 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   // ── Sizing / Resizing details panel hook ───────────────────────────────────
   const { width: panelWidthState, resizeProps } = useCommitDetailsResize(400)
 
-  const [activeDiffFile, setActiveDiffFile] = useState<{ path: string; staged: boolean; oid?: string } | null>(null)
+  const activeDiffFile = useReposStore((s) => s.activeDiffFile)
+  const setActiveDiffFile = useReposStore((s) => s.setActiveDiffFile)
 
   // ── Status detection & WIP Node ──────────────────────────────────────────
   const { data: status } = useGitStatus(repoPath)

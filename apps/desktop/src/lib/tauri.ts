@@ -135,6 +135,14 @@ export const getStagedDiff = (path: string) => invoke<GitDiff>('get_staged_diff'
 export const getFileDiff = (path: string, filePath: string, staged: boolean, oid?: string) =>
   invoke<import('@git-manager/git-types').GitDiffFile>('get_file_diff', { path, filePath, staged, oid })
 
+export interface RawFileDiffContents {
+  original: string
+  modified: string
+}
+
+export const getFileRawContents = (path: string, filePath: string, staged: boolean, oid?: string) =>
+  invoke<RawFileDiffContents>('get_file_raw_contents', { path, filePath, staged, oid })
+
 // ─── Remote ───────────────────────────────────────────────────────────────────
 
 export const fetchRemote = (path: string, remote?: string) =>

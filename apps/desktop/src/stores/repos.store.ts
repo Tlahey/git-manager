@@ -24,6 +24,10 @@ interface ReposState {
   activeTab: string        // 'dashboard' | 'pull-requests' | <repoPath>
   repoCache: Record<string, GitRepo>
   discoveredRepos: DiscoveredRepo[]
+  activeDiffFile: { path: string; staged: boolean; oid?: string } | null
+  setActiveDiffFile: (file: { path: string; staged: boolean; oid?: string } | null) => void
+  activeLeftPanel: 'sidebar' | 'blame' | 'history'
+  setActiveLeftPanel: (panel: 'sidebar' | 'blame' | 'history') => void
 
   addRepo: (repo: GitRepo) => void
   removeRepo: (path: string) => void
@@ -47,6 +51,17 @@ export const useReposStore = create<ReposState>()(
       activeTab: DASHBOARD_TAB,
       repoCache: {},
       discoveredRepos: [],
+      activeDiffFile: null,
+      activeLeftPanel: 'sidebar',
+
+      setActiveDiffFile: (file) =>
+        set((state) => {
+          const nextPanel = file ? state.activeLeftPanel : 'sidebar'
+          return { activeDiffFile: file, activeLeftPanel: nextPanel }
+        }),
+
+      setActiveLeftPanel: (panel) =>
+        set({ activeLeftPanel: panel }),
 
       addRepo: (repo) =>
         set((state) => {
@@ -75,12 +90,19 @@ export const useReposStore = create<ReposState>()(
         }),
 
       setActiveRepo: (path) =>
-        set({ activeRepo: path, activeTab: path ?? DASHBOARD_TAB }),
+        set({
+          activeRepo: path,
+          activeTab: path ?? DASHBOARD_TAB,
+          activeDiffFile: null,
+          activeLeftPanel: 'sidebar',
+        }),
 
       setActiveTab: (id) =>
         set((state) => ({
           activeTab: id,
           activeRepo: state.openTabs.includes(id) ? id : null,
+          activeDiffFile: null,
+          activeLeftPanel: 'sidebar',
         })),
 
       openTab: (path) =>

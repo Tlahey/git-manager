@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Badge, Spinner } from '@git-manager/ui'
+import { Button, Badge, Spinner, cn } from '@git-manager/ui'
 import {
   X,
   ChevronLeft,
@@ -10,11 +10,19 @@ import {
   Plus,
   Minus,
   Copy,
-  Check as CheckedIcon
+  Check as CheckedIcon,
+  ChevronUp,
+  ChevronDown,
+  GitCompare,
+  FileText,
+  Eye,
+  History
 } from 'lucide-react'
 import { useFileDiff } from '../../hooks/useFileDiff'
+import { useFileRawContents } from '../../hooks/useFileRawContents'
 import { stageFile, unstageFile, discardFileChanges } from '../../lib/tauri'
-import { MonacoDiffViewer } from './MonacoDiffViewer'
+import { MonacoDiffViewer, type MonacoDiffViewerRef } from './MonacoDiffViewer'
+import { useReposStore } from '../../stores/repos.store'
 
 interface DiffViewCenterProps {
   repoPath: string
@@ -39,15 +47,38 @@ export function DiffViewCenter({
   const [viewMode, setViewMode] = useState<'inline' | 'split'>('split')
   const [copied, setCopied] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [activeTab, setActiveTab] = useState<'diff' | 'file'>('diff')
+  const [ignoreWhitespace, setIgnoreWhitespace] = useState(false)
+  const diffViewerRef = useRef<MonacoDiffViewerRef>(null)
 
-  // Use hook to fetch diff
-  const { data: diffData, isLoading, refetch } = useFileDiff(
+  const activeLeftPanel = useReposStore((s) => s.activeLeftPanel)
+  const setActiveLeftPanel = useReposStore((s) => s.setActiveLeftPanel)
+
+  const handlePrevChange = () => {
+    diffViewerRef.current?.goToPreviousChange()
+  }
+
+  const handleNextChange = () => {
+    diffViewerRef.current?.goToNextChange()
+  }
+
+  // Use hook to fetch diff metadata
+  const { data: diffData, isLoading: isLoadingMeta, refetch } = useFileDiff(
     repoPath,
     file.path,
     file.staged,
     file.oid
   )
 
+  // Use hook to fetch raw contents
+  const { data: rawContents, isLoading: isLoadingRaw } = useFileRawContents(
+    repoPath,
+    file.path,
+    file.staged,
+    file.oid
+  )
+
+  const isLoading = isLoadingMeta || isLoadingRaw
   const isWip = !file.oid
 
   const displayPath = useMemo(() => {
@@ -194,29 +225,116 @@ export function DiffViewCenter({
           </div>
         </div>
 
+        {/* Center: View mode tabs (Diff, File) */}
+        <div className="flex items-center bg-muted/60 p-0.5 rounded-lg border border-border/50 shrink-0 mx-4">
+          <button
+            onClick={() => setActiveTab('diff')}
+            className={cn(
+              "px-4 py-1 text-xs font-medium rounded-md transition-all duration-200 flex items-center gap-1.5",
+              activeTab === 'diff'
+                ? "bg-background text-foreground shadow-sm font-semibold border-b border-border/10"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <GitCompare className="h-3.5 w-3.5" />
+            <span>Diff</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('file')}
+            className={cn(
+              "px-4 py-1 text-xs font-medium rounded-md transition-all duration-200 flex items-center gap-1.5",
+              activeTab === 'file'
+                ? "bg-background text-foreground shadow-sm font-semibold border-b border-border/10"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <FileText className="h-3.5 w-3.5" />
+            <span>File</span>
+          </button>
+        </div>
+
         {/* Right Side: Diff toggle + Stage/Rollback Actions */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Unified/Split Toggle */}
-          <div className="flex items-center border border-border rounded overflow-hidden mr-2">
+          {/* Blame & History Toggles */}
+          <div className="flex items-center border border-border rounded bg-card overflow-hidden mr-2">
             <Button
-              variant={viewMode === 'inline' ? 'default' : 'ghost'}
+              variant={activeLeftPanel === 'blame' ? 'default' : 'ghost'}
               size="sm"
-              className="h-7 px-2.5 gap-1 text-[10px] font-bold rounded-none"
-              onClick={() => setViewMode('inline')}
+              className="h-7 px-2.5 gap-1 text-[10px] font-bold rounded-none border-r border-border"
+              onClick={() => setActiveLeftPanel(activeLeftPanel === 'blame' ? 'sidebar' : 'blame')}
+              title="Git Blame"
             >
-              <List className="h-3.5 w-3.5" />
-              <span>{t('commitDetails.diffInline')}</span>
+              <Eye className="h-3.5 w-3.5" />
+              <span>Blame</span>
             </Button>
             <Button
-              variant={viewMode === 'split' ? 'default' : 'ghost'}
+              variant={activeLeftPanel === 'history' ? 'default' : 'ghost'}
               size="sm"
               className="h-7 px-2.5 gap-1 text-[10px] font-bold rounded-none"
-              onClick={() => setViewMode('split')}
+              onClick={() => setActiveLeftPanel(activeLeftPanel === 'history' ? 'sidebar' : 'history')}
+              title="File History"
             >
-              <Columns className="h-3.5 w-3.5" />
-              <span>{t('commitDetails.diffSplit')}</span>
+              <History className="h-3.5 w-3.5" />
+              <span>History</span>
             </Button>
           </div>
+
+          {/* Unified/Split Toggle & Change Navigation (only in Diff view) */}
+          {activeTab === 'diff' && (
+            <div className="flex items-center gap-2 mr-2 animate-in fade-in slide-in-from-right-1 duration-150">
+              <div className="flex items-center border border-border rounded overflow-hidden">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 rounded-none border-r border-border hover:bg-accent"
+                  onClick={handlePrevChange}
+                  title="Previous Change"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 rounded-none hover:bg-accent"
+                  onClick={handleNextChange}
+                  title="Next Change"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="flex items-center border border-border rounded overflow-hidden">
+                <Button
+                  variant={viewMode === 'inline' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-7 px-2.5 gap-1 text-[10px] font-bold rounded-none border-r border-border"
+                  onClick={() => setViewMode('inline')}
+                >
+                  <List className="h-3.5 w-3.5" />
+                  <span>{t('commitDetails.diffInline')}</span>
+                </Button>
+                <Button
+                  variant={viewMode === 'split' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-7 px-2.5 gap-1 text-[10px] font-bold rounded-none"
+                  onClick={() => setViewMode('split')}
+                >
+                  <Columns className="h-3.5 w-3.5" />
+                  <span>{t('commitDetails.diffSplit')}</span>
+                </Button>
+              </div>
+
+              <Button
+                variant={ignoreWhitespace ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 px-2.5 text-[10px] font-bold shrink-0 ml-2"
+                onClick={() => setIgnoreWhitespace(!ignoreWhitespace)}
+                title="Ignore trim whitespace in diff"
+              >
+                Hide Whitespace
+              </Button>
+            </div>
+          )}
 
           {/* WIP Action buttons */}
           {isWip && diffData && (
@@ -289,7 +407,15 @@ export function DiffViewCenter({
               </div>
             ) : (
               <div className="flex-1 rounded-lg border border-border/80 bg-background flex flex-col overflow-hidden">
-                <MonacoDiffViewer file={diffData} viewMode={viewMode} />
+                <MonacoDiffViewer
+                  ref={diffViewerRef}
+                  original={rawContents?.original || ''}
+                  modified={rawContents?.modified || ''}
+                  filePath={file.path}
+                  viewMode={viewMode}
+                  activeTab={activeTab}
+                  ignoreWhitespace={ignoreWhitespace}
+                />
               </div>
             )}
           </div>

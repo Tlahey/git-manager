@@ -3,7 +3,6 @@ use git2::{DiffOptions, Oid, Repository};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::path::Path;
-use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 // ─── Structs locales (miroir des types TypeScript GitDiff / GitDiffFile) ──────
@@ -492,4 +491,113 @@ fn build_diff(diff: git2::Diff) -> Result<GitDiff, String> {
         total_additions,
         total_deletions,
     })
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RawFileDiffContents {
+    pub original: String,
+    pub modified: String,
+}
+
+#[tauri::command]
+pub async fn get_file_raw_contents(
+    path: String,
+    file_path: String,
+    staged: bool,
+    oid: Option<String>,
+) -> Result<RawFileDiffContents, String> {
+    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+
+    let original = if let Some(ref oid_str) = oid {
+        let commit_oid = Oid::from_str(oid_str).map_err(|e| e.to_string())?;
+        let commit = repo.find_commit(commit_oid).map_err(|e| e.to_string())?;
+        if commit.parent_count() > 0 {
+            let parent = commit.parent(0).map_err(|e| e.to_string())?;
+            get_file_content_from_tree(&repo, &parent.tree().map_err(|e| e.to_string())?, &file_path)?
+        } else {
+            String::new()
+        }
+    } else if staged {
+        if let Ok(head) = repo.head() {
+            if let Ok(resolved) = head.resolve() {
+                if let Ok(commit) = resolved.peel_to_commit() {
+                    get_file_content_from_tree(&repo, &commit.tree().map_err(|e| e.to_string())?, &file_path).unwrap_or_default()
+                } else {
+                    String::new()
+                }
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        }
+    } else {
+        get_file_content_from_index(&repo, &file_path).unwrap_or_else(|_| {
+            if let Ok(head) = repo.head() {
+                if let Ok(resolved) = head.resolve() {
+                    if let Ok(commit) = resolved.peel_to_commit() {
+                        get_file_content_from_tree(&repo, &commit.tree().unwrap(), &file_path).unwrap_or_default()
+                    } else {
+                        String::new()
+                    }
+                } else {
+                    String::new()
+                }
+            } else {
+                String::new()
+            }
+        })
+    };
+
+    let modified = if let Some(ref oid_str) = oid {
+        let commit_oid = Oid::from_str(oid_str).map_err(|e| e.to_string())?;
+        let commit = repo.find_commit(commit_oid).map_err(|e| e.to_string())?;
+        get_file_content_from_tree(&repo, &commit.tree().map_err(|e| e.to_string())?, &file_path)?
+    } else if staged {
+        get_file_content_from_index(&repo, &file_path).unwrap_or_default()
+    } else {
+        let full_path = std::path::Path::new(&path).join(&file_path);
+        match std::fs::read(&full_path) {
+            Ok(bytes) => {
+                if let Ok(content) = std::str::from_utf8(&bytes) {
+                    content.to_string()
+                } else {
+                    String::from("[Binary Content]")
+                }
+            }
+            Err(_) => String::new(),
+        }
+    };
+
+    Ok(RawFileDiffContents { original, modified })
+}
+
+fn get_file_content_from_tree(repo: &Repository, tree: &git2::Tree, file_path: &str) -> Result<String, String> {
+    if let Ok(entry) = tree.get_path(std::path::Path::new(file_path)) {
+        if let Ok(blob) = repo.find_blob(entry.id()) {
+            if blob.is_binary() {
+                return Ok(String::from("[Binary Content]"));
+            }
+            if let Ok(content) = std::str::from_utf8(blob.content()) {
+                return Ok(content.to_string());
+            }
+        }
+    }
+    Ok(String::new())
+}
+
+fn get_file_content_from_index(repo: &Repository, file_path: &str) -> Result<String, String> {
+    let index = repo.index().map_err(|e| e.to_string())?;
+    if let Some(entry) = index.get_path(std::path::Path::new(file_path), 0) {
+        if let Ok(blob) = repo.find_blob(entry.id) {
+            if blob.is_binary() {
+                return Ok(String::from("[Binary Content]"));
+            }
+            if let Ok(content) = std::str::from_utf8(blob.content()) {
+                return Ok(content.to_string());
+            }
+        }
+    }
+    Err(format!("File not found in index: {file_path}"))
 }
