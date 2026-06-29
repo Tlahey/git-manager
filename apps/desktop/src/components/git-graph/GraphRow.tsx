@@ -226,20 +226,26 @@ function CellContent({
   const { commit } = node
 
   switch (col) {
-    case 'refs':
+    case 'refs': {
       if (node.refs.length === 0) return null
+      const hasOriginMain = node.refs.some(
+        (r) =>
+          r.shortName.endsWith('/main') ||
+          r.shortName.endsWith('/master')
+      )
       return (
         <div className="flex items-center w-full h-full min-w-0 overflow-visible">
           <RefLabelGroup refs={node.refs} color={node.color} />
           <div
-            className="flex-1 h-[2px] ml-2 pointer-events-none"
+            className="flex-1 h-[2px] ml-2 pointer-events-none transition-colors"
             style={{
-              backgroundColor: node.color,
+              backgroundColor: hasOriginMain ? node.color : `${node.color}75`,
               marginRight: `-${node.column * 36 + 26}px`,
             }}
           />
         </div>
       )
+    }
 
     case 'graph': {
       const COL_WIDTH = 36

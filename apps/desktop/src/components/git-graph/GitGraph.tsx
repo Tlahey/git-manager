@@ -101,13 +101,13 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
         },
         parentOids: [firstNode.commit.oid],
       },
-      column: firstNode.column,
+      column: 0,
       color: firstNode.color,
       connections: [
         {
-          fromColumn: firstNode.column,
-          toColumn: firstNode.column,
-          color: firstNode.color,
+          fromColumn: 0,
+          toColumn: 0,
+          color: '#7c3aed',
           dashed: true,
         },
       ],
@@ -335,17 +335,19 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
                         let nodeToRender = node
                         if (totalChanges > 0 && virtualItem.index === 1) {
-                          nodeToRender = {
-                            ...node,
-                            connections: [
-                              ...node.connections,
-                              {
-                                fromColumn: node.column,
-                                toColumn: node.column,
-                                color: node.color,
-                                dashed: true,
-                              },
-                            ],
+                          if (node.column === 0) {
+                            nodeToRender = {
+                              ...node,
+                              connections: [
+                                ...node.connections,
+                                {
+                                  fromColumn: 0,
+                                  toColumn: 0,
+                                  color: node.color,
+                                  dashed: true,
+                                },
+                              ],
+                            }
                           }
                         }
 

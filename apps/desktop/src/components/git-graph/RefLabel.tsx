@@ -39,13 +39,20 @@ export function RefLabel({ gitRef, color }: RefLabelProps) {
 
   const displayName = cleanName(gitRef)
 
-  const isMainOrMaster =
+  const isLocalMainOrMaster =
     gitRef.shortName === 'main' ||
-    gitRef.shortName === 'master' ||
+    gitRef.shortName === 'master'
+
+  const isRemoteMainOrMaster =
     gitRef.shortName.endsWith('/main') ||
     gitRef.shortName.endsWith('/master')
 
-  const refColor = isMainOrMaster ? '#2563eb' : color || '#2563eb'
+  let refColor = color || '#2563eb'
+  if (isLocalMainOrMaster) {
+    refColor = '#2563eb'
+  } else if (isRemoteMainOrMaster) {
+    refColor = '#7c3aed'
+  }
 
   let badgeClasses = cn(
     'inline-flex min-w-0 max-w-[180px] items-center gap-1 rounded px-1.5 py-0 text-[11px] leading-5 font-medium border bg-background transition-all duration-150',

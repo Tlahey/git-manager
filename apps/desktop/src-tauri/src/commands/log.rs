@@ -183,6 +183,87 @@ pub async fn get_log(
     let mut active_lanes: Vec<Option<String>> = Vec::new();
     let mut lane_colors: Vec<String> = Vec::new();
     let mut color_map: HashMap<String, String> = HashMap::new();
+
+    let is_main_or_master = if let Some(ref b) = branch {
+        b == "main" || b == "master"
+    } else if let Ok(head) = repo.head() {
+        if let Some(shorthand) = head.shorthand() {
+            shorthand == "main" || shorthand == "master"
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+
+    let origin_main_oid = if is_main_or_master {
+        repo.find_reference("refs/remotes/origin/main")
+            .or_else(|_| repo.find_reference("refs/remotes/origin/master"))
+            .ok()
+            .and_then(|r| r.target())
+    } else {
+        None
+    };
+
+    if let Some(oid) = origin_main_oid {
+        active_lanes.push(Some(oid.to_string()));
+        lane_colors.push("#7c3aed".to_string()); // Purple for origin/main
+    }
+
+    if is_main_or_master {
+        // Pre-populate color map for main/master branches to differentiate local and remote
+        let local_main_colors = [
+            ("refs/heads/main", "refs/remotes/origin/main"),
+            ("refs/heads/master", "refs/remotes/origin/master"),
+        ];
+
+        for (local_ref, remote_ref) in local_main_colors {
+            let remote_oid = repo.find_reference(remote_ref).ok().and_then(|r| r.target());
+            let local_oid = repo.find_reference(local_ref).ok().and_then(|r| r.target());
+
+            if let Some(oid) = remote_oid {
+                let mut curr = oid;
+                let mut count = 0;
+                while count < 1000 {
+                    if let Ok(commit) = repo.find_commit(curr) {
+                        let curr_str = curr.to_string();
+                        color_map.insert(curr_str, "#7c3aed".to_string()); // Remote main/master: Purple
+                        if commit.parent_count() > 0 {
+                            curr = commit.parent_id(0).unwrap();
+                            count += 1;
+                        } else {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            if let Some(oid) = local_oid {
+                let mut curr = oid;
+                let mut count = 0;
+                while count < 1000 {
+                    if let Ok(commit) = repo.find_commit(curr) {
+                        let curr_str = curr.to_string();
+                        if color_map.contains_key(&curr_str) {
+                            break;
+                        }
+                        color_map.insert(curr_str, "#2563eb".to_string()); // Local main/master: Blue
+                        if commit.parent_count() > 0 {
+                            curr = commit.parent_id(0).unwrap();
+                            count += 1;
+                        } else {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     let mut color_counter: usize = 0;
     let mut nodes: Vec<LogGraphNode> = Vec::new();
 
@@ -388,6 +469,40 @@ pub async fn get_log(
             connections,
             refs,
         });
+    }
+
+    // Add dashed line for origin/main up to the top of the graph
+    if let Some(origin_oid) = origin_main_oid {
+        let origin_oid_str = origin_oid.to_string();
+        if let Some(origin_node_idx) = nodes.iter().position(|n| n.commit.oid == origin_oid_str) {
+            for i in 0..origin_node_idx {
+                let has_col_0_connection = nodes[i].connections.iter().any(|c| c.from_column == 0 || c.to_column == 0);
+                if !has_col_0_connection {
+                    nodes[i].connections.push(GitGraphEdge {
+                        from_column: 0,
+                        to_column: 0,
+                        color: "#7c3aed".to_string(), // Purple
+                        starts_at_node: None,
+                        ends_at_node: None,
+                    });
+                }
+            }
+        } else {
+            // If origin/main is not in the current page, but we have local commits in this page,
+            // draw the dashed line on column 0 through the entire page.
+            for node in &mut nodes {
+                let has_col_0_connection = node.connections.iter().any(|c| c.from_column == 0 || c.to_column == 0);
+                if !has_col_0_connection {
+                    node.connections.push(GitGraphEdge {
+                        from_column: 0,
+                        to_column: 0,
+                        color: "#7c3aed".to_string(), // Purple
+                        starts_at_node: None,
+                        ends_at_node: None,
+                    });
+                }
+            }
+        }
     }
 
     Ok(nodes)

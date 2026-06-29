@@ -40,7 +40,7 @@ export function GraphSvg({ column, connections, isWip }: GraphSvgProps) {
           let yS = yStart
           let yE = yEnd
           if (edge.dashed) {
-            if (isWip) {
+            if (isWip && edge.toColumn === column) {
               // Dans la ligne WIP, la ligne part du bas du rond (y = 20 + 16 = 36)
               yS = nodeY + 16
             } else if (edge.toColumn === column) {
