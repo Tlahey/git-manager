@@ -29,7 +29,7 @@ interface GitGraphProps {
   onSelectCommit?: (oid: string) => void
 }
 
-const ROW_HEIGHT = 40
+// Row height is dynamic now based on settings
 
 interface WaterlineMark {
   id: string
@@ -42,6 +42,8 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   const { t } = useTranslation('git')
   const queryClient = useQueryClient()
   const protectedBranches = useSettingsStore((s) => s.settings.git.protectedBranches)
+  const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
+  const rowHeight = rowHeightSetting === 'small' ? 32 : 40
   // Current HEAD branch name from repo cache (e.g. "main", "feat/xyz")
   const headBranchName = useReposStore((s) => s.repoCache[repoPath]?.head)
 
@@ -249,7 +251,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   const virtualizer = useVirtualizer({
     count: filteredNodes.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => ROW_HEIGHT,
+    estimateSize: () => rowHeight,
     overscan: 20,
   })
 
@@ -416,7 +418,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                               top: 0,
                               left: 0,
                               width: '100%',
-                              height: ROW_HEIGHT,
+                              height: rowHeight,
                               transform: `translateY(${virtualItem.start}px)`,
                             }}
                           >
@@ -442,8 +444,8 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                           className="pointer-events-none absolute left-0 z-10 w-full"
                           style={{
                             top: 0,
-                            height: ROW_HEIGHT,
-                            transform: `translateY(${wl.index * ROW_HEIGHT - ROW_HEIGHT / 2}px)`,
+                            height: rowHeight,
+                            transform: `translateY(${wl.index * rowHeight - rowHeight / 2}px)`,
                           }}
                         >
                           <Waterline label={wl.label} />

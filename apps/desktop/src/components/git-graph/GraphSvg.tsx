@@ -1,4 +1,5 @@
 import type { GitGraphEdge } from '@git-manager/git-types'
+import { useSettingsStore } from '../../stores/settings.store'
 
 interface GraphSvgProps {
   column: number
@@ -7,21 +8,25 @@ interface GraphSvgProps {
 }
 
 const COL_WIDTH = 36
-const ROW_HEIGHT = 40
 
 export function GraphSvg({ column, connections, isWip }: GraphSvgProps) {
+  const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
+  const rowHeight = rowHeightSetting === 'small' ? 32 : 40
+  const avatarSize = rowHeightSetting === 'small' ? 24 : 32
+  const avatarRadius = avatarSize / 2
+
   const maxCol = connections.reduce(
     (m, c) => Math.max(m, c.fromColumn, c.toColumn),
     column,
   )
   const width = (maxCol + 1) * COL_WIDTH + 4
-  const nodeY = ROW_HEIGHT / 2
+  const nodeY = rowHeight / 2
 
   return (
     <svg
       width={width}
-      height={ROW_HEIGHT}
-      viewBox={`0 0 ${width} ${ROW_HEIGHT}`}
+      height={rowHeight}
+      viewBox={`0 0 ${width} ${rowHeight}`}
       style={{ flexShrink: 0 }}
       className="overflow-visible"
     >
@@ -32,7 +37,7 @@ export function GraphSvg({ column, connections, isWip }: GraphSvgProps) {
         const x2 = edge.toColumn * COL_WIDTH + COL_WIDTH / 2
 
         const yStart = -2
-        const yEnd = ROW_HEIGHT + 2
+        const yEnd = rowHeight + 2
 
         let d = ''
         if (x1 === x2) {
@@ -41,11 +46,11 @@ export function GraphSvg({ column, connections, isWip }: GraphSvgProps) {
           let yE = yEnd
           if (edge.dashed) {
             if (isWip && edge.toColumn === column) {
-              // Dans la ligne WIP, la ligne part du bas du rond (y = 20 + 16 = 36)
-              yS = nodeY + 16
+              // Dans la ligne WIP, la ligne part du bas du rond
+              yS = nodeY + avatarRadius
             } else if (edge.toColumn === column) {
-              // Dans la ligne HEAD, la ligne vient du haut et s'arrête au haut du rond (y = 20 - 16 = 4)
-              yE = nodeY - 16
+              // Dans la ligne HEAD, la ligne vient du haut et s'arrête au haut du rond
+              yE = nodeY - avatarRadius
             }
           } else {
             if (edge.startsAtNode) {
@@ -63,13 +68,13 @@ export function GraphSvg({ column, connections, isWip }: GraphSvgProps) {
 
           if (edge.fromColumn !== column && edge.toColumn !== column) {
             // Pass-through diagonal
-            d = `M ${x1} -2 L ${x1} 16 Q ${x1} 20, ${x1 + R * sign} 20 L ${x2 - R * sign} 20 Q ${x2} 20, ${x2} 24 L ${x2} ${ROW_HEIGHT + 2}`
+            d = `M ${x1} -2 L ${x1} ${nodeY - R} Q ${x1} ${nodeY}, ${x1 + R * sign} ${nodeY} L ${x2 - R * sign} ${nodeY} Q ${x2} ${nodeY}, ${x2} ${nodeY + R} L ${x2} ${rowHeight + 2}`
           } else if (edge.fromColumn === column) {
-            // Split (départ du milieu/avatar à y = 20)
-            d = `M ${x1} 20 L ${x2 - R * sign} 20 Q ${x2} 20, ${x2} 24 L ${x2} ${ROW_HEIGHT + 2}`
+            // Split (départ du milieu/avatar à y = nodeY)
+            d = `M ${x1} ${nodeY} L ${x2 - R * sign} ${nodeY} Q ${x2} ${nodeY}, ${x2} ${nodeY + R} L ${x2} ${rowHeight + 2}`
           } else {
-            // Merge (arrivée au milieu/avatar à y = 20)
-            d = `M ${x1} -2 L ${x1} 16 Q ${x1} 20, ${x1 + R * sign} 20 L ${x2} 20`
+            // Merge (arrivée au milieu/avatar à y = nodeY)
+            d = `M ${x1} -2 L ${x1} ${nodeY - R} Q ${x1} ${nodeY}, ${x1 + R * sign} ${nodeY} L ${x2} ${nodeY}`
           }
         }
 
@@ -88,3 +93,4 @@ export function GraphSvg({ column, connections, isWip }: GraphSvgProps) {
     </svg>
   )
 }
+

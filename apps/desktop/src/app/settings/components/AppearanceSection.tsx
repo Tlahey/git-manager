@@ -155,6 +155,11 @@ export function AppearanceSection() {
     { value: 'comfortable', label: t('settings.appearance.density.comfortable') },
   ]
 
+  const rowHeights: { value: 'standard' | 'small'; label: string }[] = [
+    { value: 'standard', label: t('settings.appearance.rowHeight.standard') },
+    { value: 'small', label: t('settings.appearance.rowHeight.small') },
+  ]
+
   const fontSizes = [12, 13, 14, 16]
 
   return (
@@ -241,6 +246,34 @@ export function AppearanceSection() {
                 className="sr-only"
               />
               {d.label}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Row height */}
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-foreground">{t('settings.appearance.rowHeight')}</p>
+        <div className="flex gap-2">
+          {rowHeights.map((rh) => (
+            <label
+              key={rh.value}
+              data-testid={`row-height-radio-${rh.value}`}
+              className={`flex items-center gap-1.5 rounded border px-3 py-1.5 text-xs cursor-pointer transition-colors ${
+                (appearance.rowHeight || 'standard') === rh.value
+                  ? 'border-primary bg-primary/10 text-foreground'
+                  : 'border-border text-muted-foreground hover:bg-accent'
+              }`}
+            >
+              <input
+                type="radio"
+                name="rowHeight"
+                value={rh.value}
+                checked={(appearance.rowHeight || 'standard') === rh.value}
+                onChange={() => updateAppearance({ rowHeight: rh.value })}
+                className="sr-only"
+              />
+              {rh.label}
             </label>
           ))}
         </div>

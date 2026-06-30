@@ -303,6 +303,7 @@ export interface AppearanceSettings {
   showAvatars: boolean
   enableAnimations: boolean
   notificationLocation?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
+  rowHeight?: 'standard' | 'small'
 }
 
 export interface UserTheme {

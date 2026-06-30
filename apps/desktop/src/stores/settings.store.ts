@@ -29,6 +29,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     showAvatars: true,
     enableAnimations: true,
     notificationLocation: 'top-right',
+    rowHeight: 'standard',
   },
   language: 'fr',
   advanced: {

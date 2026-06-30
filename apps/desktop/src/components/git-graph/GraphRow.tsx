@@ -7,6 +7,7 @@ import { GraphSvg } from './GraphSvg'
 import { RefLabelGroup } from './RefLabelGroup'
 import type { ColumnKey, ResolvedColumn } from './columns'
 import { getAvatarUrl } from '../../lib/avatar'
+import { useSettingsStore } from '../../stores/settings.store'
 
 interface GraphRowProps {
   node: GitGraphNode
@@ -105,6 +106,9 @@ export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
   const avatarUrl = getAvatarUrl(commit.author.email, commit.author.name)
   const [imgError, setImgError] = useState(false)
 
+  const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
+  const avatarSize = rowHeightSetting === 'small' ? 24 : 32
+
   const COL_WIDTH = 36
   const nodeX = node.column * COL_WIDTH + COL_WIDTH / 2
 
@@ -121,7 +125,7 @@ export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
   return (
     <div
       className="absolute h-full flex items-center justify-center pointer-events-none"
-      style={{ left: nodeX - 16, width: 32 }}
+      style={{ left: nodeX - avatarSize / 2, width: avatarSize }}
     >
       <div
         className="pointer-events-auto"
@@ -130,8 +134,15 @@ export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
       >
         {/* Avatar Circle */}
         <div
-          className="flex h-[32px] w-[32px] items-center justify-center rounded-full text-[11px] font-bold text-white select-none cursor-pointer border border-background shadow-sm hover:scale-110 hover:shadow-md transition-all duration-150 overflow-hidden"
-          style={{ backgroundColor: avatarUrl && !imgError ? undefined : node.color }}
+          className={cn(
+            "flex items-center justify-center rounded-full font-bold text-white select-none cursor-pointer border border-background shadow-sm hover:scale-110 hover:shadow-md transition-all duration-150 overflow-hidden",
+            avatarSize === 24 ? "text-[8px]" : "text-[11px]"
+          )}
+          style={{
+            width: avatarSize,
+            height: avatarSize,
+            backgroundColor: avatarUrl && !imgError ? undefined : node.color
+          }}
         >
           {avatarUrl && !imgError ? (
             <img
@@ -253,6 +264,8 @@ function CellContent({
     case 'graph': {
       const COL_WIDTH = 36
       const nodeX = node.column * COL_WIDTH + COL_WIDTH / 2
+      const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
+      const avatarSize = rowHeightSetting === 'small' ? 24 : 32
       return (
         <div className="w-full h-full relative overflow-visible flex items-center">
           {/* Conteneur de découpe (clip) élargi pour le graph uniquement */}
@@ -278,11 +291,16 @@ function CellContent({
             {node.commit.oid === 'WIP' ? (
               <div
                 className="absolute h-full flex items-center justify-center pointer-events-none"
-                style={{ left: nodeX - 16, width: 32 }}
+                style={{ left: nodeX - avatarSize / 2, width: avatarSize }}
               >
                 <div
-                  className="flex h-[32px] w-[32px] items-center justify-center rounded-full border border-dashed select-none shadow-sm transition-all duration-150"
-                  style={{ borderColor: node.color, backgroundColor: 'transparent' }}
+                  className="flex items-center justify-center rounded-full border border-dashed select-none shadow-sm transition-all duration-150"
+                  style={{
+                    width: avatarSize,
+                    height: avatarSize,
+                    borderColor: node.color,
+                    backgroundColor: 'transparent'
+                  }}
                 />
               </div>
             ) : (
@@ -349,6 +367,8 @@ export const GraphRow = memo(function GraphRow({
   totalChanges,
   onCommitWip,
 }: GraphRowProps) {
+  const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
+  const rowHeight = rowHeightSetting === 'small' ? 32 : 40
   const refsColumn = columns.find((c) => c.key === 'refs')
   const refsWidth = refsColumn ? refsColumn.width : 160
   const graphColumn = columns.find((c) => c.key === 'graph')
@@ -364,7 +384,8 @@ export const GraphRow = memo(function GraphRow({
       onClick={onSelect}
       onContextMenu={onContextMenu}
       className={cn(
-        'group relative flex h-[32px] my-[4px] cursor-pointer select-none items-center border-b border-transparent transition-colors hover:z-[60]',
+        'group relative flex cursor-pointer select-none items-center border-b border-transparent transition-colors hover:z-[60]',
+        rowHeight === 32 ? 'h-[24px] my-[4px]' : 'h-[32px] my-[4px]'
       )}
     >
       {/* Background colored band starting from the avatar to the right boundary of the graph column, with border-right */}
