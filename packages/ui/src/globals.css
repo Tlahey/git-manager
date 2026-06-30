@@ -196,6 +196,160 @@
     --radius: 0.5rem;
   }
 
+  /* ─── Amethyst (Dark Purple) ────────────────────────────────────────────────── */
+  html[data-theme="amethyst"] {
+    --background: 270 40% 6%;
+    --foreground: 270 20% 95%;
+    --card: 270 30% 10%;
+    --card-foreground: 270 20% 95%;
+    --popover: 270 35% 8%;
+    --popover-foreground: 270 20% 95%;
+    --primary: 280 80% 65%;
+    --primary-foreground: 270 40% 6%;
+    --secondary: 270 20% 15%;
+    --secondary-foreground: 270 20% 90%;
+    --muted: 270 20% 15%;
+    --muted-foreground: 270 12% 65%;
+    --accent: 270 20% 15%;
+    --accent-foreground: 270 20% 95%;
+    --destructive: 350 70% 40%;
+    --destructive-foreground: 270 20% 95%;
+    --border: 270 20% 15%;
+    --input: 270 20% 15%;
+    --ring: 280 80% 65%;
+    --radius: 0.5rem;
+  }
+
+  /* ─── Forest (Dark Green) ───────────────────────────────────────────────────── */
+  html[data-theme="forest"] {
+    --background: 140 30% 6%;
+    --foreground: 140 20% 95%;
+    --card: 140 20% 10%;
+    --card-foreground: 140 20% 95%;
+    --popover: 140 25% 8%;
+    --popover-foreground: 140 20% 95%;
+    --primary: 145 60% 45%;
+    --primary-foreground: 140 30% 6%;
+    --secondary: 140 15% 15%;
+    --secondary-foreground: 140 15% 90%;
+    --muted: 140 15% 15%;
+    --muted-foreground: 140 10% 65%;
+    --accent: 140 15% 15%;
+    --accent-foreground: 140 20% 95%;
+    --destructive: 350 70% 40%;
+    --destructive-foreground: 140 20% 95%;
+    --border: 140 15% 15%;
+    --input: 140 15% 15%;
+    --ring: 145 60% 45%;
+    --radius: 0.5rem;
+  }
+
+  /* ─── Cyberpunk (Neon Dark) ────────────────────────────────────────────────── */
+  html[data-theme="cyberpunk"] {
+    --background: 320 40% 5%;
+    --foreground: 180 100% 92%;
+    --card: 320 30% 9%;
+    --card-foreground: 180 100% 92%;
+    --popover: 320 35% 7%;
+    --popover-foreground: 180 100% 92%;
+    --primary: 320 100% 60%;
+    --primary-foreground: 320 40% 5%;
+    --secondary: 180 100% 10%;
+    --secondary-foreground: 180 100% 80%;
+    --muted: 320 20% 14%;
+    --muted-foreground: 180 30% 60%;
+    --accent: 60 100% 50%;
+    --accent-foreground: 320 40% 5%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 180 100% 92%;
+    --border: 320 25% 16%;
+    --input: 320 25% 16%;
+    --ring: 320 100% 60%;
+    --radius: 0.25rem;
+  }
+
+  /* ─── Platinum (Metallic Shiny & Flashing) ───────────────────────────────────── */
+  html[data-theme="platinum"] {
+    --background: 220 15% 9%;
+    --foreground: 220 10% 98%;
+    --card: 220 15% 13%;
+    --card-foreground: 220 10% 98%;
+    --popover: 220 15% 11%;
+    --popover-foreground: 220 10% 98%;
+    --primary: 180 100% 75%;
+    --primary-foreground: 220 15% 9%;
+    --secondary: 220 10% 18%;
+    --secondary-foreground: 220 10% 90%;
+    --muted: 220 10% 16%;
+    --muted-foreground: 220 5% 75%;
+    --accent: 300 100% 75%;
+    --accent-foreground: 220 15% 9%;
+    --destructive: 0 100% 60%;
+    --destructive-foreground: 220 10% 98%;
+    --border: 220 10% 18%;
+    --input: 220 10% 18%;
+    --ring: 180 100% 75%;
+    --radius: 0.5rem;
+  }
+
+  @keyframes platinum-border-glow {
+    0%, 100% {
+      border-color: rgba(0, 255, 255, 0.25);
+      box-shadow: 0 0 2px rgba(0, 255, 255, 0.1);
+    }
+    50% {
+      border-color: rgba(255, 0, 255, 0.35);
+      box-shadow: 0 0 8px rgba(255, 0, 255, 0.25);
+    }
+  }
+
+  /* Applique le clignotement doux de platine à toutes les bordures de cartes et barres */
+  html[data-theme="platinum"] .border,
+  html[data-theme="platinum"] .border-b,
+  html[data-theme="platinum"] .border-t,
+  html[data-theme="platinum"] .border-r,
+  html[data-theme="platinum"] .border-l {
+    animation: platinum-border-glow 4s infinite alternate;
+  }
+
+  /* Avatar Frames */
+  .avatar-frame-bronze {
+    box-shadow: 0 0 0 2px #cd7f32, 0 0 4px #cd7f32;
+    border-radius: 9999px;
+  }
+  .avatar-frame-silver {
+    box-shadow: 0 0 0 2px #c0c0c0, 0 0 6px #e0e0e0;
+    border-radius: 9999px;
+  }
+  .avatar-frame-gold {
+    box-shadow: 0 0 0 2px #ffd700, 0 0 8px rgba(255, 215, 0, 0.6);
+    border-radius: 9999px;
+  }
+  @keyframes neon-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 2px #ff007f, 0 0 8px #ff007f, 0 0 15px #00ffff;
+    }
+    50% {
+      box-shadow: 0 0 0 2px #00ffff, 0 0 8px #00ffff, 0 0 15px #ff007f;
+    }
+  }
+  .avatar-frame-neon {
+    animation: neon-pulse 3s infinite alternate;
+    border-radius: 9999px;
+  }
+  @keyframes platinum-neon {
+    0%, 100% {
+      box-shadow: 0 0 0 2px #e2e8f0, 0 0 8px #00ffff, 0 0 16px #e2e8f0;
+    }
+    50% {
+      box-shadow: 0 0 0 2px #ffffff, 0 0 8px #ff00ff, 0 0 16px #ffffff;
+    }
+  }
+  .avatar-frame-platinum {
+    animation: platinum-neon 2s infinite alternate;
+    border-radius: 9999px;
+  }
+
   * {
     @apply border-border;
   }

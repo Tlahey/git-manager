@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { useReposStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../../stores/repos.store'
-import { LayoutDashboard, Rocket, Settings, X, GitBranch } from 'lucide-react'
+import { useReposStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from '../../stores/repos.store'
+import { LayoutDashboard, Trophy, Rocket, Settings, X, GitBranch } from 'lucide-react'
+import { useGameStore } from '../../stores/game.store'
 import { NewTabMenu } from './NewTabMenu'
 import { UserProfile } from '../action-toolbar/UserProfile'
 import { NotificationDropdown } from '../notification/NotificationDropdown'
 
 interface TabBarProps {
-  onOpenSettings: (section?: 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization') => void
+  onOpenSettings: (section?: 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization' | 'rewards') => void
 }
 
 interface PinnedTabProps {
@@ -44,6 +45,7 @@ const isMac = typeof window !== 'undefined' && navigator.userAgent.includes('Mac
 
 export function TabBar({ onOpenSettings }: TabBarProps) {
   const { openTabs, activeTab, repoCache, setActiveTab, closeTab, reorderTabs } = useReposStore()
+  const rewardsEnabled = useGameStore((s) => s.rewardsEnabled)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [overIndex, setOverIndex] = useState<number | null>(null)
 
@@ -70,6 +72,17 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
         onClick={() => setActiveTab(DASHBOARD_TAB)}
         hideLabel={true}
       />
+
+      {/* Onglet Rewards (épinglé) */}
+      {rewardsEnabled && (
+        <PinnedTab
+          icon={<Trophy className="h-3.5 w-3.5 text-amber-500" />}
+          label="Succès & Trophées"
+          active={activeTab === REWARDS_TAB}
+          onClick={() => setActiveTab(REWARDS_TAB)}
+          hideLabel={true}
+        />
+      )}
 
       {/* Onglet Launchpad (épinglé) */}
       <PinnedTab

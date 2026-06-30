@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { DashboardPage } from './app/dashboard/DashboardPage'
-import { useReposStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from './stores/repos.store'
+import { useReposStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from './stores/repos.store'
+import { RewardsTab } from './app/pull-requests/components/RewardsTab'
 import { RepoView } from './app/repo/RepoView'
 import { PullRequestsPage } from './app/pull-requests/PullRequestsPage'
 import { SettingsPage } from './app/settings/SettingsPage'
@@ -21,10 +22,14 @@ const queryClient = new QueryClient({
   },
 })
 
+import { useEffect } from 'react'
+import { TrophyToast } from './components/trophy/TrophyToast'
+import { gameObserver } from './lib/gameObserver'
+
 export default function App() {
   const activeTab = useReposStore((s) => s.activeTab)
   const [showSettings, setShowSettings] = useState(false)
-  const [settingsSection, setSettingsSection] = useState<'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization'>('general')
+  const [settingsSection, setSettingsSection] = useState<'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization' | 'rewards'>('general')
 
   useTheme()
   useMonacoTheme()
@@ -36,14 +41,19 @@ export default function App() {
     showSettings,
   })
 
-  function handleOpenSettings(section?: 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization') {
+  // Firing open_app event on launch
+  useEffect(() => {
+    gameObserver.notify('open_app')
+  }, [])
+
+  function handleOpenSettings(section?: 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization' | 'rewards') {
     setSettingsSection(section || 'general')
     setShowSettings(true)
   }
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex h-screen flex-col bg-background text-foreground">
+      <div className="flex h-screen flex-col bg-background text-foreground animate-fadeIn">
         {showSettings ? (
           <SettingsPage initialSection={settingsSection} onClose={() => setShowSettings(false)} />
         ) : (
@@ -54,6 +64,8 @@ export default function App() {
                 <DashboardPage onOpenSettings={() => handleOpenSettings('local_ai')} />
               ) : activeTab === PULL_REQUESTS_TAB ? (
                 <PullRequestsPage />
+              ) : activeTab === REWARDS_TAB ? (
+                <RewardsTab />
               ) : (
                 <RepoView />
               )}
@@ -61,6 +73,7 @@ export default function App() {
             <Footer onOpenSettings={handleOpenSettings} />
           </>
         )}
+        <TrophyToast />
       </div>
     </QueryClientProvider>
   )

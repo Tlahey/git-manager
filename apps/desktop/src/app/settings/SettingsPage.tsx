@@ -9,8 +9,9 @@ import { LlmSection } from './components/LlmSection'
 import { ExternalToolsSection } from './components/ExternalToolsSection'
 import { NotificationSection } from './components/NotificationSection'
 import { AppearanceSection } from './components/AppearanceSection'
+import { RewardsSection } from './components/RewardsSection'
 
-type Section = 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization'
+type Section = 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization' | 'rewards'
 
 interface SettingsPageProps {
   onClose: () => void
@@ -31,6 +32,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
     { id: 'external_tools', label: t('settings.sections.external_tools') },
     { id: 'notifications', label: t('settings.sections.notifications') },
     { id: 'ui_customization', label: t('settings.sections.ui_customization') },
+    { id: 'rewards', label: t('settings.sections.rewards') || 'Succès & Récompenses' },
   ]
 
   return (
@@ -82,6 +84,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
               {activeSection === 'external_tools' && <ExternalToolsSection />}
               {activeSection === 'notifications' && <NotificationSection />}
               {activeSection === 'ui_customization' && <AppearanceSection />}
+              {activeSection === 'rewards' && <RewardsSection />}
             </div>
           </ScrollArea>
         )}

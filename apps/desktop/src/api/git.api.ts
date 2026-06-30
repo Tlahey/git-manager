@@ -13,33 +13,48 @@ import {
   resetToCommit,
   getCommitsBetween,
 } from '../lib/tauri'
+import { gameObserver } from '../lib/gameObserver'
 
 export async function apiStageFile(path: string, filePath: string) {
-  return stageFile(path, filePath)
+  const result = await stageFile(path, filePath)
+  gameObserver.notify('stage', { filePath })
+  return result
 }
 
 export async function apiUnstageFile(path: string, filePath: string) {
-  return unstageFile(path, filePath)
+  const result = await unstageFile(path, filePath)
+  gameObserver.notify('unstage', { filePath })
+  return result
 }
 
 export async function apiStageAll(path: string) {
-  return stageAll(path)
+  const result = await stageAll(path)
+  gameObserver.notify('stage', { filePath: 'all' })
+  return result
 }
 
 export async function apiUnstageAll(path: string) {
-  return unstageAll(path)
+  const result = await unstageAll(path)
+  gameObserver.notify('unstage', { filePath: 'all' })
+  return result
 }
 
 export async function apiCreateCommit(path: string, message: string, amend = false, amendOid?: string) {
-  return createCommit(path, message, amend, amendOid)
+  const result = await createCommit(path, message, amend, amendOid)
+  gameObserver.notify('commit')
+  return result
 }
 
 export async function apiDiscardFileChanges(path: string, filePath: string) {
-  return discardFileChanges(path, filePath)
+  const result = await discardFileChanges(path, filePath)
+  gameObserver.notify('discard')
+  return result
 }
 
 export async function apiCreateFixupCommit(path: string, targetOid: string) {
-  return createFixupCommit(path, targetOid)
+  const result = await createFixupCommit(path, targetOid)
+  gameObserver.notify('fixup')
+  return result
 }
 
 export async function apiAutosquashPreview(path: string) {
@@ -47,7 +62,9 @@ export async function apiAutosquashPreview(path: string) {
 }
 
 export async function apiRunAutosquash(path: string) {
-  return runAutosquash(path)
+  const result = await runAutosquash(path)
+  gameObserver.notify('autosquash')
+  return result
 }
 
 export async function apiGetPendingFixups(path: string) {

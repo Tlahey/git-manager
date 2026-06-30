@@ -4,6 +4,7 @@ import type { GitRepo } from '@git-manager/git-types'
 
 /** Identifiants des onglets spéciaux (toujours présents, non fermables). */
 export const DASHBOARD_TAB = 'dashboard'
+export const REWARDS_TAB = 'rewards'
 export const PULL_REQUESTS_TAB = 'pull-requests'
 
 interface SavedRepo {

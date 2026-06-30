@@ -25,6 +25,7 @@ import { IssuesTab } from './components/IssuesTab'
 import { WaitingForReviewTab } from './components/WaitingForReviewTab'
 import { CommitStatsTab } from './components/CommitStatsTab'
 import { CustomViewsTab } from './components/CustomViewsTab'
+import { gameObserver } from '../../lib/gameObserver'
 import type { InnerTab as InnerTabType, MockPR } from './types'
 
 export function PullRequestsPage() {
@@ -204,7 +205,10 @@ export function PullRequestsPage() {
         </InnerTab>
         <InnerTab
           active={activeTab === 'waiting'}
-          onClick={() => setActiveTab('waiting')}
+          onClick={() => {
+            setActiveTab('waiting')
+            gameObserver.notify('view_waiting_reviews')
+          }}
           count={tabCounts.waiting}
           loading={loading}
         >

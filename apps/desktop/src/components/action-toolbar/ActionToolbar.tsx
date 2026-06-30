@@ -21,6 +21,8 @@ import {
   stashPop,
   createBranch,
 } from '../../lib/tauri'
+import { useSettingsStore } from '../../stores/settings.store'
+import { apiOpenTerminal } from '../../api/shell.api'
 import { RepoSelector } from './RepoSelector'
 import { BranchContext } from './BranchContext'
 import { StateTags } from './StateTags'
@@ -46,6 +48,7 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
   const { t } = useTranslation('git')
   const queryClient = useQueryClient()
   const { activeRepo, repoCache } = useReposStore()
+  const settings = useSettingsStore((s) => s.settings)
 
   const [loading, setLoading] = useState<Record<LoadingKey, boolean>>({
     fetch: false,
@@ -58,6 +61,13 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
 
   const repo = activeRepo ? repoCache[activeRepo] : undefined
   const fromRef = repo ? (repo.isDetached ? 'HEAD' : repo.head) : 'HEAD'
+
+  const handleOpenTerminal = async () => {
+    if (!activeRepo) return
+    const terminal = settings.externalTools?.externalTerminal || 'system'
+    const customCommand = settings.externalTools?.externalTerminalCommand
+    await apiOpenTerminal(activeRepo, terminal, customCommand)
+  }
 
   function notify(type: Notification['type'], message: string) {
     setNotification({ type, message })
@@ -222,10 +232,12 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />
 
         <ToolbarButton
-          icon={<TerminalIcon className="h-4 w-4 text-muted-foreground" />}
+          icon={<TerminalIcon className="h-4 w-4 text-emerald-400" />}
           label={t('toolbar.terminal')}
-          title={t('toolbar.terminalSoon')}
-          disabled
+          title="Ouvrir le terminal dans ce dépôt"
+          disabled={!activeRepo}
+          onClick={handleOpenTerminal}
+          data-testid="toolbar-terminal-button"
         />
       </div>
 

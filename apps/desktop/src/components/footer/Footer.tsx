@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { useReposStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../../stores/repos.store'
+import { useReposStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from '../../stores/repos.store'
 import { useSettingsStore } from '../../stores/settings.store'
+import { useGameStore, getLevelInfo } from '../../stores/game.store'
 import {
   LayoutDashboard,
   Rocket,
@@ -13,6 +14,7 @@ import {
   Terminal,
   ClipboardCopy,
   ClipboardCheck,
+  Trophy,
 } from 'lucide-react'
 import {
   Dialog,
@@ -24,13 +26,15 @@ import {
 } from '@git-manager/ui'
 
 interface FooterProps {
-  onOpenSettings: (section?: 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization') => void
+  onOpenSettings: (section?: 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization' | 'rewards') => void
 }
 
 export function Footer({ onOpenSettings }: FooterProps) {
   const { t } = useTranslation('common')
-  const { activeTab, repoCache, savedRepos, discoveredRepos } = useReposStore()
+  const { activeTab, repoCache, savedRepos, discoveredRepos, setActiveTab } = useReposStore()
   const { settings } = useSettingsStore()
+  const { points, rewardsEnabled } = useGameStore()
+  const { level } = getLevelInfo(points)
   
   const [copied, setCopied] = useState(false)
   const [isShortcutOpen, setIsShortcutOpen] = useState(false)
@@ -45,7 +49,7 @@ export function Footer({ onOpenSettings }: FooterProps) {
   }, [savedRepos, discoveredRepos])
 
   // Dépôt actuel si on est sur un onglet de dépôt
-  const isRepoTab = activeTab !== DASHBOARD_TAB && activeTab !== PULL_REQUESTS_TAB
+  const isRepoTab = activeTab !== DASHBOARD_TAB && activeTab !== PULL_REQUESTS_TAB && activeTab !== REWARDS_TAB
   const currentRepo = isRepoTab ? repoCache[activeTab] : null
 
   // Compte GitHub connecté
@@ -114,6 +118,13 @@ export function Footer({ onOpenSettings }: FooterProps) {
           <div className="flex items-center gap-1.5 font-medium text-foreground/80">
             <Rocket className="h-3.5 w-3.5 text-indigo-500" />
             <span>{t('footer.launchpad')}</span>
+          </div>
+        )}
+
+        {activeTab === REWARDS_TAB && (
+          <div className="flex items-center gap-1.5 font-medium text-foreground/80">
+            <Trophy className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
+            <span>Succès & Récompenses</span>
           </div>
         )}
 
@@ -237,6 +248,25 @@ export function Footer({ onOpenSettings }: FooterProps) {
 
       {/* SECTION DROITE : Connexion GitHub & Version */}
       <div className="flex items-center gap-3 shrink-0">
+        {/* Game/Rewards Status Link */}
+        {rewardsEnabled && (
+          <>
+            <button
+              onClick={() => setActiveTab(REWARDS_TAB)}
+              className={`flex items-center gap-1.5 rounded px-2 py-0.5 border border-transparent hover:border-border hover:bg-accent transition-all duration-150 cursor-pointer ${
+                activeTab === REWARDS_TAB
+                  ? 'text-primary font-bold bg-accent/40 border-border'
+                  : 'text-amber-500 hover:text-amber-600 font-semibold'
+              }`}
+              title="Consulter vos succès et récompenses Git"
+            >
+              <Trophy className={`h-3.5 w-3.5 ${activeTab === REWARDS_TAB ? '' : 'animate-pulse'}`} />
+              <span>Niv. {level}</span>
+            </button>
+            <span className="text-border">|</span>
+          </>
+        )}
+
         {/* GitHub Account Link */}
         <button
           onClick={() => onOpenSettings('integrations')}

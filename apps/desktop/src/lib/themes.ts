@@ -68,6 +68,30 @@ export const BUILTIN_THEMES: ThemeDefinition[] = [
     colors: { bg: '#fdf6e3', fg: '#073642', primary: '#268bd2', accent: '#eee8d5' },
     isDark: false,
   },
+  {
+    id: 'amethyst',
+    labelKey: 'settings.appearance.theme.amethyst',
+    colors: { bg: '#180b24', fg: '#f3e8ff', primary: '#c084fc', accent: '#3b1d54' },
+    isDark: true,
+  },
+  {
+    id: 'forest',
+    labelKey: 'settings.appearance.theme.forest',
+    colors: { bg: '#0a1c12', fg: '#e6f4ea', primary: '#34a853', accent: '#133821' },
+    isDark: true,
+  },
+  {
+    id: 'cyberpunk',
+    labelKey: 'settings.appearance.theme.cyberpunk',
+    colors: { bg: '#120216', fg: '#d9fffb', primary: '#ff007f', accent: '#ffff00' },
+    isDark: true,
+  },
+  {
+    id: 'platinum',
+    labelKey: 'settings.appearance.theme.platinum',
+    colors: { bg: '#0e121a', fg: '#f1f5f9', primary: '#67e8f9', accent: '#f472b6' },
+    isDark: true,
+  },
 ]
 
 export function getBuiltinTheme(id: string): ThemeDefinition | undefined {

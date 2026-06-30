@@ -18,7 +18,7 @@ use commands::ollama::{cancel_generation, check_ollama_status, generate_commit_m
 use commands::remote::{fetch_remote, pull_branch, push_branch};
 use commands::repo::{
     get_repo_status, open_repo, scan_repos, clone_repo, init_repo, get_repo_summary,
-    open_in_editor, get_repo_readme,
+    open_in_editor, get_repo_readme, open_in_terminal, get_terminal_commands,
 };
 use commands::ssh::{generate_ssh_key, read_ssh_public_key};
 use state::AppState;
@@ -41,6 +41,8 @@ pub fn run() {
             get_repo_summary,
             open_in_editor,
             get_repo_readme,
+            open_in_terminal,
+            get_terminal_commands,
             // Log / Graph
             get_log,
             get_commit_diff,

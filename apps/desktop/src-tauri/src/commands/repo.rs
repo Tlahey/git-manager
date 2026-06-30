@@ -476,3 +476,136 @@ pub async fn get_repo_readme(path: String) -> Result<String, String> {
 
     Err("No README file found in this repository".to_string())
 }
+
+/// Ouvre un terminal dans le répertoire spécifié
+#[tauri::command]
+pub async fn open_in_terminal(
+    path: String,
+    terminal: String,
+    custom_command: Option<String>,
+) -> Result<(), String> {
+    let program = match terminal.as_str() {
+        "system" => {
+            #[cfg(target_os = "macos")]
+            {
+                "Terminal".to_string()
+            }
+            #[cfg(target_os = "windows")]
+            {
+                "cmd".to_string()
+            }
+            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+            {
+                "x-terminal-emulator".to_string()
+            }
+        }
+        "custom" => {
+            if let Some(cmd) = custom_command {
+                if cmd.is_empty() {
+                    return Err("Custom terminal command is empty".to_string());
+                }
+                cmd
+            } else {
+                return Err("No custom terminal command specified".to_string());
+            }
+        }
+        _ => return Err(format!("Unknown terminal choice: {}", terminal)),
+    };
+
+    #[cfg(target_os = "macos")]
+    {
+        if terminal == "system" {
+            std::process::Command::new("open")
+                .args(&["-a", "Terminal", &path])
+                .spawn()
+                .map_err(|e| e.to_string())?;
+            return Ok(());
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        if terminal == "system" {
+            std::process::Command::new("cmd")
+                .args(&["/C", "start", "cmd.exe", "/K", "cd", "/d", &path])
+                .spawn()
+                .map_err(|e| e.to_string())?;
+            return Ok(());
+        }
+    }
+
+    let status = if cfg!(target_os = "windows") {
+        std::process::Command::new("cmd")
+            .args(&["/C", &program])
+            .current_dir(&path)
+            .spawn()
+    } else {
+        std::process::Command::new(&program)
+            .current_dir(&path)
+            .spawn()
+    };
+
+    match status {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to open terminal: {}", e)),
+    }
+}
+
+/// Lit l'historique zsh/bash du système et extrait les commandes commençant par git
+#[tauri::command]
+pub async fn get_terminal_commands() -> Result<Vec<String>, String> {
+    use std::fs::File;
+    use std::io::Read;
+
+    let home = std::env::var("HOME")
+        .ok()
+        .or_else(|| {
+            #[allow(deprecated)]
+            std::env::home_dir().map(|p| p.to_string_lossy().to_string())
+        })
+        .ok_or_else(|| "Could not find home directory".to_string())?;
+
+    let mut commands = Vec::new();
+
+    // Lecteur d'historique robuste acceptant le non-UTF-8
+    let mut read_history = |path: std::path::PathBuf| {
+        if path.exists() {
+            if let Ok(mut file) = File::open(&path) {
+                let mut bytes = Vec::new();
+                if file.read_to_end(&mut bytes).is_ok() {
+                    let content = String::from_utf8_lossy(&bytes);
+                    for line in content.lines() {
+                        let cmd = if line.starts_with(':') {
+                            if let Some(pos) = line.find(';') {
+                                line[pos + 1..].to_string()
+                            } else {
+                                line.to_string()
+                            }
+                        } else {
+                            line.to_string()
+                        };
+                        let trimmed = cmd.trim().to_string();
+                        if trimmed.starts_with("git ") && !trimmed.is_empty() {
+                            commands.push(trimmed);
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    let home_path = std::path::Path::new(&home);
+    read_history(home_path.join(".zsh_history"));
+    read_history(home_path.join(".bash_history"));
+
+    // Élimine les répétitions consécutives identiques
+    commands.dedup();
+
+    // Garde les 100 dernières commandes pour éviter de saturer la mémoire
+    if commands.len() > 100 {
+        commands = commands.split_off(commands.len() - 100);
+    }
+
+    Ok(commands)
+}
+
