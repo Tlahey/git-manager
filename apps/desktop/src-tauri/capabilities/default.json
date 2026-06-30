@@ -8,6 +8,8 @@
     "dialog:default",
     "shell:default",
     "core:window:allow-start-dragging",
-    "notification:default"
+    "notification:default",
+    "core:path:default",
+    "core:image:allow-from-path"
   ]
 }

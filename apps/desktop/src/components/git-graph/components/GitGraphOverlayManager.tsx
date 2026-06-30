@@ -1,5 +1,4 @@
-import React, { useState } from 'react'
-import { CommitContextMenu } from '../CommitContextMenu'
+import { useState, useEffect } from 'react'
 import { CreateBranchHereDialog } from '../CreateBranchHereDialog'
 import { ResetDialog } from '../../rollback/ResetDialog'
 import { RevertDialog } from '../../rollback/RevertDialog'
@@ -10,13 +9,9 @@ interface GitGraphOverlayManagerProps {
   nodes: GitGraphNode[]
   primaryOid: string | null
   protectedBranches: string[]
-  menuIsOpen: boolean
-  menuPosition: { x: number; y: number } | null
-  menuRef: React.RefObject<HTMLDivElement>
-  menuTargets: string[]
-  menuClose: () => void
-  onCopySha: () => Promise<void>
-  onFixup: () => Promise<void>
+  /** Action to trigger from the native context menu. */
+  pendingAction: 'reset' | 'revert' | 'branch' | null
+  onClearPendingAction: () => void
 }
 
 export function GitGraphOverlayManager({
@@ -24,17 +19,23 @@ export function GitGraphOverlayManager({
   nodes,
   primaryOid,
   protectedBranches,
-  menuIsOpen,
-  menuPosition,
-  menuRef,
-  menuTargets,
-  menuClose,
-  onCopySha,
-  onFixup,
+  pendingAction,
+  onClearPendingAction,
 }: GitGraphOverlayManagerProps) {
   const [resetOid, setResetOid] = useState<string | null>(null)
   const [revertOid, setRevertOid] = useState<string | null>(null)
   const [branchOid, setBranchOid] = useState<string | null>(null)
+
+  // React to native menu actions dispatched via pendingAction
+  useEffect(() => {
+    if (!pendingAction || !primaryOid) return
+
+    if (pendingAction === 'reset') setResetOid(primaryOid)
+    else if (pendingAction === 'revert') setRevertOid(primaryOid)
+    else if (pendingAction === 'branch') setBranchOid(primaryOid)
+
+    onClearPendingAction()
+  }, [pendingAction, primaryOid, onClearPendingAction])
 
   const resetNode = resetOid ? nodes.find((n) => n.commit.oid === resetOid) ?? null : null
   const revertNode = revertOid ? nodes.find((n) => n.commit.oid === revertOid) ?? null : null
@@ -42,22 +43,7 @@ export function GitGraphOverlayManager({
 
   return (
     <>
-      {/* Context Menu */}
-      {menuIsOpen && menuPosition && (
-        <CommitContextMenu
-          position={menuPosition}
-          menuRef={menuRef}
-          targetCount={menuTargets.length}
-          onClose={menuClose}
-          onReset={() => setResetOid(primaryOid)}
-          onRevert={() => setRevertOid(primaryOid)}
-          onCreateBranch={() => setBranchOid(primaryOid)}
-          onCopySha={onCopySha}
-          onFixup={onFixup}
-        />
-      )}
-
-      {/* Dialogs */}
+      {/* Dialogs triggered by the native context menu */}
       {resetNode && (
         <ResetDialog
           repoPath={repoPath}

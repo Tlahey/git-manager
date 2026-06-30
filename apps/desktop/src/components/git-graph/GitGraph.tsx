@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Spinner } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { useGitStatus } from '../../hooks/useGitStatus'
-import { useContextMenu } from '../../hooks/useContextMenu'
+import { showCommitNativeContextMenu } from '../../api/nativeMenu.api'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useReposStore } from '../../stores/repos.store'
@@ -172,9 +172,8 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     return out
   }, [filteredNodes, t])
 
-  // ── Menu contextuel + dialogs ──────────────────────────────────────────────
-  const menu = useContextMenu()
-  const [menuTargets, setMenuTargets] = useState<string[]>([])
+  // ── Menu contextuel natif (macOS) + dialogs ──────────────────────────────
+  const [pendingAction, setPendingAction] = useState<'reset' | 'revert' | 'branch' | null>(null)
   const [toast, setToast] = useState<{ kind: 'ok' | 'error'; msg: string } | null>(null)
 
   useEffect(() => {
@@ -195,8 +194,18 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
       selectSingle(oid)
       targets = [oid]
     }
-    setMenuTargets(targets)
-    menu.openAt(e.clientX, e.clientY)
+
+    const isSingle = targets.length === 1
+
+    showCommitNativeContextMenu({
+      isSingle,
+      targetCount: targets.length,
+      onReset: () => setPendingAction('reset'),
+      onRevert: () => setPendingAction('revert'),
+      onCreateBranch: () => setPendingAction('branch'),
+      onCopySha: () => handleCopySha(),
+      onFixup: () => handleFixup(),
+    }).catch(console.error)
   }
 
   // ── Actions ────────────────────────────────────────────────────────────────
@@ -472,19 +481,14 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
         </>
       )}
 
-      {/* Overlays (menus contextuels & dialogs) */}
+      {/* Overlays (dialogs déclenchés par le menu natif) */}
       <GitGraphOverlayManager
         repoPath={repoPath}
         nodes={nodes}
         primaryOid={primaryOid}
         protectedBranches={protectedBranches}
-        menuIsOpen={menu.isOpen}
-        menuPosition={menu.position}
-        menuRef={menu.menuRef}
-        menuTargets={menuTargets}
-        menuClose={menu.close}
-        onCopySha={handleCopySha}
-        onFixup={handleFixup}
+        pendingAction={pendingAction}
+        onClearPendingAction={() => setPendingAction(null)}
       />
 
       {/* Toast discret */}
