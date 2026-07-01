@@ -620,34 +620,11 @@ pub async fn get_log(
     Ok(nodes)
 }
 
-/// Retourne le diff complet d'un commit vs son premier parent
-#[tauri::command]
-pub async fn get_commit_diff(path: String, oid: String) -> Result<CommitDiff, String> {
-    let repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
-    let commit_oid = Oid::from_str(&oid).map_err(|e| AppError::Git(e))?;
-    let commit = repo.find_commit(commit_oid).map_err(|e| AppError::Git(e))?;
-
-    let commit_tree = commit.tree().map_err(|e| AppError::Git(e))?;
-    let parent_tree = if commit.parent_count() > 0 {
-        let parent = commit.parent(0).map_err(|e| AppError::Git(e))?;
-        Some(parent.tree().map_err(|e| AppError::Git(e))?)
-    } else {
-        None
-    };
-
-    let mut diff_opts = DiffOptions::new();
-    diff_opts.context_lines(3).ignore_whitespace_change(false);
-
-    let diff = repo
-        .diff_tree_to_tree(
-            parent_tree.as_ref(),
-            Some(&commit_tree),
-            Some(&mut diff_opts),
-        )
-        .map_err(|e| AppError::Git(e))?;
-
-    let files: RefCell<Vec<DiffFile>> = RefCell::new(Vec::new());
-
+fn diff_foreach_files(
+    diff: &git2::Diff,
+    files: &RefCell<Vec<DiffFile>>,
+    is_untracked: bool,
+) -> Result<(), git2::Error> {
     diff.foreach(
         &mut |delta, _progress| {
             let old_path = delta
@@ -662,13 +639,17 @@ pub async fn get_commit_diff(path: String, oid: String) -> Result<CommitDiff, St
                 .and_then(|p| p.to_str())
                 .unwrap_or("")
                 .to_string();
-            let status = match delta.status() {
-                git2::Delta::Added => "added",
-                git2::Delta::Deleted => "deleted",
-                git2::Delta::Renamed => "renamed",
-                git2::Delta::Copied => "copied",
-                git2::Delta::Typechange => "typechange",
-                _ => "modified",
+            let status = if is_untracked {
+                "untracked"
+            } else {
+                match delta.status() {
+                    git2::Delta::Added => "added",
+                    git2::Delta::Deleted => "deleted",
+                    git2::Delta::Renamed => "renamed",
+                    git2::Delta::Copied => "copied",
+                    git2::Delta::Typechange => "typechange",
+                    _ => "modified",
+                }
             };
             let is_binary =
                 delta.old_file().is_binary() || delta.new_file().is_binary();
@@ -728,7 +709,63 @@ pub async fn get_commit_diff(path: String, oid: String) -> Result<CommitDiff, St
             true
         }),
     )
-    .map_err(|e| AppError::Git(e))?;
+}
+
+/// Retourne le diff complet d'un commit vs son premier parent
+#[tauri::command]
+pub async fn get_commit_diff(path: String, oid: String) -> Result<CommitDiff, String> {
+    let mut repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
+    let commit_oid = Oid::from_str(&oid).map_err(|e| AppError::Git(e))?;
+
+    // Check if the commit is a stash commit
+    let mut is_stash = false;
+    let _ = repo.stash_foreach(|_index, _message, stash_oid| {
+        if *stash_oid == commit_oid {
+            is_stash = true;
+            false
+        } else {
+            true
+        }
+    });
+
+    let commit = repo.find_commit(commit_oid).map_err(|e| AppError::Git(e))?;
+
+    let commit_tree = commit.tree().map_err(|e| AppError::Git(e))?;
+    let parent_tree = if commit.parent_count() > 0 {
+        let parent = commit.parent(0).map_err(|e| AppError::Git(e))?;
+        Some(parent.tree().map_err(|e| AppError::Git(e))?)
+    } else {
+        None
+    };
+
+    let mut diff_opts = DiffOptions::new();
+    diff_opts.context_lines(3).ignore_whitespace_change(false);
+
+    let diff = repo
+        .diff_tree_to_tree(
+            parent_tree.as_ref(),
+            Some(&commit_tree),
+            Some(&mut diff_opts),
+        )
+        .map_err(|e| AppError::Git(e))?;
+
+    let files: RefCell<Vec<DiffFile>> = RefCell::new(Vec::new());
+
+    diff_foreach_files(&diff, &files, false).map_err(|e| AppError::Git(e).to_string())?;
+
+    if is_stash && commit.parent_count() == 3 {
+        if let Ok(untracked_parent) = commit.parent(2) {
+            if let Ok(untracked_tree) = untracked_parent.tree() {
+                if let Ok(untracked_diff) = repo.diff_tree_to_tree(
+                    None,
+                    Some(&untracked_tree),
+                    Some(&mut diff_opts),
+                ) {
+                    let _ = diff_foreach_files(&untracked_diff, &files, true);
+                }
+            }
+        }
+    }
 
     let files_out = files.into_inner();
     let total_additions = files_out.iter().map(|f| f.additions).sum();

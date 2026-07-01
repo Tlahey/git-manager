@@ -9,6 +9,7 @@ import {
   Tag as TagIcon,
   GitFork,
   Plus,
+  Archive as ArchiveIcon,
 } from 'lucide-react'
 import { Spinner } from '@git-manager/ui'
 import type { GitBranch, PullRequest } from '@git-manager/git-types'
@@ -24,6 +25,7 @@ const SECTION_ICONS: Record<SectionKey, React.ReactNode> = {
   prs: <GitPullRequest className="h-3 w-3" />,
   tags: <TagIcon className="h-3 w-3" />,
   submodules: <GitFork className="h-3 w-3" />,
+  stashes: <ArchiveIcon className="h-3 w-3" />,
 }
 
 interface SidebarRowViewProps {
@@ -186,6 +188,30 @@ export function SidebarRowView({
           <HoverExpandLabel>{row.tag.shortName}</HoverExpandLabel>
           <span className="shrink-0 tabular-nums text-[10px] font-mono text-muted-foreground/40 font-normal">
             {row.tag.commitOid.slice(0, 7)}
+          </span>
+        </div>
+      )
+
+    case 'stash':
+      return (
+        <div
+          className={`group/stash relative flex items-center gap-1.5 py-[3px] pl-6 pr-2 text-xs transition-colors cursor-pointer ${
+            row.isSelected
+              ? 'bg-accent text-foreground font-medium'
+              : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+          }`}
+          onClick={() => onSelectBranch(row.stash.commitOid)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && onSelectBranch(row.stash.commitOid)}
+          data-testid={`stash-item-${row.stash.index}`}
+        >
+          <ArchiveIcon className="h-3 w-3 shrink-0 opacity-40 text-violet-400" />
+          <HoverExpandLabel className="min-w-0 flex-1 truncate">
+            {row.stash.message || `stash@{${row.stash.index}}`}
+          </HoverExpandLabel>
+          <span className="shrink-0 tabular-nums text-[10px] font-mono text-muted-foreground/40 font-normal">
+            {row.stash.commitOid.slice(0, 7)}
           </span>
         </div>
       )

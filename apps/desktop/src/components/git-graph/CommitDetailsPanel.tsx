@@ -95,11 +95,14 @@ export function CommitDetailsPanel({
     }))
   }, [isWip, diff, gitStatus])
 
+  const isStash = node.refs.some((r) => r.type === 'stash')
+
   return (
     <div className="flex h-full w-full flex-col border-l border-border bg-card shadow-2xl min-w-0">
       {/* ── HEADER ── */}
       <CommitHeaderInfo
         isWip={isWip}
+        isStash={isStash}
         commit={commit}
         isHead={isHead}
         repoPath={repoPath}

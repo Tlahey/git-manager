@@ -1,7 +1,7 @@
-import type { GitBranch, GitRef, GitSubmodule, PullRequest } from '@git-manager/git-types'
+import type { GitBranch, GitRef, GitSubmodule, PullRequest, GitStash } from '@git-manager/git-types'
 
 /** Identifiants stables des sections (état d'ouverture + scroll). */
-export type SectionKey = 'local' | 'remotes' | 'prs' | 'tags' | 'submodules'
+export type SectionKey = 'local' | 'remotes' | 'prs' | 'tags' | 'submodules' | 'stashes'
 
 /**
  * Ligne unitaire de la sidebar aplatie pour la virtualisation.
@@ -56,6 +56,7 @@ export type SidebarRow =
     }
   | { kind: 'pr'; id: string; pr: PullRequest; isSelected: boolean }
   | { kind: 'tag'; id: string; tag: GitRef; isSelected: boolean }
+  | { kind: 'stash'; id: string; stash: GitStash; isSelected: boolean }
   | { kind: 'submodule'; id: string; sm: GitSubmodule }
   | { kind: 'message'; id: string; text: string; loading?: boolean }
   | { kind: 'divider'; id: string }
@@ -70,6 +71,7 @@ export const ROW_HEIGHT: Record<SidebarRow['kind'], number> = {
   subgroup: 22,
   pr: 46,
   tag: 24,
+  stash: 24,
   submodule: 40,
   message: 28,
   divider: 9,
@@ -82,6 +84,7 @@ export const DEFAULT_SECTION_OPEN: Record<SectionKey, boolean> = {
   prs: true,
   tags: false,
   submodules: false,
+  stashes: false,
 }
 
 /** Branches épinglées par défaut (toujours en haut, sauf override utilisateur). */

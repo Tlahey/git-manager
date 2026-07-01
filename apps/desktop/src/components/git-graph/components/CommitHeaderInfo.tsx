@@ -29,6 +29,7 @@ function formatDate(timestamp: number): string {
 
 interface CommitHeaderInfoProps {
   isWip: boolean
+  isStash?: boolean
   commit: GitGraphNode['commit']
   isHead: boolean
   repoPath: string
@@ -40,6 +41,7 @@ interface CommitHeaderInfoProps {
 
 export function CommitHeaderInfo({
   isWip,
+  isStash = false,
   commit,
   isHead,
   repoPath,
@@ -119,6 +121,11 @@ export function CommitHeaderInfo({
               <>
                 <Layers className="h-3.5 w-3.5 text-primary" />
                 {t('workingTree.title')}
+              </>
+            ) : isStash ? (
+              <>
+                <Layers className="h-3.5 w-3.5 text-violet-400" />
+                {t('stash.title')}
               </>
             ) : (
               <>
@@ -245,6 +252,20 @@ export function CommitHeaderInfo({
               </div>
               {commit.body && (
                 <div className="text-[11px] space-y-1.5 pt-1 border-t border-border/20 font-normal">
+                  {messageBodyParsed}
+                </div>
+              )}
+            </div>
+          ) : isStash ? (
+            <div
+              data-testid="commit-message-readonly"
+              className="bg-muted/15 border border-border/30 rounded-lg p-3 space-y-2 font-normal"
+            >
+              <h4 className="text-xs font-bold text-foreground leading-snug break-words">
+                {commit.subject}
+              </h4>
+              {commit.body && (
+                <div className="text-[11px] space-y-1.5 pt-1 border-t border-border/20">
                   {messageBodyParsed}
                 </div>
               )}
