@@ -78,6 +78,8 @@ pub async fn get_log(
     limit: Option<usize>,
     skip: Option<usize>,
     branch: Option<String>,
+    show_stashes: Option<bool>,
+    hidden_stashes: Option<Vec<String>>,
 ) -> Result<Vec<LogGraphNode>, String> {
     let mut repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
 
@@ -148,8 +150,16 @@ pub async fn get_log(
         let _ = revwalk.push_glob("refs/heads/*");
         let _ = revwalk.push_glob("refs/remotes/*");
         // Parcourir et pousser tous les stashes
-        for oid in &stash_oids {
-            let _ = revwalk.push(*oid);
+        if show_stashes.unwrap_or(true) {
+            for oid in &stash_oids {
+                let oid_str = oid.to_string();
+                if let Some(ref hidden) = hidden_stashes {
+                    if hidden.contains(&oid_str) {
+                        continue;
+                    }
+                }
+                let _ = revwalk.push(*oid);
+            }
         }
         // Fallback HEAD
         if let Ok(head) = repo.head() {

@@ -35,7 +35,7 @@ export const initRepo = (path: string) => invoke<GitRepo>('init_repo', { path })
 
 export const getLog = (
   path: string,
-  opts?: { limit?: number; skip?: number; branch?: string; author?: string }
+  opts?: { limit?: number; skip?: number; branch?: string; author?: string; showStashes?: boolean; hiddenStashes?: string[] }
 ) => invoke<GitGraphNode[]>('get_log', { path, ...opts })
 
 export const getCommitDiff = (path: string, oid: string) =>

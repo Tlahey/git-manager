@@ -291,6 +291,7 @@ export interface GitSettings {
   protectedBranches: string[]
   autoFetchIntervalMinutes: number | null
   showRemoteBranches: boolean
+  showStashesInGraph?: boolean
   confirmBeforeForcePush: boolean
   externalEditor: string
   externalEditorCommand: string

@@ -30,6 +30,8 @@ interface RepositorySidebarProps {
   onOpenPr?: (pr: PullRequest) => void
 }
 
+const EMPTY_ARRAY: string[] = []
+
 export function RepositorySidebar({
   repoPath,
   remoteUrls = [],
@@ -51,8 +53,13 @@ export function RepositorySidebar({
   const queryClient = useQueryClient()
   const [openState, setOpenState] = useState<Record<string, boolean>>({})
 
+  const hiddenStashes = useReposStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
+  const toggleStashVisibility = useReposStore((s) => s.toggleStashVisibility)
+
   const handleStashContextMenu = (_e: React.MouseEvent, stash: GitStash) => {
+    const isHidden = hiddenStashes.includes(stash.commitOid)
     showStashNativeContextMenu({
+      isHidden,
       onApply: async () => {
         try {
           await apiStashApply(repoPath, stash.index)
@@ -86,6 +93,9 @@ export function RepositorySidebar({
       onEditMessage: () => {
         onSelectBranch(stash.commitOid)
         setEditingOid(stash.commitOid)
+      },
+      onToggleVisibility: () => {
+        toggleStashVisibility(repoPath, stash.commitOid)
       }
     }).catch(console.error)
   }
@@ -254,6 +264,8 @@ export function RepositorySidebar({
                   onOpenPr={onOpenPr}
                   onCreateBranch={onCreateBranch}
                   onStashContextMenu={handleStashContextMenu}
+                  hiddenStashes={hiddenStashes}
+                  onToggleStashVisibility={(oid) => toggleStashVisibility(repoPath, oid)}
                 />
               </div>
             )

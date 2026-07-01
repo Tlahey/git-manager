@@ -6,6 +6,8 @@ interface UseGitLogOptions {
   limit?: number
   skip?: number
   branch?: string
+  showStashes?: boolean
+  hiddenStashes?: string[]
 }
 
 export function useGitLog(repoPath: string, opts?: UseGitLogOptions) {

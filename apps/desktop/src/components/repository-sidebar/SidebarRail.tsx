@@ -6,10 +6,12 @@ import {
   GitPullRequest,
   Tag as TagIcon,
   GitFork,
+  Archive as ArchiveIcon,
 } from 'lucide-react'
 import type { GitRef, GitSubmodule } from '@git-manager/git-types'
 import { useBranches } from '../../hooks/useBranches'
 import { usePullRequests } from '../../hooks/usePullRequests'
+import { useGitStashes } from '../../hooks/useGitStashes'
 import { getTags, listSubmodules } from '../../lib/tauri'
 
 interface SidebarRailProps {
@@ -72,6 +74,8 @@ export function SidebarRail({
     staleTime: 60_000,
   })
 
+  const { data: stashes = [] } = useGitStashes(repoPath)
+
   return (
     <div className="flex h-full flex-col items-center">
       {/* Bouton expand */}
@@ -110,6 +114,14 @@ export function SidebarRail({
           count={tags.length}
           onClick={onExpand}
         />
+        {stashes.length > 0 && (
+          <RailIcon
+            icon={<ArchiveIcon className="h-4 w-4 text-violet-400" />}
+            label="Stashes"
+            count={stashes.length}
+            onClick={onExpand}
+          />
+        )}
         {submodules.length > 0 && (
           <RailIcon
             icon={<GitFork className="h-4 w-4" />}

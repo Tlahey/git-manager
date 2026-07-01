@@ -33,6 +33,8 @@ interface ReposState {
   setWipMessage: (path: string, message: string) => void
   editingOid: string | null
   setEditingOid: (oid: string | null) => void
+  hiddenStashes: Record<string, string[]>
+  toggleStashVisibility: (repoPath: string, oid: string) => void
 
 
   addRepo: (repo: GitRepo) => void
@@ -61,6 +63,18 @@ export const useReposStore = create<ReposState>()(
       activeLeftPanel: 'sidebar',
       wipMessages: {},
       editingOid: null,
+      hiddenStashes: {},
+
+      toggleStashVisibility: (repoPath, oid) =>
+        set((state) => {
+          const current = state.hiddenStashes[repoPath] || []
+          const next = current.includes(oid)
+            ? current.filter((x) => x !== oid)
+            : [...current, oid]
+          return {
+            hiddenStashes: { ...state.hiddenStashes, [repoPath]: next },
+          }
+        }),
 
 
       setActiveDiffFile: (file) =>
@@ -188,6 +202,7 @@ export const useReposStore = create<ReposState>()(
         activeTab: state.activeTab,
         discoveredRepos: state.discoveredRepos || [],
         wipMessages: state.wipMessages || {},
+        hiddenStashes: state.hiddenStashes || {},
       }),
     }
   )

@@ -150,17 +150,19 @@ export async function showCommitNativeContextMenu(opts: CommitNativeMenuOptions)
 }
 
 export interface StashNativeMenuOptions {
+  isHidden: boolean
   onApply: () => void
   onPop: () => void
   onDelete: () => void
   onEditMessage: () => void
+  onToggleVisibility: () => void
 }
 
 /**
  * Builds and pops up a native macOS context menu for stash actions.
  */
 export async function showStashNativeContextMenu(opts: StashNativeMenuOptions): Promise<void> {
-  const { onApply, onPop, onDelete, onEditMessage } = opts
+  const { isHidden, onApply, onPop, onDelete, onEditMessage, onToggleVisibility } = opts
 
   // Ensure icons are loaded (noop after first call)
   try {
@@ -173,7 +175,7 @@ export async function showStashNativeContextMenu(opts: StashNativeMenuOptions): 
   const popItem     = await makeItem({ text: 'Pop stash',   action: () => onPop() })
   const deleteItem  = await makeItem({ text: 'Delete stash', action: () => onDelete() })
   const editItem    = await makeItem({ text: 'Edit stash message', action: () => onEditMessage() })
-  const hideItem    = await makeItem({ text: 'Hide the stash', enabled: false })
+  const hideItem    = await makeItem({ text: isHidden ? 'Show the stash' : 'Hide the stash', action: () => onToggleVisibility() })
 
   const sep  = () => PredefinedMenuItem.new({ item: 'Separator' })
 
