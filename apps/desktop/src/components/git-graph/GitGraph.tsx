@@ -432,6 +432,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                               onOpenMenu={(e) => openMenuAt(e, oid)}
                               totalChanges={totalChanges}
                               onCommitWip={handleCommitWip}
+                              isFirst={virtualItem.index === 0}
                             />
                           </div>
                         )

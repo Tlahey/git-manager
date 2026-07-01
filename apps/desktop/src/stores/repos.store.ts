@@ -29,6 +29,8 @@ interface ReposState {
   setActiveDiffFile: (file: { path: string; staged: boolean; oid?: string } | null) => void
   activeLeftPanel: 'sidebar' | 'blame' | 'history'
   setActiveLeftPanel: (panel: 'sidebar' | 'blame' | 'history') => void
+  wipMessages: Record<string, string>
+  setWipMessage: (path: string, message: string) => void
 
   addRepo: (repo: GitRepo) => void
   removeRepo: (path: string) => void
@@ -54,6 +56,7 @@ export const useReposStore = create<ReposState>()(
       discoveredRepos: [],
       activeDiffFile: null,
       activeLeftPanel: 'sidebar',
+      wipMessages: {},
 
       setActiveDiffFile: (file) =>
         set((state) => {
@@ -161,6 +164,11 @@ export const useReposStore = create<ReposState>()(
         set((state) => ({
           discoveredRepos: (state.discoveredRepos || []).filter((r) => r.path !== path),
         })),
+
+      setWipMessage: (path, message) =>
+        set((state) => ({
+          wipMessages: { ...state.wipMessages, [path]: message },
+        })),
     }),
     {
       name: 'git-manager-repos',
@@ -171,6 +179,7 @@ export const useReposStore = create<ReposState>()(
         activeRepo: state.activeRepo,
         activeTab: state.activeTab,
         discoveredRepos: state.discoveredRepos || [],
+        wipMessages: state.wipMessages || {},
       }),
     }
   )

@@ -21,6 +21,7 @@ use commands::repo::{
     open_in_editor, get_repo_readme, open_in_terminal, get_terminal_commands,
 };
 use commands::ssh::{generate_ssh_key, read_ssh_public_key};
+use commands::stash::{stash_push, stash_pop, stash_apply, stash_drop, stash_list};
 use state::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -89,6 +90,12 @@ pub fn run() {
             // SSH
             generate_ssh_key,
             read_ssh_public_key,
+            // Stash
+            stash_push,
+            stash_pop,
+            stash_apply,
+            stash_drop,
+            stash_list,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

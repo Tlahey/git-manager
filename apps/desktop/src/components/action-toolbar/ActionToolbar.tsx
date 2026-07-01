@@ -17,12 +17,14 @@ import {
   fetchRemote,
   pullBranch,
   pushBranch,
-  stashPush,
-  stashPop,
   createBranch,
 } from '../../lib/tauri'
+import { apiStashPush, apiStashPop } from '../../api/git.api'
 import { useSettingsStore } from '../../stores/settings.store'
 import { apiOpenTerminal } from '../../api/shell.api'
+import { mutate } from 'swr'
+import { useGitStatus } from '../../hooks/useGitStatus'
+import { useGitStashes } from '../../hooks/useGitStashes'
 import { RepoSelector } from './RepoSelector'
 import { BranchContext } from './BranchContext'
 import { StateTags } from './StateTags'
@@ -58,9 +60,22 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
     pop: false,
   })
   const [notification, setNotification] = useState<Notification | null>(null)
+  const wipMessages = useReposStore((s) => s.wipMessages)
+  const setWipMessage = useReposStore((s) => s.setWipMessage)
 
   const repo = activeRepo ? repoCache[activeRepo] : undefined
   const fromRef = repo ? (repo.isDetached ? 'HEAD' : repo.head) : 'HEAD'
+
+  const { data: gitStatus } = useGitStatus(activeRepo || '')
+  const { data: stashes } = useGitStashes(activeRepo)
+
+  const hasChanges = gitStatus
+    ? gitStatus.staged.length > 0 ||
+      gitStatus.unstaged.length > 0 ||
+      gitStatus.untracked.length > 0
+    : false
+
+  const hasStashes = stashes ? stashes.length > 0 : false
 
   const handleOpenTerminal = async () => {
     if (!activeRepo) return
@@ -79,6 +94,7 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
     queryClient.invalidateQueries({ queryKey: ['branches', activeRepo] })
     queryClient.invalidateQueries({ queryKey: ['git-log', activeRepo] })
     queryClient.invalidateQueries({ queryKey: ['git-status', activeRepo] })
+    mutate(['git-stashes', activeRepo])
   }
 
   async function runAction(key: LoadingKey, fn: () => Promise<void>) {
@@ -134,14 +150,22 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
 
   const handleStash = () =>
     runAction('stash', async () => {
-      await stashPush(activeRepo!)
+      const wipMsg = activeRepo ? wipMessages[activeRepo] || '' : ''
+      const defaultMessage = `WIP on ${fromRef}`
+      const stashMessage = wipMsg.trim() ? wipMsg.trim() : defaultMessage
+      // Always stash untracked
+      await apiStashPush(activeRepo!, stashMessage, true)
+      // Clear WIP message
+      if (activeRepo) {
+        setWipMessage(activeRepo, '')
+      }
       notify('success', t('toolbar.stashSuccess'))
       invalidateRepo()
     })
 
   const handlePop = () =>
     runAction('pop', async () => {
-      await stashPop(activeRepo!)
+      await apiStashPop(activeRepo!)
       notify('success', t('toolbar.popSuccess'))
       invalidateRepo()
     })
@@ -218,14 +242,15 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
           icon={<Archive className="h-4 w-4 text-violet-400" />}
           label={t('toolbar.stash')}
           loading={loading.stash}
-          disabled={disabled}
+          disabled={disabled || !hasChanges}
           onClick={handleStash}
+          data-testid="toolbar-stash-button"
         />
         <ToolbarButton
           icon={<ArchiveRestore className="h-4 w-4 text-violet-400" />}
           label={t('toolbar.pop')}
           loading={loading.pop}
-          disabled={disabled}
+          disabled={disabled || !hasStashes}
           onClick={handlePop}
         />
 

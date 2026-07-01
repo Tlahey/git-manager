@@ -1,6 +1,5 @@
 import { memo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { MoreVertical, FileText } from 'lucide-react'
 import type { GitGraphNode } from '@git-manager/git-types'
 import { cn } from '@git-manager/ui'
 import { GraphSvg } from './GraphSvg'
@@ -8,6 +7,8 @@ import { RefLabelGroup } from './RefLabelGroup'
 import type { ColumnKey, ResolvedColumn } from './columns'
 import { getAvatarUrl } from '../../lib/avatar'
 import { useSettingsStore } from '../../stores/settings.store'
+import { useReposStore } from '../../stores/repos.store'
+import { MoreVertical, FileText, Archive } from 'lucide-react'
 
 interface GraphRowProps {
   node: GitGraphNode
@@ -22,6 +23,7 @@ interface GraphRowProps {
   onOpenMenu: (e: React.MouseEvent) => void
   totalChanges?: number
   onCommitWip?: (message: string) => void
+  isFirst?: boolean
 }
 
 function formatRelativeDate(timestamp: number): string {
@@ -74,9 +76,20 @@ function getAuthorInitials(name: string): string {
   return name.slice(0, 2).toUpperCase()
 }
 
-function AuthorAvatar({ name, email }: { name: string; email?: string }) {
+function AuthorAvatar({ name, email, isStash }: { name: string; email?: string; isStash?: boolean }) {
   const avatarUrl = getAvatarUrl(email, name)
   const [imgError, setImgError] = useState(false)
+
+  if (isStash) {
+    return (
+      <div
+        className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-dashed border-violet-400/60 text-violet-400 bg-transparent"
+        title="Stash"
+      >
+        <Archive className="h-2.5 w-2.5" />
+      </div>
+    )
+  }
 
   return (
     <div
@@ -122,6 +135,8 @@ export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
     setIsHovered(false)
   }
 
+  const isStash = node.refs.some((r) => r.type === 'stash')
+
   return (
     <div
       className="absolute h-full flex items-center justify-center pointer-events-none"
@@ -132,29 +147,47 @@ export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Avatar Circle */}
-        <div
-          className={cn(
-            "flex items-center justify-center rounded-full font-bold text-white select-none cursor-pointer border border-background shadow-sm hover:scale-110 hover:shadow-md transition-all duration-150 overflow-hidden",
-            avatarSize === 24 ? "text-[8px]" : "text-[11px]"
-          )}
-          style={{
-            width: avatarSize,
-            height: avatarSize,
-            backgroundColor: avatarUrl && !imgError ? undefined : node.color
-          }}
-        >
-          {avatarUrl && !imgError ? (
-            <img
-              src={avatarUrl}
-              alt={commit.author.name}
-              className="h-full w-full object-cover"
-              onError={() => setImgError(true)}
-            />
-          ) : (
-            initials
-          )}
-        </div>
+        {isStash ? (
+          <div
+            className={cn(
+              "flex items-center justify-center rounded-md font-bold select-none cursor-pointer border-2 border-dashed shadow-sm hover:scale-110 hover:shadow-md transition-all duration-150 overflow-hidden",
+              avatarSize === 24 ? "text-[8px]" : "text-[11px]"
+            )}
+            style={{
+              width: avatarSize,
+              height: avatarSize,
+              borderColor: node.color,
+              color: node.color,
+              backgroundColor: 'transparent'
+            }}
+          >
+            <Archive className={avatarSize === 24 ? "h-3 w-3" : "h-3.5 w-3.5"} />
+          </div>
+        ) : (
+          /* Avatar Circle */
+          <div
+            className={cn(
+              "flex items-center justify-center rounded-full font-bold text-white select-none cursor-pointer border border-background shadow-sm hover:scale-110 hover:shadow-md transition-all duration-150 overflow-hidden",
+              avatarSize === 24 ? "text-[8px]" : "text-[11px]"
+            )}
+            style={{
+              width: avatarSize,
+              height: avatarSize,
+              backgroundColor: avatarUrl && !imgError ? undefined : node.color
+            }}
+          >
+            {avatarUrl && !imgError ? (
+              <img
+                src={avatarUrl}
+                alt={commit.author.name}
+                className="h-full w-full object-cover"
+                onError={() => setImgError(true)}
+              />
+            ) : (
+              initials
+            )}
+          </div>
+        )}
       </div>
 
       {isHovered &&
@@ -181,14 +214,21 @@ export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
 
 function WipCommitInput({
   totalChanges,
-  color,
   onCommit,
 }: {
   totalChanges: number
-  color?: string
   onCommit?: (message: string) => void
 }) {
-  const [value, setValue] = useState('')
+  const activeRepo = useReposStore((s) => s.activeRepo)
+  const wipMessages = useReposStore((s) => s.wipMessages)
+  const setWipMessage = useReposStore((s) => s.setWipMessage)
+  const value = activeRepo ? wipMessages[activeRepo] || '' : ''
+
+  function setValue(val: string) {
+    if (activeRepo) {
+      setWipMessage(activeRepo, val)
+    }
+  }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
@@ -208,8 +248,7 @@ function WipCommitInput({
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="// WIP"
-        style={{ color, borderColor: color ? `${color}40` : undefined }}
-        className="flex-1 min-w-0 bg-transparent placeholder-muted-foreground/60 text-[11px] h-6 px-2 rounded border focus:border-primary/60 focus:outline-none transition-colors"
+        className="flex-1 min-w-0 bg-transparent text-foreground border-border placeholder-muted-foreground/60 text-[11px] h-6 px-2 rounded border focus:border-primary/60 focus:outline-none transition-colors"
       />
       <div
         className="flex items-center gap-1 shrink-0 text-[10px] font-semibold text-muted-foreground bg-muted/40 px-2 py-0.5 rounded border border-border/30"
@@ -230,26 +269,31 @@ function CellContent({
   refsWidth,
   totalChanges,
   onCommitWip,
+  isFirst,
 }: {
   col: ColumnKey
   node: GitGraphNode
   refsWidth: number
   totalChanges?: number
   onCommitWip?: (message: string) => void
+  isFirst?: boolean
 }) {
   const { commit } = node
 
   switch (col) {
     case 'refs': {
-      if (node.refs.length === 0) return null
-      const hasOriginMain = node.refs.some(
+      const isStashCommit = node.refs.some((r) => r.type === 'stash')
+      if (isStashCommit) return null
+      const filteredRefs = node.refs
+      if (filteredRefs.length === 0) return null
+      const hasOriginMain = filteredRefs.some(
         (r) =>
           r.shortName.endsWith('/main') ||
           r.shortName.endsWith('/master')
       )
       return (
         <div className="flex items-center w-full h-full min-w-0 overflow-visible">
-          <RefLabelGroup refs={node.refs} color={node.color} />
+          <RefLabelGroup refs={filteredRefs} color={node.color} />
           <div
             className="flex-1 h-[2px] ml-2 pointer-events-none transition-colors"
             style={{
@@ -262,6 +306,7 @@ function CellContent({
     }
 
     case 'graph': {
+      const isStash = node.refs.some((r) => r.type === 'stash')
       const COL_WIDTH = 36
       const nodeX = node.column * COL_WIDTH + COL_WIDTH / 2
       const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
@@ -282,6 +327,8 @@ function CellContent({
                 column={node.column}
                 connections={node.connections}
                 isWip={node.commit.oid === 'WIP'}
+                isStash={isStash}
+                isFirst={isFirst}
               />
             </div>
           </div>
@@ -313,7 +360,7 @@ function CellContent({
 
     case 'message': {
       if (node.commit.oid === 'WIP') {
-        return <WipCommitInput totalChanges={totalChanges ?? 0} color={node.color} onCommit={onCommitWip} />
+        return <WipCommitInput totalChanges={totalChanges ?? 0} onCommit={onCommitWip} />
       }
       const body = commit.body?.replace(/\s+/g, ' ').trim()
       return (
@@ -324,14 +371,16 @@ function CellContent({
       )
     }
 
-    case 'author':
+    case 'author': {
       if (node.commit.oid === 'WIP') return null
+      const isStashCommit = node.refs.some((r) => r.type === 'stash')
       return (
         <div className="flex min-w-0 items-center gap-1.5">
-          <AuthorAvatar name={commit.author.name} email={commit.author.email} />
+          <AuthorAvatar name={commit.author.name} email={commit.author.email} isStash={isStashCommit} />
           <span className="truncate text-[10px] text-muted-foreground">{commit.author.name}</span>
         </div>
       )
+    }
 
     case 'date':
       if (node.commit.oid === 'WIP') return null
@@ -366,6 +415,7 @@ export const GraphRow = memo(function GraphRow({
   onOpenMenu,
   totalChanges,
   onCommitWip,
+  isFirst,
 }: GraphRowProps) {
   const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
   const rowHeight = rowHeightSetting === 'small' ? 32 : 40
@@ -438,6 +488,7 @@ export const GraphRow = memo(function GraphRow({
             refsWidth={refsWidth}
             totalChanges={totalChanges}
             onCommitWip={onCommitWip}
+            isFirst={isFirst}
           />
         </div>
       ))}

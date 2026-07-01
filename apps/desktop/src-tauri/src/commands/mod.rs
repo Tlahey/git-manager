@@ -10,3 +10,4 @@ pub mod rollback;
 pub mod submodule;
 pub mod themes;
 pub mod ssh;
+pub mod stash;

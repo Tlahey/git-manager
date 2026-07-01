@@ -12,6 +12,9 @@ import {
   revertCommit,
   resetToCommit,
   getCommitsBetween,
+  stashPush,
+  stashPop,
+  stashList,
 } from '../lib/tauri'
 import { gameObserver } from '../lib/gameObserver'
 
@@ -82,3 +85,19 @@ export async function apiResetToCommit(path: string, oid: string, mode: 'soft' |
 export async function apiGetCommitsBetween(path: string, fromOid: string, toOid: string) {
   return getCommitsBetween(path, fromOid, toOid)
 }
+
+export async function apiStashPush(path: string, message?: string, includeUntracked = false) {
+  const result = await stashPush(path, message, includeUntracked)
+  // Optionally notify gameObserver if there is a stash achievement/event
+  return result
+}
+
+export async function apiStashPop(path: string, index?: number) {
+  const result = await stashPop(path, index)
+  return result
+}
+
+export async function apiStashList(path: string) {
+  return stashList(path)
+}
+

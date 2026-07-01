@@ -79,7 +79,26 @@ pub async fn get_log(
     skip: Option<usize>,
     branch: Option<String>,
 ) -> Result<Vec<LogGraphNode>, String> {
-    let repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
+    let mut repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
+
+    let mut stash_oids = Vec::new();
+    let mut stash_refs = Vec::new();
+    let _ = repo.stash_foreach(|index, _, commit_oid| {
+        stash_oids.push(*commit_oid);
+        stash_refs.push((index, commit_oid.to_string()));
+        true
+    });
+
+    let mut ignored_stash_parent_oids = std::collections::HashSet::new();
+    for commit_oid in &stash_oids {
+        if let Ok(commit) = repo.find_commit(*commit_oid) {
+            for i in 1..commit.parent_count() {
+                if let Ok(parent) = commit.parent(i) {
+                    ignored_stash_parent_oids.insert(parent.id());
+                }
+            }
+        }
+    }
 
     let mut revwalk = repo.revwalk().map_err(|e| AppError::Git(e))?;
     revwalk
@@ -128,6 +147,10 @@ pub async fn get_log(
         // Parcourir toutes les branches et remotes
         let _ = revwalk.push_glob("refs/heads/*");
         let _ = revwalk.push_glob("refs/remotes/*");
+        // Parcourir et pousser tous les stashes
+        for oid in &stash_oids {
+            let _ = revwalk.push(*oid);
+        }
         // Fallback HEAD
         if let Ok(head) = repo.head() {
             if let Some(oid) = head.target() {
@@ -196,14 +219,28 @@ pub async fn get_log(
         }
     }
 
+    // Add stash references to refs_map
+    for (index, oid_str) in stash_refs {
+        refs_map
+            .entry(oid_str.clone())
+            .or_default()
+            .push(LogRef {
+                name: format!("refs/stash@{{{}}}", index),
+                short_name: format!("stash@{{{}}}", index),
+                ref_type: "stash".to_string(),
+                commit_oid: oid_str,
+            });
+    }
+
     // ── Collecte des OIDs avec pagination ────────────────────────────────────
     let skip_n = skip.unwrap_or(0);
     let limit_n = limit.unwrap_or(200);
 
     let oids: Vec<Oid> = revwalk
+        .filter_map(|r| r.ok())
+        .filter(|oid| !ignored_stash_parent_oids.contains(oid))
         .skip(skip_n)
         .take(limit_n)
-        .filter_map(|r| r.ok())
         .collect();
 
     // ── Algorithme de layout de colonnes ─────────────────────────────────────
@@ -224,6 +261,15 @@ pub async fn get_log(
         false
     };
 
+    let local_main_oid = if is_main_or_master {
+        repo.find_reference("refs/heads/main")
+            .or_else(|_| repo.find_reference("refs/heads/master"))
+            .ok()
+            .and_then(|r| r.target())
+    } else {
+        None
+    };
+
     let origin_main_oid = if is_main_or_master {
         repo.find_reference("refs/remotes/origin/main")
             .or_else(|_| repo.find_reference("refs/remotes/origin/master"))
@@ -233,7 +279,10 @@ pub async fn get_log(
         None
     };
 
-    if let Some(oid) = origin_main_oid {
+    if let Some(oid) = local_main_oid {
+        active_lanes.push(Some(oid.to_string()));
+        lane_colors.push("#2563eb".to_string()); // Blue for local main
+    } else if let Some(oid) = origin_main_oid {
         active_lanes.push(Some(oid.to_string()));
         lane_colors.push("#7c3aed".to_string()); // Purple for origin/main
     }
@@ -246,27 +295,8 @@ pub async fn get_log(
         ];
 
         for (local_ref, remote_ref) in local_main_colors {
-            let remote_oid = repo.find_reference(remote_ref).ok().and_then(|r| r.target());
             let local_oid = repo.find_reference(local_ref).ok().and_then(|r| r.target());
-
-            if let Some(oid) = remote_oid {
-                let mut curr = oid;
-                let mut count = 0;
-                while count < 1000 {
-                    if let Ok(commit) = repo.find_commit(curr) {
-                        let curr_str = curr.to_string();
-                        color_map.insert(curr_str, "#7c3aed".to_string()); // Remote main/master: Purple
-                        if commit.parent_count() > 0 {
-                            curr = commit.parent_id(0).unwrap();
-                            count += 1;
-                        } else {
-                            break;
-                        }
-                    } else {
-                        break;
-                    }
-                }
-            }
+            let remote_oid = repo.find_reference(remote_ref).ok().and_then(|r| r.target());
 
             if let Some(oid) = local_oid {
                 let mut curr = oid;
@@ -289,6 +319,28 @@ pub async fn get_log(
                     }
                 }
             }
+
+            if let Some(oid) = remote_oid {
+                let mut curr = oid;
+                let mut count = 0;
+                while count < 1000 {
+                    if let Ok(commit) = repo.find_commit(curr) {
+                        let curr_str = curr.to_string();
+                        if color_map.contains_key(&curr_str) {
+                            break;
+                        }
+                        color_map.insert(curr_str, "#7c3aed".to_string()); // Remote main/master: Purple
+                        if commit.parent_count() > 0 {
+                            curr = commit.parent_id(0).unwrap();
+                            count += 1;
+                        } else {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            }
         }
     }
 
@@ -299,10 +351,24 @@ pub async fn get_log(
         let commit = repo.find_commit(*oid).map_err(|e| AppError::Git(e))?;
         let oid_str = oid.to_string();
         let short_oid = oid_str[..7.min(oid_str.len())].to_string();
-        let parent_oids: Vec<String> = commit.parent_ids().map(|p| p.to_string()).collect();
+        let mut parent_oids: Vec<String> = commit.parent_ids().map(|p| p.to_string()).collect();
+        if stash_oids.contains(oid) {
+            if !parent_oids.is_empty() {
+                parent_oids.truncate(1);
+            }
+        }
+
+        let mut col_override = None;
+        if stash_oids.contains(oid) {
+            if let Some(p0) = parent_oids.first() {
+                if let Some(idx) = active_lanes.iter().position(|l| l.as_deref() == Some(p0.as_str())) {
+                    col_override = Some(idx);
+                }
+            }
+        }
 
         // Assigner la couleur du commit courant (stable par lane, propagée au 1er parent)
-        let color = color_map
+        let mut color = color_map
             .entry(oid_str.clone())
             .or_insert_with(|| {
                 let c = COLORS[color_counter % COLORS.len()].to_string();
@@ -311,10 +377,19 @@ pub async fn get_log(
             })
             .clone();
 
+        if let Some(idx) = col_override {
+            if idx < lane_colors.len() && !lane_colors[idx].is_empty() {
+                color = lane_colors[idx].clone();
+                color_map.insert(oid_str.clone(), color.clone());
+            }
+        }
+
         let mut is_new_lane = false;
 
         // S'assurer que ce commit est dans active_lanes (nouveau nœud non attendu)
-        if !active_lanes
+        if let Some(idx) = col_override {
+            active_lanes[idx] = Some(oid_str.clone());
+        } else if !active_lanes
             .iter()
             .any(|l| l.as_deref() == Some(oid_str.as_str()))
         {
@@ -492,7 +567,10 @@ pub async fn get_log(
             parent_oids,
         };
 
-        let refs = refs_map.get(&oid_str).cloned().unwrap_or_default();
+        let mut refs = refs_map.get(&oid_str).cloned().unwrap_or_default();
+        if stash_oids.contains(oid) {
+            refs.retain(|r| r.ref_type == "stash");
+        }
 
         nodes.push(LogGraphNode {
             commit: git_commit,
