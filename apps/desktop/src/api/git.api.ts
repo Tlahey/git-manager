@@ -15,6 +15,9 @@ import {
   stashPush,
   stashPop,
   stashList,
+  stashApply,
+  stashDrop,
+  editStashMessage,
 } from '../lib/tauri'
 import { gameObserver } from '../lib/gameObserver'
 
@@ -97,7 +100,23 @@ export async function apiStashPop(path: string, index?: number) {
   return result
 }
 
+export async function apiStashApply(path: string, index?: number) {
+  const result = await stashApply(path, index)
+  return result
+}
+
+export async function apiStashDrop(path: string, index: number) {
+  const result = await stashDrop(path, index)
+  return result
+}
+
+export async function apiUpdateStashMessage(path: string, index: number, message: string) {
+  const result = await editStashMessage(path, index, message)
+  return result
+}
+
 export async function apiStashList(path: string) {
   return stashList(path)
 }
+
 

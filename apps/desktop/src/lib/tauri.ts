@@ -77,6 +77,10 @@ export const stashApply = (path: string, index?: number) =>
 
 export const stashDrop = (path: string, index: number) => invoke<void>('stash_drop', { path, index })
 
+export const editStashMessage = (path: string, index: number, message: string) =>
+  invoke<void>('edit_stash_message', { path, index, message })
+
+
 // ─── Worktree ─────────────────────────────────────────────────────────────────
 
 export const listWorktrees = (path: string) => invoke<GitWorktree[]>('list_worktrees', { path })

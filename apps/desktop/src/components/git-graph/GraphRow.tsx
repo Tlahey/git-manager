@@ -9,6 +9,8 @@ import { getAvatarUrl } from '../../lib/avatar'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useReposStore } from '../../stores/repos.store'
 import { MoreVertical, FileText, Archive } from 'lucide-react'
+import { useGitStashes } from '../../hooks/useGitStashes'
+
 
 interface GraphRowProps {
   node: GitGraphNode
@@ -222,6 +224,7 @@ function WipCommitInput({
   const activeRepo = useReposStore((s) => s.activeRepo)
   const wipMessages = useReposStore((s) => s.wipMessages)
   const setWipMessage = useReposStore((s) => s.setWipMessage)
+
   const value = activeRepo ? wipMessages[activeRepo] || '' : ''
 
   function setValue(val: string) {
@@ -279,6 +282,10 @@ function CellContent({
   isFirst?: boolean
 }) {
   const { commit } = node
+  const activeRepo = useReposStore((s) => s.activeRepo)
+  const { data: stashes } = useGitStashes(activeRepo)
+  const isStashCommit = node.refs.some((r) => r.type === 'stash')
+  const stash = isStashCommit ? stashes?.find((s) => s.commitOid === commit.oid) : null
 
   switch (col) {
     case 'refs': {
@@ -363,9 +370,10 @@ function CellContent({
         return <WipCommitInput totalChanges={totalChanges ?? 0} onCommit={onCommitWip} />
       }
       const body = commit.body?.replace(/\s+/g, ' ').trim()
+      const displaySubject = stash ? stash.message : commit.subject
       return (
         <span className="min-w-0 flex-1 truncate text-[11px] leading-tight">
-          <span className="text-foreground">{commit.subject}</span>
+          <span className="text-foreground">{displaySubject}</span>
           {body && <span className="ml-2 text-muted-foreground/70">{body}</span>}
         </span>
       )

@@ -12,7 +12,7 @@ import {
   Archive as ArchiveIcon,
 } from 'lucide-react'
 import { Spinner } from '@git-manager/ui'
-import type { GitBranch, PullRequest } from '@git-manager/git-types'
+import type { GitBranch, PullRequest, GitStash } from '@git-manager/git-types'
 import type { SidebarRow, SectionKey } from './types'
 import { SectionHeader } from './SectionHeader'
 import { BranchItem } from './BranchItem'
@@ -36,6 +36,7 @@ interface SidebarRowViewProps {
   onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
   onOpenPr?: (pr: PullRequest) => void
   onCreateBranch?: () => void
+  onStashContextMenu?: (e: React.MouseEvent, stash: GitStash) => void
 }
 
 export function SidebarRowView({
@@ -46,6 +47,7 @@ export function SidebarRowView({
   onContextMenu,
   onOpenPr,
   onCreateBranch,
+  onStashContextMenu,
 }: SidebarRowViewProps) {
   switch (row.kind) {
     case 'section':
@@ -201,6 +203,11 @@ export function SidebarRowView({
               : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
           }`}
           onClick={() => onSelectBranch(row.stash.commitOid)}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onStashContextMenu?.(e, row.stash)
+          }}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => e.key === 'Enter' && onSelectBranch(row.stash.commitOid)}

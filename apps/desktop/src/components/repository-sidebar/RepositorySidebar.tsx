@@ -11,6 +11,12 @@ import { SidebarRowView } from './SidebarRowView'
 import { ROW_HEIGHT, DEFAULT_PINNED } from './types'
 import { useReposStore } from '../../stores/repos.store'
 import { BlameHistoryPanel } from './BlameHistoryPanel'
+import { useQueryClient } from '@tanstack/react-query'
+import { mutate } from 'swr'
+import { showStashNativeContextMenu } from '../../api/nativeMenu.api'
+import { apiStashApply, apiStashPop, apiStashDrop } from '../../api/git.api'
+import type { GitStash } from '@git-manager/git-types'
+
 
 interface RepositorySidebarProps {
   repoPath: string
@@ -41,7 +47,49 @@ export function RepositorySidebar({
   const activeLeftPanel = useReposStore((s) => s.activeLeftPanel)
   const activeDiffFile = useReposStore((s) => s.activeDiffFile)
   const setActiveLeftPanel = useReposStore((s) => s.setActiveLeftPanel)
+  const setEditingOid = useReposStore((s) => s.setEditingOid)
+  const queryClient = useQueryClient()
   const [openState, setOpenState] = useState<Record<string, boolean>>({})
+
+  const handleStashContextMenu = (_e: React.MouseEvent, stash: GitStash) => {
+    showStashNativeContextMenu({
+      onApply: async () => {
+        try {
+          await apiStashApply(repoPath, stash.index)
+          mutate(['git-stashes', repoPath])
+          queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+          queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+        } catch (err) {
+          alert(String(err))
+        }
+      },
+      onPop: async () => {
+        try {
+          await apiStashPop(repoPath, stash.index)
+          mutate(['git-stashes', repoPath])
+          queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+          queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+        } catch (err) {
+          alert(String(err))
+        }
+      },
+      onDelete: async () => {
+        try {
+          await apiStashDrop(repoPath, stash.index)
+          mutate(['git-stashes', repoPath])
+          queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+          queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+        } catch (err) {
+          alert(String(err))
+        }
+      },
+      onEditMessage: () => {
+        onSelectBranch(stash.commitOid)
+        setEditingOid(stash.commitOid)
+      }
+    }).catch(console.error)
+  }
+
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -205,6 +253,7 @@ export function RepositorySidebar({
                   onContextMenu={onContextMenu}
                   onOpenPr={onOpenPr}
                   onCreateBranch={onCreateBranch}
+                  onStashContextMenu={handleStashContextMenu}
                 />
               </div>
             )

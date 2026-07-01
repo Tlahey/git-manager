@@ -5,8 +5,11 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Spinner } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { useGitStatus } from '../../hooks/useGitStatus'
-import { showCommitNativeContextMenu } from '../../api/nativeMenu.api'
+import { showCommitNativeContextMenu, showStashNativeContextMenu } from '../../api/nativeMenu.api'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
+import { apiStashApply, apiStashPop, apiStashDrop } from '../../api/git.api'
+import { mutate } from 'swr'
+
 import { useSettingsStore } from '../../stores/settings.store'
 import { useReposStore } from '../../stores/repos.store'
 import { useCommitSelection } from '../../hooks/useCommitSelection'
@@ -184,10 +187,62 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     return () => clearTimeout(id)
   }, [toast])
 
+  const setEditingOid = useReposStore((s) => s.setEditingOid)
+
   function openMenuAt(e: React.MouseEvent, oid: string) {
     if (oid === 'WIP') return
     e.preventDefault()
     e.stopPropagation()
+
+    // Check if this is a stash commit
+    const clickedNode = nodes.find((n) => n.commit.oid === oid)
+    const stashRef = clickedNode?.refs.find((r) => r.type === 'stash')
+
+    if (stashRef) {
+      const stashMatch = stashRef.shortName.match(/stash@\{(\d+)\}/)
+      const index = stashMatch ? parseInt(stashMatch[1], 10) : 0
+
+      selectSingle(oid)
+
+      showStashNativeContextMenu({
+        onApply: async () => {
+          try {
+            await apiStashApply(repoPath, index)
+            mutate(['git-stashes', repoPath])
+            queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+            queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+          } catch (err) {
+            alert(String(err))
+          }
+        },
+        onPop: async () => {
+          try {
+            await apiStashPop(repoPath, index)
+            mutate(['git-stashes', repoPath])
+            queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+            queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+          } catch (err) {
+            alert(String(err))
+          }
+        },
+        onDelete: async () => {
+          try {
+            await apiStashDrop(repoPath, index)
+            mutate(['git-stashes', repoPath])
+            queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+            queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+          } catch (err) {
+            alert(String(err))
+          }
+        },
+        onEditMessage: () => {
+          selectSingle(oid)
+          setEditingOid(oid)
+        }
+      }).catch(console.error)
+      return
+    }
+
     let targets: string[]
     if (selected.has(oid)) {
       targets = Array.from(selected)
@@ -209,6 +264,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
       onFixup: () => handleFixup(),
     }).catch(console.error)
   }
+
 
   // ── Actions ────────────────────────────────────────────────────────────────
   async function handleCopySha() {
@@ -259,8 +315,9 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   useEffect(() => {
     if (!nodes || nodes.length === 0) return
 
-    // Find a node that has a ref matching the branch name, or default to the first node
+    // Find a node that has a ref matching the branch name, or matches by OID (stashes)
     const matchNode = nodes.find((node) =>
+      node.commit.oid === branch ||
       node.refs.some((r) => r.name === branch || r.shortName === branch)
     ) || nodes[0]
 

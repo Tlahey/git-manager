@@ -148,3 +148,49 @@ export async function showCommitNativeContextMenu(opts: CommitNativeMenuOptions)
     console.error('[nativeMenu] Failed to create or popup native menu:', err)
   }
 }
+
+export interface StashNativeMenuOptions {
+  onApply: () => void
+  onPop: () => void
+  onDelete: () => void
+  onEditMessage: () => void
+}
+
+/**
+ * Builds and pops up a native macOS context menu for stash actions.
+ */
+export async function showStashNativeContextMenu(opts: StashNativeMenuOptions): Promise<void> {
+  const { onApply, onPop, onDelete, onEditMessage } = opts
+
+  // Ensure icons are loaded (noop after first call)
+  try {
+    await loadIcons()
+  } catch (err) {
+    console.error('[nativeMenu] Error loading icons:', err)
+  }
+
+  const applyItem   = await makeItem({ text: 'Apply stash', action: () => onApply() })
+  const popItem     = await makeItem({ text: 'Pop stash',   action: () => onPop() })
+  const deleteItem  = await makeItem({ text: 'Delete stash', action: () => onDelete() })
+  const editItem    = await makeItem({ text: 'Edit stash message', action: () => onEditMessage() })
+  const hideItem    = await makeItem({ text: 'Hide the stash', enabled: false })
+
+  const sep  = () => PredefinedMenuItem.new({ item: 'Separator' })
+
+  const items = [
+    applyItem,
+    popItem,
+    deleteItem,
+    await sep(),
+    editItem,
+    hideItem,
+  ]
+
+  try {
+    const menu = await Menu.new({ items })
+    await menu.popup()
+  } catch (err) {
+    console.error('[nativeMenu] Failed to create or popup native stash menu:', err)
+  }
+}
+
