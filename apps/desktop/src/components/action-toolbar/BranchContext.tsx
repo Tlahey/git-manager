@@ -6,7 +6,8 @@ import { Spinner } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { useReposStore } from '../../stores/repos.store'
 import { useBranches } from '../../hooks/useBranches'
-import { checkoutBranch, openRepo } from '../../lib/tauri'
+import { openRepo } from '../../lib/tauri'
+import { apiCheckoutBranch } from '../../api/git.api'
 import { useAnchoredMenu } from './useAnchoredMenu'
 
 /** Sélecteur de la branche courante du dépôt actif (checkout au clic). */
@@ -41,7 +42,9 @@ export function BranchContext() {
     if (!activeRepo || busy) return
     setBusy(name)
     try {
-      await checkoutBranch(activeRepo, name)
+      const fromDetached = repo?.isDetached ?? false
+      const fromRef = fromDetached ? repo!.head : headBranch?.shortName ?? repo?.head
+      await apiCheckoutBranch(activeRepo, name, fromRef ? { fromRef, fromDetached } : undefined)
       // Rafraîchit le cache repo (head/isDetached/isDirty) + les vues dépendantes.
       try {
         const fresh = await openRepo(activeRepo)

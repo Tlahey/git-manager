@@ -1,5 +1,8 @@
 use crate::error::AppError;
-use crate::models::{GitCommit, GitGraphEdge, GitSignature};
+use crate::models::{
+    GitCommit, GitDiff, GitDiffFile, GitDiffHunk, GitDiffLine, GitGraphEdge, GitSignature,
+};
+use crate::utils::short_oid;
 use git2::{DiffOptions, Oid, Repository, Sort};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
@@ -33,42 +36,6 @@ pub struct LogGraphNode {
     pub refs: Vec<LogRef>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct DiffLine {
-    origin: String,
-    content: String,
-    old_lineno: Option<i32>,
-    new_lineno: Option<i32>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct DiffHunk {
-    header: String,
-    lines: Vec<DiffLine>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct DiffFile {
-    old_path: String,
-    new_path: String,
-    status: String,
-    additions: usize,
-    deletions: usize,
-    hunks: Vec<DiffHunk>,
-    is_binary: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct CommitDiff {
-    files: Vec<DiffFile>,
-    total_additions: usize,
-    total_deletions: usize,
-}
-
 // ─── Commandes Tauri ──────────────────────────────────────────────────────────
 
 /// Retourne l'historique paginé sous forme de nœuds de graphe
@@ -78,8 +45,29 @@ pub async fn get_log(
     limit: Option<usize>,
     skip: Option<usize>,
     branch: Option<String>,
+    show_stashes: Option<bool>,
+    hidden_stashes: Option<Vec<String>>,
 ) -> Result<Vec<LogGraphNode>, String> {
-    let repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
+    let mut repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
+
+    let mut stash_oids = Vec::new();
+    let mut stash_refs = Vec::new();
+    let _ = repo.stash_foreach(|index, _, commit_oid| {
+        stash_oids.push(*commit_oid);
+        stash_refs.push((index, commit_oid.to_string()));
+        true
+    });
+
+    let mut ignored_stash_parent_oids = std::collections::HashSet::new();
+    for commit_oid in &stash_oids {
+        if let Ok(commit) = repo.find_commit(*commit_oid) {
+            for i in 1..commit.parent_count() {
+                if let Ok(parent) = commit.parent(i) {
+                    ignored_stash_parent_oids.insert(parent.id());
+                }
+            }
+        }
+    }
 
     let mut revwalk = repo.revwalk().map_err(|e| AppError::Git(e))?;
     revwalk
@@ -128,6 +116,18 @@ pub async fn get_log(
         // Parcourir toutes les branches et remotes
         let _ = revwalk.push_glob("refs/heads/*");
         let _ = revwalk.push_glob("refs/remotes/*");
+        // Parcourir et pousser tous les stashes
+        if show_stashes.unwrap_or(true) {
+            for oid in &stash_oids {
+                let oid_str = oid.to_string();
+                if let Some(ref hidden) = hidden_stashes {
+                    if hidden.contains(&oid_str) {
+                        continue;
+                    }
+                }
+                let _ = revwalk.push(*oid);
+            }
+        }
         // Fallback HEAD
         if let Ok(head) = repo.head() {
             if let Some(oid) = head.target() {
@@ -196,14 +196,28 @@ pub async fn get_log(
         }
     }
 
+    // Add stash references to refs_map
+    for (index, oid_str) in stash_refs {
+        refs_map
+            .entry(oid_str.clone())
+            .or_default()
+            .push(LogRef {
+                name: format!("refs/stash@{{{}}}", index),
+                short_name: format!("stash@{{{}}}", index),
+                ref_type: "stash".to_string(),
+                commit_oid: oid_str,
+            });
+    }
+
     // ── Collecte des OIDs avec pagination ────────────────────────────────────
     let skip_n = skip.unwrap_or(0);
     let limit_n = limit.unwrap_or(200);
 
     let oids: Vec<Oid> = revwalk
+        .filter_map(|r| r.ok())
+        .filter(|oid| !ignored_stash_parent_oids.contains(oid))
         .skip(skip_n)
         .take(limit_n)
-        .filter_map(|r| r.ok())
         .collect();
 
     // ── Algorithme de layout de colonnes ─────────────────────────────────────
@@ -224,6 +238,15 @@ pub async fn get_log(
         false
     };
 
+    let local_main_oid = if is_main_or_master {
+        repo.find_reference("refs/heads/main")
+            .or_else(|_| repo.find_reference("refs/heads/master"))
+            .ok()
+            .and_then(|r| r.target())
+    } else {
+        None
+    };
+
     let origin_main_oid = if is_main_or_master {
         repo.find_reference("refs/remotes/origin/main")
             .or_else(|_| repo.find_reference("refs/remotes/origin/master"))
@@ -233,7 +256,10 @@ pub async fn get_log(
         None
     };
 
-    if let Some(oid) = origin_main_oid {
+    if let Some(oid) = local_main_oid {
+        active_lanes.push(Some(oid.to_string()));
+        lane_colors.push("#2563eb".to_string()); // Blue for local main
+    } else if let Some(oid) = origin_main_oid {
         active_lanes.push(Some(oid.to_string()));
         lane_colors.push("#7c3aed".to_string()); // Purple for origin/main
     }
@@ -246,27 +272,8 @@ pub async fn get_log(
         ];
 
         for (local_ref, remote_ref) in local_main_colors {
-            let remote_oid = repo.find_reference(remote_ref).ok().and_then(|r| r.target());
             let local_oid = repo.find_reference(local_ref).ok().and_then(|r| r.target());
-
-            if let Some(oid) = remote_oid {
-                let mut curr = oid;
-                let mut count = 0;
-                while count < 1000 {
-                    if let Ok(commit) = repo.find_commit(curr) {
-                        let curr_str = curr.to_string();
-                        color_map.insert(curr_str, "#7c3aed".to_string()); // Remote main/master: Purple
-                        if commit.parent_count() > 0 {
-                            curr = commit.parent_id(0).unwrap();
-                            count += 1;
-                        } else {
-                            break;
-                        }
-                    } else {
-                        break;
-                    }
-                }
-            }
+            let remote_oid = repo.find_reference(remote_ref).ok().and_then(|r| r.target());
 
             if let Some(oid) = local_oid {
                 let mut curr = oid;
@@ -289,6 +296,28 @@ pub async fn get_log(
                     }
                 }
             }
+
+            if let Some(oid) = remote_oid {
+                let mut curr = oid;
+                let mut count = 0;
+                while count < 1000 {
+                    if let Ok(commit) = repo.find_commit(curr) {
+                        let curr_str = curr.to_string();
+                        if color_map.contains_key(&curr_str) {
+                            break;
+                        }
+                        color_map.insert(curr_str, "#7c3aed".to_string()); // Remote main/master: Purple
+                        if commit.parent_count() > 0 {
+                            curr = commit.parent_id(0).unwrap();
+                            count += 1;
+                        } else {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            }
         }
     }
 
@@ -298,11 +327,25 @@ pub async fn get_log(
     for oid in &oids {
         let commit = repo.find_commit(*oid).map_err(|e| AppError::Git(e))?;
         let oid_str = oid.to_string();
-        let short_oid = oid_str[..7.min(oid_str.len())].to_string();
-        let parent_oids: Vec<String> = commit.parent_ids().map(|p| p.to_string()).collect();
+        let short_oid_str = short_oid(&oid_str);
+        let mut parent_oids: Vec<String> = commit.parent_ids().map(|p| p.to_string()).collect();
+        if stash_oids.contains(oid) {
+            if !parent_oids.is_empty() {
+                parent_oids.truncate(1);
+            }
+        }
+
+        let mut col_override = None;
+        if stash_oids.contains(oid) {
+            if let Some(p0) = parent_oids.first() {
+                if let Some(idx) = active_lanes.iter().position(|l| l.as_deref() == Some(p0.as_str())) {
+                    col_override = Some(idx);
+                }
+            }
+        }
 
         // Assigner la couleur du commit courant (stable par lane, propagée au 1er parent)
-        let color = color_map
+        let mut color = color_map
             .entry(oid_str.clone())
             .or_insert_with(|| {
                 let c = COLORS[color_counter % COLORS.len()].to_string();
@@ -311,10 +354,19 @@ pub async fn get_log(
             })
             .clone();
 
+        if let Some(idx) = col_override {
+            if idx < lane_colors.len() && !lane_colors[idx].is_empty() {
+                color = lane_colors[idx].clone();
+                color_map.insert(oid_str.clone(), color.clone());
+            }
+        }
+
         let mut is_new_lane = false;
 
         // S'assurer que ce commit est dans active_lanes (nouveau nœud non attendu)
-        if !active_lanes
+        if let Some(idx) = col_override {
+            active_lanes[idx] = Some(oid_str.clone());
+        } else if !active_lanes
             .iter()
             .any(|l| l.as_deref() == Some(oid_str.as_str()))
         {
@@ -475,7 +527,7 @@ pub async fn get_log(
 
         let git_commit = GitCommit {
             oid: oid_str.clone(),
-            short_oid,
+            short_oid: short_oid_str,
             message: raw_message,
             subject,
             body,
@@ -492,7 +544,10 @@ pub async fn get_log(
             parent_oids,
         };
 
-        let refs = refs_map.get(&oid_str).cloned().unwrap_or_default();
+        let mut refs = refs_map.get(&oid_str).cloned().unwrap_or_default();
+        if stash_oids.contains(oid) {
+            refs.retain(|r| r.ref_type == "stash");
+        }
 
         nodes.push(LogGraphNode {
             commit: git_commit,
@@ -542,34 +597,11 @@ pub async fn get_log(
     Ok(nodes)
 }
 
-/// Retourne le diff complet d'un commit vs son premier parent
-#[tauri::command]
-pub async fn get_commit_diff(path: String, oid: String) -> Result<CommitDiff, String> {
-    let repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
-    let commit_oid = Oid::from_str(&oid).map_err(|e| AppError::Git(e))?;
-    let commit = repo.find_commit(commit_oid).map_err(|e| AppError::Git(e))?;
-
-    let commit_tree = commit.tree().map_err(|e| AppError::Git(e))?;
-    let parent_tree = if commit.parent_count() > 0 {
-        let parent = commit.parent(0).map_err(|e| AppError::Git(e))?;
-        Some(parent.tree().map_err(|e| AppError::Git(e))?)
-    } else {
-        None
-    };
-
-    let mut diff_opts = DiffOptions::new();
-    diff_opts.context_lines(3).ignore_whitespace_change(false);
-
-    let diff = repo
-        .diff_tree_to_tree(
-            parent_tree.as_ref(),
-            Some(&commit_tree),
-            Some(&mut diff_opts),
-        )
-        .map_err(|e| AppError::Git(e))?;
-
-    let files: RefCell<Vec<DiffFile>> = RefCell::new(Vec::new());
-
+fn diff_foreach_files(
+    diff: &git2::Diff,
+    files: &RefCell<Vec<GitDiffFile>>,
+    is_untracked: bool,
+) -> Result<(), git2::Error> {
     diff.foreach(
         &mut |delta, _progress| {
             let old_path = delta
@@ -584,18 +616,22 @@ pub async fn get_commit_diff(path: String, oid: String) -> Result<CommitDiff, St
                 .and_then(|p| p.to_str())
                 .unwrap_or("")
                 .to_string();
-            let status = match delta.status() {
-                git2::Delta::Added => "added",
-                git2::Delta::Deleted => "deleted",
-                git2::Delta::Renamed => "renamed",
-                git2::Delta::Copied => "copied",
-                git2::Delta::Typechange => "typechange",
-                _ => "modified",
+            let status = if is_untracked {
+                "untracked"
+            } else {
+                match delta.status() {
+                    git2::Delta::Added => "added",
+                    git2::Delta::Deleted => "deleted",
+                    git2::Delta::Renamed => "renamed",
+                    git2::Delta::Copied => "copied",
+                    git2::Delta::Typechange => "typechange",
+                    _ => "modified",
+                }
             };
             let is_binary =
                 delta.old_file().is_binary() || delta.new_file().is_binary();
 
-            files.borrow_mut().push(DiffFile {
+            files.borrow_mut().push(GitDiffFile {
                 old_path,
                 new_path,
                 status: status.to_string(),
@@ -613,7 +649,7 @@ pub async fn get_commit_diff(path: String, oid: String) -> Result<CommitDiff, St
                 .trim_end_matches('\n')
                 .to_string();
             if let Some(file) = files.borrow_mut().last_mut() {
-                file.hunks.push(DiffHunk {
+                file.hunks.push(GitDiffHunk {
                     header,
                     lines: Vec::new(),
                 });
@@ -639,7 +675,7 @@ pub async fn get_commit_diff(path: String, oid: String) -> Result<CommitDiff, St
                     _ => {}
                 }
                 if let Some(hunk) = file.hunks.last_mut() {
-                    hunk.lines.push(DiffLine {
+                    hunk.lines.push(GitDiffLine {
                         origin: origin.to_string(),
                         content,
                         old_lineno: line.old_lineno().map(|n| n as i32),
@@ -650,13 +686,69 @@ pub async fn get_commit_diff(path: String, oid: String) -> Result<CommitDiff, St
             true
         }),
     )
-    .map_err(|e| AppError::Git(e))?;
+}
+
+/// Retourne le diff complet d'un commit vs son premier parent
+#[tauri::command]
+pub async fn get_commit_diff(path: String, oid: String) -> Result<GitDiff, String> {
+    let mut repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
+    let commit_oid = Oid::from_str(&oid).map_err(|e| AppError::Git(e))?;
+
+    // Check if the commit is a stash commit
+    let mut is_stash = false;
+    let _ = repo.stash_foreach(|_index, _message, stash_oid| {
+        if *stash_oid == commit_oid {
+            is_stash = true;
+            false
+        } else {
+            true
+        }
+    });
+
+    let commit = repo.find_commit(commit_oid).map_err(|e| AppError::Git(e))?;
+
+    let commit_tree = commit.tree().map_err(|e| AppError::Git(e))?;
+    let parent_tree = if commit.parent_count() > 0 {
+        let parent = commit.parent(0).map_err(|e| AppError::Git(e))?;
+        Some(parent.tree().map_err(|e| AppError::Git(e))?)
+    } else {
+        None
+    };
+
+    let mut diff_opts = DiffOptions::new();
+    diff_opts.context_lines(3).ignore_whitespace_change(false);
+
+    let diff = repo
+        .diff_tree_to_tree(
+            parent_tree.as_ref(),
+            Some(&commit_tree),
+            Some(&mut diff_opts),
+        )
+        .map_err(|e| AppError::Git(e))?;
+
+    let files: RefCell<Vec<GitDiffFile>> = RefCell::new(Vec::new());
+
+    diff_foreach_files(&diff, &files, false).map_err(|e| AppError::Git(e).to_string())?;
+
+    if is_stash && commit.parent_count() == 3 {
+        if let Ok(untracked_parent) = commit.parent(2) {
+            if let Ok(untracked_tree) = untracked_parent.tree() {
+                if let Ok(untracked_diff) = repo.diff_tree_to_tree(
+                    None,
+                    Some(&untracked_tree),
+                    Some(&mut diff_opts),
+                ) {
+                    let _ = diff_foreach_files(&untracked_diff, &files, true);
+                }
+            }
+        }
+    }
 
     let files_out = files.into_inner();
     let total_additions = files_out.iter().map(|f| f.additions).sum();
     let total_deletions = files_out.iter().map(|f| f.deletions).sum();
 
-    Ok(CommitDiff {
+    Ok(GitDiff {
         files: files_out,
         total_additions,
         total_deletions,

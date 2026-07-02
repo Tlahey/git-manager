@@ -5,8 +5,11 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Spinner } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { useGitStatus } from '../../hooks/useGitStatus'
-import { showCommitNativeContextMenu } from '../../api/nativeMenu.api'
+import { showCommitNativeContextMenu, showStashNativeContextMenu } from '../../api/nativeMenu.api'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
+import { apiStashApply, apiStashPop, apiStashDrop } from '../../api/git.api'
+import { mutate } from 'swr'
+
 import { useSettingsStore } from '../../stores/settings.store'
 import { useReposStore } from '../../stores/repos.store'
 import { useCommitSelection } from '../../hooks/useCommitSelection'
@@ -38,6 +41,8 @@ interface WaterlineMark {
   index: number
 }
 
+const EMPTY_ARRAY: string[] = []
+
 export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitGraphProps) {
   const { t } = useTranslation('git')
   const queryClient = useQueryClient()
@@ -52,6 +57,8 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
   const activeDiffFile = useReposStore((s) => s.activeDiffFile)
   const setActiveDiffFile = useReposStore((s) => s.setActiveDiffFile)
+  const hiddenStashes = useReposStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
+  const toggleStashVisibility = useReposStore((s) => s.toggleStashVisibility)
 
   // ── Status detection & WIP Node ──────────────────────────────────────────
   const { data: status } = useGitStatus(repoPath)
@@ -76,9 +83,13 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     [columnState],
   )
 
+  const showStashesInGraph = useSettingsStore((s) => s.settings.git.showStashesInGraph ?? true)
+
   const { data: nodes = [], isLoading, isError } = useGitLog(repoPath, {
     limit: 500,
     branch: branch || undefined,
+    showStashes: showStashesInGraph,
+    hiddenStashes,
   })
 
   const wipNode = useMemo(() => {
@@ -184,10 +195,67 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     return () => clearTimeout(id)
   }, [toast])
 
+  const setEditingOid = useReposStore((s) => s.setEditingOid)
+
   function openMenuAt(e: React.MouseEvent, oid: string) {
     if (oid === 'WIP') return
     e.preventDefault()
     e.stopPropagation()
+
+    // Check if this is a stash commit
+    const clickedNode = nodes.find((n) => n.commit.oid === oid)
+    const stashRef = clickedNode?.refs.find((r) => r.type === 'stash')
+
+    if (stashRef) {
+      const stashMatch = stashRef.shortName.match(/stash@\{(\d+)\}/)
+      const index = stashMatch ? parseInt(stashMatch[1], 10) : 0
+
+      selectSingle(oid)
+
+      const isHidden = hiddenStashes.includes(oid)
+      showStashNativeContextMenu({
+        isHidden,
+        onApply: async () => {
+          try {
+            await apiStashApply(repoPath, index)
+            mutate(['git-stashes', repoPath])
+            queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+            queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+          } catch (err) {
+            alert(String(err))
+          }
+        },
+        onPop: async () => {
+          try {
+            await apiStashPop(repoPath, index)
+            mutate(['git-stashes', repoPath])
+            queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+            queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+          } catch (err) {
+            alert(String(err))
+          }
+        },
+        onDelete: async () => {
+          try {
+            await apiStashDrop(repoPath, index)
+            mutate(['git-stashes', repoPath])
+            queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+            queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+          } catch (err) {
+            alert(String(err))
+          }
+        },
+        onEditMessage: () => {
+          selectSingle(oid)
+          setEditingOid(oid)
+        },
+        onToggleVisibility: () => {
+          toggleStashVisibility(repoPath, oid)
+        }
+      }).catch(console.error)
+      return
+    }
+
     let targets: string[]
     if (selected.has(oid)) {
       targets = Array.from(selected)
@@ -209,6 +277,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
       onFixup: () => handleFixup(),
     }).catch(console.error)
   }
+
 
   // ── Actions ────────────────────────────────────────────────────────────────
   async function handleCopySha() {
@@ -247,6 +316,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
   // ── Virtualisation ─────────────────────────────────────────────────────────
   const parentRef = useRef<HTMLDivElement>(null)
+  const lastScrolledRef = useRef<{ branch: string | undefined; repoPath: string }>({ branch: undefined, repoPath: '' })
 
   const virtualizer = useVirtualizer({
     count: filteredNodes.length,
@@ -259,19 +329,24 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   useEffect(() => {
     if (!nodes || nodes.length === 0) return
 
-    // Find a node that has a ref matching the branch name, or default to the first node
+    const currentSelected = branch || primaryOid
+    // Find a node that has a ref matching the branch name, or matches by OID (stashes)
     const matchNode = nodes.find((node) =>
-      node.refs.some((r) => r.name === branch || r.shortName === branch)
+      node.commit.oid === currentSelected ||
+      node.refs.some((r) => r.name === currentSelected || r.shortName === currentSelected)
     ) || nodes[0]
 
     if (matchNode && matchNode.commit.oid !== 'WIP') {
       selectSingle(matchNode.commit.oid)
 
-      const index = filteredNodes.findIndex((n) => n.commit.oid === matchNode.commit.oid)
-      if (index !== -1) {
-        setTimeout(() => {
-          virtualizer.scrollToIndex(index, { align: 'center' })
-        }, 50)
+      if (lastScrolledRef.current.branch !== branch || lastScrolledRef.current.repoPath !== repoPath) {
+        lastScrolledRef.current = { branch, repoPath }
+        const index = filteredNodes.findIndex((n) => n.commit.oid === matchNode.commit.oid)
+        if (index !== -1) {
+          setTimeout(() => {
+            virtualizer.scrollToIndex(index, { align: 'center' })
+          }, 50)
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -432,6 +507,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                               onOpenMenu={(e) => openMenuAt(e, oid)}
                               totalChanges={totalChanges}
                               onCommitWip={handleCommitWip}
+                              isFirst={virtualItem.index === 0}
                             />
                           </div>
                         )

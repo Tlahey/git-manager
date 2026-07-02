@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::utils::short_oid;
 use git2::{Cred, FetchOptions, PushOptions, RemoteCallbacks, Repository};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
@@ -63,7 +64,7 @@ pub async fn fetch_remote(path: String, remote: Option<String>) -> Result<FetchR
     callbacks.update_tips(move |refname, old_oid, new_oid| {
         if old_oid != new_oid {
             let short_new = new_oid.to_string();
-            let short_new = &short_new[..7.min(short_new.len())];
+            let short_new = short_oid(&short_new);
             updated_refs_clone
                 .lock()
                 .unwrap()
@@ -242,5 +243,53 @@ pub async fn push_branch(
         .push(&[refspec.as_str()], Some(&mut push_opts))
         .map_err(AppError::Git)?;
 
+    Ok(())
+}
+
+// ─── get_remotes ──────────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteInfo {
+    pub name: String,
+    pub url: String,
+    pub push_url: Option<String>,
+}
+
+/// Liste les remotes avec leur nom (GitRepo.remotes ne fournit que les URLs)
+#[tauri::command]
+pub async fn get_remotes(path: String) -> Result<Vec<RemoteInfo>, String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    let mut remotes = Vec::new();
+
+    let names = repo.remotes().map_err(AppError::Git)?;
+    for name in names.iter().flatten() {
+        if let Ok(remote) = repo.find_remote(name) {
+            remotes.push(RemoteInfo {
+                name: name.to_string(),
+                url: remote.url().unwrap_or("").to_string(),
+                push_url: remote.pushurl().map(|s| s.to_string()),
+            });
+        }
+    }
+
+    Ok(remotes)
+}
+
+// ─── remove_remote ────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn remove_remote(path: String, name: String) -> Result<(), String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    repo.remote_delete(&name).map_err(AppError::Git)?;
+    Ok(())
+}
+
+// ─── add_remote ───────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn add_remote(path: String, name: String, url: String) -> Result<(), String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    repo.remote(&name, &url).map_err(AppError::Git)?;
     Ok(())
 }

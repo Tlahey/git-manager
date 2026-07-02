@@ -5,11 +5,13 @@ interface GraphSvgProps {
   column: number
   connections: GitGraphEdge[]
   isWip?: boolean
+  isStash?: boolean
+  isFirst?: boolean
 }
 
 const COL_WIDTH = 36
 
-export function GraphSvg({ column, connections, isWip }: GraphSvgProps) {
+export function GraphSvg({ column, connections, isWip, isStash, isFirst }: GraphSvgProps) {
   const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
   const rowHeight = rowHeightSetting === 'small' ? 32 : 40
   const avatarSize = rowHeightSetting === 'small' ? 24 : 32
@@ -54,27 +56,47 @@ export function GraphSvg({ column, connections, isWip }: GraphSvgProps) {
             }
           } else {
             if (edge.startsAtNode) {
-              yS = nodeY
+              yS = (isStash && edge.fromColumn === column) ? nodeY + avatarRadius : nodeY
             }
             if (edge.endsAtNode) {
-              yE = nodeY
+              yE = (isStash && edge.toColumn === column) ? nodeY - avatarRadius : nodeY
             }
           }
-          d = `M ${x1} ${yS} L ${x1} ${yE}`
+          if (isFirst && yS === yStart) {
+            d = ''
+          } else {
+            d = `M ${x1} ${yS} L ${x1} ${yE}`
+          }
         } else {
           // Transition droite avec angles arrondis R = 4
           const sign = x2 > x1 ? 1 : -1
           const R = 4
 
-          if (edge.fromColumn !== column && edge.toColumn !== column) {
-            // Pass-through diagonal
-            d = `M ${x1} -2 L ${x1} ${nodeY - R} Q ${x1} ${nodeY}, ${x1 + R * sign} ${nodeY} L ${x2 - R * sign} ${nodeY} Q ${x2} ${nodeY}, ${x2} ${nodeY + R} L ${x2} ${rowHeight + 2}`
-          } else if (edge.fromColumn === column) {
-            // Split (départ du milieu/avatar à y = nodeY)
-            d = `M ${x1} ${nodeY} L ${x2 - R * sign} ${nodeY} Q ${x2} ${nodeY}, ${x2} ${nodeY + R} L ${x2} ${rowHeight + 2}`
+          if (isFirst) {
+            if (edge.fromColumn !== column && edge.toColumn !== column) {
+              // Pass-through diagonal starts at -2, so hide it in the first element
+              d = ''
+            } else if (edge.fromColumn === column) {
+              // Split starts at the node, so we DO render it
+              const xStart = isStash ? x1 + avatarRadius * sign : x1
+              d = `M ${xStart} ${nodeY} L ${x2 - R * sign} ${nodeY} Q ${x2} ${nodeY}, ${x2} ${nodeY + R} L ${x2} ${rowHeight + 2}`
+            } else {
+              // Merge starts at -2, so hide it in the first element
+              d = ''
+            }
           } else {
-            // Merge (arrivée au milieu/avatar à y = nodeY)
-            d = `M ${x1} -2 L ${x1} ${nodeY - R} Q ${x1} ${nodeY}, ${x1 + R * sign} ${nodeY} L ${x2} ${nodeY}`
+            if (edge.fromColumn !== column && edge.toColumn !== column) {
+              // Pass-through diagonal
+              d = `M ${x1} -2 L ${x1} ${nodeY - R} Q ${x1} ${nodeY}, ${x1 + R * sign} ${nodeY} L ${x2 - R * sign} ${nodeY} Q ${x2} ${nodeY}, ${x2} ${nodeY + R} L ${x2} ${rowHeight + 2}`
+            } else if (edge.fromColumn === column) {
+              // Split (départ du milieu/avatar à y = nodeY)
+              const xStart = isStash ? x1 + avatarRadius * sign : x1
+              d = `M ${xStart} ${nodeY} L ${x2 - R * sign} ${nodeY} Q ${x2} ${nodeY}, ${x2} ${nodeY + R} L ${x2} ${rowHeight + 2}`
+            } else {
+              // Merge (arrivée au milieu/avatar à y = nodeY)
+              const xEnd = isStash ? x2 - avatarRadius * sign : x2
+              d = `M ${x1} -2 L ${x1} ${nodeY - R} Q ${x1} ${nodeY}, ${x1 + R * sign} ${nodeY} L ${xEnd} ${nodeY}`
+            }
           }
         }
 

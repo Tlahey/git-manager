@@ -1,22 +1,33 @@
 import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import type { GitBranch } from '@git-manager/git-types'
 import { useReposStore } from '../../stores/repos.store'
+import { useUndoHistoryStore } from '../../stores/undoHistory.store'
 import { openRepo } from '../../lib/tauri'
 import { GitGraph } from '../../components/git-graph/GitGraph'
 import { RepositorySidebar } from '../../components/repository-sidebar'
 import { ActionToolbar } from '../../components/action-toolbar'
 import { useSettingsStore } from '../../stores/settings.store'
+import { showBranchNativeContextMenu } from '../../api/nativeMenu.api'
+import { apiDeleteBranch } from '../../api/git.api'
 
 export function RepoView() {
   const { activeRepo, repoCache, setRepoCache } = useReposStore()
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const queryClient = useQueryClient()
 
   // Le cache repo n'est pas persisté : on (ré)ouvre le dépôt actif au besoin
   // pour alimenter head/isDetached/isDirty/remotes (toolbar, badges d'état…).
   useEffect(() => {
     if (activeRepo && !repoCache[activeRepo]) {
       openRepo(activeRepo)
-        .then((r) => setRepoCache(activeRepo, r))
+        .then((r) => {
+          setRepoCache(activeRepo, r)
+          // Purge les entrées undo/redo persistées dont l'objet Git référencé a disparu
+          // depuis la dernière session (ex. git gc manuel en dehors de l'app).
+          useUndoHistoryStore.getState().validateAndPrune(activeRepo)
+        })
         .catch(() => {
           /* dépôt introuvable / non-git : ignoré */
         })
@@ -25,6 +36,26 @@ export function RepoView() {
 
   const github = useSettingsStore((s) => s.settings.github)
   const activeAccount = github?.accounts?.find((a) => a.id === github.activeAccountId) || null
+
+  async function handleBranchContextMenu(e: React.MouseEvent, branch: GitBranch) {
+    e.preventDefault()
+    if (branch.isRemote || !activeRepo) return
+    await showBranchNativeContextMenu({
+      isHead: branch.isHead,
+      onDelete: async () => {
+        if (!window.confirm(`Delete branch "${branch.shortName}"?`)) return
+        try {
+          await apiDeleteBranch(activeRepo, branch.shortName, {
+            targetOid: branch.commitOid,
+            upstream: branch.upstream ?? undefined,
+          })
+          queryClient.invalidateQueries({ queryKey: ['branches', activeRepo] })
+        } catch (err) {
+          alert(String(err))
+        }
+      },
+    })
+  }
 
   if (!activeRepo) return null
 
@@ -46,6 +77,7 @@ export function RepoView() {
           onOpenPr={(pr) => setSelectedBranch(pr.headRef)}
           currentUser={activeAccount?.user?.login}
           githubToken={activeAccount?.token ?? undefined}
+          onContextMenu={handleBranchContextMenu}
         />
 
         {/* Zone centrale — historique plein largeur */}

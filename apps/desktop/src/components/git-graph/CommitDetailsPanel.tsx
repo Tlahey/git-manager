@@ -3,7 +3,9 @@ import { ScrollArea } from '@git-manager/ui'
 import { useCommitDiff } from '../../hooks/useCommitDiff'
 import { useGitStatus } from '../../hooks/useGitStatus'
 import { useQueryClient } from '@tanstack/react-query'
+import { mutate } from 'swr'
 import type { GitGraphNode } from '@git-manager/git-types'
+
 import { CommitHeaderInfo } from './components/CommitHeaderInfo'
 import { useReposStore } from '../../stores/repos.store'
 import { CommitFileList } from './components/CommitFileList'
@@ -57,6 +59,7 @@ export function CommitDetailsPanel({
   function handleRefresh() {
     queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
     queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+    mutate(['git-stashes', repoPath])
   }
 
   const processedFiles = useMemo<ProcessedFileItem[]>(() => {
@@ -95,11 +98,14 @@ export function CommitDetailsPanel({
     }))
   }, [isWip, diff, gitStatus])
 
+  const isStash = node.refs.some((r) => r.type === 'stash')
+
   return (
     <div className="flex h-full w-full flex-col border-l border-border bg-card shadow-2xl min-w-0">
       {/* ── HEADER ── */}
       <CommitHeaderInfo
         isWip={isWip}
+        isStash={isStash}
         commit={commit}
         isHead={isHead}
         repoPath={repoPath}
@@ -107,6 +113,7 @@ export function CommitDetailsPanel({
         onSelectCommit={onSelectCommit}
         onRefresh={handleRefresh}
         onClose={onClose}
+        refs={node.refs}
       />
 
       {/* ── SCROLLABLE FILE LIST ── */}

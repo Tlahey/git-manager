@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::utils::{get_git_signature, short_oid};
 use git2::{Oid, Repository, ResetType};
 use serde::Serialize;
 
@@ -38,14 +39,7 @@ pub async fn revert_commit(
     }
 
     // Build and write the revert commit
-    let config = repo.config().map_err(AppError::Git)?;
-    let author_name = config
-        .get_string("user.name")
-        .unwrap_or_else(|_| "Unknown".to_string());
-    let author_email = config
-        .get_string("user.email")
-        .unwrap_or_else(|_| "unknown@unknown.com".to_string());
-    let sig = git2::Signature::now(&author_name, &author_email).map_err(AppError::Git)?;
+    let sig = get_git_signature(&repo)?;
 
     let mut index = repo.index().map_err(AppError::Git)?;
     let tree_oid = index.write_tree().map_err(AppError::Git)?;
@@ -62,7 +56,7 @@ pub async fn revert_commit(
         .map_err(AppError::Git)?;
 
     let sha = new_oid.to_string();
-    Ok(sha[..7.min(sha.len())].to_string())
+    Ok(short_oid(&sha))
 }
 
 // ─── reset_to_commit ──────────────────────────────────────────────────────────
@@ -122,7 +116,7 @@ pub async fn get_commits_between(
         let sha = oid.to_string();
         summaries.push(CommitSummary {
             oid: sha.clone(),
-            short_oid: sha[..7.min(sha.len())].to_string(),
+            short_oid: short_oid(&sha),
             subject: commit.summary().unwrap_or("").to_string(),
             author_name: commit.author().name().unwrap_or("").to_string(),
             timestamp: commit.author().when().seconds(),

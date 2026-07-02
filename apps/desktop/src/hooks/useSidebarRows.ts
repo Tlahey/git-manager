@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { GitBranch, GitRef, GitSubmodule } from '@git-manager/git-types'
 import { useBranches } from './useBranches'
+import { useGitStashes } from './useGitStashes'
 import { useGroupedBranches } from './useGroupedBranches'
 import { usePullRequests } from './usePullRequests'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
@@ -42,6 +43,7 @@ export function useSidebarRows({
   openState,
 }: UseSidebarRowsParams): UseSidebarRowsResult {
   const { data: allBranches = [] } = useBranches(repoPath)
+  const { data: stashes = [] } = useGitStashes(repoPath)
   const overrides = usePinnedBranchesStore((s) => s.overrides[repoPath])
 
   const { myPrs, allPrs, isGithub, isLoading: prsLoading } = usePullRequests({
@@ -295,6 +297,30 @@ export function useSidebarRows({
       }
     }
 
+    // ----- Stashes -----
+    if (stashes.length > 0) {
+      out.push({ kind: 'divider', id: 'div:stashes' })
+      const open = sectionOpen('stashes')
+      out.push({
+        kind: 'section',
+        id: 'section:stashes',
+        sectionKey: 'stashes',
+        title: 'Stashes',
+        count: stashes.length,
+        isOpen: open,
+      })
+      if (open) {
+        for (const stash of stashes) {
+          out.push({
+            kind: 'stash',
+            id: `stash:${stash.index}`,
+            stash,
+            isSelected: selectedBranch === stash.commitOid,
+          })
+        }
+      }
+    }
+
     // ----- Submodules -----
     if (submodules.length > 0) {
       out.push({ kind: 'divider', id: 'div:submodules' })
@@ -329,6 +355,7 @@ export function useSidebarRows({
     isGithub,
     prsLoading,
     tags,
+    stashes,
     submodules,
   ])
 

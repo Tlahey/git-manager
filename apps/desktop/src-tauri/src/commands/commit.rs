@@ -1,47 +1,11 @@
 use crate::error::AppError;
+use crate::models::{GitDiff, GitDiffFile, GitDiffHunk, GitDiffLine};
+use crate::utils::{get_git_signature, short_oid};
 use git2::{DiffOptions, Oid, Repository};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
-
-// ─── Structs locales (miroir des types TypeScript GitDiff / GitDiffFile) ──────
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-struct DiffLine {
-    origin: String,
-    content: String,
-    old_lineno: Option<i32>,
-    new_lineno: Option<i32>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-struct DiffHunk {
-    header: String,
-    lines: Vec<DiffLine>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct GitDiffFile {
-    pub old_path: String,
-    pub new_path: String,
-    pub status: String,
-    pub additions: usize,
-    pub deletions: usize,
-    pub hunks: Vec<DiffHunk>,
-    pub is_binary: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct GitDiff {
-    pub files: Vec<GitDiffFile>,
-    pub total_additions: usize,
-    pub total_deletions: usize,
-}
 
 // ─── stage_file ───────────────────────────────────────────────────────────────
 
@@ -96,17 +60,45 @@ pub async fn unstage_file(path: String, file_path: String) -> Result<(), String>
 
 // ─── discard_file_changes ─────────────────────────────────────────────────────
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscardResult {
+    /// OID d'un blob orphelin contenant le contenu du fichier avant le discard (pour undo).
+    /// `None` si le fichier n'existait pas sur disque (ex. déjà vide) ou était un dossier.
+    pub snapshot_blob_oid: Option<String>,
+    pub was_untracked: bool,
+    pub was_staged: bool,
+}
+
 /// Discards all unstaged changes to a file in the working directory.
 #[tauri::command]
-pub async fn discard_file_changes(path: String, file_path: String) -> Result<(), String> {
+pub async fn discard_file_changes(path: String, file_path: String) -> Result<DiscardResult, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
 
     // Check if the file is untracked
     let status = repo.status_file(Path::new(&file_path)).ok();
     let is_untracked = status.map(|s| s.is_wt_new() || s.is_index_new()).unwrap_or(false);
+    let was_staged = status
+        .map(|s| {
+            s.is_index_new()
+                || s.is_index_modified()
+                || s.is_index_deleted()
+                || s.is_index_renamed()
+                || s.is_index_typechange()
+        })
+        .unwrap_or(false);
+
+    // Snapshot du contenu actuel (fichier régulier uniquement) avant toute modification,
+    // pour permettre un undo fidèle du discard.
+    let full_path = Path::new(&path).join(&file_path);
+    let snapshot_blob_oid = if full_path.is_file() {
+        let bytes = std::fs::read(&full_path).map_err(|e| e.to_string())?;
+        Some(repo.blob(&bytes).map_err(AppError::Git)?.to_string())
+    } else {
+        None
+    };
 
     if is_untracked {
-        let full_path = Path::new(&path).join(&file_path);
         if full_path.exists() {
             if full_path.is_dir() {
                 std::fs::remove_dir_all(&full_path).map_err(|e| e.to_string())?;
@@ -118,7 +110,11 @@ pub async fn discard_file_changes(path: String, file_path: String) -> Result<(),
         let mut index = repo.index().map_err(AppError::Git)?;
         let _ = index.remove_path(Path::new(&file_path));
         let _ = index.write();
-        return Ok(());
+        return Ok(DiscardResult {
+            snapshot_blob_oid,
+            was_untracked: true,
+            was_staged,
+        });
     }
 
     // Otherwise, unstage it first if it is staged
@@ -141,7 +137,11 @@ pub async fn discard_file_changes(path: String, file_path: String) -> Result<(),
     repo.checkout_index(None, Some(&mut checkout_opts))
         .map_err(|e| e.to_string())?;
 
-    Ok(())
+    Ok(DiscardResult {
+        snapshot_blob_oid,
+        was_untracked: false,
+        was_staged,
+    })
 }
 
 
@@ -223,26 +223,25 @@ pub async fn unstage_all(path: String) -> Result<(), String> {
 
 // ─── create_commit ────────────────────────────────────────────────────────────
 
-/// Crée un commit avec les fichiers staged. Retourne le short OID.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitResult {
+    pub oid: String,
+    pub short_oid: String,
+}
+
+/// Crée un commit avec les fichiers staged. Retourne l'OID complet et le short OID.
 #[tauri::command]
 pub async fn create_commit(
     path: String,
     message: String,
     amend: Option<bool>,
     amend_oid: Option<String>,
-) -> Result<String, String> {
+) -> Result<CommitResult, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
 
     // Auteur depuis la config git locale
-    let config = repo.config().map_err(AppError::Git)?;
-    let author_name = config
-        .get_string("user.name")
-        .unwrap_or_else(|_| "Unknown".to_string());
-    let author_email = config
-        .get_string("user.email")
-        .unwrap_or_else(|_| "unknown@unknown.com".to_string());
-
-    let sig = git2::Signature::now(&author_name, &author_email).map_err(AppError::Git)?;
+    let sig = get_git_signature(&repo)?;
 
     let mut index = repo.index().map_err(AppError::Git)?;
     let tree_oid = index.write_tree().map_err(AppError::Git)?;
@@ -304,9 +303,12 @@ pub async fn create_commit(
             .map_err(AppError::Git)?
     };
 
-    // Retourner le short SHA (7 caractères)
     let full_sha = oid.to_string();
-    Ok(full_sha[..7.min(full_sha.len())].to_string())
+    let short_sha = short_oid(&full_sha);
+    Ok(CommitResult {
+        oid: full_sha,
+        short_oid: short_sha,
+    })
 }
 
 // ─── get_staged_diff ──────────────────────────────────────────────────────────
@@ -443,7 +445,7 @@ fn build_diff(diff: git2::Diff) -> Result<GitDiff, String> {
                 .trim_end_matches('\n')
                 .to_string();
             if let Some(file) = files.borrow_mut().last_mut() {
-                file.hunks.push(DiffHunk {
+                file.hunks.push(GitDiffHunk {
                     header,
                     lines: Vec::new(),
                 });
@@ -469,7 +471,7 @@ fn build_diff(diff: git2::Diff) -> Result<GitDiff, String> {
                     _ => {}
                 }
                 if let Some(hunk) = file.hunks.last_mut() {
-                    hunk.lines.push(DiffLine {
+                    hunk.lines.push(GitDiffLine {
                         origin: origin.to_string(),
                         content,
                         old_lineno: line.old_lineno().map(|n| n as i32),

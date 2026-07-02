@@ -13,16 +13,19 @@ import {
 } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { useReposStore } from '../../stores/repos.store'
+import { useUndoHistoryStore } from '../../stores/undoHistory.store'
 import {
   fetchRemote,
   pullBranch,
   pushBranch,
-  stashPush,
-  stashPop,
   createBranch,
 } from '../../lib/tauri'
+import { apiStashPush, apiStashPop } from '../../api/git.api'
 import { useSettingsStore } from '../../stores/settings.store'
 import { apiOpenTerminal } from '../../api/shell.api'
+import { mutate } from 'swr'
+import { useGitStatus } from '../../hooks/useGitStatus'
+import { useGitStashes } from '../../hooks/useGitStashes'
 import { RepoSelector } from './RepoSelector'
 import { BranchContext } from './BranchContext'
 import { StateTags } from './StateTags'
@@ -41,7 +44,7 @@ interface Notification {
   message: string
 }
 
-type LoadingKey = 'fetch' | 'pull' | 'push' | 'stash' | 'pop'
+type LoadingKey = 'fetch' | 'pull' | 'push' | 'stash' | 'pop' | 'undo' | 'redo'
 
 /** Barre d'actions principale (Partie 2) située sous les onglets. */
 export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProps) {
@@ -56,11 +59,31 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
     push: false,
     stash: false,
     pop: false,
+    undo: false,
+    redo: false,
   })
   const [notification, setNotification] = useState<Notification | null>(null)
+  const wipMessages = useReposStore((s) => s.wipMessages)
+  const setWipMessage = useReposStore((s) => s.setWipMessage)
 
   const repo = activeRepo ? repoCache[activeRepo] : undefined
   const fromRef = repo ? (repo.isDetached ? 'HEAD' : repo.head) : 'HEAD'
+
+  const { data: gitStatus } = useGitStatus(activeRepo || '')
+  const { data: stashes } = useGitStashes(activeRepo)
+
+  const hasChanges = gitStatus
+    ? gitStatus.staged.length > 0 ||
+      gitStatus.unstaged.length > 0 ||
+      gitStatus.untracked.length > 0
+    : false
+
+  const hasStashes = stashes ? stashes.length > 0 : false
+
+  const canUndo = useUndoHistoryStore((s) => (activeRepo ? s.canUndo(activeRepo) : false))
+  const canRedo = useUndoHistoryStore((s) => (activeRepo ? s.canRedo(activeRepo) : false))
+  const undoLabel = useUndoHistoryStore((s) => (activeRepo ? s.peekUndoLabel(activeRepo) : null))
+  const redoLabel = useUndoHistoryStore((s) => (activeRepo ? s.peekRedoLabel(activeRepo) : null))
 
   const handleOpenTerminal = async () => {
     if (!activeRepo) return
@@ -79,6 +102,7 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
     queryClient.invalidateQueries({ queryKey: ['branches', activeRepo] })
     queryClient.invalidateQueries({ queryKey: ['git-log', activeRepo] })
     queryClient.invalidateQueries({ queryKey: ['git-status', activeRepo] })
+    mutate(['git-stashes', activeRepo])
   }
 
   async function runAction(key: LoadingKey, fn: () => Promise<void>) {
@@ -93,10 +117,15 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
     }
   }
 
+  function clearRedoForActiveRepo() {
+    if (activeRepo) useUndoHistoryStore.getState().clearRedo(activeRepo)
+  }
+
   const handleFetch = () =>
     runAction('fetch', async () => {
       await fetchRemote(activeRepo!)
       notify('success', t('remote.fetchSuccess'))
+      clearRedoForActiveRepo()
       invalidateRepo()
     })
 
@@ -111,6 +140,7 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
         }
       }
       notify('success', t('remote.fetchSuccess'))
+      clearRedoForActiveRepo()
       invalidateRepo()
     })
 
@@ -122,6 +152,7 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
       } else {
         notify('success', t('remote.pullSuccess', { commits: result.commitsMerged }))
       }
+      clearRedoForActiveRepo()
       invalidateRepo()
     })
 
@@ -129,19 +160,40 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
     runAction('push', async () => {
       await pushBranch(activeRepo!)
       notify('success', t('remote.pushSuccess'))
+      clearRedoForActiveRepo()
+      invalidateRepo()
+    })
+
+  const handleUndo = () =>
+    runAction('undo', async () => {
+      await useUndoHistoryStore.getState().undo(activeRepo!)
+      invalidateRepo()
+    })
+
+  const handleRedo = () =>
+    runAction('redo', async () => {
+      await useUndoHistoryStore.getState().redo(activeRepo!)
       invalidateRepo()
     })
 
   const handleStash = () =>
     runAction('stash', async () => {
-      await stashPush(activeRepo!)
+      const wipMsg = activeRepo ? wipMessages[activeRepo] || '' : ''
+      const defaultMessage = `WIP on ${fromRef}`
+      const stashMessage = wipMsg.trim() ? wipMsg.trim() : defaultMessage
+      // Always stash untracked
+      await apiStashPush(activeRepo!, stashMessage, true)
+      // Clear WIP message
+      if (activeRepo) {
+        setWipMessage(activeRepo, '')
+      }
       notify('success', t('toolbar.stashSuccess'))
       invalidateRepo()
     })
 
   const handlePop = () =>
     runAction('pop', async () => {
-      await stashPop(activeRepo!)
+      await apiStashPop(activeRepo!)
       notify('success', t('toolbar.popSuccess'))
       invalidateRepo()
     })
@@ -178,14 +230,20 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
         <ToolbarButton
           icon={<Undo2 className="h-4 w-4 text-muted-foreground" />}
           label={t('toolbar.undo')}
-          title={t('toolbar.undoSoon')}
-          disabled
+          title={undoLabel ? t(undoLabel.key, undoLabel.params) : t('toolbar.undo')}
+          loading={loading.undo}
+          disabled={disabled || !canUndo}
+          onClick={handleUndo}
+          data-testid="toolbar-undo-button"
         />
         <ToolbarButton
           icon={<Redo2 className="h-4 w-4 text-muted-foreground" />}
           label={t('toolbar.redo')}
-          title={t('toolbar.redoSoon')}
-          disabled
+          title={redoLabel ? t(redoLabel.key, redoLabel.params) : t('toolbar.redo')}
+          loading={loading.redo}
+          disabled={disabled || !canRedo}
+          onClick={handleRedo}
+          data-testid="toolbar-redo-button"
         />
 
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />
@@ -218,14 +276,15 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
           icon={<Archive className="h-4 w-4 text-violet-400" />}
           label={t('toolbar.stash')}
           loading={loading.stash}
-          disabled={disabled}
+          disabled={disabled || !hasChanges}
           onClick={handleStash}
+          data-testid="toolbar-stash-button"
         />
         <ToolbarButton
           icon={<ArchiveRestore className="h-4 w-4 text-violet-400" />}
           label={t('toolbar.pop')}
           loading={loading.pop}
-          disabled={disabled}
+          disabled={disabled || !hasStashes}
           onClick={handlePop}
         />
 

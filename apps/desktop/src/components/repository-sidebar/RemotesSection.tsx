@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { Globe, ChevronDown, ChevronRight, GitBranch as BranchIcon } from 'lucide-react'
+import { Globe, ChevronDown, ChevronRight, GitBranch as BranchIcon, Trash2 } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { GitBranch } from '@git-manager/git-types'
 import { useBranches } from '../../hooks/useBranches'
+import { apiRemoveRemote } from '../../api/git.api'
 import { SectionHeader } from './SectionHeader'
 import { HoverExpandLabel } from './HoverExpandLabel'
 
@@ -17,13 +19,14 @@ interface RemoteGroupProps {
   branches: GitBranch[]
   selectedBranch: string | null
   onSelect: (name: string) => void
+  onRemove: (remoteName: string) => void
 }
 
-function RemoteGroup({ remoteName, branches, selectedBranch, onSelect }: RemoteGroupProps) {
+function RemoteGroup({ remoteName, branches, selectedBranch, onSelect, onRemove }: RemoteGroupProps) {
   const [isOpen, setIsOpen] = useState(true)
 
   return (
-    <div>
+    <div className="group/remote">
       <button
         onClick={() => setIsOpen((o) => !o)}
         className="flex w-full items-center gap-1.5 py-[3px] pl-4 pr-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
@@ -35,6 +38,19 @@ function RemoteGroup({ remoteName, branches, selectedBranch, onSelect }: RemoteG
         <span className="flex-1 font-medium">{remoteName}</span>
         <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground/40">
           {branches.length}
+        </span>
+        <span
+          role="button"
+          tabIndex={-1}
+          onClick={(e) => {
+            e.stopPropagation()
+            onRemove(remoteName)
+          }}
+          aria-label={`Remove remote ${remoteName}`}
+          title="Remove remote"
+          className="hidden shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:bg-destructive/20 hover:text-destructive group-hover/remote:inline-flex"
+        >
+          <Trash2 className="h-3 w-3" />
         </span>
       </button>
 
@@ -92,6 +108,17 @@ export function RemotesSection({
 }: RemotesSectionProps) {
   const [isOpen, setIsOpen] = useState(true)
   const { data: allBranches = [] } = useBranches(repoPath)
+  const queryClient = useQueryClient()
+
+  async function handleRemoveRemote(remoteName: string) {
+    if (!window.confirm(`Remove remote "${remoteName}"?`)) return
+    try {
+      await apiRemoveRemote(repoPath, remoteName)
+      queryClient.invalidateQueries({ queryKey: ['branches', repoPath] })
+    } catch (err) {
+      alert(String(err))
+    }
+  }
 
   const q = filter.trim().toLowerCase()
   const remoteBranches = allBranches.filter(
@@ -128,6 +155,7 @@ export function RemotesSection({
               branches={branches}
               selectedBranch={selectedBranch}
               onSelect={onSelectBranch}
+              onRemove={handleRemoveRemote}
             />
           ))}
         </div>

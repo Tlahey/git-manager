@@ -1,0 +1,172 @@
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import { unpinObject, objectsExist } from '../lib/tauri'
+import { executeUndo, executeRedo, collectActionOids, type UndoAction, type UndoLabel } from '../lib/undoActions'
+
+export type { UndoAction, UndoLabel }
+
+const MAX_HISTORY = 50
+
+interface RepoHistory {
+  stack: UndoAction[]
+  pointer: number
+}
+
+interface UndoHistoryState {
+  byRepo: Record<string, RepoHistory>
+  push: (repoPath: string, action: UndoAction) => void
+  undo: (repoPath: string) => Promise<void>
+  redo: (repoPath: string) => Promise<void>
+  clearRedo: (repoPath: string) => void
+  canUndo: (repoPath: string) => boolean
+  canRedo: (repoPath: string) => boolean
+  peekUndoLabel: (repoPath: string) => UndoLabel | null
+  peekRedoLabel: (repoPath: string) => UndoLabel | null
+  /** Vérifie que les objets Git référencés par la pile existent toujours (démarrage / réouverture
+   * d'un dépôt) et retire silencieusement les entrées devenues invalides. */
+  validateAndPrune: (repoPath: string) => Promise<void>
+}
+
+function emptyHistory(): RepoHistory {
+  return { stack: [], pointer: 0 }
+}
+
+function unpinEntries(repoPath: string, entries: UndoAction[]) {
+  for (const entry of entries) {
+    for (const refName of entry.pinnedRefs) {
+      unpinObject(repoPath, refName).catch(() => {})
+    }
+  }
+}
+
+export const useUndoHistoryStore = create<UndoHistoryState>()(
+  persist(
+    (set, get) => ({
+      byRepo: {},
+
+      push: (repoPath, action) =>
+        set((state) => {
+          const current = state.byRepo[repoPath] ?? emptyHistory()
+          const droppedRedoTail = current.stack.slice(current.pointer)
+          let stack = [...current.stack.slice(0, current.pointer), action]
+
+          let evicted: UndoAction[] = []
+          if (stack.length > MAX_HISTORY) {
+            evicted = stack.slice(0, stack.length - MAX_HISTORY)
+            stack = stack.slice(stack.length - MAX_HISTORY)
+          }
+
+          unpinEntries(repoPath, [...droppedRedoTail, ...evicted])
+
+          return {
+            byRepo: { ...state.byRepo, [repoPath]: { stack, pointer: stack.length } },
+          }
+        }),
+
+      undo: async (repoPath) => {
+        const history = get().byRepo[repoPath]
+        if (!history || history.pointer <= 0) return
+        const action = history.stack[history.pointer - 1]
+        await executeUndo(repoPath, action)
+        set((state) => {
+          const h = state.byRepo[repoPath]
+          if (!h) return state
+          return { byRepo: { ...state.byRepo, [repoPath]: { ...h, pointer: h.pointer - 1 } } }
+        })
+      },
+
+      redo: async (repoPath) => {
+        const history = get().byRepo[repoPath]
+        if (!history || history.pointer >= history.stack.length) return
+        const action = history.stack[history.pointer]
+        await executeRedo(repoPath, action)
+        set((state) => {
+          const h = state.byRepo[repoPath]
+          if (!h) return state
+          return { byRepo: { ...state.byRepo, [repoPath]: { ...h, pointer: h.pointer + 1 } } }
+        })
+      },
+
+      clearRedo: (repoPath) =>
+        set((state) => {
+          const current = state.byRepo[repoPath]
+          if (!current || current.pointer >= current.stack.length) return state
+          const dropped = current.stack.slice(current.pointer)
+          unpinEntries(repoPath, dropped)
+          return {
+            byRepo: {
+              ...state.byRepo,
+              [repoPath]: { stack: current.stack.slice(0, current.pointer), pointer: current.pointer },
+            },
+          }
+        }),
+
+      canUndo: (repoPath) => {
+        const history = get().byRepo[repoPath]
+        return !!history && history.pointer > 0
+      },
+
+      canRedo: (repoPath) => {
+        const history = get().byRepo[repoPath]
+        return !!history && history.pointer < history.stack.length
+      },
+
+      peekUndoLabel: (repoPath) => {
+        const history = get().byRepo[repoPath]
+        if (!history || history.pointer <= 0) return null
+        return history.stack[history.pointer - 1].label
+      },
+
+      peekRedoLabel: (repoPath) => {
+        const history = get().byRepo[repoPath]
+        if (!history || history.pointer >= history.stack.length) return null
+        return history.stack[history.pointer].label
+      },
+
+      validateAndPrune: async (repoPath) => {
+        const history = get().byRepo[repoPath]
+        if (!history || history.stack.length === 0) return
+
+        const allOids = Array.from(new Set(history.stack.flatMap((a) => collectActionOids(a))))
+        if (allOids.length === 0) return
+
+        let existsList: boolean[]
+        try {
+          existsList = await objectsExist(repoPath, allOids)
+        } catch {
+          // Dépôt introuvable ou erreur IPC transitoire : ne pas jeter l'historique sur un doute.
+          return
+        }
+        const validOids = new Set(allOids.filter((_, i) => existsList[i]))
+
+        const pointerBefore = history.pointer
+        const keptIndices: number[] = []
+        const dropped: UndoAction[] = []
+
+        history.stack.forEach((action, i) => {
+          const oids = collectActionOids(action)
+          if (oids.every((oid) => validOids.has(oid))) {
+            keptIndices.push(i)
+          } else {
+            dropped.push(action)
+          }
+        })
+
+        if (dropped.length === 0) return
+
+        unpinEntries(repoPath, dropped)
+
+        set((state) => {
+          const h = state.byRepo[repoPath]
+          if (!h) return state
+          const newStack = keptIndices.map((i) => h.stack[i])
+          const newPointer = keptIndices.filter((i) => i < pointerBefore).length
+          return { byRepo: { ...state.byRepo, [repoPath]: { stack: newStack, pointer: newPointer } } }
+        })
+      },
+    }),
+    {
+      name: 'git-manager-undo-history',
+    },
+  ),
+)

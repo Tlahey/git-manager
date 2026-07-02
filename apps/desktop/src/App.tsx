@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from './lib/queryClient'
 import { DashboardPage } from './app/dashboard/DashboardPage'
 import { useReposStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from './stores/repos.store'
 import { RewardsTab } from './app/pull-requests/components/RewardsTab'
@@ -12,15 +13,6 @@ import { useMonacoTheme } from './hooks/useMonacoTheme'
 import { useNotificationWatcher } from './hooks/useNotificationWatcher'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { Footer } from './components/footer/Footer'
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      staleTime: 5_000,
-    },
-  },
-})
 
 import { useEffect } from 'react'
 import { TrophyToast } from './components/trophy/TrophyToast'

@@ -1,6 +1,6 @@
 import type { GitRef } from '@git-manager/git-types'
 import { cn } from '@git-manager/ui'
-import { GitCommitHorizontal, Check, Laptop, Tag } from 'lucide-react'
+import { GitCommitHorizontal, Check, Laptop, Tag, Archive } from 'lucide-react'
 
 interface RefLabelProps {
   gitRef: GitRef
@@ -36,6 +36,7 @@ export function RefLabel({ gitRef, color }: RefLabelProps) {
   const isHEAD = gitRef.type === 'HEAD'
   const isRemote = gitRef.type === 'remote'
   const isTag = gitRef.type === 'tag'
+  const isStash = gitRef.type === 'stash'
 
   const displayName = cleanName(gitRef)
 
@@ -52,6 +53,8 @@ export function RefLabel({ gitRef, color }: RefLabelProps) {
     refColor = '#2563eb'
   } else if (isRemoteMainOrMaster) {
     refColor = '#7c3aed'
+  } else if (isStash) {
+    refColor = '#a78bfa'
   }
 
   let badgeClasses = cn(
@@ -71,6 +74,9 @@ export function RefLabel({ gitRef, color }: RefLabelProps) {
     if (isRemote) {
       customStyle.borderStyle = 'dashed'
       badgeClasses = cn(badgeClasses, 'opacity-80')
+    } else if (isStash) {
+      customStyle.borderStyle = 'dashed'
+      badgeClasses = cn(badgeClasses, 'opacity-90')
     }
   }
 
@@ -82,15 +88,16 @@ export function RefLabel({ gitRef, color }: RefLabelProps) {
   return (
     <span className={badgeClasses} style={customStyle}>
       {isHEAD && <GitCommitHorizontal className="h-3 w-3 shrink-0" />}
-      {!isHEAD && !isRemote && !isTag && <Check className="h-3 w-3 shrink-0" />}
+      {!isHEAD && !isRemote && !isTag && !isStash && <Check className="h-3 w-3 shrink-0" />}
       {isTag && <Tag className="h-3 w-3 shrink-0" />}
+      {isStash && <Archive className="h-3 w-3 shrink-0" />}
       
       <span className="truncate">
         {isHEAD ? 'HEAD' : displayName}
       </span>
 
       {isRemote && <GithubIcon className="h-3 w-3 shrink-0 ml-0.5" />}
-      {!isHEAD && !isRemote && !isTag && <Laptop className="h-3 w-3 shrink-0 ml-0.5" />}
+      {!isHEAD && !isRemote && !isTag && !isStash && <Laptop className="h-3 w-3 shrink-0 ml-0.5" />}
     </span>
   )
 }

@@ -1,6 +1,6 @@
 use crate::error::AppError;
 use crate::models::GitBranch;
-use git2::Repository;
+use git2::{Oid, Repository};
 use serde::{Deserialize, Serialize};
 
 // ─── Struct local pour GitRef avec le bon nom de champ "type" ────────────────
@@ -167,4 +167,94 @@ pub async fn get_tags(path: String) -> Result<Vec<BranchRef>, String> {
     tags.sort_by(|a, b| a.short_name.cmp(&b.short_name));
 
     Ok(tags)
+}
+
+// ─── checkout_branch ───────────────────────────────────────────────────────────
+
+/// Checkout d'une branche locale par son nom, ou d'un commit brut par OID (HEAD détaché).
+/// Le fallback OID permet de restaurer un HEAD détaché lors d'un undo de checkout.
+#[tauri::command]
+pub async fn checkout_branch(
+    path: String,
+    ref_name: String,
+    force: Option<bool>,
+) -> Result<(), String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    let mut checkout_opts = git2::build::CheckoutBuilder::new();
+    if force.unwrap_or(false) {
+        checkout_opts.force();
+    } else {
+        checkout_opts.safe();
+    }
+
+    if let Ok(branch) = repo.find_branch(&ref_name, git2::BranchType::Local) {
+        let reference = branch.into_reference();
+        let commit = reference.peel_to_commit().map_err(AppError::Git)?;
+        repo.checkout_tree(commit.as_object(), Some(&mut checkout_opts))
+            .map_err(AppError::Git)?;
+        let ref_full_name = reference
+            .name()
+            .ok_or_else(|| String::from(AppError::Unknown("Invalid branch ref name".to_string())))?;
+        repo.set_head(ref_full_name).map_err(AppError::Git)?;
+        return Ok(());
+    }
+
+    // Pas une branche locale : tenter un OID brut (checkout détaché)
+    let oid = Oid::from_str(&ref_name).map_err(|_| format!("Branch not found: {ref_name}"))?;
+    let commit = repo.find_commit(oid).map_err(AppError::Git)?;
+    repo.checkout_tree(commit.as_object(), Some(&mut checkout_opts))
+        .map_err(AppError::Git)?;
+    repo.set_head_detached(oid).map_err(AppError::Git)?;
+    Ok(())
+}
+
+// ─── delete_branch ─────────────────────────────────────────────────────────────
+
+/// Supprime une branche locale (et sa branche de tracking distante si demandé).
+/// `force = false` refuse la suppression si la branche n'est pas fusionnée dans HEAD
+/// (équivalent `git branch -d`) ; `force = true` supprime sans vérification (`-D`).
+#[tauri::command]
+pub async fn delete_branch(
+    path: String,
+    name: String,
+    force: Option<bool>,
+    delete_remote: Option<bool>,
+) -> Result<(), String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    let mut branch = repo
+        .find_branch(&name, git2::BranchType::Local)
+        .map_err(AppError::Git)?;
+
+    if !force.unwrap_or(false) {
+        if let (Ok(head), Some(branch_oid)) = (repo.head(), branch.get().target()) {
+            if let Some(head_oid) = head.target() {
+                let is_merged = head_oid == branch_oid
+                    || repo
+                        .graph_descendant_of(head_oid, branch_oid)
+                        .unwrap_or(false);
+                if !is_merged {
+                    return Err(String::from(AppError::Unknown(format!(
+                        "Branch '{name}' is not fully merged"
+                    ))));
+                }
+            }
+        }
+    }
+
+    let upstream_name = branch
+        .upstream()
+        .ok()
+        .and_then(|u| u.name().ok().flatten().map(|n| n.to_string()));
+
+    branch.delete().map_err(AppError::Git)?;
+
+    if delete_remote.unwrap_or(false) {
+        if let Some(upstream_name) = upstream_name {
+            if let Ok(mut remote_branch) = repo.find_branch(&upstream_name, git2::BranchType::Remote) {
+                let _ = remote_branch.delete();
+            }
+        }
+    }
+
+    Ok(())
 }

@@ -49,7 +49,7 @@ export interface GitGraphEdge {
 
 // ─── Refs ─────────────────────────────────────────────────────────────────────
 
-export type GitRefType = 'branch' | 'tag' | 'remote' | 'HEAD'
+export type GitRefType = 'branch' | 'tag' | 'remote' | 'HEAD' | 'stash'
 
 export interface GitRef {
   name: string
@@ -291,6 +291,7 @@ export interface GitSettings {
   protectedBranches: string[]
   autoFetchIntervalMinutes: number | null
   showRemoteBranches: boolean
+  showStashesInGraph?: boolean
   confirmBeforeForcePush: boolean
   externalEditor: string
   externalEditorCommand: string

@@ -35,7 +35,7 @@ export const initRepo = (path: string) => invoke<GitRepo>('init_repo', { path })
 
 export const getLog = (
   path: string,
-  opts?: { limit?: number; skip?: number; branch?: string; author?: string }
+  opts?: { limit?: number; skip?: number; branch?: string; author?: string; showStashes?: boolean; hiddenStashes?: string[] }
 ) => invoke<GitGraphNode[]>('get_log', { path, ...opts })
 
 export const getCommitDiff = (path: string, oid: string) =>
@@ -54,14 +54,17 @@ export const getTags = (path: string) => invoke<GitRef[]>('get_tags', { path })
 export const createBranch = (path: string, name: string, fromRef: string) =>
   invoke<void>('create_branch', { path, name, fromRef })
 
-export const checkoutBranch = (path: string, name: string, force = false) =>
-  invoke<void>('checkout_branch', { path, name, force })
+export const checkoutBranch = (path: string, refName: string, force = false) =>
+  invoke<void>('checkout_branch', { path, refName, force })
 
 export const deleteBranch = (path: string, name: string, force = false, deleteRemote = false) =>
   invoke<void>('delete_branch', { path, name, force, deleteRemote })
 
 export const renameBranch = (path: string, oldName: string, newName: string) =>
   invoke<void>('rename_branch', { path, oldName, newName })
+
+export const recreateBranchRef = (path: string, name: string, oid: string, upstream?: string) =>
+  invoke<void>('recreate_branch_ref', { path, name, oid, upstream })
 
 // ─── Stash ────────────────────────────────────────────────────────────────────
 
@@ -76,6 +79,13 @@ export const stashApply = (path: string, index?: number) =>
   invoke<void>('stash_apply', { path, index })
 
 export const stashDrop = (path: string, index: number) => invoke<void>('stash_drop', { path, index })
+
+export const stashStore = (path: string, commitOid: string, message: string) =>
+  invoke<void>('stash_store', { path, commitOid, message })
+
+export const editStashMessage = (path: string, index: number, message: string) =>
+  invoke<void>('edit_stash_message', { path, index, message })
+
 
 // ─── Worktree ─────────────────────────────────────────────────────────────────
 
@@ -119,16 +129,27 @@ export const stageFile = (path: string, filePath: string) =>
 export const unstageFile = (path: string, filePath: string) =>
   invoke<void>('unstage_file', { path, filePath })
 
+export interface DiscardResult {
+  snapshotBlobOid: string | null
+  wasUntracked: boolean
+  wasStaged: boolean
+}
+
 export const discardFileChanges = (path: string, filePath: string) =>
-  invoke<void>('discard_file_changes', { path, filePath })
+  invoke<DiscardResult>('discard_file_changes', { path, filePath })
 
 
 export const stageAll = (path: string) => invoke<void>('stage_all', { path })
 
 export const unstageAll = (path: string) => invoke<void>('unstage_all', { path })
 
+export interface CommitResult {
+  oid: string
+  shortOid: string
+}
+
 export const createCommit = (path: string, message: string, amend = false, amendOid?: string) =>
-  invoke<string>('create_commit', { path, message, amend, amendOid })
+  invoke<CommitResult>('create_commit', { path, message, amend, amendOid })
 
 export const getStagedDiff = (path: string) => invoke<GitDiff>('get_staged_diff', { path })
 
@@ -156,6 +177,64 @@ export const pullBranch = (path: string, remote?: string, rebase?: boolean) =>
 
 export const pushBranch = (path: string, remote?: string, force?: boolean) =>
   invoke<void>('push_branch', { path, remote, force })
+
+export interface RemoteInfo {
+  name: string
+  url: string
+  pushUrl?: string
+}
+
+export const getRemotes = (path: string) => invoke<RemoteInfo[]>('get_remotes', { path })
+
+export const addRemote = (path: string, name: string, url: string) =>
+  invoke<void>('add_remote', { path, name, url })
+
+export const removeRemote = (path: string, name: string) =>
+  invoke<void>('remove_remote', { path, name })
+
+// ─── Undo/Redo snapshots ──────────────────────────────────────────────────────
+
+export interface FileSnapshotResult {
+  blobOid: string
+  refName: string
+}
+
+export const snapshotFile = (path: string, filePath: string, entryId: string) =>
+  invoke<FileSnapshotResult | null>('snapshot_file', { path, filePath, entryId })
+
+export const restoreFileBlob = (path: string, filePath: string, blobOid: string) =>
+  invoke<void>('restore_file_blob', { path, filePath, blobOid })
+
+export interface WorktreeSnapshot {
+  indexTreeOid: string
+  workdirTreeOid: string
+  indexRefName: string
+  workdirRefName: string
+}
+
+export const snapshotWorktree = (path: string, entryId: string) =>
+  invoke<WorktreeSnapshot | null>('snapshot_worktree', { path, entryId })
+
+export const snapshotWorktreeAlways = (path: string, entryId: string) =>
+  invoke<WorktreeSnapshot>('snapshot_worktree_always', { path, entryId })
+
+export const restoreWorktreeSnapshot = (path: string, snapshot: WorktreeSnapshot) =>
+  invoke<void>('restore_worktree_snapshot', {
+    path,
+    indexTreeOid: snapshot.indexTreeOid,
+    workdirTreeOid: snapshot.workdirTreeOid,
+  })
+
+// ─── Undo/Redo persistence (pinning + validation) ─────────────────────────────
+
+export const pinObject = (path: string, refName: string, oid: string) =>
+  invoke<void>('pin_object', { path, refName, oid })
+
+export const unpinObject = (path: string, refName: string) =>
+  invoke<void>('unpin_object', { path, refName })
+
+export const objectsExist = (path: string, oids: string[]) =>
+  invoke<boolean[]>('objects_exist', { path, oids })
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
@@ -270,6 +349,9 @@ export const openInEditor = (path: string, editor: string, customCommand?: strin
 
 export const getRepoReadme = (path: string) =>
   invoke<string>('get_repo_readme', { path })
+
+export const getTerminalCommands = () =>
+  invoke<string[]>('get_terminal_commands')
 
 // ─── SSH ─────────────────────────────────────────────────────────────────────
 

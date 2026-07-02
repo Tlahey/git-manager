@@ -9,9 +9,12 @@ import {
   Tag as TagIcon,
   GitFork,
   Plus,
+  Archive as ArchiveIcon,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import { Spinner } from '@git-manager/ui'
-import type { GitBranch, PullRequest } from '@git-manager/git-types'
+import type { GitBranch, PullRequest, GitStash } from '@git-manager/git-types'
 import type { SidebarRow, SectionKey } from './types'
 import { SectionHeader } from './SectionHeader'
 import { BranchItem } from './BranchItem'
@@ -24,6 +27,7 @@ const SECTION_ICONS: Record<SectionKey, React.ReactNode> = {
   prs: <GitPullRequest className="h-3 w-3" />,
   tags: <TagIcon className="h-3 w-3" />,
   submodules: <GitFork className="h-3 w-3" />,
+  stashes: <ArchiveIcon className="h-3 w-3" />,
 }
 
 interface SidebarRowViewProps {
@@ -34,6 +38,9 @@ interface SidebarRowViewProps {
   onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
   onOpenPr?: (pr: PullRequest) => void
   onCreateBranch?: () => void
+  onStashContextMenu?: (e: React.MouseEvent, stash: GitStash) => void
+  hiddenStashes?: string[]
+  onToggleStashVisibility?: (oid: string) => void
 }
 
 export function SidebarRowView({
@@ -44,6 +51,9 @@ export function SidebarRowView({
   onContextMenu,
   onOpenPr,
   onCreateBranch,
+  onStashContextMenu,
+  hiddenStashes = [],
+  onToggleStashVisibility,
 }: SidebarRowViewProps) {
   switch (row.kind) {
     case 'section':
@@ -126,11 +136,10 @@ export function SidebarRowView({
       )
       return (
         <div
-          className={`group/rbranch relative flex items-center gap-1.5 py-[3px] pl-10 pr-2 text-xs transition-colors ${
-            row.isSelected
-              ? 'bg-accent text-foreground'
-              : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
-          }`}
+          className={`group/rbranch relative flex items-center gap-1.5 py-[3px] pl-10 pr-2 text-xs transition-colors ${row.isSelected
+            ? 'bg-accent text-foreground'
+            : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+            }`}
           onClick={() => onSelectBranch(row.branch.name)}
           role="button"
           tabIndex={0}
@@ -172,11 +181,10 @@ export function SidebarRowView({
     case 'tag':
       return (
         <div
-          className={`group/tag relative flex items-center gap-1.5 py-[3px] pl-6 pr-2 text-xs transition-colors ${
-            row.isSelected
-              ? 'bg-accent text-foreground font-medium'
-              : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
-          }`}
+          className={`group/tag relative flex items-center gap-1.5 py-[3px] pl-6 pr-2 text-xs transition-colors ${row.isSelected
+            ? 'bg-accent text-foreground font-medium'
+            : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+            }`}
           onClick={() => onSelectBranch(row.tag.name)}
           role="button"
           tabIndex={0}
@@ -189,6 +197,73 @@ export function SidebarRowView({
           </span>
         </div>
       )
+
+    case 'stash': {
+      const isHidden = hiddenStashes.includes(row.stash.commitOid)
+      return (
+        <div
+          className={`group/stash relative flex items-center gap-1.5 py-[3px] pl-6 pr-2 text-xs transition-colors cursor-pointer ${row.isSelected
+            ? 'bg-accent text-foreground font-medium'
+            : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+            } ${isHidden ? 'opacity-50' : ''}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            if ((e.target as HTMLElement).closest('[data-toggle]')) {
+              return
+            }
+            onSelectBranch(row.stash.commitOid)
+          }}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onStashContextMenu?.(e, row.stash)
+          }}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter') {
+              if ((e.target as HTMLElement).closest('[data-toggle]')) return
+              onSelectBranch(row.stash.commitOid)
+            }
+          }}
+          data-testid={`stash-item-${row.stash.index}`}
+        >
+          <span
+            data-toggle="stash-visibility"
+            onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              onToggleStashVisibility?.(row.stash.commitOid)
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+            }}
+            onMouseUp={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+            }}
+            className="absolute left-1 z-10 opacity-0 group-hover/stash:opacity-100 rounded p-0.5 hover:bg-accent/80 text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer"
+            title={isHidden ? "Afficher le stash dans le graphe" : "Masquer le stash dans le graphe"}
+            aria-label={isHidden ? "Afficher le stash dans le graphe" : "Masquer le stash dans le graphe"}
+          >
+            {isHidden ? (
+              <EyeOff className="h-3.5 w-3.5 text-muted-foreground/60" />
+            ) : (
+              <Eye className="h-3.5 w-3.5 text-violet-400" />
+            )}
+          </span>
+          <ArchiveIcon className="h-3 w-3 shrink-0 opacity-40 text-violet-400" />
+          <HoverExpandLabel className="min-w-0 flex-1 truncate">
+            {row.stash.message || `stash@{${row.stash.index}}`}
+          </HoverExpandLabel>
+          <span className="shrink-0 tabular-nums text-[10px] font-mono text-muted-foreground/40 font-normal">
+            {row.stash.commitOid.slice(0, 7)}
+          </span>
+        </div>
+      )
+    }
 
     case 'submodule':
       return (

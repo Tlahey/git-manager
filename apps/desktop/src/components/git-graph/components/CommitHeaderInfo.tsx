@@ -12,9 +12,12 @@ import {
   Gitlab,
 } from 'lucide-react'
 import { CommitDetailsAvatar } from './CommitDetailsAvatar'
-import { apiCreateCommit } from '../../../api/git.api'
+import { apiCreateCommit, apiUpdateStashMessage } from '../../../api/git.api'
 import { apiOpenUrl } from '../../../api/shell.api'
-import type { GitGraphNode } from '@git-manager/git-types'
+import type { GitGraphNode, GitRef } from '@git-manager/git-types'
+import { useGitStashes } from '../../../hooks/useGitStashes'
+import { useReposStore } from '../../../stores/repos.store'
+
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp * 1000).toLocaleString(undefined, {
@@ -29,6 +32,7 @@ function formatDate(timestamp: number): string {
 
 interface CommitHeaderInfoProps {
   isWip: boolean
+  isStash?: boolean
   commit: GitGraphNode['commit']
   isHead: boolean
   repoPath: string
@@ -36,10 +40,12 @@ interface CommitHeaderInfoProps {
   onSelectCommit?: (oid: string) => void
   onRefresh?: () => void
   onClose?: () => void
+  refs?: GitRef[]
 }
 
 export function CommitHeaderInfo({
   isWip,
+  isStash = false,
   commit,
   isHead,
   repoPath,
@@ -47,6 +53,7 @@ export function CommitHeaderInfo({
   onSelectCommit,
   onRefresh,
   onClose,
+  refs = [],
 }: CommitHeaderInfoProps) {
   const { t } = useTranslation('git')
 
@@ -56,12 +63,33 @@ export function CommitHeaderInfo({
   const [editBody, setEditBody] = useState('')
   const [isSavingMessage, setIsSavingMessage] = useState(false)
 
+  const { data: stashes } = useGitStashes(repoPath)
+  const stash = useMemo(() => {
+    if (!isStash) return null
+    return stashes?.find((s) => s.commitOid === commit?.oid)
+  }, [isStash, stashes, commit?.oid])
+
+  const { editingOid, setEditingOid } = useReposStore()
+
+  useEffect(() => {
+    if (editingOid && editingOid === commit?.oid) {
+      setIsEditingMessage(true)
+      setEditingOid(null)
+    }
+  }, [editingOid, commit?.oid, setEditingOid])
+
   // Reset states when the selected commit changes
   useEffect(() => {
     setIsEditingMessage(false)
-    setEditSubject(commit?.subject ?? '')
-    setEditBody(commit?.body ?? '')
-  }, [commit?.oid, commit?.subject, commit?.body])
+    if (isStash && stash) {
+      const parts = stash.message.split('\n\n')
+      setEditSubject(parts[0] || '')
+      setEditBody(parts.slice(1).join('\n\n') || '')
+    } else {
+      setEditSubject(commit?.subject ?? '')
+      setEditBody(commit?.body ?? '')
+    }
+  }, [commit?.oid, commit?.subject, commit?.body, isStash, stash])
 
   async function handleUpdateCommitMessage() {
     if (!editSubject.trim()) return
@@ -70,6 +98,17 @@ export function CommitHeaderInfo({
       const fullMessage = editBody.trim()
         ? `${editSubject.trim()}\n\n${editBody.trim()}`
         : editSubject.trim()
+
+      if (isStash) {
+        const stashRef = refs?.find((r) => r.type === 'stash')
+        const stashMatch = stashRef?.shortName.match(/stash@\{(\d+)\}/)
+        const stashIndex = stashMatch ? parseInt(stashMatch[1], 10) : 0
+
+        await apiUpdateStashMessage(repoPath, stashIndex, fullMessage)
+        setIsEditingMessage(false)
+        onRefresh?.()
+        return
+      }
 
       const commitOidToAmend = commit.oid !== 'WIP' ? commit.oid : undefined
       await apiCreateCommit(repoPath, fullMessage, true, commitOidToAmend)
@@ -119,6 +158,11 @@ export function CommitHeaderInfo({
               <>
                 <Layers className="h-3.5 w-3.5 text-primary" />
                 {t('workingTree.title')}
+              </>
+            ) : isStash ? (
+              <>
+                <Layers className="h-3.5 w-3.5 text-violet-400" />
+                {t('stash.title')}
               </>
             ) : (
               <>
@@ -248,6 +292,34 @@ export function CommitHeaderInfo({
                   {messageBodyParsed}
                 </div>
               )}
+            </div>
+          ) : isStash ? (
+            <div
+              data-testid="commit-message-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setIsEditingMessage(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') setIsEditingMessage(true)
+              }}
+              className="bg-muted/15 border border-border/30 hover:border-primary/50 hover:bg-accent/15 cursor-pointer rounded-lg p-3 space-y-2 group transition-all"
+              title="Click to edit stash message"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <h4 className="text-xs font-bold text-foreground leading-snug break-words flex-1">
+                  {stash ? stash.message.split('\n\n')[0] : commit.subject}
+                </h4>
+                <Pencil className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground/60 shrink-0 mt-0.5 transition-all duration-200" />
+              </div>
+              {stash && stash.message.split('\n\n')[1] ? (
+                <div className="text-[11px] space-y-1.5 pt-1 border-t border-border/20 font-normal text-muted-foreground">
+                  {stash.message.split('\n\n').slice(1).join('\n\n')}
+                </div>
+              ) : commit.body ? (
+                <div className="text-[11px] space-y-1.5 pt-1 border-t border-border/20 font-normal">
+                  {messageBodyParsed}
+                </div>
+              ) : null}
             </div>
           ) : (
             <div

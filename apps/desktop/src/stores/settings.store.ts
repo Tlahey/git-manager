@@ -18,6 +18,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     protectedBranches: ['main', 'master', 'develop'],
     autoFetchIntervalMinutes: null,
     showRemoteBranches: true,
+    showStashesInGraph: true,
     confirmBeforeForcePush: true,
     externalEditor: 'vscode',
     externalEditorCommand: '',
