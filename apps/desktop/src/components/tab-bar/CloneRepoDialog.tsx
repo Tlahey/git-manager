@@ -12,7 +12,7 @@ import {
 } from '@git-manager/ui'
 import { FolderOpen } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
-import { cloneRepo } from '../../lib/tauri'
+import { apiCloneRepo } from '../../api/repo.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 
@@ -65,7 +65,7 @@ export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogP
     setLoading(true)
     try {
       const destPath = `${parentDir}/${folderName}`
-      const repo = await cloneRepo(url.trim(), destPath, shallow, sparse)
+      const repo = await apiCloneRepo(url.trim(), destPath, shallow, sparse)
       addRepo(repo)
       openTab(repo.path)
       handleClose(false)

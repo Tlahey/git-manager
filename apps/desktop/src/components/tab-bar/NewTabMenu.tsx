@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, FolderOpen, GitBranch, FolderPlus } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
-import { openRepo, initRepo } from '../../lib/tauri'
+import { apiOpenRepo, apiInitRepo } from '../../api/repo.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { CloneRepoDialog } from './CloneRepoDialog'
@@ -71,7 +71,7 @@ export function NewTabMenu() {
     const selected = await open({ directory: true, multiple: false })
     if (!selected || typeof selected !== 'string') return
     try {
-      const repo = await openRepo(selected)
+      const repo = await apiOpenRepo(selected)
       addRepo(repo)
       openTab(repo.path)
     } catch {
@@ -84,7 +84,7 @@ export function NewTabMenu() {
     const selected = await open({ directory: true, multiple: false })
     if (!selected || typeof selected !== 'string') return
     try {
-      const repo = await initRepo(selected)
+      const repo = await apiInitRepo(selected)
       addRepo(repo)
       openTab(repo.path)
     } catch {

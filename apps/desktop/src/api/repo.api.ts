@@ -4,10 +4,20 @@ import {
   getRepoSummary,
   openInEditor,
   getRepoReadme,
+  cloneRepo,
+  initRepo,
 } from '../lib/tauri'
 
 export async function apiOpenRepo(path: string) {
   return openRepo(path)
+}
+
+export async function apiCloneRepo(url: string, destPath: string, shallow?: boolean, sparse?: boolean) {
+  return cloneRepo(url, destPath, shallow, sparse)
+}
+
+export async function apiInitRepo(path: string) {
+  return initRepo(path)
 }
 
 export async function apiScanRepos(rootPath: string, maxDepth: number) {

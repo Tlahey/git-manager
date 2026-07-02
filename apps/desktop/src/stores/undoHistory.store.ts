@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { unpinObject, objectsExist } from '../lib/tauri'
+import { apiUnpinObject, apiObjectsExist } from '../api/undoSupport.api'
 import { executeUndo, executeRedo, collectActionOids, type UndoAction, type UndoLabel } from '../lib/undoActions'
 
 export type { UndoAction, UndoLabel }
@@ -34,7 +34,7 @@ function emptyHistory(): RepoHistory {
 function unpinEntries(repoPath: string, entries: UndoAction[]) {
   for (const entry of entries) {
     for (const refName of entry.pinnedRefs) {
-      unpinObject(repoPath, refName).catch(() => {})
+      apiUnpinObject(repoPath, refName).catch(() => {})
     }
   }
 }
@@ -132,7 +132,7 @@ export const useUndoHistoryStore = create<UndoHistoryState>()(
 
         let existsList: boolean[]
         try {
-          existsList = await objectsExist(repoPath, allOids)
+          existsList = await apiObjectsExist(repoPath, allOids)
         } catch {
           // Dépôt introuvable ou erreur IPC transitoire : ne pas jeter l'historique sur un doute.
           return
