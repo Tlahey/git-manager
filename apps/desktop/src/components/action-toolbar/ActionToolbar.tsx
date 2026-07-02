@@ -1,6 +1,4 @@
-import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useQueryClient } from '@tanstack/react-query'
 import {
   ArrowUpFromLine,
   ChevronRight,
@@ -12,22 +10,7 @@ import {
   ArchiveRestore,
 } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
-import { useRepoDataStore } from '../../stores/repoData.store'
-import { useRepoUIStore } from '../../stores/repoUI.store'
-import { useUndoHistoryStore } from '../../stores/undoHistory.store'
-import {
-  apiStashPush,
-  apiStashPop,
-  apiFetchRemote,
-  apiPullBranch,
-  apiPushBranch,
-  apiCreateBranch,
-} from '../../api/git.api'
-import { useSettingsStore } from '../../stores/settings.store'
-import { apiOpenTerminal } from '../../api/shell.api'
-import { mutate } from 'swr'
-import { useGitStatus } from '../../hooks/useGitStatus'
-import { useGitStashes } from '../../hooks/useGitStashes'
+import { useActionToolbar } from '../../hooks/useActionToolbar'
 import { RepoSelector } from './RepoSelector'
 import { BranchContext } from './BranchContext'
 import { StateTags } from './StateTags'
@@ -41,176 +24,32 @@ interface ActionToolbarProps {
   onSearchChange: (value: string) => void
 }
 
-interface Notification {
-  type: 'success' | 'error'
-  message: string
-}
-
-type LoadingKey = 'fetch' | 'pull' | 'push' | 'stash' | 'pop' | 'undo' | 'redo'
-
 /** Barre d'actions principale (Partie 2) située sous les onglets. */
 export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProps) {
   const { t } = useTranslation('git')
-  const queryClient = useQueryClient()
-  const { activeRepo } = useRepoUIStore()
-  const { repoCache } = useRepoDataStore()
-  const settings = useSettingsStore((s) => s.settings)
 
-  const [loading, setLoading] = useState<Record<LoadingKey, boolean>>({
-    fetch: false,
-    pull: false,
-    push: false,
-    stash: false,
-    pop: false,
-    undo: false,
-    redo: false,
-  })
-  const [notification, setNotification] = useState<Notification | null>(null)
-  const wipMessages = useRepoDataStore((s) => s.wipMessages)
-  const setWipMessage = useRepoDataStore((s) => s.setWipMessage)
-
-  const repo = activeRepo ? repoCache[activeRepo] : undefined
-  const fromRef = repo ? (repo.isDetached ? 'HEAD' : repo.head) : 'HEAD'
-
-  const { data: gitStatus } = useGitStatus(activeRepo || '')
-  const { data: stashes } = useGitStashes(activeRepo)
-
-  const hasChanges = gitStatus
-    ? gitStatus.staged.length > 0 ||
-      gitStatus.unstaged.length > 0 ||
-      gitStatus.untracked.length > 0
-    : false
-
-  const hasStashes = stashes ? stashes.length > 0 : false
-
-  const canUndo = useUndoHistoryStore((s) => (activeRepo ? s.canUndo(activeRepo) : false))
-  const canRedo = useUndoHistoryStore((s) => (activeRepo ? s.canRedo(activeRepo) : false))
-  const undoLabel = useUndoHistoryStore((s) => (activeRepo ? s.peekUndoLabel(activeRepo) : null))
-  const redoLabel = useUndoHistoryStore((s) => (activeRepo ? s.peekRedoLabel(activeRepo) : null))
-
-  const handleOpenTerminal = async () => {
-    if (!activeRepo) return
-    const terminal = settings.externalTools?.externalTerminal || 'system'
-    const customCommand = settings.externalTools?.externalTerminalCommand
-    await apiOpenTerminal(activeRepo, terminal, customCommand)
-  }
-
-  function notify(type: Notification['type'], message: string) {
-    setNotification({ type, message })
-    setTimeout(() => setNotification(null), 3500)
-  }
-
-  function invalidateRepo() {
-    if (!activeRepo) return
-    queryClient.invalidateQueries({ queryKey: ['branches', activeRepo] })
-    queryClient.invalidateQueries({ queryKey: ['git-log', activeRepo] })
-    queryClient.invalidateQueries({ queryKey: ['git-status', activeRepo] })
-    mutate(['git-stashes', activeRepo])
-  }
-
-  async function runAction(key: LoadingKey, fn: () => Promise<void>) {
-    if (!activeRepo) return
-    setLoading((s) => ({ ...s, [key]: true }))
-    try {
-      await fn()
-    } catch (err) {
-      notify('error', String(err))
-    } finally {
-      setLoading((s) => ({ ...s, [key]: false }))
-    }
-  }
-
-  function clearRedoForActiveRepo() {
-    if (activeRepo) useUndoHistoryStore.getState().clearRedo(activeRepo)
-  }
-
-  const handleFetch = () =>
-    runAction('fetch', async () => {
-      await apiFetchRemote(activeRepo!)
-      notify('success', t('remote.fetchSuccess'))
-      clearRedoForActiveRepo()
-      invalidateRepo()
-    })
-
-  const handleFetchAll = () =>
-    runAction('fetch', async () => {
-      const remotes = repo?.remotes ?? []
-      if (remotes.length === 0) {
-        await apiFetchRemote(activeRepo!)
-      } else {
-        for (const remote of remotes) {
-          await apiFetchRemote(activeRepo!, remote)
-        }
-      }
-      notify('success', t('remote.fetchSuccess'))
-      clearRedoForActiveRepo()
-      invalidateRepo()
-    })
-
-  const handlePull = () =>
-    runAction('pull', async () => {
-      const result = await apiPullBranch(activeRepo!)
-      if (result.conflicts.length > 0) {
-        notify('error', t('remote.conflict', { count: result.conflicts.length }))
-      } else {
-        notify('success', t('remote.pullSuccess', { commits: result.commitsMerged }))
-      }
-      clearRedoForActiveRepo()
-      invalidateRepo()
-    })
-
-  const handlePush = () =>
-    runAction('push', async () => {
-      await apiPushBranch(activeRepo!)
-      notify('success', t('remote.pushSuccess'))
-      clearRedoForActiveRepo()
-      invalidateRepo()
-    })
-
-  const handleUndo = () =>
-    runAction('undo', async () => {
-      await useUndoHistoryStore.getState().undo(activeRepo!)
-      invalidateRepo()
-    })
-
-  const handleRedo = () =>
-    runAction('redo', async () => {
-      await useUndoHistoryStore.getState().redo(activeRepo!)
-      invalidateRepo()
-    })
-
-  const handleStash = () =>
-    runAction('stash', async () => {
-      const wipMsg = activeRepo ? wipMessages[activeRepo] || '' : ''
-      const defaultMessage = `WIP on ${fromRef}`
-      const stashMessage = wipMsg.trim() ? wipMsg.trim() : defaultMessage
-      // Always stash untracked
-      await apiStashPush(activeRepo!, stashMessage, true)
-      // Clear WIP message
-      if (activeRepo) {
-        setWipMessage(activeRepo, '')
-      }
-      notify('success', t('toolbar.stashSuccess'))
-      invalidateRepo()
-    })
-
-  const handlePop = () =>
-    runAction('pop', async () => {
-      await apiStashPop(activeRepo!)
-      notify('success', t('toolbar.popSuccess'))
-      invalidateRepo()
-    })
-
-  async function handleCreateBranch(name: string) {
-    if (!activeRepo) return
-    try {
-      await apiCreateBranch(activeRepo, name, fromRef)
-      notify('success', t('toolbar.branchCreated', { name }))
-      invalidateRepo()
-    } catch (err) {
-      notify('error', String(err))
-    }
-  }
+  const {
+    activeRepo,
+    fromRef,
+    loading,
+    notification,
+    hasChanges,
+    hasStashes,
+    canUndo,
+    canRedo,
+    undoLabel,
+    redoLabel,
+    handleOpenTerminal,
+    handleFetch,
+    handleFetchAll,
+    handlePull,
+    handlePush,
+    handleUndo,
+    handleRedo,
+    handleStash,
+    handlePop,
+    handleCreateBranch,
+  } = useActionToolbar(t)
 
   const disabled = !activeRepo
 
