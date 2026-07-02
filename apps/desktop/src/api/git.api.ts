@@ -35,6 +35,10 @@ import {
   getTags,
   listSubmodules,
   getRebaseState,
+  createBranch,
+  fetchRemote,
+  pullBranch,
+  pushBranch,
 } from '../lib/tauri'
 import { callCommand } from './service'
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
@@ -439,4 +443,24 @@ export async function apiListSubmodules(path: string) {
 
 export async function apiGetRebaseState(path: string) {
   return getRebaseState(path)
+}
+
+// ─── Branch creation ───────────────────────────────────────────────────────
+
+export async function apiCreateBranch(path: string, name: string, fromRef: string) {
+  return createBranch(path, name, fromRef)
+}
+
+// ─── Fetch / Pull / Push ───────────────────────────────────────────────────
+
+export async function apiFetchRemote(path: string, remote?: string) {
+  return fetchRemote(path, remote)
+}
+
+export async function apiPullBranch(path: string, remote?: string, rebase?: boolean) {
+  return pullBranch(path, remote, rebase)
+}
+
+export async function apiPushBranch(path: string, remote?: string, force?: boolean) {
+  return pushBranch(path, remote, force)
 }

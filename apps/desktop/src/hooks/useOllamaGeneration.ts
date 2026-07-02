@@ -1,6 +1,6 @@
 import { listen } from '@tauri-apps/api/event'
 import { useCallback, useRef, useState } from 'react'
-import { cancelGeneration, generateCommitMessage } from '../lib/tauri'
+import { apiCancelGeneration, apiGenerateCommitMessage } from '../api/ollama.api'
 import { useSettingsStore } from '../stores/settings.store'
 
 export type GenerationStatus =
@@ -66,7 +66,7 @@ export function useOllamaGeneration(repoPath: string) {
       unlistenRef.current = cleanup
 
       try {
-        await generateCommitMessage(repoPath, settings.ollama.model)
+        await apiGenerateCommitMessage(repoPath, settings.ollama.model)
       } catch (err) {
         setStatus('error')
         setError(String(err))
@@ -77,7 +77,7 @@ export function useOllamaGeneration(repoPath: string) {
   )
 
   const cancel = useCallback(async () => {
-    await cancelGeneration()
+    await apiCancelGeneration()
   }, [])
 
   return { generate, cancel, status, error }

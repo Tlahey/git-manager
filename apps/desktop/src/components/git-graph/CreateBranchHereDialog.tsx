@@ -12,7 +12,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@git-manager/ui'
-import { createBranch, checkoutBranch } from '../../lib/tauri'
+import { apiCreateBranch, apiCheckoutBranch } from '../../api/git.api'
 
 interface CreateBranchHereDialogProps {
   repoPath: string
@@ -43,9 +43,9 @@ export function CreateBranchHereDialog({
     setIsLoading(true)
     setError(null)
     try {
-      await createBranch(repoPath, trimmed, oid)
+      await apiCreateBranch(repoPath, trimmed, oid)
       if (checkout) {
-        await checkoutBranch(repoPath, trimmed)
+        await apiCheckoutBranch(repoPath, trimmed)
       }
       queryClient.invalidateQueries({ queryKey: ['branches', repoPath] })
       queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })

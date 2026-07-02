@@ -16,12 +16,13 @@ import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useUndoHistoryStore } from '../../stores/undoHistory.store'
 import {
-  fetchRemote,
-  pullBranch,
-  pushBranch,
-  createBranch,
-} from '../../lib/tauri'
-import { apiStashPush, apiStashPop } from '../../api/git.api'
+  apiStashPush,
+  apiStashPop,
+  apiFetchRemote,
+  apiPullBranch,
+  apiPushBranch,
+  apiCreateBranch,
+} from '../../api/git.api'
 import { useSettingsStore } from '../../stores/settings.store'
 import { apiOpenTerminal } from '../../api/shell.api'
 import { mutate } from 'swr'
@@ -125,7 +126,7 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
 
   const handleFetch = () =>
     runAction('fetch', async () => {
-      await fetchRemote(activeRepo!)
+      await apiFetchRemote(activeRepo!)
       notify('success', t('remote.fetchSuccess'))
       clearRedoForActiveRepo()
       invalidateRepo()
@@ -135,10 +136,10 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
     runAction('fetch', async () => {
       const remotes = repo?.remotes ?? []
       if (remotes.length === 0) {
-        await fetchRemote(activeRepo!)
+        await apiFetchRemote(activeRepo!)
       } else {
         for (const remote of remotes) {
-          await fetchRemote(activeRepo!, remote)
+          await apiFetchRemote(activeRepo!, remote)
         }
       }
       notify('success', t('remote.fetchSuccess'))
@@ -148,7 +149,7 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
 
   const handlePull = () =>
     runAction('pull', async () => {
-      const result = await pullBranch(activeRepo!)
+      const result = await apiPullBranch(activeRepo!)
       if (result.conflicts.length > 0) {
         notify('error', t('remote.conflict', { count: result.conflicts.length }))
       } else {
@@ -160,7 +161,7 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
 
   const handlePush = () =>
     runAction('push', async () => {
-      await pushBranch(activeRepo!)
+      await apiPushBranch(activeRepo!)
       notify('success', t('remote.pushSuccess'))
       clearRedoForActiveRepo()
       invalidateRepo()
@@ -203,7 +204,7 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
   async function handleCreateBranch(name: string) {
     if (!activeRepo) return
     try {
-      await createBranch(activeRepo, name, fromRef)
+      await apiCreateBranch(activeRepo, name, fromRef)
       notify('success', t('toolbar.branchCreated', { name }))
       invalidateRepo()
     } catch (err) {
