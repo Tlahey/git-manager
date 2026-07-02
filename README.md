@@ -22,15 +22,19 @@
 **git-manager** is a macOS desktop application that gives you a powerful, opinionated interface for everyday Git workflows. Instead of memorizing flags or juggling terminal windows, you get:
 
 - **Visual Git graph** — interactive commit history with branches, tags and diffs
-- **AI commit generation** — conventional commit messages from your diff via a local Ollama LLM
-- **Working tree** — stage, unstage, commit, push and pull from a single panel
-- **Rollback** — safe revert and reset (soft / mixed / hard) with preview
+- **AI commit generation** — conventional commit messages from your diff via a local Ollama LLM, streamed live, with message history
+- **Working tree** — stage, unstage, commit (including a WIP batch-commit mode with per-group AI messages), push and pull
+- **Rollback** — safe revert and reset (soft / mixed / hard) with preview and typed confirmation for hard reset
 - **Fixup & Autosquash** — guided `--fixup` + `rebase --autosquash` workflow
-- **Interactive Rebase** — drag-and-drop reorder, squash, drop with live preview
-- **Worktree management** — create, open and remove worktrees visually
-- **Stash** — push, pop, apply, drop with diff preview
-- **Branch management** — create, rename, merge and compare branches
+- **Stash** — push, pop, apply, drop
+- **Branch management** — create, rename, delete, checkout branches
+- **Undo/redo** — safe undo history across git-mutating actions, with pinned refs so undone objects aren't garbage-collected
+- **GitHub integration** — device-flow OAuth login, pull request views
+- **SSH key management** — generate and manage keys for remote auth
+- **Submodules** — list and inspect
 - **i18n** — English and French interface
+
+> Interactive rebase (drag-and-drop) and worktree management are planned but not yet implemented — see [Implemented milestones](#implemented-milestones).
 
 ---
 
@@ -42,7 +46,7 @@
 | Frontend | React 18 + Vite + TypeScript (strict) |
 | UI components | shadcn/ui + Tailwind CSS (dark mode) |
 | Git backend | Rust + [`git2`](https://crates.io/crates/git2) (libgit2 bindings) |
-| State management | [Zustand](https://zustand-demo.pmnd.rs/) + [TanStack Query](https://tanstack.com/query) |
+| State management | [Zustand](https://zustand-demo.pmnd.rs/) (UI/app state) + [SWR](https://swr.vercel.app/) (new data-fetching hooks) + [TanStack Query](https://tanstack.com/query) (older hooks, being migrated to SWR) |
 | Internationalisation | [react-i18next](https://react.i18next.com/) (EN / FR) |
 | LLM (commit AI) | [Ollama](https://ollama.ai) (local — no API key required) |
 | Remote auth | SSH (system agent) + HTTPS (token) |
@@ -58,28 +62,38 @@ git-manager/
 │   └── desktop/                    # Main Tauri application
 │       ├── src-tauri/              # Rust backend
 │       │   └── src/
-│       │       ├── commands/       # Tauri IPC commands (repo, log, branch, commit, remote, ollama)
+│       │       ├── commands/       # Thin Tauri IPC commands, one file per domain
+│       │       │                   #   (repo, log, branch, commit, remote, stash, rollback,
+│       │       │                   #   fixup, undo, github, ollama, ssh, submodule, themes)
+│       │       ├── services/       # git2 business logic, called from commands/
+│       │       │                   #   (git_diff, git_commit, git_repo, git_graph)
 │       │       ├── error.rs        # Unified AppError → JSON string
 │       │       ├── models.rs       # serde structs mirroring TypeScript types
+│       │       ├── utils.rs        # Shared helpers (short_oid, get_git_signature)
 │       │       ├── state.rs        # AppState (repos, ollama config, cancellation)
 │       │       └── lib.rs          # Builder + invoke_handler registration
 │       └── src/                    # React frontend
-│           ├── app/                # Pages (dashboard, repo, settings)
-│           ├── components/         # Feature components
-│           │   ├── git-graph/      # GitGraph, GraphRow, CommitPanel, DiffViewer
-│           │   └── working-tree/   # WorkingTreePanel, FileStatusItem, CommitMessageBox
-│           ├── hooks/              # TanStack Query hooks + useOllamaGeneration
-│           ├── lib/tauri.ts        # Typed invoke() wrappers for all commands
-│           └── stores/             # Zustand stores (repos, settings)
+│           ├── app/                # Pages (dashboard, repo, settings, pull-requests)
+│           ├── components/         # Feature components, render-only (logic lives in hooks/)
+│           │   └── git-graph/      # GitGraph, GraphRow, CommitPanel, DiffViewer
+│           ├── hooks/              # Business-logic + data-fetching hooks (SWR + legacy React Query)
+│           ├── api/                # api/*.api.ts — domain-grouped service layer over lib/tauri.ts;
+│           │                       # components/hooks/stores call this, never lib/tauri.ts directly
+│           ├── lib/
+│           │   ├── tauri.ts        # Typed invoke() wrappers for all commands (one per command)
+│           │   └── appEventBus.ts  # Cross-cutting event bus (achievements/gamification)
+│           └── stores/             # Zustand stores (repoUI, repoData, settings, undoHistory, game)
 ├── packages/
 │   ├── git-types/                  # Shared TypeScript interfaces (DTOs)
 │   ├── i18n/                       # react-i18next setup + EN/FR locale files
 │   ├── ui/                         # shadcn/ui base components
 │   └── config/                     # Shared ESLint + Tailwind + tsconfig
-├── doc/
+├── docs/
 │   ├── README.md                   # Documentation index
 │   ├── ROADMAP.md                  # Milestone plan (M0–M7)
-│   └── specs/                      # Feature specifications (11 files)
+│   ├── specs/                      # Feature specs (00–12)
+│   └── architecture/               # Architecture refactor plan (13) + tracking (14)
+├── CLAUDE.md                       # Architecture/IPC conventions — authoritative for AI coding agents
 ├── Cargo.toml                      # Rust workspace
 ├── package.json                    # Root pnpm scripts
 ├── pnpm-workspace.yaml
@@ -202,13 +216,15 @@ pnpm --filter @git-manager/desktop lint
 
 ## Tauri IPC architecture
 
-The frontend calls Rust commands via `invoke()`. All commands return `Result<T, String>` where errors are JSON-encoded `AppError` objects:
+The frontend calls Rust commands via `invoke()`, layered through `lib/tauri.ts` → `api/*.api.ts` → `hooks/` → components. All commands return `Result<T, String>` where errors are JSON-encoded `AppError` objects:
 
 ```json
 { "code": "REPO_NOT_FOUND", "message": "...", "detail": "..." }
 ```
 
-Long-running operations (Ollama generation, rebase) stream progress via Tauri events:
+> For the full architecture — IPC boundary conventions, the frontend layering rules, and the R1/R2 rules enforced across the codebase — see [CLAUDE.md](CLAUDE.md). It's kept in sync with the actual code and is also the source of truth used by AI coding agents working in this repo.
+
+Long-running operations (currently: Ollama generation) stream progress via Tauri events:
 
 | Event | Payload | Description |
 |-------|---------|-------------|
@@ -247,33 +263,37 @@ The model is configurable per-project. Temperature and timeout are also adjustab
 | M0 — Foundations | ✅ Done | Monorepo setup, Tauri scaffold, packages |
 | M1 — Git Tree | ✅ Done | Virtualised commit graph, branch sidebar, commit diff panel |
 | M2 — Working Tree | ✅ Done | Stage/unstage, commit, fetch/pull/push |
-| M3 — Commit AI | 🔵 In progress | Ollama streaming, settings UI, message history |
-| M4 — Rollback & Fixup | ⬜ Planned | git revert, reset (soft/mixed/hard), fixup + autosquash |
-| M5 — Interactive Rebase | ⬜ Planned | Drag-and-drop rebase UI |
-| M6 — Worktree & Branches | ⬜ Planned | Worktree management, branch operations |
-| M7 — Stash & Polish | ⬜ Planned | Stash, keyboard shortcuts, auto-update |
+| M3 — Commit AI | ✅ Done | Ollama streaming, settings UI, message history, WIP batch commit |
+| M4 — Rollback & Fixup | ✅ Done | git revert, reset (soft/mixed/hard), fixup + autosquash |
+| M5 — Interactive Rebase | ⬜ Planned | Drag-and-drop rebase UI (not started — only rebase-state detection exists today) |
+| M6 — Worktree & Branches | 🔵 In progress | Branch create/rename/delete/checkout done; worktree management not started |
+| M7 — Stash & Polish | 🔵 In progress | Stash push/pop/apply/drop and keyboard shortcuts done; auto-update not started |
 
-See [doc/ROADMAP.md](doc/ROADMAP.md) for the full plan with detailed tasks and acceptance criteria.
+See [docs/ROADMAP.md](docs/ROADMAP.md) for the full plan with detailed tasks and acceptance criteria.
 
 ---
 
 ## Feature specifications
 
-Detailed specs for every feature are in [doc/specs/](doc/specs/):
+Detailed specs for every feature are in [docs/specs/](docs/specs/):
 
 | Spec | Feature |
 |------|---------|
-| [00-architecture](doc/specs/00-architecture.md) | Stack, IPC patterns, conventions |
-| [01-dashboard](doc/specs/01-dashboard.md) | Multi-repo dashboard |
-| [02-git-tree](doc/specs/02-git-tree.md) | Commit graph visualisation |
-| [03-commit-generation](doc/specs/03-commit-generation.md) | AI commit messages via Ollama |
-| [04-rollback](doc/specs/04-rollback.md) | Revert / Reset |
-| [05-fixup](doc/specs/05-fixup.md) | Fixup & autosquash |
-| [06-worktree](doc/specs/06-worktree.md) | Git worktree management |
-| [07-rebase-interactive](doc/specs/07-rebase-interactive.md) | Interactive rebase UI |
-| [08-stash](doc/specs/08-stash.md) | Stash management |
-| [09-branch-management](doc/specs/09-branch-management.md) | Branch operations |
-| [10-settings](doc/specs/10-settings.md) | Application settings |
+| [00-architecture](docs/specs/00-architecture.md) | Stack, IPC patterns, conventions |
+| [01-dashboard](docs/specs/01-dashboard.md) | Multi-repo dashboard |
+| [02-git-tree](docs/specs/02-git-tree.md) | Commit graph visualisation |
+| [03-commit-generation](docs/specs/03-commit-generation.md) | AI commit messages via Ollama |
+| [04-rollback](docs/specs/04-rollback.md) | Revert / Reset |
+| [05-fixup](docs/specs/05-fixup.md) | Fixup & autosquash |
+| [06-worktree](docs/specs/06-worktree.md) | Git worktree management |
+| [07-rebase-interactive](docs/specs/07-rebase-interactive.md) | Interactive rebase UI |
+| [08-stash](docs/specs/08-stash.md) | Stash management |
+| [09-branch-management](docs/specs/09-branch-management.md) | Branch operations |
+| [10-settings](docs/specs/10-settings.md) | Application settings |
+| [11-pedagogy](docs/specs/11-pedagogy.md) | Contextual git education mode |
+| [12-left-sidebar](docs/specs/12-left-sidebar.md) | Resizable repository sidebar |
+
+Architecture refactor plan and execution tracking live in [docs/architecture/](docs/architecture/) (specs 13 and 14).
 
 ---
 
