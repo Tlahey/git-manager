@@ -1,24 +1,24 @@
 # Spec 09 — Branch management
 
-## Objectif
+## Goal
 
-Gérer toutes les opérations sur les branches Git (création, suppression, renommage, checkout, merge, comparaison) depuis une interface unifiée.
+Manage all operations on Git branches (creation, deletion, renaming, checkout, merge, comparison) from a unified interface.
 
 ---
 
-## Vue Branches
+## Branches view
 
-Accessible via la sidebar du repo → section "Branches" (arborescente par préfixe).
+Accessible via the repo sidebar → "Branches" section (tree-structured by prefix).
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  Branches                                    [+ Créer]   │
+│  Branches                                    [+ Create]   │
 ├──────────────────────────────────────────────────────────┤
 │  LOCAL                                                   │
 │  ● main                      HEAD · 2h ago              │
 │  ▶ feat/                                                 │
-│      feat/login-page         ↑2 ↓0 · 1j ago  [···]     │
-│      feat/api-refactor       ↑0 ↓3 · 3j ago  [···]     │
+│      feat/login-page         ↑2 ↓0 · 1d ago  [···]     │
+│      feat/api-refactor       ↑0 ↓3 · 3d ago  [···]     │
 │  ▶ fix/                                                  │
 │      fix/typo                ↑1 ↓0 · 10min   [···]     │
 │                                                          │
@@ -28,100 +28,100 @@ Accessible via la sidebar du repo → section "Branches" (arborescente par préf
 └──────────────────────────────────────────────────────────┘
 ```
 
-- **●** indique la branche HEAD
-- **↑N ↓M** = ahead/behind du remote tracking
-- **[···]** = menu contextuel
+- **●** indicates the HEAD branch
+- **↑N ↓M** = ahead/behind of the remote tracking branch
+- **[···]** = context menu
 
 ---
 
-## Fonctionnalités
+## Features
 
-### Créer une branche
+### Create a branch
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  Nouvelle branche                                        │
+│  New branch                                              │
 │                                                          │
-│  Nom :     [feat/my-feature                    ]         │
-│  Depuis :  [main                               ▾]        │
+│  Name:     [feat/my-feature                    ]         │
+│  From:     [main                               ▾]        │
 │                                                          │
-│  ☑ Checkout automatiquement après création               │
+│  ☑ Checkout automatically after creation                  │
 │                                                          │
-│  [Annuler]                          [Créer]              │
+│  [Cancel]                          [Create]              │
 └──────────────────────────────────────────────────────────┘
 ```
 
-- Validation du nom (caractères interdits, conflits)
-- Suggestion de préfixe selon le nom (feat/, fix/, chore/…)
+- Name validation (forbidden characters, conflicts)
+- Prefix suggestion based on the name (feat/, fix/, chore/…)
 
 ### Checkout
 
-- Double-clic sur une branche → checkout
-- Si working tree dirty : proposer stash auto + checkout, ou forcer avec `--force`
-- Checkout d'une branche remote → crée automatiquement le tracking local
+- Double-click on a branch → checkout
+- If working tree is dirty: offer auto-stash + checkout, or force with `--force`
+- Checking out a remote branch → automatically creates the local tracking branch
 
-### Renommer une branche
+### Rename a branch
 
-- Inline edit (clic sur le nom → éditable)
-- Met à jour le remote si la branche était poussée (avec confirmation)
+- Inline edit (click on the name → editable)
+- Updates the remote if the branch had been pushed (with confirmation)
 
-### Supprimer une branche
+### Delete a branch
 
 ```
-Confirmation :
-- Branche non pushée : "Cette branche n'a pas été poussée. Les commits seront perdus."
-- Branche mergée : confirmation simple
-- Remote : "Supprimer aussi origin/{{branch}} ?" (checkbox)
+Confirmation:
+- Unpushed branch: "This branch has not been pushed. The commits will be lost."
+- Merged branch: simple confirmation
+- Remote: "Also delete origin/{{branch}}?" (checkbox)
 ```
 
-Interdit de supprimer la branche HEAD.
+Deleting the HEAD branch is forbidden.
 
 ### Merge
 
 ```
-Depuis la branche cible (ex: main) → clic droit sur branche source → "Merge ici"
+From the target branch (e.g. main) → right-click on the source branch → "Merge here"
 
 ┌──────────────────────────────────────────────────────────┐
-│  Merger feat/login-page → main                           │
+│  Merge feat/login-page → main                            │
 │                                                          │
-│  5 commits à intégrer                                    │
-│  Stratégie :                                             │
-│  ● Merge (crée un commit de merge)                       │
-│  ○ Fast-forward si possible                              │
-│  ○ Squash merge (tous les commits en un)                 │
+│  5 commits to integrate                                  │
+│  Strategy:                                                │
+│  ● Merge (creates a merge commit)                        │
+│  ○ Fast-forward if possible                               │
+│  ○ Squash merge (all commits into one)                    │
 │                                                          │
-│  [Annuler]                          [Merger]             │
+│  [Cancel]                          [Merge]               │
 └──────────────────────────────────────────────────────────┘
 ```
 
-### Comparer deux branches
+### Compare two branches
 
 ```
-Clic droit sur branche → "Comparer avec..."
+Right-click on a branch → "Compare with..."
 
-Vue diff entre les deux branches :
-- Commits dans A mais pas B (et vice-versa)
-- Diff cumulé des fichiers
+Diff view between the two branches:
+- Commits in A but not in B (and vice versa)
+- Cumulative diff of the files
 ```
 
 ---
 
-## Commandes Tauri impliquées
+## Tauri commands involved
 
-| Command | Paramètres | Description |
+| Command | Parameters | Description |
 |---------|-----------|-------------|
-| `get_branches` | `path, include_remote?` | Liste complète |
-| `create_branch` | `path, name, from_ref` | Crée une branche |
+| `get_branches` | `path, include_remote?` | Full list |
+| `create_branch` | `path, name, from_ref` | Creates a branch |
 | `checkout_branch` | `path, name, force?` | Checkout |
-| `rename_branch` | `path, old_name, new_name` | Renomme |
-| `delete_branch` | `path, name, force?, delete_remote?` | Supprime |
+| `rename_branch` | `path, old_name, new_name` | Renames |
+| `delete_branch` | `path, name, force?, delete_remote?` | Deletes |
 | `merge_branch` | `path, source, strategy` | Merge |
-| `compare_branches` | `path, base, compare` | Commits et diff entre branches |
+| `compare_branches` | `path, base, compare` | Commits and diff between branches |
 | `get_ahead_behind` | `path, branch` | Sync status vs remote |
 
 ---
 
-## Types TypeScript
+## TypeScript types
 
 ```typescript
 export interface GitBranch {
@@ -142,16 +142,16 @@ export type MergeStrategy = 'merge' | 'fast-forward' | 'squash'
 
 ---
 
-## Composants React
+## React components
 
 ```
 components/branch/
-├── BranchList.tsx              # Liste arborescente
-├── BranchItem.tsx              # Une branche avec indicateurs
-├── CreateBranchDialog.tsx      # Dialog création
-├── DeleteBranchDialog.tsx      # Dialog suppression
-├── MergeBranchDialog.tsx       # Dialog merge avec stratégie
-└── CompareBranchesView.tsx     # Vue comparaison
+├── BranchList.tsx              # Tree-structured list
+├── BranchItem.tsx              # One branch with indicators
+├── CreateBranchDialog.tsx      # Creation dialog
+├── DeleteBranchDialog.tsx      # Deletion dialog
+├── MergeBranchDialog.tsx       # Merge dialog with strategy
+└── CompareBranchesView.tsx     # Comparison view
 ```
 
 ---

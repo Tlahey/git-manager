@@ -1,39 +1,39 @@
-# Spec 11 — Pédagogie & Mode apprentissage
+# Spec 11 — Pedagogy & Learning Mode
 
-## Objectif
+## Objective
 
-Faire de git-manager une application qui **instruite l'utilisateur** autant qu'elle l'aide. Chaque action peut être accompagnée d'explications contextuelles, de commandes git équivalentes, et d'une mémoire de session permettant de comprendre ce qu'il vient de se passer — avec le LLM local comme assistant pédagogique.
-
----
-
-## Vue d'ensemble des features
-
-```
-Pédagogie
-├── 1. Console Git             — commandes git équivalentes en temps réel
-├── 2. Tooltips pédagogiques   — explication + risque sur chaque action
-├── 3. Preview pré-destructive — commande exacte avant exécution risquée
-├── 4. Glossaire Git inline    — survol d'un terme → définition
-├── 5. Résumé post-action      — toast enrichi après chaque opération
-├── 6. Mode apprentissage      — panneau explicatif avant exécution
-└── 7. Journal des actions     — historique de session + explication LLM
-```
-
-Toutes ces features sont **optionnelles et configurables** depuis la section [Apprentissage](#section--apprentissage) des Settings.
+Make git-manager an application that **educates the user** as much as it helps them. Every action can be accompanied by contextual explanations, equivalent git commands, and a session memory that lets the user understand what just happened — with the local LLM acting as a pedagogical assistant.
 
 ---
 
-## Feature 1 — Console Git
+## Feature overview
 
-### Objectif
+```
+Pedagogy
+├── 1. Git Console             — real-time equivalent git commands
+├── 2. Pedagogical tooltips    — explanation + risk on every action
+├── 3. Pre-destructive preview — exact command shown before a risky execution
+├── 4. Inline Git glossary     — hover a term → definition
+├── 5. Post-action summary     — enriched toast after each operation
+├── 6. Learning mode           — explanatory panel before execution
+└── 7. Action journal          — session history + LLM explanation
+```
 
-Permettre à l'utilisateur de voir en temps réel les commandes `git` exactes qui sont exécutées en arrière-plan, comme s'il les tapait lui-même dans un terminal.
+All these features are **optional and configurable** from the [Learning](#section--learning-settings) section of Settings.
+
+---
+
+## Feature 1 — Git Console
+
+### Objective
+
+Let the user see, in real time, the exact `git` commands being executed in the background, as if they had typed them themselves in a terminal.
 
 ### Interface
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  Console Git                                             [✕ Fermer]  │
+│  Git Console                                              [✕ Close]  │
 ├──────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  14:32:01  ✓  git fetch origin                           (320ms)    │
@@ -42,32 +42,32 @@ Permettre à l'utilisateur de voir en temps réel les commandes `git` exactes qu
 │               error: failed to push — remote contains work you do   │
 │               not have locally                                       │
 │                                                                      │
-│                                              [Effacer]               │
+│                                              [Clear]                 │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-La console s'affiche dans un panel rétractable en bas de la vue repo (comme un terminal intégré).
+The console is displayed in a collapsible panel at the bottom of the repo view (like an embedded terminal).
 
-### Comportement
+### Behavior
 
-- **Activation** : bouton dans la toolbar du repo ou raccourci `⌘+Shift+L`
-- **Persistance** : l'état ouvert/fermé est sauvegardé dans `settings.showGitConsole`
-- **Entrées** : chaque entrée contient `timestamp | statut | commande | durée`
-- **Erreurs** : en cas d'échec, la sortie d'erreur est affichée en rouge sur la ligne suivante (collapsée, dépliable)
-- **Scroll** : auto-scroll vers le bas à chaque nouvelle entrée
-- **Limite** : 100 entrées conservées (session uniquement, non persisté)
-- **Effacer** : bouton "Effacer" vide la liste en session
+- **Activation**: button in the repo toolbar or shortcut `⌘+Shift+L`
+- **Persistence**: the open/closed state is saved in `settings.showGitConsole`
+- **Entries**: each entry contains `timestamp | status | command | duration`
+- **Errors**: on failure, the error output is displayed in red on the next line (collapsed, expandable)
+- **Scroll**: auto-scrolls to the bottom on each new entry
+- **Limit**: 100 entries kept (session only, not persisted)
+- **Clear**: a "Clear" button empties the list for the session
 
 ### Architecture
 
 ```
-Rust (après résolution de la commande)
+Rust (after command resolution)
   → app_handle.emit("git:command", GitCommandEvent { ... })
 
 Frontend
   → listen("git:command", handler)
   → useConsoleStore (Zustand, session)
-  → <GitConsolePanel> dans <RepoView>
+  → <GitConsolePanel> inside <RepoView>
 ```
 
 ```rust
@@ -82,15 +82,15 @@ pub struct GitCommandEvent {
 }
 ```
 
-> **Note** : L'event est émis **après** résolution. La commande affichée est la reconstruction équivalente en CLI, pas l'appel libgit2 interne.
+> **Note**: The event is emitted **after** resolution. The displayed command is the equivalent CLI reconstruction, not the internal libgit2 call.
 
 ---
 
-## Feature 2 — Tooltips pédagogiques
+## Feature 2 — Pedagogical tooltips
 
-### Objectif
+### Objective
 
-Chaque bouton d'action affiche, au survol, une explication de ce qu'il fait, le niveau de risque associé, et la commande git équivalente.
+Every action button shows, on hover, an explanation of what it does, the associated risk level, and the equivalent git command.
 
 ### Interface
 
@@ -98,23 +98,23 @@ Chaque bouton d'action affiche, au survol, une explication de ce qu'il fait, le 
 ┌──────────────────────────────────────────────────────────────┐
 │  ⚠️  Reset --hard                                           │
 │                                                              │
-│  Réinitialise HEAD à ce commit et efface définitivement      │
-│  toutes les modifications non committées.                    │
+│  Resets HEAD to this commit and permanently erases           │
+│  all uncommitted changes.                                     │
 │                                                              │
-│  Risque :  🔴 Destructif — impossible à annuler             │
-│  Commande : git reset --hard <commit-sha>                    │
+│  Risk:  🔴 Destructive — cannot be undone                   │
+│  Command: git reset --hard <commit-sha>                      │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-### Niveaux de risque
+### Risk levels
 
-| Niveau | Icône | Description |
+| Level | Icon | Description |
 |--------|-------|-------------|
-| `safe` | `✅ Sûr` | Aucun effet sur l'historique ou les fichiers |
-| `reversible` | `⚠️ Réversible` | Modifie l'historique mais annulable (revert, reflog) |
-| `destructive` | `🔴 Destructif` | Perte de données possible, difficile à annuler |
+| `safe` | `✅ Safe` | No effect on history or files |
+| `reversible` | `⚠️ Reversible` | Modifies history but can be undone (revert, reflog) |
+| `destructive` | `🔴 Destructive` | Possible data loss, hard to undo |
 
-### Composant
+### Component
 
 ```tsx
 // packages/ui/src/components/ActionTooltip.tsx
@@ -126,79 +126,79 @@ Chaque bouton d'action affiche, au survol, une explication de ce qu'il fait, le 
 </ActionTooltip>
 ```
 
-Le contenu des tooltips est géré via `packages/i18n/locales/*/action-tooltips.json`.
+Tooltip content is managed via `packages/i18n/locales/*/action-tooltips.json`.
 
 ### Activation
 
-Toggle `showPedagogicTooltips` dans Settings section Apprentissage. Activé par défaut.
+Toggle `showPedagogicTooltips` in the Settings Learning section. Enabled by default.
 
 ---
 
-## Feature 3 — Preview de commande pré-destructive
+## Feature 3 — Pre-destructive command preview
 
-### Objectif
+### Objective
 
-Avant toute action risquée, intercaler un affichage explicite de la commande git qui va être lancée, en plus de la confirmation déjà existante.
+Before any risky action, insert an explicit display of the git command that is about to run, in addition to the confirmation that already exists.
 
-### Actions concernées
+### Actions concerned
 
-| Action | Commande affichée |
+| Action | Command shown |
 |--------|------------------|
 | `reset --hard` | `git reset --hard <sha>` |
 | `rebase -i` | `git rebase -i <base>` |
-| `push --force` | `git push --force origin <branche>` |
+| `push --force` | `git push --force origin <branch>` |
 | `drop` (rebase) | `git rebase --drop <sha>` |
-| `branch -D` | `git branch -D <nom>` |
+| `branch -D` | `git branch -D <name>` |
 
-### Interface (ajout dans les modales existantes)
+### Interface (addition to existing modals)
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  Confirmer le reset --hard                                   │
+│  Confirm reset --hard                                        │
 │                                                              │
-│  Commande qui sera exécutée :                                │
+│  Command that will be executed:                              │
 │  ┌────────────────────────────────────────────────────────┐  │
 │  │  git reset --hard a1b2c3d                             │  │
 │  └────────────────────────────────────────────────────────┘  │
 │                                                              │
-│  ⚠️  Les modifications non committées seront perdues.        │
+│  ⚠️  Uncommitted changes will be lost.                       │
 │                                                              │
-│  Tapez RESET pour confirmer : [          ]                  │
-│                                          [Annuler] [Reset]  │
+│  Type RESET to confirm: [          ]                        │
+│                                          [Cancel] [Reset]    │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 ### Activation
 
-Option `skipCommandPreview` dans Settings section Apprentissage. Désactivé par défaut (preview activée).
+Option `skipCommandPreview` in the Settings Learning section. Disabled by default (preview enabled).
 
 ---
 
-## Feature 4 — Glossaire Git inline
+## Feature 4 — Inline Git glossary
 
-### Objectif
+### Objective
 
-Permettre à l'utilisateur de comprendre les termes techniques Git directement dans l'interface, sans quitter l'application.
+Let the user understand Git technical terms directly in the interface, without leaving the application.
 
 ### Interface
 
-Les termes techniques sont affichés avec un **underline pointillé**. Au survol :
+Technical terms are displayed with a **dotted underline**. On hover:
 
 ```
-  Le rebase interactif permet de…
+  Interactive rebase lets you…
        ───────────────
        ↓
 ┌──────────────────────────────────────────┐
 │  rebase                                  │
 │                                          │
-│  Rejoue une série de commits sur une     │
-│  nouvelle base. Réécrit l'historique.    │
+│  Replays a series of commits onto a      │
+│  new base. Rewrites history.             │
 │                                          │
-│  📖 Documentation git                   │
+│  📖 Git documentation                   │
 └──────────────────────────────────────────┘
 ```
 
-### Composant
+### Component
 
 ```tsx
 // packages/ui/src/components/GitTerm.tsx
@@ -207,9 +207,9 @@ Les termes techniques sont affichés avec un **underline pointillé**. Au survol
 <GitTerm term="staging-area" />
 ```
 
-### Dictionnaire
+### Dictionary
 
-Fichier `packages/i18n/locales/*/git-glossary.json` — environ 35 termes :
+File `packages/i18n/locales/*/git-glossary.json` — about 35 terms:
 
 ```json
 {
@@ -228,107 +228,107 @@ Fichier `packages/i18n/locales/*/git-glossary.json` — environ 35 termes :
 }
 ```
 
-### Utilisation
+### Usage
 
-Principalement dans le Mode apprentissage (Feature 6) et le Journal des actions (Feature 7). Peut être utilisé ponctuellement dans les descriptions de l'interface.
+Primarily used in Learning mode (Feature 6) and the Action journal (Feature 7). Can also be used occasionally in interface descriptions.
 
 ---
 
-## Feature 5 — Résumé post-action
+## Feature 5 — Post-action summary
 
-### Objectif
+### Objective
 
-Après chaque opération majeure, afficher un toast enrichi qui explique ce qui vient de se passer en langage naturel, avec les commandes équivalentes.
+After each major operation, show an enriched toast that explains what just happened in natural language, along with the equivalent commands.
 
 ### Interface
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│  ✅  Commit créé avec succès                         │
+│  ✅  Commit created successfully                     │
 │                                                      │
-│  2 fichiers commités sur main (feat: add login)      │
+│  2 files committed on main (feat: add login)         │
 │                                                      │
-│  ▶ Voir les commandes (2)                            │
+│  ▶ View commands (2)                                 │
 │    git add src/login.tsx src/auth.ts                 │
 │    git commit -m "feat: add login"                   │
 │                                                      │
-│  ▶ Ouvrir dans le Journal                            │
+│  ▶ Open in Journal                                    │
 └──────────────────────────────────────────────────────┘
 ```
 
-Le détail des commandes est **collapsé par défaut** et dépliable. Le toast disparaît après 6 secondes ou au clic.
+The command details are **collapsed by default** and expandable. The toast disappears after 6 seconds or on click.
 
-### Actions couvertes
+### Actions covered
 
 - Commit, amend
 - Push, pull, fetch
 - Reset (soft / mixed / hard)
 - Revert
-- Rebase interactif
+- Interactive rebase
 - Stash push / pop / drop
-- Création / suppression de branche
-- Création / suppression de worktree
+- Branch creation / deletion
+- Worktree creation / deletion
 - Fixup / autosquash
 
 ### Activation
 
-Toggle `showPostActionSummary` dans Settings section Apprentissage. Activé par défaut.
+Toggle `showPostActionSummary` in the Settings Learning section. Enabled by default.
 
 ---
 
-## Feature 6 — Mode apprentissage
+## Feature 6 — Learning mode
 
-### Objectif
+### Objective
 
-Proposer un mode où, avant d'exécuter une action, un panneau s'affiche avec une explication contextuelle adaptée au niveau de l'utilisateur (débutant ou intermédiaire).
+Offer a mode where, before executing an action, a panel is displayed with a contextual explanation adapted to the user's level (beginner or intermediate).
 
-### Niveaux
+### Levels
 
-| Niveau | Description |
+| Level | Description |
 |--------|-------------|
-| `off` | Désactivé — comportement standard |
-| `beginner` | Explication narrative complète, risques détaillés, alternatives suggérées |
-| `intermediate` | Compact — commande + risque uniquement |
+| `off` | Disabled — standard behavior |
+| `beginner` | Full narrative explanation, detailed risks, suggested alternatives |
+| `intermediate` | Compact — command + risk only |
 
-### Interface — niveau `beginner`
+### Interface — `beginner` level
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  ℹ️  À propos du Reset --hard                                   │
+│  ℹ️  About Reset --hard                                         │
 │                                                                 │
-│  Vous êtes sur le point d'effectuer un reset --hard.           │
+│  You are about to perform a reset --hard.                      │
 │                                                                 │
-│  Ce que ça fait :                                               │
-│  Git va déplacer HEAD au commit a1b2c3d et effacer             │
-│  définitivement toutes les modifications non committées         │
-│  dans vos fichiers.                                             │
+│  What it does:                                                  │
+│  Git will move HEAD to commit a1b2c3d and permanently          │
+│  erase all uncommitted changes                                  │
+│  in your files.                                                 │
 │                                                                 │
-│  ⚠️  Risque : Vos modifications seront perdues.                │
+│  ⚠️  Risk: Your changes will be lost.                          │
 │                                                                 │
-│  Alternatives plus sûres :                                      │
-│  → git stash     (mettre de côté sans perdre)                  │
-│  → git reset --soft (conserver les fichiers modifiés)          │
+│  Safer alternatives:                                            │
+│  → git stash     (set aside without losing anything)           │
+│  → git reset --soft (keep the modified files)                  │
 │                                                                 │
-│  Commande : git reset --hard a1b2c3d                           │
+│  Command: git reset --hard a1b2c3d                              │
 │                                                                 │
-│             [Ne plus afficher pour cette action]               │
-│                               [Annuler]  [Exécuter quand même] │
+│             [Don't show again for this action]                 │
+│                               [Cancel]  [Run anyway]            │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Interface — niveau `intermediate`
+### Interface — `intermediate` level
 
 ```
 ┌────────────────────────────────────────────────────┐
 │  git reset --hard a1b2c3d                          │
-│  🔴 Destructif                                    │
-│                       [Annuler]  [Exécuter]        │
+│  🔴 Destructive                                    │
+│                       [Cancel]  [Run]               │
 └────────────────────────────────────────────────────┘
 ```
 
 ### Architecture
 
-Le contenu pédagogique est un dictionnaire statique dans `packages/i18n` :
+The pedagogical content is a static dictionary in `packages/i18n`:
 
 ```typescript
 // packages/i18n/src/actionExplainMap.ts
@@ -336,7 +336,7 @@ export type ActionExplain = {
   titleKey: string
   descriptionKey: string   // narrative
   risk: 'safe' | 'reversible' | 'destructive'
-  commandTemplate: string  // avec placeholders
+  commandTemplate: string  // with placeholders
   alternativesKeys?: string[]
 }
 
@@ -348,71 +348,71 @@ export const actionExplainMap: Record<string, ActionExplain> = {
 }
 ```
 
-Chaque action concernée expose un hook `useActionGuard(actionId, params)` qui retourne `{ shouldShow, proceed, cancel }`.
+Each concerned action exposes a `useActionGuard(actionId, params)` hook that returns `{ shouldShow, proceed, cancel }`.
 
 ### Activation
 
-Toggle `learningMode: 'off' | 'beginner' | 'intermediate'` dans Settings section Apprentissage.
+Toggle `learningMode: 'off' | 'beginner' | 'intermediate'` in the Settings Learning section.
 
 ---
 
-## Feature 7 — Journal des actions
+## Feature 7 — Action journal
 
-### Objectif
+### Objective
 
-Conserver un **historique de session** de toutes les opérations effectuées, sous forme de documents lisibles, et permettre à l'utilisateur de demander une explication détaillée au LLM local (Ollama).
+Keep a **session history** of all operations performed, in the form of readable documents, and let the user request a detailed explanation from the local LLM (Ollama).
 
-### Interface — panneau Journal
+### Interface — Journal panel
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  Journal des actions                                    [Effacer]    │
+│  Action Journal                                          [Clear]     │
 ├──────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  ▶ 14:32 — Commit "feat: add login page"                            │
 │  ▼ 14:28 — Fetch origin                                             │
 │  │                                                                   │
 │  │  Repo    : my-app                                                 │
-│  │  Branche : main                                                   │
-│  │  Résultat: 2 nouvelles branches, HEAD inchangé                   │
+│  │  Branch  : main                                                   │
+│  │  Result  : 2 new branches, HEAD unchanged                        │
 │  │                                                                   │
-│  │  Commandes :                                                      │
+│  │  Commands:                                                        │
 │  │    git fetch origin                                               │
 │  │                                                                   │
-│  │  [✨ Expliquer avec Ollama]                                       │
+│  │  [✨ Explain with Ollama]                                         │
 │  │                                                                   │
 │  │  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄  │
-│  │  La commande fetch récupère les métadonnées du remote sans       │
-│  │  modifier votre branche locale. Ici, deux nouvelles branches     │
-│  │  ont été découvertes (feature/auth, fix/typo). Votre HEAD        │
-│  │  reste sur le même commit — aucun changement sur vos fichiers.   │
+│  │  The fetch command retrieves the remote's metadata without       │
+│  │  modifying your local branch. Here, two new branches were        │
+│  │  discovered (feature/auth, fix/typo). Your HEAD                  │
+│  │  stays on the same commit — no change to your files.             │
 │  │                                                                   │
-│  ▶ 14:25 — Reset --hard vers a1b2c3d                               │
+│  ▶ 14:25 — Reset --hard to a1b2c3d                                  │
 │                                                                      │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### Structure d'une entrée de journal
+### Structure of a journal entry
 
-Chaque entrée est un objet structuré (généré côté frontend) :
+Each entry is a structured object (generated on the frontend side):
 
 ```typescript
 interface ActionJournalEntry {
   id: string               // uuid
   timestamp: number        // Unix ms
   actionType: string       // "commit" | "push" | "reset" | "rebase" | ...
-  title: string            // résumé humain
-  repo: string             // nom du repo
-  branch: string           // branche courante
-  commands: string[]       // commandes git équivalentes
-  context: Record<string, string>  // avant/après : HEAD, nb fichiers...
-  llmExplanation?: string  // streamé, ajouté après clic "Expliquer"
+  title: string            // human-readable summary
+  repo: string             // repo name
+  branch: string           // current branch
+  commands: string[]       // equivalent git commands
+  context: Record<string, string>  // before/after: HEAD, file count...
+  llmExplanation?: string  // streamed, added after clicking "Explain"
 }
 ```
 
-### Explication LLM
+### LLM explanation
 
-Le bouton **"Expliquer avec Ollama"** construit un prompt markdown à partir de l'entrée :
+The **"Explain with Ollama"** button builds a markdown prompt from the entry:
 
 ```markdown
 # Action Git : Fetch
@@ -439,63 +439,63 @@ Le bouton **"Expliquer avec Ollama"** construit un prompt markdown à partir de 
 Explique en détail ce qui s'est passé et ce que ça signifie pour l'utilisateur.
 ```
 
-Ce prompt est envoyé à Ollama via `useOllamaGeneration` (déjà implémenté en M3). La réponse est streamée directement dans l'entrée du journal.
+This prompt is sent to Ollama via `useOllamaGeneration` (already implemented in M3). The response is streamed directly into the journal entry.
 
 ### Store
 
 ```typescript
 // stores/actionJournal.store.ts
 interface ActionJournalState {
-  entries: ActionJournalEntry[]   // session uniquement, non persisté
+  entries: ActionJournalEntry[]   // session only, not persisted
   addEntry: (entry: Omit<ActionJournalEntry, 'id' | 'timestamp'>) => void
   setLlmExplanation: (id: string, text: string) => void
   clear: () => void
 }
 ```
 
-Limite : 50 entrées par session (FIFO).
+Limit: 50 entries per session (FIFO).
 
-### Panneau
+### Panel
 
-Le Journal est accessible via :
-- Un onglet dans la vue repo (à côté de Historique / Working Tree)
-- Un bouton "Ouvrir dans le Journal" dans les toasts post-action (Feature 5)
-- Lien depuis la Console Git
+The Journal is accessible via:
+- A tab in the repo view (next to History / Working Tree)
+- An "Open in Journal" button in post-action toasts (Feature 5)
+- A link from the Git Console
 
 ### Activation
 
-Toggle `showActionJournal` dans Settings section Apprentissage. Activé par défaut.
+Toggle `showActionJournal` in the Settings Learning section. Enabled by default.
 
 ---
 
-## Section : Apprentissage (Settings)
+## Section: Learning (Settings)
 
-Nouvelle section dans `SettingsPage`, positionnée entre "Langue" et "Avancé".
+New section in `SettingsPage`, positioned between "Language" and "Advanced".
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Apprentissage                                              │
+│  Learning                                                    │
 │                                                             │
-│  Mode apprentissage :                                       │
-│  ○ Désactivé                                               │
-│  ○ Intermédiaire  (commande + risque avant chaque action)  │
-│  ● Débutant       (explication complète)                   │
+│  Learning mode:                                              │
+│  ○ Disabled                                                 │
+│  ○ Intermediate  (command + risk before each action)        │
+│  ● Beginner       (full explanation)                        │
 │                                                             │
 │  ─────────────────────────────────────────────────────────  │
 │                                                             │
-│  ☑ Console Git  (afficher les commandes en temps réel)     │
-│  ☑ Tooltips pédagogiques sur les actions                   │
-│  ☑ Résumé post-action (toast enrichi)                      │
-│  ☑ Journal des actions                                     │
-│  ☐ Afficher la commande avant les actions destructives     │
-│    (désactiver si vous êtes un utilisateur avancé)         │
+│  ☑ Git Console  (show commands in real time)                │
+│  ☑ Pedagogical tooltips on actions                           │
+│  ☑ Post-action summary (enriched toast)                     │
+│  ☑ Action journal                                            │
+│  ☐ Show the command before destructive actions               │
+│    (disable if you are an advanced user)                    │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Nouveaux paramètres
+### New settings
 
-| Paramètre | Type | Défaut |
+| Setting | Type | Default |
 |-----------|------|--------|
 | `learningMode` | `'off' \| 'beginner' \| 'intermediate'` | `'off'` |
 | `showGitConsole` | boolean | `false` |
@@ -506,12 +506,12 @@ Nouvelle section dans `SettingsPage`, positionnée entre "Langue" et "Avancé".
 
 ---
 
-## Architecture globale
+## Overall architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  Rust (commands/)                                               │
-│  Chaque commande émet git:command après résolution             │
+│  Each command emits git:command after resolution                │
 │                                                                 │
 │  emit("git:command", GitCommandEvent { cmd, ok, duration... }) │
 └───────────────────────────┬─────────────────────────────────────┘
@@ -520,13 +520,13 @@ Nouvelle section dans `SettingsPage`, positionnée entre "Langue" et "Avancé".
 │  Frontend                                                       │
 │                                                                 │
 │  useConsoleStore ◄── listen("git:command")                     │
-│  useActionJournalStore ◄── alimenté par les hooks d'action     │
+│  useActionJournalStore ◄── fed by action hooks                 │
 │                                                                 │
 │  <GitConsolePanel>     Feature 1                               │
 │  <ActionTooltip>       Feature 2                               │
-│  <CommandPreview>      Feature 3  (injecté dans les modales)   │
+│  <CommandPreview>      Feature 3  (injected into modals)       │
 │  <GitTerm>             Feature 4                               │
-│  <PostActionToast>     Feature 5  (remplace le toast standard) │
+│  <PostActionToast>     Feature 5  (replaces the standard toast) │
 │  <ActionGuardPanel>    Feature 6                               │
 │  <ActionJournalPanel>  Feature 7                               │
 └─────────────────────────────────────────────────────────────────┘
@@ -534,17 +534,17 @@ Nouvelle section dans `SettingsPage`, positionnée entre "Langue" et "Avancé".
 
 ---
 
-## Nouveaux fichiers
+## New files
 
 ### Frontend
 
 ```
 apps/desktop/src/
 ├── stores/
-│   ├── console.store.ts          # Feature 1 — entrées console git
-│   └── actionJournal.store.ts    # Feature 7 — journal de session
+│   ├── console.store.ts          # Feature 1 — git console entries
+│   └── actionJournal.store.ts    # Feature 7 — session journal
 ├── hooks/
-│   ├── useGitConsole.ts          # Feature 1 — subscribe à git:command
+│   ├── useGitConsole.ts          # Feature 1 — subscribes to git:command
 │   └── useActionGuard.ts         # Feature 6 — intercept pre-action
 ├── components/pedagogy/
 │   ├── GitConsolePanel.tsx       # Feature 1
@@ -554,13 +554,13 @@ apps/desktop/src/
 │   ├── PostActionToast.tsx       # Feature 5
 │   └── ActionJournalPanel.tsx    # Feature 7
 └── app/settings/
-    └── LearningSettings.tsx      # Section Apprentissage
+    └── LearningSettings.tsx      # Learning section
 
 packages/
 ├── ui/src/components/
-│   └── GitTerm.tsx               # Feature 4 — glossaire inline
+│   └── GitTerm.tsx               # Feature 4 — inline glossary
 └── i18n/
-    ├── src/actionExplainMap.ts   # Feature 6 — contenu pédagogique
+    ├── src/actionExplainMap.ts   # Feature 6 — pedagogical content
     └── locales/
         ├── fr/
         │   ├── action-tooltips.json  # Feature 2
@@ -570,10 +570,10 @@ packages/
             └── git-glossary.json
 ```
 
-### Rust (ajout dans les commandes existantes)
+### Rust (addition to existing commands)
 
 ```rust
-// Ajout dans chaque commande existante (commands/*.rs)
+// Addition to each existing command (commands/*.rs)
 app_handle.emit("git:command", GitCommandEvent {
     cmd: format!("git commit -m {:?}", message),
     timestamp: unix_ms(),
@@ -584,7 +584,7 @@ app_handle.emit("git:command", GitCommandEvent {
 ```
 
 ```rust
-// models.rs — nouveau type
+// models.rs — new type
 #[derive(Clone, serde::Serialize)]
 pub struct GitCommandEvent {
     pub cmd: String,
@@ -597,7 +597,7 @@ pub struct GitCommandEvent {
 
 ---
 
-## i18n keys (nouvelles clés)
+## i18n keys (new keys)
 
 ```json
 {

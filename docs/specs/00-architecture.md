@@ -1,12 +1,12 @@
 # Spec 00 — Architecture
 
-## Objectif
+## Goal
 
-Définir la structure technique globale de l'application : stack, organisation du code, patterns de communication entre le frontend React et le backend Rust (Tauri IPC), et conventions de développement.
+Define the overall technical structure of the application: stack, code organization, communication patterns between the React frontend and the Rust backend (Tauri IPC), and development conventions.
 
 ---
 
-## Stack globale
+## Overall stack
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -22,7 +22,7 @@ Définir la structure technique globale de l'application : stack, organisation d
 │  │  git2 (libgit2) │ tokio │ serde_json          │  │
 │  │  reqwest (Ollama HTTP) │ tauri-plugin-*        │  │
 │  └───────────────────────────────────────────────┘  │
-│                  Système de fichiers                 │
+│                  File system                 │
 │            Git repos (SSH/HTTPS auth)               │
 │            Ollama (localhost:11434)                  │
 └─────────────────────────────────────────────────────┘
@@ -30,21 +30,21 @@ Définir la structure technique globale de l'application : stack, organisation d
 
 ---
 
-## Monorepo : packages
+## Monorepo: packages
 
-| Package | Rôle |
+| Package | Role |
 |---------|------|
-| `apps/desktop` | Application principale Tauri |
-| `packages/ui` | Composants shadcn/ui + primitives Radix |
-| `packages/i18n` | Dictionnaires FR/EN + hook `useTranslation` |
-| `packages/git-types` | Types TypeScript partagés (DTOs IPC) |
-| `packages/config` | ESLint config + Tailwind preset partagés |
+| `apps/desktop` | Main Tauri application |
+| `packages/ui` | shadcn/ui components + Radix primitives |
+| `packages/i18n` | FR/EN dictionaries + `useTranslation` hook |
+| `packages/git-types` | Shared TypeScript types (IPC DTOs) |
+| `packages/config` | Shared ESLint config + Tailwind preset |
 
 ---
 
-## Communication Tauri IPC
+## Tauri IPC communication
 
-### Invoke (commandes synchrones)
+### Invoke (synchronous commands)
 
 ```typescript
 // Frontend
@@ -64,7 +64,7 @@ async fn open_repo(path: String, state: tauri::State<'_, AppState>) -> Result<Gi
 
 ### Events (streaming / async)
 
-Les opérations longues (rebase, génération Ollama) utilisent les events Tauri pour envoyer des updates progressives :
+Long-running operations (rebase, Ollama generation) use Tauri events to send progressive updates:
 
 ```rust
 app_handle.emit("ollama:token", payload).unwrap();
@@ -79,13 +79,13 @@ await listen<string>('ollama:token', (event) => {
 
 ---
 
-## Organisation du backend Rust
+## Rust backend organization
 
 ```
 src-tauri/src/
-├── main.rs                 # Point d'entrée, setup Tauri, registre des commands
-├── state.rs                # AppState (repos ouverts, config)
-├── error.rs                # Type AppError unifié, impl Into<String>
+├── main.rs                 # Entry point, Tauri setup, command registry
+├── state.rs                # AppState (open repos, config)
+├── error.rs                # Unified AppError type, impl Into<String>
 ├── commands/
 │   ├── mod.rs
 │   ├── repo.rs             # open_repo, get_status, get_log, get_diff
@@ -98,50 +98,50 @@ src-tauri/src/
 │   └── ollama.rs           # generate_commit_message (streaming)
 ├── git/
 │   ├── mod.rs
-│   ├── repo.rs             # Wrapper git2::Repository
-│   ├── log.rs              # Parcours de l'historique
-│   ├── diff.rs             # Génération de diffs
-│   └── graph.rs            # Calcul du graphe (lignes, colonnes)
+│   ├── repo.rs             # git2::Repository wrapper
+│   ├── log.rs              # History traversal
+│   ├── diff.rs             # Diff generation
+│   └── graph.rs            # Graph computation (lines, columns)
 └── ollama/
     ├── mod.rs
-    └── client.rs           # Client HTTP reqwest vers Ollama
+    └── client.rs           # reqwest HTTP client to Ollama
 ```
 
 ---
 
-## Organisation du frontend React
+## React frontend organization
 
 ```
 apps/desktop/src/
-├── main.tsx                # Entrée React
+├── main.tsx                # React entry point
 ├── App.tsx                 # Router + providers
 ├── app/
-│   ├── dashboard/          # Page dashboard multi-repo
-│   ├── repo/               # Vue repo (git tree, working tree)
-│   └── settings/           # Page paramètres
+│   ├── dashboard/          # Multi-repo dashboard page
+│   ├── repo/               # Repo view (git tree, working tree)
+│   └── settings/           # Settings page
 ├── components/
-│   ├── git-graph/          # Composant graphe git
-│   ├── commit-panel/       # Panneau détail commit
-│   ├── working-tree/       # Fichiers modifiés / staged
+│   ├── git-graph/          # Git graph component
+│   ├── commit-panel/       # Commit detail panel
+│   ├── working-tree/       # Modified / staged files
 │   └── layout/             # Shell, sidebar, tabs
 ├── stores/
-│   ├── repos.store.ts      # Liste des repos, repo actif
-│   ├── ui.store.ts         # État UI (sidebar, onglets, thème)
-│   └── settings.store.ts   # Configuration persistée
+│   ├── repos.store.ts      # List of repos, active repo
+│   ├── ui.store.ts         # UI state (sidebar, tabs, theme)
+│   └── settings.store.ts   # Persisted configuration
 ├── hooks/
 │   ├── useGitLog.ts        # TanStack Query + invoke get_log
 │   ├── useGitStatus.ts
-│   └── useOllama.ts        # Hook streaming Ollama
+│   └── useOllama.ts        # Ollama streaming hook
 └── lib/
-    ├── tauri.ts            # Wrappers typés autour de invoke()
+    ├── tauri.ts            # Typed wrappers around invoke()
     └── utils.ts
 ```
 
 ---
 
-## Typage IPC — `packages/git-types`
+## IPC typing — `packages/git-types`
 
-Tous les types de données échangés entre Rust et TypeScript sont définis ici. Les structs Rust doivent avoir une dérivation `serde::Serialize` qui correspond exactement au type TypeScript.
+All data types exchanged between Rust and TypeScript are defined here. Rust structs must have a `serde::Serialize` derivation that matches the TypeScript type exactly.
 
 ```typescript
 // packages/git-types/src/index.ts
@@ -149,14 +149,14 @@ Tous les types de données échangés entre Rust et TypeScript sont définis ici
 export interface GitRepo {
   path: string
   name: string
-  head: string        // nom de la branche HEAD
+  head: string        // HEAD branch name
   isDetached: boolean
   isDirty: boolean
 }
 
 export interface GitCommit {
-  oid: string         // SHA-1 complet
-  shortOid: string    // 7 caractères
+  oid: string         // full SHA-1
+  shortOid: string    // 7 characters
   message: string
   author: GitSignature
   committer: GitSignature
@@ -194,55 +194,55 @@ export interface GitStatusEntry {
 
 ---
 
-## Gestion d'erreurs
+## Error handling
 
 ### Rust
-Toutes les commands retournent `Result<T, String>` où `String` contient un message d'erreur structuré JSON :
+All commands return `Result<T, String>` where `String` contains a structured JSON error message:
 ```json
 { "code": "REPO_NOT_FOUND", "message": "...", "detail": "..." }
 ```
 
 ### TypeScript
-Un hook `useCommand` encapsule `invoke` avec gestion d'erreur unifiée :
+A `useCommand` hook wraps `invoke` with unified error handling:
 ```typescript
 const { data, error, isLoading } = useCommand('get_log', { repoPath, limit: 100 })
 ```
 
 ---
 
-## Internationalisation
+## Internationalization
 
-- **Library** : `react-i18next` + `i18next`
-- **Namespaces** : `common`, `git`, `dashboard`, `settings`, `errors`
-- **Langues** : `fr` (défaut), `en`
-- **Stockage** : `packages/i18n/locales/{fr,en}/{namespace}.json`
-- **Détection** : langue système macOS au premier lancement, modifiable dans Settings
-
----
-
-## Persistance
-
-La configuration est persistée via `tauri-plugin-store` dans `~/.config/git-manager/config.json` :
-- Liste des repos ajoutés
-- Configuration Ollama (URL, modèle)
-- Préférences UI (langue, thème, sidebar)
-- Chemins de scan automatique
+- **Library**: `react-i18next` + `i18next`
+- **Namespaces**: `common`, `git`, `dashboard`, `settings`, `errors`
+- **Languages**: `fr` (default), `en`
+- **Storage**: `packages/i18n/locales/{fr,en}/{namespace}.json`
+- **Detection**: macOS system language on first launch, changeable in Settings
 
 ---
 
-## Sécurité
+## Persistence
 
-- Les credentials SSH/HTTPS ne transitent jamais côté JavaScript — manipulation exclusivement dans le process Rust
-- Les appels Tauri IPC utilisent le système de permissions Tauri v2 (ACL)
-- Pas d'appel réseau sortant sauf vers Ollama localhost (configurable, confirmé par l'utilisateur)
-- Pas de telemetrie
+Configuration is persisted via `tauri-plugin-store` in `~/.config/git-manager/config.json`:
+- List of added repos
+- Ollama configuration (URL, model)
+- UI preferences (language, theme, sidebar)
+- Automatic scan paths
+
+---
+
+## Security
+
+- SSH/HTTPS credentials never transit through JavaScript — handled exclusively within the Rust process
+- Tauri IPC calls use the Tauri v2 permission system (ACL)
+- No outbound network calls except to Ollama on localhost (configurable, confirmed by the user)
+- No telemetry
 
 ---
 
 ## Conventions
 
-- **Commits** : Conventional Commits (`feat:`, `fix:`, `chore:`, etc.)
-- **Branches** : `main` (stable), `dev` (intégration), `feat/*`, `fix/*`
-- **TypeScript** : strict mode activé, pas de `any`
-- **Rust** : clippy + rustfmt obligatoires en CI
-- **Nommage** : camelCase TS, snake_case Rust, kebab-case fichiers
+- **Commits**: Conventional Commits (`feat:`, `fix:`, `chore:`, etc.)
+- **Branches**: `main` (stable), `dev` (integration), `feat/*`, `fix/*`
+- **TypeScript**: strict mode enabled, no `any`
+- **Rust**: clippy + rustfmt mandatory in CI
+- **Naming**: camelCase TS, snake_case Rust, kebab-case files

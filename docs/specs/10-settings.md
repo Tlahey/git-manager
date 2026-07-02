@@ -1,178 +1,178 @@
 # Spec 10 — Settings (Configuration)
 
-## Objectif
+## Goal
 
-Permettre à l'utilisateur de configurer tous les aspects de l'application : LLM, authentification Git, interface, langue, thème et comportements.
+Allow the user to configure all aspects of the application: LLM, Git authentication, interface, language, theme, and behaviors.
 
 ---
 
-## Structure des Settings
+## Settings structure
 
 ```
 Settings
 ├── 🤖 LLM (Ollama)
-├── 🔑 Authentification Git
+├── 🔑 Git Authentication
 ├── 🌿 Git
-├── 🎨 Apparence
-├── 🌐 Langue
-├── 🎓 Apprentissage
-└── ⚙️ Avancé
+├── 🎨 Appearance
+├── 🌐 Language
+├── 🎓 Learning
+└── ⚙️ Advanced
 ```
 
 ---
 
-## Section : LLM (Ollama)
+## Section: LLM (Ollama)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  LLM — Génération de commits                                │
+│  LLM — Commit generation                                    │
 │                                                             │
-│  URL Ollama :     [http://localhost:11434      ]  [Tester]  │
-│  Statut :         ● Connecté (3 modèles disponibles)        │
+│  Ollama URL:      [http://localhost:11434      ]  [Test]    │
+│  Status:          ● Connected (3 models available)          │
 │                                                             │
-│  Modèle :         [llama3.2                    ▾]           │
-│  Modèles dispo :  llama3.2, qwen2.5-coder:7b, ...          │
+│  Model:           [llama3.2                    ▾]           │
+│  Available models: llama3.2, qwen2.5-coder:7b, ...          │
 │                                                             │
-│  Température :    [0.3    ] (0 = déterministe, 1 = créatif) │
-│  Timeout :        [30     ] secondes                        │
+│  Temperature:     [0.3    ] (0 = deterministic, 1 = creative)│
+│  Timeout:         [30     ] seconds                        │
 │                                                             │
-│  Prompt système : [Modifier...]                             │
-│                   (personnaliser le style des messages)     │
+│  System prompt:   [Edit...]                             │
+│                   (customize the style of the messages)     │
 │                                                             │
-│  ☑ Inclure le contexte du repo (nom, branche)              │
-│  ☑ Détecter automatiquement le scope depuis les fichiers   │
+│  ☑ Include repo context (name, branch)              │
+│  ☑ Automatically detect scope from files   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-| Paramètre | Type | Défaut |
+| Parameter | Type | Default |
 |-----------|------|--------|
 | `ollamaUrl` | string | `http://localhost:11434` |
 | `ollamaModel` | string | `llama3.2` |
 | `ollamaTemperature` | float | `0.3` |
 | `ollamaTimeout` | integer (s) | `30` |
-| `ollamaSystemPrompt` | string | (prompt par défaut) |
+| `ollamaSystemPrompt` | string | (default prompt) |
 | `includeRepoContext` | boolean | `true` |
 | `autoDetectScope` | boolean | `true` |
 
 ---
 
-## Section : Authentification Git
+## Section: Git Authentication
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Authentification Git                                        │
+│  Git Authentication                                        │
 │                                                              │
 │  SSH                                                         │
-│  Clé privée SSH :  [~/.ssh/id_ed25519         ]  [Parcourir]│
-│  Passphrase :      [••••••••                  ]             │
-│  ☑ Utiliser l'agent SSH système (recommandé)                │
+│  SSH private key:  [~/.ssh/id_ed25519         ]  [Browse]│
+│  Passphrase:      [••••••••                  ]             │
+│  ☑ Use system SSH agent (recommended)                │
 │                                                              │
 │  HTTPS                                                       │
-│  [+ Ajouter un token]                                        │
+│  [+ Add a token]                                        │
 │                                                              │
-│  github.com      ghp_•••••••••••••••••  [Modifier] [✕]     │
-│  gitlab.com      glpat-•••••••••••••••  [Modifier] [✕]     │
+│  github.com      ghp_•••••••••••••••••  [Edit] [✕]     │
+│  gitlab.com      glpat-•••••••••••••••  [Edit] [✕]     │
 │                                                              │
-│  ☑ Utiliser le trousseau macOS (Keychain)                   │
+│  ☑ Use macOS Keychain                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Sécurité** : Les tokens et clés SSH ne transitent jamais côté JavaScript. Stockés exclusivement dans le process Rust, et dans le Keychain macOS si activé.
+**Security**: Tokens and SSH keys never transit through JavaScript. Stored exclusively in the Rust process, and in the macOS Keychain if enabled.
 
 ---
 
-## Section : Git
+## Section: Git
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Paramètres Git                                             │
+│  Git Settings                                             │
 │                                                             │
-│  Identité par défaut                                        │
-│  Nom :    [Antoine Dupont                    ]              │
-│  Email :  [antoine@example.com               ]              │
-│  (utilisé si pas de config git locale)                      │
+│  Default identity                                        │
+│  Name:    [Antoine Dupont                    ]              │
+│  Email:  [antoine@example.com               ]              │
+│  (used if no local git config)                      │
 │                                                             │
-│  Branches protégées (pas de reset --hard)                   │
-│  [main] [master] [develop] [+ Ajouter]                     │
+│  Protected branches (no reset --hard)                   │
+│  [main] [master] [develop] [+ Add]                     │
 │                                                             │
-│  Fetch automatique :                                        │
-│  ○ Désactivé                                               │
-│  ● Toutes les 5 min                                         │
-│  ○ Toutes les 15 min                                        │
+│  Automatic fetch:                                        │
+│  ○ Disabled                                               │
+│  ● Every 5 min                                         │
+│  ○ Every 15 min                                        │
 │                                                             │
-│  Editeur de merge :   [Intégré ▾]                          │
-│                        (Intégré / VS Code / autre)          │
+│  Merge editor:   [Built-in ▾]                          │
+│                        (Built-in / VS Code / other)          │
 │                                                             │
-│  ☑ Afficher les branches remote dans le git tree           │
-│  ☑ Confirmer avant push --force                            │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Section : Apparence
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Apparence                                                  │
-│                                                             │
-│  Thème :    ○ Clair   ● Sombre   ○ Système                 │
-│                                                             │
-│  Taille de police :    [14px  ▾]                           │
-│                                                             │
-│  Densité de l'historique :                                  │
-│  ○ Compact   ● Normal   ○ Confortable                      │
-│                                                             │
-│  Couleurs du graphe :   [Palette ▾]  [Prévisualisation]    │
-│                                                             │
-│  ☑ Afficher les avatars (Gravatar, local)                  │
-│  ☑ Animations de l'interface                               │
+│  ☑ Show remote branches in the git tree           │
+│  ☑ Confirm before push --force                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Section : Langue
+## Section: Appearance
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Langue                                                     │
+│  Appearance                                                  │
 │                                                             │
-│  ● Français                                                 │
+│  Theme:    ○ Light   ● Dark   ○ System                 │
+│                                                             │
+│  Font size:    [14px  ▾]                           │
+│                                                             │
+│  History density:                                  │
+│  ○ Compact   ● Normal   ○ Comfortable                      │
+│                                                             │
+│  Graph colors:   [Palette ▾]  [Preview]    │
+│                                                             │
+│  ☑ Show avatars (Gravatar, local)                  │
+│  ☑ Interface animations                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Section: Language
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Language                                                     │
+│                                                             │
+│  ● French                                                 │
 │  ○ English                                                  │
 │                                                             │
-│  Redémarrage requis : Non (changement immédiat)             │
+│  Restart required: No (change takes effect immediately)             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Section : Apprentissage
+## Section: Learning
 
-> Voir [Spec 11 — Pédagogie](./11-pedagogie.md) pour le détail complet de chaque feature.
+> See [Spec 11 — Pedagogy](./11-pedagogy.md) for the full detail of each feature.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Apprentissage                                              │
+│  Learning                                              │
 │                                                             │
-│  Mode apprentissage :                                       │
-│  ○ Désactivé                                               │
-│  ○ Intermédiaire  (commande + risque avant chaque action)  │
-│  ● Débutant       (explication complète)                   │
+│  Learning mode:                                       │
+│  ○ Disabled                                               │
+│  ○ Intermediate  (command + risk before each action)  │
+│  ● Beginner       (full explanation)                   │
 │                                                             │
 │  ─────────────────────────────────────────────────────────  │
 │                                                             │
-│  ☑ Console Git  (afficher les commandes en temps réel)     │
-│  ☑ Tooltips pédagogiques sur les actions                   │
-│  ☑ Résumé post-action (toast enrichi)                      │
-│  ☑ Journal des actions                                     │
-│  ☐ Masquer la preview avant les actions destructives       │
-│    (option pour les utilisateurs avancés)                  │
+│  ☑ Git Console  (show commands in real time)     │
+│  ☑ Pedagogic tooltips on actions                   │
+│  ☑ Post-action summary (enriched toast)                   │
+│  ☑ Action journal                                 │
+│  ☐ Hide preview before destructive actions       │
+│    (option for advanced users)                  │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-| Paramètre | Type | Défaut |
+| Parameter | Type | Default |
 |-----------|------|--------|
 | `learningMode` | `'off' \| 'beginner' \| 'intermediate'` | `'off'` |
 | `showGitConsole` | boolean | `false` |
@@ -185,58 +185,58 @@ Settings
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Avancé                                                     │
+│  Advanced                                                     │
 │                                                             │
-│  Dossiers exclus du scan :                                  │
-│  [node_modules] [.pnpm-store] [dist] [+ Ajouter]           │
+│  Folders excluded from scan:                                  │
+│  [node_modules] [.pnpm-store] [dist] [+ Add]           │
 │                                                             │
-│  Profondeur de scan max :    [3     ]                       │
+│  Max scan depth:    [3     ]                       │
 │                                                             │
-│  Dossier de données app :    ~/.config/git-manager  [Ouvrir]│
+│  App data folder:    ~/.config/git-manager  [Open]│
 │                                                             │
-│  [Exporter les paramètres]     [Importer les paramètres]   │
+│  [Export settings]     [Import settings]   │
 │                                                             │
 │  ─────────────────────────────────────────────────────────  │
-│  Zone dangereuse                                            │
-│  [Réinitialiser tous les paramètres]                        │
+│  Danger zone                                            │
+│  [Reset all settings]                        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Persistance
+## Persistence
 
-Les settings sont stockés dans `~/.config/git-manager/config.json` via `tauri-plugin-store`.
+Settings are stored in `~/.config/git-manager/config.json` via `tauri-plugin-store`.
 
-Les credentials (tokens, passphrase SSH) sont stockés dans le Keychain macOS via `tauri-plugin-keychain` (ou la crate `keyring` côté Rust).
+Credentials (tokens, SSH passphrase) are stored in the macOS Keychain via `tauri-plugin-keychain` (or the `keyring` crate on the Rust side).
 
 ---
 
-## Commandes Tauri impliquées
+## Tauri commands involved
 
 | Command | Description |
 |---------|-------------|
-| `get_settings` | Retourne la config complète |
-| `update_settings(partial)` | Met à jour partiellement |
-| `test_ollama_connection(url)` | Teste la connexion + liste les modèles |
-| `save_credential(host, token)` | Stocke dans Keychain |
-| `delete_credential(host)` | Supprime du Keychain |
-| `list_credentials` | Retourne les hosts configurés (sans les tokens) |
+| `get_settings` | Returns the complete config |
+| `update_settings(partial)` | Partially updates |
+| `test_ollama_connection(url)` | Tests the connection + lists models |
+| `save_credential(host, token)` | Stores in Keychain |
+| `delete_credential(host)` | Deletes from Keychain |
+| `list_credentials` | Returns the configured hosts (without the tokens) |
 
 ---
 
-## Composants React
+## React components
 
 ```
 app/settings/
-├── SettingsPage.tsx           # Layout avec nav sections
-├── LlmSettings.tsx            # Section Ollama
-├── AuthSettings.tsx           # Section credentials
-├── GitSettings.tsx            # Section git config
-├── AppearanceSettings.tsx     # Section thème / UI
-├── LanguageSettings.tsx       # Section langue
-├── LearningSettings.tsx       # Section apprentissage (Spec 11)
-└── AdvancedSettings.tsx       # Section avancé + danger zone
+├── SettingsPage.tsx           # Layout with nav sections
+├── LlmSettings.tsx            # Ollama section
+├── AuthSettings.tsx           # Credentials section
+├── GitSettings.tsx            # Git config section
+├── AppearanceSettings.tsx     # Theme / UI section
+├── LanguageSettings.tsx       # Language section
+├── LearningSettings.tsx       # Learning section (Spec 11)
+└── AdvancedSettings.tsx       # Advanced section + danger zone
 ```
 
 ---

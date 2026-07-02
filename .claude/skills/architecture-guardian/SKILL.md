@@ -6,9 +6,9 @@ description: Use before writing or right after writing code in git-manager that 
 # Architecture guardian
 
 This repo has a documented architecture plan at
-[doc/specs/13-architecture-refactor-plan.md](../../../doc/specs/13-architecture-refactor-plan.md)
+[docs/architecture/13-architecture-refactor-plan.md](../../../docs/architecture/13-architecture-refactor-plan.md)
 built from a real audit of the codebase, and a living execution log at
-[doc/specs/14-architecture-refactor-tracking.md](../../../doc/specs/14-architecture-refactor-tracking.md).
+[docs/architecture/14-architecture-refactor-tracking.md](../../../docs/architecture/14-architecture-refactor-tracking.md).
 As of that tracker, the plan (phases 1-6) is fully applied — R1 and R2 below are no longer
 aspirational, they're the current state of the code. Treat them as invariants to preserve, not
 goals to work toward: before adding new code in the areas below, apply these rules so we don't
@@ -73,8 +73,8 @@ reintroduce problems that were already found and fixed.
    silently ignoring it — the plan doc is a living document, update it if a rule needs to change.
 4. If you find a *new* violation (a file that grew, a new `lib/tauri.ts` bypass, duplicated
    logic), add a new numbered action to Phase 6 of
-   [doc/specs/14-architecture-refactor-tracking.md](../../../doc/specs/14-architecture-refactor-tracking.md)
+   [docs/architecture/14-architecture-refactor-tracking.md](../../../docs/architecture/14-architecture-refactor-tracking.md)
    rather than reopening a closed phase — that's the file's own stated convention. Mark actions ✅
-   (or 🔄 if partially done), update the "Étape courante" line, and add a dated Journal entry once
+   (or 🔄 if partially done), update the "Current step" line, and add a dated Journal entry once
    the change lands. That file is the single source of truth for where the refactor stands — keep
    it accurate rather than letting it drift from reality.

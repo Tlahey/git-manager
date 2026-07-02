@@ -88,10 +88,11 @@ git-manager/
 │   ├── i18n/                       # react-i18next setup + EN/FR locale files
 │   ├── ui/                         # shadcn/ui base components
 │   └── config/                     # Shared ESLint + Tailwind + tsconfig
-├── doc/
+├── docs/
 │   ├── README.md                   # Documentation index
 │   ├── ROADMAP.md                  # Milestone plan (M0–M7)
-│   └── specs/                      # Feature specs + architecture plan/tracking (13, 14)
+│   ├── specs/                      # Feature specs (00–12)
+│   └── architecture/               # Architecture refactor plan (13) + tracking (14)
 ├── CLAUDE.md                       # Architecture/IPC conventions — authoritative for AI coding agents
 ├── Cargo.toml                      # Rust workspace
 ├── package.json                    # Root pnpm scripts
@@ -268,27 +269,31 @@ The model is configurable per-project. Temperature and timeout are also adjustab
 | M6 — Worktree & Branches | 🔵 In progress | Branch create/rename/delete/checkout done; worktree management not started |
 | M7 — Stash & Polish | 🔵 In progress | Stash push/pop/apply/drop and keyboard shortcuts done; auto-update not started |
 
-See [doc/ROADMAP.md](doc/ROADMAP.md) for the full plan with detailed tasks and acceptance criteria.
+See [docs/ROADMAP.md](docs/ROADMAP.md) for the full plan with detailed tasks and acceptance criteria.
 
 ---
 
 ## Feature specifications
 
-Detailed specs for every feature are in [doc/specs/](doc/specs/):
+Detailed specs for every feature are in [docs/specs/](docs/specs/):
 
 | Spec | Feature |
 |------|---------|
-| [00-architecture](doc/specs/00-architecture.md) | Stack, IPC patterns, conventions |
-| [01-dashboard](doc/specs/01-dashboard.md) | Multi-repo dashboard |
-| [02-git-tree](doc/specs/02-git-tree.md) | Commit graph visualisation |
-| [03-commit-generation](doc/specs/03-commit-generation.md) | AI commit messages via Ollama |
-| [04-rollback](doc/specs/04-rollback.md) | Revert / Reset |
-| [05-fixup](doc/specs/05-fixup.md) | Fixup & autosquash |
-| [06-worktree](doc/specs/06-worktree.md) | Git worktree management |
-| [07-rebase-interactive](doc/specs/07-rebase-interactive.md) | Interactive rebase UI |
-| [08-stash](doc/specs/08-stash.md) | Stash management |
-| [09-branch-management](doc/specs/09-branch-management.md) | Branch operations |
-| [10-settings](doc/specs/10-settings.md) | Application settings |
+| [00-architecture](docs/specs/00-architecture.md) | Stack, IPC patterns, conventions |
+| [01-dashboard](docs/specs/01-dashboard.md) | Multi-repo dashboard |
+| [02-git-tree](docs/specs/02-git-tree.md) | Commit graph visualisation |
+| [03-commit-generation](docs/specs/03-commit-generation.md) | AI commit messages via Ollama |
+| [04-rollback](docs/specs/04-rollback.md) | Revert / Reset |
+| [05-fixup](docs/specs/05-fixup.md) | Fixup & autosquash |
+| [06-worktree](docs/specs/06-worktree.md) | Git worktree management |
+| [07-rebase-interactive](docs/specs/07-rebase-interactive.md) | Interactive rebase UI |
+| [08-stash](docs/specs/08-stash.md) | Stash management |
+| [09-branch-management](docs/specs/09-branch-management.md) | Branch operations |
+| [10-settings](docs/specs/10-settings.md) | Application settings |
+| [11-pedagogy](docs/specs/11-pedagogy.md) | Contextual git education mode |
+| [12-left-sidebar](docs/specs/12-left-sidebar.md) | Resizable repository sidebar |
+
+Architecture refactor plan and execution tracking live in [docs/architecture/](docs/architecture/) (specs 13 and 14).
 
 ---
 
