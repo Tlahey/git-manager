@@ -1,28 +1,25 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useTranslation } from '@git-manager/i18n'
 import { useQueryClient } from '@tanstack/react-query'
 import { Spinner } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { useGitStatus } from '../../hooks/useGitStatus'
-import { showCommitNativeContextMenu, showStashNativeContextMenu } from '../../api/nativeMenu.api'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
-import { apiStashApply, apiStashPop, apiStashDrop } from '../../api/git.api'
-import { mutate } from 'swr'
 
 import { useSettingsStore } from '../../stores/settings.store'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useCommitSelection } from '../../hooks/useCommitSelection'
 import { useCommitDetailsResize } from '../../hooks/useCommitDetailsResize'
-import { apiCreateFixupCommit, apiCreateCommit, apiStageAll } from '../../api/git.api'
+import { useGitGraphNodes } from '../../hooks/useGitGraphNodes'
+import { useGitGraphActions } from '../../hooks/useGitGraphActions'
 import { GraphRow } from './GraphRow'
 import { GraphHeader } from './GraphHeader'
 import { CommitDetailsPanel } from './CommitDetailsPanel'
 import { DiffViewCenter } from './DiffViewCenter'
 import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
 import { Waterline } from './Waterline'
-import { getWaterlineBucket, bucketLabel } from './waterlineBuckets'
 import { COLUMN_DEFS, COLUMN_ORDER, type ResolvedColumn } from './columns'
 
 interface GitGraphProps {
@@ -34,13 +31,6 @@ interface GitGraphProps {
 }
 
 // Row height is dynamic now based on settings
-
-interface WaterlineMark {
-  id: string
-  label: string
-  /** Index du commit (frontière) sur lequel l'overlay est positionné. */
-  index: number
-}
 
 const EMPTY_ARRAY: string[] = []
 
@@ -93,64 +83,13 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     hiddenStashes,
   })
 
-  const wipNode = useMemo(() => {
-    if (totalChanges === 0 || nodes.length === 0) return null
-    const firstNode = nodes[0]
-    return {
-      commit: {
-        oid: 'WIP',
-        shortOid: 'WIP',
-        message: '',
-        subject: '',
-        body: '',
-        author: {
-          name: '',
-          email: '',
-          timestamp: Date.now() / 1000,
-        },
-        committer: {
-          name: '',
-          email: '',
-          timestamp: Date.now() / 1000,
-        },
-        parentOids: [firstNode.commit.oid],
-      },
-      column: 0,
-      color: '#7c3aed',
-      connections: [
-        {
-          fromColumn: 0,
-          toColumn: 0,
-          color: '#7c3aed',
-          dashed: true,
-        },
-      ],
-      refs: [],
-    }
-  }, [totalChanges, nodes])
-
-  // ── Filtrage (recherche globale uniquement) ────────────────────────────────
-  const filteredNodes = useMemo(() => {
-    const search = searchQuery?.trim().toLowerCase() ?? ''
-    const baseNodes = wipNode ? [wipNode, ...nodes] : nodes
-    if (!search) return baseNodes
-    return baseNodes.filter((node) => {
-      if (node.commit.oid === 'WIP') {
-        return 'wip'.includes(search)
-      }
-      const { commit } = node
-      const haystack = [
-        commit.subject,
-        commit.body,
-        commit.author.name,
-        commit.author.email,
-        commit.oid,
-      ]
-        .join(' ')
-        .toLowerCase()
-      return haystack.includes(search)
-    })
-  }, [nodes, searchQuery, wipNode])
+  // ── Dérivation des données du graphe (WIP, recherche, waterlines) ──────────
+  const { wipNode, filteredNodes, waterlines, originMainIndex } = useGitGraphNodes(
+    nodes,
+    searchQuery,
+    totalChanges,
+    t,
+  )
 
   // ── Sélection (multiple) hook ──────────────────────────────────────────────
   const {
@@ -167,153 +106,19 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     setActiveDiffFile(null)
   }, [primaryOid, repoPath])
 
-  // ── Waterlines : overlays plein-largeur posés sur la frontière entre groupes ──
-  // Elles n'occupent PAS de hauteur (le graphe reste continu derrière). On émet
-  // de façon MONOTONE (rang croissant) : un palier n'apparaît qu'en entrant dans
-  // une période plus ancienne, jamais en arrière (commits pas toujours triés).
-  const waterlines = useMemo<WaterlineMark[]>(() => {
-    const out: WaterlineMark[] = []
-    let maxRank = -1
-    filteredNodes.forEach((node, index) => {
-      const bucket = getWaterlineBucket(node.commit.author.timestamp)
-      if (bucket.rank > maxRank) {
-        if (index > 0) {
-          out.push({ id: `wl:${index}:${bucket.key}`, label: bucketLabel(bucket, t), index })
-        }
-        maxRank = bucket.rank
-      }
-    })
-    return out
-  }, [filteredNodes, t])
-
-  // ── Menu contextuel natif (macOS) + dialogs ──────────────────────────────
-  const [pendingAction, setPendingAction] = useState<'reset' | 'revert' | 'branch' | null>(null)
-  const [toast, setToast] = useState<{ kind: 'ok' | 'error'; msg: string } | null>(null)
-
-  useEffect(() => {
-    if (!toast) return
-    const id = setTimeout(() => setToast(null), 3000)
-    return () => clearTimeout(id)
-  }, [toast])
-
-  const setEditingOid = useRepoUIStore((s) => s.setEditingOid)
-
-  function openMenuAt(e: React.MouseEvent, oid: string) {
-    if (oid === 'WIP') return
-    e.preventDefault()
-    e.stopPropagation()
-
-    // Check if this is a stash commit
-    const clickedNode = nodes.find((n) => n.commit.oid === oid)
-    const stashRef = clickedNode?.refs.find((r) => r.type === 'stash')
-
-    if (stashRef) {
-      const stashMatch = stashRef.shortName.match(/stash@\{(\d+)\}/)
-      const index = stashMatch ? parseInt(stashMatch[1], 10) : 0
-
-      selectSingle(oid)
-
-      const isHidden = hiddenStashes.includes(oid)
-      showStashNativeContextMenu({
-        isHidden,
-        onApply: async () => {
-          try {
-            await apiStashApply(repoPath, index)
-            mutate(['git-stashes', repoPath])
-            queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-            queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-          } catch (err) {
-            alert(String(err))
-          }
-        },
-        onPop: async () => {
-          try {
-            await apiStashPop(repoPath, index)
-            mutate(['git-stashes', repoPath])
-            queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-            queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-          } catch (err) {
-            alert(String(err))
-          }
-        },
-        onDelete: async () => {
-          try {
-            await apiStashDrop(repoPath, index)
-            mutate(['git-stashes', repoPath])
-            queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-            queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-          } catch (err) {
-            alert(String(err))
-          }
-        },
-        onEditMessage: () => {
-          selectSingle(oid)
-          setEditingOid(oid)
-        },
-        onToggleVisibility: () => {
-          toggleStashVisibility(repoPath, oid)
-        }
-      }).catch(console.error)
-      return
-    }
-
-    let targets: string[]
-    if (selected.has(oid)) {
-      targets = Array.from(selected)
-      setPrimaryOid(oid)
-    } else {
-      selectSingle(oid)
-      targets = [oid]
-    }
-
-    const isSingle = targets.length === 1
-
-    showCommitNativeContextMenu({
-      isSingle,
-      targetCount: targets.length,
-      onReset: () => setPendingAction('reset'),
-      onRevert: () => setPendingAction('revert'),
-      onCreateBranch: () => setPendingAction('branch'),
-      onCopySha: () => handleCopySha(),
-      onFixup: () => handleFixup(),
-    }).catch(console.error)
-  }
-
-
-  // ── Actions ────────────────────────────────────────────────────────────────
-  async function handleCopySha() {
-    if (!primaryOid) return
-    await navigator.clipboard.writeText(primaryOid)
-    setToast({ kind: 'ok', msg: t('gitTree.contextMenu.shaCopied') })
-  }
-
-  async function handleFixup() {
-    if (!primaryOid) return
-    try {
-      await apiCreateFixupCommit(repoPath, primaryOid)
-      queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-      queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-      queryClient.invalidateQueries({ queryKey: ['pending-fixups', repoPath] })
-      setToast({ kind: 'ok', msg: t('gitTree.contextMenu.fixupCreated') })
-    } catch (err) {
-      setToast({ kind: 'error', msg: String(err) })
-    }
-  }
-
-  async function handleCommitWip(message: string) {
-    if (!message.trim()) return
-    try {
-      const stagedCount = status?.staged?.length || 0
-      if (stagedCount === 0) {
-        await apiStageAll(repoPath)
-      }
-      await apiCreateCommit(repoPath, message)
-      queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-      queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-    } catch (err) {
-      setToast({ kind: 'error', msg: String(err) })
-    }
-  }
+  // ── Menu contextuel natif (macOS) + dialogs + actions du graphe ───────────
+  const { pendingAction, setPendingAction, toast, openMenuAt, handleCommitWip } = useGitGraphActions({
+    repoPath,
+    nodes,
+    selected,
+    primaryOid,
+    setPrimaryOid,
+    selectSingle,
+    hiddenStashes,
+    toggleStashVisibility,
+    status,
+    t,
+  })
 
   // ── Virtualisation ─────────────────────────────────────────────────────────
   const parentRef = useRef<HTMLDivElement>(null)
@@ -372,18 +177,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     // Strategy 3: fallback – first node in the walk is typically HEAD
     const isFirstNode = primaryNode.commit.oid === nodes[0]?.commit?.oid
 
-    const result = hasHeadRef || hasBranchRef || isFirstNode
-    console.log('[isSelectedCommitHead]', {
-      oid: primaryNode.commit.oid.slice(0, 8),
-      headBranchName,
-      hasHeadRef,
-      hasBranchRef,
-      isFirstNode,
-      result,
-      refs: primaryNode.refs.map((r) => `${r.type}:${r.shortName}`),
-      nodes0oid: nodes[0]?.commit?.oid?.slice(0, 8),
-    })
-    return result
+    return hasHeadRef || hasBranchRef || isFirstNode
   }, [primaryNode, nodes, headBranchName])
 
   return (
@@ -443,11 +237,6 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                         const oid = node.commit.oid
 
                         let nodeToRender = node
-
-                        // Trouve l'index du commit origin/main ou origin/master
-                        const originMainIndex = filteredNodes.findIndex((n) =>
-                          n.refs.some((r) => r.shortName === 'origin/main' || r.shortName === 'origin/master')
-                        )
 
                         // 1. Si on est sur le premier commit réel (sous le WIP) et que sa colonne est 0,
                         // on doit ajouter la connexion verticale vers le WIP.
