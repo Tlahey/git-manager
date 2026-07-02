@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Input, Textarea, cn } from '@git-manager/ui'
 import {
@@ -12,11 +12,10 @@ import {
   Gitlab,
 } from 'lucide-react'
 import { CommitDetailsAvatar } from './CommitDetailsAvatar'
-import { apiCreateCommit, apiUpdateStashMessage } from '../../../api/git.api'
 import { apiOpenUrl } from '../../../api/shell.api'
 import type { GitGraphNode, GitRef } from '@git-manager/git-types'
 import { useGitStashes } from '../../../hooks/useGitStashes'
-import { useRepoUIStore } from '../../../stores/repoUI.store'
+import { useCommitMessageEdit } from '../../../hooks/useCommitMessageEdit'
 
 
 function formatDate(timestamp: number): string {
@@ -57,75 +56,24 @@ export function CommitHeaderInfo({
 }: CommitHeaderInfoProps) {
   const { t } = useTranslation('git')
 
-  const [copied, setCopied] = useState(false)
-  const [isEditingMessage, setIsEditingMessage] = useState(false)
-  const [editSubject, setEditSubject] = useState('')
-  const [editBody, setEditBody] = useState('')
-  const [isSavingMessage, setIsSavingMessage] = useState(false)
-
   const { data: stashes } = useGitStashes(repoPath)
   const stash = useMemo(() => {
     if (!isStash) return null
     return stashes?.find((s) => s.commitOid === commit?.oid)
   }, [isStash, stashes, commit?.oid])
 
-  const { editingOid, setEditingOid } = useRepoUIStore()
-
-  useEffect(() => {
-    if (editingOid && editingOid === commit?.oid) {
-      setIsEditingMessage(true)
-      setEditingOid(null)
-    }
-  }, [editingOid, commit?.oid, setEditingOid])
-
-  // Reset states when the selected commit changes
-  useEffect(() => {
-    setIsEditingMessage(false)
-    if (isStash && stash) {
-      const parts = stash.message.split('\n\n')
-      setEditSubject(parts[0] || '')
-      setEditBody(parts.slice(1).join('\n\n') || '')
-    } else {
-      setEditSubject(commit?.subject ?? '')
-      setEditBody(commit?.body ?? '')
-    }
-  }, [commit?.oid, commit?.subject, commit?.body, isStash, stash])
-
-  async function handleUpdateCommitMessage() {
-    if (!editSubject.trim()) return
-    setIsSavingMessage(true)
-    try {
-      const fullMessage = editBody.trim()
-        ? `${editSubject.trim()}\n\n${editBody.trim()}`
-        : editSubject.trim()
-
-      if (isStash) {
-        const stashRef = refs?.find((r) => r.type === 'stash')
-        const stashMatch = stashRef?.shortName.match(/stash@\{(\d+)\}/)
-        const stashIndex = stashMatch ? parseInt(stashMatch[1], 10) : 0
-
-        await apiUpdateStashMessage(repoPath, stashIndex, fullMessage)
-        setIsEditingMessage(false)
-        onRefresh?.()
-        return
-      }
-
-      const commitOidToAmend = commit.oid !== 'WIP' ? commit.oid : undefined
-      await apiCreateCommit(repoPath, fullMessage, true, commitOidToAmend)
-      setIsEditingMessage(false)
-      onRefresh?.()
-    } catch (err) {
-      alert(String(err))
-    } finally {
-      setIsSavingMessage(false)
-    }
-  }
-
-  async function handleCopySha() {
-    await navigator.clipboard.writeText(commit.oid)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
+  const {
+    copied,
+    handleCopySha,
+    isEditingMessage,
+    setIsEditingMessage,
+    editSubject,
+    setEditSubject,
+    editBody,
+    setEditBody,
+    isSavingMessage,
+    handleUpdateCommitMessage,
+  } = useCommitMessageEdit({ commit, repoPath, isStash, stash, refs, onRefresh })
 
   const messageBodyParsed = useMemo(() => {
     if (!commit.body) return null
