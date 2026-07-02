@@ -6,7 +6,7 @@ import { useGitStashes } from './useGitStashes'
 import { useGroupedBranches } from './useGroupedBranches'
 import { usePullRequests } from './usePullRequests'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
-import { getTags, listSubmodules } from '../lib/tauri'
+import { apiGetTags, apiListSubmodules } from '../api/git.api'
 import {
   type SidebarRow,
   type SectionKey,
@@ -54,14 +54,14 @@ export function useSidebarRows({
 
   const { data: tags = [] } = useQuery<GitRef[]>({
     queryKey: ['tags', repoPath],
-    queryFn: () => getTags(repoPath),
+    queryFn: () => apiGetTags(repoPath),
     enabled: !!repoPath,
     staleTime: 30_000,
   })
 
   const { data: submodules = [] } = useQuery<GitSubmodule[]>({
     queryKey: ['submodules', repoPath],
-    queryFn: () => listSubmodules(repoPath),
+    queryFn: () => apiListSubmodules(repoPath),
     enabled: !!repoPath,
     staleTime: 60_000,
   })

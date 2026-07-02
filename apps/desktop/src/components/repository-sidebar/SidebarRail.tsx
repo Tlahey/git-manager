@@ -12,7 +12,7 @@ import type { GitRef, GitSubmodule } from '@git-manager/git-types'
 import { useBranches } from '../../hooks/useBranches'
 import { usePullRequests } from '../../hooks/usePullRequests'
 import { useGitStashes } from '../../hooks/useGitStashes'
-import { getTags, listSubmodules } from '../../lib/tauri'
+import { apiGetTags, apiListSubmodules } from '../../api/git.api'
 
 interface SidebarRailProps {
   repoPath: string
@@ -62,14 +62,14 @@ export function SidebarRail({
 
   const { data: tags = [] } = useQuery<GitRef[]>({
     queryKey: ['tags', repoPath],
-    queryFn: () => getTags(repoPath),
+    queryFn: () => apiGetTags(repoPath),
     enabled: !!repoPath,
     staleTime: 30_000,
   })
 
   const { data: submodules = [] } = useQuery<GitSubmodule[]>({
     queryKey: ['submodules', repoPath],
-    queryFn: () => listSubmodules(repoPath),
+    queryFn: () => apiListSubmodules(repoPath),
     enabled: !!repoPath,
     staleTime: 60_000,
   })

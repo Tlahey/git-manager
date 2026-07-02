@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Tag as TagIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import type { GitRef } from '@git-manager/git-types'
-import { getTags } from '../../lib/tauri'
+import { apiGetTags } from '../../api/git.api'
 import { SectionHeader } from './SectionHeader'
 import { HoverExpandLabel } from './HoverExpandLabel'
 
@@ -15,7 +15,7 @@ export function TagsSection({ repoPath }: TagsSectionProps) {
 
   const { data: tags = [] } = useQuery<GitRef[]>({
     queryKey: ['tags', repoPath],
-    queryFn: () => getTags(repoPath),
+    queryFn: () => apiGetTags(repoPath),
     enabled: !!repoPath,
     staleTime: 30_000,
   })
