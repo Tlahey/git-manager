@@ -10,7 +10,7 @@ import {
   DialogFooter,
 } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
-import { createFixupCommit } from '../../lib/tauri'
+import { apiCreateFixupCommit } from '../../api/git.api'
 
 interface FixupTargetSelectorProps {
   repoPath: string
@@ -52,7 +52,7 @@ export function FixupTargetSelector({
     setIsLoading(true)
     setError(null)
     try {
-      await createFixupCommit(repoPath, selectedOid)
+      await apiCreateFixupCommit(repoPath, selectedOid)
       queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
       queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
       onSelect(selectedOid, selectedSubject)

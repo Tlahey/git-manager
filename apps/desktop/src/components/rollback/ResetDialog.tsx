@@ -9,8 +9,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@git-manager/ui'
-import { getCommitsBetween } from '../../lib/tauri'
-import { apiResetToCommit } from '../../api/git.api'
+import { apiGetCommitsBetween, apiResetToCommit } from '../../api/git.api'
 
 type ResetMode = 'soft' | 'mixed' | 'hard'
 
@@ -47,7 +46,7 @@ export function ResetDialog({
 
   const { data: commits = [], isLoading: isLoadingCommits } = useQuery({
     queryKey: ['commits-between', repoPath, 'HEAD', targetOid],
-    queryFn: () => getCommitsBetween(repoPath, 'HEAD', targetOid),
+    queryFn: () => apiGetCommitsBetween(repoPath, 'HEAD', targetOid),
     enabled: open,
   })
 
