@@ -172,7 +172,7 @@ src-tauri/src/
 │   └── ...
 ├── services/          # logique métier pure, testable sans Tauri
 │   ├── git_log.rs      # parcours d'historique (ex log.rs sans le rendu graphe)
-│   ├── git_graph.rs     # calcul colonnes/couleurs/edges (Builder, voir plus bas)
+│   ├── git_graph.rs     # calcul colonnes/couleurs/edges (fonction pure, pas un Builder — voir plus bas)
 │   ├── git_diff.rs      # génération de diffs — seule source de DiffLine/DiffHunk/DiffFile
 │   ├── git_commit.rs    # stage/unstage/commit/discard
 │   └── git_repo.rs      # open/scan/clone/init, build_git_repo unifié
@@ -183,14 +183,27 @@ Ceci résorbe directement la duplication de structs Diff et des helpers `short_o
 relevée dans l'audit, sans réécrire l'accès git2 existant (pas de couche d'abstraction
 supplémentaire type `git/` façon `00-architecture.md` — juste un découpage commands/services).
 
-### Builder — construction du graphe de commits et des options de diff
-**Problème résolu** : `log.rs` calcule columns/couleurs/edges et les options de diff en ligne, avec
-plusieurs paramètres optionnels (limite, filtres stash, contexte de diff) passés en cascade.
+### Builder — construction du graphe de commits (re-scopé en fonction de service simple)
+**Problème résolu** : `log.rs` calculait colonnes/couleurs/edges inline dans `get_log` (~375
+lignes d'algorithme mélangées à la préparation de la requête), avec plusieurs paramètres
+optionnels (limite, filtres stash, branche) passés en cascade.
 
-**Cible** : un `GitGraphBuilder` (`services/git_graph.rs`) avec des méthodes chaînables
-(`.with_limit()`, `.include_stashes()`, `.from_ref()`) qui produit le graphe final, et un
-`DiffOptionsBuilder` équivalent pour les diffs (contexte, whitespace, binaire). Rend `log.rs`
-lisible et isole les paramètres actuellement dispersés en arguments de fonction.
+> **Correction post-implémentation (2026-07-02)** : le plan proposait un `GitGraphBuilder` avec
+> méthodes chaînables (`.with_limit()`, `.include_stashes()`, `.from_ref()`). En regardant le
+> code réel, `get_log` n'a qu'un seul point d'appel (la commande Tauri elle-même) et ses
+> paramètres sont déjà des `Option<T>` simples sans validation croisée complexe — exactement le
+> cas où un Builder n'apporte aucune valeur ergonomique par rapport à des arguments de fonction
+> nommés. Plutôt que d'inventer une API chaînable inutilisée ailleurs, l'algorithme de layout a
+> été extrait tel quel dans `services/git_graph.rs::build_graph_nodes(repo, oids, stash_oids,
+> refs_map, branch)` — une fonction pure, testable indépendamment de Tauri, sans changer sa forme
+> d'appel. Extraction vérifiée ligne à ligne contre l'original (diff exact hors adaptations de
+> signature emprunt/possession) pour garantir zéro changement de comportement sur un algorithme
+> qui ne peut pas être testé visuellement depuis cet environnement.
+>
+> Le `DiffOptionsBuilder` pour les options de diff n'a pas non plus été introduit : les usages de
+> `DiffOptions` dans le code (`context_lines`, `ignore_whitespace_change`, `include_untracked`)
+> sont à 2-3 options par site d'appel, déjà lisibles telles quelles — même raisonnement anti
+> sur-ingénierie.
 
 ### Strategy — rendu de diff selon le type de contenu
 **Problème résolu (supposé)** : `DiffViewCenter.tsx` (427 lignes) mélangerait virtualisation,
