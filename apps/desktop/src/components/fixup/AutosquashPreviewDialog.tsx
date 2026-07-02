@@ -8,7 +8,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@git-manager/ui'
-import { autosquashPreview, runAutosquash } from '../../lib/tauri'
+import { apiAutosquashPreview, apiRunAutosquash } from '../../api/git.api'
 import { useState } from 'react'
 
 interface AutosquashPreviewDialogProps {
@@ -29,7 +29,7 @@ export function AutosquashPreviewDialog({
 
   const { data: groups = [], isLoading } = useQuery({
     queryKey: ['autosquash-preview', repoPath],
-    queryFn: () => autosquashPreview(repoPath),
+    queryFn: () => apiAutosquashPreview(repoPath),
     enabled: open,
   })
 
@@ -39,7 +39,7 @@ export function AutosquashPreviewDialog({
     setIsRunning(true)
     setError(null)
     try {
-      await runAutosquash(repoPath)
+      await apiRunAutosquash(repoPath)
       queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
       queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
       onClose()

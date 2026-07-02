@@ -3,7 +3,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '@git-manager/ui'
 import { Wrench } from 'lucide-react'
-import { getPendingFixups } from '../../lib/tauri'
+import { apiGetPendingFixups } from '../../api/git.api'
 import { AutosquashPreviewDialog } from './AutosquashPreviewDialog'
 
 interface PendingFixupsBannerProps {
@@ -16,7 +16,7 @@ export function PendingFixupsBanner({ repoPath }: PendingFixupsBannerProps) {
 
   const { data: fixups = [] } = useQuery({
     queryKey: ['pending-fixups', repoPath],
-    queryFn: () => getPendingFixups(repoPath),
+    queryFn: () => apiGetPendingFixups(repoPath),
     enabled: !!repoPath,
     staleTime: 30_000,
   })

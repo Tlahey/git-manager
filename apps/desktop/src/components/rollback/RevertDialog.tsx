@@ -10,7 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@git-manager/ui'
-import { revertCommit } from '../../lib/tauri'
+import { apiRevertCommit } from '../../api/git.api'
 
 interface RevertDialogProps {
   repoPath: string
@@ -39,7 +39,7 @@ export function RevertDialog({
     setIsLoading(true)
     setError(null)
     try {
-      const sha = await revertCommit(repoPath, commitOid, noCommit)
+      const sha = await apiRevertCommit(repoPath, commitOid, noCommit)
       queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
       queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
       onSuccess(sha)

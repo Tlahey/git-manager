@@ -7,8 +7,8 @@ import { useTranslation } from '@git-manager/i18n'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useBranches } from '../../hooks/useBranches'
-import { openRepo } from '../../lib/tauri'
 import { apiCheckoutBranch } from '../../api/git.api'
+import { apiOpenRepo } from '../../api/repo.api'
 import { useAnchoredMenu } from './useAnchoredMenu'
 
 /** Sélecteur de la branche courante du dépôt actif (checkout au clic). */
@@ -49,7 +49,7 @@ export function BranchContext() {
       await apiCheckoutBranch(activeRepo, name, fromRef ? { fromRef, fromDetached } : undefined)
       // Rafraîchit le cache repo (head/isDetached/isDirty) + les vues dépendantes.
       try {
-        const fresh = await openRepo(activeRepo)
+        const fresh = await apiOpenRepo(activeRepo)
         setRepoCache(activeRepo, fresh)
       } catch {
         /* ignore */

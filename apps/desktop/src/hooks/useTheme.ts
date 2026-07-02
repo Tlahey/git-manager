@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useSettingsStore } from '../stores/settings.store'
 import { resolveSystemTheme } from '../lib/themes'
-import { getUserThemes } from '../lib/tauri'
+import { apiGetUserThemes } from '../api/theme.api'
 import type { UserTheme } from '@git-manager/git-types'
 
 const STYLE_TAG_PREFIX = 'user-theme-'
@@ -54,7 +54,7 @@ export function useTheme() {
 
   // ── Load user themes once on mount ─────────────────────────────────────────
   useEffect(() => {
-    getUserThemes()
+    apiGetUserThemes()
       .then((themes) => {
         removeAllUserThemeStyles()
         themes.forEach(injectUserThemeStyle)

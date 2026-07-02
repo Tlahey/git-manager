@@ -20,8 +20,7 @@ import {
 } from 'lucide-react'
 import { useFileDiff } from '../../hooks/useFileDiff'
 import { useFileRawContents } from '../../hooks/useFileRawContents'
-import { stageFile, unstageFile } from '../../lib/tauri'
-import { apiDiscardFileChanges } from '../../api/git.api'
+import { apiDiscardFileChanges, apiStageFile, apiUnstageFile } from '../../api/git.api'
 import { MonacoDiffViewer, type MonacoDiffViewerRef } from './MonacoDiffViewer'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 
@@ -110,9 +109,9 @@ export function DiffViewCenter({
     setIsProcessing(true)
     try {
       if (file.staged) {
-        await unstageFile(repoPath, file.path)
+        await apiUnstageFile(repoPath, file.path)
       } else {
-        await stageFile(repoPath, file.path)
+        await apiStageFile(repoPath, file.path)
       }
       refetch()
       onRefresh?.()

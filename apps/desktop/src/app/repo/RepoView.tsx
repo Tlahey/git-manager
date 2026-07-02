@@ -4,13 +4,13 @@ import type { GitBranch } from '@git-manager/git-types'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useUndoHistoryStore } from '../../stores/undoHistory.store'
-import { openRepo } from '../../lib/tauri'
 import { GitGraph } from '../../components/git-graph/GitGraph'
 import { RepositorySidebar } from '../../components/repository-sidebar'
 import { ActionToolbar } from '../../components/action-toolbar'
 import { useSettingsStore } from '../../stores/settings.store'
 import { showBranchNativeContextMenu } from '../../api/nativeMenu.api'
 import { apiDeleteBranch } from '../../api/git.api'
+import { apiOpenRepo } from '../../api/repo.api'
 
 export function RepoView() {
   const { activeRepo } = useRepoUIStore()
@@ -23,7 +23,7 @@ export function RepoView() {
   // pour alimenter head/isDetached/isDirty/remotes (toolbar, badges d'état…).
   useEffect(() => {
     if (activeRepo && !repoCache[activeRepo]) {
-      openRepo(activeRepo)
+      apiOpenRepo(activeRepo)
         .then((r) => {
           setRepoCache(activeRepo, r)
           // Purge les entrées undo/redo persistées dont l'objet Git référencé a disparu
