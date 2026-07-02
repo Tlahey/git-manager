@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { apiGetTerminalCommands } from '../api/shell.api'
-import { gameObserver } from '../lib/gameObserver'
+import { appEventBus } from '../lib/appEventBus'
 import JSON_ACHIEVEMENTS from './achievements.json'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -237,7 +237,7 @@ export const useGameStore = create<GameState>()(
 
             // Dispatch each new command event to the observer
             newCommands.forEach((cmd) => {
-              gameObserver.notify('terminal_command', { command: cmd })
+              appEventBus.notify('terminal_command', { command: cmd })
             })
           }
         } catch (e) {
@@ -293,7 +293,7 @@ export const useGameStore = create<GameState>()(
   )
 )
 
-// Automatically wire the store to the gameObserver event channel on import
-gameObserver.subscribe((event: string, payload?: any) => {
+// Automatically wire the store to the appEventBus event channel on import
+appEventBus.subscribe((event: string, payload?: any) => {
   useGameStore.getState().handleObserverEvent(event, payload)
 })

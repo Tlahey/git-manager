@@ -123,28 +123,40 @@ ou un couplage observé dans l'audit.
 ### Observer — généraliser `gameObserver` en bus d'événements applicatif
 **Problème résolu** : aujourd'hui seul `api/git.api.ts` notifie `gameObserver` (pour les
 achievements). Les autres domaines (GitHub, stash, remote) n'ont aucun point d'instrumentation
-commun ; si demain on veut ajouter un audit log ou améliorer l'historique undo/redo, il faudra
-ajouter des appels manuels dans chaque fonction API.
+commun ; si demain on veut ajouter un audit log, il faudra ajouter des appels manuels dans chaque
+fonction API.
 
 **Cible** :
-- Renommer/étendre `lib/gameObserver.ts` en `lib/appEventBus.ts` (ou garder le nom, mais ouvrir les
-  types d'événements au-delà de la gamification : `git:stage`, `git:commit`, `github:auth`,
-  `remote:push`, etc.).
-- Introduire un wrapper unique côté frontend, ex. `api/service.ts` :
+- Renommer `lib/gameObserver.ts` en `lib/appEventBus.ts` (`GameEvent`/`GameListener` →
+  `AppEvent`/`AppEventListener`), même implémentation pub/sub.
+- Introduire un wrapper `api/service.ts` :
   ```ts
-  export async function callCommand<T>(name: AppEvent, invokeFn: () => Promise<T>): Promise<T> {
-    const result = await invokeFn()
-    appEventBus.emit(name, result)
+  export async function callCommand<T>(event: AppEvent, fn: () => Promise<T>, payload?: any): Promise<T> {
+    const result = await fn()
+    appEventBus.notify(event, payload)
     return result
   }
   ```
-  Chaque fonction de `api/*.api.ts` passe par `callCommand` au lieu d'appeler `invoke`/`lib/tauri.ts`
-  nue. `game.store.ts`, `undoHistory.store.ts`, un futur logger, etc. s'abonnent au même bus au lieu
-  de coder leur propre notification ad hoc.
-- Côté Rust, le pattern Observer existe déjà via `app_handle.emit()` pour le streaming (Ollama). Le
-  généraliser pour émettre un événement `command:executed` (nom, durée, succès/échec) depuis la
-  couche `services/` serait la contrepartie backend — utile pour le futur historique undo/redo
-  serveur-side sans dupliquer la logique dans chaque commande.
+
+> **Correction post-implémentation (2026-07-02)** : `api/git.api.ts` a été inspecté avant de le
+> migrer, et son instrumentation n'est **pas** un simple "invoke + notify" uniforme partout — la
+> plupart de ses fonctions pilotent aussi l'historique undo/redo (`pushAction`/`clearRedo`/
+> `pinObject`, snapshots conditionnels selon le mode d'action), avec une forme différente par type
+> d'action. Forcer *toute la fonction* à travers `callCommand` aurait ajouté un paramètre générique
+> fourre-tout sans rien retirer de la duplication réelle (qui est légitime : chaque action undo est
+> différente, façon Command pattern, pas façon Observer).
+>
+> Le scope a donc été resserré à ce qui correspond vraiment à un Observer : **seuls les appels qui
+> notifiaient déjà `gameObserver`** (stage/unstage/stageAll/unstageAll/commit/discard/fixup/
+> autosquash — 8 sites) sont passés par `callCommand`, en ne wrappant que l'appel `invoke`
+> lui-même (`callCommand('commit', () => createCommit(...))`), sans toucher à la logique undo/redo
+> qui reste autour, inchangée. Les autres fichiers `api/*.api.ts` (`github.api.ts`,
+> `nativeMenu.api.ts`, `repo.api.ts`, `shell.api.ts`, `ssh.api.ts`, `theme.api.ts`, `ollama.api.ts`)
+> n'ont **pas** été forcés à travers `callCommand` : ils ne notifient rien aujourd'hui, et les y
+> faire passer avec un événement inutilisé aurait été de l'indirection sans bénéfice (cf. règle
+> anti-abstraction-prématurée du projet). Le jour où l'un d'eux a un événement réel à notifier,
+> `callCommand` est déjà prêt à l'accueillir — voir
+> [14-architecture-refactor-tracking.md](14-architecture-refactor-tracking.md) action 4.4.
 
 ### Service layer (Rust) — extraire `services/` entre `commands/` et `git2`
 **Problème résolu** : `log.rs` (816 lignes) et `commit.rs` (649 lignes) mélangent logique métier et
@@ -233,8 +245,10 @@ tri, le calcul des stats de dossier, le filtrage.
    branches protégées, GitHub) si le store continue de grossir.
 7. `stores/game.store.ts:228` → remplacer l'appel direct `invoke('get_terminal_commands')` par un
    export de `lib/tauri.ts` (`getTerminalCommands()`), lui-même appelé via `api/*.api.ts`.
-8. Introduire `api/service.ts` (le `callCommand` décrit dans Observer) et migrer `api/*.api.ts` un
-   fichier à la fois pour qu'ils passent tous par ce wrapper.
+8. Introduire `api/service.ts` (le `callCommand` décrit dans Observer) et migrer les 8 sites de
+   `api/git.api.ts` qui notifiaient déjà `gameObserver`/`appEventBus`. Ne pas forcer les autres
+   fichiers `api/*.api.ts` à travers `callCommand` tant qu'ils n'ont rien à notifier (cf. la
+   correction post-implémentation ci-dessus).
 
 ---
 
@@ -253,7 +267,9 @@ tri, le calcul des stats de dossier, le filtrage.
   `services/git_graph.rs` avec `GitGraphBuilder`.
 
 **Phase 4 — Bus d'événements généralisé**
-- `api/service.ts` + `appEventBus`, migration progressive de `api/*.api.ts`.
+- `api/service.ts` + `appEventBus`, migration des 8 sites de notification existants dans
+  `api/git.api.ts`. Pas de migration forcée des autres fichiers `api/*.api.ts` (rien à y notifier
+  aujourd'hui).
 
 **Phase 5 — Strategy pour le rendu de diff**
 - Une fois le reste stabilisé, refactor `DiffViewCenter.tsx`.
