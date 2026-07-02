@@ -18,7 +18,8 @@ doit toujours refléter l'état réel du code, pas l'intention.
 | ⬜ | Pas commencé |
 | 🔄 | En cours |
 | ✅ | Terminé |
-| ⏭️ | Reporté / hors scope pour l'instant |
+| ⏭️ | Hors scope / ne sera pas fait (justifié) |
+| ⏸️ | Reporté à une prochaine session (à reprendre plus tard, pas abandonné) |
 
 ---
 
@@ -53,11 +54,11 @@ doit toujours refléter l'état réel du code, pas l'intention.
 
 | # | Action | Fichier(s) | Dépend de | Statut |
 |---|---|---|---|---|
-| 3.1 | Extraire `services/git_diff.rs` (génération de diff, seule source utilisée par `commit.rs` et `log.rs`) | `services/git_diff.rs` | 1.1–1.3 | ⬜ |
-| 3.2 | Extraire `services/git_graph.rs` avec un `GitGraphBuilder` (colonnes/couleurs/edges) hors de `log.rs` | `services/git_graph.rs`, `commands/log.rs` | 3.1 | ⬜ |
-| 3.3 | Extraire `services/git_commit.rs` (stage/unstage/commit/discard) hors de `commit.rs` | `services/git_commit.rs`, `commands/commit.rs` | 3.1 | ⬜ |
-| 3.4 | Unifier `build_git_repo()` / `open_repo()` dans `services/git_repo.rs` | `services/git_repo.rs`, `commands/repo.rs` | — | ⬜ |
-| 3.5 | Vérifier que `commands/log.rs` et `commands/commit.rs` sont redescendus à ~150 lignes chacun (désérialisation + délégation + erreurs uniquement) | `commands/log.rs`, `commands/commit.rs` | 3.1–3.3 | ⬜ |
+| 3.1 | Extraire `services/git_diff.rs` (génération de diff, seule source utilisée par `commit.rs` et `log.rs`) | `services/git_diff.rs` | 1.1–1.3 | ✅ |
+| 3.3 | Extraire `services/git_commit.rs` (stage/unstage/commit/discard) hors de `commit.rs` | `services/git_commit.rs`, `commands/commit.rs` | 3.1 | ✅ |
+| 3.4 | Unifier `build_git_repo()` / `open_repo()` dans `services/git_repo.rs` | `services/git_repo.rs`, `commands/repo.rs` | — | ✅ |
+| 3.2 | Extraire `services/git_graph.rs` avec un `GitGraphBuilder` (colonnes/couleurs/edges) hors de `log.rs` | `services/git_graph.rs`, `commands/log.rs` | 3.1 | ⏸️ reporté — voir note |
+| 3.5 | Vérifier que `commands/log.rs` et `commands/commit.rs` sont redescendus à ~150 lignes chacun (désérialisation + délégation + erreurs uniquement) | `commands/log.rs`, `commands/commit.rs` | 3.1–3.3 | 🔄 partiel — voir note |
 
 ## Phase 4 — Bus d'événements généralisé (Observer)
 
@@ -80,8 +81,13 @@ doit toujours refléter l'état réel du code, pas l'intention.
 ## Étape courante
 
 **Phase 2 : 2.1/2.2/2.4 terminées, 2.3 non applicable (⏭️), 2.5 optionnelle (reportée).**
-**Prochaine action à faire : 3.1** — extraire `services/git_diff.rs` hors de `commit.rs`/`log.rs`
-(première étape de la couche service Rust).
+**Phase 3 : 3.1/3.3/3.4 terminées.** **3.2 (GitGraphBuilder) reportée (⏸️)** — c'est le seul
+morceau vraiment risqué qui reste : ~350 lignes d'algorithme de layout de colonnes/couleurs/edges
+dans `get_log` (`commands/log.rs`), sans suite de tests et sans moyen de vérifier visuellement le
+rendu du graphe depuis cet environnement. À faire dans une session où l'app peut être testée
+manuellement juste après (`pnpm dev`, vérifier le rendu du graphe avec plusieurs branches/merges).
+**Prochaine action à faire : 3.2** (si testable) ou **Phase 4** (bus d'événements frontend, pas de
+risque backend) en attendant.
 
 *(Mettre à jour cette ligne à chaque session : indiquer le numéro de la prochaine action non
 terminée. Si plusieurs actions sont en parallèle, lister les numéros en cours.)*
@@ -99,3 +105,4 @@ terminée. Si plusieurs actions sont en parallèle, lister les numéros en cours
 | 2026-07-02 | 2.1 | Créé `hooks/useGithubDeviceFlow.ts` (device code, polling, cleanup timer via `useRef`, `completeLoginWithToken` partagé OAuth/PAT) réutilisant le type `DeviceCodeResponse` déjà exporté par `lib/tauri.ts` plutôt que d'en redéfinir un. `GithubSection.tsx` passe de 562 à 465 lignes, ne garde que l'état UI (loginMethod, patToken, copied) et le rendu. Comportement préservé à l'identique (mêmes messages d'erreur, mêmes resets). Vérifié : `pnpm typecheck` passe. Pas de test manuel du flow OAuth dans l'app (Tauri, non testable en navigateur) — à vérifier manuellement par l'utilisateur. |
 | 2026-07-02 | 2.2, 2.3 | Créé `hooks/useFileTree.ts` (Composite générique `useFileTree<T extends FileTreeInputFile>`, exporte aussi `getSortedNodes`/`TreeNode`) depuis `CommitFileList.tsx` (682 → 467 lignes). En relisant `WipStagingPanel.tsx` pour l'action 2.3, constaté qu'il n'y avait pas de duplication réelle (son `wipBatches` est un regroupement plat, pas un arbre récursif) — 2.3 marquée ⏭️ et le plan (`13-...md`) corrigé en conséquence plutôt que de forcer une migration artificielle. Vérifié : `pnpm typecheck` passe. |
 | 2026-07-02 | 2.4 | Créé `stores/repoUI.store.ts` (openTabs, activeRepo, activeTab, activeDiffFile, activeLeftPanel, editingOid + `DASHBOARD_TAB`/`REWARDS_TAB`/`PULL_REQUESTS_TAB`) et `stores/repoData.store.ts` (savedRepos, discoveredRepos, repoCache, wipMessages, hiddenStashes), supprimé `repos.store.ts`, mis à jour les 22 fichiers consommateurs un par un (App.tsx, DashboardPage, RepoRow, ReadmePanel, RepoView, RepoSelector, Footer, StateTags, ActionToolbar, NewTabMenu, CloneRepoDialog, BranchContext, NotificationDropdown, TabBar, DiffViewCenter, RepositorySidebar, GraphRow, GitGraph, CommitDetailsPanel, CommitHeaderInfo, useKeyboardShortcuts, useNotificationWatcher). `removeRepo` (repoData) appelle `useRepoUIStore.getState().clearTabStateForRemovedRepo()` en cross-store pour préserver le comportement exact de nettoyage des onglets/sélection. Persistance : `repoData.store` garde la clé localStorage `git-manager-repos` (pas de perte des repos sauvegardés/pins/wip drafts existants) ; `repoUI.store` utilise une nouvelle clé `git-manager-repos-ui` (les onglets ouverts seront réinitialisés une fois après mise à jour — effet de bord mineur assumé, documenté ici). Vérifié : `grep` ne trouve plus aucune référence à `repos.store`/`useReposStore` dans tout le repo, `pnpm typecheck` passe. Pas de test manuel dans l'app (Tauri, non testable en navigateur) — **fortement recommandé de lancer `pnpm dev` et vérifier onglets/sélection de repo/diff/stash avant de merger**, vu l'ampleur du changement. |
+| 2026-07-02 | 3.1, 3.3, 3.4 | Créé `services/git_diff.rs` (diff_foreach_files/finalize/build_diff, remplace les corps dupliqués dans `commit.rs` et `log.rs` ; au passage, `commit.rs` gagne le statut `"typechange"` que seul `log.rs` gérait — comportement unifié). Créé `services/git_repo.rs` (`build_git_repo`, `open_repo` ne le réimplémente plus inline). Créé `services/git_commit.rs` (stage_file/unstage_file/discard_file_changes/stage_all/unstage_all/create_commit + `DiscardResult`/`CommitResult`), `commands/commit.rs` réduit à des wrappers `#[tauri::command]` minces. Tailles : `commit.rs` 605→264, `log.rs` 783→683, `repo.rs` 611→526. Vérifié : `cargo build` + `cargo clippy` passent sans nouvelle erreur/warning. **3.2 (GitGraphBuilder) reportée** — voir note dans "Étape courante" : c'est l'algorithme de layout du graphe, trop risqué à toucher sans pouvoir tester visuellement le rendu. |
