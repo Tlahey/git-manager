@@ -1,7 +1,6 @@
 use crate::error::AppError;
-use crate::models::{
-    GitCommit, GitDiff, GitDiffFile, GitDiffHunk, GitDiffLine, GitGraphEdge, GitSignature,
-};
+use crate::models::{GitCommit, GitDiff, GitDiffFile, GitGraphEdge, GitSignature};
+use crate::services::git_diff;
 use crate::utils::short_oid;
 use git2::{DiffOptions, Oid, Repository, Sort};
 use serde::{Deserialize, Serialize};
@@ -597,97 +596,6 @@ pub async fn get_log(
     Ok(nodes)
 }
 
-fn diff_foreach_files(
-    diff: &git2::Diff,
-    files: &RefCell<Vec<GitDiffFile>>,
-    is_untracked: bool,
-) -> Result<(), git2::Error> {
-    diff.foreach(
-        &mut |delta, _progress| {
-            let old_path = delta
-                .old_file()
-                .path()
-                .and_then(|p| p.to_str())
-                .unwrap_or("")
-                .to_string();
-            let new_path = delta
-                .new_file()
-                .path()
-                .and_then(|p| p.to_str())
-                .unwrap_or("")
-                .to_string();
-            let status = if is_untracked {
-                "untracked"
-            } else {
-                match delta.status() {
-                    git2::Delta::Added => "added",
-                    git2::Delta::Deleted => "deleted",
-                    git2::Delta::Renamed => "renamed",
-                    git2::Delta::Copied => "copied",
-                    git2::Delta::Typechange => "typechange",
-                    _ => "modified",
-                }
-            };
-            let is_binary =
-                delta.old_file().is_binary() || delta.new_file().is_binary();
-
-            files.borrow_mut().push(GitDiffFile {
-                old_path,
-                new_path,
-                status: status.to_string(),
-                additions: 0,
-                deletions: 0,
-                hunks: Vec::new(),
-                is_binary,
-            });
-            true
-        },
-        None,
-        Some(&mut |_delta, hunk| {
-            let header = std::str::from_utf8(hunk.header())
-                .unwrap_or("")
-                .trim_end_matches('\n')
-                .to_string();
-            if let Some(file) = files.borrow_mut().last_mut() {
-                file.hunks.push(GitDiffHunk {
-                    header,
-                    lines: Vec::new(),
-                });
-            }
-            true
-        }),
-        Some(&mut |_delta, _hunk, line| {
-            let content = std::str::from_utf8(line.content())
-                .unwrap_or("")
-                .trim_end_matches('\n')
-                .to_string();
-            let origin = match line.origin() {
-                '+' => "+",
-                '-' => "-",
-                ' ' => " ",
-                _ => "\\",
-            };
-            let mut f = files.borrow_mut();
-            if let Some(file) = f.last_mut() {
-                match origin {
-                    "+" => file.additions += 1,
-                    "-" => file.deletions += 1,
-                    _ => {}
-                }
-                if let Some(hunk) = file.hunks.last_mut() {
-                    hunk.lines.push(GitDiffLine {
-                        origin: origin.to_string(),
-                        content,
-                        old_lineno: line.old_lineno().map(|n| n as i32),
-                        new_lineno: line.new_lineno().map(|n| n as i32),
-                    });
-                }
-            }
-            true
-        }),
-    )
-}
-
 /// Retourne le diff complet d'un commit vs son premier parent
 #[tauri::command]
 pub async fn get_commit_diff(path: String, oid: String) -> Result<GitDiff, String> {
@@ -728,7 +636,7 @@ pub async fn get_commit_diff(path: String, oid: String) -> Result<GitDiff, Strin
 
     let files: RefCell<Vec<GitDiffFile>> = RefCell::new(Vec::new());
 
-    diff_foreach_files(&diff, &files, false).map_err(|e| AppError::Git(e).to_string())?;
+    git_diff::diff_foreach_files(&diff, &files, false).map_err(|e| AppError::Git(e).to_string())?;
 
     if is_stash && commit.parent_count() == 3 {
         if let Ok(untracked_parent) = commit.parent(2) {
@@ -738,21 +646,13 @@ pub async fn get_commit_diff(path: String, oid: String) -> Result<GitDiff, Strin
                     Some(&untracked_tree),
                     Some(&mut diff_opts),
                 ) {
-                    let _ = diff_foreach_files(&untracked_diff, &files, true);
+                    let _ = git_diff::diff_foreach_files(&untracked_diff, &files, true);
                 }
             }
         }
     }
 
-    let files_out = files.into_inner();
-    let total_additions = files_out.iter().map(|f| f.additions).sum();
-    let total_deletions = files_out.iter().map(|f| f.deletions).sum();
-
-    Ok(GitDiff {
-        files: files_out,
-        total_additions,
-        total_deletions,
-    })
+    Ok(git_diff::finalize(files.into_inner()))
 }
 
 /// Retourne le contenu brut d'un fichier à un commit donné
