@@ -11,3 +11,4 @@ pub mod submodule;
 pub mod themes;
 pub mod ssh;
 pub mod stash;
+pub mod undo;

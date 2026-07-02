@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { useReposStore } from '../../stores/repos.store'
+import { useUndoHistoryStore } from '../../stores/undoHistory.store'
 import {
   fetchRemote,
   pullBranch,
@@ -43,7 +44,7 @@ interface Notification {
   message: string
 }
 
-type LoadingKey = 'fetch' | 'pull' | 'push' | 'stash' | 'pop'
+type LoadingKey = 'fetch' | 'pull' | 'push' | 'stash' | 'pop' | 'undo' | 'redo'
 
 /** Barre d'actions principale (Partie 2) située sous les onglets. */
 export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProps) {
@@ -58,6 +59,8 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
     push: false,
     stash: false,
     pop: false,
+    undo: false,
+    redo: false,
   })
   const [notification, setNotification] = useState<Notification | null>(null)
   const wipMessages = useReposStore((s) => s.wipMessages)
@@ -76,6 +79,11 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
     : false
 
   const hasStashes = stashes ? stashes.length > 0 : false
+
+  const canUndo = useUndoHistoryStore((s) => (activeRepo ? s.canUndo(activeRepo) : false))
+  const canRedo = useUndoHistoryStore((s) => (activeRepo ? s.canRedo(activeRepo) : false))
+  const undoLabel = useUndoHistoryStore((s) => (activeRepo ? s.peekUndoLabel(activeRepo) : null))
+  const redoLabel = useUndoHistoryStore((s) => (activeRepo ? s.peekRedoLabel(activeRepo) : null))
 
   const handleOpenTerminal = async () => {
     if (!activeRepo) return
@@ -109,10 +117,15 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
     }
   }
 
+  function clearRedoForActiveRepo() {
+    if (activeRepo) useUndoHistoryStore.getState().clearRedo(activeRepo)
+  }
+
   const handleFetch = () =>
     runAction('fetch', async () => {
       await fetchRemote(activeRepo!)
       notify('success', t('remote.fetchSuccess'))
+      clearRedoForActiveRepo()
       invalidateRepo()
     })
 
@@ -127,6 +140,7 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
         }
       }
       notify('success', t('remote.fetchSuccess'))
+      clearRedoForActiveRepo()
       invalidateRepo()
     })
 
@@ -138,6 +152,7 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
       } else {
         notify('success', t('remote.pullSuccess', { commits: result.commitsMerged }))
       }
+      clearRedoForActiveRepo()
       invalidateRepo()
     })
 
@@ -145,6 +160,19 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
     runAction('push', async () => {
       await pushBranch(activeRepo!)
       notify('success', t('remote.pushSuccess'))
+      clearRedoForActiveRepo()
+      invalidateRepo()
+    })
+
+  const handleUndo = () =>
+    runAction('undo', async () => {
+      await useUndoHistoryStore.getState().undo(activeRepo!)
+      invalidateRepo()
+    })
+
+  const handleRedo = () =>
+    runAction('redo', async () => {
+      await useUndoHistoryStore.getState().redo(activeRepo!)
       invalidateRepo()
     })
 
@@ -202,14 +230,20 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
         <ToolbarButton
           icon={<Undo2 className="h-4 w-4 text-muted-foreground" />}
           label={t('toolbar.undo')}
-          title={t('toolbar.undoSoon')}
-          disabled
+          title={undoLabel ? t(undoLabel.key, undoLabel.params) : t('toolbar.undo')}
+          loading={loading.undo}
+          disabled={disabled || !canUndo}
+          onClick={handleUndo}
+          data-testid="toolbar-undo-button"
         />
         <ToolbarButton
           icon={<Redo2 className="h-4 w-4 text-muted-foreground" />}
           label={t('toolbar.redo')}
-          title={t('toolbar.redoSoon')}
-          disabled
+          title={redoLabel ? t(redoLabel.key, redoLabel.params) : t('toolbar.redo')}
+          loading={loading.redo}
+          disabled={disabled || !canRedo}
+          onClick={handleRedo}
+          data-testid="toolbar-redo-button"
         />
 
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />

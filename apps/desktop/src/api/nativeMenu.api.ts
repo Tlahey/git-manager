@@ -196,3 +196,34 @@ export async function showStashNativeContextMenu(opts: StashNativeMenuOptions): 
   }
 }
 
+export interface BranchNativeMenuOptions {
+  isHead: boolean
+  onDelete: () => void
+}
+
+/**
+ * Builds and pops up a native context menu for local branch actions.
+ */
+export async function showBranchNativeContextMenu(opts: BranchNativeMenuOptions): Promise<void> {
+  const { isHead, onDelete } = opts
+
+  try {
+    await loadIcons()
+  } catch (err) {
+    console.error('[nativeMenu] Error loading icons:', err)
+  }
+
+  const deleteItem = await makeItem({
+    text: 'Delete branch',
+    enabled: !isHead,
+    action: () => onDelete(),
+  })
+
+  try {
+    const menu = await Menu.new({ items: [deleteItem] })
+    await menu.popup()
+  } catch (err) {
+    console.error('[nativeMenu] Failed to create or popup native branch menu:', err)
+  }
+}
+

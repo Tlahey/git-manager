@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
 import { useReposStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../stores/repos.store'
+import { useUndoHistoryStore } from '../stores/undoHistory.store'
+import { queryClient } from '../lib/queryClient'
 
 interface UseKeyboardShortcutsProps {
   onOpenSettings: () => void
@@ -12,7 +14,7 @@ export function useKeyboardShortcuts({
   onCloseSettings,
   showSettings,
 }: UseKeyboardShortcutsProps) {
-  const { openTabs, activeTab, setActiveTab, closeTab } = useReposStore()
+  const { openTabs, activeTab, activeRepo, setActiveTab, closeTab } = useReposStore()
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -41,9 +43,30 @@ export function useKeyboardShortcuts({
         }
       }
 
+      // Undo / Redo : Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z — vérifié indépendamment de `isMod`
+      // ci-dessous (qui inclut Alt) pour ne pas déclencher sur Alt+Z.
+      const isCtrlOrCmd = navigator.userAgent.includes('Mac') ? e.metaKey : e.ctrlKey
+      if (isCtrlOrCmd && !e.altKey && e.key.toLowerCase() === 'z' && activeRepo) {
+        e.preventDefault()
+        const undoHistory = useUndoHistoryStore.getState()
+        const invalidate = () => {
+          queryClient.invalidateQueries({ queryKey: ['branches', activeRepo] })
+          queryClient.invalidateQueries({ queryKey: ['git-log', activeRepo] })
+          queryClient.invalidateQueries({ queryKey: ['git-status', activeRepo] })
+        }
+        if (e.shiftKey) {
+          if (undoHistory.canRedo(activeRepo)) {
+            undoHistory.redo(activeRepo).then(invalidate)
+          }
+        } else if (undoHistory.canUndo(activeRepo)) {
+          undoHistory.undo(activeRepo).then(invalidate)
+        }
+        return
+      }
+
       // Check modifier keys: Alt (Option on Mac) or Cmd/Ctrl
       const isMod = e.altKey || (navigator.userAgent.includes('Mac') ? e.metaKey : e.ctrlKey)
-      
+
       if (isMod) {
         // 2. Tab Navigation: 1 to 9
         if (e.key >= '1' && e.key <= '9') {
@@ -86,5 +109,14 @@ export function useKeyboardShortcuts({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [openTabs, activeTab, showSettings, setActiveTab, closeTab, onOpenSettings, onCloseSettings])
+  }, [
+    openTabs,
+    activeTab,
+    activeRepo,
+    showSettings,
+    setActiveTab,
+    closeTab,
+    onOpenSettings,
+    onCloseSettings,
+  ])
 }

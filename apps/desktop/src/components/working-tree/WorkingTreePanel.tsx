@@ -7,7 +7,8 @@ import { useState } from 'react'
 import { DiffViewer } from '../git-graph/DiffViewer'
 import { useFileDiff } from '../../hooks/useFileDiff'
 import { useGitStatus } from '../../hooks/useGitStatus'
-import { createCommit, stageAll, stageFile, unstageAll, unstageFile } from '../../lib/tauri'
+import { stageAll, stageFile, unstageAll, unstageFile } from '../../lib/tauri'
+import { apiCreateCommit } from '../../api/git.api'
 import { CommitMessageBox } from './CommitMessageBox'
 import { FileStatusItem } from './FileStatusItem'
 
@@ -91,11 +92,11 @@ export function WorkingTreePanel({ repoPath }: WorkingTreePanelProps) {
     if (!commitMessage.trim()) return
     setIsCommitting(true)
     try {
-      const sha = await createCommit(repoPath, commitMessage)
+      const result = await apiCreateCommit(repoPath, commitMessage)
       setCommitMessage('')
       setSelectedFile(null)
       invalidate()
-      showNotification('success', t('commit.success', { sha }))
+      showNotification('success', t('commit.success', { sha: result.shortOid }))
     } catch (err) {
       showNotification('error', String(err))
     } finally {

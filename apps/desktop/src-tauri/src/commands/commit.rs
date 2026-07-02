@@ -96,17 +96,45 @@ pub async fn unstage_file(path: String, file_path: String) -> Result<(), String>
 
 // ─── discard_file_changes ─────────────────────────────────────────────────────
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscardResult {
+    /// OID d'un blob orphelin contenant le contenu du fichier avant le discard (pour undo).
+    /// `None` si le fichier n'existait pas sur disque (ex. déjà vide) ou était un dossier.
+    pub snapshot_blob_oid: Option<String>,
+    pub was_untracked: bool,
+    pub was_staged: bool,
+}
+
 /// Discards all unstaged changes to a file in the working directory.
 #[tauri::command]
-pub async fn discard_file_changes(path: String, file_path: String) -> Result<(), String> {
+pub async fn discard_file_changes(path: String, file_path: String) -> Result<DiscardResult, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
 
     // Check if the file is untracked
     let status = repo.status_file(Path::new(&file_path)).ok();
     let is_untracked = status.map(|s| s.is_wt_new() || s.is_index_new()).unwrap_or(false);
+    let was_staged = status
+        .map(|s| {
+            s.is_index_new()
+                || s.is_index_modified()
+                || s.is_index_deleted()
+                || s.is_index_renamed()
+                || s.is_index_typechange()
+        })
+        .unwrap_or(false);
+
+    // Snapshot du contenu actuel (fichier régulier uniquement) avant toute modification,
+    // pour permettre un undo fidèle du discard.
+    let full_path = Path::new(&path).join(&file_path);
+    let snapshot_blob_oid = if full_path.is_file() {
+        let bytes = std::fs::read(&full_path).map_err(|e| e.to_string())?;
+        Some(repo.blob(&bytes).map_err(AppError::Git)?.to_string())
+    } else {
+        None
+    };
 
     if is_untracked {
-        let full_path = Path::new(&path).join(&file_path);
         if full_path.exists() {
             if full_path.is_dir() {
                 std::fs::remove_dir_all(&full_path).map_err(|e| e.to_string())?;
@@ -118,7 +146,11 @@ pub async fn discard_file_changes(path: String, file_path: String) -> Result<(),
         let mut index = repo.index().map_err(AppError::Git)?;
         let _ = index.remove_path(Path::new(&file_path));
         let _ = index.write();
-        return Ok(());
+        return Ok(DiscardResult {
+            snapshot_blob_oid,
+            was_untracked: true,
+            was_staged,
+        });
     }
 
     // Otherwise, unstage it first if it is staged
@@ -141,7 +173,11 @@ pub async fn discard_file_changes(path: String, file_path: String) -> Result<(),
     repo.checkout_index(None, Some(&mut checkout_opts))
         .map_err(|e| e.to_string())?;
 
-    Ok(())
+    Ok(DiscardResult {
+        snapshot_blob_oid,
+        was_untracked: false,
+        was_staged,
+    })
 }
 
 
@@ -223,14 +259,21 @@ pub async fn unstage_all(path: String) -> Result<(), String> {
 
 // ─── create_commit ────────────────────────────────────────────────────────────
 
-/// Crée un commit avec les fichiers staged. Retourne le short OID.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitResult {
+    pub oid: String,
+    pub short_oid: String,
+}
+
+/// Crée un commit avec les fichiers staged. Retourne l'OID complet et le short OID.
 #[tauri::command]
 pub async fn create_commit(
     path: String,
     message: String,
     amend: Option<bool>,
     amend_oid: Option<String>,
-) -> Result<String, String> {
+) -> Result<CommitResult, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
 
     // Auteur depuis la config git locale
@@ -304,9 +347,12 @@ pub async fn create_commit(
             .map_err(AppError::Git)?
     };
 
-    // Retourner le short SHA (7 caractères)
     let full_sha = oid.to_string();
-    Ok(full_sha[..7.min(full_sha.len())].to_string())
+    let short_sha = full_sha[..7.min(full_sha.len())].to_string();
+    Ok(CommitResult {
+        oid: full_sha,
+        short_oid: short_sha,
+    })
 }
 
 // ─── get_staged_diff ──────────────────────────────────────────────────────────

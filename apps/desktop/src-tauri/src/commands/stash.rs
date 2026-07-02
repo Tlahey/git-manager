@@ -93,6 +93,35 @@ pub async fn stash_list(path: String) -> Result<Vec<GitStash>, String> {
     Ok(stashes)
 }
 
+/// Re-stores a commit as a new stash entry (top of stack) — used to undo a stash
+/// pop/drop by recreating the entry from its previously-captured commit OID.
+#[tauri::command]
+pub async fn stash_store(path: String, commit_oid: String, message: String) -> Result<(), String> {
+    run_stash_store(&path, &commit_oid, &message)
+}
+
+fn run_stash_store(path: &str, commit_oid: &str, message: &str) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    let mut cmd = std::process::Command::new("cmd");
+    #[cfg(target_os = "windows")]
+    cmd.args(&["/C", "git", "stash", "store", "-m", message, commit_oid]);
+
+    #[cfg(not(target_os = "windows"))]
+    let mut cmd = std::process::Command::new("git");
+    #[cfg(not(target_os = "windows"))]
+    cmd.args(&["stash", "store", "-m", message, commit_oid]);
+
+    cmd.current_dir(path);
+
+    let output = cmd.output().map_err(|e| format!("Failed to run git stash store: {}", e))?;
+    if !output.status.success() {
+        let err_msg = String::from_utf8_lossy(&output.stderr).into_owned();
+        return Err(format!("git stash store failed: {}", err_msg));
+    }
+
+    Ok(())
+}
+
 /// Modifies the message of a stash at the given index
 #[tauri::command]
 pub async fn edit_stash_message(
@@ -138,23 +167,7 @@ pub async fn edit_stash_message(
             original_msg
         };
 
-        #[cfg(target_os = "windows")]
-        let mut cmd = std::process::Command::new("cmd");
-        #[cfg(target_os = "windows")]
-        cmd.args(&["/C", "git", "stash", "store", "-m", msg_to_store, &commit_oid.to_string()]);
-
-        #[cfg(not(target_os = "windows"))]
-        let mut cmd = std::process::Command::new("git");
-        #[cfg(not(target_os = "windows"))]
-        cmd.args(&["stash", "store", "-m", msg_to_store, &commit_oid.to_string()]);
-
-        cmd.current_dir(&path);
-
-        let output = cmd.output().map_err(|e| format!("Failed to run git stash store: {}", e))?;
-        if !output.status.success() {
-            let err_msg = String::from_utf8_lossy(&output.stderr).into_owned();
-            return Err(format!("git stash store failed: {}", err_msg));
-        }
+        run_stash_store(&path, &commit_oid.to_string(), msg_to_store)?;
     }
 
     Ok(())

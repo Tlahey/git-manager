@@ -9,7 +9,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@git-manager/ui'
-import { getCommitsBetween, resetToCommit } from '../../lib/tauri'
+import { getCommitsBetween } from '../../lib/tauri'
+import { apiResetToCommit } from '../../api/git.api'
 
 type ResetMode = 'soft' | 'mixed' | 'hard'
 
@@ -59,7 +60,7 @@ export function ResetDialog({
     setIsLoading(true)
     setError(null)
     try {
-      await resetToCommit(repoPath, targetOid, mode)
+      await apiResetToCommit(repoPath, targetOid, mode)
       queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
       queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
       onSuccess()
