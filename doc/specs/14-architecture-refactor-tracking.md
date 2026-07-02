@@ -73,8 +73,8 @@ doit toujours refléter l'état réel du code, pas l'intention.
 
 | # | Action | Fichier(s) | Dépend de | Statut |
 |---|---|---|---|---|
-| 5.1 | Définir l'interface `DiffRenderStrategy` (texte split-view, binaire, image) | nouveau module côté `components/git-graph/` | Phase 2–4 stabilisées | ⬜ |
-| 5.2 | Refactorer `DiffViewCenter.tsx` pour sélectionner/déléguer à la stratégie au lieu de `if/else` empilés | `components/git-graph/DiffViewCenter.tsx` | 5.1 | ⬜ |
+| 5.1 | ~~Définir l'interface `DiffRenderStrategy`~~ — **re-scopé, pas applicable** : en relisant `DiffViewCenter.tsx`, son seul branchement par type de contenu est un ternaire à 2 branches (`isBinary ? placeholder : MonacoDiffViewer`), pas un `if/else` empilé. Aucun cas "image" nulle part dans le code. "Split-view" est un prop (`viewMode`) de `MonacoDiffViewer`, pas une stratégie séparée. Une interface Strategy pour un ternaire de 5 lignes serait de la sur-ingénierie. | nouveau module côté `components/git-graph/` | Phase 2–4 stabilisées | ⏭️ |
+| 5.2 | ~~Refactorer `DiffViewCenter.tsx` pour déléguer à la stratégie~~ — même raison, rien à déléguer. La vraie taille du fichier (427 lignes) vient du header/toolbar (tabs, blame/history, navigation, stage/discard), pas du rendu de diff — un futur découpage en sous-composant serait une action R1 différente, hors scope de ce plan tel qu'écrit. | `components/git-graph/DiffViewCenter.tsx` | 5.1 | ⏭️ |
 
 ---
 
@@ -87,8 +87,16 @@ dans `get_log` (`commands/log.rs`), sans suite de tests et sans moyen de vérifi
 rendu du graphe depuis cet environnement. À faire dans une session où l'app peut être testée
 manuellement juste après (`pnpm dev`, vérifier le rendu du graphe avec plusieurs branches/merges).
 **Phase 4 : 4.1/4.2/4.3 terminées, 4.4 non applicable pour l'instant (⏭️).**
-**Prochaine action à faire : 3.2** (si testable) ou **Phase 5** (Strategy pour `DiffViewCenter.tsx`)
-en attendant.
+**Phase 5 : 5.1/5.2 non applicables (⏭️)** — pas de Strategy à extraire, voir notes ci-dessus et
+dans `13-architecture-refactor-plan.md`.
+
+**Le plan est maintenant entièrement traité** à l'exception de **3.2** (extraction de
+`GitGraphBuilder` hors de `get_log`), volontairement laissée en pause (⏸️) — c'est le seul
+morceau qui reste, et le seul vraiment risqué : ~350 lignes d'algorithme de layout de
+colonnes/couleurs/edges, sans suite de tests, sans moyen de vérifier visuellement le rendu du
+graphe depuis cet environnement. **Prochaine action à faire : 3.2**, dans une session où l'app
+peut être testée manuellement juste après (`pnpm dev`, vérifier le rendu du graphe avec plusieurs
+branches/merges/stashes).
 
 *(Mettre à jour cette ligne à chaque session : indiquer le numéro de la prochaine action non
 terminée. Si plusieurs actions sont en parallèle, lister les numéros en cours.)*
@@ -108,3 +116,4 @@ terminée. Si plusieurs actions sont en parallèle, lister les numéros en cours
 | 2026-07-02 | 2.4 | Créé `stores/repoUI.store.ts` (openTabs, activeRepo, activeTab, activeDiffFile, activeLeftPanel, editingOid + `DASHBOARD_TAB`/`REWARDS_TAB`/`PULL_REQUESTS_TAB`) et `stores/repoData.store.ts` (savedRepos, discoveredRepos, repoCache, wipMessages, hiddenStashes), supprimé `repos.store.ts`, mis à jour les 22 fichiers consommateurs un par un (App.tsx, DashboardPage, RepoRow, ReadmePanel, RepoView, RepoSelector, Footer, StateTags, ActionToolbar, NewTabMenu, CloneRepoDialog, BranchContext, NotificationDropdown, TabBar, DiffViewCenter, RepositorySidebar, GraphRow, GitGraph, CommitDetailsPanel, CommitHeaderInfo, useKeyboardShortcuts, useNotificationWatcher). `removeRepo` (repoData) appelle `useRepoUIStore.getState().clearTabStateForRemovedRepo()` en cross-store pour préserver le comportement exact de nettoyage des onglets/sélection. Persistance : `repoData.store` garde la clé localStorage `git-manager-repos` (pas de perte des repos sauvegardés/pins/wip drafts existants) ; `repoUI.store` utilise une nouvelle clé `git-manager-repos-ui` (les onglets ouverts seront réinitialisés une fois après mise à jour — effet de bord mineur assumé, documenté ici). Vérifié : `grep` ne trouve plus aucune référence à `repos.store`/`useReposStore` dans tout le repo, `pnpm typecheck` passe. Pas de test manuel dans l'app (Tauri, non testable en navigateur) — **fortement recommandé de lancer `pnpm dev` et vérifier onglets/sélection de repo/diff/stash avant de merger**, vu l'ampleur du changement. |
 | 2026-07-02 | 3.1, 3.3, 3.4 | Créé `services/git_diff.rs` (diff_foreach_files/finalize/build_diff, remplace les corps dupliqués dans `commit.rs` et `log.rs` ; au passage, `commit.rs` gagne le statut `"typechange"` que seul `log.rs` gérait — comportement unifié). Créé `services/git_repo.rs` (`build_git_repo`, `open_repo` ne le réimplémente plus inline). Créé `services/git_commit.rs` (stage_file/unstage_file/discard_file_changes/stage_all/unstage_all/create_commit + `DiscardResult`/`CommitResult`), `commands/commit.rs` réduit à des wrappers `#[tauri::command]` minces. Tailles : `commit.rs` 605→264, `log.rs` 783→683, `repo.rs` 611→526. Vérifié : `cargo build` + `cargo clippy` passent sans nouvelle erreur/warning. **3.2 (GitGraphBuilder) reportée** — voir note dans "Étape courante" : c'est l'algorithme de layout du graphe, trop risqué à toucher sans pouvoir tester visuellement le rendu. |
 | 2026-07-02 | 4.1, 4.2, 4.3 | Renommé `lib/gameObserver.ts` → `lib/appEventBus.ts` (3 consommateurs mis à jour : `App.tsx`, `PullRequestsPage.tsx`, `game.store.ts`), créé `api/service.ts` (`callCommand`). En lisant `api/git.api.ts` avant de le migrer, constaté que la plupart de ses fonctions pilotent aussi l'historique undo/redo avec une logique différente par action (pas un simple "invoke + notify" uniforme) — forcer toute la fonction à travers `callCommand` aurait été une mauvaise abstraction. Resserré le scope : seuls les 8 sites qui notifiaient déjà `gameObserver` (stage/unstage/stageAll/unstageAll/commit/discard/fixup/autosquash) migrés vers `callCommand`, en ne wrappant que l'appel `invoke` lui-même. 4.4 marquée ⏭️ pour la même raison que 2.3 : forcer les autres `api/*.api.ts` (qui ne notifient rien) à travers `callCommand` aurait été de l'indirection sans bénéfice — plan (`13-...md`) corrigé en conséquence. Vérifié : `pnpm typecheck` passe, `cargo build` intact (aucun fichier Rust touché). |
+| 2026-07-02 | 5.1, 5.2 | Relu `DiffViewCenter.tsx` avant d'y extraire un `DiffRenderStrategy` — l'hypothèse de l'audit ne tenait pas : un seul ternaire binaire/texte, pas d'`if/else` empilés, pas de cas "image", "split-view" est un prop de `MonacoDiffViewer` et non une stratégie séparée. Pas de Strategy à extraire pour un ternaire de 5 lignes (sur-ingénierie). 5.1/5.2 marquées ⏭️, plan (`13-...md`) corrigé. **Le plan est désormais entièrement traité, seule l'action 3.2 reste en pause (⏸️).** |
