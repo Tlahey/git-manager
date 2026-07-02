@@ -1,5 +1,6 @@
 use crate::error::AppError;
 use crate::models::GitStash;
+use crate::utils::get_git_signature;
 use git2::{Repository, StashFlags};
 
 /// Creates a git stash
@@ -11,15 +12,7 @@ pub async fn stash_push(
 ) -> Result<(), String> {
     let mut repo = Repository::open(&path).map_err(AppError::Git)?;
 
-    let config = repo.config().map_err(AppError::Git)?;
-    let author_name = config
-        .get_string("user.name")
-        .unwrap_or_else(|_| "Unknown".to_string());
-    let author_email = config
-        .get_string("user.email")
-        .unwrap_or_else(|_| "unknown@unknown.com".to_string());
-
-    let sig = git2::Signature::now(&author_name, &author_email).map_err(AppError::Git)?;
+    let sig = get_git_signature(&repo)?;
 
     let mut flags = StashFlags::DEFAULT;
     if include_untracked.unwrap_or(false) {

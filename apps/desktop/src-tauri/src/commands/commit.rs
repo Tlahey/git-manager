@@ -1,47 +1,11 @@
 use crate::error::AppError;
+use crate::models::{GitDiff, GitDiffFile, GitDiffHunk, GitDiffLine};
+use crate::utils::{get_git_signature, short_oid};
 use git2::{DiffOptions, Oid, Repository};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
-
-// ─── Structs locales (miroir des types TypeScript GitDiff / GitDiffFile) ──────
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-struct DiffLine {
-    origin: String,
-    content: String,
-    old_lineno: Option<i32>,
-    new_lineno: Option<i32>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-struct DiffHunk {
-    header: String,
-    lines: Vec<DiffLine>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct GitDiffFile {
-    pub old_path: String,
-    pub new_path: String,
-    pub status: String,
-    pub additions: usize,
-    pub deletions: usize,
-    pub hunks: Vec<DiffHunk>,
-    pub is_binary: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct GitDiff {
-    pub files: Vec<GitDiffFile>,
-    pub total_additions: usize,
-    pub total_deletions: usize,
-}
 
 // ─── stage_file ───────────────────────────────────────────────────────────────
 
@@ -277,15 +241,7 @@ pub async fn create_commit(
     let repo = Repository::open(&path).map_err(AppError::Git)?;
 
     // Auteur depuis la config git locale
-    let config = repo.config().map_err(AppError::Git)?;
-    let author_name = config
-        .get_string("user.name")
-        .unwrap_or_else(|_| "Unknown".to_string());
-    let author_email = config
-        .get_string("user.email")
-        .unwrap_or_else(|_| "unknown@unknown.com".to_string());
-
-    let sig = git2::Signature::now(&author_name, &author_email).map_err(AppError::Git)?;
+    let sig = get_git_signature(&repo)?;
 
     let mut index = repo.index().map_err(AppError::Git)?;
     let tree_oid = index.write_tree().map_err(AppError::Git)?;
@@ -348,7 +304,7 @@ pub async fn create_commit(
     };
 
     let full_sha = oid.to_string();
-    let short_sha = full_sha[..7.min(full_sha.len())].to_string();
+    let short_sha = short_oid(&full_sha);
     Ok(CommitResult {
         oid: full_sha,
         short_oid: short_sha,
@@ -489,7 +445,7 @@ fn build_diff(diff: git2::Diff) -> Result<GitDiff, String> {
                 .trim_end_matches('\n')
                 .to_string();
             if let Some(file) = files.borrow_mut().last_mut() {
-                file.hunks.push(DiffHunk {
+                file.hunks.push(GitDiffHunk {
                     header,
                     lines: Vec::new(),
                 });
@@ -515,7 +471,7 @@ fn build_diff(diff: git2::Diff) -> Result<GitDiff, String> {
                     _ => {}
                 }
                 if let Some(hunk) = file.hunks.last_mut() {
-                    hunk.lines.push(DiffLine {
+                    hunk.lines.push(GitDiffLine {
                         origin: origin.to_string(),
                         content,
                         old_lineno: line.old_lineno().map(|n| n as i32),

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { invoke } from '@tauri-apps/api/core'
+import { apiGetTerminalCommands } from '../api/shell.api'
 import { gameObserver } from '../lib/gameObserver'
 import JSON_ACHIEVEMENTS from './achievements.json'
 
@@ -225,7 +225,7 @@ export const useGameStore = create<GameState>()(
         if (!get().rewardsEnabled) return
         try {
           // Fetch zsh/bash history from Tauri backend
-          const commands = await invoke<string[]>('get_terminal_commands')
+          const commands = await apiGetTerminalCommands()
           if (!commands || commands.length === 0) return
 
           const checked = get().historyChecked

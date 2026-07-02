@@ -179,6 +179,47 @@ pub struct OllamaStatus {
     pub version: Option<String>,
 }
 
+// ─── Diff ─────────────────────────────────────────────────────────────────────
+// Miroir exact de GitDiff / GitDiffFile / GitDiffHunk / GitDiffLine dans
+// packages/git-types. Source unique — ne pas redéfinir ces structs localement
+// dans commands/commit.rs ou commands/log.rs.
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GitDiffLine {
+    pub origin: String,
+    pub content: String,
+    pub old_lineno: Option<i32>,
+    pub new_lineno: Option<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GitDiffHunk {
+    pub header: String,
+    pub lines: Vec<GitDiffLine>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GitDiffFile {
+    pub old_path: String,
+    pub new_path: String,
+    pub status: String,
+    pub additions: usize,
+    pub deletions: usize,
+    pub hunks: Vec<GitDiffHunk>,
+    pub is_binary: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GitDiff {
+    pub files: Vec<GitDiffFile>,
+    pub total_additions: usize,
+    pub total_deletions: usize,
+}
+
 // ─── Repo Summary ─────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

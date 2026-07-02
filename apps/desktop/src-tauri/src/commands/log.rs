@@ -1,5 +1,8 @@
 use crate::error::AppError;
-use crate::models::{GitCommit, GitGraphEdge, GitSignature};
+use crate::models::{
+    GitCommit, GitDiff, GitDiffFile, GitDiffHunk, GitDiffLine, GitGraphEdge, GitSignature,
+};
+use crate::utils::short_oid;
 use git2::{DiffOptions, Oid, Repository, Sort};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
@@ -31,42 +34,6 @@ pub struct LogGraphNode {
     pub color: String,
     pub connections: Vec<GitGraphEdge>,
     pub refs: Vec<LogRef>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct DiffLine {
-    origin: String,
-    content: String,
-    old_lineno: Option<i32>,
-    new_lineno: Option<i32>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct DiffHunk {
-    header: String,
-    lines: Vec<DiffLine>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct DiffFile {
-    old_path: String,
-    new_path: String,
-    status: String,
-    additions: usize,
-    deletions: usize,
-    hunks: Vec<DiffHunk>,
-    is_binary: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct CommitDiff {
-    files: Vec<DiffFile>,
-    total_additions: usize,
-    total_deletions: usize,
 }
 
 // ─── Commandes Tauri ──────────────────────────────────────────────────────────
@@ -360,7 +327,7 @@ pub async fn get_log(
     for oid in &oids {
         let commit = repo.find_commit(*oid).map_err(|e| AppError::Git(e))?;
         let oid_str = oid.to_string();
-        let short_oid = oid_str[..7.min(oid_str.len())].to_string();
+        let short_oid_str = short_oid(&oid_str);
         let mut parent_oids: Vec<String> = commit.parent_ids().map(|p| p.to_string()).collect();
         if stash_oids.contains(oid) {
             if !parent_oids.is_empty() {
@@ -560,7 +527,7 @@ pub async fn get_log(
 
         let git_commit = GitCommit {
             oid: oid_str.clone(),
-            short_oid,
+            short_oid: short_oid_str,
             message: raw_message,
             subject,
             body,
@@ -632,7 +599,7 @@ pub async fn get_log(
 
 fn diff_foreach_files(
     diff: &git2::Diff,
-    files: &RefCell<Vec<DiffFile>>,
+    files: &RefCell<Vec<GitDiffFile>>,
     is_untracked: bool,
 ) -> Result<(), git2::Error> {
     diff.foreach(
@@ -664,7 +631,7 @@ fn diff_foreach_files(
             let is_binary =
                 delta.old_file().is_binary() || delta.new_file().is_binary();
 
-            files.borrow_mut().push(DiffFile {
+            files.borrow_mut().push(GitDiffFile {
                 old_path,
                 new_path,
                 status: status.to_string(),
@@ -682,7 +649,7 @@ fn diff_foreach_files(
                 .trim_end_matches('\n')
                 .to_string();
             if let Some(file) = files.borrow_mut().last_mut() {
-                file.hunks.push(DiffHunk {
+                file.hunks.push(GitDiffHunk {
                     header,
                     lines: Vec::new(),
                 });
@@ -708,7 +675,7 @@ fn diff_foreach_files(
                     _ => {}
                 }
                 if let Some(hunk) = file.hunks.last_mut() {
-                    hunk.lines.push(DiffLine {
+                    hunk.lines.push(GitDiffLine {
                         origin: origin.to_string(),
                         content,
                         old_lineno: line.old_lineno().map(|n| n as i32),
@@ -723,7 +690,7 @@ fn diff_foreach_files(
 
 /// Retourne le diff complet d'un commit vs son premier parent
 #[tauri::command]
-pub async fn get_commit_diff(path: String, oid: String) -> Result<CommitDiff, String> {
+pub async fn get_commit_diff(path: String, oid: String) -> Result<GitDiff, String> {
     let mut repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
     let commit_oid = Oid::from_str(&oid).map_err(|e| AppError::Git(e))?;
 
@@ -759,7 +726,7 @@ pub async fn get_commit_diff(path: String, oid: String) -> Result<CommitDiff, St
         )
         .map_err(|e| AppError::Git(e))?;
 
-    let files: RefCell<Vec<DiffFile>> = RefCell::new(Vec::new());
+    let files: RefCell<Vec<GitDiffFile>> = RefCell::new(Vec::new());
 
     diff_foreach_files(&diff, &files, false).map_err(|e| AppError::Git(e).to_string())?;
 
@@ -781,7 +748,7 @@ pub async fn get_commit_diff(path: String, oid: String) -> Result<CommitDiff, St
     let total_additions = files_out.iter().map(|f| f.additions).sum();
     let total_deletions = files_out.iter().map(|f| f.deletions).sum();
 
-    Ok(CommitDiff {
+    Ok(GitDiff {
         files: files_out,
         total_additions,
         total_deletions,

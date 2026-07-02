@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { getTerminalCommands } from '../lib/tauri'
 
 export async function apiOpenUrl(url: string): Promise<void> {
   try {
@@ -16,4 +17,8 @@ export async function apiOpenTerminal(path: string, terminal: string, customComm
   } catch (err) {
     console.error('Failed to open terminal:', err)
   }
+}
+
+export async function apiGetTerminalCommands(): Promise<string[]> {
+  return getTerminalCommands()
 }

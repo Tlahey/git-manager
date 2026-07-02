@@ -2,6 +2,7 @@ mod commands;
 mod error;
 mod models;
 mod state;
+mod utils;
 
 use commands::branch::{checkout_branch, delete_branch, get_branches, get_tags};
 use commands::github::{github_device_code, github_get_user, github_list_repos, github_poll_token};

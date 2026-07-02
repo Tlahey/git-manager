@@ -350,6 +350,9 @@ export const openInEditor = (path: string, editor: string, customCommand?: strin
 export const getRepoReadme = (path: string) =>
   invoke<string>('get_repo_readme', { path })
 
+export const getTerminalCommands = () =>
+  invoke<string[]>('get_terminal_commands')
+
 // ─── SSH ─────────────────────────────────────────────────────────────────────
 
 export const generateSshKey = (

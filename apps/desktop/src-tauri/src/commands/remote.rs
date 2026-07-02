@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::utils::short_oid;
 use git2::{Cred, FetchOptions, PushOptions, RemoteCallbacks, Repository};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
@@ -63,7 +64,7 @@ pub async fn fetch_remote(path: String, remote: Option<String>) -> Result<FetchR
     callbacks.update_tips(move |refname, old_oid, new_oid| {
         if old_oid != new_oid {
             let short_new = new_oid.to_string();
-            let short_new = &short_new[..7.min(short_new.len())];
+            let short_new = short_oid(&short_new);
             updated_refs_clone
                 .lock()
                 .unwrap()
