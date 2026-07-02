@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './lib/queryClient'
 import { DashboardPage } from './app/dashboard/DashboardPage'
-import { useReposStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from './stores/repos.store'
+import { useRepoUIStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from './stores/repoUI.store'
 import { RewardsTab } from './app/pull-requests/components/RewardsTab'
 import { RepoView } from './app/repo/RepoView'
 import { PullRequestsPage } from './app/pull-requests/PullRequestsPage'
@@ -19,7 +19,7 @@ import { TrophyToast } from './components/trophy/TrophyToast'
 import { gameObserver } from './lib/gameObserver'
 
 export default function App() {
-  const activeTab = useReposStore((s) => s.activeTab)
+  const activeTab = useRepoUIStore((s) => s.activeTab)
   const [showSettings, setShowSettings] = useState(false)
   const [settingsSection, setSettingsSection] = useState<'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization' | 'rewards'>('general')
 

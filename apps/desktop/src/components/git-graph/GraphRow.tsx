@@ -7,7 +7,8 @@ import { RefLabelGroup } from './RefLabelGroup'
 import type { ColumnKey, ResolvedColumn } from './columns'
 import { getAvatarUrl } from '../../lib/avatar'
 import { useSettingsStore } from '../../stores/settings.store'
-import { useReposStore } from '../../stores/repos.store'
+import { useRepoDataStore } from '../../stores/repoData.store'
+import { useRepoUIStore } from '../../stores/repoUI.store'
 import { MoreVertical, FileText, Archive } from 'lucide-react'
 import { useGitStashes } from '../../hooks/useGitStashes'
 
@@ -221,9 +222,9 @@ function WipCommitInput({
   totalChanges: number
   onCommit?: (message: string) => void
 }) {
-  const activeRepo = useReposStore((s) => s.activeRepo)
-  const wipMessages = useReposStore((s) => s.wipMessages)
-  const setWipMessage = useReposStore((s) => s.setWipMessage)
+  const activeRepo = useRepoUIStore((s) => s.activeRepo)
+  const wipMessages = useRepoDataStore((s) => s.wipMessages)
+  const setWipMessage = useRepoDataStore((s) => s.setWipMessage)
 
   const value = activeRepo ? wipMessages[activeRepo] || '' : ''
 
@@ -282,7 +283,7 @@ function CellContent({
   isFirst?: boolean
 }) {
   const { commit } = node
-  const activeRepo = useReposStore((s) => s.activeRepo)
+  const activeRepo = useRepoUIStore((s) => s.activeRepo)
   const { data: stashes } = useGitStashes(activeRepo)
   const isStashCommit = node.refs.some((r) => r.type === 'stash')
   const stash = isStashCommit ? stashes?.find((s) => s.commitOid === commit.oid) : null

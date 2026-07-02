@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { Badge } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
-import { useReposStore } from '../../stores/repos.store'
+import { useRepoDataStore } from '../../stores/repoData.store'
+import { useRepoUIStore } from '../../stores/repoUI.store'
 import { getRebaseState } from '../../lib/tauri'
 
 /**
@@ -10,7 +11,8 @@ import { getRebaseState } from '../../lib/tauri'
  */
 export function StateTags() {
   const { t } = useTranslation('git')
-  const { activeRepo, repoCache } = useReposStore()
+  const { activeRepo } = useRepoUIStore()
+  const { repoCache } = useRepoDataStore()
   const repo = activeRepo ? repoCache[activeRepo] : undefined
 
   const { data: rebaseState } = useQuery({

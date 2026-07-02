@@ -16,7 +16,7 @@ import { apiCreateCommit, apiUpdateStashMessage } from '../../../api/git.api'
 import { apiOpenUrl } from '../../../api/shell.api'
 import type { GitGraphNode, GitRef } from '@git-manager/git-types'
 import { useGitStashes } from '../../../hooks/useGitStashes'
-import { useReposStore } from '../../../stores/repos.store'
+import { useRepoUIStore } from '../../../stores/repoUI.store'
 
 
 function formatDate(timestamp: number): string {
@@ -69,7 +69,7 @@ export function CommitHeaderInfo({
     return stashes?.find((s) => s.commitOid === commit?.oid)
   }, [isStash, stashes, commit?.oid])
 
-  const { editingOid, setEditingOid } = useReposStore()
+  const { editingOid, setEditingOid } = useRepoUIStore()
 
   useEffect(() => {
     if (editingOid && editingOid === commit?.oid) {

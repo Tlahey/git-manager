@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useReposStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../stores/repos.store'
+import { useRepoUIStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../stores/repoUI.store'
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
 import { queryClient } from '../lib/queryClient'
 
@@ -14,7 +14,7 @@ export function useKeyboardShortcuts({
   onCloseSettings,
   showSettings,
 }: UseKeyboardShortcutsProps) {
-  const { openTabs, activeTab, activeRepo, setActiveTab, closeTab } = useReposStore()
+  const { openTabs, activeTab, activeRepo, setActiveTab, closeTab } = useRepoUIStore()
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {

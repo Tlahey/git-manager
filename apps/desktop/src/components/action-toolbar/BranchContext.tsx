@@ -4,7 +4,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronDown, GitBranch, Search } from 'lucide-react'
 import { Spinner } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
-import { useReposStore } from '../../stores/repos.store'
+import { useRepoDataStore } from '../../stores/repoData.store'
+import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useBranches } from '../../hooks/useBranches'
 import { openRepo } from '../../lib/tauri'
 import { apiCheckoutBranch } from '../../api/git.api'
@@ -14,7 +15,8 @@ import { useAnchoredMenu } from './useAnchoredMenu'
 export function BranchContext() {
   const { t } = useTranslation('git')
   const queryClient = useQueryClient()
-  const { activeRepo, repoCache, setRepoCache } = useReposStore()
+  const { activeRepo } = useRepoUIStore()
+  const { repoCache, setRepoCache } = useRepoDataStore()
   const { open, setOpen, pos, containerRef, triggerRef, menuRef } = useAnchoredMenu()
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState<string | null>(null)

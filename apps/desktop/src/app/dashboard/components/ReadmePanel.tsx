@@ -4,7 +4,7 @@ import { BookOpen, X, RefreshCw, FileText, Github, Gitlab } from 'lucide-react'
 import { Button } from '@git-manager/ui'
 import { Markdown } from '../../../components/Markdown'
 import { useRepoReadme } from '../../../hooks/useRepoReadme'
-import { useReposStore } from '../../../stores/repos.store'
+import { useRepoDataStore } from '../../../stores/repoData.store'
 import { apiOpenUrl } from '../../../api/shell.api'
 
 interface ReadmePanelProps {
@@ -19,7 +19,7 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
 
   const name = path.split('/').pop() || path
 
-  const repoCache = useReposStore((s) => s.repoCache)
+  const repoCache = useRepoDataStore((s) => s.repoCache)
   const cachedRepo = repoCache[path]
 
   const remoteUrl = useMemo(() => {

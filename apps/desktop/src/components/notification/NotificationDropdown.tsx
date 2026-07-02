@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNotificationStore, type AppNotification } from '../../stores/notification.store'
-import { useReposStore, PULL_REQUESTS_TAB } from '../../stores/repos.store'
+import { useRepoUIStore, PULL_REQUESTS_TAB } from '../../stores/repoUI.store'
 import { useLaunchpadStore } from '../../stores/launchpad.store'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useTranslation } from '@git-manager/i18n'
@@ -35,7 +35,7 @@ export function NotificationDropdown() {
     simulateChange,
   } = useNotificationStore()
 
-  const { setActiveTab: setMainActiveTab } = useReposStore()
+  const { setActiveTab: setMainActiveTab } = useRepoUIStore()
   const { setActiveTab: setLaunchpadActiveTab } = useLaunchpadStore()
   const githubSettings = useSettingsStore((s) => s.settings.github)
   

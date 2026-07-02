@@ -23,7 +23,7 @@ import { useFileRawContents } from '../../hooks/useFileRawContents'
 import { stageFile, unstageFile } from '../../lib/tauri'
 import { apiDiscardFileChanges } from '../../api/git.api'
 import { MonacoDiffViewer, type MonacoDiffViewerRef } from './MonacoDiffViewer'
-import { useReposStore } from '../../stores/repos.store'
+import { useRepoUIStore } from '../../stores/repoUI.store'
 
 interface DiffViewCenterProps {
   repoPath: string
@@ -52,8 +52,8 @@ export function DiffViewCenter({
   const [ignoreWhitespace, setIgnoreWhitespace] = useState(false)
   const diffViewerRef = useRef<MonacoDiffViewerRef>(null)
 
-  const activeLeftPanel = useReposStore((s) => s.activeLeftPanel)
-  const setActiveLeftPanel = useReposStore((s) => s.setActiveLeftPanel)
+  const activeLeftPanel = useRepoUIStore((s) => s.activeLeftPanel)
+  const setActiveLeftPanel = useRepoUIStore((s) => s.setActiveLeftPanel)
 
   const handlePrevChange = () => {
     diffViewerRef.current?.goToPreviousChange()

@@ -47,7 +47,7 @@ côté frontend, plutôt qu'une réécriture complète.
 | `components/git-graph/components/CommitFileList.tsx` | 682 | logique d'arbre de fichiers + UI + appels stage/unstage dans un seul fichier |
 | `components/git-graph/GitGraph.tsx` | 586 | composant orchestrateur qui absorbe trop de coordination |
 | `app/settings/components/GithubSection.tsx` | 562 | tout le device flow OAuth (polling, state, timers) est inline dans le composant au lieu d'un hook dédié |
-| `components/git-graph/components/WipStagingPanel.tsx` | 488 | arbre de fichiers + interactions + formatage mélangés |
+| `components/git-graph/components/WipStagingPanel.tsx` | 488 | regroupement/batch commit + génération LLM + appels stage/unstage/commit mélangés (pas de duplication d'arbre avec `CommitFileList.tsx`, contrairement à l'hypothèse initiale — voir correction plus bas) |
 | `app/pull-requests/components/CustomViewsTab.tsx` | 454 | parsing YAML + construction de requête GitHub + formulaire UI |
 | `components/git-graph/DiffViewCenter.tsx` | 427 | virtualisation + interactions stage/unstage directement couplées à la vue |
 
@@ -189,12 +189,19 @@ de `if/else` empilés dans le composant. Chaque stratégie devient un petit comp
 `DiffViewCenter` ne fait plus que sélectionner et virtualiser.
 
 ### Composite — arbre de fichiers (déjà implicite)
-**Problème résolu** : `CommitFileList.tsx` et `WipStagingPanel.tsx` réimplémentent chacun leur
-construction d'arbre de fichiers (`buildFileTree`, `computeFolderStats`).
+**Problème résolu** : `CommitFileList.tsx` construit son arbre récursif (`buildFileTree`,
+`computeFolderStats`, tri, expand/collapse) inline dans le composant, mélangé au rendu.
 
-**Cible** : un hook partagé `hooks/useFileTree.ts` qui prend une liste de chemins + statuts et
-retourne une structure Composite (`FileNode | FolderNode`), consommé par les deux composants. Un
-seul endroit pour le tri, le calcul des stats de dossier, le filtrage.
+**Cible** : un hook `hooks/useFileTree.ts` qui prend une liste de fichiers (chemin + statut) et
+retourne une structure Composite avec état de recherche/expand-collapse. Un seul endroit pour le
+tri, le calcul des stats de dossier, le filtrage.
+
+> **Correction post-implémentation (2026-07-02)** : l'audit initial supposait que
+> `WipStagingPanel.tsx` dupliquait cette logique — en le relisant pendant l'implémentation, ce
+> n'est pas le cas. Son `wipBatches` fait un simple regroupement plat par dossier racine pour le
+> mode "batch commit" (LLM par groupe), un besoin différent de l'arbre imbriqué de
+> `CommitFileList`. Le hook n'a donc été extrait que depuis `CommitFileList.tsx` ; voir
+> [14-architecture-refactor-tracking.md](14-architecture-refactor-tracking.md) action 2.3.
 
 ---
 
@@ -215,8 +222,8 @@ seul endroit pour le tri, le calcul des stats de dossier, le filtrage.
 ### Frontend
 1. `GithubSection.tsx` → extraire `hooks/useGithubDeviceFlow.ts` (polling, state, cleanup des
    timers) ; le composant ne garde que le rendu.
-2. `CommitFileList.tsx` + `WipStagingPanel.tsx` → extraire `hooks/useFileTree.ts` partagé (voir
-   Composite ci-dessus) ; les composants ne gardent que le rendu de l'arbre.
+2. `CommitFileList.tsx` → extraire `hooks/useFileTree.ts` (voir Composite ci-dessus ; correction :
+   `WipStagingPanel.tsx` n'avait finalement rien à migrer, cf. tracker action 2.3).
 3. `DiffViewCenter.tsx` → extraire les stratégies de rendu par type de diff (Strategy ci-dessus).
 4. `GitGraph.tsx` → vérifier si les 6+ hooks coordonnés peuvent être regroupés dans un hook de
    composition unique (`hooks/useGitGraphController.ts`) pour désencombrer le composant page.

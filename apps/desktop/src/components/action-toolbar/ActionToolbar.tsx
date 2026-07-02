@@ -12,7 +12,8 @@ import {
   ArchiveRestore,
 } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
-import { useReposStore } from '../../stores/repos.store'
+import { useRepoDataStore } from '../../stores/repoData.store'
+import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useUndoHistoryStore } from '../../stores/undoHistory.store'
 import {
   fetchRemote,
@@ -50,7 +51,8 @@ type LoadingKey = 'fetch' | 'pull' | 'push' | 'stash' | 'pop' | 'undo' | 'redo'
 export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProps) {
   const { t } = useTranslation('git')
   const queryClient = useQueryClient()
-  const { activeRepo, repoCache } = useReposStore()
+  const { activeRepo } = useRepoUIStore()
+  const { repoCache } = useRepoDataStore()
   const settings = useSettingsStore((s) => s.settings)
 
   const [loading, setLoading] = useState<Record<LoadingKey, boolean>>({
@@ -63,8 +65,8 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
     redo: false,
   })
   const [notification, setNotification] = useState<Notification | null>(null)
-  const wipMessages = useReposStore((s) => s.wipMessages)
-  const setWipMessage = useReposStore((s) => s.setWipMessage)
+  const wipMessages = useRepoDataStore((s) => s.wipMessages)
+  const setWipMessage = useRepoDataStore((s) => s.setWipMessage)
 
   const repo = activeRepo ? repoCache[activeRepo] : undefined
   const fromRef = repo ? (repo.isDetached ? 'HEAD' : repo.head) : 'HEAD'

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Input, ScrollArea } from '@git-manager/ui'
 import {
@@ -14,11 +14,7 @@ import {
 } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { useGitHubRepos } from '../../../hooks/useGitHubRepos'
-import {
-  apiGithubDeviceCode,
-  apiGithubPollToken,
-  apiGithubGetUser,
-} from '../../../api/github.api'
+import { useGithubDeviceFlow } from '../../../hooks/useGithubDeviceFlow'
 import type { GitHubUser } from '@git-manager/git-types'
 
 export function GithubSection() {
@@ -26,20 +22,7 @@ export function GithubSection() {
   const { settings, updateSettings } = useSettingsStore()
   const github = settings.github || { accounts: [], activeAccountId: null }
 
-  const [connecting, setConnecting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  // Device authorization state
-  const [deviceFlowData, setDeviceFlowData] = useState<{
-    device_code: string
-    user_code: string
-    verification_uri: string
-    expires_in: number
-    interval: number
-  } | null>(null)
   const [copied, setCopied] = useState(false)
-  const [pollingIntervalId, setPollingIntervalId] = useState<any>(null)
-
   const [loginMethod, setLoginMethod] = useState<'oauth' | 'pat' | null>(null)
   const [patToken, setPatToken] = useState('')
 
@@ -51,100 +34,22 @@ export function GithubSection() {
   )
   const repos = reposData ?? []
 
-  // Clear polling interval on unmount
-  useEffect(() => {
-    return () => {
-      if (pollingIntervalId) clearInterval(pollingIntervalId)
-    }
-  }, [pollingIntervalId])
+  const { connecting, error, deviceFlowData, startOAuthLogin, completeLoginWithToken, cancelFlow } =
+    useGithubDeviceFlow({
+      onLoginSuccess: (token, user: GitHubUser) => {
+        const newAccount = { id: user.login, token, user }
+        const updatedAccounts = github.accounts.filter((a) => a.id !== user.login)
+        updatedAccounts.push(newAccount)
 
-  async function handleOAuthLogin() {
-    setError(null)
-    setConnecting(true)
-    setDeviceFlowData(null)
-    if (pollingIntervalId) clearInterval(pollingIntervalId)
-
-    try {
-      const data = await apiGithubDeviceCode('repo read:user user:email')
-      setDeviceFlowData(data)
-
-      const interval = data.interval || 5
-      const id = setInterval(async () => {
-        try {
-          const pollData = await apiGithubPollToken(data.device_code)
-
-          if (pollData.error === 'authorization_pending' || pollData.error === 'slow_down') {
-            return
-          }
-          if (pollData.error) {
-            clearInterval(id)
-            setDeviceFlowData(null)
-            setConnecting(false)
-            setError(`OAuth Error: ${pollData.error_description || pollData.error}`)
-            return
-          }
-          if (pollData.access_token) {
-            clearInterval(id)
-            setDeviceFlowData(null)
-            await completeLoginWithToken(pollData.access_token)
-          }
-        } catch (e: any) {
-          console.error('Polling error:', e)
-          clearInterval(id)
-          setDeviceFlowData(null)
-          setConnecting(false)
-          setError(`Polling error: ${e?.message || String(e)}`)
-        }
-      }, interval * 1000)
-
-      setPollingIntervalId(id)
-
-      if (data.verification_uri) {
-        window.open(data.verification_uri, '_blank')
-      }
-    } catch (err: any) {
-      setConnecting(false)
-      setError(err?.message || String(err))
-    }
-  }
-
-  async function completeLoginWithToken(tokenVal: string): Promise<boolean> {
-    setConnecting(true)
-    setError(null)
-    try {
-      const userData = await apiGithubGetUser(tokenVal)
-
-      const connectedUser: GitHubUser = {
-        login: userData.login,
-        name: userData.name || userData.login,
-        email: userData.email,
-        avatarUrl: userData.avatarUrl,
-      }
-
-      const newAccount = {
-        id: userData.login,
-        token: tokenVal,
-        user: connectedUser,
-      }
-
-      const updatedAccounts = github.accounts.filter((a) => a.id !== userData.login)
-      updatedAccounts.push(newAccount)
-
-      updateSettings({
-        github: {
-          ...github,
-          accounts: updatedAccounts,
-          activeAccountId: userData.login,
-        },
-      })
-      return true
-    } catch (err: any) {
-      setError(err.message || String(err))
-      return false
-    } finally {
-      setConnecting(false)
-    }
-  }
+        updateSettings({
+          github: {
+            ...github,
+            accounts: updatedAccounts,
+            activeAccountId: user.login,
+          },
+        })
+      },
+    })
 
   async function handleAddPatToken() {
     if (!patToken.trim()) return
@@ -156,9 +61,7 @@ export function GithubSection() {
   }
 
   function handleCancelFlow() {
-    if (pollingIntervalId) clearInterval(pollingIntervalId)
-    setDeviceFlowData(null)
-    setConnecting(false)
+    cancelFlow()
     setLoginMethod(null)
     setPatToken('')
   }
@@ -282,7 +185,7 @@ export function GithubSection() {
                     </p>
                     <Button
                       size="sm"
-                      onClick={handleOAuthLogin}
+                      onClick={startOAuthLogin}
                       disabled={connecting}
                       className="text-xs h-8 w-full gap-2"
                     >
@@ -380,7 +283,7 @@ export function GithubSection() {
                     size="sm"
                     onClick={() => {
                       setLoginMethod('oauth')
-                      handleOAuthLogin()
+                      startOAuthLogin()
                     }}
                     className="w-full text-xs justify-start h-9 px-3 gap-2 hover:bg-primary/5 hover:border-primary/30 transition-all duration-200"
                   >

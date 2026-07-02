@@ -11,7 +11,8 @@ import { apiStashApply, apiStashPop, apiStashDrop } from '../../api/git.api'
 import { mutate } from 'swr'
 
 import { useSettingsStore } from '../../stores/settings.store'
-import { useReposStore } from '../../stores/repos.store'
+import { useRepoDataStore } from '../../stores/repoData.store'
+import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useCommitSelection } from '../../hooks/useCommitSelection'
 import { useCommitDetailsResize } from '../../hooks/useCommitDetailsResize'
 import { apiCreateFixupCommit, apiCreateCommit, apiStageAll } from '../../api/git.api'
@@ -50,15 +51,15 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
   const rowHeight = rowHeightSetting === 'small' ? 32 : 40
   // Current HEAD branch name from repo cache (e.g. "main", "feat/xyz")
-  const headBranchName = useReposStore((s) => s.repoCache[repoPath]?.head)
+  const headBranchName = useRepoDataStore((s) => s.repoCache[repoPath]?.head)
 
   // ── Sizing / Resizing details panel hook ───────────────────────────────────
   const { width: panelWidthState, resizeProps } = useCommitDetailsResize(400)
 
-  const activeDiffFile = useReposStore((s) => s.activeDiffFile)
-  const setActiveDiffFile = useReposStore((s) => s.setActiveDiffFile)
-  const hiddenStashes = useReposStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
-  const toggleStashVisibility = useReposStore((s) => s.toggleStashVisibility)
+  const activeDiffFile = useRepoUIStore((s) => s.activeDiffFile)
+  const setActiveDiffFile = useRepoUIStore((s) => s.setActiveDiffFile)
+  const hiddenStashes = useRepoDataStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
+  const toggleStashVisibility = useRepoDataStore((s) => s.toggleStashVisibility)
 
   // ── Status detection & WIP Node ──────────────────────────────────────────
   const { data: status } = useGitStatus(repoPath)
@@ -195,7 +196,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     return () => clearTimeout(id)
   }, [toast])
 
-  const setEditingOid = useReposStore((s) => s.setEditingOid)
+  const setEditingOid = useRepoUIStore((s) => s.setEditingOid)
 
   function openMenuAt(e: React.MouseEvent, oid: string) {
     if (oid === 'WIP') return

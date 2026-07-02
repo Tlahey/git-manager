@@ -13,7 +13,8 @@ import {
 import { FolderOpen } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
 import { cloneRepo } from '../../lib/tauri'
-import { useReposStore } from '../../stores/repos.store'
+import { useRepoDataStore } from '../../stores/repoData.store'
+import { useRepoUIStore } from '../../stores/repoUI.store'
 
 interface CloneRepoDialogProps {
   open: boolean
@@ -28,7 +29,8 @@ function deriveFolderName(url: string): string {
 }
 
 export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogProps) {
-  const { addRepo, openTab } = useReposStore()
+  const { addRepo } = useRepoDataStore()
+  const { openTab } = useRepoUIStore()
   const [url, setUrl] = useState('')
   const [parentDir, setParentDir] = useState('')
   const [loading, setLoading] = useState(false)
