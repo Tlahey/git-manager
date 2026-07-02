@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useReposStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from '../../stores/repos.store'
+import { useRepoDataStore } from '../../stores/repoData.store'
+import { useRepoUIStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from '../../stores/repoUI.store'
 import { LayoutDashboard, Trophy, Rocket, Settings, X, GitBranch } from 'lucide-react'
 import { useGameStore } from '../../stores/game.store'
 import { NewTabMenu } from './NewTabMenu'
@@ -44,7 +45,8 @@ function PinnedTab({ icon, label, active, onClick, hideLabel }: PinnedTabProps) 
 const isMac = typeof window !== 'undefined' && navigator.userAgent.includes('Mac')
 
 export function TabBar({ onOpenSettings }: TabBarProps) {
-  const { openTabs, activeTab, repoCache, setActiveTab, closeTab, reorderTabs } = useReposStore()
+  const { openTabs, activeTab, setActiveTab, closeTab, reorderTabs } = useRepoUIStore()
+  const { repoCache } = useRepoDataStore()
   const rewardsEnabled = useGameStore((s) => s.rewardsEnabled)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [overIndex, setOverIndex] = useState<number | null>(null)

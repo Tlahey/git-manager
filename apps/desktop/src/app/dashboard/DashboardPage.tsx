@@ -17,7 +17,8 @@ import {
 import { open } from '@tauri-apps/plugin-dialog'
 import { CloneRepoDialog } from '../../components/tab-bar/CloneRepoDialog'
 import { apiOpenRepo, apiScanRepos } from '../../api/repo.api'
-import { useReposStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../../stores/repos.store'
+import { useRepoDataStore } from '../../stores/repoData.store'
+import { useRepoUIStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../../stores/repoUI.store'
 import { RepoRow } from './components/RepoRow'
 import { ReadmePanel } from './components/ReadmePanel'
 
@@ -27,14 +28,8 @@ interface DashboardPageProps {
 
 export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
   const { t } = useTranslation('dashboard')
-  const {
-    savedRepos,
-    openTabs,
-    discoveredRepos,
-    addRepo,
-    openTab,
-    addDiscoveredRepo,
-  } = useReposStore()
+  const { savedRepos, discoveredRepos, addRepo, addDiscoveredRepo } = useRepoDataStore()
+  const { openTabs, openTab } = useRepoUIStore()
 
   const [error, setError] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)

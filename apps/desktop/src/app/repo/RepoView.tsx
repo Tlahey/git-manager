@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { GitBranch } from '@git-manager/git-types'
-import { useReposStore } from '../../stores/repos.store'
+import { useRepoDataStore } from '../../stores/repoData.store'
+import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useUndoHistoryStore } from '../../stores/undoHistory.store'
 import { openRepo } from '../../lib/tauri'
 import { GitGraph } from '../../components/git-graph/GitGraph'
@@ -12,7 +13,8 @@ import { showBranchNativeContextMenu } from '../../api/nativeMenu.api'
 import { apiDeleteBranch } from '../../api/git.api'
 
 export function RepoView() {
-  const { activeRepo, repoCache, setRepoCache } = useReposStore()
+  const { activeRepo } = useRepoUIStore()
+  const { repoCache, setRepoCache } = useRepoDataStore()
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const queryClient = useQueryClient()

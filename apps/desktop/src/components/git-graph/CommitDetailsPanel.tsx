@@ -7,7 +7,7 @@ import { mutate } from 'swr'
 import type { GitGraphNode } from '@git-manager/git-types'
 
 import { CommitHeaderInfo } from './components/CommitHeaderInfo'
-import { useReposStore } from '../../stores/repos.store'
+import { useRepoDataStore } from '../../stores/repoData.store'
 import { CommitFileList } from './components/CommitFileList'
 import type { ProcessedFileItem } from './components/CommitFileList'
 import { WipStagingPanel } from './components/WipStagingPanel'
@@ -41,7 +41,7 @@ export function CommitDetailsPanel({
 
   const isHead = isHeadProp ?? node.refs.some((r) => r.type === 'HEAD')
 
-  const repoCache = useReposStore((s) => s.repoCache)
+  const repoCache = useRepoDataStore((s) => s.repoCache)
   const cachedRepo = repoCache[repoPath]
 
   const remoteUrl = useMemo(() => {

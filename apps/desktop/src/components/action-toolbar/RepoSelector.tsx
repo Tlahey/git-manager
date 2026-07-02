@@ -2,13 +2,15 @@ import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown, GitBranch, Search } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
-import { useReposStore } from '../../stores/repos.store'
+import { useRepoDataStore } from '../../stores/repoData.store'
+import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useAnchoredMenu } from './useAnchoredMenu'
 
 /** Dropdown de sélection / recherche du dépôt courant. */
 export function RepoSelector() {
   const { t } = useTranslation('git')
-  const { savedRepos, openTabs, activeRepo, repoCache, openTab } = useReposStore()
+  const { savedRepos, repoCache } = useRepoDataStore()
+  const { openTabs, activeRepo, openTab } = useRepoUIStore()
   const { open, setOpen, pos, containerRef, triggerRef, menuRef } = useAnchoredMenu()
   const [query, setQuery] = useState('')
 

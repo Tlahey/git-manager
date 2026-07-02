@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom'
 import { Plus, FolderOpen, GitBranch, FolderPlus } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
 import { openRepo, initRepo } from '../../lib/tauri'
-import { useReposStore } from '../../stores/repos.store'
+import { useRepoDataStore } from '../../stores/repoData.store'
+import { useRepoUIStore } from '../../stores/repoUI.store'
 import { CloneRepoDialog } from './CloneRepoDialog'
 
 interface MenuItemProps {
@@ -31,7 +32,8 @@ function MenuItem({ icon, label, description, onClick }: MenuItemProps) {
 }
 
 export function NewTabMenu() {
-  const { addRepo, openTab } = useReposStore()
+  const { addRepo } = useRepoDataStore()
+  const { openTab } = useRepoUIStore()
   const [menuOpen, setMenuOpen] = useState(false)
   const [cloneOpen, setCloneOpen] = useState(false)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })

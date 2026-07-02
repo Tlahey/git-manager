@@ -4,7 +4,7 @@ import { useNotificationStore, type AppNotification } from '../stores/notificati
 import { useSettingsStore } from '../stores/settings.store'
 import { useTranslation } from '@git-manager/i18n'
 import { getNotificationText } from '../components/notification/utils'
-import { useReposStore, PULL_REQUESTS_TAB } from '../stores/repos.store'
+import { useRepoUIStore, PULL_REQUESTS_TAB } from '../stores/repoUI.store'
 import { useLaunchpadStore } from '../stores/launchpad.store'
 import {
   isPermissionGranted,
@@ -119,7 +119,7 @@ export function useNotificationWatcher() {
           if (notifId) {
             const notif = useNotificationStore.getState().notifications.find((n) => n.id === notifId)
             if (notif) {
-              useReposStore.getState().setActiveTab(PULL_REQUESTS_TAB)
+              useRepoUIStore.getState().setActiveTab(PULL_REQUESTS_TAB)
               useLaunchpadStore.getState().setActiveTab(notif.targetTab)
               useNotificationStore.getState().markAsRead(notif.id)
             }

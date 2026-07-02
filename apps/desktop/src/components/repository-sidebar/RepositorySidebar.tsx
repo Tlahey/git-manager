@@ -9,7 +9,8 @@ import { SidebarResizeHandle } from './SidebarResizeHandle'
 import { SidebarRail } from './SidebarRail'
 import { SidebarRowView } from './SidebarRowView'
 import { ROW_HEIGHT, DEFAULT_PINNED } from './types'
-import { useReposStore } from '../../stores/repos.store'
+import { useRepoDataStore } from '../../stores/repoData.store'
+import { useRepoUIStore } from '../../stores/repoUI.store'
 import { BlameHistoryPanel } from './BlameHistoryPanel'
 import { useQueryClient } from '@tanstack/react-query'
 import { mutate } from 'swr'
@@ -46,15 +47,15 @@ export function RepositorySidebar({
   const { width, isCollapsed, collapse, expand, resizeHandleProps } = useSidebarResize()
   const [branchQuery, setBranchQuery] = useState('')
 
-  const activeLeftPanel = useReposStore((s) => s.activeLeftPanel)
-  const activeDiffFile = useReposStore((s) => s.activeDiffFile)
-  const setActiveLeftPanel = useReposStore((s) => s.setActiveLeftPanel)
-  const setEditingOid = useReposStore((s) => s.setEditingOid)
+  const activeLeftPanel = useRepoUIStore((s) => s.activeLeftPanel)
+  const activeDiffFile = useRepoUIStore((s) => s.activeDiffFile)
+  const setActiveLeftPanel = useRepoUIStore((s) => s.setActiveLeftPanel)
+  const setEditingOid = useRepoUIStore((s) => s.setEditingOid)
   const queryClient = useQueryClient()
   const [openState, setOpenState] = useState<Record<string, boolean>>({})
 
-  const hiddenStashes = useReposStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
-  const toggleStashVisibility = useReposStore((s) => s.toggleStashVisibility)
+  const hiddenStashes = useRepoDataStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
+  const toggleStashVisibility = useRepoDataStore((s) => s.toggleStashVisibility)
 
   const handleStashContextMenu = (_e: React.MouseEvent, stash: GitStash) => {
     const isHidden = hiddenStashes.includes(stash.commitOid)

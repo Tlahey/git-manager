@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { useReposStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from '../../stores/repos.store'
+import { useRepoDataStore } from '../../stores/repoData.store'
+import { useRepoUIStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from '../../stores/repoUI.store'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useGameStore, getLevelInfo } from '../../stores/game.store'
 import {
@@ -31,7 +32,8 @@ interface FooterProps {
 
 export function Footer({ onOpenSettings }: FooterProps) {
   const { t } = useTranslation('common')
-  const { activeTab, repoCache, savedRepos, discoveredRepos, setActiveTab } = useReposStore()
+  const { repoCache, savedRepos, discoveredRepos } = useRepoDataStore()
+  const { activeTab, setActiveTab } = useRepoUIStore()
   const { settings } = useSettingsStore()
   const { points, rewardsEnabled } = useGameStore()
   const { level } = getLevelInfo(points)

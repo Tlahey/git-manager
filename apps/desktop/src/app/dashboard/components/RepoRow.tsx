@@ -11,7 +11,8 @@ import {
   X,
   Star,
 } from 'lucide-react'
-import { useReposStore } from '../../../stores/repos.store'
+import { useRepoDataStore } from '../../../stores/repoData.store'
+import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { useRepoSummary } from '../../../hooks/useRepoSummary'
 import { apiOpenInEditor } from '../../../api/repo.api'
@@ -34,7 +35,8 @@ export function RepoRow({
   isReadmeActive,
 }: RepoRowProps) {
   const { t } = useTranslation('dashboard')
-  const { togglePin, openTab, openTabs, closeTab } = useReposStore()
+  const { togglePin } = useRepoDataStore()
+  const { openTab, openTabs, closeTab } = useRepoUIStore()
   const { settings } = useSettingsStore()
 
   const { data: summary, isLoading, error } = useRepoSummary(path)
