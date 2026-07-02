@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import type { GitGraphNode } from '@git-manager/git-types'
-import { getLog } from '../lib/tauri'
+import { apiGetLog } from '../api/git.api'
 
 interface UseGitLogOptions {
   limit?: number
@@ -13,7 +13,7 @@ interface UseGitLogOptions {
 export function useGitLog(repoPath: string, opts?: UseGitLogOptions) {
   return useQuery<GitGraphNode[]>({
     queryKey: ['git-log', repoPath, opts],
-    queryFn: () => getLog(repoPath, opts),
+    queryFn: () => apiGetLog(repoPath, opts),
     enabled: !!repoPath,
     staleTime: 30_000,
   })

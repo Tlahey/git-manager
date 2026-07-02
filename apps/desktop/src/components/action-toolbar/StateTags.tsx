@@ -3,7 +3,7 @@ import { Badge } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
-import { getRebaseState } from '../../lib/tauri'
+import { apiGetRebaseState } from '../../api/git.api'
 
 /**
  * Badges dynamiques indiquant l'état du dépôt :
@@ -17,7 +17,7 @@ export function StateTags() {
 
   const { data: rebaseState } = useQuery({
     queryKey: ['rebase-state', activeRepo],
-    queryFn: () => getRebaseState(activeRepo!),
+    queryFn: () => apiGetRebaseState(activeRepo!),
     enabled: !!activeRepo,
     refetchInterval: 4000,
   })

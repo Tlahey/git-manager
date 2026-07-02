@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { GitFork } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import type { GitSubmodule } from '@git-manager/git-types'
-import { listSubmodules } from '../../lib/tauri'
+import { apiListSubmodules } from '../../api/git.api'
 import { SectionHeader } from './SectionHeader'
 import { HoverExpandLabel } from './HoverExpandLabel'
 
@@ -19,7 +19,7 @@ export function SubmodulesSection({ repoPath }: SubmodulesSectionProps) {
 
   const { data: submodules = [] } = useQuery<GitSubmodule[]>({
     queryKey: ['submodules', repoPath],
-    queryFn: () => listSubmodules(repoPath),
+    queryFn: () => apiListSubmodules(repoPath),
     enabled: !!repoPath,
     staleTime: 60_000,
   })

@@ -27,6 +27,14 @@ import {
   snapshotWorktree,
   snapshotWorktreeAlways,
   type WorktreeSnapshot,
+  getRepoStatus,
+  getLog,
+  getCommitDiff,
+  getFileDiff,
+  getFileRawContents,
+  getTags,
+  listSubmodules,
+  getRebaseState,
 } from '../lib/tauri'
 import { callCommand } from './service'
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
@@ -390,4 +398,45 @@ export async function apiRemoveRemote(path: string, name: string) {
   } else {
     clearRedo(path)
   }
+}
+
+// ─── Reads ───────────────────────────────────────────────────────────────────
+
+export async function apiGetRepoStatus(path: string) {
+  return getRepoStatus(path)
+}
+
+export async function apiGetLog(
+  path: string,
+  opts?: { limit?: number; skip?: number; branch?: string; author?: string; showStashes?: boolean; hiddenStashes?: string[] }
+) {
+  return getLog(path, opts)
+}
+
+export async function apiGetBranches(path: string, includeRemote = true) {
+  return getBranches(path, includeRemote)
+}
+
+export async function apiGetCommitDiff(path: string, oid: string) {
+  return getCommitDiff(path, oid)
+}
+
+export async function apiGetFileDiff(path: string, filePath: string, staged: boolean, oid?: string) {
+  return getFileDiff(path, filePath, staged, oid)
+}
+
+export async function apiGetFileRawContents(path: string, filePath: string, staged: boolean, oid?: string) {
+  return getFileRawContents(path, filePath, staged, oid)
+}
+
+export async function apiGetTags(path: string) {
+  return getTags(path)
+}
+
+export async function apiListSubmodules(path: string) {
+  return listSubmodules(path)
+}
+
+export async function apiGetRebaseState(path: string) {
+  return getRebaseState(path)
 }
