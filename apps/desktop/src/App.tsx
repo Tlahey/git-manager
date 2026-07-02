@@ -16,7 +16,7 @@ import { Footer } from './components/footer/Footer'
 
 import { useEffect } from 'react'
 import { TrophyToast } from './components/trophy/TrophyToast'
-import { gameObserver } from './lib/gameObserver'
+import { appEventBus } from './lib/appEventBus'
 
 export default function App() {
   const activeTab = useRepoUIStore((s) => s.activeTab)
@@ -35,7 +35,7 @@ export default function App() {
 
   // Firing open_app event on launch
   useEffect(() => {
-    gameObserver.notify('open_app')
+    appEventBus.notify('open_app')
   }, [])
 
   function handleOpenSettings(section?: 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization' | 'rewards') {

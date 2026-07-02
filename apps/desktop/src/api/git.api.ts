@@ -28,7 +28,7 @@ import {
   snapshotWorktreeAlways,
   type WorktreeSnapshot,
 } from '../lib/tauri'
-import { gameObserver } from '../lib/gameObserver'
+import { callCommand } from './service'
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
 import type { UndoAction } from '../lib/undoActions'
 
@@ -47,27 +47,19 @@ function clearRedo(repoPath: string) {
 }
 
 export async function apiStageFile(path: string, filePath: string) {
-  const result = await stageFile(path, filePath)
-  gameObserver.notify('stage', { filePath })
-  return result
+  return callCommand('stage', () => stageFile(path, filePath), { filePath })
 }
 
 export async function apiUnstageFile(path: string, filePath: string) {
-  const result = await unstageFile(path, filePath)
-  gameObserver.notify('unstage', { filePath })
-  return result
+  return callCommand('unstage', () => unstageFile(path, filePath), { filePath })
 }
 
 export async function apiStageAll(path: string) {
-  const result = await stageAll(path)
-  gameObserver.notify('stage', { filePath: 'all' })
-  return result
+  return callCommand('stage', () => stageAll(path), { filePath: 'all' })
 }
 
 export async function apiUnstageAll(path: string) {
-  const result = await unstageAll(path)
-  gameObserver.notify('unstage', { filePath: 'all' })
-  return result
+  return callCommand('unstage', () => unstageAll(path), { filePath: 'all' })
 }
 
 export async function apiCreateCommit(path: string, message: string, amend = false, amendOid?: string) {
@@ -81,8 +73,7 @@ export async function apiCreateCommit(path: string, message: string, amend = fal
     }
   }
 
-  const result = await createCommit(path, message, amend, amendOid)
-  gameObserver.notify('commit')
+  const result = await callCommand('commit', () => createCommit(path, message, amend, amendOid))
 
   if (amend) {
     // L'amend n'est pas dans le périmètre undo/redo (seul le commit initial l'est) —
@@ -108,8 +99,7 @@ export async function apiCreateCommit(path: string, message: string, amend = fal
 }
 
 export async function apiDiscardFileChanges(path: string, filePath: string) {
-  const result = await discardFileChanges(path, filePath)
-  gameObserver.notify('discard')
+  const result = await callCommand('discard', () => discardFileChanges(path, filePath))
 
   if (result.snapshotBlobOid) {
     const id = generateId()
@@ -133,8 +123,7 @@ export async function apiDiscardFileChanges(path: string, filePath: string) {
 }
 
 export async function apiCreateFixupCommit(path: string, targetOid: string) {
-  const result = await createFixupCommit(path, targetOid)
-  gameObserver.notify('fixup')
+  const result = await callCommand('fixup', () => createFixupCommit(path, targetOid))
   clearRedo(path)
   return result
 }
@@ -144,8 +133,7 @@ export async function apiAutosquashPreview(path: string) {
 }
 
 export async function apiRunAutosquash(path: string) {
-  const result = await runAutosquash(path)
-  gameObserver.notify('autosquash')
+  const result = await callCommand('autosquash', () => runAutosquash(path))
   clearRedo(path)
   return result
 }
