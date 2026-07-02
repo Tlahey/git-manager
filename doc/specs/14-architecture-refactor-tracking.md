@@ -76,29 +76,37 @@ doit toujours refléter l'état réel du code, pas l'intention.
 | 5.1 | ~~Définir l'interface `DiffRenderStrategy`~~ — **re-scopé, pas applicable** : en relisant `DiffViewCenter.tsx`, son seul branchement par type de contenu est un ternaire à 2 branches (`isBinary ? placeholder : MonacoDiffViewer`), pas un `if/else` empilé. Aucun cas "image" nulle part dans le code. "Split-view" est un prop (`viewMode`) de `MonacoDiffViewer`, pas une stratégie séparée. Une interface Strategy pour un ternaire de 5 lignes serait de la sur-ingénierie. | nouveau module côté `components/git-graph/` | Phase 2–4 stabilisées | ⏭️ |
 | 5.2 | ~~Refactorer `DiffViewCenter.tsx` pour déléguer à la stratégie~~ — même raison, rien à déléguer. La vraie taille du fichier (427 lignes) vient du header/toolbar (tabs, blame/history, navigation, stage/discard), pas du rendu de diff — un futur découpage en sous-composant serait une action R1 différente, hors scope de ce plan tel qu'écrit. | `components/git-graph/DiffViewCenter.tsx` | 5.1 | ⏭️ |
 
+## Phase 6 — Actions ponctuelles post-plan (audit de suivi)
+
+Le plan initial (phases 1-5) est entièrement traité. Conformément à la note de clôture
+ci-dessous, les actions suivantes sont ajoutées ici au fil de l'eau, à mesure qu'un audit
+ponctuel identifie un nouveau fichier trop gros ou une nouvelle duplication — sans rouvrir
+les phases closes.
+
+| # | Action | Fichier(s) | Dépend de | Statut |
+|---|---|---|---|---|
+| 6.1 | Extraire la dérivation de données (nœud WIP, filtrage recherche, waterlines, index origin/main) de `GitGraph.tsx` dans un hook `useGitGraphNodes` | `hooks/useGitGraphNodes.ts`, `components/git-graph/GitGraph.tsx` | — | ✅ |
+| 6.2 | Extraire les actions impératives (menu contextuel natif commit/stash, copie SHA, fixup, commit WIP, toast) de `GitGraph.tsx` dans un hook `useGitGraphActions` | `hooks/useGitGraphActions.ts`, `components/git-graph/GitGraph.tsx` | — | ✅ |
+
 ---
 
 ## Étape courante
 
-**Toutes les phases sont terminées.** Phase 2 : 2.1/2.2/2.4 ✅, 2.3 ⏭️ (non applicable), 2.5 ⏭️
-(optionnelle, non faite). Phase 3 : 3.1/3.2/3.3/3.4/3.5 ✅ (3.2 extrait sans `GitGraphBuilder`,
-voir note — vérifié ligne à ligne contre l'original pour garantir zéro changement de comportement
-sur l'algorithme de layout, non testable visuellement depuis cet environnement : **un test manuel
-du rendu du graphe via `pnpm dev` reste recommandé avant de merger**, notamment avec plusieurs
-branches/merges/stashes). Phase 4 : 4.1/4.2/4.3 ✅, 4.4 ⏭️ (non applicable). Phase 5 : 5.1/5.2 ⏭️
-(non applicable, pas de Strategy à extraire).
+**Toutes les phases sont terminées.** Phase 1 ✅. Phase 2 : 2.1/2.2/2.4 ✅, 2.3 ⏭️ (non
+applicable), 2.5 ⏭️ (optionnelle, non faite). Phase 3 : 3.1/3.2/3.3/3.4/3.5 ✅ (3.2 extrait sans
+`GitGraphBuilder`, vérifié ligne à ligne contre l'original). Phase 4 : 4.1/4.2/4.3 ✅, 4.4 ⏭️ (non
+applicable). Phase 5 : 5.1/5.2 ⏭️ (non applicable, pas de Strategy à extraire). Phase 6
+(actions ponctuelles post-plan) : 6.1/6.2 ✅.
 
 **Prochaine étape** : plus d'action de refactor planifiée. Si de nouveaux fichiers grossissent ou
-qu'une nouvelle duplication apparaît, ajouter une nouvelle action ici plutôt que de rouvrir les
-phases closes.
+qu'une nouvelle duplication apparaît, ajouter une nouvelle action dans la Phase 6 plutôt que de
+rouvrir les phases closes.
 
-**Le plan est maintenant entièrement traité** à l'exception de **3.2** (extraction de
-`GitGraphBuilder` hors de `get_log`), volontairement laissée en pause (⏸️) — c'est le seul
-morceau qui reste, et le seul vraiment risqué : ~350 lignes d'algorithme de layout de
-colonnes/couleurs/edges, sans suite de tests, sans moyen de vérifier visuellement le rendu du
-graphe depuis cet environnement. **Prochaine action à faire : 3.2**, dans une session où l'app
-peut être testée manuellement juste après (`pnpm dev`, vérifier le rendu du graphe avec plusieurs
-branches/merges/stashes).
+**Point d'attention transverse (non testable depuis cet environnement, Tauri-only)** : les
+changements touchant au rendu du graphe de commits (3.2, 6.1, 6.2) ont été vérifiés par lecture
+attentive / diff ligne à ligne, mais jamais visuellement. **Un passage manuel via `pnpm dev`**
+(plusieurs branches/merges/stashes, sélection de commit, menu contextuel, commit WIP) reste
+recommandé avant de merger toute PR qui les inclut.
 
 *(Mettre à jour cette ligne à chaque session : indiquer le numéro de la prochaine action non
 terminée. Si plusieurs actions sont en parallèle, lister les numéros en cours.)*
@@ -120,3 +128,4 @@ terminée. Si plusieurs actions sont en parallèle, lister les numéros en cours
 | 2026-07-02 | 4.1, 4.2, 4.3 | Renommé `lib/gameObserver.ts` → `lib/appEventBus.ts` (3 consommateurs mis à jour : `App.tsx`, `PullRequestsPage.tsx`, `game.store.ts`), créé `api/service.ts` (`callCommand`). En lisant `api/git.api.ts` avant de le migrer, constaté que la plupart de ses fonctions pilotent aussi l'historique undo/redo avec une logique différente par action (pas un simple "invoke + notify" uniforme) — forcer toute la fonction à travers `callCommand` aurait été une mauvaise abstraction. Resserré le scope : seuls les 8 sites qui notifiaient déjà `gameObserver` (stage/unstage/stageAll/unstageAll/commit/discard/fixup/autosquash) migrés vers `callCommand`, en ne wrappant que l'appel `invoke` lui-même. 4.4 marquée ⏭️ pour la même raison que 2.3 : forcer les autres `api/*.api.ts` (qui ne notifient rien) à travers `callCommand` aurait été de l'indirection sans bénéfice — plan (`13-...md`) corrigé en conséquence. Vérifié : `pnpm typecheck` passe, `cargo build` intact (aucun fichier Rust touché). |
 | 2026-07-02 | 5.1, 5.2 | Relu `DiffViewCenter.tsx` avant d'y extraire un `DiffRenderStrategy` — l'hypothèse de l'audit ne tenait pas : un seul ternaire binaire/texte, pas d'`if/else` empilés, pas de cas "image", "split-view" est un prop de `MonacoDiffViewer` et non une stratégie séparée. Pas de Strategy à extraire pour un ternaire de 5 lignes (sur-ingénierie). 5.1/5.2 marquées ⏭️, plan (`13-...md`) corrigé. |
 | 2026-07-02 | 3.2 | Extrait l'algorithme de layout de `get_log` (colonnes/couleurs/edges, ~375 lignes) dans `services/git_graph.rs::build_graph_nodes(repo, oids, stash_oids, refs_map, branch)`. Re-scopé sans `GitGraphBuilder` chaînable : un seul point d'appel, params déjà des `Option<T>` simples, un Builder n'aurait rien apporté (plan corrigé). Vérification supplémentaire vu le risque (algorithme non testable visuellement ici) : diff ligne à ligne entre le corps original et le corps extrait — **identique**, à l'exception des 4 adaptations attendues liées au passage de paramètres possédés (`Vec<Oid>`, `Option<String>`) à empruntés (`&[Oid]`, `Option<&str>`) et une simplification de style (`.map_err(AppError::Git)` au lieu d'une closure équivalente). `commands/log.rs` : 683→282 lignes. Vérifié : `cargo build` + `cargo clippy` passent sans nouvelle erreur/warning. **Le plan est désormais entièrement traité.** Recommandation : tester le rendu du graphe manuellement (`pnpm dev`, plusieurs branches/merges/stashes) avant de merger, malgré la vérification ligne à ligne. |
+| 2026-07-02 | 6.1, 6.2 | Audit de suivi post-plan (`main` à jour, toutes les PR 1-4 mergées) : `GitGraph.tsx` était remonté à 587 lignes en mélangeant dérivation de données, actions impératives, virtualisation et rendu — violation R1 (composant = rendu uniquement). Créé `hooks/useGitGraphNodes.ts` (wipNode/filteredNodes/waterlines/originMainIndex, mémoïsés) et `hooks/useGitGraphActions.ts` (menu contextuel natif commit/stash, copie SHA, fixup, commit WIP, toast). `GitGraph.tsx` réduit à 587→377 lignes, ne garde que l'orchestration/rendu. Au passage, corrigé un vrai bug de perf : `originMainIndex` était recalculé par un `findIndex` sur tout `filteredNodes` à *chaque ligne visible à chaque render* (O(n²) dans la boucle de virtualisation) — déplacé dans le `useMemo` du nouveau hook, calculé une seule fois par changement de `filteredNodes`. Supprimé aussi un `console.log('[isSelectedCommitHead]', ...)` de debug oublié dans le code. Vérifié : `pnpm typecheck` passe (`pnpm lint` échoue pour la même raison préexistante que 1.7, sans rapport). Pas de test manuel dans l'app (Tauri, non testable en navigateur) — recommandé de vérifier menu contextuel, commit WIP et affichage des connexions près de `origin/main` via `pnpm dev` avant de merger. |
