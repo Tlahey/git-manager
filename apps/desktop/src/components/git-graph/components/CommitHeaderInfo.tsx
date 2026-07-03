@@ -236,7 +236,7 @@ export function CommitHeaderInfo({
                 <Pencil className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground/60 shrink-0 mt-0.5 transition-all duration-200" />
               </div>
               {commit.body && (
-                <div className="text-[11px] space-y-1.5 pt-1 border-t border-border/20 font-normal">
+                <div className="text-[11px] space-y-1.5 pt-1 border-t border-border/20 font-normal max-h-40 overflow-y-auto">
                   {messageBodyParsed}
                 </div>
               )}
@@ -260,11 +260,11 @@ export function CommitHeaderInfo({
                 <Pencil className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground/60 shrink-0 mt-0.5 transition-all duration-200" />
               </div>
               {stash && stash.message.split('\n\n')[1] ? (
-                <div className="text-[11px] space-y-1.5 pt-1 border-t border-border/20 font-normal text-muted-foreground">
+                <div className="text-[11px] space-y-1.5 pt-1 border-t border-border/20 font-normal text-muted-foreground max-h-40 overflow-y-auto">
                   {stash.message.split('\n\n').slice(1).join('\n\n')}
                 </div>
               ) : commit.body ? (
-                <div className="text-[11px] space-y-1.5 pt-1 border-t border-border/20 font-normal">
+                <div className="text-[11px] space-y-1.5 pt-1 border-t border-border/20 font-normal max-h-40 overflow-y-auto">
                   {messageBodyParsed}
                 </div>
               ) : null}
@@ -288,7 +288,7 @@ export function CommitHeaderInfo({
                 <Pencil className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground/60 shrink-0 mt-0.5 transition-all duration-200" />
               </div>
               {commit.body && (
-                <div className="text-[11px] space-y-1.5 pt-1 border-t border-border/20 font-normal">
+                <div className="text-[11px] space-y-1.5 pt-1 border-t border-border/20 font-normal max-h-40 overflow-y-auto">
                   {messageBodyParsed}
                 </div>
               )}
