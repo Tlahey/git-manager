@@ -4,6 +4,13 @@ import { useNotificationStore, type AppNotification } from '../stores/notificati
 import { useSettingsStore } from '../stores/settings.store'
 import { useTranslation } from '@git-manager/i18n'
 import { getNotificationText } from '../components/notification/utils'
+import {
+  NOTIFICATION_TYPES,
+  getNotificationTypeDef,
+  isNotificationTypeEnabled,
+  resolveTargetTab,
+  type PreviousPRSnapshot,
+} from '../lib/notifications/notificationRegistry'
 import { useRepoUIStore, PULL_REQUESTS_TAB } from '../stores/repoUI.store'
 import { useLaunchpadStore } from '../stores/launchpad.store'
 import {
@@ -26,41 +33,7 @@ export async function showNativeNotification(notif: AppNotification, t: any) {
       const settings = useSettingsStore.getState().settings
       const soundEnabled = settings.notifications?.enableSound ?? false
       const soundName = settings.notifications?.soundName ?? 'default'
-
-      // Déterminer l'indicateur visuel de statut
-      let prefix = ''
-      switch (notif.type) {
-        case 'ci_success':
-          prefix = '🟢 [CI Success] '
-          break
-        case 'ci_failed':
-          prefix = '🔴 [CI Failed] '
-          break
-        case 'pr_merged':
-          prefix = '🎉 [Merged] '
-          break
-        case 'pr_closed':
-          prefix = '🛑 [Closed] '
-          break
-        case 'review_requested':
-          prefix = '👀 [Review] '
-          break
-        case 'review_status_changed':
-          if (notif.reviewStatus === 'approved') {
-            prefix = '🟢 [Approved] '
-          } else if (notif.reviewStatus === 'changes_requested') {
-            prefix = '🔴 [Changes Requested] '
-          } else {
-            prefix = '💬 [Review Update] '
-          }
-          break
-        case 'new_pr':
-          prefix = '🆕 [New PR] '
-          break
-        default:
-          prefix = 'ℹ️ '
-          break
-      }
+      const prefix = getNotificationTypeDef(notif.type)?.nativePrefix ?? 'ℹ️ '
 
       sendNotification({
         id: notif.id,
@@ -78,13 +51,9 @@ export function useNotificationWatcher() {
   const { prs, loading } = useGitHubData()
   const settings = useSettingsStore((s) => s.settings)
   const { t } = useTranslation('common')
-  
+
   const notificationsEnabled = settings.notifications?.enabled ?? true
   const soundEnabled = settings.notifications?.enableSound ?? false
-  const notifyOnNewPr = settings.notifications?.notifyOnNewPr ?? true
-  const notifyOnPrMerged = settings.notifications?.notifyOnPrMerged ?? true
-  const notifyOnReviewRequested = settings.notifications?.notifyOnReviewRequested ?? true
-  const notifyOnReviewStatusChanged = settings.notifications?.notifyOnReviewStatusChanged ?? true
 
   const {
     previousPRs,
@@ -144,7 +113,7 @@ export function useNotificationWatcher() {
     if (loading || prs.length === 0) return
 
     // Build map of current PR states
-    const currentPRsMap: Record<string, { status: typeof prs[0]['status']; reviewStatus: typeof prs[0]['reviewStatus']; needsMyReview: boolean; ciStatus: typeof prs[0]['ciStatus']; updatedAt: string }> = {}
+    const currentPRsMap: Record<string, PreviousPRSnapshot> = {}
     for (const pr of prs) {
       currentPRsMap[pr.id] = {
         status: pr.status,
@@ -164,143 +133,33 @@ export function useNotificationWatcher() {
 
     let hasUpdates = false
 
-    // Compare new states with the previous baseline
+    // Compare new states with the previous baseline against every registered notification type
     for (const pr of prs) {
       const prev = previousPRs[pr.id]
+      let shouldNotifyThisPR = false
 
-      if (!prev) {
-        // A new PR appeared
-        if (notificationsEnabled && notifyOnNewPr) {
-          const newNotif = addNotification({
-            type: 'new_pr',
-            repo: pr.repo,
-            prNumber: pr.number,
-            prTitle: pr.title,
-            prId: pr.id,
-            author: pr.author,
-            url: pr.url,
-            targetTab: pr.needsMyReview ? 'waiting' : 'prs',
-          })
-          showNativeNotification(newNotif, t)
-          hasUpdates = true
-        }
-      } else {
-        // Check if state changed
-        let shouldNotifyThisPR = false
+      for (const def of NOTIFICATION_TYPES) {
+        if (!notificationsEnabled) break
+        if (!isNotificationTypeEnabled(def, settings.notifications)) continue
+        if (!def.detect(pr, prev)) continue
 
-        if (pr.status !== prev.status) {
-          if (pr.status === 'merged') {
-            if (notificationsEnabled && notifyOnPrMerged) {
-              const newNotif = addNotification({
-                type: 'pr_merged',
-                repo: pr.repo,
-                prNumber: pr.number,
-                prTitle: pr.title,
-                prId: pr.id,
-                author: pr.author,
-                url: pr.url,
-                targetTab: 'prs',
-              })
-              showNativeNotification(newNotif, t)
-              shouldNotifyThisPR = true
-            }
-          } else if (pr.status === 'closed') {
-            if (notificationsEnabled && notifyOnPrMerged) {
-              const newNotif = addNotification({
-                type: 'pr_closed',
-                repo: pr.repo,
-                prNumber: pr.number,
-                prTitle: pr.title,
-                prId: pr.id,
-                author: pr.author,
-                url: pr.url,
-                targetTab: 'prs',
-              })
-              showNativeNotification(newNotif, t)
-              shouldNotifyThisPR = true
-            }
-          }
-        }
+        const newNotif = addNotification({
+          type: def.type,
+          repo: pr.repo,
+          prNumber: pr.number,
+          prTitle: pr.title,
+          prId: pr.id,
+          author: pr.author,
+          url: pr.url,
+          targetTab: resolveTargetTab(def, pr),
+          ...(def.reviewStatus ? { reviewStatus: def.reviewStatus(pr) } : {}),
+        })
+        showNativeNotification(newNotif, t)
+        shouldNotifyThisPR = true
+      }
 
-        // Check if needsMyReview changed
-        if (pr.needsMyReview && !prev.needsMyReview) {
-          if (notificationsEnabled && notifyOnReviewRequested) {
-            const newNotif = addNotification({
-              type: 'review_requested',
-              repo: pr.repo,
-              prNumber: pr.number,
-              prTitle: pr.title,
-              prId: pr.id,
-              author: pr.author,
-              url: pr.url,
-              targetTab: 'waiting',
-            })
-            showNativeNotification(newNotif, t)
-            shouldNotifyThisPR = true
-          }
-        }
-
-        // Check if reviewStatus changed (approved / changes_requested)
-        if (
-          pr.reviewStatus !== prev.reviewStatus &&
-          pr.reviewStatus !== 'pending' &&
-          (pr.reviewStatus === 'approved' || pr.reviewStatus === 'changes_requested')
-        ) {
-          if (notificationsEnabled && notifyOnReviewStatusChanged) {
-            const newNotif = addNotification({
-              type: 'review_status_changed',
-              repo: pr.repo,
-              prNumber: pr.number,
-              prTitle: pr.title,
-              prId: pr.id,
-              author: pr.author,
-              reviewStatus: pr.reviewStatus,
-              url: pr.url,
-              targetTab: 'prs',
-            })
-            showNativeNotification(newNotif, t)
-            shouldNotifyThisPR = true
-          }
-        }
-
-        // Check if CI status changed (green / red)
-        if (pr.ciStatus !== prev.ciStatus) {
-          if (pr.ciStatus === 'success') {
-            if (notificationsEnabled) {
-              const newNotif = addNotification({
-                type: 'ci_success',
-                repo: pr.repo,
-                prNumber: pr.number,
-                prTitle: pr.title,
-                prId: pr.id,
-                author: pr.author,
-                url: pr.url,
-                targetTab: 'prs',
-              })
-              showNativeNotification(newNotif, t)
-              shouldNotifyThisPR = true
-            }
-          } else if (pr.ciStatus === 'failure') {
-            if (notificationsEnabled) {
-              const newNotif = addNotification({
-                type: 'ci_failed',
-                repo: pr.repo,
-                prNumber: pr.number,
-                prTitle: pr.title,
-                prId: pr.id,
-                author: pr.author,
-                url: pr.url,
-                targetTab: 'prs',
-              })
-              showNativeNotification(newNotif, t)
-              shouldNotifyThisPR = true
-            }
-          }
-        }
-
-        if (shouldNotifyThisPR) {
-          hasUpdates = true
-        }
+      if (shouldNotifyThisPR) {
+        hasUpdates = true
       }
     }
 
@@ -309,5 +168,5 @@ export function useNotificationWatcher() {
     if (hasUpdates || !keysCountMatch) {
       setPreviousPRs(currentPRsMap)
     }
-  }, [prs, loading, hasSessionInitialized, previousPRs, notificationsEnabled, soundEnabled, notifyOnNewPr, notifyOnPrMerged, notifyOnReviewRequested, notifyOnReviewStatusChanged, t])
+  }, [prs, loading, hasSessionInitialized, previousPRs, notificationsEnabled, soundEnabled, settings.notifications, t])
 }
