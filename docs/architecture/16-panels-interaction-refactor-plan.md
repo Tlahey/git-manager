@@ -1,8 +1,9 @@
 # Spec 16 — Panels & Interaction System: SOLID Audit & Target Architecture
 
-> **Status**: All 10 actions implemented (2026-07-03), one deliberate scope refinement on action
-> 3.1 — see "Implementation status" at the bottom for what was built and where it deviated from
-> the original sketch.
+> **Status**: All 13 actions implemented (2026-07-03) — the original 10 (Phases 1-7), one
+> deliberate scope refinement on action 3.1, plus 3 more (Phase 8) added after a follow-up sweep
+> found the same class of duplication one layer lower (`useAnchoredMenu`). See "Implementation
+> status" at the bottom for what was built and where it deviated from the original sketch.
 
 ## Objective
 
@@ -128,6 +129,27 @@ already-identified action gets scheduled (Phase 4 below) rather than staying an 
 Doc 15 already flagged `AppEvent`/`any` payload typing as SOLID violation #6, deliberately deferred
 as its own "Phase 4." Not re-auditing it here — cross-referenced only so it isn't accidentally
 tracked twice under two different plans.
+
+### Scope F — Anchored-menu positioning logic duplicated 3 times (found post-implementation)
+
+While reviewing the PR for actions 1-7, a follow-up sweep of the app for other instances of the
+same class of problem (a generic interaction primitive already exists, and a component doesn't use
+it — the same shape as Scope B2's dialog finding) turned up
+[`components/action-toolbar/useAnchoredMenu.ts`](../../apps/desktop/src/hooks/useAnchoredMenu.ts):
+a hook that manages a portal-rendered dropdown's fixed-position placement under its trigger button,
+plus outside-click/Escape-to-close, already shared by 5 consumers inside `action-toolbar/`
+(`RepoSelector`, `FetchButton`, `UserProfile`, `BranchButton`, `BranchContext`). Two components
+**outside** that folder reimplement the exact same ~35 lines from scratch instead of reusing it:
+`components/notification/NotificationDropdown.tsx` and `components/tab-bar/NewTabMenu.tsx` — both
+have their own `useState` for open/position, their own `useLayoutEffect` positioning calculation,
+and their own `useEffect` with `pointerdown`/`keydown` listeners, byte-for-byte equivalent in
+behavior to the hook.
+
+This is the same DRY shape as Scope B2 (two dialogs bypassing the shared `Dialog` primitive), just
+one layer lower (a hook instead of a component), and is fixed the same way: reuse, don't
+reimplement. Because the duplication crosses `action-toolbar/`'s folder boundary, the hook itself
+no longer belongs there — moved to `hooks/useAnchoredMenu.ts` (Phase 8 below) so its location
+matches its actual (now cross-cutting) scope.
 
 ---
 
@@ -294,10 +316,13 @@ new pattern — the primitive already exists and is already the majority convent
 | 6.1 | Extract `DiffToolbar` sub-component (view-mode tabs, blame/history toggle, diff-nav, stage/discard actions) from `DiffViewCenter.tsx`'s header block | `components/git-graph/components/DiffToolbar.tsx`, `components/git-graph/DiffViewCenter.tsx` | — | ✅ |
 | 7.1 | Rebuild `FollowPRDialog.tsx` on `packages/ui`'s `Dialog` primitive | `app/pull-requests/components/FollowPRDialog.tsx` | — | ✅ |
 | 7.2 | Rebuild `FilterEditorDialog.tsx` on `packages/ui`'s `Dialog` primitive | `app/pull-requests/components/FilterEditorDialog.tsx` | — | ✅ |
+| 8.1 | Relocate `components/action-toolbar/useAnchoredMenu.ts` to `hooks/useAnchoredMenu.ts` (it stopped being action-toolbar-specific the moment a second domain needed it) and update its 5 existing consumers' imports | `hooks/useAnchoredMenu.ts`, `components/action-toolbar/{BranchButton,BranchContext,RepoSelector,UserProfile,FetchButton}.tsx` | — | ✅ |
+| 8.2 | Migrate `NotificationDropdown.tsx`'s hand-rolled menu-positioning/outside-click/Escape logic to `useAnchoredMenu({ align: 'right' })` | `components/notification/NotificationDropdown.tsx` | 8.1 | ✅ |
+| 8.3 | Migrate `NewTabMenu.tsx`'s hand-rolled menu-positioning/outside-click/Escape logic to `useAnchoredMenu({ offset: 4 })` | `components/tab-bar/NewTabMenu.tsx` | 8.1 | ✅ |
 
-Phases are independent of each other (only the sub-steps within 1-3 depend on each other) — they
-can be done in any order, as separate PRs, per the project's existing "one action = one reasonable
-PR" convention from doc 14.
+Phases are independent of each other (only the sub-steps within 1-3 and 8 depend on each other) —
+they can be done in any order, as separate PRs, per the project's existing "one action = one
+reasonable PR" convention from doc 14.
 
 ### Manual test notes (Tauri-only, cannot be verified in a browser per `CLAUDE.md`)
 
@@ -308,6 +333,8 @@ PR" convention from doc 14.
 - 5.1: check WIP connection lines and the dashed origin/main styling on a repo with uncommitted
   changes and at least one commit above `origin/main` — this is the same rendering path doc 14's
   action 6.1 recommended a manual pass for.
+- 8.2/8.3: open the notification bell dropdown and the "new tab" (+) menu and confirm they still
+  position correctly under their trigger button, and still close on outside click and Escape.
 - 7.1/7.2: confirm Escape and backdrop-click now close both dialogs (behavior they didn't
   necessarily have before), and that existing keyboard/focus behavior isn't regressed.
 
@@ -315,7 +342,7 @@ PR" convention from doc 14.
 
 ## Implementation status
 
-All 10 actions implemented on branch `refactor/panels-tab-registry` (off `main` @ `6c74d32`, the
+All 13 actions implemented on branch `refactor/panels-tab-registry` (off `main` @ `6c74d32`, the
 already-merged rewards-system-solid PR). `pnpm --filter @git-manager/desktop typecheck` passes
 after every single action (verified incrementally, not just at the end).
 
@@ -368,3 +395,4 @@ which they may not have done identically before).
 | 2026-07-03 | 6.1 | Extracted `components/git-graph/components/DiffToolbar.tsx` (all header/toolbar JSX: file identity, diff/file tabs, blame/history toggle, diff nav, split/inline + whitespace toggles, WIP stage/discard, close) out of `DiffViewCenter.tsx`. Purely presentational move — all state/handlers stayed in `DiffViewCenter.tsx`, passed down as props/callbacks, no logic changed. `DiffViewCenter.tsx` 427→192 lines, `DiffToolbar.tsx` 315 lines. Verified: typecheck passes. |
 | 2026-07-03 | 7.1, 7.2 | Rebuilt `FollowPRDialog.tsx` and `FilterEditorDialog.tsx` on `packages/ui`'s `Dialog`/`DialogContent`/`DialogHeader`/`DialogTitle`/`DialogFooter` (same convention as `CreateBranchHereDialog.tsx`), replacing the hand-rolled fixed-position backdrop + manual close button in both. External prop contracts (`onAdd`/`onSave`/`onClose`) unchanged, so both call sites (`FollowedPRsTab.tsx`, `CustomViewsTab.tsx`) needed no changes. Verified: typecheck passes. Not re-tested visually — both dialogs should now also close on Escape/backdrop-click, which is a behavior change worth confirming in `pnpm dev`. |
 | 2026-07-03 | — | Full monorepo `pnpm typecheck` also run: `@git-manager/ui`'s typecheck script fails, but confirmed via `git stash` that this failure pre-dates this session's changes (broken on `main` already, unrelated `tsc`/turbo config issue) — not caused by, or in scope of, this plan. |
+| 2026-07-03 | 8.1, 8.2, 8.3 | Follow-up sweep (per the user's request to keep looking for improvement points) found Scope F: `useAnchoredMenu` duplicated 3 times outside its original folder. Moved `components/action-toolbar/useAnchoredMenu.ts` → `hooks/useAnchoredMenu.ts`, updated its 5 existing consumers' import paths (behavior unchanged, pure relocation). Migrated `NotificationDropdown.tsx` (`align: 'right'`, matching the same `transform: translateX(-100%)` convention already used by `UserProfile.tsx`) and `NewTabMenu.tsx` (`offset: 4`, preserving its slightly different 4px gap instead of the hook's 6px default) to the shared hook, removing ~35 duplicated lines from each. Verified: `pnpm --filter @git-manager/desktop typecheck` passes after each of the 3 steps. Not re-tested visually — added to "Manual test notes" above (confirm both menus still position correctly and close on outside-click/Escape). |

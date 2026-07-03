@@ -4,7 +4,7 @@ import { ChevronDown, GitBranch, Search } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
-import { useAnchoredMenu } from './useAnchoredMenu'
+import { useAnchoredMenu } from '../../hooks/useAnchoredMenu'
 
 /** Dropdown de sélection / recherche du dépôt courant. */
 export function RepoSelector() {

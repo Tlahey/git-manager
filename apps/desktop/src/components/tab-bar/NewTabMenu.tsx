@@ -1,10 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, FolderOpen, GitBranch, FolderPlus } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
 import { apiOpenRepo, apiInitRepo } from '../../api/repo.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
+import { useAnchoredMenu } from '../../hooks/useAnchoredMenu'
 import { CloneRepoDialog } from './CloneRepoDialog'
 
 interface MenuItemProps {
@@ -34,37 +35,15 @@ function MenuItem({ icon, label, description, onClick }: MenuItemProps) {
 export function NewTabMenu() {
   const { addRepo } = useRepoDataStore()
   const { openTab } = useRepoUIStore()
-  const [menuOpen, setMenuOpen] = useState(false)
   const [cloneOpen, setCloneOpen] = useState(false)
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
-  const containerRef = useRef<HTMLDivElement>(null)
-  const buttonRef = useRef<HTMLButtonElement>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
-
-  useLayoutEffect(() => {
-    if (!menuOpen || !buttonRef.current) return
-    const rect = buttonRef.current.getBoundingClientRect()
-    setMenuPos({ top: rect.bottom + 4, left: rect.left })
-  }, [menuOpen])
-
-  useEffect(() => {
-    if (!menuOpen) return
-    function onPointerDown(e: PointerEvent) {
-      const target = e.target as Node
-      const inButton = containerRef.current?.contains(target)
-      const inMenu = menuRef.current?.contains(target)
-      if (!inButton && !inMenu) setMenuOpen(false)
-    }
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setMenuOpen(false)
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [menuOpen])
+  const {
+    open: menuOpen,
+    setOpen: setMenuOpen,
+    pos: menuPos,
+    containerRef,
+    triggerRef: buttonRef,
+    menuRef,
+  } = useAnchoredMenu({ offset: 4 })
 
   async function handleOpenFolder() {
     setMenuOpen(false)

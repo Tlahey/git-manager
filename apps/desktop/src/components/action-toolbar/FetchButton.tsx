@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom'
 import { ArrowDownToLine, ChevronDown } from 'lucide-react'
 import { Spinner } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
-import { useAnchoredMenu } from './useAnchoredMenu'
+import { useAnchoredMenu } from '../../hooks/useAnchoredMenu'
 
 interface FetchButtonProps {
   loading?: boolean

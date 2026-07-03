@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNotificationStore, type AppNotification } from '../../stores/notification.store'
 import { useRepoUIStore, PULL_REQUESTS_TAB } from '../../stores/repoUI.store'
@@ -8,6 +8,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { Bell, CheckCheck, Trash2, Play, Sparkles } from 'lucide-react'
 import { getNotificationIcon, getNotificationText } from './utils'
 import { showNativeNotification } from '../../hooks/useNotificationWatcher'
+import { useAnchoredMenu } from '../../hooks/useAnchoredMenu'
 
 function formatRelativeTime(timestamp: number, t: any): string {
   const diff = Date.now() - timestamp
@@ -43,16 +44,18 @@ export function NotificationDropdown() {
     githubSettings?.accounts?.find((a) => a.id === githubSettings.activeAccountId) ?? null
   const hasToken = !!activeAccount?.token
 
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [menuPos, setMenuPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 })
-  
   // Simulator states
   const [simPrId, setSimPrId] = useState('')
   const [simAction, setSimAction] = useState<'merge' | 'close' | 'request_review' | 'approve' | 'new_pr' | 'ci_success' | 'ci_failed'>('merge')
 
-  const containerRef = useRef<HTMLDivElement>(null)
-  const buttonRef = useRef<HTMLButtonElement>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const {
+    open: menuOpen,
+    setOpen: setMenuOpen,
+    pos,
+    containerRef,
+    triggerRef: buttonRef,
+    menuRef,
+  } = useAnchoredMenu({ align: 'right' })
 
   // Initialize simulator PR selection
   useEffect(() => {
@@ -60,34 +63,6 @@ export function NotificationDropdown() {
       setSimPrId(mockPRs[0].id)
     }
   }, [mockPRs, simPrId])
-
-  useLayoutEffect(() => {
-    if (!menuOpen || !buttonRef.current) return
-    const rect = buttonRef.current.getBoundingClientRect()
-    setMenuPos({
-      top: rect.bottom + 6,
-      right: window.innerWidth - rect.right,
-    })
-  }, [menuOpen])
-
-  useEffect(() => {
-    if (!menuOpen) return
-    function onPointerDown(e: PointerEvent) {
-      const target = e.target as Node
-      const inButton = containerRef.current?.contains(target)
-      const inMenu = menuRef.current?.contains(target)
-      if (!inButton && !inMenu) setMenuOpen(false)
-    }
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setMenuOpen(false)
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [menuOpen])
 
   const unreadCount = notifications.filter((n) => !n.read).length
   const recentNotifications = notifications.slice(0, 5)
@@ -127,8 +102,9 @@ export function NotificationDropdown() {
             ref={menuRef}
             style={{
               position: 'fixed',
-              top: `${menuPos.top}px`,
-              right: `${menuPos.right}px`,
+              top: pos.top,
+              left: pos.left,
+              transform: 'translateX(-100%)',
             }}
             className="z-[99] flex w-80 flex-col rounded-lg border border-border bg-popover text-popover-foreground shadow-2xl backdrop-blur-sm animate-in fade-in slide-in-from-top-2 duration-150"
           >
