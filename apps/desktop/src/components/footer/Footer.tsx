@@ -25,9 +25,10 @@ import {
   DialogTrigger,
   DialogDescription,
 } from '@git-manager/ui'
+import type { Section } from '../../app/settings/SettingsPage'
 
 interface FooterProps {
-  onOpenSettings: (section?: 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization' | 'rewards') => void
+  onOpenSettings: (section?: Section) => void
 }
 
 export function Footer({ onOpenSettings }: FooterProps) {

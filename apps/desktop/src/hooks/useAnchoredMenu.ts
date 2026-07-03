@@ -13,7 +13,10 @@ interface AnchoredMenuOptions {
  * Gère l'état ouvert/fermé d'un menu déroulant ancré sur un bouton :
  * positionnement en `position: fixed` (rendu via portal), fermeture au clic
  * extérieur et à la touche Échap. Mutualise la logique répétée dans la barre
- * d'actions (RepoSelector, FetchButton, UserProfile...).
+ * d'actions (RepoSelector, FetchButton, UserProfile, BranchButton, BranchContext)
+ * et, au-delà, par tout menu ancré ailleurs dans l'app (NotificationDropdown,
+ * NewTabMenu) — d'où son emplacement dans `hooks/` plutôt que dans un dossier
+ * de domaine.
  */
 export function useAnchoredMenu({ align = 'left', offset = 6 }: AnchoredMenuOptions = {}) {
   const [open, setOpen] = useState(false)

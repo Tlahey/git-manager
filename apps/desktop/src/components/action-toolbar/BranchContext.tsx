@@ -9,7 +9,7 @@ import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useBranches } from '../../hooks/useBranches'
 import { apiCheckoutBranch } from '../../api/git.api'
 import { apiOpenRepo } from '../../api/repo.api'
-import { useAnchoredMenu } from './useAnchoredMenu'
+import { useAnchoredMenu } from '../../hooks/useAnchoredMenu'
 
 /** Sélecteur de la branche courante du dépôt actif (checkout au clic). */
 export function BranchContext() {

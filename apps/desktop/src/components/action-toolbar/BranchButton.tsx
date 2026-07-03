@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { GitBranch } from 'lucide-react'
 import { Spinner } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
-import { useAnchoredMenu } from './useAnchoredMenu'
+import { useAnchoredMenu } from '../../hooks/useAnchoredMenu'
 
 interface BranchButtonProps {
   /** Référence de départ (branche courante ou HEAD si detached). */

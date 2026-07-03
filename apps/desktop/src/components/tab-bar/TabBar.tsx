@@ -6,9 +6,10 @@ import { useGameStore } from '../../stores/game.store'
 import { NewTabMenu } from './NewTabMenu'
 import { UserProfile } from '../action-toolbar/UserProfile'
 import { NotificationDropdown } from '../notification/NotificationDropdown'
+import type { Section } from '../../app/settings/SettingsPage'
 
 interface TabBarProps {
-  onOpenSettings: (section?: 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization' | 'rewards') => void
+  onOpenSettings: (section?: Section) => void
 }
 
 interface PinnedTabProps {
