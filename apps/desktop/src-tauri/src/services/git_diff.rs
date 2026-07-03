@@ -1,4 +1,6 @@
+use crate::error::AppError;
 use crate::models::{GitDiff, GitDiffFile, GitDiffHunk, GitDiffLine};
+use git2::{DiffOptions, Oid, Repository};
 use std::cell::RefCell;
 
 /// Walks a `git2::Diff` and appends one `GitDiffFile` (with hunks/lines) per delta into `files`.
@@ -114,4 +116,21 @@ pub fn build_diff(diff: git2::Diff) -> Result<GitDiff, git2::Error> {
     let files: RefCell<Vec<GitDiffFile>> = RefCell::new(Vec::new());
     diff_foreach_files(&diff, &files, false)?;
     Ok(finalize(files.into_inner()))
+}
+
+/// Diffs a commit's tree directly against the literal working directory (not the index),
+/// so uncommitted changes on top of that commit show up alongside its own historical delta.
+pub fn diff_commit_to_workdir(repo: &Repository, oid: &str) -> Result<GitDiff, AppError> {
+    let commit_oid = Oid::from_str(oid).map_err(AppError::Git)?;
+    let commit = repo.find_commit(commit_oid).map_err(AppError::Git)?;
+    let tree = commit.tree().map_err(AppError::Git)?;
+
+    let mut diff_opts = DiffOptions::new();
+    diff_opts.context_lines(3).ignore_whitespace_change(false);
+
+    let diff = repo
+        .diff_tree_to_workdir(Some(&tree), Some(&mut diff_opts))
+        .map_err(AppError::Git)?;
+
+    build_diff(diff).map_err(AppError::Git)
 }

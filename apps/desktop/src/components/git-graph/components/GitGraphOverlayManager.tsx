@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react'
 import { CreateBranchHereDialog } from '../CreateBranchHereDialog'
 import { ResetDialog } from '../../rollback/ResetDialog'
 import { RevertDialog } from '../../rollback/RevertDialog'
+import { TagDialog } from '../TagDialog'
+import { CompareToWorkdirDialog } from '../CompareToWorkdirDialog'
 import type { GitGraphNode } from '@git-manager/git-types'
+import type { PendingAction } from '../../../hooks/useGitGraphActions'
 
 interface GitGraphOverlayManagerProps {
   repoPath: string
@@ -10,15 +13,11 @@ interface GitGraphOverlayManagerProps {
   primaryOid: string | null
   protectedBranches: string[]
   /** Action to trigger from the native context menu. */
-  pendingAction: 'reset' | 'revert' | 'branch' | null
+  pendingAction: PendingAction
   onClearPendingAction: () => void
 }
 
-type PendingDialog =
-  | { kind: 'reset'; oid: string }
-  | { kind: 'revert'; oid: string }
-  | { kind: 'branch'; oid: string }
-  | null
+type ActiveDialog = (PendingAction & { oid: string }) | null
 
 export function GitGraphOverlayManager({
   repoPath,
@@ -28,13 +27,13 @@ export function GitGraphOverlayManager({
   pendingAction,
   onClearPendingAction,
 }: GitGraphOverlayManagerProps) {
-  const [activeDialog, setActiveDialog] = useState<PendingDialog>(null)
+  const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null)
 
   // React to native menu actions dispatched via pendingAction
   useEffect(() => {
     if (!pendingAction || !primaryOid) return
 
-    setActiveDialog({ kind: pendingAction, oid: primaryOid })
+    setActiveDialog({ ...pendingAction, oid: primaryOid })
     onClearPendingAction()
   }, [pendingAction, primaryOid, onClearPendingAction])
 
@@ -57,6 +56,7 @@ export function GitGraphOverlayManager({
           onClose={closeDialog}
           onSuccess={closeDialog}
           protectedBranches={protectedBranches}
+          initialMode={activeDialog.mode}
         />
       )
     case 'revert':
@@ -73,6 +73,27 @@ export function GitGraphOverlayManager({
     case 'branch':
       return (
         <CreateBranchHereDialog
+          repoPath={repoPath}
+          oid={activeNode.commit.oid}
+          shortOid={activeNode.commit.shortOid}
+          open
+          onClose={closeDialog}
+        />
+      )
+    case 'tag':
+      return (
+        <TagDialog
+          repoPath={repoPath}
+          oid={activeNode.commit.oid}
+          shortOid={activeNode.commit.shortOid}
+          annotated={activeDialog.annotated}
+          open
+          onClose={closeDialog}
+        />
+      )
+    case 'compare':
+      return (
+        <CompareToWorkdirDialog
           repoPath={repoPath}
           oid={activeNode.commit.oid}
           shortOid={activeNode.commit.shortOid}

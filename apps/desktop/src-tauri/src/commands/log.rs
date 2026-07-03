@@ -254,6 +254,13 @@ pub async fn get_commit_diff(path: String, oid: String) -> Result<GitDiff, Strin
     Ok(git_diff::finalize(files.into_inner()))
 }
 
+/// Diffe l'arbre d'un commit contre le working directory actuel (pas l'index).
+#[tauri::command]
+pub async fn compare_commit_to_workdir(path: String, oid: String) -> Result<GitDiff, String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    git_diff::diff_commit_to_workdir(&repo, &oid).map_err(Into::into)
+}
+
 /// Retourne le contenu brut d'un fichier à un commit donné
 #[tauri::command]
 pub async fn get_commit_file(

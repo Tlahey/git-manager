@@ -19,6 +19,7 @@ import { GraphHeader } from './GraphHeader'
 import { CommitDetailsPanel } from './CommitDetailsPanel'
 import { DiffViewCenter } from './DiffViewCenter'
 import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
+import { RebaseConflictBanner } from '../rebase/RebaseConflictBanner'
 import { Waterline } from './Waterline'
 import { COLUMN_DEFS, COLUMN_ORDER, type ResolvedColumn } from './columns'
 
@@ -320,6 +321,8 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
         pendingAction={pendingAction}
         onClearPendingAction={() => setPendingAction(null)}
       />
+
+      <RebaseConflictBanner repoPath={repoPath} />
 
       {/* Toast discret */}
       {toast && (

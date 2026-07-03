@@ -20,3 +20,20 @@ pub fn get_git_signature(repo: &Repository) -> Result<Signature<'static>, AppErr
 
     Signature::now(&author_name, &author_email).map_err(AppError::Git)
 }
+
+/// Turns a GitHub remote URL (`git@github.com:owner/repo.git` or
+/// `https://github.com/owner/repo.git`) plus a commit OID into the commit's web URL.
+/// Returns `None` if the remote isn't a recognizable GitHub URL.
+pub fn github_web_url(remote_url: &str, oid: &str) -> Option<String> {
+    let owner_repo = remote_url
+        .strip_prefix("git@github.com:")
+        .or_else(|| remote_url.strip_prefix("https://github.com/"))
+        .or_else(|| remote_url.strip_prefix("http://github.com/"))?;
+
+    let owner_repo = owner_repo.trim_end_matches('/').trim_end_matches(".git");
+    if owner_repo.is_empty() || !owner_repo.contains('/') {
+        return None;
+    }
+
+    Some(format!("https://github.com/{owner_repo}/commit/{oid}"))
+}

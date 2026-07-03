@@ -15,6 +15,10 @@ pub enum AppError {
     CommitNotFound(String),
     #[error("Protected branch: {0}")]
     ProtectedBranch(String),
+    #[error("Tag already exists: {0}")]
+    TagAlreadyExists(String),
+    #[error("Worktree path already exists: {0}")]
+    WorktreePathExists(String),
     #[error("Ollama error: {0}")]
     Ollama(String),
     #[error("HTTP error: {0}")]
@@ -39,6 +43,8 @@ impl From<AppError> for String {
             AppError::BranchNotFound(_) => ("BRANCH_NOT_FOUND", e.to_string()),
             AppError::CommitNotFound(_) => ("COMMIT_NOT_FOUND", e.to_string()),
             AppError::ProtectedBranch(_) => ("PROTECTED_BRANCH", e.to_string()),
+            AppError::TagAlreadyExists(_) => ("TAG_ALREADY_EXISTS", e.to_string()),
+            AppError::WorktreePathExists(_) => ("WORKTREE_PATH_EXISTS", e.to_string()),
             AppError::Ollama(_) => ("OLLAMA_ERROR", e.to_string()),
             AppError::Http(_) => ("HTTP_ERROR", e.to_string()),
             AppError::Unknown(_) => ("UNKNOWN", e.to_string()),
