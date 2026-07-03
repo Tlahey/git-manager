@@ -1,10 +1,10 @@
 import { useTranslation } from '@git-manager/i18n'
-import { Monitor, Check, Lock } from 'lucide-react'
+import { Monitor, Check } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { useUserThemes } from '../../../hooks/useUserThemes'
 import { BUILTIN_THEMES } from '../../../lib/themes'
 import { useGameStore } from '../../../stores/game.store'
-import { findEffectGate, isEffectUnlocked } from '../../../lib/rewards/effects'
+import { isEffectUnlocked } from '../../../lib/rewards/effects'
 
 interface ThemeCardProps {
   id: string
@@ -14,33 +14,17 @@ interface ThemeCardProps {
   isActive: boolean
   isCustom?: boolean
   onClick: () => void
-  locked?: boolean
-  lockReason?: string
 }
 
-function ThemeCard({
-  label,
-  colors,
-  isSystem,
-  isActive,
-  isCustom,
-  onClick,
-  locked,
-  lockReason,
-}: ThemeCardProps) {
+function ThemeCard({ label, colors, isSystem, isActive, isCustom, onClick }: ThemeCardProps) {
   return (
     <button
       type="button"
-      onClick={locked ? undefined : onClick}
-      title={locked ? lockReason : undefined}
+      onClick={onClick}
       data-testid={`theme-card-${label.toLowerCase().replace(/\s+/g, '-')}`}
-      className={`relative flex flex-col gap-2 rounded-lg border p-3 text-left transition-all ${
-        locked ? 'opacity-55 cursor-not-allowed border-dashed bg-muted/5' : 'cursor-pointer'
-      } ${
+      className={`relative flex flex-col gap-2 rounded-lg border p-3 text-left transition-all cursor-pointer ${
         isActive
           ? 'border-primary bg-primary/10 ring-1 ring-primary'
-          : locked
-          ? 'border-border/60'
           : 'border-border hover:border-muted-foreground/40 hover:bg-accent/50'
       }`}
     >
@@ -62,20 +46,10 @@ function ThemeCard({
               style={{ background: colors.fg }}
             />
           </div>
-          {locked && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[1px]">
-              <Lock className="h-4 w-4 text-amber-500" />
-            </div>
-          )}
         </div>
       ) : (
         <div className="flex h-12 w-full items-center justify-center rounded-md border border-dashed border-border bg-muted/30 relative">
           <span className="text-[10px] text-muted-foreground">CSS</span>
-          {locked && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[1px]">
-              <Lock className="h-4 w-4 text-amber-500" />
-            </div>
-          )}
         </div>
       )}
 
@@ -90,7 +64,6 @@ function ThemeCard({
               custom
             </span>
           )}
-          {locked && <Lock className="h-3 w-3 text-amber-500/80" />}
           {isActive && <Check className="h-3.5 w-3.5 text-primary" />}
         </div>
       </div>
@@ -109,13 +82,10 @@ export function AppearanceSection() {
   // Which achievement (if any) gates a given theme id is declared in achievements.json
   // (`effects: [{ type: 'theme', id: ... }]`), not hardcoded here — a new locked theme only
   // needs a JSON entry, see docs/architecture/15-rewards-system-refactor-plan.md.
-  const isThemeLocked = (themeId: string) => !isEffectUnlocked(achievements, 'theme', themeId)
-
-  const getThemeLockReason = (themeId: string) => {
-    const gate = findEffectGate(achievements, 'theme', themeId)
-    if (!gate || gate.unlocked) return ''
-    return `Thème Verrouillé : nécessite le succès "${gate.title}" — ${gate.description}`
-  }
+  // Locked themes are hidden entirely rather than shown disabled.
+  const unlockedBuiltinThemes = BUILTIN_THEMES.filter((theme) =>
+    isEffectUnlocked(achievements, 'theme', theme.id)
+  )
 
   // SWR hook replaces manual useEffect
   const { data: userThemesData } = useUserThemes()
@@ -144,23 +114,17 @@ export function AppearanceSection() {
       <div className="space-y-3">
         <p className="text-xs font-medium text-foreground">{t('settings.appearance.theme')}</p>
         <div className="grid grid-cols-3 gap-2">
-          {BUILTIN_THEMES.map((theme) => {
-            const locked = isThemeLocked(theme.id)
-            const lockReason = getThemeLockReason(theme.id)
-            return (
-              <ThemeCard
-                key={theme.id}
-                id={theme.id}
-                label={t(theme.labelKey)}
-                colors={theme.colors}
-                isSystem={theme.id === 'system'}
-                isActive={appearance.theme === theme.id}
-                locked={locked}
-                lockReason={lockReason}
-                onClick={() => updateAppearance({ theme: theme.id })}
-              />
-            )
-          })}
+          {unlockedBuiltinThemes.map((theme) => (
+            <ThemeCard
+              key={theme.id}
+              id={theme.id}
+              label={t(theme.labelKey)}
+              colors={theme.colors}
+              isSystem={theme.id === 'system'}
+              isActive={appearance.theme === theme.id}
+              onClick={() => updateAppearance({ theme: theme.id })}
+            />
+          ))}
           {userThemes.map((theme) => (
             <ThemeCard
               key={theme.id}
