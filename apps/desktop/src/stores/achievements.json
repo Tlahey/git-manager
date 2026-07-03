@@ -6,7 +6,8 @@
     "points": 10,
     "type": "bronze",
     "difficulty": "beginner",
-    "actionType": "open_launchpad",
+    "kind": "action",
+    "event": "open_app",
     "rewardDescription": "Amélioration d'XP"
   },
   {
@@ -16,6 +17,7 @@
     "points": 10,
     "type": "bronze",
     "difficulty": "beginner",
+    "kind": "milestone",
     "milestoneType": "commit",
     "milestoneValue": 1,
     "rewardDescription": "Cadre d'avatar Bronze"
@@ -28,6 +30,7 @@
     "type": "bronze",
     "difficulty": "beginner",
     "prerequisiteId": "commit_1",
+    "kind": "milestone",
     "milestoneType": "commit",
     "milestoneValue": 10,
     "rewardDescription": "Amélioration d'XP"
@@ -39,7 +42,9 @@
     "points": 15,
     "type": "bronze",
     "difficulty": "beginner",
-    "actionType": "stage_unstage",
+    "kind": "pair",
+    "startEvent": "stage",
+    "endEvent": "unstage",
     "rewardDescription": "Amélioration d'XP"
   },
   {
@@ -49,6 +54,7 @@
     "points": 15,
     "type": "bronze",
     "difficulty": "beginner",
+    "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
     "commandKeyword": "git status",
@@ -61,6 +67,7 @@
     "points": 15,
     "type": "bronze",
     "difficulty": "beginner",
+    "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
     "commandKeyword": "git log",
@@ -74,6 +81,7 @@
     "type": "silver",
     "difficulty": "intermediate",
     "prerequisiteId": "commit_10",
+    "kind": "milestone",
     "milestoneType": "commit",
     "milestoneValue": 50,
     "rewardDescription": "Cadre d'avatar Argent"
@@ -85,6 +93,7 @@
     "points": 20,
     "type": "bronze",
     "difficulty": "intermediate",
+    "kind": "milestone",
     "milestoneType": "pr_merged",
     "milestoneValue": 1,
     "rewardDescription": "Amélioration d'XP"
@@ -97,8 +106,10 @@
     "type": "silver",
     "difficulty": "intermediate",
     "prerequisiteId": "pr_1",
+    "kind": "milestone",
     "milestoneType": "pr_merged",
     "milestoneValue": 10,
+    "effects": [{ "type": "theme", "id": "forest" }],
     "rewardDescription": "Thème Forêt Verte"
   },
   {
@@ -108,7 +119,8 @@
     "points": 15,
     "type": "bronze",
     "difficulty": "intermediate",
-    "actionType": "discard",
+    "kind": "action",
+    "event": "discard",
     "rewardDescription": "Amélioration d'XP"
   },
   {
@@ -118,7 +130,8 @@
     "points": 20,
     "type": "bronze",
     "difficulty": "intermediate",
-    "actionType": "fixup",
+    "kind": "action",
+    "event": "fixup",
     "rewardDescription": "Amélioration d'XP"
   },
   {
@@ -128,6 +141,7 @@
     "points": 20,
     "type": "bronze",
     "difficulty": "intermediate",
+    "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
     "commandKeyword": "git diff",
@@ -140,6 +154,7 @@
     "points": 20,
     "type": "bronze",
     "difficulty": "intermediate",
+    "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
     "commandKeyword": "git branch --all",
@@ -152,6 +167,7 @@
     "points": 20,
     "type": "bronze",
     "difficulty": "intermediate",
+    "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
     "commandKeyword": "git stash list",
@@ -165,8 +181,10 @@
     "type": "gold",
     "difficulty": "expert",
     "prerequisiteId": "commit_50",
+    "kind": "milestone",
     "milestoneType": "commit",
     "milestoneValue": 100,
+    "effects": [{ "type": "theme", "id": "amethyst" }],
     "rewardDescription": "Thème Améthyste"
   },
   {
@@ -177,6 +195,7 @@
     "type": "platinum",
     "difficulty": "expert",
     "prerequisiteId": "commit_100",
+    "kind": "milestone",
     "milestoneType": "commit",
     "milestoneValue": 500,
     "rewardDescription": "Cadre d'avatar Néon"
@@ -189,6 +208,7 @@
     "type": "gold",
     "difficulty": "expert",
     "prerequisiteId": "pr_10",
+    "kind": "milestone",
     "milestoneType": "pr_merged",
     "milestoneValue": 50,
     "rewardDescription": "Cadre d'avatar Or"
@@ -200,7 +220,9 @@
     "points": 30,
     "type": "silver",
     "difficulty": "expert",
-    "actionType": "autosquash",
+    "kind": "action",
+    "event": "autosquash",
+    "effects": [{ "type": "theme", "id": "cyberpunk" }],
     "rewardDescription": "Thème Cyberpunk"
   },
   {
@@ -210,6 +232,7 @@
     "points": 30,
     "type": "silver",
     "difficulty": "expert",
+    "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
     "commandKeyword": "git bisect",
@@ -222,6 +245,7 @@
     "points": 30,
     "type": "silver",
     "difficulty": "expert",
+    "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
     "commandKeyword": "git cherry-pick",
@@ -234,6 +258,7 @@
     "points": 35,
     "type": "silver",
     "difficulty": "expert",
+    "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
     "commandKeyword": "git rebase -i",
@@ -246,6 +271,7 @@
     "points": 40,
     "type": "gold",
     "difficulty": "expert",
+    "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
     "commandKeyword": "git worktree",
@@ -258,6 +284,7 @@
     "points": 40,
     "type": "gold",
     "difficulty": "expert",
+    "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
     "commandKeyword": "git submodule",
@@ -270,6 +297,7 @@
     "points": 50,
     "type": "gold",
     "difficulty": "expert",
+    "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
     "commandKeyword": "git filter",
@@ -282,6 +310,7 @@
     "points": 50,
     "type": "gold",
     "difficulty": "expert",
+    "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
     "commandKeyword": "git verify-pack",
@@ -294,6 +323,7 @@
     "points": 60,
     "type": "gold",
     "difficulty": "expert",
+    "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
     "commandKeyword": "git write-tree",
@@ -306,6 +336,7 @@
     "points": 60,
     "type": "gold",
     "difficulty": "expert",
+    "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
     "commandKeyword": "git cat-file",
@@ -318,6 +349,9 @@
     "points": 150,
     "type": "platinum",
     "difficulty": "expert",
+    "kind": "composite",
+    "requiresAllExcept": ["platinum_trophy"],
+    "effects": [{ "type": "theme", "id": "platinum" }],
     "rewardDescription": "Thème Platine clignotant"
   }
 ]

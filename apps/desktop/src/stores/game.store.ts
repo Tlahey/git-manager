@@ -1,35 +1,28 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { apiGetTerminalCommands } from '../api/shell.api'
-import { appEventBus } from '../lib/appEventBus'
+import { appEventBus, type AppEvent } from '../lib/appEventBus'
+import { processEvent, unlockAchievementById, type RewardEngineState } from '../lib/rewards/rewardEngine'
+import type { AchievementDefinition } from '../lib/rewards/types'
 import JSON_ACHIEVEMENTS from './achievements.json'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export interface Achievement {
-  id: string
-  title: string
-  description: string
-  points: number
-  type: 'bronze' | 'silver' | 'gold' | 'platinum'
-  difficulty: 'beginner' | 'intermediate' | 'expert'
-  prerequisiteId?: string
-  milestoneType?: 'commit' | 'pr_merged' | 'terminal_command'
-  milestoneValue?: number
-  commandKeyword?: string
-  actionType?: string
-  unlocked: boolean
-  unlockedAt?: number
-  rewardDescription: string
-}
+/**
+ * Client-side gamification state. Rule evaluation itself (which achievement unlocks on which
+ * event) lives in `lib/rewards/` — this store only holds state, persists it, and adapts the
+ * pure `rewardEngine.processEvent` result into Zustand `set()` calls + the delayed platinum-
+ * trophy unlock. See docs/architecture/15-rewards-system-refactor-plan.md for why this split
+ * exists (the whole engine used to live inline here).
+ */
+export type { Achievement } from '../lib/rewards/types'
+import type { Achievement } from '../lib/rewards/types'
 
 export interface GameState {
   achievements: Achievement[]
   points: number
   recentUnlock: Achievement | null
   historyChecked: string[] // List of terminal commands already processed
-  stagedFilesHistory: Set<string> // Temporary session tracking for Stage & Unstage
-  unstagedFilesHistory: Set<string>
+  pairTracking: Map<string, Set<string>> // Per-achievement session tracking, see PairEventRule
+
   rewardsEnabled: boolean
 
   // Counters
@@ -38,20 +31,20 @@ export interface GameState {
   terminalCommandCount: number
 
   // Actions
-  unlockAchievement: (id: string) => void
   clearRecentUnlock: () => void
-  handleObserverEvent: (event: string, payload?: any) => void
+  processAppEvent: (event: AppEvent, payload?: unknown) => void
   checkTerminalHistory: () => Promise<void>
-  checkMilestones: (type: 'commit' | 'pr_merged' | 'terminal_command', value: number, rawCommand?: string) => void
   setRewardsEnabled: (enabled: boolean) => void
   resetGameProgress: () => void
 }
 
-const INITIAL_ACHIEVEMENTS: Achievement[] = (JSON_ACHIEVEMENTS as any[]).map((item) => ({
-  ...item,
-  unlocked: false,
-  unlockedAt: undefined,
-}))
+const INITIAL_ACHIEVEMENTS: Achievement[] = (JSON_ACHIEVEMENTS as unknown as AchievementDefinition[]).map(
+  (item) => ({
+    ...item,
+    unlocked: false,
+    unlockedAt: undefined,
+  })
+)
 
 // ─── Level Math ───────────────────────────────────────────────────────────────
 
@@ -90,135 +83,59 @@ export const useGameStore = create<GameState>()(
       points: 0,
       recentUnlock: null,
       historyChecked: [],
-      stagedFilesHistory: new Set(),
-      unstagedFilesHistory: new Set(),
+      pairTracking: new Map(),
       rewardsEnabled: true,
 
       commitCount: 0,
       prMergedCount: 0,
       terminalCommandCount: 0,
 
-      unlockAchievement: (id: string) => {
-        const list = get().achievements
-        const item = list.find((a: Achievement) => a.id === id)
-        if (!item || item.unlocked) return
-
-        // Verify prerequisites are satisfied
-        if (item.prerequisiteId) {
-          const prereq = list.find((a: Achievement) => a.id === item.prerequisiteId)
-          if (!prereq || !prereq.unlocked) return
-        }
-
-        const updated = list.map((a: Achievement) =>
-          a.id === id ? { ...a, unlocked: true, unlockedAt: Date.now() } : a
-        )
-
-        set({
-          achievements: updated,
-          points: get().points + item.points,
-          recentUnlock: { ...item, unlocked: true, unlockedAt: Date.now() },
-        })
-
-        // Check for Platinum Trophy: unlock it if all other 27 achievements are unlocked
-        const allOtherUnlocked = updated.every((a: Achievement) => a.id === 'platinum_trophy' || a.unlocked)
-        const plat = updated.find((a: Achievement) => a.id === 'platinum_trophy')
-        if (allOtherUnlocked && plat && !plat.unlocked) {
-          setTimeout(() => {
-            get().unlockAchievement('platinum_trophy')
-          }, 1000)
-        }
-      },
-
       clearRecentUnlock: () => {
         set({ recentUnlock: null })
       },
 
-      checkMilestones: (type: 'commit' | 'pr_merged' | 'terminal_command', value: number, rawCommand?: string) => {
-        const list = get().achievements
-        list.forEach((ach: Achievement) => {
-          if (ach.unlocked || ach.milestoneType !== type) return
-
-          // Verify prerequisites are satisfied
-          if (ach.prerequisiteId) {
-            const prereq = list.find((a: Achievement) => a.id === ach.prerequisiteId)
-            if (!prereq || !prereq.unlocked) return
-          }
-
-          if (type === 'terminal_command') {
-            if (ach.commandKeyword && rawCommand && rawCommand.trim().toLowerCase().includes(ach.commandKeyword.toLowerCase())) {
-              get().unlockAchievement(ach.id)
-            }
-          } else {
-            if (ach.milestoneValue !== undefined && value >= ach.milestoneValue) {
-              get().unlockAchievement(ach.id)
-            }
-          }
-        })
-      },
-
-      handleObserverEvent: (event: string, payload?: any) => {
+      processAppEvent: (event: AppEvent, payload?: unknown) => {
         if (!get().rewardsEnabled) return
-        const { unlockAchievement, checkMilestones } = get()
 
-        // 1. Direct actions mapping from achievements catalog
-        const list = get().achievements
-        list.forEach((ach: Achievement) => {
-          if (ach.unlocked || !ach.actionType) return
-          if (ach.actionType === event) {
-            // Verify prerequisites are satisfied
-            if (ach.prerequisiteId) {
-              const prereq = list.find((a: Achievement) => a.id === ach.prerequisiteId)
-              if (!prereq || !prereq.unlocked) return
-            }
-            unlockAchievement(ach.id)
-          }
+        const engineState: RewardEngineState = {
+          achievements: get().achievements,
+          points: get().points,
+          commitCount: get().commitCount,
+          prMergedCount: get().prMergedCount,
+          terminalCommandCount: get().terminalCommandCount,
+          pairTracking: get().pairTracking,
+        }
+
+        const result = processEvent(engineState, event, payload)
+
+        set({
+          achievements: result.nextState.achievements,
+          points: result.nextState.points,
+          commitCount: result.nextState.commitCount,
+          prMergedCount: result.nextState.prMergedCount,
+          terminalCommandCount: result.nextState.terminalCommandCount,
+          pairTracking: result.nextState.pairTracking,
         })
 
-        // Special observer notifications mapping
-        if (event === 'open_app') {
-          unlockAchievement('open_launchpad')
+        if (result.newlyUnlocked.length > 0) {
+          // Mirrors the original behavior: if several achievements unlock from the same event,
+          // only the last one gets a toast (recentUnlock is a single slot, not a queue).
+          set({ recentUnlock: result.newlyUnlocked[result.newlyUnlocked.length - 1] })
         }
 
-        if (event === 'commit') {
-          const nextVal = get().commitCount + 1
-          set({ commitCount: nextVal })
-          checkMilestones('commit', nextVal)
-        }
-
-        if (event === 'pr_closed_or_merged') {
-          const nextVal = get().prMergedCount + 1
-          set({ prMergedCount: nextVal })
-          checkMilestones('pr_merged', nextVal)
-        }
-
-        if (event === 'terminal_command') {
-          const cmd = payload?.command || ''
-          const nextVal = get().terminalCommandCount + 1
-          set({ terminalCommandCount: nextVal })
-          checkMilestones('terminal_command', nextVal, cmd)
-        }
-
-        // 2. Stage/Unstage tracking
-        if (event === 'stage') {
-          const file = payload?.filePath || 'default'
-          set((state: GameState) => {
-            const next = new Set(state.stagedFilesHistory)
-            next.add(file)
-            return { stagedFilesHistory: next }
-          })
-        }
-        if (event === 'unstage') {
-          const file = payload?.filePath || 'default'
-          const staged = get().stagedFilesHistory
-          if (staged.has(file)) {
-            unlockAchievement('stage_unstage')
-          }
-          set((state: GameState) => {
-            const next = new Set(state.unstagedFilesHistory)
-            next.add(file)
-            return { unstagedFilesHistory: next }
-          })
-        }
+        // Composite achievements (the platinum trophy) unlock 1s after the set that completed
+        // them, so their toast doesn't visually collide with the "normal" unlock that just fired.
+        result.pendingComposites.forEach((composite) => {
+          setTimeout(() => {
+            const unlockResult = unlockAchievementById(get().achievements, get().points, composite.id)
+            if (!unlockResult) return
+            set({
+              achievements: unlockResult.achievements,
+              points: unlockResult.points,
+              recentUnlock: unlockResult.unlocked,
+            })
+          }, 1000)
+        })
       },
 
       checkTerminalHistory: async () => {
@@ -235,7 +152,7 @@ export const useGameStore = create<GameState>()(
             // Update checking registry first to prevent concurrency loops
             set({ historyChecked: [...checked, ...newCommands] })
 
-            // Dispatch each new command event to the observer
+            // Dispatch each new command event to the engine
             newCommands.forEach((cmd) => {
               appEventBus.notify('terminal_command', { command: cmd })
             })
@@ -255,8 +172,7 @@ export const useGameStore = create<GameState>()(
           points: 0,
           recentUnlock: null,
           historyChecked: [],
-          stagedFilesHistory: new Set(),
-          unstagedFilesHistory: new Set(),
+          pairTracking: new Map(),
           commitCount: 0,
           prMergedCount: 0,
           terminalCommandCount: 0,
@@ -294,6 +210,6 @@ export const useGameStore = create<GameState>()(
 )
 
 // Automatically wire the store to the appEventBus event channel on import
-appEventBus.subscribe((event: string, payload?: any) => {
-  useGameStore.getState().handleObserverEvent(event, payload)
+appEventBus.subscribe((event: AppEvent, payload?: any) => {
+  useGameStore.getState().processAppEvent(event, payload)
 })
