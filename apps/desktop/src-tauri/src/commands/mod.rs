@@ -4,6 +4,7 @@ pub mod fixup;
 pub mod github;
 pub mod log;
 pub mod ollama;
+pub mod rebase;
 pub mod remote;
 pub mod repo;
 pub mod rollback;

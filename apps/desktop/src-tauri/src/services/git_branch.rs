@@ -154,6 +154,17 @@ pub fn list_tags(repo: &Repository) -> Result<Vec<BranchRef>, AppError> {
     Ok(tags)
 }
 
+/// Crée une nouvelle branche locale pointant sur `from_ref`, sans la checkout.
+/// `from_ref` accepte tout revspec résolu par git2 (nom de branche, "HEAD", OID complet).
+pub fn create_branch(repo: &Repository, name: &str, from_ref: &str) -> Result<(), AppError> {
+    let obj = repo
+        .revparse_single(from_ref)
+        .map_err(|_| AppError::Unknown(format!("Invalid reference: {from_ref}")))?;
+    let commit = obj.peel_to_commit().map_err(AppError::Git)?;
+    repo.branch(name, &commit, false).map_err(AppError::Git)?;
+    Ok(())
+}
+
 /// Checkout d'une branche locale par son nom, ou d'un commit brut par OID (HEAD détaché).
 /// Le fallback OID permet de restaurer un HEAD détaché lors d'un undo de checkout.
 pub fn checkout_branch(repo: &Repository, ref_name: &str, force: bool) -> Result<(), AppError> {
