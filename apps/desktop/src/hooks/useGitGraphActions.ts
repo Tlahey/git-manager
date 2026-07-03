@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { mutate } from 'swr'
+import { open, save } from '@tauri-apps/plugin-dialog'
 import type { GitGraphNode, GitStatus } from '@git-manager/git-types'
 import { showCommitNativeContextMenu, showStashNativeContextMenu } from '../api/nativeMenu.api'
 import {
@@ -10,7 +11,14 @@ import {
   apiCreateFixupCommit,
   apiCreateCommit,
   apiStageAll,
+  apiCopyCommitSha,
+  apiCheckoutBranch,
+  apiCherryPickCommit,
+  apiRebaseOntoCommit,
+  apiGetCommitWebUrl,
+  apiCreatePatch,
 } from '../api/git.api'
+import { apiAddWorktree } from '../api/worktree.api'
 import { useRepoUIStore } from '../stores/repoUI.store'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
@@ -27,6 +35,14 @@ interface UseGitGraphActionsParams {
   status: GitStatus | undefined
   t: TranslateFn
 }
+
+export type PendingAction =
+  | { kind: 'reset'; mode: 'soft' | 'mixed' | 'hard' }
+  | { kind: 'revert' }
+  | { kind: 'branch' }
+  | { kind: 'tag'; annotated: boolean }
+  | { kind: 'compare' }
+  | null
 
 /**
  * Encapsule les actions impératives déclenchées depuis le graphe : menu
@@ -47,7 +63,7 @@ export function useGitGraphActions({
   const queryClient = useQueryClient()
   const setEditingOid = useRepoUIStore((s) => s.setEditingOid)
 
-  const [pendingAction, setPendingAction] = useState<'reset' | 'revert' | 'branch' | null>(null)
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null)
   const [toast, setToast] = useState<{ kind: 'ok' | 'error'; msg: string } | null>(null)
 
   useEffect(() => {
@@ -56,9 +72,14 @@ export function useGitGraphActions({
     return () => clearTimeout(id)
   }, [toast])
 
+  function refreshLogAndStatus() {
+    queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+    queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+  }
+
   async function handleCopySha() {
     if (!primaryOid) return
-    await navigator.clipboard.writeText(primaryOid)
+    await apiCopyCommitSha(primaryOid)
     setToast({ kind: 'ok', msg: t('gitTree.contextMenu.shaCopied') })
   }
 
@@ -70,6 +91,77 @@ export function useGitGraphActions({
       queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
       queryClient.invalidateQueries({ queryKey: ['pending-fixups', repoPath] })
       setToast({ kind: 'ok', msg: t('gitTree.contextMenu.fixupCreated') })
+    } catch (err) {
+      setToast({ kind: 'error', msg: String(err) })
+    }
+  }
+
+  async function handleCheckoutDetached() {
+    if (!primaryOid) return
+    try {
+      await apiCheckoutBranch(repoPath, primaryOid)
+      refreshLogAndStatus()
+    } catch (err) {
+      setToast({ kind: 'error', msg: String(err) })
+    }
+  }
+
+  async function handleCreateWorktree() {
+    if (!primaryOid) return
+    try {
+      const destPath = await open({ directory: true, multiple: false })
+      if (!destPath || typeof destPath !== 'string') return
+      await apiAddWorktree(repoPath, primaryOid, destPath)
+      setToast({ kind: 'ok', msg: t('gitTree.contextMenu.worktreeCreated') })
+    } catch (err) {
+      setToast({ kind: 'error', msg: String(err) })
+    }
+  }
+
+  async function handleCherryPick() {
+    if (!primaryOid) return
+    try {
+      await apiCherryPickCommit(repoPath, primaryOid)
+      refreshLogAndStatus()
+      setToast({ kind: 'ok', msg: t('gitTree.contextMenu.cherryPicked') })
+    } catch (err) {
+      setToast({ kind: 'error', msg: String(err) })
+    }
+  }
+
+  async function handleRebaseOntoCommit() {
+    if (!primaryOid) return
+    try {
+      await apiRebaseOntoCommit(repoPath, primaryOid)
+      refreshLogAndStatus()
+      setToast({ kind: 'ok', msg: t('gitTree.contextMenu.rebased') })
+    } catch (err) {
+      setToast({ kind: 'error', msg: String(err) })
+    }
+  }
+
+  async function handleCopyWebLink() {
+    if (!primaryOid) return
+    try {
+      const url = await apiGetCommitWebUrl(repoPath, primaryOid)
+      if (!url) {
+        setToast({ kind: 'error', msg: t('gitTree.contextMenu.noRemoteLink') })
+        return
+      }
+      await navigator.clipboard.writeText(url)
+      setToast({ kind: 'ok', msg: t('gitTree.contextMenu.linkCopied') })
+    } catch (err) {
+      setToast({ kind: 'error', msg: String(err) })
+    }
+  }
+
+  async function handleCreatePatch() {
+    if (!primaryOid) return
+    try {
+      const destPath = await save({ defaultPath: `${primaryOid.slice(0, 7)}.patch` })
+      if (!destPath) return
+      await apiCreatePatch(repoPath, primaryOid, destPath)
+      setToast({ kind: 'ok', msg: t('gitTree.contextMenu.patchCreated') })
     } catch (err) {
       setToast({ kind: 'error', msg: String(err) })
     }
@@ -159,15 +251,55 @@ export function useGitGraphActions({
     }
 
     const isSingle = targets.length === 1
+    const primaryShortOid = oid.slice(0, 7)
 
     showCommitNativeContextMenu({
       isSingle,
       targetCount: targets.length,
-      onReset: () => setPendingAction('reset'),
-      onRevert: () => setPendingAction('revert'),
-      onCreateBranch: () => setPendingAction('branch'),
-      onCopySha: () => handleCopySha(),
+      labels: {
+        checkout: t('gitTree.contextMenu.checkout'),
+        createWorktree: t('gitTree.contextMenu.createWorktree'),
+        createBranch: t('gitTree.contextMenu.createBranch'),
+        cherryPick: t('gitTree.contextMenu.cherryPick'),
+        rebaseOnto: t('gitTree.contextMenu.rebaseOnto'),
+        resetSubmenu: t('gitTree.contextMenu.resetSubmenu'),
+        resetSoft: t('gitTree.contextMenu.resetSoft'),
+        resetMixed: t('gitTree.contextMenu.resetMixed'),
+        resetHard: t('gitTree.contextMenu.resetHard'),
+        revert: t('gitTree.contextMenu.revert'),
+        fixup: t('gitTree.contextMenu.fixup'),
+        recompose: isSingle
+          ? t('gitTree.contextMenu.recomposeOne')
+          : t('gitTree.contextMenu.recomposeMany', { count: targets.length, sha: primaryShortOid }),
+        interactiveRebase: isSingle
+          ? t('gitTree.contextMenu.interactiveRebase')
+          : t('gitTree.contextMenu.interactiveRebaseMany', { count: targets.length, sha: primaryShortOid }),
+        editMessage: t('gitTree.contextMenu.reword'),
+        drop: t('gitTree.contextMenu.drop'),
+        moveUp: t('gitTree.contextMenu.moveUp'),
+        moveDown: t('gitTree.contextMenu.moveDown'),
+        copySha: t('gitTree.contextMenu.copySha'),
+        copyLink: t('gitTree.contextMenu.copyLink'),
+        createPatch: t('gitTree.contextMenu.createPatch'),
+        compareToWorkdir: t('gitTree.contextMenu.compareToWorkdir'),
+        createTag: t('gitTree.contextMenu.createTag'),
+        createAnnotatedTag: t('gitTree.contextMenu.createAnnotatedTag'),
+        selectedCount: t('gitTree.contextMenu.selectedCount', { count: targets.length }),
+      },
+      onCheckout: () => handleCheckoutDetached(),
+      onCreateWorktree: () => handleCreateWorktree(),
+      onCreateBranch: () => setPendingAction({ kind: 'branch' }),
+      onCherryPick: () => handleCherryPick(),
+      onRebaseOnto: () => handleRebaseOntoCommit(),
+      onReset: (mode) => setPendingAction({ kind: 'reset', mode }),
+      onRevert: () => setPendingAction({ kind: 'revert' }),
       onFixup: () => handleFixup(),
+      onCopySha: () => handleCopySha(),
+      onCopyLink: () => handleCopyWebLink(),
+      onCreatePatch: () => handleCreatePatch(),
+      onCompareToWorkdir: () => setPendingAction({ kind: 'compare' }),
+      onCreateTag: () => setPendingAction({ kind: 'tag', annotated: false }),
+      onCreateAnnotatedTag: () => setPendingAction({ kind: 'tag', annotated: true }),
     }).catch(console.error)
   }
 

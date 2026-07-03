@@ -5,32 +5,42 @@ mod services;
 mod state;
 mod utils;
 
-use commands::branch::{checkout_branch, create_branch, delete_branch, get_branches, get_tags};
-use commands::github::{github_device_code, github_get_user, github_list_repos, github_poll_token};
-use commands::submodule::list_submodules;
-use commands::themes::get_user_themes;
-use commands::fixup::{autosquash_preview, create_fixup_commit, get_pending_fixups, run_autosquash};
-use commands::rollback::{get_commits_between, reset_to_commit, revert_commit};
+use commands::branch::{
+    checkout_branch, create_branch, create_tag, delete_branch, get_branches, get_tags,
+};
+use commands::cherry_pick::cherry_pick_commit;
 use commands::commit::{
-    create_commit, get_file_diff, get_staged_diff, stage_all, stage_file, unstage_all,
-    unstage_file, discard_file_changes, get_file_raw_contents,
+    create_commit, discard_file_changes, get_file_diff, get_file_raw_contents, get_staged_diff,
+    stage_all, stage_file, unstage_all, unstage_file,
 };
-use commands::log::{get_commit_diff, get_commit_file, get_log};
+use commands::fixup::{
+    autosquash_preview, create_fixup_commit, get_pending_fixups, run_autosquash,
+};
+use commands::github::{github_device_code, github_get_user, github_list_repos, github_poll_token};
+use commands::log::{compare_commit_to_workdir, get_commit_diff, get_commit_file, get_log};
 use commands::ollama::{cancel_generation, check_ollama_status, generate_commit_message};
-use commands::rebase::get_rebase_state;
-use commands::remote::{add_remote, fetch_remote, get_remotes, pull_branch, push_branch, remove_remote};
-use commands::repo::{
-    get_repo_status, open_repo, scan_repos, clone_repo, init_repo, get_repo_summary,
-    open_in_editor, get_repo_readme, open_in_terminal, get_terminal_commands,
+use commands::patch::create_patch;
+use commands::rebase::{abort_rebase, continue_rebase, get_rebase_state, rebase_onto_commit};
+use commands::remote::{
+    add_remote, fetch_remote, get_commit_web_url, get_remotes, pull_branch, push_branch,
+    remove_remote,
 };
+use commands::repo::{
+    clone_repo, get_repo_readme, get_repo_status, get_repo_summary, get_terminal_commands,
+    init_repo, open_in_editor, open_in_terminal, open_repo, scan_repos,
+};
+use commands::rollback::{get_commits_between, reset_to_commit, revert_commit};
 use commands::ssh::{generate_ssh_key, read_ssh_public_key};
 use commands::stash::{
-    stash_push, stash_pop, stash_apply, stash_drop, stash_list, edit_stash_message, stash_store,
+    edit_stash_message, stash_apply, stash_drop, stash_list, stash_pop, stash_push, stash_store,
 };
+use commands::submodule::list_submodules;
+use commands::themes::get_user_themes;
 use commands::undo::{
     objects_exist, pin_object, recreate_branch_ref, restore_file_blob, restore_worktree_snapshot,
     snapshot_file, snapshot_worktree, snapshot_worktree_always, unpin_object,
 };
+use commands::worktree::{add_worktree, list_worktrees, remove_worktree};
 use state::AppState;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
@@ -110,14 +120,19 @@ pub fn run() {
             get_log,
             get_commit_diff,
             get_commit_file,
+            compare_commit_to_workdir,
             // Branches & Tags
             get_branches,
             get_tags,
             create_branch,
+            create_tag,
             checkout_branch,
             delete_branch,
             // Rebase
             get_rebase_state,
+            rebase_onto_commit,
+            continue_rebase,
+            abort_rebase,
             // Ollama
             check_ollama_status,
             generate_commit_message,
@@ -139,10 +154,13 @@ pub fn run() {
             get_remotes,
             add_remote,
             remove_remote,
+            get_commit_web_url,
             // Rollback
             revert_commit,
             reset_to_commit,
             get_commits_between,
+            // Cherry-pick
+            cherry_pick_commit,
             // Fixup
             create_fixup_commit,
             get_pending_fixups,
@@ -178,6 +196,12 @@ pub fn run() {
             pin_object,
             unpin_object,
             objects_exist,
+            // Worktree
+            add_worktree,
+            list_worktrees,
+            remove_worktree,
+            // Patch
+            create_patch,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

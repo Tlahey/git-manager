@@ -36,9 +36,17 @@ import {
   listSubmodules,
   getRebaseState,
   createBranch,
+  createTag,
   fetchRemote,
   pullBranch,
   pushBranch,
+  cherryPickCommit,
+  compareCommitToWorkdir,
+  getCommitWebUrl,
+  rebaseOntoCommit,
+  continueRebase,
+  abortRebase,
+  createPatch,
 } from '../lib/tauri'
 import { callCommand } from './service'
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
@@ -56,6 +64,12 @@ function pushAction(repoPath: string, action: UndoAction) {
 
 function clearRedo(repoPath: string) {
   useUndoHistoryStore.getState().clearRedo(repoPath)
+}
+
+// ─── Clipboard ──────────────────────────────────────────────────────────────
+
+export async function apiCopyCommitSha(oid: string) {
+  await navigator.clipboard.writeText(oid)
 }
 
 export async function apiStageFile(path: string, filePath: string) {
@@ -207,6 +221,36 @@ export async function apiResetToCommit(path: string, oid: string, mode: 'soft' |
 
 export async function apiGetCommitsBetween(path: string, fromOid: string, toOid: string) {
   return getCommitsBetween(path, fromOid, toOid)
+}
+
+// ─── Cherry-pick ────────────────────────────────────────────────────────────
+
+export async function apiCherryPickCommit(path: string, oid: string) {
+  const result = await cherryPickCommit(path, oid)
+  clearRedo(path)
+  return result
+}
+
+// ─── Rebase ─────────────────────────────────────────────────────────────────
+
+export async function apiRebaseOntoCommit(path: string, targetOid: string) {
+  const result = await rebaseOntoCommit(path, targetOid)
+  clearRedo(path)
+  return result
+}
+
+export async function apiRebaseContinue(path: string) {
+  return continueRebase(path)
+}
+
+export async function apiRebaseAbort(path: string) {
+  return abortRebase(path)
+}
+
+// ─── Patch ──────────────────────────────────────────────────────────────────
+
+export async function apiCreatePatch(path: string, oid: string, destPath: string) {
+  return createPatch(path, oid, destPath)
 }
 
 export async function apiStashPush(path: string, message?: string, includeUntracked = false) {
@@ -383,6 +427,10 @@ export async function apiGetRemotes(path: string) {
   return getRemotes(path)
 }
 
+export async function apiGetCommitWebUrl(path: string, oid: string, remote?: string) {
+  return getCommitWebUrl(path, oid, remote)
+}
+
 export async function apiRemoveRemote(path: string, name: string) {
   const remotes = await getRemotes(path)
   const remote = remotes.find((r) => r.name === name)
@@ -425,6 +473,10 @@ export async function apiGetCommitDiff(path: string, oid: string) {
   return getCommitDiff(path, oid)
 }
 
+export async function apiCompareCommitToWorkdir(path: string, oid: string) {
+  return compareCommitToWorkdir(path, oid)
+}
+
 export async function apiGetFileDiff(path: string, filePath: string, staged: boolean, oid?: string) {
   return getFileDiff(path, filePath, staged, oid)
 }
@@ -449,6 +501,12 @@ export async function apiGetRebaseState(path: string) {
 
 export async function apiCreateBranch(path: string, name: string, fromRef: string) {
   return createBranch(path, name, fromRef)
+}
+
+// ─── Tag creation ──────────────────────────────────────────────────────────
+
+export async function apiCreateTag(path: string, name: string, fromRef: string, message?: string) {
+  return createTag(path, name, fromRef, message)
 }
 
 // ─── Fetch / Pull / Push ───────────────────────────────────────────────────

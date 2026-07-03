@@ -22,6 +22,7 @@ interface ResetDialogProps {
   onSuccess: () => void
   protectedBranches?: string[]
   currentBranch?: string
+  initialMode?: ResetMode
 }
 
 export function ResetDialog({
@@ -33,10 +34,11 @@ export function ResetDialog({
   onSuccess,
   protectedBranches = [],
   currentBranch = '',
+  initialMode = 'mixed',
 }: ResetDialogProps) {
   const { t } = useTranslation('git')
   const queryClient = useQueryClient()
-  const [mode, setMode] = useState<ResetMode>('mixed')
+  const [mode, setMode] = useState<ResetMode>(initialMode)
   const [hardConfirm, setHardConfirm] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -75,7 +77,7 @@ export function ResetDialog({
     if (!isOpen) {
       setError(null)
       setHardConfirm('')
-      setMode('mixed')
+      setMode(initialMode)
       onClose()
     }
   }

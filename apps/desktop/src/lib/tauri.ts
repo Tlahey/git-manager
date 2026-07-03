@@ -41,6 +41,9 @@ export const getLog = (
 export const getCommitDiff = (path: string, oid: string) =>
   invoke<GitDiff>('get_commit_diff', { path, oid })
 
+export const compareCommitToWorkdir = (path: string, oid: string) =>
+  invoke<GitDiff>('compare_commit_to_workdir', { path, oid })
+
 export const getCommitFile = (path: string, oid: string, filePath: string) =>
   invoke<string>('get_commit_file', { path, oid, filePath })
 
@@ -65,6 +68,9 @@ export const renameBranch = (path: string, oldName: string, newName: string) =>
 
 export const recreateBranchRef = (path: string, name: string, oid: string, upstream?: string) =>
   invoke<void>('recreate_branch_ref', { path, name, oid, upstream })
+
+export const createTag = (path: string, name: string, fromRef: string, message?: string) =>
+  invoke<void>('create_tag', { path, name, fromRef, message })
 
 // ─── Stash ────────────────────────────────────────────────────────────────────
 
@@ -107,6 +113,9 @@ export const startInteractiveRebase = (path: string, baseOid: string, steps: Reb
 export const continueRebase = (path: string) => invoke<void>('continue_rebase', { path })
 
 export const abortRebase = (path: string) => invoke<void>('abort_rebase', { path })
+
+export const rebaseOntoCommit = (path: string, targetOid: string) =>
+  invoke<void>('rebase_onto_commit', { path, targetOid })
 
 // ─── Ollama ───────────────────────────────────────────────────────────────────
 
@@ -192,6 +201,9 @@ export const addRemote = (path: string, name: string, url: string) =>
 export const removeRemote = (path: string, name: string) =>
   invoke<void>('remove_remote', { path, name })
 
+export const getCommitWebUrl = (path: string, oid: string, remote?: string) =>
+  invoke<string | null>('get_commit_web_url', { path, oid, remote })
+
 // ─── Undo/Redo snapshots ──────────────────────────────────────────────────────
 
 export interface FileSnapshotResult {
@@ -261,6 +273,16 @@ export const resetToCommit = (path: string, oid: string, mode: 'soft' | 'mixed' 
 
 export const getCommitsBetween = (path: string, fromOid: string, toOid: string) =>
   invoke<CommitSummary[]>('get_commits_between', { path, fromOid, toOid })
+
+// ─── Cherry-pick ──────────────────────────────────────────────────────────────
+
+export const cherryPickCommit = (path: string, oid: string) =>
+  invoke<string>('cherry_pick_commit', { path, oid })
+
+// ─── Patch ────────────────────────────────────────────────────────────────────
+
+export const createPatch = (path: string, oid: string, destPath: string) =>
+  invoke<void>('create_patch', { path, oid, destPath })
 
 // ─── Fixup ────────────────────────────────────────────────────────────────────
 

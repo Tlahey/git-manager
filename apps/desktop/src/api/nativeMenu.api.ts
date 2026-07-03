@@ -6,6 +6,8 @@ import { Image } from '@tauri-apps/api/image'
 // Icons are bundled as resources in src-tauri/icons/menu/*.png and resolved
 // at runtime.
 
+// Only names with a bundled PNG resource go here — items without one fall back to the
+// transparent blank spacer (see `makeItem`) rather than logging a resolve failure on every load.
 const ICON_NAMES = ['copy_sha', 'branch', 'tag', 'reset', 'revert', 'fixup'] as const
 type IconName = typeof ICON_NAMES[number]
 
@@ -66,22 +68,78 @@ async function makeItem(
   return MenuItem.new({ text, enabled, action })
 }
 
+export interface CommitNativeMenuLabels {
+  checkout: string
+  createWorktree: string
+  createBranch: string
+  cherryPick: string
+  rebaseOnto: string
+  resetSubmenu: string
+  resetSoft: string
+  resetMixed: string
+  resetHard: string
+  revert: string
+  fixup: string
+  recompose: string
+  interactiveRebase: string
+  editMessage: string
+  drop: string
+  moveUp: string
+  moveDown: string
+  copySha: string
+  copyLink: string
+  createPatch: string
+  compareToWorkdir: string
+  createTag: string
+  createAnnotatedTag: string
+  selectedCount: string
+}
+
 export interface CommitNativeMenuOptions {
   isSingle: boolean
   targetCount: number
-  onReset: () => void
-  onRevert: () => void
+  labels: CommitNativeMenuLabels
+  onCheckout: () => void
+  onCreateWorktree: () => void
   onCreateBranch: () => void
-  onCopySha: () => void
+  onCherryPick: () => void
+  onRebaseOnto: () => void
+  onReset: (mode: 'soft' | 'mixed' | 'hard') => void
+  onRevert: () => void
   onFixup: () => void
+  onCopySha: () => void
+  onCopyLink: () => void
+  onCreatePatch: () => void
+  onCompareToWorkdir: () => void
+  onCreateTag: () => void
+  onCreateAnnotatedTag: () => void
 }
 
 /**
  * Builds and pops up a native macOS context menu for commit actions.
  * Uses Tauri v2's built-in Menu API with bundled PNG icons resolved at runtime.
+ * Item text is passed in pre-translated via `labels` — this module has no React/i18n context.
  */
 export async function showCommitNativeContextMenu(opts: CommitNativeMenuOptions): Promise<void> {
-  const { isSingle, targetCount, onReset, onRevert, onCreateBranch, onCopySha, onFixup } = opts
+  const {
+    isSingle,
+    targetCount,
+    labels,
+    onCheckout,
+    onCreateWorktree,
+    onCreateBranch,
+    onCherryPick,
+    onRebaseOnto,
+    onReset,
+    onRevert,
+    onFixup,
+    onCopySha,
+    onCopyLink,
+    onCreatePatch,
+    onCompareToWorkdir,
+    onCreateTag,
+    onCreateAnnotatedTag,
+  } = opts
 
   // Ensure icons are loaded (noop after first call)
   try {
@@ -92,30 +150,50 @@ export async function showCommitNativeContextMenu(opts: CommitNativeMenuOptions)
 
   // ── Header (multi-select count) ───────────────────────────────────────────
   const header = targetCount > 1
-    ? await MenuItem.new({ text: `${targetCount} commits selected`, enabled: false })
+    ? await MenuItem.new({ text: labels.selectedCount, enabled: false })
     : null
 
   // ── Items ─────────────────────────────────────────────────────────────────
-  const copySha      = await makeItem({ text: 'Copy SHA',                icon: 'copy_sha', enabled: isSingle, action: () => onCopySha() })
-  const createBranch = await makeItem({ text: 'Create branch here…',     icon: 'branch',   enabled: isSingle, action: () => onCreateBranch() })
-  const createTag    = await makeItem({ text: 'Create tag here…',        icon: 'tag',      enabled: false })
-  const resetItem    = await makeItem({ text: 'Reset to here…',          icon: 'reset',    enabled: isSingle, action: () => onReset() })
-  const revertItem   = await makeItem({ text: 'Revert this commit',      icon: 'revert',   enabled: isSingle, action: () => onRevert() })
-  const fixupItem    = await makeItem({ text: 'Fixup from changes',      icon: 'fixup',    enabled: isSingle, action: () => onFixup() })
+  const checkoutItem   = await makeItem({ text: labels.checkout,       enabled: isSingle, action: () => onCheckout() })
+  const worktreeItem   = await makeItem({ text: labels.createWorktree, enabled: isSingle, action: () => onCreateWorktree() })
+  const createBranch   = await makeItem({ text: labels.createBranch,   icon: 'branch', enabled: isSingle, action: () => onCreateBranch() })
+  const cherryItem     = await makeItem({ text: labels.cherryPick,     enabled: isSingle, action: () => onCherryPick() })
+  const rebaseOntoItem = await makeItem({ text: labels.rebaseOnto,     enabled: isSingle, action: () => onRebaseOnto() })
+  const revertItem     = await makeItem({ text: labels.revert,         icon: 'revert', enabled: isSingle, action: () => onRevert() })
 
-  // Coming soon — aligned with transparent placeholder icon
-  const squashItem    = await makeItem({ text: 'Squash commits…',              enabled: false })
-  const rewordItem    = await makeItem({ text: 'Reword (rename message)',      enabled: false })
-  const amendItem     = await makeItem({ text: 'Edit commit (amend)',          enabled: false })
-  const rebaseItem    = await makeItem({ text: 'Interactive rebase from here', enabled: false })
-  const cherryItem    = await makeItem({ text: 'Cherry-pick this commit',      enabled: false })
-  const checkoutItem  = await makeItem({ text: 'Checkout (detached HEAD)',     enabled: false })
-  const dropItem      = await makeItem({ text: 'Drop this commit',             enabled: false })
+  const resetSoftItem  = await makeItem({ text: labels.resetSoft,  action: () => onReset('soft') })
+  const resetMixedItem = await makeItem({ text: labels.resetMixed, action: () => onReset('mixed') })
+  const resetHardItem  = await makeItem({ text: labels.resetHard,  action: () => onReset('hard') })
+  const resetSubmenu = await Submenu.new({
+    text: labels.resetSubmenu,
+    enabled: isSingle,
+    items: [resetSoftItem, resetMixedItem, resetHardItem],
+  })
+
+  // Deferred: a richer WebStorm-style interactive rebase UI will implement these later.
+  // They stay visible (disabled) with a transparent spacer icon so menu alignment holds.
+  const recomposeItem = await makeItem({ text: labels.recompose, enabled: false })
+  const interactiveRebaseItem = await makeItem({ text: labels.interactiveRebase, enabled: false })
+  const editMessageItem = await makeItem({ text: labels.editMessage, enabled: false })
+  const dropItem        = await makeItem({ text: labels.drop,        enabled: false })
+  const moveUpItem       = await makeItem({ text: labels.moveUp,     enabled: false })
+  const moveDownItem     = await makeItem({ text: labels.moveDown,   enabled: false })
+
+  const copySha       = await makeItem({ text: labels.copySha, icon: 'copy_sha', enabled: isSingle, action: () => onCopySha() })
+  const copyLinkItem  = await makeItem({ text: labels.copyLink, enabled: isSingle, action: () => onCopyLink() })
+  const patchItem     = await makeItem({ text: labels.createPatch, enabled: isSingle, action: () => onCreatePatch() })
+
+  const compareItem   = await makeItem({ text: labels.compareToWorkdir, enabled: isSingle, action: () => onCompareToWorkdir() })
+
+  const createTag         = await makeItem({ text: labels.createTag,         icon: 'tag', enabled: isSingle, action: () => onCreateTag() })
+  const createAnnotatedTag = await makeItem({ text: labels.createAnnotatedTag, icon: 'tag', enabled: isSingle, action: () => onCreateAnnotatedTag() })
+
+  const fixupItem = await makeItem({ text: labels.fixup, icon: 'fixup', enabled: isSingle, action: () => onFixup() })
 
   // ── Separators ────────────────────────────────────────────────────────────
   const sep  = () => PredefinedMenuItem.new({ item: 'Separator' })
 
-  // ── Assemble ──────────────────────────────────────────────────────────────
+  // ── Assemble (order matches the spec) ─────────────────────────────────────
   const items: (MenuItem | IconMenuItem | Submenu | PredefinedMenuItem)[] = []
 
   if (header) {
@@ -123,23 +201,32 @@ export async function showCommitNativeContextMenu(opts: CommitNativeMenuOptions)
     items.push(await sep())
   }
 
-  items.push(copySha)
+  items.push(checkoutItem)
+  items.push(await sep())
+  items.push(worktreeItem)
   items.push(await sep())
   items.push(createBranch)
-  items.push(createTag)
-  items.push(await sep())
-  items.push(resetItem)
-  items.push(revertItem)
-  items.push(await sep())
-  items.push(fixupItem)
-  items.push(squashItem)
-  items.push(await sep())
-  items.push(rewordItem)
-  items.push(amendItem)
-  items.push(rebaseItem)
   items.push(cherryItem)
-  items.push(checkoutItem)
+  items.push(rebaseOntoItem)
+  items.push(resetSubmenu)
+  items.push(revertItem)
+  items.push(fixupItem)
+  items.push(await sep())
+  items.push(recomposeItem)
+  items.push(interactiveRebaseItem)
+  items.push(editMessageItem)
   items.push(dropItem)
+  items.push(moveUpItem)
+  items.push(moveDownItem)
+  items.push(await sep())
+  items.push(copySha)
+  items.push(copyLinkItem)
+  items.push(patchItem)
+  items.push(await sep())
+  items.push(compareItem)
+  items.push(await sep())
+  items.push(createTag)
+  items.push(createAnnotatedTag)
 
   try {
     const menu = await Menu.new({ items })

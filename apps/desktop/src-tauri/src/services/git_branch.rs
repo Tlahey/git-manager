@@ -1,5 +1,6 @@
 use crate::error::AppError;
 use crate::models::GitBranch;
+use crate::utils::get_git_signature;
 use git2::{Oid, Repository};
 use serde::{Deserialize, Serialize};
 
@@ -162,6 +163,42 @@ pub fn create_branch(repo: &Repository, name: &str, from_ref: &str) -> Result<()
         .map_err(|_| AppError::Unknown(format!("Invalid reference: {from_ref}")))?;
     let commit = obj.peel_to_commit().map_err(AppError::Git)?;
     repo.branch(name, &commit, false).map_err(AppError::Git)?;
+    Ok(())
+}
+
+/// Crée un tag léger (lightweight) pointant sur `from_ref`.
+pub fn create_tag_lightweight(
+    repo: &Repository,
+    name: &str,
+    from_ref: &str,
+) -> Result<(), AppError> {
+    if repo.find_reference(&format!("refs/tags/{name}")).is_ok() {
+        return Err(AppError::TagAlreadyExists(name.to_string()));
+    }
+    let obj = repo
+        .revparse_single(from_ref)
+        .map_err(|_| AppError::Unknown(format!("Invalid reference: {from_ref}")))?;
+    repo.tag_lightweight(name, &obj, false)
+        .map_err(AppError::Git)?;
+    Ok(())
+}
+
+/// Crée un tag annoté (avec message et signature) pointant sur `from_ref`.
+pub fn create_tag_annotated(
+    repo: &Repository,
+    name: &str,
+    from_ref: &str,
+    message: &str,
+) -> Result<(), AppError> {
+    if repo.find_reference(&format!("refs/tags/{name}")).is_ok() {
+        return Err(AppError::TagAlreadyExists(name.to_string()));
+    }
+    let obj = repo
+        .revparse_single(from_ref)
+        .map_err(|_| AppError::Unknown(format!("Invalid reference: {from_ref}")))?;
+    let sig = get_git_signature(repo)?;
+    repo.tag(name, &obj, &sig, message, false)
+        .map_err(AppError::Git)?;
     Ok(())
 }
 
