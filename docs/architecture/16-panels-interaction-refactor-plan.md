@@ -1,9 +1,10 @@
 # Spec 16 — Panels & Interaction System: SOLID Audit & Target Architecture
 
-> **Status**: All 13 actions implemented (2026-07-03) — the original 10 (Phases 1-7), one
-> deliberate scope refinement on action 3.1, plus 3 more (Phase 8) added after a follow-up sweep
-> found the same class of duplication one layer lower (`useAnchoredMenu`). See "Implementation
-> status" at the bottom for what was built and where it deviated from the original sketch.
+> **Status**: All 14 actions implemented (2026-07-03) — the original 10 (Phases 1-7), one
+> deliberate scope refinement on action 3.1, plus 4 more (Phase 8) added after follow-up sweeps
+> found the same class of duplication one layer lower (`useAnchoredMenu`) and a `Section` type
+> leak action 3.1 missed. See "Implementation status" at the bottom for what was built and where
+> it deviated from the original sketch.
 
 ## Objective
 
@@ -319,6 +320,7 @@ new pattern — the primitive already exists and is already the majority convent
 | 8.1 | Relocate `components/action-toolbar/useAnchoredMenu.ts` to `hooks/useAnchoredMenu.ts` (it stopped being action-toolbar-specific the moment a second domain needed it) and update its 5 existing consumers' imports | `hooks/useAnchoredMenu.ts`, `components/action-toolbar/{BranchButton,BranchContext,RepoSelector,UserProfile,FetchButton}.tsx` | — | ✅ |
 | 8.2 | Migrate `NotificationDropdown.tsx`'s hand-rolled menu-positioning/outside-click/Escape logic to `useAnchoredMenu({ align: 'right' })` | `components/notification/NotificationDropdown.tsx` | 8.1 | ✅ |
 | 8.3 | Migrate `NewTabMenu.tsx`'s hand-rolled menu-positioning/outside-click/Escape logic to `useAnchoredMenu({ offset: 4 })` | `components/tab-bar/NewTabMenu.tsx` | 8.1 | ✅ |
+| 8.4 | Finish the `Section` type deduplication started in action 3.1: 2 more components (`UserProfile.tsx`, `TabBar.tsx`) plus `Footer.tsx` had their own byte-for-byte copy of the same 8-value union for their `onOpenSettings` prop — found by grepping for the literal after 3.1, not caught at the time | `components/footer/Footer.tsx`, `components/action-toolbar/UserProfile.tsx`, `components/tab-bar/TabBar.tsx` | 1.2 | ✅ |
 
 Phases are independent of each other (only the sub-steps within 1-3 and 8 depend on each other) —
 they can be done in any order, as separate PRs, per the project's existing "one action = one
@@ -342,7 +344,7 @@ reasonable PR" convention from doc 14.
 
 ## Implementation status
 
-All 13 actions implemented on branch `refactor/panels-tab-registry` (off `main` @ `6c74d32`, the
+All 14 actions implemented on branch `refactor/panels-tab-registry` (off `main` @ `6c74d32`, the
 already-merged rewards-system-solid PR). `pnpm --filter @git-manager/desktop typecheck` passes
 after every single action (verified incrementally, not just at the end).
 
@@ -396,3 +398,4 @@ which they may not have done identically before).
 | 2026-07-03 | 7.1, 7.2 | Rebuilt `FollowPRDialog.tsx` and `FilterEditorDialog.tsx` on `packages/ui`'s `Dialog`/`DialogContent`/`DialogHeader`/`DialogTitle`/`DialogFooter` (same convention as `CreateBranchHereDialog.tsx`), replacing the hand-rolled fixed-position backdrop + manual close button in both. External prop contracts (`onAdd`/`onSave`/`onClose`) unchanged, so both call sites (`FollowedPRsTab.tsx`, `CustomViewsTab.tsx`) needed no changes. Verified: typecheck passes. Not re-tested visually — both dialogs should now also close on Escape/backdrop-click, which is a behavior change worth confirming in `pnpm dev`. |
 | 2026-07-03 | — | Full monorepo `pnpm typecheck` also run: `@git-manager/ui`'s typecheck script fails, but confirmed via `git stash` that this failure pre-dates this session's changes (broken on `main` already, unrelated `tsc`/turbo config issue) — not caused by, or in scope of, this plan. |
 | 2026-07-03 | 8.1, 8.2, 8.3 | Follow-up sweep (per the user's request to keep looking for improvement points) found Scope F: `useAnchoredMenu` duplicated 3 times outside its original folder. Moved `components/action-toolbar/useAnchoredMenu.ts` → `hooks/useAnchoredMenu.ts`, updated its 5 existing consumers' import paths (behavior unchanged, pure relocation). Migrated `NotificationDropdown.tsx` (`align: 'right'`, matching the same `transform: translateX(-100%)` convention already used by `UserProfile.tsx`) and `NewTabMenu.tsx` (`offset: 4`, preserving its slightly different 4px gap instead of the hook's 6px default) to the shared hook, removing ~35 duplicated lines from each. Verified: `pnpm --filter @git-manager/desktop typecheck` passes after each of the 3 steps. Not re-tested visually — added to "Manual test notes" above (confirm both menus still position correctly and close on outside-click/Escape). |
+| 2026-07-03 | 8.4 | Grepping for the literal `'general' | 'ssh' | 'integrations'` after fixing action 3.1 turned up 3 more untouched copies of the exact same `Section` union: `Footer.tsx`, `UserProfile.tsx`, `TabBar.tsx` (all typing an `onOpenSettings` prop). Action 3.1's own audit only looked at `App.tsx`/`SettingsPage.tsx` and missed that the type had actually leaked to every component that forwards the settings-open callback. All 3 now import `type { Section } from '../../app/settings/SettingsPage'` instead of re-declaring it — 0 remaining occurrences of the literal outside `SettingsPage.tsx` (verified by grep). Verified: typecheck passes. |

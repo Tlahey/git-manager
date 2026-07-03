@@ -3,9 +3,10 @@ import { User, UserPlus } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useAnchoredMenu } from '../../hooks/useAnchoredMenu'
+import type { Section } from '../../app/settings/SettingsPage'
 
 interface UserProfileProps {
-  onOpenSettings: (section?: 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization' | 'rewards') => void
+  onOpenSettings: (section?: Section) => void
 }
 
 function initials(name: string): string {
