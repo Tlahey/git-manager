@@ -10,8 +10,9 @@ import { ExternalToolsSection } from './components/ExternalToolsSection'
 import { NotificationSection } from './components/NotificationSection'
 import { AppearanceSection } from './components/AppearanceSection'
 import { RewardsSection } from './components/RewardsSection'
+import { defineTabs, renderActiveTab, type TabDef } from '../../lib/navigation/tabRegistry'
 
-type Section = 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization' | 'rewards'
+export type Section = 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization' | 'rewards'
 
 interface SettingsPageProps {
   onClose: () => void
@@ -20,20 +21,37 @@ interface SettingsPageProps {
 
 const isMac = typeof window !== 'undefined' && navigator.userAgent.includes('Mac')
 
+/** Scrollable, centered layout shared by every section except `integrations` (full-bleed). */
+function scrolled(node: React.ReactNode) {
+  return (
+    <ScrollArea className="flex-1">
+      <div className="mx-auto max-w-xl px-8 py-6">{node}</div>
+    </ScrollArea>
+  )
+}
+
 export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
   const { t } = useTranslation('settings')
   const [activeSection, setActiveSection] = useState<Section>(initialSection || 'general')
 
-  const navItems: { id: Section; label: string }[] = [
-    { id: 'general', label: t('settings.sections.general') },
-    { id: 'ssh', label: t('settings.sections.ssh') },
-    { id: 'integrations', label: t('settings.sections.integrations') },
-    { id: 'local_ai', label: t('settings.sections.local_ai') },
-    { id: 'external_tools', label: t('settings.sections.external_tools') },
-    { id: 'notifications', label: t('settings.sections.notifications') },
-    { id: 'ui_customization', label: t('settings.sections.ui_customization') },
-    { id: 'rewards', label: t('settings.sections.rewards') || 'Succès & Récompenses' },
-  ]
+  const SETTINGS_TABS: TabDef<Section>[] = defineTabs([
+    { id: 'general', label: t('settings.sections.general'), render: () => scrolled(<GeneralSection />) },
+    { id: 'ssh', label: t('settings.sections.ssh'), render: () => scrolled(<SshSection />) },
+    {
+      id: 'integrations',
+      label: t('settings.sections.integrations'),
+      render: () => (
+        <div className="flex-1 overflow-hidden h-full p-6">
+          <IntegrationSection />
+        </div>
+      ),
+    },
+    { id: 'local_ai', label: t('settings.sections.local_ai'), render: () => scrolled(<LlmSection />) },
+    { id: 'external_tools', label: t('settings.sections.external_tools'), render: () => scrolled(<ExternalToolsSection />) },
+    { id: 'notifications', label: t('settings.sections.notifications'), render: () => scrolled(<NotificationSection />) },
+    { id: 'ui_customization', label: t('settings.sections.ui_customization'), render: () => scrolled(<AppearanceSection />) },
+    { id: 'rewards', label: t('settings.sections.rewards') || 'Succès & Récompenses', render: () => scrolled(<RewardsSection />) },
+  ])
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
@@ -55,39 +73,23 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
       <div className="flex flex-1 overflow-hidden">
         {/* Left nav */}
         <nav className="w-44 shrink-0 border-r border-border bg-muted/20 p-2">
-          {navItems.map((item) => (
+          {SETTINGS_TABS.map((tab) => (
             <button
-              key={item.id}
-              onClick={() => setActiveSection(item.id)}
+              key={tab.id}
+              onClick={() => setActiveSection(tab.id)}
               className={`w-full rounded px-3 py-2 text-left text-xs transition-colors cursor-pointer ${
-                activeSection === item.id
+                activeSection === tab.id
                   ? 'bg-accent text-foreground font-medium'
                   : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
               }`}
             >
-              {item.label}
+              {tab.label}
             </button>
           ))}
         </nav>
 
         {/* Content */}
-        {activeSection === 'integrations' ? (
-          <div className="flex-1 overflow-hidden h-full p-6">
-            <IntegrationSection />
-          </div>
-        ) : (
-          <ScrollArea className="flex-1">
-            <div className="mx-auto max-w-xl px-8 py-6">
-              {activeSection === 'general' && <GeneralSection />}
-              {activeSection === 'ssh' && <SshSection />}
-              {activeSection === 'local_ai' && <LlmSection />}
-              {activeSection === 'external_tools' && <ExternalToolsSection />}
-              {activeSection === 'notifications' && <NotificationSection />}
-              {activeSection === 'ui_customization' && <AppearanceSection />}
-              {activeSection === 'rewards' && <RewardsSection />}
-            </div>
-          </ScrollArea>
-        )}
+        {renderActiveTab(SETTINGS_TABS, activeSection)}
       </div>
     </div>
   )
