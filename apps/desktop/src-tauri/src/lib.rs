@@ -5,7 +5,7 @@ mod services;
 mod state;
 mod utils;
 
-use commands::branch::{checkout_branch, delete_branch, get_branches, get_tags};
+use commands::branch::{checkout_branch, create_branch, delete_branch, get_branches, get_tags};
 use commands::github::{github_device_code, github_get_user, github_list_repos, github_poll_token};
 use commands::submodule::list_submodules;
 use commands::themes::get_user_themes;
@@ -17,6 +17,7 @@ use commands::commit::{
 };
 use commands::log::{get_commit_diff, get_commit_file, get_log};
 use commands::ollama::{cancel_generation, check_ollama_status, generate_commit_message};
+use commands::rebase::get_rebase_state;
 use commands::remote::{add_remote, fetch_remote, get_remotes, pull_branch, push_branch, remove_remote};
 use commands::repo::{
     get_repo_status, open_repo, scan_repos, clone_repo, init_repo, get_repo_summary,
@@ -59,8 +60,11 @@ pub fn run() {
             // Branches & Tags
             get_branches,
             get_tags,
+            create_branch,
             checkout_branch,
             delete_branch,
+            // Rebase
+            get_rebase_state,
             // Ollama
             check_ollama_status,
             generate_commit_message,

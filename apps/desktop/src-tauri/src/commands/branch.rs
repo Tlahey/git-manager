@@ -24,6 +24,13 @@ pub async fn get_tags(path: String) -> Result<Vec<BranchRef>, String> {
     git_branch::list_tags(&repo).map_err(Into::into)
 }
 
+/// Crée une nouvelle branche locale pointant sur `from_ref` (nom de branche, "HEAD", ou OID), sans checkout.
+#[tauri::command]
+pub async fn create_branch(path: String, name: String, from_ref: String) -> Result<(), String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    git_branch::create_branch(&repo, &name, &from_ref).map_err(Into::into)
+}
+
 /// Checkout d'une branche locale par son nom, ou d'un commit brut par OID (HEAD détaché).
 /// Le fallback OID permet de restaurer un HEAD détaché lors d'un undo de checkout.
 #[tauri::command]

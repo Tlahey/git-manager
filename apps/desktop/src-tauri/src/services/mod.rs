@@ -3,6 +3,7 @@ pub mod git_commit;
 pub mod git_diff;
 pub mod git_fixup;
 pub mod git_graph;
+pub mod git_rebase;
 pub mod git_remote;
 pub mod git_repo;
 pub mod git_rollback;
