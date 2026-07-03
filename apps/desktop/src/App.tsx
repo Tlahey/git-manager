@@ -6,7 +6,7 @@ import { useRepoUIStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from '.
 import { RewardsTab } from './app/pull-requests/components/RewardsTab'
 import { RepoView } from './app/repo/RepoView'
 import { PullRequestsPage } from './app/pull-requests/PullRequestsPage'
-import { SettingsPage } from './app/settings/SettingsPage'
+import { SettingsPage, type Section } from './app/settings/SettingsPage'
 import { TabBar } from './components/tab-bar'
 import { useTheme } from './hooks/useTheme'
 import { useMonacoTheme } from './hooks/useMonacoTheme'
@@ -21,7 +21,7 @@ import { appEventBus } from './lib/appEventBus'
 export default function App() {
   const activeTab = useRepoUIStore((s) => s.activeTab)
   const [showSettings, setShowSettings] = useState(false)
-  const [settingsSection, setSettingsSection] = useState<'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization' | 'rewards'>('general')
+  const [settingsSection, setSettingsSection] = useState<Section>('general')
 
   useTheme()
   useMonacoTheme()
@@ -38,7 +38,7 @@ export default function App() {
     appEventBus.notify('open_app')
   }, [])
 
-  function handleOpenSettings(section?: 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization' | 'rewards') {
+  function handleOpenSettings(section?: Section) {
     setSettingsSection(section || 'general')
     setShowSettings(true)
   }

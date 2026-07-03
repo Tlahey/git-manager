@@ -84,7 +84,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   })
 
   // ── Dérivation des données du graphe (WIP, recherche, waterlines) ──────────
-  const { wipNode, filteredNodes, waterlines, originMainIndex } = useGitGraphNodes(
+  const { wipNode, filteredNodes, renderNodes, waterlines } = useGitGraphNodes(
     nodes,
     searchQuery,
     totalChanges,
@@ -233,46 +233,8 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                       }}
                     >
                       {virtualizer.getVirtualItems().map((virtualItem) => {
-                        const node = filteredNodes[virtualItem.index]
+                        const node = renderNodes[virtualItem.index]
                         const oid = node.commit.oid
-
-                        let nodeToRender = node
-
-                        // 1. Si on est sur le premier commit réel (sous le WIP) et que sa colonne est 0,
-                        // on doit ajouter la connexion verticale vers le WIP.
-                        if (totalChanges > 0 && virtualItem.index === 1) {
-                          if (node.column === 0) {
-                            const hasCol0 = node.connections.some((c) => c.fromColumn === 0 && c.toColumn === 0)
-                            if (!hasCol0) {
-                              nodeToRender = {
-                                ...nodeToRender,
-                                connections: [
-                                  ...nodeToRender.connections,
-                                  {
-                                    fromColumn: 0,
-                                    toColumn: 0,
-                                    color: '#7c3aed',
-                                    dashed: true,
-                                  },
-                                ],
-                              }
-                            }
-                          }
-                        }
-
-                        // 2. Si le nœud est situé au-dessus ou au niveau du commit origin/main,
-                        // on s'assure que toutes ses connexions verticales sur la colonne 0 soient en pointillés.
-                        if (originMainIndex !== -1 && virtualItem.index <= originMainIndex) {
-                          nodeToRender = {
-                            ...nodeToRender,
-                            connections: nodeToRender.connections.map((conn) => {
-                              if (conn.fromColumn === 0 && conn.toColumn === 0) {
-                                return { ...conn, dashed: true }
-                              }
-                              return conn
-                            }),
-                          }
-                        }
 
                         return (
                           <div
@@ -288,7 +250,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                             }}
                           >
                             <GraphRow
-                              node={nodeToRender}
+                              node={node}
                               columns={visibleColumns}
                               isSelected={selected.has(oid)}
                               isPrimary={oid === primaryOid}

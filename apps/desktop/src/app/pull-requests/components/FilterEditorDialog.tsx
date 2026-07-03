@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Sliders, X, CheckCircle2, Save } from 'lucide-react'
+import { Sliders, CheckCircle2, Save } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@git-manager/ui'
 import type { SavedFilter, FilterType, FilterStatus } from '../../../stores/launchpad.store'
 
 const ALL_STATUSES: FilterStatus[] = ['open', 'draft', 'approved', 'changes_requested', 'merged', 'closed']
@@ -55,19 +56,15 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
   }
 
   return (
-    <>
-      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed z-50 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] rounded-xl border border-border bg-card shadow-2xl overflow-hidden">
+    <Dialog open onOpenChange={(next) => !next && onClose()}>
+      <DialogContent className="w-[520px] max-w-[520px] p-0 overflow-hidden gap-0">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/10">
-          <div className="flex items-center gap-2">
+        <DialogHeader className="px-5 py-4 border-b border-border bg-muted/10 space-y-0">
+          <DialogTitle className="flex items-center gap-2 text-sm">
             <Sliders className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold">{initial ? 'Edit filter' : 'New custom filter'}</h2>
-          </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+            {initial ? 'Edit filter' : 'New custom filter'}
+          </DialogTitle>
+        </DialogHeader>
 
         <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
           {/* Name + emoji */}
@@ -247,7 +244,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border bg-muted/5">
+        <DialogFooter className="px-5 py-3 border-t border-border bg-muted/5 sm:justify-end">
           <button
             onClick={onClose}
             className="h-8 px-3 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
@@ -261,8 +258,8 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
           >
             <Save className="h-3 w-3" /> {initial ? 'Save changes' : 'Create filter'}
           </button>
-        </div>
-      </div>
-    </>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

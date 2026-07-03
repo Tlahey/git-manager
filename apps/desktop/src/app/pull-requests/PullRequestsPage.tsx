@@ -1,4 +1,3 @@
-import { useState, useCallback } from 'react'
 import {
   Rocket,
   WifiOff,
@@ -14,8 +13,7 @@ import {
   GitCommit,
   BookOpen,
 } from 'lucide-react'
-import { useGitHubData } from '../../hooks/useGitHubData'
-import { useLaunchpadStore } from '../../stores/launchpad.store'
+import { usePullRequestsPage } from '../../hooks/usePullRequestsPage'
 import { timeAgo } from './utils'
 import { InnerTab } from './components/InnerTab'
 import { KpiCard } from './components/KpiCard'
@@ -26,14 +24,13 @@ import { WaitingForReviewTab } from './components/WaitingForReviewTab'
 import { CommitStatsTab } from './components/CommitStatsTab'
 import { CustomViewsTab } from './components/CustomViewsTab'
 import { appEventBus } from '../../lib/appEventBus'
-import type { InnerTab as InnerTabType, MockPR } from './types'
+import { defineTabs, renderActiveTab, type TabDef } from '../../lib/navigation/tabRegistry'
+import type { InnerTab as InnerTabType } from './types'
 
 export function PullRequestsPage() {
-  const { activeTab, setActiveTab, savedFilters } = useLaunchpadStore()
-  const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set())
-  const [followedPRs, setFollowedPRs] = useState<MockPR[]>([])
-
   const {
+    activeTab,
+    setActiveTab,
     prs,
     issues,
     commitDays,
@@ -45,44 +42,82 @@ export function PullRequestsPage() {
     username,
     lastRefreshed,
     refresh,
-  } = useGitHubData()
+    pinnedIds,
+    togglePin,
+    followedPRs,
+    addFollowed,
+    removeFollowed,
+    openPRsCount,
+    needsReviewCount,
+    openIssuesCount,
+    ciPassRate,
+    weekCommits,
+    tabCounts,
+  } = usePullRequestsPage()
 
-  const togglePin = useCallback((id: string) => {
-    setPinnedIds((prev) => {
-      const n = new Set(prev)
-      if (n.has(id)) n.delete(id)
-      else n.add(id)
-      return n
-    })
-  }, [])
+  const PR_TABS: TabDef<InnerTabType>[] = defineTabs([
+    {
+      id: 'prs',
+      label: 'My Pull Requests',
+      icon: GitPullRequest,
+      render: () => (
+        <PullRequestsTab allPRs={prs} pinnedIds={pinnedIds} onTogglePin={togglePin} loading={loading} />
+      ),
+    },
+    {
+      id: 'followed',
+      label: 'Followed PRs',
+      icon: BookOpen,
+      render: () => (
+        <FollowedPRsTab
+          followedPRs={followedPRs}
+          pinnedIds={pinnedIds}
+          onTogglePin={togglePin}
+          onAddFollowed={addFollowed}
+          onRemoveFollowed={removeFollowed}
+          loading={loading}
+        />
+      ),
+    },
+    {
+      id: 'issues',
+      label: 'My Issues',
+      icon: AlertCircle,
+      render: () => <IssuesTab allIssues={issues} loading={loading} />,
+    },
+    {
+      id: 'waiting',
+      label: 'Waiting for Review',
+      icon: Eye,
+      render: () => (
+        <WaitingForReviewTab allPRs={prs} pinnedIds={pinnedIds} onTogglePin={togglePin} loading={loading} />
+      ),
+    },
+    {
+      id: 'stats',
+      label: 'Commit Stats',
+      icon: BarChart2,
+      render: () => <CommitStatsTab commitDays={commitDays} yearDays={yearDays} loading={loading} />,
+    },
+    {
+      id: 'views',
+      label: 'Custom Views',
+      icon: Sliders,
+      render: () => (
+        <CustomViewsTab
+          allPRs={prs}
+          allIssues={issues}
+          pinnedIds={pinnedIds}
+          onTogglePin={togglePin}
+          loading={loading}
+        />
+      ),
+    },
+  ])
 
-  const addFollowed = useCallback(
-    (pr: MockPR) =>
-      setFollowedPRs((prev) => (prev.some((p) => p.id === pr.id) ? prev : [...prev, pr])),
-    []
-  )
-
-  const removeFollowed = useCallback(
-    (id: string) => setFollowedPRs((prev) => prev.filter((p) => p.id !== id)),
-    []
-  )
-
-  const openPRsCount = prs.filter((p) => p.status === 'open' || p.status === 'draft').length
-  const needsReviewCount = prs.filter((p) => p.needsMyReview).length
-  const openIssuesCount = issues.filter((i) => i.status === 'open').length
-  const ciPassRate =
-    prs.length > 0
-      ? Math.round((prs.filter((p) => p.ciStatus === 'success').length / prs.length) * 100)
-      : 0
-  const weekCommits = commitDays.slice(-7).reduce((s, d) => s + d.commits, 0)
-
-  const tabCounts: Record<InnerTabType, number | undefined> = {
-    prs: prs.filter((p) => p.status !== 'closed' && p.status !== 'merged').length,
-    followed: followedPRs.length,
-    issues: issues.filter((i) => i.status === 'open').length,
-    waiting: needsReviewCount,
-    stats: undefined,
-    views: savedFilters.length,
+  function selectTab(id: InnerTabType) {
+    setActiveTab(id)
+    if (id === 'waiting') appEventBus.notify('view_waiting_reviews')
   }
 
   return (
@@ -184,91 +219,24 @@ export function PullRequestsPage() {
 
       {/* Inner Tab Bar */}
       <div className="flex items-center border-b border-border bg-card/30 shrink-0 px-3">
-        <InnerTab active={activeTab === 'prs'} onClick={() => setActiveTab('prs')} count={tabCounts.prs} loading={loading}>
-          <GitPullRequest className="h-3.5 w-3.5" /> My Pull Requests
-        </InnerTab>
-        <InnerTab
-          active={activeTab === 'followed'}
-          onClick={() => setActiveTab('followed')}
-          count={tabCounts.followed}
-          loading={loading}
-        >
-          <BookOpen className="h-3.5 w-3.5" /> Followed PRs
-        </InnerTab>
-        <InnerTab
-          active={activeTab === 'issues'}
-          onClick={() => setActiveTab('issues')}
-          count={tabCounts.issues}
-          loading={loading}
-        >
-          <AlertCircle className="h-3.5 w-3.5" /> My Issues
-        </InnerTab>
-        <InnerTab
-          active={activeTab === 'waiting'}
-          onClick={() => {
-            setActiveTab('waiting')
-            appEventBus.notify('view_waiting_reviews')
-          }}
-          count={tabCounts.waiting}
-          loading={loading}
-        >
-          <Eye className="h-3.5 w-3.5" /> Waiting for Review
-        </InnerTab>
-        <InnerTab active={activeTab === 'stats'} onClick={() => setActiveTab('stats')}>
-          <BarChart2 className="h-3.5 w-3.5" /> Commit Stats
-        </InnerTab>
-        <InnerTab
-          active={activeTab === 'views'}
-          onClick={() => setActiveTab('views')}
-          count={tabCounts.views}
-          loading={loading}
-        >
-          <Sliders className="h-3.5 w-3.5" /> Custom Views
-        </InnerTab>
+        {PR_TABS.map((tab) => {
+          const Icon = tab.icon
+          return (
+            <InnerTab
+              key={tab.id}
+              active={activeTab === tab.id}
+              onClick={() => selectTab(tab.id)}
+              count={tabCounts[tab.id]}
+              loading={loading}
+            >
+              {Icon && <Icon className="h-3.5 w-3.5" />} {tab.label}
+            </InnerTab>
+          )
+        })}
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 min-h-0">
-        {activeTab === 'prs' && (
-          <PullRequestsTab
-            allPRs={prs}
-            pinnedIds={pinnedIds}
-            onTogglePin={togglePin}
-            loading={loading}
-          />
-        )}
-        {activeTab === 'followed' && (
-          <FollowedPRsTab
-            followedPRs={followedPRs}
-            pinnedIds={pinnedIds}
-            onTogglePin={togglePin}
-            onAddFollowed={addFollowed}
-            onRemoveFollowed={removeFollowed}
-            loading={loading}
-          />
-        )}
-        {activeTab === 'issues' && <IssuesTab allIssues={issues} loading={loading} />}
-        {activeTab === 'waiting' && (
-          <WaitingForReviewTab
-            allPRs={prs}
-            pinnedIds={pinnedIds}
-            onTogglePin={togglePin}
-            loading={loading}
-          />
-        )}
-        {activeTab === 'stats' && (
-          <CommitStatsTab commitDays={commitDays} yearDays={yearDays} loading={loading} />
-        )}
-        {activeTab === 'views' && (
-          <CustomViewsTab
-            allPRs={prs}
-            allIssues={issues}
-            pinnedIds={pinnedIds}
-            onTogglePin={togglePin}
-            loading={loading}
-          />
-        )}
-      </div>
+      <div className="flex-1 min-h-0">{renderActiveTab(PR_TABS, activeTab)}</div>
     </div>
   )
 }

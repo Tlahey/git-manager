@@ -14,6 +14,12 @@ interface GitGraphOverlayManagerProps {
   onClearPendingAction: () => void
 }
 
+type PendingDialog =
+  | { kind: 'reset'; oid: string }
+  | { kind: 'revert'; oid: string }
+  | { kind: 'branch'; oid: string }
+  | null
+
 export function GitGraphOverlayManager({
   repoPath,
   nodes,
@@ -22,58 +28,59 @@ export function GitGraphOverlayManager({
   pendingAction,
   onClearPendingAction,
 }: GitGraphOverlayManagerProps) {
-  const [resetOid, setResetOid] = useState<string | null>(null)
-  const [revertOid, setRevertOid] = useState<string | null>(null)
-  const [branchOid, setBranchOid] = useState<string | null>(null)
+  const [activeDialog, setActiveDialog] = useState<PendingDialog>(null)
 
   // React to native menu actions dispatched via pendingAction
   useEffect(() => {
     if (!pendingAction || !primaryOid) return
 
-    if (pendingAction === 'reset') setResetOid(primaryOid)
-    else if (pendingAction === 'revert') setRevertOid(primaryOid)
-    else if (pendingAction === 'branch') setBranchOid(primaryOid)
-
+    setActiveDialog({ kind: pendingAction, oid: primaryOid })
     onClearPendingAction()
   }, [pendingAction, primaryOid, onClearPendingAction])
 
-  const resetNode = resetOid ? nodes.find((n) => n.commit.oid === resetOid) ?? null : null
-  const revertNode = revertOid ? nodes.find((n) => n.commit.oid === revertOid) ?? null : null
-  const branchNode = branchOid ? nodes.find((n) => n.commit.oid === branchOid) ?? null : null
+  const activeNode = activeDialog
+    ? nodes.find((n) => n.commit.oid === activeDialog.oid) ?? null
+    : null
 
-  return (
-    <>
-      {/* Dialogs triggered by the native context menu */}
-      {resetNode && (
+  if (!activeNode) return null
+
+  const closeDialog = () => setActiveDialog(null)
+
+  switch (activeDialog?.kind) {
+    case 'reset':
+      return (
         <ResetDialog
           repoPath={repoPath}
-          targetOid={resetNode.commit.oid}
-          targetSubject={resetNode.commit.subject}
+          targetOid={activeNode.commit.oid}
+          targetSubject={activeNode.commit.subject}
           open
-          onClose={() => setResetOid(null)}
-          onSuccess={() => setResetOid(null)}
+          onClose={closeDialog}
+          onSuccess={closeDialog}
           protectedBranches={protectedBranches}
         />
-      )}
-      {revertNode && (
+      )
+    case 'revert':
+      return (
         <RevertDialog
           repoPath={repoPath}
-          commitOid={revertNode.commit.oid}
-          commitSubject={revertNode.commit.subject}
+          commitOid={activeNode.commit.oid}
+          commitSubject={activeNode.commit.subject}
           open
-          onClose={() => setRevertOid(null)}
-          onSuccess={() => setRevertOid(null)}
+          onClose={closeDialog}
+          onSuccess={closeDialog}
         />
-      )}
-      {branchNode && (
+      )
+    case 'branch':
+      return (
         <CreateBranchHereDialog
           repoPath={repoPath}
-          oid={branchNode.commit.oid}
-          shortOid={branchNode.commit.shortOid}
+          oid={activeNode.commit.oid}
+          shortOid={activeNode.commit.shortOid}
           open
-          onClose={() => setBranchOid(null)}
+          onClose={closeDialog}
         />
-      )}
-    </>
-  )
+      )
+    default:
+      return null
+  }
 }

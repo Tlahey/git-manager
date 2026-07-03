@@ -111,5 +111,39 @@ export function useGitGraphNodes(
     [filteredNodes],
   )
 
-  return { wipNode, filteredNodes, waterlines, originMainIndex }
+  // Nodes ready for rendering: same as filteredNodes, but with the WIP→first-commit
+  // connector and the dashed origin/main boundary already patched in. Derived once here
+  // rather than per visible row on every render (that used to re-run this reasoning inside
+  // the virtualization loop's .map() callback).
+  const renderNodes = useMemo(() => {
+    return filteredNodes.map((node, index) => {
+      let patched = node
+
+      if (totalChanges > 0 && index === 1 && node.column === 0) {
+        const hasCol0 = node.connections.some((c) => c.fromColumn === 0 && c.toColumn === 0)
+        if (!hasCol0) {
+          patched = {
+            ...patched,
+            connections: [
+              ...patched.connections,
+              { fromColumn: 0, toColumn: 0, color: '#7c3aed', dashed: true },
+            ],
+          }
+        }
+      }
+
+      if (originMainIndex !== -1 && index <= originMainIndex) {
+        patched = {
+          ...patched,
+          connections: patched.connections.map((conn) =>
+            conn.fromColumn === 0 && conn.toColumn === 0 ? { ...conn, dashed: true } : conn,
+          ),
+        }
+      }
+
+      return patched
+    })
+  }, [filteredNodes, totalChanges, originMainIndex])
+
+  return { wipNode, filteredNodes, renderNodes, waterlines, originMainIndex }
 }
