@@ -4,6 +4,7 @@ import { useSettingsStore } from '../../../stores/settings.store'
 import { useUserThemes } from '../../../hooks/useUserThemes'
 import { BUILTIN_THEMES } from '../../../lib/themes'
 import { useGameStore } from '../../../stores/game.store'
+import { findEffectGate, isEffectUnlocked } from '../../../lib/rewards/effects'
 
 interface ThemeCardProps {
   id: string
@@ -105,40 +106,15 @@ export function AppearanceSection() {
   // Game/achievements statistics for theme locking
   const { achievements } = useGameStore()
 
-  const isThemeLocked = (themeId: string) => {
-    if (themeId === 'amethyst') {
-      return !achievements.find((a) => a.id === 'commit_100')?.unlocked
-    }
-    if (themeId === 'forest') {
-      return !achievements.find((a) => a.id === 'pr_10')?.unlocked
-    }
-    if (themeId === 'cyberpunk') {
-      return !achievements.find((a) => a.id === 'autosquash')?.unlocked
-    }
-    if (themeId === 'platinum') {
-      return !achievements.find((a) => a.id === 'platinum_trophy')?.unlocked
-    }
-    return false
-  }
+  // Which achievement (if any) gates a given theme id is declared in achievements.json
+  // (`effects: [{ type: 'theme', id: ... }]`), not hardcoded here — a new locked theme only
+  // needs a JSON entry, see docs/architecture/15-rewards-system-refactor-plan.md.
+  const isThemeLocked = (themeId: string) => !isEffectUnlocked(achievements, 'theme', themeId)
 
   const getThemeLockReason = (themeId: string) => {
-    if (themeId === 'amethyst') {
-      const title = achievements.find((a) => a.id === 'commit_100')?.title || 'Stakhanoviste du Commit'
-      return `Thème Verrouillé : nécessite le succès "${title}" (100 commits)`
-    }
-    if (themeId === 'forest') {
-      const title = achievements.find((a) => a.id === 'pr_10')?.title || 'Gestionnaire Agile'
-      return `Thème Verrouillé : nécessite le succès "${title}" (10 PRs)`
-    }
-    if (themeId === 'cyberpunk') {
-      const title = achievements.find((a) => a.id === 'autosquash')?.title || "Architecte de l'Histoire"
-      return `Thème Verrouillé : nécessite le succès "${title}" (autosquash rebase)`
-    }
-    if (themeId === 'platinum') {
-      const title = achievements.find((a) => a.id === 'platinum_trophy')?.title || 'Maître Absolu de Git'
-      return `Thème Verrouillé : nécessite le succès ultime "${title}" (débloquer tous les autres trophées)`
-    }
-    return ''
+    const gate = findEffectGate(achievements, 'theme', themeId)
+    if (!gate || gate.unlocked) return ''
+    return `Thème Verrouillé : nécessite le succès "${gate.title}" — ${gate.description}`
   }
 
   // SWR hook replaces manual useEffect
