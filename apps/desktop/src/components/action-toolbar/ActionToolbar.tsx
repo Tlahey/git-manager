@@ -60,7 +60,7 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
         <RepoSelector />
         <ChevronRight className="h-4 w-4 shrink-0 self-end pb-0.5 text-muted-foreground/40" />
         <BranchContext />
-        <div className="ml-1 self-end pb-0.5">
+        <div className="ml-1 flex items-center gap-1 self-end pb-0.5">
           <StateTags />
         </div>
       </div>

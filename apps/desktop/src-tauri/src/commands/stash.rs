@@ -11,7 +11,11 @@ pub async fn stash_push(
     include_untracked: Option<bool>,
 ) -> Result<(), String> {
     let mut repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_stash::stash_push(&mut repo, message.as_deref(), include_untracked.unwrap_or(false))
+    git_stash::stash_push(
+        &mut repo,
+        message.as_deref(),
+        include_untracked.unwrap_or(false),
+    )
 }
 
 /// Applies a stash and removes it from the list
@@ -51,11 +55,7 @@ pub async fn stash_store(path: String, commit_oid: String, message: String) -> R
 
 /// Modifies the message of a stash at the given index
 #[tauri::command]
-pub async fn edit_stash_message(
-    path: String,
-    index: usize,
-    message: String,
-) -> Result<(), String> {
+pub async fn edit_stash_message(path: String, index: usize, message: String) -> Result<(), String> {
     let mut repo = Repository::open(&path).map_err(|e| AppError::Git(e).to_string())?;
     git_stash::edit_stash_message(&mut repo, &path, index, &message)
 }

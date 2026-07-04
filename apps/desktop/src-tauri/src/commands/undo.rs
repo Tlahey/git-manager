@@ -11,7 +11,12 @@ fn pin_ref_name(ref_name: &str) -> String {
 }
 
 fn pin_oid(repo: &Repository, ref_name: &str, oid: Oid) -> Result<(), git2::Error> {
-    repo.reference(&pin_ref_name(ref_name), oid, true, "git-manager: pin for undo history")?;
+    repo.reference(
+        &pin_ref_name(ref_name),
+        oid,
+        true,
+        "git-manager: pin for undo history",
+    )?;
     Ok(())
 }
 
@@ -124,7 +129,10 @@ pub struct WorktreeSnapshot {
     pub workdir_ref_name: String,
 }
 
-fn build_worktree_snapshot(repo: &Repository, entry_id: &str) -> Result<WorktreeSnapshot, git2::Error> {
+fn build_worktree_snapshot(
+    repo: &Repository,
+    entry_id: &str,
+) -> Result<WorktreeSnapshot, git2::Error> {
     let index_tree_oid = {
         let mut index = repo.index()?;
         index.write_tree()?
@@ -154,12 +162,19 @@ fn build_worktree_snapshot(repo: &Repository, entry_id: &str) -> Result<Worktree
 /// le repo est déjà propre (rien à protéger avant une action destructive comme reset --hard ou
 /// checkout forcé).
 #[tauri::command]
-pub async fn snapshot_worktree(path: String, entry_id: String) -> Result<Option<WorktreeSnapshot>, String> {
+pub async fn snapshot_worktree(
+    path: String,
+    entry_id: String,
+) -> Result<Option<WorktreeSnapshot>, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
 
     let mut status_opts = git2::StatusOptions::new();
-    status_opts.include_untracked(true).recurse_untracked_dirs(true);
-    let statuses = repo.statuses(Some(&mut status_opts)).map_err(AppError::Git)?;
+    status_opts
+        .include_untracked(true)
+        .recurse_untracked_dirs(true);
+    let statuses = repo
+        .statuses(Some(&mut status_opts))
+        .map_err(AppError::Git)?;
     if statuses.is_empty() {
         return Ok(None);
     }
@@ -173,7 +188,10 @@ pub async fn snapshot_worktree(path: String, entry_id: String) -> Result<Option<
 /// Comme `snapshot_worktree`, mais capture toujours (même si le workdir est propre) — utilisé
 /// pour l'undo de stash apply/pop, où la baseline "propre" est elle-même l'état à restaurer.
 #[tauri::command]
-pub async fn snapshot_worktree_always(path: String, entry_id: String) -> Result<WorktreeSnapshot, String> {
+pub async fn snapshot_worktree_always(
+    path: String,
+    entry_id: String,
+) -> Result<WorktreeSnapshot, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
     build_worktree_snapshot(&repo, &entry_id)
         .map_err(AppError::Git)
@@ -191,7 +209,8 @@ pub async fn restore_worktree_snapshot(
 ) -> Result<(), String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
 
-    let workdir_oid = Oid::from_str(&workdir_tree_oid).map_err(|_| "Invalid workdir tree OID".to_string())?;
+    let workdir_oid =
+        Oid::from_str(&workdir_tree_oid).map_err(|_| "Invalid workdir tree OID".to_string())?;
     let workdir_tree = repo.find_tree(workdir_oid).map_err(AppError::Git)?;
 
     let mut checkout_opts = git2::build::CheckoutBuilder::new();
@@ -200,7 +219,8 @@ pub async fn restore_worktree_snapshot(
     repo.checkout_tree(workdir_tree.as_object(), Some(&mut checkout_opts))
         .map_err(AppError::Git)?;
 
-    let index_oid = Oid::from_str(&index_tree_oid).map_err(|_| "Invalid index tree OID".to_string())?;
+    let index_oid =
+        Oid::from_str(&index_tree_oid).map_err(|_| "Invalid index tree OID".to_string())?;
     let index_tree = repo.find_tree(index_oid).map_err(AppError::Git)?;
     let mut index = repo.index().map_err(AppError::Git)?;
     index.read_tree(&index_tree).map_err(AppError::Git)?;

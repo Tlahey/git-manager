@@ -102,7 +102,9 @@ Types: feat, fix, chore, docs, style, refactor, test, perf, build, ci"#;
     );
 
     let client = Client::builder()
-        .timeout(std::time::Duration::from_secs(ollama_config.timeout_seconds))
+        .timeout(std::time::Duration::from_secs(
+            ollama_config.timeout_seconds,
+        ))
         .build()
         .map_err(AppError::Http)?;
 
@@ -179,8 +181,8 @@ pub async fn cancel_generation(state: State<'_, AppState>) -> Result<(), String>
 fn get_staged_diff(repo_path: &str) -> Result<String, String> {
     use git2::Repository;
 
-    let repo = Repository::open(repo_path)
-        .map_err(|_| AppError::RepoNotFound(repo_path.to_string()))?;
+    let repo =
+        Repository::open(repo_path).map_err(|_| AppError::RepoNotFound(repo_path.to_string()))?;
 
     let head = repo.head().ok().and_then(|h| h.peel_to_tree().ok());
     let mut index = repo.index().map_err(AppError::Git)?;

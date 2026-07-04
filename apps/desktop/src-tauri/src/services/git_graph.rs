@@ -100,7 +100,10 @@ pub fn build_graph_nodes(
 
         for (local_ref, remote_ref) in local_main_colors {
             let local_oid = repo.find_reference(local_ref).ok().and_then(|r| r.target());
-            let remote_oid = repo.find_reference(remote_ref).ok().and_then(|r| r.target());
+            let remote_oid = repo
+                .find_reference(remote_ref)
+                .ok()
+                .and_then(|r| r.target());
 
             if let Some(oid) = local_oid {
                 let mut curr = oid;
@@ -165,7 +168,10 @@ pub fn build_graph_nodes(
         let mut col_override = None;
         if stash_oids.contains(oid) {
             if let Some(p0) = parent_oids.first() {
-                if let Some(idx) = active_lanes.iter().position(|l| l.as_deref() == Some(p0.as_str())) {
+                if let Some(idx) = active_lanes
+                    .iter()
+                    .position(|l| l.as_deref() == Some(p0.as_str()))
+                {
                     col_override = Some(idx);
                 }
             }
@@ -259,11 +265,14 @@ pub fn build_graph_nodes(
                         next_lanes.len() - 1
                     });
                 next_lanes[new_idx] = Some(p.clone());
-                let p_color = color_map.entry(p.clone()).or_insert_with(|| {
-                    let c = COLORS[color_counter % COLORS.len()].to_string();
-                    color_counter += 1;
-                    c
-                }).clone();
+                let p_color = color_map
+                    .entry(p.clone())
+                    .or_insert_with(|| {
+                        let c = COLORS[color_counter % COLORS.len()].to_string();
+                        color_counter += 1;
+                        c
+                    })
+                    .clone();
                 next_lane_colors[new_idx] = p_color;
                 new_idx
             };
@@ -286,7 +295,10 @@ pub fn build_graph_nodes(
                     continue; // La lane de ce commit : gérée via merge/outgoing
                 }
                 // Une lane pass-through reste toujours dans la même colonne et garde sa couleur
-                let edge_color = lane_colors.get(from_col).cloned().unwrap_or_else(|| "#888888".to_string());
+                let edge_color = lane_colors
+                    .get(from_col)
+                    .cloned()
+                    .unwrap_or_else(|| "#888888".to_string());
                 connections.push(GitGraphEdge {
                     from_column: from_col,
                     to_column: from_col,
@@ -300,7 +312,10 @@ pub fn build_graph_nodes(
 
         // 2. Lignes de merge entrant (colonnes secondaires → col principal)
         for &mc in &merge_cols {
-            let edge_color = lane_colors.get(mc).cloned().unwrap_or_else(|| color.clone());
+            let edge_color = lane_colors
+                .get(mc)
+                .cloned()
+                .unwrap_or_else(|| color.clone());
             if mc != col {
                 connections.push(GitGraphEdge {
                     from_column: mc,
@@ -325,7 +340,10 @@ pub fn build_graph_nodes(
         // 3. Lignes sortantes vers les parents
         for p_oid in &parent_oids {
             if let Some(&to_col) = parent_to_col.get(p_oid) {
-                let edge_color = next_lane_colors.get(to_col).cloned().unwrap_or_else(|| color.clone());
+                let edge_color = next_lane_colors
+                    .get(to_col)
+                    .cloned()
+                    .unwrap_or_else(|| color.clone());
                 let starts_at_node = if to_col == col { Some(true) } else { None };
                 connections.push(GitGraphEdge {
                     from_column: col,
@@ -346,11 +364,7 @@ pub fn build_graph_nodes(
         let committer = commit.committer();
         let raw_message = commit.message().unwrap_or("").to_string();
         let subject = raw_message.lines().next().unwrap_or("").to_string();
-        let body = raw_message
-            .lines()
-            .skip(2)
-            .collect::<Vec<_>>()
-            .join("\n");
+        let body = raw_message.lines().skip(2).collect::<Vec<_>>().join("\n");
 
         let git_commit = GitCommit {
             oid: oid_str.clone(),
@@ -390,7 +404,10 @@ pub fn build_graph_nodes(
         let origin_oid_str = origin_oid.to_string();
         if let Some(origin_node_idx) = nodes.iter().position(|n| n.commit.oid == origin_oid_str) {
             for i in 0..origin_node_idx {
-                let has_col_0_connection = nodes[i].connections.iter().any(|c| c.from_column == 0 || c.to_column == 0);
+                let has_col_0_connection = nodes[i]
+                    .connections
+                    .iter()
+                    .any(|c| c.from_column == 0 || c.to_column == 0);
                 if !has_col_0_connection {
                     nodes[i].connections.push(GitGraphEdge {
                         from_column: 0,
@@ -406,7 +423,10 @@ pub fn build_graph_nodes(
             // If origin/main is not in the current page, but we have local commits in this page,
             // draw the dashed line on column 0 through the entire page.
             for node in &mut nodes {
-                let has_col_0_connection = node.connections.iter().any(|c| c.from_column == 0 || c.to_column == 0);
+                let has_col_0_connection = node
+                    .connections
+                    .iter()
+                    .any(|c| c.from_column == 0 || c.to_column == 0);
                 if !has_col_0_connection {
                     node.connections.push(GitGraphEdge {
                         from_column: 0,

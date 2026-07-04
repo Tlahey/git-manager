@@ -28,7 +28,10 @@ pub async fn unstage_file(path: String, file_path: String) -> Result<(), String>
 
 /// Discards all unstaged changes to a file in the working directory.
 #[tauri::command]
-pub async fn discard_file_changes(path: String, file_path: String) -> Result<DiscardResult, String> {
+pub async fn discard_file_changes(
+    path: String,
+    file_path: String,
+) -> Result<DiscardResult, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
     git_commit::discard_file_changes(&repo, &path, &file_path).map_err(Into::into)
 }
@@ -62,8 +65,13 @@ pub async fn create_commit(
     amend_oid: Option<String>,
 ) -> Result<CommitResult, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_commit::create_commit(&repo, &message, amend.unwrap_or(false), amend_oid.as_deref())
-        .map_err(Into::into)
+    git_commit::create_commit(
+        &repo,
+        &message,
+        amend.unwrap_or(false),
+        amend_oid.as_deref(),
+    )
+    .map_err(Into::into)
 }
 
 // ─── get_staged_diff ──────────────────────────────────────────────────────────
@@ -175,7 +183,11 @@ pub async fn get_file_raw_contents(
         let commit = repo.find_commit(commit_oid).map_err(|e| e.to_string())?;
         if commit.parent_count() > 0 {
             let parent = commit.parent(0).map_err(|e| e.to_string())?;
-            get_file_content_from_tree(&repo, &parent.tree().map_err(|e| e.to_string())?, &file_path)?
+            get_file_content_from_tree(
+                &repo,
+                &parent.tree().map_err(|e| e.to_string())?,
+                &file_path,
+            )?
         } else {
             String::new()
         }
@@ -183,7 +195,12 @@ pub async fn get_file_raw_contents(
         if let Ok(head) = repo.head() {
             if let Ok(resolved) = head.resolve() {
                 if let Ok(commit) = resolved.peel_to_commit() {
-                    get_file_content_from_tree(&repo, &commit.tree().map_err(|e| e.to_string())?, &file_path).unwrap_or_default()
+                    get_file_content_from_tree(
+                        &repo,
+                        &commit.tree().map_err(|e| e.to_string())?,
+                        &file_path,
+                    )
+                    .unwrap_or_default()
                 } else {
                     String::new()
                 }
@@ -198,7 +215,8 @@ pub async fn get_file_raw_contents(
             if let Ok(head) = repo.head() {
                 if let Ok(resolved) = head.resolve() {
                     if let Ok(commit) = resolved.peel_to_commit() {
-                        get_file_content_from_tree(&repo, &commit.tree().unwrap(), &file_path).unwrap_or_default()
+                        get_file_content_from_tree(&repo, &commit.tree().unwrap(), &file_path)
+                            .unwrap_or_default()
                     } else {
                         String::new()
                     }
@@ -214,7 +232,11 @@ pub async fn get_file_raw_contents(
     let modified = if let Some(ref oid_str) = oid {
         let commit_oid = Oid::from_str(oid_str).map_err(|e| e.to_string())?;
         let commit = repo.find_commit(commit_oid).map_err(|e| e.to_string())?;
-        get_file_content_from_tree(&repo, &commit.tree().map_err(|e| e.to_string())?, &file_path)?
+        get_file_content_from_tree(
+            &repo,
+            &commit.tree().map_err(|e| e.to_string())?,
+            &file_path,
+        )?
     } else if staged {
         get_file_content_from_index(&repo, &file_path).unwrap_or_default()
     } else {
@@ -234,7 +256,11 @@ pub async fn get_file_raw_contents(
     Ok(RawFileDiffContents { original, modified })
 }
 
-fn get_file_content_from_tree(repo: &Repository, tree: &git2::Tree, file_path: &str) -> Result<String, String> {
+fn get_file_content_from_tree(
+    repo: &Repository,
+    tree: &git2::Tree,
+    file_path: &str,
+) -> Result<String, String> {
     if let Ok(entry) = tree.get_path(std::path::Path::new(file_path)) {
         if let Ok(blob) = repo.find_blob(entry.id()) {
             if blob.is_binary() {

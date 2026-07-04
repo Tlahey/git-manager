@@ -1,6 +1,7 @@
 pub mod branch;
 pub mod cherry_pick;
 pub mod commit;
+pub mod conflict;
 pub mod fixup;
 pub mod github;
 pub mod log;

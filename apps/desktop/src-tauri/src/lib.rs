@@ -13,6 +13,10 @@ use commands::commit::{
     create_commit, discard_file_changes, get_file_diff, get_file_raw_contents, get_staged_diff,
     stage_all, stage_file, unstage_all, unstage_file,
 };
+use commands::conflict::{
+    auto_merge_conflict_view, get_merge_view, list_conflicted_files, resolve_conflict,
+    resolve_conflict_binary,
+};
 use commands::fixup::{
     autosquash_preview, create_fixup_commit, get_pending_fixups, run_autosquash,
 };
@@ -20,7 +24,9 @@ use commands::github::{github_device_code, github_get_user, github_list_repos, g
 use commands::log::{compare_commit_to_workdir, get_commit_diff, get_commit_file, get_log};
 use commands::ollama::{cancel_generation, check_ollama_status, generate_commit_message};
 use commands::patch::create_patch;
-use commands::rebase::{abort_rebase, continue_rebase, get_rebase_state, rebase_onto_commit};
+use commands::rebase::{
+    abort_rebase, continue_rebase, get_rebase_state, rebase_onto_commit, skip_rebase,
+};
 use commands::remote::{
     add_remote, fetch_remote, get_commit_web_url, get_remotes, pull_branch, push_branch,
     remove_remote,
@@ -133,6 +139,7 @@ pub fn run() {
             rebase_onto_commit,
             continue_rebase,
             abort_rebase,
+            skip_rebase,
             // Ollama
             check_ollama_status,
             generate_commit_message,
@@ -202,6 +209,12 @@ pub fn run() {
             remove_worktree,
             // Patch
             create_patch,
+            // Conflict resolution
+            list_conflicted_files,
+            get_merge_view,
+            resolve_conflict,
+            resolve_conflict_binary,
+            auto_merge_conflict_view,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

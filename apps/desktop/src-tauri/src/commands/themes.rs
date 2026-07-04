@@ -3,13 +3,10 @@ use std::fs;
 use std::path::PathBuf;
 
 fn user_themes_dir() -> Option<PathBuf> {
-    let home = std::env::var("HOME")
-        .ok()
-        .map(PathBuf::from)
-        .or_else(|| {
-            #[allow(deprecated)]
-            std::env::home_dir()
-        })?;
+    let home = std::env::var("HOME").ok().map(PathBuf::from).or_else(|| {
+        #[allow(deprecated)]
+        std::env::home_dir()
+    })?;
     Some(home.join(".git-manager").join("themes"))
 }
 
@@ -57,7 +54,11 @@ pub async fn get_user_themes() -> Result<Vec<UserTheme>, String> {
         // user only needs to write plain `--variable: value;` lines.
         let css = format!("[data-theme=\"{stem}\"] {{\n{content}\n}}");
 
-        themes.push(UserTheme { id: stem, name, css });
+        themes.push(UserTheme {
+            id: stem,
+            name,
+            css,
+        });
     }
 
     themes.sort_by(|a, b| a.name.cmp(&b.name));

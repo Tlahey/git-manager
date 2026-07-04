@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useTranslation } from '@git-manager/i18n'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { mutate } from 'swr'
 import { Spinner } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { useGitStatus } from '../../hooks/useGitStatus'
@@ -12,14 +13,16 @@ import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useCommitSelection } from '../../hooks/useCommitSelection'
 import { useCommitDetailsResize } from '../../hooks/useCommitDetailsResize'
-import { useGitGraphNodes } from '../../hooks/useGitGraphNodes'
+import { useGitGraphNodes, type ConflictRowInfo } from '../../hooks/useGitGraphNodes'
 import { useGitGraphActions } from '../../hooks/useGitGraphActions'
+import { apiGetRebaseState } from '../../api/git.api'
 import { GraphRow } from './GraphRow'
 import { GraphHeader } from './GraphHeader'
 import { CommitDetailsPanel } from './CommitDetailsPanel'
 import { DiffViewCenter } from './DiffViewCenter'
 import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
-import { RebaseConflictBanner } from '../rebase/RebaseConflictBanner'
+import { ConflictResolutionPanel } from './ConflictResolutionPanel'
+import { ConflictDiffView } from './ConflictDiffView'
 import { Waterline } from './Waterline'
 import { COLUMN_DEFS, COLUMN_ORDER, type ResolvedColumn } from './columns'
 
@@ -49,8 +52,24 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
   const activeDiffFile = useRepoUIStore((s) => s.activeDiffFile)
   const setActiveDiffFile = useRepoUIStore((s) => s.setActiveDiffFile)
+  const conflictFilePath = useRepoUIStore((s) => s.conflictFilePath)
+  const setConflictFilePath = useRepoUIStore((s) => s.setConflictFilePath)
+  const pendingGraphSelection = useRepoUIStore((s) => s.pendingGraphSelection)
+  const setPendingGraphSelection = useRepoUIStore((s) => s.setPendingGraphSelection)
   const hiddenStashes = useRepoDataStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
   const toggleStashVisibility = useRepoDataStore((s) => s.toggleStashVisibility)
+
+  // ── État de rebase (pour la ligne de conflit synthétique dans le graphe) ────
+  const { data: rebaseState } = useQuery({
+    queryKey: ['rebase-state', repoPath],
+    queryFn: () => apiGetRebaseState(repoPath),
+    enabled: !!repoPath,
+    refetchInterval: 4000,
+  })
+  const isRebasePaused = rebaseState?.kind === 'conflict' || rebaseState?.kind === 'edit_pause'
+  const conflictInfo: ConflictRowInfo | null = isRebasePaused
+    ? { count: rebaseState?.conflictedFiles?.length ?? 0, branchName: rebaseState?.branchName }
+    : null
 
   // ── Status detection & WIP Node ──────────────────────────────────────────
   const { data: status } = useGitStatus(repoPath)
@@ -84,12 +103,13 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     hiddenStashes,
   })
 
-  // ── Dérivation des données du graphe (WIP, recherche, waterlines) ──────────
-  const { wipNode, filteredNodes, renderNodes, waterlines } = useGitGraphNodes(
+  // ── Dérivation des données du graphe (WIP, conflit, recherche, waterlines) ──
+  const { wipNode, conflictNode, filteredNodes, renderNodes, waterlines } = useGitGraphNodes(
     nodes,
     searchQuery,
     totalChanges,
     t,
+    conflictInfo,
   )
 
   // ── Sélection (multiple) hook ──────────────────────────────────────────────
@@ -101,6 +121,15 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     handleRowSelect,
     clearSelection,
   } = useCommitSelection(filteredNodes, onSelectCommit)
+
+  // Bridge: lets components outside GitGraph (e.g. the toolbar's conflict indicator) select
+  // the synthetic "CONFLICT" row via the store, since `selectSingle` is local to this component.
+  useEffect(() => {
+    if (pendingGraphSelection) {
+      selectSingle(pendingGraphSelection)
+      setPendingGraphSelection(null)
+    }
+  }, [pendingGraphSelection, selectSingle, setPendingGraphSelection])
 
   // Reset active diff on commit selection or repo changes
   useEffect(() => {
@@ -162,11 +191,26 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   const primaryNode = useMemo(() => {
     if (!primaryOid) return null
     if (primaryOid === 'WIP') return wipNode
+    if (primaryOid === 'CONFLICT') return conflictNode
     return nodes.find((n) => n.commit.oid === primaryOid) ?? null
-  }, [primaryOid, nodes, wipNode])
+  }, [primaryOid, nodes, wipNode, conflictNode])
+
+  const isConflictPanelOpen = primaryNode?.commit.oid === 'CONFLICT'
+
+  function closeConflictPanel() {
+    clearSelection()
+    setConflictFilePath(null)
+  }
+
+  function handleConflictFileResolved() {
+    setConflictFilePath(null)
+    mutate(['conflicted-files', repoPath])
+    queryClient.invalidateQueries({ queryKey: ['rebase-state', repoPath] })
+    queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+  }
 
   const isSelectedCommitHead = useMemo(() => {
-    if (!primaryNode || primaryNode.commit.oid === 'WIP') return false
+    if (!primaryNode || primaryNode.commit.oid === 'WIP' || primaryNode.commit.oid === 'CONFLICT') return false
     // Strategy 1: a ref with type 'HEAD' is directly on this commit (detached HEAD)
     const hasHeadRef = primaryNode.refs.some((r) => r.type === 'HEAD')
     // Strategy 2: the commit carries the branch that HEAD currently points to
@@ -185,7 +229,14 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     <div className="flex h-full overflow-hidden select-none">
       {/* Zone principale : tableau virtualisé ou DiffViewCenter */}
       <div className="flex min-w-[280px] flex-1 flex-col overflow-hidden">
-        {activeDiffFile ? (
+        {conflictFilePath ? (
+          <ConflictDiffView
+            repoPath={repoPath}
+            filePath={conflictFilePath}
+            onClose={() => setConflictFilePath(null)}
+            onResolved={handleConflictFileResolved}
+          />
+        ) : activeDiffFile ? (
           <DiffViewCenter
             repoPath={repoPath}
             file={activeDiffFile}
@@ -261,6 +312,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                               totalChanges={totalChanges}
                               onCommitWip={handleCommitWip}
                               isFirst={virtualItem.index === 0}
+                              conflictInfo={conflictInfo}
                             />
                           </div>
                         )
@@ -289,7 +341,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
         )}
       </div>
 
-      {/* Panneau latéral du commit primaire */}
+      {/* Panneau latéral : résolution de conflits (priorité) ou détails du commit primaire */}
       {primaryNode && (
         <>
           {/* Handle de redimensionnement */}
@@ -300,14 +352,23 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
             <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
           </div>
           <div className="h-full shrink-0 overflow-hidden min-w-[350px]" style={{ width: panelWidthState }}>
-            <CommitDetailsPanel
-              node={primaryNode}
-              repoPath={repoPath}
-              isHead={isSelectedCommitHead}
-              onSelectCommit={selectSingle}
-              onSelectFileDiff={(file) => setActiveDiffFile(file)}
-              onClose={clearSelection}
-            />
+            {isConflictPanelOpen ? (
+              <ConflictResolutionPanel
+                repoPath={repoPath}
+                activeFile={conflictFilePath}
+                onSelectFile={setConflictFilePath}
+                onClose={closeConflictPanel}
+              />
+            ) : (
+              <CommitDetailsPanel
+                node={primaryNode}
+                repoPath={repoPath}
+                isHead={isSelectedCommitHead}
+                onSelectCommit={selectSingle}
+                onSelectFileDiff={(file) => setActiveDiffFile(file)}
+                onClose={clearSelection}
+              />
+            )}
           </div>
         </>
       )}
@@ -321,8 +382,6 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
         pendingAction={pendingAction}
         onClearPendingAction={() => setPendingAction(null)}
       />
-
-      <RebaseConflictBanner repoPath={repoPath} />
 
       {/* Toast discret */}
       {toast && (

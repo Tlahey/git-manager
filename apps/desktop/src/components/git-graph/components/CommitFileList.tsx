@@ -31,6 +31,17 @@ interface CommitFileListProps {
   processedFiles: ProcessedFileItem[]
   onSelectFileDiff?: (file: { path: string; staged: boolean; oid?: string }) => void
   onRefresh?: () => void
+  /** Overrides the "Modifications" section label (e.g. "Conflicted files"). */
+  title?: string
+  /** Overrides the empty-state text shown when `processedFiles` is empty. */
+  emptyMessage?: string
+  /** Hides the "Global Statistics Summary" block — not meaningful for file lists without diff stats. */
+  hideStats?: boolean
+  /** Hides the filter/search input — not useful for short, fixed lists (e.g. conflict resolution). */
+  hideSearch?: boolean
+  /** Overrides the `useFileTree` cache key (defaults to `repoPath:commitOid:isWip`) — needed when
+   * rendering more than one `CommitFileList` for the same repo/commit (e.g. conflicted + resolved). */
+  cacheKey?: string
 }
 
 export function CommitFileList({
@@ -40,9 +51,15 @@ export function CommitFileList({
   processedFiles,
   onSelectFileDiff,
   onRefresh,
+  title,
+  emptyMessage,
+  hideStats,
+  hideSearch,
+  cacheKey,
 }: CommitFileListProps) {
   const { t } = useTranslation('git')
   const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree')
+  const noChangesLabel = emptyMessage ?? t('workingTree.noChanges')
 
   // File stats (summary badges, independent of search filtering)
   const fileStats = useMemo(() => {
@@ -71,7 +88,7 @@ export function CommitFileList({
     buttonState,
     toggleFolder,
     toggleExpandAll: handleToggleExpandAll,
-  } = useFileTree(processedFiles, `${repoPath}:${commitOid}:${isWip}`)
+  } = useFileTree(processedFiles, cacheKey ?? `${repoPath}:${commitOid}:${isWip}`)
 
   // Staging actions
   async function handleStage(file: string) {
@@ -251,72 +268,76 @@ export function CommitFileList({
   return (
     <div className="space-y-4">
       {/* Global Statistics Summary */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-            Stats Summary
-          </span>
-          <span className="text-[10px] font-semibold text-muted-foreground bg-muted/65 px-1.5 py-0.5 rounded border border-border/40 font-mono">
-            {filteredFiles.length} {filteredFiles.length === 1 ? 'file' : 'files'} changed
-          </span>
+      {!hideStats && (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+              Stats Summary
+            </span>
+            <span className="text-[10px] font-semibold text-muted-foreground bg-muted/65 px-1.5 py-0.5 rounded border border-border/40 font-mono">
+              {filteredFiles.length} {filteredFiles.length === 1 ? 'file' : 'files'} changed
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2 text-[10px] font-medium text-muted-foreground bg-muted/5 p-2 rounded-md border border-border/20">
+            {fileStats.added > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-green-500" />
+                <span>{fileStats.added} {t('commitDetails.stats.added') || 'added'}</span>
+              </span>
+            )}
+            {fileStats.modified > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-yellow-500" />
+                <span>{fileStats.modified} {t('commitDetails.stats.modified') || 'modified'}</span>
+              </span>
+            )}
+            {fileStats.deleted > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-red-500" />
+                <span>{fileStats.deleted} {t('commitDetails.stats.deleted') || 'deleted'}</span>
+              </span>
+            )}
+            {fileStats.renamed > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-blue-500" />
+                <span>{fileStats.renamed} {t('commitDetails.stats.renamed') || 'renamed'}</span>
+              </span>
+            )}
+            {processedFiles.length === 0 && (
+              <span className="italic text-muted-foreground/60">{noChangesLabel}</span>
+            )}
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2 text-[10px] font-medium text-muted-foreground bg-muted/5 p-2 rounded-md border border-border/20">
-          {fileStats.added > 0 && (
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-green-500" />
-              <span>{fileStats.added} {t('commitDetails.stats.added') || 'added'}</span>
-            </span>
-          )}
-          {fileStats.modified > 0 && (
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-yellow-500" />
-              <span>{fileStats.modified} {t('commitDetails.stats.modified') || 'modified'}</span>
-            </span>
-          )}
-          {fileStats.deleted > 0 && (
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-red-500" />
-              <span>{fileStats.deleted} {t('commitDetails.stats.deleted') || 'deleted'}</span>
-            </span>
-          )}
-          {fileStats.renamed > 0 && (
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-blue-500" />
-              <span>{fileStats.renamed} {t('commitDetails.stats.renamed') || 'renamed'}</span>
-            </span>
-          )}
-          {processedFiles.length === 0 && (
-            <span className="italic text-muted-foreground/60">{t('workingTree.noChanges')}</span>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* Search bar inside files */}
-      <div className="relative">
-        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-        <Input
-          type="text"
-          placeholder={t('commitDetails.searchFiles') || "Filter files..."}
-          value={fileSearchQuery}
-          onChange={(e) => setFileSearchQuery(e.target.value)}
-          className="pl-8 h-8 text-xs font-mono"
-        />
-        {fileSearchQuery && (
-          <button
-            onClick={() => setFileSearchQuery('')}
-            className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
+      {!hideSearch && (
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder={t('commitDetails.searchFiles') || "Filter files..."}
+            value={fileSearchQuery}
+            onChange={(e) => setFileSearchQuery(e.target.value)}
+            className="pl-8 h-8 text-xs font-mono"
+          />
+          {fileSearchQuery && (
+            <button
+              onClick={() => setFileSearchQuery('')}
+              className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* FILES TREE OR LIST VIEW */}
       <div className="space-y-2">
         <div className="flex items-center justify-between bg-muted/10 p-1.5 rounded-lg border border-border/30">
           <div className="flex items-center gap-2 pl-1">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider select-none">
-              Modifications
+              {title ?? 'Modifications'}
             </span>
             {viewMode === 'tree' && allFolderPaths.size > 0 && (
               <>
@@ -357,7 +378,7 @@ export function CommitFileList({
           <div className="space-y-0.5">
             {filteredFiles.length === 0 ? (
               <p className="text-[11px] text-muted-foreground/70 italic px-2 py-1">
-                {t('workingTree.noChanges')}
+                {noChangesLabel}
               </p>
             ) : (
               getSortedNodes(fileTreeRoot).map((node) => renderTreeNode(node))
@@ -370,7 +391,7 @@ export function CommitFileList({
           <div className="space-y-0.5">
             {filteredFiles.length === 0 ? (
               <p className="text-[11px] text-muted-foreground/70 italic px-2 py-1">
-                {t('workingTree.noChanges')}
+                {noChangesLabel}
               </p>
             ) : (
               filteredFiles.map((file) => (

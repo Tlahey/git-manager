@@ -24,10 +24,7 @@ pub async fn list_submodules(path: String) -> Result<Vec<GitSubmodule>, String> 
         .map_err(AppError::Git)?
         .into_iter()
         .map(|sm| {
-            let head_oid = sm
-                .head_id()
-                .map(|oid| oid.to_string())
-                .unwrap_or_default();
+            let head_oid = sm.head_id().map(|oid| oid.to_string()).unwrap_or_default();
 
             GitSubmodule {
                 path: sm.path().to_string_lossy().to_string(),

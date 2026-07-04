@@ -36,3 +36,123 @@ body {
   animation: shimmer 1.4s infinite linear;
 }
 
+/* 3-way merge editor: block coloring (decorations) and gutter action buttons (content widgets).
+   Plain rgba (no `hsl(var(--x) / a)` relative-color syntax) and `!important` deliberately —
+   Monaco layers its own decoration/theme backgrounds on top of ours, so these need to win the
+   cascade unconditionally rather than relying on rule ordering or CSS variable resolution.
+
+   Four colors, by what actually happened: green = pure addition; gray = pure deletion (nothing
+   new to weigh in on, just keep-or-drop — same weight as "already settled"); blue = a one-sided
+   modification (only one side changed the value, the other still mirrors the unchanged
+   ancestor); red = a genuine two-sided conflict (both sides changed the *same* spot to
+   *different* values — the one case that most needs your attention). Also gray once settled.
+
+   Two intensities per color: "vivid" for the gutter/line-number margin and the connector
+   ribbons (`merge-connector-*`, in MergeConnectorOverlay.tsx) — no text to compete with there,
+   so a clearer, more saturated fill reads well — and "text" (muted) for the actual code
+   background, where a heavy fill would fight with legibility. */
+.merge-vivid-addition {
+  background-color: rgba(34, 197, 94, 0.42) !important;
+}
+.merge-vivid-deletion {
+  background-color: rgba(148, 163, 184, 0.42) !important;
+}
+.merge-vivid-modification {
+  background-color: rgba(59, 130, 246, 0.42) !important;
+}
+.merge-vivid-conflict {
+  background-color: rgba(239, 68, 68, 0.42) !important;
+}
+.merge-vivid-resolved {
+  background-color: rgba(148, 163, 184, 0.42) !important;
+}
+
+.merge-text-addition {
+  background-color: rgba(34, 197, 94, 0.16) !important;
+}
+.merge-text-deletion {
+  background-color: rgba(148, 163, 184, 0.16) !important;
+}
+.merge-text-modification {
+  background-color: rgba(59, 130, 246, 0.16) !important;
+}
+.merge-text-conflict {
+  background-color: rgba(239, 68, 68, 0.16) !important;
+}
+.merge-text-resolved {
+  background-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+/* Connector-gap action buttons (MergeConnectorOverlay) — plain HTML `<button>`s rendered as a
+   sibling overlay to the ribbon SVG, in the gap between panes rather than in either pane's own
+   Monaco gutter. This is deliberate: real DOM elements here get real, unconditional :hover and
+   :click with zero dependency on Monaco's own mouse-target hit-testing, which — see git history
+   on ThreeWayMergeEditor.tsx — silently breaks for a pane whose gutter has been CSS-repositioned
+   (Monaco computes "did you click the margin" from its own internal, unflipped layout numbers,
+   not the actual rendered DOM). Icons are lucide's X / ChevronsRight / ChevronsLeft paths,
+   inlined so no extra bundle/network dependency is needed for a CSS mask-image. */
+.merge-connector-action {
+  all: unset;
+  box-sizing: border-box;
+  display: block;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  background-color: hsl(var(--muted-foreground));
+  -webkit-mask-size: 85%;
+  mask-size: 85%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+.merge-connector-action:hover {
+  background-color: hsl(var(--foreground));
+}
+.merge-connector-reject {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'/%3E%3Cpath d='m6 6 12 12'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'/%3E%3Cpath d='m6 6 12 12'/%3E%3C/svg%3E");
+}
+.merge-connector-accept-ours {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 17 5-5-5-5'/%3E%3Cpath d='m13 17 5-5-5-5'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 17 5-5-5-5'/%3E%3Cpath d='m13 17 5-5-5-5'/%3E%3C/svg%3E");
+}
+.merge-connector-accept-theirs {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m11 17-5-5 5-5'/%3E%3Cpath d='m18 17-5-5 5-5'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m11 17-5-5 5-5'/%3E%3Cpath d='m18 17-5-5 5-5'/%3E%3C/svg%3E");
+}
+
+.merge-connector-addition {
+  fill: rgba(34, 197, 94, 0.42);
+}
+.merge-connector-deletion {
+  fill: rgba(148, 163, 184, 0.42);
+}
+.merge-connector-modification {
+  fill: rgba(59, 130, 246, 0.42);
+}
+.merge-connector-conflict {
+  fill: rgba(239, 68, 68, 0.42);
+}
+.merge-connector-resolved {
+  fill: rgba(148, 163, 184, 0.42);
+}
+
+/* Ours pane: flip Monaco's native gutter to the right edge instead of the left. The margin's
+   width is always exactly `contentLeft`, and the scrollable content's width is always exactly
+   `fullWidth - contentLeft` — so swapping which side each one docks to tiles them back together
+   with no gap or overlap. `!important` is required for the scrollable element specifically:
+   Monaco sets its `left` via inline style on every layout pass, which only an `!important`
+   stylesheet rule can override. Content widgets and text still render correctly relative to
+   their own (now-shifted) container; the one known tradeoff is that Monaco's mouse hit-testing
+   (click-to-column, drag-select) still assumes the old position, so text selection in this
+   read-only pane may feel slightly offset — acceptable here since editing happens in the center
+   pane, not this one. */
+.merge-pane-numbers-right .monaco-editor .margin {
+  left: auto !important;
+  right: 0 !important;
+}
+.merge-pane-numbers-right .monaco-editor .monaco-scrollable-element.editor-scrollable {
+  left: 0 !important;
+}
+

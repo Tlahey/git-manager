@@ -1,6 +1,6 @@
-use std::process::Command;
-use std::path::PathBuf;
 use std::fs;
+use std::path::PathBuf;
+use std::process::Command;
 
 #[tauri::command]
 pub async fn generate_ssh_key(
@@ -31,7 +31,7 @@ pub async fn generate_ssh_key(
 
     let mut cmd = Command::new("ssh-keygen");
     cmd.arg("-t").arg(&key_type);
-    
+
     if key_type == "rsa" {
         if let Some(b) = bits {
             cmd.arg("-b").arg(b.to_string());
@@ -39,14 +39,16 @@ pub async fn generate_ssh_key(
             cmd.arg("-b").arg("3072");
         }
     }
-    
+
     cmd.arg("-C").arg(&comment);
     cmd.arg("-f").arg(&expanded_path);
     cmd.arg("-N").arg(&passphrase.unwrap_or_default());
     cmd.arg("-q"); // quiet
-    
-    let output = cmd.output().map_err(|e| format!("Failed to run ssh-keygen: {}", e))?;
-    
+
+    let output = cmd
+        .output()
+        .map_err(|e| format!("Failed to run ssh-keygen: {}", e))?;
+
     if !output.status.success() {
         let err_msg = String::from_utf8_lossy(&output.stderr).into_owned();
         return Err(format!("ssh-keygen failed: {}", err_msg));

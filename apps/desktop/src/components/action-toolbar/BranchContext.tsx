@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronDown, GitBranch, Search } from 'lucide-react'
@@ -20,6 +20,13 @@ export function BranchContext() {
   const { open, setOpen, pos, containerRef, triggerRef, menuRef } = useAnchoredMenu()
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!error) return
+    const id = setTimeout(() => setError(null), 3000)
+    return () => clearTimeout(id)
+  }, [error])
 
   const repo = activeRepo ? repoCache[activeRepo] : undefined
   const { data: branches = [] } = useBranches(activeRepo ?? '')
@@ -59,8 +66,8 @@ export function BranchContext() {
       queryClient.invalidateQueries({ queryKey: ['git-status', activeRepo] })
       setOpen(false)
       setQuery('')
-    } catch {
-      // erreur de checkout (conflits, etc.) ignorée silencieusement ici
+    } catch (err) {
+      setError(String(err))
     } finally {
       setBusy(null)
     }
@@ -129,6 +136,14 @@ export function BranchContext() {
                 ))
               )}
             </div>
+          </div>,
+          document.body,
+        )}
+
+      {error &&
+        createPortal(
+          <div className="pointer-events-none fixed bottom-4 right-4 z-50 max-w-sm rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive shadow-lg">
+            {error}
           </div>,
           document.body,
         )}

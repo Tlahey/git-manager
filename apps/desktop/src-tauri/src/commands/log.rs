@@ -81,7 +81,10 @@ pub async fn get_log(
         if let Some(oid) = target {
             revwalk.push(oid).map_err(|e| AppError::Git(e))?;
         } else {
-            return Err(format!("Could not resolve branch/reference '{}'", branch_name));
+            return Err(format!(
+                "Could not resolve branch/reference '{}'",
+                branch_name
+            ));
         }
     } else {
         // Parcourir toutes les branches et remotes
@@ -117,15 +120,12 @@ pub async fn get_log(
             .target()
             .or_else(|| head_ref.peel_to_commit().ok().map(|c| c.id()));
         if let Some(oid) = head_oid {
-            refs_map
-                .entry(oid.to_string())
-                .or_default()
-                .push(LogRef {
-                    name: "HEAD".to_string(),
-                    short_name: "HEAD".to_string(),
-                    ref_type: "HEAD".to_string(),
-                    commit_oid: oid.to_string(),
-                });
+            refs_map.entry(oid.to_string()).or_default().push(LogRef {
+                name: "HEAD".to_string(),
+                short_name: "HEAD".to_string(),
+                ref_type: "HEAD".to_string(),
+                commit_oid: oid.to_string(),
+            });
         }
     }
 
@@ -169,15 +169,12 @@ pub async fn get_log(
 
     // Add stash references to refs_map
     for (index, oid_str) in stash_refs {
-        refs_map
-            .entry(oid_str.clone())
-            .or_default()
-            .push(LogRef {
-                name: format!("refs/stash@{{{}}}", index),
-                short_name: format!("stash@{{{}}}", index),
-                ref_type: "stash".to_string(),
-                commit_oid: oid_str,
-            });
+        refs_map.entry(oid_str.clone()).or_default().push(LogRef {
+            name: format!("refs/stash@{{{}}}", index),
+            short_name: format!("stash@{{{}}}", index),
+            ref_type: "stash".to_string(),
+            commit_oid: oid_str,
+        });
     }
 
     // ── Collecte des OIDs avec pagination ────────────────────────────────────
@@ -240,11 +237,9 @@ pub async fn get_commit_diff(path: String, oid: String) -> Result<GitDiff, Strin
     if is_stash && commit.parent_count() == 3 {
         if let Ok(untracked_parent) = commit.parent(2) {
             if let Ok(untracked_tree) = untracked_parent.tree() {
-                if let Ok(untracked_diff) = repo.diff_tree_to_tree(
-                    None,
-                    Some(&untracked_tree),
-                    Some(&mut diff_opts),
-                ) {
+                if let Ok(untracked_diff) =
+                    repo.diff_tree_to_tree(None, Some(&untracked_tree), Some(&mut diff_opts))
+                {
                     let _ = git_diff::diff_foreach_files(&untracked_diff, &files, true);
                 }
             }
@@ -277,9 +272,7 @@ pub async fn get_commit_file(
         .get_path(std::path::Path::new(&file_path))
         .map_err(|e| AppError::Git(e))?;
 
-    let blob = repo
-        .find_blob(entry.id())
-        .map_err(|e| AppError::Git(e))?;
+    let blob = repo.find_blob(entry.id()).map_err(|e| AppError::Git(e))?;
 
     let content = std::str::from_utf8(blob.content())
         .map_err(|_| AppError::Unknown("File content is not valid UTF-8".to_string()))?

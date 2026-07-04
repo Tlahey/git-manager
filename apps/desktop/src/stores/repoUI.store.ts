@@ -16,6 +16,17 @@ interface RepoUIState {
   setActiveLeftPanel: (panel: 'sidebar' | 'blame' | 'history') => void
   editingOid: string | null
   setEditingOid: (oid: string | null) => void
+  /** Main content area shows `ConflictDiffView` for this file instead of the graph/`DiffViewCenter`. */
+  conflictFilePath: string | null
+  setConflictFilePath: (path: string | null) => void
+  /**
+   * Bridge for triggering graph-row selection (e.g. the synthetic "CONFLICT" row) from outside
+   * `GitGraph.tsx` — the toolbar lives in a separate branch of the component tree and has no
+   * direct access to `useCommitSelection`'s local `selectSingle`. `GitGraph.tsx` watches this
+   * and calls `selectSingle` on change, then clears it.
+   */
+  pendingGraphSelection: string | null
+  setPendingGraphSelection: (oid: string | null) => void
 
   setActiveRepo: (path: string | null) => void
   setActiveTab: (id: string) => void
@@ -36,6 +47,8 @@ export const useRepoUIStore = create<RepoUIState>()(
       activeDiffFile: null,
       activeLeftPanel: 'sidebar',
       editingOid: null,
+      conflictFilePath: null,
+      pendingGraphSelection: null,
 
       setActiveDiffFile: (file) =>
         set((state) => {
@@ -47,12 +60,17 @@ export const useRepoUIStore = create<RepoUIState>()(
 
       setEditingOid: (oid) => set({ editingOid: oid }),
 
+      setConflictFilePath: (path) => set({ conflictFilePath: path }),
+
+      setPendingGraphSelection: (oid) => set({ pendingGraphSelection: oid }),
+
       setActiveRepo: (path) =>
         set({
           activeRepo: path,
           activeTab: path ?? DASHBOARD_TAB,
           activeDiffFile: null,
           activeLeftPanel: 'sidebar',
+          conflictFilePath: null,
         }),
 
       setActiveTab: (id) =>
@@ -61,6 +79,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           activeRepo: state.openTabs.includes(id) ? id : null,
           activeDiffFile: null,
           activeLeftPanel: 'sidebar',
+          conflictFilePath: null,
         })),
 
       openTab: (path) =>

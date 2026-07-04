@@ -167,6 +167,49 @@ pub struct RebaseState {
     pub total_steps: Option<usize>,
     pub current_oid: Option<String>,
     pub conflicted_files: Option<Vec<String>>,
+    pub branch_name: Option<String>,
+    /// Original message of the commit currently being replayed (looked up via `current_oid`),
+    /// used to prefill the conflict-resolution panel's commit message box.
+    pub current_message: Option<String>,
+}
+
+// ─── Conflict Resolution (3-way merge editor) ─────────────────────────────────
+// Miroir exact de MergeBlockKind / MergeBlock / ThreeWayMergeView dans packages/git-types.
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum MergeBlockKind {
+    Unchanged,
+    OursOnly,
+    TheirsOnly,
+    BothSame,
+    BothDifferent,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct MergeBlock {
+    pub block_id: usize,
+    pub kind: MergeBlockKind,
+    pub ours_start_line: usize, // 1-based
+    pub ours_line_count: usize,
+    pub theirs_start_line: usize, // 1-based
+    pub theirs_line_count: usize,
+    pub ours_lines: Vec<String>,
+    pub theirs_lines: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreeWayMergeView {
+    pub file_path: String,
+    pub renderable: bool,
+    pub is_binary: bool,
+    pub conflict_kind: Option<String>, // "delete" | "rename"
+    pub blocks: Vec<MergeBlock>,
+    pub ours_text: String,
+    pub theirs_text: String,
+    pub conflict_count: usize, // count of BothDifferent blocks only
 }
 
 // ─── Ollama ───────────────────────────────────────────────────────────────────

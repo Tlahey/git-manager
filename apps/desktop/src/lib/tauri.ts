@@ -11,6 +11,7 @@ import type {
   GitSubmodule,
   RebaseStep,
   RebaseState,
+  ThreeWayMergeView,
   OllamaStatus,
   AppSettings,
   UserTheme,
@@ -110,12 +111,32 @@ export const getRebaseState = (path: string) => invoke<RebaseState>('get_rebase_
 export const startInteractiveRebase = (path: string, baseOid: string, steps: RebaseStep[]) =>
   invoke<void>('start_interactive_rebase', { path, baseOid, steps })
 
-export const continueRebase = (path: string) => invoke<void>('continue_rebase', { path })
+export const continueRebase = (path: string, message?: string) =>
+  invoke<void>('continue_rebase', { path, message })
 
 export const abortRebase = (path: string) => invoke<void>('abort_rebase', { path })
 
+export const skipRebase = (path: string) => invoke<void>('skip_rebase', { path })
+
 export const rebaseOntoCommit = (path: string, targetOid: string) =>
   invoke<void>('rebase_onto_commit', { path, targetOid })
+
+// ─── Conflict Resolution ──────────────────────────────────────────────────────
+
+export const listConflictedFiles = (path: string) =>
+  invoke<string[]>('list_conflicted_files', { path })
+
+export const getMergeView = (path: string, filePath: string) =>
+  invoke<ThreeWayMergeView>('get_merge_view', { path, filePath })
+
+export const autoMergeConflictView = (path: string, filePath: string) =>
+  invoke<string>('auto_merge_conflict_view', { path, filePath })
+
+export const resolveConflict = (path: string, filePath: string, resolvedContent: string) =>
+  invoke<void>('resolve_conflict', { path, filePath, resolvedContent })
+
+export const resolveConflictBinary = (path: string, filePath: string, side: 'ours' | 'theirs') =>
+  invoke<void>('resolve_conflict_binary', { path, filePath, side })
 
 // ─── Ollama ───────────────────────────────────────────────────────────────────
 
