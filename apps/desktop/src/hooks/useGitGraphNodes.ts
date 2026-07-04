@@ -9,6 +9,11 @@ interface WaterlineMark {
   index: number
 }
 
+export interface ConflictRowInfo {
+  count: number
+  branchName?: string
+}
+
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
 function buildWipNode(nodes: GitGraphNode[]) {
@@ -47,7 +52,51 @@ function buildWipNode(nodes: GitGraphNode[]) {
 }
 
 /**
- * Dérive les données d'affichage du graphe (nœud WIP, filtrage recherche,
+ * Synthetic row for a paused rebase, rendered in the graph the same way as the WIP row
+ * (see `buildWipNode`) — same `commit`-shaped object, special-cased in `GraphRow.tsx` by
+ * `oid === 'CONFLICT'`. Mutually exclusive with the WIP row (see `useGitGraphNodes` below):
+ * showing both at once would break the WIP→first-commit connector math, and a paused rebase
+ * already IS the repo's "in-progress work" state.
+ */
+function buildConflictNode(nodes: GitGraphNode[]) {
+  const firstNode = nodes[0]
+  return {
+    commit: {
+      oid: 'CONFLICT',
+      shortOid: 'CONFLICT',
+      message: '',
+      subject: '',
+      body: '',
+      author: {
+        name: '',
+        email: '',
+        timestamp: Date.now() / 1000,
+      },
+      committer: {
+        name: '',
+        email: '',
+        timestamp: Date.now() / 1000,
+      },
+      parentOids: firstNode ? [firstNode.commit.oid] : [],
+    },
+    column: 0,
+    color: '#f97316',
+    connections: firstNode
+      ? [
+          {
+            fromColumn: 0,
+            toColumn: 0,
+            color: '#f97316',
+            dashed: true,
+          },
+        ]
+      : [],
+    refs: [],
+  }
+}
+
+/**
+ * Dérive les données d'affichage du graphe (nœud WIP, nœud conflit, filtrage recherche,
  * paliers temporels, position de origin/main) à partir des commits bruts.
  */
 export function useGitGraphNodes(
@@ -55,19 +104,29 @@ export function useGitGraphNodes(
   searchQuery: string | undefined,
   totalChanges: number,
   t: TranslateFn,
+  conflictInfo: ConflictRowInfo | null,
 ) {
+  const conflictNode = useMemo(() => {
+    if (!conflictInfo || nodes.length === 0) return null
+    return buildConflictNode(nodes)
+  }, [conflictInfo, nodes])
+
   const wipNode = useMemo(() => {
-    if (totalChanges === 0 || nodes.length === 0) return null
+    if (conflictNode || totalChanges === 0 || nodes.length === 0) return null
     return buildWipNode(nodes)
-  }, [totalChanges, nodes])
+  }, [totalChanges, nodes, conflictNode])
 
   const filteredNodes = useMemo(() => {
     const search = searchQuery?.trim().toLowerCase() ?? ''
-    const baseNodes = wipNode ? [wipNode, ...nodes] : nodes
+    const specialNode = conflictNode ?? wipNode
+    const baseNodes = specialNode ? [specialNode, ...nodes] : nodes
     if (!search) return baseNodes
     return baseNodes.filter((node) => {
       if (node.commit.oid === 'WIP') {
         return 'wip'.includes(search)
+      }
+      if (node.commit.oid === 'CONFLICT') {
+        return 'conflict'.includes(search)
       }
       const { commit } = node
       const haystack = [
@@ -81,7 +140,7 @@ export function useGitGraphNodes(
         .toLowerCase()
       return haystack.includes(search)
     })
-  }, [nodes, searchQuery, wipNode])
+  }, [nodes, searchQuery, wipNode, conflictNode])
 
   // Waterlines : émises de façon MONOTONE (rang croissant) : un palier n'apparaît
   // qu'en entrant dans une période plus ancienne, jamais en arrière (commits pas
@@ -119,7 +178,7 @@ export function useGitGraphNodes(
     return filteredNodes.map((node, index) => {
       let patched = node
 
-      if (totalChanges > 0 && index === 1 && node.column === 0) {
+      if ((totalChanges > 0 || conflictNode) && index === 1 && node.column === 0) {
         const hasCol0 = node.connections.some((c) => c.fromColumn === 0 && c.toColumn === 0)
         if (!hasCol0) {
           patched = {
@@ -143,7 +202,7 @@ export function useGitGraphNodes(
 
       return patched
     })
-  }, [filteredNodes, totalChanges, originMainIndex])
+  }, [filteredNodes, totalChanges, originMainIndex, conflictNode])
 
-  return { wipNode, filteredNodes, renderNodes, waterlines, originMainIndex }
+  return { wipNode, conflictNode, filteredNodes, renderNodes, waterlines, originMainIndex }
 }

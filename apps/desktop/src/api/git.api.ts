@@ -46,6 +46,7 @@ import {
   rebaseOntoCommit,
   continueRebase,
   abortRebase,
+  skipRebase,
   createPatch,
 } from '../lib/tauri'
 import { callCommand } from './service'
@@ -239,12 +240,16 @@ export async function apiRebaseOntoCommit(path: string, targetOid: string) {
   return result
 }
 
-export async function apiRebaseContinue(path: string) {
-  return continueRebase(path)
+export async function apiRebaseContinue(path: string, message?: string) {
+  return continueRebase(path, message)
 }
 
 export async function apiRebaseAbort(path: string) {
   return abortRebase(path)
+}
+
+export async function apiRebaseSkip(path: string) {
+  return skipRebase(path)
 }
 
 // ─── Patch ──────────────────────────────────────────────────────────────────

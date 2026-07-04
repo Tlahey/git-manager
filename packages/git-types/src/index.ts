@@ -195,6 +195,34 @@ export interface RebaseState {
   totalSteps?: number
   currentOid?: string
   conflictedFiles?: string[]
+  branchName?: string
+  currentMessage?: string
+}
+
+// ─── Conflict Resolution (3-way merge editor) ─────────────────────────────────
+
+export type MergeBlockKind = 'unchanged' | 'ours-only' | 'theirs-only' | 'both-same' | 'both-different'
+
+export interface MergeBlock {
+  blockId: number
+  kind: MergeBlockKind
+  oursStartLine: number
+  oursLineCount: number
+  theirsStartLine: number
+  theirsLineCount: number
+  oursLines: string[]
+  theirsLines: string[]
+}
+
+export interface ThreeWayMergeView {
+  filePath: string
+  renderable: boolean
+  isBinary: boolean
+  conflictKind?: 'delete' | 'rename'
+  blocks: MergeBlock[]
+  oursText: string
+  theirsText: string
+  conflictCount: number
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────────

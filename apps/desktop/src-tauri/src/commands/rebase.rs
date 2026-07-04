@@ -31,16 +31,32 @@ pub async fn rebase_onto_commit(
         .map_err(|e| e.to_string())?;
 
     if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        return err_unless_paused(&path, &output.stderr);
     }
     Ok(())
 }
 
 /// Continues a paused rebase (`git rebase --continue`). `GIT_EDITOR=true` accepts
-/// whatever commit message is already staged rather than prompting.
+/// whatever commit message is already staged rather than prompting. If `message` is
+/// provided (the conflict panel's "amend previous commit" reword), it's written into
+/// `rebase-merge/message` first — the file `git` shows in the editor for the step it's
+/// about to finish — so the no-op editor picks it up instead of the step's original message.
 #[tauri::command]
-pub async fn continue_rebase(path: String, app: tauri::AppHandle) -> Result<(), String> {
+pub async fn continue_rebase(
+    path: String,
+    message: Option<String>,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
     use tauri_plugin_shell::ShellExt;
+
+    if let Some(trimmed) = message.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        let message_path = repo.path().join("rebase-merge").join("message");
+        if message_path.parent().map(|p| p.is_dir()).unwrap_or(false) {
+            std::fs::write(&message_path, format!("{trimmed}\n"))
+                .map_err(|e| AppError::Unknown(e.to_string()))?;
+        }
+    }
 
     let output = app
         .shell()
@@ -52,9 +68,41 @@ pub async fn continue_rebase(path: String, app: tauri::AppHandle) -> Result<(), 
         .map_err(|e| e.to_string())?;
 
     if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        return err_unless_paused(&path, &output.stderr);
     }
     Ok(())
+}
+
+/// Skips the commit currently being replayed (`git rebase --skip`) — used when the user
+/// wants to drop this step entirely rather than resolve its conflicts.
+#[tauri::command]
+pub async fn skip_rebase(path: String, app: tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_shell::ShellExt;
+
+    let output = app
+        .shell()
+        .command("git")
+        .args(["-C", &path, "rebase", "--skip"])
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !output.status.success() {
+        return err_unless_paused(&path, &output.stderr);
+    }
+    Ok(())
+}
+
+/// `git rebase` (and `--continue`) exit non-zero when they pause for a conflict — that's
+/// normal, expected behavior, not a failure. Only surface an error if the repo *isn't* left
+/// paused mid-rebase (a real failure: bad ref, dirty worktree preventing the rebase, etc.).
+fn err_unless_paused(path: &str, stderr: &[u8]) -> Result<(), String> {
+    let repo = Repository::open(path).map_err(AppError::Git)?;
+    let state = git_rebase::get_rebase_state(&repo)?;
+    if state.kind == "conflict" || state.kind == "edit_pause" {
+        return Ok(());
+    }
+    Err(String::from_utf8_lossy(stderr).to_string())
 }
 
 /// Aborts a paused rebase (`git rebase --abort`), restoring the original HEAD.

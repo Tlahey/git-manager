@@ -19,6 +19,10 @@ pub enum AppError {
     TagAlreadyExists(String),
     #[error("Worktree path already exists: {0}")]
     WorktreePathExists(String),
+    #[error("Conflict not found for path: {0}")]
+    ConflictNotFound(String),
+    #[error("Unparseable conflict: {0}")]
+    UnparseableConflict(String),
     #[error("Ollama error: {0}")]
     Ollama(String),
     #[error("HTTP error: {0}")]
@@ -45,6 +49,8 @@ impl From<AppError> for String {
             AppError::ProtectedBranch(_) => ("PROTECTED_BRANCH", e.to_string()),
             AppError::TagAlreadyExists(_) => ("TAG_ALREADY_EXISTS", e.to_string()),
             AppError::WorktreePathExists(_) => ("WORKTREE_PATH_EXISTS", e.to_string()),
+            AppError::ConflictNotFound(_) => ("CONFLICT_NOT_FOUND", e.to_string()),
+            AppError::UnparseableConflict(_) => ("UNPARSEABLE_CONFLICT", e.to_string()),
             AppError::Ollama(_) => ("OLLAMA_ERROR", e.to_string()),
             AppError::Http(_) => ("HTTP_ERROR", e.to_string()),
             AppError::Unknown(_) => ("UNKNOWN", e.to_string()),

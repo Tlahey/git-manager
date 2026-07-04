@@ -33,18 +33,31 @@ pub fn get_rebase_state(repo: &Repository) -> Result<RebaseState, AppError> {
     let progress = read_rebase_progress(repo.path());
     let conflicted_files = conflicted_paths(repo)?;
 
-    let kind = if !conflicted_files.is_empty() {
-        "conflict"
-    } else if progress
+    // A conflict pause persists — from the user's point of view — until they run
+    // continue/skip/abort, even after they've staged fixes for every file (index
+    // conflicts go to zero, but `stopped-sha` stays on disk until the step is finished).
+    // So "conflict" is driven by `current_oid` (the step being replayed), not by
+    // `conflicted_files` being non-empty, or the panel would disappear the instant the
+    // last file gets resolved — right when the user needs it most to click "Continue".
+    let is_edit_pause = progress
         .last_done_line
         .as_deref()
         .map(is_edit_or_reword_line)
-        .unwrap_or(false)
-    {
+        .unwrap_or(false);
+    let kind = if is_edit_pause {
         "edit_pause"
+    } else if progress.current_oid.is_some() {
+        "conflict"
     } else {
         "in_progress"
     };
+
+    let current_message = progress
+        .current_oid
+        .as_deref()
+        .and_then(|oid| git2::Oid::from_str(oid).ok())
+        .and_then(|oid| repo.find_commit(oid).ok())
+        .and_then(|commit| commit.message().map(str::to_string));
 
     Ok(RebaseState {
         kind: kind.to_string(),
@@ -56,6 +69,8 @@ pub fn get_rebase_state(repo: &Repository) -> Result<RebaseState, AppError> {
         } else {
             Some(conflicted_files)
         },
+        branch_name: progress.branch_name,
+        current_message,
     })
 }
 
@@ -66,6 +81,8 @@ fn idle_state() -> RebaseState {
         total_steps: None,
         current_oid: None,
         conflicted_files: None,
+        branch_name: None,
+        current_message: None,
     }
 }
 
@@ -74,6 +91,7 @@ struct RebaseProgress {
     total_steps: Option<usize>,
     current_oid: Option<String>,
     last_done_line: Option<String>,
+    branch_name: Option<String>,
 }
 
 /// Reads `git`'s own rebase state directory directly — `rebase-merge` (interactive/merge
@@ -93,6 +111,7 @@ fn read_rebase_progress(git_dir: &Path) -> RebaseProgress {
             total_steps: None,
             current_oid: None,
             last_done_line: None,
+            branch_name: None,
         };
     };
 
@@ -102,6 +121,9 @@ fn read_rebase_progress(git_dir: &Path) -> RebaseProgress {
         current_oid: read_trimmed(&dir.join("stopped-sha")),
         last_done_line: read_trimmed(&dir.join("done"))
             .and_then(|s| s.lines().last().map(|l| l.to_string())),
+        // `head-name` holds the original branch being rebased, e.g. "refs/heads/feature".
+        branch_name: read_trimmed(&dir.join("head-name"))
+            .map(|s| s.trim_start_matches("refs/heads/").to_string()),
     }
 }
 
@@ -124,7 +146,7 @@ fn is_edit_or_reword_line(line: &str) -> bool {
     matches!(action, "edit" | "e" | "reword" | "r")
 }
 
-fn conflicted_paths(repo: &Repository) -> Result<Vec<String>, AppError> {
+pub(crate) fn conflicted_paths(repo: &Repository) -> Result<Vec<String>, AppError> {
     let index = repo.index().map_err(AppError::Git)?;
     let paths = index
         .conflicts()

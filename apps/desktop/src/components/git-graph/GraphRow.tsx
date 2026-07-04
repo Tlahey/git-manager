@@ -9,8 +9,10 @@ import { getAvatarUrl } from '../../lib/avatar'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
-import { MoreVertical, FileText, Archive } from 'lucide-react'
+import { MoreVertical, FileText, Archive, AlertTriangle, GitMerge } from 'lucide-react'
 import { useGitStashes } from '../../hooks/useGitStashes'
+import { useTranslation } from '@git-manager/i18n'
+import type { ConflictRowInfo } from '../../hooks/useGitGraphNodes'
 
 
 interface GraphRowProps {
@@ -27,6 +29,7 @@ interface GraphRowProps {
   totalChanges?: number
   onCommitWip?: (message: string) => void
   isFirst?: boolean
+  conflictInfo?: ConflictRowInfo | null
 }
 
 function formatRelativeDate(timestamp: number): string {
@@ -265,6 +268,19 @@ function WipCommitInput({
   )
 }
 
+function ConflictRowMessage({ count, branchName }: { count: number; branchName?: string }) {
+  const { t } = useTranslation('git')
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-2 pr-4">
+      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-white" />
+      <GitMerge className="h-3.5 w-3.5 shrink-0 text-white" />
+      <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-white">
+        {t('gitTree.contextMenu.conflictBannerMessage', { count, branch: branchName ?? '' })}
+      </span>
+    </div>
+  )
+}
+
 // ── Cellules ──────────────────────────────────────────────────────────────────
 
 function CellContent({
@@ -274,6 +290,7 @@ function CellContent({
   totalChanges,
   onCommitWip,
   isFirst,
+  conflictInfo,
 }: {
   col: ColumnKey
   node: GitGraphNode
@@ -281,6 +298,7 @@ function CellContent({
   totalChanges?: number
   onCommitWip?: (message: string) => void
   isFirst?: boolean
+  conflictInfo?: ConflictRowInfo | null
 }) {
   const { commit } = node
   const activeRepo = useRepoUIStore((s) => s.activeRepo)
@@ -334,7 +352,7 @@ function CellContent({
               <GraphSvg
                 column={node.column}
                 connections={node.connections}
-                isWip={node.commit.oid === 'WIP'}
+                isWip={node.commit.oid === 'WIP' || node.commit.oid === 'CONFLICT'}
                 isStash={isStash}
                 isFirst={isFirst}
               />
@@ -343,7 +361,7 @@ function CellContent({
 
           {/* Conteneur de découpe simple et direct pour les avatars */}
           <div className="absolute inset-y-0 left-0 right-0 overflow-hidden pointer-events-none">
-            {node.commit.oid === 'WIP' ? (
+            {node.commit.oid === 'WIP' || node.commit.oid === 'CONFLICT' ? (
               <div
                 className="absolute h-full flex items-center justify-center pointer-events-none"
                 style={{ left: nodeX - avatarSize / 2, width: avatarSize }}
@@ -356,7 +374,14 @@ function CellContent({
                     borderColor: node.color,
                     backgroundColor: 'transparent'
                   }}
-                />
+                >
+                  {node.commit.oid === 'CONFLICT' && (
+                    <AlertTriangle
+                      className="text-orange-400"
+                      style={{ width: avatarSize * 0.5, height: avatarSize * 0.5 }}
+                    />
+                  )}
+                </div>
               </div>
             ) : (
               <GraphAvatarTooltip node={node} />
@@ -370,6 +395,9 @@ function CellContent({
       if (node.commit.oid === 'WIP') {
         return <WipCommitInput totalChanges={totalChanges ?? 0} onCommit={onCommitWip} />
       }
+      if (node.commit.oid === 'CONFLICT') {
+        return <ConflictRowMessage count={conflictInfo?.count ?? 0} branchName={conflictInfo?.branchName} />
+      }
       const body = commit.body?.replace(/\s+/g, ' ').trim()
       const displaySubject = stash ? stash.message : commit.subject
       return (
@@ -381,7 +409,7 @@ function CellContent({
     }
 
     case 'author': {
-      if (node.commit.oid === 'WIP') return null
+      if (node.commit.oid === 'WIP' || node.commit.oid === 'CONFLICT') return null
       const isStashCommit = node.refs.some((r) => r.type === 'stash')
       return (
         <div className="flex min-w-0 items-center gap-1.5">
@@ -392,7 +420,7 @@ function CellContent({
     }
 
     case 'date':
-      if (node.commit.oid === 'WIP') return null
+      if (node.commit.oid === 'WIP' || node.commit.oid === 'CONFLICT') return null
       return (
         <span
           className="truncate text-[10px] text-muted-foreground/70"
@@ -403,7 +431,7 @@ function CellContent({
       )
 
     case 'sha':
-      if (node.commit.oid === 'WIP') return null
+      if (node.commit.oid === 'WIP' || node.commit.oid === 'CONFLICT') return null
       return (
         <code className="truncate font-mono text-[10px] text-muted-foreground" title={commit.oid}>
           {commit.shortOid}
@@ -425,6 +453,7 @@ export const GraphRow = memo(function GraphRow({
   totalChanges,
   onCommitWip,
   isFirst,
+  conflictInfo,
 }: GraphRowProps) {
   const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
   const rowHeight = rowHeightSetting === 'small' ? 32 : 40
@@ -481,6 +510,18 @@ export const GraphRow = memo(function GraphRow({
         }}
       />
 
+      {/* Conflict background starting from the end of the graph column to the right end of the row */}
+      {node.commit.oid === 'CONFLICT' && (
+        <div
+          className="absolute inset-y-0 pointer-events-none"
+          style={{
+            left: endX,
+            right: 0,
+            backgroundColor: '#904538',
+          }}
+        />
+      )}
+
       {columns.map((col) => (
         <div
           key={col.key}
@@ -498,6 +539,7 @@ export const GraphRow = memo(function GraphRow({
             totalChanges={totalChanges}
             onCommitWip={onCommitWip}
             isFirst={isFirst}
+            conflictInfo={conflictInfo}
           />
         </div>
       ))}

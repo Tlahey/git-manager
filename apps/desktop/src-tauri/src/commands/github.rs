@@ -19,7 +19,10 @@ pub struct DeviceCodeResponse {
 /// Returns the device_code, user_code, and verification_uri for the user.
 #[tauri::command]
 pub async fn github_device_code(scope: String) -> Result<DeviceCodeResponse, String> {
-    println!("[GitHub OAuth] Requesting device authorization code for scopes: {}", scope);
+    println!(
+        "[GitHub OAuth] Requesting device authorization code for scopes: {}",
+        scope
+    );
     let client = Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .build()
@@ -40,7 +43,10 @@ pub async fn github_device_code(scope: String) -> Result<DeviceCodeResponse, Str
     if !res.status().is_success() {
         let status = res.status();
         let body = res.text().await.unwrap_or_default();
-        println!("[GitHub OAuth] Device code request failed: Status {}, Body {}", status, body);
+        println!(
+            "[GitHub OAuth] Device code request failed: Status {}, Body {}",
+            status, body
+        );
         return Err(AppError::Unknown(format!(
             "GitHub device code request failed (HTTP {}): {}",
             status, body
@@ -99,11 +105,15 @@ pub async fn github_poll_token(device_code: String) -> Result<PollTokenResponse,
     if !res.status().is_success() {
         let status = res.status();
         let body = res.text().await.unwrap_or_default();
-        println!("[GitHub OAuth] Token poll failed: Status {}, Body {}", status, body);
-        return Err(
-            AppError::Unknown(format!("GitHub token poll failed (HTTP {}): {}", status, body))
-                .into(),
+        println!(
+            "[GitHub OAuth] Token poll failed: Status {}, Body {}",
+            status, body
         );
+        return Err(AppError::Unknown(format!(
+            "GitHub token poll failed (HTTP {}): {}",
+            status, body
+        ))
+        .into());
     }
 
     let data: PollTokenResponse = res.json().await.map_err(AppError::Http)?;
@@ -156,7 +166,10 @@ pub async fn github_get_user(token: String) -> Result<GitHubUserInfo, String> {
     if !user_res.status().is_success() {
         let status = user_res.status();
         let body = user_res.text().await.unwrap_or_default();
-        println!("[GitHub API] User profile request failed: Status {}, Body {}", status, body);
+        println!(
+            "[GitHub API] User profile request failed: Status {}, Body {}",
+            status, body
+        );
         return Err(AppError::Unknown(format!(
             "Failed to fetch GitHub user profile (HTTP {})",
             status
@@ -166,10 +179,7 @@ pub async fn github_get_user(token: String) -> Result<GitHubUserInfo, String> {
 
     let user_data: serde_json::Value = user_res.json().await.map_err(AppError::Http)?;
 
-    let login = user_data["login"]
-        .as_str()
-        .unwrap_or_default()
-        .to_string();
+    let login = user_data["login"].as_str().unwrap_or_default().to_string();
     let name = user_data["name"].as_str().map(|s| s.to_string());
     let avatar_url = user_data["avatar_url"]
         .as_str()
@@ -177,7 +187,10 @@ pub async fn github_get_user(token: String) -> Result<GitHubUserInfo, String> {
         .to_string();
     let mut email = user_data["email"].as_str().map(|s| s.to_string());
 
-    println!("[GitHub API] Profile fetched: login={}, name={:?}", login, name);
+    println!(
+        "[GitHub API] Profile fetched: login={}, name={:?}",
+        login, name
+    );
 
     // Fetch primary email (may not be public on profile)
     let emails_res = client
@@ -256,7 +269,10 @@ pub async fn github_list_repos(token: String) -> Result<Vec<GitHubRepoInfo>, Str
     if !res.status().is_success() {
         let status = res.status();
         let body = res.text().await.unwrap_or_default();
-        println!("[GitHub API] Repos request failed: Status {}, Body {}", status, body);
+        println!(
+            "[GitHub API] Repos request failed: Status {}, Body {}",
+            status, body
+        );
         return Err(AppError::Unknown(format!(
             "Failed to fetch GitHub repositories (HTTP {})",
             status
@@ -273,6 +289,9 @@ pub async fn github_list_repos(token: String) -> Result<Vec<GitHubRepoInfo>, Str
         }
     };
 
-    println!("[GitHub API] Successfully listed {} repositories.", repos.len());
+    println!(
+        "[GitHub API] Successfully listed {} repositories.",
+        repos.len()
+    );
     Ok(repos)
 }

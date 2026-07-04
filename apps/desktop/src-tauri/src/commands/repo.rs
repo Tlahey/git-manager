@@ -12,11 +12,7 @@ pub async fn open_repo(path: String, state: State<'_, AppState>) -> Result<GitRe
     let git_repo = build_git_repo(&repo, path.clone());
 
     // Enregistrer le repo dans l'état
-    state
-        .open_repos
-        .lock()
-        .unwrap()
-        .insert(path.clone(), path);
+    state.open_repos.lock().unwrap().insert(path.clone(), path);
 
     Ok(git_repo)
 }
@@ -51,7 +47,8 @@ pub async fn clone_repo(
     #[cfg(not(target_os = "windows"))]
     let mut cmd = Command::new("git");
 
-    let output = cmd.args(&args)
+    let output = cmd
+        .args(&args)
         .output()
         .map_err(|e| format!("Failed to run git clone: {}", e))?;
 
@@ -60,7 +57,8 @@ pub async fn clone_repo(
         return Err(format!("Git clone failed: {}", err_msg));
     }
 
-    let repo = Repository::open(&dest_path).map_err(|e| format!("Failed to open cloned repository: {}", e))?;
+    let repo = Repository::open(&dest_path)
+        .map_err(|e| format!("Failed to open cloned repository: {}", e))?;
     let git_repo = build_git_repo(&repo, dest_path.clone());
 
     state
@@ -78,15 +76,10 @@ pub async fn init_repo(path: String, state: State<'_, AppState>) -> Result<GitRe
     let repo = Repository::init(&path).map_err(AppError::Git)?;
     let git_repo = build_git_repo(&repo, path.clone());
 
-    state
-        .open_repos
-        .lock()
-        .unwrap()
-        .insert(path.clone(), path);
+    state.open_repos.lock().unwrap().insert(path.clone(), path);
 
     Ok(git_repo)
 }
-
 
 #[tauri::command]
 pub async fn get_repo_status(path: String) -> Result<GitStatus, String> {
@@ -331,9 +324,7 @@ pub async fn open_in_editor(
         .spawn();
 
     #[cfg(not(target_os = "windows"))]
-    let status = std::process::Command::new(&program)
-        .arg(&path)
-        .spawn();
+    let status = std::process::Command::new(&program).arg(&path).spawn();
 
     match status {
         Ok(_) => Ok(()),
@@ -523,4 +514,3 @@ pub async fn get_terminal_commands() -> Result<Vec<String>, String> {
 
     Ok(commands)
 }
-

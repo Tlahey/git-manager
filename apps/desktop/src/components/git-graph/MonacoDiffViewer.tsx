@@ -1,17 +1,7 @@
-import { lazy, Suspense, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
+import { Suspense, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { useSettingsStore } from '../../stores/settings.store'
 import { registerAndApplyDynamicTheme } from '../../lib/monacoThemes'
-import { loader } from '@monaco-editor/react'
-import * as monaco from 'monaco-editor'
-
-// Configure @monaco-editor/react loader to use local monaco instance
-loader.config({ monaco })
-
-// Lazy load Monaco Editor and Diff Editor to avoid initial bundle bloat
-const MonacoEditor = lazy(() => import('@monaco-editor/react'))
-const MonacoDiffEditor = lazy(() => import('@monaco-editor/react').then(module => ({
-  default: module.DiffEditor
-})))
+import { MonacoEditor, MonacoDiffEditor, languageForFilePath } from '../../lib/monacoSetup'
 
 interface MonacoDiffViewerProps {
   original: string
@@ -25,6 +15,8 @@ interface MonacoDiffViewerProps {
 export interface MonacoDiffViewerRef {
   goToNextChange: () => void
   goToPreviousChange: () => void
+  getModifiedValue: () => string
+  setModifiedValue: (value: string) => void
 }
 
 export const MonacoDiffViewer = forwardRef<MonacoDiffViewerRef, MonacoDiffViewerProps>(
@@ -41,23 +33,7 @@ export const MonacoDiffViewer = forwardRef<MonacoDiffViewerRef, MonacoDiffViewer
     }, [theme])
 
     // Determine language from file extension
-    const language = useMemo(() => {
-      const ext = filePath.split('.').pop()?.toLowerCase() || ''
-      const languageMap: Record<string, string> = {
-        ts: 'typescript',
-        tsx: 'typescript',
-        js: 'javascript',
-        jsx: 'javascript',
-        py: 'python',
-        rs: 'rust',
-        css: 'css',
-        html: 'html',
-        md: 'markdown',
-        json: 'json',
-        sh: 'shellscript',
-      }
-      return languageMap[ext] || 'text'
-    }, [filePath])
+    const language = useMemo(() => languageForFilePath(filePath), [filePath])
 
     // Expose Next / Previous change functionality to parent container via ref
     useImperativeHandle(ref, () => ({
@@ -117,6 +93,14 @@ export const MonacoDiffViewer = forwardRef<MonacoDiffViewerRef, MonacoDiffViewer
           modifiedEditor.setPosition({ lineNumber: line, column: 1 })
           modifiedEditor.focus()
         }
+      },
+      getModifiedValue() {
+        const diffEditor = diffEditorRef.current
+        if (!diffEditor) return ''
+        return diffEditor.getModifiedEditor().getValue()
+      },
+      setModifiedValue(value: string) {
+        diffEditorRef.current?.getModifiedEditor().setValue(value)
       }
     }), [])
 

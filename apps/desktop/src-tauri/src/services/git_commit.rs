@@ -28,7 +28,9 @@ pub fn stage_file(repo: &Repository, repo_path: &str, file_path: &str) -> Result
 
     let abs_path = Path::new(repo_path).join(file_path);
     if abs_path.exists() {
-        index.add_path(Path::new(file_path)).map_err(AppError::Git)?;
+        index
+            .add_path(Path::new(file_path))
+            .map_err(AppError::Git)?;
     } else {
         // Fichier supprimé : le retirer de l'index
         index

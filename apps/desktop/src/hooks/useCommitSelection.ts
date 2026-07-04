@@ -25,11 +25,11 @@ export function useCommitSelection(
 
   const handleRowSelect = useCallback((e: React.MouseEvent, index: number) => {
     const oid = filteredNodes[index].commit.oid
-    if (oid === 'WIP') {
-      if (primaryOid === 'WIP') {
+    if (oid === 'WIP' || oid === 'CONFLICT') {
+      if (primaryOid === oid) {
         clearSelection()
       } else {
-        selectSingle('WIP')
+        selectSingle(oid)
       }
       return
     }
