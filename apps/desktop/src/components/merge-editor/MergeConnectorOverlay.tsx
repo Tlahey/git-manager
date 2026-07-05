@@ -17,6 +17,7 @@ export interface ConnectorSegment {
    * in): rendered as a thin stroked line instead of a filled ribbon, continuing the
    * insertion's boundary marker across the gap into one unbroken line across the screen. */
   flat?: boolean
+  resolved?: boolean
 }
 
 interface MergeConnectorOverlayProps {
@@ -68,15 +69,34 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
       >
         {segments.map((seg) => {
           const half = width / 2
+          const resolvedSuffix = seg.resolved ? ' merge-resolved' : ''
           if (seg.flat) {
             const d = `M 0,${seg.leftY0} C ${half},${seg.leftY0} ${half},${seg.rightY0} ${width},${seg.rightY0}`
             return (
               <path
                 key={seg.id}
                 d={d}
-                className={`${seg.colorClass} merge-connector-flat`}
+                className={`${seg.colorClass} merge-connector-flat${resolvedSuffix}`}
                 data-testid={`merge-connector-ribbon-${side}-${seg.id}`}
               />
+            )
+          }
+          if (seg.resolved) {
+            const dTop = `M 0,${seg.leftY0} C ${half},${seg.leftY0} ${half},${seg.rightY0} ${width},${seg.rightY0}`
+            const dBottom = `M 0,${seg.leftY1} C ${half},${seg.leftY1} ${half},${seg.rightY1} ${width},${seg.rightY1}`
+            return (
+              <g key={seg.id}>
+                <path
+                  d={dTop}
+                  className={`${seg.colorClass} merge-connector-edge merge-resolved`}
+                  data-testid={`merge-connector-ribbon-${side}-${seg.id}-top`}
+                />
+                <path
+                  d={dBottom}
+                  className={`${seg.colorClass} merge-connector-edge merge-resolved`}
+                  data-testid={`merge-connector-ribbon-${side}-${seg.id}-bottom`}
+                />
+              </g>
             )
           }
           const d = [

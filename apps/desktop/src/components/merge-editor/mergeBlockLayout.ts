@@ -369,9 +369,8 @@ export type ColorToken = 'addition' | 'deletion' | 'modification' | 'conflict' |
  * line count being > 0), so which literal side is passed in doesn't change the outcome.
  * Exported for mergeDecorations.ts, which derives border/view-zone classes from the same token
  * rather than re-deriving the state→color mapping. */
-export function sideColorToken(block: MergeBlock, touched: boolean, side?: MergeSide): ColorToken | undefined {
+export function sideColorToken(block: MergeBlock, _touched: boolean, side?: MergeSide): ColorToken | undefined {
   if (isAutoMerged(block)) return undefined
-  if (touched) return 'resolved'
 
   if (side !== undefined && !isChangeSource(block, side)) {
     return undefined

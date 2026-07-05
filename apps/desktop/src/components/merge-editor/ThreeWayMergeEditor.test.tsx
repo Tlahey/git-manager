@@ -248,8 +248,11 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
     expect(screen.getByTestId('merge-connector-reject-left-2')).toBeInTheDocument()
 
-    // But the ribbon itself stays, now settled (gray).
-    expect(screen.getByTestId('merge-connector-ribbon-right-2')).toHaveClass('merge-connector-resolved')
+    // But the ribbon itself stays, now settled as dashed edges with conflict color.
+    expect(screen.getByTestId('merge-connector-ribbon-right-2-top')).toHaveClass('merge-connector-conflict')
+    expect(screen.getByTestId('merge-connector-ribbon-right-2-top')).toHaveClass('merge-resolved')
+    expect(screen.getByTestId('merge-connector-ribbon-right-2-bottom')).toHaveClass('merge-connector-conflict')
+    expect(screen.getByTestId('merge-connector-ribbon-right-2-bottom')).toHaveClass('merge-resolved')
   })
 
   it('only offers actions on the side that authored the change — the mirror pane of a one-sided block has no buttons', async () => {

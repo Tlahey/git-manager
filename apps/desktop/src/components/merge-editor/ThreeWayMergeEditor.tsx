@@ -25,7 +25,6 @@ import {
 import {
   type DecorationSpec,
   type ViewZoneSpec,
-  MARKER_NUDGE_PX,
   computeMergeVisuals,
   computePaneTotalLines,
   markerEdge,
@@ -241,12 +240,6 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       const theirsEditor = theirsEditorRef.current
       if (!oursEditor || !centerEditor || !theirsEditor) return
 
-      const getEditorLineHeight = (editorInstance: editor.IStandaloneCodeEditor) => {
-        if (typeof editorInstance.getOption === 'function' && monacoRef.current?.editor?.EditorOption) {
-          return editorInstance.getOption(monacoRef.current.editor.EditorOption.lineHeight)
-        }
-        return 18
-      }
 
       const left: ConnectorSegment[] = []
       const right: ConnectorSegment[] = []
@@ -352,6 +345,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
             // pane has 0 lines but the center still has base content draws as a filled funnel
             // ribbon from the point to the range, not a flat stroke.
             flat: paneCount === 0 && count === 0,
+            resolved: touched,
           }
           if (side === 'theirs') left.push(segment)
           else right.push(segment)

@@ -117,8 +117,15 @@ describe('computeMergeVisuals — alignment view zones', () => {
     expect(visuals.ours.decorations).toEqual([
       { startLine: 2, endLine: 2, className: 'merge-text-conflict', marginClassName: 'merge-vivid-conflict' },
     ])
-    const all = [...visuals.ours.decorations, ...visuals.center.decorations, ...visuals.theirs.decorations]
-    expect(all.some((d) => d.className.includes('merge-border-'))).toBe(false)
+    expect(visuals.ours.decorations.some((d) => d.className.includes('merge-border-'))).toBe(false)
+    expect(visuals.theirs.decorations).toEqual([
+      {
+        startLine: 2,
+        endLine: 2,
+        className: 'merge-text-conflict merge-resolved merge-border-top-conflict merge-resolved merge-border-bottom-conflict merge-resolved',
+        marginClassName: 'merge-vivid-conflict merge-resolved merge-border-top-conflict merge-resolved merge-border-bottom-conflict merge-resolved',
+      },
+    ])
   })
 
   it('fills both side panes once the center holds both sides of a conflict (borders on)', () => {
@@ -320,8 +327,8 @@ describe('computeMergeVisuals — alignment view zones', () => {
       {
         startLine: 3,
         endLine: 3,
-        className: 'merge-text-resolved merge-border-bottom-resolved',
-        marginClassName: 'merge-vivid-resolved merge-border-bottom-resolved',
+        className: 'merge-text-conflict merge-resolved merge-border-bottom-conflict merge-resolved',
+        marginClassName: 'merge-vivid-conflict merge-resolved merge-border-bottom-conflict merge-resolved',
       },
     ])
   })

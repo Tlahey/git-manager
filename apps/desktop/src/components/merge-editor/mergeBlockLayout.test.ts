@@ -655,15 +655,15 @@ describe('sideColorToken / connectorClassForSide', () => {
     expect(sideColorToken(conflict, false)).toBe('conflict')
   })
 
-  it('turns gray once a side is touched, regardless of change kind', () => {
+  it('turns original token color even once a side is touched, regardless of change kind', () => {
     const addition = block({ blockId: 1, kind: 'ours-only', oursLineCount: 1, theirsLineCount: 0 })
-    expect(sideColorToken(addition, true)).toBe('resolved')
+    expect(sideColorToken(addition, true)).toBe('addition')
   })
 
   it('mirrors the block color as a connector class with the merge-connector- prefix', () => {
     const conflict = block({ blockId: 1, kind: 'both-different', oursLineCount: 1, theirsLineCount: 1 })
     expect(connectorClassForSide(conflict, false, 'ours')).toBe('merge-connector-conflict')
-    expect(connectorClassForSide(conflict, true, 'ours')).toBe('merge-connector-resolved')
+    expect(connectorClassForSide(conflict, true, 'ours')).toBe('merge-connector-conflict')
 
     const unchanged = block({ blockId: 2, kind: 'unchanged' })
     expect(connectorClassForSide(unchanged, false, 'ours')).toBeUndefined()
