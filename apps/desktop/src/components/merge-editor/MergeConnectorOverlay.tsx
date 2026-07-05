@@ -72,7 +72,12 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
       {segments
         .filter((seg) => seg.actionable)
         .map((seg) => {
-          const midY = ((seg.leftY0 + seg.leftY1) / 2 + (seg.rightY0 + seg.rightY1) / 2) / 2
+          // Vertical center of the ribbon's bounding box — NOT the average of the two ends'
+          // midpoints: for a funnel shape (a pure insertion pinching to a zero-height point on
+          // one side) averaging midpoints drags the buttons toward the pinched tip, visibly
+          // off-center against the full-height block. The bounding box always spans the block's
+          // whole height, so the buttons sit dead-center on it, WebStorm-style.
+          const midY = (Math.min(seg.leftY0, seg.rightY0) + Math.max(seg.leftY1, seg.rightY1)) / 2
           const acceptButton = (
             <button
               key="accept"

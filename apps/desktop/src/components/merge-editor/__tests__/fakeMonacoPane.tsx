@@ -80,6 +80,13 @@ export function createFakeModel(initialValue: string) {
 
 export type FakeModel = ReturnType<typeof createFakeModel>
 
+export interface FakeViewZone {
+  id: string
+  afterLineNumber: number
+  heightInLines: number
+  domNode: HTMLElement
+}
+
 export interface FakeEditorInstance {
   path: string
   getModel: () => FakeModel
@@ -88,16 +95,25 @@ export interface FakeEditorInstance {
   onDidLayoutChange: (cb: () => void) => { dispose: () => void }
   onDidChangeModelContent: (cb: ContentChangeListener) => { dispose: () => void }
   executeEdits: (source: string, edits: FakeEdit[]) => void
+  changeViewZones: (
+    cb: (accessor: {
+      addZone: (zone: { afterLineNumber: number; heightInLines: number; domNode: HTMLElement }) => string
+      removeZone: (id: string) => void
+    }) => void
+  ) => void
   getScrollTop: () => number
   getTopForLineNumber: (line: number) => number
   /** Test-only: the most recent array passed to the decorations collection's `.set()`. */
   decorations: unknown[]
+  /** Test-only: the currently-live view zones (adds minus removes across `changeViewZones` calls). */
+  viewZones: FakeViewZone[]
 }
 
 const LINE_HEIGHT = 18
 
 function createFakeEditor(path: string, initialValue: string): FakeEditorInstance {
   const model = createFakeModel(initialValue)
+  let zoneCounter = 0
   const instance: FakeEditorInstance = {
     path,
     getModel: () => model,
@@ -109,9 +125,22 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
     onDidLayoutChange: () => ({ dispose: () => {} }),
     onDidChangeModelContent: (cb) => model.onDidChangeContent(cb),
     executeEdits: (_source, edits) => model.applyEdits(edits),
+    changeViewZones: (cb) => {
+      cb({
+        addZone: (zone) => {
+          const id = `zone-${++zoneCounter}`
+          instance.viewZones.push({ id, ...zone })
+          return id
+        },
+        removeZone: (id) => {
+          instance.viewZones = instance.viewZones.filter((z) => z.id !== id)
+        },
+      })
+    },
     getScrollTop: () => 0,
     getTopForLineNumber: (line: number) => (line - 1) * LINE_HEIGHT,
     decorations: [],
+    viewZones: [],
   }
   return instance
 }

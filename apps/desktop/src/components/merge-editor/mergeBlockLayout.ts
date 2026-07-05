@@ -304,8 +304,10 @@ export type ColorToken = 'addition' | 'deletion' | 'modification' | 'conflict' |
  * genuine two-sided conflict (both sides changed the *same* spot to *different* values — the
  * one case that needs the most attention). Side-independent: for addition/deletion only one
  * side ever has content to color in the first place (callers already gate on that side's own
- * line count being > 0), so which literal side is passed in doesn't change the outcome. */
-function colorToken(block: MergeBlock, touched: boolean): ColorToken | undefined {
+ * line count being > 0), so which literal side is passed in doesn't change the outcome.
+ * Exported for mergeDecorations.ts, which derives border/view-zone classes from the same token
+ * rather than re-deriving the state→color mapping. */
+export function sideColorToken(block: MergeBlock, touched: boolean): ColorToken | undefined {
   if (isAutoMerged(block)) return undefined
   if (touched) return 'resolved'
 
@@ -316,22 +318,7 @@ function colorToken(block: MergeBlock, touched: boolean): ColorToken | undefined
   return 'modification' // one-sided modification only, from here on
 }
 
-/** Vivid intensity — used for a pane's own gutter/line-number margin and for the connector
- * ribbon, where a clearer, more saturated color reads well against the UI chrome. */
-export function sideColorClass(block: MergeBlock, touched: boolean, _side: MergeSide): string | undefined {
-  const token = colorToken(block, touched)
-  return token && `merge-vivid-${token}`
-}
-
-/** Muted intensity — used for the actual code background (in any pane, including whichever
- * portion of the center buffer a side currently occupies), where a heavier fill would fight
- * with text legibility. */
-export function sideTextColorClass(block: MergeBlock, touched: boolean, _side: MergeSide): string | undefined {
-  const token = colorToken(block, touched)
-  return token && `merge-text-${token}`
-}
-
 export function connectorClassForSide(block: MergeBlock, touched: boolean, _side: MergeSide): string | undefined {
-  const token = colorToken(block, touched)
+  const token = sideColorToken(block, touched)
   return token && `merge-connector-${token}`
 }

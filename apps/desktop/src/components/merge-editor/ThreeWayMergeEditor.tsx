@@ -16,17 +16,20 @@ import {
   linesForSide,
   placementOverridesAfterAutoMerge,
   recomputeAllPlacements,
-  sideColorClass,
-  sideTextColorClass,
   subRangeForSide,
   updatePlacementAfterToggle,
 } from './mergeBlockLayout'
+import { type DecorationSpec, type ViewZoneSpec, computeMergeVisuals } from './mergeDecorations'
+import { type InlineDecorationSpec, computeIntraLineHighlights } from './mergeIntraLineDiff'
 
 interface ThreeWayMergeEditorProps {
   repoPath: string
   filePath: string
   view: ThreeWayMergeView
   onPendingCountChange?: (count: number) => void
+  /** Draw the JetBrains-style hermetic 2px top/bottom edges around each block (and the matching
+   * closing edges on the hatched filler zones). Off by default — the colored fills alone. */
+  showBlockBorders?: boolean
 }
 
 export interface ThreeWayMergeEditorRef {
@@ -38,29 +41,59 @@ export interface ThreeWayMergeEditorRef {
 // MergeConnectorOverlay) plus the ribbon curve.
 const GAP_WIDTH = 40
 
-/** `endLineExclusive` is `startLine + lineCount` (one past the range's last line) — the same
- * convention used for edit ranges. For a *decoration* though, `isWholeLine: true` treats
- * `endLineNumber` as inclusive regardless of `endColumn`, so passing the exclusive boundary
- * straight through would bleed the color one line into whatever follows the range.
+/** `DecorationSpec.endLine` is already inclusive (see mergeDecorations.ts) — exactly what
+ * `isWholeLine: true` expects, no boundary adjustment here.
  *
- * `textClassName`/`marginClassName` are deliberately different classes (muted vs. vivid — see
- * `sideTextColorClass`/`sideColorClass` in mergeBlockLayout.ts): a heavy fill behind actual code
+ * `className`/`marginClassName` carry different fill intensities (muted `merge-text-*` vs.
+ * vivid `merge-vivid-*` — see mergeDecorations.ts): a heavy fill behind actual code
  * text fights with legibility, but the same intensity in the gutter/line-number margin (no text
  * to compete with) reads better vivid. `lineNumberClassName` turned out to only color the
  * line-number digit's own narrow div, not the full gutter row — `marginClassName` is the one
  * that paints the whole margin width (line numbers + the reserved lineDecorationsWidth strip
  * together). */
-function lineDecoration(
-  startLine: number,
-  endLineExclusive: number,
-  textClassName: string,
-  marginClassName: string
-): editor.IModelDeltaDecoration {
-  const lastLine = Math.max(startLine, endLineExclusive - 1)
-  const range: IRange = { startLineNumber: startLine, startColumn: 1, endLineNumber: lastLine, endColumn: 1 }
+function toMonacoDecoration(spec: DecorationSpec): editor.IModelDeltaDecoration {
+  const range: IRange = { startLineNumber: spec.startLine, startColumn: 1, endLineNumber: spec.endLine, endColumn: 1 }
   // `zIndex` is defensive: without it, decorations can render underneath other decoration
   // layers Monaco itself manages (current-line highlight, etc.) depending on paint order.
-  return { range, options: { isWholeLine: true, className: textClassName, marginClassName, zIndex: 10 } }
+  return {
+    range,
+    options: { isWholeLine: true, className: spec.className, marginClassName: spec.marginClassName, zIndex: 10 },
+  }
+}
+
+/** Intra-line (character-precise) highlight: `inlineClassName` styles just the changed span of
+ * text inside a line, over the block's whole-line fill — no `isWholeLine`, and no margin class
+ * (the gutter belongs to the block, not to a word). */
+function toInlineMonacoDecoration(spec: InlineDecorationSpec): editor.IModelDeltaDecoration {
+  const range: IRange = {
+    startLineNumber: spec.line,
+    startColumn: spec.startColumn,
+    endLineNumber: spec.line,
+    endColumn: spec.endColumn,
+  }
+  return { range, options: { inlineClassName: spec.inlineClassName, zIndex: 11 } }
+}
+
+/** Replaces a pane's alignment filler zones wholesale (remove previous, add current) inside a
+ * single `changeViewZones` transaction — zones are recomputed from scratch on every placement
+ * change (mirroring how decorations are re-`set()`), so there's no per-zone diffing to do.
+ * Removing an id Monaco no longer knows (it drops all zones itself when the pane's model is
+ * swapped on file switch) is a harmless no-op. Returns the new zone ids for the next call. */
+function applyViewZones(
+  editorInstance: editor.IStandaloneCodeEditor,
+  previousIds: string[],
+  specs: ViewZoneSpec[]
+): string[] {
+  const ids: string[] = []
+  editorInstance.changeViewZones((accessor) => {
+    for (const id of previousIds) accessor.removeZone(id)
+    for (const spec of specs) {
+      const domNode = document.createElement('div')
+      domNode.className = spec.className
+      ids.push(accessor.addZone({ afterLineNumber: spec.afterLineNumber, heightInLines: spec.heightInLines, domNode }))
+    }
+  })
+  return ids
 }
 
 /** Computes the Monaco edit range/text for replacing an explicit `[startLine, startLine+lineCount)`
@@ -107,7 +140,7 @@ function buildRangeEdit(
  * non-conflicting block at once. Blocks are color-coded and connected across the gaps by
  * `MergeConnectorOverlay`. */
 export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMergeEditorProps>(
-  ({ repoPath, filePath, view, onPendingCountChange }, ref) => {
+  ({ repoPath, filePath, view, onPendingCountChange, showBlockBorders = false }, ref) => {
     const blocksRef = useRef<MergeBlock[]>(view.blocks)
     blocksRef.current = view.blocks
 
@@ -126,6 +159,13 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     const oursDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null)
     const centerDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null)
     const theirsDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null)
+
+    // Ids of the currently-injected alignment view zones per pane (see applyViewZones) — plain
+    // refs, not state: they're pure bookkeeping for the next wholesale replacement, never read
+    // during render.
+    const oursZoneIdsRef = useRef<string[]>([])
+    const centerZoneIdsRef = useRef<string[]>([])
+    const theirsZoneIdsRef = useRef<string[]>([])
 
     // Undo/redo-aware bookkeeping: every gutter/wand action snapshots the placements map it's
     // about to replace onto `historyRef` and clears `redoRef` (new branch of history, matching
@@ -284,7 +324,10 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     const handleAcceptTheirs = useCallback((blockId: number) => handleToggleById(blockId, 'theirs', true), [handleToggleById])
     const handleRejectTheirs = useCallback((blockId: number) => handleToggleById(blockId, 'theirs', false), [handleToggleById])
 
-    // Re-apply decorations and reschedule connector redraw whenever placements change.
+    // Re-apply decorations and alignment view zones, and reschedule connector redraw, whenever
+    // placements change. The per-pane specs (block colors, hermetic first/last borders, hatched
+    // filler zones sized so all three panes stay vertically aligned) all come from
+    // computeMergeVisuals — this effect only translates them into Monaco calls.
     useEffect(() => {
       if (!editorsReady) return
       const oursEditor = oursEditorRef.current
@@ -292,56 +335,46 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       const theirsEditor = theirsEditorRef.current
       if (!oursEditor || !centerEditor || !theirsEditor) return
 
-      const oursDecorations: editor.IModelDeltaDecoration[] = []
-      const centerDecorations: editor.IModelDeltaDecoration[] = []
-      const theirsDecorations: editor.IModelDeltaDecoration[] = []
-
       let pendingConflicts = 0
-
       for (const block of blocksRef.current) {
         const placement = placements.get(block.blockId)
         if (!placement) continue
         if (block.kind === 'both-different' && !placement.oursTouched && !placement.theirsTouched) pendingConflicts += 1
-
-        const oursMarginColor = sideColorClass(block, placement.oursTouched, 'ours')
-        const oursTextColor = sideTextColorClass(block, placement.oursTouched, 'ours')
-        if (oursMarginColor && oursTextColor && block.oursLineCount > 0) {
-          oursDecorations.push(
-            lineDecoration(block.oursStartLine, block.oursStartLine + block.oursLineCount, oursTextColor, oursMarginColor)
-          )
-        }
-        const theirsMarginColor = sideColorClass(block, placement.theirsTouched, 'theirs')
-        const theirsTextColor = sideTextColorClass(block, placement.theirsTouched, 'theirs')
-        if (theirsMarginColor && theirsTextColor && block.theirsLineCount > 0) {
-          theirsDecorations.push(
-            lineDecoration(block.theirsStartLine, block.theirsStartLine + block.theirsLineCount, theirsTextColor, theirsMarginColor)
-          )
-        }
-
-        // Center: up to two separate colored sub-ranges (ours-derived lines, then theirs-derived
-        // lines, in that fixed order) since both sides can now be present simultaneously.
-        if (placement.oursIncluded) {
-          const { start, count } = subRangeForSide(placement, block, 'ours')
-          if (count > 0 && oursMarginColor && oursTextColor) {
-            centerDecorations.push(lineDecoration(start, start + count, oursTextColor, oursMarginColor))
-          }
-        }
-        if (placement.theirsIncluded) {
-          const { start, count } = subRangeForSide(placement, block, 'theirs')
-          if (count > 0 && theirsMarginColor && theirsTextColor) {
-            centerDecorations.push(lineDecoration(start, start + count, theirsTextColor, theirsMarginColor))
-          }
-        }
       }
 
-      oursDecorationsRef.current?.set(oursDecorations)
-      centerDecorationsRef.current?.set(centerDecorations)
-      theirsDecorationsRef.current?.set(theirsDecorations)
+      const visuals = computeMergeVisuals(blocksRef.current, placements, showBlockBorders)
+
+      // Second diff pass (intra-line): reads the center buffer's live text so the highlights
+      // track manual typing too — this effect already re-runs on every content change, since
+      // handleCenterContentChange re-derives `placements` from the buffer on each keystroke.
+      const centerModel = centerEditor.getModel()
+      const intra = centerModel
+        ? computeIntraLineHighlights(blocksRef.current, placements, (line) =>
+            line >= 1 && line <= centerModel.getLineCount() ? centerModel.getLineContent(line) : ''
+          )
+        : { ours: [], center: [], theirs: [] }
+
+      oursDecorationsRef.current?.set([
+        ...visuals.ours.decorations.map(toMonacoDecoration),
+        ...intra.ours.map(toInlineMonacoDecoration),
+      ])
+      centerDecorationsRef.current?.set([
+        ...visuals.center.decorations.map(toMonacoDecoration),
+        ...intra.center.map(toInlineMonacoDecoration),
+      ])
+      theirsDecorationsRef.current?.set([
+        ...visuals.theirs.decorations.map(toMonacoDecoration),
+        ...intra.theirs.map(toInlineMonacoDecoration),
+      ])
+
+      oursZoneIdsRef.current = applyViewZones(oursEditor, oursZoneIdsRef.current, visuals.ours.viewZones)
+      centerZoneIdsRef.current = applyViewZones(centerEditor, centerZoneIdsRef.current, visuals.center.viewZones)
+      theirsZoneIdsRef.current = applyViewZones(theirsEditor, theirsZoneIdsRef.current, visuals.theirs.viewZones)
 
       onPendingCountChange?.(pendingConflicts)
       scheduleRecompute()
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [placements, editorsReady])
+    }, [placements, editorsReady, showBlockBorders])
 
     // Track manual edits inside the center pane so downstream block placements (and thus
     // gutter widgets/connectors/colors) stay in sync with what's actually in the buffer, even
