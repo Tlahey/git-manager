@@ -2,6 +2,7 @@ import type { MergeBlock } from '@git-manager/git-types'
 import {
   changeKindForBlock,
   connectorCenterRangeForSide,
+  isChangeSource,
   sideColorToken,
   type BlockPlacement,
   type MergeSide,
@@ -160,6 +161,8 @@ export function computeIntraLineHighlights(
     if (kind === 'addition' || kind === 'deletion') continue
 
     for (const side of ['ours', 'theirs'] as MergeSide[]) {
+      if (!isChangeSource(block, side)) continue
+
       const touched = side === 'ours' ? placement.oursTouched : placement.theirsTouched
       const token = sideColorToken(block, touched)
       if (!token) continue // auto-merged blocks never highlight

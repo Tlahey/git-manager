@@ -279,6 +279,28 @@ describe('computeMergeVisuals — alignment view zones', () => {
     expect(visuals.center.viewZones).toEqual([])
   })
 
+  it('does not highlight the untouched side of a one-sided modification', () => {
+    const blocks = [
+      block({
+        blockId: 1,
+        kind: 'ours-only',
+        oursStartLine: 1,
+        oursLineCount: 1,
+        theirsStartLine: 1,
+        theirsLineCount: 1,
+        oursLines: ['ours modified'],
+        theirsLines: ['base content'],
+      }),
+    ]
+    const visuals = computeMergeVisuals(blocks, computeInitialPlacements(blocks))
+    // Ours has the change, so ours gets blue (modification) decoration.
+    expect(visuals.ours.decorations).toEqual([
+      { startLine: 1, endLine: 1, className: 'merge-text-modification', marginClassName: 'merge-vivid-modification' }
+    ])
+    // Theirs has NO change, so theirs gets NO decoration.
+    expect(visuals.theirs.decorations).toEqual([])
+  })
+
   it('colors the center block with both sub-ranges when both sides are included, bordered as one block (borders on)', () => {
     const blocks = conflictBlocks()
     const placements = updatePlacementAfterToggle(computeInitialPlacements(blocks), blocks, blocks[1], 'theirs', true)

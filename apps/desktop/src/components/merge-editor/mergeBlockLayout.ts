@@ -373,12 +373,11 @@ export function sideColorToken(block: MergeBlock, touched: boolean, side?: Merge
   if (isAutoMerged(block)) return undefined
   if (touched) return 'resolved'
 
-  const changeKind = changeKindForBlock(block)
-  if (changeKind === 'deletion' && side) {
-    if (block.kind === 'ours-only' && side === 'theirs') return undefined
-    if (block.kind === 'theirs-only' && side === 'ours') return undefined
+  if (side !== undefined && !isChangeSource(block, side)) {
+    return undefined
   }
 
+  const changeKind = changeKindForBlock(block)
   if (changeKind === 'addition') return 'addition'
   if (changeKind === 'deletion') return 'deletion'
   if (changeKind === 'conflict') return 'conflict'

@@ -3,6 +3,7 @@ import {
   type BlockPlacement,
   type ColorToken,
   changeKindForBlock,
+  isChangeSource,
   sideColorToken,
   subRangeForSide,
 } from './mergeBlockLayout'
@@ -267,8 +268,8 @@ export function computeMergeVisuals(
     const placement = placements.get(block.blockId)
     if (!placement) continue
 
-    const oursToken = sideColorToken(block, placement.oursTouched, 'ours')
-    const theirsToken = sideColorToken(block, placement.theirsTouched, 'theirs')
+    const oursToken = isChangeSource(block, 'ours') ? sideColorToken(block, placement.oursTouched, 'ours') : undefined
+    const theirsToken = isChangeSource(block, 'theirs') ? sideColorToken(block, placement.theirsTouched, 'theirs') : undefined
     const centerCount = placement.centerLineCount
     const maxCount = Math.max(block.oursLineCount, block.theirsLineCount, centerCount)
 

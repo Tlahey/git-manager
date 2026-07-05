@@ -646,6 +646,8 @@ describe('sideColorToken / connectorClassForSide', () => {
   it('tokens a one-sided modification blue while untouched', () => {
     const modification = block({ blockId: 1, kind: 'ours-only', oursLineCount: 1, theirsLineCount: 1 })
     expect(sideColorToken(modification, false)).toBe('modification')
+    expect(sideColorToken(modification, false, 'ours')).toBe('modification')
+    expect(sideColorToken(modification, false, 'theirs')).toBeUndefined()
   })
 
   it('tokens a genuine two-sided conflict red while untouched', () => {

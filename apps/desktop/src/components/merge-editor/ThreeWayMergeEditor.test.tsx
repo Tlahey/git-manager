@@ -276,12 +276,12 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     }
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={view} />)
 
-    // Ours authored this change → buttons in the right (ours) gap only; the theirs pane just
-    // mirrors the untouched ancestor, its gap shows the ribbon but no actions.
+    // Ours authored this change → buttons and ribbon in the right (ours) gap only; the theirs pane just
+    // mirrors the untouched ancestor, its gap has no ribbon and no actions.
     await waitFor(() => expect(screen.getByTestId('merge-connector-accept-right-1')).toBeInTheDocument())
     expect(screen.queryByTestId('merge-connector-accept-left-1')).not.toBeInTheDocument()
     expect(screen.queryByTestId('merge-connector-reject-left-1')).not.toBeInTheDocument()
-    expect(screen.getByTestId('merge-connector-ribbon-left-1')).toBeInTheDocument()
+    expect(screen.queryByTestId('merge-connector-ribbon-left-1')).not.toBeInTheDocument()
   })
 
   it('resolves a one-sided block exclusively: accepting theirs swaps the block to theirs’ content instead of keeping both', async () => {
@@ -544,7 +544,7 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     expect(rightRibbon.getAttribute('d')).toBe('M 0,0 C 20,0 20,-1 40,-1 L 40,0 C 20,0 20,36 0,36 Z')
   })
 
-  it('does not flatten a one-sided MODIFICATION’s mirror ribbon — both sides have real content, so the parallel ribbon stays a filled shape', async () => {
+  it('does not draw a one-sided MODIFICATION’s mirror ribbon — both sides have real content, but the passive side has no ribbon', async () => {
     const blocks: MergeBlock[] = [
       {
         blockId: 1,
@@ -568,8 +568,7 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     }
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={view} />)
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-ribbon-left-1')).toBeInTheDocument())
-    expect(screen.getByTestId('merge-connector-ribbon-left-1')).not.toHaveClass('merge-connector-flat')
+    await waitFor(() => expect(screen.queryByTestId('merge-connector-ribbon-left-1')).not.toBeInTheDocument())
   })
 })
 
