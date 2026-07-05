@@ -113,9 +113,7 @@ describe('computeMergeVisuals — alignment view zones', () => {
 
     const visuals = computeMergeVisuals(blocks, placements)
 
-    expect(visuals.ours.viewZones).toEqual([
-      { afterLineNumber: 2, heightInLines: 1, className: 'merge-view-zone merge-view-zone-conflict' },
-    ])
+    expect(visuals.ours.viewZones).toEqual([])
     expect(visuals.ours.decorations).toEqual([
       { startLine: 2, endLine: 2, className: 'merge-text-conflict', marginClassName: 'merge-vivid-conflict' },
     ])
@@ -132,14 +130,10 @@ describe('computeMergeVisuals — alignment view zones', () => {
     // Center block is 2 lines (ours + theirs); each side pane shows 1 → 1 hatched line each,
     // after that pane's own line 2. The zone closes the block's bottom edge; the pane's own
     // content keeps only the top edge.
-    expect(visuals.ours.viewZones).toEqual([
-      { afterLineNumber: 2, heightInLines: 1, className: 'merge-view-zone merge-view-zone-conflict merge-border-bottom-conflict' },
-    ])
-    expect(visuals.theirs.viewZones).toEqual([
-      { afterLineNumber: 2, heightInLines: 1, className: 'merge-view-zone merge-view-zone-resolved merge-border-bottom-resolved' },
-    ])
+    expect(visuals.ours.viewZones).toEqual([])
+    expect(visuals.theirs.viewZones).toEqual([])
     expect(visuals.center.viewZones).toEqual([])
-    expect(visuals.ours.decorations.at(-1)?.className).toBe('merge-text-conflict merge-border-top-conflict')
+    expect(visuals.ours.decorations.at(-1)?.className).toBe('merge-text-conflict merge-border-top-conflict merge-border-bottom-conflict')
   })
 
   it('renders a not-yet-pulled pure addition as a zero-height boundary marker (no space consumed) in the empty panes', () => {
@@ -226,16 +220,13 @@ describe('computeMergeVisuals — alignment view zones', () => {
     const visuals = computeMergeVisuals(blocks, computeInitialPlacements(blocks))
 
     // Theirs deleted these lines: its pane keeps a 2-line hatched zone where they used to be.
-    expect(visuals.theirs.viewZones).toEqual([
-      { afterLineNumber: 0, heightInLines: 2, className: 'merge-view-zone merge-view-zone-deletion' },
+    expect(visuals.theirs.decorations).toEqual([
+      { startLine: 1, endLine: 1, className: 'merge-marker-top-deletion', marginClassName: 'merge-marker-top-deletion' },
     ])
-    expect(visuals.theirs.decorations).toEqual([])
     // Ours and the center still hold the content — plain gray deletion blocks, no zones.
     expect(visuals.ours.viewZones).toEqual([])
     expect(visuals.center.viewZones).toEqual([])
-    expect(visuals.ours.decorations).toEqual([
-      { startLine: 1, endLine: 2, className: 'merge-text-deletion', marginClassName: 'merge-vivid-deletion' },
-    ])
+    expect(visuals.ours.decorations).toEqual([])
   })
 
   it('mirrors that for an ours-only deletion: OURS (the side that deleted) gets the hatched zone, never the center', () => {
@@ -257,10 +248,9 @@ describe('computeMergeVisuals — alignment view zones', () => {
     ]
     const visuals = computeMergeVisuals(blocks, computeInitialPlacements(blocks))
 
-    expect(visuals.ours.viewZones).toEqual([
-      { afterLineNumber: 0, heightInLines: 2, className: 'merge-view-zone merge-view-zone-deletion' },
+    expect(visuals.ours.decorations).toEqual([
+      { startLine: 1, endLine: 1, className: 'merge-marker-top-deletion', marginClassName: 'merge-marker-top-deletion' },
     ])
-    expect(visuals.ours.decorations).toEqual([])
     // Theirs and the center both show the real, kept content — no zone at the center, ever.
     expect(visuals.theirs.viewZones).toEqual([])
     expect(visuals.center.viewZones).toEqual([])

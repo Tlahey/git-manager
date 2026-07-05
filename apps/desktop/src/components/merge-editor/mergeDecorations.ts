@@ -28,6 +28,7 @@ export interface DecorationSpec {
  * lines instead (see the `merge-marker-*` decorations emitted by `addPaneBlock`), and the
  * connector ribbon funnels to that point. */
 export interface ViewZoneSpec {
+  id?: string
   afterLineNumber: number
   heightInLines: number
   className: string
@@ -168,6 +169,7 @@ function addPaneBlock(
   pane: PaneVisualSpecs,
   parts: ColoredRange[],
   zone: {
+    id?: string
     deficit: number
     afterLine: number
     token: ColorToken | undefined
@@ -218,7 +220,7 @@ function addPaneBlock(
       classes.push(`merge-border-bottom-${zone.token}`)
       if (parts.length === 0) classes.push(`merge-border-top-${zone.token}`)
     }
-    pane.viewZones.push({ afterLineNumber: zone.afterLine, heightInLines: zone.deficit, className: classes.join(' ') })
+    pane.viewZones.push({ id: zone.id, afterLineNumber: zone.afterLine, heightInLines: zone.deficit, className: classes.join(' ') })
   }
 }
 
@@ -240,6 +242,12 @@ function addPaneBlock(
  * `withBlockBorders` (off by default) adds the hermetic 2px top/bottom edges around each block
  * (and the matching closing edges on filler zones) — purely additive: fills and zones are
  * identical either way. */
+function isBlockResolved(block: MergeBlock, placement: BlockPlacement): boolean {
+  if (block.kind === 'ours-only') return placement.oursTouched
+  if (block.kind === 'theirs-only') return placement.theirsTouched
+  return placement.oursTouched && placement.theirsTouched
+}
+
 export function computeMergeVisuals(
   blocks: MergeBlock[],
   placements: Map<number, BlockPlacement>,
@@ -259,8 +267,8 @@ export function computeMergeVisuals(
     const placement = placements.get(block.blockId)
     if (!placement) continue
 
-    const oursToken = sideColorToken(block, placement.oursTouched)
-    const theirsToken = sideColorToken(block, placement.theirsTouched)
+    const oursToken = sideColorToken(block, placement.oursTouched, 'ours')
+    const theirsToken = sideColorToken(block, placement.theirsTouched, 'theirs')
     const centerCount = placement.centerLineCount
     const maxCount = Math.max(block.oursLineCount, block.theirsLineCount, centerCount)
 
@@ -272,16 +280,21 @@ export function computeMergeVisuals(
     // (deletions, one-side-deleted conflicts, a center whose sides were both rejected) keeps
     // the hatched filler zone: that space existed in the base and should still read as occupied.
     const isPureInsertion = changeKindForBlock(block) === 'addition'
-    const sideEmptyRendering: EmptyPaneRendering = isPureInsertion ? 'none' : 'zone'
+    const sideEmptyRendering: EmptyPaneRendering = isPureInsertion ? 'none' : 'accent-marker'
     const centerEmptyRendering: EmptyPaneRendering = isPureInsertion ? 'accent-marker' : 'zone'
+
+    const resolved = isBlockResolved(block, placement)
+    const oursDeficit = resolved ? 0 : (block.oursLineCount === 0 ? 1 : 0)
+    const theirsDeficit = resolved ? 0 : (block.theirsLineCount === 0 ? 1 : 0)
 
     const oursParts: ColoredRange[] =
       oursToken && block.oursLineCount > 0
         ? [{ startLine: block.oursStartLine, lineCount: block.oursLineCount, token: oursToken }]
         : []
     addPaneBlock(visuals.ours, oursParts, {
-      deficit: maxCount - block.oursLineCount,
-      afterLine: block.oursStartLine + block.oursLineCount - 1,
+      id: `${block.blockId}-ours`,
+      deficit: oursDeficit,
+      afterLine: block.oursLineCount === 0 ? block.oursStartLine - 1 : block.oursStartLine + block.oursLineCount - 1,
       token: oursToken,
       paneLineCount: block.oursLineCount,
       paneTotalLines: oursTotalLines,
@@ -293,25 +306,29 @@ export function computeMergeVisuals(
         ? [{ startLine: block.theirsStartLine, lineCount: block.theirsLineCount, token: theirsToken }]
         : []
     addPaneBlock(visuals.theirs, theirsParts, {
-      deficit: maxCount - block.theirsLineCount,
-      afterLine: block.theirsStartLine + block.theirsLineCount - 1,
+      id: `${block.blockId}-theirs`,
+      deficit: theirsDeficit,
+      afterLine: block.theirsLineCount === 0 ? block.theirsStartLine - 1 : block.theirsStartLine + block.theirsLineCount - 1,
       token: theirsToken,
       paneLineCount: block.theirsLineCount,
       paneTotalLines: theirsTotalLines,
       emptyRendering: sideEmptyRendering,
     }, withBlockBorders)
 
+    const baseOursToken = sideColorToken(block, placement.oursTouched)
+    const baseTheirsToken = sideColorToken(block, placement.theirsTouched)
+
     const centerParts: ColoredRange[] = []
-    if (placement.oursIncluded && oursToken) {
+    if (placement.oursIncluded && baseOursToken) {
       const { start, count } = subRangeForSide(placement, block, 'ours')
-      if (count > 0) centerParts.push({ startLine: start, lineCount: count, token: oursToken })
+      if (count > 0) centerParts.push({ startLine: start, lineCount: count, token: baseOursToken })
     }
-    if (placement.theirsIncluded && theirsToken) {
+    if (placement.theirsIncluded && baseTheirsToken) {
       const { start, count } = subRangeForSide(placement, block, 'theirs')
-      if (count > 0) centerParts.push({ startLine: start, lineCount: count, token: theirsToken })
+      if (count > 0) centerParts.push({ startLine: start, lineCount: count, token: baseTheirsToken })
     }
     addPaneBlock(visuals.center, centerParts, {
-      deficit: maxCount - centerCount,
+      deficit: changeKindForBlock(block) === 'addition' ? maxCount - centerCount : 0,
       afterLine: placement.centerStartLine + centerCount - 1,
       token: sideColorToken(block, placement.oursTouched && placement.theirsTouched),
       paneLineCount: centerCount,

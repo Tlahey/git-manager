@@ -100,6 +100,9 @@ function applyViewZones(
     for (const spec of specs) {
       const domNode = document.createElement('div')
       domNode.className = spec.className
+      if (spec.id) {
+        domNode.setAttribute('data-zone-id', spec.id)
+      }
       ids.push(accessor.addZone({ afterLineNumber: spec.afterLineNumber, heightInLines: spec.heightInLines, domNode }))
     }
   })
@@ -238,6 +241,13 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       const theirsEditor = theirsEditorRef.current
       if (!oursEditor || !centerEditor || !theirsEditor) return
 
+      const getEditorLineHeight = (editorInstance: editor.IStandaloneCodeEditor) => {
+        if (typeof editorInstance.getOption === 'function' && monacoRef.current?.editor?.EditorOption) {
+          return editorInstance.getOption(monacoRef.current.editor.EditorOption.lineHeight)
+        }
+        return 18
+      }
+
       const left: ConnectorSegment[] = []
       const right: ConnectorSegment[] = []
 
@@ -289,19 +299,38 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
           const { start, count } = connectorCenterRangeForSide(placement, block, side)
 
-          const paneY0 = paneEditor.getTopForLineNumber(paneStart)
-          const paneY1 = paneEditor.getTopForLineNumber(paneStart + paneCount)
+          let paneY0 = paneEditor.getTopForLineNumber(paneStart)
+          let paneY1 = paneEditor.getTopForLineNumber(paneStart + paneCount)
+          if (paneCount === 0) {
+            const domNode = typeof paneEditor.getDomNode === 'function' ? paneEditor.getDomNode() : null
+            const element = domNode?.querySelector(`[data-zone-id="${block.blockId}-${side}"]`) as HTMLElement | null
+            if (element) {
+              paneY0 = element.offsetTop
+              paneY1 = element.offsetTop + element.offsetHeight
+            } else {
+              paneY0 = paneY1
+              if (changeKindForBlock(block) === 'deletion') {
+                const edge = markerEdge(paneStart - 1, paneTotals[side])
+                if (edge === 'top') {
+                  paneY0 = paneY1 - 1
+                } else {
+                  paneY0 = paneY1
+                  paneY1 = paneY1 + 1
+                }
+              }
+            }
+          }
 
           let centerY0 = centerEditor.getTopForLineNumber(start)
           let centerY1 = centerEditor.getTopForLineNumber(start + count)
-          // Only a not-yet-pulled-in pure addition renders its center endpoint as the CSS-shifted
-          // accent marker (mergeDecorations.ts's `centerEmptyRendering: 'accent-marker'` is itself
-          // gated on `changeKindForBlock === 'addition'`) — a deletion or conflict with a
-          // genuinely empty center gets a plain hachured zone there instead, never CSS-nudged.
           if (count === 0 && changeKindForBlock(block) === 'addition') {
-            const nudge = markerEdge(start - 1, paneTotals.center) === 'top' ? -MARKER_NUDGE_PX : MARKER_NUDGE_PX
-            centerY0 += nudge
-            centerY1 += nudge
+            const edge = markerEdge(start - 1, paneTotals.center)
+            if (edge === 'top') {
+              centerY0 = centerY1 - 1
+            } else {
+              centerY0 = centerY1
+              centerY1 = centerY1 + 1
+            }
           }
 
           const segment: ConnectorSegment = {

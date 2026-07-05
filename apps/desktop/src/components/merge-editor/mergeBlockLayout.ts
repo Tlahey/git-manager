@@ -369,19 +369,24 @@ export type ColorToken = 'addition' | 'deletion' | 'modification' | 'conflict' |
  * line count being > 0), so which literal side is passed in doesn't change the outcome.
  * Exported for mergeDecorations.ts, which derives border/view-zone classes from the same token
  * rather than re-deriving the state→color mapping. */
-export function sideColorToken(block: MergeBlock, touched: boolean): ColorToken | undefined {
+export function sideColorToken(block: MergeBlock, touched: boolean, side?: MergeSide): ColorToken | undefined {
   if (isAutoMerged(block)) return undefined
   if (touched) return 'resolved'
 
   const changeKind = changeKindForBlock(block)
+  if (changeKind === 'deletion' && side) {
+    if (block.kind === 'ours-only' && side === 'theirs') return undefined
+    if (block.kind === 'theirs-only' && side === 'ours') return undefined
+  }
+
   if (changeKind === 'addition') return 'addition'
   if (changeKind === 'deletion') return 'deletion'
   if (changeKind === 'conflict') return 'conflict'
   return 'modification' // one-sided modification only, from here on
 }
 
-export function connectorClassForSide(block: MergeBlock, touched: boolean, _side: MergeSide): string | undefined {
-  const token = sideColorToken(block, touched)
+export function connectorClassForSide(block: MergeBlock, touched: boolean, side: MergeSide): string | undefined {
+  const token = sideColorToken(block, touched, side)
   return token && `merge-connector-${token}`
 }
 

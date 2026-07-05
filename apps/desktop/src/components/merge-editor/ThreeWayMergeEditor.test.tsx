@@ -168,7 +168,7 @@ describe('ThreeWayMergeEditor — alignment view zones', () => {
     expect(fakeEditors.get(theirsPath)!.viewZones).toHaveLength(0)
   })
 
-  it('injects hatched filler zones in the side panes once the center holds both sides (center grew taller)', async () => {
+  it('injects no filler zones in the side panes once the center holds both sides (hatched view zones disabled)', async () => {
     const user = userEvent.setup()
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={conflictView()} />)
 
@@ -177,23 +177,21 @@ describe('ThreeWayMergeEditor — alignment view zones', () => {
     await user.click(screen.getByTestId('merge-connector-accept-left-2')) // keep both → center block is now 2 lines
 
     await waitFor(() => {
-      // Each side pane shows 1 line for the block but the center now shows 2 → 1 filler line
-      // each, right after the block's own content (line 2 in both side panes).
-      expect(fakeEditors.get(oursPath)!.viewZones).toMatchObject([{ afterLineNumber: 2, heightInLines: 1 }])
-      expect(fakeEditors.get(theirsPath)!.viewZones).toMatchObject([{ afterLineNumber: 2, heightInLines: 1 }])
+      expect(fakeEditors.get(oursPath)!.viewZones).toHaveLength(0)
+      expect(fakeEditors.get(theirsPath)!.viewZones).toHaveLength(0)
     })
+
     // The center is the tallest pane for this block — no filler needed there.
     expect(fakeEditors.get(centerPath)!.viewZones).toHaveLength(0)
-    expect(fakeEditors.get(oursPath)!.viewZones[0].domNode.className).toContain('merge-view-zone')
   })
 
-  it('replaces zones instead of stacking them when placements change again', async () => {
+  it('maintains zero zones when placements change again', async () => {
     const user = userEvent.setup()
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={conflictView()} />)
 
     await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument())
     await user.click(screen.getByTestId('merge-connector-accept-left-2')) // keep both (theirs, left gap)
-    await waitFor(() => expect(fakeEditors.get(oursPath)!.viewZones).toHaveLength(1))
+    await waitFor(() => expect(fakeEditors.get(oursPath)!.viewZones).toHaveLength(0))
 
     await user.click(screen.getByTestId('merge-connector-reject-right-2')) // reject ours → back to 1 center line
 
@@ -505,15 +503,14 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     // The fake editor's line height is 18px (see __tests__/fakeMonacoPane.tsx): theirs' 2-line
     // block spans raw Y 0→36. The center end (not yet pulled in) is a marker point, nudged from
     // its raw 0 to -1.
-    expect(d).toBe('M 0,0 C 20,0 20,-1 40,-1 L 40,-1 C 20,-1 20,36 0,36 Z')
+    expect(d).toBe('M 0,0 C 20,0 20,-1 40,-1 L 40,0 C 20,0 20,36 0,36 Z')
   })
 
-  it('never nudges a deletion’s zero-line pane endpoint — its hachured zone is a real ViewZone, never CSS-shifted', async () => {
+  it('nudges a deletion’s zero-line pane endpoint to match the deletion marker line', async () => {
     // ours-only deletion (ours deleted, theirs kept): center now defaults to theirs' content
-    // (mergeBlockLayout.ts's defaultFlags exception), so theirs' own segment is a plain,
-    // unshifted parallel ribbon, and ours' segment is a flat stroke from the center's real
-    // content down to ours' own (genuinely, permanently empty) line — with NO 1px nudge on
-    // ours' side, since that endpoint is a hachured `IViewZone`, not a CSS-transformed marker.
+    // (mergeBlockLayout.ts's defaultFlags exception), so theirs' own segment has no ribbon,
+    // and ours' segment is a funnel from the center's real content down to ours' own 1px-nudged
+    // deletion marker line.
     const blocks: MergeBlock[] = [
       {
         blockId: 1,
@@ -539,17 +536,12 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
 
     // Theirs (kept content) — a plain, fully-aligned parallel ribbon (both ends span raw Y 0→36
     // in the fake editor's 18px-tall lines), no marker involved at all.
-    await waitFor(() => expect(screen.getByTestId('merge-connector-ribbon-left-1')).toBeInTheDocument())
-    const leftRibbon = screen.getByTestId('merge-connector-ribbon-left-1')
-    expect(leftRibbon).not.toHaveClass('merge-connector-flat')
-    expect(leftRibbon.getAttribute('d')).toBe('M 0,0 C 20,0 20,0 40,0 L 40,36 C 20,36 20,36 0,36 Z')
-
-    // Ours (deleted) — a filled funnel ribbon from the center's real content
-    // (raw Y 0 to 36) down to ours' own empty point (raw Y 0).
+    await waitFor(() => expect(screen.getByTestId('merge-connector-ribbon-right-1')).toBeInTheDocument())
     const rightRibbon = screen.getByTestId('merge-connector-ribbon-right-1')
+    expect(screen.queryByTestId('merge-connector-ribbon-left-1')).not.toBeInTheDocument()
     expect(rightRibbon).not.toHaveClass('merge-connector-flat')
     expect(rightRibbon).toHaveClass('merge-connector-deletion')
-    expect(rightRibbon.getAttribute('d')).toBe('M 0,0 C 20,0 20,0 40,0 L 40,0 C 20,0 20,36 0,36 Z')
+    expect(rightRibbon.getAttribute('d')).toBe('M 0,0 C 20,0 20,-1 40,-1 L 40,0 C 20,0 20,36 0,36 Z')
   })
 
   it('does not flatten a one-sided MODIFICATION’s mirror ribbon — both sides have real content, so the parallel ribbon stays a filled shape', async () => {

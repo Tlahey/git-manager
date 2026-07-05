@@ -147,6 +147,7 @@ body {
   background-image: linear-gradient(to bottom, rgba(34, 197, 94, 0.9) 0, rgba(34, 197, 94, 0.9) 1px, transparent 1px) !important;
   transform: translateY(-1px);
 }
+.merge-marker-top-deletion,
 .merge-marker-top-resolved {
   background-image: linear-gradient(to bottom, rgba(148, 163, 184, 0.9) 0, rgba(148, 163, 184, 0.9) 1px, transparent 1px) !important;
   transform: translateY(-1px);
@@ -155,6 +156,7 @@ body {
   background-image: linear-gradient(to top, rgba(34, 197, 94, 0.9) 0, rgba(34, 197, 94, 0.9) 1px, transparent 1px) !important;
   transform: translateY(1px);
 }
+.merge-marker-bottom-deletion,
 .merge-marker-bottom-resolved {
   background-image: linear-gradient(to top, rgba(148, 163, 184, 0.9) 0, rgba(148, 163, 184, 0.9) 1px, transparent 1px) !important;
   transform: translateY(1px);
