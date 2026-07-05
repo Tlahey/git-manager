@@ -6,6 +6,7 @@ import {
   connectorCenterRangeForSide,
   connectorClassForSide,
   deriveLivePlacements,
+  isChangeSource,
   linesForSide,
   placementOverridesAfterAutoMerge,
   recomputeAllPlacements,
@@ -405,6 +406,49 @@ describe('changeKindForBlock', () => {
     expect(changeKindForBlock(block({ blockId: 1, kind: 'theirs-only', oursLineCount: 0, theirsLineCount: 1 }))).toBe('addition')
     expect(changeKindForBlock(block({ blockId: 1, kind: 'theirs-only', oursLineCount: 1, theirsLineCount: 0 }))).toBe('deletion')
     expect(changeKindForBlock(block({ blockId: 1, kind: 'theirs-only', oursLineCount: 1, theirsLineCount: 1 }))).toBe('modification')
+  })
+})
+
+describe('isChangeSource', () => {
+  it('is actionable from both sides for a genuine conflict', () => {
+    const conflict = block({ blockId: 1, kind: 'both-different', oursLineCount: 1, theirsLineCount: 1 })
+    expect(isChangeSource(conflict, 'ours')).toBe(true)
+    expect(isChangeSource(conflict, 'theirs')).toBe(true)
+  })
+
+  it('is never actionable for an auto-merged (unchanged/both-same) block', () => {
+    expect(isChangeSource(block({ blockId: 1, kind: 'unchanged' }), 'ours')).toBe(false)
+    expect(isChangeSource(block({ blockId: 1, kind: 'unchanged' }), 'theirs')).toBe(false)
+  })
+
+  it('for a pure ADDITION, matches the authoring side (the side with the new content)', () => {
+    const oursAddition = block({ blockId: 1, kind: 'ours-only', oursLineCount: 2, theirsLineCount: 0 })
+    expect(isChangeSource(oursAddition, 'ours')).toBe(true)
+    expect(isChangeSource(oursAddition, 'theirs')).toBe(false)
+
+    const theirsAddition = block({ blockId: 2, kind: 'theirs-only', oursLineCount: 0, theirsLineCount: 2 })
+    expect(isChangeSource(theirsAddition, 'theirs')).toBe(true)
+    expect(isChangeSource(theirsAddition, 'ours')).toBe(false)
+  })
+
+  it('for a one-sided MODIFICATION, matches the authoring side (both sides have content, only one actually changed the value)', () => {
+    const oursModification = block({ blockId: 1, kind: 'ours-only', oursLineCount: 1, theirsLineCount: 1 })
+    expect(isChangeSource(oursModification, 'ours')).toBe(true)
+    expect(isChangeSource(oursModification, 'theirs')).toBe(false)
+  })
+
+  it('for a pure DELETION, flips to the side that still HAS the content — not the side that deleted it', () => {
+    // ours-only deletion: base had it, ours removed it (oursLineCount 0), theirs still has it.
+    // The deleting side (ours) now shows nothing to anchor a button near; the action belongs
+    // on theirs' gap, where the actual ribbon/content is visible.
+    const oursDeletion = block({ blockId: 1, kind: 'ours-only', oursLineCount: 0, theirsLineCount: 2 })
+    expect(isChangeSource(oursDeletion, 'theirs')).toBe(true)
+    expect(isChangeSource(oursDeletion, 'ours')).toBe(false)
+
+    // Mirrored: theirs-only deletion — theirs removed it, ours still has it.
+    const theirsDeletion = block({ blockId: 2, kind: 'theirs-only', oursLineCount: 2, theirsLineCount: 0 })
+    expect(isChangeSource(theirsDeletion, 'ours')).toBe(true)
+    expect(isChangeSource(theirsDeletion, 'theirs')).toBe(false)
   })
 })
 

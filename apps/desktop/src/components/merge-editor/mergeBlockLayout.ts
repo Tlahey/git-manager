@@ -322,3 +322,25 @@ export function connectorClassForSide(block: MergeBlock, touched: boolean, _side
   const token = sideColorToken(block, touched)
   return token && `merge-connector-${token}`
 }
+
+/** Whether `side` is where this block's change actually comes from — WebStorm only offers the
+ * accept/ignore actions on the side that authored the change (both sides of a genuine
+ * conflict); the other pane of a one-sided change just mirrors the untouched ancestor, and
+ * showing buttons there too reads as two competing decisions when there's only one to make.
+ *
+ * For a pure ADDITION or MODIFICATION, "authored it" and "has visible content to anchor to" are
+ * the same side — no ambiguity. For a pure DELETION, they're NOT: the side that did the
+ * deleting (say ours, for an `ours-only` deletion) now shows nothing at all there, while the
+ * *other* side still displays the removed lines in full and is where the connector ribbon is
+ * actually visible. Anchoring the action on the side with nothing to show split the visible
+ * gray ribbon from its own accept/ignore buttons across the two different gaps — flip to the
+ * side that still has the content instead, so the ribbon and its buttons live in the same gap. */
+export function isChangeSource(block: MergeBlock, side: MergeSide): boolean {
+  if (block.kind === 'both-different') return true
+  if (block.kind !== 'ours-only' && block.kind !== 'theirs-only') return false
+
+  const authoringSide: MergeSide = block.kind === 'ours-only' ? 'ours' : 'theirs'
+  const effectiveSource: MergeSide =
+    changeKindForBlock(block) === 'deletion' ? (authoringSide === 'ours' ? 'theirs' : 'ours') : authoringSide
+  return side === effectiveSource
+}

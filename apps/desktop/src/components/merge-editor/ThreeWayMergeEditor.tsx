@@ -9,17 +9,26 @@ import { useMergeScrollSync } from './useMergeScrollSync'
 import {
   type BlockPlacement,
   type MergeSide,
+  changeKindForBlock,
   computeInitialPlacements,
   connectorCenterRangeForSide,
   connectorClassForSide,
   deriveLivePlacements,
+  isChangeSource,
   linesForSide,
   placementOverridesAfterAutoMerge,
   recomputeAllPlacements,
   subRangeForSide,
   updatePlacementAfterToggle,
 } from './mergeBlockLayout'
-import { type DecorationSpec, type ViewZoneSpec, computeMergeVisuals } from './mergeDecorations'
+import {
+  type DecorationSpec,
+  type ViewZoneSpec,
+  MARKER_NUDGE_PX,
+  computeMergeVisuals,
+  computePaneTotalLines,
+  markerEdge,
+} from './mergeDecorations'
 import { type InlineDecorationSpec, computeIntraLineHighlights } from './mergeIntraLineDiff'
 
 interface ThreeWayMergeEditorProps {
@@ -132,13 +141,17 @@ function buildRangeEdit(
   }
 }
 
-/** JetBrains-style 3-panel merge editor: left = ours (read-only), center = editable result,
- * right = theirs (read-only). Each side of a block can be independently included in the center
- * — accepting ours doesn't exclude theirs, so both can end up in the final result together.
- * Accept/ignore buttons live in the connector gaps (see MergeConnectorOverlay), not in either
- * pane's own gutter; the magic wand (imperative `applyAutoMerge`) auto-merges every
- * non-conflicting block at once. Blocks are color-coded and connected across the gaps by
- * `MergeConnectorOverlay`. */
+/** JetBrains-style 3-panel merge editor: left = theirs (the incoming change being applied,
+ * read-only), center = editable result, right = ours (the local/current side, read-only) —
+ * matching WebStorm's merge/rebase dialog, which puts what you're merging IN on the left and
+ * your own code on the right. Accept/ignore buttons live in the connector gaps (see
+ * MergeConnectorOverlay), anchored against the pane that authored the change; a genuine
+ * conflict is actionable from both gaps and its sides toggle independently (accepting ours
+ * doesn't exclude theirs, so both can end up in the result together), while a one-sided change
+ * is only actionable from its source gap and resolves exclusively — accept swaps the block's
+ * center content to that side, ignore restores the other (ancestor-mirroring) side. The magic
+ * wand (imperative `applyAutoMerge`) auto-merges every non-conflicting block at once. Blocks
+ * are color-coded and connected across the gaps by `MergeConnectorOverlay`. */
 export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMergeEditorProps>(
   ({ repoPath, filePath, view, onPendingCountChange, showBlockBorders = false }, ref) => {
     const blocksRef = useRef<MergeBlock[]>(view.blocks)
@@ -223,57 +236,85 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       const left: ConnectorSegment[] = []
       const right: ConnectorSegment[] = []
 
+      // Marker lines (mergeDecorations.ts's `merge-marker-*`/`merge-marker-passive-*`) are
+      // nudged 1px off the real line they decorate via CSS `transform`, onto the true
+      // inter-line boundary — matched here so a segment's marker-anchored endpoint (a pane
+      // showing 0 lines, or a center range with 0 count) lands on that exact same shifted pixel
+      // instead of drifting 1px away from the line it's supposed to terminate on.
+      const paneTotals = computePaneTotalLines(blocksRef.current, placementsRef.current)
+
       for (const block of blocksRef.current) {
         const placement = placementsRef.current.get(block.blockId)
         if (!placement) continue
 
         // Each side's ribbon is independent: it targets wherever that side's content *currently*
         // sits in the center buffer, so excluding one side never hides the other side's own
-        // ribbon or button (previously, rejecting a block emptied its whole center range, which
-        // made both ribbons vanish together even though only one side was actually acted on).
-        // The center-side anchor comes from `connectorCenterRangeForSide`, not `subRangeForSide`
-        // directly: when a side isn't included, it spans whatever the block *does* currently
-        // show (the other side's content, which this one would replace) rather than pinching to
-        // a point — a point there would make a modification/conflict look shaped exactly like a
-        // pure addition. It only genuinely collapses to a point when the block has nothing
-        // shown at all (a pure addition that hasn't been pulled in yet).
-        if (block.oursLineCount > 0) {
-          const leftColor = connectorClassForSide(block, placement.oursTouched, 'ours')
-          if (leftColor) {
-            const { start, count } = connectorCenterRangeForSide(placement, block, 'ours')
-            const centerY0 = centerEditor.getTopForLineNumber(start)
-            const centerY1 = centerEditor.getTopForLineNumber(start + count)
-            const oursY0 = oursEditor.getTopForLineNumber(block.oursStartLine)
-            const oursY1 = oursEditor.getTopForLineNumber(block.oursStartLine + block.oursLineCount)
-            left.push({
-              id: block.blockId,
-              leftY0: oursY0,
-              leftY1: oursY1,
-              rightY0: centerY0,
-              rightY1: centerY1,
-              colorClass: leftColor,
-              actionable: !placement.oursTouched,
-            })
+        // ribbon or button. The center-side anchor comes from `connectorCenterRangeForSide`,
+        // not `subRangeForSide` directly: when a side isn't included, it spans whatever the
+        // block *does* currently show (the other side's content, which this one would replace)
+        // rather than pinching to a point.
+        //
+        // `flat` is keyed on the PANE's own content alone (`paneCount === 0`), not on whether
+        // the center also happens to be empty right now: a side that never has (and never will
+        // have) real content for this block — the mirror pane of a one-sided change — draws as
+        // a thin flat stroke, continuing that side's boundary marker across the gap, no matter
+        // what the *other* side has currently pushed into the center. A side that DOES have its
+        // own content (paneCount > 0) always gets the real ribbon/funnel, matching however tall
+        // its own pane block is.
+        //
+        // Exception: a pure ADDITION's mirror pane (the side that never had, and never will
+        // have, this content) gets no ribbon at all, not even a flat one — per spec, that pane
+        // shows completely untouched, undecorated code, with nothing in its gap either. This is
+        // narrower than the deletion case just above: a deletion's "gone" side still gets a flat
+        // marker-anchored stroke (there's something to act on — restoring the deleted lines),
+        // whereas an addition's mirror side will never have any action available for it at all
+        // (see `isChangeSource`, which never routes actionability there for an addition).
+        for (const side of ['ours', 'theirs'] as MergeSide[]) {
+          const touched = side === 'ours' ? placement.oursTouched : placement.theirsTouched
+          const colorClass = connectorClassForSide(block, touched, side)
+          if (!colorClass) continue
+
+          const paneEditor = side === 'ours' ? oursEditor : theirsEditor
+          const paneStart = side === 'ours' ? block.oursStartLine : block.theirsStartLine
+          const paneCount = side === 'ours' ? block.oursLineCount : block.theirsLineCount
+          if (paneCount === 0 && changeKindForBlock(block) === 'addition') continue
+
+          const { start, count } = connectorCenterRangeForSide(placement, block, side)
+
+          let paneY0 = paneEditor.getTopForLineNumber(paneStart)
+          let paneY1 = paneEditor.getTopForLineNumber(paneStart + paneCount)
+          if (paneCount === 0) {
+            const paneTotal = side === 'ours' ? paneTotals.ours : paneTotals.theirs
+            const nudge = markerEdge(paneStart - 1, paneTotal) === 'top' ? -MARKER_NUDGE_PX : MARKER_NUDGE_PX
+            paneY0 += nudge
+            paneY1 += nudge
           }
-        }
-        if (block.theirsLineCount > 0) {
-          const rightColor = connectorClassForSide(block, placement.theirsTouched, 'theirs')
-          if (rightColor) {
-            const { start, count } = connectorCenterRangeForSide(placement, block, 'theirs')
-            const centerY0 = centerEditor.getTopForLineNumber(start)
-            const centerY1 = centerEditor.getTopForLineNumber(start + count)
-            const theirsY0 = theirsEditor.getTopForLineNumber(block.theirsStartLine)
-            const theirsY1 = theirsEditor.getTopForLineNumber(block.theirsStartLine + block.theirsLineCount)
-            right.push({
-              id: block.blockId,
-              leftY0: centerY0,
-              leftY1: centerY1,
-              rightY0: theirsY0,
-              rightY1: theirsY1,
-              colorClass: rightColor,
-              actionable: !placement.theirsTouched,
-            })
+
+          let centerY0 = centerEditor.getTopForLineNumber(start)
+          let centerY1 = centerEditor.getTopForLineNumber(start + count)
+          if (count === 0) {
+            const nudge = markerEdge(start - 1, paneTotals.center) === 'top' ? -MARKER_NUDGE_PX : MARKER_NUDGE_PX
+            centerY0 += nudge
+            centerY1 += nudge
           }
+
+          const segment: ConnectorSegment = {
+            id: block.blockId,
+            // theirs (incoming) sits in the LEFT gap, ours (current) in the RIGHT gap — the
+            // pane end of the segment is whichever edge touches that side's own pane.
+            leftY0: side === 'theirs' ? paneY0 : centerY0,
+            leftY1: side === 'theirs' ? paneY1 : centerY1,
+            rightY0: side === 'theirs' ? centerY0 : paneY0,
+            rightY1: side === 'theirs' ? centerY1 : paneY1,
+            colorClass,
+            // `isChangeSource` already flips to the content-bearing side for a pure deletion
+            // (see its own doc comment) — so this naturally keeps the actionable buttons in the
+            // same gap as whichever side actually renders a real (non-flat) ribbon.
+            actionable: !touched && isChangeSource(block, side),
+            flat: paneCount === 0,
+          }
+          if (side === 'theirs') left.push(segment)
+          else right.push(segment)
         }
       }
 
@@ -310,19 +351,61 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       setPlacements(updatePlacementAfterToggle(placementsRef.current, blocksRef.current, block, side, included))
     }, [])
 
+    // One-sided blocks resolve exclusively, WebStorm-style: their buttons only exist on the
+    // side that authored the change (see `isChangeSource`), so accept means "the block becomes
+    // exactly this side's content" and ignore means "restore the other side" — which mirrors
+    // the untouched ancestor, i.e. puts the base text back. Without the restore, ignoring a
+    // one-sided *modification* would just empty the block (its old independent-toggle
+    // semantics), leaving no button anywhere to bring the original line back. Both flag flips
+    // land in ONE placements update and ONE model edit, so a single Ctrl+Z reverts the whole
+    // decision. Genuine conflicts keep the independent per-side toggles (handleToggle) — both
+    // gaps are actionable and "keep both" stays possible.
+    const applyOneSidedDecision = useCallback((block: MergeBlock, source: MergeSide, apply: boolean) => {
+      const centerEditor = centerEditorRef.current
+      const model = centerEditor?.getModel()
+      if (!centerEditor || !model) return
+      const current = placementsRef.current.get(block.blockId)
+      if (!current) return
+
+      const mirror: MergeSide = source === 'ours' ? 'theirs' : 'ours'
+      let next = updatePlacementAfterToggle(placementsRef.current, blocksRef.current, block, source, apply)
+      next = updatePlacementAfterToggle(next, blocksRef.current, block, mirror, !apply)
+      const flags = next.get(block.blockId)
+      if (!flags) return
+
+      const newLines = [
+        ...(flags.oursIncluded ? block.oursLines : []),
+        ...(flags.theirsIncluded ? block.theirsLines : []),
+      ]
+      const edit = buildRangeEdit(model, current.centerStartLine, current.centerLineCount, newLines)
+
+      isApplyingOwnEditRef.current = true
+      centerEditor.executeEdits('merge-gutter-action', [{ range: edit.range, text: edit.text }])
+      isApplyingOwnEditRef.current = false
+
+      historyRef.current.push(placementsRef.current)
+      redoRef.current = []
+      setPlacements(next)
+    }, [])
+
     // The connector-gap accept/ignore buttons (MergeConnectorOverlay) only know a block's id,
     // not the `MergeBlock` object itself.
-    const handleToggleById = useCallback(
+    const handleActionById = useCallback(
       (blockId: number, side: MergeSide, included: boolean) => {
         const block = blocksRef.current.find((b) => b.blockId === blockId)
-        if (block) handleToggle(block, side, included)
+        if (!block) return
+        if (block.kind === 'ours-only' || block.kind === 'theirs-only') {
+          applyOneSidedDecision(block, side, included)
+        } else {
+          handleToggle(block, side, included)
+        }
       },
-      [handleToggle]
+      [handleToggle, applyOneSidedDecision]
     )
-    const handleAcceptOurs = useCallback((blockId: number) => handleToggleById(blockId, 'ours', true), [handleToggleById])
-    const handleRejectOurs = useCallback((blockId: number) => handleToggleById(blockId, 'ours', false), [handleToggleById])
-    const handleAcceptTheirs = useCallback((blockId: number) => handleToggleById(blockId, 'theirs', true), [handleToggleById])
-    const handleRejectTheirs = useCallback((blockId: number) => handleToggleById(blockId, 'theirs', false), [handleToggleById])
+    const handleAcceptOurs = useCallback((blockId: number) => handleActionById(blockId, 'ours', true), [handleActionById])
+    const handleRejectOurs = useCallback((blockId: number) => handleActionById(blockId, 'ours', false), [handleActionById])
+    const handleAcceptTheirs = useCallback((blockId: number) => handleActionById(blockId, 'theirs', true), [handleActionById])
+    const handleRejectTheirs = useCallback((blockId: number) => handleActionById(blockId, 'theirs', false), [handleActionById])
 
     // Re-apply decorations and alignment view zones, and reschedule connector redraw, whenever
     // placements change. The per-pane specs (block colors, hermetic first/last borders, hatched
@@ -505,11 +588,11 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       <div ref={containerRef} className="flex h-full w-full overflow-hidden">
         <div className="merge-pane-numbers-right min-w-0 flex-1">
           <MergePane
-            value={view.oursText}
+            value={view.theirsText}
             filePath={filePath}
-            modelPath={`${repoPath}/${filePath}#ours`}
+            modelPath={`${repoPath}/${filePath}#theirs`}
             readOnly
-            onMount={handlePaneMount('ours')}
+            onMount={handlePaneMount('theirs')}
           />
         </div>
         <div className="relative shrink-0 overflow-hidden" style={{ width: GAP_WIDTH }}>
@@ -519,8 +602,8 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
             height={gapHeight}
             segments={leftSegments}
             side="left"
-            onAccept={handleAcceptOurs}
-            onReject={handleRejectOurs}
+            onAccept={handleAcceptTheirs}
+            onReject={handleRejectTheirs}
           />
         </div>
         <div className="min-w-0 flex-1">
@@ -539,17 +622,17 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
             height={gapHeight}
             segments={rightSegments}
             side="right"
-            onAccept={handleAcceptTheirs}
-            onReject={handleRejectTheirs}
+            onAccept={handleAcceptOurs}
+            onReject={handleRejectOurs}
           />
         </div>
         <div className="min-w-0 flex-1">
           <MergePane
-            value={view.theirsText}
+            value={view.oursText}
             filePath={filePath}
-            modelPath={`${repoPath}/${filePath}#theirs`}
+            modelPath={`${repoPath}/${filePath}#ours`}
             readOnly
-            onMount={handlePaneMount('theirs')}
+            onMount={handlePaneMount('ours')}
           />
         </div>
       </div>

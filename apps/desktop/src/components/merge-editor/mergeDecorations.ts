@@ -34,10 +34,53 @@ export interface ViewZoneSpec {
 }
 
 /** How a pane renders a block it holds zero lines of: the intense colored boundary line (the
- * center pane, where the insertion would land), the thin neutral alignment line (the opposite
- * source pane, a passive observer of a one-sided insertion), or the hatched filler zone
- * (deletions — the space existed in the base and should still read as occupied). */
-type EmptyPaneRendering = 'accent-marker' | 'passive-marker' | 'zone'
+ * center pane, where the insertion would land), the hatched filler zone (deletions — the space
+ * existed in the base and should still read as occupied), or nothing at all (a pure addition's
+ * mirror pane — the side that never had, and never will have, this content: per spec it shows
+ * completely untouched, undecorated code). */
+type EmptyPaneRendering = 'accent-marker' | 'zone' | 'none'
+
+/** How far the `merge-marker-*`/`merge-marker-passive-*` CSS classes (see index.css) nudge a
+ * boundary marker off the real line it's decorating and onto the true inter-line boundary —
+ * `ThreeWayMergeEditor.tsx`'s connector-ribbon geometry applies this exact same pixel offset to
+ * whichever endpoint of a segment lands on a marker line, so the SVG ribbon's tip/flat-stroke
+ * still terminates precisely on the (CSS-shifted) marker instead of drifting 1px away from it.
+ * The two must stay in lockstep: bumping this constant means bumping the matching `translateY`
+ * values in index.css too. */
+export const MARKER_NUDGE_PX = 1
+
+/** Every pane's own total line count, as of the last block's placement — a boundary marker past
+ * the last real line needs this to know there's no "next line" to anchor a top edge to (falls
+ * back to the last line's bottom edge instead). Exposed so `ThreeWayMergeEditor.tsx`'s connector
+ * geometry can determine the same top/bottom edge a marker decoration would use, without
+ * duplicating the "which is the tallest/last block" walk. */
+export interface PaneTotalLines {
+  ours: number
+  center: number
+  theirs: number
+}
+
+export function computePaneTotalLines(blocks: MergeBlock[], placements: Map<number, BlockPlacement>): PaneTotalLines {
+  const lastBlock = blocks[blocks.length - 1]
+  const lastPlacement = lastBlock ? placements.get(lastBlock.blockId) : undefined
+  return {
+    ours: lastBlock ? lastBlock.oursStartLine + lastBlock.oursLineCount - 1 : 0,
+    theirs: lastBlock ? lastBlock.theirsStartLine + lastBlock.theirsLineCount - 1 : 0,
+    center: lastPlacement ? lastPlacement.centerStartLine + lastPlacement.centerLineCount - 1 : 0,
+  }
+}
+
+/** Whether a boundary marker anchored right after `afterLine` (0 if there's nothing before it)
+ * lands on a real "next line" (`top` — the common case) or falls past the end of the pane's
+ * content entirely (`bottom` — anchors to the last line's bottom edge instead, since there's no
+ * next line to carry a top edge). Shared by `addPaneBlock`'s own marker decoration and
+ * `ThreeWayMergeEditor.tsx`'s connector geometry so they agree on which edge (and therefore
+ * which nudge direction) applies to the exact same marker. */
+export function markerEdge(afterLine: number, paneTotalLines: number): 'top' | 'bottom' {
+  const markerLine = afterLine + 1
+  const total = Math.max(1, paneTotalLines)
+  return markerLine <= total ? 'top' : 'bottom'
+}
 
 export interface PaneVisualSpecs {
   decorations: DecorationSpec[]
@@ -113,14 +156,14 @@ export function blockDecorationSpecs(
  *   it takes over the block's bottom edge (the content's own last line stays borderless so
  *   content and zone read as one continuous unit).
  * - None of it: dispatched by `emptyRendering` (chosen per pane role and change kind by
- *   `computeMergeVisuals`) — either a hatched zone (deletions keep occupying the space the base
- *   content left behind), or a zero-height boundary marker that consumes no space at all
- *   (WebStorm's pure-insertion rendering): a line drawn along the top edge of the line right
- *   after the insertion point (`merge-marker-top-*` — intense and token-colored for the accent
- *   variant, thin and neutral for the passive one), flipped to the pane's last line's bottom
- *   edge when the insertion point sits past the end of the document. The connector ribbon
- *   (whose center anchor already collapses to a point for an absent block — see
- *   `connectorCenterRangeForSide`) funnels exactly to that line. */
+ *   `computeMergeVisuals`) — a hatched zone (deletions keep occupying the space the base content
+ *   left behind), a zero-height accent boundary marker that consumes no space at all (the
+ *   CENTER pane's own rendering of a not-yet-pulled-in pure insertion: a line drawn along the
+ *   top edge of the line right after the insertion point, flipped to the pane's last line's
+ *   bottom edge when the insertion point sits past the end of the document — the connector
+ *   ribbon, whose center anchor already collapses to a point for an absent block, funnels
+ *   exactly to that line), or nothing at all (a pure addition's mirror pane — per spec, that
+ *   pane and its own gap show no decoration whatsoever, just the untouched code). */
 function addPaneBlock(
   pane: PaneVisualSpecs,
   parts: ColoredRange[],
@@ -134,11 +177,10 @@ function addPaneBlock(
   },
   withBorders: boolean
 ): void {
-  const wantsMarker =
-    zone.deficit > 0 &&
-    zone.paneLineCount === 0 &&
-    (zone.emptyRendering === 'passive-marker' || (zone.emptyRendering === 'accent-marker' && zone.token !== undefined))
-  const hasZone = zone.deficit > 0 && !wantsMarker
+  const isEmpty = zone.paneLineCount === 0
+  const wantsMarker = zone.deficit > 0 && isEmpty && zone.emptyRendering === 'accent-marker' && zone.token !== undefined
+  const wantsNothing = zone.deficit > 0 && isEmpty && zone.emptyRendering === 'none'
+  const hasZone = zone.deficit > 0 && !wantsMarker && !wantsNothing
 
   parts.forEach((part, i) => {
     pane.decorations.push(
@@ -152,12 +194,13 @@ function addPaneBlock(
     )
   })
 
+  if (wantsNothing) return
+
   if (wantsMarker) {
     const markerLine = zone.afterLine + 1
     const total = Math.max(1, zone.paneTotalLines)
-    const edge = markerLine <= total ? 'top' : 'bottom'
-    const className =
-      zone.emptyRendering === 'passive-marker' ? `merge-marker-passive-${edge}` : `merge-marker-${edge}-${zone.token}`
+    const edge = markerEdge(zone.afterLine, zone.paneTotalLines)
+    const className = `merge-marker-${edge}-${zone.token}`
     const line = Math.min(markerLine, total)
     // Whole-line decoration whose only visible effect is the painted boundary edge; the same
     // class on the margin makes the line run across the line-number gutter too, like WebStorm's.
@@ -167,6 +210,10 @@ function addPaneBlock(
 
   if (hasZone) {
     const classes = ['merge-view-zone']
+    // Semantic hatching, WebStorm-style: the stripes themselves say what kind of hole this is —
+    // thick, widely-spaced gray for a plain deletion, thin dense red for a conflict where one
+    // side removed text (see the merge-view-zone-* variants in index.css).
+    if (zone.token) classes.push(`merge-view-zone-${zone.token}`)
     if (withBorders && zone.token) {
       classes.push(`merge-border-bottom-${zone.token}`)
       if (parts.length === 0) classes.push(`merge-border-top-${zone.token}`)
@@ -204,14 +251,9 @@ export function computeMergeVisuals(
     theirs: { decorations: [], viewZones: [] },
   }
 
-  // Blocks tile each document in order, so each pane's total line count falls out of its last
-  // block/placement — needed to clamp a boundary marker whose insertion point sits past the end
-  // of a pane (there's no "next line" to carry a top edge; the last line's bottom edge is used).
-  const lastBlock = blocks[blocks.length - 1]
-  const lastPlacement = lastBlock ? placements.get(lastBlock.blockId) : undefined
-  const oursTotalLines = lastBlock ? lastBlock.oursStartLine + lastBlock.oursLineCount - 1 : 0
-  const theirsTotalLines = lastBlock ? lastBlock.theirsStartLine + lastBlock.theirsLineCount - 1 : 0
-  const centerTotalLines = lastPlacement ? lastPlacement.centerStartLine + lastPlacement.centerLineCount - 1 : 0
+  // Needed to clamp a boundary marker whose insertion point sits past the end of a pane (there's
+  // no "next line" to carry a top edge; the last line's bottom edge is used instead).
+  const { ours: oursTotalLines, theirs: theirsTotalLines, center: centerTotalLines } = computePaneTotalLines(blocks, placements)
 
   for (const block of blocks) {
     const placement = placements.get(block.blockId)
@@ -224,12 +266,13 @@ export function computeMergeVisuals(
 
     // WebStorm's decoration matrix for a pane that holds zero lines of a block: a pure
     // insertion consumes no space anywhere it's absent — the center (the target the content
-    // would land in) gets the intense colored boundary line, the opposite source pane (a
-    // passive observer) gets the thin neutral alignment line. Everything else (deletions,
-    // one-side-deleted conflicts, a center whose sides were both rejected) keeps the hatched
-    // filler zone: that space existed in the base and should still read as occupied.
+    // would land in) gets the intense colored boundary line, and the opposite/mirror pane gets
+    // NO decoration at all (per spec: untouched code, nothing in its own gap either — see the
+    // matching skip in ThreeWayMergeEditor.tsx's `recomputeConnectors`). Everything else
+    // (deletions, one-side-deleted conflicts, a center whose sides were both rejected) keeps
+    // the hatched filler zone: that space existed in the base and should still read as occupied.
     const isPureInsertion = changeKindForBlock(block) === 'addition'
-    const sideEmptyRendering: EmptyPaneRendering = isPureInsertion ? 'passive-marker' : 'zone'
+    const sideEmptyRendering: EmptyPaneRendering = isPureInsertion ? 'none' : 'zone'
     const centerEmptyRendering: EmptyPaneRendering = isPureInsertion ? 'accent-marker' : 'zone'
 
     const oursParts: ColoredRange[] =

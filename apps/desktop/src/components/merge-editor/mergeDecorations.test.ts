@@ -113,7 +113,9 @@ describe('computeMergeVisuals — alignment view zones', () => {
 
     const visuals = computeMergeVisuals(blocks, placements)
 
-    expect(visuals.ours.viewZones).toEqual([{ afterLineNumber: 2, heightInLines: 1, className: 'merge-view-zone' }])
+    expect(visuals.ours.viewZones).toEqual([
+      { afterLineNumber: 2, heightInLines: 1, className: 'merge-view-zone merge-view-zone-conflict' },
+    ])
     expect(visuals.ours.decorations).toEqual([
       { startLine: 2, endLine: 2, className: 'merge-text-conflict', marginClassName: 'merge-vivid-conflict' },
     ])
@@ -131,10 +133,10 @@ describe('computeMergeVisuals — alignment view zones', () => {
     // after that pane's own line 2. The zone closes the block's bottom edge; the pane's own
     // content keeps only the top edge.
     expect(visuals.ours.viewZones).toEqual([
-      { afterLineNumber: 2, heightInLines: 1, className: 'merge-view-zone merge-border-bottom-conflict' },
+      { afterLineNumber: 2, heightInLines: 1, className: 'merge-view-zone merge-view-zone-conflict merge-border-bottom-conflict' },
     ])
     expect(visuals.theirs.viewZones).toEqual([
-      { afterLineNumber: 2, heightInLines: 1, className: 'merge-view-zone merge-border-bottom-resolved' },
+      { afterLineNumber: 2, heightInLines: 1, className: 'merge-view-zone merge-view-zone-resolved merge-border-bottom-resolved' },
     ])
     expect(visuals.center.viewZones).toEqual([])
     expect(visuals.ours.decorations.at(-1)?.className).toBe('merge-text-conflict merge-border-top-conflict')
@@ -157,16 +159,14 @@ describe('computeMergeVisuals — alignment view zones', () => {
 
     // No hatched zone anywhere (a pure insertion consumes no space in the panes it's absent
     // from, WebStorm-style). The center — where the content would land — gets the intense green
-    // boundary line along the top edge of the line at the insertion point; ours, the passive
-    // observer pane, gets the thin neutral alignment line at the same height.
+    // boundary line along the top edge of the line at the insertion point; ours, the mirror
+    // pane that will never have this content, gets NO decoration at all — untouched code.
     expect(visuals.ours.viewZones).toEqual([])
     expect(visuals.center.viewZones).toEqual([])
     expect(visuals.center.decorations).toEqual([
       { startLine: 1, endLine: 1, className: 'merge-marker-top-addition', marginClassName: 'merge-marker-top-addition' },
     ])
-    expect(visuals.ours.decorations).toEqual([
-      { startLine: 1, endLine: 1, className: 'merge-marker-passive-top', marginClassName: 'merge-marker-passive-top' },
-    ])
+    expect(visuals.ours.decorations).toEqual([])
     // The side that has the content keeps its classic green block.
     expect(visuals.theirs.viewZones).toEqual([])
     expect(visuals.theirs.decorations).toEqual([
@@ -200,13 +200,12 @@ describe('computeMergeVisuals — alignment view zones', () => {
     const visuals = computeMergeVisuals(blocks, computeInitialPlacements(blocks))
 
     // The addition appends after ours' only line — there's no line 2 to carry a top edge, so
-    // the markers land on line 1's bottom edge instead (accent in the center, passive in ours).
+    // the center's marker lands on line 1's bottom edge instead. Ours (the mirror pane) still
+    // gets no decoration at all.
     expect(visuals.center.decorations).toEqual([
       { startLine: 1, endLine: 1, className: 'merge-marker-bottom-addition', marginClassName: 'merge-marker-bottom-addition' },
     ])
-    expect(visuals.ours.decorations).toEqual([
-      { startLine: 1, endLine: 1, className: 'merge-marker-passive-bottom', marginClassName: 'merge-marker-passive-bottom' },
-    ])
+    expect(visuals.ours.decorations).toEqual([])
     expect(visuals.ours.viewZones).toEqual([])
     expect(visuals.center.viewZones).toEqual([])
   })
@@ -227,7 +226,9 @@ describe('computeMergeVisuals — alignment view zones', () => {
     const visuals = computeMergeVisuals(blocks, computeInitialPlacements(blocks))
 
     // Theirs deleted these lines: its pane keeps a 2-line hatched zone where they used to be.
-    expect(visuals.theirs.viewZones).toEqual([{ afterLineNumber: 0, heightInLines: 2, className: 'merge-view-zone' }])
+    expect(visuals.theirs.viewZones).toEqual([
+      { afterLineNumber: 0, heightInLines: 2, className: 'merge-view-zone merge-view-zone-deletion' },
+    ])
     expect(visuals.theirs.decorations).toEqual([])
     // Ours and the center still hold the content — plain gray deletion blocks, no zones.
     expect(visuals.ours.viewZones).toEqual([])
