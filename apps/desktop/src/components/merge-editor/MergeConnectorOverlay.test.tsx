@@ -84,6 +84,24 @@ describe('MergeConnectorOverlay', () => {
     expect(onReject).toHaveBeenCalledWith(7)
   })
 
+  it('centers the buttons on the ribbon’s bounding box, not between the two ends’ midpoints', () => {
+    // A funnel: full-height block on one end (100→136), zero-height insertion point on the
+    // other (100→100). Midpoint averaging would put the buttons at 109 — dragged toward the
+    // pinched tip; the bounding-box center keeps them dead-center on the block at 118.
+    render(
+      <MergeConnectorOverlay
+        width={40}
+        height={200}
+        segments={[segment({ id: 1, leftY0: 100, leftY1: 136, rightY0: 100, rightY1: 100 })]}
+        side="left"
+        onAccept={vi.fn()}
+        onReject={vi.fn()}
+      />
+    )
+    const container = screen.getByRole('button', { name: 'Accept current change' }).parentElement
+    expect(container).toHaveStyle({ top: '118px' })
+  })
+
   it('renders no buttons at all when every segment is already settled', () => {
     render(
       <MergeConnectorOverlay

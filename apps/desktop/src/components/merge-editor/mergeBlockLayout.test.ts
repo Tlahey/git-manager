@@ -9,8 +9,7 @@ import {
   linesForSide,
   placementOverridesAfterAutoMerge,
   recomputeAllPlacements,
-  sideColorClass,
-  sideTextColorClass,
+  sideColorToken,
   subRangeForSide,
   updatePlacementAfterToggle,
   type BlockPlacement,
@@ -409,41 +408,36 @@ describe('changeKindForBlock', () => {
   })
 })
 
-describe('sideColorClass / sideTextColorClass / connectorClassForSide', () => {
+describe('sideColorToken / connectorClassForSide', () => {
   it('never colors an auto-merged block, touched or not', () => {
     const unchanged = block({ blockId: 1, kind: 'unchanged' })
-    expect(sideColorClass(unchanged, false, 'ours')).toBeUndefined()
-    expect(sideColorClass(unchanged, true, 'ours')).toBeUndefined()
+    expect(sideColorToken(unchanged, false)).toBeUndefined()
+    expect(sideColorToken(unchanged, true)).toBeUndefined()
   })
 
-  it('colors a pure addition green — vivid for the margin, muted for the code background', () => {
+  it('tokens a pure addition green', () => {
     const addition = block({ blockId: 1, kind: 'ours-only', oursLineCount: 1, theirsLineCount: 0 })
-    expect(sideColorClass(addition, false, 'ours')).toBe('merge-vivid-addition')
-    expect(sideTextColorClass(addition, false, 'ours')).toBe('merge-text-addition')
+    expect(sideColorToken(addition, false)).toBe('addition')
   })
 
-  it('colors a pure deletion gray — same weight as already-settled', () => {
+  it('tokens a pure deletion gray — same weight as already-settled', () => {
     const deletion = block({ blockId: 1, kind: 'ours-only', oursLineCount: 0, theirsLineCount: 1 })
-    expect(sideColorClass(deletion, false, 'theirs')).toBe('merge-vivid-deletion')
-    expect(sideTextColorClass(deletion, false, 'theirs')).toBe('merge-text-deletion')
+    expect(sideColorToken(deletion, false)).toBe('deletion')
   })
 
-  it('colors a one-sided modification blue on both sides while untouched', () => {
+  it('tokens a one-sided modification blue while untouched', () => {
     const modification = block({ blockId: 1, kind: 'ours-only', oursLineCount: 1, theirsLineCount: 1 })
-    expect(sideColorClass(modification, false, 'ours')).toBe('merge-vivid-modification')
-    expect(sideColorClass(modification, false, 'theirs')).toBe('merge-vivid-modification')
+    expect(sideColorToken(modification, false)).toBe('modification')
   })
 
-  it('colors a genuine two-sided conflict red on both sides while untouched', () => {
+  it('tokens a genuine two-sided conflict red while untouched', () => {
     const conflict = block({ blockId: 1, kind: 'both-different', oursLineCount: 1, theirsLineCount: 1 })
-    expect(sideColorClass(conflict, false, 'ours')).toBe('merge-vivid-conflict')
-    expect(sideColorClass(conflict, false, 'theirs')).toBe('merge-vivid-conflict')
+    expect(sideColorToken(conflict, false)).toBe('conflict')
   })
 
   it('turns gray once a side is touched, regardless of change kind', () => {
     const addition = block({ blockId: 1, kind: 'ours-only', oursLineCount: 1, theirsLineCount: 0 })
-    expect(sideColorClass(addition, true, 'ours')).toBe('merge-vivid-resolved')
-    expect(sideTextColorClass(addition, true, 'ours')).toBe('merge-text-resolved')
+    expect(sideColorToken(addition, true)).toBe('resolved')
   })
 
   it('mirrors the block color as a connector class with the merge-connector- prefix', () => {

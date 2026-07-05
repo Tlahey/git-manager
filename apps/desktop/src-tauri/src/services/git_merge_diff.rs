@@ -74,9 +74,23 @@ fn diff_hunks(base_bytes: &[u8], side_bytes: &[u8]) -> Result<Vec<Hunk>, AppErro
     let mut hunks = Vec::with_capacity(patch.num_hunks());
     for i in 0..patch.num_hunks() {
         let (hunk, _lines_in_hunk) = patch.hunk(i).map_err(AppError::Git)?;
+        // `old_start` is 1-based for a non-empty range (`-1` converts it to a 0-based index),
+        // but for a pure insertion (`old_lines == 0`) the unified-diff convention flips: it
+        // names the line the insertion comes AFTER, so the 0-based insertion index is
+        // `old_start` itself. Subtracting 1 there anchored every mid-file insertion block one
+        // line too high (first symptom: the line right above an added block was colored as
+        // part of it, and the center/passive boundary markers drew one line above the real
+        // insertion point). Top-of-file insertions report `old_start == 0`, which is why the
+        // uniform `saturating_sub(1)` version passed that test but nothing mid-file.
+        let old_start = hunk.old_start() as usize;
+        let base_len = hunk.old_lines() as usize;
         hunks.push(Hunk {
-            base_start: hunk.old_start().saturating_sub(1) as usize,
-            base_len: hunk.old_lines() as usize,
+            base_start: if base_len == 0 {
+                old_start
+            } else {
+                old_start.saturating_sub(1)
+            },
+            base_len,
             side_len: hunk.new_lines() as usize,
         });
     }
@@ -565,5 +579,43 @@ mod tests {
         assert_eq!(hunks[0].base_start, 0);
         assert_eq!(hunks[0].base_len, 0);
         assert_eq!(hunks[0].side_len, 2);
+    }
+
+    #[test]
+    fn diff_hunks_mid_file_pure_insert_anchors_after_the_named_line() {
+        // Inserting X between b and c produces `@@ -2,0 +3,1 @@`: for a zero-length old range,
+        // `old_start` (2) is the line the insertion comes AFTER, so the 0-based insertion index
+        // is 2 itself — NOT `old_start - 1`, which anchored the block one line too high (the
+        // regression this test pins down; the empty-ancestor case above can't catch it since
+        // `old_start` is 0 there).
+        let hunks = diff_hunks(b"a\nb\nc\n", b"a\nb\nX\nc\n").expect("diff buffers");
+        assert_eq!(hunks.len(), 1);
+        assert_eq!(hunks[0].base_start, 2);
+        assert_eq!(hunks[0].base_len, 0);
+        assert_eq!(hunks[0].side_len, 1);
+    }
+
+    #[test]
+    fn mid_file_theirs_insertion_block_carries_the_inserted_lines_only() {
+        // End-to-end through merge_hunks + blocks_to_dto: theirs inserts two lines after base
+        // line 2 ("b"). The TheirsOnly block must cover exactly the inserted lines (theirs
+        // 3-4, 1-based) and pin ours' insertion point to line 3 (right before "c") — with the
+        // old off-by-one it covered theirs 2-3, absorbing the untouched "b" line above.
+        let base = lines("a\nb\nc\n");
+        let ours = base.clone();
+        let theirs = lines("a\nb\nX\nY\nc\n");
+        let theirs_hunks = diff_hunks(b"a\nb\nc\n", b"a\nb\nX\nY\nc\n").expect("diff buffers");
+        let internal = merge_hunks(&[], &theirs_hunks, base.len(), &ours, &theirs);
+        let blocks = blocks_to_dto(internal, &ours, &theirs);
+
+        let block = blocks
+            .iter()
+            .find(|b| b.kind == MergeBlockKind::TheirsOnly)
+            .expect("a theirs-only block");
+        assert_eq!(block.theirs_start_line, 3);
+        assert_eq!(block.theirs_line_count, 2);
+        assert_eq!(block.theirs_lines, vec!["X".to_string(), "Y".to_string()]);
+        assert_eq!(block.ours_start_line, 3);
+        assert_eq!(block.ours_line_count, 0);
     }
 }
