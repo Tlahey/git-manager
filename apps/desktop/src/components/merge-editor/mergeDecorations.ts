@@ -297,8 +297,8 @@ export function computeMergeVisuals(
     const centerEmptyRendering: EmptyPaneRendering = isPureInsertion ? 'accent-marker' : 'zone'
 
     const resolved = isBlockResolved(block, placement)
-    const oursDeficit = resolved ? 0 : (block.oursLineCount === 0 ? 1 : 0)
-    const theirsDeficit = resolved ? 0 : (block.theirsLineCount === 0 ? 1 : 0)
+    const oursDeficit = block.oursLineCount === 0 ? 1 : 0
+    const theirsDeficit = block.theirsLineCount === 0 ? 1 : 0
 
     const oursParts: ColoredRange[] =
       oursToken && block.oursLineCount > 0
@@ -342,14 +342,22 @@ export function computeMergeVisuals(
       const { start, count } = subRangeForSide(placement, block, 'theirs')
       if (count > 0) centerParts.push({ startLine: start, lineCount: count, token: baseTheirsToken, resolved: placement.theirsTouched })
     }
+    const isDeletion = changeKindForBlock(block) === 'deletion'
+    const centerDeficit = changeKindForBlock(block) === 'addition'
+      ? maxCount - centerCount
+      : (isDeletion && resolved && centerCount === 0 ? 1 : 0)
+    const resolvedCenterEmptyRendering = isDeletion && resolved && centerCount === 0
+      ? 'accent-marker'
+      : centerEmptyRendering
+
     addPaneBlock(visuals.center, centerParts, {
-      deficit: changeKindForBlock(block) === 'addition' ? maxCount - centerCount : 0,
+      deficit: centerDeficit,
       afterLine: placement.centerStartLine + centerCount - 1,
       token: sideColorToken(block, placement.oursTouched && placement.theirsTouched),
       paneLineCount: centerCount,
       paneTotalLines: centerTotalLines,
-      emptyRendering: centerEmptyRendering,
-      resolved: isBlockResolved(block, placement),
+      emptyRendering: resolvedCenterEmptyRendering,
+      resolved,
     }, withBlockBorders)
   }
 

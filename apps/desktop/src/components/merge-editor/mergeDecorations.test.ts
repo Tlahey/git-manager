@@ -332,4 +332,74 @@ describe('computeMergeVisuals — alignment view zones', () => {
       },
     ])
   })
+
+  it('handles resolved deletion (accepted): draws deletion marker in source pane and center pane', () => {
+    const blocks = [
+      block({
+        blockId: 1,
+        kind: 'ours-only',
+        oursStartLine: 1,
+        oursLineCount: 0,
+        theirsStartLine: 1,
+        theirsLineCount: 2,
+        oursLines: [],
+        theirsLines: ['legacy-cache', 'legacy-session'],
+      }),
+    ]
+    // Accept deletion: ours (source) = true, theirs (mirror) = false
+    let placements = computeInitialPlacements(blocks)
+    placements = updatePlacementAfterToggle(placements, blocks, blocks[0], 'ours', true)
+    placements = updatePlacementAfterToggle(placements, blocks, blocks[0], 'theirs', false)
+    const visuals = computeMergeVisuals(blocks, placements)
+
+    // Ours (the side that deleted) should get a resolved deletion marker
+    expect(visuals.ours.decorations).toEqual([
+      { startLine: 1, endLine: 1, className: 'merge-marker-top-deletion merge-resolved', marginClassName: 'merge-marker-top-deletion merge-resolved' }
+    ])
+    // Center (since deletion was accepted, centerCount is 0) should also get a resolved deletion marker
+    expect(visuals.center.decorations).toEqual([
+      { startLine: 1, endLine: 1, className: 'merge-marker-top-deletion merge-resolved', marginClassName: 'merge-marker-top-deletion merge-resolved' }
+    ])
+  })
+
+  it('handles resolved deletion (ignored): draws deletion marker in source pane but not center pane', () => {
+    const blocks = [
+      block({
+        blockId: 1,
+        kind: 'ours-only',
+        oursStartLine: 1,
+        oursLineCount: 0,
+        theirsStartLine: 1,
+        theirsLineCount: 2,
+        oursLines: [],
+        theirsLines: ['legacy-cache', 'legacy-session'],
+      }),
+    ]
+    // Ignore deletion (keep theirs): ours (source) = false, theirs (mirror) = true
+    let placements = computeInitialPlacements(blocks)
+    placements = updatePlacementAfterToggle(placements, blocks, blocks[0], 'ours', false)
+    placements = updatePlacementAfterToggle(placements, blocks, blocks[0], 'theirs', true)
+    const visuals = computeMergeVisuals(blocks, placements)
+
+    // Ours still gets the resolved deletion marker
+    expect(visuals.ours.decorations).toEqual([
+      { startLine: 1, endLine: 1, className: 'merge-marker-top-deletion merge-resolved', marginClassName: 'merge-marker-top-deletion merge-resolved' }
+    ])
+    // Center does NOT get a marker because center has content (> 0 lines).
+    // Instead it gets the resolved deletion decorations for the kept lines.
+    expect(visuals.center.decorations).toEqual([
+      {
+        startLine: 1,
+        endLine: 1,
+        className: 'merge-text-deletion merge-resolved merge-border-top-deletion merge-resolved',
+        marginClassName: 'merge-vivid-deletion merge-resolved merge-border-top-deletion merge-resolved',
+      },
+      {
+        startLine: 2,
+        endLine: 2,
+        className: 'merge-text-deletion merge-resolved merge-border-bottom-deletion merge-resolved',
+        marginClassName: 'merge-vivid-deletion merge-resolved merge-border-bottom-deletion merge-resolved',
+      },
+    ])
+  })
 })
