@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { MergeBlock } from '@git-manager/git-types'
 import {
   changeKindForBlock,
+  computeInitialCenterText,
   computeInitialPlacements,
   connectorCenterRangeForSide,
   connectorClassForSide,
@@ -76,21 +77,22 @@ function sampleBlocks(): MergeBlock[] {
 }
 
 describe('computeInitialPlacements / recomputeAllPlacements', () => {
-  it('defaults every block to showing ours only, untouched', () => {
+  it('defaults ordinary blocks to showing ours only, untouched', () => {
     const placements = computeInitialPlacements(sampleBlocks())
-    for (const placement of placements.values()) {
-      expect(placement.oursIncluded).toBe(true)
-      expect(placement.theirsIncluded).toBe(false)
-      expect(placement.oursTouched).toBe(false)
-      expect(placement.theirsTouched).toBe(false)
-    }
+    // Block 1 (unchanged) and 4 (both-different) follow the default path.
+    expect(placements.get(1)).toMatchObject({ oursIncluded: true, theirsIncluded: false, oursTouched: false, theirsTouched: false })
+    expect(placements.get(4)).toMatchObject({ oursIncluded: true, theirsIncluded: false, oursTouched: false, theirsTouched: false })
+    // Block 2 (ours-only modification): default = ours included (pre-applied).
+    expect(placements.get(2)).toMatchObject({ oursIncluded: true, theirsIncluded: false })
+    // Block 3 (theirs-only addition, oursLineCount 0): default = ours included but 0 lines.
+    expect(placements.get(3)).toMatchObject({ oursIncluded: true, theirsIncluded: false })
   })
 
-  it('accumulates centerStartLine sequentially from each block’s default line count', () => {
+  it("accumulates centerStartLine sequentially from each block's default line count", () => {
     const placements = computeInitialPlacements(sampleBlocks())
     expect(placements.get(1)).toMatchObject({ centerStartLine: 1, centerLineCount: 1 }) // unchanged: 'header'
-    expect(placements.get(2)).toMatchObject({ centerStartLine: 2, centerLineCount: 1 }) // ours-only: 'ours modified'
-    expect(placements.get(3)).toMatchObject({ centerStartLine: 3, centerLineCount: 0 }) // theirs-only: ours side empty by default
+    expect(placements.get(2)).toMatchObject({ centerStartLine: 2, centerLineCount: 1 }) // ours-only modification: 'ours modified'
+    expect(placements.get(3)).toMatchObject({ centerStartLine: 3, centerLineCount: 0 }) // theirs-only addition: ours side empty (0 lines)
     expect(placements.get(4)).toMatchObject({ centerStartLine: 3, centerLineCount: 1 }) // both-different: ours side shown
   })
 
@@ -98,6 +100,147 @@ describe('computeInitialPlacements / recomputeAllPlacements', () => {
     const overrides = new Map([[3, { oursIncluded: false, theirsIncluded: true, oursTouched: true, theirsTouched: true }]])
     const placements = recomputeAllPlacements(sampleBlocks(), overrides)
     expect(placements.get(3)).toMatchObject({ centerLineCount: 1, oursIncluded: false, theirsIncluded: true })
+  })
+
+  it('defaults an ours-only pure DELETION to showing theirs’ still-present content, not ours’ empty state', () => {
+    // ours deleted these lines (oursLineCount 0); theirs still mirrors the untouched ancestor.
+    // The center must never need a hachured filler for a plain, undecided deletion — defaulting
+    // to ours here would show 0 lines and force exactly that.
+    const deletion = block({
+      blockId: 1,
+      kind: 'ours-only',
+      oursStartLine: 5,
+      oursLineCount: 0,
+      theirsStartLine: 5,
+      theirsLineCount: 2,
+      oursLines: [],
+      theirsLines: ['legacy-cache', 'legacy-session'],
+    })
+    const placements = computeInitialPlacements([deletion])
+    expect(placements.get(1)).toMatchObject({
+      oursIncluded: false,
+      theirsIncluded: true,
+      oursTouched: false,
+      theirsTouched: false,
+      centerLineCount: 2,
+    })
+  })
+
+  it('does not flip a theirs-only deletion — ours (the side that kept the content) already defaults to included', () => {
+    const deletion = block({
+      blockId: 1,
+      kind: 'theirs-only',
+      oursStartLine: 5,
+      oursLineCount: 2,
+      theirsStartLine: 5,
+      theirsLineCount: 0,
+      oursLines: ['deprecated-auth', 'deprecated-mailer'],
+      theirsLines: [],
+    })
+    const placements = computeInitialPlacements([deletion])
+    expect(placements.get(1)).toMatchObject({
+      oursIncluded: true,
+      theirsIncluded: false,
+      centerLineCount: 2,
+    })
+  })
+
+  it('does not flip an ours-only MODIFICATION (both sides have content — no empty-center risk)', () => {
+    const modification = block({
+      blockId: 1,
+      kind: 'ours-only',
+      oursStartLine: 5,
+      oursLineCount: 1,
+      theirsStartLine: 5,
+      theirsLineCount: 1,
+      oursLines: ['http-client = 7.32.0'],
+      theirsLines: ['http-client = 7.4.0'],
+    })
+    const placements = computeInitialPlacements([modification])
+    expect(placements.get(1)).toMatchObject({ oursIncluded: true, theirsIncluded: false, centerLineCount: 1 })
+  })
+
+  it('defaults an ours-only ADDITION to NOT including ours — center stays empty (= base)', () => {
+    // An addition adds lines that the base doesn't have. Pre-applying it in the center would
+    // break alignment with the side pane (theirs) that doesn't have these lines.
+    const addition = block({
+      blockId: 1,
+      kind: 'ours-only',
+      oursStartLine: 5,
+      oursLineCount: 2,
+      theirsStartLine: 5,
+      theirsLineCount: 0,
+      oursLines: ['addon-metrics', 'addon-tracing'],
+      theirsLines: [],
+    })
+    const placements = computeInitialPlacements([addition])
+    expect(placements.get(1)).toMatchObject({ oursIncluded: false, theirsIncluded: false, centerLineCount: 0 })
+  })
+
+  it('pre-applies a theirs-only MODIFICATION by defaulting to theirsIncluded (saves a click)', () => {
+    // Non-conflicting modification from theirs: the center takes theirs' modified version
+    // immediately, like WebStorm. Ours mirrors the base, so showing it would be redundant.
+    const modification = block({
+      blockId: 1,
+      kind: 'theirs-only',
+      oursStartLine: 5,
+      oursLineCount: 1,
+      theirsStartLine: 5,
+      theirsLineCount: 1,
+      oursLines: ['http-client = 7.4.0'],
+      theirsLines: ['http-client = 7.32.0'],
+    })
+    const placements = computeInitialPlacements([modification])
+    expect(placements.get(1)).toMatchObject({ oursIncluded: false, theirsIncluded: true, centerLineCount: 1 })
+  })
+})
+
+describe('computeInitialCenterText', () => {
+  it('concatenates the included side for each block, matching computeInitialPlacements exactly', () => {
+    // sampleBlocks: header(ours) + ours modified(ours) + theirs-addition(0 lines) + conflict(ours)
+    expect(computeInitialCenterText(sampleBlocks())).toBe('header\nours modified\nours conflict line')
+  })
+
+  it('falls back to theirs’ kept content for an ours-only pure deletion — matching computeInitialPlacements exactly', () => {
+    const deletion = block({
+      blockId: 1,
+      kind: 'ours-only',
+      oursLineCount: 0,
+      theirsLineCount: 2,
+      oursLines: [],
+      theirsLines: ['legacy-cache', 'legacy-session'],
+    })
+    expect(computeInitialCenterText([deletion])).toBe('legacy-cache\nlegacy-session')
+  })
+
+  it('never lets a later block drift: the seeded text’s line count for each block matches its own computeInitialPlacements centerLineCount', () => {
+    // The actual regression this guards: if this function's per-block decisions ever diverge
+    // from computeInitialPlacements's, a block after a mismatched one silently shows the wrong
+    // content at the wrong line — a real, visible desync, not just a coloring glitch.
+    const blocks = [
+      block({
+        blockId: 1,
+        kind: 'ours-only',
+        oursLineCount: 0,
+        theirsLineCount: 2,
+        oursLines: [],
+        theirsLines: ['legacy-cache', 'legacy-session'],
+      }),
+      block({
+        blockId: 2,
+        kind: 'unchanged',
+        oursLineCount: 1,
+        theirsLineCount: 1,
+        oursLines: ['deprecated-auth'],
+        theirsLines: ['deprecated-auth'],
+      }),
+    ]
+    const text = computeInitialCenterText(blocks)
+    const placements = computeInitialPlacements(blocks)
+    expect(text.split('\n')).toHaveLength(
+      [...placements.values()].reduce((total, p) => total + p.centerLineCount, 0)
+    )
+    expect(text).toBe('legacy-cache\nlegacy-session\ndeprecated-auth')
   })
 })
 
@@ -352,18 +495,49 @@ describe('deriveLivePlacements', () => {
 })
 
 describe('placementOverridesAfterAutoMerge', () => {
-  it('settles ours-only blocks onto ours, fully touched', () => {
+  it('settles ours-only MODIFICATIONS onto ours, fully touched', () => {
     const blocks = sampleBlocks()
     const placements = computeInitialPlacements(blocks)
     const overrides = placementOverridesAfterAutoMerge(blocks, placements)
+    // Block 2 is an ours-only modification — auto-merged.
     expect(overrides.get(2)).toEqual({ oursIncluded: true, theirsIncluded: false, oursTouched: true, theirsTouched: true })
   })
 
-  it('settles theirs-only blocks onto theirs, fully touched', () => {
+  it('leaves theirs-only ADDITIONS pending (not auto-resolved)', () => {
     const blocks = sampleBlocks()
     const placements = computeInitialPlacements(blocks)
     const overrides = placementOverridesAfterAutoMerge(blocks, placements)
-    expect(overrides.get(3)).toEqual({ oursIncluded: false, theirsIncluded: true, oursTouched: true, theirsTouched: true })
+    // Block 3 is a theirs-only addition (oursLineCount 0) — deletions/additions stay pending.
+    expect(overrides.get(3)).toEqual({ oursIncluded: true, theirsIncluded: false, oursTouched: false, theirsTouched: false })
+  })
+
+  it('leaves theirs-only DELETIONS pending (not auto-resolved)', () => {
+    const deletion = block({
+      blockId: 1,
+      kind: 'theirs-only',
+      oursLineCount: 2,
+      theirsLineCount: 0,
+      oursLines: ['deprecated-auth', 'deprecated-mailer'],
+      theirsLines: [],
+    })
+    const placements = computeInitialPlacements([deletion])
+    const overrides = placementOverridesAfterAutoMerge([deletion], placements)
+    // Deletion stays pending — not auto-resolved by the wand.
+    expect(overrides.get(1)).toEqual({ oursIncluded: true, theirsIncluded: false, oursTouched: false, theirsTouched: false })
+  })
+
+  it('settles theirs-only MODIFICATIONS onto theirs, fully touched', () => {
+    const modification = block({
+      blockId: 1,
+      kind: 'theirs-only',
+      oursLineCount: 1,
+      theirsLineCount: 1,
+      oursLines: ['http-client = 7.4.0'],
+      theirsLines: ['http-client = 7.32.0'],
+    })
+    const placements = computeInitialPlacements([modification])
+    const overrides = placementOverridesAfterAutoMerge([modification], placements)
+    expect(overrides.get(1)).toEqual({ oursIncluded: false, theirsIncluded: true, oursTouched: true, theirsTouched: true })
   })
 
   it('leaves a genuine two-sided conflict fully untouched', () => {
@@ -437,18 +611,18 @@ describe('isChangeSource', () => {
     expect(isChangeSource(oursModification, 'theirs')).toBe(false)
   })
 
-  it('for a pure DELETION, flips to the side that still HAS the content — not the side that deleted it', () => {
-    // ours-only deletion: base had it, ours removed it (oursLineCount 0), theirs still has it.
-    // The deleting side (ours) now shows nothing to anchor a button near; the action belongs
-    // on theirs' gap, where the actual ribbon/content is visible.
+  it('for a pure DELETION, matches the authoring side — the side that initiated the deletion', () => {
+    // ours-only deletion: ours removed it (oursLineCount 0). The button belongs on ours' gap
+    // (the authoring side), even though ours' pane shows 0 lines there — the connector ribbon
+    // funnels from the pane's zero-height boundary to the center's still-present base text.
     const oursDeletion = block({ blockId: 1, kind: 'ours-only', oursLineCount: 0, theirsLineCount: 2 })
-    expect(isChangeSource(oursDeletion, 'theirs')).toBe(true)
-    expect(isChangeSource(oursDeletion, 'ours')).toBe(false)
+    expect(isChangeSource(oursDeletion, 'ours')).toBe(true)
+    expect(isChangeSource(oursDeletion, 'theirs')).toBe(false)
 
-    // Mirrored: theirs-only deletion — theirs removed it, ours still has it.
+    // Mirrored: theirs-only deletion — theirs removed it.
     const theirsDeletion = block({ blockId: 2, kind: 'theirs-only', oursLineCount: 2, theirsLineCount: 0 })
-    expect(isChangeSource(theirsDeletion, 'ours')).toBe(true)
-    expect(isChangeSource(theirsDeletion, 'theirs')).toBe(false)
+    expect(isChangeSource(theirsDeletion, 'theirs')).toBe(true)
+    expect(isChangeSource(theirsDeletion, 'ours')).toBe(false)
   })
 })
 

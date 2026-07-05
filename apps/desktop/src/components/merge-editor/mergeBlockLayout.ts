@@ -22,10 +22,42 @@ function isAutoMerged(block: MergeBlock): boolean {
   return block.kind === 'unchanged' || block.kind === 'both-same'
 }
 
-/** The center buffer always starts as plain, natural text — exactly `oursText` (every block's
- * `ours_lines` concatenated), never conflict-marker syntax — so `ours` is included and `theirs`
- * is not, by default, until the user explicitly pulls theirs in. */
-function defaultFlags(): Pick<BlockPlacement, 'oursIncluded' | 'theirsIncluded' | 'oursTouched' | 'theirsTouched'> {
+/** The center buffer always starts showing the **ancestor / base** content (the most recent
+ * common-ancestor text at each block's position), never conflict-marker syntax — so the visual
+ * alignment between the center and the side pane that didn't touch this block is preserved and
+ * both panes show the same text at the same line indices.
+ *
+ * For blocks where one side has 0 lines (deletions / additions), pre-applying the change in
+ * the center would add or remove lines, breaking alignment with the side pane that still has
+ * the original text. These blocks start with the base content (or nothing, for a pure
+ * addition) and stay pending until the user explicitly accepts or rejects.
+ *
+ * For one-sided **modifications** the change is pre-applied (WebStorm-style: non-conflicting
+ * modifications are taken immediately, saving the user from clicking through every trivial
+ * change). `ours-only` modifications already default to showing ours (the modified version,
+ * which *is* the first branch's content); `theirs-only` modifications flip to theirs (the
+ * modified version from the incoming branch) instead of showing ours (which mirrors the base). */
+function defaultFlags(block: MergeBlock): Pick<BlockPlacement, 'oursIncluded' | 'theirsIncluded' | 'oursTouched' | 'theirsTouched'> {
+  const kind = changeKindForBlock(block)
+
+  // Ours-only deletion: show theirs (= base, content still present on theirs' side).
+  if (block.kind === 'ours-only' && kind === 'deletion') {
+    return { oursIncluded: false, theirsIncluded: true, oursTouched: false, theirsTouched: false }
+  }
+  // Ours-only addition: center = empty (= base has nothing here). Not pre-applied.
+  if (block.kind === 'ours-only' && kind === 'addition') {
+    return { oursIncluded: false, theirsIncluded: false, oursTouched: false, theirsTouched: false }
+  }
+  // Theirs-only modification: show theirs (modified, pre-applied — saves a click).
+  if (block.kind === 'theirs-only' && kind === 'modification') {
+    return { oursIncluded: false, theirsIncluded: true, oursTouched: false, theirsTouched: false }
+  }
+  // Everything else: show ours (default first-branch content).
+  // - Unchanged / both-same: ours = theirs = base.
+  // - Ours-only modification: ours = modified version (pre-applied).
+  // - Theirs-only deletion: ours = base (theirs deleted, content kept via ours).
+  // - Theirs-only addition: ours has 0 lines → center empty (= base has nothing here).
+  // - Both-different conflict: ours shown as default, user picks.
   return { oursIncluded: true, theirsIncluded: false, oursTouched: false, theirsTouched: false }
 }
 
@@ -57,7 +89,7 @@ export function recomputeAllPlacements(
   const placements = new Map<number, BlockPlacement>()
   let line = 1
   for (const block of blocks) {
-    const flags = overrides?.get(block.blockId) ?? defaultFlags()
+    const flags = overrides?.get(block.blockId) ?? defaultFlags(block)
     const centerLineCount = centerLineCountFor(block, flags)
     placements.set(block.blockId, { blockId: block.blockId, centerStartLine: line, centerLineCount, ...flags })
     line += centerLineCount
@@ -67,6 +99,27 @@ export function recomputeAllPlacements(
 
 export function computeInitialPlacements(blocks: MergeBlock[]): Map<number, BlockPlacement> {
   return recomputeAllPlacements(blocks)
+}
+
+/** Builds the center Monaco buffer's INITIAL text — the client-side equivalent of the backend's
+ * `oursText` (used to seed the pane before this function existed), except it follows the exact
+ * same per-block inclusion decisions as `computeInitialPlacements` (via `defaultFlags`) rather
+ * than always concatenating `oursLines`. The two MUST stay in lockstep: `computeInitialPlacements`
+ * decides "this block's placement metadata says N lines are shown here" while this function
+ * decides "the actual buffer text has N lines here" — if the two disagree (as they did before
+ * this function existed, back when the center was unconditionally seeded from `oursText`), every
+ * block *after* the mismatched one visibly drifts by the difference: the placement metadata
+ * says a deletion's kept content occupies 2 lines, decorations/zones/connector geometry are
+ * computed assuming that, but the real text skipped straight past those 2 lines to whatever
+ * follows — a real, visible multi-line desync, not just a coloring glitch. */
+export function computeInitialCenterText(blocks: MergeBlock[]): string {
+  const lines: string[] = []
+  for (const block of blocks) {
+    const flags = defaultFlags(block)
+    if (flags.oursIncluded) lines.push(...block.oursLines)
+    if (flags.theirsIncluded) lines.push(...block.theirsLines)
+  }
+  return lines.join('\n')
 }
 
 /** Where one side's content currently sits within a block's center range — ours (if included)
@@ -238,12 +291,17 @@ export function deriveLivePlacements(
   return placements
 }
 
-/** After the wand: non-conflicting blocks (`ours-only` / `theirs-only`) resolve to their one
- * meaningful side and are marked fully settled (gray, matching `auto_merge_non_conflicting` in
- * git_merge_diff.rs, which only ever picks one side for these). `both-different` conflicts are
- * left fully untouched — the wand never guesses on a real conflict, and leaving both flags
- * untouched (rather than "resolved") is what keeps the "keep both" option available afterwards.
- * A block the user already touched by hand is left as they set it. */
+/** After the wand: non-conflicting **modifications** (`ours-only` / `theirs-only` with content
+ * on both sides) resolve to their authoring side and are marked fully settled (gray).
+ *
+ * **Deletions and additions** (one side has 0 lines) are deliberately left pending — the wand
+ * never auto-applies a change that adds or removes lines, because doing so would break the
+ * visual alignment between center and the side pane that still has the original content.
+ * These blocks keep their default flags (pending state), so their action buttons stay visible
+ * and the user must explicitly accept or reject each one.
+ *
+ * `both-different` conflicts are left fully untouched — the wand never guesses on a real
+ * conflict. A block the user already touched by hand is left as they set it. */
 export function placementOverridesAfterAutoMerge(
   blocks: MergeBlock[],
   placements: Map<number, BlockPlacement>
@@ -260,12 +318,16 @@ export function placementOverridesAfterAutoMerge(
       })
       continue
     }
-    if (block.kind === 'theirs-only') {
+    const kind = changeKindForBlock(block)
+    if (kind === 'deletion' || kind === 'addition') {
+      // Deletions and additions: leave pending (user must decide).
+      overrides.set(block.blockId, defaultFlags(block))
+    } else if (block.kind === 'theirs-only') {
       overrides.set(block.blockId, { oursIncluded: false, theirsIncluded: true, oursTouched: true, theirsTouched: true })
     } else if (block.kind === 'ours-only') {
       overrides.set(block.blockId, { oursIncluded: true, theirsIncluded: false, oursTouched: true, theirsTouched: true })
     } else {
-      overrides.set(block.blockId, defaultFlags()) // unchanged/both-same/both-different: leave as default
+      overrides.set(block.blockId, defaultFlags(block)) // unchanged/both-same/both-different: leave as default
     }
   }
   return overrides
@@ -328,19 +390,14 @@ export function connectorClassForSide(block: MergeBlock, touched: boolean, _side
  * conflict); the other pane of a one-sided change just mirrors the untouched ancestor, and
  * showing buttons there too reads as two competing decisions when there's only one to make.
  *
- * For a pure ADDITION or MODIFICATION, "authored it" and "has visible content to anchor to" are
- * the same side — no ambiguity. For a pure DELETION, they're NOT: the side that did the
- * deleting (say ours, for an `ours-only` deletion) now shows nothing at all there, while the
- * *other* side still displays the removed lines in full and is where the connector ribbon is
- * actually visible. Anchoring the action on the side with nothing to show split the visible
- * gray ribbon from its own accept/ignore buttons across the two different gaps — flip to the
- * side that still has the content instead, so the ribbon and its buttons live in the same gap. */
+ * The authoring side is always where the buttons appear — for additions it's the side with
+ * new content, for deletions it's the side that removed the content (even though that pane
+ * shows 0 lines there — the connector ribbon funnels from the pane's zero-height boundary to
+ * the center's still-present base text, anchoring the buttons at the pane edge), and for
+ * modifications it's the side that changed the value. */
 export function isChangeSource(block: MergeBlock, side: MergeSide): boolean {
   if (block.kind === 'both-different') return true
   if (block.kind !== 'ours-only' && block.kind !== 'theirs-only') return false
-
   const authoringSide: MergeSide = block.kind === 'ours-only' ? 'ours' : 'theirs'
-  const effectiveSource: MergeSide =
-    changeKindForBlock(block) === 'deletion' ? (authoringSide === 'ours' ? 'theirs' : 'ours') : authoringSide
-  return side === effectiveSource
+  return side === authoringSide
 }

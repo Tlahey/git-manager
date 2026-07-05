@@ -238,6 +238,37 @@ describe('computeMergeVisuals — alignment view zones', () => {
     ])
   })
 
+  it('mirrors that for an ours-only deletion: OURS (the side that deleted) gets the hatched zone, never the center', () => {
+    // ours deleted these lines, theirs still has them. Golden rule: the center never shows a
+    // hachured filler — it must default to theirs' still-present content instead (see
+    // mergeBlockLayout.ts's defaultFlags exception for this exact case), so the deficit lands
+    // on ours alone.
+    const blocks = [
+      block({
+        blockId: 1,
+        kind: 'ours-only',
+        oursStartLine: 1,
+        oursLineCount: 0,
+        theirsStartLine: 1,
+        theirsLineCount: 2,
+        oursLines: [],
+        theirsLines: ['legacy-cache', 'legacy-session'],
+      }),
+    ]
+    const visuals = computeMergeVisuals(blocks, computeInitialPlacements(blocks))
+
+    expect(visuals.ours.viewZones).toEqual([
+      { afterLineNumber: 0, heightInLines: 2, className: 'merge-view-zone merge-view-zone-deletion' },
+    ])
+    expect(visuals.ours.decorations).toEqual([])
+    // Theirs and the center both show the real, kept content — no zone at the center, ever.
+    expect(visuals.theirs.viewZones).toEqual([])
+    expect(visuals.center.viewZones).toEqual([])
+    expect(visuals.center.decorations).toEqual([
+      { startLine: 1, endLine: 2, className: 'merge-text-deletion', marginClassName: 'merge-vivid-deletion' },
+    ])
+  })
+
   it('never zones or colors auto-merged blocks', () => {
     const blocks = [
       block({

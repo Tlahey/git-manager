@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import type { Monaco } from '@monaco-editor/react'
 import type { editor, IRange } from 'monaco-editor'
 import type { MergeBlock, ThreeWayMergeView } from '@git-manager/git-types'
@@ -10,6 +10,7 @@ import {
   type BlockPlacement,
   type MergeSide,
   changeKindForBlock,
+  computeInitialCenterText,
   computeInitialPlacements,
   connectorCenterRangeForSide,
   connectorClassForSide,
@@ -157,8 +158,12 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     const blocksRef = useRef<MergeBlock[]>(view.blocks)
     blocksRef.current = view.blocks
 
-    // The center buffer always starts as plain, natural text — exactly `oursText` (every
-    // block's `ours_lines` concatenated), never conflict-marker syntax.
+    // The center buffer's initial text and its placement metadata are two independent
+    // computations over the same blocks — see `computeInitialCenterText`'s own doc comment for
+    // why they MUST stay in lockstep (a real, one-time bug: seeding this pane from the backend's
+    // plain `oursText` while `computeInitialPlacements` had its own per-block inclusion
+    // exceptions left every block after a mismatched one visibly offset by the difference).
+    const initialCenterText = useMemo(() => computeInitialCenterText(view.blocks), [view.blocks])
     const [placements, setPlacements] = useState<Map<number, BlockPlacement>>(() => computeInitialPlacements(view.blocks))
     const placementsRef = useRef(placements)
     placementsRef.current = placements
@@ -236,11 +241,14 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       const left: ConnectorSegment[] = []
       const right: ConnectorSegment[] = []
 
-      // Marker lines (mergeDecorations.ts's `merge-marker-*`/`merge-marker-passive-*`) are
-      // nudged 1px off the real line they decorate via CSS `transform`, onto the true
-      // inter-line boundary — matched here so a segment's marker-anchored endpoint (a pane
-      // showing 0 lines, or a center range with 0 count) lands on that exact same shifted pixel
-      // instead of drifting 1px away from the line it's supposed to terminate on.
+      // The CENTER's `merge-marker-*` accent line (mergeDecorations.ts) is nudged 1px off the
+      // real line it decorates via CSS `transform`, onto the true inter-line boundary — matched
+      // below so a segment's center-anchored marker endpoint lands on that exact same shifted
+      // pixel instead of drifting 1px away from the line it's supposed to terminate on. Only the
+      // CENTER ever gets this treatment: a pane's own zero-line endpoint is always either a pure
+      // addition's mirror (skipped entirely, just below) or a deletion/conflict's hachured zone
+      // (a real `IViewZone`, never CSS-shifted), so nudging a pane's own Y here would drift it
+      // 1px away from geometry that was never moved in the first place.
       const paneTotals = computePaneTotalLines(blocksRef.current, placementsRef.current)
 
       for (const block of blocksRef.current) {
@@ -281,18 +289,16 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
           const { start, count } = connectorCenterRangeForSide(placement, block, side)
 
-          let paneY0 = paneEditor.getTopForLineNumber(paneStart)
-          let paneY1 = paneEditor.getTopForLineNumber(paneStart + paneCount)
-          if (paneCount === 0) {
-            const paneTotal = side === 'ours' ? paneTotals.ours : paneTotals.theirs
-            const nudge = markerEdge(paneStart - 1, paneTotal) === 'top' ? -MARKER_NUDGE_PX : MARKER_NUDGE_PX
-            paneY0 += nudge
-            paneY1 += nudge
-          }
+          const paneY0 = paneEditor.getTopForLineNumber(paneStart)
+          const paneY1 = paneEditor.getTopForLineNumber(paneStart + paneCount)
 
           let centerY0 = centerEditor.getTopForLineNumber(start)
           let centerY1 = centerEditor.getTopForLineNumber(start + count)
-          if (count === 0) {
+          // Only a not-yet-pulled-in pure addition renders its center endpoint as the CSS-shifted
+          // accent marker (mergeDecorations.ts's `centerEmptyRendering: 'accent-marker'` is itself
+          // gated on `changeKindForBlock === 'addition'`) — a deletion or conflict with a
+          // genuinely empty center gets a plain hachured zone there instead, never CSS-nudged.
+          if (count === 0 && changeKindForBlock(block) === 'addition') {
             const nudge = markerEdge(start - 1, paneTotals.center) === 'top' ? -MARKER_NUDGE_PX : MARKER_NUDGE_PX
             centerY0 += nudge
             centerY1 += nudge
@@ -307,11 +313,16 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
             rightY0: side === 'theirs' ? centerY0 : paneY0,
             rightY1: side === 'theirs' ? centerY1 : paneY1,
             colorClass,
-            // `isChangeSource` already flips to the content-bearing side for a pure deletion
-            // (see its own doc comment) — so this naturally keeps the actionable buttons in the
-            // same gap as whichever side actually renders a real (non-flat) ribbon.
+            // `isChangeSource` always returns the authoring side — for a deletion that's the
+            // side that deleted (0 lines in its pane). The connector ribbon funnels from the
+            // pane's zero-height boundary to the center's still-present base text, and the
+            // action buttons anchor at that pane edge.
             actionable: !touched && isChangeSource(block, side),
-            flat: paneCount === 0,
+            // Only truly flat (thin stroked line) when BOTH the pane and the center endpoint
+            // are zero-height — e.g. a pending addition's mirror pane. A deletion where the
+            // pane has 0 lines but the center still has base content draws as a filled funnel
+            // ribbon from the point to the range, not a flat stroke.
+            flat: paneCount === 0 && count === 0,
           }
           if (side === 'theirs') left.push(segment)
           else right.push(segment)
@@ -608,7 +619,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         </div>
         <div className="min-w-0 flex-1">
           <MergePane
-            value={view.oursText}
+            value={initialCenterText}
             filePath={filePath}
             modelPath={`${repoPath}/${filePath}#center`}
             readOnly={false}

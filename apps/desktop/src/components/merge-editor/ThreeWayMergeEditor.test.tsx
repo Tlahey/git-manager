@@ -379,10 +379,58 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     }
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={view} />)
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-1')).toBeInTheDocument())
-    expect(screen.getByTestId('merge-connector-reject-left-1')).toBeInTheDocument()
-    expect(screen.queryByTestId('merge-connector-accept-right-1')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('merge-connector-reject-right-1')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-right-1')).toBeInTheDocument())
+    expect(screen.getByTestId('merge-connector-reject-right-1')).toBeInTheDocument()
+    expect(screen.queryByTestId('merge-connector-accept-left-1')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('merge-connector-reject-left-1')).not.toBeInTheDocument()
+  })
+
+  it('seeds the center buffer’s ACTUAL text to match the deletion default, so a later block never drifts by the deleted line count', async () => {
+    // Regression test for a real bug: the placement metadata (mergeBlockLayout.ts's
+    // defaultFlags) was fixed to default an ours-only deletion to theirs' kept content, but the
+    // center pane's *seeded text* was still built from `view.oursText` alone — which has 0
+    // lines for this block, since ours really did delete it. The metadata said "2 lines here"
+    // while the real buffer had 0, so every block *after* this one rendered 2 lines too early —
+    // exactly the "deprecated-auth shows up 2 lines short" symptom reported against the real
+    // fixture. Two blocks here: the ours-only deletion (legacy-cache/legacy-session, kept by
+    // theirs), followed by an unrelated unchanged line (deprecated-auth) — the bug only shows
+    // once there's something *after* the mismatched block to visibly drift.
+    const blocks: MergeBlock[] = [
+      {
+        blockId: 1,
+        kind: 'ours-only',
+        oursStartLine: 1,
+        oursLineCount: 0,
+        theirsStartLine: 1,
+        theirsLineCount: 2,
+        oursLines: [],
+        theirsLines: ['legacy-cache', 'legacy-session'],
+      },
+      {
+        blockId: 2,
+        kind: 'unchanged',
+        oursStartLine: 1,
+        oursLineCount: 1,
+        theirsStartLine: 3,
+        theirsLineCount: 1,
+        oursLines: ['deprecated-auth'],
+        theirsLines: ['deprecated-auth'],
+      },
+    ]
+    const view: ThreeWayMergeView = {
+      filePath: FILE_PATH,
+      renderable: true,
+      isBinary: false,
+      blocks,
+      oursText: 'deprecated-auth',
+      theirsText: 'legacy-cache\nlegacy-session\ndeprecated-auth',
+      conflictCount: 0,
+    }
+    render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={view} />)
+
+    await waitFor(() => {
+      expect(fakeEditors.get(centerPath)!.getModel().getValue()).toBe('legacy-cache\nlegacy-session\ndeprecated-auth')
+    })
   })
 
   it('renders NO ribbon at all in the mirror gap of a pure addition — untouched code, nothing to connect', async () => {
@@ -458,6 +506,50 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     // block spans raw Y 0→36. The center end (not yet pulled in) is a marker point, nudged from
     // its raw 0 to -1.
     expect(d).toBe('M 0,0 C 20,0 20,-1 40,-1 L 40,-1 C 20,-1 20,36 0,36 Z')
+  })
+
+  it('never nudges a deletion’s zero-line pane endpoint — its hachured zone is a real ViewZone, never CSS-shifted', async () => {
+    // ours-only deletion (ours deleted, theirs kept): center now defaults to theirs' content
+    // (mergeBlockLayout.ts's defaultFlags exception), so theirs' own segment is a plain,
+    // unshifted parallel ribbon, and ours' segment is a flat stroke from the center's real
+    // content down to ours' own (genuinely, permanently empty) line — with NO 1px nudge on
+    // ours' side, since that endpoint is a hachured `IViewZone`, not a CSS-transformed marker.
+    const blocks: MergeBlock[] = [
+      {
+        blockId: 1,
+        kind: 'ours-only',
+        oursStartLine: 1,
+        oursLineCount: 0,
+        theirsStartLine: 1,
+        theirsLineCount: 2,
+        oursLines: [],
+        theirsLines: ['legacy-cache', 'legacy-session'],
+      },
+    ]
+    const view: ThreeWayMergeView = {
+      filePath: FILE_PATH,
+      renderable: true,
+      isBinary: false,
+      blocks,
+      oursText: '',
+      theirsText: 'legacy-cache\nlegacy-session',
+      conflictCount: 0,
+    }
+    render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={view} />)
+
+    // Theirs (kept content) — a plain, fully-aligned parallel ribbon (both ends span raw Y 0→36
+    // in the fake editor's 18px-tall lines), no marker involved at all.
+    await waitFor(() => expect(screen.getByTestId('merge-connector-ribbon-left-1')).toBeInTheDocument())
+    const leftRibbon = screen.getByTestId('merge-connector-ribbon-left-1')
+    expect(leftRibbon).not.toHaveClass('merge-connector-flat')
+    expect(leftRibbon.getAttribute('d')).toBe('M 0,0 C 20,0 20,0 40,0 L 40,36 C 20,36 20,36 0,36 Z')
+
+    // Ours (deleted) — a filled funnel ribbon from the center's real content
+    // (raw Y 0 to 36) down to ours' own empty point (raw Y 0).
+    const rightRibbon = screen.getByTestId('merge-connector-ribbon-right-1')
+    expect(rightRibbon).not.toHaveClass('merge-connector-flat')
+    expect(rightRibbon).toHaveClass('merge-connector-deletion')
+    expect(rightRibbon.getAttribute('d')).toBe('M 0,0 C 20,0 20,0 40,0 L 40,0 C 20,0 20,36 0,36 Z')
   })
 
   it('does not flatten a one-sided MODIFICATION’s mirror ribbon — both sides have real content, so the parallel ribbon stays a filled shape', async () => {
@@ -591,11 +683,11 @@ describe('ThreeWayMergeEditor — auto-merge wand', () => {
     await ref.current!.applyAutoMerge()
 
     expect(apiAutoMergeConflictView).toHaveBeenCalledWith(REPO_PATH, FILE_PATH)
-    // The addition block (blockId 1, ours-only → actionable from the right/ours gap) is
-    // non-conflicting and settles — its own gutter action disappears. The real conflict (now
-    // blockId 3) is left fully pending for the user, actionable from both gaps.
+    // The addition block (blockId 1, ours-only) is non-conflicting but stays pending
+    // (deletions/additions are skipped by the auto-merge wand) — its own gutter action remains.
+    // The real conflict (now blockId 3) is left fully pending for the user, actionable from both gaps.
     await waitFor(() => {
-      expect(screen.queryByTestId('merge-connector-accept-right-1')).not.toBeInTheDocument()
+      expect(screen.getByTestId('merge-connector-accept-right-1')).toBeInTheDocument()
       expect(screen.getByTestId('merge-connector-accept-left-3')).toBeInTheDocument()
     })
   })
