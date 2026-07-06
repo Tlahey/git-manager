@@ -25,6 +25,7 @@ function block(overrides: Partial<MergeBlock> & Pick<MergeBlock, 'blockId' | 'ki
     theirsLineCount: 0,
     oursLines: [],
     theirsLines: [],
+    baseLines: [],
     ...overrides,
   }
 }
@@ -72,6 +73,7 @@ function sampleBlocks(): MergeBlock[] {
       theirsLineCount: 1,
       oursLines: ['ours conflict line'],
       theirsLines: ['theirs conflict line'],
+      baseLines: ['base conflict line'],
     }),
   ]
 }
@@ -120,6 +122,48 @@ describe('computeInitialPlacements / recomputeAllPlacements', () => {
     expect(placements.get(1)).toMatchObject({
       oursIncluded: false,
       theirsIncluded: true,
+      oursTouched: false,
+      theirsTouched: false,
+      centerLineCount: 2,
+    })
+  })
+
+  it('defaults a conflict block with a deletion on ours to showing theirs (which has content)', () => {
+    const blocks = [
+      block({
+        blockId: 1,
+        kind: 'both-different',
+        oursLineCount: 0,
+        theirsLineCount: 2,
+        oursLines: [],
+        theirsLines: ['new theirs a', 'new theirs b'],
+      }),
+    ]
+    const placements = computeInitialPlacements(blocks)
+    expect(placements.get(1)).toMatchObject({
+      oursIncluded: false,
+      theirsIncluded: true,
+      oursTouched: false,
+      theirsTouched: false,
+      centerLineCount: 2,
+    })
+  })
+
+  it('defaults a conflict block with a deletion on theirs to showing ours (which has content)', () => {
+    const blocks = [
+      block({
+        blockId: 1,
+        kind: 'both-different',
+        oursLineCount: 2,
+        theirsLineCount: 0,
+        oursLines: ['new ours a', 'new ours b'],
+        theirsLines: [],
+      }),
+    ]
+    const placements = computeInitialPlacements(blocks)
+    expect(placements.get(1)).toMatchObject({
+      oursIncluded: true,
+      theirsIncluded: false,
       oursTouched: false,
       theirsTouched: false,
       centerLineCount: 2,
@@ -409,6 +453,39 @@ describe('updatePlacementAfterToggle', () => {
     const next = updatePlacementAfterToggle(placements, blocks, target, 'ours', true)
     expect(next.get(4)!.centerLineCount).toBe(placements.get(4)!.centerLineCount)
     expect(next.get(4)!.oursTouched).toBe(true) // still marks it as an explicit decision
+  })
+
+  it('rejecting one side of a conflict auto-includes the other side if the other is pending', () => {
+    const blocks = sampleBlocks()
+    const conflict = blocks[3] // blockId 4, oursLineCount 1, theirsLineCount 1
+    const placements = computeInitialPlacements(blocks)
+
+    // Reject ours: ours = false, which should auto-include theirs since theirs is not touched yet.
+    const next = updatePlacementAfterToggle(placements, blocks, conflict, 'ours', false)
+    const updated = next.get(4)!
+
+    expect(updated.oursIncluded).toBe(false)
+    expect(updated.oursTouched).toBe(true)
+    expect(updated.theirsIncluded).toBe(true) // auto-included!
+    expect(updated.theirsTouched).toBe(false) // still pending decision
+    expect(updated.centerLineCount).toBe(1)
+  })
+
+  it('does not auto-include the other side of a conflict when rejecting if the other side is already touched', () => {
+    const blocks = sampleBlocks()
+    const conflict = blocks[3]
+    let placements = computeInitialPlacements(blocks)
+    // First, user explicitly rejects theirs (theirsIncluded = false, theirsTouched = true)
+    placements = updatePlacementAfterToggle(placements, blocks, conflict, 'theirs', false)
+    // Then, user rejects ours (oursIncluded = false, oursTouched = true)
+    placements = updatePlacementAfterToggle(placements, blocks, conflict, 'ours', false)
+
+    const updated = placements.get(4)!
+    expect(updated.oursIncluded).toBe(false)
+    expect(updated.oursTouched).toBe(true)
+    expect(updated.theirsIncluded).toBe(false) // stays excluded since it was already touched
+    expect(updated.theirsTouched).toBe(true)
+    expect(updated.centerLineCount).toBe(1) // Reverted to baseLines (1 line)
   })
 })
 

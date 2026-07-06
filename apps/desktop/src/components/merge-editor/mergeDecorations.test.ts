@@ -11,6 +11,7 @@ function block(overrides: Partial<MergeBlock> & Pick<MergeBlock, 'blockId' | 'ki
     theirsLineCount: 0,
     oursLines: [],
     theirsLines: [],
+    baseLines: [],
     ...overrides,
   }
 }
@@ -399,6 +400,79 @@ describe('computeMergeVisuals — alignment view zones', () => {
         endLine: 2,
         className: 'merge-text-deletion merge-resolved merge-border-bottom-deletion merge-resolved',
         marginClassName: 'merge-vivid-deletion merge-resolved merge-border-bottom-deletion merge-resolved',
+      },
+    ])
+  })
+
+  it('handles unresolved conflict: rejecting one side auto-includes the pending other side in the center', () => {
+    const blocks = conflictBlocks()
+    let placements = computeInitialPlacements(blocks)
+    // Reject ours (ours = false), theirs is not touched (initially false) -> auto-includes theirs
+    placements = updatePlacementAfterToggle(placements, blocks, blocks[1], 'ours', false)
+    const visuals = computeMergeVisuals(blocks, placements)
+
+    // Center has 1 line (theirs conflict line), and conflict is unresolved.
+    // It should render no view zones, but show the theirs block in red (conflict) decoration.
+    expect(visuals.center.viewZones).toEqual([])
+    expect(visuals.center.decorations).toEqual([
+      {
+        startLine: 2,
+        endLine: 2,
+        className: 'merge-text-conflict',
+        marginClassName: 'merge-vivid-conflict',
+      },
+    ])
+  })
+
+  it('handles resolved conflict with empty center (both sides rejected): draws resolved marker in center pane', () => {
+    const blocks = conflictBlocks()
+    let placements = computeInitialPlacements(blocks)
+    // Reject both sides
+    placements = updatePlacementAfterToggle(placements, blocks, blocks[1], 'ours', false)
+    placements = updatePlacementAfterToggle(placements, blocks, blocks[1], 'theirs', false)
+    const visuals = computeMergeVisuals(blocks, placements)
+
+    // Center has 0 lines and is resolved.
+    // Since it appends after the only remaining line (header, line 1), it renders as a bottom marker on line 1.
+    expect(visuals.center.decorations).toEqual([
+      {
+        startLine: 1,
+        endLine: 1,
+        className: 'merge-marker-bottom-conflict merge-resolved',
+        marginClassName: 'merge-marker-bottom-conflict merge-resolved',
+      },
+    ])
+    expect(visuals.center.viewZones).toEqual([])
+  })
+
+  it('handles resolved conflict: when both sides are rejected and base has lines, center reverts to base lines with resolved conflict decorations', () => {
+    const blocks = [
+      block({
+        blockId: 1,
+        kind: 'both-different',
+        oursStartLine: 1,
+        oursLineCount: 1,
+        theirsStartLine: 1,
+        theirsLineCount: 1,
+        oursLines: ['ours conflict'],
+        theirsLines: ['theirs conflict'],
+        baseLines: ['base content'],
+      }),
+    ]
+    let placements = computeInitialPlacements(blocks)
+    placements = updatePlacementAfterToggle(placements, blocks, blocks[0], 'ours', false)
+    placements = updatePlacementAfterToggle(placements, blocks, blocks[0], 'theirs', false)
+    const visuals = computeMergeVisuals(blocks, placements, true)
+
+    // Center has 1 line (base content) and is resolved.
+    // It should render no view zones, and render resolved conflict decorations for the base line.
+    expect(visuals.center.viewZones).toEqual([])
+    expect(visuals.center.decorations).toEqual([
+      {
+        startLine: 1,
+        endLine: 1,
+        className: 'merge-text-conflict merge-resolved merge-border-top-conflict merge-resolved merge-border-bottom-conflict merge-resolved',
+        marginClassName: 'merge-vivid-conflict merge-resolved merge-border-top-conflict merge-resolved merge-border-bottom-conflict merge-resolved',
       },
     ])
   })

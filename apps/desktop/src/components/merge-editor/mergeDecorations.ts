@@ -342,13 +342,34 @@ export function computeMergeVisuals(
       const { start, count } = subRangeForSide(placement, block, 'theirs')
       if (count > 0) centerParts.push({ startLine: start, lineCount: count, token: baseTheirsToken, resolved: placement.theirsTouched })
     }
-    const isDeletion = changeKindForBlock(block) === 'deletion'
-    const centerDeficit = changeKindForBlock(block) === 'addition'
-      ? maxCount - centerCount
-      : (isDeletion && resolved && centerCount === 0 ? 1 : 0)
-    const resolvedCenterEmptyRendering = isDeletion && resolved && centerCount === 0
-      ? 'accent-marker'
-      : centerEmptyRendering
+    if (!placement.oursIncluded && !placement.theirsIncluded && (baseOursToken || baseTheirsToken)) {
+      const start = placement.centerStartLine
+      const count = placement.centerLineCount // baseLines.length
+      const token = baseOursToken ?? baseTheirsToken ?? 'conflict'
+      if (count > 0) {
+        centerParts.push({ startLine: start, lineCount: count, token, resolved: true })
+      }
+    }
+    const changeKind = changeKindForBlock(block)
+    const isDeletion = changeKind === 'deletion'
+    const isConflict = changeKind === 'conflict'
+
+    let centerDeficit = 0
+    let resolvedCenterEmptyRendering = centerEmptyRendering
+
+    if (changeKind === 'addition') {
+      centerDeficit = maxCount - centerCount
+    } else if (isDeletion || isConflict) {
+      if (centerCount === 0) {
+        if (resolved) {
+          centerDeficit = 1
+          resolvedCenterEmptyRendering = 'accent-marker'
+        } else {
+          centerDeficit = maxCount
+          resolvedCenterEmptyRendering = 'zone'
+        }
+      }
+    }
 
     addPaneBlock(visuals.center, centerParts, {
       deficit: centerDeficit,

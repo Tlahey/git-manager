@@ -35,6 +35,7 @@ struct MergeBlockInternal {
     kind: BlockKind,
     ours_range: (usize, usize),
     theirs_range: (usize, usize),
+    base_range: (usize, usize),
 }
 
 /// Splits text into lines the same way git/libgit2 counts them: a trailing newline does not
@@ -186,6 +187,7 @@ fn merge_hunks(
             kind: BlockKind::Unchanged,
             ours_range,
             theirs_range,
+            base_range: (start, end),
         });
     };
 
@@ -242,6 +244,7 @@ fn merge_hunks(
             kind,
             ours_range,
             theirs_range,
+            base_range: (u_start, u_end),
         });
 
         pos = u_end;
@@ -258,6 +261,7 @@ fn blocks_to_dto(
     internal: Vec<MergeBlockInternal>,
     ours_lines: &[String],
     theirs_lines: &[String],
+    base_lines: &[String],
 ) -> Vec<MergeBlock> {
     internal
         .into_iter()
@@ -274,6 +278,8 @@ fn blocks_to_dto(
             let ours_end = b.ours_range.1.min(ours_lines.len()).max(ours_start);
             let theirs_start = b.theirs_range.0.min(theirs_lines.len());
             let theirs_end = b.theirs_range.1.min(theirs_lines.len()).max(theirs_start);
+            let base_start = b.base_range.0.min(base_lines.len());
+            let base_end = b.base_range.1.min(base_lines.len()).max(base_start);
             MergeBlock {
                 block_id: id,
                 kind,
@@ -283,6 +289,7 @@ fn blocks_to_dto(
                 theirs_line_count: theirs_end - theirs_start,
                 ours_lines: ours_lines[ours_start..ours_end].to_vec(),
                 theirs_lines: theirs_lines[theirs_start..theirs_end].to_vec(),
+                base_lines: base_lines[base_start..base_end].to_vec(),
             }
         })
         .collect()
@@ -385,7 +392,7 @@ pub fn get_merge_view(
         &ours_lines,
         &theirs_lines,
     );
-    let blocks = blocks_to_dto(internal, &ours_lines, &theirs_lines);
+    let blocks = blocks_to_dto(internal, &ours_lines, &theirs_lines, &base_lines);
 
     let conflict_count = blocks
         .iter()
@@ -560,6 +567,7 @@ mod tests {
             theirs_line_count: theirs.len(),
             ours_lines: ours.iter().map(|s| s.to_string()).collect(),
             theirs_lines: theirs.iter().map(|s| s.to_string()).collect(),
+            base_lines: Vec::new(),
         }
     }
 
@@ -633,7 +641,7 @@ mod tests {
         let theirs = lines("a\nb\nX\nY\nc\n");
         let theirs_hunks = diff_hunks(b"a\nb\nc\n", b"a\nb\nX\nY\nc\n").expect("diff buffers");
         let internal = merge_hunks(&[], &theirs_hunks, base.len(), &ours, &theirs);
-        let blocks = blocks_to_dto(internal, &ours, &theirs);
+        let blocks = blocks_to_dto(internal, &ours, &theirs, &base);
 
         let block = blocks
             .iter()

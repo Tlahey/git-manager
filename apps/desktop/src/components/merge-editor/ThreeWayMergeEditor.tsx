@@ -10,6 +10,7 @@ import {
   type BlockPlacement,
   type MergeSide,
   changeKindForBlock,
+  centerLinesForBlock,
   computeInitialCenterText,
   computeInitialPlacements,
   connectorCenterRangeForSide,
@@ -473,13 +474,16 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       const currentPlacement = placementsRef.current.get(block.blockId)
       if (!currentPlacement) return
 
-      const { start, count } = subRangeForSide(currentPlacement, block, side)
-      const newLines = linesForSide(block, side, included)
-      const hasTextChange = checkTextChanges(model, start, count, newLines)
-      const edit = buildRangeEdit(model, start, count, newLines)
-
       const altIdBefore = model.getAlternativeVersionId()
       const prePlacements = placementsRef.current
+
+      const postPlacements = updatePlacementAfterToggle(prePlacements, blocksRef.current, block, side, included)
+      const updatedPlacement = postPlacements.get(block.blockId)
+      if (!updatedPlacement) return
+
+      const newLines = centerLinesForBlock(block, updatedPlacement.oursIncluded, updatedPlacement.theirsIncluded)
+      const hasTextChange = checkTextChanges(model, currentPlacement.centerStartLine, currentPlacement.centerLineCount, newLines)
+      const edit = buildRangeEdit(model, currentPlacement.centerStartLine, currentPlacement.centerLineCount, newLines)
 
       if (hasTextChange) {
         isApplyingOwnEditRef.current = true
@@ -489,7 +493,6 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
       const altIdAfter = model.getAlternativeVersionId()
       const textChange = hasTextChange
-      const postPlacements = updatePlacementAfterToggle(prePlacements, blocksRef.current, block, side, included)
 
       historyRef.current.push({
         prePlacements,
@@ -524,10 +527,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       const flags = next.get(block.blockId)
       if (!flags) return
 
-      const newLines = [
-        ...(flags.oursIncluded ? block.oursLines : []),
-        ...(flags.theirsIncluded ? block.theirsLines : []),
-      ]
+      const newLines = centerLinesForBlock(block, flags.oursIncluded, flags.theirsIncluded)
       const hasTextChange = checkTextChanges(model, current.centerStartLine, current.centerLineCount, newLines)
       const edit = buildRangeEdit(model, current.centerStartLine, current.centerLineCount, newLines)
 

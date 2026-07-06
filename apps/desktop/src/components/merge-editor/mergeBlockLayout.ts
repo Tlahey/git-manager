@@ -52,6 +52,15 @@ function defaultFlags(block: MergeBlock): Pick<BlockPlacement, 'oursIncluded' | 
   if (block.kind === 'theirs-only' && kind === 'modification') {
     return { oursIncluded: false, theirsIncluded: true, oursTouched: false, theirsTouched: false }
   }
+  // Conflict where one side is a deletion: show the side that has content by default
+  if (block.kind === 'both-different') {
+    if (block.oursLineCount === 0 && block.theirsLineCount > 0) {
+      return { oursIncluded: false, theirsIncluded: true, oursTouched: false, theirsTouched: false }
+    }
+    if (block.theirsLineCount === 0 && block.oursLineCount > 0) {
+      return { oursIncluded: true, theirsIncluded: false, oursTouched: false, theirsTouched: false }
+    }
+  }
   // Everything else: show ours (default first-branch content).
   // - Unchanged / both-same: ours = theirs = base.
   // - Ours-only modification: ours = modified version (pre-applied).
@@ -59,6 +68,23 @@ function defaultFlags(block: MergeBlock): Pick<BlockPlacement, 'oursIncluded' | 
   // - Theirs-only addition: ours has 0 lines → center empty (= base has nothing here).
   // - Both-different conflict: ours shown as default, user picks.
   return { oursIncluded: true, theirsIncluded: false, oursTouched: false, theirsTouched: false }
+}
+
+export function centerLinesForBlock(
+  block: MergeBlock,
+  oursIncluded: boolean,
+  theirsIncluded: boolean
+): string[] {
+  if (oursIncluded && theirsIncluded) {
+    return [...block.oursLines, ...block.theirsLines]
+  }
+  if (oursIncluded) {
+    return block.oursLines
+  }
+  if (theirsIncluded) {
+    return block.theirsLines
+  }
+  return block.baseLines ?? []
 }
 
 function sideLines(block: MergeBlock, side: MergeSide): string[] {
@@ -74,7 +100,16 @@ function centerLineCountFor(
   block: MergeBlock,
   flags: Pick<BlockPlacement, 'oursIncluded' | 'theirsIncluded'>
 ): number {
-  return sideLineCount(block, 'ours', flags.oursIncluded) + sideLineCount(block, 'theirs', flags.theirsIncluded)
+  if (flags.oursIncluded && flags.theirsIncluded) {
+    return block.oursLineCount + block.theirsLineCount
+  }
+  if (flags.oursIncluded) {
+    return block.oursLineCount
+  }
+  if (flags.theirsIncluded) {
+    return block.theirsLineCount
+  }
+  return block.baseLines?.length ?? 0
 }
 
 type PlacementFlags = Pick<BlockPlacement, 'oursIncluded' | 'theirsIncluded' | 'oursTouched' | 'theirsTouched'>
@@ -116,8 +151,7 @@ export function computeInitialCenterText(blocks: MergeBlock[]): string {
   const lines: string[] = []
   for (const block of blocks) {
     const flags = defaultFlags(block)
-    if (flags.oursIncluded) lines.push(...block.oursLines)
-    if (flags.theirsIncluded) lines.push(...block.theirsLines)
+    lines.push(...centerLinesForBlock(block, flags.oursIncluded, flags.theirsIncluded))
   }
   return lines.join('\n')
 }
@@ -175,6 +209,25 @@ export function updatePlacementAfterToggle(
 
   const updated: BlockPlacement =
     side === 'ours' ? { ...current, oursIncluded: included, oursTouched: true } : { ...current, theirsIncluded: included, theirsTouched: true }
+
+  // Auto-toggle behavior for conflicts:
+  if (block.kind === 'both-different') {
+    // If the side is being rejected (included === false)
+    if (!included) {
+      const mirror: MergeSide = side === 'ours' ? 'theirs' : 'ours'
+      const mirrorTouched = side === 'ours' ? current.theirsTouched : current.oursTouched
+      // and the other side is not touched yet (still pending)
+      if (!mirrorTouched) {
+        // then include the other side
+        if (mirror === 'ours') {
+          updated.oursIncluded = true
+        } else {
+          updated.theirsIncluded = true
+        }
+      }
+    }
+  }
+
   const newCenterLineCount = centerLineCountFor(block, updated)
   const delta = newCenterLineCount - current.centerLineCount
   updated.centerLineCount = newCenterLineCount
@@ -235,6 +288,7 @@ export function deriveLivePlacements(
     const oursMatchesHere = matchesAt(block.oursLines, cursor)
     const bothMatchHere = oursMatchesHere && matchesAt(block.theirsLines, cursor + block.oursLines.length)
     const theirsMatchesHere = matchesAt(block.theirsLines, cursor)
+    const baseMatchesHere = matchesAt(block.baseLines, cursor)
 
     let oursIncluded: boolean
     let theirsIncluded: boolean
@@ -252,6 +306,10 @@ export function deriveLivePlacements(
       oursIncluded = false
       theirsIncluded = true
       consumed = block.theirsLines.length
+    } else if (baseMatchesHere) {
+      oursIncluded = false
+      theirsIncluded = false
+      consumed = block.baseLines.length
     } else {
       // Free-form edit (or excluding both sides entirely): find where a later block's known
       // content next resumes, bounded so a large file with no further recognizable match

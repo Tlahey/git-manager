@@ -11,6 +11,7 @@ function createBlock(overrides: Partial<MergeBlock> & Pick<MergeBlock, 'blockId'
     theirsLineCount: 0,
     oursLines: [],
     theirsLines: [],
+    baseLines: [],
     ...overrides,
   }
 }

@@ -197,6 +197,7 @@ pub struct MergeBlock {
     pub theirs_line_count: usize,
     pub ours_lines: Vec<String>,
     pub theirs_lines: Vec<String>,
+    pub base_lines: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
