@@ -46,7 +46,7 @@ export function useSidebarRows({
   const { data: stashes = [] } = useGitStashes(repoPath)
   const overrides = usePinnedBranchesStore((s) => s.overrides[repoPath])
 
-  const { myPrs, allPrs, isGithub, isLoading: prsLoading } = usePullRequests({
+  const { allPrs, isGithub, isLoading: prsLoading } = usePullRequests({
     remoteUrls,
     currentUser,
     githubToken,
@@ -350,7 +350,6 @@ export function useSidebarRows({
     groups,
     remoteGroups,
     remoteCount,
-    myPrs,
     allPrs,
     isGithub,
     prsLoading,

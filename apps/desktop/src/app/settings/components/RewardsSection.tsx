@@ -17,7 +17,7 @@ export function RewardsSection() {
           <Trophy className="h-4 w-4 text-amber-500" /> Succès & Récompenses Git
         </h3>
         <p className="text-[11px] text-muted-foreground">
-          Gérez le système de progression ludique, l\'XP de niveau et les récompenses cosmétiques.
+          Gérez le système de progression ludique, l&apos;XP de niveau et les récompenses cosmétiques.
         </p>
       </div>
 
@@ -30,7 +30,7 @@ export function RewardsSection() {
             Activer la Gamification
           </label>
           <p className="text-[10px] text-muted-foreground">
-            Affiche l\'onglet de succès, suit votre XP et débloque des thèmes personnalisés / cadres d\'avatars au cours de vos actions Git.
+            Affiche l&apos;onglet de succès, suit votre XP et débloque des thèmes personnalisés / cadres d&apos;avatars au cours de vos actions Git.
           </p>
         </div>
         <input
@@ -47,7 +47,7 @@ export function RewardsSection() {
         <div className="space-y-0.5">
           <h4 className="text-xs font-semibold text-destructive">Zone de Contrôle des Succès</h4>
           <p className="text-[10px] text-muted-foreground">
-            Remet à zéro l\'historique des succès complétés, votre XP et reverrouille les thèmes cosmétiques.
+            Remet à zéro l&apos;historique des succès complétés, votre XP et reverrouille les thèmes cosmétiques.
           </p>
         </div>
         <button

@@ -109,8 +109,8 @@ export function SshSection() {
 
       // Reload SWR
       mutate(pubKey, false)
-    } catch (err: any) {
-      setGenError(err?.message || String(err))
+    } catch (err: unknown) {
+      setGenError((err instanceof Error ? err.message : '') || String(err))
     } finally {
       setGenerating(false)
     }
@@ -169,7 +169,7 @@ export function SshSection() {
             onChange={(e) => updateSsh({ useSystemAgent: e.target.checked })}
             className="h-4 w-4 rounded border-border"
           />
-          <span className="text-xs text-foreground">Utiliser l'agent SSH système (recommandé)</span>
+          <span className="text-xs text-foreground">Utiliser l&apos;agent SSH système (recommandé)</span>
         </label>
       </div>
 
@@ -246,7 +246,7 @@ export function SshSection() {
                 <label className="text-[11px] font-medium text-foreground">Type de clé</label>
                 <select
                   value={genType}
-                  onChange={(e) => setGenType(e.target.value as any)}
+                  onChange={(e) => setGenType(e.target.value as 'ed25519' | 'rsa')}
                   className="w-full h-8 rounded border border-input bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                 >
                   <option value="ed25519">ED25519 (Recommandé)</option>
@@ -314,7 +314,7 @@ export function SshSection() {
                   Clé générée avec succès !
                 </p>
                 <p className="text-[10px] text-muted-foreground leading-relaxed">
-                  Ajoutez cette clé publique SSH à vos fournisseurs d'intégration (GitHub, GitLab, etc.).
+                  Ajoutez cette clé publique SSH à vos fournisseurs d&apos;intégration (GitHub, GitLab, etc.).
                 </p>
                 <div className="relative">
                   <Textarea

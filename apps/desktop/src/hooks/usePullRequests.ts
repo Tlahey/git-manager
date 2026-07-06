@@ -56,15 +56,15 @@ export function usePullRequests({
     swrKey,
     async ([_, owner, repo, tok]) => {
       const raw = await fetchRepoPRs(owner, repo, tok ?? undefined)
-      return raw.map((pr: any): PullRequest => ({
+      return raw.map((pr): PullRequest => ({
         number: pr.number,
         title: pr.title,
         body: pr.body ?? '',
         state: pr.draft ? 'draft' : (pr.state as PullRequest['state']),
-        author: pr.user.login,
-        authorAvatar: pr.user.avatar_url,
-        headRef: pr.head.ref,
-        baseRef: pr.base.ref,
+        author: pr.user?.login ?? '—',
+        authorAvatar: pr.user?.avatar_url ?? '',
+        headRef: pr.head?.ref ?? '',
+        baseRef: pr.base?.ref ?? '',
         url: pr.html_url,
         ciStatus: null,
         createdAt: pr.created_at,

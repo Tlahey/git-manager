@@ -4,7 +4,7 @@ import { useCommitDiff } from '../../hooks/useCommitDiff'
 import { useGitStatus } from '../../hooks/useGitStatus'
 import { useQueryClient } from '@tanstack/react-query'
 import { mutate } from 'swr'
-import type { GitGraphNode } from '@git-manager/git-types'
+import type { GitGraphNode, GitStatusEntry } from '@git-manager/git-types'
 
 import { CommitHeaderInfo } from './components/CommitHeaderInfo'
 import { useRepoDataStore } from '../../stores/repoData.store'
@@ -66,17 +66,17 @@ export function CommitDetailsPanel({
     if (isWip) {
       if (!gitStatus) return []
       const list: ProcessedFileItem[] = []
-      gitStatus.staged.forEach((f: any) =>
+      gitStatus.staged.forEach((f: GitStatusEntry) =>
         list.push({
           path: f.path,
-          status: f.status as any,
+          status: f.status as ProcessedFileItem['status'],
           staged: true
         })
       )
-      gitStatus.unstaged.forEach((f: any) =>
+      gitStatus.unstaged.forEach((f: GitStatusEntry) =>
         list.push({
           path: f.path,
-          status: f.status as any,
+          status: f.status as ProcessedFileItem['status'],
           staged: false
         })
       )
@@ -91,7 +91,7 @@ export function CommitDetailsPanel({
     }
     return (diff?.files ?? []).map((f) => ({
       path: f.newPath || f.oldPath,
-      status: f.status as any,
+      status: f.status as ProcessedFileItem['status'],
       additions: f.additions,
       deletions: f.deletions,
       staged: false

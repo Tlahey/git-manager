@@ -38,7 +38,7 @@ export function NotificationSection() {
             )}
             <div>
               <h4 className="text-xs font-semibold text-foreground">Autoriser les notifications</h4>
-              <p className="text-[10px] text-muted-foreground">Activer ou désactiver toutes les notifications de l'application.</p>
+              <p className="text-[10px] text-muted-foreground">Activer ou désactiver toutes les notifications de l&apos;application.</p>
             </div>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
@@ -78,7 +78,7 @@ export function NotificationSection() {
               <label className="flex items-center justify-between cursor-pointer">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xs text-foreground font-sans">Résultat de Pull (Mise à jour)</span>
-                  <span className="text-[10px] text-muted-foreground font-sans">Notifier lors de la réussite ou de l'échec de la récupération des commits</span>
+                  <span className="text-[10px] text-muted-foreground font-sans">Notifier lors de la réussite ou de l&apos;échec de la récupération des commits</span>
                 </div>
                 <input
                   type="checkbox"
@@ -91,7 +91,7 @@ export function NotificationSection() {
               <label className="flex items-center justify-between cursor-pointer">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xs text-foreground">Résultat de Push (Envoi)</span>
-                  <span className="text-[10px] text-muted-foreground">Notifier lors de l'envoi de vos commits locaux vers le serveur distant</span>
+                  <span className="text-[10px] text-muted-foreground">Notifier lors de l&apos;envoi de vos commits locaux vers le serveur distant</span>
                 </div>
                 <input
                   type="checkbox"
@@ -143,7 +143,7 @@ export function NotificationSection() {
               <label className="flex items-center justify-between cursor-pointer">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xs text-foreground font-sans">Mises à jour des revues</span>
-                  <span className="text-[10px] text-muted-foreground font-sans">Notifier quand l'état d'approbation d'une PR est mis à jour</span>
+                  <span className="text-[10px] text-muted-foreground font-sans">Notifier quand l&apos;état d&apos;approbation d&apos;une PR est mis à jour</span>
                 </div>
                 <input
                   type="checkbox"
@@ -169,7 +169,7 @@ export function NotificationSection() {
                   )}
                   <div className="flex flex-col">
                     <h4 className="text-xs font-semibold text-foreground">Effets sonores</h4>
-                    <p className="text-[10px] text-muted-foreground font-sans">Jouer un son lors d'une notification.</p>
+                    <p className="text-[10px] text-muted-foreground font-sans">Jouer un son lors d&apos;une notification.</p>
                   </div>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">

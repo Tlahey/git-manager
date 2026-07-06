@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Input } from '@git-manager/ui'
 import {
@@ -58,12 +58,10 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
       if (!selected || typeof selected !== 'string') return
       // Scan directories up to depth 4
       const paths = await apiScanRepos(selected, 4)
-      let addedCount = 0
       for (const repoPath of paths) {
         try {
           const name = repoPath.split('/').pop() || repoPath
           addDiscoveredRepo(repoPath, name)
-          addedCount++
         } catch (err) {
           console.error('Failed to add discovered repo:', repoPath, err)
         }
@@ -76,11 +74,11 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
   }
 
   // Filter callback matching name or path
-  const filterFn = (repo: { path: string; name: string }) => {
+  const filterFn = useCallback((repo: { path: string; name: string }) => {
     if (!filterText) return true
     const text = filterText.toLowerCase()
     return repo.name.toLowerCase().includes(text) || repo.path.toLowerCase().includes(text)
-  }
+  }, [filterText])
 
   // 1. Repos currently open in tabs (excluding special dashboard & PRs tabs)
   const activeTabs = useMemo(() => {
@@ -92,12 +90,12 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
         return { path, name }
       })
       .filter(filterFn)
-  }, [openTabs, savedRepos, filterText])
+  }, [openTabs, savedRepos, filterFn])
 
   // 2. Favorites repos (saved repos with pinned === true)
   const favoriteRepos = useMemo(() => {
     return savedRepos.filter((r) => r.pinned).filter(filterFn)
-  }, [savedRepos, filterText])
+  }, [savedRepos, filterFn])
 
   // 3. All repositories (Union of savedRepos and discoveredRepos)
   const allRepos = useMemo(() => {
@@ -116,7 +114,7 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
     })
 
     return Array.from(uniqueMap.values()).filter(filterFn)
-  }, [discoveredRepos, savedRepos, filterText])
+  }, [discoveredRepos, savedRepos, filterFn])
 
   const totalKnownCount = allRepos.length
 

@@ -199,7 +199,7 @@ export function useMergeScrollSync(
         }
       }
     })
-  }, [blocksRef, placementsRef])
+  }, [blocksRef, placementsRef, ignoreScrollSyncRef])
 
   return { attach, editorsRef }
 }

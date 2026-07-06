@@ -37,8 +37,8 @@ export function useGithubDeviceFlow({ onLoginSuccess }: UseGithubDeviceFlowOptio
       }
       onLoginSuccess(tokenVal, connectedUser)
       return true
-    } catch (err: any) {
-      setError(err.message || String(err))
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : '') || String(err))
       return false
     } finally {
       setConnecting(false)
@@ -75,12 +75,12 @@ export function useGithubDeviceFlow({ onLoginSuccess }: UseGithubDeviceFlowOptio
             setDeviceFlowData(null)
             await completeLoginWithToken(pollData.access_token)
           }
-        } catch (e: any) {
+        } catch (e: unknown) {
           console.error('Polling error:', e)
           clearInterval(id)
           setDeviceFlowData(null)
           setConnecting(false)
-          setError(`Polling error: ${e?.message || String(e)}`)
+          setError(`Polling error: ${e instanceof Error ? e.message : String(e)}`)
         }
       }, interval * 1000)
 
@@ -89,9 +89,9 @@ export function useGithubDeviceFlow({ onLoginSuccess }: UseGithubDeviceFlowOptio
       if (data.verification_uri) {
         window.open(data.verification_uri, '_blank')
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setConnecting(false)
-      setError(err?.message || String(err))
+      setError((err instanceof Error ? err.message : '') || String(err))
     }
   }
 

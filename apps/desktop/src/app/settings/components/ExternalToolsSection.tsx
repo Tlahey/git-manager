@@ -112,7 +112,7 @@ export function ExternalToolsSection() {
 
           {tools.externalEditor === 'custom' && (
             <div className="space-y-1">
-              <label className="text-[10px] font-medium text-muted-foreground">Commande de l'éditeur</label>
+              <label className="text-[10px] font-medium text-muted-foreground">Commande de l&apos;éditeur</label>
               <Input
                 value={tools.externalEditorCommand}
                 onChange={(e) => updateTools({ externalEditorCommand: e.target.value })}

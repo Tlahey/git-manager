@@ -96,7 +96,7 @@ export function WaitingForReviewTab({ allPRs, pinnedIds, onTogglePin, loading }:
         ) : waitingPRs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground/50">
             <CheckSquare className="h-6 w-6 opacity-30" />
-            <p className="text-xs">You're all caught up</p>
+            <p className="text-xs">You&apos;re all caught up</p>
           </div>
         ) : (
           <>

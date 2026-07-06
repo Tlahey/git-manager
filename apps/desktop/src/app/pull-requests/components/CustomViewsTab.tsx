@@ -346,7 +346,7 @@ export function CustomViewsTab({ allPRs, allIssues, pinnedIds, onTogglePin, load
             <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">Criteria</p>
             {activeFilter.titleContains && (
               <p className="text-[10px] text-muted-foreground">
-                <span className="font-medium text-foreground/70">Title:</span> "{activeFilter.titleContains}"
+                <span className="font-medium text-foreground/70">Title:</span> &quot;{activeFilter.titleContains}&quot;
               </p>
             )}
             {activeFilter.authorContains && (

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import type { GitStatus } from '@git-manager/git-types'
+import type { GitStatus, GitStatusEntry } from '@git-manager/git-types'
 import {
   apiUnstageAll,
   apiStageFile,
@@ -64,7 +64,7 @@ export function useWipCommitPanel(
 
     try {
       // 1. Get currently staged files
-      const originallyStaged = (gitStatus?.staged ?? []).map((x: any) => x.path)
+      const originallyStaged = (gitStatus?.staged ?? []).map((x: GitStatusEntry) => x.path)
 
       // 2. Unstage everything
       await apiUnstageAll(repoPath)
@@ -96,11 +96,11 @@ export function useWipCommitPanel(
 
       // 5. Restore original staging state
       await apiUnstageAll(repoPath)
-      const freshStatus = await queryClient.fetchQuery<any>({
+      const freshStatus = await queryClient.fetchQuery<GitStatus>({
         queryKey: ['git-status', repoPath]
       })
       const activeChanges = new Set<string>([
-        ...(freshStatus?.unstaged ?? []).map((x: any) => x.path),
+        ...(freshStatus?.unstaged ?? []).map((x: GitStatusEntry) => x.path),
         ...(freshStatus?.untracked ?? [])
       ])
       for (const path of originallyStaged) {
@@ -125,7 +125,7 @@ export function useWipCommitPanel(
     }
 
     try {
-      const originallyStaged = (gitStatus?.staged ?? []).map((x: any) => x.path)
+      const originallyStaged = (gitStatus?.staged ?? []).map((x: GitStatusEntry) => x.path)
       const batchFileSet = new Set(files.map((x) => x.path))
 
       // Unstage all
@@ -147,11 +147,11 @@ export function useWipCommitPanel(
       })
 
       // Restore remaining originally staged files
-      const freshStatus = await queryClient.fetchQuery<any>({
+      const freshStatus = await queryClient.fetchQuery<GitStatus>({
         queryKey: ['git-status', repoPath]
       })
       const activeChanges = new Set<string>([
-        ...(freshStatus?.unstaged ?? []).map((x: any) => x.path),
+        ...(freshStatus?.unstaged ?? []).map((x: GitStatusEntry) => x.path),
         ...(freshStatus?.untracked ?? [])
       ])
       for (const path of originallyStaged) {

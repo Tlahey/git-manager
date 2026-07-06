@@ -82,7 +82,7 @@ export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogP
         <DialogHeader>
           <DialogTitle>Cloner un dépôt</DialogTitle>
           <DialogDescription>
-            Saisissez l'URL du dépôt distant et choisissez où le cloner.
+            Saisissez l&apos;URL du dépôt distant et choisissez où le cloner.
           </DialogDescription>
         </DialogHeader>
 

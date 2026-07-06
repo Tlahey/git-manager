@@ -58,7 +58,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
     const openMergeWindow = async () => {
       const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
-      const safeLabel = `merge-${repoPath.replace(/[^a-zA-Z0-9_\-]/g, '-')}-${conflictFilePath.replace(/[^a-zA-Z0-9_\-]/g, '-')}`
+      const safeLabel = `merge-${repoPath.replace(/[^a-zA-Z0-9_-]/g, '-')}-${conflictFilePath.replace(/[^a-zA-Z0-9_-]/g, '-')}`
       const url = `/?window=merge&repoPath=${encodeURIComponent(repoPath)}&filePath=${encodeURIComponent(conflictFilePath)}`
 
       const existing = await WebviewWindow.getByLabel(safeLabel)
@@ -162,7 +162,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   // Reset active diff on commit selection or repo changes
   useEffect(() => {
     setActiveDiffFile(null)
-  }, [primaryOid, repoPath])
+  }, [primaryOid, repoPath, setActiveDiffFile])
 
   // ── Menu contextuel natif (macOS) + dialogs + actions du graphe ───────────
   const { pendingAction, setPendingAction, toast, openMenuAt, handleCommitWip } = useGitGraphActions({

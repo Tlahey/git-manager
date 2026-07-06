@@ -1,4 +1,5 @@
 import { Suspense, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
+import type * as monaco from 'monaco-editor'
 import { useSettingsStore } from '../../stores/settings.store'
 import { registerAndApplyDynamicTheme } from '../../lib/monacoThemes'
 import { MonacoEditor, MonacoDiffEditor, languageForFilePath } from '../../lib/monacoSetup'
@@ -22,8 +23,8 @@ export interface MonacoDiffViewerRef {
 export const MonacoDiffViewer = forwardRef<MonacoDiffViewerRef, MonacoDiffViewerProps>(
   ({ original, modified, filePath, viewMode, activeTab, ignoreWhitespace }, ref) => {
     const theme = useSettingsStore((s) => s.settings.appearance.theme)
-    const monacoRef = useRef<any>(null)
-    const diffEditorRef = useRef<any>(null)
+    const monacoRef = useRef<typeof monaco | null>(null)
+    const diffEditorRef = useRef<monaco.editor.IStandaloneDiffEditor | null>(null)
 
     // Re-apply theme when theme changes
     useEffect(() => {

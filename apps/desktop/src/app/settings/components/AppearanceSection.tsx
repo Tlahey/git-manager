@@ -226,7 +226,7 @@ export function AppearanceSection() {
         </label>
         <select
           value={appearance.notificationLocation || 'top-right'}
-          onChange={(e) => updateAppearance({ notificationLocation: e.target.value as any })}
+          onChange={(e) => updateAppearance({ notificationLocation: e.target.value as 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' })}
           className="w-full h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-sans"
         >
           <option value="top-right">Haut droit (Top Right)</option>

@@ -1,4 +1,4 @@
-import i18next from 'i18next'
+import i18next, { type TFunction } from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
 // FR
@@ -49,3 +49,4 @@ export function initI18n(language: SupportedLanguage = 'fr') {
 
 export { i18next }
 export { useTranslation } from 'react-i18next'
+export type { TFunction }

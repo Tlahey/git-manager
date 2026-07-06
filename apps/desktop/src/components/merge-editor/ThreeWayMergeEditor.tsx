@@ -1168,7 +1168,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         handleCenterContentChange()
         scheduleRecompute()
       },
-      [handleCenterContentChange, scheduleRecompute]
+      [handleCenterContentChange, scheduleRecompute, updatePlacementsStateAndRef]
     )
 
     const handlePaneMount = useCallback(
@@ -1224,7 +1224,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
           setTimeout(() => scheduleRecompute(), 250)
         }
       },
-      [attachScrollSync, scheduleRecompute, handleCenterContentEvent, applyScrollOffset, updateActiveBlockIndex]
+      [attachScrollSync, scheduleRecompute, handleCenterContentEvent, applyScrollOffset, updateActiveBlockIndex, triggerUndo, triggerRedo]
     )
 
     useEffect(() => {
@@ -1375,7 +1375,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
           })
         },
       }),
-      [repoPath, filePath, executeWithScrollPreservation, updatePlacementsStateAndRef]
+      [executeWithScrollPreservation, updatePlacementsStateAndRef, applyAutoMerge]
     )
 
     useEffect(() => {

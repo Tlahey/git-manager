@@ -168,7 +168,6 @@ export function useFileTree<T extends FileTreeInputFile>(files: T[], resetKey: s
       setExpandedFolders(foldersToExpand)
       setButtonState('collapse')
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, filteredFiles])
 
   // Reset expanded folders when the tree's identity changes (e.g. switching commit/repo)

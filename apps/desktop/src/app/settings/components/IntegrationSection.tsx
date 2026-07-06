@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button, Input, ScrollArea } from '@git-manager/ui'
-import { Github, Flame, Gitlab, Check, Trash2, Key, Globe, User, Plus, RefreshCw } from 'lucide-react'
+import { Github, Flame, Gitlab, Check, Trash2, Key, Globe, User, Plus, RefreshCw, type LucideIcon } from 'lucide-react'
 import { GithubSection } from './GithubSection'
 import { useSettingsStore } from '../../../stores/settings.store'
 import type { ProviderAccount } from '@git-manager/git-types'
@@ -30,7 +30,7 @@ export function IntegrationSection() {
   const [bbToken, setBbToken] = useState('')
   const [bbConnecting, setBbConnecting] = useState(false)
 
-  const navProviders: { id: Provider; label: string; icon: any }[] = [
+  const navProviders: { id: Provider; label: string; icon: LucideIcon }[] = [
     { id: 'github', label: 'GitHub', icon: Github },
     { id: 'gitlab', label: 'GitLab', icon: Gitlab },
     { id: 'bitbucket', label: 'Bitbucket', icon: Flame },
@@ -172,7 +172,7 @@ export function IntegrationSection() {
                   <div className="space-y-1">
                     <label className="text-[11px] font-medium text-foreground flex items-center gap-1.5">
                       <Globe className="h-3 w-3 text-muted-foreground" />
-                      URL de l'instance GitLab
+                      URL de l&apos;instance GitLab
                     </label>
                     <Input
                       value={glHost}
@@ -185,7 +185,7 @@ export function IntegrationSection() {
                   <div className="space-y-1">
                     <label className="text-[11px] font-medium text-foreground flex items-center gap-1.5">
                       <User className="h-3 w-3 text-muted-foreground" />
-                      Nom d'utilisateur
+                      Nom d&apos;utilisateur
                     </label>
                     <Input
                       value={glUser}
@@ -312,7 +312,7 @@ export function IntegrationSection() {
                   <div className="space-y-1">
                     <label className="text-[11px] font-medium text-foreground flex items-center gap-1.5">
                       <User className="h-3 w-3 text-muted-foreground" />
-                      Nom d'utilisateur
+                      Nom d&apos;utilisateur
                     </label>
                     <Input
                       value={bbUser}

@@ -13,7 +13,7 @@ import { appEventBus, type AppEvent } from '../lib/appEventBus'
 export async function callCommand<T>(
   event: AppEvent,
   fn: () => Promise<T>,
-  payload?: any
+  payload?: unknown
 ): Promise<T> {
   const result = await fn()
   appEventBus.notify(event, payload)

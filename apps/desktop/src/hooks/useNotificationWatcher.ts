@@ -18,9 +18,12 @@ import {
   requestPermission,
   sendNotification,
   onAction,
+  type Options as NotificationActionEvent,
 } from '@tauri-apps/plugin-notification'
+import type { PluginListener } from '@tauri-apps/api/core'
+import type { TFunction } from '@git-manager/i18n'
 
-export async function showNativeNotification(notif: AppNotification, t: any) {
+export async function showNativeNotification(notif: AppNotification, t: TFunction) {
   try {
     let permissionGranted = await isPermissionGranted()
     if (!permissionGranted) {
@@ -65,7 +68,7 @@ export function useNotificationWatcher() {
 
   // Setup click action listener and bring window to focus, and request permission on mount
   useEffect(() => {
-    let unsub: any
+    let unsub: PluginListener | undefined
 
     async function init() {
       // 1. Request permission if enabled
@@ -82,9 +85,9 @@ export function useNotificationWatcher() {
 
       // 2. Listen to actions/clicks
       try {
-        unsub = await onAction((event: any) => {
+        unsub = await onAction((event: NotificationActionEvent) => {
           window.focus()
-          const notifId = event?.notification?.id
+          const notifId = event?.id
           if (notifId) {
             const notif = useNotificationStore.getState().notifications.find((n) => n.id === notifId)
             if (notif) {
@@ -103,7 +106,7 @@ export function useNotificationWatcher() {
 
     return () => {
       if (unsub) {
-        unsub()
+        unsub.unregister()
       }
     }
   }, [notificationsEnabled])
@@ -168,5 +171,5 @@ export function useNotificationWatcher() {
     if (hasUpdates || !keysCountMatch) {
       setPreviousPRs(currentPRsMap)
     }
-  }, [prs, loading, hasSessionInitialized, previousPRs, notificationsEnabled, soundEnabled, settings.notifications, t])
+  }, [prs, loading, hasSessionInitialized, previousPRs, notificationsEnabled, soundEnabled, settings.notifications, t, addNotification, setPreviousPRs, setSessionInitialized])
 }

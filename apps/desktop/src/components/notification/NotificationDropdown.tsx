@@ -9,8 +9,9 @@ import { Bell, CheckCheck, Trash2, Play, Sparkles } from 'lucide-react'
 import { getNotificationIcon, getNotificationText } from './utils'
 import { showNativeNotification } from '../../hooks/useNotificationWatcher'
 import { useAnchoredMenu } from '../../hooks/useAnchoredMenu'
+import type { TFunction } from '@git-manager/i18n'
 
-function formatRelativeTime(timestamp: number, t: any): string {
+function formatRelativeTime(timestamp: number, t: TFunction): string {
   const diff = Date.now() - timestamp
   const seconds = Math.floor(diff / 1000)
   if (seconds < 60) return t('time.justNow')
@@ -184,14 +185,14 @@ export function NotificationDropdown() {
             </div>
 
             {/* Simulated actions panel (only when no github token) */}
-            {((import.meta as any).env?.DEV || !hasToken) && (
+            {(import.meta.env.DEV || !hasToken) && (
               <div className="border-t border-border bg-accent/20 p-2.5">
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-1 text-[10px] font-semibold text-amber-500/80">
                     <Sparkles className="h-3 w-3" />
                     <span>{t('notifications.simulator')}</span>
                   </div>
-                  {(import.meta as any).env?.DEV && (
+                  {import.meta.env.DEV && (
                     <span className="rounded bg-primary/10 px-1 py-0.2 text-[8px] font-bold text-primary tracking-wide">
                       DEV MODE
                     </span>
@@ -200,7 +201,7 @@ export function NotificationDropdown() {
                 
                 <div className="flex flex-col gap-1.5">
                   {/* Test triggers visible only in development mode */}
-                  {(import.meta as any).env?.DEV && (
+                  {import.meta.env.DEV && (
                     <div className="grid grid-cols-2 gap-1.5 mb-1">
                       <button
                         onClick={() => {
@@ -295,7 +296,7 @@ export function NotificationDropdown() {
 
                         <select
                           value={simAction}
-                          onChange={(e) => setSimAction(e.target.value as any)}
+                          onChange={(e) => setSimAction(e.target.value as Parameters<typeof simulateChange>[1])}
                           className="h-6 rounded border border-border bg-background px-1.5 text-[9px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                         >
                           <option value="merge">{t('notifications.sim.prMerged')}</option>

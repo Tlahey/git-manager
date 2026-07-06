@@ -191,11 +191,12 @@ export const useGameStore = create<GameState>()(
         prMergedCount: state.prMergedCount,
         terminalCommandCount: state.terminalCommandCount,
       }),
-      merge: (persistedState: any, currentState: any) => {
-        const merged = { ...currentState, ...persistedState }
-        if (persistedState && persistedState.achievements) {
+      merge: (persistedState: unknown, currentState: GameState): GameState => {
+        const persisted = (persistedState ?? {}) as Partial<GameState>
+        const merged: GameState = { ...currentState, ...persisted }
+        if (persisted.achievements) {
           merged.achievements = INITIAL_ACHIEVEMENTS.map((staticAch) => {
-            const saved = persistedState.achievements.find((a: any) => a.id === staticAch.id)
+            const saved = persisted.achievements?.find((a) => a.id === staticAch.id)
             return {
               ...staticAch,
               unlocked: saved ? saved.unlocked : false,
@@ -210,6 +211,6 @@ export const useGameStore = create<GameState>()(
 )
 
 // Automatically wire the store to the appEventBus event channel on import
-appEventBus.subscribe((event: AppEvent, payload?: any) => {
+appEventBus.subscribe((event: AppEvent, payload?: unknown) => {
   useGameStore.getState().processAppEvent(event, payload)
 })

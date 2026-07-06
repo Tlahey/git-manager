@@ -18,7 +18,7 @@ export type AppEvent =
   | 'terminal_command'
   | 'pr_closed_or_merged'
 
-export type AppEventListener = (event: AppEvent, payload?: any) => void
+export type AppEventListener = (event: AppEvent, payload?: unknown) => void
 
 class AppEventBus {
   private listeners: Set<AppEventListener> = new Set()
@@ -30,7 +30,7 @@ class AppEventBus {
     }
   }
 
-  notify(event: AppEvent, payload?: any) {
+  notify(event: AppEvent, payload?: unknown) {
     this.listeners.forEach((listener) => {
       try {
         listener(event, payload)

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { editor } from 'monaco-editor'
 import type { MergeBlock } from '@git-manager/git-types'
 import { getScrollCoordinatesForContent } from './useMergeScrollSync'
 import { computeInitialPlacements } from './mergeBlockLayout'
@@ -28,7 +29,7 @@ function mockEditor(lineCount: number, lineHeights: Record<number, number> = {})
       }
       return top
     },
-  } as any
+  } as unknown as editor.IStandaloneCodeEditor
 }
 
 describe('getScrollCoordinatesForContent', () => {

@@ -3,7 +3,7 @@ import * as monaco from 'monaco-editor'
 export interface MonacoThemeConfig {
   base: 'vs' | 'vs-dark' | 'hc-black' | 'hc-light'
   inherit: boolean
-  rules: any[]
+  rules: monaco.editor.ITokenThemeRule[]
   colors: Record<string, string>
 }
 
@@ -451,7 +451,7 @@ export function registerMonacoThemes() {
   Object.entries(monacoThemes).forEach(([themeName, themeConfig]) => {
     try {
       monaco.editor.defineTheme(themeName, themeConfig)
-    } catch (error) {
+    } catch {
       // Theme already defined
     }
   })
@@ -533,7 +533,7 @@ function isBackgroundDark(): boolean {
   return true // fallback to dark
 }
 
-export function registerAndApplyDynamicTheme(monacoInstance: any) {
+export function registerAndApplyDynamicTheme(monacoInstance: typeof monaco | null | undefined) {
   if (!monacoInstance) return
 
   const isDark = isBackgroundDark()

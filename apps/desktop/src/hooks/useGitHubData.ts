@@ -11,6 +11,8 @@ import {
   fetchGitHubPRDetails,
   fetchGitHubCommitCiStatus,
   fetchGitHubContributions,
+  type GhCheckRun,
+  type GhCommitStatus,
 } from '../api/github.api'
 
 interface GitHubData {
@@ -104,24 +106,24 @@ export function useGitHubData(): GitHubData {
             if (hasCheckRuns || hasStatuses) {
               const hasFailure =
                 (hasCheckRuns &&
-                  checkRuns.some((run: any) =>
-                    ['failure', 'timed_out', 'cancelled'].includes(run.conclusion)
+                  checkRuns.some((run: GhCheckRun) =>
+                    ['failure', 'timed_out', 'cancelled'].includes(run.conclusion ?? '')
                   )) ||
-                (hasStatuses && ['failure', 'error'].includes(commitStatusState))
+                (hasStatuses && ['failure', 'error'].includes(commitStatusState ?? ''))
 
               if (hasFailure) {
                 resolvedCiStatus = 'failure'
               } else {
                 const hasRunning =
                   (hasCheckRuns &&
-                    checkRuns.some((run: any) => ['in_progress', 'queued'].includes(run.status))) ||
+                    checkRuns.some((run: GhCheckRun) => ['in_progress', 'queued'].includes(run.status))) ||
                   (hasStatuses && commitStatusState === 'pending')
 
                 if (hasRunning) {
                   resolvedCiStatus = 'running'
                 } else {
                   const hasSuccess =
-                    (hasCheckRuns && checkRuns.some((run: any) => run.conclusion === 'success')) ||
+                    (hasCheckRuns && checkRuns.some((run: GhCheckRun) => run.conclusion === 'success')) ||
                     (hasStatuses && commitStatusState === 'success')
 
                   if (hasSuccess) {
@@ -129,21 +131,21 @@ export function useGitHubData(): GitHubData {
                   } else {
                     const allSkipped =
                       hasCheckRuns &&
-                      checkRuns.every((run: any) => ['skipped', 'neutral'].includes(run.conclusion))
+                      checkRuns.every((run: GhCheckRun) => ['skipped', 'neutral'].includes(run.conclusion ?? ''))
                     resolvedCiStatus = allSkipped ? 'skipped' : null
                   }
                 }
               }
 
               // Build details list
-              const checkRunsDetails: CiDetail[] = checkRuns.map((run: any) => {
+              const checkRunsDetails: CiDetail[] = checkRuns.map((run: GhCheckRun) => {
                 let s: CiDetail['status'] = 'unknown'
                 if (run.status === 'in_progress' || run.status === 'queued') {
                   s = 'running'
                 } else if (run.status === 'completed') {
                   if (run.conclusion === 'success') s = 'success'
-                  else if (['failure', 'timed_out', 'cancelled'].includes(run.conclusion)) s = 'failure'
-                  else if (['skipped', 'neutral'].includes(run.conclusion)) s = 'skipped'
+                  else if (['failure', 'timed_out', 'cancelled'].includes(run.conclusion ?? '')) s = 'failure'
+                  else if (['skipped', 'neutral'].includes(run.conclusion ?? '')) s = 'skipped'
                 }
                 return {
                   name: run.name ?? 'Check run',
@@ -152,7 +154,7 @@ export function useGitHubData(): GitHubData {
                 }
               })
 
-              const statusesDetails: CiDetail[] = statuses.map((status: any) => {
+              const statusesDetails: CiDetail[] = statuses.map((status: GhCommitStatus) => {
                 let s: CiDetail['status'] = 'unknown'
                 if (status.state === 'success') s = 'success'
                 else if (['failure', 'error'].includes(status.state)) s = 'failure'

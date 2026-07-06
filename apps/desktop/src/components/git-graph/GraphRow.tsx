@@ -305,6 +305,8 @@ function CellContent({
   const { data: stashes } = useGitStashes(activeRepo)
   const isStashCommit = node.refs.some((r) => r.type === 'stash')
   const stash = isStashCommit ? stashes?.find((s) => s.commitOid === commit.oid) : null
+  const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
+  const avatarSize = rowHeightSetting === 'small' ? 24 : 32
 
   switch (col) {
     case 'refs': {
@@ -335,8 +337,6 @@ function CellContent({
       const isStash = node.refs.some((r) => r.type === 'stash')
       const COL_WIDTH = 36
       const nodeX = node.column * COL_WIDTH + COL_WIDTH / 2
-      const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
-      const avatarSize = rowHeightSetting === 'small' ? 24 : 32
       return (
         <div className="w-full h-full relative overflow-visible flex items-center">
           {/* Conteneur de découpe (clip) élargi pour le graph uniquement */}

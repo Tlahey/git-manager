@@ -39,7 +39,7 @@ export function ConflictResolutionPanel({
     refetchInterval: 4000,
   })
 
-  const resolvedFiles = gitStatus?.staged ?? []
+  const resolvedFiles = useMemo(() => gitStatus?.staged ?? [], [gitStatus?.staged])
 
   const conflictedItems = useMemo<ProcessedFileItem[]>(
     () => conflictedFiles.map((path) => ({ path, status: 'modified', staged: false })),
@@ -62,10 +62,14 @@ export function ConflictResolutionPanel({
   const [isLoading, setIsLoading] = useState<'continue' | 'abort' | 'skip' | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Reset the editable message whenever the step being replayed changes.
+  // Reset the editable message whenever the step being replayed changes. Deliberately keyed
+  // only on currentOid — currentMessage must NOT be a dep, or the operator's in-progress edits
+  // would get clobbered every time the polling refetch (see `refetchInterval` above) returns a
+  // new object with the same message.
   useEffect(() => {
     setMessage(rebaseState?.currentMessage?.trim() ?? '')
     setAmend(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rebaseState?.currentOid])
 
   function refresh() {
