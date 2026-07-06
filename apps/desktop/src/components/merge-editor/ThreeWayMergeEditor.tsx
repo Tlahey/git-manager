@@ -17,10 +17,8 @@ import {
   connectorClassForSide,
   deriveLivePlacements,
   isChangeSource,
-  linesForSide,
   placementOverridesAfterAutoMerge,
   recomputeAllPlacements,
-  subRangeForSide,
   updatePlacementAfterToggle,
 } from './mergeBlockLayout'
 import {

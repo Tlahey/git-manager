@@ -7,193 +7,131 @@ import type { Monaco } from '@monaco-editor/react'
 type Editor = editor.IStandaloneCodeEditor
 export type PaneIndex = 0 | 1 | 2
 
-interface AlignedCoordinates {
-  theirsLine: number
-  theirsFrozen: boolean
-  centerLine: number
-  centerFrozen: boolean
-  oursLine: number
-  oursFrozen: boolean
-}
-
-function getVirtualOffset(
+function getPaneLineRange(
   block: MergeBlock,
-  placement: BlockPlacement,
-  offset: number,
-  masterPane: PaneIndex
-): number {
-  if (block.kind === 'unchanged' || block.kind === 'both-same') {
-    return offset
-  }
-  if (masterPane === 1) { // Center
-    return offset
-  }
-  if (masterPane === 0) { // Theirs
-    if (placement.theirsIncluded) {
-      return (placement.oursIncluded ? block.oursLineCount : 0) + offset
-    }
-    return offset
-  }
-  if (masterPane === 2) { // Ours
-    return offset
-  }
-  return offset
-}
-
-function getCoordinatesForBlockOffset(
-  block: MergeBlock,
-  placement: BlockPlacement,
-  offset: number
-): AlignedCoordinates {
-  const oursCount = block.oursLineCount
-  const theirsCount = block.theirsLineCount
-  const centerCount = placement.centerLineCount
-
-  if (block.kind === 'unchanged' || block.kind === 'both-same') {
+  placement: BlockPlacement | undefined,
+  paneIndex: PaneIndex
+): { startLine: number; lineCount: number } {
+  if (paneIndex === 0) {
+    return { startLine: block.theirsStartLine, lineCount: block.theirsLineCount }
+  } else if (paneIndex === 1) {
     return {
-      theirsLine: block.theirsStartLine + offset,
-      theirsFrozen: false,
-      oursLine: block.oursStartLine + offset,
-      oursFrozen: false,
-      centerLine: placement.centerStartLine + offset,
-      centerFrozen: false,
-    }
-  }
-
-  if (placement.oursIncluded && placement.theirsIncluded) {
-    if (offset < oursCount) {
-      return {
-        theirsLine: block.theirsStartLine,
-        theirsFrozen: true,
-        oursLine: block.oursStartLine + offset,
-        oursFrozen: false,
-        centerLine: placement.centerStartLine + offset,
-        centerFrozen: false,
-      }
-    } else {
-      return {
-        theirsLine: block.theirsStartLine + (offset - oursCount),
-        theirsFrozen: false,
-        oursLine: block.oursStartLine + oursCount,
-        oursFrozen: true,
-        centerLine: placement.centerStartLine + offset,
-        centerFrozen: false,
-      }
-    }
-  } else if (placement.oursIncluded) {
-    return {
-      theirsLine: block.theirsStartLine,
-      theirsFrozen: true,
-      oursLine: block.oursStartLine + Math.min(offset, oursCount),
-      oursFrozen: offset >= oursCount,
-      centerLine: placement.centerStartLine + Math.min(offset, centerCount),
-      centerFrozen: offset >= centerCount,
-    }
-  } else if (placement.theirsIncluded) {
-    return {
-      theirsLine: block.theirsStartLine + Math.min(offset, theirsCount),
-      theirsFrozen: offset >= theirsCount,
-      oursLine: block.oursStartLine,
-      oursFrozen: true,
-      centerLine: placement.centerStartLine + Math.min(offset, centerCount),
-      centerFrozen: offset >= centerCount,
+      startLine: placement?.centerStartLine ?? 1,
+      lineCount: placement?.centerLineCount ?? 0,
     }
   } else {
-    return {
-      theirsLine: block.theirsStartLine,
-      theirsFrozen: true,
-      oursLine: block.oursStartLine,
-      oursFrozen: true,
-      centerLine: placement.centerStartLine,
-      centerFrozen: true,
-    }
+    return { startLine: block.oursStartLine, lineCount: block.oursLineCount }
   }
 }
 
-export function getAlignedCoordinatesForPaneLine(
-  line: number,
-  sourcePane: PaneIndex,
+function getPaneYCoords(
+  editor: Editor,
+  startLine: number,
+  lineCount: number
+): { yStart: number; yEnd: number } {
+  const model = editor.getModel()
+  const totalLines = model ? model.getLineCount() : 1
+
+  const safeStart = Math.max(1, Math.min(startLine, totalLines + 1))
+  const yStart = editor.getTopForLineNumber(safeStart)
+
+  if (lineCount === 0) {
+    return { yStart, yEnd: yStart }
+  }
+
+  const safeEnd = Math.max(1, Math.min(startLine + lineCount, totalLines + 1))
+  const yEnd = editor.getTopForLineNumber(safeEnd)
+
+  return { yStart, yEnd }
+}
+
+function findActiveBlock(
+  editor: Editor,
   blocks: MergeBlock[],
-  placements: Map<number, BlockPlacement>
-): AlignedCoordinates {
-  let foundBlock: MergeBlock | null = null
-  let offset = 0
+  placements: Map<number, BlockPlacement>,
+  paneIndex: PaneIndex,
+  scrollTop: number
+): { block: MergeBlock; yStart: number; yEnd: number; index: number } | null {
+  if (blocks.length === 0) return null
 
-  for (const block of blocks) {
-    const start =
-      sourcePane === 0
-        ? block.theirsStartLine
-        : sourcePane === 1
-        ? placements.get(block.blockId)?.centerStartLine
-        : block.oursStartLine
+  const mapped = blocks.map((block, index) => {
+    const placement = placements.get(block.blockId)
+    const { startLine, lineCount } = getPaneLineRange(block, placement, paneIndex)
+    const { yStart, yEnd } = getPaneYCoords(editor, startLine, lineCount)
+    return { block, yStart, yEnd, index }
+  })
 
-    const count =
-      sourcePane === 0
-        ? block.theirsLineCount
-        : sourcePane === 1
-        ? placements.get(block.blockId)?.centerLineCount
-        : block.oursLineCount
-
-    if (
-      start !== undefined &&
-      count !== undefined &&
-      count > 0 &&
-      line >= start &&
-      line < start + count
-    ) {
-      foundBlock = block
-      offset = line - start
-      break
+  // Find the first block containing the scrollTop (where height > 0)
+  for (const item of mapped) {
+    if (item.yStart < item.yEnd && scrollTop >= item.yStart && scrollTop < item.yEnd) {
+      return item
     }
   }
 
-  if (foundBlock) {
-    const placement = placements.get(foundBlock.blockId)
-    if (placement) {
-      const virtualOffset = getVirtualOffset(foundBlock, placement, offset, sourcePane)
-      return getCoordinatesForBlockOffset(foundBlock, placement, virtualOffset)
+  // If scrollTop is at or before the first block
+  if (scrollTop <= mapped[0].yStart) {
+    return mapped[0]
+  }
+
+  // If scrollTop is at or after the last block
+  const lastItem = mapped[mapped.length - 1]
+  if (scrollTop >= lastItem.yEnd) {
+    return lastItem
+  }
+
+  // If scrollTop is exactly at a boundary between blocks
+  for (const item of mapped) {
+    if (scrollTop <= item.yStart) {
+      return item
     }
   }
 
-  // Fallback: past the end or not inside any block with lineCount > 0
-  if (blocks.length > 0) {
-    const lastBlock = blocks[blocks.length - 1]
-    const lastPlacement = placements.get(lastBlock.blockId)
-    if (lastPlacement) {
-      const sourceStart =
-        sourcePane === 0
-          ? lastBlock.theirsStartLine
-          : sourcePane === 1
-          ? lastPlacement.centerStartLine
-          : lastBlock.oursStartLine
-      const sourceCount =
-        sourcePane === 0
-          ? lastBlock.theirsLineCount
-          : sourcePane === 1
-          ? lastPlacement.centerLineCount
-          : lastBlock.oursLineCount
-      const sourceTotal = sourceStart + sourceCount
+  return lastItem
+}
 
-      const delta = line - sourceTotal
-      return {
-        theirsLine: lastBlock.theirsStartLine + lastBlock.theirsLineCount + delta,
-        theirsFrozen: false,
-        centerLine: lastPlacement.centerStartLine + lastPlacement.centerLineCount + delta,
-        centerFrozen: false,
-        oursLine: lastBlock.oursStartLine + lastBlock.oursLineCount + delta,
-        oursFrozen: false,
-      }
-    }
+export function getScrollCoordinatesForContent(
+  masterEditor: Editor,
+  slaveEditor: Editor,
+  masterScrollTop: number,
+  blocks: MergeBlock[],
+  placements: Map<number, BlockPlacement>,
+  masterIndex: PaneIndex,
+  slaveIndex: PaneIndex
+): number {
+  if (blocks.length === 0) return masterScrollTop
+
+  const active = findActiveBlock(masterEditor, blocks, placements, masterIndex, masterScrollTop)
+  if (!active) return masterScrollTop
+
+  const block = active.block
+  const placement = placements.get(block.blockId)
+
+  const masterRange = getPaneLineRange(block, placement, masterIndex)
+  const slaveRange = getPaneLineRange(block, placement, slaveIndex)
+
+  const masterCoords = getPaneYCoords(masterEditor, masterRange.startLine, masterRange.lineCount)
+  const slaveCoords = getPaneYCoords(slaveEditor, slaveRange.startLine, slaveRange.lineCount)
+
+  const masterHeight = masterCoords.yEnd - masterCoords.yStart
+  const slaveHeight = slaveCoords.yEnd - slaveCoords.yStart
+
+  // Extrapolate past the end of the document if we are at the last block
+  if (active.index === blocks.length - 1 && masterScrollTop >= masterCoords.yEnd) {
+    const deltaPx = masterScrollTop - masterCoords.yEnd
+    return slaveCoords.yEnd + deltaPx
   }
 
-  return {
-    theirsLine: line,
-    theirsFrozen: false,
-    centerLine: line,
-    centerFrozen: false,
-    oursLine: line,
-    oursFrozen: false,
+  // Extrapolate/clamp before the document if we are at the first block
+  if (active.index === 0 && masterScrollTop <= masterCoords.yStart) {
+    return Math.max(0, slaveCoords.yStart + (masterScrollTop - masterCoords.yStart))
   }
+
+  if (masterHeight === 0) {
+    return slaveCoords.yStart
+  }
+
+  const fraction = Math.max(0, Math.min(1, (masterScrollTop - masterCoords.yStart) / masterHeight))
+  return slaveCoords.yStart + fraction * slaveHeight
 }
 
 /** Pixel-offset (not line-based) scroll sync across the 3 panes — panes have different total
@@ -213,73 +151,54 @@ export function getAlignedCoordinatesForPaneLine(
 export function useMergeScrollSync(
   blocksRef: MutableRefObject<MergeBlock[]>,
   placementsRef: MutableRefObject<Map<number, BlockPlacement>>,
-  monacoRef: MutableRefObject<Monaco | null>
+  _monacoRef: MutableRefObject<Monaco | null>
 ) {
   const editorsRef = useRef<(Editor | null)[]>([null, null, null])
-  const syncingRef = useRef(false)
+  const isSyncingScroll = useRef(false)
 
   const attach = useCallback((editorInstance: Editor, index: PaneIndex) => {
     editorsRef.current[index] = editorInstance
     editorInstance.onDidScrollChange((e) => {
-      if (syncingRef.current) return
+      if (isSyncingScroll.current) return
 
       if (e.scrollLeftChanged) {
-        syncingRef.current = true
+        isSyncingScroll.current = true
         try {
           editorsRef.current.forEach((other, i) => {
             if (i === index || !other) return
             other.setScrollLeft(e.scrollLeft)
           })
         } finally {
-          syncingRef.current = false
+          isSyncingScroll.current = false
         }
       }
 
       if (e.scrollTopChanged) {
-        syncingRef.current = true
+        isSyncingScroll.current = true
         try {
-          const monaco = monacoRef.current
-          const lineHeight = monaco ? editorInstance.getOption(monaco.editor.EditorOption.lineHeight) : 19
-
           const masterScrollTop = e.scrollTop
-          const currentLine = Math.floor(masterScrollTop / lineHeight) + 1
-          const remainderPx = masterScrollTop % lineHeight
-
-          const coords = getAlignedCoordinatesForPaneLine(
-            currentLine,
-            index,
-            blocksRef.current,
-            placementsRef.current
-          )
 
           editorsRef.current.forEach((other, i) => {
             if (i === index || !other) return
 
-            let targetLine = 1
-            let frozen = false
-
-            if (i === 0) {
-              targetLine = coords.theirsLine
-              frozen = coords.theirsFrozen
-            } else if (i === 1) {
-              targetLine = coords.centerLine
-              frozen = coords.centerFrozen
-            } else if (i === 2) {
-              targetLine = coords.oursLine
-              frozen = coords.oursFrozen
-            }
-
-            const targetRemainder = frozen ? 0 : remainderPx
-            const targetScrollTop = (targetLine - 1) * lineHeight + targetRemainder
+            const targetScrollTop = getScrollCoordinatesForContent(
+              editorInstance,
+              other,
+              masterScrollTop,
+              blocksRef.current,
+              placementsRef.current,
+              index,
+              i as PaneIndex
+            )
 
             other.setScrollTop(targetScrollTop)
           })
         } finally {
-          syncingRef.current = false
+          isSyncingScroll.current = false
         }
       }
     })
-  }, [blocksRef, placementsRef, monacoRef])
+  }, [blocksRef, placementsRef])
 
   return { attach, editorsRef }
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { MergeBlock } from '@git-manager/git-types'
-import { getAlignedCoordinatesForPaneLine } from './useMergeScrollSync'
-import { computeInitialPlacements, updatePlacementAfterToggle, type BlockPlacement } from './mergeBlockLayout'
+import { getScrollCoordinatesForContent } from './useMergeScrollSync'
+import { computeInitialPlacements } from './mergeBlockLayout'
 
 function createBlock(overrides: Partial<MergeBlock> & Pick<MergeBlock, 'blockId' | 'kind'>): MergeBlock {
   return {
@@ -16,7 +16,22 @@ function createBlock(overrides: Partial<MergeBlock> & Pick<MergeBlock, 'blockId'
   }
 }
 
-describe('getAlignedCoordinatesForPaneLine', () => {
+function mockEditor(lineCount: number, lineHeights: Record<number, number> = {}) {
+  return {
+    getModel: () => ({
+      getLineCount: () => lineCount,
+    }),
+    getTopForLineNumber: (line: number) => {
+      let top = 0
+      for (let i = 1; i < line; i++) {
+        top += lineHeights[i] ?? 19
+      }
+      return top
+    },
+  } as any
+}
+
+describe('getScrollCoordinatesForContent', () => {
   it('maps unchanged lines 1-to-1 without freezing', () => {
     const blocks = [
       createBlock({
@@ -30,108 +45,173 @@ describe('getAlignedCoordinatesForPaneLine', () => {
     ]
     const placements = computeInitialPlacements(blocks)
 
-    // Scroll Center at physical line 3
-    const coords = getAlignedCoordinatesForPaneLine(3, 1, blocks, placements)
-    expect(coords).toEqual({
-      theirsLine: 3,
-      theirsFrozen: false,
-      centerLine: 3,
-      centerFrozen: false,
-      oursLine: 3,
-      oursFrozen: false,
-    })
+    const masterEditor = mockEditor(5)
+    const slaveEditor = mockEditor(5)
+
+    // Master is Center (index 1), Slave is Ours (index 2)
+    // Line height is 19px.
+    // Line 3 is at Y = 38px
+    const targetScroll = getScrollCoordinatesForContent(
+      masterEditor,
+      slaveEditor,
+      38,
+      blocks,
+      placements,
+      1,
+      2
+    )
+
+    expect(targetScroll).toBe(38)
   })
 
-  it('handles a conflict block where both sides are included in Center', () => {
+  it('interpolates modified blocks linearly with different line counts', () => {
     const blocks = [
       createBlock({
         blockId: 1,
         kind: 'both-different',
         oursStartLine: 1,
-        oursLineCount: 2, // Ours: lines 1, 2
+        oursLineCount: 4, // Ours has 4 lines: height = 4 * 19 = 76px
         theirsStartLine: 1,
-        theirsLineCount: 3, // Theirs: lines 1, 2, 3
+        theirsLineCount: 2, // Theirs has 2 lines: height = 2 * 19 = 38px
       }),
     ]
-    // Force both to be included in Center
-    let placements = computeInitialPlacements(blocks)
-    placements = updatePlacementAfterToggle(placements, blocks, blocks[0], 'ours', true)
-    placements = updatePlacementAfterToggle(placements, blocks, blocks[0], 'theirs', true)
-
-    // Center has Ours first (2 lines), then Theirs (3 lines). Total = 5 lines.
-    // Center lines 1-2: Ours.
-    // Center lines 3-5: Theirs.
-
-    // Center line 1: inside Ours part of the block
-    let coords = getAlignedCoordinatesForPaneLine(1, 1, blocks, placements)
-    expect(coords).toEqual({
-      theirsLine: 1,
-      theirsFrozen: true, // Theirs hasn't started yet in Center sequence
-      centerLine: 1,
-      centerFrozen: false,
-      oursLine: 1,
-      oursFrozen: false,
-    })
-
-    // Center line 3: inside Theirs part of the block
-    coords = getAlignedCoordinatesForPaneLine(3, 1, blocks, placements)
-    expect(coords).toEqual({
-      theirsLine: 1,
-      theirsFrozen: false,
-      centerLine: 3,
-      centerFrozen: false,
-      oursLine: 3, // Ours is frozen at the end of its lines (start + count)
-      oursFrozen: true,
-    })
-  })
-
-  it('handles single side inclusion correctly (freezes excluded side)', () => {
-    const blocks = [
-      createBlock({
-        blockId: 1,
-        kind: 'both-different',
-        oursStartLine: 1,
-        oursLineCount: 2,
-        theirsStartLine: 1,
-        theirsLineCount: 3,
-      }),
-    ]
-    // Only Ours included in Center
+    // Center includes only ours (default)
     const placements = computeInitialPlacements(blocks)
 
-    // Center has 2 lines (Ours). Theirs is not included.
-    const coords = getAlignedCoordinatesForPaneLine(2, 1, blocks, placements)
-    expect(coords).toEqual({
-      theirsLine: 1, // Excluded Theirs stays frozen at start
-      theirsFrozen: true,
-      centerLine: 2,
-      centerFrozen: false,
-      oursLine: 2,
-      oursFrozen: false,
-    })
+    const masterEditor = mockEditor(4) // Center has ours (4 lines)
+    const slaveEditor = mockEditor(2)  // Theirs has 2 lines
+
+    // Master is Center (index 1), Slave is Theirs (index 0)
+    // Middle of Master: Y = 38px (half of 76px)
+    let targetScroll = getScrollCoordinatesForContent(
+      masterEditor,
+      slaveEditor,
+      38,
+      blocks,
+      placements,
+      1,
+      0
+    )
+    expect(targetScroll).toBe(19) // Half of 38px is 19px
+
+    // End of Master block: Y = 76px
+    targetScroll = getScrollCoordinatesForContent(
+      masterEditor,
+      slaveEditor,
+      76,
+      blocks,
+      placements,
+      1,
+      0
+    )
+    expect(targetScroll).toBe(38)
   })
 
-  it('handles fallback correctly past the end of the document', () => {
+  it('freezes the slave editor when master scrolls in exclusive code', () => {
+    // Block 1: ours-only deletion (theirs has 5 lines, ours has 0 lines)
+    // Block 2: unchanged (5 lines)
+    const blocks = [
+      createBlock({
+        blockId: 1,
+        kind: 'ours-only',
+        theirsStartLine: 1,
+        theirsLineCount: 5,
+        oursStartLine: 1,
+        oursLineCount: 0,
+      }),
+      createBlock({
+        blockId: 2,
+        kind: 'unchanged',
+        theirsStartLine: 6,
+        theirsLineCount: 5,
+        oursStartLine: 1,
+        oursLineCount: 5,
+      }),
+    ]
+
+    const placements = computeInitialPlacements(blocks)
+    // Default placements for ours-only deletion: Center shows theirs (theirsIncluded = true, 5 lines)
+    // So:
+    // Center (Master) has Block 1 (5 lines), Block 2 (5 lines) -> Total 10 lines
+    // Ours (Slave) has Block 1 (0 lines), Block 2 (5 lines) -> Total 5 lines
+
+    const masterEditor = mockEditor(10) // Center
+    const slaveEditor = mockEditor(5)   // Ours
+
+    // Scrolling in Block 1 (Y from 0 to 95 in Master). Slave has 0 lines here and should freeze at 0.
+    for (let scrollTop = 0; scrollTop < 95; scrollTop += 10) {
+      const targetScroll = getScrollCoordinatesForContent(
+        masterEditor,
+        slaveEditor,
+        scrollTop,
+        blocks,
+        placements,
+        1, // Center
+        2  // Ours
+      )
+      expect(targetScroll).toBe(0)
+    }
+
+    // Entering Block 2 in Master (scrollTop >= 95). Slave should unfreeze and scroll.
+    // At scrollTop = 95 (start of Block 2), Slave should be at 0.
+    let targetScroll = getScrollCoordinatesForContent(
+      masterEditor,
+      slaveEditor,
+      95,
+      blocks,
+      placements,
+      1,
+      2
+    )
+    expect(targetScroll).toBe(0)
+
+    // Halfway through Block 2: scrollTop = 95 + 47.5 = 142.5
+    targetScroll = getScrollCoordinatesForContent(
+      masterEditor,
+      slaveEditor,
+      142.5,
+      blocks,
+      placements,
+      1,
+      2
+    )
+    // Actually, in Slave, Block 2 starts at line 1, so its Y start is 0, height is 5 * 19 = 95px.
+    // So half of 95px is 47.5px.
+    // Let's compute: Master starts Block 2 at Y = 95, ends at Y = 190. masterHeight = 95.
+    // At scrollTop = 142.5, fraction = (142.5 - 95) / 95 = 0.5.
+    // Slave coords for Block 2: startLine = 1, lineCount = 5. yStart = 0, yEnd = 95. slaveHeight = 95.
+    // targetScroll = 0 + 0.5 * 95 = 47.5.
+    expect(targetScroll).toBe(47.5)
+  })
+
+  it('extrapolates scrolling beyond the last block', () => {
     const blocks = [
       createBlock({
         blockId: 1,
         kind: 'unchanged',
         oursStartLine: 1,
-        oursLineCount: 2,
+        oursLineCount: 5,
         theirsStartLine: 1,
-        theirsLineCount: 2,
+        theirsLineCount: 5,
       }),
     ]
     const placements = computeInitialPlacements(blocks)
 
-    const coords = getAlignedCoordinatesForPaneLine(5, 1, blocks, placements)
-    expect(coords).toEqual({
-      theirsLine: 5,
-      theirsFrozen: false,
-      centerLine: 5,
-      centerFrozen: false,
-      oursLine: 5,
-      oursFrozen: false,
-    })
+    const masterEditor = mockEditor(5)
+    const slaveEditor = mockEditor(5)
+
+    // Master ends at Y = 5 * 19 = 95px.
+    // Scroll Master past the end to 120px (+25px).
+    const targetScroll = getScrollCoordinatesForContent(
+      masterEditor,
+      slaveEditor,
+      120,
+      blocks,
+      placements,
+      1,
+      2
+    )
+
+    expect(targetScroll).toBe(120)
   })
 })

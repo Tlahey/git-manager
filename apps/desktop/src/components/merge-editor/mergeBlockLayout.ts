@@ -288,7 +288,7 @@ export function deriveLivePlacements(
     const oursMatchesHere = matchesAt(block.oursLines, cursor)
     const bothMatchHere = oursMatchesHere && matchesAt(block.theirsLines, cursor + block.oursLines.length)
     const theirsMatchesHere = matchesAt(block.theirsLines, cursor)
-    const baseMatchesHere = matchesAt(block.baseLines, cursor)
+    const baseMatchesHere = matchesAt(block.baseLines || [], cursor)
 
     let oursIncluded: boolean
     let theirsIncluded: boolean
@@ -309,7 +309,7 @@ export function deriveLivePlacements(
     } else if (baseMatchesHere) {
       oursIncluded = false
       theirsIncluded = false
-      consumed = block.baseLines.length
+      consumed = block.baseLines?.length ?? 0
     } else {
       // Free-form edit (or excluding both sides entirely): find where a later block's known
       // content next resumes, bounded so a large file with no further recognizable match

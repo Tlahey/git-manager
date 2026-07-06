@@ -212,7 +212,7 @@ export interface MergeBlock {
   theirsLineCount: number
   oursLines: string[]
   theirsLines: string[]
-  baseLines: string[]
+  baseLines?: string[]
 }
 
 export interface ThreeWayMergeView {
