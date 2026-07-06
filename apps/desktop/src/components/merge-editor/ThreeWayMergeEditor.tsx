@@ -280,6 +280,8 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     const historyRef = useRef<HistoryEntry[]>([])
     const redoRef = useRef<HistoryEntry[]>([])
     const isApplyingOwnEditRef = useRef(false)
+    const isUndoingGutterActionRef = useRef(false)
+    const isRedoingGutterActionRef = useRef(false)
     const ignoreScrollSyncRef = useRef(false)
     const savedScrollTopsRef = useRef<{ ours: number; center: number; theirs: number } | null>(null)
 
@@ -528,9 +530,11 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         const edit = buildRangeEdit(model, currentPlacement.centerStartLine, currentPlacement.centerLineCount, newLines)
 
         if (hasTextChange) {
+          model.pushStackElement()
           isApplyingOwnEditRef.current = true
           centerEditor.executeEdits('merge-gutter-action', [{ range: edit.range, text: edit.text }])
           isApplyingOwnEditRef.current = false
+          model.pushStackElement()
         }
 
         const altIdAfter = model.getAlternativeVersionId()
@@ -545,6 +549,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         })
         redoRef.current = []
         updatePlacementsStateAndRef(postPlacements)
+        centerEditor.focus()
       })
     }, [executeWithScrollPreservation, updatePlacementsStateAndRef])
 
@@ -579,9 +584,11 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         const prePlacements = placementsRef.current
 
         if (hasTextChange) {
+          model.pushStackElement()
           isApplyingOwnEditRef.current = true
           centerEditor.executeEdits('merge-gutter-action', [{ range: edit.range, text: edit.text }])
           isApplyingOwnEditRef.current = false
+          model.pushStackElement()
         }
 
         const altIdAfter = model.getAlternativeVersionId()
@@ -596,6 +603,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         })
         redoRef.current = []
         updatePlacementsStateAndRef(next)
+        centerEditor.focus()
       })
     }, [executeWithScrollPreservation, updatePlacementsStateAndRef])
 
@@ -702,6 +710,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       executeWithScrollPreservation(() => {
         const centerEditor = centerEditorRef.current
         if (!centerEditor) return
+        centerEditor.focus()
         const model = centerEditor.getModel()
         if (!model) return
 
@@ -720,7 +729,9 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         }
 
         if (entry.textChange) {
+          isUndoingGutterActionRef.current = true
           centerEditor.trigger('keyboard', 'undo', null)
+          isUndoingGutterActionRef.current = false
         } else {
           history.pop()
           updatePlacementsStateAndRef(entry.prePlacements)
@@ -734,6 +745,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       executeWithScrollPreservation(() => {
         const centerEditor = centerEditorRef.current
         if (!centerEditor) return
+        centerEditor.focus()
         const model = centerEditor.getModel()
         if (!model) return
 
@@ -752,7 +764,9 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         }
 
         if (entry.textChange) {
+          isRedoingGutterActionRef.current = true
           centerEditor.trigger('keyboard', 'redo', null)
+          isRedoingGutterActionRef.current = false
         } else {
           redo.pop()
           updatePlacementsStateAndRef(entry.postPlacements)
@@ -782,7 +796,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
           const history = historyRef.current
           if (history.length > 0) {
             const entry = history[history.length - 1]
-            if (entry.textChange && currentAltId === entry.altIdBefore) {
+            if (isUndoingGutterActionRef.current || (entry.textChange && currentAltId === entry.altIdBefore)) {
               history.pop()
               redoRef.current.push(entry)
               updatePlacementsStateAndRef(entry.prePlacements)
@@ -799,7 +813,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
           const redo = redoRef.current
           if (redo.length > 0) {
             const entry = redo[redo.length - 1]
-            if (entry.textChange && currentAltId === entry.altIdAfter) {
+            if (isRedoingGutterActionRef.current || (entry.textChange && currentAltId === entry.altIdAfter)) {
               redo.pop()
               historyRef.current.push(entry)
               updatePlacementsStateAndRef(entry.postPlacements)
@@ -931,13 +945,27 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
           ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')
 
         if (isUndo) {
-          if (containerRef.current?.contains(document.activeElement)) {
+          const active = document.activeElement
+          const isInputFocused =
+            active &&
+            (active.tagName === 'INPUT' ||
+              active.tagName === 'TEXTAREA' ||
+              active.getAttribute('contenteditable') === 'true')
+
+          if (containerRef.current?.contains(active) || !isInputFocused) {
             e.preventDefault()
             e.stopPropagation()
             triggerUndo()
           }
         } else if (isRedo) {
-          if (containerRef.current?.contains(document.activeElement)) {
+          const active = document.activeElement
+          const isInputFocused =
+            active &&
+            (active.tagName === 'INPUT' ||
+              active.tagName === 'TEXTAREA' ||
+              active.getAttribute('contenteditable') === 'true')
+
+          if (containerRef.current?.contains(active) || !isInputFocused) {
             e.preventDefault()
             e.stopPropagation()
             triggerRedo()

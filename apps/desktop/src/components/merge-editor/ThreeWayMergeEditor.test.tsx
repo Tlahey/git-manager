@@ -705,6 +705,72 @@ describe('ThreeWayMergeEditor — undo', () => {
     // Block 1 buttons should also remain present
     expect(screen.getByTestId('merge-connector-reject-right-1')).toBeInTheDocument()
   })
+
+  it('restores the previous placements and actions on undo when both sides of a conflict are rejected (Left first, then Right)', async () => {
+    const user = userEvent.setup()
+    render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={conflictView()} />)
+
+    // Initially, both reject buttons are present
+    await waitFor(() => {
+      expect(screen.getByTestId('merge-connector-reject-left-2')).toBeInTheDocument()
+      expect(screen.getByTestId('merge-connector-reject-right-2')).toBeInTheDocument()
+    })
+
+    // 1. Reject theirs (left side of conflict)
+    await user.click(screen.getByTestId('merge-connector-reject-left-2'))
+    await waitFor(() => expect(screen.queryByTestId('merge-connector-reject-left-2')).not.toBeInTheDocument())
+
+    // 2. Reject ours (right side of conflict)
+    await user.click(screen.getByTestId('merge-connector-reject-right-2'))
+    await waitFor(() => expect(screen.queryByTestId('merge-connector-reject-right-2')).not.toBeInTheDocument())
+
+    // 3. Undo once (should restore Block 2's right/ours reject action first, text changes back to ours conflict)
+    fakeEditors.get(centerPath)!.trigger('keyboard', 'undo', null)
+    await waitFor(() => {
+      expect(screen.getByTestId('merge-connector-reject-right-2')).toBeInTheDocument()
+    })
+    expect(screen.queryByTestId('merge-connector-reject-left-2')).not.toBeInTheDocument()
+
+    // 4. Undo again (should restore Block 2's left/theirs reject action, text remains ours conflict)
+    fakeEditors.get(centerPath)!.trigger('keyboard', 'undo', null)
+    await waitFor(() => {
+      expect(screen.getByTestId('merge-connector-reject-left-2')).toBeInTheDocument()
+      expect(screen.getByTestId('merge-connector-reject-right-2')).toBeInTheDocument()
+    })
+  })
+
+  it('restores the previous placements and actions on undo when both sides of a conflict are rejected (Right first, then Left)', async () => {
+    const user = userEvent.setup()
+    render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={conflictView()} />)
+
+    // Initially, both reject buttons are present
+    await waitFor(() => {
+      expect(screen.getByTestId('merge-connector-reject-left-2')).toBeInTheDocument()
+      expect(screen.getByTestId('merge-connector-reject-right-2')).toBeInTheDocument()
+    })
+
+    // 1. Reject ours (right side of conflict)
+    await user.click(screen.getByTestId('merge-connector-reject-right-2'))
+    await waitFor(() => expect(screen.queryByTestId('merge-connector-reject-right-2')).not.toBeInTheDocument())
+
+    // 2. Reject theirs (left side of conflict)
+    await user.click(screen.getByTestId('merge-connector-reject-left-2'))
+    await waitFor(() => expect(screen.queryByTestId('merge-connector-reject-left-2')).not.toBeInTheDocument())
+
+    // 3. Undo once (should restore Block 2's left/theirs reject action first, text changes back to theirs conflict)
+    fakeEditors.get(centerPath)!.trigger('keyboard', 'undo', null)
+    await waitFor(() => {
+      expect(screen.getByTestId('merge-connector-reject-left-2')).toBeInTheDocument()
+    })
+    expect(screen.queryByTestId('merge-connector-reject-right-2')).not.toBeInTheDocument()
+
+    // 4. Undo again (should restore Block 2's right/ours reject action, text changes back to ours conflict)
+    fakeEditors.get(centerPath)!.trigger('keyboard', 'undo', null)
+    await waitFor(() => {
+      expect(screen.getByTestId('merge-connector-reject-left-2')).toBeInTheDocument()
+      expect(screen.getByTestId('merge-connector-reject-right-2')).toBeInTheDocument()
+    })
+  })
 })
 
 describe('ThreeWayMergeEditor — file switch', () => {

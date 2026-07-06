@@ -32,6 +32,9 @@ export function createFakeModel(initialValue: string) {
   const versionHistory = new Map<string, number>()
   versionHistory.set(text, currentAltId)
 
+  const undoStack: { text: string; altId: number }[] = []
+  const redoStack: { text: string; altId: number }[] = []
+
   const currentLines = () => text.split('\n')
 
   function positionToOffset(line: number, column: number): number {
@@ -66,9 +69,34 @@ export function createFakeModel(initialValue: string) {
       return { startLineNumber: 1, startColumn: 1, endLineNumber: lines.length, endColumn: (lines[lines.length - 1]?.length ?? 0) + 1 }
     },
     getAlternativeVersionId: () => currentAltId,
+    undoStack,
+    redoStack,
+    undo: () => {
+      if (undoStack.length === 0) return
+      const entry = undoStack.pop()!
+      const prevText = text
+      const prevAltId = currentAltId
+      text = entry.text
+      currentAltId = entry.altId
+      redoStack.push({ text: prevText, altId: prevAltId })
+      fire({ isUndoing: true })
+    },
+    redo: () => {
+      if (redoStack.length === 0) return
+      const entry = redoStack.pop()!
+      const prevText = text
+      const prevAltId = currentAltId
+      text = entry.text
+      currentAltId = entry.altId
+      undoStack.push({ text: prevText, altId: prevAltId })
+      fire({ isRedoing: true })
+    },
     /** Mirrors `editor.executeEdits` — applies one or more range replacements against the
      * current text, offset-based so it's exact regardless of how many lines an edit spans. */
     applyEdits: (edits: FakeEdit[]) => {
+      const prevText = text
+      const prevAltId = currentAltId
+
       const withOffsets = edits
         .map((e) => ({
           start: positionToOffset(e.range.startLineNumber, e.range.startColumn),
@@ -80,13 +108,29 @@ export function createFakeModel(initialValue: string) {
         text = text.slice(0, e.start) + e.text + text.slice(e.end)
       }
       updateAltId()
+      undoStack.push({ text: prevText, altId: prevAltId })
+      redoStack.length = 0
       fire()
     },
+    pushStackElement: () => {},
     /** Test-only escape hatch for simulating a change Monaco itself would have made outside of
      * our own `executeEdits` calls — manual typing, or an undo/redo restoring prior text. */
     simulateExternalChange: (newText: string, event: { isUndoing?: boolean; isRedoing?: boolean } = {}) => {
+      const prevText = text
+      const prevAltId = currentAltId
+
       text = newText
       updateAltId()
+
+      if (event.isUndoing) {
+        redoStack.push({ text: prevText, altId: prevAltId })
+      } else if (event.isRedoing) {
+        undoStack.push({ text: prevText, altId: prevAltId })
+      } else {
+        undoStack.push({ text: prevText, altId: prevAltId })
+        redoStack.length = 0
+      }
+
       fire(event)
     },
     onDidChangeContent: (cb: ContentChangeListener) => {
@@ -123,6 +167,7 @@ export interface FakeEditorInstance {
   setScrollTop: (val: number) => void
   getTopForLineNumber: (line: number) => number
   addCommand: (keybinding: number, handler: () => void) => void
+  focus: () => void
   trigger: (source: string, actionId: string, payload: unknown) => void
   /** Test-only: the most recent array passed to the decorations collection's `.set()`. */
   decorations: unknown[]
@@ -169,16 +214,25 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
     addCommand: (keybinding, handler) => {
       commands.set(keybinding, handler)
     },
+    focus: () => {},
     trigger: (_source, actionId, _payload) => {
       // In fake environment, triggering undo or redo checks the registered command keybindings
       if (actionId === 'undo') {
-        const handler = commands.get(2048 | 56) // KeyMod.CtrlCmd | KeyCode.KeyZ
-        if (handler) handler()
+        if (model.undoStack.length > 0) {
+          model.undo()
+        } else {
+          const handler = commands.get(2048 | 56) // KeyMod.CtrlCmd | KeyCode.KeyZ
+          if (handler) handler()
+        }
       } else if (actionId === 'redo') {
-        const handlerY = commands.get(2048 | 55) // KeyMod.CtrlCmd | KeyCode.KeyY
-        const handlerShiftZ = commands.get(2048 | 1024 | 56) // KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyZ
-        if (handlerY) handlerY()
-        else if (handlerShiftZ) handlerShiftZ()
+        if (model.redoStack.length > 0) {
+          model.redo()
+        } else {
+          const handlerY = commands.get(2048 | 55) // KeyMod.CtrlCmd | KeyCode.KeyY
+          const handlerShiftZ = commands.get(2048 | 1024 | 56) // KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyZ
+          if (handlerY) handlerY()
+          else if (handlerShiftZ) handlerShiftZ()
+        }
       }
     },
     decorations: [],
