@@ -240,6 +240,7 @@ function updateConnectorPaths(
  * are color-coded and connected across the gaps by `MergeConnectorOverlay`. */
 export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMergeEditorProps>(
   ({ repoPath, filePath, view, onPendingCountChange, showBlockBorders = false }, ref) => {
+    const containerRef = useRef<HTMLDivElement | null>(null)
     const blocksRef = useRef<MergeBlock[]>(view.blocks)
     blocksRef.current = view.blocks
 
@@ -254,6 +255,96 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     placementsRef.current = placements
 
     const [editorsReady, setEditorsReady] = useState(false)
+    const [panelWidths, setPanelWidths] = useState<[number, number, number]>([33.333, 33.334, 33.333])
+
+    const handleLeftMouseDown = useCallback(
+      (e: React.MouseEvent) => {
+        if ((e.target as HTMLElement).closest('.merge-connector-action')) {
+          return
+        }
+        e.preventDefault()
+
+        const startX = e.clientX
+        const startLeftPct = panelWidths[0]
+        const startCenterPct = panelWidths[1]
+        const containerWidth = containerRef.current?.getBoundingClientRect().width ?? 0
+        const panelsWidth = containerWidth - GAP_WIDTH * 2
+
+        const handleMouseMove = (moveEvent: MouseEvent) => {
+          const dx = moveEvent.clientX - startX
+          const dPct = (dx / panelsWidth) * 100
+
+          let newLeft = startLeftPct + dPct
+          let newCenter = startCenterPct - dPct
+          const sum = startLeftPct + startCenterPct
+          const minPct = Math.min(33.3, (150 / panelsWidth) * 100)
+
+          if (newLeft < minPct) {
+            newLeft = minPct
+            newCenter = sum - minPct
+          } else if (newCenter < minPct) {
+            newCenter = minPct
+            newLeft = sum - minPct
+          }
+
+          setPanelWidths((prev) => [newLeft, newCenter, prev[2]])
+        }
+
+        const handleMouseUp = () => {
+          window.removeEventListener('mousemove', handleMouseMove)
+          window.removeEventListener('mouseup', handleMouseUp)
+        }
+
+        window.addEventListener('mousemove', handleMouseMove)
+        window.addEventListener('mouseup', handleMouseUp)
+      },
+      [panelWidths, containerRef]
+    )
+
+    const handleRightMouseDown = useCallback(
+      (e: React.MouseEvent) => {
+        if ((e.target as HTMLElement).closest('.merge-connector-action')) {
+          return
+        }
+        e.preventDefault()
+
+        const startX = e.clientX
+        const startCenterPct = panelWidths[1]
+        const startRightPct = panelWidths[2]
+        const containerWidth = containerRef.current?.getBoundingClientRect().width ?? 0
+        const panelsWidth = containerWidth - GAP_WIDTH * 2
+
+        const handleMouseMove = (moveEvent: MouseEvent) => {
+          const dx = moveEvent.clientX - startX
+          const dPct = (dx / panelsWidth) * 100
+
+          let newCenter = startCenterPct + dPct
+          let newRight = startRightPct - dPct
+          const sum = startCenterPct + startRightPct
+          const minPct = Math.min(33.3, (150 / panelsWidth) * 100)
+
+          if (newCenter < minPct) {
+            newCenter = minPct
+            newRight = sum - minPct
+          } else if (newRight < minPct) {
+            newRight = minPct
+            newCenter = sum - minPct
+          }
+
+          setPanelWidths((prev) => [prev[0], newCenter, newRight])
+        }
+
+        const handleMouseUp = () => {
+          window.removeEventListener('mousemove', handleMouseMove)
+          window.removeEventListener('mouseup', handleMouseUp)
+        }
+
+        window.addEventListener('mousemove', handleMouseMove)
+        window.addEventListener('mouseup', handleMouseUp)
+      },
+      [panelWidths, containerRef]
+    )
+
     const monacoRef = useRef<Monaco | null>(null)
     const oursEditorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
     const centerEditorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
@@ -342,7 +433,6 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
     const { attach: attachScrollSync } = useMergeScrollSync(blocksRef, placementsRef, monacoRef, ignoreScrollSyncRef)
 
-    const containerRef = useRef<HTMLDivElement | null>(null)
     const [gapHeight, setGapHeight] = useState(0)
     const [leftSegments, setLeftSegments] = useState<ConnectorSegment[]>([])
     const [rightSegments, setRightSegments] = useState<ConnectorSegment[]>([])
@@ -978,7 +1068,11 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
     return (
       <div ref={containerRef} className="flex h-full w-full overflow-hidden">
-        <div className="merge-pane-numbers-right min-w-0 flex-1">
+        <div
+          className="merge-pane-numbers-right min-w-0"
+          style={{ flex: `${panelWidths[0]} 1 0%` }}
+          data-testid="merge-pane-theirs-wrapper"
+        >
           <MergePane
             value={view.theirsText}
             filePath={filePath}
@@ -987,7 +1081,12 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
             onMount={handlePaneMount('theirs')}
           />
         </div>
-        <div className="relative shrink-0 overflow-hidden" style={{ width: GAP_WIDTH }}>
+        <div
+          className="relative shrink-0 overflow-hidden select-none"
+          style={{ width: GAP_WIDTH, cursor: 'col-resize' }}
+          onMouseDown={handleLeftMouseDown}
+          data-testid="merge-resize-handle-left"
+        >
           <MergeConnectorOverlay
             ref={leftOverlayRef}
             width={GAP_WIDTH}
@@ -1000,7 +1099,11 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
             scrollTopRight={centerEditorRef.current?.getScrollTop() ?? 0}
           />
         </div>
-        <div className="min-w-0 flex-1">
+        <div
+          className="min-w-0"
+          style={{ flex: `${panelWidths[1]} 1 0%` }}
+          data-testid="merge-pane-center-wrapper"
+        >
           <MergePane
             value={initialCenterText}
             filePath={filePath}
@@ -1009,7 +1112,12 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
             onMount={handlePaneMount('center')}
           />
         </div>
-        <div className="relative shrink-0 overflow-hidden" style={{ width: GAP_WIDTH }}>
+        <div
+          className="relative shrink-0 overflow-hidden select-none"
+          style={{ width: GAP_WIDTH, cursor: 'col-resize' }}
+          onMouseDown={handleRightMouseDown}
+          data-testid="merge-resize-handle-right"
+        >
           <MergeConnectorOverlay
             ref={rightOverlayRef}
             width={GAP_WIDTH}
@@ -1022,7 +1130,11 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
             scrollTopRight={oursEditorRef.current?.getScrollTop() ?? 0}
           />
         </div>
-        <div className="min-w-0 flex-1">
+        <div
+          className="min-w-0"
+          style={{ flex: `${panelWidths[2]} 1 0%` }}
+          data-testid="merge-pane-ours-wrapper"
+        >
           <MergePane
             value={view.oursText}
             filePath={filePath}

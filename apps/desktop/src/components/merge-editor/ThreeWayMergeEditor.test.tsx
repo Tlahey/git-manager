@@ -1,5 +1,5 @@
 import { createRef } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MergeBlock, ThreeWayMergeView } from '@git-manager/git-types'
@@ -901,6 +901,64 @@ describe('ThreeWayMergeEditor — scroll preservation on undo/redo', () => {
       expect(centerEditor.getScrollTop()).toBe(456)
       expect(theirsEditor.getScrollTop()).toBe(789)
     })
+  })
+})
+
+describe('ThreeWayMergeEditor — panel resizing', () => {
+  it('renders the resize handles and panels with correct styles, and resizes panels on drag', async () => {
+    render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={conflictView()} />)
+
+    // Verify pane wrappers and handles are in the document
+    const theirsWrapper = screen.getByTestId('merge-pane-theirs-wrapper')
+    const centerWrapper = screen.getByTestId('merge-pane-center-wrapper')
+    const oursWrapper = screen.getByTestId('merge-pane-ours-wrapper')
+    const leftHandle = screen.getByTestId('merge-resize-handle-left')
+    const rightHandle = screen.getByTestId('merge-resize-handle-right')
+
+    expect(theirsWrapper).toBeInTheDocument()
+    expect(centerWrapper).toBeInTheDocument()
+    expect(oursWrapper).toBeInTheDocument()
+    expect(leftHandle).toBeInTheDocument()
+    expect(rightHandle).toBeInTheDocument()
+
+    // Check initial styles
+    expect(theirsWrapper.style.flex).toBe('33.333 1 0%')
+    expect(centerWrapper.style.flex).toBe('33.334 1 0%')
+    expect(oursWrapper.style.flex).toBe('33.333 1 0%')
+    expect(leftHandle.style.cursor).toBe('col-resize')
+    expect(rightHandle.style.cursor).toBe('col-resize')
+
+    // Mock getBoundingClientRect on container ref
+    const container = theirsWrapper.parentElement!
+    vi.spyOn(container, 'getBoundingClientRect').mockReturnValue({
+      width: 1080,
+      height: 600,
+      top: 0,
+      left: 0,
+      bottom: 600,
+      right: 1080,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    })
+
+    // Simulate drag left handle to the right by 100px
+    fireEvent.mouseDown(leftHandle, { clientX: 200 })
+    
+    fireEvent.mouseMove(window, { clientX: 300 })
+
+    // Total width for panels is 1080 - 2 * 40 = 1000px
+    // dx = 100px -> dPct = 10%
+    // theirsPct = 33.333 + 10 = 43.333
+    // centerPct = 33.334 - 10 = 23.334
+    
+    const getFlexGrow = (el: HTMLElement) => parseFloat(el.style.flex.split(' ')[0])
+
+    expect(getFlexGrow(theirsWrapper)).toBeCloseTo(43.333, 3)
+    expect(getFlexGrow(centerWrapper)).toBeCloseTo(23.334, 3)
+    expect(getFlexGrow(oursWrapper)).toBeCloseTo(33.333, 3)
+
+    fireEvent.mouseUp(window)
   })
 })
 
