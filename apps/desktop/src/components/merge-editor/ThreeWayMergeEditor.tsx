@@ -46,6 +46,14 @@ export interface ThreeWayMergeEditorRef {
   applyAutoMerge: () => Promise<void>
 }
 
+interface HistoryEntry {
+  prePlacements: Map<number, BlockPlacement>
+  postPlacements: Map<number, BlockPlacement>
+  altIdBefore: number
+  altIdAfter: number
+  textChange: boolean
+}
+
 // Wide enough to comfortably fit the two accept/ignore buttons side by side (see
 // MergeConnectorOverlay) plus the ribbon curve.
 const GAP_WIDTH = 40
@@ -144,6 +152,19 @@ function buildRangeEdit(
   }
 }
 
+function checkTextChanges(
+  model: editor.ITextModel,
+  startLine: number,
+  lineCount: number,
+  newLines: string[]
+): boolean {
+  if (lineCount !== newLines.length) return true
+  for (let i = 0; i < lineCount; i++) {
+    if (model.getLineContent(startLine + i) !== newLines[i]) return true
+  }
+  return false
+}
+
 /** JetBrains-style 3-panel merge editor: left = theirs (the incoming change being applied,
  * read-only), center = editable result, right = ours (the local/current side, read-only) —
  * matching WebStorm's merge/rebase dialog, which puts what you're merging IN on the left and
@@ -194,8 +215,8 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     // just made this edit ourselves" apart from a genuine undo/redo/manual keystroke — without
     // this, Ctrl+Z would change the buffer text back but leave gutter widgets/colors stuck on
     // whatever they were set to by the action being undone.
-    const historyRef = useRef<Map<number, BlockPlacement>[]>([])
-    const redoRef = useRef<Map<number, BlockPlacement>[]>([])
+    const historyRef = useRef<HistoryEntry[]>([])
+    const redoRef = useRef<HistoryEntry[]>([])
     const isApplyingOwnEditRef = useRef(false)
 
     // Reset per-file state when switching to a different file. `placements` is otherwise only
@@ -374,15 +395,31 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
       const { start, count } = subRangeForSide(currentPlacement, block, side)
       const newLines = linesForSide(block, side, included)
+      const hasTextChange = checkTextChanges(model, start, count, newLines)
       const edit = buildRangeEdit(model, start, count, newLines)
 
-      isApplyingOwnEditRef.current = true
-      centerEditor.executeEdits('merge-gutter-action', [{ range: edit.range, text: edit.text }])
-      isApplyingOwnEditRef.current = false
+      const altIdBefore = model.getAlternativeVersionId()
+      const prePlacements = placementsRef.current
 
-      historyRef.current.push(placementsRef.current)
+      if (hasTextChange) {
+        isApplyingOwnEditRef.current = true
+        centerEditor.executeEdits('merge-gutter-action', [{ range: edit.range, text: edit.text }])
+        isApplyingOwnEditRef.current = false
+      }
+
+      const altIdAfter = model.getAlternativeVersionId()
+      const textChange = hasTextChange
+      const postPlacements = updatePlacementAfterToggle(prePlacements, blocksRef.current, block, side, included)
+
+      historyRef.current.push({
+        prePlacements,
+        postPlacements,
+        altIdBefore,
+        altIdAfter,
+        textChange,
+      })
       redoRef.current = []
-      setPlacements(updatePlacementAfterToggle(placementsRef.current, blocksRef.current, block, side, included))
+      setPlacements(postPlacements)
     }, [])
 
     // One-sided blocks resolve exclusively, WebStorm-style: their buttons only exist on the
@@ -411,13 +448,28 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         ...(flags.oursIncluded ? block.oursLines : []),
         ...(flags.theirsIncluded ? block.theirsLines : []),
       ]
+      const hasTextChange = checkTextChanges(model, current.centerStartLine, current.centerLineCount, newLines)
       const edit = buildRangeEdit(model, current.centerStartLine, current.centerLineCount, newLines)
 
-      isApplyingOwnEditRef.current = true
-      centerEditor.executeEdits('merge-gutter-action', [{ range: edit.range, text: edit.text }])
-      isApplyingOwnEditRef.current = false
+      const altIdBefore = model.getAlternativeVersionId()
+      const prePlacements = placementsRef.current
 
-      historyRef.current.push(placementsRef.current)
+      if (hasTextChange) {
+        isApplyingOwnEditRef.current = true
+        centerEditor.executeEdits('merge-gutter-action', [{ range: edit.range, text: edit.text }])
+        isApplyingOwnEditRef.current = false
+      }
+
+      const altIdAfter = model.getAlternativeVersionId()
+      const textChange = hasTextChange
+
+      historyRef.current.push({
+        prePlacements,
+        postPlacements: next,
+        altIdBefore,
+        altIdAfter,
+        textChange,
+      })
       redoRef.current = []
       setPlacements(next)
     }, [])
@@ -508,6 +560,66 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       )
     }, [])
 
+    const triggerUndo = useCallback(() => {
+      const centerEditor = centerEditorRef.current
+      if (!centerEditor) return
+      const model = centerEditor.getModel()
+      if (!model) return
+
+      const currentAltId = model.getAlternativeVersionId()
+      const history = historyRef.current
+      if (history.length === 0) {
+        centerEditor.trigger('keyboard', 'undo', null)
+        return
+      }
+
+      const entry = history[history.length - 1]
+      if (currentAltId !== entry.altIdAfter) {
+        // There is manual typing since the gutter action
+        centerEditor.trigger('keyboard', 'undo', null)
+        return
+      }
+
+      if (entry.textChange) {
+        centerEditor.trigger('keyboard', 'undo', null)
+      } else {
+        history.pop()
+        setPlacements(entry.prePlacements)
+        redoRef.current.push(entry)
+        scheduleRecompute()
+      }
+    }, [scheduleRecompute])
+
+    const triggerRedo = useCallback(() => {
+      const centerEditor = centerEditorRef.current
+      if (!centerEditor) return
+      const model = centerEditor.getModel()
+      if (!model) return
+
+      const currentAltId = model.getAlternativeVersionId()
+      const redo = redoRef.current
+      if (redo.length === 0) {
+        centerEditor.trigger('keyboard', 'redo', null)
+        return
+      }
+
+      const entry = redo[redo.length - 1]
+      if (currentAltId !== entry.altIdBefore) {
+        // There is manual typing/other actions since the undo
+        centerEditor.trigger('keyboard', 'redo', null)
+        return
+      }
+
+      if (entry.textChange) {
+        centerEditor.trigger('keyboard', 'redo', null)
+      } else {
+        redo.pop()
+        setPlacements(entry.postPlacements)
+        historyRef.current.push(entry)
+        scheduleRecompute()
+      }
+    }, [scheduleRecompute])
+
     // Fixes "undo doesn't bring back the gutter buttons/colors": Monaco's own undo/redo stack
     // operates on the model text only, so Ctrl+Z reverts the *content* but, without this,
     // leaves our separate `placements` state (colors, widgets) pointing at whatever the
@@ -518,21 +630,42 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       (e: editor.IModelContentChangedEvent) => {
         if (isApplyingOwnEditRef.current) return
 
+        const centerEditor = centerEditorRef.current
+        const model = centerEditor?.getModel()
+        if (!model) return
+
+        const currentAltId = model.getAlternativeVersionId()
+
         if (e.isUndoing) {
-          const previous = historyRef.current.pop()
-          if (previous) {
-            redoRef.current.push(placementsRef.current)
-            setPlacements(previous)
+          const history = historyRef.current
+          if (history.length > 0) {
+            const entry = history[history.length - 1]
+            if (entry.textChange && currentAltId === entry.altIdBefore) {
+              history.pop()
+              redoRef.current.push(entry)
+              setPlacements(entry.prePlacements)
+              scheduleRecompute()
+              return
+            }
           }
+          handleCenterContentChange()
           scheduleRecompute()
           return
         }
+
         if (e.isRedoing) {
-          const next = redoRef.current.pop()
-          if (next) {
-            historyRef.current.push(placementsRef.current)
-            setPlacements(next)
+          const redo = redoRef.current
+          if (redo.length > 0) {
+            const entry = redo[redo.length - 1]
+            if (entry.textChange && currentAltId === entry.altIdAfter) {
+              redo.pop()
+              historyRef.current.push(entry)
+              setPlacements(entry.postPlacements)
+              scheduleRecompute()
+              return
+            }
           }
+          handleCenterContentChange()
           scheduleRecompute()
           return
         }
@@ -569,6 +702,17 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
         if (pane === 'center') {
           editorInstance.onDidChangeModelContent((e) => handleCenterContentEvent(e))
+
+          // Register undo/redo keybindings to intercept them and handle gutter actions that don't change text
+          editorInstance.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyZ, () => {
+            triggerUndo()
+          })
+          editorInstance.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyY, () => {
+            triggerRedo()
+          })
+          editorInstance.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyMod.Shift | monacoInstance.KeyCode.KeyZ, () => {
+            triggerRedo()
+          })
         }
 
         if (oursEditorRef.current && centerEditorRef.current && theirsEditorRef.current) {
@@ -605,18 +749,60 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
           const mergedText = await apiAutoMergeConflictView(repoPath, filePath)
           const centerEditor = centerEditorRef.current
           const model = centerEditor?.getModel()
-          if (centerEditor && model) {
+          if (!centerEditor || !model) return
+
+          const altIdBefore = model.getAlternativeVersionId()
+          const prePlacements = placementsRef.current
+          const hasTextChange = model.getValue() !== mergedText
+
+          if (hasTextChange) {
             isApplyingOwnEditRef.current = true
             centerEditor.executeEdits('merge-auto-merge', [{ range: model.getFullModelRange(), text: mergedText }])
             isApplyingOwnEditRef.current = false
           }
-          historyRef.current.push(placementsRef.current)
+
+          const altIdAfter = model.getAlternativeVersionId()
+          const textChange = hasTextChange
+          const postPlacements = recomputeAllPlacements(blocksRef.current, placementOverridesAfterAutoMerge(blocksRef.current, prePlacements))
+
+          historyRef.current.push({
+            prePlacements,
+            postPlacements,
+            altIdBefore,
+            altIdAfter,
+            textChange,
+          })
           redoRef.current = []
-          setPlacements(recomputeAllPlacements(blocksRef.current, placementOverridesAfterAutoMerge(blocksRef.current, placementsRef.current)))
+          setPlacements(postPlacements)
         },
       }),
       [repoPath, filePath]
     )
+
+    useEffect(() => {
+      const handleGlobalKeyDown = (e: KeyboardEvent) => {
+        const isUndo = (e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z'
+        const isRedo =
+          ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') ||
+          ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')
+
+        if (isUndo) {
+          if (containerRef.current?.contains(document.activeElement)) {
+            e.preventDefault()
+            e.stopPropagation()
+            triggerUndo()
+          }
+        } else if (isRedo) {
+          if (containerRef.current?.contains(document.activeElement)) {
+            e.preventDefault()
+            e.stopPropagation()
+            triggerRedo()
+          }
+        }
+      }
+      window.addEventListener('keydown', handleGlobalKeyDown, true)
+      return () => window.removeEventListener('keydown', handleGlobalKeyDown, true)
+    }, [triggerUndo, triggerRedo])
 
     return (
       <div ref={containerRef} className="flex h-full w-full overflow-hidden">

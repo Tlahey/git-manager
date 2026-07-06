@@ -595,6 +595,116 @@ describe('ThreeWayMergeEditor — undo', () => {
       expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
     })
   })
+
+  it('restores the previous placements (and re-shows the buttons) on undo when a gutter action did not change any text (like rejecting a deletion)', async () => {
+    const user = userEvent.setup()
+    const blocks: MergeBlock[] = [
+      {
+        blockId: 1,
+        kind: 'ours-only',
+        oursStartLine: 1,
+        oursLineCount: 0,
+        theirsStartLine: 1,
+        theirsLineCount: 1,
+        oursLines: [],
+        theirsLines: ['original line'],
+      },
+    ]
+    const view: ThreeWayMergeView = {
+      filePath: FILE_PATH,
+      renderable: true,
+      isBinary: false,
+      blocks,
+      oursText: '',
+      theirsText: 'original line',
+      conflictCount: 0,
+    }
+    render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={view} />)
+
+    // Initially, the reject button (ignore/reject ours, right gap) is present
+    await waitFor(() => expect(screen.getByTestId('merge-connector-reject-right-1')).toBeInTheDocument())
+
+    // Click Reject. This resolves the block but keeps the original line (which is already in the center), so text remains "original line".
+    await user.click(screen.getByTestId('merge-connector-reject-right-1'))
+
+    // The buttons disappear
+    await waitFor(() => expect(screen.queryByTestId('merge-connector-reject-right-1')).not.toBeInTheDocument())
+
+    // Trigger programmatical Ctrl+Z (undo) via Monaco's trigger API
+    fakeEditors.get(centerPath)!.trigger('keyboard', 'undo', null)
+
+    // The buttons should reappear
+    await waitFor(() => {
+      expect(screen.getByTestId('merge-connector-reject-right-1')).toBeInTheDocument()
+    })
+  })
+
+  it('handles multiple consecutive gutter actions that do not change text (e.g. reject addition then reject deletion) and undos them one by one', async () => {
+    const user = userEvent.setup()
+    const blocks: MergeBlock[] = [
+      {
+        blockId: 1,
+        kind: 'ours-only',
+        oursStartLine: 1,
+        oursLineCount: 0,
+        theirsStartLine: 1,
+        theirsLineCount: 1,
+        oursLines: [],
+        theirsLines: ['original line 1'],
+      },
+      {
+        blockId: 2,
+        kind: 'ours-only',
+        oursStartLine: 2,
+        oursLineCount: 1,
+        theirsStartLine: 2,
+        theirsLineCount: 0,
+        oursLines: ['original line 2'],
+        theirsLines: [],
+      },
+    ]
+    const view: ThreeWayMergeView = {
+      filePath: FILE_PATH,
+      renderable: true,
+      isBinary: false,
+      blocks,
+      oursText: 'original line 2',
+      theirsText: 'original line 1',
+      conflictCount: 0,
+    }
+    render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={view} />)
+
+    // Block 1 is ours-only deletion (oursLines is empty, theirsLines has 'original line 1').
+    // Block 2 is ours-only addition (oursLines has 'original line 2', theirsLines is empty).
+    await waitFor(() => {
+      expect(screen.getByTestId('merge-connector-reject-right-1')).toBeInTheDocument()
+      expect(screen.getByTestId('merge-connector-reject-right-2')).toBeInTheDocument()
+    })
+
+    // 1. Reject addition (Block 2). Text doesn't change (starts empty, remains empty).
+    await user.click(screen.getByTestId('merge-connector-reject-right-2'))
+    await waitFor(() => expect(screen.queryByTestId('merge-connector-reject-right-2')).not.toBeInTheDocument())
+
+    // 2. Reject deletion (Block 1). Text doesn't change (starts with line, keeps line).
+    await user.click(screen.getByTestId('merge-connector-reject-right-1'))
+    await waitFor(() => expect(screen.queryByTestId('merge-connector-reject-right-1')).not.toBeInTheDocument())
+
+    // 3. Undo once (should restore Block 1 / Reject deletion)
+    fakeEditors.get(centerPath)!.trigger('keyboard', 'undo', null)
+    await waitFor(() => {
+      expect(screen.getByTestId('merge-connector-reject-right-1')).toBeInTheDocument()
+    })
+    // Block 2 should still be resolved (no buttons)
+    expect(screen.queryByTestId('merge-connector-reject-right-2')).not.toBeInTheDocument()
+
+    // 4. Undo again (should restore Block 2 / Reject addition)
+    fakeEditors.get(centerPath)!.trigger('keyboard', 'undo', null)
+    await waitFor(() => {
+      expect(screen.getByTestId('merge-connector-reject-right-2')).toBeInTheDocument()
+    })
+    // Block 1 buttons should also remain present
+    expect(screen.getByTestId('merge-connector-reject-right-1')).toBeInTheDocument()
+  })
 })
 
 describe('ThreeWayMergeEditor — file switch', () => {
