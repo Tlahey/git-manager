@@ -151,7 +151,8 @@ export function getScrollCoordinatesForContent(
 export function useMergeScrollSync(
   blocksRef: MutableRefObject<MergeBlock[]>,
   placementsRef: MutableRefObject<Map<number, BlockPlacement>>,
-  _monacoRef: MutableRefObject<Monaco | null>
+  _monacoRef: MutableRefObject<Monaco | null>,
+  ignoreScrollSyncRef?: MutableRefObject<boolean>
 ) {
   const editorsRef = useRef<(Editor | null)[]>([null, null, null])
   const isSyncingScroll = useRef(false)
@@ -159,7 +160,7 @@ export function useMergeScrollSync(
   const attach = useCallback((editorInstance: Editor, index: PaneIndex) => {
     editorsRef.current[index] = editorInstance
     editorInstance.onDidScrollChange((e) => {
-      if (isSyncingScroll.current) return
+      if (isSyncingScroll.current || ignoreScrollSyncRef?.current) return
 
       if (e.scrollLeftChanged) {
         isSyncingScroll.current = true

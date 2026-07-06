@@ -796,3 +796,45 @@ describe('ThreeWayMergeEditor — auto-merge wand', () => {
     })
   })
 })
+
+describe('ThreeWayMergeEditor — scroll preservation on undo/redo', () => {
+  it('preserves scroll position of editors when undo/redo or gutter actions are triggered', async () => {
+    const user = userEvent.setup()
+    render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={conflictView()} />)
+
+    await waitFor(() => expect(fakeEditors.get(centerPath)).toBeDefined())
+
+    const centerEditor = fakeEditors.get(centerPath)!
+    const oursEditor = fakeEditors.get(oursPath)!
+    const theirsEditor = fakeEditors.get(theirsPath)!
+
+    // Simulate user scrolled in all three panes
+    oursEditor.setScrollTop(123)
+    centerEditor.setScrollTop(456)
+    theirsEditor.setScrollTop(789)
+
+    // Wait for buttons to mount
+    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-right-2')).toBeInTheDocument())
+
+    // Click "Accept Ours" (ignore theirs - reject left)
+    await user.click(screen.getByTestId('merge-connector-accept-right-2'))
+
+    // Verify that the scroll positions are preserved after the action layout settles
+    await waitFor(() => {
+      expect(oursEditor.getScrollTop()).toBe(123)
+      expect(centerEditor.getScrollTop()).toBe(456)
+      expect(theirsEditor.getScrollTop()).toBe(789)
+    })
+
+    // Trigger programmatical Ctrl+Z (undo)
+    centerEditor.trigger('keyboard', 'undo', null)
+
+    // Verify that the scroll positions are preserved after undo
+    await waitFor(() => {
+      expect(oursEditor.getScrollTop()).toBe(123)
+      expect(centerEditor.getScrollTop()).toBe(456)
+      expect(theirsEditor.getScrollTop()).toBe(789)
+    })
+  })
+})
+

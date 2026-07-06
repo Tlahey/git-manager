@@ -280,6 +280,49 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     const historyRef = useRef<HistoryEntry[]>([])
     const redoRef = useRef<HistoryEntry[]>([])
     const isApplyingOwnEditRef = useRef(false)
+    const ignoreScrollSyncRef = useRef(false)
+    const savedScrollTopsRef = useRef<{ ours: number; center: number; theirs: number } | null>(null)
+
+    const updatePlacementsStateAndRef = useCallback((next: Map<number, BlockPlacement>) => {
+      placementsRef.current = next
+      setPlacements(next)
+    }, [])
+
+    const saveScrollTopsAndPauseSync = useCallback(() => {
+      const oursEditor = oursEditorRef.current
+      const centerEditor = centerEditorRef.current
+      const theirsEditor = theirsEditorRef.current
+      if (oursEditor && centerEditor && theirsEditor) {
+        savedScrollTopsRef.current = {
+          ours: oursEditor.getScrollTop(),
+          center: centerEditor.getScrollTop(),
+          theirs: theirsEditor.getScrollTop(),
+        }
+        ignoreScrollSyncRef.current = true
+      }
+    }, [])
+
+    const executeWithScrollPreservation = useCallback((action: () => void) => {
+      saveScrollTopsAndPauseSync()
+      let completed = false
+      try {
+        action()
+        completed = true
+      } finally {
+        if (!completed) {
+          ignoreScrollSyncRef.current = false
+          savedScrollTopsRef.current = null
+        } else {
+          // Safety timeout in case placements useEffect doesn't trigger
+          setTimeout(() => {
+            if (savedScrollTopsRef.current) {
+              ignoreScrollSyncRef.current = false
+              savedScrollTopsRef.current = null
+            }
+          }, 150)
+        }
+      }
+    }, [saveScrollTopsAndPauseSync])
 
     // Reset per-file state when switching to a different file. `placements` is otherwise only
     // ever seeded once (the `useState` lazy initializer above only runs on the component's
@@ -289,13 +332,13 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     // itself, since SWR can hand back a freshly-fetched `view` object for the *same* file on
     // revalidation — that shouldn't wipe in-progress edits.
     useEffect(() => {
-      setPlacements(computeInitialPlacements(view.blocks))
+      updatePlacementsStateAndRef(computeInitialPlacements(view.blocks))
       historyRef.current = []
       redoRef.current = []
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [repoPath, filePath])
+    }, [repoPath, filePath, updatePlacementsStateAndRef])
 
-    const { attach: attachScrollSync } = useMergeScrollSync(blocksRef, placementsRef, monacoRef)
+    const { attach: attachScrollSync } = useMergeScrollSync(blocksRef, placementsRef, monacoRef, ignoreScrollSyncRef)
 
     const containerRef = useRef<HTMLDivElement | null>(null)
     const [gapHeight, setGapHeight] = useState(0)
@@ -465,43 +508,45 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     }, [recomputeConnectors])
 
     const handleToggle = useCallback((block: MergeBlock, side: MergeSide, included: boolean) => {
-      const centerEditor = centerEditorRef.current
-      if (!centerEditor) return
-      const model = centerEditor.getModel()
-      if (!model) return
-      const currentPlacement = placementsRef.current.get(block.blockId)
-      if (!currentPlacement) return
+      executeWithScrollPreservation(() => {
+        const centerEditor = centerEditorRef.current
+        if (!centerEditor) return
+        const model = centerEditor.getModel()
+        if (!model) return
+        const currentPlacement = placementsRef.current.get(block.blockId)
+        if (!currentPlacement) return
 
-      const altIdBefore = model.getAlternativeVersionId()
-      const prePlacements = placementsRef.current
+        const altIdBefore = model.getAlternativeVersionId()
+        const prePlacements = placementsRef.current
 
-      const postPlacements = updatePlacementAfterToggle(prePlacements, blocksRef.current, block, side, included)
-      const updatedPlacement = postPlacements.get(block.blockId)
-      if (!updatedPlacement) return
+        const postPlacements = updatePlacementAfterToggle(prePlacements, blocksRef.current, block, side, included)
+        const updatedPlacement = postPlacements.get(block.blockId)
+        if (!updatedPlacement) return
 
-      const newLines = centerLinesForBlock(block, updatedPlacement.oursIncluded, updatedPlacement.theirsIncluded)
-      const hasTextChange = checkTextChanges(model, currentPlacement.centerStartLine, currentPlacement.centerLineCount, newLines)
-      const edit = buildRangeEdit(model, currentPlacement.centerStartLine, currentPlacement.centerLineCount, newLines)
+        const newLines = centerLinesForBlock(block, updatedPlacement.oursIncluded, updatedPlacement.theirsIncluded)
+        const hasTextChange = checkTextChanges(model, currentPlacement.centerStartLine, currentPlacement.centerLineCount, newLines)
+        const edit = buildRangeEdit(model, currentPlacement.centerStartLine, currentPlacement.centerLineCount, newLines)
 
-      if (hasTextChange) {
-        isApplyingOwnEditRef.current = true
-        centerEditor.executeEdits('merge-gutter-action', [{ range: edit.range, text: edit.text }])
-        isApplyingOwnEditRef.current = false
-      }
+        if (hasTextChange) {
+          isApplyingOwnEditRef.current = true
+          centerEditor.executeEdits('merge-gutter-action', [{ range: edit.range, text: edit.text }])
+          isApplyingOwnEditRef.current = false
+        }
 
-      const altIdAfter = model.getAlternativeVersionId()
-      const textChange = hasTextChange
+        const altIdAfter = model.getAlternativeVersionId()
+        const textChange = hasTextChange
 
-      historyRef.current.push({
-        prePlacements,
-        postPlacements,
-        altIdBefore,
-        altIdAfter,
-        textChange,
+        historyRef.current.push({
+          prePlacements,
+          postPlacements,
+          altIdBefore,
+          altIdAfter,
+          textChange,
+        })
+        redoRef.current = []
+        updatePlacementsStateAndRef(postPlacements)
       })
-      redoRef.current = []
-      setPlacements(postPlacements)
-    }, [])
+    }, [executeWithScrollPreservation, updatePlacementsStateAndRef])
 
     // One-sided blocks resolve exclusively, WebStorm-style: their buttons only exist on the
     // side that authored the change (see `isChangeSource`), so accept means "the block becomes
@@ -513,44 +558,46 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     // decision. Genuine conflicts keep the independent per-side toggles (handleToggle) — both
     // gaps are actionable and "keep both" stays possible.
     const applyOneSidedDecision = useCallback((block: MergeBlock, source: MergeSide, apply: boolean) => {
-      const centerEditor = centerEditorRef.current
-      const model = centerEditor?.getModel()
-      if (!centerEditor || !model) return
-      const current = placementsRef.current.get(block.blockId)
-      if (!current) return
+      executeWithScrollPreservation(() => {
+        const centerEditor = centerEditorRef.current
+        const model = centerEditor?.getModel()
+        if (!centerEditor || !model) return
+        const current = placementsRef.current.get(block.blockId)
+        if (!current) return
 
-      const mirror: MergeSide = source === 'ours' ? 'theirs' : 'ours'
-      let next = updatePlacementAfterToggle(placementsRef.current, blocksRef.current, block, source, apply)
-      next = updatePlacementAfterToggle(next, blocksRef.current, block, mirror, !apply)
-      const flags = next.get(block.blockId)
-      if (!flags) return
+        const mirror: MergeSide = source === 'ours' ? 'theirs' : 'ours'
+        let next = updatePlacementAfterToggle(placementsRef.current, blocksRef.current, block, source, apply)
+        next = updatePlacementAfterToggle(next, blocksRef.current, block, mirror, !apply)
+        const flags = next.get(block.blockId)
+        if (!flags) return
 
-      const newLines = centerLinesForBlock(block, flags.oursIncluded, flags.theirsIncluded)
-      const hasTextChange = checkTextChanges(model, current.centerStartLine, current.centerLineCount, newLines)
-      const edit = buildRangeEdit(model, current.centerStartLine, current.centerLineCount, newLines)
+        const newLines = centerLinesForBlock(block, flags.oursIncluded, flags.theirsIncluded)
+        const hasTextChange = checkTextChanges(model, current.centerStartLine, current.centerLineCount, newLines)
+        const edit = buildRangeEdit(model, current.centerStartLine, current.centerLineCount, newLines)
 
-      const altIdBefore = model.getAlternativeVersionId()
-      const prePlacements = placementsRef.current
+        const altIdBefore = model.getAlternativeVersionId()
+        const prePlacements = placementsRef.current
 
-      if (hasTextChange) {
-        isApplyingOwnEditRef.current = true
-        centerEditor.executeEdits('merge-gutter-action', [{ range: edit.range, text: edit.text }])
-        isApplyingOwnEditRef.current = false
-      }
+        if (hasTextChange) {
+          isApplyingOwnEditRef.current = true
+          centerEditor.executeEdits('merge-gutter-action', [{ range: edit.range, text: edit.text }])
+          isApplyingOwnEditRef.current = false
+        }
 
-      const altIdAfter = model.getAlternativeVersionId()
-      const textChange = hasTextChange
+        const altIdAfter = model.getAlternativeVersionId()
+        const textChange = hasTextChange
 
-      historyRef.current.push({
-        prePlacements,
-        postPlacements: next,
-        altIdBefore,
-        altIdAfter,
-        textChange,
+        historyRef.current.push({
+          prePlacements,
+          postPlacements: next,
+          altIdBefore,
+          altIdAfter,
+          textChange,
+        })
+        redoRef.current = []
+        updatePlacementsStateAndRef(next)
       })
-      redoRef.current = []
-      setPlacements(next)
-    }, [])
+    }, [executeWithScrollPreservation, updatePlacementsStateAndRef])
 
     // The connector-gap accept/ignore buttons (MergeConnectorOverlay) only know a block's id,
     // not the `MergeBlock` object itself.
@@ -620,6 +667,17 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
       onPendingCountChange?.(pendingConflicts)
       scheduleRecompute()
+
+      if (savedScrollTopsRef.current) {
+        const { ours, center, theirs } = savedScrollTopsRef.current
+        oursEditor.setScrollTop(ours)
+        centerEditor.setScrollTop(center)
+        theirsEditor.setScrollTop(theirs)
+        savedScrollTopsRef.current = null
+        requestAnimationFrame(() => {
+          ignoreScrollSyncRef.current = false
+        })
+      }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [placements, editorsReady, showBlockBorders])
 
@@ -633,70 +691,76 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       const model = centerEditor?.getModel()
       if (!model) return
 
-      setPlacements((prev) =>
-        deriveLivePlacements((line) => model.getLineContent(line), model.getLineCount(), blocksRef.current, prev)
-      )
+      setPlacements((prev) => {
+        const next = deriveLivePlacements((line) => model.getLineContent(line), model.getLineCount(), blocksRef.current, prev)
+        placementsRef.current = next
+        return next
+      })
     }, [])
 
     const triggerUndo = useCallback(() => {
-      const centerEditor = centerEditorRef.current
-      if (!centerEditor) return
-      const model = centerEditor.getModel()
-      if (!model) return
+      executeWithScrollPreservation(() => {
+        const centerEditor = centerEditorRef.current
+        if (!centerEditor) return
+        const model = centerEditor.getModel()
+        if (!model) return
 
-      const currentAltId = model.getAlternativeVersionId()
-      const history = historyRef.current
-      if (history.length === 0) {
-        centerEditor.trigger('keyboard', 'undo', null)
-        return
-      }
+        const currentAltId = model.getAlternativeVersionId()
+        const history = historyRef.current
+        if (history.length === 0) {
+          centerEditor.trigger('keyboard', 'undo', null)
+          return
+        }
 
-      const entry = history[history.length - 1]
-      if (currentAltId !== entry.altIdAfter) {
-        // There is manual typing since the gutter action
-        centerEditor.trigger('keyboard', 'undo', null)
-        return
-      }
+        const entry = history[history.length - 1]
+        if (currentAltId !== entry.altIdAfter) {
+          // There is manual typing since the gutter action
+          centerEditor.trigger('keyboard', 'undo', null)
+          return
+        }
 
-      if (entry.textChange) {
-        centerEditor.trigger('keyboard', 'undo', null)
-      } else {
-        history.pop()
-        setPlacements(entry.prePlacements)
-        redoRef.current.push(entry)
-        scheduleRecompute()
-      }
-    }, [scheduleRecompute])
+        if (entry.textChange) {
+          centerEditor.trigger('keyboard', 'undo', null)
+        } else {
+          history.pop()
+          updatePlacementsStateAndRef(entry.prePlacements)
+          redoRef.current.push(entry)
+          scheduleRecompute()
+        }
+      })
+    }, [executeWithScrollPreservation, scheduleRecompute, updatePlacementsStateAndRef])
 
     const triggerRedo = useCallback(() => {
-      const centerEditor = centerEditorRef.current
-      if (!centerEditor) return
-      const model = centerEditor.getModel()
-      if (!model) return
+      executeWithScrollPreservation(() => {
+        const centerEditor = centerEditorRef.current
+        if (!centerEditor) return
+        const model = centerEditor.getModel()
+        if (!model) return
 
-      const currentAltId = model.getAlternativeVersionId()
-      const redo = redoRef.current
-      if (redo.length === 0) {
-        centerEditor.trigger('keyboard', 'redo', null)
-        return
-      }
+        const currentAltId = model.getAlternativeVersionId()
+        const redo = redoRef.current
+        if (redo.length === 0) {
+          centerEditor.trigger('keyboard', 'redo', null)
+          return
+        }
 
-      const entry = redo[redo.length - 1]
-      if (currentAltId !== entry.altIdBefore) {
-        // There is manual typing/other actions since the undo
-        centerEditor.trigger('keyboard', 'redo', null)
-        return
-      }
+        const entry = redo[redo.length - 1]
+        if (currentAltId !== entry.altIdBefore) {
+          // There is manual typing/other actions since the undo
+          centerEditor.trigger('keyboard', 'redo', null)
+          return
+        }
 
-      if (entry.textChange) {
-        centerEditor.trigger('keyboard', 'redo', null)
-      } else {
-        redo.pop()
-        setPlacements(entry.postPlacements)
-        historyRef.current.push(entry)
-        scheduleRecompute()
-      }
-    }, [scheduleRecompute])
+        if (entry.textChange) {
+          centerEditor.trigger('keyboard', 'redo', null)
+        } else {
+          redo.pop()
+          updatePlacementsStateAndRef(entry.postPlacements)
+          historyRef.current.push(entry)
+          scheduleRecompute()
+        }
+      })
+    }, [executeWithScrollPreservation, scheduleRecompute, updatePlacementsStateAndRef])
 
     // Fixes "undo doesn't bring back the gutter buttons/colors": Monaco's own undo/redo stack
     // operates on the model text only, so Ctrl+Z reverts the *content* but, without this,
@@ -721,7 +785,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
             if (entry.textChange && currentAltId === entry.altIdBefore) {
               history.pop()
               redoRef.current.push(entry)
-              setPlacements(entry.prePlacements)
+              updatePlacementsStateAndRef(entry.prePlacements)
               scheduleRecompute()
               return
             }
@@ -738,7 +802,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
             if (entry.textChange && currentAltId === entry.altIdAfter) {
               redo.pop()
               historyRef.current.push(entry)
-              setPlacements(entry.postPlacements)
+              updatePlacementsStateAndRef(entry.postPlacements)
               scheduleRecompute()
               return
             }
@@ -829,32 +893,34 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
           const model = centerEditor?.getModel()
           if (!centerEditor || !model) return
 
-          const altIdBefore = model.getAlternativeVersionId()
-          const prePlacements = placementsRef.current
-          const hasTextChange = model.getValue() !== mergedText
+          executeWithScrollPreservation(() => {
+            const altIdBefore = model.getAlternativeVersionId()
+            const prePlacements = placementsRef.current
+            const hasTextChange = model.getValue() !== mergedText
 
-          if (hasTextChange) {
-            isApplyingOwnEditRef.current = true
-            centerEditor.executeEdits('merge-auto-merge', [{ range: model.getFullModelRange(), text: mergedText }])
-            isApplyingOwnEditRef.current = false
-          }
+            if (hasTextChange) {
+              isApplyingOwnEditRef.current = true
+              centerEditor.executeEdits('merge-auto-merge', [{ range: model.getFullModelRange(), text: mergedText }])
+              isApplyingOwnEditRef.current = false
+            }
 
-          const altIdAfter = model.getAlternativeVersionId()
-          const textChange = hasTextChange
-          const postPlacements = recomputeAllPlacements(blocksRef.current, placementOverridesAfterAutoMerge(blocksRef.current, prePlacements))
+            const altIdAfter = model.getAlternativeVersionId()
+            const textChange = hasTextChange
+            const postPlacements = recomputeAllPlacements(blocksRef.current, placementOverridesAfterAutoMerge(blocksRef.current, prePlacements))
 
-          historyRef.current.push({
-            prePlacements,
-            postPlacements,
-            altIdBefore,
-            altIdAfter,
-            textChange,
+            historyRef.current.push({
+              prePlacements,
+              postPlacements,
+              altIdBefore,
+              altIdAfter,
+              textChange,
+            })
+            redoRef.current = []
+            updatePlacementsStateAndRef(postPlacements)
           })
-          redoRef.current = []
-          setPlacements(postPlacements)
         },
       }),
-      [repoPath, filePath]
+      [repoPath, filePath, executeWithScrollPreservation, updatePlacementsStateAndRef]
     )
 
     useEffect(() => {

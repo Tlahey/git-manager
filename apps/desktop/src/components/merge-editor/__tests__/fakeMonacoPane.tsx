@@ -120,6 +120,7 @@ export interface FakeEditorInstance {
     }) => void
   ) => void
   getScrollTop: () => number
+  setScrollTop: (val: number) => void
   getTopForLineNumber: (line: number) => number
   addCommand: (keybinding: number, handler: () => void) => void
   trigger: (source: string, actionId: string, payload: unknown) => void
@@ -136,6 +137,7 @@ const LINE_HEIGHT = 18
 function createFakeEditor(path: string, initialValue: string): FakeEditorInstance {
   const model = createFakeModel(initialValue)
   let zoneCounter = 0
+  let scrollTop = 0
   const commands = new Map<number, () => void>()
 
   const instance: FakeEditorInstance = {
@@ -161,7 +163,8 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
         },
       })
     },
-    getScrollTop: () => 0,
+    getScrollTop: () => scrollTop,
+    setScrollTop: (val: number) => { scrollTop = val },
     getTopForLineNumber: (line: number) => (line - 1) * LINE_HEIGHT,
     addCommand: (keybinding, handler) => {
       commands.set(keybinding, handler)
