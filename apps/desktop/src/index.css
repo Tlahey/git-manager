@@ -157,21 +157,21 @@ body {
    (touched); deletion/modification/conflict never produce a center accent marker, so those
    token variants aren't defined here. */
 .merge-marker-top-addition {
-  background-image: linear-gradient(to bottom, rgba(34, 197, 94, 0.9) 0, rgba(34, 197, 94, 0.9) 1px, transparent 1px) !important;
+  background-image: linear-gradient(to bottom, rgba(34, 197, 94, 0.6) 0, rgba(34, 197, 94, 0.6) 1px, transparent 1px) !important;
   transform: translateY(-1px);
 }
 .merge-marker-top-deletion,
 .merge-marker-top-resolved {
-  background-image: linear-gradient(to bottom, rgba(148, 163, 184, 0.9) 0, rgba(148, 163, 184, 0.9) 1px, transparent 1px) !important;
+  background-image: linear-gradient(to bottom, rgba(148, 163, 184, 0.6) 0, rgba(148, 163, 184, 0.6) 1px, transparent 1px) !important;
   transform: translateY(-1px);
 }
 .merge-marker-bottom-addition {
-  background-image: linear-gradient(to top, rgba(34, 197, 94, 0.9) 0, rgba(34, 197, 94, 0.9) 1px, transparent 1px) !important;
+  background-image: linear-gradient(to top, rgba(34, 197, 94, 0.6) 0, rgba(34, 197, 94, 0.6) 1px, transparent 1px) !important;
   transform: translateY(1px);
 }
 .merge-marker-bottom-deletion,
 .merge-marker-bottom-resolved {
-  background-image: linear-gradient(to top, rgba(148, 163, 184, 0.9) 0, rgba(148, 163, 184, 0.9) 1px, transparent 1px) !important;
+  background-image: linear-gradient(to top, rgba(148, 163, 184, 0.6) 0, rgba(148, 163, 184, 0.6) 1px, transparent 1px) !important;
   transform: translateY(1px);
 }
 
@@ -239,25 +239,25 @@ body {
 
 /* Resolved marker styles: dashed representation */
 .merge-marker-top-addition.merge-resolved {
-  background-image: repeating-linear-gradient(to right, rgba(34, 197, 94, 0.9), rgba(34, 197, 94, 0.9) 4px, transparent 4px, transparent 8px) !important;
+  background-image: repeating-linear-gradient(to right, rgba(34, 197, 94, 0.6), rgba(34, 197, 94, 0.6) 4px, transparent 4px, transparent 8px) !important;
   background-size: 100% 1px !important;
   background-repeat: no-repeat !important;
   transform: translateY(-1px);
 }
 .merge-marker-bottom-addition.merge-resolved {
-  background-image: repeating-linear-gradient(to right, rgba(34, 197, 94, 0.9), rgba(34, 197, 94, 0.9) 4px, transparent 4px, transparent 8px) !important;
+  background-image: repeating-linear-gradient(to right, rgba(34, 197, 94, 0.6), rgba(34, 197, 94, 0.6) 4px, transparent 4px, transparent 8px) !important;
   background-size: 100% 1px !important;
   background-repeat: no-repeat !important;
   transform: translateY(1px);
 }
 .merge-marker-top-deletion.merge-resolved {
-  background-image: repeating-linear-gradient(to right, rgba(148, 163, 184, 0.9), rgba(148, 163, 184, 0.9) 4px, transparent 4px, transparent 8px) !important;
+  background-image: repeating-linear-gradient(to right, rgba(148, 163, 184, 0.6), rgba(148, 163, 184, 0.6) 4px, transparent 4px, transparent 8px) !important;
   background-size: 100% 1px !important;
   background-repeat: no-repeat !important;
   transform: translateY(-1px);
 }
 .merge-marker-bottom-deletion.merge-resolved {
-  background-image: repeating-linear-gradient(to right, rgba(148, 163, 184, 0.9), rgba(148, 163, 184, 0.9) 4px, transparent 4px, transparent 8px) !important;
+  background-image: repeating-linear-gradient(to right, rgba(148, 163, 184, 0.6), rgba(148, 163, 184, 0.6) 4px, transparent 4px, transparent 8px) !important;
   background-size: 100% 1px !important;
   background-repeat: no-repeat !important;
   transform: translateY(1px);
@@ -392,19 +392,19 @@ body {
   stroke-width: 1.5;
 }
 .merge-connector-addition.merge-connector-flat {
-  stroke: rgba(34, 197, 94, 0.9);
+  stroke: rgba(34, 197, 94, 0.6);
 }
 .merge-connector-deletion.merge-connector-flat {
-  stroke: rgba(148, 163, 184, 0.9);
+  stroke: rgba(148, 163, 184, 0.6);
 }
 .merge-connector-modification.merge-connector-flat {
-  stroke: rgba(59, 130, 246, 0.9);
+  stroke: rgba(59, 130, 246, 0.6);
 }
 .merge-connector-conflict.merge-connector-flat {
-  stroke: rgba(239, 68, 68, 0.9);
+  stroke: rgba(239, 68, 68, 0.6);
 }
 .merge-connector-resolved.merge-connector-flat {
-  stroke: rgba(148, 163, 184, 0.9);
+  stroke: rgba(148, 163, 184, 0.6);
 }
 
 /* Resolved connector styles: keep original color, set fill to none and dashed stroke */
