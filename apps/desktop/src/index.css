@@ -63,8 +63,12 @@ body {
 .merge-vivid-conflict {
   background-color: rgba(239, 68, 68, 0.42) !important;
 }
-.merge-vivid-resolved {
-  background-color: rgba(148, 163, 184, 0.42) !important;
+.merge-vivid-resolved,
+.merge-vivid-addition.merge-resolved,
+.merge-vivid-deletion.merge-resolved,
+.merge-vivid-modification.merge-resolved,
+.merge-vivid-conflict.merge-resolved {
+  background-color: transparent !important;
 }
 
 .merge-text-addition {
@@ -79,8 +83,12 @@ body {
 .merge-text-conflict {
   background-color: rgba(239, 68, 68, 0.16) !important;
 }
-.merge-text-resolved {
-  background-color: rgba(148, 163, 184, 0.16) !important;
+.merge-text-resolved,
+.merge-text-addition.merge-resolved,
+.merge-text-deletion.merge-resolved,
+.merge-text-modification.merge-resolved,
+.merge-text-conflict.merge-resolved {
+  background-color: transparent !important;
 }
 
 /* Intra-line (character-precise) highlights — `inlineClassName` decorations from
@@ -105,61 +113,66 @@ body {
   border-radius: 2px;
   border-bottom: 1px dashed rgba(239, 68, 68, 0.9);
 }
-.merge-inline-resolved {
-  background-color: rgba(148, 163, 184, 0.4) !important;
+.merge-inline-resolved,
+.merge-inline-addition.merge-resolved,
+.merge-inline-deletion.merge-resolved,
+.merge-inline-modification.merge-resolved,
+.merge-inline-conflict.merge-resolved {
+  background-color: transparent !important;
   border-radius: 2px;
+  border-bottom: none !important;
 }
 
 /* Zero-height boundary markers (WebStorm's pure-insertion rendering): when a block simply does
-   not exist in a pane, no space is consumed there — instead a crisp 2px line is painted along
-   the inter-line boundary where the content would land (top edge of the following line, or
-   bottom edge of the last line when the insertion point is past the end of the document). The
-   connector ribbon funnels to this exact line.
+   not exist in a pane, no space is consumed there — instead a crisp 1px hairline is painted
+   along the inter-line boundary where the content would land (top edge of the following line,
+   or bottom edge of the last line when the insertion point is past the end of the document).
+   The connector ribbon funnels to this exact line.
 
    Painted as a background-image gradient band rather than a CSS border on purpose: the same
    decoration class is applied to the line-number margin (`marginClassName`), and Monaco's
    margin-overlay line divs reliably render *backgrounds* (the merge-vivid-* gutter fills above
    prove it) whereas a border there gets cut off — the line must run unbroken across the gutter
-   and the code area. */
+   and the code area.
+
+   These classes are the CENTER pane's own accent marker for a pure addition not yet pulled in —
+   the mirror/opposite pane gets no decoration at all for that same block (untouched code, per
+   spec), so there's no passive counterpart to keep in sync here. This is the specific hook to
+   target with `document.querySelector('.merge-marker-top-addition')` etc. from devtools/a test:
+   Monaco decorations don't expose a `data-testid`-style attribute through the public API
+   (`className`/`marginClassName` only ever take CSS class names, nothing else gets forwarded to
+   the rendered DOM node), so the class name itself is the closest equivalent hook available.
+
+   `transform: translateY(...)` nudges the whole decoration element by a further 1px, off the
+   real line it's decorating and onto the true inter-line boundary: the gradient itself only
+   ever paints inside this element's own box (`background` can't be clipped-out an element's
+   bounds to render "outside" it), so line up the line by moving the box itself instead — `-1px`
+   for the top variant (used on the line *below* the boundary, so shifting up moves it off that
+   line and onto the boundary above), `+1px` for the bottom variant (mirrored, used on the line
+   *above* the boundary when there's no next line to anchor to). Each per-line decoration here is
+   its own independent, absolutely-positioned overlay div in Monaco's rendering, not clipped by
+   its neighbors, so nudging it 1px into the adjacent line's slot renders cleanly. */
+/* Only ever reached for a pure-addition block (see `centerEmptyRendering` in
+   mergeDecorations.ts) — its token is therefore always 'addition' (untouched) or 'resolved'
+   (touched); deletion/modification/conflict never produce a center accent marker, so those
+   token variants aren't defined here. */
 .merge-marker-top-addition {
-  background-image: linear-gradient(to bottom, rgba(34, 197, 94, 0.9) 0, rgba(34, 197, 94, 0.9) 2px, transparent 2px) !important;
+  background-image: linear-gradient(to bottom, rgba(34, 197, 94, 0.9) 0, rgba(34, 197, 94, 0.9) 1px, transparent 1px) !important;
+  transform: translateY(-1px);
 }
-.merge-marker-top-deletion {
-  background-image: linear-gradient(to bottom, rgba(148, 163, 184, 0.9) 0, rgba(148, 163, 184, 0.9) 2px, transparent 2px) !important;
-}
-.merge-marker-top-modification {
-  background-image: linear-gradient(to bottom, rgba(59, 130, 246, 0.9) 0, rgba(59, 130, 246, 0.9) 2px, transparent 2px) !important;
-}
-.merge-marker-top-conflict {
-  background-image: linear-gradient(to bottom, rgba(239, 68, 68, 0.9) 0, rgba(239, 68, 68, 0.9) 2px, transparent 2px) !important;
-}
+.merge-marker-top-deletion,
 .merge-marker-top-resolved {
-  background-image: linear-gradient(to bottom, rgba(148, 163, 184, 0.9) 0, rgba(148, 163, 184, 0.9) 2px, transparent 2px) !important;
+  background-image: linear-gradient(to bottom, rgba(148, 163, 184, 0.9) 0, rgba(148, 163, 184, 0.9) 1px, transparent 1px) !important;
+  transform: translateY(-1px);
 }
 .merge-marker-bottom-addition {
-  background-image: linear-gradient(to top, rgba(34, 197, 94, 0.9) 0, rgba(34, 197, 94, 0.9) 2px, transparent 2px) !important;
+  background-image: linear-gradient(to top, rgba(34, 197, 94, 0.9) 0, rgba(34, 197, 94, 0.9) 1px, transparent 1px) !important;
+  transform: translateY(1px);
 }
-.merge-marker-bottom-deletion {
-  background-image: linear-gradient(to top, rgba(148, 163, 184, 0.9) 0, rgba(148, 163, 184, 0.9) 2px, transparent 2px) !important;
-}
-.merge-marker-bottom-modification {
-  background-image: linear-gradient(to top, rgba(59, 130, 246, 0.9) 0, rgba(59, 130, 246, 0.9) 2px, transparent 2px) !important;
-}
-.merge-marker-bottom-conflict {
-  background-image: linear-gradient(to top, rgba(239, 68, 68, 0.9) 0, rgba(239, 68, 68, 0.9) 2px, transparent 2px) !important;
-}
+.merge-marker-bottom-deletion,
 .merge-marker-bottom-resolved {
-  background-image: linear-gradient(to top, rgba(148, 163, 184, 0.9) 0, rgba(148, 163, 184, 0.9) 2px, transparent 2px) !important;
-}
-
-/* The passive counterpart, for the source pane that a one-sided insertion does NOT come from
-   (WebStorm's "observer" pane): a thin, discreet, theme-neutral 1px line — it only materializes
-   "something is happening at this height in the other panes" without claiming a color. */
-.merge-marker-passive-top {
-  background-image: linear-gradient(to bottom, rgba(128, 128, 128, 0.35) 0, rgba(128, 128, 128, 0.35) 1px, transparent 1px) !important;
-}
-.merge-marker-passive-bottom {
-  background-image: linear-gradient(to top, rgba(128, 128, 128, 0.35) 0, rgba(128, 128, 128, 0.35) 1px, transparent 1px) !important;
+  background-image: linear-gradient(to top, rgba(148, 163, 184, 0.9) 0, rgba(148, 163, 184, 0.9) 1px, transparent 1px) !important;
+  transform: translateY(1px);
 }
 
 /* Hermetic block borders (JetBrains-style): a vivid 2px edge only across the very top of a
@@ -180,7 +193,7 @@ body {
   border-top: 2px solid rgba(239, 68, 68, 0.8) !important;
 }
 .merge-border-top-resolved {
-  border-top: 2px solid rgba(148, 163, 184, 0.8) !important;
+  border-top: 2px dashed rgba(148, 163, 184, 0.8) !important;
 }
 .merge-border-bottom-addition {
   border-bottom: 2px solid rgba(34, 197, 94, 0.8) !important;
@@ -195,13 +208,70 @@ body {
   border-bottom: 2px solid rgba(239, 68, 68, 0.8) !important;
 }
 .merge-border-bottom-resolved {
-  border-bottom: 2px solid rgba(148, 163, 184, 0.8) !important;
+  border-bottom: 2px dashed rgba(148, 163, 184, 0.8) !important;
+}
+
+/* Resolved border styles (keep original semantic color, but styled as dashed) */
+.merge-border-top-addition.merge-resolved {
+  border-top: 2px dashed rgba(34, 197, 94, 0.8) !important;
+}
+.merge-border-top-deletion.merge-resolved {
+  border-top: 2px dashed rgba(148, 163, 184, 0.8) !important;
+}
+.merge-border-top-modification.merge-resolved {
+  border-top: 2px dashed rgba(59, 130, 246, 0.8) !important;
+}
+.merge-border-top-conflict.merge-resolved {
+  border-top: 2px dashed rgba(239, 68, 68, 0.8) !important;
+}
+.merge-border-bottom-addition.merge-resolved {
+  border-bottom: 2px dashed rgba(34, 197, 94, 0.8) !important;
+}
+.merge-border-bottom-deletion.merge-resolved {
+  border-bottom: 2px dashed rgba(148, 163, 184, 0.8) !important;
+}
+.merge-border-bottom-modification.merge-resolved {
+  border-bottom: 2px dashed rgba(59, 130, 246, 0.8) !important;
+}
+.merge-border-bottom-conflict.merge-resolved {
+  border-bottom: 2px dashed rgba(239, 68, 68, 0.8) !important;
+}
+
+/* Resolved marker styles: dashed representation */
+.merge-marker-top-addition.merge-resolved {
+  background-image: repeating-linear-gradient(to right, rgba(34, 197, 94, 0.9), rgba(34, 197, 94, 0.9) 4px, transparent 4px, transparent 8px) !important;
+  background-size: 100% 1px !important;
+  background-repeat: no-repeat !important;
+  transform: translateY(-1px);
+}
+.merge-marker-bottom-addition.merge-resolved {
+  background-image: repeating-linear-gradient(to right, rgba(34, 197, 94, 0.9), rgba(34, 197, 94, 0.9) 4px, transparent 4px, transparent 8px) !important;
+  background-size: 100% 1px !important;
+  background-repeat: no-repeat !important;
+  transform: translateY(1px);
+}
+.merge-marker-top-deletion.merge-resolved {
+  background-image: repeating-linear-gradient(to right, rgba(148, 163, 184, 0.9), rgba(148, 163, 184, 0.9) 4px, transparent 4px, transparent 8px) !important;
+  background-size: 100% 1px !important;
+  background-repeat: no-repeat !important;
+  transform: translateY(-1px);
+}
+.merge-marker-bottom-deletion.merge-resolved {
+  background-image: repeating-linear-gradient(to right, rgba(148, 163, 184, 0.9), rgba(148, 163, 184, 0.9) 4px, transparent 4px, transparent 8px) !important;
+  background-size: 100% 1px !important;
+  background-repeat: no-repeat !important;
+  transform: translateY(1px);
 }
 
 /* Alignment filler zones (Monaco IViewZone dom nodes, injected by ThreeWayMergeEditor's
    applyViewZones): hatched "this content doesn't exist in this pane" space, WebStorm-style,
-   sized so the three panes stay line-for-line aligned. Neutral translucent stripes rather than
-   hard-coded grays so both light and dark editor themes keep readable contrast. */
+   sized so the three panes stay line-for-line aligned. Translucent stripes rather than
+   hard-coded solids so both light and dark editor themes keep readable contrast.
+
+   The hatching is SEMANTIC, like WebStorm's: a plain deletion's hole gets thick, widely-spaced
+   gray stripes; a conflict where one side removed text gets thin, dense red ones — the stripe
+   pattern alone tells you what kind of gap you're looking at. The base class is the neutral
+   fallback for tokenless zones. */
 .merge-view-zone {
   box-sizing: border-box;
   width: 100%;
@@ -212,6 +282,43 @@ body {
     rgba(128, 128, 128, 0.14) 6px,
     rgba(128, 128, 128, 0.03) 6px,
     rgba(128, 128, 128, 0.03) 12px
+  );
+}
+.merge-view-zone-deletion,
+.merge-view-zone-resolved {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(148, 163, 184, 0.28),
+    rgba(148, 163, 184, 0.28) 7px,
+    rgba(148, 163, 184, 0.04) 7px,
+    rgba(148, 163, 184, 0.04) 21px
+  );
+}
+.merge-view-zone-conflict {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(239, 68, 68, 0.3),
+    rgba(239, 68, 68, 0.3) 2px,
+    rgba(239, 68, 68, 0.05) 2px,
+    rgba(239, 68, 68, 0.05) 6px
+  );
+}
+.merge-view-zone-modification {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(59, 130, 246, 0.22),
+    rgba(59, 130, 246, 0.22) 5px,
+    rgba(59, 130, 246, 0.04) 5px,
+    rgba(59, 130, 246, 0.04) 13px
+  );
+}
+.merge-view-zone-addition {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(34, 197, 94, 0.22),
+    rgba(34, 197, 94, 0.22) 5px,
+    rgba(34, 197, 94, 0.04) 5px,
+    rgba(34, 197, 94, 0.04) 13px
   );
 }
 
@@ -245,11 +352,14 @@ body {
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'/%3E%3Cpath d='m6 6 12 12'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'/%3E%3Cpath d='m6 6 12 12'/%3E%3C/svg%3E");
 }
-.merge-connector-accept-ours {
+/* Accept-icon direction is per GAP, not per merge side: it always points toward the center
+   pane the content flows into — chevrons-right for the left gap (theirs/incoming), chevrons-left
+   for the right gap (ours/current). */
+.merge-connector-accept-from-left {
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 17 5-5-5-5'/%3E%3Cpath d='m13 17 5-5-5-5'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 17 5-5-5-5'/%3E%3Cpath d='m13 17 5-5-5-5'/%3E%3C/svg%3E");
 }
-.merge-connector-accept-theirs {
+.merge-connector-accept-from-right {
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m11 17-5-5 5-5'/%3E%3Cpath d='m18 17-5-5 5-5'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m11 17-5-5 5-5'/%3E%3Cpath d='m18 17-5-5 5-5'/%3E%3C/svg%3E");
 }
@@ -270,7 +380,60 @@ body {
   fill: rgba(148, 163, 184, 0.42);
 }
 
-/* Ours pane: flip Monaco's native gutter to the right edge instead of the left. The margin's
+/* Degenerate (zero-height at both ends) segments — the gap a pure insertion crosses in the
+   pane it's absent from: drawn as an open stroked hairline instead of a filled ribbon, so the
+   insertion's boundary marker continues unbroken through the gap. Same rgba (hue AND opacity)
+   as the `merge-marker-*`/`merge-marker-passive-*` lines it connects to on either side — this
+   stroke is the middle segment of that one continuous line across the whole screen, so any
+   opacity mismatch here would show up as a visible color seam right where the gap meets the
+   pane, same reasoning as the accent/passive marker unification above. */
+.merge-connector-flat {
+  fill: none !important;
+  stroke-width: 1.5;
+}
+.merge-connector-addition.merge-connector-flat {
+  stroke: rgba(34, 197, 94, 0.9);
+}
+.merge-connector-deletion.merge-connector-flat {
+  stroke: rgba(148, 163, 184, 0.9);
+}
+.merge-connector-modification.merge-connector-flat {
+  stroke: rgba(59, 130, 246, 0.9);
+}
+.merge-connector-conflict.merge-connector-flat {
+  stroke: rgba(239, 68, 68, 0.9);
+}
+.merge-connector-resolved.merge-connector-flat {
+  stroke: rgba(148, 163, 184, 0.9);
+}
+
+/* Resolved connector styles: keep original color, set fill to none and dashed stroke */
+.merge-connector-addition.merge-resolved {
+  fill: none !important;
+  stroke: rgba(34, 197, 94, 0.8) !important;
+}
+.merge-connector-deletion.merge-resolved {
+  fill: none !important;
+  stroke: rgba(148, 163, 184, 0.8) !important;
+}
+.merge-connector-modification.merge-resolved {
+  fill: none !important;
+  stroke: rgba(59, 130, 246, 0.8) !important;
+}
+.merge-connector-conflict.merge-resolved {
+  fill: none !important;
+  stroke: rgba(239, 68, 68, 0.8) !important;
+}
+
+.merge-connector-edge.merge-resolved,
+.merge-connector-flat.merge-resolved {
+  fill: none !important;
+  stroke-dasharray: 4,4;
+  stroke-width: 1.5;
+}
+
+/* Leftmost (theirs/incoming) pane: flip Monaco's native gutter to the right edge instead of
+   the left, so its line numbers hug the connector gap. The margin's
    width is always exactly `contentLeft`, and the scrollable content's width is always exactly
    `fullWidth - contentLeft` — so swapping which side each one docks to tiles them back together
    with no gap or overlap. `!important` is required for the scrollable element specifically:

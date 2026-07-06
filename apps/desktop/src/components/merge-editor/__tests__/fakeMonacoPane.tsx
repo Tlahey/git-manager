@@ -27,6 +27,11 @@ export function createFakeModel(initialValue: string) {
   let text = initialValue
   const listeners: ContentChangeListener[] = []
 
+  let nextAltId = 1
+  let currentAltId = 1
+  const versionHistory = new Map<string, number>()
+  versionHistory.set(text, currentAltId)
+
   const currentLines = () => text.split('\n')
 
   function positionToOffset(line: number, column: number): number {
@@ -41,6 +46,16 @@ export function createFakeModel(initialValue: string) {
     for (const listener of listeners) listener(e)
   }
 
+  function updateAltId() {
+    if (versionHistory.has(text)) {
+      currentAltId = versionHistory.get(text)!
+    } else {
+      nextAltId++
+      currentAltId = nextAltId
+      versionHistory.set(text, currentAltId)
+    }
+  }
+
   return {
     getValue: () => text,
     getLineCount: () => currentLines().length,
@@ -50,6 +65,7 @@ export function createFakeModel(initialValue: string) {
       const lines = currentLines()
       return { startLineNumber: 1, startColumn: 1, endLineNumber: lines.length, endColumn: (lines[lines.length - 1]?.length ?? 0) + 1 }
     },
+    getAlternativeVersionId: () => currentAltId,
     /** Mirrors `editor.executeEdits` — applies one or more range replacements against the
      * current text, offset-based so it's exact regardless of how many lines an edit spans. */
     applyEdits: (edits: FakeEdit[]) => {
@@ -63,12 +79,14 @@ export function createFakeModel(initialValue: string) {
       for (const e of withOffsets) {
         text = text.slice(0, e.start) + e.text + text.slice(e.end)
       }
+      updateAltId()
       fire()
     },
     /** Test-only escape hatch for simulating a change Monaco itself would have made outside of
      * our own `executeEdits` calls — manual typing, or an undo/redo restoring prior text. */
     simulateExternalChange: (newText: string, event: { isUndoing?: boolean; isRedoing?: boolean } = {}) => {
       text = newText
+      updateAltId()
       fire(event)
     },
     onDidChangeContent: (cb: ContentChangeListener) => {
@@ -102,11 +120,16 @@ export interface FakeEditorInstance {
     }) => void
   ) => void
   getScrollTop: () => number
+  setScrollTop: (val: number) => void
   getTopForLineNumber: (line: number) => number
+  addCommand: (keybinding: number, handler: () => void) => void
+  trigger: (source: string, actionId: string, payload: unknown) => void
   /** Test-only: the most recent array passed to the decorations collection's `.set()`. */
   decorations: unknown[]
   /** Test-only: the currently-live view zones (adds minus removes across `changeViewZones` calls). */
   viewZones: FakeViewZone[]
+  /** Test-only: map of registered commands for testing undo/redo key bindings. */
+  commands: Map<number, () => void>
 }
 
 const LINE_HEIGHT = 18
@@ -114,6 +137,9 @@ const LINE_HEIGHT = 18
 function createFakeEditor(path: string, initialValue: string): FakeEditorInstance {
   const model = createFakeModel(initialValue)
   let zoneCounter = 0
+  let scrollTop = 0
+  const commands = new Map<number, () => void>()
+
   const instance: FakeEditorInstance = {
     path,
     getModel: () => model,
@@ -137,10 +163,27 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
         },
       })
     },
-    getScrollTop: () => 0,
+    getScrollTop: () => scrollTop,
+    setScrollTop: (val: number) => { scrollTop = val },
     getTopForLineNumber: (line: number) => (line - 1) * LINE_HEIGHT,
+    addCommand: (keybinding, handler) => {
+      commands.set(keybinding, handler)
+    },
+    trigger: (_source, actionId, _payload) => {
+      // In fake environment, triggering undo or redo checks the registered command keybindings
+      if (actionId === 'undo') {
+        const handler = commands.get(2048 | 56) // KeyMod.CtrlCmd | KeyCode.KeyZ
+        if (handler) handler()
+      } else if (actionId === 'redo') {
+        const handlerY = commands.get(2048 | 55) // KeyMod.CtrlCmd | KeyCode.KeyY
+        const handlerShiftZ = commands.get(2048 | 1024 | 56) // KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyZ
+        if (handlerY) handlerY()
+        else if (handlerShiftZ) handlerShiftZ()
+      }
+    },
     decorations: [],
     viewZones: [],
+    commands,
   }
   return instance
 }
@@ -171,7 +214,16 @@ export function FakeMonacoEditor({ path, value, onMount }: FakeMonacoEditorProps
   useEffect(() => {
     const instance = createFakeEditor(path, value)
     fakeEditors.set(path, instance)
-    onMount?.(instance, {})
+    onMount?.(instance, {
+      KeyMod: {
+        CtrlCmd: 2048,
+        Shift: 1024,
+      },
+      KeyCode: {
+        KeyZ: 56,
+        KeyY: 55,
+      },
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path])
   return null

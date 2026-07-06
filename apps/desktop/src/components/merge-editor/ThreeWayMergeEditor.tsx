@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import type { Monaco } from '@monaco-editor/react'
 import type { editor, IRange } from 'monaco-editor'
 import type { MergeBlock, ThreeWayMergeView } from '@git-manager/git-types'
@@ -9,17 +9,25 @@ import { useMergeScrollSync } from './useMergeScrollSync'
 import {
   type BlockPlacement,
   type MergeSide,
+  changeKindForBlock,
+  centerLinesForBlock,
+  computeInitialCenterText,
   computeInitialPlacements,
   connectorCenterRangeForSide,
   connectorClassForSide,
   deriveLivePlacements,
-  linesForSide,
+  isChangeSource,
   placementOverridesAfterAutoMerge,
   recomputeAllPlacements,
-  subRangeForSide,
   updatePlacementAfterToggle,
 } from './mergeBlockLayout'
-import { type DecorationSpec, type ViewZoneSpec, computeMergeVisuals } from './mergeDecorations'
+import {
+  type DecorationSpec,
+  type ViewZoneSpec,
+  computeMergeVisuals,
+  computePaneTotalLines,
+  markerEdge,
+} from './mergeDecorations'
 import { type InlineDecorationSpec, computeIntraLineHighlights } from './mergeIntraLineDiff'
 
 interface ThreeWayMergeEditorProps {
@@ -35,6 +43,14 @@ interface ThreeWayMergeEditorProps {
 export interface ThreeWayMergeEditorRef {
   getCenterValue: () => string
   applyAutoMerge: () => Promise<void>
+}
+
+interface HistoryEntry {
+  prePlacements: Map<number, BlockPlacement>
+  postPlacements: Map<number, BlockPlacement>
+  altIdBefore: number
+  altIdAfter: number
+  textChange: boolean
 }
 
 // Wide enough to comfortably fit the two accept/ignore buttons side by side (see
@@ -90,6 +106,9 @@ function applyViewZones(
     for (const spec of specs) {
       const domNode = document.createElement('div')
       domNode.className = spec.className
+      if (spec.id) {
+        domNode.setAttribute('data-zone-id', spec.id)
+      }
       ids.push(accessor.addZone({ afterLineNumber: spec.afterLineNumber, heightInLines: spec.heightInLines, domNode }))
     }
   })
@@ -132,20 +151,104 @@ function buildRangeEdit(
   }
 }
 
-/** JetBrains-style 3-panel merge editor: left = ours (read-only), center = editable result,
- * right = theirs (read-only). Each side of a block can be independently included in the center
- * — accepting ours doesn't exclude theirs, so both can end up in the final result together.
- * Accept/ignore buttons live in the connector gaps (see MergeConnectorOverlay), not in either
- * pane's own gutter; the magic wand (imperative `applyAutoMerge`) auto-merges every
- * non-conflicting block at once. Blocks are color-coded and connected across the gaps by
- * `MergeConnectorOverlay`. */
+function checkTextChanges(
+  model: editor.ITextModel,
+  startLine: number,
+  lineCount: number,
+  newLines: string[]
+): boolean {
+  if (lineCount !== newLines.length) return true
+  for (let i = 0; i < lineCount; i++) {
+    if (model.getLineContent(startLine + i) !== newLines[i]) return true
+  }
+  return false
+}
+
+function updateConnectorPaths(
+  overlayElement: HTMLDivElement | null,
+  scrollTopLeft: number,
+  scrollTopRight: number,
+  segments: ConnectorSegment[],
+  side: 'left' | 'right'
+) {
+  if (!overlayElement) return
+
+  const half = GAP_WIDTH / 2
+  const width = GAP_WIDTH
+
+  // 1. Update SVG paths
+  const paths = overlayElement.querySelectorAll('path')
+  let pathIdx = 0
+
+  segments.forEach((seg) => {
+    const leftY0 = seg.leftY0 - scrollTopLeft
+    const leftY1 = seg.leftY1 - scrollTopLeft
+    const rightY0 = seg.rightY0 - scrollTopRight
+    const rightY1 = seg.rightY1 - scrollTopRight
+
+    if (seg.flat) {
+      const d = `M 0,${leftY0} C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`
+      const pathEl = paths[pathIdx++] as SVGPathElement | undefined
+      if (pathEl) pathEl.setAttribute('d', d)
+    } else if (seg.resolved) {
+      const dTop = `M 0,${leftY0} C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`
+      const dBottom = `M 0,${leftY1} C ${half},${leftY1} ${half},${rightY1} ${width},${rightY1}`
+      
+      const pathElTop = paths[pathIdx++] as SVGPathElement | undefined
+      if (pathElTop) pathElTop.setAttribute('d', dTop)
+      
+      const pathElBottom = paths[pathIdx++] as SVGPathElement | undefined
+      if (pathElBottom) pathElBottom.setAttribute('d', dBottom)
+    } else {
+      const d = [
+        `M 0,${leftY0}`,
+        `C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`,
+        `L ${width},${rightY1}`,
+        `C ${half},${rightY1} ${half},${leftY1} 0,${leftY1}`,
+        'Z',
+      ].join(' ')
+      
+      const pathEl = paths[pathIdx++] as SVGPathElement | undefined
+      if (pathEl) pathEl.setAttribute('d', d)
+    }
+  })
+
+  // 2. Update action button positions
+  const buttonContainers = overlayElement.querySelectorAll('.merge-connector-action-container')
+  let btnIdx = 0
+
+  segments.forEach((seg) => {
+    if (!seg.actionable) return
+    const anchorY = side === 'left' ? seg.leftY0 - scrollTopLeft : seg.rightY0 - scrollTopRight
+    const btnContainer = buttonContainers[btnIdx++] as HTMLDivElement | undefined
+    if (btnContainer) {
+      btnContainer.style.top = `${anchorY}px`
+    }
+  })
+}
+
+/** JetBrains-style 3-panel merge editor: left = theirs (the incoming change being applied,
+ * read-only), center = editable result, right = ours (the local/current side, read-only) —
+ * matching WebStorm's merge/rebase dialog, which puts what you're merging IN on the left and
+ * your own code on the right. Accept/ignore buttons live in the connector gaps (see
+ * MergeConnectorOverlay), anchored against the pane that authored the change; a genuine
+ * conflict is actionable from both gaps and its sides toggle independently (accepting ours
+ * doesn't exclude theirs, so both can end up in the result together), while a one-sided change
+ * is only actionable from its source gap and resolves exclusively — accept swaps the block's
+ * center content to that side, ignore restores the other (ancestor-mirroring) side. The magic
+ * wand (imperative `applyAutoMerge`) auto-merges every non-conflicting block at once. Blocks
+ * are color-coded and connected across the gaps by `MergeConnectorOverlay`. */
 export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMergeEditorProps>(
   ({ repoPath, filePath, view, onPendingCountChange, showBlockBorders = false }, ref) => {
     const blocksRef = useRef<MergeBlock[]>(view.blocks)
     blocksRef.current = view.blocks
 
-    // The center buffer always starts as plain, natural text — exactly `oursText` (every
-    // block's `ours_lines` concatenated), never conflict-marker syntax.
+    // The center buffer's initial text and its placement metadata are two independent
+    // computations over the same blocks — see `computeInitialCenterText`'s own doc comment for
+    // why they MUST stay in lockstep (a real, one-time bug: seeding this pane from the backend's
+    // plain `oursText` while `computeInitialPlacements` had its own per-block inclusion
+    // exceptions left every block after a mismatched one visibly offset by the difference).
+    const initialCenterText = useMemo(() => computeInitialCenterText(view.blocks), [view.blocks])
     const [placements, setPlacements] = useState<Map<number, BlockPlacement>>(() => computeInitialPlacements(view.blocks))
     const placementsRef = useRef(placements)
     placementsRef.current = placements
@@ -174,9 +277,52 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     // just made this edit ourselves" apart from a genuine undo/redo/manual keystroke — without
     // this, Ctrl+Z would change the buffer text back but leave gutter widgets/colors stuck on
     // whatever they were set to by the action being undone.
-    const historyRef = useRef<Map<number, BlockPlacement>[]>([])
-    const redoRef = useRef<Map<number, BlockPlacement>[]>([])
+    const historyRef = useRef<HistoryEntry[]>([])
+    const redoRef = useRef<HistoryEntry[]>([])
     const isApplyingOwnEditRef = useRef(false)
+    const ignoreScrollSyncRef = useRef(false)
+    const savedScrollTopsRef = useRef<{ ours: number; center: number; theirs: number } | null>(null)
+
+    const updatePlacementsStateAndRef = useCallback((next: Map<number, BlockPlacement>) => {
+      placementsRef.current = next
+      setPlacements(next)
+    }, [])
+
+    const saveScrollTopsAndPauseSync = useCallback(() => {
+      const oursEditor = oursEditorRef.current
+      const centerEditor = centerEditorRef.current
+      const theirsEditor = theirsEditorRef.current
+      if (oursEditor && centerEditor && theirsEditor) {
+        savedScrollTopsRef.current = {
+          ours: oursEditor.getScrollTop(),
+          center: centerEditor.getScrollTop(),
+          theirs: theirsEditor.getScrollTop(),
+        }
+        ignoreScrollSyncRef.current = true
+      }
+    }, [])
+
+    const executeWithScrollPreservation = useCallback((action: () => void) => {
+      saveScrollTopsAndPauseSync()
+      let completed = false
+      try {
+        action()
+        completed = true
+      } finally {
+        if (!completed) {
+          ignoreScrollSyncRef.current = false
+          savedScrollTopsRef.current = null
+        } else {
+          // Safety timeout in case placements useEffect doesn't trigger
+          setTimeout(() => {
+            if (savedScrollTopsRef.current) {
+              ignoreScrollSyncRef.current = false
+              savedScrollTopsRef.current = null
+            }
+          }, 150)
+        }
+      }
+    }, [saveScrollTopsAndPauseSync])
 
     // Reset per-file state when switching to a different file. `placements` is otherwise only
     // ever seeded once (the `useState` lazy initializer above only runs on the component's
@@ -186,31 +332,46 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     // itself, since SWR can hand back a freshly-fetched `view` object for the *same* file on
     // revalidation — that shouldn't wipe in-progress edits.
     useEffect(() => {
-      setPlacements(computeInitialPlacements(view.blocks))
+      updatePlacementsStateAndRef(computeInitialPlacements(view.blocks))
       historyRef.current = []
       redoRef.current = []
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [repoPath, filePath])
+    }, [repoPath, filePath, updatePlacementsStateAndRef])
 
-    const { attach: attachScrollSync } = useMergeScrollSync()
+    const { attach: attachScrollSync } = useMergeScrollSync(blocksRef, placementsRef, monacoRef, ignoreScrollSyncRef)
 
     const containerRef = useRef<HTMLDivElement | null>(null)
     const [gapHeight, setGapHeight] = useState(0)
     const [leftSegments, setLeftSegments] = useState<ConnectorSegment[]>([])
     const [rightSegments, setRightSegments] = useState<ConnectorSegment[]>([])
+    const leftSegmentsRef = useRef<ConnectorSegment[]>([])
+    const rightSegmentsRef = useRef<ConnectorSegment[]>([])
     const leftOverlayRef = useRef<HTMLDivElement | null>(null)
     const rightOverlayRef = useRef<HTMLDivElement | null>(null)
 
     // Written directly to the DOM (bypassing React state/render) from Monaco's own
     // `onDidScrollChange`, so the connector overlay's position tracks the panes' scroll at the
     // exact same synchronous moment Monaco updates itself, rather than catching up a render
-    // cycle later. `recomputeConnectors` below deliberately never factors scroll into segment
-    // coordinates (they're in document space) — scroll-following is entirely this transform.
-    const applyScrollOffset = useCallback((scrollTop: number) => {
-      const transform = `translateY(${-scrollTop}px)`
-      if (leftOverlayRef.current) leftOverlayRef.current.style.transform = transform
-      if (rightOverlayRef.current) rightOverlayRef.current.style.transform = transform
+    // cycle later. We update the connector paths in viewport space rather than shifting
+    // the wrapper.
+    const applyScrollOffset = useCallback(() => {
+      const theirsEditor = theirsEditorRef.current
+      const centerEditor = centerEditorRef.current
+      const oursEditor = oursEditorRef.current
+
+      if (!theirsEditor || !centerEditor || !oursEditor) return
+
+      const theirsScroll = theirsEditor.getScrollTop()
+      const centerScroll = centerEditor.getScrollTop()
+      const oursScroll = oursEditor.getScrollTop()
+
+      updateConnectorPaths(leftOverlayRef.current, theirsScroll, centerScroll, leftSegmentsRef.current, 'left')
+      updateConnectorPaths(rightOverlayRef.current, centerScroll, oursScroll, rightSegmentsRef.current, 'right')
     }, [])
+
+    useEffect(() => {
+      applyScrollOffset()
+    }, [leftSegments, rightSegments, applyScrollOffset])
 
     const connectorRafRef = useRef<number | null>(null)
 
@@ -220,8 +381,19 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       const theirsEditor = theirsEditorRef.current
       if (!oursEditor || !centerEditor || !theirsEditor) return
 
+
       const left: ConnectorSegment[] = []
       const right: ConnectorSegment[] = []
+
+      // The CENTER's `merge-marker-*` accent line (mergeDecorations.ts) is nudged 1px off the
+      // real line it decorates via CSS `transform`, onto the true inter-line boundary — matched
+      // below so a segment's center-anchored marker endpoint lands on that exact same shifted
+      // pixel instead of drifting 1px away from the line it's supposed to terminate on. Only the
+      // CENTER ever gets this treatment: a pane's own zero-line endpoint is always either a pure
+      // addition's mirror (skipped entirely, just below) or a deletion/conflict's hachured zone
+      // (a real `IViewZone`, never CSS-shifted), so nudging a pane's own Y here would drift it
+      // 1px away from geometry that was never moved in the first place.
+      const paneTotals = computePaneTotalLines(blocksRef.current, placementsRef.current)
 
       for (const block of blocksRef.current) {
         const placement = placementsRef.current.get(block.blockId)
@@ -229,54 +401,100 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
         // Each side's ribbon is independent: it targets wherever that side's content *currently*
         // sits in the center buffer, so excluding one side never hides the other side's own
-        // ribbon or button (previously, rejecting a block emptied its whole center range, which
-        // made both ribbons vanish together even though only one side was actually acted on).
-        // The center-side anchor comes from `connectorCenterRangeForSide`, not `subRangeForSide`
-        // directly: when a side isn't included, it spans whatever the block *does* currently
-        // show (the other side's content, which this one would replace) rather than pinching to
-        // a point — a point there would make a modification/conflict look shaped exactly like a
-        // pure addition. It only genuinely collapses to a point when the block has nothing
-        // shown at all (a pure addition that hasn't been pulled in yet).
-        if (block.oursLineCount > 0) {
-          const leftColor = connectorClassForSide(block, placement.oursTouched, 'ours')
-          if (leftColor) {
-            const { start, count } = connectorCenterRangeForSide(placement, block, 'ours')
-            const centerY0 = centerEditor.getTopForLineNumber(start)
-            const centerY1 = centerEditor.getTopForLineNumber(start + count)
-            const oursY0 = oursEditor.getTopForLineNumber(block.oursStartLine)
-            const oursY1 = oursEditor.getTopForLineNumber(block.oursStartLine + block.oursLineCount)
-            left.push({
-              id: block.blockId,
-              leftY0: oursY0,
-              leftY1: oursY1,
-              rightY0: centerY0,
-              rightY1: centerY1,
-              colorClass: leftColor,
-              actionable: !placement.oursTouched,
-            })
+        // ribbon or button. The center-side anchor comes from `connectorCenterRangeForSide`,
+        // not `subRangeForSide` directly: when a side isn't included, it spans whatever the
+        // block *does* currently show (the other side's content, which this one would replace)
+        // rather than pinching to a point.
+        //
+        // `flat` is keyed on the PANE's own content alone (`paneCount === 0`), not on whether
+        // the center also happens to be empty right now: a side that never has (and never will
+        // have) real content for this block — the mirror pane of a one-sided change — draws as
+        // a thin flat stroke, continuing that side's boundary marker across the gap, no matter
+        // what the *other* side has currently pushed into the center. A side that DOES have its
+        // own content (paneCount > 0) always gets the real ribbon/funnel, matching however tall
+        // its own pane block is.
+        //
+        // Exception: a pure ADDITION's mirror pane (the side that never had, and never will
+        // have, this content) gets no ribbon at all, not even a flat one — per spec, that pane
+        // shows completely untouched, undecorated code, with nothing in its gap either. This is
+        // narrower than the deletion case just above: a deletion's "gone" side still gets a flat
+        // marker-anchored stroke (there's something to act on — restoring the deleted lines),
+        // whereas an addition's mirror side will never have any action available for it at all
+        // (see `isChangeSource`, which never routes actionability there for an addition).
+        for (const side of ['ours', 'theirs'] as MergeSide[]) {
+          const touched = side === 'ours' ? placement.oursTouched : placement.theirsTouched
+          const colorClass = connectorClassForSide(block, touched, side)
+          if (!colorClass) continue
+
+          const paneEditor = side === 'ours' ? oursEditor : theirsEditor
+          const paneStart = side === 'ours' ? block.oursStartLine : block.theirsStartLine
+          const paneCount = side === 'ours' ? block.oursLineCount : block.theirsLineCount
+          if (paneCount === 0 && changeKindForBlock(block) === 'addition') continue
+
+          const { start, count } = connectorCenterRangeForSide(placement, block, side)
+
+          let paneY0 = paneEditor.getTopForLineNumber(paneStart)
+          let paneY1 = paneEditor.getTopForLineNumber(paneStart + paneCount)
+          if (paneCount === 0) {
+            const domNode = typeof paneEditor.getDomNode === 'function' ? paneEditor.getDomNode() : null
+            const element = domNode?.querySelector(`[data-zone-id="${block.blockId}-${side}"]`) as HTMLElement | null
+            if (element) {
+              paneY0 = element.offsetTop
+              paneY1 = element.offsetTop + element.offsetHeight
+            } else {
+              paneY0 = paneY1
+              if (changeKindForBlock(block) === 'deletion') {
+                const edge = markerEdge(paneStart - 1, paneTotals[side])
+                if (edge === 'top') {
+                  paneY0 = paneY1 - 1
+                } else {
+                  paneY0 = paneY1
+                  paneY1 = paneY1 + 1
+                }
+              }
+            }
           }
-        }
-        if (block.theirsLineCount > 0) {
-          const rightColor = connectorClassForSide(block, placement.theirsTouched, 'theirs')
-          if (rightColor) {
-            const { start, count } = connectorCenterRangeForSide(placement, block, 'theirs')
-            const centerY0 = centerEditor.getTopForLineNumber(start)
-            const centerY1 = centerEditor.getTopForLineNumber(start + count)
-            const theirsY0 = theirsEditor.getTopForLineNumber(block.theirsStartLine)
-            const theirsY1 = theirsEditor.getTopForLineNumber(block.theirsStartLine + block.theirsLineCount)
-            right.push({
-              id: block.blockId,
-              leftY0: centerY0,
-              leftY1: centerY1,
-              rightY0: theirsY0,
-              rightY1: theirsY1,
-              colorClass: rightColor,
-              actionable: !placement.theirsTouched,
-            })
+
+          let centerY0 = centerEditor.getTopForLineNumber(start)
+          let centerY1 = centerEditor.getTopForLineNumber(start + count)
+          if (count === 0 && changeKindForBlock(block) === 'addition') {
+            const edge = markerEdge(start - 1, paneTotals.center)
+            if (edge === 'top') {
+              centerY0 = centerY1 - 1
+            } else {
+              centerY0 = centerY1
+              centerY1 = centerY1 + 1
+            }
           }
+
+          const segment: ConnectorSegment = {
+            id: block.blockId,
+            // theirs (incoming) sits in the LEFT gap, ours (current) in the RIGHT gap — the
+            // pane end of the segment is whichever edge touches that side's own pane.
+            leftY0: side === 'theirs' ? paneY0 : centerY0,
+            leftY1: side === 'theirs' ? paneY1 : centerY1,
+            rightY0: side === 'theirs' ? centerY0 : paneY0,
+            rightY1: side === 'theirs' ? centerY1 : paneY1,
+            colorClass,
+            // `isChangeSource` always returns the authoring side — for a deletion that's the
+            // side that deleted (0 lines in its pane). The connector ribbon funnels from the
+            // pane's zero-height boundary to the center's still-present base text, and the
+            // action buttons anchor at that pane edge.
+            actionable: !touched && isChangeSource(block, side),
+            // Only truly flat (thin stroked line) when BOTH the pane and the center endpoint
+            // are zero-height — e.g. a pending addition's mirror pane. A deletion where the
+            // pane has 0 lines but the center still has base content draws as a filled funnel
+            // ribbon from the point to the range, not a flat stroke.
+            flat: paneCount === 0 && count === 0,
+            resolved: touched,
+          }
+          if (side === 'theirs') left.push(segment)
+          else right.push(segment)
         }
       }
 
+      leftSegmentsRef.current = left
+      rightSegmentsRef.current = right
       setLeftSegments(left)
       setRightSegments(right)
     }, [])
@@ -290,39 +508,115 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     }, [recomputeConnectors])
 
     const handleToggle = useCallback((block: MergeBlock, side: MergeSide, included: boolean) => {
-      const centerEditor = centerEditorRef.current
-      if (!centerEditor) return
-      const model = centerEditor.getModel()
-      if (!model) return
-      const currentPlacement = placementsRef.current.get(block.blockId)
-      if (!currentPlacement) return
+      executeWithScrollPreservation(() => {
+        const centerEditor = centerEditorRef.current
+        if (!centerEditor) return
+        const model = centerEditor.getModel()
+        if (!model) return
+        const currentPlacement = placementsRef.current.get(block.blockId)
+        if (!currentPlacement) return
 
-      const { start, count } = subRangeForSide(currentPlacement, block, side)
-      const newLines = linesForSide(block, side, included)
-      const edit = buildRangeEdit(model, start, count, newLines)
+        const altIdBefore = model.getAlternativeVersionId()
+        const prePlacements = placementsRef.current
 
-      isApplyingOwnEditRef.current = true
-      centerEditor.executeEdits('merge-gutter-action', [{ range: edit.range, text: edit.text }])
-      isApplyingOwnEditRef.current = false
+        const postPlacements = updatePlacementAfterToggle(prePlacements, blocksRef.current, block, side, included)
+        const updatedPlacement = postPlacements.get(block.blockId)
+        if (!updatedPlacement) return
 
-      historyRef.current.push(placementsRef.current)
-      redoRef.current = []
-      setPlacements(updatePlacementAfterToggle(placementsRef.current, blocksRef.current, block, side, included))
-    }, [])
+        const newLines = centerLinesForBlock(block, updatedPlacement.oursIncluded, updatedPlacement.theirsIncluded)
+        const hasTextChange = checkTextChanges(model, currentPlacement.centerStartLine, currentPlacement.centerLineCount, newLines)
+        const edit = buildRangeEdit(model, currentPlacement.centerStartLine, currentPlacement.centerLineCount, newLines)
+
+        if (hasTextChange) {
+          isApplyingOwnEditRef.current = true
+          centerEditor.executeEdits('merge-gutter-action', [{ range: edit.range, text: edit.text }])
+          isApplyingOwnEditRef.current = false
+        }
+
+        const altIdAfter = model.getAlternativeVersionId()
+        const textChange = hasTextChange
+
+        historyRef.current.push({
+          prePlacements,
+          postPlacements,
+          altIdBefore,
+          altIdAfter,
+          textChange,
+        })
+        redoRef.current = []
+        updatePlacementsStateAndRef(postPlacements)
+      })
+    }, [executeWithScrollPreservation, updatePlacementsStateAndRef])
+
+    // One-sided blocks resolve exclusively, WebStorm-style: their buttons only exist on the
+    // side that authored the change (see `isChangeSource`), so accept means "the block becomes
+    // exactly this side's content" and ignore means "restore the other side" — which mirrors
+    // the untouched ancestor, i.e. puts the base text back. Without the restore, ignoring a
+    // one-sided *modification* would just empty the block (its old independent-toggle
+    // semantics), leaving no button anywhere to bring the original line back. Both flag flips
+    // land in ONE placements update and ONE model edit, so a single Ctrl+Z reverts the whole
+    // decision. Genuine conflicts keep the independent per-side toggles (handleToggle) — both
+    // gaps are actionable and "keep both" stays possible.
+    const applyOneSidedDecision = useCallback((block: MergeBlock, source: MergeSide, apply: boolean) => {
+      executeWithScrollPreservation(() => {
+        const centerEditor = centerEditorRef.current
+        const model = centerEditor?.getModel()
+        if (!centerEditor || !model) return
+        const current = placementsRef.current.get(block.blockId)
+        if (!current) return
+
+        const mirror: MergeSide = source === 'ours' ? 'theirs' : 'ours'
+        let next = updatePlacementAfterToggle(placementsRef.current, blocksRef.current, block, source, apply)
+        next = updatePlacementAfterToggle(next, blocksRef.current, block, mirror, !apply)
+        const flags = next.get(block.blockId)
+        if (!flags) return
+
+        const newLines = centerLinesForBlock(block, flags.oursIncluded, flags.theirsIncluded)
+        const hasTextChange = checkTextChanges(model, current.centerStartLine, current.centerLineCount, newLines)
+        const edit = buildRangeEdit(model, current.centerStartLine, current.centerLineCount, newLines)
+
+        const altIdBefore = model.getAlternativeVersionId()
+        const prePlacements = placementsRef.current
+
+        if (hasTextChange) {
+          isApplyingOwnEditRef.current = true
+          centerEditor.executeEdits('merge-gutter-action', [{ range: edit.range, text: edit.text }])
+          isApplyingOwnEditRef.current = false
+        }
+
+        const altIdAfter = model.getAlternativeVersionId()
+        const textChange = hasTextChange
+
+        historyRef.current.push({
+          prePlacements,
+          postPlacements: next,
+          altIdBefore,
+          altIdAfter,
+          textChange,
+        })
+        redoRef.current = []
+        updatePlacementsStateAndRef(next)
+      })
+    }, [executeWithScrollPreservation, updatePlacementsStateAndRef])
 
     // The connector-gap accept/ignore buttons (MergeConnectorOverlay) only know a block's id,
     // not the `MergeBlock` object itself.
-    const handleToggleById = useCallback(
+    const handleActionById = useCallback(
       (blockId: number, side: MergeSide, included: boolean) => {
         const block = blocksRef.current.find((b) => b.blockId === blockId)
-        if (block) handleToggle(block, side, included)
+        if (!block) return
+        if (block.kind === 'ours-only' || block.kind === 'theirs-only') {
+          applyOneSidedDecision(block, side, included)
+        } else {
+          handleToggle(block, side, included)
+        }
       },
-      [handleToggle]
+      [handleToggle, applyOneSidedDecision]
     )
-    const handleAcceptOurs = useCallback((blockId: number) => handleToggleById(blockId, 'ours', true), [handleToggleById])
-    const handleRejectOurs = useCallback((blockId: number) => handleToggleById(blockId, 'ours', false), [handleToggleById])
-    const handleAcceptTheirs = useCallback((blockId: number) => handleToggleById(blockId, 'theirs', true), [handleToggleById])
-    const handleRejectTheirs = useCallback((blockId: number) => handleToggleById(blockId, 'theirs', false), [handleToggleById])
+    const handleAcceptOurs = useCallback((blockId: number) => handleActionById(blockId, 'ours', true), [handleActionById])
+    const handleRejectOurs = useCallback((blockId: number) => handleActionById(blockId, 'ours', false), [handleActionById])
+    const handleAcceptTheirs = useCallback((blockId: number) => handleActionById(blockId, 'theirs', true), [handleActionById])
+    const handleRejectTheirs = useCallback((blockId: number) => handleActionById(blockId, 'theirs', false), [handleActionById])
 
     // Re-apply decorations and alignment view zones, and reschedule connector redraw, whenever
     // placements change. The per-pane specs (block colors, hermetic first/last borders, hatched
@@ -373,6 +667,17 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
       onPendingCountChange?.(pendingConflicts)
       scheduleRecompute()
+
+      if (savedScrollTopsRef.current) {
+        const { ours, center, theirs } = savedScrollTopsRef.current
+        oursEditor.setScrollTop(ours)
+        centerEditor.setScrollTop(center)
+        theirsEditor.setScrollTop(theirs)
+        savedScrollTopsRef.current = null
+        requestAnimationFrame(() => {
+          ignoreScrollSyncRef.current = false
+        })
+      }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [placements, editorsReady, showBlockBorders])
 
@@ -386,10 +691,76 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       const model = centerEditor?.getModel()
       if (!model) return
 
-      setPlacements((prev) =>
-        deriveLivePlacements((line) => model.getLineContent(line), model.getLineCount(), blocksRef.current, prev)
-      )
+      setPlacements((prev) => {
+        const next = deriveLivePlacements((line) => model.getLineContent(line), model.getLineCount(), blocksRef.current, prev)
+        placementsRef.current = next
+        return next
+      })
     }, [])
+
+    const triggerUndo = useCallback(() => {
+      executeWithScrollPreservation(() => {
+        const centerEditor = centerEditorRef.current
+        if (!centerEditor) return
+        const model = centerEditor.getModel()
+        if (!model) return
+
+        const currentAltId = model.getAlternativeVersionId()
+        const history = historyRef.current
+        if (history.length === 0) {
+          centerEditor.trigger('keyboard', 'undo', null)
+          return
+        }
+
+        const entry = history[history.length - 1]
+        if (currentAltId !== entry.altIdAfter) {
+          // There is manual typing since the gutter action
+          centerEditor.trigger('keyboard', 'undo', null)
+          return
+        }
+
+        if (entry.textChange) {
+          centerEditor.trigger('keyboard', 'undo', null)
+        } else {
+          history.pop()
+          updatePlacementsStateAndRef(entry.prePlacements)
+          redoRef.current.push(entry)
+          scheduleRecompute()
+        }
+      })
+    }, [executeWithScrollPreservation, scheduleRecompute, updatePlacementsStateAndRef])
+
+    const triggerRedo = useCallback(() => {
+      executeWithScrollPreservation(() => {
+        const centerEditor = centerEditorRef.current
+        if (!centerEditor) return
+        const model = centerEditor.getModel()
+        if (!model) return
+
+        const currentAltId = model.getAlternativeVersionId()
+        const redo = redoRef.current
+        if (redo.length === 0) {
+          centerEditor.trigger('keyboard', 'redo', null)
+          return
+        }
+
+        const entry = redo[redo.length - 1]
+        if (currentAltId !== entry.altIdBefore) {
+          // There is manual typing/other actions since the undo
+          centerEditor.trigger('keyboard', 'redo', null)
+          return
+        }
+
+        if (entry.textChange) {
+          centerEditor.trigger('keyboard', 'redo', null)
+        } else {
+          redo.pop()
+          updatePlacementsStateAndRef(entry.postPlacements)
+          historyRef.current.push(entry)
+          scheduleRecompute()
+        }
+      })
+    }, [executeWithScrollPreservation, scheduleRecompute, updatePlacementsStateAndRef])
 
     // Fixes "undo doesn't bring back the gutter buttons/colors": Monaco's own undo/redo stack
     // operates on the model text only, so Ctrl+Z reverts the *content* but, without this,
@@ -401,21 +772,42 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       (e: editor.IModelContentChangedEvent) => {
         if (isApplyingOwnEditRef.current) return
 
+        const centerEditor = centerEditorRef.current
+        const model = centerEditor?.getModel()
+        if (!model) return
+
+        const currentAltId = model.getAlternativeVersionId()
+
         if (e.isUndoing) {
-          const previous = historyRef.current.pop()
-          if (previous) {
-            redoRef.current.push(placementsRef.current)
-            setPlacements(previous)
+          const history = historyRef.current
+          if (history.length > 0) {
+            const entry = history[history.length - 1]
+            if (entry.textChange && currentAltId === entry.altIdBefore) {
+              history.pop()
+              redoRef.current.push(entry)
+              updatePlacementsStateAndRef(entry.prePlacements)
+              scheduleRecompute()
+              return
+            }
           }
+          handleCenterContentChange()
           scheduleRecompute()
           return
         }
+
         if (e.isRedoing) {
-          const next = redoRef.current.pop()
-          if (next) {
-            historyRef.current.push(placementsRef.current)
-            setPlacements(next)
+          const redo = redoRef.current
+          if (redo.length > 0) {
+            const entry = redo[redo.length - 1]
+            if (entry.textChange && currentAltId === entry.altIdAfter) {
+              redo.pop()
+              historyRef.current.push(entry)
+              updatePlacementsStateAndRef(entry.postPlacements)
+              scheduleRecompute()
+              return
+            }
           }
+          handleCenterContentChange()
           scheduleRecompute()
           return
         }
@@ -443,7 +835,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
         const paneIndex = pane === 'ours' ? 0 : pane === 'center' ? 1 : 2
         attachScrollSync(editorInstance, paneIndex)
-        editorInstance.onDidScrollChange((e) => applyScrollOffset(e.scrollTop))
+        editorInstance.onDidScrollChange(() => applyScrollOffset())
         // `onDidLayoutChange` fires when Monaco's own automaticLayout resize-observer settles
         // on this editor's real dimensions — a more reliable connector-recompute trigger than
         // our own outer-container ResizeObserver, since it directly reflects when
@@ -452,13 +844,24 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
         if (pane === 'center') {
           editorInstance.onDidChangeModelContent((e) => handleCenterContentEvent(e))
+
+          // Register undo/redo keybindings to intercept them and handle gutter actions that don't change text
+          editorInstance.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyZ, () => {
+            triggerUndo()
+          })
+          editorInstance.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyY, () => {
+            triggerRedo()
+          })
+          editorInstance.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyMod.Shift | monacoInstance.KeyCode.KeyZ, () => {
+            triggerRedo()
+          })
         }
 
         if (oursEditorRef.current && centerEditorRef.current && theirsEditorRef.current) {
           setEditorsReady(true)
-          // Panes normally mount already scrolled to the top, but seed the transform from
-          // whatever the center pane actually reports rather than assuming 0.
-          applyScrollOffset(centerEditorRef.current.getScrollTop())
+          // Panes normally mount already scrolled to the top, but seed the paths from
+          // whatever the panes actually report rather than assuming 0.
+          applyScrollOffset()
           // Belt-and-suspenders: schedule a couple of follow-up recomputes a moment after all
           // three editors report ready, in case the very first layout pass (and thus the very
           // first `getTopForLineNumber` reads) happened before the browser's first paint.
@@ -488,28 +891,72 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
           const mergedText = await apiAutoMergeConflictView(repoPath, filePath)
           const centerEditor = centerEditorRef.current
           const model = centerEditor?.getModel()
-          if (centerEditor && model) {
-            isApplyingOwnEditRef.current = true
-            centerEditor.executeEdits('merge-auto-merge', [{ range: model.getFullModelRange(), text: mergedText }])
-            isApplyingOwnEditRef.current = false
-          }
-          historyRef.current.push(placementsRef.current)
-          redoRef.current = []
-          setPlacements(recomputeAllPlacements(blocksRef.current, placementOverridesAfterAutoMerge(blocksRef.current, placementsRef.current)))
+          if (!centerEditor || !model) return
+
+          executeWithScrollPreservation(() => {
+            const altIdBefore = model.getAlternativeVersionId()
+            const prePlacements = placementsRef.current
+            const hasTextChange = model.getValue() !== mergedText
+
+            if (hasTextChange) {
+              isApplyingOwnEditRef.current = true
+              centerEditor.executeEdits('merge-auto-merge', [{ range: model.getFullModelRange(), text: mergedText }])
+              isApplyingOwnEditRef.current = false
+            }
+
+            const altIdAfter = model.getAlternativeVersionId()
+            const textChange = hasTextChange
+            const postPlacements = recomputeAllPlacements(blocksRef.current, placementOverridesAfterAutoMerge(blocksRef.current, prePlacements))
+
+            historyRef.current.push({
+              prePlacements,
+              postPlacements,
+              altIdBefore,
+              altIdAfter,
+              textChange,
+            })
+            redoRef.current = []
+            updatePlacementsStateAndRef(postPlacements)
+          })
         },
       }),
-      [repoPath, filePath]
+      [repoPath, filePath, executeWithScrollPreservation, updatePlacementsStateAndRef]
     )
+
+    useEffect(() => {
+      const handleGlobalKeyDown = (e: KeyboardEvent) => {
+        const isUndo = (e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z'
+        const isRedo =
+          ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') ||
+          ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')
+
+        if (isUndo) {
+          if (containerRef.current?.contains(document.activeElement)) {
+            e.preventDefault()
+            e.stopPropagation()
+            triggerUndo()
+          }
+        } else if (isRedo) {
+          if (containerRef.current?.contains(document.activeElement)) {
+            e.preventDefault()
+            e.stopPropagation()
+            triggerRedo()
+          }
+        }
+      }
+      window.addEventListener('keydown', handleGlobalKeyDown, true)
+      return () => window.removeEventListener('keydown', handleGlobalKeyDown, true)
+    }, [triggerUndo, triggerRedo])
 
     return (
       <div ref={containerRef} className="flex h-full w-full overflow-hidden">
         <div className="merge-pane-numbers-right min-w-0 flex-1">
           <MergePane
-            value={view.oursText}
+            value={view.theirsText}
             filePath={filePath}
-            modelPath={`${repoPath}/${filePath}#ours`}
+            modelPath={`${repoPath}/${filePath}#theirs`}
             readOnly
-            onMount={handlePaneMount('ours')}
+            onMount={handlePaneMount('theirs')}
           />
         </div>
         <div className="relative shrink-0 overflow-hidden" style={{ width: GAP_WIDTH }}>
@@ -519,13 +966,15 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
             height={gapHeight}
             segments={leftSegments}
             side="left"
-            onAccept={handleAcceptOurs}
-            onReject={handleRejectOurs}
+            onAccept={handleAcceptTheirs}
+            onReject={handleRejectTheirs}
+            scrollTopLeft={theirsEditorRef.current?.getScrollTop() ?? 0}
+            scrollTopRight={centerEditorRef.current?.getScrollTop() ?? 0}
           />
         </div>
         <div className="min-w-0 flex-1">
           <MergePane
-            value={view.oursText}
+            value={initialCenterText}
             filePath={filePath}
             modelPath={`${repoPath}/${filePath}#center`}
             readOnly={false}
@@ -539,17 +988,19 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
             height={gapHeight}
             segments={rightSegments}
             side="right"
-            onAccept={handleAcceptTheirs}
-            onReject={handleRejectTheirs}
+            onAccept={handleAcceptOurs}
+            onReject={handleRejectOurs}
+            scrollTopLeft={centerEditorRef.current?.getScrollTop() ?? 0}
+            scrollTopRight={oursEditorRef.current?.getScrollTop() ?? 0}
           />
         </div>
         <div className="min-w-0 flex-1">
           <MergePane
-            value={view.theirsText}
+            value={view.oursText}
             filePath={filePath}
-            modelPath={`${repoPath}/${filePath}#theirs`}
+            modelPath={`${repoPath}/${filePath}#ours`}
             readOnly
-            onMount={handlePaneMount('theirs')}
+            onMount={handlePaneMount('ours')}
           />
         </div>
       </div>

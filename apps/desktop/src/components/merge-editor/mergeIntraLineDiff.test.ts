@@ -60,6 +60,7 @@ function conflictBlocks(): MergeBlock[] {
       theirsLineCount: 1,
       oursLines: ['header'],
       theirsLines: ['header'],
+      baseLines: [],
     },
     {
       blockId: 2,
@@ -70,6 +71,7 @@ function conflictBlocks(): MergeBlock[] {
       theirsLineCount: 1,
       oursLines: ['const value = ours;'],
       theirsLines: ['const value = theirs;'],
+      baseLines: [],
     },
   ]
 }
@@ -136,6 +138,7 @@ describe('computeIntraLineHighlights', () => {
         theirsLineCount: 2,
         oursLines: [],
         theirsLines: ['# --- ADDITION', 'theirs-metrics'],
+        baseLines: [],
       },
     ]
     // Pulled in, then hand-edited in the center: the lines now differ from theirs again, and
@@ -162,6 +165,7 @@ describe('computeIntraLineHighlights', () => {
         theirsLineCount: 0,
         oursLines: ['legacy-cache', 'legacy-session'],
         theirsLines: [],
+        baseLines: [],
       },
     ]
     const highlights = computeIntraLineHighlights(blocks, computeInitialPlacements(blocks), (n) =>

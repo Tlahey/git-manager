@@ -35,6 +35,7 @@ struct MergeBlockInternal {
     kind: BlockKind,
     ours_range: (usize, usize),
     theirs_range: (usize, usize),
+    base_range: (usize, usize),
 }
 
 /// Splits text into lines the same way git/libgit2 counts them: a trailing newline does not
@@ -186,6 +187,7 @@ fn merge_hunks(
             kind: BlockKind::Unchanged,
             ours_range,
             theirs_range,
+            base_range: (start, end),
         });
     };
 
@@ -242,6 +244,7 @@ fn merge_hunks(
             kind,
             ours_range,
             theirs_range,
+            base_range: (u_start, u_end),
         });
 
         pos = u_end;
@@ -258,6 +261,7 @@ fn blocks_to_dto(
     internal: Vec<MergeBlockInternal>,
     ours_lines: &[String],
     theirs_lines: &[String],
+    base_lines: &[String],
 ) -> Vec<MergeBlock> {
     internal
         .into_iter()
@@ -274,6 +278,8 @@ fn blocks_to_dto(
             let ours_end = b.ours_range.1.min(ours_lines.len()).max(ours_start);
             let theirs_start = b.theirs_range.0.min(theirs_lines.len());
             let theirs_end = b.theirs_range.1.min(theirs_lines.len()).max(theirs_start);
+            let base_start = b.base_range.0.min(base_lines.len());
+            let base_end = b.base_range.1.min(base_lines.len()).max(base_start);
             MergeBlock {
                 block_id: id,
                 kind,
@@ -283,34 +289,50 @@ fn blocks_to_dto(
                 theirs_line_count: theirs_end - theirs_start,
                 ours_lines: ours_lines[ours_start..ours_end].to_vec(),
                 theirs_lines: theirs_lines[theirs_start..theirs_end].to_vec(),
+                base_lines: base_lines[base_start..base_end].to_vec(),
             }
         })
         .collect()
 }
 
-/// Builds the center pane's starting text: `Unchanged`/`BothSame` blocks are pre-applied (no
-/// user action needed — they're not in dispute), `OursOnly`/`TheirsOnly` blocks are left as a
-/// lightweight pending sentinel (still require an explicit gutter/wand action even though
-/// they're non-conflicting, per the PRD). No conflict markers are ever emitted here — the
-/// center pane always shows plain, natural text (the "ours" side, i.e. the current/left
-/// version) for every block kind, colored/interactive per block via the frontend's
-/// decorations and gutter widgets instead of literal `<<<<<<<` syntax. Concatenating every
-/// block's `ours_lines` in order is exactly `ours_text` reconstructed — the frontend seeds its
-/// center buffer straight from `ThreeWayMergeView::ours_text`, so no separate field is needed.
+/// The magic-wand "apply non-conflicting changes" action.  Rebuilds the center pane text in
+/// one server-side shot — only non-conflicting **modifications** (both sides have content,
+/// only one actually changed it) are auto-resolved.
 ///
-/// Applies every non-conflicting block (`Unchanged`/`BothSame`/`OursOnly`) plus pulls in
-/// `TheirsOnly` (the only real content for a block ours never touched) into a single merged
-/// text; `BothDifferent` blocks are left showing their `ours_lines` default untouched (a
-/// genuine conflict has no safe automatic resolution) — the magic-wand "apply non-conflicting
-/// changes" action. Computed server-side in one shot rather than as a client-side per-block
-/// loop: the classification already fully determines the action, so there's no remaining
-/// decision to push to the client, and rebuilding a potentially-large text buffer is better
-/// done once in Rust than via N sequential IPC calls.
+/// **Deletions and additions** (one side has 0 lines) are deliberately left pending: the
+/// wand never auto-applies a change that adds or removes lines, because doing so would
+/// break the visual alignment between the center and the side pane that still has the
+/// original content.  These blocks keep their initial center content (the base / ancestor
+/// state, matching the frontend's `defaultFlags` decisions):
+/// - Deletions keep the non-deleting side's lines (= base).
+/// - Additions keep nothing (base has no content for that block).
+///
+/// `BothDifferent` conflicts are left showing `ours_lines` (no safe automatic resolution).
 pub fn auto_merge_non_conflicting(blocks: &[MergeBlock]) -> String {
     let mut out: Vec<String> = Vec::new();
     for b in blocks {
         match b.kind {
-            MergeBlockKind::TheirsOnly => out.extend(b.theirs_lines.iter().cloned()),
+            MergeBlockKind::TheirsOnly => {
+                if b.theirs_line_count == 0 || b.ours_line_count == 0 {
+                    // Deletion or addition: keep initial center content (ours = base).
+                    out.extend(b.ours_lines.iter().cloned());
+                } else {
+                    // Modification: auto-resolve to theirs.
+                    out.extend(b.theirs_lines.iter().cloned());
+                }
+            }
+            MergeBlockKind::OursOnly => {
+                if b.ours_line_count == 0 {
+                    // Ours-only deletion: keep theirs (= base).
+                    out.extend(b.theirs_lines.iter().cloned());
+                } else if b.theirs_line_count == 0 {
+                    // Ours-only addition: center initial is empty (= base).
+                    // Don't push anything — the addition stays pending.
+                } else {
+                    // Modification: auto-resolve to ours.
+                    out.extend(b.ours_lines.iter().cloned());
+                }
+            }
             _ => out.extend(b.ours_lines.iter().cloned()),
         }
     }
@@ -370,7 +392,7 @@ pub fn get_merge_view(
         &ours_lines,
         &theirs_lines,
     );
-    let blocks = blocks_to_dto(internal, &ours_lines, &theirs_lines);
+    let blocks = blocks_to_dto(internal, &ours_lines, &theirs_lines, &base_lines);
 
     let conflict_count = blocks
         .iter()
@@ -545,6 +567,7 @@ mod tests {
             theirs_line_count: theirs.len(),
             ours_lines: ours.iter().map(|s| s.to_string()).collect(),
             theirs_lines: theirs.iter().map(|s| s.to_string()).collect(),
+            base_lines: Vec::new(),
         }
     }
 
@@ -561,6 +584,18 @@ mod tests {
         // Non-conflicting blocks resolve (ours-only -> ours, theirs-only -> theirs); the
         // genuine conflict is left showing its `ours_lines` default, no markers anywhere.
         assert_eq!(merged, "a\nours-change\ntheirs-change\nsame\nours-x");
+    }
+
+    #[test]
+    fn auto_merge_skips_deletions_and_additions() {
+        let blocks = vec![
+            dto_block(0, MergeBlockKind::OursOnly, &[], &["deleted-ours"]),
+            dto_block(1, MergeBlockKind::TheirsOnly, &["deleted-theirs"], &[]),
+            dto_block(2, MergeBlockKind::OursOnly, &["added-ours"], &[]),
+            dto_block(3, MergeBlockKind::TheirsOnly, &[], &["added-theirs"]),
+        ];
+        let merged = auto_merge_non_conflicting(&blocks);
+        assert_eq!(merged, "deleted-ours\ndeleted-theirs");
     }
 
     #[test]
@@ -606,7 +641,7 @@ mod tests {
         let theirs = lines("a\nb\nX\nY\nc\n");
         let theirs_hunks = diff_hunks(b"a\nb\nc\n", b"a\nb\nX\nY\nc\n").expect("diff buffers");
         let internal = merge_hunks(&[], &theirs_hunks, base.len(), &ours, &theirs);
-        let blocks = blocks_to_dto(internal, &ours, &theirs);
+        let blocks = blocks_to_dto(internal, &ours, &theirs, &base);
 
         let block = blocks
             .iter()
