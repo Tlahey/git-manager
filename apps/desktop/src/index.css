@@ -193,7 +193,7 @@ body {
   border-top: 2px solid rgba(239, 68, 68, 0.8) !important;
 }
 .merge-border-top-resolved {
-  border-top: 2px dashed rgba(148, 163, 184, 0.8) !important;
+  border-top: 2px dotted rgba(148, 163, 184, 0.8) !important;
 }
 .merge-border-bottom-addition {
   border-bottom: 2px solid rgba(34, 197, 94, 0.8) !important;
@@ -208,56 +208,56 @@ body {
   border-bottom: 2px solid rgba(239, 68, 68, 0.8) !important;
 }
 .merge-border-bottom-resolved {
-  border-bottom: 2px dashed rgba(148, 163, 184, 0.8) !important;
+  border-bottom: 2px dotted rgba(148, 163, 184, 0.8) !important;
 }
 
-/* Resolved border styles (keep original semantic color, but styled as dashed) */
+/* Resolved border styles (keep original semantic color, but styled as dotted) */
 .merge-border-top-addition.merge-resolved {
-  border-top: 2px dashed rgba(34, 197, 94, 0.8) !important;
+  border-top: 2px dotted rgba(34, 197, 94, 0.8) !important;
 }
 .merge-border-top-deletion.merge-resolved {
-  border-top: 2px dashed rgba(148, 163, 184, 0.8) !important;
+  border-top: 2px dotted rgba(148, 163, 184, 0.8) !important;
 }
 .merge-border-top-modification.merge-resolved {
-  border-top: 2px dashed rgba(59, 130, 246, 0.8) !important;
+  border-top: 2px dotted rgba(59, 130, 246, 0.8) !important;
 }
 .merge-border-top-conflict.merge-resolved {
-  border-top: 2px dashed rgba(239, 68, 68, 0.8) !important;
+  border-top: 2px dotted rgba(239, 68, 68, 0.8) !important;
 }
 .merge-border-bottom-addition.merge-resolved {
-  border-bottom: 2px dashed rgba(34, 197, 94, 0.8) !important;
+  border-bottom: 2px dotted rgba(34, 197, 94, 0.8) !important;
 }
 .merge-border-bottom-deletion.merge-resolved {
-  border-bottom: 2px dashed rgba(148, 163, 184, 0.8) !important;
+  border-bottom: 2px dotted rgba(148, 163, 184, 0.8) !important;
 }
 .merge-border-bottom-modification.merge-resolved {
-  border-bottom: 2px dashed rgba(59, 130, 246, 0.8) !important;
+  border-bottom: 2px dotted rgba(59, 130, 246, 0.8) !important;
 }
 .merge-border-bottom-conflict.merge-resolved {
-  border-bottom: 2px dashed rgba(239, 68, 68, 0.8) !important;
+  border-bottom: 2px dotted rgba(239, 68, 68, 0.8) !important;
 }
 
-/* Resolved marker styles: dashed representation */
+/* Resolved marker styles: dotted representation */
 .merge-marker-top-addition.merge-resolved {
-  background-image: repeating-linear-gradient(to right, rgba(34, 197, 94, 0.6), rgba(34, 197, 94, 0.6) 4px, transparent 4px, transparent 8px) !important;
+  background-image: repeating-linear-gradient(to right, rgba(34, 197, 94, 0.6), rgba(34, 197, 94, 0.6) 2px, transparent 2px, transparent 4px) !important;
   background-size: 100% 1px !important;
   background-repeat: no-repeat !important;
   transform: translateY(-1px);
 }
 .merge-marker-bottom-addition.merge-resolved {
-  background-image: repeating-linear-gradient(to right, rgba(34, 197, 94, 0.6), rgba(34, 197, 94, 0.6) 4px, transparent 4px, transparent 8px) !important;
+  background-image: repeating-linear-gradient(to right, rgba(34, 197, 94, 0.6), rgba(34, 197, 94, 0.6) 2px, transparent 2px, transparent 4px) !important;
   background-size: 100% 1px !important;
   background-repeat: no-repeat !important;
   transform: translateY(1px);
 }
 .merge-marker-top-deletion.merge-resolved {
-  background-image: repeating-linear-gradient(to right, rgba(148, 163, 184, 0.6), rgba(148, 163, 184, 0.6) 4px, transparent 4px, transparent 8px) !important;
+  background-image: repeating-linear-gradient(to right, rgba(148, 163, 184, 0.6), rgba(148, 163, 184, 0.6) 2px, transparent 2px, transparent 4px) !important;
   background-size: 100% 1px !important;
   background-repeat: no-repeat !important;
   transform: translateY(-1px);
 }
 .merge-marker-bottom-deletion.merge-resolved {
-  background-image: repeating-linear-gradient(to right, rgba(148, 163, 184, 0.6), rgba(148, 163, 184, 0.6) 4px, transparent 4px, transparent 8px) !important;
+  background-image: repeating-linear-gradient(to right, rgba(148, 163, 184, 0.6), rgba(148, 163, 184, 0.6) 2px, transparent 2px, transparent 4px) !important;
   background-size: 100% 1px !important;
   background-repeat: no-repeat !important;
   transform: translateY(1px);
@@ -407,7 +407,7 @@ body {
   stroke: rgba(148, 163, 184, 0.6);
 }
 
-/* Resolved connector styles: keep original color, set fill to none and dashed stroke */
+/* Resolved connector styles: keep original color, set fill to none and dotted stroke */
 .merge-connector-addition.merge-resolved {
   fill: none !important;
   stroke: rgba(34, 197, 94, 0.8) !important;
@@ -428,8 +428,8 @@ body {
 .merge-connector-edge.merge-resolved,
 .merge-connector-flat.merge-resolved {
   fill: none !important;
-  stroke-dasharray: 4,4;
-  stroke-width: 1.5;
+  stroke-dasharray: 2,2;
+  stroke-width: 2;
 }
 
 /* Leftmost (theirs/incoming) pane: flip Monaco's native gutter to the right edge instead of

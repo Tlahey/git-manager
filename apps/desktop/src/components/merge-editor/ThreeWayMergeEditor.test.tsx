@@ -248,7 +248,7 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
     expect(screen.getByTestId('merge-connector-reject-left-2')).toBeInTheDocument()
 
-    // But the ribbon itself stays, now settled as dashed edges with conflict color.
+    // But the ribbon itself stays, now settled as dotted edges with conflict color.
     expect(screen.getByTestId('merge-connector-ribbon-right-2-top')).toHaveClass('merge-connector-conflict')
     expect(screen.getByTestId('merge-connector-ribbon-right-2-top')).toHaveClass('merge-resolved')
     expect(screen.getByTestId('merge-connector-ribbon-right-2-bottom')).toHaveClass('merge-connector-conflict')

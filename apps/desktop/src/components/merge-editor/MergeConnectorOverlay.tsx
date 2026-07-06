@@ -90,8 +90,8 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
             )
           }
           if (seg.resolved) {
-            const dTop = `M 0,${leftY0} C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`
-            const dBottom = `M 0,${leftY1} C ${half},${leftY1} ${half},${rightY1} ${width},${rightY1}`
+            const dTop = `M 0,${leftY0 + 1} C ${half},${leftY0 + 1} ${half},${rightY0 + 1} ${width},${rightY0 + 1}`
+            const dBottom = `M 0,${leftY1 - 1} C ${half},${leftY1 - 1} ${half},${rightY1 - 1} ${width},${rightY1 - 1}`
             return (
               <g key={seg.id}>
                 <path
