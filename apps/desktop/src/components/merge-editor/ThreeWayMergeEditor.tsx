@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, Fragment } from 'react'
 import type { Monaco } from '@monaco-editor/react'
 import type { editor, IRange } from 'monaco-editor'
 import type { MergeBlock, ThreeWayMergeView } from '@git-manager/git-types'
@@ -28,16 +28,129 @@ import {
 import {
   type DecorationSpec,
   type ViewZoneSpec,
+  blockDecorationSpecs,
   computeMergeVisuals,
   computePaneTotalLines,
   markerEdge,
 } from './mergeDecorations'
 import { type InlineDecorationSpec, computeIntraLineHighlights } from './mergeIntraLineDiff'
 
+function buildDynamicMergeView(
+  filePath: string,
+  original: string,
+  _modified: string,
+  changes: editor.ILineChange[]
+): ThreeWayMergeView {
+  const originalLines = original.split('\n')
+
+  const blocks: MergeBlock[] = changes.map((change, index) => {
+    const originalStartLine = change.originalStartLineNumber
+    const originalEndLine = change.originalEndLineNumber
+    const modifiedStartLine = change.modifiedStartLineNumber
+    const modifiedEndLine = change.modifiedEndLineNumber
+
+    const originalCount = originalEndLine === 0 ? 0 : originalEndLine - originalStartLine + 1
+    const modifiedCount = modifiedEndLine === 0 ? 0 : modifiedEndLine - modifiedStartLine + 1
+
+    const theirsLines = originalLines.slice(Math.max(0, originalStartLine - 1), originalEndLine)
+
+    return {
+      blockId: index,
+      kind: 'theirs-only',
+      oursStartLine: modifiedStartLine, // carry modified start line for scroll sync
+      oursLineCount: modifiedCount,     // carry modified line count for scroll sync
+      theirsStartLine: originalStartLine,
+      theirsLineCount: originalCount,
+      oursLines: [],
+      theirsLines,
+      baseLines: theirsLines,
+    }
+  })
+
+  return {
+    filePath,
+    renderable: true,
+    isBinary: false,
+    blocks,
+    oursText: '',
+    theirsText: original,
+    conflictCount: 0,
+  }
+}
+
+interface PaneVisualSpecs {
+  decorations: DecorationSpec[]
+  viewZones: ViewZoneSpec[]
+}
+
+interface TwoWayVisuals {
+  ours: PaneVisualSpecs
+  center: PaneVisualSpecs
+  theirs: PaneVisualSpecs
+}
+
+function computeTwoWayVisuals(
+  blocks: MergeBlock[],
+  placements: Map<number, BlockPlacement>,
+  showBlockBorders: boolean
+): TwoWayVisuals {
+  const theirs: PaneVisualSpecs = { decorations: [], viewZones: [] }
+  const center: PaneVisualSpecs = { decorations: [], viewZones: [] }
+  const ours: PaneVisualSpecs = { decorations: [], viewZones: [] }
+
+  const paneTotals = computePaneTotalLines(blocks, placements)
+
+  blocks.forEach((block) => {
+    const placement = placements.get(block.blockId)
+    if (!placement) return
+
+    const originalStartLine = block.theirsStartLine
+    const originalCount = block.theirsLineCount
+    const modifiedStartLine = placement.centerStartLine
+    const modifiedCount = placement.centerLineCount
+
+    let kind: 'addition' | 'deletion' | 'modification' = 'modification'
+    if (originalCount === 0) {
+      kind = 'addition'
+    } else if (modifiedCount === 0) {
+      kind = 'deletion'
+    }
+
+    // 1. Left (Theirs / Original) pane visuals
+    if (originalCount > 0) {
+      theirs.decorations.push(...blockDecorationSpecs(originalStartLine, originalCount, kind, showBlockBorders, showBlockBorders, false))
+    } else {
+      // Pure addition (Left has 0 lines): render boundary marker line
+      const afterLine = originalStartLine - 1
+      const edge = markerEdge(afterLine, paneTotals.theirs)
+      const className = `merge-marker-${edge}-${kind}`
+      const line = Math.min(afterLine + 1, Math.max(1, paneTotals.theirs))
+      theirs.decorations.push({ startLine: line, endLine: line, className, marginClassName: className })
+    }
+
+    // 2. Right (Center / Modified) pane visuals
+    if (modifiedCount > 0) {
+      center.decorations.push(...blockDecorationSpecs(modifiedStartLine, modifiedCount, kind, showBlockBorders, showBlockBorders, false))
+    } else {
+      // Pure deletion (Right has 0 lines): render boundary marker line
+      const afterLine = modifiedStartLine - 1
+      const edge = markerEdge(afterLine, paneTotals.center)
+      const className = `merge-marker-${edge}-${kind}`
+      const line = Math.min(afterLine + 1, Math.max(1, paneTotals.center))
+      center.decorations.push({ startLine: line, endLine: line, className, marginClassName: className })
+    }
+  })
+
+  return { theirs, center, ours }
+}
+
 interface ThreeWayMergeEditorProps {
   repoPath: string
   filePath: string
-  view: ThreeWayMergeView
+  view?: ThreeWayMergeView
+  original?: string
+  modified?: string
+  isTwoWay?: boolean
   onPendingCountChange?: (count: number) => void
   /** Draw the JetBrains-style hermetic 2px top/bottom edges around each block (and the matching
    * closing edges on the hatched filler zones). Off by default — the colored fills alone. */
@@ -49,6 +162,8 @@ export interface ThreeWayMergeEditorRef {
   applyAutoMerge: () => Promise<void>
   acceptLeft: () => void
   acceptRight: () => void
+  goToNextChange: () => void
+  goToPreviousChange: () => void
 }
 
 interface HistoryEntry {
@@ -245,22 +360,95 @@ function updateConnectorPaths(
  * wand (imperative `applyAutoMerge`) auto-merges every non-conflicting block at once. Blocks
  * are color-coded and connected across the gaps by `MergeConnectorOverlay`. */
 export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMergeEditorProps>(
-  ({ repoPath, filePath, view, onPendingCountChange, showBlockBorders = false }, ref) => {
-    const containerRef = useRef<HTMLDivElement | null>(null)
-    const blocksRef = useRef<MergeBlock[]>(view.blocks)
-    blocksRef.current = view.blocks
+  ({ repoPath, filePath, view, original, modified, isTwoWay = false, onPendingCountChange, showBlockBorders = false }, ref) => {
+    const [monaco, setMonaco] = useState<Monaco | null>(null)
+    const [dynamicView, setDynamicView] = useState<ThreeWayMergeView | null>(null)
 
-    // The center buffer's initial text and its placement metadata are two independent
-    // computations over the same blocks — see `computeInitialCenterText`'s own doc comment for
-    // why they MUST stay in lockstep (a real, one-time bug: seeding this pane from the backend's
-    // plain `oursText` while `computeInitialPlacements` had its own per-block inclusion
-    // exceptions left every block after a mismatched one visibly offset by the difference).
-    const initialCenterText = useMemo(() => computeInitialCenterText(view.blocks), [view.blocks])
-    const [placements, setPlacements] = useState<Map<number, BlockPlacement>>(() => computeInitialPlacements(view.blocks))
+    const dummyView = useMemo<ThreeWayMergeView>(() => ({
+      filePath,
+      renderable: true,
+      isBinary: false,
+      blocks: [],
+      oursText: '',
+      theirsText: '',
+      conflictCount: 0,
+    }), [filePath])
+
+    const viewToUse = isTwoWay ? (dynamicView ?? dummyView) : view!
+
+    const containerRef = useRef<HTMLDivElement | null>(null)
+    const blocksRef = useRef<MergeBlock[]>(viewToUse.blocks)
+    blocksRef.current = viewToUse.blocks
+
+    const initialCenterText = useMemo(() => {
+      if (isTwoWay) return modified ?? ''
+      return computeInitialCenterText(viewToUse.blocks)
+    }, [isTwoWay, modified, viewToUse.blocks])
+
+    const [placements, setPlacements] = useState<Map<number, BlockPlacement>>(() => {
+      if (isTwoWay) return new Map()
+      return computeInitialPlacements(viewToUse.blocks)
+    })
     const placementsRef = useRef(placements)
     placementsRef.current = placements
 
+    const updatePlacementsStateAndRef = useCallback((next: Map<number, BlockPlacement>) => {
+      placementsRef.current = next
+      setPlacements(next)
+    }, [])
+
     const [whitespaceMode, setWhitespaceMode] = useState<'compare' | 'ignore' | 'trim'>('compare')
+
+    // Compute diff dynamically in 2-way mode
+    useEffect(() => {
+      if (!isTwoWay || !monaco || original === undefined || modified === undefined) return
+
+      const originalModel = monaco.editor.createModel(original, undefined, monaco.Uri.parse(`inmemory://original-${Math.random()}`))
+      const modifiedModel = monaco.editor.createModel(modified, undefined, monaco.Uri.parse(`inmemory://modified-${Math.random()}`))
+
+      const container = document.createElement('div')
+      const diffEditor = monaco.editor.createDiffEditor(container, {
+        ignoreTrimWhitespace: whitespaceMode === 'ignore',
+      })
+
+      diffEditor.setModel({
+        original: originalModel,
+        modified: modifiedModel,
+      })
+
+      const disposable = diffEditor.onDidUpdateDiff(() => {
+        const changes = diffEditor.getLineChanges() || []
+        const parsedView = buildDynamicMergeView(filePath, original, modified, changes)
+        setDynamicView(parsedView)
+      })
+
+      return () => {
+        disposable.dispose()
+        diffEditor.dispose()
+        originalModel.dispose()
+        modifiedModel.dispose()
+      }
+    }, [isTwoWay, monaco, original, modified, whitespaceMode, filePath])
+
+    // Update placements when dynamicView updates in 2-way mode
+    useEffect(() => {
+      if (isTwoWay && dynamicView) {
+        const initialPlacements = new Map<number, BlockPlacement>()
+        dynamicView.blocks.forEach((block) => {
+          initialPlacements.set(block.blockId, {
+            blockId: block.blockId,
+            centerStartLine: block.oursStartLine, // modified start line!
+            centerLineCount: block.oursLineCount, // modified line count!
+            oursIncluded: false,
+            theirsIncluded: false,
+            oursTouched: false,
+            theirsTouched: false,
+          })
+        })
+        updatePlacementsStateAndRef(initialPlacements)
+      }
+    }, [isTwoWay, dynamicView, updatePlacementsStateAndRef])
+
     const [highlightMode, setHighlightMode] = useState<'words' | 'lines'>('words')
 
     const { mutate } = useSWRConfig()
@@ -282,7 +470,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       let conflicts = 0
       let changes = 0
 
-      for (const block of view.blocks) {
+      for (const block of viewToUse.blocks) {
         if (block.kind === 'unchanged') continue
 
         const placement = placements.get(block.blockId)
@@ -301,12 +489,12 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       }
 
       return { changesCount: changes, conflictsCount: conflicts }
-    }, [view.blocks, placements])
-
-
+    }, [viewToUse.blocks, placements])
 
     const [editorsReady, setEditorsReady] = useState(false)
-    const [panelWidths, setPanelWidths] = useState<[number, number, number]>([33.333, 33.334, 33.333])
+    const [panelWidths, setPanelWidths] = useState<[number, number, number]>(() =>
+      isTwoWay ? [50, 50, 0] : [33.333, 33.334, 33.333]
+    )
 
     const handleLeftMouseDown = useCallback(
       (e: React.MouseEvent) => {
@@ -319,7 +507,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         const startLeftPct = panelWidths[0]
         const startCenterPct = panelWidths[1]
         const containerWidth = containerRef.current?.getBoundingClientRect().width ?? 0
-        const panelsWidth = containerWidth - GAP_WIDTH * 2
+        const panelsWidth = containerWidth - (isTwoWay ? GAP_WIDTH : GAP_WIDTH * 2)
 
         const handleMouseMove = (moveEvent: MouseEvent) => {
           const dx = moveEvent.clientX - startX
@@ -349,7 +537,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         window.addEventListener('mousemove', handleMouseMove)
         window.addEventListener('mouseup', handleMouseUp)
       },
-      [panelWidths, containerRef]
+      [panelWidths, containerRef, isTwoWay]
     )
 
     const handleRightMouseDown = useCallback(
@@ -427,10 +615,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     const ignoreScrollSyncRef = useRef(false)
     const savedScrollTopsRef = useRef<{ ours: number; center: number; theirs: number } | null>(null)
 
-    const updatePlacementsStateAndRef = useCallback((next: Map<number, BlockPlacement>) => {
-      placementsRef.current = next
-      setPlacements(next)
-    }, [])
+
 
     const saveScrollTopsAndPauseSync = useCallback(() => {
       const oursEditor = oursEditorRef.current
@@ -476,19 +661,22 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     // itself, since SWR can hand back a freshly-fetched `view` object for the *same* file on
     // revalidation — that shouldn't wipe in-progress edits.
     useEffect(() => {
-      updatePlacementsStateAndRef(computeInitialPlacements(view.blocks))
+      if (!isTwoWay) {
+        updatePlacementsStateAndRef(computeInitialPlacements(viewToUse.blocks))
+      }
       historyRef.current = []
       redoRef.current = []
+      setPanelWidths(isTwoWay ? [50, 50, 0] : [33.333, 33.334, 33.333])
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [repoPath, filePath, updatePlacementsStateAndRef])
+    }, [repoPath, filePath, updatePlacementsStateAndRef, isTwoWay])
 
     const { attach: attachScrollSync } = useMergeScrollSync(blocksRef, placementsRef, monacoRef, ignoreScrollSyncRef)
 
     const [activeBlockIndex, setActiveBlockIndex] = useState<number>(0)
 
     const changeBlocks = useMemo(() => {
-      return view.blocks.filter((b) => b.kind !== 'unchanged')
-    }, [view.blocks])
+      return viewToUse.blocks.filter((b) => b.kind !== 'unchanged')
+    }, [viewToUse.blocks])
 
     const updateActiveBlockIndex = useCallback(() => {
       const centerEditor = centerEditorRef.current
@@ -689,15 +877,17 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       const centerEditor = centerEditorRef.current
       const oursEditor = oursEditorRef.current
 
-      if (!theirsEditor || !centerEditor || !oursEditor) return
+      if (!theirsEditor || !centerEditor || (!isTwoWay && !oursEditor)) return
 
       const theirsScroll = theirsEditor.getScrollTop()
       const centerScroll = centerEditor.getScrollTop()
-      const oursScroll = oursEditor.getScrollTop()
+      const oursScroll = oursEditor ? oursEditor.getScrollTop() : 0
 
       updateConnectorPaths(leftOverlayRef.current, theirsScroll, centerScroll, leftSegmentsRef.current, 'left')
-      updateConnectorPaths(rightOverlayRef.current, centerScroll, oursScroll, rightSegmentsRef.current, 'right')
-    }, [])
+      if (!isTwoWay) {
+        updateConnectorPaths(rightOverlayRef.current, centerScroll, oursScroll, rightSegmentsRef.current, 'right')
+      }
+    }, [isTwoWay])
 
     useEffect(() => {
       applyScrollOffset()
@@ -706,57 +896,93 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     const connectorRafRef = useRef<number | null>(null)
 
     const recomputeConnectors = useCallback(() => {
-      const oursEditor = oursEditorRef.current
-      const centerEditor = centerEditorRef.current
       const theirsEditor = theirsEditorRef.current
-      if (!oursEditor || !centerEditor || !theirsEditor) return
-
+      const centerEditor = centerEditorRef.current
+      const oursEditor = oursEditorRef.current
+      if (!centerEditor || !theirsEditor || (!isTwoWay && !oursEditor)) return
 
       const left: ConnectorSegment[] = []
       const right: ConnectorSegment[] = []
 
-      // The CENTER's `merge-marker-*` accent line (mergeDecorations.ts) is nudged 1px off the
-      // real line it decorates via CSS `transform`, onto the true inter-line boundary — matched
-      // below so a segment's center-anchored marker endpoint lands on that exact same shifted
-      // pixel instead of drifting 1px away from the line it's supposed to terminate on. Only the
-      // CENTER ever gets this treatment: a pane's own zero-line endpoint is always either a pure
-      // addition's mirror (skipped entirely, just below) or a deletion/conflict's hachured zone
-      // (a real `IViewZone`, never CSS-shifted), so nudging a pane's own Y here would drift it
-      // 1px away from geometry that was never moved in the first place.
       const paneTotals = computePaneTotalLines(blocksRef.current, placementsRef.current)
 
-      for (const block of blocksRef.current) {
-        const placement = placementsRef.current.get(block.blockId)
-        if (!placement) continue
+      if (isTwoWay) {
+        for (const block of blocksRef.current) {
+          const placement = placementsRef.current.get(block.blockId)
+          if (!placement) continue
 
-        // Each side's ribbon is independent: it targets wherever that side's content *currently*
-        // sits in the center buffer, so excluding one side never hides the other side's own
-        // ribbon or button. The center-side anchor comes from `connectorCenterRangeForSide`,
-        // not `subRangeForSide` directly: when a side isn't included, it spans whatever the
-        // block *does* currently show (the other side's content, which this one would replace)
-        // rather than pinching to a point.
-        //
-        // `flat` is keyed on the PANE's own content alone (`paneCount === 0`), not on whether
-        // the center also happens to be empty right now: a side that never has (and never will
-        // have) real content for this block — the mirror pane of a one-sided change — draws as
-        // a thin flat stroke, continuing that side's boundary marker across the gap, no matter
-        // what the *other* side has currently pushed into the center. A side that DOES have its
-        // own content (paneCount > 0) always gets the real ribbon/funnel, matching however tall
-        // its own pane block is.
-        //
-        // Exception: a pure ADDITION's mirror pane (the side that never had, and never will
-        // have, this content) gets no ribbon at all, not even a flat one — per spec, that pane
-        // shows completely untouched, undecorated code, with nothing in its gap either. This is
-        // narrower than the deletion case just above: a deletion's "gone" side still gets a flat
-        // marker-anchored stroke (there's something to act on — restoring the deleted lines),
-        // whereas an addition's mirror side will never have any action available for it at all
-        // (see `isChangeSource`, which never routes actionability there for an addition).
-        for (const side of ['ours', 'theirs'] as MergeSide[]) {
+          const originalStartLine = block.theirsStartLine
+          const originalCount = block.theirsLineCount
+          const modifiedStartLine = placement.centerStartLine
+          const modifiedCount = placement.centerLineCount
+
+          let kind: 'addition' | 'deletion' | 'modification' = 'modification'
+          if (originalCount === 0) kind = 'addition'
+          else if (modifiedCount === 0) kind = 'deletion'
+
+          const colorClass = `merge-connector-${kind}`
+
+          let paneY0 = 0
+          let paneY1 = 0
+          if (originalCount === 0) {
+            const afterLine = originalStartLine - 1
+            const y = theirsEditor.getTopForLineNumber(afterLine + 1)
+            const edge = markerEdge(afterLine, paneTotals.theirs)
+            if (edge === 'top') {
+              paneY0 = y - 1
+              paneY1 = y
+            } else {
+              paneY0 = y
+              paneY1 = y + 1
+            }
+          } else {
+            paneY0 = theirsEditor.getTopForLineNumber(originalStartLine)
+            paneY1 = theirsEditor.getTopForLineNumber(originalStartLine + originalCount)
+          }
+
+          let centerY0 = 0
+          let centerY1 = 0
+          if (modifiedCount === 0) {
+            const afterLine = modifiedStartLine - 1
+            const y = centerEditor.getTopForLineNumber(afterLine + 1)
+            const edge = markerEdge(afterLine, paneTotals.center)
+            if (edge === 'top') {
+              centerY0 = y - 1
+              centerY1 = y
+            } else {
+              centerY0 = y
+              centerY1 = y + 1
+            }
+          } else {
+            centerY0 = centerEditor.getTopForLineNumber(modifiedStartLine)
+            centerY1 = centerEditor.getTopForLineNumber(modifiedStartLine + modifiedCount)
+          }
+
+          const segment: ConnectorSegment = {
+            id: block.blockId,
+            leftY0: paneY0,
+            leftY1: paneY1,
+            rightY0: centerY0,
+            rightY1: centerY1,
+            colorClass,
+            actionable: false,
+            flat: originalCount === 0 && modifiedCount === 0,
+            resolved: false,
+          }
+          left.push(segment)
+        }
+      } else {
+        for (const block of blocksRef.current) {
+          const placement = placementsRef.current.get(block.blockId)
+          if (!placement) continue
+
+          for (const side of ['ours', 'theirs'] as MergeSide[]) {
           const touched = side === 'ours' ? placement.oursTouched : placement.theirsTouched
           const colorClass = connectorClassForSide(block, touched, side)
           if (!colorClass) continue
 
           const paneEditor = side === 'ours' ? oursEditor : theirsEditor
+          if (!paneEditor) continue
           const paneStart = side === 'ours' ? block.oursStartLine : block.theirsStartLine
           const paneCount = side === 'ours' ? block.oursLineCount : block.theirsLineCount
           if (paneCount === 0 && changeKindForBlock(block) === 'addition') continue
@@ -822,12 +1048,13 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
           else right.push(segment)
         }
       }
+    }
 
       leftSegmentsRef.current = left
       rightSegmentsRef.current = right
       setLeftSegments(left)
       setRightSegments(right)
-    }, [])
+    }, [isTwoWay])
 
     const scheduleRecompute = useCallback(() => {
       if (connectorRafRef.current !== null) return
@@ -963,11 +1190,11 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       const oursEditor = oursEditorRef.current
       const centerEditor = centerEditorRef.current
       const theirsEditor = theirsEditorRef.current
-      if (!oursEditor || !centerEditor || !theirsEditor) return
+      if (!centerEditor || !theirsEditor || (!isTwoWay && !oursEditor)) return
 
       // Update whitespace option in Monaco editors dynamically
       const renderWhitespaceOption = whitespaceMode === 'compare' ? 'all' : 'none'
-      if (typeof oursEditor.updateOptions === 'function') oursEditor.updateOptions({ renderWhitespace: renderWhitespaceOption })
+      if (!isTwoWay && oursEditor && typeof oursEditor.updateOptions === 'function') oursEditor.updateOptions({ renderWhitespace: renderWhitespaceOption })
       if (typeof centerEditor.updateOptions === 'function') centerEditor.updateOptions({ renderWhitespace: renderWhitespaceOption })
       if (typeof theirsEditor.updateOptions === 'function') theirsEditor.updateOptions({ renderWhitespace: renderWhitespaceOption })
 
@@ -978,32 +1205,38 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         if (block.kind === 'both-different' && !placement.oursTouched && !placement.theirsTouched) pendingConflicts += 1
       }
 
-      const visuals = computeMergeVisuals(blocksRef.current, placements, showBlockBorders, highlightMode === 'lines')
+      const visuals = isTwoWay
+        ? computeTwoWayVisuals(blocksRef.current, placements, showBlockBorders)
+        : computeMergeVisuals(blocksRef.current, placements, showBlockBorders, highlightMode === 'lines')
 
       // Second diff pass (intra-line): reads the center buffer's live text so the highlights
       // track manual typing too. Only run if highlightMode is 'words'.
       const centerModel = centerEditor.getModel()
-      const intra = centerModel && highlightMode === 'words'
+      const intra = centerModel && highlightMode === 'words' && !isTwoWay
         ? computeIntraLineHighlights(blocksRef.current, placements, (line) =>
             line >= 1 && line <= centerModel.getLineCount() ? centerModel.getLineContent(line) : ''
           )
         : { ours: [], center: [], theirs: [] }
 
       const showWholeLineHighlights = true
-      oursDecorationsRef.current?.set([
-        ...(showWholeLineHighlights ? visuals.ours.decorations.map(toMonacoDecoration) : []),
-        ...intra.ours.map(toInlineMonacoDecoration),
-      ])
+      if (!isTwoWay && oursDecorationsRef.current) {
+        oursDecorationsRef.current.set([
+          ...(showWholeLineHighlights ? visuals.ours.decorations.map(toMonacoDecoration) : []),
+          ...intra.ours.map(toInlineMonacoDecoration),
+        ])
+      }
       centerDecorationsRef.current?.set([
         ...(showWholeLineHighlights ? visuals.center.decorations.map(toMonacoDecoration) : []),
-        ...intra.center.map(toInlineMonacoDecoration),
+        ...(isTwoWay ? [] : intra.center.map(toInlineMonacoDecoration)),
       ])
       theirsDecorationsRef.current?.set([
         ...(showWholeLineHighlights ? visuals.theirs.decorations.map(toMonacoDecoration) : []),
-        ...intra.theirs.map(toInlineMonacoDecoration),
+        ...(isTwoWay ? [] : intra.theirs.map(toInlineMonacoDecoration)),
       ])
 
-      oursZoneIdsRef.current = applyViewZones(oursEditor, oursZoneIdsRef.current, visuals.ours.viewZones)
+      if (!isTwoWay && oursEditor) {
+        oursZoneIdsRef.current = applyViewZones(oursEditor, oursZoneIdsRef.current, visuals.ours.viewZones)
+      }
       centerZoneIdsRef.current = applyViewZones(centerEditor, centerZoneIdsRef.current, visuals.center.viewZones)
       theirsZoneIdsRef.current = applyViewZones(theirsEditor, theirsZoneIdsRef.current, visuals.theirs.viewZones)
 
@@ -1013,7 +1246,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
       if (savedScrollTopsRef.current) {
         const { ours, center, theirs } = savedScrollTopsRef.current
-        oursEditor.setScrollTop(ours)
+        if (!isTwoWay && oursEditor) oursEditor.setScrollTop(ours)
         centerEditor.setScrollTop(center)
         theirsEditor.setScrollTop(theirs)
         savedScrollTopsRef.current = null
@@ -1022,7 +1255,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         })
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [placements, editorsReady, showBlockBorders, whitespaceMode, highlightMode, updateActiveBlockIndex])
+    }, [placements, editorsReady, showBlockBorders, whitespaceMode, highlightMode, updateActiveBlockIndex, isTwoWay])
 
     // Track manual edits inside the center pane so downstream block placements (and thus
     // gutter widgets/connectors/colors) stay in sync with what's actually in the buffer, even
@@ -1174,6 +1407,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     const handlePaneMount = useCallback(
       (pane: 'ours' | 'center' | 'theirs') => (editorInstance: editor.IStandaloneCodeEditor, monacoInstance: Monaco) => {
         monacoRef.current = monacoInstance
+        setMonaco(monacoInstance)
         if (pane === 'ours') oursEditorRef.current = editorInstance
         if (pane === 'center') centerEditorRef.current = editorInstance
         if (pane === 'theirs') theirsEditorRef.current = editorInstance
@@ -1211,7 +1445,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
           })
         }
 
-        if (oursEditorRef.current && centerEditorRef.current && theirsEditorRef.current) {
+        if (theirsEditorRef.current && centerEditorRef.current && (isTwoWay || oursEditorRef.current)) {
           setEditorsReady(true)
           // Panes normally mount already scrolled to the top, but seed the paths from
           // whatever the panes actually report rather than assuming 0.
@@ -1224,7 +1458,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
           setTimeout(() => scheduleRecompute(), 250)
         }
       },
-      [attachScrollSync, scheduleRecompute, handleCenterContentEvent, applyScrollOffset, updateActiveBlockIndex, triggerUndo, triggerRedo]
+      [attachScrollSync, scheduleRecompute, handleCenterContentEvent, applyScrollOffset, updateActiveBlockIndex, triggerUndo, triggerRedo, isTwoWay]
     )
 
     useEffect(() => {
@@ -1374,8 +1608,10 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
             centerEditor.focus()
           })
         },
+        goToNextChange: () => navigateConflict('next'),
+        goToPreviousChange: () => navigateConflict('prev'),
       }),
-      [executeWithScrollPreservation, updatePlacementsStateAndRef, applyAutoMerge]
+      [executeWithScrollPreservation, updatePlacementsStateAndRef, applyAutoMerge, navigateConflict]
     )
 
     useEffect(() => {
@@ -1417,105 +1653,83 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       return () => window.removeEventListener('keydown', handleGlobalKeyDown, true)
     }, [triggerUndo, triggerRedo])
 
+    const panels = useMemo(() => {
+      if (isTwoWay) {
+        return [
+          { id: 'theirs' as const, value: original ?? '', readOnly: true, modelPath: `${filePath}.original` },
+          { id: 'center' as const, value: modified ?? '', readOnly: true, modelPath: `${filePath}.modified` },
+        ]
+      }
+      return [
+        { id: 'theirs' as const, value: view?.theirsText ?? '', readOnly: true, modelPath: `${repoPath}/${filePath}#theirs` },
+        { id: 'center' as const, value: initialCenterText, readOnly: false, modelPath: `${repoPath}/${filePath}#center` },
+        { id: 'ours' as const, value: view?.oursText ?? '', readOnly: true, modelPath: `${repoPath}/${filePath}#ours` },
+      ]
+    }, [isTwoWay, original, modified, filePath, repoPath, view, initialCenterText])
+
     return (
       <div className="flex h-full w-full flex-col overflow-hidden bg-[#1a1a1a]">
-        <MergeHeader
-          whitespaceMode={whitespaceMode}
-          setWhitespaceMode={setWhitespaceMode}
-          highlightMode={highlightMode}
-          setHighlightMode={setHighlightMode}
-          onNavigate={navigateConflict}
-          canNavigatePrev={activeBlockIndex > 0}
-          canNavigateNext={activeBlockIndex !== -1 && activeBlockIndex < changeBlocks.length - 1}
-          onApplyLeft={() => applyNonConflicting('left')}
-          onApplyRight={() => applyNonConflicting('right')}
-          onApplyAll={() => applyNonConflicting('all')}
-          onApplyAuto={applyAutoMerge}
-          onReset={handleResetMerge}
-          onRecalculate={handleRecalculate}
-          changesCount={changesCount}
-          conflictsCount={conflictsCount}
-          commitSha={commitSha}
-          fileName={fileName}
-          panelWidths={panelWidths}
-          gapWidth={GAP_WIDTH}
-        />
+        {!isTwoWay && (
+          <MergeHeader
+            whitespaceMode={whitespaceMode}
+            setWhitespaceMode={setWhitespaceMode}
+            highlightMode={highlightMode}
+            setHighlightMode={setHighlightMode}
+            onNavigate={navigateConflict}
+            canNavigatePrev={activeBlockIndex > 0}
+            canNavigateNext={activeBlockIndex !== -1 && activeBlockIndex < changeBlocks.length - 1}
+            onApplyLeft={() => applyNonConflicting('left')}
+            onApplyRight={() => applyNonConflicting('right')}
+            onApplyAll={() => applyNonConflicting('all')}
+            onApplyAuto={applyAutoMerge}
+            onReset={handleResetMerge}
+            onRecalculate={handleRecalculate}
+            changesCount={changesCount}
+            conflictsCount={conflictsCount}
+            commitSha={commitSha}
+            fileName={fileName}
+            panelWidths={panelWidths}
+            gapWidth={GAP_WIDTH}
+          />
+        )}
         <div ref={containerRef} className="flex flex-1 w-full overflow-hidden min-h-0">
-          <div
-            className="merge-pane-numbers-right min-w-0"
-            style={{ flex: `${panelWidths[0]} 1 0%` }}
-            data-testid="merge-pane-theirs-wrapper"
-          >
-            <MergePane
-              value={view.theirsText}
-              filePath={filePath}
-              modelPath={`${repoPath}/${filePath}#theirs`}
-              readOnly
-              onMount={handlePaneMount('theirs')}
-            />
-          </div>
-          <div
-            className="relative shrink-0 overflow-hidden select-none"
-            style={{ width: GAP_WIDTH, cursor: 'col-resize' }}
-            onMouseDown={handleLeftMouseDown}
-            data-testid="merge-resize-handle-left"
-          >
-            <MergeConnectorOverlay
-              ref={leftOverlayRef}
-              width={GAP_WIDTH}
-              height={gapHeight}
-              segments={leftSegments}
-              side="left"
-              onAccept={handleAcceptTheirs}
-              onReject={handleRejectTheirs}
-              scrollTopLeft={theirsEditorRef.current?.getScrollTop() ?? 0}
-              scrollTopRight={centerEditorRef.current?.getScrollTop() ?? 0}
-            />
-          </div>
-          <div
-            className="min-w-0"
-            style={{ flex: `${panelWidths[1]} 1 0%` }}
-            data-testid="merge-pane-center-wrapper"
-          >
-            <MergePane
-              value={initialCenterText}
-              filePath={filePath}
-              modelPath={`${repoPath}/${filePath}#center`}
-              readOnly={false}
-              onMount={handlePaneMount('center')}
-            />
-          </div>
-          <div
-            className="relative shrink-0 overflow-hidden select-none"
-            style={{ width: GAP_WIDTH, cursor: 'col-resize' }}
-            onMouseDown={handleRightMouseDown}
-            data-testid="merge-resize-handle-right"
-          >
-            <MergeConnectorOverlay
-              ref={rightOverlayRef}
-              width={GAP_WIDTH}
-              height={gapHeight}
-              segments={rightSegments}
-              side="right"
-              onAccept={handleAcceptOurs}
-              onReject={handleRejectOurs}
-              scrollTopLeft={centerEditorRef.current?.getScrollTop() ?? 0}
-              scrollTopRight={oursEditorRef.current?.getScrollTop() ?? 0}
-            />
-          </div>
-          <div
-            className="min-w-0"
-            style={{ flex: `${panelWidths[2]} 1 0%` }}
-            data-testid="merge-pane-ours-wrapper"
-          >
-            <MergePane
-              value={view.oursText}
-              filePath={filePath}
-              modelPath={`${repoPath}/${filePath}#ours`}
-              readOnly
-              onMount={handlePaneMount('ours')}
-            />
-          </div>
+          {panels.map((panel, index) => (
+            <Fragment key={panel.id}>
+              <div
+                className={`${index === 0 ? 'merge-pane-numbers-right' : ''} min-w-0`}
+                style={{ flex: `${panelWidths[index]} 1 0%` }}
+                data-testid={`merge-pane-${panel.id}-wrapper`}
+              >
+                <MergePane
+                  value={panel.value}
+                  filePath={filePath}
+                  modelPath={panel.modelPath}
+                  readOnly={panel.readOnly}
+                  onMount={handlePaneMount(panel.id)}
+                />
+              </div>
+              {index < panels.length - 1 && (
+                <div
+                  className="relative shrink-0 overflow-hidden select-none"
+                  style={{ width: GAP_WIDTH, cursor: isTwoWay ? 'default' : 'col-resize' }}
+                  onMouseDown={isTwoWay ? undefined : (index === 0 ? handleLeftMouseDown : handleRightMouseDown)}
+                  data-testid={`merge-resize-handle-${index === 0 ? 'left' : 'right'}`}
+                >
+                  <MergeConnectorOverlay
+                    ref={index === 0 ? leftOverlayRef : rightOverlayRef}
+                    width={GAP_WIDTH}
+                    height={gapHeight}
+                    segments={index === 0 ? leftSegments : rightSegments}
+                    side={index === 0 ? 'left' : 'right'}
+                    onAccept={index === 0 ? handleAcceptTheirs : handleAcceptOurs}
+                    onReject={index === 0 ? handleRejectTheirs : handleRejectOurs}
+                    scrollTopLeft={index === 0 ? theirsEditorRef.current?.getScrollTop() ?? 0 : centerEditorRef.current?.getScrollTop() ?? 0}
+                    scrollTopRight={index === 0 ? centerEditorRef.current?.getScrollTop() ?? 0 : oursEditorRef.current?.getScrollTop() ?? 0}
+                  />
+                </div>
+              )}
+            </Fragment>
+          ))}
         </div>
       </div>
     )

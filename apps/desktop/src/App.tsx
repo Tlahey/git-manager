@@ -15,7 +15,9 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { Footer } from './components/footer/Footer'
 
 import { TrophyToast } from './components/trophy/TrophyToast'
+import { OperationProgressBar } from './components/layout/OperationProgressBar'
 import { appEventBus } from './lib/appEventBus'
+import { useOperationProgressStore } from './stores/operationProgress.store'
 import { listen } from '@tauri-apps/api/event'
 import { mutate } from 'swr'
 
@@ -57,6 +59,48 @@ export default function App() {
     }
   }, [])
 
+  // Listen for fixup commits made from dedicated "Commit Changes" windows
+  useEffect(() => {
+    let unlisten: (() => void) | undefined
+    const setupListener = async () => {
+      unlisten = await listen<{ repoPath: string }>('fixup-committed', (event) => {
+        const { repoPath } = event.payload
+        queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+        queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+        queryClient.invalidateQueries({ queryKey: ['pending-fixups', repoPath] })
+      })
+    }
+    setupListener()
+    return () => {
+      if (unlisten) unlisten()
+    }
+  }, [])
+
+  // Listen for rebase progress updates to drive the OperationProgressBar
+  useEffect(() => {
+    let unlisten: (() => void) | undefined
+    const setupListener = async () => {
+      unlisten = await listen<{ repoPath: string; phase: string }>('rebase-progress', (event) => {
+        const { repoPath, phase } = event.payload
+        const store = useOperationProgressStore.getState()
+        if (phase === 'start') {
+          store.start(repoPath, 'rebase')
+        } else {
+          store.clear(repoPath)
+          queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+          queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+          queryClient.invalidateQueries({ queryKey: ['pending-fixups', repoPath] })
+          queryClient.invalidateQueries({ queryKey: ['rebase-state', repoPath] })
+          mutate(['conflicted-files', repoPath])
+        }
+      })
+    }
+    setupListener()
+    return () => {
+      if (unlisten) unlisten()
+    }
+  }, [])
+
   function handleOpenSettings(section?: Section) {
     setSettingsSection(section || 'general')
     setShowSettings(true)
@@ -70,6 +114,7 @@ export default function App() {
         ) : (
           <>
             <TabBar onOpenSettings={handleOpenSettings} />
+            <OperationProgressBar />
             <div className="flex-1 overflow-hidden">
               {activeTab === DASHBOARD_TAB ? (
                 <DashboardPage onOpenSettings={() => handleOpenSettings('local_ai')} />

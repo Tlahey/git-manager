@@ -199,6 +199,18 @@ export interface RebaseState {
   currentMessage?: string
 }
 
+// ─── Interactive rebase (Rebasing Commit editor) ─────────────────────────────
+
+export type RebaseTodoAction = 'pick' | 'reword' | 'squash' | 'fixup' | 'drop'
+
+/** Mirrors `RebaseTodoStep` in `services/git_interactive_rebase.rs`. */
+export interface RebaseTodoStep {
+  action: RebaseTodoAction
+  oid: string
+  /** Replacement commit message (reword, or custom squash result message). */
+  message?: string
+}
+
 // ─── Conflict Resolution (3-way merge editor) ─────────────────────────────────
 
 export type MergeBlockKind = 'unchanged' | 'ours-only' | 'theirs-only' | 'both-same' | 'both-different'

@@ -97,6 +97,8 @@ export interface CommitNativeMenuLabels {
 
 export interface CommitNativeMenuOptions {
   isSingle: boolean
+  /** Enable the fixup item only when the target is a single commit on the current branch. */
+  fixupEnabled: boolean
   targetCount: number
   labels: CommitNativeMenuLabels
   onCheckout: () => void
@@ -123,6 +125,7 @@ export interface CommitNativeMenuOptions {
 export async function showCommitNativeContextMenu(opts: CommitNativeMenuOptions): Promise<void> {
   const {
     isSingle,
+    fixupEnabled,
     targetCount,
     labels,
     onCheckout,
@@ -188,7 +191,7 @@ export async function showCommitNativeContextMenu(opts: CommitNativeMenuOptions)
   const createTag         = await makeItem({ text: labels.createTag,         icon: 'tag', enabled: isSingle, action: () => onCreateTag() })
   const createAnnotatedTag = await makeItem({ text: labels.createAnnotatedTag, icon: 'tag', enabled: isSingle, action: () => onCreateAnnotatedTag() })
 
-  const fixupItem = await makeItem({ text: labels.fixup, icon: 'fixup', enabled: isSingle, action: () => onFixup() })
+  const fixupItem = await makeItem({ text: labels.fixup, icon: 'fixup', enabled: fixupEnabled, action: () => onFixup() })
 
   // ── Separators ────────────────────────────────────────────────────────────
   const sep  = () => PredefinedMenuItem.new({ item: 'Separator' })

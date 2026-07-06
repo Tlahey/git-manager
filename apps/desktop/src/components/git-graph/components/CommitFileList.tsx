@@ -217,9 +217,28 @@ export function CommitFileList({
           }
         }}
       >
-        {/* Left: File Icon and Filename */}
+        {/* Left: Stage checkbox (WIP), File Icon and Filename */}
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          <div className="w-3 shrink-0" />
+          {isWip ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                if (node.staged) handleUnstage(node.path)
+                else handleStage(node.path)
+              }}
+              className={cn(
+                "h-4 w-4 flex items-center justify-center text-[10px] font-bold border rounded transition-colors shrink-0",
+                node.staged
+                  ? "bg-primary border-primary text-white"
+                  : "border-border hover:border-primary/60 text-transparent hover:text-muted-foreground"
+              )}
+              title={node.staged ? 'Unstage' : 'Stage'}
+            >
+              ✓
+            </button>
+          ) : (
+            <div className="w-3 shrink-0" />
+          )}
           <FileText className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
           <span className="font-mono text-foreground truncate min-w-0 flex-1">{node.name}</span>
         </div>
@@ -238,27 +257,13 @@ export function CommitFileList({
           </span>
 
           {isWip && (
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                onClick={() => (node.staged ? handleUnstage(node.path) : handleStage(node.path))}
-                className={cn(
-                  "h-4 w-4 flex items-center justify-center text-[10px] font-bold border rounded transition-colors shrink-0",
-                  node.staged
-                    ? "bg-primary border-primary text-white"
-                    : "border-border hover:border-primary/60 text-transparent hover:text-muted-foreground"
-                )}
-                title={node.staged ? 'Unstage' : 'Stage'}
-              >
-                ✓
-              </button>
-              <button
-                onClick={() => handleDiscard(node.path)}
-                className="p-0.5 border rounded border-border text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-                title="Discard Changes"
-              >
-                <RotateCcw className="h-2.5 w-2.5" />
-              </button>
-            </div>
+            <button
+              onClick={() => handleDiscard(node.path)}
+              className="p-0.5 border rounded border-border text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+              title="Discard Changes"
+            >
+              <RotateCcw className="h-2.5 w-2.5" />
+            </button>
           )}
         </div>
       </div>
@@ -417,8 +422,26 @@ export function CommitFileList({
                     }
                   }}
                 >
-                  {/* Left: File Icon and Consecutive Path Display */}
+                  {/* Left: Stage checkbox (WIP), File Icon and Consecutive Path Display */}
                   <div className="flex items-center min-w-0 flex-1 mr-4">
+                    {isWip && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (file.staged) handleUnstage(file.path)
+                          else handleStage(file.path)
+                        }}
+                        className={cn(
+                          "h-4 w-4 flex items-center justify-center text-[10px] font-bold border rounded transition-colors shrink-0 mr-1.5",
+                          file.staged
+                            ? "bg-primary border-primary text-white"
+                            : "border-border hover:border-primary/60 text-transparent hover:text-muted-foreground"
+                        )}
+                        title={file.staged ? 'Unstage' : 'Stage'}
+                      >
+                        ✓
+                      </button>
+                    )}
                     <FileText className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 mr-1.5" />
                     <div className="min-w-0 flex-1 flex items-center font-mono text-[11px] leading-tight select-text overflow-hidden">
                       {(() => {
@@ -452,29 +475,13 @@ export function CommitFileList({
                     </span>
 
                     {isWip && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() =>
-                            file.staged ? handleUnstage(file.path) : handleStage(file.path)
-                          }
-                          className={cn(
-                            "h-4 w-4 flex items-center justify-center text-[10px] font-bold border rounded transition-colors shrink-0",
-                            file.staged
-                              ? "bg-primary border-primary text-white"
-                              : "border-border hover:border-primary/60 text-transparent hover:text-muted-foreground"
-                          )}
-                          title={file.staged ? 'Unstage' : 'Stage'}
-                        >
-                          ✓
-                        </button>
-                        <button
-                          onClick={() => handleDiscard(file.path)}
-                          className="p-0.5 border rounded border-border text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-                          title="Discard Changes"
-                        >
-                          <RotateCcw className="h-2.5 w-2.5" />
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => handleDiscard(file.path)}
+                        className="p-0.5 border rounded border-border text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                        title="Discard Changes"
+                      >
+                        <RotateCcw className="h-2.5 w-2.5" />
+                      </button>
                     )}
                   </div>
                 </div>

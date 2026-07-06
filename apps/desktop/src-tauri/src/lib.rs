@@ -7,11 +7,12 @@ mod utils;
 
 use commands::branch::{
     checkout_branch, create_branch, create_tag, delete_branch, get_branches, get_tags,
+    is_commit_on_current_branch,
 };
 use commands::cherry_pick::cherry_pick_commit;
 use commands::commit::{
-    create_commit, discard_file_changes, get_file_diff, get_file_raw_contents, get_staged_diff,
-    stage_all, stage_file, unstage_all, unstage_file,
+    create_commit, discard_file_changes, get_commit_file_vs_workdir, get_file_diff,
+    get_file_raw_contents, get_staged_diff, stage_all, stage_file, unstage_all, unstage_file,
 };
 use commands::conflict::{
     auto_merge_conflict_view, get_merge_view, list_conflicted_files, resolve_conflict,
@@ -21,6 +22,7 @@ use commands::fixup::{
     autosquash_preview, create_fixup_commit, get_pending_fixups, run_autosquash,
 };
 use commands::github::{github_device_code, github_get_user, github_list_repos, github_poll_token};
+use commands::interactive_rebase::{list_rebase_commits, run_interactive_rebase};
 use commands::log::{compare_commit_to_workdir, get_commit_diff, get_commit_file, get_log};
 use commands::ollama::{cancel_generation, check_ollama_status, generate_commit_message};
 use commands::patch::create_patch;
@@ -137,12 +139,15 @@ pub fn run() {
             create_tag,
             checkout_branch,
             delete_branch,
+            is_commit_on_current_branch,
             // Rebase
             get_rebase_state,
             rebase_onto_commit,
             continue_rebase,
             abort_rebase,
             skip_rebase,
+            list_rebase_commits,
+            run_interactive_rebase,
             // Ollama
             check_ollama_status,
             generate_commit_message,
@@ -157,6 +162,7 @@ pub fn run() {
             get_staged_diff,
             get_file_diff,
             get_file_raw_contents,
+            get_commit_file_vs_workdir,
             // Remote
             fetch_remote,
             pull_branch,
