@@ -118,12 +118,13 @@ export function blockDecorationSpecs(
   token: ColorToken,
   withTopBorder: boolean,
   withBottomBorder: boolean,
-  resolved = false
+  resolved = false,
+  useVividText = false
 ): DecorationSpec[] {
   if (lineCount <= 0) return []
 
   const resolvedClass = resolved ? ' merge-resolved' : ''
-  const text = `merge-text-${token}${resolvedClass}`
+  const text = useVividText ? `merge-vivid-${token}${resolvedClass}` : `merge-text-${token}${resolvedClass}`
   const margin = `merge-vivid-${token}${resolvedClass}`
 
   // No edge to draw at all (borders disabled, or both edges closed by something else): the
@@ -182,7 +183,8 @@ function addPaneBlock(
     emptyRendering: EmptyPaneRendering
     resolved: boolean
   },
-  withBorders: boolean
+  withBorders: boolean,
+  useVividText = false
 ): void {
   const isEmpty = zone.paneLineCount === 0
   const wantsMarker = zone.deficit > 0 && isEmpty && zone.emptyRendering === 'accent-marker' && zone.token !== undefined
@@ -197,7 +199,8 @@ function addPaneBlock(
         part.token,
         (withBorders || part.resolved) && i === 0,
         (withBorders || part.resolved) && i === parts.length - 1 && !hasZone,
-        part.resolved
+        part.resolved,
+        useVividText
       )
     )
   })
@@ -264,7 +267,8 @@ function isBlockResolved(block: MergeBlock, placement: BlockPlacement): boolean 
 export function computeMergeVisuals(
   blocks: MergeBlock[],
   placements: Map<number, BlockPlacement>,
-  withBlockBorders = false
+  withBlockBorders = false,
+  useVividText = false
 ): MergeVisuals {
   const visuals: MergeVisuals = {
     ours: { decorations: [], viewZones: [] },
@@ -313,7 +317,7 @@ export function computeMergeVisuals(
       paneTotalLines: oursTotalLines,
       emptyRendering: sideEmptyRendering,
       resolved: placement.oursTouched,
-    }, withBlockBorders)
+    }, withBlockBorders, useVividText)
 
     const theirsParts: ColoredRange[] =
       theirsToken && block.theirsLineCount > 0
@@ -328,7 +332,7 @@ export function computeMergeVisuals(
       paneTotalLines: theirsTotalLines,
       emptyRendering: sideEmptyRendering,
       resolved: placement.theirsTouched,
-    }, withBlockBorders)
+    }, withBlockBorders, useVividText)
 
     const baseOursToken = sideColorToken(block, placement.oursTouched)
     const baseTheirsToken = sideColorToken(block, placement.theirsTouched)
@@ -379,7 +383,7 @@ export function computeMergeVisuals(
       paneTotalLines: centerTotalLines,
       emptyRendering: resolvedCenterEmptyRendering,
       resolved,
-    }, withBlockBorders)
+    }, withBlockBorders, useVividText)
   }
 
   return visuals

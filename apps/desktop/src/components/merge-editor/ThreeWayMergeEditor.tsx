@@ -2,7 +2,10 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import type { Monaco } from '@monaco-editor/react'
 import type { editor, IRange } from 'monaco-editor'
 import type { MergeBlock, ThreeWayMergeView } from '@git-manager/git-types'
+import { useSWRConfig } from 'swr'
 import { apiAutoMergeConflictView } from '../../api/conflict.api'
+import { useRebaseState } from '../../hooks/useRebaseState'
+import { MergeHeader } from './components/MergeHeader'
 import { MergePane } from './MergePane'
 import { MergeConnectorOverlay, type ConnectorSegment } from './MergeConnectorOverlay'
 import { useMergeScrollSync } from './useMergeScrollSync'
@@ -257,6 +260,51 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     const placementsRef = useRef(placements)
     placementsRef.current = placements
 
+    const [whitespaceMode, setWhitespaceMode] = useState<'compare' | 'ignore' | 'trim'>('compare')
+    const [highlightMode, setHighlightMode] = useState<'words' | 'lines'>('words')
+
+    const { mutate } = useSWRConfig()
+    const { data: rebaseState } = useRebaseState(repoPath)
+
+    const commitSha = useMemo(() => {
+      if (rebaseState?.currentOid) {
+        return rebaseState.currentOid.substring(0, 8)
+      }
+      return 'd6a30cec'
+    }, [rebaseState])
+
+    const fileName = useMemo(() => {
+      return filePath.split('/').pop() || filePath
+    }, [filePath])
+
+    // Dynamic conflict/change stats
+    const { changesCount, conflictsCount } = useMemo(() => {
+      let conflicts = 0
+      let changes = 0
+
+      for (const block of view.blocks) {
+        if (block.kind === 'unchanged') continue
+
+        const placement = placements.get(block.blockId)
+        if (!placement) continue
+
+        if (block.kind === 'both-different') {
+          if (!placement.oursTouched && !placement.theirsTouched) {
+            conflicts++
+          }
+          changes++
+        } else {
+          if (!placement.oursTouched && !placement.theirsTouched) {
+            changes++
+          }
+        }
+      }
+
+      return { changesCount: changes, conflictsCount: conflicts }
+    }, [view.blocks, placements])
+
+
+
     const [editorsReady, setEditorsReady] = useState(false)
     const [panelWidths, setPanelWidths] = useState<[number, number, number]>([33.333, 33.334, 33.333])
 
@@ -435,6 +483,193 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     }, [repoPath, filePath, updatePlacementsStateAndRef])
 
     const { attach: attachScrollSync } = useMergeScrollSync(blocksRef, placementsRef, monacoRef, ignoreScrollSyncRef)
+
+    const [activeBlockIndex, setActiveBlockIndex] = useState<number>(0)
+
+    const changeBlocks = useMemo(() => {
+      return view.blocks.filter((b) => b.kind !== 'unchanged')
+    }, [view.blocks])
+
+    const updateActiveBlockIndex = useCallback(() => {
+      const centerEditor = centerEditorRef.current
+      if (!centerEditor) return
+
+      if (changeBlocks.length === 0) {
+        setActiveBlockIndex(-1)
+        return
+      }
+
+      const visibleRanges = typeof centerEditor.getVisibleRanges === 'function' ? centerEditor.getVisibleRanges() : []
+      const currentLine = visibleRanges.length > 0 ? visibleRanges[0].startLineNumber : 1
+
+      let foundIndex = -1
+      for (let i = 0; i < changeBlocks.length; i++) {
+        const p = placementsRef.current.get(changeBlocks[i].blockId)
+        if (p) {
+          if (p.centerStartLine >= currentLine) {
+            foundIndex = i
+            break
+          }
+          if (currentLine >= p.centerStartLine && currentLine < p.centerStartLine + p.centerLineCount) {
+            foundIndex = i
+            break
+          }
+        }
+      }
+
+      if (foundIndex === -1) {
+        foundIndex = changeBlocks.length - 1
+      }
+
+      setActiveBlockIndex(foundIndex)
+    }, [changeBlocks])
+
+    // Scroll and focus next/prev conflict
+    const navigateConflict = useCallback((direction: 'next' | 'prev') => {
+      const centerEditor = centerEditorRef.current
+      if (!centerEditor || changeBlocks.length === 0) return
+
+      let targetIndex = activeBlockIndex
+      if (direction === 'next') {
+        if (activeBlockIndex < changeBlocks.length - 1) {
+          targetIndex = activeBlockIndex + 1
+        } else {
+          return // Boundary reached
+        }
+      } else {
+        if (activeBlockIndex > 0) {
+          targetIndex = activeBlockIndex - 1
+        } else {
+          return // Boundary reached
+        }
+      }
+
+      const targetBlock = changeBlocks[targetIndex]
+      if (targetBlock) {
+        const p = placementsRef.current.get(targetBlock.blockId)
+        if (p) {
+          centerEditor.revealLineInCenter(p.centerStartLine)
+          centerEditor.setPosition({ lineNumber: p.centerStartLine, column: 1 })
+          centerEditor.focus()
+          setActiveBlockIndex(targetIndex)
+        }
+      }
+    }, [activeBlockIndex, changeBlocks])
+
+    // Apply non-conflicting changes (Left, Right, or both sides)
+    const applyNonConflicting = useCallback((side: 'left' | 'right' | 'all') => {
+      const centerEditor = centerEditorRef.current
+      const model = centerEditor?.getModel()
+      if (!centerEditor || !model) return
+
+      executeWithScrollPreservation(() => {
+        const altIdBefore = model.getAlternativeVersionId()
+        const prePlacements = placementsRef.current
+
+        let nextPlacements = new Map(prePlacements)
+        let changedAny = false
+
+        for (const block of blocksRef.current) {
+          const current = prePlacements.get(block.blockId)
+          if (!current || current.oursTouched || current.theirsTouched) continue
+
+          const isLeftChange = block.kind === 'theirs-only'
+          const isRightChange = block.kind === 'ours-only'
+
+          if (isLeftChange && (side === 'left' || side === 'all')) {
+            const kind = changeKindForBlock(block)
+            const theirsInc = kind !== 'deletion'
+            nextPlacements = updatePlacementBothFlags(nextPlacements, blocksRef.current, block, false, theirsInc)
+            changedAny = true
+          } else if (isRightChange && (side === 'right' || side === 'all')) {
+            const kind = changeKindForBlock(block)
+            const oursInc = kind !== 'deletion'
+            nextPlacements = updatePlacementBothFlags(nextPlacements, blocksRef.current, block, oursInc, false)
+            changedAny = true
+          }
+        }
+
+        if (!changedAny) return
+
+        const lines: string[] = []
+        for (const block of blocksRef.current) {
+          const placement = nextPlacements.get(block.blockId)
+          if (placement) {
+            lines.push(...centerLinesForBlock(block, placement.oursIncluded, placement.theirsIncluded))
+          } else {
+            lines.push(...(block.baseLines ?? []))
+          }
+        }
+        const mergedText = lines.join('\n')
+        const hasTextChange = model.getValue() !== mergedText
+
+        if (hasTextChange) {
+          model.pushStackElement()
+          isApplyingOwnEditRef.current = true
+          centerEditor.executeEdits('merge-bulk-accept-non-conflicting', [{ range: model.getFullModelRange(), text: mergedText }])
+          isApplyingOwnEditRef.current = false
+          model.pushStackElement()
+        }
+
+        const altIdAfter = model.getAlternativeVersionId()
+        const textChange = hasTextChange
+
+        historyRef.current.push({
+          prePlacements,
+          postPlacements: nextPlacements,
+          altIdBefore,
+          altIdAfter,
+          textChange,
+        })
+        redoRef.current = []
+        updatePlacementsStateAndRef(nextPlacements)
+        centerEditor.focus()
+      })
+    }, [executeWithScrollPreservation, updatePlacementsStateAndRef])
+
+    // Reset merge state completely
+    const handleResetMerge = useCallback(() => {
+      executeWithScrollPreservation(() => {
+        const centerEditor = centerEditorRef.current
+        const model = centerEditor?.getModel()
+        if (!centerEditor || !model) return
+
+        const altIdBefore = model.getAlternativeVersionId()
+        const prePlacements = placementsRef.current
+
+        const initialText = computeInitialCenterText(blocksRef.current)
+        const initialPlacements = computeInitialPlacements(blocksRef.current)
+
+        const hasTextChange = model.getValue() !== initialText
+
+        if (hasTextChange) {
+          model.pushStackElement()
+          isApplyingOwnEditRef.current = true
+          centerEditor.executeEdits('merge-reset', [{ range: model.getFullModelRange(), text: initialText }])
+          isApplyingOwnEditRef.current = false
+          model.pushStackElement()
+        }
+
+        const altIdAfter = model.getAlternativeVersionId()
+
+        historyRef.current.push({
+          prePlacements,
+          postPlacements: initialPlacements,
+          altIdBefore,
+          altIdAfter,
+          textChange: hasTextChange,
+        })
+        redoRef.current = []
+        updatePlacementsStateAndRef(initialPlacements)
+        centerEditor.focus()
+      })
+    }, [executeWithScrollPreservation, updatePlacementsStateAndRef])
+
+    // Force recalculating/revalidating SWR keys
+    const handleRecalculate = useCallback(() => {
+      mutate(['merge-view', repoPath, filePath])
+      mutate(['rebase-state', repoPath])
+    }, [repoPath, filePath, mutate])
 
     const [gapHeight, setGapHeight] = useState(0)
     const [leftSegments, setLeftSegments] = useState<ConnectorSegment[]>([])
@@ -730,6 +965,12 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       const theirsEditor = theirsEditorRef.current
       if (!oursEditor || !centerEditor || !theirsEditor) return
 
+      // Update whitespace option in Monaco editors dynamically
+      const renderWhitespaceOption = whitespaceMode === 'compare' ? 'all' : 'none'
+      if (typeof oursEditor.updateOptions === 'function') oursEditor.updateOptions({ renderWhitespace: renderWhitespaceOption })
+      if (typeof centerEditor.updateOptions === 'function') centerEditor.updateOptions({ renderWhitespace: renderWhitespaceOption })
+      if (typeof theirsEditor.updateOptions === 'function') theirsEditor.updateOptions({ renderWhitespace: renderWhitespaceOption })
+
       let pendingConflicts = 0
       for (const block of blocksRef.current) {
         const placement = placements.get(block.blockId)
@@ -737,28 +978,28 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         if (block.kind === 'both-different' && !placement.oursTouched && !placement.theirsTouched) pendingConflicts += 1
       }
 
-      const visuals = computeMergeVisuals(blocksRef.current, placements, showBlockBorders)
+      const visuals = computeMergeVisuals(blocksRef.current, placements, showBlockBorders, highlightMode === 'lines')
 
       // Second diff pass (intra-line): reads the center buffer's live text so the highlights
-      // track manual typing too — this effect already re-runs on every content change, since
-      // handleCenterContentChange re-derives `placements` from the buffer on each keystroke.
+      // track manual typing too. Only run if highlightMode is 'words'.
       const centerModel = centerEditor.getModel()
-      const intra = centerModel
+      const intra = centerModel && highlightMode === 'words'
         ? computeIntraLineHighlights(blocksRef.current, placements, (line) =>
             line >= 1 && line <= centerModel.getLineCount() ? centerModel.getLineContent(line) : ''
           )
         : { ours: [], center: [], theirs: [] }
 
+      const showWholeLineHighlights = true
       oursDecorationsRef.current?.set([
-        ...visuals.ours.decorations.map(toMonacoDecoration),
+        ...(showWholeLineHighlights ? visuals.ours.decorations.map(toMonacoDecoration) : []),
         ...intra.ours.map(toInlineMonacoDecoration),
       ])
       centerDecorationsRef.current?.set([
-        ...visuals.center.decorations.map(toMonacoDecoration),
+        ...(showWholeLineHighlights ? visuals.center.decorations.map(toMonacoDecoration) : []),
         ...intra.center.map(toInlineMonacoDecoration),
       ])
       theirsDecorationsRef.current?.set([
-        ...visuals.theirs.decorations.map(toMonacoDecoration),
+        ...(showWholeLineHighlights ? visuals.theirs.decorations.map(toMonacoDecoration) : []),
         ...intra.theirs.map(toInlineMonacoDecoration),
       ])
 
@@ -768,6 +1009,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
       onPendingCountChange?.(pendingConflicts)
       scheduleRecompute()
+      updateActiveBlockIndex()
 
       if (savedScrollTopsRef.current) {
         const { ours, center, theirs } = savedScrollTopsRef.current
@@ -780,7 +1022,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         })
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [placements, editorsReady, showBlockBorders])
+    }, [placements, editorsReady, showBlockBorders, whitespaceMode, highlightMode, updateActiveBlockIndex])
 
     // Track manual edits inside the center pane so downstream block placements (and thus
     // gutter widgets/connectors/colors) stay in sync with what's actually in the buffer, even
@@ -942,7 +1184,12 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
         const paneIndex = pane === 'ours' ? 0 : pane === 'center' ? 1 : 2
         attachScrollSync(editorInstance, paneIndex)
-        editorInstance.onDidScrollChange(() => applyScrollOffset())
+        editorInstance.onDidScrollChange(() => {
+          applyScrollOffset()
+          if (pane === 'center') {
+            updateActiveBlockIndex()
+          }
+        })
         // `onDidLayoutChange` fires when Monaco's own automaticLayout resize-observer settles
         // on this editor's real dimensions — a more reliable connector-recompute trigger than
         // our own outer-container ResizeObserver, since it directly reflects when
@@ -969,6 +1216,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
           // Panes normally mount already scrolled to the top, but seed the paths from
           // whatever the panes actually report rather than assuming 0.
           applyScrollOffset()
+          updateActiveBlockIndex()
           // Belt-and-suspenders: schedule a couple of follow-up recomputes a moment after all
           // three editors report ready, in case the very first layout pass (and thus the very
           // first `getTopForLineNumber` reads) happened before the browser's first paint.
@@ -976,7 +1224,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
           setTimeout(() => scheduleRecompute(), 250)
         }
       },
-      [attachScrollSync, scheduleRecompute, handleCenterContentEvent, applyScrollOffset]
+      [attachScrollSync, scheduleRecompute, handleCenterContentEvent, applyScrollOffset, updateActiveBlockIndex]
     )
 
     useEffect(() => {
@@ -990,42 +1238,44 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       return () => observer.disconnect()
     }, [scheduleRecompute])
 
+    const applyAutoMerge = useCallback(async () => {
+      const mergedText = await apiAutoMergeConflictView(repoPath, filePath)
+      const centerEditor = centerEditorRef.current
+      const model = centerEditor?.getModel()
+      if (!centerEditor || !model) return
+
+      executeWithScrollPreservation(() => {
+        const altIdBefore = model.getAlternativeVersionId()
+        const prePlacements = placementsRef.current
+        const hasTextChange = model.getValue() !== mergedText
+
+        if (hasTextChange) {
+          isApplyingOwnEditRef.current = true
+          centerEditor.executeEdits('merge-auto-merge', [{ range: model.getFullModelRange(), text: mergedText }])
+          isApplyingOwnEditRef.current = false
+        }
+
+        const altIdAfter = model.getAlternativeVersionId()
+        const textChange = hasTextChange
+        const postPlacements = recomputeAllPlacements(blocksRef.current, placementOverridesAfterAutoMerge(blocksRef.current, prePlacements))
+
+        historyRef.current.push({
+          prePlacements,
+          postPlacements,
+          altIdBefore,
+          altIdAfter,
+          textChange,
+        })
+        redoRef.current = []
+        updatePlacementsStateAndRef(postPlacements)
+      })
+    }, [repoPath, filePath, executeWithScrollPreservation, updatePlacementsStateAndRef])
+
     useImperativeHandle(
       ref,
       () => ({
         getCenterValue: () => centerEditorRef.current?.getModel()?.getValue() ?? '',
-        applyAutoMerge: async () => {
-          const mergedText = await apiAutoMergeConflictView(repoPath, filePath)
-          const centerEditor = centerEditorRef.current
-          const model = centerEditor?.getModel()
-          if (!centerEditor || !model) return
-
-          executeWithScrollPreservation(() => {
-            const altIdBefore = model.getAlternativeVersionId()
-            const prePlacements = placementsRef.current
-            const hasTextChange = model.getValue() !== mergedText
-
-            if (hasTextChange) {
-              isApplyingOwnEditRef.current = true
-              centerEditor.executeEdits('merge-auto-merge', [{ range: model.getFullModelRange(), text: mergedText }])
-              isApplyingOwnEditRef.current = false
-            }
-
-            const altIdAfter = model.getAlternativeVersionId()
-            const textChange = hasTextChange
-            const postPlacements = recomputeAllPlacements(blocksRef.current, placementOverridesAfterAutoMerge(blocksRef.current, prePlacements))
-
-            historyRef.current.push({
-              prePlacements,
-              postPlacements,
-              altIdBefore,
-              altIdAfter,
-              textChange,
-            })
-            redoRef.current = []
-            updatePlacementsStateAndRef(postPlacements)
-          })
-        },
+        applyAutoMerge,
         acceptLeft: () => {
           const centerEditor = centerEditorRef.current
           const model = centerEditor?.getModel()
@@ -1168,81 +1418,104 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     }, [triggerUndo, triggerRedo])
 
     return (
-      <div ref={containerRef} className="flex h-full w-full overflow-hidden">
-        <div
-          className="merge-pane-numbers-right min-w-0"
-          style={{ flex: `${panelWidths[0]} 1 0%` }}
-          data-testid="merge-pane-theirs-wrapper"
-        >
-          <MergePane
-            value={view.theirsText}
-            filePath={filePath}
-            modelPath={`${repoPath}/${filePath}#theirs`}
-            readOnly
-            onMount={handlePaneMount('theirs')}
-          />
-        </div>
-        <div
-          className="relative shrink-0 overflow-hidden select-none"
-          style={{ width: GAP_WIDTH, cursor: 'col-resize' }}
-          onMouseDown={handleLeftMouseDown}
-          data-testid="merge-resize-handle-left"
-        >
-          <MergeConnectorOverlay
-            ref={leftOverlayRef}
-            width={GAP_WIDTH}
-            height={gapHeight}
-            segments={leftSegments}
-            side="left"
-            onAccept={handleAcceptTheirs}
-            onReject={handleRejectTheirs}
-            scrollTopLeft={theirsEditorRef.current?.getScrollTop() ?? 0}
-            scrollTopRight={centerEditorRef.current?.getScrollTop() ?? 0}
-          />
-        </div>
-        <div
-          className="min-w-0"
-          style={{ flex: `${panelWidths[1]} 1 0%` }}
-          data-testid="merge-pane-center-wrapper"
-        >
-          <MergePane
-            value={initialCenterText}
-            filePath={filePath}
-            modelPath={`${repoPath}/${filePath}#center`}
-            readOnly={false}
-            onMount={handlePaneMount('center')}
-          />
-        </div>
-        <div
-          className="relative shrink-0 overflow-hidden select-none"
-          style={{ width: GAP_WIDTH, cursor: 'col-resize' }}
-          onMouseDown={handleRightMouseDown}
-          data-testid="merge-resize-handle-right"
-        >
-          <MergeConnectorOverlay
-            ref={rightOverlayRef}
-            width={GAP_WIDTH}
-            height={gapHeight}
-            segments={rightSegments}
-            side="right"
-            onAccept={handleAcceptOurs}
-            onReject={handleRejectOurs}
-            scrollTopLeft={centerEditorRef.current?.getScrollTop() ?? 0}
-            scrollTopRight={oursEditorRef.current?.getScrollTop() ?? 0}
-          />
-        </div>
-        <div
-          className="min-w-0"
-          style={{ flex: `${panelWidths[2]} 1 0%` }}
-          data-testid="merge-pane-ours-wrapper"
-        >
-          <MergePane
-            value={view.oursText}
-            filePath={filePath}
-            modelPath={`${repoPath}/${filePath}#ours`}
-            readOnly
-            onMount={handlePaneMount('ours')}
-          />
+      <div className="flex h-full w-full flex-col overflow-hidden bg-[#1a1a1a]">
+        <MergeHeader
+          whitespaceMode={whitespaceMode}
+          setWhitespaceMode={setWhitespaceMode}
+          highlightMode={highlightMode}
+          setHighlightMode={setHighlightMode}
+          onNavigate={navigateConflict}
+          canNavigatePrev={activeBlockIndex > 0}
+          canNavigateNext={activeBlockIndex !== -1 && activeBlockIndex < changeBlocks.length - 1}
+          onApplyLeft={() => applyNonConflicting('left')}
+          onApplyRight={() => applyNonConflicting('right')}
+          onApplyAll={() => applyNonConflicting('all')}
+          onApplyAuto={applyAutoMerge}
+          onReset={handleResetMerge}
+          onRecalculate={handleRecalculate}
+          changesCount={changesCount}
+          conflictsCount={conflictsCount}
+          commitSha={commitSha}
+          fileName={fileName}
+          panelWidths={panelWidths}
+          gapWidth={GAP_WIDTH}
+        />
+        <div ref={containerRef} className="flex flex-1 w-full overflow-hidden min-h-0">
+          <div
+            className="merge-pane-numbers-right min-w-0"
+            style={{ flex: `${panelWidths[0]} 1 0%` }}
+            data-testid="merge-pane-theirs-wrapper"
+          >
+            <MergePane
+              value={view.theirsText}
+              filePath={filePath}
+              modelPath={`${repoPath}/${filePath}#theirs`}
+              readOnly
+              onMount={handlePaneMount('theirs')}
+            />
+          </div>
+          <div
+            className="relative shrink-0 overflow-hidden select-none"
+            style={{ width: GAP_WIDTH, cursor: 'col-resize' }}
+            onMouseDown={handleLeftMouseDown}
+            data-testid="merge-resize-handle-left"
+          >
+            <MergeConnectorOverlay
+              ref={leftOverlayRef}
+              width={GAP_WIDTH}
+              height={gapHeight}
+              segments={leftSegments}
+              side="left"
+              onAccept={handleAcceptTheirs}
+              onReject={handleRejectTheirs}
+              scrollTopLeft={theirsEditorRef.current?.getScrollTop() ?? 0}
+              scrollTopRight={centerEditorRef.current?.getScrollTop() ?? 0}
+            />
+          </div>
+          <div
+            className="min-w-0"
+            style={{ flex: `${panelWidths[1]} 1 0%` }}
+            data-testid="merge-pane-center-wrapper"
+          >
+            <MergePane
+              value={initialCenterText}
+              filePath={filePath}
+              modelPath={`${repoPath}/${filePath}#center`}
+              readOnly={false}
+              onMount={handlePaneMount('center')}
+            />
+          </div>
+          <div
+            className="relative shrink-0 overflow-hidden select-none"
+            style={{ width: GAP_WIDTH, cursor: 'col-resize' }}
+            onMouseDown={handleRightMouseDown}
+            data-testid="merge-resize-handle-right"
+          >
+            <MergeConnectorOverlay
+              ref={rightOverlayRef}
+              width={GAP_WIDTH}
+              height={gapHeight}
+              segments={rightSegments}
+              side="right"
+              onAccept={handleAcceptOurs}
+              onReject={handleRejectOurs}
+              scrollTopLeft={centerEditorRef.current?.getScrollTop() ?? 0}
+              scrollTopRight={oursEditorRef.current?.getScrollTop() ?? 0}
+            />
+          </div>
+          <div
+            className="min-w-0"
+            style={{ flex: `${panelWidths[2]} 1 0%` }}
+            data-testid="merge-pane-ours-wrapper"
+          >
+            <MergePane
+              value={view.oursText}
+              filePath={filePath}
+              modelPath={`${repoPath}/${filePath}#ours`}
+              readOnly
+              onMount={handlePaneMount('ours')}
+            />
+          </div>
         </div>
       </div>
     )
