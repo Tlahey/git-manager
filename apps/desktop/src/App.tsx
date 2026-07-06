@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './lib/queryClient'
 import { DashboardPage } from './app/dashboard/DashboardPage'
@@ -14,9 +14,10 @@ import { useNotificationWatcher } from './hooks/useNotificationWatcher'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { Footer } from './components/footer/Footer'
 
-import { useEffect } from 'react'
 import { TrophyToast } from './components/trophy/TrophyToast'
 import { appEventBus } from './lib/appEventBus'
+import { listen } from '@tauri-apps/api/event'
+import { mutate } from 'swr'
 
 export default function App() {
   const activeTab = useRepoUIStore((s) => s.activeTab)
@@ -36,6 +37,24 @@ export default function App() {
   // Firing open_app event on launch
   useEffect(() => {
     appEventBus.notify('open_app')
+  }, [])
+
+  // Listen for conflict-resolved events from dedicated merge windows
+  useEffect(() => {
+    let unlisten: (() => void) | undefined
+    const setupListener = async () => {
+      unlisten = await listen<{ repoPath: string; filePath: string }>('conflict-resolved', (event) => {
+        const { repoPath } = event.payload
+        queryClient.invalidateQueries({ queryKey: ['rebase-state', repoPath] })
+        queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+        queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+        mutate(['conflicted-files', repoPath])
+      })
+    }
+    setupListener()
+    return () => {
+      if (unlisten) unlisten()
+    }
   }, [])
 
   function handleOpenSettings(section?: Section) {

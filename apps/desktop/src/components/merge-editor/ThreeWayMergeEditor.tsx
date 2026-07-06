@@ -20,6 +20,7 @@ import {
   placementOverridesAfterAutoMerge,
   recomputeAllPlacements,
   updatePlacementAfterToggle,
+  updatePlacementBothFlags,
 } from './mergeBlockLayout'
 import {
   type DecorationSpec,
@@ -43,6 +44,8 @@ interface ThreeWayMergeEditorProps {
 export interface ThreeWayMergeEditorRef {
   getCenterValue: () => string
   applyAutoMerge: () => Promise<void>
+  acceptLeft: () => void
+  acceptRight: () => void
 }
 
 interface HistoryEntry {
@@ -1021,6 +1024,104 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
             })
             redoRef.current = []
             updatePlacementsStateAndRef(postPlacements)
+          })
+        },
+        acceptLeft: () => {
+          const centerEditor = centerEditorRef.current
+          const model = centerEditor?.getModel()
+          if (!centerEditor || !model) return
+
+          executeWithScrollPreservation(() => {
+            const altIdBefore = model.getAlternativeVersionId()
+            const prePlacements = placementsRef.current
+
+            let nextPlacements = new Map(prePlacements)
+            for (const block of blocksRef.current) {
+              nextPlacements = updatePlacementBothFlags(nextPlacements, blocksRef.current, block, false, true)
+            }
+
+            const lines: string[] = []
+            for (const block of blocksRef.current) {
+              const placement = nextPlacements.get(block.blockId)
+              if (placement) {
+                lines.push(...centerLinesForBlock(block, placement.oursIncluded, placement.theirsIncluded))
+              } else {
+                lines.push(...(block.baseLines ?? []))
+              }
+            }
+            const mergedText = lines.join('\n')
+            const hasTextChange = model.getValue() !== mergedText
+
+            if (hasTextChange) {
+              model.pushStackElement()
+              isApplyingOwnEditRef.current = true
+              centerEditor.executeEdits('merge-bulk-accept', [{ range: model.getFullModelRange(), text: mergedText }])
+              isApplyingOwnEditRef.current = false
+              model.pushStackElement()
+            }
+
+            const altIdAfter = model.getAlternativeVersionId()
+            const textChange = hasTextChange
+
+            historyRef.current.push({
+              prePlacements,
+              postPlacements: nextPlacements,
+              altIdBefore,
+              altIdAfter,
+              textChange,
+            })
+            redoRef.current = []
+            updatePlacementsStateAndRef(nextPlacements)
+            centerEditor.focus()
+          })
+        },
+        acceptRight: () => {
+          const centerEditor = centerEditorRef.current
+          const model = centerEditor?.getModel()
+          if (!centerEditor || !model) return
+
+          executeWithScrollPreservation(() => {
+            const altIdBefore = model.getAlternativeVersionId()
+            const prePlacements = placementsRef.current
+
+            let nextPlacements = new Map(prePlacements)
+            for (const block of blocksRef.current) {
+              nextPlacements = updatePlacementBothFlags(nextPlacements, blocksRef.current, block, true, false)
+            }
+
+            const lines: string[] = []
+            for (const block of blocksRef.current) {
+              const placement = nextPlacements.get(block.blockId)
+              if (placement) {
+                lines.push(...centerLinesForBlock(block, placement.oursIncluded, placement.theirsIncluded))
+              } else {
+                lines.push(...(block.baseLines ?? []))
+              }
+            }
+            const mergedText = lines.join('\n')
+            const hasTextChange = model.getValue() !== mergedText
+
+            if (hasTextChange) {
+              model.pushStackElement()
+              isApplyingOwnEditRef.current = true
+              centerEditor.executeEdits('merge-bulk-accept', [{ range: model.getFullModelRange(), text: mergedText }])
+              isApplyingOwnEditRef.current = false
+              model.pushStackElement()
+            }
+
+            const altIdAfter = model.getAlternativeVersionId()
+            const textChange = hasTextChange
+
+            historyRef.current.push({
+              prePlacements,
+              postPlacements: nextPlacements,
+              altIdBefore,
+              altIdAfter,
+              textChange,
+            })
+            redoRef.current = []
+            updatePlacementsStateAndRef(nextPlacements)
+            centerEditor.focus()
           })
         },
       }),

@@ -105,9 +105,12 @@ pub fn run() {
             // Hide instead of quitting: keeps the webview (and the notification watcher's
             // polling loop) alive in the background, so OS notifications keep firing after the
             // user closes the window — the process only actually exits via the tray's "Quit".
+            // Only apply this to the main window; dedicated sub-windows should close normally.
             if let WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
+                if window.label() == "main" {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
             }
         })
         .invoke_handler(tauri::generate_handler![

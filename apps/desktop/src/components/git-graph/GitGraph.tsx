@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useTranslation } from '@git-manager/i18n'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { mutate } from 'swr'
 import { Spinner } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { useGitStatus } from '../../hooks/useGitStatus'
@@ -22,7 +21,6 @@ import { CommitDetailsPanel } from './CommitDetailsPanel'
 import { DiffViewCenter } from './DiffViewCenter'
 import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
 import { ConflictResolutionPanel } from './ConflictResolutionPanel'
-import { ConflictDiffView } from './ConflictDiffView'
 import { Waterline } from './Waterline'
 import { COLUMN_DEFS, COLUMN_ORDER, type ResolvedColumn } from './columns'
 
@@ -54,6 +52,36 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   const setActiveDiffFile = useRepoUIStore((s) => s.setActiveDiffFile)
   const conflictFilePath = useRepoUIStore((s) => s.conflictFilePath)
   const setConflictFilePath = useRepoUIStore((s) => s.setConflictFilePath)
+
+  useEffect(() => {
+    if (!conflictFilePath) return
+
+    const openMergeWindow = async () => {
+      const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
+      const safeLabel = `merge-${repoPath.replace(/[^a-zA-Z0-9_\-]/g, '-')}-${conflictFilePath.replace(/[^a-zA-Z0-9_\-]/g, '-')}`
+      const url = `/?window=merge&repoPath=${encodeURIComponent(repoPath)}&filePath=${encodeURIComponent(conflictFilePath)}`
+
+      const existing = await WebviewWindow.getByLabel(safeLabel)
+      if (existing) {
+        await existing.show()
+        await existing.setFocus()
+      } else {
+        new WebviewWindow(safeLabel, {
+          url,
+          title: `Conflict Resolution - ${conflictFilePath}`,
+          width: 1200,
+          height: 800,
+          minWidth: 900,
+          minHeight: 600,
+          decorations: true,
+        })
+      }
+      setConflictFilePath(null)
+    }
+
+    openMergeWindow()
+  }, [conflictFilePath, repoPath, setConflictFilePath])
+
   const pendingGraphSelection = useRepoUIStore((s) => s.pendingGraphSelection)
   const setPendingGraphSelection = useRepoUIStore((s) => s.setPendingGraphSelection)
   const hiddenStashes = useRepoDataStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
@@ -202,13 +230,6 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     setConflictFilePath(null)
   }
 
-  function handleConflictFileResolved() {
-    setConflictFilePath(null)
-    mutate(['conflicted-files', repoPath])
-    queryClient.invalidateQueries({ queryKey: ['rebase-state', repoPath] })
-    queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-  }
-
   const isSelectedCommitHead = useMemo(() => {
     if (!primaryNode || primaryNode.commit.oid === 'WIP' || primaryNode.commit.oid === 'CONFLICT') return false
     // Strategy 1: a ref with type 'HEAD' is directly on this commit (detached HEAD)
@@ -229,14 +250,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     <div className="flex h-full overflow-hidden select-none">
       {/* Zone principale : tableau virtualisé ou DiffViewCenter */}
       <div className="flex min-w-[280px] flex-1 flex-col overflow-hidden">
-        {conflictFilePath ? (
-          <ConflictDiffView
-            repoPath={repoPath}
-            filePath={conflictFilePath}
-            onClose={() => setConflictFilePath(null)}
-            onResolved={handleConflictFileResolved}
-          />
-        ) : activeDiffFile ? (
+        {activeDiffFile ? (
           <DiffViewCenter
             repoPath={repoPath}
             file={activeDiffFile}

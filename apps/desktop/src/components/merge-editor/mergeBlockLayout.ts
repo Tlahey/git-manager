@@ -246,6 +246,42 @@ export function updatePlacementAfterToggle(
   return next
 }
 
+export function updatePlacementBothFlags(
+  placements: Map<number, BlockPlacement>,
+  blocks: MergeBlock[],
+  block: MergeBlock,
+  oursIncluded: boolean,
+  theirsIncluded: boolean
+): Map<number, BlockPlacement> {
+  const current = placements.get(block.blockId)
+  if (!current) return placements
+
+  const updated: BlockPlacement = {
+    ...current,
+    oursIncluded,
+    oursTouched: true,
+    theirsIncluded,
+    theirsTouched: true,
+  }
+
+  const newCenterLineCount = centerLineCountFor(block, updated)
+  const delta = newCenterLineCount - current.centerLineCount
+  updated.centerLineCount = newCenterLineCount
+
+  const next = new Map(placements)
+  next.set(block.blockId, updated)
+
+  if (delta !== 0) {
+    for (const b of blocks) {
+      if (b.blockId <= block.blockId) continue
+      const placement = next.get(b.blockId)
+      if (!placement) continue
+      next.set(b.blockId, { ...placement, centerStartLine: placement.centerStartLine + delta })
+    }
+  }
+  return next
+}
+
 const MAX_FORWARD_SCAN_LINES = 20000
 
 /** Re-derives every block's live placement directly from the center buffer's actual current
