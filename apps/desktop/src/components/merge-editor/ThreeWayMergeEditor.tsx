@@ -165,6 +165,69 @@ function checkTextChanges(
   return false
 }
 
+function updateConnectorPaths(
+  overlayElement: HTMLDivElement | null,
+  scrollTopLeft: number,
+  scrollTopRight: number,
+  segments: ConnectorSegment[],
+  side: 'left' | 'right'
+) {
+  if (!overlayElement) return
+
+  const half = GAP_WIDTH / 2
+  const width = GAP_WIDTH
+
+  // 1. Update SVG paths
+  const paths = overlayElement.querySelectorAll('path')
+  let pathIdx = 0
+
+  segments.forEach((seg) => {
+    const leftY0 = seg.leftY0 - scrollTopLeft
+    const leftY1 = seg.leftY1 - scrollTopLeft
+    const rightY0 = seg.rightY0 - scrollTopRight
+    const rightY1 = seg.rightY1 - scrollTopRight
+
+    if (seg.flat) {
+      const d = `M 0,${leftY0} C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`
+      const pathEl = paths[pathIdx++] as SVGPathElement | undefined
+      if (pathEl) pathEl.setAttribute('d', d)
+    } else if (seg.resolved) {
+      const dTop = `M 0,${leftY0} C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`
+      const dBottom = `M 0,${leftY1} C ${half},${leftY1} ${half},${rightY1} ${width},${rightY1}`
+      
+      const pathElTop = paths[pathIdx++] as SVGPathElement | undefined
+      if (pathElTop) pathElTop.setAttribute('d', dTop)
+      
+      const pathElBottom = paths[pathIdx++] as SVGPathElement | undefined
+      if (pathElBottom) pathElBottom.setAttribute('d', dBottom)
+    } else {
+      const d = [
+        `M 0,${leftY0}`,
+        `C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`,
+        `L ${width},${rightY1}`,
+        `C ${half},${rightY1} ${half},${leftY1} 0,${leftY1}`,
+        'Z',
+      ].join(' ')
+      
+      const pathEl = paths[pathIdx++] as SVGPathElement | undefined
+      if (pathEl) pathEl.setAttribute('d', d)
+    }
+  })
+
+  // 2. Update action button positions
+  const buttonContainers = overlayElement.querySelectorAll('.merge-connector-action-container')
+  let btnIdx = 0
+
+  segments.forEach((seg) => {
+    if (!seg.actionable) return
+    const anchorY = side === 'left' ? seg.leftY0 - scrollTopLeft : seg.rightY0 - scrollTopRight
+    const btnContainer = buttonContainers[btnIdx++] as HTMLDivElement | undefined
+    if (btnContainer) {
+      btnContainer.style.top = `${anchorY}px`
+    }
+  })
+}
+
 /** JetBrains-style 3-panel merge editor: left = theirs (the incoming change being applied,
  * read-only), center = editable result, right = ours (the local/current side, read-only) —
  * matching WebStorm's merge/rebase dialog, which puts what you're merging IN on the left and
@@ -233,25 +296,40 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [repoPath, filePath])
 
-    const { attach: attachScrollSync } = useMergeScrollSync()
+    const { attach: attachScrollSync } = useMergeScrollSync(blocksRef, placementsRef, monacoRef)
 
     const containerRef = useRef<HTMLDivElement | null>(null)
     const [gapHeight, setGapHeight] = useState(0)
     const [leftSegments, setLeftSegments] = useState<ConnectorSegment[]>([])
     const [rightSegments, setRightSegments] = useState<ConnectorSegment[]>([])
+    const leftSegmentsRef = useRef<ConnectorSegment[]>([])
+    const rightSegmentsRef = useRef<ConnectorSegment[]>([])
     const leftOverlayRef = useRef<HTMLDivElement | null>(null)
     const rightOverlayRef = useRef<HTMLDivElement | null>(null)
 
     // Written directly to the DOM (bypassing React state/render) from Monaco's own
     // `onDidScrollChange`, so the connector overlay's position tracks the panes' scroll at the
     // exact same synchronous moment Monaco updates itself, rather than catching up a render
-    // cycle later. `recomputeConnectors` below deliberately never factors scroll into segment
-    // coordinates (they're in document space) — scroll-following is entirely this transform.
-    const applyScrollOffset = useCallback((scrollTop: number) => {
-      const transform = `translateY(${-scrollTop}px)`
-      if (leftOverlayRef.current) leftOverlayRef.current.style.transform = transform
-      if (rightOverlayRef.current) rightOverlayRef.current.style.transform = transform
+    // cycle later. We update the connector paths in viewport space rather than shifting
+    // the wrapper.
+    const applyScrollOffset = useCallback(() => {
+      const theirsEditor = theirsEditorRef.current
+      const centerEditor = centerEditorRef.current
+      const oursEditor = oursEditorRef.current
+
+      if (!theirsEditor || !centerEditor || !oursEditor) return
+
+      const theirsScroll = theirsEditor.getScrollTop()
+      const centerScroll = centerEditor.getScrollTop()
+      const oursScroll = oursEditor.getScrollTop()
+
+      updateConnectorPaths(leftOverlayRef.current, theirsScroll, centerScroll, leftSegmentsRef.current, 'left')
+      updateConnectorPaths(rightOverlayRef.current, centerScroll, oursScroll, rightSegmentsRef.current, 'right')
     }, [])
+
+    useEffect(() => {
+      applyScrollOffset()
+    }, [leftSegments, rightSegments, applyScrollOffset])
 
     const connectorRafRef = useRef<number | null>(null)
 
@@ -373,6 +451,8 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         }
       }
 
+      leftSegmentsRef.current = left
+      rightSegmentsRef.current = right
       setLeftSegments(left)
       setRightSegments(right)
     }, [])
@@ -693,7 +773,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
         const paneIndex = pane === 'ours' ? 0 : pane === 'center' ? 1 : 2
         attachScrollSync(editorInstance, paneIndex)
-        editorInstance.onDidScrollChange((e) => applyScrollOffset(e.scrollTop))
+        editorInstance.onDidScrollChange(() => applyScrollOffset())
         // `onDidLayoutChange` fires when Monaco's own automaticLayout resize-observer settles
         // on this editor's real dimensions — a more reliable connector-recompute trigger than
         // our own outer-container ResizeObserver, since it directly reflects when
@@ -717,9 +797,9 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
         if (oursEditorRef.current && centerEditorRef.current && theirsEditorRef.current) {
           setEditorsReady(true)
-          // Panes normally mount already scrolled to the top, but seed the transform from
-          // whatever the center pane actually reports rather than assuming 0.
-          applyScrollOffset(centerEditorRef.current.getScrollTop())
+          // Panes normally mount already scrolled to the top, but seed the paths from
+          // whatever the panes actually report rather than assuming 0.
+          applyScrollOffset()
           // Belt-and-suspenders: schedule a couple of follow-up recomputes a moment after all
           // three editors report ready, in case the very first layout pass (and thus the very
           // first `getTopForLineNumber` reads) happened before the browser's first paint.
@@ -824,6 +904,8 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
             side="left"
             onAccept={handleAcceptTheirs}
             onReject={handleRejectTheirs}
+            scrollTopLeft={theirsEditorRef.current?.getScrollTop() ?? 0}
+            scrollTopRight={centerEditorRef.current?.getScrollTop() ?? 0}
           />
         </div>
         <div className="min-w-0 flex-1">
@@ -844,6 +926,8 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
             side="right"
             onAccept={handleAcceptOurs}
             onReject={handleRejectOurs}
+            scrollTopLeft={centerEditorRef.current?.getScrollTop() ?? 0}
+            scrollTopRight={oursEditorRef.current?.getScrollTop() ?? 0}
           />
         </div>
         <div className="min-w-0 flex-1">

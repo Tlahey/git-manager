@@ -31,6 +31,8 @@ interface MergeConnectorOverlayProps {
   side: 'left' | 'right'
   onAccept: (blockId: number) => void
   onReject: (blockId: number) => void
+  scrollTopLeft?: number
+  scrollTopRight?: number
 }
 
 /** Filled "ribbon" connectors linking a block's Y-range in one pane to its Y-range in the
@@ -56,7 +58,7 @@ interface MergeConnectorOverlayProps {
  * values through state on every scroll tick is what keeps this overlay glued to the panes' own
  * (React-external) scrolling instead of trailing it by a render cycle. */
 export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOverlayProps>(function MergeConnectorOverlay(
-  { width, height, segments, side, onAccept, onReject },
+  { width, height, segments, side, onAccept, onReject, scrollTopLeft = 0, scrollTopRight = 0 },
   ref
 ) {
   return (
@@ -70,8 +72,14 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
         {segments.map((seg) => {
           const half = width / 2
           const resolvedSuffix = seg.resolved ? ' merge-resolved' : ''
+
+          const leftY0 = seg.leftY0 - scrollTopLeft
+          const leftY1 = seg.leftY1 - scrollTopLeft
+          const rightY0 = seg.rightY0 - scrollTopRight
+          const rightY1 = seg.rightY1 - scrollTopRight
+
           if (seg.flat) {
-            const d = `M 0,${seg.leftY0} C ${half},${seg.leftY0} ${half},${seg.rightY0} ${width},${seg.rightY0}`
+            const d = `M 0,${leftY0} C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`
             return (
               <path
                 key={seg.id}
@@ -82,8 +90,8 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
             )
           }
           if (seg.resolved) {
-            const dTop = `M 0,${seg.leftY0} C ${half},${seg.leftY0} ${half},${seg.rightY0} ${width},${seg.rightY0}`
-            const dBottom = `M 0,${seg.leftY1} C ${half},${seg.leftY1} ${half},${seg.rightY1} ${width},${seg.rightY1}`
+            const dTop = `M 0,${leftY0} C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`
+            const dBottom = `M 0,${leftY1} C ${half},${leftY1} ${half},${rightY1} ${width},${rightY1}`
             return (
               <g key={seg.id}>
                 <path
@@ -100,10 +108,10 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
             )
           }
           const d = [
-            `M 0,${seg.leftY0}`,
-            `C ${half},${seg.leftY0} ${half},${seg.rightY0} ${width},${seg.rightY0}`,
-            `L ${width},${seg.rightY1}`,
-            `C ${half},${seg.rightY1} ${half},${seg.leftY1} 0,${seg.leftY1}`,
+            `M 0,${leftY0}`,
+            `C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`,
+            `L ${width},${rightY1}`,
+            `C ${half},${rightY1} ${half},${leftY1} 0,${leftY1}`,
             'Z',
           ].join(' ')
           return <path key={seg.id} d={d} className={seg.colorClass} data-testid={`merge-connector-ribbon-${side}-${seg.id}`} />
@@ -116,7 +124,7 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
           // pane's end of the segment (the left pane for the left gap, the right pane for the
           // right gap), hugging that pane's edge horizontally. An 18px button on an ~18px line
           // sits flush with the block's first line, exactly where WebStorm nests its actions.
-          const anchorY = side === 'left' ? seg.leftY0 : seg.rightY0
+          const anchorY = side === 'left' ? seg.leftY0 - scrollTopLeft : seg.rightY0 - scrollTopRight
           const acceptButton = (
             <button
               key="accept"
@@ -144,7 +152,7 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
           return (
             <div
               key={seg.id}
-              className={`absolute left-0 right-0 flex items-center gap-0.5 ${side === 'left' ? 'justify-start pl-0.5' : 'justify-end pr-0.5'}`}
+              className={`merge-connector-action-container absolute left-0 right-0 flex items-center gap-0.5 ${side === 'left' ? 'justify-start pl-0.5' : 'justify-end pr-0.5'}`}
               style={{ top: anchorY }}
             >
               {/* Accept sits closest to the source pane's edge, the ignore X right after it. */}
