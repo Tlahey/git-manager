@@ -1,0 +1,17 @@
+/* Applied by Playwright only while taking screenshots (see `stylePath` in
+   playwright.config.ts) — neutralizes Monaco's non-deterministic chrome so visual baselines
+   only capture what the component actually renders:
+   - the blinking cursor (its blink phase at capture time is random),
+   - the current-line highlight (tracks wherever the last click/edit left the cursor, which
+     would make "state after action X" snapshots depend on click coordinates),
+   - the custom scrollbars (fade in/out on interaction). */
+.monaco-editor .cursors-layer {
+  display: none !important;
+}
+.monaco-editor .view-overlays .current-line,
+.monaco-editor .margin-view-overlays .current-line-margin {
+  display: none !important;
+}
+.monaco-editor .scrollbar {
+  opacity: 0 !important;
+}

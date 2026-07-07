@@ -62,3 +62,21 @@ pnpm --filter @git-manager/code-view test:e2e    # Playwright suite against Stor
 ```
 
 First e2e run needs the browser once: `npx playwright install chromium` from this package.
+
+### Visual regression
+
+`e2e/visual.spec.ts` compares screenshots against committed baselines
+(`e2e/visual.spec.ts-snapshots/`): one per story (catches unintended restyling between two
+versions) and one per user action — accept a conflict side, accept an incoming addition, wand
+auto-merge, and reset (which must reproduce the pristine baseline pixel-for-pixel). Monaco's
+non-deterministic chrome (cursor blink, current-line highlight, scrollbars) is stripped during
+capture by `e2e/screenshot.css`.
+
+When a visual change is intentional, regenerate the baselines and commit them:
+
+```bash
+npx playwright test --update-snapshots
+```
+
+Baselines are platform-suffixed (`-darwin`, `-linux`, …); only run/regenerate them on a
+platform whose baselines are committed, or Playwright will write a new set on first run.
