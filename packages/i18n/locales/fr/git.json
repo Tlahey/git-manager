@@ -200,6 +200,7 @@
   "commitDetails.openRemote": "Ouvrir dans GitHub/GitLab",
   "commitDetails.diffInline": "Unifié",
   "commitDetails.diffSplit": "Côte à côte",
+  "commitDetails.collapseUnchanged": "Replier l'inchangé",
   "commitDetails.discardTitle": "Annuler les modifications",
   "commitDetails.discardPrompt": "Voulez-vous vraiment annuler toutes les modifications locales de ce fichier ? Cette action est irréversible.",
   "commitDetails.batchCommit.title": "Assistant Commits Groupés",

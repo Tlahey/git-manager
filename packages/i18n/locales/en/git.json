@@ -206,6 +206,7 @@
   "commitDetails.openRemote": "Open in GitHub/GitLab",
   "commitDetails.diffInline": "Unified",
   "commitDetails.diffSplit": "Side-by-side",
+  "commitDetails.collapseUnchanged": "Collapse Unchanged",
   "commitDetails.discardTitle": "Discard changes",
   "commitDetails.discardPrompt": "Are you sure you want to discard all local changes to this file? This action is irreversible.",
   "commitDetails.batchCommit.title": "Smart Batch Commits",

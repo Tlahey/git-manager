@@ -16,6 +16,7 @@ import {
   FileText,
   Eye,
   History,
+  FoldVertical,
 } from 'lucide-react'
 import type { GitDiffFile } from '@git-manager/git-types'
 
@@ -57,6 +58,8 @@ interface DiffToolbarProps {
   onChangeViewMode: (mode: 'inline' | 'split') => void
   ignoreWhitespace: boolean
   onToggleIgnoreWhitespace: () => void
+  collapseUnchanged: boolean
+  onToggleCollapseUnchanged: () => void
   isProcessing: boolean
   onToggleStage: () => void
   onRollback: () => void
@@ -85,6 +88,8 @@ export function DiffToolbar({
   onChangeViewMode,
   ignoreWhitespace,
   onToggleIgnoreWhitespace,
+  collapseUnchanged,
+  onToggleCollapseUnchanged,
   isProcessing,
   onToggleStage,
   onRollback,
@@ -260,6 +265,17 @@ export function DiffToolbar({
               title="Ignore trim whitespace in diff"
             >
               Hide Whitespace
+            </Button>
+
+            <Button
+              variant={collapseUnchanged ? 'default' : 'outline'}
+              size="icon"
+              className="h-7 w-7 shrink-0 ml-2"
+              onClick={onToggleCollapseUnchanged}
+              title={t('commitDetails.collapseUnchanged')}
+              data-testid="diff-collapse-unchanged-btn"
+            >
+              <FoldVertical className="h-3.5 w-3.5" />
             </Button>
           </div>
         )}

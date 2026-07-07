@@ -33,6 +33,7 @@ export function DiffViewCenter({
   const [isProcessing, setIsProcessing] = useState(false)
   const [activeTab, setActiveTab] = useState<'diff' | 'file'>('diff')
   const [ignoreWhitespace, setIgnoreWhitespace] = useState(false)
+  const [collapseUnchanged, setCollapseUnchanged] = useState(false)
   const diffViewerRef = useRef<MonacoDiffViewerRef>(null)
 
   const activeLeftPanel = useRepoUIStore((s) => s.activeLeftPanel)
@@ -145,6 +146,8 @@ export function DiffViewCenter({
         onChangeViewMode={setViewMode}
         ignoreWhitespace={ignoreWhitespace}
         onToggleIgnoreWhitespace={() => setIgnoreWhitespace(!ignoreWhitespace)}
+        collapseUnchanged={collapseUnchanged}
+        onToggleCollapseUnchanged={() => setCollapseUnchanged(!collapseUnchanged)}
         isProcessing={isProcessing}
         onToggleStage={handleToggleStage}
         onRollback={handleRollback}
@@ -181,6 +184,7 @@ export function DiffViewCenter({
                   viewMode={viewMode}
                   activeTab={activeTab}
                   ignoreWhitespace={ignoreWhitespace}
+                  collapseUnchanged={collapseUnchanged}
                 />
               </div>
             )}

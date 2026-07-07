@@ -199,6 +199,7 @@ export interface ConflictResolverProps {
   /** Draw the JetBrains-style hermetic 2px top/bottom edges around each block (and the matching
    * closing edges on the hatched filler zones). Off by default — the colored fills alone. */
   showBlockBorders?: boolean
+  defaultCollapseUnchanged?: boolean
 }
 
 export interface ConflictResolverRef {
@@ -417,6 +418,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       onRecalculate,
       onPendingCountChange,
       showBlockBorders = false,
+      defaultCollapseUnchanged = false,
     },
     ref
   ) => {
@@ -514,6 +516,9 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
     }, [isTwoWay, dynamicView, updatePlacementsStateAndRef])
 
     const [highlightMode, setHighlightMode] = useState<'words' | 'lines'>('words')
+    const [collapseUnchanged, setCollapseUnchanged] = useState(defaultCollapseUnchanged)
+
+
 
     // Dynamic conflict/change stats
     const { changesCount, conflictsCount } = useMemo(() => {
@@ -1019,78 +1024,78 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
           if (!placement) continue
 
           for (const side of ['ours', 'theirs'] as MergeSide[]) {
-          const touched = side === 'ours' ? placement.oursTouched : placement.theirsTouched
-          const colorClass = connectorClassForSide(block, touched, side)
-          if (!colorClass) continue
+            const touched = side === 'ours' ? placement.oursTouched : placement.theirsTouched
+            const colorClass = connectorClassForSide(block, touched, side)
+            if (!colorClass) continue
 
-          const paneEditor = side === 'ours' ? oursEditor : theirsEditor
-          if (!paneEditor) continue
-          const paneStart = side === 'ours' ? block.oursStartLine : block.theirsStartLine
-          const paneCount = side === 'ours' ? block.oursLineCount : block.theirsLineCount
-          if (paneCount === 0 && changeKindForBlock(block) === 'addition') continue
+            const paneEditor = side === 'ours' ? oursEditor : theirsEditor
+            if (!paneEditor) continue
+            const paneStart = side === 'ours' ? block.oursStartLine : block.theirsStartLine
+            const paneCount = side === 'ours' ? block.oursLineCount : block.theirsLineCount
+            if (paneCount === 0 && changeKindForBlock(block) === 'addition') continue
 
-          const { start, count } = connectorCenterRangeForSide(placement, block, side)
+            const { start, count } = connectorCenterRangeForSide(placement, block, side)
 
-          let paneY0 = paneEditor.getTopForLineNumber(paneStart)
-          let paneY1 = paneEditor.getTopForLineNumber(paneStart + paneCount)
-          if (paneCount === 0) {
-            const domNode = typeof paneEditor.getDomNode === 'function' ? paneEditor.getDomNode() : null
-            const element = domNode?.querySelector(`[data-zone-id="${block.blockId}-${side}"]`) as HTMLElement | null
-            if (element) {
-              paneY0 = element.offsetTop
-              paneY1 = element.offsetTop + element.offsetHeight
-            } else {
-              paneY0 = paneY1
-              if (changeKindForBlock(block) === 'deletion') {
-                const edge = markerEdge(paneStart - 1, paneTotals[side])
-                if (edge === 'top') {
-                  paneY0 = paneY1 - 1
-                } else {
-                  paneY0 = paneY1
-                  paneY1 = paneY1 + 1
+            let paneY0 = paneEditor.getTopForLineNumber(paneStart)
+            let paneY1 = paneEditor.getTopForLineNumber(paneStart + paneCount)
+            if (paneCount === 0) {
+              const domNode = typeof paneEditor.getDomNode === 'function' ? paneEditor.getDomNode() : null
+              const element = domNode?.querySelector(`[data-zone-id="${block.blockId}-${side}"]`) as HTMLElement | null
+              if (element) {
+                paneY0 = element.offsetTop
+                paneY1 = element.offsetTop + element.offsetHeight
+              } else {
+                paneY0 = paneY1
+                if (changeKindForBlock(block) === 'deletion') {
+                  const edge = markerEdge(paneStart - 1, paneTotals[side])
+                  if (edge === 'top') {
+                    paneY0 = paneY1 - 1
+                  } else {
+                    paneY0 = paneY1
+                    paneY1 = paneY1 + 1
+                  }
                 }
               }
             }
-          }
 
-          let centerY0 = centerEditor.getTopForLineNumber(start)
-          let centerY1 = centerEditor.getTopForLineNumber(start + count)
-          if (count === 0 && changeKindForBlock(block) === 'addition') {
-            const edge = markerEdge(start - 1, paneTotals.center)
-            if (edge === 'top') {
-              centerY0 = centerY1 - 1
-            } else {
-              centerY0 = centerY1
-              centerY1 = centerY1 + 1
+            let centerY0 = centerEditor.getTopForLineNumber(start)
+            let centerY1 = centerEditor.getTopForLineNumber(start + count)
+            if (count === 0 && changeKindForBlock(block) === 'addition') {
+              const edge = markerEdge(start - 1, paneTotals.center)
+              if (edge === 'top') {
+                centerY0 = centerY1 - 1
+              } else {
+                centerY0 = centerY1
+                centerY1 = centerY1 + 1
+              }
             }
-          }
 
-          const segment: ConnectorSegment = {
-            id: block.blockId,
-            // theirs (incoming) sits in the LEFT gap, ours (current) in the RIGHT gap — the
-            // pane end of the segment is whichever edge touches that side's own pane.
-            leftY0: side === 'theirs' ? paneY0 : centerY0,
-            leftY1: side === 'theirs' ? paneY1 : centerY1,
-            rightY0: side === 'theirs' ? centerY0 : paneY0,
-            rightY1: side === 'theirs' ? centerY1 : paneY1,
-            colorClass,
-            // `isChangeSource` always returns the authoring side — for a deletion that's the
-            // side that deleted (0 lines in its pane). The connector ribbon funnels from the
-            // pane's zero-height boundary to the center's still-present base text, and the
-            // action buttons anchor at that pane edge.
-            actionable: !touched && isChangeSource(block, side),
-            // Only truly flat (thin stroked line) when BOTH the pane and the center endpoint
-            // are zero-height — e.g. a pending addition's mirror pane. A deletion where the
-            // pane has 0 lines but the center still has base content draws as a filled funnel
-            // ribbon from the point to the range, not a flat stroke.
-            flat: paneCount === 0 && count === 0,
-            resolved: touched,
+            const segment: ConnectorSegment = {
+              id: block.blockId,
+              // theirs (incoming) sits in the LEFT gap, ours (current) in the RIGHT gap — the
+              // pane end of the segment is whichever edge touches that side's own pane.
+              leftY0: side === 'theirs' ? paneY0 : centerY0,
+              leftY1: side === 'theirs' ? paneY1 : centerY1,
+              rightY0: side === 'theirs' ? centerY0 : paneY0,
+              rightY1: side === 'theirs' ? centerY1 : paneY1,
+              colorClass,
+              // `isChangeSource` always returns the authoring side — for a deletion that's the
+              // side that deleted (0 lines in its pane). The connector ribbon funnels from the
+              // pane's zero-height boundary to the center's still-present base text, and the
+              // action buttons anchor at that pane edge.
+              actionable: !touched && isChangeSource(block, side),
+              // Only truly flat (thin stroked line) when BOTH the pane and the center endpoint
+              // are zero-height — e.g. a pending addition's mirror pane. A deletion where the
+              // pane has 0 lines but the center still has base content draws as a filled funnel
+              // ribbon from the point to the range, not a flat stroke.
+              flat: paneCount === 0 && count === 0,
+              resolved: touched,
+            }
+            if (side === 'theirs') left.push(segment)
+            else right.push(segment)
           }
-          if (side === 'theirs') left.push(segment)
-          else right.push(segment)
         }
       }
-    }
 
       leftSegmentsRef.current = left
       rightSegmentsRef.current = right
@@ -1105,6 +1110,80 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
         recomputeConnectors()
       })
     }, [recomputeConnectors])
+
+    // Apply collapseUnchanged regions to standard Monaco editors using hiddenAreas API
+    useEffect(() => {
+      const theirsEditor = theirsEditorRef.current
+      const centerEditor = centerEditorRef.current
+      const oursEditor = oursEditorRef.current
+
+      if (!collapseUnchanged || !monacoRef.current) {
+        if (theirsEditor && typeof (theirsEditor as any).setHiddenAreas === 'function') (theirsEditor as any).setHiddenAreas([])
+        if (centerEditor && typeof (centerEditor as any).setHiddenAreas === 'function') (centerEditor as any).setHiddenAreas([])
+        if (oursEditor && typeof (oursEditor as any).setHiddenAreas === 'function') (oursEditor as any).setHiddenAreas([])
+        scheduleRecompute()
+        return
+      }
+
+      const monacoInstance = monacoRef.current
+      const theirsHidden: any[] = []
+      const centerHidden: any[] = []
+      const oursHidden: any[] = []
+
+      viewToUse.blocks.forEach((block) => {
+        if (block.kind !== 'unchanged') return
+
+        // Left pane (theirs)
+        if (block.theirsLineCount > 6) {
+          theirsHidden.push(
+            new monacoInstance.Range(
+              block.theirsStartLine + 3,
+              1,
+              block.theirsStartLine + block.theirsLineCount - 4,
+              1
+            )
+          )
+        }
+
+        // Right pane (ours)
+        if (block.oursLineCount > 6) {
+          oursHidden.push(
+            new monacoInstance.Range(
+              block.oursStartLine + 3,
+              1,
+              block.oursStartLine + block.oursLineCount - 4,
+              1
+            )
+          )
+        }
+
+        // Center pane (result)
+        const p = placements.get(block.blockId)
+        if (p && p.centerLineCount > 6) {
+          centerHidden.push(
+            new monacoInstance.Range(
+              p.centerStartLine + 3,
+              1,
+              p.centerStartLine + p.centerLineCount - 4,
+              1
+            )
+          )
+        }
+      })
+
+      if (theirsEditor && typeof (theirsEditor as any).setHiddenAreas === 'function') (theirsEditor as any).setHiddenAreas(theirsHidden)
+      if (centerEditor && typeof (centerEditor as any).setHiddenAreas === 'function') (centerEditor as any).setHiddenAreas(centerHidden)
+      if (oursEditor && typeof (oursEditor as any).setHiddenAreas === 'function') (oursEditor as any).setHiddenAreas(oursHidden)
+
+      // Monaco's layout takes a moment to update line height mappings after setHiddenAreas
+      scheduleRecompute()
+      const t1 = setTimeout(() => scheduleRecompute(), 50)
+      const t2 = setTimeout(() => scheduleRecompute(), 150)
+      return () => {
+        clearTimeout(t1)
+        clearTimeout(t2)
+      }
+    }, [collapseUnchanged, viewToUse.blocks, placements, scheduleRecompute, monacoRef.current])
 
     const handleToggle = useCallback((block: MergeBlock, side: MergeSide, included: boolean) => {
       executeWithScrollPreservation(() => {
@@ -1256,8 +1335,8 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       const centerModel = centerEditor.getModel()
       const intra = centerModel && highlightMode === 'words' && !isTwoWay
         ? computeIntraLineHighlights(blocksRef.current, placements, (line) =>
-            line >= 1 && line <= centerModel.getLineCount() ? centerModel.getLineContent(line) : ''
-          )
+          line >= 1 && line <= centerModel.getLineCount() ? centerModel.getLineContent(line) : ''
+        )
         : { ours: [], center: [], theirs: [] }
 
       const showWholeLineHighlights = true
@@ -1728,6 +1807,8 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
             setWhitespaceMode={setWhitespaceMode}
             highlightMode={highlightMode}
             setHighlightMode={setHighlightMode}
+            collapseUnchanged={collapseUnchanged}
+            setCollapseUnchanged={setCollapseUnchanged}
             onNavigate={navigateConflict}
             canNavigatePrev={activeBlockIndex > 0}
             canNavigateNext={activeBlockIndex !== -1 && activeBlockIndex < changeBlocks.length - 1}

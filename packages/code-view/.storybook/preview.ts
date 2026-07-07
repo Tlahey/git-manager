@@ -1,3 +1,10 @@
+// Polyfill require.toUrl for Monaco Editor ESM worker fallback
+if (typeof (globalThis as any).require === 'undefined') {
+  ;(globalThis as any).require = {
+    toUrl: (id: string) => id,
+  }
+}
+
 import type { Preview } from '@storybook/react'
 import type { Environment } from 'monaco-editor'
 import * as monaco from 'monaco-editor'

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react'
+import { expect, within, userEvent } from 'storybook/test'
 import { ConflictResolver, type MergeBlock } from '../src'
 
 /** Consistent 3-way fixture: unchanged header, a genuine two-sided conflict, a theirs-only
@@ -133,6 +134,23 @@ export const ThreeWayMerge: Story = {
     editor: { language: 'typescript', theme: 'vs-dark' },
     onAutoMerge: () => Promise.resolve(autoMergedText),
   },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // 1. Verify the initial dropdown button text
+    const dropdownBtn = canvas.getByTestId('merge-whitespace-dropdown-btn');
+    await expect(dropdownBtn).toHaveTextContent('Do not ignore');
+
+    // 2. Open the dropdown
+    await userEvent.click(dropdownBtn);
+
+    // 3. Locate and click the "Ignore whitespace" option in the dropdown list
+    const ignoreOption = canvas.getByText('Ignore whitespace');
+    await userEvent.click(ignoreOption);
+
+    // 4. Verify that the dropdown closed and the button label has updated
+    await expect(dropdownBtn).toHaveTextContent('Ignore whitespace');
+  },
 }
 
 /** Simple side-by-side diff: 2 panels, read-only, block geometry computed live by Monaco's
@@ -172,5 +190,86 @@ export const NoHeader: Story = {
     ...ThreeWayMerge.args,
     modelPathPrefix: 'story/no-header/client.ts',
     header: false,
+  },
+}
+
+/** Story showcasing the editor with collapseUnchanged set to true on mount. */
+const largeUnchangedLines = [
+  "// Copyright (c) 2026 Git Manager Ltd. All rights reserved.",
+  "// Dedicated header with lots of license boilerplate lines",
+  "// to trigger the collapse threshold (> 6 lines).",
+  "import React from 'react'",
+  "import { useState } from 'react'",
+  "import { Button } from '@git-manager/ui'",
+  "import { api } from './api'",
+  "import { utils } from './utils'",
+  "import { logger } from './logger'",
+  "import { config } from './config'",
+  "import { auth } from './auth'",
+  "import { i18n } from './i18n'",
+  "import { theme } from './theme'",
+  "// Some additional line to fill up space",
+  "// and ensure we clearly see the folded lines",
+  "// in the Monaco code editors.",
+  "// Line 17",
+  "// Line 18",
+  "// Line 19",
+  "// Line 20"
+]
+
+const largeBlocks: MergeBlock[] = [
+  {
+    blockId: 1,
+    kind: 'unchanged',
+    oursStartLine: 1,
+    oursLineCount: 20,
+    theirsStartLine: 1,
+    theirsLineCount: 20,
+    oursLines: largeUnchangedLines,
+    theirsLines: largeUnchangedLines,
+  },
+  {
+    blockId: 2,
+    kind: 'both-different',
+    oursStartLine: 21,
+    oursLineCount: 1,
+    theirsStartLine: 21,
+    theirsLineCount: 1,
+    oursLines: ['  const retries = 2'],
+    theirsLines: ['  const retries = 5'],
+    baseLines: ['  const retries = 3'],
+  },
+  {
+    blockId: 3,
+    kind: 'unchanged',
+    oursStartLine: 22,
+    oursLineCount: 2,
+    theirsStartLine: 22,
+    theirsLineCount: 2,
+    oursLines: ['  return api.run(retries)', '}'],
+    theirsLines: ['  return api.run(retries)', '}'],
+  },
+]
+
+const largeTheirsText = joinPane(largeBlocks, 'theirs')
+const largeOursText = joinPane(largeBlocks, 'ours')
+
+export const CollapsedByDefault: Story = {
+  args: {
+    panels: [
+      { content: largeTheirsText, status: <span>Incoming — feature/http-retries</span> },
+      { status: <span>Result — client.ts</span> },
+      { content: largeOursText, status: <span>Current — main</span> },
+    ],
+    blocks: largeBlocks,
+    modelPathPrefix: 'story/collapsed-by-default/client.ts',
+    editor: { language: 'typescript', theme: 'vs-dark' },
+    onAutoMerge: () => Promise.resolve([
+      ...largeUnchangedLines,
+      '  const retries = 3',
+      '  return api.run(retries)',
+      '}'
+    ].join('\n')),
+    defaultCollapseUnchanged: true,
   },
 }

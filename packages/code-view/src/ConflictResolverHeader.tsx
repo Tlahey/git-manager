@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ChevronDown, Wand2, RefreshCw, X } from 'lucide-react'
+import { ChevronDown, Wand2, RefreshCw, X, FoldVertical } from 'lucide-react'
 
 // Custom SVG global merge icon (branch merge symbol)
 const CombinedMergeIcon = ({ className }: { className?: string }) => (
@@ -32,6 +32,7 @@ export interface ConflictResolverActionsConfig {
   whitespace?: boolean
   highlight?: boolean
   stats?: boolean
+  collapseUnchanged?: boolean
 }
 
 export interface ConflictResolverHeaderProps {
@@ -40,6 +41,8 @@ export interface ConflictResolverHeaderProps {
   setWhitespaceMode: (mode: 'compare' | 'ignore' | 'trim') => void
   highlightMode: 'words' | 'lines'
   setHighlightMode: (mode: 'words' | 'lines') => void
+  collapseUnchanged: boolean
+  setCollapseUnchanged: (collapse: boolean) => void
   onNavigate: (direction: 'next' | 'prev') => void
   canNavigatePrev: boolean
   canNavigateNext: boolean
@@ -64,6 +67,8 @@ export function ConflictResolverHeader({
   setWhitespaceMode,
   highlightMode,
   setHighlightMode,
+  collapseUnchanged,
+  setCollapseUnchanged,
   onNavigate,
   canNavigatePrev,
   canNavigateNext,
@@ -280,6 +285,22 @@ export function ConflictResolverHeader({
                 </div>
               )}
             </div>
+          )}
+
+          {/* Collapse Unchanged Toggle */}
+          {actions.collapseUnchanged !== false && (
+            <button
+              onClick={() => setCollapseUnchanged(!collapseUnchanged)}
+              className={`flex h-6 w-6 items-center justify-center rounded border transition-colors ${
+                collapseUnchanged
+                  ? 'border-[#4b9dfa] bg-[#1e293b] text-[#4b9dfa]'
+                  : 'border-[#3c3c3c] bg-[#202020] hover:bg-[#262626] active:bg-[#2c2c2c] text-muted-foreground/80 hover:text-foreground'
+              }`}
+              title="Collapse unchanged fragments"
+              data-testid="merge-collapse-unchanged-btn"
+            >
+              <FoldVertical className="h-3.5 w-3.5" />
+            </button>
           )}
 
           {/* Reset button (X) */}
