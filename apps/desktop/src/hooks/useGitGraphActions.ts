@@ -8,7 +8,6 @@ import {
   apiStashApply,
   apiStashPop,
   apiStashDrop,
-  apiCreateFixupCommit,
   apiCreateCommit,
   apiStageAll,
   apiCopyCommitSha,
@@ -17,6 +16,7 @@ import {
   apiRebaseOntoCommit,
   apiGetCommitWebUrl,
   apiCreatePatch,
+  apiIsCommitOnCurrentBranch,
 } from '../api/git.api'
 import { apiAddWorktree } from '../api/worktree.api'
 import { useRepoUIStore } from '../stores/repoUI.store'
@@ -83,16 +83,32 @@ export function useGitGraphActions({
     setToast({ kind: 'ok', msg: t('gitTree.contextMenu.shaCopied') })
   }
 
-  async function handleFixup() {
-    if (!primaryOid) return
-    try {
-      await apiCreateFixupCommit(repoPath, primaryOid)
-      queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-      queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-      queryClient.invalidateQueries({ queryKey: ['pending-fixups', repoPath] })
-      setToast({ kind: 'ok', msg: t('gitTree.contextMenu.fixupCreated') })
-    } catch (err) {
-      setToast({ kind: 'error', msg: String(err) })
+  /** Opens the dedicated "Commit Changes" fixup window (same pattern as the merge window). */
+  async function openFixupWindow(oid: string) {
+    const node = nodes.find((n) => n.commit.oid === oid)
+    if (!node) return
+    const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
+    const safeLabel = `fixup-${repoPath.replace(/[^a-zA-Z0-9_-]/g, '-')}-${node.commit.shortOid}`
+    const url =
+      `/?window=fixup&repoPath=${encodeURIComponent(repoPath)}` +
+      `&oid=${encodeURIComponent(oid)}` +
+      `&shortOid=${encodeURIComponent(node.commit.shortOid)}` +
+      `&subject=${encodeURIComponent(node.commit.subject)}`
+
+    const existing = await WebviewWindow.getByLabel(safeLabel)
+    if (existing) {
+      await existing.show()
+      await existing.setFocus()
+    } else {
+      new WebviewWindow(safeLabel, {
+        url,
+        title: `Commit Changes - fixup! ${node.commit.subject}`,
+        width: 1200,
+        height: 850,
+        minWidth: 900,
+        minHeight: 600,
+        decorations: true,
+      })
     }
   }
 
@@ -182,7 +198,7 @@ export function useGitGraphActions({
     }
   }
 
-  function openMenuAt(e: React.MouseEvent, oid: string) {
+  async function openMenuAt(e: React.MouseEvent, oid: string) {
     if (oid === 'WIP') return
     e.preventDefault()
     e.stopPropagation()
@@ -253,8 +269,14 @@ export function useGitGraphActions({
     const isSingle = targets.length === 1
     const primaryShortOid = oid.slice(0, 7)
 
+    // Fixup is only meaningful for a single commit that's part of the current
+    // branch's history (HEAD or an ancestor) — otherwise it isn't rebasable.
+    const fixupEnabled =
+      isSingle && (await apiIsCommitOnCurrentBranch(repoPath, oid).catch(() => false))
+
     showCommitNativeContextMenu({
       isSingle,
+      fixupEnabled,
       targetCount: targets.length,
       labels: {
         checkout: t('gitTree.contextMenu.checkout'),
@@ -293,7 +315,7 @@ export function useGitGraphActions({
       onRebaseOnto: () => handleRebaseOntoCommit(),
       onReset: (mode) => setPendingAction({ kind: 'reset', mode }),
       onRevert: () => setPendingAction({ kind: 'revert' }),
-      onFixup: () => handleFixup(),
+      onFixup: () => void openFixupWindow(oid).catch(console.error),
       onCopySha: () => handleCopySha(),
       onCopyLink: () => handleCopyWebLink(),
       onCreatePatch: () => handleCreatePatch(),

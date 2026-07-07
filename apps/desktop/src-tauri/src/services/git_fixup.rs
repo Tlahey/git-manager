@@ -41,8 +41,14 @@ fn collect_commit_subjects(repo: &Repository) -> Result<Vec<(String, String)>, S
 // ─── create_fixup_commit ──────────────────────────────────────────────────────
 
 /// Creates a fixup! commit for the target commit from the current staged changes.
-/// Returns the short SHA of the new fixup commit.
-pub fn create_fixup_commit(repo: &Repository, target_oid: &str) -> Result<String, String> {
+/// `message` overrides the generated `fixup! <subject>` when provided (the commit
+/// dialog lets the user edit it); autosquash matching only works if the first
+/// line keeps the `fixup! <subject>` form. Returns the short SHA of the new commit.
+pub fn create_fixup_commit(
+    repo: &Repository,
+    target_oid: &str,
+    message: Option<&str>,
+) -> Result<String, String> {
     let parsed_oid = Oid::from_str(target_oid).map_err(|_| "Invalid target OID".to_string())?;
     let target_commit = repo.find_commit(parsed_oid).map_err(AppError::Git)?;
     let target_subject = target_commit.summary().unwrap_or("").to_string();
@@ -68,7 +74,10 @@ pub fn create_fixup_commit(repo: &Repository, target_oid: &str) -> Result<String
     let tree_oid = index.write_tree().map_err(AppError::Git)?;
     let tree = repo.find_tree(tree_oid).map_err(AppError::Git)?;
 
-    let message = format!("fixup! {target_subject}");
+    let message = match message.map(str::trim).filter(|m| !m.is_empty()) {
+        Some(custom) => custom.to_string(),
+        None => format!("fixup! {target_subject}"),
+    };
     let new_oid = repo
         .commit(Some("HEAD"), &sig, &sig, &message, &tree, &[&head_commit])
         .map_err(AppError::Git)?;

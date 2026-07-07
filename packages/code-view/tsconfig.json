@@ -1,0 +1,4 @@
+{
+  "extends": "@git-manager/config/typescript",
+  "include": ["src", "stories", "e2e", ".storybook", "vitest.setup.ts", "vitest.config.ts", "playwright.config.ts"]
+}

@@ -16,6 +16,7 @@
     "fixture:conflict": "bash scripts/setup-conflict-test.sh"
   },
   "dependencies": {
+    "@git-manager/code-view": "workspace:*",
     "@git-manager/git-types": "workspace:*",
     "@git-manager/i18n": "workspace:*",
     "@git-manager/ui": "workspace:*",

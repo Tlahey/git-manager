@@ -24,6 +24,14 @@ pub async fn get_tags(path: String) -> Result<Vec<BranchRef>, String> {
     git_branch::list_tags(&repo).map_err(Into::into)
 }
 
+/// Indique si `oid` appartient à l'historique de la branche courante (HEAD ou un
+/// de ses ancêtres) — utilisé pour n'activer le fixup que sur les commits rebasables.
+#[tauri::command]
+pub async fn is_commit_on_current_branch(path: String, oid: String) -> Result<bool, String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    git_branch::is_commit_on_current_branch(&repo, &oid).map_err(Into::into)
+}
+
 /// Crée une nouvelle branche locale pointant sur `from_ref` (nom de branche, "HEAD", ou OID), sans checkout.
 #[tauri::command]
 pub async fn create_branch(path: String, name: String, from_ref: String) -> Result<(), String> {

@@ -32,6 +32,8 @@ import {
   getCommitDiff,
   getFileDiff,
   getFileRawContents,
+  getCommitFileVsWorkdir,
+  isCommitOnCurrentBranch,
   getTags,
   listSubmodules,
   getRebaseState,
@@ -47,8 +49,11 @@ import {
   continueRebase,
   abortRebase,
   skipRebase,
+  listRebaseCommits,
+  runInteractiveRebase,
   createPatch,
 } from '../lib/tauri'
+import type { RebaseTodoStep } from '@git-manager/git-types'
 import { callCommand } from './service'
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
 import type { UndoAction } from '../lib/undoActions'
@@ -149,8 +154,8 @@ export async function apiDiscardFileChanges(path: string, filePath: string) {
   return result
 }
 
-export async function apiCreateFixupCommit(path: string, targetOid: string) {
-  const result = await callCommand('fixup', () => createFixupCommit(path, targetOid))
+export async function apiCreateFixupCommit(path: string, targetOid: string, message?: string) {
+  const result = await callCommand('fixup', () => createFixupCommit(path, targetOid, message))
   clearRedo(path)
   return result
 }
@@ -490,6 +495,14 @@ export async function apiGetFileRawContents(path: string, filePath: string, stag
   return getFileRawContents(path, filePath, staged, oid)
 }
 
+export async function apiGetCommitFileVsWorkdir(path: string, oid: string, filePath: string) {
+  return getCommitFileVsWorkdir(path, oid, filePath)
+}
+
+export async function apiIsCommitOnCurrentBranch(path: string, oid: string) {
+  return isCommitOnCurrentBranch(path, oid)
+}
+
 export async function apiGetTags(path: string) {
   return getTags(path)
 }
@@ -500,6 +513,16 @@ export async function apiListSubmodules(path: string) {
 
 export async function apiGetRebaseState(path: string) {
   return getRebaseState(path)
+}
+
+export async function apiListRebaseCommits(path: string, baseOid: string) {
+  return listRebaseCommits(path, baseOid)
+}
+
+export async function apiRunInteractiveRebase(path: string, baseOid: string, steps: RebaseTodoStep[]) {
+  const result = await runInteractiveRebase(path, baseOid, steps)
+  clearRedo(path)
+  return result
 }
 
 // ─── Branch creation ───────────────────────────────────────────────────────

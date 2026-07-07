@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { editor } from 'monaco-editor'
-import type { MergeBlock } from '@git-manager/git-types'
+import type { MergeBlock } from './types'
 import { getScrollCoordinatesForContent } from './useMergeScrollSync'
 import { computeInitialPlacements } from './mergeBlockLayout'
 

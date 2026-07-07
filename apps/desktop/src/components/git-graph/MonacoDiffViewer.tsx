@@ -11,6 +11,10 @@ interface MonacoDiffViewerProps {
   viewMode: 'inline' | 'split'
   activeTab: 'diff' | 'file'
   ignoreWhitespace: boolean
+  /** Fired with the number of line-change groups whenever the diff is (re)computed. */
+  onChangeCount?: (count: number) => void
+  /** Collapses unchanged regions so only changed fragments (plus context) are shown. */
+  collapseUnchanged?: boolean
 }
 
 export interface MonacoDiffViewerRef {
@@ -21,7 +25,7 @@ export interface MonacoDiffViewerRef {
 }
 
 export const MonacoDiffViewer = forwardRef<MonacoDiffViewerRef, MonacoDiffViewerProps>(
-  ({ original, modified, filePath, viewMode, activeTab, ignoreWhitespace }, ref) => {
+  ({ original, modified, filePath, viewMode, activeTab, ignoreWhitespace, onChangeCount, collapseUnchanged }, ref) => {
     const theme = useSettingsStore((s) => s.settings.appearance.theme)
     const monacoRef = useRef<typeof monaco | null>(null)
     const diffEditorRef = useRef<monaco.editor.IStandaloneDiffEditor | null>(null)
@@ -114,7 +118,13 @@ export const MonacoDiffViewer = forwardRef<MonacoDiffViewerRef, MonacoDiffViewer
       glyphMargin: true,
       readOnly: false,
       ignoreTrimWhitespace: ignoreWhitespace,
-    }), [viewMode, ignoreWhitespace])
+      hideUnchangedRegions: {
+        enabled: collapseUnchanged ?? false,
+        revealLineCount: 3,
+        contextLineCount: 3,
+        minimumLineCount: 3,
+      },
+    }), [viewMode, ignoreWhitespace, collapseUnchanged])
 
     return (
       <Suspense fallback={
@@ -149,6 +159,9 @@ export const MonacoDiffViewer = forwardRef<MonacoDiffViewerRef, MonacoDiffViewer
               diffEditorRef.current = editor
               monacoRef.current = monacoInstance
               registerAndApplyDynamicTheme(monacoInstance)
+              if (onChangeCount) {
+                editor.onDidUpdateDiff(() => onChangeCount(editor.getLineChanges()?.length ?? 0))
+              }
             }}
             original={original}
             modified={modified}

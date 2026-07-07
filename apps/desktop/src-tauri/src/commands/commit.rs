@@ -256,6 +256,35 @@ pub async fn get_file_raw_contents(
     Ok(RawFileDiffContents { original, modified })
 }
 
+/// Returns the target commit's version of `file_path` (left) and the current
+/// working-tree version (right), for the fixup "Commit changes" diff. Unlike
+/// `get_file_raw_contents`, `original` is the file at `oid`'s own tree (not its
+/// parent), so the diff shows how the working copy differs from the fixup target.
+#[tauri::command]
+pub async fn get_commit_file_vs_workdir(
+    path: String,
+    oid: String,
+    file_path: String,
+) -> Result<RawFileDiffContents, String> {
+    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+
+    let commit_oid = Oid::from_str(&oid).map_err(|e| e.to_string())?;
+    let commit = repo.find_commit(commit_oid).map_err(|e| e.to_string())?;
+    let tree = commit.tree().map_err(|e| e.to_string())?;
+    let original = get_file_content_from_tree(&repo, &tree, &file_path)?;
+
+    let full_path = std::path::Path::new(&path).join(&file_path);
+    let modified = match std::fs::read(&full_path) {
+        Ok(bytes) => match std::str::from_utf8(&bytes) {
+            Ok(content) => content.to_string(),
+            Err(_) => String::from("[Binary Content]"),
+        },
+        Err(_) => String::new(),
+    };
+
+    Ok(RawFileDiffContents { original, modified })
+}
+
 fn get_file_content_from_tree(
     repo: &Repository,
     tree: &git2::Tree,

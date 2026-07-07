@@ -1,9 +1,40 @@
 use crate::error::AppError;
+use crate::models::{GitCommit, GitSignature};
 use git2::{Repository, Signature};
 
 /// Raccourcit un SHA-1 complet à 7 caractères (ou moins si le SHA est plus court).
 pub fn short_oid(sha: &str) -> String {
     sha[..7.min(sha.len())].to_string()
+}
+
+/// Convertit un `git2::Commit` en modèle `GitCommit` sérialisable (même découpage
+/// sujet/corps que `git_graph`).
+pub fn commit_to_model(commit: &git2::Commit) -> GitCommit {
+    let author = commit.author();
+    let committer = commit.committer();
+    let raw_message = commit.message().unwrap_or("").to_string();
+    let subject = raw_message.lines().next().unwrap_or("").to_string();
+    let body = raw_message.lines().skip(2).collect::<Vec<_>>().join("\n");
+    let oid_str = commit.id().to_string();
+
+    GitCommit {
+        short_oid: short_oid(&oid_str),
+        oid: oid_str,
+        message: raw_message,
+        subject,
+        body,
+        author: GitSignature {
+            name: author.name().unwrap_or("").to_string(),
+            email: author.email().unwrap_or("").to_string(),
+            timestamp: author.when().seconds(),
+        },
+        committer: GitSignature {
+            name: committer.name().unwrap_or("").to_string(),
+            email: committer.email().unwrap_or("").to_string(),
+            timestamp: committer.when().seconds(),
+        },
+        parent_oids: commit.parent_ids().map(|p| p.to_string()).collect(),
+    }
 }
 
 /// Construit une signature git2 à partir de `user.name`/`user.email` de la config du repo,

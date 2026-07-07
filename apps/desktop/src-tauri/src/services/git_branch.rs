@@ -155,6 +155,22 @@ pub fn list_tags(repo: &Repository) -> Result<Vec<BranchRef>, AppError> {
     Ok(tags)
 }
 
+/// Indique si `target_oid` fait partie de l'historique de la branche courante,
+/// c.-à-d. si le commit est HEAD ou un de ses ancêtres. Sert à n'activer le
+/// fixup que sur des commits réellement rebasables depuis HEAD.
+pub fn is_commit_on_current_branch(repo: &Repository, target_oid: &str) -> Result<bool, AppError> {
+    let target = Oid::from_str(target_oid)
+        .map_err(|_| AppError::Unknown(format!("Invalid OID: {target_oid}")))?;
+    let head_oid = match repo.head().ok().and_then(|h| h.target()) {
+        Some(oid) => oid,
+        None => return Ok(false),
+    };
+    if head_oid == target {
+        return Ok(true);
+    }
+    Ok(repo.graph_descendant_of(head_oid, target).unwrap_or(false))
+}
+
 /// Crée une nouvelle branche locale pointant sur `from_ref`, sans la checkout.
 /// `from_ref` accepte tout revspec résolu par git2 (nom de branche, "HEAD", OID complet).
 pub fn create_branch(repo: &Repository, name: &str, from_ref: &str) -> Result<(), AppError> {

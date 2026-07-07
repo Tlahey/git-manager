@@ -4,6 +4,7 @@ pub mod commit;
 pub mod conflict;
 pub mod fixup;
 pub mod github;
+pub mod interactive_rebase;
 pub mod log;
 pub mod ollama;
 pub mod patch;

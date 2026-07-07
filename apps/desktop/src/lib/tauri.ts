@@ -9,8 +9,9 @@ import type {
   GitStash,
   GitWorktree,
   GitSubmodule,
-  RebaseStep,
   RebaseState,
+  RebaseTodoStep,
+  GitCommit,
   ThreeWayMergeView,
   OllamaStatus,
   AppSettings,
@@ -108,8 +109,13 @@ export const removeWorktree = (path: string, worktreePath: string, force = false
 
 export const getRebaseState = (path: string) => invoke<RebaseState>('get_rebase_state', { path })
 
-export const startInteractiveRebase = (path: string, baseOid: string, steps: RebaseStep[]) =>
-  invoke<void>('start_interactive_rebase', { path, baseOid, steps })
+/** Commits from `baseOid` (inclusive) up to HEAD, oldest first. */
+export const listRebaseCommits = (path: string, baseOid: string) =>
+  invoke<GitCommit[]>('list_rebase_commits', { path, baseOid })
+
+/** Runs `git rebase -i` with the UI-built todo list. A conflict pause is not an error. */
+export const runInteractiveRebase = (path: string, baseOid: string, steps: RebaseTodoStep[]) =>
+  invoke<void>('run_interactive_rebase', { path, baseOid, steps })
 
 export const continueRebase = (path: string, message?: string) =>
   invoke<void>('continue_rebase', { path, message })
@@ -193,6 +199,14 @@ export interface RawFileDiffContents {
 
 export const getFileRawContents = (path: string, filePath: string, staged: boolean, oid?: string) =>
   invoke<RawFileDiffContents>('get_file_raw_contents', { path, filePath, staged, oid })
+
+/** Target commit's version of a file (original) vs the current working-tree version (modified). */
+export const getCommitFileVsWorkdir = (path: string, oid: string, filePath: string) =>
+  invoke<RawFileDiffContents>('get_commit_file_vs_workdir', { path, oid, filePath })
+
+/** Whether `oid` is HEAD or one of its ancestors (i.e. on the current branch). */
+export const isCommitOnCurrentBranch = (path: string, oid: string) =>
+  invoke<boolean>('is_commit_on_current_branch', { path, oid })
 
 // ─── Remote ───────────────────────────────────────────────────────────────────
 
@@ -320,8 +334,8 @@ export interface AutosquashGroup {
   fixups: string[]
 }
 
-export const createFixupCommit = (path: string, targetOid: string) =>
-  invoke<string>('create_fixup_commit', { path, targetOid })
+export const createFixupCommit = (path: string, targetOid: string, message?: string) =>
+  invoke<string>('create_fixup_commit', { path, targetOid, message })
 
 export const getPendingFixups = (path: string) =>
   invoke<FixupInfo[]>('get_pending_fixups', { path })

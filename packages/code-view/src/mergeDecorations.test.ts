@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { MergeBlock } from '@git-manager/git-types'
+import type { MergeBlock } from './types'
 import { computeInitialPlacements, updatePlacementAfterToggle } from './mergeBlockLayout'
 import { blockDecorationSpecs, computeMergeVisuals } from './mergeDecorations'
 

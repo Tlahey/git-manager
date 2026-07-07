@@ -96,7 +96,8 @@ pub async fn skip_rebase(path: String, app: tauri::AppHandle) -> Result<(), Stri
 /// `git rebase` (and `--continue`) exit non-zero when they pause for a conflict — that's
 /// normal, expected behavior, not a failure. Only surface an error if the repo *isn't* left
 /// paused mid-rebase (a real failure: bad ref, dirty worktree preventing the rebase, etc.).
-fn err_unless_paused(path: &str, stderr: &[u8]) -> Result<(), String> {
+/// Shared with `interactive_rebase.rs`, which pauses through the same states.
+pub(crate) fn err_unless_paused(path: &str, stderr: &[u8]) -> Result<(), String> {
     let repo = Repository::open(path).map_err(AppError::Git)?;
     let state = git_rebase::get_rebase_state(&repo)?;
     if state.kind == "conflict" || state.kind == "edit_pause" {
