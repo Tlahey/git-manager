@@ -1,6 +1,6 @@
 import { useCallback, useRef, type MutableRefObject } from 'react'
 import type { editor } from 'monaco-editor'
-import type { MergeBlock } from '@git-manager/git-types'
+import type { MergeBlock } from './types'
 import type { BlockPlacement } from './mergeBlockLayout'
 import type { Monaco } from '@monaco-editor/react'
 

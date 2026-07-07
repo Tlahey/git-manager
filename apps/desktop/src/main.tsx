@@ -6,6 +6,7 @@ import { FixupCommitWindow } from './components/git-graph/fixup/FixupCommitWindo
 import { RebasingCommitWindow } from './components/rebase-editor/RebasingCommitWindow'
 import { initI18n } from '@git-manager/i18n'
 import '@git-manager/ui/globals.css'
+import '@git-manager/code-view/styles.css'
 import './index.css'
 
 // Initialize i18n before rendering

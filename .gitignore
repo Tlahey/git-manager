@@ -11,3 +11,6 @@ target/
 apps/desktop/src-tauri/target/
 .idea/
 plans/
+storybook-static/
+playwright-report/
+test-results/

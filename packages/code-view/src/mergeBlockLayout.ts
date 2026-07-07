@@ -1,4 +1,4 @@
-import type { MergeBlock } from '@git-manager/git-types'
+import type { MergeBlock } from './types'
 
 export type MergeSide = 'ours' | 'theirs'
 
