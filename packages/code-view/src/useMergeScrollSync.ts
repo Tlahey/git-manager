@@ -24,23 +24,32 @@ function getPaneLineRange(
   }
 }
 
+function paneIndexToSide(index: PaneIndex): 'theirs' | 'center' | 'ours' {
+  if (index === 0) return 'theirs'
+  if (index === 1) return 'center'
+  return 'ours'
+}
+
 function getPaneYCoords(
   editor: Editor,
   startLine: number,
-  lineCount: number
+  lineCount: number,
+  paneIndex: PaneIndex,
+  getTop?: (editor: Editor, lineNumber: number, side: 'ours' | 'theirs' | 'center') => number
 ): { yStart: number; yEnd: number } {
   const model = editor.getModel()
   const totalLines = model ? model.getLineCount() : 1
+  const side = paneIndexToSide(paneIndex)
 
   const safeStart = Math.max(1, Math.min(startLine, totalLines + 1))
-  const yStart = editor.getTopForLineNumber(safeStart)
+  const yStart = getTop ? getTop(editor, safeStart, side) : editor.getTopForLineNumber(safeStart)
 
   if (lineCount === 0) {
     return { yStart, yEnd: yStart }
   }
 
   const safeEnd = Math.max(1, Math.min(startLine + lineCount, totalLines + 1))
-  const yEnd = editor.getTopForLineNumber(safeEnd)
+  const yEnd = getTop ? getTop(editor, safeEnd, side) : editor.getTopForLineNumber(safeEnd)
 
   return { yStart, yEnd }
 }
@@ -50,14 +59,15 @@ function findActiveBlock(
   blocks: MergeBlock[],
   placements: Map<number, BlockPlacement>,
   paneIndex: PaneIndex,
-  scrollTop: number
+  scrollTop: number,
+  getTop?: (editor: Editor, lineNumber: number, side: 'ours' | 'theirs' | 'center') => number
 ): { block: MergeBlock; yStart: number; yEnd: number; index: number } | null {
   if (blocks.length === 0) return null
 
   const mapped = blocks.map((block, index) => {
     const placement = placements.get(block.blockId)
     const { startLine, lineCount } = getPaneLineRange(block, placement, paneIndex)
-    const { yStart, yEnd } = getPaneYCoords(editor, startLine, lineCount)
+    const { yStart, yEnd } = getPaneYCoords(editor, startLine, lineCount, paneIndex, getTop)
     return { block, yStart, yEnd, index }
   })
 
@@ -96,11 +106,12 @@ export function getScrollCoordinatesForContent(
   blocks: MergeBlock[],
   placements: Map<number, BlockPlacement>,
   masterIndex: PaneIndex,
-  slaveIndex: PaneIndex
+  slaveIndex: PaneIndex,
+  getTop?: (editor: Editor, lineNumber: number, side: 'ours' | 'theirs' | 'center') => number
 ): number {
   if (blocks.length === 0) return masterScrollTop
 
-  const active = findActiveBlock(masterEditor, blocks, placements, masterIndex, masterScrollTop)
+  const active = findActiveBlock(masterEditor, blocks, placements, masterIndex, masterScrollTop, getTop)
   if (!active) return masterScrollTop
 
   const block = active.block
@@ -109,8 +120,8 @@ export function getScrollCoordinatesForContent(
   const masterRange = getPaneLineRange(block, placement, masterIndex)
   const slaveRange = getPaneLineRange(block, placement, slaveIndex)
 
-  const masterCoords = getPaneYCoords(masterEditor, masterRange.startLine, masterRange.lineCount)
-  const slaveCoords = getPaneYCoords(slaveEditor, slaveRange.startLine, slaveRange.lineCount)
+  const masterCoords = getPaneYCoords(masterEditor, masterRange.startLine, masterRange.lineCount, masterIndex, getTop)
+  const slaveCoords = getPaneYCoords(slaveEditor, slaveRange.startLine, slaveRange.lineCount, slaveIndex, getTop)
 
   const masterHeight = masterCoords.yEnd - masterCoords.yStart
   const slaveHeight = slaveCoords.yEnd - slaveCoords.yStart
@@ -152,6 +163,7 @@ export function useMergeScrollSync(
   blocksRef: MutableRefObject<MergeBlock[]>,
   placementsRef: MutableRefObject<Map<number, BlockPlacement>>,
   _monacoRef: MutableRefObject<Monaco | null>,
+  getTop: (editor: Editor, lineNumber: number, side: 'ours' | 'theirs' | 'center') => number,
   ignoreScrollSyncRef?: MutableRefObject<boolean>
 ) {
   const editorsRef = useRef<(Editor | null)[]>([null, null, null])
@@ -189,7 +201,8 @@ export function useMergeScrollSync(
               blocksRef.current,
               placementsRef.current,
               index,
-              i as PaneIndex
+              i as PaneIndex,
+              getTop
             )
 
             other.setScrollTop(targetScrollTop)
@@ -199,7 +212,7 @@ export function useMergeScrollSync(
         }
       }
     })
-  }, [blocksRef, placementsRef, ignoreScrollSyncRef])
+  }, [blocksRef, placementsRef, getTop, ignoreScrollSyncRef])
 
   return { attach, editorsRef }
 }

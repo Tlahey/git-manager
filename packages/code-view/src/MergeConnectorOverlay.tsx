@@ -1,5 +1,16 @@
 import { forwardRef } from 'react'
 
+function setCollapsedBlockHover(blockId: number, active: boolean) {
+  const elements = document.querySelectorAll(`[data-collapsed-block-id="${blockId}"]`)
+  elements.forEach((el) => {
+    if (active) {
+      el.classList.add('is-hovered')
+    } else {
+      el.classList.remove('is-hovered')
+    }
+  })
+}
+
 export interface ConnectorSegment {
   id: number
   leftY0: number
@@ -33,6 +44,8 @@ interface MergeConnectorOverlayProps {
   onReject: (blockId: number) => void
   scrollTopLeft?: number
   scrollTopRight?: number
+  lineHeight?: number
+  onExpandBlock?: (blockId: number) => void
 }
 
 /** Filled "ribbon" connectors linking a block's Y-range in one pane to its Y-range in the
@@ -58,11 +71,11 @@ interface MergeConnectorOverlayProps {
  * values through state on every scroll tick is what keeps this overlay glued to the panes' own
  * (React-external) scrolling instead of trailing it by a render cycle. */
 export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOverlayProps>(function MergeConnectorOverlay(
-  { width, height, segments, side, onAccept, onReject, scrollTopLeft = 0, scrollTopRight = 0 },
+  { width, height, segments, side, onAccept, onReject, scrollTopLeft = 0, scrollTopRight = 0, lineHeight = 19, onExpandBlock },
   ref
 ) {
   return (
-    <div ref={ref} className="absolute inset-0">
+    <div ref={ref} className="merge-connector-overlay absolute inset-0">
       <svg
         width={width}
         height={height}
@@ -70,6 +83,7 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
         className="pointer-events-none absolute inset-0 overflow-visible"
       >
         {segments.map((seg) => {
+          console.log('SEGMENT IN SVG:', seg.id, seg.colorClass, seg.leftY0, seg.leftY1)
           const half = width / 2
           const resolvedSuffix = seg.resolved ? ' merge-resolved' : ''
 
@@ -77,6 +91,10 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
           const leftY1 = seg.leftY1 - scrollTopLeft
           const rightY0 = seg.rightY0 - scrollTopRight
           const rightY1 = seg.rightY1 - scrollTopRight
+
+          if (seg.colorClass === 'merge-connector-collapsed') {
+            return null
+          }
 
           if (seg.flat) {
             const d = `M 0,${leftY0} C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`
@@ -153,11 +171,32 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
             <div
               key={seg.id}
               className={`merge-connector-action-container absolute left-0 right-0 flex items-center gap-0.5 ${side === 'left' ? 'justify-start pl-0.5' : 'justify-end pr-0.5'}`}
-              style={{ top: anchorY }}
+              style={{ top: anchorY, height: lineHeight }}
             >
               {/* Accept sits closest to the source pane's edge, the ignore X right after it. */}
               {side === 'left' ? [acceptButton, rejectButton] : [rejectButton, acceptButton]}
             </div>
+          )
+        })}
+      {segments
+        .filter((seg) => seg.colorClass === 'merge-connector-collapsed')
+        .map((seg) => {
+          const anchorY = side === 'left' ? seg.leftY0 - scrollTopLeft : seg.rightY0 - scrollTopRight
+          return (
+            <div
+              key={seg.id}
+              className="monaco-collapsed-zone-banner"
+              data-collapsed-block-id={seg.id}
+              style={{
+                top: anchorY,
+                height: 1.5 * lineHeight,
+                pointerEvents: 'auto',
+                zIndex: 10,
+              }}
+              onClick={() => onExpandBlock?.(seg.id)}
+              onMouseEnter={() => setCollapsedBlockHover(seg.id, true)}
+              onMouseLeave={() => setCollapsedBlockHover(seg.id, false)}
+            />
           )
         })}
     </div>

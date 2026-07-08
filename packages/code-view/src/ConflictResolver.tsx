@@ -347,6 +347,10 @@ function updateConnectorPaths(
   let pathIdx = 0
 
   segments.forEach((seg) => {
+    if (seg.colorClass === 'merge-connector-collapsed') {
+      return
+    }
+
     const leftY0 = seg.leftY0 - scrollTopLeft
     const leftY1 = seg.leftY1 - scrollTopLeft
     const rightY0 = seg.rightY0 - scrollTopRight
@@ -357,8 +361,8 @@ function updateConnectorPaths(
       const pathEl = paths[pathIdx++] as SVGPathElement | undefined
       if (pathEl) pathEl.setAttribute('d', d)
     } else if (seg.resolved) {
-      const dTop = `M 0,${leftY0} C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`
-      const dBottom = `M 0,${leftY1} C ${half},${leftY1} ${half},${rightY1} ${width},${rightY1}`
+      const dTop = `M 0,${leftY0 + 1} C ${half},${leftY0 + 1} ${half},${rightY0 + 1} ${width},${rightY0 + 1}`
+      const dBottom = `M 0,${leftY1 - 1} C ${half},${leftY1 - 1} ${half},${rightY1 - 1} ${width},${rightY1 - 1}`
 
       const pathElTop = paths[pathIdx++] as SVGPathElement | undefined
       if (pathElTop) pathElTop.setAttribute('d', dTop)
@@ -391,6 +395,19 @@ function updateConnectorPaths(
       btnContainer.style.top = `${anchorY}px`
     }
   })
+
+  // 3. Update collapsed zone banner positions
+  const collapsedBanners = overlayElement.querySelectorAll('.monaco-collapsed-zone-banner')
+  let bannerIdx = 0
+
+  segments.forEach((seg) => {
+    if (seg.colorClass !== 'merge-connector-collapsed') return
+    const anchorY = side === 'left' ? seg.leftY0 - scrollTopLeft : seg.rightY0 - scrollTopRight
+    const bannerContainer = collapsedBanners[bannerIdx++] as HTMLDivElement | undefined
+    if (bannerContainer) {
+      bannerContainer.style.top = `${anchorY}px`
+    }
+  })
 }
 
 /** JetBrains-style multi-panel code/merge editor. In 3-panel mode: left = theirs (the incoming
@@ -406,6 +423,57 @@ function updateConnectorPaths(
  * non-conflicting block at once. Blocks are color-coded and connected across the gaps by
  * `MergeConnectorOverlay`. In 2-panel mode it renders a read-only side-by-side diff whose block
  * geometry is computed live by Monaco's own diff engine. */
+export function setCollapsedBlockHover(blockId: number, active: boolean) {
+  const elements = document.querySelectorAll(`[data-collapsed-block-id="${blockId}"]`)
+  elements.forEach((el) => {
+    if (active) {
+      el.classList.add('is-hovered')
+    } else {
+      el.classList.remove('is-hovered')
+    }
+  })
+}
+
+export function getTopForLineNumberSafe(
+  editor: editor.IStandaloneCodeEditor,
+  lineNumber: number,
+  lineHeight: number,
+  hiddenRanges: { start: number; end: number }[],
+  viewZones: { afterLineNumber: number; heightInLines: number }[]
+): number {
+  if (lineNumber <= 1) return 0
+
+  // If the line itself is inside a hidden range, its top is the bottom of the last visible line before the range
+  for (const range of hiddenRanges) {
+    if (lineNumber >= range.start && lineNumber <= range.end) {
+      return getTopForLineNumberSafe(editor, range.start - 1, lineHeight, hiddenRanges, viewZones) + lineHeight
+    }
+  }
+
+  let y = 0
+  for (let i = 1; i < lineNumber; i++) {
+    let hidden = false
+    for (const range of hiddenRanges) {
+      if (i >= range.start && i <= range.end) {
+        hidden = true
+        break
+      }
+    }
+    if (!hidden) {
+      y += lineHeight
+    }
+    for (const zone of viewZones) {
+      if (zone.afterLineNumber === i) {
+        y += zone.heightInLines * lineHeight
+      }
+    }
+  }
+  if (lineNumber === 21) {
+    console.log(`getTopForLineNumberSafe(21) details: hiddenRanges=`, hiddenRanges, `viewZones=`, viewZones, `result Y=`, y)
+  }
+  return y
+}
+
 export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolverProps>(
   (
     {
@@ -517,6 +585,92 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
 
     const [highlightMode, setHighlightMode] = useState<'words' | 'lines'>('words')
     const [collapseUnchanged, setCollapseUnchanged] = useState(defaultCollapseUnchanged)
+    const [expandedBlocks, setExpandedBlocks] = useState<Set<number>>(new Set())
+
+    useEffect(() => {
+      setExpandedBlocks(new Set())
+    }, [collapseUnchanged])
+
+    const getTop = useCallback((editor: editor.IStandaloneCodeEditor, lineNumber: number, side: 'ours' | 'theirs' | 'center'): number => {
+      const lineHeight = monacoRef.current && centerEditorRef.current
+        ? centerEditorRef.current.getOption(monacoRef.current.editor.EditorOption.lineHeight)
+        : 19
+
+      const theirsCollapsedZones: { afterLineNumber: number; heightInLines: number }[] = []
+      const theirsHiddenRanges: { start: number; end: number }[] = []
+      if (collapseUnchanged) {
+        for (const block of blocksRef.current) {
+          if (block.kind === 'unchanged' && !expandedBlocks.has(block.blockId)) {
+            const lineCount = block.theirsLineCount
+            if (lineCount > 6) {
+              const startHide = block.theirsStartLine + 3
+              const endHide = block.theirsStartLine + block.theirsLineCount - 4
+              theirsHiddenRanges.push({ start: startHide, end: endHide })
+              theirsCollapsedZones.push({ afterLineNumber: startHide - 1, heightInLines: 1.5 })
+            }
+          }
+        }
+      }
+
+      const oursCollapsedZones: { afterLineNumber: number; heightInLines: number }[] = []
+      const oursHiddenRanges: { start: number; end: number }[] = []
+      if (collapseUnchanged) {
+        for (const block of blocksRef.current) {
+          if (block.kind === 'unchanged' && !expandedBlocks.has(block.blockId)) {
+            const lineCount = block.oursLineCount
+            if (lineCount > 6) {
+              const startHide = block.oursStartLine + 3
+              const endHide = block.oursStartLine + block.oursLineCount - 4
+              oursHiddenRanges.push({ start: startHide, end: endHide })
+              oursCollapsedZones.push({ afterLineNumber: startHide - 1, heightInLines: 1.5 })
+            }
+          }
+        }
+      }
+
+      const centerCollapsedZones: { afterLineNumber: number; heightInLines: number }[] = []
+      const centerHiddenRanges: { start: number; end: number }[] = []
+      if (collapseUnchanged) {
+        for (const block of blocksRef.current) {
+          if (block.kind === 'unchanged' && !expandedBlocks.has(block.blockId)) {
+            const placement = placementsRef.current.get(block.blockId)
+            if (placement) {
+              const lineCount = placement.centerLineCount
+              if (lineCount > 6) {
+                const startHide = placement.centerStartLine + 3
+                const endHide = placement.centerStartLine + placement.centerLineCount - 4
+                centerHiddenRanges.push({ start: startHide, end: endHide })
+                centerCollapsedZones.push({ afterLineNumber: startHide - 1, heightInLines: 1.5 })
+              }
+            }
+          }
+        }
+      }
+
+      const visuals = isTwoWay
+        ? computeTwoWayVisuals(blocksRef.current, placementsRef.current, showBlockBorders)
+        : computeMergeVisuals(blocksRef.current, placementsRef.current, showBlockBorders, highlightMode === 'lines')
+
+      const theirsViewZones = [
+        ...theirsCollapsedZones,
+        ...(visuals ? visuals.theirs.viewZones.map(vz => ({ afterLineNumber: vz.afterLineNumber, heightInLines: vz.heightInLines })) : [])
+      ]
+
+      const oursViewZones = [
+        ...oursCollapsedZones,
+        ...(visuals && !isTwoWay ? visuals.ours.viewZones.map(vz => ({ afterLineNumber: vz.afterLineNumber, heightInLines: vz.heightInLines })) : [])
+      ]
+
+      const centerViewZones = [
+        ...centerCollapsedZones,
+        ...(visuals ? visuals.center.viewZones.map(vz => ({ afterLineNumber: vz.afterLineNumber, heightInLines: vz.heightInLines })) : [])
+      ]
+
+      const hiddenRanges = side === 'theirs' ? theirsHiddenRanges : side === 'ours' ? oursHiddenRanges : centerHiddenRanges
+      const viewZones = side === 'theirs' ? theirsViewZones : side === 'ours' ? oursViewZones : centerViewZones
+      return getTopForLineNumberSafe(editor, lineNumber, lineHeight, hiddenRanges, viewZones)
+    }, [isTwoWay, collapseUnchanged, expandedBlocks, highlightMode, showBlockBorders])
+
 
 
 
@@ -655,6 +809,12 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
     const centerZoneIdsRef = useRef<string[]>([])
     const theirsZoneIdsRef = useRef<string[]>([])
 
+    // Bookkeeping for collapsed code view zones
+    const oursCollapsedViewZonesRef = useRef<string[]>([])
+    const centerCollapsedViewZonesRef = useRef<string[]>([])
+    const theirsCollapsedViewZonesRef = useRef<string[]>([])
+
+
     // Undo/redo-aware bookkeeping: every gutter/wand action snapshots the placements map it's
     // about to replace onto `historyRef` and clears `redoRef` (new branch of history, matching
     // normal editor semantics). `isApplyingOwnEditRef` is set for the duration of our own
@@ -723,7 +883,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [modelPathPrefix, updatePlacementsStateAndRef, isTwoWay])
 
-    const { attach: attachScrollSync } = useMergeScrollSync(blocksRef, placementsRef, monacoRef, ignoreScrollSyncRef)
+    const { attach: attachScrollSync } = useMergeScrollSync(blocksRef, placementsRef, monacoRef, getTop, ignoreScrollSyncRef)
 
     const [activeBlockIndex, setActiveBlockIndex] = useState<number>(0)
 
@@ -948,6 +1108,15 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       const oursEditor = oursEditorRef.current
       if (!centerEditor || !theirsEditor || (!isTwoWay && !oursEditor)) return
 
+      // Force layout calculation in Monaco to ensure editor structures are initialised
+      theirsEditor.layout()
+      centerEditor.layout()
+      if (oursEditor) oursEditor.layout()
+
+      const lineHeight = monacoRef.current
+        ? centerEditor.getOption(monacoRef.current.editor.EditorOption.lineHeight)
+        : 19
+
       const left: ConnectorSegment[] = []
       const right: ConnectorSegment[] = []
 
@@ -957,6 +1126,33 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
         for (const block of blocksRef.current) {
           const placement = placementsRef.current.get(block.blockId)
           if (!placement) continue
+
+          if (block.kind === 'unchanged' && collapseUnchanged && !expandedBlocks.has(block.blockId)) {
+            const lineCount = block.theirsLineCount
+            if (lineCount > 6) {
+              const startHide = block.theirsStartLine + 3
+              const centerStartHide = placement.centerStartLine + 3
+
+              const theirsY0 = getTop(theirsEditor, startHide - 1, 'theirs') + lineHeight
+              const theirsY1 = theirsY0 + 1.5 * lineHeight
+
+              const centerY0 = getTop(centerEditor, centerStartHide - 1, 'center') + lineHeight
+              const centerY1 = centerY0 + 1.5 * lineHeight
+
+              left.push({
+                id: block.blockId,
+                leftY0: theirsY0,
+                leftY1: theirsY1,
+                rightY0: centerY0,
+                rightY1: centerY1,
+                colorClass: 'merge-connector-collapsed',
+                actionable: false,
+                flat: false,
+                resolved: false,
+              })
+            }
+            continue
+          }
 
           const originalStartLine = block.theirsStartLine
           const originalCount = block.theirsLineCount
@@ -973,7 +1169,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
           let paneY1 = 0
           if (originalCount === 0) {
             const afterLine = originalStartLine - 1
-            const y = theirsEditor.getTopForLineNumber(afterLine + 1)
+            const y = getTop(theirsEditor, afterLine + 1, 'theirs')
             const edge = markerEdge(afterLine, paneTotals.theirs)
             if (edge === 'top') {
               paneY0 = y - 1
@@ -983,15 +1179,15 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
               paneY1 = y + 1
             }
           } else {
-            paneY0 = theirsEditor.getTopForLineNumber(originalStartLine)
-            paneY1 = theirsEditor.getTopForLineNumber(originalStartLine + originalCount)
+            paneY0 = getTop(theirsEditor, originalStartLine, 'theirs')
+            paneY1 = getTop(theirsEditor, originalStartLine + originalCount, 'theirs')
           }
 
           let centerY0 = 0
           let centerY1 = 0
           if (modifiedCount === 0) {
             const afterLine = modifiedStartLine - 1
-            const y = centerEditor.getTopForLineNumber(afterLine + 1)
+            const y = getTop(centerEditor, afterLine + 1, 'center')
             const edge = markerEdge(afterLine, paneTotals.center)
             if (edge === 'top') {
               centerY0 = y - 1
@@ -1001,8 +1197,8 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
               centerY1 = y + 1
             }
           } else {
-            centerY0 = centerEditor.getTopForLineNumber(modifiedStartLine)
-            centerY1 = centerEditor.getTopForLineNumber(modifiedStartLine + modifiedCount)
+            centerY0 = getTop(centerEditor, modifiedStartLine, 'center')
+            centerY1 = getTop(centerEditor, modifiedStartLine + modifiedCount, 'center')
           }
 
           const segment: ConnectorSegment = {
@@ -1023,6 +1219,53 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
           const placement = placementsRef.current.get(block.blockId)
           if (!placement) continue
 
+          if (block.kind === 'unchanged' && collapseUnchanged && !expandedBlocks.has(block.blockId)) {
+            const lineCount = block.theirsLineCount
+            if (lineCount > 6) {
+              const startHide = block.theirsStartLine + 3
+              const oursStartHide = block.oursStartLine + 3
+              const centerStartHide = placement.centerStartLine + 3
+
+              const theirsY0 = getTop(theirsEditor, startHide - 1, 'theirs') + lineHeight
+              const theirsY1 = theirsY0 + 1.5 * lineHeight
+
+              const oursY0 = oursEditor ? getTop(oursEditor, oursStartHide - 1, 'ours') + lineHeight : theirsY0
+              const oursY1 = oursY0 + 1.5 * lineHeight
+
+              const centerY0 = getTop(centerEditor, centerStartHide - 1, 'center') + lineHeight
+              const centerY1 = centerY0 + 1.5 * lineHeight
+
+              // Left segment (theirs <-> center)
+              left.push({
+                id: block.blockId,
+                leftY0: theirsY0,
+                leftY1: theirsY1,
+                rightY0: centerY0,
+                rightY1: centerY1,
+                colorClass: 'merge-connector-collapsed',
+                actionable: false,
+                flat: false,
+                resolved: false,
+              })
+
+              // Right segment (center <-> ours)
+              if (oursEditor) {
+                right.push({
+                  id: block.blockId,
+                  leftY0: centerY0,
+                  leftY1: centerY1,
+                  rightY0: oursY0,
+                  rightY1: oursY1,
+                  colorClass: 'merge-connector-collapsed',
+                  actionable: false,
+                  flat: false,
+                  resolved: false,
+                })
+              }
+            }
+            continue
+          }
+
           for (const side of ['ours', 'theirs'] as MergeSide[]) {
             const touched = side === 'ours' ? placement.oursTouched : placement.theirsTouched
             const colorClass = connectorClassForSide(block, touched, side)
@@ -1036,8 +1279,8 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
 
             const { start, count } = connectorCenterRangeForSide(placement, block, side)
 
-            let paneY0 = paneEditor.getTopForLineNumber(paneStart)
-            let paneY1 = paneEditor.getTopForLineNumber(paneStart + paneCount)
+            let paneY0 = getTop(paneEditor, paneStart, side)
+            let paneY1 = getTop(paneEditor, paneStart + paneCount, side)
             if (paneCount === 0) {
               const domNode = typeof paneEditor.getDomNode === 'function' ? paneEditor.getDomNode() : null
               const element = domNode?.querySelector(`[data-zone-id="${block.blockId}-${side}"]`) as HTMLElement | null
@@ -1058,8 +1301,8 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
               }
             }
 
-            let centerY0 = centerEditor.getTopForLineNumber(start)
-            let centerY1 = centerEditor.getTopForLineNumber(start + count)
+            let centerY0 = getTop(centerEditor, start, 'center')
+            let centerY1 = getTop(centerEditor, start + count, 'center')
             if (count === 0 && changeKindForBlock(block) === 'addition') {
               const edge = markerEdge(start - 1, paneTotals.center)
               if (edge === 'top') {
@@ -1097,11 +1340,23 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
         }
       }
 
+      console.log('SEGMENT PATHS left:', left)
       leftSegmentsRef.current = left
       rightSegmentsRef.current = right
       setLeftSegments(left)
       setRightSegments(right)
-    }, [isTwoWay])
+
+      // Align wave phases across all panels and gaps
+      if (containerRef.current) {
+        const parentRect = containerRef.current.getBoundingClientRect()
+        const elements = containerRef.current.querySelectorAll('.monaco-collapsed-zone-banner')
+        elements.forEach((el) => {
+          const rect = el.getBoundingClientRect()
+          const offset = -(rect.left - parentRect.left)
+          ;(el as HTMLElement).style.setProperty('--wave-offset', `${offset}px`)
+        })
+      }
+    }, [isTwoWay, collapseUnchanged, expandedBlocks, getTop])
 
     const scheduleRecompute = useCallback(() => {
       if (connectorRafRef.current !== null) return
@@ -1111,11 +1366,25 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       })
     }, [recomputeConnectors])
 
-    // Apply collapseUnchanged regions to standard Monaco editors using hiddenAreas API
+    // Apply collapseUnchanged regions to standard Monaco editors using hiddenAreas API and custom view zones
     useEffect(() => {
       const theirsEditor = theirsEditorRef.current
       const centerEditor = centerEditorRef.current
       const oursEditor = oursEditorRef.current
+
+      // Clean up previous view zones
+      const clearZones = (editor: editor.IStandaloneCodeEditor | null, zoneIdsRef: React.MutableRefObject<string[]>) => {
+        if (editor && zoneIdsRef.current.length > 0) {
+          editor.changeViewZones((accessor) => {
+            zoneIdsRef.current.forEach((id) => accessor.removeZone(id))
+          })
+          zoneIdsRef.current = []
+        }
+      }
+
+      clearZones(theirsEditor, theirsCollapsedViewZonesRef)
+      clearZones(centerEditor, centerCollapsedViewZonesRef)
+      clearZones(oursEditor, oursCollapsedViewZonesRef)
 
       if (!collapseUnchanged || !monacoRef.current) {
         if (theirsEditor && typeof (theirsEditor as any).setHiddenAreas === 'function') (theirsEditor as any).setHiddenAreas([])
@@ -1130,50 +1399,147 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       const centerHidden: any[] = []
       const oursHidden: any[] = []
 
+      const theirsZonesToAdd: Array<{ afterLineNumber: number; collapsedCount: number; blockId: number }> = []
+      const centerZonesToAdd: Array<{ afterLineNumber: number; collapsedCount: number; blockId: number }> = []
+      const oursZonesToAdd: Array<{ afterLineNumber: number; collapsedCount: number; blockId: number }> = []
+
       viewToUse.blocks.forEach((block) => {
         if (block.kind !== 'unchanged') return
+        if (expandedBlocks.has(block.blockId)) return
 
         // Left pane (theirs)
         if (block.theirsLineCount > 6) {
-          theirsHidden.push(
-            new monacoInstance.Range(
-              block.theirsStartLine + 3,
-              1,
-              block.theirsStartLine + block.theirsLineCount - 4,
-              1
-            )
-          )
+          const startHide = block.theirsStartLine + 3
+          const endHide = block.theirsStartLine + block.theirsLineCount - 4
+          theirsHidden.push(new monacoInstance.Range(startHide, 1, endHide, 1))
+          theirsZonesToAdd.push({
+            afterLineNumber: startHide - 1,
+            collapsedCount: endHide - startHide + 1,
+            blockId: block.blockId,
+          })
         }
 
         // Right pane (ours)
         if (block.oursLineCount > 6) {
-          oursHidden.push(
-            new monacoInstance.Range(
-              block.oursStartLine + 3,
-              1,
-              block.oursStartLine + block.oursLineCount - 4,
-              1
-            )
-          )
+          const startHide = block.oursStartLine + 3
+          const endHide = block.oursStartLine + block.oursLineCount - 4
+          oursHidden.push(new monacoInstance.Range(startHide, 1, endHide, 1))
+          oursZonesToAdd.push({
+            afterLineNumber: startHide - 1,
+            collapsedCount: endHide - startHide + 1,
+            blockId: block.blockId,
+          })
         }
 
         // Center pane (result)
         const p = placements.get(block.blockId)
         if (p && p.centerLineCount > 6) {
-          centerHidden.push(
-            new monacoInstance.Range(
-              p.centerStartLine + 3,
-              1,
-              p.centerStartLine + p.centerLineCount - 4,
-              1
-            )
-          )
+          const startHide = p.centerStartLine + 3
+          const endHide = p.centerStartLine + p.centerLineCount - 4
+          centerHidden.push(new monacoInstance.Range(startHide, 1, endHide, 1))
+          centerZonesToAdd.push({
+            afterLineNumber: startHide - 1,
+            collapsedCount: endHide - startHide + 1,
+            blockId: block.blockId,
+          })
         }
       })
 
       if (theirsEditor && typeof (theirsEditor as any).setHiddenAreas === 'function') (theirsEditor as any).setHiddenAreas(theirsHidden)
       if (centerEditor && typeof (centerEditor as any).setHiddenAreas === 'function') (centerEditor as any).setHiddenAreas(centerHidden)
       if (oursEditor && typeof (oursEditor as any).setHiddenAreas === 'function') (oursEditor as any).setHiddenAreas(oursHidden)
+
+      // Create banner DOM nodes and add view zones
+      const createBannerNode = (collapsedCount: number, blockId: number, isMargin: boolean) => {
+        const domNode = document.createElement('div')
+        domNode.className = 'monaco-collapsed-zone-banner'
+        domNode.style.pointerEvents = 'auto'
+        domNode.setAttribute('data-collapsed-block-id', String(blockId))
+
+        if (!isMargin) {
+          const textSpan = document.createElement('span')
+          textSpan.className = 'monaco-collapsed-zone-banner-text'
+          
+          const iconSpan = document.createElement('span')
+          iconSpan.className = 'monaco-collapsed-zone-banner-icon'
+          iconSpan.textContent = '↔'
+          
+          const countSpan = document.createElement('span')
+          countSpan.textContent = `${collapsedCount} lines collapsed — click to expand`
+          
+          textSpan.appendChild(iconSpan)
+          textSpan.appendChild(countSpan)
+          domNode.appendChild(textSpan)
+        }
+        
+        const onTrigger = (e: MouseEvent) => {
+          e.stopPropagation()
+          e.preventDefault()
+          setExpandedBlocks((prev) => {
+            const next = new Set(prev)
+            next.add(blockId)
+            return next
+          })
+        }
+
+        // Add listeners with capture to handle before Monaco intercepts
+        domNode.addEventListener('mousedown', onTrigger, true)
+        domNode.addEventListener('click', onTrigger, true)
+
+        // Add hover sync listeners
+        domNode.addEventListener('mouseenter', () => setCollapsedBlockHover(blockId, true))
+        domNode.addEventListener('mouseleave', () => setCollapsedBlockHover(blockId, false))
+        
+        return domNode
+      }
+
+      if (theirsEditor && theirsZonesToAdd.length > 0) {
+        theirsEditor.changeViewZones((accessor) => {
+          theirsZonesToAdd.forEach((zone) => {
+            const id = accessor.addZone({
+              afterLineNumber: zone.afterLineNumber,
+              heightInLines: 1.5,
+              domNode: createBannerNode(zone.collapsedCount, zone.blockId, false),
+              marginDomNode: createBannerNode(zone.collapsedCount, zone.blockId, true),
+              showInHiddenAreas: true,
+              suppressMouseDown: true,
+            })
+            theirsCollapsedViewZonesRef.current.push(id)
+          })
+        })
+      }
+
+      if (centerEditor && centerZonesToAdd.length > 0) {
+        centerEditor.changeViewZones((accessor) => {
+          centerZonesToAdd.forEach((zone) => {
+            const id = accessor.addZone({
+              afterLineNumber: zone.afterLineNumber,
+              heightInLines: 1.5,
+              domNode: createBannerNode(zone.collapsedCount, zone.blockId, false),
+              marginDomNode: createBannerNode(zone.collapsedCount, zone.blockId, true),
+              showInHiddenAreas: true,
+              suppressMouseDown: true,
+            })
+            centerCollapsedViewZonesRef.current.push(id)
+          })
+        })
+      }
+
+      if (oursEditor && oursZonesToAdd.length > 0) {
+        oursEditor.changeViewZones((accessor) => {
+          oursZonesToAdd.forEach((zone) => {
+            const id = accessor.addZone({
+              afterLineNumber: zone.afterLineNumber,
+              heightInLines: 1.5,
+              domNode: createBannerNode(zone.collapsedCount, zone.blockId, false),
+              marginDomNode: createBannerNode(zone.collapsedCount, zone.blockId, true),
+              showInHiddenAreas: true,
+              suppressMouseDown: true,
+            })
+            oursCollapsedViewZonesRef.current.push(id)
+          })
+        })
+      }
 
       // Monaco's layout takes a moment to update line height mappings after setHiddenAreas
       scheduleRecompute()
@@ -1182,8 +1548,18 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       return () => {
         clearTimeout(t1)
         clearTimeout(t2)
+        clearZones(theirsEditorRef.current, theirsCollapsedViewZonesRef)
+        clearZones(centerEditorRef.current, centerCollapsedViewZonesRef)
+        clearZones(oursEditorRef.current, oursCollapsedViewZonesRef)
       }
-    }, [collapseUnchanged, viewToUse.blocks, placements, scheduleRecompute, monacoRef.current])
+    }, [
+      collapseUnchanged,
+      expandedBlocks,
+      viewToUse.blocks,
+      placements,
+      scheduleRecompute,
+      monacoRef.current
+    ])
 
     const handleToggle = useCallback((block: MergeBlock, side: MergeSide, included: boolean) => {
       executeWithScrollPreservation(() => {
@@ -1798,6 +2174,10 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
 
     const headerActions: ConflictResolverActionsConfig = typeof header === 'object' ? header : {}
 
+    const currentLineHeight = (monacoRef.current && centerEditorRef.current)
+      ? centerEditorRef.current.getOption(monacoRef.current.editor.EditorOption.lineHeight)
+      : 19
+
     return (
       <div className="flex h-full w-full flex-col overflow-hidden bg-[#1a1a1a]">
         {!isTwoWay && header !== false && (
@@ -1847,7 +2227,11 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
               {index < panes.length - 1 && (
                 <div
                   className="relative shrink-0 overflow-hidden select-none"
-                  style={{ width: GAP_WIDTH, cursor: isTwoWay ? 'default' : 'col-resize' }}
+                  style={{
+                    width: GAP_WIDTH,
+                    cursor: isTwoWay ? 'default' : 'col-resize',
+                    backgroundColor: 'var(--vscode-editor-background, #1e1e1e)',
+                  }}
                   onMouseDown={isTwoWay ? undefined : (index === 0 ? handleLeftMouseDown : handleRightMouseDown)}
                   data-testid={`merge-resize-handle-${index === 0 ? 'left' : 'right'}`}
                 >
@@ -1861,6 +2245,14 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
                     onReject={index === 0 ? handleRejectTheirs : handleRejectOurs}
                     scrollTopLeft={index === 0 ? theirsEditorRef.current?.getScrollTop() ?? 0 : centerEditorRef.current?.getScrollTop() ?? 0}
                     scrollTopRight={index === 0 ? centerEditorRef.current?.getScrollTop() ?? 0 : oursEditorRef.current?.getScrollTop() ?? 0}
+                    lineHeight={currentLineHeight}
+                    onExpandBlock={(blockId) => {
+                      setExpandedBlocks((prev) => {
+                        const next = new Set(prev)
+                        next.add(blockId)
+                        return next
+                      })
+                    }}
                   />
                 </div>
               )}

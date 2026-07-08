@@ -147,4 +147,23 @@ describe('MergeConnectorOverlay', () => {
     )
     expect(screen.queryAllByRole('button')).toHaveLength(0)
   })
+
+  it('skips rendering collapsed segments as svg paths, but renders them as divs', () => {
+    const segments = [
+      segment({ id: 1, colorClass: 'merge-connector-collapsed', leftY0: 38, leftY1: 85.5 }),
+      segment({ id: 2, colorClass: 'merge-connector-conflict', leftY0: 142.5, leftY1: 161.5 })
+    ]
+    const { container } = render(
+      <MergeConnectorOverlay
+        width={40}
+        height={200}
+        segments={segments}
+        side="left"
+        onAccept={vi.fn()}
+        onReject={vi.fn()}
+      />
+    )
+    expect(container.querySelectorAll('svg path')).toHaveLength(1)
+    expect(container.querySelectorAll('.monaco-collapsed-zone-banner')).toHaveLength(1)
+  })
 })

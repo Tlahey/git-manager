@@ -3,6 +3,7 @@ import type { editor } from 'monaco-editor'
 import type { MergeBlock } from './types'
 import { getScrollCoordinatesForContent } from './useMergeScrollSync'
 import { computeInitialPlacements } from './mergeBlockLayout'
+import { getTopForLineNumberSafe } from './ConflictResolver'
 
 function createBlock(overrides: Partial<MergeBlock> & Pick<MergeBlock, 'blockId' | 'kind'>): MergeBlock {
   return {
@@ -214,5 +215,13 @@ describe('getScrollCoordinatesForContent', () => {
     )
 
     expect(targetScroll).toBe(120)
+  })
+
+  it('calculates top coordinate correctly for line 21 when 4-17 is collapsed', () => {
+    const editor = mockEditor(23)
+    const hiddenRanges = [{ start: 4, end: 17 }]
+    const viewZones = [{ afterLineNumber: 3, heightInLines: 1.5 }]
+    const resultY = getTopForLineNumberSafe(editor, 21, 19, hiddenRanges, viewZones)
+    expect(resultY).toBe(142.5)
   })
 })
