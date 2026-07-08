@@ -281,6 +281,17 @@ function applyViewZones(
   return ids
 }
 
+/** `setHiddenAreas` exists on Monaco's runtime standalone editor but isn't part of the public
+ * `IStandaloneCodeEditor` typings, so callers need a narrow escape hatch instead of casting to
+ * `any` at every call site. */
+type EditorWithHiddenAreas = editor.IStandaloneCodeEditor & {
+  setHiddenAreas?: (ranges: IRange[]) => void
+}
+
+function setHiddenAreas(editorInstance: editor.IStandaloneCodeEditor | null, ranges: IRange[]): void {
+  ;(editorInstance as EditorWithHiddenAreas | null)?.setHiddenAreas?.(ranges)
+}
+
 /** Computes the Monaco edit range/text for replacing an explicit `[startLine, startLine+lineCount)`
  * range with `newLines` — used both to replace a side's existing content and, when `lineCount`
  * is 0, to insert content at that boundary (accepting a side that wasn't included before).
@@ -1441,17 +1452,17 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       clearZones(oursEditor, oursCollapsedViewZonesRef)
 
       if (!collapseUnchanged || !monacoRef.current) {
-        if (theirsEditor && typeof (theirsEditor as any).setHiddenAreas === 'function') (theirsEditor as any).setHiddenAreas([])
-        if (centerEditor && typeof (centerEditor as any).setHiddenAreas === 'function') (centerEditor as any).setHiddenAreas([])
-        if (oursEditor && typeof (oursEditor as any).setHiddenAreas === 'function') (oursEditor as any).setHiddenAreas([])
+        setHiddenAreas(theirsEditor, [])
+        setHiddenAreas(centerEditor, [])
+        setHiddenAreas(oursEditor, [])
         scheduleRecompute()
         return
       }
 
       const monacoInstance = monacoRef.current
-      const theirsHidden: any[] = []
-      const centerHidden: any[] = []
-      const oursHidden: any[] = []
+      const theirsHidden: IRange[] = []
+      const centerHidden: IRange[] = []
+      const oursHidden: IRange[] = []
 
       const theirsZonesToAdd: Array<{ afterLineNumber: number; collapsedCount: number; blockId: number }> = []
       const centerZonesToAdd: Array<{ afterLineNumber: number; collapsedCount: number; blockId: number }> = []
@@ -1499,9 +1510,9 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
         }
       })
 
-      if (theirsEditor && typeof (theirsEditor as any).setHiddenAreas === 'function') (theirsEditor as any).setHiddenAreas(theirsHidden)
-      if (centerEditor && typeof (centerEditor as any).setHiddenAreas === 'function') (centerEditor as any).setHiddenAreas(centerHidden)
-      if (oursEditor && typeof (oursEditor as any).setHiddenAreas === 'function') (oursEditor as any).setHiddenAreas(oursHidden)
+      setHiddenAreas(theirsEditor, theirsHidden)
+      setHiddenAreas(centerEditor, centerHidden)
+      setHiddenAreas(oursEditor, oursHidden)
 
       // Create banner DOM nodes and add view zones
       const createBannerNode = (collapsedCount: number, blockId: number, isMargin: boolean) => {
@@ -1607,7 +1618,6 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       viewToUse.blocks,
       placements,
       scheduleRecompute,
-      monacoRef.current
     ])
 
     const handleToggle = useCallback((block: MergeBlock, side: MergeSide, included: boolean) => {
