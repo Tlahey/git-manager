@@ -14,7 +14,7 @@ import type { editor, IRange } from 'monaco-editor'
 import type { MergeBlock } from './types'
 import { ConflictResolverHeader, type ConflictResolverActionsConfig } from './ConflictResolverHeader'
 import { CodePane, type CodePaneEditorComponent } from './CodePane'
-import { MergeConnectorOverlay, type ConnectorSegment } from './MergeConnectorOverlay'
+import { MergeConnectorOverlay, buildCollapsedWavePath, type ConnectorSegment } from './MergeConnectorOverlay'
 import { useMergeScrollSync } from './useMergeScrollSync'
 import {
   type BlockPlacement,
@@ -335,7 +335,8 @@ function updateConnectorPaths(
   scrollTopLeft: number,
   scrollTopRight: number,
   segments: ConnectorSegment[],
-  side: 'left' | 'right'
+  side: 'left' | 'right',
+  wavePhaseOffset: number
 ) {
   if (!overlayElement) return
 
@@ -347,14 +348,30 @@ function updateConnectorPaths(
   let pathIdx = 0
 
   segments.forEach((seg) => {
-    if (seg.colorClass === 'merge-connector-collapsed') {
-      return
-    }
-
     const leftY0 = seg.leftY0 - scrollTopLeft
     const leftY1 = seg.leftY1 - scrollTopLeft
     const rightY0 = seg.rightY0 - scrollTopRight
     const rightY1 = seg.rightY1 - scrollTopRight
+
+    if (seg.colorClass === 'merge-connector-collapsed') {
+      // Mirrors the <g> the JSX renders: fill path (closed quadrilateral, invisible hit-target)
+      // then the wave stroke — in that order.
+      const d = [
+        `M 0,${leftY0}`,
+        `C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`,
+        `L ${width},${rightY1}`,
+        `C ${half},${rightY1} ${half},${leftY1} 0,${leftY1}`,
+        'Z',
+      ].join(' ')
+      const dWave = buildCollapsedWavePath((leftY0 + leftY1) / 2, (rightY0 + rightY1) / 2, width, wavePhaseOffset)
+
+      const pathElFill = paths[pathIdx++] as SVGPathElement | undefined
+      if (pathElFill) pathElFill.setAttribute('d', d)
+
+      const pathElWave = paths[pathIdx++] as SVGPathElement | undefined
+      if (pathElWave) pathElWave.setAttribute('d', dWave)
+      return
+    }
 
     if (seg.flat) {
       const d = `M 0,${leftY0} C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`
@@ -396,18 +413,6 @@ function updateConnectorPaths(
     }
   })
 
-  // 3. Update collapsed zone banner positions
-  const collapsedBanners = overlayElement.querySelectorAll('.monaco-collapsed-zone-banner')
-  let bannerIdx = 0
-
-  segments.forEach((seg) => {
-    if (seg.colorClass !== 'merge-connector-collapsed') return
-    const anchorY = side === 'left' ? seg.leftY0 - scrollTopLeft : seg.rightY0 - scrollTopRight
-    const bannerContainer = collapsedBanners[bannerIdx++] as HTMLDivElement | undefined
-    if (bannerContainer) {
-      bannerContainer.style.top = `${anchorY}px`
-    }
-  })
 }
 
 /** JetBrains-style multi-panel code/merge editor. In 3-panel mode: left = theirs (the incoming
@@ -467,9 +472,6 @@ export function getTopForLineNumberSafe(
         y += zone.heightInLines * lineHeight
       }
     }
-  }
-  if (lineNumber === 21) {
-    console.log(`getTopForLineNumberSafe(21) details: hiddenRanges=`, hiddenRanges, `viewZones=`, viewZones, `result Y=`, y)
   }
   return y
 }
@@ -1073,6 +1075,17 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
     const rightSegmentsRef = useRef<ConnectorSegment[]>([])
     const leftOverlayRef = useRef<HTMLDivElement | null>(null)
     const rightOverlayRef = useRef<HTMLDivElement | null>(null)
+    // Each gap's own horizontal offset from containerRef, same measurement basis as
+    // --wave-offset below. State (not just a ref) because it flows into MergeConnectorOverlay's
+    // own JSX render as the wavePhaseOffset prop — the connector's wave is real path data
+    // (buildCollapsedWavePath), not a CSS mask, so unlike --wave-offset it can't be corrected by
+    // mutating a style property after the fact: React re-renders the path's `d` from JSX on
+    // every segment update regardless, so an imperative `setAttribute` patch here would just get
+    // overwritten by the next commit. The ref mirrors the same value for updateConnectorPaths,
+    // which — being a scroll-driven imperative function outside React — genuinely does need to
+    // read it without going through props.
+    const [gapPhaseOffsets, setGapPhaseOffsets] = useState<{ left: number; right: number }>({ left: 0, right: 0 })
+    const gapPhaseOffsetsRef = useRef<{ left: number; right: number }>({ left: 0, right: 0 })
 
     // Written directly to the DOM (bypassing React state/render) from Monaco's own
     // `onDidScrollChange`, so the connector overlay's position tracks the panes' scroll at the
@@ -1090,9 +1103,23 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       const centerScroll = centerEditor.getScrollTop()
       const oursScroll = oursEditor ? oursEditor.getScrollTop() : 0
 
-      updateConnectorPaths(leftOverlayRef.current, theirsScroll, centerScroll, leftSegmentsRef.current, 'left')
+      updateConnectorPaths(
+        leftOverlayRef.current,
+        theirsScroll,
+        centerScroll,
+        leftSegmentsRef.current,
+        'left',
+        gapPhaseOffsetsRef.current.left
+      )
       if (!isTwoWay) {
-        updateConnectorPaths(rightOverlayRef.current, centerScroll, oursScroll, rightSegmentsRef.current, 'right')
+        updateConnectorPaths(
+          rightOverlayRef.current,
+          centerScroll,
+          oursScroll,
+          rightSegmentsRef.current,
+          'right',
+          gapPhaseOffsetsRef.current.right
+        )
       }
     }, [isTwoWay])
 
@@ -1149,6 +1176,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
                 actionable: false,
                 flat: false,
                 resolved: false,
+                collapsedCount: lineCount - 6,
               })
             }
             continue
@@ -1246,6 +1274,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
                 actionable: false,
                 flat: false,
                 resolved: false,
+                collapsedCount: lineCount - 6,
               })
 
               // Right segment (center <-> ours)
@@ -1260,6 +1289,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
                   actionable: false,
                   flat: false,
                   resolved: false,
+                  collapsedCount: lineCount - 6,
                 })
               }
             }
@@ -1340,7 +1370,6 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
         }
       }
 
-      console.log('SEGMENT PATHS left:', left)
       leftSegmentsRef.current = left
       rightSegmentsRef.current = right
       setLeftSegments(left)
@@ -1355,6 +1384,21 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
           const offset = -(rect.left - parentRect.left)
           ;(el as HTMLElement).style.setProperty('--wave-offset', `${offset}px`)
         })
+
+        // Same shared phase for the connector's own wave. Measurement only, on purpose — see
+        // gapPhaseOffsets' declaration for why this must flow through React state (as the
+        // wavePhaseOffset prop) rather than an imperative DOM patch the way --wave-offset above
+        // does; setGapPhaseOffsets below is what actually applies it.
+        const measureGapOffset = (overlay: HTMLDivElement | null): number =>
+          overlay ? overlay.getBoundingClientRect().left - parentRect.left : 0
+        const nextGapPhaseOffsets = {
+          left: measureGapOffset(leftOverlayRef.current),
+          right: measureGapOffset(rightOverlayRef.current),
+        }
+        gapPhaseOffsetsRef.current = nextGapPhaseOffsets
+        setGapPhaseOffsets((prev) =>
+          prev.left === nextGapPhaseOffsets.left && prev.right === nextGapPhaseOffsets.right ? prev : nextGapPhaseOffsets
+        )
       }
     }, [isTwoWay, collapseUnchanged, expandedBlocks, getTop])
 
@@ -1365,6 +1409,16 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
         recomputeConnectors()
       })
     }, [recomputeConnectors])
+
+    // handlePaneMount's editorInstance.onDidLayoutChange callback below is registered once at
+    // Monaco mount time and never re-subscribed, so it can only ever close over whatever
+    // scheduleRecompute (and transitively recomputeConnectors, and expandedBlocks) was at that
+    // first render — same problem onEditorMountRef above already exists to solve, just for a
+    // different callback. Reading through this ref instead keeps every onDidLayoutChange firing
+    // (e.g. a panel resize) using the *current* expandedBlocks instead of silently treating
+    // already-expanded blocks as still collapsed.
+    const scheduleRecomputeRef = useRef(scheduleRecompute)
+    scheduleRecomputeRef.current = scheduleRecompute
 
     // Apply collapseUnchanged regions to standard Monaco editors using hiddenAreas API and custom view zones
     useEffect(() => {
@@ -1456,22 +1510,17 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
         domNode.style.pointerEvents = 'auto'
         domNode.setAttribute('data-collapsed-block-id', String(blockId))
 
+        // The margin copy is just the narrow gutter sliver — no room for a label there, so only
+        // the full-width main copy gets one. Shown on hover (see .monaco-collapsed-zone-banner-
+        // label in styles.css) rather than as a native `title`, which only appears after the
+        // browser's own hover delay.
         if (!isMargin) {
-          const textSpan = document.createElement('span')
-          textSpan.className = 'monaco-collapsed-zone-banner-text'
-          
-          const iconSpan = document.createElement('span')
-          iconSpan.className = 'monaco-collapsed-zone-banner-icon'
-          iconSpan.textContent = '↔'
-          
-          const countSpan = document.createElement('span')
-          countSpan.textContent = `${collapsedCount} lines collapsed — click to expand`
-          
-          textSpan.appendChild(iconSpan)
-          textSpan.appendChild(countSpan)
-          domNode.appendChild(textSpan)
+          const label = document.createElement('span')
+          label.className = 'monaco-collapsed-zone-banner-label'
+          label.textContent = `${collapsedCount} lines collapsed`
+          domNode.appendChild(label)
         }
-        
+
         const onTrigger = (e: MouseEvent) => {
           e.stopPropagation()
           e.preventDefault()
@@ -1930,7 +1979,10 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
         // on this editor's real dimensions — a more reliable connector-recompute trigger than
         // our own outer-container ResizeObserver, since it directly reflects when
         // `getTopForLineNumber` results become trustworthy for *this* editor specifically.
-        editorInstance.onDidLayoutChange(() => scheduleRecompute())
+        // Reads through scheduleRecomputeRef, not the closed-over scheduleRecompute directly —
+        // this handler is registered once at mount and Monaco never re-subscribes it, so a
+        // direct closure would permanently use whatever expandedBlocks existed at mount time.
+        editorInstance.onDidLayoutChange(() => scheduleRecomputeRef.current())
 
         if (pane === 'center') {
           editorInstance.onDidChangeModelContent((e) => handleCenterContentEvent(e))
@@ -1975,6 +2027,17 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       observer.observe(container)
       return () => observer.disconnect()
     }, [scheduleRecompute])
+
+    // Dragging the pane resize handle (handleLeftMouseDown/handleRightMouseDown) only changes
+    // CSS flex-grow ratios via panelWidths — the container's own size never changes, so the
+    // ResizeObserver above doesn't fire, and Monaco's automaticLayout isn't enabled anywhere in
+    // this codebase, so a pure CSS-driven resize doesn't make Monaco notice on its own either.
+    // Without this, connector ribbons/waves (and the collapsed-region hidden areas effect, which
+    // also runs off scheduleRecompute) kept using stale pre-resize positions until some
+    // unrelated trigger happened to fire.
+    useEffect(() => {
+      scheduleRecompute()
+    }, [panelWidths, scheduleRecompute])
 
     const applyAutoMerge = useCallback(async () => {
       if (!onAutoMerge) return
@@ -2246,6 +2309,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
                     scrollTopLeft={index === 0 ? theirsEditorRef.current?.getScrollTop() ?? 0 : centerEditorRef.current?.getScrollTop() ?? 0}
                     scrollTopRight={index === 0 ? centerEditorRef.current?.getScrollTop() ?? 0 : oursEditorRef.current?.getScrollTop() ?? 0}
                     lineHeight={currentLineHeight}
+                    wavePhaseOffset={index === 0 ? gapPhaseOffsets.left : gapPhaseOffsets.right}
                     onExpandBlock={(blockId) => {
                       setExpandedBlocks((prev) => {
                         const next = new Set(prev)

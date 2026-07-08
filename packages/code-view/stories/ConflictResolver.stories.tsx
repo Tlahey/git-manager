@@ -273,3 +273,83 @@ export const CollapsedByDefault: Story = {
     defaultCollapseUnchanged: true,
   },
 }
+
+/** Same collapsible unchanged block as `CollapsedByDefault`, but staggered: an earlier
+ * both-different header (4 lines on theirs, 1 on ours) pushes the big unchanged block — and
+ * everything after it — down by 3 lines in theirs relative to ours. The collapsed region's
+ * banner therefore sits at a different pixel Y in the theirs pane than in the ours pane, which
+ * exercises the connector ribbon's sloped fill+border path (in the gap between panes) rather
+ * than the degenerate case where both ends happen to line up. */
+const staggeredHeaderTheirsLines = [
+  "// Copyright (c) 2026 Git Manager Ltd. All rights reserved.",
+  "// Extra line only present on the incoming side,",
+  "// so the unchanged block below starts later here",
+  "// than it does in the current side.",
+]
+const staggeredHeaderOursLines = ["// Copyright (c) 2026 Git Manager Ltd. All rights reserved."]
+
+const staggeredBlocks: MergeBlock[] = [
+  {
+    blockId: 1,
+    kind: 'both-different',
+    oursStartLine: 1,
+    oursLineCount: 1,
+    theirsStartLine: 1,
+    theirsLineCount: 4,
+    oursLines: staggeredHeaderOursLines,
+    theirsLines: staggeredHeaderTheirsLines,
+    baseLines: staggeredHeaderOursLines,
+  },
+  {
+    blockId: 2,
+    kind: 'unchanged',
+    oursStartLine: 2,
+    oursLineCount: 20,
+    theirsStartLine: 5,
+    theirsLineCount: 20,
+    oursLines: largeUnchangedLines,
+    theirsLines: largeUnchangedLines,
+  },
+  {
+    blockId: 3,
+    kind: 'both-different',
+    oursStartLine: 22,
+    oursLineCount: 1,
+    theirsStartLine: 25,
+    theirsLineCount: 1,
+    oursLines: ['  const retries = 2'],
+    theirsLines: ['  const retries = 5'],
+    baseLines: ['  const retries = 3'],
+  },
+  {
+    blockId: 4,
+    kind: 'unchanged',
+    oursStartLine: 23,
+    oursLineCount: 2,
+    theirsStartLine: 26,
+    theirsLineCount: 2,
+    oursLines: ['  return api.run(retries)', '}'],
+    theirsLines: ['  return api.run(retries)', '}'],
+  },
+]
+
+const staggeredTheirsText = joinPane(staggeredBlocks, 'theirs')
+const staggeredOursText = joinPane(staggeredBlocks, 'ours')
+
+export const CollapsedStaggeredAcrossPanels: Story = {
+  args: {
+    panels: [
+      { content: staggeredTheirsText, status: <span>Incoming — feature/http-retries</span> },
+      { status: <span>Result — client.ts</span> },
+      { content: staggeredOursText, status: <span>Current — main</span> },
+    ],
+    blocks: staggeredBlocks,
+    modelPathPrefix: 'story/collapsed-staggered/client.ts',
+    editor: { language: 'typescript', theme: 'vs-dark' },
+    onAutoMerge: () =>
+      Promise.resolve(
+        [...staggeredHeaderOursLines, ...largeUnchangedLines, '  const retries = 3', '  return api.run(retries)', '}'].join('\n')
+      ),
+    defaultCollapseUnchanged: true,
+  },
+}

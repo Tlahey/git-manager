@@ -421,25 +421,29 @@
 
 .monaco-collapsed-zone-banner {
   position: relative !important;
-  background-color: var(--vscode-diffEditor-unchangedRegionBackground, rgba(128, 128, 128, 0.08)) !important;
-  border-top: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.15)) !important;
-  border-bottom: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.15)) !important;
   display: flex !important;
   align-items: center !important;
-  justify-content: center !important;
+  /* flex-start, not center: Monaco sizes a view-zone's DOM node to the document's scroll width
+     (the widest line in the file), not the visible viewport — a single long line elsewhere
+     easily makes this banner far wider than what's on screen. Centering placed the label at the
+     midpoint of that oversized box, off-screen past the visible edge whenever scrollWidth >
+     viewport (which is exactly when the reported "hidden behind the panels" symptom happened —
+     it wasn't a stacking bug, the label was laid out outside the visible area entirely). The
+     wave doesn't have this problem: mask-repeat tiles it across the whole width instead of
+     placing one fixed instance, so some of it is always in view. Anchoring the label near x=0
+     instead of centering only "works" while horizontal scroll is at/near 0, which is the common
+     case — there's no cheap way to track Monaco's own scroll offset here (it scrolls via
+     transform, not native scrollLeft, so position: sticky doesn't apply). */
+  justify-content: flex-start !important;
+  padding-left: 12px !important;
   cursor: pointer !important;
-  color: var(--vscode-descriptionForeground, #9ca3af) !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
-  font-size: 11px !important;
-  font-weight: 500 !important;
-  transition: background-color 0.15s ease, color 0.15s ease !important;
   user-select: none !important;
   pointer-events: auto !important;
   box-sizing: border-box !important;
-  line-height: 1 !important;
 }
 
-/* Wavy line in normal state */
+/* Wavy line marking the collapsed region — brightens on hover instead of the old
+   background/border treatment, since the banner itself carries no fill or border anymore. */
 .monaco-collapsed-zone-banner::before {
   content: "" !important;
   position: absolute !important;
@@ -451,62 +455,77 @@
   mask-repeat: repeat-x !important;
   -webkit-mask-position: var(--wave-offset, 0px) center !important;
   mask-position: var(--wave-offset, 0px) center !important;
+  transition: background-color 0.15s ease !important;
+}
+
+/* Hover / .is-hovered state: highlight the wave along its full length (mask-repeat already
+   spans the whole banner) rather than hiding it. `.is-hovered` is toggled by
+   setCollapsedBlockHover on every element sharing the same data-collapsed-block-id, so hovering
+   any one pane's banner or the connecting gap ribbon highlights the whole collapsed region at
+   once, in every pane and gap it spans. */
+.monaco-collapsed-zone-banner:hover::before,
+.monaco-collapsed-zone-banner.is-hovered::before {
+  background-color: var(--vscode-foreground, #e5e7eb) !important;
+}
+
+/* Line-count label — hidden until hover, sitting above the (now-highlighted) wave via z-index.
+   A real pill with its own background rather than plain text, so it stays legible on top of the
+   brightened wave instead of the two fighting for contrast. Only the pane banner gets one (see
+   createBannerNode's isMargin check) — the connector ribbon between panes is 40px wide, too
+   narrow for this text. Deliberately keyed off real `:hover` only, NOT `.is-hovered`: the wave
+   brightens everywhere the block spans (cross-pane sync via data-collapsed-block-id), but the
+   label should show exactly once, in whichever element the mouse is actually over — hovering
+   the connector ribbon (not itself a banner) brightens every pane's wave without popping open
+   three redundant copies of the same label. */
+.monaco-collapsed-zone-banner-label {
+  position: relative !important;
+  z-index: 1 !important;
+  opacity: 0 !important;
+  background-color: var(--vscode-editor-background, #1e1e1e) !important;
+  color: var(--vscode-foreground, #e5e7eb) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.15)) !important;
+  pointer-events: none !important;
   transition: opacity 0.15s ease !important;
+}
+
+.monaco-collapsed-zone-banner:hover .monaco-collapsed-zone-banner-label {
   opacity: 1 !important;
 }
 
-/* Hover / .is-hovered state */
-.monaco-collapsed-zone-banner:hover,
-.monaco-collapsed-zone-banner.is-hovered {
-  background-color: var(--vscode-diffEditor-unchangedRegionHoverBackground, rgba(128, 128, 128, 0.16)) !important;
-  color: var(--vscode-foreground, #e5e7eb) !important;
-}
-
-.monaco-collapsed-zone-banner:hover::before,
-.monaco-collapsed-zone-banner.is-hovered::before {
-  opacity: 0 !important;
-}
-
-.monaco-collapsed-zone-banner-text {
-  position: relative !important;
-  z-index: 1 !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  transition: opacity 0.15s ease !important;
-  opacity: 0 !important; /* Hidden in normal state */
-}
-
-.monaco-collapsed-zone-banner:hover .monaco-collapsed-zone-banner-text,
-.monaco-collapsed-zone-banner.is-hovered .monaco-collapsed-zone-banner-text {
-  opacity: 1 !important; /* Shown on hover */
-}
-
-.monaco-collapsed-zone-banner-icon {
-  font-size: 12px !important;
-}
-
-/* Collapsed unchanged region connector SVG ribbon styling */
+/* Collapsed unchanged region connector SVG ribbon styling — bridges a pane's banner to the
+   next pane's when the collapsed region sits at different line positions in each (see the
+   quadrilateral+Bezier path construction shared with the other merge-connector-* ribbons). */
 .merge-connector-collapsed-fill {
-  fill: var(--vscode-diffEditor-unchangedRegionBackground, rgba(128, 128, 128, 0.08)) !important;
-  transition: fill 0.15s ease !important;
+  /* Transparent, not `none` — `none` would stop counting as "painted" and drop out of hit-
+     testing entirely despite `pointer-events: auto`, silently breaking click/hover. This is
+     purely the hit-target now; the wave (brightened via .is-hovered, see
+     .merge-connector-collapsed-wave below) carries the hover feedback instead of a fill tint. */
+  fill: transparent !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
 }
 
-.merge-connector-collapsed-fill.is-hovered,
-g.is-hovered .merge-connector-collapsed-fill {
-  fill: var(--vscode-diffEditor-unchangedRegionHoverBackground, rgba(128, 128, 128, 0.16)) !important;
-}
-
-.merge-connector-collapsed-border {
+/* The connector's own wave (buildCollapsedWavePath in MergeConnectorOverlay.tsx) — same
+   color/hover behavior as the pane banner's ::before wave, so the two read as one continuous
+   line threading through the gap rather than two different decorations. */
+.merge-connector-collapsed-wave {
   fill: none !important;
-  stroke: var(--vscode-widget-border, rgba(128, 128, 128, 0.15)) !important;
-  stroke-width: 1px !important;
+  stroke: var(--vscode-descriptionForeground, #9ca3af) !important;
+  stroke-width: 2px !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  pointer-events: none !important;
+  transition: stroke 0.15s ease !important;
 }
 
-.merge-connector-overlay .monaco-collapsed-zone-banner {
-  position: absolute !important;
-  left: 0 !important;
-  right: 0 !important;
+.merge-connector-collapsed-wave.is-hovered,
+g.is-hovered .merge-connector-collapsed-wave {
+  stroke: var(--vscode-foreground, #e5e7eb) !important;
 }
 
 .merge-connector-overlay {
