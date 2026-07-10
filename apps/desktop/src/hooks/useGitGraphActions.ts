@@ -33,6 +33,7 @@ interface UseGitGraphActionsParams {
   hiddenStashes: string[]
   toggleStashVisibility: (repoPath: string, oid: string) => void
   status: GitStatus | undefined
+  isRebasePaused: boolean
   t: TranslateFn
 }
 
@@ -58,6 +59,7 @@ export function useGitGraphActions({
   hiddenStashes,
   toggleStashVisibility,
   status,
+  isRebasePaused,
   t,
 }: UseGitGraphActionsParams) {
   const queryClient = useQueryClient()
@@ -270,9 +272,13 @@ export function useGitGraphActions({
     const primaryShortOid = oid.slice(0, 7)
 
     // Fixup is only meaningful for a single commit that's part of the current
-    // branch's history (HEAD or an ancestor) — otherwise it isn't rebasable.
+    // branch's history (HEAD or an ancestor) — otherwise it isn't rebasable. It's
+    // also unavailable mid-rebase: the paused rebase leaves the index with unmerged
+    // entries, so `create_fixup_commit` can't write a tree until it's resolved.
     const fixupEnabled =
-      isSingle && (await apiIsCommitOnCurrentBranch(repoPath, oid).catch(() => false))
+      isSingle &&
+      !isRebasePaused &&
+      (await apiIsCommitOnCurrentBranch(repoPath, oid).catch(() => false))
 
     showCommitNativeContextMenu({
       isSingle,

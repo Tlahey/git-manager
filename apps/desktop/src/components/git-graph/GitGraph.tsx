@@ -175,6 +175,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     hiddenStashes,
     toggleStashVisibility,
     status,
+    isRebasePaused,
     t,
   })
 

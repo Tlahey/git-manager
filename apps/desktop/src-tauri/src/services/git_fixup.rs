@@ -69,6 +69,10 @@ pub fn create_fixup_commit(
         return Err("No staged changes to create a fixup commit".to_string());
     }
 
+    if index.has_conflicts() {
+        return Err("Resolve pending conflicts before creating a fixup commit".to_string());
+    }
+
     let sig = get_git_signature(repo)?;
 
     let tree_oid = index.write_tree().map_err(AppError::Git)?;
