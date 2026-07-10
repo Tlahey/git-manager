@@ -11,7 +11,7 @@ import { useSettingsStore } from '../../stores/settings.store'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useCommitSelection } from '../../hooks/useCommitSelection'
-import { useCommitDetailsResize } from '../../hooks/useCommitDetailsResize'
+import { useHorizontalResize } from '@git-manager/components'
 import { useGitGraphNodes, type ConflictRowInfo } from '../../hooks/useGitGraphNodes'
 import { useGitGraphActions } from '../../hooks/useGitGraphActions'
 import { apiGetRebaseState } from '../../api/git.api'
@@ -46,7 +46,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   const headBranchName = useRepoDataStore((s) => s.repoCache[repoPath]?.head)
 
   // ── Sizing / Resizing details panel hook ───────────────────────────────────
-  const { width: panelWidthState, resizeProps } = useCommitDetailsResize(400)
+  const { width: panelWidthState, resizeProps } = useHorizontalResize(400)
 
   const activeDiffFile = useRepoUIStore((s) => s.activeDiffFile)
   const setActiveDiffFile = useRepoUIStore((s) => s.setActiveDiffFile)

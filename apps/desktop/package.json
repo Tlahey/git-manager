@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@git-manager/code-view": "workspace:*",
+    "@git-manager/components": "workspace:*",
     "@git-manager/git-types": "workspace:*",
     "@git-manager/i18n": "workspace:*",
     "@git-manager/mascot": "workspace:*",

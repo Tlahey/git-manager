@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useMemo, useRef } from 'react'
+import { forwardRef, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import type { Monaco } from '@monaco-editor/react'
 import { Lock } from 'lucide-react'
 import type { ThreeWayMergeView } from '@git-manager/git-types'
@@ -22,10 +22,17 @@ interface ThreeWayMergeEditorProps {
   original?: string
   modified?: string
   isTwoWay?: boolean
+  /** Status label shown above the left (original) pane in two-way mode — e.g. the fixup target
+   * commit's sha. Ignored in 3-panel mode (those statuses are built in below). */
+  originalLabel?: ReactNode
+  /** Status label shown above the right (modified) pane in two-way mode. */
+  modifiedLabel?: ReactNode
   onPendingCountChange?: (count: number) => void
   /** Draw the JetBrains-style hermetic 2px top/bottom edges around each block (and the matching
    * closing edges on the hatched filler zones). Off by default — the colored fills alone. */
   showBlockBorders?: boolean
+  /** Initial collapse-unchanged state — the library's own header toggle controls it from there. */
+  defaultCollapseUnchanged?: boolean
 }
 
 export type ThreeWayMergeEditorRef = ConflictResolverRef
@@ -35,7 +42,22 @@ export type ThreeWayMergeEditorRef = ConflictResolverRef
  * commit sha shown in the header statuses, and the app's shared lazy Monaco instance + dynamic
  * theme. All merge/diff behavior itself lives in the library component. */
 export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMergeEditorProps>(
-  ({ repoPath, filePath, view, original, modified, isTwoWay = false, onPendingCountChange, showBlockBorders = false }, ref) => {
+  (
+    {
+      repoPath,
+      filePath,
+      view,
+      original,
+      modified,
+      isTwoWay = false,
+      originalLabel,
+      modifiedLabel,
+      onPendingCountChange,
+      showBlockBorders = false,
+      defaultCollapseUnchanged,
+    },
+    ref
+  ) => {
     const { mutate } = useSWRConfig()
     const { data: rebaseState } = useRebaseState(repoPath)
     const theme = useSettingsStore((s) => s.settings.appearance.theme)
@@ -65,7 +87,10 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
 
     const panels = useMemo<ConflictResolverPanel[]>(() => {
       if (isTwoWay) {
-        return [{ content: original ?? '' }, { content: modified ?? '' }]
+        return [
+          { content: original ?? '', status: originalLabel },
+          { content: modified ?? '', status: modifiedLabel },
+        ]
       }
       return [
         {
@@ -101,7 +126,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
           ),
         },
       ]
-    }, [isTwoWay, original, modified, view, commitSha, fileName])
+    }, [isTwoWay, original, modified, originalLabel, modifiedLabel, view, commitSha, fileName])
 
     const handleAutoMerge = useCallback(() => apiAutoMergeConflictView(repoPath, filePath), [repoPath, filePath])
 
@@ -132,6 +157,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         onRecalculate={handleRecalculate}
         onPendingCountChange={onPendingCountChange}
         showBlockBorders={showBlockBorders}
+        defaultCollapseUnchanged={defaultCollapseUnchanged}
       />
     )
   }

@@ -1,25 +1,25 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useTranslation } from '@git-manager/i18n'
-import { Lock } from 'lucide-react'
+import { Lock, Check, ArrowUp, GitBranch } from 'lucide-react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { emit } from '@tauri-apps/api/event'
 import type { GitStatusEntry } from '@git-manager/git-types'
 import { Button, ScrollArea, Spinner, Textarea } from '@git-manager/ui'
+import { SplitButton, useVerticalResize } from '@git-manager/components'
 import {
   apiCreateFixupCommit,
   apiGetCommitFileVsWorkdir,
   apiPushBranch,
 } from '../../../api/git.api'
 import { useGitStatus } from '../../../hooks/useGitStatus'
-import { useVerticalResize } from '../../../hooks/useVerticalResize'
 import { useTheme } from '../../../hooks/useTheme'
 import { useMonacoTheme } from '../../../hooks/useMonacoTheme'
 import { queryClient } from '../../../lib/queryClient'
-import { ThreeWayMergeEditor, type ThreeWayMergeEditorRef } from '../../merge-editor/ThreeWayMergeEditor'
+import { ThreeWayMergeEditor } from '../../merge-editor/ThreeWayMergeEditor'
 import { CommitFileList, type ProcessedFileItem } from '../components/CommitFileList'
-import { FixupDiffToolbar } from './FixupDiffToolbar'
-import { CommitSplitButton, type CommitMode } from './CommitSplitButton'
+
+type CommitMode = 'commit' | 'push' | 'rebase'
 
 interface FixupCommitWindowProps {
   repoPath: string
@@ -40,10 +40,7 @@ function FixupCommitWindowContent({ repoPath, targetOid, targetShortOid, targetS
   const qc = useQueryClient()
   const { data: status } = useGitStatus(repoPath)
 
-  const diffRef = useRef<ThreeWayMergeEditorRef>(null)
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
-  const [ignoreWhitespace, setIgnoreWhitespace] = useState(false)
-  const [changeCount, setChangeCount] = useState(0)
   const [message, setMessage] = useState(`fixup! ${targetSubject}`)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -141,7 +138,8 @@ function FixupCommitWindowContent({ repoPath, targetOid, targetShortOid, targetS
         <span className="truncate text-xs text-muted-foreground">{targetSubject}</span>
       </div>
 
-      {/* Files panel (reused CommitFileList: ✓ buttons stage/unstage = include/exclude) */}
+      {/* Files panel (reused CommitFileList: ✓ buttons stage/unstage = include/exclude,
+          folder checkboxes cascade to every file below them) */}
       <div style={{ height: filesPanel.height }} className="shrink-0 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="px-3 py-2">
@@ -153,6 +151,7 @@ function FixupCommitWindowContent({ repoPath, targetOid, targetShortOid, targetS
               onSelectFileDiff={(file) => setSelectedPath(file.path)}
               onRefresh={handleRefresh}
               hideStats
+              folderCheckboxes
               cacheKey={`fixup-window:${repoPath}`}
             />
           </div>
@@ -185,50 +184,39 @@ function FixupCommitWindowContent({ repoPath, targetOid, targetShortOid, targetS
         data-testid="fixup-resize-message"
       />
 
-      {/* Diff area — merge-view principle: toolbar + bordered editor container */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-card/45">
-        <FixupDiffToolbar
-          ignoreWhitespace={ignoreWhitespace}
-          onChangeIgnoreWhitespace={setIgnoreWhitespace}
-          changeCount={changeCount}
-          onPrevChange={() => diffRef.current?.goToPreviousChange()}
-          onNextChange={() => diffRef.current?.goToNextChange()}
-        />
-
-        {/* Pane labels: target revision (left) vs current version (right) */}
-        <div className="flex shrink-0 border-b border-border/50 bg-card/50 text-[11px] text-muted-foreground">
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 px-3 py-1">
-            <Lock className="h-3 w-3 shrink-0" />
-            <span className="font-mono">{targetShortOid}</span>
-            <span className="truncate font-mono">{activePath ?? ''}</span>
-          </div>
-          <div className="flex-1 border-l border-border/50 px-3 py-1">
-            {t('gitTree.fixupDialog.currentVersion')}
-          </div>
-        </div>
-
-        <div className="min-h-0 flex-1 p-3">
-          <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border/80 bg-background">
-            {diffLoading ? (
-              <div className="flex h-full items-center justify-center">
-                <Spinner className="h-5 w-5" />
-              </div>
-            ) : activePath && diff ? (
-              <ThreeWayMergeEditor
-                ref={diffRef}
-                repoPath={repoPath}
-                filePath={activePath}
-                original={diff.original}
-                modified={diff.modified}
-                isTwoWay={true}
-                onPendingCountChange={setChangeCount}
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                {t('gitTree.fixupDialog.noChanges')}
-              </div>
-            )}
-          </div>
+      {/* Diff area — the bordered container holds `ConflictResolver`'s own header (nav,
+          whitespace, highlight, collapse-unchanged toggle — all "for free" from code-view) plus
+          its status bar, which we feed the target sha / "Current version" pane labels below. */}
+      <div className="min-h-0 flex-1 bg-card/45 p-3">
+        <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border/80 bg-background">
+          {diffLoading ? (
+            <div className="flex h-full items-center justify-center">
+              <Spinner className="h-5 w-5" />
+            </div>
+          ) : activePath && diff ? (
+            <ThreeWayMergeEditor
+              repoPath={repoPath}
+              filePath={activePath}
+              original={diff.original}
+              modified={diff.modified}
+              isTwoWay={true}
+              defaultCollapseUnchanged
+              originalLabel={
+                <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground/75">
+                  <Lock className="h-3 w-3 shrink-0 text-muted-foreground/45" />
+                  <span className="font-mono text-foreground/90">{targetShortOid}</span>
+                  <span className="truncate font-mono">{activePath}</span>
+                </div>
+              }
+              modifiedLabel={
+                <span className="truncate text-muted-foreground/70">{t('gitTree.fixupDialog.currentVersion')}</span>
+              }
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+              {t('gitTree.fixupDialog.noChanges')}
+            </div>
+          )}
         </div>
       </div>
 
@@ -245,15 +233,27 @@ function FixupCommitWindowContent({ repoPath, targetOid, targetShortOid, targetS
         >
           {t('gitTree.fixupDialog.cancel')}
         </Button>
-        <CommitSplitButton
+        <SplitButton
+          testIdPrefix="fixup-commit"
           busy={busy}
           disabled={stagedCount === 0 || !message.trim()}
-          labels={{
-            commit: t('gitTree.fixupDialog.commit'),
-            commitAndPush: t('gitTree.fixupDialog.commitAndPush'),
-            commitAndRebase: t('gitTree.fixupDialog.commitAndRebase'),
-          }}
-          onCommit={handleCommit}
+          icon={<Check className="h-3.5 w-3.5" />}
+          label={t('gitTree.fixupDialog.commit')}
+          onClick={() => handleCommit('commit')}
+          actions={[
+            {
+              key: 'push',
+              label: t('gitTree.fixupDialog.commitAndPush'),
+              icon: <ArrowUp className="h-3.5 w-3.5" />,
+              onSelect: () => handleCommit('push'),
+            },
+            {
+              key: 'rebase',
+              label: t('gitTree.fixupDialog.commitAndRebase'),
+              icon: <GitBranch className="h-3.5 w-3.5" />,
+              onSelect: () => handleCommit('rebase'),
+            },
+          ]}
         />
       </div>
     </div>

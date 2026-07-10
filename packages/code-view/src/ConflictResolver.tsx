@@ -156,7 +156,7 @@ function computeTwoWayVisuals(
 export interface ConflictResolverPanel {
   /** Pane text. Ignored for the middle panel in 3-panel mode (derived from `blocks`). */
   content?: string
-  /** Node rendered above this pane in the header status bar (3-panel mode only). */
+  /** Node rendered above this pane in the header's status bar. */
   status?: ReactNode
 }
 
@@ -187,7 +187,9 @@ export interface ConflictResolverProps {
   modelPathPrefix: string
   editor?: ConflictResolverEditorConfig
   /** `false` hides the toolbar/status header entirely; an object toggles individual buttons
-   * (see ConflictResolverActionsConfig). The header only renders in 3-panel mode. */
+   * (see ConflictResolverActionsConfig). In 2-panel (`isTwoWay`) mode, the merge-only actions
+   * (apply-non-conflicting, auto-merge, reset) are always forced off regardless of this config —
+   * there's no merge target to write into, just two read-only panes. */
   header?: boolean | ConflictResolverActionsConfig
   /** Wand/auto-merge provider: resolves to the merged text for the result pane. The wand
    * button only shows when this is wired. */
@@ -199,6 +201,7 @@ export interface ConflictResolverProps {
   /** Draw the JetBrains-style hermetic 2px top/bottom edges around each block (and the matching
    * closing edges on the hatched filler zones). Off by default — the colored fills alone. */
   showBlockBorders?: boolean
+  /** Initial collapse-unchanged state — the header's own toggle button controls it from there. */
   defaultCollapseUnchanged?: boolean
 }
 
@@ -2245,7 +2248,13 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       ]
     }, [isTwoWay, original, modified, modelPathPrefix, staticView, initialCenterText])
 
-    const headerActions: ConflictResolverActionsConfig = typeof header === 'object' ? header : {}
+    const headerActions: ConflictResolverActionsConfig = {
+      ...(typeof header === 'object' ? header : {}),
+      // Two read-only panes, no merge target to write into or reset, and no host-side
+      // `onRecalculate` wired to the right query key for a raw two-way diff — these buttons only
+      // make sense in 3-panel mode, regardless of what the host's `header` config says.
+      ...(isTwoWay ? { applyNonConflicting: false, autoMerge: false, reset: false, recalculate: false } : {}),
+    }
 
     const currentLineHeight = (monacoRef.current && centerEditorRef.current)
       ? centerEditorRef.current.getOption(monacoRef.current.editor.EditorOption.lineHeight)
@@ -2253,7 +2262,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
 
     return (
       <div className="flex h-full w-full flex-col overflow-hidden bg-[#1a1a1a]">
-        {!isTwoWay && header !== false && (
+        {header !== false && (
           <ConflictResolverHeader
             actions={headerActions}
             whitespaceMode={whitespaceMode}

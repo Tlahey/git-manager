@@ -3,24 +3,20 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 export type MenuAlign = 'left' | 'right'
 
 interface AnchoredMenuOptions {
-  /** Alignement horizontal du menu par rapport au trigger. */
+  /** Horizontal alignment of the menu relative to the trigger. */
   align?: MenuAlign
-  /** Décalage vertical sous le trigger (px). */
+  /** Vertical offset below the trigger (px). */
   offset?: number
 }
 
 /**
- * Gère l'état ouvert/fermé d'un menu déroulant ancré sur un bouton :
- * positionnement en `position: fixed` (rendu via portal), fermeture au clic
- * extérieur et à la touche Échap. Mutualise la logique répétée dans la barre
- * d'actions (RepoSelector, FetchButton, UserProfile, BranchButton, BranchContext)
- * et, au-delà, par tout menu ancré ailleurs dans l'app (NotificationDropdown,
- * NewTabMenu) — d'où son emplacement dans `hooks/` plutôt que dans un dossier
- * de domaine.
+ * Drives the open/closed state of a dropdown menu anchored to a trigger button:
+ * `position: fixed` placement (rendered via portal by the caller), closes on
+ * outside click and Escape.
  */
 export function useAnchoredMenu({ align = 'left', offset = 6 }: AnchoredMenuOptions = {}) {
   const [open, setOpen] = useState(false)
-  const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number }>({ top: 0, left: 0 })
 
   const containerRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -29,9 +25,16 @@ export function useAnchoredMenu({ align = 'left', offset = 6 }: AnchoredMenuOpti
   useLayoutEffect(() => {
     if (!open || !triggerRef.current) return
     const rect = triggerRef.current.getBoundingClientRect()
-    const top = rect.bottom + offset
     const left = align === 'right' ? rect.right : rect.left
-    setPos({ top, left })
+    // Flip the menu above the trigger when it sits in the lower part of the window (same
+    // heuristic as ContextMenuSurface) so it renders within the window instead of being
+    // clipped past the bottom edge — e.g. a footer button's dropdown.
+    const openUp = rect.bottom > window.innerHeight * 0.6
+    if (openUp) {
+      setPos({ bottom: window.innerHeight - rect.top + offset, left })
+    } else {
+      setPos({ top: rect.bottom + offset, left })
+    }
   }, [open, align, offset])
 
   useEffect(() => {

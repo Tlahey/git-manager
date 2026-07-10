@@ -9,7 +9,7 @@ import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useBranches } from '../../hooks/useBranches'
 import { apiCheckoutBranch } from '../../api/git.api'
 import { apiOpenRepo } from '../../api/repo.api'
-import { useAnchoredMenu } from '../../hooks/useAnchoredMenu'
+import { useAnchoredMenu } from '@git-manager/components'
 
 /** Sélecteur de la branche courante du dépôt actif (checkout au clic). */
 export function BranchContext() {
@@ -93,7 +93,7 @@ export function BranchContext() {
         createPortal(
           <div
             ref={menuRef}
-            style={{ position: 'fixed', top: pos.top, left: pos.left }}
+            style={{ position: 'fixed', top: pos.top, bottom: pos.bottom, left: pos.left }}
             className="z-50 w-64 overflow-hidden rounded-md border border-border bg-popover shadow-lg"
           >
             <div className="flex items-center gap-2 border-b border-border px-2.5 py-2">

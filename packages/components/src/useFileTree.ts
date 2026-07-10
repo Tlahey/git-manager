@@ -125,12 +125,16 @@ function findNodeByPath(root: Record<string, TreeNode>, path: string): TreeNode 
  * Builds a Composite file tree (folders containing files/folders, with aggregated per-folder
  * stats) from a flat file list, plus the search/expand-collapse UI state that goes with
  * rendering it. `resetKey` clears the expanded-folders state when it changes (e.g. switching
- * commit/repo).
+ * commit/repo). `defaultExpanded` starts (and resets to) every folder expanded instead of
+ * collapsed — used by the "Commit Changes" file tree, where everything should be visible upfront.
  */
-export function useFileTree<T extends FileTreeInputFile>(files: T[], resetKey: string) {
+export function useFileTree<T extends FileTreeInputFile>(
+  files: T[],
+  resetKey: string,
+  options?: { defaultExpanded?: boolean }
+) {
+  const defaultExpanded = options?.defaultExpanded ?? false
   const [searchQuery, setSearchQuery] = useState('')
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
-  const [buttonState, setButtonState] = useState<'expand' | 'collapse'>('expand')
 
   const filteredFiles = useMemo(() => {
     if (!searchQuery.trim()) return files
@@ -150,6 +154,13 @@ export function useFileTree<T extends FileTreeInputFile>(files: T[], resetKey: s
     })
     return folders
   }, [files])
+
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() =>
+    defaultExpanded ? new Set(allFolderPaths) : new Set()
+  )
+  const [buttonState, setButtonState] = useState<'expand' | 'collapse'>(
+    defaultExpanded ? 'collapse' : 'expand'
+  )
 
   const treeRoot = useMemo(() => buildFileTree(filteredFiles), [filteredFiles])
 
@@ -172,9 +183,17 @@ export function useFileTree<T extends FileTreeInputFile>(files: T[], resetKey: s
 
   // Reset expanded folders when the tree's identity changes (e.g. switching commit/repo)
   useEffect(() => {
-    setExpandedFolders(new Set())
-    setButtonState('expand')
-  }, [resetKey])
+    if (defaultExpanded) {
+      setExpandedFolders(new Set(allFolderPaths))
+      setButtonState('collapse')
+    } else {
+      setExpandedFolders(new Set())
+      setButtonState('expand')
+    }
+    // allFolderPaths intentionally excluded: only the tree's identity (resetKey) should
+    // re-trigger this, not every recomputation of allFolderPaths from in-place file changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetKey, defaultExpanded])
 
   function toggleFolder(folderPath: string) {
     const isExpanding = !expandedFolders.has(folderPath)

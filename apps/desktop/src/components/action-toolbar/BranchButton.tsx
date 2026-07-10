@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { GitBranch } from 'lucide-react'
 import { Spinner } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
-import { useAnchoredMenu } from '../../hooks/useAnchoredMenu'
+import { useAnchoredMenu } from '@git-manager/components'
 
 interface BranchButtonProps {
   /** Référence de départ (branche courante ou HEAD si detached). */
@@ -53,7 +53,7 @@ export function BranchButton({ fromRef, onCreate }: BranchButtonProps) {
         createPortal(
           <div
             ref={menuRef}
-            style={{ position: 'fixed', top: pos.top, left: pos.left }}
+            style={{ position: 'fixed', top: pos.top, bottom: pos.bottom, left: pos.left }}
             className="z-50 w-64 rounded-md border border-border bg-popover p-2.5 shadow-lg"
           >
             <form onSubmit={handleSubmit}>

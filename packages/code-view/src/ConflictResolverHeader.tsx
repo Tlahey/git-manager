@@ -354,17 +354,22 @@ export function ConflictResolverHeader({
           {statuses[1]}
         </div>
 
-        {/* Right Gap Filler */}
-        <div style={{ width: gapWidth }} className="shrink-0" />
+        {/* 2-panel (isTwoWay) mode has no third pane — panelWidths[2] is 0 then. */}
+        {panelWidths[2] > 0 && (
+          <>
+            {/* Right Gap Filler */}
+            <div style={{ width: gapWidth }} className="shrink-0" />
 
-        {/* C. Au-dessus de l'éditeur DROIT */}
-        <div
-          style={{ flex: `${panelWidths[2]} 1 0%` }}
-          className="flex items-center px-3 min-w-0"
-          data-testid="merge-header-right-status"
-        >
-          {statuses[2]}
-        </div>
+            {/* C. Au-dessus de l'éditeur DROIT */}
+            <div
+              style={{ flex: `${panelWidths[2]} 1 0%` }}
+              className="flex items-center px-3 min-w-0"
+              data-testid="merge-header-right-status"
+            >
+              {statuses[2]}
+            </div>
+          </>
+        )}
 
       </div>
     </div>

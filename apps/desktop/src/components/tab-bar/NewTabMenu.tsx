@@ -5,7 +5,7 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { apiOpenRepo, apiInitRepo } from '../../api/repo.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
-import { useAnchoredMenu } from '../../hooks/useAnchoredMenu'
+import { useAnchoredMenu } from '@git-manager/components'
 import { CloneRepoDialog } from './CloneRepoDialog'
 
 interface MenuItemProps {
@@ -91,7 +91,7 @@ export function NewTabMenu() {
         createPortal(
           <div
             ref={menuRef}
-            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }}
+            style={{ position: 'fixed', top: menuPos.top, bottom: menuPos.bottom, left: menuPos.left }}
             className="z-50 w-60 rounded-md border border-border bg-popover p-1 shadow-lg"
           >
             <MenuItem

@@ -8,7 +8,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { Bell, CheckCheck, Trash2, Play, Sparkles } from 'lucide-react'
 import { getNotificationIcon, getNotificationText } from './utils'
 import { showNativeNotification } from '../../hooks/useNotificationWatcher'
-import { useAnchoredMenu } from '../../hooks/useAnchoredMenu'
+import { useAnchoredMenu } from '@git-manager/components'
 import type { TFunction } from '@git-manager/i18n'
 
 function formatRelativeTime(timestamp: number, t: TFunction): string {
@@ -104,6 +104,7 @@ export function NotificationDropdown() {
             style={{
               position: 'fixed',
               top: pos.top,
+              bottom: pos.bottom,
               left: pos.left,
               transform: 'translateX(-100%)',
             }}

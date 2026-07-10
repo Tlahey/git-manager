@@ -1,10 +1,16 @@
-import React, { useCallback, useState, useRef } from 'react'
+import React, { useCallback, useState } from 'react'
 
-export function useCommitDetailsResize(defaultWidth = 400, minWidth = 350, maxWidth = 700) {
+/**
+ * Drag-to-resize a panel's width via a vertical handle. Spread `resizeProps` on
+ * the handle element (rendered with `cursor-col-resize`); dragging left grows
+ * the panel to the handle's right (e.g. a details sidebar anchored to the
+ * right edge).
+ */
+export function useHorizontalResize(defaultWidth = 400, minWidth = 350, maxWidth = 700) {
   const [width, setWidth] = useState(defaultWidth)
-  const isDragging = useRef(false)
-  const startX = useRef(0)
-  const startWidth = useRef(defaultWidth)
+  const isDragging = React.useRef(false)
+  const startX = React.useRef(0)
+  const startWidth = React.useRef(defaultWidth)
 
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     isDragging.current = true

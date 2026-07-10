@@ -5,12 +5,11 @@ import { createPortal } from 'react-dom'
 import { ChevronDown, Pencil, Combine, Trash2, Undo2 } from 'lucide-react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { emit } from '@tauri-apps/api/event'
-import { Button, Spinner, Textarea, cn } from '@git-manager/ui'
+import { Button, Spinner, Textarea, cn, type BadgeProps } from '@git-manager/ui'
+import { useAnchoredMenu, useHorizontalResize, StepRailRow, type StepRailVariant } from '@git-manager/components'
 import { apiListRebaseCommits, apiRunInteractiveRebase } from '../../api/git.api'
 import { useTheme } from '../../hooks/useTheme'
 import { useMonacoTheme } from '../../hooks/useMonacoTheme'
-import { useAnchoredMenu } from '../../hooks/useAnchoredMenu'
-import { useCommitDetailsResize } from '../../hooks/useCommitDetailsResize'
 import { queryClient } from '../../lib/queryClient'
 import {
   type RebasePlanStep,
@@ -22,8 +21,23 @@ import {
   validatePlan,
   toTodoSteps,
 } from './rebasePlan'
-import { RebaseStepRow } from './components/RebaseStepRow'
 import { RebaseCommitDetails } from './components/RebaseCommitDetails'
+
+/** Badge color per rebase action — git-rebase-specific vocabulary, so it stays
+ * app-side rather than living in the generic `StepRailRow` package component. */
+const ACTION_BADGE_VARIANTS: Record<RebasePlanStep['action'], BadgeProps['variant']> = {
+  pick: 'secondary',
+  reword: 'warning',
+  squash: 'success',
+  fixup: 'success',
+  drop: 'destructive',
+}
+
+function railVariantForAction(action: RebasePlanStep['action']): StepRailVariant {
+  if (action === 'drop') return 'dropped'
+  if (action === 'squash' || action === 'fixup') return 'combined'
+  return 'normal'
+}
 
 interface RebasingCommitWindowProps {
   repoPath: string
@@ -59,7 +73,7 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
   const dragFrom = useRef<number | null>(null)
   const [dragOver, setDragOver] = useState<number | null>(null)
 
-  const { width: detailsWidth, resizeProps } = useCommitDetailsResize(420)
+  const { width: detailsWidth, resizeProps } = useHorizontalResize(420)
   const squashMenu = useAnchoredMenu({ align: 'left' })
 
   const selectedSteps = plan.filter((s) => selected.includes(s.commit.oid))
@@ -165,7 +179,7 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
             createPortal(
               <div
                 ref={squashMenu.menuRef}
-                style={{ position: 'fixed', top: squashMenu.pos.top, left: squashMenu.pos.left }}
+                style={{ position: 'fixed', top: squashMenu.pos.top, bottom: squashMenu.pos.bottom, left: squashMenu.pos.left }}
                 className="z-50 min-w-[220px] rounded-md border border-border bg-popover py-1 text-popover-foreground shadow-lg"
               >
                 <button
@@ -214,12 +228,17 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
           ) : (
             plan.map((step, index) => (
               <div key={step.commit.oid} className={cn(dragOver === index && 'border-t-2 border-primary')}>
-                <RebaseStepRow
-                  step={step}
+                <StepRailRow
                   index={index}
                   isLast={index === plan.length - 1}
                   isSelected={selected.includes(step.commit.oid)}
-                  actionLabel={step.action}
+                  variant={railVariantForAction(step.action)}
+                  title={step.action === 'reword' && step.message ? step.message.split('\n')[0] : step.commit.subject}
+                  subtitle={`${step.commit.author.name} · ${new Date(step.commit.author.timestamp * 1000).toLocaleDateString()}`}
+                  badgeLabel={step.action}
+                  badgeVariant={ACTION_BADGE_VARIANTS[step.action]}
+                  trailingCaption={step.commit.shortOid}
+                  testId={`rebase-step-${step.commit.shortOid}`}
                   onRowClick={handleRowClick}
                   onDragStart={(i) => (dragFrom.current = i)}
                   onDragOverRow={setDragOver}
@@ -258,7 +277,7 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
         />
         <div style={{ width: detailsWidth }} className="shrink-0 border-l border-border bg-card/30">
           {focusedStep ? (
-            <RebaseCommitDetails repoPath={repoPath} commit={focusedStep.commit} />
+            <RebaseCommitDetails key={focusedStep.commit.oid} repoPath={repoPath} commit={focusedStep.commit} />
           ) : (
             <div className="flex h-full items-center justify-center px-6 text-center text-xs text-muted-foreground">
               {t('rebaseEditor.selectHint')}

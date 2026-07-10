@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom'
 import { ArrowDownToLine, ChevronDown } from 'lucide-react'
 import { Spinner } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
-import { useAnchoredMenu } from '../../hooks/useAnchoredMenu'
+import { useAnchoredMenu } from '@git-manager/components'
 
 interface FetchButtonProps {
   loading?: boolean
@@ -57,7 +57,7 @@ export function FetchButton({ loading, onFetch, onFetchAll, onFetchPrune }: Fetc
         createPortal(
           <div
             ref={menuRef}
-            style={{ position: 'fixed', top: pos.top, left: pos.left }}
+            style={{ position: 'fixed', top: pos.top, bottom: pos.bottom, left: pos.left }}
             className="z-50 w-52 rounded-md border border-border bg-popover p-1 shadow-lg"
           >
             <button

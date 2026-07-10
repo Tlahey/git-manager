@@ -26,6 +26,9 @@ importers:
       '@git-manager/code-view':
         specifier: workspace:*
         version: link:../../packages/code-view
+      '@git-manager/components':
+        specifier: workspace:*
+        version: link:../../packages/components
       '@git-manager/git-types':
         specifier: workspace:*
         version: link:../../packages/git-types
@@ -233,6 +236,34 @@ importers:
       vitest:
         specifier: ^3.0.7
         version: 3.2.7(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@1.21.7)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@5.9.3))
+
+  packages/components:
+    dependencies:
+      '@git-manager/ui':
+        specifier: workspace:*
+        version: link:../ui
+      lucide-react:
+        specifier: ^0.468.0
+        version: 0.468.0(react@18.3.1)
+      react:
+        specifier: ^18.0.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.0.0
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@git-manager/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: ^18.3.1
+        version: 18.3.7(@types/react@18.3.31)
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
 
   packages/config:
     devDependencies:

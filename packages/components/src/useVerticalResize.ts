@@ -1,15 +1,15 @@
-import React, { useCallback, useState, useRef } from 'react'
+import React, { useCallback, useState } from 'react'
 
 /**
- * Vertical counterpart of `useCommitDetailsResize`: drag a horizontal handle to
- * resize a panel's height. Spread `resizeProps` on the handle element (rendered
- * with `cursor-row-resize`); dragging down grows the panel above the handle.
+ * Drag-to-resize a panel's height via a horizontal handle. Spread `resizeProps`
+ * on the handle element (rendered with `cursor-row-resize`); dragging down
+ * grows the panel above the handle.
  */
 export function useVerticalResize(defaultHeight = 200, minHeight = 80, maxHeight = 600) {
   const [height, setHeight] = useState(defaultHeight)
-  const isDragging = useRef(false)
-  const startY = useRef(0)
-  const startHeight = useRef(defaultHeight)
+  const isDragging = React.useRef(false)
+  const startY = React.useRef(0)
+  const startHeight = React.useRef(defaultHeight)
 
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     isDragging.current = true

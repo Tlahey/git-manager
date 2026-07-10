@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom'
 import { User, UserPlus } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { useSettingsStore } from '../../stores/settings.store'
-import { useAnchoredMenu } from '../../hooks/useAnchoredMenu'
+import { useAnchoredMenu } from '@git-manager/components'
 import type { Section } from '../../app/settings/SettingsPage'
 
 interface UserProfileProps {
@@ -58,7 +58,7 @@ export function UserProfile({ onOpenSettings }: UserProfileProps) {
         createPortal(
           <div
             ref={menuRef}
-            style={{ position: 'fixed', top: pos.top, left: pos.left, transform: 'translateX(-100%)' }}
+            style={{ position: 'fixed', top: pos.top, bottom: pos.bottom, left: pos.left, transform: 'translateX(-100%)' }}
             className="z-50 w-60 rounded-md border border-border bg-popover p-1 shadow-lg"
           >
             <div className="flex items-center gap-2.5 px-2 py-2">

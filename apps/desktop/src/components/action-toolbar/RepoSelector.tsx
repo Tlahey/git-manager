@@ -4,7 +4,7 @@ import { ChevronDown, GitBranch, Search } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
-import { useAnchoredMenu } from '../../hooks/useAnchoredMenu'
+import { useAnchoredMenu } from '@git-manager/components'
 
 /** Dropdown de sélection / recherche du dépôt courant. */
 export function RepoSelector() {
@@ -54,7 +54,7 @@ export function RepoSelector() {
         createPortal(
           <div
             ref={menuRef}
-            style={{ position: 'fixed', top: pos.top, left: pos.left }}
+            style={{ position: 'fixed', top: pos.top, bottom: pos.bottom, left: pos.left }}
             className="z-50 w-72 overflow-hidden rounded-md border border-border bg-popover shadow-lg"
           >
             <div className="flex items-center gap-2 border-b border-border px-2.5 py-2">

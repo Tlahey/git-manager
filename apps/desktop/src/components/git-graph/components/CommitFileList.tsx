@@ -14,7 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import { apiStageFile, apiUnstageFile, apiDiscardFileChanges } from '../../../api/git.api'
-import { useFileTree, getSortedNodes, type TreeNode } from '../../../hooks/useFileTree'
+import { useFileTree, getSortedNodes, type TreeNode } from '@git-manager/components'
 
 export interface ProcessedFileItem {
   path: string
@@ -42,6 +42,10 @@ interface CommitFileListProps {
   /** Overrides the `useFileTree` cache key (defaults to `repoPath:commitOid:isWip`) — needed when
    * rendering more than one `CommitFileList` for the same repo/commit (e.g. conflicted + resolved). */
   cacheKey?: string
+  /** Shows a checkbox in front of each folder (staging/unstaging every file below it), starts
+   * every folder expanded, and adds a "N file(s)" caption under each folder name — the JetBrains
+   * "Commit Changes" tree style. Off by default; only meaningful together with `isWip`. */
+  folderCheckboxes?: boolean
 }
 
 export function CommitFileList({
@@ -56,6 +60,7 @@ export function CommitFileList({
   hideStats,
   hideSearch,
   cacheKey,
+  folderCheckboxes,
 }: CommitFileListProps) {
   const { t } = useTranslation('git')
   const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree')
@@ -88,7 +93,9 @@ export function CommitFileList({
     buttonState,
     toggleFolder,
     toggleExpandAll: handleToggleExpandAll,
-  } = useFileTree(processedFiles, cacheKey ?? `${repoPath}:${commitOid}:${isWip}`)
+  } = useFileTree(processedFiles, cacheKey ?? `${repoPath}:${commitOid}:${isWip}`, {
+    defaultExpanded: folderCheckboxes,
+  })
 
   // Staging actions
   async function handleStage(file: string) {
@@ -125,10 +132,35 @@ export function CommitFileList({
     untracked: '?'
   }
 
+  function collectDescendantFiles(node: TreeNode): TreeNode[] {
+    if (!node.isFolder) return [node]
+    if (!node.children) return []
+    return Object.values(node.children).flatMap(collectDescendantFiles)
+  }
+
+  async function handleToggleFolder(node: TreeNode, allStaged: boolean) {
+    const paths = collectDescendantFiles(node).map((f) => f.path)
+    if (allStaged) {
+      await Promise.all(paths.map((path) => apiUnstageFile(repoPath, path)))
+    } else {
+      await Promise.all(paths.map((path) => apiStageFile(repoPath, path)))
+    }
+    onRefresh?.()
+  }
+
   function renderTreeNode(node: TreeNode, depth = 0) {
     const isExpanded = expandedFolders.has(node.path)
 
     if (node.isFolder) {
+      const totalFiles = node.stats
+        ? node.stats.added + node.stats.modified + node.stats.deleted + node.stats.renamed
+        : 0
+      const showFolderCheckbox = folderCheckboxes && isWip
+      const descendantFiles = showFolderCheckbox ? collectDescendantFiles(node) : []
+      const stagedCount = descendantFiles.filter((f) => f.staged).length
+      const allStaged = descendantFiles.length > 0 && stagedCount === descendantFiles.length
+      const someStaged = stagedCount > 0 && !allStaged
+
       return (
         <div key={node.path} className="flex flex-col">
           <div
@@ -149,12 +181,37 @@ export function CommitFileList({
             ) : (
               <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
             )}
+            {showFolderCheckbox && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleToggleFolder(node, allStaged)
+                }}
+                className={cn(
+                  "h-4 w-4 flex items-center justify-center text-[10px] font-bold border rounded transition-colors shrink-0",
+                  allStaged || someStaged
+                    ? "bg-primary border-primary text-white"
+                    : "border-border hover:border-primary/60 text-transparent hover:text-muted-foreground"
+                )}
+                title={allStaged ? 'Unstage folder' : 'Stage folder'}
+                data-testid={`file-tree-folder-checkbox-${node.path}`}
+              >
+                {someStaged ? '-' : '✓'}
+              </button>
+            )}
             {isExpanded ? (
               <FolderOpen className="h-3.5 w-3.5 text-blue-400 shrink-0" />
             ) : (
               <Folder className="h-3.5 w-3.5 text-blue-400 shrink-0" />
             )}
-            <span className="truncate text-foreground/90 flex-1 min-w-0">{node.name}</span>
+            <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
+              <span className="truncate text-foreground/90">{node.name}</span>
+              {folderCheckboxes && (
+                <span className="shrink-0 text-[10px] font-normal text-muted-foreground/60">
+                  {t('commitDetails.fileCount', { count: totalFiles })}
+                </span>
+              )}
+            </div>
             {node.stats && (
               <div className="flex items-center gap-1 shrink-0 ml-2 select-none text-[9px] font-bold">
                 {node.stats.added > 0 && (
@@ -192,11 +249,15 @@ export function CommitFileList({
     }
 
     const fileStatus = node.status ?? 'modified'
+    // Folder rows gain a checkbox (+ its leading gap) when `folderCheckboxes` is on, pushing
+    // their name further right — files need the same extra indent per level to stay aligned
+    // under their parent folder's name instead of under its checkbox.
+    const indentStep = folderCheckboxes ? 36 : 12
     return (
       <div
         key={node.path}
         className="group/file flex items-center justify-between py-1 px-2 text-xs hover:bg-accent rounded transition-colors cursor-pointer w-full min-w-0"
-        style={{ paddingLeft: `${depth * 12 + 8}px` }}
+        style={{ paddingLeft: `${depth * indentStep + 8}px` }}
         onClick={() =>
           onSelectFileDiff?.({
             path: node.path,
