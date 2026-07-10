@@ -12,8 +12,7 @@
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "fixture:conflict": "bash scripts/setup-conflict-test.sh"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@git-manager/code-view": "workspace:*",

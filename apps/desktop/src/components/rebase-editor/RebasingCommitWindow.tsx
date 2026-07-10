@@ -1,12 +1,21 @@
 import { useMemo, useRef, useState } from 'react'
 import { useQuery, QueryClientProvider } from '@tanstack/react-query'
 import { useTranslation } from '@git-manager/i18n'
-import { createPortal } from 'react-dom'
 import { ChevronDown, Pencil, Combine, Trash2, Undo2 } from 'lucide-react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { emit } from '@tauri-apps/api/event'
-import { Button, Spinner, Textarea, cn, type BadgeProps } from '@git-manager/ui'
-import { useAnchoredMenu, useHorizontalResize, StepRailRow, type StepRailVariant } from '@git-manager/components'
+import {
+  Button,
+  Spinner,
+  Textarea,
+  cn,
+  type BadgeProps,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@git-manager/ui'
+import { useHorizontalResize, StepRailRow, type StepRailVariant } from '@git-manager/components'
 import { apiListRebaseCommits, apiRunInteractiveRebase } from '../../api/git.api'
 import { useTheme } from '../../hooks/useTheme'
 import { useMonacoTheme } from '../../hooks/useMonacoTheme'
@@ -74,7 +83,6 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
   const [dragOver, setDragOver] = useState<number | null>(null)
 
   const { width: detailsWidth, resizeProps } = useHorizontalResize(420)
-  const squashMenu = useAnchoredMenu({ align: 'left' })
 
   const selectedSteps = plan.filter((s) => selected.includes(s.commit.oid))
   const focusedStep = selectedSteps.length > 0 ? selectedSteps[selectedSteps.length - 1] : null
@@ -110,7 +118,6 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
   }
 
   function handleCombine(mode: 'squash' | 'fixup') {
-    squashMenu.setOpen(false)
     if (selected.length < 2) return
     // The oldest selected row (lowest index) is the combine target.
     const ordered = plan.filter((s) => selected.includes(s.commit.oid)).map((s) => s.commit.oid)
@@ -161,45 +168,29 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
           {t('rebaseEditor.reword')}
         </Button>
 
-        <div ref={squashMenu.containerRef}>
-          <Button
-            ref={squashMenu.triggerRef}
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1 px-2.5 text-[10px] font-bold"
-            disabled={selectedSteps.length < 2 || busy}
-            onClick={() => squashMenu.setOpen((v) => !v)}
-            data-testid="rebase-squash"
-          >
-            <Combine className="h-3.5 w-3.5" />
-            {t('rebaseEditor.squash')}
-            <ChevronDown className="h-3 w-3" />
-          </Button>
-          {squashMenu.open &&
-            createPortal(
-              <div
-                ref={squashMenu.menuRef}
-                style={{ position: 'fixed', top: squashMenu.pos.top, bottom: squashMenu.pos.bottom, left: squashMenu.pos.left }}
-                className="z-50 min-w-[220px] rounded-md border border-border bg-popover py-1 text-popover-foreground shadow-lg"
-              >
-                <button
-                  type="button"
-                  className="flex w-full items-center px-3 py-1.5 text-left text-xs hover:bg-accent"
-                  onClick={() => handleCombine('squash')}
-                >
-                  {t('rebaseEditor.squashKeepMessages')}
-                </button>
-                <button
-                  type="button"
-                  className="flex w-full items-center px-3 py-1.5 text-left text-xs hover:bg-accent"
-                  onClick={() => handleCombine('fixup')}
-                >
-                  {t('rebaseEditor.fixupDiscardMessage')}
-                </button>
-              </div>,
-              document.body,
-            )}
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 px-2.5 text-[10px] font-bold"
+              disabled={selectedSteps.length < 2 || busy}
+              data-testid="rebase-squash"
+            >
+              <Combine className="h-3.5 w-3.5" />
+              {t('rebaseEditor.squash')}
+              <ChevronDown className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-[220px]">
+            <DropdownMenuItem onSelect={() => handleCombine('squash')} className="text-xs">
+              {t('rebaseEditor.squashKeepMessages')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => handleCombine('fixup')} className="text-xs">
+              {t('rebaseEditor.fixupDiscardMessage')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Button
           variant="outline"

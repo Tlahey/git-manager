@@ -1,6 +1,3 @@
-export { useAnchoredMenu } from './useAnchoredMenu'
-export type { MenuAlign } from './useAnchoredMenu'
-
 export { useHorizontalResize } from './useHorizontalResize'
 export { useVerticalResize } from './useVerticalResize'
 

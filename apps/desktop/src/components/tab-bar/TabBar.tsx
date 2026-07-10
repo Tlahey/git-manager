@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from '../../stores/repoUI.store'
-import { LayoutDashboard, Trophy, Rocket, Settings, X, GitBranch } from 'lucide-react'
+import { useDevFixtureReposStore } from '../../stores/devFixtureRepos.store'
+import { LayoutDashboard, Trophy, Rocket, Settings, X, GitBranch, FlaskConical } from 'lucide-react'
 import { useGameStore } from '../../stores/game.store'
 import { NewTabMenu } from './NewTabMenu'
 import { UserProfile } from '../action-toolbar/UserProfile'
@@ -46,8 +47,9 @@ function PinnedTab({ icon, label, active, onClick, hideLabel }: PinnedTabProps) 
 const isMac = typeof window !== 'undefined' && navigator.userAgent.includes('Mac')
 
 export function TabBar({ onOpenSettings }: TabBarProps) {
-  const { openTabs, activeTab, setActiveTab, closeTab, reorderTabs } = useRepoUIStore()
+  const { openTabs, activeTab, setActiveTab, setActiveRepo, closeTab, reorderTabs } = useRepoUIStore()
   const { repoCache } = useRepoDataStore()
+  const { fixtures, removeFixture } = useDevFixtureReposStore()
   const rewardsEnabled = useGameStore((s) => s.rewardsEnabled)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [overIndex, setOverIndex] = useState<number | null>(null)
@@ -138,6 +140,40 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
                 onClick={(e) => {
                   e.stopPropagation()
                   closeTab(path)
+                }}
+              >
+                <X className="h-3 w-3" />
+              </span>
+            </button>
+          )
+        })}
+
+        {/* Onglets de fixtures dev (pnpm dev:import-repo) — jamais persistés, cf. devFixtureRepos.store.ts */}
+        {fixtures.map((fixture) => {
+          const isActive = fixture.path === activeTab
+          return (
+            <button
+              key={fixture.path}
+              title={fixture.description}
+              onClick={() => setActiveRepo(fixture.path)}
+              className={`group relative flex h-9 min-w-[120px] max-w-[200px] shrink-0 items-center gap-2 border-r border-dashed border-amber-500/50 px-3 text-xs transition-colors ${
+                isActive
+                  ? 'bg-background text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-amber-500'
+                  : 'text-muted-foreground hover:bg-background/40 hover:text-foreground'
+              }`}
+            >
+              <FlaskConical className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+              <span className="flex-1 truncate text-left font-medium">{fixture.name}</span>
+              <span
+                role="button"
+                tabIndex={-1}
+                className={`ml-auto rounded p-0.5 transition-opacity hover:bg-destructive/20 ${
+                  isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  removeFixture(fixture.path)
+                  if (isActive) setActiveTab(DASHBOARD_TAB)
                 }}
               >
                 <X className="h-3 w-3" />

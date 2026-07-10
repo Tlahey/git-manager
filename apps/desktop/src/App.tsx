@@ -12,6 +12,7 @@ import { useTheme } from './hooks/useTheme'
 import { useMonacoTheme } from './hooks/useMonacoTheme'
 import { useNotificationWatcher } from './hooks/useNotificationWatcher'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { useDevFixtureImport } from './hooks/useDevFixtureImport'
 import { Footer } from './components/footer/Footer'
 
 import { TrophyToast } from './components/trophy/TrophyToast'
@@ -29,6 +30,7 @@ export default function App() {
   useTheme()
   useMonacoTheme()
   useNotificationWatcher()
+  useDevFixtureImport()
 
   useKeyboardShortcuts({
     onOpenSettings: () => handleOpenSettings('general'),

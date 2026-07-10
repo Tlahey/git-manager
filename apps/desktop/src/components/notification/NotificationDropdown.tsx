@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useNotificationStore, type AppNotification } from '../../stores/notification.store'
 import { useRepoUIStore, PULL_REQUESTS_TAB } from '../../stores/repoUI.store'
 import { useLaunchpadStore } from '../../stores/launchpad.store'
@@ -8,7 +7,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { Bell, CheckCheck, Trash2, Play, Sparkles } from 'lucide-react'
 import { getNotificationIcon, getNotificationText } from './utils'
 import { showNativeNotification } from '../../hooks/useNotificationWatcher'
-import { useAnchoredMenu } from '@git-manager/components'
+import { Popover, PopoverTrigger, PopoverContent } from '@git-manager/ui'
 import type { TFunction } from '@git-manager/i18n'
 
 function formatRelativeTime(timestamp: number, t: TFunction): string {
@@ -49,14 +48,7 @@ export function NotificationDropdown() {
   const [simPrId, setSimPrId] = useState('')
   const [simAction, setSimAction] = useState<'merge' | 'close' | 'request_review' | 'approve' | 'new_pr' | 'ci_success' | 'ci_failed'>('merge')
 
-  const {
-    open: menuOpen,
-    setOpen: setMenuOpen,
-    pos,
-    containerRef,
-    triggerRef: buttonRef,
-    menuRef,
-  } = useAnchoredMenu({ align: 'right' })
+  const [menuOpen, setMenuOpen] = useState(false)
 
   // Initialize simulator PR selection
   useEffect(() => {
@@ -80,36 +72,26 @@ export function NotificationDropdown() {
   }
 
   return (
-    <div ref={containerRef} className="relative flex items-center">
-      <button
-        ref={buttonRef}
-        onClick={() => setMenuOpen(!menuOpen)}
-        className={`relative flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground ${
-          menuOpen ? 'bg-accent text-foreground' : ''
-        }`}
-        title={t('notifications.title')}
+    <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className={`relative flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground ${
+            menuOpen ? 'bg-accent text-foreground' : ''
+          }`}
+          title={t('notifications.title')}
+        >
+          <Bell className="h-3.5 w-3.5" />
+          {unreadCount > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[8px] font-bold text-primary-foreground ring-2 ring-card animate-pulse">
+              {unreadCount}
+            </span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        className="z-[99] flex w-80 flex-col rounded-lg border border-border bg-popover text-popover-foreground shadow-2xl backdrop-blur-sm"
       >
-        <Bell className="h-3.5 w-3.5" />
-        {unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[8px] font-bold text-primary-foreground ring-2 ring-card animate-pulse">
-            {unreadCount}
-          </span>
-        )}
-      </button>
-
-      {menuOpen &&
-        createPortal(
-          <div
-            ref={menuRef}
-            style={{
-              position: 'fixed',
-              top: pos.top,
-              bottom: pos.bottom,
-              left: pos.left,
-              transform: 'translateX(-100%)',
-            }}
-            className="z-[99] flex w-80 flex-col rounded-lg border border-border bg-popover text-popover-foreground shadow-2xl backdrop-blur-sm animate-in fade-in slide-in-from-top-2 duration-150"
-          >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
               <div className="flex items-center gap-1.5">
@@ -321,9 +303,7 @@ export function NotificationDropdown() {
                 </div>
               </div>
             )}
-          </div>,
-          document.body
-        )}
-    </div>
+      </PopoverContent>
+    </Popover>
   )
 }

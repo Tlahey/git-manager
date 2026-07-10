@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "pnpm --filter @git-manager/desktop dev",
     "dev:desktop": "turbo dev",
+    "dev:import-repo": "bash tools/git-fixtures/dev-import.sh",
+    "fixture:build": "bash tools/git-fixtures/build-all.sh",
     "build": "turbo build",
     "build:desktop": "pnpm --filter @git-manager/desktop build",
     "lint": "turbo lint",

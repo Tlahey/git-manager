@@ -23,14 +23,18 @@ pnpm --filter @git-manager/desktop typecheck
 pnpm --filter @git-manager/desktop lint
 pnpm --filter @git-manager/desktop test          # Vitest (jsdom + React Testing Library), *.test.ts(x) files
 pnpm --filter @git-manager/desktop test:watch    # same, watch mode
-pnpm --filter @git-manager/desktop fixture:conflict  # see below
+
+pnpm dev:import-repo      # rebuild every dev fixture repo (rebase conflict, fixup chain, stash
+                           # stack, detached HEAD, reset/revert history — see below) and launch
+                           # the app with them all injected as extra tabs
+pnpm fixture:build        # just rebuild the fixture repos on disk without relaunching the app
 ```
 
 Rust backend (`apps/desktop/src-tauri`): standard `cargo clippy` / `cargo fmt` from that directory; both are required to pass in CI.
 
 Frontend unit tests use Vitest (`apps/desktop/vitest.config.ts`/`vitest.setup.ts`), covering pure logic directly (e.g. `mergeBlockLayout.ts`) and components via React Testing Library with a fake `@monaco-editor/react` (see `components/merge-editor/__tests__/fakeMonacoPane.tsx`) — real Monaco can't run in jsdom. The Rust backend has no test runner wired into CI beyond `cargo clippy`/`cargo fmt`, though some modules (e.g. `git_merge_diff.rs`) have `#[cfg(test)]` unit tests you can run directly with `cargo test` from `apps/desktop/src-tauri`.
 
-To manually test the 3-way merge editor (`components/merge-editor/ThreeWayMergeEditor.tsx`) against a real, unresolved git conflict instead of just unit tests, run `pnpm --filter @git-manager/desktop fixture:conflict` (or `bash apps/desktop/scripts/setup-conflict-test.sh`) — builds a throwaway repo at `/tmp/conflict-test` with two branches merged into a conflict on a ~110-line file that hits every block kind twice (both-sided additions/deletions/modifications-per-side and genuine two-sided conflicts), then open `/tmp/conflict-test` as a repo in `pnpm dev`.
+To manually test UI against real, awkward git states (paused rebase conflicts, fixup/autosquash chains, stashes, detached HEAD, reset/revert history) instead of just unit tests, run `pnpm dev:import-repo` — it rebuilds a set of scripted repos under `/tmp/git-manager-fixtures/<scenario>/` (see `tools/git-fixtures/`, one script per scenario) and launches the app with all of them injected as extra, non-persisted tabs (never written to `localStorage`, so a plain `pnpm dev` is completely unaffected). `pnpm fixture:build` rebuilds the fixtures on disk alone, e.g. to reset a resolved conflict while `pnpm dev` is already running — re-select the tab afterwards to see the fresh state. See `tools/git-fixtures/README.md` for the full mechanism (why the manifest travels through `VITE_DEV_FIXTURES` rather than a runtime file read, and how `TabBar.tsx`/`devFixtureRepos.store.ts` keep injected repos out of persisted state) and the list of current scenarios.
 
 **This is a Tauri desktop app, not a web app.** It cannot be run or previewed in a regular browser — the frontend depends on Tauri IPC (`invoke`) which only exists inside the Tauri webview. Don't attempt to launch or test it via a browser automation tool; use `pnpm dev` to see it running as a native window.
 

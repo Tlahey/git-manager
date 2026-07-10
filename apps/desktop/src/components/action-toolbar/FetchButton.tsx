@@ -1,8 +1,6 @@
-import { createPortal } from 'react-dom'
 import { ArrowDownToLine, ChevronDown } from 'lucide-react'
-import { Spinner } from '@git-manager/ui'
+import { Spinner, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
-import { useAnchoredMenu } from '@git-manager/components'
 
 interface FetchButtonProps {
   loading?: boolean
@@ -14,15 +12,9 @@ interface FetchButtonProps {
 /** Bouton `Fetch` avec menu déroulant (Fetch all, Fetch & prune). */
 export function FetchButton({ loading, onFetch, onFetchAll, onFetchPrune }: FetchButtonProps) {
   const { t } = useTranslation('git')
-  const { open, setOpen, pos, containerRef, triggerRef, menuRef } = useAnchoredMenu()
-
-  function run(action: () => void) {
-    setOpen(false)
-    action()
-  }
 
   return (
-    <div ref={containerRef} className="relative flex shrink-0 items-stretch">
+    <div className="flex shrink-0 items-stretch">
       <button
         type="button"
         onClick={onFetch}
@@ -42,43 +34,28 @@ export function FetchButton({ loading, onFetch, onFetchAll, onFetchPrune }: Fetc
         </span>
       </button>
 
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        disabled={loading}
-        aria-label={t('toolbar.fetchAll')}
-        className="flex items-center rounded-r px-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        <ChevronDown className="h-3.5 w-3.5" />
-      </button>
-
-      {open &&
-        createPortal(
-          <div
-            ref={menuRef}
-            style={{ position: 'fixed', top: pos.top, bottom: pos.bottom, left: pos.left }}
-            className="z-50 w-52 rounded-md border border-border bg-popover p-1 shadow-lg"
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            disabled={loading}
+            aria-label={t('toolbar.fetchAll')}
+            className="flex items-center rounded-r px-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <button
-              type="button"
-              onClick={() => run(onFetchAll)}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent"
-            >
-              <ArrowDownToLine className="h-3.5 w-3.5 text-muted-foreground" />
-              {t('toolbar.fetchAll')}
-            </button>
-            <button
-              type="button"
-              onClick={() => run(onFetchPrune)}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent"
-            >
-              <ArrowDownToLine className="h-3.5 w-3.5 text-muted-foreground" />
-              {t('toolbar.fetchPrune')}
-            </button>
-          </div>,
-          document.body,
-        )}
+            <ChevronDown className="h-3.5 w-3.5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-52">
+          <DropdownMenuItem onSelect={onFetchAll} className="gap-2 text-xs">
+            <ArrowDownToLine className="h-3.5 w-3.5 text-muted-foreground" />
+            {t('toolbar.fetchAll')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={onFetchPrune} className="gap-2 text-xs">
+            <ArrowDownToLine className="h-3.5 w-3.5 text-muted-foreground" />
+            {t('toolbar.fetchPrune')}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 }

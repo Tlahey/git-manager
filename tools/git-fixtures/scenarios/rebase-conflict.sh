@@ -1,28 +1,18 @@
 #!/usr/bin/env bash
-# Builds a throwaway git repo at /tmp/conflict-test with a real, unresolved conflict (via a
-# paused rebase — see the note further down on why not a plain `git merge`) on
-# dependency-manifest.txt — for manually exercising the 3-way merge editor
-# (src/components/merge-editor/ThreeWayMergeEditor.tsx) end to end in `pnpm dev`, since it reads
-# live git conflict state rather than standalone files.
+# Paused rebase with a real, unresolved conflict on dependency-manifest.txt — for manually
+# exercising the 3-way merge editor (components/merge-editor/ThreeWayMergeEditor.tsx) end to end,
+# since it reads live git conflict state rather than standalone files.
 #
 # The file contains two occurrences each of every block kind the merge editor distinguishes:
 # ours-only addition, theirs-only addition, ours-only deletion, theirs-only deletion, ours-only
 # modification (blue), theirs-only modification (blue), and a genuine two-sided conflict (red) —
 # spread across ~110 lines so scrolling / sync-scroll / connector geometry can be tested too, not
 # just a single small block.
-#
-# Usage: bash scripts/setup-conflict-test.sh
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib.sh"
 
-TARGET_DIR=/tmp/conflict-test
-
-rm -rf "$TARGET_DIR"
-mkdir -p "$TARGET_DIR"
-cd "$TARGET_DIR"
-git init -q
-git checkout -q -b main
-git config user.email test@example.com
-git config user.name "Test User"
+fixture_init "rebase-conflict"
 
 cat > dependency-manifest.txt <<'BASE_EOF'
 # ============================================================
@@ -336,5 +326,4 @@ git commit -q -am "theirs: add theirs-metrics/beta-feature, bump json-parser/dat
 git checkout -q theirs
 git rebase ours || true
 
-echo "=== repo ready at $TARGET_DIR, currently mid-rebase (theirs onto ours) ==="
-git status --short
+register_fixture "rebase-conflict" "Paused rebase with an unresolved conflict on a ~110-line file covering every merge-editor block kind twice"

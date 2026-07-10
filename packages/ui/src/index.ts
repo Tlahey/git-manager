@@ -30,3 +30,20 @@ export {
   DialogTitle,
   DialogDescription,
 } from './components/dialog'
+
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from './components/dropdown-menu'
+
+export { Popover, PopoverTrigger, PopoverAnchor, PopoverContent } from './components/popover'
+
+export {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuLabel,
+} from './components/context-menu'
