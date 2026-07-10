@@ -169,6 +169,8 @@ export interface FakeEditorInstance {
   addCommand: (keybinding: number, handler: () => void) => void
   focus: () => void
   trigger: (source: string, actionId: string, payload: unknown) => void
+  layout: () => void
+  getOption: (id: number) => number
   /** Test-only: the most recent array passed to the decorations collection's `.set()`. */
   decorations: unknown[]
   /** Test-only: the currently-live view zones (adds minus removes across `changeViewZones` calls). */
@@ -178,6 +180,10 @@ export interface FakeEditorInstance {
 }
 
 const LINE_HEIGHT = 18
+// Arbitrary stand-in id for monaco's real `EditorOption.lineHeight` enum member — only needs to
+// round-trip through `getOption` consistently with the `editor.EditorOption.lineHeight` handed
+// out below, since ConflictResolver.tsx uses it as an opaque key.
+const EDITOR_OPTION_LINE_HEIGHT = 66
 
 function createFakeEditor(path: string, initialValue: string): FakeEditorInstance {
   const model = createFakeModel(initialValue)
@@ -214,6 +220,8 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
     addCommand: (keybinding, handler) => {
       commands.set(keybinding, handler)
     },
+    layout: () => {},
+    getOption: (id: number) => (id === EDITOR_OPTION_LINE_HEIGHT ? LINE_HEIGHT : 0),
     focus: () => {},
     trigger: (_source, actionId, _payload) => {
       // In fake environment, triggering undo or redo checks the registered command keybindings
@@ -276,6 +284,11 @@ export function FakeMonacoEditor({ path, value, onMount }: FakeMonacoEditorProps
       KeyCode: {
         KeyZ: 56,
         KeyY: 55,
+      },
+      editor: {
+        EditorOption: {
+          lineHeight: EDITOR_OPTION_LINE_HEIGHT,
+        },
       },
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps

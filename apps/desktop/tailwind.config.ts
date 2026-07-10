@@ -8,6 +8,7 @@ export default {
     './src/**/*.{ts,tsx}',
     '../../packages/ui/src/**/*.{ts,tsx}',
     '../../packages/code-view/src/**/*.{ts,tsx}',
+    '../../packages/components/src/**/*.{ts,tsx}',
   ],
   theme: {
     ...baseConfig.theme,
