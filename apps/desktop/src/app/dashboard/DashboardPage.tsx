@@ -15,6 +15,7 @@ import {
   Star,
 } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
+import { OctopusMascot } from '@git-manager/mascot'
 import { CloneRepoDialog } from '../../components/tab-bar/CloneRepoDialog'
 import { apiOpenRepo, apiScanRepos } from '../../api/repo.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
@@ -183,8 +184,8 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
         {/* Scrollable list content */}
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
           {totalKnownCount === 0 ? (
-            <div className="flex h-[300px] flex-col items-center justify-center gap-4 text-muted-foreground bg-card/20 rounded-xl border border-dashed border-border/60 p-6 max-w-lg mx-auto mt-12 shadow-sm">
-              <Folder className="h-12 w-12 opacity-30 text-primary" />
+            <div className="flex flex-col items-center justify-center gap-4 text-muted-foreground bg-card/20 rounded-xl border border-dashed border-border/60 p-6 max-w-lg mx-auto mt-12 shadow-sm">
+              <OctopusMascot size={150} label={t('dashboard.title') || 'Git Manager'} />
               <p className="text-xs text-center leading-relaxed">
                 {t('dashboard.noAllRepos') || "Aucun dépôt enregistré. Utilisez 'Ouvrir un repo' ou 'Scanner un dossier' pour commencer."}
               </p>

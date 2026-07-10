@@ -1,0 +1,58 @@
+name: Deploy Landing Page
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      # Run when the landing page, the mascot it depends on, or this workflow change
+      - 'apps/landing-page/**'
+      - 'packages/mascot/**'
+      - '.github/workflows/deploy-landing.yml'
+
+# Allow one concurrent deployment; cancel in-progress runs
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    name: Build & Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build landing page
+        run: pnpm --filter @git-manager/landing-page build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./apps/landing-page/dist
+          publish_branch: gh-pages
+          # Preserve commit history on gh-pages branch
+          keep_files: false
+          # Commit message with triggering SHA
+          commit_message: 'deploy: landing page from ${{ github.sha }}'
+          # Set custom domain if needed (uncomment and edit):
+          # cname: git-manager.example.com

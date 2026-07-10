@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "landing-page",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@git-manager/landing-page", "dev"],
+      "port": 5199
+    },
+    {
+      "name": "mascot-storybook",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@git-manager/mascot", "storybook", "--no-open"],
+      "port": 6007
+    }
+  ]
+}
