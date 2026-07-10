@@ -155,8 +155,34 @@ export async function apiDiscardFileChanges(path: string, filePath: string) {
 }
 
 export async function apiCreateFixupCommit(path: string, targetOid: string, message?: string) {
+  let previousOid: string | null = null
+  try {
+    const branches = await getBranches(path, false)
+    previousOid = branches.find((b) => b.isHead)?.commitOid ?? null
+  } catch {
+    previousOid = null
+  }
+
   const result = await callCommand('fixup', () => createFixupCommit(path, targetOid, message))
-  clearRedo(path)
+
+  if (previousOid) {
+    const id = generateId()
+    // Un fixup est un commit tout à fait normal au-dessus de HEAD — mêmes garanties qu'un commit
+    // classique (previousOid reste atteignable en tant qu'ancêtre tant que newOid est épinglé).
+    await pinObject(path, id, result.oid).catch(() => {})
+    pushAction(path, {
+      id,
+      timestamp: Date.now(),
+      label: { key: 'undoRedo.fixup', params: { sha: result.shortOid } },
+      pinnedRefs: [id],
+      type: 'fixup',
+      previousOid,
+      newOid: result.oid,
+    })
+  } else {
+    clearRedo(path)
+  }
+
   return result
 }
 
@@ -165,8 +191,47 @@ export async function apiAutosquashPreview(path: string) {
 }
 
 export async function apiRunAutosquash(path: string) {
+  let previousOid: string | null = null
+  try {
+    const branches = await getBranches(path, false)
+    previousOid = branches.find((b) => b.isHead)?.commitOid ?? null
+  } catch {
+    previousOid = null
+  }
+
   const result = await callCommand('autosquash', () => runAutosquash(path))
-  clearRedo(path)
+
+  let newOid: string | null = null
+  if (previousOid) {
+    try {
+      const branches = await getBranches(path, false)
+      newOid = branches.find((b) => b.isHead)?.commitOid ?? null
+    } catch {
+      newOid = null
+    }
+  }
+
+  if (previousOid && newOid && newOid !== previousOid) {
+    const id = generateId()
+    // git rebase --autosquash réécrit HEAD sur un commit qui n'est pas un ancêtre de l'ancien
+    // tip (comme un reset) — les deux extrémités doivent donc être épinglées séparément.
+    await Promise.all([
+      pinObject(path, `${id}-previous`, previousOid).catch(() => {}),
+      pinObject(path, `${id}-new`, newOid).catch(() => {}),
+    ])
+    pushAction(path, {
+      id,
+      timestamp: Date.now(),
+      label: { key: 'undoRedo.autosquash' },
+      pinnedRefs: [`${id}-previous`, `${id}-new`],
+      type: 'autosquash',
+      previousOid,
+      newOid,
+    })
+  } else {
+    clearRedo(path)
+  }
+
   return result
 }
 

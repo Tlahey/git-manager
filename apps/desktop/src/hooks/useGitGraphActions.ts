@@ -273,11 +273,15 @@ export function useGitGraphActions({
 
     // Fixup is only meaningful for a single commit that's part of the current
     // branch's history (HEAD or an ancestor) — otherwise it isn't rebasable. It's
-    // also unavailable mid-rebase: the paused rebase leaves the index with unmerged
-    // entries, so `create_fixup_commit` can't write a tree until it's resolved.
+    // also unavailable mid-rebase (the paused rebase leaves the index with unmerged
+    // entries, so `create_fixup_commit` can't write a tree until it's resolved) and
+    // with a clean working tree (nothing to stage into the fixup commit).
+    const hasWorkingChanges =
+      (status?.staged.length ?? 0) + (status?.unstaged.length ?? 0) + (status?.untracked.length ?? 0) > 0
     const fixupEnabled =
       isSingle &&
       !isRebasePaused &&
+      hasWorkingChanges &&
       (await apiIsCommitOnCurrentBranch(repoPath, oid).catch(() => false))
 
     showCommitNativeContextMenu({

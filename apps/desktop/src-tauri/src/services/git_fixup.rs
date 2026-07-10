@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::services::git_commit::CommitResult;
 use crate::utils::{get_git_signature, short_oid};
 use git2::{Oid, Repository};
 use serde::Serialize;
@@ -43,12 +44,14 @@ fn collect_commit_subjects(repo: &Repository) -> Result<Vec<(String, String)>, S
 /// Creates a fixup! commit for the target commit from the current staged changes.
 /// `message` overrides the generated `fixup! <subject>` when provided (the commit
 /// dialog lets the user edit it); autosquash matching only works if the first
-/// line keeps the `fixup! <subject>` form. Returns the short SHA of the new commit.
+/// line keeps the `fixup! <subject>` form. Returns the full + short OID of the new commit
+/// (same shape as `git_commit::create_commit`'s `CommitResult`, so the frontend can undo a
+/// fixup exactly like a regular commit — it's a plain new commit on top of HEAD either way).
 pub fn create_fixup_commit(
     repo: &Repository,
     target_oid: &str,
     message: Option<&str>,
-) -> Result<String, String> {
+) -> Result<CommitResult, String> {
     let parsed_oid = Oid::from_str(target_oid).map_err(|_| "Invalid target OID".to_string())?;
     let target_commit = repo.find_commit(parsed_oid).map_err(AppError::Git)?;
     let target_subject = target_commit.summary().unwrap_or("").to_string();
@@ -87,7 +90,10 @@ pub fn create_fixup_commit(
         .map_err(AppError::Git)?;
 
     let sha = new_oid.to_string();
-    Ok(short_oid(&sha))
+    Ok(CommitResult {
+        short_oid: short_oid(&sha),
+        oid: sha,
+    })
 }
 
 // ─── list_pending_fixups ──────────────────────────────────────────────────────

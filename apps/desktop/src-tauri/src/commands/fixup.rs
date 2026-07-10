@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::services::git_commit::CommitResult;
 use crate::services::git_fixup;
 use git2::Repository;
 
@@ -8,13 +9,13 @@ pub use crate::services::git_fixup::{AutosquashGroup, FixupInfo};
 
 /// Creates a fixup! commit for the target commit from the current staged changes.
 /// `message` optionally overrides the generated `fixup! <subject>` message.
-/// Returns the short SHA of the new fixup commit.
+/// Returns the full + short OID of the new fixup commit.
 #[tauri::command]
 pub async fn create_fixup_commit(
     path: String,
     target_oid: String,
     message: Option<String>,
-) -> Result<String, String> {
+) -> Result<CommitResult, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
     git_fixup::create_fixup_commit(&repo, &target_oid, message.as_deref())
 }

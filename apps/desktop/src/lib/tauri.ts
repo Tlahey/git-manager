@@ -335,7 +335,7 @@ export interface AutosquashGroup {
 }
 
 export const createFixupCommit = (path: string, targetOid: string, message?: string) =>
-  invoke<string>('create_fixup_commit', { path, targetOid, message })
+  invoke<CommitResult>('create_fixup_commit', { path, targetOid, message })
 
 export const getPendingFixups = (path: string) =>
   invoke<FixupInfo[]>('get_pending_fixups', { path })

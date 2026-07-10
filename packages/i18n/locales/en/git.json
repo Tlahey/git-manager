@@ -256,6 +256,8 @@
   "undoRedo.stashPop": "Undo stash pop \"{{message}}\"",
   "undoRedo.stashApply": "Undo stash apply (#{{index}})",
   "undoRedo.stashDrop": "Undo stash drop \"{{message}}\"",
+  "undoRedo.fixup": "Undo fixup commit {{sha}}",
+  "undoRedo.autosquash": "Undo autosquash",
   "toolbar.search": "Search (commits, messages, authors, files)",
   "toolbar.preferences": "Preferences",
   "toolbar.account": "Linked account",

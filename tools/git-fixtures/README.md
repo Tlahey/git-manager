@@ -81,7 +81,7 @@ wire up. Run it standalone with `bash tools/git-fixtures/scenarios/<name>.sh` wh
 | Scenario | What it sets up |
 |---|---|
 | `rebase-conflict` | Paused rebase with a real, unresolved conflict on a ~110-line file covering every 3-way merge-editor block kind twice |
-| `fixup-chain` | Two `fixup!`/target commit pairs separated by an unrelated commit, for testing autosquash grouping |
+| `fixup-chain` | Two pre-existing `fixup!`/target pairs (autosquash grouping) *plus* a staged change ready to become a fixup for a third, not-yet-fixed-up commit (create-fixup flow) |
 | `stash-stack` | Two stashes (plain + one with an untracked file) plus staged and unstaged changes left on top |
 | `detached-head` | HEAD detached two commits behind `main`, with an unrelated side branch also present |
 | `rollback-history` | Five linear commits bumping the same file, for testing reset/revert/undo |

@@ -45,6 +45,8 @@ export type UndoAction = ActionBase &
     | { type: 'stashPop'; message: string; commitOid: string; snapshot: WorktreeSnapshot }
     | { type: 'stashApply'; index: number; snapshot: WorktreeSnapshot }
     | { type: 'stashDrop'; message: string; commitOid: string }
+    | { type: 'fixup'; previousOid: string; newOid: string }
+    | { type: 'autosquash'; previousOid: string; newOid: string }
   )
 
 function snapshotOids(snapshot: WorktreeSnapshot | null): string[] {
@@ -74,6 +76,9 @@ export function collectActionOids(action: UndoAction): string[] {
       return snapshotOids(action.snapshot)
     case 'stashDrop':
       return [action.commitOid]
+    case 'fixup':
+    case 'autosquash':
+      return [action.previousOid, action.newOid]
   }
 }
 
@@ -121,6 +126,10 @@ export async function executeUndo(path: string, action: UndoAction): Promise<voi
     case 'stashDrop':
       await stashStore(path, action.commitOid, action.message)
       return
+    case 'fixup':
+    case 'autosquash':
+      await resetToCommit(path, action.previousOid, 'soft')
+      return
   }
 }
 
@@ -155,6 +164,10 @@ export async function executeRedo(path: string, action: UndoAction): Promise<voi
       return
     case 'stashDrop':
       await stashDrop(path, 0)
+      return
+    case 'fixup':
+    case 'autosquash':
+      await resetToCommit(path, action.newOid, 'soft')
       return
   }
 }
