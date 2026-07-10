@@ -1,0 +1,33 @@
+{
+  "name": "@git-manager/mascot",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./element": "./src/element.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "generate": "node scripts/generate.mjs",
+    "storybook": "storybook dev -p 6007",
+    "build-storybook": "storybook build"
+  },
+  "devDependencies": {
+    "@git-manager/config": "workspace:*",
+    "@storybook/react": "^10.4.6",
+    "@storybook/react-vite": "^10.4.6",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sharp": "^0.35.3",
+    "storybook": "^10.4.6",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.3"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  }
+}
