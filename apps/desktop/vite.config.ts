@@ -32,5 +32,9 @@ export default defineConfig(async () => ({
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
     css: false,
+    alias: {
+      // See src/test/monacoEditorStub.ts — the real package can't be resolved under Vitest.
+      'monaco-editor': fileURLToPath(new URL('./src/test/monacoEditorStub.ts', import.meta.url)),
+    },
   },
 } as any))
