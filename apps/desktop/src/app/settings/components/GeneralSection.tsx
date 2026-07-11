@@ -96,6 +96,15 @@ export function GeneralSection() {
             className="h-8 text-xs"
           />
         </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-foreground">{t('settings.git.protectedBranches')}</label>
+          <TagInput
+            tags={git.protectedBranches}
+            onChange={(branches) => updateGit({ protectedBranches: branches })}
+            placeholder="main, master…"
+          />
+        </div>
       </div>
 
       <Separator />
