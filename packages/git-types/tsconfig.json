@@ -1,8 +1,7 @@
 {
   "extends": "@git-manager/config/typescript",
   "compilerOptions": {
-    "rootDir": "./src",
-    "baseUrl": "."
+    "rootDir": "./src"
   },
   "include": ["src"]
 }
