@@ -12,6 +12,6 @@
     "@git-manager/mascot": "workspace:*"
   },
   "devDependencies": {
-    "vite": "^6.0.3"
+    "vite": "catalog:"
   }
 }
