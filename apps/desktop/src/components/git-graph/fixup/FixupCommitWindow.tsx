@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useTranslation } from '@git-manager/i18n'
-import { Lock, Check, ArrowUp, GitBranch } from 'lucide-react'
+import { Lock, Check, ArrowUp } from 'lucide-react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { emit } from '@tauri-apps/api/event'
 import type { GitStatusEntry } from '@git-manager/git-types'
@@ -19,7 +19,7 @@ import { queryClient } from '../../../lib/queryClient'
 import { ThreeWayMergeEditor } from '../../merge-editor/ThreeWayMergeEditor'
 import { CommitFileList, type ProcessedFileItem } from '../components/CommitFileList'
 
-type CommitMode = 'commit' | 'push' | 'rebase'
+type CommitMode = 'commit' | 'push'
 
 interface FixupCommitWindowProps {
   repoPath: string
@@ -114,8 +114,10 @@ function FixupCommitWindowContent({ repoPath, targetOid, targetShortOid, targetS
       await apiCreateFixupCommit(repoPath, targetOid, message)
       if (mode === 'push') {
         await apiPushBranch(repoPath)
-      } else if (mode === 'rebase') {
-        // The Rebasing Commit editor takes over: this window closes, the new one opens.
+      } else {
+        // Creating the fixup! commit alone would leave it dangling on top of HEAD
+        // with nothing to actually squash it into its target — the Rebasing Commit
+        // editor takes over so the user finishes the job right away.
         await openRebasingWindow()
       }
       await emit('fixup-committed', { repoPath })
@@ -246,12 +248,6 @@ function FixupCommitWindowContent({ repoPath, targetOid, targetShortOid, targetS
               label: t('gitTree.fixupDialog.commitAndPush'),
               icon: <ArrowUp className="h-3.5 w-3.5" />,
               onSelect: () => handleCommit('push'),
-            },
-            {
-              key: 'rebase',
-              label: t('gitTree.fixupDialog.commitAndRebase'),
-              icon: <GitBranch className="h-3.5 w-3.5" />,
-              onSelect: () => handleCommit('rebase'),
             },
           ]}
         />
