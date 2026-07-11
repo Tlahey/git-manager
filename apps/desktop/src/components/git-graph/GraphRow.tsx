@@ -400,9 +400,19 @@ function CellContent({
       }
       const body = commit.body?.replace(/\s+/g, ' ').trim()
       const displaySubject = stash ? stash.message : commit.subject
+      const isFixup = displaySubject.startsWith('fixup!')
       return (
         <span className="min-w-0 flex-1 truncate text-[11px] leading-tight">
-          <span className="text-foreground">{displaySubject}</span>
+          <span className="text-foreground">
+            {isFixup ? (
+              <>
+                <span className="font-semibold text-orange-400">fixup!</span>
+                {displaySubject.slice('fixup!'.length)}
+              </>
+            ) : (
+              displaySubject
+            )}
+          </span>
           {body && <span className="ml-2 text-muted-foreground/70">{body}</span>}
         </span>
       )

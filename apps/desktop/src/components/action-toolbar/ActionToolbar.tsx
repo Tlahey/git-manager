@@ -1,4 +1,3 @@
-import { createPortal } from 'react-dom'
 import {
   ArrowUpFromLine,
   ChevronRight,
@@ -32,7 +31,6 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
     activeRepo,
     fromRef,
     loading,
-    notification,
     hasChanges,
     hasStashes,
     canUndo,
@@ -146,21 +144,6 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         <ToolbarSearch value={searchQuery} onChange={onSearchChange} />
       </div>
-
-      {/* Toast transitoire */}
-      {notification &&
-        createPortal(
-          <div
-            className={`fixed bottom-4 right-4 z-50 flex items-center rounded-md px-3 py-2 text-xs shadow-lg ${
-              notification.type === 'success'
-                ? 'bg-green-500/15 text-green-400 ring-1 ring-green-500/30'
-                : 'bg-destructive/15 text-destructive ring-1 ring-destructive/30'
-            }`}
-          >
-            {notification.message}
-          </div>,
-          document.body,
-        )}
     </div>
   )
 }

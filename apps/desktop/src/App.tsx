@@ -15,6 +15,7 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useDevFixtureImport } from './hooks/useDevFixtureImport'
 import { Footer } from './components/footer/Footer'
 
+import { Toaster } from '@git-manager/ui'
 import { TrophyToast } from './components/trophy/TrophyToast'
 import { OperationProgressBar } from './components/layout/OperationProgressBar'
 import { appEventBus } from './lib/appEventBus'
@@ -132,6 +133,7 @@ export default function App() {
           </>
         )}
         <TrophyToast />
+        <Toaster />
       </div>
     </QueryClientProvider>
   )

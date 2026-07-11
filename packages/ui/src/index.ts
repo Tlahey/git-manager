@@ -16,6 +16,9 @@ export type { TextareaProps } from './components/textarea'
 
 export { Spinner } from './components/spinner'
 
+export { toast, Toaster } from './components/toast'
+export type { ToastVariant, ToastOptions } from './components/toast'
+
 export { cn } from './lib/utils'
 
 export {

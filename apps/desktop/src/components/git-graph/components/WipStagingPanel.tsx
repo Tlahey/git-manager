@@ -45,8 +45,6 @@ export function WipStagingPanel({
     history,
     historyOpen,
     setHistoryOpen,
-    handleStageAllFiles,
-    handleUnstageAllFiles,
   } = useWipCommitPanel(repoPath, gitStatus, allWipChanges, t, onRefresh)
 
   const statusIcons: Record<string, string> = {
@@ -79,26 +77,6 @@ export function WipStagingPanel({
               : t('commitDetails.batchCommit.title')}
           </span>
         </button>
-        {!batchMode && (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-6 text-[10px] font-bold"
-              onClick={handleStageAllFiles}
-            >
-              {t('workingTree.stageAll')}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-6 text-[10px] font-bold"
-              onClick={handleUnstageAllFiles}
-            >
-              {t('workingTree.unstageAll')}
-            </Button>
-          </div>
-        )}
       </div>
 
       {batchMode ? (

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { mutate } from 'swr'
+import { toast } from '@git-manager/ui'
 import { useRepoDataStore } from '../stores/repoData.store'
 import { useRepoUIStore } from '../stores/repoUI.store'
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
@@ -19,17 +20,12 @@ import { useGitStashes } from './useGitStashes'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
-interface Notification {
-  type: 'success' | 'error'
-  message: string
-}
-
 type LoadingKey = 'fetch' | 'pull' | 'push' | 'stash' | 'pop' | 'undo' | 'redo'
 
 /**
  * Actions et état dérivé de la barre d'actions principale : fetch/pull/push,
  * undo/redo, stash/pop, création de branche, terminal — plus l'état de
- * chargement par action et le toast de notification.
+ * chargement par action. Les notifications passent par le toast global (@git-manager/ui).
  */
 export function useActionToolbar(t: TranslateFn) {
   const queryClient = useQueryClient()
@@ -46,7 +42,6 @@ export function useActionToolbar(t: TranslateFn) {
     undo: false,
     redo: false,
   })
-  const [notification, setNotification] = useState<Notification | null>(null)
   const wipMessages = useRepoDataStore((s) => s.wipMessages)
   const setWipMessage = useRepoDataStore((s) => s.setWipMessage)
 
@@ -76,11 +71,6 @@ export function useActionToolbar(t: TranslateFn) {
     await apiOpenTerminal(activeRepo, terminal, customCommand)
   }
 
-  function notify(type: Notification['type'], message: string) {
-    setNotification({ type, message })
-    setTimeout(() => setNotification(null), 3500)
-  }
-
   function invalidateRepo() {
     if (!activeRepo) return
     queryClient.invalidateQueries({ queryKey: ['branches', activeRepo] })
@@ -95,7 +85,7 @@ export function useActionToolbar(t: TranslateFn) {
     try {
       await fn()
     } catch (err) {
-      notify('error', String(err))
+      toast.error(String(err))
     } finally {
       setLoading((s) => ({ ...s, [key]: false }))
     }
@@ -108,7 +98,7 @@ export function useActionToolbar(t: TranslateFn) {
   const handleFetch = () =>
     runAction('fetch', async () => {
       await apiFetchRemote(activeRepo!)
-      notify('success', t('remote.fetchSuccess'))
+      toast.success(t('remote.fetchSuccess'))
       clearRedoForActiveRepo()
       invalidateRepo()
     })
@@ -123,7 +113,7 @@ export function useActionToolbar(t: TranslateFn) {
           await apiFetchRemote(activeRepo!, remote)
         }
       }
-      notify('success', t('remote.fetchSuccess'))
+      toast.success(t('remote.fetchSuccess'))
       clearRedoForActiveRepo()
       invalidateRepo()
     })
@@ -132,9 +122,9 @@ export function useActionToolbar(t: TranslateFn) {
     runAction('pull', async () => {
       const result = await apiPullBranch(activeRepo!)
       if (result.conflicts.length > 0) {
-        notify('error', t('remote.conflict', { count: result.conflicts.length }))
+        toast.error(t('remote.conflict', { count: result.conflicts.length }))
       } else {
-        notify('success', t('remote.pullSuccess', { commits: result.commitsMerged }))
+        toast.success(t('remote.pullSuccess', { commits: result.commitsMerged }))
       }
       clearRedoForActiveRepo()
       invalidateRepo()
@@ -143,7 +133,7 @@ export function useActionToolbar(t: TranslateFn) {
   const handlePush = () =>
     runAction('push', async () => {
       await apiPushBranch(activeRepo!)
-      notify('success', t('remote.pushSuccess'))
+      toast.success(t('remote.pushSuccess'))
       clearRedoForActiveRepo()
       invalidateRepo()
     })
@@ -171,14 +161,14 @@ export function useActionToolbar(t: TranslateFn) {
       if (activeRepo) {
         setWipMessage(activeRepo, '')
       }
-      notify('success', t('toolbar.stashSuccess'))
+      toast.success(t('toolbar.stashSuccess'))
       invalidateRepo()
     })
 
   const handlePop = () =>
     runAction('pop', async () => {
       await apiStashPop(activeRepo!)
-      notify('success', t('toolbar.popSuccess'))
+      toast.success(t('toolbar.popSuccess'))
       invalidateRepo()
     })
 
@@ -186,10 +176,10 @@ export function useActionToolbar(t: TranslateFn) {
     if (!activeRepo) return
     try {
       await apiCreateBranch(activeRepo, name, fromRef)
-      notify('success', t('toolbar.branchCreated', { name }))
+      toast.success(t('toolbar.branchCreated', { name }))
       invalidateRepo()
     } catch (err) {
-      notify('error', String(err))
+      toast.error(String(err))
     }
   }
 
@@ -197,7 +187,6 @@ export function useActionToolbar(t: TranslateFn) {
     activeRepo,
     fromRef,
     loading,
-    notification,
     hasChanges,
     hasStashes,
     canUndo,

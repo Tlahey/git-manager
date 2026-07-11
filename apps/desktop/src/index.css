@@ -23,6 +23,11 @@ body {
   overflow: hidden;
 }
 
+:root {
+  /* Zone de drag ajoutée au-dessus de la barre d'onglets (macOS, titleBarStyle: Overlay) */
+  --tab-bar-drag-spacer-height: 6px;
+}
+
 @keyframes shimmer {
   0% {
     transform: translateX(-100%);
@@ -34,5 +39,9 @@ body {
 
 .animate-shimmer {
   animation: shimmer 1.4s infinite linear;
+}
+
+.tab-strip-scroll::-webkit-scrollbar {
+  height: 3px;
 }
 

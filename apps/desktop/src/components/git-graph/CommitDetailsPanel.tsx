@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from '@git-manager/i18n'
 import { ScrollArea } from '@git-manager/ui'
 import { useCommitDiff } from '../../hooks/useCommitDiff'
 import { useGitStatus } from '../../hooks/useGitStatus'
@@ -11,6 +12,7 @@ import { useRepoDataStore } from '../../stores/repoData.store'
 import { CommitFileList } from './components/CommitFileList'
 import type { ProcessedFileItem } from './components/CommitFileList'
 import { WipStagingPanel } from './components/WipStagingPanel'
+import { apiStageAll, apiUnstageAll } from '../../api/git.api'
 
 interface CommitDetailsPanelProps {
   node: GitGraphNode
@@ -29,6 +31,7 @@ export function CommitDetailsPanel({
   onSelectFileDiff,
   onClose
 }: CommitDetailsPanelProps) {
+  const { t } = useTranslation('git')
   const queryClient = useQueryClient()
   const { commit } = node
   const isWip = commit.oid === 'WIP'
@@ -60,6 +63,16 @@ export function CommitDetailsPanel({
     queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
     queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
     mutate(['git-stashes', repoPath])
+  }
+
+  async function handleStageAll() {
+    await apiStageAll(repoPath)
+    handleRefresh()
+  }
+
+  async function handleUnstageAll() {
+    await apiUnstageAll(repoPath)
+    handleRefresh()
   }
 
   const processedFiles = useMemo<ProcessedFileItem[]>(() => {
@@ -98,6 +111,24 @@ export function CommitDetailsPanel({
     }))
   }, [isWip, diff, gitStatus])
 
+  const unmergedFiles = useMemo<ProcessedFileItem[]>(() => {
+    if (!isWip || !gitStatus) return []
+    return gitStatus.conflicted.map((path) => ({
+      path,
+      status: 'conflicted' as const,
+      staged: false
+    }))
+  }, [isWip, gitStatus])
+
+  const stagedFiles = useMemo(
+    () => processedFiles.filter((f) => f.staged),
+    [processedFiles]
+  )
+  const unstagedFiles = useMemo(
+    () => processedFiles.filter((f) => !f.staged),
+    [processedFiles]
+  )
+
   const isStash = node.refs.some((r) => r.type === 'stash')
 
   return (
@@ -125,14 +156,64 @@ export function CommitDetailsPanel({
       `}} />
       <ScrollArea className="flex-1 min-w-0 w-full details-scroll-area">
         <div className="px-4 py-4 space-y-4 min-w-0 w-full overflow-hidden">
-          <CommitFileList
-            repoPath={repoPath}
-            isWip={isWip}
-            commitOid={commit.oid}
-            processedFiles={processedFiles}
-            onSelectFileDiff={onSelectFileDiff}
-            onRefresh={handleRefresh}
-          />
+          {isWip ? (
+            <>
+              {unmergedFiles.length > 0 && (
+                <CommitFileList
+                  repoPath={repoPath}
+                  isWip={false}
+                  commitOid={commit.oid}
+                  processedFiles={unmergedFiles}
+                  onSelectFileDiff={onSelectFileDiff}
+                  onRefresh={handleRefresh}
+                  title={t('workingTree.unmerged', { count: unmergedFiles.length })}
+                  hideStats
+                  hideSearch
+                  collapsible
+                  cacheKey={`${repoPath}:${commit.oid}:unmerged`}
+                />
+              )}
+              <CommitFileList
+                repoPath={repoPath}
+                isWip
+                commitOid={commit.oid}
+                processedFiles={stagedFiles}
+                onSelectFileDiff={onSelectFileDiff}
+                onRefresh={handleRefresh}
+                title={t('workingTree.staged', { count: stagedFiles.length })}
+                hideStats
+                hideSearch
+                collapsible
+                hoverStage="remove"
+                onBulkStage={handleUnstageAll}
+                cacheKey={`${repoPath}:${commit.oid}:staged`}
+              />
+              <CommitFileList
+                repoPath={repoPath}
+                isWip
+                commitOid={commit.oid}
+                processedFiles={unstagedFiles}
+                onSelectFileDiff={onSelectFileDiff}
+                onRefresh={handleRefresh}
+                title={t('workingTree.unstaged', { count: unstagedFiles.length })}
+                hideStats
+                hideSearch
+                collapsible
+                hoverStage="add"
+                onBulkStage={handleStageAll}
+                cacheKey={`${repoPath}:${commit.oid}:unstaged`}
+              />
+            </>
+          ) : (
+            <CommitFileList
+              repoPath={repoPath}
+              isWip={false}
+              commitOid={commit.oid}
+              processedFiles={processedFiles}
+              onSelectFileDiff={onSelectFileDiff}
+              onRefresh={handleRefresh}
+            />
+          )}
         </div>
       </ScrollArea>
 
