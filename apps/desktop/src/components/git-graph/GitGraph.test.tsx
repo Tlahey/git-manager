@@ -390,6 +390,17 @@ describe('GitGraph — auto-select on branch/repo change', () => {
     await new Promise((r) => setTimeout(r, 0))
     expect(selectSingle).not.toHaveBeenCalled()
   })
+
+  it('auto-selects the synthetic CONFLICT row when a rebase pauses, so the resolution panel opens on its own', async () => {
+    const selectSingle = vi.fn()
+    const nodes = [commitNode('a', { refs: [{ name: 'refs/heads/main', shortName: 'main', type: 'branch', commitOid: 'a' }] })]
+    apiGetRebaseState.mockResolvedValue({ kind: 'conflict', conflictedFiles: ['src/config.ts'], branchName: 'main' })
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes, { conflictNode: commitNode('CONFLICT') }))
+    useCommitSelection.mockReturnValue(selectionState({ selectSingle }))
+    renderGraph({ branch: 'main' })
+    await waitFor(() => expect(selectSingle).toHaveBeenCalledWith('CONFLICT'))
+  })
 })
 
 describe('GitGraph — pending graph selection bridge', () => {
