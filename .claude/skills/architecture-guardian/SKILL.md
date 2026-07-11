@@ -1,6 +1,6 @@
 ---
 name: architecture-guardian
-description: Use before writing or right after writing code in git-manager that adds/changes a Tauri command (apps/desktop/src-tauri/src/commands/*.rs), a React component, hook, Zustand store, or an api/*.api.ts file. Reminds of the repo's mandatory layering rules (one file = one responsibility, every operation goes through a service/API layer) so new code doesn't reproduce known anti-patterns (oversized files mixing concerns, invoke() calls bypassing the API layer, duplicated Diff structs/helpers). Not for general code review of correctness — see the code-review skill for that.
+description: Use before writing or right after writing code in git-manager that adds/changes a Tauri command (apps/desktop/src-tauri/src/commands/*.rs or services/*.rs), a React component, hook, Zustand store, or an api/*.api.ts file. Reminds of the repo's mandatory layering rules (one file = one responsibility, every operation goes through a service/API layer) and file-size/complexity discipline — split a component, function, or module before it crosses ~300 lines or piles up nested branches and mixed concerns, into a feature-scoped components/hooks/utility file with its own test — so new code doesn't reproduce known anti-patterns (oversized files mixing concerns, invoke() calls bypassing the API layer, duplicated Diff structs/helpers, untested extractions). Also use whenever a file you're editing is already near or past 300 lines, or the user asks how to split/refactor/organize a large component, hook, or function. Not for general code review of correctness — see the code-review skill for that.
 ---
 
 # Architecture guardian
@@ -16,11 +16,15 @@ reintroduce problems that were already found and fixed.
 
 ## When this applies
 
-- Adding or editing a `#[tauri::command]` in `apps/desktop/src-tauri/src/commands/*.rs`.
+- Adding or editing a `#[tauri::command]` in `apps/desktop/src-tauri/src/commands/*.rs`, or its
+  backing logic in `apps/desktop/src-tauri/src/services/*.rs`.
 - Adding or editing a React component under `apps/desktop/src/components/` or `apps/desktop/src/app/**/components/`.
 - Adding or editing a hook under `apps/desktop/src/hooks/`.
 - Adding or editing a Zustand store under `apps/desktop/src/stores/`.
-- Adding or editing a file under `apps/desktop/src/api/*.api.ts`.
+- Adding or editing a file under `apps/desktop/src/api/*.api.ts` or `apps/desktop/src/lib/*.ts`.
+- Any time the file or function you're about to touch is already near or past ~300 lines, or the
+  user asks how to split/refactor/organize a large component, hook, or module — this applies
+  project-wide, not just to the paths above.
 
 ## Rules to apply (R1 / R2 from the plan)
 
@@ -40,6 +44,27 @@ reintroduce problems that were already found and fixed.
   instead of re-deriving them.
 - A page/parent component should not have large sub-components (rows, cards, panels) defined
   inline — split them into a local `components/` folder (already required by `.agents/AGENTS.md`).
+- Treat ~300 lines as the point to actively look for a seam, for both components and individual
+  functions (TS or Rust) — not a hard limit to hit exactly, but the size where deferring the split
+  starts costing more than doing it now. `CommitFileList.tsx` (697 lines), `GraphRow.tsx` (568),
+  `git_merge_diff.rs` (656) and `commands/repo.rs` (516) are today's examples of what happens when
+  a file keeps absorbing "just one more case" — none of them need an urgent rewrite, but new logic
+  in that area should default to a new file, not another method bolted onto the existing one. The
+  same applies well under 300 lines if a function has deep nesting, many branches, or handles more
+  than one concern you couldn't summarize in a single sentence — line count is a proxy for
+  cognitive load, not the actual target, so don't let a 280-line function slide just because it's
+  under the number.
+- This doesn't apply uniformly to flat aggregator files like `api/git.api.ts` (667 lines): a file
+  that's just many independent, near-identical thin wrappers (one per Tauri command, no shared
+  state or branching) is lower-risk than the same line count concentrated in one function or
+  component, because there's nothing to hold in your head across lines. If one of those wrapper
+  functions grows real logic, extract *that function*, not the whole file.
+- When you extract a sub-component, hook, or utility function, give it its own colocated test
+  (React Testing Library for components, a plain Vitest unit test for hooks/utilities, `#[cfg(test)]`
+  for Rust modules — see `apps/desktop/vitest.config.ts` / `git_merge_diff.rs` for the existing
+  patterns) rather than relying on the parent's coverage. An untested extraction just moves the
+  risk instead of reducing it, and defeats the point of splitting for testability in the first
+  place.
 
 **R2 — every operation goes through the service/API layer.**
 - Frontend: never call `invoke()` directly from a component, hook, or store, and never import a
@@ -61,11 +86,12 @@ reintroduce problems that were already found and fixed.
 
 ## What to do with this
 
-1. Before writing the code, check whether the file you're about to touch already grew past a
-   reasonable size or mixes rendering with logic. The plan's original audit table (doc 13) is
+1. Before writing the code, check whether the file you're about to touch already grew past
+   ~300 lines or mixes rendering with logic. The plan's original audit table (doc 13) is
    historical; the current state — including everything fixed in Phase 6 — is in doc 14's tables
    and Journal. If the file you're touching is already large, prefer extracting the piece you're
-   adding into its own hook/service instead of adding more lines to it.
+   adding into its own hook/service/component instead of adding more lines to it, and give that
+   extraction its own test.
 2. After writing the code, if the change is non-trivial (new command, new component with any
    non-trivial logic, new store), consider invoking the `architecture-reviewer` agent to check the
    diff against these rules before opening a PR.

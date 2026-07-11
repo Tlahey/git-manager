@@ -1,0 +1,47 @@
+{
+  "skill_name": "reusable-components",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need a small confirmation dialog component for git-manager — title, message, confirm/cancel button labels, and a `danger` variant that renders the confirm button in red (used for things like discarding changes or force-pushing). Build it and wire up a call site so I can see how it'd be used.",
+      "expected_output": "The component is created under packages/components/src (not apps/desktop), takes all text as props (no useTranslation() call inside it), has no import from apps/desktop's api/*.api.ts, lib/tauri.ts, or any store, and is exported from packages/components/src/index.ts. A Storybook story is added or at least proposed for it under packages/components/stories/.",
+      "files": [],
+      "expectations": [
+        "New confirmation dialog component file is created under packages/components/src/, not apps/desktop",
+        "Component text (title/message/button labels) comes in via props — no useTranslation()/t() call inside the component itself",
+        "No import from apps/desktop/src/api/*.api.ts, lib/tauri.ts, or any apps/desktop/src/stores/* store in the new component",
+        "Component is exported from packages/components/src/index.ts",
+        "Component reuses packages/ui primitives (e.g. Dialog, Button) rather than reimplementing dialog behavior from scratch",
+        "The wired call site imports the component from @git-manager/components, not via a relative path into packages/components/src",
+        "Summary mentions a Storybook story location under packages/components/stories/ (even if the file itself wasn't created, since Storybook isn't set up yet)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Here's a small component I have sitting in a scratch file at apps/desktop/src/components/EmptyState.tsx — icon, title, optional description, optional action button, nothing else:\n\n```tsx\nimport type { ReactNode } from 'react'\n\ninterface EmptyStateProps {\n  icon: ReactNode\n  title: string\n  description?: string\n  actionLabel?: string\n  onAction?: () => void\n}\n\nexport function EmptyState({ icon, title, description, actionLabel, onAction }: EmptyStateProps) {\n  return (\n    <div className=\"flex flex-col items-center justify-center gap-3 py-12 text-center\">\n      <div className=\"text-muted-foreground/50\">{icon}</div>\n      <h3 className=\"text-sm font-medium text-foreground\">{title}</h3>\n      {description && <p className=\"max-w-sm text-xs text-muted-foreground\">{description}</p>}\n      {actionLabel && onAction && (\n        <button onClick={onAction} className=\"mt-1 text-xs font-medium text-primary hover:underline\">\n          {actionLabel}\n        </button>\n      )}\n    </div>\n  )\n}\n```\n\nI want to reuse this exact look in three different empty-list screens (e.g. dashboard with no repos open, pull requests list with none found, a search with no results). Set it up properly in the codebase — decide where it should live — and wire up one real call site as an example.",
+      "expected_output": "The component is recognized as a packages/components candidate (no business logic) and moved there rather than just being left in apps/desktop or duplicated. The move includes updating the import at the call site, exporting it from packages/components/src/index.ts, and (per the skill) suggests or adds a Storybook story.",
+      "files": [],
+      "expectations": [
+        "EmptyState component ends up under packages/components/src/, not left in apps/desktop/src/components/",
+        "Component is exported from packages/components/src/index.ts",
+        "The wired call site in apps/desktop imports EmptyState from @git-manager/components rather than a local relative path",
+        "No domain-specific prop naming introduced — props stay generic (icon/title/description/actionLabel/onAction), no Repo/PullRequest/Branch-shaped types",
+        "Summary explains the placement decision in terms of reusability / absence of business logic, not just 'because it's shared'"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Can you set up Storybook for packages/components? I want to be able to run stories for SplitButton and StepRailRow and eventually use it for visual snapshot testing.",
+      "expected_output": "Storybook is scaffolded following the pattern already used by packages/mascot and packages/code-view: a .storybook/main.ts with the stories glob pointing at a top-level stories/ folder, a preview.ts importing @git-manager/ui/globals.css, a port that doesn't collide with the existing 6006 (code-view) / 6007 (mascot), storybook/build-storybook scripts added to package.json, and at least one working story file for SplitButton and/or StepRailRow using static props only.",
+      "files": [],
+      "expectations": [
+        ".storybook/main.ts created under packages/components with stories glob pointing at a top-level stories/ folder (../stories/**/*.stories.@(ts|tsx)), matching mascot/code-view",
+        ".storybook/preview.ts imports @git-manager/ui/globals.css so Tailwind-based components render styled",
+        "Storybook dev port chosen does not collide with 6006 (code-view) or 6007 (mascot)",
+        "package.json gains storybook and build-storybook scripts plus matching Storybook devDependencies",
+        "At least one story file exists for SplitButton and/or StepRailRow, built from static props only (no mocked invoke/store)",
+        "core.disableTelemetry: true is set in main.ts, matching the no-telemetry convention used by the other two packages"
+      ]
+    }
+  ]
+}
