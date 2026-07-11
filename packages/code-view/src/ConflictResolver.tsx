@@ -217,6 +217,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       placements,
       scheduleRecompute: stableScheduleRecompute,
       defaultCollapseUnchanged,
+      editorsReady,
     })
 
     /** A line's top Y offset in a pane's content space, accounting for collapsed (hidden)

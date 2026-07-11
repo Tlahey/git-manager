@@ -336,6 +336,98 @@ const staggeredBlocks: MergeBlock[] = [
 const staggeredTheirsText = joinPane(staggeredBlocks, 'theirs')
 const staggeredOursText = joinPane(staggeredBlocks, 'ours')
 
+/** N distinct, numbered filler lines for a collapsible unchanged block — long enough (> 6 lines)
+ * to trip the collapse threshold, with a label so each block reads differently in a snapshot. */
+function fillerLines(label: string, count: number): string[] {
+  return Array.from({ length: count }, (_, i) => `// ${label} — line ${i + 1} of ${count}`)
+}
+
+/** Three long unchanged blocks, each individually collapsible, separated by tiny both-different
+ * conflicts. This is the case the single-block collapse stories never exercised: with more than
+ * one collapsed banner stacked down the panes, the connector wave for every region AFTER the
+ * first must still line up with its banners. Regressions here show as a one-line vertical drift
+ * of the 2nd/3rd wave relative to its banner strips. Panes stay perfectly aligned (all blocks
+ * have equal line counts on both sides) so any offset is purely the collapse-geometry bug, not
+ * cross-pane stagger. */
+const unchangedA = fillerLines('block A', 14)
+const unchangedB = fillerLines('block B', 14)
+const unchangedC = fillerLines('block C', 14)
+
+const multiCollapseBlocks: MergeBlock[] = [
+  {
+    blockId: 1,
+    kind: 'unchanged',
+    oursStartLine: 1,
+    oursLineCount: 14,
+    theirsStartLine: 1,
+    theirsLineCount: 14,
+    oursLines: unchangedA,
+    theirsLines: unchangedA,
+  },
+  {
+    blockId: 2,
+    kind: 'both-different',
+    oursStartLine: 15,
+    oursLineCount: 1,
+    theirsStartLine: 15,
+    theirsLineCount: 1,
+    oursLines: ['  const retries = 2'],
+    theirsLines: ['  const retries = 5'],
+    baseLines: ['  const retries = 3'],
+  },
+  {
+    blockId: 3,
+    kind: 'unchanged',
+    oursStartLine: 16,
+    oursLineCount: 14,
+    theirsStartLine: 16,
+    theirsLineCount: 14,
+    oursLines: unchangedB,
+    theirsLines: unchangedB,
+  },
+  {
+    blockId: 4,
+    kind: 'both-different',
+    oursStartLine: 30,
+    oursLineCount: 1,
+    theirsStartLine: 30,
+    theirsLineCount: 1,
+    oursLines: ['  const timeout = 100'],
+    theirsLines: ['  const timeout = 200'],
+    baseLines: ['  const timeout = 50'],
+  },
+  {
+    blockId: 5,
+    kind: 'unchanged',
+    oursStartLine: 31,
+    oursLineCount: 14,
+    theirsStartLine: 31,
+    theirsLineCount: 14,
+    oursLines: unchangedC,
+    theirsLines: unchangedC,
+  },
+]
+
+const multiCollapseTheirsText = joinPane(multiCollapseBlocks, 'theirs')
+const multiCollapseOursText = joinPane(multiCollapseBlocks, 'ours')
+
+/** Repro for the multi-region collapse offset bug: three collapsed unchanged blocks stacked down
+ * the panes. The first wave lines up with its banners; the 2nd and 3rd drift by a line unless the
+ * collapse geometry accounts for every banner zone above them. Snapshot this to lock the fix. */
+export const CollapsedMultipleRegions: Story = {
+  args: {
+    panels: [
+      { content: multiCollapseTheirsText, status: <span>Incoming — feature/http-retries</span> },
+      { status: <span>Result — client.ts</span> },
+      { content: multiCollapseOursText, status: <span>Current — main</span> },
+    ],
+    blocks: multiCollapseBlocks,
+    modelPathPrefix: 'story/collapsed-multiple/client.ts',
+    editor: { language: 'typescript', theme: 'vs-dark' },
+    defaultCollapseUnchanged: true,
+  },
+}
+
 export const CollapsedStaggeredAcrossPanels: Story = {
   args: {
     panels: [
