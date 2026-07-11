@@ -3,7 +3,7 @@ import type { editor } from 'monaco-editor'
 import type { MergeBlock } from './types'
 import { getScrollCoordinatesForContent } from './useMergeScrollSync'
 import { computeInitialPlacements } from './mergeBlockLayout'
-import { getTopForLineNumberSafe } from './ConflictResolver'
+import { getTopForLineNumberSafe } from './conflict-resolver/editorGeometry'
 
 function createBlock(overrides: Partial<MergeBlock> & Pick<MergeBlock, 'blockId' | 'kind'>): MergeBlock {
   return {
