@@ -1,6 +1,6 @@
 import { useTranslation } from '@git-manager/i18n'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Button, Spinner } from '@git-manager/ui'
+import { Button, Spinner, toast } from '@git-manager/ui'
 import {
   Dialog,
   DialogContent,
@@ -8,7 +8,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@git-manager/ui'
-import { apiAutosquashPreview, apiRunAutosquash } from '../../api/git.api'
+import { apiAutosquashPreview, apiRunAutosquash, apiGetRebaseState } from '../../api/git.api'
 import { useState } from 'react'
 
 interface AutosquashPreviewDialogProps {
@@ -42,8 +42,21 @@ export function AutosquashPreviewDialog({
       await apiRunAutosquash(repoPath)
       queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
       queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+      queryClient.invalidateQueries({ queryKey: ['pending-fixups', repoPath] })
+      queryClient.invalidateQueries({ queryKey: ['rebase-state', repoPath] })
+
+      // A conflict pause resolves this call successfully (it's an expected outcome, not a
+      // failure) — check the actual repo state to tell it apart from a clean completion so
+      // the toast doesn't lie about the rebase being done.
+      const rebaseState = await apiGetRebaseState(repoPath)
+      if (rebaseState.kind === 'conflict' || rebaseState.kind === 'edit_pause') {
+        toast.warning(t('gitTree.contextMenu.rebaseConflict'))
+      } else {
+        toast.success(t('fixup.autosquash.success'))
+      }
       onClose()
     } catch (err) {
+      toast.error(String(err))
       setError(String(err))
     } finally {
       setIsRunning(false)

@@ -14,3 +14,4 @@ plans/
 storybook-static/
 playwright-report/
 test-results/
+.aider*

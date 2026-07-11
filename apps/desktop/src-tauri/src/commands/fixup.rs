@@ -1,3 +1,4 @@
+use crate::commands::rebase::{emit_progress, err_unless_paused};
 use crate::error::AppError;
 use crate::services::git_commit::CommitResult;
 use crate::services::git_fixup;
@@ -42,7 +43,14 @@ pub async fn autosquash_preview(path: String) -> Result<Vec<AutosquashGroup>, St
 // ─── run_autosquash ───────────────────────────────────────────────────────────
 
 /// Runs git rebase --autosquash to merge all pending fixup commits.
-/// Uses GIT_SEQUENCE_EDITOR=true to auto-accept the rebase todo list.
+/// Uses GIT_SEQUENCE_EDITOR=true to auto-accept the rebase todo list, and
+/// --autostash because `create_fixup_commit` only commits staged changes —
+/// any leftover unstaged/untracked changes would otherwise make git refuse
+/// to start the rebase at all.
+/// Like `run_interactive_rebase`, a conflict pause is not an error — it's reported via
+/// `err_unless_paused` and the `rebase-progress` event so the existing rebase-state UI
+/// (conflict banner / resolution panel) picks it up instead of leaving the repo mid-rebase
+/// with no indication in the app that anything is waiting on the user.
 #[tauri::command]
 pub async fn run_autosquash(path: String, app: tauri::AppHandle) -> Result<(), String> {
     use tauri_plugin_shell::ShellExt;
@@ -57,18 +65,34 @@ pub async fn run_autosquash(path: String, app: tauri::AppHandle) -> Result<(), S
     let oldest_target = &fixups[fixups.len() - 1].target_oid;
     let base_ref = format!("{oldest_target}^");
 
+    emit_progress(&app, &path, "start");
+
     let output = app
         .shell()
         .command("git")
-        .args(["-C", &path, "rebase", "-i", "--autosquash", &base_ref])
+        .args([
+            "-C",
+            &path,
+            "rebase",
+            "-i",
+            "--autosquash",
+            "--autostash",
+            &base_ref,
+        ])
         .env("GIT_SEQUENCE_EDITOR", "true")
         .output()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            emit_progress(&app, &path, "error");
+            e.to_string()
+        })?;
 
     if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        let result = err_unless_paused(&path, &output.stderr);
+        emit_progress(&app, &path, if result.is_ok() { "paused" } else { "error" });
+        return result;
     }
 
+    emit_progress(&app, &path, "done");
     Ok(())
 }

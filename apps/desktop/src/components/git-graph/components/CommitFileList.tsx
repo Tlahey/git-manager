@@ -12,13 +12,15 @@ import {
   List,
   Search,
   X,
+  Plus,
+  Minus,
 } from 'lucide-react'
 import { apiStageFile, apiUnstageFile, apiDiscardFileChanges } from '../../../api/git.api'
 import { useFileTree, getSortedNodes, type TreeNode } from '@git-manager/components'
 
 export interface ProcessedFileItem {
   path: string
-  status: 'added' | 'modified' | 'deleted' | 'renamed' | 'untracked'
+  status: 'added' | 'modified' | 'deleted' | 'renamed' | 'untracked' | 'conflicted'
   additions?: number
   deletions?: number
   staged: boolean
@@ -46,6 +48,21 @@ interface CommitFileListProps {
    * every folder expanded, and adds a "N file(s)" caption under each folder name — the JetBrains
    * "Commit Changes" tree style. Off by default; only meaningful together with `isWip`. */
   folderCheckboxes?: boolean
+  /** Replaces the persistent stage checkbox with a +/- button that only appears on hover, at the
+   * end of the file/folder row. `'add'` stages (used for an all-unstaged file list), `'remove'`
+   * unstages (used for an all-staged file list) — every file in `processedFiles` is assumed to
+   * share that same direction. Only meaningful together with `isWip`; takes precedence over the
+   * default checkbox and over `folderCheckboxes`. */
+  hoverStage?: 'add' | 'remove'
+  /** Wraps the whole list in a bordered card and makes its header row collapsible (click to
+   * fold away the stats/search/file-tree body, leaving just the title + count) — used to give
+   * each working-tree zone (Unmerged/Staged/Unstaged) a distinct, foldable group. Off by default. */
+  collapsible?: boolean
+  /** Adds a persistent +/- button in the header (next to the title, always visible regardless of
+   * collapse state) that bulk stages/unstages every file in this list in one action — the "Stage
+   * All"/"Unstage All" equivalent for a single zone. Direction/icon follows `hoverStage`; only
+   * meaningful together with it. */
+  onBulkStage?: () => void
 }
 
 export function CommitFileList({
@@ -61,9 +78,14 @@ export function CommitFileList({
   hideSearch,
   cacheKey,
   folderCheckboxes,
+  hoverStage,
+  collapsible,
+  onBulkStage,
 }: CommitFileListProps) {
   const { t } = useTranslation('git')
   const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree')
+  const [collapsed, setCollapsed] = useState(false)
+  const bodyVisible = !collapsible || !collapsed
   const noChangesLabel = emptyMessage ?? t('workingTree.noChanges')
 
   // File stats (summary badges, independent of search filtering)
@@ -121,7 +143,8 @@ export function CommitFileList({
     modified: 'text-yellow-500 font-bold text-xs',
     deleted: 'text-red-500 font-bold text-xs',
     renamed: 'text-blue-500 font-bold text-xs',
-    untracked: 'text-muted-foreground font-bold text-xs'
+    untracked: 'text-muted-foreground font-bold text-xs',
+    conflicted: 'text-orange-500 font-bold text-xs'
   }
 
   const statusLetters: Record<string, string> = {
@@ -129,7 +152,8 @@ export function CommitFileList({
     modified: 'M',
     deleted: 'D',
     renamed: 'R',
-    untracked: '?'
+    untracked: '?',
+    conflicted: 'U'
   }
 
   function collectDescendantFiles(node: TreeNode): TreeNode[] {
@@ -144,6 +168,16 @@ export function CommitFileList({
       await Promise.all(paths.map((path) => apiUnstageFile(repoPath, path)))
     } else {
       await Promise.all(paths.map((path) => apiStageFile(repoPath, path)))
+    }
+    onRefresh?.()
+  }
+
+  async function handleHoverStageFolder(node: TreeNode) {
+    const paths = collectDescendantFiles(node).map((f) => f.path)
+    if (hoverStage === 'add') {
+      await Promise.all(paths.map((path) => apiStageFile(repoPath, path)))
+    } else {
+      await Promise.all(paths.map((path) => apiUnstageFile(repoPath, path)))
     }
     onRefresh?.()
   }
@@ -165,7 +199,7 @@ export function CommitFileList({
         <div key={node.path} className="flex flex-col">
           <div
             onClick={() => toggleFolder(node.path)}
-            className="flex items-center gap-1.5 py-1 px-2 text-xs hover:bg-accent/40 rounded transition-colors text-left font-medium cursor-pointer w-full min-w-0"
+            className="group/folder flex items-center gap-1.5 py-1 px-2 text-xs hover:bg-accent/40 rounded transition-colors text-left font-medium cursor-pointer w-full min-w-0"
             role="button"
             tabIndex={0}
             data-testid={`file-tree-folder-${node.path}`}
@@ -236,6 +270,24 @@ export function CommitFileList({
                 )}
               </div>
             )}
+            {hoverStage && isWip && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleHoverStageFolder(node)
+                }}
+                className={cn(
+                  "p-0.5 border rounded transition-colors shrink-0 ml-2 opacity-0 group-hover/folder:opacity-100",
+                  hoverStage === 'add'
+                    ? "border-green-500/40 text-green-500 hover:bg-green-500/10"
+                    : "border-red-500/40 text-red-500 hover:bg-red-500/10"
+                )}
+                title={hoverStage === 'add' ? 'Stage folder' : 'Unstage folder'}
+                data-testid={`file-tree-folder-hover-stage-${node.path}`}
+              >
+                {hoverStage === 'add' ? <Plus className="h-2.5 w-2.5" /> : <Minus className="h-2.5 w-2.5" />}
+              </button>
+            )}
           </div>
           {isExpanded && node.children && (
             <div className="flex flex-col">
@@ -280,7 +332,7 @@ export function CommitFileList({
       >
         {/* Left: Stage checkbox (WIP), File Icon and Filename */}
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          {isWip ? (
+          {!hoverStage && isWip ? (
             <button
               onClick={(e) => {
                 e.stopPropagation()
@@ -297,11 +349,11 @@ export function CommitFileList({
             >
               ✓
             </button>
-          ) : (
+          ) : !hoverStage ? (
             <div className="w-3 shrink-0" />
-          )}
+          ) : null}
           <FileText className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
-          <span className="font-mono text-foreground truncate min-w-0 flex-1">{node.name}</span>
+          <span className="font-mono text-[11px] leading-tight text-foreground font-semibold truncate min-w-0 flex-1">{node.name}</span>
         </div>
 
         {/* Right: Stats, Status, WIP Actions */}
@@ -320,10 +372,28 @@ export function CommitFileList({
           {isWip && (
             <button
               onClick={() => handleDiscard(node.path)}
-              className="p-0.5 border rounded border-border text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+              className={cn(
+                "p-0.5 border rounded border-border text-destructive hover:bg-destructive/10 transition-colors shrink-0",
+                hoverStage && "opacity-0 group-hover/file:opacity-100"
+              )}
               title="Discard Changes"
             >
               <RotateCcw className="h-2.5 w-2.5" />
+            </button>
+          )}
+
+          {hoverStage && isWip && (
+            <button
+              onClick={() => (hoverStage === 'add' ? handleStage(node.path) : handleUnstage(node.path))}
+              className={cn(
+                "p-0.5 border rounded transition-colors shrink-0 opacity-0 group-hover/file:opacity-100",
+                hoverStage === 'add'
+                  ? "border-green-500/40 text-green-500 hover:bg-green-500/10"
+                  : "border-red-500/40 text-red-500 hover:bg-red-500/10"
+              )}
+              title={hoverStage === 'add' ? 'Stage' : 'Unstage'}
+            >
+              {hoverStage === 'add' ? <Plus className="h-2.5 w-2.5" /> : <Minus className="h-2.5 w-2.5" />}
             </button>
           )}
         </div>
@@ -332,9 +402,9 @@ export function CommitFileList({
   }
 
   return (
-    <div className="space-y-4">
+    <div className={cn(collapsible ? "border border-border/40 rounded-lg overflow-hidden" : "space-y-4")}>
       {/* Global Statistics Summary */}
-      {!hideStats && (
+      {!hideStats && bodyVisible && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
@@ -377,7 +447,7 @@ export function CommitFileList({
       )}
 
       {/* Search bar inside files */}
-      {!hideSearch && (
+      {!hideSearch && bodyVisible && (
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input
@@ -399,17 +469,62 @@ export function CommitFileList({
       )}
 
       {/* FILES TREE OR LIST VIEW */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between bg-muted/10 p-1.5 rounded-lg border border-border/30">
+      <div className={collapsible ? "" : "space-y-2"}>
+        <div
+          onClick={collapsible ? () => setCollapsed((c) => !c) : undefined}
+          className={cn(
+            "flex items-center justify-between transition-colors",
+            collapsible
+              ? "bg-muted/15 hover:bg-muted/25 px-3 py-2 cursor-pointer select-none"
+              : "bg-muted/10 p-1.5 rounded-lg border border-border/30"
+          )}
+          role={collapsible ? "button" : undefined}
+          tabIndex={collapsible ? 0 : undefined}
+          onKeyDown={
+            collapsible
+              ? (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') setCollapsed((c) => !c)
+                }
+              : undefined
+          }
+          data-testid={collapsible ? "file-list-zone-header" : undefined}
+        >
           <div className="flex items-center gap-2 pl-1">
+            {collapsible &&
+              (collapsed ? (
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              ))}
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider select-none">
               {title ?? 'Modifications'}
             </span>
-            {viewMode === 'tree' && allFolderPaths.size > 0 && (
+            {onBulkStage && hoverStage && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onBulkStage()
+                }}
+                className={cn(
+                  "h-4 w-4 flex items-center justify-center rounded border transition-colors shrink-0",
+                  hoverStage === 'add'
+                    ? "border-green-500/40 text-green-500 hover:bg-green-500/10"
+                    : "border-red-500/40 text-red-500 hover:bg-red-500/10"
+                )}
+                title={hoverStage === 'add' ? t('workingTree.stageAll') : t('workingTree.unstageAll')}
+                data-testid="file-list-bulk-stage"
+              >
+                {hoverStage === 'add' ? <Plus className="h-2.5 w-2.5" /> : <Minus className="h-2.5 w-2.5" />}
+              </button>
+            )}
+            {bodyVisible && viewMode === 'tree' && allFolderPaths.size > 0 && (
               <>
                 <span className="text-muted-foreground/30 text-[10px] select-none">•</span>
                 <button
-                  onClick={handleToggleExpandAll}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleToggleExpandAll()
+                  }}
                   className="text-[10px] text-primary hover:underline font-semibold"
                 >
                   {buttonState === 'expand' ? t('commitDetails.expandAll') : t('commitDetails.collapseAll')}
@@ -417,7 +532,15 @@ export function CommitFileList({
               </>
             )}
           </div>
-          <div className="flex items-center border border-border/55 rounded overflow-hidden bg-card">
+          {/* Always rendered (even collapsed) so the header row's height stays constant —
+              `invisible` hides it without collapsing its box, avoiding layout shift on toggle. */}
+          <div
+            className={cn(
+              "flex items-center border border-border/55 rounded overflow-hidden bg-card",
+              !bodyVisible && "invisible"
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               onClick={() => setViewMode('tree')}
               className={`p-1.5 transition-all ${
@@ -440,8 +563,8 @@ export function CommitFileList({
         </div>
 
         {/* Tree rendering */}
-        {viewMode === 'tree' && (
-          <div className="space-y-0.5">
+        {bodyVisible && viewMode === 'tree' && (
+          <div className={collapsible ? "space-y-0.5 border-t border-border/30 p-2" : "space-y-0.5"}>
             {filteredFiles.length === 0 ? (
               <p className="text-[11px] text-muted-foreground/70 italic px-2 py-1">
                 {noChangesLabel}
@@ -453,8 +576,8 @@ export function CommitFileList({
         )}
 
         {/* List rendering */}
-        {viewMode === 'list' && (
-          <div className="space-y-0.5">
+        {bodyVisible && viewMode === 'list' && (
+          <div className={collapsible ? "space-y-0.5 border-t border-border/30 p-2" : "space-y-0.5"}>
             {filteredFiles.length === 0 ? (
               <p className="text-[11px] text-muted-foreground/70 italic px-2 py-1">
                 {noChangesLabel}
@@ -485,7 +608,7 @@ export function CommitFileList({
                 >
                   {/* Left: Stage checkbox (WIP), File Icon and Consecutive Path Display */}
                   <div className="flex items-center min-w-0 flex-1 mr-4">
-                    {isWip && (
+                    {!hoverStage && isWip && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -538,10 +661,28 @@ export function CommitFileList({
                     {isWip && (
                       <button
                         onClick={() => handleDiscard(file.path)}
-                        className="p-0.5 border rounded border-border text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                        className={cn(
+                          "p-0.5 border rounded border-border text-destructive hover:bg-destructive/10 transition-colors shrink-0",
+                          hoverStage && "opacity-0 group-hover/file:opacity-100"
+                        )}
                         title="Discard Changes"
                       >
                         <RotateCcw className="h-2.5 w-2.5" />
+                      </button>
+                    )}
+
+                    {hoverStage && isWip && (
+                      <button
+                        onClick={() => (hoverStage === 'add' ? handleStage(file.path) : handleUnstage(file.path))}
+                        className={cn(
+                          "p-0.5 border rounded transition-colors shrink-0 opacity-0 group-hover/file:opacity-100",
+                          hoverStage === 'add'
+                            ? "border-green-500/40 text-green-500 hover:bg-green-500/10"
+                            : "border-red-500/40 text-red-500 hover:bg-red-500/10"
+                        )}
+                        title={hoverStage === 'add' ? 'Stage' : 'Unstage'}
+                      >
+                        {hoverStage === 'add' ? <Plus className="h-2.5 w-2.5" /> : <Minus className="h-2.5 w-2.5" />}
                       </button>
                     )}
                   </div>

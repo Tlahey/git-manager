@@ -50,8 +50,8 @@ export function GitGraphOverlayManager({
       return (
         <ResetDialog
           repoPath={repoPath}
-          targetOid={activeNode.commit.oid}
-          targetSubject={activeNode.commit.subject}
+          targetOid={activeDialog.targetOid ?? activeNode.commit.oid}
+          targetSubject={activeDialog.targetSubject ?? activeNode.commit.subject}
           open
           onClose={closeDialog}
           onSuccess={closeDialog}

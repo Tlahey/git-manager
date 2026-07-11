@@ -1,6 +1,7 @@
 import { Menu, MenuItem, IconMenuItem, Submenu, PredefinedMenuItem } from '@tauri-apps/api/menu'
 import { resolveResource } from '@tauri-apps/api/path'
 import { Image } from '@tauri-apps/api/image'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 
 // ── Icon resolution ──────────────────────────────────────────────────────────
 // Icons are bundled as resources in src-tauri/icons/menu/*.png and resolved
@@ -12,12 +13,43 @@ const ICON_NAMES = ['copy_sha', 'branch', 'tag', 'reset', 'revert', 'fixup'] as 
 type IconName = typeof ICON_NAMES[number]
 
 let resolvedIcons: Partial<Record<IconName, Image>> = {}
+// Tinted variants of the same glyphs — macOS renders custom (non-template) menu
+// icons as-is regardless of dark mode or disabled state, so we recolor the RGBA
+// buffer ourselves instead of relying on the OS to do it.
+let whiteIcons: Partial<Record<IconName, Image>> = {}
+let greyIcons: Partial<Record<IconName, Image>> = {}
 let blankImg: Image | undefined
 let hasAttemptedResolve = false
 
+// Refreshed once per menu build (see refreshThemeState) rather than threaded through
+// every makeItem call.
+let isDarkWindow = false
+
+const WHITE_RGB: [number, number, number] = [255, 255, 255]
+const GREY_RGB: [number, number, number] = [142, 142, 147] // macOS systemGray
+const DISABLED_OPACITY = 0.4
+
+/** Recolors an icon's RGB channels while preserving (and optionally scaling down) its alpha. */
+async function tintImage(
+  base: Image,
+  [r, g, b]: [number, number, number],
+  opacity = 1,
+): Promise<Image> {
+  const [{ width, height }, rgba] = await Promise.all([base.size(), base.rgba()])
+  const out = new Uint8Array(rgba.length)
+  for (let i = 0; i < rgba.length; i += 4) {
+    out[i] = r
+    out[i + 1] = g
+    out[i + 2] = b
+    out[i + 3] = Math.round(rgba[i + 3] * opacity)
+  }
+  return Image.new(out, width, height)
+}
+
 /**
  * Resolves all menu icon paths and loads them into Tauri Image instances.
- * Also generates a transparent blank Image in memory to use as a fallback alignment placeholder.
+ * Also generates a transparent blank Image in memory to use as a fallback alignment placeholder,
+ * plus white/grey tinted variants of each icon for dark mode and disabled rendering.
  */
 async function loadIcons(): Promise<void> {
   if (hasAttemptedResolve) return
@@ -31,18 +63,33 @@ async function loadIcons(): Promise<void> {
     console.error('[nativeMenu] Failed to generate in-memory blank placeholder:', err)
   }
 
-  // 2. Load custom icons from resources
+  // 2. Load custom icons from resources, then derive tinted variants
   await Promise.all(
     ICON_NAMES.map(async (name) => {
       try {
         const path = await resolveResource(`icons/menu/${name}.png`)
         const img = await Image.fromPath(path)
         resolvedIcons[name] = img
+        const [white, grey] = await Promise.all([
+          tintImage(img, WHITE_RGB),
+          tintImage(img, GREY_RGB, DISABLED_OPACITY),
+        ])
+        whiteIcons[name] = white
+        greyIcons[name] = grey
       } catch (err) {
         console.warn(`[nativeMenu] Failed to load icon "${name}":`, err)
       }
     }),
   )
+}
+
+/** Reads the window's current effective theme so icons can be tinted accordingly. */
+async function refreshThemeState(): Promise<void> {
+  try {
+    isDarkWindow = (await getCurrentWindow().theme()) === 'dark'
+  } catch (err) {
+    console.warn('[nativeMenu] Failed to read window theme:', err)
+  }
 }
 
 async function makeItem(
@@ -54,9 +101,15 @@ async function makeItem(
   }
 ): Promise<MenuItem | IconMenuItem> {
   const { text, icon, enabled = true, action } = opts
-  
-  // Use the loaded icon or fall back to the transparent blank placeholder image to align items
-  const img = (icon ? resolvedIcons[icon] : undefined) || blankImg
+
+  // Disabled always wins (greyed out) regardless of theme; otherwise pick the
+  // white variant in dark mode so the glyph stays visible against the dark menu.
+  const tinted = icon
+    ? (!enabled ? greyIcons[icon] : isDarkWindow ? whiteIcons[icon] : resolvedIcons[icon])
+    : undefined
+
+  // Use the tinted/loaded icon or fall back to the transparent blank placeholder to align items
+  const img = tinted || (icon ? resolvedIcons[icon] : undefined) || blankImg
 
   if (img) {
     try {
@@ -78,6 +131,7 @@ export interface CommitNativeMenuLabels {
   resetSoft: string
   resetMixed: string
   resetHard: string
+  undoCommit: string
   revert: string
   fixup: string
   recompose: string
@@ -99,6 +153,8 @@ export interface CommitNativeMenuOptions {
   isSingle: boolean
   /** Enable the fixup item only when the target is a single commit on the current branch. */
   fixupEnabled: boolean
+  /** Enable "Undo commit" only for the tip commit (HEAD) when it has a parent to reset onto. */
+  undoCommitEnabled: boolean
   targetCount: number
   labels: CommitNativeMenuLabels
   onCheckout: () => void
@@ -107,6 +163,7 @@ export interface CommitNativeMenuOptions {
   onCherryPick: () => void
   onRebaseOnto: () => void
   onReset: (mode: 'soft' | 'mixed' | 'hard') => void
+  onUndoCommit: () => void
   onRevert: () => void
   onFixup: () => void
   onCopySha: () => void
@@ -126,6 +183,7 @@ export async function showCommitNativeContextMenu(opts: CommitNativeMenuOptions)
   const {
     isSingle,
     fixupEnabled,
+    undoCommitEnabled,
     targetCount,
     labels,
     onCheckout,
@@ -134,6 +192,7 @@ export async function showCommitNativeContextMenu(opts: CommitNativeMenuOptions)
     onCherryPick,
     onRebaseOnto,
     onReset,
+    onUndoCommit,
     onRevert,
     onFixup,
     onCopySha,
@@ -150,6 +209,8 @@ export async function showCommitNativeContextMenu(opts: CommitNativeMenuOptions)
   } catch (err) {
     console.error('[nativeMenu] Error loading icons:', err)
   }
+
+  await refreshThemeState()
 
   // ── Header (multi-select count) ───────────────────────────────────────────
   const header = targetCount > 1
@@ -169,9 +230,11 @@ export async function showCommitNativeContextMenu(opts: CommitNativeMenuOptions)
   const resetHardItem  = await makeItem({ text: labels.resetHard,  action: () => onReset('hard') })
   const resetSubmenu = await Submenu.new({
     text: labels.resetSubmenu,
+    icon: blankImg,
     enabled: isSingle,
     items: [resetSoftItem, resetMixedItem, resetHardItem],
   })
+  const undoCommitItem = await makeItem({ text: labels.undoCommit, icon: 'reset', enabled: undoCommitEnabled, action: () => onUndoCommit() })
 
   // Deferred: a richer WebStorm-style interactive rebase UI will implement these later.
   // They stay visible (disabled) with a transparent spacer icon so menu alignment holds.
@@ -211,6 +274,7 @@ export async function showCommitNativeContextMenu(opts: CommitNativeMenuOptions)
   items.push(createBranch)
   items.push(cherryItem)
   items.push(rebaseOntoItem)
+  items.push(undoCommitItem)
   items.push(resetSubmenu)
   items.push(revertItem)
   items.push(fixupItem)
@@ -261,6 +325,8 @@ export async function showStashNativeContextMenu(opts: StashNativeMenuOptions): 
     console.error('[nativeMenu] Error loading icons:', err)
   }
 
+  await refreshThemeState()
+
   const applyItem   = await makeItem({ text: 'Apply stash', action: () => onApply() })
   const popItem     = await makeItem({ text: 'Pop stash',   action: () => onPop() })
   const deleteItem  = await makeItem({ text: 'Delete stash', action: () => onDelete() })
@@ -302,6 +368,8 @@ export async function showBranchNativeContextMenu(opts: BranchNativeMenuOptions)
   } catch (err) {
     console.error('[nativeMenu] Error loading icons:', err)
   }
+
+  await refreshThemeState()
 
   const deleteItem = await makeItem({
     text: 'Delete branch',

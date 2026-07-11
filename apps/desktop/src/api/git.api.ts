@@ -72,6 +72,57 @@ function clearRedo(repoPath: string) {
   useUndoHistoryStore.getState().clearRedo(repoPath)
 }
 
+// Pre-rebase HEAD captured by apiRunInteractiveRebase/apiRunAutosquash, keyed by repoPath —
+// survives a conflict/edit pause (both git2's rebase-related flows and the shelled-out
+// `git rebase -i --autosquash` land in the same .git/rebase-merge state) so
+// apiRebaseContinue/apiRebaseSkip can still record the undo entry once the rebase they finish
+// actually settles back to idle. Cleared by settleRebaseUndo or on abort.
+type PendingRebaseKind = 'interactiveRebase' | 'autosquash'
+const pendingRebasePreviousOid = new Map<string, { previousOid: string | null; kind: PendingRebaseKind }>()
+
+async function settleRebaseUndo(path: string) {
+  const pending = pendingRebasePreviousOid.get(path)
+  if (!pending) return
+
+  const rebaseState = await getRebaseState(path).catch(() => null)
+  const stillRebasing = rebaseState ? rebaseState.kind !== 'idle' : false
+  if (stillRebasing) return
+
+  pendingRebasePreviousOid.delete(path)
+  const { previousOid, kind } = pending
+
+  let newOid: string | null = null
+  if (previousOid) {
+    try {
+      const branches = await getBranches(path, false)
+      newOid = branches.find((b) => b.isHead)?.commitOid ?? null
+    } catch {
+      newOid = null
+    }
+  }
+
+  if (previousOid && newOid && newOid !== previousOid) {
+    const id = generateId()
+    // The rebased HEAD isn't a descendant of the old tip, so both ends need their own pin to
+    // survive GC.
+    await Promise.all([
+      pinObject(path, `${id}-previous`, previousOid).catch(() => {}),
+      pinObject(path, `${id}-new`, newOid).catch(() => {}),
+    ])
+    pushAction(path, {
+      id,
+      timestamp: Date.now(),
+      label: { key: kind === 'autosquash' ? 'undoRedo.autosquash' : 'undoRedo.interactiveRebase' },
+      pinnedRefs: [`${id}-previous`, `${id}-new`],
+      type: kind,
+      previousOid,
+      newOid,
+    })
+  } else {
+    clearRedo(path)
+  }
+}
+
 // ─── Clipboard ──────────────────────────────────────────────────────────────
 
 export async function apiCopyCommitSha(oid: string) {
@@ -201,36 +252,12 @@ export async function apiRunAutosquash(path: string) {
 
   const result = await callCommand('autosquash', () => runAutosquash(path))
 
-  let newOid: string | null = null
-  if (previousOid) {
-    try {
-      const branches = await getBranches(path, false)
-      newOid = branches.find((b) => b.isHead)?.commitOid ?? null
-    } catch {
-      newOid = null
-    }
-  }
-
-  if (previousOid && newOid && newOid !== previousOid) {
-    const id = generateId()
-    // git rebase --autosquash réécrit HEAD sur un commit qui n'est pas un ancêtre de l'ancien
-    // tip (comme un reset) — les deux extrémités doivent donc être épinglées séparément.
-    await Promise.all([
-      pinObject(path, `${id}-previous`, previousOid).catch(() => {}),
-      pinObject(path, `${id}-new`, newOid).catch(() => {}),
-    ])
-    pushAction(path, {
-      id,
-      timestamp: Date.now(),
-      label: { key: 'undoRedo.autosquash' },
-      pinnedRefs: [`${id}-previous`, `${id}-new`],
-      type: 'autosquash',
-      previousOid,
-      newOid,
-    })
-  } else {
-    clearRedo(path)
-  }
+  // Same conflict-pause caveat as apiRunInteractiveRebase: `run_autosquash` shells out to
+  // `git rebase -i --autosquash` and pauses gracefully (err_unless_paused) instead of erroring,
+  // so HEAD may not have moved yet. Stash previousOid either way and let settleRebaseUndo record
+  // the undo entry now, or later via apiRebaseContinue/apiRebaseSkip once it reaches idle.
+  pendingRebasePreviousOid.set(path, { previousOid, kind: 'autosquash' })
+  await settleRebaseUndo(path)
 
   return result
 }
@@ -311,15 +338,22 @@ export async function apiRebaseOntoCommit(path: string, targetOid: string) {
 }
 
 export async function apiRebaseContinue(path: string, message?: string) {
-  return continueRebase(path, message)
+  const result = await continueRebase(path, message)
+  await settleRebaseUndo(path)
+  return result
 }
 
 export async function apiRebaseAbort(path: string) {
+  // Abort restores HEAD to the pre-rebase tip itself, so there's nothing to record as an undo
+  // entry — just forget the pending previousOid so it doesn't leak into a later rebase.
+  pendingRebasePreviousOid.delete(path)
   return abortRebase(path)
 }
 
 export async function apiRebaseSkip(path: string) {
-  return skipRebase(path)
+  const result = await skipRebase(path)
+  await settleRebaseUndo(path)
+  return result
 }
 
 // ─── Patch ──────────────────────────────────────────────────────────────────
@@ -585,8 +619,24 @@ export async function apiListRebaseCommits(path: string, baseOid: string) {
 }
 
 export async function apiRunInteractiveRebase(path: string, baseOid: string, steps: RebaseTodoStep[]) {
+  let previousOid: string | null = null
+  try {
+    const branches = await getBranches(path, false)
+    previousOid = branches.find((b) => b.isHead)?.commitOid ?? null
+  } catch {
+    previousOid = null
+  }
+
   const result = await runInteractiveRebase(path, baseOid, steps)
-  clearRedo(path)
+
+  // A conflict/edit pause resolves without throwing (err_unless_paused treats it as expected —
+  // the ConflictResolutionPanel takes over from here), so HEAD may have moved to an
+  // intermediate replay step without the rebase actually being done. Stash previousOid either
+  // way: settleRebaseUndo records the undo entry now if it already settled, or later — via
+  // apiRebaseContinue/apiRebaseSkip — once the paused rebase finally reaches idle.
+  pendingRebasePreviousOid.set(path, { previousOid, kind: 'interactiveRebase' })
+  await settleRebaseUndo(path)
+
   return result
 }
 

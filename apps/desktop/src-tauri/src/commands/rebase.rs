@@ -2,6 +2,23 @@ use crate::error::AppError;
 use crate::models::RebaseState;
 use crate::services::git_rebase;
 use git2::Repository;
+use tauri::Emitter;
+
+/// Progress of a running rebase, broadcast to every window so the main UI can drive its
+/// launchpad-style progress strip and pick up a conflict pause without the user having to
+/// notice on their own. Shared by every command that shells out to `git rebase`, interactive
+/// or not (plain rebase-onto, `run_interactive_rebase`, `run_autosquash`).
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RebaseProgress<'a> {
+    repo_path: &'a str,
+    /// `start` | `done` | `paused` | `error`
+    phase: &'a str,
+}
+
+pub(crate) fn emit_progress(app: &tauri::AppHandle, repo_path: &str, phase: &str) {
+    let _ = app.emit("rebase-progress", RebaseProgress { repo_path, phase });
+}
 
 /// Returns the repository's current rebase state (idle, in progress, paused on a
 /// conflict, or paused on an edit/reword step), for the toolbar's "REBASING" indicator.

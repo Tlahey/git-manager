@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { mutate } from 'swr'
 import { open, save } from '@tauri-apps/plugin-dialog'
+import { toast } from '@git-manager/ui'
 import type { GitGraphNode, GitStatus } from '@git-manager/git-types'
 import { showCommitNativeContextMenu, showStashNativeContextMenu } from '../api/nativeMenu.api'
 import {
@@ -38,7 +39,7 @@ interface UseGitGraphActionsParams {
 }
 
 export type PendingAction =
-  | { kind: 'reset'; mode: 'soft' | 'mixed' | 'hard' }
+  | { kind: 'reset'; mode: 'soft' | 'mixed' | 'hard'; targetOid?: string; targetSubject?: string }
   | { kind: 'revert' }
   | { kind: 'branch' }
   | { kind: 'tag'; annotated: boolean }
@@ -66,13 +67,6 @@ export function useGitGraphActions({
   const setEditingOid = useRepoUIStore((s) => s.setEditingOid)
 
   const [pendingAction, setPendingAction] = useState<PendingAction>(null)
-  const [toast, setToast] = useState<{ kind: 'ok' | 'error'; msg: string } | null>(null)
-
-  useEffect(() => {
-    if (!toast) return
-    const id = setTimeout(() => setToast(null), 3000)
-    return () => clearTimeout(id)
-  }, [toast])
 
   function refreshLogAndStatus() {
     queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
@@ -82,7 +76,7 @@ export function useGitGraphActions({
   async function handleCopySha() {
     if (!primaryOid) return
     await apiCopyCommitSha(primaryOid)
-    setToast({ kind: 'ok', msg: t('gitTree.contextMenu.shaCopied') })
+    toast.success(t('gitTree.contextMenu.shaCopied'))
   }
 
   /** Opens the dedicated "Commit Changes" fixup window (same pattern as the merge window). */
@@ -120,7 +114,7 @@ export function useGitGraphActions({
       await apiCheckoutBranch(repoPath, primaryOid)
       refreshLogAndStatus()
     } catch (err) {
-      setToast({ kind: 'error', msg: String(err) })
+      toast.error(String(err))
     }
   }
 
@@ -130,9 +124,9 @@ export function useGitGraphActions({
       const destPath = await open({ directory: true, multiple: false })
       if (!destPath || typeof destPath !== 'string') return
       await apiAddWorktree(repoPath, primaryOid, destPath)
-      setToast({ kind: 'ok', msg: t('gitTree.contextMenu.worktreeCreated') })
+      toast.success(t('gitTree.contextMenu.worktreeCreated'))
     } catch (err) {
-      setToast({ kind: 'error', msg: String(err) })
+      toast.error(String(err))
     }
   }
 
@@ -141,9 +135,9 @@ export function useGitGraphActions({
     try {
       await apiCherryPickCommit(repoPath, primaryOid)
       refreshLogAndStatus()
-      setToast({ kind: 'ok', msg: t('gitTree.contextMenu.cherryPicked') })
+      toast.success(t('gitTree.contextMenu.cherryPicked'))
     } catch (err) {
-      setToast({ kind: 'error', msg: String(err) })
+      toast.error(String(err))
     }
   }
 
@@ -152,9 +146,9 @@ export function useGitGraphActions({
     try {
       await apiRebaseOntoCommit(repoPath, primaryOid)
       refreshLogAndStatus()
-      setToast({ kind: 'ok', msg: t('gitTree.contextMenu.rebased') })
+      toast.success(t('gitTree.contextMenu.rebased'))
     } catch (err) {
-      setToast({ kind: 'error', msg: String(err) })
+      toast.error(String(err))
     }
   }
 
@@ -163,13 +157,13 @@ export function useGitGraphActions({
     try {
       const url = await apiGetCommitWebUrl(repoPath, primaryOid)
       if (!url) {
-        setToast({ kind: 'error', msg: t('gitTree.contextMenu.noRemoteLink') })
+        toast.error(t('gitTree.contextMenu.noRemoteLink'))
         return
       }
       await navigator.clipboard.writeText(url)
-      setToast({ kind: 'ok', msg: t('gitTree.contextMenu.linkCopied') })
+      toast.success(t('gitTree.contextMenu.linkCopied'))
     } catch (err) {
-      setToast({ kind: 'error', msg: String(err) })
+      toast.error(String(err))
     }
   }
 
@@ -179,9 +173,9 @@ export function useGitGraphActions({
       const destPath = await save({ defaultPath: `${primaryOid.slice(0, 7)}.patch` })
       if (!destPath) return
       await apiCreatePatch(repoPath, primaryOid, destPath)
-      setToast({ kind: 'ok', msg: t('gitTree.contextMenu.patchCreated') })
+      toast.success(t('gitTree.contextMenu.patchCreated'))
     } catch (err) {
-      setToast({ kind: 'error', msg: String(err) })
+      toast.error(String(err))
     }
   }
 
@@ -196,7 +190,7 @@ export function useGitGraphActions({
       queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
       queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
     } catch (err) {
-      setToast({ kind: 'error', msg: String(err) })
+      toast.error(String(err))
     }
   }
 
@@ -225,7 +219,7 @@ export function useGitGraphActions({
             queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
             queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
           } catch (err) {
-            alert(String(err))
+            toast.error(String(err))
           }
         },
         onPop: async () => {
@@ -235,7 +229,7 @@ export function useGitGraphActions({
             queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
             queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
           } catch (err) {
-            alert(String(err))
+            toast.error(String(err))
           }
         },
         onDelete: async () => {
@@ -245,7 +239,7 @@ export function useGitGraphActions({
             queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
             queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
           } catch (err) {
-            alert(String(err))
+            toast.error(String(err))
           }
         },
         onEditMessage: () => {
@@ -284,9 +278,18 @@ export function useGitGraphActions({
       hasWorkingChanges &&
       (await apiIsCommitOnCurrentBranch(repoPath, oid).catch(() => false))
 
+    // "Undo commit" is only meaningful for the tip commit (HEAD, top of the list) — undoing
+    // any other commit would require rewriting everything above it, which is what the Reset
+    // submenu is for. It also needs a parent to reset onto and is unavailable mid-rebase, same
+    // as fixup above.
+    const isLastCommit = nodes[0]?.commit.oid === oid
+    const parentOid = clickedNode?.commit.parentOids[0]
+    const undoCommitEnabled = isSingle && isLastCommit && !isRebasePaused && !!parentOid
+
     showCommitNativeContextMenu({
       isSingle,
       fixupEnabled,
+      undoCommitEnabled,
       targetCount: targets.length,
       labels: {
         checkout: t('gitTree.contextMenu.checkout'),
@@ -298,6 +301,7 @@ export function useGitGraphActions({
         resetSoft: t('gitTree.contextMenu.resetSoft'),
         resetMixed: t('gitTree.contextMenu.resetMixed'),
         resetHard: t('gitTree.contextMenu.resetHard'),
+        undoCommit: t('gitTree.contextMenu.undoCommit'),
         revert: t('gitTree.contextMenu.revert'),
         fixup: t('gitTree.contextMenu.fixup'),
         recompose: isSingle
@@ -324,6 +328,16 @@ export function useGitGraphActions({
       onCherryPick: () => handleCherryPick(),
       onRebaseOnto: () => handleRebaseOntoCommit(),
       onReset: (mode) => setPendingAction({ kind: 'reset', mode }),
+      onUndoCommit: () => {
+        if (!parentOid) return
+        const parentNode = nodes.find((n) => n.commit.oid === parentOid)
+        setPendingAction({
+          kind: 'reset',
+          mode: 'mixed',
+          targetOid: parentOid,
+          targetSubject: parentNode?.commit.subject ?? '',
+        })
+      },
       onRevert: () => setPendingAction({ kind: 'revert' }),
       onFixup: () => void openFixupWindow(oid).catch(console.error),
       onCopySha: () => handleCopySha(),
@@ -335,5 +349,5 @@ export function useGitGraphActions({
     }).catch(console.error)
   }
 
-  return { pendingAction, setPendingAction, toast, openMenuAt, handleCommitWip }
+  return { pendingAction, setPendingAction, openMenuAt, handleCommitWip }
 }

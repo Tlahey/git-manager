@@ -1,25 +1,10 @@
-use crate::commands::rebase::err_unless_paused;
+use crate::commands::rebase::{emit_progress, err_unless_paused};
 use crate::error::AppError;
 use crate::models::GitCommit;
 use crate::services::git_interactive_rebase;
 use git2::{Oid, Repository};
-use tauri::Emitter;
 
 pub use crate::services::git_interactive_rebase::RebaseTodoStep;
-
-/// Progress of a running interactive rebase, broadcast to every window so the
-/// main UI can drive its launchpad-style progress strip.
-#[derive(Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-struct RebaseProgress<'a> {
-    repo_path: &'a str,
-    /// `start` | `done` | `paused` | `error`
-    phase: &'a str,
-}
-
-fn emit_progress(app: &tauri::AppHandle, repo_path: &str, phase: &str) {
-    let _ = app.emit("rebase-progress", RebaseProgress { repo_path, phase });
-}
 
 // ─── list_rebase_commits ──────────────────────────────────────────────────────
 
@@ -77,7 +62,7 @@ pub async fn run_interactive_rebase(
     let output = app
         .shell()
         .command("git")
-        .args(["-C", &path, "rebase", "-i", &upstream_arg])
+        .args(["-C", &path, "rebase", "-i", "--autostash", &upstream_arg])
         .env("GIT_SEQUENCE_EDITOR", sequence_editor)
         .env("GIT_EDITOR", "true")
         .output()

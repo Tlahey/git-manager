@@ -96,49 +96,47 @@ export function ConflictMergeWindowContent({ repoPath, filePath }: ConflictMerge
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background select-none animate-fadeIn">
       {/* HEADER / TOOLBAR */}
-      {!view?.renderable && (
-        <div className="flex shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 shadow-sm">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex min-w-0 flex-col">
-              {parsedPath.dir && (
-                <span className="mb-0.5 truncate font-mono text-[10px] leading-none text-muted-foreground/60">
-                  {parsedPath.dir}
-                </span>
-              )}
-              <span className="select-all truncate font-mono text-xs leading-tight text-foreground font-semibold">
-                {parsedPath.name}
+      <div className="flex shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 shadow-sm">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 flex-col">
+            {parsedPath.dir && (
+              <span className="mb-0.5 truncate font-mono text-[10px] leading-none text-muted-foreground/60">
+                {parsedPath.dir}
               </span>
-            </div>
+            )}
+            <span className="select-all truncate font-mono text-xs leading-tight text-foreground font-semibold">
+              {parsedPath.name}
+            </span>
           </div>
-
-          {view?.renderable && (
-            <div className="flex shrink-0 items-center gap-3">
-              {error && (
-                <span className="flex items-center gap-1 text-xs text-destructive font-medium">
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  {error}
-                </span>
-              )}
-              <span className="text-[10px] font-medium text-muted-foreground bg-muted/65 border border-border/40 px-2 py-0.5 rounded">
-                {t('conflictEditor.conflictsRemaining', { count: pendingCount })}
-              </span>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 gap-1 px-2.5 text-[10px] font-bold"
-                onClick={handleApplyNonConflicting}
-                disabled={isAutoMerging || isSaving}
-                title={t('conflictEditor.applyNonConflicting')}
-                data-testid="merge-auto-merge-button"
-              >
-                {isAutoMerging ? <Spinner className="h-3.5 w-3.5" /> : <Wand2 className="h-3.5 w-3.5" />}
-                {t('conflictEditor.applyNonConflicting')}
-              </Button>
-            </div>
-          )}
         </div>
-      )}
+
+        {view?.renderable && (
+          <div className="flex shrink-0 items-center gap-3">
+            {error && (
+              <span className="flex items-center gap-1 text-xs text-destructive font-medium">
+                <AlertCircle className="h-3.5 w-3.5" />
+                {error}
+              </span>
+            )}
+            <span className="text-[10px] font-medium text-muted-foreground bg-muted/65 border border-border/40 px-2 py-0.5 rounded">
+              {t('conflictEditor.conflictsRemaining', { count: pendingCount })}
+            </span>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 px-2.5 text-[10px] font-bold"
+              onClick={handleApplyNonConflicting}
+              disabled={isAutoMerging || isSaving}
+              title={t('conflictEditor.applyNonConflicting')}
+              data-testid="merge-auto-merge-button"
+            >
+              {isAutoMerging ? <Spinner className="h-3.5 w-3.5" /> : <Wand2 className="h-3.5 w-3.5" />}
+              {t('conflictEditor.applyNonConflicting')}
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* CONTENT AREA */}
       <div className="flex flex-1 flex-col overflow-hidden bg-card/45 font-mono text-xs select-text">

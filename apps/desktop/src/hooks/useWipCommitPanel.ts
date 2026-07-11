@@ -6,7 +6,6 @@ import {
   apiStageFile,
   apiUnstageFile,
   apiCreateCommit,
-  apiStageAll,
 } from '../api/git.api'
 import { useOllamaGeneration } from './useOllamaGeneration'
 import { useCommitMessageHistory } from './useCommitMessageHistory'
@@ -199,16 +198,6 @@ export function useWipCommitPanel(
     }
   }
 
-  async function handleStageAllFiles() {
-    await apiStageAll(repoPath)
-    onRefresh?.()
-  }
-
-  async function handleUnstageAllFiles() {
-    await apiUnstageAll(repoPath)
-    onRefresh?.()
-  }
-
   return {
     // Batch mode
     batchMode,
@@ -229,8 +218,5 @@ export function useWipCommitPanel(
     history,
     historyOpen,
     setHistoryOpen,
-    // Shared
-    handleStageAllFiles,
-    handleUnstageAllFiles,
   }
 }
