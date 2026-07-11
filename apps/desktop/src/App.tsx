@@ -20,6 +20,7 @@ import { TrophyToast } from './components/trophy/TrophyToast'
 import { OperationProgressBar } from './components/layout/OperationProgressBar'
 import { appEventBus } from './lib/appEventBus'
 import { useOperationProgressStore } from './stores/operationProgress.store'
+import { useUndoHistoryStore } from './stores/undoHistory.store'
 import { listen } from '@tauri-apps/api/event'
 import { mutate } from 'swr'
 
@@ -71,6 +72,11 @@ export default function App() {
         queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
         queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
         queryClient.invalidateQueries({ queryKey: ['pending-fixups', repoPath] })
+        // Fixup / rebasing commits are created in dedicated Tauri windows, each with its own
+        // Zustand store instance. Their undo entry is persisted to localStorage but this window's
+        // store was hydrated at startup and won't pick it up on its own — re-read it so the UNDO
+        // button reflects the action just performed elsewhere.
+        useUndoHistoryStore.persist.rehydrate()
       })
     }
     setupListener()
