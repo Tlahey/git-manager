@@ -1,4 +1,4 @@
 {
   "extends": "@git-manager/config/typescript",
-  "include": ["src"]
+  "include": ["src", "vitest.setup.ts"]
 }

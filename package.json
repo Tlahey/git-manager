@@ -10,6 +10,7 @@
     "build": "turbo build",
     "build:desktop": "pnpm --filter @git-manager/desktop build",
     "lint": "turbo lint",
+    "test": "turbo test",
     "typecheck": "turbo typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "clean": "turbo clean"

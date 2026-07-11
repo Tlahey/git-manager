@@ -40,7 +40,10 @@ export function OctopusMascot({
     animated: animated ? undefined : 'false',
     'eye-tracking': eyeTracking ? undefined : 'false',
     label,
-    className,
+    // React doesn't rewrite `className` to the `class` attribute for custom (hyphenated) elements
+    // the way it does for built-in DOM tags — passing `className` through as-is would silently
+    // set a nonsensical `classname` attribute instead of applying any CSS class.
+    class: className,
     style,
   });
 }

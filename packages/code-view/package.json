@@ -12,8 +12,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint src stories e2e",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "vitest run --project unit",
+    "test:watch": "vitest --project unit",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test-storybook": "test-storybook",
