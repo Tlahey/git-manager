@@ -10,14 +10,17 @@ export function ExternalToolsSection() {
     mergeToolCommand: '',
     diffTool: 'integrated',
     diffToolCommand: '',
-    externalEditor: 'vscode',
-    externalEditorCommand: '',
     externalTerminal: 'system',
     externalTerminalCommand: '',
   }
+  const git = settings.git
 
   function updateTools(partial: Partial<typeof tools>) {
     updateSettings({ externalTools: { ...tools, ...partial } })
+  }
+
+  function updateGit(partial: Partial<typeof git>) {
+    updateSettings({ git: { ...git, ...partial } })
   }
 
   return (
@@ -99,8 +102,8 @@ export function ExternalToolsSection() {
         </h4>
         <div className="space-y-2">
           <select
-            value={tools.externalEditor}
-            onChange={(e) => updateTools({ externalEditor: e.target.value })}
+            value={git.externalEditor}
+            onChange={(e) => updateGit({ externalEditor: e.target.value })}
             className="w-full h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-sans"
           >
             <option value="vscode">VS Code</option>
@@ -110,12 +113,12 @@ export function ExternalToolsSection() {
             <option value="custom">Commande personnalisée</option>
           </select>
 
-          {tools.externalEditor === 'custom' && (
+          {git.externalEditor === 'custom' && (
             <div className="space-y-1">
               <label className="text-[10px] font-medium text-muted-foreground">Commande de l&apos;éditeur</label>
               <Input
-                value={tools.externalEditorCommand}
-                onChange={(e) => updateTools({ externalEditorCommand: e.target.value })}
+                value={git.externalEditorCommand}
+                onChange={(e) => updateGit({ externalEditorCommand: e.target.value })}
                 placeholder="Ex: /usr/local/bin/code"
                 className="h-8 text-xs font-mono"
               />

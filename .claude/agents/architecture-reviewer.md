@@ -50,9 +50,17 @@ base branch, or whatever the user points you at — don't re-audit the whole rep
 
 **Cross-cutting:**
 - Logic duplicated between two or more files that could be a shared helper/hook/service.
-- File size as a smell, not a hard rule: a component/command file that's grown past ~300-400
-  lines and clearly mixes responsibilities is worth flagging; a large file that's genuinely one
-  cohesive responsibility (e.g. static theme data) is not.
+- File/function size as a signal, not a hard rule: ~300 lines is the point where a component,
+  hook, or Rust function should have an obvious seam to split — flag it if the diff grows a file
+  past that (or grows an already-large one further) while mixing concerns or piling up nested
+  branches; a large file that's genuinely one cohesive responsibility (e.g. static theme data) or
+  a flat list of near-identical thin wrappers (e.g. `api/git.api.ts`) is not a violation on size
+  alone.
+- New sub-component/hook/utility extractions with no colocated test (RTL for components, Vitest
+  for hooks/utilities, `#[cfg(test)]` for Rust) — the repo has an established Vitest + React
+  Testing Library suite (`apps/desktop/vitest.config.ts`) and Rust unit tests in modules like
+  `git_merge_diff.rs`, so an untested extraction is a regression in the pattern, not an
+  acceptable gap.
 
 ## What NOT to flag
 
@@ -60,7 +68,8 @@ base branch, or whatever the user points you at — don't re-audit the whole rep
   doc's audit, not something to re-report every time.
 - Style/formatting (lint/prettier/clippy/rustfmt already enforce this).
 - Correctness bugs — out of scope for this agent.
-- Missing tests — this repo has no test suite currently; don't flag test coverage.
+- Missing tests on code that isn't a new extraction (e.g. a one-line change to existing logic) —
+  only flag test coverage for newly split-out components/hooks/utilities/modules.
 
 ## Output format
 
