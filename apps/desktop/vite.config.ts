@@ -36,5 +36,12 @@ export default defineConfig(async () => ({
       // See src/test/monacoEditorStub.ts — the real package can't be resolved under Vitest.
       'monaco-editor': fileURLToPath(new URL('./src/test/monacoEditorStub.ts', import.meta.url)),
     },
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary'],
+      // No repo-wide thresholds here on purpose — this repo's legacy files aren't at 95% yet.
+      // See .claude/skills/test-coverage-guardian, which enforces the 95% bar per-file, scoped
+      // to files actually touched in a given change.
+    },
   },
 } as any))

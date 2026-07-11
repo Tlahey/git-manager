@@ -197,7 +197,6 @@ export function useFileTree<T extends FileTreeInputFile>(
 
   function toggleFolder(folderPath: string) {
     const isExpanding = !expandedFolders.has(folderPath)
-    let wasExpanded = false
 
     const foldersToToggle = new Set<string>()
     foldersToToggle.add(folderPath)
@@ -230,12 +229,11 @@ export function useFileTree<T extends FileTreeInputFile>(
         foldersToToggle.forEach((path) => next.add(path))
       } else {
         next.delete(folderPath)
-        wasExpanded = true
       }
       return next
     })
 
-    if (wasExpanded) {
+    if (!isExpanding) {
       setButtonState('expand')
     }
   }
