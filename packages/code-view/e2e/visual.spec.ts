@@ -48,6 +48,18 @@ test.describe('story baselines', () => {
     await expect(page.getByTestId('merge-connector-ribbon-left-2')).toBeVisible()
     await expect(subject(page)).toHaveScreenshot('no-header.png')
   })
+
+  test('CollapsedMultipleRegions', async ({ page }) => {
+    await openStory(page, 'codeview-conflictresolver--collapsed-multiple-regions')
+    // All three unchanged blocks collapse into wavy connectors in both gaps. Waiting for the
+    // last one (block 5) in both gaps guarantees the collapse geometry has fully settled.
+    await expect(page.getByTestId('merge-connector-collapsed-left-5')).toBeVisible()
+    await expect(page.getByTestId('merge-connector-collapsed-right-5')).toBeVisible()
+    // Regression guard: the 2nd/3rd collapsed wave must stay glued to its banner strips. A
+    // one-line drift of any later wave (the bug this story was written for) shifts hundreds of
+    // pixels and fails this baseline.
+    await expect(subject(page)).toHaveScreenshot('collapsed-multiple-regions.png')
+  })
 })
 
 test.describe('action outcomes', () => {

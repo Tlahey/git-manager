@@ -13,6 +13,12 @@ interface UseCollapseUnchangedParams {
   placements: Map<number, BlockPlacement>
   scheduleRecompute: () => void
   defaultCollapseUnchanged: boolean
+  /** Flips to `true` once every pane's Monaco instance has mounted. The `editors` bundle is a
+   * stable ref object, so mutating its `.current` handles never re-triggers the apply effect on
+   * its own — without this flag in the deps, the effect's first (and, with static `blocks`/
+   * `placements`, only) run happens while the editor refs are still `null` and silently no-ops,
+   * leaving the panes uncollapsed until some unrelated dependency change happens to re-run it. */
+  editorsReady: boolean
 }
 
 /** The collapse-unchanged feature: hides the middle of long unchanged blocks in every pane via
@@ -26,6 +32,7 @@ export function useCollapseUnchanged({
   placements,
   scheduleRecompute,
   defaultCollapseUnchanged,
+  editorsReady,
 }: UseCollapseUnchangedParams) {
   const [collapseUnchanged, setCollapseUnchanged] = useState(defaultCollapseUnchanged)
   const [expandedBlocks, setExpandedBlocks] = useState<Set<number>>(new Set())
@@ -158,7 +165,7 @@ export function useCollapseUnchanged({
       clearZones(editors.centerEditorRef.current, editors.centerCollapsedViewZonesRef)
       clearZones(editors.oursEditorRef.current, editors.oursCollapsedViewZonesRef)
     }
-  }, [editors, collapseUnchanged, expandedBlocks, blocks, placements, scheduleRecompute, expandBlock])
+  }, [editors, collapseUnchanged, expandedBlocks, blocks, placements, scheduleRecompute, expandBlock, editorsReady])
 
   return { collapseUnchanged, setCollapseUnchanged, expandedBlocks, expandBlock }
 }

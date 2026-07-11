@@ -420,7 +420,15 @@
 }
 
 .monaco-collapsed-zone-banner {
-  position: relative !important;
+  /* absolute, NOT relative: Monaco positions every view-zone DOM node with an inline
+     `position: absolute; top: <px>`. Forcing `position: relative` here re-interpreted that `top`
+     as an offset from the node's normal-flow position instead of an absolute one — and since the
+     banners then also stacked in normal flow, each one drifted DOWN by the summed height of every
+     collapsed banner above it (the 2nd banner off by one banner-height, the 3rd by two, …). The
+     wave connectors, positioned independently via getTop, stayed put, so the in-pane banner
+     visibly detached from its gap. `absolute` still establishes the positioning context the
+     ::before wave/label need, so nothing else changes. */
+  position: absolute !important;
   display: flex !important;
   align-items: center !important;
   /* flex-start, not center: Monaco sizes a view-zone's DOM node to the document's scroll width
