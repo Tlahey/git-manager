@@ -297,8 +297,6 @@ export interface ExternalToolsSettings {
   mergeToolCommand: string
   diffTool: string
   diffToolCommand: string
-  externalEditor: string
-  externalEditorCommand: string
   externalTerminal: string
   externalTerminalCommand: string
 }
@@ -330,10 +328,7 @@ export interface GitSettings {
   defaultAuthorName: string
   defaultAuthorEmail: string
   protectedBranches: string[]
-  autoFetchIntervalMinutes: number | null
-  showRemoteBranches: boolean
   showStashesInGraph?: boolean
-  confirmBeforeForcePush: boolean
   externalEditor: string
   externalEditorCommand: string
 }

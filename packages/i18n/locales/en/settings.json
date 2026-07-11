@@ -68,10 +68,6 @@
   "settings.llm.resetPrompt": "Reset to default",
   "settings.llm.includeContext": "Include repo context (name, branch)",
   "settings.llm.autoScope": "Auto-detect scope from file paths",
-  "settings.git.autoFetch": "Auto-fetch interval",
-  "settings.git.autoFetch.off": "Off",
-  "settings.git.showRemotes": "Show remote branches in graph",
-  "settings.git.confirmForcePush": "Confirm before force push",
   "settings.appearance.fontSize": "Font size",
   "settings.appearance.density.compact": "Compact",
   "settings.appearance.density.normal": "Normal",
@@ -85,8 +81,5 @@
   "settings.advanced.exclusions": "Scan exclusions",
   "settings.dangerZone": "Danger zone",
   "commit.history": "Recent messages",
-  "commit.historyEmpty": "No recent messages",
-  "settings.git.externalEditor": "External Editor",
-  "settings.git.externalEditorCommand": "Editor Command",
-  "settings.git.externalEditorCommandPlaceholder": "E.g.: /usr/local/bin/code, cursor, subl, idea..."
+  "commit.historyEmpty": "No recent messages"
 }
