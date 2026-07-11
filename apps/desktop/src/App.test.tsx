@@ -75,6 +75,7 @@ vi.mock('./hooks/useDevFixtureImport', () => ({ useDevFixtureImport: vi.fn() }))
 import App from './App'
 import { useRepoUIStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from './stores/repoUI.store'
 import { useOperationProgressStore } from './stores/operationProgress.store'
+import { useUndoHistoryStore } from './stores/undoHistory.store'
 import { queryClient } from './lib/queryClient'
 
 const INITIAL_REPO_UI = useRepoUIStore.getState()
@@ -202,7 +203,8 @@ describe('App — Tauri event listeners', () => {
     expect(swrMutate).toHaveBeenCalledWith(['conflicted-files', '/repo'])
   })
 
-  it('invalidates status/log/pending-fixups queries on fixup-committed', async () => {
+  it('invalidates status/log/pending-fixups queries and rehydrates undo history on fixup-committed', async () => {
+    const rehydrate = vi.spyOn(useUndoHistoryStore.persist, 'rehydrate').mockResolvedValue()
     render(<App />)
     await act(async () => {
       listenCallbacks.get('fixup-committed')?.({ payload: { repoPath: '/repo' } })
@@ -210,6 +212,9 @@ describe('App — Tauri event listeners', () => {
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['git-status', '/repo'] })
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['git-log', '/repo'] })
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['pending-fixups', '/repo'] })
+    // Fixup/rebasing windows persist their undo entry to localStorage; the main window must
+    // re-read it so the UNDO button reflects the action performed in that other window.
+    expect(rehydrate).toHaveBeenCalled()
   })
 
   it('starts the progress bar on rebase-progress "start"', async () => {

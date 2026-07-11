@@ -7,6 +7,7 @@
   "settings.sections.external_tools": "External Tools",
   "settings.sections.notifications": "Notifications",
   "settings.sections.ui_customization": "UI Customization",
+  "settings.sections.debug": "Debug",
   "settings.ollama.url": "Ollama URL",
   "settings.ollama.test": "Test connection",
   "settings.ollama.connected": "Connected ({{count}} models)",

@@ -4,9 +4,11 @@ const { mockInvoke } = vi.hoisted(() => ({ mockInvoke: vi.fn() }))
 vi.mock('@tauri-apps/api/core', () => ({ invoke: mockInvoke }))
 
 import * as tauri from './tauri'
+import { useDebugLogStore } from '../stores/debugLog.store'
 
 beforeEach(() => {
   mockInvoke.mockClear()
+  useDebugLogStore.setState({ enabled: false, entries: [] })
 })
 
 // Every export here is a thin `invoke<T>('command_name', {...})` pass-through with no branching
@@ -542,5 +544,35 @@ describe('lib/tauri — restoreWorktreeSnapshot', () => {
       indexTreeOid: 'index-oid',
       workdirTreeOid: 'workdir-oid',
     })
+  })
+})
+
+describe('lib/tauri — debug log capture', () => {
+  it('records nothing while debug logging is disabled', async () => {
+    mockInvoke.mockResolvedValue({})
+    await tauri.openRepo('/repo')
+    expect(useDebugLogStore.getState().entries).toHaveLength(0)
+  })
+
+  it('records a successful IPC call with its command, args and status when enabled', async () => {
+    useDebugLogStore.setState({ enabled: true, entries: [] })
+    mockInvoke.mockResolvedValue({})
+    await tauri.openRepo('/repo')
+    const [logged] = useDebugLogStore.getState().entries
+    expect(logged).toMatchObject({ command: 'open_repo', args: { path: '/repo' }, status: 'ok' })
+  })
+
+  it('records failures with the error message and still rethrows', async () => {
+    useDebugLogStore.setState({ enabled: true, entries: [] })
+    mockInvoke.mockRejectedValue('backend blew up')
+    await expect(tauri.openRepo('/repo')).rejects.toBe('backend blew up')
+    expect(useDebugLogStore.getState().entries[0]).toMatchObject({ command: 'open_repo', status: 'error', error: 'backend blew up' })
+  })
+
+  it('redacts arguments of credential-shaped commands before storing them', async () => {
+    useDebugLogStore.setState({ enabled: true, entries: [] })
+    mockInvoke.mockResolvedValue({})
+    await tauri.githubGetUser('super-secret-token')
+    expect(useDebugLogStore.getState().entries[0].args).toBe('[redacted]')
   })
 })

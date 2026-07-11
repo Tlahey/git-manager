@@ -10,9 +10,10 @@ import { ExternalToolsSection } from './components/ExternalToolsSection'
 import { NotificationSection } from './components/NotificationSection'
 import { AppearanceSection } from './components/AppearanceSection'
 import { RewardsSection } from './components/RewardsSection'
+import { DebugSection } from './components/DebugSection'
 import { defineTabs, renderActiveTab, type TabDef } from '../../lib/navigation/tabRegistry'
 
-export type Section = 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization' | 'rewards'
+export type Section = 'general' | 'ssh' | 'integrations' | 'local_ai' | 'external_tools' | 'notifications' | 'ui_customization' | 'rewards' | 'debug'
 
 interface SettingsPageProps {
   onClose: () => void
@@ -51,6 +52,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
     { id: 'notifications', label: t('settings.sections.notifications'), render: () => scrolled(<NotificationSection />) },
     { id: 'ui_customization', label: t('settings.sections.ui_customization'), render: () => scrolled(<AppearanceSection />) },
     { id: 'rewards', label: t('settings.sections.rewards') || 'Succès & Récompenses', render: () => scrolled(<RewardsSection />) },
+    { id: 'debug', label: t('settings.sections.debug') || 'Debug', render: () => scrolled(<DebugSection />) },
   ])
 
   return (

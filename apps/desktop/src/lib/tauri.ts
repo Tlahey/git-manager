@@ -1,4 +1,6 @@
-import { invoke } from '@tauri-apps/api/core'
+import { invoke as tauriInvoke } from '@tauri-apps/api/core'
+import { useDebugLogStore } from '../stores/debugLog.store'
+import { redactArgs } from './debugLogRedact'
 import type {
   GitRepo,
   GitStatus,
@@ -18,6 +20,45 @@ import type {
   UserTheme,
   GitRepoSummary,
 } from '@git-manager/git-types'
+
+/**
+ * Single chokepoint for every frontend→backend call. Wraps Tauri's `invoke` so the debug log
+ * (`stores/debugLog.store.ts`, surfaced in Settings → Debug) can record the command name,
+ * redacted arguments, duration and success/error of each IPC round-trip — capturing 100% of what
+ * the app asks the backend to do (git2 and shell-outs alike), which is otherwise invisible from
+ * outside the native window. Transparent when logging is disabled (the default): just a passthrough.
+ */
+async function invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  const start = performance.now()
+  try {
+    // Preserve the exact call shape (no trailing `undefined`) so no-arg commands still forward as
+    // `invoke('cmd')` rather than `invoke('cmd', undefined)`.
+    const result = args === undefined ? await tauriInvoke<T>(command) : await tauriInvoke<T>(command, args)
+    record(command, args, start, 'ok')
+    return result
+  } catch (err) {
+    record(command, args, start, 'error', String(err))
+    throw err
+  }
+}
+
+function record(
+  command: string,
+  args: Record<string, unknown> | undefined,
+  start: number,
+  status: 'ok' | 'error',
+  error?: string,
+) {
+  const store = useDebugLogStore.getState()
+  if (!store.enabled) return
+  store.add({
+    command,
+    args: redactArgs(command, args),
+    durationMs: Math.round(performance.now() - start),
+    status,
+    error,
+  })
+}
 
 // ─── Repository ───────────────────────────────────────────────────────────────
 

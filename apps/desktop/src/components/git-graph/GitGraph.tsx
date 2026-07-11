@@ -190,9 +190,29 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     overscan: 20,
   })
 
+  // One-shot guard so the conflict panel auto-opens once per pause (below) without snapping
+  // back to the CONFLICT row every time the user navigates away to inspect another commit.
+  const autoOpenedConflictRef = useRef(false)
+  useEffect(() => {
+    if (!isRebasePaused) autoOpenedConflictRef.current = false
+  }, [isRebasePaused])
+
   // Auto-select commit when branch/reference or repository changes
   useEffect(() => {
     if (!nodes || nodes.length === 0) return
+
+    // When a rebase pauses on a conflict, surface the resolution panel automatically by
+    // selecting the synthetic CONFLICT row — otherwise the user only sees conflict markers in
+    // the diff and no obvious way forward (no Continue/Abort). Done once per pause; while paused
+    // we also suppress the branch-head auto-select below so a background refetch can't snap the
+    // user off the conflict row (or off a commit they navigated to) mid-resolution.
+    if (isRebasePaused && conflictNode) {
+      if (!autoOpenedConflictRef.current) {
+        autoOpenedConflictRef.current = true
+        selectSingle('CONFLICT')
+      }
+      return
+    }
 
     const currentSelected = branch || primaryOid
     // Find a node that has a ref matching the branch name, or matches by OID (stashes)
@@ -215,7 +235,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branch, repoPath, nodes])
+  }, [branch, repoPath, nodes, isRebasePaused, conflictNode])
 
   const primaryNode = useMemo(() => {
     if (!primaryOid) return null
