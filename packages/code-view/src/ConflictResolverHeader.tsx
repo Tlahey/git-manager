@@ -1,24 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ChevronDown, Wand2, RefreshCw, X, FoldVertical } from 'lucide-react'
-
-// Custom SVG global merge icon (branch merge symbol)
-const CombinedMergeIcon = ({ className }: { className?: string }) => (
-  <svg
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    {/* Horizontal line with left arrow */}
-    <path d="M12 5H4M7 2L4 5l3 3" />
-    {/* Branch curve merging downward */}
-    <path d="M4 11h5a3 3 0 0 0 3-3V7" />
-    <path d="m10 9 2 2-2 2" />
-  </svg>
-)
+import { type ReactNode } from 'react'
+import { Wand2, RefreshCw, X, FoldVertical } from 'lucide-react'
+import { CombinedMergeIcon } from './conflict-resolver-header/CombinedMergeIcon'
+import { HeaderDropdown } from './conflict-resolver-header/HeaderDropdown'
 
 /** Per-button visibility switches for the toolbar. Everything defaults to visible; the wand and
  * recalculate buttons additionally require their corresponding callback to be wired on
@@ -84,33 +67,13 @@ export function ConflictResolverHeader({
   panelWidths,
   gapWidth,
 }: ConflictResolverHeaderProps) {
-  const [whitespaceOpen, setWhitespaceOpen] = useState(false)
-  const [highlightOpen, setHighlightOpen] = useState(false)
-
-  const whitespaceRef = useRef<HTMLDivElement>(null)
-  const highlightRef = useRef<HTMLDivElement>(null)
-
-  // Handle click outside to close dropdowns
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (whitespaceRef.current && !whitespaceRef.current.contains(event.target as Node)) {
-        setWhitespaceOpen(false)
-      }
-      if (highlightRef.current && !highlightRef.current.contains(event.target as Node)) {
-        setHighlightOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  const whitespaceLabels = {
+  const whitespaceLabels: Record<'compare' | 'ignore' | 'trim', string> = {
     compare: 'Do not ignore',
     ignore: 'Ignore whitespace',
     trim: 'Ignore leading/trailing whitespace',
   }
 
-  const highlightLabels = {
+  const highlightLabels: Record<'words' | 'lines', string> = {
     words: 'Highlight words',
     lines: 'Highlight lines',
   }
@@ -225,66 +188,26 @@ export function ConflictResolverHeader({
 
           {/* Whitespace Dropdown */}
           {showWhitespace && (
-            <div className="relative" ref={whitespaceRef}>
-              <button
-                onClick={() => setWhitespaceOpen(!whitespaceOpen)}
-                className="flex items-center justify-between gap-1 text-[11px] h-6 px-2.5 rounded border border-[#3c3c3c] bg-[#202020] hover:bg-[#262626] active:bg-[#2c2c2c] text-foreground/90 transition-colors"
-                data-testid="merge-whitespace-dropdown-btn"
-              >
-                <span>{whitespaceLabels[whitespaceMode]}</span>
-                <ChevronDown className="h-3 w-3 text-muted-foreground/60" />
-              </button>
-              {whitespaceOpen && (
-                <div className="absolute right-0 mt-1 w-52 rounded-md bg-[#252525] border border-[#3c3c3c] shadow-lg z-50 py-1 text-[11px] animate-fadeIn">
-                  {(['compare', 'ignore', 'trim'] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      onClick={() => {
-                        setWhitespaceMode(mode)
-                        setWhitespaceOpen(false)
-                      }}
-                      className={`w-full text-left px-3 py-1.5 hover:bg-[#343434] transition-colors ${
-                        whitespaceMode === mode ? 'text-[#4b9dfa] font-semibold' : 'text-foreground/80'
-                      }`}
-                    >
-                      {whitespaceLabels[mode]}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <HeaderDropdown
+              options={['compare', 'ignore', 'trim'] as const}
+              value={whitespaceMode}
+              onChange={setWhitespaceMode}
+              labels={whitespaceLabels}
+              menuWidthClass="w-52"
+              testId="merge-whitespace-dropdown-btn"
+            />
           )}
 
           {/* Highlight Mode Dropdown */}
           {showHighlight && (
-            <div className="relative" ref={highlightRef}>
-              <button
-                onClick={() => setHighlightOpen(!highlightOpen)}
-                className="flex items-center justify-between gap-1 text-[11px] h-6 px-2.5 rounded border border-[#3c3c3c] bg-[#202020] hover:bg-[#262626] active:bg-[#2c2c2c] text-foreground/90 transition-colors"
-                data-testid="merge-highlight-dropdown-btn"
-              >
-                <span>{highlightLabels[highlightMode]}</span>
-                <ChevronDown className="h-3 w-3 text-muted-foreground/60" />
-              </button>
-              {highlightOpen && (
-                <div className="absolute right-0 mt-1 w-44 rounded-md bg-[#252525] border border-[#3c3c3c] shadow-lg z-50 py-1 text-[11px] animate-fadeIn">
-                  {(['words', 'lines'] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      onClick={() => {
-                        setHighlightMode(mode)
-                        setHighlightOpen(false)
-                      }}
-                      className={`w-full text-left px-3 py-1.5 hover:bg-[#343434] transition-colors ${
-                        highlightMode === mode ? 'text-[#4b9dfa] font-semibold' : 'text-foreground/80'
-                      }`}
-                    >
-                      {highlightLabels[mode]}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <HeaderDropdown
+              options={['words', 'lines'] as const}
+              value={highlightMode}
+              onChange={setHighlightMode}
+              labels={highlightLabels}
+              menuWidthClass="w-44"
+              testId="merge-highlight-dropdown-btn"
+            />
           )}
 
           {/* Collapse Unchanged Toggle */}

@@ -1,18 +1,6 @@
 import { forwardRef } from 'react'
-
-function setCollapsedBlockHover(blockId: number, active: boolean) {
-  const elements = document.querySelectorAll(`[data-collapsed-block-id="${blockId}"]`)
-  elements.forEach((el) => {
-    if (active) {
-      el.classList.add('is-hovered')
-    } else {
-      el.classList.remove('is-hovered')
-    }
-  })
-}
-
-const WAVE_AMPLITUDE = 5
-const WAVE_HALF_PERIOD = 10 // wavelength 20, matching the mask SVG's 20x20 tile
+import { setCollapsedBlockHover } from './conflict-resolver/collapsedRegions'
+import { DEFAULT_LINE_HEIGHT, WAVE_AMPLITUDE, WAVE_HALF_PERIOD } from './mergeViewConfig'
 
 /** The collapsed-region connector's own version of the wavy line each pane's banner draws via a
  * CSS mask — built from the *same* alternating-quadratic-Bezier curve family as that mask
@@ -199,7 +187,7 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
     onReject,
     scrollTopLeft = 0,
     scrollTopRight = 0,
-    lineHeight = 19,
+    lineHeight = DEFAULT_LINE_HEIGHT,
     onExpandBlock,
     wavePhaseOffset = 0,
   },
