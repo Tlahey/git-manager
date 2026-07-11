@@ -17,7 +17,7 @@
   },
   "devDependencies": {
     "@git-manager/config": "workspace:*",
-    "typescript": "^5.6.3"
+    "typescript": "catalog:"
   },
   "peerDependencies": {
     "react": "^18.0.0"
