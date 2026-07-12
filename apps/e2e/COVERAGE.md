@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (9 features / 59 steps, 6 visual snapshots)
+## Covered today (11 features / 72 steps, 6 visual snapshots)
 
 | Feature | Area | Setup | Snapshot | Status |
 |---|---|---|---|---|
@@ -26,9 +26,11 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | Fixup autosquash grouping | fixup | fixture:fixup-chain | 📷 ✅ (preview groups) | ✅ |
 | Rebase conflict panel auto-opens + **snapshot** | rebase | fixture:rebase-conflict | 📷 ✅ (panel layout) | 🟡 (panel shown + snapshotted; resolve/continue not driven) |
 | **Merge editor** opens for a conflicted file + **snapshot** | merge | fixture:rebase-conflict | 📷 ✅ (full Monaco editor) | 🟡 (opens + snapshotted; block resolution not driven) |
-| **Working-tree staging panel** + **file diff** + **snapshots** | commits | fixture:stash-stack | 📷 ✅ (staging panel + diff view) | 🟡 (panel + diff snapshotted; stage/commit not driven) |
+| **Working-tree staging panel** + **file diff** + **snapshots** | commits | fixture:stash-stack | 📷 ✅ (staging panel + diff view) | ✅ |
+| **Commit staged changes** (write message → Commit → HEAD advances) | commits | fixture:stash-stack | — | ✅ |
+| **Undo / redo a branch checkout** (Cmd+Z / Cmd+Shift+Z) | undo/redo | fixture:feature-branches | — | ✅ |
 | Detached HEAD indicator reads "HEAD" | repo state | fixture:detached-head | — | ✅ |
-| Sidebar lists stashes | stash | fixture:stash-stack | — | 🟡 (list only; apply/pop/drop todo) |
+| Sidebar lists stashes | stash | fixture:stash-stack | — | 🟡 (list only; apply/pop/drop blocked — native menu) |
 | Settings screen opens + **snapshot** | settings | keyboard (Mod+,) | 📷 ✅ (general section) | 🟡 (general snapshotted; other sections todo) |
 
 ---
@@ -58,9 +60,10 @@ fixture:
 | Fixture | Exercises | Status |
 |---|---|---|
 | fixup-chain | fixup grouping / autosquash · **create-fixup from staged change** | 🟡 (autosquash ✅; create-fixup ⬜) |
-| rebase-conflict | conflict panel ✅ · **merge editor** ⬜ · continue/skip/abort flow ⬜ | 🟡 |
+| rebase-conflict | conflict panel ✅ · merge editor ✅ · continue/skip/abort flow ⬜ | 🟡 |
 | detached-head | detached indicator ✅ · checkout-back-to-branch ⬜ | 🟡 |
-| stash-stack | list ✅ · **apply / pop / drop / stash message edit** ⬜ | 🟡 |
+| feature-branches | branch checkout ✅ · **undo/redo of the checkout** ✅ | ✅ |
+| stash-stack | list ✅ · WIP staging panel ✅ · file diff ✅ · **commit** ✅ · apply/pop/drop 🚫 (native menu) | ✅ |
 | rollback-history | **reset (soft/mixed/hard) · revert · undo/redo of those** ⬜ | ⬜ |
 
 ### 3. Settings  🟡  📷
@@ -74,21 +77,29 @@ root or add a per-section testid.
 
 ### 4. Commits / working tree  🟡  📷 (staging panel snapshotted)
 **Done:** selecting the synthetic WIP node (`graph-row-WIP`) opens the staging panel
-(`wip-staging-panel`) + a layout snapshot. Setup: `fixture:stash-stack` (leaves staged +
-unstaged changes → a WIP node). **Gotcha handled:** the WIP row's centre is its inline "// WIP"
-commit input (stops click propagation), so the step clicks the row's left edge over the graph
-node. **Todo:** stage a file · bulk stage (`file-list-bulk-stage`) · type a subject/body and
-commit · amend (`commit-amend-*`). The commit-box testids are still mock-only. **Diff view: done**
-— clicking a file row (`file-tree-file-<path>`, a real testid) shows the diff (`diff-content-area`)
-and it's snapshotted (`wip-file-diff`), verified stable.
+(`wip-staging-panel`) + a layout snapshot. Setup: `fixture:stash-stack` (leaves `config.yml`
+staged → a WIP node). **Gotcha handled:** the WIP row's centre is its inline "// WIP" commit input
+(stops click propagation), so the step clicks the row's left edge over the graph node. **Commit:
+done** — `commit.feature` types into the message box (`commit-message-input`, new real testid),
+clicks Commit (`commit-button`, new real testid → real `apiCreateCommit`), and asserts HEAD
+advanced by reading the fixture repo's `git log -1` **off disk** (the wdio worker is Node, like the
+fixture-build step) rather than a volatile UI value — robust to the panel unmounting once the tree
+goes clean. **Diff view: done** — clicking a file row (`file-tree-file-<path>`, a real testid)
+shows the diff (`diff-content-area`) and it's snapshotted (`wip-file-diff`), verified stable.
+**Todo:** stage/unstage individual files · bulk stage (`file-list-bulk-stage`) · amend
+(`commit-amend-*` are still mock-only).
 
-### 5. Undo / redo  ⬜
-State-mutating actions push to `undoHistory.store`. **Note:** the toolbar undo/redo buttons'
-testids are dead (see blockers), but undo/redo is also bound to **Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z**
-(`hooks/useKeyboardShortcuts.ts`) — drive it with `browser.keys([...])`. Setup:
-`fixture:rollback-history`. Scenario: perform a reset/commit · Cmd+Z · assert the graph/HEAD
-reverted · redo · assert re-applied. High value (undo is easy to break, hard to unit-test across
-the real IPC boundary).
+### 5. Undo / redo  ✅  (checkout) · ⬜ (reset/commit)
+State-mutating actions push to `undoHistory.store`. **Done:** the `undo-redo.feature` drives a
+real **branch checkout** through the toolbar's `BranchContext` selector (new
+`branch-option-<name>` testid), then **Cmd+Z / Cmd+Shift+Z** — bound globally in
+`hooks/useKeyboardShortcuts.ts`, driven with `browser.keys([META, 'z'])` /
+`browser.keys([META, SHIFT, 'z'])` — and asserts HEAD moves `main → feature/login → main →
+feature/login` via the shared `branch-context-label` indicator (now polled, since undo/redo are
+async). This sidesteps the dead toolbar-button testids (see blockers) entirely. Setup: the new
+`fixture:feature-branches` (HEAD on a **named** branch so the indicator resolves to a branch name,
+not a detached sha). **Todo:** cover the other undoable actions — a reset or commit then Cmd+Z on
+`fixture:rollback-history`, asserting the graph/HEAD reverts and redo re-applies.
 
 ---
 
@@ -96,13 +107,13 @@ the real IPC boundary).
 
 | Feature | Area | Setup | Snapshot | Status |
 |---|---|---|---|---|
-| Commit graph rendering | log/graph | any fixture | 📷 | ⬜ |
-| Branches: create / checkout / delete | branch | any fixture | — | ⬜ |
-| Tags: create / list | tag | any fixture | — | ⬜ |
-| Cherry-pick a commit | cherry-pick | rollback-history | — | ⬜ |
-| Interactive rebase (reword/squash/drop) | rebase | fixup-chain | — | ⬜ (child window) |
-| Reset (soft/mixed/hard, RESET confirm) | rollback | rollback-history | — | ⬜ |
-| Revert a commit | rollback | rollback-history | — | ⬜ |
+| Commit graph rendering | log/graph | any fixture | 📷 | ⬜ (volatile: shas/dates) |
+| Branches: create / checkout / delete | branch | any fixture | — | 🟡 (checkout ✅ via BranchContext; create/delete are behind the native commit menu) |
+| Tags: create / list | tag | any fixture | — | 🚫 (create is behind the native commit context menu) |
+| Cherry-pick a commit | cherry-pick | rollback-history | — | 🚫 (native commit context menu) |
+| Interactive rebase (reword/squash/drop) | rebase | fixup-chain | — | 🚫 (native commit menu + child window) |
+| Reset (soft/mixed/hard, RESET confirm) | rollback | rollback-history | — | 🚫 (ResetDialog is web+drivable, but only opens from the native commit context menu) |
+| Revert a commit | rollback | rollback-history | — | 🚫 (native commit context menu) |
 | Remote: fetch / pull / push | remote | native creds | — | 🚫 (needs a real remote) |
 | Clone a repo | repo | native | — | 🚫 (native dialog + network) |
 | Scan a folder for repos | repo | native | — | 🚫 (native dialog) |
@@ -152,6 +163,14 @@ DOM value:
   that's fixed (flagged separately).
 - **Native dialogs can't be driven** — folder pickers, clone, scan. Worked around for "open repo"
   by seeding localStorage (see README); features that *need* a native dialog mid-flow are 🚫.
+- **Native context menus gate most commit/stash actions** — the graph's right-click commit menu
+  (`showCommitNativeContextMenu` in `api/nativeMenu.api.ts`) and the stash right-click menu
+  (`showStashNativeContextMenu`) are real OS menus WebDriver can't open. That blocks *every* action
+  reachable only through them from e2e: reset, revert, cherry-pick, interactive rebase, create
+  tag/branch-from-commit, and stash apply/pop/drop — even when the follow-up UI is web and drivable
+  (e.g. `ResetDialog` is a plain React dialog, but nothing web-driveable opens it). Prefer actions
+  with a non-menu entry point: branch checkout via `BranchContext` (undo-redo.feature), commit via
+  the WIP panel buttons (commit.feature), undo/redo via keyboard.
 - **Multi-window** (merge / fixup / rebase child windows) needs `switchToWindow` and is heavier;
   Monaco content in those windows is best validated by snapshot, not DOM queries.
 - **Real remote / network** (fetch/pull/push, clone, GitHub, Ollama) — mock the IPC command
