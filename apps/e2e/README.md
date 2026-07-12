@@ -21,6 +21,7 @@ features/                       # .feature files — the scenarios in plain Gher
   rebase-conflict.feature       #   @rebase @conflict  paused rebase auto-opens the panel
   detached-head.feature         #   @detached  toolbar shows HEAD, not a branch name
   stash-stack.feature           #   @stash     sidebar lists the stashed changes
+  settings.feature              #   @settings  settings screen opens (+ @visual snapshot)
 step-definitions/               # the TypeScript backing each Given/When/Then, matched by text
   repo.steps.ts                 #   generic "open the <fixture> repository" (shared)
   common.steps.ts               #   app launch / generic assertions
@@ -29,6 +30,7 @@ step-definitions/               # the TypeScript backing each Given/When/Then, m
   rebase.steps.ts               #   conflict resolution panel (+ visual snapshot)
   detached.steps.ts             #   detached HEAD branch indicator
   stash.steps.ts                #   sidebar stash section
+  settings.steps.ts             #   open settings (keyboard), general-section snapshot
 support/
   visual.ts                     #   stabiliseForSnapshot() shared by every snapshot step
 COVERAGE.md                     # coverage matrix: what's tested vs the app's feature surface

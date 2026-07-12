@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (6 features / 35 steps)
+## Covered today (7 features / 42 steps)
 
 | Feature | Area | Setup | Snapshot | Status |
 |---|---|---|---|---|
@@ -27,6 +27,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | Rebase conflict panel auto-opens + **snapshot** | rebase | fixture:rebase-conflict | 📷 ✅ (panel layout) | 🟡 (panel shown + snapshotted; resolve/continue not driven) |
 | Detached HEAD indicator reads "HEAD" | repo state | fixture:detached-head | — | ✅ |
 | Sidebar lists stashes | stash | fixture:stash-stack | — | 🟡 (list only; apply/pop/drop todo) |
+| Settings screen opens + **snapshot** | settings | keyboard (Mod+,) | 📷 ✅ (general section) | 🟡 (general snapshotted; other sections todo) |
 
 ---
 
@@ -59,13 +60,14 @@ fixture:
 | stash-stack | list ✅ · **apply / pop / drop / stash message edit** ⬜ | 🟡 |
 | rollback-history | **reset (soft/mixed/hard) · revert · undo/redo of those** ⬜ | ⬜ |
 
-### 3. Settings  ⬜  📷
-`SettingsPage` (opened via the dashboard gear or keyboard shortcut). Sections each have a real
-testid: `section-general`, `section-appearance`(`ui_customization`), `section-integrations`,
-`section-local_ai`, `section-ssh`, `section-notifications`, `section-rewards`,
-`section-external_tools`, `section-debug`. Scenarios: open settings · navigate each section ·
-toggle a setting and confirm it persists (localStorage) · **snapshot of each section's layout**.
-Good snapshot target — mostly static, deterministic panels.
+### 3. Settings  🟡  📷
+`SettingsPage` (opened via `Mod+,` or the dashboard gear — `dashboard-settings-button`). **Done:**
+opens on the general section + a layout snapshot of the whole screen. Nav tabs now carry
+`settings-tab-<id>` testids and the root `settings-page`. **Todo:** navigate + snapshot the other
+sections (appearance, notifications are deterministic; ssh/local_ai/rewards have dynamic content —
+mask or assert values instead), and toggle-a-setting-persists. Note the section *content* has no
+real testid on its root (the `section-*` ids are test-mock-only) — snapshot the `settings-page`
+root or add a per-section testid.
 
 ### 4. Commits / working tree  ⬜  📷
 Staging + commit flow. Testids: `wip-staging-panel`, `file-list-bulk-stage`,

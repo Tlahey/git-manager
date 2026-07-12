@@ -56,7 +56,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
   ])
 
   return (
-    <div className="flex h-screen flex-col bg-background text-foreground">
+    <div data-testid="settings-page" className="flex h-screen flex-col bg-background text-foreground">
       {/* Header */}
       <header
         data-tauri-drag-region
@@ -78,6 +78,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
           {SETTINGS_TABS.map((tab) => (
             <button
               key={tab.id}
+              data-testid={`settings-tab-${tab.id}`}
               onClick={() => setActiveSection(tab.id)}
               className={`w-full rounded px-3 py-2 text-left text-xs transition-colors cursor-pointer ${
                 activeSection === tab.id

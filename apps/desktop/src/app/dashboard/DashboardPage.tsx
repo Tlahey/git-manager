@@ -144,7 +144,7 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
               <FolderSearch className="mr-1.5 h-3.5 w-3.5" />
               {scanning ? (t('dashboard.scanning') || 'Scan...') : (t('dashboard.scanFolder') || 'Scanner')}
             </Button>
-            <Button size="sm" variant="ghost" onClick={onOpenSettings} title="Paramètres" className="h-8 w-8 hover:bg-accent">
+            <Button data-testid="dashboard-settings-button" size="sm" variant="ghost" onClick={onOpenSettings} title="Paramètres" className="h-8 w-8 hover:bg-accent">
               <Settings className="h-4 w-4" />
             </Button>
           </div>
