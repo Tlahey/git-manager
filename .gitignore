@@ -16,3 +16,5 @@ playwright-report/
 test-results/
 coverage/
 .aider*
+apps/e2e/logs/
+apps/e2e/__visual__/

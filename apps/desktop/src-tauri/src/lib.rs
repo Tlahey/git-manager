@@ -93,12 +93,25 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_notification::init())
-        .manage(AppState::new())
+        .plugin(tauri_plugin_notification::init());
+
+    // Embedded WebDriver server for WebdriverIO e2e tests (see apps/desktop/e2e/). Only
+    // compiled in when built with `--features e2e`; never present in a normal dev or
+    // release build, so it's never a local attack surface for real users.
+    #[cfg(feature = "e2e")]
+    {
+        builder = builder
+            .plugin(tauri_plugin_wdio::init())
+            .plugin(tauri_plugin_wdio_webdriver::init());
+    }
+
+    builder = builder.manage(AppState::new());
+
+    builder
         .setup(|app| {
             setup_tray(app)?;
             Ok(())

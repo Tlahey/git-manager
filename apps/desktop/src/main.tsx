@@ -9,8 +9,14 @@ import '@git-manager/ui/globals.css'
 import '@git-manager/code-view/styles.css'
 import './index.css'
 
+// WebdriverIO's Tauri plugin auto-initializes on import and must load before tests run.
+// import.meta.env.VITE_E2E is a build-time constant, so this branch (and the whole
+// @wdio/tauri-plugin chunk) is dead-code-eliminated from every non-e2e build.
+const e2eSetup =
+  import.meta.env.VITE_E2E === 'true' ? import('@wdio/tauri-plugin') : Promise.resolve()
+
 // Initialize i18n before rendering
-initI18n('fr').then(() => {
+e2eSetup.then(() => initI18n('fr')).then(() => {
   const params = new URLSearchParams(window.location.search)
   const windowKind = params.get('window')
   const repoPath = params.get('repoPath')

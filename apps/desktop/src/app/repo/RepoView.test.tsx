@@ -97,6 +97,12 @@ vi.mock('../../components/repository-sidebar', () => ({
   ),
 }))
 
+vi.mock('../../components/fixup/PendingFixupsBanner', () => ({
+  PendingFixupsBanner: (props: { repoPath: string }) => (
+    <div data-testid="fake-pending-fixups-banner">{props.repoPath}</div>
+  ),
+}))
+
 import { RepoView } from './RepoView'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useRepoDataStore } from '../../stores/repoData.store'

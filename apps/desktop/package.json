@@ -12,7 +12,8 @@
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build:e2e": "tauri build --debug --no-bundle --features e2e --config src-tauri/tauri.e2e.conf.json"
   },
   "dependencies": {
     "@git-manager/code-view": "workspace:*",
@@ -47,6 +48,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/coverage-v8": "^3.0.7",
+    "@wdio/tauri-plugin": "^1.2.0",
     "autoprefixer": "catalog:",
     "jsdom": "catalog:",
     "postcss": "catalog:",

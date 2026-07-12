@@ -1,0 +1,18 @@
+{
+  "build": {
+    "beforeBuildCommand": "pnpm --filter @git-manager/desktop exec vite build --mode e2e"
+  },
+  "app": {
+    "security": {
+      "capabilities": [
+        "default",
+        {
+          "identifier": "e2e",
+          "description": "WebdriverIO e2e testing permissions — only merged in via this config override, never part of a normal dev or release build",
+          "windows": ["*"],
+          "permissions": ["wdio:default", "wdio-webdriver:default"]
+        }
+      ]
+    }
+  }
+}
