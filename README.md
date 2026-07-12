@@ -282,12 +282,7 @@ Everything project-state and design related lives in [docs/](docs/):
 
 ## Contributing
 
-1. Fork and clone the repository
-2. Run `pnpm install` then `pnpm dev`
-3. Follow [Conventional Commits](https://www.conventionalcommits.org/) for commit messages
-4. TypeScript strict mode is enforced — no `any` types
-5. Rust code must pass `cargo clippy` and `cargo fmt`
-6. Open a PR against `dev` (not `main`)
+This project is not currently open to external contributions — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
