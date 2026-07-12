@@ -4,7 +4,7 @@ use crate::services::git_commit::CommitResult;
 use crate::services::git_fixup;
 use git2::Repository;
 
-pub use crate::services::git_fixup::{AutosquashGroup, FixupInfo};
+pub use crate::services::git_fixup::{AutosquashGroup, FixupInfo, FixupTargetWarnings};
 
 // ─── create_fixup_commit ──────────────────────────────────────────────────────
 
@@ -19,6 +19,21 @@ pub async fn create_fixup_commit(
 ) -> Result<CommitResult, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
     git_fixup::create_fixup_commit(&repo, &target_oid, message.as_deref())
+}
+
+// ─── check_fixup_target ────────────────────────────────────────────────────────
+
+/// Checks staged changes against `target_oid` for likely rebase-conflict risk (a file missing
+/// from the target's tree, or also touched by a commit between the target and HEAD) — called by
+/// the "Commit Changes" fixup window before the user commits, so they get a heads-up instead of
+/// only finding out once the rebase actually pauses on a conflict.
+#[tauri::command]
+pub async fn check_fixup_target(
+    path: String,
+    target_oid: String,
+) -> Result<FixupTargetWarnings, String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    git_fixup::check_fixup_target(&repo, &target_oid)
 }
 
 // ─── get_pending_fixups ───────────────────────────────────────────────────────

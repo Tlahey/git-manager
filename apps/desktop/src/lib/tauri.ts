@@ -378,6 +378,25 @@ export interface AutosquashGroup {
 export const createFixupCommit = (path: string, targetOid: string, message?: string) =>
   invoke<CommitResult>('create_fixup_commit', { path, targetOid, message })
 
+export interface FixupRiskCommit {
+  oid: string
+  shortOid: string
+  subject: string
+}
+
+export interface FixupFileRisk {
+  path: string
+  commits: FixupRiskCommit[]
+}
+
+export interface FixupTargetWarnings {
+  missingInTarget: string[]
+  touchedAfterTarget: FixupFileRisk[]
+}
+
+export const checkFixupTarget = (path: string, targetOid: string) =>
+  invoke<FixupTargetWarnings>('check_fixup_target', { path, targetOid })
+
 export const getPendingFixups = (path: string) =>
   invoke<FixupInfo[]>('get_pending_fixups', { path })
 

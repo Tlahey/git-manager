@@ -6,6 +6,7 @@ import {
   createCommit,
   discardFileChanges,
   createFixupCommit,
+  checkFixupTarget,
   autosquashPreview,
   runAutosquash,
   getPendingFixups,
@@ -203,6 +204,10 @@ export async function apiDiscardFileChanges(path: string, filePath: string) {
   }
 
   return result
+}
+
+export async function apiCheckFixupTarget(path: string, targetOid: string) {
+  return checkFixupTarget(path, targetOid)
 }
 
 export async function apiCreateFixupCommit(path: string, targetOid: string, message?: string) {

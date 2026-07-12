@@ -91,6 +91,8 @@
   "gitTree.fixupDialog.messageLabel": "Message de commit",
   "gitTree.fixupDialog.currentVersion": "Version actuelle",
   "gitTree.fixupDialog.noChanges": "Aucune modification à valider",
+  "gitTree.fixupDialog.missingInTargetWarning": "{{file}} n’existe pas encore dans ce commit — le fixup provoquera très probablement un conflit lors du rebase.",
+  "gitTree.fixupDialog.touchedAfterTargetWarning": "{{file}} est aussi modifié par {{count}} commit(s) après celui-ci ({{commits}}) — un conflit est possible lors du rebase.",
   "gitTree.fixupDialog.cancel": "Annuler",
   "gitTree.fixupDialog.commit": "Valider",
   "gitTree.fixupDialog.commitAndPush": "Valider et pousser",
@@ -212,7 +214,6 @@
   "commitDetails.batchCommit.generating": "Génération...",
   "commitDetails.batchCommit.placeholder": "Message pour ce groupe...",
   "commit.title": "Commit",
-
   "commit.amend": "Amend",
   "commit.emptyMessage": "Le message de commit est requis",
   "commit.success": "Commit créé : {{sha}}",

@@ -91,6 +91,8 @@
   "gitTree.fixupDialog.messageLabel": "Commit Message",
   "gitTree.fixupDialog.currentVersion": "Current version",
   "gitTree.fixupDialog.noChanges": "No changes to commit",
+  "gitTree.fixupDialog.missingInTargetWarning": "{{file}} doesn't exist yet in this commit — this fixup will very likely conflict once the rebase runs.",
+  "gitTree.fixupDialog.touchedAfterTargetWarning": "{{file}} is also modified by {{count}} commit(s) after this one ({{commits}}) — a conflict is possible once the rebase runs.",
   "gitTree.fixupDialog.cancel": "Cancel",
   "gitTree.fixupDialog.commit": "Commit",
   "gitTree.fixupDialog.commitAndPush": "Commit & Push",
@@ -215,7 +217,6 @@
   "commitDetails.batchCommit.generating": "Generating...",
   "commitDetails.batchCommit.placeholder": "Message for this batch...",
   "commit.title": "Commit",
-
   "commit.amend": "Amend",
   "commit.emptyMessage": "Commit message is required",
   "commit.success": "Commit created: {{sha}}",
