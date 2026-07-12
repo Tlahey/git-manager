@@ -23,22 +23,9 @@ describe('MASCOT_LAYOUT', () => {
     expect(MASCOT_LAYOUT.head.scale).toBe(headPlacement.scale)
   })
 
-  it('positions exactly two eyes, symmetric around the head center axis', () => {
-    expect(MASCOT_LAYOUT.eyes).toHaveLength(2)
-    const [left, right] = MASCOT_LAYOUT.eyes
-    expect(left.cy).toBe(right.cy)
-    expect(left.cx).toBeLessThan(right.cx)
-  })
-
-  it('derives strictly positive, finite scale factors', () => {
-    for (const value of [
-      MASCOT_LAYOUT.eyeWhiteR,
-      MASCOT_LAYOUT.pupilScale,
-      MASCOT_LAYOUT.lidScale,
-    ]) {
-      expect(Number.isFinite(value)).toBe(true)
-      expect(value).toBeGreaterThan(0)
-    }
+  it('exposes the reference alignment geometry', () => {
+    expect(MASCOT_LAYOUT.reference.size).toBeGreaterThan(0)
+    expect(MASCOT_LAYOUT.reference.headMaxWidth).toBeGreaterThan(0)
   })
 
   it('carries each limb spec through from its placement (pivot, animation params)', () => {
@@ -81,23 +68,14 @@ describe('MASCOT_MARKUP', () => {
     }
   })
 
-  it('renders exactly two pupil groups tagged with the shared pupil selector and their eye coordinates', () => {
-    const matches = [
-      ...MASCOT_MARKUP.matchAll(
-        new RegExp(`class="${MASCOT_SELECTORS.pupil}" data-cx="([\\d.]+)" data-cy="([\\d.]+)"`, 'g')
-      ),
-    ]
-    expect(matches).toHaveLength(2)
-    expect(Number(matches[0][1])).toBeCloseTo(MASCOT_LAYOUT.eyes[0].cx)
-    expect(Number(matches[1][1])).toBeCloseTo(MASCOT_LAYOUT.eyes[1].cx)
-  })
-
-  it('paints the head after every limb (last image reference before the face groups)', () => {
-    const lastArmIndex = MASCOT_MARKUP.lastIndexOf('gm-arm gm-arm--')
-    const headImageIndex = MASCOT_MARKUP.indexOf(headPlacement.sprite.uri)
-    const eyeWhitesIndex = MASCOT_MARKUP.indexOf('gm-eye-whites')
-    expect(headImageIndex).toBeGreaterThan(lastArmIndex)
-    expect(headImageIndex).toBeLessThan(eyeWhitesIndex)
+  it('paints every part in the generated placement order, head included', () => {
+    const markupIndex = (p: (typeof PLACEMENTS)[number]) =>
+      p.role === 'head'
+        ? MASCOT_MARKUP.indexOf(p.sprite.uri)
+        : MASCOT_MARKUP.indexOf(`gm-arm gm-arm--${p.zone}`)
+    const indices = PLACEMENTS.map(markupIndex)
+    for (const idx of indices) expect(idx).toBeGreaterThan(-1)
+    expect(indices).toEqual([...indices].sort((a, b) => a - b))
   })
 })
 
@@ -113,12 +91,6 @@ describe('MASCOT_STYLES', () => {
 
   it('gates continuous motion behind prefers-reduced-motion: no-preference', () => {
     expect(MASCOT_STYLES).toContain('@media (prefers-reduced-motion: no-preference)')
-  })
-
-  it('disables idle pupil glances while [data-tracking] is set', () => {
-    expect(MASCOT_STYLES).toContain(
-      `.${MASCOT_SELECTORS.root}:not([data-tracking]) .${MASCOT_SELECTORS.pupil}`
-    )
   })
 
   it('kills every animation in static mode', () => {

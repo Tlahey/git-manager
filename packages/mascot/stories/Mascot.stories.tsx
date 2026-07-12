@@ -14,9 +14,8 @@ const meta: Meta<typeof OctopusMascot> = {
   argTypes: {
     size: { control: { type: 'range', min: 80, max: 800, step: 10 } },
     animated: { control: 'boolean' },
-    eyeTracking: { control: 'boolean' },
   },
-  args: { size: 420, animated: true, eyeTracking: true },
+  args: { size: 420, animated: true },
 }
 export default meta
 
@@ -108,7 +107,7 @@ export const ReferenceOverlayOnLive: StoryObj<OverlayArgs> = {
         <div style={{ position: 'relative', width: size }}>
           {ghost}
           <div style={{ position: 'relative', zIndex: 1 }}>
-            <OctopusMascot size={size} animated={false} eyeTracking={false} />
+            <OctopusMascot size={size} animated={false} />
           </div>
         </div>
         <p style={{ color: '#9fb6d4', fontFamily: 'sans-serif', fontSize: 13, maxWidth: 560 }}>

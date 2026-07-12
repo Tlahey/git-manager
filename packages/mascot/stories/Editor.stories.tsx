@@ -6,8 +6,10 @@
  *      l'éditeur EST le rig actuel (un autre PNG peut être chargé par-dessus),
  *   2. définis/ajuste des zones dessus (glisser pour tracer, nommer, typer),
  *   3. place chaque zone sur la scène 1000×1000 (drag, échelle, rotation,
- *      flip, opacité, avant/arrière via l'ordre de peinture, pivot + params
- *      d'animation), avec la référence de marque en surimpression alignée,
+ *      flip, opacité, pivot + params d'animation), avec la référence de
+ *      marque en surimpression alignée ; le panneau « Couches » liste les
+ *      placements en ordre de peinture (haut = devant) et se réordonne par
+ *      drag-and-drop,
  *   4. exporte le JSON → `assets/layout.json`, puis
  *      `pnpm --filter @git-manager/mascot generate` régénère
  *      `src/generated/{sprites,layout}.ts` consommés par les apps.
@@ -17,6 +19,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { Meta, StoryObj } from '@storybook/react'
 import { ReferenceOverlay, SPRITES, Stage } from './rigUtils'
+import { LayersPanel } from './LayersPanel'
 import layoutJson from '../assets/layout.json'
 import defaultSheetUrl from '../assets/sprites.png'
 
@@ -222,6 +225,22 @@ function Editor() {
       setSelPart(j)
       return { ...d, placements: arr }
     })
+
+  const reorderPart = (from: number, to: number) => {
+    if (from === to) return
+    // keep the selection on the same placement across the reindexing
+    if (selPart !== null) {
+      if (selPart === from) setSelPart(to)
+      else if (from < selPart && selPart <= to) setSelPart(selPart - 1)
+      else if (to <= selPart && selPart < from) setSelPart(selPart + 1)
+    }
+    setDoc((d) => {
+      const arr = [...d.placements]
+      const [moved] = arr.splice(from, 1)
+      arr.splice(to, 0, moved)
+      return { ...d, placements: arr }
+    })
+  }
 
   const sel = selPart !== null ? doc.placements[selPart] : null
   const exportJson = useMemo(() => JSON.stringify(doc, null, 2), [doc])
@@ -558,9 +577,21 @@ function Editor() {
         </p>
       </div>
 
+      {/* ── layers (paint order) ── */}
+      <div style={{ ...panel, width: 220 }}>
+        <strong>3. Couches</strong>
+        <LayersPanel
+          layers={doc.placements.map((p) => ({ zone: p.zone, x: p.x, y: p.y }))}
+          selected={selPart}
+          uriFor={uriFor}
+          onSelect={setSelPart}
+          onReorder={reorderPart}
+        />
+      </div>
+
       {/* ── inspector + JSON ── */}
       <div style={{ ...panel, width: 300 }}>
-        <strong>3. Pièce sélectionnée</strong>
+        <strong>4. Pièce sélectionnée</strong>
         {sel && selPart !== null ? (
           <div>
             <p style={{ margin: '6px 0' }}>
@@ -675,7 +706,7 @@ function Editor() {
         )}
 
         <hr style={{ border: 0, borderTop: '1px solid #24406a', margin: '12px 0' }} />
-        <strong>4. JSON</strong>
+        <strong>5. JSON</strong>
         <textarea
           readOnly
           value={exportJson}

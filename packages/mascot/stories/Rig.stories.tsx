@@ -7,7 +7,7 @@
 
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react'
-import { MASCOT_LAYOUT, ReferenceOverlay, SPRITES, Stage, partStyle } from './rigUtils'
+import { MASCOT_LAYOUT, ReferenceOverlay, Stage, partStyle } from './rigUtils'
 
 const meta: Meta = { title: 'Mascot/Rig debugger' }
 export default meta
@@ -31,13 +31,12 @@ export const RigDebugger: StoryObj<RigArgs> = {
   ),
 }
 
-/** Layers in paint order (back → front), face on top like the shipped markup. */
-function layerList(): { id: string; kind: 'limb' | 'head' | 'face' }[] {
-  return [
-    ...Object.keys(MASCOT_LAYOUT.limbs).map((id) => ({ id, kind: 'limb' as const })),
-    { id: 'head', kind: 'head' as const },
-    { id: 'face', kind: 'face' as const },
-  ]
+/** Layers in the generated paint order (back → front), head at its own depth like the shipped markup. */
+function layerList(): { id: string; kind: 'limb' | 'head' }[] {
+  return MASCOT_LAYOUT.order.map((id) => ({
+    id,
+    kind: id === 'head' ? ('head' as const) : ('limb' as const),
+  }))
 }
 
 function RigView({ refOpacity, showPivots, stageWidth }: RigArgs) {
@@ -54,7 +53,7 @@ function RigView({ refOpacity, showPivots, stageWidth }: RigArgs) {
       return next
     })
 
-  const { head, limbs, eyes, eyeWhiteR, pupilScale, lidScale, mouth } = MASCOT_LAYOUT
+  const { head, limbs } = MASCOT_LAYOUT
 
   return (
     <div
@@ -92,74 +91,18 @@ function RigView({ refOpacity, showPivots, stageWidth }: RigArgs) {
                 />
               )
             }
-            if (kind === 'head') {
-              return (
-                <img
-                  key={id}
-                  src={head.sprite.uri}
-                  alt="head"
-                  {...common}
-                  style={{
-                    ...partStyle({ ...head, rot: 0 }, head.sprite.w),
-                    opacity: dimmed(id),
-                    transition: 'opacity 0.1s',
-                  }}
-                />
-              )
-            }
             return (
-              <div key={id} {...common} style={{ opacity: dimmed(id), transition: 'opacity 0.1s' }}>
-                {eyes.map((e, i) => (
-                  <div key={i}>
-                    <div
-                      style={{
-                        position: 'absolute',
-                        left: e.cx - eyeWhiteR,
-                        top: e.cy - eyeWhiteR,
-                        width: eyeWhiteR * 2,
-                        height: eyeWhiteR * 2,
-                        borderRadius: '50%',
-                        background: '#fdfefe',
-                      }}
-                    />
-                    <img
-                      src={SPRITES.eye.uri}
-                      alt="pupil"
-                      style={{
-                        position: 'absolute',
-                        left: e.cx - (SPRITES.eye.w * pupilScale) / 2,
-                        top: e.cy - (SPRITES.eye.h * pupilScale) / 2,
-                        width: SPRITES.eye.w * pupilScale,
-                      }}
-                    />
-                  </div>
-                ))}
-                <img
-                  src={SPRITES.eyelid.uri}
-                  alt="mouth"
-                  style={{
-                    position: 'absolute',
-                    left: mouth.cx - (SPRITES.eyelid.w * mouth.scale) / 2,
-                    top: mouth.cy - (SPRITES.eyelid.h * mouth.scale) / 2,
-                    width: SPRITES.eyelid.w * mouth.scale,
-                  }}
-                />
-                {/* lids drawn faint so their alignment stays checkable */}
-                {eyes.map((e, i) => (
-                  <img
-                    key={`lid-${i}`}
-                    src={SPRITES.eyelid.uri}
-                    alt="lid"
-                    style={{
-                      position: 'absolute',
-                      left: e.cx - (SPRITES.eyelid.w * lidScale) / 2,
-                      top: e.cy - (SPRITES.eyelid.h * lidScale) / 2,
-                      width: SPRITES.eyelid.w * lidScale,
-                      opacity: 0.15,
-                    }}
-                  />
-                ))}
-              </div>
+              <img
+                key={id}
+                src={head.sprite.uri}
+                alt="head"
+                {...common}
+                style={{
+                  ...partStyle({ ...head, rot: 0 }, head.sprite.w),
+                  opacity: dimmed(id),
+                  transition: 'opacity 0.1s',
+                }}
+              />
             )
           })}
 
