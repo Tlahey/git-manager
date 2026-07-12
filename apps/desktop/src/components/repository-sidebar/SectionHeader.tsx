@@ -7,6 +7,7 @@ interface SectionHeaderProps {
   isOpen: boolean
   onToggle: () => void
   action?: React.ReactNode
+  testId?: string
 }
 
 export function SectionHeader({
@@ -16,10 +17,12 @@ export function SectionHeader({
   isOpen,
   onToggle,
   action,
+  testId,
 }: SectionHeaderProps) {
   return (
     <div className="group/header flex items-center">
       <button
+        data-testid={testId}
         onClick={onToggle}
         className="flex flex-1 items-center gap-1.5 px-2 py-1.5 text-left transition-colors hover:bg-accent/40"
       >

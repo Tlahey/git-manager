@@ -5,7 +5,7 @@ Feature: Fixup autosquash
   So that I can clean up my history before pushing
 
   Background:
-    Given the "fixup-chain" fixture repository is built and opened
+    Given the "fixup-chain" fixture repository is opened
 
   Scenario: The pending fixups banner is shown
     Then the pending fixups banner reports 2 fixups

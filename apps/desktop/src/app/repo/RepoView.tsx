@@ -63,7 +63,7 @@ export function RepoView() {
   if (!activeRepo) return null
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-testid="repo-view" className="flex h-full flex-col">
       <ActionToolbar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
