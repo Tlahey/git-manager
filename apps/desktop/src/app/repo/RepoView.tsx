@@ -11,6 +11,7 @@ import { useSettingsStore } from '../../stores/settings.store'
 import { showBranchNativeContextMenu } from '../../api/nativeMenu.api'
 import { apiDeleteBranch } from '../../api/git.api'
 import { apiOpenRepo } from '../../api/repo.api'
+import { PendingFixupsBanner } from '../../components/fixup/PendingFixupsBanner'
 
 export function RepoView() {
   const { activeRepo } = useRepoUIStore()
@@ -67,6 +68,8 @@ export function RepoView() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
+
+      <PendingFixupsBanner repoPath={activeRepo} />
 
       {/* ── Layout principal : sidebar | zone centrale ──────────── */}
       <div className="flex flex-1 overflow-hidden">

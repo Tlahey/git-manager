@@ -132,7 +132,7 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
             </h1>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={handleOpenRepo} className="hover:bg-primary/10 hover:border-primary/30 transition-all text-xs h-8">
+            <Button data-testid="open-repo-button" size="sm" variant="outline" onClick={handleOpenRepo} className="hover:bg-primary/10 hover:border-primary/30 transition-all text-xs h-8">
               <FolderOpen className="mr-1.5 h-3.5 w-3.5" />
               {t('dashboard.browse') || 'Browse'}
             </Button>

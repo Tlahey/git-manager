@@ -72,7 +72,7 @@ export function AutosquashPreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent data-testid="autosquash-preview-dialog" className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{t('fixup.autosquash.title')}</DialogTitle>
         </DialogHeader>
@@ -87,7 +87,7 @@ export function AutosquashPreviewDialog({
               {t('fixup.autosquash.summary', { count: totalFixups })}
             </p>
 
-            <div className="max-h-64 overflow-y-auto space-y-2">
+            <div data-testid="autosquash-preview-groups" className="max-h-64 overflow-y-auto space-y-2">
               {groups.map((group) => (
                 <div
                   key={group.baseOid}
@@ -126,6 +126,7 @@ export function AutosquashPreviewDialog({
             Cancel
           </Button>
           <Button
+            data-testid="autosquash-confirm-button"
             size="sm"
             onClick={handleConfirm}
             disabled={isRunning || isLoading || groups.length === 0}

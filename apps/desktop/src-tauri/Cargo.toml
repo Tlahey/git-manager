@@ -32,6 +32,14 @@ futures-util = "0.3"
 thiserror = "1"
 chrono = { version = "0.4", features = ["serde"] }
 
+# WebdriverIO E2E testing support (behind the "e2e" feature, see docs/architecture — this
+# embeds a WebDriver server in the binary, so it must never be compiled into a real build).
+tauri-plugin-wdio = { version = "1", optional = true }
+tauri-plugin-wdio-webdriver = { version = "1", optional = true }
+
+[features]
+e2e = ["dep:tauri-plugin-wdio", "dep:tauri-plugin-wdio-webdriver"]
+
 [profile.release]
 panic = "abort"
 codegen-units = 1
