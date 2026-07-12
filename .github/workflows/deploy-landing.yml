@@ -5,29 +5,33 @@ on:
     branches:
       - main
     paths:
-      # Run when the landing page, the mascot it depends on, or this workflow change
+      # Only deploy when the landing page itself (or this workflow) changes.
+      # The page also depends on packages/mascot — after a mascot-only change,
+      # trigger a manual redeploy from the Actions tab (workflow_dispatch).
       - 'apps/landing-page/**'
-      - 'packages/mascot/**'
       - '.github/workflows/deploy-landing.yml'
+  workflow_dispatch:
 
-# Allow one concurrent deployment; cancel in-progress runs
-concurrency:
-  group: pages-deploy
-  cancel-in-progress: true
-
+# Native GitHub Pages deployment (no gh-pages branch): the build is uploaded
+# as an ephemeral artifact and published via OIDC. Repo Settings → Pages must
+# use source "GitHub Actions" — configure-pages enables it automatically.
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; let in-flight deployments finish (GitHub's recommendation)
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Build & Deploy to GitHub Pages
+  build:
+    name: Build landing page
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -41,18 +45,27 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
       - name: Build landing page
         run: pnpm --filter @git-manager/landing-page build
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./apps/landing-page/dist
-          publish_branch: gh-pages
-          # Preserve commit history on gh-pages branch
-          keep_files: false
-          # Commit message with triggering SHA
-          commit_message: 'deploy: landing page from ${{ github.sha }}'
-          # Set custom domain if needed (uncomment and edit):
-          # cname: git-manager.example.com
+          path: apps/landing-page/dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
