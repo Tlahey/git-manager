@@ -2,6 +2,9 @@ packages:
   - "apps/*"
   - "packages/*"
 
+overrides:
+  "@wdio/native-utils": "^2.5.0"
+
 catalog:
   typescript: ^7.0.2
   react: ^18.3.1
@@ -25,3 +28,11 @@ catalog:
   "@storybook/react-vite": ^10.4.6
   "@monaco-editor/react": ^4.6.0
   monaco-editor: ^0.52.0
+
+allowBuilds:
+  '@swc/core': true
+  edgedriver: true
+  esbuild: true
+  geckodriver: true
+  msw: true
+  unrs-resolver: true
