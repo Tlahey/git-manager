@@ -12,17 +12,15 @@ const meta: Meta = { title: 'Mascot/Parts' }
 export default meta
 
 const LABELS: Record<string, string> = {
-  head: 'tête (sans visage)',
-  eye: 'pupille (réutilisée ×2)',
-  eyelid: 'paupière / bouche',
-  t1: 'bras supérieur gauche',
-  t4: 'bras supérieur droit',
-  t3: 'tentacule extérieure gauche',
-  t2: 'tentacule extérieure droite',
-  t5: 'tentacule milieu gauche',
-  t8: 'tentacule milieu droite (sombre, flippée)',
-  t7: 'tentacule intérieure gauche',
-  t6: 'tentacule intérieure droite',
+  head: 'tête (visage inclus)',
+  t1: 'bras supérieur droit',
+  t4: 'bras supérieur gauche',
+  t2: 'tentacule médiane gauche',
+  t3: 'tentacule médiane droite',
+  t5: 'tentacule extérieure gauche',
+  t8: 'tentacule extérieure droite',
+  t6: 'tentacule intérieure gauche',
+  t7: 'tentacule intérieure droite',
 }
 
 function PartCard({ name, background }: { name: keyof typeof SPRITES; background: string }) {
