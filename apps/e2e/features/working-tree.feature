@@ -15,3 +15,9 @@ Feature: Working tree staging
   Scenario: The staging panel matches the reference snapshot
     When I select the working-tree changes in the graph
     Then the staging panel matches the visual snapshot "wip-staging-panel"
+
+  @visual
+  Scenario: Viewing a changed file shows its diff
+    When I select the working-tree changes in the graph
+    And I open the diff for "config.yml"
+    Then the file diff matches the visual snapshot "wip-file-diff"

@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (9 features / 55 steps)
+## Covered today (9 features / 59 steps, 6 visual snapshots)
 
 | Feature | Area | Setup | Snapshot | Status |
 |---|---|---|---|---|
@@ -26,7 +26,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | Fixup autosquash grouping | fixup | fixture:fixup-chain | 📷 ✅ (preview groups) | ✅ |
 | Rebase conflict panel auto-opens + **snapshot** | rebase | fixture:rebase-conflict | 📷 ✅ (panel layout) | 🟡 (panel shown + snapshotted; resolve/continue not driven) |
 | **Merge editor** opens for a conflicted file + **snapshot** | merge | fixture:rebase-conflict | 📷 ✅ (full Monaco editor) | 🟡 (opens + snapshotted; block resolution not driven) |
-| **Working-tree staging panel** shows + **snapshot** | commits | fixture:stash-stack | 📷 ✅ (staging panel) | 🟡 (panel shown + snapshotted; stage/commit not driven) |
+| **Working-tree staging panel** + **file diff** + **snapshots** | commits | fixture:stash-stack | 📷 ✅ (staging panel + diff view) | 🟡 (panel + diff snapshotted; stage/commit not driven) |
 | Detached HEAD indicator reads "HEAD" | repo state | fixture:detached-head | — | ✅ |
 | Sidebar lists stashes | stash | fixture:stash-stack | — | 🟡 (list only; apply/pop/drop todo) |
 | Settings screen opens + **snapshot** | settings | keyboard (Mod+,) | 📷 ✅ (general section) | 🟡 (general snapshotted; other sections todo) |
@@ -78,8 +78,9 @@ root or add a per-section testid.
 unstaged changes → a WIP node). **Gotcha handled:** the WIP row's centre is its inline "// WIP"
 commit input (stops click propagation), so the step clicks the row's left edge over the graph
 node. **Todo:** stage a file · bulk stage (`file-list-bulk-stage`) · type a subject/body and
-commit · amend (`commit-amend-*`). The commit-box / file-row testids are still mock-only. Diff
-view (`diff-content-area`, `monaco-diff-viewer`) is a further 📷 candidate.
+commit · amend (`commit-amend-*`). The commit-box testids are still mock-only. **Diff view: done**
+— clicking a file row (`file-tree-file-<path>`, a real testid) shows the diff (`diff-content-area`)
+and it's snapshotted (`wip-file-diff`), verified stable.
 
 ### 5. Undo / redo  ⬜
 State-mutating actions push to `undoHistory.store`. **Note:** the toolbar undo/redo buttons'

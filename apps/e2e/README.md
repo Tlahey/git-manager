@@ -23,7 +23,7 @@ features/                       # .feature files — the scenarios in plain Gher
   stash-stack.feature           #   @stash     sidebar lists the stashed changes
   settings.feature              #   @settings  settings screen opens (+ @visual snapshot)
   merge-editor.feature          #   @merge     three-way merge editor opens (+ @visual Monaco snapshot)
-  working-tree.feature          #   @commits   WIP staging panel opens (+ @visual snapshot)
+  working-tree.feature          #   @commits   WIP staging panel + file diff (+ @visual snapshots)
 step-definitions/               # the TypeScript backing each Given/When/Then, matched by text
   repo.steps.ts                 #   generic "open the <fixture> repository" (shared)
   common.steps.ts               #   app launch / generic assertions
