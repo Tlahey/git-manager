@@ -23,6 +23,7 @@ features/                       # .feature files — the scenarios in plain Gher
   stash-stack.feature           #   @stash     sidebar lists the stashed changes
   settings.feature              #   @settings  settings screen opens (+ @visual snapshot)
   merge-editor.feature          #   @merge     three-way merge editor opens (+ @visual Monaco snapshot)
+  working-tree.feature          #   @commits   WIP staging panel opens (+ @visual snapshot)
 step-definitions/               # the TypeScript backing each Given/When/Then, matched by text
   repo.steps.ts                 #   generic "open the <fixture> repository" (shared)
   common.steps.ts               #   app launch / generic assertions
@@ -33,6 +34,7 @@ step-definitions/               # the TypeScript backing each Given/When/Then, m
   stash.steps.ts                #   sidebar stash section
   settings.steps.ts             #   open settings (keyboard), general-section snapshot
   merge.steps.ts                #   navigate to merge route, snapshot Monaco editor
+  working-tree.steps.ts         #   select WIP node, snapshot the staging panel
 support/
   visual.ts                     #   stabiliseForSnapshot() shared by every snapshot step
 COVERAGE.md                     # coverage matrix: what's tested vs the app's feature surface

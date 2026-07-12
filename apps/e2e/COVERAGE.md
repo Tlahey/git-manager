@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (8 features / 49 steps)
+## Covered today (9 features / 55 steps)
 
 | Feature | Area | Setup | Snapshot | Status |
 |---|---|---|---|---|
@@ -26,6 +26,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | Fixup autosquash grouping | fixup | fixture:fixup-chain | 📷 ✅ (preview groups) | ✅ |
 | Rebase conflict panel auto-opens + **snapshot** | rebase | fixture:rebase-conflict | 📷 ✅ (panel layout) | 🟡 (panel shown + snapshotted; resolve/continue not driven) |
 | **Merge editor** opens for a conflicted file + **snapshot** | merge | fixture:rebase-conflict | 📷 ✅ (full Monaco editor) | 🟡 (opens + snapshotted; block resolution not driven) |
+| **Working-tree staging panel** shows + **snapshot** | commits | fixture:stash-stack | 📷 ✅ (staging panel) | 🟡 (panel shown + snapshotted; stage/commit not driven) |
 | Detached HEAD indicator reads "HEAD" | repo state | fixture:detached-head | — | ✅ |
 | Sidebar lists stashes | stash | fixture:stash-stack | — | 🟡 (list only; apply/pop/drop todo) |
 | Settings screen opens + **snapshot** | settings | keyboard (Mod+,) | 📷 ✅ (general section) | 🟡 (general snapshotted; other sections todo) |
@@ -71,13 +72,14 @@ mask or assert values instead), and toggle-a-setting-persists. Note the section 
 real testid on its root (the `section-*` ids are test-mock-only) — snapshot the `settings-page`
 root or add a per-section testid.
 
-### 4. Commits / working tree  ⬜  📷
-Staging + commit flow. Testids: `wip-staging-panel`, `file-list-bulk-stage`,
-`commit-subject-input`, `commit-body-textarea`, `commit-subject-counter`, `commit-amend-form`,
-`commit-amend-submit`, `commit-amend-cancel`. Setup: a fixture with a dirty tree (stash-stack
-leaves staged + unstaged changes; or a new dedicated fixture). Scenarios: stage a file · bulk
-stage · type a subject/body and commit · amend the last commit · discard a change. Diff view
-(`diff-content-area`, `diff-view-center`, `monaco-diff-viewer`) is a 📷 candidate.
+### 4. Commits / working tree  🟡  📷 (staging panel snapshotted)
+**Done:** selecting the synthetic WIP node (`graph-row-WIP`) opens the staging panel
+(`wip-staging-panel`) + a layout snapshot. Setup: `fixture:stash-stack` (leaves staged +
+unstaged changes → a WIP node). **Gotcha handled:** the WIP row's centre is its inline "// WIP"
+commit input (stops click propagation), so the step clicks the row's left edge over the graph
+node. **Todo:** stage a file · bulk stage (`file-list-bulk-stage`) · type a subject/body and
+commit · amend (`commit-amend-*`). The commit-box / file-row testids are still mock-only. Diff
+view (`diff-content-area`, `monaco-diff-viewer`) is a further 📷 candidate.
 
 ### 5. Undo / redo  ⬜
 State-mutating actions push to `undoHistory.store`. **Note:** the toolbar undo/redo buttons'

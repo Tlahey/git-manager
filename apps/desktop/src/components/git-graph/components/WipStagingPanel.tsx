@@ -64,7 +64,7 @@ export function WipStagingPanel({
   }
 
   return (
-    <div className="pt-2 border-t border-border/55 space-y-3 px-4 pb-4">
+    <div data-testid="wip-staging-panel" className="pt-2 border-t border-border/55 space-y-3 px-4 pb-4">
       <div className="flex items-center justify-between">
         <button
           onClick={() => setBatchMode((b) => !b)}
