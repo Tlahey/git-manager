@@ -1,7 +1,4 @@
 {
   "extends": "@git-manager/config/typescript",
-  "compilerOptions": {
-    "baseUrl": "."
-  },
   "include": ["src", "stories", ".storybook", "vitest.setup.ts"]
 }
