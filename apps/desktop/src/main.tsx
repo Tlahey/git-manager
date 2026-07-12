@@ -5,6 +5,7 @@ import { ConflictMergeWindow } from './components/merge-editor/ConflictMergeWind
 import { FixupCommitWindow } from './components/git-graph/fixup/FixupCommitWindow'
 import { RebasingCommitWindow } from './components/rebase-editor/RebasingCommitWindow'
 import { initI18n } from '@git-manager/i18n'
+import { useSettingsStore } from './stores/settings.store'
 import '@git-manager/ui/globals.css'
 import '@git-manager/code-view/styles.css'
 import './index.css'
@@ -15,9 +16,10 @@ import './index.css'
 const e2eSetup =
   import.meta.env.VITE_E2E === 'true' ? import('@wdio/tauri-plugin') : Promise.resolve()
 
-// Initialize i18n before rendering
+// Initialize i18n before rendering, honoring the persisted language choice
+// (the zustand store rehydrates synchronously from localStorage on import).
 e2eSetup
-  .then(() => initI18n('fr'))
+  .then(() => initI18n(useSettingsStore.getState().settings.language))
   .then(() => {
     const params = new URLSearchParams(window.location.search)
     const windowKind = params.get('window')
