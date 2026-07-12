@@ -3,7 +3,11 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitStatus } from '@git-manager/git-types'
 
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
+vi.mock('@git-manager/i18n', () => ({
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key} ${JSON.stringify(opts)}` : key),
+  }),
+}))
 vi.mock('../../../hooks/useTheme', () => ({ useTheme: vi.fn() }))
 vi.mock('../../../hooks/useMonacoTheme', () => ({ useMonacoTheme: vi.fn() }))
 
@@ -12,6 +16,7 @@ vi.mock('../../../hooks/useGitStatus', () => ({ useGitStatus }))
 
 vi.mock('../../../api/git.api', () => ({
   apiCreateFixupCommit: vi.fn(),
+  apiCheckFixupTarget: vi.fn(),
   apiGetCommitFileVsWorkdir: vi.fn(),
   apiPushBranch: vi.fn(),
 }))
@@ -50,11 +55,17 @@ vi.mock('../components/CommitFileList', () => ({
   },
 }))
 
-import { apiCreateFixupCommit, apiGetCommitFileVsWorkdir, apiPushBranch } from '../../../api/git.api'
+import {
+  apiCreateFixupCommit,
+  apiCheckFixupTarget,
+  apiGetCommitFileVsWorkdir,
+  apiPushBranch,
+} from '../../../api/git.api'
 import { FixupCommitWindow } from './FixupCommitWindow'
 import { queryClient } from '../../../lib/queryClient'
 
 const mockedCreateFixup = apiCreateFixupCommit as unknown as ReturnType<typeof vi.fn>
+const mockedCheckFixupTarget = apiCheckFixupTarget as unknown as ReturnType<typeof vi.fn>
 const mockedGetDiff = apiGetCommitFileVsWorkdir as unknown as ReturnType<typeof vi.fn>
 const mockedPushBranch = apiPushBranch as unknown as ReturnType<typeof vi.fn>
 
@@ -81,6 +92,7 @@ beforeEach(() => {
   lastFileListProps.current = null
   useGitStatus.mockReturnValue({ data: gitStatus() })
   mockedGetDiff.mockResolvedValue({ original: 'old', modified: 'new' })
+  mockedCheckFixupTarget.mockResolvedValue({ missingInTarget: [], touchedAfterTarget: [] })
 })
 
 describe('FixupCommitWindow — header and defaults', () => {
@@ -214,5 +226,54 @@ describe('FixupCommitWindow — committing', () => {
     await user.click(screen.getByTestId('fixup-cancel'))
     expect(closeWindow).toHaveBeenCalledOnce()
     expect(mockedCreateFixup).not.toHaveBeenCalled()
+  })
+})
+
+describe('FixupCommitWindow — conflict-risk banner', () => {
+  it('does not check or show a banner when nothing is staged', () => {
+    renderWindow()
+    expect(mockedCheckFixupTarget).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('fixup-risk-banner')).not.toBeInTheDocument()
+  })
+
+  it('shows nothing when the check comes back clean', async () => {
+    useGitStatus.mockReturnValue({ data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] }) })
+    renderWindow()
+    await waitFor(() => expect(mockedCheckFixupTarget).toHaveBeenCalledWith('/repo', 'target123'))
+    expect(screen.queryByTestId('fixup-risk-banner')).not.toBeInTheDocument()
+  })
+
+  it('shows a destructive warning for a file missing from the target commit', async () => {
+    useGitStatus.mockReturnValue({ data: gitStatus({ staged: [{ path: 'config.ts', status: 'modified' }] }) })
+    mockedCheckFixupTarget.mockResolvedValue({ missingInTarget: ['config.ts'], touchedAfterTarget: [] })
+    renderWindow()
+    await screen.findByTestId('fixup-risk-missing')
+    expect(screen.getByTestId('fixup-risk-missing')).toHaveTextContent('config.ts')
+  })
+
+  it('shows a soft warning listing the intervening commits for a file touched after the target', async () => {
+    useGitStatus.mockReturnValue({ data: gitStatus({ staged: [{ path: 'greeting.ts', status: 'modified' }] }) })
+    mockedCheckFixupTarget.mockResolvedValue({
+      missingInTarget: [],
+      touchedAfterTarget: [
+        { path: 'greeting.ts', commits: [{ oid: 'abc123', shortOid: 'abc123', subject: 'fixup! feat: add greeting module' }] },
+      ],
+    })
+    renderWindow()
+    const row = await screen.findByTestId('fixup-risk-touched')
+    expect(row).toHaveTextContent('greeting.ts')
+    expect(row).toHaveTextContent('abc123')
+  })
+
+  it('re-checks when the staged file set changes', async () => {
+    useGitStatus.mockReturnValue({ data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] }) })
+    const { rerender } = renderWindow()
+    await waitFor(() => expect(mockedCheckFixupTarget).toHaveBeenCalledTimes(1))
+
+    useGitStatus.mockReturnValue({ data: gitStatus({ staged: [{ path: 'b.ts', status: 'modified' }] }) })
+    rerender(
+      <FixupCommitWindow repoPath="/repo" targetOid="target123" targetShortOid="target1" targetSubject="Original commit subject" />
+    )
+    await waitFor(() => expect(mockedCheckFixupTarget).toHaveBeenCalledTimes(2))
   })
 })

@@ -19,7 +19,7 @@ use commands::conflict::{
     resolve_conflict_binary,
 };
 use commands::fixup::{
-    autosquash_preview, create_fixup_commit, get_pending_fixups, run_autosquash,
+    autosquash_preview, check_fixup_target, create_fixup_commit, get_pending_fixups, run_autosquash,
 };
 use commands::github::{github_device_code, github_get_user, github_list_repos, github_poll_token};
 use commands::interactive_rebase::{list_rebase_commits, run_interactive_rebase};
@@ -179,6 +179,7 @@ pub fn run() {
             cherry_pick_commit,
             // Fixup
             create_fixup_commit,
+            check_fixup_target,
             get_pending_fixups,
             autosquash_preview,
             run_autosquash,

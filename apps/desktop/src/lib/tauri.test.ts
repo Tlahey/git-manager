@@ -441,6 +441,12 @@ const cases: { name: string; call: () => unknown; command: string; args?: Record
     args: { path: '/repo', targetOid: 'target', message: 'fixup!' },
   },
   {
+    name: 'checkFixupTarget',
+    call: () => tauri.checkFixupTarget('/repo', 'target'),
+    command: 'check_fixup_target',
+    args: { path: '/repo', targetOid: 'target' },
+  },
+  {
     name: 'getPendingFixups',
     call: () => tauri.getPendingFixups('/repo'),
     command: 'get_pending_fixups',
