@@ -21,6 +21,7 @@ import { OperationProgressBar } from './components/layout/OperationProgressBar'
 import { appEventBus } from './lib/appEventBus'
 import { useOperationProgressStore } from './stores/operationProgress.store'
 import { useUndoHistoryStore } from './stores/undoHistory.store'
+import { useDebugLogStore, type DebugLogEntry } from './stores/debugLog.store'
 import { listen } from '@tauri-apps/api/event'
 import { mutate } from 'swr'
 
@@ -77,6 +78,23 @@ export default function App() {
         // store was hydrated at startup and won't pick it up on its own — re-read it so the UNDO
         // button reflects the action just performed elsewhere.
         useUndoHistoryStore.persist.rehydrate()
+      })
+    }
+    setupListener()
+    return () => {
+      if (unlisten) unlisten()
+    }
+  }, [])
+
+  // Single writer into the debug-log ring buffer (Settings → Debug): every window's `invoke`
+  // wrapper broadcasts a 'debug-log-entry' event instead of writing to its own store instance
+  // (see lib/tauri.ts) — this is the one place that turns those broadcasts into visible entries,
+  // regardless of which window (main, fixup, rebase, merge) actually made the call.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined
+    const setupListener = async () => {
+      unlisten = await listen<Omit<DebugLogEntry, 'id' | 'timestamp'>>('debug-log-entry', (event) => {
+        useDebugLogStore.getState().add(event.payload)
       })
     }
     setupListener()

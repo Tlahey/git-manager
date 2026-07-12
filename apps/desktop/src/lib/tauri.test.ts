@@ -1,13 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { mockInvoke } = vi.hoisted(() => ({ mockInvoke: vi.fn() }))
+const { mockInvoke, mockEmit } = vi.hoisted(() => ({ mockInvoke: vi.fn(), mockEmit: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@tauri-apps/api/core', () => ({ invoke: mockInvoke }))
+vi.mock('@tauri-apps/api/event', () => ({ emit: mockEmit }))
 
 import * as tauri from './tauri'
 import { useDebugLogStore } from '../stores/debugLog.store'
 
 beforeEach(() => {
   mockInvoke.mockClear()
+  mockEmit.mockClear()
   useDebugLogStore.setState({ enabled: false, entries: [] })
 })
 
@@ -548,31 +550,40 @@ describe('lib/tauri — restoreWorktreeSnapshot', () => {
 })
 
 describe('lib/tauri — debug log capture', () => {
-  it('records nothing while debug logging is disabled', async () => {
+  // record() broadcasts a 'debug-log-entry' Tauri event rather than writing to this window's own
+  // store directly — the main window (App.tsx) is the single listener that appends it to the
+  // displayed log. This is what lets a fixup/rebase/merge window's calls (each a separate JS
+  // context with its own store instance) still show up in the one place the user reads them.
+  it('broadcasts nothing while debug logging is disabled', async () => {
     mockInvoke.mockResolvedValue({})
     await tauri.openRepo('/repo')
-    expect(useDebugLogStore.getState().entries).toHaveLength(0)
+    expect(mockEmit).not.toHaveBeenCalled()
   })
 
-  it('records a successful IPC call with its command, args and status when enabled', async () => {
+  it('broadcasts a successful IPC call with its command, args and status when enabled', async () => {
     useDebugLogStore.setState({ enabled: true, entries: [] })
     mockInvoke.mockResolvedValue({})
     await tauri.openRepo('/repo')
-    const [logged] = useDebugLogStore.getState().entries
-    expect(logged).toMatchObject({ command: 'open_repo', args: { path: '/repo' }, status: 'ok' })
+    expect(mockEmit).toHaveBeenCalledWith(
+      'debug-log-entry',
+      expect.objectContaining({ command: 'open_repo', args: { path: '/repo' }, status: 'ok' }),
+    )
   })
 
-  it('records failures with the error message and still rethrows', async () => {
+  it('broadcasts failures with the error message and still rethrows', async () => {
     useDebugLogStore.setState({ enabled: true, entries: [] })
     mockInvoke.mockRejectedValue('backend blew up')
     await expect(tauri.openRepo('/repo')).rejects.toBe('backend blew up')
-    expect(useDebugLogStore.getState().entries[0]).toMatchObject({ command: 'open_repo', status: 'error', error: 'backend blew up' })
+    expect(mockEmit).toHaveBeenCalledWith(
+      'debug-log-entry',
+      expect.objectContaining({ command: 'open_repo', status: 'error', error: 'backend blew up' }),
+    )
   })
 
-  it('redacts arguments of credential-shaped commands before storing them', async () => {
+  it('redacts arguments of credential-shaped commands before broadcasting them', async () => {
     useDebugLogStore.setState({ enabled: true, entries: [] })
     mockInvoke.mockResolvedValue({})
     await tauri.githubGetUser('super-secret-token')
-    expect(useDebugLogStore.getState().entries[0].args).toBe('[redacted]')
+    expect(mockEmit).toHaveBeenCalledWith('debug-log-entry', expect.objectContaining({ args: '[redacted]' }))
   })
 })

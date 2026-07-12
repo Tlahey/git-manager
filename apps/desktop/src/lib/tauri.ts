@@ -1,4 +1,5 @@
 import { invoke as tauriInvoke } from '@tauri-apps/api/core'
+import { emit } from '@tauri-apps/api/event'
 import { useDebugLogStore } from '../stores/debugLog.store'
 import { redactArgs } from './debugLogRedact'
 import type {
@@ -27,6 +28,13 @@ import type {
  * redacted arguments, duration and success/error of each IPC round-trip — capturing 100% of what
  * the app asks the backend to do (git2 and shell-outs alike), which is otherwise invisible from
  * outside the native window. Transparent when logging is disabled (the default): just a passthrough.
+ *
+ * Fixup/rebase/merge commits run in their own dedicated Tauri windows (see `main.tsx`), each a
+ * fully separate JS context with its own `useDebugLogStore` instance — a local `store.add()` here
+ * would only ever be visible in the window that made the call, never in the main window's Debug
+ * panel where the user actually reads it. So logging broadcasts a `debug-log-entry` Tauri event
+ * instead of writing locally; the main window (`App.tsx`) is the single listener that appends to
+ * the displayed log, whichever window the call actually came from.
  */
 async function invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   const start = performance.now()
@@ -49,9 +57,11 @@ function record(
   status: 'ok' | 'error',
   error?: string,
 ) {
-  const store = useDebugLogStore.getState()
-  if (!store.enabled) return
-  store.add({
+  // Gated on this window's own store mirror: debug logging must be enabled *before* a fixup/
+  // rebase/merge window is opened for that window's calls to be captured (its store only reads
+  // the persisted flag once, at window creation).
+  if (!useDebugLogStore.getState().enabled) return
+  void emit('debug-log-entry', {
     command,
     args: redactArgs(command, args),
     durationMs: Math.round(performance.now() - start),

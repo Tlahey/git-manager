@@ -76,6 +76,7 @@ import App from './App'
 import { useRepoUIStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from './stores/repoUI.store'
 import { useOperationProgressStore } from './stores/operationProgress.store'
 import { useUndoHistoryStore } from './stores/undoHistory.store'
+import { useDebugLogStore } from './stores/debugLog.store'
 import { queryClient } from './lib/queryClient'
 
 const INITIAL_REPO_UI = useRepoUIStore.getState()
@@ -85,6 +86,7 @@ beforeEach(() => {
   listenCallbacks.clear()
   useRepoUIStore.setState(INITIAL_REPO_UI, true)
   useOperationProgressStore.setState({ running: {} })
+  useDebugLogStore.setState({ enabled: false, entries: [] })
   vi.spyOn(queryClient, 'invalidateQueries')
 })
 
@@ -215,6 +217,17 @@ describe('App — Tauri event listeners', () => {
     // Fixup/rebasing windows persist their undo entry to localStorage; the main window must
     // re-read it so the UNDO button reflects the action performed in that other window.
     expect(rehydrate).toHaveBeenCalled()
+  })
+
+  it('appends broadcast IPC calls to the debug log on debug-log-entry', async () => {
+    render(<App />)
+    await act(async () => {
+      listenCallbacks.get('debug-log-entry')?.({
+        payload: { command: 'create_fixup_commit', args: { path: '/repo' }, durationMs: 5, status: 'ok' },
+      })
+    })
+    const [logged] = useDebugLogStore.getState().entries
+    expect(logged).toMatchObject({ command: 'create_fixup_commit', status: 'ok' })
   })
 
   it('starts the progress bar on rebase-progress "start"', async () => {
