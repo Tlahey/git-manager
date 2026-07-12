@@ -4,14 +4,21 @@
 
 # Git Manager
 
-**A modern desktop Git client built with Tauri, React and Rust**
+**Git, finally made beautiful. A modern desktop Git client built with Tauri, React and Rust.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue)](https://www.typescriptlang.org/)
 [![Rust](https://img.shields.io/badge/Rust-1.77+-orange)](https://www.rust-lang.org/)
 [![Tauri](https://img.shields.io/badge/Tauri-v2-purple)](https://tauri.app/)
+[![Platform](https://img.shields.io/badge/Platform-macOS-black)](https://github.com/Tlahey/git-manager)
 
 _100% local — no telemetry, no cloud, no data leaves your machine._
+
+**[✨ Visit the landing page](https://tlahey.github.io/git-manager/)**
+
+<img src="docs/screenshots/app-commit-graph.png" alt="Git Manager — visual commit graph with branches, tags and a WIP row" width="900" />
+
+<sub>Real screenshots, captured automatically from the app by the e2e harness — see <a href="#screenshots">Screenshots</a>.</sub>
 
 </div>
 
@@ -35,6 +42,25 @@ _100% local — no telemetry, no cloud, no data leaves your machine._
 - **i18n** — English and French interface
 
 > Interactive rebase (drag-and-drop) and worktree management are planned but not yet implemented — see [Implemented milestones](#implemented-milestones).
+
+---
+
+## Screenshots
+
+| Commit graph | Commit details |
+| --- | --- |
+| ![Commit graph](docs/screenshots/app-commit-graph.png) | ![Commit details](docs/screenshots/app-commit-details.png) |
+
+These images are **generated from the real app**, not mocked: the `@screenshots`-tagged
+e2e scenarios ([apps/e2e/features/marketing-screenshots.feature](apps/e2e/features/marketing-screenshots.feature))
+launch the compiled Tauri binary against the scripted `showcase` fixture repository
+([tools/git-fixtures/scenarios/showcase.sh](tools/git-fixtures/scenarios/showcase.sh)) and export
+PNGs into [docs/screenshots/](docs/screenshots/). Refresh them anytime with:
+
+```bash
+pnpm --filter @git-manager/desktop build:e2e   # build the e2e app binary once
+pnpm --filter @git-manager/e2e screenshots     # re-capture docs/screenshots/*.png
+```
 
 ---
 
@@ -166,7 +192,7 @@ brew install pkg-config openssl libssh2
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-org/git-manager.git
+git clone https://github.com/Tlahey/git-manager.git
 cd git-manager
 
 # 2. Install Node.js dependencies
@@ -311,13 +337,16 @@ Architecture refactor plan and execution tracking live in [docs/architecture/](d
 
 ## Package overview
 
-| Package              | Name                     | Description                                  |
-| -------------------- | ------------------------ | -------------------------------------------- |
-| `apps/desktop`       | `@git-manager/desktop`   | Main Tauri + React application               |
-| `packages/git-types` | `@git-manager/git-types` | Shared TypeScript DTOs (mirrors Rust models) |
-| `packages/i18n`      | `@git-manager/i18n`      | i18next setup + EN/FR locale files           |
-| `packages/ui`        | `@git-manager/ui`        | shadcn/ui base components                    |
-| `packages/config`    | `@git-manager/config`    | Shared ESLint, Tailwind, tsconfig            |
+| Package              | Name                        | Description                                                                                     |
+| -------------------- | --------------------------- | ----------------------------------------------------------------------------------------------- |
+| `apps/desktop`       | `@git-manager/desktop`      | Main Tauri + React application                                                                  |
+| `apps/landing-page`  | `@git-manager/landing-page` | The [public landing page](https://tlahey.github.io/git-manager/), deployed to GitHub Pages      |
+| `apps/e2e`           | `@git-manager/e2e`          | WebdriverIO + Cucumber e2e suite driving the real Tauri app (incl. the `screenshots` capture)   |
+| `packages/git-types` | `@git-manager/git-types`    | Shared TypeScript DTOs (mirrors Rust models)                                                    |
+| `packages/mascot`    | `@git-manager/mascot`       | The octopus mascot as a shared `<git-mascot>` web component (landing page today, app tomorrow)  |
+| `packages/i18n`      | `@git-manager/i18n`         | i18next setup + EN/FR locale files                                                              |
+| `packages/ui`        | `@git-manager/ui`           | shadcn/ui base components                                                                       |
+| `packages/config`    | `@git-manager/config`       | Shared ESLint, Tailwind, tsconfig                                                               |
 
 ---
 

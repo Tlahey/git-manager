@@ -13,7 +13,13 @@
       property="og:description"
       content="Free macOS Git client. No telemetry. No cloud. Just Git."
     />
-    <meta property="og:image" content="og-image.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://tlahey.github.io/git-manager/" />
+    <meta property="og:image" content="https://tlahey.github.io/git-manager/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="128x128" href="app-icon-128.png" />
+    <link rel="apple-touch-icon" href="app-icon-256.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -28,23 +34,7 @@
       <div class="nav__inner">
         <a href="#hero" class="nav__logo" aria-label="Git Manager home">
           <div class="nav__logo-icon">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-              <circle cx="16" cy="16" r="15" fill="#050d1a" stroke="#00e5cc" stroke-width="1.5"/>
-              <!-- Mini octopus head -->
-              <ellipse cx="16" cy="13" rx="6" ry="5.5" fill="#00c9b8"/>
-              <ellipse cx="16" cy="14" rx="5" ry="4" fill="#00e5cc"/>
-              <!-- Eyes -->
-              <circle cx="14" cy="12.5" r="1.2" fill="#050d1a"/>
-              <circle cx="18" cy="12.5" r="1.2" fill="#050d1a"/>
-              <circle cx="14.4" cy="12.1" r="0.4" fill="white"/>
-              <circle cx="18.4" cy="12.1" r="0.4" fill="white"/>
-              <!-- Tentacles hint -->
-              <path d="M10 17 Q9 20 10 22" stroke="#00c9b8" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-              <path d="M13 18 Q12 21 13 24" stroke="#00c9b8" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-              <path d="M16 18.5 Q16 22 16 25" stroke="#00c9b8" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-              <path d="M19 18 Q20 21 19 24" stroke="#00c9b8" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-              <path d="M22 17 Q23 20 22 22" stroke="#00c9b8" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-            </svg>
+            <img src="app-icon-128.png" width="32" height="32" alt="" aria-hidden="true" />
           </div>
           <span class="nav__logo-text">Git Manager</span>
         </a>
@@ -196,77 +186,98 @@
                 Browse your entire repo history at a glance.
               </p>
               <div class="feature-card__preview" aria-hidden="true">
-                <div class="graph-demo">
-                  <svg viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <defs>
-                      <filter id="node-glow" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="b"/>
-                        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-                      </filter>
-                      <filter id="node-glow-purple" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="b"/>
-                        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-                      </filter>
-                    </defs>
+                <!-- Faithful mini-replica of the app's commit graph: same dark theme
+                     (hsl(222 84% 4.9%)), lane palette (#2563eb main / #16a34a branch /
+                     #7c3aed remote), 2px lanes with R4 rounded merges, avatar nodes and
+                     RefLabel-style pills — matching GraphSvg.tsx / RefLabel.tsx. -->
+                <div class="app-window">
+                  <div class="app-window__bar">
+                    <span class="app-window__dot app-window__dot--r"></span>
+                    <span class="app-window__dot app-window__dot--y"></span>
+                    <span class="app-window__dot app-window__dot--g"></span>
+                    <span class="app-window__title">git-manager — ~/dev/my-app</span>
+                  </div>
+                  <div class="app-window__body">
+                    <svg viewBox="0 0 470 240" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <!-- Lanes -->
+                      <path d="M22 0 L22 240" stroke="#2563eb" stroke-width="2" fill="none"/>
+                      <path d="M22 60 L50 60 Q54 60 54 64 L54 176 Q54 180 50 180 L22 180"
+                        stroke="#16a34a" stroke-width="2" fill="none"/>
 
-                    <!-- ── Main branch vertical line (x=80) ── -->
-                    <line x1="80" y1="20" x2="80" y2="220"
-                      stroke="url(#mainLineGrad)" stroke-width="2.5" stroke-linecap="round"/>
-                    <defs>
-                      <linearGradient id="mainLineGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#00e5cc"/>
-                        <stop offset="100%" stop-color="#007a8c"/>
-                      </linearGradient>
-                      <linearGradient id="branchLineGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#a47eff"/>
-                        <stop offset="100%" stop-color="#7040cc"/>
-                      </linearGradient>
-                    </defs>
+                      <!-- Nodes: author-avatar circles, like the app -->
+                      <g font-family="Inter, sans-serif" font-size="9" font-weight="700" text-anchor="middle">
+                        <circle cx="22" cy="20" r="12" fill="#020817"/>
+                        <circle cx="22" cy="20" r="10" fill="#7c3aed" class="graph-node-main"/>
+                        <text x="22" y="23.5" fill="#fff">TL</text>
 
-                    <!-- ── Branch line (x=160, from y=80 to y=140) ── -->
-                    <line x1="160" y1="80" x2="160" y2="140"
-                      stroke="url(#branchLineGrad)" stroke-width="2.5" stroke-linecap="round"/>
+                        <circle cx="22" cy="60" r="12" fill="#020817"/>
+                        <circle cx="22" cy="60" r="10" fill="#0891b2"/>
+                        <text x="22" y="63.5" fill="#fff">MB</text>
 
-                    <!-- ── Branch connector: main(80,80) → branch(160,80) ── -->
-                    <path d="M80,80 C120,80 120,80 160,80"
-                      stroke="#a47eff" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.7"/>
+                        <circle cx="54" cy="100" r="12" fill="#020817"/>
+                        <circle cx="54" cy="100" r="10" fill="#16a34a"/>
+                        <text x="54" y="103.5" fill="#fff">TL</text>
 
-                    <!-- ── Merge connector: branch(160,140) → main(80,140) ── -->
-                    <path d="M160,140 C120,140 120,140 80,140"
-                      stroke="#a47eff" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.7"/>
+                        <circle cx="54" cy="140" r="12" fill="#020817"/>
+                        <circle cx="54" cy="140" r="10" fill="#d97706"/>
+                        <text x="54" y="143.5" fill="#fff">AS</text>
 
-                    <!-- ══ COMMIT 1 — main — feat: dashboard (y=30) ══ -->
-                    <!-- Ring -->
-                    <circle cx="80" cy="30" r="9" fill="#0a1628" stroke="#00e5cc" stroke-width="2"/>
-                    <!-- Dot (animated) -->
-                    <circle cx="80" cy="30" r="5" fill="#00e5cc" filter="url(#node-glow)" class="graph-node-main"/>
-                    <!-- Label -->
-                    <text x="100" y="26" font-family="'SF Mono','Fira Code',monospace" font-size="10" fill="#8ba8c0">feat:</text>
-                    <text x="100" y="38" font-family="'SF Mono','Fira Code',monospace" font-size="10" fill="#e8f4f8" font-weight="600">dashboard</text>
+                        <circle cx="22" cy="180" r="12" fill="#020817"/>
+                        <circle cx="22" cy="180" r="10" fill="#2563eb"/>
+                        <text x="22" y="183.5" fill="#fff">TL</text>
 
-                    <!-- ══ COMMIT 2 — branch — fix: auth (y=80) ══ -->
-                    <circle cx="160" cy="80" r="9" fill="#0a1628" stroke="#a47eff" stroke-width="2"/>
-                    <circle cx="160" cy="80" r="5" fill="#a47eff" filter="url(#node-glow-purple)" class="graph-node-branch"/>
-                    <text x="180" y="76" font-family="'SF Mono','Fira Code',monospace" font-size="10" fill="#8ba8c0">fix:</text>
-                    <text x="180" y="88" font-family="'SF Mono','Fira Code',monospace" font-size="10" fill="#e8f4f8" font-weight="600">auth</text>
+                        <circle cx="22" cy="220" r="12" fill="#020817"/>
+                        <circle cx="22" cy="220" r="10" fill="#be185d"/>
+                        <text x="22" y="223.5" fill="#fff">MB</text>
+                      </g>
 
-                    <!-- ══ COMMIT 3 — main — merge (y=140) ══ -->
-                    <circle cx="80" cy="140" r="9" fill="#0a1628" stroke="#00e5cc" stroke-width="2"/>
-                    <circle cx="80" cy="140" r="5" fill="#00e5cc" filter="url(#node-glow)" class="graph-node-main"/>
-                    <text x="100" y="136" font-family="'SF Mono','Fira Code',monospace" font-size="10" fill="#8ba8c0">chore:</text>
-                    <text x="100" y="148" font-family="'SF Mono','Fira Code',monospace" font-size="10" fill="#e8f4f8" font-weight="600">deps</text>
+                      <!-- Row 1: HEAD + main pills, message, sha -->
+                      <g font-family="Inter, sans-serif" font-size="11">
+                        <rect x="88" y="10" width="46" height="20" rx="4" fill="rgba(16,185,129,0.15)" stroke="rgba(16,185,129,0.4)"/>
+                        <text x="111" y="24" fill="#6ee7b7" text-anchor="middle" font-weight="600">HEAD</text>
+                        <rect x="140" y="10" width="42" height="20" rx="4" fill="rgba(37,99,235,0.15)" stroke="rgba(37,99,235,0.45)"/>
+                        <text x="161" y="24" fill="#60a5fa" text-anchor="middle" font-weight="600">main</text>
+                        <text x="192" y="24" fill="#e2e8f0">feat: AI commit messages via Ollama</text>
+                        <text x="452" y="24" fill="#64748b" text-anchor="end" font-family="'SF Mono','Fira Code',monospace" font-size="10">a1b2c3f</text>
+                      </g>
 
-                    <!-- ══ COMMIT 4 — main — v1.0.0 tag (y=200) ══ -->
-                    <circle cx="80" cy="200" r="9" fill="#0a1628" stroke="#ffb347" stroke-width="2"/>
-                    <circle cx="80" cy="200" r="5" fill="#ffb347" class="graph-node-tag">
-                      <animate attributeName="r" values="5;7;5" dur="3s" begin="0.8s" repeatCount="indefinite"/>
-                    </circle>
-                    <!-- Tag pill -->
-                    <rect x="100" y="190" width="54" height="20" rx="10"
-                      fill="rgba(255,179,71,0.1)" stroke="rgba(255,179,71,0.4)" stroke-width="1"/>
-                    <text x="127" y="204" font-family="'SF Mono','Fira Code',monospace" font-size="10"
-                      fill="#ffb347" font-weight="700" text-anchor="middle">v1.0.0</text>
-                  </svg>
+                      <!-- Row 2: merge commit + origin/main (dashed, purple) -->
+                      <g font-family="Inter, sans-serif" font-size="11">
+                        <rect x="88" y="50" width="82" height="20" rx="4" fill="rgba(124,58,237,0.15)" stroke="rgba(124,58,237,0.45)" stroke-dasharray="3 2"/>
+                        <text x="129" y="64" fill="#a78bfa" text-anchor="middle" font-weight="600">origin/main</text>
+                        <text x="180" y="64" fill="#e2e8f0">Merge branch 'feat/visual-graph'</text>
+                        <text x="452" y="64" fill="#64748b" text-anchor="end" font-family="'SF Mono','Fira Code',monospace" font-size="10">23baa4f</text>
+                      </g>
+
+                      <!-- Row 3: branch commit + branch pill -->
+                      <g font-family="Inter, sans-serif" font-size="11">
+                        <rect x="88" y="90" width="78" height="20" rx="4" fill="rgba(22,163,74,0.15)" stroke="rgba(22,163,74,0.45)"/>
+                        <text x="127" y="104" fill="#4ade80" text-anchor="middle" font-weight="600">feat/graph</text>
+                        <text x="176" y="104" fill="#e2e8f0">feat: interactive commit graph</text>
+                        <text x="452" y="104" fill="#64748b" text-anchor="end" font-family="'SF Mono','Fira Code',monospace" font-size="10">2c79c27</text>
+                      </g>
+
+                      <!-- Row 4 -->
+                      <g font-family="Inter, sans-serif" font-size="11">
+                        <text x="88" y="144" fill="#e2e8f0">test(e2e): visual snapshots</text>
+                        <text x="452" y="144" fill="#64748b" text-anchor="end" font-family="'SF Mono','Fira Code',monospace" font-size="10">fc7c758</text>
+                      </g>
+
+                      <!-- Row 5: tag -->
+                      <g font-family="Inter, sans-serif" font-size="11">
+                        <rect x="88" y="170" width="52" height="20" rx="4" fill="rgba(217,119,6,0.15)" stroke="rgba(217,119,6,0.45)"/>
+                        <text x="114" y="184" fill="#fbbf24" text-anchor="middle" font-weight="600">v1.0.0</text>
+                        <text x="150" y="184" fill="#e2e8f0">feat: rollback with typed confirm</text>
+                        <text x="452" y="184" fill="#64748b" text-anchor="end" font-family="'SF Mono','Fira Code',monospace" font-size="10">e26eb42</text>
+                      </g>
+
+                      <!-- Row 6 -->
+                      <g font-family="Inter, sans-serif" font-size="11">
+                        <text x="88" y="224" fill="#e2e8f0">chore: scaffold Tauri app</text>
+                        <text x="452" y="224" fill="#64748b" text-anchor="end" font-family="'SF Mono','Fira Code',monospace" font-size="10">9bb9421</text>
+                      </g>
+                    </svg>
+                  </div>
                 </div>
               </div>
             </article>
@@ -414,16 +425,16 @@
 
       <!-- ═══════════════════════════════ OPEN SOURCE ═══ -->
       <section class="open-source" id="open-source" aria-label="Open source">
+        <!-- Decorative bubbles live on the section (not the content box) so they
+             clip against the section edges instead of being cut mid-content -->
+        <div class="os__bubbles" aria-hidden="true">
+          <div class="os__bubble os__bubble--1"></div>
+          <div class="os__bubble os__bubble--2"></div>
+          <div class="os__bubble os__bubble--3"></div>
+          <div class="os__bubble os__bubble--4"></div>
+        </div>
         <div class="section-inner">
           <div class="open-source__content" data-reveal>
-            <!-- Decorative bubbles -->
-            <div class="os__bubbles" aria-hidden="true">
-              <div class="os__bubble os__bubble--1"></div>
-              <div class="os__bubble os__bubble--2"></div>
-              <div class="os__bubble os__bubble--3"></div>
-              <div class="os__bubble os__bubble--4"></div>
-            </div>
-
             <div class="os__badge" aria-hidden="true">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#00e5cc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
@@ -476,20 +487,7 @@
     <footer class="footer" role="contentinfo">
       <div class="footer__inner">
         <div class="footer__brand">
-          <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-            <circle cx="16" cy="16" r="15" fill="#050d1a" stroke="#00e5cc" stroke-width="1.5"/>
-            <ellipse cx="16" cy="13" rx="6" ry="5.5" fill="#00c9b8"/>
-            <ellipse cx="16" cy="14" rx="5" ry="4" fill="#00e5cc"/>
-            <circle cx="14" cy="12.5" r="1.2" fill="#050d1a"/>
-            <circle cx="18" cy="12.5" r="1.2" fill="#050d1a"/>
-            <circle cx="14.4" cy="12.1" r="0.4" fill="white"/>
-            <circle cx="18.4" cy="12.1" r="0.4" fill="white"/>
-            <path d="M10 17 Q9 20 10 22" stroke="#00c9b8" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-            <path d="M13 18 Q12 21 13 24" stroke="#00c9b8" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-            <path d="M16 18.5 Q16 22 16 25" stroke="#00c9b8" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-            <path d="M19 18 Q20 21 19 24" stroke="#00c9b8" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-            <path d="M22 17 Q23 20 22 22" stroke="#00c9b8" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-          </svg>
+          <img src="app-icon-128.png" width="28" height="28" alt="" aria-hidden="true" />
           <span>Git Manager</span>
         </div>
         <p class="footer__copy">

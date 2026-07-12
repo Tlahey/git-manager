@@ -9,6 +9,23 @@
 import '@git-manager/mascot/element';
 
 /* ══════════════════════════════════════════════════════
+   STATIC CAPTURE MODE — ?static=1 renders the final state
+   (no reveal animation, no bubbles, no smooth scroll) for
+   deterministic screenshots (headless Chrome, e2e, previews).
+══════════════════════════════════════════════════════ */
+const CAPTURE_PARAMS = new URLSearchParams(window.location.search);
+const STATIC_CAPTURE = CAPTURE_PARAMS.has('static');
+if (STATIC_CAPTURE) {
+  document.documentElement.classList.add('static-capture');
+  // Optional deterministic scroll position for section captures (?static=1&scroll=1200)
+  window.addEventListener('load', () => {
+    if (CAPTURE_PARAMS.has('scroll')) {
+      window.scrollTo(0, Number(CAPTURE_PARAMS.get('scroll')) || 0);
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════════════
    NAV — add glass effect on scroll
 ══════════════════════════════════════════════════════ */
 const nav = document.getElementById('nav');
@@ -90,14 +107,14 @@ function createBubble() {
   }, (duration + delay) * 1000 + 500);
 }
 
-// Spawn initial batch
-const INITIAL_BUBBLES = 20;
-for (let i = 0; i < INITIAL_BUBBLES; i++) {
-  createBubble();
+// Spawn initial batch, then keep spawning (skipped entirely in static capture mode)
+if (!STATIC_CAPTURE) {
+  const INITIAL_BUBBLES = 20;
+  for (let i = 0; i < INITIAL_BUBBLES; i++) {
+    createBubble();
+  }
+  setInterval(createBubble, 1200);
 }
-
-// Keep spawning at interval
-setInterval(createBubble, 1200);
 
 /* ══════════════════════════════════════════════════════
    PARALLAX — hero mascot subtle parallax on mouse move
@@ -150,6 +167,69 @@ document.addEventListener('visibilitychange', () => {
     animateParallax();
   }
 });
+
+/* ══════════════════════════════════════════════════════
+   SCROLL PARALLAX — Apple-style depth on scroll.
+   Transform/opacity only (compositor-friendly), one rAF
+   per scroll frame, disabled for reduced motion & capture.
+══════════════════════════════════════════════════════ */
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+if (!prefersReducedMotion && !STATIC_CAPTURE) {
+  const heroContent = document.querySelector('.hero__content');
+  const circuits = document.querySelector('.hero__circuits');
+  const oceanLayers = [
+    [document.querySelector('.ocean__layer--1'), 0.22],
+    [document.querySelector('.ocean__layer--2'), 0.14],
+    [document.querySelector('.ocean__layer--3'), 0.08],
+  ];
+  const privacyMascot = document.querySelector('.privacy__mascot-wrap');
+  const osBadge = document.querySelector('.os__badge');
+
+  let scrollTicking = false;
+
+  function applyScrollParallax() {
+    scrollTicking = false;
+    const y = window.scrollY;
+    const vh = window.innerHeight;
+
+    // Hero recedes: drifts up slower than the page, shrinks a touch and fades out
+    if (heroContent) {
+      const p = Math.min(y / vh, 1.2);
+      heroContent.style.transform = `translateY(${y * 0.35}px) scale(${1 - Math.min(p, 1) * 0.06})`;
+      heroContent.style.opacity = String(Math.max(0, 1 - p * 1.1));
+    }
+    // Background layers scroll at different speeds → depth
+    for (const [layer, factor] of oceanLayers) {
+      if (layer) layer.style.transform = `translateY(${y * factor}px)`;
+    }
+    if (circuits) circuits.style.transform = `translateY(${y * 0.18}px)`;
+
+    // Below the fold: gentle drift relative to viewport center
+    if (privacyMascot) {
+      const r = privacyMascot.getBoundingClientRect();
+      const d = (r.top + r.height / 2 - vh / 2) / vh;
+      privacyMascot.style.transform = `translateY(${(-d * 46).toFixed(1)}px)`;
+    }
+    if (osBadge) {
+      const r = osBadge.getBoundingClientRect();
+      const d = (r.top + r.height / 2 - vh / 2) / vh;
+      osBadge.style.transform = `translateY(${(-d * 28).toFixed(1)}px)`;
+    }
+  }
+
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (!scrollTicking) {
+        scrollTicking = true;
+        requestAnimationFrame(applyScrollParallax);
+      }
+    },
+    { passive: true }
+  );
+  applyScrollParallax();
+}
 
 /* ══════════════════════════════════════════════════════
    SMOOTH ANCHOR SCROLL for nav links

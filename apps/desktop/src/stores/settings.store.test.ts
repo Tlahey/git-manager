@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useSettingsStore } from './settings.store'
+import { mergeSettingsWithDefaults, useSettingsStore } from './settings.store'
 
 const DEFAULT_SETTINGS = useSettingsStore.getState().settings
 
@@ -43,5 +43,35 @@ describe('useSettingsStore', () => {
     const raw = localStorage.getItem('git-manager-settings')
     expect(raw).not.toBeNull()
     expect(JSON.parse(raw!).state.settings.language).toBe('en')
+  })
+})
+
+describe('mergeSettingsWithDefaults', () => {
+  it('returns full defaults when nothing was persisted', () => {
+    expect(mergeSettingsWithDefaults(undefined)).toEqual(DEFAULT_SETTINGS)
+  })
+
+  it('keeps persisted scalar values while filling missing groups from defaults', () => {
+    const merged = mergeSettingsWithDefaults({ language: 'en' })
+    expect(merged.language).toBe('en')
+    expect(merged.appearance).toEqual(DEFAULT_SETTINGS.appearance)
+    expect(merged.ollama).toEqual(DEFAULT_SETTINGS.ollama)
+  })
+
+  it('fills fields missing inside a persisted group (forward-compat for new settings)', () => {
+    const merged = mergeSettingsWithDefaults({
+      appearance: { theme: 'light' } as unknown as typeof DEFAULT_SETTINGS.appearance,
+    })
+    expect(merged.appearance.theme).toBe('light')
+    // Fields the old snapshot didn't know about come from the defaults.
+    expect(merged.appearance.fontSize).toBe(DEFAULT_SETTINGS.appearance.fontSize)
+    expect(merged.appearance.rowHeight).toBe(DEFAULT_SETTINGS.appearance.rowHeight)
+  })
+
+  it('does not treat arrays as mergeable groups', () => {
+    const merged = mergeSettingsWithDefaults({
+      advanced: { ...DEFAULT_SETTINGS.advanced, scanExclusions: ['only-this'] },
+    })
+    expect(merged.advanced.scanExclusions).toEqual(['only-this'])
   })
 })

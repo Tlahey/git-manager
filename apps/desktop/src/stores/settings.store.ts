@@ -77,6 +77,29 @@ interface SettingsState {
   resetSettings: () => void
 }
 
+/**
+ * Rehydration merge: fill anything missing from the persisted snapshot with
+ * the defaults, group by group. zustand/persist's default merge is a shallow
+ * top-level spread, so a stored `settings` object would otherwise *replace*
+ * DEFAULT_SETTINGS wholesale — adding a new settings group (or seeding a
+ * partial snapshot, as the e2e screenshot scenarios do) would then leave
+ * every other group undefined and crash their consumers.
+ */
+export function mergeSettingsWithDefaults(persisted: Partial<AppSettings> | undefined): AppSettings {
+  const merged = { ...DEFAULT_SETTINGS, ...(persisted ?? {}) }
+  for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof AppSettings)[]) {
+    const def = DEFAULT_SETTINGS[key]
+    const stored = persisted?.[key]
+    if (def && typeof def === 'object' && !Array.isArray(def)) {
+      ;(merged as Record<string, unknown>)[key] = {
+        ...(def as unknown as Record<string, unknown>),
+        ...((stored as unknown as Record<string, unknown> | undefined) ?? {}),
+      }
+    }
+  }
+  return merged
+}
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
@@ -89,6 +112,14 @@ export const useSettingsStore = create<SettingsState>()(
 
       resetSettings: () => set({ settings: DEFAULT_SETTINGS }),
     }),
-    { name: 'git-manager-settings' }
+    {
+      name: 'git-manager-settings',
+      merge: (persisted, current) => ({
+        ...current,
+        settings: mergeSettingsWithDefaults(
+          (persisted as { settings?: Partial<AppSettings> } | undefined)?.settings
+        ),
+      }),
+    }
   )
 )

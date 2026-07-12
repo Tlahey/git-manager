@@ -141,6 +141,11 @@ body {
   display: flex;
   transition: transform var(--dur-mid) var(--ease-bounce);
 }
+.nav__logo-icon img,
+.footer__brand img {
+  border-radius: 7px;
+  box-shadow: 0 0 0 1px var(--clr-card-border);
+}
 .nav__logo:hover .nav__logo-icon { transform: rotate(-8deg) scale(1.05); }
 
 .nav__links {
@@ -265,6 +270,7 @@ body {
 .hero__content {
   position: relative;
   z-index: 2;
+  will-change: transform, opacity; /* scroll parallax (script.js) */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -476,6 +482,22 @@ body {
   transform: translateY(0);
 }
 
+/* Static capture mode (?static=1): final state, no motion — used by
+   headless-Chrome screenshots and any automated capture of the page. */
+.static-capture [data-reveal] {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+.static-capture *,
+.static-capture *::before,
+.static-capture *::after {
+  animation: none !important;
+}
+.static-capture {
+  scroll-behavior: auto !important;
+}
+
 /* ══════════════════════════════════════════════════════════
    FEATURES SECTION
 ══════════════════════════════════════════════════════════ */
@@ -588,39 +610,70 @@ body {
   font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
-/* ── Graph demo (SVG-based) ── */
+/* ── Graph preview: mini replica of the app window ── */
 .feature-card__preview {
   position: relative;
   min-height: 220px;
   display: flex;
-  align-items: stretch;
+  align-items: center;
 }
 
-.graph-demo {
+.app-window {
   width: 100%;
-  height: 100%;
-  min-height: 220px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: #020817; /* the app's dark theme background */
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.45),
+    0 0 40px rgba(0, 229, 204, 0.06);
+  overflow: hidden;
+}
+
+.app-window__bar {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 12px;
+  background: rgba(148, 163, 184, 0.06);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
 }
 
-.graph-demo svg {
+.app-window__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.app-window__dot--r { background: #ff5f57; }
+.app-window__dot--y { background: #febc2e; }
+.app-window__dot--g { background: #28c840; }
+
+.app-window__title {
+  margin-left: 8px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-window__body {
+  padding: 10px 6px 6px;
+}
+
+.app-window__body svg {
+  display: block;
   width: 100%;
-  height: 100%;
-  max-height: 260px;
-  overflow: visible;
+  height: auto;
 }
 
-/* Node dot pulse — applied via SVG animation attribute, no CSS conflict */
+/* HEAD node pulse */
 @keyframes node-pulse {
-  0%, 100% { r: 7; }
-  50%       { r: 9; }
+  0%, 100% { r: 10; }
+  50%       { r: 11; }
 }
-
-.graph-node-main { animation: node-pulse 2.4s ease-in-out infinite; }
-.graph-node-branch { animation: node-pulse 2.8s ease-in-out infinite 0.4s; }
-.graph-node-tag { animation: node-pulse 3s ease-in-out infinite 0.8s; }
+.graph-node-main { animation: node-pulse 2.6s ease-in-out infinite; }
 
 /* ══════════════════════════════════════════════════════════
    PRIVACY SECTION
@@ -738,10 +791,15 @@ body {
   overflow: hidden;
 }
 
+/* Flex column: every child (badge, title, desc, CTA, stats) stacks and centers
+   itself — the CTA and stats bar can no longer end up inline on the same row. */
 .open-source__content {
   text-align: center;
   position: relative;
   padding: var(--space-xl) 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 /* Decorative bubbles for this section */
@@ -788,26 +846,21 @@ body {
   margin-bottom: var(--space-md);
 }
 
-/* Center the CTA button (inline-flex inside text-align:center doesn't auto-center) */
-#os-github-cta {
-  display: inline-flex;
-  margin: 0 auto;
-}
-
 .open-source__desc {
   font-size: 1.1rem;
   color: var(--clr-text-secondary);
   line-height: 1.8;
   max-width: 52ch;
-  margin: 0 auto var(--space-xl);
+  margin: 0 auto var(--space-lg);
 }
 
 .os__stats {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: var(--space-lg);
-  margin-top: var(--space-xl);
+  margin-top: var(--space-lg);
   padding: var(--space-md) var(--space-xl);
   background: var(--clr-card-bg);
   border: 1px solid var(--clr-card-border);
