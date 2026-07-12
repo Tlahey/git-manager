@@ -47,31 +47,46 @@
 ```
 git-manager/
 ├── apps/
-│   └── desktop/                  # Main Tauri application
-│       ├── src-tauri/            # Rust backend (commands, git2, ollama)
-│       │   ├── src/
-│       │   │   ├── main.rs
-│       │   │   ├── commands/     # Tauri commands exposed to the frontend
-│       │   │   ├── git/          # git2 layer (repo, log, branches, diff…)
-│       │   │   └── ollama/       # Local Ollama HTTP client
-│       │   └── Cargo.toml
-│       └── src/                  # React/Vite frontend
-│           ├── app/              # Pages / routing
-│           ├── components/       # App-specific components
-│           ├── stores/           # Zustand stores
-│           ├── hooks/            # React hooks
-│           └── lib/              # Tauri IPC wrappers
+│   ├── desktop/                    # Main Tauri application
+│   │   ├── src-tauri/              # Rust backend
+│   │   │   └── src/
+│   │   │       ├── commands/       # Thin Tauri IPC commands, one file per domain
+│   │   │       │                   #   (repo, log, branch, commit, remote, stash, rollback,
+│   │   │       │                   #   fixup, undo, github, ollama, ssh, submodule, themes)
+│   │   │       ├── services/       # git2 business logic, called from commands/
+│   │   │       │                   #   (git_diff, git_commit, git_repo, git_graph, …)
+│   │   │       ├── error.rs        # Unified AppError → JSON string
+│   │   │       ├── models.rs       # serde structs mirroring TypeScript types
+│   │   │       ├── utils.rs        # Shared helpers (short_oid, get_git_signature)
+│   │   │       ├── state.rs        # AppState (repos, ollama config, cancellation)
+│   │   │       └── lib.rs          # Builder + invoke_handler registration
+│   │   └── src/                    # React frontend
+│   │       ├── app/                # Pages (dashboard, repo, settings, pull-requests)
+│   │       ├── components/         # Feature components, render-only (logic lives in hooks/)
+│   │       ├── hooks/              # Business-logic + data-fetching hooks (SWR + legacy React Query)
+│   │       ├── api/                # api/*.api.ts — domain-grouped service layer over lib/tauri.ts
+│   │       ├── lib/                # tauri.ts (typed invoke wrappers), appEventBus.ts
+│   │       └── stores/             # Zustand stores (repoUI, repoData, settings, undoHistory, game)
+│   ├── landing-page/               # Public landing page (Vite), deployed to GitHub Pages
+│   └── e2e/                        # WebdriverIO + Cucumber e2e suite (drives the real app)
 ├── packages/
-│   ├── ui/                       # Shared shadcn/ui components
-│   ├── i18n/                     # FR/EN translations + react-i18next setup
-│   ├── git-types/                # Shared TypeScript interfaces
-│   └── config/                   # Shared ESLint + Tailwind configs
+│   ├── git-types/                  # Shared TypeScript interfaces (DTOs)
+│   ├── mascot/                     # Octopus mascot as a shared <git-mascot> web component
+│   ├── i18n/                       # react-i18next setup + EN/FR locale files
+│   ├── ui/                         # shadcn/ui base components
+│   ├── components/                 # Shared presentational React components
+│   ├── code-view/                  # Monaco-based diff/merge components
+│   └── config/                     # Shared ESLint + Tailwind + tsconfig
+├── tools/
+│   └── git-fixtures/               # Scripted fixture repos (dev tabs + e2e scenarios)
 ├── docs/
-│   ├── README.md                 # This file
-│   ├── ROADMAP.md                # Development plan
-│   ├── specs/                    # Detailed specifications per feature
-│   └── architecture/             # Architecture refactor plan + execution tracking
-├── package.json                  # Root package (global scripts)
+│   ├── README.md                   # This file
+│   ├── ROADMAP.md                  # Development plan + status at a glance
+│   ├── screenshots/                # Auto-captured app screenshots (e2e @screenshots)
+│   ├── specs/                      # Detailed specifications per feature
+│   └── architecture/               # Architecture refactor plan + execution tracking
+├── CLAUDE.md                       # Architecture/IPC conventions — authoritative
+├── package.json                    # Root package (global scripts)
 ├── pnpm-workspace.yaml
 └── turbo.json
 ```

@@ -15,6 +15,30 @@
 
 ---
 
+## Status at a glance
+
+| Milestone                | Status         | Description                                                                                                                                                                                                    |
+| ------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0 — Foundations         | ✅ Done        | Monorepo setup, Tauri scaffold, packages                                                                                                                                                                       |
+| M1 — Git Tree            | ✅ Done        | Virtualised commit graph, branch sidebar, commit diff panel                                                                                                                                                    |
+| M2 — Working Tree        | ✅ Done        | Stage/unstage, commit, fetch/pull/push                                                                                                                                                                         |
+| M3 — Commit AI           | ✅ Done        | Ollama streaming, settings UI, message history, WIP batch commit                                                                                                                                               |
+| M4 — Rollback & Fixup    | ✅ Done        | git revert, reset (soft/mixed/hard), fixup + autosquash                                                                                                                                                        |
+| M5 — Interactive Rebase  | ⬜ Planned     | Read-only rebase-state detection done (`get_rebase_state` — idle/in-progress/conflict/edit-pause, for the toolbar's REBASING badge); drag-and-drop rebase UI and the start/abort/continue controls not started |
+| M6 — Worktree & Branches | 🔵 In progress | Branch create/delete/checkout done; branch rename and worktree management not started                                                                                                                          |
+| M7 — Stash & Polish      | 🔵 In progress | Stash push/pop/apply/drop and keyboard shortcuts done; auto-update not started                                                                                                                                 |
+
+### Not yet wired up (frontend scaffolding exists, backend command doesn't)
+
+These have a typed `invoke()` wrapper already sitting in [`lib/tauri.ts`](../apps/desktop/src/lib/tauri.ts) (and, for rebase, a real UI consumer) but no corresponding `#[tauri::command]` — found via a cross-check of every `invoke()` call against `lib.rs`'s registered handler list. Listed here so implementing them is "wire up the two ends," not "start from scratch":
+
+- [ ] **Branch rename** — `renameBranch(path, oldName, newName)` → `rename_branch`. No UI trigger yet either (no rename option in the branch context menu). Spec: [09-branch-management](./specs/09-branch-management.md); tracked as task 6.3.
+- [ ] **Worktree management** — `listWorktrees`/`addWorktree`/`removeWorktree` → `list_worktrees`/`add_worktree`/`remove_worktree`. `GitWorktree` DTO already defined ([`models.rs`](../apps/desktop/src-tauri/src/models.rs), [`git-types`](../packages/git-types/src/index.ts)). No UI consumer yet. Spec: [06-worktree](./specs/06-worktree.md); tasks 6.1/6.2.
+- [ ] **Interactive rebase controls** — `startInteractiveRebase`/`abortRebase`/`continueRebase` → `start_interactive_rebase`/`abort_rebase`/`continue_rebase`. `RebaseStep` DTO already defined for the todo-list shape. The read side (`get_rebase_state`, `RebaseState`) is implemented and live in the toolbar; these three are the write side needed for the drag-and-drop UI. Spec: [07-rebase-interactive](./specs/07-rebase-interactive.md); tasks 5.1–5.5.
+- [ ] **Settings backend sync** — `getSettings`/`updateSettings` → `get_settings`/`update_settings`, plus an `AppSettings` DTO. Currently unused: `stores/settings.store.ts` persists settings entirely client-side (Zustand `persist` → localStorage) and never calls these. Only relevant if/when settings need to sync across machines or be readable from outside the app — not blocking anything today.
+
+---
+
 ## M0 — Foundations (Phase 0 + 1)
 
 > **Goal**: Working monorepo, a Tauri application that launches, display of a minimal Git repo.
