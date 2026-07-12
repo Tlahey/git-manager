@@ -111,8 +111,8 @@ export function changedCharRanges(
   }
 
   // …then walk it to mark which tokens survive on both sides.
-  const matchedA = new Array<boolean>(n).fill(false)
-  const matchedB = new Array<boolean>(m).fill(false)
+  const matchedA = Array.from<boolean>({ length: n }).fill(false)
+  const matchedB = Array.from<boolean>({ length: m }).fill(false)
   let sharesMeaningfulToken = false
   let i = 0
   let j = 0

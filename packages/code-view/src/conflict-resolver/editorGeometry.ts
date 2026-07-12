@@ -6,6 +6,9 @@ import type { editor } from 'monaco-editor'
  * because it throws for lines inside `setHiddenAreas` ranges. A line that is itself hidden
  * resolves to the bottom of the last visible line before its range. */
 export function getTopForLineNumberSafe(
+  // Kept for interface parity with the `getTop`-shaped callback (see useMergeScrollSync/useMergeConnectors),
+  // whose other implementation calls a method on the editor instance — this one just doesn't need it.
+  // oxlint-disable-next-line oxc/only-used-in-recursion
   editor: editor.IStandaloneCodeEditor,
   lineNumber: number,
   lineHeight: number,

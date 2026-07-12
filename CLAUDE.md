@@ -14,7 +14,7 @@ All run from the repo root.
 pnpm dev                  # Start Tauri dev server (hot reload React + Rust watch) — launches the native app window
 pnpm build                # Production build
 pnpm typecheck            # TypeScript check across all packages (turbo)
-pnpm lint                 # ESLint across all packages (turbo)
+pnpm lint                 # Oxlint across all packages (turbo)
 pnpm format                # Prettier write across ts/tsx/json/md
 pnpm clean                # Remove build artifacts
 
@@ -79,7 +79,7 @@ Before adding non-trivial logic to a component, hook, or store, see [.claude/ski
 | `packages/git-types` | Shared TypeScript DTOs mirroring the Rust `serde` structs used over IPC                                        |
 | `packages/i18n`      | `react-i18next` setup + `en`/`fr` locale JSON (namespaces: `common`, `git`, `dashboard`, `settings`, `errors`) |
 | `packages/ui`        | shadcn/ui + Radix primitive components, Tailwind-based                                                         |
-| `packages/config`    | Shared ESLint config, Tailwind preset, base `tsconfig.json`                                                    |
+| `packages/config`    | Shared Oxlint config, Tailwind preset, base `tsconfig.json`                                                    |
 
 ### State management
 
