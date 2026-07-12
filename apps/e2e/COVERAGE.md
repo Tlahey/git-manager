@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (7 features / 42 steps)
+## Covered today (8 features / 49 steps)
 
 | Feature | Area | Setup | Snapshot | Status |
 |---|---|---|---|---|
@@ -25,6 +25,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | Tauri command mock: success / reject / restore | IPC | mock | — | ✅ |
 | Fixup autosquash grouping | fixup | fixture:fixup-chain | 📷 ✅ (preview groups) | ✅ |
 | Rebase conflict panel auto-opens + **snapshot** | rebase | fixture:rebase-conflict | 📷 ✅ (panel layout) | 🟡 (panel shown + snapshotted; resolve/continue not driven) |
+| **Merge editor** opens for a conflicted file + **snapshot** | merge | fixture:rebase-conflict | 📷 ✅ (full Monaco editor) | 🟡 (opens + snapshotted; block resolution not driven) |
 | Detached HEAD indicator reads "HEAD" | repo state | fixture:detached-head | — | ✅ |
 | Sidebar lists stashes | stash | fixture:stash-stack | — | 🟡 (list only; apply/pop/drop todo) |
 | Settings screen opens + **snapshot** | settings | keyboard (Mod+,) | 📷 ✅ (general section) | 🟡 (general snapshotted; other sections todo) |
@@ -33,20 +34,21 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ## Priority backlog (the domains we actually want next)
 
-### 1. Merge editor  ⬜  📷
-The three-way merge editor (`components/merge-editor/ConflictMergeWindow.tsx`) opens in a
-**separate Tauri window** (`?window=merge`) and renders with **Monaco**. Two consequences for e2e:
-- Multi-window: the test must `getWindowHandles()` / `switchToWindow()` to reach it (the
-  tauri-service supports this — seen in run logs).
-- Monaco's content is largely canvas/virtualised, so **DOM assertions are brittle → visual
-  snapshot is the realistic validation** here. Existing testids: `three-way-merge-editor`,
-  `merge-accept-left`, `merge-accept-right`, `merge-apply`, `merge-auto-merge-button`,
-  `merge-cancel`, `dialog-continue-merge`, `dialog-discard-and-apply`.
-- Setup: `fixture:rebase-conflict` (the paused rebase exposes a conflicted file), then open the
-  file's merge window. The fixture's file "covers every merge-editor block kind twice" — ideal
-  for a layout snapshot.
-- Scenarios to write: window opens for a conflicted file · accept-left / accept-right updates a
-  block · auto-merge resolves the trivial blocks · **snapshot of the resolved layout**.
+### 1. Merge editor  🟡  📷 (opens + snapshotted)
+The three-way merge editor (`components/merge-editor/ConflictMergeWindow.tsx`) normally opens in a
+**separate Tauri window** (`?window=merge`) and renders with **Monaco**. **Done:** rather than
+driving the native second window, the test navigates the current window straight to the merge
+route (`/?window=merge&repoPath=…&filePath=…`) — main.tsx renders `ConflictMergeWindow` from those
+URL params, independent of the store — waits for `merge-auto-merge-button` (appears once
+`get_merge_view` resolves), and **snapshots the whole Monaco editor** (`merge-editor-window`).
+Verified stable across multiple runs with a 1.5s Monaco settle + `stabiliseForSnapshot`.
+- Setup: `fixture:rebase-conflict` — the conflicted `dependency-manifest.txt` "covers every
+  merge-editor block kind twice", ideal for a layout snapshot.
+- **Gotcha handled**: the embedded provider shares one app window across features (run
+  sequentially), so this feature resets the URL to `/` in an `After({ tags: '@merge' })` hook —
+  otherwise every feature after it inherits `?window=merge`. See merge.steps.ts.
+- **Todo:** drive block resolution (`merge-accept-left`/`-right`, `merge-apply`, auto-merge) and
+  assert the result; those testids are mock-only today and would need adding to the real panes.
 
 ### 2. Injected repo fixtures  🟡
 Each scripted fixture is a real, awkward git state — the highest-value e2e fuel. Coverage per

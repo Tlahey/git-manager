@@ -94,7 +94,10 @@ export function ConflictMergeWindowContent({ repoPath, filePath }: ConflictMerge
   }
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-background select-none animate-fadeIn">
+    <div
+      data-testid="merge-editor-window"
+      className="flex h-full w-full flex-col overflow-hidden bg-background select-none animate-fadeIn"
+    >
       {/* HEADER / TOOLBAR */}
       <div className="flex shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 shadow-sm">
         <div className="flex min-w-0 items-center gap-3">
