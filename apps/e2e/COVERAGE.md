@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (6 features / 35 steps)
+## Covered today (9 features / 59 steps, 6 visual snapshots)
 
 | Feature | Area | Setup | Snapshot | Status |
 |---|---|---|---|---|
@@ -25,27 +25,31 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | Tauri command mock: success / reject / restore | IPC | mock | — | ✅ |
 | Fixup autosquash grouping | fixup | fixture:fixup-chain | 📷 ✅ (preview groups) | ✅ |
 | Rebase conflict panel auto-opens + **snapshot** | rebase | fixture:rebase-conflict | 📷 ✅ (panel layout) | 🟡 (panel shown + snapshotted; resolve/continue not driven) |
+| **Merge editor** opens for a conflicted file + **snapshot** | merge | fixture:rebase-conflict | 📷 ✅ (full Monaco editor) | 🟡 (opens + snapshotted; block resolution not driven) |
+| **Working-tree staging panel** + **file diff** + **snapshots** | commits | fixture:stash-stack | 📷 ✅ (staging panel + diff view) | 🟡 (panel + diff snapshotted; stage/commit not driven) |
 | Detached HEAD indicator reads "HEAD" | repo state | fixture:detached-head | — | ✅ |
 | Sidebar lists stashes | stash | fixture:stash-stack | — | 🟡 (list only; apply/pop/drop todo) |
+| Settings screen opens + **snapshot** | settings | keyboard (Mod+,) | 📷 ✅ (general section) | 🟡 (general snapshotted; other sections todo) |
 
 ---
 
 ## Priority backlog (the domains we actually want next)
 
-### 1. Merge editor  ⬜  📷
-The three-way merge editor (`components/merge-editor/ConflictMergeWindow.tsx`) opens in a
-**separate Tauri window** (`?window=merge`) and renders with **Monaco**. Two consequences for e2e:
-- Multi-window: the test must `getWindowHandles()` / `switchToWindow()` to reach it (the
-  tauri-service supports this — seen in run logs).
-- Monaco's content is largely canvas/virtualised, so **DOM assertions are brittle → visual
-  snapshot is the realistic validation** here. Existing testids: `three-way-merge-editor`,
-  `merge-accept-left`, `merge-accept-right`, `merge-apply`, `merge-auto-merge-button`,
-  `merge-cancel`, `dialog-continue-merge`, `dialog-discard-and-apply`.
-- Setup: `fixture:rebase-conflict` (the paused rebase exposes a conflicted file), then open the
-  file's merge window. The fixture's file "covers every merge-editor block kind twice" — ideal
-  for a layout snapshot.
-- Scenarios to write: window opens for a conflicted file · accept-left / accept-right updates a
-  block · auto-merge resolves the trivial blocks · **snapshot of the resolved layout**.
+### 1. Merge editor  🟡  📷 (opens + snapshotted)
+The three-way merge editor (`components/merge-editor/ConflictMergeWindow.tsx`) normally opens in a
+**separate Tauri window** (`?window=merge`) and renders with **Monaco**. **Done:** rather than
+driving the native second window, the test navigates the current window straight to the merge
+route (`/?window=merge&repoPath=…&filePath=…`) — main.tsx renders `ConflictMergeWindow` from those
+URL params, independent of the store — waits for `merge-auto-merge-button` (appears once
+`get_merge_view` resolves), and **snapshots the whole Monaco editor** (`merge-editor-window`).
+Verified stable across multiple runs with a 1.5s Monaco settle + `stabiliseForSnapshot`.
+- Setup: `fixture:rebase-conflict` — the conflicted `dependency-manifest.txt` "covers every
+  merge-editor block kind twice", ideal for a layout snapshot.
+- **Gotcha handled**: the embedded provider shares one app window across features (run
+  sequentially), so this feature resets the URL to `/` in an `After({ tags: '@merge' })` hook —
+  otherwise every feature after it inherits `?window=merge`. See merge.steps.ts.
+- **Todo:** drive block resolution (`merge-accept-left`/`-right`, `merge-apply`, auto-merge) and
+  assert the result; those testids are mock-only today and would need adding to the real panes.
 
 ### 2. Injected repo fixtures  🟡
 Each scripted fixture is a real, awkward git state — the highest-value e2e fuel. Coverage per
@@ -59,21 +63,24 @@ fixture:
 | stash-stack | list ✅ · **apply / pop / drop / stash message edit** ⬜ | 🟡 |
 | rollback-history | **reset (soft/mixed/hard) · revert · undo/redo of those** ⬜ | ⬜ |
 
-### 3. Settings  ⬜  📷
-`SettingsPage` (opened via the dashboard gear or keyboard shortcut). Sections each have a real
-testid: `section-general`, `section-appearance`(`ui_customization`), `section-integrations`,
-`section-local_ai`, `section-ssh`, `section-notifications`, `section-rewards`,
-`section-external_tools`, `section-debug`. Scenarios: open settings · navigate each section ·
-toggle a setting and confirm it persists (localStorage) · **snapshot of each section's layout**.
-Good snapshot target — mostly static, deterministic panels.
+### 3. Settings  🟡  📷
+`SettingsPage` (opened via `Mod+,` or the dashboard gear — `dashboard-settings-button`). **Done:**
+opens on the general section + a layout snapshot of the whole screen. Nav tabs now carry
+`settings-tab-<id>` testids and the root `settings-page`. **Todo:** navigate + snapshot the other
+sections (appearance, notifications are deterministic; ssh/local_ai/rewards have dynamic content —
+mask or assert values instead), and toggle-a-setting-persists. Note the section *content* has no
+real testid on its root (the `section-*` ids are test-mock-only) — snapshot the `settings-page`
+root or add a per-section testid.
 
-### 4. Commits / working tree  ⬜  📷
-Staging + commit flow. Testids: `wip-staging-panel`, `file-list-bulk-stage`,
-`commit-subject-input`, `commit-body-textarea`, `commit-subject-counter`, `commit-amend-form`,
-`commit-amend-submit`, `commit-amend-cancel`. Setup: a fixture with a dirty tree (stash-stack
-leaves staged + unstaged changes; or a new dedicated fixture). Scenarios: stage a file · bulk
-stage · type a subject/body and commit · amend the last commit · discard a change. Diff view
-(`diff-content-area`, `diff-view-center`, `monaco-diff-viewer`) is a 📷 candidate.
+### 4. Commits / working tree  🟡  📷 (staging panel snapshotted)
+**Done:** selecting the synthetic WIP node (`graph-row-WIP`) opens the staging panel
+(`wip-staging-panel`) + a layout snapshot. Setup: `fixture:stash-stack` (leaves staged +
+unstaged changes → a WIP node). **Gotcha handled:** the WIP row's centre is its inline "// WIP"
+commit input (stops click propagation), so the step clicks the row's left edge over the graph
+node. **Todo:** stage a file · bulk stage (`file-list-bulk-stage`) · type a subject/body and
+commit · amend (`commit-amend-*`). The commit-box testids are still mock-only. **Diff view: done**
+— clicking a file row (`file-tree-file-<path>`, a real testid) shows the diff (`diff-content-area`)
+and it's snapshotted (`wip-file-diff`), verified stable.
 
 ### 5. Undo / redo  ⬜
 State-mutating actions push to `undoHistory.store`. **Note:** the toolbar undo/redo buttons'

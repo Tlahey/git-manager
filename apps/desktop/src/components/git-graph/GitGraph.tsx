@@ -326,6 +326,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                         return (
                           <div
                             key={virtualItem.key}
+                            data-testid={`graph-row-${oid}`}
                             className="hover:z-[60]"
                             style={{
                               position: 'absolute',

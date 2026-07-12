@@ -17,15 +17,21 @@ Given(/^the "([^"]*)" fixture repository is opened$/, async (fixtureName: string
   execFileSync('bash', [join(SCENARIOS_DIR, `${fixtureName}.sh`)], { stdio: 'inherit' })
   const repoPath = join(FIXTURE_ROOT, fixtureName)
 
+  // Navigate to the base app route with a cache-busting param rather than a plain reload: the
+  // embedded provider shares one app window across features, and a prior feature (e.g. the merge
+  // editor) may have left it on a different route — reload() would preserve that stale URL,
+  // whereas forcing `/?…` always lands on the main app, which then reads the seeded localStorage.
   await browser.execute(
-    (key: string, value: string) => localStorage.setItem(key, value),
+    (key: string, value: string) => {
+      localStorage.setItem(key, value)
+      window.location.href = `/?e2e=${Date.now()}`
+    },
     'git-manager-repos-ui',
     JSON.stringify({
       state: { openTabs: [repoPath], activeRepo: repoPath, activeTab: repoPath },
       version: 0,
     })
   )
-  await browser.execute(() => window.location.reload())
 
   // RepoView's root renders for any opened repo — a fixture-agnostic "repo view is loaded"
   // signal, unlike the fixup banner which only exists for the fixup-chain fixture.
