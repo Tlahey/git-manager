@@ -9,7 +9,8 @@ describe('getMockContributions', () => {
   it('returns exactly 365 days, in ascending chronological order ending today', () => {
     const days = getMockContributions()
     expect(days).toHaveLength(365)
-    const todayKey = new Date().toISOString().slice(0, 10)
+    const now = new Date()
+    const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
     expect(days[days.length - 1].date).toBe(todayKey)
     for (let i = 1; i < days.length; i++) {
       expect(days[i].date >= days[i - 1].date).toBe(true)
