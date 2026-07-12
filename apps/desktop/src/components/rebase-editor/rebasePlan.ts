@@ -32,16 +32,22 @@ export function moveStep(steps: RebasePlanStep[], from: number, to: number): Reb
 export function setAction(
   steps: RebasePlanStep[],
   oids: string[],
-  action: RebaseTodoAction,
+  action: RebaseTodoAction
 ): RebasePlanStep[] {
   const targets = new Set(oids)
   return steps.map((s) =>
-    targets.has(s.commit.oid) ? { ...s, action, message: action === 'pick' ? undefined : s.message } : s,
+    targets.has(s.commit.oid)
+      ? { ...s, action, message: action === 'pick' ? undefined : s.message }
+      : s
   )
 }
 
 /** Marks a commit for reword with its replacement message. */
-export function rewordStep(steps: RebasePlanStep[], oid: string, message: string): RebasePlanStep[] {
+export function rewordStep(
+  steps: RebasePlanStep[],
+  oid: string,
+  message: string
+): RebasePlanStep[] {
   return steps.map((s) => (s.commit.oid === oid ? { ...s, action: 'reword', message } : s))
 }
 
@@ -55,14 +61,16 @@ export function combineInto(
   steps: RebasePlanStep[],
   targetOid: string,
   otherOids: string[],
-  mode: 'squash' | 'fixup',
+  mode: 'squash' | 'fixup'
 ): RebasePlanStep[] {
   const others = new Set(otherOids.filter((oid) => oid !== targetOid))
   if (others.size === 0) return steps
   const targetStep = steps.find((s) => s.commit.oid === targetOid)
   if (!targetStep) return steps
 
-  const combined = steps.filter((s) => others.has(s.commit.oid)).map((s) => ({ ...s, action: mode }))
+  const combined = steps
+    .filter((s) => others.has(s.commit.oid))
+    .map((s) => ({ ...s, action: mode }))
   const rest = steps.filter((s) => !others.has(s.commit.oid))
   const targetIndex = rest.findIndex((s) => s.commit.oid === targetOid)
   return [...rest.slice(0, targetIndex + 1), ...combined, ...rest.slice(targetIndex + 1)]

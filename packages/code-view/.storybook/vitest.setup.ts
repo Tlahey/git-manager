@@ -7,7 +7,12 @@ import * as projectAnnotations from './preview'
 vi.mock('monaco-editor', () => {
   return {
     Range: class {
-      constructor(public startLine: number, public startCol: number, public endLine: number, public endCol: number) {}
+      constructor(
+        public startLine: number,
+        public startCol: number,
+        public endLine: number,
+        public endCol: number
+      ) {}
     },
     editor: {
       create: vi.fn(() => ({

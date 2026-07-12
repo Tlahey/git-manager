@@ -52,16 +52,16 @@ export function Toolbar({
   }
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-muted/5 shrink-0">
+    <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/5 px-4 py-2">
       {/* Search */}
-      <div className="relative flex-1 max-w-xs">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+      <div className="relative max-w-xs flex-1">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
           value={search}
           onChange={(e) => onSearch(e.target.value)}
           placeholder="Search…"
-          className="w-full pl-7 pr-6 h-7 rounded-md border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+          className="h-7 w-full rounded-md border border-border bg-card pl-7 pr-6 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
         />
         {search && (
           <button
@@ -74,7 +74,7 @@ export function Toolbar({
       </div>
 
       {/* Separator */}
-      <div className="h-4 w-px bg-border/60 mx-0.5" />
+      <div className="mx-0.5 h-4 w-px bg-border/60" />
 
       {/* Quick filter dropdowns */}
       <MultiSelectDropdown
@@ -106,14 +106,14 @@ export function Toolbar({
       {totalActiveFilters > 0 && (
         <button
           onClick={clearAll}
-          className="flex items-center gap-1 h-6 px-2 rounded-md text-[10px] text-muted-foreground hover:text-destructive hover:bg-destructive/5 border border-transparent hover:border-destructive/20 transition-all"
+          className="flex h-6 items-center gap-1 rounded-md border border-transparent px-2 text-[10px] text-muted-foreground transition-all hover:border-destructive/20 hover:bg-destructive/5 hover:text-destructive"
         >
           <X className="h-2.5 w-2.5" /> Clear all ({totalActiveFilters})
         </button>
       )}
 
       {/* Separator */}
-      <div className="h-4 w-px bg-border/60 mx-0.5" />
+      <div className="mx-0.5 h-4 w-px bg-border/60" />
 
       {/* Sort buttons */}
       <div className="flex items-center gap-1">
@@ -121,9 +121,9 @@ export function Toolbar({
           <button
             key={k}
             onClick={() => onSort(k)}
-            className={`flex items-center gap-1 h-7 px-2 rounded border text-[10px] transition-colors ${
+            className={`flex h-7 items-center gap-1 rounded border px-2 text-[10px] transition-colors ${
               sortKey === k
-                ? 'bg-primary/10 border-primary/30 text-primary'
+                ? 'border-primary/30 bg-primary/10 text-primary'
                 : 'border-border text-muted-foreground hover:text-foreground'
             }`}
           >

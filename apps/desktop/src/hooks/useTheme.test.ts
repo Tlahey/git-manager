@@ -14,7 +14,9 @@ const mockedResolveSystemTheme = resolveSystemTheme as unknown as ReturnType<typ
 const DEFAULT_SETTINGS = useSettingsStore.getState().settings
 
 function setThemeSetting(theme: string) {
-  useSettingsStore.setState({ settings: { ...DEFAULT_SETTINGS, appearance: { ...DEFAULT_SETTINGS.appearance, theme } } })
+  useSettingsStore.setState({
+    settings: { ...DEFAULT_SETTINGS, appearance: { ...DEFAULT_SETTINGS.appearance, theme } },
+  })
 }
 
 beforeEach(() => {
@@ -26,7 +28,10 @@ beforeEach(() => {
   document.head.querySelectorAll('[id^="user-theme-"]').forEach((el) => el.remove())
   // jsdom has no native matchMedia — default stub for tests that don't care about its listener
   // wiring; tests specifically about that wiring install their own tracked stub instead.
-  vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockReturnValue({ addEventListener: vi.fn(), removeEventListener: vi.fn() })
+  )
 })
 
 afterEach(() => {

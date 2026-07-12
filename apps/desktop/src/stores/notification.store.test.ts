@@ -3,7 +3,11 @@ import { useNotificationStore } from './notification.store'
 
 const INITIAL_MOCK_PRS = useNotificationStore.getState().mockPRs
 
-function notif(overrides: Partial<Parameters<ReturnType<typeof useNotificationStore.getState>['addNotification']>[0]> = {}) {
+function notif(
+  overrides: Partial<
+    Parameters<ReturnType<typeof useNotificationStore.getState>['addNotification']>[0]
+  > = {}
+) {
   return {
     type: 'new_pr' as const,
     repo: 'org/repo',
@@ -43,7 +47,10 @@ describe('useNotificationStore — notifications', () => {
   it('newest notifications appear first', () => {
     useNotificationStore.getState().addNotification(notif({ prId: 'pr-1' }))
     useNotificationStore.getState().addNotification(notif({ prId: 'pr-2' }))
-    expect(useNotificationStore.getState().notifications.map((n) => n.prId)).toEqual(['pr-2', 'pr-1'])
+    expect(useNotificationStore.getState().notifications.map((n) => n.prId)).toEqual([
+      'pr-2',
+      'pr-1',
+    ])
   })
 
   it('keeps only the most recent 50 notifications', () => {
@@ -79,7 +86,11 @@ describe('useNotificationStore — notifications', () => {
   })
 
   it('setPreviousPRs / setSessionInitialized store watcher bookkeeping', () => {
-    useNotificationStore.getState().setPreviousPRs({ 'pr-1': { status: 'open', reviewStatus: 'pending', needsMyReview: false, updatedAt: 'now' } })
+    useNotificationStore
+      .getState()
+      .setPreviousPRs({
+        'pr-1': { status: 'open', reviewStatus: 'pending', needsMyReview: false, updatedAt: 'now' },
+      })
     useNotificationStore.getState().setSessionInitialized(true)
     const state = useNotificationStore.getState()
     expect(state.previousPRs['pr-1'].status).toBe('open')
@@ -97,23 +108,27 @@ describe('useNotificationStore — simulateChange', () => {
     expect(prs[0].needsMyReview).toBe(true)
   })
 
-  it('merge sets the matching PR\'s status to merged, leaving others untouched', () => {
+  it("merge sets the matching PR's status to merged, leaving others untouched", () => {
     const targetId = INITIAL_MOCK_PRS[0].id
     useNotificationStore.getState().simulateChange(targetId, 'merge')
     const prs = useNotificationStore.getState().mockPRs
     expect(prs.find((p) => p.id === targetId)?.status).toBe('merged')
   })
 
-  it('close sets the matching PR\'s status to closed', () => {
+  it("close sets the matching PR's status to closed", () => {
     const targetId = INITIAL_MOCK_PRS[0].id
     useNotificationStore.getState().simulateChange(targetId, 'close')
-    expect(useNotificationStore.getState().mockPRs.find((p) => p.id === targetId)?.status).toBe('closed')
+    expect(useNotificationStore.getState().mockPRs.find((p) => p.id === targetId)?.status).toBe(
+      'closed'
+    )
   })
 
   it('request_review sets needsMyReview to true', () => {
     const targetId = INITIAL_MOCK_PRS[0].id
     useNotificationStore.getState().simulateChange(targetId, 'request_review')
-    expect(useNotificationStore.getState().mockPRs.find((p) => p.id === targetId)?.needsMyReview).toBe(true)
+    expect(
+      useNotificationStore.getState().mockPRs.find((p) => p.id === targetId)?.needsMyReview
+    ).toBe(true)
   })
 
   it('approve sets reviewStatus and status to approved', () => {
@@ -124,13 +139,17 @@ describe('useNotificationStore — simulateChange', () => {
     expect(pr?.status).toBe('approved')
   })
 
-  it('ci_success / ci_failed set the matching PR\'s ciStatus', () => {
+  it("ci_success / ci_failed set the matching PR's ciStatus", () => {
     const targetId = INITIAL_MOCK_PRS[0].id
     useNotificationStore.getState().simulateChange(targetId, 'ci_success')
-    expect(useNotificationStore.getState().mockPRs.find((p) => p.id === targetId)?.ciStatus).toBe('success')
+    expect(useNotificationStore.getState().mockPRs.find((p) => p.id === targetId)?.ciStatus).toBe(
+      'success'
+    )
 
     useNotificationStore.getState().simulateChange(targetId, 'ci_failed')
-    expect(useNotificationStore.getState().mockPRs.find((p) => p.id === targetId)?.ciStatus).toBe('failure')
+    expect(useNotificationStore.getState().mockPRs.find((p) => p.id === targetId)?.ciStatus).toBe(
+      'failure'
+    )
   })
 
   it('is a no-op on unrelated PRs for a non-"new_pr" action', () => {

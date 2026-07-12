@@ -46,7 +46,11 @@ export function useSidebarRows({
   const { data: stashes = [] } = useGitStashes(repoPath)
   const overrides = usePinnedBranchesStore((s) => s.overrides[repoPath])
 
-  const { allPrs, isGithub, isLoading: prsLoading } = usePullRequests({
+  const {
+    allPrs,
+    isGithub,
+    isLoading: prsLoading,
+  } = usePullRequests({
     remoteUrls,
     currentUser,
     githubToken,
@@ -67,8 +71,7 @@ export function useSidebarRows({
   })
 
   const q = filter.trim().toLowerCase()
-  const matchesFilter = (b: GitBranch) =>
-    !q || b.shortName.toLowerCase().includes(q)
+  const matchesFilter = (b: GitBranch) => !q || b.shortName.toLowerCase().includes(q)
 
   const isPinned = (shortName: string): boolean =>
     overrides?.[shortName] ?? DEFAULT_PINNED.includes(shortName)
@@ -127,8 +130,7 @@ export function useSidebarRows({
       openState[`section:${key}`] ?? DEFAULT_SECTION_OPEN[key]
     const subOpen = (id: string, def = true) => openState[id] ?? def
 
-    const isSelected = (b: GitBranch) =>
-      selectedBranch === b.shortName || selectedBranch === b.name
+    const isSelected = (b: GitBranch) => selectedBranch === b.shortName || selectedBranch === b.name
 
     // ----- Local -----
     const localOpen = sectionOpen('local')
@@ -242,7 +244,12 @@ export function useSidebarRows({
       })
       if (open) {
         if (prsLoading) {
-          out.push({ kind: 'message', id: 'pr:loading', text: 'Chargement des PRs…', loading: true })
+          out.push({
+            kind: 'message',
+            id: 'pr:loading',
+            text: 'Chargement des PRs…',
+            loading: true,
+          })
         } else if (!isGithub) {
           out.push({
             kind: 'message',

@@ -16,7 +16,9 @@ const yearDays: DayCommit[] = [
 
 describe('CommitStatsTab — loading state', () => {
   it('shows skeleton placeholders and no KPI values', () => {
-    const { container } = render(<CommitStatsTab commitDays={commitDays} yearDays={yearDays} loading />)
+    const { container } = render(
+      <CommitStatsTab commitDays={commitDays} yearDays={yearDays} loading />
+    )
     expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0)
     expect(screen.getByText('Loading contribution map...')).toBeInTheDocument()
     expect(screen.queryByText('4')).not.toBeInTheDocument()
@@ -70,7 +72,9 @@ describe('CommitStatsTab — contribution activity', () => {
 
 describe('CommitStatsTab — daily bars', () => {
   it('renders one bar per commit day with its hover tooltip count', () => {
-    const { container } = render(<CommitStatsTab commitDays={commitDays} yearDays={yearDays} loading={false} />)
+    const { container } = render(
+      <CommitStatsTab commitDays={commitDays} yearDays={yearDays} loading={false} />
+    )
     const bars = container.querySelectorAll('[class*="group/bar"]')
     expect(bars).toHaveLength(3)
     // The "5" hover tooltip also matches the daily-breakdown list's count for the same day.
@@ -85,7 +89,9 @@ describe('CommitStatsTab — daily bars', () => {
   })
 
   it('shows no date range labels when there are no commit days', () => {
-    const { container } = render(<CommitStatsTab commitDays={[]} yearDays={yearDays} loading={false} />)
+    const { container } = render(
+      <CommitStatsTab commitDays={[]} yearDays={yearDays} loading={false} />
+    )
     const rangeRow = container.querySelector('.flex.justify-between.mt-1')!
     expect(rangeRow.textContent).toBe('')
   })
@@ -93,7 +99,9 @@ describe('CommitStatsTab — daily bars', () => {
 
 describe('CommitStatsTab — daily breakdown list', () => {
   it('lists days in reverse order with their commit counts', () => {
-    const { container } = render(<CommitStatsTab commitDays={commitDays} yearDays={yearDays} loading={false} />)
+    const { container } = render(
+      <CommitStatsTab commitDays={commitDays} yearDays={yearDays} loading={false} />
+    )
     const rows = container.querySelectorAll('.divide-y > div')
     expect(rows).toHaveLength(3)
     expect(rows[0].textContent).toContain('Jan 3')

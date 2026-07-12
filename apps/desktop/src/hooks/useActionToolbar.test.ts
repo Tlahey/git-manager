@@ -10,7 +10,12 @@ vi.mock('swr', () => ({ mutate: (...a: unknown[]) => swrMutate(...a) }))
 
 const toastSuccess = vi.fn()
 const toastError = vi.fn()
-vi.mock('@git-manager/ui', () => ({ toast: { success: (...a: unknown[]) => toastSuccess(...a), error: (...a: unknown[]) => toastError(...a) } }))
+vi.mock('@git-manager/ui', () => ({
+  toast: {
+    success: (...a: unknown[]) => toastSuccess(...a),
+    error: (...a: unknown[]) => toastError(...a),
+  },
+}))
 
 vi.mock('../api/git.api', () => ({
   apiStashPush: vi.fn(),
@@ -53,10 +58,19 @@ const mocked = {
 }
 
 const DEFAULT_SETTINGS = useSettingsStore.getState().settings
-const t = (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key)
+const t = (key: string, opts?: Record<string, unknown>) =>
+  opts ? `${key}:${JSON.stringify(opts)}` : key
 
 function repo(overrides: Partial<GitRepo> = {}): GitRepo {
-  return { path: '/repo', name: 'repo', head: 'main', isDetached: false, isDirty: false, remotes: [], ...overrides }
+  return {
+    path: '/repo',
+    name: 'repo',
+    head: 'main',
+    isDetached: false,
+    isDirty: false,
+    remotes: [],
+    ...overrides,
+  }
 }
 
 function gitStatus(overrides: Partial<GitStatus> = {}): GitStatus {
@@ -84,7 +98,9 @@ describe('useActionToolbar — derived state', () => {
   })
 
   it('hasChanges is true when there are staged/unstaged/untracked files', () => {
-    useGitStatusMock.mockReturnValue({ data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] }) })
+    useGitStatusMock.mockReturnValue({
+      data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] }),
+    })
     const { result } = renderHook(() => useActionToolbar(t))
     expect(result.current.hasChanges).toBe(true)
   })
@@ -96,7 +112,10 @@ describe('useActionToolbar — derived state', () => {
   })
 
   it('fromRef is "HEAD" for a detached repo, otherwise the repo head', () => {
-    useRepoDataStore.setState({ repoCache: { '/repo': repo({ isDetached: true }) }, wipMessages: {} })
+    useRepoDataStore.setState({
+      repoCache: { '/repo': repo({ isDetached: true }) },
+      wipMessages: {},
+    })
     const { result } = renderHook(() => useActionToolbar(t))
     expect(result.current.fromRef).toBe('HEAD')
   })
@@ -108,7 +127,9 @@ describe('useActionToolbar — derived state', () => {
 
   it('exposes canUndo/canRedo/undoLabel/redoLabel scoped to the active repo', () => {
     useUndoHistoryStore.setState({
-      byRepo: { '/repo': { stack: [{ id: 'a', label: { key: 'undoRedo.commit' } } as never], pointer: 1 } },
+      byRepo: {
+        '/repo': { stack: [{ id: 'a', label: { key: 'undoRedo.commit' } } as never], pointer: 1 },
+      },
     })
     const { result } = renderHook(() => useActionToolbar(t))
     expect(result.current.canUndo).toBe(true)
@@ -120,7 +141,14 @@ describe('useActionToolbar — derived state', () => {
 describe('useActionToolbar — terminal', () => {
   it('opens the terminal with the configured tool and custom command', async () => {
     useSettingsStore.setState({
-      settings: { ...DEFAULT_SETTINGS, externalTools: { ...DEFAULT_SETTINGS.externalTools!, externalTerminal: 'iterm', externalTerminalCommand: 'custom {path}' } },
+      settings: {
+        ...DEFAULT_SETTINGS,
+        externalTools: {
+          ...DEFAULT_SETTINGS.externalTools!,
+          externalTerminal: 'iterm',
+          externalTerminalCommand: 'custom {path}',
+        },
+      },
     })
     const { result } = renderHook(() => useActionToolbar(t))
     await act(async () => result.current.handleOpenTerminal())
@@ -149,7 +177,10 @@ describe('useActionToolbar — fetch/pull/push', () => {
   })
 
   it('handleFetchAll fetches every remote individually when remotes exist', async () => {
-    useRepoDataStore.setState({ repoCache: { '/repo': repo({ remotes: ['origin', 'upstream'] }) }, wipMessages: {} })
+    useRepoDataStore.setState({
+      repoCache: { '/repo': repo({ remotes: ['origin', 'upstream'] }) },
+      wipMessages: {},
+    })
     mocked.apiFetchRemote.mockResolvedValue(undefined)
     const { result } = renderHook(() => useActionToolbar(t))
     await act(async () => result.current.handleFetchAll())
@@ -221,7 +252,10 @@ describe('useActionToolbar — undo/redo', () => {
 
 describe('useActionToolbar — stash/pop', () => {
   it('handleStash uses the WIP message when present, always including untracked files', async () => {
-    useRepoDataStore.setState({ repoCache: { '/repo': repo() }, wipMessages: { '/repo': 'my custom wip' } })
+    useRepoDataStore.setState({
+      repoCache: { '/repo': repo() },
+      wipMessages: { '/repo': 'my custom wip' },
+    })
     mocked.apiStashPush.mockResolvedValue(undefined)
     const { result } = renderHook(() => useActionToolbar(t))
     await act(async () => result.current.handleStash())

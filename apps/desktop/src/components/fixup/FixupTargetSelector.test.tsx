@@ -35,7 +35,13 @@ function node(oid: string, subject: string): GitGraphNode {
   } as GitGraphNode
 }
 
-function renderSelector(props: Partial<{ open: boolean; onClose: () => void; onSelect: (oid: string, subject: string) => void }> = {}) {
+function renderSelector(
+  props: Partial<{
+    open: boolean
+    onClose: () => void
+    onSelect: (oid: string, subject: string) => void
+  }> = {}
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
@@ -51,7 +57,10 @@ function renderSelector(props: Partial<{ open: boolean; onClose: () => void; onS
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useGitLogMock.mockReturnValue({ data: [node('abc1234', 'Add feature'), node('def5678', 'Fix bug')], isLoading: false })
+  useGitLogMock.mockReturnValue({
+    data: [node('abc1234', 'Add feature'), node('def5678', 'Fix bug')],
+    isLoading: false,
+  })
 })
 
 afterEach(() => {

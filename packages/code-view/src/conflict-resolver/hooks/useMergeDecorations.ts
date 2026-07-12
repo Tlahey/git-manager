@@ -51,29 +51,39 @@ export function useMergeDecorations({
 
     // Update whitespace option in Monaco editors dynamically
     const renderWhitespaceOption = whitespaceMode === 'compare' ? 'all' : 'none'
-    if (!isTwoWay && oursEditor && typeof oursEditor.updateOptions === 'function') oursEditor.updateOptions({ renderWhitespace: renderWhitespaceOption })
-    if (typeof centerEditor.updateOptions === 'function') centerEditor.updateOptions({ renderWhitespace: renderWhitespaceOption })
-    if (typeof theirsEditor.updateOptions === 'function') theirsEditor.updateOptions({ renderWhitespace: renderWhitespaceOption })
+    if (!isTwoWay && oursEditor && typeof oursEditor.updateOptions === 'function')
+      oursEditor.updateOptions({ renderWhitespace: renderWhitespaceOption })
+    if (typeof centerEditor.updateOptions === 'function')
+      centerEditor.updateOptions({ renderWhitespace: renderWhitespaceOption })
+    if (typeof theirsEditor.updateOptions === 'function')
+      theirsEditor.updateOptions({ renderWhitespace: renderWhitespaceOption })
 
     let pendingConflicts = 0
     for (const block of blocksRef.current) {
       const placement = placements.get(block.blockId)
       if (!placement) continue
-      if (block.kind === 'both-different' && !placement.oursTouched && !placement.theirsTouched) pendingConflicts += 1
+      if (block.kind === 'both-different' && !placement.oursTouched && !placement.theirsTouched)
+        pendingConflicts += 1
     }
 
     const visuals = isTwoWay
       ? computeTwoWayVisuals(blocksRef.current, placements, showBlockBorders)
-      : computeMergeVisuals(blocksRef.current, placements, showBlockBorders, highlightMode === 'lines')
+      : computeMergeVisuals(
+          blocksRef.current,
+          placements,
+          showBlockBorders,
+          highlightMode === 'lines'
+        )
 
     // Second diff pass (intra-line): reads the center buffer's live text so the highlights
     // track manual typing too. Only run if highlightMode is 'words'.
     const centerModel = centerEditor.getModel()
-    const intra = centerModel && highlightMode === 'words' && !isTwoWay
-      ? computeIntraLineHighlights(blocksRef.current, placements, (line) =>
-        line >= 1 && line <= centerModel.getLineCount() ? centerModel.getLineContent(line) : ''
-      )
-      : { ours: [], center: [], theirs: [] }
+    const intra =
+      centerModel && highlightMode === 'words' && !isTwoWay
+        ? computeIntraLineHighlights(blocksRef.current, placements, (line) =>
+            line >= 1 && line <= centerModel.getLineCount() ? centerModel.getLineContent(line) : ''
+          )
+        : { ours: [], center: [], theirs: [] }
 
     const showWholeLineHighlights = true
     if (!isTwoWay && editors.oursDecorationsRef.current) {
@@ -92,10 +102,22 @@ export function useMergeDecorations({
     ])
 
     if (!isTwoWay && oursEditor) {
-      editors.oursZoneIdsRef.current = applyViewZones(oursEditor, editors.oursZoneIdsRef.current, visuals.ours.viewZones)
+      editors.oursZoneIdsRef.current = applyViewZones(
+        oursEditor,
+        editors.oursZoneIdsRef.current,
+        visuals.ours.viewZones
+      )
     }
-    editors.centerZoneIdsRef.current = applyViewZones(centerEditor, editors.centerZoneIdsRef.current, visuals.center.viewZones)
-    editors.theirsZoneIdsRef.current = applyViewZones(theirsEditor, editors.theirsZoneIdsRef.current, visuals.theirs.viewZones)
+    editors.centerZoneIdsRef.current = applyViewZones(
+      centerEditor,
+      editors.centerZoneIdsRef.current,
+      visuals.center.viewZones
+    )
+    editors.theirsZoneIdsRef.current = applyViewZones(
+      theirsEditor,
+      editors.theirsZoneIdsRef.current,
+      visuals.theirs.viewZones
+    )
 
     onPendingCountChange?.(pendingConflicts)
     scheduleRecompute()
@@ -106,5 +128,13 @@ export function useMergeDecorations({
     // this must re-run when the *visual inputs* change, not when e.g. scheduleRecompute picks
     // up a new closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [placements, editorsReady, showBlockBorders, whitespaceMode, highlightMode, updateActiveBlockIndex, isTwoWay])
+  }, [
+    placements,
+    editorsReady,
+    showBlockBorders,
+    whitespaceMode,
+    highlightMode,
+    updateActiveBlockIndex,
+    isTwoWay,
+  ])
 }

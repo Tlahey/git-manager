@@ -9,11 +9,16 @@ import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key}:${JSON.stringify(opts)}` : key,
+  }),
 }))
 vi.mock('./GraphSvg', () => ({ GraphSvg: () => <div data-testid="graph-svg" /> }))
 
-const { lastRefLabelGroupProps } = vi.hoisted(() => ({ lastRefLabelGroupProps: { current: null as Record<string, unknown> | null } }))
+const { lastRefLabelGroupProps } = vi.hoisted(() => ({
+  lastRefLabelGroupProps: { current: null as Record<string, unknown> | null },
+}))
 vi.mock('./RefLabelGroup', () => ({
   RefLabelGroup: (props: Record<string, unknown>) => {
     lastRefLabelGroupProps.current = props
@@ -29,8 +34,24 @@ const INITIAL_REPO_DATA = useRepoDataStore.getState()
 const INITIAL_REPO_UI = useRepoUIStore.getState()
 
 function col(key: ResolvedColumn['key'], overrides: Partial<ResolvedColumn> = {}): ResolvedColumn {
-  const widths: Record<string, number> = { refs: 160, graph: 120, message: 400, author: 150, date: 110, sha: 100 }
-  return { key, labelKey: `gitTree.columns.${key}`, defaultWidth: widths[key], minWidth: 100, defaultVisible: true, width: widths[key], flex: key === 'message', ...overrides }
+  const widths: Record<string, number> = {
+    refs: 160,
+    graph: 120,
+    message: 400,
+    author: 150,
+    date: 110,
+    sha: 100,
+  }
+  return {
+    key,
+    labelKey: `gitTree.columns.${key}`,
+    defaultWidth: widths[key],
+    minWidth: 100,
+    defaultVisible: true,
+    width: widths[key],
+    flex: key === 'message',
+    ...overrides,
+  }
 }
 
 function node(overrides: Partial<GitGraphNode> = {}): GitGraphNode {
@@ -41,7 +62,11 @@ function node(overrides: Partial<GitGraphNode> = {}): GitGraphNode {
       message: 'Subject\n\nBody text',
       subject: 'Subject line',
       body: '',
-      author: { name: 'Ada Lovelace', email: 'ada@example.com', timestamp: Math.floor(Date.now() / 1000) - 3600 },
+      author: {
+        name: 'Ada Lovelace',
+        email: 'ada@example.com',
+        timestamp: Math.floor(Date.now() / 1000) - 3600,
+      },
       committer: { name: 'Ada Lovelace', email: 'ada@example.com', timestamp: 0 },
       parentOids: [],
     },
@@ -53,7 +78,9 @@ function node(overrides: Partial<GitGraphNode> = {}): GitGraphNode {
   }
 }
 
-function renderRow(props: Partial<React.ComponentProps<typeof GraphRow>> & { columns: ResolvedColumn[] }) {
+function renderRow(
+  props: Partial<React.ComponentProps<typeof GraphRow>> & { columns: ResolvedColumn[] }
+) {
   return render(
     <GraphRow
       node={node()}
@@ -99,7 +126,14 @@ describe('GraphRow — row interaction', () => {
 
 describe('GraphRow — refs column', () => {
   it('renders a RefLabelGroup with the node color when refs are present', () => {
-    const refs = [{ name: 'refs/heads/main', shortName: 'main', type: 'branch' as const, commitOid: 'abc1234567890' }]
+    const refs = [
+      {
+        name: 'refs/heads/main',
+        shortName: 'main',
+        type: 'branch' as const,
+        commitOid: 'abc1234567890',
+      },
+    ]
     renderRow({ columns: [col('refs')], node: node({ refs, color: '#123456' }) })
     expect(screen.getByTestId('ref-label-group')).toBeInTheDocument()
     expect(lastRefLabelGroupProps.current).toMatchObject({ refs, color: '#123456' })
@@ -113,7 +147,14 @@ describe('GraphRow — refs column', () => {
   })
 
   it('renders nothing for a stash commit, even with refs on the node', () => {
-    const refs = [{ name: 'stash@{0}', shortName: 'stash@{0}', type: 'stash' as const, commitOid: 'abc1234567890' }]
+    const refs = [
+      {
+        name: 'stash@{0}',
+        shortName: 'stash@{0}',
+        type: 'stash' as const,
+        commitOid: 'abc1234567890',
+      },
+    ]
     renderRow({ columns: [col('refs')], node: node({ refs }) })
     expect(screen.queryByTestId('ref-label-group')).not.toBeInTheDocument()
   })
@@ -127,13 +168,19 @@ describe('GraphRow — graph column', () => {
   })
 
   it('shows a dashed placeholder without a warning icon for the WIP row', () => {
-    const { container } = renderRow({ columns: [col('graph')], node: node({ commit: { ...node().commit, oid: 'WIP' } }) })
+    const { container } = renderRow({
+      columns: [col('graph')],
+      node: node({ commit: { ...node().commit, oid: 'WIP' } }),
+    })
     expect(container.querySelector('.lucide-triangle-alert')).not.toBeInTheDocument()
     expect(container.querySelector('.border-dashed')).toBeTruthy()
   })
 
   it('shows a warning icon for the CONFLICT row', () => {
-    const { container } = renderRow({ columns: [col('graph')], node: node({ commit: { ...node().commit, oid: 'CONFLICT' } }) })
+    const { container } = renderRow({
+      columns: [col('graph')],
+      node: node({ commit: { ...node().commit, oid: 'CONFLICT' } }),
+    })
     expect(container.querySelector('.lucide-triangle-alert')).toBeTruthy()
   })
 })
@@ -142,7 +189,11 @@ describe('GraphRow — message column: WIP', () => {
   it('binds the WIP input to the per-repo wip message and shows the total-changes count', async () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     const user = userEvent.setup()
-    renderRow({ columns: [col('message')], node: node({ commit: { ...node().commit, oid: 'WIP' } }), totalChanges: 3 })
+    renderRow({
+      columns: [col('message')],
+      node: node({ commit: { ...node().commit, oid: 'WIP' } }),
+      totalChanges: 3,
+    })
     expect(screen.getByText('3')).toBeInTheDocument()
 
     await user.type(screen.getByPlaceholderText('// WIP'), 'my wip message')
@@ -154,7 +205,11 @@ describe('GraphRow — message column: WIP', () => {
     useRepoDataStore.setState({ wipMessages: { '/repo': '  do the thing  ' } })
     const onCommitWip = vi.fn()
     const user = userEvent.setup()
-    renderRow({ columns: [col('message')], node: node({ commit: { ...node().commit, oid: 'WIP' } }), onCommitWip })
+    renderRow({
+      columns: [col('message')],
+      node: node({ commit: { ...node().commit, oid: 'WIP' } }),
+      onCommitWip,
+    })
     await user.type(screen.getByPlaceholderText('// WIP'), '{Enter}')
     expect(onCommitWip).toHaveBeenCalledWith('  do the thing  ')
   })
@@ -163,7 +218,11 @@ describe('GraphRow — message column: WIP', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     const onCommitWip = vi.fn()
     const user = userEvent.setup()
-    renderRow({ columns: [col('message')], node: node({ commit: { ...node().commit, oid: 'WIP' } }), onCommitWip })
+    renderRow({
+      columns: [col('message')],
+      node: node({ commit: { ...node().commit, oid: 'WIP' } }),
+      onCommitWip,
+    })
     await user.type(screen.getByPlaceholderText('// WIP'), '{Enter}')
     expect(onCommitWip).not.toHaveBeenCalled()
   })
@@ -172,7 +231,11 @@ describe('GraphRow — message column: WIP', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     const onSelect = vi.fn()
     const user = userEvent.setup()
-    renderRow({ columns: [col('message')], node: node({ commit: { ...node().commit, oid: 'WIP' } }), onSelect })
+    renderRow({
+      columns: [col('message')],
+      node: node({ commit: { ...node().commit, oid: 'WIP' } }),
+      onSelect,
+    })
     await user.click(screen.getByPlaceholderText('// WIP'))
     expect(onSelect).not.toHaveBeenCalled()
   })
@@ -185,28 +248,61 @@ describe('GraphRow — message column: CONFLICT', () => {
       node: node({ commit: { ...node().commit, oid: 'CONFLICT' } }),
       conflictInfo: { count: 2, branchName: 'feature-x' },
     })
-    expect(screen.getByText('gitTree.contextMenu.conflictBannerMessage:{"count":2,"branch":"feature-x"}')).toBeInTheDocument()
+    expect(
+      screen.getByText('gitTree.contextMenu.conflictBannerMessage:{"count":2,"branch":"feature-x"}')
+    ).toBeInTheDocument()
   })
 })
 
 describe('GraphRow — message column: normal commit', () => {
   it('shows the subject and a whitespace-collapsed body', () => {
-    renderRow({ columns: [col('message')], node: node({ commit: { ...node().commit, subject: 'Add feature', body: 'line one\n  line two' } }) })
+    renderRow({
+      columns: [col('message')],
+      node: node({
+        commit: { ...node().commit, subject: 'Add feature', body: 'line one\n  line two' },
+      }),
+    })
     expect(screen.getByText('Add feature')).toBeInTheDocument()
     expect(screen.getByText('line one line two')).toBeInTheDocument()
   })
 
   it('highlights a leading "fixup!" prefix', () => {
-    const { container } = renderRow({ columns: [col('message')], node: node({ commit: { ...node().commit, subject: 'fixup! Add feature' } }) })
+    const { container } = renderRow({
+      columns: [col('message')],
+      node: node({ commit: { ...node().commit, subject: 'fixup! Add feature' } }),
+    })
     const fixupSpan = container.querySelector('.text-orange-400')!
     expect(fixupSpan).toHaveTextContent('fixup!')
     expect(screen.getByText(/Add feature/)).toBeInTheDocument()
   })
 
   it('shows the stash message instead of the commit subject for a matched stash', () => {
-    useGitStashes.mockReturnValue({ data: [{ index: 0, message: 'WIP on main: stash subject', branch: 'main', commitOid: 'abc1234567890', timestamp: 0, filesCount: 1, additions: 0, deletions: 0 }] })
-    const refs = [{ name: 'stash@{0}', shortName: 'stash@{0}', type: 'stash' as const, commitOid: 'abc1234567890' }]
-    renderRow({ columns: [col('message')], node: node({ refs, commit: { ...node().commit, subject: 'fallback subject' } }) })
+    useGitStashes.mockReturnValue({
+      data: [
+        {
+          index: 0,
+          message: 'WIP on main: stash subject',
+          branch: 'main',
+          commitOid: 'abc1234567890',
+          timestamp: 0,
+          filesCount: 1,
+          additions: 0,
+          deletions: 0,
+        },
+      ],
+    })
+    const refs = [
+      {
+        name: 'stash@{0}',
+        shortName: 'stash@{0}',
+        type: 'stash' as const,
+        commitOid: 'abc1234567890',
+      },
+    ]
+    renderRow({
+      columns: [col('message')],
+      node: node({ refs, commit: { ...node().commit, subject: 'fallback subject' } }),
+    })
     expect(screen.getByText('WIP on main: stash subject')).toBeInTheDocument()
     expect(screen.queryByText('fallback subject')).not.toBeInTheDocument()
   })
@@ -214,7 +310,12 @@ describe('GraphRow — message column: normal commit', () => {
 
 describe('GraphRow — author/date/sha columns', () => {
   it('shows author initials and name for a normal commit', () => {
-    renderRow({ columns: [col('author')], node: node({ commit: { ...node().commit, author: { name: 'Ada Lovelace', email: '', timestamp: 0 } } }) })
+    renderRow({
+      columns: [col('author')],
+      node: node({
+        commit: { ...node().commit, author: { name: 'Ada Lovelace', email: '', timestamp: 0 } },
+      }),
+    })
     expect(screen.getByText('AL')).toBeInTheDocument()
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument()
   })
@@ -232,12 +333,18 @@ describe('GraphRow — author/date/sha columns', () => {
 
   it('shows a relative date with the exact date as the title', () => {
     const timestamp = Math.floor(Date.now() / 1000) - 7200 // 2h ago
-    renderRow({ columns: [col('date')], node: node({ commit: { ...node().commit, author: { name: 'A', email: '', timestamp } } }) })
+    renderRow({
+      columns: [col('date')],
+      node: node({ commit: { ...node().commit, author: { name: 'A', email: '', timestamp } } }),
+    })
     expect(screen.getByText('2h ago')).toBeInTheDocument()
   })
 
   it('shows the short oid with the full oid as the title', () => {
-    renderRow({ columns: [col('sha')], node: node({ commit: { ...node().commit, oid: 'fullsha1234567890', shortOid: 'fullsha' } }) })
+    renderRow({
+      columns: [col('sha')],
+      node: node({ commit: { ...node().commit, oid: 'fullsha1234567890', shortOid: 'fullsha' } }),
+    })
     const code = screen.getByText('fullsha')
     expect(code).toHaveAttribute('title', 'fullsha1234567890')
   })
@@ -250,7 +357,11 @@ describe('GraphRow — selection/conflict styling', () => {
   })
 
   it('applies the softer selected background when isSelected but not primary', () => {
-    const { container } = renderRow({ columns: [col('message')], isSelected: true, isPrimary: false })
+    const { container } = renderRow({
+      columns: [col('message')],
+      isSelected: true,
+      isPrimary: false,
+    })
     expect(container.querySelector('.bg-accent\\/70')).toBeTruthy()
   })
 
@@ -259,7 +370,10 @@ describe('GraphRow — selection/conflict styling', () => {
     const { container: normalRow } = renderRow({ columns: [col('message')] })
     expect(normalRow.querySelector('[style*="144, 69, 56"]')).toBeFalsy()
 
-    const { container: conflictRow } = renderRow({ columns: [col('message')], node: node({ commit: { ...node().commit, oid: 'CONFLICT' } }) })
+    const { container: conflictRow } = renderRow({
+      columns: [col('message')],
+      node: node({ commit: { ...node().commit, oid: 'CONFLICT' } }),
+    })
     expect(conflictRow.querySelector('[style*="144, 69, 56"]')).toBeTruthy()
   })
 })
@@ -267,7 +381,9 @@ describe('GraphRow — selection/conflict styling', () => {
 describe('GraphAvatarTooltip', () => {
   it('shows a name/email tooltip on hover and hides it on mouse leave', () => {
     // No email -> getAvatarUrl() returns null -> falls back to initials, which we can target
-    const noEmailNode = node({ commit: { ...node().commit, author: { name: 'Ada Lovelace', email: '', timestamp: 0 } } })
+    const noEmailNode = node({
+      commit: { ...node().commit, author: { name: 'Ada Lovelace', email: '', timestamp: 0 } },
+    })
     render(<GraphAvatarTooltip node={noEmailNode} />)
     expect(screen.queryByText('ada@example.com')).not.toBeInTheDocument()
 
@@ -279,7 +395,11 @@ describe('GraphAvatarTooltip', () => {
   })
 
   it('shows a dashed archive icon instead of initials for a stash node', () => {
-    const stashNode = node({ refs: [{ name: 'stash@{0}', shortName: 'stash@{0}', type: 'stash', commitOid: 'abc1234567890' }] })
+    const stashNode = node({
+      refs: [
+        { name: 'stash@{0}', shortName: 'stash@{0}', type: 'stash', commitOid: 'abc1234567890' },
+      ],
+    })
     const { container } = render(<GraphAvatarTooltip node={stashNode} />)
     expect(container.querySelector('.lucide-archive')).toBeTruthy()
     expect(screen.queryByText('AL')).not.toBeInTheDocument()

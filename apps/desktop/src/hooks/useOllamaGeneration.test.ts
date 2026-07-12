@@ -16,7 +16,10 @@ function emit(event: string, payload?: unknown) {
   listeners.get(event)?.forEach((h) => h({ payload }))
 }
 
-vi.mock('../api/ollama.api', () => ({ apiGenerateCommitMessage: vi.fn(), apiCancelGeneration: vi.fn() }))
+vi.mock('../api/ollama.api', () => ({
+  apiGenerateCommitMessage: vi.fn(),
+  apiCancelGeneration: vi.fn(),
+}))
 
 import { apiGenerateCommitMessage, apiCancelGeneration } from '../api/ollama.api'
 import { useOllamaGeneration } from './useOllamaGeneration'

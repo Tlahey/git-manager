@@ -58,26 +58,50 @@ describe('commit', () => {
 
 describe('discard', () => {
   it('collects the blob oid', () => {
-    const action: UndoAction = { ...base, type: 'discard', filePath: 'f.ts', blobOid: 'blob1', wasStaged: false }
+    const action: UndoAction = {
+      ...base,
+      type: 'discard',
+      filePath: 'f.ts',
+      blobOid: 'blob1',
+      wasStaged: false,
+    }
     expect(collectActionOids(action)).toEqual(['blob1'])
   })
 
   it('undo restores the blob and re-stages when it was staged', async () => {
-    const action: UndoAction = { ...base, type: 'discard', filePath: 'f.ts', blobOid: 'blob1', wasStaged: true }
+    const action: UndoAction = {
+      ...base,
+      type: 'discard',
+      filePath: 'f.ts',
+      blobOid: 'blob1',
+      wasStaged: true,
+    }
     await executeUndo(REPO, action)
     expect(tauri.restoreFileBlob).toHaveBeenCalledWith(REPO, 'f.ts', 'blob1')
     expect(tauri.stageFile).toHaveBeenCalledWith(REPO, 'f.ts')
   })
 
   it('undo restores the blob without staging when it was unstaged', async () => {
-    const action: UndoAction = { ...base, type: 'discard', filePath: 'f.ts', blobOid: 'blob1', wasStaged: false }
+    const action: UndoAction = {
+      ...base,
+      type: 'discard',
+      filePath: 'f.ts',
+      blobOid: 'blob1',
+      wasStaged: false,
+    }
     await executeUndo(REPO, action)
     expect(tauri.restoreFileBlob).toHaveBeenCalledWith(REPO, 'f.ts', 'blob1')
     expect(tauri.stageFile).not.toHaveBeenCalled()
   })
 
   it('redo re-discards the file', async () => {
-    const action: UndoAction = { ...base, type: 'discard', filePath: 'f.ts', blobOid: 'blob1', wasStaged: false }
+    const action: UndoAction = {
+      ...base,
+      type: 'discard',
+      filePath: 'f.ts',
+      blobOid: 'blob1',
+      wasStaged: false,
+    }
     await executeRedo(REPO, action)
     expect(tauri.discardFileChanges).toHaveBeenCalledWith(REPO, 'f.ts')
   })
@@ -85,36 +109,77 @@ describe('discard', () => {
 
 describe('checkout', () => {
   it('collects no oids without a snapshot, snapshot tree oids with one', () => {
-    const noSnap: UndoAction = { ...base, type: 'checkout', fromRef: 'main', toRef: 'feat', force: false, snapshot: null }
+    const noSnap: UndoAction = {
+      ...base,
+      type: 'checkout',
+      fromRef: 'main',
+      toRef: 'feat',
+      force: false,
+      snapshot: null,
+    }
     expect(collectActionOids(noSnap)).toEqual([])
 
-    const withSnap: UndoAction = { ...base, type: 'checkout', fromRef: 'main', toRef: 'feat', force: true, snapshot: snapshot() }
+    const withSnap: UndoAction = {
+      ...base,
+      type: 'checkout',
+      fromRef: 'main',
+      toRef: 'feat',
+      force: true,
+      snapshot: snapshot(),
+    }
     expect(collectActionOids(withSnap)).toEqual(['idx-oid', 'wd-oid'])
   })
 
   it('undo checks out fromRef and restores the snapshot when present', async () => {
-    const action: UndoAction = { ...base, type: 'checkout', fromRef: 'main', toRef: 'feat', force: true, snapshot: snapshot() }
+    const action: UndoAction = {
+      ...base,
+      type: 'checkout',
+      fromRef: 'main',
+      toRef: 'feat',
+      force: true,
+      snapshot: snapshot(),
+    }
     await executeUndo(REPO, action)
     expect(tauri.checkoutBranch).toHaveBeenCalledWith(REPO, 'main', true)
     expect(tauri.restoreWorktreeSnapshot).toHaveBeenCalledWith(REPO, snapshot())
   })
 
   it('undo skips snapshot restore when there was none', async () => {
-    const action: UndoAction = { ...base, type: 'checkout', fromRef: 'main', toRef: 'feat', force: false, snapshot: null }
+    const action: UndoAction = {
+      ...base,
+      type: 'checkout',
+      fromRef: 'main',
+      toRef: 'feat',
+      force: false,
+      snapshot: null,
+    }
     await executeUndo(REPO, action)
     expect(tauri.checkoutBranch).toHaveBeenCalledWith(REPO, 'main', false)
     expect(tauri.restoreWorktreeSnapshot).not.toHaveBeenCalled()
   })
 
   it('redo checks out toRef', async () => {
-    const action: UndoAction = { ...base, type: 'checkout', fromRef: 'main', toRef: 'feat', force: false, snapshot: null }
+    const action: UndoAction = {
+      ...base,
+      type: 'checkout',
+      fromRef: 'main',
+      toRef: 'feat',
+      force: false,
+      snapshot: null,
+    }
     await executeRedo(REPO, action)
     expect(tauri.checkoutBranch).toHaveBeenCalledWith(REPO, 'feat', false)
   })
 })
 
 describe('deleteBranch', () => {
-  const action: UndoAction = { ...base, type: 'deleteBranch', name: 'feat', targetOid: 'sha1', upstream: 'origin/feat' }
+  const action: UndoAction = {
+    ...base,
+    type: 'deleteBranch',
+    name: 'feat',
+    targetOid: 'sha1',
+    upstream: 'origin/feat',
+  }
 
   it('collects the target oid', () => {
     expect(collectActionOids(action)).toEqual(['sha1'])
@@ -210,7 +275,13 @@ describe('stashPush', () => {
 })
 
 describe('stashPop', () => {
-  const action: UndoAction = { ...base, type: 'stashPop', message: 'WIP', commitOid: 'stash1', snapshot: snapshot() }
+  const action: UndoAction = {
+    ...base,
+    type: 'stashPop',
+    message: 'WIP',
+    commitOid: 'stash1',
+    snapshot: snapshot(),
+  }
 
   it('collects the stash commit oid and snapshot oids', () => {
     expect(collectActionOids(action)).toEqual(['stash1', 'idx-oid', 'wd-oid'])

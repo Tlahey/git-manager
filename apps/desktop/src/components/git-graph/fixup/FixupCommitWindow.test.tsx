@@ -5,7 +5,8 @@ import type { GitStatus } from '@git-manager/git-types'
 
 vi.mock('@git-manager/i18n', () => ({
   useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key} ${JSON.stringify(opts)}` : key),
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key} ${JSON.stringify(opts)}` : key,
   }),
 }))
 vi.mock('../../../hooks/useTheme', () => ({ useTheme: vi.fn() }))
@@ -73,7 +74,14 @@ function gitStatus(overrides: Partial<GitStatus> = {}): GitStatus {
   return { staged: [], unstaged: [], untracked: [], conflicted: [], ...overrides }
 }
 
-function renderWindow(overrides: Partial<{ repoPath: string; targetOid: string; targetShortOid: string; targetSubject: string }> = {}) {
+function renderWindow(
+  overrides: Partial<{
+    repoPath: string
+    targetOid: string
+    targetShortOid: string
+    targetSubject: string
+  }> = {}
+) {
   return render(
     <FixupCommitWindow
       repoPath="/repo"
@@ -122,21 +130,34 @@ describe('FixupCommitWindow — header and defaults', () => {
 
 describe('FixupCommitWindow — diff area', () => {
   it('fetches and shows the diff for the first file by default', async () => {
-    useGitStatus.mockReturnValue({ data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] }) })
+    useGitStatus.mockReturnValue({
+      data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] }),
+    })
     renderWindow()
     await waitFor(() => expect(mockedGetDiff).toHaveBeenCalledWith('/repo', 'target123', 'a.ts'))
     await screen.findByTestId('three-way-merge-editor')
-    expect(lastMergeEditorProps.current).toMatchObject({ filePath: 'a.ts', original: 'old', modified: 'new', isTwoWay: true })
+    expect(lastMergeEditorProps.current).toMatchObject({
+      filePath: 'a.ts',
+      original: 'old',
+      modified: 'new',
+      isTwoWay: true,
+    })
   })
 
   it('switches the diffed file when a different one is selected in the file list', async () => {
     useGitStatus.mockReturnValue({
-      data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }, { path: 'b.ts', status: 'modified' }] }),
+      data: gitStatus({
+        staged: [
+          { path: 'a.ts', status: 'modified' },
+          { path: 'b.ts', status: 'modified' },
+        ],
+      }),
     })
     renderWindow()
     await waitFor(() => expect(mockedGetDiff).toHaveBeenCalledWith('/repo', 'target123', 'a.ts'))
-
-    ;(lastFileListProps.current!.onSelectFileDiff as (f: { path: string }) => void)({ path: 'b.ts' })
+    ;(lastFileListProps.current!.onSelectFileDiff as (f: { path: string }) => void)({
+      path: 'b.ts',
+    })
     await waitFor(() => expect(mockedGetDiff).toHaveBeenCalledWith('/repo', 'target123', 'b.ts'))
   })
 
@@ -153,7 +174,9 @@ describe('FixupCommitWindow — commit gating', () => {
   })
 
   it('disables commit when the message is cleared, even with staged files', async () => {
-    useGitStatus.mockReturnValue({ data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] }) })
+    useGitStatus.mockReturnValue({
+      data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] }),
+    })
     const user = userEvent.setup()
     renderWindow()
     await user.clear(screen.getByTestId('fixup-commit-message'))
@@ -161,7 +184,9 @@ describe('FixupCommitWindow — commit gating', () => {
   })
 
   it('enables commit once files are staged and the message is non-empty', () => {
-    useGitStatus.mockReturnValue({ data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] }) })
+    useGitStatus.mockReturnValue({
+      data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] }),
+    })
     renderWindow()
     expect(screen.getByTestId('fixup-commit-btn')).toBeEnabled()
   })
@@ -169,7 +194,9 @@ describe('FixupCommitWindow — commit gating', () => {
 
 describe('FixupCommitWindow — committing', () => {
   beforeEach(() => {
-    useGitStatus.mockReturnValue({ data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] }) })
+    useGitStatus.mockReturnValue({
+      data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] }),
+    })
   })
 
   it('creates the fixup commit, opens the rebasing window, emits an event, and closes', async () => {
@@ -178,7 +205,13 @@ describe('FixupCommitWindow — committing', () => {
     renderWindow()
     await user.click(screen.getByTestId('fixup-commit-btn'))
 
-    await waitFor(() => expect(mockedCreateFixup).toHaveBeenCalledWith('/repo', 'target123', 'fixup! Original commit subject'))
+    await waitFor(() =>
+      expect(mockedCreateFixup).toHaveBeenCalledWith(
+        '/repo',
+        'target123',
+        'fixup! Original commit subject'
+      )
+    )
     await waitFor(() => expect(WebviewWindowCtor).toHaveBeenCalledOnce())
     expect(emitMock).toHaveBeenCalledWith('fixup-committed', { repoPath: '/repo' })
     expect(closeWindow).toHaveBeenCalledOnce()
@@ -186,7 +219,10 @@ describe('FixupCommitWindow — committing', () => {
 
   it('reuses an existing rebasing window instead of opening a new one', async () => {
     mockedCreateFixup.mockResolvedValue(undefined)
-    const existing = { show: vi.fn().mockResolvedValue(undefined), setFocus: vi.fn().mockResolvedValue(undefined) }
+    const existing = {
+      show: vi.fn().mockResolvedValue(undefined),
+      setFocus: vi.fn().mockResolvedValue(undefined),
+    }
     webviewGetByLabel.mockResolvedValue(existing)
     const user = userEvent.setup()
     renderWindow()
@@ -237,26 +273,40 @@ describe('FixupCommitWindow — conflict-risk banner', () => {
   })
 
   it('shows nothing when the check comes back clean', async () => {
-    useGitStatus.mockReturnValue({ data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] }) })
+    useGitStatus.mockReturnValue({
+      data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] }),
+    })
     renderWindow()
     await waitFor(() => expect(mockedCheckFixupTarget).toHaveBeenCalledWith('/repo', 'target123'))
     expect(screen.queryByTestId('fixup-risk-banner')).not.toBeInTheDocument()
   })
 
   it('shows a destructive warning for a file missing from the target commit', async () => {
-    useGitStatus.mockReturnValue({ data: gitStatus({ staged: [{ path: 'config.ts', status: 'modified' }] }) })
-    mockedCheckFixupTarget.mockResolvedValue({ missingInTarget: ['config.ts'], touchedAfterTarget: [] })
+    useGitStatus.mockReturnValue({
+      data: gitStatus({ staged: [{ path: 'config.ts', status: 'modified' }] }),
+    })
+    mockedCheckFixupTarget.mockResolvedValue({
+      missingInTarget: ['config.ts'],
+      touchedAfterTarget: [],
+    })
     renderWindow()
     await screen.findByTestId('fixup-risk-missing')
     expect(screen.getByTestId('fixup-risk-missing')).toHaveTextContent('config.ts')
   })
 
   it('shows a soft warning listing the intervening commits for a file touched after the target', async () => {
-    useGitStatus.mockReturnValue({ data: gitStatus({ staged: [{ path: 'greeting.ts', status: 'modified' }] }) })
+    useGitStatus.mockReturnValue({
+      data: gitStatus({ staged: [{ path: 'greeting.ts', status: 'modified' }] }),
+    })
     mockedCheckFixupTarget.mockResolvedValue({
       missingInTarget: [],
       touchedAfterTarget: [
-        { path: 'greeting.ts', commits: [{ oid: 'abc123', shortOid: 'abc123', subject: 'fixup! feat: add greeting module' }] },
+        {
+          path: 'greeting.ts',
+          commits: [
+            { oid: 'abc123', shortOid: 'abc123', subject: 'fixup! feat: add greeting module' },
+          ],
+        },
       ],
     })
     renderWindow()
@@ -266,13 +316,22 @@ describe('FixupCommitWindow — conflict-risk banner', () => {
   })
 
   it('re-checks when the staged file set changes', async () => {
-    useGitStatus.mockReturnValue({ data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] }) })
+    useGitStatus.mockReturnValue({
+      data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] }),
+    })
     const { rerender } = renderWindow()
     await waitFor(() => expect(mockedCheckFixupTarget).toHaveBeenCalledTimes(1))
 
-    useGitStatus.mockReturnValue({ data: gitStatus({ staged: [{ path: 'b.ts', status: 'modified' }] }) })
+    useGitStatus.mockReturnValue({
+      data: gitStatus({ staged: [{ path: 'b.ts', status: 'modified' }] }),
+    })
     rerender(
-      <FixupCommitWindow repoPath="/repo" targetOid="target123" targetShortOid="target1" targetSubject="Original commit subject" />
+      <FixupCommitWindow
+        repoPath="/repo"
+        targetOid="target123"
+        targetShortOid="target1"
+        targetSubject="Original commit subject"
+      />
     )
     await waitFor(() => expect(mockedCheckFixupTarget).toHaveBeenCalledTimes(2))
   })

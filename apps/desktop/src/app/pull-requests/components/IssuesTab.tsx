@@ -62,7 +62,7 @@ export function IssuesTab({ allIssues, loading }: IssuesTabProps) {
   }, [allIssues, search, statusFilter, repoFilter, authorFilter, sortKey, sortDir])
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       <Toolbar
         search={search}
         onSearch={setSearch}
@@ -82,15 +82,15 @@ export function IssuesTab({ allIssues, loading }: IssuesTabProps) {
         statuses={statuses}
         authors={authors}
       />
-      <div className="flex items-center gap-3 px-4 py-1.5 bg-muted/10 border-b border-border text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60 shrink-0">
+      <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
         <div className="w-4 shrink-0" />
-        <div className="flex-1 min-w-0">Item</div>
-        <div className="shrink-0 w-[52px] text-right">Updated</div>
-        <div className="shrink-0 w-[70px] text-center">Status</div>
-        <div className="shrink-0 w-[90px]">Author</div>
-        <div className="shrink-0 w-[60px] text-center">Assigned</div>
-        <div className="shrink-0 w-[110px]">Repo</div>
-        <div className="shrink-0 w-6" />
+        <div className="min-w-0 flex-1">Item</div>
+        <div className="w-[52px] shrink-0 text-right">Updated</div>
+        <div className="w-[70px] shrink-0 text-center">Status</div>
+        <div className="w-[90px] shrink-0">Author</div>
+        <div className="w-[60px] shrink-0 text-center">Assigned</div>
+        <div className="w-[110px] shrink-0">Repo</div>
+        <div className="w-6 shrink-0" />
       </div>
       <div className="flex-1 overflow-y-auto">
         {loading ? (
@@ -101,7 +101,7 @@ export function IssuesTab({ allIssues, loading }: IssuesTabProps) {
             <IssueRowSkeleton />
           </>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground/50">
+          <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground/50">
             <AlertCircle className="h-6 w-6 opacity-30" />
             <p className="text-xs">No issues match your filters</p>
           </div>
@@ -110,7 +110,11 @@ export function IssuesTab({ allIssues, loading }: IssuesTabProps) {
             {filtered.slice(0, shown).map((issue) => (
               <IssueRow key={issue.id} issue={issue} />
             ))}
-            <LoadMore total={filtered.length} shown={shown} onLoadMore={() => setShown((n) => n + PAGE_SIZE)} />
+            <LoadMore
+              total={filtered.length}
+              shown={shown}
+              onLoadMore={() => setShown((n) => n + PAGE_SIZE)}
+            />
           </>
         )}
       </div>

@@ -33,7 +33,7 @@ describe('SplitButton', () => {
     expect(screen.getByRole('menuitem', { name: 'Commit & Rebase' })).toBeInTheDocument()
   })
 
-  it('calls the chosen action\'s onSelect', async () => {
+  it("calls the chosen action's onSelect", async () => {
     const user = userEvent.setup()
     const onSelectPush = vi.fn()
     render(
@@ -61,10 +61,14 @@ describe('SplitButton', () => {
   })
 
   it('applies data-testid attributes only when testIdPrefix is provided', () => {
-    const { rerender } = render(<SplitButton label="Commit" onClick={vi.fn()} actions={actions()} />)
+    const { rerender } = render(
+      <SplitButton label="Commit" onClick={vi.fn()} actions={actions()} />
+    )
     expect(screen.queryByTestId('commit-btn')).not.toBeInTheDocument()
 
-    rerender(<SplitButton label="Commit" onClick={vi.fn()} actions={actions()} testIdPrefix="commit" />)
+    rerender(
+      <SplitButton label="Commit" onClick={vi.fn()} actions={actions()} testIdPrefix="commit" />
+    )
     expect(screen.getByTestId('commit-btn')).toBeInTheDocument()
     expect(screen.getByTestId('commit-menu-btn')).toBeInTheDocument()
   })

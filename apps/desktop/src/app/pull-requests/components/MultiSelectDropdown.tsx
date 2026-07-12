@@ -36,18 +36,18 @@ export function MultiSelectDropdown({
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-[11px] font-medium transition-all duration-150 ${
+        className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-medium transition-all duration-150 ${
           activeCount > 0
-            ? 'bg-primary/10 border-primary/30 text-primary shadow-sm shadow-primary/5'
+            ? 'border-primary/30 bg-primary/10 text-primary shadow-sm shadow-primary/5'
             : open
-              ? 'bg-accent/60 border-border/80 text-foreground'
-              : 'border-border text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-accent/30'
+              ? 'border-border/80 bg-accent/60 text-foreground'
+              : 'border-border text-muted-foreground hover:border-border/80 hover:bg-accent/30 hover:text-foreground'
         }`}
       >
         <span className="text-muted-foreground/70">{icon}</span>
         {label}
         {activeCount > 0 && (
-          <span className="flex items-center justify-center min-w-[16px] h-4 rounded-full bg-primary/20 text-primary text-[9px] font-bold px-1 leading-none">
+          <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary/20 px-1 text-[9px] font-bold leading-none text-primary">
             {activeCount}
           </span>
         )}
@@ -57,10 +57,10 @@ export function MultiSelectDropdown({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1.5 min-w-[180px] max-h-[280px] rounded-lg border border-border bg-popover shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+        <div className="animate-in fade-in slide-in-from-top-1 absolute left-0 top-full z-50 mt-1.5 max-h-[280px] min-w-[180px] overflow-hidden rounded-lg border border-border bg-popover shadow-xl duration-150">
           {/* Header with clear button */}
           {activeCount > 0 && (
-            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-muted/10">
+            <div className="flex items-center justify-between border-b border-border/50 bg-muted/10 px-3 py-1.5">
               <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {activeCount} selected
               </span>
@@ -69,7 +69,7 @@ export function MultiSelectDropdown({
                   e.stopPropagation()
                   onClear()
                 }}
-                className="text-[9px] text-muted-foreground/60 hover:text-primary underline transition-colors"
+                className="text-[9px] text-muted-foreground/60 underline transition-colors hover:text-primary"
               >
                 Clear all
               </button>
@@ -77,9 +77,9 @@ export function MultiSelectDropdown({
           )}
 
           {/* Options list */}
-          <div className="overflow-y-auto max-h-[240px] py-1">
+          <div className="max-h-[240px] overflow-y-auto py-1">
             {options.length === 0 ? (
-              <div className="px-3 py-3 text-[10px] text-muted-foreground/50 text-center italic">
+              <div className="px-3 py-3 text-center text-[10px] italic text-muted-foreground/50">
                 No options available
               </div>
             ) : (
@@ -89,12 +89,12 @@ export function MultiSelectDropdown({
                   <button
                     key={opt}
                     onClick={() => onToggle(opt)}
-                    className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs transition-colors hover:bg-accent/50 group/opt"
+                    className="group/opt flex w-full items-center gap-2.5 px-3 py-1.5 text-xs transition-colors hover:bg-accent/50"
                   >
                     <div
-                      className={`flex items-center justify-center w-3.5 h-3.5 rounded border transition-all duration-100 ${
+                      className={`flex h-3.5 w-3.5 items-center justify-center rounded border transition-all duration-100 ${
                         isActive
-                          ? 'bg-primary border-primary text-primary-foreground'
+                          ? 'border-primary bg-primary text-primary-foreground'
                           : 'border-border/80 bg-transparent group-hover/opt:border-muted-foreground/50'
                       }`}
                     >
@@ -102,7 +102,7 @@ export function MultiSelectDropdown({
                     </div>
                     <span
                       className={`truncate transition-colors ${
-                        isActive ? 'text-foreground font-medium' : 'text-muted-foreground'
+                        isActive ? 'font-medium text-foreground' : 'text-muted-foreground'
                       }`}
                     >
                       {opt}

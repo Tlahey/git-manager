@@ -6,7 +6,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { mutate } from 'swr'
 import { useConflictedFiles } from '../../hooks/useConflictedFiles'
 import { useGitStatus } from '../../hooks/useGitStatus'
-import { apiRebaseAbort, apiRebaseContinue, apiRebaseSkip, apiGetRebaseState } from '../../api/git.api'
+import {
+  apiRebaseAbort,
+  apiRebaseContinue,
+  apiRebaseSkip,
+  apiGetRebaseState,
+} from '../../api/git.api'
 import { CommitFileList, type ProcessedFileItem } from './components/CommitFileList'
 
 interface ConflictResolutionPanelProps {
@@ -43,7 +48,7 @@ export function ConflictResolutionPanel({
 
   const conflictedItems = useMemo<ProcessedFileItem[]>(
     () => conflictedFiles.map((path) => ({ path, status: 'modified', staged: false })),
-    [conflictedFiles],
+    [conflictedFiles]
   )
   const resolvedItems = useMemo<ProcessedFileItem[]>(
     () =>
@@ -54,7 +59,7 @@ export function ConflictResolutionPanel({
           : 'modified') as ProcessedFileItem['status'],
         staged: true,
       })),
-    [resolvedFiles],
+    [resolvedFiles]
   )
 
   const [amend, setAmend] = useState(false)
@@ -168,8 +173,8 @@ export function ConflictResolutionPanel({
       `,
         }}
       />
-      <ScrollArea className="conflict-scroll-area min-w-0 w-full flex-1">
-        <div className="min-w-0 w-full space-y-4 overflow-hidden px-4 py-4">
+      <ScrollArea className="conflict-scroll-area w-full min-w-0 flex-1">
+        <div className="w-full min-w-0 space-y-4 overflow-hidden px-4 py-4">
           <CommitFileList
             repoPath={repoPath}
             isWip={false}
@@ -207,12 +212,12 @@ export function ConflictResolutionPanel({
             type="button"
             onClick={() => setAmend((v) => !v)}
             data-testid="conflict-amend-toggle"
-            className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground select-none"
+            className="flex select-none items-center gap-1.5 text-[10px] font-medium text-muted-foreground"
           >
             <span
               className={cn(
                 'flex h-3.5 w-3.5 items-center justify-center rounded border transition-colors',
-                amend ? 'border-primary bg-primary text-white' : 'border-border text-transparent',
+                amend ? 'border-primary bg-primary text-white' : 'border-border text-transparent'
               )}
             >
               <Check className="h-2.5 w-2.5" />

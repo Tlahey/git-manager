@@ -8,14 +8,7 @@ export function Spinner({ className }: { className?: string }) {
       viewBox="0 0 24 24"
       className={cn('animate-spin', className)}
     >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path
         className="opacity-75"
         fill="currentColor"

@@ -50,7 +50,16 @@ function tag(name: string): GitRef {
 }
 
 function stash(index: number): GitStash {
-  return { index, message: `WIP ${index}`, branch: 'main', commitOid: `stash-${index}`, timestamp: 0, filesCount: 1, additions: 0, deletions: 0 }
+  return {
+    index,
+    message: `WIP ${index}`,
+    branch: 'main',
+    commitOid: `stash-${index}`,
+    timestamp: 0,
+    filesCount: 1,
+    additions: 0,
+    deletions: 0,
+  }
 }
 
 function submodule(path: string): GitSubmodule {
@@ -126,7 +135,9 @@ describe('useSidebarRows — local section', () => {
     const { result } = renderRows({ openState: { 'folder:feat/': false } })
     await waitFor(() => expect(findRow(result.current.rows, 'folder:feat/')).toBeDefined())
     expect(findRow(result.current.rows, 'folder:feat/')).toMatchObject({ isOpen: false })
-    expect(result.current.rows.find((r) => r.kind === 'branch' && r.id === 'local:refs/heads/feat/a')).toBeUndefined()
+    expect(
+      result.current.rows.find((r) => r.kind === 'branch' && r.id === 'local:refs/heads/feat/a')
+    ).toBeUndefined()
   })
 
   it('filters local branches by the filter string (case-insensitive)', async () => {
@@ -156,7 +167,11 @@ describe('useSidebarRows — remotes section', () => {
 
   it('groups remote branches by remote name', async () => {
     useBranchesMock.mockReturnValue({
-      data: [remoteBranch('origin/main'), remoteBranch('origin/dev'), remoteBranch('upstream/main')],
+      data: [
+        remoteBranch('origin/main'),
+        remoteBranch('origin/dev'),
+        remoteBranch('upstream/main'),
+      ],
     })
     const { result } = renderRows()
     await waitFor(() => expect(findRow(result.current.rows, 'section:remotes')).toBeDefined())
@@ -193,7 +208,10 @@ describe('useSidebarRows — pull requests section', () => {
 
   it('renders one row per PR, marking the row matching selectedBranch as selected', async () => {
     usePullRequestsMock.mockReturnValue({
-      allPrs: [{ number: 1, headRef: 'feature-x' }, { number: 2, headRef: 'feature-y' }],
+      allPrs: [
+        { number: 1, headRef: 'feature-x' },
+        { number: 2, headRef: 'feature-y' },
+      ],
       isGithub: true,
       isLoading: false,
     })
@@ -238,13 +256,19 @@ describe('useSidebarRows — tags/stashes/submodules', () => {
     useGitStashesMock.mockReturnValue({ data: [stash(0), stash(1)] })
     const { result } = renderRows()
     await waitFor(() => expect(findRow(result.current.rows, 'section:stashes')).toBeDefined())
-    expect(findRow(result.current.rows, 'section:stashes')).toMatchObject({ count: 2, isOpen: false })
+    expect(findRow(result.current.rows, 'section:stashes')).toMatchObject({
+      count: 2,
+      isOpen: false,
+    })
   })
 
   it('renders the submodules section (closed by default) once submodules load', async () => {
     mockedListSubmodules.mockResolvedValue([submodule('libs/a'), submodule('libs/b')])
     const { result } = renderRows()
     await waitFor(() => expect(findRow(result.current.rows, 'section:submodules')).toBeDefined())
-    expect(findRow(result.current.rows, 'section:submodules')).toMatchObject({ count: 2, isOpen: false })
+    expect(findRow(result.current.rows, 'section:submodules')).toMatchObject({
+      count: 2,
+      isOpen: false,
+    })
   })
 })

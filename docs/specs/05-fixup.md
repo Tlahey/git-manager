@@ -111,12 +111,12 @@ A badge/indicator is displayed in the branch bar when `fixup!` commits exist wit
 
 ## Tauri commands involved
 
-| Command | Parameters | Description |
-|---------|-----------|-------------|
-| `create_fixup_commit` | `path, target_oid` | Creates the `--fixup` commit |
-| `get_pending_fixups` | `path` | Returns the list of pending fixups |
-| `autosquash_preview` | `path` | Returns the list of merges that will be performed |
-| `run_autosquash` | `path, base_oid?` | Executes `rebase --autosquash` |
+| Command               | Parameters         | Description                                       |
+| --------------------- | ------------------ | ------------------------------------------------- |
+| `create_fixup_commit` | `path, target_oid` | Creates the `--fixup` commit                      |
+| `get_pending_fixups`  | `path`             | Returns the list of pending fixups                |
+| `autosquash_preview`  | `path`             | Returns the list of merges that will be performed |
+| `run_autosquash`      | `path, base_oid?`  | Executes `rebase --autosquash`                    |
 
 ---
 

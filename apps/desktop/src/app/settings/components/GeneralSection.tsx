@@ -52,9 +52,9 @@ export function GeneralSection() {
           {languages.map((lang) => (
             <label
               key={lang.value}
-              className={`flex items-center gap-2 rounded border px-4 py-2 text-sm cursor-pointer transition-colors ${
+              className={`flex cursor-pointer items-center gap-2 rounded border px-4 py-2 text-sm transition-colors ${
                 settings.language === lang.value
-                  ? 'border-primary bg-primary/10 text-foreground font-medium'
+                  ? 'border-primary bg-primary/10 font-medium text-foreground'
                   : 'border-border text-muted-foreground hover:bg-accent'
               }`}
             >
@@ -77,9 +77,11 @@ export function GeneralSection() {
       {/* Git Identity */}
       <div className="space-y-4">
         <h4 className="text-xs font-semibold text-foreground">Identité Git par défaut</h4>
-        
+
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">{t('settings.git.defaultName')}</label>
+          <label className="text-xs font-medium text-foreground">
+            {t('settings.git.defaultName')}
+          </label>
           <Input
             value={git.defaultAuthorName}
             onChange={(e) => updateGit({ defaultAuthorName: e.target.value })}
@@ -88,7 +90,9 @@ export function GeneralSection() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">{t('settings.git.defaultEmail')}</label>
+          <label className="text-xs font-medium text-foreground">
+            {t('settings.git.defaultEmail')}
+          </label>
           <Input
             type="email"
             value={git.defaultAuthorEmail}
@@ -98,7 +102,9 @@ export function GeneralSection() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">{t('settings.git.protectedBranches')}</label>
+          <label className="text-xs font-medium text-foreground">
+            {t('settings.git.protectedBranches')}
+          </label>
           <TagInput
             tags={git.protectedBranches}
             onChange={(branches) => updateGit({ protectedBranches: branches })}
@@ -138,12 +144,7 @@ export function GeneralSection() {
           />
         </div>
 
-        <Button
-          size="sm"
-          variant="outline"
-          className="text-xs h-8"
-          onClick={handleOpenDataFolder}
-        >
+        <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleOpenDataFolder}>
           {t('settings.advanced.openDataFolder')}
         </Button>
       </div>
@@ -157,19 +158,14 @@ export function GeneralSection() {
           <p className="text-xs text-muted-foreground">{t('settings.advanced.resetConfirm')}</p>
         )}
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="destructive"
-            className="text-xs h-8"
-            onClick={handleReset}
-          >
+          <Button size="sm" variant="destructive" className="h-8 text-xs" onClick={handleReset}>
             {confirmReset ? 'Confirmer — réinitialiser' : t('settings.advanced.reset')}
           </Button>
           {confirmReset && (
             <Button
               size="sm"
               variant="ghost"
-              className="text-xs h-8 text-muted-foreground hover:text-foreground"
+              className="h-8 text-xs text-muted-foreground hover:text-foreground"
               onClick={() => setConfirmReset(false)}
             >
               Annuler

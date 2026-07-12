@@ -11,7 +11,9 @@ function initialWidths(isTwoWay: boolean): [number, number, number] {
  * connector accept/ignore buttons (which live inside the same gap) are ignored so clicking them
  * doesn't start a drag. */
 export function usePanelResize(containerRef: RefObject<HTMLDivElement | null>, isTwoWay: boolean) {
-  const [panelWidths, setPanelWidths] = useState<[number, number, number]>(() => initialWidths(isTwoWay))
+  const [panelWidths, setPanelWidths] = useState<[number, number, number]>(() =>
+    initialWidths(isTwoWay)
+  )
 
   const resetPanelWidths = useCallback(() => {
     setPanelWidths(initialWidths(isTwoWay))

@@ -4,7 +4,13 @@ import type { GitRef } from '@git-manager/git-types'
 import { RefLabelGroup } from './RefLabelGroup'
 
 function ref(overrides: Partial<GitRef> = {}): GitRef {
-  return { name: `refs/heads/${overrides.shortName ?? 'x'}`, shortName: 'x', type: 'branch', commitOid: 'abc', ...overrides }
+  return {
+    name: `refs/heads/${overrides.shortName ?? 'x'}`,
+    shortName: 'x',
+    type: 'branch',
+    commitOid: 'abc',
+    ...overrides,
+  }
 }
 
 describe('RefLabelGroup — empty/single', () => {

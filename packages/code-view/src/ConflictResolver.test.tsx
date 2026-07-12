@@ -3,8 +3,17 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MergeBlock } from './types'
-import { ConflictResolver, type ConflictResolverProps, type ConflictResolverRef } from './ConflictResolver'
-import { FakeMonacoEditor, fakeEditors, fakeDiffEditors, resetFakeEditors } from './__tests__/fakeMonacoPane'
+import {
+  ConflictResolver,
+  type ConflictResolverProps,
+  type ConflictResolverRef,
+} from './ConflictResolver'
+import {
+  FakeMonacoEditor,
+  fakeEditors,
+  fakeDiffEditors,
+  resetFakeEditors,
+} from './__tests__/fakeMonacoPane'
 
 // `ConflictResolver` is the shared engine behind the desktop app's `ThreeWayMergeEditor` (a thin
 // prop-translation wrapper, see apps/desktop/src/components/merge-editor/ThreeWayMergeEditor.tsx)
@@ -53,9 +62,17 @@ function conflictBlocks(): MergeBlock[] {
   ]
 }
 
-function renderMerge(blocks: MergeBlock[], overrides: Partial<ConflictResolverProps> = {}, ref?: Ref<ConflictResolverRef>) {
+function renderMerge(
+  blocks: MergeBlock[],
+  overrides: Partial<ConflictResolverProps> = {},
+  ref?: Ref<ConflictResolverRef>
+) {
   const props: ConflictResolverProps = {
-    panels: [{ content: textFor(blocks, 'theirs') }, { content: '' }, { content: textFor(blocks, 'ours') }],
+    panels: [
+      { content: textFor(blocks, 'theirs') },
+      { content: '' },
+      { content: textFor(blocks, 'ours') },
+    ],
     blocks,
     modelPathPrefix: MODEL_PREFIX,
     editor: { component: FakeMonacoEditor },
@@ -64,7 +81,11 @@ function renderMerge(blocks: MergeBlock[], overrides: Partial<ConflictResolverPr
   return render(<ConflictResolver ref={ref} {...props} />)
 }
 
-function renderDiff(original: string, modified: string, overrides: Partial<ConflictResolverProps> = {}) {
+function renderDiff(
+  original: string,
+  modified: string,
+  overrides: Partial<ConflictResolverProps> = {}
+) {
   const props: ConflictResolverProps = {
     panels: [{ content: original }, { content: modified }],
     modelPathPrefix: DIFF_PREFIX,
@@ -77,7 +98,9 @@ function renderDiff(original: string, modified: string, overrides: Partial<Confl
 /** One entry per decoration; each entry is that decoration's full (possibly multi-class, e.g.
  * `merge-text-conflict merge-border-top-conflict …`) className string. */
 function decorationClasses(path: string): string[] {
-  const decorations = fakeEditors.get(path)?.decorations as Array<{ options: { className?: string } }> | undefined
+  const decorations = fakeEditors.get(path)?.decorations as
+    | Array<{ options: { className?: string } }>
+    | undefined
   return (decorations ?? []).map((d) => d.options.className).filter((c): c is string => Boolean(c))
 }
 
@@ -88,7 +111,10 @@ function hasDecorationClass(path: string, className: string): boolean {
 /** The intra-line (character-precise) decorations only — those carrying an `inlineClassName`. */
 function inlineDecorations(path: string) {
   const decorations = fakeEditors.get(path)?.decorations as
-    | Array<{ range: { startColumn: number; endColumn: number }; options: { inlineClassName?: string } }>
+    | Array<{
+        range: { startColumn: number; endColumn: number }
+        options: { inlineClassName?: string }
+      }>
     | undefined
   return (decorations ?? []).filter((d) => Boolean(d.options.inlineClassName))
 }
@@ -147,7 +173,11 @@ describe('ConflictResolver — 3-panel decorations', () => {
 
     rerender(
       <ConflictResolver
-        panels={[{ content: textFor(conflictBlocks(), 'theirs') }, { content: '' }, { content: textFor(conflictBlocks(), 'ours') }]}
+        panels={[
+          { content: textFor(conflictBlocks(), 'theirs') },
+          { content: '' },
+          { content: textFor(conflictBlocks(), 'ours') },
+        ]}
         blocks={conflictBlocks()}
         modelPathPrefix={MODEL_PREFIX}
         editor={{ component: FakeMonacoEditor }}
@@ -167,11 +197,15 @@ describe('ConflictResolver — connector gutter actions', () => {
     const user = userEvent.setup()
     renderMerge(conflictBlocks())
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
+    )
     await user.click(screen.getByTestId('merge-connector-accept-left-2')) // pull theirs (left gap) in too
 
     await waitFor(() => {
-      expect(fakeEditors.get(centerPath)!.getModel().getValue()).toBe('header\nours conflict\ntheirs conflict')
+      expect(fakeEditors.get(centerPath)!.getModel().getValue()).toBe(
+        'header\nours conflict\ntheirs conflict'
+      )
     })
   })
 
@@ -179,9 +213,13 @@ describe('ConflictResolver — connector gutter actions', () => {
     const user = userEvent.setup()
     renderMerge(conflictBlocks())
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
+    )
     await user.click(screen.getByTestId('merge-connector-accept-left-2')) // keep both
-    await waitFor(() => expect(fakeEditors.get(centerPath)!.getModel().getValue()).toContain('theirs conflict'))
+    await waitFor(() =>
+      expect(fakeEditors.get(centerPath)!.getModel().getValue()).toContain('theirs conflict')
+    )
 
     await user.click(screen.getByTestId('merge-connector-reject-right-2')) // then reject ours only
 
@@ -194,7 +232,9 @@ describe('ConflictResolver — connector gutter actions', () => {
     const user = userEvent.setup()
     renderMerge(conflictBlocks())
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-right-2')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-right-2')).toBeInTheDocument()
+    )
     await user.click(screen.getByTestId('merge-connector-accept-right-2')) // idempotent accept, right gap
 
     await waitFor(() => {
@@ -204,7 +244,9 @@ describe('ConflictResolver — connector gutter actions', () => {
     expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
     expect(screen.getByTestId('merge-connector-reject-left-2')).toBeInTheDocument()
 
-    expect(screen.getByTestId('merge-connector-ribbon-right-2-top')).toHaveClass('merge-connector-conflict')
+    expect(screen.getByTestId('merge-connector-ribbon-right-2-top')).toHaveClass(
+      'merge-connector-conflict'
+    )
     expect(screen.getByTestId('merge-connector-ribbon-right-2-top')).toHaveClass('merge-resolved')
   })
 
@@ -223,7 +265,9 @@ describe('ConflictResolver — connector gutter actions', () => {
     ]
     renderMerge(blocks)
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-right-1')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-right-1')).toBeInTheDocument()
+    )
     expect(screen.queryByTestId('merge-connector-accept-left-1')).not.toBeInTheDocument()
     expect(screen.queryByTestId('merge-connector-reject-left-1')).not.toBeInTheDocument()
   })
@@ -244,7 +288,9 @@ describe('ConflictResolver — connector gutter actions', () => {
     const user = userEvent.setup()
     renderMerge(blocks)
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-1')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-left-1')).toBeInTheDocument()
+    )
     await user.click(screen.getByTestId('merge-connector-accept-left-1'))
 
     await waitFor(() => {
@@ -268,7 +314,9 @@ describe('ConflictResolver — connector gutter actions', () => {
     const user = userEvent.setup()
     renderMerge(blocks)
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-reject-right-1')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-reject-right-1')).toBeInTheDocument()
+    )
     await user.click(screen.getByTestId('merge-connector-reject-right-1'))
 
     await waitFor(() => {
@@ -324,7 +372,9 @@ describe('ConflictResolver — header apply-non-conflicting buttons', () => {
 
     await user.click(screen.getByTestId('merge-apply-left-btn'))
 
-    await waitFor(() => expect(screen.queryByTestId('merge-connector-accept-left-1')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByTestId('merge-connector-accept-left-1')).not.toBeInTheDocument()
+    )
     expect(screen.getByTestId('merge-connector-accept-right-2')).toBeInTheDocument()
     expect(screen.getByTestId('merge-connector-accept-left-3')).toBeInTheDocument()
     expect(screen.getByTestId('merge-connector-accept-right-3')).toBeInTheDocument()
@@ -334,11 +384,15 @@ describe('ConflictResolver — header apply-non-conflicting buttons', () => {
     const user = userEvent.setup()
     renderMerge(mixedApplyBlocks())
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-right-2')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-right-2')).toBeInTheDocument()
+    )
 
     await user.click(screen.getByTestId('merge-apply-right-btn'))
 
-    await waitFor(() => expect(screen.queryByTestId('merge-connector-accept-right-2')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByTestId('merge-connector-accept-right-2')).not.toBeInTheDocument()
+    )
     expect(screen.getByTestId('merge-connector-accept-left-1')).toBeInTheDocument()
     expect(screen.getByTestId('merge-connector-accept-left-3')).toBeInTheDocument()
   })
@@ -347,12 +401,16 @@ describe('ConflictResolver — header apply-non-conflicting buttons', () => {
     const user = userEvent.setup()
     renderMerge(mixedApplyBlocks())
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-1')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-left-1')).toBeInTheDocument()
+    )
 
     await user.click(screen.getByTestId('merge-apply-all-btn'))
 
     await waitFor(() => {
-      expect(fakeEditors.get(centerPath)!.getModel().getValue()).toBe('theirs addition\nours addition\nours conflict')
+      expect(fakeEditors.get(centerPath)!.getModel().getValue()).toBe(
+        'theirs addition\nours addition\nours conflict'
+      )
     })
     // The buttons live in the connector overlay, whose segments are recomputed in a rAF tick —
     // their disappearance is async even though the model text above updated synchronously.
@@ -370,17 +428,25 @@ describe('ConflictResolver — header reset button', () => {
     const user = userEvent.setup()
     renderMerge(conflictBlocks())
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
+    )
     await user.click(screen.getByTestId('merge-connector-accept-left-2'))
-    await waitFor(() => expect(fakeEditors.get(centerPath)!.getModel().getValue()).toContain('theirs conflict'))
-    await waitFor(() => expect(screen.queryByTestId('merge-connector-accept-left-2')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(fakeEditors.get(centerPath)!.getModel().getValue()).toContain('theirs conflict')
+    )
+    await waitFor(() =>
+      expect(screen.queryByTestId('merge-connector-accept-left-2')).not.toBeInTheDocument()
+    )
 
     await user.click(screen.getByTestId('merge-reset-btn'))
 
     await waitFor(() => {
       expect(fakeEditors.get(centerPath)!.getModel().getValue()).toBe('header\nours conflict')
     })
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
+    )
   })
 })
 
@@ -425,13 +491,22 @@ describe('ConflictResolver — undo/redo history bookkeeping', () => {
     const user = userEvent.setup()
     renderMerge(conflictBlocks())
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
+    )
     await user.click(screen.getByTestId('merge-connector-accept-left-2'))
-    await waitFor(() => expect(fakeEditors.get(centerPath)!.getModel().getValue()).toContain('theirs conflict'))
-    await waitFor(() => expect(screen.queryByTestId('merge-connector-accept-left-2')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(fakeEditors.get(centerPath)!.getModel().getValue()).toContain('theirs conflict')
+    )
+    await waitFor(() =>
+      expect(screen.queryByTestId('merge-connector-accept-left-2')).not.toBeInTheDocument()
+    )
 
     // Simulate Monaco's own undo restoring the pre-action text.
-    fakeEditors.get(centerPath)!.getModel().simulateExternalChange('header\nours conflict', { isUndoing: true })
+    fakeEditors
+      .get(centerPath)!
+      .getModel()
+      .simulateExternalChange('header\nours conflict', { isUndoing: true })
 
     await waitFor(() => {
       expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
@@ -454,9 +529,13 @@ describe('ConflictResolver — undo/redo history bookkeeping', () => {
     ]
     renderMerge(blocks)
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-reject-right-1')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-reject-right-1')).toBeInTheDocument()
+    )
     await user.click(screen.getByTestId('merge-connector-reject-right-1')) // resolves without changing text (already "original line")
-    await waitFor(() => expect(screen.queryByTestId('merge-connector-reject-right-1')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByTestId('merge-connector-reject-right-1')).not.toBeInTheDocument()
+    )
 
     fakeEditors.get(centerPath)!.trigger('keyboard', 'undo', null)
 
@@ -469,14 +548,26 @@ describe('ConflictResolver — undo/redo history bookkeeping', () => {
     const user = userEvent.setup()
     renderMerge(conflictBlocks())
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
+    )
     await user.click(screen.getByTestId('merge-connector-accept-left-2'))
-    await waitFor(() => expect(fakeEditors.get(centerPath)!.getModel().getValue()).toContain('theirs conflict'))
+    await waitFor(() =>
+      expect(fakeEditors.get(centerPath)!.getModel().getValue()).toContain('theirs conflict')
+    )
 
-    fakeEditors.get(centerPath)!.getModel().simulateExternalChange('header\nours conflict', { isUndoing: true })
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument())
+    fakeEditors
+      .get(centerPath)!
+      .getModel()
+      .simulateExternalChange('header\nours conflict', { isUndoing: true })
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
+    )
 
-    fakeEditors.get(centerPath)!.getModel().simulateExternalChange('header\nours conflict\ntheirs conflict', { isRedoing: true })
+    fakeEditors
+      .get(centerPath)!
+      .getModel()
+      .simulateExternalChange('header\nours conflict\ntheirs conflict', { isRedoing: true })
 
     await waitFor(() => {
       expect(screen.queryByTestId('merge-connector-accept-left-2')).not.toBeInTheDocument()
@@ -543,7 +634,9 @@ describe('ConflictResolver — 2-panel diff mode', () => {
     await waitFor(() => expect(fakeEditors.get(modifiedPath)).toBeDefined())
 
     await waitFor(() => {
-      expect(screen.getByTestId('merge-connector-ribbon-left-0')).toHaveClass('merge-connector-modification')
+      expect(screen.getByTestId('merge-connector-ribbon-left-0')).toHaveClass(
+        'merge-connector-modification'
+      )
     })
     expect(hasDecorationClass(originalPath, 'merge-text-modification')).toBe(true)
     expect(hasDecorationClass(modifiedPath, 'merge-text-modification')).toBe(true)
@@ -557,9 +650,13 @@ describe('ConflictResolver — 2-panel diff mode', () => {
     await waitFor(() => expect(fakeEditors.get(modifiedPath)).toBeDefined())
 
     await waitFor(() => {
-      expect(screen.getByTestId('merge-connector-ribbon-left-0')).toHaveClass('merge-connector-addition')
+      expect(screen.getByTestId('merge-connector-ribbon-left-0')).toHaveClass(
+        'merge-connector-addition'
+      )
     })
-    expect(decorationClasses(originalPath).some((c) => /^merge-marker-(top|bottom)-addition$/.test(c))).toBe(true)
+    expect(
+      decorationClasses(originalPath).some((c) => /^merge-marker-(top|bottom)-addition$/.test(c))
+    ).toBe(true)
   })
 
   it('a pure deletion is decorated as a deletion, with a boundary marker on the modified pane', async () => {
@@ -568,9 +665,13 @@ describe('ConflictResolver — 2-panel diff mode', () => {
     await waitFor(() => expect(fakeEditors.get(modifiedPath)).toBeDefined())
 
     await waitFor(() => {
-      expect(screen.getByTestId('merge-connector-ribbon-left-0')).toHaveClass('merge-connector-deletion')
+      expect(screen.getByTestId('merge-connector-ribbon-left-0')).toHaveClass(
+        'merge-connector-deletion'
+      )
     })
-    expect(decorationClasses(modifiedPath).some((c) => /^merge-marker-(top|bottom)-deletion$/.test(c))).toBe(true)
+    expect(
+      decorationClasses(modifiedPath).some((c) => /^merge-marker-(top|bottom)-deletion$/.test(c))
+    ).toBe(true)
   })
 
   it('identical original/modified content produces no ribbon at all', async () => {
@@ -589,7 +690,9 @@ describe('ConflictResolver — 2-panel diff mode', () => {
     renderDiff('line1\n  indented\nline3', 'line1\nindented\nline3')
 
     await waitFor(() => expect(fakeEditors.get(modifiedPath)).toBeDefined())
-    await waitFor(() => expect(screen.getByTestId('merge-connector-ribbon-left-0')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-ribbon-left-0')).toBeInTheDocument()
+    )
     expect(fakeDiffEditors).toHaveLength(1)
 
     await user.click(screen.getByTestId('merge-whitespace-dropdown-btn'))
@@ -662,7 +765,9 @@ describe('ConflictResolver — imperative ref API', () => {
     await waitFor(() => expect(fakeEditors.get(centerPath)).toBeDefined())
 
     ref.current!.acceptLeft() // flip away from the default first, to prove acceptRight isn't a no-op
-    await waitFor(() => expect(fakeEditors.get(centerPath)!.getModel().getValue()).toBe('header\ntheirs conflict'))
+    await waitFor(() =>
+      expect(fakeEditors.get(centerPath)!.getModel().getValue()).toBe('header\ntheirs conflict')
+    )
 
     ref.current!.acceptRight()
 
@@ -673,10 +778,46 @@ describe('ConflictResolver — imperative ref API', () => {
 
   it('goToNextChange/goToPreviousChange reveal successive change blocks and stop at the boundaries', async () => {
     const blocks: MergeBlock[] = [
-      { blockId: 1, kind: 'unchanged', oursStartLine: 1, oursLineCount: 1, theirsStartLine: 1, theirsLineCount: 1, oursLines: ['header'], theirsLines: ['header'] },
-      { blockId: 2, kind: 'both-different', oursStartLine: 2, oursLineCount: 1, theirsStartLine: 2, theirsLineCount: 1, oursLines: ['ours a'], theirsLines: ['theirs a'] },
-      { blockId: 3, kind: 'unchanged', oursStartLine: 3, oursLineCount: 1, theirsStartLine: 3, theirsLineCount: 1, oursLines: ['mid'], theirsLines: ['mid'] },
-      { blockId: 4, kind: 'both-different', oursStartLine: 4, oursLineCount: 1, theirsStartLine: 4, theirsLineCount: 1, oursLines: ['ours b'], theirsLines: ['theirs b'] },
+      {
+        blockId: 1,
+        kind: 'unchanged',
+        oursStartLine: 1,
+        oursLineCount: 1,
+        theirsStartLine: 1,
+        theirsLineCount: 1,
+        oursLines: ['header'],
+        theirsLines: ['header'],
+      },
+      {
+        blockId: 2,
+        kind: 'both-different',
+        oursStartLine: 2,
+        oursLineCount: 1,
+        theirsStartLine: 2,
+        theirsLineCount: 1,
+        oursLines: ['ours a'],
+        theirsLines: ['theirs a'],
+      },
+      {
+        blockId: 3,
+        kind: 'unchanged',
+        oursStartLine: 3,
+        oursLineCount: 1,
+        theirsStartLine: 3,
+        theirsLineCount: 1,
+        oursLines: ['mid'],
+        theirsLines: ['mid'],
+      },
+      {
+        blockId: 4,
+        kind: 'both-different',
+        oursStartLine: 4,
+        oursLineCount: 1,
+        theirsStartLine: 4,
+        theirsLineCount: 1,
+        oursLines: ['ours b'],
+        theirsLines: ['theirs b'],
+      },
     ]
     const ref = createRef<ConflictResolverRef>()
     renderMerge(blocks, {}, ref)

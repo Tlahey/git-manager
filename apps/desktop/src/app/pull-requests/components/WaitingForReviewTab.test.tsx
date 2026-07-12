@@ -36,7 +36,9 @@ function makePR(overrides: Partial<MockPR> = {}): MockPR {
 
 describe('WaitingForReviewTab — loading', () => {
   it('shows skeleton rows while loading', () => {
-    const { container } = render(<WaitingForReviewTab allPRs={[]} pinnedIds={new Set()} onTogglePin={vi.fn()} loading />)
+    const { container } = render(
+      <WaitingForReviewTab allPRs={[]} pinnedIds={new Set()} onTogglePin={vi.fn()} loading />
+    )
     expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0)
   })
 })
@@ -47,14 +49,28 @@ describe('WaitingForReviewTab — filtering to needsMyReview', () => {
       makePR({ id: '1', title: 'Needs review', needsMyReview: true }),
       makePR({ id: '2', title: 'Not for me', needsMyReview: false }),
     ]
-    render(<WaitingForReviewTab allPRs={prs} pinnedIds={new Set()} onTogglePin={vi.fn()} loading={false} />)
+    render(
+      <WaitingForReviewTab
+        allPRs={prs}
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+        loading={false}
+      />
+    )
     expect(screen.getByText('Needs review')).toBeInTheDocument()
     expect(screen.queryByText('Not for me')).not.toBeInTheDocument()
   })
 
   it('shows an empty state when nothing needs review', () => {
     const prs = [makePR({ needsMyReview: false })]
-    render(<WaitingForReviewTab allPRs={prs} pinnedIds={new Set()} onTogglePin={vi.fn()} loading={false} />)
+    render(
+      <WaitingForReviewTab
+        allPRs={prs}
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+        loading={false}
+      />
+    )
     expect(screen.getByText("You're all caught up")).toBeInTheDocument()
   })
 })
@@ -66,7 +82,14 @@ describe('WaitingForReviewTab — search and filters', () => {
       makePR({ id: '2', title: 'Add feature', author: 'bob', repo: 'repo-b' }),
     ]
     const user = userEvent.setup()
-    render(<WaitingForReviewTab allPRs={prs} pinnedIds={new Set()} onTogglePin={vi.fn()} loading={false} />)
+    render(
+      <WaitingForReviewTab
+        allPRs={prs}
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+        loading={false}
+      />
+    )
     await user.type(screen.getByPlaceholderText('Search…'), 'bob')
     expect(screen.getByText('Add feature')).toBeInTheDocument()
     expect(screen.queryByText('Fix bug')).not.toBeInTheDocument()
@@ -78,7 +101,14 @@ describe('WaitingForReviewTab — search and filters', () => {
       makePR({ id: '2', title: 'From repo B', repo: 'repo-b' }),
     ]
     const user = userEvent.setup()
-    const { container } = render(<WaitingForReviewTab allPRs={prs} pinnedIds={new Set()} onTogglePin={vi.fn()} loading={false} />)
+    const { container } = render(
+      <WaitingForReviewTab
+        allPRs={prs}
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+        loading={false}
+      />
+    )
     await user.click(screen.getAllByText('Repo')[0])
     // "repo-a" also appears in the PRRow's own repo column, so scope the click to the dropdown popup.
     const dropdown = container.querySelector<HTMLElement>('.absolute.left-0.top-full')!
@@ -95,24 +125,44 @@ describe('WaitingForReviewTab — sorting', () => {
       makePR({ id: '2', title: 'PR by alice', author: 'alice' }),
     ]
     const user = userEvent.setup()
-    const { container } = render(<WaitingForReviewTab allPRs={prs} pinnedIds={new Set()} onTogglePin={vi.fn()} loading={false} />)
+    const { container } = render(
+      <WaitingForReviewTab
+        allPRs={prs}
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+        loading={false}
+      />
+    )
     const sortButtons = Array.from(container.querySelectorAll('.flex.items-center.gap-1 > button'))
     const authorButton = sortButtons.find((b) => b.textContent === 'Author')!
     await user.click(authorButton) // desc by author: zed before alice
-    let titles = Array.from(container.querySelectorAll('.text-xs.font-medium.text-foreground')).map((el) => el.textContent)
+    let titles = Array.from(container.querySelectorAll('.text-xs.font-medium.text-foreground')).map(
+      (el) => el.textContent
+    )
     expect(titles).toEqual(['PR by zed', 'PR by alice'])
 
     await user.click(authorButton) // toggled to asc: alice before zed
-    titles = Array.from(container.querySelectorAll('.text-xs.font-medium.text-foreground')).map((el) => el.textContent)
+    titles = Array.from(container.querySelectorAll('.text-xs.font-medium.text-foreground')).map(
+      (el) => el.textContent
+    )
     expect(titles).toEqual(['PR by alice', 'PR by zed'])
   })
 })
 
 describe('WaitingForReviewTab — pagination', () => {
   it('shows a Load more button when there are more than 20 PRs, and loads more on click', async () => {
-    const prs = Array.from({ length: 25 }, (_, i) => makePR({ id: String(i), title: `PR number ${i}` }))
+    const prs = Array.from({ length: 25 }, (_, i) =>
+      makePR({ id: String(i), title: `PR number ${i}` })
+    )
     const user = userEvent.setup()
-    render(<WaitingForReviewTab allPRs={prs} pinnedIds={new Set()} onTogglePin={vi.fn()} loading={false} />)
+    render(
+      <WaitingForReviewTab
+        allPRs={prs}
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+        loading={false}
+      />
+    )
     expect(screen.getByText('Load more (5 remaining)')).toBeInTheDocument()
     expect(screen.queryByText('PR number 24')).not.toBeInTheDocument()
 
@@ -122,8 +172,17 @@ describe('WaitingForReviewTab — pagination', () => {
   })
 
   it('hides Load more when there are 20 or fewer PRs', () => {
-    const prs = Array.from({ length: 5 }, (_, i) => makePR({ id: String(i), title: `PR number ${i}` }))
-    render(<WaitingForReviewTab allPRs={prs} pinnedIds={new Set()} onTogglePin={vi.fn()} loading={false} />)
+    const prs = Array.from({ length: 5 }, (_, i) =>
+      makePR({ id: String(i), title: `PR number ${i}` })
+    )
+    render(
+      <WaitingForReviewTab
+        allPRs={prs}
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+        loading={false}
+      />
+    )
     expect(screen.queryByText(/Load more/)).not.toBeInTheDocument()
   })
 })
@@ -133,7 +192,14 @@ describe('WaitingForReviewTab — pin toggling', () => {
     const onTogglePin = vi.fn()
     const prs = [makePR({ id: 'pr-1', title: 'Pinnable PR' })]
     const user = userEvent.setup()
-    render(<WaitingForReviewTab allPRs={prs} pinnedIds={new Set(['pr-1'])} onTogglePin={onTogglePin} loading={false} />)
+    render(
+      <WaitingForReviewTab
+        allPRs={prs}
+        pinnedIds={new Set(['pr-1'])}
+        onTogglePin={onTogglePin}
+        loading={false}
+      />
+    )
     expect(screen.getByTitle('Unpin')).toBeInTheDocument()
     await user.click(screen.getByTitle('Unpin'))
     expect(onTogglePin).toHaveBeenCalledWith('pr-1')

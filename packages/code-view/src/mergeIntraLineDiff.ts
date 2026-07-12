@@ -72,8 +72,10 @@ function prefixSuffixRanges(a: string, b: string): { a: CharRange[]; b: CharRang
   let suffix = 0
   while (suffix < max - prefix && a[a.length - 1 - suffix] === b[b.length - 1 - suffix]) suffix++
   if (prefix === 0 && suffix === 0) return undefined // nothing in common — block fill says it all
-  const rangesA: CharRange[] = prefix < a.length - suffix ? [{ start: prefix, end: a.length - suffix }] : []
-  const rangesB: CharRange[] = prefix < b.length - suffix ? [{ start: prefix, end: b.length - suffix }] : []
+  const rangesA: CharRange[] =
+    prefix < a.length - suffix ? [{ start: prefix, end: a.length - suffix }] : []
+  const rangesB: CharRange[] =
+    prefix < b.length - suffix ? [{ start: prefix, end: b.length - suffix }] : []
   return { a: rangesA, b: rangesB }
 }
 
@@ -85,7 +87,10 @@ function prefixSuffixRanges(a: string, b: string): { a: CharRange[]; b: CharRang
  * Returns `undefined` when the two lines share no meaningful (non-whitespace) token — they're
  * not really "the same line edited", so an intra highlight would just repaint almost everything
  * in a louder color; the block-level fill already conveys "this whole line differs". */
-export function changedCharRanges(a: string, b: string): { a: CharRange[]; b: CharRange[] } | undefined {
+export function changedCharRanges(
+  a: string,
+  b: string
+): { a: CharRange[]; b: CharRange[] } | undefined {
   if (a === b) return { a: [], b: [] }
 
   const tokensA = tokenize(a)
@@ -98,13 +103,16 @@ export function changedCharRanges(a: string, b: string): { a: CharRange[]; b: Ch
   const dp: Uint32Array[] = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1))
   for (let i = n - 1; i >= 0; i--) {
     for (let j = m - 1; j >= 0; j--) {
-      dp[i][j] = tokensA[i].text === tokensB[j].text ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1])
+      dp[i][j] =
+        tokensA[i].text === tokensB[j].text
+          ? dp[i + 1][j + 1] + 1
+          : Math.max(dp[i + 1][j], dp[i][j + 1])
     }
   }
 
   // …then walk it to mark which tokens survive on both sides.
-  const matchedA = new Array<boolean>(n).fill(false)
-  const matchedB = new Array<boolean>(m).fill(false)
+  const matchedA = Array.from<boolean>({ length: n }).fill(false)
+  const matchedB = Array.from<boolean>({ length: m }).fill(false)
   let sharesMeaningfulToken = false
   let i = 0
   let j = 0
@@ -184,10 +192,20 @@ export function computeIntraLineHighlights(
         if (!ranges) continue
 
         for (const r of ranges.a) {
-          out[side].push({ line: sideStartLine + i, startColumn: r.start + 1, endColumn: r.end + 1, inlineClassName })
+          out[side].push({
+            line: sideStartLine + i,
+            startColumn: r.start + 1,
+            endColumn: r.end + 1,
+            inlineClassName,
+          })
         }
         for (const r of ranges.b) {
-          out.center.push({ line: centerRange.start + i, startColumn: r.start + 1, endColumn: r.end + 1, inlineClassName })
+          out.center.push({
+            line: centerRange.start + i,
+            startColumn: r.start + 1,
+            endColumn: r.end + 1,
+            inlineClassName,
+          })
         }
       }
     }

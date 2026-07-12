@@ -4,17 +4,34 @@ import userEvent from '@testing-library/user-event'
 import type { GitRepo } from '@git-manager/git-types'
 
 vi.mock('./NewTabMenu', () => ({ NewTabMenu: () => <div data-testid="new-tab-menu" /> }))
-vi.mock('../action-toolbar/UserProfile', () => ({ UserProfile: () => <div data-testid="user-profile" /> }))
-vi.mock('../notification/NotificationDropdown', () => ({ NotificationDropdown: () => <div data-testid="notification-dropdown" /> }))
+vi.mock('../action-toolbar/UserProfile', () => ({
+  UserProfile: () => <div data-testid="user-profile" />,
+}))
+vi.mock('../notification/NotificationDropdown', () => ({
+  NotificationDropdown: () => <div data-testid="notification-dropdown" />,
+}))
 
 import { TabBar } from './TabBar'
-import { useRepoUIStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from '../../stores/repoUI.store'
+import {
+  useRepoUIStore,
+  DASHBOARD_TAB,
+  REWARDS_TAB,
+  PULL_REQUESTS_TAB,
+} from '../../stores/repoUI.store'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useDevFixtureReposStore } from '../../stores/devFixtureRepos.store'
 import { useGameStore } from '../../stores/game.store'
 
 function repo(overrides: Partial<GitRepo> = {}): GitRepo {
-  return { path: '/repo/a', name: 'repo-a', head: 'main', isDetached: false, isDirty: false, remotes: [], ...overrides }
+  return {
+    path: '/repo/a',
+    name: 'repo-a',
+    head: 'main',
+    isDetached: false,
+    isDirty: false,
+    remotes: [],
+    ...overrides,
+  }
 }
 
 beforeEach(() => {
@@ -68,7 +85,9 @@ describe('TabBar — pinned tabs', () => {
 describe('TabBar — repo tabs', () => {
   beforeEach(() => {
     useRepoUIStore.setState({ openTabs: ['/repo/a', '/repo/b'], activeTab: '/repo/a' })
-    useRepoDataStore.setState({ repoCache: { '/repo/a': repo({ path: '/repo/a', name: 'repo-a' }) } })
+    useRepoDataStore.setState({
+      repoCache: { '/repo/a': repo({ path: '/repo/a', name: 'repo-a' }) },
+    })
   })
 
   it('shows the cached name, falling back to the last path segment', () => {
@@ -87,7 +106,9 @@ describe('TabBar — repo tabs', () => {
   it('closes a tab via its close control without activating it first', async () => {
     const user = userEvent.setup()
     render(<TabBar onOpenSettings={vi.fn()} />)
-    const closeControls = screen.getAllByRole('button', { hidden: true }).filter((el) => el.getAttribute('tabindex') === '-1')
+    const closeControls = screen
+      .getAllByRole('button', { hidden: true })
+      .filter((el) => el.getAttribute('tabindex') === '-1')
     await user.click(closeControls[0])
     expect(useRepoUIStore.getState().openTabs).not.toContain('/repo/a')
   })
@@ -107,7 +128,9 @@ describe('TabBar — repo tabs', () => {
 
 describe('TabBar — dev fixture tabs', () => {
   beforeEach(() => {
-    useDevFixtureReposStore.setState({ fixtures: [{ name: 'conflict', path: '/tmp/conflict', description: 'a rebase conflict' }] })
+    useDevFixtureReposStore.setState({
+      fixtures: [{ name: 'conflict', path: '/tmp/conflict', description: 'a rebase conflict' }],
+    })
   })
 
   it('renders the fixture tab and activates it via setActiveRepo', async () => {
@@ -121,7 +144,9 @@ describe('TabBar — dev fixture tabs', () => {
     useRepoUIStore.setState({ activeTab: '/tmp/conflict' })
     const user = userEvent.setup()
     render(<TabBar onOpenSettings={vi.fn()} />)
-    const closeControls = screen.getAllByRole('button', { hidden: true }).filter((el) => el.getAttribute('tabindex') === '-1')
+    const closeControls = screen
+      .getAllByRole('button', { hidden: true })
+      .filter((el) => el.getAttribute('tabindex') === '-1')
     await user.click(closeControls[0])
 
     expect(useDevFixtureReposStore.getState().fixtures).toEqual([])

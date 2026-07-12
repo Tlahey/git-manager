@@ -7,7 +7,9 @@ function node(oid: string): GitGraphNode {
   return { commit: { oid } } as GitGraphNode
 }
 
-function clickEvent(overrides: Partial<{ shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }> = {}) {
+function clickEvent(
+  overrides: Partial<{ shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }> = {}
+) {
   return { shiftKey: false, metaKey: false, ctrlKey: false, ...overrides } as React.MouseEvent
 }
 

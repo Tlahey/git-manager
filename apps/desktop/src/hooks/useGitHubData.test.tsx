@@ -28,7 +28,9 @@ import type { MockPR } from '../app/pull-requests/types'
 
 const mocked = {
   fetchGitHubPRs: fetchGitHubPRs as unknown as ReturnType<typeof vi.fn>,
-  fetchGitHubReviewRequestedPRs: fetchGitHubReviewRequestedPRs as unknown as ReturnType<typeof vi.fn>,
+  fetchGitHubReviewRequestedPRs: fetchGitHubReviewRequestedPRs as unknown as ReturnType<
+    typeof vi.fn
+  >,
   fetchGitHubIssues: fetchGitHubIssues as unknown as ReturnType<typeof vi.fn>,
   fetchGitHubPRDetails: fetchGitHubPRDetails as unknown as ReturnType<typeof vi.fn>,
   fetchGitHubCommitCiStatus: fetchGitHubCommitCiStatus as unknown as ReturnType<typeof vi.fn>,
@@ -38,7 +40,9 @@ const mocked = {
 const DEFAULT_SETTINGS = useSettingsStore.getState().settings
 
 function wrapper({ children }: { children: ReactNode }) {
-  return <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>{children}</SWRConfig>
+  return (
+    <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>{children}</SWRConfig>
+  )
 }
 
 function pr(overrides: Partial<MockPR> = {}): MockPR {
@@ -74,7 +78,13 @@ function withToken() {
     settings: {
       ...DEFAULT_SETTINGS,
       github: {
-        accounts: [{ id: 'acc1', token: 'tok', user: { login: 'me', name: null, email: null, avatarUrl: '' } }],
+        accounts: [
+          {
+            id: 'acc1',
+            token: 'tok',
+            user: { login: 'me', name: null, email: null, avatarUrl: '' },
+          },
+        ],
         activeAccountId: 'acc1',
       },
     },
@@ -116,7 +126,9 @@ describe('useGitHubData — with a token', () => {
   it('fetches and merges PR search + review-requested search results', async () => {
     withToken()
     mocked.fetchGitHubPRs.mockResolvedValue([pr({ id: 'pr-1', needsMyReview: false })])
-    mocked.fetchGitHubReviewRequestedPRs.mockResolvedValue([pr({ id: 'pr-2', needsMyReview: false })])
+    mocked.fetchGitHubReviewRequestedPRs.mockResolvedValue([
+      pr({ id: 'pr-2', needsMyReview: false }),
+    ])
 
     const { result } = renderHook(() => useGitHubData(), { wrapper })
     await waitFor(() => expect(result.current.loading).toBe(false))
@@ -141,7 +153,12 @@ describe('useGitHubData — with a token', () => {
   it('enriches PRs with details from fetchGitHubPRDetails', async () => {
     withToken()
     mocked.fetchGitHubPRs.mockResolvedValue([pr({ id: 'pr-1' })])
-    mocked.fetchGitHubPRDetails.mockResolvedValue({ additions: 12, deletions: 3, changed_files: 4, mergeable: false })
+    mocked.fetchGitHubPRDetails.mockResolvedValue({
+      additions: 12,
+      deletions: 3,
+      changed_files: 4,
+      mergeable: false,
+    })
 
     const { result } = renderHook(() => useGitHubData(), { wrapper })
     await waitFor(() => expect(result.current.loading).toBe(false))
@@ -173,7 +190,10 @@ describe('useGitHubData — with a token', () => {
     mocked.fetchGitHubPRs.mockResolvedValue([pr({ id: 'pr-1' })])
     mocked.fetchGitHubPRDetails.mockResolvedValue({ head: { sha: 'sha1' } })
     mocked.fetchGitHubCommitCiStatus.mockResolvedValue({
-      checkRunsRes: { total_count: 1, check_runs: [{ status: 'completed', conclusion: 'failure' }] },
+      checkRunsRes: {
+        total_count: 1,
+        check_runs: [{ status: 'completed', conclusion: 'failure' }],
+      },
       statusRes: null,
     })
 
@@ -201,7 +221,10 @@ describe('useGitHubData — with a token', () => {
     mocked.fetchGitHubPRs.mockResolvedValue([pr({ id: 'pr-1' })])
     mocked.fetchGitHubPRDetails.mockResolvedValue({ head: { sha: 'sha1' } })
     mocked.fetchGitHubCommitCiStatus.mockResolvedValue({
-      checkRunsRes: { total_count: 1, check_runs: [{ status: 'completed', conclusion: 'success' }] },
+      checkRunsRes: {
+        total_count: 1,
+        check_runs: [{ status: 'completed', conclusion: 'success' }],
+      },
       statusRes: null,
     })
 
@@ -215,7 +238,10 @@ describe('useGitHubData — with a token', () => {
     mocked.fetchGitHubPRs.mockResolvedValue([pr({ id: 'pr-1' })])
     mocked.fetchGitHubPRDetails.mockResolvedValue({ head: { sha: 'sha1' } })
     mocked.fetchGitHubCommitCiStatus.mockResolvedValue({
-      checkRunsRes: { total_count: 1, check_runs: [{ status: 'completed', conclusion: 'skipped' }] },
+      checkRunsRes: {
+        total_count: 1,
+        check_runs: [{ status: 'completed', conclusion: 'skipped' }],
+      },
       statusRes: null,
     })
 

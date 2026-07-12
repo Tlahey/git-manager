@@ -172,7 +172,10 @@ export function useMergeHistory({
         const history = historyRef.current
         if (history.length > 0) {
           const entry = history[history.length - 1]
-          if (isUndoingGutterActionRef.current || (entry.textChange && currentAltId === entry.altIdBefore)) {
+          if (
+            isUndoingGutterActionRef.current ||
+            (entry.textChange && currentAltId === entry.altIdBefore)
+          ) {
             history.pop()
             redoRef.current.push(entry)
             updatePlacementsStateAndRef(entry.prePlacements)
@@ -189,7 +192,10 @@ export function useMergeHistory({
         const redo = redoRef.current
         if (redo.length > 0) {
           const entry = redo[redo.length - 1]
-          if (isRedoingGutterActionRef.current || (entry.textChange && currentAltId === entry.altIdAfter)) {
+          if (
+            isRedoingGutterActionRef.current ||
+            (entry.textChange && currentAltId === entry.altIdAfter)
+          ) {
             redo.pop()
             historyRef.current.push(entry)
             updatePlacementsStateAndRef(entry.postPlacements)

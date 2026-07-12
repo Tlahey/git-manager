@@ -65,4 +65,3 @@ export interface DayCommit {
 export type SortKey = 'date' | 'status' | 'author' | 'repo' | 'files'
 export type SortDir = 'asc' | 'desc'
 export type InnerTab = 'prs' | 'followed' | 'issues' | 'waiting' | 'stats' | 'views'
-

@@ -193,7 +193,14 @@ describe('Tooltip — positioning', () => {
     )
     const trigger = screen.getByText('Trigger')
     // Far right edge: a "right" placement would overflow past window.innerWidth.
-    stubRect(trigger, { top: 300, left: window.innerWidth - 10, right: window.innerWidth, bottom: 320, width: 10, height: 20 })
+    stubRect(trigger, {
+      top: 300,
+      left: window.innerWidth - 10,
+      right: window.innerWidth,
+      bottom: 320,
+      width: 10,
+      height: 20,
+    })
 
     fireEvent.mouseEnter(trigger)
     act(() => vi.advanceTimersByTime(150))

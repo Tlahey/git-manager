@@ -14,9 +14,14 @@ const INITIAL = useGitGraphColumnsStore.getState()
 // hand (a plain Event with clientX assigned as an own property) for both the React-handled
 // pointerdown on the handle and the raw window.addEventListener('pointermove'/'pointerup', ...)
 // pair the component wires up itself.
-function firePointer(target: EventTarget, type: 'pointerdown' | 'pointermove' | 'pointerup', clientX?: number) {
+function firePointer(
+  target: EventTarget,
+  type: 'pointerdown' | 'pointermove' | 'pointerup',
+  clientX?: number
+) {
   const event = new Event(type, { bubbles: true, cancelable: true })
-  if (clientX !== undefined) Object.defineProperty(event, 'clientX', { value: clientX, configurable: true })
+  if (clientX !== undefined)
+    Object.defineProperty(event, 'clientX', { value: clientX, configurable: true })
   target.dispatchEvent(event)
 }
 
@@ -38,7 +43,10 @@ beforeEach(() => {
 
 describe('GraphHeader — rendering', () => {
   it('renders every column label in order', () => {
-    const columns = [col({ key: 'refs', labelKey: 'gitTree.columns.refs' }), col({ key: 'graph', labelKey: 'gitTree.columns.graph' })]
+    const columns = [
+      col({ key: 'refs', labelKey: 'gitTree.columns.refs' }),
+      col({ key: 'graph', labelKey: 'gitTree.columns.graph' }),
+    ]
     render(<GraphHeader columns={columns} />)
     expect(screen.getByText('gitTree.columns.refs')).toBeInTheDocument()
     expect(screen.getByText('gitTree.columns.graph')).toBeInTheDocument()
@@ -80,7 +88,10 @@ describe('GraphHeader — resizing', () => {
   })
 
   it('shrinks the column width when dragging the left handle to the right (inverted delta)', () => {
-    const columns = [col({ key: 'message', flex: true }), col({ key: 'author', flex: false, width: 150 })]
+    const columns = [
+      col({ key: 'message', flex: true }),
+      col({ key: 'author', flex: false, width: 150 }),
+    ]
     const { container } = render(<GraphHeader columns={columns} />)
     const leftHandle = container.querySelectorAll('.cursor-col-resize')[0]
 

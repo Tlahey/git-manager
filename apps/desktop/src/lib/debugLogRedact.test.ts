@@ -8,7 +8,10 @@ describe('redactArgs', () => {
   })
 
   it('keeps ordinary scalar args intact', () => {
-    expect(redactArgs('get_log', { path: '/repo', limit: 50 })).toEqual({ path: '/repo', limit: 50 })
+    expect(redactArgs('get_log', { path: '/repo', limit: 50 })).toEqual({
+      path: '/repo',
+      limit: 50,
+    })
   })
 
   it('drops the whole arg object for auth/credential-shaped commands', () => {
@@ -33,7 +36,9 @@ describe('redactArgs', () => {
   })
 
   it('stringifies nested objects/arrays rather than keeping references', () => {
-    const out = redactArgs('run_interactive_rebase', { steps: [{ action: 'pick' }] }) as { steps: unknown }
+    const out = redactArgs('run_interactive_rebase', { steps: [{ action: 'pick' }] }) as {
+      steps: unknown
+    }
     expect(typeof out.steps).toBe('string')
     expect(out.steps).toContain('pick')
   })

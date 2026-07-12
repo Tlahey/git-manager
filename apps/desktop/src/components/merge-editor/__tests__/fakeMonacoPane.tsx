@@ -66,7 +66,12 @@ export function createFakeModel(initialValue: string) {
     getLineMaxColumn: (n: number) => (currentLines()[n - 1]?.length ?? 0) + 1,
     getFullModelRange: (): FakeRange => {
       const lines = currentLines()
-      return { startLineNumber: 1, startColumn: 1, endLineNumber: lines.length, endColumn: (lines[lines.length - 1]?.length ?? 0) + 1 }
+      return {
+        startLineNumber: 1,
+        startColumn: 1,
+        endLineNumber: lines.length,
+        endColumn: (lines[lines.length - 1]?.length ?? 0) + 1,
+      }
     },
     getAlternativeVersionId: () => currentAltId,
     undoStack,
@@ -115,7 +120,10 @@ export function createFakeModel(initialValue: string) {
     pushStackElement: () => {},
     /** Test-only escape hatch for simulating a change Monaco itself would have made outside of
      * our own `executeEdits` calls — manual typing, or an undo/redo restoring prior text. */
-    simulateExternalChange: (newText: string, event: { isUndoing?: boolean; isRedoing?: boolean } = {}) => {
+    simulateExternalChange: (
+      newText: string,
+      event: { isUndoing?: boolean; isRedoing?: boolean } = {}
+    ) => {
       const prevText = text
       const prevAltId = currentAltId
 
@@ -159,7 +167,11 @@ export interface FakeEditorInstance {
   executeEdits: (source: string, edits: FakeEdit[]) => void
   changeViewZones: (
     cb: (accessor: {
-      addZone: (zone: { afterLineNumber: number; heightInLines: number; domNode: HTMLElement }) => string
+      addZone: (zone: {
+        afterLineNumber: number
+        heightInLines: number
+        domNode: HTMLElement
+      }) => string
       removeZone: (id: string) => void
     }) => void
   ) => void
@@ -196,7 +208,11 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
     getModel: () => model,
     createDecorationsCollection: (initial) => {
       instance.decorations = initial
-      return { set: (d: unknown[]) => { instance.decorations = d } }
+      return {
+        set: (d: unknown[]) => {
+          instance.decorations = d
+        },
+      }
     },
     onDidScrollChange: () => ({ dispose: () => {} }),
     onDidLayoutChange: () => ({ dispose: () => {} }),
@@ -215,7 +231,9 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
       })
     },
     getScrollTop: () => scrollTop,
-    setScrollTop: (val: number) => { scrollTop = val },
+    setScrollTop: (val: number) => {
+      scrollTop = val
+    },
     getTopForLineNumber: (line: number) => (line - 1) * LINE_HEIGHT,
     addCommand: (keybinding, handler) => {
       commands.set(keybinding, handler)

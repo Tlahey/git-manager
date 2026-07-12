@@ -10,7 +10,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window'
 // Only names with a bundled PNG resource go here — items without one fall back to the
 // transparent blank spacer (see `makeItem`) rather than logging a resolve failure on every load.
 const ICON_NAMES = ['copy_sha', 'branch', 'tag', 'reset', 'revert', 'fixup'] as const
-type IconName = typeof ICON_NAMES[number]
+type IconName = (typeof ICON_NAMES)[number]
 
 let resolvedIcons: Partial<Record<IconName, Image>> = {}
 // Tinted variants of the same glyphs — macOS renders custom (non-template) menu
@@ -33,7 +33,7 @@ const DISABLED_OPACITY = 0.4
 async function tintImage(
   base: Image,
   [r, g, b]: [number, number, number],
-  opacity = 1,
+  opacity = 1
 ): Promise<Image> {
   const [{ width, height }, rgba] = await Promise.all([base.size(), base.rgba()])
   const out = new Uint8Array(rgba.length)
@@ -79,7 +79,7 @@ async function loadIcons(): Promise<void> {
       } catch (err) {
         console.warn(`[nativeMenu] Failed to load icon "${name}":`, err)
       }
-    }),
+    })
   )
 }
 
@@ -92,20 +92,22 @@ async function refreshThemeState(): Promise<void> {
   }
 }
 
-async function makeItem(
-  opts: {
-    text: string
-    icon?: IconName
-    enabled?: boolean
-    action?: () => void
-  }
-): Promise<MenuItem | IconMenuItem> {
+async function makeItem(opts: {
+  text: string
+  icon?: IconName
+  enabled?: boolean
+  action?: () => void
+}): Promise<MenuItem | IconMenuItem> {
   const { text, icon, enabled = true, action } = opts
 
   // Disabled always wins (greyed out) regardless of theme; otherwise pick the
   // white variant in dark mode so the glyph stays visible against the dark menu.
   const tinted = icon
-    ? (!enabled ? greyIcons[icon] : isDarkWindow ? whiteIcons[icon] : resolvedIcons[icon])
+    ? !enabled
+      ? greyIcons[icon]
+      : isDarkWindow
+        ? whiteIcons[icon]
+        : resolvedIcons[icon]
     : undefined
 
   // Use the tinted/loaded icon or fall back to the transparent blank placeholder to align items
@@ -213,51 +215,113 @@ export async function showCommitNativeContextMenu(opts: CommitNativeMenuOptions)
   await refreshThemeState()
 
   // ── Header (multi-select count) ───────────────────────────────────────────
-  const header = targetCount > 1
-    ? await MenuItem.new({ text: labels.selectedCount, enabled: false })
-    : null
+  const header =
+    targetCount > 1 ? await MenuItem.new({ text: labels.selectedCount, enabled: false }) : null
 
   // ── Items ─────────────────────────────────────────────────────────────────
-  const checkoutItem   = await makeItem({ text: labels.checkout,       enabled: isSingle, action: () => onCheckout() })
-  const worktreeItem   = await makeItem({ text: labels.createWorktree, enabled: isSingle, action: () => onCreateWorktree() })
-  const createBranch   = await makeItem({ text: labels.createBranch,   icon: 'branch', enabled: isSingle, action: () => onCreateBranch() })
-  const cherryItem     = await makeItem({ text: labels.cherryPick,     enabled: isSingle, action: () => onCherryPick() })
-  const rebaseOntoItem = await makeItem({ text: labels.rebaseOnto,     enabled: isSingle, action: () => onRebaseOnto() })
-  const revertItem     = await makeItem({ text: labels.revert,         icon: 'revert', enabled: isSingle, action: () => onRevert() })
+  const checkoutItem = await makeItem({
+    text: labels.checkout,
+    enabled: isSingle,
+    action: () => onCheckout(),
+  })
+  const worktreeItem = await makeItem({
+    text: labels.createWorktree,
+    enabled: isSingle,
+    action: () => onCreateWorktree(),
+  })
+  const createBranch = await makeItem({
+    text: labels.createBranch,
+    icon: 'branch',
+    enabled: isSingle,
+    action: () => onCreateBranch(),
+  })
+  const cherryItem = await makeItem({
+    text: labels.cherryPick,
+    enabled: isSingle,
+    action: () => onCherryPick(),
+  })
+  const rebaseOntoItem = await makeItem({
+    text: labels.rebaseOnto,
+    enabled: isSingle,
+    action: () => onRebaseOnto(),
+  })
+  const revertItem = await makeItem({
+    text: labels.revert,
+    icon: 'revert',
+    enabled: isSingle,
+    action: () => onRevert(),
+  })
 
-  const resetSoftItem  = await makeItem({ text: labels.resetSoft,  action: () => onReset('soft') })
+  const resetSoftItem = await makeItem({ text: labels.resetSoft, action: () => onReset('soft') })
   const resetMixedItem = await makeItem({ text: labels.resetMixed, action: () => onReset('mixed') })
-  const resetHardItem  = await makeItem({ text: labels.resetHard,  action: () => onReset('hard') })
+  const resetHardItem = await makeItem({ text: labels.resetHard, action: () => onReset('hard') })
   const resetSubmenu = await Submenu.new({
     text: labels.resetSubmenu,
     icon: blankImg,
     enabled: isSingle,
     items: [resetSoftItem, resetMixedItem, resetHardItem],
   })
-  const undoCommitItem = await makeItem({ text: labels.undoCommit, icon: 'reset', enabled: undoCommitEnabled, action: () => onUndoCommit() })
+  const undoCommitItem = await makeItem({
+    text: labels.undoCommit,
+    icon: 'reset',
+    enabled: undoCommitEnabled,
+    action: () => onUndoCommit(),
+  })
 
   // Deferred: a richer WebStorm-style interactive rebase UI will implement these later.
   // They stay visible (disabled) with a transparent spacer icon so menu alignment holds.
   const recomposeItem = await makeItem({ text: labels.recompose, enabled: false })
   const interactiveRebaseItem = await makeItem({ text: labels.interactiveRebase, enabled: false })
   const editMessageItem = await makeItem({ text: labels.editMessage, enabled: false })
-  const dropItem        = await makeItem({ text: labels.drop,        enabled: false })
-  const moveUpItem       = await makeItem({ text: labels.moveUp,     enabled: false })
-  const moveDownItem     = await makeItem({ text: labels.moveDown,   enabled: false })
+  const dropItem = await makeItem({ text: labels.drop, enabled: false })
+  const moveUpItem = await makeItem({ text: labels.moveUp, enabled: false })
+  const moveDownItem = await makeItem({ text: labels.moveDown, enabled: false })
 
-  const copySha       = await makeItem({ text: labels.copySha, icon: 'copy_sha', enabled: isSingle, action: () => onCopySha() })
-  const copyLinkItem  = await makeItem({ text: labels.copyLink, enabled: isSingle, action: () => onCopyLink() })
-  const patchItem     = await makeItem({ text: labels.createPatch, enabled: isSingle, action: () => onCreatePatch() })
+  const copySha = await makeItem({
+    text: labels.copySha,
+    icon: 'copy_sha',
+    enabled: isSingle,
+    action: () => onCopySha(),
+  })
+  const copyLinkItem = await makeItem({
+    text: labels.copyLink,
+    enabled: isSingle,
+    action: () => onCopyLink(),
+  })
+  const patchItem = await makeItem({
+    text: labels.createPatch,
+    enabled: isSingle,
+    action: () => onCreatePatch(),
+  })
 
-  const compareItem   = await makeItem({ text: labels.compareToWorkdir, enabled: isSingle, action: () => onCompareToWorkdir() })
+  const compareItem = await makeItem({
+    text: labels.compareToWorkdir,
+    enabled: isSingle,
+    action: () => onCompareToWorkdir(),
+  })
 
-  const createTag         = await makeItem({ text: labels.createTag,         icon: 'tag', enabled: isSingle, action: () => onCreateTag() })
-  const createAnnotatedTag = await makeItem({ text: labels.createAnnotatedTag, icon: 'tag', enabled: isSingle, action: () => onCreateAnnotatedTag() })
+  const createTag = await makeItem({
+    text: labels.createTag,
+    icon: 'tag',
+    enabled: isSingle,
+    action: () => onCreateTag(),
+  })
+  const createAnnotatedTag = await makeItem({
+    text: labels.createAnnotatedTag,
+    icon: 'tag',
+    enabled: isSingle,
+    action: () => onCreateAnnotatedTag(),
+  })
 
-  const fixupItem = await makeItem({ text: labels.fixup, icon: 'fixup', enabled: fixupEnabled, action: () => onFixup() })
+  const fixupItem = await makeItem({
+    text: labels.fixup,
+    icon: 'fixup',
+    enabled: fixupEnabled,
+    action: () => onFixup(),
+  })
 
   // ── Separators ────────────────────────────────────────────────────────────
-  const sep  = () => PredefinedMenuItem.new({ item: 'Separator' })
+  const sep = () => PredefinedMenuItem.new({ item: 'Separator' })
 
   // ── Assemble (order matches the spec) ─────────────────────────────────────
   const items: (MenuItem | IconMenuItem | Submenu | PredefinedMenuItem)[] = []
@@ -327,22 +391,18 @@ export async function showStashNativeContextMenu(opts: StashNativeMenuOptions): 
 
   await refreshThemeState()
 
-  const applyItem   = await makeItem({ text: 'Apply stash', action: () => onApply() })
-  const popItem     = await makeItem({ text: 'Pop stash',   action: () => onPop() })
-  const deleteItem  = await makeItem({ text: 'Delete stash', action: () => onDelete() })
-  const editItem    = await makeItem({ text: 'Edit stash message', action: () => onEditMessage() })
-  const hideItem    = await makeItem({ text: isHidden ? 'Show the stash' : 'Hide the stash', action: () => onToggleVisibility() })
+  const applyItem = await makeItem({ text: 'Apply stash', action: () => onApply() })
+  const popItem = await makeItem({ text: 'Pop stash', action: () => onPop() })
+  const deleteItem = await makeItem({ text: 'Delete stash', action: () => onDelete() })
+  const editItem = await makeItem({ text: 'Edit stash message', action: () => onEditMessage() })
+  const hideItem = await makeItem({
+    text: isHidden ? 'Show the stash' : 'Hide the stash',
+    action: () => onToggleVisibility(),
+  })
 
-  const sep  = () => PredefinedMenuItem.new({ item: 'Separator' })
+  const sep = () => PredefinedMenuItem.new({ item: 'Separator' })
 
-  const items = [
-    applyItem,
-    popItem,
-    deleteItem,
-    await sep(),
-    editItem,
-    hideItem,
-  ]
+  const items = [applyItem, popItem, deleteItem, await sep(), editItem, hideItem]
 
   try {
     const menu = await Menu.new({ items })
@@ -384,4 +444,3 @@ export async function showBranchNativeContextMenu(opts: BranchNativeMenuOptions)
     console.error('[nativeMenu] Failed to create or popup native branch menu:', err)
   }
 }
-

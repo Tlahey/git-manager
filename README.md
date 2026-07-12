@@ -11,7 +11,7 @@
 [![Rust](https://img.shields.io/badge/Rust-1.77+-orange)](https://www.rust-lang.org/)
 [![Tauri](https://img.shields.io/badge/Tauri-v2-purple)](https://tauri.app/)
 
-*100% local — no telemetry, no cloud, no data leaves your machine.*
+_100% local — no telemetry, no cloud, no data leaves your machine._
 
 </div>
 
@@ -40,17 +40,17 @@
 
 ## Tech stack
 
-| Layer | Technology |
-|-------|-----------|
-| Desktop runtime | [Tauri v2](https://tauri.app/) |
-| Frontend | React 18 + Vite + TypeScript (strict) |
-| UI components | shadcn/ui + Tailwind CSS (dark mode) |
-| Git backend | Rust + [`git2`](https://crates.io/crates/git2) (libgit2 bindings) |
-| State management | [Zustand](https://zustand-demo.pmnd.rs/) (UI/app state) + [SWR](https://swr.vercel.app/) (new data-fetching hooks) + [TanStack Query](https://tanstack.com/query) (older hooks, being migrated to SWR) |
-| Internationalisation | [react-i18next](https://react.i18next.com/) (EN / FR) |
-| LLM (commit AI) | [Ollama](https://ollama.ai) (local — no API key required) |
-| Remote auth | SSH (system agent) + HTTPS (token) |
-| Monorepo | pnpm workspaces + [Turborepo](https://turbo.build/) |
+| Layer                | Technology                                                                                                                                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Desktop runtime      | [Tauri v2](https://tauri.app/)                                                                                                                                                                         |
+| Frontend             | React 18 + Vite + TypeScript (strict)                                                                                                                                                                  |
+| UI components        | shadcn/ui + Tailwind CSS (dark mode)                                                                                                                                                                   |
+| Git backend          | Rust + [`git2`](https://crates.io/crates/git2) (libgit2 bindings)                                                                                                                                      |
+| State management     | [Zustand](https://zustand-demo.pmnd.rs/) (UI/app state) + [SWR](https://swr.vercel.app/) (new data-fetching hooks) + [TanStack Query](https://tanstack.com/query) (older hooks, being migrated to SWR) |
+| Internationalisation | [react-i18next](https://react.i18next.com/) (EN / FR)                                                                                                                                                  |
+| LLM (commit AI)      | [Ollama](https://ollama.ai) (local — no API key required)                                                                                                                                              |
+| Remote auth          | SSH (system agent) + HTTPS (token)                                                                                                                                                                     |
+| Monorepo             | pnpm workspaces + [Turborepo](https://turbo.build/)                                                                                                                                                    |
 
 ---
 
@@ -104,15 +104,15 @@ git-manager/
 
 ## Prerequisites
 
-| Requirement | Version | Install |
-|-------------|---------|---------|
-| macOS | 13+ (Ventura) | — |
-| Xcode CLT | latest | `xcode-select --install` |
-| Node.js | 20+ | [nodejs.org](https://nodejs.org) |
-| pnpm | 9+ | `npm i -g pnpm` |
-| Rust | 1.77+ | see below |
-| Tauri CLI | v2 | `cargo install tauri-cli` |
-| Ollama | latest | [ollama.ai](https://ollama.ai) |
+| Requirement | Version       | Install                          |
+| ----------- | ------------- | -------------------------------- |
+| macOS       | 13+ (Ventura) | —                                |
+| Xcode CLT   | latest        | `xcode-select --install`         |
+| Node.js     | 20+           | [nodejs.org](https://nodejs.org) |
+| pnpm        | 9+            | `npm i -g pnpm`                  |
+| Rust        | 1.77+         | see below                        |
+| Tauri CLI   | v2            | `cargo install tauri-cli`        |
+| Ollama      | latest        | [ollama.ai](https://ollama.ai)   |
 
 ### 1. Xcode Command Line Tools
 
@@ -135,6 +135,7 @@ source "$HOME/.cargo/env"
 ```
 
 > **Permanent fix:** add the following line to your `~/.zshrc` (or `~/.zshprofile`) so `cargo` is always in your PATH:
+>
 > ```bash
 > export PATH="$HOME/.cargo/bin:$PATH"
 > ```
@@ -192,14 +193,14 @@ pnpm build
 
 All scripts are run from the **repository root**.
 
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Start Tauri dev server (hot reload React + Rust watch) |
-| `pnpm build` | Build production app bundle |
-| `pnpm typecheck` | TypeScript check across all packages |
-| `pnpm lint` | ESLint across all packages |
-| `pnpm format` | Prettier formatting |
-| `pnpm clean` | Remove all build artifacts |
+| Command          | Description                                            |
+| ---------------- | ------------------------------------------------------ |
+| `pnpm dev`       | Start Tauri dev server (hot reload React + Rust watch) |
+| `pnpm build`     | Build production app bundle                            |
+| `pnpm typecheck` | TypeScript check across all packages                   |
+| `pnpm lint`      | ESLint across all packages                             |
+| `pnpm format`    | Prettier formatting                                    |
+| `pnpm clean`     | Remove all build artifacts                             |
 
 ### Per-package
 
@@ -226,12 +227,12 @@ The frontend calls Rust commands via `invoke()`, layered through `lib/tauri.ts` 
 
 Long-running operations (currently: Ollama generation) stream progress via Tauri events:
 
-| Event | Payload | Description |
-|-------|---------|-------------|
-| `ollama:token` | `string` | Next generated token |
-| `ollama:done` | `void` | Generation complete |
-| `ollama:error` | `string` | Error message |
-| `ollama:cancelled` | `void` | Cancelled by user |
+| Event              | Payload  | Description          |
+| ------------------ | -------- | -------------------- |
+| `ollama:token`     | `string` | Next generated token |
+| `ollama:done`      | `void`   | Generation complete  |
+| `ollama:error`     | `string` | Error message        |
+| `ollama:cancelled` | `void`   | Cancelled by user    |
 
 ---
 
@@ -258,16 +259,16 @@ The model is configurable per-project. Temperature and timeout are also adjustab
 
 ## Implemented milestones
 
-| Milestone | Status | Description |
-|-----------|--------|-------------|
-| M0 — Foundations | ✅ Done | Monorepo setup, Tauri scaffold, packages |
-| M1 — Git Tree | ✅ Done | Virtualised commit graph, branch sidebar, commit diff panel |
-| M2 — Working Tree | ✅ Done | Stage/unstage, commit, fetch/pull/push |
-| M3 — Commit AI | ✅ Done | Ollama streaming, settings UI, message history, WIP batch commit |
-| M4 — Rollback & Fixup | ✅ Done | git revert, reset (soft/mixed/hard), fixup + autosquash |
-| M5 — Interactive Rebase | ⬜ Planned | Read-only rebase-state detection done (`get_rebase_state` — idle/in-progress/conflict/edit-pause, for the toolbar's REBASING badge); drag-and-drop rebase UI and the start/abort/continue controls not started |
-| M6 — Worktree & Branches | 🔵 In progress | Branch create/delete/checkout done; branch rename and worktree management not started |
-| M7 — Stash & Polish | 🔵 In progress | Stash push/pop/apply/drop and keyboard shortcuts done; auto-update not started |
+| Milestone                | Status         | Description                                                                                                                                                                                                    |
+| ------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0 — Foundations         | ✅ Done        | Monorepo setup, Tauri scaffold, packages                                                                                                                                                                       |
+| M1 — Git Tree            | ✅ Done        | Virtualised commit graph, branch sidebar, commit diff panel                                                                                                                                                    |
+| M2 — Working Tree        | ✅ Done        | Stage/unstage, commit, fetch/pull/push                                                                                                                                                                         |
+| M3 — Commit AI           | ✅ Done        | Ollama streaming, settings UI, message history, WIP batch commit                                                                                                                                               |
+| M4 — Rollback & Fixup    | ✅ Done        | git revert, reset (soft/mixed/hard), fixup + autosquash                                                                                                                                                        |
+| M5 — Interactive Rebase  | ⬜ Planned     | Read-only rebase-state detection done (`get_rebase_state` — idle/in-progress/conflict/edit-pause, for the toolbar's REBASING badge); drag-and-drop rebase UI and the start/abort/continue controls not started |
+| M6 — Worktree & Branches | 🔵 In progress | Branch create/delete/checkout done; branch rename and worktree management not started                                                                                                                          |
+| M7 — Stash & Polish      | 🔵 In progress | Stash push/pop/apply/drop and keyboard shortcuts done; auto-update not started                                                                                                                                 |
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for the full plan with detailed tasks and acceptance criteria.
 
@@ -288,21 +289,21 @@ These have a typed `invoke()` wrapper already sitting in [`lib/tauri.ts`](apps/d
 
 Detailed specs for every feature are in [docs/specs/](docs/specs/):
 
-| Spec | Feature |
-|------|---------|
-| [00-architecture](docs/specs/00-architecture.md) | Stack, IPC patterns, conventions |
-| [01-dashboard](docs/specs/01-dashboard.md) | Multi-repo dashboard |
-| [02-git-tree](docs/specs/02-git-tree.md) | Commit graph visualisation |
-| [03-commit-generation](docs/specs/03-commit-generation.md) | AI commit messages via Ollama |
-| [04-rollback](docs/specs/04-rollback.md) | Revert / Reset |
-| [05-fixup](docs/specs/05-fixup.md) | Fixup & autosquash |
-| [06-worktree](docs/specs/06-worktree.md) | Git worktree management |
-| [07-rebase-interactive](docs/specs/07-rebase-interactive.md) | Interactive rebase UI |
-| [08-stash](docs/specs/08-stash.md) | Stash management |
-| [09-branch-management](docs/specs/09-branch-management.md) | Branch operations |
-| [10-settings](docs/specs/10-settings.md) | Application settings |
-| [11-pedagogy](docs/specs/11-pedagogy.md) | Contextual git education mode |
-| [12-left-sidebar](docs/specs/12-left-sidebar.md) | Resizable repository sidebar |
+| Spec                                                         | Feature                          |
+| ------------------------------------------------------------ | -------------------------------- |
+| [00-architecture](docs/specs/00-architecture.md)             | Stack, IPC patterns, conventions |
+| [01-dashboard](docs/specs/01-dashboard.md)                   | Multi-repo dashboard             |
+| [02-git-tree](docs/specs/02-git-tree.md)                     | Commit graph visualisation       |
+| [03-commit-generation](docs/specs/03-commit-generation.md)   | AI commit messages via Ollama    |
+| [04-rollback](docs/specs/04-rollback.md)                     | Revert / Reset                   |
+| [05-fixup](docs/specs/05-fixup.md)                           | Fixup & autosquash               |
+| [06-worktree](docs/specs/06-worktree.md)                     | Git worktree management          |
+| [07-rebase-interactive](docs/specs/07-rebase-interactive.md) | Interactive rebase UI            |
+| [08-stash](docs/specs/08-stash.md)                           | Stash management                 |
+| [09-branch-management](docs/specs/09-branch-management.md)   | Branch operations                |
+| [10-settings](docs/specs/10-settings.md)                     | Application settings             |
+| [11-pedagogy](docs/specs/11-pedagogy.md)                     | Contextual git education mode    |
+| [12-left-sidebar](docs/specs/12-left-sidebar.md)             | Resizable repository sidebar     |
 
 Architecture refactor plan and execution tracking live in [docs/architecture/](docs/architecture/) (specs 13 and 14).
 
@@ -310,23 +311,23 @@ Architecture refactor plan and execution tracking live in [docs/architecture/](d
 
 ## Package overview
 
-| Package | Name | Description |
-|---------|------|-------------|
-| `apps/desktop` | `@git-manager/desktop` | Main Tauri + React application |
+| Package              | Name                     | Description                                  |
+| -------------------- | ------------------------ | -------------------------------------------- |
+| `apps/desktop`       | `@git-manager/desktop`   | Main Tauri + React application               |
 | `packages/git-types` | `@git-manager/git-types` | Shared TypeScript DTOs (mirrors Rust models) |
-| `packages/i18n` | `@git-manager/i18n` | i18next setup + EN/FR locale files |
-| `packages/ui` | `@git-manager/ui` | shadcn/ui base components |
-| `packages/config` | `@git-manager/config` | Shared ESLint, Tailwind, tsconfig |
+| `packages/i18n`      | `@git-manager/i18n`      | i18next setup + EN/FR locale files           |
+| `packages/ui`        | `@git-manager/ui`        | shadcn/ui base components                    |
+| `packages/config`    | `@git-manager/config`    | Shared ESLint, Tailwind, tsconfig            |
 
 ---
 
 ## Security
 
-- **No telemetry** — zero analytics, no network calls except Ollama (localhost)  
-- **Credentials stay in Rust** — SSH keys and HTTPS tokens never reach the JavaScript layer  
-- **Tauri ACL** — strict capability permissions via Tauri v2's permission system  
-- **Protected branches** — configurable list of branches that block destructive operations  
-- **Confirmation gates** — hard reset requires typing `RESET`, force-push requires explicit opt-in  
+- **No telemetry** — zero analytics, no network calls except Ollama (localhost)
+- **Credentials stay in Rust** — SSH keys and HTTPS tokens never reach the JavaScript layer
+- **Tauri ACL** — strict capability permissions via Tauri v2's permission system
+- **Protected branches** — configurable list of branches that block destructive operations
+- **Confirmation gates** — hard reset requires typing `RESET`, force-push requires explicit opt-in
 
 ---
 

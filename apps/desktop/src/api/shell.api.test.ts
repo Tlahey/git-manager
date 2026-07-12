@@ -29,7 +29,11 @@ describe('apiOpenTerminal', () => {
   it('invokes "open_in_terminal" with path/terminal/customCommand', async () => {
     invoke.mockResolvedValue(undefined)
     await api.apiOpenTerminal('/repo/a', 'iterm', 'my-term {path}')
-    expect(invoke).toHaveBeenCalledWith('open_in_terminal', { path: '/repo/a', terminal: 'iterm', customCommand: 'my-term {path}' })
+    expect(invoke).toHaveBeenCalledWith('open_in_terminal', {
+      path: '/repo/a',
+      terminal: 'iterm',
+      customCommand: 'my-term {path}',
+    })
   })
 
   it('logs and swallows the error instead of throwing when the backend call fails', async () => {

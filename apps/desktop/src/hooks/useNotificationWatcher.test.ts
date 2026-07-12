@@ -8,13 +8,14 @@ vi.mock('./useGitHubData', () => ({ useGitHubData: () => useGitHubData() }))
 
 vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 
-const { isPermissionGranted, requestPermission, sendNotification, onAction, unregister } = vi.hoisted(() => ({
-  isPermissionGranted: vi.fn(),
-  requestPermission: vi.fn(),
-  sendNotification: vi.fn(),
-  onAction: vi.fn(),
-  unregister: vi.fn(),
-}))
+const { isPermissionGranted, requestPermission, sendNotification, onAction, unregister } =
+  vi.hoisted(() => ({
+    isPermissionGranted: vi.fn(),
+    requestPermission: vi.fn(),
+    sendNotification: vi.fn(),
+    onAction: vi.fn(),
+    unregister: vi.fn(),
+  }))
 vi.mock('@tauri-apps/plugin-notification', () => ({
   isPermissionGranted: (...a: unknown[]) => isPermissionGranted(...a),
   requestPermission: (...a: unknown[]) => requestPermission(...a),
@@ -63,7 +64,11 @@ function mockGitHubData(prs: MockPR[], loading = false) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useNotificationStore.setState({ notifications: [], previousPRs: {}, hasSessionInitialized: false })
+  useNotificationStore.setState({
+    notifications: [],
+    previousPRs: {},
+    hasSessionInitialized: false,
+  })
   useSettingsStore.setState({ settings: DEFAULT_SETTINGS })
   useRepoUIStore.setState({ activeTab: DASHBOARD_TAB })
   useLaunchpadStore.setState({ activeTab: 'prs' })
@@ -122,7 +127,9 @@ describe('useNotificationWatcher — permission + action listener setup', () => 
     expect(windowFocus).toHaveBeenCalledOnce()
     expect(useRepoUIStore.getState().activeTab).toBe(PULL_REQUESTS_TAB)
     expect(useLaunchpadStore.getState().activeTab).toBe('waiting')
-    expect(useNotificationStore.getState().notifications.find((n) => n.id === notif.id)?.read).toBe(true)
+    expect(useNotificationStore.getState().notifications.find((n) => n.id === notif.id)?.read).toBe(
+      true
+    )
   })
 
   it('ignores an action event for an unknown notification id', async () => {
@@ -164,12 +171,18 @@ describe('useNotificationWatcher — PR change detection', () => {
     rerender()
 
     await waitFor(() => expect(useNotificationStore.getState().notifications).toHaveLength(1))
-    expect(useNotificationStore.getState().notifications[0]).toMatchObject({ type: 'pr_merged', prId: 'pr-1' })
+    expect(useNotificationStore.getState().notifications[0]).toMatchObject({
+      type: 'pr_merged',
+      prId: 'pr-1',
+    })
   })
 
   it('does not notify when notifications are globally disabled', async () => {
     useSettingsStore.setState({
-      settings: { ...DEFAULT_SETTINGS, notifications: { ...DEFAULT_SETTINGS.notifications!, enabled: false } },
+      settings: {
+        ...DEFAULT_SETTINGS,
+        notifications: { ...DEFAULT_SETTINGS.notifications!, enabled: false },
+      },
     })
     mockGitHubData([pr({ status: 'open' })])
     const { rerender } = renderHook(() => useNotificationWatcher())
@@ -190,7 +203,9 @@ describe('useNotificationWatcher — PR change detection', () => {
     mockGitHubData([pr({ status: 'merged' })])
     rerender()
 
-    await waitFor(() => expect(useNotificationStore.getState().previousPRs['pr-1'].status).toBe('merged'))
+    await waitFor(() =>
+      expect(useNotificationStore.getState().previousPRs['pr-1'].status).toBe('merged')
+    )
   })
 })
 
@@ -237,7 +252,10 @@ describe('showNativeNotification', () => {
 
   it('includes the sound name only when sound is enabled in settings', async () => {
     useSettingsStore.setState({
-      settings: { ...DEFAULT_SETTINGS, notifications: { ...DEFAULT_SETTINGS.notifications!, enableSound: true, soundName: 'ding' } },
+      settings: {
+        ...DEFAULT_SETTINGS,
+        notifications: { ...DEFAULT_SETTINGS.notifications!, enableSound: true, soundName: 'ding' },
+      },
     })
     const notif = useNotificationStore.getState().addNotification({
       type: 'pr_merged',

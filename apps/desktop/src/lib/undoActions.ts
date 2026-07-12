@@ -37,10 +37,22 @@ export type UndoAction = ActionBase &
   (
     | { type: 'commit'; previousOid: string; newOid: string }
     | { type: 'discard'; filePath: string; blobOid: string; wasStaged: boolean }
-    | { type: 'checkout'; fromRef: string; toRef: string; force: boolean; snapshot: WorktreeSnapshot | null }
+    | {
+        type: 'checkout'
+        fromRef: string
+        toRef: string
+        force: boolean
+        snapshot: WorktreeSnapshot | null
+      }
     | { type: 'deleteBranch'; name: string; targetOid: string; upstream?: string }
     | { type: 'removeRemote'; name: string; url: string }
-    | { type: 'reset'; previousOid: string; targetOid: string; mode: ResetMode; snapshot: WorktreeSnapshot | null }
+    | {
+        type: 'reset'
+        previousOid: string
+        targetOid: string
+        mode: ResetMode
+        snapshot: WorktreeSnapshot | null
+      }
     | { type: 'stashPush'; message?: string; includeUntracked: boolean }
     | { type: 'stashPop'; message: string; commitOid: string; snapshot: WorktreeSnapshot }
     | { type: 'stashApply'; index: number; snapshot: WorktreeSnapshot }

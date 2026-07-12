@@ -14,7 +14,9 @@ describe('HoverExpandLabel — truncated text', () => {
   })
 
   it('applies the container class name to the wrapper', () => {
-    const { container } = render(<HoverExpandLabel containerClassName="my-wrapper">Label</HoverExpandLabel>)
+    const { container } = render(
+      <HoverExpandLabel containerClassName="my-wrapper">Label</HoverExpandLabel>
+    )
     expect(container.firstElementChild).toHaveClass('my-wrapper')
   })
 

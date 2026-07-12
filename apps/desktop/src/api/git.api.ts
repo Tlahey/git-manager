@@ -79,7 +79,10 @@ function clearRedo(repoPath: string) {
 // apiRebaseContinue/apiRebaseSkip can still record the undo entry once the rebase they finish
 // actually settles back to idle. Cleared by settleRebaseUndo or on abort.
 type PendingRebaseKind = 'interactiveRebase' | 'autosquash'
-const pendingRebasePreviousOid = new Map<string, { previousOid: string | null; kind: PendingRebaseKind }>()
+const pendingRebasePreviousOid = new Map<
+  string,
+  { previousOid: string | null; kind: PendingRebaseKind }
+>()
 
 async function settleRebaseUndo(path: string) {
   const pending = pendingRebasePreviousOid.get(path)
@@ -146,7 +149,12 @@ export async function apiUnstageAll(path: string) {
   return callCommand('unstage', () => unstageAll(path), { filePath: 'all' })
 }
 
-export async function apiCreateCommit(path: string, message: string, amend = false, amendOid?: string) {
+export async function apiCreateCommit(
+  path: string,
+  message: string,
+  amend = false,
+  amendOid?: string
+) {
   let previousOid: string | null = null
   if (!amend) {
     try {
@@ -474,7 +482,7 @@ export async function apiStashList(path: string) {
 export async function apiCheckoutBranch(
   path: string,
   toRef: string,
-  opts?: { fromRef: string; fromDetached: boolean; force?: boolean },
+  opts?: { fromRef: string; fromDetached: boolean; force?: boolean }
 ) {
   const force = opts?.force ?? false
   const id = generateId()
@@ -515,7 +523,7 @@ export async function apiCheckoutBranch(
 export async function apiDeleteBranch(
   path: string,
   name: string,
-  opts: { targetOid: string; upstream?: string; force?: boolean; deleteRemote?: boolean },
+  opts: { targetOid: string; upstream?: string; force?: boolean; deleteRemote?: boolean }
 ) {
   const id = generateId()
   // Épingler avant suppression : une fois la ref supprimée, ce commit peut devenir inatteignable.
@@ -574,7 +582,14 @@ export async function apiGetRepoStatus(path: string) {
 
 export async function apiGetLog(
   path: string,
-  opts?: { limit?: number; skip?: number; branch?: string; author?: string; showStashes?: boolean; hiddenStashes?: string[] }
+  opts?: {
+    limit?: number
+    skip?: number
+    branch?: string
+    author?: string
+    showStashes?: boolean
+    hiddenStashes?: string[]
+  }
 ) {
   return getLog(path, opts)
 }
@@ -591,11 +606,21 @@ export async function apiCompareCommitToWorkdir(path: string, oid: string) {
   return compareCommitToWorkdir(path, oid)
 }
 
-export async function apiGetFileDiff(path: string, filePath: string, staged: boolean, oid?: string) {
+export async function apiGetFileDiff(
+  path: string,
+  filePath: string,
+  staged: boolean,
+  oid?: string
+) {
   return getFileDiff(path, filePath, staged, oid)
 }
 
-export async function apiGetFileRawContents(path: string, filePath: string, staged: boolean, oid?: string) {
+export async function apiGetFileRawContents(
+  path: string,
+  filePath: string,
+  staged: boolean,
+  oid?: string
+) {
   return getFileRawContents(path, filePath, staged, oid)
 }
 
@@ -623,7 +648,11 @@ export async function apiListRebaseCommits(path: string, baseOid: string) {
   return listRebaseCommits(path, baseOid)
 }
 
-export async function apiRunInteractiveRebase(path: string, baseOid: string, steps: RebaseTodoStep[]) {
+export async function apiRunInteractiveRebase(
+  path: string,
+  baseOid: string,
+  steps: RebaseTodoStep[]
+) {
   let previousOid: string | null = null
   try {
     const branches = await getBranches(path, false)

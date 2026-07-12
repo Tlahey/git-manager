@@ -63,7 +63,9 @@ export function TagDialog({ repoPath, oid, shortOid, annotated, open, onClose }:
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {annotated ? t('gitTree.contextMenu.createAnnotatedTag') : t('gitTree.contextMenu.createTag')}
+            {annotated
+              ? t('gitTree.contextMenu.createAnnotatedTag')
+              : t('gitTree.contextMenu.createTag')}
           </DialogTitle>
           <DialogDescription>{t('gitTree.createBranch.from', { sha: shortOid })}</DialogDescription>
         </DialogHeader>
@@ -83,7 +85,7 @@ export function TagDialog({ repoPath, oid, shortOid, annotated, open, onClose }:
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder={t('gitTree.contextMenu.tagMessagePlaceholder')}
-              className="w-full min-h-20 rounded border border-border bg-background p-2 text-sm"
+              className="min-h-20 w-full rounded border border-border bg-background p-2 text-sm"
             />
           )}
           {error && <p className="text-xs text-destructive">{error}</p>}
@@ -93,7 +95,12 @@ export function TagDialog({ repoPath, oid, shortOid, annotated, open, onClose }:
           <Button variant="ghost" size="sm" onClick={onClose} disabled={isLoading}>
             {t('gitTree.contextMenu.cancel')}
           </Button>
-          <Button size="sm" onClick={handleConfirm} disabled={!name.trim() || isLoading} className="gap-1.5">
+          <Button
+            size="sm"
+            onClick={handleConfirm}
+            disabled={!name.trim() || isLoading}
+            className="gap-1.5"
+          >
             {isLoading && <Spinner className="h-3 w-3" />}
             {t('gitTree.contextMenu.create')}
           </Button>

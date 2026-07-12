@@ -4,14 +4,24 @@ import { createRef } from 'react'
 
 vi.mock('@monaco-editor/react', async () => {
   const fake = await import('./__tests__/fakeMonacoDiffEditor')
-  return { default: fake.FakeMonacoEditor, DiffEditor: fake.FakeMonacoDiffEditor, loader: { config: vi.fn() } }
+  return {
+    default: fake.FakeMonacoEditor,
+    DiffEditor: fake.FakeMonacoDiffEditor,
+    loader: { config: vi.fn() },
+  }
 })
 
-const { registerAndApplyDynamicTheme } = vi.hoisted(() => ({ registerAndApplyDynamicTheme: vi.fn() }))
+const { registerAndApplyDynamicTheme } = vi.hoisted(() => ({
+  registerAndApplyDynamicTheme: vi.fn(),
+}))
 vi.mock('../../lib/monacoThemes', () => ({ registerAndApplyDynamicTheme }))
 
 import { MonacoDiffViewer, type MonacoDiffViewerRef } from './MonacoDiffViewer'
-import { fakeDiffEditors, resetFakeDiffEditors, lastDiffEditorOptions } from './__tests__/fakeMonacoDiffEditor'
+import {
+  fakeDiffEditors,
+  resetFakeDiffEditors,
+  lastDiffEditorOptions,
+} from './__tests__/fakeMonacoDiffEditor'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -52,7 +62,9 @@ describe('MonacoDiffViewer — rendering', () => {
   })
 
   it('derives the editor options from viewMode/ignoreWhitespace/collapseUnchanged', async () => {
-    render(<MonacoDiffViewer {...baseProps()} viewMode="inline" ignoreWhitespace collapseUnchanged />)
+    render(
+      <MonacoDiffViewer {...baseProps()} viewMode="inline" ignoreWhitespace collapseUnchanged />
+    )
     await screen.findByTestId('fake-monaco-diff-editor')
     const options = lastDiffEditorOptions.get('src/a.ts.mod') as {
       renderSideBySide: boolean

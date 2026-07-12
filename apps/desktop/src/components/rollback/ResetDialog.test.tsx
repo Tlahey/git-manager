@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key}:${JSON.stringify(opts)}` : key,
+  }),
 }))
 vi.mock('../../api/git.api', () => ({ apiGetCommitsBetween: vi.fn(), apiResetToCommit: vi.fn() }))
 
@@ -43,7 +46,9 @@ afterEach(() => {
 describe('ResetDialog — commits list', () => {
   it('shows the affected commit count and list once loaded', async () => {
     renderDialog()
-    await waitFor(() => expect(screen.getByText('rollback.reset.commitsAffected:{"count":1}')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText('rollback.reset.commitsAffected:{"count":1}')).toBeInTheDocument()
+    )
     expect(screen.getByText('Commit A')).toBeInTheDocument()
   })
 })
@@ -61,7 +66,9 @@ describe('ResetDialog — mode selection', () => {
 
   it('does not show the hard-reset warning/confirm field outside hard mode', () => {
     renderDialog()
-    expect(screen.queryByPlaceholderText('rollback.reset.hardConfirmPlaceholder')).not.toBeInTheDocument()
+    expect(
+      screen.queryByPlaceholderText('rollback.reset.hardConfirmPlaceholder')
+    ).not.toBeInTheDocument()
   })
 
   it('shows the hard-reset warning and confirm field once hard is selected', async () => {

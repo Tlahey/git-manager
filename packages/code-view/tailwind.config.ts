@@ -5,9 +5,5 @@ import baseConfig from '@git-manager/config/tailwind'
 /** @type {import('tailwindcss').Config} */
 export default {
   ...baseConfig,
-  content: [
-    './src/**/*.{ts,tsx}',
-    './stories/**/*.{ts,tsx}',
-    '../ui/src/**/*.{ts,tsx}',
-  ],
+  content: ['./src/**/*.{ts,tsx}', './stories/**/*.{ts,tsx}', '../ui/src/**/*.{ts,tsx}'],
 }

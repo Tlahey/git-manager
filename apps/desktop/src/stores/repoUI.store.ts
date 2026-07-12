@@ -96,7 +96,11 @@ export const useRepoUIStore = create<RepoUIState>()(
           const fallback = newTabs[newTabs.length - 1] ?? DASHBOARD_TAB
           return {
             openTabs: newTabs,
-            activeRepo: wasActive ? (newTabs.includes(fallback) ? fallback : null) : state.activeRepo,
+            activeRepo: wasActive
+              ? newTabs.includes(fallback)
+                ? fallback
+                : null
+              : state.activeRepo,
             activeTab: wasActive ? fallback : state.activeTab,
           }
         }),

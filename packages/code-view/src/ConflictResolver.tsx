@@ -12,7 +12,10 @@ import {
 import type { Monaco } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
 import type { MergeBlock } from './types'
-import { ConflictResolverHeader, type ConflictResolverActionsConfig } from './ConflictResolverHeader'
+import {
+  ConflictResolverHeader,
+  type ConflictResolverActionsConfig,
+} from './ConflictResolverHeader'
 import { CodePane, type CodePaneEditorComponent } from './CodePane'
 import { MergeConnectorOverlay } from './MergeConnectorOverlay'
 import { useMergeScrollSync } from './useMergeScrollSync'
@@ -25,7 +28,12 @@ import {
 import { computeMergeVisuals } from './mergeDecorations'
 import { DEFAULT_LINE_HEIGHT, GAP_WIDTH } from './mergeViewConfig'
 import { computeTwoWayVisuals, type InternalMergeView } from './conflict-resolver/twoWayView'
-import { type PaneSide, collapsedRegionsForPane, toBannerZones, toHiddenRanges } from './conflict-resolver/collapsedRegions'
+import {
+  type PaneSide,
+  collapsedRegionsForPane,
+  toBannerZones,
+  toHiddenRanges,
+} from './conflict-resolver/collapsedRegions'
 import { getTopForLineNumberSafe } from './conflict-resolver/editorGeometry'
 import { useMergeEditorRefs } from './conflict-resolver/hooks/useMergeEditorRefs'
 import { useScrollPreservation } from './conflict-resolver/hooks/useScrollPreservation'
@@ -146,7 +154,10 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
     const [highlightMode, setHighlightMode] = useState<'words' | 'lines'>('words')
     const [editorsReady, setEditorsReady] = useState(false)
 
-    const dummyView = useMemo<InternalMergeView>(() => ({ blocks: [], oursText: '', theirsText: '' }), [])
+    const dummyView = useMemo<InternalMergeView>(
+      () => ({ blocks: [], oursText: '', theirsText: '' }),
+      []
+    )
 
     const staticView = useMemo<InternalMergeView>(
       () => ({
@@ -202,7 +213,8 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
     }, [isTwoWay, dynamicView, updatePlacementsStateAndRef])
 
     const editors = useMergeEditorRefs()
-    const { ignoreScrollSyncRef, executeWithScrollPreservation, restoreSavedScrollTops } = useScrollPreservation(editors)
+    const { ignoreScrollSyncRef, executeWithScrollPreservation, restoreSavedScrollTops } =
+      useScrollPreservation(editors)
 
     // useCollapseUnchanged needs to schedule connector recomputes, but useMergeConnectors in
     // turn needs the collapse state — this stable indirection breaks the cycle: the collapse
@@ -211,40 +223,61 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
     const scheduleRecomputeIndirectionRef = useRef<() => void>(() => {})
     const stableScheduleRecompute = useCallback(() => scheduleRecomputeIndirectionRef.current(), [])
 
-    const { collapseUnchanged, setCollapseUnchanged, expandedBlocks, expandBlock } = useCollapseUnchanged({
-      editors,
-      blocks: viewToUse.blocks,
-      placements,
-      scheduleRecompute: stableScheduleRecompute,
-      defaultCollapseUnchanged,
-      editorsReady,
-    })
+    const { collapseUnchanged, setCollapseUnchanged, expandedBlocks, expandBlock } =
+      useCollapseUnchanged({
+        editors,
+        blocks: viewToUse.blocks,
+        placements,
+        scheduleRecompute: stableScheduleRecompute,
+        defaultCollapseUnchanged,
+        editorsReady,
+      })
 
     /** A line's top Y offset in a pane's content space, accounting for collapsed (hidden)
      * regions and every alignment/banner view zone above it — the shared geometry basis for
      * scroll sync and connector ribbons. */
-    const getTop = useCallback((paneEditor: editor.IStandaloneCodeEditor, lineNumber: number, side: PaneSide): number => {
-      const lineHeight = editors.monacoRef.current && editors.centerEditorRef.current
-        ? editors.centerEditorRef.current.getOption(editors.monacoRef.current.editor.EditorOption.lineHeight)
-        : DEFAULT_LINE_HEIGHT
+    const getTop = useCallback(
+      (paneEditor: editor.IStandaloneCodeEditor, lineNumber: number, side: PaneSide): number => {
+        const lineHeight =
+          editors.monacoRef.current && editors.centerEditorRef.current
+            ? editors.centerEditorRef.current.getOption(
+                editors.monacoRef.current.editor.EditorOption.lineHeight
+              )
+            : DEFAULT_LINE_HEIGHT
 
-      const collapsedRegions = collapseUnchanged
-        ? collapsedRegionsForPane(blocksRef.current, placementsRef.current, expandedBlocks, side)
-        : []
+        const collapsedRegions = collapseUnchanged
+          ? collapsedRegionsForPane(blocksRef.current, placementsRef.current, expandedBlocks, side)
+          : []
 
-      const visuals = isTwoWay
-        ? computeTwoWayVisuals(blocksRef.current, placementsRef.current, showBlockBorders)
-        : computeMergeVisuals(blocksRef.current, placementsRef.current, showBlockBorders, highlightMode === 'lines')
+        const visuals = isTwoWay
+          ? computeTwoWayVisuals(blocksRef.current, placementsRef.current, showBlockBorders)
+          : computeMergeVisuals(
+              blocksRef.current,
+              placementsRef.current,
+              showBlockBorders,
+              highlightMode === 'lines'
+            )
 
-      // In 2-way mode the `ours` pane doesn't exist — its visuals slot is always empty.
-      const paneVisualZones = isTwoWay && side === 'ours' ? [] : visuals[side].viewZones
-      const viewZones = [
-        ...toBannerZones(collapsedRegions),
-        ...paneVisualZones.map((vz) => ({ afterLineNumber: vz.afterLineNumber, heightInLines: vz.heightInLines })),
-      ]
+        // In 2-way mode the `ours` pane doesn't exist — its visuals slot is always empty.
+        const paneVisualZones = isTwoWay && side === 'ours' ? [] : visuals[side].viewZones
+        const viewZones = [
+          ...toBannerZones(collapsedRegions),
+          ...paneVisualZones.map((vz) => ({
+            afterLineNumber: vz.afterLineNumber,
+            heightInLines: vz.heightInLines,
+          })),
+        ]
 
-      return getTopForLineNumberSafe(paneEditor, lineNumber, lineHeight, toHiddenRanges(collapsedRegions), viewZones)
-    }, [editors, isTwoWay, collapseUnchanged, expandedBlocks, highlightMode, showBlockBorders])
+        return getTopForLineNumberSafe(
+          paneEditor,
+          lineNumber,
+          lineHeight,
+          toHiddenRanges(collapsedRegions),
+          viewZones
+        )
+      },
+      [editors, isTwoWay, collapseUnchanged, expandedBlocks, highlightMode, showBlockBorders]
+    )
 
     // Dynamic conflict/change stats
     const { changesCount, conflictsCount } = useMemo(() => {
@@ -272,7 +305,8 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       return { changesCount: changes, conflictsCount: conflicts }
     }, [viewToUse.blocks, placements])
 
-    const { panelWidths, resetPanelWidths, handleLeftMouseDown, handleRightMouseDown } = usePanelResize(containerRef, isTwoWay)
+    const { panelWidths, resetPanelWidths, handleLeftMouseDown, handleRightMouseDown } =
+      usePanelResize(containerRef, isTwoWay)
 
     const {
       gapHeight,
@@ -307,13 +341,25 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       if (!model) return
 
       setPlacements((prev) => {
-        const next = deriveLivePlacements((line) => model.getLineContent(line), model.getLineCount(), blocksRef.current, prev)
+        const next = deriveLivePlacements(
+          (line) => model.getLineContent(line),
+          model.getLineCount(),
+          blocksRef.current,
+          prev
+        )
         placementsRef.current = next
         return next
       })
     }, [editors])
 
-    const { recordEntry, resetHistory, applyTrackedEdit, triggerUndo, triggerRedo, handleCenterContentEvent } = useMergeHistory({
+    const {
+      recordEntry,
+      resetHistory,
+      applyTrackedEdit,
+      triggerUndo,
+      triggerRedo,
+      handleCenterContentEvent,
+    } = useMergeHistory({
       editors,
       containerRef,
       executeWithScrollPreservation,
@@ -338,15 +384,24 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [modelPathPrefix, updatePlacementsStateAndRef, isTwoWay, resetHistory, resetPanelWidths])
 
-    const { attach: attachScrollSync } = useMergeScrollSync(blocksRef, placementsRef, editors.monacoRef, getTop, ignoreScrollSyncRef)
-
-    const { activeBlockIndex, changeBlocks, updateActiveBlockIndex, navigateConflict } = useConflictNavigation(
-      viewToUse.blocks,
+    const { attach: attachScrollSync } = useMergeScrollSync(
+      blocksRef,
       placementsRef,
-      editors
+      editors.monacoRef,
+      getTop,
+      ignoreScrollSyncRef
     )
 
-    const { handleActionById, applyNonConflicting, acceptAllForSide, handleResetMerge, applyAutoMerge } = useMergeActions({
+    const { activeBlockIndex, changeBlocks, updateActiveBlockIndex, navigateConflict } =
+      useConflictNavigation(viewToUse.blocks, placementsRef, editors)
+
+    const {
+      handleActionById,
+      applyNonConflicting,
+      acceptAllForSide,
+      handleResetMerge,
+      applyAutoMerge,
+    } = useMergeActions({
       editors,
       blocksRef,
       placementsRef,
@@ -357,10 +412,22 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       onAutoMerge,
     })
 
-    const handleAcceptOurs = useCallback((blockId: number) => handleActionById(blockId, 'ours', true), [handleActionById])
-    const handleRejectOurs = useCallback((blockId: number) => handleActionById(blockId, 'ours', false), [handleActionById])
-    const handleAcceptTheirs = useCallback((blockId: number) => handleActionById(blockId, 'theirs', true), [handleActionById])
-    const handleRejectTheirs = useCallback((blockId: number) => handleActionById(blockId, 'theirs', false), [handleActionById])
+    const handleAcceptOurs = useCallback(
+      (blockId: number) => handleActionById(blockId, 'ours', true),
+      [handleActionById]
+    )
+    const handleRejectOurs = useCallback(
+      (blockId: number) => handleActionById(blockId, 'ours', false),
+      [handleActionById]
+    )
+    const handleAcceptTheirs = useCallback(
+      (blockId: number) => handleActionById(blockId, 'theirs', true),
+      [handleActionById]
+    )
+    const handleRejectTheirs = useCallback(
+      (blockId: number) => handleActionById(blockId, 'theirs', false),
+      [handleActionById]
+    )
 
     useMergeDecorations({
       editors,
@@ -383,65 +450,95 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
     onEditorMountRef.current = editorConfig?.onEditorMount
 
     const handlePaneMount = useCallback(
-      (pane: 'ours' | 'center' | 'theirs') => (editorInstance: editor.IStandaloneCodeEditor, monacoInstance: Monaco) => {
-        editors.monacoRef.current = monacoInstance
-        setMonaco(monacoInstance)
-        if (pane === 'ours') editors.oursEditorRef.current = editorInstance
-        if (pane === 'center') editors.centerEditorRef.current = editorInstance
-        if (pane === 'theirs') editors.theirsEditorRef.current = editorInstance
+      (pane: 'ours' | 'center' | 'theirs') =>
+        (editorInstance: editor.IStandaloneCodeEditor, monacoInstance: Monaco) => {
+          editors.monacoRef.current = monacoInstance
+          setMonaco(monacoInstance)
+          if (pane === 'ours') editors.oursEditorRef.current = editorInstance
+          if (pane === 'center') editors.centerEditorRef.current = editorInstance
+          if (pane === 'theirs') editors.theirsEditorRef.current = editorInstance
 
-        if (pane === 'ours') editors.oursDecorationsRef.current = editorInstance.createDecorationsCollection([])
-        if (pane === 'center') editors.centerDecorationsRef.current = editorInstance.createDecorationsCollection([])
-        if (pane === 'theirs') editors.theirsDecorationsRef.current = editorInstance.createDecorationsCollection([])
+          if (pane === 'ours')
+            editors.oursDecorationsRef.current = editorInstance.createDecorationsCollection([])
+          if (pane === 'center')
+            editors.centerDecorationsRef.current = editorInstance.createDecorationsCollection([])
+          if (pane === 'theirs')
+            editors.theirsDecorationsRef.current = editorInstance.createDecorationsCollection([])
 
-        const paneIndex = pane === 'ours' ? 0 : pane === 'center' ? 1 : 2
-        attachScrollSync(editorInstance, paneIndex)
-        editorInstance.onDidScrollChange(() => {
-          applyScrollOffset()
+          const paneIndex = pane === 'ours' ? 0 : pane === 'center' ? 1 : 2
+          attachScrollSync(editorInstance, paneIndex)
+          editorInstance.onDidScrollChange(() => {
+            applyScrollOffset()
+            if (pane === 'center') {
+              updateActiveBlockIndex()
+            }
+          })
+          // `onDidLayoutChange` fires when Monaco's own automaticLayout resize-observer settles
+          // on this editor's real dimensions — a more reliable connector-recompute trigger than
+          // our own outer-container ResizeObserver, since it directly reflects when
+          // `getTopForLineNumber` results become trustworthy for *this* editor specifically.
+          // Reads through scheduleRecomputeRef, not the closed-over scheduleRecompute directly —
+          // this handler is registered once at mount and Monaco never re-subscribes it, so a
+          // direct closure would permanently use whatever expandedBlocks existed at mount time.
+          editorInstance.onDidLayoutChange(() => scheduleRecomputeRef.current())
+
           if (pane === 'center') {
-            updateActiveBlockIndex()
+            editorInstance.onDidChangeModelContent((e) => handleCenterContentEvent(e))
+
+            // Register undo/redo keybindings to intercept them and handle gutter actions that don't change text
+            editorInstance.addCommand(
+              monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyZ,
+              () => {
+                triggerUndo()
+              }
+            )
+            editorInstance.addCommand(
+              monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyY,
+              () => {
+                triggerRedo()
+              }
+            )
+            editorInstance.addCommand(
+              monacoInstance.KeyMod.CtrlCmd |
+                monacoInstance.KeyMod.Shift |
+                monacoInstance.KeyCode.KeyZ,
+              () => {
+                triggerRedo()
+              }
+            )
           }
-        })
-        // `onDidLayoutChange` fires when Monaco's own automaticLayout resize-observer settles
-        // on this editor's real dimensions — a more reliable connector-recompute trigger than
-        // our own outer-container ResizeObserver, since it directly reflects when
-        // `getTopForLineNumber` results become trustworthy for *this* editor specifically.
-        // Reads through scheduleRecomputeRef, not the closed-over scheduleRecompute directly —
-        // this handler is registered once at mount and Monaco never re-subscribes it, so a
-        // direct closure would permanently use whatever expandedBlocks existed at mount time.
-        editorInstance.onDidLayoutChange(() => scheduleRecomputeRef.current())
 
-        if (pane === 'center') {
-          editorInstance.onDidChangeModelContent((e) => handleCenterContentEvent(e))
+          onEditorMountRef.current?.(editorInstance, monacoInstance, pane)
 
-          // Register undo/redo keybindings to intercept them and handle gutter actions that don't change text
-          editorInstance.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyZ, () => {
-            triggerUndo()
-          })
-          editorInstance.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyY, () => {
-            triggerRedo()
-          })
-          editorInstance.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyMod.Shift | monacoInstance.KeyCode.KeyZ, () => {
-            triggerRedo()
-          })
-        }
-
-        onEditorMountRef.current?.(editorInstance, monacoInstance, pane)
-
-        if (editors.theirsEditorRef.current && editors.centerEditorRef.current && (isTwoWay || editors.oursEditorRef.current)) {
-          setEditorsReady(true)
-          // Panes normally mount already scrolled to the top, but seed the paths from
-          // whatever the panes actually report rather than assuming 0.
-          applyScrollOffset()
-          updateActiveBlockIndex()
-          // Belt-and-suspenders: schedule a couple of follow-up recomputes a moment after all
-          // three editors report ready, in case the very first layout pass (and thus the very
-          // first `getTopForLineNumber` reads) happened before the browser's first paint.
-          setTimeout(() => scheduleRecompute(), 50)
-          setTimeout(() => scheduleRecompute(), 250)
-        }
-      },
-      [editors, attachScrollSync, scheduleRecompute, scheduleRecomputeRef, handleCenterContentEvent, applyScrollOffset, updateActiveBlockIndex, triggerUndo, triggerRedo, isTwoWay]
+          if (
+            editors.theirsEditorRef.current &&
+            editors.centerEditorRef.current &&
+            (isTwoWay || editors.oursEditorRef.current)
+          ) {
+            setEditorsReady(true)
+            // Panes normally mount already scrolled to the top, but seed the paths from
+            // whatever the panes actually report rather than assuming 0.
+            applyScrollOffset()
+            updateActiveBlockIndex()
+            // Belt-and-suspenders: schedule a couple of follow-up recomputes a moment after all
+            // three editors report ready, in case the very first layout pass (and thus the very
+            // first `getTopForLineNumber` reads) happened before the browser's first paint.
+            setTimeout(() => scheduleRecompute(), 50)
+            setTimeout(() => scheduleRecompute(), 250)
+          }
+        },
+      [
+        editors,
+        attachScrollSync,
+        scheduleRecompute,
+        scheduleRecomputeRef,
+        handleCenterContentEvent,
+        applyScrollOffset,
+        updateActiveBlockIndex,
+        triggerUndo,
+        triggerRedo,
+        isTwoWay,
+      ]
     )
 
     useImperativeHandle(
@@ -460,14 +557,39 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
     const panes = useMemo(() => {
       if (isTwoWay) {
         return [
-          { id: 'theirs' as const, value: original ?? '', readOnly: true, modelPath: `${modelPathPrefix}.original` },
-          { id: 'center' as const, value: modified ?? '', readOnly: true, modelPath: `${modelPathPrefix}.modified` },
+          {
+            id: 'theirs' as const,
+            value: original ?? '',
+            readOnly: true,
+            modelPath: `${modelPathPrefix}.original`,
+          },
+          {
+            id: 'center' as const,
+            value: modified ?? '',
+            readOnly: true,
+            modelPath: `${modelPathPrefix}.modified`,
+          },
         ]
       }
       return [
-        { id: 'theirs' as const, value: staticView.theirsText, readOnly: true, modelPath: `${modelPathPrefix}#theirs` },
-        { id: 'center' as const, value: initialCenterText, readOnly: false, modelPath: `${modelPathPrefix}#center` },
-        { id: 'ours' as const, value: staticView.oursText, readOnly: true, modelPath: `${modelPathPrefix}#ours` },
+        {
+          id: 'theirs' as const,
+          value: staticView.theirsText,
+          readOnly: true,
+          modelPath: `${modelPathPrefix}#theirs`,
+        },
+        {
+          id: 'center' as const,
+          value: initialCenterText,
+          readOnly: false,
+          modelPath: `${modelPathPrefix}#center`,
+        },
+        {
+          id: 'ours' as const,
+          value: staticView.oursText,
+          readOnly: true,
+          modelPath: `${modelPathPrefix}#ours`,
+        },
       ]
     }, [isTwoWay, original, modified, modelPathPrefix, staticView, initialCenterText])
 
@@ -476,12 +598,17 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       // Two read-only panes, no merge target to write into or reset, and no host-side
       // `onRecalculate` wired to the right query key for a raw two-way diff — these buttons only
       // make sense in 3-panel mode, regardless of what the host's `header` config says.
-      ...(isTwoWay ? { applyNonConflicting: false, autoMerge: false, reset: false, recalculate: false } : {}),
+      ...(isTwoWay
+        ? { applyNonConflicting: false, autoMerge: false, reset: false, recalculate: false }
+        : {}),
     }
 
-    const currentLineHeight = (editors.monacoRef.current && editors.centerEditorRef.current)
-      ? editors.centerEditorRef.current.getOption(editors.monacoRef.current.editor.EditorOption.lineHeight)
-      : DEFAULT_LINE_HEIGHT
+    const currentLineHeight =
+      editors.monacoRef.current && editors.centerEditorRef.current
+        ? editors.centerEditorRef.current.getOption(
+            editors.monacoRef.current.editor.EditorOption.lineHeight
+          )
+        : DEFAULT_LINE_HEIGHT
 
     return (
       <div className="flex h-full w-full flex-col overflow-hidden bg-[#1a1a1a]">
@@ -505,12 +632,16 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
             onRecalculate={onRecalculate}
             changesCount={changesCount}
             conflictsCount={conflictsCount}
-            statuses={[panelsInput[0]?.status ?? null, panelsInput[1]?.status ?? null, panelsInput[2]?.status ?? null]}
+            statuses={[
+              panelsInput[0]?.status ?? null,
+              panelsInput[1]?.status ?? null,
+              panelsInput[2]?.status ?? null,
+            ]}
             panelWidths={panelWidths}
             gapWidth={GAP_WIDTH}
           />
         )}
-        <div ref={containerRef} className="flex flex-1 w-full overflow-hidden min-h-0">
+        <div ref={containerRef} className="flex min-h-0 w-full flex-1 overflow-hidden">
           {panes.map((pane, index) => (
             <Fragment key={pane.id}>
               <div
@@ -531,13 +662,15 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
               </div>
               {index < panes.length - 1 && (
                 <div
-                  className="relative shrink-0 overflow-hidden select-none"
+                  className="relative shrink-0 select-none overflow-hidden"
                   style={{
                     width: GAP_WIDTH,
                     cursor: isTwoWay ? 'default' : 'col-resize',
                     backgroundColor: 'var(--vscode-editor-background, #1e1e1e)',
                   }}
-                  onMouseDown={isTwoWay ? undefined : (index === 0 ? handleLeftMouseDown : handleRightMouseDown)}
+                  onMouseDown={
+                    isTwoWay ? undefined : index === 0 ? handleLeftMouseDown : handleRightMouseDown
+                  }
                   data-testid={`merge-resize-handle-${index === 0 ? 'left' : 'right'}`}
                 >
                   <MergeConnectorOverlay
@@ -548,8 +681,16 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
                     side={index === 0 ? 'left' : 'right'}
                     onAccept={index === 0 ? handleAcceptTheirs : handleAcceptOurs}
                     onReject={index === 0 ? handleRejectTheirs : handleRejectOurs}
-                    scrollTopLeft={index === 0 ? editors.theirsEditorRef.current?.getScrollTop() ?? 0 : editors.centerEditorRef.current?.getScrollTop() ?? 0}
-                    scrollTopRight={index === 0 ? editors.centerEditorRef.current?.getScrollTop() ?? 0 : editors.oursEditorRef.current?.getScrollTop() ?? 0}
+                    scrollTopLeft={
+                      index === 0
+                        ? (editors.theirsEditorRef.current?.getScrollTop() ?? 0)
+                        : (editors.centerEditorRef.current?.getScrollTop() ?? 0)
+                    }
+                    scrollTopRight={
+                      index === 0
+                        ? (editors.centerEditorRef.current?.getScrollTop() ?? 0)
+                        : (editors.oursEditorRef.current?.getScrollTop() ?? 0)
+                    }
                     lineHeight={currentLineHeight}
                     wavePhaseOffset={index === 0 ? gapPhaseOffsets.left : gapPhaseOffsets.right}
                     onExpandBlock={expandBlock}

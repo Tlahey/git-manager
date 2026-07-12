@@ -11,7 +11,9 @@ import { useUserThemes } from './useUserThemes'
 const mockedApi = apiGetUserThemes as unknown as ReturnType<typeof vi.fn>
 
 function wrapper({ children }: { children: ReactNode }) {
-  return <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>{children}</SWRConfig>
+  return (
+    <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>{children}</SWRConfig>
+  )
 }
 
 beforeEach(() => {

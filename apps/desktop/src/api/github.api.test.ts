@@ -77,30 +77,58 @@ describe('parsePRStatus', () => {
 describe('extractRepoInfo', () => {
   it('prefers base.repo when present', () => {
     const info = extractRepoInfo({
-      base: { repo: { name: 'repo', html_url: 'https://github.com/org/repo', full_name: 'org/repo' } },
+      base: {
+        repo: { name: 'repo', html_url: 'https://github.com/org/repo', full_name: 'org/repo' },
+      },
       html_url: '',
     })
-    expect(info).toEqual({ repo: 'repo', repoUrl: 'https://github.com/org/repo', fullName: 'org/repo' })
+    expect(info).toEqual({
+      repo: 'repo',
+      repoUrl: 'https://github.com/org/repo',
+      fullName: 'org/repo',
+    })
   })
 
   it('falls back to repository_url', () => {
-    const info = extractRepoInfo({ repository_url: 'https://api.github.com/repos/org/repo', html_url: '' })
-    expect(info).toEqual({ repo: 'repo', repoUrl: 'https://github.com/org/repo', fullName: 'org/repo' })
+    const info = extractRepoInfo({
+      repository_url: 'https://api.github.com/repos/org/repo',
+      html_url: '',
+    })
+    expect(info).toEqual({
+      repo: 'repo',
+      repoUrl: 'https://github.com/org/repo',
+      fullName: 'org/repo',
+    })
   })
 
   it('falls back to parsing html_url', () => {
     const info = extractRepoInfo({ html_url: 'https://github.com/org/repo/issues/5' })
-    expect(info).toEqual({ repo: 'repo', repoUrl: 'https://github.com/org/repo', fullName: 'org/repo' })
+    expect(info).toEqual({
+      repo: 'repo',
+      repoUrl: 'https://github.com/org/repo',
+      fullName: 'org/repo',
+    })
   })
 
   it('falls back to "unknown" when nothing is present', () => {
-    expect(extractRepoInfo({ html_url: '' })).toEqual({ repo: 'unknown', repoUrl: '', fullName: 'unknown' })
+    expect(extractRepoInfo({ html_url: '' })).toEqual({
+      repo: 'unknown',
+      repoUrl: '',
+      fullName: 'unknown',
+    })
   })
 })
 
 describe('rawToMockPR', () => {
   it('maps the core fields and repo info', () => {
-    const pr = rawToMockPR(rawPR({ base: { repo: { name: 'repo', html_url: 'https://github.com/org/repo', full_name: 'org/repo' } } }), 'me')
+    const pr = rawToMockPR(
+      rawPR({
+        base: {
+          repo: { name: 'repo', html_url: 'https://github.com/org/repo', full_name: 'org/repo' },
+        },
+      }),
+      'me'
+    )
     expect(pr).toMatchObject({
       id: 'gh-pr-42-org/repo',
       number: 42,
@@ -118,13 +146,20 @@ describe('rawToMockPR', () => {
   })
 
   it('maps requested reviewers to collaborators', () => {
-    const pr = rawToMockPR(rawPR({ requested_reviewers: [{ login: 'alice', avatar_url: 'a.png' }] }), 'me')
+    const pr = rawToMockPR(
+      rawPR({ requested_reviewers: [{ login: 'alice', avatar_url: 'a.png' }] }),
+      'me'
+    )
     expect(pr.collaborators).toEqual([{ login: 'alice', avatar: 'a.png' }])
   })
 
   it('sets needsMyReview when the PR is open, not authored by me, and I am a requested reviewer', () => {
     const pr = rawToMockPR(
-      rawPR({ state: 'open', user: { login: 'other', avatar_url: '' }, requested_reviewers: [{ login: 'me', avatar_url: '' }] }),
+      rawPR({
+        state: 'open',
+        user: { login: 'other', avatar_url: '' },
+        requested_reviewers: [{ login: 'me', avatar_url: '' }],
+      }),
       'me'
     )
     expect(pr.needsMyReview).toBe(true)
@@ -132,7 +167,11 @@ describe('rawToMockPR', () => {
 
   it('does not need my review when I am the author', () => {
     const pr = rawToMockPR(
-      rawPR({ state: 'open', user: { login: 'me', avatar_url: '' }, requested_reviewers: [{ login: 'me', avatar_url: '' }] }),
+      rawPR({
+        state: 'open',
+        user: { login: 'me', avatar_url: '' },
+        requested_reviewers: [{ login: 'me', avatar_url: '' }],
+      }),
       'me'
     )
     expect(pr.needsMyReview).toBe(false)
@@ -140,7 +179,12 @@ describe('rawToMockPR', () => {
 
   it('does not need my review when the PR is not open', () => {
     const pr = rawToMockPR(
-      rawPR({ state: 'closed', merged_at: '2024-01-01', user: { login: 'other', avatar_url: '' }, requested_reviewers: [{ login: 'me', avatar_url: '' }] }),
+      rawPR({
+        state: 'closed',
+        merged_at: '2024-01-01',
+        user: { login: 'other', avatar_url: '' },
+        requested_reviewers: [{ login: 'me', avatar_url: '' }],
+      }),
       'me'
     )
     expect(pr.needsMyReview).toBe(false)
@@ -181,7 +225,12 @@ describe('rawToMockIssue', () => {
   })
 
   it('maps assignees and labels', () => {
-    const issue = rawToMockIssue(rawIssue({ assignees: [{ login: 'bob', avatar_url: 'b.png' }], labels: [{ name: 'help wanted' }] }))
+    const issue = rawToMockIssue(
+      rawIssue({
+        assignees: [{ login: 'bob', avatar_url: 'b.png' }],
+        labels: [{ name: 'help wanted' }],
+      })
+    )
     expect(issue.assignees).toEqual([{ login: 'bob', avatar: 'b.png' }])
     expect(issue.labels).toEqual(['help wanted'])
   })
@@ -203,12 +252,19 @@ describe('fetchGitHubPRs / fetchGitHubReviewRequestedPRs / fetchGitHubIssues', (
   })
 
   it('fetchGitHubReviewRequestedPRs queries review-requested PRs and forces needsMyReview true', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ items: [rawPR({ user: { login: 'me', avatar_url: '' } })] }))
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse({ items: [rawPR({ user: { login: 'me', avatar_url: '' } })] })
+      )
     vi.stubGlobal('fetch', fetchMock)
 
     const prs = await fetchGitHubReviewRequestedPRs('me', 'tok')
 
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('review-requested:me'), expect.anything())
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('review-requested:me'),
+      expect.anything()
+    )
     expect(prs[0].needsMyReview).toBe(true) // forced true even though rawToMockPR would say false (author === me)
   })
 
@@ -218,7 +274,10 @@ describe('fetchGitHubPRs / fetchGitHubReviewRequestedPRs / fetchGitHubIssues', (
 
     await fetchGitHubIssues('me', 'tok')
 
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('is:issue+assignee:me'), expect.anything())
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('is:issue+assignee:me'),
+      expect.anything()
+    )
   })
 
   it('returns an empty array when the search response has no items', async () => {
@@ -237,7 +296,10 @@ describe('fetchGitHubPRDetails / fetchRepoPRs', () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(rawPR()))
     vi.stubGlobal('fetch', fetchMock)
     await fetchGitHubPRDetails('https://api.github.com/repos/org/repo/pulls/42', 'tok')
-    expect(fetchMock).toHaveBeenCalledWith('https://api.github.com/repos/org/repo/pulls/42', expect.anything())
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.github.com/repos/org/repo/pulls/42',
+      expect.anything()
+    )
   })
 
   it('fetchRepoPRs builds the open-PRs listing URL and works without a token', async () => {
@@ -246,16 +308,24 @@ describe('fetchGitHubPRDetails / fetchRepoPRs', () => {
     await fetchRepoPRs('org', 'repo')
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.github.com/repos/org/repo/pulls?state=open&per_page=100',
-      expect.objectContaining({ headers: expect.not.objectContaining({ Authorization: expect.anything() }) })
+      expect.objectContaining({
+        headers: expect.not.objectContaining({ Authorization: expect.anything() }),
+      })
     )
   })
 })
 
 describe('fetchGitHubCommitCiStatus', () => {
   it('fetches check-runs and commit status in parallel', async () => {
-    const fetchMock = vi.fn().mockImplementation((url: string) =>
-      Promise.resolve(url.includes('check-runs') ? jsonResponse({ total_count: 1 }) : jsonResponse({ state: 'success' }))
-    )
+    const fetchMock = vi
+      .fn()
+      .mockImplementation((url: string) =>
+        Promise.resolve(
+          url.includes('check-runs')
+            ? jsonResponse({ total_count: 1 })
+            : jsonResponse({ state: 'success' })
+        )
+      )
     vi.stubGlobal('fetch', fetchMock)
 
     const result = await fetchGitHubCommitCiStatus('org', 'repo', 'sha1', 'tok')
@@ -264,9 +334,13 @@ describe('fetchGitHubCommitCiStatus', () => {
   })
 
   it('resolves the other branch to null when one of the two requests fails', async () => {
-    const fetchMock = vi.fn().mockImplementation((url: string) =>
-      url.includes('check-runs') ? Promise.reject(new Error('boom')) : Promise.resolve(jsonResponse({ state: 'success' }))
-    )
+    const fetchMock = vi
+      .fn()
+      .mockImplementation((url: string) =>
+        url.includes('check-runs')
+          ? Promise.reject(new Error('boom'))
+          : Promise.resolve(jsonResponse({ state: 'success' }))
+      )
     vi.stubGlobal('fetch', fetchMock)
 
     const result = await fetchGitHubCommitCiStatus('org', 'repo', 'sha1', 'tok')
@@ -284,7 +358,14 @@ describe('fetchGitHubContributions', () => {
             contributionsCollection: {
               contributionCalendar: {
                 totalContributions: 3,
-                weeks: [{ contributionDays: [{ date: '2024-01-01', contributionCount: 2 }, { date: '2024-01-02', contributionCount: 1 }] }],
+                weeks: [
+                  {
+                    contributionDays: [
+                      { date: '2024-01-01', contributionCount: 2 },
+                      { date: '2024-01-02', contributionCount: 1 },
+                    ],
+                  },
+                ],
               },
             },
           },
@@ -297,7 +378,10 @@ describe('fetchGitHubContributions', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.github.com/graphql',
-      expect.objectContaining({ method: 'POST', headers: expect.objectContaining({ Authorization: 'bearer tok' }) })
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'bearer tok' }),
+      })
     )
     expect(days).toEqual([
       { date: '2024-01-01', commits: 2 },
@@ -313,7 +397,11 @@ describe('fetchGitHubContributions', () => {
   it('throws with the joined GraphQL error messages when the response has errors', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(jsonResponse({ errors: [{ message: 'bad token' }, { message: 'rate limited' }] }))
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse({ errors: [{ message: 'bad token' }, { message: 'rate limited' }] })
+        )
     )
     await expect(fetchGitHubContributions('me', 'tok')).rejects.toThrow(Error)
   })

@@ -3,7 +3,10 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key}:${JSON.stringify(opts)}` : key,
+  }),
 }))
 vi.mock('../../../api/ollama.api', () => ({ apiCheckOllamaStatus: vi.fn() }))
 
@@ -95,7 +98,12 @@ describe('LlmSection — system prompt', () => {
   })
 
   it('resets the prompt via the reset button', async () => {
-    useSettingsStore.setState({ settings: { ...INITIAL_SETTINGS.settings, ollama: { ...INITIAL_SETTINGS.settings.ollama, systemPrompt: 'custom prompt' } } })
+    useSettingsStore.setState({
+      settings: {
+        ...INITIAL_SETTINGS.settings,
+        ollama: { ...INITIAL_SETTINGS.settings.ollama, systemPrompt: 'custom prompt' },
+      },
+    })
     const user = userEvent.setup()
     render(<LlmSection />)
     await user.click(screen.getByText('settings.llm.systemPrompt'))

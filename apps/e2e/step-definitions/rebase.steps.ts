@@ -19,9 +19,12 @@ Then(/^the conflict panel offers to skip or abort the rebase$/, async () => {
 
 // The panel renders file names, step progress and stable commit subjects — no shas/timestamps —
 // so its layout is a clean snapshot target (see COVERAGE.md "Snapshot strategy").
-Then(/^the conflict resolution panel matches the visual snapshot "([^"]*)"$/, async (tag: string) => {
-  const panel = $('[data-testid="conflict-resolution-panel"]')
-  await panel.waitForDisplayed({ timeout: 10000 })
-  await stabiliseForSnapshot()
-  await expect(panel).toMatchElementSnapshot(tag, 1)
-})
+Then(
+  /^the conflict resolution panel matches the visual snapshot "([^"]*)"$/,
+  async (tag: string) => {
+    const panel = $('[data-testid="conflict-resolution-panel"]')
+    await panel.waitForDisplayed({ timeout: 10000 })
+    await stabiliseForSnapshot()
+    await expect(panel).toMatchElementSnapshot(tag, 1)
+  }
+)

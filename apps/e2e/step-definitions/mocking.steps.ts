@@ -36,7 +36,11 @@ Given(
 
 Given(/^the "([^"]*)" command is mocked with a fake value$/, async (command: string) => {
   ollamaMock = await browser.tauri.mock(command)
-  await ollamaMock.mockResolvedValue({ connected: true, models: [FAKE_MODEL], version: FAKE_VERSION })
+  await ollamaMock.mockResolvedValue({
+    connected: true,
+    models: [FAKE_MODEL],
+    version: FAKE_VERSION,
+  })
 })
 
 When(/^all mocks are restored$/, async () => {

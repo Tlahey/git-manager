@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const apiGetTerminalCommands = vi.fn()
-vi.mock('../api/shell.api', () => ({ apiGetTerminalCommands: (...args: unknown[]) => apiGetTerminalCommands(...args) }))
+vi.mock('../api/shell.api', () => ({
+  apiGetTerminalCommands: (...args: unknown[]) => apiGetTerminalCommands(...args),
+}))
 
 import { useGameStore, getLevelInfo } from './game.store'
 import { appEventBus } from '../lib/appEventBus'
@@ -10,7 +12,11 @@ const INITIAL = useGameStore.getState()
 
 function resetStore() {
   useGameStore.setState({
-    achievements: INITIAL.achievements.map((a) => ({ ...a, unlocked: false, unlockedAt: undefined })),
+    achievements: INITIAL.achievements.map((a) => ({
+      ...a,
+      unlocked: false,
+      unlockedAt: undefined,
+    })),
     points: 0,
     recentUnlock: null,
     historyChecked: [],
@@ -70,7 +76,9 @@ describe('useGameStore.processAppEvent', () => {
   it('does nothing when rewards are disabled', () => {
     useGameStore.getState().setRewardsEnabled(false)
     useGameStore.getState().processAppEvent('discard')
-    expect(useGameStore.getState().achievements.find((a) => a.id === 'discard')?.unlocked).toBe(false)
+    expect(useGameStore.getState().achievements.find((a) => a.id === 'discard')?.unlocked).toBe(
+      false
+    )
     expect(useGameStore.getState().points).toBe(0)
   })
 
@@ -91,16 +99,22 @@ describe('useGameStore.processAppEvent', () => {
   it('only reports (does not immediately unlock) a composite achievement whose condition just became true', () => {
     // Unlock every non-composite achievement directly, leaving only platinum_trophy locked.
     useGameStore.setState((state) => ({
-      achievements: state.achievements.map((a) => (a.kind === 'composite' ? a : { ...a, unlocked: true })),
+      achievements: state.achievements.map((a) =>
+        a.kind === 'composite' ? a : { ...a, unlocked: true }
+      ),
     }))
 
     useGameStore.getState().processAppEvent('open_app') // re-fires open_launchpad's event; already unlocked, but re-triggers a pass
 
-    expect(useGameStore.getState().achievements.find((a) => a.id === 'platinum_trophy')?.unlocked).toBe(false)
+    expect(
+      useGameStore.getState().achievements.find((a) => a.id === 'platinum_trophy')?.unlocked
+    ).toBe(false)
 
     vi.advanceTimersByTime(1000)
 
-    expect(useGameStore.getState().achievements.find((a) => a.id === 'platinum_trophy')?.unlocked).toBe(true)
+    expect(
+      useGameStore.getState().achievements.find((a) => a.id === 'platinum_trophy')?.unlocked
+    ).toBe(true)
     expect(useGameStore.getState().recentUnlock?.id).toBe('platinum_trophy')
   })
 })
@@ -108,7 +122,9 @@ describe('useGameStore.processAppEvent', () => {
 describe('useGameStore — appEventBus interoperability', () => {
   it('reacts to events notified through the shared appEventBus, not just direct calls', () => {
     appEventBus.notify('discard')
-    expect(useGameStore.getState().achievements.find((a) => a.id === 'discard')?.unlocked).toBe(true)
+    expect(useGameStore.getState().achievements.find((a) => a.id === 'discard')?.unlocked).toBe(
+      true
+    )
   })
 })
 
@@ -174,12 +190,18 @@ describe('useGameStore — misc actions', () => {
 describe('useGameStore — persisted-state merge', () => {
   const merge = (
     useGameStore.persist.getOptions() as unknown as {
-      merge: (persisted: unknown, current: ReturnType<typeof useGameStore.getState>) => ReturnType<typeof useGameStore.getState>
+      merge: (
+        persisted: unknown,
+        current: ReturnType<typeof useGameStore.getState>
+      ) => ReturnType<typeof useGameStore.getState>
     }
   ).merge
 
   it('keeps unlocked/unlockedAt from persisted achievements matched by id', () => {
-    const persisted = { achievements: [{ id: 'discard', unlocked: true, unlockedAt: 123 }], points: 15 }
+    const persisted = {
+      achievements: [{ id: 'discard', unlocked: true, unlockedAt: 123 }],
+      points: 15,
+    }
     const merged = merge(persisted, useGameStore.getState())
     const discard = merged.achievements.find((a) => a.id === 'discard')
     expect(discard?.unlocked).toBe(true)

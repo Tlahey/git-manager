@@ -2,13 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button, Spinner, Input } from '@git-manager/ui'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@git-manager/ui'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@git-manager/ui'
 import { apiGetCommitsBetween, apiResetToCommit } from '../../api/git.api'
 
 type ResetMode = 'soft' | 'mixed' | 'hard'
@@ -43,8 +37,7 @@ export function ResetDialog({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const isProtected =
-    currentBranch !== '' && protectedBranches.includes(currentBranch)
+  const isProtected = currentBranch !== '' && protectedBranches.includes(currentBranch)
 
   const { data: commits = [], isLoading: isLoadingCommits } = useQuery({
     queryKey: ['commits-between', repoPath, 'HEAD', targetOid],
@@ -52,10 +45,7 @@ export function ResetDialog({
     enabled: open,
   })
 
-  const canConfirm =
-    !isProtected &&
-    !isLoading &&
-    (mode !== 'hard' || hardConfirm === 'RESET')
+  const canConfirm = !isProtected && !isLoading && (mode !== 'hard' || hardConfirm === 'RESET')
 
   async function handleConfirm() {
     setIsLoading(true)
@@ -92,9 +82,7 @@ export function ResetDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>
-            {t('rollback.reset.title', { message: targetSubject })}
-          </DialogTitle>
+          <DialogTitle>{t('rollback.reset.title', { message: targetSubject })}</DialogTitle>
         </DialogHeader>
 
         {isProtected && (
@@ -112,7 +100,7 @@ export function ResetDialog({
               <p className="text-xs text-muted-foreground">
                 {t('rollback.reset.commitsAffected', { count: commits.length })}
               </p>
-              <div className="max-h-32 overflow-y-auto rounded border border-border bg-muted/30 p-2 space-y-0.5">
+              <div className="max-h-32 space-y-0.5 overflow-y-auto rounded border border-border bg-muted/30 p-2">
                 {commits.map((c) => (
                   <div key={c.oid} className="flex items-center gap-2 text-xs">
                     <code className="shrink-0 font-mono text-muted-foreground">{c.shortOid}</code>
@@ -129,7 +117,7 @@ export function ResetDialog({
           {modeOptions.map((opt) => (
             <label
               key={opt.value}
-              className={`flex items-center gap-2 rounded border px-3 py-2 text-sm cursor-pointer transition-colors ${
+              className={`flex cursor-pointer items-center gap-2 rounded border px-3 py-2 text-sm transition-colors ${
                 mode === opt.value
                   ? 'border-primary bg-primary/10 text-foreground'
                   : 'border-border text-muted-foreground hover:bg-accent'
@@ -151,7 +139,7 @@ export function ResetDialog({
         {/* Hard reset warning */}
         {mode === 'hard' && (
           <div className="space-y-2 rounded border border-destructive/50 bg-destructive/10 p-3">
-            <p className="text-xs text-destructive font-medium">
+            <p className="text-xs font-medium text-destructive">
               {t('rollback.reset.hardWarning')}
             </p>
             <Input
@@ -164,9 +152,7 @@ export function ResetDialog({
         )}
 
         {error && (
-          <p className="rounded bg-destructive/20 px-3 py-2 text-xs text-destructive">
-            {error}
-          </p>
+          <p className="rounded bg-destructive/20 px-3 py-2 text-xs text-destructive">{error}</p>
         )}
 
         <DialogFooter className="gap-2">

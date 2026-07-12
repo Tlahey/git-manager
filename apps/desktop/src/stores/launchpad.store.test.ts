@@ -10,7 +10,10 @@ beforeEach(() => {
 
 describe('useLaunchpadStore', () => {
   it('seeds two example filters by default', () => {
-    expect(useLaunchpadStore.getState().savedFilters.map((f) => f.id)).toEqual(['preset-needs-review', 'preset-bugs'])
+    expect(useLaunchpadStore.getState().savedFilters.map((f) => f.id)).toEqual([
+      'preset-needs-review',
+      'preset-bugs',
+    ])
   })
 
   it('setActiveTab updates the active tab', () => {
@@ -37,12 +40,18 @@ describe('useLaunchpadStore', () => {
 
   it('deleteFilter removes only the matching filter', () => {
     useLaunchpadStore.getState().deleteFilter('preset-bugs')
-    expect(useLaunchpadStore.getState().savedFilters.map((f) => f.id)).toEqual(['preset-needs-review'])
+    expect(useLaunchpadStore.getState().savedFilters.map((f) => f.id)).toEqual([
+      'preset-needs-review',
+    ])
   })
 
   it('reorderFilters moves a filter from one index to another', () => {
     useLaunchpadStore.getState().addFilter({ name: 'Third', emoji: '3', type: 'prs' })
     useLaunchpadStore.getState().reorderFilters(0, 2)
-    expect(useLaunchpadStore.getState().savedFilters.map((f) => f.name)).toEqual(['Bugs', 'Third', 'Needs My Review'])
+    expect(useLaunchpadStore.getState().savedFilters.map((f) => f.name)).toEqual([
+      'Bugs',
+      'Third',
+      'Needs My Review',
+    ])
   })
 })

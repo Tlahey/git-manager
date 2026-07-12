@@ -38,7 +38,7 @@ export function SectionHeader({
           {title}
         </span>
         {count !== undefined && (
-          <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground/40">
+          <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/40">
             {count}
           </span>
         )}

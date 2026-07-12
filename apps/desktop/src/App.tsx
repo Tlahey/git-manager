@@ -2,7 +2,12 @@ import { useState, useEffect } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './lib/queryClient'
 import { DashboardPage } from './app/dashboard/DashboardPage'
-import { useRepoUIStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from './stores/repoUI.store'
+import {
+  useRepoUIStore,
+  DASHBOARD_TAB,
+  REWARDS_TAB,
+  PULL_REQUESTS_TAB,
+} from './stores/repoUI.store'
 import { RewardsTab } from './app/pull-requests/components/RewardsTab'
 import { RepoView } from './app/repo/RepoView'
 import { PullRequestsPage } from './app/pull-requests/PullRequestsPage'
@@ -49,13 +54,16 @@ export default function App() {
   useEffect(() => {
     let unlisten: (() => void) | undefined
     const setupListener = async () => {
-      unlisten = await listen<{ repoPath: string; filePath: string }>('conflict-resolved', (event) => {
-        const { repoPath } = event.payload
-        queryClient.invalidateQueries({ queryKey: ['rebase-state', repoPath] })
-        queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-        queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-        mutate(['conflicted-files', repoPath])
-      })
+      unlisten = await listen<{ repoPath: string; filePath: string }>(
+        'conflict-resolved',
+        (event) => {
+          const { repoPath } = event.payload
+          queryClient.invalidateQueries({ queryKey: ['rebase-state', repoPath] })
+          queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+          queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+          mutate(['conflicted-files', repoPath])
+        }
+      )
     }
     setupListener()
     return () => {
@@ -117,7 +125,7 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex h-screen flex-col bg-background text-foreground animate-fadeIn">
+      <div className="animate-fadeIn flex h-screen flex-col bg-background text-foreground">
         {showSettings ? (
           <SettingsPage initialSection={settingsSection} onClose={() => setShowSettings(false)} />
         ) : (

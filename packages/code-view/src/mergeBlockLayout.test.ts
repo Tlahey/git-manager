@@ -82,8 +82,18 @@ describe('computeInitialPlacements / recomputeAllPlacements', () => {
   it('defaults ordinary blocks to showing ours only, untouched', () => {
     const placements = computeInitialPlacements(sampleBlocks())
     // Block 1 (unchanged) and 4 (both-different) follow the default path.
-    expect(placements.get(1)).toMatchObject({ oursIncluded: true, theirsIncluded: false, oursTouched: false, theirsTouched: false })
-    expect(placements.get(4)).toMatchObject({ oursIncluded: true, theirsIncluded: false, oursTouched: false, theirsTouched: false })
+    expect(placements.get(1)).toMatchObject({
+      oursIncluded: true,
+      theirsIncluded: false,
+      oursTouched: false,
+      theirsTouched: false,
+    })
+    expect(placements.get(4)).toMatchObject({
+      oursIncluded: true,
+      theirsIncluded: false,
+      oursTouched: false,
+      theirsTouched: false,
+    })
     // Block 2 (ours-only modification): default = ours included (pre-applied).
     expect(placements.get(2)).toMatchObject({ oursIncluded: true, theirsIncluded: false })
     // Block 3 (theirs-only addition, oursLineCount 0): default = ours included but 0 lines.
@@ -99,9 +109,15 @@ describe('computeInitialPlacements / recomputeAllPlacements', () => {
   })
 
   it('applies explicit overrides instead of the default flags', () => {
-    const overrides = new Map([[3, { oursIncluded: false, theirsIncluded: true, oursTouched: true, theirsTouched: true }]])
+    const overrides = new Map([
+      [3, { oursIncluded: false, theirsIncluded: true, oursTouched: true, theirsTouched: true }],
+    ])
     const placements = recomputeAllPlacements(sampleBlocks(), overrides)
-    expect(placements.get(3)).toMatchObject({ centerLineCount: 1, oursIncluded: false, theirsIncluded: true })
+    expect(placements.get(3)).toMatchObject({
+      centerLineCount: 1,
+      oursIncluded: false,
+      theirsIncluded: true,
+    })
   })
 
   it('defaults an ours-only pure DELETION to showing theirs’ still-present content, not ours’ empty state', () => {
@@ -201,7 +217,11 @@ describe('computeInitialPlacements / recomputeAllPlacements', () => {
       theirsLines: ['http-client = 7.4.0'],
     })
     const placements = computeInitialPlacements([modification])
-    expect(placements.get(1)).toMatchObject({ oursIncluded: true, theirsIncluded: false, centerLineCount: 1 })
+    expect(placements.get(1)).toMatchObject({
+      oursIncluded: true,
+      theirsIncluded: false,
+      centerLineCount: 1,
+    })
   })
 
   it('defaults an ours-only ADDITION to NOT including ours — center stays empty (= base)', () => {
@@ -218,7 +238,11 @@ describe('computeInitialPlacements / recomputeAllPlacements', () => {
       theirsLines: [],
     })
     const placements = computeInitialPlacements([addition])
-    expect(placements.get(1)).toMatchObject({ oursIncluded: false, theirsIncluded: false, centerLineCount: 0 })
+    expect(placements.get(1)).toMatchObject({
+      oursIncluded: false,
+      theirsIncluded: false,
+      centerLineCount: 0,
+    })
   })
 
   it('pre-applies a theirs-only MODIFICATION by defaulting to theirsIncluded (saves a click)', () => {
@@ -235,14 +259,20 @@ describe('computeInitialPlacements / recomputeAllPlacements', () => {
       theirsLines: ['http-client = 7.32.0'],
     })
     const placements = computeInitialPlacements([modification])
-    expect(placements.get(1)).toMatchObject({ oursIncluded: false, theirsIncluded: true, centerLineCount: 1 })
+    expect(placements.get(1)).toMatchObject({
+      oursIncluded: false,
+      theirsIncluded: true,
+      centerLineCount: 1,
+    })
   })
 })
 
 describe('computeInitialCenterText', () => {
   it('concatenates the included side for each block, matching computeInitialPlacements exactly', () => {
     // sampleBlocks: header(ours) + ours modified(ours) + theirs-addition(0 lines) + conflict(ours)
-    expect(computeInitialCenterText(sampleBlocks())).toBe('header\nours modified\nours conflict line')
+    expect(computeInitialCenterText(sampleBlocks())).toBe(
+      'header\nours modified\nours conflict line'
+    )
   })
 
   it('falls back to theirs’ kept content for an ours-only pure deletion — matching computeInitialPlacements exactly', () => {
@@ -376,11 +406,20 @@ describe('connectorCenterRangeForSide', () => {
       oursTouched: false,
       theirsTouched: false,
     }
-    expect(connectorCenterRangeForSide(placement, target, 'theirs')).toEqual({ start: 10, count: 1 })
+    expect(connectorCenterRangeForSide(placement, target, 'theirs')).toEqual({
+      start: 10,
+      count: 1,
+    })
   })
 
   it('only collapses to a genuine point when the block has nothing shown at all (a pending pure addition)', () => {
-    const additionBlock = block({ blockId: 5, kind: 'theirs-only', oursLineCount: 0, theirsLineCount: 1, theirsLines: ['new'] })
+    const additionBlock = block({
+      blockId: 5,
+      kind: 'theirs-only',
+      oursLineCount: 0,
+      theirsLineCount: 1,
+      theirsLines: ['new'],
+    })
     const placement: BlockPlacement = {
       blockId: 5,
       centerStartLine: 20,
@@ -390,7 +429,10 @@ describe('connectorCenterRangeForSide', () => {
       oursTouched: false,
       theirsTouched: false,
     }
-    expect(connectorCenterRangeForSide(placement, additionBlock, 'theirs')).toEqual({ start: 20, count: 0 })
+    expect(connectorCenterRangeForSide(placement, additionBlock, 'theirs')).toEqual({
+      start: 20,
+      count: 0,
+    })
   })
 })
 
@@ -436,7 +478,11 @@ describe('updatePlacementAfterToggle', () => {
     const blocks = sampleBlocks()
     const target = blocks[1] // blockId 2
     const placements = computeInitialPlacements(blocks)
-    const before = { b1: placements.get(1)!.centerStartLine, b3: placements.get(3)!.centerStartLine, b4: placements.get(4)!.centerStartLine }
+    const before = {
+      b1: placements.get(1)!.centerStartLine,
+      b3: placements.get(3)!.centerStartLine,
+      b4: placements.get(4)!.centerStartLine,
+    }
 
     // Accept theirs too on the ours-only modification block — grows the center by 1 line.
     const next = updatePlacementAfterToggle(placements, blocks, target, 'theirs', true)
@@ -505,12 +551,22 @@ describe('deriveLivePlacements', () => {
 
     const derived = deriveLivePlacements(getLineText, totalLines, blocks, previous)
 
-    expect(derived.get(2)).toMatchObject({ oursIncluded: true, theirsIncluded: false, oursTouched: false })
-    expect(derived.get(4)).toMatchObject({ oursIncluded: true, theirsIncluded: false, oursTouched: false })
+    expect(derived.get(2)).toMatchObject({
+      oursIncluded: true,
+      theirsIncluded: false,
+      oursTouched: false,
+    })
+    expect(derived.get(4)).toMatchObject({
+      oursIncluded: true,
+      theirsIncluded: false,
+      oursTouched: false,
+    })
   })
 
   it('recognizes ours immediately followed by theirs as "both included"', () => {
-    const text = ['header', 'ours modified', 'ours conflict line', 'theirs conflict line'].join('\n')
+    const text = ['header', 'ours modified', 'ours conflict line', 'theirs conflict line'].join(
+      '\n'
+    )
     const { getLineText, totalLines } = lineTextOf(text)
     const previous = computeInitialPlacements(blocks)
 
@@ -538,7 +594,9 @@ describe('deriveLivePlacements', () => {
   })
 
   it('preserves "still untouched" when re-derived state matches the previous state exactly', () => {
-    const text = ['header', 'ours modified', 'ours conflict line', 'theirs conflict line'].join('\n')
+    const text = ['header', 'ours modified', 'ours conflict line', 'theirs conflict line'].join(
+      '\n'
+    )
     const { getLineText, totalLines } = lineTextOf(text)
 
     // First pass marks theirs as touched (accepted).
@@ -557,7 +615,11 @@ describe('deriveLivePlacements', () => {
 
     const derived = deriveLivePlacements(getLineText, totalLines, blocks, previous)
 
-    expect(derived.get(2)).toMatchObject({ oursIncluded: true, theirsIncluded: false, centerLineCount: 1 })
+    expect(derived.get(2)).toMatchObject({
+      oursIncluded: true,
+      theirsIncluded: false,
+      centerLineCount: 1,
+    })
   })
 
   it('treats a fully emptied block (both sides excluded) as zero consumed lines', () => {
@@ -567,7 +629,11 @@ describe('deriveLivePlacements', () => {
 
     const derived = deriveLivePlacements(getLineText, totalLines, blocks, previous)
 
-    expect(derived.get(2)).toMatchObject({ centerLineCount: 0, oursIncluded: false, oursTouched: true })
+    expect(derived.get(2)).toMatchObject({
+      centerLineCount: 0,
+      oursIncluded: false,
+      oursTouched: true,
+    })
   })
 })
 
@@ -577,7 +643,12 @@ describe('placementOverridesAfterAutoMerge', () => {
     const placements = computeInitialPlacements(blocks)
     const overrides = placementOverridesAfterAutoMerge(blocks, placements)
     // Block 2 is an ours-only modification — auto-merged.
-    expect(overrides.get(2)).toEqual({ oursIncluded: true, theirsIncluded: false, oursTouched: true, theirsTouched: true })
+    expect(overrides.get(2)).toEqual({
+      oursIncluded: true,
+      theirsIncluded: false,
+      oursTouched: true,
+      theirsTouched: true,
+    })
   })
 
   it('leaves theirs-only ADDITIONS pending (not auto-resolved)', () => {
@@ -585,7 +656,12 @@ describe('placementOverridesAfterAutoMerge', () => {
     const placements = computeInitialPlacements(blocks)
     const overrides = placementOverridesAfterAutoMerge(blocks, placements)
     // Block 3 is a theirs-only addition (oursLineCount 0) — deletions/additions stay pending.
-    expect(overrides.get(3)).toEqual({ oursIncluded: true, theirsIncluded: false, oursTouched: false, theirsTouched: false })
+    expect(overrides.get(3)).toEqual({
+      oursIncluded: true,
+      theirsIncluded: false,
+      oursTouched: false,
+      theirsTouched: false,
+    })
   })
 
   it('leaves theirs-only DELETIONS pending (not auto-resolved)', () => {
@@ -600,7 +676,12 @@ describe('placementOverridesAfterAutoMerge', () => {
     const placements = computeInitialPlacements([deletion])
     const overrides = placementOverridesAfterAutoMerge([deletion], placements)
     // Deletion stays pending — not auto-resolved by the wand.
-    expect(overrides.get(1)).toEqual({ oursIncluded: true, theirsIncluded: false, oursTouched: false, theirsTouched: false })
+    expect(overrides.get(1)).toEqual({
+      oursIncluded: true,
+      theirsIncluded: false,
+      oursTouched: false,
+      theirsTouched: false,
+    })
   })
 
   it('settles theirs-only MODIFICATIONS onto theirs, fully touched', () => {
@@ -614,14 +695,24 @@ describe('placementOverridesAfterAutoMerge', () => {
     })
     const placements = computeInitialPlacements([modification])
     const overrides = placementOverridesAfterAutoMerge([modification], placements)
-    expect(overrides.get(1)).toEqual({ oursIncluded: false, theirsIncluded: true, oursTouched: true, theirsTouched: true })
+    expect(overrides.get(1)).toEqual({
+      oursIncluded: false,
+      theirsIncluded: true,
+      oursTouched: true,
+      theirsTouched: true,
+    })
   })
 
   it('leaves a genuine two-sided conflict fully untouched', () => {
     const blocks = sampleBlocks()
     const placements = computeInitialPlacements(blocks)
     const overrides = placementOverridesAfterAutoMerge(blocks, placements)
-    expect(overrides.get(4)).toEqual({ oursIncluded: true, theirsIncluded: false, oursTouched: false, theirsTouched: false })
+    expect(overrides.get(4)).toEqual({
+      oursIncluded: true,
+      theirsIncluded: false,
+      oursTouched: false,
+      theirsTouched: false,
+    })
   })
 
   it('leaves a block the user already decided exactly as they left it, even if non-conflicting', () => {
@@ -632,7 +723,12 @@ describe('placementOverridesAfterAutoMerge', () => {
 
     const overrides = placementOverridesAfterAutoMerge(blocks, placements)
 
-    expect(overrides.get(2)).toEqual({ oursIncluded: true, theirsIncluded: true, oursTouched: false, theirsTouched: true })
+    expect(overrides.get(2)).toEqual({
+      oursIncluded: true,
+      theirsIncluded: true,
+      oursTouched: false,
+      theirsTouched: true,
+    })
   })
 })
 
@@ -642,27 +738,56 @@ describe('changeKindForBlock', () => {
   })
 
   it('classifies ours-only with no theirs content as a pure addition', () => {
-    expect(changeKindForBlock(block({ blockId: 1, kind: 'ours-only', oursLineCount: 1, theirsLineCount: 0 }))).toBe('addition')
+    expect(
+      changeKindForBlock(
+        block({ blockId: 1, kind: 'ours-only', oursLineCount: 1, theirsLineCount: 0 })
+      )
+    ).toBe('addition')
   })
 
   it('classifies ours-only with no ours content as a pure deletion', () => {
-    expect(changeKindForBlock(block({ blockId: 1, kind: 'ours-only', oursLineCount: 0, theirsLineCount: 1 }))).toBe('deletion')
+    expect(
+      changeKindForBlock(
+        block({ blockId: 1, kind: 'ours-only', oursLineCount: 0, theirsLineCount: 1 })
+      )
+    ).toBe('deletion')
   })
 
   it('classifies ours-only with content on both sides as a modification', () => {
-    expect(changeKindForBlock(block({ blockId: 1, kind: 'ours-only', oursLineCount: 1, theirsLineCount: 1 }))).toBe('modification')
+    expect(
+      changeKindForBlock(
+        block({ blockId: 1, kind: 'ours-only', oursLineCount: 1, theirsLineCount: 1 })
+      )
+    ).toBe('modification')
   })
 
   it('mirrors the same rules for theirs-only', () => {
-    expect(changeKindForBlock(block({ blockId: 1, kind: 'theirs-only', oursLineCount: 0, theirsLineCount: 1 }))).toBe('addition')
-    expect(changeKindForBlock(block({ blockId: 1, kind: 'theirs-only', oursLineCount: 1, theirsLineCount: 0 }))).toBe('deletion')
-    expect(changeKindForBlock(block({ blockId: 1, kind: 'theirs-only', oursLineCount: 1, theirsLineCount: 1 }))).toBe('modification')
+    expect(
+      changeKindForBlock(
+        block({ blockId: 1, kind: 'theirs-only', oursLineCount: 0, theirsLineCount: 1 })
+      )
+    ).toBe('addition')
+    expect(
+      changeKindForBlock(
+        block({ blockId: 1, kind: 'theirs-only', oursLineCount: 1, theirsLineCount: 0 })
+      )
+    ).toBe('deletion')
+    expect(
+      changeKindForBlock(
+        block({ blockId: 1, kind: 'theirs-only', oursLineCount: 1, theirsLineCount: 1 })
+      )
+    ).toBe('modification')
   })
 })
 
 describe('isChangeSource', () => {
   it('is actionable from both sides for a genuine conflict', () => {
-    const conflict = block({ blockId: 1, kind: 'both-different', oursLineCount: 1, theirsLineCount: 1 })
+    const conflict = block({
+      blockId: 1,
+      kind: 'both-different',
+      oursLineCount: 1,
+      theirsLineCount: 1,
+    })
     expect(isChangeSource(conflict, 'ours')).toBe(true)
     expect(isChangeSource(conflict, 'theirs')).toBe(true)
   })
@@ -673,17 +798,32 @@ describe('isChangeSource', () => {
   })
 
   it('for a pure ADDITION, matches the authoring side (the side with the new content)', () => {
-    const oursAddition = block({ blockId: 1, kind: 'ours-only', oursLineCount: 2, theirsLineCount: 0 })
+    const oursAddition = block({
+      blockId: 1,
+      kind: 'ours-only',
+      oursLineCount: 2,
+      theirsLineCount: 0,
+    })
     expect(isChangeSource(oursAddition, 'ours')).toBe(true)
     expect(isChangeSource(oursAddition, 'theirs')).toBe(false)
 
-    const theirsAddition = block({ blockId: 2, kind: 'theirs-only', oursLineCount: 0, theirsLineCount: 2 })
+    const theirsAddition = block({
+      blockId: 2,
+      kind: 'theirs-only',
+      oursLineCount: 0,
+      theirsLineCount: 2,
+    })
     expect(isChangeSource(theirsAddition, 'theirs')).toBe(true)
     expect(isChangeSource(theirsAddition, 'ours')).toBe(false)
   })
 
   it('for a one-sided MODIFICATION, matches the authoring side (both sides have content, only one actually changed the value)', () => {
-    const oursModification = block({ blockId: 1, kind: 'ours-only', oursLineCount: 1, theirsLineCount: 1 })
+    const oursModification = block({
+      blockId: 1,
+      kind: 'ours-only',
+      oursLineCount: 1,
+      theirsLineCount: 1,
+    })
     expect(isChangeSource(oursModification, 'ours')).toBe(true)
     expect(isChangeSource(oursModification, 'theirs')).toBe(false)
   })
@@ -692,12 +832,22 @@ describe('isChangeSource', () => {
     // ours-only deletion: ours removed it (oursLineCount 0). The button belongs on ours' gap
     // (the authoring side), even though ours' pane shows 0 lines there — the connector ribbon
     // funnels from the pane's zero-height boundary to the center's still-present base text.
-    const oursDeletion = block({ blockId: 1, kind: 'ours-only', oursLineCount: 0, theirsLineCount: 2 })
+    const oursDeletion = block({
+      blockId: 1,
+      kind: 'ours-only',
+      oursLineCount: 0,
+      theirsLineCount: 2,
+    })
     expect(isChangeSource(oursDeletion, 'ours')).toBe(true)
     expect(isChangeSource(oursDeletion, 'theirs')).toBe(false)
 
     // Mirrored: theirs-only deletion — theirs removed it.
-    const theirsDeletion = block({ blockId: 2, kind: 'theirs-only', oursLineCount: 2, theirsLineCount: 0 })
+    const theirsDeletion = block({
+      blockId: 2,
+      kind: 'theirs-only',
+      oursLineCount: 2,
+      theirsLineCount: 0,
+    })
     expect(isChangeSource(theirsDeletion, 'theirs')).toBe(true)
     expect(isChangeSource(theirsDeletion, 'ours')).toBe(false)
   })
@@ -721,14 +871,24 @@ describe('sideColorToken / connectorClassForSide', () => {
   })
 
   it('tokens a one-sided modification blue while untouched', () => {
-    const modification = block({ blockId: 1, kind: 'ours-only', oursLineCount: 1, theirsLineCount: 1 })
+    const modification = block({
+      blockId: 1,
+      kind: 'ours-only',
+      oursLineCount: 1,
+      theirsLineCount: 1,
+    })
     expect(sideColorToken(modification, false)).toBe('modification')
     expect(sideColorToken(modification, false, 'ours')).toBe('modification')
     expect(sideColorToken(modification, false, 'theirs')).toBeUndefined()
   })
 
   it('tokens a genuine two-sided conflict red while untouched', () => {
-    const conflict = block({ blockId: 1, kind: 'both-different', oursLineCount: 1, theirsLineCount: 1 })
+    const conflict = block({
+      blockId: 1,
+      kind: 'both-different',
+      oursLineCount: 1,
+      theirsLineCount: 1,
+    })
     expect(sideColorToken(conflict, false)).toBe('conflict')
   })
 
@@ -738,7 +898,12 @@ describe('sideColorToken / connectorClassForSide', () => {
   })
 
   it('mirrors the block color as a connector class with the merge-connector- prefix', () => {
-    const conflict = block({ blockId: 1, kind: 'both-different', oursLineCount: 1, theirsLineCount: 1 })
+    const conflict = block({
+      blockId: 1,
+      kind: 'both-different',
+      oursLineCount: 1,
+      theirsLineCount: 1,
+    })
     expect(connectorClassForSide(conflict, false, 'ours')).toBe('merge-connector-conflict')
     expect(connectorClassForSide(conflict, true, 'ours')).toBe('merge-connector-conflict')
 

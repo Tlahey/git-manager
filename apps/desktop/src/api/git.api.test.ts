@@ -130,18 +130,31 @@ describe('apiCreateCommit', () => {
 describe('apiDiscardFileChanges', () => {
   it('pushes a discard entry and pins the snapshot blob when one was captured', async () => {
     const path = freshPath()
-    mocked.discardFileChanges.mockResolvedValue({ snapshotBlobOid: 'blob-1', wasUntracked: false, wasStaged: true })
+    mocked.discardFileChanges.mockResolvedValue({
+      snapshotBlobOid: 'blob-1',
+      wasUntracked: false,
+      wasStaged: true,
+    })
 
     await api.apiDiscardFileChanges(path, 'file.ts')
 
     const entry = historyOf(path).stack[0]
-    expect(entry).toMatchObject({ type: 'discard', filePath: 'file.ts', blobOid: 'blob-1', wasStaged: true })
+    expect(entry).toMatchObject({
+      type: 'discard',
+      filePath: 'file.ts',
+      blobOid: 'blob-1',
+      wasStaged: true,
+    })
     expect(mocked.pinObject).toHaveBeenCalledWith(path, entry.id, 'blob-1')
   })
 
   it('clears redo instead when there is no snapshot to restore', async () => {
     const path = freshPath()
-    mocked.discardFileChanges.mockResolvedValue({ snapshotBlobOid: null, wasUntracked: true, wasStaged: false })
+    mocked.discardFileChanges.mockResolvedValue({
+      snapshotBlobOid: null,
+      wasUntracked: true,
+      wasStaged: false,
+    })
 
     await api.apiDiscardFileChanges(path, 'file.ts')
 
@@ -222,7 +235,11 @@ describe('apiRunInteractiveRebase', () => {
     await api.apiRunInteractiveRebase(path, 'base-sha', [])
 
     const entry = historyOf(path).stack[0]
-    expect(entry).toMatchObject({ type: 'interactiveRebase', previousOid: 'prev-sha', newOid: 'new-sha' })
+    expect(entry).toMatchObject({
+      type: 'interactiveRebase',
+      previousOid: 'prev-sha',
+      newOid: 'new-sha',
+    })
   })
 
   it('records nothing yet when it pauses on a conflict', async () => {
@@ -250,7 +267,11 @@ describe('apiRunInteractiveRebase', () => {
     await api.apiRebaseSkip(path)
 
     const entry = historyOf(path).stack[0]
-    expect(entry).toMatchObject({ type: 'interactiveRebase', previousOid: 'prev-sha', newOid: 'new-sha' })
+    expect(entry).toMatchObject({
+      type: 'interactiveRebase',
+      previousOid: 'prev-sha',
+      newOid: 'new-sha',
+    })
   })
 
   it('apiRebaseAbort forgets the pending rebase so a later settle records nothing', async () => {
@@ -322,7 +343,12 @@ describe('apiResetToCommit', () => {
     await api.apiResetToCommit(path, 'target-sha', 'mixed')
 
     const entry = historyOf(path).stack[0]
-    expect(entry).toMatchObject({ type: 'reset', previousOid: 'prev-sha', targetOid: 'target-sha', mode: 'mixed' })
+    expect(entry).toMatchObject({
+      type: 'reset',
+      previousOid: 'prev-sha',
+      targetOid: 'target-sha',
+      mode: 'mixed',
+    })
     expect(mocked.pinObject).toHaveBeenCalledWith(path, `${entry.id}-previous`, 'prev-sha')
     expect(mocked.pinObject).toHaveBeenCalledWith(path, `${entry.id}-target`, 'target-sha')
   })
@@ -337,7 +363,7 @@ describe('apiResetToCommit', () => {
 
     const entry = historyOf(path).stack[0]
     expect(entry.pinnedRefs).toEqual(
-      expect.arrayContaining(['refs/git-manager/undo/idxreset', 'refs/git-manager/undo/wdreset']),
+      expect.arrayContaining(['refs/git-manager/undo/idxreset', 'refs/git-manager/undo/wdreset'])
     )
   })
 })
@@ -349,7 +375,11 @@ describe('stash actions', () => {
 
     await api.apiStashPush(path, 'my wip', true)
 
-    expect(historyOf(path).stack[0]).toMatchObject({ type: 'stashPush', message: 'my wip', includeUntracked: true })
+    expect(historyOf(path).stack[0]).toMatchObject({
+      type: 'stashPush',
+      message: 'my wip',
+      includeUntracked: true,
+    })
   })
 
   it('apiStashPop pushes a stashPop entry pinning the stash commit and pre-pop snapshot', async () => {
@@ -363,7 +393,11 @@ describe('stash actions', () => {
     const entry = historyOf(path).stack[0]
     expect(entry).toMatchObject({ type: 'stashPop', commitOid: 'stash-0' })
     expect(entry.pinnedRefs).toEqual(
-      expect.arrayContaining([`${entry.id}-stash`, 'refs/git-manager/undo/idxpop', 'refs/git-manager/undo/wdpop']),
+      expect.arrayContaining([
+        `${entry.id}-stash`,
+        'refs/git-manager/undo/idxpop',
+        'refs/git-manager/undo/wdpop',
+      ])
     )
   })
 
@@ -390,7 +424,9 @@ describe('stash actions', () => {
 
   it('apiStashDrop pushes a stashDrop entry pinning the dropped commit', async () => {
     const path = freshPath()
-    mocked.stashList.mockResolvedValue([stash({ index: 2, commitOid: 'stash-2', message: 'drop me' })])
+    mocked.stashList.mockResolvedValue([
+      stash({ index: 2, commitOid: 'stash-2', message: 'drop me' }),
+    ])
     mocked.stashDrop.mockResolvedValue(undefined)
 
     await api.apiStashDrop(path, 2)
@@ -418,7 +454,12 @@ describe('apiCheckoutBranch', () => {
 
     await api.apiCheckoutBranch(path, 'feat', { fromRef: 'main', fromDetached: false })
 
-    expect(historyOf(path).stack[0]).toMatchObject({ type: 'checkout', fromRef: 'main', toRef: 'feat', force: false })
+    expect(historyOf(path).stack[0]).toMatchObject({
+      type: 'checkout',
+      fromRef: 'main',
+      toRef: 'feat',
+      force: false,
+    })
   })
 
   it('force checkout snapshots the worktree first and pins it', async () => {
@@ -430,7 +471,7 @@ describe('apiCheckoutBranch', () => {
 
     const entry = historyOf(path).stack[0]
     expect(entry.pinnedRefs).toEqual(
-      expect.arrayContaining(['refs/git-manager/undo/idxco', 'refs/git-manager/undo/wdco']),
+      expect.arrayContaining(['refs/git-manager/undo/idxco', 'refs/git-manager/undo/wdco'])
     )
   })
 
@@ -463,7 +504,12 @@ describe('apiDeleteBranch', () => {
     await api.apiDeleteBranch(path, 'feat', { targetOid: 'sha-feat', upstream: 'origin/feat' })
 
     const entry = historyOf(path).stack[0]
-    expect(entry).toMatchObject({ type: 'deleteBranch', name: 'feat', targetOid: 'sha-feat', upstream: 'origin/feat' })
+    expect(entry).toMatchObject({
+      type: 'deleteBranch',
+      name: 'feat',
+      targetOid: 'sha-feat',
+      upstream: 'origin/feat',
+    })
     expect(mocked.pinObject).toHaveBeenCalledWith(path, entry.id, 'sha-feat')
   })
 })
@@ -476,7 +522,11 @@ describe('apiRemoveRemote', () => {
 
     await api.apiRemoveRemote(path, 'origin')
 
-    expect(historyOf(path).stack[0]).toMatchObject({ type: 'removeRemote', name: 'origin', url: 'git@x:y.git' })
+    expect(historyOf(path).stack[0]).toMatchObject({
+      type: 'removeRemote',
+      name: 'origin',
+      url: 'git@x:y.git',
+    })
   })
 
   it('clears redo when the remote was already gone', async () => {

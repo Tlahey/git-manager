@@ -23,7 +23,10 @@ interface CloneRepoDialogProps {
 
 /** Dérive le nom de dossier depuis une URL Git (https ou ssh). */
 function deriveFolderName(url: string): string {
-  const cleaned = url.trim().replace(/\/+$/, '').replace(/\.git$/, '')
+  const cleaned = url
+    .trim()
+    .replace(/\/+$/, '')
+    .replace(/\.git$/, '')
   const segment = cleaned.split(/[/:]/).pop() ?? ''
   return segment || 'repository'
 }
@@ -117,24 +120,28 @@ export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogP
             )}
           </div>
 
-          <div className="flex gap-4 mt-1 font-sans">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
+          <div className="mt-1 flex gap-4 font-sans">
+            <label className="flex cursor-pointer select-none items-center gap-2">
               <input
                 type="checkbox"
                 checked={shallow}
                 onChange={(e) => setShallow(e.target.checked)}
                 className="h-3.5 w-3.5 rounded border-border bg-card text-primary focus:ring-primary focus:ring-offset-background"
               />
-              <span className="text-xs text-muted-foreground hover:text-foreground transition-colors font-medium">Shallow clone</span>
+              <span className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">
+                Shallow clone
+              </span>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
+            <label className="flex cursor-pointer select-none items-center gap-2">
               <input
                 type="checkbox"
                 checked={sparse}
                 onChange={(e) => setSparse(e.target.checked)}
                 className="h-3.5 w-3.5 rounded border-border bg-card text-primary focus:ring-primary focus:ring-offset-background"
               />
-              <span className="text-xs text-muted-foreground hover:text-foreground transition-colors font-medium">Sparse checkout</span>
+              <span className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">
+                Sparse checkout
+              </span>
             </label>
           </div>
 

@@ -21,8 +21,18 @@ function fakeModel(lines: string[]): LineTextModel {
 
 describe('toMonacoDecoration', () => {
   it('builds a whole-line decoration spanning the inclusive line range', () => {
-    const deco = toMonacoDecoration({ startLine: 3, endLine: 5, className: 'merge-text-conflict', marginClassName: 'merge-vivid-conflict' })
-    expect(deco.range).toEqual({ startLineNumber: 3, startColumn: 1, endLineNumber: 5, endColumn: 1 })
+    const deco = toMonacoDecoration({
+      startLine: 3,
+      endLine: 5,
+      className: 'merge-text-conflict',
+      marginClassName: 'merge-vivid-conflict',
+    })
+    expect(deco.range).toEqual({
+      startLineNumber: 3,
+      startColumn: 1,
+      endLineNumber: 5,
+      endColumn: 1,
+    })
     expect(deco.options.isWholeLine).toBe(true)
     expect(deco.options.className).toBe('merge-text-conflict')
     expect(deco.options.marginClassName).toBe('merge-vivid-conflict')
@@ -31,8 +41,18 @@ describe('toMonacoDecoration', () => {
 
 describe('toInlineMonacoDecoration', () => {
   it('builds a character-precise inline decoration without whole-line or margin styling', () => {
-    const deco = toInlineMonacoDecoration({ line: 2, startColumn: 4, endColumn: 9, inlineClassName: 'merge-inline-modification' })
-    expect(deco.range).toEqual({ startLineNumber: 2, startColumn: 4, endLineNumber: 2, endColumn: 9 })
+    const deco = toInlineMonacoDecoration({
+      line: 2,
+      startColumn: 4,
+      endColumn: 9,
+      inlineClassName: 'merge-inline-modification',
+    })
+    expect(deco.range).toEqual({
+      startLineNumber: 2,
+      startColumn: 4,
+      endLineNumber: 2,
+      endColumn: 9,
+    })
     expect(deco.options.inlineClassName).toBe('merge-inline-modification')
     expect(deco.options.isWholeLine).toBeUndefined()
     expect(deco.options.marginClassName).toBeUndefined()
@@ -110,16 +130,24 @@ describe('checkTextChanges', () => {
 describe('applyViewZones', () => {
   function fakeZoneEditor() {
     let nextId = 1
-    const zones = new Map<string, { afterLineNumber: number; heightInLines: number; domNode: HTMLElement }>()
+    const zones = new Map<
+      string,
+      { afterLineNumber: number; heightInLines: number; domNode: HTMLElement }
+    >()
     const editorInstance = {
-      changeViewZones: (cb: (accessor: { removeZone: (id: string) => void; addZone: (z: never) => string }) => void) => {
+      changeViewZones: (
+        cb: (accessor: { removeZone: (id: string) => void; addZone: (z: never) => string }) => void
+      ) => {
         cb({
           removeZone: (id: string) => {
             zones.delete(id)
           },
           addZone: (zone: never) => {
             const id = `zone-${nextId++}`
-            zones.set(id, zone as { afterLineNumber: number; heightInLines: number; domNode: HTMLElement })
+            zones.set(
+              id,
+              zone as { afterLineNumber: number; heightInLines: number; domNode: HTMLElement }
+            )
             return id
           },
         })
@@ -131,7 +159,11 @@ describe('applyViewZones', () => {
   it('replaces the previous zones wholesale and returns the new ids', () => {
     const { editorInstance, zones } = fakeZoneEditor()
 
-    const firstIds = applyViewZones(editorInstance, [], [{ afterLineNumber: 2, heightInLines: 1, className: 'merge-zone' }])
+    const firstIds = applyViewZones(
+      editorInstance,
+      [],
+      [{ afterLineNumber: 2, heightInLines: 1, className: 'merge-zone' }]
+    )
     expect(firstIds).toHaveLength(1)
     expect(zones.size).toBe(1)
 
@@ -154,10 +186,14 @@ describe('applyViewZones', () => {
 describe('setHiddenAreas', () => {
   it('calls the runtime setHiddenAreas when present and tolerates editors without it (or null)', () => {
     const calls: unknown[] = []
-    const withApi = { setHiddenAreas: (ranges: unknown) => calls.push(ranges) } as unknown as editor.IStandaloneCodeEditor
+    const withApi = {
+      setHiddenAreas: (ranges: unknown) => calls.push(ranges),
+    } as unknown as editor.IStandaloneCodeEditor
     const withoutApi = {} as editor.IStandaloneCodeEditor
 
-    setHiddenAreas(withApi, [{ startLineNumber: 1, startColumn: 1, endLineNumber: 2, endColumn: 1 }])
+    setHiddenAreas(withApi, [
+      { startLineNumber: 1, startColumn: 1, endLineNumber: 2, endColumn: 1 },
+    ])
     expect(calls).toHaveLength(1)
 
     expect(() => setHiddenAreas(withoutApi, [])).not.toThrow()

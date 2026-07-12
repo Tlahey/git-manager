@@ -61,7 +61,12 @@ export function PullRequestsPage() {
       label: 'My Pull Requests',
       icon: GitPullRequest,
       render: () => (
-        <PullRequestsTab allPRs={prs} pinnedIds={pinnedIds} onTogglePin={togglePin} loading={loading} />
+        <PullRequestsTab
+          allPRs={prs}
+          pinnedIds={pinnedIds}
+          onTogglePin={togglePin}
+          loading={loading}
+        />
       ),
     },
     {
@@ -90,14 +95,21 @@ export function PullRequestsPage() {
       label: 'Waiting for Review',
       icon: Eye,
       render: () => (
-        <WaitingForReviewTab allPRs={prs} pinnedIds={pinnedIds} onTogglePin={togglePin} loading={loading} />
+        <WaitingForReviewTab
+          allPRs={prs}
+          pinnedIds={pinnedIds}
+          onTogglePin={togglePin}
+          loading={loading}
+        />
       ),
     },
     {
       id: 'stats',
       label: 'Commit Stats',
       icon: BarChart2,
-      render: () => <CommitStatsTab commitDays={commitDays} yearDays={yearDays} loading={loading} />,
+      render: () => (
+        <CommitStatsTab commitDays={commitDays} yearDays={yearDays} loading={loading} />
+      ),
     },
     {
       id: 'views',
@@ -123,14 +135,14 @@ export function PullRequestsPage() {
   return (
     <div className="flex h-full flex-col overflow-hidden bg-background">
       {/* Page Header */}
-      <header className="flex items-center gap-3 border-b border-border bg-card/50 px-5 py-2.5 shrink-0 backdrop-blur-sm">
+      <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card/50 px-5 py-2.5 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <Rocket className="h-4 w-4 text-primary" />
-          <h1 className="text-sm font-bold text-foreground tracking-wide">Launchpad</h1>
+          <h1 className="text-sm font-bold tracking-wide text-foreground">Launchpad</h1>
         </div>
         <div className="h-4 w-px bg-border" />
         {hasToken ? (
-          <span className="text-xs text-muted-foreground flex items-center gap-1">
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
             {loading || isValidating ? (
               <>
                 <Loader2 className="h-3 w-3 animate-spin" /> Fetching…
@@ -143,7 +155,7 @@ export function PullRequestsPage() {
             ) : (
               <>
                 <CheckCircle2 className="h-3 w-3 text-green-400" /> Synced as{' '}
-                <strong className="text-foreground ml-0.5">{username}</strong>
+                <strong className="ml-0.5 text-foreground">{username}</strong>
               </>
             )}
           </span>
@@ -162,7 +174,7 @@ export function PullRequestsPage() {
             onClick={refresh}
             disabled={isValidating}
             data-testid="manual-refresh-button"
-            className="flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-accent/40 transition-colors disabled:opacity-40"
+            className="flex h-7 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs text-muted-foreground transition-colors hover:border-border/80 hover:bg-accent/40 hover:text-foreground disabled:opacity-40"
             title="Refresh now"
           >
             <RefreshCw className={`h-3 w-3 ${isValidating ? 'animate-spin' : ''}`} /> Refresh
@@ -171,14 +183,17 @@ export function PullRequestsPage() {
       </header>
 
       {/* Loading progress bar container - fixed height to prevent CLS */}
-      <div className="h-[2px] w-full bg-border/10 overflow-hidden shrink-0 relative" data-testid="refresh-progress-bar">
+      <div
+        className="relative h-[2px] w-full shrink-0 overflow-hidden bg-border/10"
+        data-testid="refresh-progress-bar"
+      >
         {isValidating && (
-          <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent animate-shimmer" />
+          <div className="animate-shimmer absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent" />
         )}
       </div>
 
       {/* Overview KPI Bar */}
-      <div className="flex items-stretch gap-3 px-5 py-3 border-b border-border bg-card/20 shrink-0">
+      <div className="flex shrink-0 items-stretch gap-3 border-b border-border bg-card/20 px-5 py-3">
         <KpiCard
           icon={<GitPullRequest className="h-3.5 w-3.5 text-green-400" />}
           label="Open PRs"
@@ -218,7 +233,7 @@ export function PullRequestsPage() {
       </div>
 
       {/* Inner Tab Bar */}
-      <div className="flex items-center border-b border-border bg-card/30 shrink-0 px-3">
+      <div className="flex shrink-0 items-center border-b border-border bg-card/30 px-3">
         {PR_TABS.map((tab) => {
           const Icon = tab.icon
           return (
@@ -236,7 +251,7 @@ export function PullRequestsPage() {
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 min-h-0">{renderActiveTab(PR_TABS, activeTab)}</div>
+      <div className="min-h-0 flex-1">{renderActiveTab(PR_TABS, activeTab)}</div>
     </div>
   )
 }

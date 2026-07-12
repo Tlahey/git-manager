@@ -40,10 +40,7 @@ export function usePullRequests({
   const resolvedUser = currentUser || (activeAccount?.user?.login ?? undefined)
 
   // Détecte le premier remote GitHub
-  const ownerRepo =
-    remoteUrls
-      .map((url) => parseGitHubUrl(url))
-      .find((r) => r !== null) ?? null
+  const ownerRepo = remoteUrls.map((url) => parseGitHubUrl(url)).find((r) => r !== null) ?? null
 
   const isGithub = ownerRepo !== null
 
@@ -56,21 +53,23 @@ export function usePullRequests({
     swrKey,
     async ([_, owner, repo, tok]) => {
       const raw = await fetchRepoPRs(owner, repo, tok ?? undefined)
-      return raw.map((pr): PullRequest => ({
-        number: pr.number,
-        title: pr.title,
-        body: pr.body ?? '',
-        state: pr.draft ? 'draft' : (pr.state as PullRequest['state']),
-        author: pr.user?.login ?? '—',
-        authorAvatar: pr.user?.avatar_url ?? '',
-        headRef: pr.head?.ref ?? '',
-        baseRef: pr.base?.ref ?? '',
-        url: pr.html_url,
-        ciStatus: null,
-        createdAt: pr.created_at,
-        updatedAt: pr.updated_at,
-        isDraft: pr.draft,
-      }))
+      return raw.map(
+        (pr): PullRequest => ({
+          number: pr.number,
+          title: pr.title,
+          body: pr.body ?? '',
+          state: pr.draft ? 'draft' : (pr.state as PullRequest['state']),
+          author: pr.user?.login ?? '—',
+          authorAvatar: pr.user?.avatar_url ?? '',
+          headRef: pr.head?.ref ?? '',
+          baseRef: pr.base?.ref ?? '',
+          url: pr.html_url,
+          ciStatus: null,
+          createdAt: pr.created_at,
+          updatedAt: pr.updated_at,
+          isDraft: pr.draft,
+        })
+      )
     },
     {
       refreshInterval: 60_000,
@@ -79,9 +78,7 @@ export function usePullRequests({
   )
 
   const allPrs = data ?? []
-  const myPrs = resolvedUser
-    ? allPrs.filter((pr) => pr.author === resolvedUser)
-    : []
+  const myPrs = resolvedUser ? allPrs.filter((pr) => pr.author === resolvedUser) : []
 
   return {
     myPrs,

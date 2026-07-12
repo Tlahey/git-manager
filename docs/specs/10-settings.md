@@ -44,15 +44,15 @@ Settings
 └─────────────────────────────────────────────────────────────┘
 ```
 
-| Parameter | Type | Default |
-|-----------|------|--------|
-| `ollamaUrl` | string | `http://localhost:11434` |
-| `ollamaModel` | string | `llama3.2` |
-| `ollamaTemperature` | float | `0.3` |
-| `ollamaTimeout` | integer (s) | `30` |
-| `ollamaSystemPrompt` | string | (default prompt) |
-| `includeRepoContext` | boolean | `true` |
-| `autoDetectScope` | boolean | `true` |
+| Parameter            | Type        | Default                  |
+| -------------------- | ----------- | ------------------------ |
+| `ollamaUrl`          | string      | `http://localhost:11434` |
+| `ollamaModel`        | string      | `llama3.2`               |
+| `ollamaTemperature`  | float       | `0.3`                    |
+| `ollamaTimeout`      | integer (s) | `30`                     |
+| `ollamaSystemPrompt` | string      | (default prompt)         |
+| `includeRepoContext` | boolean     | `true`                   |
+| `autoDetectScope`    | boolean     | `true`                   |
 
 ---
 
@@ -172,14 +172,14 @@ Settings
 └─────────────────────────────────────────────────────────────┘
 ```
 
-| Parameter | Type | Default |
-|-----------|------|--------|
-| `learningMode` | `'off' \| 'beginner' \| 'intermediate'` | `'off'` |
-| `showGitConsole` | boolean | `false` |
-| `showPedagogicTooltips` | boolean | `true` |
-| `showPostActionSummary` | boolean | `true` |
-| `showActionJournal` | boolean | `true` |
-| `skipCommandPreview` | boolean | `false` |
+| Parameter               | Type                                    | Default |
+| ----------------------- | --------------------------------------- | ------- |
+| `learningMode`          | `'off' \| 'beginner' \| 'intermediate'` | `'off'` |
+| `showGitConsole`        | boolean                                 | `false` |
+| `showPedagogicTooltips` | boolean                                 | `true`  |
+| `showPostActionSummary` | boolean                                 | `true`  |
+| `showActionJournal`     | boolean                                 | `true`  |
+| `skipCommandPreview`    | boolean                                 | `false` |
 
 ---
 
@@ -214,14 +214,14 @@ Credentials (tokens, SSH passphrase) are stored in the macOS Keychain via `tauri
 
 ## Tauri commands involved
 
-| Command | Description |
-|---------|-------------|
-| `get_settings` | Returns the complete config |
-| `update_settings(partial)` | Partially updates |
-| `test_ollama_connection(url)` | Tests the connection + lists models |
-| `save_credential(host, token)` | Stores in Keychain |
-| `delete_credential(host)` | Deletes from Keychain |
-| `list_credentials` | Returns the configured hosts (without the tokens) |
+| Command                        | Description                                       |
+| ------------------------------ | ------------------------------------------------- |
+| `get_settings`                 | Returns the complete config                       |
+| `update_settings(partial)`     | Partially updates                                 |
+| `test_ollama_connection(url)`  | Tests the connection + lists models               |
+| `save_credential(host, token)` | Stores in Keychain                                |
+| `delete_credential(host)`      | Deletes from Keychain                             |
+| `list_credentials`             | Returns the configured hosts (without the tokens) |
 
 ---
 

@@ -111,7 +111,14 @@ export function getScrollCoordinatesForContent(
 ): number {
   if (blocks.length === 0) return masterScrollTop
 
-  const active = findActiveBlock(masterEditor, blocks, placements, masterIndex, masterScrollTop, getTop)
+  const active = findActiveBlock(
+    masterEditor,
+    blocks,
+    placements,
+    masterIndex,
+    masterScrollTop,
+    getTop
+  )
   if (!active) return masterScrollTop
 
   const block = active.block
@@ -120,8 +127,20 @@ export function getScrollCoordinatesForContent(
   const masterRange = getPaneLineRange(block, placement, masterIndex)
   const slaveRange = getPaneLineRange(block, placement, slaveIndex)
 
-  const masterCoords = getPaneYCoords(masterEditor, masterRange.startLine, masterRange.lineCount, masterIndex, getTop)
-  const slaveCoords = getPaneYCoords(slaveEditor, slaveRange.startLine, slaveRange.lineCount, slaveIndex, getTop)
+  const masterCoords = getPaneYCoords(
+    masterEditor,
+    masterRange.startLine,
+    masterRange.lineCount,
+    masterIndex,
+    getTop
+  )
+  const slaveCoords = getPaneYCoords(
+    slaveEditor,
+    slaveRange.startLine,
+    slaveRange.lineCount,
+    slaveIndex,
+    getTop
+  )
 
   const masterHeight = masterCoords.yEnd - masterCoords.yStart
   const slaveHeight = slaveCoords.yEnd - slaveCoords.yStart
@@ -169,50 +188,53 @@ export function useMergeScrollSync(
   const editorsRef = useRef<(Editor | null)[]>([null, null, null])
   const isSyncingScroll = useRef(false)
 
-  const attach = useCallback((editorInstance: Editor, index: PaneIndex) => {
-    editorsRef.current[index] = editorInstance
-    editorInstance.onDidScrollChange((e) => {
-      if (isSyncingScroll.current || ignoreScrollSyncRef?.current) return
+  const attach = useCallback(
+    (editorInstance: Editor, index: PaneIndex) => {
+      editorsRef.current[index] = editorInstance
+      editorInstance.onDidScrollChange((e) => {
+        if (isSyncingScroll.current || ignoreScrollSyncRef?.current) return
 
-      if (e.scrollLeftChanged) {
-        isSyncingScroll.current = true
-        try {
-          editorsRef.current.forEach((other, i) => {
-            if (i === index || !other) return
-            other.setScrollLeft(e.scrollLeft)
-          })
-        } finally {
-          isSyncingScroll.current = false
+        if (e.scrollLeftChanged) {
+          isSyncingScroll.current = true
+          try {
+            editorsRef.current.forEach((other, i) => {
+              if (i === index || !other) return
+              other.setScrollLeft(e.scrollLeft)
+            })
+          } finally {
+            isSyncingScroll.current = false
+          }
         }
-      }
 
-      if (e.scrollTopChanged) {
-        isSyncingScroll.current = true
-        try {
-          const masterScrollTop = e.scrollTop
+        if (e.scrollTopChanged) {
+          isSyncingScroll.current = true
+          try {
+            const masterScrollTop = e.scrollTop
 
-          editorsRef.current.forEach((other, i) => {
-            if (i === index || !other) return
+            editorsRef.current.forEach((other, i) => {
+              if (i === index || !other) return
 
-            const targetScrollTop = getScrollCoordinatesForContent(
-              editorInstance,
-              other,
-              masterScrollTop,
-              blocksRef.current,
-              placementsRef.current,
-              index,
-              i as PaneIndex,
-              getTop
-            )
+              const targetScrollTop = getScrollCoordinatesForContent(
+                editorInstance,
+                other,
+                masterScrollTop,
+                blocksRef.current,
+                placementsRef.current,
+                index,
+                i as PaneIndex,
+                getTop
+              )
 
-            other.setScrollTop(targetScrollTop)
-          })
-        } finally {
-          isSyncingScroll.current = false
+              other.setScrollTop(targetScrollTop)
+            })
+          } finally {
+            isSyncingScroll.current = false
+          }
         }
-      }
-    })
-  }, [blocksRef, placementsRef, getTop, ignoreScrollSyncRef])
+      })
+    },
+    [blocksRef, placementsRef, getTop, ignoreScrollSyncRef]
+  )
 
   return { attach, editorsRef }
 }

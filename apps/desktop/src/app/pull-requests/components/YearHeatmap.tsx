@@ -59,7 +59,7 @@ export function YearHeatmap({ yearDays }: YearHeatmapProps) {
 
       <div className="flex">
         {/* Day-of-week labels */}
-        <div className="flex flex-col gap-0.5 mr-1" style={{ width: 24 }}>
+        <div className="mr-1 flex flex-col gap-0.5" style={{ width: 24 }}>
           {DAYS_LABELS.map((d, i) => (
             <div
               key={i}
@@ -85,7 +85,11 @@ export function YearHeatmap({ yearDays }: YearHeatmapProps) {
                 const cell = week[di] ?? null
                 if (!cell) {
                   return (
-                    <div key={di} style={{ width: 11, height: 11 }} className="rounded-sm bg-transparent" />
+                    <div
+                      key={di}
+                      style={{ width: 11, height: 11 }}
+                      className="rounded-sm bg-transparent"
+                    />
                   )
                 }
                 const fmtDate = new Date(cell.date + 'T00:00:00').toLocaleDateString('en', {
@@ -98,7 +102,7 @@ export function YearHeatmap({ yearDays }: YearHeatmapProps) {
                   <div
                     key={di}
                     style={{ width: 11, height: 11 }}
-                    className={`rounded-sm cursor-pointer transition-opacity hover:opacity-80 ${heatColor(
+                    className={`cursor-pointer rounded-sm transition-opacity hover:opacity-80 ${heatColor(
                       cell.commits,
                       max
                     )}`}
@@ -116,13 +120,18 @@ export function YearHeatmap({ yearDays }: YearHeatmapProps) {
       {tooltipPortal}
 
       {/* Legend */}
-      <div className="flex items-center gap-1 mt-2 justify-end">
+      <div className="mt-2 flex items-center justify-end gap-1">
         <span className="text-[9px] text-muted-foreground">Less</span>
-        {['bg-muted/40', 'bg-green-900/60', 'bg-green-700/70', 'bg-green-600/80', 'bg-green-500/90', 'bg-green-400'].map(
-          (c, i) => (
-            <div key={i} style={{ width: 11, height: 11 }} className={`rounded-sm ${c}`} />
-          )
-        )}
+        {[
+          'bg-muted/40',
+          'bg-green-900/60',
+          'bg-green-700/70',
+          'bg-green-600/80',
+          'bg-green-500/90',
+          'bg-green-400',
+        ].map((c, i) => (
+          <div key={i} style={{ width: 11, height: 11 }} className={`rounded-sm ${c}`} />
+        ))}
         <span className="text-[9px] text-muted-foreground">More</span>
       </div>
     </div>

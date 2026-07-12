@@ -28,7 +28,7 @@ function ActionMenu({ items, onClose }: ActionMenuProps) {
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-lg border border-border bg-popover shadow-xl py-1 overflow-hidden">
+      <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-lg border border-border bg-popover py-1 shadow-xl">
         {items.map((item) => (
           <button
             key={item.label}
@@ -36,7 +36,7 @@ function ActionMenu({ items, onClose }: ActionMenuProps) {
               item.action()
               onClose()
             }}
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-foreground hover:bg-accent transition-colors"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-accent"
           >
             <span className="text-muted-foreground">{item.icon}</span>
             {item.label}
@@ -58,7 +58,7 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
 
   return (
     <div
-      className="group/pr relative flex items-center gap-3 px-4 py-2.5 hover:bg-accent/30 transition-colors cursor-pointer border-b border-border/30 last:border-0"
+      className="group/pr relative flex cursor-pointer items-center gap-3 border-b border-border/30 px-4 py-2.5 transition-colors last:border-0 hover:bg-accent/30"
       onClick={() => openUrl(pr.url)}
     >
       <button
@@ -84,76 +84,78 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
           <GitPullRequest className="h-4 w-4 text-green-400" />
         )}
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
-          <span className="text-xs font-medium text-foreground group-hover/pr:text-primary transition-colors truncate">
+          <span className="truncate text-xs font-medium text-foreground transition-colors group-hover/pr:text-primary">
             {pr.title}
           </span>
-          <span className="text-[10px] font-mono text-muted-foreground/60 shrink-0">
+          <span className="shrink-0 font-mono text-[10px] text-muted-foreground/60">
             #{pr.number}
           </span>
         </div>
-        <div className="flex items-center gap-2 mt-0.5">
+        <div className="mt-0.5 flex items-center gap-2">
           {pr.additions > 0 || pr.deletions > 0 ? (
-            <span className="text-[10px] font-mono text-muted-foreground/60 flex items-center gap-1">
+            <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground/60">
               <span className="text-green-400">+{pr.additions}</span>
               <span className="text-red-400">−{pr.deletions}</span>
-              {pr.filesChanged > 0 && <span className="text-muted-foreground/40">· {pr.filesChanged} files</span>}
+              {pr.filesChanged > 0 && (
+                <span className="text-muted-foreground/40">· {pr.filesChanged} files</span>
+              )}
             </span>
           ) : pr.filesChanged > 0 ? (
-            <span className="text-[10px] font-mono text-muted-foreground/60">
+            <span className="font-mono text-[10px] text-muted-foreground/60">
               {pr.filesChanged} files
             </span>
           ) : null}
           {pr.labels.slice(0, 2).map((l) => (
             <span
               key={l}
-              className="text-[9px] bg-muted/60 text-muted-foreground border border-border/50 rounded px-1 py-px"
+              className="rounded border border-border/50 bg-muted/60 px-1 py-px text-[9px] text-muted-foreground"
             >
               {l}
             </span>
           ))}
           {pr.needsRebase && (
-            <span className="text-[9px] bg-amber-500/15 text-amber-500 border border-amber-500/35 rounded px-1 py-0.5 flex items-center gap-0.5 font-medium shrink-0">
+            <span className="flex shrink-0 items-center gap-0.5 rounded border border-amber-500/35 bg-amber-500/15 px-1 py-0.5 text-[9px] font-medium text-amber-500">
               <AlertCircle className="h-2.5 w-2.5 text-amber-500" /> Rebase required
             </span>
           )}
         </div>
       </div>
-      <div className="shrink-0 text-[10px] text-muted-foreground min-w-[52px] text-right">
+      <div className="min-w-[52px] shrink-0 text-right text-[10px] text-muted-foreground">
         {timeAgo(pr.updatedAt)}
       </div>
-      <div className="shrink-0 w-[80px] flex justify-center">
+      <div className="flex w-[80px] shrink-0 justify-center">
         <StatusBadge status={pr.status} />
       </div>
-      <div className="shrink-0 flex items-center gap-1.5 w-[90px]">
+      <div className="flex w-[90px] shrink-0 items-center gap-1.5">
         <img
           src={pr.authorAvatar}
           alt={pr.author}
-          className="rounded-full bg-muted border border-border object-cover"
+          className="rounded-full border border-border bg-muted object-cover"
           style={{ width: 18, height: 18 }}
         />
-        <span className="text-[10px] text-muted-foreground truncate">{pr.author}</span>
+        <span className="truncate text-[10px] text-muted-foreground">{pr.author}</span>
       </div>
-      <div className="shrink-0 w-[60px] flex justify-center">
+      <div className="flex w-[60px] shrink-0 justify-center">
         {pr.collaborators.length > 0 ? (
           <AvatarStack users={pr.collaborators} max={3} />
         ) : (
-          <span className="text-muted-foreground/30 text-[10px]">—</span>
+          <span className="text-[10px] text-muted-foreground/30">—</span>
         )}
       </div>
-      <div className="shrink-0 w-[110px]">
-        <span className="text-[10px] font-mono text-muted-foreground/70 truncate block">
+      <div className="w-[110px] shrink-0">
+        <span className="block truncate font-mono text-[10px] text-muted-foreground/70">
           {pr.repo}
         </span>
       </div>
-      <div className="shrink-0 w-[60px] flex justify-center">
+      <div className="flex w-[60px] shrink-0 justify-center">
         <CiBadge status={pr.ciStatus} details={pr.ciDetails} />
       </div>
-      <div className="shrink-0 relative" onClick={(e) => e.stopPropagation()}>
+      <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
         <button
           onClick={() => setMenuOpen((v) => !v)}
-          className="h-6 w-6 flex items-center justify-center rounded border border-transparent hover:border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+          className="flex h-6 w-6 items-center justify-center rounded border border-transparent text-muted-foreground transition-colors hover:border-border hover:bg-accent hover:text-foreground"
         >
           <MoreHorizontal className="h-3.5 w-3.5" />
         </button>

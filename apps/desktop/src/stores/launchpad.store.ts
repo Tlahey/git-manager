@@ -17,9 +17,9 @@ export interface SavedFilter {
   authorContains?: string
   repo?: string
   labelContains?: string
-  statuses?: FilterStatus[]   // empty = all statuses
-  needsMyReview?: boolean     // undefined = don't filter
-  createdAt: number           // timestamp
+  statuses?: FilterStatus[] // empty = all statuses
+  needsMyReview?: boolean // undefined = don't filter
+  createdAt: number // timestamp
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -70,9 +70,7 @@ export const useLaunchpadStore = create<LaunchpadState>()(
 
       updateFilter: (id, patch) =>
         set((state) => ({
-          savedFilters: state.savedFilters.map((f) =>
-            f.id === id ? { ...f, ...patch } : f
-          ),
+          savedFilters: state.savedFilters.map((f) => (f.id === id ? { ...f, ...patch } : f)),
         })),
 
       deleteFilter: (id) =>

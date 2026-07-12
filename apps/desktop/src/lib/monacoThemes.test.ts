@@ -111,7 +111,10 @@ describe('registerAndApplyDynamicTheme', () => {
       throw new Error('boom')
     })
     expect(() => registerAndApplyDynamicTheme(monaco)).not.toThrow()
-    expect(errorSpy).toHaveBeenCalledWith('Failed to define or apply dynamic Monaco theme', expect.any(Error))
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Failed to define or apply dynamic Monaco theme',
+      expect.any(Error)
+    )
     expect(setTheme).not.toHaveBeenCalled()
     errorSpy.mockRestore()
   })

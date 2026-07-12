@@ -14,12 +14,22 @@ import type { InlineDecorationSpec } from '../mergeIntraLineDiff'
  * that paints the whole margin width (line numbers + the reserved lineDecorationsWidth strip
  * together). */
 export function toMonacoDecoration(spec: DecorationSpec): editor.IModelDeltaDecoration {
-  const range: IRange = { startLineNumber: spec.startLine, startColumn: 1, endLineNumber: spec.endLine, endColumn: 1 }
+  const range: IRange = {
+    startLineNumber: spec.startLine,
+    startColumn: 1,
+    endLineNumber: spec.endLine,
+    endColumn: 1,
+  }
   // `zIndex` is defensive: without it, decorations can render underneath other decoration
   // layers Monaco itself manages (current-line highlight, etc.) depending on paint order.
   return {
     range,
-    options: { isWholeLine: true, className: spec.className, marginClassName: spec.marginClassName, zIndex: 10 },
+    options: {
+      isWholeLine: true,
+      className: spec.className,
+      marginClassName: spec.marginClassName,
+      zIndex: 10,
+    },
   }
 }
 
@@ -55,7 +65,13 @@ export function applyViewZones(
       if (spec.id) {
         domNode.setAttribute('data-zone-id', spec.id)
       }
-      ids.push(accessor.addZone({ afterLineNumber: spec.afterLineNumber, heightInLines: spec.heightInLines, domNode }))
+      ids.push(
+        accessor.addZone({
+          afterLineNumber: spec.afterLineNumber,
+          heightInLines: spec.heightInLines,
+          domNode,
+        })
+      )
     }
   })
   return ids
@@ -68,7 +84,10 @@ type EditorWithHiddenAreas = editor.IStandaloneCodeEditor & {
   setHiddenAreas?: (ranges: IRange[]) => void
 }
 
-export function setHiddenAreas(editorInstance: editor.IStandaloneCodeEditor | null, ranges: IRange[]): void {
+export function setHiddenAreas(
+  editorInstance: editor.IStandaloneCodeEditor | null,
+  ranges: IRange[]
+): void {
   ;(editorInstance as EditorWithHiddenAreas | null)?.setHiddenAreas?.(ranges)
 }
 
@@ -96,7 +115,12 @@ export function buildRangeEdit(
 
   if (startLine + lineCount <= totalLines) {
     return {
-      range: { startLineNumber: startLine, startColumn: 1, endLineNumber: startLine + lineCount, endColumn: 1 },
+      range: {
+        startLineNumber: startLine,
+        startColumn: 1,
+        endLineNumber: startLine + lineCount,
+        endColumn: 1,
+      },
       text: newLines.length > 0 ? newLines.join('\n') + '\n' : '',
     }
   }
@@ -106,12 +130,22 @@ export function buildRangeEdit(
   if (startLine > 1) {
     const prevLine = startLine - 1
     return {
-      range: { startLineNumber: prevLine, startColumn: model.getLineMaxColumn(prevLine), endLineNumber: lastLine, endColumn: lastCol },
+      range: {
+        startLineNumber: prevLine,
+        startColumn: model.getLineMaxColumn(prevLine),
+        endLineNumber: lastLine,
+        endColumn: lastCol,
+      },
       text: newLines.length > 0 ? '\n' + newLines.join('\n') : '',
     }
   }
   return {
-    range: { startLineNumber: startLine, startColumn: 1, endLineNumber: lastLine, endColumn: lastCol },
+    range: {
+      startLineNumber: startLine,
+      startColumn: 1,
+      endLineNumber: lastLine,
+      endColumn: lastCol,
+    },
     text: newLines.join('\n'),
   }
 }

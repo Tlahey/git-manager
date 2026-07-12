@@ -30,7 +30,12 @@ describe('repo.api pass-throughs', () => {
   it('apiCloneRepo forwards optional shallow/sparse flags', async () => {
     mocked.cloneRepo.mockResolvedValue(undefined)
     await api.apiCloneRepo('git@github.com:org/repo.git', '/dest', true, false)
-    expect(mocked.cloneRepo).toHaveBeenCalledWith('git@github.com:org/repo.git', '/dest', true, false)
+    expect(mocked.cloneRepo).toHaveBeenCalledWith(
+      'git@github.com:org/repo.git',
+      '/dest',
+      true,
+      false
+    )
   })
 
   it('apiInitRepo delegates to initRepo', async () => {

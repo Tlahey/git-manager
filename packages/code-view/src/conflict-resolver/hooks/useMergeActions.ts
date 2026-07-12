@@ -64,7 +64,10 @@ export function useMergeActions({
       computeEdit: (
         centerEditor: editor.IStandaloneCodeEditor,
         model: editor.ITextModel
-      ) => { nextPlacements: Map<number, BlockPlacement>; edit: { range: IRange; text: string } | null } | null,
+      ) => {
+        nextPlacements: Map<number, BlockPlacement>
+        edit: { range: IRange; text: string } | null
+      } | null,
       { pushStack = true, focus = true }: { pushStack?: boolean; focus?: boolean } = {}
     ) => {
       executeWithScrollPreservation(() => {
@@ -96,14 +99,24 @@ export function useMergeActions({
         if (focus) centerEditor.focus()
       })
     },
-    [editors, placementsRef, executeWithScrollPreservation, applyTrackedEdit, recordEntry, updatePlacementsStateAndRef]
+    [
+      editors,
+      placementsRef,
+      executeWithScrollPreservation,
+      applyTrackedEdit,
+      recordEntry,
+      updatePlacementsStateAndRef,
+    ]
   )
 
   /** Full-buffer replacement edit, or `null` when the buffer already holds `mergedText`. */
-  const fullTextEdit = useCallback((model: editor.ITextModel, mergedText: string): { range: IRange; text: string } | null => {
-    if (model.getValue() === mergedText) return null
-    return { range: model.getFullModelRange(), text: mergedText }
-  }, [])
+  const fullTextEdit = useCallback(
+    (model: editor.ITextModel, mergedText: string): { range: IRange; text: string } | null => {
+      if (model.getValue() === mergedText) return null
+      return { range: model.getFullModelRange(), text: mergedText }
+    },
+    []
+  )
 
   /** Independent per-side toggle for genuine conflicts — accepting ours doesn't exclude theirs,
    * so both can end up in the result together. */
@@ -113,13 +126,33 @@ export function useMergeActions({
         const currentPlacement = placementsRef.current.get(block.blockId)
         if (!currentPlacement) return null
 
-        const postPlacements = updatePlacementAfterToggle(placementsRef.current, blocksRef.current, block, side, included)
+        const postPlacements = updatePlacementAfterToggle(
+          placementsRef.current,
+          blocksRef.current,
+          block,
+          side,
+          included
+        )
         const updatedPlacement = postPlacements.get(block.blockId)
         if (!updatedPlacement) return null
 
-        const newLines = centerLinesForBlock(block, updatedPlacement.oursIncluded, updatedPlacement.theirsIncluded)
-        const hasTextChange = checkTextChanges(model, currentPlacement.centerStartLine, currentPlacement.centerLineCount, newLines)
-        const edit = buildRangeEdit(model, currentPlacement.centerStartLine, currentPlacement.centerLineCount, newLines)
+        const newLines = centerLinesForBlock(
+          block,
+          updatedPlacement.oursIncluded,
+          updatedPlacement.theirsIncluded
+        )
+        const hasTextChange = checkTextChanges(
+          model,
+          currentPlacement.centerStartLine,
+          currentPlacement.centerLineCount,
+          newLines
+        )
+        const edit = buildRangeEdit(
+          model,
+          currentPlacement.centerStartLine,
+          currentPlacement.centerLineCount,
+          newLines
+        )
 
         return { nextPlacements: postPlacements, edit: hasTextChange ? edit : null }
       })
@@ -143,14 +176,30 @@ export function useMergeActions({
         if (!current) return null
 
         const mirror: MergeSide = source === 'ours' ? 'theirs' : 'ours'
-        let next = updatePlacementAfterToggle(placementsRef.current, blocksRef.current, block, source, apply)
+        let next = updatePlacementAfterToggle(
+          placementsRef.current,
+          blocksRef.current,
+          block,
+          source,
+          apply
+        )
         next = updatePlacementAfterToggle(next, blocksRef.current, block, mirror, !apply)
         const flags = next.get(block.blockId)
         if (!flags) return null
 
         const newLines = centerLinesForBlock(block, flags.oursIncluded, flags.theirsIncluded)
-        const hasTextChange = checkTextChanges(model, current.centerStartLine, current.centerLineCount, newLines)
-        const edit = buildRangeEdit(model, current.centerStartLine, current.centerLineCount, newLines)
+        const hasTextChange = checkTextChanges(
+          model,
+          current.centerStartLine,
+          current.centerLineCount,
+          newLines
+        )
+        const edit = buildRangeEdit(
+          model,
+          current.centerStartLine,
+          current.centerLineCount,
+          newLines
+        )
 
         return { nextPlacements: next, edit: hasTextChange ? edit : null }
       })
@@ -191,12 +240,24 @@ export function useMergeActions({
           if (isLeftChange && (side === 'left' || side === 'all')) {
             const kind = changeKindForBlock(block)
             const theirsInc = kind !== 'deletion'
-            nextPlacements = updatePlacementBothFlags(nextPlacements, blocksRef.current, block, false, theirsInc)
+            nextPlacements = updatePlacementBothFlags(
+              nextPlacements,
+              blocksRef.current,
+              block,
+              false,
+              theirsInc
+            )
             changedAny = true
           } else if (isRightChange && (side === 'right' || side === 'all')) {
             const kind = changeKindForBlock(block)
             const oursInc = kind !== 'deletion'
-            nextPlacements = updatePlacementBothFlags(nextPlacements, blocksRef.current, block, oursInc, false)
+            nextPlacements = updatePlacementBothFlags(
+              nextPlacements,
+              blocksRef.current,
+              block,
+              oursInc,
+              false
+            )
             changedAny = true
           }
         }

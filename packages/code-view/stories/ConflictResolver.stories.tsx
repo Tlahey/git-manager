@@ -110,7 +110,10 @@ const meta = {
   component: ConflictResolver,
   decorators: [
     (Story) => (
-      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }} data-testid="story-root">
+      <div
+        style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}
+        data-testid="story-root"
+      >
         <Story />
       </div>
     ),
@@ -135,21 +138,21 @@ export const ThreeWayMerge: Story = {
     onAutoMerge: () => Promise.resolve(autoMergedText),
   },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+    const canvas = within(canvasElement)
 
     // 1. Verify the initial dropdown button text
-    const dropdownBtn = canvas.getByTestId('merge-whitespace-dropdown-btn');
-    await expect(dropdownBtn).toHaveTextContent('Do not ignore');
+    const dropdownBtn = canvas.getByTestId('merge-whitespace-dropdown-btn')
+    await expect(dropdownBtn).toHaveTextContent('Do not ignore')
 
     // 2. Open the dropdown
-    await userEvent.click(dropdownBtn);
+    await userEvent.click(dropdownBtn)
 
     // 3. Locate and click the "Ignore whitespace" option in the dropdown list
-    const ignoreOption = canvas.getByText('Ignore whitespace');
-    await userEvent.click(ignoreOption);
+    const ignoreOption = canvas.getByText('Ignore whitespace')
+    await userEvent.click(ignoreOption)
 
     // 4. Verify that the dropdown closed and the button label has updated
-    await expect(dropdownBtn).toHaveTextContent('Ignore whitespace');
+    await expect(dropdownBtn).toHaveTextContent('Ignore whitespace')
   },
 }
 
@@ -157,10 +160,7 @@ export const ThreeWayMerge: Story = {
  * own diff engine — no `blocks` input needed. */
 export const TwoPanelDiff: Story = {
   args: {
-    panels: [
-      { content: theirsText },
-      { content: oursText },
-    ],
+    panels: [{ content: theirsText }, { content: oursText }],
     modelPathPrefix: 'story/two-way/client.ts',
     editor: { language: 'typescript', theme: 'vs-dark' },
   },
@@ -195,9 +195,9 @@ export const NoHeader: Story = {
 
 /** Story showcasing the editor with collapseUnchanged set to true on mount. */
 const largeUnchangedLines = [
-  "// Copyright (c) 2026 Git Manager Ltd. All rights reserved.",
-  "// Dedicated header with lots of license boilerplate lines",
-  "// to trigger the collapse threshold (> 6 lines).",
+  '// Copyright (c) 2026 Git Manager Ltd. All rights reserved.',
+  '// Dedicated header with lots of license boilerplate lines',
+  '// to trigger the collapse threshold (> 6 lines).',
   "import React from 'react'",
   "import { useState } from 'react'",
   "import { Button } from '@git-manager/ui'",
@@ -208,13 +208,13 @@ const largeUnchangedLines = [
   "import { auth } from './auth'",
   "import { i18n } from './i18n'",
   "import { theme } from './theme'",
-  "// Some additional line to fill up space",
-  "// and ensure we clearly see the folded lines",
-  "// in the Monaco code editors.",
-  "// Line 17",
-  "// Line 18",
-  "// Line 19",
-  "// Line 20"
+  '// Some additional line to fill up space',
+  '// and ensure we clearly see the folded lines',
+  '// in the Monaco code editors.',
+  '// Line 17',
+  '// Line 18',
+  '// Line 19',
+  '// Line 20',
 ]
 
 const largeBlocks: MergeBlock[] = [
@@ -264,12 +264,10 @@ export const CollapsedByDefault: Story = {
     blocks: largeBlocks,
     modelPathPrefix: 'story/collapsed-by-default/client.ts',
     editor: { language: 'typescript', theme: 'vs-dark' },
-    onAutoMerge: () => Promise.resolve([
-      ...largeUnchangedLines,
-      '  const retries = 3',
-      '  return api.run(retries)',
-      '}'
-    ].join('\n')),
+    onAutoMerge: () =>
+      Promise.resolve(
+        [...largeUnchangedLines, '  const retries = 3', '  return api.run(retries)', '}'].join('\n')
+      ),
     defaultCollapseUnchanged: true,
   },
 }
@@ -281,12 +279,12 @@ export const CollapsedByDefault: Story = {
  * exercises the connector ribbon's sloped fill+border path (in the gap between panes) rather
  * than the degenerate case where both ends happen to line up. */
 const staggeredHeaderTheirsLines = [
-  "// Copyright (c) 2026 Git Manager Ltd. All rights reserved.",
-  "// Extra line only present on the incoming side,",
-  "// so the unchanged block below starts later here",
-  "// than it does in the current side.",
+  '// Copyright (c) 2026 Git Manager Ltd. All rights reserved.',
+  '// Extra line only present on the incoming side,',
+  '// so the unchanged block below starts later here',
+  '// than it does in the current side.',
 ]
-const staggeredHeaderOursLines = ["// Copyright (c) 2026 Git Manager Ltd. All rights reserved."]
+const staggeredHeaderOursLines = ['// Copyright (c) 2026 Git Manager Ltd. All rights reserved.']
 
 const staggeredBlocks: MergeBlock[] = [
   {
@@ -440,7 +438,13 @@ export const CollapsedStaggeredAcrossPanels: Story = {
     editor: { language: 'typescript', theme: 'vs-dark' },
     onAutoMerge: () =>
       Promise.resolve(
-        [...staggeredHeaderOursLines, ...largeUnchangedLines, '  const retries = 3', '  return api.run(retries)', '}'].join('\n')
+        [
+          ...staggeredHeaderOursLines,
+          ...largeUnchangedLines,
+          '  const retries = 3',
+          '  return api.run(retries)',
+          '}',
+        ].join('\n')
       ),
     defaultCollapseUnchanged: true,
   },

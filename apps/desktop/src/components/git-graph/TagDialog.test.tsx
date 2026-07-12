@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key}:${JSON.stringify(opts)}` : key,
+  }),
 }))
 vi.mock('../../api/git.api', () => ({ apiCreateTag: vi.fn() }))
 
@@ -18,7 +21,15 @@ function renderDialog(props: Partial<React.ComponentProps<typeof TagDialog>> = {
   const invalidateSpy = vi.spyOn(client, 'invalidateQueries')
   const utils = render(
     <QueryClientProvider client={client}>
-      <TagDialog repoPath="/repo" oid="abc123" shortOid="abc123d" annotated={false} open onClose={vi.fn()} {...props} />
+      <TagDialog
+        repoPath="/repo"
+        oid="abc123"
+        shortOid="abc123d"
+        annotated={false}
+        open
+        onClose={vi.fn()}
+        {...props}
+      />
     </QueryClientProvider>
   )
   return { ...utils, invalidateSpy }
@@ -42,12 +53,16 @@ describe('TagDialog — title and description', () => {
   it('shows the annotated-tag title and a message textarea when annotated', () => {
     renderDialog({ annotated: true })
     expect(screen.getByText('gitTree.contextMenu.createAnnotatedTag')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('gitTree.contextMenu.tagMessagePlaceholder')).toBeInTheDocument()
+    expect(
+      screen.getByPlaceholderText('gitTree.contextMenu.tagMessagePlaceholder')
+    ).toBeInTheDocument()
   })
 
   it('does not show the message textarea for a lightweight tag', () => {
     renderDialog()
-    expect(screen.queryByPlaceholderText('gitTree.contextMenu.tagMessagePlaceholder')).not.toBeInTheDocument()
+    expect(
+      screen.queryByPlaceholderText('gitTree.contextMenu.tagMessagePlaceholder')
+    ).not.toBeInTheDocument()
   })
 })
 
@@ -75,7 +90,10 @@ describe('TagDialog — creating a tag', () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
     const { invalidateSpy } = renderDialog({ onClose })
-    await user.type(screen.getByPlaceholderText('gitTree.createBranch.placeholder'), 'v1.0.0{Enter}')
+    await user.type(
+      screen.getByPlaceholderText('gitTree.createBranch.placeholder'),
+      'v1.0.0{Enter}'
+    )
 
     expect(mockedCreateTag).toHaveBeenCalledWith('/repo', 'v1.0.0', 'abc123', undefined)
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
@@ -86,7 +104,10 @@ describe('TagDialog — creating a tag', () => {
   it('does not submit on Enter while annotated (message needs its own newlines)', async () => {
     const user = userEvent.setup()
     renderDialog({ annotated: true })
-    await user.type(screen.getByPlaceholderText('gitTree.createBranch.placeholder'), 'v2.0.0{Enter}')
+    await user.type(
+      screen.getByPlaceholderText('gitTree.createBranch.placeholder'),
+      'v2.0.0{Enter}'
+    )
     expect(mockedCreateTag).not.toHaveBeenCalled()
   })
 
@@ -95,7 +116,10 @@ describe('TagDialog — creating a tag', () => {
     const user = userEvent.setup()
     renderDialog({ annotated: true })
     await user.type(screen.getByPlaceholderText('gitTree.createBranch.placeholder'), 'v2.0.0')
-    await user.type(screen.getByPlaceholderText('gitTree.contextMenu.tagMessagePlaceholder'), '  release notes  ')
+    await user.type(
+      screen.getByPlaceholderText('gitTree.contextMenu.tagMessagePlaceholder'),
+      '  release notes  '
+    )
     await user.click(screen.getByRole('button', { name: 'gitTree.contextMenu.create' }))
 
     expect(mockedCreateTag).toHaveBeenCalledWith('/repo', 'v2.0.0', 'abc123', 'release notes')

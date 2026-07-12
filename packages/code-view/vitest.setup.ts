@@ -19,5 +19,6 @@ globalThis.ResizeObserver ??= ResizeObserverStub
 
 // jsdom doesn't schedule real frames — fall back to a macrotask so `scheduleRecompute`'s
 // rAF-coalesced connector redraw still resolves deterministically in tests.
-globalThis.requestAnimationFrame ??= (cb: FrameRequestCallback) => setTimeout(() => cb(Date.now()), 0) as unknown as number
+globalThis.requestAnimationFrame ??= (cb: FrameRequestCallback) =>
+  setTimeout(() => cb(Date.now()), 0) as unknown as number
 globalThis.cancelAnimationFrame ??= (handle: number) => clearTimeout(handle)

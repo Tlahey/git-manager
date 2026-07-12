@@ -16,9 +16,7 @@ function injectUserThemeStyle(theme: UserTheme) {
 }
 
 function removeAllUserThemeStyles() {
-  document.head
-    .querySelectorAll(`[id^="${STYLE_TAG_PREFIX}"]`)
-    .forEach((el) => el.remove())
+  document.head.querySelectorAll(`[id^="${STYLE_TAG_PREFIX}"]`).forEach((el) => el.remove())
 }
 
 /**

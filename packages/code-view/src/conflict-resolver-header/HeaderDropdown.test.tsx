@@ -9,7 +9,9 @@ const whitespaceLabels = {
   trim: 'Ignore leading/trailing whitespace',
 } as const
 
-function renderDropdown(overrides: Partial<Parameters<typeof HeaderDropdown<'compare' | 'ignore' | 'trim'>>[0]> = {}) {
+function renderDropdown(
+  overrides: Partial<Parameters<typeof HeaderDropdown<'compare' | 'ignore' | 'trim'>>[0]> = {}
+) {
   const onChange = vi.fn()
   render(
     <HeaderDropdown

@@ -13,10 +13,14 @@ const mockedFetch = fetchRepoPRs as unknown as ReturnType<typeof vi.fn>
 const DEFAULT_SETTINGS = useSettingsStore.getState().settings
 
 function wrapper({ children }: { children: ReactNode }) {
-  return <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>{children}</SWRConfig>
+  return (
+    <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>{children}</SWRConfig>
+  )
 }
 
-function rawPR(overrides: Partial<Parameters<typeof mockedFetch>[0]> & Record<string, unknown> = {}) {
+function rawPR(
+  overrides: Partial<Parameters<typeof mockedFetch>[0]> & Record<string, unknown> = {}
+) {
   return {
     number: 1,
     title: 'Add feature',
@@ -51,14 +55,24 @@ describe('usePullRequests — GitHub remote detection', () => {
 
   it('uses the first GitHub remote when multiple are given', () => {
     const { result } = renderHook(
-      () => usePullRequests({ remoteUrls: ['not-a-url', 'https://github.com/org/repo.git', 'https://github.com/org/other.git'] }),
+      () =>
+        usePullRequests({
+          remoteUrls: [
+            'not-a-url',
+            'https://github.com/org/repo.git',
+            'https://github.com/org/other.git',
+          ],
+        }),
       { wrapper }
     )
     expect(result.current.ownerRepo).toEqual({ owner: 'org', repo: 'repo' })
   })
 
   it('reports isGithub false and skips fetching when no remote matches GitHub', () => {
-    const { result } = renderHook(() => usePullRequests({ remoteUrls: ['https://gitlab.com/org/repo.git'] }), { wrapper })
+    const { result } = renderHook(
+      () => usePullRequests({ remoteUrls: ['https://gitlab.com/org/repo.git'] }),
+      { wrapper }
+    )
     expect(result.current.isGithub).toBe(false)
     expect(result.current.ownerRepo).toBeNull()
     expect(mockedFetch).not.toHaveBeenCalled()
@@ -69,7 +83,8 @@ describe('usePullRequests — fetching and mapping', () => {
   it('fetches and maps PRs into the PullRequest shape', async () => {
     mockedFetch.mockResolvedValue([rawPR()])
     const { result } = renderHook(
-      () => usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'], githubToken: 'tok' }),
+      () =>
+        usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'], githubToken: 'tok' }),
       { wrapper }
     )
     await waitFor(() => expect(result.current.allPrs).toHaveLength(1))
@@ -95,8 +110,11 @@ describe('usePullRequests — fetching and mapping', () => {
     expect(result.current.allPrs[0].state).toBe('draft')
   })
 
-  it('filters myPrs down to the resolved current user\'s PRs', async () => {
-    mockedFetch.mockResolvedValue([rawPR({ user: { login: 'me', avatar_url: '' } }), rawPR({ number: 2, user: { login: 'other', avatar_url: '' } })])
+  it("filters myPrs down to the resolved current user's PRs", async () => {
+    mockedFetch.mockResolvedValue([
+      rawPR({ user: { login: 'me', avatar_url: '' } }),
+      rawPR({ number: 2, user: { login: 'other', avatar_url: '' } }),
+    ])
     const { result } = renderHook(
       () => usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'], currentUser: 'me' }),
       { wrapper }
@@ -121,13 +139,21 @@ describe('usePullRequests — fetching and mapping', () => {
       settings: {
         ...DEFAULT_SETTINGS,
         github: {
-          accounts: [{ id: 'acc1', token: 'account-tok', user: { login: 'account-user', name: null, email: null, avatarUrl: '' } }],
+          accounts: [
+            {
+              id: 'acc1',
+              token: 'account-tok',
+              user: { login: 'account-user', name: null, email: null, avatarUrl: '' },
+            },
+          ],
           activeAccountId: 'acc1',
         },
       },
     })
     mockedFetch.mockResolvedValue([])
-    renderHook(() => usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'] }), { wrapper })
+    renderHook(() => usePullRequests({ remoteUrls: ['https://github.com/org/repo.git'] }), {
+      wrapper,
+    })
     await waitFor(() => expect(mockedFetch).toHaveBeenCalledWith('org', 'repo', 'account-tok'))
   })
 

@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { CommitFileList, type ProcessedFileItem } from './CommitFileList'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key}:${JSON.stringify(opts)}` : key,
+  }),
 }))
 vi.mock('../../../api/git.api', () => ({
   apiStageFile: vi.fn(),
@@ -23,11 +26,23 @@ function file(path: string, overrides: Partial<ProcessedFileItem> = {}): Process
 }
 
 let cacheKeyCounter = 0
-function renderList(props: Partial<React.ComponentProps<typeof CommitFileList>> & { processedFiles: ProcessedFileItem[] }) {
+function renderList(
+  props: Partial<React.ComponentProps<typeof CommitFileList>> & {
+    processedFiles: ProcessedFileItem[]
+  }
+) {
   // Give every render its own cache key (unless the test wants persistence via rerender) so
   // useFileTree's expandedFolders/search state don't leak between unrelated test cases.
   const cacheKey = props.cacheKey ?? `test-${cacheKeyCounter++}`
-  return render(<CommitFileList repoPath="/repo" isWip={false} commitOid="abc123" {...props} cacheKey={cacheKey} />)
+  return render(
+    <CommitFileList
+      repoPath="/repo"
+      isWip={false}
+      commitOid="abc123"
+      {...props}
+      cacheKey={cacheKey}
+    />
+  )
 }
 
 beforeEach(() => {
@@ -151,7 +166,12 @@ describe('CommitFileList — tree view interactions', () => {
   it('selects a file diff on click, with staged/oid derived from WIP-ness', async () => {
     const onSelectFileDiff = vi.fn()
     const user = userEvent.setup()
-    renderList({ processedFiles: [file('a.ts', { staged: true })], isWip: true, commitOid: 'WIP', onSelectFileDiff })
+    renderList({
+      processedFiles: [file('a.ts', { staged: true })],
+      isWip: true,
+      commitOid: 'WIP',
+      onSelectFileDiff,
+    })
     await user.click(screen.getByText('a.ts'))
     expect(onSelectFileDiff).toHaveBeenCalledWith({ path: 'a.ts', staged: true, oid: undefined })
   })
@@ -159,7 +179,12 @@ describe('CommitFileList — tree view interactions', () => {
   it('selects a file diff with the commit oid for a non-WIP list', async () => {
     const onSelectFileDiff = vi.fn()
     const user = userEvent.setup()
-    renderList({ processedFiles: [file('a.ts')], isWip: false, commitOid: 'sha123', onSelectFileDiff })
+    renderList({
+      processedFiles: [file('a.ts')],
+      isWip: false,
+      commitOid: 'sha123',
+      onSelectFileDiff,
+    })
     await user.click(screen.getByText('a.ts'))
     expect(onSelectFileDiff).toHaveBeenCalledWith({ path: 'a.ts', staged: false, oid: 'sha123' })
   })
@@ -238,7 +263,11 @@ describe('CommitFileList — WIP stage/unstage/discard (tree view)', () => {
   })
 
   it('shows the per-folder file count only with folderCheckboxes', () => {
-    renderList({ processedFiles: [file('src/a.ts'), file('src/b.ts')], isWip: true, folderCheckboxes: true })
+    renderList({
+      processedFiles: [file('src/a.ts'), file('src/b.ts')],
+      isWip: true,
+      folderCheckboxes: true,
+    })
     expect(screen.getByText('commitDetails.fileCount:{"count":2}')).toBeInTheDocument()
   })
 
@@ -276,7 +305,13 @@ describe('CommitFileList — bulk stage header button', () => {
   it('renders only when both onBulkStage and hoverStage are given, and calls onBulkStage', async () => {
     const onBulkStage = vi.fn()
     const user = userEvent.setup()
-    renderList({ processedFiles: [file('a.ts')], isWip: true, hoverStage: 'add', onBulkStage, title: 'Unstaged' })
+    renderList({
+      processedFiles: [file('a.ts')],
+      isWip: true,
+      hoverStage: 'add',
+      onBulkStage,
+      title: 'Unstaged',
+    })
     await user.click(screen.getByTestId('file-list-bulk-stage'))
     expect(onBulkStage).toHaveBeenCalledOnce()
   })
@@ -311,7 +346,13 @@ describe('CommitFileList — collapsible zones', () => {
   it('the bulk-stage button click does not toggle collapse (stops propagation)', async () => {
     const onBulkStage = vi.fn()
     const user = userEvent.setup()
-    renderList({ processedFiles: [file('a.ts')], collapsible: true, hoverStage: 'add', onBulkStage, isWip: true })
+    renderList({
+      processedFiles: [file('a.ts')],
+      collapsible: true,
+      hoverStage: 'add',
+      onBulkStage,
+      isWip: true,
+    })
     await user.click(screen.getByTestId('file-list-bulk-stage'))
     expect(screen.getByText('Stats Summary')).toBeInTheDocument() // still expanded
   })

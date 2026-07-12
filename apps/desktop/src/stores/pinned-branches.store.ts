@@ -21,7 +21,7 @@ export const usePinnedBranchesStore = create<PinnedBranchesState>()(
         set((state) => ({
           overrides: {
             ...state.overrides,
-            [repoPath]: { ...(state.overrides[repoPath] ?? {}), [shortName]: pinned },
+            [repoPath]: { ...state.overrides[repoPath], [shortName]: pinned },
           },
         })),
     }),

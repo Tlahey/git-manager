@@ -1,6 +1,18 @@
 import { useState } from 'react'
 import { Button, Input, ScrollArea } from '@git-manager/ui'
-import { Github, Flame, Gitlab, Check, Trash2, Key, Globe, User, Plus, RefreshCw, type LucideIcon } from 'lucide-react'
+import {
+  Github,
+  Flame,
+  Gitlab,
+  Check,
+  Trash2,
+  Key,
+  Globe,
+  User,
+  Plus,
+  RefreshCw,
+  type LucideIcon,
+} from 'lucide-react'
 import { GithubSection } from './GithubSection'
 import { useSettingsStore } from '../../../stores/settings.store'
 import type { ProviderAccount } from '@git-manager/git-types'
@@ -121,10 +133,10 @@ export function IntegrationSection() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-140px)] w-full overflow-hidden border border-border rounded-lg bg-card text-card-foreground">
+    <div className="flex h-[calc(100vh-140px)] w-full overflow-hidden rounded-lg border border-border bg-card text-card-foreground">
       {/* Sub-panel left: select provider */}
-      <div className="w-40 shrink-0 border-r border-border bg-muted/10 p-2 flex flex-col gap-1">
-        <p className="text-[10px] font-semibold text-muted-foreground uppercase px-2 py-1 tracking-wider">
+      <div className="flex w-40 shrink-0 flex-col gap-1 border-r border-border bg-muted/10 p-2">
+        <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           Fournisseurs
         </p>
         {navProviders.map((prov) => {
@@ -134,9 +146,9 @@ export function IntegrationSection() {
             <button
               key={prov.id}
               onClick={() => setActiveProvider(prov.id)}
-              className={`flex items-center gap-2 w-full rounded px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer ${
+              className={`flex w-full cursor-pointer items-center gap-2 rounded px-2.5 py-1.5 text-left text-xs transition-colors ${
                 isActive
-                  ? 'bg-primary/10 text-primary font-medium'
+                  ? 'bg-primary/10 font-medium text-primary'
                   : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
               }`}
             >
@@ -148,29 +160,30 @@ export function IntegrationSection() {
       </div>
 
       {/* Provider Details Right */}
-      <div className="flex-1 overflow-hidden h-full bg-background/50">
+      <div className="h-full flex-1 overflow-hidden bg-background/50">
         {activeProvider === 'github' && <GithubSection />}
 
         {activeProvider === 'gitlab' && (
           <ScrollArea className="h-full">
-            <div className="p-6 space-y-6 max-w-xl">
+            <div className="max-w-xl space-y-6 p-6">
               <div>
                 <h3 className="text-sm font-semibold text-foreground">Intégration GitLab</h3>
                 <p className="text-xs text-muted-foreground">
-                  Synchronisez vos dépôts GitLab en connectant vos comptes personnels ou auto-hébergés.
+                  Synchronisez vos dépôts GitLab en connectant vos comptes personnels ou
+                  auto-hébergés.
                 </p>
               </div>
 
               {/* Form connection */}
               <div className="space-y-4 rounded-lg border border-border bg-muted/5 p-4">
-                <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                   <Plus className="h-3.5 w-3.5" />
                   Connecter un compte GitLab
                 </h4>
 
                 <div className="space-y-3">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-foreground flex items-center gap-1.5">
+                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
                       <Globe className="h-3 w-3 text-muted-foreground" />
                       URL de l&apos;instance GitLab
                     </label>
@@ -183,7 +196,7 @@ export function IntegrationSection() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-foreground flex items-center gap-1.5">
+                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
                       <User className="h-3 w-3 text-muted-foreground" />
                       Nom d&apos;utilisateur
                     </label>
@@ -196,7 +209,7 @@ export function IntegrationSection() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-foreground flex items-center gap-1.5">
+                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
                       <Key className="h-3 w-3 text-muted-foreground" />
                       Personal Access Token (PAT)
                     </label>
@@ -211,7 +224,7 @@ export function IntegrationSection() {
 
                   <Button
                     size="sm"
-                    className="h-8 text-xs w-full gap-1.5"
+                    className="h-8 w-full gap-1.5 text-xs"
                     onClick={handleConnectGitLab}
                     disabled={glConnecting || !glUser || !glToken}
                   >
@@ -231,18 +244,22 @@ export function IntegrationSection() {
               <div className="space-y-2">
                 <h4 className="text-xs font-semibold text-foreground">Comptes connectés</h4>
                 {integrations.gitlabAccounts.length > 0 ? (
-                  <div className="divide-y divide-border border rounded-md overflow-hidden bg-muted/5">
+                  <div className="divide-y divide-border overflow-hidden rounded-md border bg-muted/5">
                     {integrations.gitlabAccounts.map((account) => {
                       const isActive = integrations.gitlabActiveAccountId === account.id
                       return (
                         <div key={account.id} className="flex items-center justify-between p-3">
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-xs font-medium text-foreground">{account.username}</span>
-                            <span className="text-[10px] text-muted-foreground font-mono">{account.host}</span>
+                            <span className="text-xs font-medium text-foreground">
+                              {account.username}
+                            </span>
+                            <span className="font-mono text-[10px] text-muted-foreground">
+                              {account.host}
+                            </span>
                           </div>
                           <div className="flex items-center gap-2">
                             {isActive ? (
-                              <span className="text-[10px] bg-green-500/10 text-green-500 rounded px-1.5 py-0.5 flex items-center gap-1">
+                              <span className="flex items-center gap-1 rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] text-green-500">
                                 <Check className="h-3 w-3" /> Actif
                               </span>
                             ) : (
@@ -250,7 +267,9 @@ export function IntegrationSection() {
                                 size="sm"
                                 variant="ghost"
                                 className="h-7 text-[10px]"
-                                onClick={() => updateIntegrations({ gitlabActiveAccountId: account.id })}
+                                onClick={() =>
+                                  updateIntegrations({ gitlabActiveAccountId: account.id })
+                                }
                               >
                                 Activer
                               </Button>
@@ -269,7 +288,7 @@ export function IntegrationSection() {
                     })}
                   </div>
                 ) : (
-                  <div className="text-xs text-muted-foreground p-4 text-center border border-dashed rounded-md">
+                  <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
                     Aucun compte GitLab connecté
                   </div>
                 )}
@@ -280,7 +299,7 @@ export function IntegrationSection() {
 
         {activeProvider === 'bitbucket' && (
           <ScrollArea className="h-full">
-            <div className="p-6 space-y-6 max-w-xl">
+            <div className="max-w-xl space-y-6 p-6">
               <div>
                 <h3 className="text-sm font-semibold text-foreground">Intégration Bitbucket</h3>
                 <p className="text-xs text-muted-foreground">
@@ -290,14 +309,14 @@ export function IntegrationSection() {
 
               {/* Form connection */}
               <div className="space-y-4 rounded-lg border border-border bg-muted/5 p-4">
-                <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                   <Plus className="h-3.5 w-3.5" />
                   Connecter un compte Bitbucket
                 </h4>
 
                 <div className="space-y-3">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-foreground flex items-center gap-1.5">
+                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
                       <Globe className="h-3 w-3 text-muted-foreground" />
                       Instance Bitbucket URL
                     </label>
@@ -310,7 +329,7 @@ export function IntegrationSection() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-foreground flex items-center gap-1.5">
+                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
                       <User className="h-3 w-3 text-muted-foreground" />
                       Nom d&apos;utilisateur
                     </label>
@@ -323,7 +342,7 @@ export function IntegrationSection() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-foreground flex items-center gap-1.5">
+                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
                       <Key className="h-3 w-3 text-muted-foreground" />
                       App Password / Token
                     </label>
@@ -338,7 +357,7 @@ export function IntegrationSection() {
 
                   <Button
                     size="sm"
-                    className="h-8 text-xs w-full gap-1.5"
+                    className="h-8 w-full gap-1.5 text-xs"
                     onClick={handleConnectBitbucket}
                     disabled={bbConnecting || !bbUser || !bbToken}
                   >
@@ -358,18 +377,22 @@ export function IntegrationSection() {
               <div className="space-y-2">
                 <h4 className="text-xs font-semibold text-foreground">Comptes connectés</h4>
                 {integrations.bitbucketAccounts.length > 0 ? (
-                  <div className="divide-y divide-border border rounded-md overflow-hidden bg-muted/5">
+                  <div className="divide-y divide-border overflow-hidden rounded-md border bg-muted/5">
                     {integrations.bitbucketAccounts.map((account) => {
                       const isActive = integrations.bitbucketActiveAccountId === account.id
                       return (
                         <div key={account.id} className="flex items-center justify-between p-3">
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-xs font-medium text-foreground">{account.username}</span>
-                            <span className="text-[10px] text-muted-foreground font-mono">{account.host}</span>
+                            <span className="text-xs font-medium text-foreground">
+                              {account.username}
+                            </span>
+                            <span className="font-mono text-[10px] text-muted-foreground">
+                              {account.host}
+                            </span>
                           </div>
                           <div className="flex items-center gap-2">
                             {isActive ? (
-                              <span className="text-[10px] bg-green-500/10 text-green-500 rounded px-1.5 py-0.5 flex items-center gap-1">
+                              <span className="flex items-center gap-1 rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] text-green-500">
                                 <Check className="h-3 w-3" /> Actif
                               </span>
                             ) : (
@@ -377,7 +400,9 @@ export function IntegrationSection() {
                                 size="sm"
                                 variant="ghost"
                                 className="h-7 text-[10px]"
-                                onClick={() => updateIntegrations({ bitbucketActiveAccountId: account.id })}
+                                onClick={() =>
+                                  updateIntegrations({ bitbucketActiveAccountId: account.id })
+                                }
                               >
                                 Activer
                               </Button>
@@ -396,7 +421,7 @@ export function IntegrationSection() {
                     })}
                   </div>
                 ) : (
-                  <div className="text-xs text-muted-foreground p-4 text-center border border-dashed rounded-md">
+                  <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
                     Aucun compte Bitbucket connecté
                   </div>
                 )}

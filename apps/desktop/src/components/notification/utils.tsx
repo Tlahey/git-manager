@@ -12,8 +12,8 @@ export function getNotificationText(notif: AppNotification, t: TFunction) {
     notif.reviewStatus === 'approved'
       ? t('notifications.status.approved')
       : notif.reviewStatus === 'changes_requested'
-      ? t('notifications.status.changes_requested')
-      : notif.reviewStatus || ''
+        ? t('notifications.status.changes_requested')
+        : notif.reviewStatus || ''
 
   return {
     title: t(`notifications.types.${notif.type}`, { number: notif.prNumber }),
@@ -32,4 +32,3 @@ export function getNotificationIcon(type: AppNotification['type']) {
   const Icon = getNotificationTypeDef(type)?.icon ?? DefaultIcon
   return <Icon />
 }
-

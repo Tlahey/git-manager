@@ -40,13 +40,10 @@ export function RefLabel({ gitRef, color }: RefLabelProps) {
 
   const displayName = cleanName(gitRef)
 
-  const isLocalMainOrMaster =
-    gitRef.shortName === 'main' ||
-    gitRef.shortName === 'master'
+  const isLocalMainOrMaster = gitRef.shortName === 'main' || gitRef.shortName === 'master'
 
   const isRemoteMainOrMaster =
-    gitRef.shortName.endsWith('/main') ||
-    gitRef.shortName.endsWith('/master')
+    gitRef.shortName.endsWith('/main') || gitRef.shortName.endsWith('/master')
 
   let refColor = color || '#2563eb'
   if (isLocalMainOrMaster) {
@@ -58,7 +55,7 @@ export function RefLabel({ gitRef, color }: RefLabelProps) {
   }
 
   let badgeClasses = cn(
-    'inline-flex min-w-0 max-w-[180px] items-center gap-1 rounded px-1.5 py-0 text-[11px] leading-5 font-medium border bg-background transition-all duration-150',
+    'inline-flex min-w-0 max-w-[180px] items-center gap-1 rounded px-1.5 py-0 text-[11px] leading-5 font-medium border bg-background transition-all duration-150'
   )
 
   // Custom inline styles for coloring (non-HEAD)
@@ -66,7 +63,8 @@ export function RefLabel({ gitRef, color }: RefLabelProps) {
 
   if (isHEAD) {
     badgeClasses = cn(badgeClasses, 'text-emerald-300 border-emerald-500/40 font-semibold')
-    customStyle.backgroundImage = 'linear-gradient(rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.2))'
+    customStyle.backgroundImage =
+      'linear-gradient(rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.2))'
   } else {
     customStyle.backgroundImage = `linear-gradient(${refColor}25, ${refColor}25)` // ~15% opacity overlay over solid bg-background
     customStyle.borderColor = `${refColor}50` // ~30% opacity
@@ -91,13 +89,11 @@ export function RefLabel({ gitRef, color }: RefLabelProps) {
       {!isHEAD && !isRemote && !isTag && !isStash && <Check className="h-3 w-3 shrink-0" />}
       {isTag && <Tag className="h-3 w-3 shrink-0" />}
       {isStash && <Archive className="h-3 w-3 shrink-0" />}
-      
-      <span className="truncate">
-        {isHEAD ? 'HEAD' : displayName}
-      </span>
 
-      {isRemote && <GithubIcon className="h-3 w-3 shrink-0 ml-0.5" />}
-      {!isHEAD && !isRemote && !isTag && !isStash && <Laptop className="h-3 w-3 shrink-0 ml-0.5" />}
+      <span className="truncate">{isHEAD ? 'HEAD' : displayName}</span>
+
+      {isRemote && <GithubIcon className="ml-0.5 h-3 w-3 shrink-0" />}
+      {!isHEAD && !isRemote && !isTag && !isStash && <Laptop className="ml-0.5 h-3 w-3 shrink-0" />}
     </span>
   )
 }

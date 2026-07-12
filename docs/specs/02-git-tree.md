@@ -48,7 +48,7 @@ The graph is computed on the Rust side (`git/graph.rs`) and returned with column
 ```typescript
 export interface GraphNode {
   commit: GitCommit
-  column: number          // X column in the grid
+  column: number // X column in the grid
   connections: GraphEdge[]
   refs: GitRef[]
 }
@@ -98,6 +98,7 @@ Triggered by clicking a node in the graph.
 ### Actions on a commit
 
 From the detail panel:
+
 - **Checkout** this commit (detached HEAD mode)
 - **Create a branch** from this commit
 - **Revert** this commit
@@ -129,12 +130,12 @@ From the detail panel:
 
 ## Tauri commands involved
 
-| Command | Parameters | Return |
-|---------|-----------|--------|
-| `get_log` | `path, limit, skip, branch?, author?, since?, until?` | `GraphNode[]` |
-| `get_commit_diff` | `path, oid` | `GitDiff` |
-| `get_commit_file` | `path, oid, file_path` | `string` (content) |
-| `get_refs` | `path` | `GitRef[]` |
+| Command           | Parameters                                            | Return             |
+| ----------------- | ----------------------------------------------------- | ------------------ |
+| `get_log`         | `path, limit, skip, branch?, author?, since?, until?` | `GraphNode[]`      |
+| `get_commit_diff` | `path, oid`                                           | `GitDiff`          |
+| `get_commit_file` | `path, oid, file_path`                                | `string` (content) |
+| `get_refs`        | `path`                                                | `GitRef[]`         |
 
 ---
 

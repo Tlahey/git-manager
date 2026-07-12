@@ -9,7 +9,15 @@ import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 
 function repo(overrides: Partial<GitRepo> = {}): GitRepo {
-  return { path: '/repo', name: 'repo', head: 'main', isDetached: false, isDirty: false, remotes: [], ...overrides }
+  return {
+    path: '/repo',
+    name: 'repo',
+    head: 'main',
+    isDetached: false,
+    isDirty: false,
+    remotes: [],
+    ...overrides,
+  }
 }
 
 beforeEach(() => {

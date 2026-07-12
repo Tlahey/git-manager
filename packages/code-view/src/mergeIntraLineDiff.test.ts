@@ -82,7 +82,11 @@ const initialCenterLines = ['header', 'const value = ours;']
 describe('computeIntraLineHighlights', () => {
   it('initially highlights the differing word on the theirs pane and on the center, nothing on ours', () => {
     const blocks = conflictBlocks()
-    const highlights = computeIntraLineHighlights(blocks, computeInitialPlacements(blocks), (n) => initialCenterLines[n - 1] ?? '')
+    const highlights = computeIntraLineHighlights(
+      blocks,
+      computeInitialPlacements(blocks),
+      (n) => initialCenterLines[n - 1] ?? ''
+    )
 
     // Ours is included — its center range is its own identical content.
     expect(highlights.ours).toEqual([])
@@ -97,10 +101,20 @@ describe('computeIntraLineHighlights', () => {
 
   it('clears the highlights once theirs is pulled in (each side now faces its own content)', () => {
     const blocks = conflictBlocks()
-    const placements = updatePlacementAfterToggle(computeInitialPlacements(blocks), blocks, blocks[1], 'theirs', true)
+    const placements = updatePlacementAfterToggle(
+      computeInitialPlacements(blocks),
+      blocks,
+      blocks[1],
+      'theirs',
+      true
+    )
     const centerLines = ['header', 'const value = ours;', 'const value = theirs;']
 
-    const highlights = computeIntraLineHighlights(blocks, placements, (n) => centerLines[n - 1] ?? '')
+    const highlights = computeIntraLineHighlights(
+      blocks,
+      placements,
+      (n) => centerLines[n - 1] ?? ''
+    )
 
     expect(highlights.ours).toEqual([])
     expect(highlights.theirs).toEqual([])
@@ -112,7 +126,11 @@ describe('computeIntraLineHighlights', () => {
     // The user hand-edited the center's conflicting line: now both sides differ from it.
     const editedCenterLines = ['header', 'const value = edited;']
 
-    const highlights = computeIntraLineHighlights(blocks, computeInitialPlacements(blocks), (n) => editedCenterLines[n - 1] ?? '')
+    const highlights = computeIntraLineHighlights(
+      blocks,
+      computeInitialPlacements(blocks),
+      (n) => editedCenterLines[n - 1] ?? ''
+    )
 
     expect(highlights.ours).toEqual([
       { line: 2, startColumn: 15, endColumn: 19, inlineClassName: 'merge-inline-conflict' },
@@ -144,10 +162,20 @@ describe('computeIntraLineHighlights', () => {
     // Pulled in, then hand-edited in the center: the lines now differ from theirs again, and
     // WITHOUT the pure-insertion gate this would paint word-level highlights. WebStorm keeps
     // whole-block coloring only for insertions.
-    const placements = updatePlacementAfterToggle(computeInitialPlacements(blocks), blocks, blocks[0], 'theirs', true)
+    const placements = updatePlacementAfterToggle(
+      computeInitialPlacements(blocks),
+      blocks,
+      blocks[0],
+      'theirs',
+      true
+    )
     const editedCenterLines = ['# --- ADDITION edited', 'theirs-metrics-tweaked']
 
-    const highlights = computeIntraLineHighlights(blocks, placements, (n) => editedCenterLines[n - 1] ?? '')
+    const highlights = computeIntraLineHighlights(
+      blocks,
+      placements,
+      (n) => editedCenterLines[n - 1] ?? ''
+    )
 
     expect(highlights.ours).toEqual([])
     expect(highlights.center).toEqual([])
@@ -168,8 +196,10 @@ describe('computeIntraLineHighlights', () => {
         baseLines: [],
       },
     ]
-    const highlights = computeIntraLineHighlights(blocks, computeInitialPlacements(blocks), (n) =>
-      ['legacy-cache', 'legacy-session'][n - 1] ?? ''
+    const highlights = computeIntraLineHighlights(
+      blocks,
+      computeInitialPlacements(blocks),
+      (n) => ['legacy-cache', 'legacy-session'][n - 1] ?? ''
     )
 
     expect(highlights.ours).toEqual([])
@@ -179,7 +209,11 @@ describe('computeIntraLineHighlights', () => {
 
   it('never highlights auto-merged (unchanged/both-same) blocks even if the center text drifted', () => {
     const blocks = [conflictBlocks()[0]]
-    const highlights = computeIntraLineHighlights(blocks, computeInitialPlacements(blocks), () => 'completely different')
+    const highlights = computeIntraLineHighlights(
+      blocks,
+      computeInitialPlacements(blocks),
+      () => 'completely different'
+    )
     expect(highlights.ours).toEqual([])
     expect(highlights.center).toEqual([])
     expect(highlights.theirs).toEqual([])

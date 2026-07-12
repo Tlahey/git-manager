@@ -8,12 +8,14 @@ you're testing; skip categories that don't apply rather than forcing an irreleva
 inflate the count (a pure string-formatting helper has no async/loading edge cases, for example).
 
 ## Empty / absent input
+
 - Empty collections: zero commits, empty branch list, empty diff (no hunks), repo with no
   remotes, empty stash list.
 - Absent optional fields: a `GitDiff` with no `old_path` (renamed/added file), a commit with no
   parent (initial commit), a `None`/`null` config value falling back to a default.
 
 ## Boundary values
+
 - Smallest non-empty case: single-line file, single-commit repo, single-hunk diff.
 - Exactly-at-threshold values: 0 vs 1 conflicting files, a diff context window boundary, a string
   exactly at a truncation length.
@@ -21,6 +23,7 @@ inflate the count (a pure string-formatting helper has no async/loading edge cas
   truncation) — don't assume it scales without a data point above the threshold.
 
 ## Error / rejection paths
+
 - Every `Err(...)` arm of an `AppError` variant a function can return, not just the `Ok` path.
 - Every `.catch()` / rejected promise a frontend API call can produce (network failure to Ollama,
   GitHub API error response, invalid SSH key, git2 operation failure surfaced as a string).
@@ -28,10 +31,12 @@ inflate the count (a pure string-formatting helper has no async/loading edge cas
   stage, multi-branch fetch).
 
 ## Confirmation-gated / destructive actions
+
 This repo has specific guardrails around destructive operations (see the root `CLAUDE.md`
 "Security-relevant conventions" section) — these branches are exactly the kind that are easy to
 leave untested because they're not on the "normal" path, and exactly the kind where a regression
 is expensive:
+
 - Hard reset's confirmation requires the literal string `RESET` — test both the correct
   confirmation text (action proceeds) and an incorrect one (action is rejected, nothing happens).
 - Force-push is explicit opt-in — test both the default (off, rejected/blocked) and the
@@ -40,6 +45,7 @@ is expensive:
   a non-protected one (allowed).
 
 ## Concurrent / async state
+
 - Loading and in-flight states: a component rendered while its query is still pending, not just
   after it resolves.
 - Cancellation: the Ollama generation cancel flag actually stopping a stream, not just existing.
@@ -48,12 +54,14 @@ is expensive:
   shape — a bypass of the API layer silently skipped `clearRedo`).
 
 ## Special / unusual input
+
 - Filenames or commit messages with unicode, spaces, or characters that look like diff markers
   (`+`, `-`, `@@`) to make sure parsing doesn't confuse content for structure.
 - Very long strings (commit message, branch name) if the code truncates or wraps them.
 - Multi-line commit messages (subject + body) if the code splits or displays them separately.
 
 ## Rust-specific
+
 - Every `Option::None` branch, not just `Some`.
 - Every enum variant of a `match`, including ones that look "impossible" in practice — if the
   compiler requires a catch-all arm, that arm is reachable by construction and should have a test

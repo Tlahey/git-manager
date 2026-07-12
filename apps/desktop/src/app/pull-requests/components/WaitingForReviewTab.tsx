@@ -15,7 +15,12 @@ interface WaitingForReviewTabProps {
   loading: boolean
 }
 
-export function WaitingForReviewTab({ allPRs, pinnedIds, onTogglePin, loading }: WaitingForReviewTabProps) {
+export function WaitingForReviewTab({
+  allPRs,
+  pinnedIds,
+  onTogglePin,
+  loading,
+}: WaitingForReviewTabProps) {
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -64,7 +69,7 @@ export function WaitingForReviewTab({ allPRs, pinnedIds, onTogglePin, loading }:
   }, [allPRs, search, statusFilter, repoFilter, authorFilter, sortKey, sortDir])
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       <Toolbar
         search={search}
         onSearch={setSearch}
@@ -94,7 +99,7 @@ export function WaitingForReviewTab({ allPRs, pinnedIds, onTogglePin, loading }:
             <PRRowSkeleton />
           </>
         ) : waitingPRs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground/50">
+          <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground/50">
             <CheckSquare className="h-6 w-6 opacity-30" />
             <p className="text-xs">You&apos;re all caught up</p>
           </div>
@@ -103,7 +108,11 @@ export function WaitingForReviewTab({ allPRs, pinnedIds, onTogglePin, loading }:
             {waitingPRs.slice(0, shown).map((pr) => (
               <PRRow key={pr.id} pr={pr} pinned={pinnedIds.has(pr.id)} onTogglePin={onTogglePin} />
             ))}
-            <LoadMore total={waitingPRs.length} shown={shown} onLoadMore={() => setShown((n) => n + PAGE_SIZE)} />
+            <LoadMore
+              total={waitingPRs.length}
+              shown={shown}
+              onLoadMore={() => setShown((n) => n + PAGE_SIZE)}
+            />
           </>
         )}
       </div>

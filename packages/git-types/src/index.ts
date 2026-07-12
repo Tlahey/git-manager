@@ -213,7 +213,12 @@ export interface RebaseTodoStep {
 
 // ─── Conflict Resolution (3-way merge editor) ─────────────────────────────────
 
-export type MergeBlockKind = 'unchanged' | 'ours-only' | 'theirs-only' | 'both-same' | 'both-different'
+export type MergeBlockKind =
+  | 'unchanged'
+  | 'ours-only'
+  | 'theirs-only'
+  | 'both-same'
+  | 'both-different'
 
 export interface MergeBlock {
   blockId: number

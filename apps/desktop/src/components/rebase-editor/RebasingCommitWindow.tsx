@@ -150,10 +150,11 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
     }
   }
 
-  const allSelectedDropped = selectedSteps.length > 0 && selectedSteps.every((s) => s.action === 'drop')
+  const allSelectedDropped =
+    selectedSteps.length > 0 && selectedSteps.every((s) => s.action === 'drop')
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-background select-none animate-fadeIn">
+    <div className="animate-fadeIn flex h-full w-full select-none flex-col overflow-hidden bg-background">
       {/* Header: plan actions */}
       <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-4 py-2.5 shadow-sm">
         <Button
@@ -200,7 +201,11 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
           onClick={handleDropToggle}
           data-testid="rebase-drop"
         >
-          {allSelectedDropped ? <Undo2 className="h-3.5 w-3.5" /> : <Trash2 className="h-3.5 w-3.5" />}
+          {allSelectedDropped ? (
+            <Undo2 className="h-3.5 w-3.5" />
+          ) : (
+            <Trash2 className="h-3.5 w-3.5" />
+          )}
           {allSelectedDropped ? t('rebaseEditor.restore') : t('rebaseEditor.drop')}
         </Button>
 
@@ -218,13 +223,20 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
             </div>
           ) : (
             plan.map((step, index) => (
-              <div key={step.commit.oid} className={cn(dragOver === index && 'border-t-2 border-primary')}>
+              <div
+                key={step.commit.oid}
+                className={cn(dragOver === index && 'border-t-2 border-primary')}
+              >
                 <StepRailRow
                   index={index}
                   isLast={index === plan.length - 1}
                   isSelected={selected.includes(step.commit.oid)}
                   variant={railVariantForAction(step.action)}
-                  title={step.action === 'reword' && step.message ? step.message.split('\n')[0] : step.commit.subject}
+                  title={
+                    step.action === 'reword' && step.message
+                      ? step.message.split('\n')[0]
+                      : step.commit.subject
+                  }
                   subtitle={`${step.commit.author.name} · ${new Date(step.commit.author.timestamp * 1000).toLocaleDateString()}`}
                   badgeLabel={step.action}
                   badgeVariant={ACTION_BADGE_VARIANTS[step.action]}
@@ -246,10 +258,20 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
                       data-testid="rebase-reword-input"
                     />
                     <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setRewordingOid(null)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-[10px]"
+                        onClick={() => setRewordingOid(null)}
+                      >
                         {t('rebaseEditor.cancelEdit')}
                       </Button>
-                      <Button size="sm" className="h-6 text-[10px]" onClick={handleRewordSave} disabled={!rewordDraft.trim()}>
+                      <Button
+                        size="sm"
+                        className="h-6 text-[10px]"
+                        onClick={handleRewordSave}
+                        disabled={!rewordDraft.trim()}
+                      >
                         {t('rebaseEditor.saveMessage')}
                       </Button>
                     </div>
@@ -268,7 +290,11 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
         />
         <div style={{ width: detailsWidth }} className="shrink-0 border-l border-border bg-card/30">
           {focusedStep ? (
-            <RebaseCommitDetails key={focusedStep.commit.oid} repoPath={repoPath} commit={focusedStep.commit} />
+            <RebaseCommitDetails
+              key={focusedStep.commit.oid}
+              repoPath={repoPath}
+              commit={focusedStep.commit}
+            />
           ) : (
             <div className="flex h-full items-center justify-center px-6 text-center text-xs text-muted-foreground">
               {t('rebaseEditor.selectHint')}
@@ -280,7 +306,9 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
       {/* Footer */}
       <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-card px-4 py-3 shadow-md">
         {(error || planError) && (
-          <span className="mr-auto truncate text-xs text-destructive">{error ?? t(planError!)}</span>
+          <span className="mr-auto truncate text-xs text-destructive">
+            {error ?? t(planError!)}
+          </span>
         )}
         <Button
           variant="ghost"

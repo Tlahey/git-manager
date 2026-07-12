@@ -33,9 +33,7 @@ export function PullRequestItem({ pr, onOpen, isSelected = false }: PullRequestI
   return (
     <div
       className={`group/pr relative flex cursor-pointer items-start gap-2 py-1.5 pl-6 pr-2 transition-colors ${
-        isSelected
-          ? 'bg-accent text-foreground font-medium'
-          : 'hover:bg-accent/60'
+        isSelected ? 'bg-accent font-medium text-foreground' : 'hover:bg-accent/60'
       }`}
       onClick={() => onOpen?.(pr)}
       role="button"
@@ -58,7 +56,9 @@ export function PullRequestItem({ pr, onOpen, isSelected = false }: PullRequestI
       {/* Contenu */}
       <div className="min-w-0 flex-1">
         {/* Titre avec hover-expand */}
-        <HoverExpandLabel className={`text-xs ${isSelected ? 'text-foreground font-medium' : 'text-foreground'}`}>
+        <HoverExpandLabel
+          className={`text-xs ${isSelected ? 'font-medium text-foreground' : 'text-foreground'}`}
+        >
           #{pr.number} {pr.title}
         </HoverExpandLabel>
 

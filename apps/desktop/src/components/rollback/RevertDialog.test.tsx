@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key}:${JSON.stringify(opts)}` : key,
+  }),
 }))
 vi.mock('../../api/git.api', () => ({ apiRevertCommit: vi.fn() }))
 
@@ -13,7 +16,9 @@ import { RevertDialog } from './RevertDialog'
 
 const mockedRevert = apiRevertCommit as unknown as ReturnType<typeof vi.fn>
 
-function renderDialog(props: Partial<{ onClose: () => void; onSuccess: (sha: string) => void }> = {}) {
+function renderDialog(
+  props: Partial<{ onClose: () => void; onSuccess: (sha: string) => void }> = {}
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>

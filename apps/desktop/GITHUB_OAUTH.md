@@ -28,11 +28,11 @@ If you need to create or reconfigure the GitHub OAuth App:
 2. Click **"New OAuth App"**
 3. Fill in the required fields:
 
-| Field                       | Value                                               |
-|-----------------------------|-----------------------------------------------------|
-| **Application name**        | `git-manager` (or your preferred name)              |
-| **Homepage URL**            | Your project homepage (e.g. `https://github.com/your-org/git-manager`) |
-| **Authorization callback URL** | `http://localhost` (not used in Device Flow, but required) |
+| Field                          | Value                                                                  |
+| ------------------------------ | ---------------------------------------------------------------------- |
+| **Application name**           | `git-manager` (or your preferred name)                                 |
+| **Homepage URL**               | Your project homepage (e.g. `https://github.com/your-org/git-manager`) |
+| **Authorization callback URL** | `http://localhost` (not used in Device Flow, but required)             |
 
 4. Click **"Register application"**
 5. Copy the **Client ID** and update it in `src-tauri/src/commands/github.rs`:
@@ -57,11 +57,11 @@ Without this setting, the device code request will fail with a `400` error.
 
 The following OAuth scopes are requested during authentication:
 
-| Scope          | Purpose                                                        |
-|----------------|----------------------------------------------------------------|
-| `repo`         | Full access to private and public repositories (read/write)    |
-| `read:user`    | Read access to the user's profile information                  |
-| `user:email`   | Read access to the user's email addresses (including private)  |
+| Scope        | Purpose                                                       |
+| ------------ | ------------------------------------------------------------- |
+| `repo`       | Full access to private and public repositories (read/write)   |
+| `read:user`  | Read access to the user's profile information                 |
+| `user:email` | Read access to the user's email addresses (including private) |
 
 ### Scope Details
 
@@ -75,12 +75,12 @@ The following OAuth scopes are requested during authentication:
 
 All GitHub API interactions are handled by Tauri commands in [`src-tauri/src/commands/github.rs`](src-tauri/src/commands/github.rs):
 
-| Command               | Description                                          |
-|------------------------|------------------------------------------------------|
-| `github_device_code`   | Initiates the Device Flow, returns a user code       |
-| `github_poll_token`    | Polls GitHub for an access token during Device Flow  |
-| `github_get_user`      | Fetches user profile and primary email               |
-| `github_list_repos`    | Lists the authenticated user's repositories          |
+| Command              | Description                                         |
+| -------------------- | --------------------------------------------------- |
+| `github_device_code` | Initiates the Device Flow, returns a user code      |
+| `github_poll_token`  | Polls GitHub for an access token during Device Flow |
+| `github_get_user`    | Fetches user profile and primary email              |
+| `github_list_repos`  | Lists the authenticated user's repositories         |
 
 ### Frontend (TypeScript)
 
@@ -90,7 +90,9 @@ The frontend wrappers in [`src/lib/tauri.ts`](src/lib/tauri.ts) call these comma
 import { githubDeviceCode, githubPollToken, githubGetUser, githubListRepos } from './lib/tauri'
 
 // Start Device Flow
-const { device_code, user_code, verification_uri } = await githubDeviceCode('repo read:user user:email')
+const { device_code, user_code, verification_uri } = await githubDeviceCode(
+  'repo read:user user:email'
+)
 
 // Poll for token (call repeatedly with interval)
 const { access_token, error } = await githubPollToken(device_code)
@@ -108,9 +110,9 @@ Access tokens are stored locally in the app settings via the Tauri `tauri-plugin
 
 ## Troubleshooting
 
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| "Failed to request device code" | Client ID is invalid or Device Flow is not enabled | Verify Client ID and enable Device Flow in OAuth App settings |
-| User code not appearing | Network error or GitHub API is down | Check internet connection, try again |
-| Token polling returns `expired_token` | User did not authorize within 15 minutes | Restart the login flow |
-| Repos not loading after login | Token doesn't have `repo` scope | Re-authenticate to request the correct scopes |
+| Issue                                 | Cause                                              | Fix                                                           |
+| ------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------- |
+| "Failed to request device code"       | Client ID is invalid or Device Flow is not enabled | Verify Client ID and enable Device Flow in OAuth App settings |
+| User code not appearing               | Network error or GitHub API is down                | Check internet connection, try again                          |
+| Token polling returns `expired_token` | User did not authorize within 15 minutes           | Restart the login flow                                        |
+| Repos not loading after login         | Token doesn't have `repo` scope                    | Re-authenticate to request the correct scopes                 |

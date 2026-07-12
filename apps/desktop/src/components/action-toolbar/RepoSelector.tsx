@@ -21,7 +21,7 @@ export function RepoSelector() {
     const q = query.trim().toLowerCase()
     if (!q) return savedRepos
     return savedRepos.filter(
-      (r) => r.name.toLowerCase().includes(q) || r.path.toLowerCase().includes(q),
+      (r) => r.name.toLowerCase().includes(q) || r.path.toLowerCase().includes(q)
     )
   }, [savedRepos, query])
 
@@ -88,9 +88,7 @@ export function RepoSelector() {
                         {repo.path}
                       </span>
                     </span>
-                    {isOpen && (
-                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                    )}
+                    {isOpen && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
                   </button>
                 )
               })

@@ -38,7 +38,15 @@ function branch(shortName: string, overrides: Partial<GitBranch> = {}): GitBranc
 }
 
 function repo(overrides: Partial<GitRepo> = {}): GitRepo {
-  return { path: '/repo', name: 'repo', head: 'main', isDetached: false, isDirty: false, remotes: [], ...overrides }
+  return {
+    path: '/repo',
+    name: 'repo',
+    head: 'main',
+    isDetached: false,
+    isDirty: false,
+    remotes: [],
+    ...overrides,
+  }
 }
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -79,7 +87,9 @@ describe('BranchContext — visibility/label', () => {
 
   it('truncates the sha for a detached HEAD', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
-    useRepoDataStore.setState({ repoCache: { '/repo': repo({ isDetached: true, head: 'abcdefabcdefabcdef' }) } })
+    useRepoDataStore.setState({
+      repoCache: { '/repo': repo({ isDetached: true, head: 'abcdefabcdefabcdef' }) },
+    })
     render(<BranchContext />, { wrapper })
     expect(screen.getByTitle('abcdefabcd')).toBeInTheDocument()
   })
@@ -89,7 +99,11 @@ describe('BranchContext — branch list & filtering', () => {
   beforeEach(() => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     useBranchesMock.mockReturnValue({
-      data: [branch('main', { isHead: true }), branch('feature-x'), branch('origin/main', { isRemote: true })],
+      data: [
+        branch('main', { isHead: true }),
+        branch('feature-x'),
+        branch('origin/main', { isRemote: true }),
+      ],
     })
   })
 
@@ -119,7 +133,9 @@ describe('BranchContext — checkout', () => {
   beforeEach(() => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     useRepoDataStore.setState({ repoCache: { '/repo': repo({ head: 'main' }) } })
-    useBranchesMock.mockReturnValue({ data: [branch('main', { isHead: true }), branch('feature-x')] })
+    useBranchesMock.mockReturnValue({
+      data: [branch('main', { isHead: true }), branch('feature-x')],
+    })
   })
 
   it('checks out the clicked branch from the current HEAD', async () => {
@@ -130,7 +146,10 @@ describe('BranchContext — checkout', () => {
     await user.click(screen.getByTitle('main'))
     await user.click(screen.getByText('feature-x'))
 
-    expect(mockedCheckout).toHaveBeenCalledWith('/repo', 'feature-x', { fromRef: 'main', fromDetached: false })
+    expect(mockedCheckout).toHaveBeenCalledWith('/repo', 'feature-x', {
+      fromRef: 'main',
+      fromDetached: false,
+    })
     await waitFor(() => expect(mockedOpenRepo).toHaveBeenCalledWith('/repo'))
   })
 
@@ -141,7 +160,9 @@ describe('BranchContext — checkout', () => {
     render(<BranchContext />, { wrapper })
     await user.click(screen.getByTitle('main'))
     await user.click(screen.getByText('feature-x'))
-    await waitFor(() => expect(screen.queryByPlaceholderText('branch.checkout')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByPlaceholderText('branch.checkout')).not.toBeInTheDocument()
+    )
   })
 
   it('shows an error banner when checkout fails, without closing the popover', async () => {

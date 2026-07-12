@@ -5,7 +5,9 @@ import { getScrollCoordinatesForContent } from './useMergeScrollSync'
 import { computeInitialPlacements } from './mergeBlockLayout'
 import { getTopForLineNumberSafe } from './conflict-resolver/editorGeometry'
 
-function createBlock(overrides: Partial<MergeBlock> & Pick<MergeBlock, 'blockId' | 'kind'>): MergeBlock {
+function createBlock(
+  overrides: Partial<MergeBlock> & Pick<MergeBlock, 'blockId' | 'kind'>
+): MergeBlock {
   return {
     oursStartLine: 1,
     oursLineCount: 0,
@@ -81,7 +83,7 @@ describe('getScrollCoordinatesForContent', () => {
     const placements = computeInitialPlacements(blocks)
 
     const masterEditor = mockEditor(4) // Center has ours (4 lines)
-    const slaveEditor = mockEditor(2)  // Theirs has 2 lines
+    const slaveEditor = mockEditor(2) // Theirs has 2 lines
 
     // Master is Center (index 1), Slave is Theirs (index 0)
     // Middle of Master: Y = 38px (half of 76px)
@@ -138,7 +140,7 @@ describe('getScrollCoordinatesForContent', () => {
     // Ours (Slave) has Block 1 (0 lines), Block 2 (5 lines) -> Total 5 lines
 
     const masterEditor = mockEditor(10) // Center
-    const slaveEditor = mockEditor(5)   // Ours
+    const slaveEditor = mockEditor(5) // Ours
 
     // Scrolling in Block 1 (Y from 0 to 95 in Master). Slave has 0 lines here and should freeze at 0.
     for (let scrollTop = 0; scrollTop < 95; scrollTop += 10) {
@@ -149,7 +151,7 @@ describe('getScrollCoordinatesForContent', () => {
         blocks,
         placements,
         1, // Center
-        2  // Ours
+        2 // Ours
       )
       expect(targetScroll).toBe(0)
     }

@@ -11,20 +11,26 @@ export function useVerticalResize(defaultHeight = 200, minHeight = 80, maxHeight
   const startY = React.useRef(0)
   const startHeight = React.useRef(defaultHeight)
 
-  const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    isDragging.current = true
-    startY.current = e.clientY
-    startHeight.current = height
-    e.currentTarget.setPointerCapture(e.pointerId)
-    e.preventDefault()
-  }, [height])
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      isDragging.current = true
+      startY.current = e.clientY
+      startHeight.current = height
+      e.currentTarget.setPointerCapture(e.pointerId)
+      e.preventDefault()
+    },
+    [height]
+  )
 
-  const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDragging.current) return
-    const delta = e.clientY - startY.current
-    const next = Math.max(minHeight, Math.min(maxHeight, startHeight.current + delta))
-    setHeight(next)
-  }, [minHeight, maxHeight])
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!isDragging.current) return
+      const delta = e.clientY - startY.current
+      const next = Math.max(minHeight, Math.min(maxHeight, startHeight.current + delta))
+      setHeight(next)
+    },
+    [minHeight, maxHeight]
+  )
 
   const onPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDragging.current) return

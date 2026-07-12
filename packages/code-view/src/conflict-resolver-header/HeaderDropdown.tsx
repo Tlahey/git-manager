@@ -43,14 +43,16 @@ export function HeaderDropdown<T extends string>({
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center justify-between gap-1 text-[11px] h-6 px-2.5 rounded border border-[#3c3c3c] bg-[#202020] hover:bg-[#262626] active:bg-[#2c2c2c] text-foreground/90 transition-colors"
+        className="flex h-6 items-center justify-between gap-1 rounded border border-[#3c3c3c] bg-[#202020] px-2.5 text-[11px] text-foreground/90 transition-colors hover:bg-[#262626] active:bg-[#2c2c2c]"
         data-testid={testId}
       >
         <span>{labels[value]}</span>
         <ChevronDown className="h-3 w-3 text-muted-foreground/60" />
       </button>
       {open && (
-        <div className={`absolute right-0 mt-1 ${menuWidthClass} rounded-md bg-[#252525] border border-[#3c3c3c] shadow-lg z-50 py-1 text-[11px] animate-fadeIn`}>
+        <div
+          className={`absolute right-0 mt-1 ${menuWidthClass} animate-fadeIn z-50 rounded-md border border-[#3c3c3c] bg-[#252525] py-1 text-[11px] shadow-lg`}
+        >
           {options.map((option) => (
             <button
               key={option}
@@ -58,8 +60,8 @@ export function HeaderDropdown<T extends string>({
                 onChange(option)
                 setOpen(false)
               }}
-              className={`w-full text-left px-3 py-1.5 hover:bg-[#343434] transition-colors ${
-                value === option ? 'text-[#4b9dfa] font-semibold' : 'text-foreground/80'
+              className={`w-full px-3 py-1.5 text-left transition-colors hover:bg-[#343434] ${
+                value === option ? 'font-semibold text-[#4b9dfa]' : 'text-foreground/80'
               }`}
             >
               {labels[option]}

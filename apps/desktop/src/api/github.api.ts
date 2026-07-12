@@ -87,7 +87,11 @@ async function ghFetch<T>(url: string, token?: string): Promise<T> {
   return res.json()
 }
 
-export function parsePRStatus(pr: { state: string; draft: boolean; merged_at: string | null }): PRStatus {
+export function parsePRStatus(pr: {
+  state: string
+  draft: boolean
+  merged_at: string | null
+}): PRStatus {
   if (pr.merged_at) return 'merged'
   if (pr.draft) return 'draft'
   if (pr.state === 'closed') return 'closed'
@@ -95,19 +99,34 @@ export function parsePRStatus(pr: { state: string; draft: boolean; merged_at: st
 }
 
 /** Extract repo name from various fields available in search results */
-export function extractRepoInfo(raw: Pick<GhRawPR & GhRawIssue, 'base' | 'repository_url' | 'html_url'>): { repo: string; repoUrl: string; fullName: string } {
+export function extractRepoInfo(
+  raw: Pick<GhRawPR & GhRawIssue, 'base' | 'repository_url' | 'html_url'>
+): { repo: string; repoUrl: string; fullName: string } {
   if (raw.base?.repo?.name) {
-    return { repo: raw.base.repo.name, repoUrl: raw.base.repo.html_url ?? '', fullName: raw.base.repo.full_name ?? '' }
+    return {
+      repo: raw.base.repo.name,
+      repoUrl: raw.base.repo.html_url ?? '',
+      fullName: raw.base.repo.full_name ?? '',
+    }
   }
   if (raw.repository_url) {
     const parts = raw.repository_url.split('/')
     const repoName = parts[parts.length - 1] ?? 'unknown'
     const owner = parts[parts.length - 2] ?? ''
-    return { repo: repoName, repoUrl: `https://github.com/${owner}/${repoName}`, fullName: `${owner}/${repoName}` }
+    return {
+      repo: repoName,
+      repoUrl: `https://github.com/${owner}/${repoName}`,
+      fullName: `${owner}/${repoName}`,
+    }
   }
   if (raw.html_url) {
     const match = raw.html_url.match(/github\.com\/([^/]+)\/([^/]+)/)
-    if (match) return { repo: match[2], repoUrl: `https://github.com/${match[1]}/${match[2]}`, fullName: `${match[1]}/${match[2]}` }
+    if (match)
+      return {
+        repo: match[2],
+        repoUrl: `https://github.com/${match[1]}/${match[2]}`,
+        fullName: `${match[1]}/${match[2]}`,
+      }
   }
   return { repo: 'unknown', repoUrl: '', fullName: 'unknown' }
 }
@@ -126,7 +145,10 @@ export function rawToMockPR(raw: GhRawPR, currentUser: string): MockPR {
     ciStatus: null,
     author: raw.user?.login ?? '—',
     authorAvatar: raw.user?.avatar_url ?? '',
-    collaborators: (raw.requested_reviewers ?? []).map((r) => ({ login: r.login, avatar: r.avatar_url })),
+    collaborators: (raw.requested_reviewers ?? []).map((r) => ({
+      login: r.login,
+      avatar: r.avatar_url,
+    })),
     filesChanged: raw.changed_files ?? 0,
     additions: raw.additions ?? 0,
     deletions: raw.deletions ?? 0,
@@ -134,7 +156,9 @@ export function rawToMockPR(raw: GhRawPR, currentUser: string): MockPR {
     updatedAt: new Date(raw.updated_at),
     reviewStatus: 'pending',
     isDraft: raw.draft ?? false,
-    needsMyReview: raw.state === 'open' && raw.user?.login !== currentUser &&
+    needsMyReview:
+      raw.state === 'open' &&
+      raw.user?.login !== currentUser &&
       (raw.requested_reviewers ?? []).some((r) => r.login === currentUser),
     labels: (raw.labels ?? []).map((l) => l.name),
     comments: raw.comments ?? 0,
@@ -160,12 +184,21 @@ export function rawToMockIssue(raw: GhRawIssue): MockIssue {
 }
 
 export async function fetchGitHubPRs(username: string, token: string): Promise<MockPR[]> {
-  const data = await ghFetch<GhSearchResult<GhRawPR>>(`https://api.github.com/search/issues?q=is:pr+author:${username}+is:open&per_page=50&sort=updated`, token)
+  const data = await ghFetch<GhSearchResult<GhRawPR>>(
+    `https://api.github.com/search/issues?q=is:pr+author:${username}+is:open&per_page=50&sort=updated`,
+    token
+  )
   return (data.items ?? []).map((item) => rawToMockPR(item, username))
 }
 
-export async function fetchGitHubReviewRequestedPRs(username: string, token: string): Promise<MockPR[]> {
-  const data = await ghFetch<GhSearchResult<GhRawPR>>(`https://api.github.com/search/issues?q=is:pr+review-requested:${username}+is:open&per_page=50&sort=updated`, token)
+export async function fetchGitHubReviewRequestedPRs(
+  username: string,
+  token: string
+): Promise<MockPR[]> {
+  const data = await ghFetch<GhSearchResult<GhRawPR>>(
+    `https://api.github.com/search/issues?q=is:pr+review-requested:${username}+is:open&per_page=50&sort=updated`,
+    token
+  )
   return (data.items ?? []).map((item) => {
     const pr = rawToMockPR(item, username)
     pr.needsMyReview = true
@@ -174,7 +207,10 @@ export async function fetchGitHubReviewRequestedPRs(username: string, token: str
 }
 
 export async function fetchGitHubIssues(username: string, token: string): Promise<MockIssue[]> {
-  const data = await ghFetch<GhSearchResult<GhRawIssue>>(`https://api.github.com/search/issues?q=is:issue+assignee:${username}&per_page=50&sort=updated`, token)
+  const data = await ghFetch<GhSearchResult<GhRawIssue>>(
+    `https://api.github.com/search/issues?q=is:issue+assignee:${username}&per_page=50&sort=updated`,
+    token
+  )
   return (data.items ?? []).map(rawToMockIssue)
 }
 
@@ -182,16 +218,30 @@ export async function fetchGitHubPRDetails(prApiUrl: string, token: string): Pro
   return ghFetch<GhRawPR>(prApiUrl, token)
 }
 
-export async function fetchGitHubCommitCiStatus(owner: string, repo: string, sha: string, token: string): Promise<{ checkRunsRes: GhCheckRunsResponse | null; statusRes: GhCommitStatusResponse | null }> {
+export async function fetchGitHubCommitCiStatus(
+  owner: string,
+  repo: string,
+  sha: string,
+  token: string
+): Promise<{ checkRunsRes: GhCheckRunsResponse | null; statusRes: GhCommitStatusResponse | null }> {
   const [checkRunsRes, statusRes] = await Promise.all([
-    ghFetch<GhCheckRunsResponse>(`https://api.github.com/repos/${owner}/${repo}/commits/${sha}/check-runs`, token).catch(() => null),
-    ghFetch<GhCommitStatusResponse>(`https://api.github.com/repos/${owner}/${repo}/commits/${sha}/status`, token).catch(() => null)
+    ghFetch<GhCheckRunsResponse>(
+      `https://api.github.com/repos/${owner}/${repo}/commits/${sha}/check-runs`,
+      token
+    ).catch(() => null),
+    ghFetch<GhCommitStatusResponse>(
+      `https://api.github.com/repos/${owner}/${repo}/commits/${sha}/status`,
+      token
+    ).catch(() => null),
   ])
   return { checkRunsRes, statusRes }
 }
 
 /** Fetch full-year contribution calendar via GitHub GraphQL API */
-export async function fetchGitHubContributions(username: string, token: string): Promise<DayCommit[]> {
+export async function fetchGitHubContributions(
+  username: string,
+  token: string
+): Promise<DayCommit[]> {
   const now = new Date()
   const oneYearAgo = new Date(now)
   oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
@@ -246,17 +296,19 @@ export async function fetchGitHubContributions(username: string, token: string):
 }
 
 // For usePullRequests.ts
-export async function fetchRepoPRs(owner: string, repo: string, token?: string): Promise<GhRawPR[]> {
-  return ghFetch<GhRawPR[]>(`https://api.github.com/repos/${owner}/${repo}/pulls?state=open&per_page=100`, token)
+export async function fetchRepoPRs(
+  owner: string,
+  repo: string,
+  token?: string
+): Promise<GhRawPR[]> {
+  return ghFetch<GhRawPR[]>(
+    `https://api.github.com/repos/${owner}/${repo}/pulls?state=open&per_page=100`,
+    token
+  )
 }
 
 // Tauri backend GitHub integration wrappers
-import {
-  githubDeviceCode,
-  githubPollToken,
-  githubGetUser,
-  githubListRepos
-} from '../lib/tauri'
+import { githubDeviceCode, githubPollToken, githubGetUser, githubListRepos } from '../lib/tauri'
 
 export async function apiGithubDeviceCode(scope: string) {
   return githubDeviceCode(scope)
@@ -273,4 +325,3 @@ export async function apiGithubGetUser(token: string) {
 export async function apiGithubListRepos(token: string) {
   return githubListRepos(token)
 }
-

@@ -60,7 +60,9 @@ vi.mock('./components/footer/Footer', () => ({
     </div>
   ),
 }))
-vi.mock('./components/trophy/TrophyToast', () => ({ TrophyToast: () => <div data-testid="fake-trophy-toast" /> }))
+vi.mock('./components/trophy/TrophyToast', () => ({
+  TrophyToast: () => <div data-testid="fake-trophy-toast" />,
+}))
 vi.mock('./components/layout/OperationProgressBar', () => ({
   OperationProgressBar: () => <div data-testid="fake-operation-progress-bar" />,
 }))
@@ -73,7 +75,12 @@ vi.mock('./hooks/useNotificationWatcher', () => ({ useNotificationWatcher: vi.fn
 vi.mock('./hooks/useDevFixtureImport', () => ({ useDevFixtureImport: vi.fn() }))
 
 import App from './App'
-import { useRepoUIStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from './stores/repoUI.store'
+import {
+  useRepoUIStore,
+  DASHBOARD_TAB,
+  REWARDS_TAB,
+  PULL_REQUESTS_TAB,
+} from './stores/repoUI.store'
 import { useOperationProgressStore } from './stores/operationProgress.store'
 import { useUndoHistoryStore } from './stores/undoHistory.store'
 import { queryClient } from './lib/queryClient'
@@ -195,10 +202,16 @@ describe('App — Tauri event listeners', () => {
   it('invalidates rebase/status/log queries and mutates conflicted-files on conflict-resolved', async () => {
     render(<App />)
     await act(async () => {
-      listenCallbacks.get('conflict-resolved')?.({ payload: { repoPath: '/repo', filePath: 'a.ts' } })
+      listenCallbacks.get('conflict-resolved')?.({
+        payload: { repoPath: '/repo', filePath: 'a.ts' },
+      })
     })
-    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rebase-state', '/repo'] })
-    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['git-status', '/repo'] })
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['rebase-state', '/repo'],
+    })
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['git-status', '/repo'],
+    })
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['git-log', '/repo'] })
     expect(swrMutate).toHaveBeenCalledWith(['conflicted-files', '/repo'])
   })
@@ -209,9 +222,13 @@ describe('App — Tauri event listeners', () => {
     await act(async () => {
       listenCallbacks.get('fixup-committed')?.({ payload: { repoPath: '/repo' } })
     })
-    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['git-status', '/repo'] })
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['git-status', '/repo'],
+    })
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['git-log', '/repo'] })
-    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['pending-fixups', '/repo'] })
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['pending-fixups', '/repo'],
+    })
     // Fixup/rebasing windows persist their undo entry to localStorage; the main window must
     // re-read it so the UNDO button reflects the action performed in that other window.
     expect(rehydrate).toHaveBeenCalled()
@@ -234,7 +251,9 @@ describe('App — Tauri event listeners', () => {
       listenCallbacks.get('rebase-progress')?.({ payload: { repoPath: '/repo', phase: 'end' } })
     })
     expect(useOperationProgressStore.getState().running['/repo']).toBeUndefined()
-    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rebase-state', '/repo'] })
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['rebase-state', '/repo'],
+    })
     expect(swrMutate).toHaveBeenCalledWith(['conflicted-files', '/repo'])
   })
 })

@@ -12,11 +12,11 @@ export function OperationProgressBar() {
 
   return (
     <div
-      className="h-[2px] w-full bg-border/10 overflow-hidden shrink-0 relative"
+      className="relative h-[2px] w-full shrink-0 overflow-hidden bg-border/10"
       data-testid="operation-progress-bar"
     >
       {isActive && (
-        <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent animate-shimmer" />
+        <div className="animate-shimmer absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent" />
       )}
     </div>
   )

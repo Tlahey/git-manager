@@ -43,9 +43,7 @@ export const useRepoDataStore = create<RepoDataState>()(
       toggleStashVisibility: (repoPath, oid) =>
         set((state) => {
           const current = state.hiddenStashes[repoPath] || []
-          const next = current.includes(oid)
-            ? current.filter((x) => x !== oid)
-            : [...current, oid]
+          const next = current.includes(oid) ? current.filter((x) => x !== oid) : [...current, oid]
           return {
             hiddenStashes: { ...state.hiddenStashes, [repoPath]: next },
           }

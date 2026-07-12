@@ -14,7 +14,6 @@ import { useGitStashes } from '../../hooks/useGitStashes'
 import { useTranslation } from '@git-manager/i18n'
 import type { ConflictRowInfo } from '../../hooks/useGitGraphNodes'
 
-
 interface GraphRowProps {
   node: GitGraphNode
   columns: ResolvedColumn[]
@@ -82,14 +81,22 @@ function getAuthorInitials(name: string): string {
   return name.slice(0, 2).toUpperCase()
 }
 
-function AuthorAvatar({ name, email, isStash }: { name: string; email?: string; isStash?: boolean }) {
+function AuthorAvatar({
+  name,
+  email,
+  isStash,
+}: {
+  name: string
+  email?: string
+  isStash?: boolean
+}) {
   const avatarUrl = getAvatarUrl(email, name)
   const [imgError, setImgError] = useState(false)
 
   if (isStash) {
     return (
       <div
-        className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-dashed border-violet-400/60 text-violet-400 bg-transparent"
+        className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-dashed border-violet-400/60 bg-transparent text-violet-400"
         title="Stash"
       >
         <Archive className="h-2.5 w-2.5" />
@@ -99,7 +106,7 @@ function AuthorAvatar({ name, email, isStash }: { name: string; email?: string; 
 
   return (
     <div
-      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[7px] font-bold text-white overflow-hidden"
+      className="flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded-full text-[7px] font-bold text-white"
       style={{ backgroundColor: avatarUrl && !imgError ? undefined : getAuthorColor(name) }}
       title={name}
     >
@@ -145,7 +152,7 @@ export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
 
   return (
     <div
-      className="absolute h-full flex items-center justify-center pointer-events-none"
+      className="pointer-events-none absolute flex h-full items-center justify-center"
       style={{ left: nodeX - avatarSize / 2, width: avatarSize }}
     >
       <div
@@ -156,30 +163,30 @@ export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
         {isStash ? (
           <div
             className={cn(
-              "flex items-center justify-center rounded-md font-bold select-none cursor-pointer border-2 border-dashed shadow-sm hover:scale-110 hover:shadow-md transition-all duration-150 overflow-hidden",
-              avatarSize === 24 ? "text-[8px]" : "text-[11px]"
+              'flex cursor-pointer select-none items-center justify-center overflow-hidden rounded-md border-2 border-dashed font-bold shadow-sm transition-all duration-150 hover:scale-110 hover:shadow-md',
+              avatarSize === 24 ? 'text-[8px]' : 'text-[11px]'
             )}
             style={{
               width: avatarSize,
               height: avatarSize,
               borderColor: node.color,
               color: node.color,
-              backgroundColor: 'transparent'
+              backgroundColor: 'transparent',
             }}
           >
-            <Archive className={avatarSize === 24 ? "h-3 w-3" : "h-3.5 w-3.5"} />
+            <Archive className={avatarSize === 24 ? 'h-3 w-3' : 'h-3.5 w-3.5'} />
           </div>
         ) : (
           /* Avatar Circle */
           <div
             className={cn(
-              "flex items-center justify-center rounded-full font-bold text-white select-none cursor-pointer border border-background shadow-sm hover:scale-110 hover:shadow-md transition-all duration-150 overflow-hidden",
-              avatarSize === 24 ? "text-[8px]" : "text-[11px]"
+              'flex cursor-pointer select-none items-center justify-center overflow-hidden rounded-full border border-background font-bold text-white shadow-sm transition-all duration-150 hover:scale-110 hover:shadow-md',
+              avatarSize === 24 ? 'text-[8px]' : 'text-[11px]'
             )}
             style={{
               width: avatarSize,
               height: avatarSize,
-              backgroundColor: avatarUrl && !imgError ? undefined : node.color
+              backgroundColor: avatarUrl && !imgError ? undefined : node.color,
             }}
           >
             {avatarUrl && !imgError ? (
@@ -205,14 +212,16 @@ export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
               left: pos.left,
               transform: 'translate(-50%, -100%)',
             }}
-            className="z-[100] pointer-events-none flex flex-col gap-0.5 rounded-md border border-border bg-popover/95 backdrop-blur-md px-2.5 py-1.5 shadow-xl text-popover-foreground whitespace-nowrap animate-in fade-in-0 zoom-in-95 duration-100"
+            className="animate-in fade-in-0 zoom-in-95 pointer-events-none z-[100] flex flex-col gap-0.5 whitespace-nowrap rounded-md border border-border bg-popover/95 px-2.5 py-1.5 text-popover-foreground shadow-xl backdrop-blur-md duration-100"
           >
             <span className="text-[10px] font-semibold leading-none">{commit.author.name}</span>
-            <span className="text-[9px] text-muted-foreground/90 leading-none mt-0.5">{commit.author.email}</span>
+            <span className="mt-0.5 text-[9px] leading-none text-muted-foreground/90">
+              {commit.author.email}
+            </span>
             {/* Petit triangle en bas */}
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-popover/95" />
+            <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-popover/95" />
           </div>,
-          document.body,
+          document.body
         )}
     </div>
   )
@@ -248,17 +257,17 @@ function WipCommitInput({
   }
 
   return (
-    <div className="flex items-center w-full gap-2 pr-4" onClick={(e) => e.stopPropagation()}>
+    <div className="flex w-full items-center gap-2 pr-4" onClick={(e) => e.stopPropagation()}>
       <input
         type="text"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="// WIP"
-        className="flex-1 min-w-0 bg-transparent text-foreground border-border placeholder-muted-foreground/60 text-[11px] h-6 px-2 rounded border focus:border-primary/60 focus:outline-none transition-colors"
+        className="h-6 min-w-0 flex-1 rounded border border-border bg-transparent px-2 text-[11px] text-foreground placeholder-muted-foreground/60 transition-colors focus:border-primary/60 focus:outline-none"
       />
       <div
-        className="flex items-center gap-1 shrink-0 text-[10px] font-semibold text-muted-foreground bg-muted/40 px-2 py-0.5 rounded border border-border/30"
+        className="flex shrink-0 items-center gap-1 rounded border border-border/30 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground"
         title={`${totalChanges} files changed`}
       >
         <FileText className="h-3 w-3 text-muted-foreground/60" />
@@ -315,15 +324,13 @@ function CellContent({
       const filteredRefs = node.refs
       if (filteredRefs.length === 0) return null
       const hasOriginMain = filteredRefs.some(
-        (r) =>
-          r.shortName.endsWith('/main') ||
-          r.shortName.endsWith('/master')
+        (r) => r.shortName.endsWith('/main') || r.shortName.endsWith('/master')
       )
       return (
-        <div className="flex items-center w-full h-full min-w-0 overflow-visible">
+        <div className="flex h-full w-full min-w-0 items-center overflow-visible">
           <RefLabelGroup refs={filteredRefs} color={node.color} />
           <div
-            className="flex-1 h-[2px] ml-2 pointer-events-none transition-colors"
+            className="pointer-events-none ml-2 h-[2px] flex-1 transition-colors"
             style={{
               backgroundColor: hasOriginMain ? node.color : `${node.color}75`,
               marginRight: `-${node.column * 36 + 26}px`,
@@ -338,15 +345,15 @@ function CellContent({
       const COL_WIDTH = 36
       const nodeX = node.column * COL_WIDTH + COL_WIDTH / 2
       return (
-        <div className="w-full h-full relative overflow-visible flex items-center">
+        <div className="relative flex h-full w-full items-center overflow-visible">
           {/* Conteneur de découpe (clip) élargi pour le graph uniquement */}
           <div
-            className="absolute overflow-hidden pointer-events-none"
+            className="pointer-events-none absolute overflow-hidden"
             style={{ left: -refsWidth, right: 0, top: -4, bottom: -5 }}
           >
             {/* Conteneur interne réaligné sur la colonne graph */}
             <div
-              className="absolute pointer-events-none"
+              className="pointer-events-none absolute"
               style={{ left: refsWidth, right: 0, top: 0, bottom: 0 }}
             >
               <GraphSvg
@@ -360,19 +367,19 @@ function CellContent({
           </div>
 
           {/* Conteneur de découpe simple et direct pour les avatars */}
-          <div className="absolute inset-y-0 left-0 right-0 overflow-hidden pointer-events-none">
+          <div className="pointer-events-none absolute inset-y-0 left-0 right-0 overflow-hidden">
             {node.commit.oid === 'WIP' || node.commit.oid === 'CONFLICT' ? (
               <div
-                className="absolute h-full flex items-center justify-center pointer-events-none"
+                className="pointer-events-none absolute flex h-full items-center justify-center"
                 style={{ left: nodeX - avatarSize / 2, width: avatarSize }}
               >
                 <div
-                  className="flex items-center justify-center rounded-full border border-dashed select-none shadow-sm transition-all duration-150"
+                  className="flex select-none items-center justify-center rounded-full border border-dashed shadow-sm transition-all duration-150"
                   style={{
                     width: avatarSize,
                     height: avatarSize,
                     borderColor: node.color,
-                    backgroundColor: 'transparent'
+                    backgroundColor: 'transparent',
                   }}
                 >
                   {node.commit.oid === 'CONFLICT' && (
@@ -396,7 +403,12 @@ function CellContent({
         return <WipCommitInput totalChanges={totalChanges ?? 0} onCommit={onCommitWip} />
       }
       if (node.commit.oid === 'CONFLICT') {
-        return <ConflictRowMessage count={conflictInfo?.count ?? 0} branchName={conflictInfo?.branchName} />
+        return (
+          <ConflictRowMessage
+            count={conflictInfo?.count ?? 0}
+            branchName={conflictInfo?.branchName}
+          />
+        )
       }
       const body = commit.body?.replace(/\s+/g, ' ').trim()
       const displaySubject = stash ? stash.message : commit.subject
@@ -423,7 +435,11 @@ function CellContent({
       const isStashCommit = node.refs.some((r) => r.type === 'stash')
       return (
         <div className="flex min-w-0 items-center gap-1.5">
-          <AuthorAvatar name={commit.author.name} email={commit.author.email} isStash={isStashCommit} />
+          <AuthorAvatar
+            name={commit.author.name}
+            email={commit.author.email}
+            isStash={isStashCommit}
+          />
           <span className="truncate text-[10px] text-muted-foreground">{commit.author.name}</span>
         </div>
       )
@@ -483,12 +499,12 @@ export const GraphRow = memo(function GraphRow({
       onContextMenu={onContextMenu}
       className={cn(
         'group relative flex cursor-pointer select-none items-center border-b border-transparent transition-colors hover:z-[60]',
-        rowHeight === 32 ? 'h-[24px] my-[4px]' : 'h-[32px] my-[4px]'
+        rowHeight === 32 ? 'my-[4px] h-[24px]' : 'my-[4px] h-[32px]'
       )}
     >
       {/* Background colored band starting from the avatar to the right boundary of the graph column, with border-right */}
       <div
-        className="absolute inset-y-0 pointer-events-none border-r-[3px] transition-colors"
+        className="pointer-events-none absolute inset-y-0 border-r-[3px] transition-colors"
         style={{
           left: startX,
           width: Math.max(0, endX - startX),
@@ -501,8 +517,8 @@ export const GraphRow = memo(function GraphRow({
       {(isSelected || isPrimary) && (
         <div
           className={cn(
-            "absolute inset-y-0 pointer-events-none transition-colors",
-            isPrimary ? "bg-accent" : "bg-accent/70"
+            'pointer-events-none absolute inset-y-0 transition-colors',
+            isPrimary ? 'bg-accent' : 'bg-accent/70'
           )}
           style={{
             left: endX,
@@ -513,7 +529,7 @@ export const GraphRow = memo(function GraphRow({
 
       {/* Hover background starting from the end of the graph column to the right end of the row */}
       <div
-        className="absolute inset-y-0 pointer-events-none bg-accent/50 transition-opacity opacity-0 group-hover:opacity-100"
+        className="pointer-events-none absolute inset-y-0 bg-accent/50 opacity-0 transition-opacity group-hover:opacity-100"
         style={{
           left: endX,
           right: 0,
@@ -523,7 +539,7 @@ export const GraphRow = memo(function GraphRow({
       {/* Conflict background starting from the end of the graph column to the right end of the row */}
       {node.commit.oid === 'CONFLICT' && (
         <div
-          className="absolute inset-y-0 pointer-events-none"
+          className="pointer-events-none absolute inset-y-0"
           style={{
             left: endX,
             right: 0,
@@ -536,7 +552,7 @@ export const GraphRow = memo(function GraphRow({
         <div
           key={col.key}
           className={cn(
-            "relative z-10 flex h-full min-w-0 items-center",
+            'relative z-10 flex h-full min-w-0 items-center',
             col.key === 'refs' ? 'justify-start pl-2' : 'mx-2',
             col.key === 'graph' && 'px-0'
           )}

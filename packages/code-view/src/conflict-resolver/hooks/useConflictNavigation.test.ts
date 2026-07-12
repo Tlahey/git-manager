@@ -9,9 +9,17 @@ import { useConflictNavigation } from './useConflictNavigation'
 function fakeCenterEditor(topVisibleLine = 1) {
   const calls = { revealed: [] as number[], positions: [] as number[], focused: 0 }
   const instance = {
-    getVisibleRanges: () => [{ startLineNumber: topVisibleLine, startColumn: 1, endLineNumber: topVisibleLine + 20, endColumn: 1 }],
+    getVisibleRanges: () => [
+      {
+        startLineNumber: topVisibleLine,
+        startColumn: 1,
+        endLineNumber: topVisibleLine + 20,
+        endColumn: 1,
+      },
+    ],
     revealLineInCenter: (line: number) => calls.revealed.push(line),
-    setPosition: (pos: { lineNumber: number; column: number }) => calls.positions.push(pos.lineNumber),
+    setPosition: (pos: { lineNumber: number; column: number }) =>
+      calls.positions.push(pos.lineNumber),
     focus: () => {
       calls.focused += 1
     },
@@ -65,7 +73,9 @@ describe('useConflictNavigation', () => {
   it('filters changeBlocks to non-unchanged blocks', () => {
     const blocks = makeBlocks()
     const placementsRef = { current: computeInitialPlacements(blocks) }
-    const { result } = renderHook(() => useConflictNavigation(blocks, placementsRef, editorsWith(fakeCenterEditor().instance)))
+    const { result } = renderHook(() =>
+      useConflictNavigation(blocks, placementsRef, editorsWith(fakeCenterEditor().instance))
+    )
 
     expect(result.current.changeBlocks.map((b) => b.blockId)).toEqual([2, 4])
   })
@@ -74,7 +84,9 @@ describe('useConflictNavigation', () => {
     const blocks = makeBlocks()
     const placementsRef = { current: computeInitialPlacements(blocks) }
     const { instance, calls } = fakeCenterEditor()
-    const { result } = renderHook(() => useConflictNavigation(blocks, placementsRef, editorsWith(instance)))
+    const { result } = renderHook(() =>
+      useConflictNavigation(blocks, placementsRef, editorsWith(instance))
+    )
 
     // Starts on the first change block (index 0 = block 2); next goes to block 4.
     act(() => result.current.navigateConflict('next'))
@@ -100,7 +112,9 @@ describe('useConflictNavigation', () => {
     const blocks = makeBlocks()
     const placementsRef = { current: computeInitialPlacements(blocks) }
     const { instance } = fakeCenterEditor(3) // scrolled so line 3 is on top
-    const { result } = renderHook(() => useConflictNavigation(blocks, placementsRef, editorsWith(instance)))
+    const { result } = renderHook(() =>
+      useConflictNavigation(blocks, placementsRef, editorsWith(instance))
+    )
 
     act(() => result.current.updateActiveBlockIndex())
     expect(result.current.activeBlockIndex).toBe(1) // block 4 (center line 4 >= 3)
@@ -110,7 +124,9 @@ describe('useConflictNavigation', () => {
     const blocks = makeBlocks()
     const placementsRef = { current: computeInitialPlacements(blocks) }
     const { instance } = fakeCenterEditor(50)
-    const { result } = renderHook(() => useConflictNavigation(blocks, placementsRef, editorsWith(instance)))
+    const { result } = renderHook(() =>
+      useConflictNavigation(blocks, placementsRef, editorsWith(instance))
+    )
 
     act(() => result.current.updateActiveBlockIndex())
     expect(result.current.activeBlockIndex).toBe(1)
@@ -131,7 +147,9 @@ describe('useConflictNavigation', () => {
     ]
     const placementsRef = { current: computeInitialPlacements(blocks) }
     const { instance, calls } = fakeCenterEditor()
-    const { result } = renderHook(() => useConflictNavigation(blocks, placementsRef, editorsWith(instance)))
+    const { result } = renderHook(() =>
+      useConflictNavigation(blocks, placementsRef, editorsWith(instance))
+    )
 
     act(() => result.current.updateActiveBlockIndex())
     expect(result.current.activeBlockIndex).toBe(-1)

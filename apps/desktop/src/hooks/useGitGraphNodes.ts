@@ -104,7 +104,7 @@ export function useGitGraphNodes(
   searchQuery: string | undefined,
   totalChanges: number,
   t: TranslateFn,
-  conflictInfo: ConflictRowInfo | null,
+  conflictInfo: ConflictRowInfo | null
 ) {
   const conflictNode = useMemo(() => {
     if (!conflictInfo || nodes.length === 0) return null
@@ -165,9 +165,9 @@ export function useGitGraphNodes(
   const originMainIndex = useMemo(
     () =>
       filteredNodes.findIndex((n) =>
-        n.refs.some((r) => r.shortName === 'origin/main' || r.shortName === 'origin/master'),
+        n.refs.some((r) => r.shortName === 'origin/main' || r.shortName === 'origin/master')
       ),
-    [filteredNodes],
+    [filteredNodes]
   )
 
   // Nodes ready for rendering: same as filteredNodes, but with the WIP→first-commit
@@ -195,7 +195,7 @@ export function useGitGraphNodes(
         patched = {
           ...patched,
           connections: patched.connections.map((conn) =>
-            conn.fromColumn === 0 && conn.toColumn === 0 ? { ...conn, dashed: true } : conn,
+            conn.fromColumn === 0 && conn.toColumn === 0 ? { ...conn, dashed: true } : conn
           ),
         }
       }

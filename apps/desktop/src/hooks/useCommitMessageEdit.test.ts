@@ -38,7 +38,13 @@ afterEach(() => {
 describe('useCommitMessageEdit — initial subject/body derivation', () => {
   it('derives subject/body from the commit when not a stash', () => {
     const { result } = renderHook(() =>
-      useCommitMessageEdit({ commit: commit(), repoPath: '/repo', isStash: false, stash: null, refs: [] })
+      useCommitMessageEdit({
+        commit: commit(),
+        repoPath: '/repo',
+        isStash: false,
+        stash: null,
+        refs: [],
+      })
     )
     expect(result.current.editSubject).toBe('Add feature')
     expect(result.current.editBody).toBe('Details here')
@@ -64,7 +70,14 @@ describe('useCommitMessageEdit — initial subject/body derivation', () => {
 
   it('resets fields (and closes edit mode) when the selected commit changes', () => {
     const { result, rerender } = renderHook(
-      ({ c }) => useCommitMessageEdit({ commit: c, repoPath: '/repo', isStash: false, stash: null, refs: [] }),
+      ({ c }) =>
+        useCommitMessageEdit({
+          commit: c,
+          repoPath: '/repo',
+          isStash: false,
+          stash: null,
+          refs: [],
+        }),
       { initialProps: { c: commit({ oid: 'a', subject: 'first' }) } }
     )
     act(() => result.current.setIsEditingMessage(true))
@@ -84,7 +97,13 @@ describe('useCommitMessageEdit — editingOid interoperability with repoUI.store
     // effect (also commit-identity-keyed), which unconditionally clears isEditingMessage on the
     // very same mount — not representative of real usage.
     const { result } = renderHook(() =>
-      useCommitMessageEdit({ commit: commit({ oid: 'abc123' }), repoPath: '/repo', isStash: false, stash: null, refs: [] })
+      useCommitMessageEdit({
+        commit: commit({ oid: 'abc123' }),
+        repoPath: '/repo',
+        isStash: false,
+        stash: null,
+        refs: [],
+      })
     )
     expect(result.current.isEditingMessage).toBe(false)
 
@@ -97,7 +116,13 @@ describe('useCommitMessageEdit — editingOid interoperability with repoUI.store
   it('does not open edit mode when editingOid targets a different commit', () => {
     useRepoUIStore.setState({ editingOid: 'other-oid' })
     const { result } = renderHook(() =>
-      useCommitMessageEdit({ commit: commit({ oid: 'abc123' }), repoPath: '/repo', isStash: false, stash: null, refs: [] })
+      useCommitMessageEdit({
+        commit: commit({ oid: 'abc123' }),
+        repoPath: '/repo',
+        isStash: false,
+        stash: null,
+        refs: [],
+      })
     )
     expect(result.current.isEditingMessage).toBe(false)
   })
@@ -106,7 +131,13 @@ describe('useCommitMessageEdit — editingOid interoperability with repoUI.store
 describe('useCommitMessageEdit — saving (commit)', () => {
   it('does nothing when the subject is blank', async () => {
     const { result } = renderHook(() =>
-      useCommitMessageEdit({ commit: commit(), repoPath: '/repo', isStash: false, stash: null, refs: [] })
+      useCommitMessageEdit({
+        commit: commit(),
+        repoPath: '/repo',
+        isStash: false,
+        stash: null,
+        refs: [],
+      })
     )
     act(() => result.current.setEditSubject('   '))
     await act(async () => result.current.handleUpdateCommitMessage())
@@ -117,7 +148,14 @@ describe('useCommitMessageEdit — saving (commit)', () => {
     mockedCreateCommit.mockResolvedValue({ oid: 'new', shortOid: 'new' })
     const onRefresh = vi.fn()
     const { result } = renderHook(() =>
-      useCommitMessageEdit({ commit: commit({ oid: 'sha1' }), repoPath: '/repo', isStash: false, stash: null, refs: [], onRefresh })
+      useCommitMessageEdit({
+        commit: commit({ oid: 'sha1' }),
+        repoPath: '/repo',
+        isStash: false,
+        stash: null,
+        refs: [],
+        onRefresh,
+      })
     )
     act(() => {
       result.current.setEditSubject('New subject')
@@ -125,7 +163,12 @@ describe('useCommitMessageEdit — saving (commit)', () => {
     })
     await act(async () => result.current.handleUpdateCommitMessage())
 
-    expect(mockedCreateCommit).toHaveBeenCalledWith('/repo', 'New subject\n\nNew body', true, 'sha1')
+    expect(mockedCreateCommit).toHaveBeenCalledWith(
+      '/repo',
+      'New subject\n\nNew body',
+      true,
+      'sha1'
+    )
     expect(result.current.isEditingMessage).toBe(false)
     expect(onRefresh).toHaveBeenCalledOnce()
   })
@@ -133,7 +176,13 @@ describe('useCommitMessageEdit — saving (commit)', () => {
   it('omits the body separator when the body is blank', async () => {
     mockedCreateCommit.mockResolvedValue({ oid: 'new', shortOid: 'new' })
     const { result } = renderHook(() =>
-      useCommitMessageEdit({ commit: commit({ oid: 'sha1' }), repoPath: '/repo', isStash: false, stash: null, refs: [] })
+      useCommitMessageEdit({
+        commit: commit({ oid: 'sha1' }),
+        repoPath: '/repo',
+        isStash: false,
+        stash: null,
+        refs: [],
+      })
     )
     act(() => {
       result.current.setEditSubject('Subject only')
@@ -146,7 +195,13 @@ describe('useCommitMessageEdit — saving (commit)', () => {
   it('amends the WIP pseudo-commit without an oid (amends the actual HEAD instead)', async () => {
     mockedCreateCommit.mockResolvedValue({ oid: 'new', shortOid: 'new' })
     const { result } = renderHook(() =>
-      useCommitMessageEdit({ commit: commit({ oid: 'WIP' }), repoPath: '/repo', isStash: false, stash: null, refs: [] })
+      useCommitMessageEdit({
+        commit: commit({ oid: 'WIP' }),
+        repoPath: '/repo',
+        isStash: false,
+        stash: null,
+        refs: [],
+      })
     )
     act(() => {
       result.current.setEditSubject('WIP commit message')
@@ -160,7 +215,13 @@ describe('useCommitMessageEdit — saving (commit)', () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
     mockedCreateCommit.mockRejectedValue(new Error('amend failed'))
     const { result } = renderHook(() =>
-      useCommitMessageEdit({ commit: commit(), repoPath: '/repo', isStash: false, stash: null, refs: [] })
+      useCommitMessageEdit({
+        commit: commit(),
+        repoPath: '/repo',
+        isStash: false,
+        stash: null,
+        refs: [],
+      })
     )
     act(() => {
       result.current.setEditSubject('Subject')
@@ -175,13 +236,22 @@ describe('useCommitMessageEdit — saving (commit)', () => {
 })
 
 describe('useCommitMessageEdit — saving (stash)', () => {
-  const refs: GitRef[] = [{ name: 'refs/stash@{2}', shortName: 'stash@{2}', type: 'stash', commitOid: 'stash-oid' }]
+  const refs: GitRef[] = [
+    { name: 'refs/stash@{2}', shortName: 'stash@{2}', type: 'stash', commitOid: 'stash-oid' },
+  ]
 
   it('parses the stash index from refs and renames it', async () => {
     mockedUpdateStashMessage.mockResolvedValue(undefined)
     const onRefresh = vi.fn()
     const { result } = renderHook(() =>
-      useCommitMessageEdit({ commit: commit(), repoPath: '/repo', isStash: true, stash: null, refs, onRefresh })
+      useCommitMessageEdit({
+        commit: commit(),
+        repoPath: '/repo',
+        isStash: true,
+        stash: null,
+        refs,
+        onRefresh,
+      })
     )
     act(() => {
       result.current.setEditSubject('Renamed stash')
@@ -196,7 +266,13 @@ describe('useCommitMessageEdit — saving (stash)', () => {
   it('defaults to stash index 0 when no stash ref is found', async () => {
     mockedUpdateStashMessage.mockResolvedValue(undefined)
     const { result } = renderHook(() =>
-      useCommitMessageEdit({ commit: commit(), repoPath: '/repo', isStash: true, stash: null, refs: [] })
+      useCommitMessageEdit({
+        commit: commit(),
+        repoPath: '/repo',
+        isStash: true,
+        stash: null,
+        refs: [],
+      })
     )
     act(() => {
       result.current.setEditSubject('Renamed stash')
@@ -211,7 +287,13 @@ describe('useCommitMessageEdit — copy SHA', () => {
   it('copies the commit oid and resets the "copied" flag after 1.5s', async () => {
     vi.useFakeTimers()
     const { result } = renderHook(() =>
-      useCommitMessageEdit({ commit: commit({ oid: 'sha-to-copy' }), repoPath: '/repo', isStash: false, stash: null, refs: [] })
+      useCommitMessageEdit({
+        commit: commit({ oid: 'sha-to-copy' }),
+        repoPath: '/repo',
+        isStash: false,
+        stash: null,
+        refs: [],
+      })
     )
     await act(async () => result.current.handleCopySha())
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('sha-to-copy')

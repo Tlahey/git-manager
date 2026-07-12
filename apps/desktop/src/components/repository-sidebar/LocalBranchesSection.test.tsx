@@ -44,7 +44,14 @@ function branch(shortName: string, overrides: Partial<GitBranch> = {}): GitBranc
 }
 
 function renderSection(props: Partial<React.ComponentProps<typeof LocalBranchesSection>> = {}) {
-  return render(<LocalBranchesSection repoPath="/repo" selectedBranch={null} onSelectBranch={vi.fn()} {...props} />)
+  return render(
+    <LocalBranchesSection
+      repoPath="/repo"
+      selectedBranch={null}
+      onSelectBranch={vi.fn()}
+      {...props}
+    />
+  )
 }
 
 beforeEach(() => {
@@ -57,7 +64,9 @@ beforeEach(() => {
 
 describe('LocalBranchesSection — filtering (local only)', () => {
   it('excludes remote branches from the count and list', () => {
-    useBranches.mockReturnValue({ data: [branch('main'), { ...branch('origin/main'), isRemote: true }] })
+    useBranches.mockReturnValue({
+      data: [branch('main'), { ...branch('origin/main'), isRemote: true }],
+    })
     renderSection()
     expect(screen.getByText('Local')).toBeInTheDocument()
     expect(screen.getByText('1')).toBeInTheDocument()
@@ -75,7 +84,9 @@ describe('LocalBranchesSection — pinning', () => {
   it('pins main/master by default, at the top, ahead of other unprefixed branches', () => {
     useBranches.mockReturnValue({ data: [branch('zeta'), branch('main')] })
     renderSection()
-    const mainCall = lastBranchItemCalls.current.find((c) => (c.branch as GitBranch).shortName === 'main')
+    const mainCall = lastBranchItemCalls.current.find(
+      (c) => (c.branch as GitBranch).shortName === 'main'
+    )
     expect(mainCall).toMatchObject({ isPinned: true })
   })
 
@@ -83,7 +94,9 @@ describe('LocalBranchesSection — pinning', () => {
     usePinnedBranchesStore.setState({ overrides: { '/repo': { main: false } } })
     useBranches.mockReturnValue({ data: [branch('main')] })
     renderSection()
-    const mainCall = lastBranchItemCalls.current.find((c) => (c.branch as GitBranch).shortName === 'main')
+    const mainCall = lastBranchItemCalls.current.find(
+      (c) => (c.branch as GitBranch).shortName === 'main'
+    )
     expect(mainCall).toMatchObject({ isPinned: false })
   })
 
@@ -91,14 +104,18 @@ describe('LocalBranchesSection — pinning', () => {
     usePinnedBranchesStore.setState({ overrides: { '/repo': { feature: true } } })
     useBranches.mockReturnValue({ data: [branch('feature')] })
     renderSection()
-    const call = lastBranchItemCalls.current.find((c) => (c.branch as GitBranch).shortName === 'feature')
+    const call = lastBranchItemCalls.current.find(
+      (c) => (c.branch as GitBranch).shortName === 'feature'
+    )
     expect(call).toMatchObject({ isPinned: true })
   })
 
   it('toggles pin through the store when onTogglePin is invoked', () => {
     useBranches.mockReturnValue({ data: [branch('feature')] })
     renderSection()
-    const call = lastBranchItemCalls.current.find((c) => (c.branch as GitBranch).shortName === 'feature')!
+    const call = lastBranchItemCalls.current.find(
+      (c) => (c.branch as GitBranch).shortName === 'feature'
+    )!
     ;(call.onTogglePin as (name: string) => void)('feature')
     expect(usePinnedBranchesStore.getState().overrides['/repo']?.feature).toBe(true)
   })
@@ -123,7 +140,14 @@ describe('LocalBranchesSection — create branch action', () => {
     const { rerender } = renderSection()
     expect(screen.queryByLabelText('Créer une branche')).not.toBeInTheDocument()
 
-    rerender(<LocalBranchesSection repoPath="/repo" selectedBranch={null} onSelectBranch={vi.fn()} onCreateBranch={onCreateBranch} />)
+    rerender(
+      <LocalBranchesSection
+        repoPath="/repo"
+        selectedBranch={null}
+        onSelectBranch={vi.fn()}
+        onCreateBranch={onCreateBranch}
+      />
+    )
     await user.click(screen.getByLabelText('Créer une branche'))
     expect(onCreateBranch).toHaveBeenCalledOnce()
   })

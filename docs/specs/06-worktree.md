@@ -99,14 +99,14 @@ The worktree appears in the dashboard sidebar with a distinct icon (🔀) indica
 
 ## Possible statuses
 
-| Status | Icon | Description |
-|--------|-------|-------------|
-| Clean | ✓ green | No changes |
-| Dirty | • orange | Uncommitted changes |
-| Ahead | ↑ blue | Unpushed commits |
-| Behind | ↓ gray | Commits to pull |
-| Locked | 🔒 | Worktree manually locked |
-| Prunable | ⚠️ | Folder deleted, orphaned worktree |
+| Status   | Icon     | Description                       |
+| -------- | -------- | --------------------------------- |
+| Clean    | ✓ green  | No changes                        |
+| Dirty    | • orange | Uncommitted changes               |
+| Ahead    | ↑ blue   | Unpushed commits                  |
+| Behind   | ↓ gray   | Commits to pull                   |
+| Locked   | 🔒       | Worktree manually locked          |
+| Prunable | ⚠️       | Folder deleted, orphaned worktree |
 
 ---
 
@@ -118,13 +118,13 @@ On startup or during a refresh, the app detects worktrees whose folder no longer
 
 ## Tauri commands involved
 
-| Command | Parameters | Description |
-|---------|-----------|-------------|
-| `list_worktrees` | `path` | Returns all worktrees of the repo |
-| `add_worktree` | `path, branch, worktree_path, new_branch?, from?` | Creates a worktree |
-| `remove_worktree` | `path, worktree_path, force?` | Removes a worktree |
-| `lock_worktree` | `path, worktree_path, reason?` | Locks |
-| `prune_worktrees` | `path` | Removes orphaned entries |
+| Command           | Parameters                                        | Description                       |
+| ----------------- | ------------------------------------------------- | --------------------------------- |
+| `list_worktrees`  | `path`                                            | Returns all worktrees of the repo |
+| `add_worktree`    | `path, branch, worktree_path, new_branch?, from?` | Creates a worktree                |
+| `remove_worktree` | `path, worktree_path, force?`                     | Removes a worktree                |
+| `lock_worktree`   | `path, worktree_path, reason?`                    | Locks                             |
+| `prune_worktrees` | `path`                                            | Removes orphaned entries          |
 
 ---
 

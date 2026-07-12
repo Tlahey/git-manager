@@ -54,7 +54,16 @@ describe('getWaterlineBucket', () => {
   })
 
   it('assigns strictly increasing ranks from today to older, in bucket order', () => {
-    const timestamps = [NOW, NOW - DAY, NOW - 2 * DAY, NOW - 7 * DAY, NOW - 14 * DAY, NOW - 30 * DAY, NOW - 60 * DAY, NOW - 365 * DAY]
+    const timestamps = [
+      NOW,
+      NOW - DAY,
+      NOW - 2 * DAY,
+      NOW - 7 * DAY,
+      NOW - 14 * DAY,
+      NOW - 30 * DAY,
+      NOW - 60 * DAY,
+      NOW - 365 * DAY,
+    ]
     const ranks = timestamps.map((ts) => getWaterlineBucket(ts, NOW).rank)
     expect(ranks).toEqual([0, 1, 2, 3, 4, 5, 6, 7])
   })

@@ -29,6 +29,7 @@ reintroduce problems that were already found and fixed.
 ## Rules to apply (R1 / R2 from the plan)
 
 **R1 — one file, one responsibility.**
+
 - A `.tsx` component renders. If it needs polling, timers, tree-building, parsing, or any
   non-presentational logic, that logic belongs in a hook (`hooks/useX.ts`), not inline in the
   component. Example of what NOT to repeat: `GithubSection.tsx` grew to 562 lines by keeping the
@@ -58,7 +59,7 @@ reintroduce problems that were already found and fixed.
   that's just many independent, near-identical thin wrappers (one per Tauri command, no shared
   state or branching) is lower-risk than the same line count concentrated in one function or
   component, because there's nothing to hold in your head across lines. If one of those wrapper
-  functions grows real logic, extract *that function*, not the whole file.
+  functions grows real logic, extract _that function_, not the whole file.
 - When you extract a sub-component, hook, or utility function, give it its own colocated test
   (React Testing Library for components, a plain Vitest unit test for hooks/utilities, `#[cfg(test)]`
   for Rust modules — see `apps/desktop/vitest.config.ts` / `git_merge_diff.rs` for the existing
@@ -67,6 +68,7 @@ reintroduce problems that were already found and fixed.
   place.
 
 **R2 — every operation goes through the service/API layer.**
+
 - Frontend: never call `invoke()` directly from a component, hook, or store, and never import a
   function from `lib/tauri.ts` directly either (type-only imports are fine) — go through
   `api/*.api.ts` so the operation is reachable from one place. This is what lets cross-cutting
@@ -97,7 +99,7 @@ reintroduce problems that were already found and fixed.
    diff against these rules before opening a PR.
 3. If a rule genuinely doesn't fit the situation, say so explicitly and explain why rather than
    silently ignoring it — the plan doc is a living document, update it if a rule needs to change.
-4. If you find a *new* violation (a file that grew, a new `lib/tauri.ts` bypass, duplicated
+4. If you find a _new_ violation (a file that grew, a new `lib/tauri.ts` bypass, duplicated
    logic), add a new numbered action to Phase 6 of
    [docs/architecture/14-architecture-refactor-tracking.md](../../../docs/architecture/14-architecture-refactor-tracking.md)
    rather than reopening a closed phase — that's the file's own stated convention. Mark actions ✅

@@ -28,7 +28,10 @@ describe('NotificationSection — global toggle', () => {
 
   it('shows the BellOff icon and hides everything else when disabled', () => {
     useSettingsStore.setState({
-      settings: { ...INITIAL_SETTINGS.settings, notifications: { ...INITIAL_SETTINGS.settings.notifications!, enabled: false } },
+      settings: {
+        ...INITIAL_SETTINGS.settings,
+        notifications: { ...INITIAL_SETTINGS.settings.notifications!, enabled: false },
+      },
     })
     render(<NotificationSection />)
     expect(document.querySelector('.lucide-bell-off')).toBeTruthy()
@@ -71,7 +74,10 @@ describe('NotificationSection — sounds', () => {
 
   it('binds the selected sound name', async () => {
     useSettingsStore.setState({
-      settings: { ...INITIAL_SETTINGS.settings, notifications: { ...INITIAL_SETTINGS.settings.notifications!, enableSound: true } },
+      settings: {
+        ...INITIAL_SETTINGS.settings,
+        notifications: { ...INITIAL_SETTINGS.settings.notifications!, enableSound: true },
+      },
     })
     const user = userEvent.setup()
     render(<NotificationSection />)
@@ -87,7 +93,10 @@ describe('NotificationSection — test notification', () => {
     await user.click(screen.getByText('Tester la notification macOS'))
 
     expect(useNotificationStore.getState().notifications).toHaveLength(1)
-    expect(useNotificationStore.getState().notifications[0]).toMatchObject({ type: 'review_requested', prId: 'test-pr-settings' })
+    expect(useNotificationStore.getState().notifications[0]).toMatchObject({
+      type: 'review_requested',
+      prId: 'test-pr-settings',
+    })
     expect(showNativeNotification).toHaveBeenCalledOnce()
   })
 })

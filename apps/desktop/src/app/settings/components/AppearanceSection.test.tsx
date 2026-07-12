@@ -33,10 +33,14 @@ describe('AppearanceSection — theme picker', () => {
     // "forest" is gated by achievement "pr_10" (see achievements.json); all achievements start
     // unlocked: false in the default game store, so it should not show up yet.
     const { rerender } = render(<AppearanceSection />)
-    expect(screen.queryByTestId('theme-card-settings.appearance.theme.forest')).not.toBeInTheDocument()
+    expect(
+      screen.queryByTestId('theme-card-settings.appearance.theme.forest')
+    ).not.toBeInTheDocument()
 
     useGameStore.setState({
-      achievements: useGameStore.getState().achievements.map((a) => (a.id === 'pr_10' ? { ...a, unlocked: true } : a)),
+      achievements: useGameStore
+        .getState()
+        .achievements.map((a) => (a.id === 'pr_10' ? { ...a, unlocked: true } : a)),
     })
     rerender(<AppearanceSection />)
     expect(screen.getByTestId('theme-card-settings.appearance.theme.forest')).toBeInTheDocument()

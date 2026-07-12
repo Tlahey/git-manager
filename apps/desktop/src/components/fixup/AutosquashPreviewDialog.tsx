@@ -1,13 +1,7 @@
 import { useTranslation } from '@git-manager/i18n'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button, Spinner, toast } from '@git-manager/ui'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@git-manager/ui'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@git-manager/ui'
 import { apiAutosquashPreview, apiRunAutosquash, apiGetRebaseState } from '../../api/git.api'
 import { useState } from 'react'
 
@@ -17,11 +11,7 @@ interface AutosquashPreviewDialogProps {
   onClose: () => void
 }
 
-export function AutosquashPreviewDialog({
-  repoPath,
-  open,
-  onClose,
-}: AutosquashPreviewDialogProps) {
+export function AutosquashPreviewDialog({ repoPath, open, onClose }: AutosquashPreviewDialogProps) {
   const { t } = useTranslation('git')
   const queryClient = useQueryClient()
   const [isRunning, setIsRunning] = useState(false)
@@ -87,17 +77,23 @@ export function AutosquashPreviewDialog({
               {t('fixup.autosquash.summary', { count: totalFixups })}
             </p>
 
-            <div data-testid="autosquash-preview-groups" className="max-h-64 overflow-y-auto space-y-2">
+            <div
+              data-testid="autosquash-preview-groups"
+              className="max-h-64 space-y-2 overflow-y-auto"
+            >
               {groups.map((group) => (
                 <div
                   key={group.baseOid}
-                  className="rounded border border-border bg-muted/30 p-3 space-y-1"
+                  className="space-y-1 rounded border border-border bg-muted/30 p-3"
                 >
-                  <p className="text-xs font-medium text-foreground truncate">
+                  <p className="truncate text-xs font-medium text-foreground">
                     {group.baseSubject}
                   </p>
                   {group.fixups.map((sha) => (
-                    <div key={sha} className="flex items-center gap-2 pl-3 text-xs text-muted-foreground">
+                    <div
+                      key={sha}
+                      className="flex items-center gap-2 pl-3 text-xs text-muted-foreground"
+                    >
                       <span className="h-px w-3 bg-border" />
                       <code className="font-mono">fixup! {sha}</code>
                     </div>
@@ -116,9 +112,7 @@ export function AutosquashPreviewDialog({
         )}
 
         {error && (
-          <p className="rounded bg-destructive/20 px-3 py-2 text-xs text-destructive">
-            {error}
-          </p>
+          <p className="rounded bg-destructive/20 px-3 py-2 text-xs text-destructive">{error}</p>
         )}
 
         <DialogFooter className="gap-2">

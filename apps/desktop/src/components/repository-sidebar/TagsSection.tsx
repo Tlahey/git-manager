@@ -44,7 +44,7 @@ export function TagsSection({ repoPath }: TagsSectionProps) {
               {/* Hover-expand */}
               <HoverExpandLabel>{tag.shortName}</HoverExpandLabel>
 
-              <span className="shrink-0 tabular-nums text-[10px] font-mono text-muted-foreground/40">
+              <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground/40">
                 {tag.commitOid.slice(0, 7)}
               </span>
             </div>

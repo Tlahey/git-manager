@@ -21,7 +21,15 @@ import { useUndoHistoryStore, type UndoAction } from './undoHistory.store'
 const REPO = '/repo/a'
 
 function action(id: string, pinnedRefs: string[] = []): UndoAction {
-  return { id, label: { key: `label.${id}` }, timestamp: 0, pinnedRefs, type: 'commit', previousOid: 'p', newOid: 'n' } as UndoAction
+  return {
+    id,
+    label: { key: `label.${id}` },
+    timestamp: 0,
+    pinnedRefs,
+    type: 'commit',
+    previousOid: 'p',
+    newOid: 'n',
+  } as UndoAction
 }
 
 beforeEach(() => {

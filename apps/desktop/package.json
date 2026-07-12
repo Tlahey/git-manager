@@ -9,7 +9,7 @@
     "build": "tauri build",
     "build:frontend": "vite build",
     "preview": "vite preview",
-    "lint": "eslint src",
+    "lint": "oxlint src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

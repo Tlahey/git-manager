@@ -22,7 +22,13 @@ interface RemoteGroupProps {
   onRemove: (remoteName: string) => void
 }
 
-function RemoteGroup({ remoteName, branches, selectedBranch, onSelect, onRemove }: RemoteGroupProps) {
+function RemoteGroup({
+  remoteName,
+  branches,
+  selectedBranch,
+  onSelect,
+  onRemove,
+}: RemoteGroupProps) {
   const [isOpen, setIsOpen] = useState(true)
 
   return (
@@ -36,7 +42,7 @@ function RemoteGroup({ remoteName, branches, selectedBranch, onSelect, onRemove 
         </span>
         <Globe className="h-3 w-3 shrink-0 opacity-50" />
         <span className="flex-1 font-medium">{remoteName}</span>
-        <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground/40">
+        <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/40">
           {branches.length}
         </span>
         <span
@@ -59,8 +65,7 @@ function RemoteGroup({ remoteName, branches, selectedBranch, onSelect, onRemove 
           {branches.map((branch) => {
             // shortName pour remote = "origin/main" → afficher sans le préfixe remote
             const displayName = branch.shortName.replace(new RegExp(`^${remoteName}/`), '')
-            const isSelected =
-              selectedBranch === branch.shortName || selectedBranch === branch.name
+            const isSelected = selectedBranch === branch.shortName || selectedBranch === branch.name
 
             return (
               <div
@@ -82,7 +87,7 @@ function RemoteGroup({ remoteName, branches, selectedBranch, onSelect, onRemove 
 
                 {/* Ahead/Behind */}
                 {(branch.aheadCount > 0 || branch.behindCount > 0) && (
-                  <span className="shrink-0 tabular-nums text-[10px]">
+                  <span className="shrink-0 text-[10px] tabular-nums">
                     {branch.aheadCount > 0 && (
                       <span className="text-blue-400">↑{branch.aheadCount}</span>
                     )}

@@ -28,17 +28,17 @@
 
 ## Tech stack
 
-| Layer | Technology |
-|--------|------------|
-| Desktop runtime | Tauri v2 |
-| Frontend | React 18 + Vite + TypeScript |
-| UI Components | shadcn/ui + Tailwind CSS |
-| Backend | Rust + `git2` crate (libgit2) |
-| State management | Zustand |
-| Internationalization | react-i18next (FR / EN) |
-| LLM (AI commit) | Ollama (local) |
-| Remote auth | SSH + HTTPS (token) |
-| Monorepo | pnpm workspaces + Turborepo |
+| Layer                | Technology                    |
+| -------------------- | ----------------------------- |
+| Desktop runtime      | Tauri v2                      |
+| Frontend             | React 18 + Vite + TypeScript  |
+| UI Components        | shadcn/ui + Tailwind CSS      |
+| Backend              | Rust + `git2` crate (libgit2) |
+| State management     | Zustand                       |
+| Internationalization | react-i18next (FR / EN)       |
+| LLM (AI commit)      | Ollama (local)                |
+| Remote auth          | SSH + HTTPS (token)           |
+| Monorepo             | pnpm workspaces + Turborepo   |
 
 ---
 
@@ -132,22 +132,22 @@ The URL and model configuration is available in **Settings → LLM**.
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| [ROADMAP](./ROADMAP.md) | Milestones and planning |
-| [Architecture](./specs/00-architecture.md) | Stack, patterns, Tauri IPC |
-| [Dashboard](./specs/01-dashboard.md) | Multi-repo management |
-| [Git Tree](./specs/02-git-tree.md) | Graph visualization |
-| [Commit generation](./specs/03-commit-generation.md) | AI via Ollama |
-| [Rollback](./specs/04-rollback.md) | Revert / Reset |
-| [Fixup](./specs/05-fixup.md) | Fixup & autosquash |
-| [Worktree](./specs/06-worktree.md) | Worktree management |
-| [Interactive rebase](./specs/07-rebase-interactive.md) | Rebase UI |
-| [Stash](./specs/08-stash.md) | Stash management |
-| [Branches](./specs/09-branch-management.md) | Branch management |
-| [Settings](./specs/10-settings.md) | Configuration |
-| [Pedagogy](./specs/11-pedagogy.md) | Contextual git education mode |
-| [Left Sidebar](./specs/12-left-sidebar.md) | Resizable repository sidebar |
+| Document                                               | Description                   |
+| ------------------------------------------------------ | ----------------------------- |
+| [ROADMAP](./ROADMAP.md)                                | Milestones and planning       |
+| [Architecture](./specs/00-architecture.md)             | Stack, patterns, Tauri IPC    |
+| [Dashboard](./specs/01-dashboard.md)                   | Multi-repo management         |
+| [Git Tree](./specs/02-git-tree.md)                     | Graph visualization           |
+| [Commit generation](./specs/03-commit-generation.md)   | AI via Ollama                 |
+| [Rollback](./specs/04-rollback.md)                     | Revert / Reset                |
+| [Fixup](./specs/05-fixup.md)                           | Fixup & autosquash            |
+| [Worktree](./specs/06-worktree.md)                     | Worktree management           |
+| [Interactive rebase](./specs/07-rebase-interactive.md) | Rebase UI                     |
+| [Stash](./specs/08-stash.md)                           | Stash management              |
+| [Branches](./specs/09-branch-management.md)            | Branch management             |
+| [Settings](./specs/10-settings.md)                     | Configuration                 |
+| [Pedagogy](./specs/11-pedagogy.md)                     | Contextual git education mode |
+| [Left Sidebar](./specs/12-left-sidebar.md)             | Resizable repository sidebar  |
 
 ---
 

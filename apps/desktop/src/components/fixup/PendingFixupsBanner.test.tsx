@@ -4,11 +4,15 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key}:${JSON.stringify(opts)}` : key,
+  }),
 }))
 vi.mock('../../api/git.api', () => ({ apiGetPendingFixups: vi.fn() }))
 vi.mock('./AutosquashPreviewDialog', () => ({
-  AutosquashPreviewDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="autosquash-dialog" /> : null),
+  AutosquashPreviewDialog: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="autosquash-dialog" /> : null,
 }))
 
 import { apiGetPendingFixups } from '../../api/git.api'

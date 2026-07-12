@@ -8,7 +8,7 @@ import { useSshPublicKey } from '../../../hooks/useSshPublicKey'
 
 export function SshSection() {
   const { settings, updateSettings } = useSettingsStore()
-  
+
   const ssh = settings.ssh || {
     privateKeyPath: '~/.ssh/id_ed25519',
     publicKeyPath: '~/.ssh/id_ed25519.pub',
@@ -97,11 +97,11 @@ export function SshSection() {
       )
 
       setGeneratedPubKey(pubKey)
-      
+
       // Update active settings to use new key
       const finalPubKeyPath = genPath.endsWith('.pub') ? genPath : `${genPath}.pub`
       const finalPrivKeyPath = genPath.endsWith('.pub') ? genPath.slice(0, -4) : genPath
-      
+
       updateSsh({
         privateKeyPath: finalPrivKeyPath,
         publicKeyPath: finalPubKeyPath,
@@ -128,12 +128,12 @@ export function SshSection() {
             <Input
               value={ssh.privateKeyPath}
               onChange={(e) => updateSsh({ privateKeyPath: e.target.value })}
-              className="flex-1 h-8 text-xs font-mono"
+              className="h-8 flex-1 font-mono text-xs"
             />
             <Button
               size="sm"
               variant="outline"
-              className="h-8 shrink-0 text-xs gap-1.5"
+              className="h-8 shrink-0 gap-1.5 text-xs"
               onClick={handlePickPrivateKey}
             >
               <FolderOpen className="h-3.5 w-3.5" />
@@ -148,12 +148,12 @@ export function SshSection() {
             <Input
               value={ssh.publicKeyPath}
               onChange={(e) => updateSsh({ publicKeyPath: e.target.value })}
-              className="flex-1 h-8 text-xs font-mono"
+              className="h-8 flex-1 font-mono text-xs"
             />
             <Button
               size="sm"
               variant="outline"
-              className="h-8 shrink-0 text-xs gap-1.5"
+              className="h-8 shrink-0 gap-1.5 text-xs"
               onClick={handlePickPublicKey}
             >
               <FolderOpen className="h-3.5 w-3.5" />
@@ -162,14 +162,16 @@ export function SshSection() {
           </div>
         </div>
 
-        <label className="flex items-center gap-2 cursor-pointer pt-1">
+        <label className="flex cursor-pointer items-center gap-2 pt-1">
           <input
             type="checkbox"
             checked={ssh.useSystemAgent}
             onChange={(e) => updateSsh({ useSystemAgent: e.target.checked })}
             className="h-4 w-4 rounded border-border"
           />
-          <span className="text-xs text-foreground">Utiliser l&apos;agent SSH système (recommandé)</span>
+          <span className="text-xs text-foreground">
+            Utiliser l&apos;agent SSH système (recommandé)
+          </span>
         </label>
       </div>
 
@@ -183,7 +185,7 @@ export function SshSection() {
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 text-[11px] gap-1.5 px-2 text-primary hover:text-primary-hover"
+              className="hover:text-primary-hover h-7 gap-1.5 px-2 text-[11px] text-primary"
               onClick={() => handleCopyPubKey(pubKeyContent)}
             >
               {copiedKey ? (
@@ -203,17 +205,17 @@ export function SshSection() {
 
         {pubKeyContent ? (
           <div className="rounded-lg border border-border bg-muted/20 p-3">
-            <p className="text-[10px] font-mono leading-relaxed break-all select-all text-muted-foreground line-clamp-4">
+            <p className="line-clamp-4 select-all break-all font-mono text-[10px] leading-relaxed text-muted-foreground">
               {pubKeyContent}
             </p>
           </div>
         ) : pubKeyError ? (
-          <div className="flex items-center gap-2 rounded border border-warning/30 bg-warning/5 p-3 text-xs text-muted-foreground">
-            <AlertCircle className="h-4 w-4 text-warning shrink-0" />
+          <div className="border-warning/30 bg-warning/5 flex items-center gap-2 rounded border p-3 text-xs text-muted-foreground">
+            <AlertCircle className="text-warning h-4 w-4 shrink-0" />
             <span>Impossible de charger la clé publique. Vérifiez le chemin.</span>
           </div>
         ) : (
-          <div className="flex items-center justify-center h-16 rounded border border-dashed border-border bg-muted/5 text-xs text-muted-foreground">
+          <div className="flex h-16 items-center justify-center rounded border border-dashed border-border bg-muted/5 text-xs text-muted-foreground">
             Aucune clé publique SSH chargée
           </div>
         )}
@@ -226,12 +228,15 @@ export function SshSection() {
         <div className="flex items-center justify-between">
           <div>
             <h4 className="text-xs font-semibold text-foreground">Générer une nouvelle clé SSH</h4>
-            <p className="text-[10px] text-muted-foreground">Générez un nouveau couple de clés privée / publique directement dans votre dossier SSH.</p>
+            <p className="text-[10px] text-muted-foreground">
+              Générez un nouveau couple de clés privée / publique directement dans votre dossier
+              SSH.
+            </p>
           </div>
           <Button
             size="sm"
             variant="outline"
-            className="h-8 text-xs gap-1.5"
+            className="h-8 gap-1.5 text-xs"
             onClick={() => setShowGenerator(!showGenerator)}
           >
             <Plus className="h-3.5 w-3.5" />
@@ -247,7 +252,7 @@ export function SshSection() {
                 <select
                   value={genType}
                   onChange={(e) => setGenType(e.target.value as 'ed25519' | 'rsa')}
-                  className="w-full h-8 rounded border border-input bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="h-8 w-full rounded border border-input bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                 >
                   <option value="ed25519">ED25519 (Recommandé)</option>
                   <option value="rsa">RSA</option>
@@ -260,7 +265,7 @@ export function SshSection() {
                   <select
                     value={genBits}
                     onChange={(e) => setGenBits(parseInt(e.target.value, 10))}
-                    className="w-full h-8 rounded border border-input bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                    className="h-8 w-full rounded border border-input bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                   >
                     <option value={2048}>2048 bits</option>
                     <option value={3072}>3072 bits (Sécurisé)</option>
@@ -271,7 +276,9 @@ export function SshSection() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-medium text-foreground">Commentaire (ex: e-mail)</label>
+              <label className="text-[11px] font-medium text-foreground">
+                Commentaire (ex: e-mail)
+              </label>
               <Input
                 placeholder="votre.email@domain.com"
                 value={genComment}
@@ -281,7 +288,9 @@ export function SshSection() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-medium text-foreground">Mot de passe (optionnel)</label>
+              <label className="text-[11px] font-medium text-foreground">
+                Mot de passe (optionnel)
+              </label>
               <Input
                 type="password"
                 placeholder="Laisser vide pour pas de mot de passe"
@@ -292,11 +301,13 @@ export function SshSection() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-medium text-foreground">Chemin de destination</label>
+              <label className="text-[11px] font-medium text-foreground">
+                Chemin de destination
+              </label>
               <Input
                 value={genPath}
                 onChange={(e) => setGenPath(e.target.value)}
-                className="h-8 text-xs font-mono"
+                className="h-8 font-mono text-xs"
               />
             </div>
 
@@ -309,23 +320,24 @@ export function SshSection() {
 
             {generatedPubKey ? (
               <div className="space-y-3 rounded-md border border-green-500/20 bg-green-500/5 p-3">
-                <p className="text-xs font-semibold text-green-500 flex items-center gap-1.5">
+                <p className="flex items-center gap-1.5 text-xs font-semibold text-green-500">
                   <Check className="h-4 w-4" />
                   Clé générée avec succès !
                 </p>
-                <p className="text-[10px] text-muted-foreground leading-relaxed">
-                  Ajoutez cette clé publique SSH à vos fournisseurs d&apos;intégration (GitHub, GitLab, etc.).
+                <p className="text-[10px] leading-relaxed text-muted-foreground">
+                  Ajoutez cette clé publique SSH à vos fournisseurs d&apos;intégration (GitHub,
+                  GitLab, etc.).
                 </p>
                 <div className="relative">
                   <Textarea
                     readOnly
                     value={generatedPubKey}
                     rows={3}
-                    className="w-full text-[10px] font-mono leading-normal resize-none bg-muted/20 border border-border"
+                    className="w-full resize-none border border-border bg-muted/20 font-mono text-[10px] leading-normal"
                   />
                   <Button
                     size="sm"
-                    className="absolute bottom-2 right-2 h-7 text-[10px] gap-1 px-2"
+                    className="absolute bottom-2 right-2 h-7 gap-1 px-2 text-[10px]"
                     onClick={() => handleCopyPubKey(generatedPubKey)}
                   >
                     {copiedKey ? 'Copié !' : 'Copier'}
@@ -337,7 +349,7 @@ export function SshSection() {
                 size="sm"
                 onClick={handleGenerateKey}
                 disabled={generating}
-                className="text-xs h-8 gap-2 w-full"
+                className="h-8 w-full gap-2 text-xs"
               >
                 {generating ? (
                   <>

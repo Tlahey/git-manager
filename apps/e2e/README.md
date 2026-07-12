@@ -95,7 +95,7 @@ that can inspect and mock every Tauri IPC call. They must never ship to a real u
   (`src-tauri/Cargo.toml`), only registered in `lib.rs` under `#[cfg(feature = "e2e")]`.
   A plain `cargo build`/`pnpm build` never compiles them in.
 - **Capability/permissions**: the `wdio:default` / `wdio-webdriver:default` permissions are
-  declared *inline* inside `src-tauri/tauri.e2e.conf.json` (merged only via `--config` on
+  declared _inline_ inside `src-tauri/tauri.e2e.conf.json` (merged only via `--config` on
   `build:e2e`), not as a file in `src-tauri/capabilities/` — Tauri's build-time ACL validator
   scans every file in that directory regardless of the `security.capabilities` allowlist, so a
   real `capabilities/e2e.json` file would fail every normal build the moment the `e2e` feature
@@ -157,7 +157,10 @@ compares against it and fails if the diff exceeds the tolerance passed to
 `toMatchElementSnapshot`.
 
 ```ts
-await expect($('[data-testid="autosquash-preview-groups"]')).toMatchElementSnapshot('autosquash-preview-groups', 1)
+await expect($('[data-testid="autosquash-preview-groups"]')).toMatchElementSnapshot(
+  'autosquash-preview-groups',
+  1
+)
 ```
 
 A tolerance of exactly `0` is too strict in practice — two renders of the identical state can

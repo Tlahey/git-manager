@@ -19,7 +19,10 @@ function achievement(overrides: Partial<Achievement> = {}): Achievement {
 
 describe('findEffectGate', () => {
   it('finds the achievement gating a given effect type/id', () => {
-    const gated = achievement({ id: 'theme-unlocker', effects: [{ type: 'theme', id: 'dark-forest' }] })
+    const gated = achievement({
+      id: 'theme-unlocker',
+      effects: [{ type: 'theme', id: 'dark-forest' }],
+    })
     const other = achievement({ id: 'other' })
     expect(findEffectGate([other, gated], 'theme', 'dark-forest')).toBe(gated)
   })
@@ -60,7 +63,11 @@ describe('getUnlockedEffects', () => {
         { type: 'avatarFrame', id: 'gold-frame' },
       ],
     })
-    const locked = achievement({ id: 'l', unlocked: false, effects: [{ type: 'theme', id: 'locked-theme' }] })
+    const locked = achievement({
+      id: 'l',
+      unlocked: false,
+      effects: [{ type: 'theme', id: 'locked-theme' }],
+    })
     const result = getUnlockedEffects([unlocked, locked], 'theme')
     expect(result).toEqual(new Set(['dark-forest']))
   })
@@ -71,7 +78,10 @@ describe('getUnlockedEffects', () => {
   })
 
   it('returns an empty set when nothing matches the requested type', () => {
-    const unlocked = achievement({ unlocked: true, effects: [{ type: 'avatarFrame', id: 'gold-frame' }] })
+    const unlocked = achievement({
+      unlocked: true,
+      effects: [{ type: 'avatarFrame', id: 'gold-frame' }],
+    })
     expect(getUnlockedEffects([unlocked], 'theme')).toEqual(new Set())
   })
 })

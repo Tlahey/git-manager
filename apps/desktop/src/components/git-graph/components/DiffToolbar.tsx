@@ -97,34 +97,40 @@ export function DiffToolbar({
   const { t } = useTranslation('git')
 
   return (
-    <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3 shrink-0 shadow-sm">
+    <div className="flex shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 shadow-sm">
       {/* Left Side: Back button + File info */}
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex min-w-0 items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 hover:bg-accent shrink-0"
+          className="h-8 w-8 shrink-0 hover:bg-accent"
           onClick={onClose}
           title="Back to graph"
         >
           <ChevronLeft className="h-5 w-5" />
         </Button>
 
-        <div className="flex flex-col min-w-0">
+        <div className="flex min-w-0 flex-col">
           {parsedPath.dir && (
-            <span data-testid="diff-header-path" className="font-mono text-[10px] text-muted-foreground/60 truncate select-none leading-none mb-0.5">
+            <span
+              data-testid="diff-header-path"
+              className="mb-0.5 select-none truncate font-mono text-[10px] leading-none text-muted-foreground/60"
+            >
               {parsedPath.dir}
             </span>
           )}
           <div className="flex items-center gap-2">
-            <span data-testid="diff-header-name" className="font-mono text-xs text-foreground truncate select-all leading-tight">
+            <span
+              data-testid="diff-header-name"
+              className="select-all truncate font-mono text-xs leading-tight text-foreground"
+            >
               {parsedPath.name}
             </span>
             <Button
               data-testid="diff-copy-path-btn"
               variant="ghost"
               size="icon"
-              className="h-5 w-5 hover:bg-accent shrink-0"
+              className="h-5 w-5 shrink-0 hover:bg-accent"
               onClick={onCopyPath}
               title="Copy path"
             >
@@ -137,19 +143,24 @@ export function DiffToolbar({
           </div>
 
           {diffData && (
-            <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5 font-medium">
-              <Badge variant={STATUS_VARIANTS[diffData.status] ?? 'secondary'} className="text-[9px] px-1 py-0 select-none">
+            <div className="mt-0.5 flex items-center gap-2 text-[10px] font-medium text-muted-foreground">
+              <Badge
+                variant={STATUS_VARIANTS[diffData.status] ?? 'secondary'}
+                className="select-none px-1 py-0 text-[9px]"
+              >
                 {STATUS_LABELS[diffData.status] ?? diffData.status}
               </Badge>
               {!diffData.isBinary && (
                 <span>
-                  <span className="text-green-500">+{diffData.additions}</span>
-                  {' '}
+                  <span className="text-green-500">+{diffData.additions}</span>{' '}
                   <span className="text-red-500">-{diffData.deletions}</span>
                 </span>
               )}
               {isWip && (
-                <Badge variant={file.staged ? 'success' : 'secondary'} className="text-[9px] px-1 py-0 select-none">
+                <Badge
+                  variant={file.staged ? 'success' : 'secondary'}
+                  className="select-none px-1 py-0 text-[9px]"
+                >
                   {file.staged ? 'Staged' : 'Unstaged'}
                 </Badge>
               )}
@@ -159,14 +170,14 @@ export function DiffToolbar({
       </div>
 
       {/* Center: View mode tabs (Diff, File) */}
-      <div className="flex items-center bg-muted/60 p-0.5 rounded-lg border border-border/50 shrink-0 mx-4">
+      <div className="mx-4 flex shrink-0 items-center rounded-lg border border-border/50 bg-muted/60 p-0.5">
         <button
           onClick={() => onChangeActiveTab('diff')}
           className={cn(
-            "px-4 py-1 text-xs font-medium rounded-md transition-all duration-200 flex items-center gap-1.5",
+            'flex items-center gap-1.5 rounded-md px-4 py-1 text-xs font-medium transition-all duration-200',
             activeTab === 'diff'
-              ? "bg-background text-foreground shadow-sm font-semibold border-b border-border/10"
-              : "text-muted-foreground hover:text-foreground"
+              ? 'border-b border-border/10 bg-background font-semibold text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
           )}
         >
           <GitCompare className="h-3.5 w-3.5" />
@@ -175,10 +186,10 @@ export function DiffToolbar({
         <button
           onClick={() => onChangeActiveTab('file')}
           className={cn(
-            "px-4 py-1 text-xs font-medium rounded-md transition-all duration-200 flex items-center gap-1.5",
+            'flex items-center gap-1.5 rounded-md px-4 py-1 text-xs font-medium transition-all duration-200',
             activeTab === 'file'
-              ? "bg-background text-foreground shadow-sm font-semibold border-b border-border/10"
-              : "text-muted-foreground hover:text-foreground"
+              ? 'border-b border-border/10 bg-background font-semibold text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
           )}
         >
           <FileText className="h-3.5 w-3.5" />
@@ -187,14 +198,16 @@ export function DiffToolbar({
       </div>
 
       {/* Right Side: Diff toggle + Stage/Rollback Actions */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex shrink-0 items-center gap-2">
         {/* Blame & History Toggles */}
-        <div className="flex items-center border border-border rounded bg-card overflow-hidden mr-2">
+        <div className="mr-2 flex items-center overflow-hidden rounded border border-border bg-card">
           <Button
             variant={activeLeftPanel === 'blame' ? 'default' : 'ghost'}
             size="sm"
-            className="h-7 px-2.5 gap-1 text-[10px] font-bold rounded-none border-r border-border"
-            onClick={() => onChangeActiveLeftPanel(activeLeftPanel === 'blame' ? 'sidebar' : 'blame')}
+            className="h-7 gap-1 rounded-none border-r border-border px-2.5 text-[10px] font-bold"
+            onClick={() =>
+              onChangeActiveLeftPanel(activeLeftPanel === 'blame' ? 'sidebar' : 'blame')
+            }
             title="Git Blame"
           >
             <Eye className="h-3.5 w-3.5" />
@@ -203,8 +216,10 @@ export function DiffToolbar({
           <Button
             variant={activeLeftPanel === 'history' ? 'default' : 'ghost'}
             size="sm"
-            className="h-7 px-2.5 gap-1 text-[10px] font-bold rounded-none"
-            onClick={() => onChangeActiveLeftPanel(activeLeftPanel === 'history' ? 'sidebar' : 'history')}
+            className="h-7 gap-1 rounded-none px-2.5 text-[10px] font-bold"
+            onClick={() =>
+              onChangeActiveLeftPanel(activeLeftPanel === 'history' ? 'sidebar' : 'history')
+            }
             title="File History"
           >
             <History className="h-3.5 w-3.5" />
@@ -214,8 +229,8 @@ export function DiffToolbar({
 
         {/* Unified/Split Toggle & Change Navigation (only in Diff view) */}
         {activeTab === 'diff' && (
-          <div className="flex items-center gap-2 mr-2 animate-in fade-in slide-in-from-right-1 duration-150">
-            <div className="flex items-center border border-border rounded overflow-hidden">
+          <div className="animate-in fade-in slide-in-from-right-1 mr-2 flex items-center gap-2 duration-150">
+            <div className="flex items-center overflow-hidden rounded border border-border">
               <Button
                 variant="ghost"
                 size="icon"
@@ -236,11 +251,11 @@ export function DiffToolbar({
               </Button>
             </div>
 
-            <div className="flex items-center border border-border rounded overflow-hidden">
+            <div className="flex items-center overflow-hidden rounded border border-border">
               <Button
                 variant={viewMode === 'inline' ? 'default' : 'ghost'}
                 size="sm"
-                className="h-7 px-2.5 gap-1 text-[10px] font-bold rounded-none border-r border-border"
+                className="h-7 gap-1 rounded-none border-r border-border px-2.5 text-[10px] font-bold"
                 onClick={() => onChangeViewMode('inline')}
               >
                 <List className="h-3.5 w-3.5" />
@@ -249,7 +264,7 @@ export function DiffToolbar({
               <Button
                 variant={viewMode === 'split' ? 'default' : 'ghost'}
                 size="sm"
-                className="h-7 px-2.5 gap-1 text-[10px] font-bold rounded-none"
+                className="h-7 gap-1 rounded-none px-2.5 text-[10px] font-bold"
                 onClick={() => onChangeViewMode('split')}
               >
                 <Columns className="h-3.5 w-3.5" />
@@ -260,7 +275,7 @@ export function DiffToolbar({
             <Button
               variant={ignoreWhitespace ? 'default' : 'outline'}
               size="sm"
-              className="h-7 px-2.5 text-[10px] font-bold shrink-0 ml-2"
+              className="ml-2 h-7 shrink-0 px-2.5 text-[10px] font-bold"
               onClick={onToggleIgnoreWhitespace}
               title="Ignore trim whitespace in diff"
             >
@@ -270,7 +285,7 @@ export function DiffToolbar({
             <Button
               variant={collapseUnchanged ? 'default' : 'outline'}
               size="icon"
-              className="h-7 w-7 shrink-0 ml-2"
+              className="ml-2 h-7 w-7 shrink-0"
               onClick={onToggleCollapseUnchanged}
               title={t('commitDetails.collapseUnchanged')}
               data-testid="diff-collapse-unchanged-btn"
@@ -286,7 +301,7 @@ export function DiffToolbar({
             <Button
               variant={file.staged ? 'outline' : 'default'}
               size="sm"
-              className="h-7 px-3 text-[10px] font-bold gap-1"
+              className="h-7 gap-1 px-3 text-[10px] font-bold"
               onClick={onToggleStage}
               disabled={isProcessing}
             >
@@ -306,7 +321,7 @@ export function DiffToolbar({
             <Button
               variant="destructive"
               size="sm"
-              className="h-7 px-3 text-[10px] font-bold gap-1 hover:bg-destructive/90"
+              className="h-7 gap-1 px-3 text-[10px] font-bold hover:bg-destructive/90"
               onClick={onRollback}
               disabled={isProcessing}
             >
@@ -319,7 +334,7 @@ export function DiffToolbar({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 hover:bg-accent ml-1"
+          className="ml-1 h-8 w-8 hover:bg-accent"
           onClick={onClose}
           title="Close"
         >

@@ -4,12 +4,20 @@ import userEvent from '@testing-library/user-event'
 import type { GitRepo, GitHubAccount } from '@git-manager/git-types'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key}:${JSON.stringify(opts)}` : key,
+  }),
 }))
 
 import { Footer } from './Footer'
 import { useRepoDataStore } from '../../stores/repoData.store'
-import { useRepoUIStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from '../../stores/repoUI.store'
+import {
+  useRepoUIStore,
+  DASHBOARD_TAB,
+  REWARDS_TAB,
+  PULL_REQUESTS_TAB,
+} from '../../stores/repoUI.store'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useGameStore } from '../../stores/game.store'
 
@@ -19,19 +27,40 @@ const INITIAL_SETTINGS = useSettingsStore.getState()
 const INITIAL_GAME = useGameStore.getState()
 
 function repo(overrides: Partial<GitRepo> = {}): GitRepo {
-  return { path: '/repo/a', name: 'repo-a', head: 'main', isDetached: false, isDirty: false, remotes: [], ...overrides }
+  return {
+    path: '/repo/a',
+    name: 'repo-a',
+    head: 'main',
+    isDetached: false,
+    isDirty: false,
+    remotes: [],
+    ...overrides,
+  }
 }
 
 function account(overrides: Partial<GitHubAccount> = {}): GitHubAccount {
-  return { id: 'acc1', token: 'tok', user: { login: 'antoine', name: 'Antoine', email: null, avatarUrl: '' }, ...overrides }
+  return {
+    id: 'acc1',
+    token: 'tok',
+    user: { login: 'antoine', name: 'Antoine', email: null, avatarUrl: '' },
+    ...overrides,
+  }
 }
 
 beforeEach(() => {
-  useRepoDataStore.setState({ ...INITIAL_REPO_DATA, repoCache: {}, savedRepos: [], discoveredRepos: [] })
+  useRepoDataStore.setState({
+    ...INITIAL_REPO_DATA,
+    repoCache: {},
+    savedRepos: [],
+    discoveredRepos: [],
+  })
   useRepoUIStore.setState({ ...INITIAL_REPO_UI, activeTab: DASHBOARD_TAB })
   useSettingsStore.setState(INITIAL_SETTINGS)
   useGameStore.setState({ ...INITIAL_GAME, points: 0, rewardsEnabled: true })
-  Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockResolvedValue(undefined) }, configurable: true })
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    configurable: true,
+  })
 })
 
 afterEach(() => {
@@ -60,7 +89,10 @@ describe('Footer — contextual left section', () => {
   it('deduplicates saved and discovered repos sharing the same path', () => {
     useRepoDataStore.setState({
       savedRepos: [{ path: '/a', name: 'a', pinned: false }],
-      discoveredRepos: [{ path: '/a', name: 'a' }, { path: '/b', name: 'b' }],
+      discoveredRepos: [
+        { path: '/a', name: 'a' },
+        { path: '/b', name: 'b' },
+      ],
     })
     render(<Footer onOpenSettings={vi.fn()} />)
     expect(screen.getByText('footer.totalRepos_plural:{"count":2}')).toBeInTheDocument()
@@ -98,7 +130,9 @@ describe('Footer — contextual left section', () => {
     })
 
     it('shows the dirty status and remotes when present', () => {
-      useRepoDataStore.setState({ repoCache: { '/repo/a': repo({ isDirty: true, remotes: ['origin', 'upstream'] }) } })
+      useRepoDataStore.setState({
+        repoCache: { '/repo/a': repo({ isDirty: true, remotes: ['origin', 'upstream'] }) },
+      })
       render(<Footer onOpenSettings={vi.fn()} />)
       expect(screen.getByText('footer.dirty')).toBeInTheDocument()
       expect(screen.getByText('origin, upstream')).toBeInTheDocument()
@@ -179,7 +213,10 @@ describe('Footer — GitHub account link', () => {
 
   it('shows the connected account name once a token is active', () => {
     useSettingsStore.setState({
-      settings: { ...INITIAL_SETTINGS.settings, github: { accounts: [account()], activeAccountId: 'acc1' } },
+      settings: {
+        ...INITIAL_SETTINGS.settings,
+        github: { accounts: [account()], activeAccountId: 'acc1' },
+      },
     })
     render(<Footer onOpenSettings={vi.fn()} />)
     expect(screen.getByText('Antoine')).toBeInTheDocument()

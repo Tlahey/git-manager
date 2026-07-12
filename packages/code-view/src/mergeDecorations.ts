@@ -62,7 +62,10 @@ export interface PaneTotalLines {
   theirs: number
 }
 
-export function computePaneTotalLines(blocks: MergeBlock[], placements: Map<number, BlockPlacement>): PaneTotalLines {
+export function computePaneTotalLines(
+  blocks: MergeBlock[],
+  placements: Map<number, BlockPlacement>
+): PaneTotalLines {
   const lastBlock = blocks[blocks.length - 1]
   const lastPlacement = lastBlock ? placements.get(lastBlock.blockId) : undefined
   return {
@@ -124,13 +127,17 @@ export function blockDecorationSpecs(
   if (lineCount <= 0) return []
 
   const resolvedClass = resolved ? ' merge-resolved' : ''
-  const text = useVividText ? `merge-vivid-${token}${resolvedClass}` : `merge-text-${token}${resolvedClass}`
+  const text = useVividText
+    ? `merge-vivid-${token}${resolvedClass}`
+    : `merge-text-${token}${resolvedClass}`
   const margin = `merge-vivid-${token}${resolvedClass}`
 
   // No edge to draw at all (borders disabled, or both edges closed by something else): the
   // whole range collapses into one plain decoration — no first/middle/last split needed.
   if (!withTopBorder && !withBottomBorder) {
-    return [{ startLine, endLine: startLine + lineCount - 1, className: text, marginClassName: margin }]
+    return [
+      { startLine, endLine: startLine + lineCount - 1, className: text, marginClassName: margin },
+    ]
   }
 
   const top = withTopBorder ? ` merge-border-top-${token}${resolvedClass}` : ''
@@ -138,18 +145,38 @@ export function blockDecorationSpecs(
 
   if (lineCount === 1) {
     return [
-      { startLine, endLine: startLine, className: `${text}${top}${bottom}`, marginClassName: `${margin}${top}${bottom}` },
+      {
+        startLine,
+        endLine: startLine,
+        className: `${text}${top}${bottom}`,
+        marginClassName: `${margin}${top}${bottom}`,
+      },
     ]
   }
 
   const specs: DecorationSpec[] = [
-    { startLine, endLine: startLine, className: `${text}${top}`, marginClassName: `${margin}${top}` },
+    {
+      startLine,
+      endLine: startLine,
+      className: `${text}${top}`,
+      marginClassName: `${margin}${top}`,
+    },
   ]
   if (lineCount > 2) {
-    specs.push({ startLine: startLine + 1, endLine: startLine + lineCount - 2, className: text, marginClassName: margin })
+    specs.push({
+      startLine: startLine + 1,
+      endLine: startLine + lineCount - 2,
+      className: text,
+      marginClassName: margin,
+    })
   }
   const lastLine = startLine + lineCount - 1
-  specs.push({ startLine: lastLine, endLine: lastLine, className: `${text}${bottom}`, marginClassName: `${margin}${bottom}` })
+  specs.push({
+    startLine: lastLine,
+    endLine: lastLine,
+    className: `${text}${bottom}`,
+    marginClassName: `${margin}${bottom}`,
+  })
   return specs
 }
 
@@ -187,7 +214,11 @@ function addPaneBlock(
   useVividText = false
 ): void {
   const isEmpty = zone.paneLineCount === 0
-  const wantsMarker = zone.deficit > 0 && isEmpty && zone.emptyRendering === 'accent-marker' && zone.token !== undefined
+  const wantsMarker =
+    zone.deficit > 0 &&
+    isEmpty &&
+    zone.emptyRendering === 'accent-marker' &&
+    zone.token !== undefined
   const wantsNothing = zone.deficit > 0 && isEmpty && zone.emptyRendering === 'none'
   const hasZone = zone.deficit > 0 && !wantsMarker && !wantsNothing
 
@@ -236,7 +267,12 @@ function addPaneBlock(
       classes.push(`merge-border-bottom-${zone.token}${resolvedClass}`)
       if (parts.length === 0) classes.push(`merge-border-top-${zone.token}${resolvedClass}`)
     }
-    pane.viewZones.push({ id: zone.id, afterLineNumber: zone.afterLine, heightInLines: zone.deficit, className: classes.join(' ') })
+    pane.viewZones.push({
+      id: zone.id,
+      afterLineNumber: zone.afterLine,
+      heightInLines: zone.deficit,
+      className: classes.join(' '),
+    })
   }
 }
 
@@ -278,14 +314,22 @@ export function computeMergeVisuals(
 
   // Needed to clamp a boundary marker whose insertion point sits past the end of a pane (there's
   // no "next line" to carry a top edge; the last line's bottom edge is used instead).
-  const { ours: oursTotalLines, theirs: theirsTotalLines, center: centerTotalLines } = computePaneTotalLines(blocks, placements)
+  const {
+    ours: oursTotalLines,
+    theirs: theirsTotalLines,
+    center: centerTotalLines,
+  } = computePaneTotalLines(blocks, placements)
 
   for (const block of blocks) {
     const placement = placements.get(block.blockId)
     if (!placement) continue
 
-    const oursToken = isChangeSource(block, 'ours') ? sideColorToken(block, placement.oursTouched, 'ours') : undefined
-    const theirsToken = isChangeSource(block, 'theirs') ? sideColorToken(block, placement.theirsTouched, 'theirs') : undefined
+    const oursToken = isChangeSource(block, 'ours')
+      ? sideColorToken(block, placement.oursTouched, 'ours')
+      : undefined
+    const theirsToken = isChangeSource(block, 'theirs')
+      ? sideColorToken(block, placement.theirsTouched, 'theirs')
+      : undefined
     const centerCount = placement.centerLineCount
     const maxCount = Math.max(block.oursLineCount, block.theirsLineCount, centerCount)
 
@@ -306,33 +350,65 @@ export function computeMergeVisuals(
 
     const oursParts: ColoredRange[] =
       oursToken && block.oursLineCount > 0
-        ? [{ startLine: block.oursStartLine, lineCount: block.oursLineCount, token: oursToken, resolved: placement.oursTouched }]
+        ? [
+            {
+              startLine: block.oursStartLine,
+              lineCount: block.oursLineCount,
+              token: oursToken,
+              resolved: placement.oursTouched,
+            },
+          ]
         : []
-    addPaneBlock(visuals.ours, oursParts, {
-      id: `${block.blockId}-ours`,
-      deficit: oursDeficit,
-      afterLine: block.oursLineCount === 0 ? block.oursStartLine - 1 : block.oursStartLine + block.oursLineCount - 1,
-      token: oursToken,
-      paneLineCount: block.oursLineCount,
-      paneTotalLines: oursTotalLines,
-      emptyRendering: sideEmptyRendering,
-      resolved: placement.oursTouched,
-    }, withBlockBorders, useVividText)
+    addPaneBlock(
+      visuals.ours,
+      oursParts,
+      {
+        id: `${block.blockId}-ours`,
+        deficit: oursDeficit,
+        afterLine:
+          block.oursLineCount === 0
+            ? block.oursStartLine - 1
+            : block.oursStartLine + block.oursLineCount - 1,
+        token: oursToken,
+        paneLineCount: block.oursLineCount,
+        paneTotalLines: oursTotalLines,
+        emptyRendering: sideEmptyRendering,
+        resolved: placement.oursTouched,
+      },
+      withBlockBorders,
+      useVividText
+    )
 
     const theirsParts: ColoredRange[] =
       theirsToken && block.theirsLineCount > 0
-        ? [{ startLine: block.theirsStartLine, lineCount: block.theirsLineCount, token: theirsToken, resolved: placement.theirsTouched }]
+        ? [
+            {
+              startLine: block.theirsStartLine,
+              lineCount: block.theirsLineCount,
+              token: theirsToken,
+              resolved: placement.theirsTouched,
+            },
+          ]
         : []
-    addPaneBlock(visuals.theirs, theirsParts, {
-      id: `${block.blockId}-theirs`,
-      deficit: theirsDeficit,
-      afterLine: block.theirsLineCount === 0 ? block.theirsStartLine - 1 : block.theirsStartLine + block.theirsLineCount - 1,
-      token: theirsToken,
-      paneLineCount: block.theirsLineCount,
-      paneTotalLines: theirsTotalLines,
-      emptyRendering: sideEmptyRendering,
-      resolved: placement.theirsTouched,
-    }, withBlockBorders, useVividText)
+    addPaneBlock(
+      visuals.theirs,
+      theirsParts,
+      {
+        id: `${block.blockId}-theirs`,
+        deficit: theirsDeficit,
+        afterLine:
+          block.theirsLineCount === 0
+            ? block.theirsStartLine - 1
+            : block.theirsStartLine + block.theirsLineCount - 1,
+        token: theirsToken,
+        paneLineCount: block.theirsLineCount,
+        paneTotalLines: theirsTotalLines,
+        emptyRendering: sideEmptyRendering,
+        resolved: placement.theirsTouched,
+      },
+      withBlockBorders,
+      useVividText
+    )
 
     const baseOursToken = sideColorToken(block, placement.oursTouched)
     const baseTheirsToken = sideColorToken(block, placement.theirsTouched)
@@ -340,13 +416,29 @@ export function computeMergeVisuals(
     const centerParts: ColoredRange[] = []
     if (placement.oursIncluded && baseOursToken) {
       const { start, count } = subRangeForSide(placement, block, 'ours')
-      if (count > 0) centerParts.push({ startLine: start, lineCount: count, token: baseOursToken, resolved: placement.oursTouched })
+      if (count > 0)
+        centerParts.push({
+          startLine: start,
+          lineCount: count,
+          token: baseOursToken,
+          resolved: placement.oursTouched,
+        })
     }
     if (placement.theirsIncluded && baseTheirsToken) {
       const { start, count } = subRangeForSide(placement, block, 'theirs')
-      if (count > 0) centerParts.push({ startLine: start, lineCount: count, token: baseTheirsToken, resolved: placement.theirsTouched })
+      if (count > 0)
+        centerParts.push({
+          startLine: start,
+          lineCount: count,
+          token: baseTheirsToken,
+          resolved: placement.theirsTouched,
+        })
     }
-    if (!placement.oursIncluded && !placement.theirsIncluded && (baseOursToken || baseTheirsToken)) {
+    if (
+      !placement.oursIncluded &&
+      !placement.theirsIncluded &&
+      (baseOursToken || baseTheirsToken)
+    ) {
       const start = placement.centerStartLine
       const count = placement.centerLineCount // baseLines.length
       const token = baseOursToken ?? baseTheirsToken ?? 'conflict'
@@ -375,15 +467,21 @@ export function computeMergeVisuals(
       }
     }
 
-    addPaneBlock(visuals.center, centerParts, {
-      deficit: centerDeficit,
-      afterLine: placement.centerStartLine + centerCount - 1,
-      token: sideColorToken(block, placement.oursTouched && placement.theirsTouched),
-      paneLineCount: centerCount,
-      paneTotalLines: centerTotalLines,
-      emptyRendering: resolvedCenterEmptyRendering,
-      resolved,
-    }, withBlockBorders, useVividText)
+    addPaneBlock(
+      visuals.center,
+      centerParts,
+      {
+        deficit: centerDeficit,
+        afterLine: placement.centerStartLine + centerCount - 1,
+        token: sideColorToken(block, placement.oursTouched && placement.theirsTouched),
+        paneLineCount: centerCount,
+        paneTotalLines: centerTotalLines,
+        emptyRendering: resolvedCenterEmptyRendering,
+        resolved,
+      },
+      withBlockBorders,
+      useVividText
+    )
   }
 
   return visuals

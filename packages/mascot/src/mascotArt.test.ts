@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { MASCOT_VIEWBOX, MASCOT_SELECTORS, MASCOT_MARKUP, MASCOT_STYLES, MASCOT_LAYOUT } from './mascotArt'
+import {
+  MASCOT_VIEWBOX,
+  MASCOT_SELECTORS,
+  MASCOT_MARKUP,
+  MASCOT_STYLES,
+  MASCOT_LAYOUT,
+} from './mascotArt'
 import { PLACEMENTS } from './generated/layout'
 
 const limbZones = PLACEMENTS.filter((p) => p.role !== 'head').map((p) => p.zone)
@@ -25,7 +31,11 @@ describe('MASCOT_LAYOUT', () => {
   })
 
   it('derives strictly positive, finite scale factors', () => {
-    for (const value of [MASCOT_LAYOUT.eyeWhiteR, MASCOT_LAYOUT.pupilScale, MASCOT_LAYOUT.lidScale]) {
+    for (const value of [
+      MASCOT_LAYOUT.eyeWhiteR,
+      MASCOT_LAYOUT.pupilScale,
+      MASCOT_LAYOUT.lidScale,
+    ]) {
       expect(Number.isFinite(value)).toBe(true)
       expect(value).toBeGreaterThan(0)
     }
@@ -58,17 +68,25 @@ describe('MASCOT_MARKUP', () => {
     }
   })
 
-  it('mirrors only the flipped limb (t8) with a horizontal scale transform', () => {
-    const t8Group = MASCOT_MARKUP.match(/<g class="gm-arm gm-arm--t8">[\s\S]*?<\/g>/)![0]
-    expect(t8Group).toContain('scale(-1 1)')
-
-    const nonFlipped = PLACEMENTS.find((p) => p.role !== 'head' && !p.flip)!
-    const group = MASCOT_MARKUP.match(new RegExp(`<g class="gm-arm gm-arm--${nonFlipped.zone}">[\\s\\S]*?</g>`))![0]
-    expect(group).not.toContain('scale(-1 1)')
+  it('mirrors flipped limbs (and only those) with a horizontal scale transform', () => {
+    for (const p of PLACEMENTS.filter((p) => p.role !== 'head')) {
+      const group = MASCOT_MARKUP.match(
+        new RegExp(`<g class="gm-arm gm-arm--${p.zone}">[\\s\\S]*?</g>`)
+      )![0]
+      if (p.flip) {
+        expect(group).toContain('scale(-1 1)')
+      } else {
+        expect(group).not.toContain('scale(-1 1)')
+      }
+    }
   })
 
   it('renders exactly two pupil groups tagged with the shared pupil selector and their eye coordinates', () => {
-    const matches = [...MASCOT_MARKUP.matchAll(new RegExp(`class="${MASCOT_SELECTORS.pupil}" data-cx="([\\d.]+)" data-cy="([\\d.]+)"`, 'g'))]
+    const matches = [
+      ...MASCOT_MARKUP.matchAll(
+        new RegExp(`class="${MASCOT_SELECTORS.pupil}" data-cx="([\\d.]+)" data-cy="([\\d.]+)"`, 'g')
+      ),
+    ]
     expect(matches).toHaveLength(2)
     expect(Number(matches[0][1])).toBeCloseTo(MASCOT_LAYOUT.eyes[0].cx)
     expect(Number(matches[1][1])).toBeCloseTo(MASCOT_LAYOUT.eyes[1].cx)
@@ -98,10 +116,14 @@ describe('MASCOT_STYLES', () => {
   })
 
   it('disables idle pupil glances while [data-tracking] is set', () => {
-    expect(MASCOT_STYLES).toContain(`.${MASCOT_SELECTORS.root}:not([data-tracking]) .${MASCOT_SELECTORS.pupil}`)
+    expect(MASCOT_STYLES).toContain(
+      `.${MASCOT_SELECTORS.root}:not([data-tracking]) .${MASCOT_SELECTORS.pupil}`
+    )
   })
 
   it('kills every animation in static mode', () => {
-    expect(MASCOT_STYLES).toContain(`.${MASCOT_SELECTORS.root}[data-static] * { animation: none !important; }`)
+    expect(MASCOT_STYLES).toContain(
+      `.${MASCOT_SELECTORS.root}[data-static] * { animation: none !important; }`
+    )
   })
 })

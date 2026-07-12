@@ -45,48 +45,56 @@ export function CiBadge({ status, details }: { status: CiStatus; details?: CiDet
 
   if (status === 'success') {
     badgeEl = (
-      <span className="flex items-center gap-0.5 text-[9px] text-green-400 cursor-help">
+      <span className="flex cursor-help items-center gap-0.5 text-[9px] text-green-400">
         <CheckCircle2 className="h-3 w-3" />
         Pass
       </span>
     )
   } else if (status === 'failure') {
     badgeEl = (
-      <span className="flex items-center gap-0.5 text-[9px] text-red-400 cursor-help">
+      <span className="flex cursor-help items-center gap-0.5 text-[9px] text-red-400">
         <XCircle className="h-3 w-3" />
         Fail
       </span>
     )
   } else if (status === 'running') {
     badgeEl = (
-      <span className="flex items-center gap-0.5 text-[9px] text-amber-400 cursor-help">
+      <span className="flex cursor-help items-center gap-0.5 text-[9px] text-amber-400">
         <Loader2 className="h-3 w-3 animate-spin" />
         Running
       </span>
     )
   } else if (status === 'skipped') {
-    badgeEl = <span className="text-[9px] text-muted-foreground/40 cursor-help">Skip</span>
+    badgeEl = <span className="cursor-help text-[9px] text-muted-foreground/40">Skip</span>
   }
 
   if (details && details.length > 0) {
     const tooltipContent = (
-      <div className="flex flex-col gap-1 p-1 max-w-[280px]">
-        <div className="font-bold text-[10px] text-muted-foreground/85 border-b border-border/40 pb-1 mb-1.5 flex items-center justify-between">
+      <div className="flex max-w-[280px] flex-col gap-1 p-1">
+        <div className="mb-1.5 flex items-center justify-between border-b border-border/40 pb-1 text-[10px] font-bold text-muted-foreground/85">
           <span>CI Check Steps</span>
-          <span className="text-[8px] opacity-60 normal-case font-normal">hover to see status</span>
+          <span className="text-[8px] font-normal normal-case opacity-60">hover to see status</span>
         </div>
         <div className="flex flex-col gap-1.5">
           {details.map((d, idx) => (
             <div key={idx} className="flex items-center justify-between gap-4 text-[10px]">
-              <div className="flex items-center gap-1.5 min-w-0">
-                {d.status === 'success' && <CheckCircle2 className="h-3 w-3 text-green-400 shrink-0" />}
-                {d.status === 'failure' && <XCircle className="h-3 w-3 text-red-400 shrink-0" />}
-                {d.status === 'running' && <Loader2 className="h-3 w-3 animate-spin text-amber-400 shrink-0" />}
-                {d.status === 'skipped' && <Circle className="h-3 w-3 text-muted-foreground/30 shrink-0" />}
-                {d.status === 'unknown' && <Circle className="h-3 w-3 text-muted-foreground/50 shrink-0" />}
-                <span className="truncate text-foreground/90 font-medium">{d.name}</span>
+              <div className="flex min-w-0 items-center gap-1.5">
+                {d.status === 'success' && (
+                  <CheckCircle2 className="h-3 w-3 shrink-0 text-green-400" />
+                )}
+                {d.status === 'failure' && <XCircle className="h-3 w-3 shrink-0 text-red-400" />}
+                {d.status === 'running' && (
+                  <Loader2 className="h-3 w-3 shrink-0 animate-spin text-amber-400" />
+                )}
+                {d.status === 'skipped' && (
+                  <Circle className="h-3 w-3 shrink-0 text-muted-foreground/30" />
+                )}
+                {d.status === 'unknown' && (
+                  <Circle className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+                )}
+                <span className="truncate font-medium text-foreground/90">{d.name}</span>
               </div>
-              <span className="text-[9px] uppercase font-semibold text-muted-foreground/60 shrink-0">
+              <span className="shrink-0 text-[9px] font-semibold uppercase text-muted-foreground/60">
                 {d.status}
               </span>
             </div>
@@ -96,7 +104,7 @@ export function CiBadge({ status, details }: { status: CiStatus; details?: CiDet
     )
 
     return (
-      <Tooltip content={tooltipContent} className="whitespace-normal min-w-[220px]">
+      <Tooltip content={tooltipContent} className="min-w-[220px] whitespace-normal">
         {badgeEl}
       </Tooltip>
     )

@@ -37,9 +37,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "icons/menu/*"
-    ]
+    "resources": ["icons/menu/*"]
   },
   "plugins": {}
 }

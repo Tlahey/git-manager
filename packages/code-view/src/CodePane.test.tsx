@@ -48,7 +48,13 @@ describe('CodePane', () => {
       return null
     }
     render(
-      <CodePane value="" modelPath="p" readOnly={false} onMount={vi.fn()} editorComponent={Capturing} />
+      <CodePane
+        value=""
+        modelPath="p"
+        readOnly={false}
+        onMount={vi.fn()}
+        editorComponent={Capturing}
+      />
     )
     expect(captured?.options?.minimap).toEqual({ enabled: false })
     expect(captured?.options?.glyphMargin).toBe(false)
@@ -57,19 +63,42 @@ describe('CodePane', () => {
 
   it('passes readOnly through to editor options and renders line highlight "all" only when editable', () => {
     const { rerender } = render(
-      <CodePane value="" modelPath="p" readOnly={true} onMount={vi.fn()} editorComponent={FakeEditor} />
+      <CodePane
+        value=""
+        modelPath="p"
+        readOnly={true}
+        onMount={vi.fn()}
+        editorComponent={FakeEditor}
+      />
     )
     expect(screen.getByTestId('readonly')).toHaveTextContent('true')
     expect(screen.getByTestId('line-highlight')).toHaveTextContent('none')
 
-    rerender(<CodePane value="" modelPath="p" readOnly={false} onMount={vi.fn()} editorComponent={FakeEditor} />)
+    rerender(
+      <CodePane
+        value=""
+        modelPath="p"
+        readOnly={false}
+        onMount={vi.fn()}
+        editorComponent={FakeEditor}
+      />
+    )
     expect(screen.getByTestId('readonly')).toHaveTextContent('false')
     expect(screen.getByTestId('line-highlight')).toHaveTextContent('all')
   })
 
   it('wraps onChange so an undefined editor value becomes an empty string', async () => {
     const onChange = vi.fn()
-    render(<CodePane value="" modelPath="p" readOnly={false} onMount={vi.fn()} onChange={onChange} editorComponent={FakeEditor} />)
+    render(
+      <CodePane
+        value=""
+        modelPath="p"
+        readOnly={false}
+        onMount={vi.fn()}
+        onChange={onChange}
+        editorComponent={FakeEditor}
+      />
+    )
 
     screen.getByTestId('trigger-change').click()
     expect(onChange).toHaveBeenCalledWith('new value')
@@ -84,7 +113,15 @@ describe('CodePane', () => {
       captured = props
       return null
     }
-    render(<CodePane value="" modelPath="p" readOnly={false} onMount={vi.fn()} editorComponent={Capturing} />)
+    render(
+      <CodePane
+        value=""
+        modelPath="p"
+        readOnly={false}
+        onMount={vi.fn()}
+        editorComponent={Capturing}
+      />
+    )
     expect(captured?.onChange).toBeUndefined()
   })
 
@@ -95,12 +132,22 @@ describe('CodePane', () => {
       return null
     }
     const onMount = vi.fn()
-    render(<CodePane value="" modelPath="p" readOnly={false} onMount={onMount} editorComponent={Capturing} />)
+    render(
+      <CodePane
+        value=""
+        modelPath="p"
+        readOnly={false}
+        onMount={onMount}
+        editorComponent={Capturing}
+      />
+    )
     expect(captured?.onMount).toBe(onMount)
   })
 
   it('renders a custom loading fallback while the (lazy) editor component is pending', () => {
-    const LazyNeverResolves = lazy(() => new Promise<{ default: (props: CodePaneEditorProps) => null }>(() => {}))
+    const LazyNeverResolves = lazy(
+      () => new Promise<{ default: (props: CodePaneEditorProps) => null }>(() => {})
+    )
     render(
       <CodePane
         value=""

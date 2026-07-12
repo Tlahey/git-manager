@@ -5,12 +5,18 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { forwardRef, useImperativeHandle } from 'react'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key}:${JSON.stringify(opts)}` : key,
+  }),
 }))
 
 const { useMergeView } = vi.hoisted(() => ({ useMergeView: vi.fn() }))
 vi.mock('../../hooks/useMergeView', () => ({ useMergeView }))
-vi.mock('../../api/conflict.api', () => ({ apiResolveConflict: vi.fn(), apiResolveConflictBinary: vi.fn() }))
+vi.mock('../../api/conflict.api', () => ({
+  apiResolveConflict: vi.fn(),
+  apiResolveConflictBinary: vi.fn(),
+}))
 
 const { closeWindow, emitMock } = vi.hoisted(() => ({ closeWindow: vi.fn(), emitMock: vi.fn() }))
 vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({ close: closeWindow }) }))
@@ -21,11 +27,13 @@ const { mergeEditorMock, lastMergeEditorProps } = vi.hoisted(() => ({
   lastMergeEditorProps: { current: null as null | { onPendingCountChange: (n: number) => void } },
 }))
 vi.mock('./ThreeWayMergeEditor', () => {
-  const ThreeWayMergeEditor = forwardRef((props: { onPendingCountChange: (n: number) => void }, ref) => {
-    lastMergeEditorProps.current = props
-    useImperativeHandle(ref, () => mergeEditorMock)
-    return <div data-testid="three-way-merge-editor" />
-  })
+  const ThreeWayMergeEditor = forwardRef(
+    (props: { onPendingCountChange: (n: number) => void }, ref) => {
+      lastMergeEditorProps.current = props
+      useImperativeHandle(ref, () => mergeEditorMock)
+      return <div data-testid="three-way-merge-editor" />
+    }
+  )
   ThreeWayMergeEditor.displayName = 'ThreeWayMergeEditor'
   return { ThreeWayMergeEditor }
 })
@@ -59,7 +67,10 @@ describe('ConflictMergeWindow — loading/renderable content', () => {
   })
 
   it('renders the three-way merge editor plus the remaining-conflicts count and auto-merge button', () => {
-    useMergeView.mockReturnValue({ data: { renderable: true, isBinary: false, oursText: 'o', theirsText: 't' }, isLoading: false })
+    useMergeView.mockReturnValue({
+      data: { renderable: true, isBinary: false, oursText: 'o', theirsText: 't' },
+      isLoading: false,
+    })
     renderWindow()
     expect(screen.getByTestId('three-way-merge-editor')).toBeInTheDocument()
     expect(screen.getByTestId('merge-auto-merge-button')).toBeInTheDocument()
@@ -69,7 +80,10 @@ describe('ConflictMergeWindow — loading/renderable content', () => {
 
   it('applies non-conflicting hunks via the merge editor ref', async () => {
     mergeEditorMock.applyAutoMerge.mockResolvedValue(undefined)
-    useMergeView.mockReturnValue({ data: { renderable: true, isBinary: false, oursText: 'o', theirsText: 't' }, isLoading: false })
+    useMergeView.mockReturnValue({
+      data: { renderable: true, isBinary: false, oursText: 'o', theirsText: 't' },
+      isLoading: false,
+    })
     const user = userEvent.setup()
     renderWindow()
     await user.click(screen.getByTestId('merge-auto-merge-button'))
@@ -93,13 +107,19 @@ describe('ConflictMergeWindow — binary/delete/rename fallback', () => {
     await user.click(screen.getByTestId('keep-ours-button'))
 
     expect(mockedResolveBinary).toHaveBeenCalledWith('/repo', 'src/a.ts', 'ours')
-    expect(emitMock).toHaveBeenCalledWith('conflict-resolved', { repoPath: '/repo', filePath: 'src/a.ts' })
+    expect(emitMock).toHaveBeenCalledWith('conflict-resolved', {
+      repoPath: '/repo',
+      filePath: 'src/a.ts',
+    })
     expect(closeWindow).toHaveBeenCalledOnce()
   })
 
   it('keeps "theirs" for a delete conflict', async () => {
     mockedResolveBinary.mockResolvedValue(undefined)
-    useMergeView.mockReturnValue({ data: { renderable: false, isBinary: false, conflictKind: 'delete' }, isLoading: false })
+    useMergeView.mockReturnValue({
+      data: { renderable: false, isBinary: false, conflictKind: 'delete' },
+      isLoading: false,
+    })
     const user = userEvent.setup()
     renderWindow()
     expect(screen.getByText('conflictEditor.deleteConflict')).toBeInTheDocument()
@@ -126,7 +146,10 @@ describe('ConflictMergeWindow — binary/delete/rename fallback', () => {
 
 describe('ConflictMergeWindow — Apply / Cancel', () => {
   beforeEach(() => {
-    useMergeView.mockReturnValue({ data: { renderable: true, isBinary: false, oursText: 'ours text', theirsText: 'theirs text' }, isLoading: false })
+    useMergeView.mockReturnValue({
+      data: { renderable: true, isBinary: false, oursText: 'ours text', theirsText: 'theirs text' },
+      isLoading: false,
+    })
   })
 
   it('disables Apply while conflicts remain, enables once resolved', () => {
@@ -138,7 +161,7 @@ describe('ConflictMergeWindow — Apply / Cancel', () => {
     expect(screen.getByTestId('merge-apply')).toBeEnabled()
   })
 
-  it('applies with the merge editor\'s center value, emits, and closes', async () => {
+  it("applies with the merge editor's center value, emits, and closes", async () => {
     mockedResolve.mockResolvedValue(undefined)
     const user = userEvent.setup()
     renderWindow()
@@ -146,7 +169,10 @@ describe('ConflictMergeWindow — Apply / Cancel', () => {
     await user.click(screen.getByTestId('merge-apply'))
 
     expect(mockedResolve).toHaveBeenCalledWith('/repo', 'src/a.ts', 'center content')
-    expect(emitMock).toHaveBeenCalledWith('conflict-resolved', { repoPath: '/repo', filePath: 'src/a.ts' })
+    expect(emitMock).toHaveBeenCalledWith('conflict-resolved', {
+      repoPath: '/repo',
+      filePath: 'src/a.ts',
+    })
     expect(closeWindow).toHaveBeenCalledOnce()
   })
 
@@ -171,7 +197,10 @@ describe('ConflictMergeWindow — Apply / Cancel', () => {
 
 describe('ConflictMergeWindow — Accept Left/Right with discard confirmation', () => {
   beforeEach(() => {
-    useMergeView.mockReturnValue({ data: { renderable: true, isBinary: false, oursText: 'ours text', theirsText: 'theirs text' }, isLoading: false })
+    useMergeView.mockReturnValue({
+      data: { renderable: true, isBinary: false, oursText: 'ours text', theirsText: 'theirs text' },
+      isLoading: false,
+    })
   })
 
   it('opens a discard-confirmation dialog when Accept Left is clicked', async () => {

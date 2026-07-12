@@ -47,7 +47,14 @@ describe('RewardsTab — rank card', () => {
   it('shows the platinum rank name when the platinum trophy is unlocked, regardless of points', () => {
     useGameStore.setState({
       points: 10,
-      achievements: [achievement({ id: 'platinum_trophy', unlocked: true, difficulty: 'expert', type: 'platinum' })],
+      achievements: [
+        achievement({
+          id: 'platinum_trophy',
+          unlocked: true,
+          difficulty: 'expert',
+          type: 'platinum',
+        }),
+      ],
     })
     render(<RewardsTab />)
     expect(screen.getByText('Git Grand Maître (Platine)')).toBeInTheDocument()
@@ -67,9 +74,9 @@ describe('RewardsTab — trophy cabinet', () => {
     })
     const { container } = render(<RewardsTab />)
     // Bronze/Silver/Gold/Platinum counts appear in fixed DOM order in the trophy cabinet card.
-    const counts = Array.from(container.querySelectorAll('.text-xs.font-extrabold.text-foreground')).map(
-      (el) => el.textContent
-    )
+    const counts = Array.from(
+      container.querySelectorAll('.text-xs.font-extrabold.text-foreground')
+    ).map((el) => el.textContent)
     expect(counts[0]).toBe('1') // bronze unlocked
     expect(counts[1]).toBe('1') // silver unlocked
     expect(counts[2]).toBe('1') // gold unlocked
@@ -80,8 +87,18 @@ describe('RewardsTab — trophy cabinet', () => {
 })
 
 describe('RewardsTab — status filter', () => {
-  const unlockedAch = achievement({ id: 'done', title: 'Done achievement', unlocked: true, difficulty: 'beginner' })
-  const inProgressAch = achievement({ id: 'todo', title: 'Todo achievement', unlocked: false, difficulty: 'beginner' })
+  const unlockedAch = achievement({
+    id: 'done',
+    title: 'Done achievement',
+    unlocked: true,
+    difficulty: 'beginner',
+  })
+  const inProgressAch = achievement({
+    id: 'todo',
+    title: 'Todo achievement',
+    unlocked: false,
+    difficulty: 'beginner',
+  })
 
   it('shows all achievements by default', () => {
     useGameStore.setState({ achievements: [unlockedAch, inProgressAch] })
@@ -115,7 +132,12 @@ describe('RewardsTab — difficulty groups', () => {
     useGameStore.setState({
       achievements: [
         achievement({ id: 'b1', title: 'Beginner done', difficulty: 'beginner', unlocked: true }),
-        achievement({ id: 'i1', title: 'Intermediate todo', difficulty: 'intermediate', unlocked: false }),
+        achievement({
+          id: 'i1',
+          title: 'Intermediate todo',
+          difficulty: 'intermediate',
+          unlocked: false,
+        }),
       ],
     })
     render(<RewardsTab />)
@@ -143,7 +165,13 @@ describe('RewardsTab — achievement card content', () => {
   it('shows title, description and XP for an unlocked achievement', () => {
     useGameStore.setState({
       achievements: [
-        achievement({ id: 'a1', title: 'Unlocked one', description: 'You did it', points: 25, unlocked: true }),
+        achievement({
+          id: 'a1',
+          title: 'Unlocked one',
+          description: 'You did it',
+          points: 25,
+          unlocked: true,
+        }),
       ],
     })
     render(<RewardsTab />)
@@ -166,21 +194,33 @@ describe('RewardsTab — achievement card content', () => {
     useGameStore.setState({
       achievements: [
         achievement({ id: 'prereq', title: 'The prerequisite', unlocked: false }),
-        achievement({ id: 'locked', title: 'Secret achievement', prerequisiteId: 'prereq', unlocked: false }),
+        achievement({
+          id: 'locked',
+          title: 'Secret achievement',
+          prerequisiteId: 'prereq',
+          unlocked: false,
+        }),
       ],
     })
     render(<RewardsTab />)
     const card = screen.getByTestId('achievement-card-locked')
     expect(within(card).getByText('???')).toBeInTheDocument()
     expect(within(card).queryByText('Secret achievement')).not.toBeInTheDocument()
-    expect(within(card).getByText(/Débloquez d'abord le succès "The prerequisite"/)).toBeInTheDocument()
+    expect(
+      within(card).getByText(/Débloquez d'abord le succès "The prerequisite"/)
+    ).toBeInTheDocument()
   })
 
   it('reveals the title once the prerequisite is unlocked', () => {
     useGameStore.setState({
       achievements: [
         achievement({ id: 'prereq', title: 'The prerequisite', unlocked: true }),
-        achievement({ id: 'unlocked-child', title: 'Now visible', prerequisiteId: 'prereq', unlocked: false }),
+        achievement({
+          id: 'unlocked-child',
+          title: 'Now visible',
+          prerequisiteId: 'prereq',
+          unlocked: false,
+        }),
       ],
     })
     render(<RewardsTab />)
@@ -204,7 +244,9 @@ describe('RewardsTab — achievement card content', () => {
 
   it('reveals the cosmetic reward name once unlocked', () => {
     useGameStore.setState({
-      achievements: [achievement({ id: 'cosmetic', rewardDescription: 'Thème Forêt', unlocked: true })],
+      achievements: [
+        achievement({ id: 'cosmetic', rewardDescription: 'Thème Forêt', unlocked: true }),
+      ],
     })
     render(<RewardsTab />)
     expect(screen.getByText('Gain : Thème Forêt')).toBeInTheDocument()
@@ -216,7 +258,13 @@ describe('RewardsTab — milestone progress bar', () => {
     useGameStore.setState({
       commitCount: 4,
       achievements: [
-        achievement({ id: 'milestone-a', kind: 'milestone', milestoneType: 'commit', milestoneValue: 10, unlocked: false }),
+        achievement({
+          id: 'milestone-a',
+          kind: 'milestone',
+          milestoneType: 'commit',
+          milestoneValue: 10,
+          unlocked: false,
+        }),
       ],
     })
     render(<RewardsTab />)
@@ -228,7 +276,13 @@ describe('RewardsTab — milestone progress bar', () => {
     useGameStore.setState({
       commitCount: 10,
       achievements: [
-        achievement({ id: 'milestone-a', kind: 'milestone', milestoneType: 'commit', milestoneValue: 10, unlocked: true }),
+        achievement({
+          id: 'milestone-a',
+          kind: 'milestone',
+          milestoneType: 'commit',
+          milestoneValue: 10,
+          unlocked: true,
+        }),
       ],
     })
     render(<RewardsTab />)

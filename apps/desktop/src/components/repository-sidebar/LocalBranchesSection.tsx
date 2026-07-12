@@ -55,8 +55,7 @@ export function LocalBranchesSection({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localBranches, overrides])
 
-  const onTogglePin = (shortName: string) =>
-    setPin(repoPath, shortName, !isPinnedBranch(shortName))
+  const onTogglePin = (shortName: string) => setPin(repoPath, shortName, !isPinnedBranch(shortName))
 
   // Branches épinglées triées : main/master d'abord, puis ordre alpha.
   const pinnedBranches = useMemo(() => {
@@ -108,9 +107,7 @@ export function LocalBranchesSection({
             <BranchItem
               key={branch.name}
               branch={branch}
-              isSelected={
-                selectedBranch === branch.shortName || selectedBranch === branch.name
-              }
+              isSelected={selectedBranch === branch.shortName || selectedBranch === branch.name}
               depth={0}
               isPinned
               onSelect={onSelectBranch}
@@ -128,9 +125,7 @@ export function LocalBranchesSection({
             <BranchItem
               key={branch.name}
               branch={branch}
-              isSelected={
-                selectedBranch === branch.shortName || selectedBranch === branch.name
-              }
+              isSelected={selectedBranch === branch.shortName || selectedBranch === branch.name}
               depth={0}
               isPinned={false}
               onSelect={onSelectBranch}

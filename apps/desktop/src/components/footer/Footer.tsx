@@ -1,7 +1,12 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { useRepoDataStore } from '../../stores/repoData.store'
-import { useRepoUIStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from '../../stores/repoUI.store'
+import {
+  useRepoUIStore,
+  DASHBOARD_TAB,
+  REWARDS_TAB,
+  PULL_REQUESTS_TAB,
+} from '../../stores/repoUI.store'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useGameStore, getLevelInfo } from '../../stores/game.store'
 import {
@@ -38,7 +43,7 @@ export function Footer({ onOpenSettings }: FooterProps) {
   const { settings } = useSettingsStore()
   const { points, rewardsEnabled } = useGameStore()
   const { level } = getLevelInfo(points)
-  
+
   const [copied, setCopied] = useState(false)
   const [isShortcutOpen, setIsShortcutOpen] = useState(false)
 
@@ -52,7 +57,8 @@ export function Footer({ onOpenSettings }: FooterProps) {
   }, [savedRepos, discoveredRepos])
 
   // Dépôt actuel si on est sur un onglet de dépôt
-  const isRepoTab = activeTab !== DASHBOARD_TAB && activeTab !== PULL_REQUESTS_TAB && activeTab !== REWARDS_TAB
+  const isRepoTab =
+    activeTab !== DASHBOARD_TAB && activeTab !== PULL_REQUESTS_TAB && activeTab !== REWARDS_TAB
   const currentRepo = isRepoTab ? repoCache[activeTab] : null
 
   // Compte GitHub connecté
@@ -78,7 +84,7 @@ export function Footer({ onOpenSettings }: FooterProps) {
     {
       category: 'Navigation',
       items: [
-        { keys: ['Alt', '1'], desc: 'Aller à l\'accueil (Dashboard)' },
+        { keys: ['Alt', '1'], desc: "Aller à l'accueil (Dashboard)" },
         { keys: ['Alt', '2'], desc: 'Aller au Launchpad (PRs)' },
         { keys: ['Alt', '3-9'], desc: 'Basculer vers les dépôts ouverts (onglets 3 à 9)' },
       ],
@@ -95,21 +101,21 @@ export function Footer({ onOpenSettings }: FooterProps) {
       category: 'Général',
       items: [
         { keys: ['Alt', ','], desc: 'Ouvrir les Paramètres' },
-        { keys: ['Alt', 'W'], desc: 'Fermer l\'onglet du dépôt actif' },
+        { keys: ['Alt', 'W'], desc: "Fermer l'onglet du dépôt actif" },
         { keys: ['Esc'], desc: 'Fermer les boîtes de dialogue / volets' },
       ],
     },
   ]
 
   return (
-    <footer className="flex h-8 w-full items-center justify-between border-t border-border bg-card/60 px-4 text-[11px] text-muted-foreground shrink-0 backdrop-blur-sm select-none">
+    <footer className="flex h-8 w-full shrink-0 select-none items-center justify-between border-t border-border bg-card/60 px-4 text-[11px] text-muted-foreground backdrop-blur-sm">
       {/* SECTION GAUCHE : État contextuel */}
       <div className="flex items-center gap-3 overflow-hidden">
         {activeTab === DASHBOARD_TAB && (
           <div className="flex items-center gap-1.5 font-medium text-foreground/80">
             <LayoutDashboard className="h-3.5 w-3.5 text-primary/80" />
             <span>{t('footer.dashboard')}</span>
-            <span className="text-[10px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-full font-normal">
+            <span className="rounded-full bg-muted/60 px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
               {totalRepos > 1
                 ? t('footer.totalRepos_plural', { count: totalRepos })
                 : t('footer.totalRepos', { count: totalRepos })}
@@ -126,7 +132,7 @@ export function Footer({ onOpenSettings }: FooterProps) {
 
         {activeTab === REWARDS_TAB && (
           <div className="flex items-center gap-1.5 font-medium text-foreground/80">
-            <Trophy className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
+            <Trophy className="h-3.5 w-3.5 animate-pulse text-amber-500" />
             <span>Succès & Récompenses</span>
           </div>
         )}
@@ -136,25 +142,25 @@ export function Footer({ onOpenSettings }: FooterProps) {
             {/* Nom & chemin du Repo */}
             <button
               onClick={handleCopyPath}
-              className="flex items-center gap-1.5 font-medium text-foreground/90 hover:text-primary transition-colors cursor-pointer group shrink-0"
+              className="group flex shrink-0 cursor-pointer items-center gap-1.5 font-medium text-foreground/90 transition-colors hover:text-primary"
               title="Cliquer pour copier le chemin absolu"
             >
               <Terminal className="h-3.5 w-3.5 text-primary/70" />
               <span>{currentRepo?.name || activeTab.split('/').pop()}</span>
               {copied ? (
-                <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-normal bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 animate-fade-in shrink-0">
+                <span className="animate-fade-in flex shrink-0 items-center gap-1 rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-normal text-emerald-500">
                   <ClipboardCheck className="h-2.5 w-2.5" />
                   {t('footer.copiedPath')}
                 </span>
               ) : (
-                <ClipboardCopy className="h-2.5 w-2.5 opacity-0 group-hover:opacity-100 text-muted-foreground/60 transition-opacity shrink-0" />
+                <ClipboardCopy className="h-2.5 w-2.5 shrink-0 text-muted-foreground/60 opacity-0 transition-opacity group-hover:opacity-100" />
               )}
             </button>
 
             <span className="text-border">|</span>
 
             {/* Branche Git Actuelle */}
-            <div className="flex items-center gap-1 text-foreground/75 font-mono">
+            <div className="flex items-center gap-1 font-mono text-foreground/75">
               <GitBranch className="h-3.5 w-3.5 text-emerald-500/80" />
               <span className="font-semibold">{currentRepo?.head || '...'}</span>
             </div>
@@ -166,12 +172,12 @@ export function Footer({ onOpenSettings }: FooterProps) {
                 {/* Statut Dirty/Clean */}
                 <div className="flex items-center gap-1">
                   {currentRepo.isDirty ? (
-                    <span className="flex items-center gap-1 text-amber-500/90 font-medium">
+                    <span className="flex items-center gap-1 font-medium text-amber-500/90">
                       <AlertCircle className="h-3.5 w-3.5 animate-pulse" />
                       {t('footer.dirty')}
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 text-emerald-500/90 font-medium">
+                    <span className="flex items-center gap-1 font-medium text-emerald-500/90">
                       <CheckCircle2 className="h-3.5 w-3.5" />
                       {t('footer.clean')}
                     </span>
@@ -182,9 +188,11 @@ export function Footer({ onOpenSettings }: FooterProps) {
                   <>
                     <span className="text-border">|</span>
                     {/* Remotes */}
-                    <div className="hidden sm:flex items-center gap-1">
+                    <div className="hidden items-center gap-1 sm:flex">
                       <span className="text-muted-foreground/60">{t('footer.remotes')}:</span>
-                      <span className="font-mono text-foreground/70">{currentRepo.remotes.join(', ')}</span>
+                      <span className="font-mono text-foreground/70">
+                        {currentRepo.remotes.join(', ')}
+                      </span>
                     </div>
                   </>
                 )}
@@ -198,18 +206,18 @@ export function Footer({ onOpenSettings }: FooterProps) {
       <div>
         <Dialog open={isShortcutOpen} onOpenChange={setIsShortcutOpen}>
           <DialogTrigger asChild>
-            <button className="flex items-center gap-1.5 rounded px-2 py-0.5 hover:bg-accent hover:text-foreground transition-all duration-150 active:scale-95 font-medium border border-transparent hover:border-border shadow-none">
+            <button className="flex items-center gap-1.5 rounded border border-transparent px-2 py-0.5 font-medium shadow-none transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground active:scale-95">
               <Keyboard className="h-3.5 w-3.5" />
               <span>{t('footer.keyboardShortcuts')}</span>
             </button>
           </DialogTrigger>
-          <DialogContent className="max-w-md bg-background/95 backdrop-blur border border-border shadow-2xl rounded-xl">
+          <DialogContent className="max-w-md rounded-xl border border-border bg-background/95 shadow-2xl backdrop-blur">
             <DialogHeader className="border-b border-border pb-3">
               <DialogTitle className="flex items-center gap-2 text-sm font-semibold tracking-wide">
                 <Keyboard className="h-4 w-4 text-primary" />
                 {t('footer.keyboardShortcuts')}
               </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground mt-1">
+              <DialogDescription className="mt-1 text-xs text-muted-foreground">
                 Raccourcis clavier globaux pour naviguer plus rapidement.
               </DialogDescription>
             </DialogHeader>
@@ -217,24 +225,26 @@ export function Footer({ onOpenSettings }: FooterProps) {
             <div className="space-y-4 py-2">
               {shortcuts.map((cat, idx) => (
                 <div key={idx} className="space-y-1.5">
-                  <h4 className="text-[10px] font-bold text-primary/70 uppercase tracking-widest pl-1">
+                  <h4 className="pl-1 text-[10px] font-bold uppercase tracking-widest text-primary/70">
                     {cat.category}
                   </h4>
                   <div className="divide-y divide-border/40 rounded-lg border border-border bg-card/40 p-1">
                     {cat.items.map((item, keyIdx) => (
                       <div
                         key={keyIdx}
-                        className="flex items-center justify-between px-2.5 py-1.5 text-xs hover:bg-muted/30 transition-colors rounded"
+                        className="flex items-center justify-between rounded px-2.5 py-1.5 text-xs transition-colors hover:bg-muted/30"
                       >
-                        <span className="text-foreground/80 font-sans">{item.desc}</span>
+                        <span className="font-sans text-foreground/80">{item.desc}</span>
                         <div className="flex items-center gap-1">
                           {item.keys.map((k, kIdx) => (
                             <span key={kIdx} className="flex items-center gap-1">
-                              <kbd className="inline-flex h-5 items-center justify-center rounded border border-border bg-muted/95 px-1.5 font-mono text-[10px] font-bold text-foreground shadow-sm min-w-[20px]">
+                              <kbd className="inline-flex h-5 min-w-[20px] items-center justify-center rounded border border-border bg-muted/95 px-1.5 font-mono text-[10px] font-bold text-foreground shadow-sm">
                                 {k}
                               </kbd>
                               {kIdx < item.keys.length - 1 && (
-                                <span className="text-[9px] text-muted-foreground/60 font-semibold">+</span>
+                                <span className="text-[9px] font-semibold text-muted-foreground/60">
+                                  +
+                                </span>
                               )}
                             </span>
                           ))}
@@ -250,20 +260,22 @@ export function Footer({ onOpenSettings }: FooterProps) {
       </div>
 
       {/* SECTION DROITE : Connexion GitHub & Version */}
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex shrink-0 items-center gap-3">
         {/* Game/Rewards Status Link */}
         {rewardsEnabled && (
           <>
             <button
               onClick={() => setActiveTab(REWARDS_TAB)}
-              className={`flex items-center gap-1.5 rounded px-2 py-0.5 border border-transparent hover:border-border hover:bg-accent transition-all duration-150 cursor-pointer ${
+              className={`flex cursor-pointer items-center gap-1.5 rounded border border-transparent px-2 py-0.5 transition-all duration-150 hover:border-border hover:bg-accent ${
                 activeTab === REWARDS_TAB
-                  ? 'text-primary font-bold bg-accent/40 border-border'
-                  : 'text-amber-500 hover:text-amber-600 font-semibold'
+                  ? 'border-border bg-accent/40 font-bold text-primary'
+                  : 'font-semibold text-amber-500 hover:text-amber-600'
               }`}
               title="Consulter vos succès et récompenses Git"
             >
-              <Trophy className={`h-3.5 w-3.5 ${activeTab === REWARDS_TAB ? '' : 'animate-pulse'}`} />
+              <Trophy
+                className={`h-3.5 w-3.5 ${activeTab === REWARDS_TAB ? '' : 'animate-pulse'}`}
+              />
               <span>Niv. {level}</span>
             </button>
             <span className="text-border">|</span>
@@ -273,7 +285,7 @@ export function Footer({ onOpenSettings }: FooterProps) {
         {/* GitHub Account Link */}
         <button
           onClick={() => onOpenSettings('integrations')}
-          className="flex items-center gap-1.5 rounded px-2 py-0.5 hover:bg-accent hover:text-foreground border border-transparent hover:border-border transition-all duration-150 cursor-pointer"
+          className="flex cursor-pointer items-center gap-1.5 rounded border border-transparent px-2 py-0.5 transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground"
         >
           {activeAccount ? (
             <>
@@ -286,14 +298,14 @@ export function Footer({ onOpenSettings }: FooterProps) {
               ) : (
                 <Github className="h-3.5 w-3.5 text-foreground/80" />
               )}
-              <span className="hidden sm:inline font-medium text-foreground/80">
+              <span className="hidden font-medium text-foreground/80 sm:inline">
                 {activeAccount.user.name || activeAccount.user.login}
               </span>
             </>
           ) : (
             <>
               <Github className="h-3.5 w-3.5 text-muted-foreground/60" />
-              <span className="hidden sm:inline text-muted-foreground/60">
+              <span className="hidden text-muted-foreground/60 sm:inline">
                 {t('footer.notConnected')}
               </span>
             </>
@@ -303,7 +315,7 @@ export function Footer({ onOpenSettings }: FooterProps) {
         <span className="text-border">|</span>
 
         {/* Version App */}
-        <div className="flex items-center gap-1 bg-muted/80 border border-border/50 text-[10px] font-semibold text-foreground/75 px-2 py-0.5 rounded-full font-mono shadow-sm">
+        <div className="flex items-center gap-1 rounded-full border border-border/50 bg-muted/80 px-2 py-0.5 font-mono text-[10px] font-semibold text-foreground/75 shadow-sm">
           <span>{t('footer.version', { version: appVersion })}</span>
         </div>
       </div>

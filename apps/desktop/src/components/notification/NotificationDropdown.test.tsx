@@ -3,7 +3,10 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key}:${JSON.stringify(opts)}` : key,
+  }),
 }))
 
 const { showNativeNotification } = vi.hoisted(() => ({ showNativeNotification: vi.fn() }))
@@ -55,7 +58,9 @@ describe('NotificationDropdown — bell badge', () => {
   })
 
   it('shows the unread count on the bell when there are unread notifications', () => {
-    useNotificationStore.setState({ notifications: [notification({ read: false }), notification({ id: 2, read: true })] })
+    useNotificationStore.setState({
+      notifications: [notification({ read: false }), notification({ id: 2, read: true })],
+    })
     render(<NotificationDropdown />)
     expect(screen.getByText('1')).toBeInTheDocument()
   })
@@ -93,7 +98,9 @@ describe('NotificationDropdown — list', () => {
   })
 
   it('marks all as read', async () => {
-    useNotificationStore.setState({ notifications: [notification({ read: false }), notification({ id: 2, read: false })] })
+    useNotificationStore.setState({
+      notifications: [notification({ read: false }), notification({ id: 2, read: false })],
+    })
     const user = userEvent.setup()
     render(<NotificationDropdown />)
     await user.click(screen.getByTitle('notifications.title'))
@@ -123,7 +130,10 @@ describe('NotificationDropdown — simulator panel visibility', () => {
     useSettingsStore.setState({
       settings: {
         ...INITIAL_SETTINGS.settings,
-        github: { accounts: [{ id: 'acc1', token: 'tok', login: 'me' } as never], activeAccountId: 'acc1' },
+        github: {
+          accounts: [{ id: 'acc1', token: 'tok', login: 'me' } as never],
+          activeAccountId: 'acc1',
+        },
       },
     })
     const user = userEvent.setup()
@@ -158,7 +168,10 @@ describe('NotificationDropdown — dev test triggers', () => {
     await user.click(screen.getByText('Test Review'))
 
     expect(useNotificationStore.getState().notifications).toHaveLength(1)
-    expect(useNotificationStore.getState().notifications[0]).toMatchObject({ type: 'review_requested', prId: 'test-pr-review' })
+    expect(useNotificationStore.getState().notifications[0]).toMatchObject({
+      type: 'review_requested',
+      prId: 'test-pr-review',
+    })
     expect(showNativeNotification).toHaveBeenCalledOnce()
   })
 })
@@ -175,6 +188,9 @@ describe('NotificationDropdown — PR simulator', () => {
     render(<NotificationDropdown />)
     await user.click(screen.getByTitle('notifications.title'))
     await user.click(screen.getByText('Run Sim'))
-    expect(useNotificationStore.getState().mockPRs[0]).toMatchObject({ id: 'pr-1', status: 'merged' })
+    expect(useNotificationStore.getState().mockPRs[0]).toMatchObject({
+      id: 'pr-1',
+      status: 'merged',
+    })
   })
 })

@@ -10,11 +10,19 @@ vi.mock('swr', () => ({ mutate: (...a: unknown[]) => swrMutate(...a) }))
 
 const dialogOpen = vi.fn()
 const dialogSave = vi.fn()
-vi.mock('@tauri-apps/plugin-dialog', () => ({ open: (...a: unknown[]) => dialogOpen(...a), save: (...a: unknown[]) => dialogSave(...a) }))
+vi.mock('@tauri-apps/plugin-dialog', () => ({
+  open: (...a: unknown[]) => dialogOpen(...a),
+  save: (...a: unknown[]) => dialogSave(...a),
+}))
 
 const toastSuccess = vi.fn()
 const toastError = vi.fn()
-vi.mock('@git-manager/ui', () => ({ toast: { success: (...a: unknown[]) => toastSuccess(...a), error: (...a: unknown[]) => toastError(...a) } }))
+vi.mock('@git-manager/ui', () => ({
+  toast: {
+    success: (...a: unknown[]) => toastSuccess(...a),
+    error: (...a: unknown[]) => toastError(...a),
+  },
+}))
 
 const showCommitNativeContextMenu = vi.fn().mockResolvedValue(undefined)
 const showStashNativeContextMenu = vi.fn().mockResolvedValue(undefined)
@@ -58,7 +66,8 @@ import { useGitGraphActions } from './useGitGraphActions'
 const mocked = gitApi as unknown as Record<string, ReturnType<typeof vi.fn>>
 const mockedAddWorktree = apiAddWorktree as unknown as ReturnType<typeof vi.fn>
 
-const t = (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key)
+const t = (key: string, opts?: Record<string, unknown>) =>
+  opts ? `${key}:${JSON.stringify(opts)}` : key
 const REPO = '/repo'
 
 function commitNode(oid: string, overrides: Partial<GitGraphNode> = {}): GitGraphNode {
@@ -142,7 +151,9 @@ describe('useGitGraphActions — simple commit actions', () => {
   it('handleCommitWip stages everything first when nothing is staged yet', async () => {
     mocked.apiStageAll.mockResolvedValue(undefined)
     mocked.apiCreateCommit.mockResolvedValue({ oid: 'new' })
-    const { result } = renderHook(() => useGitGraphActions(baseParams({ status: status({ staged: [] }) })))
+    const { result } = renderHook(() =>
+      useGitGraphActions(baseParams({ status: status({ staged: [] }) }))
+    )
     await act(async () => result.current.handleCommitWip('Add feature'))
 
     expect(mocked.apiStageAll).toHaveBeenCalledWith(REPO)
@@ -186,12 +197,16 @@ describe('useGitGraphActions — openMenuAt: stash rows', () => {
   it('opens the stash menu with the parsed index and isHidden flag', async () => {
     const selectSingle = vi.fn()
     const { result } = renderHook(() =>
-      useGitGraphActions(baseParams({ nodes: [stashNode], selectSingle, hiddenStashes: ['stash-1'] }))
+      useGitGraphActions(
+        baseParams({ nodes: [stashNode], selectSingle, hiddenStashes: ['stash-1'] })
+      )
     )
     await act(async () => result.current.openMenuAt(clickEvent(), 'stash-1'))
 
     expect(selectSingle).toHaveBeenCalledWith('stash-1')
-    expect(showStashNativeContextMenu).toHaveBeenCalledWith(expect.objectContaining({ isHidden: true }))
+    expect(showStashNativeContextMenu).toHaveBeenCalledWith(
+      expect.objectContaining({ isHidden: true })
+    )
   })
 
   it('onApply applies the stash and refreshes', async () => {
@@ -226,7 +241,9 @@ describe('useGitGraphActions — openMenuAt: stash rows', () => {
 
   it('onEditMessage selects the row and opens the rename field via repoUI.store (real interop)', async () => {
     const selectSingle = vi.fn()
-    const { result } = renderHook(() => useGitGraphActions(baseParams({ nodes: [stashNode], selectSingle })))
+    const { result } = renderHook(() =>
+      useGitGraphActions(baseParams({ nodes: [stashNode], selectSingle }))
+    )
     await act(async () => result.current.openMenuAt(clickEvent(), 'stash-1'))
     const opts = showStashNativeContextMenu.mock.calls[0][0]
     act(() => opts.onEditMessage())
@@ -237,7 +254,9 @@ describe('useGitGraphActions — openMenuAt: stash rows', () => {
 
   it('onToggleVisibility calls toggleStashVisibility with the repo path and oid', async () => {
     const toggleStashVisibility = vi.fn()
-    const { result } = renderHook(() => useGitGraphActions(baseParams({ nodes: [stashNode], toggleStashVisibility })))
+    const { result } = renderHook(() =>
+      useGitGraphActions(baseParams({ nodes: [stashNode], toggleStashVisibility }))
+    )
     await act(async () => result.current.openMenuAt(clickEvent(), 'stash-1'))
     const opts = showStashNativeContextMenu.mock.calls[0][0]
     act(() => opts.onToggleVisibility())
@@ -258,21 +277,29 @@ describe('useGitGraphActions — openMenuAt: regular commit rows', () => {
   it('selects the single clicked commit as target when it was not already selected', async () => {
     const selectSingle = vi.fn()
     mocked.apiIsCommitOnCurrentBranch.mockResolvedValue(true)
-    const { result } = renderHook(() => useGitGraphActions(baseParams({ selectSingle, selected: new Set() })))
+    const { result } = renderHook(() =>
+      useGitGraphActions(baseParams({ selectSingle, selected: new Set() }))
+    )
     await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
     expect(selectSingle).toHaveBeenCalledWith('a')
-    expect(showCommitNativeContextMenu).toHaveBeenCalledWith(expect.objectContaining({ isSingle: true, targetCount: 1 }))
+    expect(showCommitNativeContextMenu).toHaveBeenCalledWith(
+      expect.objectContaining({ isSingle: true, targetCount: 1 })
+    )
   })
 
   it('uses the full multi-selection as targets when the clicked oid is already selected', async () => {
     const setPrimaryOid = vi.fn()
     mocked.apiIsCommitOnCurrentBranch.mockResolvedValue(true)
     const { result } = renderHook(() =>
-      useGitGraphActions(baseParams({ selected: new Set(['a', 'b']), setPrimaryOid, primaryOid: 'a' }))
+      useGitGraphActions(
+        baseParams({ selected: new Set(['a', 'b']), setPrimaryOid, primaryOid: 'a' })
+      )
     )
     await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
     expect(setPrimaryOid).toHaveBeenCalledWith('a')
-    expect(showCommitNativeContextMenu).toHaveBeenCalledWith(expect.objectContaining({ isSingle: false, targetCount: 2 }))
+    expect(showCommitNativeContextMenu).toHaveBeenCalledWith(
+      expect.objectContaining({ isSingle: false, targetCount: 2 })
+    )
   })
 
   it('enables fixup only for a single, non-rebase-paused commit with working changes that is on the current branch', async () => {
@@ -281,23 +308,34 @@ describe('useGitGraphActions — openMenuAt: regular commit rows', () => {
       useGitGraphActions(baseParams({ status: status({ unstaged: [{ path: 'a.ts' } as never] }) }))
     )
     await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
-    expect(showCommitNativeContextMenu).toHaveBeenCalledWith(expect.objectContaining({ fixupEnabled: true }))
+    expect(showCommitNativeContextMenu).toHaveBeenCalledWith(
+      expect.objectContaining({ fixupEnabled: true })
+    )
   })
 
   it('disables fixup when a rebase is paused', async () => {
     mocked.apiIsCommitOnCurrentBranch.mockResolvedValue(true)
     const { result } = renderHook(() =>
-      useGitGraphActions(baseParams({ status: status({ unstaged: [{ path: 'a.ts' } as never] }), isRebasePaused: true }))
+      useGitGraphActions(
+        baseParams({
+          status: status({ unstaged: [{ path: 'a.ts' } as never] }),
+          isRebasePaused: true,
+        })
+      )
     )
     await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
-    expect(showCommitNativeContextMenu).toHaveBeenCalledWith(expect.objectContaining({ fixupEnabled: false }))
+    expect(showCommitNativeContextMenu).toHaveBeenCalledWith(
+      expect.objectContaining({ fixupEnabled: false })
+    )
   })
 
   it('disables fixup when there are no working-tree changes', async () => {
     mocked.apiIsCommitOnCurrentBranch.mockResolvedValue(true)
     const { result } = renderHook(() => useGitGraphActions(baseParams({ status: status() })))
     await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
-    expect(showCommitNativeContextMenu).toHaveBeenCalledWith(expect.objectContaining({ fixupEnabled: false }))
+    expect(showCommitNativeContextMenu).toHaveBeenCalledWith(
+      expect.objectContaining({ fixupEnabled: false })
+    )
   })
 
   it('enables undoCommit only for the tip (index 0) commit with a parent', async () => {
@@ -306,7 +344,9 @@ describe('useGitGraphActions — openMenuAt: regular commit rows', () => {
     const parent = commitNode('parent-1')
     const { result } = renderHook(() => useGitGraphActions(baseParams({ nodes: [tip, parent] })))
     await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
-    expect(showCommitNativeContextMenu).toHaveBeenCalledWith(expect.objectContaining({ undoCommitEnabled: true }))
+    expect(showCommitNativeContextMenu).toHaveBeenCalledWith(
+      expect.objectContaining({ undoCommitEnabled: true })
+    )
   })
 
   it('disables undoCommit for a commit that is not the tip', async () => {
@@ -315,7 +355,9 @@ describe('useGitGraphActions — openMenuAt: regular commit rows', () => {
     const notTip = commitNode('b', { commit: { ...commitNode('b').commit, parentOids: ['a'] } })
     const { result } = renderHook(() => useGitGraphActions(baseParams({ nodes: [tip, notTip] })))
     await act(async () => result.current.openMenuAt(clickEvent(), 'b'))
-    expect(showCommitNativeContextMenu).toHaveBeenCalledWith(expect.objectContaining({ undoCommitEnabled: false }))
+    expect(showCommitNativeContextMenu).toHaveBeenCalledWith(
+      expect.objectContaining({ undoCommitEnabled: false })
+    )
   })
 
   it('onCreateBranch sets a pending "branch" action', async () => {
@@ -339,12 +381,19 @@ describe('useGitGraphActions — openMenuAt: regular commit rows', () => {
   it('onUndoCommit sets a pending reset to the parent commit', async () => {
     mocked.apiIsCommitOnCurrentBranch.mockResolvedValue(true)
     const tip = commitNode('a', { commit: { ...commitNode('a').commit, parentOids: ['parent-1'] } })
-    const parent = commitNode('parent-1', { commit: { ...commitNode('parent-1').commit, subject: 'parent subject' } })
+    const parent = commitNode('parent-1', {
+      commit: { ...commitNode('parent-1').commit, subject: 'parent subject' },
+    })
     const { result } = renderHook(() => useGitGraphActions(baseParams({ nodes: [tip, parent] })))
     await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
     const opts = showCommitNativeContextMenu.mock.calls[0][0]
     act(() => opts.onUndoCommit())
-    expect(result.current.pendingAction).toEqual({ kind: 'reset', mode: 'mixed', targetOid: 'parent-1', targetSubject: 'parent subject' })
+    expect(result.current.pendingAction).toEqual({
+      kind: 'reset',
+      mode: 'mixed',
+      targetOid: 'parent-1',
+      targetSubject: 'parent subject',
+    })
   })
 
   it('onRevert/onCompareToWorkdir/onCreateTag/onCreateAnnotatedTag set the matching pending action', async () => {
@@ -448,7 +497,9 @@ describe('useGitGraphActions — copy web link', () => {
     await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
     const opts = showCommitNativeContextMenu.mock.calls[0][0]
     await act(async () => opts.onCopyLink())
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://github.com/org/repo/commit/a')
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      'https://github.com/org/repo/commit/a'
+    )
     expect(toastSuccess).toHaveBeenCalledWith('gitTree.contextMenu.linkCopied')
   })
 })

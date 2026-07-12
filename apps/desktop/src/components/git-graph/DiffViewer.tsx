@@ -25,22 +25,19 @@ const STATUS_VARIANTS: Record<string, 'success' | 'destructive' | 'secondary' | 
 }
 
 export function DiffViewer({ file }: DiffViewerProps) {
-  const displayPath = file.status === 'renamed'
-    ? `${file.oldPath} → ${file.newPath}`
-    : file.newPath
+  const displayPath = file.status === 'renamed' ? `${file.oldPath} → ${file.newPath}` : file.newPath
 
   return (
-    <div className="rounded-md border border-border overflow-hidden text-xs font-mono">
+    <div className="overflow-hidden rounded-md border border-border font-mono text-xs">
       {/* Header fichier */}
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 border-b border-border">
+      <div className="flex items-center gap-2 border-b border-border bg-muted/50 px-3 py-1.5">
         <span className="flex-1 truncate text-foreground">{displayPath}</span>
         <Badge variant={STATUS_VARIANTS[file.status] ?? 'secondary'}>
           {STATUS_LABELS[file.status] ?? file.status}
         </Badge>
         {!file.isBinary && (
-          <span className="text-muted-foreground whitespace-nowrap">
-            <span className="text-green-400">+{file.additions}</span>
-            {' '}
+          <span className="whitespace-nowrap text-muted-foreground">
+            <span className="text-green-400">+{file.additions}</span>{' '}
             <span className="text-red-400">-{file.deletions}</span>
           </span>
         )}
@@ -48,13 +45,13 @@ export function DiffViewer({ file }: DiffViewerProps) {
 
       {/* Contenu diff */}
       {file.isBinary ? (
-        <div className="px-3 py-2 text-muted-foreground italic">Binary file</div>
+        <div className="px-3 py-2 italic text-muted-foreground">Binary file</div>
       ) : (
         <div className="overflow-x-auto">
           {file.hunks.map((hunk, hi) => (
             <div key={hi}>
               {/* En-tête du hunk */}
-              <div className="px-2 py-0.5 bg-blue-500/10 text-blue-400/80 text-[11px]">
+              <div className="bg-blue-500/10 px-2 py-0.5 text-[11px] text-blue-400/80">
                 {hunk.header}
               </div>
               {/* Lignes du hunk */}
@@ -62,25 +59,25 @@ export function DiffViewer({ file }: DiffViewerProps) {
                 <div
                   key={li}
                   className={cn(
-                    'flex items-start leading-5 px-0',
+                    'flex items-start px-0 leading-5',
                     line.origin === '+' && 'bg-green-500/10',
-                    line.origin === '-' && 'bg-red-500/10',
+                    line.origin === '-' && 'bg-red-500/10'
                   )}
                 >
                   {/* Numéros de lignes */}
-                  <span className="w-10 shrink-0 text-right pr-2 text-muted-foreground/50 select-none border-r border-border">
+                  <span className="w-10 shrink-0 select-none border-r border-border pr-2 text-right text-muted-foreground/50">
                     {line.oldLineno ?? ''}
                   </span>
-                  <span className="w-10 shrink-0 text-right pr-2 text-muted-foreground/50 select-none border-r border-border">
+                  <span className="w-10 shrink-0 select-none border-r border-border pr-2 text-right text-muted-foreground/50">
                     {line.newLineno ?? ''}
                   </span>
                   {/* Origine (+/-/espace) */}
                   <span
                     className={cn(
-                      'w-5 shrink-0 text-center select-none',
+                      'w-5 shrink-0 select-none text-center',
                       line.origin === '+' && 'text-green-400',
                       line.origin === '-' && 'text-red-400',
-                      line.origin === ' ' && 'text-muted-foreground/40',
+                      line.origin === ' ' && 'text-muted-foreground/40'
                     )}
                   >
                     {line.origin === ' ' ? '' : line.origin}
@@ -91,7 +88,7 @@ export function DiffViewer({ file }: DiffViewerProps) {
                       'flex-1 whitespace-pre pl-1',
                       line.origin === '+' && 'text-green-300',
                       line.origin === '-' && 'text-red-300',
-                      line.origin === ' ' && 'text-foreground/70',
+                      line.origin === ' ' && 'text-foreground/70'
                     )}
                   >
                     {line.content}

@@ -116,9 +116,7 @@ export function HoverExpandLabel({
               lineHeight: overlay.lineHeight,
             }}
           >
-            <span
-              className="flex h-full items-center whitespace-nowrap bg-accent/60 pr-2"
-            >
+            <span className="flex h-full items-center whitespace-nowrap bg-accent/60 pr-2">
               {children}
             </span>
           </span>,

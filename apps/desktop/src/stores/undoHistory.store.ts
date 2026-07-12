@@ -1,7 +1,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { apiUnpinObject, apiObjectsExist } from '../api/undoSupport.api'
-import { executeUndo, executeRedo, collectActionOids, type UndoAction, type UndoLabel } from '../lib/undoActions'
+import {
+  executeUndo,
+  executeRedo,
+  collectActionOids,
+  type UndoAction,
+  type UndoLabel,
+} from '../lib/undoActions'
 
 export type { UndoAction, UndoLabel }
 
@@ -96,7 +102,10 @@ export const useUndoHistoryStore = create<UndoHistoryState>()(
           return {
             byRepo: {
               ...state.byRepo,
-              [repoPath]: { stack: current.stack.slice(0, current.pointer), pointer: current.pointer },
+              [repoPath]: {
+                stack: current.stack.slice(0, current.pointer),
+                pointer: current.pointer,
+              },
             },
           }
         }),
@@ -161,12 +170,14 @@ export const useUndoHistoryStore = create<UndoHistoryState>()(
           if (!h) return state
           const newStack = keptIndices.map((i) => h.stack[i])
           const newPointer = keptIndices.filter((i) => i < pointerBefore).length
-          return { byRepo: { ...state.byRepo, [repoPath]: { stack: newStack, pointer: newPointer } } }
+          return {
+            byRepo: { ...state.byRepo, [repoPath]: { stack: newStack, pointer: newPointer } },
+          }
         })
       },
     }),
     {
       name: 'git-manager-undo-history',
-    },
-  ),
+    }
+  )
 )

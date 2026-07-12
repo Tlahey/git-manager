@@ -78,8 +78,14 @@ export function FollowedPRsTab({
   }, [])
 
   const repos = useMemo(() => [...new Set(followedPRs.map((p) => p.repo))].sort(), [followedPRs])
-  const statuses = useMemo(() => [...new Set(followedPRs.map((p) => p.status))].sort(), [followedPRs])
-  const authors = useMemo(() => [...new Set(followedPRs.map((p) => p.author))].sort(), [followedPRs])
+  const statuses = useMemo(
+    () => [...new Set(followedPRs.map((p) => p.status))].sort(),
+    [followedPRs]
+  )
+  const authors = useMemo(
+    () => [...new Set(followedPRs.map((p) => p.author))].sort(),
+    [followedPRs]
+  )
 
   const filtered = useMemo(() => {
     return followedPRs.filter((pr) => {
@@ -102,7 +108,7 @@ export function FollowedPRsTab({
   const sortedPRs = usePRSort(filtered, sortKey, sortDir)
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       <Toolbar
         search={search}
         onSearch={setSearch}
@@ -124,7 +130,7 @@ export function FollowedPRsTab({
       >
         <button
           onClick={() => setShowFollowDialog(true)}
-          className="flex items-center gap-1.5 h-7 px-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/95 text-xs font-semibold shadow-sm transition-all duration-200"
+          className="flex h-7 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:bg-primary/95"
         >
           <Plus className="h-3.5 w-3.5" /> Follow PR
         </button>
@@ -140,37 +146,37 @@ export function FollowedPRsTab({
             <PRRowSkeleton />
           </>
         ) : followedPRs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center border border-primary/10 mb-4">
+          <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/10 bg-primary/5">
               <BookOpen className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="text-sm font-semibold text-foreground mb-1">No followed PRs yet</h3>
-            <p className="text-xs text-muted-foreground max-w-[280px] mb-4">
+            <h3 className="mb-1 text-sm font-semibold text-foreground">No followed PRs yet</h3>
+            <p className="mb-4 max-w-[280px] text-xs text-muted-foreground">
               Keep an eye on specific external pull requests by adding their GitHub URLs.
             </p>
             <button
               onClick={() => setShowFollowDialog(true)}
-              className="flex items-center gap-1.5 h-8 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium shadow transition-colors"
+              className="flex h-8 items-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
             >
               <Plus className="h-3.5 w-3.5" /> Add PR by URL
             </button>
           </div>
         ) : sortedPRs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/50">
-            <GitPullRequest className="h-6 w-6 opacity-30 mb-2" />
+            <GitPullRequest className="mb-2 h-6 w-6 opacity-30" />
             <p className="text-xs">No PRs match your search or filters.</p>
           </div>
         ) : (
           <>
             {sortedPRs.slice(0, shown).map((pr) => (
-              <div key={pr.id} className="relative group/followed">
+              <div key={pr.id} className="group/followed relative">
                 <PRRow pr={pr} pinned={pinnedIds.has(pr.id)} onTogglePin={onTogglePin} />
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
                     onRemoveFollowed(pr.id)
                   }}
-                  className="absolute right-10 top-1/2 -translate-y-1/2 opacity-0 group-hover/followed:opacity-100 h-6 w-6 flex items-center justify-center rounded-md bg-card/85 backdrop-blur-sm border border-border text-muted-foreground hover:text-destructive hover:border-destructive/20 shadow-sm transition-all duration-150"
+                  className="absolute right-10 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md border border-border bg-card/85 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-all duration-150 hover:border-destructive/20 hover:text-destructive group-hover/followed:opacity-100"
                   title="Unfollow PR"
                 >
                   <Trash2 className="h-3.5 w-3.5" />

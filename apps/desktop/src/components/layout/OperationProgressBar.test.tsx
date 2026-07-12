@@ -18,7 +18,9 @@ describe('OperationProgressBar', () => {
   it('shows the shimmer when an operation is running', () => {
     useOperationProgressStore.setState({ running: { '/repo': 'rebase' } })
     render(<OperationProgressBar />)
-    expect(screen.getByTestId('operation-progress-bar').querySelector('.animate-shimmer')).not.toBeNull()
+    expect(
+      screen.getByTestId('operation-progress-bar').querySelector('.animate-shimmer')
+    ).not.toBeNull()
   })
 
   it('hides the shimmer again once the operation clears', () => {
@@ -26,6 +28,8 @@ describe('OperationProgressBar', () => {
     const { rerender } = render(<OperationProgressBar />)
     useOperationProgressStore.setState({ running: {} })
     rerender(<OperationProgressBar />)
-    expect(screen.getByTestId('operation-progress-bar').querySelector('.animate-shimmer')).toBeNull()
+    expect(
+      screen.getByTestId('operation-progress-bar').querySelector('.animate-shimmer')
+    ).toBeNull()
   })
 })

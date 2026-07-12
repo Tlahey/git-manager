@@ -64,10 +64,7 @@ export function RepoView() {
 
   return (
     <div data-testid="repo-view" className="flex h-full flex-col">
-      <ActionToolbar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-      />
+      <ActionToolbar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
       <PendingFixupsBanner repoPath={activeRepo} />
 
@@ -97,5 +94,3 @@ export function RepoView() {
     </div>
   )
 }
-
-

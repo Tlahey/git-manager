@@ -1,6 +1,10 @@
 import { useState, useMemo } from 'react'
 import { Search, X, GitPullRequest, AlertCircle, Plus, Layers, Pencil, Trash2 } from 'lucide-react'
-import { useLaunchpadStore, type SavedFilter, type FilterStatus } from '../../../stores/launchpad.store'
+import {
+  useLaunchpadStore,
+  type SavedFilter,
+  type FilterStatus,
+} from '../../../stores/launchpad.store'
 import type { MockPR, MockIssue } from '../types'
 import { TableHeader, LoadMore } from './ListHelpers'
 import { PRRowSkeleton, IssueRowSkeleton } from './RowSkeletons'
@@ -11,20 +15,33 @@ import { FilterEditorDialog } from './FilterEditorDialog'
 const PAGE_SIZE = 20
 
 function matchesPR(pr: MockPR, f: SavedFilter): boolean {
-  if (f.titleContains && !pr.title.toLowerCase().includes(f.titleContains.toLowerCase())) return false
-  if (f.authorContains && !pr.author.toLowerCase().includes(f.authorContains.toLowerCase())) return false
+  if (f.titleContains && !pr.title.toLowerCase().includes(f.titleContains.toLowerCase()))
+    return false
+  if (f.authorContains && !pr.author.toLowerCase().includes(f.authorContains.toLowerCase()))
+    return false
   if (f.repo && pr.repo !== f.repo) return false
-  if (f.labelContains && !pr.labels.some((l) => l.toLowerCase().includes(f.labelContains!.toLowerCase()))) return false
-  if (f.statuses && f.statuses.length > 0 && !f.statuses.includes(pr.status as FilterStatus)) return false
+  if (
+    f.labelContains &&
+    !pr.labels.some((l) => l.toLowerCase().includes(f.labelContains!.toLowerCase()))
+  )
+    return false
+  if (f.statuses && f.statuses.length > 0 && !f.statuses.includes(pr.status as FilterStatus))
+    return false
   if (f.needsMyReview === true && !pr.needsMyReview) return false
   return true
 }
 
 function matchesIssue(issue: MockIssue, f: SavedFilter): boolean {
-  if (f.titleContains && !issue.title.toLowerCase().includes(f.titleContains.toLowerCase())) return false
-  if (f.authorContains && !issue.author.toLowerCase().includes(f.authorContains.toLowerCase())) return false
+  if (f.titleContains && !issue.title.toLowerCase().includes(f.titleContains.toLowerCase()))
+    return false
+  if (f.authorContains && !issue.author.toLowerCase().includes(f.authorContains.toLowerCase()))
+    return false
   if (f.repo && issue.repo !== f.repo) return false
-  if (f.labelContains && !issue.labels.some((l) => l.toLowerCase().includes(f.labelContains!.toLowerCase()))) return false
+  if (
+    f.labelContains &&
+    !issue.labels.some((l) => l.toLowerCase().includes(f.labelContains!.toLowerCase()))
+  )
+    return false
   return true
 }
 
@@ -68,17 +85,17 @@ function CustomViewResults({
   const total = matchedPRs.length + matchedIssues.length
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       {/* Search */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-muted/5 shrink-0">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/5 px-4 py-2">
         <div className="relative max-w-xs flex-1">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search within this view…"
-            className="w-full pl-7 pr-6 h-7 rounded-md border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+            className="h-7 w-full rounded-md border border-border bg-card pl-7 pr-6 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
           />
           {search && (
             <button
@@ -100,7 +117,7 @@ function CustomViewResults({
             {filter.type !== 'issues' && (
               <>
                 {filter.type === 'both' && (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-muted/15 border-b border-border/50 shrink-0">
+                  <div className="flex shrink-0 items-center gap-2 border-b border-border/50 bg-muted/15 px-4 py-2">
                     <GitPullRequest className="h-3 w-3 text-green-400" />
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Pull Requests
@@ -115,22 +132,22 @@ function CustomViewResults({
             {filter.type !== 'prs' && (
               <>
                 {filter.type === 'both' && (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-muted/15 border-b border-border/50 shrink-0 mt-4">
+                  <div className="mt-4 flex shrink-0 items-center gap-2 border-b border-border/50 bg-muted/15 px-4 py-2">
                     <AlertCircle className="h-3 w-3 text-blue-400" />
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Issues
                     </span>
                   </div>
                 )}
-                <div className="flex items-center gap-3 px-4 py-1.5 bg-muted/10 border-b border-border text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60 shrink-0">
+                <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
                   <div className="w-4 shrink-0" />
-                  <div className="flex-1 min-w-0">Item</div>
-                  <div className="shrink-0 w-[52px] text-right">Updated</div>
-                  <div className="shrink-0 w-[70px] text-center">Status</div>
-                  <div className="shrink-0 w-[90px]">Author</div>
-                  <div className="shrink-0 w-[60px] text-center">Assigned</div>
-                  <div className="shrink-0 w-[110px]">Repo</div>
-                  <div className="shrink-0 w-6" />
+                  <div className="min-w-0 flex-1">Item</div>
+                  <div className="w-[52px] shrink-0 text-right">Updated</div>
+                  <div className="w-[70px] shrink-0 text-center">Status</div>
+                  <div className="w-[90px] shrink-0">Author</div>
+                  <div className="w-[60px] shrink-0 text-center">Assigned</div>
+                  <div className="w-[110px] shrink-0">Repo</div>
+                  <div className="w-6 shrink-0" />
                 </div>
                 <IssueRowSkeleton />
                 <IssueRowSkeleton />
@@ -138,7 +155,7 @@ function CustomViewResults({
             )}
           </>
         ) : total === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground/50">
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground/50">
             <span className="text-3xl">{filter.emoji}</span>
             <p className="text-xs">No results match this filter</p>
           </div>
@@ -147,22 +164,25 @@ function CustomViewResults({
             {matchedPRs.length > 0 && (
               <>
                 {filter.type === 'both' && (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-muted/15 border-b border-border/50 shrink-0">
+                  <div className="flex shrink-0 items-center gap-2 border-b border-border/50 bg-muted/15 px-4 py-2">
                     <GitPullRequest className="h-3 w-3 text-green-400" />
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Pull Requests
                     </span>
-                    <span className="rounded-full px-1.5 py-px text-[9px] font-bold leading-none bg-muted text-muted-foreground">
+                    <span className="rounded-full bg-muted px-1.5 py-px text-[9px] font-bold leading-none text-muted-foreground">
                       {matchedPRs.length}
                     </span>
                   </div>
                 )}
                 <TableHeader />
-                {matchedPRs
-                  .slice(0, shownPRs)
-                  .map((pr) => (
-                    <PRRow key={pr.id} pr={pr} pinned={pinnedIds.has(pr.id)} onTogglePin={onTogglePin} />
-                  ))}
+                {matchedPRs.slice(0, shownPRs).map((pr) => (
+                  <PRRow
+                    key={pr.id}
+                    pr={pr}
+                    pinned={pinnedIds.has(pr.id)}
+                    onTogglePin={onTogglePin}
+                  />
+                ))}
                 <LoadMore
                   total={matchedPRs.length}
                   shown={shownPRs}
@@ -174,31 +194,29 @@ function CustomViewResults({
             {matchedIssues.length > 0 && (
               <>
                 {filter.type === 'both' && (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-muted/15 border-b border-border/50 shrink-0">
+                  <div className="flex shrink-0 items-center gap-2 border-b border-border/50 bg-muted/15 px-4 py-2">
                     <AlertCircle className="h-3 w-3 text-blue-400" />
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Issues
                     </span>
-                    <span className="rounded-full px-1.5 py-px text-[9px] font-bold leading-none bg-muted text-muted-foreground">
+                    <span className="rounded-full bg-muted px-1.5 py-px text-[9px] font-bold leading-none text-muted-foreground">
                       {matchedIssues.length}
                     </span>
                   </div>
                 )}
-                <div className="flex items-center gap-3 px-4 py-1.5 bg-muted/10 border-b border-border text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60 shrink-0">
+                <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
                   <div className="w-4 shrink-0" />
-                  <div className="flex-1 min-w-0">Item</div>
-                  <div className="shrink-0 w-[52px] text-right">Updated</div>
-                  <div className="shrink-0 w-[70px] text-center">Status</div>
-                  <div className="shrink-0 w-[90px]">Author</div>
-                  <div className="shrink-0 w-[60px] text-center">Assigned</div>
-                  <div className="shrink-0 w-[110px]">Repo</div>
-                  <div className="shrink-0 w-6" />
+                  <div className="min-w-0 flex-1">Item</div>
+                  <div className="w-[52px] shrink-0 text-right">Updated</div>
+                  <div className="w-[70px] shrink-0 text-center">Status</div>
+                  <div className="w-[90px] shrink-0">Author</div>
+                  <div className="w-[60px] shrink-0 text-center">Assigned</div>
+                  <div className="w-[110px] shrink-0">Repo</div>
+                  <div className="w-6 shrink-0" />
                 </div>
-                {matchedIssues
-                  .slice(0, shownIssues)
-                  .map((issue) => (
-                    <IssueRow key={issue.id} issue={issue} />
-                  ))}
+                {matchedIssues.slice(0, shownIssues).map((issue) => (
+                  <IssueRow key={issue.id} issue={issue} />
+                ))}
                 <LoadMore
                   total={matchedIssues.length}
                   shown={shownIssues}
@@ -221,7 +239,13 @@ interface CustomViewsTabProps {
   loading: boolean
 }
 
-export function CustomViewsTab({ allPRs, allIssues, pinnedIds, onTogglePin, loading }: CustomViewsTabProps) {
+export function CustomViewsTab({
+  allPRs,
+  allIssues,
+  pinnedIds,
+  onTogglePin,
+  loading,
+}: CustomViewsTabProps) {
   const { savedFilters, addFilter, updateFilter, deleteFilter } = useLaunchpadStore()
   const [activeFilterId, setActiveFilterId] = useState<string | null>(savedFilters[0]?.id ?? null)
   const [showEditor, setShowEditor] = useState(false)
@@ -247,22 +271,25 @@ export function CustomViewsTab({ allPRs, allIssues, pinnedIds, onTogglePin, load
   // Count matching items per filter
   function countForFilter(f: SavedFilter): number {
     const prCount = f.type === 'issues' ? 0 : allPRs.filter((pr) => matchesPR(pr, f)).length
-    const issueCount = f.type === 'prs' ? 0 : allIssues.filter((issue) => matchesIssue(issue, f)).length
+    const issueCount =
+      f.type === 'prs' ? 0 : allIssues.filter((issue) => matchesIssue(issue, f)).length
     return prCount + issueCount
   }
 
   return (
     <div className="flex h-full overflow-hidden">
       {/* Left sidebar — filter list */}
-      <div className="w-52 shrink-0 flex flex-col border-r border-border bg-muted/5">
-        <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Saved filters</span>
+      <div className="flex w-52 shrink-0 flex-col border-r border-border bg-muted/5">
+        <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Saved filters
+          </span>
           <button
             onClick={() => {
               setEditingFilter(null)
               setShowEditor(true)
             }}
-            className="h-5 w-5 flex items-center justify-center rounded hover:bg-accent text-muted-foreground hover:text-primary transition-colors"
+            className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
             title="New filter"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -271,9 +298,9 @@ export function CustomViewsTab({ allPRs, allIssues, pinnedIds, onTogglePin, load
 
         <div className="flex-1 overflow-y-auto py-1">
           {savedFilters.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground/50 px-3">
+            <div className="flex flex-col items-center justify-center gap-2 px-3 py-8 text-muted-foreground/50">
               <Layers className="h-5 w-5 opacity-30" />
-              <p className="text-[10px] text-center">
+              <p className="text-center text-[10px]">
                 No filters yet.
                 <br />
                 Click + to create one.
@@ -286,28 +313,30 @@ export function CustomViewsTab({ allPRs, allIssues, pinnedIds, onTogglePin, load
             return (
               <div
                 key={f.id}
-                className={`group/filter relative flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors ${
-                  isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
+                className={`group/filter relative flex cursor-pointer items-center gap-2 px-3 py-2 transition-colors ${
+                  isActive
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
                 }`}
                 onClick={() => setActiveFilterId(f.id)}
               >
-                <span className="text-sm shrink-0">{f.emoji}</span>
-                <span className="text-xs font-medium truncate flex-1">{f.name}</span>
+                <span className="shrink-0 text-sm">{f.emoji}</span>
+                <span className="flex-1 truncate text-xs font-medium">{f.name}</span>
                 <span
-                  className={`rounded-full px-1.5 py-px text-[9px] font-bold leading-none shrink-0 ${
+                  className={`shrink-0 rounded-full px-1.5 py-px text-[9px] font-bold leading-none ${
                     isActive ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
                   }`}
                 >
                   {count}
                 </span>
-                <div className="absolute right-1 hidden group-hover/filter:flex items-center gap-0.5">
+                <div className="absolute right-1 hidden items-center gap-0.5 group-hover/filter:flex">
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
                       setEditingFilter(f)
                       setShowEditor(true)
                     }}
-                    className="h-5 w-5 flex items-center justify-center rounded hover:bg-accent text-muted-foreground hover:text-foreground"
+                    className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
                     title="Edit"
                   >
                     <Pencil className="h-2.5 w-2.5" />
@@ -318,7 +347,7 @@ export function CustomViewsTab({ allPRs, allIssues, pinnedIds, onTogglePin, load
                         e.stopPropagation()
                         handleDelete(f.id)
                       }}
-                      className="h-5 px-1 flex items-center justify-center rounded bg-destructive/10 text-destructive text-[9px] font-medium"
+                      className="flex h-5 items-center justify-center rounded bg-destructive/10 px-1 text-[9px] font-medium text-destructive"
                     >
                       Confirm
                     </button>
@@ -328,7 +357,7 @@ export function CustomViewsTab({ allPRs, allIssues, pinnedIds, onTogglePin, load
                         e.stopPropagation()
                         setConfirmDeleteId(f.id)
                       }}
-                      className="h-5 w-5 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                      className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                       title="Delete"
                     >
                       <Trash2 className="h-2.5 w-2.5" />
@@ -342,16 +371,20 @@ export function CustomViewsTab({ allPRs, allIssues, pinnedIds, onTogglePin, load
 
         {/* Filter description */}
         {activeFilter && (
-          <div className="border-t border-border px-3 py-3 space-y-1.5">
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">Criteria</p>
+          <div className="space-y-1.5 border-t border-border px-3 py-3">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+              Criteria
+            </p>
             {activeFilter.titleContains && (
               <p className="text-[10px] text-muted-foreground">
-                <span className="font-medium text-foreground/70">Title:</span> &quot;{activeFilter.titleContains}&quot;
+                <span className="font-medium text-foreground/70">Title:</span> &quot;
+                {activeFilter.titleContains}&quot;
               </p>
             )}
             {activeFilter.authorContains && (
               <p className="text-[10px] text-muted-foreground">
-                <span className="font-medium text-foreground/70">Author:</span> {activeFilter.authorContains}
+                <span className="font-medium text-foreground/70">Author:</span>{' '}
+                {activeFilter.authorContains}
               </p>
             )}
             {activeFilter.repo && (
@@ -361,36 +394,47 @@ export function CustomViewsTab({ allPRs, allIssues, pinnedIds, onTogglePin, load
             )}
             {activeFilter.labelContains && (
               <p className="text-[10px] text-muted-foreground">
-                <span className="font-medium text-foreground/70">Label:</span> {activeFilter.labelContains}
+                <span className="font-medium text-foreground/70">Label:</span>{' '}
+                {activeFilter.labelContains}
               </p>
             )}
             {(activeFilter.statuses?.length ?? 0) > 0 && (
               <p className="text-[10px] text-muted-foreground">
-                <span className="font-medium text-foreground/70">Status:</span> {activeFilter.statuses?.join(', ')}
+                <span className="font-medium text-foreground/70">Status:</span>{' '}
+                {activeFilter.statuses?.join(', ')}
               </p>
             )}
-            {activeFilter.needsMyReview === true && <p className="text-[10px] text-muted-foreground">Needs my review</p>}
+            {activeFilter.needsMyReview === true && (
+              <p className="text-[10px] text-muted-foreground">Needs my review</p>
+            )}
             {!activeFilter.titleContains &&
               !activeFilter.authorContains &&
               !activeFilter.repo &&
               !activeFilter.labelContains &&
               !activeFilter.statuses?.length &&
               activeFilter.needsMyReview === undefined && (
-                <p className="text-[10px] text-muted-foreground/40 italic">No criteria (matches all)</p>
+                <p className="text-[10px] italic text-muted-foreground/40">
+                  No criteria (matches all)
+                </p>
               )}
           </div>
         )}
       </div>
 
       {/* Right content */}
-      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {activeFilter ? (
           <>
-            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-card/30 shrink-0">
+            <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card/30 px-4 py-2.5">
               <span className="text-base">{activeFilter.emoji}</span>
               <span className="text-sm font-semibold text-foreground">{activeFilter.name}</span>
-              <span className="text-[10px] text-muted-foreground/60 capitalize">
-                — {activeFilter.type === 'both' ? 'PRs & Issues' : activeFilter.type === 'prs' ? 'Pull Requests' : 'Issues'}
+              <span className="text-[10px] capitalize text-muted-foreground/60">
+                —{' '}
+                {activeFilter.type === 'both'
+                  ? 'PRs & Issues'
+                  : activeFilter.type === 'prs'
+                    ? 'Pull Requests'
+                    : 'Issues'}
               </span>
             </div>
             <CustomViewResults
@@ -403,18 +447,18 @@ export function CustomViewsTab({ allPRs, allIssues, pinnedIds, onTogglePin, load
             />
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center flex-1 gap-4 text-muted-foreground/50">
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 text-muted-foreground/50">
             <Layers className="h-8 w-8 opacity-20" />
             <div className="text-center">
               <p className="text-sm font-medium">No filter selected</p>
-              <p className="text-xs mt-1">Create a filter to get started</p>
+              <p className="mt-1 text-xs">Create a filter to get started</p>
             </div>
             <button
               onClick={() => {
                 setEditingFilter(null)
                 setShowEditor(true)
               }}
-              className="flex items-center gap-2 h-8 px-4 rounded-lg border border-dashed border-border hover:border-primary/40 hover:bg-primary/5 text-xs text-muted-foreground hover:text-primary transition-colors"
+              className="flex h-8 items-center gap-2 rounded-lg border border-dashed border-border px-4 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
             >
               <Plus className="h-3.5 w-3.5" /> New filter
             </button>

@@ -24,7 +24,7 @@ holding.
   [StepRailRow.tsx](../../../packages/components/src/StepRailRow.tsx) and
   [useFileTree.ts](../../../packages/components/src/useFileTree.ts).
 - `apps/desktop/src/components` and `apps/desktop/src/app/**/components` hold everything that
-  *does* know about domain data, IPC, or business rules.
+  _does_ know about domain data, IPC, or business rules.
 
 ## Deciding if a component belongs in packages/components
 
@@ -36,8 +36,8 @@ Ask, in this order:
    stays in `apps/desktop`.
 2. **Domain-type check** — does an exported prop type name a domain concept (`Commit`, `Branch`,
    `Repo`, `PullRequest`, `StashEntry`, `RebaseStep`...), or does the component branch on domain
-   values (`if (commit.isMerge) ...`)? If the component needs to *understand* the data rather than
-   just *display* what's handed to it, it's app-specific.
+   values (`if (commit.isMerge) ...`)? If the component needs to _understand_ the data rather than
+   just _display_ what's handed to it, it's app-specific.
 3. **Reuse check** — would this pattern make sense reused in an unrelated feature (a dropdown
    pattern used by both the commit list and the branch list, a draggable row rail used by both
    interactive-rebase and fixup planning)? If it's one-off UI for one feature, leave it where it is
@@ -67,7 +67,7 @@ A component or hook in `packages/components` must not:
   dependencies — no imports from `apps/desktop` at all.
 
 All interactivity goes through callback props (`onClick`, `onSelect`, `onDrop`, ...); the component
-never decides what an action *means*, only that it happened.
+never decides what an action _means_, only that it happened.
 
 ## Existing precedent — follow the pattern, including the comment
 

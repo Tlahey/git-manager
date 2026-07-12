@@ -2,7 +2,11 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { apiGetTerminalCommands } from '../api/shell.api'
 import { appEventBus, type AppEvent } from '../lib/appEventBus'
-import { processEvent, unlockAchievementById, type RewardEngineState } from '../lib/rewards/rewardEngine'
+import {
+  processEvent,
+  unlockAchievementById,
+  type RewardEngineState,
+} from '../lib/rewards/rewardEngine'
 import type { AchievementDefinition } from '../lib/rewards/types'
 import JSON_ACHIEVEMENTS from './achievements.json'
 
@@ -38,13 +42,13 @@ export interface GameState {
   resetGameProgress: () => void
 }
 
-const INITIAL_ACHIEVEMENTS: Achievement[] = (JSON_ACHIEVEMENTS as unknown as AchievementDefinition[]).map(
-  (item) => ({
-    ...item,
-    unlocked: false,
-    unlockedAt: undefined,
-  })
-)
+const INITIAL_ACHIEVEMENTS: Achievement[] = (
+  JSON_ACHIEVEMENTS as unknown as AchievementDefinition[]
+).map((item) => ({
+  ...item,
+  unlocked: false,
+  unlockedAt: undefined,
+}))
 
 // ─── Level Math ───────────────────────────────────────────────────────────────
 
@@ -63,15 +67,43 @@ export function getLevelInfo(points: number, isPlatinumUnlocked = false) {
     return { level: 1, name: 'Git Novice', min: 0, max: 50, badge: 'Novice', frameClass: '' }
   }
   if (points < 120) {
-    return { level: 2, name: 'Git Apprenti', min: 50, max: 120, badge: 'Apprenti', frameClass: 'avatar-frame-bronze' }
+    return {
+      level: 2,
+      name: 'Git Apprenti',
+      min: 50,
+      max: 120,
+      badge: 'Apprenti',
+      frameClass: 'avatar-frame-bronze',
+    }
   }
   if (points < 200) {
-    return { level: 3, name: 'Git Praticien', min: 120, max: 200, badge: 'Praticien', frameClass: 'avatar-frame-silver' }
+    return {
+      level: 3,
+      name: 'Git Praticien',
+      min: 120,
+      max: 200,
+      badge: 'Praticien',
+      frameClass: 'avatar-frame-silver',
+    }
   }
   if (points < 300) {
-    return { level: 4, name: 'Git Spécialiste', min: 200, max: 300, badge: 'Spécialiste', frameClass: 'avatar-frame-gold' }
+    return {
+      level: 4,
+      name: 'Git Spécialiste',
+      min: 200,
+      max: 300,
+      badge: 'Spécialiste',
+      frameClass: 'avatar-frame-gold',
+    }
   }
-  return { level: 5, name: 'Git Grand Maître', min: 300, max: 500, badge: 'Grand Maître', frameClass: 'avatar-frame-neon' }
+  return {
+    level: 5,
+    name: 'Git Grand Maître',
+    min: 300,
+    max: 500,
+    badge: 'Grand Maître',
+    frameClass: 'avatar-frame-neon',
+  }
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -127,7 +159,11 @@ export const useGameStore = create<GameState>()(
         // them, so their toast doesn't visually collide with the "normal" unlock that just fired.
         result.pendingComposites.forEach((composite) => {
           setTimeout(() => {
-            const unlockResult = unlockAchievementById(get().achievements, get().points, composite.id)
+            const unlockResult = unlockAchievementById(
+              get().achievements,
+              get().points,
+              composite.id
+            )
             if (!unlockResult) return
             set({
               achievements: unlockResult.achievements,
@@ -168,7 +204,11 @@ export const useGameStore = create<GameState>()(
 
       resetGameProgress: () => {
         set({
-          achievements: INITIAL_ACHIEVEMENTS.map((a: Achievement) => ({ ...a, unlocked: false, unlockedAt: undefined })),
+          achievements: INITIAL_ACHIEVEMENTS.map((a: Achievement) => ({
+            ...a,
+            unlocked: false,
+            unlockedAt: undefined,
+          })),
           points: 0,
           recentUnlock: null,
           historyChecked: [],

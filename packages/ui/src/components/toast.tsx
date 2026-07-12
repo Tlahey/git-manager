@@ -61,17 +61,23 @@ function push(variant: ToastVariant, message: string, options?: ToastOptions) {
   return id
 }
 
-export const toast = Object.assign((message: string, options?: ToastOptions) => push('info', message, options), {
-  success: (message: string, options?: ToastOptions) => push('success', message, options),
-  error: (message: string, options?: ToastOptions) => push('error', message, options),
-  info: (message: string, options?: ToastOptions) => push('info', message, options),
-  warning: (message: string, options?: ToastOptions) => push('warning', message, options),
-  dismiss,
-})
+export const toast = Object.assign(
+  (message: string, options?: ToastOptions) => push('info', message, options),
+  {
+    success: (message: string, options?: ToastOptions) => push('success', message, options),
+    error: (message: string, options?: ToastOptions) => push('error', message, options),
+    info: (message: string, options?: ToastOptions) => push('info', message, options),
+    warning: (message: string, options?: ToastOptions) => push('warning', message, options),
+    dismiss,
+  }
+)
 
 // ── UI ───────────────────────────────────────────────────────────────────────
 
-const VARIANT_STYLES: Record<ToastVariant, { icon: React.ElementType; border: string; icon_: string }> = {
+const VARIANT_STYLES: Record<
+  ToastVariant,
+  { icon: React.ElementType; border: string; icon_: string }
+> = {
   success: { icon: CheckCircle2, border: 'border-l-success', icon_: 'text-success' },
   error: { icon: XCircle, border: 'border-l-destructive', icon_: 'text-destructive' },
   warning: { icon: AlertTriangle, border: 'border-l-amber-500', icon_: 'text-amber-500' },
@@ -93,22 +99,24 @@ function ToastCard({ item }: { item: ToastItem }) {
     <div
       role="status"
       className={cn(
-        'pointer-events-auto flex w-80 max-w-[calc(100vw-2rem)] items-start gap-2.5 rounded-lg border border-l-4 border-border bg-popover/95 p-3 shadow-xl backdrop-blur-md transition-all duration-200 ease-out',
+        'border-border bg-popover/95 pointer-events-auto flex w-80 max-w-[calc(100vw-2rem)] items-start gap-2.5 rounded-lg border border-l-4 p-3 shadow-xl backdrop-blur-md transition-all duration-200 ease-out',
         border,
-        shown ? 'translate-x-0 opacity-100' : 'translate-x-3 opacity-0',
+        shown ? 'translate-x-0 opacity-100' : 'translate-x-3 opacity-0'
       )}
     >
       <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', icon_)} />
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium leading-snug text-popover-foreground">{item.message}</p>
+        <p className="text-popover-foreground text-xs font-medium leading-snug">{item.message}</p>
         {item.description && (
-          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{item.description}</p>
+          <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
+            {item.description}
+          </p>
         )}
       </div>
       <button
         type="button"
         onClick={() => dismiss(item.id)}
-        className="shrink-0 rounded p-0.5 text-muted-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
+        className="text-muted-foreground/70 hover:bg-accent hover:text-foreground shrink-0 rounded p-0.5 transition-colors"
       >
         <X className="h-3 w-3" />
         <span className="sr-only">Dismiss</span>
@@ -132,6 +140,6 @@ export function Toaster() {
         <ToastCard key={item.id} item={item} />
       ))}
     </div>,
-    document.body,
+    document.body
   )
 }

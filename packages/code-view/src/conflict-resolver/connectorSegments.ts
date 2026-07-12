@@ -77,7 +77,11 @@ export function buildTwoWaySegments(
     const placement = placements.get(block.blockId)
     if (!placement) continue
 
-    if (block.kind === 'unchanged' && geometry.collapseUnchanged && !geometry.expandedBlocks.has(block.blockId)) {
+    if (
+      block.kind === 'unchanged' &&
+      geometry.collapseUnchanged &&
+      !geometry.expandedBlocks.has(block.blockId)
+    ) {
       const segment = collapsedSegment(
         geometry,
         block.blockId,
@@ -170,7 +174,11 @@ export function buildThreeWaySegments(
     const placement = placements.get(block.blockId)
     if (!placement) continue
 
-    if (block.kind === 'unchanged' && geometry.collapseUnchanged && !geometry.expandedBlocks.has(block.blockId)) {
+    if (
+      block.kind === 'unchanged' &&
+      geometry.collapseUnchanged &&
+      !geometry.expandedBlocks.has(block.blockId)
+    ) {
       const leftSegment = collapsedSegment(
         geometry,
         block.blockId,

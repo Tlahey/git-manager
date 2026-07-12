@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useFileTree, getSortedNodes, type FileTreeInputFile, type TreeNode } from './useFileTree'
 
-function file(path: string, status = 'modified', overrides: Partial<FileTreeInputFile> = {}): FileTreeInputFile {
+function file(
+  path: string,
+  status = 'modified',
+  overrides: Partial<FileTreeInputFile> = {}
+): FileTreeInputFile {
   return { path, status, ...overrides }
 }
 
@@ -59,7 +63,12 @@ describe('useFileTree — tree building', () => {
       file('src/e.ts', 'untracked'),
     ]
     const { result } = renderHook(() => useFileTree(files, 'key1'))
-    expect(result.current.treeRoot.src.stats).toEqual({ added: 2, modified: 1, deleted: 1, renamed: 1 })
+    expect(result.current.treeRoot.src.stats).toEqual({
+      added: 2,
+      modified: 1,
+      deleted: 1,
+      renamed: 1,
+    })
   })
 
   it('rolls stats up through multiple nesting levels', () => {
@@ -169,9 +178,12 @@ describe('useFileTree — resetKey', () => {
 
   it('resets to fully expanded when resetKey changes and defaultExpanded is true', () => {
     const files = [file('src/a.ts'), file('lib/b.ts')]
-    const { result, rerender } = renderHook(({ files, key }) => useFileTree(files, key, { defaultExpanded: true }), {
-      initialProps: { files, key: 'key1' },
-    })
+    const { result, rerender } = renderHook(
+      ({ files, key }) => useFileTree(files, key, { defaultExpanded: true }),
+      {
+        initialProps: { files, key: 'key1' },
+      }
+    )
     act(() => result.current.toggleFolder('src'))
     expect(result.current.expandedFolders.has('src')).toBe(false)
 

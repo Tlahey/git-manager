@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const detach = vi.fn()
 const attachEyeTracking = vi.fn((_svg: SVGSVGElement) => detach)
-vi.mock('./behaviors', () => ({ attachEyeTracking: (...args: [SVGSVGElement]) => attachEyeTracking(...args) }))
+vi.mock('./behaviors', () => ({
+  attachEyeTracking: (...args: [SVGSVGElement]) => attachEyeTracking(...args),
+}))
 
 import { GitMascotElement, defineGitMascot } from './GitMascotElement'
 

@@ -21,7 +21,17 @@ const mockedGetTags = apiGetTags as unknown as ReturnType<typeof vi.fn>
 const mockedListSubmodules = apiListSubmodules as unknown as ReturnType<typeof vi.fn>
 
 function localBranch(name: string): GitBranch {
-  return { name, shortName: name, isHead: false, isRemote: false, commitOid: '', commitMessage: '', commitTimestamp: 0, aheadCount: 0, behindCount: 0 }
+  return {
+    name,
+    shortName: name,
+    isHead: false,
+    isRemote: false,
+    commitOid: '',
+    commitMessage: '',
+    commitTimestamp: 0,
+    aheadCount: 0,
+    behindCount: 0,
+  }
 }
 function remoteBranch(name: string): GitBranch {
   return { ...localBranch(name), isRemote: true }
@@ -51,7 +61,9 @@ afterEach(() => {
 
 describe('SidebarRail — counts', () => {
   it('splits local vs remote branch counts', () => {
-    useBranches.mockReturnValue({ data: [localBranch('main'), localBranch('dev'), remoteBranch('origin/main')] })
+    useBranches.mockReturnValue({
+      data: [localBranch('main'), localBranch('dev'), remoteBranch('origin/main')],
+    })
     renderRail()
     expect(screen.getByTitle('Local (2)')).toBeInTheDocument()
     expect(screen.getByTitle('Remotes (1)')).toBeInTheDocument()

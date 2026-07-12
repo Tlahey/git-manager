@@ -3,7 +3,10 @@ import { render, screen } from '@testing-library/react'
 import type { GitGraphNode, GitStatus } from '@git-manager/git-types'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key}:${JSON.stringify(opts)}` : key,
+  }),
 }))
 
 const { useCommitDiff, useGitStatus, invalidateQueries, swrMutate } = vi.hoisted(() => ({
@@ -52,7 +55,16 @@ const INITIAL_REPO_DATA = useRepoDataStore.getState()
 
 function node(overrides: Partial<GitGraphNode> = {}): GitGraphNode {
   return {
-    commit: { oid: 'abc123', shortOid: 'abc123', message: 'msg', subject: 'Subject', body: '', author: {} as never, committer: {} as never, parentOids: [] },
+    commit: {
+      oid: 'abc123',
+      shortOid: 'abc123',
+      message: 'msg',
+      subject: 'Subject',
+      body: '',
+      author: {} as never,
+      committer: {} as never,
+      parentOids: [],
+    },
     column: 0,
     color: '#000',
     connections: [],
@@ -82,7 +94,12 @@ function findFileList(title: string) {
 describe('CommitDetailsPanel — WIP vs commit detection', () => {
   it('treats the special WIP oid as the working tree, not a real commit', () => {
     useGitStatus.mockReturnValue({ data: gitStatus() })
-    render(<CommitDetailsPanel node={node({ commit: { ...node().commit, oid: 'WIP' } })} repoPath="/repo" />)
+    render(
+      <CommitDetailsPanel
+        node={node({ commit: { ...node().commit, oid: 'WIP' } })}
+        repoPath="/repo"
+      />
+    )
     expect(lastHeaderProps.current!.isWip).toBe(true)
     expect(screen.getByTestId('wip-staging-panel')).toBeInTheDocument()
   })
@@ -94,7 +111,14 @@ describe('CommitDetailsPanel — WIP vs commit detection', () => {
   })
 
   it('derives isHead from the node refs when no isHead prop is given', () => {
-    render(<CommitDetailsPanel node={node({ refs: [{ name: 'HEAD', shortName: 'HEAD', type: 'HEAD', commitOid: 'abc123' }] })} repoPath="/repo" />)
+    render(
+      <CommitDetailsPanel
+        node={node({
+          refs: [{ name: 'HEAD', shortName: 'HEAD', type: 'HEAD', commitOid: 'abc123' }],
+        })}
+        repoPath="/repo"
+      />
+    )
     expect(lastHeaderProps.current!.isHead).toBe(true)
   })
 
@@ -104,7 +128,14 @@ describe('CommitDetailsPanel — WIP vs commit detection', () => {
   })
 
   it('detects a stash node from its refs', () => {
-    render(<CommitDetailsPanel node={node({ refs: [{ name: 'stash@{0}', shortName: 'stash@{0}', type: 'stash', commitOid: 'abc123' }] })} repoPath="/repo" />)
+    render(
+      <CommitDetailsPanel
+        node={node({
+          refs: [{ name: 'stash@{0}', shortName: 'stash@{0}', type: 'stash', commitOid: 'abc123' }],
+        })}
+        repoPath="/repo"
+      />
+    )
     expect(lastHeaderProps.current!.isStash).toBe(true)
   })
 })
@@ -117,7 +148,16 @@ describe('CommitDetailsPanel — remote URL derivation', () => {
 
   it('converts an SSH GitHub remote to an HTTPS URL', () => {
     useRepoDataStore.setState({
-      repoCache: { '/repo': { path: '/repo', name: 'repo', head: 'main', isDetached: false, isDirty: false, remotes: ['git@github.com:owner/repo.git'] } },
+      repoCache: {
+        '/repo': {
+          path: '/repo',
+          name: 'repo',
+          head: 'main',
+          isDetached: false,
+          isDirty: false,
+          remotes: ['git@github.com:owner/repo.git'],
+        },
+      },
     })
     render(<CommitDetailsPanel node={node()} repoPath="/repo" />)
     expect(lastHeaderProps.current!.remoteUrl).toBe('https://github.com/owner/repo')
@@ -125,7 +165,16 @@ describe('CommitDetailsPanel — remote URL derivation', () => {
 
   it('strips ".git" from an HTTPS remote as-is', () => {
     useRepoDataStore.setState({
-      repoCache: { '/repo': { path: '/repo', name: 'repo', head: 'main', isDetached: false, isDirty: false, remotes: ['https://gitlab.com/owner/repo.git'] } },
+      repoCache: {
+        '/repo': {
+          path: '/repo',
+          name: 'repo',
+          head: 'main',
+          isDetached: false,
+          isDirty: false,
+          remotes: ['https://gitlab.com/owner/repo.git'],
+        },
+      },
     })
     render(<CommitDetailsPanel node={node()} repoPath="/repo" />)
     expect(lastHeaderProps.current!.remoteUrl).toBe('https://gitlab.com/owner/repo')
@@ -133,7 +182,16 @@ describe('CommitDetailsPanel — remote URL derivation', () => {
 
   it('ignores remotes that are neither github.com nor gitlab.com', () => {
     useRepoDataStore.setState({
-      repoCache: { '/repo': { path: '/repo', name: 'repo', head: 'main', isDetached: false, isDirty: false, remotes: ['git@bitbucket.org:owner/repo.git'] } },
+      repoCache: {
+        '/repo': {
+          path: '/repo',
+          name: 'repo',
+          head: 'main',
+          isDetached: false,
+          isDirty: false,
+          remotes: ['git@bitbucket.org:owner/repo.git'],
+        },
+      },
     })
     render(<CommitDetailsPanel node={node()} repoPath="/repo" />)
     expect(lastHeaderProps.current!.remoteUrl).toBeNull()
@@ -155,8 +213,24 @@ describe('CommitDetailsPanel — non-WIP file list', () => {
     useCommitDiff.mockReturnValue({
       data: {
         files: [
-          { newPath: 'b.ts', oldPath: 'a.ts', status: 'renamed', additions: 2, deletions: 1, isBinary: false, hunks: [] },
-          { newPath: '', oldPath: 'deleted.ts', status: 'deleted', additions: 0, deletions: 5, isBinary: false, hunks: [] },
+          {
+            newPath: 'b.ts',
+            oldPath: 'a.ts',
+            status: 'renamed',
+            additions: 2,
+            deletions: 1,
+            isBinary: false,
+            hunks: [],
+          },
+          {
+            newPath: '',
+            oldPath: 'deleted.ts',
+            status: 'deleted',
+            additions: 0,
+            deletions: 5,
+            isBinary: false,
+            hunks: [],
+          },
         ],
       },
     })
@@ -169,7 +243,12 @@ describe('CommitDetailsPanel — non-WIP file list', () => {
   })
 
   it('fetches the commit diff by the real oid (not the WIP sentinel)', () => {
-    render(<CommitDetailsPanel node={node({ commit: { ...node().commit, oid: 'deadbeef' } })} repoPath="/repo" />)
+    render(
+      <CommitDetailsPanel
+        node={node({ commit: { ...node().commit, oid: 'deadbeef' } })}
+        repoPath="/repo"
+      />
+    )
     expect(useCommitDiff).toHaveBeenCalledWith('/repo', 'deadbeef')
   })
 })
@@ -210,15 +289,20 @@ describe('CommitDetailsPanel — WIP file lists', () => {
     useGitStatus.mockReturnValue({ data: gitStatus({ conflicted: ['conflict.ts'] }) })
     render(<CommitDetailsPanel node={wipNode()} repoPath="/repo" />)
     const unmerged = findFileList('workingTree.unmerged:{"count":1}')!
-    expect(unmerged.processedFiles).toEqual([{ path: 'conflict.ts', status: 'conflicted', staged: false }])
+    expect(unmerged.processedFiles).toEqual([
+      { path: 'conflict.ts', status: 'conflicted', staged: false },
+    ])
     expect(fileListCalls.current).toHaveLength(3)
   })
 
-  it('wires the staged list\'s bulk action to unstage-all, and the unstaged list\'s to stage-all', async () => {
+  it("wires the staged list's bulk action to unstage-all, and the unstaged list's to stage-all", async () => {
     mockedStageAll.mockResolvedValue(undefined)
     mockedUnstageAll.mockResolvedValue(undefined)
     useGitStatus.mockReturnValue({
-      data: gitStatus({ staged: [{ path: 's.ts', status: 'modified' }], unstaged: [{ path: 'u.ts', status: 'modified' }] }),
+      data: gitStatus({
+        staged: [{ path: 's.ts', status: 'modified' }],
+        unstaged: [{ path: 'u.ts', status: 'modified' }],
+      }),
     })
     render(<CommitDetailsPanel node={wipNode()} repoPath="/repo" />)
 
@@ -230,9 +314,15 @@ describe('CommitDetailsPanel — WIP file lists', () => {
   })
 
   it('passes all WIP changes and status through to the WipStagingPanel', () => {
-    useGitStatus.mockReturnValue({ data: gitStatus({ staged: [{ path: 's.ts', status: 'modified' }] }) })
+    useGitStatus.mockReturnValue({
+      data: gitStatus({ staged: [{ path: 's.ts', status: 'modified' }] }),
+    })
     render(<CommitDetailsPanel node={wipNode()} repoPath="/repo" />)
-    expect(lastWipPanelProps.current!.gitStatus).toEqual(gitStatus({ staged: [{ path: 's.ts', status: 'modified' }] }))
-    expect(lastWipPanelProps.current!.allWipChanges).toEqual([{ path: 's.ts', status: 'modified', staged: true }])
+    expect(lastWipPanelProps.current!.gitStatus).toEqual(
+      gitStatus({ staged: [{ path: 's.ts', status: 'modified' }] })
+    )
+    expect(lastWipPanelProps.current!.allWipChanges).toEqual([
+      { path: 's.ts', status: 'modified', staged: true },
+    ])
   })
 })

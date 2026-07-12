@@ -35,7 +35,10 @@ describe('CommitDetailsAvatar — image vs initials', () => {
 
   it('falls back to initials entirely when avatars are disabled', () => {
     useSettingsStore.setState({
-      settings: { ...INITIAL_SETTINGS.settings, appearance: { ...INITIAL_SETTINGS.settings.appearance, showAvatars: false } },
+      settings: {
+        ...INITIAL_SETTINGS.settings,
+        appearance: { ...INITIAL_SETTINGS.settings.appearance, showAvatars: false },
+      },
     })
     render(<CommitDetailsAvatar name="Ada Lovelace" email="ada@example.com" />)
     expect(screen.getByText('AL')).toBeInTheDocument()
@@ -51,7 +54,10 @@ describe('CommitDetailsAvatar — image vs initials', () => {
 describe('CommitDetailsAvatar — "isMe" avatar frame', () => {
   it('wraps the avatar in the level frame class when the email matches the default author and the level has a frame', () => {
     useSettingsStore.setState({
-      settings: { ...INITIAL_SETTINGS.settings, git: { ...INITIAL_SETTINGS.settings.git, defaultAuthorEmail: 'me@example.com' } },
+      settings: {
+        ...INITIAL_SETTINGS.settings,
+        git: { ...INITIAL_SETTINGS.settings.git, defaultAuthorEmail: 'me@example.com' },
+      },
     })
     useGameStore.setState({ points: 60 }) // level 2 => avatar-frame-bronze
     const { container } = render(<CommitDetailsAvatar name="Me" email="me@example.com" />)
@@ -60,16 +66,24 @@ describe('CommitDetailsAvatar — "isMe" avatar frame', () => {
 
   it('matches by default author name too, without an email match', () => {
     useSettingsStore.setState({
-      settings: { ...INITIAL_SETTINGS.settings, git: { ...INITIAL_SETTINGS.settings.git, defaultAuthorName: 'Antoine' } },
+      settings: {
+        ...INITIAL_SETTINGS.settings,
+        git: { ...INITIAL_SETTINGS.settings.git, defaultAuthorName: 'Antoine' },
+      },
     })
     useGameStore.setState({ points: 130 }) // level 3 => avatar-frame-silver
-    const { container } = render(<CommitDetailsAvatar name="Antoine" email="someone-else@example.com" />)
+    const { container } = render(
+      <CommitDetailsAvatar name="Antoine" email="someone-else@example.com" />
+    )
     expect(container.querySelector('.avatar-frame-silver')).toBeInTheDocument()
   })
 
   it('does not add a frame wrapper for level 1 (no frame class) even when it is me', () => {
     useSettingsStore.setState({
-      settings: { ...INITIAL_SETTINGS.settings, git: { ...INITIAL_SETTINGS.settings.git, defaultAuthorEmail: 'me@example.com' } },
+      settings: {
+        ...INITIAL_SETTINGS.settings,
+        git: { ...INITIAL_SETTINGS.settings.git, defaultAuthorEmail: 'me@example.com' },
+      },
     })
     useGameStore.setState({ points: 0 }) // level 1 => frameClass ''
     const { container } = render(<CommitDetailsAvatar name="Me" email="me@example.com" />)
@@ -78,16 +92,24 @@ describe('CommitDetailsAvatar — "isMe" avatar frame', () => {
 
   it('does not add a frame wrapper for another author, regardless of level', () => {
     useSettingsStore.setState({
-      settings: { ...INITIAL_SETTINGS.settings, git: { ...INITIAL_SETTINGS.settings.git, defaultAuthorEmail: 'me@example.com' } },
+      settings: {
+        ...INITIAL_SETTINGS.settings,
+        git: { ...INITIAL_SETTINGS.settings.git, defaultAuthorEmail: 'me@example.com' },
+      },
     })
     useGameStore.setState({ points: 250 }) // level 4 => avatar-frame-gold
-    const { container } = render(<CommitDetailsAvatar name="Someone Else" email="other@example.com" />)
+    const { container } = render(
+      <CommitDetailsAvatar name="Someone Else" email="other@example.com" />
+    )
     expect(container.querySelector('[class*="avatar-frame"]')).not.toBeInTheDocument()
   })
 
   it('uses the platinum frame once the platinum trophy is unlocked, regardless of points', () => {
     useSettingsStore.setState({
-      settings: { ...INITIAL_SETTINGS.settings, git: { ...INITIAL_SETTINGS.settings.git, defaultAuthorEmail: 'me@example.com' } },
+      settings: {
+        ...INITIAL_SETTINGS.settings,
+        git: { ...INITIAL_SETTINGS.settings.git, defaultAuthorEmail: 'me@example.com' },
+      },
     })
     useGameStore.setState({
       points: 10,

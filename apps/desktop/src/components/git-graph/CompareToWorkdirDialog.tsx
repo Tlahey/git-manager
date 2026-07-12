@@ -1,7 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from '@git-manager/i18n'
 import { ScrollArea, Spinner } from '@git-manager/ui'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@git-manager/ui'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@git-manager/ui'
 import { apiCompareCommitToWorkdir } from '../../api/git.api'
 import { DiffViewer } from './DiffViewer'
 
@@ -14,7 +20,13 @@ interface CompareToWorkdirDialogProps {
 }
 
 /** Compare l'arbre d'un commit avec le répertoire de travail actuel (pas l'index). */
-export function CompareToWorkdirDialog({ repoPath, oid, shortOid, open, onClose }: CompareToWorkdirDialogProps) {
+export function CompareToWorkdirDialog({
+  repoPath,
+  oid,
+  shortOid,
+  open,
+  onClose,
+}: CompareToWorkdirDialogProps) {
   const { t } = useTranslation('git')
 
   const { data: diff, isLoading } = useQuery({
@@ -29,7 +41,7 @@ export function CompareToWorkdirDialog({ repoPath, oid, shortOid, open, onClose 
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+      <DialogContent className="flex max-h-[80vh] max-w-3xl flex-col">
         <DialogHeader>
           <DialogTitle>{t('gitTree.contextMenu.compareToWorkdir')}</DialogTitle>
           <DialogDescription>{t('gitTree.createBranch.from', { sha: shortOid })}</DialogDescription>
@@ -40,12 +52,14 @@ export function CompareToWorkdirDialog({ repoPath, oid, shortOid, open, onClose 
             <Spinner className="h-5 w-5" />
           </div>
         ) : (
-          <ScrollArea className="flex-1 min-h-0">
+          <ScrollArea className="min-h-0 flex-1">
             <div className="space-y-3 pr-3">
               {diff?.files.length ? (
                 diff.files.map((file, i) => <DiffViewer key={i} file={file} />)
               ) : (
-                <p className="text-xs text-muted-foreground">{t('gitTree.contextMenu.noDifferences')}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t('gitTree.contextMenu.noDifferences')}
+                </p>
               )}
             </div>
           </ScrollArea>

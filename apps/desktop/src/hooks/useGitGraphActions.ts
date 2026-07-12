@@ -271,7 +271,10 @@ export function useGitGraphActions({
     // entries, so `create_fixup_commit` can't write a tree until it's resolved) and
     // with a clean working tree (nothing to stage into the fixup commit).
     const hasWorkingChanges =
-      (status?.staged.length ?? 0) + (status?.unstaged.length ?? 0) + (status?.untracked.length ?? 0) > 0
+      (status?.staged.length ?? 0) +
+        (status?.unstaged.length ?? 0) +
+        (status?.untracked.length ?? 0) >
+      0
     const fixupEnabled =
       isSingle &&
       !isRebasePaused &&
@@ -309,7 +312,10 @@ export function useGitGraphActions({
           : t('gitTree.contextMenu.recomposeMany', { count: targets.length, sha: primaryShortOid }),
         interactiveRebase: isSingle
           ? t('gitTree.contextMenu.interactiveRebase')
-          : t('gitTree.contextMenu.interactiveRebaseMany', { count: targets.length, sha: primaryShortOid }),
+          : t('gitTree.contextMenu.interactiveRebaseMany', {
+              count: targets.length,
+              sha: primaryShortOid,
+            }),
         editMessage: t('gitTree.contextMenu.reword'),
         drop: t('gitTree.contextMenu.drop'),
         moveUp: t('gitTree.contextMenu.moveUp'),

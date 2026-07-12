@@ -12,7 +12,12 @@ export async function apiOpenRepo(path: string) {
   return openRepo(path)
 }
 
-export async function apiCloneRepo(url: string, destPath: string, shallow?: boolean, sparse?: boolean) {
+export async function apiCloneRepo(
+  url: string,
+  destPath: string,
+  shallow?: boolean,
+  sparse?: boolean
+) {
   return cloneRepo(url, destPath, shallow, sparse)
 }
 

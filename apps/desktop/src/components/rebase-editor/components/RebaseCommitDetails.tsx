@@ -42,13 +42,13 @@ export function RebaseCommitDetails({ repoPath, commit }: RebaseCommitDetailsPro
         deletions: f.deletions,
         staged: false,
       })),
-    [diff],
+    [diff]
   )
 
   const activePath =
     selectedPath && processedFiles.some((f) => f.path === selectedPath)
       ? selectedPath
-      : processedFiles[0]?.path ?? null
+      : (processedFiles[0]?.path ?? null)
 
   // original = the file at this commit's parent, modified = the file at this
   // commit — i.e. exactly the change this commit introduced.
@@ -56,7 +56,7 @@ export function RebaseCommitDetails({ repoPath, commit }: RebaseCommitDetailsPro
     repoPath,
     activePath,
     false,
-    commit.oid,
+    commit.oid
   )
 
   const parentShortOid = commit.parentOids[0]?.slice(0, 7)
@@ -103,10 +103,14 @@ export function RebaseCommitDetails({ repoPath, commit }: RebaseCommitDetailsPro
               originalLabel={
                 <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground/75">
                   <Lock className="h-3 w-3 shrink-0 text-muted-foreground/45" />
-                  <span className="font-mono text-foreground/90">{parentShortOid ?? t('rebaseEditor.noParent')}</span>
+                  <span className="font-mono text-foreground/90">
+                    {parentShortOid ?? t('rebaseEditor.noParent')}
+                  </span>
                 </div>
               }
-              modifiedLabel={<span className="font-mono text-muted-foreground/70">{commit.shortOid}</span>}
+              modifiedLabel={
+                <span className="font-mono text-muted-foreground/70">{commit.shortOid}</span>
+              }
             />
           ) : (
             <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
@@ -121,7 +125,9 @@ export function RebaseCommitDetails({ repoPath, commit }: RebaseCommitDetailsPro
         <div className="space-y-1.5 p-3 text-xs">
           <div className="font-semibold leading-snug text-foreground">{commit.subject}</div>
           {commit.body && (
-            <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-muted-foreground">{commit.body}</p>
+            <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-muted-foreground">
+              {commit.body}
+            </p>
           )}
           <div className="pt-1 text-[11px] text-muted-foreground">
             <div>

@@ -8,20 +8,20 @@
  * stories show is what the component renders.
  */
 
-import type { CSSProperties, ReactNode } from 'react';
-import { MASCOT_LAYOUT } from '../src/mascotArt';
-import referenceUrl from './assets/reference.png';
+import type { CSSProperties, ReactNode } from 'react'
+import { MASCOT_LAYOUT } from '../src/mascotArt'
+import referenceUrl from './assets/reference.png'
 
-export { MASCOT_LAYOUT };
-export { SPRITES } from '../src/generated/sprites';
-export { referenceUrl };
+export { MASCOT_LAYOUT }
+export { SPRITES } from '../src/generated/sprites'
+export { referenceUrl }
 
 export interface PartPlacement {
-  x: number;
-  y: number;
-  scale: number;
-  rot: number;
-  flip?: boolean;
+  x: number
+  y: number
+  scale: number
+  rot: number
+  flip?: boolean
 }
 
 /**
@@ -40,7 +40,7 @@ export function partStyle(p: PartPlacement, spriteW: number): CSSProperties {
     width: spriteW * p.scale,
     transformOrigin: '0 0',
     transform: `${p.flip ? 'scale(-1,1) ' : ''}rotate(${p.rot}deg)`,
-  };
+  }
 }
 
 /**
@@ -52,14 +52,14 @@ export function partStyle(p: PartPlacement, spriteW: number): CSSProperties {
  * the head sprite is drawn at scale 1).
  */
 export function referenceFrame() {
-  const { head, reference } = MASCOT_LAYOUT;
-  const k = head.sprite.w / reference.headMaxWidth; // stage units per reference px
-  const crownX = head.x + (head.sprite.w * head.scale) / 2;
+  const { head, reference } = MASCOT_LAYOUT
+  const k = head.sprite.w / reference.headMaxWidth // stage units per reference px
+  const crownX = head.x + (head.sprite.w * head.scale) / 2
   return {
     left: crownX - reference.crown.x * k,
     top: head.y - reference.crown.y * k,
     width: reference.size * k,
-  };
+  }
 }
 
 /**
@@ -71,12 +71,12 @@ export function Stage({
   background = '#0a1830',
   children,
 }: {
-  width?: number;
-  background?: string;
-  children: ReactNode;
+  width?: number
+  background?: string
+  children: ReactNode
 }) {
-  const { width: sw, height: sh } = MASCOT_LAYOUT.stage;
-  const k = width / sw;
+  const { width: sw, height: sh } = MASCOT_LAYOUT.stage
+  const k = width / sw
   return (
     <div
       style={{
@@ -100,7 +100,7 @@ export function Stage({
         {children}
       </div>
     </div>
-  );
+  )
 }
 
 /** The brand reference ghost, aligned to the rig (see referenceFrame). */
@@ -108,12 +108,12 @@ export function ReferenceOverlay({
   opacity,
   blend = 'normal',
 }: {
-  opacity: number;
+  opacity: number
   /** 'multiply' hides the reference's white page background on light stages. */
-  blend?: CSSProperties['mixBlendMode'];
+  blend?: CSSProperties['mixBlendMode']
 }) {
-  const f = referenceFrame();
-  if (opacity <= 0) return null;
+  const f = referenceFrame()
+  if (opacity <= 0) return null
   return (
     <img
       src={referenceUrl}
@@ -128,5 +128,5 @@ export function ReferenceOverlay({
         mixBlendMode: blend,
       }}
     />
-  );
+  )
 }

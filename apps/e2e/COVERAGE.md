@@ -19,25 +19,26 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ## Covered today (11 features / 72 steps, 6 visual snapshots)
 
-| Feature | Area | Setup | Snapshot | Status |
-|---|---|---|---|---|
-| App launches, React mounts | app shell | — | — | ✅ |
-| Tauri command mock: success / reject / restore | IPC | mock | — | ✅ |
-| Fixup autosquash grouping | fixup | fixture:fixup-chain | 📷 ✅ (preview groups) | ✅ |
-| Rebase conflict panel auto-opens + **snapshot** | rebase | fixture:rebase-conflict | 📷 ✅ (panel layout) | 🟡 (panel shown + snapshotted; resolve/continue not driven) |
-| **Merge editor** opens for a conflicted file + **snapshot** | merge | fixture:rebase-conflict | 📷 ✅ (full Monaco editor) | 🟡 (opens + snapshotted; block resolution not driven) |
-| **Working-tree staging panel** + **file diff** + **snapshots** | commits | fixture:stash-stack | 📷 ✅ (staging panel + diff view) | ✅ |
-| **Commit staged changes** (write message → Commit → HEAD advances) | commits | fixture:stash-stack | — | ✅ |
-| **Undo / redo a branch checkout** (Cmd+Z / Cmd+Shift+Z) | undo/redo | fixture:feature-branches | — | ✅ |
-| Detached HEAD indicator reads "HEAD" | repo state | fixture:detached-head | — | ✅ |
-| Sidebar lists stashes | stash | fixture:stash-stack | — | 🟡 (list only; apply/pop/drop blocked — native menu) |
-| Settings screen opens + **snapshot** | settings | keyboard (Mod+,) | 📷 ✅ (general section) | 🟡 (general snapshotted; other sections todo) |
+| Feature                                                            | Area       | Setup                    | Snapshot                          | Status                                                      |
+| ------------------------------------------------------------------ | ---------- | ------------------------ | --------------------------------- | ----------------------------------------------------------- |
+| App launches, React mounts                                         | app shell  | —                        | —                                 | ✅                                                          |
+| Tauri command mock: success / reject / restore                     | IPC        | mock                     | —                                 | ✅                                                          |
+| Fixup autosquash grouping                                          | fixup      | fixture:fixup-chain      | 📷 ✅ (preview groups)            | ✅                                                          |
+| Rebase conflict panel auto-opens + **snapshot**                    | rebase     | fixture:rebase-conflict  | 📷 ✅ (panel layout)              | 🟡 (panel shown + snapshotted; resolve/continue not driven) |
+| **Merge editor** opens for a conflicted file + **snapshot**        | merge      | fixture:rebase-conflict  | 📷 ✅ (full Monaco editor)        | 🟡 (opens + snapshotted; block resolution not driven)       |
+| **Working-tree staging panel** + **file diff** + **snapshots**     | commits    | fixture:stash-stack      | 📷 ✅ (staging panel + diff view) | ✅                                                          |
+| **Commit staged changes** (write message → Commit → HEAD advances) | commits    | fixture:stash-stack      | —                                 | ✅                                                          |
+| **Undo / redo a branch checkout** (Cmd+Z / Cmd+Shift+Z)            | undo/redo  | fixture:feature-branches | —                                 | ✅                                                          |
+| Detached HEAD indicator reads "HEAD"                               | repo state | fixture:detached-head    | —                                 | ✅                                                          |
+| Sidebar lists stashes                                              | stash      | fixture:stash-stack      | —                                 | 🟡 (list only; apply/pop/drop blocked — native menu)        |
+| Settings screen opens + **snapshot**                               | settings   | keyboard (Mod+,)         | 📷 ✅ (general section)           | 🟡 (general snapshotted; other sections todo)               |
 
 ---
 
 ## Priority backlog (the domains we actually want next)
 
-### 1. Merge editor  🟡  📷 (opens + snapshotted)
+### 1. Merge editor 🟡 📷 (opens + snapshotted)
+
 The three-way merge editor (`components/merge-editor/ConflictMergeWindow.tsx`) normally opens in a
 **separate Tauri window** (`?window=merge`) and renders with **Monaco**. **Done:** rather than
 driving the native second window, the test navigates the current window straight to the merge
@@ -45,6 +46,7 @@ route (`/?window=merge&repoPath=…&filePath=…`) — main.tsx renders `Conflic
 URL params, independent of the store — waits for `merge-auto-merge-button` (appears once
 `get_merge_view` resolves), and **snapshots the whole Monaco editor** (`merge-editor-window`).
 Verified stable across multiple runs with a 1.5s Monaco settle + `stabiliseForSnapshot`.
+
 - Setup: `fixture:rebase-conflict` — the conflicted `dependency-manifest.txt` "covers every
   merge-editor block kind twice", ideal for a layout snapshot.
 - **Gotcha handled**: the embedded provider shares one app window across features (run
@@ -53,29 +55,32 @@ Verified stable across multiple runs with a 1.5s Monaco settle + `stabiliseForSn
 - **Todo:** drive block resolution (`merge-accept-left`/`-right`, `merge-apply`, auto-merge) and
   assert the result; those testids are mock-only today and would need adding to the real panes.
 
-### 2. Injected repo fixtures  🟡
+### 2. Injected repo fixtures 🟡
+
 Each scripted fixture is a real, awkward git state — the highest-value e2e fuel. Coverage per
 fixture:
 
-| Fixture | Exercises | Status |
-|---|---|---|
-| fixup-chain | fixup grouping / autosquash · **create-fixup from staged change** | 🟡 (autosquash ✅; create-fixup ⬜) |
-| rebase-conflict | conflict panel ✅ · merge editor ✅ · continue/skip/abort flow ⬜ | 🟡 |
-| detached-head | detached indicator ✅ · checkout-back-to-branch ⬜ | 🟡 |
-| feature-branches | branch checkout ✅ · **undo/redo of the checkout** ✅ | ✅ |
-| stash-stack | list ✅ · WIP staging panel ✅ · file diff ✅ · **commit** ✅ · apply/pop/drop 🚫 (native menu) | ✅ |
-| rollback-history | **reset (soft/mixed/hard) · revert · undo/redo of those** ⬜ | ⬜ |
+| Fixture          | Exercises                                                                                       | Status                              |
+| ---------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------- |
+| fixup-chain      | fixup grouping / autosquash · **create-fixup from staged change**                               | 🟡 (autosquash ✅; create-fixup ⬜) |
+| rebase-conflict  | conflict panel ✅ · merge editor ✅ · continue/skip/abort flow ⬜                               | 🟡                                  |
+| detached-head    | detached indicator ✅ · checkout-back-to-branch ⬜                                              | 🟡                                  |
+| feature-branches | branch checkout ✅ · **undo/redo of the checkout** ✅                                           | ✅                                  |
+| stash-stack      | list ✅ · WIP staging panel ✅ · file diff ✅ · **commit** ✅ · apply/pop/drop 🚫 (native menu) | ✅                                  |
+| rollback-history | **reset (soft/mixed/hard) · revert · undo/redo of those** ⬜                                    | ⬜                                  |
 
-### 3. Settings  🟡  📷
+### 3. Settings 🟡 📷
+
 `SettingsPage` (opened via `Mod+,` or the dashboard gear — `dashboard-settings-button`). **Done:**
 opens on the general section + a layout snapshot of the whole screen. Nav tabs now carry
 `settings-tab-<id>` testids and the root `settings-page`. **Todo:** navigate + snapshot the other
 sections (appearance, notifications are deterministic; ssh/local_ai/rewards have dynamic content —
-mask or assert values instead), and toggle-a-setting-persists. Note the section *content* has no
+mask or assert values instead), and toggle-a-setting-persists. Note the section _content_ has no
 real testid on its root (the `section-*` ids are test-mock-only) — snapshot the `settings-page`
 root or add a per-section testid.
 
-### 4. Commits / working tree  🟡  📷 (staging panel snapshotted)
+### 4. Commits / working tree 🟡 📷 (staging panel snapshotted)
+
 **Done:** selecting the synthetic WIP node (`graph-row-WIP`) opens the staging panel
 (`wip-staging-panel`) + a layout snapshot. Setup: `fixture:stash-stack` (leaves `config.yml`
 staged → a WIP node). **Gotcha handled:** the WIP row's centre is its inline "// WIP" commit input
@@ -89,7 +94,8 @@ shows the diff (`diff-content-area`) and it's snapshotted (`wip-file-diff`), ver
 **Todo:** stage/unstage individual files · bulk stage (`file-list-bulk-stage`) · amend
 (`commit-amend-*` are still mock-only).
 
-### 5. Undo / redo  ✅  (checkout) · ⬜ (reset/commit)
+### 5. Undo / redo ✅ (checkout) · ⬜ (reset/commit)
+
 State-mutating actions push to `undoHistory.store`. **Done:** the `undo-redo.feature` drives a
 real **branch checkout** through the toolbar's `BranchContext` selector (new
 `branch-option-<name>` testid), then **Cmd+Z / Cmd+Shift+Z** — bound globally in
@@ -105,26 +111,26 @@ not a detached sha). **Todo:** cover the other undoable actions — a reset or c
 
 ## Rest of the surface (lower priority / smaller)
 
-| Feature | Area | Setup | Snapshot | Status |
-|---|---|---|---|---|
-| Commit graph rendering | log/graph | any fixture | 📷 | ⬜ (volatile: shas/dates) |
-| Branches: create / checkout / delete | branch | any fixture | — | 🟡 (checkout ✅ via BranchContext; create/delete are behind the native commit menu) |
-| Tags: create / list | tag | any fixture | — | 🚫 (create is behind the native commit context menu) |
-| Cherry-pick a commit | cherry-pick | rollback-history | — | 🚫 (native commit context menu) |
-| Interactive rebase (reword/squash/drop) | rebase | fixup-chain | — | 🚫 (native commit menu + child window) |
-| Reset (soft/mixed/hard, RESET confirm) | rollback | rollback-history | — | 🚫 (ResetDialog is web+drivable, but only opens from the native commit context menu) |
-| Revert a commit | rollback | rollback-history | — | 🚫 (native commit context menu) |
-| Remote: fetch / pull / push | remote | native creds | — | 🚫 (needs a real remote) |
-| Clone a repo | repo | native | — | 🚫 (native dialog + network) |
-| Scan a folder for repos | repo | native | — | 🚫 (native dialog) |
-| Ollama commit-message generation | AI | mock | — | ⬜ (mock the stream) |
-| GitHub OAuth device flow | github | mock | — | ⬜ (mock the poll) |
-| SSH key generate / read | ssh | seed | — | ⬜ |
-| Submodule list | submodule | dedicated fixture | — | ⬜ |
-| Worktree add / list / remove | worktree | native path | — | ⬜ |
-| Themes | settings | seed | 📷 | ⬜ |
-| Rewards / gamification toast | rewards | action-triggered | 📷 | ⬜ |
-| Notifications tray/dropdown | notifications | seed | — | ⬜ |
+| Feature                                 | Area          | Setup             | Snapshot | Status                                                                               |
+| --------------------------------------- | ------------- | ----------------- | -------- | ------------------------------------------------------------------------------------ |
+| Commit graph rendering                  | log/graph     | any fixture       | 📷       | ⬜ (volatile: shas/dates)                                                            |
+| Branches: create / checkout / delete    | branch        | any fixture       | —        | 🟡 (checkout ✅ via BranchContext; create/delete are behind the native commit menu)  |
+| Tags: create / list                     | tag           | any fixture       | —        | 🚫 (create is behind the native commit context menu)                                 |
+| Cherry-pick a commit                    | cherry-pick   | rollback-history  | —        | 🚫 (native commit context menu)                                                      |
+| Interactive rebase (reword/squash/drop) | rebase        | fixup-chain       | —        | 🚫 (native commit menu + child window)                                               |
+| Reset (soft/mixed/hard, RESET confirm)  | rollback      | rollback-history  | —        | 🚫 (ResetDialog is web+drivable, but only opens from the native commit context menu) |
+| Revert a commit                         | rollback      | rollback-history  | —        | 🚫 (native commit context menu)                                                      |
+| Remote: fetch / pull / push             | remote        | native creds      | —        | 🚫 (needs a real remote)                                                             |
+| Clone a repo                            | repo          | native            | —        | 🚫 (native dialog + network)                                                         |
+| Scan a folder for repos                 | repo          | native            | —        | 🚫 (native dialog)                                                                   |
+| Ollama commit-message generation        | AI            | mock              | —        | ⬜ (mock the stream)                                                                 |
+| GitHub OAuth device flow                | github        | mock              | —        | ⬜ (mock the poll)                                                                   |
+| SSH key generate / read                 | ssh           | seed              | —        | ⬜                                                                                   |
+| Submodule list                          | submodule     | dedicated fixture | —        | ⬜                                                                                   |
+| Worktree add / list / remove            | worktree      | native path       | —        | ⬜                                                                                   |
+| Themes                                  | settings      | seed              | 📷       | ⬜                                                                                   |
+| Rewards / gamification toast            | rewards       | action-triggered  | 📷       | ⬜                                                                                   |
+| Notifications tray/dropdown             | notifications | seed              | —        | ⬜                                                                                   |
 
 ---
 
@@ -132,7 +138,7 @@ not a detached sha). **Todo:** cover the other undoable actions — a reset or c
 
 Visual snapshots are already wired (`@wdio/visual-service`, see README "Visual snapshots") and
 proven on the fixup preview. **The plan is to make a snapshot the default validation for any
-feature whose value is in how it *renders*** — layout, alignment, theming — rather than a single
+feature whose value is in how it _renders_** — layout, alignment, theming — rather than a single
 DOM value:
 
 - **Best snapshot targets** (📷 above): merge editor resolved layout, commit graph, diff view,
@@ -143,7 +149,7 @@ DOM value:
   then `await expect($('[data-testid="…"]')).toMatchElementSnapshot('<tag>', 1)`. Whole-screen:
   `browser.checkScreen('<tag>')`. Tolerance `1` absorbs sub-pixel jitter; real regressions run
   much higher. Used today by the fixup preview and the conflict resolution panel.
-- **Watch out for volatile content**: the tolerance that absorbs jitter *also* silently absorbs
+- **Watch out for volatile content**: the tolerance that absorbs jitter _also_ silently absorbs
   small volatile text — short commit OIDs, timestamps (a few chars are a tiny pixel fraction of a
   large element). The fixup preview snapshots a region that includes `fixup! <short-oid>` and
   passes only because those 7 chars stay under 1% of the box; that's robust-by-proportion, not by
@@ -162,10 +168,10 @@ DOM value:
   `toolbar-terminal-button` never reach the DOM. Use keyboard shortcuts or other selectors until
   that's fixed (flagged separately).
 - **Native dialogs can't be driven** — folder pickers, clone, scan. Worked around for "open repo"
-  by seeding localStorage (see README); features that *need* a native dialog mid-flow are 🚫.
+  by seeding localStorage (see README); features that _need_ a native dialog mid-flow are 🚫.
 - **Native context menus gate most commit/stash actions** — the graph's right-click commit menu
   (`showCommitNativeContextMenu` in `api/nativeMenu.api.ts`) and the stash right-click menu
-  (`showStashNativeContextMenu`) are real OS menus WebDriver can't open. That blocks *every* action
+  (`showStashNativeContextMenu`) are real OS menus WebDriver can't open. That blocks _every_ action
   reachable only through them from e2e: reset, revert, cherry-pick, interactive rebase, create
   tag/branch-from-commit, and stash apply/pop/drop — even when the follow-up UI is web and drivable
   (e.g. `ResetDialog` is a plain React dialog, but nothing web-driveable opens it). Prefer actions

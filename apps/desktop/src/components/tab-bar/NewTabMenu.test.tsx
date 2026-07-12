@@ -7,7 +7,8 @@ const dialogOpen = vi.fn()
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: (...a: unknown[]) => dialogOpen(...a) }))
 vi.mock('../../api/repo.api', () => ({ apiOpenRepo: vi.fn(), apiInitRepo: vi.fn() }))
 vi.mock('./CloneRepoDialog', () => ({
-  CloneRepoDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="clone-dialog" /> : null),
+  CloneRepoDialog: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="clone-dialog" /> : null,
 }))
 
 import { apiOpenRepo, apiInitRepo } from '../../api/repo.api'
@@ -19,7 +20,15 @@ const mockedOpenRepo = apiOpenRepo as unknown as ReturnType<typeof vi.fn>
 const mockedInitRepo = apiInitRepo as unknown as ReturnType<typeof vi.fn>
 
 function repo(overrides: Partial<GitRepo> = {}): GitRepo {
-  return { path: '/repo/a', name: 'a', head: 'main', isDetached: false, isDirty: false, remotes: [], ...overrides }
+  return {
+    path: '/repo/a',
+    name: 'a',
+    head: 'main',
+    isDetached: false,
+    isDirty: false,
+    remotes: [],
+    ...overrides,
+  }
 }
 
 beforeEach(() => {

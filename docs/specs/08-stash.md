@@ -63,6 +63,7 @@ If "partial stash" is checked, the user can select what will be stashed file by 
 ### Applying a stash (`stash pop` / `stash apply`)
 
 Actions menu for a stash:
+
 - **Pop** — Applies the stash AND removes it from the list
 - **Apply** — Applies without removing (allows applying it to multiple branches)
 - **Branch from** — Creates a new branch and applies the stash onto it
@@ -80,6 +81,7 @@ Actions menu for a stash:
 ### Previewing a stash
 
 Clicking on a stash → side panel with:
+
 - List of modified files with statuses (A/M/D)
 - Full diff per file (expandable)
 - Branch the stash was created on
@@ -90,6 +92,7 @@ Clicking on a stash → side panel with:
 ## Conflict handling on apply
 
 If a `stash pop` or `apply` generates conflicts:
+
 1. Operation interrupted, `CONFLICT` status
 2. Conflicting files listed
 3. Options: **Resolve** (opens the merge tool) / **Cancel the apply** (`git checkout .`)
@@ -98,16 +101,16 @@ If a `stash pop` or `apply` generates conflicts:
 
 ## Tauri commands involved
 
-| Command | Parameters | Description |
-|---------|-----------|-------------|
-| `stash_push` | `path, message?, include_untracked?, paths?` | Creates a stash |
-| `stash_list` | `path` | Returns the list of stashes |
-| `stash_show` | `path, index` | Returns the diff of a stash |
-| `stash_pop` | `path, index?` | Applies and removes |
-| `stash_apply` | `path, index?` | Applies without removing |
-| `stash_drop` | `path, index` | Deletes a stash |
-| `stash_clear` | `path` | Deletes all stashes |
-| `stash_branch` | `path, index, branch_name` | Creates a branch from a stash |
+| Command        | Parameters                                   | Description                   |
+| -------------- | -------------------------------------------- | ----------------------------- |
+| `stash_push`   | `path, message?, include_untracked?, paths?` | Creates a stash               |
+| `stash_list`   | `path`                                       | Returns the list of stashes   |
+| `stash_show`   | `path, index`                                | Returns the diff of a stash   |
+| `stash_pop`    | `path, index?`                               | Applies and removes           |
+| `stash_apply`  | `path, index?`                               | Applies without removing      |
+| `stash_drop`   | `path, index`                                | Deletes a stash               |
+| `stash_clear`  | `path`                                       | Deletes all stashes           |
+| `stash_branch` | `path, index, branch_name`                   | Creates a branch from a stash |
 
 ---
 
@@ -115,10 +118,10 @@ If a `stash pop` or `apply` generates conflicts:
 
 ```typescript
 export interface GitStash {
-  index: number           // 0 = stash@{0}
+  index: number // 0 = stash@{0}
   message: string
-  branch: string          // branch at the time of the stash
-  commitOid: string       // HEAD commit at the time of the stash
+  branch: string // branch at the time of the stash
+  commitOid: string // HEAD commit at the time of the stash
   timestamp: number
   filesCount: number
   additions: number

@@ -36,7 +36,9 @@ function renderSidebar(props: Partial<React.ComponentProps<typeof RepoBranchSide
 
 describe('RepoBranchSidebar — header', () => {
   it('shows the HEAD branch name when present', () => {
-    useBranches.mockReturnValue({ data: [branch({ name: 'main', shortName: 'main', isHead: true })] })
+    useBranches.mockReturnValue({
+      data: [branch({ name: 'main', shortName: 'main', isHead: true })],
+    })
     renderSidebar()
     expect(screen.getByText('branch.title')).toBeInTheDocument()
     // "main" appears both in the header's HEAD indicator and in the Local branches list row.
@@ -69,14 +71,19 @@ describe('RepoBranchSidebar — All branches row', () => {
 
 describe('RepoBranchSidebar — Local section', () => {
   it('hides the Local section when there are no local branches', () => {
-    useBranches.mockReturnValue({ data: [branch({ name: 'refs/remotes/origin/main', isRemote: true })] })
+    useBranches.mockReturnValue({
+      data: [branch({ name: 'refs/remotes/origin/main', isRemote: true })],
+    })
     renderSidebar()
     expect(screen.queryByText('Local')).not.toBeInTheDocument()
   })
 
   it('lists local branches with their count', () => {
     useBranches.mockReturnValue({
-      data: [branch({ name: 'main', shortName: 'main' }), branch({ name: 'dev', shortName: 'dev' })],
+      data: [
+        branch({ name: 'main', shortName: 'main' }),
+        branch({ name: 'dev', shortName: 'dev' }),
+      ],
     })
     renderSidebar()
     expect(screen.getByText('Local')).toBeInTheDocument()
