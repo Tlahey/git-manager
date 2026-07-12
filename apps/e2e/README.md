@@ -15,19 +15,31 @@ Tests are written in **Gherkin** (`@wdio/cucumber-framework`), in English, organ
 
 ```
 features/                       # .feature files — the scenarios in plain Gherkin
-  app-launch.feature            #   @smoke
-  command-mocking.feature       #   @mocking
-  fixup-autosquash.feature      #   @fixup  (+ @visual on the snapshot scenario)
+  app-launch.feature            #   @smoke     window boots, React mounts
+  command-mocking.feature       #   @mocking   browser.tauri.mock of a real command
+  fixup-autosquash.feature      #   @fixup     fixup grouping (+ @visual snapshot scenario)
+  rebase-conflict.feature       #   @rebase @conflict  paused rebase auto-opens the panel
+  detached-head.feature         #   @detached  toolbar shows HEAD, not a branch name
+  stash-stack.feature           #   @stash     sidebar lists the stashed changes
 step-definitions/               # the TypeScript backing each Given/When/Then, matched by text
-  common.steps.ts               #   app launch / generic
+  repo.steps.ts                 #   generic "open the <fixture> repository" (shared)
+  common.steps.ts               #   app launch / generic assertions
   mocking.steps.ts              #   browser.tauri.mock scenarios
-  fixup.steps.ts                #   fixture build + open, banner, autosquash preview, snapshot
+  fixup.steps.ts                #   banner, autosquash preview, visual snapshot
+  rebase.steps.ts               #   conflict resolution panel (+ visual snapshot)
+  detached.steps.ts             #   detached HEAD branch indicator
+  stash.steps.ts                #   sidebar stash section
+support/
+  visual.ts                     #   stabiliseForSnapshot() shared by every snapshot step
+COVERAGE.md                     # coverage matrix: what's tested vs the app's feature surface
 ```
 
 Steps are matched to definitions by their text (regex) across all files, so a step phrased the
-same way is reused everywhere. WDIO runs one worker per `.feature` file. `strict: true` in
-`cucumberOpts` (see `wdio.conf.ts`) fails the run on any step with no matching definition rather
-than silently skipping it.
+same way is reused everywhere — e.g. every fixture-backed feature opens its repo through the one
+shared `Given the "<fixture>" fixture repository is opened` step in `repo.steps.ts` (which builds
+the real fixture, seeds localStorage, reloads, and waits for the `repo-view` marker — see below).
+WDIO runs one worker per `.feature` file. `strict: true` in `cucumberOpts` (see `wdio.conf.ts`)
+fails the run on any step with no matching definition rather than silently skipping it.
 
 ### Tags
 
@@ -113,16 +125,17 @@ bugs; mocking is for the edges around git (dialogs, network, OS), not git itself
 
 ## Driving UI state without a real native dialog
 
-`features/fixup-autosquash.feature`'s `Given the "…" fixture repository is built and opened` step
+The shared `Given the "<fixture>" fixture repository is opened` step (`step-definitions/repo.steps.ts`)
 needs the app to have a repo open, which normally happens by clicking "Browse" → native OS folder
 picker → `open_repo`. WebDriver can't drive a native dialog, and (per the limitation above)
-mocking the dialog's `invoke()` call doesn't work here either. Instead the step
-(`step-definitions/fixup.steps.ts`) writes directly to the same `localStorage` key
-`repoUI.store.ts`'s `zustand/persist` middleware owns (`git-manager-repos-ui`, shape `{ state: {
-openTabs, activeRepo, activeTab }, version: 0 }`) and reloads the page. From that point on,
-everything is real: `RepoView`'s own mount effect calls the real `open_repo`,
-`PendingFixupsBanner` fires a real `get_pending_fixups`, `AutosquashPreviewDialog` a real
-`autosquash_preview` — all against the real fixup-chain fixture repo. Only the "click Browse, use
+mocking the dialog's `invoke()` call doesn't work here either. Instead the step writes directly to
+the same `localStorage` key `repoUI.store.ts`'s `zustand/persist` middleware owns
+(`git-manager-repos-ui`, shape `{ state: { openTabs, activeRepo, activeTab }, version: 0 }`) and
+reloads the page, then waits for the `data-testid="repo-view"` marker on `RepoView`'s root — a
+fixture-agnostic "repo loaded" signal. From that point on, everything is real: `RepoView`'s own
+mount effect calls the real `open_repo`, `PendingFixupsBanner` fires a real `get_pending_fixups`,
+`AutosquashPreviewDialog` a real `autosquash_preview` — all against the real fixture repo. Only the
+"click Browse, use
 the native picker" step is skipped.
 
 ## Visual snapshots
@@ -140,10 +153,11 @@ await expect($('[data-testid="autosquash-preview-groups"]')).toMatchElementSnaps
 A tolerance of exactly `0` is too strict in practice — two renders of the identical state can
 differ by a fraction of a percent from font hinting/antialiasing jitter alone (measured ~0.27%
 here before adding the stabilisation step below); `1` absorbs that noise while still catching
-real UI regressions, which run an order of magnitude higher. The snapshot step in
-`step-definitions/fixup.steps.ts` also waits for `document.fonts.ready` and force-disables CSS
-transitions/animations right before capturing, both recommended by the upstream visual-testing
-guide, to cut noise further.
+real UI regressions, which run an order of magnitude higher. The shared `stabiliseForSnapshot()`
+helper (`support/visual.ts`, called by every snapshot step) waits for `document.fonts.ready` and
+force-disables CSS transitions/animations right before capturing, both recommended by the
+upstream visual-testing guide, to cut noise further. See [COVERAGE.md](./COVERAGE.md) for the
+snapshot strategy (which features are good targets, and the volatile-content caveat).
 
 Baselines live in `apps/e2e/__visual__/<platform>/<arch>/<driverProvider>/baseline/` — gitignored
 here since there's no CI runner yet to own a canonical baseline per-OS; once there is, drop the

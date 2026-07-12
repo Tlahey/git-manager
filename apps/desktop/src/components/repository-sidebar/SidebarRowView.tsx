@@ -64,6 +64,7 @@ export function SidebarRowView({
           count={row.count}
           isOpen={row.isOpen}
           onToggle={() => onToggleOpen(row.id)}
+          testId={`sidebar-section-${row.sectionKey}`}
           action={
             row.sectionKey === 'local' && onCreateBranch ? (
               <button

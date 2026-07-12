@@ -84,7 +84,9 @@ export function BranchContext() {
             title={label}
             className="flex h-5 min-w-0 max-w-[200px] items-center gap-1 rounded px-1 text-sm font-bold transition-colors hover:bg-accent"
           >
-            <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+            <span data-testid="branch-context-label" className="min-w-0 flex-1 truncate text-left">
+              {label}
+            </span>
             <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           </button>
         </PopoverTrigger>

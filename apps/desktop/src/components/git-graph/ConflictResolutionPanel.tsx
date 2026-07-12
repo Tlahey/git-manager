@@ -124,7 +124,10 @@ export function ConflictResolutionPanel({
   const noneResolved = resolvedFiles.length === 0 && conflictedFiles.length > 0
 
   return (
-    <div className="flex h-full w-full min-w-0 flex-col overflow-hidden border-l border-border bg-card shadow-2xl">
+    <div
+      data-testid="conflict-resolution-panel"
+      className="flex h-full w-full min-w-0 flex-col overflow-hidden border-l border-border bg-card shadow-2xl"
+    >
       {/* PANEL HEADER — matches CommitHeaderInfo's header bar */}
       <div className="flex flex-col gap-2.5 border-b border-border bg-muted/20 px-4 py-3">
         <div className="flex items-center justify-between">
