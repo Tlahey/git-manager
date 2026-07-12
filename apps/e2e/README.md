@@ -24,6 +24,7 @@ features/                       # .feature files — the scenarios in plain Gher
   settings.feature              #   @settings  settings screen opens (+ @visual snapshot)
   merge-editor.feature          #   @merge     three-way merge editor opens (+ @visual Monaco snapshot)
   working-tree.feature          #   @commits   WIP staging panel + file diff (+ @visual snapshots)
+  commit.feature                #   @commit    write a message + Commit; HEAD advances on disk
   undo-redo.feature             #   @undo      Cmd+Z/Cmd+Shift+Z undo & redo a branch checkout
 step-definitions/               # the TypeScript backing each Given/When/Then, matched by text
   repo.steps.ts                 #   generic "open the <fixture> repository" (shared)
@@ -36,6 +37,7 @@ step-definitions/               # the TypeScript backing each Given/When/Then, m
   settings.steps.ts             #   open settings (keyboard), general-section snapshot
   merge.steps.ts                #   navigate to merge route, snapshot Monaco editor
   working-tree.steps.ts         #   select WIP node, snapshot the staging panel
+  commit.steps.ts               #   type a message, click Commit, assert HEAD via git log on disk
   undo-redo.steps.ts            #   checkout via BranchContext, then Cmd+Z / Cmd+Shift+Z
 support/
   visual.ts                     #   stabiliseForSnapshot() shared by every snapshot step

@@ -194,6 +194,7 @@ export function WipStagingPanel({
               {t('commit.title')}
             </span>
             <Textarea
+              data-testid="commit-message-input"
               value={commitMessage}
               onChange={(e) => setCommitMessage(e.target.value)}
               placeholder={t('commit.placeholder')}
@@ -269,6 +270,7 @@ export function WipStagingPanel({
 
             <Button
               size="sm"
+              data-testid="commit-button"
               className="flex-1 text-xs h-8"
               onClick={handleCommitWip}
               disabled={
