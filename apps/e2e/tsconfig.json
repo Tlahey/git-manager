@@ -2,7 +2,6 @@
   "extends": "@git-manager/config/typescript",
   "compilerOptions": {
     "types": ["node", "@wdio/globals/types", "@wdio/visual-service"],
-    "typeRoots": ["./node_modules", "./node_modules/@types"],
     "isolatedModules": true
   },
   "include": ["**/*.ts"]
