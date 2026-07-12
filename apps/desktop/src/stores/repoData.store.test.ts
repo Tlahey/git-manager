@@ -4,7 +4,15 @@ import { useRepoUIStore, DASHBOARD_TAB } from './repoUI.store'
 import type { GitRepo } from '@git-manager/git-types'
 
 function repo(overrides: Partial<GitRepo> = {}): GitRepo {
-  return { path: '/repo/a', name: 'a', head: 'main', isDetached: false, isDirty: false, remotes: [], ...overrides }
+  return {
+    path: '/repo/a',
+    name: 'a',
+    head: 'main',
+    isDetached: false,
+    isDirty: false,
+    remotes: [],
+    ...overrides,
+  }
 }
 
 beforeEach(() => {
@@ -83,7 +91,7 @@ describe('useRepoDataStore — removeRepo cross-store interoperability', () => {
     expect(useRepoDataStore.getState().savedRepos).toEqual([])
   })
 
-  it('also clears the removed repo out of repoUI.store\'s open tabs/active state', () => {
+  it("also clears the removed repo out of repoUI.store's open tabs/active state", () => {
     useRepoDataStore.getState().addRepo(repo())
     useRepoUIStore.getState().openTab('/repo/a')
     expect(useRepoUIStore.getState().activeRepo).toBe('/repo/a')

@@ -20,7 +20,11 @@ const { runLlmGenerate, cancelLlmGenerate, llmStatus, addMessage } = vi.hoisted(
   addMessage: vi.fn(),
 }))
 vi.mock('./useOllamaGeneration', () => ({
-  useOllamaGeneration: () => ({ generate: runLlmGenerate, cancel: cancelLlmGenerate, status: llmStatus.current }),
+  useOllamaGeneration: () => ({
+    generate: runLlmGenerate,
+    cancel: cancelLlmGenerate,
+    status: llmStatus.current,
+  }),
 }))
 vi.mock('./useCommitMessageHistory', () => ({
   useCommitMessageHistory: () => ({ history: ['past message'], addMessage }),
@@ -104,11 +108,13 @@ describe('useWipCommitPanel — classic commit', () => {
   })
 
   it('handleGenerateCommitMessage streams tokens into commitMessage and records history on completion', () => {
-    runLlmGenerate.mockImplementation(async (onToken: (t: string) => void, onDone: (full: string) => void) => {
-      onToken('Hello ')
-      onToken('world')
-      onDone('Hello world')
-    })
+    runLlmGenerate.mockImplementation(
+      async (onToken: (t: string) => void, onDone: (full: string) => void) => {
+        onToken('Hello ')
+        onToken('world')
+        onDone('Hello world')
+      }
+    )
     const { result } = renderHook(() => useWipCommitPanel('/repo', status(), [], t))
     act(() => result.current.handleGenerateCommitMessage())
     expect(result.current.commitMessage).toBe('Hello world')
@@ -133,10 +139,9 @@ describe('useWipCommitPanel — batch mode: generateMessageForBatch', () => {
   it('is a no-op when already generating for that group', async () => {
     mocked.apiUnstageAll.mockResolvedValue(undefined)
     const files = [file('src/a.ts')]
-    const { result, rerender } = renderHook(
-      ({ gs }) => useWipCommitPanel('/repo', gs, files, t),
-      { initialProps: { gs: status() } }
-    )
+    const { result, rerender } = renderHook(({ gs }) => useWipCommitPanel('/repo', gs, files, t), {
+      initialProps: { gs: status() },
+    })
     // Simulate an in-progress generation by directly triggering it without awaiting, then
     // calling again synchronously while the first is still "in flight".
     runLlmGenerate.mockImplementation(() => new Promise(() => {})) // never resolves
@@ -156,17 +161,24 @@ describe('useWipCommitPanel — batch mode: generateMessageForBatch', () => {
     mocked.apiUnstageAll.mockResolvedValue(undefined)
     mocked.apiStageFile.mockResolvedValue(undefined)
     mocked.apiUnstageFile.mockResolvedValue(undefined)
-    runLlmGenerate.mockImplementation(async (onToken: (t: string) => void, onDone: (full: string) => void) => {
-      // onDone's `full` param is only used for the history entry (addMessage) — batchMessages is
-      // driven exclusively by the running onToken accumulation, so the two must agree here to
-      // reflect realistic streaming (where "full" is just the sum of the tokens already emitted).
-      onToken('generated message')
-      onDone('generated message')
-    })
+    runLlmGenerate.mockImplementation(
+      async (onToken: (t: string) => void, onDone: (full: string) => void) => {
+        // onDone's `full` param is only used for the history entry (addMessage) — batchMessages is
+        // driven exclusively by the running onToken accumulation, so the two must agree here to
+        // reflect realistic streaming (where "full" is just the sum of the tokens already emitted).
+        onToken('generated message')
+        onDone('generated message')
+      }
+    )
     fetchQuery.mockResolvedValue(status({ unstaged: [], untracked: [] }))
 
-    const files = [file('src/a.ts', { status: 'modified' }), file('src/b.ts', { status: 'deleted' })]
-    const { result } = renderHook(() => useWipCommitPanel('/repo', status({ staged: [] }), files, t))
+    const files = [
+      file('src/a.ts', { status: 'modified' }),
+      file('src/b.ts', { status: 'deleted' }),
+    ]
+    const { result } = renderHook(() =>
+      useWipCommitPanel('/repo', status({ staged: [] }), files, t)
+    )
 
     await act(async () => result.current.generateMessageForBatch('src', files))
 
@@ -180,8 +192,12 @@ describe('useWipCommitPanel — batch mode: generateMessageForBatch', () => {
   it('restores originally-staged files still present after generation', async () => {
     mocked.apiUnstageAll.mockResolvedValue(undefined)
     mocked.apiStageFile.mockResolvedValue(undefined)
-    runLlmGenerate.mockImplementation(async (_onToken: unknown, onDone: (full: string) => void) => onDone('msg'))
-    fetchQuery.mockResolvedValue(status({ unstaged: [{ path: 'other.ts', status: 'modified' } as never], untracked: [] }))
+    runLlmGenerate.mockImplementation(async (_onToken: unknown, onDone: (full: string) => void) =>
+      onDone('msg')
+    )
+    fetchQuery.mockResolvedValue(
+      status({ unstaged: [{ path: 'other.ts', status: 'modified' } as never], untracked: [] })
+    )
 
     const files = [file('src/a.ts')]
     const gitStatus = status({ staged: [{ path: 'other.ts', status: 'modified' } as never] })
@@ -220,7 +236,9 @@ describe('useWipCommitPanel — batch mode: commitBatch', () => {
     mocked.apiUnstageAll.mockResolvedValue(undefined)
     mocked.apiStageFile.mockResolvedValue(undefined)
     mocked.apiCreateCommit.mockResolvedValue({ oid: 'new' })
-    fetchQuery.mockResolvedValue(status({ unstaged: [{ path: 'other.ts', status: 'modified' } as never], untracked: [] }))
+    fetchQuery.mockResolvedValue(
+      status({ unstaged: [{ path: 'other.ts', status: 'modified' } as never], untracked: [] })
+    )
 
     const files = [file('src/a.ts')]
     const gitStatus = status({ staged: [{ path: 'other.ts', status: 'modified' } as never] })

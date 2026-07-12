@@ -18,8 +18,7 @@ interface OperationProgressState {
 
 export const useOperationProgressStore = create<OperationProgressState>((set) => ({
   running: {},
-  start: (repoPath, kind) =>
-    set((state) => ({ running: { ...state.running, [repoPath]: kind } })),
+  start: (repoPath, kind) => set((state) => ({ running: { ...state.running, [repoPath]: kind } })),
   clear: (repoPath) =>
     set((state) => {
       const next = { ...state.running }

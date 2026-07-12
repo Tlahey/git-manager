@@ -10,11 +10,17 @@ describe('FollowPRDialog — validation', () => {
     const followButton = screen.getByText('Follow PR')
     expect(followButton).toBeDisabled()
 
-    await user.type(screen.getByPlaceholderText('https://github.com/owner/repo/pull/123'), 'https://github.com/owner/repo/issues/1')
+    await user.type(
+      screen.getByPlaceholderText('https://github.com/owner/repo/pull/123'),
+      'https://github.com/owner/repo/issues/1'
+    )
     expect(followButton).toBeDisabled()
 
     await user.clear(screen.getByPlaceholderText('https://github.com/owner/repo/pull/123'))
-    await user.type(screen.getByPlaceholderText('https://github.com/owner/repo/pull/123'), 'https://github.com/owner/repo/pull/123')
+    await user.type(
+      screen.getByPlaceholderText('https://github.com/owner/repo/pull/123'),
+      'https://github.com/owner/repo/pull/123'
+    )
     expect(followButton).toBeEnabled()
   })
 })
@@ -25,7 +31,10 @@ describe('FollowPRDialog — submitting', () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
     render(<FollowPRDialog onAdd={onAdd} onClose={onClose} />)
-    await user.type(screen.getByPlaceholderText('https://github.com/owner/repo/pull/123'), '  https://github.com/owner/repo/pull/123  ')
+    await user.type(
+      screen.getByPlaceholderText('https://github.com/owner/repo/pull/123'),
+      '  https://github.com/owner/repo/pull/123  '
+    )
     await user.click(screen.getByText('Follow PR'))
     expect(onAdd).toHaveBeenCalledWith('https://github.com/owner/repo/pull/123')
     expect(onClose).toHaveBeenCalledOnce()
@@ -35,7 +44,10 @@ describe('FollowPRDialog — submitting', () => {
     const onAdd = vi.fn()
     const user = userEvent.setup()
     render(<FollowPRDialog onAdd={onAdd} onClose={vi.fn()} />)
-    await user.type(screen.getByPlaceholderText('https://github.com/owner/repo/pull/123'), 'https://github.com/owner/repo/pull/1{Enter}')
+    await user.type(
+      screen.getByPlaceholderText('https://github.com/owner/repo/pull/123'),
+      'https://github.com/owner/repo/pull/1{Enter}'
+    )
     expect(onAdd).toHaveBeenCalledWith('https://github.com/owner/repo/pull/1')
   })
 
@@ -43,7 +55,10 @@ describe('FollowPRDialog — submitting', () => {
     const onAdd = vi.fn()
     const user = userEvent.setup()
     render(<FollowPRDialog onAdd={onAdd} onClose={vi.fn()} />)
-    await user.type(screen.getByPlaceholderText('https://github.com/owner/repo/pull/123'), 'not a url{Enter}')
+    await user.type(
+      screen.getByPlaceholderText('https://github.com/owner/repo/pull/123'),
+      'not a url{Enter}'
+    )
     expect(onAdd).not.toHaveBeenCalled()
   })
 

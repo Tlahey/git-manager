@@ -38,9 +38,9 @@ this skill, not the percentage itself.
    and a repo-wide run would be slow and full of unrelated noise anyway.
    - TS/TSX: `node .claude/skills/test-coverage-guardian/scripts/check_ts_coverage.mjs <path/to/File.tsx>`
    - Rust: `.claude/skills/test-coverage-guardian/scripts/check_rust_coverage.sh <path/to/file.rs>`
-   Both accept multiple file paths in one call. Each prints per-file percentages for every metric
-   plus the specific uncovered line numbers (and uncovered branches/functions where available) —
-   use that list to know exactly what to add next, not just whether you passed.
+     Both accept multiple file paths in one call. Each prints per-file percentages for every metric
+     plus the specific uncovered line numbers (and uncovered branches/functions where available) —
+     use that list to know exactly what to add next, not just whether you passed.
 6. **If any metric is below 95%, add tests targeting the reported lines/branches specifically,
    then rerun.** Repeat until every file you created or modified is at or above 95% on all
    applicable metrics, or you hit the documented exception below.
@@ -57,6 +57,7 @@ this skill, not the percentage itself.
 Check the relevant gotcha file first — several failure modes here look like application bugs
 (0 calls recorded, `NaN` instead of a thrown error, a selector matching nothing) but are actually
 known quirks of this repo's test environment:
+
 - TS/TSX: [references/frontend-vitest-patterns.md](references/frontend-vitest-patterns.md) —
   query-cache bleed between tests, `react-virtual` rendering nothing in jsdom, missing
   `PointerEvent`, hex-vs-rgb color serialization, the Monaco fake harnesses, `act()` timing, a

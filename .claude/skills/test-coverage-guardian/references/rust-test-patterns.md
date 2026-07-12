@@ -97,7 +97,7 @@ automatically — run it yourself if you want real branch numbers, or proceed wi
 `check_rust_coverage.sh` runs `cargo llvm-cov --lib`, not a plain `cargo llvm-cov`. This crate
 has two targets that both link the library code — `src/lib.rs` (where every `#[cfg(test)]` lives)
 and `src/main.rs` (the thin Tauri binary entry point, which has no tests of its own). Without
-`--lib`, cargo-llvm-cov instruments *both* targets, and every `pub fn` in the lib gets a second,
+`--lib`, cargo-llvm-cov instruments _both_ targets, and every `pub fn` in the lib gets a second,
 separate coverage entry from the binary target's perspective — one where it's fully exercised
 (by the lib's own tests) and one where it shows 0 hits (because the binary target runs 0 tests).
 The two get counted as separate functions, so real 100%-tested functions silently report as ~50%

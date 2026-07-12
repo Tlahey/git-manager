@@ -144,7 +144,7 @@ export function CommitFileList({
     deleted: 'text-red-500 font-bold text-xs',
     renamed: 'text-blue-500 font-bold text-xs',
     untracked: 'text-muted-foreground font-bold text-xs',
-    conflicted: 'text-orange-500 font-bold text-xs'
+    conflicted: 'text-orange-500 font-bold text-xs',
   }
 
   const statusLetters: Record<string, string> = {
@@ -153,7 +153,7 @@ export function CommitFileList({
     deleted: 'D',
     renamed: 'R',
     untracked: '?',
-    conflicted: 'U'
+    conflicted: 'U',
   }
 
   function collectDescendantFiles(node: TreeNode): TreeNode[] {
@@ -199,7 +199,7 @@ export function CommitFileList({
         <div key={node.path} className="flex flex-col">
           <div
             onClick={() => toggleFolder(node.path)}
-            className="group/folder flex items-center gap-1.5 py-1 px-2 text-xs hover:bg-accent/40 rounded transition-colors text-left font-medium cursor-pointer w-full min-w-0"
+            className="group/folder flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded px-2 py-1 text-left text-xs font-medium transition-colors hover:bg-accent/40"
             role="button"
             tabIndex={0}
             data-testid={`file-tree-folder-${node.path}`}
@@ -211,9 +211,9 @@ export function CommitFileList({
             style={{ paddingLeft: `${depth * 12 + 8}px` }}
           >
             {isExpanded ? (
-              <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+              <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
             ) : (
-              <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+              <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
             )}
             {showFolderCheckbox && (
               <button
@@ -222,10 +222,10 @@ export function CommitFileList({
                   handleToggleFolder(node, allStaged)
                 }}
                 className={cn(
-                  "h-4 w-4 flex items-center justify-center text-[10px] font-bold border rounded transition-colors shrink-0",
+                  'flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold transition-colors',
                   allStaged || someStaged
-                    ? "bg-primary border-primary text-white"
-                    : "border-border hover:border-primary/60 text-transparent hover:text-muted-foreground"
+                    ? 'border-primary bg-primary text-white'
+                    : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
                 )}
                 title={allStaged ? 'Unstage folder' : 'Stage folder'}
                 data-testid={`file-tree-folder-checkbox-${node.path}`}
@@ -234,9 +234,9 @@ export function CommitFileList({
               </button>
             )}
             {isExpanded ? (
-              <FolderOpen className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+              <FolderOpen className="h-3.5 w-3.5 shrink-0 text-blue-400" />
             ) : (
-              <Folder className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+              <Folder className="h-3.5 w-3.5 shrink-0 text-blue-400" />
             )}
             <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
               <span className="truncate text-foreground/90">{node.name}</span>
@@ -247,24 +247,24 @@ export function CommitFileList({
               )}
             </div>
             {node.stats && (
-              <div className="flex items-center gap-1 shrink-0 ml-2 select-none text-[9px] font-bold">
+              <div className="ml-2 flex shrink-0 select-none items-center gap-1 text-[9px] font-bold">
                 {node.stats.added > 0 && (
-                  <span className="text-green-500 bg-green-500/10 px-1 rounded">
+                  <span className="rounded bg-green-500/10 px-1 text-green-500">
                     +{node.stats.added}
                   </span>
                 )}
                 {node.stats.modified > 0 && (
-                  <span className="text-yellow-500 bg-yellow-500/10 px-1 rounded">
+                  <span className="rounded bg-yellow-500/10 px-1 text-yellow-500">
                     ~{node.stats.modified}
                   </span>
                 )}
                 {node.stats.deleted > 0 && (
-                  <span className="text-red-500 bg-red-500/10 px-1 rounded">
+                  <span className="rounded bg-red-500/10 px-1 text-red-500">
                     -{node.stats.deleted}
                   </span>
                 )}
                 {node.stats.renamed > 0 && (
-                  <span className="text-blue-500 bg-blue-500/10 px-1 rounded">
+                  <span className="rounded bg-blue-500/10 px-1 text-blue-500">
                     →{node.stats.renamed}
                   </span>
                 )}
@@ -277,23 +277,25 @@ export function CommitFileList({
                   handleHoverStageFolder(node)
                 }}
                 className={cn(
-                  "p-0.5 border rounded transition-colors shrink-0 ml-2 opacity-0 group-hover/folder:opacity-100",
+                  'ml-2 shrink-0 rounded border p-0.5 opacity-0 transition-colors group-hover/folder:opacity-100',
                   hoverStage === 'add'
-                    ? "border-green-500/40 text-green-500 hover:bg-green-500/10"
-                    : "border-red-500/40 text-red-500 hover:bg-red-500/10"
+                    ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
+                    : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
                 )}
                 title={hoverStage === 'add' ? 'Stage folder' : 'Unstage folder'}
                 data-testid={`file-tree-folder-hover-stage-${node.path}`}
               >
-                {hoverStage === 'add' ? <Plus className="h-2.5 w-2.5" /> : <Minus className="h-2.5 w-2.5" />}
+                {hoverStage === 'add' ? (
+                  <Plus className="h-2.5 w-2.5" />
+                ) : (
+                  <Minus className="h-2.5 w-2.5" />
+                )}
               </button>
             )}
           </div>
           {isExpanded && node.children && (
             <div className="flex flex-col">
-              {getSortedNodes(node.children).map((child) =>
-                renderTreeNode(child, depth + 1)
-              )}
+              {getSortedNodes(node.children).map((child) => renderTreeNode(child, depth + 1))}
             </div>
           )}
         </div>
@@ -308,13 +310,13 @@ export function CommitFileList({
     return (
       <div
         key={node.path}
-        className="group/file flex items-center justify-between py-1 px-2 text-xs hover:bg-accent rounded transition-colors cursor-pointer w-full min-w-0"
+        className="group/file flex w-full min-w-0 cursor-pointer items-center justify-between rounded px-2 py-1 text-xs transition-colors hover:bg-accent"
         style={{ paddingLeft: `${depth * indentStep + 8}px` }}
         onClick={() =>
           onSelectFileDiff?.({
             path: node.path,
             staged: node.staged ?? false,
-            oid: isWip ? undefined : commitOid
+            oid: isWip ? undefined : commitOid,
           })
         }
         role="button"
@@ -325,13 +327,13 @@ export function CommitFileList({
             onSelectFileDiff?.({
               path: node.path,
               staged: node.staged ?? false,
-              oid: isWip ? undefined : commitOid
+              oid: isWip ? undefined : commitOid,
             })
           }
         }}
       >
         {/* Left: Stage checkbox (WIP), File Icon and Filename */}
-        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5">
           {!hoverStage && isWip ? (
             <button
               onClick={(e) => {
@@ -340,10 +342,10 @@ export function CommitFileList({
                 else handleStage(node.path)
               }}
               className={cn(
-                "h-4 w-4 flex items-center justify-center text-[10px] font-bold border rounded transition-colors shrink-0",
+                'flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold transition-colors',
                 node.staged
-                  ? "bg-primary border-primary text-white"
-                  : "border-border hover:border-primary/60 text-transparent hover:text-muted-foreground"
+                  ? 'border-primary bg-primary text-white'
+                  : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
               )}
               title={node.staged ? 'Unstage' : 'Stage'}
             >
@@ -352,20 +354,24 @@ export function CommitFileList({
           ) : !hoverStage ? (
             <div className="w-3 shrink-0" />
           ) : null}
-          <FileText className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
-          <span className="font-mono text-[11px] leading-tight text-foreground font-semibold truncate min-w-0 flex-1">{node.name}</span>
+          <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+          <span className="min-w-0 flex-1 truncate font-mono text-[11px] font-semibold leading-tight text-foreground">
+            {node.name}
+          </span>
         </div>
 
         {/* Right: Stats, Status, WIP Actions */}
-        <div className="flex items-center gap-2 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
+        <div className="ml-2 flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
           {node.additions !== undefined && node.deletions !== undefined && (
-            <span className="text-[10px] text-muted-foreground/70 scale-90 select-none shrink-0 flex items-center gap-0.5">
+            <span className="flex shrink-0 scale-90 select-none items-center gap-0.5 text-[10px] text-muted-foreground/70">
               <span className="text-green-500">+{node.additions}</span>
               <span className="text-red-500">-{node.deletions}</span>
             </span>
           )}
 
-          <span className={cn(statusIcons[fileStatus], "shrink-0 min-w-[12px] text-center select-none")}>
+          <span
+            className={cn(statusIcons[fileStatus], 'min-w-[12px] shrink-0 select-none text-center')}
+          >
             {statusLetters[fileStatus]}
           </span>
 
@@ -373,8 +379,8 @@ export function CommitFileList({
             <button
               onClick={() => handleDiscard(node.path)}
               className={cn(
-                "p-0.5 border rounded border-border text-destructive hover:bg-destructive/10 transition-colors shrink-0",
-                hoverStage && "opacity-0 group-hover/file:opacity-100"
+                'shrink-0 rounded border border-border p-0.5 text-destructive transition-colors hover:bg-destructive/10',
+                hoverStage && 'opacity-0 group-hover/file:opacity-100'
               )}
               title="Discard Changes"
             >
@@ -384,16 +390,22 @@ export function CommitFileList({
 
           {hoverStage && isWip && (
             <button
-              onClick={() => (hoverStage === 'add' ? handleStage(node.path) : handleUnstage(node.path))}
+              onClick={() =>
+                hoverStage === 'add' ? handleStage(node.path) : handleUnstage(node.path)
+              }
               className={cn(
-                "p-0.5 border rounded transition-colors shrink-0 opacity-0 group-hover/file:opacity-100",
+                'shrink-0 rounded border p-0.5 opacity-0 transition-colors group-hover/file:opacity-100',
                 hoverStage === 'add'
-                  ? "border-green-500/40 text-green-500 hover:bg-green-500/10"
-                  : "border-red-500/40 text-red-500 hover:bg-red-500/10"
+                  ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
+                  : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
               )}
               title={hoverStage === 'add' ? 'Stage' : 'Unstage'}
             >
-              {hoverStage === 'add' ? <Plus className="h-2.5 w-2.5" /> : <Minus className="h-2.5 w-2.5" />}
+              {hoverStage === 'add' ? (
+                <Plus className="h-2.5 w-2.5" />
+              ) : (
+                <Minus className="h-2.5 w-2.5" />
+              )}
             </button>
           )}
         </div>
@@ -402,41 +414,53 @@ export function CommitFileList({
   }
 
   return (
-    <div className={cn(collapsible ? "border border-border/40 rounded-lg overflow-hidden" : "space-y-4")}>
+    <div
+      className={cn(
+        collapsible ? 'overflow-hidden rounded-lg border border-border/40' : 'space-y-4'
+      )}
+    >
       {/* Global Statistics Summary */}
       {!hideStats && bodyVisible && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Stats Summary
             </span>
-            <span className="text-[10px] font-semibold text-muted-foreground bg-muted/65 px-1.5 py-0.5 rounded border border-border/40 font-mono">
+            <span className="rounded border border-border/40 bg-muted/65 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
               {filteredFiles.length} {filteredFiles.length === 1 ? 'file' : 'files'} changed
             </span>
           </div>
-          <div className="flex flex-wrap gap-2 text-[10px] font-medium text-muted-foreground bg-muted/5 p-2 rounded-md border border-border/20">
+          <div className="flex flex-wrap gap-2 rounded-md border border-border/20 bg-muted/5 p-2 text-[10px] font-medium text-muted-foreground">
             {fileStats.added > 0 && (
               <span className="flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-green-500" />
-                <span>{fileStats.added} {t('commitDetails.stats.added') || 'added'}</span>
+                <span>
+                  {fileStats.added} {t('commitDetails.stats.added') || 'added'}
+                </span>
               </span>
             )}
             {fileStats.modified > 0 && (
               <span className="flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-yellow-500" />
-                <span>{fileStats.modified} {t('commitDetails.stats.modified') || 'modified'}</span>
+                <span>
+                  {fileStats.modified} {t('commitDetails.stats.modified') || 'modified'}
+                </span>
               </span>
             )}
             {fileStats.deleted > 0 && (
               <span className="flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-red-500" />
-                <span>{fileStats.deleted} {t('commitDetails.stats.deleted') || 'deleted'}</span>
+                <span>
+                  {fileStats.deleted} {t('commitDetails.stats.deleted') || 'deleted'}
+                </span>
               </span>
             )}
             {fileStats.renamed > 0 && (
               <span className="flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-blue-500" />
-                <span>{fileStats.renamed} {t('commitDetails.stats.renamed') || 'renamed'}</span>
+                <span>
+                  {fileStats.renamed} {t('commitDetails.stats.renamed') || 'renamed'}
+                </span>
               </span>
             )}
             {processedFiles.length === 0 && (
@@ -452,10 +476,10 @@ export function CommitFileList({
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             type="text"
-            placeholder={t('commitDetails.searchFiles') || "Filter files..."}
+            placeholder={t('commitDetails.searchFiles') || 'Filter files...'}
             value={fileSearchQuery}
             onChange={(e) => setFileSearchQuery(e.target.value)}
-            className="pl-8 h-8 text-xs font-mono"
+            className="h-8 pl-8 font-mono text-xs"
           />
           {fileSearchQuery && (
             <button
@@ -469,16 +493,16 @@ export function CommitFileList({
       )}
 
       {/* FILES TREE OR LIST VIEW */}
-      <div className={collapsible ? "" : "space-y-2"}>
+      <div className={collapsible ? '' : 'space-y-2'}>
         <div
           onClick={collapsible ? () => setCollapsed((c) => !c) : undefined}
           className={cn(
-            "flex items-center justify-between transition-colors",
+            'flex items-center justify-between transition-colors',
             collapsible
-              ? "bg-muted/15 hover:bg-muted/25 px-3 py-2 cursor-pointer select-none"
-              : "bg-muted/10 p-1.5 rounded-lg border border-border/30"
+              ? 'cursor-pointer select-none bg-muted/15 px-3 py-2 hover:bg-muted/25'
+              : 'rounded-lg border border-border/30 bg-muted/10 p-1.5'
           )}
-          role={collapsible ? "button" : undefined}
+          role={collapsible ? 'button' : undefined}
           tabIndex={collapsible ? 0 : undefined}
           onKeyDown={
             collapsible
@@ -487,16 +511,16 @@ export function CommitFileList({
                 }
               : undefined
           }
-          data-testid={collapsible ? "file-list-zone-header" : undefined}
+          data-testid={collapsible ? 'file-list-zone-header' : undefined}
         >
           <div className="flex items-center gap-2 pl-1">
             {collapsible &&
               (collapsed ? (
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               ) : (
-                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               ))}
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider select-none">
+            <span className="select-none text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {title ?? 'Modifications'}
             </span>
             {onBulkStage && hoverStage && (
@@ -506,28 +530,36 @@ export function CommitFileList({
                   onBulkStage()
                 }}
                 className={cn(
-                  "h-4 w-4 flex items-center justify-center rounded border transition-colors shrink-0",
+                  'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
                   hoverStage === 'add'
-                    ? "border-green-500/40 text-green-500 hover:bg-green-500/10"
-                    : "border-red-500/40 text-red-500 hover:bg-red-500/10"
+                    ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
+                    : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
                 )}
-                title={hoverStage === 'add' ? t('workingTree.stageAll') : t('workingTree.unstageAll')}
+                title={
+                  hoverStage === 'add' ? t('workingTree.stageAll') : t('workingTree.unstageAll')
+                }
                 data-testid="file-list-bulk-stage"
               >
-                {hoverStage === 'add' ? <Plus className="h-2.5 w-2.5" /> : <Minus className="h-2.5 w-2.5" />}
+                {hoverStage === 'add' ? (
+                  <Plus className="h-2.5 w-2.5" />
+                ) : (
+                  <Minus className="h-2.5 w-2.5" />
+                )}
               </button>
             )}
             {bodyVisible && viewMode === 'tree' && allFolderPaths.size > 0 && (
               <>
-                <span className="text-muted-foreground/30 text-[10px] select-none">•</span>
+                <span className="select-none text-[10px] text-muted-foreground/30">•</span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
                     handleToggleExpandAll()
                   }}
-                  className="text-[10px] text-primary hover:underline font-semibold"
+                  className="text-[10px] font-semibold text-primary hover:underline"
                 >
-                  {buttonState === 'expand' ? t('commitDetails.expandAll') : t('commitDetails.collapseAll')}
+                  {buttonState === 'expand'
+                    ? t('commitDetails.expandAll')
+                    : t('commitDetails.collapseAll')}
                 </button>
               </>
             )}
@@ -536,26 +568,30 @@ export function CommitFileList({
               `invisible` hides it without collapsing its box, avoiding layout shift on toggle. */}
           <div
             className={cn(
-              "flex items-center border border-border/55 rounded overflow-hidden bg-card",
-              !bodyVisible && "invisible"
+              'flex items-center overflow-hidden rounded border border-border/55 bg-card',
+              !bodyVisible && 'invisible'
             )}
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setViewMode('tree')}
               className={`p-1.5 transition-all ${
-                viewMode === 'tree' ? 'bg-primary text-white' : 'hover:bg-accent text-muted-foreground'
+                viewMode === 'tree'
+                  ? 'bg-primary text-white'
+                  : 'text-muted-foreground hover:bg-accent'
               }`}
-              title={t('commitDetails.viewModeTree') || "Tree structure"}
+              title={t('commitDetails.viewModeTree') || 'Tree structure'}
             >
               <FolderTree className="h-3.5 w-3.5" />
             </button>
             <button
               onClick={() => setViewMode('list')}
               className={`p-1.5 transition-all ${
-                viewMode === 'list' ? 'bg-primary text-white' : 'hover:bg-accent text-muted-foreground'
+                viewMode === 'list'
+                  ? 'bg-primary text-white'
+                  : 'text-muted-foreground hover:bg-accent'
               }`}
-              title={t('commitDetails.viewModeList') || "Flat list"}
+              title={t('commitDetails.viewModeList') || 'Flat list'}
             >
               <List className="h-3.5 w-3.5" />
             </button>
@@ -564,9 +600,11 @@ export function CommitFileList({
 
         {/* Tree rendering */}
         {bodyVisible && viewMode === 'tree' && (
-          <div className={collapsible ? "space-y-0.5 border-t border-border/30 p-2" : "space-y-0.5"}>
+          <div
+            className={collapsible ? 'space-y-0.5 border-t border-border/30 p-2' : 'space-y-0.5'}
+          >
             {filteredFiles.length === 0 ? (
-              <p className="text-[11px] text-muted-foreground/70 italic px-2 py-1">
+              <p className="px-2 py-1 text-[11px] italic text-muted-foreground/70">
                 {noChangesLabel}
               </p>
             ) : (
@@ -577,21 +615,23 @@ export function CommitFileList({
 
         {/* List rendering */}
         {bodyVisible && viewMode === 'list' && (
-          <div className={collapsible ? "space-y-0.5 border-t border-border/30 p-2" : "space-y-0.5"}>
+          <div
+            className={collapsible ? 'space-y-0.5 border-t border-border/30 p-2' : 'space-y-0.5'}
+          >
             {filteredFiles.length === 0 ? (
-              <p className="text-[11px] text-muted-foreground/70 italic px-2 py-1">
+              <p className="px-2 py-1 text-[11px] italic text-muted-foreground/70">
                 {noChangesLabel}
               </p>
             ) : (
               filteredFiles.map((file) => (
                 <div
                   key={file.path}
-                  className="group/file flex items-center justify-between py-1 px-2 text-xs hover:bg-accent rounded transition-colors cursor-pointer w-full min-w-0"
+                  className="group/file flex w-full min-w-0 cursor-pointer items-center justify-between rounded px-2 py-1 text-xs transition-colors hover:bg-accent"
                   onClick={() =>
                     onSelectFileDiff?.({
                       path: file.path,
                       staged: file.staged,
-                      oid: isWip ? undefined : commitOid
+                      oid: isWip ? undefined : commitOid,
                     })
                   }
                   role="button"
@@ -601,13 +641,13 @@ export function CommitFileList({
                       onSelectFileDiff?.({
                         path: file.path,
                         staged: file.staged,
-                        oid: isWip ? undefined : commitOid
+                        oid: isWip ? undefined : commitOid,
                       })
                     }
                   }}
                 >
                   {/* Left: Stage checkbox (WIP), File Icon and Consecutive Path Display */}
-                  <div className="flex items-center min-w-0 flex-1 mr-4">
+                  <div className="mr-4 flex min-w-0 flex-1 items-center">
                     {!hoverStage && isWip && (
                       <button
                         onClick={(e) => {
@@ -616,29 +656,35 @@ export function CommitFileList({
                           else handleStage(file.path)
                         }}
                         className={cn(
-                          "h-4 w-4 flex items-center justify-center text-[10px] font-bold border rounded transition-colors shrink-0 mr-1.5",
+                          'mr-1.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold transition-colors',
                           file.staged
-                            ? "bg-primary border-primary text-white"
-                            : "border-border hover:border-primary/60 text-transparent hover:text-muted-foreground"
+                            ? 'border-primary bg-primary text-white'
+                            : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
                         )}
                         title={file.staged ? 'Unstage' : 'Stage'}
                       >
                         ✓
                       </button>
                     )}
-                    <FileText className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 mr-1.5" />
-                    <div className="min-w-0 flex-1 flex items-center font-mono text-[11px] leading-tight select-text overflow-hidden">
+                    <FileText className="mr-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+                    <div className="flex min-w-0 flex-1 select-text items-center overflow-hidden font-mono text-[11px] leading-tight">
                       {(() => {
                         const lastSlash = file.path.lastIndexOf('/')
                         if (lastSlash === -1) {
-                          return <span className="text-foreground font-semibold truncate min-w-0 flex-1">{file.path}</span>
+                          return (
+                            <span className="min-w-0 flex-1 truncate font-semibold text-foreground">
+                              {file.path}
+                            </span>
+                          )
                         }
                         const dir = file.path.substring(0, lastSlash + 1)
                         const name = file.path.substring(lastSlash + 1)
                         return (
                           <>
-                            <span className="text-muted-foreground/45 truncate min-w-0 shrink pr-0.5">{dir}</span>
-                            <span className="text-foreground font-semibold shrink-0">{name}</span>
+                            <span className="min-w-0 shrink truncate pr-0.5 text-muted-foreground/45">
+                              {dir}
+                            </span>
+                            <span className="shrink-0 font-semibold text-foreground">{name}</span>
                           </>
                         )
                       })()}
@@ -646,15 +692,23 @@ export function CommitFileList({
                   </div>
 
                   {/* Right: Stats, Status Letter, WIP Actions */}
-                  <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className="flex shrink-0 items-center gap-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {file.additions !== undefined && file.deletions !== undefined && (
-                      <span className="text-[10px] text-muted-foreground/70 scale-90 select-none shrink-0 flex items-center gap-0.5">
+                      <span className="flex shrink-0 scale-90 select-none items-center gap-0.5 text-[10px] text-muted-foreground/70">
                         <span className="text-green-500">+{file.additions}</span>
                         <span className="text-red-500">-{file.deletions}</span>
                       </span>
                     )}
 
-                    <span className={cn(statusIcons[file.status], "shrink-0 min-w-[12px] text-center select-none")}>
+                    <span
+                      className={cn(
+                        statusIcons[file.status],
+                        'min-w-[12px] shrink-0 select-none text-center'
+                      )}
+                    >
                       {statusLetters[file.status]}
                     </span>
 
@@ -662,8 +716,8 @@ export function CommitFileList({
                       <button
                         onClick={() => handleDiscard(file.path)}
                         className={cn(
-                          "p-0.5 border rounded border-border text-destructive hover:bg-destructive/10 transition-colors shrink-0",
-                          hoverStage && "opacity-0 group-hover/file:opacity-100"
+                          'shrink-0 rounded border border-border p-0.5 text-destructive transition-colors hover:bg-destructive/10',
+                          hoverStage && 'opacity-0 group-hover/file:opacity-100'
                         )}
                         title="Discard Changes"
                       >
@@ -673,16 +727,22 @@ export function CommitFileList({
 
                     {hoverStage && isWip && (
                       <button
-                        onClick={() => (hoverStage === 'add' ? handleStage(file.path) : handleUnstage(file.path))}
+                        onClick={() =>
+                          hoverStage === 'add' ? handleStage(file.path) : handleUnstage(file.path)
+                        }
                         className={cn(
-                          "p-0.5 border rounded transition-colors shrink-0 opacity-0 group-hover/file:opacity-100",
+                          'shrink-0 rounded border p-0.5 opacity-0 transition-colors group-hover/file:opacity-100',
                           hoverStage === 'add'
-                            ? "border-green-500/40 text-green-500 hover:bg-green-500/10"
-                            : "border-red-500/40 text-red-500 hover:bg-red-500/10"
+                            ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
+                            : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
                         )}
                         title={hoverStage === 'add' ? 'Stage' : 'Unstage'}
                       >
-                        {hoverStage === 'add' ? <Plus className="h-2.5 w-2.5" /> : <Minus className="h-2.5 w-2.5" />}
+                        {hoverStage === 'add' ? (
+                          <Plus className="h-2.5 w-2.5" />
+                        ) : (
+                          <Minus className="h-2.5 w-2.5" />
+                        )}
                       </button>
                     )}
                   </div>

@@ -4,7 +4,12 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { apiOpenRepo, apiInitRepo } from '../../api/repo.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@git-manager/ui'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@git-manager/ui'
 import { CloneRepoDialog } from './CloneRepoDialog'
 
 interface MenuItemProps {

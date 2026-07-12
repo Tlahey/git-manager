@@ -64,7 +64,11 @@ export function unlockAchievementById(
  * achievements are evaluated in a second pass, against the post-unlock snapshot, but are
  * reported via `pendingComposites` rather than unlocked immediately — see `CompositeRule`.
  */
-export function processEvent(state: RewardEngineState, event: AppEvent, payload: unknown): ProcessEventResult {
+export function processEvent(
+  state: RewardEngineState,
+  event: AppEvent,
+  payload: unknown
+): ProcessEventResult {
   let achievements = state.achievements
   let points = state.points
   const newlyUnlocked: Achievement[] = []
@@ -93,7 +97,13 @@ export function processEvent(state: RewardEngineState, event: AppEvent, payload:
     if (definition.kind === 'composite') continue // second pass, below
     const rule = getRule(definition.kind)
     const current = achievements.find((a) => a.id === definition.id)!
-    const ctx: RuleContext = { event, payload, counters, pairTracking, allAchievements: achievements }
+    const ctx: RuleContext = {
+      event,
+      payload,
+      counters,
+      pairTracking,
+      allAchievements: achievements,
+    }
     rule.track?.(current, ctx)
     if (!current.unlocked && rule.matches(current, ctx)) {
       tryUnlock(definition.id)
@@ -104,7 +114,13 @@ export function processEvent(state: RewardEngineState, event: AppEvent, payload:
   const compositeRule = getRule('composite')
   for (const achievement of achievements) {
     if (achievement.kind !== 'composite' || achievement.unlocked) continue
-    const ctx: RuleContext = { event, payload, counters, pairTracking, allAchievements: achievements }
+    const ctx: RuleContext = {
+      event,
+      payload,
+      counters,
+      pairTracking,
+      allAchievements: achievements,
+    }
     if (compositeRule.matches(achievement, ctx)) {
       pendingComposites.push(achievement)
     }

@@ -1,17 +1,17 @@
-import { createElement, useEffect, type CSSProperties } from 'react';
-import { defineGitMascot } from './GitMascotElement';
+import { createElement, useEffect, type CSSProperties } from 'react'
+import { defineGitMascot } from './GitMascotElement'
 
 export interface OctopusMascotProps {
   /** Rendered width in px (height is derived from the artwork ratio). Default 320. */
-  size?: number;
+  size?: number
   /** Enable the idle "natural movement" animations. Default true. */
-  animated?: boolean;
+  animated?: boolean
   /** Let the eyes follow the pointer. Default true (ignored when not animated). */
-  eyeTracking?: boolean;
-  className?: string;
-  style?: CSSProperties;
+  eyeTracking?: boolean
+  className?: string
+  style?: CSSProperties
   /** Accessible label for the SVG. */
-  label?: string;
+  label?: string
 }
 
 /**
@@ -32,8 +32,8 @@ export function OctopusMascot({
   label = 'Git Manager octopus mascot',
 }: OctopusMascotProps) {
   useEffect(() => {
-    defineGitMascot();
-  }, []);
+    defineGitMascot()
+  }, [])
 
   return createElement('git-mascot', {
     size,
@@ -45,5 +45,5 @@ export function OctopusMascot({
     // set a nonsensical `classname` attribute instead of applying any CSS class.
     class: className,
     style,
-  });
+  })
 }

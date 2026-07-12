@@ -5,17 +5,17 @@
  * reference on top to check placements.
  */
 
-import { useState } from 'react';
-import type { Meta, StoryObj } from '@storybook/react';
-import { MASCOT_LAYOUT, ReferenceOverlay, SPRITES, Stage, partStyle } from './rigUtils';
+import { useState } from 'react'
+import type { Meta, StoryObj } from '@storybook/react'
+import { MASCOT_LAYOUT, ReferenceOverlay, SPRITES, Stage, partStyle } from './rigUtils'
 
-const meta: Meta = { title: 'Mascot/Rig debugger' };
-export default meta;
+const meta: Meta = { title: 'Mascot/Rig debugger' }
+export default meta
 
 interface RigArgs {
-  refOpacity: number;
-  showPivots: boolean;
-  stageWidth: number;
+  refOpacity: number
+  showPivots: boolean
+  stageWidth: number
 }
 
 export const RigDebugger: StoryObj<RigArgs> = {
@@ -29,7 +29,7 @@ export const RigDebugger: StoryObj<RigArgs> = {
   render: ({ refOpacity, showPivots, stageWidth }) => (
     <RigView refOpacity={refOpacity} showPivots={showPivots} stageWidth={stageWidth} />
   ),
-};
+}
 
 /** Layers in paint order (back → front), face on top like the shipped markup. */
 function layerList(): { id: string; kind: 'limb' | 'head' | 'face' }[] {
@@ -37,24 +37,24 @@ function layerList(): { id: string; kind: 'limb' | 'head' | 'face' }[] {
     ...Object.keys(MASCOT_LAYOUT.limbs).map((id) => ({ id, kind: 'limb' as const })),
     { id: 'head', kind: 'head' as const },
     { id: 'face', kind: 'face' as const },
-  ];
+  ]
 }
 
 function RigView({ refOpacity, showPivots, stageWidth }: RigArgs) {
-  const [hidden, setHidden] = useState<Set<string>>(new Set());
-  const [hovered, setHovered] = useState<string | null>(null);
+  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [hovered, setHovered] = useState<string | null>(null)
 
-  const layers = layerList();
-  const dimmed = (id: string) => (hovered !== null && hovered !== id ? 0.15 : 1);
+  const layers = layerList()
+  const dimmed = (id: string) => (hovered !== null && hovered !== id ? 0.15 : 1)
   const toggle = (id: string) =>
     setHidden((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
 
-  const { head, limbs, eyes, eyeWhiteR, pupilScale, lidScale, mouth } = MASCOT_LAYOUT;
+  const { head, limbs, eyes, eyeWhiteR, pupilScale, lidScale, mouth } = MASCOT_LAYOUT
 
   return (
     <div
@@ -71,22 +71,26 @@ function RigView({ refOpacity, showPivots, stageWidth }: RigArgs) {
       <div>
         <Stage width={stageWidth}>
           {layers.map(({ id, kind }) => {
-            if (hidden.has(id)) return null;
+            if (hidden.has(id)) return null
             const common = {
               onPointerEnter: () => setHovered(id),
               onPointerLeave: () => setHovered(null),
-            };
+            }
             if (kind === 'limb') {
-              const l = limbs[id];
+              const l = limbs[id]
               return (
                 <img
                   key={id}
                   src={l.sprite.uri}
                   alt={id}
                   {...common}
-                  style={{ ...partStyle(l, l.sprite.w), opacity: dimmed(id), transition: 'opacity 0.1s' }}
+                  style={{
+                    ...partStyle(l, l.sprite.w),
+                    opacity: dimmed(id),
+                    transition: 'opacity 0.1s',
+                  }}
                 />
-              );
+              )
             }
             if (kind === 'head') {
               return (
@@ -101,7 +105,7 @@ function RigView({ refOpacity, showPivots, stageWidth }: RigArgs) {
                     transition: 'opacity 0.1s',
                   }}
                 />
-              );
+              )
             }
             return (
               <div key={id} {...common} style={{ opacity: dimmed(id), transition: 'opacity 0.1s' }}>
@@ -156,7 +160,7 @@ function RigView({ refOpacity, showPivots, stageWidth }: RigArgs) {
                   />
                 ))}
               </div>
-            );
+            )
           })}
 
           {showPivots &&
@@ -182,12 +186,19 @@ function RigView({ refOpacity, showPivots, stageWidth }: RigArgs) {
           <ReferenceOverlay opacity={refOpacity} />
         </Stage>
         <p style={{ color: '#7d95b5', fontSize: 12, maxWidth: stageWidth }}>
-          Ordre des lignes = ordre de peinture (haut = arrière). Survoler isole une couche ;
-          la case masque/affiche. Les pivots (rouges) sont les ancres d'ondulation.
+          Ordre des lignes = ordre de peinture (haut = arrière). Survoler isole une couche ; la case
+          masque/affiche. Les pivots (rouges) sont les ancres d'ondulation.
         </p>
       </div>
 
-      <table style={{ color: '#cfe3f5', fontSize: 13, borderCollapse: 'collapse', alignSelf: 'flex-start' }}>
+      <table
+        style={{
+          color: '#cfe3f5',
+          fontSize: 13,
+          borderCollapse: 'collapse',
+          alignSelf: 'flex-start',
+        }}
+      >
         <thead>
           <tr style={{ color: '#7d95b5', textAlign: 'left' }}>
             <th style={{ padding: '4px 8px' }}>couche</th>
@@ -199,7 +210,7 @@ function RigView({ refOpacity, showPivots, stageWidth }: RigArgs) {
         </thead>
         <tbody>
           {layers.map(({ id, kind }) => {
-            const l = kind === 'limb' ? MASCOT_LAYOUT.limbs[id] : undefined;
+            const l = kind === 'limb' ? MASCOT_LAYOUT.limbs[id] : undefined
             return (
               <tr
                 key={id}
@@ -221,10 +232,10 @@ function RigView({ refOpacity, showPivots, stageWidth }: RigArgs) {
                 <td style={{ padding: '4px 8px' }}>{l ? `${l.delay}s` : '—'}</td>
                 <td style={{ padding: '4px 8px' }}>{l?.flip ? 'oui' : ''}</td>
               </tr>
-            );
+            )
           })}
         </tbody>
       </table>
     </div>
-  );
+  )
 }

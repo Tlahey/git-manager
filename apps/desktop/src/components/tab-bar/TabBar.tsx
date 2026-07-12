@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { useRepoDataStore } from '../../stores/repoData.store'
-import { useRepoUIStore, DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB } from '../../stores/repoUI.store'
+import {
+  useRepoUIStore,
+  DASHBOARD_TAB,
+  REWARDS_TAB,
+  PULL_REQUESTS_TAB,
+} from '../../stores/repoUI.store'
 import { useDevFixtureReposStore } from '../../stores/devFixtureRepos.store'
 import { LayoutDashboard, Trophy, Rocket, Settings, X, GitBranch, FlaskConical } from 'lucide-react'
 import { useGameStore } from '../../stores/game.store'
@@ -23,7 +28,7 @@ interface PinnedTabProps {
 
 function PinnedTab({ icon, label, active, onClick, hideLabel }: PinnedTabProps) {
   return (
-    <div className="relative group/tab flex items-end self-end">
+    <div className="group/tab relative flex items-end self-end">
       <button
         onClick={onClick}
         className={`group relative flex h-7 items-center gap-2 rounded-md px-3 text-xs transition-colors ${
@@ -36,7 +41,7 @@ function PinnedTab({ icon, label, active, onClick, hideLabel }: PinnedTabProps) 
         {!hideLabel && <span className="font-medium">{label}</span>}
       </button>
       {hideLabel && (
-        <div className="absolute top-[34px] left-1/2 -translate-x-1/2 hidden group-hover/tab:block bg-popover text-popover-foreground border border-border text-[10px] rounded px-1.5 py-0.5 whitespace-nowrap shadow-md z-50 pointer-events-none">
+        <div className="pointer-events-none absolute left-1/2 top-[34px] z-50 hidden -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 text-[10px] text-popover-foreground shadow-md group-hover/tab:block">
           {label}
         </div>
       )}
@@ -47,7 +52,8 @@ function PinnedTab({ icon, label, active, onClick, hideLabel }: PinnedTabProps) 
 const isMac = typeof window !== 'undefined' && navigator.userAgent.includes('Mac')
 
 export function TabBar({ onOpenSettings }: TabBarProps) {
-  const { openTabs, activeTab, setActiveTab, setActiveRepo, closeTab, reorderTabs } = useRepoUIStore()
+  const { openTabs, activeTab, setActiveTab, setActiveRepo, closeTab, reorderTabs } =
+    useRepoUIStore()
   const { repoCache } = useRepoDataStore()
   const { fixtures, removeFixture } = useDevFixtureReposStore()
   const rewardsEnabled = useGameStore((s) => s.rewardsEnabled)
@@ -65,7 +71,11 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
   return (
     <>
       {/* Zone de drag supplémentaire pour faciliter le déplacement de la fenêtre (hauteur: --tab-bar-drag-spacer-height) */}
-      <div data-tauri-drag-region className="shrink-0" style={{ height: 'var(--tab-bar-drag-spacer-height)' }} />
+      <div
+        data-tauri-drag-region
+        className="shrink-0"
+        style={{ height: 'var(--tab-bar-drag-spacer-height)' }}
+      />
       <div
         data-tauri-drag-region
         className={`flex h-9 shrink-0 items-stretch gap-0.5 border-b border-border bg-card pr-1 ${
@@ -129,7 +139,9 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
                     ? 'bg-muted text-foreground'
                     : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
                 } ${dragIndex === index ? 'opacity-40' : ''} ${
-                  isDragOver ? 'before:absolute before:bottom-0 before:left-0 before:top-0 before:w-0.5 before:bg-primary' : ''
+                  isDragOver
+                    ? 'before:absolute before:bottom-0 before:left-0 before:top-0 before:w-0.5 before:bg-primary'
+                    : ''
                 }`}
               >
                 <GitBranch className="h-3.5 w-3.5 shrink-0" />

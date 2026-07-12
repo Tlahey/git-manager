@@ -69,7 +69,12 @@ export function createFakeModel(initialValue: string) {
     getLineMaxColumn: (n: number) => (currentLines()[n - 1]?.length ?? 0) + 1,
     getFullModelRange: (): FakeRange => {
       const lines = currentLines()
-      return { startLineNumber: 1, startColumn: 1, endLineNumber: lines.length, endColumn: (lines[lines.length - 1]?.length ?? 0) + 1 }
+      return {
+        startLineNumber: 1,
+        startColumn: 1,
+        endLineNumber: lines.length,
+        endColumn: (lines[lines.length - 1]?.length ?? 0) + 1,
+      }
     },
     getAlternativeVersionId: () => currentAltId,
     undoStack,
@@ -118,7 +123,10 @@ export function createFakeModel(initialValue: string) {
     pushStackElement: () => {},
     /** Test-only escape hatch for simulating a change Monaco itself would have made outside of
      * our own `executeEdits` calls — manual typing, or an undo/redo restoring prior text. */
-    simulateExternalChange: (newText: string, event: { isUndoing?: boolean; isRedoing?: boolean } = {}) => {
+    simulateExternalChange: (
+      newText: string,
+      event: { isUndoing?: boolean; isRedoing?: boolean } = {}
+    ) => {
       const prevText = text
       const prevAltId = currentAltId
 
@@ -162,7 +170,11 @@ export interface FakeEditorInstance {
   executeEdits: (source: string, edits: FakeEdit[]) => void
   changeViewZones: (
     cb: (accessor: {
-      addZone: (zone: { afterLineNumber: number; heightInLines: number; domNode: HTMLElement }) => string
+      addZone: (zone: {
+        afterLineNumber: number
+        heightInLines: number
+        domNode: HTMLElement
+      }) => string
       removeZone: (id: string) => void
     }) => void
   ) => void
@@ -211,7 +223,11 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
     getModel: () => model,
     createDecorationsCollection: (initial) => {
       instance.decorations = initial
-      return { set: (d: unknown[]) => { instance.decorations = d } }
+      return {
+        set: (d: unknown[]) => {
+          instance.decorations = d
+        },
+      }
     },
     onDidScrollChange: () => ({ dispose: () => {} }),
     onDidLayoutChange: () => ({ dispose: () => {} }),
@@ -230,17 +246,27 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
       })
     },
     getScrollTop: () => scrollTop,
-    setScrollTop: (val: number) => { scrollTop = val },
+    setScrollTop: (val: number) => {
+      scrollTop = val
+    },
     getTopForLineNumber: (line: number) => (line - 1) * LINE_HEIGHT,
     addCommand: (keybinding, handler) => {
       commands.set(keybinding, handler)
     },
     layout: () => {},
     getOption: (id: number) => (id === EDITOR_OPTION_LINE_HEIGHT ? LINE_HEIGHT : 0),
-    updateOptions: (opts) => { instance.lastUpdateOptions = opts },
-    revealLineInCenter: (line) => { instance.lastRevealedLine = line },
-    setPosition: (pos) => { instance.lastPosition = pos },
-    setHiddenAreas: (ranges) => { instance.hiddenAreas = ranges },
+    updateOptions: (opts) => {
+      instance.lastUpdateOptions = opts
+    },
+    revealLineInCenter: (line) => {
+      instance.lastRevealedLine = line
+    },
+    setPosition: (pos) => {
+      instance.lastPosition = pos
+    },
+    setHiddenAreas: (ranges) => {
+      instance.hiddenAreas = ranges
+    },
     focus: () => {},
     trigger: (_source, actionId, _payload) => {
       // In fake environment, triggering undo or redo checks the registered command keybindings
@@ -290,7 +316,10 @@ export interface FakeLineChange {
 
 export interface FakeDiffEditorInstance {
   disposed: boolean
-  setModel: (m: { original: { getValue: () => string }; modified: { getValue: () => string } }) => void
+  setModel: (m: {
+    original: { getValue: () => string }
+    modified: { getValue: () => string }
+  }) => void
   onDidUpdateDiff: (cb: () => void) => { dispose: () => void }
   getLineChanges: () => FakeLineChange[] | null
   dispose: () => void
@@ -313,13 +342,21 @@ export function resetFakeEditors() {
  * algorithm (won't split multiple, non-adjacent hunks) — real Monaco diffing can't run in jsdom,
  * and re-implementing it fully isn't necessary to exercise ConflictResolver.tsx's own
  * `buildDynamicMergeView` translation logic. */
-export function computeSimpleLineDiff(original: string, modified: string, ignoreTrimWhitespace: boolean): FakeLineChange[] {
+export function computeSimpleLineDiff(
+  original: string,
+  modified: string,
+  ignoreTrimWhitespace: boolean
+): FakeLineChange[] {
   const origLines = original.split('\n')
   const modLines = modified.split('\n')
   const norm = (l: string) => (ignoreTrimWhitespace ? l.trim() : l)
 
   let prefix = 0
-  while (prefix < origLines.length && prefix < modLines.length && norm(origLines[prefix]) === norm(modLines[prefix])) {
+  while (
+    prefix < origLines.length &&
+    prefix < modLines.length &&
+    norm(origLines[prefix]) === norm(modLines[prefix])
+  ) {
     prefix++
   }
 
@@ -362,13 +399,21 @@ function createFakeDiffEditor(options: { ignoreTrimWhitespace?: boolean }): Fake
       // immediately follows `setModel` in ConflictResolver.tsx's own effect body.
       queueMicrotask(() => {
         if (instance.disposed) return
-        changes = computeSimpleLineDiff(originalText, modifiedText, options.ignoreTrimWhitespace ?? false)
+        changes = computeSimpleLineDiff(
+          originalText,
+          modifiedText,
+          options.ignoreTrimWhitespace ?? false
+        )
         listener?.()
       })
     },
     onDidUpdateDiff: (cb) => {
       listener = cb
-      return { dispose: () => { listener = null } }
+      return {
+        dispose: () => {
+          listener = null
+        },
+      }
     },
     getLineChanges: () => changes,
     dispose: () => {
@@ -402,8 +447,10 @@ const fakeMonacoInstance = {
   editor: {
     EditorOption: { lineHeight: EDITOR_OPTION_LINE_HEIGHT },
     createModel: (value: string) => ({ getValue: () => value, dispose: () => {} }),
-    createDiffEditor: (_container: HTMLElement, diffOptions: { ignoreTrimWhitespace?: boolean } = {}) =>
-      createFakeDiffEditor(diffOptions),
+    createDiffEditor: (
+      _container: HTMLElement,
+      diffOptions: { ignoreTrimWhitespace?: boolean } = {}
+    ) => createFakeDiffEditor(diffOptions),
   },
   Uri: { parse: (value: string) => ({ toString: () => value }) },
 }

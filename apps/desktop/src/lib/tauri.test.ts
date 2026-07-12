@@ -16,9 +16,24 @@ beforeEach(() => {
 // argument-object shape not matching the Rust #[tauri::command] on the other side of the IPC
 // boundary (a mismatch compiles fine in TS but fails silently/at-runtime against the real backend).
 // This table asserts, for every wrapper, exactly what command name and argument shape it sends.
-const cases: { name: string; call: () => unknown; command: string; args?: Record<string, unknown> }[] = [
-  { name: 'openRepo', call: () => tauri.openRepo('/repo'), command: 'open_repo', args: { path: '/repo' } },
-  { name: 'getRepoStatus', call: () => tauri.getRepoStatus('/repo'), command: 'get_repo_status', args: { path: '/repo' } },
+const cases: {
+  name: string
+  call: () => unknown
+  command: string
+  args?: Record<string, unknown>
+}[] = [
+  {
+    name: 'openRepo',
+    call: () => tauri.openRepo('/repo'),
+    command: 'open_repo',
+    args: { path: '/repo' },
+  },
+  {
+    name: 'getRepoStatus',
+    call: () => tauri.getRepoStatus('/repo'),
+    command: 'get_repo_status',
+    args: { path: '/repo' },
+  },
   {
     name: 'scanRepos',
     call: () => tauri.scanRepos('/root', 3),
@@ -31,7 +46,12 @@ const cases: { name: string; call: () => unknown; command: string; args?: Record
     command: 'clone_repo',
     args: { url: 'https://x/repo.git', destPath: '/dest', shallow: true, sparse: false },
   },
-  { name: 'initRepo', call: () => tauri.initRepo('/repo'), command: 'init_repo', args: { path: '/repo' } },
+  {
+    name: 'initRepo',
+    call: () => tauri.initRepo('/repo'),
+    command: 'init_repo',
+    args: { path: '/repo' },
+  },
 
   {
     name: 'getLog (no opts)',
@@ -76,7 +96,12 @@ const cases: { name: string; call: () => unknown; command: string; args?: Record
     command: 'get_branches',
     args: { path: '/repo', includeRemote: false },
   },
-  { name: 'getTags', call: () => tauri.getTags('/repo'), command: 'get_tags', args: { path: '/repo' } },
+  {
+    name: 'getTags',
+    call: () => tauri.getTags('/repo'),
+    command: 'get_tags',
+    args: { path: '/repo' },
+  },
   {
     name: 'createBranch',
     call: () => tauri.createBranch('/repo', 'feat', 'main'),
@@ -114,7 +139,12 @@ const cases: { name: string; call: () => unknown; command: string; args?: Record
     args: { path: '/repo', name: 'v1', fromRef: 'main', message: 'release' },
   },
 
-  { name: 'stashList', call: () => tauri.stashList('/repo'), command: 'stash_list', args: { path: '/repo' } },
+  {
+    name: 'stashList',
+    call: () => tauri.stashList('/repo'),
+    command: 'stash_list',
+    args: { path: '/repo' },
+  },
   {
     name: 'stashPush (defaults)',
     call: () => tauri.stashPush('/repo'),
@@ -195,8 +225,18 @@ const cases: { name: string; call: () => unknown; command: string; args?: Record
     command: 'continue_rebase',
     args: { path: '/repo', message: 'msg' },
   },
-  { name: 'abortRebase', call: () => tauri.abortRebase('/repo'), command: 'abort_rebase', args: { path: '/repo' } },
-  { name: 'skipRebase', call: () => tauri.skipRebase('/repo'), command: 'skip_rebase', args: { path: '/repo' } },
+  {
+    name: 'abortRebase',
+    call: () => tauri.abortRebase('/repo'),
+    command: 'abort_rebase',
+    args: { path: '/repo' },
+  },
+  {
+    name: 'skipRebase',
+    call: () => tauri.skipRebase('/repo'),
+    command: 'skip_rebase',
+    args: { path: '/repo' },
+  },
   {
     name: 'rebaseOntoCommit',
     call: () => tauri.rebaseOntoCommit('/repo', 'target'),
@@ -269,8 +309,18 @@ const cases: { name: string; call: () => unknown; command: string; args?: Record
     command: 'discard_file_changes',
     args: { path: '/repo', filePath: 'a.ts' },
   },
-  { name: 'stageAll', call: () => tauri.stageAll('/repo'), command: 'stage_all', args: { path: '/repo' } },
-  { name: 'unstageAll', call: () => tauri.unstageAll('/repo'), command: 'unstage_all', args: { path: '/repo' } },
+  {
+    name: 'stageAll',
+    call: () => tauri.stageAll('/repo'),
+    command: 'stage_all',
+    args: { path: '/repo' },
+  },
+  {
+    name: 'unstageAll',
+    call: () => tauri.unstageAll('/repo'),
+    command: 'unstage_all',
+    args: { path: '/repo' },
+  },
   {
     name: 'createCommit (defaults)',
     call: () => tauri.createCommit('/repo', 'msg'),
@@ -332,7 +382,12 @@ const cases: { name: string; call: () => unknown; command: string; args?: Record
     command: 'push_branch',
     args: { path: '/repo', remote: 'origin', force: true },
   },
-  { name: 'getRemotes', call: () => tauri.getRemotes('/repo'), command: 'get_remotes', args: { path: '/repo' } },
+  {
+    name: 'getRemotes',
+    call: () => tauri.getRemotes('/repo'),
+    command: 'get_remotes',
+    args: { path: '/repo' },
+  },
   {
     name: 'addRemote',
     call: () => tauri.addRemote('/repo', 'origin', 'https://x/repo.git'),
@@ -458,7 +513,12 @@ const cases: { name: string; call: () => unknown; command: string; args?: Record
     command: 'autosquash_preview',
     args: { path: '/repo' },
   },
-  { name: 'runAutosquash', call: () => tauri.runAutosquash('/repo'), command: 'run_autosquash', args: { path: '/repo' } },
+  {
+    name: 'runAutosquash',
+    call: () => tauri.runAutosquash('/repo'),
+    command: 'run_autosquash',
+    args: { path: '/repo' },
+  },
 
   {
     name: 'listSubmodules',
@@ -510,13 +570,23 @@ const cases: { name: string; call: () => unknown; command: string; args?: Record
     command: 'get_repo_readme',
     args: { path: '/repo' },
   },
-  { name: 'getTerminalCommands', call: () => tauri.getTerminalCommands(), command: 'get_terminal_commands' },
+  {
+    name: 'getTerminalCommands',
+    call: () => tauri.getTerminalCommands(),
+    command: 'get_terminal_commands',
+  },
 
   {
     name: 'generateSshKey',
     call: () => tauri.generateSshKey('ed25519', null, 'me@host', '/id_ed25519', 'pass'),
     command: 'generate_ssh_key',
-    args: { keyType: 'ed25519', bits: null, comment: 'me@host', path: '/id_ed25519', passphrase: 'pass' },
+    args: {
+      keyType: 'ed25519',
+      bits: null,
+      comment: 'me@host',
+      path: '/id_ed25519',
+      passphrase: 'pass',
+    },
   },
   {
     name: 'readSshPublicKey',
@@ -572,7 +642,11 @@ describe('lib/tauri — debug log capture', () => {
     useDebugLogStore.setState({ enabled: true, entries: [] })
     mockInvoke.mockRejectedValue('backend blew up')
     await expect(tauri.openRepo('/repo')).rejects.toBe('backend blew up')
-    expect(useDebugLogStore.getState().entries[0]).toMatchObject({ command: 'open_repo', status: 'error', error: 'backend blew up' })
+    expect(useDebugLogStore.getState().entries[0]).toMatchObject({
+      command: 'open_repo',
+      status: 'error',
+      error: 'backend blew up',
+    })
   })
 
   it('redacts arguments of credential-shaped commands before storing them', async () => {

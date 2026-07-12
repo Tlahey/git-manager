@@ -17,7 +17,12 @@ vi.mock('../../api/git.api', () => ({
 }))
 
 const { diffViewerMock, lastDiffViewerProps, lastToolbarProps } = vi.hoisted(() => ({
-  diffViewerMock: { goToNextChange: vi.fn(), goToPreviousChange: vi.fn(), getModifiedValue: vi.fn(), setModifiedValue: vi.fn() },
+  diffViewerMock: {
+    goToNextChange: vi.fn(),
+    goToPreviousChange: vi.fn(),
+    getModifiedValue: vi.fn(),
+    setModifiedValue: vi.fn(),
+  },
   lastDiffViewerProps: { current: null as unknown },
   lastToolbarProps: { current: null as unknown },
 }))
@@ -57,7 +62,10 @@ function toolbarProps() {
   return lastToolbarProps.current as ToolbarProps
 }
 
-function renderCenter(fileOverrides: Partial<{ path: string; staged: boolean; oid?: string }> = {}, extra: Partial<React.ComponentProps<typeof DiffViewCenter>> = {}) {
+function renderCenter(
+  fileOverrides: Partial<{ path: string; staged: boolean; oid?: string }> = {},
+  extra: Partial<React.ComponentProps<typeof DiffViewCenter>> = {}
+) {
   const onClose = vi.fn()
   const onRefresh = vi.fn()
   const utils = render(
@@ -74,7 +82,10 @@ function renderCenter(fileOverrides: Partial<{ path: string; staged: boolean; oi
 
 beforeEach(() => {
   vi.clearAllMocks()
-  Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockResolvedValue(undefined) }, configurable: true })
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    configurable: true,
+  })
   vi.spyOn(window, 'alert').mockImplementation(() => {})
   vi.spyOn(window, 'confirm').mockReturnValue(true)
   useFileDiff.mockReturnValue({ data: undefined, isLoading: false, refetch: vi.fn() })
@@ -98,7 +109,11 @@ describe('DiffViewCenter — loading/empty states', () => {
   })
 
   it('shows a binary placeholder instead of the Monaco viewer for binary files', () => {
-    useFileDiff.mockReturnValue({ data: { status: 'modified', oldPath: 'a.ts', newPath: 'a.ts', isBinary: true }, isLoading: false, refetch: vi.fn() })
+    useFileDiff.mockReturnValue({
+      data: { status: 'modified', oldPath: 'a.ts', newPath: 'a.ts', isBinary: true },
+      isLoading: false,
+      refetch: vi.fn(),
+    })
     renderCenter()
     expect(screen.getByTestId('diff-binary-placeholder')).toBeInTheDocument()
     expect(screen.queryByTestId('monaco-diff-viewer')).not.toBeInTheDocument()
@@ -107,8 +122,15 @@ describe('DiffViewCenter — loading/empty states', () => {
 
 describe('DiffViewCenter — Monaco wiring', () => {
   beforeEach(() => {
-    useFileDiff.mockReturnValue({ data: { status: 'modified', oldPath: 'a.ts', newPath: 'a.ts', isBinary: false }, isLoading: false, refetch: vi.fn() })
-    useFileRawContents.mockReturnValue({ data: { original: 'old content', modified: 'new content' }, isLoading: false })
+    useFileDiff.mockReturnValue({
+      data: { status: 'modified', oldPath: 'a.ts', newPath: 'a.ts', isBinary: false },
+      isLoading: false,
+      refetch: vi.fn(),
+    })
+    useFileRawContents.mockReturnValue({
+      data: { original: 'old content', modified: 'new content' },
+      isLoading: false,
+    })
   })
 
   it('passes the raw contents and file path through to MonacoDiffViewer', () => {

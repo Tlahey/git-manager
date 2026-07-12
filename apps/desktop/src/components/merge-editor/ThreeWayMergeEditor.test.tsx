@@ -24,9 +24,12 @@ vi.mock('../../stores/settings.store', () => ({
     selector({ settings: { appearance: { theme: 'dark' } } }),
 }))
 
-const apiAutoMergeConflictView = vi.hoisted(() => vi.fn<(repoPath: string, filePath: string) => Promise<string>>())
+const apiAutoMergeConflictView = vi.hoisted(() =>
+  vi.fn<(repoPath: string, filePath: string) => Promise<string>>()
+)
 vi.mock('../../api/conflict.api', () => ({
-  apiAutoMergeConflictView: (repoPath: string, filePath: string) => apiAutoMergeConflictView(repoPath, filePath),
+  apiAutoMergeConflictView: (repoPath: string, filePath: string) =>
+    apiAutoMergeConflictView(repoPath, filePath),
 }))
 
 const REPO_PATH = '/repo'
@@ -77,7 +80,9 @@ function conflictView(blocks: MergeBlock[] = conflictBlocks()): ThreeWayMergeVie
 /** One entry per decoration; each entry is that decoration's full (possibly multi-class, e.g.
  * `merge-text-conflict merge-border-top-conflict …`) className string. */
 function decorationClasses(path: string): string[] {
-  const decorations = fakeEditors.get(path)?.decorations as Array<{ options: { className?: string } }> | undefined
+  const decorations = fakeEditors.get(path)?.decorations as
+    | Array<{ options: { className?: string } }>
+    | undefined
   return (decorations ?? []).map((d) => d.options.className).filter((c): c is string => Boolean(c))
 }
 
@@ -88,7 +93,10 @@ function hasDecorationClass(path: string, className: string): boolean {
 /** The intra-line (character-precise) decorations only — those carrying an `inlineClassName`. */
 function inlineDecorations(path: string) {
   const decorations = fakeEditors.get(path)?.decorations as
-    | Array<{ range: { startColumn: number; endColumn: number }; options: { inlineClassName?: string } }>
+    | Array<{
+        range: { startColumn: number; endColumn: number }
+        options: { inlineClassName?: string }
+      }>
     | undefined
   return (decorations ?? []).filter((d) => Boolean(d.options.inlineClassName))
 }
@@ -121,10 +129,16 @@ describe('ThreeWayMergeEditor — decorations', () => {
     // its own comparison is a no-op.
     await waitFor(() => {
       expect(inlineDecorations(theirsPath)).toMatchObject([
-        { range: { startColumn: 1, endColumn: 7 }, options: { inlineClassName: 'merge-inline-conflict' } },
+        {
+          range: { startColumn: 1, endColumn: 7 },
+          options: { inlineClassName: 'merge-inline-conflict' },
+        },
       ])
       expect(inlineDecorations(centerPath)).toMatchObject([
-        { range: { startColumn: 1, endColumn: 5 }, options: { inlineClassName: 'merge-inline-conflict' } },
+        {
+          range: { startColumn: 1, endColumn: 5 },
+          options: { inlineClassName: 'merge-inline-conflict' },
+        },
       ])
     })
     expect(inlineDecorations(oursPath)).toHaveLength(0)
@@ -138,7 +152,14 @@ describe('ThreeWayMergeEditor — decorations', () => {
   })
 
   it('closes the one-line conflict block hermetically when showBlockBorders is on: top and bottom border classes on its single decoration', async () => {
-    render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={conflictView()} showBlockBorders />)
+    render(
+      <ThreeWayMergeEditor
+        repoPath={REPO_PATH}
+        filePath={FILE_PATH}
+        view={conflictView()}
+        showBlockBorders
+      />
+    )
 
     await waitFor(() => {
       expect(hasDecorationClass(oursPath, 'merge-border-top-conflict')).toBe(true)
@@ -173,7 +194,9 @@ describe('ThreeWayMergeEditor — alignment view zones', () => {
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={conflictView()} />)
 
     // Theirs (incoming) sits in the LEFT gap, WebStorm-style.
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
+    )
     await user.click(screen.getByTestId('merge-connector-accept-left-2')) // keep both → center block is now 2 lines
 
     await waitFor(() => {
@@ -189,7 +212,9 @@ describe('ThreeWayMergeEditor — alignment view zones', () => {
     const user = userEvent.setup()
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={conflictView()} />)
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
+    )
     await user.click(screen.getByTestId('merge-connector-accept-left-2')) // keep both (theirs, left gap)
     await waitFor(() => expect(fakeEditors.get(oursPath)!.viewZones).toHaveLength(0))
 
@@ -208,13 +233,17 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     const user = userEvent.setup()
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={conflictView()} />)
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
+    )
 
     // Ours is included by default already; explicitly pull theirs (left gap) in too.
     await user.click(screen.getByTestId('merge-connector-accept-left-2'))
 
     await waitFor(() => {
-      expect(fakeEditors.get(centerPath)!.getModel().getValue()).toBe('header\nours conflict\ntheirs conflict')
+      expect(fakeEditors.get(centerPath)!.getModel().getValue()).toBe(
+        'header\nours conflict\ntheirs conflict'
+      )
     })
   })
 
@@ -222,9 +251,13 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     const user = userEvent.setup()
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={conflictView()} />)
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
+    )
     await user.click(screen.getByTestId('merge-connector-accept-left-2')) // keep both
-    await waitFor(() => expect(fakeEditors.get(centerPath)!.getModel().getValue()).toContain('theirs conflict'))
+    await waitFor(() =>
+      expect(fakeEditors.get(centerPath)!.getModel().getValue()).toContain('theirs conflict')
+    )
 
     await user.click(screen.getByTestId('merge-connector-reject-right-2')) // then reject ours only
 
@@ -237,7 +270,9 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     const user = userEvent.setup()
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={conflictView()} />)
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-right-2')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-right-2')).toBeInTheDocument()
+    )
     await user.click(screen.getByTestId('merge-connector-accept-right-2')) // decide ours (idempotent accept, right gap)
 
     await waitFor(() => {
@@ -249,10 +284,16 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     expect(screen.getByTestId('merge-connector-reject-left-2')).toBeInTheDocument()
 
     // But the ribbon itself stays, now settled as dotted edges with conflict color.
-    expect(screen.getByTestId('merge-connector-ribbon-right-2-top')).toHaveClass('merge-connector-conflict')
+    expect(screen.getByTestId('merge-connector-ribbon-right-2-top')).toHaveClass(
+      'merge-connector-conflict'
+    )
     expect(screen.getByTestId('merge-connector-ribbon-right-2-top')).toHaveClass('merge-resolved')
-    expect(screen.getByTestId('merge-connector-ribbon-right-2-bottom')).toHaveClass('merge-connector-conflict')
-    expect(screen.getByTestId('merge-connector-ribbon-right-2-bottom')).toHaveClass('merge-resolved')
+    expect(screen.getByTestId('merge-connector-ribbon-right-2-bottom')).toHaveClass(
+      'merge-connector-conflict'
+    )
+    expect(screen.getByTestId('merge-connector-ribbon-right-2-bottom')).toHaveClass(
+      'merge-resolved'
+    )
   })
 
   it('only offers actions on the side that authored the change — the mirror pane of a one-sided block has no buttons', async () => {
@@ -281,7 +322,9 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
 
     // Ours authored this change → buttons and ribbon in the right (ours) gap only; the theirs pane just
     // mirrors the untouched ancestor, its gap has no ribbon and no actions.
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-right-1')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-right-1')).toBeInTheDocument()
+    )
     expect(screen.queryByTestId('merge-connector-accept-left-1')).not.toBeInTheDocument()
     expect(screen.queryByTestId('merge-connector-reject-left-1')).not.toBeInTheDocument()
     expect(screen.queryByTestId('merge-connector-ribbon-left-1')).not.toBeInTheDocument()
@@ -312,7 +355,9 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     const user = userEvent.setup()
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={view} />)
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-1')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-left-1')).toBeInTheDocument()
+    )
     await user.click(screen.getByTestId('merge-connector-accept-left-1'))
 
     await waitFor(() => {
@@ -345,7 +390,9 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     const user = userEvent.setup()
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={view} />)
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-reject-right-1')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-reject-right-1')).toBeInTheDocument()
+    )
     await user.click(screen.getByTestId('merge-connector-reject-right-1'))
 
     await waitFor(() => {
@@ -380,7 +427,9 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     }
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={view} />)
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-right-1')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-right-1')).toBeInTheDocument()
+    )
     expect(screen.getByTestId('merge-connector-reject-right-1')).toBeInTheDocument()
     expect(screen.queryByTestId('merge-connector-accept-left-1')).not.toBeInTheDocument()
     expect(screen.queryByTestId('merge-connector-reject-left-1')).not.toBeInTheDocument()
@@ -430,7 +479,9 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={view} />)
 
     await waitFor(() => {
-      expect(fakeEditors.get(centerPath)!.getModel().getValue()).toBe('legacy-cache\nlegacy-session\ndeprecated-auth')
+      expect(fakeEditors.get(centerPath)!.getModel().getValue()).toBe(
+        'legacy-cache\nlegacy-session\ndeprecated-auth'
+      )
     })
   })
 
@@ -462,8 +513,12 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={view} />)
 
     // The ours (authoring) gap has the real, non-flat ribbon and the actionable buttons.
-    await waitFor(() => expect(screen.getByTestId('merge-connector-ribbon-right-1')).toBeInTheDocument())
-    expect(screen.getByTestId('merge-connector-ribbon-right-1')).not.toHaveClass('merge-connector-flat')
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-ribbon-right-1')).toBeInTheDocument()
+    )
+    expect(screen.getByTestId('merge-connector-ribbon-right-1')).not.toHaveClass(
+      'merge-connector-flat'
+    )
     expect(screen.getByTestId('merge-connector-accept-right-1')).toBeInTheDocument()
 
     // Theirs' gap has nothing — no ribbon, flat or otherwise.
@@ -499,7 +554,9 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     }
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={view} />)
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-ribbon-left-1')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-ribbon-left-1')).toBeInTheDocument()
+    )
     const leftRibbon = screen.getByTestId('merge-connector-ribbon-left-1')
     expect(leftRibbon).not.toHaveClass('merge-connector-flat') // theirs has real content — a genuine funnel, not a flat stroke
     const d = leftRibbon.getAttribute('d')
@@ -539,12 +596,16 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
 
     // Theirs (kept content) — a plain, fully-aligned parallel ribbon (both ends span raw Y 0→36
     // in the fake editor's 18px-tall lines), no marker involved at all.
-    await waitFor(() => expect(screen.getByTestId('merge-connector-ribbon-right-1')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-ribbon-right-1')).toBeInTheDocument()
+    )
     const rightRibbon = screen.getByTestId('merge-connector-ribbon-right-1')
     expect(screen.queryByTestId('merge-connector-ribbon-left-1')).not.toBeInTheDocument()
     expect(rightRibbon).not.toHaveClass('merge-connector-flat')
     expect(rightRibbon).toHaveClass('merge-connector-deletion')
-    expect(rightRibbon.getAttribute('d')).toBe('M 0,0 C 20,0 20,-1 40,-1 L 40,0 C 20,0 20,36 0,36 Z')
+    expect(rightRibbon.getAttribute('d')).toBe(
+      'M 0,0 C 20,0 20,-1 40,-1 L 40,0 C 20,0 20,36 0,36 Z'
+    )
   })
 
   it('does not draw a one-sided MODIFICATION’s mirror ribbon — both sides have real content, but the passive side has no ribbon', async () => {
@@ -571,7 +632,9 @@ describe('ThreeWayMergeEditor — gutter actions (keep-both regression)', () => 
     }
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={view} />)
 
-    await waitFor(() => expect(screen.queryByTestId('merge-connector-ribbon-left-1')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByTestId('merge-connector-ribbon-left-1')).not.toBeInTheDocument()
+    )
   })
 })
 
@@ -580,16 +643,25 @@ describe('ThreeWayMergeEditor — undo', () => {
     const user = userEvent.setup()
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={conflictView()} />)
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
+    )
     await user.click(screen.getByTestId('merge-connector-accept-left-2'))
-    await waitFor(() => expect(fakeEditors.get(centerPath)!.getModel().getValue()).toContain('theirs conflict'))
+    await waitFor(() =>
+      expect(fakeEditors.get(centerPath)!.getModel().getValue()).toContain('theirs conflict')
+    )
     // The buttons live in the connector overlay, whose segments are recomputed in a rAF tick —
     // their disappearance is async even though the model text above updated synchronously.
-    await waitFor(() => expect(screen.queryByTestId('merge-connector-accept-left-2')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByTestId('merge-connector-accept-left-2')).not.toBeInTheDocument()
+    )
 
     // Simulate Monaco's own undo restoring the pre-action text (a real Ctrl+Z reverts the
     // model directly; ThreeWayMergeEditor only listens for the resulting content-change event).
-    fakeEditors.get(centerPath)!.getModel().simulateExternalChange('header\nours conflict', { isUndoing: true })
+    fakeEditors
+      .get(centerPath)!
+      .getModel()
+      .simulateExternalChange('header\nours conflict', { isUndoing: true })
 
     await waitFor(() => {
       expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
@@ -622,13 +694,17 @@ describe('ThreeWayMergeEditor — undo', () => {
     render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={view} />)
 
     // Initially, the reject button (ignore/reject ours, right gap) is present
-    await waitFor(() => expect(screen.getByTestId('merge-connector-reject-right-1')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-reject-right-1')).toBeInTheDocument()
+    )
 
     // Click Reject. This resolves the block but keeps the original line (which is already in the center), so text remains "original line".
     await user.click(screen.getByTestId('merge-connector-reject-right-1'))
 
     // The buttons disappear
-    await waitFor(() => expect(screen.queryByTestId('merge-connector-reject-right-1')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByTestId('merge-connector-reject-right-1')).not.toBeInTheDocument()
+    )
 
     // Trigger programmatical Ctrl+Z (undo) via Monaco's trigger API
     fakeEditors.get(centerPath)!.trigger('keyboard', 'undo', null)
@@ -683,11 +759,15 @@ describe('ThreeWayMergeEditor — undo', () => {
 
     // 1. Reject addition (Block 2). Text doesn't change (starts empty, remains empty).
     await user.click(screen.getByTestId('merge-connector-reject-right-2'))
-    await waitFor(() => expect(screen.queryByTestId('merge-connector-reject-right-2')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByTestId('merge-connector-reject-right-2')).not.toBeInTheDocument()
+    )
 
     // 2. Reject deletion (Block 1). Text doesn't change (starts with line, keeps line).
     await user.click(screen.getByTestId('merge-connector-reject-right-1'))
-    await waitFor(() => expect(screen.queryByTestId('merge-connector-reject-right-1')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByTestId('merge-connector-reject-right-1')).not.toBeInTheDocument()
+    )
 
     // 3. Undo once (should restore Block 1 / Reject deletion)
     fakeEditors.get(centerPath)!.trigger('keyboard', 'undo', null)
@@ -718,11 +798,15 @@ describe('ThreeWayMergeEditor — undo', () => {
 
     // 1. Reject theirs (left side of conflict)
     await user.click(screen.getByTestId('merge-connector-reject-left-2'))
-    await waitFor(() => expect(screen.queryByTestId('merge-connector-reject-left-2')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByTestId('merge-connector-reject-left-2')).not.toBeInTheDocument()
+    )
 
     // 2. Reject ours (right side of conflict)
     await user.click(screen.getByTestId('merge-connector-reject-right-2'))
-    await waitFor(() => expect(screen.queryByTestId('merge-connector-reject-right-2')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByTestId('merge-connector-reject-right-2')).not.toBeInTheDocument()
+    )
 
     // 3. Undo once (should restore Block 2's right/ours reject action first, text changes back to ours conflict)
     fakeEditors.get(centerPath)!.trigger('keyboard', 'undo', null)
@@ -751,11 +835,15 @@ describe('ThreeWayMergeEditor — undo', () => {
 
     // 1. Reject ours (right side of conflict)
     await user.click(screen.getByTestId('merge-connector-reject-right-2'))
-    await waitFor(() => expect(screen.queryByTestId('merge-connector-reject-right-2')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByTestId('merge-connector-reject-right-2')).not.toBeInTheDocument()
+    )
 
     // 2. Reject theirs (left side of conflict)
     await user.click(screen.getByTestId('merge-connector-reject-left-2'))
-    await waitFor(() => expect(screen.queryByTestId('merge-connector-reject-left-2')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByTestId('merge-connector-reject-left-2')).not.toBeInTheDocument()
+    )
 
     // 3. Undo once (should restore Block 2's left/theirs reject action first, text changes back to theirs conflict)
     fakeEditors.get(centerPath)!.trigger('keyboard', 'undo', null)
@@ -776,11 +864,17 @@ describe('ThreeWayMergeEditor — undo', () => {
 describe('ThreeWayMergeEditor — file switch', () => {
   it('resets placements/decorations to the new file instead of keeping the previous file’s state', async () => {
     const user = userEvent.setup()
-    const { rerender } = render(<ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={conflictView()} />)
+    const { rerender } = render(
+      <ThreeWayMergeEditor repoPath={REPO_PATH} filePath={FILE_PATH} view={conflictView()} />
+    )
 
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-left-2')).toBeInTheDocument()
+    )
     await user.click(screen.getByTestId('merge-connector-accept-left-2')) // decide something on file A
-    await waitFor(() => expect(fakeEditors.get(centerPath)!.getModel().getValue()).toContain('theirs conflict'))
+    await waitFor(() =>
+      expect(fakeEditors.get(centerPath)!.getModel().getValue()).toContain('theirs conflict')
+    )
 
     const otherFilePath = 'b.txt'
     const otherBlocks: MergeBlock[] = [
@@ -880,7 +974,9 @@ describe('ThreeWayMergeEditor — scroll preservation on undo/redo', () => {
     theirsEditor.setScrollTop(789)
 
     // Wait for buttons to mount
-    await waitFor(() => expect(screen.getByTestId('merge-connector-accept-right-2')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('merge-connector-accept-right-2')).toBeInTheDocument()
+    )
 
     // Click "Accept Ours" (ignore theirs - reject left)
     await user.click(screen.getByTestId('merge-connector-accept-right-2'))
@@ -944,14 +1040,14 @@ describe('ThreeWayMergeEditor — panel resizing', () => {
 
     // Simulate drag left handle to the right by 100px
     fireEvent.mouseDown(leftHandle, { clientX: 200 })
-    
+
     fireEvent.mouseMove(window, { clientX: 300 })
 
     // Total width for panels is 1080 - 2 * 40 = 1000px
     // dx = 100px -> dPct = 10%
     // theirsPct = 33.333 + 10 = 43.333
     // centerPct = 33.334 - 10 = 23.334
-    
+
     const getFlexGrow = (el: HTMLElement) => parseFloat(el.style.flex.split(' ')[0])
 
     expect(getFlexGrow(theirsWrapper)).toBeCloseTo(43.333, 3)
@@ -961,4 +1057,3 @@ describe('ThreeWayMergeEditor — panel resizing', () => {
     fireEvent.mouseUp(window)
   })
 })
-

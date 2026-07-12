@@ -73,13 +73,13 @@ Before adding non-trivial logic to a component, hook, or store, see [.claude/ski
 
 ### Monorepo packages
 
-| Package | Purpose |
-|---|---|
-| `apps/desktop` | The Tauri app (Rust backend in `src-tauri/`, React frontend in `src/`) |
-| `packages/git-types` | Shared TypeScript DTOs mirroring the Rust `serde` structs used over IPC |
-| `packages/i18n` | `react-i18next` setup + `en`/`fr` locale JSON (namespaces: `common`, `git`, `dashboard`, `settings`, `errors`) |
-| `packages/ui` | shadcn/ui + Radix primitive components, Tailwind-based |
-| `packages/config` | Shared ESLint config, Tailwind preset, base `tsconfig.json` |
+| Package              | Purpose                                                                                                        |
+| -------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `apps/desktop`       | The Tauri app (Rust backend in `src-tauri/`, React frontend in `src/`)                                         |
+| `packages/git-types` | Shared TypeScript DTOs mirroring the Rust `serde` structs used over IPC                                        |
+| `packages/i18n`      | `react-i18next` setup + `en`/`fr` locale JSON (namespaces: `common`, `git`, `dashboard`, `settings`, `errors`) |
+| `packages/ui`        | shadcn/ui + Radix primitive components, Tailwind-based                                                         |
+| `packages/config`    | Shared ESLint config, Tailwind preset, base `tsconfig.json`                                                    |
 
 ### State management
 

@@ -8,10 +8,24 @@ function makeSvg(pupilCount = 2): SVGSVGElement {
     configurable: true,
     value: { baseVal: { x: 0, y: 0, width: 100, height: 100 } },
   })
-  svg.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100, right: 100, bottom: 100, x: 0, y: 0, toJSON() {} }) as DOMRect
+  svg.getBoundingClientRect = () =>
+    ({
+      left: 0,
+      top: 0,
+      width: 100,
+      height: 100,
+      right: 100,
+      bottom: 100,
+      x: 0,
+      y: 0,
+      toJSON() {},
+    }) as DOMRect
 
   for (let i = 0; i < pupilCount; i++) {
-    const pupil = document.createElementNS('http://www.w3.org/2000/svg', 'circle') as SVGGraphicsElement
+    const pupil = document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'circle'
+    ) as SVGGraphicsElement
     pupil.setAttribute('class', MASCOT_SELECTORS.pupil)
     pupil.dataset.cx = '50'
     pupil.dataset.cy = '50'
@@ -39,7 +53,11 @@ describe('attachEyeTracking', () => {
     const svg = makeSvg()
     const addEventListenerSpy = vi.spyOn(window, 'addEventListener')
     attachEyeTracking(svg)
-    expect(addEventListenerSpy).not.toHaveBeenCalledWith('pointermove', expect.anything(), expect.anything())
+    expect(addEventListenerSpy).not.toHaveBeenCalledWith(
+      'pointermove',
+      expect.anything(),
+      expect.anything()
+    )
   })
 
   it('moves pupils toward the pointer, clamped to the max offset, and marks the svg as tracking', () => {

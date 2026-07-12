@@ -19,12 +19,16 @@ describe('getTopForLineNumberSafe', () => {
 
   it('skips lines inside hidden ranges', () => {
     // Lines 4-7 hidden: line 10's top counts lines 1,2,3,8,9 → 5 lines.
-    expect(getTopForLineNumberSafe(dummyEditor, 10, LINE_HEIGHT, [{ start: 4, end: 7 }], [])).toBe(5 * LINE_HEIGHT)
+    expect(getTopForLineNumberSafe(dummyEditor, 10, LINE_HEIGHT, [{ start: 4, end: 7 }], [])).toBe(
+      5 * LINE_HEIGHT
+    )
   })
 
   it('adds view-zone heights anchored below preceding lines', () => {
     const zones = [{ afterLineNumber: 2, heightInLines: 1.5 }]
-    expect(getTopForLineNumberSafe(dummyEditor, 4, LINE_HEIGHT, [], zones)).toBe(3 * LINE_HEIGHT + 1.5 * LINE_HEIGHT)
+    expect(getTopForLineNumberSafe(dummyEditor, 4, LINE_HEIGHT, [], zones)).toBe(
+      3 * LINE_HEIGHT + 1.5 * LINE_HEIGHT
+    )
   })
 
   it('resolves a line inside a hidden range to the bottom of the last visible line above it', () => {
@@ -39,6 +43,8 @@ describe('getTopForLineNumberSafe', () => {
     const hidden = [{ start: 4, end: 7 }]
     const zones = [{ afterLineNumber: 3, heightInLines: 1.5 }]
     // Line 8's top: lines 1-3 visible (3 * lh) + banner (1.5 * lh).
-    expect(getTopForLineNumberSafe(dummyEditor, 8, LINE_HEIGHT, hidden, zones)).toBe(4.5 * LINE_HEIGHT)
+    expect(getTopForLineNumberSafe(dummyEditor, 8, LINE_HEIGHT, hidden, zones)).toBe(
+      4.5 * LINE_HEIGHT
+    )
   })
 })

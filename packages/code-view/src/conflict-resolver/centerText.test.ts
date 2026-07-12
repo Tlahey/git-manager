@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { MergeBlock } from '../types'
-import { computeInitialCenterText, computeInitialPlacements, updatePlacementAfterToggle } from '../mergeBlockLayout'
+import {
+  computeInitialCenterText,
+  computeInitialPlacements,
+  updatePlacementAfterToggle,
+} from '../mergeBlockLayout'
 import { buildCenterTextFromPlacements } from './centerText'
 
 const blocks: MergeBlock[] = [
@@ -35,13 +39,13 @@ describe('buildCenterTextFromPlacements', () => {
   it('reflects per-block include flags — accepting theirs on the conflict keeps both sides', () => {
     let placements = computeInitialPlacements(blocks)
     placements = updatePlacementAfterToggle(placements, blocks, blocks[1], 'theirs', true)
-    expect(buildCenterTextFromPlacements(blocks, placements)).toBe('header\nours conflict\ntheirs conflict')
+    expect(buildCenterTextFromPlacements(blocks, placements)).toBe(
+      'header\nours conflict\ntheirs conflict'
+    )
   })
 
   it('falls back to a block’s base lines when it has no placement', () => {
-    const withBase: MergeBlock[] = [
-      { ...blocks[1], baseLines: ['base line'] },
-    ]
+    const withBase: MergeBlock[] = [{ ...blocks[1], baseLines: ['base line'] }]
     expect(buildCenterTextFromPlacements(withBase, new Map())).toBe('base line')
   })
 

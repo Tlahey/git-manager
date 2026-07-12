@@ -62,12 +62,8 @@ export function RevertDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {t('rollback.revert.title', { message: commitSubject })}
-          </DialogTitle>
-          <DialogDescription>
-            {t('rollback.revert.description')}
-          </DialogDescription>
+          <DialogTitle>{t('rollback.revert.title', { message: commitSubject })}</DialogTitle>
+          <DialogDescription>{t('rollback.revert.description')}</DialogDescription>
         </DialogHeader>
 
         <div className="flex items-center gap-2 py-2">
@@ -78,15 +74,13 @@ export function RevertDialog({
             onChange={(e) => setNoCommit(e.target.checked)}
             className="h-4 w-4 rounded border-border"
           />
-          <label htmlFor="no-commit" className="text-sm text-foreground cursor-pointer">
+          <label htmlFor="no-commit" className="cursor-pointer text-sm text-foreground">
             {t('rollback.revert.noCommit')}
           </label>
         </div>
 
         {error && (
-          <p className="rounded bg-destructive/20 px-3 py-2 text-xs text-destructive">
-            {error}
-          </p>
+          <p className="rounded bg-destructive/20 px-3 py-2 text-xs text-destructive">{error}</p>
         )}
 
         <DialogFooter className="gap-2">

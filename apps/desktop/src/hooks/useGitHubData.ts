@@ -45,7 +45,9 @@ export function useGitHubData(): GitHubData {
   const hasToken = !!token && !!username
 
   // Local state to track the last refreshed time
-  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(hasToken ? null : fallbackRefreshed)
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(
+    hasToken ? null : fallbackRefreshed
+  )
 
   const swrKey = hasToken ? ['github-data', token, username] : null
 
@@ -90,7 +92,12 @@ export function useGitHubData(): GitHubData {
 
           if (owner && repo && sha) {
             // Fetch CI Check Runs & Commit Statuses
-            const { checkRunsRes, statusRes } = await fetchGitHubCommitCiStatus(owner, repo, sha, tok)
+            const { checkRunsRes, statusRes } = await fetchGitHubCommitCiStatus(
+              owner,
+              repo,
+              sha,
+              tok
+            )
 
             const checkRuns = checkRunsRes?.check_runs ?? []
             const totalCheckRuns = checkRunsRes?.total_count ?? 0
@@ -116,14 +123,17 @@ export function useGitHubData(): GitHubData {
               } else {
                 const hasRunning =
                   (hasCheckRuns &&
-                    checkRuns.some((run: GhCheckRun) => ['in_progress', 'queued'].includes(run.status))) ||
+                    checkRuns.some((run: GhCheckRun) =>
+                      ['in_progress', 'queued'].includes(run.status)
+                    )) ||
                   (hasStatuses && commitStatusState === 'pending')
 
                 if (hasRunning) {
                   resolvedCiStatus = 'running'
                 } else {
                   const hasSuccess =
-                    (hasCheckRuns && checkRuns.some((run: GhCheckRun) => run.conclusion === 'success')) ||
+                    (hasCheckRuns &&
+                      checkRuns.some((run: GhCheckRun) => run.conclusion === 'success')) ||
                     (hasStatuses && commitStatusState === 'success')
 
                   if (hasSuccess) {
@@ -131,7 +141,9 @@ export function useGitHubData(): GitHubData {
                   } else {
                     const allSkipped =
                       hasCheckRuns &&
-                      checkRuns.every((run: GhCheckRun) => ['skipped', 'neutral'].includes(run.conclusion ?? ''))
+                      checkRuns.every((run: GhCheckRun) =>
+                        ['skipped', 'neutral'].includes(run.conclusion ?? '')
+                      )
                     resolvedCiStatus = allSkipped ? 'skipped' : null
                   }
                 }
@@ -144,7 +156,8 @@ export function useGitHubData(): GitHubData {
                   s = 'running'
                 } else if (run.status === 'completed') {
                   if (run.conclusion === 'success') s = 'success'
-                  else if (['failure', 'timed_out', 'cancelled'].includes(run.conclusion ?? '')) s = 'failure'
+                  else if (['failure', 'timed_out', 'cancelled'].includes(run.conclusion ?? ''))
+                    s = 'failure'
                   else if (['skipped', 'neutral'].includes(run.conclusion ?? '')) s = 'skipped'
                 }
                 return {

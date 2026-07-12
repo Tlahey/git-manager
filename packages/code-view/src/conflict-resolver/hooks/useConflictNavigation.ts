@@ -26,7 +26,8 @@ export function useConflictNavigation(
       return
     }
 
-    const visibleRanges = typeof centerEditor.getVisibleRanges === 'function' ? centerEditor.getVisibleRanges() : []
+    const visibleRanges =
+      typeof centerEditor.getVisibleRanges === 'function' ? centerEditor.getVisibleRanges() : []
     const currentLine = visibleRanges.length > 0 ? visibleRanges[0].startLineNumber : 1
 
     let foundIndex = -1
@@ -37,7 +38,10 @@ export function useConflictNavigation(
           foundIndex = i
           break
         }
-        if (currentLine >= p.centerStartLine && currentLine < p.centerStartLine + p.centerLineCount) {
+        if (
+          currentLine >= p.centerStartLine &&
+          currentLine < p.centerStartLine + p.centerLineCount
+        ) {
           foundIndex = i
           break
         }

@@ -43,18 +43,14 @@ export function BranchItem({
 
       {/* Nom de la branche — hover-expand robuste (overlay fixed) */}
       <HoverExpandLabel className={branch.isHead ? 'font-medium text-foreground' : ''}>
-        {branch.isHead && (
-          <span className="mr-1 text-[10px] text-emerald-400">●</span>
-        )}
+        {branch.isHead && <span className="mr-1 text-[10px] text-emerald-400">●</span>}
         {branch.shortName}
       </HoverExpandLabel>
 
       {/* Ahead / Behind — toujours affiché (push/pull) */}
       {(branch.aheadCount > 0 || branch.behindCount > 0) && (
-        <span className="shrink-0 tabular-nums text-[10px]">
-          {branch.aheadCount > 0 && (
-            <span className="text-blue-400">↑{branch.aheadCount}</span>
-          )}
+        <span className="shrink-0 text-[10px] tabular-nums">
+          {branch.aheadCount > 0 && <span className="text-blue-400">↑{branch.aheadCount}</span>}
           {branch.behindCount > 0 && (
             <span className="ml-0.5 text-orange-400">↓{branch.behindCount}</span>
           )}
@@ -65,9 +61,7 @@ export function BranchItem({
       {canPin && onTogglePin && (
         <button
           className={`shrink-0 rounded p-0.5 transition-colors hover:bg-accent ${
-            isPinned
-              ? 'text-muted-foreground/70'
-              : 'hidden group-hover/branch:inline-flex'
+            isPinned ? 'text-muted-foreground/70' : 'hidden group-hover/branch:inline-flex'
           }`}
           onClick={(e) => {
             e.stopPropagation()
@@ -76,11 +70,7 @@ export function BranchItem({
           aria-label={isPinned ? `Désépingler ${branch.shortName}` : `Épingler ${branch.shortName}`}
           title={isPinned ? 'Désépingler' : 'Épingler en haut'}
         >
-          {isPinned ? (
-            <Pin className="h-3 w-3 fill-current" />
-          ) : (
-            <Pin className="h-3 w-3" />
-          )}
+          {isPinned ? <Pin className="h-3 w-3 fill-current" /> : <Pin className="h-3 w-3" />}
         </button>
       )}
 

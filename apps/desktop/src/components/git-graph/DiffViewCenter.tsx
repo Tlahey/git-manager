@@ -19,14 +19,7 @@ interface DiffViewCenterProps {
   onRefresh?: () => void
 }
 
-
-
-export function DiffViewCenter({
-  repoPath,
-  file,
-  onClose,
-  onRefresh
-}: DiffViewCenterProps) {
+export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewCenterProps) {
   const { t } = useTranslation('git')
   const [viewMode, setViewMode] = useState<'inline' | 'split'>('split')
   const [copied, setCopied] = useState(false)
@@ -48,12 +41,11 @@ export function DiffViewCenter({
   }
 
   // Use hook to fetch diff metadata
-  const { data: diffData, isLoading: isLoadingMeta, refetch } = useFileDiff(
-    repoPath,
-    file.path,
-    file.staged,
-    file.oid
-  )
+  const {
+    data: diffData,
+    isLoading: isLoadingMeta,
+    refetch,
+  } = useFileDiff(repoPath, file.path, file.staged, file.oid)
 
   // Use hook to fetch raw contents
   const { data: rawContents, isLoading: isLoadingRaw } = useFileRawContents(
@@ -125,9 +117,7 @@ export function DiffViewCenter({
   }
 
   return (
-    <div
-      className="flex h-full w-full flex-col bg-background overflow-hidden animate-in fade-in zoom-in-95 duration-100 select-none"
-    >
+    <div className="animate-in fade-in zoom-in-95 flex h-full w-full select-none flex-col overflow-hidden bg-background duration-100">
       <DiffToolbar
         parsedPath={parsedPath}
         diffData={diffData}
@@ -154,10 +144,13 @@ export function DiffViewCenter({
       />
 
       {/* ── DIFF CONTENT AREA ─────────────────────────────────────────────────── */}
-      <div data-testid="diff-content-area" className="flex-1 bg-card/45 select-text font-mono text-xs flex flex-col overflow-hidden">
+      <div
+        data-testid="diff-content-area"
+        className="flex flex-1 select-text flex-col overflow-hidden bg-card/45 font-mono text-xs"
+      >
         {isLoading && (
           <div className="flex h-40 w-full items-center justify-center">
-            <Spinner className="h-5 w-5 text-muted-foreground mr-2" />
+            <Spinner className="mr-2 h-5 w-5 text-muted-foreground" />
             <span className="text-muted-foreground">Loading diff…</span>
           </div>
         )}
@@ -169,13 +162,16 @@ export function DiffViewCenter({
         )}
 
         {!isLoading && diffData && (
-          <div className="flex-1 p-4 overflow-hidden flex flex-col min-h-0">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
             {diffData.isBinary ? (
-              <div data-testid="diff-binary-placeholder" className="rounded-lg border border-border bg-muted/20 px-4 py-8 text-center text-muted-foreground italic">
+              <div
+                data-testid="diff-binary-placeholder"
+                className="rounded-lg border border-border bg-muted/20 px-4 py-8 text-center italic text-muted-foreground"
+              >
                 Binary file diff content cannot be displayed.
               </div>
             ) : (
-              <div className="flex-1 rounded-lg border border-border/80 bg-background flex flex-col overflow-hidden">
+              <div className="flex flex-1 flex-col overflow-hidden rounded-lg border border-border/80 bg-background">
                 <MonacoDiffViewer
                   ref={diffViewerRef}
                   original={rawContents?.original || ''}

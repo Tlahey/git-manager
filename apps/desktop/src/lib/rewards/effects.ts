@@ -19,14 +19,21 @@ export function findEffectGate(
 
 /** Whether `id` (a theme id, avatar-frame id, ...) is currently usable. Ids not gated by any
  *  achievement are always unlocked. */
-export function isEffectUnlocked(achievements: Achievement[], type: RewardEffect['type'], id: string): boolean {
+export function isEffectUnlocked(
+  achievements: Achievement[],
+  type: RewardEffect['type'],
+  id: string
+): boolean {
   const gate = findEffectGate(achievements, type, id)
   return gate ? gate.unlocked : true
 }
 
 /** All effect ids of a given type currently unlocked, e.g. `getUnlockedEffects(achievements,
  *  'theme')` → the set of theme ids the user has earned. */
-export function getUnlockedEffects(achievements: Achievement[], type: RewardEffect['type']): Set<string> {
+export function getUnlockedEffects(
+  achievements: Achievement[],
+  type: RewardEffect['type']
+): Set<string> {
   const unlocked = new Set<string>()
   for (const achievement of achievements) {
     if (!achievement.unlocked || !achievement.effects) continue

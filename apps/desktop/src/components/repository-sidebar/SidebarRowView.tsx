@@ -100,14 +100,18 @@ export function SidebarRowView({
           className="flex w-full items-center gap-1.5 py-[3px] pl-4 pr-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
         >
           <span className="shrink-0">
-            {row.isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            {row.isOpen ? (
+              <ChevronDown className="h-3 w-3" />
+            ) : (
+              <ChevronRight className="h-3 w-3" />
+            )}
           </span>
           <FolderGit2 className="h-3 w-3 shrink-0 opacity-50" />
           <span className="flex-1 truncate font-medium">
             {row.hasHead && <span className="mr-1 text-[9px] text-emerald-400">●</span>}
             {row.prefix}
           </span>
-          <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground/40">
+          <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/40">
             {row.count}
           </span>
         </button>
@@ -120,27 +124,29 @@ export function SidebarRowView({
           className="flex w-full items-center gap-1.5 py-[3px] pl-4 pr-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
         >
           <span className="shrink-0">
-            {row.isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            {row.isOpen ? (
+              <ChevronDown className="h-3 w-3" />
+            ) : (
+              <ChevronRight className="h-3 w-3" />
+            )}
           </span>
           <Globe className="h-3 w-3 shrink-0 opacity-50" />
           <span className="flex-1 truncate font-medium">{row.remoteName}</span>
-          <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground/40">
+          <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/40">
             {row.count}
           </span>
         </button>
       )
 
     case 'remote-branch': {
-      const displayName = row.branch.shortName.replace(
-        new RegExp(`^${row.remoteName}/`),
-        ''
-      )
+      const displayName = row.branch.shortName.replace(new RegExp(`^${row.remoteName}/`), '')
       return (
         <div
-          className={`group/rbranch relative flex items-center gap-1.5 py-[3px] pl-10 pr-2 text-xs transition-colors ${row.isSelected
-            ? 'bg-accent text-foreground'
-            : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
-            }`}
+          className={`group/rbranch relative flex items-center gap-1.5 py-[3px] pl-10 pr-2 text-xs transition-colors ${
+            row.isSelected
+              ? 'bg-accent text-foreground'
+              : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+          }`}
           onClick={() => onSelectBranch(row.branch.name)}
           role="button"
           tabIndex={0}
@@ -149,7 +155,7 @@ export function SidebarRowView({
           <BranchIcon className="h-3 w-3 shrink-0 opacity-30" />
           <HoverExpandLabel>{displayName}</HoverExpandLabel>
           {(row.branch.aheadCount > 0 || row.branch.behindCount > 0) && (
-            <span className="shrink-0 tabular-nums text-[10px]">
+            <span className="shrink-0 text-[10px] tabular-nums">
               {row.branch.aheadCount > 0 && (
                 <span className="text-blue-400">↑{row.branch.aheadCount}</span>
               )}
@@ -169,7 +175,11 @@ export function SidebarRowView({
           className="flex w-full items-center gap-1 px-4 py-[3px] text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 transition-colors hover:bg-accent/30 hover:text-muted-foreground"
         >
           <span className="shrink-0">
-            {row.isOpen ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronRight className="h-2.5 w-2.5" />}
+            {row.isOpen ? (
+              <ChevronDown className="h-2.5 w-2.5" />
+            ) : (
+              <ChevronRight className="h-2.5 w-2.5" />
+            )}
           </span>
           <span className="flex-1">{row.label}</span>
           <span className="tabular-nums">{row.count}</span>
@@ -182,10 +192,11 @@ export function SidebarRowView({
     case 'tag':
       return (
         <div
-          className={`group/tag relative flex items-center gap-1.5 py-[3px] pl-6 pr-2 text-xs transition-colors ${row.isSelected
-            ? 'bg-accent text-foreground font-medium'
-            : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
-            }`}
+          className={`group/tag relative flex items-center gap-1.5 py-[3px] pl-6 pr-2 text-xs transition-colors ${
+            row.isSelected
+              ? 'bg-accent font-medium text-foreground'
+              : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+          }`}
           onClick={() => onSelectBranch(row.tag.name)}
           role="button"
           tabIndex={0}
@@ -193,7 +204,7 @@ export function SidebarRowView({
         >
           <TagIcon className="h-3 w-3 shrink-0 opacity-30" />
           <HoverExpandLabel>{row.tag.shortName}</HoverExpandLabel>
-          <span className="shrink-0 tabular-nums text-[10px] font-mono text-muted-foreground/40 font-normal">
+          <span className="shrink-0 font-mono text-[10px] font-normal tabular-nums text-muted-foreground/40">
             {row.tag.commitOid.slice(0, 7)}
           </span>
         </div>
@@ -203,12 +214,13 @@ export function SidebarRowView({
       const isHidden = hiddenStashes.includes(row.stash.commitOid)
       return (
         <div
-          className={`group/stash relative flex items-center gap-1.5 py-[3px] pl-6 pr-2 text-xs transition-colors cursor-pointer ${row.isSelected
-            ? 'bg-accent text-foreground font-medium'
-            : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
-            } ${isHidden ? 'opacity-50' : ''}`}
+          className={`group/stash relative flex cursor-pointer items-center gap-1.5 py-[3px] pl-6 pr-2 text-xs transition-colors ${
+            row.isSelected
+              ? 'bg-accent font-medium text-foreground'
+              : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+          } ${isHidden ? 'opacity-50' : ''}`}
           onClick={(e) => {
-            e.stopPropagation();
+            e.stopPropagation()
             if ((e.target as HTMLElement).closest('[data-toggle]')) {
               return
             }
@@ -222,7 +234,7 @@ export function SidebarRowView({
           role="button"
           tabIndex={0}
           onKeyDown={(e) => {
-            e.stopPropagation();
+            e.stopPropagation()
             if (e.key === 'Enter') {
               if ((e.target as HTMLElement).closest('[data-toggle]')) return
               onSelectBranch(row.stash.commitOid)
@@ -245,9 +257,13 @@ export function SidebarRowView({
               e.stopPropagation()
               e.preventDefault()
             }}
-            className="absolute left-1 z-10 opacity-0 group-hover/stash:opacity-100 rounded p-0.5 hover:bg-accent/80 text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer"
-            title={isHidden ? "Afficher le stash dans le graphe" : "Masquer le stash dans le graphe"}
-            aria-label={isHidden ? "Afficher le stash dans le graphe" : "Masquer le stash dans le graphe"}
+            className="absolute left-1 z-10 shrink-0 cursor-pointer rounded p-0.5 text-muted-foreground opacity-0 transition-all hover:bg-accent/80 hover:text-foreground group-hover/stash:opacity-100"
+            title={
+              isHidden ? 'Afficher le stash dans le graphe' : 'Masquer le stash dans le graphe'
+            }
+            aria-label={
+              isHidden ? 'Afficher le stash dans le graphe' : 'Masquer le stash dans le graphe'
+            }
           >
             {isHidden ? (
               <EyeOff className="h-3.5 w-3.5 text-muted-foreground/60" />
@@ -255,11 +271,11 @@ export function SidebarRowView({
               <Eye className="h-3.5 w-3.5 text-violet-400" />
             )}
           </span>
-          <ArchiveIcon className="h-3 w-3 shrink-0 opacity-40 text-violet-400" />
+          <ArchiveIcon className="h-3 w-3 shrink-0 text-violet-400 opacity-40" />
           <HoverExpandLabel className="min-w-0 flex-1 truncate">
             {row.stash.message || `stash@{${row.stash.index}}`}
           </HoverExpandLabel>
-          <span className="shrink-0 tabular-nums text-[10px] font-mono text-muted-foreground/40 font-normal">
+          <span className="shrink-0 font-mono text-[10px] font-normal tabular-nums text-muted-foreground/40">
             {row.stash.commitOid.slice(0, 7)}
           </span>
         </div>
@@ -277,7 +293,7 @@ export function SidebarRowView({
             </span>
           </div>
           {row.sm.headOid && (
-            <span className="shrink-0 tabular-nums text-[10px] font-mono text-muted-foreground/30">
+            <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground/30">
               {row.sm.headOid.slice(0, 7)}
             </span>
           )}

@@ -47,7 +47,9 @@ describe('TerminalKeywordRule', () => {
 
   it('does not match on events other than terminal_command', () => {
     const a = achievement({ commandKeyword: 'git reflog' })
-    expect(rule.matches(a, ctx({ event: 'commit', payload: { command: 'git reflog' } }))).toBe(false)
+    expect(rule.matches(a, ctx({ event: 'commit', payload: { command: 'git reflog' } }))).toBe(
+      false
+    )
   })
 
   it('does not match when the achievement has no commandKeyword', () => {

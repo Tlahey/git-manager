@@ -22,7 +22,7 @@ function ThemeCard({ label, colors, isSystem, isActive, isCustom, onClick }: The
       type="button"
       onClick={onClick}
       data-testid={`theme-card-${label.toLowerCase().replace(/\s+/g, '-')}`}
-      className={`relative flex flex-col gap-2 rounded-lg border p-3 text-left transition-all cursor-pointer ${
+      className={`relative flex cursor-pointer flex-col gap-2 rounded-lg border p-3 text-left transition-all ${
         isActive
           ? 'border-primary bg-primary/10 ring-1 ring-primary'
           : 'border-border hover:border-muted-foreground/40 hover:bg-accent/50'
@@ -35,27 +35,24 @@ function ThemeCard({ label, colors, isSystem, isActive, isCustom, onClick }: The
         </div>
       ) : colors ? (
         <div
-          className="h-12 w-full overflow-hidden rounded-md border border-black/10 relative"
+          className="relative h-12 w-full overflow-hidden rounded-md border border-black/10"
           style={{ background: colors.bg }}
         >
           <div className="flex h-full gap-0.5 p-1.5">
             <div className="flex-1 rounded-sm" style={{ background: colors.primary }} />
             <div className="flex-1 rounded-sm" style={{ background: colors.accent }} />
-            <div
-              className="flex-1 rounded-sm opacity-60"
-              style={{ background: colors.fg }}
-            />
+            <div className="flex-1 rounded-sm opacity-60" style={{ background: colors.fg }} />
           </div>
         </div>
       ) : (
-        <div className="flex h-12 w-full items-center justify-center rounded-md border border-dashed border-border bg-muted/30 relative">
+        <div className="relative flex h-12 w-full items-center justify-center rounded-md border border-dashed border-border bg-muted/30">
           <span className="text-[10px] text-muted-foreground">CSS</span>
         </div>
       )}
 
       {/* Name + badges */}
-      <div className="flex items-center justify-between gap-1 w-full overflow-hidden">
-        <span className="text-xs font-medium text-foreground truncate flex items-center gap-1">
+      <div className="flex w-full items-center justify-between gap-1 overflow-hidden">
+        <span className="flex items-center gap-1 truncate text-xs font-medium text-foreground">
           {label}
         </span>
         <div className="flex shrink-0 items-center gap-1">
@@ -171,7 +168,7 @@ export function AppearanceSection() {
           {densities.map((d) => (
             <label
               key={d.value}
-              className={`flex items-center gap-1.5 rounded border px-3 py-1.5 text-xs cursor-pointer transition-colors ${
+              className={`flex cursor-pointer items-center gap-1.5 rounded border px-3 py-1.5 text-xs transition-colors ${
                 appearance.density === d.value
                   ? 'border-primary bg-primary/10 text-foreground'
                   : 'border-border text-muted-foreground hover:bg-accent'
@@ -199,7 +196,7 @@ export function AppearanceSection() {
             <label
               key={rh.value}
               data-testid={`row-height-radio-${rh.value}`}
-              className={`flex items-center gap-1.5 rounded border px-3 py-1.5 text-xs cursor-pointer transition-colors ${
+              className={`flex cursor-pointer items-center gap-1.5 rounded border px-3 py-1.5 text-xs transition-colors ${
                 (appearance.rowHeight || 'standard') === rh.value
                   ? 'border-primary bg-primary/10 text-foreground'
                   : 'border-border text-muted-foreground hover:bg-accent'
@@ -221,13 +218,19 @@ export function AppearanceSection() {
 
       {/* Notification location */}
       <div className="space-y-1.5 font-sans">
-        <label className="text-xs font-medium text-foreground">
-          Emplacement des notifications
-        </label>
+        <label className="text-xs font-medium text-foreground">Emplacement des notifications</label>
         <select
           value={appearance.notificationLocation || 'top-right'}
-          onChange={(e) => updateAppearance({ notificationLocation: e.target.value as 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' })}
-          className="w-full h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-sans"
+          onChange={(e) =>
+            updateAppearance({
+              notificationLocation: e.target.value as
+                | 'top-right'
+                | 'top-left'
+                | 'bottom-right'
+                | 'bottom-left',
+            })
+          }
+          className="h-8 w-full rounded-md border border-input bg-background px-3 font-sans text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         >
           <option value="top-right">Haut droit (Top Right)</option>
           <option value="top-left">Haut gauche (Top Left)</option>
@@ -238,7 +241,7 @@ export function AppearanceSection() {
 
       {/* Checkboxes */}
       <div className="space-y-2">
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className="flex cursor-pointer items-center gap-2">
           <input
             type="checkbox"
             checked={appearance.showAvatars}
@@ -247,7 +250,7 @@ export function AppearanceSection() {
           />
           <span className="text-xs text-foreground">{t('settings.appearance.showAvatars')}</span>
         </label>
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className="flex cursor-pointer items-center gap-2">
           <input
             type="checkbox"
             checked={appearance.enableAnimations}

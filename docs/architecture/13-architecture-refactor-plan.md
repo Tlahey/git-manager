@@ -7,6 +7,7 @@ time we touch an area of the code that violates the splitting rules below, and a
 before merging a PR that adds a Tauri command, a component, a hook, or a store.
 
 It starts from a factual audit of the code (July 2026, see § Current state) and sets out:
+
 1. the splitting rules to follow (file = 1 role, mandatory service layer),
 2. the design patterns to introduce and where,
 3. a prioritized roadmap,
@@ -27,6 +28,7 @@ layer on the frontend side, rather than a complete rewrite.
 ## Current state (audit)
 
 ### Strengths to preserve
+
 - The IPC boundary is respected: the frontend never talks to git directly, everything goes
   through `#[tauri::command]` → `lib/tauri.ts`.
 - The `api/*.api.ts` layer already exists and covers ~95% of the commands used by the frontend
@@ -42,22 +44,24 @@ layer on the frontend side, rather than a complete rewrite.
 
 **Frontend — files that mix several responsibilities:**
 
-| File | Lines | Problem |
-|---|---|---|
-| `components/git-graph/components/CommitFileList.tsx` | 682 | file tree logic + UI + stage/unstage calls in a single file |
-| `components/git-graph/GitGraph.tsx` | 586 | orchestrator component that absorbs too much coordination |
-| `app/settings/components/GithubSection.tsx` | 562 | the entire OAuth device flow (polling, state, timers) is inline in the component instead of a dedicated hook |
-| `components/git-graph/components/WipStagingPanel.tsx` | 488 | batching/batch commit + LLM generation + stage/unstage/commit calls mixed together (no tree duplication with `CommitFileList.tsx`, contrary to the initial hypothesis — see correction below) |
-| `app/pull-requests/components/CustomViewsTab.tsx` | 454 | YAML parsing + GitHub query construction + UI form |
-| `components/git-graph/DiffViewCenter.tsx` | 427 | virtualization + stage/unstage interactions directly coupled to the view |
+| File                                                  | Lines | Problem                                                                                                                                                                                       |
+| ----------------------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `components/git-graph/components/CommitFileList.tsx`  | 682   | file tree logic + UI + stage/unstage calls in a single file                                                                                                                                   |
+| `components/git-graph/GitGraph.tsx`                   | 586   | orchestrator component that absorbs too much coordination                                                                                                                                     |
+| `app/settings/components/GithubSection.tsx`           | 562   | the entire OAuth device flow (polling, state, timers) is inline in the component instead of a dedicated hook                                                                                  |
+| `components/git-graph/components/WipStagingPanel.tsx` | 488   | batching/batch commit + LLM generation + stage/unstage/commit calls mixed together (no tree duplication with `CommitFileList.tsx`, contrary to the initial hypothesis — see correction below) |
+| `app/pull-requests/components/CustomViewsTab.tsx`     | 454   | YAML parsing + GitHub query construction + UI form                                                                                                                                            |
+| `components/git-graph/DiffViewCenter.tsx`             | 427   | virtualization + stage/unstage interactions directly coupled to the view                                                                                                                      |
 
 **Frontend — API layer violation:**
+
 - `stores/game.store.ts:228` calls `invoke('get_terminal_commands')` **directly**, bypassing
   `lib/tauri.ts` and `api/*.api.ts`. This is the only violation found, but it illustrates
   the risk: a store that short-circuits the service layer cannot be observed/traced
   uniformly.
 
 **Frontend — store that mixes UI and business data:**
+
 - `stores/repos.store.ts` (209 lines) mixes pure UI state (open tabs, active panel, selected
   diff file) and business data (active repo, WIP messages, hidden stashes).
 - `stores/settings.store.ts` mixes business config (Ollama, protected branches, GitHub) and
@@ -65,11 +69,11 @@ layer on the frontend side, rather than a complete rewrite.
 
 **Backend Rust — duplication and oversized files:**
 
-| File | Lines | Problem |
-|---|---|---|
-| `commands/log.rs` | 816 | mixes graph computation (columns/colors/edges), commit parsing, stash filtering, and full diff generation |
-| `commands/commit.rs` | 649 | 6 distinct commands (stage, unstage, commit, discard, diff, raw content) in a single file |
-| `commands/repo.rs` | 611 | scan/clone/init logic not factored out |
+| File                 | Lines | Problem                                                                                                   |
+| -------------------- | ----- | --------------------------------------------------------------------------------------------------------- |
+| `commands/log.rs`    | 816   | mixes graph computation (columns/colors/edges), commit parsing, stash filtering, and full diff generation |
+| `commands/commit.rs` | 649   | 6 distinct commands (stage, unstage, commit, discard, diff, raw content) in a single file                 |
+| `commands/repo.rs`   | 611   | scan/clone/init logic not factored out                                                                    |
 
 - **`DiffLine` / `DiffHunk` / `DiffFile` / `CommitDiff` are redefined identically** in
   `commands/commit.rs` (lines 10-44) and `commands/log.rs` (lines 38-70). Two sources of truth
@@ -90,7 +94,9 @@ These rules are **binding**, not suggestions. They complement (without replacing
 `.agents/AGENTS.md` and the Architecture section of `CLAUDE.md`.
 
 ### R1 — One file, one role
+
 A file should have only one reason to change. Concretely:
+
 - A `.tsx` component = one displayed feature. Any non-presentational logic (tree
   construction, polling, parsing) goes into a dedicated hook (`hooks/useX.ts`).
 - A Rust module in `commands/` should only expose **thin** `#[tauri::command]` functions:
@@ -98,8 +104,9 @@ A file should have only one reason to change. Concretely:
   logic (git2 traversal, computations, validations) goes into `services/`.
 
 ### R2 — All operations must go through a service
+
 This is the explicitly requested rule and it has a direct benefit for the Observer: if a single
-entry point executes *all* operations, it's the only place to hook cross-cutting side effects
+entry point executes _all_ operations, it's the only place to hook cross-cutting side effects
 (notifications, undo/redo history, achievements, future audit log) into without
 duplicating them at each call site.
 
@@ -113,6 +120,7 @@ duplicating them at each call site.
   `services::branch::delete(...)`, etc). The service is the only layer allowed to touch `git2`.
 
 ### R3 — Design patterns, applied where they solve a real problem
+
 No pattern for the pattern's sake — each introduction below addresses a duplication
 or coupling observed in the audit.
 
@@ -121,17 +129,23 @@ or coupling observed in the audit.
 ## Patterns to introduce
 
 ### Observer — generalize `gameObserver` into an application-wide event bus
+
 **Problem solved**: today only `api/git.api.ts` notifies `gameObserver` (for
 achievements). Other domains (GitHub, stash, remote) have no common instrumentation
 point; if tomorrow we want to add an audit log, we'd have to add manual calls in each
 API function.
 
 **Target**:
+
 - Rename `lib/gameObserver.ts` to `lib/appEventBus.ts` (`GameEvent`/`GameListener` →
   `AppEvent`/`AppEventListener`), same pub/sub implementation.
 - Introduce an `api/service.ts` wrapper:
   ```ts
-  export async function callCommand<T>(event: AppEvent, fn: () => Promise<T>, payload?: any): Promise<T> {
+  export async function callCommand<T>(
+    event: AppEvent,
+    fn: () => Promise<T>,
+    payload?: any
+  ): Promise<T> {
     const result = await fn()
     appEventBus.notify(event, payload)
     return result
@@ -142,7 +156,7 @@ API function.
 > migrating it, and its instrumentation is **not** a simple uniform "invoke + notify" everywhere —
 > most of its functions also drive the undo/redo history (`pushAction`/`clearRedo`/
 > `pinObject`, conditional snapshots depending on the action mode), with a different shape per
-> action type. Forcing *the entire function* through `callCommand` would have added a generic
+> action type. Forcing _the entire function_ through `callCommand` would have added a generic
 > catch-all parameter without removing any real duplication (which is legitimate: each undo
 > action is different, Command-pattern style, not Observer style).
 >
@@ -159,11 +173,13 @@ API function.
 > [14-architecture-refactor-tracking.md](14-architecture-refactor-tracking.md) action 4.4.
 
 ### Service layer (Rust) — extract `services/` between `commands/` and `git2`
+
 **Problem solved**: `log.rs` (816 lines) and `commit.rs` (649 lines) mix business logic and
 Tauri plumbing, making the code untestable outside `#[tauri::command]`, and duplicate the
 `DiffLine`/`DiffHunk`/`DiffFile` structs.
 
 **Target**:
+
 ```
 src-tauri/src/
 ├── commands/         # thin #[tauri::command] functions: deserialization + delegation + errors
@@ -179,11 +195,13 @@ src-tauri/src/
 ├── models.rs           # shared structs (DiffLine, DiffHunk, DiffFile, CommitDiff, ShortOid...)
 └── utils.rs             # short_oid(), get_git_signature() — currently duplicated 4x
 ```
+
 This directly resolves the Diff struct duplication and the `short_oid`/signature helper
 duplication noted in the audit, without rewriting the existing git2 access (no additional
 abstraction layer of the `git/` kind as in `00-architecture.md` — just a commands/services split).
 
 ### Builder — commit graph construction (rescoped as a simple service function)
+
 **Problem solved**: `log.rs` computed columns/colors/edges inline in `get_log` (~375
 lines of algorithm mixed with request preparation), with several optional parameters
 (limit, stash filters, branch) passed in cascade.
@@ -195,7 +213,7 @@ lines of algorithm mixed with request preparation), with several optional parame
 > case where a Builder brings no ergonomic value over named function arguments. Rather than
 > inventing a chainable API unused anywhere else, the layout algorithm was extracted as-is into
 > `services/git_graph.rs::build_graph_nodes(repo, oids, stash_oids,
-> refs_map, branch)` — a pure function, testable independently of Tauri, without changing its
+refs_map, branch)` — a pure function, testable independently of Tauri, without changing its
 > call shape. Extraction verified line by line against the original (exact diff aside from
 > borrow/ownership signature adaptations) to guarantee zero behavior change on an algorithm
 > that cannot be visually tested from this environment.
@@ -206,6 +224,7 @@ lines of algorithm mixed with request preparation), with several optional parame
 > reasoning.
 
 ### Strategy — diff rendering based on content type
+
 **Problem solved (assumed)**: `DiffViewCenter.tsx` (427 lines) allegedly mixed virtualization,
 interactions, and formatting logic that varies by file type (text, binary, image,
 pure rename), with stacked `if/else`s to be replaced by a `DiffRenderStrategy` interface.
@@ -213,7 +232,7 @@ pure rename), with stacked `if/else`s to be replaced by a `DiffRenderStrategy` i
 > **Post-implementation correction (2026-07-02)**: upon re-reading `DiffViewCenter.tsx` to
 > implement it, the hypothesis doesn't hold. There is only a single branching point per content
 > type, a two-branch ternary (`diffData.isBinary ? <binary placeholder> :
-> <MonacoDiffViewer>`) — no stacked `if/else`s, no separate "image" case anywhere in the
+<MonacoDiffViewer>`) — no stacked `if/else`s, no separate "image" case anywhere in the
 > code (nor in `MonacoDiffViewer.tsx`), and "split-view" is not a separate rendering strategy
 > but a simple prop (`viewMode`) passed to `MonacoDiffViewer`, which handles both modes
 > internally. Introducing a `DiffRenderStrategy` interface for a 5-line ternary would be
@@ -229,6 +248,7 @@ pure rename), with stacked `if/else`s to be replaced by a `DiffRenderStrategy` i
 > planned here.
 
 ### Composite — file tree (already implicit)
+
 **Problem solved**: `CommitFileList.tsx` builds its recursive tree (`buildFileTree`,
 `computeFolderStats`, sorting, expand/collapse) inline in the component, mixed with rendering.
 
@@ -248,6 +268,7 @@ sorting, folder stats computation, and filtering.
 ## Detailed action plan by file
 
 ### Backend Rust
+
 1. Create `models.rs` (or extend the existing one) with `DiffLine`, `DiffHunk`, `DiffFile`, `CommitDiff`
    as the single definition; remove the redefinitions in `commit.rs` and `log.rs`.
 2. Create `utils.rs` with `short_oid()` and `get_git_signature()`; replace the 4 duplicated
@@ -260,6 +281,7 @@ sorting, folder stats computation, and filtering.
    lines each (deserialization + service call + errors).
 
 ### Frontend
+
 1. `GithubSection.tsx` → extract `hooks/useGithubDeviceFlow.ts` (polling, state, timer cleanup);
    the component keeps only the rendering.
 2. `CommitFileList.tsx` → extract `hooks/useFileTree.ts` (see Composite above; correction:
@@ -284,23 +306,28 @@ sorting, folder stats computation, and filtering.
 ## Prioritized roadmap
 
 **Phase 1 — Quick wins (low risk, immediate value)**
+
 - Fix `game.store.ts:228` (API layer violation).
 - Centralize `short_oid()` / `get_git_signature()` in `utils.rs`.
 - Centralize the Diff structs in `models.rs`.
 
 **Phase 2 — Hook extraction (frontend, no behavior change)**
+
 - `useGithubDeviceFlow`, `useFileTree`, `repos.store.ts` split.
 
 **Phase 3 — Introduction of the service layer (Rust)**
+
 - Extraction of `services/git_diff.rs`, `services/git_commit.rs`, `services/git_repo.rs`,
   `services/git_graph.rs` with `GitGraphBuilder`.
 
 **Phase 4 — Generalized event bus**
+
 - `api/service.ts` + `appEventBus`, migration of the 8 existing notification sites in
   `api/git.api.ts`. No forced migration of the other `api/*.api.ts` files (nothing to notify
   there today).
 
 **Phase 5 — Strategy for diff rendering**
+
 - ~~Refactor `DiffViewCenter.tsx`~~ — not applicable, see the correction in the Strategy section.
 
 Each phase is independent and separately shippable — don't do everything in a single PR.

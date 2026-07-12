@@ -1,12 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { GitStatus, GitStatusEntry } from '@git-manager/git-types'
-import {
-  apiUnstageAll,
-  apiStageFile,
-  apiUnstageFile,
-  apiCreateCommit,
-} from '../api/git.api'
+import { apiUnstageAll, apiStageFile, apiUnstageFile, apiCreateCommit } from '../api/git.api'
 import { useOllamaGeneration } from './useOllamaGeneration'
 import { useCommitMessageHistory } from './useCommitMessageHistory'
 import type { ProcessedFileItem } from '../components/git-graph/components/CommitFileList'
@@ -24,7 +19,7 @@ export function useWipCommitPanel(
   gitStatus: GitStatus | undefined,
   allWipChanges: ProcessedFileItem[],
   t: TranslateFn,
-  onRefresh?: () => void,
+  onRefresh?: () => void
 ) {
   const queryClient = useQueryClient()
 
@@ -35,8 +30,11 @@ export function useWipCommitPanel(
   const [batchMessages, setBatchMessages] = useState<Record<string, string>>({})
   const [batchGenerating, setBatchGenerating] = useState<Record<string, boolean>>({})
 
-  const { generate: runLlmGenerate, cancel: cancelLlmGenerate, status: llmStatus } =
-    useOllamaGeneration(repoPath)
+  const {
+    generate: runLlmGenerate,
+    cancel: cancelLlmGenerate,
+    status: llmStatus,
+  } = useOllamaGeneration(repoPath)
   const { history, addMessage } = useCommitMessageHistory()
 
   const isGenerating = llmStatus === 'connecting' || llmStatus === 'streaming'
@@ -59,7 +57,10 @@ export function useWipCommitPanel(
     if (batchGenerating[groupName]) return
 
     setBatchGenerating((prev) => ({ ...prev, [groupName]: true }))
-    setBatchMessages((prev) => ({ ...prev, [groupName]: t('commitDetails.batchCommit.generating') }))
+    setBatchMessages((prev) => ({
+      ...prev,
+      [groupName]: t('commitDetails.batchCommit.generating'),
+    }))
 
     try {
       // 1. Get currently staged files
@@ -96,11 +97,11 @@ export function useWipCommitPanel(
       // 5. Restore original staging state
       await apiUnstageAll(repoPath)
       const freshStatus = await queryClient.fetchQuery<GitStatus>({
-        queryKey: ['git-status', repoPath]
+        queryKey: ['git-status', repoPath],
       })
       const activeChanges = new Set<string>([
         ...(freshStatus?.unstaged ?? []).map((x: GitStatusEntry) => x.path),
-        ...(freshStatus?.untracked ?? [])
+        ...(freshStatus?.untracked ?? []),
       ])
       for (const path of originallyStaged) {
         if (activeChanges.has(path)) {
@@ -147,11 +148,11 @@ export function useWipCommitPanel(
 
       // Restore remaining originally staged files
       const freshStatus = await queryClient.fetchQuery<GitStatus>({
-        queryKey: ['git-status', repoPath]
+        queryKey: ['git-status', repoPath],
       })
       const activeChanges = new Set<string>([
         ...(freshStatus?.unstaged ?? []).map((x: GitStatusEntry) => x.path),
-        ...(freshStatus?.untracked ?? [])
+        ...(freshStatus?.untracked ?? []),
       ])
       for (const path of originallyStaged) {
         if (!batchFileSet.has(path) && activeChanges.has(path)) {

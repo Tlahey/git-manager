@@ -24,7 +24,11 @@ export class MilestoneRule implements RewardRule {
 
   matches(achievement: Achievement, ctx: RuleContext): boolean {
     const milestoneType = achievement.milestoneType
-    if (!milestoneType || milestoneType === 'terminal_command' || achievement.milestoneValue === undefined) {
+    if (
+      !milestoneType ||
+      milestoneType === 'terminal_command' ||
+      achievement.milestoneValue === undefined
+    ) {
       return false
     }
     if (EVENT_TO_MILESTONE_TYPE[ctx.event] !== milestoneType) return false

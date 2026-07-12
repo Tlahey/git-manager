@@ -7,6 +7,7 @@
 ## Objective
 
 Replace the basic `RepoBranchSidebar` (fixed 220px) with a `RepositorySidebar` featuring:
+
 - **Resizable** width via drag-and-drop (min 140px, max 480px)
 - **Collapse/expand** button to hide the sidebar
 - **Accordion** sections: Local Branches, Remotes, Pull Requests, Tags, Submodules
@@ -43,42 +44,42 @@ apps/desktop/src/hooks/
 
 ## Modified files
 
-| File | Change |
-|---------|-------------|
-| `packages/git-types/src/index.ts` | ✅ Added `GitSubmodule`, `PullRequest`, `PrState`, `PrCiStatus` |
-| `apps/desktop/src-tauri/src/commands/submodule.rs` | ✅ Created — `list_submodules` command via git2 |
-| `apps/desktop/src-tauri/src/commands/mod.rs` | ✅ `pub mod submodule` added |
-| `apps/desktop/src-tauri/src/lib.rs` | ✅ `list_submodules` registered in `invoke_handler` |
-| `apps/desktop/src/lib/tauri.ts` | ✅ Import `GitSubmodule` + `listSubmodules` wrapper |
-| `apps/desktop/src/app/repo/RepoView.tsx` | ✅ Replaced `RepoBranchSidebar` with `RepositorySidebar` |
+| File                                               | Change                                                          |
+| -------------------------------------------------- | --------------------------------------------------------------- |
+| `packages/git-types/src/index.ts`                  | ✅ Added `GitSubmodule`, `PullRequest`, `PrState`, `PrCiStatus` |
+| `apps/desktop/src-tauri/src/commands/submodule.rs` | ✅ Created — `list_submodules` command via git2                 |
+| `apps/desktop/src-tauri/src/commands/mod.rs`       | ✅ `pub mod submodule` added                                    |
+| `apps/desktop/src-tauri/src/lib.rs`                | ✅ `list_submodules` registered in `invoke_handler`             |
+| `apps/desktop/src/lib/tauri.ts`                    | ✅ Import `GitSubmodule` + `listSubmodules` wrapper             |
+| `apps/desktop/src/app/repo/RepoView.tsx`           | ✅ Replaced `RepoBranchSidebar` with `RepositorySidebar`        |
 
 ---
 
 ## Implementation tracking table
 
-| # | Task | Status |
-|---|-------|--------|
-| 12.1 | Types `GitSubmodule`, `PullRequest`, `PrState`, `PrCiStatus` | ✅ |
-| 12.2 | Rust command `list_submodules` (git2) | ✅ |
-| 12.3 | Tauri registration + `listSubmodules` wrapper | ✅ |
-| 12.4 | `useSidebarResize` hook (drag, collapse, localStorage) | ✅ |
-| 12.5 | `useGroupedBranches` hook (prefixes, threshold ≥2) | ✅ |
-| 12.6 | `usePullRequests` hook (GitHub REST API, URL parsing) | ✅ |
-| 12.7 | `SectionHeader` component | ✅ |
-| 12.8 | `BranchItem` component (hover-expand, HEAD ●, ↑↓, ⋮) | ✅ |
-| 12.9 | `BranchFolder` component (virtual prefix folder) | ✅ |
-| 12.10 | `PullRequestItem` component (status badge, CI, hover-expand) | ✅ |
-| 12.11 | `LocalBranchesSection` section | ✅ |
-| 12.12 | `RemotesSection` section (grouped by remote) | ✅ |
-| 12.13 | `PullRequestsSection` section (My PRs / All PRs) | ✅ |
-| 12.14 | `TagsSection` section (getTags data) | ✅ |
-| 12.15 | `SubmodulesSection` section (listSubmodules data) | ✅ |
-| 12.16 | `SidebarResizeHandle` component | ✅ |
-| 12.17 | `RepositorySidebar` component (main container) | ✅ |
-| 12.18 | Integration into `RepoView.tsx` | ✅ |
-| 12.19 | Rail mode (`SidebarRail`) — collapse into icons, never fully closed | ✅ |
-| 12.20 | Typecheck verification | ✅ |
-| 12.21 | cargo build verification | ✅ |
+| #     | Task                                                                | Status |
+| ----- | ------------------------------------------------------------------- | ------ |
+| 12.1  | Types `GitSubmodule`, `PullRequest`, `PrState`, `PrCiStatus`        | ✅     |
+| 12.2  | Rust command `list_submodules` (git2)                               | ✅     |
+| 12.3  | Tauri registration + `listSubmodules` wrapper                       | ✅     |
+| 12.4  | `useSidebarResize` hook (drag, collapse, localStorage)              | ✅     |
+| 12.5  | `useGroupedBranches` hook (prefixes, threshold ≥2)                  | ✅     |
+| 12.6  | `usePullRequests` hook (GitHub REST API, URL parsing)               | ✅     |
+| 12.7  | `SectionHeader` component                                           | ✅     |
+| 12.8  | `BranchItem` component (hover-expand, HEAD ●, ↑↓, ⋮)                | ✅     |
+| 12.9  | `BranchFolder` component (virtual prefix folder)                    | ✅     |
+| 12.10 | `PullRequestItem` component (status badge, CI, hover-expand)        | ✅     |
+| 12.11 | `LocalBranchesSection` section                                      | ✅     |
+| 12.12 | `RemotesSection` section (grouped by remote)                        | ✅     |
+| 12.13 | `PullRequestsSection` section (My PRs / All PRs)                    | ✅     |
+| 12.14 | `TagsSection` section (getTags data)                                | ✅     |
+| 12.15 | `SubmodulesSection` section (listSubmodules data)                   | ✅     |
+| 12.16 | `SidebarResizeHandle` component                                     | ✅     |
+| 12.17 | `RepositorySidebar` component (main container)                      | ✅     |
+| 12.18 | Integration into `RepoView.tsx`                                     | ✅     |
+| 12.19 | Rail mode (`SidebarRail`) — collapse into icons, never fully closed | ✅     |
+| 12.20 | Typecheck verification                                              | ✅     |
+| 12.21 | cargo build verification                                            | ✅     |
 
 ---
 
@@ -93,8 +94,7 @@ Implemented via **two overlapping `<span>` elements** — pure CSS/Tailwind, no 
   {/* Truncated normally */}
   <span className="block truncate group-hover/branch:invisible">{name}</span>
   {/* Full on hover, absolute with opaque background */}
-  <span className="pointer-events-none invisible absolute left-0 top-0 z-20
-    whitespace-nowrap bg-card px-0.5 shadow-sm group-hover/branch:visible">
+  <span className="bg-card pointer-events-none invisible absolute top-0 left-0 z-20 px-0.5 whitespace-nowrap shadow-sm group-hover/branch:visible">
     {name}
   </span>
 </div>
@@ -103,6 +103,7 @@ Implemented via **two overlapping `<span>` elements** — pure CSS/Tailwind, no 
 ### Sidebar resize
 
 Via `useRef` + `pointer capture` (`setPointerCapture` API):
+
 - `pointerdown` on the handle → captures the pointer
 - `pointermove` → computes the delta and updates the width (min/max clamp)
 - `pointerup` → releases + persists to `localStorage`
@@ -116,7 +117,6 @@ The sidebar **never closes** completely: it **shrinks into a rail** (`RAIL_WIDTH
 - `isCollapsed` state persisted in `localStorage` (`sidebar-collapsed`).
 
 > **Fix**: the previous version used `width: 0 + overflow: hidden`, which clipped the reopen button (positioned at `absolute -right-3`) → impossible to reopen. Replaced with a true fixed-width rail mode.
-
 
 ---
 

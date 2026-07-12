@@ -7,10 +7,21 @@ import { DiffToolbar } from './DiffToolbar'
 vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 
 function diffFile(overrides: Partial<GitDiffFile> = {}): GitDiffFile {
-  return { oldPath: 'a.ts', newPath: 'a.ts', status: 'modified', isBinary: false, additions: 3, deletions: 1, hunks: [], ...overrides } as GitDiffFile
+  return {
+    oldPath: 'a.ts',
+    newPath: 'a.ts',
+    status: 'modified',
+    isBinary: false,
+    additions: 3,
+    deletions: 1,
+    hunks: [],
+    ...overrides,
+  } as GitDiffFile
 }
 
-function baseProps(overrides: Partial<React.ComponentProps<typeof DiffToolbar>> = {}): React.ComponentProps<typeof DiffToolbar> {
+function baseProps(
+  overrides: Partial<React.ComponentProps<typeof DiffToolbar>> = {}
+): React.ComponentProps<typeof DiffToolbar> {
   return {
     parsedPath: { dir: 'src/', name: 'a.ts' },
     diffData: undefined,
@@ -70,7 +81,11 @@ describe('DiffToolbar — status badge', () => {
   })
 
   it('shows the status label and +/- counts for a non-binary file', () => {
-    render(<DiffToolbar {...baseProps({ diffData: diffFile({ status: 'added', additions: 10, deletions: 2 }) })} />)
+    render(
+      <DiffToolbar
+        {...baseProps({ diffData: diffFile({ status: 'added', additions: 10, deletions: 2 }) })}
+      />
+    )
     expect(screen.getByText('Added')).toBeInTheDocument()
     expect(screen.getByText('+10')).toBeInTheDocument()
     expect(screen.getByText('-2')).toBeInTheDocument()
@@ -83,11 +98,17 @@ describe('DiffToolbar — status badge', () => {
 
   it('shows a Staged/Unstaged badge only for WIP files', () => {
     const { rerender } = render(
-      <DiffToolbar {...baseProps({ diffData: diffFile(), isWip: true, file: { path: 'a', staged: false } })} />
+      <DiffToolbar
+        {...baseProps({ diffData: diffFile(), isWip: true, file: { path: 'a', staged: false } })}
+      />
     )
     expect(screen.getByText('Unstaged')).toBeInTheDocument()
 
-    rerender(<DiffToolbar {...baseProps({ diffData: diffFile(), isWip: true, file: { path: 'a', staged: true } })} />)
+    rerender(
+      <DiffToolbar
+        {...baseProps({ diffData: diffFile(), isWip: true, file: { path: 'a', staged: true } })}
+      />
+    )
     expect(screen.getByText('Staged')).toBeInTheDocument()
 
     rerender(<DiffToolbar {...baseProps({ diffData: diffFile(), isWip: false })} />)
@@ -189,13 +210,26 @@ describe('DiffToolbar — WIP actions', () => {
   it('shows "Stage File" for an unstaged WIP file and calls onToggleStage', async () => {
     const onToggleStage = vi.fn()
     const user = userEvent.setup()
-    render(<DiffToolbar {...baseProps({ isWip: true, diffData: diffFile(), file: { path: 'a', staged: false }, onToggleStage })} />)
+    render(
+      <DiffToolbar
+        {...baseProps({
+          isWip: true,
+          diffData: diffFile(),
+          file: { path: 'a', staged: false },
+          onToggleStage,
+        })}
+      />
+    )
     await user.click(screen.getByText('Stage File'))
     expect(onToggleStage).toHaveBeenCalledOnce()
   })
 
   it('shows "Unstage" for a staged WIP file', () => {
-    render(<DiffToolbar {...baseProps({ isWip: true, diffData: diffFile(), file: { path: 'a', staged: true } })} />)
+    render(
+      <DiffToolbar
+        {...baseProps({ isWip: true, diffData: diffFile(), file: { path: 'a', staged: true } })}
+      />
+    )
     expect(screen.getByText('Unstage')).toBeInTheDocument()
   })
 
@@ -208,7 +242,9 @@ describe('DiffToolbar — WIP actions', () => {
   })
 
   it('disables stage/discard while processing', () => {
-    render(<DiffToolbar {...baseProps({ isWip: true, diffData: diffFile(), isProcessing: true })} />)
+    render(
+      <DiffToolbar {...baseProps({ isWip: true, diffData: diffFile(), isProcessing: true })} />
+    )
     expect(screen.getByText('Stage File').closest('button')).toBeDisabled()
     expect(screen.getByText('Discard').closest('button')).toBeDisabled()
   })

@@ -38,7 +38,7 @@ export function GitGraphOverlayManager({
   }, [pendingAction, primaryOid, onClearPendingAction])
 
   const activeNode = activeDialog
-    ? nodes.find((n) => n.commit.oid === activeDialog.oid) ?? null
+    ? (nodes.find((n) => n.commit.oid === activeDialog.oid) ?? null)
     : null
 
   if (!activeNode) return null

@@ -22,7 +22,9 @@ describe('useGroupedBranches', () => {
   it('groups branches sharing a prefix when at least 2 share it', () => {
     const branches = [branch('feat/a'), branch('feat/b'), branch('main')]
     const { result } = renderHook(() => useGroupedBranches(branches))
-    expect(result.current.groups).toEqual([{ prefix: 'feat/', branches: [branches[0], branches[1]] }])
+    expect(result.current.groups).toEqual([
+      { prefix: 'feat/', branches: [branches[0], branches[1]] },
+    ])
     expect(result.current.ungrouped).toEqual([branches[2]])
   })
 

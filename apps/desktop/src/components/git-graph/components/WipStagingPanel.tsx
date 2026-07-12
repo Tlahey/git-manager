@@ -1,13 +1,6 @@
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Textarea, Badge, cn } from '@git-manager/ui'
-import {
-  ChevronDown,
-  Layers,
-  Sparkles,
-  Check,
-  History,
-  Square,
-} from 'lucide-react'
+import { ChevronDown, Layers, Sparkles, Check, History, Square } from 'lucide-react'
 import type { GitStatus } from '@git-manager/git-types'
 import { useWipCommitPanel } from '../../../hooks/useWipCommitPanel'
 import type { ProcessedFileItem } from './CommitFileList'
@@ -52,7 +45,7 @@ export function WipStagingPanel({
     modified: 'text-yellow-500 font-bold text-[10px]',
     deleted: 'text-red-500 font-bold text-[10px]',
     renamed: 'text-blue-500 font-bold text-[10px]',
-    untracked: 'text-muted-foreground font-bold text-[10px]'
+    untracked: 'text-muted-foreground font-bold text-[10px]',
   }
 
   const statusLetters: Record<string, string> = {
@@ -60,29 +53,30 @@ export function WipStagingPanel({
     modified: 'M',
     deleted: 'D',
     renamed: 'R',
-    untracked: '?'
+    untracked: '?',
   }
 
   return (
-    <div data-testid="wip-staging-panel" className="pt-2 border-t border-border/55 space-y-3 px-4 pb-4">
+    <div
+      data-testid="wip-staging-panel"
+      className="space-y-3 border-t border-border/55 px-4 pb-4 pt-2"
+    >
       <div className="flex items-center justify-between">
         <button
           onClick={() => setBatchMode((b) => !b)}
-          className="flex items-center gap-1.5 text-xs text-primary font-bold hover:opacity-85 select-none"
+          className="flex select-none items-center gap-1.5 text-xs font-bold text-primary hover:opacity-85"
         >
           <Layers className="h-3.5 w-3.5 text-primary" />
           <span>
-            {batchMode
-              ? '← Retour au commit global'
-              : t('commitDetails.batchCommit.title')}
+            {batchMode ? '← Retour au commit global' : t('commitDetails.batchCommit.title')}
           </span>
         </button>
       </div>
 
       {batchMode ? (
         /* Smart Batch Mode */
-        <div className="space-y-4 pt-1 animate-in fade-in slide-in-from-top-1 duration-150">
-          <p className="text-[10px] text-muted-foreground font-medium leading-relaxed pb-1 border-b border-border/20">
+        <div className="animate-in fade-in slide-in-from-top-1 space-y-4 pt-1 duration-150">
+          <p className="border-b border-border/20 pb-1 text-[10px] font-medium leading-relaxed text-muted-foreground">
             {t('commitDetails.batchCommit.subtitle')}
           </p>
 
@@ -94,11 +88,11 @@ export function WipStagingPanel({
             return (
               <div
                 key={groupName}
-                className="border border-border/40 bg-muted/10 rounded-lg p-3 space-y-2.5"
+                className="space-y-2.5 rounded-lg border border-border/40 bg-muted/10 p-3"
               >
                 {/* Group Header */}
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-primary font-mono truncate">
+                  <span className="truncate font-mono text-xs font-bold text-primary">
                     /{groupName}
                   </span>
                   <Badge variant="secondary" className="text-[9px] font-bold">
@@ -107,11 +101,19 @@ export function WipStagingPanel({
                 </div>
 
                 {/* Files in Group */}
-                <div className="max-h-24 overflow-y-auto border border-border/30 rounded p-1.5 bg-card space-y-0.5">
+                <div className="max-h-24 space-y-0.5 overflow-y-auto rounded border border-border/30 bg-card p-1.5">
                   {files.map((file) => (
-                    <div key={file.path} className="flex items-center justify-between text-[10px] py-0.5 font-mono w-full min-w-0">
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-4">
-                        <span className={cn(statusIcons[file.status], "shrink-0 min-w-[12px] text-center select-none")}>
+                    <div
+                      key={file.path}
+                      className="flex w-full min-w-0 items-center justify-between py-0.5 font-mono text-[10px]"
+                    >
+                      <div className="mr-4 flex min-w-0 flex-1 items-center gap-1.5">
+                        <span
+                          className={cn(
+                            statusIcons[file.status],
+                            'min-w-[12px] shrink-0 select-none text-center'
+                          )}
+                        >
                           {statusLetters[file.status]}
                         </span>
                         {(() => {
@@ -119,13 +121,13 @@ export function WipStagingPanel({
                           if (lastSlash === -1) return null
                           const dir = file.path.substring(0, lastSlash + 1)
                           return (
-                            <span className="text-muted-foreground/45 truncate min-w-0 shrink pr-0.5 text-[9px] leading-tight select-text">
+                            <span className="min-w-0 shrink select-text truncate pr-0.5 text-[9px] leading-tight text-muted-foreground/45">
                               {dir}
                             </span>
                           )
                         })()}
                       </div>
-                      <span className="text-foreground font-semibold shrink-0 truncate min-w-0 text-[9px] leading-tight select-all">
+                      <span className="min-w-0 shrink-0 select-all truncate text-[9px] font-semibold leading-tight text-foreground">
                         {(() => {
                           const lastSlash = file.path.lastIndexOf('/')
                           return lastSlash === -1 ? file.path : file.path.substring(lastSlash + 1)
@@ -142,12 +144,12 @@ export function WipStagingPanel({
                     onChange={(e) =>
                       setBatchMessages((prev) => ({
                         ...prev,
-                        [groupName]: e.target.value
+                        [groupName]: e.target.value,
                       }))
                     }
                     placeholder={t('commitDetails.batchCommit.placeholder')}
                     rows={2}
-                    className="resize-none text-[11px] font-mono"
+                    className="resize-none font-mono text-[11px]"
                     disabled={isGen}
                   />
 
@@ -155,7 +157,7 @@ export function WipStagingPanel({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 h-7 text-[10px] font-semibold gap-1"
+                      className="h-7 flex-1 gap-1 text-[10px] font-semibold"
                       onClick={() => generateMessageForBatch(groupName, files)}
                       disabled={isGen}
                     >
@@ -165,15 +167,13 @@ export function WipStagingPanel({
                         <Sparkles className="h-3 w-3 text-primary" />
                       )}
                       <span>
-                        {isGen
-                          ? t('commitDetails.batchCommit.generating')
-                          : t('commit.generate')}
+                        {isGen ? t('commitDetails.batchCommit.generating') : t('commit.generate')}
                       </span>
                     </Button>
 
                     <Button
                       size="sm"
-                      className="flex-1 h-7 text-[10px] font-semibold gap-1"
+                      className="h-7 flex-1 gap-1 text-[10px] font-semibold"
                       onClick={() => commitBatch(groupName, files)}
                       disabled={isGen || !msg.trim()}
                     >
@@ -190,7 +190,7 @@ export function WipStagingPanel({
         /* Classic Staged / Unstaged List + Commit message */
         <div className="space-y-3 pt-1">
           <div className="space-y-1.5">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {t('commit.title')}
             </span>
             <Textarea
@@ -209,13 +209,13 @@ export function WipStagingPanel({
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 gap-1 rounded-r-none text-xs border-r-0 h-8"
+                className="h-8 flex-1 gap-1 rounded-r-none border-r-0 text-xs"
                 onClick={handleGenerateCommitMessage}
                 disabled={gitStatus?.staged?.length === 0 && !isGenerating}
               >
                 {isGenerating ? (
                   <>
-                    <Square className="h-3 w-3 text-destructive animate-pulse" />
+                    <Square className="h-3 w-3 animate-pulse text-destructive" />
                     {t('commit.stop')}
                   </>
                 ) : (
@@ -237,7 +237,7 @@ export function WipStagingPanel({
               </Button>
 
               {historyOpen && (
-                <div className="absolute bottom-full left-0 z-50 mb-1.5 w-full min-w-[220px] rounded-lg border border-border bg-background shadow-xl p-1 animate-in fade-in duration-100">
+                <div className="animate-in fade-in absolute bottom-full left-0 z-50 mb-1.5 w-full min-w-[220px] rounded-lg border border-border bg-background p-1 shadow-xl duration-100">
                   <div className="flex items-center gap-1.5 border-b border-border/40 px-2 py-1.5">
                     <History className="h-3 w-3 text-muted-foreground" />
                     <span className="text-xs font-semibold text-muted-foreground">
@@ -246,7 +246,7 @@ export function WipStagingPanel({
                   </div>
                   <div className="max-h-40 overflow-y-auto">
                     {history.length === 0 ? (
-                      <p className="px-3 py-2 text-xs text-muted-foreground/70 italic">
+                      <p className="px-3 py-2 text-xs italic text-muted-foreground/70">
                         {t('commit.historyEmpty')}
                       </p>
                     ) : (
@@ -257,7 +257,7 @@ export function WipStagingPanel({
                             setCommitMessage(msg)
                             setHistoryOpen(false)
                           }}
-                          className="w-full truncate px-3 py-1.5 text-left text-xs text-foreground hover:bg-accent transition-colors font-mono"
+                          className="w-full truncate px-3 py-1.5 text-left font-mono text-xs text-foreground transition-colors hover:bg-accent"
                         >
                           {msg}
                         </button>
@@ -271,12 +271,10 @@ export function WipStagingPanel({
             <Button
               size="sm"
               data-testid="commit-button"
-              className="flex-1 text-xs h-8"
+              className="h-8 flex-1 text-xs"
               onClick={handleCommitWip}
               disabled={
-                (gitStatus?.staged?.length ?? 0) === 0 ||
-                !commitMessage.trim() ||
-                isCommitting
+                (gitStatus?.staged?.length ?? 0) === 0 || !commitMessage.trim() || isCommitting
               }
             >
               {isCommitting ? <Spinner className="mr-1.5 h-3 w-3" /> : null}
@@ -291,9 +289,17 @@ export function WipStagingPanel({
 
 function Spinner({ className }: { className?: string }) {
   return (
-    <svg className={cn("animate-spin h-3 w-3 text-current", className)} fill="none" viewBox="0 0 24 24">
+    <svg
+      className={cn('h-3 w-3 animate-spin text-current', className)}
+      fill="none"
+      viewBox="0 0 24 24"
+    >
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+      />
     </svg>
   )
 }

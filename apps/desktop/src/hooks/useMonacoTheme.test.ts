@@ -5,7 +5,9 @@ const { config } = vi.hoisted(() => ({ config: vi.fn() }))
 vi.mock('@monaco-editor/react', () => ({ loader: { config } }))
 
 const registerAndApplyDynamicTheme = vi.fn()
-vi.mock('../lib/monacoThemes', () => ({ registerAndApplyDynamicTheme: (...args: unknown[]) => registerAndApplyDynamicTheme(...args) }))
+vi.mock('../lib/monacoThemes', () => ({
+  registerAndApplyDynamicTheme: (...args: unknown[]) => registerAndApplyDynamicTheme(...args),
+}))
 
 import { useSettingsStore } from '../stores/settings.store'
 import { useMonacoTheme } from './useMonacoTheme'
@@ -35,7 +37,9 @@ describe('useMonacoTheme', () => {
     const { rerender } = renderHook(() => useMonacoTheme())
     await vi.waitFor(() => expect(registerAndApplyDynamicTheme).toHaveBeenCalledTimes(1))
 
-    useSettingsStore.getState().updateSettings({ appearance: { ...DEFAULT_SETTINGS.appearance, theme: 'light' } })
+    useSettingsStore
+      .getState()
+      .updateSettings({ appearance: { ...DEFAULT_SETTINGS.appearance, theme: 'light' } })
     rerender()
 
     await vi.waitFor(() => expect(registerAndApplyDynamicTheme).toHaveBeenCalledTimes(2))

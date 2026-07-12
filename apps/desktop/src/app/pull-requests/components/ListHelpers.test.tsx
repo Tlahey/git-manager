@@ -17,7 +17,9 @@ describe('GroupHeader', () => {
   it('shows the label, count, and toggles the chevron/onToggle', async () => {
     const onToggle = vi.fn()
     const user = userEvent.setup()
-    const { rerender } = render(<GroupHeader label="Needs Review" count={3} open={false} onToggle={onToggle} />)
+    const { rerender } = render(
+      <GroupHeader label="Needs Review" count={3} open={false} onToggle={onToggle} />
+    )
     expect(screen.getByText('Needs Review')).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument()
     const button = screen.getByRole('button')
@@ -31,7 +33,15 @@ describe('GroupHeader', () => {
   })
 
   it('applies the accent color when given', () => {
-    render(<GroupHeader label="Urgent" count={1} open={false} onToggle={vi.fn()} accent="text-amber-400" />)
+    render(
+      <GroupHeader
+        label="Urgent"
+        count={1}
+        open={false}
+        onToggle={vi.fn()}
+        accent="text-amber-400"
+      />
+    )
     expect(screen.getByText('Urgent')).toHaveClass('text-amber-400')
   })
 })
@@ -82,7 +92,9 @@ describe('usePRSort', () => {
   it('sorts ascending and descending by date', () => {
     const older = pr({ id: 'a', updatedAt: new Date('2024-01-01') })
     const newer = pr({ id: 'b', updatedAt: new Date('2024-06-01') })
-    const { result, rerender } = renderHook(({ dir }) => usePRSort([older, newer], 'date', dir), { initialProps: { dir: 'asc' as SortDir } })
+    const { result, rerender } = renderHook(({ dir }) => usePRSort([older, newer], 'date', dir), {
+      initialProps: { dir: 'asc' as SortDir },
+    })
     expect(result.current.map((p) => p.id)).toEqual(['a', 'b'])
 
     rerender({ dir: 'desc' })
@@ -104,7 +116,10 @@ describe('usePRSort', () => {
   })
 
   it('does not mutate the original array', () => {
-    const list = [pr({ id: 'a', updatedAt: new Date('2024-06-01') }), pr({ id: 'b', updatedAt: new Date('2024-01-01') })]
+    const list = [
+      pr({ id: 'a', updatedAt: new Date('2024-06-01') }),
+      pr({ id: 'b', updatedAt: new Date('2024-01-01') }),
+    ]
     renderHook(() => usePRSort(list, 'date', 'asc'))
     expect(list.map((p) => p.id)).toEqual(['a', 'b'])
   })

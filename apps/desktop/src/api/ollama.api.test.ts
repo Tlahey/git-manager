@@ -24,7 +24,9 @@ describe('ollama.api pass-throughs', () => {
 
   it('apiGenerateCommitMessage delegates to generateCommitMessage with an optional prompt hint', async () => {
     mocked.generateCommitMessage.mockResolvedValue('feat: add thing')
-    expect(await api.apiGenerateCommitMessage('/repo', 'llama3.2', 'be concise')).toBe('feat: add thing')
+    expect(await api.apiGenerateCommitMessage('/repo', 'llama3.2', 'be concise')).toBe(
+      'feat: add thing'
+    )
     expect(mocked.generateCommitMessage).toHaveBeenCalledWith('/repo', 'llama3.2', 'be concise')
   })
 

@@ -14,7 +14,9 @@ beforeEach(() => {
   useSettingsStore.setState(INITIAL_SETTINGS, true)
 })
 
-function renderSvg(props: Partial<React.ComponentProps<typeof GraphSvg>> & { connections: GitGraphEdge[] }) {
+function renderSvg(
+  props: Partial<React.ComponentProps<typeof GraphSvg>> & { connections: GitGraphEdge[] }
+) {
   const { container } = render(<GraphSvg column={0} {...props} />)
   return container.querySelector('svg')!
 }
@@ -29,7 +31,10 @@ describe('GraphSvg — dimensions', () => {
 
   it('uses a smaller row height when the "small" row-height setting is active', () => {
     useSettingsStore.setState({
-      settings: { ...INITIAL_SETTINGS.settings, appearance: { ...INITIAL_SETTINGS.settings.appearance, rowHeight: 'small' } },
+      settings: {
+        ...INITIAL_SETTINGS.settings,
+        appearance: { ...INITIAL_SETTINGS.settings.appearance, rowHeight: 'small' },
+      },
     })
     const svg = renderSvg({ connections: [] })
     expect(svg.getAttribute('height')).toBe('32')
@@ -41,7 +46,9 @@ describe('GraphSvg — dimensions', () => {
   })
 
   it('applies the edge color, stroke width, and dash pattern', () => {
-    const svg = renderSvg({ connections: [edge({ color: '#123456', dashed: true, startsAtNode: true })] })
+    const svg = renderSvg({
+      connections: [edge({ color: '#123456', dashed: true, startsAtNode: true })],
+    })
     const path = svg.querySelector('path')!
     expect(path.getAttribute('stroke')).toBe('#123456')
     expect(path.getAttribute('stroke-width')).toBe('2')
@@ -97,19 +104,19 @@ describe('GraphSvg — straight vertical lines', () => {
 })
 
 describe('GraphSvg — diagonal transitions', () => {
-  it('draws a full pass-through diagonal when neither endpoint is this row\'s column', () => {
+  it("draws a full pass-through diagonal when neither endpoint is this row's column", () => {
     const svg = renderSvg({ connections: [edge({ fromColumn: 1, toColumn: 2 })] })
     const d = svg.querySelector('path')!.getAttribute('d')!
     expect(d).toBe('M 54 -2 L 54 16 Q 54 20, 58 20 L 86 20 Q 90 20, 90 24 L 90 42')
   })
 
-  it('draws a split starting at this row\'s node', () => {
+  it("draws a split starting at this row's node", () => {
     const svg = renderSvg({ connections: [edge({ fromColumn: 0, toColumn: 1 })] })
     const d = svg.querySelector('path')!.getAttribute('d')!
     expect(d).toBe('M 18 20 L 50 20 Q 54 20, 54 24 L 54 42')
   })
 
-  it('draws a merge ending at this row\'s node', () => {
+  it("draws a merge ending at this row's node", () => {
     const svg = renderSvg({ connections: [edge({ fromColumn: 1, toColumn: 0 })] })
     const d = svg.querySelector('path')!.getAttribute('d')!
     expect(d).toBe('M 54 -2 L 54 16 Q 54 20, 50 20 L 18 20')

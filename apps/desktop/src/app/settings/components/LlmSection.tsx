@@ -39,7 +39,7 @@ export function LlmSection() {
           <Input
             value={ollama.url}
             onChange={(e) => updateOllama({ url: e.target.value })}
-            className="flex-1 h-8 text-xs"
+            className="h-8 flex-1 text-xs"
           />
           <Button
             size="sm"
@@ -71,7 +71,7 @@ export function LlmSection() {
           <select
             value={ollama.model}
             onChange={(e) => updateOllama({ model: e.target.value })}
-            className="w-full h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           >
             {connectionStatus.models.map((m) => (
               <option key={m} value={m}>
@@ -106,7 +106,9 @@ export function LlmSection() {
 
       {/* Timeout */}
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-foreground">{t('settings.ollama.timeout')}</label>
+        <label className="text-xs font-medium text-foreground">
+          {t('settings.ollama.timeout')}
+        </label>
         <Input
           type="number"
           min={5}
@@ -119,7 +121,7 @@ export function LlmSection() {
 
       {/* Checkboxes */}
       <div className="space-y-2">
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className="flex cursor-pointer items-center gap-2">
           <input
             type="checkbox"
             checked={ollama.includeRepoContext}
@@ -128,7 +130,7 @@ export function LlmSection() {
           />
           <span className="text-xs text-foreground">{t('settings.llm.includeContext')}</span>
         </label>
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className="flex cursor-pointer items-center gap-2">
           <input
             type="checkbox"
             checked={ollama.autoDetectScope}
@@ -144,7 +146,7 @@ export function LlmSection() {
         <button
           type="button"
           onClick={() => setPromptExpanded((v) => !v)}
-          className="flex items-center gap-1 text-xs font-medium text-foreground hover:text-primary transition-colors"
+          className="flex items-center gap-1 text-xs font-medium text-foreground transition-colors hover:text-primary"
         >
           {promptExpanded ? (
             <ChevronDown className="h-3.5 w-3.5" />

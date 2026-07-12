@@ -39,18 +39,18 @@ api/git.api.ts (callCommand)         stores/game.store.ts
 
 ## Files
 
-| File | Role |
-|---|---|
-| `types.ts` | `Achievement`, `AchievementDefinition`, `RuleKind`, `RewardEffect`, `RuleContext` — no logic, just shapes. |
-| `rules/RewardRule.ts` | The `RewardRule` Strategy interface (`matches`, optional `track`). |
-| `rules/ActionRule.ts` | Unlocks on a specific one-shot `AppEvent` (`discard`, `fixup`, `autosquash`, `open_app`). |
-| `rules/MilestoneRule.ts` | Unlocks once a counter (commits, PRs merged) crosses a threshold. |
-| `rules/TerminalKeywordRule.ts` | Unlocks the first time a terminal command containing a keyword is observed. |
-| `rules/PairEventRule.ts` | Unlocks when an `endEvent` (e.g. `unstage`) fires for the same file a prior `startEvent` (e.g. `stage`) recorded. Stateful — the only rule using `track()`. |
-| `rules/CompositeRule.ts` | Meta-achievement: unlocks once every other achievement is unlocked (the platinum trophy). |
-| `ruleRegistry.ts` | `RuleKind → RewardRule` lookup. The only place that imports every concrete rule class. |
-| `rewardEngine.ts` | `processEvent()` (pure) and `unlockAchievementById()` (pure, the single place prerequisite-checking lives). |
-| `effects.ts` | Selectors (`isEffectUnlocked`, `findEffectGate`, `getUnlockedEffects`) over `Achievement.effects`, used by UI code (theme picker, ...) that needs to know what an achievement unlocks without hardcoding its id. |
+| File                           | Role                                                                                                                                                                                                             |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `types.ts`                     | `Achievement`, `AchievementDefinition`, `RuleKind`, `RewardEffect`, `RuleContext` — no logic, just shapes.                                                                                                       |
+| `rules/RewardRule.ts`          | The `RewardRule` Strategy interface (`matches`, optional `track`).                                                                                                                                               |
+| `rules/ActionRule.ts`          | Unlocks on a specific one-shot `AppEvent` (`discard`, `fixup`, `autosquash`, `open_app`).                                                                                                                        |
+| `rules/MilestoneRule.ts`       | Unlocks once a counter (commits, PRs merged) crosses a threshold.                                                                                                                                                |
+| `rules/TerminalKeywordRule.ts` | Unlocks the first time a terminal command containing a keyword is observed.                                                                                                                                      |
+| `rules/PairEventRule.ts`       | Unlocks when an `endEvent` (e.g. `unstage`) fires for the same file a prior `startEvent` (e.g. `stage`) recorded. Stateful — the only rule using `track()`.                                                      |
+| `rules/CompositeRule.ts`       | Meta-achievement: unlocks once every other achievement is unlocked (the platinum trophy).                                                                                                                        |
+| `ruleRegistry.ts`              | `RuleKind → RewardRule` lookup. The only place that imports every concrete rule class.                                                                                                                           |
+| `rewardEngine.ts`              | `processEvent()` (pure) and `unlockAchievementById()` (pure, the single place prerequisite-checking lives).                                                                                                      |
+| `effects.ts`                   | Selectors (`isEffectUnlocked`, `findEffectGate`, `getUnlockedEffects`) over `Achievement.effects`, used by UI code (theme picker, ...) that needs to know what an achievement unlocks without hardcoding its id. |
 
 ## Adding a new achievement
 

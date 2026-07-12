@@ -126,7 +126,13 @@ interface FakeMonacoDiffEditorProps {
 export const lastDiffEditorOptions = new Map<string, unknown>()
 
 /** Stand-in for `DiffEditor`, used by `MonacoDiffViewer` when `activeTab === 'diff'`. */
-export function FakeMonacoDiffEditor({ original, modified, modifiedModelPath, options, onMount }: FakeMonacoDiffEditorProps) {
+export function FakeMonacoDiffEditor({
+  original,
+  modified,
+  modifiedModelPath,
+  options,
+  onMount,
+}: FakeMonacoDiffEditorProps) {
   lastDiffEditorOptions.set(modifiedModelPath, options)
   useEffect(() => {
     const instance = createFakeDiffEditor(modified)

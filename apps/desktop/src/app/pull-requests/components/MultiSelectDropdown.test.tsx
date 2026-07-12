@@ -65,7 +65,14 @@ describe('MultiSelectDropdown — opening', () => {
     const user = userEvent.setup()
     render(
       <div>
-        <MultiSelectDropdown label="Status" icon={null} options={['open']} selected={new Set()} onToggle={vi.fn()} onClear={vi.fn()} />
+        <MultiSelectDropdown
+          label="Status"
+          icon={null}
+          options={['open']}
+          selected={new Set()}
+          onToggle={vi.fn()}
+          onClear={vi.fn()}
+        />
         <button>outside</button>
       </div>
     )

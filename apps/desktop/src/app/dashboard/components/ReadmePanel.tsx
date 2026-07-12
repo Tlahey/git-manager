@@ -35,21 +35,24 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
   }, [cachedRepo])
 
   return (
-    <div className="flex h-full w-full flex-col border-l border-border bg-card shadow-2xl min-w-0">
+    <div className="flex h-full w-full min-w-0 flex-col border-l border-border bg-card shadow-2xl">
       {/* Pane Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-muted/10 shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <BookOpen className="h-4 w-4 text-primary shrink-0" />
-          <span className="font-semibold text-xs text-foreground truncate">{name}</span>
+      <div className="flex shrink-0 items-center justify-between border-b border-border bg-muted/10 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <BookOpen className="h-4 w-4 shrink-0 text-primary" />
+          <span className="truncate text-xs font-semibold text-foreground">{name}</span>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex shrink-0 items-center gap-1.5">
           {remoteUrl && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 hover:bg-accent text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+              className="flex h-7 items-center gap-1.5 px-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               onClick={() => apiOpenUrl(remoteUrl)}
-              title={t('commitDetails.openRemote', { ns: 'git' }) || (remoteUrl.includes('gitlab.com') ? 'Open GitLab' : 'Open GitHub')}
+              title={
+                t('commitDetails.openRemote', { ns: 'git' }) ||
+                (remoteUrl.includes('gitlab.com') ? 'Open GitLab' : 'Open GitHub')
+              }
               data-testid="github-repo-button"
             >
               {remoteUrl.includes('gitlab.com') ? (
@@ -57,14 +60,14 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
               ) : (
                 <Github className="h-3.5 w-3.5 text-muted-foreground" />
               )}
-              <span className="text-[11px] font-medium hidden sm:inline">
+              <span className="hidden text-[11px] font-medium sm:inline">
                 {remoteUrl.includes('gitlab.com') ? 'GitLab' : 'GitHub'}
               </span>
             </Button>
           )}
           <button
             onClick={onClose}
-            className="rounded p-1 hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+            className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             title="Fermer"
             data-testid="readme-panel-close-button"
           >
@@ -74,16 +77,18 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
       </div>
 
       {/* Pane content */}
-      <div className="flex-1 overflow-y-auto p-5 select-text bg-card/10">
+      <div className="flex-1 select-text overflow-y-auto bg-card/10 p-5">
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-full py-8 space-y-2">
+          <div className="flex h-full flex-col items-center justify-center space-y-2 py-8">
             <RefreshCw className="h-6 w-6 animate-spin text-primary" />
             <p className="text-xs text-muted-foreground">Chargement du README...</p>
           </div>
         ) : error || content === undefined ? (
-          <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground/60 p-4">
-            <FileText className="h-10 w-10 mb-2 opacity-20 text-muted-foreground" />
-            <p className="text-xs font-sans">{t('dashboard.noReadme') || 'Aucun fichier README trouvé.'}</p>
+          <div className="flex h-full flex-col items-center justify-center p-4 text-center text-muted-foreground/60">
+            <FileText className="mb-2 h-10 w-10 text-muted-foreground opacity-20" />
+            <p className="font-sans text-xs">
+              {t('dashboard.noReadme') || 'Aucun fichier README trouvé.'}
+            </p>
           </div>
         ) : (
           <Markdown content={content} />

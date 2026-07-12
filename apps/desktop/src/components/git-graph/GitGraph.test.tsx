@@ -5,7 +5,14 @@ import type { GitGraphNode } from '@git-manager/git-types'
 
 vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 
-const { useGitLog, useGitStatus, useCommitSelection, useGitGraphNodes, useGitGraphActions, apiGetRebaseState } = vi.hoisted(() => ({
+const {
+  useGitLog,
+  useGitStatus,
+  useCommitSelection,
+  useGitGraphNodes,
+  useGitGraphActions,
+  apiGetRebaseState,
+} = vi.hoisted(() => ({
   useGitLog: vi.fn(),
   useGitStatus: vi.fn(),
   useCommitSelection: vi.fn(),
@@ -28,7 +35,11 @@ vi.mock('@tanstack/react-virtual', () => ({
   useVirtualizer: (opts: { count: number; estimateSize: () => number }) => ({
     getTotalSize: () => opts.count * opts.estimateSize(),
     getVirtualItems: () =>
-      Array.from({ length: opts.count }, (_, index) => ({ key: index, index, start: index * opts.estimateSize() })),
+      Array.from({ length: opts.count }, (_, index) => ({
+        key: index,
+        index,
+        start: index * opts.estimateSize(),
+      })),
     scrollToIndex: virtualizerScrollToIndex,
   }),
 }))
@@ -119,7 +130,16 @@ const INITIAL_COLUMNS = useGitGraphColumnsStore.getState()
 
 function commitNode(oid: string, overrides: Partial<GitGraphNode> = {}): GitGraphNode {
   return {
-    commit: { oid, shortOid: oid.slice(0, 7), message: 'm', subject: 's', body: '', author: {} as never, committer: {} as never, parentOids: [] },
+    commit: {
+      oid,
+      shortOid: oid.slice(0, 7),
+      message: 'm',
+      subject: 's',
+      body: '',
+      author: {} as never,
+      committer: {} as never,
+      parentOids: [],
+    },
     column: 0,
     color: '#000',
     connections: [],
@@ -140,7 +160,10 @@ function selectionState(overrides: Partial<ReturnType<typeof useCommitSelection>
   }
 }
 
-function graphNodesState(nodes: GitGraphNode[], overrides: Partial<ReturnType<typeof useGitGraphNodes>> = {}) {
+function graphNodesState(
+  nodes: GitGraphNode[],
+  overrides: Partial<ReturnType<typeof useGitGraphNodes>> = {}
+) {
   return {
     wipNode: null,
     conflictNode: null,
@@ -227,12 +250,22 @@ describe('GitGraph — rendering rows', () => {
     const nodes = [commitNode('a'), commitNode('b')]
     useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
     useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
-    useCommitSelection.mockReturnValue(selectionState({ selected: new Set(['a']), primaryOid: 'b' }))
+    useCommitSelection.mockReturnValue(
+      selectionState({ selected: new Set(['a']), primaryOid: 'b' })
+    )
     renderGraph()
 
     expect(lastGraphRowCalls.current).toHaveLength(2)
-    expect(lastGraphRowCalls.current[0]).toMatchObject({ isSelected: true, isPrimary: false, isFirst: true })
-    expect(lastGraphRowCalls.current[1]).toMatchObject({ isSelected: false, isPrimary: true, isFirst: false })
+    expect(lastGraphRowCalls.current[0]).toMatchObject({
+      isSelected: true,
+      isPrimary: false,
+      isFirst: true,
+    })
+    expect(lastGraphRowCalls.current[1]).toMatchObject({
+      isSelected: false,
+      isPrimary: true,
+      isFirst: false,
+    })
   })
 
   it('forwards column visibility/width derived from the columns store to GraphHeader', () => {
@@ -249,7 +282,9 @@ describe('GitGraph — rendering rows', () => {
   it('renders waterline overlays from useGitGraphNodes', () => {
     const nodes = [commitNode('a')]
     useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
-    useGitGraphNodes.mockReturnValue(graphNodesState(nodes, { waterlines: [{ id: 'w1', label: 'Yesterday', index: 0 }] }))
+    useGitGraphNodes.mockReturnValue(
+      graphNodesState(nodes, { waterlines: [{ id: 'w1', label: 'Yesterday', index: 0 }] })
+    )
     renderGraph()
     expect(lastWaterlineLabels.current).toEqual(['Yesterday'])
   })
@@ -338,7 +373,10 @@ describe('GitGraph — diff view routing', () => {
 describe('GitGraph — overlay manager wiring', () => {
   it('forwards nodes/primaryOid/protectedBranches/pendingAction to the overlay manager', () => {
     useSettingsStore.setState({
-      settings: { ...INITIAL_SETTINGS.settings, git: { ...INITIAL_SETTINGS.settings.git, protectedBranches: ['main'] } },
+      settings: {
+        ...INITIAL_SETTINGS.settings,
+        git: { ...INITIAL_SETTINGS.settings.git, protectedBranches: ['main'] },
+      },
     })
     useGitGraphActions.mockReturnValue(actionsState({ pendingAction: { kind: 'branch' } }))
     useCommitSelection.mockReturnValue(selectionState({ primaryOid: 'a' }))
@@ -362,7 +400,11 @@ describe('GitGraph — overlay manager wiring', () => {
 describe('GitGraph — auto-select on branch/repo change', () => {
   it('selects the node matching the current branch ref', async () => {
     const selectSingle = vi.fn()
-    const nodes = [commitNode('a', { refs: [{ name: 'refs/heads/main', shortName: 'main', type: 'branch', commitOid: 'a' }] })]
+    const nodes = [
+      commitNode('a', {
+        refs: [{ name: 'refs/heads/main', shortName: 'main', type: 'branch', commitOid: 'a' }],
+      }),
+    ]
     useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
     useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
     useCommitSelection.mockReturnValue(selectionState({ selectSingle }))
@@ -393,10 +435,20 @@ describe('GitGraph — auto-select on branch/repo change', () => {
 
   it('auto-selects the synthetic CONFLICT row when a rebase pauses, so the resolution panel opens on its own', async () => {
     const selectSingle = vi.fn()
-    const nodes = [commitNode('a', { refs: [{ name: 'refs/heads/main', shortName: 'main', type: 'branch', commitOid: 'a' }] })]
-    apiGetRebaseState.mockResolvedValue({ kind: 'conflict', conflictedFiles: ['src/config.ts'], branchName: 'main' })
+    const nodes = [
+      commitNode('a', {
+        refs: [{ name: 'refs/heads/main', shortName: 'main', type: 'branch', commitOid: 'a' }],
+      }),
+    ]
+    apiGetRebaseState.mockResolvedValue({
+      kind: 'conflict',
+      conflictedFiles: ['src/config.ts'],
+      branchName: 'main',
+    })
     useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
-    useGitGraphNodes.mockReturnValue(graphNodesState(nodes, { conflictNode: commitNode('CONFLICT') }))
+    useGitGraphNodes.mockReturnValue(
+      graphNodesState(nodes, { conflictNode: commitNode('CONFLICT') })
+    )
     useCommitSelection.mockReturnValue(selectionState({ selectSingle }))
     renderGraph({ branch: 'main' })
     await waitFor(() => expect(selectSingle).toHaveBeenCalledWith('CONFLICT'))
@@ -423,7 +475,10 @@ describe('GitGraph — conflict merge window', () => {
   })
 
   it('reuses an existing merge window instead of creating a new one', async () => {
-    const existing = { show: vi.fn().mockResolvedValue(undefined), setFocus: vi.fn().mockResolvedValue(undefined) }
+    const existing = {
+      show: vi.fn().mockResolvedValue(undefined),
+      setFocus: vi.fn().mockResolvedValue(undefined),
+    }
     webviewGetByLabel.mockResolvedValue(existing)
     useRepoUIStore.setState({ conflictFilePath: 'src/a.ts' })
     renderGraph()

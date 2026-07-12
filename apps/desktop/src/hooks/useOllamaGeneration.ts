@@ -3,13 +3,7 @@ import { useCallback, useRef, useState } from 'react'
 import { apiCancelGeneration, apiGenerateCommitMessage } from '../api/ollama.api'
 import { useSettingsStore } from '../stores/settings.store'
 
-export type GenerationStatus =
-  | 'idle'
-  | 'connecting'
-  | 'streaming'
-  | 'done'
-  | 'error'
-  | 'cancelled'
+export type GenerationStatus = 'idle' | 'connecting' | 'streaming' | 'done' | 'error' | 'cancelled'
 
 export function useOllamaGeneration(repoPath: string) {
   const [status, setStatus] = useState<GenerationStatus>('idle')
@@ -18,10 +12,7 @@ export function useOllamaGeneration(repoPath: string) {
   const settings = useSettingsStore((s) => s.settings)
 
   const generate = useCallback(
-    async (
-      onToken: (token: string) => void,
-      onDone: (full: string) => void,
-    ) => {
+    async (onToken: (token: string) => void, onDone: (full: string) => void) => {
       setStatus('connecting')
       setError(null)
 
@@ -73,7 +64,7 @@ export function useOllamaGeneration(repoPath: string) {
         cleanup()
       }
     },
-    [repoPath, settings.ollama.model],
+    [repoPath, settings.ollama.model]
   )
 
   const cancel = useCallback(async () => {

@@ -24,13 +24,25 @@ describe('BlameHistoryPanel — file banner', () => {
   })
 
   it('splits a nested path into a dimmed directory and the file name', () => {
-    render(<BlameHistoryPanel mode="blame" file={{ path: 'src/components/Button.tsx', staged: false }} onClose={vi.fn()} />)
+    render(
+      <BlameHistoryPanel
+        mode="blame"
+        file={{ path: 'src/components/Button.tsx', staged: false }}
+        onClose={vi.fn()}
+      />
+    )
     expect(screen.getByText('src/components/')).toBeInTheDocument()
     expect(screen.getByText('Button.tsx')).toBeInTheDocument()
   })
 
   it('shows just the file name, no directory, for a top-level file', () => {
-    render(<BlameHistoryPanel mode="blame" file={{ path: 'README.md', staged: false }} onClose={vi.fn()} />)
+    render(
+      <BlameHistoryPanel
+        mode="blame"
+        file={{ path: 'README.md', staged: false }}
+        onClose={vi.fn()}
+      />
+    )
     expect(screen.getByText('README.md')).toBeInTheDocument()
   })
 })

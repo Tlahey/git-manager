@@ -7,7 +7,11 @@ const { isPermissionGranted, requestPermission, sendNotification } = vi.hoisted(
   requestPermission: vi.fn().mockResolvedValue('granted'),
   sendNotification: vi.fn(),
 }))
-vi.mock('@tauri-apps/plugin-notification', () => ({ isPermissionGranted, requestPermission, sendNotification }))
+vi.mock('@tauri-apps/plugin-notification', () => ({
+  isPermissionGranted,
+  requestPermission,
+  sendNotification,
+}))
 
 import { TrophyToast } from './TrophyToast'
 import { useGameStore } from '../../stores/game.store'
@@ -90,7 +94,10 @@ describe('TrophyToast — native notification', () => {
     await unlock()
 
     expect(sendNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ title: expect.stringContaining('BRONZE'), body: expect.stringContaining('Premier Pas') })
+      expect.objectContaining({
+        title: expect.stringContaining('BRONZE'),
+        body: expect.stringContaining('Premier Pas'),
+      })
     )
     expect(requestPermission).not.toHaveBeenCalled()
   })

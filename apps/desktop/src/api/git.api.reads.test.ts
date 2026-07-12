@@ -130,16 +130,19 @@ describe('read-only pass-throughs', () => {
     ['apiFetchRemote', 'fetchRemote', [PATH, 'origin']],
     ['apiPullBranch', 'pullBranch', [PATH, 'origin', true]],
     ['apiPushBranch', 'pushBranch', [PATH, 'origin', false]],
-  ] as const)('%s delegates to tauri.%s with the same arguments and returns its result', async (apiName, tauriName, args) => {
-    const sentinel = { marker: `${tauriName}-result` }
-    mocked[tauriName].mockResolvedValue(sentinel)
+  ] as const)(
+    '%s delegates to tauri.%s with the same arguments and returns its result',
+    async (apiName, tauriName, args) => {
+      const sentinel = { marker: `${tauriName}-result` }
+      mocked[tauriName].mockResolvedValue(sentinel)
 
-    const fn = (api as unknown as Record<string, (...a: unknown[]) => Promise<unknown>>)[apiName]
-    const result = await fn(...args)
+      const fn = (api as unknown as Record<string, (...a: unknown[]) => Promise<unknown>>)[apiName]
+      const result = await fn(...args)
 
-    expect(mocked[tauriName]).toHaveBeenCalledWith(...args)
-    expect(result).toBe(sentinel)
-  })
+      expect(mocked[tauriName]).toHaveBeenCalledWith(...args)
+      expect(result).toBe(sentinel)
+    }
+  )
 
   it('apiGetLog forwards the options object as-is', async () => {
     const opts = { limit: 50, branch: 'main' }

@@ -18,7 +18,10 @@ describe('useOperationProgressStore', () => {
   it('tracks multiple repos independently', () => {
     useOperationProgressStore.getState().start('/repo/a', 'rebase')
     useOperationProgressStore.getState().start('/repo/b', 'rebase')
-    expect(useOperationProgressStore.getState().running).toEqual({ '/repo/a': 'rebase', '/repo/b': 'rebase' })
+    expect(useOperationProgressStore.getState().running).toEqual({
+      '/repo/a': 'rebase',
+      '/repo/b': 'rebase',
+    })
   })
 
   it('clear() removes only the given repo', () => {

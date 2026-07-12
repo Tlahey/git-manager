@@ -40,7 +40,12 @@ export function updateConnectorPaths(
         `C ${half},${rightY1} ${half},${leftY1} 0,${leftY1}`,
         'Z',
       ].join(' ')
-      const dWave = buildCollapsedWavePath((leftY0 + leftY1) / 2, (rightY0 + rightY1) / 2, width, wavePhaseOffset)
+      const dWave = buildCollapsedWavePath(
+        (leftY0 + leftY1) / 2,
+        (rightY0 + rightY1) / 2,
+        width,
+        wavePhaseOffset
+      )
 
       const pathElFill = paths[pathIdx++] as SVGPathElement | undefined
       if (pathElFill) pathElFill.setAttribute('d', d)

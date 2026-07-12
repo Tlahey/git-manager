@@ -69,7 +69,14 @@ function issue(overrides: Partial<MockIssue> = {}): MockIssue {
 
 function renderTab(props: Partial<React.ComponentProps<typeof CustomViewsTab>> = {}) {
   return render(
-    <CustomViewsTab allPRs={[]} allIssues={[]} pinnedIds={new Set()} onTogglePin={vi.fn()} loading={false} {...props} />
+    <CustomViewsTab
+      allPRs={[]}
+      allIssues={[]}
+      pinnedIds={new Set()}
+      onTogglePin={vi.fn()}
+      loading={false}
+      {...props}
+    />
   )
 }
 
@@ -124,7 +131,10 @@ describe('CustomViewsTab — filter list', () => {
   it('switches the active filter when another one is clicked', async () => {
     const user = userEvent.setup()
     useLaunchpadStore.setState({
-      savedFilters: [filter({ id: 'f1', name: 'First filter' }), filter({ id: 'f2', name: 'Second filter' })],
+      savedFilters: [
+        filter({ id: 'f1', name: 'First filter' }),
+        filter({ id: 'f2', name: 'Second filter' }),
+      ],
     })
     const { container } = renderTab()
     expect(screen.getByText('— PRs & Issues')).toBeInTheDocument()
@@ -231,7 +241,10 @@ describe('CustomViewsTab — results content', () => {
 
   it('shows only PRs when the filter type is "prs"', () => {
     useLaunchpadStore.setState({ savedFilters: [filter({ id: 'f1', type: 'prs' })] })
-    renderTab({ allPRs: [pr({ id: '1', title: 'Only PR' })], allIssues: [issue({ id: '1', title: 'Hidden issue' })] })
+    renderTab({
+      allPRs: [pr({ id: '1', title: 'Only PR' })],
+      allIssues: [issue({ id: '1', title: 'Hidden issue' })],
+    })
     expect(screen.getByText('Only PR')).toBeInTheDocument()
     expect(screen.queryByText('Hidden issue')).not.toBeInTheDocument()
     expect(screen.queryByText('Pull Requests')).not.toBeInTheDocument() // no section header outside "both"
@@ -239,15 +252,23 @@ describe('CustomViewsTab — results content', () => {
 
   it('shows only Issues when the filter type is "issues"', () => {
     useLaunchpadStore.setState({ savedFilters: [filter({ id: 'f1', type: 'issues' })] })
-    renderTab({ allPRs: [pr({ id: '1', title: 'Hidden PR' })], allIssues: [issue({ id: '1', title: 'Only issue' })] })
+    renderTab({
+      allPRs: [pr({ id: '1', title: 'Hidden PR' })],
+      allIssues: [issue({ id: '1', title: 'Only issue' })],
+    })
     expect(screen.getByText('Only issue')).toBeInTheDocument()
     expect(screen.queryByText('Hidden PR')).not.toBeInTheDocument()
   })
 
   it('applies the filter criteria (e.g. labelContains) to matching', () => {
-    useLaunchpadStore.setState({ savedFilters: [filter({ id: 'f1', type: 'prs', labelContains: 'bug' })] })
+    useLaunchpadStore.setState({
+      savedFilters: [filter({ id: 'f1', type: 'prs', labelContains: 'bug' })],
+    })
     renderTab({
-      allPRs: [pr({ id: '1', title: 'Buggy PR', labels: ['bug'] }), pr({ id: '2', title: 'Clean PR', labels: [] })],
+      allPRs: [
+        pr({ id: '1', title: 'Buggy PR', labels: ['bug'] }),
+        pr({ id: '2', title: 'Clean PR', labels: [] }),
+      ],
     })
     expect(screen.getByText('Buggy PR')).toBeInTheDocument()
     expect(screen.queryByText('Clean PR')).not.toBeInTheDocument()
@@ -270,7 +291,9 @@ describe('CustomViewsTab — results content', () => {
   it('filters results further by the in-view search box', async () => {
     const user = userEvent.setup()
     useLaunchpadStore.setState({ savedFilters: [filter({ id: 'f1', type: 'prs' })] })
-    renderTab({ allPRs: [pr({ id: '1', title: 'Fix the bug' }), pr({ id: '2', title: 'Add feature' })] })
+    renderTab({
+      allPRs: [pr({ id: '1', title: 'Fix the bug' }), pr({ id: '2', title: 'Add feature' })],
+    })
     await user.type(screen.getByPlaceholderText('Search within this view…'), 'bug')
     expect(screen.getByText('Fix the bug')).toBeInTheDocument()
     expect(screen.queryByText('Add feature')).not.toBeInTheDocument()

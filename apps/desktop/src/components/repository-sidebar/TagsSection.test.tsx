@@ -5,7 +5,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { GitRef } from '@git-manager/git-types'
 
 vi.mock('../../api/git.api', () => ({ apiGetTags: vi.fn() }))
-vi.mock('./HoverExpandLabel', () => ({ HoverExpandLabel: ({ children }: { children: React.ReactNode }) => <span>{children}</span> }))
+vi.mock('./HoverExpandLabel', () => ({
+  HoverExpandLabel: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+}))
 
 import { apiGetTags } from '../../api/git.api'
 import { TagsSection } from './TagsSection'

@@ -25,8 +25,22 @@ const driverProvider = 'embedded'
 const visualService: Services.ServiceEntry = [
   'visual',
   {
-    baselineFolder: join(__dirname, '__visual__', process.platform, process.arch, driverProvider, 'baseline'),
-    screenshotPath: join(__dirname, '__visual__', process.platform, process.arch, driverProvider, 'actual'),
+    baselineFolder: join(
+      __dirname,
+      '__visual__',
+      process.platform,
+      process.arch,
+      driverProvider,
+      'baseline'
+    ),
+    screenshotPath: join(
+      __dirname,
+      '__visual__',
+      process.platform,
+      process.arch,
+      driverProvider,
+      'actual'
+    ),
     formatImageName: '{tag}-{width}x{height}',
     autoSaveBaseline: !process.env.CI,
   },

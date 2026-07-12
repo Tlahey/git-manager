@@ -2,13 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Input, ScrollArea, Spinner } from '@git-manager/ui'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@git-manager/ui'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { apiCreateFixupCommit } from '../../api/git.api'
 
@@ -42,9 +36,10 @@ export function FixupTargetSelector({
 
   const { data: nodes = [], isLoading: isLoadingLog } = useGitLog(repoPath, { limit: 50 })
 
-  const filtered = nodes.filter((n) =>
-    n.commit.subject.toLowerCase().includes(search.toLowerCase()) ||
-    n.commit.shortOid.toLowerCase().includes(search.toLowerCase()),
+  const filtered = nodes.filter(
+    (n) =>
+      n.commit.subject.toLowerCase().includes(search.toLowerCase()) ||
+      n.commit.shortOid.toLowerCase().includes(search.toLowerCase())
   )
 
   async function handleConfirm() {
@@ -93,7 +88,7 @@ export function FixupTargetSelector({
               <Spinner className="h-4 w-4 text-muted-foreground" />
             </div>
           ) : (
-            <div className="p-1 space-y-0.5">
+            <div className="space-y-0.5 p-1">
               {filtered.map((n) => {
                 const isSelected = n.commit.oid === selectedOid
                 return (
@@ -122,9 +117,7 @@ export function FixupTargetSelector({
         </ScrollArea>
 
         {error && (
-          <p className="rounded bg-destructive/20 px-3 py-2 text-xs text-destructive">
-            {error}
-          </p>
+          <p className="rounded bg-destructive/20 px-3 py-2 text-xs text-destructive">{error}</p>
         )}
 
         <DialogFooter className="gap-2">

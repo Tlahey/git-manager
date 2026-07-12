@@ -17,10 +17,7 @@ export function GraphSvg({ column, connections, isWip, isStash, isFirst }: Graph
   const avatarSize = rowHeightSetting === 'small' ? 24 : 32
   const avatarRadius = avatarSize / 2
 
-  const maxCol = connections.reduce(
-    (m, c) => Math.max(m, c.fromColumn, c.toColumn),
-    column,
-  )
+  const maxCol = connections.reduce((m, c) => Math.max(m, c.fromColumn, c.toColumn), column)
   const width = (maxCol + 1) * COL_WIDTH + 4
   const nodeY = rowHeight / 2
 
@@ -32,7 +29,6 @@ export function GraphSvg({ column, connections, isWip, isStash, isFirst }: Graph
       style={{ flexShrink: 0 }}
       className="overflow-visible"
     >
-
       {/* Lignes de connexion (full-row, avec angles droits arrondis et background coloré) */}
       {connections.map((edge, i) => {
         const x1 = edge.fromColumn * COL_WIDTH + COL_WIDTH / 2
@@ -56,10 +52,10 @@ export function GraphSvg({ column, connections, isWip, isStash, isFirst }: Graph
             }
           } else {
             if (edge.startsAtNode) {
-              yS = (isStash && edge.fromColumn === column) ? nodeY + avatarRadius : nodeY
+              yS = isStash && edge.fromColumn === column ? nodeY + avatarRadius : nodeY
             }
             if (edge.endsAtNode) {
-              yE = (isStash && edge.toColumn === column) ? nodeY - avatarRadius : nodeY
+              yE = isStash && edge.toColumn === column ? nodeY - avatarRadius : nodeY
             }
           }
           if (isFirst && yS === yStart) {
@@ -115,4 +111,3 @@ export function GraphSvg({ column, connections, isWip, isStash, isFirst }: Graph
     </svg>
   )
 }
-

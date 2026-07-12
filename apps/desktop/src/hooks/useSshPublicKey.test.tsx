@@ -11,7 +11,9 @@ import { useSshPublicKey } from './useSshPublicKey'
 const mockedApi = apiReadSshPublicKey as unknown as ReturnType<typeof vi.fn>
 
 function wrapper({ children }: { children: ReactNode }) {
-  return <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>{children}</SWRConfig>
+  return (
+    <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>{children}</SWRConfig>
+  )
 }
 
 beforeEach(() => {
@@ -21,7 +23,9 @@ beforeEach(() => {
 describe('useSshPublicKey', () => {
   it('fetches the public key when path is set', async () => {
     mockedApi.mockResolvedValue('ssh-ed25519 AAAA...')
-    const { result } = renderHook(() => useSshPublicKey('/home/me/.ssh/id_ed25519.pub'), { wrapper })
+    const { result } = renderHook(() => useSshPublicKey('/home/me/.ssh/id_ed25519.pub'), {
+      wrapper,
+    })
     await waitFor(() => expect(result.current.data).toBe('ssh-ed25519 AAAA...'))
     expect(mockedApi).toHaveBeenCalledWith('/home/me/.ssh/id_ed25519.pub')
   })

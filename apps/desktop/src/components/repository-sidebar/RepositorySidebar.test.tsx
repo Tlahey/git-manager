@@ -4,41 +4,56 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { SidebarRow } from './types'
 
-const { useSidebarResize, useSidebarRows, showStashNativeContextMenu, swrMutate } = vi.hoisted(() => ({
-  useSidebarResize: vi.fn(),
-  useSidebarRows: vi.fn(),
-  showStashNativeContextMenu: vi.fn(),
-  swrMutate: vi.fn(),
-}))
+const { useSidebarResize, useSidebarRows, showStashNativeContextMenu, swrMutate } = vi.hoisted(
+  () => ({
+    useSidebarResize: vi.fn(),
+    useSidebarRows: vi.fn(),
+    showStashNativeContextMenu: vi.fn(),
+    swrMutate: vi.fn(),
+  })
+)
 vi.mock('../../hooks/useSidebarResize', () => ({ useSidebarResize, RAIL_WIDTH: 48 }))
 vi.mock('../../hooks/useSidebarRows', () => ({ useSidebarRows }))
 vi.mock('../../api/nativeMenu.api', () => ({ showStashNativeContextMenu }))
-vi.mock('../../api/git.api', () => ({ apiStashApply: vi.fn(), apiStashPop: vi.fn(), apiStashDrop: vi.fn() }))
+vi.mock('../../api/git.api', () => ({
+  apiStashApply: vi.fn(),
+  apiStashPop: vi.fn(),
+  apiStashDrop: vi.fn(),
+}))
 vi.mock('swr', () => ({ mutate: swrMutate }))
 
 vi.mock('@tanstack/react-virtual', () => ({
   useVirtualizer: (opts: { count: number; estimateSize: (i: number) => number }) => ({
-    getTotalSize: () => Array.from({ length: opts.count }, (_, i) => opts.estimateSize(i)).reduce((a, b) => a + b, 0),
+    getTotalSize: () =>
+      Array.from({ length: opts.count }, (_, i) => opts.estimateSize(i)).reduce((a, b) => a + b, 0),
     getVirtualItems: () =>
       Array.from({ length: opts.count }, (_, index) => ({ key: index, index, start: 0 })),
     measureElement: () => {},
   }),
 }))
 
-const { lastRowViewCalls } = vi.hoisted(() => ({ lastRowViewCalls: { current: [] as Record<string, unknown>[] } }))
+const { lastRowViewCalls } = vi.hoisted(() => ({
+  lastRowViewCalls: { current: [] as Record<string, unknown>[] },
+}))
 vi.mock('./SidebarRowView', () => ({
   SidebarRowView: (props: Record<string, unknown>) => {
     lastRowViewCalls.current.push(props)
     return <div data-testid={`row-${(props.row as SidebarRow).id}`} />
   },
 }))
-vi.mock('./SidebarRail', () => ({ SidebarRail: (props: { onExpand: () => void }) => <button data-testid="sidebar-rail" onClick={props.onExpand} /> }))
+vi.mock('./SidebarRail', () => ({
+  SidebarRail: (props: { onExpand: () => void }) => (
+    <button data-testid="sidebar-rail" onClick={props.onExpand} />
+  ),
+}))
 vi.mock('./BlameHistoryPanel', () => ({
   BlameHistoryPanel: (props: { mode: string; file: unknown; onClose: () => void }) => (
     <div data-testid="blame-history-panel" data-mode={props.mode} onClick={props.onClose} />
   ),
 }))
-vi.mock('./SidebarResizeHandle', () => ({ SidebarResizeHandle: () => <div data-testid="resize-handle" /> }))
+vi.mock('./SidebarResizeHandle', () => ({
+  SidebarResizeHandle: () => <div data-testid="resize-handle" />,
+}))
 
 import { apiStashApply, apiStashPop, apiStashDrop } from '../../api/git.api'
 import { RepositorySidebar } from './RepositorySidebar'
@@ -75,7 +90,12 @@ function renderSidebar(props: Partial<React.ComponentProps<typeof RepositorySide
   const onSelectBranch = vi.fn()
   const utils = render(
     <QueryClientProvider client={client}>
-      <RepositorySidebar repoPath="/repo" selectedBranch={null} onSelectBranch={onSelectBranch} {...props} />
+      <RepositorySidebar
+        repoPath="/repo"
+        selectedBranch={null}
+        onSelectBranch={onSelectBranch}
+        {...props}
+      />
     </QueryClientProvider>
   )
   return { ...utils, invalidateSpy, onSelectBranch }
@@ -170,10 +190,22 @@ describe('RepositorySidebar — rows', () => {
   })
 
   it('toggles a section/folder open state, feeding it back into useSidebarRows on the next render', () => {
-    useSidebarRows.mockReturnValue({ rows: [{ kind: 'section', id: 'sec-local', sectionKey: 'local', title: 'Local', isOpen: true } as SidebarRow] })
+    useSidebarRows.mockReturnValue({
+      rows: [
+        {
+          kind: 'section',
+          id: 'sec-local',
+          sectionKey: 'local',
+          title: 'Local',
+          isOpen: true,
+        } as SidebarRow,
+      ],
+    })
     renderSidebar()
     act(() => (lastRowViewCalls.current[0].onToggleOpen as (id: string) => void)('sec-local'))
-    expect(useSidebarRows).toHaveBeenLastCalledWith(expect.objectContaining({ openState: { 'sec-local': false } }))
+    expect(useSidebarRows).toHaveBeenLastCalledWith(
+      expect.objectContaining({ openState: { 'sec-local': false } })
+    )
   })
 
   it('forwards branch selection to onSelectBranch and pin toggling through the pinned-branches store', () => {
@@ -181,7 +213,6 @@ describe('RepositorySidebar — rows', () => {
     const { onSelectBranch } = renderSidebar()
     ;(lastRowViewCalls.current[0].onSelectBranch as (n: string) => void)('main')
     expect(onSelectBranch).toHaveBeenCalledWith('main')
-
     ;(lastRowViewCalls.current[0].onTogglePin as (n: string) => void)('feature')
     expect(usePinnedBranchesStore.getState().overrides['/repo']?.feature).toBe(true)
   })
@@ -191,7 +222,6 @@ describe('RepositorySidebar — rows', () => {
     useSidebarRows.mockReturnValue({ rows: [row({ id: 'r1' })] })
     renderSidebar()
     expect(lastRowViewCalls.current[0].hiddenStashes).toEqual(['oid1'])
-
     ;(lastRowViewCalls.current[0].onToggleStashVisibility as (oid: string) => void)('oid2')
     expect(useRepoDataStore.getState().hiddenStashes['/repo']).toContain('oid2')
   })
@@ -199,20 +229,36 @@ describe('RepositorySidebar — rows', () => {
 
 describe('RepositorySidebar — stash context menu', () => {
   function stash() {
-    return { index: 0, message: 'WIP', branch: 'main', commitOid: 'stash-oid', timestamp: 0, filesCount: 1, additions: 0, deletions: 0 }
+    return {
+      index: 0,
+      message: 'WIP',
+      branch: 'main',
+      commitOid: 'stash-oid',
+      timestamp: 0,
+      filesCount: 1,
+      additions: 0,
+      deletions: 0,
+    }
   }
 
   function triggerStashContextMenu() {
     useSidebarRows.mockReturnValue({ rows: [row({ id: 'r1' })] })
     renderSidebar()
-    ;(lastRowViewCalls.current[0].onStashContextMenu as (e: unknown, s: ReturnType<typeof stash>) => void)({}, stash())
+    ;(
+      lastRowViewCalls.current[0].onStashContextMenu as (
+        e: unknown,
+        s: ReturnType<typeof stash>
+      ) => void
+    )({}, stash())
   }
 
   it('opens the native menu with isHidden reflecting the repoData store', () => {
     useRepoDataStore.setState({ hiddenStashes: { '/repo': ['stash-oid'] } })
     showStashNativeContextMenu.mockResolvedValue(undefined)
     triggerStashContextMenu()
-    expect(showStashNativeContextMenu).toHaveBeenCalledWith(expect.objectContaining({ isHidden: true }))
+    expect(showStashNativeContextMenu).toHaveBeenCalledWith(
+      expect.objectContaining({ isHidden: true })
+    )
   })
 
   it('applies the stash, refreshes stashes/log/status, on "apply"', async () => {
@@ -257,7 +303,12 @@ describe('RepositorySidebar — stash context menu', () => {
     showStashNativeContextMenu.mockResolvedValue(undefined)
     useSidebarRows.mockReturnValue({ rows: [row({ id: 'r1' })] })
     const { onSelectBranch } = renderSidebar()
-    ;(lastRowViewCalls.current.at(-1)!.onStashContextMenu as (e: unknown, s: ReturnType<typeof stash>) => void)({}, stash())
+    ;(
+      lastRowViewCalls.current.at(-1)!.onStashContextMenu as (
+        e: unknown,
+        s: ReturnType<typeof stash>
+      ) => void
+    )({}, stash())
     const args = showStashNativeContextMenu.mock.calls[0][0]
     act(() => args.onEditMessage())
     expect(onSelectBranch).toHaveBeenCalledWith('stash-oid')

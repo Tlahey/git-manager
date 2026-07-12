@@ -5,7 +5,13 @@ import type { PullRequest } from '@git-manager/git-types'
 import { PullRequestItem } from './PullRequestItem'
 
 vi.mock('./HoverExpandLabel', () => ({
-  HoverExpandLabel: ({ children, className }: { children: React.ReactNode; className?: string }) => <span className={className}>{children}</span>,
+  HoverExpandLabel: ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode
+    className?: string
+  }) => <span className={className}>{children}</span>,
 }))
 
 function pr(overrides: Partial<PullRequest> = {}): PullRequest {
@@ -29,7 +35,9 @@ function pr(overrides: Partial<PullRequest> = {}): PullRequest {
 
 describe('PullRequestItem — content', () => {
   it('shows the PR number, title, author, and state label', () => {
-    render(<PullRequestItem pr={pr({ number: 7, title: 'Fix bug', author: 'marie', state: 'open' })} />)
+    render(
+      <PullRequestItem pr={pr({ number: 7, title: 'Fix bug', author: 'marie', state: 'open' })} />
+    )
     expect(screen.getByText('#7 Fix bug')).toBeInTheDocument()
     expect(screen.getByText('marie')).toBeInTheDocument()
     expect(screen.getByText('Open')).toBeInTheDocument()
@@ -64,12 +72,16 @@ describe('PullRequestItem — content', () => {
 describe('PullRequestItem — CI status icon', () => {
   it('shows nothing when ciStatus is null', () => {
     const { container } = render(<PullRequestItem pr={pr({ ciStatus: null })} />)
-    expect(container.querySelector('.lucide-circle-check-big, .lucide-circle-x, .lucide-loader-circle')).toBeFalsy()
+    expect(
+      container.querySelector('.lucide-circle-check-big, .lucide-circle-x, .lucide-loader-circle')
+    ).toBeFalsy()
   })
 
   it('shows a green check for success', () => {
     const { container } = render(<PullRequestItem pr={pr({ ciStatus: 'success' })} />)
-    expect(container.querySelector('.text-green-400.lucide-circle-check-big, svg.text-green-400')).toBeTruthy()
+    expect(
+      container.querySelector('.text-green-400.lucide-circle-check-big, svg.text-green-400')
+    ).toBeTruthy()
   })
 
   it('shows a red X for failure', () => {
@@ -101,7 +113,9 @@ describe('PullRequestItem — interaction', () => {
   it('the external-link opens the PR URL without triggering onOpen', async () => {
     const onOpen = vi.fn()
     const user = userEvent.setup()
-    render(<PullRequestItem pr={pr({ url: 'https://github.com/owner/repo/pull/42' })} onOpen={onOpen} />)
+    render(
+      <PullRequestItem pr={pr({ url: 'https://github.com/owner/repo/pull/42' })} onOpen={onOpen} />
+    )
     const link = screen.getByLabelText('Ouvrir dans GitHub')
     expect(link).toHaveAttribute('href', 'https://github.com/owner/repo/pull/42')
     expect(link).toHaveAttribute('target', '_blank')

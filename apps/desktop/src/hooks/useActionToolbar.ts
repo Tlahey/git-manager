@@ -52,9 +52,7 @@ export function useActionToolbar(t: TranslateFn) {
   const { data: stashes } = useGitStashes(activeRepo)
 
   const hasChanges = gitStatus
-    ? gitStatus.staged.length > 0 ||
-      gitStatus.unstaged.length > 0 ||
-      gitStatus.untracked.length > 0
+    ? gitStatus.staged.length > 0 || gitStatus.unstaged.length > 0 || gitStatus.untracked.length > 0
     : false
 
   const hasStashes = stashes ? stashes.length > 0 : false

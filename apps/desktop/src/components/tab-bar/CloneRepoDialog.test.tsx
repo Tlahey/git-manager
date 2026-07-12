@@ -15,10 +15,22 @@ import { useRepoUIStore } from '../../stores/repoUI.store'
 const mockedClone = apiCloneRepo as unknown as ReturnType<typeof vi.fn>
 
 function repo(overrides: Partial<GitRepo> = {}): GitRepo {
-  return { path: '/dest/repo', name: 'repo', head: 'main', isDetached: false, isDirty: false, remotes: [], ...overrides }
+  return {
+    path: '/dest/repo',
+    name: 'repo',
+    head: 'main',
+    isDetached: false,
+    isDirty: false,
+    remotes: [],
+    ...overrides,
+  }
 }
 
-async function fillAndPickDir(user: ReturnType<typeof userEvent.setup>, url: string, parentDir = '/dest') {
+async function fillAndPickDir(
+  user: ReturnType<typeof userEvent.setup>,
+  url: string,
+  parentDir = '/dest'
+) {
   await user.type(screen.getByPlaceholderText('git@github.com:owner/repo.git'), url)
   dialogOpen.mockResolvedValue(parentDir)
   await user.click(screen.getByRole('button', { name: '' })) // the folder-picker icon button
@@ -53,7 +65,10 @@ describe('CloneRepoDialog', () => {
     const user = userEvent.setup()
     render(<CloneRepoDialog open onOpenChange={vi.fn()} />)
     expect(screen.getByRole('button', { name: 'Cloner' })).toBeDisabled()
-    await user.type(screen.getByPlaceholderText('git@github.com:owner/repo.git'), 'git@github.com:owner/repo.git')
+    await user.type(
+      screen.getByPlaceholderText('git@github.com:owner/repo.git'),
+      'git@github.com:owner/repo.git'
+    )
     expect(screen.getByRole('button', { name: 'Cloner' })).toBeDisabled()
   })
 
@@ -67,7 +82,12 @@ describe('CloneRepoDialog', () => {
     await user.click(screen.getByText('Sparse checkout'))
     await user.click(screen.getByRole('button', { name: 'Cloner' }))
 
-    expect(mockedClone).toHaveBeenCalledWith('git@github.com:owner/repo.git', '/dest/repo', true, true)
+    expect(mockedClone).toHaveBeenCalledWith(
+      'git@github.com:owner/repo.git',
+      '/dest/repo',
+      true,
+      true
+    )
     expect(useRepoUIStore.getState().activeRepo).toBe('/dest/repo')
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
@@ -88,7 +108,10 @@ describe('CloneRepoDialog', () => {
     const onOpenChange = vi.fn()
     const user = userEvent.setup()
     render(<CloneRepoDialog open onOpenChange={onOpenChange} />)
-    await user.type(screen.getByPlaceholderText('git@github.com:owner/repo.git'), 'git@github.com:owner/repo.git')
+    await user.type(
+      screen.getByPlaceholderText('git@github.com:owner/repo.git'),
+      'git@github.com:owner/repo.git'
+    )
     await user.click(screen.getByRole('button', { name: 'Annuler' }))
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })

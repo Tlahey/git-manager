@@ -1,6 +1,15 @@
 import { useMemo, useRef, useState } from 'react'
 import { Wand2, AlertCircle } from 'lucide-react'
-import { Button, Spinner, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@git-manager/ui'
+import {
+  Button,
+  Spinner,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { getCurrentWindow } from '@tauri-apps/api/window'
@@ -17,7 +26,10 @@ interface ConflictMergeWindowContentProps {
   filePath: string
 }
 
-export function ConflictMergeWindowContent({ repoPath, filePath }: ConflictMergeWindowContentProps) {
+export function ConflictMergeWindowContent({
+  repoPath,
+  filePath,
+}: ConflictMergeWindowContentProps) {
   const { t } = useTranslation('git')
   const mergeEditorRef = useRef<ThreeWayMergeEditorRef>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -96,7 +108,7 @@ export function ConflictMergeWindowContent({ repoPath, filePath }: ConflictMerge
   return (
     <div
       data-testid="merge-editor-window"
-      className="flex h-full w-full flex-col overflow-hidden bg-background select-none animate-fadeIn"
+      className="animate-fadeIn flex h-full w-full select-none flex-col overflow-hidden bg-background"
     >
       {/* HEADER / TOOLBAR */}
       <div className="flex shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 shadow-sm">
@@ -107,7 +119,7 @@ export function ConflictMergeWindowContent({ repoPath, filePath }: ConflictMerge
                 {parsedPath.dir}
               </span>
             )}
-            <span className="select-all truncate font-mono text-xs leading-tight text-foreground font-semibold">
+            <span className="select-all truncate font-mono text-xs font-semibold leading-tight text-foreground">
               {parsedPath.name}
             </span>
           </div>
@@ -116,12 +128,12 @@ export function ConflictMergeWindowContent({ repoPath, filePath }: ConflictMerge
         {view?.renderable && (
           <div className="flex shrink-0 items-center gap-3">
             {error && (
-              <span className="flex items-center gap-1 text-xs text-destructive font-medium">
+              <span className="flex items-center gap-1 text-xs font-medium text-destructive">
                 <AlertCircle className="h-3.5 w-3.5" />
                 {error}
               </span>
             )}
-            <span className="text-[10px] font-medium text-muted-foreground bg-muted/65 border border-border/40 px-2 py-0.5 rounded">
+            <span className="rounded border border-border/40 bg-muted/65 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
               {t('conflictEditor.conflictsRemaining', { count: pendingCount })}
             </span>
 
@@ -134,7 +146,11 @@ export function ConflictMergeWindowContent({ repoPath, filePath }: ConflictMerge
               title={t('conflictEditor.applyNonConflicting')}
               data-testid="merge-auto-merge-button"
             >
-              {isAutoMerging ? <Spinner className="h-3.5 w-3.5" /> : <Wand2 className="h-3.5 w-3.5" />}
+              {isAutoMerging ? (
+                <Spinner className="h-3.5 w-3.5" />
+              ) : (
+                <Wand2 className="h-3.5 w-3.5" />
+              )}
               {t('conflictEditor.applyNonConflicting')}
             </Button>
           </div>
@@ -142,7 +158,7 @@ export function ConflictMergeWindowContent({ repoPath, filePath }: ConflictMerge
       </div>
 
       {/* CONTENT AREA */}
-      <div className="flex flex-1 flex-col overflow-hidden bg-card/45 font-mono text-xs select-text">
+      <div className="flex flex-1 select-text flex-col overflow-hidden bg-card/45 font-mono text-xs">
         {isLoading && (
           <div className="flex h-full w-full items-center justify-center text-muted-foreground">
             <Spinner className="mr-2 h-5 w-5" />
@@ -150,22 +166,36 @@ export function ConflictMergeWindowContent({ repoPath, filePath }: ConflictMerge
           </div>
         )}
 
-        {!isLoading && view && (view.isBinary || view.conflictKind === 'delete' || view.conflictKind === 'rename') && (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-sm">
-            <p className="text-foreground font-medium">
-              {view.isBinary ? t('conflictEditor.binaryConflict') : t('conflictEditor.deleteConflict')}
-            </p>
-            {error && <p className="text-xs text-destructive font-medium">{error}</p>}
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => handleKeepSide('ours')} disabled={isSaving} data-testid="keep-ours-button">
-                {t('conflictEditor.keepOurs')}
-              </Button>
-              <Button variant="outline" onClick={() => handleKeepSide('theirs')} disabled={isSaving} data-testid="keep-theirs-button">
-                {t('conflictEditor.keepTheirs')}
-              </Button>
+        {!isLoading &&
+          view &&
+          (view.isBinary || view.conflictKind === 'delete' || view.conflictKind === 'rename') && (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-sm">
+              <p className="font-medium text-foreground">
+                {view.isBinary
+                  ? t('conflictEditor.binaryConflict')
+                  : t('conflictEditor.deleteConflict')}
+              </p>
+              {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => handleKeepSide('ours')}
+                  disabled={isSaving}
+                  data-testid="keep-ours-button"
+                >
+                  {t('conflictEditor.keepOurs')}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleKeepSide('theirs')}
+                  disabled={isSaving}
+                  data-testid="keep-theirs-button"
+                >
+                  {t('conflictEditor.keepTheirs')}
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {!isLoading && view && !view.renderable && !view.isBinary && !view.conflictKind && (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -174,8 +204,8 @@ export function ConflictMergeWindowContent({ repoPath, filePath }: ConflictMerge
         )}
 
         {!isLoading && view && view.renderable && (
-          <div className="flex flex-1 flex-col overflow-hidden p-4 min-h-0">
-            <div className="flex flex-1 flex-col overflow-hidden rounded-lg border border-border/80 bg-background animate-in fade-in zoom-in-95 duration-100">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
+            <div className="animate-in fade-in zoom-in-95 flex flex-1 flex-col overflow-hidden rounded-lg border border-border/80 bg-background duration-100">
               <ThreeWayMergeEditor
                 ref={mergeEditorRef}
                 repoPath={repoPath}
@@ -189,7 +219,7 @@ export function ConflictMergeWindowContent({ repoPath, filePath }: ConflictMerge
       </div>
 
       {/* FOOTER */}
-      <div className="flex shrink-0 items-center justify-between border-t border-border bg-card px-4 py-3 shadow-md select-none">
+      <div className="flex shrink-0 select-none items-center justify-between border-t border-border bg-card px-4 py-3 shadow-md">
         {/* Bottom Left: Accept Left + Accept Right */}
         <div className="flex items-center gap-2">
           {view?.renderable && (
@@ -199,7 +229,7 @@ export function ConflictMergeWindowContent({ repoPath, filePath }: ConflictMerge
                 size="sm"
                 onClick={() => setConfirmSide('left')}
                 disabled={isSaving}
-                className="text-[11px] font-semibold h-8"
+                className="h-8 text-[11px] font-semibold"
                 data-testid="merge-accept-left"
               >
                 Accept Left
@@ -209,7 +239,7 @@ export function ConflictMergeWindowContent({ repoPath, filePath }: ConflictMerge
                 size="sm"
                 onClick={() => setConfirmSide('right')}
                 disabled={isSaving}
-                className="text-[11px] font-semibold h-8"
+                className="h-8 text-[11px] font-semibold"
                 data-testid="merge-accept-right"
               >
                 Accept Right
@@ -225,7 +255,7 @@ export function ConflictMergeWindowContent({ repoPath, filePath }: ConflictMerge
             size="sm"
             onClick={handleCancel}
             disabled={isSaving}
-            className="text-[11px] font-semibold h-8"
+            className="h-8 text-[11px] font-semibold"
             data-testid="merge-cancel"
           >
             Cancel
@@ -235,7 +265,7 @@ export function ConflictMergeWindowContent({ repoPath, filePath }: ConflictMerge
             size="sm"
             onClick={handleApply}
             disabled={isSaving || (view?.renderable ? pendingCount > 0 : false)}
-            className="text-[11px] font-semibold h-8 px-4"
+            className="h-8 px-4 text-[11px] font-semibold"
             data-testid="merge-apply"
           >
             {isSaving ? <Spinner className="mr-1.5 h-3.5 w-3.5" /> : null}
@@ -248,8 +278,9 @@ export function ConflictMergeWindowContent({ repoPath, filePath }: ConflictMerge
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle>Discard changes?</DialogTitle>
-            <DialogDescription className="text-foreground pt-2 text-sm leading-relaxed">
-              There are unsaved changes in the result file. Discard changes and accept {confirmSide} anyway?
+            <DialogDescription className="pt-2 text-sm leading-relaxed text-foreground">
+              There are unsaved changes in the result file. Discard changes and accept {confirmSide}{' '}
+              anyway?
             </DialogDescription>
           </DialogHeader>
 
@@ -268,7 +299,7 @@ export function ConflictMergeWindowContent({ repoPath, filePath }: ConflictMerge
               size="sm"
               onClick={handleConfirmDiscardAndApply}
               disabled={isSaving}
-              className="text-xs h-8"
+              className="h-8 text-xs"
               data-testid="dialog-discard-and-apply"
             >
               {isSaving && <Spinner className="mr-1.5 h-3.5 w-3.5" />}
@@ -281,7 +312,13 @@ export function ConflictMergeWindowContent({ repoPath, filePath }: ConflictMerge
   )
 }
 
-export function ConflictMergeWindow({ repoPath, filePath }: { repoPath: string; filePath: string }) {
+export function ConflictMergeWindow({
+  repoPath,
+  filePath,
+}: {
+  repoPath: string
+  filePath: string
+}) {
   useTheme()
   useMonacoTheme()
 

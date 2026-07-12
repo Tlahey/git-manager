@@ -37,7 +37,7 @@ export function PendingFixupsBanner({ repoPath }: PendingFixupsBannerProps) {
           data-testid="autosquash-button"
           size="sm"
           variant="outline"
-          className="h-6 px-2 text-xs border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
+          className="h-6 border-amber-500/40 px-2 text-xs text-amber-600 hover:bg-amber-500/20 dark:text-amber-400"
           onClick={() => setDialogOpen(true)}
         >
           Autosquash

@@ -1,5 +1,11 @@
 import { ArrowDownToLine, ChevronDown } from 'lucide-react'
-import { Spinner, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@git-manager/ui'
+import {
+  Spinner,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 
 interface FetchButtonProps {

@@ -71,7 +71,9 @@ describe('openUrl', () => {
   })
 
   it('falls back to window.open when open() itself rejects', async () => {
-    vi.doMock('@tauri-apps/plugin-shell', () => ({ open: vi.fn().mockRejectedValue(new Error('denied')) }))
+    vi.doMock('@tauri-apps/plugin-shell', () => ({
+      open: vi.fn().mockRejectedValue(new Error('denied')),
+    }))
     const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
 
     const { openUrl: openUrlFresh } = await import('./utils')

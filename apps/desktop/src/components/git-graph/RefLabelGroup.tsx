@@ -73,7 +73,7 @@ export function RefLabelGroup({ refs, color }: RefLabelGroupProps) {
           ref={badgeRef}
           onMouseEnter={show}
           onMouseLeave={hide}
-          className="inline-flex shrink-0 cursor-default items-center rounded border border-border bg-muted px-1.5 py-0 text-[11px] leading-5 font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="inline-flex shrink-0 cursor-default items-center rounded border border-border bg-muted px-1.5 py-0 text-[11px] font-medium leading-5 text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           +{extra}
         </span>
@@ -92,7 +92,7 @@ export function RefLabelGroup({ refs, color }: RefLabelGroupProps) {
               <RefLabel key={i} gitRef={ref} color={color} />
             ))}
           </div>,
-          document.body,
+          document.body
         )}
     </div>
   )

@@ -12,16 +12,16 @@ export function InnerTab({ active, onClick, children, count, loading }: InnerTab
   return (
     <button
       onClick={onClick}
-      className={`relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors border-b-2 ${
+      className={`relative flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium transition-colors ${
         active
           ? 'border-primary text-foreground'
-          : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+          : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
       }`}
     >
       {children}
       {count !== undefined &&
         (loading ? (
-          <span className="w-5 h-3.5 rounded-full bg-muted/65 animate-pulse" />
+          <span className="h-3.5 w-5 animate-pulse rounded-full bg-muted/65" />
         ) : (
           <span
             className={`rounded-full px-1.5 py-px text-[9px] font-semibold leading-none ${

@@ -18,7 +18,9 @@ export interface CodePaneEditorProps {
 export type CodePaneEditorComponent = ComponentType<CodePaneEditorProps>
 
 // Default editor: lazy-loaded so hosts that inject their own component never pull the chunk in.
-const DefaultMonacoEditor = lazy(() => import('@monaco-editor/react')) as unknown as CodePaneEditorComponent
+const DefaultMonacoEditor = lazy(
+  () => import('@monaco-editor/react')
+) as unknown as CodePaneEditorComponent
 
 interface CodePaneProps {
   value: string

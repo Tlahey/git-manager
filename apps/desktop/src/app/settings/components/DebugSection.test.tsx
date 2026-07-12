@@ -8,7 +8,15 @@ import { DebugSection } from './DebugSection'
 import { useDebugLogStore, type DebugLogEntry } from '../../../stores/debugLog.store'
 
 function entry(overrides: Partial<DebugLogEntry> = {}): DebugLogEntry {
-  return { id: 'e1', timestamp: Date.now(), command: 'get_log', args: { path: '/repo' }, durationMs: 5, status: 'ok', ...overrides }
+  return {
+    id: 'e1',
+    timestamp: Date.now(),
+    command: 'get_log',
+    args: { path: '/repo' },
+    durationMs: 5,
+    status: 'ok',
+    ...overrides,
+  }
 }
 
 beforeEach(() => {
@@ -34,7 +42,10 @@ describe('DebugSection', () => {
   })
 
   it('renders one row per entry with its command', () => {
-    useDebugLogStore.setState({ enabled: true, entries: [entry({ command: 'create_commit' }), entry({ id: 'e2', command: 'get_log' })] })
+    useDebugLogStore.setState({
+      enabled: true,
+      entries: [entry({ command: 'create_commit' }), entry({ id: 'e2', command: 'get_log' })],
+    })
     render(<DebugSection />)
     const rows = screen.getAllByTestId('debug-entry')
     expect(rows).toHaveLength(2)

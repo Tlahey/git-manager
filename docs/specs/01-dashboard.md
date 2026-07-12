@@ -9,6 +9,7 @@ Allow the user to manage several Git repositories from a central view. The dashb
 ## Overview
 
 The dashboard is divided into two zones:
+
 1. **Left sidebar** — list of registered repos, favorites at the top, real-time status
 2. **Central zone** — repo cards with key information
 
@@ -21,11 +22,13 @@ Open repos are then displayed in **persistent tabs** at the top of the applicati
 ### Adding repos
 
 #### Manual
+
 - **"Open a repo"** button → native macOS dialog (`tauri-plugin-dialog`) to select a folder
 - Validation that the folder is indeed a Git repo (presence of `.git/`)
 - Immediate addition to the list
 
 #### Automatic scan
+
 - **"Scan a folder"** button → selection of a root directory (e.g., `~/Projects`)
 - Recursive scan up to a configurable depth (default: 3)
 - List of found repos with a checkbox to select several
@@ -35,6 +38,7 @@ Open repos are then displayed in **persistent tabs** at the top of the applicati
 ### Repo list
 
 Each repo in the sidebar displays:
+
 - Repo name (folder or manual override)
 - Current HEAD branch
 - Dirty indicator (•) if uncommitted changes exist
@@ -44,6 +48,7 @@ Each repo in the sidebar displays:
 ### Dashboard cards
 
 In the central view, each repo has a card with:
+
 - Name + path
 - HEAD branch + ahead/behind of the remote
 - Number of modified files
@@ -53,6 +58,7 @@ In the central view, each repo has a card with:
 ### Per-repo tabs
 
 Each open repo generates a persistent tab:
+
 - Tabs in the top bar (max ~8 visible, horizontal scroll)
 - Individual closing (× on the tab)
 - Dirty indicator on the tab
@@ -62,13 +68,13 @@ Each open repo generates a persistent tab:
 
 ## List states
 
-| State | Display |
-|------|-----------|
-| Valid repo, clean | Name in white, green branch icon |
-| Dirty repo | Orange dot next to the name |
-| Repo not found | ⚠️ icon, grayed-out path |
-| Fetch in progress | Spinner |
-| Unresolved conflicts | Red icon |
+| State                | Display                          |
+| -------------------- | -------------------------------- |
+| Valid repo, clean    | Name in white, green branch icon |
+| Dirty repo           | Orange dot next to the name      |
+| Repo not found       | ⚠️ icon, grayed-out path         |
+| Fetch in progress    | Spinner                          |
+| Unresolved conflicts | Red icon                         |
 
 ---
 
@@ -88,19 +94,20 @@ App launch
 
 ## Tauri commands involved
 
-| Command | Description |
-|---------|-------------|
-| `scan_repos(root_path, max_depth)` | Returns the list of found repos |
-| `open_repo(path)` → `GitRepo` | Opens and validates a repo, adds it to the state |
-| `close_repo(path)` | Removes a repo from the active state |
-| `get_repo_status(path)` → `GitStatus` | Quick status (dirty, ahead/behind) |
-| `fetch_repo(path)` | Fetches from the default remote |
+| Command                               | Description                                      |
+| ------------------------------------- | ------------------------------------------------ |
+| `scan_repos(root_path, max_depth)`    | Returns the list of found repos                  |
+| `open_repo(path)` → `GitRepo`         | Opens and validates a repo, adds it to the state |
+| `close_repo(path)`                    | Removes a repo from the active state             |
+| `get_repo_status(path)` → `GitStatus` | Quick status (dirty, ahead/behind)               |
+| `fetch_repo(path)`                    | Fetches from the default remote                  |
 
 ---
 
 ## Persistence
 
 Via `tauri-plugin-store`:
+
 ```json
 {
   "repos": [

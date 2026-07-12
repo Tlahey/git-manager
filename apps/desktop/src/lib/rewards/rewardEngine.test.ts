@@ -17,7 +17,10 @@ function achievement(overrides: Partial<Achievement> = {}): Achievement {
   }
 }
 
-function state(achievements: Achievement[], overrides: Partial<RewardEngineState> = {}): RewardEngineState {
+function state(
+  achievements: Achievement[],
+  overrides: Partial<RewardEngineState> = {}
+): RewardEngineState {
   return {
     achievements,
     points: 0,
@@ -80,7 +83,12 @@ describe('processEvent — single rule kinds', () => {
   })
 
   it('increments the commit counter and unlocks a milestone at threshold', () => {
-    const a = achievement({ id: 'committer', kind: 'milestone', milestoneType: 'commit', milestoneValue: 2 })
+    const a = achievement({
+      id: 'committer',
+      kind: 'milestone',
+      milestoneType: 'commit',
+      milestoneValue: 2,
+    })
     const afterFirst = processEvent(state([a], { commitCount: 0 }), 'commit', undefined)
     expect(afterFirst.newlyUnlocked).toHaveLength(0)
     expect(afterFirst.nextState.commitCount).toBe(1)
@@ -91,7 +99,11 @@ describe('processEvent — single rule kinds', () => {
   })
 
   it('unlocks a terminal_keyword achievement on a matching command', () => {
-    const a = achievement({ id: 'reflogger', kind: 'terminal_keyword', commandKeyword: 'git reflog' })
+    const a = achievement({
+      id: 'reflogger',
+      kind: 'terminal_keyword',
+      commandKeyword: 'git reflog',
+    })
     const result = processEvent(state([a]), 'terminal_command', { command: 'git reflog show' })
     expect(result.newlyUnlocked.map((x) => x.id)).toEqual(['reflogger'])
     expect(result.nextState.terminalCommandCount).toBe(1)
@@ -106,7 +118,12 @@ describe('processEvent — single rule kinds', () => {
 
 describe('processEvent — pair rule state carried across calls', () => {
   it('unlocks a pair achievement when the end event follows the start event for the same file', () => {
-    const a = achievement({ id: 'stage_unstage', kind: 'pair', startEvent: 'stage', endEvent: 'unstage' })
+    const a = achievement({
+      id: 'stage_unstage',
+      kind: 'pair',
+      startEvent: 'stage',
+      endEvent: 'unstage',
+    })
     const afterStage = processEvent(state([a]), 'stage', { filePath: 'foo.ts' })
     expect(afterStage.newlyUnlocked).toHaveLength(0)
     expect(afterStage.nextState.pairTracking.get('stage_unstage')).toEqual(new Set(['foo.ts']))
@@ -116,14 +133,24 @@ describe('processEvent — pair rule state carried across calls', () => {
   })
 
   it('does not unlock the pair achievement for a different file', () => {
-    const a = achievement({ id: 'stage_unstage', kind: 'pair', startEvent: 'stage', endEvent: 'unstage' })
+    const a = achievement({
+      id: 'stage_unstage',
+      kind: 'pair',
+      startEvent: 'stage',
+      endEvent: 'unstage',
+    })
     const afterStage = processEvent(state([a]), 'stage', { filePath: 'foo.ts' })
     const afterUnstage = processEvent(afterStage.nextState, 'unstage', { filePath: 'bar.ts' })
     expect(afterUnstage.newlyUnlocked).toHaveLength(0)
   })
 
   it('does not mutate the pairTracking map of the previous state (nextState is a fresh clone)', () => {
-    const a = achievement({ id: 'stage_unstage', kind: 'pair', startEvent: 'stage', endEvent: 'unstage' })
+    const a = achievement({
+      id: 'stage_unstage',
+      kind: 'pair',
+      startEvent: 'stage',
+      endEvent: 'unstage',
+    })
     const initial = state([a])
     const afterStage = processEvent(initial, 'stage', { filePath: 'foo.ts' })
     expect(initial.pairTracking.size).toBe(0)
@@ -133,24 +160,39 @@ describe('processEvent — pair rule state carried across calls', () => {
 
 describe('processEvent — composite achievements', () => {
   it('reports a composite achievement as pending rather than unlocking it immediately', () => {
-    const platinum = achievement({ id: 'platinum_trophy', kind: 'composite', requiresAllExcept: ['platinum_trophy'] })
+    const platinum = achievement({
+      id: 'platinum_trophy',
+      kind: 'composite',
+      requiresAllExcept: ['platinum_trophy'],
+    })
     const last = achievement({ id: 'last_one', kind: 'action', event: 'discard', unlocked: false })
     const result = processEvent(state([platinum, last]), 'discard', undefined)
 
     expect(result.newlyUnlocked.map((x) => x.id)).toEqual(['last_one'])
     expect(result.pendingComposites.map((x) => x.id)).toEqual(['platinum_trophy'])
-    expect(result.nextState.achievements.find((x) => x.id === 'platinum_trophy')!.unlocked).toBe(false)
+    expect(result.nextState.achievements.find((x) => x.id === 'platinum_trophy')!.unlocked).toBe(
+      false
+    )
   })
 
   it('does not report a composite as pending while other achievements remain locked', () => {
-    const platinum = achievement({ id: 'platinum_trophy', kind: 'composite', requiresAllExcept: ['platinum_trophy'] })
+    const platinum = achievement({
+      id: 'platinum_trophy',
+      kind: 'composite',
+      requiresAllExcept: ['platinum_trophy'],
+    })
     const other = achievement({ id: 'other', kind: 'action', event: 'fixup', unlocked: false })
     const result = processEvent(state([platinum, other]), 'discard', undefined)
     expect(result.pendingComposites).toHaveLength(0)
   })
 
   it('does not re-report an already-unlocked composite as pending', () => {
-    const platinum = achievement({ id: 'platinum_trophy', kind: 'composite', requiresAllExcept: ['platinum_trophy'], unlocked: true })
+    const platinum = achievement({
+      id: 'platinum_trophy',
+      kind: 'composite',
+      requiresAllExcept: ['platinum_trophy'],
+      unlocked: true,
+    })
     const result = processEvent(state([platinum]), 'discard', undefined)
     expect(result.pendingComposites).toHaveLength(0)
   })

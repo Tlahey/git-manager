@@ -18,7 +18,6 @@ import { showStashNativeContextMenu } from '../../api/nativeMenu.api'
 import { apiStashApply, apiStashPop, apiStashDrop } from '../../api/git.api'
 import type { GitStash } from '@git-manager/git-types'
 
-
 interface RepositorySidebarProps {
   repoPath: string
   remoteUrls?: string[]
@@ -97,10 +96,9 @@ export function RepositorySidebar({
       },
       onToggleVisibility: () => {
         toggleStashVisibility(repoPath, stash.commitOid)
-      }
+      },
     }).catch(console.error)
   }
-
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -155,7 +153,7 @@ export function RepositorySidebar({
   if (isBlameOrHistoryActive) {
     return (
       <div
-        className="relative flex h-full shrink-0 flex-col border-r border-border bg-card overflow-hidden"
+        className="relative flex h-full shrink-0 flex-col overflow-hidden border-r border-border bg-card"
         style={{ width: isCollapsed ? 350 : width }}
       >
         <BlameHistoryPanel
@@ -279,4 +277,3 @@ export function RepositorySidebar({
     </div>
   )
 }
-

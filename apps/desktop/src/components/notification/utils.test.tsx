@@ -36,7 +36,10 @@ describe('getNotificationText', () => {
 
   it('passes PR metadata through to the message translation', () => {
     const t = fakeT()
-    getNotificationText(notification({ prNumber: 7, prTitle: 'Fix bug', repo: 'org/repo', author: 'alice' }), t)
+    getNotificationText(
+      notification({ prNumber: 7, prTitle: 'Fix bug', repo: 'org/repo', author: 'alice' }),
+      t
+    )
     expect(t).toHaveBeenCalledWith(
       'notifications.messages.new_pr',
       expect.objectContaining({ number: 7, title: 'Fix bug', repo: 'org/repo', author: 'alice' })
@@ -47,7 +50,10 @@ describe('getNotificationText', () => {
     const t = fakeT()
     getNotificationText(notification({ reviewStatus: 'approved' }), t)
     expect(t).toHaveBeenCalledWith('notifications.status.approved')
-    expect(t).toHaveBeenCalledWith('notifications.messages.new_pr', expect.objectContaining({ status: 'notifications.status.approved' }))
+    expect(t).toHaveBeenCalledWith(
+      'notifications.messages.new_pr',
+      expect.objectContaining({ status: 'notifications.status.approved' })
+    )
   })
 
   it('translates reviewStatus "changes_requested" to a pre-translated status string', () => {
@@ -59,13 +65,19 @@ describe('getNotificationText', () => {
   it('passes through other reviewStatus values (e.g. "pending") as raw text', () => {
     const t = fakeT()
     getNotificationText(notification({ reviewStatus: 'pending' }), t)
-    expect(t).toHaveBeenCalledWith('notifications.messages.new_pr', expect.objectContaining({ status: 'pending' }))
+    expect(t).toHaveBeenCalledWith(
+      'notifications.messages.new_pr',
+      expect.objectContaining({ status: 'pending' })
+    )
   })
 
   it('uses an empty status string when reviewStatus is absent', () => {
     const t = fakeT()
     getNotificationText(notification({ reviewStatus: undefined }), t)
-    expect(t).toHaveBeenCalledWith('notifications.messages.new_pr', expect.objectContaining({ status: '' }))
+    expect(t).toHaveBeenCalledWith(
+      'notifications.messages.new_pr',
+      expect.objectContaining({ status: '' })
+    )
   })
 })
 
@@ -83,7 +95,9 @@ describe('getNotificationIcon', () => {
   })
 
   it('falls back to the default icon for an unregistered type', () => {
-    const { container } = render(<>{getNotificationIcon('unknown_type' as AppNotification['type'])}</>)
+    const { container } = render(
+      <>{getNotificationIcon('unknown_type' as AppNotification['type'])}</>
+    )
     expect(container.querySelector('.bg-sky-500\\/10')).toBeTruthy()
   })
 })

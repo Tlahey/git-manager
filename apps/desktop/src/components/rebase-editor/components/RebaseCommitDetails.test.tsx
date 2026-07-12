@@ -65,7 +65,17 @@ beforeEach(() => {
 describe('RebaseCommitDetails — file list', () => {
   it('builds processed files from the commit diff', async () => {
     mockedGetCommitDiff.mockResolvedValue({
-      files: [{ newPath: 'a.ts', oldPath: 'a.ts', status: 'modified', additions: 2, deletions: 1, isBinary: false, hunks: [] }],
+      files: [
+        {
+          newPath: 'a.ts',
+          oldPath: 'a.ts',
+          status: 'modified',
+          additions: 2,
+          deletions: 1,
+          isBinary: false,
+          hunks: [],
+        },
+      ],
     })
     renderDetails()
     await waitFor(() => expect(lastFileListProps.current).not.toBeNull())
@@ -77,16 +87,40 @@ describe('RebaseCommitDetails — file list', () => {
   it('selecting a file in the list drives the diff panel below', async () => {
     mockedGetCommitDiff.mockResolvedValue({
       files: [
-        { newPath: 'a.ts', oldPath: 'a.ts', status: 'modified', additions: 1, deletions: 0, isBinary: false, hunks: [] },
-        { newPath: 'b.ts', oldPath: 'b.ts', status: 'modified', additions: 1, deletions: 0, isBinary: false, hunks: [] },
+        {
+          newPath: 'a.ts',
+          oldPath: 'a.ts',
+          status: 'modified',
+          additions: 1,
+          deletions: 0,
+          isBinary: false,
+          hunks: [],
+        },
+        {
+          newPath: 'b.ts',
+          oldPath: 'b.ts',
+          status: 'modified',
+          additions: 1,
+          deletions: 0,
+          isBinary: false,
+          hunks: [],
+        },
       ],
     })
-    useFileRawContents.mockReturnValue({ data: { original: 'old', modified: 'new' }, isLoading: false })
+    useFileRawContents.mockReturnValue({
+      data: { original: 'old', modified: 'new' },
+      isLoading: false,
+    })
     renderDetails()
-    await waitFor(() => expect(useFileRawContents).toHaveBeenCalledWith('/repo', 'a.ts', false, 'abcdef1234567890'))
-
-    ;(lastFileListProps.current!.onSelectFileDiff as (f: { path: string }) => void)({ path: 'b.ts' })
-    await waitFor(() => expect(useFileRawContents).toHaveBeenCalledWith('/repo', 'b.ts', false, 'abcdef1234567890'))
+    await waitFor(() =>
+      expect(useFileRawContents).toHaveBeenCalledWith('/repo', 'a.ts', false, 'abcdef1234567890')
+    )
+    ;(lastFileListProps.current!.onSelectFileDiff as (f: { path: string }) => void)({
+      path: 'b.ts',
+    })
+    await waitFor(() =>
+      expect(useFileRawContents).toHaveBeenCalledWith('/repo', 'b.ts', false, 'abcdef1234567890')
+    )
   })
 })
 
@@ -98,9 +132,22 @@ describe('RebaseCommitDetails — diff panel', () => {
 
   it('renders the two-way merge editor with parent/commit labels once a file has contents', async () => {
     mockedGetCommitDiff.mockResolvedValue({
-      files: [{ newPath: 'a.ts', oldPath: 'a.ts', status: 'modified', additions: 1, deletions: 0, isBinary: false, hunks: [] }],
+      files: [
+        {
+          newPath: 'a.ts',
+          oldPath: 'a.ts',
+          status: 'modified',
+          additions: 1,
+          deletions: 0,
+          isBinary: false,
+          hunks: [],
+        },
+      ],
     })
-    useFileRawContents.mockReturnValue({ data: { original: 'old content', modified: 'new content' }, isLoading: false })
+    useFileRawContents.mockReturnValue({
+      data: { original: 'old content', modified: 'new content' },
+      isLoading: false,
+    })
     renderDetails()
     await waitFor(() => expect(screen.getByTestId('three-way-merge-editor')).toBeInTheDocument())
     expect(lastMergeEditorProps.current).toMatchObject({
@@ -123,12 +170,27 @@ describe('RebaseCommitDetails — diff panel', () => {
 
   it('shows a "no parent" placeholder for a root commit', async () => {
     mockedGetCommitDiff.mockResolvedValue({
-      files: [{ newPath: 'a.ts', oldPath: 'a.ts', status: 'modified', additions: 1, deletions: 0, isBinary: false, hunks: [] }],
+      files: [
+        {
+          newPath: 'a.ts',
+          oldPath: 'a.ts',
+          status: 'modified',
+          additions: 1,
+          deletions: 0,
+          isBinary: false,
+          hunks: [],
+        },
+      ],
     })
-    useFileRawContents.mockReturnValue({ data: { original: '', modified: 'new content' }, isLoading: false })
+    useFileRawContents.mockReturnValue({
+      data: { original: '', modified: 'new content' },
+      isLoading: false,
+    })
     renderDetails({ commit: commit({ parentOids: [] }) })
     await waitFor(() => expect(lastMergeEditorProps.current).not.toBeNull())
-    const { getByText: getByTextInLabel } = render(lastMergeEditorProps.current!.originalLabel as React.ReactElement)
+    const { getByText: getByTextInLabel } = render(
+      lastMergeEditorProps.current!.originalLabel as React.ReactElement
+    )
     expect(getByTextInLabel('rebaseEditor.noParent')).toBeInTheDocument()
   })
 })

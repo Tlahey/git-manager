@@ -5,7 +5,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { GitStatus } from '@git-manager/git-types'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key}:${JSON.stringify(opts)}` : key,
+  }),
 }))
 
 const { useConflictedFiles, useGitStatus, swrMutate } = vi.hoisted(() => ({
@@ -23,7 +26,9 @@ vi.mock('../../api/git.api', () => ({
   apiGetRebaseState: vi.fn(),
 }))
 
-const { fileListCalls } = vi.hoisted(() => ({ fileListCalls: { current: [] as Record<string, unknown>[] } }))
+const { fileListCalls } = vi.hoisted(() => ({
+  fileListCalls: { current: [] as Record<string, unknown>[] },
+}))
 vi.mock('./components/CommitFileList', () => ({
   CommitFileList: (props: Record<string, unknown>) => {
     fileListCalls.current.push(props)
@@ -31,7 +36,12 @@ vi.mock('./components/CommitFileList', () => ({
   },
 }))
 
-import { apiRebaseAbort, apiRebaseContinue, apiRebaseSkip, apiGetRebaseState } from '../../api/git.api'
+import {
+  apiRebaseAbort,
+  apiRebaseContinue,
+  apiRebaseSkip,
+  apiGetRebaseState,
+} from '../../api/git.api'
 import { ConflictResolutionPanel } from './ConflictResolutionPanel'
 
 const mockedAbort = apiRebaseAbort as unknown as ReturnType<typeof vi.fn>
@@ -47,13 +57,24 @@ function findFileList(commitOid: 'CONFLICTED' | 'RESOLVED') {
   return fileListCalls.current.find((p) => p.commitOid === commitOid)!
 }
 
-function renderPanel(props: Partial<{ activeFile: string | null; onSelectFile: (p: string) => void; onClose: () => void }> = {}) {
+function renderPanel(
+  props: Partial<{
+    activeFile: string | null
+    onSelectFile: (p: string) => void
+    onClose: () => void
+  }> = {}
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const onSelectFile = props.onSelectFile ?? vi.fn()
   const onClose = props.onClose ?? vi.fn()
   const utils = render(
     <QueryClientProvider client={client}>
-      <ConflictResolutionPanel repoPath="/repo" activeFile={props.activeFile ?? null} onSelectFile={onSelectFile} onClose={onClose} />
+      <ConflictResolutionPanel
+        repoPath="/repo"
+        activeFile={props.activeFile ?? null}
+        onSelectFile={onSelectFile}
+        onClose={onClose}
+      />
     </QueryClientProvider>
   )
   return { ...utils, client, onSelectFile, onClose }
@@ -75,7 +96,9 @@ describe('ConflictResolutionPanel — header', () => {
   it('shows the step-progress badge only once currentStep/totalSteps are known', async () => {
     mockedGetRebaseState.mockResolvedValue({ currentStep: 2, totalSteps: 5 })
     renderPanel()
-    expect(await screen.findByText('conflictEditor.stepProgress:{"current":2,"total":5}')).toBeInTheDocument()
+    expect(
+      await screen.findByText('conflictEditor.stepProgress:{"current":2,"total":5}')
+    ).toBeInTheDocument()
   })
 
   it('hides the step-progress badge when absent', () => {
@@ -103,7 +126,12 @@ describe('ConflictResolutionPanel — file lists', () => {
 
   it('builds resolved items from staged git status, mapping unknown statuses to "modified"', () => {
     useGitStatus.mockReturnValue({
-      data: gitStatus({ staged: [{ path: 'x.ts', status: 'deleted' }, { path: 'y.ts', status: 'copied' }] }),
+      data: gitStatus({
+        staged: [
+          { path: 'x.ts', status: 'deleted' },
+          { path: 'y.ts', status: 'copied' },
+        ],
+      }),
     })
     renderPanel()
     expect(findFileList('RESOLVED').processedFiles).toEqual([
@@ -116,29 +144,41 @@ describe('ConflictResolutionPanel — file lists', () => {
     useConflictedFiles.mockReturnValue({ data: ['a.ts'] })
     const onSelectFile = vi.fn()
     renderPanel({ onSelectFile })
-    ;(findFileList('CONFLICTED').onSelectFileDiff as (f: { path: string }) => void)({ path: 'a.ts' })
+    ;(findFileList('CONFLICTED').onSelectFileDiff as (f: { path: string }) => void)({
+      path: 'a.ts',
+    })
     expect(onSelectFile).toHaveBeenCalledWith('a.ts')
   })
 })
 
 describe('ConflictResolutionPanel — message editing across polls', () => {
   it('initializes the message from the current rebase step', async () => {
-    mockedGetRebaseState.mockResolvedValue({ currentOid: 'step-a', currentMessage: '  fix: step a  ' })
+    mockedGetRebaseState.mockResolvedValue({
+      currentOid: 'step-a',
+      currentMessage: '  fix: step a  ',
+    })
     renderPanel()
-    await waitFor(() => expect(screen.getByPlaceholderText('commit.placeholder')).toHaveValue('fix: step a'))
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText('commit.placeholder')).toHaveValue('fix: step a')
+    )
   })
 
   it('preserves an in-progress edit across a poll that returns the same step', async () => {
     mockedGetRebaseState.mockResolvedValue({ currentOid: 'step-a', currentMessage: 'original' })
     const { client } = renderPanel()
-    await waitFor(() => expect(screen.getByPlaceholderText('commit.placeholder')).toHaveValue('original'))
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText('commit.placeholder')).toHaveValue('original')
+    )
 
     const user = userEvent.setup()
     await user.click(screen.getByTestId('conflict-amend-toggle'))
     await user.clear(screen.getByPlaceholderText('commit.placeholder'))
     await user.type(screen.getByPlaceholderText('commit.placeholder'), 'my edit')
 
-    mockedGetRebaseState.mockResolvedValue({ currentOid: 'step-a', currentMessage: 'original (refetched)' })
+    mockedGetRebaseState.mockResolvedValue({
+      currentOid: 'step-a',
+      currentMessage: 'original (refetched)',
+    })
     await act(async () => {
       await client.refetchQueries({ queryKey: ['rebase-state', '/repo'] })
     })
@@ -148,16 +188,23 @@ describe('ConflictResolutionPanel — message editing across polls', () => {
   it('resets the message once the rebase advances to a new step', async () => {
     mockedGetRebaseState.mockResolvedValue({ currentOid: 'step-a', currentMessage: 'original' })
     const { client } = renderPanel()
-    await waitFor(() => expect(screen.getByPlaceholderText('commit.placeholder')).toHaveValue('original'))
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText('commit.placeholder')).toHaveValue('original')
+    )
 
     const user = userEvent.setup()
     await user.click(screen.getByTestId('conflict-amend-toggle'))
 
-    mockedGetRebaseState.mockResolvedValue({ currentOid: 'step-b', currentMessage: 'next step message' })
+    mockedGetRebaseState.mockResolvedValue({
+      currentOid: 'step-b',
+      currentMessage: 'next step message',
+    })
     await act(async () => {
       await client.refetchQueries({ queryKey: ['rebase-state', '/repo'] })
     })
-    await waitFor(() => expect(screen.getByPlaceholderText('commit.placeholder')).toHaveValue('next step message'))
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText('commit.placeholder')).toHaveValue('next step message')
+    )
   })
 
   it('disables the message textarea unless "amend" is toggled on', async () => {
@@ -179,7 +226,9 @@ describe('ConflictResolutionPanel — action button visibility', () => {
 
   it('shows Continue once all conflicts are resolved', () => {
     useConflictedFiles.mockReturnValue({ data: [] })
-    useGitStatus.mockReturnValue({ data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] }) })
+    useGitStatus.mockReturnValue({
+      data: gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] }),
+    })
     renderPanel()
     expect(screen.getByTestId('conflict-panel-continue-button')).toBeInTheDocument()
     expect(screen.queryByTestId('conflict-panel-skip-button')).not.toBeInTheDocument()

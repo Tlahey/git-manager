@@ -65,7 +65,10 @@ describe('buildDynamicMergeView', () => {
   })
 
   it('assigns sequential block ids to multiple changes', () => {
-    const view = buildDynamicMergeView('a\nb\nc\nd', [lineChange(1, 1, 1, 1), lineChange(3, 3, 3, 3)])
+    const view = buildDynamicMergeView('a\nb\nc\nd', [
+      lineChange(1, 1, 1, 1),
+      lineChange(3, 3, 3, 3),
+    ])
     expect(view.blocks.map((b) => b.blockId)).toEqual([0, 1])
   })
 })
@@ -105,7 +108,13 @@ describe('computeTwoWayVisuals', () => {
   }
 
   it('decorates a modification on both panes and leaves the (unused) ours slot empty', () => {
-    const block = makeBlock({ theirsStartLine: 2, theirsLineCount: 1, oursStartLine: 2, oursLineCount: 1, theirsLines: ['x'] })
+    const block = makeBlock({
+      theirsStartLine: 2,
+      theirsLineCount: 1,
+      oursStartLine: 2,
+      oursLineCount: 1,
+      theirsLines: ['x'],
+    })
     const visuals = computeTwoWayVisuals([block], placementFor(block), false)
 
     expect(visuals.theirs.decorations.some((d) => d.className.includes('modification'))).toBe(true)
@@ -115,7 +124,12 @@ describe('computeTwoWayVisuals', () => {
   })
 
   it('renders a pure addition as a boundary marker on the original pane', () => {
-    const block = makeBlock({ theirsStartLine: 2, theirsLineCount: 0, oursStartLine: 2, oursLineCount: 1 })
+    const block = makeBlock({
+      theirsStartLine: 2,
+      theirsLineCount: 0,
+      oursStartLine: 2,
+      oursLineCount: 1,
+    })
     const visuals = computeTwoWayVisuals([block], placementFor(block), false)
 
     expect(visuals.theirs.decorations).toHaveLength(1)
@@ -124,7 +138,13 @@ describe('computeTwoWayVisuals', () => {
   })
 
   it('renders a pure deletion as a boundary marker on the modified pane', () => {
-    const block = makeBlock({ theirsStartLine: 2, theirsLineCount: 1, oursStartLine: 2, oursLineCount: 0, theirsLines: ['gone'] })
+    const block = makeBlock({
+      theirsStartLine: 2,
+      theirsLineCount: 1,
+      oursStartLine: 2,
+      oursLineCount: 0,
+      theirsLines: ['gone'],
+    })
     const visuals = computeTwoWayVisuals([block], placementFor(block), false)
 
     expect(visuals.center.decorations).toHaveLength(1)

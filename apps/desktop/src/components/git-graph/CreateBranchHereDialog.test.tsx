@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key}:${JSON.stringify(opts)}` : key,
+  }),
 }))
 vi.mock('../../api/git.api', () => ({ apiCreateBranch: vi.fn(), apiCheckoutBranch: vi.fn() }))
 
@@ -19,7 +22,14 @@ function renderDialog(props: Partial<React.ComponentProps<typeof CreateBranchHer
   const invalidateSpy = vi.spyOn(client, 'invalidateQueries')
   const utils = render(
     <QueryClientProvider client={client}>
-      <CreateBranchHereDialog repoPath="/repo" oid="abc123" shortOid="abc123d" open onClose={vi.fn()} {...props} />
+      <CreateBranchHereDialog
+        repoPath="/repo"
+        oid="abc123"
+        shortOid="abc123d"
+        open
+        onClose={vi.fn()}
+        {...props}
+      />
     </QueryClientProvider>
   )
   return { ...utils, invalidateSpy }
@@ -59,7 +69,10 @@ describe('CreateBranchHereDialog — creating a branch', () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
     const { invalidateSpy } = renderDialog({ onClose })
-    await user.type(screen.getByPlaceholderText('gitTree.createBranch.placeholder'), 'feature-x{Enter}')
+    await user.type(
+      screen.getByPlaceholderText('gitTree.createBranch.placeholder'),
+      'feature-x{Enter}'
+    )
 
     expect(mockedCreateBranch).toHaveBeenCalledWith('/repo', 'feature-x', 'abc123')
     expect(mockedCheckoutBranch).toHaveBeenCalledWith('/repo', 'feature-x')

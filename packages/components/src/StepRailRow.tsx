@@ -66,20 +66,34 @@ export function StepRailRow({
         onDrop()
       }}
       className={cn(
-        'flex w-full cursor-pointer items-center gap-1 border-b border-border/30 pr-3 text-xs transition-colors',
-        isSelected ? 'bg-accent' : 'hover:bg-accent/40',
+        'border-border/30 flex w-full cursor-pointer items-center gap-1 border-b pr-3 text-xs transition-colors',
+        isSelected ? 'bg-accent' : 'hover:bg-accent/40'
       )}
       style={{ height: STEP_RAIL_ROW_HEIGHT }}
     >
-      <GripVertical className="ml-1 h-3.5 w-3.5 shrink-0 cursor-grab text-muted-foreground/40" />
+      <GripVertical className="text-muted-foreground/40 ml-1 h-3.5 w-3.5 shrink-0 cursor-grab" />
 
       {/* Mini graph rail */}
       <svg width={28} height={STEP_RAIL_ROW_HEIGHT} className="shrink-0">
         {index > 0 && (
-          <line x1={10} y1={0} x2={10} y2={STEP_RAIL_ROW_HEIGHT / 2} className="stroke-border" strokeWidth={1.5} />
+          <line
+            x1={10}
+            y1={0}
+            x2={10}
+            y2={STEP_RAIL_ROW_HEIGHT / 2}
+            className="stroke-border"
+            strokeWidth={1.5}
+          />
         )}
         {!isLast && (
-          <line x1={10} y1={STEP_RAIL_ROW_HEIGHT / 2} x2={10} y2={STEP_RAIL_ROW_HEIGHT} className="stroke-border" strokeWidth={1.5} />
+          <line
+            x1={10}
+            y1={STEP_RAIL_ROW_HEIGHT / 2}
+            x2={10}
+            y2={STEP_RAIL_ROW_HEIGHT}
+            className="stroke-border"
+            strokeWidth={1.5}
+          />
         )}
         {isCombined ? (
           <>
@@ -98,7 +112,9 @@ export function StepRailRow({
             cx={10}
             cy={STEP_RAIL_ROW_HEIGHT / 2}
             r={isDropped ? 3.5 : 4}
-            className={cn(isDropped ? 'fill-transparent stroke-muted-foreground/50' : 'fill-primary stroke-none')}
+            className={cn(
+              isDropped ? 'stroke-muted-foreground/50 fill-transparent' : 'fill-primary stroke-none'
+            )}
             strokeWidth={1.5}
           />
         )}
@@ -107,23 +123,30 @@ export function StepRailRow({
       <div className="flex min-w-0 flex-1 flex-col justify-center">
         <span
           className={cn(
-            'truncate font-medium leading-tight',
+            'truncate leading-tight font-medium',
             isDropped ? 'text-muted-foreground/50 line-through' : 'text-foreground',
-            isCombined && 'text-muted-foreground',
+            isCombined && 'text-muted-foreground'
           )}
         >
           {title}
         </span>
         {subtitle && (
-          <span className="truncate text-[10px] leading-tight text-muted-foreground/70">{subtitle}</span>
+          <span className="text-muted-foreground/70 truncate text-[10px] leading-tight">
+            {subtitle}
+          </span>
         )}
       </div>
 
-      <Badge variant={badgeVariant ?? 'secondary'} className="shrink-0 px-1.5 py-0 text-[9px] uppercase select-none">
+      <Badge
+        variant={badgeVariant ?? 'secondary'}
+        className="shrink-0 px-1.5 py-0 text-[9px] uppercase select-none"
+      >
         {badgeLabel}
       </Badge>
       {trailingCaption && (
-        <span className="shrink-0 font-mono text-[10px] text-muted-foreground/70">{trailingCaption}</span>
+        <span className="text-muted-foreground/70 shrink-0 font-mono text-[10px]">
+          {trailingCaption}
+        </span>
       )}
     </div>
   )

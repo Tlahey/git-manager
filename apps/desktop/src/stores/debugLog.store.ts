@@ -59,6 +59,6 @@ export const useDebugLogStore = create<DebugLogState>()(
       name: 'git-manager-debug-log',
       // Persist only the opt-in flag — never the captured entries.
       partialize: (state) => ({ enabled: state.enabled }),
-    },
-  ),
+    }
+  )
 )

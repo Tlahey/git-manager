@@ -39,7 +39,12 @@ function unchangedBlock(blockId: number, startLine: number, lineCount: number): 
 describe('collapsedRegionForRange', () => {
   it('hides the middle of a long range, keeping 3 context lines on each side', () => {
     // 10 lines starting at line 1: keep 1-3 and 8-10, hide 4-7.
-    expect(collapsedRegionForRange(1, 1, 10)).toEqual({ blockId: 1, startHide: 4, endHide: 7, collapsedCount: 4 })
+    expect(collapsedRegionForRange(1, 1, 10)).toEqual({
+      blockId: 1,
+      startHide: 4,
+      endHide: 7,
+      collapsedCount: 4,
+    })
   })
 
   it('returns null for ranges too short to have a hideable middle (<= 2 * context lines)', () => {
@@ -48,11 +53,21 @@ describe('collapsedRegionForRange', () => {
   })
 
   it('collapses exactly one line when the range is one past the threshold', () => {
-    expect(collapsedRegionForRange(2, 10, 7)).toEqual({ blockId: 2, startHide: 13, endHide: 13, collapsedCount: 1 })
+    expect(collapsedRegionForRange(2, 10, 7)).toEqual({
+      blockId: 2,
+      startHide: 13,
+      endHide: 13,
+      collapsedCount: 1,
+    })
   })
 
   it('offsets the hidden range by the range start line', () => {
-    expect(collapsedRegionForRange(3, 21, 10)).toEqual({ blockId: 3, startHide: 24, endHide: 27, collapsedCount: 4 })
+    expect(collapsedRegionForRange(3, 21, 10)).toEqual({
+      blockId: 3,
+      startHide: 24,
+      endHide: 27,
+      collapsedCount: 4,
+    })
   })
 })
 
@@ -107,10 +122,12 @@ describe('collapsedRegionsForPane', () => {
         theirsLines: Array.from({ length: 4 }, (_, i) => `l${i}`),
       }),
     ]
-    expect(collapsedRegionsForPane(asymmetric, computeInitialPlacements(asymmetric), new Set(), 'ours')).toEqual([
-      { blockId: 1, startHide: 8, endHide: 11, collapsedCount: 4 },
-    ])
-    expect(collapsedRegionsForPane(asymmetric, computeInitialPlacements(asymmetric), new Set(), 'theirs')).toEqual([])
+    expect(
+      collapsedRegionsForPane(asymmetric, computeInitialPlacements(asymmetric), new Set(), 'ours')
+    ).toEqual([{ blockId: 1, startHide: 8, endHide: 11, collapsedCount: 4 }])
+    expect(
+      collapsedRegionsForPane(asymmetric, computeInitialPlacements(asymmetric), new Set(), 'theirs')
+    ).toEqual([])
   })
 })
 

@@ -19,7 +19,10 @@ const INITIAL_SETTINGS = useSettingsStore.getState()
 beforeEach(() => {
   vi.clearAllMocks()
   useSettingsStore.setState(INITIAL_SETTINGS, true)
-  Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockResolvedValue(undefined) }, configurable: true })
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    configurable: true,
+  })
   useSshPublicKey.mockReturnValue({ data: undefined, error: undefined, mutate: vi.fn() })
 })
 
@@ -55,8 +58,12 @@ describe('SshSection — key paths', () => {
       await Promise.resolve()
     })
 
-    expect(useSettingsStore.getState().settings.ssh!.privateKeyPath).toBe('/Users/me/.ssh/id_ed25519')
-    expect(useSettingsStore.getState().settings.ssh!.publicKeyPath).toBe('/Users/me/.ssh/id_ed25519.pub')
+    expect(useSettingsStore.getState().settings.ssh!.privateKeyPath).toBe(
+      '/Users/me/.ssh/id_ed25519'
+    )
+    expect(useSettingsStore.getState().settings.ssh!.publicKeyPath).toBe(
+      '/Users/me/.ssh/id_ed25519.pub'
+    )
     expect(mutate).not.toHaveBeenCalled()
     await act(async () => vi.advanceTimersByTime(100))
     expect(mutate).toHaveBeenCalledOnce()
@@ -68,7 +75,9 @@ describe('SshSection — key paths', () => {
     const user = userEvent.setup()
     render(<SshSection />)
     await user.click(screen.getAllByText('Parcourir')[1])
-    expect(useSettingsStore.getState().settings.ssh!.publicKeyPath).toBe('/Users/me/.ssh/id_ed25519.pub')
+    expect(useSettingsStore.getState().settings.ssh!.publicKeyPath).toBe(
+      '/Users/me/.ssh/id_ed25519.pub'
+    )
   })
 
   it('does nothing when the file picker is dismissed', async () => {
@@ -76,7 +85,9 @@ describe('SshSection — key paths', () => {
     const user = userEvent.setup()
     render(<SshSection />)
     await user.click(screen.getAllByText('Parcourir')[0])
-    expect(useSettingsStore.getState().settings.ssh!.privateKeyPath).toBe(INITIAL_SETTINGS.settings.ssh!.privateKeyPath)
+    expect(useSettingsStore.getState().settings.ssh!.privateKeyPath).toBe(
+      INITIAL_SETTINGS.settings.ssh!.privateKeyPath
+    )
   })
 
   it('toggles useSystemAgent', async () => {
@@ -94,13 +105,21 @@ describe('SshSection — public key display', () => {
   })
 
   it('shows an error state when the key fails to load', () => {
-    useSshPublicKey.mockReturnValue({ data: undefined, error: new Error('not found'), mutate: vi.fn() })
+    useSshPublicKey.mockReturnValue({
+      data: undefined,
+      error: new Error('not found'),
+      mutate: vi.fn(),
+    })
     render(<SshSection />)
     expect(screen.getByText(/Impossible de charger la clé publique/)).toBeInTheDocument()
   })
 
   it('shows the key content and copies it, reverting the label after 2s', async () => {
-    useSshPublicKey.mockReturnValue({ data: 'ssh-ed25519 AAAA... me@host', error: undefined, mutate: vi.fn() })
+    useSshPublicKey.mockReturnValue({
+      data: 'ssh-ed25519 AAAA... me@host',
+      error: undefined,
+      mutate: vi.fn(),
+    })
     vi.useFakeTimers()
     render(<SshSection />)
     expect(screen.getByText('ssh-ed25519 AAAA... me@host')).toBeInTheDocument()
@@ -132,7 +151,8 @@ describe('SshSection — key generator', () => {
     await user.click(screen.getByText('Ouvrir le générateur'))
     // The generator's own destination-path input starts with the same default value as the
     // top-level private-key-path input, so scope the query to the "Chemin de destination" field.
-    const destPathInput = () => screen.getByText('Chemin de destination').nextElementSibling as HTMLInputElement
+    const destPathInput = () =>
+      screen.getByText('Chemin de destination').nextElementSibling as HTMLInputElement
     expect(destPathInput()).toHaveValue('~/.ssh/id_ed25519')
     expect(screen.queryByText('Taille en bits')).not.toBeInTheDocument()
 
@@ -151,7 +171,13 @@ describe('SshSection — key generator', () => {
     await user.type(screen.getByPlaceholderText('votre.email@domain.com'), 'me@host')
     await user.click(screen.getByText('Générer le couple de clés'))
 
-    expect(mockedGenerateKey).toHaveBeenCalledWith('ed25519', null, 'me@host', '~/.ssh/id_ed25519', undefined)
+    expect(mockedGenerateKey).toHaveBeenCalledWith(
+      'ed25519',
+      null,
+      'me@host',
+      '~/.ssh/id_ed25519',
+      undefined
+    )
     expect(await screen.findByText('Clé générée avec succès !')).toBeInTheDocument()
     expect(screen.getByDisplayValue('ssh-ed25519 AAAAgenerated me@host')).toBeInTheDocument()
     expect(useSettingsStore.getState().settings.ssh!.privateKeyPath).toBe('~/.ssh/id_ed25519')
@@ -169,7 +195,13 @@ describe('SshSection — key generator', () => {
     await user.type(screen.getByPlaceholderText('Laisser vide pour pas de mot de passe'), 'secret')
     await user.click(screen.getByText('Générer le couple de clés'))
 
-    expect(mockedGenerateKey).toHaveBeenCalledWith('rsa', 4096, 'git-manager-key', '~/.ssh/id_rsa', 'secret')
+    expect(mockedGenerateKey).toHaveBeenCalledWith(
+      'rsa',
+      4096,
+      'git-manager-key',
+      '~/.ssh/id_rsa',
+      'secret'
+    )
   })
 
   it('shows an inline error when generation fails', async () => {

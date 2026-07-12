@@ -8,4 +8,3 @@ To ensure long-term codebase readability, ease of maintenance, and testability, 
 - **Use SWR for Data Queries**: For any query/GET requests or data fetching operations (Tauri commands or HTTP calls), use SWR hooks (`useSWR`) instead of inline `useEffect` state synchronization. Place these hooks under `apps/desktop/src/hooks/`.
 - **No Browser Testing / Tauri Exclusivity**: Do not attempt to test, navigate, or verify the application inside Google Chrome (via a browser agent/subagent) because it is a Tauri desktop application. The frontend relies heavily on native Tauri IPC commands which fail or crash when executed in a standard browser environment.
 - **Use `data-testid` for easier debugging**: Add `data-testid` attributes with descriptive label values to key interactive, dynamic, or structural UI elements (like buttons, links, inputs, rows, panels, etc.) to make locating and debugging elements much easier.
-

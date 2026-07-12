@@ -42,7 +42,10 @@ describe('IssuesTab — empty state', () => {
 
 describe('IssuesTab — content', () => {
   it('lists all issues', () => {
-    const issues = [makeIssue({ id: '1', title: 'Issue one' }), makeIssue({ id: '2', title: 'Issue two' })]
+    const issues = [
+      makeIssue({ id: '1', title: 'Issue one' }),
+      makeIssue({ id: '2', title: 'Issue two' }),
+    ]
     render(<IssuesTab allIssues={issues} loading={false} />)
     expect(screen.getByText('Issue one')).toBeInTheDocument()
     expect(screen.getByText('Issue two')).toBeInTheDocument()
@@ -88,18 +91,24 @@ describe('IssuesTab — sorting', () => {
     const sortButtons = Array.from(container.querySelectorAll('.flex.items-center.gap-1 > button'))
     const authorButton = sortButtons.find((b) => b.textContent === 'Author')!
     await user.click(authorButton) // desc by author: zed before alice
-    let titles = Array.from(container.querySelectorAll('.text-xs.font-medium.text-foreground')).map((el) => el.textContent)
+    let titles = Array.from(container.querySelectorAll('.text-xs.font-medium.text-foreground')).map(
+      (el) => el.textContent
+    )
     expect(titles).toEqual(['Issue by zed', 'Issue by alice'])
 
     await user.click(authorButton) // asc: alice before zed
-    titles = Array.from(container.querySelectorAll('.text-xs.font-medium.text-foreground')).map((el) => el.textContent)
+    titles = Array.from(container.querySelectorAll('.text-xs.font-medium.text-foreground')).map(
+      (el) => el.textContent
+    )
     expect(titles).toEqual(['Issue by alice', 'Issue by zed'])
   })
 })
 
 describe('IssuesTab — pagination', () => {
   it('shows a Load more button beyond 20 issues, and loads more on click', async () => {
-    const issues = Array.from({ length: 25 }, (_, i) => makeIssue({ id: String(i), title: `Issue number ${i}` }))
+    const issues = Array.from({ length: 25 }, (_, i) =>
+      makeIssue({ id: String(i), title: `Issue number ${i}` })
+    )
     const user = userEvent.setup()
     render(<IssuesTab allIssues={issues} loading={false} />)
     expect(screen.getByText('Load more (5 remaining)')).toBeInTheDocument()
@@ -110,7 +119,9 @@ describe('IssuesTab — pagination', () => {
   })
 
   it('hides Load more with 20 or fewer issues', () => {
-    const issues = Array.from({ length: 5 }, (_, i) => makeIssue({ id: String(i), title: `Issue number ${i}` }))
+    const issues = Array.from({ length: 5 }, (_, i) =>
+      makeIssue({ id: String(i), title: `Issue number ${i}` })
+    )
     render(<IssuesTab allIssues={issues} loading={false} />)
     expect(screen.queryByText(/Load more/)).not.toBeInTheDocument()
   })

@@ -18,7 +18,12 @@ vi.mock('../../rollback/ResetDialog', () => ({
     onClose: () => void
     onSuccess: () => void
   }) => (
-    <div data-testid="reset-dialog" data-target-oid={p.targetOid} data-target-subject={p.targetSubject} data-mode={p.initialMode}>
+    <div
+      data-testid="reset-dialog"
+      data-target-oid={p.targetOid}
+      data-target-subject={p.targetSubject}
+      data-mode={p.initialMode}
+    >
       <button onClick={p.onClose}>close-reset</button>
       <button onClick={p.onSuccess}>success-reset</button>
     </div>
@@ -33,7 +38,12 @@ vi.mock('../../rollback/RevertDialog', () => ({
 }))
 vi.mock('../TagDialog', () => ({
   TagDialog: (p: { oid: string; shortOid: string; annotated: boolean; onClose: () => void }) => (
-    <div data-testid="tag-dialog" data-oid={p.oid} data-short-oid={p.shortOid} data-annotated={String(p.annotated)}>
+    <div
+      data-testid="tag-dialog"
+      data-oid={p.oid}
+      data-short-oid={p.shortOid}
+      data-annotated={String(p.annotated)}
+    >
       <button onClick={p.onClose}>close-tag</button>
     </div>
   ),
@@ -50,7 +60,17 @@ import { GitGraphOverlayManager } from './GitGraphOverlayManager'
 
 function node(oid: string, overrides: Partial<GitGraphNode['commit']> = {}): GitGraphNode {
   return {
-    commit: { oid, shortOid: oid.slice(0, 7), message: 'msg', subject: `Subject ${oid}`, body: '', author: {} as never, committer: {} as never, parentOids: [], ...overrides },
+    commit: {
+      oid,
+      shortOid: oid.slice(0, 7),
+      message: 'msg',
+      subject: `Subject ${oid}`,
+      body: '',
+      author: {} as never,
+      committer: {} as never,
+      parentOids: [],
+      ...overrides,
+    },
     column: 0,
     color: '#000',
     connections: [],
@@ -60,7 +80,10 @@ function node(oid: string, overrides: Partial<GitGraphNode['commit']> = {}): Git
 
 const NODES = [node('aaa1111'), node('bbb2222')]
 
-function renderManager(pendingAction: PendingAction, overrides: Partial<React.ComponentProps<typeof GitGraphOverlayManager>> = {}) {
+function renderManager(
+  pendingAction: PendingAction,
+  overrides: Partial<React.ComponentProps<typeof GitGraphOverlayManager>> = {}
+) {
   const onClearPendingAction = vi.fn()
   const utils = render(
     <GitGraphOverlayManager
@@ -136,7 +159,12 @@ describe('GitGraphOverlayManager — routing', () => {
   })
 
   it('opens the reset dialog using an explicit target oid/subject over the primary node', () => {
-    renderManager({ kind: 'reset', mode: 'hard', targetOid: 'bbb2222', targetSubject: 'Subject bbb2222' })
+    renderManager({
+      kind: 'reset',
+      mode: 'hard',
+      targetOid: 'bbb2222',
+      targetSubject: 'Subject bbb2222',
+    })
     const dialog = screen.getByTestId('reset-dialog')
     expect(dialog.dataset.targetOid).toBe('bbb2222')
     expect(dialog.dataset.targetSubject).toBe('Subject bbb2222')

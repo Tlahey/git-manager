@@ -16,12 +16,7 @@ interface PullRequestsTabProps {
   loading: boolean
 }
 
-export function PullRequestsTab({
-  allPRs,
-  pinnedIds,
-  onTogglePin,
-  loading,
-}: PullRequestsTabProps) {
+export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: PullRequestsTabProps) {
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -74,24 +69,24 @@ export function PullRequestsTab({
     sortDir
   )
   const needsReview = usePRSort(
-    useMemo(() => filtered.filter((pr) => pr.needsMyReview && !pinnedIds.has(pr.id)), [
-      filtered,
-      pinnedIds,
-    ]),
+    useMemo(
+      () => filtered.filter((pr) => pr.needsMyReview && !pinnedIds.has(pr.id)),
+      [filtered, pinnedIds]
+    ),
     sortKey,
     sortDir
   )
   const other = usePRSort(
-    useMemo(() => filtered.filter((pr) => !pr.needsMyReview && !pinnedIds.has(pr.id)), [
-      filtered,
-      pinnedIds,
-    ]),
+    useMemo(
+      () => filtered.filter((pr) => !pr.needsMyReview && !pinnedIds.has(pr.id)),
+      [filtered, pinnedIds]
+    ),
     sortKey,
     sortDir
   )
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       <Toolbar
         search={search}
         onSearch={setSearch}
@@ -148,7 +143,7 @@ export function PullRequestsTab({
               <>
                 {needsReview.length === 0 && (
                   <div className="flex items-center justify-center py-6 text-xs text-muted-foreground/50">
-                    <Eye className="h-4 w-4 mr-2 opacity-30" /> No PRs waiting for your review
+                    <Eye className="mr-2 h-4 w-4 opacity-30" /> No PRs waiting for your review
                   </div>
                 )}
                 {needsReview.slice(0, shownNeeds).map((pr) => (
@@ -171,7 +166,7 @@ export function PullRequestsTab({
               <>
                 {other.length === 0 && (
                   <div className="flex items-center justify-center py-6 text-xs text-muted-foreground/50">
-                    <GitPullRequest className="h-4 w-4 mr-2 opacity-30" /> No pull requests
+                    <GitPullRequest className="mr-2 h-4 w-4 opacity-30" /> No pull requests
                   </div>
                 )}
                 {other.slice(0, shownOther).map((pr) => (

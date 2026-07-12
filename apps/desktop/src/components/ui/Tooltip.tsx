@@ -37,8 +37,17 @@ function computePosition(
   // Try the preferred placement, then flip if it doesn't fit
   const placements: Placement[] = [
     preferred,
-    preferred === 'top' ? 'bottom' : preferred === 'bottom' ? 'top' : preferred === 'left' ? 'right' : 'left',
-    'top', 'bottom', 'left', 'right',
+    preferred === 'top'
+      ? 'bottom'
+      : preferred === 'bottom'
+        ? 'top'
+        : preferred === 'left'
+          ? 'right'
+          : 'left',
+    'top',
+    'bottom',
+    'left',
+    'right',
   ]
 
   for (const p of placements) {
@@ -111,13 +120,15 @@ function TooltipBubble({
       ref={ref}
       role="tooltip"
       className={[
-        'fixed z-[9999] px-2.5 py-1.5 rounded-lg',
-        'bg-popover border border-border shadow-xl',
-        'text-[11px] text-foreground leading-snug',
+        'fixed z-[9999] rounded-lg px-2.5 py-1.5',
+        'border border-border bg-popover shadow-xl',
+        'text-[11px] leading-snug text-foreground',
         'pointer-events-none whitespace-nowrap',
         'animate-in fade-in-0 zoom-in-95 duration-150',
         className,
-      ].filter(Boolean).join(' ')}
+      ]
+        .filter(Boolean)
+        .join(' ')}
       style={
         pos
           ? { top: pos.top, left: pos.left, position: 'fixed' }
@@ -162,7 +173,9 @@ export function Tooltip({
 
   // Clean up timer on unmount
   useEffect(() => {
-    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
   }, [])
 
   // Clone the child and attach mouse handlers + ref
@@ -173,7 +186,8 @@ export function Tooltip({
       // Forward ref if the child already has one
       const { ref } = child as { ref?: React.Ref<HTMLElement> }
       if (typeof ref === 'function') ref(node)
-      else if (ref && typeof ref === 'object') (ref as React.MutableRefObject<HTMLElement | null>).current = node
+      else if (ref && typeof ref === 'object')
+        (ref as React.MutableRefObject<HTMLElement | null>).current = node
     },
     onMouseEnter: (e: React.MouseEvent) => {
       handleEnter()
@@ -229,7 +243,7 @@ export function useImperativeTooltip() {
     ? createPortal(
         <div
           role="tooltip"
-          className="fixed z-[9999] px-2.5 py-1.5 rounded-lg bg-popover border border-border shadow-xl text-[11px] text-foreground leading-snug pointer-events-none whitespace-nowrap"
+          className="pointer-events-none fixed z-[9999] whitespace-nowrap rounded-lg border border-border bg-popover px-2.5 py-1.5 text-[11px] leading-snug text-foreground shadow-xl"
           style={{
             position: 'fixed',
             top: state.rect.top - 32,

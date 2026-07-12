@@ -51,11 +51,14 @@ describe('useGitGraphColumnsStore', () => {
 describe('useGitGraphColumnsStore — persisted-state merge (forward compatibility)', () => {
   const merge = (
     useGitGraphColumnsStore.persist.getOptions() as unknown as {
-      merge: (persisted: unknown, current: ReturnType<typeof useGitGraphColumnsStore.getState>) => ReturnType<typeof useGitGraphColumnsStore.getState>
+      merge: (
+        persisted: unknown,
+        current: ReturnType<typeof useGitGraphColumnsStore.getState>
+      ) => ReturnType<typeof useGitGraphColumnsStore.getState>
     }
   ).merge
 
-  it('keeps a saved column\'s visibility/width when present in persisted state', () => {
+  it("keeps a saved column's visibility/width when present in persisted state", () => {
     const persisted = { columns: { author: { visible: true, width: 250 } } }
     const merged = merge(persisted, useGitGraphColumnsStore.getState())
     expect(merged.columns.author).toEqual({ visible: true, width: 250 })
@@ -64,7 +67,10 @@ describe('useGitGraphColumnsStore — persisted-state merge (forward compatibili
   it('falls back to defaults for a column missing from persisted state (e.g. newly added)', () => {
     const persisted = { columns: { author: { visible: true, width: 250 } } }
     const merged = merge(persisted, useGitGraphColumnsStore.getState())
-    expect(merged.columns.sha).toEqual({ visible: COLUMN_DEFS.sha.defaultVisible, width: COLUMN_DEFS.sha.defaultWidth })
+    expect(merged.columns.sha).toEqual({
+      visible: COLUMN_DEFS.sha.defaultVisible,
+      width: COLUMN_DEFS.sha.defaultWidth,
+    })
   })
 
   it('re-clamps a persisted width that is now below the current minWidth', () => {

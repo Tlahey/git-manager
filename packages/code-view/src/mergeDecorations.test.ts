@@ -23,7 +23,8 @@ describe('blockDecorationSpecs — hermetic border splitting', () => {
         startLine: 5,
         endLine: 5,
         className: 'merge-text-conflict merge-border-top-conflict merge-border-bottom-conflict',
-        marginClassName: 'merge-vivid-conflict merge-border-top-conflict merge-border-bottom-conflict',
+        marginClassName:
+          'merge-vivid-conflict merge-border-top-conflict merge-border-bottom-conflict',
       },
     ])
   })
@@ -58,7 +59,12 @@ describe('blockDecorationSpecs — hermetic border splitting', () => {
 
   it('collapses to a single plain decoration when neither edge is drawn', () => {
     expect(blockDecorationSpecs(10, 4, 'addition', false, false)).toEqual([
-      { startLine: 10, endLine: 13, className: 'merge-text-addition', marginClassName: 'merge-vivid-addition' },
+      {
+        startLine: 10,
+        endLine: 13,
+        className: 'merge-text-addition',
+        marginClassName: 'merge-vivid-addition',
+      },
     ])
   })
 
@@ -110,28 +116,47 @@ describe('computeMergeVisuals — alignment view zones', () => {
 
   it('draws no border classes by default — plain fills and plain hatched zones only', () => {
     const blocks = conflictBlocks()
-    const placements = updatePlacementAfterToggle(computeInitialPlacements(blocks), blocks, blocks[1], 'theirs', true)
+    const placements = updatePlacementAfterToggle(
+      computeInitialPlacements(blocks),
+      blocks,
+      blocks[1],
+      'theirs',
+      true
+    )
 
     const visuals = computeMergeVisuals(blocks, placements)
 
     expect(visuals.ours.viewZones).toEqual([])
     expect(visuals.ours.decorations).toEqual([
-      { startLine: 2, endLine: 2, className: 'merge-text-conflict', marginClassName: 'merge-vivid-conflict' },
+      {
+        startLine: 2,
+        endLine: 2,
+        className: 'merge-text-conflict',
+        marginClassName: 'merge-vivid-conflict',
+      },
     ])
     expect(visuals.ours.decorations.some((d) => d.className.includes('merge-border-'))).toBe(false)
     expect(visuals.theirs.decorations).toEqual([
       {
         startLine: 2,
         endLine: 2,
-        className: 'merge-text-conflict merge-resolved merge-border-top-conflict merge-resolved merge-border-bottom-conflict merge-resolved',
-        marginClassName: 'merge-vivid-conflict merge-resolved merge-border-top-conflict merge-resolved merge-border-bottom-conflict merge-resolved',
+        className:
+          'merge-text-conflict merge-resolved merge-border-top-conflict merge-resolved merge-border-bottom-conflict merge-resolved',
+        marginClassName:
+          'merge-vivid-conflict merge-resolved merge-border-top-conflict merge-resolved merge-border-bottom-conflict merge-resolved',
       },
     ])
   })
 
   it('fills both side panes once the center holds both sides of a conflict (borders on)', () => {
     const blocks = conflictBlocks()
-    const placements = updatePlacementAfterToggle(computeInitialPlacements(blocks), blocks, blocks[1], 'theirs', true)
+    const placements = updatePlacementAfterToggle(
+      computeInitialPlacements(blocks),
+      blocks,
+      blocks[1],
+      'theirs',
+      true
+    )
 
     const visuals = computeMergeVisuals(blocks, placements, true)
 
@@ -141,7 +166,9 @@ describe('computeMergeVisuals — alignment view zones', () => {
     expect(visuals.ours.viewZones).toEqual([])
     expect(visuals.theirs.viewZones).toEqual([])
     expect(visuals.center.viewZones).toEqual([])
-    expect(visuals.ours.decorations.at(-1)?.className).toBe('merge-text-conflict merge-border-top-conflict merge-border-bottom-conflict')
+    expect(visuals.ours.decorations.at(-1)?.className).toBe(
+      'merge-text-conflict merge-border-top-conflict merge-border-bottom-conflict'
+    )
   })
 
   it('renders a not-yet-pulled pure addition as a zero-height boundary marker (no space consumed) in the empty panes', () => {
@@ -166,13 +193,23 @@ describe('computeMergeVisuals — alignment view zones', () => {
     expect(visuals.ours.viewZones).toEqual([])
     expect(visuals.center.viewZones).toEqual([])
     expect(visuals.center.decorations).toEqual([
-      { startLine: 1, endLine: 1, className: 'merge-marker-top-addition', marginClassName: 'merge-marker-top-addition' },
+      {
+        startLine: 1,
+        endLine: 1,
+        className: 'merge-marker-top-addition',
+        marginClassName: 'merge-marker-top-addition',
+      },
     ])
     expect(visuals.ours.decorations).toEqual([])
     // The side that has the content keeps its classic green block.
     expect(visuals.theirs.viewZones).toEqual([])
     expect(visuals.theirs.decorations).toEqual([
-      { startLine: 1, endLine: 2, className: 'merge-text-addition', marginClassName: 'merge-vivid-addition' },
+      {
+        startLine: 1,
+        endLine: 2,
+        className: 'merge-text-addition',
+        marginClassName: 'merge-vivid-addition',
+      },
     ])
   })
 
@@ -205,7 +242,12 @@ describe('computeMergeVisuals — alignment view zones', () => {
     // the center's marker lands on line 1's bottom edge instead. Ours (the mirror pane) still
     // gets no decoration at all.
     expect(visuals.center.decorations).toEqual([
-      { startLine: 1, endLine: 1, className: 'merge-marker-bottom-addition', marginClassName: 'merge-marker-bottom-addition' },
+      {
+        startLine: 1,
+        endLine: 1,
+        className: 'merge-marker-bottom-addition',
+        marginClassName: 'merge-marker-bottom-addition',
+      },
     ])
     expect(visuals.ours.decorations).toEqual([])
     expect(visuals.ours.viewZones).toEqual([])
@@ -229,7 +271,12 @@ describe('computeMergeVisuals — alignment view zones', () => {
 
     // Theirs deleted these lines: its pane keeps a 2-line hatched zone where they used to be.
     expect(visuals.theirs.decorations).toEqual([
-      { startLine: 1, endLine: 1, className: 'merge-marker-top-deletion', marginClassName: 'merge-marker-top-deletion' },
+      {
+        startLine: 1,
+        endLine: 1,
+        className: 'merge-marker-top-deletion',
+        marginClassName: 'merge-marker-top-deletion',
+      },
     ])
     // Ours and the center still hold the content — plain gray deletion blocks, no zones.
     expect(visuals.ours.viewZones).toEqual([])
@@ -257,13 +304,23 @@ describe('computeMergeVisuals — alignment view zones', () => {
     const visuals = computeMergeVisuals(blocks, computeInitialPlacements(blocks))
 
     expect(visuals.ours.decorations).toEqual([
-      { startLine: 1, endLine: 1, className: 'merge-marker-top-deletion', marginClassName: 'merge-marker-top-deletion' },
+      {
+        startLine: 1,
+        endLine: 1,
+        className: 'merge-marker-top-deletion',
+        marginClassName: 'merge-marker-top-deletion',
+      },
     ])
     // Theirs and the center both show the real, kept content — no zone at the center, ever.
     expect(visuals.theirs.viewZones).toEqual([])
     expect(visuals.center.viewZones).toEqual([])
     expect(visuals.center.decorations).toEqual([
-      { startLine: 1, endLine: 2, className: 'merge-text-deletion', marginClassName: 'merge-vivid-deletion' },
+      {
+        startLine: 1,
+        endLine: 2,
+        className: 'merge-text-deletion',
+        marginClassName: 'merge-vivid-deletion',
+      },
     ])
   })
 
@@ -303,7 +360,12 @@ describe('computeMergeVisuals — alignment view zones', () => {
     const visuals = computeMergeVisuals(blocks, computeInitialPlacements(blocks))
     // Ours has the change, so ours gets blue (modification) decoration.
     expect(visuals.ours.decorations).toEqual([
-      { startLine: 1, endLine: 1, className: 'merge-text-modification', marginClassName: 'merge-vivid-modification' }
+      {
+        startLine: 1,
+        endLine: 1,
+        className: 'merge-text-modification',
+        marginClassName: 'merge-vivid-modification',
+      },
     ])
     // Theirs has NO change, so theirs gets NO decoration.
     expect(visuals.theirs.decorations).toEqual([])
@@ -311,7 +373,13 @@ describe('computeMergeVisuals — alignment view zones', () => {
 
   it('colors the center block with both sub-ranges when both sides are included, bordered as one block (borders on)', () => {
     const blocks = conflictBlocks()
-    const placements = updatePlacementAfterToggle(computeInitialPlacements(blocks), blocks, blocks[1], 'theirs', true)
+    const placements = updatePlacementAfterToggle(
+      computeInitialPlacements(blocks),
+      blocks,
+      blocks[1],
+      'theirs',
+      true
+    )
 
     const visuals = computeMergeVisuals(blocks, placements, true)
     const centerBlockDecorations = visuals.center.decorations
@@ -329,7 +397,8 @@ describe('computeMergeVisuals — alignment view zones', () => {
         startLine: 3,
         endLine: 3,
         className: 'merge-text-conflict merge-resolved merge-border-bottom-conflict merge-resolved',
-        marginClassName: 'merge-vivid-conflict merge-resolved merge-border-bottom-conflict merge-resolved',
+        marginClassName:
+          'merge-vivid-conflict merge-resolved merge-border-bottom-conflict merge-resolved',
       },
     ])
   })
@@ -355,11 +424,21 @@ describe('computeMergeVisuals — alignment view zones', () => {
 
     // Ours (the side that deleted) should get a resolved deletion marker
     expect(visuals.ours.decorations).toEqual([
-      { startLine: 1, endLine: 1, className: 'merge-marker-top-deletion merge-resolved', marginClassName: 'merge-marker-top-deletion merge-resolved' }
+      {
+        startLine: 1,
+        endLine: 1,
+        className: 'merge-marker-top-deletion merge-resolved',
+        marginClassName: 'merge-marker-top-deletion merge-resolved',
+      },
     ])
     // Center (since deletion was accepted, centerCount is 0) should also get a resolved deletion marker
     expect(visuals.center.decorations).toEqual([
-      { startLine: 1, endLine: 1, className: 'merge-marker-top-deletion merge-resolved', marginClassName: 'merge-marker-top-deletion merge-resolved' }
+      {
+        startLine: 1,
+        endLine: 1,
+        className: 'merge-marker-top-deletion merge-resolved',
+        marginClassName: 'merge-marker-top-deletion merge-resolved',
+      },
     ])
   })
 
@@ -384,7 +463,12 @@ describe('computeMergeVisuals — alignment view zones', () => {
 
     // Ours still gets the resolved deletion marker
     expect(visuals.ours.decorations).toEqual([
-      { startLine: 1, endLine: 1, className: 'merge-marker-top-deletion merge-resolved', marginClassName: 'merge-marker-top-deletion merge-resolved' }
+      {
+        startLine: 1,
+        endLine: 1,
+        className: 'merge-marker-top-deletion merge-resolved',
+        marginClassName: 'merge-marker-top-deletion merge-resolved',
+      },
     ])
     // Center does NOT get a marker because center has content (> 0 lines).
     // Instead it gets the resolved deletion decorations for the kept lines.
@@ -393,13 +477,15 @@ describe('computeMergeVisuals — alignment view zones', () => {
         startLine: 1,
         endLine: 1,
         className: 'merge-text-deletion merge-resolved merge-border-top-deletion merge-resolved',
-        marginClassName: 'merge-vivid-deletion merge-resolved merge-border-top-deletion merge-resolved',
+        marginClassName:
+          'merge-vivid-deletion merge-resolved merge-border-top-deletion merge-resolved',
       },
       {
         startLine: 2,
         endLine: 2,
         className: 'merge-text-deletion merge-resolved merge-border-bottom-deletion merge-resolved',
-        marginClassName: 'merge-vivid-deletion merge-resolved merge-border-bottom-deletion merge-resolved',
+        marginClassName:
+          'merge-vivid-deletion merge-resolved merge-border-bottom-deletion merge-resolved',
       },
     ])
   })
@@ -471,8 +557,10 @@ describe('computeMergeVisuals — alignment view zones', () => {
       {
         startLine: 1,
         endLine: 1,
-        className: 'merge-text-conflict merge-resolved merge-border-top-conflict merge-resolved merge-border-bottom-conflict merge-resolved',
-        marginClassName: 'merge-vivid-conflict merge-resolved merge-border-top-conflict merge-resolved merge-border-bottom-conflict merge-resolved',
+        className:
+          'merge-text-conflict merge-resolved merge-border-top-conflict merge-resolved merge-border-bottom-conflict merge-resolved',
+        marginClassName:
+          'merge-vivid-conflict merge-resolved merge-border-top-conflict merge-resolved merge-border-bottom-conflict merge-resolved',
       },
     ])
   })

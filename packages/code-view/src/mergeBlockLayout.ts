@@ -37,7 +37,9 @@ function isAutoMerged(block: MergeBlock): boolean {
  * change). `ours-only` modifications already default to showing ours (the modified version,
  * which *is* the first branch's content); `theirs-only` modifications flip to theirs (the
  * modified version from the incoming branch) instead of showing ours (which mirrors the base). */
-function defaultFlags(block: MergeBlock): Pick<BlockPlacement, 'oursIncluded' | 'theirsIncluded' | 'oursTouched' | 'theirsTouched'> {
+function defaultFlags(
+  block: MergeBlock
+): Pick<BlockPlacement, 'oursIncluded' | 'theirsIncluded' | 'oursTouched' | 'theirsTouched'> {
   const kind = changeKindForBlock(block)
 
   // Ours-only deletion: show theirs (= base, content still present on theirs' side).
@@ -112,7 +114,10 @@ function centerLineCountFor(
   return block.baseLines?.length ?? 0
 }
 
-type PlacementFlags = Pick<BlockPlacement, 'oursIncluded' | 'theirsIncluded' | 'oursTouched' | 'theirsTouched'>
+type PlacementFlags = Pick<
+  BlockPlacement,
+  'oursIncluded' | 'theirsIncluded' | 'oursTouched' | 'theirsTouched'
+>
 
 /** Walks blocks in order, accumulating line counts, so each block's starting line in the
  * center buffer is known without re-parsing the buffer itself. `overrides` lets the magic-wand
@@ -126,7 +131,12 @@ export function recomputeAllPlacements(
   for (const block of blocks) {
     const flags = overrides?.get(block.blockId) ?? defaultFlags(block)
     const centerLineCount = centerLineCountFor(block, flags)
-    placements.set(block.blockId, { blockId: block.blockId, centerStartLine: line, centerLineCount, ...flags })
+    placements.set(block.blockId, {
+      blockId: block.blockId,
+      centerStartLine: line,
+      centerLineCount,
+      ...flags,
+    })
     line += centerLineCount
   }
   return placements
@@ -168,7 +178,10 @@ export function subRangeForSide(
 ): { start: number; count: number } {
   const oursCount = sideLineCount(block, 'ours', placement.oursIncluded)
   if (side === 'ours') return { start: placement.centerStartLine, count: oursCount }
-  return { start: placement.centerStartLine + oursCount, count: sideLineCount(block, 'theirs', placement.theirsIncluded) }
+  return {
+    start: placement.centerStartLine + oursCount,
+    count: sideLineCount(block, 'theirs', placement.theirsIncluded),
+  }
 }
 
 /** Where a side's connector ribbon should anchor on the center-buffer end. When that side *is*
@@ -208,7 +221,9 @@ export function updatePlacementAfterToggle(
   if (!current) return placements
 
   const updated: BlockPlacement =
-    side === 'ours' ? { ...current, oursIncluded: included, oursTouched: true } : { ...current, theirsIncluded: included, theirsTouched: true }
+    side === 'ours'
+      ? { ...current, oursIncluded: included, oursTouched: true }
+      : { ...current, theirsIncluded: included, theirsTouched: true }
 
   // Auto-toggle behavior for conflicts:
   if (block.kind === 'both-different') {
@@ -322,7 +337,8 @@ export function deriveLivePlacements(
     const prevTheirsTouched = prev?.theirsTouched ?? false
 
     const oursMatchesHere = matchesAt(block.oursLines, cursor)
-    const bothMatchHere = oursMatchesHere && matchesAt(block.theirsLines, cursor + block.oursLines.length)
+    const bothMatchHere =
+      oursMatchesHere && matchesAt(block.theirsLines, cursor + block.oursLines.length)
     const theirsMatchesHere = matchesAt(block.theirsLines, cursor)
     const baseMatchesHere = matchesAt(block.baseLines || [], cursor)
 
@@ -417,9 +433,19 @@ export function placementOverridesAfterAutoMerge(
       // Deletions and additions: leave pending (user must decide).
       overrides.set(block.blockId, defaultFlags(block))
     } else if (block.kind === 'theirs-only') {
-      overrides.set(block.blockId, { oursIncluded: false, theirsIncluded: true, oursTouched: true, theirsTouched: true })
+      overrides.set(block.blockId, {
+        oursIncluded: false,
+        theirsIncluded: true,
+        oursTouched: true,
+        theirsTouched: true,
+      })
     } else if (block.kind === 'ours-only') {
-      overrides.set(block.blockId, { oursIncluded: true, theirsIncluded: false, oursTouched: true, theirsTouched: true })
+      overrides.set(block.blockId, {
+        oursIncluded: true,
+        theirsIncluded: false,
+        oursTouched: true,
+        theirsTouched: true,
+      })
     } else {
       overrides.set(block.blockId, defaultFlags(block)) // unchanged/both-same/both-different: leave as default
     }
@@ -463,7 +489,11 @@ export type ColorToken = 'addition' | 'deletion' | 'modification' | 'conflict' |
  * line count being > 0), so which literal side is passed in doesn't change the outcome.
  * Exported for mergeDecorations.ts, which derives border/view-zone classes from the same token
  * rather than re-deriving the state→color mapping. */
-export function sideColorToken(block: MergeBlock, _touched: boolean, side?: MergeSide): ColorToken | undefined {
+export function sideColorToken(
+  block: MergeBlock,
+  _touched: boolean,
+  side?: MergeSide
+): ColorToken | undefined {
   if (isAutoMerged(block)) return undefined
 
   if (side !== undefined && !isChangeSource(block, side)) {
@@ -477,7 +507,11 @@ export function sideColorToken(block: MergeBlock, _touched: boolean, side?: Merg
   return 'modification' // one-sided modification only, from here on
 }
 
-export function connectorClassForSide(block: MergeBlock, touched: boolean, side: MergeSide): string | undefined {
+export function connectorClassForSide(
+  block: MergeBlock,
+  touched: boolean,
+  side: MergeSide
+): string | undefined {
   const token = sideColorToken(block, touched, side)
   return token && `merge-connector-${token}`
 }

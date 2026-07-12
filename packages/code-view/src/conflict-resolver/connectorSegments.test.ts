@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import type { MergeBlock } from '../types'
 import type { BlockPlacement } from '../mergeBlockLayout'
-import { computeInitialPlacements, connectorCenterRangeForSide, updatePlacementAfterToggle } from '../mergeBlockLayout'
-import { type SegmentGeometry, buildThreeWaySegments, buildTwoWaySegments } from './connectorSegments'
+import {
+  computeInitialPlacements,
+  connectorCenterRangeForSide,
+  updatePlacementAfterToggle,
+} from '../mergeBlockLayout'
+import {
+  type SegmentGeometry,
+  buildThreeWaySegments,
+  buildTwoWaySegments,
+} from './connectorSegments'
 
 const LINE_HEIGHT = 10
 
@@ -96,7 +104,14 @@ describe('buildTwoWaySegments', () => {
 
   it('renders a pure insertion’s original-pane end as a 1px marker edge', () => {
     const blocks = [
-      block({ blockId: 1, kind: 'theirs-only', theirsStartLine: 2, theirsLineCount: 0, oursStartLine: 2, oursLineCount: 1 }),
+      block({
+        blockId: 1,
+        kind: 'theirs-only',
+        theirsStartLine: 2,
+        theirsLineCount: 0,
+        oursStartLine: 2,
+        oursLineCount: 1,
+      }),
     ]
     const [segment] = buildTwoWaySegments(blocks, twoWayPlacements(blocks), fakeGeometry())
 
@@ -108,7 +123,11 @@ describe('buildTwoWaySegments', () => {
 
   it('draws a collapsed wave segment for a long unchanged block when collapse is on', () => {
     const blocks = [unchangedBlock(1, 1, 10)]
-    const segments = buildTwoWaySegments(blocks, twoWayPlacements(blocks), fakeGeometry({ collapseUnchanged: true }))
+    const segments = buildTwoWaySegments(
+      blocks,
+      twoWayPlacements(blocks),
+      fakeGeometry({ collapseUnchanged: true })
+    )
 
     expect(segments).toHaveLength(1)
     expect(segments[0]).toMatchObject({
@@ -155,8 +174,18 @@ describe('buildThreeWaySegments', () => {
 
     expect(left).toHaveLength(1)
     expect(right).toHaveLength(1)
-    expect(left[0]).toMatchObject({ id: 2, colorClass: 'merge-connector-conflict', actionable: true, resolved: false })
-    expect(right[0]).toMatchObject({ id: 2, colorClass: 'merge-connector-conflict', actionable: true, resolved: false })
+    expect(left[0]).toMatchObject({
+      id: 2,
+      colorClass: 'merge-connector-conflict',
+      actionable: true,
+      resolved: false,
+    })
+    expect(right[0]).toMatchObject({
+      id: 2,
+      colorClass: 'merge-connector-conflict',
+      actionable: true,
+      resolved: false,
+    })
 
     // The pane end of each segment touches its own pane: theirs on the left gap's left edge,
     // ours on the right gap's right edge.
@@ -175,7 +204,13 @@ describe('buildThreeWaySegments', () => {
 
   it('marks a decided side resolved and no longer actionable, leaving the other side actionable', () => {
     let placements = computeInitialPlacements(conflictBlocks)
-    placements = updatePlacementAfterToggle(placements, conflictBlocks, conflictBlocks[1], 'theirs', true)
+    placements = updatePlacementAfterToggle(
+      placements,
+      conflictBlocks,
+      conflictBlocks[1],
+      'theirs',
+      true
+    )
 
     const { left, right } = buildThreeWaySegments(conflictBlocks, placements, fakeGeometry())
     expect(left[0]).toMatchObject({ resolved: true, actionable: false })
@@ -195,11 +230,19 @@ describe('buildThreeWaySegments', () => {
         theirsLines: ['original'],
       }),
     ]
-    const { left, right } = buildThreeWaySegments(blocks, computeInitialPlacements(blocks), fakeGeometry())
+    const { left, right } = buildThreeWaySegments(
+      blocks,
+      computeInitialPlacements(blocks),
+      fakeGeometry()
+    )
 
     expect(left).toEqual([])
     expect(right).toHaveLength(1)
-    expect(right[0]).toMatchObject({ id: 1, colorClass: 'merge-connector-modification', actionable: true })
+    expect(right[0]).toMatchObject({
+      id: 1,
+      colorClass: 'merge-connector-modification',
+      actionable: true,
+    })
   })
 
   it('anchors a deletion’s empty pane end on the hatched filler zone when one is in the DOM', () => {
@@ -219,7 +262,8 @@ describe('buildThreeWaySegments', () => {
       blocks,
       computeInitialPlacements(blocks),
       fakeGeometry({
-        getZoneRect: (side, blockId) => (side === 'ours' && blockId === 1 ? { top: 100, height: 20 } : null),
+        getZoneRect: (side, blockId) =>
+          side === 'ours' && blockId === 1 ? { top: 100, height: 20 } : null,
       })
     )
 

@@ -25,7 +25,8 @@ function overlayFor(segments: ConnectorSegment[]): HTMLDivElement {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
   overlay.appendChild(svg)
   for (const seg of segments) {
-    const pathCount = seg.colorClass === 'merge-connector-collapsed' ? 2 : seg.resolved && !seg.flat ? 2 : 1
+    const pathCount =
+      seg.colorClass === 'merge-connector-collapsed' ? 2 : seg.resolved && !seg.flat ? 2 : 1
     for (let i = 0; i < pathCount; i++) {
       svg.appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'path'))
     }
@@ -47,7 +48,9 @@ describe('updateConnectorPaths', () => {
 
     const d = overlay.querySelector('path')!.getAttribute('d')!
     // left ys shift by 30, right ys by 10.
-    expect(d).toBe(`M 0,70 C ${GAP_WIDTH / 2},70 ${GAP_WIDTH / 2},90 ${GAP_WIDTH},90 L ${GAP_WIDTH},110 C ${GAP_WIDTH / 2},110 ${GAP_WIDTH / 2},90 0,90 Z`)
+    expect(d).toBe(
+      `M 0,70 C ${GAP_WIDTH / 2},70 ${GAP_WIDTH / 2},90 ${GAP_WIDTH},90 L ${GAP_WIDTH},110 C ${GAP_WIDTH / 2},110 ${GAP_WIDTH / 2},90 0,90 Z`
+    )
   })
 
   it('renders a flat segment as a single thin stroke path', () => {
@@ -88,10 +91,14 @@ describe('updateConnectorPaths', () => {
     const overlay = overlayFor([seg])
 
     updateConnectorPaths(overlay, 40, 15, [seg], 'left', 0)
-    expect((overlay.querySelector('.merge-connector-action-container') as HTMLDivElement).style.top).toBe('60px')
+    expect(
+      (overlay.querySelector('.merge-connector-action-container') as HTMLDivElement).style.top
+    ).toBe('60px')
 
     updateConnectorPaths(overlay, 40, 15, [seg], 'right', 0)
-    expect((overlay.querySelector('.merge-connector-action-container') as HTMLDivElement).style.top).toBe('85px')
+    expect(
+      (overlay.querySelector('.merge-connector-action-container') as HTMLDivElement).style.top
+    ).toBe('85px')
   })
 
   it('is a no-op for a null overlay element', () => {

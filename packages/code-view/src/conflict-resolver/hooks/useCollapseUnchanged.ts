@@ -56,7 +56,10 @@ export function useCollapseUnchanged({
     const oursEditor = editors.oursEditorRef.current
 
     // Clean up previous view zones
-    const clearZones = (paneEditor: editor.IStandaloneCodeEditor | null, zoneIdsRef: MutableRefObject<string[]>) => {
+    const clearZones = (
+      paneEditor: editor.IStandaloneCodeEditor | null,
+      zoneIdsRef: MutableRefObject<string[]>
+    ) => {
       if (paneEditor && zoneIdsRef.current.length > 0) {
         paneEditor.changeViewZones((accessor) => {
           zoneIdsRef.current.forEach((id) => accessor.removeZone(id))
@@ -84,7 +87,11 @@ export function useCollapseUnchanged({
     const toMonacoHidden = (regions: ReturnType<typeof regionsFor>): IRange[] =>
       regions.map((r) => new monacoInstance.Range(r.startHide, 1, r.endHide, 1))
     const toZonesToAdd = (regions: ReturnType<typeof regionsFor>) =>
-      regions.map((r) => ({ afterLineNumber: r.startHide - 1, collapsedCount: r.collapsedCount, blockId: r.blockId }))
+      regions.map((r) => ({
+        afterLineNumber: r.startHide - 1,
+        collapsedCount: r.collapsedCount,
+        blockId: r.blockId,
+      }))
 
     const theirsRegions = regionsFor('theirs')
     const oursRegions = regionsFor('ours')
@@ -165,7 +172,16 @@ export function useCollapseUnchanged({
       clearZones(editors.centerEditorRef.current, editors.centerCollapsedViewZonesRef)
       clearZones(editors.oursEditorRef.current, editors.oursCollapsedViewZonesRef)
     }
-  }, [editors, collapseUnchanged, expandedBlocks, blocks, placements, scheduleRecompute, expandBlock, editorsReady])
+  }, [
+    editors,
+    collapseUnchanged,
+    expandedBlocks,
+    blocks,
+    placements,
+    scheduleRecompute,
+    expandBlock,
+    editorsReady,
+  ])
 
   return { collapseUnchanged, setCollapseUnchanged, expandedBlocks, expandBlock }
 }

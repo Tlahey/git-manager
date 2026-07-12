@@ -7,7 +7,9 @@ import type { GitBranch } from '@git-manager/git-types'
 const { useBranches } = vi.hoisted(() => ({ useBranches: vi.fn() }))
 vi.mock('../../hooks/useBranches', () => ({ useBranches }))
 vi.mock('../../api/git.api', () => ({ apiRemoveRemote: vi.fn() }))
-vi.mock('./HoverExpandLabel', () => ({ HoverExpandLabel: ({ children }: { children: React.ReactNode }) => <span>{children}</span> }))
+vi.mock('./HoverExpandLabel', () => ({
+  HoverExpandLabel: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+}))
 
 import { apiRemoveRemote } from '../../api/git.api'
 import { RemotesSection } from './RemotesSection'
@@ -68,7 +70,9 @@ describe('RemotesSection — visibility', () => {
   })
 
   it('filters remote branches by name', () => {
-    useBranches.mockReturnValue({ data: [remoteBranch('origin/main'), remoteBranch('origin/feature-x')] })
+    useBranches.mockReturnValue({
+      data: [remoteBranch('origin/main'), remoteBranch('origin/feature-x')],
+    })
     renderSection({ filter: 'feat' })
     expect(screen.getByText('feature-x')).toBeInTheDocument()
     expect(screen.queryByText('main')).not.toBeInTheDocument()
@@ -77,7 +81,9 @@ describe('RemotesSection — visibility', () => {
 
 describe('RemotesSection — grouping and display', () => {
   it('groups branches by remote name and strips the prefix from the display name', () => {
-    useBranches.mockReturnValue({ data: [remoteBranch('origin/main'), remoteBranch('upstream/dev')] })
+    useBranches.mockReturnValue({
+      data: [remoteBranch('origin/main'), remoteBranch('upstream/dev')],
+    })
     renderSection()
     expect(screen.getByText('origin')).toBeInTheDocument()
     expect(screen.getByText('upstream')).toBeInTheDocument()
@@ -92,7 +98,9 @@ describe('RemotesSection — grouping and display', () => {
   })
 
   it('shows ahead/behind indicators only when non-zero', () => {
-    useBranches.mockReturnValue({ data: [remoteBranch('origin/main', { aheadCount: 1, behindCount: 2 })] })
+    useBranches.mockReturnValue({
+      data: [remoteBranch('origin/main', { aheadCount: 1, behindCount: 2 })],
+    })
     renderSection()
     expect(screen.getByText('↑1')).toBeInTheDocument()
     expect(screen.getByText('↓2')).toBeInTheDocument()
@@ -174,6 +182,8 @@ describe('RemotesSection — removing a remote', () => {
     useBranches.mockReturnValue({ data: [remoteBranch('origin/main')] })
     renderSection()
     fireEvent.click(screen.getByLabelText('Remove remote origin'))
-    await vi.waitFor(() => expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('remove failed')))
+    await vi.waitFor(() =>
+      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('remove failed'))
+    )
   })
 })

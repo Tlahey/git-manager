@@ -81,7 +81,9 @@ beforeEach(() => {
 
 describe('usePullRequestsPage — derived counts', () => {
   it('counts open PRs (open + draft) for openPRsCount', () => {
-    mockGitHubData({ prs: [pr({ status: 'open' }), pr({ status: 'draft' }), pr({ status: 'merged' })] })
+    mockGitHubData({
+      prs: [pr({ status: 'open' }), pr({ status: 'draft' }), pr({ status: 'merged' })],
+    })
     const { result } = renderHook(() => usePullRequestsPage())
     expect(result.current.openPRsCount).toBe(2)
   })
@@ -99,7 +101,9 @@ describe('usePullRequestsPage — derived counts', () => {
   })
 
   it('computes ciPassRate as a rounded percentage', () => {
-    mockGitHubData({ prs: [pr({ ciStatus: 'success' }), pr({ ciStatus: 'failure' }), pr({ ciStatus: 'success' })] })
+    mockGitHubData({
+      prs: [pr({ ciStatus: 'success' }), pr({ ciStatus: 'failure' }), pr({ ciStatus: 'success' })],
+    })
     const { result } = renderHook(() => usePullRequestsPage())
     expect(result.current.ciPassRate).toBe(67)
   })
@@ -110,7 +114,10 @@ describe('usePullRequestsPage — derived counts', () => {
   })
 
   it('sums the last 7 days of commits for weekCommits', () => {
-    const commitDays: DayCommit[] = Array.from({ length: 10 }, (_, i) => ({ date: `d${i}`, commits: i }))
+    const commitDays: DayCommit[] = Array.from({ length: 10 }, (_, i) => ({
+      date: `d${i}`,
+      commits: i,
+    }))
     mockGitHubData({ commitDays })
     const { result } = renderHook(() => usePullRequestsPage())
     // last 7 entries: commits 3..9 = 3+4+5+6+7+8+9 = 42

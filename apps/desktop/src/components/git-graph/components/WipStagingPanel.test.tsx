@@ -48,7 +48,9 @@ beforeEach(() => {
 })
 
 function renderPanel(props: Partial<React.ComponentProps<typeof WipStagingPanel>> = {}) {
-  return render(<WipStagingPanel repoPath="/repo" gitStatus={gitStatus()} allWipChanges={[]} {...props} />)
+  return render(
+    <WipStagingPanel repoPath="/repo" gitStatus={gitStatus()} allWipChanges={[]} {...props} />
+  )
 }
 
 describe('WipStagingPanel — mode toggle', () => {
@@ -73,7 +75,9 @@ describe('WipStagingPanel — mode toggle', () => {
 
 describe('WipStagingPanel — classic commit form', () => {
   it('binds the commit message textarea and disables it while generating', () => {
-    useWipCommitPanel.mockReturnValue(panelState({ commitMessage: 'my message', isGenerating: true }))
+    useWipCommitPanel.mockReturnValue(
+      panelState({ commitMessage: 'my message', isGenerating: true })
+    )
     renderPanel()
     expect(screen.getByPlaceholderText('commit.placeholder')).toHaveValue('my message')
     expect(screen.getByPlaceholderText('commit.placeholder')).toBeDisabled()
@@ -91,7 +95,9 @@ describe('WipStagingPanel — classic commit form', () => {
 
   it('shows a stop control while generating, and calls the handler either way', async () => {
     const handleGenerateCommitMessage = vi.fn()
-    useWipCommitPanel.mockReturnValue(panelState({ isGenerating: true, handleGenerateCommitMessage }))
+    useWipCommitPanel.mockReturnValue(
+      panelState({ isGenerating: true, handleGenerateCommitMessage })
+    )
     const user = userEvent.setup()
     renderPanel()
     expect(screen.getByText('commit.stop')).toBeInTheDocument()
@@ -117,7 +123,14 @@ describe('WipStagingPanel — classic commit form', () => {
   it('lists history entries and selects one into the commit message', async () => {
     const setCommitMessage = vi.fn()
     const setHistoryOpen = vi.fn()
-    useWipCommitPanel.mockReturnValue(panelState({ historyOpen: true, history: ['fix: old bug', 'feat: thing'], setCommitMessage, setHistoryOpen }))
+    useWipCommitPanel.mockReturnValue(
+      panelState({
+        historyOpen: true,
+        history: ['fix: old bug', 'feat: thing'],
+        setCommitMessage,
+        setHistoryOpen,
+      })
+    )
     const user = userEvent.setup()
     renderPanel()
     await user.click(screen.getByText('fix: old bug'))
@@ -130,11 +143,23 @@ describe('WipStagingPanel — classic commit form', () => {
     expect(screen.getByText('commit.commit').closest('button')).toBeDisabled()
 
     useWipCommitPanel.mockReturnValue(panelState({ commitMessage: '   ' }))
-    rerender(<WipStagingPanel repoPath="/repo" gitStatus={gitStatus({ staged: [{ path: 'a', status: 'modified' }] })} allWipChanges={[]} />)
+    rerender(
+      <WipStagingPanel
+        repoPath="/repo"
+        gitStatus={gitStatus({ staged: [{ path: 'a', status: 'modified' }] })}
+        allWipChanges={[]}
+      />
+    )
     expect(screen.getByText('commit.commit').closest('button')).toBeDisabled()
 
     useWipCommitPanel.mockReturnValue(panelState({ commitMessage: 'ok', isCommitting: true }))
-    rerender(<WipStagingPanel repoPath="/repo" gitStatus={gitStatus({ staged: [{ path: 'a', status: 'modified' }] })} allWipChanges={[]} />)
+    rerender(
+      <WipStagingPanel
+        repoPath="/repo"
+        gitStatus={gitStatus({ staged: [{ path: 'a', status: 'modified' }] })}
+        allWipChanges={[]}
+      />
+    )
     expect(screen.getByText('commit.commit').closest('button')).toBeDisabled()
   })
 
@@ -171,7 +196,9 @@ describe('WipStagingPanel — batch mode', () => {
 
   it('binds the per-group message textarea', () => {
     renderPanel()
-    expect(screen.getByPlaceholderText('commitDetails.batchCommit.placeholder')).toHaveValue('auth message')
+    expect(screen.getByPlaceholderText('commitDetails.batchCommit.placeholder')).toHaveValue(
+      'auth message'
+    )
   })
 
   it('generates a message for the batch when clicked', async () => {
@@ -209,20 +236,33 @@ describe('WipStagingPanel — batch mode', () => {
       panelState({ batchMode: true, wipBatches: { auth: [file()] }, batchMessages: { auth: '' } })
     )
     const { rerender } = renderPanel()
-    expect(screen.getByText('commitDetails.batchCommit.commitBatch').closest('button')).toBeDisabled()
+    expect(
+      screen.getByText('commitDetails.batchCommit.commitBatch').closest('button')
+    ).toBeDisabled()
 
     useWipCommitPanel.mockReturnValue(
-      panelState({ batchMode: true, wipBatches: { auth: [file()] }, batchMessages: { auth: 'ready' } })
+      panelState({
+        batchMode: true,
+        wipBatches: { auth: [file()] },
+        batchMessages: { auth: 'ready' },
+      })
     )
     rerender(<WipStagingPanel repoPath="/repo" gitStatus={gitStatus()} allWipChanges={[]} />)
-    expect(screen.getByText('commitDetails.batchCommit.commitBatch').closest('button')).toBeEnabled()
+    expect(
+      screen.getByText('commitDetails.batchCommit.commitBatch').closest('button')
+    ).toBeEnabled()
   })
 
   it('commits the batch when clicked', async () => {
     const commitBatch = vi.fn()
     const files = [file()]
     useWipCommitPanel.mockReturnValue(
-      panelState({ batchMode: true, wipBatches: { auth: files }, batchMessages: { auth: 'ready' }, commitBatch })
+      panelState({
+        batchMode: true,
+        wipBatches: { auth: files },
+        batchMessages: { auth: 'ready' },
+        commitBatch,
+      })
     )
     const user = userEvent.setup()
     renderPanel()

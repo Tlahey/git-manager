@@ -108,16 +108,16 @@ Diff view between the two branches:
 
 ## Tauri commands involved
 
-| Command | Parameters | Description |
-|---------|-----------|-------------|
-| `get_branches` | `path, include_remote?` | Full list |
-| `create_branch` | `path, name, from_ref` | Creates a branch |
-| `checkout_branch` | `path, name, force?` | Checkout |
-| `rename_branch` | `path, old_name, new_name` | Renames |
-| `delete_branch` | `path, name, force?, delete_remote?` | Deletes |
-| `merge_branch` | `path, source, strategy` | Merge |
-| `compare_branches` | `path, base, compare` | Commits and diff between branches |
-| `get_ahead_behind` | `path, branch` | Sync status vs remote |
+| Command            | Parameters                           | Description                       |
+| ------------------ | ------------------------------------ | --------------------------------- |
+| `get_branches`     | `path, include_remote?`              | Full list                         |
+| `create_branch`    | `path, name, from_ref`               | Creates a branch                  |
+| `checkout_branch`  | `path, name, force?`                 | Checkout                          |
+| `rename_branch`    | `path, old_name, new_name`           | Renames                           |
+| `delete_branch`    | `path, name, force?, delete_remote?` | Deletes                           |
+| `merge_branch`     | `path, source, strategy`             | Merge                             |
+| `compare_branches` | `path, base, compare`                | Commits and diff between branches |
+| `get_ahead_behind` | `path, branch`                       | Sync status vs remote             |
 
 ---
 

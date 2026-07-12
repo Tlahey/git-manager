@@ -33,7 +33,8 @@ async function invoke<T>(command: string, args?: Record<string, unknown>): Promi
   try {
     // Preserve the exact call shape (no trailing `undefined`) so no-arg commands still forward as
     // `invoke('cmd')` rather than `invoke('cmd', undefined)`.
-    const result = args === undefined ? await tauriInvoke<T>(command) : await tauriInvoke<T>(command, args)
+    const result =
+      args === undefined ? await tauriInvoke<T>(command) : await tauriInvoke<T>(command, args)
     record(command, args, start, 'ok')
     return result
   } catch (err) {
@@ -47,7 +48,7 @@ function record(
   args: Record<string, unknown> | undefined,
   start: number,
   status: 'ok' | 'error',
-  error?: string,
+  error?: string
 ) {
   const store = useDebugLogStore.getState()
   if (!store.enabled) return
@@ -78,7 +79,14 @@ export const initRepo = (path: string) => invoke<GitRepo>('init_repo', { path })
 
 export const getLog = (
   path: string,
-  opts?: { limit?: number; skip?: number; branch?: string; author?: string; showStashes?: boolean; hiddenStashes?: string[] }
+  opts?: {
+    limit?: number
+    skip?: number
+    branch?: string
+    author?: string
+    showStashes?: boolean
+    hiddenStashes?: string[]
+  }
 ) => invoke<GitGraphNode[]>('get_log', { path, ...opts })
 
 export const getCommitDiff = (path: string, oid: string) =>
@@ -127,14 +135,14 @@ export const stashPop = (path: string, index?: number) => invoke<void>('stash_po
 export const stashApply = (path: string, index?: number) =>
   invoke<void>('stash_apply', { path, index })
 
-export const stashDrop = (path: string, index: number) => invoke<void>('stash_drop', { path, index })
+export const stashDrop = (path: string, index: number) =>
+  invoke<void>('stash_drop', { path, index })
 
 export const stashStore = (path: string, commitOid: string, message: string) =>
   invoke<void>('stash_store', { path, commitOid, message })
 
 export const editStashMessage = (path: string, index: number, message: string) =>
   invoke<void>('edit_stash_message', { path, index, message })
-
 
 // ─── Worktree ─────────────────────────────────────────────────────────────────
 
@@ -187,7 +195,8 @@ export const resolveConflictBinary = (path: string, filePath: string, side: 'our
 
 // ─── Ollama ───────────────────────────────────────────────────────────────────
 
-export const checkOllamaStatus = (url: string) => invoke<OllamaStatus>('check_ollama_status', { url })
+export const checkOllamaStatus = (url: string) =>
+  invoke<OllamaStatus>('check_ollama_status', { url })
 
 export const generateCommitMessage = (path: string, model: string, promptHint?: string) =>
   invoke<void>('generate_commit_message', { path, model, promptHint })
@@ -215,7 +224,6 @@ export interface DiscardResult {
 export const discardFileChanges = (path: string, filePath: string) =>
   invoke<DiscardResult>('discard_file_changes', { path, filePath })
 
-
 export const stageAll = (path: string) => invoke<void>('stage_all', { path })
 
 export const unstageAll = (path: string) => invoke<void>('unstage_all', { path })
@@ -231,7 +239,12 @@ export const createCommit = (path: string, message: string, amend = false, amend
 export const getStagedDiff = (path: string) => invoke<GitDiff>('get_staged_diff', { path })
 
 export const getFileDiff = (path: string, filePath: string, staged: boolean, oid?: string) =>
-  invoke<import('@git-manager/git-types').GitDiffFile>('get_file_diff', { path, filePath, staged, oid })
+  invoke<import('@git-manager/git-types').GitDiffFile>('get_file_diff', {
+    path,
+    filePath,
+    staged,
+    oid,
+  })
 
 export interface RawFileDiffContents {
   original: string
@@ -255,10 +268,11 @@ export const fetchRemote = (path: string, remote?: string) =>
   invoke<{ remote: string; updatedRefs: string[] }>('fetch_remote', { path, remote })
 
 export const pullBranch = (path: string, remote?: string, rebase?: boolean) =>
-  invoke<{ fastForwarded: boolean; commitsMerged: number; conflicts: string[] }>(
-    'pull_branch',
-    { path, remote, rebase },
-  )
+  invoke<{ fastForwarded: boolean; commitsMerged: number; conflicts: string[] }>('pull_branch', {
+    path,
+    remote,
+    rebase,
+  })
 
 export const pushBranch = (path: string, remote?: string, force?: boolean) =>
   invoke<void>('push_branch', { path, remote, force })
@@ -403,13 +417,11 @@ export const getPendingFixups = (path: string) =>
 export const autosquashPreview = (path: string) =>
   invoke<AutosquashGroup[]>('autosquash_preview', { path })
 
-export const runAutosquash = (path: string) =>
-  invoke<void>('run_autosquash', { path })
+export const runAutosquash = (path: string) => invoke<void>('run_autosquash', { path })
 
 // ─── Submodules ───────────────────────────────────────────────────────────────
 
-export const listSubmodules = (path: string) =>
-  invoke<GitSubmodule[]>('list_submodules', { path })
+export const listSubmodules = (path: string) => invoke<GitSubmodule[]>('list_submodules', { path })
 
 // ─── GitHub OAuth ─────────────────────────────────────────────────────────────
 
@@ -440,8 +452,7 @@ export const githubDeviceCode = (scope: string) =>
 export const githubPollToken = (deviceCode: string) =>
   invoke<PollTokenResponse>('github_poll_token', { deviceCode })
 
-export const githubGetUser = (token: string) =>
-  invoke<GitHubUserInfo>('github_get_user', { token })
+export const githubGetUser = (token: string) => invoke<GitHubUserInfo>('github_get_user', { token })
 
 export interface GitHubRepoInfo {
   id: number
@@ -458,17 +469,14 @@ export const githubListRepos = (token: string) =>
 
 // ─── Extended Repo Stats & Tools ─────────────────────────────────────────────
 
-export const getRepoSummary = (path: string) =>
-  invoke<GitRepoSummary>('get_repo_summary', { path })
+export const getRepoSummary = (path: string) => invoke<GitRepoSummary>('get_repo_summary', { path })
 
 export const openInEditor = (path: string, editor: string, customCommand?: string) =>
   invoke<void>('open_in_editor', { path, editor, customCommand })
 
-export const getRepoReadme = (path: string) =>
-  invoke<string>('get_repo_readme', { path })
+export const getRepoReadme = (path: string) => invoke<string>('get_repo_readme', { path })
 
-export const getTerminalCommands = () =>
-  invoke<string[]>('get_terminal_commands')
+export const getTerminalCommands = () => invoke<string[]>('get_terminal_commands')
 
 // ─── SSH ─────────────────────────────────────────────────────────────────────
 
@@ -480,5 +488,4 @@ export const generateSshKey = (
   passphrase?: string
 ) => invoke<string>('generate_ssh_key', { keyType, bits, comment, path, passphrase })
 
-export const readSshPublicKey = (path: string) =>
-  invoke<string>('read_ssh_public_key', { path })
+export const readSshPublicKey = (path: string) => invoke<string>('read_ssh_public_key', { path })

@@ -119,12 +119,16 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
         ...COLUMN_DEFS[k],
         width: columnState[k].width,
       })),
-    [columnState],
+    [columnState]
   )
 
   const showStashesInGraph = useSettingsStore((s) => s.settings.git.showStashesInGraph ?? true)
 
-  const { data: nodes = [], isLoading, isError } = useGitLog(repoPath, {
+  const {
+    data: nodes = [],
+    isLoading,
+    isError,
+  } = useGitLog(repoPath, {
     limit: 500,
     branch: branch || undefined,
     showStashes: showStashesInGraph,
@@ -137,18 +141,12 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     searchQuery,
     totalChanges,
     t,
-    conflictInfo,
+    conflictInfo
   )
 
   // ── Sélection (multiple) hook ──────────────────────────────────────────────
-  const {
-    selected,
-    primaryOid,
-    setPrimaryOid,
-    selectSingle,
-    handleRowSelect,
-    clearSelection,
-  } = useCommitSelection(filteredNodes, onSelectCommit)
+  const { selected, primaryOid, setPrimaryOid, selectSingle, handleRowSelect, clearSelection } =
+    useCommitSelection(filteredNodes, onSelectCommit)
 
   // Bridge: lets components outside GitGraph (e.g. the toolbar's conflict indicator) select
   // the synthetic "CONFLICT" row via the store, since `selectSingle` is local to this component.
@@ -181,7 +179,10 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
   // ── Virtualisation ─────────────────────────────────────────────────────────
   const parentRef = useRef<HTMLDivElement>(null)
-  const lastScrolledRef = useRef<{ branch: string | undefined; repoPath: string }>({ branch: undefined, repoPath: '' })
+  const lastScrolledRef = useRef<{ branch: string | undefined; repoPath: string }>({
+    branch: undefined,
+    repoPath: '',
+  })
 
   const virtualizer = useVirtualizer({
     count: filteredNodes.length,
@@ -216,15 +217,20 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
     const currentSelected = branch || primaryOid
     // Find a node that has a ref matching the branch name, or matches by OID (stashes)
-    const matchNode = nodes.find((node) =>
-      node.commit.oid === currentSelected ||
-      node.refs.some((r) => r.name === currentSelected || r.shortName === currentSelected)
-    ) || nodes[0]
+    const matchNode =
+      nodes.find(
+        (node) =>
+          node.commit.oid === currentSelected ||
+          node.refs.some((r) => r.name === currentSelected || r.shortName === currentSelected)
+      ) || nodes[0]
 
     if (matchNode && matchNode.commit.oid !== 'WIP') {
       selectSingle(matchNode.commit.oid)
 
-      if (lastScrolledRef.current.branch !== branch || lastScrolledRef.current.repoPath !== repoPath) {
+      if (
+        lastScrolledRef.current.branch !== branch ||
+        lastScrolledRef.current.repoPath !== repoPath
+      ) {
         lastScrolledRef.current = { branch, repoPath }
         const index = filteredNodes.findIndex((n) => n.commit.oid === matchNode.commit.oid)
         if (index !== -1) {
@@ -252,13 +258,15 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   }
 
   const isSelectedCommitHead = useMemo(() => {
-    if (!primaryNode || primaryNode.commit.oid === 'WIP' || primaryNode.commit.oid === 'CONFLICT') return false
+    if (!primaryNode || primaryNode.commit.oid === 'WIP' || primaryNode.commit.oid === 'CONFLICT')
+      return false
     // Strategy 1: a ref with type 'HEAD' is directly on this commit (detached HEAD)
     const hasHeadRef = primaryNode.refs.some((r) => r.type === 'HEAD')
     // Strategy 2: the commit carries the branch that HEAD currently points to
     const hasBranchRef = headBranchName
       ? primaryNode.refs.some(
-          (r) => r.type === 'branch' && (r.shortName === headBranchName || r.name === headBranchName),
+          (r) =>
+            r.type === 'branch' && (r.shortName === headBranchName || r.name === headBranchName)
         )
       : false
     // Strategy 3: fallback – first node in the walk is typically HEAD
@@ -268,7 +276,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   }, [primaryNode, nodes, headBranchName])
 
   return (
-    <div className="flex h-full overflow-hidden select-none">
+    <div className="flex h-full select-none overflow-hidden">
       {/* Zone principale : tableau virtualisé ou DiffViewCenter */}
       <div className="flex min-w-[280px] flex-1 flex-col overflow-hidden">
         {activeDiffFile ? (
@@ -383,11 +391,14 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
           {/* Handle de redimensionnement */}
           <div
             {...resizeProps}
-            className="group relative w-2 shrink-0 cursor-col-resize transition-colors hover:bg-primary/40 select-none"
+            className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
           >
             <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
           </div>
-          <div className="h-full shrink-0 overflow-hidden min-w-[350px]" style={{ width: panelWidthState }}>
+          <div
+            className="h-full min-w-[350px] shrink-0 overflow-hidden"
+            style={{ width: panelWidthState }}
+          >
             {isConflictPanelOpen ? (
               <ConflictResolutionPanel
                 repoPath={repoPath}

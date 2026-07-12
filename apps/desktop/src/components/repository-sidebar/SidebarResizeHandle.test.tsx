@@ -13,7 +13,11 @@ describe('SidebarResizeHandle', () => {
     const onPointerMove = vi.fn()
     const onPointerUp = vi.fn()
     const { container } = render(
-      <SidebarResizeHandle onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} />
+      <SidebarResizeHandle
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+      />
     )
     const handle = container.firstElementChild!
     firePointer(handle, 'pointerdown')
@@ -25,7 +29,9 @@ describe('SidebarResizeHandle', () => {
   })
 
   it('is hidden from the accessibility tree', () => {
-    const { container } = render(<SidebarResizeHandle onPointerDown={vi.fn()} onPointerMove={vi.fn()} onPointerUp={vi.fn()} />)
+    const { container } = render(
+      <SidebarResizeHandle onPointerDown={vi.fn()} onPointerMove={vi.fn()} onPointerUp={vi.fn()} />
+    )
     expect(container.firstElementChild).toHaveAttribute('aria-hidden')
   })
 })

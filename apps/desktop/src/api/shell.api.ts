@@ -11,7 +11,11 @@ export async function apiOpenUrl(url: string): Promise<void> {
   }
 }
 
-export async function apiOpenTerminal(path: string, terminal: string, customCommand?: string): Promise<void> {
+export async function apiOpenTerminal(
+  path: string,
+  terminal: string,
+  customCommand?: string
+): Promise<void> {
   try {
     await invoke('open_in_terminal', { path, terminal, customCommand })
   } catch (err) {

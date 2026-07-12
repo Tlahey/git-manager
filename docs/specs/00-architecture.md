@@ -32,13 +32,13 @@ Define the overall technical structure of the application: stack, code organizat
 
 ## Monorepo: packages
 
-| Package | Role |
-|---------|------|
-| `apps/desktop` | Main Tauri application |
-| `packages/ui` | shadcn/ui components + Radix primitives |
-| `packages/i18n` | FR/EN dictionaries + `useTranslation` hook |
-| `packages/git-types` | Shared TypeScript types (IPC DTOs) |
-| `packages/config` | Shared ESLint config + Tailwind preset |
+| Package              | Role                                       |
+| -------------------- | ------------------------------------------ |
+| `apps/desktop`       | Main Tauri application                     |
+| `packages/ui`        | shadcn/ui components + Radix primitives    |
+| `packages/i18n`      | FR/EN dictionaries + `useTranslation` hook |
+| `packages/git-types` | Shared TypeScript types (IPC DTOs)         |
+| `packages/config`    | Shared ESLint config + Tailwind preset     |
 
 ---
 
@@ -73,7 +73,7 @@ app_handle.emit("ollama:token", payload).unwrap();
 ```typescript
 import { listen } from '@tauri-apps/api/event'
 await listen<string>('ollama:token', (event) => {
-  setMessage(prev => prev + event.payload)
+  setMessage((prev) => prev + event.payload)
 })
 ```
 
@@ -149,19 +149,19 @@ All data types exchanged between Rust and TypeScript are defined here. Rust stru
 export interface GitRepo {
   path: string
   name: string
-  head: string        // HEAD branch name
+  head: string // HEAD branch name
   isDetached: boolean
   isDirty: boolean
 }
 
 export interface GitCommit {
-  oid: string         // full SHA-1
-  shortOid: string    // 7 characters
+  oid: string // full SHA-1
+  shortOid: string // 7 characters
   message: string
   author: GitSignature
   committer: GitSignature
   parentOids: string[]
-  timestamp: number   // Unix timestamp
+  timestamp: number // Unix timestamp
 }
 
 export interface GitSignature {
@@ -197,13 +197,17 @@ export interface GitStatusEntry {
 ## Error handling
 
 ### Rust
+
 All commands return `Result<T, String>` where `String` contains a structured JSON error message:
+
 ```json
 { "code": "REPO_NOT_FOUND", "message": "...", "detail": "..." }
 ```
 
 ### TypeScript
+
 A `useCommand` hook wraps `invoke` with unified error handling:
+
 ```typescript
 const { data, error, isLoading } = useCommand('get_log', { repoPath, limit: 100 })
 ```
@@ -223,6 +227,7 @@ const { data, error, isLoading } = useCommand('get_log', { repoPath, limit: 100 
 ## Persistence
 
 Configuration is persisted via `tauri-plugin-store` in `~/.config/git-manager/config.json`:
+
 - List of added repos
 - Ollama configuration (URL, model)
 - UI preferences (language, theme, sidebar)

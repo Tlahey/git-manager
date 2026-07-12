@@ -236,9 +236,13 @@ describe('PullRequestsPage — tab navigation', () => {
   })
 
   it('shows per-tab counts from tabCounts', () => {
-    mockHook({ tabCounts: { prs: 5, followed: 0, issues: 2, waiting: 1, stats: undefined, views: undefined } })
+    mockHook({
+      tabCounts: { prs: 5, followed: 0, issues: 2, waiting: 1, stats: undefined, views: undefined },
+    })
     const { container } = render(<PullRequestsPage />)
-    const tabBar = container.querySelector('.flex.items-center.border-b.border-border.bg-card\\/30')!
+    const tabBar = container.querySelector(
+      '.flex.items-center.border-b.border-border.bg-card\\/30'
+    )!
     expect(tabBar.textContent).toContain('5')
     expect(tabBar.textContent).toContain('2')
   })

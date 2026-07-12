@@ -102,7 +102,9 @@ export function DebugSection() {
                 data-command={entry.command}
               >
                 <div className="flex items-baseline gap-2">
-                  <span className="shrink-0 text-muted-foreground">{formatDebugTimestamp(entry.timestamp)}</span>
+                  <span className="shrink-0 text-muted-foreground">
+                    {formatDebugTimestamp(entry.timestamp)}
+                  </span>
                   <span
                     className={
                       entry.status === 'error'

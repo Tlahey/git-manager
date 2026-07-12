@@ -78,7 +78,11 @@ describe('useRepoUIStore — tabs', () => {
 
 describe('useRepoUIStore — active repo/tab selection', () => {
   it('setActiveRepo clears diff/left-panel/conflict state', () => {
-    useRepoUIStore.setState({ activeDiffFile: { path: 'a.ts', staged: false }, activeLeftPanel: 'blame', conflictFilePath: 'b.ts' })
+    useRepoUIStore.setState({
+      activeDiffFile: { path: 'a.ts', staged: false },
+      activeLeftPanel: 'blame',
+      conflictFilePath: 'b.ts',
+    })
     useRepoUIStore.getState().setActiveRepo('/repo/a')
     const state = useRepoUIStore.getState()
     expect(state.activeRepo).toBe('/repo/a')

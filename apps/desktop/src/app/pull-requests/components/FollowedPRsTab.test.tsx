@@ -112,7 +112,10 @@ describe('FollowedPRsTab — Follow PR dialog', () => {
     const user = userEvent.setup()
     renderTab({ onAddFollowed })
     await user.click(screen.getByText('Follow PR'))
-    await user.type(screen.getByPlaceholderText('https://github.com/owner/repo/pull/123'), 'https://github.com/owner/my-repo/pull/456')
+    await user.type(
+      screen.getByPlaceholderText('https://github.com/owner/repo/pull/123'),
+      'https://github.com/owner/my-repo/pull/456'
+    )
     await user.click(screen.getByRole('button', { name: 'Follow PR' }))
     expect(onAddFollowed).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -139,7 +142,9 @@ describe('FollowedPRsTab — Follow PR dialog', () => {
 
 describe('FollowedPRsTab — pagination', () => {
   it('shows a Load more button beyond 20 followed PRs', async () => {
-    const prs = Array.from({ length: 22 }, (_, i) => makePR({ id: String(i), title: `Followed ${i}` }))
+    const prs = Array.from({ length: 22 }, (_, i) =>
+      makePR({ id: String(i), title: `Followed ${i}` })
+    )
     const user = userEvent.setup()
     renderTab({ followedPRs: prs })
     expect(screen.getByText('Load more (2 remaining)')).toBeInTheDocument()

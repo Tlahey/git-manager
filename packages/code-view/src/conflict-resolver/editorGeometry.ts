@@ -17,7 +17,10 @@ export function getTopForLineNumberSafe(
   // If the line itself is inside a hidden range, its top is the bottom of the last visible line before the range
   for (const range of hiddenRanges) {
     if (lineNumber >= range.start && lineNumber <= range.end) {
-      return getTopForLineNumberSafe(editor, range.start - 1, lineHeight, hiddenRanges, viewZones) + lineHeight
+      return (
+        getTopForLineNumberSafe(editor, range.start - 1, lineHeight, hiddenRanges, viewZones) +
+        lineHeight
+      )
     }
   }
 

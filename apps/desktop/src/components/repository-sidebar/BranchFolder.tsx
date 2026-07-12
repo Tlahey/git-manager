@@ -41,7 +41,7 @@ export function BranchFolder({
           {hasHead && <span className="mr-1 text-[9px] text-emerald-400">●</span>}
           {prefix}
         </span>
-        <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground/40">
+        <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/40">
           {branches.length}
         </span>
       </button>
@@ -53,9 +53,7 @@ export function BranchFolder({
             <BranchItem
               key={branch.name}
               branch={branch}
-              isSelected={
-                selectedBranch === branch.shortName || selectedBranch === branch.name
-              }
+              isSelected={selectedBranch === branch.shortName || selectedBranch === branch.name}
               depth={1}
               isPinned={pinnedNames?.has(branch.shortName) ?? false}
               onSelect={onSelect}

@@ -4,12 +4,12 @@
  * reference. Hover a card to zoom the part and reveal its bounding box.
  */
 
-import { useState } from 'react';
-import type { Meta, StoryObj } from '@storybook/react';
-import { SPRITES } from './rigUtils';
+import { useState } from 'react'
+import type { Meta, StoryObj } from '@storybook/react'
+import { SPRITES } from './rigUtils'
 
-const meta: Meta = { title: 'Mascot/Parts' };
-export default meta;
+const meta: Meta = { title: 'Mascot/Parts' }
+export default meta
 
 const LABELS: Record<string, string> = {
   head: 'tête (sans visage)',
@@ -23,11 +23,11 @@ const LABELS: Record<string, string> = {
   t8: 'tentacule milieu droite (sombre, flippée)',
   t7: 'tentacule intérieure gauche',
   t6: 'tentacule intérieure droite',
-};
+}
 
 function PartCard({ name, background }: { name: keyof typeof SPRITES; background: string }) {
-  const [hover, setHover] = useState(false);
-  const s = SPRITES[name];
+  const [hover, setHover] = useState(false)
+  const s = SPRITES[name]
   return (
     <figure
       onPointerEnter={() => setHover(true)}
@@ -71,11 +71,11 @@ function PartCard({ name, background }: { name: keyof typeof SPRITES; background
         </span>
       </figcaption>
     </figure>
-  );
+  )
 }
 
 interface GalleryArgs {
-  background: 'dark' | 'light' | 'checker';
+  background: 'dark' | 'light' | 'checker'
 }
 
 export const Gallery: StoryObj<GalleryArgs> = {
@@ -87,7 +87,7 @@ export const Gallery: StoryObj<GalleryArgs> = {
         ? '#0a1830'
         : background === 'light'
           ? '#eef4f8'
-          : 'repeating-conic-gradient(#e8e8e8 0% 25%, #ffffff 0% 50%) 0 0 / 20px 20px';
+          : 'repeating-conic-gradient(#e8e8e8 0% 25%, #ffffff 0% 50%) 0 0 / 20px 20px'
     return (
       <div
         style={{
@@ -104,6 +104,6 @@ export const Gallery: StoryObj<GalleryArgs> = {
           <PartCard key={name} name={name} background={bg} />
         ))}
       </div>
-    );
+    )
   },
-};
+}

@@ -32,7 +32,8 @@ describe('HeaderColumnsMenu', () => {
     for (const key of COLUMN_ORDER) {
       expect(screen.getByText(`gitTree.columns.${key}`)).toBeInTheDocument()
     }
-    const itemFor = (key: string) => screen.getByText(`gitTree.columns.${key}`).closest('[role="menuitem"]')!
+    const itemFor = (key: string) =>
+      screen.getByText(`gitTree.columns.${key}`).closest('[role="menuitem"]')!
     expect(itemFor('refs').querySelector('svg')).toBeTruthy()
     expect(itemFor('graph').querySelector('svg')).toBeTruthy()
     expect(itemFor('message').querySelector('svg')).toBeTruthy()
@@ -57,7 +58,9 @@ describe('HeaderColumnsMenu', () => {
 
   it('disables the toggle for the last remaining visible column', () => {
     useGitGraphColumnsStore.setState({
-      columns: Object.fromEntries(COLUMN_ORDER.map((k) => [k, { visible: k === 'message', width: 100 }])) as never,
+      columns: Object.fromEntries(
+        COLUMN_ORDER.map((k) => [k, { visible: k === 'message', width: 100 }])
+      ) as never,
     })
     renderMenu()
     expect(screen.getByRole('menuitem', { name: /message/ })).toHaveAttribute('data-disabled')

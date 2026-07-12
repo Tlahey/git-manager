@@ -32,7 +32,11 @@ describe('navigation', () => {
   it('calls onNavigate with "prev"/"next" and disables buttons per canNavigate flags', async () => {
     const user = userEvent.setup()
     const onNavigate = vi.fn()
-    render(<ConflictResolverHeader {...props({ onNavigate, canNavigatePrev: false, canNavigateNext: true })} />)
+    render(
+      <ConflictResolverHeader
+        {...props({ onNavigate, canNavigatePrev: false, canNavigateNext: true })}
+      />
+    )
 
     expect(screen.getByTestId('merge-nav-prev')).toBeDisabled()
     expect(screen.getByTestId('merge-nav-next')).toBeEnabled()
@@ -86,7 +90,9 @@ describe('apply non-conflicting changes', () => {
   })
 
   it('suppresses the wand even with a callback when actions.autoMerge is explicitly false', () => {
-    render(<ConflictResolverHeader {...props({ onApplyAuto: vi.fn(), actions: { autoMerge: false } })} />)
+    render(
+      <ConflictResolverHeader {...props({ onApplyAuto: vi.fn(), actions: { autoMerge: false } })} />
+    )
     expect(screen.queryByTestId('merge-wand-btn')).not.toBeInTheDocument()
   })
 })
@@ -203,7 +209,9 @@ describe('collapse unchanged toggle', () => {
   it('calls setCollapseUnchanged with the inverse of the current value', async () => {
     const user = userEvent.setup()
     const setCollapseUnchanged = vi.fn()
-    render(<ConflictResolverHeader {...props({ setCollapseUnchanged, collapseUnchanged: false })} />)
+    render(
+      <ConflictResolverHeader {...props({ setCollapseUnchanged, collapseUnchanged: false })} />
+    )
     await user.click(screen.getByTestId('merge-collapse-unchanged-btn'))
     expect(setCollapseUnchanged).toHaveBeenCalledWith(true)
   })
@@ -216,14 +224,18 @@ describe('collapse unchanged toggle', () => {
 
 describe('status bar / panel layout', () => {
   it('renders all three status slots in three-panel mode', () => {
-    render(<ConflictResolverHeader {...props({ statuses: ['L', 'C', 'R'], panelWidths: [1, 1, 1] })} />)
+    render(
+      <ConflictResolverHeader {...props({ statuses: ['L', 'C', 'R'], panelWidths: [1, 1, 1] })} />
+    )
     expect(screen.getByTestId('merge-header-left-status')).toHaveTextContent('L')
     expect(screen.getByTestId('merge-header-center-status')).toHaveTextContent('C')
     expect(screen.getByTestId('merge-header-right-status')).toHaveTextContent('R')
   })
 
   it('omits the right status slot in two-panel mode (panelWidths[2] === 0)', () => {
-    render(<ConflictResolverHeader {...props({ statuses: ['L', 'C', 'R'], panelWidths: [1, 1, 0] })} />)
+    render(
+      <ConflictResolverHeader {...props({ statuses: ['L', 'C', 'R'], panelWidths: [1, 1, 0] })} />
+    )
     expect(screen.getByTestId('merge-header-left-status')).toBeInTheDocument()
     expect(screen.getByTestId('merge-header-center-status')).toBeInTheDocument()
     expect(screen.queryByTestId('merge-header-right-status')).not.toBeInTheDocument()

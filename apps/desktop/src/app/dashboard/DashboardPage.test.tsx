@@ -3,13 +3,16 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
-vi.mock('@git-manager/mascot', () => ({ OctopusMascot: () => <div data-testid="octopus-mascot" /> }))
+vi.mock('@git-manager/mascot', () => ({
+  OctopusMascot: () => <div data-testid="octopus-mascot" />,
+}))
 
 const { dialogOpen } = vi.hoisted(() => ({ dialogOpen: vi.fn() }))
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: dialogOpen }))
 vi.mock('../../api/repo.api', () => ({ apiOpenRepo: vi.fn(), apiScanRepos: vi.fn() }))
 vi.mock('../../components/tab-bar/CloneRepoDialog', () => ({
-  CloneRepoDialog: (props: { open: boolean }) => (props.open ? <div data-testid="clone-dialog" /> : null),
+  CloneRepoDialog: (props: { open: boolean }) =>
+    props.open ? <div data-testid="clone-dialog" /> : null,
 }))
 vi.mock('./components/ReadmePanel', () => ({
   ReadmePanel: (props: { path: string; onClose: () => void }) => (
@@ -19,14 +22,18 @@ vi.mock('./components/ReadmePanel', () => ({
   ),
 }))
 
-const { lastRepoRowCalls } = vi.hoisted(() => ({ lastRepoRowCalls: { current: [] as Record<string, unknown>[] } }))
+const { lastRepoRowCalls } = vi.hoisted(() => ({
+  lastRepoRowCalls: { current: [] as Record<string, unknown>[] },
+}))
 vi.mock('./components/RepoRow', () => ({
   RepoRow: (props: Record<string, unknown>) => {
     lastRepoRowCalls.current.push(props)
     return (
       <div data-testid={`repo-row-${props.path}`}>
         {props.name as string}
-        <button onClick={props.onToggleReadme as () => void}>toggle-readme-{props.path as string}</button>
+        <button onClick={props.onToggleReadme as () => void}>
+          toggle-readme-{props.path as string}
+        </button>
       </div>
     )
   },
@@ -165,7 +172,14 @@ describe('DashboardPage — header actions', () => {
 
   it('opens a repo via the file picker, adds it to the store, and opens its tab', async () => {
     dialogOpen.mockResolvedValue('/Users/me/projects/new-repo')
-    mockedOpenRepo.mockResolvedValue({ path: '/Users/me/projects/new-repo', name: 'new-repo', head: 'main', isDetached: false, isDirty: false, remotes: [] })
+    mockedOpenRepo.mockResolvedValue({
+      path: '/Users/me/projects/new-repo',
+      name: 'new-repo',
+      head: 'main',
+      isDetached: false,
+      isDirty: false,
+      remotes: [],
+    })
     const user = userEvent.setup()
     render(<DashboardPage onOpenSettings={vi.fn()} />)
     await user.click(screen.getByText('dashboard.browse'))

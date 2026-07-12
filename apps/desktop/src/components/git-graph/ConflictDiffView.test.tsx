@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { forwardRef, useImperativeHandle } from 'react'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key}:${JSON.stringify(opts)}` : key,
+  }),
 }))
 
 const { useMergeView } = vi.hoisted(() => ({ useMergeView: vi.fn() }))
@@ -20,11 +23,13 @@ const { mergeEditorMock, lastMergeEditorProps } = vi.hoisted(() => ({
   lastMergeEditorProps: { current: null as null | { onPendingCountChange: (n: number) => void } },
 }))
 vi.mock('../merge-editor/ThreeWayMergeEditor', () => {
-  const ThreeWayMergeEditor = forwardRef((props: { onPendingCountChange: (n: number) => void }, ref) => {
-    lastMergeEditorProps.current = props
-    useImperativeHandle(ref, () => mergeEditorMock)
-    return <div data-testid="three-way-merge-editor" />
-  })
+  const ThreeWayMergeEditor = forwardRef(
+    (props: { onPendingCountChange: (n: number) => void }, ref) => {
+      lastMergeEditorProps.current = props
+      useImperativeHandle(ref, () => mergeEditorMock)
+      return <div data-testid="three-way-merge-editor" />
+    }
+  )
   ThreeWayMergeEditor.displayName = 'ThreeWayMergeEditor'
   return { ThreeWayMergeEditor }
 })
@@ -39,7 +44,13 @@ function renderView(props: Partial<React.ComponentProps<typeof ConflictDiffView>
   const onClose = vi.fn()
   const onResolved = vi.fn()
   const utils = render(
-    <ConflictDiffView repoPath="/repo" filePath="src/a.ts" onClose={onClose} onResolved={onResolved} {...props} />
+    <ConflictDiffView
+      repoPath="/repo"
+      filePath="src/a.ts"
+      onClose={onClose}
+      onResolved={onResolved}
+      {...props}
+    />
   )
   return { ...utils, onClose, onResolved }
 }
@@ -108,7 +119,7 @@ describe('ConflictDiffView — renderable content', () => {
     expect(mergeEditorMock.applyAutoMerge).toHaveBeenCalledOnce()
   })
 
-  it('marks resolved with the merge editor\'s center value and calls onResolved', async () => {
+  it("marks resolved with the merge editor's center value and calls onResolved", async () => {
     mockedResolve.mockResolvedValue(undefined)
     const user = userEvent.setup()
     const { onResolved } = renderView()
@@ -142,7 +153,10 @@ describe('ConflictDiffView — binary/delete/rename fallback', () => {
   })
 
   it('shows the delete-conflict message for a delete conflictKind', () => {
-    useMergeView.mockReturnValue({ data: { renderable: false, isBinary: false, conflictKind: 'delete' }, isLoading: false })
+    useMergeView.mockReturnValue({
+      data: { renderable: false, isBinary: false, conflictKind: 'delete' },
+      isLoading: false,
+    })
     renderView()
     expect(screen.getByText('conflictEditor.deleteConflict')).toBeInTheDocument()
   })

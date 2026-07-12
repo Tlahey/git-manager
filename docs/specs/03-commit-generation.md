@@ -39,12 +39,12 @@ The generated message follows the **Conventional Commits** format:
 
 ### Configuration
 
-| Parameter | Default | Configurable in |
-|-----------|--------|-------------------|
-| Ollama URL | `http://localhost:11434` | Settings → LLM |
-| Model | `llama3.2` | Settings → LLM |
-| Temperature | `0.3` | Settings → LLM (advanced) |
-| Timeout | `30s` | Settings → LLM (advanced) |
+| Parameter   | Default                  | Configurable in           |
+| ----------- | ------------------------ | ------------------------- |
+| Ollama URL  | `http://localhost:11434` | Settings → LLM            |
+| Model       | `llama3.2`               | Settings → LLM            |
+| Temperature | `0.3`                    | Settings → LLM (advanced) |
+| Timeout     | `30s`                    | Settings → LLM (advanced) |
 
 ### API call
 
@@ -59,8 +59,9 @@ POST http://localhost:11434/api/generate
 ```
 
 The response is streamed line by line (NDJSON). Each line contains a token:
+
 ```json
-{"model":"llama3.2","response":" feat","done":false}
+{ "model": "llama3.2", "response": " feat", "done": false }
 ```
 
 ---
@@ -99,6 +100,7 @@ Analyze the following Git diff and generate a commit message:
 ### Diff truncation
 
 Large diffs are intelligently truncated:
+
 1. Priority given to new files and modified files
 2. Max 4000 tokens of diff (configurable)
 3. If truncated: mention `[diff truncated, showing first N changes]`
@@ -120,25 +122,25 @@ components/commit-panel/
 
 ## Generation states
 
-| State | UI |
-|------|-----|
-| `idle` | "✨ Generate" button active |
-| `connecting` | Spinner, "Connecting to Ollama..." |
-| `streaming` | Text appears progressively, "⏹ Stop" button |
-| `done` | Complete message, "Regenerate" + "Commit" buttons |
-| `error:ollama_down` | Banner "Ollama is not running — `ollama serve`" |
-| `error:model_missing` | Banner "Model not found — `ollama pull {model}`" |
-| `error:no_staged` | Disabled button, tooltip "Stage files first" |
+| State                 | UI                                                |
+| --------------------- | ------------------------------------------------- |
+| `idle`                | "✨ Generate" button active                       |
+| `connecting`          | Spinner, "Connecting to Ollama..."                |
+| `streaming`           | Text appears progressively, "⏹ Stop" button       |
+| `done`                | Complete message, "Regenerate" + "Commit" buttons |
+| `error:ollama_down`   | Banner "Ollama is not running — `ollama serve`"   |
+| `error:model_missing` | Banner "Model not found — `ollama pull {model}`"  |
+| `error:no_staged`     | Disabled button, tooltip "Stage files first"      |
 
 ---
 
 ## Tauri commands involved
 
-| Command | Description |
-|---------|-------------|
-| `generate_commit_message(path, model, prompt_hint?)` | Starts generation, emits `ollama:token` events |
-| `cancel_generation()` | Cancels the ongoing generation |
-| `check_ollama_status()` → `OllamaStatus` | Checks whether Ollama is available and lists the models |
+| Command                                              | Description                                             |
+| ---------------------------------------------------- | ------------------------------------------------------- |
+| `generate_commit_message(path, model, prompt_hint?)` | Starts generation, emits `ollama:token` events          |
+| `cancel_generation()`                                | Cancels the ongoing generation                          |
+| `check_ollama_status()` → `OllamaStatus`             | Checks whether Ollama is available and lists the models |
 
 ### Streaming events on the Rust side
 
@@ -167,6 +169,7 @@ app_handle.emit("ollama:error", error_message).unwrap();
 ## Session history
 
 During the session, the last N generated messages are remembered (not persisted between sessions):
+
 - Accessible via a dropdown menu on the "Generate" button
 - Allows going back to a previous message
 

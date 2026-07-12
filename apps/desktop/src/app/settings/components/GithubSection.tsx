@@ -29,9 +29,7 @@ export function GithubSection() {
   const activeAccount = github.accounts.find((a) => a.id === github.activeAccountId) || null
 
   // SWR Hook replaces manual useEffect for repo list fetching
-  const { data: reposData, isLoading: loadingRepos } = useGitHubRepos(
-    activeAccount?.token ?? null
-  )
+  const { data: reposData, isLoading: loadingRepos } = useGitHubRepos(activeAccount?.token ?? null)
   const repos = reposData ?? []
 
   const { connecting, error, deviceFlowData, startOAuthLogin, completeLoginWithToken, cancelFlow } =
@@ -99,13 +97,15 @@ export function GithubSection() {
   }
 
   return (
-    <div className="flex h-full w-full overflow-hidden divide-x divide-border">
+    <div className="flex h-full w-full divide-x divide-border overflow-hidden">
       {/* Left panel: Connection & Accounts */}
-      <div className="w-[340px] shrink-0 h-full flex flex-col bg-muted/5">
+      <div className="flex h-full w-[340px] shrink-0 flex-col bg-muted/5">
         <ScrollArea className="flex-1">
-          <div className="p-6 space-y-6">
+          <div className="space-y-6 p-6">
             <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-foreground">{t('settings.github.title')}</h3>
+              <h3 className="text-sm font-semibold text-foreground">
+                {t('settings.github.title')}
+              </h3>
               <p className="text-xs text-muted-foreground">{t('settings.github.tokenHint')}</p>
             </div>
 
@@ -114,7 +114,7 @@ export function GithubSection() {
               // Device Flow Authentication Steps Card
               <div className="space-y-4 rounded-lg border border-primary/20 bg-primary/5 p-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">
                     GitHub Authorization
                   </h4>
                   <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -123,19 +123,19 @@ export function GithubSection() {
                   </span>
                 </div>
 
-                <p className="text-xs text-muted-foreground leading-relaxed">
+                <p className="text-xs leading-relaxed text-muted-foreground">
                   {t('settings.github.deviceCodeInstructions')}
                 </p>
 
                 <div className="flex items-center justify-center gap-4 rounded-md border border-border/60 bg-muted/30 p-4">
-                  <span className="text-2xl font-bold font-mono tracking-wider text-foreground">
+                  <span className="font-mono text-2xl font-bold tracking-wider text-foreground">
                     {deviceFlowData.user_code}
                   </span>
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => handleCopyCode(deviceFlowData.user_code)}
-                    className="text-xs h-8"
+                    className="h-8 text-xs"
                   >
                     {copied ? (
                       <>
@@ -153,13 +153,18 @@ export function GithubSection() {
                     href={deviceFlowData.verification_uri}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-8 items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover shadow-sm"
+                    className="hover:bg-primary-hover inline-flex h-8 items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition-colors"
                   >
                     <span>{t('settings.github.openActivationPage')}</span>
                     <ExternalLink className="h-3 w-3" />
                   </a>
 
-                  <Button size="sm" variant="ghost" onClick={handleCancelFlow} className="text-xs h-8 text-muted-foreground hover:text-foreground">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCancelFlow}
+                    className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                  >
                     {t('settings.github.cancel')}
                   </Button>
                 </div>
@@ -167,11 +172,13 @@ export function GithubSection() {
             ) : loginMethod === 'oauth' ? (
               <div className="space-y-4 rounded-lg border border-border bg-card/30 p-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-semibold text-foreground">{t('settings.github.addUser')}</h4>
+                  <h4 className="text-xs font-semibold text-foreground">
+                    {t('settings.github.addUser')}
+                  </h4>
                   <button
                     type="button"
                     onClick={handleCancelFlow}
-                    className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                    className="flex items-center gap-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
                   >
                     <ArrowLeft className="h-2.5 w-2.5" />
                     {t('settings.github.backToAuthOptions')}
@@ -180,14 +187,14 @@ export function GithubSection() {
 
                 <div className="space-y-4">
                   <div className="flex flex-col gap-3">
-                    <p className="text-xs text-muted-foreground leading-relaxed">
+                    <p className="text-xs leading-relaxed text-muted-foreground">
                       {t('settings.github.tokenHint')}
                     </p>
                     <Button
                       size="sm"
                       onClick={startOAuthLogin}
                       disabled={connecting}
-                      className="text-xs h-8 w-full gap-2"
+                      className="h-8 w-full gap-2 text-xs"
                     >
                       {connecting ? (
                         <>
@@ -214,11 +221,13 @@ export function GithubSection() {
             ) : loginMethod === 'pat' ? (
               <div className="space-y-4 rounded-lg border border-border bg-card/30 p-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-semibold text-foreground">{t('settings.github.addUser')}</h4>
+                  <h4 className="text-xs font-semibold text-foreground">
+                    {t('settings.github.addUser')}
+                  </h4>
                   <button
                     type="button"
                     onClick={handleCancelFlow}
-                    className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                    className="flex items-center gap-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
                   >
                     <ArrowLeft className="h-2.5 w-2.5" />
                     {t('settings.github.backToAuthOptions')}
@@ -234,7 +243,7 @@ export function GithubSection() {
                     className="space-y-3"
                   >
                     <div className="space-y-1">
-                      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                         {t('settings.github.patLabel')}
                       </label>
                       <Input
@@ -242,7 +251,7 @@ export function GithubSection() {
                         value={patToken}
                         onChange={(e) => setPatToken(e.target.value)}
                         placeholder={t('settings.github.patPlaceholder')}
-                        className="h-8 text-xs font-mono"
+                        className="h-8 font-mono text-xs"
                         disabled={connecting}
                       />
                     </div>
@@ -250,7 +259,7 @@ export function GithubSection() {
                       type="submit"
                       size="sm"
                       disabled={connecting || !patToken.trim()}
-                      className="text-xs h-8 w-full gap-2"
+                      className="h-8 w-full gap-2 text-xs"
                     >
                       {connecting ? (
                         <>
@@ -276,7 +285,9 @@ export function GithubSection() {
               </div>
             ) : (
               <div className="space-y-4 rounded-lg border border-border bg-card/30 p-4">
-                <h4 className="text-xs font-semibold text-foreground">{t('settings.github.addUser')}</h4>
+                <h4 className="text-xs font-semibold text-foreground">
+                  {t('settings.github.addUser')}
+                </h4>
                 <div className="flex flex-col gap-2">
                   <Button
                     variant="outline"
@@ -285,7 +296,7 @@ export function GithubSection() {
                       setLoginMethod('oauth')
                       startOAuthLogin()
                     }}
-                    className="w-full text-xs justify-start h-9 px-3 gap-2 hover:bg-primary/5 hover:border-primary/30 transition-all duration-200"
+                    className="h-9 w-full justify-start gap-2 px-3 text-xs transition-all duration-200 hover:border-primary/30 hover:bg-primary/5"
                   >
                     <Github className="h-4 w-4 text-muted-foreground" />
                     <span>{t('settings.github.loginButton')}</span>
@@ -294,7 +305,7 @@ export function GithubSection() {
                     variant="outline"
                     size="sm"
                     onClick={() => setLoginMethod('pat')}
-                    className="w-full text-xs justify-start h-9 px-3 gap-2 hover:bg-primary/5 hover:border-primary/30 transition-all duration-200"
+                    className="h-9 w-full justify-start gap-2 px-3 text-xs transition-all duration-200 hover:border-primary/30 hover:bg-primary/5"
                   >
                     <Key className="h-4 w-4 text-muted-foreground" />
                     <span>{t('settings.github.loginWithPAT')}</span>
@@ -306,7 +317,7 @@ export function GithubSection() {
             {/* Accounts List */}
             {github.accounts.length > 0 && (
               <div className="space-y-3">
-                <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">
                   {t('settings.github.accountsTitle')}
                 </h4>
 
@@ -317,29 +328,27 @@ export function GithubSection() {
                       <div
                         key={acc.id}
                         className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
-                          isActive
-                            ? 'border-primary/50 bg-primary/5'
-                            : 'border-border bg-card'
+                          isActive ? 'border-primary/50 bg-primary/5' : 'border-border bg-card'
                         }`}
                       >
-                        <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex min-w-0 items-center gap-3">
                           <img
                             src={acc.user.avatarUrl}
                             alt={acc.user.login}
                             className="h-10 w-10 rounded-full border border-border"
                           />
-                          <div className="flex flex-col min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs font-semibold text-foreground truncate max-w-[120px]">
+                          <div className="flex min-w-0 flex-col">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="max-w-[120px] truncate text-xs font-semibold text-foreground">
                                 {acc.user.name || acc.user.login}
                               </span>
                               {isActive && (
-                                <span className="rounded-full bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/20 px-1.5 py-0.5 text-[8px] font-semibold leading-none">
+                                <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-semibold leading-none text-emerald-500 ring-1 ring-emerald-500/20">
                                   {t('settings.github.activeAccount')}
                                 </span>
                               )}
                             </div>
-                            <span className="text-[10px] text-muted-foreground truncate">
+                            <span className="truncate text-[10px] text-muted-foreground">
                               @{acc.user.login}
                             </span>
                           </div>
@@ -351,7 +360,7 @@ export function GithubSection() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleSetActive(acc.id)}
-                              className="text-[10px] h-7 px-2"
+                              className="h-7 px-2 text-[10px]"
                             >
                               {t('settings.github.switch')}
                             </Button>
@@ -361,7 +370,7 @@ export function GithubSection() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleRemoveAccount(acc.id)}
-                            className="text-[10px] h-7 px-2 border-destructive/20 text-destructive/80 hover:bg-destructive/5 hover:text-destructive hover:border-destructive transition-colors"
+                            className="h-7 border-destructive/20 px-2 text-[10px] text-destructive/80 transition-colors hover:border-destructive hover:bg-destructive/5 hover:text-destructive"
                           >
                             {t('settings.github.remove')}
                           </Button>
@@ -377,69 +386,80 @@ export function GithubSection() {
       </div>
 
       {/* Right panel: Repository Info (Full Height) */}
-      <div className="flex-1 h-full flex flex-col bg-background">
-        <div className="p-6 pb-4 border-b border-border flex items-center justify-between shrink-0">
+      <div className="flex h-full flex-1 flex-col bg-background">
+        <div className="flex shrink-0 items-center justify-between border-b border-border p-6 pb-4">
           <div className="space-y-1">
             <h4 className="text-sm font-semibold text-foreground">
               {t('settings.github.reposTitle')}
             </h4>
             {activeAccount && (
               <p className="text-xs text-muted-foreground">
-                Connected as <span className="font-medium text-foreground">@{activeAccount.user.login}</span>
+                Connected as{' '}
+                <span className="font-medium text-foreground">@{activeAccount.user.login}</span>
               </p>
             )}
           </div>
           {activeAccount && (
-            <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded border border-border/40">
+            <span className="rounded border border-border/40 bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
               {repos.length} repos
             </span>
           )}
         </div>
 
-        <div className="flex-1 min-h-0">
+        <div className="min-h-0 flex-1">
           {loadingRepos ? (
-            <div className="flex flex-col items-center justify-center h-full py-8 space-y-2">
+            <div className="flex h-full flex-col items-center justify-center space-y-2 py-8">
               <RefreshCw className="h-6 w-6 animate-spin text-primary" />
               <p className="text-xs text-muted-foreground">Loading repositories...</p>
             </div>
           ) : !activeAccount ? (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8 text-muted-foreground">
-              <AlertCircle className="h-8 w-8 mb-2 opacity-40 text-muted-foreground" />
-              <p className="text-xs max-w-xs leading-relaxed">
+            <div className="flex h-full flex-col items-center justify-center p-8 text-center text-muted-foreground">
+              <AlertCircle className="mb-2 h-8 w-8 text-muted-foreground opacity-40" />
+              <p className="max-w-xs text-xs leading-relaxed">
                 Connect an account or select one from the list to view its repositories.
               </p>
             </div>
           ) : repos.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8 text-muted-foreground">
-              <p className="text-xs">
-                {t('settings.github.noRepos')}
-              </p>
+            <div className="flex h-full flex-col items-center justify-center p-8 text-center text-muted-foreground">
+              <p className="text-xs">{t('settings.github.noRepos')}</p>
             </div>
           ) : (
             <ScrollArea className="h-full">
               <div className="divide-y divide-border px-6">
                 {repos.map((repo) => (
-                  <div key={repo.id} className="flex items-start justify-between py-4 hover:bg-accent/10 transition-colors rounded px-2 -mx-2">
-                    <div className="space-y-1 min-w-0 pr-4">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-medium text-foreground truncate max-w-[240px]" title={repo.name}>
+                  <div
+                    key={repo.id}
+                    className="-mx-2 flex items-start justify-between rounded px-2 py-4 transition-colors hover:bg-accent/10"
+                  >
+                    <div className="min-w-0 space-y-1 pr-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className="max-w-[240px] truncate text-xs font-medium text-foreground"
+                          title={repo.name}
+                        >
                           {repo.name}
                         </span>
-                        <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium leading-none ${
-                          repo.private
-                            ? 'bg-amber-500/10 text-amber-500 ring-1 ring-amber-500/20'
-                            : 'bg-green-500/10 text-green-500 ring-1 ring-green-500/20'
-                        }`}>
-                          {repo.private ? <Lock className="h-2.5 w-2.5" /> : <Unlock className="h-2.5 w-2.5" />}
+                        <span
+                          className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium leading-none ${
+                            repo.private
+                              ? 'bg-amber-500/10 text-amber-500 ring-1 ring-amber-500/20'
+                              : 'bg-green-500/10 text-green-500 ring-1 ring-green-500/20'
+                          }`}
+                        >
+                          {repo.private ? (
+                            <Lock className="h-2.5 w-2.5" />
+                          ) : (
+                            <Unlock className="h-2.5 w-2.5" />
+                          )}
                           {repo.private ? 'Private' : 'Public'}
                         </span>
                       </div>
                       {repo.description && (
-                        <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">
+                        <p className="line-clamp-2 text-[10px] leading-relaxed text-muted-foreground">
                           {repo.description}
                         </p>
                       )}
-                      <p className="text-[9px] text-muted-foreground/60 font-mono">
+                      <p className="font-mono text-[9px] text-muted-foreground/60">
                         Updated {new Date(repo.updatedAt).toLocaleDateString()}
                       </p>
                     </div>
@@ -448,7 +468,7 @@ export function GithubSection() {
                       href={repo.htmlUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex h-7 w-7 items-center justify-center rounded border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground shrink-0 mt-0.5"
+                      className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                       title="Open on GitHub"
                     >
                       <ExternalLink className="h-3.5 w-3.5" />

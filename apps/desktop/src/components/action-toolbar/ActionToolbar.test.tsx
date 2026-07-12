@@ -18,7 +18,15 @@ function hookState(overrides: Partial<ReturnType<typeof useActionToolbarMock>> =
   return {
     activeRepo: '/repo',
     fromRef: 'main',
-    loading: { fetch: false, pull: false, push: false, stash: false, pop: false, undo: false, redo: false },
+    loading: {
+      fetch: false,
+      pull: false,
+      push: false,
+      stash: false,
+      pop: false,
+      undo: false,
+      redo: false,
+    },
     hasChanges: false,
     hasStashes: false,
     canUndo: false,
@@ -102,7 +110,9 @@ describe('ActionToolbar — composition', () => {
   })
 
   it('shows a loading spinner (no icon) on a button while its action is in flight', () => {
-    useActionToolbarMock.mockReturnValue(hookState({ hasChanges: true, loading: { ...hookState().loading, stash: true } }))
+    useActionToolbarMock.mockReturnValue(
+      hookState({ hasChanges: true, loading: { ...hookState().loading, stash: true } })
+    )
     render(<ActionToolbar searchQuery="" onSearchChange={vi.fn()} />)
     expect(screen.getByRole('button', { name: 'toolbar.stash' })).toBeDisabled()
   })

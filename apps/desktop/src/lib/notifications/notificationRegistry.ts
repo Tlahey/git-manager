@@ -106,11 +106,16 @@ export const NOTIFICATION_TYPES: NotificationTypeDef[] = [
   },
 ]
 
-export function getNotificationTypeDef(type: AppNotification['type']): NotificationTypeDef | undefined {
+export function getNotificationTypeDef(
+  type: AppNotification['type']
+): NotificationTypeDef | undefined {
   return NOTIFICATION_TYPES.find((d) => d.type === type)
 }
 
-export function resolveTargetTab(def: NotificationTypeDef, pr: MockPR): AppNotification['targetTab'] {
+export function resolveTargetTab(
+  def: NotificationTypeDef,
+  pr: MockPR
+): AppNotification['targetTab'] {
   return typeof def.targetTab === 'function' ? def.targetTab(pr) : def.targetTab
 }
 

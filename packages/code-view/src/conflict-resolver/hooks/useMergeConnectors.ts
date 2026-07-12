@@ -1,10 +1,21 @@
-import { useCallback, useEffect, useRef, useState, type MutableRefObject, type RefObject } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type RefObject,
+} from 'react'
 import type { editor } from 'monaco-editor'
 import type { MergeBlock } from '../../types'
 import type { BlockPlacement } from '../../mergeBlockLayout'
 import type { ConnectorSegment } from '../../MergeConnectorOverlay'
 import { updateConnectorPaths } from '../connectorPaths'
-import { type SegmentGeometry, buildThreeWaySegments, buildTwoWaySegments } from '../connectorSegments'
+import {
+  type SegmentGeometry,
+  buildThreeWaySegments,
+  buildTwoWaySegments,
+} from '../connectorSegments'
 import type { PaneSide } from '../collapsedRegions'
 import { DEFAULT_LINE_HEIGHT } from '../../mergeViewConfig'
 import type { MergeEditorRefs } from './useMergeEditorRefs'
@@ -53,7 +64,10 @@ export function useMergeConnectors({
   // overwritten by the next commit. The ref mirrors the same value for updateConnectorPaths,
   // which — being a scroll-driven imperative function outside React — genuinely does need to
   // read it without going through props.
-  const [gapPhaseOffsets, setGapPhaseOffsets] = useState<{ left: number; right: number }>({ left: 0, right: 0 })
+  const [gapPhaseOffsets, setGapPhaseOffsets] = useState<{ left: number; right: number }>({
+    left: 0,
+    right: 0,
+  })
   const gapPhaseOffsetsRef = useRef<{ left: number; right: number }>({ left: 0, right: 0 })
 
   // Written directly to the DOM (bypassing React state/render) from Monaco's own
@@ -123,8 +137,11 @@ export function useMergeConnectors({
       },
       getZoneRect: (side, blockId) => {
         const paneEditor = editorFor(side)
-        const domNode = paneEditor && typeof paneEditor.getDomNode === 'function' ? paneEditor.getDomNode() : null
-        const element = domNode?.querySelector(`[data-zone-id="${blockId}-${side}"]`) as HTMLElement | null
+        const domNode =
+          paneEditor && typeof paneEditor.getDomNode === 'function' ? paneEditor.getDomNode() : null
+        const element = domNode?.querySelector(
+          `[data-zone-id="${blockId}-${side}"]`
+        ) as HTMLElement | null
         return element ? { top: element.offsetTop, height: element.offsetHeight } : null
       },
       lineHeight,
@@ -163,10 +180,21 @@ export function useMergeConnectors({
       }
       gapPhaseOffsetsRef.current = nextGapPhaseOffsets
       setGapPhaseOffsets((prev) =>
-        prev.left === nextGapPhaseOffsets.left && prev.right === nextGapPhaseOffsets.right ? prev : nextGapPhaseOffsets
+        prev.left === nextGapPhaseOffsets.left && prev.right === nextGapPhaseOffsets.right
+          ? prev
+          : nextGapPhaseOffsets
       )
     }
-  }, [editors, blocksRef, placementsRef, containerRef, isTwoWay, collapseUnchanged, expandedBlocks, getTop])
+  }, [
+    editors,
+    blocksRef,
+    placementsRef,
+    containerRef,
+    isTwoWay,
+    collapseUnchanged,
+    expandedBlocks,
+    getTop,
+  ])
 
   const scheduleRecompute = useCallback(() => {
     if (connectorRafRef.current !== null) return

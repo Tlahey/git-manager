@@ -13,7 +13,9 @@ describe('usePinnedBranchesStore', () => {
 
   it('setPin records an explicit pin for a branch under its repo', () => {
     usePinnedBranchesStore.getState().setPin('/repo/a', 'feature-x', true)
-    expect(usePinnedBranchesStore.getState().overrides).toEqual({ '/repo/a': { 'feature-x': true } })
+    expect(usePinnedBranchesStore.getState().overrides).toEqual({
+      '/repo/a': { 'feature-x': true },
+    })
   })
 
   it('setPin records an explicit unpin', () => {

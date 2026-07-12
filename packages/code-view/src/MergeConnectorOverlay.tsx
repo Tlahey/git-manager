@@ -22,7 +22,12 @@ import { DEFAULT_LINE_HEIGHT, WAVE_AMPLITUDE, WAVE_HALF_PERIOD } from './mergeVi
  * a pane's banner meets the connector. Segment breaks land on shared-phase boundaries (multiples
  * of WAVE_HALF_PERIOD in container space) instead, so the first and/or last segment is often a
  * partial half-period — see partialArcControlYOffset for how its control point is computed. */
-export function buildCollapsedWavePath(y0: number, y1: number, width: number, phaseOffset = 0): string {
+export function buildCollapsedWavePath(
+  y0: number,
+  y1: number,
+  width: number,
+  phaseOffset = 0
+): string {
   const baseline = (localX: number) => y0 + (y1 - y0) * (localX / width)
 
   // How far into its own half-period local wave-x=0 already sits, e.g. 6.66 means the first
@@ -54,7 +59,7 @@ export function buildCollapsedWavePath(y0: number, y1: number, width: number, ph
   const segments: string[] = []
   let x = 0
   let currentLocalStart = localStart
-  let up = (((periodIndex % 2) + 2) % 2) === 0
+  let up = ((periodIndex % 2) + 2) % 2 === 0
   // The path's own start (local x=0) sits ON the baseline only when localStart is exactly 0 (a
   // period boundary). Any other phase means this gap begins mid-arc — most visibly right at a
   // peak/trough — so the starting point itself needs the same arc-relative offset the control
@@ -73,7 +78,9 @@ export function buildCollapsedWavePath(y0: number, y1: number, width: number, ph
     // arcOffset is 0 by construction — only the final segment, ending at the gap's fixed
     // `width` rather than a period boundary, can have a nonzero localEnd here).
     const endY = baseline(xEnd) + arcOffset(localEnd, sign)
-    segments.push(`Q ${xMid.toFixed(2)},${controlY.toFixed(2)} ${xEnd.toFixed(2)},${endY.toFixed(2)}`)
+    segments.push(
+      `Q ${xMid.toFixed(2)},${controlY.toFixed(2)} ${xEnd.toFixed(2)},${endY.toFixed(2)}`
+    )
     x = xEnd
     currentLocalStart = 0
     up = !up
@@ -107,7 +114,9 @@ function arcOffset(localX: number, sign: number): number {
  * endpoint-averaging a Bezier control point otherwise contributes. */
 function partialArcControlYOffset(localStart: number, localEnd: number, sign: number): number {
   const localMid = (localStart + localEnd) / 2
-  return 2 * arcOffset(localMid, sign) - (arcOffset(localStart, sign) + arcOffset(localEnd, sign)) / 2
+  return (
+    2 * arcOffset(localMid, sign) - (arcOffset(localStart, sign) + arcOffset(localEnd, sign)) / 2
+  )
 }
 
 export interface ConnectorSegment {
@@ -177,47 +186,105 @@ interface MergeConnectorOverlayProps {
  * the scroll-following as a transform mutation (outside React) rather than recomputing `top`
  * values through state on every scroll tick is what keeps this overlay glued to the panes' own
  * (React-external) scrolling instead of trailing it by a render cycle. */
-export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOverlayProps>(function MergeConnectorOverlay(
-  {
-    width,
-    height,
-    segments,
-    side,
-    onAccept,
-    onReject,
-    scrollTopLeft = 0,
-    scrollTopRight = 0,
-    lineHeight = DEFAULT_LINE_HEIGHT,
-    onExpandBlock,
-    wavePhaseOffset = 0,
-  },
-  ref
-) {
-  return (
-    <div ref={ref} className="merge-connector-overlay absolute inset-0">
-      <svg
-        width={width}
-        height={height}
-        viewBox={`0 0 ${width} ${height}`}
-        className="pointer-events-none absolute inset-0 overflow-visible"
-      >
-        {segments.map((seg) => {
-          const half = width / 2
-          const resolvedSuffix = seg.resolved ? ' merge-resolved' : ''
+export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOverlayProps>(
+  function MergeConnectorOverlay(
+    {
+      width,
+      height,
+      segments,
+      side,
+      onAccept,
+      onReject,
+      scrollTopLeft = 0,
+      scrollTopRight = 0,
+      lineHeight = DEFAULT_LINE_HEIGHT,
+      onExpandBlock,
+      wavePhaseOffset = 0,
+    },
+    ref
+  ) {
+    return (
+      <div ref={ref} className="merge-connector-overlay absolute inset-0">
+        <svg
+          width={width}
+          height={height}
+          viewBox={`0 0 ${width} ${height}`}
+          className="pointer-events-none absolute inset-0 overflow-visible"
+        >
+          {segments.map((seg) => {
+            const half = width / 2
+            const resolvedSuffix = seg.resolved ? ' merge-resolved' : ''
 
-          const leftY0 = seg.leftY0 - scrollTopLeft
-          const leftY1 = seg.leftY1 - scrollTopLeft
-          const rightY0 = seg.rightY0 - scrollTopRight
-          const rightY1 = seg.rightY1 - scrollTopRight
+            const leftY0 = seg.leftY0 - scrollTopLeft
+            const leftY1 = seg.leftY1 - scrollTopLeft
+            const rightY0 = seg.rightY0 - scrollTopRight
+            const rightY1 = seg.rightY1 - scrollTopRight
 
-          if (seg.colorClass === 'merge-connector-collapsed') {
-            // Same quadrilateral+Bezier construction as the general ribbon below: when the
-            // collapsed region sits at different line positions in the two panes either side of
-            // this gap, the (invisible — see merge-connector-collapsed-fill) hit-target slopes
-            // smoothly between them instead of assuming they line up. The wave
-            // (buildCollapsedWavePath) threads through the vertical middle, continuing each pane
-            // banner's own wave across the gap instead of leaving a plain filled shape between
-            // them.
+            if (seg.colorClass === 'merge-connector-collapsed') {
+              // Same quadrilateral+Bezier construction as the general ribbon below: when the
+              // collapsed region sits at different line positions in the two panes either side of
+              // this gap, the (invisible — see merge-connector-collapsed-fill) hit-target slopes
+              // smoothly between them instead of assuming they line up. The wave
+              // (buildCollapsedWavePath) threads through the vertical middle, continuing each pane
+              // banner's own wave across the gap instead of leaving a plain filled shape between
+              // them.
+              const d = [
+                `M 0,${leftY0}`,
+                `C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`,
+                `L ${width},${rightY1}`,
+                `C ${half},${rightY1} ${half},${leftY1} 0,${leftY1}`,
+                'Z',
+              ].join(' ')
+              const dWave = buildCollapsedWavePath(
+                (leftY0 + leftY1) / 2,
+                (rightY0 + rightY1) / 2,
+                width,
+                wavePhaseOffset
+              )
+              return (
+                <g
+                  key={seg.id}
+                  data-collapsed-block-id={seg.id}
+                  data-testid={`merge-connector-collapsed-${side}-${seg.id}`}
+                  onClick={() => onExpandBlock?.(seg.id)}
+                  onMouseEnter={() => setCollapsedBlockHover(seg.id, true)}
+                  onMouseLeave={() => setCollapsedBlockHover(seg.id, false)}
+                >
+                  <path d={d} className="merge-connector-collapsed-fill" />
+                  <path d={dWave} className="merge-connector-collapsed-wave" />
+                </g>
+              )
+            }
+
+            if (seg.flat) {
+              const d = `M 0,${leftY0} C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`
+              return (
+                <path
+                  key={seg.id}
+                  d={d}
+                  className={`${seg.colorClass} merge-connector-flat${resolvedSuffix}`}
+                  data-testid={`merge-connector-ribbon-${side}-${seg.id}`}
+                />
+              )
+            }
+            if (seg.resolved) {
+              const dTop = `M 0,${leftY0 + 1} C ${half},${leftY0 + 1} ${half},${rightY0 + 1} ${width},${rightY0 + 1}`
+              const dBottom = `M 0,${leftY1 - 1} C ${half},${leftY1 - 1} ${half},${rightY1 - 1} ${width},${rightY1 - 1}`
+              return (
+                <g key={seg.id}>
+                  <path
+                    d={dTop}
+                    className={`${seg.colorClass} merge-connector-edge merge-resolved`}
+                    data-testid={`merge-connector-ribbon-${side}-${seg.id}-top`}
+                  />
+                  <path
+                    d={dBottom}
+                    className={`${seg.colorClass} merge-connector-edge merge-resolved`}
+                    data-testid={`merge-connector-ribbon-${side}-${seg.id}-bottom`}
+                  />
+                </g>
+              )
+            }
             const d = [
               `M 0,${leftY0}`,
               `C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`,
@@ -225,104 +292,61 @@ export const MergeConnectorOverlay = forwardRef<HTMLDivElement, MergeConnectorOv
               `C ${half},${rightY1} ${half},${leftY1} 0,${leftY1}`,
               'Z',
             ].join(' ')
-            const dWave = buildCollapsedWavePath((leftY0 + leftY1) / 2, (rightY0 + rightY1) / 2, width, wavePhaseOffset)
-            return (
-              <g
-                key={seg.id}
-                data-collapsed-block-id={seg.id}
-                data-testid={`merge-connector-collapsed-${side}-${seg.id}`}
-                onClick={() => onExpandBlock?.(seg.id)}
-                onMouseEnter={() => setCollapsedBlockHover(seg.id, true)}
-                onMouseLeave={() => setCollapsedBlockHover(seg.id, false)}
-              >
-                <path d={d} className="merge-connector-collapsed-fill" />
-                <path d={dWave} className="merge-connector-collapsed-wave" />
-              </g>
-            )
-          }
-
-          if (seg.flat) {
-            const d = `M 0,${leftY0} C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`
             return (
               <path
                 key={seg.id}
                 d={d}
-                className={`${seg.colorClass} merge-connector-flat${resolvedSuffix}`}
+                className={seg.colorClass}
                 data-testid={`merge-connector-ribbon-${side}-${seg.id}`}
               />
             )
-          }
-          if (seg.resolved) {
-            const dTop = `M 0,${leftY0 + 1} C ${half},${leftY0 + 1} ${half},${rightY0 + 1} ${width},${rightY0 + 1}`
-            const dBottom = `M 0,${leftY1 - 1} C ${half},${leftY1 - 1} ${half},${rightY1 - 1} ${width},${rightY1 - 1}`
-            return (
-              <g key={seg.id}>
-                <path
-                  d={dTop}
-                  className={`${seg.colorClass} merge-connector-edge merge-resolved`}
-                  data-testid={`merge-connector-ribbon-${side}-${seg.id}-top`}
-                />
-                <path
-                  d={dBottom}
-                  className={`${seg.colorClass} merge-connector-edge merge-resolved`}
-                  data-testid={`merge-connector-ribbon-${side}-${seg.id}-bottom`}
-                />
-              </g>
+          })}
+        </svg>
+        {segments
+          .filter((seg) => seg.actionable)
+          .map((seg) => {
+            // Anchored at the connector's start: level with the top of the block on the SOURCE
+            // pane's end of the segment (the left pane for the left gap, the right pane for the
+            // right gap), hugging that pane's edge horizontally. An 18px button on an ~18px line
+            // sits flush with the block's first line, exactly where WebStorm nests its actions.
+            const anchorY =
+              side === 'left' ? seg.leftY0 - scrollTopLeft : seg.rightY0 - scrollTopRight
+            const acceptButton = (
+              <button
+                key="accept"
+                type="button"
+                className={
+                  side === 'left'
+                    ? 'merge-connector-action merge-connector-accept-from-left'
+                    : 'merge-connector-action merge-connector-accept-from-right'
+                }
+                aria-label={side === 'left' ? 'Accept incoming change' : 'Accept current change'}
+                data-testid={`merge-connector-accept-${side}-${seg.id}`}
+                onClick={() => onAccept(seg.id)}
+              />
             )
-          }
-          const d = [
-            `M 0,${leftY0}`,
-            `C ${half},${leftY0} ${half},${rightY0} ${width},${rightY0}`,
-            `L ${width},${rightY1}`,
-            `C ${half},${rightY1} ${half},${leftY1} 0,${leftY1}`,
-            'Z',
-          ].join(' ')
-          return <path key={seg.id} d={d} className={seg.colorClass} data-testid={`merge-connector-ribbon-${side}-${seg.id}`} />
-        })}
-      </svg>
-      {segments
-        .filter((seg) => seg.actionable)
-        .map((seg) => {
-          // Anchored at the connector's start: level with the top of the block on the SOURCE
-          // pane's end of the segment (the left pane for the left gap, the right pane for the
-          // right gap), hugging that pane's edge horizontally. An 18px button on an ~18px line
-          // sits flush with the block's first line, exactly where WebStorm nests its actions.
-          const anchorY = side === 'left' ? seg.leftY0 - scrollTopLeft : seg.rightY0 - scrollTopRight
-          const acceptButton = (
-            <button
-              key="accept"
-              type="button"
-              className={
-                side === 'left'
-                  ? 'merge-connector-action merge-connector-accept-from-left'
-                  : 'merge-connector-action merge-connector-accept-from-right'
-              }
-              aria-label={side === 'left' ? 'Accept incoming change' : 'Accept current change'}
-              data-testid={`merge-connector-accept-${side}-${seg.id}`}
-              onClick={() => onAccept(seg.id)}
-            />
-          )
-          const rejectButton = (
-            <button
-              key="reject"
-              type="button"
-              className="merge-connector-action merge-connector-reject"
-              aria-label="Ignore this change"
-              data-testid={`merge-connector-reject-${side}-${seg.id}`}
-              onClick={() => onReject(seg.id)}
-            />
-          )
-          return (
-            <div
-              key={seg.id}
-              className={`merge-connector-action-container absolute left-0 right-0 flex items-center gap-0.5 ${side === 'left' ? 'justify-start pl-0.5' : 'justify-end pr-0.5'}`}
-              style={{ top: anchorY, height: lineHeight }}
-            >
-              {/* Accept sits closest to the source pane's edge, the ignore X right after it. */}
-              {side === 'left' ? [acceptButton, rejectButton] : [rejectButton, acceptButton]}
-            </div>
-          )
-        })}
-    </div>
-  )
-})
+            const rejectButton = (
+              <button
+                key="reject"
+                type="button"
+                className="merge-connector-action merge-connector-reject"
+                aria-label="Ignore this change"
+                data-testid={`merge-connector-reject-${side}-${seg.id}`}
+                onClick={() => onReject(seg.id)}
+              />
+            )
+            return (
+              <div
+                key={seg.id}
+                className={`merge-connector-action-container absolute left-0 right-0 flex items-center gap-0.5 ${side === 'left' ? 'justify-start pl-0.5' : 'justify-end pr-0.5'}`}
+                style={{ top: anchorY, height: lineHeight }}
+              >
+                {/* Accept sits closest to the source pane's edge, the ignore X right after it. */}
+                {side === 'left' ? [acceptButton, rejectButton] : [rejectButton, acceptButton]}
+              </div>
+            )
+          })}
+      </div>
+    )
+  }
+)

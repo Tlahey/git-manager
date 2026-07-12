@@ -4,7 +4,10 @@ import { Button, Spinner } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { useMergeView } from '../../hooks/useMergeView'
 import { apiResolveConflict, apiResolveConflictBinary } from '../../api/conflict.api'
-import { ThreeWayMergeEditor, type ThreeWayMergeEditorRef } from '../merge-editor/ThreeWayMergeEditor'
+import {
+  ThreeWayMergeEditor,
+  type ThreeWayMergeEditorRef,
+} from '../merge-editor/ThreeWayMergeEditor'
 
 interface ConflictDiffViewProps {
   repoPath: string
@@ -24,7 +27,12 @@ interface ConflictDiffViewProps {
  * `ThreeWayMergeEditor` — this component just owns the outer toolbar/back-button shell and
  * the binary/delete/rename coarse fallback.
  */
-export function ConflictDiffView({ repoPath, filePath, onClose, onResolved }: ConflictDiffViewProps) {
+export function ConflictDiffView({
+  repoPath,
+  filePath,
+  onClose,
+  onResolved,
+}: ConflictDiffViewProps) {
   const { t } = useTranslation('git')
   const mergeEditorRef = useRef<ThreeWayMergeEditorRef>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -77,7 +85,7 @@ export function ConflictDiffView({ repoPath, filePath, onClose, onResolved }: Co
   }
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-background animate-in fade-in zoom-in-95 duration-100 select-none">
+    <div className="animate-in fade-in zoom-in-95 flex h-full w-full select-none flex-col overflow-hidden bg-background duration-100">
       {/* TOOLBAR — mirrors DiffToolbar's back-button + path-split layout */}
       <div className="flex shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 shadow-sm">
         <div className="flex min-w-0 items-center gap-3">
@@ -93,7 +101,7 @@ export function ConflictDiffView({ repoPath, filePath, onClose, onResolved }: Co
 
           <div className="flex min-w-0 flex-col">
             {parsedPath.dir && (
-              <span className="mb-0.5 truncate select-none font-mono text-[10px] leading-none text-muted-foreground/60">
+              <span className="mb-0.5 select-none truncate font-mono text-[10px] leading-none text-muted-foreground/60">
                 {parsedPath.dir}
               </span>
             )}
@@ -118,7 +126,11 @@ export function ConflictDiffView({ repoPath, filePath, onClose, onResolved }: Co
               disabled={isAutoMerging || isSaving}
               title={t('conflictEditor.applyNonConflicting')}
             >
-              {isAutoMerging ? <Spinner className="h-3.5 w-3.5" /> : <Wand2 className="h-3.5 w-3.5" />}
+              {isAutoMerging ? (
+                <Spinner className="h-3.5 w-3.5" />
+              ) : (
+                <Wand2 className="h-3.5 w-3.5" />
+              )}
               {t('conflictEditor.applyNonConflicting')}
             </Button>
             <Button
@@ -135,7 +147,7 @@ export function ConflictDiffView({ repoPath, filePath, onClose, onResolved }: Co
       </div>
 
       {/* CONTENT AREA — mirrors DiffViewCenter's bg-card/45 wrapper + bordered diff container */}
-      <div className="flex flex-1 flex-col overflow-hidden bg-card/45 font-mono text-xs select-text">
+      <div className="flex flex-1 select-text flex-col overflow-hidden bg-card/45 font-mono text-xs">
         {isLoading && (
           <div className="flex h-40 w-full items-center justify-center text-muted-foreground">
             <Spinner className="mr-2 h-5 w-5" />
@@ -143,22 +155,34 @@ export function ConflictDiffView({ repoPath, filePath, onClose, onResolved }: Co
           </div>
         )}
 
-        {!isLoading && view && (view.isBinary || view.conflictKind === 'delete' || view.conflictKind === 'rename') && (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-sm">
-            <p className="text-foreground">
-              {view.isBinary ? t('conflictEditor.binaryConflict') : t('conflictEditor.deleteConflict')}
-            </p>
-            {error && <p className="text-xs text-destructive">{error}</p>}
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => handleKeepSide('ours')} disabled={isSaving}>
-                {t('conflictEditor.keepOurs')}
-              </Button>
-              <Button variant="outline" onClick={() => handleKeepSide('theirs')} disabled={isSaving}>
-                {t('conflictEditor.keepTheirs')}
-              </Button>
+        {!isLoading &&
+          view &&
+          (view.isBinary || view.conflictKind === 'delete' || view.conflictKind === 'rename') && (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-sm">
+              <p className="text-foreground">
+                {view.isBinary
+                  ? t('conflictEditor.binaryConflict')
+                  : t('conflictEditor.deleteConflict')}
+              </p>
+              {error && <p className="text-xs text-destructive">{error}</p>}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => handleKeepSide('ours')}
+                  disabled={isSaving}
+                >
+                  {t('conflictEditor.keepOurs')}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleKeepSide('theirs')}
+                  disabled={isSaving}
+                >
+                  {t('conflictEditor.keepTheirs')}
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {!isLoading && view && !view.renderable && !view.isBinary && !view.conflictKind && (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -167,7 +191,7 @@ export function ConflictDiffView({ repoPath, filePath, onClose, onResolved }: Co
         )}
 
         {!isLoading && view && view.renderable && (
-          <div className="flex flex-1 flex-col overflow-hidden p-4 min-h-0">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
             <div className="flex flex-1 flex-col overflow-hidden rounded-lg border border-border/80 bg-background">
               <ThreeWayMergeEditor
                 ref={mergeEditorRef}

@@ -22,6 +22,10 @@ export async function apiResolveConflict(path: string, filePath: string, resolve
   return resolveConflict(path, filePath, resolvedContent)
 }
 
-export async function apiResolveConflictBinary(path: string, filePath: string, side: 'ours' | 'theirs') {
+export async function apiResolveConflictBinary(
+  path: string,
+  filePath: string,
+  side: 'ours' | 'theirs'
+) {
   return resolveConflictBinary(path, filePath, side)
 }

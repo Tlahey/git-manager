@@ -4,11 +4,17 @@ import userEvent from '@testing-library/user-event'
 import type { GitCommit } from '@git-manager/git-types'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key}:${JSON.stringify(opts)}` : key,
+  }),
 }))
 vi.mock('../../hooks/useTheme', () => ({ useTheme: vi.fn() }))
 vi.mock('../../hooks/useMonacoTheme', () => ({ useMonacoTheme: vi.fn() }))
-vi.mock('../../api/git.api', () => ({ apiListRebaseCommits: vi.fn(), apiRunInteractiveRebase: vi.fn() }))
+vi.mock('../../api/git.api', () => ({
+  apiListRebaseCommits: vi.fn(),
+  apiRunInteractiveRebase: vi.fn(),
+}))
 
 const { closeWindow, emitMock } = vi.hoisted(() => ({ closeWindow: vi.fn(), emitMock: vi.fn() }))
 vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({ close: closeWindow }) }))
@@ -27,7 +33,9 @@ vi.mock('@git-manager/components', async (importOriginal) => {
       return (
         <div
           data-testid={props.testId as string}
-          onClick={(e) => (props.onRowClick as (i: number, e: unknown) => void)(props.index as number, e)}
+          onClick={(e) =>
+            (props.onRowClick as (i: number, e: unknown) => void)(props.index as number, e)
+          }
         >
           {props.title as string}
         </div>
@@ -103,7 +111,9 @@ describe('RebasingCommitWindow — loading and plan rendering', () => {
   it('shows the commit count in the header', async () => {
     mockedListCommits.mockResolvedValue([commit('aaa1111'), commit('bbb2222')])
     renderWindow()
-    await waitFor(() => expect(screen.getByText('rebaseEditor.commitCount:{"count":2}')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText('rebaseEditor.commitCount:{"count":2}')).toBeInTheDocument()
+    )
   })
 })
 
@@ -129,7 +139,9 @@ describe('RebasingCommitWindow — selection and details panel', () => {
     renderWindow()
     await waitFor(() => expect(lastStepRailCalls.current.length).toBeGreaterThan(0))
     act(() => (stepRow('aaa1111').onRowClick as (i: number, e: unknown) => void)(0, {}))
-    act(() => (stepRow('bbb2222').onRowClick as (i: number, e: unknown) => void)(1, { ctrlKey: true }))
+    act(() =>
+      (stepRow('bbb2222').onRowClick as (i: number, e: unknown) => void)(1, { ctrlKey: true })
+    )
 
     expect(stepRow('aaa1111').isSelected).toBe(true)
     expect(stepRow('bbb2222').isSelected).toBe(true)
@@ -259,7 +271,9 @@ describe('RebasingCommitWindow — plan validation', () => {
     await user.click(screen.getByTestId('rebase-step-aaa1111'))
     await user.click(screen.getByTestId('rebase-drop'))
 
-    await waitFor(() => expect(screen.getByText('rebaseEditor.errorAllDropped')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText('rebaseEditor.errorAllDropped')).toBeInTheDocument()
+    )
     expect(screen.getByTestId('rebase-start')).toBeDisabled()
   })
 })
@@ -273,7 +287,11 @@ describe('RebasingCommitWindow — start rebasing / cancel', () => {
     await waitFor(() => expect(screen.getByTestId('rebase-start')).toBeEnabled())
     await user.click(screen.getByTestId('rebase-start'))
 
-    await waitFor(() => expect(mockedRunRebase).toHaveBeenCalledWith('/repo', 'base123', [{ action: 'pick', oid: 'aaa1111', message: undefined }]))
+    await waitFor(() =>
+      expect(mockedRunRebase).toHaveBeenCalledWith('/repo', 'base123', [
+        { action: 'pick', oid: 'aaa1111', message: undefined },
+      ])
+    )
     expect(emitMock).toHaveBeenCalledWith('fixup-committed', { repoPath: '/repo' })
     expect(closeWindow).toHaveBeenCalledOnce()
   })

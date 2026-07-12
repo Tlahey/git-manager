@@ -18,8 +18,16 @@ export function useTwoWayDiffView(
   useEffect(() => {
     if (!isTwoWay || !monaco || original === undefined || modified === undefined) return
 
-    const originalModel = monaco.editor.createModel(original, undefined, monaco.Uri.parse(`inmemory://original-${Math.random()}`))
-    const modifiedModel = monaco.editor.createModel(modified, undefined, monaco.Uri.parse(`inmemory://modified-${Math.random()}`))
+    const originalModel = monaco.editor.createModel(
+      original,
+      undefined,
+      monaco.Uri.parse(`inmemory://original-${Math.random()}`)
+    )
+    const modifiedModel = monaco.editor.createModel(
+      modified,
+      undefined,
+      monaco.Uri.parse(`inmemory://modified-${Math.random()}`)
+    )
 
     const container = document.createElement('div')
     const diffEditor = monaco.editor.createDiffEditor(container, {

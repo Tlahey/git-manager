@@ -4,7 +4,13 @@ import type { GitRef } from '@git-manager/git-types'
 import { RefLabel } from './RefLabel'
 
 function ref(overrides: Partial<GitRef> = {}): GitRef {
-  return { name: 'refs/heads/feature-x', shortName: 'feature-x', type: 'branch', commitOid: 'abc', ...overrides }
+  return {
+    name: 'refs/heads/feature-x',
+    shortName: 'feature-x',
+    type: 'branch',
+    commitOid: 'abc',
+    ...overrides,
+  }
 }
 
 describe('RefLabel — HEAD', () => {
@@ -54,7 +60,9 @@ describe('RefLabel — remote branches', () => {
   })
 
   it('colors origin/main purple, dashed border, and shows the GitHub icon instead of Laptop', () => {
-    const { container } = render(<RefLabel gitRef={ref({ type: 'remote', shortName: 'origin/main' })} />)
+    const { container } = render(
+      <RefLabel gitRef={ref({ type: 'remote', shortName: 'origin/main' })} />
+    )
     const badge = screen.getByText('main').parentElement!
     expect(badge.style.color).toBe('rgb(124, 58, 237)') // #7c3aed
     expect(badge.style.borderStyle).toBe('dashed')
@@ -74,7 +82,9 @@ describe('RefLabel — tags', () => {
 
 describe('RefLabel — stash', () => {
   it('shows the Archive icon, purple color, and dashed border by default', () => {
-    const { container } = render(<RefLabel gitRef={ref({ type: 'stash', shortName: 'stash@{0}' })} />)
+    const { container } = render(
+      <RefLabel gitRef={ref({ type: 'stash', shortName: 'stash@{0}' })} />
+    )
     const badge = screen.getByText('stash@{0}').parentElement!
     expect(container.querySelector('.lucide-archive')).toBeTruthy()
     expect(badge.style.color).toBe('rgb(167, 139, 250)') // #a78bfa

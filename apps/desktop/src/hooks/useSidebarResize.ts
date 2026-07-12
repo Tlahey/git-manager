@@ -35,14 +35,17 @@ export function useSidebarResize() {
   const startX = useRef(0)
   const startWidth = useRef(0)
 
-  const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return
-    isDragging.current = true
-    startX.current = e.clientX
-    startWidth.current = width
-    e.currentTarget.setPointerCapture(e.pointerId)
-    e.preventDefault()
-  }, [width])
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return
+      isDragging.current = true
+      startX.current = e.clientX
+      startWidth.current = width
+      e.currentTarget.setPointerCapture(e.pointerId)
+      e.preventDefault()
+    },
+    [width]
+  )
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDragging.current) return
@@ -98,4 +101,3 @@ export function useSidebarResize() {
     resizeHandleProps,
   }
 }
-

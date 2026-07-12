@@ -21,7 +21,18 @@ describe('RepoSelector — trigger label', () => {
 
   it('shows the cached repo name for the active repo', () => {
     useRepoUIStore.setState({ activeRepo: '/repo/a' })
-    useRepoDataStore.setState({ repoCache: { '/repo/a': { path: '/repo/a', name: 'my-repo', head: 'main', isDetached: false, isDirty: false, remotes: [] } } })
+    useRepoDataStore.setState({
+      repoCache: {
+        '/repo/a': {
+          path: '/repo/a',
+          name: 'my-repo',
+          head: 'main',
+          isDetached: false,
+          isDirty: false,
+          remotes: [],
+        },
+      },
+    })
     render(<RepoSelector />)
     expect(screen.getByText('my-repo')).toBeInTheDocument()
   })

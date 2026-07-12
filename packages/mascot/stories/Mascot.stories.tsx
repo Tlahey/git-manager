@@ -4,9 +4,9 @@
  * to judge how close the rig is to the brand illustration.
  */
 
-import type { Meta, StoryObj } from '@storybook/react';
-import { OctopusMascot } from '../src';
-import { MASCOT_LAYOUT, referenceFrame, referenceUrl } from './rigUtils';
+import type { Meta, StoryObj } from '@storybook/react'
+import { OctopusMascot } from '../src'
+import { MASCOT_LAYOUT, referenceFrame, referenceUrl } from './rigUtils'
 
 const meta: Meta<typeof OctopusMascot> = {
   title: 'Mascot/Assembled',
@@ -17,12 +17,17 @@ const meta: Meta<typeof OctopusMascot> = {
     eyeTracking: { control: 'boolean' },
   },
   args: { size: 420, animated: true, eyeTracking: true },
-};
-export default meta;
+}
+export default meta
 
-type Story = StoryObj<typeof OctopusMascot>;
+type Story = StoryObj<typeof OctopusMascot>
 
-const dark = { background: '#0a1830', padding: 24, minHeight: '100vh', boxSizing: 'border-box' as const };
+const dark = {
+  background: '#0a1830',
+  padding: 24,
+  minHeight: '100vh',
+  boxSizing: 'border-box' as const,
+}
 
 export const Default: Story = {
   render: (args) => (
@@ -30,7 +35,7 @@ export const Default: Story = {
       <OctopusMascot {...args} />
     </div>
   ),
-};
+}
 
 export const OnLightBackground: Story = {
   render: (args) => (
@@ -38,27 +43,31 @@ export const OnLightBackground: Story = {
       <OctopusMascot {...args} />
     </div>
   ),
-};
+}
 
 export const SideBySideWithReference: Story = {
   render: (args) => (
     <div style={{ ...dark, display: 'flex', gap: 24, alignItems: 'flex-start' }}>
       <figure style={{ margin: 0 }}>
         <OctopusMascot {...args} />
-        <figcaption style={{ color: '#9fb6d4', fontFamily: 'sans-serif', fontSize: 13 }}>rig</figcaption>
+        <figcaption style={{ color: '#9fb6d4', fontFamily: 'sans-serif', fontSize: 13 }}>
+          rig
+        </figcaption>
       </figure>
       <figure style={{ margin: 0 }}>
         <img src={referenceUrl} width={args.size} alt="reference" style={{ borderRadius: 8 }} />
-        <figcaption style={{ color: '#9fb6d4', fontFamily: 'sans-serif', fontSize: 13 }}>référence</figcaption>
+        <figcaption style={{ color: '#9fb6d4', fontFamily: 'sans-serif', fontSize: 13 }}>
+          référence
+        </figcaption>
       </figure>
     </div>
   ),
-};
+}
 
 interface OverlayArgs {
-  size: number;
-  refOpacity: number;
-  refOnTop: boolean;
+  size: number
+  refOpacity: number
+  refOnTop: boolean
 }
 
 /**
@@ -76,9 +85,9 @@ export const ReferenceOverlayOnLive: StoryObj<OverlayArgs> = {
   },
   args: { size: 560, refOpacity: 0.45, refOnTop: true },
   render: ({ size, refOpacity, refOnTop }) => {
-    const vb = MASCOT_LAYOUT.viewBox;
-    const k = size / vb.width; // px per stage unit, same as the component's own scaling
-    const f = referenceFrame();
+    const vb = MASCOT_LAYOUT.viewBox
+    const k = size / vb.width // px per stage unit, same as the component's own scaling
+    const f = referenceFrame()
     const ghost = (
       <img
         src={referenceUrl}
@@ -93,7 +102,7 @@ export const ReferenceOverlayOnLive: StoryObj<OverlayArgs> = {
           zIndex: refOnTop ? 2 : 0,
         }}
       />
-    );
+    )
     return (
       <div style={dark}>
         <div style={{ position: 'relative', width: size }}>
@@ -107,6 +116,6 @@ export const ReferenceOverlayOnLive: StoryObj<OverlayArgs> = {
           (MASCOT_LAYOUT.reference). Animations coupées pour comparer à la pose de repos.
         </p>
       </div>
-    );
+    )
   },
-};
+}

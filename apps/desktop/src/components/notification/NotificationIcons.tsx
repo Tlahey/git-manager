@@ -1,12 +1,10 @@
-
-
 // ─── Constants & Styles ───────────────────────────────────────────────────────
 // We define beautiful inline SVGs with rich colors and gradients.
 // These icons are designed with a modern flat/fantasy aesthetic to wows the user.
 
 export function ReviewRequestedIcon() {
   return (
-    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 ring-1 ring-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.15)] animate-pulse">
+    <div className="flex h-8 w-8 animate-pulse items-center justify-center rounded-lg bg-amber-500/10 shadow-[0_0_8px_rgba(245,158,11,0.15)] ring-1 ring-amber-500/20">
       <svg
         viewBox="0 0 24 24"
         fill="none"
@@ -28,7 +26,7 @@ export function ReviewRequestedIcon() {
 
 export function PrGreenIcon() {
   return (
-    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.15)]">
+    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 shadow-[0_0_8px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/20">
       <svg
         viewBox="0 0 24 24"
         fill="none"
@@ -39,7 +37,11 @@ export function PrGreenIcon() {
         strokeLinejoin="round"
       >
         {/* Fantasy design: Rocket launching upwards with checkmark exhaust trail */}
-        <path d="M4.5 16.5c-1.5 1.5-2.5 3.5-2.5 5.5h6.5c0-2-1-4-2.5-5.5Z" fill="currentColor" fillOpacity="0.1" />
+        <path
+          d="M4.5 16.5c-1.5 1.5-2.5 3.5-2.5 5.5h6.5c0-2-1-4-2.5-5.5Z"
+          fill="currentColor"
+          fillOpacity="0.1"
+        />
         <path d="M12 2s-5 4-5 10c0 3 2.5 4.5 5 4.5s5-1.5 5-4.5c0-6-5-10-5-10Z" />
         <path d="M9 12h6M12 9v6" />
         <path d="m19.5 7.5 1.5 1.5 3-3" className="stroke-emerald-300 stroke-[2.5]" />
@@ -50,7 +52,7 @@ export function PrGreenIcon() {
 
 export function PrRedIcon() {
   return (
-    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/10 ring-1 ring-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.15)]">
+    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/10 shadow-[0_0_8px_rgba(244,63,94,0.15)] ring-1 ring-rose-500/20">
       <svg
         viewBox="0 0 24 24"
         fill="none"
@@ -62,8 +64,16 @@ export function PrRedIcon() {
       >
         {/* Fantasy design: Black hole / cosmic anomaly swallowing a git line */}
         <circle cx="12" cy="12" r="7" strokeDasharray="3 3" />
-        <circle cx="12" cy="12" r="4" fill="currentColor" fillOpacity="0.2" className="animate-ping" style={{ animationDuration: '3s' }} />
-        <path d="m15 9-6 6M9 9l6 6" className="stroke-[2.5] stroke-rose-300" />
+        <circle
+          cx="12"
+          cy="12"
+          r="4"
+          fill="currentColor"
+          fillOpacity="0.2"
+          className="animate-ping"
+          style={{ animationDuration: '3s' }}
+        />
+        <path d="m15 9-6 6M9 9l6 6" className="stroke-rose-300 stroke-[2.5]" />
         <path d="M12 2a10 10 0 0 1 10 10" />
       </svg>
     </div>
@@ -72,7 +82,7 @@ export function PrRedIcon() {
 
 export function PrMergedIcon() {
   return (
-    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10 ring-1 ring-purple-500/20 shadow-[0_0_8px_rgba(168,85,247,0.15)]">
+    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10 shadow-[0_0_8px_rgba(168,85,247,0.15)] ring-1 ring-purple-500/20">
       <svg
         viewBox="0 0 24 24"
         fill="none"
@@ -97,7 +107,7 @@ export function PrMergedIcon() {
 
 export function PrClosedIcon() {
   return (
-    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-500/10 ring-1 ring-zinc-500/20 shadow-[0_0_8px_rgba(113,113,122,0.15)]">
+    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-500/10 shadow-[0_0_8px_rgba(113,113,122,0.15)] ring-1 ring-zinc-500/20">
       <svg
         viewBox="0 0 24 24"
         fill="none"
@@ -118,7 +128,7 @@ export function PrClosedIcon() {
 
 export function NewPrIcon() {
   return (
-    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 ring-1 ring-cyan-500/20 shadow-[0_0_8px_rgba(6,182,212,0.15)]">
+    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 shadow-[0_0_8px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/20">
       <svg
         viewBox="0 0 24 24"
         fill="none"
@@ -140,7 +150,7 @@ export function NewPrIcon() {
 
 export function DefaultIcon() {
   return (
-    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/10 ring-1 ring-sky-500/20 shadow-[0_0_8px_rgba(14,165,233,0.15)]">
+    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/10 shadow-[0_0_8px_rgba(14,165,233,0.15)] ring-1 ring-sky-500/20">
       <svg
         viewBox="0 0 24 24"
         fill="none"

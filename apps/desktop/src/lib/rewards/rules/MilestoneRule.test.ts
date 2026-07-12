@@ -37,31 +37,67 @@ describe('MilestoneRule', () => {
 
   it('matches when the commit counter reaches milestoneValue on a commit event', () => {
     const a = achievement({ milestoneType: 'commit', milestoneValue: 5 })
-    expect(rule.matches(a, ctx({ event: 'commit', counters: { commitCount: 5, prMergedCount: 0, terminalCommandCount: 0 } }))).toBe(true)
+    expect(
+      rule.matches(
+        a,
+        ctx({
+          event: 'commit',
+          counters: { commitCount: 5, prMergedCount: 0, terminalCommandCount: 0 },
+        })
+      )
+    ).toBe(true)
   })
 
   it('matches when the counter exceeds milestoneValue', () => {
     const a = achievement({ milestoneType: 'commit', milestoneValue: 5 })
-    expect(rule.matches(a, ctx({ event: 'commit', counters: { commitCount: 10, prMergedCount: 0, terminalCommandCount: 0 } }))).toBe(true)
+    expect(
+      rule.matches(
+        a,
+        ctx({
+          event: 'commit',
+          counters: { commitCount: 10, prMergedCount: 0, terminalCommandCount: 0 },
+        })
+      )
+    ).toBe(true)
   })
 
   it('does not match when the counter is below milestoneValue', () => {
     const a = achievement({ milestoneType: 'commit', milestoneValue: 5 })
-    expect(rule.matches(a, ctx({ event: 'commit', counters: { commitCount: 4, prMergedCount: 0, terminalCommandCount: 0 } }))).toBe(false)
+    expect(
+      rule.matches(
+        a,
+        ctx({
+          event: 'commit',
+          counters: { commitCount: 4, prMergedCount: 0, terminalCommandCount: 0 },
+        })
+      )
+    ).toBe(false)
   })
 
   it('matches pr_merged milestones on pr_closed_or_merged events', () => {
     const a = achievement({ milestoneType: 'pr_merged', milestoneValue: 1 })
     expect(
-      rule.matches(a, ctx({ event: 'pr_closed_or_merged', counters: { commitCount: 0, prMergedCount: 1, terminalCommandCount: 0 } }))
+      rule.matches(
+        a,
+        ctx({
+          event: 'pr_closed_or_merged',
+          counters: { commitCount: 0, prMergedCount: 1, terminalCommandCount: 0 },
+        })
+      )
     ).toBe(true)
   })
 
   it('does not match when the event does not correspond to the milestone type', () => {
     const a = achievement({ milestoneType: 'commit', milestoneValue: 1 })
-    expect(rule.matches(a, ctx({ event: 'pr_closed_or_merged', counters: { commitCount: 5, prMergedCount: 5, terminalCommandCount: 0 } }))).toBe(
-      false
-    )
+    expect(
+      rule.matches(
+        a,
+        ctx({
+          event: 'pr_closed_or_merged',
+          counters: { commitCount: 5, prMergedCount: 5, terminalCommandCount: 0 },
+        })
+      )
+    ).toBe(false)
   })
 
   it('never matches terminal_command milestone type (handled by TerminalKeywordRule instead)', () => {
@@ -70,7 +106,11 @@ describe('MilestoneRule', () => {
   })
 
   it('does not match when milestoneType or milestoneValue is missing', () => {
-    expect(rule.matches(achievement({ milestoneType: undefined, milestoneValue: 1 }), ctx())).toBe(false)
-    expect(rule.matches(achievement({ milestoneType: 'commit', milestoneValue: undefined }), ctx())).toBe(false)
+    expect(rule.matches(achievement({ milestoneType: undefined, milestoneValue: 1 }), ctx())).toBe(
+      false
+    )
+    expect(
+      rule.matches(achievement({ milestoneType: 'commit', milestoneValue: undefined }), ctx())
+    ).toBe(false)
   })
 })

@@ -4,7 +4,9 @@ import userEvent from '@testing-library/user-event'
 import type { GitGraphNode, GitStash } from '@git-manager/git-types'
 
 vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
-vi.mock('./CommitDetailsAvatar', () => ({ CommitDetailsAvatar: () => <div data-testid="avatar" /> }))
+vi.mock('./CommitDetailsAvatar', () => ({
+  CommitDetailsAvatar: () => <div data-testid="avatar" />,
+}))
 
 const { useGitStashes, useCommitMessageEdit, apiOpenUrl } = vi.hoisted(() => ({
   useGitStashes: vi.fn(),
@@ -53,7 +55,9 @@ beforeEach(() => {
   useCommitMessageEdit.mockReturnValue(editState())
 })
 
-function baseProps(overrides: Partial<React.ComponentProps<typeof CommitHeaderInfo>> = {}): React.ComponentProps<typeof CommitHeaderInfo> {
+function baseProps(
+  overrides: Partial<React.ComponentProps<typeof CommitHeaderInfo>> = {}
+): React.ComponentProps<typeof CommitHeaderInfo> {
   return {
     isWip: false,
     commit: commit(),
@@ -99,7 +103,15 @@ describe('CommitHeaderInfo — author block', () => {
   })
 
   it('shows the author name/email for a real commit', () => {
-    render(<CommitHeaderInfo {...baseProps({ commit: commit({ author: { name: 'Ada Lovelace', email: 'ada@example.com', timestamp: 1700000000 } }) })} />)
+    render(
+      <CommitHeaderInfo
+        {...baseProps({
+          commit: commit({
+            author: { name: 'Ada Lovelace', email: 'ada@example.com', timestamp: 1700000000 },
+          }),
+        })}
+      />
+    )
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument()
     expect(screen.getByText('<ada@example.com>')).toBeInTheDocument()
   })
@@ -107,14 +119,18 @@ describe('CommitHeaderInfo — author block', () => {
 
 describe('CommitHeaderInfo — message editing form', () => {
   it('shows the amend form pre-filled with the hook state', () => {
-    useCommitMessageEdit.mockReturnValue(editState({ isEditingMessage: true, editSubject: 'New subject', editBody: 'New body' }))
+    useCommitMessageEdit.mockReturnValue(
+      editState({ isEditingMessage: true, editSubject: 'New subject', editBody: 'New body' })
+    )
     render(<CommitHeaderInfo {...baseProps()} />)
     expect(screen.getByTestId('commit-subject-input')).toHaveValue('New subject')
     expect(screen.getByTestId('commit-body-textarea')).toHaveValue('New body')
   })
 
   it('shows the remaining-characters counter, turning destructive under 10 left', () => {
-    useCommitMessageEdit.mockReturnValue(editState({ isEditingMessage: true, editSubject: 'x'.repeat(65) }))
+    useCommitMessageEdit.mockReturnValue(
+      editState({ isEditingMessage: true, editSubject: 'x'.repeat(65) })
+    )
     render(<CommitHeaderInfo {...baseProps()} />)
     const counter = screen.getByTestId('commit-subject-counter')
     expect(counter).toHaveTextContent('7 chars remaining')
@@ -126,11 +142,15 @@ describe('CommitHeaderInfo — message editing form', () => {
     const { rerender } = render(<CommitHeaderInfo {...baseProps()} />)
     expect(screen.getByTestId('commit-amend-submit')).toBeDisabled()
 
-    useCommitMessageEdit.mockReturnValue(editState({ isEditingMessage: true, editSubject: 'ok', isSavingMessage: true }))
+    useCommitMessageEdit.mockReturnValue(
+      editState({ isEditingMessage: true, editSubject: 'ok', isSavingMessage: true })
+    )
     rerender(<CommitHeaderInfo {...baseProps()} />)
     expect(screen.getByTestId('commit-amend-submit')).toBeDisabled()
 
-    useCommitMessageEdit.mockReturnValue(editState({ isEditingMessage: true, editSubject: 'ok', isSavingMessage: false }))
+    useCommitMessageEdit.mockReturnValue(
+      editState({ isEditingMessage: true, editSubject: 'ok', isSavingMessage: false })
+    )
     rerender(<CommitHeaderInfo {...baseProps()} />)
     expect(screen.getByTestId('commit-amend-submit')).toBeEnabled()
   })
@@ -138,7 +158,14 @@ describe('CommitHeaderInfo — message editing form', () => {
   it('submits via handleUpdateCommitMessage and cancels via setIsEditingMessage(false)', async () => {
     const handleUpdateCommitMessage = vi.fn()
     const setIsEditingMessage = vi.fn()
-    useCommitMessageEdit.mockReturnValue(editState({ isEditingMessage: true, editSubject: 'ok', handleUpdateCommitMessage, setIsEditingMessage }))
+    useCommitMessageEdit.mockReturnValue(
+      editState({
+        isEditingMessage: true,
+        editSubject: 'ok',
+        handleUpdateCommitMessage,
+        setIsEditingMessage,
+      })
+    )
     const user = userEvent.setup()
     render(<CommitHeaderInfo {...baseProps()} />)
     await user.click(screen.getByTestId('commit-amend-submit'))
@@ -155,7 +182,10 @@ describe('CommitHeaderInfo — message display (not editing)', () => {
     const user = userEvent.setup()
     render(
       <CommitHeaderInfo
-        {...baseProps({ isHead: true, commit: commit({ subject: 'Head subject', body: '- bullet one\nplain line' }) })}
+        {...baseProps({
+          isHead: true,
+          commit: commit({ subject: 'Head subject', body: '- bullet one\nplain line' }),
+        })}
       />
     )
     expect(screen.getByTestId('commit-subject-display')).toHaveTextContent('Head subject')
@@ -177,22 +207,46 @@ describe('CommitHeaderInfo — message display (not editing)', () => {
   })
 
   it('shows the stash message split into title/body when a matching stash is found', () => {
-    const stash: GitStash = { index: 0, message: 'Stash title\n\nStash body', branch: 'main', commitOid: 'abcdef1234567890', timestamp: 0, filesCount: 1, additions: 1, deletions: 0 }
+    const stash: GitStash = {
+      index: 0,
+      message: 'Stash title\n\nStash body',
+      branch: 'main',
+      commitOid: 'abcdef1234567890',
+      timestamp: 0,
+      filesCount: 1,
+      additions: 1,
+      deletions: 0,
+    }
     useGitStashes.mockReturnValue({ data: [stash] })
-    render(<CommitHeaderInfo {...baseProps({ isStash: true, commit: commit({ oid: 'abcdef1234567890' }) })} />)
+    render(
+      <CommitHeaderInfo
+        {...baseProps({ isStash: true, commit: commit({ oid: 'abcdef1234567890' }) })}
+      />
+    )
     expect(screen.getByText('Stash title')).toBeInTheDocument()
     expect(screen.getByText('Stash body')).toBeInTheDocument()
   })
 
   it('falls back to the commit subject/body for a stash with no matching entry', () => {
     useGitStashes.mockReturnValue({ data: [] })
-    render(<CommitHeaderInfo {...baseProps({ isStash: true, commit: commit({ subject: 'Fallback subject', body: 'Fallback body' }) })} />)
+    render(
+      <CommitHeaderInfo
+        {...baseProps({
+          isStash: true,
+          commit: commit({ subject: 'Fallback subject', body: 'Fallback body' }),
+        })}
+      />
+    )
     expect(screen.getByText('Fallback subject')).toBeInTheDocument()
     expect(screen.getByText('Fallback body')).toBeInTheDocument()
   })
 
   it('shows a plain readonly message block when neither HEAD nor stash', () => {
-    render(<CommitHeaderInfo {...baseProps({ isHead: false, commit: commit({ subject: 'Plain subject' }) })} />)
+    render(
+      <CommitHeaderInfo
+        {...baseProps({ isHead: false, commit: commit({ subject: 'Plain subject' }) })}
+      />
+    )
     expect(screen.getByTestId('commit-message-readonly')).toHaveTextContent('Plain subject')
   })
 })
@@ -220,7 +274,14 @@ describe('CommitHeaderInfo — SHA / remote link / parents', () => {
   it('shows a GitHub link and opens the commit URL when clicked', async () => {
     apiOpenUrl.mockResolvedValue(undefined)
     const user = userEvent.setup()
-    render(<CommitHeaderInfo {...baseProps({ remoteUrl: 'https://github.com/owner/repo', commit: commit({ oid: 'sha1' }) })} />)
+    render(
+      <CommitHeaderInfo
+        {...baseProps({
+          remoteUrl: 'https://github.com/owner/repo',
+          commit: commit({ oid: 'sha1' }),
+        })}
+      />
+    )
     expect(screen.getByText('GitHub')).toBeInTheDocument()
     await user.click(screen.getByTestId('github-commit-link'))
     expect(apiOpenUrl).toHaveBeenCalledWith('https://github.com/owner/repo/commit/sha1')
@@ -239,7 +300,14 @@ describe('CommitHeaderInfo — SHA / remote link / parents', () => {
   it('renders a button per parent oid and navigates on click', async () => {
     const onSelectCommit = vi.fn()
     const user = userEvent.setup()
-    render(<CommitHeaderInfo {...baseProps({ commit: commit({ parentOids: ['parent1234567', 'parent7654321'] }), onSelectCommit })} />)
+    render(
+      <CommitHeaderInfo
+        {...baseProps({
+          commit: commit({ parentOids: ['parent1234567', 'parent7654321'] }),
+          onSelectCommit,
+        })}
+      />
+    )
     expect(screen.getByText('parent1')).toBeInTheDocument()
     expect(screen.getByText('parent7')).toBeInTheDocument()
     await user.click(screen.getByText('parent1'))
@@ -247,7 +315,11 @@ describe('CommitHeaderInfo — SHA / remote link / parents', () => {
   })
 
   it('hides SHA/remote/parents entirely for WIP', () => {
-    render(<CommitHeaderInfo {...baseProps({ isWip: true, remoteUrl: 'https://github.com/owner/repo' })} />)
+    render(
+      <CommitHeaderInfo
+        {...baseProps({ isWip: true, remoteUrl: 'https://github.com/owner/repo' })}
+      />
+    )
     expect(screen.queryByTestId('github-commit-link')).not.toBeInTheDocument()
     expect(screen.queryByTitle('gitTree.detailPanel.copy')).not.toBeInTheDocument()
   })

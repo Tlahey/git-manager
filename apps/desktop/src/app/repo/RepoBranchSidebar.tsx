@@ -63,18 +63,14 @@ function BranchSection({ title, icon, branches, selectedBranch, onSelect }: Sect
               >
                 <BranchIcon className="h-3 w-3 shrink-0 opacity-40" />
                 <span className="flex-1 truncate">
-                  {b.isHead && (
-                    <span className="mr-1.5 text-[10px] text-emerald-400">●</span>
-                  )}
+                  {b.isHead && <span className="mr-1.5 text-[10px] text-emerald-400">●</span>}
                   <span className={b.isHead ? 'font-medium text-foreground' : ''}>
                     {b.shortName}
                   </span>
                 </span>
                 {(b.aheadCount > 0 || b.behindCount > 0) && (
                   <span className="shrink-0 text-[10px]">
-                    {b.aheadCount > 0 && (
-                      <span className="text-blue-400">↑{b.aheadCount}</span>
-                    )}
+                    {b.aheadCount > 0 && <span className="text-blue-400">↑{b.aheadCount}</span>}
                     {b.behindCount > 0 && (
                       <span className="ml-0.5 text-orange-400">↓{b.behindCount}</span>
                     )}

@@ -189,7 +189,13 @@ describe('RepoView — prop wiring', () => {
       settings: {
         ...INITIAL_SETTINGS.settings,
         github: {
-          accounts: [{ id: 'acc-1', token: 'tok-123', user: { login: 'octocat', name: null, email: null, avatarUrl: '' } }],
+          accounts: [
+            {
+              id: 'acc-1',
+              token: 'tok-123',
+              user: { login: 'octocat', name: null, email: null, avatarUrl: '' },
+            },
+          ],
           activeAccountId: 'acc-1',
         },
       },
@@ -266,7 +272,10 @@ describe('RepoView — branch context menu', () => {
     await act(async () => {
       await onDelete()
     })
-    expect(apiDeleteBranch).toHaveBeenCalledWith('/repo', 'local-branch', { targetOid: 'sha123', upstream: undefined })
+    expect(apiDeleteBranch).toHaveBeenCalledWith('/repo', 'local-branch', {
+      targetOid: 'sha123',
+      upstream: undefined,
+    })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['branches', '/repo'] })
     confirmSpy.mockRestore()
   })

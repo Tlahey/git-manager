@@ -29,7 +29,7 @@ export function CommitDetailsPanel({
   isHead: isHeadProp,
   onSelectCommit,
   onSelectFileDiff,
-  onClose
+  onClose,
 }: CommitDetailsPanelProps) {
   const { t } = useTranslation('git')
   const queryClient = useQueryClient()
@@ -37,10 +37,7 @@ export function CommitDetailsPanel({
   const isWip = commit.oid === 'WIP'
 
   const { data: gitStatus } = useGitStatus(repoPath)
-  const { data: diff } = useCommitDiff(
-    repoPath,
-    isWip ? '' : commit.oid
-  )
+  const { data: diff } = useCommitDiff(repoPath, isWip ? '' : commit.oid)
 
   const isHead = isHeadProp ?? node.refs.some((r) => r.type === 'HEAD')
 
@@ -83,21 +80,21 @@ export function CommitDetailsPanel({
         list.push({
           path: f.path,
           status: f.status as ProcessedFileItem['status'],
-          staged: true
+          staged: true,
         })
       )
       gitStatus.unstaged.forEach((f: GitStatusEntry) =>
         list.push({
           path: f.path,
           status: f.status as ProcessedFileItem['status'],
-          staged: false
+          staged: false,
         })
       )
       gitStatus.untracked.forEach((f: string) =>
         list.push({
           path: f,
           status: 'untracked',
-          staged: false
+          staged: false,
         })
       )
       return list
@@ -107,7 +104,7 @@ export function CommitDetailsPanel({
       status: f.status as ProcessedFileItem['status'],
       additions: f.additions,
       deletions: f.deletions,
-      staged: false
+      staged: false,
     }))
   }, [isWip, diff, gitStatus])
 
@@ -116,23 +113,17 @@ export function CommitDetailsPanel({
     return gitStatus.conflicted.map((path) => ({
       path,
       status: 'conflicted' as const,
-      staged: false
+      staged: false,
     }))
   }, [isWip, gitStatus])
 
-  const stagedFiles = useMemo(
-    () => processedFiles.filter((f) => f.staged),
-    [processedFiles]
-  )
-  const unstagedFiles = useMemo(
-    () => processedFiles.filter((f) => !f.staged),
-    [processedFiles]
-  )
+  const stagedFiles = useMemo(() => processedFiles.filter((f) => f.staged), [processedFiles])
+  const unstagedFiles = useMemo(() => processedFiles.filter((f) => !f.staged), [processedFiles])
 
   const isStash = node.refs.some((r) => r.type === 'stash')
 
   return (
-    <div className="flex h-full w-full flex-col border-l border-border bg-card shadow-2xl min-w-0">
+    <div className="flex h-full w-full min-w-0 flex-col border-l border-border bg-card shadow-2xl">
       {/* ── HEADER ── */}
       <CommitHeaderInfo
         isWip={isWip}
@@ -148,14 +139,18 @@ export function CommitDetailsPanel({
       />
 
       {/* ── SCROLLABLE FILE LIST ── */}
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         .details-scroll-area [data-radix-scroll-area-viewport] > div {
           display: block !important;
           width: 100% !important;
         }
-      `}} />
-      <ScrollArea className="flex-1 min-w-0 w-full details-scroll-area">
-        <div className="px-4 py-4 space-y-4 min-w-0 w-full overflow-hidden">
+      `,
+        }}
+      />
+      <ScrollArea className="details-scroll-area w-full min-w-0 flex-1">
+        <div className="w-full min-w-0 space-y-4 overflow-hidden px-4 py-4">
           {isWip ? (
             <>
               {unmergedFiles.length > 0 && (

@@ -165,19 +165,27 @@ describe('detect — review_status_changed', () => {
   const def = getNotificationTypeDef('review_status_changed')!
 
   it('fires when review status changes to approved', () => {
-    expect(def.detect(pr({ reviewStatus: 'approved' }), snapshot({ reviewStatus: 'pending' }))).toBe(true)
+    expect(
+      def.detect(pr({ reviewStatus: 'approved' }), snapshot({ reviewStatus: 'pending' }))
+    ).toBe(true)
   })
 
   it('fires when review status changes to changes_requested', () => {
-    expect(def.detect(pr({ reviewStatus: 'changes_requested' }), snapshot({ reviewStatus: 'pending' }))).toBe(true)
+    expect(
+      def.detect(pr({ reviewStatus: 'changes_requested' }), snapshot({ reviewStatus: 'pending' }))
+    ).toBe(true)
   })
 
   it('does not fire when the new status is pending', () => {
-    expect(def.detect(pr({ reviewStatus: 'pending' }), snapshot({ reviewStatus: 'approved' }))).toBe(false)
+    expect(
+      def.detect(pr({ reviewStatus: 'pending' }), snapshot({ reviewStatus: 'approved' }))
+    ).toBe(false)
   })
 
   it('does not fire when unchanged', () => {
-    expect(def.detect(pr({ reviewStatus: 'approved' }), snapshot({ reviewStatus: 'approved' }))).toBe(false)
+    expect(
+      def.detect(pr({ reviewStatus: 'approved' }), snapshot({ reviewStatus: 'approved' }))
+    ).toBe(false)
   })
 
   it('exposes a reviewStatus accessor mirroring the PR', () => {

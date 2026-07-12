@@ -16,7 +16,11 @@ export interface CollapsedRegion {
 }
 
 /** The collapsed region for one pane-range, or `null` when the range is too short to collapse. */
-export function collapsedRegionForRange(blockId: number, startLine: number, lineCount: number): CollapsedRegion | null {
+export function collapsedRegionForRange(
+  blockId: number,
+  startLine: number,
+  lineCount: number
+): CollapsedRegion | null {
   if (lineCount <= 2 * COLLAPSE_CONTEXT_LINES) return null
   const startHide = startLine + COLLAPSE_CONTEXT_LINES
   const endHide = startLine + lineCount - COLLAPSE_CONTEXT_LINES - 1
@@ -64,8 +68,13 @@ export function toHiddenRanges(regions: CollapsedRegion[]): { start: number; end
 }
 
 /** Banner view-zone geometry (the "N lines collapsed" strip) for a pane's collapsed regions. */
-export function toBannerZones(regions: CollapsedRegion[]): { afterLineNumber: number; heightInLines: number }[] {
-  return regions.map((r) => ({ afterLineNumber: r.startHide - 1, heightInLines: COLLAPSED_BANNER_HEIGHT_LINES }))
+export function toBannerZones(
+  regions: CollapsedRegion[]
+): { afterLineNumber: number; heightInLines: number }[] {
+  return regions.map((r) => ({
+    afterLineNumber: r.startHide - 1,
+    heightInLines: COLLAPSED_BANNER_HEIGHT_LINES,
+  }))
 }
 
 /** Highlights (or clears) every DOM copy of a collapsed block's banner at once — the same block

@@ -7,7 +7,14 @@ import { MOCK_PRS } from '../app/pull-requests/mockData'
 
 export interface AppNotification {
   id: number
-  type: 'pr_merged' | 'pr_closed' | 'review_requested' | 'review_status_changed' | 'new_pr' | 'ci_success' | 'ci_failed'
+  type:
+    | 'pr_merged'
+    | 'pr_closed'
+    | 'review_requested'
+    | 'review_status_changed'
+    | 'new_pr'
+    | 'ci_success'
+    | 'ci_failed'
   repo: string
   prNumber: number
   prTitle: string
@@ -22,22 +29,54 @@ export interface AppNotification {
 
 interface NotificationState {
   notifications: AppNotification[]
-  previousPRs: Record<string, { status: PRStatus; reviewStatus: ReviewStatus; needsMyReview: boolean; ciStatus?: CiStatus; updatedAt: string }>
+  previousPRs: Record<
+    string,
+    {
+      status: PRStatus
+      reviewStatus: ReviewStatus
+      needsMyReview: boolean
+      ciStatus?: CiStatus
+      updatedAt: string
+    }
+  >
   hasSessionInitialized: boolean
   mockPRs: MockPR[] // For simulation when offline/no GitHub token
-  
+
   // Actions
-  addNotification: (notification: Omit<AppNotification, 'id' | 'createdAt' | 'read'>) => AppNotification
+  addNotification: (
+    notification: Omit<AppNotification, 'id' | 'createdAt' | 'read'>
+  ) => AppNotification
   markAsRead: (id: number) => void
   markAllAsRead: () => void
   clearNotifications: () => void
-  
+
   // Watcher Actions
-  setPreviousPRs: (prs: Record<string, { status: PRStatus; reviewStatus: ReviewStatus; needsMyReview: boolean; ciStatus?: CiStatus; updatedAt: string }>) => void
+  setPreviousPRs: (
+    prs: Record<
+      string,
+      {
+        status: PRStatus
+        reviewStatus: ReviewStatus
+        needsMyReview: boolean
+        ciStatus?: CiStatus
+        updatedAt: string
+      }
+    >
+  ) => void
   setSessionInitialized: (val: boolean) => void
-  
+
   // Simulation Actions
-  simulateChange: (prId: string, actionType: 'merge' | 'close' | 'request_review' | 'approve' | 'new_pr' | 'ci_success' | 'ci_failed') => void
+  simulateChange: (
+    prId: string,
+    actionType:
+      | 'merge'
+      | 'close'
+      | 'request_review'
+      | 'approve'
+      | 'new_pr'
+      | 'ci_success'
+      | 'ci_failed'
+  ) => void
 }
 
 export const useNotificationStore = create<NotificationState>()(
@@ -65,9 +104,7 @@ export const useNotificationStore = create<NotificationState>()(
 
       markAsRead: (id) =>
         set((state) => ({
-          notifications: state.notifications.map((n) =>
-            n.id === id ? { ...n, read: true } : n
-          ),
+          notifications: state.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
         })),
 
       markAllAsRead: () =>

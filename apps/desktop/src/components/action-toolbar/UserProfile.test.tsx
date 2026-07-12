@@ -14,7 +14,12 @@ function account(overrides: Partial<GitHubAccount> = {}): GitHubAccount {
   return {
     id: 'acc1',
     token: 'tok',
-    user: { login: 'octocat', name: 'The Octocat', email: 'octo@x.com', avatarUrl: 'https://avatar/octo.png' },
+    user: {
+      login: 'octocat',
+      name: 'The Octocat',
+      email: 'octo@x.com',
+      avatarUrl: 'https://avatar/octo.png',
+    },
     ...overrides,
   }
 }
@@ -32,7 +37,10 @@ describe('UserProfile — no linked account', () => {
 
   it('shows initials derived from the default git author name', () => {
     useSettingsStore.setState({
-      settings: { ...DEFAULT_SETTINGS, git: { ...DEFAULT_SETTINGS.git, defaultAuthorName: 'Jane Doe' } },
+      settings: {
+        ...DEFAULT_SETTINGS,
+        git: { ...DEFAULT_SETTINGS.git, defaultAuthorName: 'Jane Doe' },
+      },
     })
     render(<UserProfile onOpenSettings={vi.fn()} />)
     expect(screen.getByRole('button')).toHaveTextContent('JD')
@@ -40,7 +48,10 @@ describe('UserProfile — no linked account', () => {
 
   it('uses the first two letters for a single-word default author name', () => {
     useSettingsStore.setState({
-      settings: { ...DEFAULT_SETTINGS, git: { ...DEFAULT_SETTINGS.git, defaultAuthorName: 'Cher' } },
+      settings: {
+        ...DEFAULT_SETTINGS,
+        git: { ...DEFAULT_SETTINGS.git, defaultAuthorName: 'Cher' },
+      },
     })
     render(<UserProfile onOpenSettings={vi.fn()} />)
     expect(screen.getByRole('button')).toHaveTextContent('CH')
@@ -59,7 +70,10 @@ describe('UserProfile — linked GitHub account', () => {
 
   it('shows the account avatar image', () => {
     render(<UserProfile onOpenSettings={vi.fn()} />)
-    expect(screen.getByRole('img', { name: 'The Octocat' })).toHaveAttribute('src', 'https://avatar/octo.png')
+    expect(screen.getByRole('img', { name: 'The Octocat' })).toHaveAttribute(
+      'src',
+      'https://avatar/octo.png'
+    )
   })
 
   it('shows the account name and email in the dropdown header', async () => {
@@ -74,7 +88,10 @@ describe('UserProfile — linked GitHub account', () => {
     useSettingsStore.setState({
       settings: {
         ...DEFAULT_SETTINGS,
-        github: { accounts: [account({ user: { ...account().user, avatarUrl: '' } })], activeAccountId: 'acc1' },
+        github: {
+          accounts: [account({ user: { ...account().user, avatarUrl: '' } })],
+          activeAccountId: 'acc1',
+        },
       },
     })
     render(<UserProfile onOpenSettings={vi.fn()} />)
@@ -87,7 +104,13 @@ describe('UserProfile — linked GitHub account', () => {
       settings: {
         ...DEFAULT_SETTINGS,
         github: {
-          accounts: [account({ id: 'acc1' }), account({ id: 'acc2', user: { ...account().user, login: 'other', name: 'Other User' } })],
+          accounts: [
+            account({ id: 'acc1' }),
+            account({
+              id: 'acc2',
+              user: { ...account().user, login: 'other', name: 'Other User' },
+            }),
+          ],
           activeAccountId: 'acc1',
         },
       },

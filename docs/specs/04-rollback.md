@@ -109,6 +109,7 @@ After: A → B (HEAD)  [C's changes permanently lost]
 ## Branch protection
 
 Reset actions (destructive) are blocked by default on protected branches (configurable in Settings):
+
 - `main`, `master`, `develop` → blocked by default
 - Explicit error message if attempted
 - Can be unblocked in Settings → Git → Protected Branches
@@ -117,18 +118,19 @@ Reset actions (destructive) are blocked by default on protected branches (config
 
 ## Tauri commands involved
 
-| Command | Parameters | Description |
-|---------|-----------|-------------|
-| `revert_commit` | `path, oid, no_commit?` | Revert with or without auto-commit |
-| `reset_to_commit` | `path, oid, mode: soft\|mixed\|hard` | Reset HEAD |
-| `get_commits_between` | `path, from_oid, to_oid` | List of commits between two SHAs |
-| `get_revert_diff` | `path, oid` | Diff preview of the revert before execution |
+| Command               | Parameters                           | Description                                 |
+| --------------------- | ------------------------------------ | ------------------------------------------- |
+| `revert_commit`       | `path, oid, no_commit?`              | Revert with or without auto-commit          |
+| `reset_to_commit`     | `path, oid, mode: soft\|mixed\|hard` | Reset HEAD                                  |
+| `get_commits_between` | `path, from_oid, to_oid`             | List of commits between two SHAs            |
+| `get_revert_diff`     | `path, oid`                          | Diff preview of the revert before execution |
 
 ---
 
 ## Conflict handling
 
 If a `git revert` generates conflicts:
+
 1. The operation is interrupted with status `CONFLICT`
 2. The app switches to "Conflict resolution" mode
 3. Conflicting files are listed with visual markers

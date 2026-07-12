@@ -17,7 +17,9 @@ describe('OctopusMascot', () => {
   })
 
   it('forwards size/animated/eye-tracking/label as attributes on the underlying element', () => {
-    const { container } = render(<OctopusMascot size={480} animated={false} eyeTracking={false} label="Custom label" />)
+    const { container } = render(
+      <OctopusMascot size={480} animated={false} eyeTracking={false} label="Custom label" />
+    )
     const el = container.querySelector('git-mascot')!
     expect(el.getAttribute('size')).toBe('480')
     expect(el.getAttribute('animated')).toBe('false')

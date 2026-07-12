@@ -49,19 +49,37 @@ describe('PRRow — content', () => {
   })
 
   it('shows additions/deletions and file count when present', () => {
-    render(<PRRow pr={pr({ additions: 12, deletions: 4, filesChanged: 3 })} pinned={false} onTogglePin={vi.fn()} />)
+    render(
+      <PRRow
+        pr={pr({ additions: 12, deletions: 4, filesChanged: 3 })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
     expect(screen.getByText('+12')).toBeInTheDocument()
     expect(screen.getByText('−4')).toBeInTheDocument()
     expect(screen.getByText('· 3 files')).toBeInTheDocument()
   })
 
   it('shows just the file count when there are no line changes', () => {
-    render(<PRRow pr={pr({ additions: 0, deletions: 0, filesChanged: 5 })} pinned={false} onTogglePin={vi.fn()} />)
+    render(
+      <PRRow
+        pr={pr({ additions: 0, deletions: 0, filesChanged: 5 })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
     expect(screen.getByText('5 files')).toBeInTheDocument()
   })
 
   it('shows up to 2 labels', () => {
-    render(<PRRow pr={pr({ labels: ['bug', 'urgent', 'wontfix'] })} pinned={false} onTogglePin={vi.fn()} />)
+    render(
+      <PRRow
+        pr={pr({ labels: ['bug', 'urgent', 'wontfix'] })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
     expect(screen.getByText('bug')).toBeInTheDocument()
     expect(screen.getByText('urgent')).toBeInTheDocument()
     expect(screen.queryByText('wontfix')).not.toBeInTheDocument()
@@ -79,32 +97,48 @@ describe('PRRow — content', () => {
 
   it('shows an em-dash when there are no collaborators, an avatar stack otherwise', () => {
     // With ciStatus: null, CiBadge also renders its own "—", so there are 2 by default.
-    const { rerender } = render(<PRRow pr={pr({ collaborators: [] })} pinned={false} onTogglePin={vi.fn()} />)
+    const { rerender } = render(
+      <PRRow pr={pr({ collaborators: [] })} pinned={false} onTogglePin={vi.fn()} />
+    )
     expect(screen.getAllByText('—')).toHaveLength(2)
 
-    rerender(<PRRow pr={pr({ collaborators: [{ login: 'bob', avatar: 'b.png' }] })} pinned={false} onTogglePin={vi.fn()} />)
+    rerender(
+      <PRRow
+        pr={pr({ collaborators: [{ login: 'bob', avatar: 'b.png' }] })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
     expect(screen.getAllByText('—')).toHaveLength(1)
   })
 })
 
 describe('PRRow — status icon', () => {
   it('shows a purple merge icon for merged PRs', () => {
-    const { container } = render(<PRRow pr={pr({ status: 'merged' })} pinned={false} onTogglePin={vi.fn()} />)
+    const { container } = render(
+      <PRRow pr={pr({ status: 'merged' })} pinned={false} onTogglePin={vi.fn()} />
+    )
     expect(container.querySelector('.text-purple-400')).toBeTruthy()
   })
 
   it('shows a destructive X icon for closed PRs', () => {
-    const { container } = render(<PRRow pr={pr({ status: 'closed' })} pinned={false} onTogglePin={vi.fn()} />)
+    const { container } = render(
+      <PRRow pr={pr({ status: 'closed' })} pinned={false} onTogglePin={vi.fn()} />
+    )
     expect(container.querySelector('.text-destructive')).toBeTruthy()
   })
 
   it('shows a muted circle icon for draft PRs', () => {
-    const { container } = render(<PRRow pr={pr({ status: 'open', isDraft: true })} pinned={false} onTogglePin={vi.fn()} />)
+    const { container } = render(
+      <PRRow pr={pr({ status: 'open', isDraft: true })} pinned={false} onTogglePin={vi.fn()} />
+    )
     expect(container.querySelector('.lucide-circle')).toBeTruthy()
   })
 
   it('shows a green PR icon for open, non-draft PRs', () => {
-    const { container } = render(<PRRow pr={pr({ status: 'open', isDraft: false })} pinned={false} onTogglePin={vi.fn()} />)
+    const { container } = render(
+      <PRRow pr={pr({ status: 'open', isDraft: false })} pinned={false} onTogglePin={vi.fn()} />
+    )
     expect(container.querySelector('.text-green-400')).toBeTruthy()
   })
 })
@@ -133,7 +167,13 @@ describe('PRRow — pin button', () => {
 
 describe('PRRow — row click', () => {
   it('opens the PR url when the row is clicked', async () => {
-    render(<PRRow pr={pr({ url: 'https://github.com/owner/git-manager/pull/42' })} pinned={false} onTogglePin={vi.fn()} />)
+    render(
+      <PRRow
+        pr={pr({ url: 'https://github.com/owner/git-manager/pull/42' })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
     await act(async () => {
       fireEvent.click(screen.getByText('Add feature X'))
       await Promise.resolve()
@@ -161,7 +201,13 @@ describe('PRRow — action menu', () => {
 
   it('opens the PR url via the "Open on GitHub" menu item and closes the menu', async () => {
     const user = userEvent.setup()
-    render(<PRRow pr={pr({ url: 'https://github.com/owner/git-manager/pull/42' })} pinned={false} onTogglePin={vi.fn()} />)
+    render(
+      <PRRow
+        pr={pr({ url: 'https://github.com/owner/git-manager/pull/42' })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
     const [moreButton] = screen.getAllByRole('button').slice(-1)
     await user.click(moreButton)
     await act(async () => {
@@ -178,7 +224,13 @@ describe('PRRow — action menu', () => {
     const user = userEvent.setup()
     // userEvent.setup() installs its own navigator.clipboard stub, so ours must be defined after.
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
-    render(<PRRow pr={pr({ url: 'https://github.com/owner/git-manager/pull/42' })} pinned={false} onTogglePin={vi.fn()} />)
+    render(
+      <PRRow
+        pr={pr({ url: 'https://github.com/owner/git-manager/pull/42' })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
     const [moreButton] = screen.getAllByRole('button').slice(-1)
     await user.click(moreButton)
     await user.click(screen.getByText('Copy link'))

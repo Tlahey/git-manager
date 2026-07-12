@@ -3,7 +3,10 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key}:${JSON.stringify(opts)}` : key,
+  }),
 }))
 vi.mock('../../api/git.api', () => ({ apiCompareCommitToWorkdir: vi.fn() }))
 
@@ -16,7 +19,14 @@ function renderDialog(props: Partial<React.ComponentProps<typeof CompareToWorkdi
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <CompareToWorkdirDialog repoPath="/repo" oid="abc123" shortOid="abc123d" open onClose={vi.fn()} {...props} />
+      <CompareToWorkdirDialog
+        repoPath="/repo"
+        oid="abc123"
+        shortOid="abc123d"
+        open
+        onClose={vi.fn()}
+        {...props}
+      />
     </QueryClientProvider>
   )
 }
@@ -40,14 +50,32 @@ describe('CompareToWorkdirDialog', () => {
   it('shows a "no differences" message once loaded with no files', async () => {
     mockedCompare.mockResolvedValue({ files: [] })
     renderDialog()
-    await waitFor(() => expect(screen.getByText('gitTree.contextMenu.noDifferences')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText('gitTree.contextMenu.noDifferences')).toBeInTheDocument()
+    )
   })
 
   it('renders a DiffViewer for each changed file', async () => {
     mockedCompare.mockResolvedValue({
       files: [
-        { oldPath: 'a.ts', newPath: 'a.ts', status: 'modified', isBinary: false, additions: 1, deletions: 0, hunks: [] },
-        { oldPath: 'b.ts', newPath: 'b.ts', status: 'added', isBinary: false, additions: 3, deletions: 0, hunks: [] },
+        {
+          oldPath: 'a.ts',
+          newPath: 'a.ts',
+          status: 'modified',
+          isBinary: false,
+          additions: 1,
+          deletions: 0,
+          hunks: [],
+        },
+        {
+          oldPath: 'b.ts',
+          newPath: 'b.ts',
+          status: 'added',
+          isBinary: false,
+          additions: 3,
+          deletions: 0,
+          hunks: [],
+        },
       ],
     })
     renderDialog()
@@ -64,8 +92,12 @@ describe('CompareToWorkdirDialog', () => {
     mockedCompare.mockResolvedValue({ files: [] })
     const onClose = vi.fn()
     renderDialog({ onClose })
-    await waitFor(() => expect(screen.getByText('gitTree.contextMenu.noDifferences')).toBeInTheDocument())
-    screen.getByRole('dialog').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await waitFor(() =>
+      expect(screen.getByText('gitTree.contextMenu.noDifferences')).toBeInTheDocument()
+    )
+    screen
+      .getByRole('dialog')
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     expect(onClose).toHaveBeenCalled()
   })
 })

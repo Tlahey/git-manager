@@ -16,7 +16,9 @@ const SENSITIVE_KEY = /token|password|secret|credential|passphrase|apikey|key/i
 const MAX_STRING = 200
 
 function truncate(value: string): string {
-  return value.length > MAX_STRING ? `${value.slice(0, MAX_STRING)}… (${value.length} chars)` : value
+  return value.length > MAX_STRING
+    ? `${value.slice(0, MAX_STRING)}… (${value.length} chars)`
+    : value
 }
 
 function safeStringify(value: unknown): string {

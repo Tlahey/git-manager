@@ -34,13 +34,22 @@ interface SplitButtonProps {
  * (e.g. "Commit" + "Commit & Push" / "Commit & Rebase"). Purely presentational —
  * callers own what each action means.
  */
-export function SplitButton({ label, icon, onClick, actions, disabled, busy, align = 'right', testIdPrefix }: SplitButtonProps) {
+export function SplitButton({
+  label,
+  icon,
+  onClick,
+  actions,
+  disabled,
+  busy,
+  align = 'right',
+  testIdPrefix,
+}: SplitButtonProps) {
   return (
     <div className="flex items-stretch">
       <Button
         data-testid={testIdPrefix ? `${testIdPrefix}-btn` : undefined}
         disabled={disabled || busy}
-        className="rounded-r-none gap-1.5"
+        className="gap-1.5 rounded-r-none"
         onClick={onClick}
       >
         {icon}
@@ -52,15 +61,22 @@ export function SplitButton({ label, icon, onClick, actions, disabled, busy, ali
             <Button
               data-testid={testIdPrefix ? `${testIdPrefix}-menu-btn` : undefined}
               disabled={disabled || busy}
-              className="rounded-l-none border-l border-primary-foreground/20 px-1.5"
+              className="border-primary-foreground/20 rounded-l-none border-l px-1.5"
               aria-label="More options"
             >
               <ChevronDown className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align={align === 'right' ? 'end' : 'start'} className="min-w-[200px]">
+          <DropdownMenuContent
+            align={align === 'right' ? 'end' : 'start'}
+            className="min-w-[200px]"
+          >
             {actions.map((action) => (
-              <DropdownMenuItem key={action.key} onSelect={action.onSelect} className="gap-2 text-xs">
+              <DropdownMenuItem
+                key={action.key}
+                onSelect={action.onSelect}
+                className="gap-2 text-xs"
+              >
                 {action.icon}
                 <span>{action.label}</span>
               </DropdownMenuItem>

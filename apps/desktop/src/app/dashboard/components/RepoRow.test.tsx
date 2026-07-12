@@ -34,7 +34,15 @@ function summary(overrides: Partial<ReturnType<typeof useRepoSummary>['data']> =
 
 function renderRow(props: Partial<React.ComponentProps<typeof RepoRow>> = {}) {
   return render(
-    <RepoRow path="/repo/a" name="repo-a" isSaved isPinned={false} onToggleReadme={vi.fn()} isReadmeActive={false} {...props} />
+    <RepoRow
+      path="/repo/a"
+      name="repo-a"
+      isSaved
+      isPinned={false}
+      onToggleReadme={vi.fn()}
+      isReadmeActive={false}
+      {...props}
+    />
   )
 }
 
@@ -74,7 +82,16 @@ describe('RepoRow — pin star', () => {
     const { container, rerender } = renderRow({ isSaved: true, isPinned: false })
     expect(container.querySelector('.lucide-star')).not.toHaveClass('fill-amber-500')
 
-    rerender(<RepoRow path="/repo/a" name="repo-a" isSaved isPinned onToggleReadme={vi.fn()} isReadmeActive={false} />)
+    rerender(
+      <RepoRow
+        path="/repo/a"
+        name="repo-a"
+        isSaved
+        isPinned
+        onToggleReadme={vi.fn()}
+        isReadmeActive={false}
+      />
+    )
     expect(container.querySelector('.lucide-star')).toHaveClass('fill-amber-500')
   })
 
@@ -85,7 +102,9 @@ describe('RepoRow — pin star', () => {
     const starButton = container.querySelector('.lucide-star')!.closest('button')!
     await user.click(starButton)
 
-    expect(useRepoDataStore.getState().savedRepos.find((r) => r.path === '/repo/a')?.pinned).toBe(true)
+    expect(useRepoDataStore.getState().savedRepos.find((r) => r.path === '/repo/a')?.pinned).toBe(
+      true
+    )
     expect(useRepoUIStore.getState().openTabs).not.toContain('/repo/a')
   })
 })
@@ -98,7 +117,11 @@ describe('RepoRow — loading / error / summary', () => {
   })
 
   it('shows an invalid-repo badge on error, and hides the editor/readme buttons', () => {
-    useRepoSummary.mockReturnValue({ data: undefined, isLoading: false, error: new Error('bad repo') })
+    useRepoSummary.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error('bad repo'),
+    })
     renderRow()
     expect(screen.getByText('dashboard.invalidRepo')).toBeInTheDocument()
   })
@@ -111,7 +134,14 @@ describe('RepoRow — loading / error / summary', () => {
 
   it('shows conflicted/staged/unstaged/untracked/ahead/behind badges', () => {
     useRepoSummary.mockReturnValue({
-      data: summary({ conflictedCount: 1, stagedCount: 2, unstagedCount: 3, untrackedCount: 4, aheadCount: 5, behindCount: 6 }),
+      data: summary({
+        conflictedCount: 1,
+        stagedCount: 2,
+        unstagedCount: 3,
+        untrackedCount: 4,
+        aheadCount: 5,
+        behindCount: 6,
+      }),
       isLoading: false,
       error: undefined,
     })
@@ -127,7 +157,16 @@ describe('RepoRow — loading / error / summary', () => {
 
 describe('RepoRow — open in editor', () => {
   it('opens the configured editor with the repo path', async () => {
-    useSettingsStore.setState({ settings: { ...INITIAL_SETTINGS.settings, git: { ...INITIAL_SETTINGS.settings.git, externalEditor: 'cursor', externalEditorCommand: '' } } })
+    useSettingsStore.setState({
+      settings: {
+        ...INITIAL_SETTINGS.settings,
+        git: {
+          ...INITIAL_SETTINGS.settings.git,
+          externalEditor: 'cursor',
+          externalEditorCommand: '',
+        },
+      },
+    })
     mockedOpenInEditor.mockResolvedValue(undefined)
     const user = userEvent.setup()
     const { container } = renderRow()

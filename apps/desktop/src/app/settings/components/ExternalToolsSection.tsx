@@ -27,7 +27,7 @@ export function ExternalToolsSection() {
     <div className="space-y-6">
       {/* Merge Tool */}
       <div className="space-y-3">
-        <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+        <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
           <GitPullRequest className="h-4 w-4 text-muted-foreground" />
           Outil de fusion (Merge Tool)
         </h4>
@@ -35,7 +35,7 @@ export function ExternalToolsSection() {
           <select
             value={tools.mergeTool}
             onChange={(e) => updateTools({ mergeTool: e.target.value })}
-            className="w-full h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-sans"
+            className="h-8 w-full rounded-md border border-input bg-background px-3 font-sans text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           >
             <option value="integrated">Éditeur de fusion intégré</option>
             <option value="vscode">VS Code</option>
@@ -46,12 +46,14 @@ export function ExternalToolsSection() {
 
           {tools.mergeTool === 'custom' && (
             <div className="space-y-1">
-              <label className="text-[10px] font-medium text-muted-foreground">Commande de fusion personnalisée</label>
+              <label className="text-[10px] font-medium text-muted-foreground">
+                Commande de fusion personnalisée
+              </label>
               <Input
                 value={tools.mergeToolCommand}
                 onChange={(e) => updateTools({ mergeToolCommand: e.target.value })}
                 placeholder="Ex: meld $LOCAL $BASE $REMOTE --output $MERGED"
-                className="h-8 text-xs font-mono"
+                className="h-8 font-mono text-xs"
               />
             </div>
           )}
@@ -62,7 +64,7 @@ export function ExternalToolsSection() {
 
       {/* Diff Tool */}
       <div className="space-y-3">
-        <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+        <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
           <GitCompare className="h-4 w-4 text-muted-foreground" />
           Outil de comparaison (Diff Tool)
         </h4>
@@ -70,7 +72,7 @@ export function ExternalToolsSection() {
           <select
             value={tools.diffTool}
             onChange={(e) => updateTools({ diffTool: e.target.value })}
-            className="w-full h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-sans"
+            className="h-8 w-full rounded-md border border-input bg-background px-3 font-sans text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           >
             <option value="integrated">Comparateur intégré</option>
             <option value="vscode">VS Code</option>
@@ -80,12 +82,14 @@ export function ExternalToolsSection() {
 
           {tools.diffTool === 'custom' && (
             <div className="space-y-1">
-              <label className="text-[10px] font-medium text-muted-foreground">Commande de comparaison personnalisée</label>
+              <label className="text-[10px] font-medium text-muted-foreground">
+                Commande de comparaison personnalisée
+              </label>
               <Input
                 value={tools.diffToolCommand}
                 onChange={(e) => updateTools({ diffToolCommand: e.target.value })}
                 placeholder="Ex: diffmerge $LOCAL $REMOTE"
-                className="h-8 text-xs font-mono"
+                className="h-8 font-mono text-xs"
               />
             </div>
           )}
@@ -96,7 +100,7 @@ export function ExternalToolsSection() {
 
       {/* External Editor */}
       <div className="space-y-3">
-        <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+        <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
           <FileCode className="h-4 w-4 text-muted-foreground" />
           Éditeur de code externe
         </h4>
@@ -104,7 +108,7 @@ export function ExternalToolsSection() {
           <select
             value={git.externalEditor}
             onChange={(e) => updateGit({ externalEditor: e.target.value })}
-            className="w-full h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-sans"
+            className="h-8 w-full rounded-md border border-input bg-background px-3 font-sans text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           >
             <option value="vscode">VS Code</option>
             <option value="cursor">Cursor</option>
@@ -115,12 +119,14 @@ export function ExternalToolsSection() {
 
           {git.externalEditor === 'custom' && (
             <div className="space-y-1">
-              <label className="text-[10px] font-medium text-muted-foreground">Commande de l&apos;éditeur</label>
+              <label className="text-[10px] font-medium text-muted-foreground">
+                Commande de l&apos;éditeur
+              </label>
               <Input
                 value={git.externalEditorCommand}
                 onChange={(e) => updateGit({ externalEditorCommand: e.target.value })}
                 placeholder="Ex: /usr/local/bin/code"
-                className="h-8 text-xs font-mono"
+                className="h-8 font-mono text-xs"
               />
             </div>
           )}
@@ -131,7 +137,7 @@ export function ExternalToolsSection() {
 
       {/* External Terminal */}
       <div className="space-y-3">
-        <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+        <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
           <Terminal className="h-4 w-4 text-muted-foreground" />
           Terminal externe
         </h4>
@@ -139,7 +145,7 @@ export function ExternalToolsSection() {
           <select
             value={tools.externalTerminal}
             onChange={(e) => updateTools({ externalTerminal: e.target.value })}
-            className="w-full h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-sans"
+            className="h-8 w-full rounded-md border border-input bg-background px-3 font-sans text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           >
             <option value="system">Terminal système par défaut</option>
             <option value="iterm2">iTerm2</option>
@@ -150,12 +156,14 @@ export function ExternalToolsSection() {
 
           {tools.externalTerminal === 'custom' && (
             <div className="space-y-1">
-              <label className="text-[10px] font-medium text-muted-foreground">Commande du terminal</label>
+              <label className="text-[10px] font-medium text-muted-foreground">
+                Commande du terminal
+              </label>
               <Input
                 value={tools.externalTerminalCommand}
                 onChange={(e) => updateTools({ externalTerminalCommand: e.target.value })}
                 placeholder="Ex: alacritty --working-directory $PATH"
-                className="h-8 text-xs font-mono"
+                className="h-8 font-mono text-xs"
               />
             </div>
           )}

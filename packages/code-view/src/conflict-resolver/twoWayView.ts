@@ -20,7 +20,10 @@ export interface InternalMergeView {
  * shape, so both modes flow through the same placement/decoration pipeline. Every change is
  * carried as a `theirs-only` block whose `ours*` fields hold the *modified* pane's geometry —
  * scroll sync and connector code read them as "the right pane's range". */
-export function buildDynamicMergeView(original: string, changes: editor.ILineChange[]): InternalMergeView {
+export function buildDynamicMergeView(
+  original: string,
+  changes: editor.ILineChange[]
+): InternalMergeView {
   const originalLines = original.split('\n')
 
   const blocks: MergeBlock[] = changes.map((change, index) => {
@@ -38,7 +41,7 @@ export function buildDynamicMergeView(original: string, changes: editor.ILineCha
       blockId: index,
       kind: 'theirs-only',
       oursStartLine: modifiedStartLine, // carry modified start line for scroll sync
-      oursLineCount: modifiedCount,     // carry modified line count for scroll sync
+      oursLineCount: modifiedCount, // carry modified line count for scroll sync
       theirsStartLine: originalStartLine,
       theirsLineCount: originalCount,
       oursLines: [],
@@ -97,26 +100,54 @@ export function computeTwoWayVisuals(
 
     // 1. Left (Theirs / Original) pane visuals
     if (originalCount > 0) {
-      theirs.decorations.push(...blockDecorationSpecs(originalStartLine, originalCount, kind, showBlockBorders, showBlockBorders, false))
+      theirs.decorations.push(
+        ...blockDecorationSpecs(
+          originalStartLine,
+          originalCount,
+          kind,
+          showBlockBorders,
+          showBlockBorders,
+          false
+        )
+      )
     } else {
       // Pure addition (Left has 0 lines): render boundary marker line
       const afterLine = originalStartLine - 1
       const edge = markerEdge(afterLine, paneTotals.theirs)
       const className = `merge-marker-${edge}-${kind}`
       const line = Math.min(afterLine + 1, Math.max(1, paneTotals.theirs))
-      theirs.decorations.push({ startLine: line, endLine: line, className, marginClassName: className })
+      theirs.decorations.push({
+        startLine: line,
+        endLine: line,
+        className,
+        marginClassName: className,
+      })
     }
 
     // 2. Right (Center / Modified) pane visuals
     if (modifiedCount > 0) {
-      center.decorations.push(...blockDecorationSpecs(modifiedStartLine, modifiedCount, kind, showBlockBorders, showBlockBorders, false))
+      center.decorations.push(
+        ...blockDecorationSpecs(
+          modifiedStartLine,
+          modifiedCount,
+          kind,
+          showBlockBorders,
+          showBlockBorders,
+          false
+        )
+      )
     } else {
       // Pure deletion (Right has 0 lines): render boundary marker line
       const afterLine = modifiedStartLine - 1
       const edge = markerEdge(afterLine, paneTotals.center)
       const className = `merge-marker-${edge}-${kind}`
       const line = Math.min(afterLine + 1, Math.max(1, paneTotals.center))
-      center.decorations.push({ startLine: line, endLine: line, className, marginClassName: className })
+      center.decorations.push({
+        startLine: line,
+        endLine: line,
+        className,
+        marginClassName: className,
+      })
     }
   })
 

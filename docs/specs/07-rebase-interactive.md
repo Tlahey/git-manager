@@ -8,14 +8,14 @@ Allow performing a `git rebase -i` from a drag & drop interface, without going t
 
 ## Available rebase actions
 
-| Action | Shortcut | Description |
-|--------|-----------|-------------|
-| `pick` | p | Keep the commit as-is |
-| `reword` | r | Keep the commit, edit the message |
-| `edit` | e | Pause at this commit to amend |
-| `squash` | s | Merge with the previous commit, combine messages |
-| `fixup` | f | Merge with the previous commit, discard the message |
-| `drop` | d | Delete this commit |
+| Action   | Shortcut | Description                                         |
+| -------- | -------- | --------------------------------------------------- |
+| `pick`   | p        | Keep the commit as-is                               |
+| `reword` | r        | Keep the commit, edit the message                   |
+| `edit`   | e        | Pause at this commit to amend                       |
+| `squash` | s        | Merge with the previous commit, combine messages    |
+| `fixup`  | f        | Merge with the previous commit, discard the message |
+| `drop`   | d        | Delete this commit                                  |
 
 ---
 
@@ -102,6 +102,7 @@ When the action is `reword`, a text field appears directly in the list:
 ## Managing mid-rebase state
 
 If the application is closed during an ongoing rebase:
+
 - On next launch, the `REBASE_HEAD` state is detected
 - Banner "A rebase is in progress" with Continue / Abort actions
 - The remaining steps are displayed as-is
@@ -110,35 +111,35 @@ If the application is closed during an ongoing rebase:
 
 ## Keyboard shortcuts in the panel
 
-| Shortcut | Action |
-|-----------|--------|
-| `P` | Pick action |
-| `S` | Squash action |
-| `F` | Fixup action |
-| `R` | Reword action |
-| `D` | Drop action |
-| `↑↓` | Move the selected commit |
-| `Cmd+Enter` | Execute |
-| `Esc` | Cancel |
+| Shortcut    | Action                   |
+| ----------- | ------------------------ |
+| `P`         | Pick action              |
+| `S`         | Squash action            |
+| `F`         | Fixup action             |
+| `R`         | Reword action            |
+| `D`         | Drop action              |
+| `↑↓`        | Move the selected commit |
+| `Cmd+Enter` | Execute                  |
+| `Esc`       | Cancel                   |
 
 ---
 
 ## Tauri commands involved
 
-| Command | Parameters | Description |
-|---------|-----------|-------------|
-| `get_rebase_commits` | `path, base_oid` | Returns the list of editable commits |
-| `start_interactive_rebase` | `path, base_oid, steps: RebaseStep[]` | Starts the rebase |
-| `continue_rebase` | `path` | Continues after conflict resolution |
-| `abort_rebase` | `path` | Aborts the ongoing rebase |
-| `skip_rebase_commit` | `path` | Skips the current commit |
-| `get_rebase_state` | `path` | Current state (if a rebase is in progress) |
+| Command                    | Parameters                            | Description                                |
+| -------------------------- | ------------------------------------- | ------------------------------------------ |
+| `get_rebase_commits`       | `path, base_oid`                      | Returns the list of editable commits       |
+| `start_interactive_rebase` | `path, base_oid, steps: RebaseStep[]` | Starts the rebase                          |
+| `continue_rebase`          | `path`                                | Continues after conflict resolution        |
+| `abort_rebase`             | `path`                                | Aborts the ongoing rebase                  |
+| `skip_rebase_commit`       | `path`                                | Skips the current commit                   |
+| `get_rebase_state`         | `path`                                | Current state (if a rebase is in progress) |
 
 ```typescript
 export interface RebaseStep {
   action: 'pick' | 'reword' | 'edit' | 'squash' | 'fixup' | 'drop'
   oid: string
-  message: string   // new message for reword
+  message: string // new message for reword
 }
 ```
 

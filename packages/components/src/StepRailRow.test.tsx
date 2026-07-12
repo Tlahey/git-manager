@@ -21,11 +21,7 @@ function baseProps(overrides: Partial<React.ComponentProps<typeof StepRailRow>> 
 
 describe('StepRailRow', () => {
   it('renders title, subtitle, badge label and trailing caption', () => {
-    render(
-      <StepRailRow
-        {...baseProps({ subtitle: 'abc123', trailingCaption: '2h ago' })}
-      />
-    )
+    render(<StepRailRow {...baseProps({ subtitle: 'abc123', trailingCaption: '2h ago' })} />)
     expect(screen.getByText('pick abc123 Add feature')).toBeInTheDocument()
     expect(screen.getByText('abc123')).toBeInTheDocument()
     expect(screen.getByText('pick')).toBeInTheDocument()
@@ -80,7 +76,9 @@ describe('StepRailRow', () => {
   }
 
   it('strikes the title through and uses an outline dot for the "dropped" variant', () => {
-    const { container } = render(<StepRailRow {...baseProps({ variant: 'dropped', title: 'drop abc' })} />)
+    const { container } = render(
+      <StepRailRow {...baseProps({ variant: 'dropped', title: 'drop abc' })} />
+    )
     expect(screen.getByText('drop abc').className).toContain('line-through')
     const circle = railSvg(container).querySelector('circle')!
     expect(circle.getAttribute('r')).toBe('3.5')

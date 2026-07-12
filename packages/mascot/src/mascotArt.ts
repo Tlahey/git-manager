@@ -35,35 +35,35 @@
  * mid-transition instead of deforming in place.
  */
 
-import { SPRITES, type SpriteDef } from './generated/sprites';
-import { PLACEMENTS } from './generated/layout';
+import { SPRITES, type SpriteDef } from './generated/sprites'
+import { PLACEMENTS } from './generated/layout'
 
-export const MASCOT_VIEWBOX = { minX: 30, minY: 40, width: 940, height: 900 } as const;
+export const MASCOT_VIEWBOX = { minX: 30, minY: 40, width: 940, height: 900 } as const
 
 /** Class names / selectors shared between the markup and the behavior helpers. */
 export const MASCOT_SELECTORS = {
   root: 'gm-svg',
   pupil: 'gm-pupil',
-} as const;
+} as const
 
 export interface LimbSpec {
-  sprite: SpriteDef;
+  sprite: SpriteDef
   /** Stage position of the sprite's top-left corner, and its static pose. */
-  x: number;
-  y: number;
-  scale: number;
-  rot: number;
+  x: number
+  y: number
+  scale: number
+  rot: number
   /** Mirror horizontally around the vertical line through `x` — the flipped
    * sprite occupies [x−w·scale, x]. For reusing one drawn tentacle shape on
    * both sides when no true mirror asset exists. */
-  flip?: boolean;
+  flip?: boolean
   /** Root anchor (under the head) the limb sways around. */
-  px: number;
-  py: number;
+  px: number
+  py: number
   /** Sway amplitude in degrees, cycle duration in s, phase delay in s. */
-  amp: number;
-  dur: number;
-  delay: number;
+  amp: number
+  dur: number
+  delay: number
 }
 
 /**
@@ -74,8 +74,11 @@ export interface LimbSpec {
  * tip showed the outer pair's holes fully intact while the middle pair's
  * were partly covered — the reference itself paints middle behind outer,
  * inner pair frontmost (forming the bottom "heart" gap), upper arms
- * backmost. t8 has no mirror art (same silhouette as t5, recolored darker)
- * so it's flipped in place; the darker recolor doubles as its depth cue.
+ * backmost. t8 is drawn pre-mirrored vs t5 (same silhouette, recolored
+ * darker) so it's placed unflipped; the darker recolor is its depth cue.
+ * Zone naming gotcha: t6 is the *left* inner arm and t7 the right one —
+ * each roots near the center line and drifts outward as it descends,
+ * which forms the heart gap without the limbs crossing.
  */
 const LIMBS: Record<string, LimbSpec> = Object.fromEntries(
   PLACEMENTS.filter((p) => p.role !== 'head').map((p) => [
@@ -93,12 +96,17 @@ const LIMBS: Record<string, LimbSpec> = Object.fromEntries(
       dur: p.anim.dur,
       delay: p.anim.delay,
     },
-  ]),
-);
+  ])
+)
 
-const headPlacement = PLACEMENTS.find((p) => p.role === 'head');
-if (!headPlacement) throw new Error('generated layout has no head placement');
-const HEAD = { sprite: headPlacement.sprite, x: headPlacement.x, y: headPlacement.y, scale: headPlacement.scale };
+const headPlacement = PLACEMENTS.find((p) => p.role === 'head')
+if (!headPlacement) throw new Error('generated layout has no head placement')
+const HEAD = {
+  sprite: headPlacement.sprite,
+  x: headPlacement.x,
+  y: headPlacement.y,
+  scale: headPlacement.scale,
+}
 
 /**
  * Eye/mouth placement, measured (not guessed) off the brand's filled-color
@@ -127,20 +135,20 @@ const HEAD = { sprite: headPlacement.sprite, x: headPlacement.x, y: headPlacemen
  * either) + the pupil sprite scaled down inside it, same 0.666 diameter
  * ratio as measured.
  */
-const HEAD_REF_MAX_WIDTH = 627;
-const HEAD_REF_SCALE = HEAD.sprite.w / HEAD_REF_MAX_WIDTH;
+const HEAD_REF_MAX_WIDTH = 627
+const HEAD_REF_SCALE = HEAD.sprite.w / HEAD_REF_MAX_WIDTH
 const EYES = [
   { cx: HEAD.x + 169.5 - 122.5 * HEAD_REF_SCALE, cy: HEAD.y + 476.25 * HEAD_REF_SCALE },
   { cx: HEAD.x + 169.5 + 122.5 * HEAD_REF_SCALE, cy: HEAD.y + 476.25 * HEAD_REF_SCALE },
-] as const;
-const EYE_WHITE_R = 61.4 * HEAD_REF_SCALE;
-const PUPIL_SCALE = (EYE_WHITE_R * 2 * 0.666) / SPRITES.eye.w;
-const LID_SCALE = (EYE_WHITE_R * 2) / SPRITES.eyelid.w;
+] as const
+const EYE_WHITE_R = 61.4 * HEAD_REF_SCALE
+const PUPIL_SCALE = (EYE_WHITE_R * 2 * 0.666) / SPRITES.eye.w
+const LID_SCALE = (EYE_WHITE_R * 2) / SPRITES.eyelid.w
 const MOUTH = {
   cx: HEAD.x + 169.5,
   cy: HEAD.y + 577 * HEAD_REF_SCALE,
   scale: ((121 * HEAD_REF_SCALE) / SPRITES.eyelid.w + (40 * HEAD_REF_SCALE) / SPRITES.eyelid.h) / 2,
-};
+}
 
 /**
  * The full rig, exposed for the package's Storybook (parts gallery, rig
@@ -167,7 +175,7 @@ export const MASCOT_LAYOUT = {
     crown: { x: 1024, y: 383 },
     headMaxWidth: HEAD_REF_MAX_WIDTH,
   },
-} as const;
+} as const
 
 /**
  * `flip` mirrors the sprite horizontally in place — i.e. around its own
@@ -179,22 +187,22 @@ export const MASCOT_LAYOUT = {
  * the one applied first.
  */
 function image(s: SpriteDef, x: number, y: number, scale: number, rot = 0, flip = false): string {
-  const rotate = rot ? `rotate(${rot} ${x} ${y})` : '';
-  const transform = flip ? `translate(${2 * x} 0) scale(-1 1) ${rotate}` : rotate;
-  const t = transform ? ` transform="${transform}"` : '';
-  return `<image href="${s.uri}" x="${x}" y="${y}" width="${s.w * scale}" height="${s.h * scale}"${t}/>`;
+  const rotate = rot ? `rotate(${rot} ${x} ${y})` : ''
+  const transform = flip ? `translate(${2 * x} 0) scale(-1 1) ${rotate}` : rotate
+  const t = transform ? ` transform="${transform}"` : ''
+  return `<image href="${s.uri}" x="${x}" y="${y}" width="${s.w * scale}" height="${s.h * scale}"${t}/>`
 }
 
 function centered(s: SpriteDef, cx: number, cy: number, scale: number): string {
-  return image(s, cx - (s.w * scale) / 2, cy - (s.h * scale) / 2, scale);
+  return image(s, cx - (s.w * scale) / 2, cy - (s.h * scale) / 2, scale)
 }
 
 function limb(name: string): string {
-  const l = LIMBS[name];
+  const l = LIMBS[name]
   return `
       <g class="gm-arm gm-arm--${name}">
         ${image(l.sprite, l.x, l.y, l.scale, l.rot, l.flip)}
-      </g>`;
+      </g>`
 }
 
 export const MASCOT_MARKUP = /* html */ `
@@ -223,7 +231,7 @@ export const MASCOT_MARKUP = /* html */ `
         ${EYES.map(
           (e) => `<g class="${MASCOT_SELECTORS.pupil}" data-cx="${e.cx}" data-cy="${e.cy}">
           ${centered(SPRITES.eye, e.cx, e.cy, PUPIL_SCALE)}
-        </g>`,
+        </g>`
         ).join('')}
       </g>
       <g class="gm-lids">
@@ -232,7 +240,7 @@ export const MASCOT_MARKUP = /* html */ `
       ${centered(SPRITES.eyelid, MOUTH.cx, MOUTH.cy, MOUTH.scale)}
     </g>
   </g>
-</svg>`;
+</svg>`
 
 /**
  * Scoped CSS for the mascot's natural movements. Written for a Shadow DOM (Web
@@ -268,7 +276,7 @@ export const MASCOT_STYLES = /* css */ `
   ${Object.entries(LIMBS)
     .map(
       ([name, l]) =>
-        `.gm-arm--${name} { --gm-px: ${l.px}px; --gm-py: ${l.py}px; --gm-amp: ${l.amp}; animation: gm-wave ${l.dur}s ease-in-out infinite ${l.delay}s; }`,
+        `.gm-arm--${name} { --gm-px: ${l.px}px; --gm-py: ${l.py}px; --gm-amp: ${l.amp}; animation: gm-wave ${l.dur}s ease-in-out infinite ${l.delay}s; }`
     )
     .join('\n  ')}
 
@@ -318,4 +326,4 @@ export const MASCOT_STYLES = /* css */ `
   20% { transform: translate(6px, -4px); }
   50% { transform: translate(-5px, 5px); }
   80% { transform: translate(4px, 3px); }
-}`;
+}`

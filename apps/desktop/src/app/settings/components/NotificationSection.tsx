@@ -38,17 +38,19 @@ export function NotificationSection() {
             )}
             <div>
               <h4 className="text-xs font-semibold text-foreground">Autoriser les notifications</h4>
-              <p className="text-[10px] text-muted-foreground">Activer ou désactiver toutes les notifications de l&apos;application.</p>
+              <p className="text-[10px] text-muted-foreground">
+                Activer ou désactiver toutes les notifications de l&apos;application.
+              </p>
             </div>
           </div>
-          <label className="relative inline-flex items-center cursor-pointer">
+          <label className="relative inline-flex cursor-pointer items-center">
             <input
               type="checkbox"
               checked={notifications.enabled}
               onChange={(e) => updateNotifications({ enabled: e.target.checked })}
-              className="sr-only peer"
+              className="peer sr-only"
             />
-            <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+            <div className="peer h-5 w-9 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-border after:bg-background after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>
           </label>
         </div>
       </div>
@@ -60,12 +62,14 @@ export function NotificationSection() {
           {/* Events settings */}
           <div className="space-y-3">
             <h4 className="text-xs font-semibold text-foreground">Événements de notification</h4>
-            
+
             <div className="space-y-3 pl-1">
-              <label className="flex items-center justify-between cursor-pointer">
+              <label className="flex cursor-pointer items-center justify-between">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xs text-foreground">Fetch automatique</span>
-                  <span className="text-[10px] text-muted-foreground">Notifier quand de nouvelles modifications sont récupérées du remote</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    Notifier quand de nouvelles modifications sont récupérées du remote
+                  </span>
                 </div>
                 <input
                   type="checkbox"
@@ -75,10 +79,14 @@ export function NotificationSection() {
                 />
               </label>
 
-              <label className="flex items-center justify-between cursor-pointer">
+              <label className="flex cursor-pointer items-center justify-between">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-foreground font-sans">Résultat de Pull (Mise à jour)</span>
-                  <span className="text-[10px] text-muted-foreground font-sans">Notifier lors de la réussite ou de l&apos;échec de la récupération des commits</span>
+                  <span className="font-sans text-xs text-foreground">
+                    Résultat de Pull (Mise à jour)
+                  </span>
+                  <span className="font-sans text-[10px] text-muted-foreground">
+                    Notifier lors de la réussite ou de l&apos;échec de la récupération des commits
+                  </span>
                 </div>
                 <input
                   type="checkbox"
@@ -88,10 +96,12 @@ export function NotificationSection() {
                 />
               </label>
 
-              <label className="flex items-center justify-between cursor-pointer">
+              <label className="flex cursor-pointer items-center justify-between">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xs text-foreground">Résultat de Push (Envoi)</span>
-                  <span className="text-[10px] text-muted-foreground">Notifier lors de l&apos;envoi de vos commits locaux vers le serveur distant</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    Notifier lors de l&apos;envoi de vos commits locaux vers le serveur distant
+                  </span>
                 </div>
                 <input
                   type="checkbox"
@@ -101,10 +111,12 @@ export function NotificationSection() {
                 />
               </label>
 
-              <label className="flex items-center justify-between cursor-pointer">
+              <label className="flex cursor-pointer items-center justify-between">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xs text-foreground">Nouvelles Pull Requests</span>
-                  <span className="text-[10px] text-muted-foreground">Notifier quand une nouvelle Pull Request apparaît</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    Notifier quand une nouvelle Pull Request apparaît
+                  </span>
                 </div>
                 <input
                   type="checkbox"
@@ -114,10 +126,12 @@ export function NotificationSection() {
                 />
               </label>
 
-              <label className="flex items-center justify-between cursor-pointer">
+              <label className="flex cursor-pointer items-center justify-between">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xs text-foreground">PRs fusionnées ou fermées</span>
-                  <span className="text-[10px] text-muted-foreground">Notifier quand une PR est fusionnée ou fermée</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    Notifier quand une PR est fusionnée ou fermée
+                  </span>
                 </div>
                 <input
                   type="checkbox"
@@ -127,28 +141,36 @@ export function NotificationSection() {
                 />
               </label>
 
-              <label className="flex items-center justify-between cursor-pointer">
+              <label className="flex cursor-pointer items-center justify-between">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-foreground font-sans">Demandes de revue</span>
-                  <span className="text-[10px] text-muted-foreground font-sans">Notifier quand on vous demande de revoir une PR</span>
+                  <span className="font-sans text-xs text-foreground">Demandes de revue</span>
+                  <span className="font-sans text-[10px] text-muted-foreground">
+                    Notifier quand on vous demande de revoir une PR
+                  </span>
                 </div>
                 <input
                   type="checkbox"
                   checked={notifications.notifyOnReviewRequested ?? true}
-                  onChange={(e) => updateNotifications({ notifyOnReviewRequested: e.target.checked })}
+                  onChange={(e) =>
+                    updateNotifications({ notifyOnReviewRequested: e.target.checked })
+                  }
                   className="h-4 w-4 rounded border-border font-sans"
                 />
               </label>
 
-              <label className="flex items-center justify-between cursor-pointer">
+              <label className="flex cursor-pointer items-center justify-between">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-foreground font-sans">Mises à jour des revues</span>
-                  <span className="text-[10px] text-muted-foreground font-sans">Notifier quand l&apos;état d&apos;approbation d&apos;une PR est mis à jour</span>
+                  <span className="font-sans text-xs text-foreground">Mises à jour des revues</span>
+                  <span className="font-sans text-[10px] text-muted-foreground">
+                    Notifier quand l&apos;état d&apos;approbation d&apos;une PR est mis à jour
+                  </span>
                 </div>
                 <input
                   type="checkbox"
                   checked={notifications.notifyOnReviewStatusChanged ?? true}
-                  onChange={(e) => updateNotifications({ notifyOnReviewStatusChanged: e.target.checked })}
+                  onChange={(e) =>
+                    updateNotifications({ notifyOnReviewStatusChanged: e.target.checked })
+                  }
                   className="h-4 w-4 rounded border-border font-sans"
                 />
               </label>
@@ -169,27 +191,29 @@ export function NotificationSection() {
                   )}
                   <div className="flex flex-col">
                     <h4 className="text-xs font-semibold text-foreground">Effets sonores</h4>
-                    <p className="text-[10px] text-muted-foreground font-sans">Jouer un son lors d&apos;une notification.</p>
+                    <p className="font-sans text-[10px] text-muted-foreground">
+                      Jouer un son lors d&apos;une notification.
+                    </p>
                   </div>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className="relative inline-flex cursor-pointer items-center">
                   <input
                     type="checkbox"
                     checked={notifications.enableSound}
                     onChange={(e) => updateNotifications({ enableSound: e.target.checked })}
-                    className="sr-only peer"
+                    className="peer sr-only"
                   />
-                  <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                  <div className="peer h-5 w-9 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-border after:bg-background after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>
                 </label>
               </div>
 
               {notifications.enableSound && (
-                <div className="flex items-center justify-between pl-7 mt-1.5">
+                <div className="mt-1.5 flex items-center justify-between pl-7">
                   <span className="text-[10px] text-muted-foreground">Type de son macOS</span>
                   <select
                     value={notifications.soundName || 'default'}
                     onChange={(e) => updateNotifications({ soundName: e.target.value })}
-                    className="h-7 rounded border border-border bg-background px-2 text-[10px] font-medium text-foreground outline-none transition-colors hover:border-accent-foreground/30 focus:border-primary min-w-[120px]"
+                    className="h-7 min-w-[120px] rounded border border-border bg-background px-2 text-[10px] font-medium text-foreground outline-none transition-colors hover:border-accent-foreground/30 focus:border-primary"
                   >
                     <option value="default">Default</option>
                     <option value="Glass">Glass</option>
@@ -216,7 +240,9 @@ export function NotificationSection() {
           {/* Test notifications */}
           <div className="space-y-3">
             <h4 className="text-xs font-semibold text-foreground">Test de notifications</h4>
-            <p className="text-[10px] text-muted-foreground">Envoyer une notification native macOS de test.</p>
+            <p className="text-[10px] text-muted-foreground">
+              Envoyer une notification native macOS de test.
+            </p>
             <button
               type="button"
               onClick={() => {
@@ -232,7 +258,7 @@ export function NotificationSection() {
                 })
                 showNativeNotification(newNotif, t)
               }}
-              className="flex items-center gap-2 px-3 py-1.5 rounded bg-primary text-primary-foreground font-medium text-xs transition-colors hover:bg-primary/95 mt-1"
+              className="mt-1 flex items-center gap-2 rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/95"
             >
               <Bell className="h-3.5 w-3.5" />
               <span>Tester la notification macOS</span>

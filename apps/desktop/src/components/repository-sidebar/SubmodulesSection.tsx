@@ -53,7 +53,7 @@ export function SubmodulesSection({ repoPath }: SubmodulesSectionProps) {
                 </span>
               </div>
               {sm.headOid && (
-                <span className="shrink-0 tabular-nums text-[10px] font-mono text-muted-foreground/30">
+                <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground/30">
                   {sm.headOid.slice(0, 7)}
                 </span>
               )}

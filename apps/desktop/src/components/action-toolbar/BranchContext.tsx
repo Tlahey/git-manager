@@ -43,15 +43,14 @@ export function BranchContext() {
   // La branche affichée vient en priorité du log des branches (toujours à jour
   // après un checkout), avec repli sur le cache repo (head / detached).
   const label =
-    headBranch?.shortName ??
-    (repo?.isDetached ? repo.head.slice(0, 10) : repo?.head ?? '—')
+    headBranch?.shortName ?? (repo?.isDetached ? repo.head.slice(0, 10) : (repo?.head ?? '—'))
 
   async function handleCheckout(name: string) {
     if (!activeRepo || busy) return
     setBusy(name)
     try {
       const fromDetached = repo?.isDetached ?? false
-      const fromRef = fromDetached ? repo!.head : headBranch?.shortName ?? repo?.head
+      const fromRef = fromDetached ? repo!.head : (headBranch?.shortName ?? repo?.head)
       await apiCheckoutBranch(activeRepo, name, fromRef ? { fromRef, fromDetached } : undefined)
       // Rafraîchit le cache repo (head/isDetached/isDirty) + les vues dépendantes.
       try {
@@ -140,7 +139,7 @@ export function BranchContext() {
           <div className="pointer-events-none fixed bottom-4 right-4 z-50 max-w-sm rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive shadow-lg">
             {error}
           </div>,
-          document.body,
+          document.body
         )}
     </div>
   )

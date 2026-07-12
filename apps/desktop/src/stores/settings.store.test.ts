@@ -23,9 +23,13 @@ describe('useSettingsStore', () => {
   })
 
   it('updateSettings replaces an entire nested section rather than deep-merging it', () => {
-    useSettingsStore.getState().updateSettings({ appearance: { ...DEFAULT_SETTINGS.appearance, theme: 'light' } })
+    useSettingsStore
+      .getState()
+      .updateSettings({ appearance: { ...DEFAULT_SETTINGS.appearance, theme: 'light' } })
     expect(useSettingsStore.getState().settings.appearance.theme).toBe('light')
-    expect(useSettingsStore.getState().settings.appearance.fontSize).toBe(DEFAULT_SETTINGS.appearance.fontSize)
+    expect(useSettingsStore.getState().settings.appearance.fontSize).toBe(
+      DEFAULT_SETTINGS.appearance.fontSize
+    )
   })
 
   it('resetSettings restores the full default settings object', () => {

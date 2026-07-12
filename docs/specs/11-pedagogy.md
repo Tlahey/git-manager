@@ -108,20 +108,17 @@ Every action button shows, on hover, an explanation of what it does, the associa
 
 ### Risk levels
 
-| Level | Icon | Description |
-|--------|-------|-------------|
-| `safe` | `✅ Safe` | No effect on history or files |
-| `reversible` | `⚠️ Reversible` | Modifies history but can be undone (revert, reflog) |
-| `destructive` | `🔴 Destructive` | Possible data loss, hard to undo |
+| Level         | Icon             | Description                                         |
+| ------------- | ---------------- | --------------------------------------------------- |
+| `safe`        | `✅ Safe`        | No effect on history or files                       |
+| `reversible`  | `⚠️ Reversible`  | Modifies history but can be undone (revert, reflog) |
+| `destructive` | `🔴 Destructive` | Possible data loss, hard to undo                    |
 
 ### Component
 
 ```tsx
 // packages/ui/src/components/ActionTooltip.tsx
-<ActionTooltip
-  action="reset-hard"
-  side="top"
->
+<ActionTooltip action="reset-hard" side="top">
   <Button variant="destructive">Reset --hard</Button>
 </ActionTooltip>
 ```
@@ -142,13 +139,13 @@ Before any risky action, insert an explicit display of the git command that is a
 
 ### Actions concerned
 
-| Action | Command shown |
-|--------|------------------|
-| `reset --hard` | `git reset --hard <sha>` |
-| `rebase -i` | `git rebase -i <base>` |
-| `push --force` | `git push --force origin <branch>` |
-| `drop` (rebase) | `git rebase --drop <sha>` |
-| `branch -D` | `git branch -D <name>` |
+| Action          | Command shown                      |
+| --------------- | ---------------------------------- |
+| `reset --hard`  | `git reset --hard <sha>`           |
+| `rebase -i`     | `git rebase -i <base>`             |
+| `push --force`  | `git push --force origin <branch>` |
+| `drop` (rebase) | `git rebase --drop <sha>`          |
+| `branch -D`     | `git branch -D <name>`             |
 
 ### Interface (addition to existing modals)
 
@@ -284,11 +281,11 @@ Offer a mode where, before executing an action, a panel is displayed with a cont
 
 ### Levels
 
-| Level | Description |
-|--------|-------------|
-| `off` | Disabled — standard behavior |
-| `beginner` | Full narrative explanation, detailed risks, suggested alternatives |
-| `intermediate` | Compact — command + risk only |
+| Level          | Description                                                        |
+| -------------- | ------------------------------------------------------------------ |
+| `off`          | Disabled — standard behavior                                       |
+| `beginner`     | Full narrative explanation, detailed risks, suggested alternatives |
+| `intermediate` | Compact — command + risk only                                      |
 
 ### Interface — `beginner` level
 
@@ -398,15 +395,15 @@ Each entry is a structured object (generated on the frontend side):
 
 ```typescript
 interface ActionJournalEntry {
-  id: string               // uuid
-  timestamp: number        // Unix ms
-  actionType: string       // "commit" | "push" | "reset" | "rebase" | ...
-  title: string            // human-readable summary
-  repo: string             // repo name
-  branch: string           // current branch
-  commands: string[]       // equivalent git commands
-  context: Record<string, string>  // before/after: HEAD, file count...
-  llmExplanation?: string  // streamed, added after clicking "Explain"
+  id: string // uuid
+  timestamp: number // Unix ms
+  actionType: string // "commit" | "push" | "reset" | "rebase" | ...
+  title: string // human-readable summary
+  repo: string // repo name
+  branch: string // current branch
+  commands: string[] // equivalent git commands
+  context: Record<string, string> // before/after: HEAD, file count...
+  llmExplanation?: string // streamed, added after clicking "Explain"
 }
 ```
 
@@ -422,17 +419,21 @@ The **"Explain with Ollama"** button builds a markdown prompt from the entry:
 **Date** : 2026-06-23 14:28
 
 ## Commandes exécutées
+
 - git fetch origin
 
 ## Résultat
+
 - 2 nouvelles branches découvertes : feature/auth, fix/typo
 - HEAD inchangé
 
 ## Contexte avant
+
 - HEAD : a1b2c3d
 - Remote tracking : origin/main @ a1b2c3d
 
 ## Contexte après
+
 - HEAD : a1b2c3d (inchangé)
 - Nouvelles refs : origin/feature/auth, origin/fix/typo
 
@@ -446,7 +447,7 @@ This prompt is sent to Ollama via `useOllamaGeneration` (already implemented in 
 ```typescript
 // stores/actionJournal.store.ts
 interface ActionJournalState {
-  entries: ActionJournalEntry[]   // session only, not persisted
+  entries: ActionJournalEntry[] // session only, not persisted
   addEntry: (entry: Omit<ActionJournalEntry, 'id' | 'timestamp'>) => void
   setLlmExplanation: (id: string, text: string) => void
   clear: () => void
@@ -458,6 +459,7 @@ Limit: 50 entries per session (FIFO).
 ### Panel
 
 The Journal is accessible via:
+
 - A tab in the repo view (next to History / Working Tree)
 - An "Open in Journal" button in post-action toasts (Feature 5)
 - A link from the Git Console
@@ -495,14 +497,14 @@ New section in `SettingsPage`, positioned between "Language" and "Advanced".
 
 ### New settings
 
-| Setting | Type | Default |
-|-----------|------|--------|
-| `learningMode` | `'off' \| 'beginner' \| 'intermediate'` | `'off'` |
-| `showGitConsole` | boolean | `false` |
-| `showPedagogicTooltips` | boolean | `true` |
-| `showPostActionSummary` | boolean | `true` |
-| `showActionJournal` | boolean | `true` |
-| `skipCommandPreview` | boolean | `false` |
+| Setting                 | Type                                    | Default |
+| ----------------------- | --------------------------------------- | ------- |
+| `learningMode`          | `'off' \| 'beginner' \| 'intermediate'` | `'off'` |
+| `showGitConsole`        | boolean                                 | `false` |
+| `showPedagogicTooltips` | boolean                                 | `true`  |
+| `showPostActionSummary` | boolean                                 | `true`  |
+| `showActionJournal`     | boolean                                 | `true`  |
+| `skipCommandPreview`    | boolean                                 | `false` |
 
 ---
 

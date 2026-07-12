@@ -1,35 +1,64 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-const { resolveResource, imageNew, imageFromPath, getCurrentWindow, windowTheme, menuNew, menuPopup, menuItemNew, iconMenuItemNew, submenuNew, predefinedMenuItemNew } =
-  vi.hoisted(() => {
-    const menuPopup = vi.fn(async () => {})
-    return {
-      resolveResource: vi.fn(async (p: string) => `/resources/${p}`),
-      imageNew: vi.fn(async (rgba: Uint8Array, width: number, height: number) => ({ __rgba: rgba, __w: width, __h: height })),
-      imageFromPath: vi.fn(async (path: string) => ({
-        __path: path,
-        size: async () => ({ width: 2, height: 1 }),
-        rgba: async () => new Uint8Array([10, 20, 30, 255, 10, 20, 30, 255]),
-      })),
-      getCurrentWindow: vi.fn(),
-      windowTheme: vi.fn(async () => 'light'),
-      menuPopup,
-      menuNew: vi.fn(async (opts: unknown) => ({ __kind: 'Menu', ...(opts as object), popup: menuPopup })),
-      menuItemNew: vi.fn(async (opts: unknown) => ({ __kind: 'MenuItem', ...(opts as object) })),
-      iconMenuItemNew: vi.fn(async (opts: unknown) => ({ __kind: 'IconMenuItem', ...(opts as object) })),
-      submenuNew: vi.fn(async (opts: unknown) => ({ __kind: 'Submenu', ...(opts as object) })),
-      predefinedMenuItemNew: vi.fn(async (opts: unknown) => ({ __kind: 'PredefinedMenuItem', ...(opts as object) })),
-    }
-  })
+const {
+  resolveResource,
+  imageNew,
+  imageFromPath,
+  getCurrentWindow,
+  windowTheme,
+  menuNew,
+  menuPopup,
+  menuItemNew,
+  iconMenuItemNew,
+  submenuNew,
+  predefinedMenuItemNew,
+} = vi.hoisted(() => {
+  const menuPopup = vi.fn(async () => {})
+  return {
+    resolveResource: vi.fn(async (p: string) => `/resources/${p}`),
+    imageNew: vi.fn(async (rgba: Uint8Array, width: number, height: number) => ({
+      __rgba: rgba,
+      __w: width,
+      __h: height,
+    })),
+    imageFromPath: vi.fn(async (path: string) => ({
+      __path: path,
+      size: async () => ({ width: 2, height: 1 }),
+      rgba: async () => new Uint8Array([10, 20, 30, 255, 10, 20, 30, 255]),
+    })),
+    getCurrentWindow: vi.fn(),
+    windowTheme: vi.fn(async () => 'light'),
+    menuPopup,
+    menuNew: vi.fn(async (opts: unknown) => ({
+      __kind: 'Menu',
+      ...(opts as object),
+      popup: menuPopup,
+    })),
+    menuItemNew: vi.fn(async (opts: unknown) => ({ __kind: 'MenuItem', ...(opts as object) })),
+    iconMenuItemNew: vi.fn(async (opts: unknown) => ({
+      __kind: 'IconMenuItem',
+      ...(opts as object),
+    })),
+    submenuNew: vi.fn(async (opts: unknown) => ({ __kind: 'Submenu', ...(opts as object) })),
+    predefinedMenuItemNew: vi.fn(async (opts: unknown) => ({
+      __kind: 'PredefinedMenuItem',
+      ...(opts as object),
+    })),
+  }
+})
 
-vi.mock('@tauri-apps/api/path', () => ({ resolveResource: (...a: [string]) => resolveResource(...a) }))
+vi.mock('@tauri-apps/api/path', () => ({
+  resolveResource: (...a: [string]) => resolveResource(...a),
+}))
 vi.mock('@tauri-apps/api/image', () => ({
   Image: {
     new: (...a: [Uint8Array, number, number]) => imageNew(...a),
     fromPath: (...a: [string]) => imageFromPath(...a),
   },
 }))
-vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: (...a: unknown[]) => getCurrentWindow(...a) }))
+vi.mock('@tauri-apps/api/window', () => ({
+  getCurrentWindow: (...a: unknown[]) => getCurrentWindow(...a),
+}))
 vi.mock('@tauri-apps/api/menu', () => ({
   Menu: { new: (...a: [unknown]) => menuNew(...a) },
   MenuItem: { new: (...a: [unknown]) => menuItemNew(...a) },
@@ -70,7 +99,9 @@ function commitLabels(): import('./nativeMenu.api').CommitNativeMenuLabels {
   }
 }
 
-function commitOpts(overrides: Partial<Parameters<NativeMenuModule['showCommitNativeContextMenu']>[0]> = {}) {
+function commitOpts(
+  overrides: Partial<Parameters<NativeMenuModule['showCommitNativeContextMenu']>[0]> = {}
+) {
   return {
     isSingle: true,
     fixupEnabled: true,
@@ -152,7 +183,9 @@ describe('icon loading', () => {
 
 describe('icon tinting by theme/enabled state', () => {
   function iconArgOf(text: string) {
-    const call = iconMenuItemNew.mock.calls.find(([opts]) => (opts as { text: string }).text === text)
+    const call = iconMenuItemNew.mock.calls.find(
+      ([opts]) => (opts as { text: string }).text === text
+    )
     return call?.[0] as { icon?: { __rgba?: Uint8Array; __path?: string } } | undefined
   }
 
@@ -185,7 +218,9 @@ describe('showCommitNativeContextMenu — structure', () => {
   it('adds a disabled header item + separator only for multi-select (targetCount > 1)', async () => {
     const api = await freshApi()
     await api.showCommitNativeContextMenu(commitOpts({ targetCount: 3 }))
-    expect(menuItemNew).toHaveBeenCalledWith(expect.objectContaining({ text: '3 selected', enabled: false }))
+    expect(menuItemNew).toHaveBeenCalledWith(
+      expect.objectContaining({ text: '3 selected', enabled: false })
+    )
   })
 
   it('omits the header for a single target', async () => {
@@ -200,34 +235,46 @@ describe('showCommitNativeContextMenu — structure', () => {
     // Every makeItem()-built entry becomes an IconMenuItem (even text-only ones get the
     // transparent blank placeholder icon for alignment) — plain MenuItem.new is only used
     // directly for the multi-select header, never via makeItem.
-    expect(iconMenuItemNew).toHaveBeenCalledWith(expect.objectContaining({ text: 'Checkout', enabled: false }))
-    expect(iconMenuItemNew).toHaveBeenCalledWith(expect.objectContaining({ text: 'Cherry-pick', enabled: false }))
+    expect(iconMenuItemNew).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'Checkout', enabled: false })
+    )
+    expect(iconMenuItemNew).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'Cherry-pick', enabled: false })
+    )
     expect(submenuNew).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }))
   })
 
   it('enables single-target-only items when isSingle is true', async () => {
     const api = await freshApi()
     await api.showCommitNativeContextMenu(commitOpts({ isSingle: true }))
-    expect(iconMenuItemNew).toHaveBeenCalledWith(expect.objectContaining({ text: 'Checkout', enabled: true }))
+    expect(iconMenuItemNew).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'Checkout', enabled: true })
+    )
   })
 
   it('governs the undo-commit item by undoCommitEnabled', async () => {
     const api = await freshApi()
     await api.showCommitNativeContextMenu(commitOpts({ undoCommitEnabled: false }))
-    expect(iconMenuItemNew).toHaveBeenCalledWith(expect.objectContaining({ text: 'Undo commit', enabled: false }))
+    expect(iconMenuItemNew).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'Undo commit', enabled: false })
+    )
   })
 
   it('governs the fixup item by fixupEnabled', async () => {
     const api = await freshApi()
     await api.showCommitNativeContextMenu(commitOpts({ fixupEnabled: false }))
-    expect(iconMenuItemNew).toHaveBeenCalledWith(expect.objectContaining({ text: 'Fixup', enabled: false }))
+    expect(iconMenuItemNew).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'Fixup', enabled: false })
+    )
   })
 
   it('wires the checkout item action to onCheckout', async () => {
     const onCheckout = vi.fn()
     const api = await freshApi()
     await api.showCommitNativeContextMenu(commitOpts({ onCheckout }))
-    const call = iconMenuItemNew.mock.calls.find(([opts]) => (opts as { text: string }).text === 'Checkout')
+    const call = iconMenuItemNew.mock.calls.find(
+      ([opts]) => (opts as { text: string }).text === 'Checkout'
+    )
     ;(call![0] as { action: () => void }).action()
     expect(onCheckout).toHaveBeenCalledOnce()
   })
@@ -237,9 +284,15 @@ describe('showCommitNativeContextMenu — structure', () => {
     const api = await freshApi()
     await api.showCommitNativeContextMenu(commitOpts({ onReset }))
 
-    const softCall = iconMenuItemNew.mock.calls.find(([opts]) => (opts as { text: string }).text === 'Soft')
-    const mixedCall = iconMenuItemNew.mock.calls.find(([opts]) => (opts as { text: string }).text === 'Mixed')
-    const hardCall = iconMenuItemNew.mock.calls.find(([opts]) => (opts as { text: string }).text === 'Hard')
+    const softCall = iconMenuItemNew.mock.calls.find(
+      ([opts]) => (opts as { text: string }).text === 'Soft'
+    )
+    const mixedCall = iconMenuItemNew.mock.calls.find(
+      ([opts]) => (opts as { text: string }).text === 'Mixed'
+    )
+    const hardCall = iconMenuItemNew.mock.calls.find(
+      ([opts]) => (opts as { text: string }).text === 'Hard'
+    )
     ;(softCall![0] as { action: () => void }).action()
     ;(mixedCall![0] as { action: () => void }).action()
     ;(hardCall![0] as { action: () => void }).action()
@@ -255,7 +308,9 @@ describe('showCommitNativeContextMenu — structure', () => {
   it('renders deferred (not-yet-implemented) items disabled with no action', async () => {
     const api = await freshApi()
     await api.showCommitNativeContextMenu(commitOpts())
-    const call = iconMenuItemNew.mock.calls.find(([opts]) => (opts as { text: string }).text === 'Drop')
+    const call = iconMenuItemNew.mock.calls.find(
+      ([opts]) => (opts as { text: string }).text === 'Drop'
+    )
     expect(call?.[0]).toMatchObject({ text: 'Drop', enabled: false })
   })
 
@@ -278,28 +333,62 @@ describe('showCommitNativeContextMenu — structure', () => {
 describe('showStashNativeContextMenu', () => {
   it('labels the visibility toggle based on isHidden', async () => {
     const api = await freshApi()
-    await api.showStashNativeContextMenu({ isHidden: true, onApply: vi.fn(), onPop: vi.fn(), onDelete: vi.fn(), onEditMessage: vi.fn(), onToggleVisibility: vi.fn() })
-    expect(iconMenuItemNew).toHaveBeenCalledWith(expect.objectContaining({ text: 'Show the stash' }))
+    await api.showStashNativeContextMenu({
+      isHidden: true,
+      onApply: vi.fn(),
+      onPop: vi.fn(),
+      onDelete: vi.fn(),
+      onEditMessage: vi.fn(),
+      onToggleVisibility: vi.fn(),
+    })
+    expect(iconMenuItemNew).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'Show the stash' })
+    )
   })
 
   it('labels the visibility toggle as "Hide" when not hidden', async () => {
     const api = await freshApi()
-    await api.showStashNativeContextMenu({ isHidden: false, onApply: vi.fn(), onPop: vi.fn(), onDelete: vi.fn(), onEditMessage: vi.fn(), onToggleVisibility: vi.fn() })
-    expect(iconMenuItemNew).toHaveBeenCalledWith(expect.objectContaining({ text: 'Hide the stash' }))
+    await api.showStashNativeContextMenu({
+      isHidden: false,
+      onApply: vi.fn(),
+      onPop: vi.fn(),
+      onDelete: vi.fn(),
+      onEditMessage: vi.fn(),
+      onToggleVisibility: vi.fn(),
+    })
+    expect(iconMenuItemNew).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'Hide the stash' })
+    )
   })
 
   it('wires each action to its callback', async () => {
     const onDelete = vi.fn()
     const api = await freshApi()
-    await api.showStashNativeContextMenu({ isHidden: false, onApply: vi.fn(), onPop: vi.fn(), onDelete, onEditMessage: vi.fn(), onToggleVisibility: vi.fn() })
-    const call = iconMenuItemNew.mock.calls.find(([opts]) => (opts as { text: string }).text === 'Delete stash')
+    await api.showStashNativeContextMenu({
+      isHidden: false,
+      onApply: vi.fn(),
+      onPop: vi.fn(),
+      onDelete,
+      onEditMessage: vi.fn(),
+      onToggleVisibility: vi.fn(),
+    })
+    const call = iconMenuItemNew.mock.calls.find(
+      ([opts]) => (opts as { text: string }).text === 'Delete stash'
+    )
     ;(call![0] as { action: () => void }).action()
     expect(onDelete).toHaveBeenCalledOnce()
   })
 
   it('builds and pops up the menu', async () => {
     const api = await freshApi()
-    await api.showStashNativeContextMenu({ isHidden: false, onApply: vi.fn(), onPop: vi.fn(), onDelete: vi.fn(), onEditMessage: vi.fn(), onToggleVisibility: vi.fn() })
+    await api.showStashNativeContextMenu({
+      isHidden: false,
+      onApply: vi.fn(),
+      onPop: vi.fn(),
+      onDelete: vi.fn(),
+      onEditMessage: vi.fn(),
+      onToggleVisibility: vi.fn(),
+    })
     expect(menuNew).toHaveBeenCalledOnce()
     expect(menuPopup).toHaveBeenCalledOnce()
   })
@@ -309,20 +398,26 @@ describe('showBranchNativeContextMenu', () => {
   it('disables deletion for the current (HEAD) branch', async () => {
     const api = await freshApi()
     await api.showBranchNativeContextMenu({ isHead: true, onDelete: vi.fn() })
-    expect(iconMenuItemNew).toHaveBeenCalledWith(expect.objectContaining({ text: 'Delete branch', enabled: false }))
+    expect(iconMenuItemNew).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'Delete branch', enabled: false })
+    )
   })
 
   it('enables deletion for a non-HEAD branch', async () => {
     const api = await freshApi()
     await api.showBranchNativeContextMenu({ isHead: false, onDelete: vi.fn() })
-    expect(iconMenuItemNew).toHaveBeenCalledWith(expect.objectContaining({ text: 'Delete branch', enabled: true }))
+    expect(iconMenuItemNew).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'Delete branch', enabled: true })
+    )
   })
 
   it('wires the delete action to the callback', async () => {
     const onDelete = vi.fn()
     const api = await freshApi()
     await api.showBranchNativeContextMenu({ isHead: false, onDelete })
-    const call = iconMenuItemNew.mock.calls.find(([opts]) => (opts as { text: string }).text === 'Delete branch')
+    const call = iconMenuItemNew.mock.calls.find(
+      ([opts]) => (opts as { text: string }).text === 'Delete branch'
+    )
     ;(call![0] as { action: () => void }).action()
     expect(onDelete).toHaveBeenCalledOnce()
   })

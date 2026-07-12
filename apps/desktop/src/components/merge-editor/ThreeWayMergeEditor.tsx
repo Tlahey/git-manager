@@ -96,11 +96,12 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         {
           content: view?.theirsText ?? '',
           status: (
-            <div className="flex items-center gap-1.5 min-w-0 text-muted-foreground/75">
+            <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground/75">
               <Lock className="h-3 w-3 shrink-0 text-muted-foreground/45" />
               <span className="truncate">
-                Rebasing <span className="font-mono text-foreground/90 font-medium">{commitSha}</span> from{' '}
-                <strong className="text-foreground/95 font-semibold">theirs</strong>
+                Rebasing{' '}
+                <span className="font-mono font-medium text-foreground/90">{commitSha}</span> from{' '}
+                <strong className="font-semibold text-foreground/95">theirs</strong>
               </span>
             </div>
           ),
@@ -108,7 +109,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         {
           status: (
             <div className="truncate text-muted-foreground/70">
-              <span className="text-foreground/95 font-semibold text-xs mr-1">Result</span>
+              <span className="mr-1 text-xs font-semibold text-foreground/95">Result</span>
               <span className="font-mono text-muted-foreground/85">{fileName}</span>
             </div>
           ),
@@ -116,11 +117,11 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         {
           content: view?.oursText ?? '',
           status: (
-            <div className="flex items-center gap-1.5 min-w-0 text-muted-foreground/75">
+            <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground/75">
               <Lock className="h-3 w-3 shrink-0 text-muted-foreground/45" />
               <span className="truncate">
                 Already rebased commits and commits from{' '}
-                <strong className="text-foreground/95 font-semibold">ours</strong>
+                <strong className="font-semibold text-foreground/95">ours</strong>
               </span>
             </div>
           ),
@@ -128,7 +129,10 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
       ]
     }, [isTwoWay, original, modified, originalLabel, modifiedLabel, view, commitSha, fileName])
 
-    const handleAutoMerge = useCallback(() => apiAutoMergeConflictView(repoPath, filePath), [repoPath, filePath])
+    const handleAutoMerge = useCallback(
+      () => apiAutoMergeConflictView(repoPath, filePath),
+      [repoPath, filePath]
+    )
 
     // Force recalculating/revalidating SWR keys
     const handleRecalculate = useCallback(() => {

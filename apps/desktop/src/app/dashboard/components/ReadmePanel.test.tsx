@@ -3,12 +3,16 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: Record<string, unknown>) => (opts?.ns === 'git' ? '' : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) => (opts?.ns === 'git' ? '' : key),
+  }),
 }))
 
 const { useRepoReadme } = vi.hoisted(() => ({ useRepoReadme: vi.fn() }))
 vi.mock('../../../hooks/useRepoReadme', () => ({ useRepoReadme }))
-vi.mock('../../../components/Markdown', () => ({ Markdown: ({ content }: { content: string }) => <div data-testid="markdown">{content}</div> }))
+vi.mock('../../../components/Markdown', () => ({
+  Markdown: ({ content }: { content: string }) => <div data-testid="markdown">{content}</div>,
+}))
 vi.mock('../../../api/shell.api', () => ({ apiOpenUrl: vi.fn() }))
 
 import { apiOpenUrl } from '../../../api/shell.api'
@@ -47,7 +51,16 @@ describe('ReadmePanel — remote link', () => {
 
   it('shows a GitHub button and opens the remote URL when clicked', async () => {
     useRepoDataStore.setState({
-      repoCache: { '/repo': { path: '/repo', name: 'repo', head: 'main', isDetached: false, isDirty: false, remotes: ['git@github.com:owner/repo.git'] } },
+      repoCache: {
+        '/repo': {
+          path: '/repo',
+          name: 'repo',
+          head: 'main',
+          isDetached: false,
+          isDirty: false,
+          remotes: ['git@github.com:owner/repo.git'],
+        },
+      },
     })
     const user = userEvent.setup()
     render(<ReadmePanel path="/repo" onClose={vi.fn()} />)
@@ -58,7 +71,16 @@ describe('ReadmePanel — remote link', () => {
 
   it('shows a GitLab button for a gitlab remote', () => {
     useRepoDataStore.setState({
-      repoCache: { '/repo': { path: '/repo', name: 'repo', head: 'main', isDetached: false, isDirty: false, remotes: ['https://gitlab.com/owner/repo.git'] } },
+      repoCache: {
+        '/repo': {
+          path: '/repo',
+          name: 'repo',
+          head: 'main',
+          isDetached: false,
+          isDirty: false,
+          remotes: ['https://gitlab.com/owner/repo.git'],
+        },
+      },
     })
     render(<ReadmePanel path="/repo" onClose={vi.fn()} />)
     expect(screen.getByText('GitLab')).toBeInTheDocument()
@@ -79,7 +101,11 @@ describe('ReadmePanel — content states', () => {
   })
 
   it('shows a "no readme" message on error', () => {
-    useRepoReadme.mockReturnValue({ data: undefined, isLoading: false, error: new Error('not found') })
+    useRepoReadme.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error('not found'),
+    })
     render(<ReadmePanel path="/repo" onClose={vi.fn()} />)
     expect(screen.getByText('dashboard.noReadme')).toBeInTheDocument()
   })

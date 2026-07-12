@@ -24,7 +24,9 @@ describe('KpiCard', () => {
   })
 
   it('applies the accent class to the card', () => {
-    const { container } = render(<KpiCard icon={null} label="L" value={1} accent="border-red-500" />)
+    const { container } = render(
+      <KpiCard icon={null} label="L" value={1} accent="border-red-500" />
+    )
     expect(container.firstElementChild).toHaveClass('border-red-500')
   })
 })

@@ -99,7 +99,12 @@ export function CreateBranchHereDialog({
           <Button variant="ghost" size="sm" onClick={onClose} disabled={isLoading}>
             {t('gitTree.contextMenu.cancel')}
           </Button>
-          <Button size="sm" onClick={handleConfirm} disabled={!name.trim() || isLoading} className="gap-1.5">
+          <Button
+            size="sm"
+            onClick={handleConfirm}
+            disabled={!name.trim() || isLoading}
+            className="gap-1.5"
+          >
             {isLoading && <Spinner className="h-3 w-3" />}
             {t('gitTree.contextMenu.create')}
           </Button>

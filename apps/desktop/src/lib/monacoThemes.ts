@@ -465,16 +465,20 @@ function hslToHex(h: number, s: number, l: number, a?: number): string {
   const f = (n: number) => {
     const aVal = s * Math.min(l, 1 - l)
     const color = l - aVal * Math.max(Math.min(k(n) - 3, 9 - k(n), 1), -1)
-    return Math.round(255 * color).toString(16).padStart(2, '0')
+    return Math.round(255 * color)
+      .toString(16)
+      .padStart(2, '0')
   }
 
   const hexRGB = `#${f(0)}${f(8)}${f(4)}`
-  
+
   if (a !== undefined) {
-    const alphaHex = Math.round(a * 255).toString(16).padStart(2, '0')
+    const alphaHex = Math.round(a * 255)
+      .toString(16)
+      .padStart(2, '0')
     return `${hexRGB}${alphaHex}`
   }
-  
+
   return hexRGB
 }
 
@@ -482,11 +486,14 @@ function colorToHex(colorStr: string, alpha?: number): string {
   const clean = colorStr.trim()
   if (clean.startsWith('#')) {
     let hex = clean
-    if (hex.length === 4) { // e.g. #fff
+    if (hex.length === 4) {
+      // e.g. #fff
       hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3]
     }
     if (alpha !== undefined) {
-      const alphaHex = Math.round(alpha * 255).toString(16).padStart(2, '0')
+      const alphaHex = Math.round(alpha * 255)
+        .toString(16)
+        .padStart(2, '0')
       return `${hex.slice(0, 7)}${alphaHex}`
     }
     return hex
@@ -589,7 +596,7 @@ export function registerAndApplyDynamicTheme(monacoInstance: typeof monaco | nul
       'diffEditor.diagonalFill': getMonacoColorFromCssVar('--secondary'),
       'diffEditor.move.border': getMonacoColorFromCssVar('--border'),
       'diffEditor.moveActive.border': getMonacoColorFromCssVar('--primary'),
-    }
+    },
   }
 
   try {

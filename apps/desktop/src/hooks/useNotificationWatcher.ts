@@ -89,7 +89,9 @@ export function useNotificationWatcher() {
           window.focus()
           const notifId = event?.id
           if (notifId) {
-            const notif = useNotificationStore.getState().notifications.find((n) => n.id === notifId)
+            const notif = useNotificationStore
+              .getState()
+              .notifications.find((n) => n.id === notifId)
             if (notif) {
               useRepoUIStore.getState().setActiveTab(PULL_REQUESTS_TAB)
               useLaunchpadStore.getState().setActiveTab(notif.targetTab)
@@ -171,5 +173,17 @@ export function useNotificationWatcher() {
     if (hasUpdates || !keysCountMatch) {
       setPreviousPRs(currentPRsMap)
     }
-  }, [prs, loading, hasSessionInitialized, previousPRs, notificationsEnabled, soundEnabled, settings.notifications, t, addNotification, setPreviousPRs, setSessionInitialized])
+  }, [
+    prs,
+    loading,
+    hasSessionInitialized,
+    previousPRs,
+    notificationsEnabled,
+    soundEnabled,
+    settings.notifications,
+    t,
+    addNotification,
+    setPreviousPRs,
+    setSessionInitialized,
+  ])
 }

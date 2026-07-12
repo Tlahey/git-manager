@@ -9,7 +9,7 @@ const AVATAR_COLORS = [
   'from-green-500 to-teal-600',
   'from-orange-500 to-amber-600',
   'from-red-500 to-rose-600',
-  'from-pink-500 to-fuchsia-600'
+  'from-pink-500 to-fuchsia-600',
 ]
 
 function hashString(str: string): number {
@@ -57,7 +57,7 @@ export function CommitDetailsAvatar({ name, email }: CommitDetailsAvatarProps) {
 
   const avatarEl = (
     <div
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-md overflow-hidden ${
+      className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-bold text-white shadow-md ${
         avatarUrl && !imgError ? '' : getAuthorAvatarStyle(name)
       }`}
     >
@@ -76,7 +76,9 @@ export function CommitDetailsAvatar({ name, email }: CommitDetailsAvatarProps) {
 
   if (isMe && frameClass) {
     return (
-      <div className={`p-[1px] shrink-0 rounded-full flex items-center justify-center ${frameClass}`}>
+      <div
+        className={`flex shrink-0 items-center justify-center rounded-full p-[1px] ${frameClass}`}
+      >
         {avatarEl}
       </div>
     )

@@ -39,7 +39,9 @@ describe('GeneralSection — git identity', () => {
   it('binds the default author name/email', async () => {
     const user = userEvent.setup()
     render(<GeneralSection />)
-    const [nameInput, emailInput] = screen.getAllByRole('textbox').filter((el) => !el.closest('[class*="flex-wrap"]'))
+    const [nameInput, emailInput] = screen
+      .getAllByRole('textbox')
+      .filter((el) => !el.closest('[class*="flex-wrap"]'))
     await user.type(nameInput, 'Ada')
     expect(useSettingsStore.getState().settings.git.defaultAuthorName).toBe('Ada')
     await user.type(emailInput, 'ada@example.com')
@@ -59,7 +61,12 @@ describe('GeneralSection — scan settings', () => {
   })
 
   it('updates the max scan depth', async () => {
-    useSettingsStore.setState({ settings: { ...INITIAL_SETTINGS.settings, advanced: { ...INITIAL_SETTINGS.settings.advanced, maxScanDepth: 3 } } })
+    useSettingsStore.setState({
+      settings: {
+        ...INITIAL_SETTINGS.settings,
+        advanced: { ...INITIAL_SETTINGS.settings.advanced, maxScanDepth: 3 },
+      },
+    })
     const user = userEvent.setup()
     render(<GeneralSection />)
     const input = screen.getByDisplayValue('3')

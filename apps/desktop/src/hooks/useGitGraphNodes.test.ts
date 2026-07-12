@@ -39,7 +39,9 @@ describe('useGitGraphNodes — conflictNode / wipNode', () => {
   })
 
   it('builds a synthetic CONFLICT node parented on the first commit', () => {
-    const { result } = renderHook(() => useGitGraphNodes([node('a')], undefined, 0, t, { count: 2 }))
+    const { result } = renderHook(() =>
+      useGitGraphNodes([node('a')], undefined, 0, t, { count: 2 })
+    )
     expect(result.current.conflictNode?.commit.oid).toBe('CONFLICT')
     expect(result.current.conflictNode?.commit.parentOids).toEqual(['a'])
   })
@@ -56,7 +58,9 @@ describe('useGitGraphNodes — conflictNode / wipNode', () => {
   })
 
   it('WIP and CONFLICT are mutually exclusive — conflict wins', () => {
-    const { result } = renderHook(() => useGitGraphNodes([node('a')], undefined, 3, t, { count: 1 }))
+    const { result } = renderHook(() =>
+      useGitGraphNodes([node('a')], undefined, 3, t, { count: 1 })
+    )
     expect(result.current.conflictNode).not.toBeNull()
     expect(result.current.wipNode).toBeNull()
   })
@@ -75,7 +79,10 @@ describe('useGitGraphNodes — filteredNodes / search', () => {
   })
 
   it('filters by commit subject/body/author/oid, case-insensitively', () => {
-    const nodes = [node('a', { commit: { ...node('a').commit, subject: 'Fix the bug' } }), node('b')]
+    const nodes = [
+      node('a', { commit: { ...node('a').commit, subject: 'Fix the bug' } }),
+      node('b'),
+    ]
     const { result } = renderHook(() => useGitGraphNodes(nodes, 'FIX THE', 0, t, null))
     expect(result.current.filteredNodes.map((n) => n.commit.oid)).toEqual(['a'])
   })
@@ -100,22 +107,41 @@ describe('useGitGraphNodes — filteredNodes / search', () => {
 describe('useGitGraphNodes — waterlines', () => {
   it('never emits a waterline at index 0', () => {
     const oldTimestamp = NOW - 400 * 86400
-    const nodes = [node('a', { commit: { ...node('a').commit, author: { name: '', email: '', timestamp: oldTimestamp } } })]
+    const nodes = [
+      node('a', {
+        commit: { ...node('a').commit, author: { name: '', email: '', timestamp: oldTimestamp } },
+      }),
+    ]
     const { result } = renderHook(() => useGitGraphNodes(nodes, undefined, 0, t, null))
     expect(result.current.waterlines).toEqual([])
   })
 
   it('emits a waterline mark when crossing into an older bucket', () => {
     const today = node('a')
-    const oldOne = node('b', { commit: { ...node('b').commit, author: { name: '', email: '', timestamp: NOW - 400 * 86400 } } })
+    const oldOne = node('b', {
+      commit: {
+        ...node('b').commit,
+        author: { name: '', email: '', timestamp: NOW - 400 * 86400 },
+      },
+    })
     const { result } = renderHook(() => useGitGraphNodes([today, oldOne], undefined, 0, t, null))
     expect(result.current.waterlines).toHaveLength(1)
     expect(result.current.waterlines[0].index).toBe(1)
   })
 
   it('does not emit duplicate waterlines for commits in the same bucket', () => {
-    const oldA = node('a', { commit: { ...node('a').commit, author: { name: '', email: '', timestamp: NOW - 400 * 86400 } } })
-    const oldB = node('b', { commit: { ...node('b').commit, author: { name: '', email: '', timestamp: NOW - 400 * 86400 } } })
+    const oldA = node('a', {
+      commit: {
+        ...node('a').commit,
+        author: { name: '', email: '', timestamp: NOW - 400 * 86400 },
+      },
+    })
+    const oldB = node('b', {
+      commit: {
+        ...node('b').commit,
+        author: { name: '', email: '', timestamp: NOW - 400 * 86400 },
+      },
+    })
     const { result } = renderHook(() => useGitGraphNodes([oldA, oldB], undefined, 0, t, null))
     expect(result.current.waterlines).toEqual([])
   })
@@ -123,7 +149,19 @@ describe('useGitGraphNodes — waterlines', () => {
 
 describe('useGitGraphNodes — originMainIndex', () => {
   it('finds the index of the origin/main ref', () => {
-    const nodes = [node('a'), node('b', { refs: [{ name: 'refs/remotes/origin/main', shortName: 'origin/main', type: 'remote', commitOid: 'b' }] })]
+    const nodes = [
+      node('a'),
+      node('b', {
+        refs: [
+          {
+            name: 'refs/remotes/origin/main',
+            shortName: 'origin/main',
+            type: 'remote',
+            commitOid: 'b',
+          },
+        ],
+      }),
+    ]
     // totalChanges: 0 and conflictInfo: null — no special node prepended, so filteredNodes === nodes.
     const { result } = renderHook(() => useGitGraphNodes(nodes, undefined, 0, t, null))
     expect(result.current.originMainIndex).toBe(1)
@@ -141,7 +179,9 @@ describe('useGitGraphNodes — renderNodes patching', () => {
     const { result } = renderHook(() => useGitGraphNodes(nodes, undefined, 1, t, null))
     // index 1 in filteredNodes is nodes[0] ("a"), since WIP occupies index 0
     const patchedNode = result.current.renderNodes[1]
-    expect(patchedNode.connections.some((c) => c.fromColumn === 0 && c.toColumn === 0 && c.dashed)).toBe(true)
+    expect(
+      patchedNode.connections.some((c) => c.fromColumn === 0 && c.toColumn === 0 && c.dashed)
+    ).toBe(true)
   })
 
   it('does not duplicate an already-existing column-0 connector', () => {
@@ -159,7 +199,14 @@ describe('useGitGraphNodes — renderNodes patching', () => {
       node('a', { connections: [{ fromColumn: 0, toColumn: 0, color: '#123', dashed: false }] }),
       node('b', {
         connections: [{ fromColumn: 0, toColumn: 0, color: '#123', dashed: false }],
-        refs: [{ name: 'refs/remotes/origin/main', shortName: 'origin/main', type: 'remote', commitOid: 'b' }],
+        refs: [
+          {
+            name: 'refs/remotes/origin/main',
+            shortName: 'origin/main',
+            type: 'remote',
+            commitOid: 'b',
+          },
+        ],
       }),
     ]
     const { result } = renderHook(() => useGitGraphNodes(nodes, undefined, 0, t, null))

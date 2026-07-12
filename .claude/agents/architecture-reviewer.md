@@ -16,7 +16,7 @@ repo's layering rules. Your source of truth, in priority order:
    reintroduces the same anti-pattern in a new file).
 2. `.agents/AGENTS.md` — frontend organization rules (1 feature = 1 component, split
    sub-components, group API calls, use SWR for queries, `data-testid`).
-3. `CLAUDE.md` at repo root — IPC boundary, frontend layering (component → hook → api/*.api.ts →
+3. `CLAUDE.md` at repo root — IPC boundary, frontend layering (component → hook → api/\*.api.ts →
    lib/tauri.ts → invoke), error handling (`AppError`), security conventions.
 
 ## What to check
@@ -25,10 +25,11 @@ Scope your review to files touched in the current diff (`git diff` / `git status
 base branch, or whatever the user points you at — don't re-audit the whole repo unless asked).
 
 **Frontend:**
+
 - Any new/changed component that mixes non-presentational logic (polling, tree-building, parsing,
   timers) inline instead of extracting a hook under `hooks/`.
 - Any `invoke(` call outside `lib/tauri.ts`, or any component/hook/store that imports
-  `lib/tauri.ts` directly for a *new* business operation instead of going through
+  `lib/tauri.ts` directly for a _new_ business operation instead of going through
   `api/*.api.ts` (per R2 in the plan — every operation should be reachable through the API layer,
   not just simple getters).
 - New Zustand stores (or edits to existing ones) that mix UI-only state with business/domain data
@@ -38,17 +39,19 @@ base branch, or whatever the user points you at — don't re-audit the whole rep
 - Missing `data-testid` on new interactive/structural elements.
 
 **Backend (Rust):**
+
 - New `#[tauri::command]` functions that contain business logic (git2 traversal, validation,
   computation) inline instead of delegating to a `services/*.rs` function. The service layer
   exists for diff generation, stage/unstage/commit/discard, repo open/build, and commit-graph
   layout — for those domains, a command should delegate, not reimplement. For domains without a
-  service yet, flag if a *new* command duplicates existing logic (e.g. reimplements `short_oid`,
+  service yet, flag if a _new_ command duplicates existing logic (e.g. reimplements `short_oid`,
   signature extraction, or diff struct definitions) instead of reusing `utils.rs`/`models.rs`.
 - New struct definitions that duplicate `DiffLine`/`DiffHunk`/`DiffFile`/`CommitDiff` or similar
   shapes already defined elsewhere.
 - Commands missing proper `AppError` variants (stringly-typed errors instead of using the enum).
 
 **Cross-cutting:**
+
 - Logic duplicated between two or more files that could be a shared helper/hook/service.
 - File/function size as a signal, not a hard rule: ~300 lines is the point where a component,
   hook, or Rust function should have an obvious seam to split — flag it if the diff grows a file

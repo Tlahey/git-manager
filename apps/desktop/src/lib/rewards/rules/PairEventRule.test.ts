@@ -62,19 +62,25 @@ describe('PairEventRule', () => {
   it('matches the end event for a file previously tracked by the start event', () => {
     const a = achievement()
     const pairTracking = new Map<string, Set<string>>([['stage_unstage', new Set(['foo.ts'])]])
-    expect(rule.matches(a, ctx({ event: 'unstage', payload: { filePath: 'foo.ts' }, pairTracking }))).toBe(true)
+    expect(
+      rule.matches(a, ctx({ event: 'unstage', payload: { filePath: 'foo.ts' }, pairTracking }))
+    ).toBe(true)
   })
 
   it('does not match the end event for a file never tracked', () => {
     const a = achievement()
     const pairTracking = new Map<string, Set<string>>([['stage_unstage', new Set(['foo.ts'])]])
-    expect(rule.matches(a, ctx({ event: 'unstage', payload: { filePath: 'other.ts' }, pairTracking }))).toBe(false)
+    expect(
+      rule.matches(a, ctx({ event: 'unstage', payload: { filePath: 'other.ts' }, pairTracking }))
+    ).toBe(false)
   })
 
   it('does not match on an event other than endEvent', () => {
     const a = achievement()
     const pairTracking = new Map<string, Set<string>>([['stage_unstage', new Set(['foo.ts'])]])
-    expect(rule.matches(a, ctx({ event: 'stage', payload: { filePath: 'foo.ts' }, pairTracking }))).toBe(false)
+    expect(
+      rule.matches(a, ctx({ event: 'stage', payload: { filePath: 'foo.ts' }, pairTracking }))
+    ).toBe(false)
   })
 
   it('falls back to a shared "default" key when payload has no filePath', () => {
@@ -91,6 +97,8 @@ describe('PairEventRule', () => {
     const pairTracking = new Map<string, Set<string>>()
     rule.track(a1, ctx({ event: 'stage', payload: { filePath: 'foo.ts' }, pairTracking }))
     expect(pairTracking.has('pair2')).toBe(false)
-    expect(rule.matches(a2, ctx({ event: 'unstage', payload: { filePath: 'foo.ts' }, pairTracking }))).toBe(false)
+    expect(
+      rule.matches(a2, ctx({ event: 'unstage', payload: { filePath: 'foo.ts' }, pairTracking }))
+    ).toBe(false)
   })
 })
