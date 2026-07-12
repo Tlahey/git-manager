@@ -41,7 +41,7 @@ _100% local — no telemetry, no cloud, no data leaves your machine._
 - **Submodules** — list and inspect
 - **i18n** — English and French interface
 
-> Interactive rebase (drag-and-drop) and worktree management are planned but not yet implemented — see [Implemented milestones](#implemented-milestones).
+> Interactive rebase (drag-and-drop) and worktree management are planned but not yet implemented — see the [roadmap status at a glance](docs/ROADMAP.md#status-at-a-glance).
 
 ---
 
@@ -82,49 +82,10 @@ pnpm --filter @git-manager/e2e screenshots     # re-capture docs/screenshots/*.p
 
 ## Project structure
 
-```
-git-manager/
-├── apps/
-│   └── desktop/                    # Main Tauri application
-│       ├── src-tauri/              # Rust backend
-│       │   └── src/
-│       │       ├── commands/       # Thin Tauri IPC commands, one file per domain
-│       │       │                   #   (repo, log, branch, commit, remote, stash, rollback,
-│       │       │                   #   fixup, undo, github, ollama, ssh, submodule, themes)
-│       │       ├── services/       # git2 business logic, called from commands/
-│       │       │                   #   (git_diff, git_commit, git_repo, git_graph)
-│       │       ├── error.rs        # Unified AppError → JSON string
-│       │       ├── models.rs       # serde structs mirroring TypeScript types
-│       │       ├── utils.rs        # Shared helpers (short_oid, get_git_signature)
-│       │       ├── state.rs        # AppState (repos, ollama config, cancellation)
-│       │       └── lib.rs          # Builder + invoke_handler registration
-│       └── src/                    # React frontend
-│           ├── app/                # Pages (dashboard, repo, settings, pull-requests)
-│           ├── components/         # Feature components, render-only (logic lives in hooks/)
-│           │   └── git-graph/      # GitGraph, GraphRow, CommitPanel, DiffViewer
-│           ├── hooks/              # Business-logic + data-fetching hooks (SWR + legacy React Query)
-│           ├── api/                # api/*.api.ts — domain-grouped service layer over lib/tauri.ts;
-│           │                       # components/hooks/stores call this, never lib/tauri.ts directly
-│           ├── lib/
-│           │   ├── tauri.ts        # Typed invoke() wrappers for all commands (one per command)
-│           │   └── appEventBus.ts  # Cross-cutting event bus (achievements/gamification)
-│           └── stores/             # Zustand stores (repoUI, repoData, settings, undoHistory, game)
-├── packages/
-│   ├── git-types/                  # Shared TypeScript interfaces (DTOs)
-│   ├── i18n/                       # react-i18next setup + EN/FR locale files
-│   ├── ui/                         # shadcn/ui base components
-│   └── config/                     # Shared ESLint + Tailwind + tsconfig
-├── docs/
-│   ├── README.md                   # Documentation index
-│   ├── ROADMAP.md                  # Milestone plan (M0–M7)
-│   ├── specs/                      # Feature specs (00–12)
-│   └── architecture/               # Architecture refactor plan (13) + tracking (14)
-├── CLAUDE.md                       # Architecture/IPC conventions — authoritative for AI coding agents
-├── Cargo.toml                      # Rust workspace
-├── package.json                    # Root pnpm scripts
-├── pnpm-workspace.yaml
-└── turbo.json
-```
+The full annotated monorepo tree lives in [docs/README.md](docs/README.md#monorepo-structure).
+In short: `apps/desktop` (Tauri app: Rust backend in `src-tauri/`, React frontend in `src/`),
+`apps/landing-page`, `apps/e2e`, and shared `packages/` (`git-types`, `mascot`, `i18n`, `ui`,
+`components`, `code-view`, `config`).
 
 ---
 
@@ -283,55 +244,14 @@ The model is configurable per-project. Temperature and timeout are also adjustab
 
 ---
 
-## Implemented milestones
+## Documentation & roadmap
 
-| Milestone                | Status         | Description                                                                                                                                                                                                    |
-| ------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0 — Foundations         | ✅ Done        | Monorepo setup, Tauri scaffold, packages                                                                                                                                                                       |
-| M1 — Git Tree            | ✅ Done        | Virtualised commit graph, branch sidebar, commit diff panel                                                                                                                                                    |
-| M2 — Working Tree        | ✅ Done        | Stage/unstage, commit, fetch/pull/push                                                                                                                                                                         |
-| M3 — Commit AI           | ✅ Done        | Ollama streaming, settings UI, message history, WIP batch commit                                                                                                                                               |
-| M4 — Rollback & Fixup    | ✅ Done        | git revert, reset (soft/mixed/hard), fixup + autosquash                                                                                                                                                        |
-| M5 — Interactive Rebase  | ⬜ Planned     | Read-only rebase-state detection done (`get_rebase_state` — idle/in-progress/conflict/edit-pause, for the toolbar's REBASING badge); drag-and-drop rebase UI and the start/abort/continue controls not started |
-| M6 — Worktree & Branches | 🔵 In progress | Branch create/delete/checkout done; branch rename and worktree management not started                                                                                                                          |
-| M7 — Stash & Polish      | 🔵 In progress | Stash push/pop/apply/drop and keyboard shortcuts done; auto-update not started                                                                                                                                 |
+Everything project-state and design related lives in [docs/](docs/):
 
-See [docs/ROADMAP.md](docs/ROADMAP.md) for the full plan with detailed tasks and acceptance criteria.
-
-### Not yet wired up (frontend scaffolding exists, backend command doesn't)
-
-These have a typed `invoke()` wrapper already sitting in [`lib/tauri.ts`](apps/desktop/src/lib/tauri.ts) (and, for rebase, a real UI consumer) but no corresponding `#[tauri::command]` — found via a cross-check of every `invoke()` call against `lib.rs`'s registered handler list. Listed here so implementing them is "wire up the two ends," not "start from scratch":
-
-- [ ] **Branch rename** — `renameBranch(path, oldName, newName)` → `rename_branch`. No UI trigger yet either (no rename option in the branch context menu). Spec: [docs/specs/09-branch-management.md](docs/specs/09-branch-management.md); tracked as part of ROADMAP task 6.3.
-- [ ] **Worktree management** — `listWorktrees`/`addWorktree`/`removeWorktree` → `list_worktrees`/`add_worktree`/`remove_worktree`. `GitWorktree` DTO already defined ([`models.rs`](apps/desktop/src-tauri/src/models.rs), [`git-types`](packages/git-types/src/index.ts)). No UI consumer yet. Spec: [docs/specs/06-worktree.md](docs/specs/06-worktree.md); ROADMAP tasks 6.1/6.2.
-- [ ] **Interactive rebase controls** — `startInteractiveRebase`/`abortRebase`/`continueRebase` → `start_interactive_rebase`/`abort_rebase`/`continue_rebase`. `RebaseStep` DTO already defined for the todo-list shape. The read side (`get_rebase_state`, `RebaseState`) is implemented and live in the toolbar; these three are the write side needed for the drag-and-drop UI. Spec: [docs/specs/07-rebase-interactive.md](docs/specs/07-rebase-interactive.md); ROADMAP tasks 5.1–5.5.
-- [ ] **Settings backend sync** — `getSettings`/`updateSettings` → `get_settings`/`update_settings`, plus an `AppSettings` DTO. Currently unused: `stores/settings.store.ts` persists settings entirely client-side (Zustand `persist` → localStorage) and never calls these. Only relevant if/when settings need to sync across machines or be readable from outside the app — not blocking anything today.
-
----
-
----
-
-## Feature specifications
-
-Detailed specs for every feature are in [docs/specs/](docs/specs/):
-
-| Spec                                                         | Feature                          |
-| ------------------------------------------------------------ | -------------------------------- |
-| [00-architecture](docs/specs/00-architecture.md)             | Stack, IPC patterns, conventions |
-| [01-dashboard](docs/specs/01-dashboard.md)                   | Multi-repo dashboard             |
-| [02-git-tree](docs/specs/02-git-tree.md)                     | Commit graph visualisation       |
-| [03-commit-generation](docs/specs/03-commit-generation.md)   | AI commit messages via Ollama    |
-| [04-rollback](docs/specs/04-rollback.md)                     | Revert / Reset                   |
-| [05-fixup](docs/specs/05-fixup.md)                           | Fixup & autosquash               |
-| [06-worktree](docs/specs/06-worktree.md)                     | Git worktree management          |
-| [07-rebase-interactive](docs/specs/07-rebase-interactive.md) | Interactive rebase UI            |
-| [08-stash](docs/specs/08-stash.md)                           | Stash management                 |
-| [09-branch-management](docs/specs/09-branch-management.md)   | Branch operations                |
-| [10-settings](docs/specs/10-settings.md)                     | Application settings             |
-| [11-pedagogy](docs/specs/11-pedagogy.md)                     | Contextual git education mode    |
-| [12-left-sidebar](docs/specs/12-left-sidebar.md)             | Resizable repository sidebar     |
-
-Architecture refactor plan and execution tracking live in [docs/architecture/](docs/architecture/) (specs 13 and 14).
+- **[docs/ROADMAP.md](docs/ROADMAP.md)** — milestone plan (M0–M7) with a status-at-a-glance summary, detailed tasks, and the "not yet wired up" backlog of commands whose frontend scaffolding already exists
+- **[docs/README.md](docs/README.md)** — documentation index, including the full table of feature specs (`docs/specs/00`–`12`)
+- **[docs/architecture/](docs/architecture/)** — architecture refactor plan (13) and its living execution tracking (14)
+- **[CLAUDE.md](CLAUDE.md)** — the authoritative IPC/layering conventions, kept in sync with the code (also used by AI coding agents)
 
 ---
 
