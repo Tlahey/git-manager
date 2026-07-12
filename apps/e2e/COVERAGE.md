@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (9 features / 59 steps, 6 visual snapshots)
+## Covered today (10 features / 67 steps, 6 visual snapshots)
 
 | Feature | Area | Setup | Snapshot | Status |
 |---|---|---|---|---|
@@ -27,6 +27,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | Rebase conflict panel auto-opens + **snapshot** | rebase | fixture:rebase-conflict | 📷 ✅ (panel layout) | 🟡 (panel shown + snapshotted; resolve/continue not driven) |
 | **Merge editor** opens for a conflicted file + **snapshot** | merge | fixture:rebase-conflict | 📷 ✅ (full Monaco editor) | 🟡 (opens + snapshotted; block resolution not driven) |
 | **Working-tree staging panel** + **file diff** + **snapshots** | commits | fixture:stash-stack | 📷 ✅ (staging panel + diff view) | 🟡 (panel + diff snapshotted; stage/commit not driven) |
+| **Undo / redo a branch checkout** (Cmd+Z / Cmd+Shift+Z) | undo/redo | fixture:feature-branches | — | ✅ |
 | Detached HEAD indicator reads "HEAD" | repo state | fixture:detached-head | — | ✅ |
 | Sidebar lists stashes | stash | fixture:stash-stack | — | 🟡 (list only; apply/pop/drop todo) |
 | Settings screen opens + **snapshot** | settings | keyboard (Mod+,) | 📷 ✅ (general section) | 🟡 (general snapshotted; other sections todo) |
@@ -58,8 +59,9 @@ fixture:
 | Fixture | Exercises | Status |
 |---|---|---|
 | fixup-chain | fixup grouping / autosquash · **create-fixup from staged change** | 🟡 (autosquash ✅; create-fixup ⬜) |
-| rebase-conflict | conflict panel ✅ · **merge editor** ⬜ · continue/skip/abort flow ⬜ | 🟡 |
+| rebase-conflict | conflict panel ✅ · merge editor ✅ · continue/skip/abort flow ⬜ | 🟡 |
 | detached-head | detached indicator ✅ · checkout-back-to-branch ⬜ | 🟡 |
+| feature-branches | branch checkout ✅ · **undo/redo of the checkout** ✅ | ✅ |
 | stash-stack | list ✅ · **apply / pop / drop / stash message edit** ⬜ | 🟡 |
 | rollback-history | **reset (soft/mixed/hard) · revert · undo/redo of those** ⬜ | ⬜ |
 
@@ -82,13 +84,17 @@ commit · amend (`commit-amend-*`). The commit-box testids are still mock-only. 
 — clicking a file row (`file-tree-file-<path>`, a real testid) shows the diff (`diff-content-area`)
 and it's snapshotted (`wip-file-diff`), verified stable.
 
-### 5. Undo / redo  ⬜
-State-mutating actions push to `undoHistory.store`. **Note:** the toolbar undo/redo buttons'
-testids are dead (see blockers), but undo/redo is also bound to **Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z**
-(`hooks/useKeyboardShortcuts.ts`) — drive it with `browser.keys([...])`. Setup:
-`fixture:rollback-history`. Scenario: perform a reset/commit · Cmd+Z · assert the graph/HEAD
-reverted · redo · assert re-applied. High value (undo is easy to break, hard to unit-test across
-the real IPC boundary).
+### 5. Undo / redo  ✅  (checkout) · ⬜ (reset/commit)
+State-mutating actions push to `undoHistory.store`. **Done:** the `undo-redo.feature` drives a
+real **branch checkout** through the toolbar's `BranchContext` selector (new
+`branch-option-<name>` testid), then **Cmd+Z / Cmd+Shift+Z** — bound globally in
+`hooks/useKeyboardShortcuts.ts`, driven with `browser.keys([META, 'z'])` /
+`browser.keys([META, SHIFT, 'z'])` — and asserts HEAD moves `main → feature/login → main →
+feature/login` via the shared `branch-context-label` indicator (now polled, since undo/redo are
+async). This sidesteps the dead toolbar-button testids (see blockers) entirely. Setup: the new
+`fixture:feature-branches` (HEAD on a **named** branch so the indicator resolves to a branch name,
+not a detached sha). **Todo:** cover the other undoable actions — a reset or commit then Cmd+Z on
+`fixture:rollback-history`, asserting the graph/HEAD reverts and redo re-applies.
 
 ---
 

@@ -112,6 +112,7 @@ export function BranchContext() {
                 <button
                   key={branch.name}
                   type="button"
+                  data-testid={`branch-option-${branch.shortName}`}
                   onClick={() => handleCheckout(branch.shortName)}
                   disabled={busy !== null}
                   className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition-colors hover:bg-accent disabled:opacity-60 ${
