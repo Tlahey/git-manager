@@ -10,3 +10,7 @@ Feature: Rebase conflict resolution
   Scenario: A paused rebase auto-opens the conflict resolution panel
     Then the conflict resolution panel is shown
     And the conflict panel offers to skip or abort the rebase
+
+  @visual
+  Scenario: The conflict resolution panel matches the reference snapshot
+    Then the conflict resolution panel matches the visual snapshot "conflict-resolution-panel"

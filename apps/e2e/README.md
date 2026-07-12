@@ -26,9 +26,12 @@ step-definitions/               # the TypeScript backing each Given/When/Then, m
   common.steps.ts               #   app launch / generic assertions
   mocking.steps.ts              #   browser.tauri.mock scenarios
   fixup.steps.ts                #   banner, autosquash preview, visual snapshot
-  rebase.steps.ts               #   conflict resolution panel
+  rebase.steps.ts               #   conflict resolution panel (+ visual snapshot)
   detached.steps.ts             #   detached HEAD branch indicator
   stash.steps.ts                #   sidebar stash section
+support/
+  visual.ts                     #   stabiliseForSnapshot() shared by every snapshot step
+COVERAGE.md                     # coverage matrix: what's tested vs the app's feature surface
 ```
 
 Steps are matched to definitions by their text (regex) across all files, so a step phrased the
@@ -150,10 +153,11 @@ await expect($('[data-testid="autosquash-preview-groups"]')).toMatchElementSnaps
 A tolerance of exactly `0` is too strict in practice — two renders of the identical state can
 differ by a fraction of a percent from font hinting/antialiasing jitter alone (measured ~0.27%
 here before adding the stabilisation step below); `1` absorbs that noise while still catching
-real UI regressions, which run an order of magnitude higher. The snapshot step (in
-`step-definitions/fixup.steps.ts`) also waits for `document.fonts.ready` and force-disables CSS
-transitions/animations right before capturing, both recommended by the upstream visual-testing
-guide, to cut noise further.
+real UI regressions, which run an order of magnitude higher. The shared `stabiliseForSnapshot()`
+helper (`support/visual.ts`, called by every snapshot step) waits for `document.fonts.ready` and
+force-disables CSS transitions/animations right before capturing, both recommended by the
+upstream visual-testing guide, to cut noise further. See [COVERAGE.md](./COVERAGE.md) for the
+snapshot strategy (which features are good targets, and the volatile-content caveat).
 
 Baselines live in `apps/e2e/__visual__/<platform>/<arch>/<driverProvider>/baseline/` — gitignored
 here since there's no CI runner yet to own a canonical baseline per-OS; once there is, drop the
