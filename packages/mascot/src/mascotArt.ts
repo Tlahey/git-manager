@@ -6,24 +6,38 @@
  * Web Component (`<git-mascot>`, used by the landing page) and the React
  * wrapper (`<OctopusMascot>`, used by the desktop app). Nothing here imports
  * React or touches the DOM — see `GitMascotElement.ts` and `OctopusMascot.tsx`
- * for the two thin adapters.
+ * for the two thin adapters, and `behaviors.ts` for the JS-driven eye tracking.
  *
  * ── How the artwork is built ──────────────────────────────────────────────
- * The octopus is assembled from the brand sprite sheet: a head (face baked
- * into the art — eyes and mouth are drawn by the artist, not composed here)
- * and eight individual tentacles. Parts are laid out on a 1000×1000 stage as
- * SVG `<image>` elements; every limb's root is tucked under the head, which
- * is painted after the limbs.
+ * The octopus is assembled from the brand sprite sheet: a head (mouth and eye
+ * whites/pupils baked into the art by the artist) and eight individual
+ * tentacles. Parts are laid out on a 1000×1000 stage as SVG `<image>`
+ * elements; every limb's root is tucked under the head, which is painted
+ * after the limbs.
+ *
+ * The baked-in pupils can't move on their own, so each eye gets a thin code-
+ * drawn overlay on top of the head: a flat circle in the eye-white's own
+ * color masks the baked pupil, then a redrawn pupil + highlight (same size,
+ * same rest position) sits on top of that mask — free to be pushed around by
+ * `behaviors.ts`'s `attachEyeTracking` or the idle CSS glance animation
+ * without ever uncovering the original baked pupil. A blink cross-fades that
+ * pupil group with a drawn eyelid curve. The eye geometry (centers, radii,
+ * highlight offset) below was measured directly off the head sprite via
+ * connected-component analysis of its near-white/near-navy pixels (see the
+ * `EYES`/`PUPIL_R`/etc. constants) — re-measure and update if the head
+ * artwork is ever regenerated with a different face.
  *
  * The editable sources live in `assets/` (sprites.png + layout.json, the
  * Storybook Layout editor's export); `pnpm generate` turns them into the
  * committed `src/generated/` modules imported here — placements, paint
  * order, pivots and animation params all come from there. This file owns
- * what generation can't: the markup/CSS assembly and the animation system.
+ * what generation can't: the eye math, the markup/CSS assembly, and the
+ * animation system.
  *
  * Because every limb is its own sprite, each one animates independently — a
  * gentle rotation around its root anchor (`--gm-px/--gm-py`), with per-limb
- * amplitude (`--gm-amp`, in degrees), duration and phase.
+ * amplitude (`--gm-amp`, in degrees), duration and phase. Blinking cross-
+ * fades the pupil overlay with the eyelid curve via opacity keyframes.
  *
  * Rotations use an explicit translate→rotate→translate pattern instead of
  * `transform-origin` (inconsistent for SVG across engines), and every
@@ -37,9 +51,10 @@ import { PLACEMENTS } from './generated/layout'
 
 export const MASCOT_VIEWBOX = { minX: 30, minY: 40, width: 940, height: 900 } as const
 
-/** Class names / selectors shared between the markup and consumers. */
+/** Class names / selectors shared between the markup and the behavior helpers. */
 export const MASCOT_SELECTORS = {
   root: 'gm-svg',
+  pupil: 'gm-pupil',
 } as const
 
 export interface LimbSpec {
@@ -111,6 +126,47 @@ const HEAD = {
 const HEAD_REF_MAX_WIDTH = 627
 
 /**
+ * Eye overlay geometry, measured directly off this head sprite's own pixels
+ * (633×729 at generation time) rather than an external reference: connected-
+ * component labeling of its near-white pixels isolated the two eye whites as
+ * ~131px-diameter blobs centered at (193,474) and (439,474) — symmetric
+ * around the head's horizontal center (316.5) to within 1px — plus two small
+ * ~20px "shine" blobs at consistent offsets inside them. The same technique
+ * on near-navy pixels found the baked pupils as ~65px-diameter solid discs
+ * dead-centered in each white. Converted to stage units via this head
+ * placement's own `x/y/scale` (no external transfer scale needed, since the
+ * measurement was taken on the exact deployed asset).
+ */
+const EYE_HALF_SPACING_LOCAL = 123 // px, from head sprite's horizontal center
+const EYE_CY_LOCAL = 474.4 // px
+const PUPIL_R_LOCAL = 32.5 // px, baked pupil radius
+const EYE_COVER_R_LOCAL = 36 // px, just past the baked pupil + its shine highlight
+const HIGHLIGHT_R_LOCAL = 10 // px
+const HIGHLIGHT_OFFSET_LOCAL = { dx: 12.2, dy: -16 } // px, from pupil center
+
+const EYES = [
+  {
+    cx: HEAD.x + (HEAD.sprite.w / 2 - EYE_HALF_SPACING_LOCAL) * HEAD.scale,
+    cy: HEAD.y + EYE_CY_LOCAL * HEAD.scale,
+  },
+  {
+    cx: HEAD.x + (HEAD.sprite.w / 2 + EYE_HALF_SPACING_LOCAL) * HEAD.scale,
+    cy: HEAD.y + EYE_CY_LOCAL * HEAD.scale,
+  },
+] as const
+const PUPIL_R = PUPIL_R_LOCAL * HEAD.scale
+const EYE_COVER_R = EYE_COVER_R_LOCAL * HEAD.scale
+const HIGHLIGHT_R = HIGHLIGHT_R_LOCAL * HEAD.scale
+const HIGHLIGHT_OFFSET = {
+  dx: HIGHLIGHT_OFFSET_LOCAL.dx * HEAD.scale,
+  dy: HIGHLIGHT_OFFSET_LOCAL.dy * HEAD.scale,
+}
+/** Flat fill colors sampled off the head sprite (eye white, baked-pupil ink, shine). */
+const EYE_COVER_FILL = '#fefefe'
+const PUPIL_FILL = '#141937'
+const HIGHLIGHT_FILL = '#ffffff'
+
+/**
  * The full rig, exposed for the package's Storybook (parts gallery, rig
  * debugger, reference-alignment overlays, layout editor). Not part of the
  * consumer-facing API — apps should only use `<git-mascot>`/`OctopusMascot`.
@@ -122,6 +178,9 @@ export const MASCOT_LAYOUT = {
   limbs: LIMBS,
   /** Zones in paint order (first = furthest back), head included. */
   order: PLACEMENTS.map((p) => p.zone),
+  eyes: EYES,
+  pupilR: PUPIL_R,
+  eyeCoverR: EYE_COVER_R,
   reference: {
     size: 2048,
     crown: { x: 1024, y: 383 },
@@ -153,6 +212,35 @@ function limb(name: string): string {
       </g>`
 }
 
+/**
+ * The movable eye overlay: an opaque cover (hides the baked pupil), a
+ * redrawn pupil + highlight on top of it (tracked by `attachEyeTracking`/the
+ * idle glance animation), and a blink lid curve that cross-fades with the
+ * pupil. Rendered right after the head image so it shares the head's paint-
+ * order slot — any limb painted over the head in `PLACEMENTS` still occludes
+ * the eyes along with it.
+ */
+function eyesOverlay(): string {
+  const covers = EYES.map((e) => `<circle cx="${e.cx}" cy="${e.cy}" r="${EYE_COVER_R}" fill="${EYE_COVER_FILL}"/>`).join('')
+  const pupils = EYES.map(
+    (e) => `<g class="${MASCOT_SELECTORS.pupil}" data-cx="${e.cx}" data-cy="${e.cy}">
+          <circle cx="${e.cx}" cy="${e.cy}" r="${PUPIL_R}" fill="${PUPIL_FILL}"/>
+          <circle cx="${e.cx + HIGHLIGHT_OFFSET.dx}" cy="${e.cy + HIGHLIGHT_OFFSET.dy}" r="${HIGHLIGHT_R}" fill="${HIGHLIGHT_FILL}"/>
+        </g>`
+  ).join('')
+  const lidHalfWidth = EYE_COVER_R * 0.85
+  const lidBow = EYE_COVER_R * 0.55
+  const lidStroke = EYE_COVER_R * 0.28
+  const lids = EYES.map(
+    (e) =>
+      `<path d="M ${e.cx - lidHalfWidth} ${e.cy} Q ${e.cx} ${e.cy + lidBow} ${e.cx + lidHalfWidth} ${e.cy}" stroke="${PUPIL_FILL}" stroke-width="${lidStroke}" stroke-linecap="round" fill="none"/>`
+  ).join('')
+  return `
+      <g class="gm-eye-cover">${covers}</g>
+      <g class="gm-pupils">${pupils}</g>
+      <g class="gm-lids">${lids}</g>`
+}
+
 export const MASCOT_MARKUP = /* html */ `
 <svg class="${MASCOT_SELECTORS.root}" viewBox="${MASCOT_VIEWBOX.minX} ${MASCOT_VIEWBOX.minY} ${MASCOT_VIEWBOX.width} ${MASCOT_VIEWBOX.height}" xmlns="http://www.w3.org/2000/svg" role="img">
   <defs>
@@ -166,11 +254,13 @@ export const MASCOT_MARKUP = /* html */ `
 
   <g class="gm-float">
     <g class="gm-breathe">
-      <!-- Parts strictly in the generated paint order; the head (face baked
-           into the art) sits wherever the layout put it in that order -->
+      <!-- Parts strictly in the generated paint order; the head (mouth baked
+           into the art, eyes overlaid on top) sits wherever the layout put
+           it in that order -->
       ${PLACEMENTS.map((p) =>
         p.role === 'head' ? `
-      ${image(HEAD.sprite, HEAD.x, HEAD.y, HEAD.scale)}` : limb(p.zone)
+      ${image(HEAD.sprite, HEAD.x, HEAD.y, HEAD.scale)}
+      ${eyesOverlay()}` : limb(p.zone)
       ).join('')}
     </g>
   </g>
@@ -179,7 +269,8 @@ export const MASCOT_MARKUP = /* html */ `
 /**
  * Scoped CSS for the mascot's natural movements. Written for a Shadow DOM (Web
  * Component). All continuous motion is gated behind
- * `prefers-reduced-motion: no-preference`.
+ * `prefers-reduced-motion: no-preference`. When `data-tracking` is present the
+ * idle pupil glances are disabled so the JS eye-tracking can take over.
  */
 export const MASCOT_STYLES = /* css */ `
 :host {
@@ -197,10 +288,14 @@ export const MASCOT_STYLES = /* css */ `
   display: block;
 }
 
+.gm-lids { opacity: 0; }
+
 @media (prefers-reduced-motion: no-preference) {
   .gm-float   { animation: gm-float 6s ease-in-out infinite; }
   .gm-breathe { animation: gm-breathe 4.5s ease-in-out infinite; }
   .gm-shadow  { animation: gm-shadow 6s ease-in-out infinite; }
+  .gm-pupils  { animation: gm-pupils-blink 6.5s infinite; }
+  .gm-lids    { animation: gm-lids-blink 6.5s infinite; }
 
   ${Object.entries(LIMBS)
     .map(
@@ -208,10 +303,16 @@ export const MASCOT_STYLES = /* css */ `
         `.gm-arm--${name} { --gm-px: ${l.px}px; --gm-py: ${l.py}px; --gm-amp: ${l.amp}; animation: gm-wave ${l.dur}s ease-in-out infinite ${l.delay}s; }`
     )
     .join('\n  ')}
+
+  .${MASCOT_SELECTORS.root}:not([data-tracking]) .${MASCOT_SELECTORS.pupil} {
+    animation: gm-look 7s ease-in-out infinite;
+  }
 }
 
 /* Static mode (animated="false"): kill every continuous animation. */
 .${MASCOT_SELECTORS.root}[data-static] * { animation: none !important; }
+
+.${MASCOT_SELECTORS.pupil} { transition: transform 0.12s ease-out; }
 
 /* Every keyframe repeats the full pivot pattern (see module doc). */
 @keyframes gm-wave {
@@ -232,4 +333,21 @@ export const MASCOT_STYLES = /* css */ `
   0%, 100% { transform: translateX(500px) scaleX(1) translateX(-500px);    opacity: 0.85; }
   30% { transform: translateX(500px) scaleX(0.84) translateX(-500px);      opacity: 0.45; }
   70% { transform: translateX(500px) scaleX(0.92) translateX(-500px);      opacity: 0.65; }
+}
+/* Blink: pupils and the eyelid curve cross-fade briefly. */
+@keyframes gm-pupils-blink {
+  0%, 91.5%, 98%, 100% { opacity: 1; }
+  93%, 96.5% { opacity: 0; }
+}
+@keyframes gm-lids-blink {
+  0%, 91.5%, 98%, 100% { opacity: 0; }
+  93%, 96.5% { opacity: 1; }
+}
+/* Amplitudes kept under MAX_PUPIL_OFFSET's margin (behaviors.ts) so idle
+   glances never carry the pupil past the white's edge. */
+@keyframes gm-look {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(6px, -4px); }
+  50% { transform: translate(-5px, 5px); }
+  80% { transform: translate(4px, 3px); }
 }`

@@ -6,6 +6,8 @@ export interface OctopusMascotProps {
   size?: number
   /** Enable the idle "natural movement" animations. Default true. */
   animated?: boolean
+  /** Let the eyes follow the pointer. Default true (ignored when not animated). */
+  eyeTracking?: boolean
   className?: string
   style?: CSSProperties
   /** Accessible label for the SVG. */
@@ -24,6 +26,7 @@ export interface OctopusMascotProps {
 export function OctopusMascot({
   size = 320,
   animated = true,
+  eyeTracking = true,
   className,
   style,
   label = 'Git Manager octopus mascot',
@@ -35,6 +38,7 @@ export function OctopusMascot({
   return createElement('git-mascot', {
     size,
     animated: animated ? undefined : 'false',
+    'eye-tracking': eyeTracking ? undefined : 'false',
     label,
     // React doesn't rewrite `className` to the `class` attribute for custom (hyphenated) elements
     // the way it does for built-in DOM tags — passing `className` through as-is would silently
