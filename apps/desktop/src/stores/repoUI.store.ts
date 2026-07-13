@@ -28,6 +28,13 @@ interface RepoUIState {
   setActiveDiffFile: (file: { path: string; staged: boolean; oid?: string } | null) => void
   activeLeftPanel: 'sidebar' | 'blame' | 'history'
   setActiveLeftPanel: (panel: 'sidebar' | 'blame' | 'history') => void
+  /**
+   * OID of the file version selected in the Blame/History panel. When set, `DiffViewCenter` shows
+   * that historic version of the file (and it's the highlighted row in the panel). `null` = current
+   * working/committed contents. Reset whenever the active diff file changes.
+   */
+  selectedHistoryOid: string | null
+  setSelectedHistoryOid: (oid: string | null) => void
   editingOid: string | null
   setEditingOid: (oid: string | null) => void
   /** Main content area shows `ConflictDiffView` for this file instead of the graph/`DiffViewCenter`. */
@@ -83,6 +90,7 @@ export const useRepoUIStore = create<RepoUIState>()(
       activeTab: DASHBOARD_TAB,
       activeDiffFile: null,
       activeLeftPanel: 'sidebar',
+      selectedHistoryOid: null,
       editingOid: null,
       conflictFilePath: null,
       pendingGraphSelection: null,
@@ -93,10 +101,13 @@ export const useRepoUIStore = create<RepoUIState>()(
       setActiveDiffFile: (file) =>
         set((state) => {
           const nextPanel = file ? state.activeLeftPanel : 'sidebar'
-          return { activeDiffFile: file, activeLeftPanel: nextPanel }
+          // A new file invalidates any previously pinned historic version.
+          return { activeDiffFile: file, activeLeftPanel: nextPanel, selectedHistoryOid: null }
         }),
 
       setActiveLeftPanel: (panel) => set({ activeLeftPanel: panel }),
+
+      setSelectedHistoryOid: (oid) => set({ selectedHistoryOid: oid }),
 
       setEditingOid: (oid) => set({ editingOid: oid }),
 
@@ -116,6 +127,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           activeTab: path ?? DASHBOARD_TAB,
           activeDiffFile: null,
           activeLeftPanel: 'sidebar',
+          selectedHistoryOid: null,
           conflictFilePath: null,
           selectedCommitOid: null,
           selectedStashIndex: null,
@@ -128,6 +140,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           activeRepo: state.openTabs.includes(id) ? id : null,
           activeDiffFile: null,
           activeLeftPanel: 'sidebar',
+          selectedHistoryOid: null,
           conflictFilePath: null,
           selectedCommitOid: null,
           selectedStashIndex: null,

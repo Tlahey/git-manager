@@ -20,6 +20,8 @@ import {
   fetchGitHubCommitCiStatus,
   fetchGitHubContributions,
   fetchRepoPRs,
+  fetchCommitPullRequest,
+  resolveTagOrReleaseUrl,
   apiGithubDeviceCode,
   apiGithubPollToken,
   apiGithubGetUser,
@@ -311,6 +313,65 @@ describe('fetchGitHubPRDetails / fetchRepoPRs', () => {
       expect.objectContaining({
         headers: expect.not.objectContaining({ Authorization: expect.anything() }),
       })
+    )
+  })
+})
+
+describe('fetchCommitPullRequest', () => {
+  it('returns null when no PR is associated with the commit', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse([])))
+    expect(await fetchCommitPullRequest('org', 'repo', 'sha1', 'tok')).toBeNull()
+  })
+
+  it('returns null (not throw) when GitHub responds non-ok', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({}, false, 404)))
+    expect(await fetchCommitPullRequest('org', 'repo', 'sha1', 'tok')).toBeNull()
+  })
+
+  it('prefers a merged PR over other associations and maps its fields', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse([
+          rawPR({ number: 1, merged_at: null }),
+          rawPR({
+            number: 2,
+            merged_at: '2024-01-01',
+            html_url: 'https://github.com/org/repo/pull/2',
+            title: 'Merged one',
+            state: 'closed',
+          }),
+        ])
+      )
+    )
+    const pr = await fetchCommitPullRequest('org', 'repo', 'sha1', 'tok')
+    expect(pr).toEqual({
+      number: 2,
+      url: 'https://github.com/org/repo/pull/2',
+      title: 'Merged one',
+      state: 'closed',
+      merged: true,
+    })
+  })
+})
+
+describe('resolveTagOrReleaseUrl', () => {
+  it('returns the release page URL when a release exists for the tag', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse({ html_url: 'https://github.com/org/repo/releases/tag/v1.0' })
+      )
+    )
+    expect(await resolveTagOrReleaseUrl('org', 'repo', 'v1.0', 'tok')).toBe(
+      'https://github.com/org/repo/releases/tag/v1.0'
+    )
+  })
+
+  it('falls back to the tag page URL when no release exists (404)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({}, false, 404)))
+    expect(await resolveTagOrReleaseUrl('org', 'repo', 'v9.9', 'tok')).toBe(
+      'https://github.com/org/repo/releases/tag/v9.9'
     )
   })
 })

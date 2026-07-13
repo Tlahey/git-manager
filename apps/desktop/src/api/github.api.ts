@@ -307,8 +307,74 @@ export async function fetchRepoPRs(
   )
 }
 
+export interface CommitPrRef {
+  number: number
+  url: string
+  title: string
+  state: string
+  merged: boolean
+}
+
+/** The pull request associated with a commit (the one that introduced/merged it), or null. */
+export async function fetchCommitPullRequest(
+  owner: string,
+  repo: string,
+  sha: string,
+  token?: string
+): Promise<CommitPrRef | null> {
+  const items = await ghFetch<GhRawPR[]>(
+    `https://api.github.com/repos/${owner}/${repo}/commits/${sha}/pulls`,
+    token
+  ).catch(() => [] as GhRawPR[])
+  if (!items || items.length === 0) return null
+  // Prefer a merged PR (the one that actually shipped the commit), else the first association.
+  const best = items.find((p) => p.merged_at) ?? items[0]
+  return {
+    number: best.number,
+    url: best.html_url,
+    title: best.title,
+    state: best.state,
+    merged: !!best.merged_at,
+  }
+}
+
+/** GitHub release page URL for a tag if a release exists, else null (a 404 = no release). */
+export async function fetchReleaseUrlForTag(
+  owner: string,
+  repo: string,
+  tag: string,
+  token?: string
+): Promise<string | null> {
+  const res = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/releases/tags/${encodeURIComponent(tag)}`,
+    { headers: ghHeaders(token) }
+  )
+  if (!res.ok) return null
+  const data = await res.json()
+  return typeof data.html_url === 'string' ? data.html_url : null
+}
+
+/** URL to open for a tag: its GitHub release page when one exists, otherwise the tag page. */
+export async function resolveTagOrReleaseUrl(
+  owner: string,
+  repo: string,
+  tag: string,
+  token?: string
+): Promise<string> {
+  const releaseUrl = await fetchReleaseUrlForTag(owner, repo, tag, token)
+  return (
+    releaseUrl ?? `https://github.com/${owner}/${repo}/releases/tag/${encodeURIComponent(tag)}`
+  )
+}
+
 // Tauri backend GitHub integration wrappers
-import { githubDeviceCode, githubPollToken, githubGetUser, githubListRepos } from '../lib/tauri'
+import {
+  githubDeviceCode,
+  githubPollToken,
+  githubGetUser,
+  githubListRepos,
+  githubCommitAvatars,
+} from '../lib/tauri'
 
 export async function apiGithubDeviceCode(scope: string) {
   return githubDeviceCode(scope)
@@ -324,4 +390,14 @@ export async function apiGithubGetUser(token: string) {
 
 export async function apiGithubListRepos(token: string) {
   return githubListRepos(token)
+}
+
+/** Resolves `sha → avatar URL` for the given commit SHAs (unresolved SHAs are absent). */
+export async function apiGithubCommitAvatars(
+  token: string,
+  owner: string,
+  repo: string,
+  shas: string[]
+): Promise<Record<string, string>> {
+  return githubCommitAvatars(token, owner, repo, shas)
 }

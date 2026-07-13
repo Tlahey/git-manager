@@ -43,7 +43,10 @@ pub fn list_branches(repo: &Repository, include_remote: bool) -> Result<Vec<GitB
 
         // Nom court (strip préfixe remote si applicable)
         let short_name = if is_remote {
-            name.splitn(2, '/').nth(1).unwrap_or(&name).to_string()
+            name.split_once('/')
+                .map(|(_, rest)| rest)
+                .unwrap_or(&name)
+                .to_string()
         } else {
             name.clone()
         };
@@ -153,6 +156,51 @@ pub fn list_tags(repo: &Repository) -> Result<Vec<BranchRef>, AppError> {
     tags.sort_by(|a, b| a.short_name.cmp(&b.short_name));
 
     Ok(tags)
+}
+
+/// Returns the short name of the earliest tag whose history contains `target_oid` — i.e. the first
+/// release the commit shipped in — or `None` if no tag contains it. A tag "contains" the commit
+/// when the tag's commit is the target itself or a descendant of it. "Earliest" = smallest commit
+/// time among containing tags, approximating `git describe --contains`.
+pub fn first_tag_containing_commit(
+    repo: &Repository,
+    target_oid: &str,
+) -> Result<Option<String>, AppError> {
+    let target = Oid::from_str(target_oid)
+        .map_err(|_| AppError::Unknown(format!("Invalid OID: {target_oid}")))?;
+
+    let tag_names = repo.tag_names(None).map_err(AppError::Git)?;
+    let mut best: Option<(i64, String)> = None; // (commit time, short tag name)
+
+    for tag_name in tag_names.iter().flatten() {
+        let full_ref_name = format!("refs/tags/{}", tag_name);
+        let reference = match repo.find_reference(&full_ref_name) {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+        // Dereference annotated tags down to their commit.
+        let commit = match reference.peel_to_commit() {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let tag_commit_oid = commit.id();
+
+        let contains = tag_commit_oid == target
+            || repo
+                .graph_descendant_of(tag_commit_oid, target)
+                .unwrap_or(false);
+        if !contains {
+            continue;
+        }
+
+        let time = commit.time().seconds();
+        match &best {
+            Some((best_time, _)) if *best_time <= time => {}
+            _ => best = Some((time, tag_name.to_string())),
+        }
+    }
+
+    Ok(best.map(|(_, name)| name))
 }
 
 /// Indique si `target_oid` fait partie de l'historique de la branche courante,

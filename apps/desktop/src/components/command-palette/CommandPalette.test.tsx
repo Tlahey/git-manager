@@ -8,10 +8,31 @@ vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) 
 // Fake cmdk primitives — cmdk's internal filtering/keyboard handling isn't what we're testing here,
 // and it's brittle in jsdom (same rationale as the Monaco fake). We test the palette's own wiring:
 // grouping, testids, and the run → close/onCloseSettings behaviour.
+const { apiGetCommitWebUrl, apiOpenUrl } = vi.hoisted(() => ({
+  apiGetCommitWebUrl: vi.fn(),
+  apiOpenUrl: vi.fn(),
+}))
+vi.mock('../../api/git.api', () => ({ apiGetCommitWebUrl }))
+vi.mock('../../api/shell.api', () => ({ apiOpenUrl }))
+
 vi.mock('@git-manager/ui', () => ({
+  toast: { error: vi.fn(), success: vi.fn() },
   CommandDialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
     open ? <div data-testid="fake-command-dialog">{children}</div> : null,
-  CommandInput: (props: Record<string, unknown>) => <input {...props} />,
+  // Bridge cmdk's controlled `value`/`onValueChange` to a native input so tests can type.
+  CommandInput: (props: {
+    value?: string
+    onValueChange?: (v: string) => void
+    'data-testid'?: string
+    placeholder?: string
+  }) => (
+    <input
+      data-testid={props['data-testid']}
+      placeholder={props.placeholder}
+      value={props.value ?? ''}
+      onChange={(e) => props.onValueChange?.(e.target.value)}
+    />
+  ),
   CommandList: ({ children, ...p }: { children: React.ReactNode }) => <div {...p}>{children}</div>,
   CommandEmpty: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   CommandGroup: ({ heading, children }: { heading: string; children: React.ReactNode }) => (
@@ -41,6 +62,7 @@ vi.mock('./commands/useStashCommands', () => ({ useStashCommands: () => stashCom
 
 import { CommandPalette } from './CommandPalette'
 import { useCommandPaletteStore } from '../../stores/commandPalette.store'
+import { useRepoUIStore } from '../../stores/repoUI.store'
 
 const navRun = vi.fn()
 const settingsRun = vi.fn()
@@ -49,6 +71,7 @@ const commitRun = vi.fn()
 beforeEach(() => {
   vi.clearAllMocks()
   useCommandPaletteStore.setState({ open: false })
+  useRepoUIStore.setState({ activeRepo: null })
   globalCommands.current = [
     { id: 'nav-dashboard', group: 'navigation', title: 'Dashboard', run: navRun },
     { id: 'settings-general', group: 'settings', title: 'Settings: General', run: settingsRun },
@@ -104,6 +127,25 @@ describe('CommandPalette', () => {
     expect(navRun).toHaveBeenCalledOnce()
     expect(onCloseSettings).toHaveBeenCalledOnce()
     expect(useCommandPaletteStore.getState().open).toBe(false)
+  })
+
+  it('offers a GitHub lookup command only when the query is a commit sha', async () => {
+    const user = userEvent.setup()
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    apiGetCommitWebUrl.mockResolvedValue('https://github.com/o/r/commit/deadbeefcafe')
+    apiOpenUrl.mockResolvedValue(undefined)
+    useCommandPaletteStore.setState({ open: true })
+    renderPalette()
+
+    expect(screen.queryByTestId('command-item-lookup-open-commit')).not.toBeInTheDocument()
+    await user.type(screen.getByTestId('command-palette-input'), 'deadbeefcafe')
+
+    const item = screen.getByTestId('command-item-lookup-open-commit')
+    await user.click(item)
+    expect(apiGetCommitWebUrl).toHaveBeenCalledWith('/repo', 'deadbeefcafe')
+    await vi.waitFor(() =>
+      expect(apiOpenUrl).toHaveBeenCalledWith('https://github.com/o/r/commit/deadbeefcafe')
+    )
   })
 
   it('running a settings command does not force-close settings', async () => {

@@ -1,10 +1,26 @@
 import { createElement } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { useQueryClient } from '@tanstack/react-query'
-import { RotateCcw, Undo2, GitBranch, Tag, Copy, GitCommitHorizontal, Wrench } from 'lucide-react'
+import {
+  RotateCcw,
+  Undo2,
+  GitBranch,
+  Tag,
+  Tags,
+  Copy,
+  GitCommitHorizontal,
+  GitPullRequest,
+  Wrench,
+  Github,
+} from 'lucide-react'
 import { toast } from '@git-manager/ui'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
-import { apiCopyCommitSha, apiCherryPickCommit } from '../../../api/git.api'
+import { apiCopyCommitSha, apiCherryPickCommit, apiGetCommitWebUrl } from '../../../api/git.api'
+import { apiOpenUrl } from '../../../api/shell.api'
+import { resolveTagOrReleaseUrl } from '../../../api/github.api'
+import { useRepoGitHub } from '../../../hooks/useRepoGitHub'
+import { useCommitTag } from '../../../hooks/useCommitTag'
+import { useCommitPullRequest } from '../../../hooks/useCommitPullRequest'
 import type { PaletteCommand } from './types'
 
 /**
@@ -26,12 +42,19 @@ export function useCommitCommands(): PaletteCommand[] {
   const selectedStashIndex = useRepoUIStore((s) => s.selectedStashIndex)
   const setPendingGraphAction = useRepoUIStore((s) => s.setPendingGraphAction)
 
+  // GitHub context + commit associations (PR / containing tag) for the selected commit — resolved
+  // up front so the matching commands can show the sha/tag/PR as sub-info. Hooks run unconditionally
+  // (before the gate below); they no-op when there's no commit/repo.
+  const { ownerRepo, token } = useRepoGitHub(activeRepo)
+  const tag = useCommitTag(activeRepo, selectedStashIndex === null ? selectedCommitOid : null)
+  const pr = useCommitPullRequest(activeRepo, selectedStashIndex === null ? selectedCommitOid : null)
+
   if (!selectedCommitOid || !activeRepo || selectedStashIndex !== null) return []
 
   const shortOid = selectedCommitOid.slice(0, 7)
   const shaKeyword = [shortOid, selectedCommitOid]
 
-  return [
+  const commands: PaletteCommand[] = [
     {
       id: 'commit-reset-soft',
       group: 'commit',
@@ -116,6 +139,7 @@ export function useCommitCommands(): PaletteCommand[] {
       id: 'commit-copy-sha',
       group: 'commit',
       title: t('commandPalette.commit.copySha'),
+      subtitle: shortOid,
       keywords: shaKeyword,
       icon: createElement(Copy),
       run: () => {
@@ -124,5 +148,58 @@ export function useCommitCommands(): PaletteCommand[] {
           .catch((err) => toast.error(String(err)))
       },
     },
+    {
+      id: 'commit-open-github',
+      group: 'commit',
+      title: t('commandPalette.commit.openGithub'),
+      subtitle: shortOid,
+      keywords: shaKeyword,
+      icon: createElement(Github),
+      run: () => {
+        apiGetCommitWebUrl(activeRepo, selectedCommitOid)
+          .then((url) => {
+            if (!url) {
+              toast.error(tGit('gitTree.contextMenu.noRemoteLink'))
+              return
+            }
+            return apiOpenUrl(url)
+          })
+          .catch((err) => toast.error(String(err)))
+      },
+    },
   ]
+
+  // Open the pull request that introduced/merged this commit (only when GitHub reports one).
+  if (pr) {
+    commands.push({
+      id: 'commit-open-pr',
+      group: 'commit',
+      title: t('commandPalette.commit.openPr'),
+      subtitle: `#${pr.number}`,
+      keywords: [...shaKeyword, `#${pr.number}`, pr.title],
+      icon: createElement(GitPullRequest),
+      run: () => {
+        apiOpenUrl(pr.url).catch((err) => toast.error(String(err)))
+      },
+    })
+  }
+
+  // Open the tag/release the commit first shipped in (release page if one exists, else the tag).
+  if (tag && ownerRepo) {
+    commands.push({
+      id: 'commit-open-tag',
+      group: 'commit',
+      title: t('commandPalette.commit.openTag'),
+      subtitle: tag,
+      keywords: [...shaKeyword, tag],
+      icon: createElement(Tags),
+      run: () => {
+        resolveTagOrReleaseUrl(ownerRepo.owner, ownerRepo.repo, tag, token ?? undefined)
+          .then(apiOpenUrl)
+          .catch((err) => toast.error(String(err)))
+      },
+    })
+  }
+
+  return commands
 }

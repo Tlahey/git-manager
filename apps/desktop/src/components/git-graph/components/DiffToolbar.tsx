@@ -150,6 +150,7 @@ export function DiffToolbar({
       {/* Center: View mode tabs (Diff, File) */}
       <div className="mx-4 flex shrink-0 items-center rounded-lg border border-border/50 bg-muted/60 p-0.5">
         <button
+          data-testid="diff-tab-diff"
           onClick={() => onChangeActiveTab('diff')}
           className={cn(
             'flex items-center gap-1.5 rounded-md px-4 py-1 text-xs font-medium transition-all duration-200',
@@ -162,6 +163,7 @@ export function DiffToolbar({
           <span>Diff</span>
         </button>
         <button
+          data-testid="diff-tab-file"
           onClick={() => onChangeActiveTab('file')}
           className={cn(
             'flex items-center gap-1.5 rounded-md px-4 py-1 text-xs font-medium transition-all duration-200',
@@ -180,6 +182,7 @@ export function DiffToolbar({
         {/* Blame & History Toggles */}
         <div className="mr-2 flex items-center overflow-hidden rounded border border-border bg-card">
           <Button
+            data-testid="diff-blame-toggle"
             variant={activeLeftPanel === 'blame' ? 'default' : 'ghost'}
             size="sm"
             className="h-7 gap-1 rounded-none border-r border-border px-2.5 text-[10px] font-bold"
@@ -192,6 +195,7 @@ export function DiffToolbar({
             <span>Blame</span>
           </Button>
           <Button
+            data-testid="diff-history-toggle"
             variant={activeLeftPanel === 'history' ? 'default' : 'ghost'}
             size="sm"
             className="h-7 gap-1 rounded-none px-2.5 text-[10px] font-bold"

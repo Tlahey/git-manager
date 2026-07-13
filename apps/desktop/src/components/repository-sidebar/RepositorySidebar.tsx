@@ -162,8 +162,8 @@ export function RepositorySidebar({
         style={{ width: isCollapsed ? 350 : width }}
       >
         <BlameHistoryPanel
-          mode={activeLeftPanel}
           file={activeDiffFile}
+          repoPath={repoPath}
           onClose={() => setActiveLeftPanel('sidebar')}
         />
         {/* Handle de resize */}

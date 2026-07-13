@@ -30,6 +30,38 @@ export interface GitCommit {
   parentOids: string[]
 }
 
+// ─── Blame / File history ─────────────────────────────────────────────────────
+
+/** One contiguous run of lines attributed to a single commit (mirrors `git_blame::BlameHunk`). */
+export interface BlameHunk {
+  /** 1-based line number of the first line of the run. */
+  startLine: number
+  lineCount: number
+  commitOid: string
+  shortOid: string
+  authorName: string
+  authorEmail: string
+  /** Author time, Unix epoch seconds. */
+  timestamp: number
+  summary: string
+  body: string
+}
+
+export type FileHistoryStatus = 'added' | 'modified' | 'deleted' | 'renamed'
+
+/** A commit that modified a given file (mirrors `git_blame::FileHistoryEntry`). */
+export interface FileHistoryEntry {
+  oid: string
+  shortOid: string
+  authorName: string
+  authorEmail: string
+  timestamp: number
+  summary: string
+  body: string
+  /** How the file changed in this commit. */
+  status: FileHistoryStatus
+}
+
 // ─── Graph ────────────────────────────────────────────────────────────────────
 
 export interface GitGraphNode {
