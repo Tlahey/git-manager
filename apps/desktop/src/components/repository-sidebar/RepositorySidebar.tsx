@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { PanelLeftClose, Search, X } from 'lucide-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import type { GitBranch, PullRequest } from '@git-manager/git-types'
+import type { GitBranch, GitWorktree, PullRequest } from '@git-manager/git-types'
 import { useSidebarResize, RAIL_WIDTH } from '../../hooks/useSidebarResize'
 import { useSidebarRows } from '../../hooks/useSidebarRows'
 import { usePinnedBranchesStore } from '../../stores/pinned-branches.store'
@@ -17,6 +17,8 @@ import { mutate } from 'swr'
 import { showStashNativeContextMenu } from '../../api/nativeMenu.api'
 import { apiStashApply, apiStashPop, apiStashDrop } from '../../api/git.api'
 import type { GitStash } from '@git-manager/git-types'
+import { AddWorktreeDialog } from './AddWorktreeDialog'
+import { RemoveWorktreeDialog } from './RemoveWorktreeDialog'
 
 interface RepositorySidebarProps {
   repoPath: string
@@ -55,6 +57,9 @@ export function RepositorySidebar({
 
   const hiddenStashes = useRepoDataStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
   const toggleStashVisibility = useRepoDataStore((s) => s.toggleStashVisibility)
+
+  const [addWorktreeOpen, setAddWorktreeOpen] = useState(false)
+  const [worktreeToRemove, setWorktreeToRemove] = useState<GitWorktree | null>(null)
 
   const handleStashContextMenu = (_e: React.MouseEvent, stash: GitStash) => {
     const isHidden = hiddenStashes.includes(stash.commitOid)
@@ -265,6 +270,8 @@ export function RepositorySidebar({
                   onStashContextMenu={handleStashContextMenu}
                   hiddenStashes={hiddenStashes}
                   onToggleStashVisibility={(oid) => toggleStashVisibility(repoPath, oid)}
+                  onAddWorktree={() => setAddWorktreeOpen(true)}
+                  onRemoveWorktree={(wt) => setWorktreeToRemove(wt)}
                 />
               </div>
             )
@@ -274,6 +281,17 @@ export function RepositorySidebar({
 
       {/* Handle de resize */}
       <SidebarResizeHandle {...resizeHandleProps} />
+
+      <AddWorktreeDialog
+        repoPath={repoPath}
+        open={addWorktreeOpen}
+        onClose={() => setAddWorktreeOpen(false)}
+      />
+      <RemoveWorktreeDialog
+        repoPath={repoPath}
+        worktree={worktreeToRemove}
+        onClose={() => setWorktreeToRemove(null)}
+      />
     </div>
   )
 }

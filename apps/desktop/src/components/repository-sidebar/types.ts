@@ -1,7 +1,21 @@
-import type { GitBranch, GitRef, GitSubmodule, PullRequest, GitStash } from '@git-manager/git-types'
+import type {
+  GitBranch,
+  GitRef,
+  GitSubmodule,
+  GitWorktree,
+  PullRequest,
+  GitStash,
+} from '@git-manager/git-types'
 
 /** Identifiants stables des sections (état d'ouverture + scroll). */
-export type SectionKey = 'local' | 'remotes' | 'prs' | 'tags' | 'submodules' | 'stashes'
+export type SectionKey =
+  | 'local'
+  | 'remotes'
+  | 'prs'
+  | 'tags'
+  | 'submodules'
+  | 'stashes'
+  | 'worktrees'
 
 /**
  * Ligne unitaire de la sidebar aplatie pour la virtualisation.
@@ -58,6 +72,7 @@ export type SidebarRow =
   | { kind: 'tag'; id: string; tag: GitRef; isSelected: boolean }
   | { kind: 'stash'; id: string; stash: GitStash; isSelected: boolean }
   | { kind: 'submodule'; id: string; sm: GitSubmodule }
+  | { kind: 'worktree'; id: string; wt: GitWorktree }
   | { kind: 'message'; id: string; text: string; loading?: boolean }
   | { kind: 'divider'; id: string }
 
@@ -73,6 +88,7 @@ export const ROW_HEIGHT: Record<SidebarRow['kind'], number> = {
   tag: 24,
   stash: 24,
   submodule: 40,
+  worktree: 40,
   message: 28,
   divider: 9,
 }
@@ -85,6 +101,7 @@ export const DEFAULT_SECTION_OPEN: Record<SectionKey, boolean> = {
   tags: false,
   submodules: false,
   stashes: false,
+  worktrees: false,
 }
 
 /** Branches épinglées par défaut (toujours en haut, sauf override utilisateur). */

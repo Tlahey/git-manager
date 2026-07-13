@@ -1,5 +1,6 @@
 use crate::error::AppError;
 use crate::models::GitWorktree;
+use git2::Repository;
 use std::path::Path;
 
 /// Adds a new worktree at `dest_path`, checking out `from_ref` (a branch name or a
@@ -61,9 +62,15 @@ pub fn list_worktrees(repo_path: &str) -> Result<Vec<GitWorktree>, AppError> {
         )));
     }
 
-    Ok(parse_worktree_porcelain(&String::from_utf8_lossy(
-        &output.stdout,
-    )))
+    let mut worktrees = parse_worktree_porcelain(&String::from_utf8_lossy(&output.stdout));
+    for wt in worktrees.iter_mut().filter(|wt| !wt.is_main) {
+        wt.is_dirty = match Repository::open(&wt.path) {
+            Ok(repo) => repo.statuses(None).map(|s| !s.is_empty()).unwrap_or(false),
+            Err(_) => false,
+        };
+    }
+
+    Ok(worktrees)
 }
 
 #[derive(Default)]
@@ -87,6 +94,8 @@ impl WorktreeEntryBuilder {
             commit_oid: self.commit_oid,
             is_main,
             is_locked: self.is_locked,
+            // Not derivable from the porcelain output itself — `list_worktrees` fills this in
+            // afterward by opening each non-main worktree and checking its real status.
             is_dirty: false,
             is_prunable: self.is_prunable,
             locked_reason: self.locked_reason,

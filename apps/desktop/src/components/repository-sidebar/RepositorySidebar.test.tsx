@@ -54,6 +54,16 @@ vi.mock('./BlameHistoryPanel', () => ({
 vi.mock('./SidebarResizeHandle', () => ({
   SidebarResizeHandle: () => <div data-testid="resize-handle" />,
 }))
+vi.mock('./AddWorktreeDialog', () => ({
+  AddWorktreeDialog: (props: { open: boolean }) => (
+    <div data-testid="add-worktree-dialog" data-open={props.open} />
+  ),
+}))
+vi.mock('./RemoveWorktreeDialog', () => ({
+  RemoveWorktreeDialog: (props: { worktree: { path: string } | null }) => (
+    <div data-testid="remove-worktree-dialog" data-worktree={props.worktree?.path ?? ''} />
+  ),
+}))
 
 import { apiStashApply, apiStashPop, apiStashDrop } from '../../api/git.api'
 import { RepositorySidebar } from './RepositorySidebar'
@@ -224,6 +234,29 @@ describe('RepositorySidebar — rows', () => {
     expect(lastRowViewCalls.current[0].hiddenStashes).toEqual(['oid1'])
     ;(lastRowViewCalls.current[0].onToggleStashVisibility as (oid: string) => void)('oid2')
     expect(useRepoDataStore.getState().hiddenStashes['/repo']).toContain('oid2')
+  })
+
+  it('opens the add-worktree dialog via onAddWorktree', async () => {
+    useSidebarRows.mockReturnValue({ rows: [row({ id: 'r1' })] })
+    renderSidebar()
+    expect(screen.getByTestId('add-worktree-dialog')).toHaveAttribute('data-open', 'false')
+    act(() => (lastRowViewCalls.current[0].onAddWorktree as () => void)())
+    expect(screen.getByTestId('add-worktree-dialog')).toHaveAttribute('data-open', 'true')
+  })
+
+  it('passes the clicked worktree to the remove-worktree dialog via onRemoveWorktree', () => {
+    useSidebarRows.mockReturnValue({ rows: [row({ id: 'r1' })] })
+    renderSidebar()
+    expect(screen.getByTestId('remove-worktree-dialog')).toHaveAttribute('data-worktree', '')
+    act(() =>
+      (
+        lastRowViewCalls.current[0].onRemoveWorktree as (wt: { path: string }) => void
+      )({ path: '/tmp/repo-linked' })
+    )
+    expect(screen.getByTestId('remove-worktree-dialog')).toHaveAttribute(
+      'data-worktree',
+      '/tmp/repo-linked'
+    )
   })
 })
 
