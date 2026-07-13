@@ -26,6 +26,7 @@ features/                       # .feature files — the scenarios in plain Gher
   working-tree.feature          #   @commits   WIP staging panel + file diff (+ @visual snapshots)
   commit.feature                #   @commit    write a message + Commit; HEAD advances on disk
   undo-redo.feature             #   @undo      Cmd+Z/Cmd+Shift+Z undo & redo a branch checkout
+  command-palette.feature       #   @palette   ⌘K palette: open settings section + reset-to-commit
 step-definitions/               # the TypeScript backing each Given/When/Then, matched by text
   repo.steps.ts                 #   generic "open the <fixture> repository" (shared)
   common.steps.ts               #   app launch / generic assertions
@@ -39,6 +40,7 @@ step-definitions/               # the TypeScript backing each Given/When/Then, m
   working-tree.steps.ts         #   select WIP node, snapshot the staging panel
   commit.steps.ts               #   type a message, click Commit, assert HEAD via git log on disk
   undo-redo.steps.ts            #   checkout via BranchContext, then Cmd+Z / Cmd+Shift+Z
+  command-palette.steps.ts      #   ⌘K open, run action by testid, select commit, confirm reset
 support/
   visual.ts                     #   stabiliseForSnapshot() shared by every snapshot step
 COVERAGE.md                     # coverage matrix: what's tested vs the app's feature surface
@@ -72,18 +74,23 @@ non-matching scenarios are reported as skipped.
 ## Running
 
 ```bash
-pnpm build:e2e   # compiles a debug binary of @git-manager/desktop with the e2e feature
-pnpm test:e2e    # launches it and runs features/**/*.feature
+pnpm test:e2e    # rebuilds the e2e binary, then runs features/**/*.feature
 ```
 
-(equivalent to `pnpm --filter @git-manager/desktop build:e2e` and
-`pnpm --filter @git-manager/e2e test:e2e`)
+`pnpm test:e2e` at the repo root always runs `build:e2e` first (`pnpm build:e2e && pnpm
+--filter @git-manager/e2e test:e2e`) — a stale binary is a nasty failure mode: the app window
+launches but the embedded WebDriver server inside it never comes up (whatever bug the last
+source change introduced, e.g. a render loop, is silently baked into the binary on disk), so
+the run just hangs with no obvious error pointing at "rebuild me". Paying the rebuild cost
+(cargo incremental, so only genuinely fast when nothing changed) by default avoids that trap.
 
-`build:e2e` must be rerun after any Rust or frontend change you want covered — `test:e2e`
-just launches whatever binary is already on disk at `target/debug/git-manager`. Neither script
-is wired into the turbo `build`/`test` pipeline (deliberately — it needs a real GUI to launch
-the window, and shouldn't run on every routine `pnpm test`), so it's always an explicit,
-separate step, same as `pnpm dev:import-repo`/`pnpm fixture:build`.
+If you're only iterating on `.feature`/step-definition files (no Rust or frontend source
+changed), skip the rebuild with `pnpm test:e2e:fast` (equivalent to
+`pnpm --filter @git-manager/e2e test:e2e`) or `pnpm --filter @git-manager/e2e exec wdio run
+./wdio.conf.ts --cucumberOpts.tags='...'` for a tag-filtered run. Neither script is wired into
+the turbo `build`/`test` pipeline (deliberately — it needs a real GUI to launch the window, and
+shouldn't run on every routine `pnpm test`), so it's always an explicit, separate step, same as
+`pnpm dev:import-repo`/`pnpm fixture:build`.
 
 ## Why this is behind a feature flag, not always-on
 

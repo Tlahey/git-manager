@@ -80,7 +80,7 @@ export function ResetDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg" data-testid="reset-dialog">
         <DialogHeader>
           <DialogTitle>{t('rollback.reset.title', { message: targetSubject })}</DialogTitle>
         </DialogHeader>
@@ -147,6 +147,7 @@ export function ResetDialog({
               onChange={(e) => setHardConfirm(e.target.value)}
               placeholder={t('rollback.reset.hardConfirmPlaceholder')}
               className="h-7 text-xs"
+              data-testid="reset-hard-confirm-input"
             />
           </div>
         )}
@@ -164,6 +165,7 @@ export function ResetDialog({
             variant={mode === 'hard' ? 'destructive' : 'default'}
             onClick={handleConfirm}
             disabled={!canConfirm}
+            data-testid="reset-confirm-button"
           >
             {isLoading && <Spinner className="mr-1 h-3 w-3" />}
             {t('rollback.reset.confirm')}

@@ -21,3 +21,23 @@ Feature: Working tree staging
     When I select the working-tree changes in the graph
     And I open the diff for "config.yml"
     Then the file diff matches the visual snapshot "wip-file-diff"
+
+  Scenario: Staging an individual unstaged file
+    When I select the working-tree changes in the graph
+    And I stage the file "IN_PROGRESS.md"
+    Then the file "IN_PROGRESS.md" is staged
+
+  Scenario: Unstaging an individual staged file
+    When I select the working-tree changes in the graph
+    And I unstage the file "config.yml"
+    Then the file "config.yml" is not staged
+
+  Scenario: Bulk-staging all unstaged files
+    When I select the working-tree changes in the graph
+    And I stage all unstaged files
+    Then the file "IN_PROGRESS.md" is staged
+
+  Scenario: Bulk-unstaging all staged files
+    When I select the working-tree changes in the graph
+    And I unstage all staged files
+    Then the file "config.yml" is not staged

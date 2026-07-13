@@ -50,3 +50,15 @@ export {
   ContextMenuItem,
   ContextMenuLabel,
 } from './components/context-menu'
+
+export {
+  Command,
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandSeparator,
+  CommandShortcut,
+} from './components/command'

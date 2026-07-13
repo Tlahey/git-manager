@@ -60,7 +60,7 @@ export function RevertDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" data-testid="revert-dialog">
         <DialogHeader>
           <DialogTitle>{t('rollback.revert.title', { message: commitSubject })}</DialogTitle>
           <DialogDescription>{t('rollback.revert.description')}</DialogDescription>
@@ -87,7 +87,12 @@ export function RevertDialog({
           <Button variant="outline" size="sm" onClick={onClose} disabled={isLoading}>
             Cancel
           </Button>
-          <Button size="sm" onClick={handleConfirm} disabled={isLoading}>
+          <Button
+            size="sm"
+            onClick={handleConfirm}
+            disabled={isLoading}
+            data-testid="revert-confirm-button"
+          >
             {isLoading && <Spinner className="mr-1 h-3 w-3" />}
             {t('rollback.revert.confirm')}
           </Button>

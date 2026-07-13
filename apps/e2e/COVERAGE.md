@@ -17,21 +17,22 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (11 features / 72 steps, 6 visual snapshots)
+## Covered today (12 features / ~100 steps, 7 visual snapshots)
 
 | Feature                                                            | Area       | Setup                    | Snapshot                          | Status                                                      |
 | ------------------------------------------------------------------ | ---------- | ------------------------ | --------------------------------- | ----------------------------------------------------------- |
+| **Command palette (⌘K)**: 11 scenarios across settings/commit/stash | palette    | rollback-history · feature-branches · stash-stack | — | ✅ (settings section; reset soft/mixed/hard incl. RESET-confirm gate/revert/create-branch/create-tag (lightweight + annotated)/cherry-pick on a commit; stash drop/apply/pop — each asserted via git on disk) |
 | App launches, React mounts                                         | app shell  | —                        | —                                 | ✅                                                          |
 | Tauri command mock: success / reject / restore                     | IPC        | mock                     | —                                 | ✅                                                          |
-| Fixup autosquash grouping                                          | fixup      | fixture:fixup-chain      | 📷 ✅ (preview groups)            | ✅                                                          |
-| Rebase conflict panel auto-opens + **snapshot**                    | rebase     | fixture:rebase-conflict  | 📷 ✅ (panel layout)              | 🟡 (panel shown + snapshotted; resolve/continue not driven) |
+| Fixup autosquash grouping + **create fixup commit (via ⌘K palette)** | fixup      | fixture:fixup-chain      | 📷 ✅ (preview groups)            | ✅                                                          |
+| Rebase conflict panel auto-opens + **snapshot** + continue/skip/abort | rebase     | fixture:rebase-conflict  | 📷 ✅ (panel layout)              | 🟡 (panel shown + snapshotted; continue/skip/abort ✅; merge-editor block resolution not driven) |
 | **Merge editor** opens for a conflicted file + **snapshot**        | merge      | fixture:rebase-conflict  | 📷 ✅ (full Monaco editor)        | 🟡 (opens + snapshotted; block resolution not driven)       |
 | **Working-tree staging panel** + **file diff** + **snapshots**     | commits    | fixture:stash-stack      | 📷 ✅ (staging panel + diff view) | ✅                                                          |
 | **Commit staged changes** (write message → Commit → HEAD advances) | commits    | fixture:stash-stack      | —                                 | ✅                                                          |
 | **Undo / redo a branch checkout** (Cmd+Z / Cmd+Shift+Z)            | undo/redo  | fixture:feature-branches | —                                 | ✅                                                          |
-| Detached HEAD indicator reads "HEAD"                               | repo state | fixture:detached-head    | —                                 | ✅                                                          |
-| Sidebar lists stashes                                              | stash      | fixture:stash-stack      | —                                 | 🟡 (list only; apply/pop/drop blocked — native menu)        |
-| Settings screen opens + **snapshot**                               | settings   | keyboard (Mod+,)         | 📷 ✅ (general section)           | 🟡 (general snapshotted; other sections todo)               |
+| Detached HEAD indicator reads "HEAD", checkout back to a branch                                                          | repo state | fixture:detached-head    | —                                 | ✅                                                          |
+| Sidebar lists stashes                                              | stash      | fixture:stash-stack      | —                                 | ✅ (list ✅; **drop/apply/pop ✅ via ⌘K palette**, each asserted via `git stash list` / a restored file) |
+| Settings screen opens + **snapshot**                               | settings   | keyboard (Mod+,)         | 📷 ✅ (general + notifications)   | 🟡 (general & notifications snapshotted; row-height persistence ✅; appearance/ssh/local_ai/rewards todo) |
 
 ---
 
@@ -62,22 +63,25 @@ fixture:
 
 | Fixture          | Exercises                                                                                       | Status                              |
 | ---------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------- |
-| fixup-chain      | fixup grouping / autosquash · **create-fixup from staged change**                               | 🟡 (autosquash ✅; create-fixup ⬜) |
-| rebase-conflict  | conflict panel ✅ · merge editor ✅ · continue/skip/abort flow ⬜                               | 🟡                                  |
-| detached-head    | detached indicator ✅ · checkout-back-to-branch ⬜                                              | 🟡                                  |
-| feature-branches | branch checkout ✅ · **undo/redo of the checkout** ✅                                           | ✅                                  |
-| stash-stack      | list ✅ · WIP staging panel ✅ · file diff ✅ · **commit** ✅ · apply/pop/drop 🚫 (native menu) | ✅                                  |
-| rollback-history | **reset (soft/mixed/hard) · revert · undo/redo of those** ⬜                                    | ⬜                                  |
+| fixup-chain      | fixup grouping / autosquash ✅ · **create-fixup from staged change ✅** (via ⌘K palette, real second window — see gotchas) | ✅ |
+| rebase-conflict  | conflict panel ✅ · merge editor ✅ · **continue/skip/abort ✅** (continue resolves the conflict via `git checkout --ours` directly on disk, not the merge editor UI — see gotchas) | 🟡 |
+| detached-head    | detached indicator ✅ · checkout-back-to-branch ✅                                              | ✅                                  |
+| feature-branches | branch checkout ✅ · undo/redo of the checkout ✅ · **cherry-pick (via ⌘K palette) ✅**         | ✅                                  |
+| stash-stack      | list ✅ · WIP staging panel ✅ · stage/unstage individual files ✅ · file diff ✅ · commit ✅ · **drop/apply/pop (via ⌘K palette) ✅** | ✅                                  |
+| rollback-history | **reset (soft/mixed/hard incl. RESET-confirm gate), revert, create-branch, create-tag — all via ⌘K palette ✅** · **undo/redo of a reset ✅** · undo/redo of revert/branch/tag ⬜ | 🟡 |
 
 ### 3. Settings 🟡 📷
 
 `SettingsPage` (opened via `Mod+,` or the dashboard gear — `dashboard-settings-button`). **Done:**
-opens on the general section + a layout snapshot of the whole screen. Nav tabs now carry
-`settings-tab-<id>` testids and the root `settings-page`. **Todo:** navigate + snapshot the other
-sections (appearance, notifications are deterministic; ssh/local_ai/rewards have dynamic content —
-mask or assert values instead), and toggle-a-setting-persists. Note the section _content_ has no
-real testid on its root (the `section-*` ids are test-mock-only) — snapshot the `settings-page`
-root or add a per-section testid.
+opens on the general section + a layout snapshot of the whole screen; **notifications section
+snapshotted** too (fully deterministic — pure boolean toggles, no dates/network); **row-height
+setting (`ui_customization` tab) persists across a reload** — driven directly via its
+`row-height-radio-<value>` label/radio rather than a snapshot, verified functionally. Nav tabs
+carry `settings-tab-<id>` testids and the root `settings-page`. **Skipped on purpose:** a
+full-screen snapshot of **appearance** — its theme grid depends on unlocked achievements + custom
+themes dropped into `~/.git-manager/themes/` on the machine running the test, neither controlled
+by the fixture system, so it isn't reproducible across machines. **Todo:** ssh/local_ai/rewards
+sections (dynamic content — mask or assert values instead of snapshotting).
 
 ### 4. Commits / working tree 🟡 📷 (staging panel snapshotted)
 
@@ -91,10 +95,18 @@ advanced by reading the fixture repo's `git log -1` **off disk** (the wdio worke
 fixture-build step) rather than a volatile UI value — robust to the panel unmounting once the tree
 goes clean. **Diff view: done** — clicking a file row (`file-tree-file-<path>`, a real testid)
 shows the diff (`diff-content-area`) and it's snapshotted (`wip-file-diff`), verified stable.
-**Todo:** stage/unstage individual files · bulk stage (`file-list-bulk-stage`) · amend
-(`commit-amend-*` are still mock-only).
+**Stage/unstage individual files: done** — each row's hover +/- button (`button[title="Stage"]`/
+`[title="Unstage"]`, hardcoded plain strings in `CommitFileList.tsx`, not run through i18n — locale-
+independent unlike the bulk button) drives the real `apiStageFile`/`apiUnstageFile`, asserted via
+`git diff --cached --name-only` off disk. **Bulk stage/unstage-all: done** — `file-list-bulk-stage`
+used to carry the *same* testid in both the staged and unstaged zones; added a `bulkStageTestId`
+prop to `CommitFileList` (defaults to `file-list-bulk-stage`, preserving existing unit tests) so
+`CommitDetailsPanel` can give the staged zone's unstage-all button its own testid
+(`file-list-bulk-unstage`) — a small, targeted source change (not just e2e files) rather than
+relying on the locale-dependent title text or DOM order. **Todo:** amend (`commit-amend-*` are
+still mock-only).
 
-### 5. Undo / redo ✅ (checkout) · ⬜ (reset/commit)
+### 5. Undo / redo ✅ (checkout, reset, commit)
 
 State-mutating actions push to `undoHistory.store`. **Done:** the `undo-redo.feature` drives a
 real **branch checkout** through the toolbar's `BranchContext` selector (new
@@ -104,8 +116,14 @@ real **branch checkout** through the toolbar's `BranchContext` selector (new
 feature/login` via the shared `branch-context-label` indicator (now polled, since undo/redo are
 async). This sidesteps the dead toolbar-button testids (see blockers) entirely. Setup: the new
 `fixture:feature-branches` (HEAD on a **named** branch so the indicator resolves to a branch name,
-not a detached sha). **Todo:** cover the other undoable actions — a reset or commit then Cmd+Z on
-`fixture:rollback-history`, asserting the graph/HEAD reverts and redo re-applies.
+not a detached sha). **Also done:** a **reset (mixed)** via the ⌘K palette on
+`fixture:rollback-history`, then Cmd+Z/Cmd+Shift+Z, asserting the HEAD subject reverts and
+re-applies (`undoActions.ts`'s `reset` case replays `resetToCommit` with `previousOid`/`targetOid`
+at the original mode). **Also done:** a **commit** via the WIP panel on `fixture:stash-stack`
+(`commit.feature`), then Cmd+Z/Cmd+Shift+Z, asserting HEAD reverts to the prior tip subject and
+re-applies (`undoActions.ts`'s `commit` case soft-resets to `previousOid`/`newOid`). None of these
+needed new step definitions — each is pure composition of steps already written for the
+underlying action + the generic `undo-redo.steps.ts` chords.
 
 ---
 
@@ -114,12 +132,13 @@ not a detached sha). **Todo:** cover the other undoable actions — a reset or c
 | Feature                                 | Area          | Setup             | Snapshot | Status                                                                               |
 | --------------------------------------- | ------------- | ----------------- | -------- | ------------------------------------------------------------------------------------ |
 | Commit graph rendering                  | log/graph     | any fixture       | 📷       | ⬜ (volatile: shas/dates)                                                            |
-| Branches: create / checkout / delete    | branch        | any fixture       | —        | 🟡 (checkout ✅ via BranchContext; create/delete are behind the native commit menu)  |
-| Tags: create / list                     | tag           | any fixture       | —        | 🚫 (create is behind the native commit context menu)                                 |
-| Cherry-pick a commit                    | cherry-pick   | rollback-history  | —        | 🚫 (native commit context menu)                                                      |
+| Branches: create / checkout / delete    | branch        | any fixture       | —        | 🟡 (checkout ✅ via BranchContext; **create-from-commit ✅ via ⌘K palette**, asserted via `git log`; delete still native) |
+| Tags: create / list                     | tag           | any fixture       | —        | 🟡 (**create (lightweight + annotated) ✅ via ⌘K palette**, asserted via `git log`/`git cat-file -t`; list ⬜)   |
+| Cherry-pick a commit                    | cherry-pick   | feature-branches  | —        | ✅ (**via ⌘K palette**, asserted via `git log` — picks a non-conflicting file addition from another branch) |
 | Interactive rebase (reword/squash/drop) | rebase        | fixup-chain       | —        | 🚫 (native commit menu + child window)                                               |
-| Reset (soft/mixed/hard, RESET confirm)  | rollback      | rollback-history  | —        | 🚫 (ResetDialog is web+drivable, but only opens from the native commit context menu) |
-| Revert a commit                         | rollback      | rollback-history  | —        | 🚫 (native commit context menu)                                                      |
+| Reset (soft/mixed/hard, RESET confirm)  | rollback      | rollback-history  | —        | ✅ (**soft/mixed/hard incl. RESET-confirm gate, via ⌘K palette**, asserted via `git diff`/`git status`) |
+| Revert a commit                         | rollback      | rollback-history  | —        | ✅ (**via ⌘K palette**, asserted via `git log` — reverts the tip commit cleanly)     |
+| Stash apply / pop / drop                | stash         | stash-stack       | —        | ✅ (**drop/apply/pop ✅ via ⌘K palette**, asserted via `git stash list` / a restored file — apply/pop reset the working tree to a clean HEAD first, see gotchas) |
 | Remote: fetch / pull / push             | remote        | native creds      | —        | 🚫 (needs a real remote)                                                             |
 | Clone a repo                            | repo          | native            | —        | 🚫 (native dialog + network)                                                         |
 | Scan a folder for repos                 | repo          | native            | —        | 🚫 (native dialog)                                                                   |
@@ -171,15 +190,80 @@ DOM value:
   by seeding localStorage (see README); features that _need_ a native dialog mid-flow are 🚫.
 - **Native context menus gate most commit/stash actions** — the graph's right-click commit menu
   (`showCommitNativeContextMenu` in `api/nativeMenu.api.ts`) and the stash right-click menu
-  (`showStashNativeContextMenu`) are real OS menus WebDriver can't open. That blocks _every_ action
-  reachable only through them from e2e: reset, revert, cherry-pick, interactive rebase, create
-  tag/branch-from-commit, and stash apply/pop/drop — even when the follow-up UI is web and drivable
-  (e.g. `ResetDialog` is a plain React dialog, but nothing web-driveable opens it). Prefer actions
-  with a non-menu entry point: branch checkout via `BranchContext` (undo-redo.feature), commit via
-  the WIP panel buttons (commit.feature), undo/redo via keyboard.
-- **Multi-window** (merge / fixup / rebase child windows) needs `switchToWindow` and is heavier;
-  Monaco content in those windows is best validated by snapshot, not DOM queries.
+  (`showStashNativeContextMenu`) are real OS menus WebDriver can't open. **The ⌘K command palette
+  (`components/command-palette/`) is now the canonical non-native entry point** for both: dialog
+  actions (reset/revert/create-branch/create-tag) dispatch through the store's `pendingGraphAction`
+  bridge into the same web dialogs (`reset-dialog`, `revert-dialog`, `tag-dialog`,
+  `create-branch-dialog`); no-dialog actions (cherry-pick, copy-sha, stash apply/pop/drop) call the
+  API layer directly from `useCommitCommands.ts`/`useStashCommands.ts`, mirroring
+  `useGitGraphActions.ts`'s native-menu handlers exactly (same calls, same `mutate`/
+  `invalidateQueries` follow-up). All are now e2e-drivable (see command-palette.feature). A third
+  shape exists for `fixup`: no in-page dialog to route through, so `pendingGraphAction: { kind:
+  'fixup' }` instead calls `openFixupWindow` (now exported from `useGitGraphActions.ts`) directly,
+  opening a **real second `WebviewWindow`** — see the multi-window gotcha below for why this one
+  couldn't reuse the merge/rebase editors' navigate-in-place trick. Still native-menu-only (no
+  palette command yet): interactive rebase, create-branch/tag from a *multi-selection*,
+  drag-reorder in the rebase editor. Other non-menu entry points: branch checkout via
+  `BranchContext` (undo-redo.feature), commit via the WIP panel buttons (commit.feature), undo/redo
+  via keyboard.
+- **Multi-window: prefer navigate-in-place; when a real second window is unavoidable, expect
+  WebKit click quirks.** The merge and rebase editors (`merge.steps.ts`) sidestep multi-window
+  entirely by navigating the shared main window straight to `?window=merge`/`?window=rebase` —
+  cheap and safe, since neither of those routes call `getCurrentWindow().close()` on the actions
+  the tests drive. **`fixup-autosquash.feature`'s create-fixup scenario couldn't do that**: both of
+  `FixupCommitWindow`'s buttons (Commit *and* Cancel) call `getCurrentWindow().close()`, and
+  reusing the shared window would close the one and only window for the rest of the test run. So
+  it opens a **real** second `WebviewWindow` via the palette's `commit-fixup` command and uses
+  `browser.getWindowHandles()`/`switchToWindow()` — WebdriverIO commands that hadn't been used
+  anywhere else in this suite before. Two real bugs surfaced getting this to work (see
+  `fixup.steps.ts`'s `clickViaJs` helper and the `I confirm the fixup commit` step for the fixes):
+  (1) WebdriverIO's native `element.click()` throws `"A JavaScript exception occurred"` against
+  elements in these real secondary windows even when the element is confirmed enabled/displayed —
+  dispatching the click via injected JS (`browser.execute(() => el.click())`) instead works
+  reliably; (2) once a window closes itself via app-initiated JS (`getCurrentWindow().close()`,
+  not a WebDriver-initiated close), that browsing context's WebDriver handle goes stale, and
+  issuing *any* further command while it's still the session's "current" window throws `"no such
+  window"` — switch to a different, still-alive window **immediately** after triggering a
+  self-close, before polling `getWindowHandles()` again. For a window you're done with and don't
+  need to interact with further, `browser.closeWindow()` (the native WebDriver command) proved more
+  reliable than clicking an in-app close/cancel button that does the same thing — one less
+  real-window DOM interaction to hit the click quirk above. `RebasingCommitWindow` (opened as a
+  third window by the fixup flow, to squash the new commit into place) is closed this way rather
+  than driving its interactive-rebase UI, which is separate, still-🚫 work.
 - **Real remote / network** (fetch/pull/push, clone, GitHub, Ollama) — mock the IPC command
   (`browser.tauri.mock`) rather than standing up a real server, unless doing an integration run.
 - Each feature runs one worker; keep scenarios independent (state is reset by the reload in the
   shared open-repo step, and `restoreAllMocks` in an `After` hook).
+- **Don't click a commit row's geometric center to select it** — `author`/`date`/`sha` are hidden
+  by default (`columns.ts` `defaultVisible: false`); only `refs`/`graph`/`message` show, and `graph`
+  defaults to 200px wide. A normal-width row's center lands inside `graph` (the avatar/connector
+  swimlane), not over `message` text — confirmed by `elementFromPoint` plus a live store read
+  landing on the wrong commit every time (see `command-palette.steps.ts`'s "select commit" step and
+  its git-blame for the full diagnosis trail). Click the `message` cell's subject text instead
+  (`row.$('span*=<subject>')`) — unambiguous and always visible. The WIP row has its own, older
+  workaround (click the row's left edge) for the same underlying reason (its center is the inline
+  `// WIP` input).
+- **`window.__e2eRepoUIStore`** (main.tsx, `VITE_E2E`-gated, dead-code-eliminated otherwise) exposes
+  the live `repoUI` Zustand store for direct state reads (`getState().selectedCommitOid`, etc.) —
+  reach for this over inferring state from a DOM attribute when a test needs to assert something
+  that isn't already surfaced in the UI; a DOM read can't tell "React state never changed" apart
+  from "hasn't re-rendered yet".
+- **Rebase "Continue" is tested without the merge editor** — `rebase-conflict.feature`'s continue
+  scenario resolves `dependency-manifest.txt`'s conflict via `git checkout --ours` + `git add`
+  directly on the fixture repo (not through the merge editor's block-accept UI), then reloads the
+  page so the app's stale `conflicted-files`/`git-status` queries pick up the new state before
+  clicking Continue. This deliberately scopes the test to "does Continue call `git rebase
+  --continue` and complete the rebase" — merge-editor block resolution (`merge-accept-left`/
+  `-right`/auto-merge) is separate, still-🟡 work (see "1. Merge editor" above); driving it wasn't
+  the goal here. Skip only offers a click while `noneResolved` (`ConflictResolutionPanel`'s own
+  gate — nothing staged yet); this fixture rebases a single commit, so skipping it completes the
+  whole rebase immediately rather than moving to a next paused step.
+- **Stash apply/pop can fail silently against `fixture:stash-stack`'s leftover changes** — the
+  fixture deliberately leaves `config.yml` staged + `IN_PROGRESS.md` untracked on top of both
+  stashes (for the stash-list/staging scenarios), but that same leftover diff conflicts with
+  `stash@{0}`'s own `config.yml` change: `git stash apply`/`pop` errors out, and the palette
+  command only `toast.error`s it — no exception reaches the e2e harness, so the failure surfaces
+  much later as "stash count/file never changed" rather than a clear conflict message. Any
+  scenario driving apply/pop needs a clean working tree first — see the `Given the working tree
+  starts clean` step (`git reset --hard HEAD && git clean -fd` directly on the fixture repo,
+  bypassing the UI) in `command-palette.steps.ts`.

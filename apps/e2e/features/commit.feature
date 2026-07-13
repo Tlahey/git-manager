@@ -12,3 +12,13 @@ Feature: Committing staged changes
     And I enter the commit message "test: commit staged changes via e2e"
     And I commit the staged changes
     Then the repository HEAD commit subject is "test: commit staged changes via e2e"
+
+  Scenario: Undoing a commit restores the previous HEAD and redo re-applies it
+    When I select the working-tree changes in the graph
+    And I enter the commit message "test: commit staged changes via e2e"
+    And I commit the staged changes
+    Then the repository HEAD commit subject is "test: commit staged changes via e2e"
+    When I undo the last action
+    Then the repository HEAD commit subject is "base: add config"
+    When I redo the last undone action
+    Then the repository HEAD commit subject is "test: commit staged changes via e2e"

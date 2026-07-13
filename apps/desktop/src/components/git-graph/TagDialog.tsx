@@ -60,7 +60,7 @@ export function TagDialog({ repoPath, oid, shortOid, annotated, open, onClose }:
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent data-testid="tag-dialog">
         <DialogHeader>
           <DialogTitle>
             {annotated
@@ -76,6 +76,7 @@ export function TagDialog({ repoPath, oid, shortOid, annotated, open, onClose }:
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t('gitTree.createBranch.placeholder')}
+            data-testid="tag-name-input"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !annotated) handleConfirm()
             }}
@@ -100,6 +101,7 @@ export function TagDialog({ repoPath, oid, shortOid, annotated, open, onClose }:
             onClick={handleConfirm}
             disabled={!name.trim() || isLoading}
             className="gap-1.5"
+            data-testid="tag-confirm-button"
           >
             {isLoading && <Spinner className="h-3 w-3" />}
             {t('gitTree.contextMenu.create')}

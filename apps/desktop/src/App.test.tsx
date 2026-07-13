@@ -63,6 +63,9 @@ vi.mock('./components/footer/Footer', () => ({
 vi.mock('./components/trophy/TrophyToast', () => ({
   TrophyToast: () => <div data-testid="fake-trophy-toast" />,
 }))
+vi.mock('./components/command-palette/CommandPalette', () => ({
+  CommandPalette: () => <div data-testid="fake-command-palette" />,
+}))
 vi.mock('./components/layout/OperationProgressBar', () => ({
   OperationProgressBar: () => <div data-testid="fake-operation-progress-bar" />,
 }))

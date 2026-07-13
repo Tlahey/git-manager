@@ -67,7 +67,7 @@ export function CreateBranchHereDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent data-testid="create-branch-dialog">
         <DialogHeader>
           <DialogTitle>{t('gitTree.actions.createBranch')}</DialogTitle>
           <DialogDescription>{t('gitTree.createBranch.from', { sha: shortOid })}</DialogDescription>
@@ -79,6 +79,7 @@ export function CreateBranchHereDialog({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t('gitTree.createBranch.placeholder')}
+            data-testid="create-branch-name-input"
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleConfirm()
             }}
@@ -104,6 +105,7 @@ export function CreateBranchHereDialog({
             onClick={handleConfirm}
             disabled={!name.trim() || isLoading}
             className="gap-1.5"
+            data-testid="create-branch-confirm-button"
           >
             {isLoading && <Spinner className="h-3 w-3" />}
             {t('gitTree.contextMenu.create')}

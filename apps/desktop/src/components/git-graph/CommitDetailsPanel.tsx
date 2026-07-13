@@ -181,6 +181,7 @@ export function CommitDetailsPanel({
                 collapsible
                 hoverStage="remove"
                 onBulkStage={handleUnstageAll}
+                bulkStageTestId="file-list-bulk-unstage"
                 cacheKey={`${repoPath}:${commit.oid}:staged`}
               />
               <CommitFileList
@@ -196,6 +197,7 @@ export function CommitDetailsPanel({
                 collapsible
                 hoverStage="add"
                 onBulkStage={handleStageAll}
+                bulkStageTestId="file-list-bulk-stage"
                 cacheKey={`${repoPath}:${commit.oid}:unstaged`}
               />
             </>

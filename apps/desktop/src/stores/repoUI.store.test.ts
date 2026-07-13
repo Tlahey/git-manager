@@ -10,6 +10,11 @@ const INITIAL = {
   editingOid: null as string | null,
   conflictFilePath: null as string | null,
   pendingGraphSelection: null as string | null,
+  selectedCommitOid: null as string | null,
+  selectedStashIndex: null as number | null,
+  pendingGraphAction: null as ReturnType<
+    typeof useRepoUIStore.getState
+  >['pendingGraphAction'],
 }
 
 beforeEach(() => {
@@ -105,6 +110,28 @@ describe('useRepoUIStore — active repo/tab selection', () => {
     expect(state.activeRepo).toBeNull()
   })
 
+  it('setActiveRepo and setActiveTab clear the selected commit, stash index, and pending graph action', () => {
+    useRepoUIStore.setState({
+      selectedCommitOid: 'deadbeef',
+      selectedStashIndex: 0,
+      pendingGraphAction: { kind: 'reset', mode: 'mixed' },
+    })
+    useRepoUIStore.getState().setActiveRepo('/repo/a')
+    expect(useRepoUIStore.getState().selectedCommitOid).toBeNull()
+    expect(useRepoUIStore.getState().selectedStashIndex).toBeNull()
+    expect(useRepoUIStore.getState().pendingGraphAction).toBeNull()
+
+    useRepoUIStore.setState({
+      selectedCommitOid: 'cafef00d',
+      selectedStashIndex: 1,
+      pendingGraphAction: { kind: 'revert' },
+    })
+    useRepoUIStore.getState().setActiveTab('pull-requests')
+    expect(useRepoUIStore.getState().selectedCommitOid).toBeNull()
+    expect(useRepoUIStore.getState().selectedStashIndex).toBeNull()
+    expect(useRepoUIStore.getState().pendingGraphAction).toBeNull()
+  })
+
   it('setActiveDiffFile switches to the "blame"/"history" panel only when a file is set', () => {
     useRepoUIStore.getState().setActiveLeftPanel('history')
     useRepoUIStore.getState().setActiveDiffFile({ path: 'a.ts', staged: true })
@@ -112,6 +139,29 @@ describe('useRepoUIStore — active repo/tab selection', () => {
 
     useRepoUIStore.getState().setActiveDiffFile(null)
     expect(useRepoUIStore.getState().activeLeftPanel).toBe('sidebar')
+  })
+})
+
+describe('useRepoUIStore — command-palette bridges', () => {
+  it('setSelectedCommitOid publishes the selected commit', () => {
+    useRepoUIStore.getState().setSelectedCommitOid('abc1234')
+    expect(useRepoUIStore.getState().selectedCommitOid).toBe('abc1234')
+    useRepoUIStore.getState().setSelectedCommitOid(null)
+    expect(useRepoUIStore.getState().selectedCommitOid).toBeNull()
+  })
+
+  it('setSelectedStashIndex publishes the selected stash index', () => {
+    useRepoUIStore.getState().setSelectedStashIndex(2)
+    expect(useRepoUIStore.getState().selectedStashIndex).toBe(2)
+    useRepoUIStore.getState().setSelectedStashIndex(null)
+    expect(useRepoUIStore.getState().selectedStashIndex).toBeNull()
+  })
+
+  it('setPendingGraphAction stores the requested action, then clears it', () => {
+    useRepoUIStore.getState().setPendingGraphAction({ kind: 'tag', annotated: true })
+    expect(useRepoUIStore.getState().pendingGraphAction).toEqual({ kind: 'tag', annotated: true })
+    useRepoUIStore.getState().setPendingGraphAction(null)
+    expect(useRepoUIStore.getState().pendingGraphAction).toBeNull()
   })
 })
 

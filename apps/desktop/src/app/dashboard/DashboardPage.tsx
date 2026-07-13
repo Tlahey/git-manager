@@ -17,9 +17,10 @@ import {
 import { open } from '@tauri-apps/plugin-dialog'
 import { OctopusMascot } from '@git-manager/mascot'
 import { CloneRepoDialog } from '../../components/tab-bar/CloneRepoDialog'
-import { apiOpenRepo, apiScanRepos } from '../../api/repo.api'
+import { apiScanRepos } from '../../api/repo.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../../stores/repoUI.store'
+import { useOpenRepository } from '../../hooks/useOpenRepository'
 import { RepoRow } from './components/RepoRow'
 import { ReadmePanel } from './components/ReadmePanel'
 
@@ -29,8 +30,9 @@ interface DashboardPageProps {
 
 export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
   const { t } = useTranslation('dashboard')
-  const { savedRepos, discoveredRepos, addRepo, addDiscoveredRepo } = useRepoDataStore()
-  const { openTabs, openTab } = useRepoUIStore()
+  const { savedRepos, discoveredRepos, addDiscoveredRepo } = useRepoDataStore()
+  const { openTabs } = useRepoUIStore()
+  const openRepository = useOpenRepository()
 
   const [error, setError] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
@@ -41,11 +43,7 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
   async function handleOpenRepo() {
     setError(null)
     try {
-      const selected = await open({ directory: true, multiple: false })
-      if (!selected || typeof selected !== 'string') return
-      const repo = await apiOpenRepo(selected)
-      addRepo(repo)
-      openTab(repo.path)
+      await openRepository()
     } catch (err) {
       setError(String(err))
     }

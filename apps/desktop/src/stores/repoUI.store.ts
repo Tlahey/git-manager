@@ -6,6 +6,20 @@ export const DASHBOARD_TAB = 'dashboard'
 export const REWARDS_TAB = 'rewards'
 export const PULL_REQUESTS_TAB = 'pull-requests'
 
+/**
+ * Commit-scoped action the graph can perform on the currently selected commit, dispatched from
+ * outside `GitGraph.tsx` (e.g. the command palette) via `pendingGraphAction`. Structurally this is
+ * the same payload the native context menu produces — `useGitGraphActions` re-exports it as
+ * `PendingAction` (this union `| null`).
+ */
+export type GraphCommitAction =
+  | { kind: 'reset'; mode: 'soft' | 'mixed' | 'hard'; targetOid?: string; targetSubject?: string }
+  | { kind: 'revert' }
+  | { kind: 'branch' }
+  | { kind: 'tag'; annotated: boolean }
+  | { kind: 'compare' }
+  | { kind: 'fixup' }
+
 interface RepoUIState {
   openTabs: string[] // paths des repos ouverts en onglet
   activeRepo: string | null
@@ -27,6 +41,29 @@ interface RepoUIState {
    */
   pendingGraphSelection: string | null
   setPendingGraphSelection: (oid: string | null) => void
+  /**
+   * OID of the commit currently selected in the graph — a mirror of `useCommitSelection`'s local
+   * `primaryOid`, published so out-of-tree UI (the command palette) can tell whether a commit is
+   * selected and act on it. `null` for no selection or the synthetic WIP/CONFLICT rows.
+   */
+  selectedCommitOid: string | null
+  setSelectedCommitOid: (oid: string | null) => void
+  /**
+   * Stash index (parsed from `stash@{N}`) when the selected row is a stash entry, `null` otherwise —
+   * published alongside `selectedCommitOid` so out-of-tree UI can offer stash-scoped actions
+   * (apply/pop/drop) without duplicating the stash-detection logic already in
+   * `useGitGraphActions.ts`'s native-menu path.
+   */
+  selectedStashIndex: number | null
+  setSelectedStashIndex: (index: number | null) => void
+  /**
+   * Bridge for triggering a commit-scoped action (reset/revert/tag/…) on the selected commit from
+   * outside `GitGraph.tsx`, mirroring `pendingGraphSelection` above. `GitGraph.tsx` watches this,
+   * forwards it to the graph's own `setPendingAction` (which opens the matching dialog against
+   * `primaryOid`), then clears it.
+   */
+  pendingGraphAction: GraphCommitAction | null
+  setPendingGraphAction: (action: GraphCommitAction | null) => void
 
   setActiveRepo: (path: string | null) => void
   setActiveTab: (id: string) => void
@@ -49,6 +86,9 @@ export const useRepoUIStore = create<RepoUIState>()(
       editingOid: null,
       conflictFilePath: null,
       pendingGraphSelection: null,
+      selectedCommitOid: null,
+      selectedStashIndex: null,
+      pendingGraphAction: null,
 
       setActiveDiffFile: (file) =>
         set((state) => {
@@ -64,6 +104,12 @@ export const useRepoUIStore = create<RepoUIState>()(
 
       setPendingGraphSelection: (oid) => set({ pendingGraphSelection: oid }),
 
+      setSelectedCommitOid: (oid) => set({ selectedCommitOid: oid }),
+
+      setSelectedStashIndex: (index) => set({ selectedStashIndex: index }),
+
+      setPendingGraphAction: (action) => set({ pendingGraphAction: action }),
+
       setActiveRepo: (path) =>
         set({
           activeRepo: path,
@@ -71,6 +117,9 @@ export const useRepoUIStore = create<RepoUIState>()(
           activeDiffFile: null,
           activeLeftPanel: 'sidebar',
           conflictFilePath: null,
+          selectedCommitOid: null,
+          selectedStashIndex: null,
+          pendingGraphAction: null,
         }),
 
       setActiveTab: (id) =>
@@ -80,6 +129,9 @@ export const useRepoUIStore = create<RepoUIState>()(
           activeDiffFile: null,
           activeLeftPanel: 'sidebar',
           conflictFilePath: null,
+          selectedCommitOid: null,
+          selectedStashIndex: null,
+          pendingGraphAction: null,
         })),
 
       openTab: (path) =>
