@@ -1,7 +1,8 @@
 # @git-manager/mascot
 
 La mascotte pieuvre de Git Manager, assemblée depuis un sprite sheet et animée
-(ondulation par tentacule, clignement, regard qui suit le curseur).
+(ondulation par tentacule). Le visage (yeux, bouche) fait partie du dessin de
+la tête — pas de calque séparé, pas de suivi du curseur ni de clignement.
 
 - **Consommateurs** : `<git-mascot>` (Web Component, via `@git-manager/mascot/element`)
   pour la landing page ; `<OctopusMascot>` (wrapper React) pour l'app desktop.

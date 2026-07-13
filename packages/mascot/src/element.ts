@@ -5,7 +5,6 @@
  * they never pull the React wrapper (and thus `react`) into their bundle.
  */
 export { GitMascotElement, defineGitMascot } from './GitMascotElement'
-export { attachEyeTracking } from './behaviors'
 export { MASCOT_MARKUP, MASCOT_STYLES, MASCOT_VIEWBOX, MASCOT_SELECTORS } from './mascotArt'
 
 import { defineGitMascot } from './GitMascotElement'
