@@ -3,26 +3,30 @@
  *
  * The framework-agnostic host for the mascot: renders the shared SVG + CSS
  * (from `mascotArt`) into a Shadow DOM so its animations never leak into or
- * collide with the surrounding page. This is what the static landing page
- * consumes; the React `<OctopusMascot>` wrapper renders this same element.
+ * collide with the surrounding page, and wires up the JS behaviors
+ * (`attachEyeTracking`). This is what the static landing page consumes; the
+ * React `<OctopusMascot>` wrapper renders this same element.
  *
  * Attributes:
  *   size          number  — rendered width in px (height derived). Default 320.
  *   animated      boolean — "false" freezes all continuous motion. Default on.
+ *   eye-tracking  boolean — "false" disables pointer-following eyes. Default on.
  *   label         string  — accessible label for the SVG.
  */
 
 import { MASCOT_MARKUP, MASCOT_STYLES, MASCOT_SELECTORS } from './mascotArt'
+import { attachEyeTracking } from './behaviors'
 
 const TAG_NAME = 'git-mascot'
 const DEFAULT_SIZE = 320
 
 export class GitMascotElement extends HTMLElement {
   static get observedAttributes() {
-    return ['size', 'animated', 'label']
+    return ['size', 'animated', 'eye-tracking', 'label']
   }
 
   private svg: SVGSVGElement | null = null
+  private detachEyes: (() => void) | null = null
 
   connectedCallback() {
     if (!this.shadowRoot) {
@@ -38,6 +42,11 @@ export class GitMascotElement extends HTMLElement {
     this.sync()
   }
 
+  disconnectedCallback() {
+    this.detachEyes?.()
+    this.detachEyes = null
+  }
+
   attributeChangedCallback() {
     if (this.svg) this.sync()
   }
@@ -47,7 +56,7 @@ export class GitMascotElement extends HTMLElement {
     return this.getAttribute(name) !== 'false'
   }
 
-  /** Apply the current attributes to the rendered SVG. */
+  /** Apply the current attributes to the rendered SVG + behaviors. */
   private sync() {
     const svg = this.svg
     if (!svg) return
@@ -60,6 +69,14 @@ export class GitMascotElement extends HTMLElement {
 
     const animated = this.boolAttr('animated', true)
     svg.toggleAttribute('data-static', !animated)
+
+    const eyeTracking = animated && this.boolAttr('eye-tracking', true)
+    if (eyeTracking && !this.detachEyes) {
+      this.detachEyes = attachEyeTracking(svg)
+    } else if (!eyeTracking && this.detachEyes) {
+      this.detachEyes()
+      this.detachEyes = null
+    }
   }
 }
 

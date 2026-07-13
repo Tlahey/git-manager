@@ -1,4 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+
+vi.mock('./behaviors', () => ({ attachEyeTracking: vi.fn(() => vi.fn()) }))
 
 describe('element entry point', () => {
   it('registers the git-mascot custom element as an import side effect', async () => {
@@ -10,6 +12,7 @@ describe('element entry point', () => {
     const mod = await import('./element')
     expect(mod.GitMascotElement).toBeDefined()
     expect(mod.defineGitMascot).toBeTypeOf('function')
+    expect(mod.attachEyeTracking).toBeTypeOf('function')
     expect(mod.MASCOT_MARKUP).toContain('<svg')
     expect(mod.MASCOT_STYLES).toContain('gm-wave')
     expect(mod.MASCOT_VIEWBOX).toBeDefined()

@@ -28,6 +28,21 @@ describe('MASCOT_LAYOUT', () => {
     expect(MASCOT_LAYOUT.reference.headMaxWidth).toBeGreaterThan(0)
   })
 
+  it('positions exactly two eyes, symmetric around the head center axis', () => {
+    expect(MASCOT_LAYOUT.eyes).toHaveLength(2)
+    const [left, right] = MASCOT_LAYOUT.eyes
+    expect(left.cy).toBe(right.cy)
+    expect(left.cx).toBeLessThan(right.cx)
+  })
+
+  it('derives strictly positive, finite eye radii, with the cover large enough to hide the baked pupil', () => {
+    for (const value of [MASCOT_LAYOUT.pupilR, MASCOT_LAYOUT.eyeCoverR]) {
+      expect(Number.isFinite(value)).toBe(true)
+      expect(value).toBeGreaterThan(0)
+    }
+    expect(MASCOT_LAYOUT.eyeCoverR).toBeGreaterThan(MASCOT_LAYOUT.pupilR)
+  })
+
   it('carries each limb spec through from its placement (pivot, animation params)', () => {
     for (const p of PLACEMENTS.filter((p) => p.role !== 'head')) {
       const limb = MASCOT_LAYOUT.limbs[p.zone]
@@ -77,6 +92,26 @@ describe('MASCOT_MARKUP', () => {
     for (const idx of indices) expect(idx).toBeGreaterThan(-1)
     expect(indices).toEqual([...indices].sort((a, b) => a - b))
   })
+
+  it('renders exactly two pupil groups tagged with the shared pupil selector and their eye coordinates', () => {
+    const matches = [
+      ...MASCOT_MARKUP.matchAll(
+        new RegExp(`class="${MASCOT_SELECTORS.pupil}" data-cx="(-?[\\d.]+)" data-cy="(-?[\\d.]+)"`, 'g')
+      ),
+    ]
+    expect(matches).toHaveLength(2)
+    expect(Number(matches[0][1])).toBeCloseTo(MASCOT_LAYOUT.eyes[0].cx)
+    expect(Number(matches[1][1])).toBeCloseTo(MASCOT_LAYOUT.eyes[1].cx)
+  })
+
+  it('paints the eye cover and pupil overlay right after the head image (same paint-order slot)', () => {
+    const headImageIndex = MASCOT_MARKUP.indexOf(headPlacement.sprite.uri)
+    const coverIndex = MASCOT_MARKUP.indexOf('gm-eye-cover')
+    const pupilsIndex = MASCOT_MARKUP.indexOf('gm-pupils')
+    expect(headImageIndex).toBeGreaterThan(-1)
+    expect(coverIndex).toBeGreaterThan(headImageIndex)
+    expect(pupilsIndex).toBeGreaterThan(coverIndex)
+  })
 })
 
 describe('MASCOT_STYLES', () => {
@@ -91,6 +126,18 @@ describe('MASCOT_STYLES', () => {
 
   it('gates continuous motion behind prefers-reduced-motion: no-preference', () => {
     expect(MASCOT_STYLES).toContain('@media (prefers-reduced-motion: no-preference)')
+  })
+
+  it('disables idle pupil glances while [data-tracking] is set', () => {
+    expect(MASCOT_STYLES).toContain(
+      `.${MASCOT_SELECTORS.root}:not([data-tracking]) .${MASCOT_SELECTORS.pupil}`
+    )
+  })
+
+  it('hides the eyelid curve by default and cross-fades it with the pupils on blink', () => {
+    expect(MASCOT_STYLES).toContain('.gm-lids { opacity: 0; }')
+    expect(MASCOT_STYLES).toContain('gm-pupils-blink')
+    expect(MASCOT_STYLES).toContain('gm-lids-blink')
   })
 
   it('kills every animation in static mode', () => {
