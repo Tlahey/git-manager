@@ -1,3 +1,4 @@
+import { diffWordsWithSpace } from 'diff'
 import type { MergeBlock } from './types'
 import {
   changeKindForBlock,
@@ -30,59 +31,18 @@ export interface MergeIntraLineHighlights {
   theirs: InlineDecorationSpec[]
 }
 
-interface Token {
-  text: string
-  start: number
-  end: number
-}
-
-/** Words, whitespace runs, and single punctuation characters — fine enough that `username` vs
- * `user` or `=` vs `+=` highlight as their own units, coarse enough that the LCS below stays
- * tiny for realistic lines. */
-function tokenize(line: string): Token[] {
-  const tokens: Token[] = []
-  const re = /\w+|\s+|[^\w\s]/g
-  let match: RegExpExecArray | null
-  while ((match = re.exec(line))) {
-    tokens.push({ text: match[0], start: match.index, end: match.index + match[0].length })
-  }
-  return tokens
-}
-
-/** Collapses each maximal run of unmatched tokens into one contiguous highlight range. */
-function unmatchedRuns(tokens: Token[], matched: boolean[]): CharRange[] {
-  const ranges: CharRange[] = []
-  for (let i = 0; i < tokens.length; i++) {
-    if (matched[i]) continue
-    const start = tokens[i].start
-    while (i + 1 < tokens.length && !matched[i + 1]) i++
-    ranges.push({ start, end: tokens[i].end })
-  }
-  return ranges
-}
-
-// Above this, the O(n·m) LCS table isn't worth building for a single line — fall back to the
-// cheap common-prefix/common-suffix trim (one highlight spanning the whole edited middle).
-const MAX_LCS_CELLS = 160_000
-
-function prefixSuffixRanges(a: string, b: string): { a: CharRange[]; b: CharRange[] } | undefined {
-  let prefix = 0
-  const max = Math.min(a.length, b.length)
-  while (prefix < max && a[prefix] === b[prefix]) prefix++
-  let suffix = 0
-  while (suffix < max - prefix && a[a.length - 1 - suffix] === b[b.length - 1 - suffix]) suffix++
-  if (prefix === 0 && suffix === 0) return undefined // nothing in common — block fill says it all
-  const rangesA: CharRange[] =
-    prefix < a.length - suffix ? [{ start: prefix, end: a.length - suffix }] : []
-  const rangesB: CharRange[] =
-    prefix < b.length - suffix ? [{ start: prefix, end: b.length - suffix }] : []
-  return { a: rangesA, b: rangesB }
-}
-
 /** Character-precise intra-line diff of two versions of "the same" line: which spans of `a` and
- * `b` actually changed. Token-level LCS (not a per-character diff): highlights whole changed
- * words/symbols, which is what reads well at a glance — `diff-match-patch`-style char diffs tend
- * to latch onto coincidental shared letters inside unrelated words.
+ * `b` actually changed. Delegates the actual word-tokenization/diffing to `jsdiff`'s
+ * `diffWordsWithSpace` rather than a hand-rolled LCS: its word-character set covers Latin
+ * diacritics/Unicode letter ranges (see `diff/word.js`'s `extendedWordChars`), where a naive
+ * `\w`-based tokenizer (JS's `\w` is ASCII-only) would split an accented word like "modifié" into
+ * "modifi" + "é" as two separate tokens — fragmenting the highlight and occasionally letting the
+ * lone accented character spuriously "match" an unrelated one elsewhere on the line. It also
+ * preserves whitespace as its own token type (`WithSpace`), so a change that's purely whitespace
+ * (e.g. trailing spaces added inside a comment) still highlights instead of being silently
+ * absorbed into a "common" token. jsdiff's Myers-diff core is O((N+M)D) in the edit distance
+ * rather than the O(N·M) DP table this used to build, so there's no separate long-line fallback
+ * needed either.
  *
  * Returns `undefined` when the two lines share no meaningful (non-whitespace) token — they're
  * not really "the same line edited", so an intra highlight would just repaint almost everything
@@ -93,45 +53,36 @@ export function changedCharRanges(
 ): { a: CharRange[]; b: CharRange[] } | undefined {
   if (a === b) return { a: [], b: [] }
 
-  const tokensA = tokenize(a)
-  const tokensB = tokenize(b)
-  if (tokensA.length * tokensB.length > MAX_LCS_CELLS) return prefixSuffixRanges(a, b)
+  const changes = diffWordsWithSpace(a, b)
 
-  // Standard LCS lengths table over token texts…
-  const n = tokensA.length
-  const m = tokensB.length
-  const dp: Uint32Array[] = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1))
-  for (let i = n - 1; i >= 0; i--) {
-    for (let j = m - 1; j >= 0; j--) {
-      dp[i][j] =
-        tokensA[i].text === tokensB[j].text
-          ? dp[i + 1][j + 1] + 1
-          : Math.max(dp[i + 1][j], dp[i][j + 1])
-    }
-  }
-
-  // …then walk it to mark which tokens survive on both sides.
-  const matchedA = Array.from<boolean>({ length: n }).fill(false)
-  const matchedB = Array.from<boolean>({ length: m }).fill(false)
   let sharesMeaningfulToken = false
-  let i = 0
-  let j = 0
-  while (i < n && j < m) {
-    if (tokensA[i].text === tokensB[j].text) {
-      matchedA[i] = true
-      matchedB[j] = true
-      if (/\S/.test(tokensA[i].text)) sharesMeaningfulToken = true
-      i++
-      j++
-    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
-      i++
+  for (const part of changes) {
+    if (!part.added && !part.removed && /\S/.test(part.value)) {
+      sharesMeaningfulToken = true
+      break
+    }
+  }
+  if (!sharesMeaningfulToken) return undefined
+
+  const rangesA: CharRange[] = []
+  const rangesB: CharRange[] = []
+  let offsetA = 0
+  let offsetB = 0
+  for (const part of changes) {
+    const length = part.value.length
+    if (part.removed) {
+      rangesA.push({ start: offsetA, end: offsetA + length })
+      offsetA += length
+    } else if (part.added) {
+      rangesB.push({ start: offsetB, end: offsetB + length })
+      offsetB += length
     } else {
-      j++
+      offsetA += length
+      offsetB += length
     }
   }
 
-  if (!sharesMeaningfulToken) return undefined
-  return { a: unmatchedRuns(tokensA, matchedA), b: unmatchedRuns(tokensB, matchedB) }
+  return { a: rangesA, b: rangesB }
 }
 
 /** Second pass of the two-pass diff: within each (already line-classified) block, pinpoint the
@@ -207,6 +158,61 @@ export function computeIntraLineHighlights(
             inlineClassName,
           })
         }
+      }
+    }
+  }
+
+  return out
+}
+
+/** 2-panel counterpart of `computeIntraLineHighlights` above: pinpoints the exact words/symbols
+ * that differ between the original (theirs) and modified (center) lines of a modification hunk.
+ * Additions/deletions have no counterpart line to compare against and stay covered by the
+ * block's whole-line fill alone — same rule as the 3-way version. There's no `ours` pane in this
+ * mode, so that slot always stays empty. */
+export function computeTwoWayIntraLineHighlights(
+  blocks: MergeBlock[],
+  placements: Map<number, BlockPlacement>,
+  getCenterLine: (lineNumber: number) => string
+): MergeIntraLineHighlights {
+  const out: MergeIntraLineHighlights = { ours: [], center: [], theirs: [] }
+  const inlineClassName = 'merge-inline-modification'
+
+  for (const block of blocks) {
+    if (block.kind !== 'theirs-only') continue
+    const placement = placements.get(block.blockId)
+    if (!placement) continue
+
+    const theirsLines = block.theirsLines
+    if (theirsLines.length === 0 || placement.centerLineCount === 0) continue
+
+    const theirsStartLine = block.theirsStartLine
+    const centerStartLine = placement.centerStartLine
+    const pairCount = Math.min(theirsLines.length, placement.centerLineCount)
+
+    for (let i = 0; i < pairCount; i++) {
+      const theirsText = theirsLines[i]
+      const centerText = getCenterLine(centerStartLine + i)
+      if (theirsText === centerText) continue
+
+      const ranges = changedCharRanges(theirsText, centerText)
+      if (!ranges) continue
+
+      for (const r of ranges.a) {
+        out.theirs.push({
+          line: theirsStartLine + i,
+          startColumn: r.start + 1,
+          endColumn: r.end + 1,
+          inlineClassName,
+        })
+      }
+      for (const r of ranges.b) {
+        out.center.push({
+          line: centerStartLine + i,
+          startColumn: r.start + 1,
+          endColumn: r.end + 1,
+          inlineClassName,
+        })
       }
     }
   }

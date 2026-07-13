@@ -29,6 +29,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     enableAnimations: true,
     notificationLocation: 'top-right',
     rowHeight: 'standard',
+    stickyScroll: false,
   },
   language: 'fr',
   advanced: {

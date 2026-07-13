@@ -15,6 +15,7 @@ import type { MergeBlock } from './types'
 import {
   ConflictResolverHeader,
   type ConflictResolverActionsConfig,
+  type ConflictResolverLabels,
 } from './ConflictResolverHeader'
 import { CodePane, type CodePaneEditorComponent } from './CodePane'
 import { MergeConnectorOverlay } from './MergeConnectorOverlay'
@@ -67,6 +68,9 @@ export interface ConflictResolverEditorConfig {
   /** Monaco theme name; register custom themes from `onEditorMount`. */
   theme?: string
   loadingFallback?: ReactNode
+  /** Extra Monaco options merged underneath every pane's own required options (readOnly,
+   * glyphMargin, minimap, etc. always win) — e.g. `{ stickyScroll: { enabled: false } }`. */
+  options?: editor.IStandaloneEditorConstructionOptions
   /** Called after each pane's own internal mount wiring, e.g. to register custom themes. */
   onEditorMount?: (
     editorInstance: editor.IStandaloneCodeEditor,
@@ -88,6 +92,9 @@ export interface ConflictResolverProps {
    * (apply-non-conflicting, auto-merge, reset) are always forced off regardless of this config —
    * there's no merge target to write into, just two read-only panes. */
   header?: boolean | ConflictResolverActionsConfig
+  /** Per-string overrides for the header — see `ConflictResolverLabels`. Omitted strings fall
+   * back to the built-in English defaults. */
+  labels?: ConflictResolverLabels
   /** Wand/auto-merge provider: resolves to the merged text for the result pane. The wand
    * button only shows when this is wired. */
   onAutoMerge?: () => Promise<string>
@@ -137,6 +144,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       modelPathPrefix,
       editor: editorConfig,
       header = true,
+      labels,
       onAutoMerge,
       onRecalculate,
       onPendingCountChange,
@@ -173,6 +181,12 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
     const viewToUse = isTwoWay ? (dynamicView ?? dummyView) : staticView
 
     const containerRef = useRef<HTMLDivElement | null>(null)
+    // The leftmost pane's wrapper gets padding-left (see styles.css's `.merge-pane-numbers-right`
+    // rule) so its code isn't flush against the window/panel edge. That padding strip needs the
+    // SAME background Monaco itself is painting, or it reads as a dead gap instead of inset
+    // breathing room — handlePaneMount below keeps this ref's background synced to the theirs
+    // pane's actual computed color.
+    const leftPaneWrapperRef = useRef<HTMLDivElement | null>(null)
     const blocksRef = useRef<MergeBlock[]>(viewToUse.blocks)
     blocksRef.current = viewToUse.blocks
 
@@ -465,6 +479,26 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
           if (pane === 'theirs')
             editors.theirsDecorationsRef.current = editorInstance.createDecorationsCollection([])
 
+          // Standalone monaco-editor (unlike a real VS Code webview) never exposes its resolved
+          // theme colors as CSS custom properties, and `monaco.editor` has no theme-change event
+          // to hook — so the only reliable way to keep the padding wrapper's background matching
+          // whatever theme is active (built-in or a host's dynamically-generated one) is to read
+          // Monaco's own computed background directly and re-read it whenever the editor's
+          // class/style attributes change (which is exactly what `setTheme` mutates).
+          if (pane === 'theirs') {
+            const domNode = editorInstance.getDomNode()
+            const wrapper = leftPaneWrapperRef.current
+            if (domNode && wrapper) {
+              const syncBackground = () => {
+                wrapper.style.backgroundColor = getComputedStyle(domNode).backgroundColor
+              }
+              syncBackground()
+              const observer = new MutationObserver(syncBackground)
+              observer.observe(domNode, { attributes: true, attributeFilter: ['class', 'style'] })
+              editorInstance.onDidDispose(() => observer.disconnect())
+            }
+          }
+
           const paneIndex = pane === 'ours' ? 0 : pane === 'center' ? 1 : 2
           attachScrollSync(editorInstance, paneIndex)
           editorInstance.onDidScrollChange(() => {
@@ -615,6 +649,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
         {header !== false && (
           <ConflictResolverHeader
             actions={headerActions}
+            labels={labels}
             whitespaceMode={whitespaceMode}
             setWhitespaceMode={setWhitespaceMode}
             highlightMode={highlightMode}
@@ -645,6 +680,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
           {panes.map((pane, index) => (
             <Fragment key={pane.id}>
               <div
+                ref={index === 0 ? leftPaneWrapperRef : undefined}
                 className={`${index === 0 ? 'merge-pane-numbers-right' : ''} min-w-0`}
                 style={{ flex: `${panelWidths[index]} 1 0%` }}
                 data-testid={`merge-pane-${pane.id}-wrapper`}
@@ -658,6 +694,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
                   onMount={handlePaneMount(pane.id)}
                   editorComponent={editorConfig?.component}
                   loadingFallback={editorConfig?.loadingFallback}
+                  options={editorConfig?.options}
                 />
               </div>
               {index < panes.length - 1 && (

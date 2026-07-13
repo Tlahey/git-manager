@@ -259,6 +259,15 @@ export function AppearanceSection() {
           />
           <span className="text-xs text-foreground">{t('settings.appearance.animations')}</span>
         </label>
+        <label className="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={appearance.stickyScroll ?? false}
+            onChange={(e) => updateAppearance({ stickyScroll: e.target.checked })}
+            className="h-4 w-4 rounded border-border"
+          />
+          <span className="text-xs text-foreground">{t('settings.appearance.stickyScroll')}</span>
+        </label>
       </div>
     </div>
   )

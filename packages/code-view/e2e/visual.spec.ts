@@ -32,8 +32,11 @@ test.describe('story baselines', () => {
 
   test('TwoPanelDiff', async ({ page }) => {
     await openStory(page, 'codeview-conflictresolver--two-panel-diff')
-    // 2-way blocks are computed asynchronously by Monaco's diff engine.
-    await expect(page.getByTestId('merge-connector-ribbon-left-0')).toBeVisible()
+    // 2-way blocks are computed asynchronously by Monaco's diff engine. blockId 0 is a
+    // synthesized leading unchanged gap (the fixture's first change isn't on line 1) — wait on
+    // the stats line instead of a specific ribbon id so this doesn't re-break every time the
+    // gap-synthesis shifts blockIds around.
+    await expect(page.getByTestId('merge-stats')).toContainText('changes')
     await expect(subject(page)).toHaveScreenshot('two-panel-diff.png')
   })
 
@@ -59,6 +62,51 @@ test.describe('story baselines', () => {
     // one-line drift of any later wave (the bug this story was written for) shifts hundreds of
     // pixels and fails this baseline.
     await expect(subject(page)).toHaveScreenshot('collapsed-multiple-regions.png')
+  })
+
+  test('TwoWayMixedChanges', async ({ page }) => {
+    await openStory(page, 'codeview-conflictresolver--two-way-mixed-changes')
+    // Regression guard for the two-way addition/deletion boundary-marker off-by-one: the
+    // deletion ribbon must land *inside* the `logging: {}` block (not above it), and the
+    // insertion ribbon right after `ttl: 60,` (not above it) — see twoWayView.ts's
+    // `buildDynamicMergeView` comment on Monaco's insert-after vs. insert-before convention.
+    await expect(page.getByTestId('merge-stats')).toContainText('3 changes')
+    await expect(subject(page)).toHaveScreenshot('two-way-mixed-changes.png')
+  })
+
+  test('TwoWayCollapseUnchanged', async ({ page }) => {
+    await openStory(page, 'codeview-conflictresolver--two-way-collapse-unchanged')
+    // Regression guard: two-way mode only synthesizes `unchanged` blocks (and therefore has
+    // anything to collapse at all) since buildDynamicMergeView's gap-synthesis fix — without it
+    // this banner never renders, no matter how long the untouched stretch is.
+    await expect(page.locator('.monaco-collapsed-zone-banner').first()).toBeVisible()
+    await expect(subject(page)).toHaveScreenshot('two-way-collapsed-unchanged.png')
+  })
+
+  test('TwoWayHighlightModeToggle — words mode only highlights the changed word', async ({
+    page,
+  }) => {
+    await openStory(page, 'codeview-conflictresolver--two-way-highlight-mode-toggle')
+    await expect(page.getByTestId('merge-stats')).toContainText('1 change')
+    // Regression guard: 'words' pairs a subtle whole-line fill with a precise intra-line overlay
+    // on just the changed span ("Submit" → "Save") — computeTwoWayIntraLineHighlights's job.
+    await expect(page.locator('[class*="merge-inline-"]').first()).toBeVisible()
+    await expect(subject(page)).toHaveScreenshot('two-way-highlight-words-mode.png')
+  })
+
+  test('TwoWayHighlightModeToggle — lines mode highlights the whole line', async ({ page }) => {
+    await openStory(page, 'codeview-conflictresolver--two-way-highlight-mode-toggle')
+    await expect(page.getByTestId('merge-stats')).toContainText('1 change')
+
+    await page.getByTestId('merge-highlight-dropdown-btn').click()
+    await page.locator('button:text-is("Highlight lines")').click()
+
+    // Regression guard: 'lines' switches the fill to the louder merge-vivid-* class across the
+    // whole line and drops the word-level overlay entirely — computeTwoWayVisuals's
+    // useVividText param.
+    await expect(page.locator('[class*="merge-vivid-modification"]').first()).toBeVisible()
+    await expect(page.locator('[class*="merge-inline-"]')).toHaveCount(0)
+    await expect(subject(page)).toHaveScreenshot('two-way-highlight-lines-mode.png')
   })
 })
 

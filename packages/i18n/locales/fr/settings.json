@@ -78,6 +78,7 @@
   "settings.appearance.density.comfortable": "Confortable",
   "settings.appearance.showAvatars": "Afficher les avatars (Gravatar)",
   "settings.appearance.animations": "Activer les animations",
+  "settings.appearance.stickyScroll": "Défilement collant dans les éditeurs de code/diff (épingle le nom de la fonction/classe en cours en haut pendant le défilement)",
   "settings.language.en": "English",
   "settings.language.fr": "Français",
   "settings.language.note": "Le changement de langue prend effet immédiatement.",

@@ -61,6 +61,29 @@ describe('CodePane', () => {
     expect(captured?.options?.scrollBeyondLastLine).toBe(false)
   })
 
+  it('merges host-supplied options in, but the fixed options above still win', () => {
+    let captured: CodePaneEditorProps | undefined
+    function Capturing(props: CodePaneEditorProps) {
+      captured = props
+      return null
+    }
+    render(
+      <CodePane
+        value=""
+        modelPath="p"
+        readOnly={false}
+        onMount={vi.fn()}
+        editorComponent={Capturing}
+        options={{ stickyScroll: { enabled: true }, glyphMargin: true, minimap: { enabled: true } }}
+      />
+    )
+    // Extra host option passes through unchanged...
+    expect(captured?.options?.stickyScroll).toEqual({ enabled: true })
+    // ...but a host attempt to override a fixed option is ignored.
+    expect(captured?.options?.glyphMargin).toBe(false)
+    expect(captured?.options?.minimap).toEqual({ enabled: false })
+  })
+
   it('passes readOnly through to editor options and renders line highlight "all" only when editable', () => {
     const { rerender } = render(
       <CodePane

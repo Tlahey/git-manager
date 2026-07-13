@@ -34,14 +34,6 @@ function baseProps(
     onChangeActiveTab: vi.fn(),
     activeLeftPanel: 'sidebar',
     onChangeActiveLeftPanel: vi.fn(),
-    onPrevChange: vi.fn(),
-    onNextChange: vi.fn(),
-    viewMode: 'split',
-    onChangeViewMode: vi.fn(),
-    ignoreWhitespace: false,
-    onToggleIgnoreWhitespace: vi.fn(),
-    collapseUnchanged: false,
-    onToggleCollapseUnchanged: vi.fn(),
     isProcessing: false,
     onToggleStage: vi.fn(),
     onRollback: vi.fn(),
@@ -127,13 +119,6 @@ describe('DiffToolbar — tabs', () => {
     await user.click(screen.getByText('Diff'))
     expect(onChangeActiveTab).toHaveBeenCalledWith('diff')
   })
-
-  it('hides the diff-only controls (prev/next, view mode, whitespace, collapse) on the file tab', () => {
-    render(<DiffToolbar {...baseProps({ activeTab: 'file' })} />)
-    expect(screen.queryByTitle('Previous Change')).not.toBeInTheDocument()
-    expect(screen.queryByText('Hide Whitespace')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('diff-collapse-unchanged-btn')).not.toBeInTheDocument()
-  })
 })
 
 describe('DiffToolbar — blame/history panel toggle', () => {
@@ -159,40 +144,6 @@ describe('DiffToolbar — blame/history panel toggle', () => {
     render(<DiffToolbar {...baseProps({ onChangeActiveLeftPanel, activeLeftPanel: 'sidebar' })} />)
     await user.click(screen.getByTitle('File History'))
     expect(onChangeActiveLeftPanel).toHaveBeenCalledWith('history')
-  })
-})
-
-describe('DiffToolbar — diff navigation and view controls', () => {
-  it('calls onPrevChange/onNextChange', async () => {
-    const onPrevChange = vi.fn()
-    const onNextChange = vi.fn()
-    const user = userEvent.setup()
-    render(<DiffToolbar {...baseProps({ onPrevChange, onNextChange })} />)
-    await user.click(screen.getByTitle('Previous Change'))
-    await user.click(screen.getByTitle('Next Change'))
-    expect(onPrevChange).toHaveBeenCalledOnce()
-    expect(onNextChange).toHaveBeenCalledOnce()
-  })
-
-  it('switches view mode between inline and split', async () => {
-    const onChangeViewMode = vi.fn()
-    const user = userEvent.setup()
-    render(<DiffToolbar {...baseProps({ onChangeViewMode })} />)
-    await user.click(screen.getByText('commitDetails.diffInline'))
-    expect(onChangeViewMode).toHaveBeenCalledWith('inline')
-    await user.click(screen.getByText('commitDetails.diffSplit'))
-    expect(onChangeViewMode).toHaveBeenCalledWith('split')
-  })
-
-  it('toggles ignore-whitespace and collapse-unchanged', async () => {
-    const onToggleIgnoreWhitespace = vi.fn()
-    const onToggleCollapseUnchanged = vi.fn()
-    const user = userEvent.setup()
-    render(<DiffToolbar {...baseProps({ onToggleIgnoreWhitespace, onToggleCollapseUnchanged })} />)
-    await user.click(screen.getByText('Hide Whitespace'))
-    await user.click(screen.getByTestId('diff-collapse-unchanged-btn'))
-    expect(onToggleIgnoreWhitespace).toHaveBeenCalledOnce()
-    expect(onToggleCollapseUnchanged).toHaveBeenCalledOnce()
   })
 })
 

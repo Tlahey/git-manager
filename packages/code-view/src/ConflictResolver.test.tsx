@@ -633,15 +633,16 @@ describe('ConflictResolver — 2-panel diff mode', () => {
 
     await waitFor(() => expect(fakeEditors.get(modifiedPath)).toBeDefined())
 
+    // blockId 0 is the synthesized unchanged gap for 'line1'; the real change is blockId 1.
     await waitFor(() => {
-      expect(screen.getByTestId('merge-connector-ribbon-left-0')).toHaveClass(
+      expect(screen.getByTestId('merge-connector-ribbon-left-1')).toHaveClass(
         'merge-connector-modification'
       )
     })
     expect(hasDecorationClass(originalPath, 'merge-text-modification')).toBe(true)
     expect(hasDecorationClass(modifiedPath, 'merge-text-modification')).toBe(true)
     // No action buttons: 2-panel mode is a read-only diff, never actionable.
-    expect(screen.queryByTestId('merge-connector-accept-left-0')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('merge-connector-accept-left-1')).not.toBeInTheDocument()
   })
 
   it('a pure insertion is decorated as an addition, with a boundary marker on the original pane', async () => {
@@ -649,8 +650,9 @@ describe('ConflictResolver — 2-panel diff mode', () => {
 
     await waitFor(() => expect(fakeEditors.get(modifiedPath)).toBeDefined())
 
+    // blockId 0 is the synthesized unchanged gap for 'line1'; the real change is blockId 1.
     await waitFor(() => {
-      expect(screen.getByTestId('merge-connector-ribbon-left-0')).toHaveClass(
+      expect(screen.getByTestId('merge-connector-ribbon-left-1')).toHaveClass(
         'merge-connector-addition'
       )
     })
@@ -664,8 +666,9 @@ describe('ConflictResolver — 2-panel diff mode', () => {
 
     await waitFor(() => expect(fakeEditors.get(modifiedPath)).toBeDefined())
 
+    // blockId 0 is the synthesized unchanged gap for 'line1'; the real change is blockId 1.
     await waitFor(() => {
-      expect(screen.getByTestId('merge-connector-ribbon-left-0')).toHaveClass(
+      expect(screen.getByTestId('merge-connector-ribbon-left-1')).toHaveClass(
         'merge-connector-deletion'
       )
     })
@@ -690,16 +693,20 @@ describe('ConflictResolver — 2-panel diff mode', () => {
     renderDiff('line1\n  indented\nline3', 'line1\nindented\nline3')
 
     await waitFor(() => expect(fakeEditors.get(modifiedPath)).toBeDefined())
+    // blockId 0 is the synthesized unchanged gap for 'line1'; the real change is blockId 1.
     await waitFor(() =>
-      expect(screen.getByTestId('merge-connector-ribbon-left-0')).toBeInTheDocument()
+      expect(screen.getByTestId('merge-connector-ribbon-left-1')).toBeInTheDocument()
     )
     expect(fakeDiffEditors).toHaveLength(1)
 
     await user.click(screen.getByTestId('merge-whitespace-dropdown-btn'))
     await user.click(screen.getByText('Ignore whitespace'))
 
+    // Once whitespace is ignored the two files match entirely — the whole file collapses into
+    // one synthesized unchanged block (blockId 0), which never gets a ribbon.
     await waitFor(() => {
       expect(screen.queryByTestId('merge-connector-ribbon-left-0')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('merge-connector-ribbon-left-1')).not.toBeInTheDocument()
     })
     // Switching modes tears down the old diff editor and creates a fresh one with the new option.
     expect(fakeDiffEditors).toHaveLength(2)

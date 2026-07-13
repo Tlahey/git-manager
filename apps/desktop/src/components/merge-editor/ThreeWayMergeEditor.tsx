@@ -1,11 +1,13 @@
 import { forwardRef, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import type { Monaco } from '@monaco-editor/react'
 import { Lock } from 'lucide-react'
+import { useTranslation } from '@git-manager/i18n'
 import type { ThreeWayMergeView } from '@git-manager/git-types'
 import {
   ConflictResolver,
   type ConflictResolverPanel,
   type ConflictResolverRef,
+  type ConflictResolverLabels,
   type CodePaneEditorComponent,
 } from '@git-manager/code-view'
 import { useSWRConfig } from 'swr'
@@ -58,9 +60,39 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
     },
     ref
   ) => {
+    const { t } = useTranslation('git')
     const { mutate } = useSWRConfig()
     const { data: rebaseState } = useRebaseState(repoPath)
     const theme = useSettingsStore((s) => s.settings.appearance.theme)
+    const stickyScroll = useSettingsStore((s) => s.settings.appearance.stickyScroll ?? false)
+
+    const labels = useMemo<ConflictResolverLabels>(
+      () => ({
+        navPrevTitle: t('mergeEditor.navPrevTitle'),
+        navNextTitle: t('mergeEditor.navNextTitle'),
+        applyAllIconTitle: t('mergeEditor.applyNonConflictingAllTitle'),
+        applyNonConflictingText: t('mergeEditor.applyNonConflictingLabel'),
+        applyLeftLabel: t('mergeEditor.applyLeft'),
+        applyAllLabel: t('mergeEditor.applyAll'),
+        applyRightLabel: t('mergeEditor.applyRight'),
+        autoMergeTitle: t('mergeEditor.autoMergeTitle'),
+        collapseUnchangedTitle: t('mergeEditor.collapseUnchangedTitle'),
+        resetTitle: t('mergeEditor.resetTitle'),
+        recalculateTitle: t('mergeEditor.recalculateTitle'),
+        whitespace: {
+          compare: t('mergeEditor.whitespaceCompare'),
+          ignore: t('mergeEditor.whitespaceIgnore'),
+          trim: t('mergeEditor.whitespaceTrim'),
+        },
+        highlight: {
+          words: t('mergeEditor.highlightWords'),
+          lines: t('mergeEditor.highlightLines'),
+        },
+        changesLabel: (count) => t('mergeEditor.changesCount', { count }),
+        conflictsLabel: (count) => t('mergeEditor.conflictsCount', { count }),
+      }),
+      [t]
+    )
 
     // Re-register/apply the dynamic Monaco theme when the app theme changes — the panes
     // themselves are theme-agnostic, they just reference 'git-manager-dynamic' by name.
@@ -146,8 +178,9 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         language: languageForFilePath(filePath),
         theme: 'git-manager-dynamic',
         onEditorMount: handleEditorMount,
+        options: { stickyScroll: { enabled: stickyScroll } },
       }),
-      [filePath, handleEditorMount]
+      [filePath, handleEditorMount, stickyScroll]
     )
 
     return (
@@ -157,6 +190,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         blocks={view?.blocks}
         modelPathPrefix={isTwoWay ? filePath : `${repoPath}/${filePath}`}
         editor={editorConfig}
+        labels={labels}
         onAutoMerge={handleAutoMerge}
         onRecalculate={handleRecalculate}
         onPendingCountChange={onPendingCountChange}

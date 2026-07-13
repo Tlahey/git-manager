@@ -1,10 +1,11 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Spinner } from '@git-manager/ui'
 import { useFileDiff } from '../../hooks/useFileDiff'
 import { useFileRawContents } from '../../hooks/useFileRawContents'
 import { apiDiscardFileChanges, apiStageFile, apiUnstageFile } from '../../api/git.api'
-import { MonacoDiffViewer, type MonacoDiffViewerRef } from './MonacoDiffViewer'
+import { ThreeWayMergeEditor } from '../merge-editor/ThreeWayMergeEditor'
+import { MonacoFileViewer } from './MonacoFileViewer'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { DiffToolbar } from './components/DiffToolbar'
 
@@ -21,24 +22,12 @@ interface DiffViewCenterProps {
 
 export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewCenterProps) {
   const { t } = useTranslation('git')
-  const [viewMode, setViewMode] = useState<'inline' | 'split'>('split')
   const [copied, setCopied] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [activeTab, setActiveTab] = useState<'diff' | 'file'>('diff')
-  const [ignoreWhitespace, setIgnoreWhitespace] = useState(false)
-  const [collapseUnchanged, setCollapseUnchanged] = useState(false)
-  const diffViewerRef = useRef<MonacoDiffViewerRef>(null)
 
   const activeLeftPanel = useRepoUIStore((s) => s.activeLeftPanel)
   const setActiveLeftPanel = useRepoUIStore((s) => s.setActiveLeftPanel)
-
-  const handlePrevChange = () => {
-    diffViewerRef.current?.goToPreviousChange()
-  }
-
-  const handleNextChange = () => {
-    diffViewerRef.current?.goToNextChange()
-  }
 
   // Use hook to fetch diff metadata
   const {
@@ -130,14 +119,6 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
         onChangeActiveTab={setActiveTab}
         activeLeftPanel={activeLeftPanel}
         onChangeActiveLeftPanel={setActiveLeftPanel}
-        onPrevChange={handlePrevChange}
-        onNextChange={handleNextChange}
-        viewMode={viewMode}
-        onChangeViewMode={setViewMode}
-        ignoreWhitespace={ignoreWhitespace}
-        onToggleIgnoreWhitespace={() => setIgnoreWhitespace(!ignoreWhitespace)}
-        collapseUnchanged={collapseUnchanged}
-        onToggleCollapseUnchanged={() => setCollapseUnchanged(!collapseUnchanged)}
         isProcessing={isProcessing}
         onToggleStage={handleToggleStage}
         onRollback={handleRollback}
@@ -172,16 +153,17 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
               </div>
             ) : (
               <div className="flex flex-1 flex-col overflow-hidden rounded-lg border border-border/80 bg-background">
-                <MonacoDiffViewer
-                  ref={diffViewerRef}
-                  original={rawContents?.original || ''}
-                  modified={rawContents?.modified || ''}
-                  filePath={file.path}
-                  viewMode={viewMode}
-                  activeTab={activeTab}
-                  ignoreWhitespace={ignoreWhitespace}
-                  collapseUnchanged={collapseUnchanged}
-                />
+                {activeTab === 'file' ? (
+                  <MonacoFileViewer content={rawContents?.modified || ''} filePath={file.path} />
+                ) : (
+                  <ThreeWayMergeEditor
+                    repoPath={repoPath}
+                    filePath={file.path}
+                    original={rawContents?.original || ''}
+                    modified={rawContents?.modified || ''}
+                    isTwoWay
+                  />
+                )}
               </div>
             )}
           </div>

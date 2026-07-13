@@ -2,7 +2,10 @@ import { useEffect, type MutableRefObject } from 'react'
 import type { MergeBlock } from '../../types'
 import type { BlockPlacement } from '../../mergeBlockLayout'
 import { computeMergeVisuals } from '../../mergeDecorations'
-import { computeIntraLineHighlights } from '../../mergeIntraLineDiff'
+import {
+  computeIntraLineHighlights,
+  computeTwoWayIntraLineHighlights,
+} from '../../mergeIntraLineDiff'
 import { computeTwoWayVisuals } from '../twoWayView'
 import { applyViewZones, toInlineMonacoDecoration, toMonacoDecoration } from '../monacoInterop'
 import type { MergeEditorRefs } from './useMergeEditorRefs'
@@ -67,7 +70,12 @@ export function useMergeDecorations({
     }
 
     const visuals = isTwoWay
-      ? computeTwoWayVisuals(blocksRef.current, placements, showBlockBorders)
+      ? computeTwoWayVisuals(
+          blocksRef.current,
+          placements,
+          showBlockBorders,
+          highlightMode === 'lines'
+        )
       : computeMergeVisuals(
           blocksRef.current,
           placements,
@@ -78,11 +86,15 @@ export function useMergeDecorations({
     // Second diff pass (intra-line): reads the center buffer's live text so the highlights
     // track manual typing too. Only run if highlightMode is 'words'.
     const centerModel = centerEditor.getModel()
+    const getCenterLine = (line: number) =>
+      centerModel && line >= 1 && line <= centerModel.getLineCount()
+        ? centerModel.getLineContent(line)
+        : ''
     const intra =
-      centerModel && highlightMode === 'words' && !isTwoWay
-        ? computeIntraLineHighlights(blocksRef.current, placements, (line) =>
-            line >= 1 && line <= centerModel.getLineCount() ? centerModel.getLineContent(line) : ''
-          )
+      centerModel && highlightMode === 'words'
+        ? isTwoWay
+          ? computeTwoWayIntraLineHighlights(blocksRef.current, placements, getCenterLine)
+          : computeIntraLineHighlights(blocksRef.current, placements, getCenterLine)
         : { ours: [], center: [], theirs: [] }
 
     const showWholeLineHighlights = true
@@ -94,11 +106,11 @@ export function useMergeDecorations({
     }
     editors.centerDecorationsRef.current?.set([
       ...(showWholeLineHighlights ? visuals.center.decorations.map(toMonacoDecoration) : []),
-      ...(isTwoWay ? [] : intra.center.map(toInlineMonacoDecoration)),
+      ...intra.center.map(toInlineMonacoDecoration),
     ])
     editors.theirsDecorationsRef.current?.set([
       ...(showWholeLineHighlights ? visuals.theirs.decorations.map(toMonacoDecoration) : []),
-      ...(isTwoWay ? [] : intra.theirs.map(toInlineMonacoDecoration)),
+      ...intra.theirs.map(toInlineMonacoDecoration),
     ])
 
     if (!isTwoWay && oursEditor) {

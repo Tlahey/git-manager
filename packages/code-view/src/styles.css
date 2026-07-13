@@ -394,6 +394,30 @@
   stroke-width: 2;
 }
 
+/* Leftmost pane's own breathing room from the window/panel edge (nothing sits to its left, unlike
+   every other pane which has a resize-gap neighbor). Padding lives on this wrapper — NOT on
+   `.monaco-editor` itself — deliberately: `@monaco-editor/react` sizes the editor by reading this
+   wrapper's `clientWidth` and lays out `.overflow-guard`/`.margin`/the scrollable content in JS
+   from that number, with no awareness of CSS padding on its own root. Padding `.monaco-editor`
+   directly still shrinks nothing (`clientWidth` reports the full border-box regardless of
+   padding), so Monaco keeps rendering at the old, wider size and everything overflows the pane's
+   right edge by exactly the padding amount — verified by inspecting `.overflow-guard`'s rect
+   after padding was applied there directly. Padding this wrapper instead makes Monaco measure the
+   already-shrunk box, so it lays out correctly inset with no overflow.
+   Background-color deliberately NOT set here: this wrapper is otherwise transparent, so without
+   a matching background the padding strip would show the resolver's own shell background right
+   next to Monaco's own editor canvas — a visible seam whenever the two differ, which is most of
+   the time (standalone monaco-editor, unlike a real VS Code webview, never resolves its theme
+   colors into a `--vscode-*`-style CSS custom property, so there's no CSS-only way to reference
+   "Monaco's current background" here). Instead, `ConflictResolver.tsx`'s `handlePaneMount` reads
+   this pane's *actual* computed background at mount and keeps it synced (via a `MutationObserver`
+   on the editor's class/style, since `monaco.editor` exposes no theme-change event either) onto
+   this wrapper as an inline style — works for every theme, built-in or host-generated, with
+   nothing hardcoded here. */
+.merge-pane-numbers-right {
+  padding-left: 8px;
+}
+
 /* Leftmost (theirs/incoming) pane: flip Monaco's native gutter to the right edge instead of
    the left, so its line numbers hug the connector gap. The margin's
    width is always exactly `contentLeft`, and the scrollable content's width is always exactly

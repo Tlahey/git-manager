@@ -5,7 +5,10 @@ export type {
   ConflictResolverPanel,
   ConflictResolverEditorConfig,
 } from './ConflictResolver'
-export type { ConflictResolverActionsConfig } from './ConflictResolverHeader'
+export type {
+  ConflictResolverActionsConfig,
+  ConflictResolverLabels,
+} from './ConflictResolverHeader'
 export { CodePane } from './CodePane'
 export type { CodePaneEditorComponent, CodePaneEditorProps } from './CodePane'
 export { MergeConnectorOverlay } from './MergeConnectorOverlay'

@@ -240,4 +240,19 @@ describe('status bar / panel layout', () => {
     expect(screen.getByTestId('merge-header-center-status')).toBeInTheDocument()
     expect(screen.queryByTestId('merge-header-right-status')).not.toBeInTheDocument()
   })
+
+  it('omits the whole bar when the host supplies no status at all', () => {
+    render(
+      <ConflictResolverHeader {...props({ statuses: [null, null, null], panelWidths: [1, 1, 0] })} />
+    )
+    expect(screen.queryByTestId('merge-header-left-status')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('merge-header-center-status')).not.toBeInTheDocument()
+  })
+
+  it('renders the bar as soon as at least one pane has a status', () => {
+    render(
+      <ConflictResolverHeader {...props({ statuses: [null, 'C', null], panelWidths: [1, 1, 0] })} />
+    )
+    expect(screen.getByTestId('merge-header-center-status')).toHaveTextContent('C')
+  })
 })

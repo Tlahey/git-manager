@@ -77,21 +77,21 @@ export function buildTwoWaySegments(
     const placement = placements.get(block.blockId)
     if (!placement) continue
 
-    if (
-      block.kind === 'unchanged' &&
-      geometry.collapseUnchanged &&
-      !geometry.expandedBlocks.has(block.blockId)
-    ) {
-      const segment = collapsedSegment(
-        geometry,
-        block.blockId,
-        'theirs',
-        block.theirsStartLine,
-        'center',
-        placement.centerStartLine,
-        block.theirsLineCount
-      )
-      if (segment) left.push(segment)
+    if (block.kind === 'unchanged') {
+      // Plain matching code never gets a change ribbon — only its collapsed-banner wave, and
+      // only while it's actually collapsed (not manually expanded back open).
+      if (geometry.collapseUnchanged && !geometry.expandedBlocks.has(block.blockId)) {
+        const segment = collapsedSegment(
+          geometry,
+          block.blockId,
+          'theirs',
+          block.theirsStartLine,
+          'center',
+          placement.centerStartLine,
+          block.theirsLineCount
+        )
+        if (segment) left.push(segment)
+      }
       continue
     }
 

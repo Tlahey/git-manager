@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
-import { forwardRef, useImperativeHandle } from 'react'
 
 vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 
@@ -16,25 +15,23 @@ vi.mock('../../api/git.api', () => ({
   apiUnstageFile: vi.fn(),
 }))
 
-const { diffViewerMock, lastDiffViewerProps, lastToolbarProps } = vi.hoisted(() => ({
-  diffViewerMock: {
-    goToNextChange: vi.fn(),
-    goToPreviousChange: vi.fn(),
-    getModifiedValue: vi.fn(),
-    setModifiedValue: vi.fn(),
-  },
-  lastDiffViewerProps: { current: null as unknown },
+const { lastMergeEditorProps, lastFileViewerProps, lastToolbarProps } = vi.hoisted(() => ({
+  lastMergeEditorProps: { current: null as unknown },
+  lastFileViewerProps: { current: null as unknown },
   lastToolbarProps: { current: null as unknown },
 }))
-vi.mock('./MonacoDiffViewer', () => {
-  const MonacoDiffViewer = forwardRef((props: unknown, ref) => {
-    lastDiffViewerProps.current = props
-    useImperativeHandle(ref, () => diffViewerMock)
-    return <div data-testid="monaco-diff-viewer" />
-  })
-  MonacoDiffViewer.displayName = 'MonacoDiffViewer'
-  return { MonacoDiffViewer }
-})
+vi.mock('../merge-editor/ThreeWayMergeEditor', () => ({
+  ThreeWayMergeEditor: (props: Record<string, unknown>) => {
+    lastMergeEditorProps.current = props
+    return <div data-testid="three-way-merge-editor" />
+  },
+}))
+vi.mock('./MonacoFileViewer', () => ({
+  MonacoFileViewer: (props: Record<string, unknown>) => {
+    lastFileViewerProps.current = props
+    return <div data-testid="monaco-file-viewer" />
+  },
+}))
 vi.mock('./components/DiffToolbar', () => ({
   DiffToolbar: (props: Record<string, unknown>) => {
     lastToolbarProps.current = props
@@ -54,8 +51,7 @@ type ToolbarProps = {
   onClose: () => void
   onToggleStage: () => void
   onRollback: () => void
-  onPrevChange: () => void
-  onNextChange: () => void
+  onChangeActiveTab: (tab: 'diff' | 'file') => void
 }
 
 function toolbarProps() {
@@ -108,7 +104,7 @@ describe('DiffViewCenter — loading/empty states', () => {
     expect(screen.getByText('No difference data found.')).toBeInTheDocument()
   })
 
-  it('shows a binary placeholder instead of the Monaco viewer for binary files', () => {
+  it('shows a binary placeholder instead of the diff editor for binary files', () => {
     useFileDiff.mockReturnValue({
       data: { status: 'modified', oldPath: 'a.ts', newPath: 'a.ts', isBinary: true },
       isLoading: false,
@@ -116,11 +112,11 @@ describe('DiffViewCenter — loading/empty states', () => {
     })
     renderCenter()
     expect(screen.getByTestId('diff-binary-placeholder')).toBeInTheDocument()
-    expect(screen.queryByTestId('monaco-diff-viewer')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('three-way-merge-editor')).not.toBeInTheDocument()
   })
 })
 
-describe('DiffViewCenter — Monaco wiring', () => {
+describe('DiffViewCenter — diff/file wiring', () => {
   beforeEach(() => {
     useFileDiff.mockReturnValue({
       data: { status: 'modified', oldPath: 'a.ts', newPath: 'a.ts', isBinary: false },
@@ -133,23 +129,26 @@ describe('DiffViewCenter — Monaco wiring', () => {
     })
   })
 
-  it('passes the raw contents and file path through to MonacoDiffViewer', () => {
+  it('passes the raw contents and file path through to ThreeWayMergeEditor in two-way mode', () => {
     renderCenter()
-    expect(lastDiffViewerProps.current).toMatchObject({
+    expect(lastMergeEditorProps.current).toMatchObject({
+      repoPath: '/repo',
+      filePath: 'src/a.ts',
       original: 'old content',
       modified: 'new content',
-      filePath: 'src/a.ts',
-      viewMode: 'split',
-      activeTab: 'diff',
+      isTwoWay: true,
     })
+    expect(screen.queryByTestId('monaco-file-viewer')).not.toBeInTheDocument()
   })
 
-  it('proxies prev/next-change toolbar callbacks to the Monaco ref', () => {
+  it('switches to MonacoFileViewer when the "file" tab is selected', () => {
     renderCenter()
-    toolbarProps().onPrevChange()
-    toolbarProps().onNextChange()
-    expect(diffViewerMock.goToPreviousChange).toHaveBeenCalledOnce()
-    expect(diffViewerMock.goToNextChange).toHaveBeenCalledOnce()
+    act(() => toolbarProps().onChangeActiveTab('file'))
+    expect(lastFileViewerProps.current).toMatchObject({
+      content: 'new content',
+      filePath: 'src/a.ts',
+    })
+    expect(screen.queryByTestId('three-way-merge-editor')).not.toBeInTheDocument()
   })
 })
 

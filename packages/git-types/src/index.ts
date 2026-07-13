@@ -338,6 +338,9 @@ export interface AppearanceSettings {
   enableAnimations: boolean
   notificationLocation?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
   rowHeight?: 'standard' | 'small'
+  /** Monaco's sticky scroll (pins the enclosing function/class header to the top of the pane
+   * while scrolling through its body). Off by default — see `settings.appearance.stickyScroll`. */
+  stickyScroll?: boolean
 }
 
 export interface UserTheme {
