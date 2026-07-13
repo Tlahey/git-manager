@@ -18,6 +18,8 @@ vi.mock('./tauri', () => ({
   stashApply: vi.fn(),
   stashDrop: vi.fn(),
   stashStore: vi.fn(),
+  createTag: vi.fn(),
+  deleteTag: vi.fn(),
 }))
 
 import * as tauri from './tauri'
@@ -335,7 +337,7 @@ describe('stashDrop', () => {
   })
 })
 
-describe.each(['fixup', 'autosquash', 'interactiveRebase'] as const)('%s', (type) => {
+describe.each(['fixup', 'autosquash', 'interactiveRebase', 'revert'] as const)('%s', (type) => {
   const action = { ...base, type, previousOid: 'prev', newOid: 'new' } as UndoAction
 
   it('collects both oids', () => {
@@ -350,5 +352,47 @@ describe.each(['fixup', 'autosquash', 'interactiveRebase'] as const)('%s', (type
   it('redo soft-resets to newOid', async () => {
     await executeRedo(REPO, action)
     expect(tauri.resetToCommit).toHaveBeenCalledWith(REPO, 'new', 'soft')
+  })
+})
+
+describe('createBranch', () => {
+  const action: UndoAction = { ...base, type: 'createBranch', name: 'feat', targetOid: 'sha1' }
+
+  it('collects the target oid', () => {
+    expect(collectActionOids(action)).toEqual(['sha1'])
+  })
+
+  it('undo force-deletes the created branch', async () => {
+    await executeUndo(REPO, action)
+    expect(tauri.deleteBranch).toHaveBeenCalledWith(REPO, 'feat', true, false)
+  })
+
+  it('redo recreates the branch ref at the same oid', async () => {
+    await executeRedo(REPO, action)
+    expect(tauri.recreateBranchRef).toHaveBeenCalledWith(REPO, 'feat', 'sha1')
+  })
+})
+
+describe('createTag', () => {
+  const action: UndoAction = {
+    ...base,
+    type: 'createTag',
+    name: 'v1.0',
+    targetOid: 'sha1',
+    message: 'release',
+  }
+
+  it('collects the target oid', () => {
+    expect(collectActionOids(action)).toEqual(['sha1'])
+  })
+
+  it('undo deletes the created tag', async () => {
+    await executeUndo(REPO, action)
+    expect(tauri.deleteTag).toHaveBeenCalledWith(REPO, 'v1.0')
+  })
+
+  it('redo recreates the tag at the same oid with the same message', async () => {
+    await executeRedo(REPO, action)
+    expect(tauri.createTag).toHaveBeenCalledWith(REPO, 'v1.0', 'sha1', 'release')
   })
 })

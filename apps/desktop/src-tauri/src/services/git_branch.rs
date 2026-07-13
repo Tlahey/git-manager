@@ -218,6 +218,11 @@ pub fn create_tag_annotated(
     Ok(())
 }
 
+/// Supprime un tag (léger ou annoté) par son nom court (sans le préfixe `refs/tags/`).
+pub fn delete_tag(repo: &Repository, name: &str) -> Result<(), AppError> {
+    repo.tag_delete(name).map_err(AppError::Git)
+}
+
 /// Checkout d'une branche locale par son nom, ou d'un commit brut par OID (HEAD détaché).
 /// Le fallback OID permet de restaurer un HEAD détaché lors d'un undo de checkout.
 pub fn checkout_branch(repo: &Repository, ref_name: &str, force: bool) -> Result<(), AppError> {
@@ -297,4 +302,60 @@ pub fn delete_branch(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Crée un dépôt temporaire avec un commit initial (repris du gabarit utilisé par
+    /// `git_interactive_rebase.rs` — pas de dépendance de test dédiée dans ce workspace).
+    fn init_repo_with_commit(name: &str) -> (std::path::PathBuf, Repository) {
+        let dir =
+            std::env::temp_dir().join(format!("gm-test-branch-{}-{}", name, std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = Repository::init(&dir).unwrap();
+        let sig = get_git_signature(&repo).unwrap();
+        {
+            // Le `Tree` emprunte `repo` et implémente `Drop` : sa portée doit se terminer avant
+            // de déplacer `repo` dans la valeur de retour ci-dessous.
+            let tree_oid = repo.index().unwrap().write_tree().unwrap();
+            let tree = repo.find_tree(tree_oid).unwrap();
+            repo.commit(Some("HEAD"), &sig, &sig, "init", &tree, &[])
+                .unwrap();
+        }
+        (dir, repo)
+    }
+
+    #[test]
+    fn delete_tag_removes_lightweight_tag() {
+        let (dir, repo) = init_repo_with_commit("delete-lightweight");
+        create_tag_lightweight(&repo, "v1", "HEAD").unwrap();
+        assert!(repo.find_reference("refs/tags/v1").is_ok());
+
+        delete_tag(&repo, "v1").unwrap();
+
+        assert!(repo.find_reference("refs/tags/v1").is_err());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn delete_tag_removes_annotated_tag() {
+        let (dir, repo) = init_repo_with_commit("delete-annotated");
+        create_tag_annotated(&repo, "v2", "HEAD", "release notes").unwrap();
+
+        delete_tag(&repo, "v2").unwrap();
+
+        assert!(repo.find_reference("refs/tags/v2").is_err());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn delete_tag_errors_when_tag_missing() {
+        let (dir, repo) = init_repo_with_commit("delete-missing");
+
+        assert!(delete_tag(&repo, "does-not-exist").is_err());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
 }

@@ -123,6 +123,8 @@ export const recreateBranchRef = (path: string, name: string, oid: string, upstr
 export const createTag = (path: string, name: string, fromRef: string, message?: string) =>
   invoke<void>('create_tag', { path, name, fromRef, message })
 
+export const deleteTag = (path: string, name: string) => invoke<void>('delete_tag', { path, name })
+
 // ─── Stash ────────────────────────────────────────────────────────────────────
 
 export const stashList = (path: string) => invoke<GitStash[]>('stash_list', { path })

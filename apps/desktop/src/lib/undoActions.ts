@@ -14,6 +14,8 @@ import {
   stashApply,
   stashDrop,
   stashStore,
+  createTag,
+  deleteTag,
   type WorktreeSnapshot,
 } from './tauri'
 
@@ -60,6 +62,9 @@ export type UndoAction = ActionBase &
     | { type: 'fixup'; previousOid: string; newOid: string }
     | { type: 'autosquash'; previousOid: string; newOid: string }
     | { type: 'interactiveRebase'; previousOid: string; newOid: string }
+    | { type: 'revert'; previousOid: string; newOid: string }
+    | { type: 'createBranch'; name: string; targetOid: string }
+    | { type: 'createTag'; name: string; targetOid: string; message?: string }
   )
 
 function snapshotOids(snapshot: WorktreeSnapshot | null): string[] {
@@ -92,7 +97,11 @@ export function collectActionOids(action: UndoAction): string[] {
     case 'fixup':
     case 'autosquash':
     case 'interactiveRebase':
+    case 'revert':
       return [action.previousOid, action.newOid]
+    case 'createBranch':
+    case 'createTag':
+      return [action.targetOid]
   }
 }
 
@@ -143,7 +152,14 @@ export async function executeUndo(path: string, action: UndoAction): Promise<voi
     case 'fixup':
     case 'autosquash':
     case 'interactiveRebase':
+    case 'revert':
       await resetToCommit(path, action.previousOid, 'soft')
+      return
+    case 'createBranch':
+      await deleteBranch(path, action.name, true, false)
+      return
+    case 'createTag':
+      await deleteTag(path, action.name)
       return
   }
 }
@@ -183,7 +199,14 @@ export async function executeRedo(path: string, action: UndoAction): Promise<voi
     case 'fixup':
     case 'autosquash':
     case 'interactiveRebase':
+    case 'revert':
       await resetToCommit(path, action.newOid, 'soft')
+      return
+    case 'createBranch':
+      await recreateBranchRef(path, action.name, action.targetOid)
+      return
+    case 'createTag':
+      await createTag(path, action.name, action.targetOid, action.message)
       return
   }
 }
