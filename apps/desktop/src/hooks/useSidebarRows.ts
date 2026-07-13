@@ -1,12 +1,13 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import type { GitBranch, GitRef, GitSubmodule } from '@git-manager/git-types'
+import type { GitBranch, GitRef, GitSubmodule, GitWorktree } from '@git-manager/git-types'
 import { useBranches } from './useBranches'
 import { useGitStashes } from './useGitStashes'
 import { useGroupedBranches } from './useGroupedBranches'
 import { usePullRequests } from './usePullRequests'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
 import { apiGetTags, apiListSubmodules } from '../api/git.api'
+import { apiListWorktrees } from '../api/worktree.api'
 import {
   type SidebarRow,
   type SectionKey,
@@ -69,6 +70,14 @@ export function useSidebarRows({
     enabled: !!repoPath,
     staleTime: 60_000,
   })
+
+  const { data: allWorktrees = [] } = useQuery<GitWorktree[]>({
+    queryKey: ['worktrees', repoPath],
+    queryFn: () => apiListWorktrees(repoPath),
+    enabled: !!repoPath,
+    staleTime: 30_000,
+  })
+  const worktrees = useMemo(() => allWorktrees.filter((wt) => !wt.isMain), [allWorktrees])
 
   const q = filter.trim().toLowerCase()
   const matchesFilter = (b: GitBranch) => !q || b.shortName.toLowerCase().includes(q)
@@ -347,6 +356,31 @@ export function useSidebarRows({
       }
     }
 
+    // ----- Worktrees -----
+    // Always shown (unlike Submodules/Tags/Stashes, which hide when empty) — this is the only
+    // section whose header carries an "add" action, so it must stay reachable with zero worktrees.
+    {
+      out.push({ kind: 'divider', id: 'div:worktrees' })
+      const open = sectionOpen('worktrees')
+      out.push({
+        kind: 'section',
+        id: 'section:worktrees',
+        sectionKey: 'worktrees',
+        title: 'Worktrees',
+        count: worktrees.length || undefined,
+        isOpen: open,
+      })
+      if (open) {
+        if (worktrees.length === 0) {
+          out.push({ kind: 'message', id: 'wt:empty', text: 'No linked worktrees.' })
+        } else {
+          for (const wt of worktrees) {
+            out.push({ kind: 'worktree', id: `wt:${wt.path}`, wt })
+          }
+        }
+      }
+    }
+
     return out
   }, [
     openState,
@@ -363,6 +397,7 @@ export function useSidebarRows({
     tags,
     stashes,
     submodules,
+    worktrees,
   ])
 
   return { rows, isPinned }

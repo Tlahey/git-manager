@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
-import type { GitBranch, GitRef, GitStash, GitSubmodule } from '@git-manager/git-types'
+import type { GitBranch, GitRef, GitStash, GitSubmodule, GitWorktree } from '@git-manager/git-types'
 
 const useBranchesMock = vi.fn()
 const useGitStashesMock = vi.fn()
@@ -12,14 +12,17 @@ vi.mock('./useGitStashes', () => ({ useGitStashes: () => useGitStashesMock() }))
 vi.mock('./usePullRequests', () => ({ usePullRequests: () => usePullRequestsMock() }))
 
 vi.mock('../api/git.api', () => ({ apiGetTags: vi.fn(), apiListSubmodules: vi.fn() }))
+vi.mock('../api/worktree.api', () => ({ apiListWorktrees: vi.fn() }))
 
 import { apiGetTags, apiListSubmodules } from '../api/git.api'
+import { apiListWorktrees } from '../api/worktree.api'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
 import { useSidebarRows } from './useSidebarRows'
 import type { SidebarRow } from '../components/repository-sidebar/types'
 
 const mockedGetTags = apiGetTags as unknown as ReturnType<typeof vi.fn>
 const mockedListSubmodules = apiListSubmodules as unknown as ReturnType<typeof vi.fn>
+const mockedListWorktrees = apiListWorktrees as unknown as ReturnType<typeof vi.fn>
 
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -66,6 +69,19 @@ function submodule(path: string): GitSubmodule {
   return { path, url: '', headOid: 'oid' }
 }
 
+function worktree(path: string, overrides: Partial<GitWorktree> = {}): GitWorktree {
+  return {
+    path,
+    branch: 'feature/login',
+    commitOid: 'oid',
+    isMain: false,
+    isLocked: false,
+    isDirty: false,
+    isPrunable: false,
+    ...overrides,
+  }
+}
+
 function findRow(rows: SidebarRow[], id: string) {
   return rows.find((r) => r.id === id)
 }
@@ -80,6 +96,7 @@ beforeEach(() => {
   usePullRequestsMock.mockReturnValue(DEFAULT_PR_DATA)
   mockedGetTags.mockResolvedValue([])
   mockedListSubmodules.mockResolvedValue([])
+  mockedListWorktrees.mockResolvedValue([])
 })
 
 function renderRows(params: Partial<Parameters<typeof useSidebarRows>[0]> = {}) {
@@ -270,5 +287,32 @@ describe('useSidebarRows — tags/stashes/submodules', () => {
       count: 2,
       isOpen: false,
     })
+  })
+})
+
+describe('useSidebarRows — worktrees section', () => {
+  it('always shows the worktrees section header, even with none — unlike submodules/tags/stashes', async () => {
+    const { result } = renderRows()
+    await waitFor(() => expect(findRow(result.current.rows, 'section:worktrees')).toBeDefined())
+    expect(findRow(result.current.rows, 'section:worktrees')).toMatchObject({
+      count: undefined,
+      isOpen: false,
+    })
+  })
+
+  it('shows an empty message when the section is opened with no worktrees', async () => {
+    const { result } = renderRows({ openState: { 'section:worktrees': true } })
+    await waitFor(() => expect(findRow(result.current.rows, 'wt:empty')).toBeDefined())
+  })
+
+  it('filters out the main worktree and renders one row per linked worktree once opened', async () => {
+    mockedListWorktrees.mockResolvedValue([
+      worktree('/repo', { isMain: true }),
+      worktree('/tmp/repo-linked'),
+    ])
+    const { result } = renderRows({ openState: { 'section:worktrees': true } })
+    await waitFor(() => expect(findRow(result.current.rows, 'section:worktrees')).toMatchObject({ count: 1 }))
+    expect(findRow(result.current.rows, 'wt:/repo')).toBeUndefined()
+    expect(findRow(result.current.rows, 'wt:/tmp/repo-linked')).toBeDefined()
   })
 })

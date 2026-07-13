@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (17 feature files / ~150 steps, 7 visual snapshots)
+## Covered today (18 feature files / ~160 steps, 7 visual snapshots)
 
 | Feature                                                            | Area       | Setup                    | Snapshot                          | Status                                                      |
 | ------------------------------------------------------------------ | ---------- | ------------------------ | --------------------------------- | ----------------------------------------------------------- |
@@ -34,6 +34,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | Sidebar lists stashes                                              | stash      | fixture:stash-stack      | —                                 | ✅ (list ✅; **drop/apply/pop ✅ via ⌘K palette**, each asserted via `git stash list` / a restored file) |
 | Settings screen opens + **snapshot**                               | settings   | keyboard (Mod+,)         | 📷 ✅ (general + notifications)   | 🟡 (general & notifications snapshotted; row-height persistence ✅; **ssh key generation ✅ · AI provider test-connection ✅ · rewards toggle ✅ · AI preset dropdown ✅**; appearance snapshot skipped on purpose, see below) |
 | **AI commit-message generation**: streaming + prompt-wiring + cancel | AI         | fake HTTP server         | —                                 | ✅ (see "6. AI commit-message generation" below)            |
+| **Worktree** list / add / remove (incl. dirty-remove force gate)  | worktree   | fixture:worktree-repo    | —                                 | ✅ (see "Worktree management" below)                        |
 
 ---
 
@@ -220,6 +221,40 @@ be added later without reworking today's code:
   Anthropic disabled/"coming soon"; `command-mocking.feature`/`mocking.steps.ts` updated for the
   renamed `check_ai_status` command and its new `{config: {protocol, url}}` argument shape.
 
+### 7. Worktree management ✅
+
+Requested as "e2e coverage for worktree add/list/remove," but investigating first found the Rust
+backend (`add_worktree`/`list_worktrees`/`remove_worktree`, already registered and working) had
+**no UI at all** for listing or removing a worktree — `apiListWorktrees`/`apiRemoveWorktree` had zero
+call sites anywhere in the frontend. "Add" was only reachable via a right-click on a commit
+(`useGitGraphActions.ts`'s `handleCreateWorktree`), using a native OS folder-picker dialog — which
+was also the wrong control semantically, since `add_worktree`'s destination must **not** already
+exist (a picker is for choosing something that does). Built the missing UI so the feature is both
+usable and e2e-coverable, rather than documenting it as blocked like Clone/Scan:
+
+- A new **Worktrees** sidebar section (`useSidebarRows.ts` + `SidebarRowView.tsx`'s `case
+  'worktree':`), mirroring the existing (live) Submodules pattern — one row per non-main worktree,
+  branch + path + short oid, a lock glyph when relevant. Unlike Submodules/Tags/Stashes, this
+  section is always shown (even with zero worktrees), since it's the one section whose header
+  carries an "add" action (`worktree-add-button`) that must stay reachable.
+- **`AddWorktreeDialog.tsx`** (new): a branch `<select>` + a plain text path input — deliberately
+  not a native picker, both because WebDriver can't drive one and because a path that must not yet
+  exist was never what a folder *picker* is for.
+- **`RemoveWorktreeDialog.tsx`** (new): a hover-revealed trash icon on each row (not a native
+  context menu — this repo's own docs note those can't be driven by WebDriver) opens a confirm
+  dialog. `git_worktree.rs`'s `is_dirty` was hardcoded `false` and never actually computed — fixed
+  by opening each non-main worktree with git2 and checking real status — so the dialog can warn and
+  gate removal behind an explicit "force remove" checkbox when the worktree has uncommitted
+  changes, one tier lighter than hard-reset's typed-`RESET` gate (smaller blast radius: one
+  worktree's directory, not rewriting history). Locked worktrees are a hard block for now (git
+  needs `--force` twice to remove a locked+dirty one; `remove_worktree` only ever sends one).
+- **e2e**: new `fixture:worktree-repo` (first fixture to use `git worktree add`, at a sibling path
+  outside the fixture's own directory — git refuses nesting one inside the repo it's linked to).
+  `worktree.feature`: list, add (via a fresh `mkdtempSync` path, same pattern as the SSH
+  key-generator scenario), remove, and a dirty-remove scenario that writes an uncommitted change to
+  the linked worktree's tracked file directly on disk, reloads, and asserts the force-checkbox gate
+  before removal succeeds.
+
 ---
 
 ## Rest of the surface (lower priority / smaller)
@@ -241,7 +276,7 @@ be added later without reworking today's code:
 | GitHub OAuth device flow                | github        | mock              | —        | ⬜ (mock the poll)                                                                   |
 | SSH key generate / read                 | ssh           | seed              | —        | ✅ (generate via Settings → ssh, real `ssh-keygen` against a temp dir — see "3. Settings" above) |
 | Submodule list                          | submodule     | dedicated fixture | —        | ✅ (`fixture:submodule-repo`, a real `git submodule add`; sidebar row asserted via `SidebarRowView.tsx` — see gotchas for the dead-code detour) |
-| Worktree add / list / remove            | worktree      | native path       | —        | ⬜                                                                                   |
+| Worktree add / list / remove            | worktree      | dedicated fixture | —        | ✅ (list/add/remove + dirty-remove force gate — see "Worktree management" below)     |
 | Themes                                  | settings      | seed              | 📷       | ✅ (select a built-in theme → `data-theme` applies + persists across reload; single-card snapshot avoids the full-grid reproducibility problem — see "3. Settings") |
 | Rewards / gamification toast            | rewards       | action-triggered  | 📷       | ✅ (first commit unlocks "Premier Pas", asserted via `trophy-toast`; game progress reset via localStorage first — see `rewards.feature`) |
 | Notifications tray/dropdown             | notifications | seed              | —        | ✅ (bell → dropdown shows seeded items + unread badge, mark-all-read, clear-all → empty state; seeded via `git-manager-notifications` localStorage, not the real GitHub-diff pipeline) |
@@ -388,3 +423,22 @@ DOM value:
   scenario driving apply/pop needs a clean working tree first — see the `Given the working tree
   starts clean` step (`git reset --hard HEAD && git clean -fd` directly on the fixture repo,
   bypassing the UI) in `command-palette.steps.ts`.
+- **A linked worktree must live outside its own fixture's directory** — `worktree-repo.sh` is the
+  first fixture script to call `git worktree add`; the linked worktree goes at a *sibling* path
+  (`$FIXTURES_ROOT/worktree-repo-linked`), not a subdirectory of the fixture itself, since git
+  refuses/complains about nesting a worktree inside the repo it's linked to. The dirty-remove e2e
+  scenario writes directly to a file inside that sibling path *before* reloading the app (not
+  after) — `list_worktrees`' React Query cache is wiped by the reload itself, so the timing only
+  matters relative to the write, not to any manual cache invalidation.
+- **`opacity-0 group-hover:opacity-100` elements fail `waitForDisplayed`/`.click()` on the embedded
+  WebKit provider** — the Worktrees section's "add" button (`SectionHeader`'s hover-revealed
+  `action` slot) and each row's hover-only remove button are invisible until hovered in production,
+  by design. This provider's `isDisplayed()` follows the classic Selenium visibility algorithm,
+  which — unlike `display`/`visibility` — treats `opacity: 0` as **not displayed**, so a real click
+  attempt on them times out even though the element is genuinely in the DOM and would be
+  click-through in a real browser. `worktree.steps.ts`'s `clickViaJs` helper (`waitForExist` +
+  `browser.execute(() => el.click())`) works around it — the same "bypass WebDriver's own click
+  entirely" technique `fixup.steps.ts`'s `clickViaJs` already uses for real-second-window quirks,
+  just for a different underlying cause. Any future hover-revealed control (this suite doesn't have
+  many — the stash row's visibility toggle is the only other one, and it isn't e2e-driven yet)
+  should assume the same fix is needed rather than a plain `.click()`.

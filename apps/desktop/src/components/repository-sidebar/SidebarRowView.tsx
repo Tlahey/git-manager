@@ -12,9 +12,12 @@ import {
   Archive as ArchiveIcon,
   Eye,
   EyeOff,
+  Layers,
+  Lock,
+  Trash2,
 } from 'lucide-react'
 import { Spinner } from '@git-manager/ui'
-import type { GitBranch, PullRequest, GitStash } from '@git-manager/git-types'
+import type { GitBranch, GitWorktree, PullRequest, GitStash } from '@git-manager/git-types'
 import type { SidebarRow, SectionKey } from './types'
 import { SectionHeader } from './SectionHeader'
 import { BranchItem } from './BranchItem'
@@ -28,6 +31,7 @@ const SECTION_ICONS: Record<SectionKey, React.ReactNode> = {
   tags: <TagIcon className="h-3 w-3" />,
   submodules: <GitFork className="h-3 w-3" />,
   stashes: <ArchiveIcon className="h-3 w-3" />,
+  worktrees: <Layers className="h-3 w-3" />,
 }
 
 interface SidebarRowViewProps {
@@ -41,6 +45,8 @@ interface SidebarRowViewProps {
   onStashContextMenu?: (e: React.MouseEvent, stash: GitStash) => void
   hiddenStashes?: string[]
   onToggleStashVisibility?: (oid: string) => void
+  onAddWorktree?: () => void
+  onRemoveWorktree?: (wt: GitWorktree) => void
 }
 
 export function SidebarRowView({
@@ -54,6 +60,8 @@ export function SidebarRowView({
   onStashContextMenu,
   hiddenStashes = [],
   onToggleStashVisibility,
+  onAddWorktree,
+  onRemoveWorktree,
 }: SidebarRowViewProps) {
   switch (row.kind) {
     case 'section':
@@ -72,6 +80,16 @@ export function SidebarRowView({
                 className="mr-1 rounded p-0.5 transition-colors hover:bg-accent"
                 aria-label="Créer une branche"
                 title="Créer une branche"
+              >
+                <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            ) : row.sectionKey === 'worktrees' && onAddWorktree ? (
+              <button
+                onClick={onAddWorktree}
+                className="mr-1 rounded p-0.5 transition-colors hover:bg-accent"
+                aria-label="Add worktree"
+                title="Add worktree"
+                data-testid="worktree-add-button"
               >
                 <Plus className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
@@ -299,6 +317,42 @@ export function SidebarRowView({
             <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground/30">
               {row.sm.headOid.slice(0, 7)}
             </span>
+          )}
+        </div>
+      )
+
+    case 'worktree':
+      return (
+        <div
+          data-testid={`worktree-item-${row.wt.path}`}
+          className="group/wt relative flex items-start gap-1.5 py-[3px] pl-6 pr-2 text-xs text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+        >
+          <Layers className="mt-0.5 h-3 w-3 shrink-0 opacity-30" />
+          <div className="min-w-0 flex-1">
+            <HoverExpandLabel className="font-medium">
+              {row.wt.isLocked && <Lock className="mr-1 inline h-2.5 w-2.5 text-amber-400" />}
+              {row.wt.branch}
+            </HoverExpandLabel>
+            <span className="block truncate text-[10px] text-muted-foreground/50">
+              {row.wt.path}
+            </span>
+          </div>
+          <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground/30">
+            {row.wt.commitOid.slice(0, 7)}
+          </span>
+          {onRemoveWorktree && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onRemoveWorktree(row.wt)
+              }}
+              className="absolute right-1 top-1 shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-all hover:bg-accent/80 hover:text-destructive group-hover/wt:opacity-100"
+              aria-label="Remove worktree"
+              title="Remove worktree"
+              data-testid={`worktree-remove-button-${row.wt.path}`}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
           )}
         </div>
       )

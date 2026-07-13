@@ -1,7 +1,14 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { GitBranch, GitRef, GitStash, PullRequest, GitSubmodule } from '@git-manager/git-types'
+import type {
+  GitBranch,
+  GitRef,
+  GitStash,
+  PullRequest,
+  GitSubmodule,
+  GitWorktree,
+} from '@git-manager/git-types'
 import type { SidebarRow } from './types'
 import { SidebarRowView } from './SidebarRowView'
 
@@ -104,6 +111,18 @@ function submodule(overrides: Partial<GitSubmodule> = {}): GitSubmodule {
     ...overrides,
   }
 }
+function worktree(overrides: Partial<GitWorktree> = {}): GitWorktree {
+  return {
+    path: '/tmp/repo-linked',
+    branch: 'feature/login',
+    commitOid: 'abcdef1234567890',
+    isMain: false,
+    isLocked: false,
+    isDirty: false,
+    isPrunable: false,
+    ...overrides,
+  }
+}
 
 function baseHandlers() {
   return {
@@ -115,6 +134,8 @@ function baseHandlers() {
     onCreateBranch: vi.fn(),
     onStashContextMenu: vi.fn(),
     onToggleStashVisibility: vi.fn(),
+    onAddWorktree: vi.fn(),
+    onRemoveWorktree: vi.fn(),
   }
 }
 
@@ -163,6 +184,19 @@ describe('SidebarRowView — section', () => {
       isOpen: true,
     })
     expect(screen.queryByLabelText('Créer une branche')).not.toBeInTheDocument()
+  })
+
+  it('shows the add-worktree action only for the worktrees section with onAddWorktree', async () => {
+    const user = userEvent.setup()
+    const { h } = renderRow({
+      kind: 'section',
+      id: 'sec-worktrees',
+      sectionKey: 'worktrees',
+      title: 'Worktrees',
+      isOpen: true,
+    })
+    await user.click(screen.getByTestId('worktree-add-button'))
+    expect(h.onAddWorktree).toHaveBeenCalledOnce()
   })
 })
 
@@ -388,6 +422,35 @@ describe('SidebarRowView — submodule', () => {
   it('omits the head-oid badge when absent', () => {
     renderRow({ kind: 'submodule', id: 'sm-1', sm: submodule({ headOid: '' }) })
     expect(screen.queryByText('abcdef1')).not.toBeInTheDocument()
+  })
+})
+
+describe('SidebarRowView — worktree', () => {
+  it('shows the branch, path, and short commit oid', () => {
+    renderRow({
+      kind: 'worktree',
+      id: 'wt-1',
+      wt: worktree({ branch: 'feature/login', path: '/tmp/repo-linked' }),
+    })
+    expect(screen.getByText('feature/login')).toBeInTheDocument()
+    expect(screen.getByText('/tmp/repo-linked')).toBeInTheDocument()
+    expect(screen.getByText('abcdef1')).toBeInTheDocument()
+  })
+
+  it('shows a lock icon when locked', () => {
+    const { container } = renderRow({
+      kind: 'worktree',
+      id: 'wt-1',
+      wt: worktree({ isLocked: true }),
+    })
+    expect(container.querySelector('.lucide-lock')).toBeTruthy()
+  })
+
+  it('calls onRemoveWorktree with the worktree when the trash button is clicked', () => {
+    const wt = worktree({ path: '/tmp/repo-linked' })
+    const { h } = renderRow({ kind: 'worktree', id: 'wt-1', wt })
+    fireEvent.click(screen.getByTestId('worktree-remove-button-/tmp/repo-linked'))
+    expect(h.onRemoveWorktree).toHaveBeenCalledWith(wt)
   })
 })
 
