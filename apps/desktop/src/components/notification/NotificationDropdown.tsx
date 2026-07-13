@@ -71,6 +71,7 @@ export function NotificationDropdown() {
     <Popover open={menuOpen} onOpenChange={setMenuOpen}>
       <PopoverTrigger asChild>
         <button
+          data-testid="notification-bell-button"
           className={`relative flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground ${
             menuOpen ? 'bg-accent text-foreground' : ''
           }`}
@@ -78,7 +79,10 @@ export function NotificationDropdown() {
         >
           <Bell className="h-3.5 w-3.5" />
           {unreadCount > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 animate-pulse items-center justify-center rounded-full bg-primary text-[8px] font-bold text-primary-foreground ring-2 ring-card">
+            <span
+              data-testid="notification-unread-badge"
+              className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 animate-pulse items-center justify-center rounded-full bg-primary text-[8px] font-bold text-primary-foreground ring-2 ring-card"
+            >
               {unreadCount}
             </span>
           )}
@@ -86,6 +90,7 @@ export function NotificationDropdown() {
       </PopoverTrigger>
       <PopoverContent
         align="end"
+        data-testid="notification-dropdown"
         className="z-[99] flex w-80 flex-col rounded-lg border border-border bg-popover text-popover-foreground shadow-2xl backdrop-blur-sm"
       >
         {/* Header */}
@@ -105,6 +110,7 @@ export function NotificationDropdown() {
               <>
                 <button
                   onClick={markAllAsRead}
+                  data-testid="notification-mark-all-read"
                   className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   title={t('notifications.markAllAsRead')}
                 >
@@ -112,6 +118,7 @@ export function NotificationDropdown() {
                 </button>
                 <button
                   onClick={clearNotifications}
+                  data-testid="notification-clear-all"
                   className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-destructive"
                   title={t('notifications.clearAll')}
                 >
@@ -125,7 +132,10 @@ export function NotificationDropdown() {
         {/* Notifications List */}
         <div className="max-h-[280px] min-h-[100px] overflow-y-auto">
           {recentNotifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center px-4 py-8 text-center">
+            <div
+              data-testid="notification-empty-state"
+              className="flex flex-col items-center justify-center px-4 py-8 text-center"
+            >
               <Bell className="mb-2 h-7 w-7 stroke-[1.5] text-muted-foreground/30" />
               <p className="text-[11px] text-muted-foreground">{t('notifications.empty')}</p>
             </div>
@@ -136,6 +146,7 @@ export function NotificationDropdown() {
                 return (
                   <button
                     key={notif.id}
+                    data-testid={`notification-item-${notif.id}`}
                     onClick={() => handleNotificationClick(notif)}
                     className={`flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-accent/40 ${
                       !notif.read ? 'bg-primary/5' : ''

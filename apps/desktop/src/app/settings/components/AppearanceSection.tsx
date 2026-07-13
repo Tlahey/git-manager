@@ -16,12 +16,12 @@ interface ThemeCardProps {
   onClick: () => void
 }
 
-function ThemeCard({ label, colors, isSystem, isActive, isCustom, onClick }: ThemeCardProps) {
+function ThemeCard({ id, label, colors, isSystem, isActive, isCustom, onClick }: ThemeCardProps) {
   return (
     <button
       type="button"
       onClick={onClick}
-      data-testid={`theme-card-${label.toLowerCase().replace(/\s+/g, '-')}`}
+      data-testid={`theme-card-${id}`}
       className={`relative flex cursor-pointer flex-col gap-2 rounded-lg border p-3 text-left transition-all ${
         isActive
           ? 'border-primary bg-primary/10 ring-1 ring-primary'

@@ -1,3 +1,5 @@
+import type { AiGenerationConfig } from '@git-manager/ai'
+
 // ─── Repository ───────────────────────────────────────────────────────────────
 
 export interface GitRepo {
@@ -264,7 +266,7 @@ export interface GitHubSettings {
 }
 
 export interface AppSettings {
-  ollama: OllamaSettings
+  ai: AiGenerationConfig
   git: GitSettings
   appearance: AppearanceSettings
   language: 'fr' | 'en'
@@ -319,16 +321,6 @@ export interface NotificationSettings {
   notifyOnNewPr?: boolean
 }
 
-export interface OllamaSettings {
-  url: string
-  model: string
-  temperature: number
-  timeoutSeconds: number
-  systemPrompt: string
-  includeRepoContext: boolean
-  autoDetectScope: boolean
-}
-
 export interface GitSettings {
   defaultAuthorName: string
   defaultAuthorEmail: string
@@ -365,14 +357,6 @@ export interface AppError {
   code: string
   message: string
   detail?: string
-}
-
-// ─── Ollama ───────────────────────────────────────────────────────────────────
-
-export interface OllamaStatus {
-  connected: boolean
-  models: string[]
-  version?: string
 }
 
 export interface GitRepoSummary {

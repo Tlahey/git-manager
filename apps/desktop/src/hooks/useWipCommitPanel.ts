@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { GitStatus, GitStatusEntry } from '@git-manager/git-types'
 import { apiUnstageAll, apiStageFile, apiUnstageFile, apiCreateCommit } from '../api/git.api'
-import { useOllamaGeneration } from './useOllamaGeneration'
+import { useAiGeneration } from './useAiGeneration'
 import { useCommitMessageHistory } from './useCommitMessageHistory'
 import type { ProcessedFileItem } from '../components/git-graph/components/CommitFileList'
 
@@ -34,7 +34,7 @@ export function useWipCommitPanel(
     generate: runLlmGenerate,
     cancel: cancelLlmGenerate,
     status: llmStatus,
-  } = useOllamaGeneration(repoPath)
+  } = useAiGeneration(repoPath)
   const { history, addMessage } = useCommitMessageHistory()
 
   const isGenerating = llmStatus === 'connecting' || llmStatus === 'streaming'
@@ -79,7 +79,7 @@ export function useWipCommitPanel(
         }
       }
 
-      // 4. Call Ollama
+      // 4. Call the configured AI provider
       let accumulated = ''
       await new Promise<void>((resolve, reject) => {
         runLlmGenerate(

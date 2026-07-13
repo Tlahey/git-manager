@@ -24,18 +24,16 @@ beforeEach(() => {
 describe('AppearanceSection — theme picker', () => {
   it('shows the always-unlocked built-in themes', () => {
     render(<AppearanceSection />)
-    expect(screen.getByTestId('theme-card-settings.appearance.theme.system')).toBeInTheDocument()
-    expect(screen.getByTestId('theme-card-settings.appearance.theme.dark')).toBeInTheDocument()
-    expect(screen.getByTestId('theme-card-settings.appearance.theme.light')).toBeInTheDocument()
+    expect(screen.getByTestId('theme-card-system')).toBeInTheDocument()
+    expect(screen.getByTestId('theme-card-dark')).toBeInTheDocument()
+    expect(screen.getByTestId('theme-card-light')).toBeInTheDocument()
   })
 
   it('hides an achievement-gated theme until its achievement unlocks', () => {
     // "forest" is gated by achievement "pr_10" (see achievements.json); all achievements start
     // unlocked: false in the default game store, so it should not show up yet.
     const { rerender } = render(<AppearanceSection />)
-    expect(
-      screen.queryByTestId('theme-card-settings.appearance.theme.forest')
-    ).not.toBeInTheDocument()
+    expect(screen.queryByTestId('theme-card-forest')).not.toBeInTheDocument()
 
     useGameStore.setState({
       achievements: useGameStore
@@ -43,7 +41,7 @@ describe('AppearanceSection — theme picker', () => {
         .achievements.map((a) => (a.id === 'pr_10' ? { ...a, unlocked: true } : a)),
     })
     rerender(<AppearanceSection />)
-    expect(screen.getByTestId('theme-card-settings.appearance.theme.forest')).toBeInTheDocument()
+    expect(screen.getByTestId('theme-card-forest')).toBeInTheDocument()
   })
 
   it('lists custom user themes with a "custom" badge', () => {
@@ -56,7 +54,7 @@ describe('AppearanceSection — theme picker', () => {
   it('selects a theme, marking it active', async () => {
     const user = userEvent.setup()
     render(<AppearanceSection />)
-    await user.click(screen.getByTestId('theme-card-settings.appearance.theme.dark'))
+    await user.click(screen.getByTestId('theme-card-dark'))
     expect(useSettingsStore.getState().settings.appearance.theme).toBe('dark')
   })
 })

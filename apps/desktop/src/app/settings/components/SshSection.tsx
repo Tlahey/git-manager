@@ -238,6 +238,7 @@ export function SshSection() {
             variant="outline"
             className="h-8 gap-1.5 text-xs"
             onClick={() => setShowGenerator(!showGenerator)}
+            data-testid="ssh-generator-toggle"
           >
             <Plus className="h-3.5 w-3.5" />
             {showGenerator ? 'Masquer' : 'Ouvrir le générateur'}
@@ -308,6 +309,7 @@ export function SshSection() {
                 value={genPath}
                 onChange={(e) => setGenPath(e.target.value)}
                 className="h-8 font-mono text-xs"
+                data-testid="ssh-generate-path-input"
               />
             </div>
 
@@ -334,6 +336,7 @@ export function SshSection() {
                     value={generatedPubKey}
                     rows={3}
                     className="w-full resize-none border border-border bg-muted/20 font-mono text-[10px] leading-normal"
+                    data-testid="ssh-generated-pubkey"
                   />
                   <Button
                     size="sm"
@@ -350,6 +353,7 @@ export function SshSection() {
                 onClick={handleGenerateKey}
                 disabled={generating}
                 className="h-8 w-full gap-2 text-xs"
+                data-testid="ssh-generate-button"
               >
                 {generating ? (
                   <>

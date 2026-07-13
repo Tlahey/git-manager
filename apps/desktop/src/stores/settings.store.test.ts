@@ -55,7 +55,7 @@ describe('mergeSettingsWithDefaults', () => {
     const merged = mergeSettingsWithDefaults({ language: 'en' })
     expect(merged.language).toBe('en')
     expect(merged.appearance).toEqual(DEFAULT_SETTINGS.appearance)
-    expect(merged.ollama).toEqual(DEFAULT_SETTINGS.ollama)
+    expect(merged.ai).toEqual(DEFAULT_SETTINGS.ai)
   })
 
   it('fills fields missing inside a persisted group (forward-compat for new settings)', () => {

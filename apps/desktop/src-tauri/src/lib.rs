@@ -5,6 +5,7 @@ mod services;
 mod state;
 mod utils;
 
+use commands::ai::{cancel_generation, check_ai_status, generate_commit_message};
 use commands::branch::{
     checkout_branch, create_branch, create_tag, delete_branch, delete_tag, get_branches, get_tags,
     is_commit_on_current_branch,
@@ -24,7 +25,6 @@ use commands::fixup::{
 use commands::github::{github_device_code, github_get_user, github_list_repos, github_poll_token};
 use commands::interactive_rebase::{list_rebase_commits, run_interactive_rebase};
 use commands::log::{compare_commit_to_workdir, get_commit_diff, get_commit_file, get_log};
-use commands::ollama::{cancel_generation, check_ollama_status, generate_commit_message};
 use commands::patch::create_patch;
 use commands::rebase::{
     abort_rebase, continue_rebase, get_rebase_state, rebase_onto_commit, skip_rebase,
@@ -162,8 +162,8 @@ pub fn run() {
             skip_rebase,
             list_rebase_commits,
             run_interactive_rebase,
-            // Ollama
-            check_ollama_status,
+            // AI
+            check_ai_status,
             generate_commit_message,
             cancel_generation,
             // Working Tree

@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod branch;
 pub mod cherry_pick;
 pub mod commit;
@@ -6,7 +7,6 @@ pub mod fixup;
 pub mod github;
 pub mod interactive_rebase;
 pub mod log;
-pub mod ollama;
 pub mod patch;
 pub mod rebase;
 pub mod remote;

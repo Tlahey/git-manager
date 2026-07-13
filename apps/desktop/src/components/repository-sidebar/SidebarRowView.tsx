@@ -284,7 +284,10 @@ export function SidebarRowView({
 
     case 'submodule':
       return (
-        <div className="group/sm relative flex items-start gap-1.5 py-[3px] pl-6 pr-2 text-xs text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground">
+        <div
+          data-testid={`submodule-item-${row.sm.path}`}
+          className="group/sm relative flex items-start gap-1.5 py-[3px] pl-6 pr-2 text-xs text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+        >
           <GitFork className="mt-0.5 h-3 w-3 shrink-0 opacity-30" />
           <div className="min-w-0 flex-1">
             <HoverExpandLabel className="font-medium">{row.sm.path}</HoverExpandLabel>

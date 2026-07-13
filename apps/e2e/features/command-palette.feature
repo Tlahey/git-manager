@@ -71,6 +71,7 @@ Feature: Command palette (⌘K)
     When I enter the tag name "v-from-palette"
     And I confirm the tag creation
     Then the tag "v-from-palette" points at the commit "chore: bump counter to 3"
+    And the tag "v-from-palette" is shown as a ref in the graph
 
   Scenario: Creating an annotated tag from an earlier commit via the palette
     When I select the "HEAD~1" commit in the graph

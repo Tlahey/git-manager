@@ -3,7 +3,8 @@ import { persist } from 'zustand/middleware'
 import type { AppSettings } from '@git-manager/git-types'
 
 const DEFAULT_SETTINGS: AppSettings = {
-  ollama: {
+  ai: {
+    preset: 'ollama',
     url: 'http://localhost:11434',
     model: 'llama3.2',
     temperature: 0.3,

@@ -276,16 +276,36 @@ const cases: {
   },
 
   {
-    name: 'checkOllamaStatus',
-    call: () => tauri.checkOllamaStatus('http://localhost:11434'),
-    command: 'check_ollama_status',
-    args: { url: 'http://localhost:11434' },
+    name: 'checkAiStatus',
+    call: () => tauri.checkAiStatus({ protocol: 'openai-compatible', url: 'http://localhost:11434' }),
+    command: 'check_ai_status',
+    args: { config: { protocol: 'openai-compatible', url: 'http://localhost:11434' } },
   },
   {
     name: 'generateCommitMessage',
-    call: () => tauri.generateCommitMessage('/repo', 'llama3', 'hint'),
+    call: () =>
+      tauri.generateCommitMessage('/repo', {
+        protocol: 'openai-compatible',
+        url: 'http://localhost:11434',
+        model: 'llama3',
+        temperature: 0.3,
+        timeoutSeconds: 30,
+        includeRepoContext: true,
+        autoDetectScope: true,
+      }),
     command: 'generate_commit_message',
-    args: { path: '/repo', model: 'llama3', promptHint: 'hint' },
+    args: {
+      path: '/repo',
+      config: {
+        protocol: 'openai-compatible',
+        url: 'http://localhost:11434',
+        model: 'llama3',
+        temperature: 0.3,
+        timeoutSeconds: 30,
+        includeRepoContext: true,
+        autoDetectScope: true,
+      },
+    },
   },
   { name: 'cancelGeneration', call: () => tauri.cancelGeneration(), command: 'cancel_generation' },
 

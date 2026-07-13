@@ -213,11 +213,11 @@ pub struct ThreeWayMergeView {
     pub conflict_count: usize, // count of BothDifferent blocks only
 }
 
-// ─── Ollama ───────────────────────────────────────────────────────────────────
+// ─── AI provider ──────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct OllamaStatus {
+pub struct AiProviderStatus {
     pub connected: bool,
     pub models: Vec<String>,
     pub version: Option<String>,

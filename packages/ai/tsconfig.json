@@ -1,0 +1,7 @@
+{
+  "extends": "@git-manager/config/typescript",
+  "compilerOptions": {
+    "rootDir": "./src"
+  },
+  "include": ["src"]
+}

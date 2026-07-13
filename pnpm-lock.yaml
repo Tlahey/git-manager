@@ -101,6 +101,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@git-manager/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@git-manager/code-view':
         specifier: workspace:*
         version: link:../../packages/code-view
@@ -269,6 +272,15 @@ importers:
         specifier: 'catalog:'
         version: 6.4.3(@types/node@26.0.0)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0)
 
+  packages/ai:
+    devDependencies:
+      '@git-manager/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+
   packages/code-view:
     dependencies:
       lucide-react:
@@ -406,6 +418,10 @@ importers:
   packages/config: {}
 
   packages/git-types:
+    dependencies:
+      '@git-manager/ai':
+        specifier: workspace:*
+        version: link:../ai
     devDependencies:
       '@git-manager/config':
         specifier: workspace:*

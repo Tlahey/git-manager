@@ -7,7 +7,7 @@
   "errors.BRANCH_NOT_FOUND": "Branch not found.",
   "errors.COMMIT_NOT_FOUND": "Commit not found.",
   "errors.PROTECTED_BRANCH": "This branch is protected.",
-  "errors.OLLAMA_NOT_RUNNING": "Ollama is not running.",
-  "errors.OLLAMA_MODEL_NOT_FOUND": "Ollama model not found.",
+  "errors.AI_PROVIDER_NOT_RUNNING": "The AI provider is not running.",
+  "errors.AI_MODEL_NOT_FOUND": "AI model not found.",
   "errors.UNKNOWN": "Unknown error."
 }

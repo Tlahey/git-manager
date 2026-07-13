@@ -7,7 +7,7 @@
   "errors.BRANCH_NOT_FOUND": "Branche introuvable.",
   "errors.COMMIT_NOT_FOUND": "Commit introuvable.",
   "errors.PROTECTED_BRANCH": "Cette branche est protégée.",
-  "errors.OLLAMA_NOT_RUNNING": "Ollama n'est pas démarré.",
-  "errors.OLLAMA_MODEL_NOT_FOUND": "Modèle Ollama introuvable.",
+  "errors.AI_PROVIDER_NOT_RUNNING": "Le fournisseur IA n'est pas démarré.",
+  "errors.AI_MODEL_NOT_FOUND": "Modèle IA introuvable.",
   "errors.UNKNOWN": "Erreur inconnue."
 }
