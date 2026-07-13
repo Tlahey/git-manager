@@ -280,8 +280,52 @@ export async function apiGetPendingFixups(path: string) {
 }
 
 export async function apiRevertCommit(path: string, oid: string, noCommit = false) {
+  let previousOid: string | null = null
+  if (!noCommit) {
+    try {
+      const branches = await getBranches(path, false)
+      previousOid = branches.find((b) => b.isHead)?.commitOid ?? null
+    } catch {
+      previousOid = null
+    }
+  }
+
   const result = await revertCommit(path, oid, noCommit)
-  clearRedo(path)
+
+  if (noCommit) {
+    // Sans commit, revert ne fait que modifier l'index/working dir — pas de nouveau commit à
+    // rejouer via reset (même limitation que l'amend dans apiCreateCommit).
+    clearRedo(path)
+    return result
+  }
+
+  let newOid: string | null = null
+  try {
+    const branches = await getBranches(path, false)
+    newOid = branches.find((b) => b.isHead)?.commitOid ?? null
+  } catch {
+    newOid = null
+  }
+
+  if (previousOid && newOid && newOid !== previousOid) {
+    const id = generateId()
+    await Promise.all([
+      pinObject(path, `${id}-previous`, previousOid).catch(() => {}),
+      pinObject(path, `${id}-new`, newOid).catch(() => {}),
+    ])
+    pushAction(path, {
+      id,
+      timestamp: Date.now(),
+      label: { key: 'undoRedo.revert', params: { sha: result } },
+      pinnedRefs: [`${id}-previous`, `${id}-new`],
+      type: 'revert',
+      previousOid,
+      newOid,
+    })
+  } else {
+    clearRedo(path)
+  }
+
   return result
 }
 
@@ -677,13 +721,62 @@ export async function apiRunInteractiveRebase(
 // ─── Branch creation ───────────────────────────────────────────────────────
 
 export async function apiCreateBranch(path: string, name: string, fromRef: string) {
-  return createBranch(path, name, fromRef)
+  await createBranch(path, name, fromRef)
+
+  let targetOid: string | null = null
+  try {
+    const branches = await getBranches(path, false)
+    targetOid = branches.find((b) => b.name === name)?.commitOid ?? null
+  } catch {
+    targetOid = null
+  }
+
+  if (targetOid) {
+    const id = generateId()
+    await pinObject(path, id, targetOid).catch(() => {})
+    pushAction(path, {
+      id,
+      timestamp: Date.now(),
+      label: { key: 'undoRedo.createBranch', params: { branch: name } },
+      pinnedRefs: [id],
+      type: 'createBranch',
+      name,
+      targetOid,
+    })
+  } else {
+    clearRedo(path)
+  }
 }
 
 // ─── Tag creation ──────────────────────────────────────────────────────────
 
 export async function apiCreateTag(path: string, name: string, fromRef: string, message?: string) {
-  return createTag(path, name, fromRef, message)
+  await createTag(path, name, fromRef, message)
+
+  let targetOid: string | null = null
+  try {
+    const tags = await getTags(path)
+    targetOid = tags.find((t) => t.shortName === name)?.commitOid ?? null
+  } catch {
+    targetOid = null
+  }
+
+  if (targetOid) {
+    const id = generateId()
+    await pinObject(path, id, targetOid).catch(() => {})
+    pushAction(path, {
+      id,
+      timestamp: Date.now(),
+      label: { key: 'undoRedo.createTag', params: { tag: name } },
+      pinnedRefs: [id],
+      type: 'createTag',
+      name,
+      targetOid,
+      message,
+    })
+  } else {
+    clearRedo(path)
+  }
 }
 
 // ─── Fetch / Pull / Push ───────────────────────────────────────────────────

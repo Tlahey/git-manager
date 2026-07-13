@@ -28,6 +28,9 @@ vi.mock('../lib/tauri', async () => {
     stashList: vi.fn(),
     checkoutBranch: vi.fn(),
     deleteBranch: vi.fn(),
+    createBranch: vi.fn(),
+    createTag: vi.fn(),
+    getTags: vi.fn(),
     getRemotes: vi.fn(),
     removeRemote: vi.fn(),
     pinObject: vi.fn(),
@@ -303,16 +306,6 @@ describe('clearRedo-only actions', () => {
     expect(useUndoHistoryStore.getState().canRedo(path)).toBe(true)
   }
 
-  it('apiRevertCommit clears the redo tail', async () => {
-    const path = freshPath()
-    await withPriorRedoTail(path)
-    mocked.revertCommit.mockResolvedValue(undefined)
-
-    await api.apiRevertCommit(path, 'some-sha')
-
-    expect(useUndoHistoryStore.getState().canRedo(path)).toBe(false)
-  })
-
   it('apiCherryPickCommit clears the redo tail', async () => {
     const path = freshPath()
     await withPriorRedoTail(path)
@@ -331,6 +324,42 @@ describe('clearRedo-only actions', () => {
     await api.apiRebaseOntoCommit(path, 'some-sha')
 
     expect(useUndoHistoryStore.getState().canRedo(path)).toBe(false)
+  })
+})
+
+describe('apiRevertCommit', () => {
+  it('pushes a revert entry pinning previous+new HEAD when HEAD moved', async () => {
+    const path = freshPath()
+    mocked.getBranches.mockResolvedValueOnce(headBranch('prev-sha'))
+    mocked.revertCommit.mockResolvedValue('rev-sh')
+    mocked.getBranches.mockResolvedValueOnce(headBranch('new-sha'))
+
+    await api.apiRevertCommit(path, 'target-sha')
+
+    const entry = historyOf(path).stack[0]
+    expect(entry).toMatchObject({ type: 'revert', previousOid: 'prev-sha', newOid: 'new-sha' })
+    expect(mocked.pinObject).toHaveBeenCalledWith(path, `${entry.id}-previous`, 'prev-sha')
+    expect(mocked.pinObject).toHaveBeenCalledWith(path, `${entry.id}-new`, 'new-sha')
+  })
+
+  it('clears redo instead when HEAD did not move (e.g. nothing to commit)', async () => {
+    const path = freshPath()
+    mocked.getBranches.mockResolvedValue(headBranch('same-sha'))
+    mocked.revertCommit.mockResolvedValue('rev-sh')
+
+    await api.apiRevertCommit(path, 'target-sha')
+
+    expect(historyOf(path)).toBeUndefined()
+  })
+
+  it('noCommit clears redo without querying HEAD twice', async () => {
+    const path = freshPath()
+    mocked.revertCommit.mockResolvedValue('')
+
+    await api.apiRevertCommit(path, 'target-sha', true)
+
+    expect(historyOf(path)).toBeUndefined()
+    expect(mocked.getBranches).not.toHaveBeenCalled()
   })
 })
 
@@ -511,6 +540,74 @@ describe('apiDeleteBranch', () => {
       upstream: 'origin/feat',
     })
     expect(mocked.pinObject).toHaveBeenCalledWith(path, entry.id, 'sha-feat')
+  })
+})
+
+describe('apiCreateBranch', () => {
+  it('pins the new branch tip and pushes a createBranch entry', async () => {
+    const path = freshPath()
+    mocked.createBranch.mockResolvedValue(undefined)
+    mocked.getBranches.mockResolvedValue([
+      ...headBranch('head-sha'),
+      {
+        name: 'feat',
+        shortName: 'feat',
+        isHead: false,
+        isRemote: false,
+        commitOid: 'feat-sha',
+        commitMessage: 'msg',
+        commitTimestamp: 0,
+        aheadCount: 0,
+        behindCount: 0,
+      },
+    ])
+
+    await api.apiCreateBranch(path, 'feat', 'HEAD')
+
+    const entry = historyOf(path).stack[0]
+    expect(entry).toMatchObject({ type: 'createBranch', name: 'feat', targetOid: 'feat-sha' })
+    expect(mocked.pinObject).toHaveBeenCalledWith(path, entry.id, 'feat-sha')
+  })
+
+  it('clears redo when the new branch cannot be found afterward', async () => {
+    const path = freshPath()
+    mocked.createBranch.mockResolvedValue(undefined)
+    mocked.getBranches.mockResolvedValue([])
+
+    await api.apiCreateBranch(path, 'feat', 'HEAD')
+
+    expect(historyOf(path)).toBeUndefined()
+  })
+})
+
+describe('apiCreateTag', () => {
+  it('pins the tag target and pushes a createTag entry', async () => {
+    const path = freshPath()
+    mocked.createTag.mockResolvedValue(undefined)
+    mocked.getTags.mockResolvedValue([
+      { name: 'refs/tags/v1.0', shortName: 'v1.0', type: 'tag', commitOid: 'tag-sha' },
+    ])
+
+    await api.apiCreateTag(path, 'v1.0', 'HEAD', 'release notes')
+
+    const entry = historyOf(path).stack[0]
+    expect(entry).toMatchObject({
+      type: 'createTag',
+      name: 'v1.0',
+      targetOid: 'tag-sha',
+      message: 'release notes',
+    })
+    expect(mocked.pinObject).toHaveBeenCalledWith(path, entry.id, 'tag-sha')
+  })
+
+  it('clears redo when the new tag cannot be found afterward', async () => {
+    const path = freshPath()
+    mocked.createTag.mockResolvedValue(undefined)
+    mocked.getTags.mockResolvedValue([])
+
+    await api.apiCreateTag(path, 'v1.0', 'HEAD')
+
+    expect(historyOf(path)).toBeUndefined()
   })
 })
 

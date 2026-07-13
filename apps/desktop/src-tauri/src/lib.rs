@@ -6,7 +6,7 @@ mod state;
 mod utils;
 
 use commands::branch::{
-    checkout_branch, create_branch, create_tag, delete_branch, get_branches, get_tags,
+    checkout_branch, create_branch, create_tag, delete_branch, delete_tag, get_branches, get_tags,
     is_commit_on_current_branch,
 };
 use commands::cherry_pick::cherry_pick_commit;
@@ -152,6 +152,7 @@ pub fn run() {
             create_tag,
             checkout_branch,
             delete_branch,
+            delete_tag,
             is_commit_on_current_branch,
             // Rebase
             get_rebase_state,

@@ -55,6 +55,13 @@ pub async fn create_tag(
     .map_err(Into::into)
 }
 
+/// Supprime un tag (léger ou annoté) par son nom court.
+#[tauri::command]
+pub async fn delete_tag(path: String, name: String) -> Result<(), String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    git_branch::delete_tag(&repo, &name).map_err(Into::into)
+}
+
 /// Checkout d'une branche locale par son nom, ou d'un commit brut par OID (HEAD détaché).
 /// Le fallback OID permet de restaurer un HEAD détaché lors d'un undo de checkout.
 #[tauri::command]
