@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { RewardsSection } from './RewardsSection'
 import { useGameStore } from '../../../stores/game.store'
 
+vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
+
 const INITIAL_GAME = useGameStore.getState()
 
 beforeEach(() => {
@@ -39,7 +41,7 @@ describe('RewardsSection — reset progress', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     const user = userEvent.setup()
     render(<RewardsSection />)
-    await user.click(screen.getByText('Réinitialiser toute la progression'))
+    await user.click(screen.getByText('settings.rewards.reset'))
     expect(useGameStore.getState().points).toBe(0)
   })
 
@@ -48,7 +50,7 @@ describe('RewardsSection — reset progress', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false)
     const user = userEvent.setup()
     render(<RewardsSection />)
-    await user.click(screen.getByText('Réinitialiser toute la progression'))
+    await user.click(screen.getByText('settings.rewards.reset'))
     expect(useGameStore.getState().points).toBe(42)
   })
 })

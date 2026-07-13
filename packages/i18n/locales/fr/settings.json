@@ -84,6 +84,14 @@
   "settings.advanced.openDataFolder": "Ouvrir le dossier de données",
   "settings.advanced.exclusions": "Exclusions de scan",
   "settings.dangerZone": "Zone dangereuse",
+  "settings.rewards.title": "Succès & Récompenses Git",
+  "settings.rewards.description": "Gérez le système de progression ludique, l'XP de niveau et les récompenses cosmétiques.",
+  "settings.rewards.enable": "Activer la Gamification",
+  "settings.rewards.enableHint": "Affiche l'onglet de succès, suit votre XP et débloque des thèmes personnalisés / cadres d'avatars au cours de vos actions Git.",
+  "settings.rewards.controlZone": "Zone de Contrôle des Succès",
+  "settings.rewards.controlZoneHint": "Remet à zéro l'historique des succès complétés, votre XP et reverrouille les thèmes cosmétiques.",
+  "settings.rewards.reset": "Réinitialiser toute la progression",
+  "settings.rewards.resetConfirm": "Voulez-vous vraiment réinitialiser TOUS vos succès et XP accumulés ? Cette action est irréversible.",
   "commit.history": "Messages récents",
   "commit.historyEmpty": "Aucun message récent"
 }
