@@ -10,8 +10,8 @@ vi.mock('./components/SshSection', () => ({ SshSection: () => <div data-testid="
 vi.mock('./components/IntegrationSection', () => ({
   IntegrationSection: () => <div data-testid="section-integrations" />,
 }))
-vi.mock('./components/LlmSection', () => ({
-  LlmSection: () => <div data-testid="section-local_ai" />,
+vi.mock('./components/AiSection', () => ({
+  AiSection: () => <div data-testid="section-local_ai" />,
 }))
 vi.mock('./components/ExternalToolsSection', () => ({
   ExternalToolsSection: () => <div data-testid="section-external_tools" />,

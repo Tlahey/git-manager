@@ -1400,6 +1400,7 @@ dependencies = [
 name = "git-manager"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "chrono",
  "futures-util",
  "git2",

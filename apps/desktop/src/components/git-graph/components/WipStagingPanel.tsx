@@ -209,6 +209,7 @@ export function WipStagingPanel({
               <Button
                 variant="outline"
                 size="sm"
+                data-testid="commit-generate-button"
                 className="h-8 flex-1 gap-1 rounded-r-none border-r-0 text-xs"
                 onClick={handleGenerateCommitMessage}
                 disabled={gitStatus?.staged?.length === 0 && !isGenerating}

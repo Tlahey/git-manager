@@ -15,11 +15,11 @@ import type {
   RebaseTodoStep,
   GitCommit,
   ThreeWayMergeView,
-  OllamaStatus,
   AppSettings,
   UserTheme,
   GitRepoSummary,
 } from '@git-manager/git-types'
+import type { AiProviderStatus, AiCheckConfig, AiGenerateConfig } from '@git-manager/ai'
 
 /**
  * Single chokepoint for every frontend→backend call. Wraps Tauri's `invoke` so the debug log
@@ -193,13 +193,13 @@ export const resolveConflict = (path: string, filePath: string, resolvedContent:
 export const resolveConflictBinary = (path: string, filePath: string, side: 'ours' | 'theirs') =>
   invoke<void>('resolve_conflict_binary', { path, filePath, side })
 
-// ─── Ollama ───────────────────────────────────────────────────────────────────
+// ─── AI ───────────────────────────────────────────────────────────────────────
 
-export const checkOllamaStatus = (url: string) =>
-  invoke<OllamaStatus>('check_ollama_status', { url })
+export const checkAiStatus = (config: AiCheckConfig) =>
+  invoke<AiProviderStatus>('check_ai_status', { config })
 
-export const generateCommitMessage = (path: string, model: string, promptHint?: string) =>
-  invoke<void>('generate_commit_message', { path, model, promptHint })
+export const generateCommitMessage = (path: string, config: AiGenerateConfig) =>
+  invoke<void>('generate_commit_message', { path, config })
 
 export const cancelGeneration = () => invoke<void>('cancel_generation')
 

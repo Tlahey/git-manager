@@ -1,11 +1,12 @@
 import { listen } from '@tauri-apps/api/event'
 import { useCallback, useRef, useState } from 'react'
-import { apiCancelGeneration, apiGenerateCommitMessage } from '../api/ollama.api'
+import { getAiPreset } from '@git-manager/ai'
+import { apiCancelGeneration, apiGenerateCommitMessage } from '../api/ai.api'
 import { useSettingsStore } from '../stores/settings.store'
 
 export type GenerationStatus = 'idle' | 'connecting' | 'streaming' | 'done' | 'error' | 'cancelled'
 
-export function useOllamaGeneration(repoPath: string) {
+export function useAiGeneration(repoPath: string) {
   const [status, setStatus] = useState<GenerationStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   const unlistenRef = useRef<(() => void) | null>(null)
@@ -23,25 +24,25 @@ export function useOllamaGeneration(repoPath: string) {
 
       let accumulated = ''
 
-      const unlistenToken = await listen<string>('ollama:token', (e) => {
+      const unlistenToken = await listen<string>('ai:token', (e) => {
         accumulated += e.payload
         onToken(e.payload)
         setStatus('streaming')
       })
 
-      const unlistenDone = await listen<void>('ollama:done', () => {
+      const unlistenDone = await listen<void>('ai:done', () => {
         setStatus('done')
         onDone(accumulated)
         cleanup()
       })
 
-      const unlistenError = await listen<string>('ollama:error', (e) => {
+      const unlistenError = await listen<string>('ai:error', (e) => {
         setStatus('error')
         setError(e.payload)
         cleanup()
       })
 
-      const unlistenCancelled = await listen<void>('ollama:cancelled', () => {
+      const unlistenCancelled = await listen<void>('ai:cancelled', () => {
         setStatus('cancelled')
         cleanup()
       })
@@ -57,14 +58,25 @@ export function useOllamaGeneration(repoPath: string) {
       unlistenRef.current = cleanup
 
       try {
-        await apiGenerateCommitMessage(repoPath, settings.ollama.model)
+        const { protocol } = getAiPreset(settings.ai.preset)
+        await apiGenerateCommitMessage(repoPath, {
+          protocol,
+          url: settings.ai.url,
+          model: settings.ai.model,
+          apiKey: settings.ai.apiKey,
+          temperature: settings.ai.temperature,
+          timeoutSeconds: settings.ai.timeoutSeconds,
+          systemPrompt: settings.ai.systemPrompt,
+          includeRepoContext: settings.ai.includeRepoContext,
+          autoDetectScope: settings.ai.autoDetectScope,
+        })
       } catch (err) {
         setStatus('error')
         setError(String(err))
         cleanup()
       }
     },
-    [repoPath, settings.ollama.model]
+    [repoPath, settings.ai]
   )
 
   const cancel = useCallback(async () => {

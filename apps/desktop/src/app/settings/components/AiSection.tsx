@@ -2,26 +2,38 @@ import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Input, Textarea } from '@git-manager/ui'
 import { ChevronDown, ChevronRight } from 'lucide-react'
+import { AI_PRESETS, getAiPreset, type AiPresetId, type AiProviderStatus } from '@git-manager/ai'
 import { useSettingsStore } from '../../../stores/settings.store'
-import { apiCheckOllamaStatus } from '../../../api/ollama.api'
-import type { OllamaStatus } from '@git-manager/git-types'
+import { apiCheckAiStatus } from '../../../api/ai.api'
 
-export function LlmSection() {
+export function AiSection() {
   const { t } = useTranslation('settings')
   const { settings, updateSettings } = useSettingsStore()
-  const ollama = settings.ollama
-  const [connectionStatus, setConnectionStatus] = useState<OllamaStatus | null>(null)
+  const ai = settings.ai
+  const [connectionStatus, setConnectionStatus] = useState<AiProviderStatus | null>(null)
   const [isTesting, setIsTesting] = useState(false)
   const [promptExpanded, setPromptExpanded] = useState(false)
 
-  function updateOllama(partial: Partial<typeof ollama>) {
-    updateSettings({ ollama: { ...ollama, ...partial } })
+  const activePreset = getAiPreset(ai.preset)
+
+  function updateAi(partial: Partial<typeof ai>) {
+    updateSettings({ ai: { ...ai, ...partial } })
+  }
+
+  function handlePresetChange(presetId: AiPresetId) {
+    const preset = getAiPreset(presetId)
+    updateAi({ preset: presetId, url: preset.defaultUrl })
+    setConnectionStatus(null)
   }
 
   async function handleTestConnection() {
     setIsTesting(true)
     try {
-      const status = await apiCheckOllamaStatus(ollama.url)
+      const status = await apiCheckAiStatus({
+        protocol: activePreset.protocol,
+        url: ai.url,
+        apiKey: ai.apiKey,
+      })
       setConnectionStatus(status)
     } catch {
       setConnectionStatus({ connected: false, models: [] })
@@ -32,13 +44,31 @@ export function LlmSection() {
 
   return (
     <div className="space-y-5">
+      {/* Provider preset */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-foreground">{t('settings.ai.preset')}</label>
+        <select
+          data-testid="ai-provider-select"
+          value={ai.preset}
+          onChange={(e) => handlePresetChange(e.target.value as AiPresetId)}
+          className="h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+        >
+          {AI_PRESETS.map((preset) => (
+            <option key={preset.id} value={preset.id} disabled={!preset.implemented}>
+              {preset.label}
+              {preset.implemented ? '' : ` ${t('settings.ai.comingSoon')}`}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* URL + Test */}
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-foreground">{t('settings.ollama.url')}</label>
+        <label className="text-xs font-medium text-foreground">{t('settings.ai.url')}</label>
         <div className="flex gap-2">
           <Input
-            value={ollama.url}
-            onChange={(e) => updateOllama({ url: e.target.value })}
+            value={ai.url}
+            onChange={(e) => updateAi({ url: e.target.value })}
             className="h-8 flex-1 text-xs"
           />
           <Button
@@ -47,30 +77,47 @@ export function LlmSection() {
             className="h-8 shrink-0 text-xs"
             onClick={handleTestConnection}
             disabled={isTesting}
+            data-testid="ai-test-connection-button"
           >
-            {t('settings.ollama.test')}
+            {t('settings.ai.test')}
           </Button>
         </div>
         {connectionStatus !== null && (
           <p
+            data-testid="ai-connection-status"
             className={`text-xs ${
               connectionStatus.connected ? 'text-green-500' : 'text-destructive'
             }`}
           >
             {connectionStatus.connected
-              ? t('settings.ollama.connected', { count: connectionStatus.models.length })
-              : t('settings.ollama.disconnected')}
+              ? t('settings.ai.connected', { count: connectionStatus.models.length })
+              : t('settings.ai.disconnected')}
           </p>
         )}
       </div>
 
+      {/* API key (only for presets that need one) */}
+      {activePreset.requiresApiKey && (
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-foreground">{t('settings.ai.apiKey')}</label>
+          <Input
+            type="password"
+            value={ai.apiKey ?? ''}
+            onChange={(e) => updateAi({ apiKey: e.target.value })}
+            className="h-8 text-xs"
+            data-testid="ai-api-key-input"
+          />
+        </div>
+      )}
+
       {/* Model */}
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-foreground">{t('settings.ollama.model')}</label>
+        <label className="text-xs font-medium text-foreground">{t('settings.ai.model')}</label>
         {connectionStatus?.connected && connectionStatus.models.length > 0 ? (
           <select
-            value={ollama.model}
-            onChange={(e) => updateOllama({ model: e.target.value })}
+            data-testid="ai-model-select"
+            value={ai.model}
+            onChange={(e) => updateAi({ model: e.target.value })}
             className="h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           >
             {connectionStatus.models.map((m) => (
@@ -81,8 +128,8 @@ export function LlmSection() {
           </select>
         ) : (
           <Input
-            value={ollama.model}
-            onChange={(e) => updateOllama({ model: e.target.value })}
+            value={ai.model}
+            onChange={(e) => updateAi({ model: e.target.value })}
             className="h-8 text-xs"
           />
         )}
@@ -91,30 +138,28 @@ export function LlmSection() {
       {/* Temperature */}
       <div className="space-y-1.5">
         <label className="text-xs font-medium text-foreground">
-          {t('settings.ollama.temperature')}
+          {t('settings.ai.temperature')}
         </label>
         <Input
           type="number"
           min={0}
           max={1}
           step={0.1}
-          value={ollama.temperature}
-          onChange={(e) => updateOllama({ temperature: parseFloat(e.target.value) })}
+          value={ai.temperature}
+          onChange={(e) => updateAi({ temperature: parseFloat(e.target.value) })}
           className="h-8 w-24 text-xs"
         />
       </div>
 
       {/* Timeout */}
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-foreground">
-          {t('settings.ollama.timeout')}
-        </label>
+        <label className="text-xs font-medium text-foreground">{t('settings.ai.timeout')}</label>
         <Input
           type="number"
           min={5}
           max={300}
-          value={ollama.timeoutSeconds}
-          onChange={(e) => updateOllama({ timeoutSeconds: parseInt(e.target.value, 10) })}
+          value={ai.timeoutSeconds}
+          onChange={(e) => updateAi({ timeoutSeconds: parseInt(e.target.value, 10) })}
           className="h-8 w-24 text-xs"
         />
       </div>
@@ -124,8 +169,8 @@ export function LlmSection() {
         <label className="flex cursor-pointer items-center gap-2">
           <input
             type="checkbox"
-            checked={ollama.includeRepoContext}
-            onChange={(e) => updateOllama({ includeRepoContext: e.target.checked })}
+            checked={ai.includeRepoContext}
+            onChange={(e) => updateAi({ includeRepoContext: e.target.checked })}
             className="h-4 w-4 rounded border-border"
           />
           <span className="text-xs text-foreground">{t('settings.llm.includeContext')}</span>
@@ -133,8 +178,8 @@ export function LlmSection() {
         <label className="flex cursor-pointer items-center gap-2">
           <input
             type="checkbox"
-            checked={ollama.autoDetectScope}
-            onChange={(e) => updateOllama({ autoDetectScope: e.target.checked })}
+            checked={ai.autoDetectScope}
+            onChange={(e) => updateAi({ autoDetectScope: e.target.checked })}
             className="h-4 w-4 rounded border-border"
           />
           <span className="text-xs text-foreground">{t('settings.llm.autoScope')}</span>
@@ -158,8 +203,8 @@ export function LlmSection() {
         {promptExpanded && (
           <div className="space-y-1.5">
             <Textarea
-              value={ollama.systemPrompt}
-              onChange={(e) => updateOllama({ systemPrompt: e.target.value })}
+              value={ai.systemPrompt}
+              onChange={(e) => updateAi({ systemPrompt: e.target.value })}
               rows={5}
               className="resize-none font-mono text-xs"
             />
@@ -167,7 +212,7 @@ export function LlmSection() {
               size="sm"
               variant="ghost"
               className="h-6 px-2 text-xs"
-              onClick={() => updateOllama({ systemPrompt: '' })}
+              onClick={() => updateAi({ systemPrompt: '' })}
             >
               {t('settings.llm.resetPrompt')}
             </Button>

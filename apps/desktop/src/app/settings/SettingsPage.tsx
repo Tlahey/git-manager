@@ -5,7 +5,7 @@ import { ArrowLeft } from 'lucide-react'
 import { GeneralSection } from './components/GeneralSection'
 import { SshSection } from './components/SshSection'
 import { IntegrationSection } from './components/IntegrationSection'
-import { LlmSection } from './components/LlmSection'
+import { AiSection } from './components/AiSection'
 import { ExternalToolsSection } from './components/ExternalToolsSection'
 import { NotificationSection } from './components/NotificationSection'
 import { AppearanceSection } from './components/AppearanceSection'
@@ -63,7 +63,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
     {
       id: 'local_ai',
       label: t('settings.sections.local_ai'),
-      render: () => scrolled(<LlmSection />),
+      render: () => scrolled(<AiSection />),
     },
     {
       id: 'external_tools',

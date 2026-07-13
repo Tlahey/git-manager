@@ -19,8 +19,8 @@ const { runLlmGenerate, cancelLlmGenerate, llmStatus, addMessage } = vi.hoisted(
   llmStatus: { current: 'idle' as string },
   addMessage: vi.fn(),
 }))
-vi.mock('./useOllamaGeneration', () => ({
-  useOllamaGeneration: () => ({
+vi.mock('./useAiGeneration', () => ({
+  useAiGeneration: () => ({
     generate: runLlmGenerate,
     cancel: cancelLlmGenerate,
     status: llmStatus.current,
@@ -211,13 +211,13 @@ describe('useWipCommitPanel — batch mode: generateMessageForBatch', () => {
   it('records an error message and clears the generating flag on failure', async () => {
     mocked.apiUnstageAll.mockResolvedValue(undefined)
     mocked.apiStageFile.mockResolvedValue(undefined)
-    runLlmGenerate.mockRejectedValue(new Error('ollama down'))
+    runLlmGenerate.mockRejectedValue(new Error('ai provider down'))
 
     const files = [file('src/a.ts')]
     const { result } = renderHook(() => useWipCommitPanel('/repo', status(), files, t))
     await act(async () => result.current.generateMessageForBatch('src', files))
 
-    expect(result.current.batchMessages.src).toContain('ollama down')
+    expect(result.current.batchMessages.src).toContain('ai provider down')
     expect(result.current.batchGenerating.src).toBe(false)
   })
 })

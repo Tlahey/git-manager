@@ -23,8 +23,8 @@ pub enum AppError {
     ConflictNotFound(String),
     #[error("Unparseable conflict: {0}")]
     UnparseableConflict(String),
-    #[error("Ollama error: {0}")]
-    Ollama(String),
+    #[error("AI provider error: {0}")]
+    AiProvider(String),
     #[error("HTTP error: {0}")]
     Http(#[from] reqwest::Error),
     #[error("Unknown error: {0}")]
@@ -51,7 +51,7 @@ impl From<AppError> for String {
             AppError::WorktreePathExists(_) => ("WORKTREE_PATH_EXISTS", e.to_string()),
             AppError::ConflictNotFound(_) => ("CONFLICT_NOT_FOUND", e.to_string()),
             AppError::UnparseableConflict(_) => ("UNPARSEABLE_CONFLICT", e.to_string()),
-            AppError::Ollama(_) => ("OLLAMA_ERROR", e.to_string()),
+            AppError::AiProvider(_) => ("AI_PROVIDER_ERROR", e.to_string()),
             AppError::Http(_) => ("HTTP_ERROR", e.to_string()),
             AppError::Unknown(_) => ("UNKNOWN", e.to_string()),
         };

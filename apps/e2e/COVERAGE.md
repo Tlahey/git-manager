@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (12 features / ~100 steps, 7 visual snapshots)
+## Covered today (17 feature files / ~150 steps, 7 visual snapshots)
 
 | Feature                                                            | Area       | Setup                    | Snapshot                          | Status                                                      |
 | ------------------------------------------------------------------ | ---------- | ------------------------ | --------------------------------- | ----------------------------------------------------------- |
@@ -25,36 +25,57 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | App launches, React mounts                                         | app shell  | —                        | —                                 | ✅                                                          |
 | Tauri command mock: success / reject / restore                     | IPC        | mock                     | —                                 | ✅                                                          |
 | Fixup autosquash grouping + **create fixup commit (via ⌘K palette)** | fixup      | fixture:fixup-chain      | 📷 ✅ (preview groups)            | ✅                                                          |
-| Rebase conflict panel auto-opens + **snapshot** + continue/skip/abort | rebase     | fixture:rebase-conflict  | 📷 ✅ (panel layout)              | 🟡 (panel shown + snapshotted; continue/skip/abort ✅; merge-editor block resolution not driven) |
-| **Merge editor** opens for a conflicted file + **snapshot**        | merge      | fixture:rebase-conflict  | 📷 ✅ (full Monaco editor)        | 🟡 (opens + snapshotted; block resolution not driven)       |
+| Rebase conflict panel auto-opens + **snapshot** + continue/skip/abort | rebase     | fixture:rebase-conflict  | 📷 ✅ (panel layout)              | ✅ (panel shown + snapshotted; continue/skip/abort ✅; merge-editor block resolution now driven separately) |
+| **Merge editor** opens for a conflicted file + **snapshot** + **block resolution** | merge      | fixture:rebase-conflict  | 📷 ✅ (full Monaco editor)        | ✅ (opens + snapshotted; **wand + per-block accept + Apply ✅**, real second window, result asserted via git/file content) |
 | **Working-tree staging panel** + **file diff** + **snapshots**     | commits    | fixture:stash-stack      | 📷 ✅ (staging panel + diff view) | ✅                                                          |
 | **Commit staged changes** (write message → Commit → HEAD advances) | commits    | fixture:stash-stack      | —                                 | ✅                                                          |
 | **Undo / redo a branch checkout** (Cmd+Z / Cmd+Shift+Z)            | undo/redo  | fixture:feature-branches | —                                 | ✅                                                          |
 | Detached HEAD indicator reads "HEAD", checkout back to a branch                                                          | repo state | fixture:detached-head    | —                                 | ✅                                                          |
 | Sidebar lists stashes                                              | stash      | fixture:stash-stack      | —                                 | ✅ (list ✅; **drop/apply/pop ✅ via ⌘K palette**, each asserted via `git stash list` / a restored file) |
-| Settings screen opens + **snapshot**                               | settings   | keyboard (Mod+,)         | 📷 ✅ (general + notifications)   | 🟡 (general & notifications snapshotted; row-height persistence ✅; appearance/ssh/local_ai/rewards todo) |
+| Settings screen opens + **snapshot**                               | settings   | keyboard (Mod+,)         | 📷 ✅ (general + notifications)   | 🟡 (general & notifications snapshotted; row-height persistence ✅; **ssh key generation ✅ · AI provider test-connection ✅ · rewards toggle ✅ · AI preset dropdown ✅**; appearance snapshot skipped on purpose, see below) |
+| **AI commit-message generation**: streaming + prompt-wiring + cancel | AI         | fake HTTP server         | —                                 | ✅ (see "6. AI commit-message generation" below)            |
 
 ---
 
 ## Priority backlog (the domains we actually want next)
 
-### 1. Merge editor 🟡 📷 (opens + snapshotted)
+### 1. Merge editor ✅ 📷 (opens + snapshotted + block resolution)
 
 The three-way merge editor (`components/merge-editor/ConflictMergeWindow.tsx`) normally opens in a
-**separate Tauri window** (`?window=merge`) and renders with **Monaco**. **Done:** rather than
-driving the native second window, the test navigates the current window straight to the merge
-route (`/?window=merge&repoPath=…&filePath=…`) — main.tsx renders `ConflictMergeWindow` from those
-URL params, independent of the store — waits for `merge-auto-merge-button` (appears once
-`get_merge_view` resolves), and **snapshots the whole Monaco editor** (`merge-editor-window`).
-Verified stable across multiple runs with a 1.5s Monaco settle + `stabiliseForSnapshot`.
+**separate Tauri window** (`?window=merge`) and renders with **Monaco**. **Opens + snapshot:**
+rather than driving the native second window, that scenario navigates the current window straight
+to the merge route (`/?window=merge&repoPath=…&filePath=…`) — main.tsx renders
+`ConflictMergeWindow` from those URL params, independent of the store — waits for
+`merge-auto-merge-button` (appears once `get_merge_view` resolves), and **snapshots the whole
+Monaco editor** (`merge-editor-window`). Verified stable across multiple runs with a 1.5s Monaco
+settle + `stabiliseForSnapshot`.
 
 - Setup: `fixture:rebase-conflict` — the conflicted `dependency-manifest.txt` "covers every
   merge-editor block kind twice", ideal for a layout snapshot.
 - **Gotcha handled**: the embedded provider shares one app window across features (run
   sequentially), so this feature resets the URL to `/` in an `After({ tags: '@merge' })` hook —
   otherwise every feature after it inherits `?window=merge`. See merge.steps.ts.
-- **Todo:** drive block resolution (`merge-accept-left`/`-right`, `merge-apply`, auto-merge) and
-  assert the result; those testids are mock-only today and would need adding to the real panes.
+
+**Block resolution: done** — unlike the opens/snapshot scenario above, every action that actually
+*resolves* the conflict (`merge-apply`, `merge-accept-left`/`-right`, keep-ours/keep-theirs) calls
+`getCurrentWindow().close()`, so reusing the shared main window here would kill the rest of the
+test run (see the multi-window gotcha below). This scenario instead opens a **real second
+`WebviewWindow`** the same way production does — clicking the conflicted file row in
+`ConflictResolutionPanel` (`file-tree-file-<path>`, `onSelectFile` → repoUI's `conflictFilePath` →
+GitGraph's `WebviewWindow`-open effect) — then: clicks the auto-merge wand
+(`merge-auto-merge-button`, the real testid; already existed, contrary to an earlier note here
+claiming these were mock-only), which resolves only the **modification** blocks (both sides) per
+`git_merge_diff.rs`'s `auto_merge_non_conflicting` (deletions/additions are deliberately left
+pending, see its doc comment and the `auto_merge_skips_deletions_and_additions` Rust test); then
+queries every still-actionable `merge-connector-accept-right-*` button (the real per-block gutter
+buttons in `MergeConnectorOverlay.tsx`) — after the wand this is exactly the 2 real conflicts plus
+the 2 ours-only deletion/addition blocks the wand left pending — and clicks each via injected JS;
+then clicks `merge-apply` (enabled once `pendingCount === 0`), which writes the center buffer to
+disk and stages it (`git_conflict.rs::resolve_conflict`) and closes the window. Result asserted by
+reading the fixture repo **off disk**: the file is staged and no longer conflicted
+(`git status --porcelain` / `git diff --cached --name-only`), wand-resolved modifications and
+manually-accepted blocks show the expected content, and the untouched theirs-only deletion/addition
+(never touched — only the right gap was driven) keep their documented default (kept / absent).
 
 ### 2. Injected repo fixtures 🟡
 
@@ -64,11 +85,11 @@ fixture:
 | Fixture          | Exercises                                                                                       | Status                              |
 | ---------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------- |
 | fixup-chain      | fixup grouping / autosquash ✅ · **create-fixup from staged change ✅** (via ⌘K palette, real second window — see gotchas) | ✅ |
-| rebase-conflict  | conflict panel ✅ · merge editor ✅ · **continue/skip/abort ✅** (continue resolves the conflict via `git checkout --ours` directly on disk, not the merge editor UI — see gotchas) | 🟡 |
+| rebase-conflict  | conflict panel ✅ · merge editor open+snapshot ✅ · **continue/skip/abort ✅** (continue resolves the conflict via `git checkout --ours` directly on disk, not the merge editor UI) · **merge editor block resolution ✅** (wand + per-block accept + Apply, real second window — see gotchas) | ✅ |
 | detached-head    | detached indicator ✅ · checkout-back-to-branch ✅                                              | ✅                                  |
 | feature-branches | branch checkout ✅ · undo/redo of the checkout ✅ · **cherry-pick (via ⌘K palette) ✅**         | ✅                                  |
 | stash-stack      | list ✅ · WIP staging panel ✅ · stage/unstage individual files ✅ · file diff ✅ · commit ✅ · **drop/apply/pop (via ⌘K palette) ✅** | ✅                                  |
-| rollback-history | **reset (soft/mixed/hard incl. RESET-confirm gate), revert, create-branch, create-tag — all via ⌘K palette ✅** · **undo/redo of a reset ✅** · undo/redo of revert/branch/tag ⬜ | 🟡 |
+| rollback-history | **reset (soft/mixed/hard incl. RESET-confirm gate), revert, create-branch, create-tag — all via ⌘K palette ✅** · **undo/redo of a reset ✅** · **create-tag's ref badge shown in the graph ✅** · undo/redo of revert/branch/tag 🚫 (not a test gap — `undoActions.ts` has no case for these three actions at all; the app doesn't support undoing them yet, see the "Add undo/redo support" follow-up) | ✅ |
 
 ### 3. Settings 🟡 📷
 
@@ -80,8 +101,37 @@ setting (`ui_customization` tab) persists across a reload** — driven directly 
 carry `settings-tab-<id>` testids and the root `settings-page`. **Skipped on purpose:** a
 full-screen snapshot of **appearance** — its theme grid depends on unlocked achievements + custom
 themes dropped into `~/.git-manager/themes/` on the machine running the test, neither controlled
-by the fixture system, so it isn't reproducible across machines. **Todo:** ssh/local_ai/rewards
-sections (dynamic content — mask or assert values instead of snapshotting).
+by the fixture system, so it isn't reproducible across machines.
+
+**ssh/local_ai/rewards: done** — none of the three had any `data-testid` before this (small,
+targeted additions, not just e2e files): `ssh-generator-toggle`/`ssh-generate-path-input`/
+`ssh-generate-button`/`ssh-generated-pubkey` on `SshSection.tsx`, `ollama-test-connection-button`/
+`ollama-connection-status` on `LlmSection.tsx`, `rewards-toggle` on `RewardsSection.tsx` (which
+already had a root testid). **SSH:** opens the generator, points the path at a fresh `mkdtemp()`
+directory (never the user's real `~/.ssh` — `generate_ssh_key` shells out to the real `ssh-keygen`
+and creates parent dirs itself, so a pre-existing file at the destination would make it prompt
+interactively to overwrite and hang the test), clicks generate, and asserts both the UI shows the
+generated public key **and** a real key pair exists on disk. **Ollama:** clicks "Test Connection"
+and asserts *some* definitive status renders (`text-destructive` or `text-green-500` class) —
+**not** which one: mocking the IPC command doesn't reach a real UI click (see
+command-mocking.feature's own note on that limitation), and asserting a specific outcome here is
+genuinely flaky across machines, not just theoretically — a real local Ollama server (very
+plausible on a dev box, since that's what the app's own AI commit-message feature talks to) made
+this scenario fail on the very first run when it assumed "disconnected". **Rewards:** toggles the
+gamification checkbox and asserts it persists across a reload, same pattern as row-height. **Not
+reset afterward** — like row-height, these three settings values (ssh key paths, rewards enabled)
+stay changed for the rest of the suite run; no other current scenario reads them, so this is a
+known, accepted gotcha rather than a bug.
+
+**Themes: done** — rather than snapshotting the whole grid (unreproducible, see above), selects a
+specific always-unlocked built-in theme (`theme-card-<id>`, changed from a translated-label-derived
+testid to the raw theme `id` — this app defaults to French, so the old testid was locale-fragile;
+updated `AppearanceSection.test.tsx`'s 6 assertions to match), asserts it's actually applied by
+reading `document.documentElement.dataset.theme` (`useTheme.ts`'s real DOM effect, not just that the
+setting persisted) and that it survives a reload, then **switches back to "dark"** (the app's
+default) at the end — unlike ssh/rewards above, leaving a non-default theme active would bleed into
+every other visual snapshot in the suite, not just this feature's own. A single theme card's own
+swatch (always "dark", never achievement-gated) is snapshotted instead of the full grid.
 
 ### 4. Commits / working tree 🟡 📷 (staging panel snapshotted)
 
@@ -125,6 +175,51 @@ re-applies (`undoActions.ts`'s `commit` case soft-resets to `previousOid`/`newOi
 needed new step definitions — each is pure composition of steps already written for the
 underlying action + the generic `undo-redo.steps.ts` chords.
 
+### 6. AI commit-message generation ✅
+
+Requested as "just add e2e coverage for Ollama commit-message generation," but investigating first
+found the feature wasn't actually complete: the streaming pipeline (Rust HTTP streaming, Tauri
+events, the WIP panel's "Generate" button) worked, but `settings.ollama.systemPrompt`/
+`includeRepoContext`/`autoDetectScope` changed React state that nothing downstream ever read, and
+even `url`/`temperature`/`timeoutSeconds` were silently ignored (the backend read from an
+`AppState` field that was set once to a hardcoded default and never updated — no
+`update_ollama_config` command existed anywhere). Fixed the wiring **and** rebuilt the backend as a
+provider-agnostic architecture per the user's explicit ask, so LM Studio/OpenAI/Anthropic/MLX can
+be added later without reworking today's code:
+
+- **`packages/ai`** (new package): `AiPresetId` (the user-facing choice) is kept separate from
+  `AiProtocol` (the actual wire format) — `AI_PRESETS` maps `ollama`/`lmstudio`/`openai`/`mlx` to
+  the shared `openai-compatible` protocol (Ollama has spoken the OpenAI Chat Completions API at
+  `/v1/chat/completions` + `/v1/models` since v0.1.14) and `anthropic` to its own
+  `anthropic-messages` protocol. Only `ollama` is `implemented: true` today.
+- **Rust** (`services/ai_provider.rs`'s `AiProvider` trait, `ai_openai_compatible.rs`,
+  `ai_anthropic.rs` stub, `ai_registry.rs`, `commands/ai.rs` replacing `commands/ollama.rs`):
+  `state.rs`'s dead `OllamaConfig`/`ollama_config` removed entirely — every AI setting is now
+  passed as a per-call command argument instead of synced global state, which is what let the old
+  sync-bug happen in the first place. Prompt-building (system prompt override, repo-context prefix,
+  scope detection from the diff's changed paths — mirrors the existing "group by first path
+  segment" heuristic already shipped for batch-commit grouping in `useWipCommitPanel.ts`) lives
+  once in `ai_provider.rs`, shared by every protocol implementation.
+- **Frontend**: `useOllamaGeneration.ts`→`useAiGeneration.ts`, `ollama.api.ts`→`ai.api.ts`,
+  `LlmSection.tsx`→`AiSection.tsx` (adds a provider `<select>` sourced from `AI_PRESETS`, disabled
+  for non-implemented presets), `settings.ollama`→`settings.ai` (renamed now per explicit
+  instruction — existing users' saved Ollama config resets to defaults, accepted tradeoff).
+- **e2e**: a fake OpenAI-compatible HTTP server (`support/fakeAiServer.ts`, plain Node `http`, no
+  new dependency) — `Settings → local_ai`'s `url` just points at it, exactly like a user pointing
+  Ollama's preset at a different host. Not `browser.tauri.mock` (doesn't reach a real UI click, see
+  command-mocking.feature's own note). `ai-generation.feature`: (1) generates a message, asserting
+  both the streamed UI result **and**, by reading the fake server's recorded request body directly
+  (same Node process, no `browser.execute` needed), that the sent prompt actually contains the
+  custom system prompt, repo name/branch, and detected scope — proving the wiring, not just that
+  generation "did something"; (2) cancels a stuck generation. **Gotcha**: the stalled-server variant
+  must still send periodic SSE keep-alive comment lines (`: keep-alive`) rather than truly never
+  writing anything — the Rust cancellation check only runs *between* stream chunks
+  (`while let Some(chunk) = stream.next().await`), so a connection with zero bytes ever sent would
+  leave that await stuck forever with the cancel flag never observed, no matter what the frontend
+  does. `settings.feature` gained a scenario asserting the preset dropdown shows Ollama enabled and
+  Anthropic disabled/"coming soon"; `command-mocking.feature`/`mocking.steps.ts` updated for the
+  renamed `check_ai_status` command and its new `{config: {protocol, url}}` argument shape.
+
 ---
 
 ## Rest of the surface (lower priority / smaller)
@@ -133,7 +228,7 @@ underlying action + the generic `undo-redo.steps.ts` chords.
 | --------------------------------------- | ------------- | ----------------- | -------- | ------------------------------------------------------------------------------------ |
 | Commit graph rendering                  | log/graph     | any fixture       | 📷       | ⬜ (volatile: shas/dates)                                                            |
 | Branches: create / checkout / delete    | branch        | any fixture       | —        | 🟡 (checkout ✅ via BranchContext; **create-from-commit ✅ via ⌘K palette**, asserted via `git log`; delete still native) |
-| Tags: create / list                     | tag           | any fixture       | —        | 🟡 (**create (lightweight + annotated) ✅ via ⌘K palette**, asserted via `git log`/`git cat-file -t`; list ⬜)   |
+| Tags: create / shown in graph            | tag           | any fixture       | —        | ✅ (**create (lightweight + annotated) via ⌘K palette**, asserted via `git log`/`git cat-file -t`; **ref badge shown in the graph row ✅**, `ref-label-tag-<name>` testid added to `RefLabel.tsx`) |
 | Cherry-pick a commit                    | cherry-pick   | feature-branches  | —        | ✅ (**via ⌘K palette**, asserted via `git log` — picks a non-conflicting file addition from another branch) |
 | Interactive rebase (reword/squash/drop) | rebase        | fixup-chain       | —        | 🚫 (native commit menu + child window)                                               |
 | Reset (soft/mixed/hard, RESET confirm)  | rollback      | rollback-history  | —        | ✅ (**soft/mixed/hard incl. RESET-confirm gate, via ⌘K palette**, asserted via `git diff`/`git status`) |
@@ -142,14 +237,14 @@ underlying action + the generic `undo-redo.steps.ts` chords.
 | Remote: fetch / pull / push             | remote        | native creds      | —        | 🚫 (needs a real remote)                                                             |
 | Clone a repo                            | repo          | native            | —        | 🚫 (native dialog + network)                                                         |
 | Scan a folder for repos                 | repo          | native            | —        | 🚫 (native dialog)                                                                   |
-| Ollama commit-message generation        | AI            | mock              | —        | ⬜ (mock the stream)                                                                 |
+| AI commit-message generation            | AI            | fake HTTP server  | —        | ✅ (streaming + prompt-wiring + cancel + settings dropdown — see "AI generation" below) |
 | GitHub OAuth device flow                | github        | mock              | —        | ⬜ (mock the poll)                                                                   |
-| SSH key generate / read                 | ssh           | seed              | —        | ⬜                                                                                   |
-| Submodule list                          | submodule     | dedicated fixture | —        | ⬜                                                                                   |
+| SSH key generate / read                 | ssh           | seed              | —        | ✅ (generate via Settings → ssh, real `ssh-keygen` against a temp dir — see "3. Settings" above) |
+| Submodule list                          | submodule     | dedicated fixture | —        | ✅ (`fixture:submodule-repo`, a real `git submodule add`; sidebar row asserted via `SidebarRowView.tsx` — see gotchas for the dead-code detour) |
 | Worktree add / list / remove            | worktree      | native path       | —        | ⬜                                                                                   |
-| Themes                                  | settings      | seed              | 📷       | ⬜                                                                                   |
-| Rewards / gamification toast            | rewards       | action-triggered  | 📷       | ⬜                                                                                   |
-| Notifications tray/dropdown             | notifications | seed              | —        | ⬜                                                                                   |
+| Themes                                  | settings      | seed              | 📷       | ✅ (select a built-in theme → `data-theme` applies + persists across reload; single-card snapshot avoids the full-grid reproducibility problem — see "3. Settings") |
+| Rewards / gamification toast            | rewards       | action-triggered  | 📷       | ✅ (first commit unlocks "Premier Pas", asserted via `trophy-toast`; game progress reset via localStorage first — see `rewards.feature`) |
+| Notifications tray/dropdown             | notifications | seed              | —        | ✅ (bell → dropdown shows seeded items + unread badge, mark-all-read, clear-all → empty state; seeded via `git-manager-notifications` localStorage, not the real GitHub-diff pipeline) |
 
 ---
 
@@ -229,9 +324,35 @@ DOM value:
   reliable than clicking an in-app close/cancel button that does the same thing — one less
   real-window DOM interaction to hit the click quirk above. `RebasingCommitWindow` (opened as a
   third window by the fixup flow, to squash the new commit into place) is closed this way rather
-  than driving its interactive-rebase UI, which is separate, still-🚫 work.
+  than driving its interactive-rebase UI, which is separate, still-🚫 work. **The merge editor's
+  block-resolution scenario hits the same tradeoff**: opening the file via `ConflictResolutionPanel`
+  (matching production, unlike the navigate-in-place "opens + snapshot" scenario above) gives a
+  real second window, since `merge-apply`/`merge-accept-left`/`-right`/keep-ours/keep-theirs all
+  self-close too — same `clickViaJs` + switch-to-main-immediately pattern (`merge.steps.ts`). One
+  extra timing gotcha surfaced here: both `handleApplyNonConflicting` (the wand) and the connector
+  overlay's initial geometry are asynchronous — `handleApplyNonConflicting` awaits a real backend
+  IPC round-trip, and `MergeConnectorOverlay`'s accept/reject buttons don't exist until
+  `ConflictResolver`'s own post-mount recompute (scheduled up to 250ms after all three Monaco panes
+  report ready) has run — so querying for `merge-connector-accept-*` buttons immediately after
+  opening the window or clicking the wand can transiently find zero elements. A first fix attempt
+  waited for the wand button's spinner `<svg class="animate-spin">` to disappear
+  (`waitForExist({reverse: true})`) instead of a plain pause, but that's itself racy: if the spinner
+  hasn't appeared *yet* (React hasn't re-rendered with `isAutoMerging: true` at the moment of the
+  check), `reverse: true` reports "not there" immediately and the wait becomes a no-op. A plain
+  `browser.pause(1000)` after opening the window and after each wand click proved simpler and
+  reliable for this fixture's size — paired with the existing `browser.waitUntil` poll for the
+  accept-right buttons themselves as a second safety net.
 - **Real remote / network** (fetch/pull/push, clone, GitHub, Ollama) — mock the IPC command
   (`browser.tauri.mock`) rather than standing up a real server, unless doing an integration run.
+- **Check a component is actually mounted before adding testids to it** — the sidebar's submodule
+  section has *two* implementations: `SubmodulesSection.tsx` (dead code, only referenced from its
+  own test file) and the real one, `SidebarRowView.tsx`'s `case 'submodule':` branch (fed by
+  `useSidebarRows.ts`), which is what the app actually renders. Adding testids to the dead one first
+  produced a confusing partial result — the section *header* worked (it's rendered generically by
+  `SidebarRowView.tsx` itself via `testId={`sidebar-section-${row.sectionKey}`}`, unrelated to
+  `SubmodulesSection.tsx`), showing the correct count, but the item rows never appeared, because
+  they're rendered by the OTHER, real component. `grep -rn "<ComponentName"` for actual JSX usage
+  (not just filename matches) would have caught this immediately.
 - Each feature runs one worker; keep scenarios independent (state is reset by the reload in the
   shared open-repo step, and `restoreAllMocks` in an `After` hook).
 - **Don't click a commit row's geometric center to select it** — `author`/`date`/`sha` are hidden

@@ -45,6 +45,7 @@ export function RewardsSection() {
         <input
           type="checkbox"
           id="toggle-rewards"
+          data-testid="rewards-toggle"
           checked={rewardsEnabled}
           onChange={(e) => setRewardsEnabled(e.target.checked)}
           className="h-4 w-4 cursor-pointer rounded border-border text-primary accent-primary focus:ring-primary"

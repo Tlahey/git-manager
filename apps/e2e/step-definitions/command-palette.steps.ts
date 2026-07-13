@@ -289,6 +289,21 @@ Then(/^the tag "([^"]*)" is annotated$/, async (tag: string) => {
   expect(type).toBe('tag')
 })
 
+// Creating a tag invalidates both the 'tags' and 'git-log' react-query keys (TagDialog.tsx), so the
+// new ref badge lands in the graph asynchronously — waitForDisplayed (rather than a one-shot query)
+// rides out that refetch. `ref-label-tag-<name>` (RefLabel.tsx) is scoped inside the commit's own
+// `graph-row-<oid>` row so it can't match a same-named tag on a different commit.
+Then(/^the tag "([^"]*)" is shown as a ref in the graph$/, async (tag: string) => {
+  const repoPath = await activeRepoPath()
+  expect(repoPath).toBeTruthy()
+  const oid = execFileSync('git', ['-C', repoPath as string, 'rev-parse', `${tag}^{commit}`], {
+    encoding: 'utf8',
+  }).trim()
+  const row = $(`[data-testid="graph-row-${oid}"]`)
+  await row.waitForDisplayed({ timeout: 10000 })
+  await row.$(`[data-testid="ref-label-tag-${tag}"]`).waitForDisplayed({ timeout: 10000 })
+})
+
 // Cherry-pick creates a *new* commit (different oid, same subject) on the target ref rather than
 // moving anything — checking `<ref>`'s log for the subject (not oid equality) is the correct proof.
 Then(/^the commit "([^"]*)" is reachable from "([^"]*)"$/, async (subject: string, ref: string) => {

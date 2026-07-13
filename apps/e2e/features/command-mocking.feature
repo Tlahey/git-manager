@@ -9,19 +9,19 @@ Feature: Tauri command mocking
   # documented in README.md (intercepting the app's own invoke calls doesn't work on this
   # Tauri version).
 
-  Scenario: Simulate an unavailable Ollama backend
-    Given the "check_ollama_status" command is mocked to return "unavailable"
-    When the Ollama status is checked through the test bridge
+  Scenario: Simulate an unavailable AI provider backend
+    Given the "check_ai_status" command is mocked to return "unavailable"
+    When the AI provider status is checked through the test bridge
     Then the reported status is "unavailable"
-    And the "check_ollama_status" command was called once
+    And the "check_ai_status" command was called once
 
   Scenario: Simulate a connection failure
-    Given the "check_ollama_status" command is mocked to reject with "connection refused"
-    When the Ollama status is checked through the test bridge
+    Given the "check_ai_status" command is mocked to reject with "connection refused"
+    When the AI provider status is checked through the test bridge
     Then the error "connection refused" is returned
 
   Scenario: Restore the real command after mocking
-    Given the "check_ollama_status" command is mocked with a fake value
+    Given the "check_ai_status" command is mocked with a fake value
     When all mocks are restored
-    And the Ollama status is checked through the test bridge
+    And the AI provider status is checked through the test bridge
     Then the fake value does not appear in the result

@@ -84,7 +84,11 @@ export function RefLabel({ gitRef, color }: RefLabelProps) {
   }
 
   return (
-    <span className={badgeClasses} style={customStyle}>
+    <span
+      className={badgeClasses}
+      style={customStyle}
+      data-testid={`ref-label-${gitRef.type}-${gitRef.shortName}`}
+    >
       {isHEAD && <GitCommitHorizontal className="h-3 w-3 shrink-0" />}
       {!isHEAD && !isRemote && !isTag && !isStash && <Check className="h-3 w-3 shrink-0" />}
       {isTag && <Tag className="h-3 w-3 shrink-0" />}

@@ -73,6 +73,7 @@ export function RefLabelGroup({ refs, color }: RefLabelGroupProps) {
           ref={badgeRef}
           onMouseEnter={show}
           onMouseLeave={hide}
+          data-testid="ref-label-group-more-badge"
           className="inline-flex shrink-0 cursor-default items-center rounded border border-border bg-muted px-1.5 py-0 text-[11px] font-medium leading-5 text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           +{extra}
@@ -86,6 +87,7 @@ export function RefLabelGroup({ refs, color }: RefLabelGroupProps) {
             style={{ position: 'fixed', top: pos.top, left: pos.left }}
             onMouseEnter={show}
             onMouseLeave={hide}
+            data-testid="ref-label-group-more-popover"
             className="z-50 flex max-w-xs flex-col items-start gap-1 rounded-md border border-border bg-popover p-1.5 shadow-lg"
           >
             {sortedRefs.slice(1).map((ref, i) => (

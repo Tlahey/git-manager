@@ -16,6 +16,7 @@
     "build:e2e": "tauri build --debug --no-bundle --features e2e --config src-tauri/tauri.e2e.conf.json"
   },
   "dependencies": {
+    "@git-manager/ai": "workspace:*",
     "@git-manager/code-view": "workspace:*",
     "@git-manager/components": "workspace:*",
     "@git-manager/git-types": "workspace:*",
