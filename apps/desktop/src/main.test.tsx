@@ -110,4 +110,20 @@ describe('main entry', () => {
     await import('./main')
     await waitFor(() => expect(screen.getByTestId('fake-app')).toBeInTheDocument())
   })
+
+  it('fades out and removes the static splash markup once the app mounts', async () => {
+    document.body.innerHTML = '<div id="root"></div><div id="app-splash"></div>'
+    setSearch('')
+    await import('./main')
+    await waitFor(() => expect(screen.getByTestId('fake-app')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(document.getElementById('app-splash')).toHaveClass('is-hidden')
+    )
+  })
+
+  it('does nothing when the splash markup is absent (e.g. secondary windows in tests)', async () => {
+    setSearch('')
+    await expect(import('./main')).resolves.not.toThrow()
+    await waitFor(() => expect(screen.getByTestId('fake-app')).toBeInTheDocument())
+  })
 })

@@ -16,6 +16,18 @@ import './index.css'
 const e2eSetup =
   import.meta.env.VITE_E2E === 'true' ? import('@wdio/tauri-plugin') : Promise.resolve()
 
+// Fades out and removes the static splash markup painted instantly by index.html once the
+// real app has committed its first frame. The setTimeout fallback guarantees removal even
+// if `transitionend` never fires (e.g. reduced-motion, or no matching CSS transition).
+function hideSplash() {
+  const splash = document.getElementById('app-splash')
+  if (!splash) return
+  splash.classList.add('is-hidden')
+  const remove = () => splash.remove()
+  splash.addEventListener('transitionend', remove, { once: true })
+  setTimeout(remove, 300)
+}
+
 // Initialize i18n before rendering, honoring the persisted language choice
 // (the zustand store rehydrates synchronously from localStorage on import).
 e2eSetup
@@ -51,4 +63,5 @@ e2eSetup
     ReactDOM.createRoot(document.getElementById('root')!).render(
       <React.StrictMode>{content}</React.StrictMode>
     )
+    requestAnimationFrame(hideSplash)
   })
