@@ -112,7 +112,10 @@ export function GithubSection() {
             {/* Add Form */}
             {deviceFlowData ? (
               // Device Flow Authentication Steps Card
-              <div className="space-y-4 rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <div
+                data-testid="github-device-flow-card"
+                className="space-y-4 rounded-lg border border-primary/20 bg-primary/5 p-4"
+              >
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">
                     GitHub Authorization
@@ -128,7 +131,10 @@ export function GithubSection() {
                 </p>
 
                 <div className="flex items-center justify-center gap-4 rounded-md border border-border/60 bg-muted/30 p-4">
-                  <span className="font-mono text-2xl font-bold tracking-wider text-foreground">
+                  <span
+                    data-testid="github-device-user-code"
+                    className="font-mono text-2xl font-bold tracking-wider text-foreground"
+                  >
                     {deviceFlowData.user_code}
                   </span>
                   <Button
@@ -153,6 +159,7 @@ export function GithubSection() {
                     href={deviceFlowData.verification_uri}
                     target="_blank"
                     rel="noopener noreferrer"
+                    data-testid="github-device-verification-link"
                     className="hover:bg-primary-hover inline-flex h-8 items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition-colors"
                   >
                     <span>{t('settings.github.openActivationPage')}</span>
@@ -163,6 +170,7 @@ export function GithubSection() {
                     size="sm"
                     variant="ghost"
                     onClick={handleCancelFlow}
+                    data-testid="github-device-cancel-button"
                     className="h-8 text-xs text-muted-foreground hover:text-foreground"
                   >
                     {t('settings.github.cancel')}
@@ -178,6 +186,7 @@ export function GithubSection() {
                   <button
                     type="button"
                     onClick={handleCancelFlow}
+                    data-testid="github-back-to-choice-button"
                     className="flex items-center gap-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
                   >
                     <ArrowLeft className="h-2.5 w-2.5" />
@@ -211,7 +220,10 @@ export function GithubSection() {
                   </div>
 
                   {error && (
-                    <div className="flex items-center gap-2 rounded border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive">
+                    <div
+                      data-testid="github-error-message"
+                      className="flex items-center gap-2 rounded border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive"
+                    >
                       <AlertCircle className="h-4 w-4 shrink-0" />
                       <span>{error}</span>
                     </div>
@@ -227,6 +239,7 @@ export function GithubSection() {
                   <button
                     type="button"
                     onClick={handleCancelFlow}
+                    data-testid="github-back-to-choice-button"
                     className="flex items-center gap-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
                   >
                     <ArrowLeft className="h-2.5 w-2.5" />
@@ -253,6 +266,7 @@ export function GithubSection() {
                         placeholder={t('settings.github.patPlaceholder')}
                         className="h-8 font-mono text-xs"
                         disabled={connecting}
+                        data-testid="github-pat-input"
                       />
                     </div>
                     <Button
@@ -260,6 +274,7 @@ export function GithubSection() {
                       size="sm"
                       disabled={connecting || !patToken.trim()}
                       className="h-8 w-full gap-2 text-xs"
+                      data-testid="github-pat-submit-button"
                     >
                       {connecting ? (
                         <>
@@ -276,7 +291,10 @@ export function GithubSection() {
                   </form>
 
                   {error && (
-                    <div className="flex items-center gap-2 rounded border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive">
+                    <div
+                      data-testid="github-error-message"
+                      className="flex items-center gap-2 rounded border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive"
+                    >
                       <AlertCircle className="h-4 w-4 shrink-0" />
                       <span>{error}</span>
                     </div>
@@ -297,6 +315,7 @@ export function GithubSection() {
                       startOAuthLogin()
                     }}
                     className="h-9 w-full justify-start gap-2 px-3 text-xs transition-all duration-200 hover:border-primary/30 hover:bg-primary/5"
+                    data-testid="github-login-oauth-button"
                   >
                     <Github className="h-4 w-4 text-muted-foreground" />
                     <span>{t('settings.github.loginButton')}</span>
@@ -306,6 +325,7 @@ export function GithubSection() {
                     size="sm"
                     onClick={() => setLoginMethod('pat')}
                     className="h-9 w-full justify-start gap-2 px-3 text-xs transition-all duration-200 hover:border-primary/30 hover:bg-primary/5"
+                    data-testid="github-login-pat-button"
                   >
                     <Key className="h-4 w-4 text-muted-foreground" />
                     <span>{t('settings.github.loginWithPAT')}</span>
@@ -327,6 +347,7 @@ export function GithubSection() {
                     return (
                       <div
                         key={acc.id}
+                        data-testid={`github-account-item-${acc.id}`}
                         className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
                           isActive ? 'border-primary/50 bg-primary/5' : 'border-border bg-card'
                         }`}
@@ -360,6 +381,7 @@ export function GithubSection() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleSetActive(acc.id)}
+                              data-testid={`github-account-switch-${acc.id}`}
                               className="h-7 px-2 text-[10px]"
                             >
                               {t('settings.github.switch')}
@@ -370,6 +392,7 @@ export function GithubSection() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleRemoveAccount(acc.id)}
+                            data-testid={`github-account-remove-${acc.id}`}
                             className="h-7 border-destructive/20 px-2 text-[10px] text-destructive/80 transition-colors hover:border-destructive hover:bg-destructive/5 hover:text-destructive"
                           >
                             {t('settings.github.remove')}
