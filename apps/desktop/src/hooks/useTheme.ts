@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useSettingsStore } from '../stores/settings.store'
 import { resolveSystemTheme } from '../lib/themes'
 import { apiGetUserThemes } from '../api/theme.api'
+import { warnOnInvalidUserTheme } from '../lib/userThemeValidation'
 import type { UserTheme } from '@git-manager/git-types'
 
 const STYLE_TAG_PREFIX = 'user-theme-'
@@ -9,6 +10,7 @@ const STYLE_TAG_PREFIX = 'user-theme-'
 function injectUserThemeStyle(theme: UserTheme) {
   const id = `${STYLE_TAG_PREFIX}${theme.id}`
   if (document.getElementById(id)) return
+  warnOnInvalidUserTheme(theme)
   const style = document.createElement('style')
   style.id = id
   style.textContent = theme.css

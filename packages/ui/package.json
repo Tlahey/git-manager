@@ -11,7 +11,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:a11y": "vitest run themeTokens colorContrast"
   },
   "dependencies": {
     "@radix-ui/react-context-menu": "^2.2.2",

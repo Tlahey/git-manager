@@ -11,6 +11,7 @@
 [![Rust](https://img.shields.io/badge/Rust-1.77+-orange)](https://www.rust-lang.org/)
 [![Tauri](https://img.shields.io/badge/Tauri-v2-purple)](https://tauri.app/)
 [![Platform](https://img.shields.io/badge/Platform-macOS-black)](https://github.com/Tlahey/git-manager)
+[![Themes: WCAG AA](https://img.shields.io/badge/Themes-WCAG_AA-brightgreen)](#theme-accessibility--consistency)
 
 _100% local — no telemetry, no cloud, no data leaves your machine._
 
@@ -186,8 +187,20 @@ All scripts are run from the **repository root**.
 | `pnpm build`     | Build production app bundle                            |
 | `pnpm typecheck` | TypeScript check across all packages                   |
 | `pnpm lint`      | ESLint across all packages                             |
+| `pnpm test`      | Unit tests (Vitest) across all packages                |
+| `pnpm test:a11y` | Theme accessibility & consistency checks (see below)   |
 | `pnpm format`    | Prettier formatting                                    |
 | `pnpm clean`     | Remove all build artifacts                             |
+
+### Theme accessibility & consistency
+
+`pnpm test:a11y` runs a focused subset of the test suite that validates every built-in theme in `packages/ui/src/globals.css` (and, at runtime, user themes loaded from `~/.git-manager/themes/`):
+
+- **WCAG AA contrast** — every foreground/surface token pair (`primary`/`primary-foreground`, `destructive`, `success`, `muted-foreground`, …) meets the AA ratio, so no theme ships e.g. white text on a bright button. All 12 themes currently pass.
+- **Token consistency** — each theme declares the same complete token set, as HSL triplets only (no stray hex that would bypass the color system).
+- **Picker parity** — the Settings theme picker's swatch previews match their real CSS tokens, and the picker list stays in sync with the CSS.
+
+The contrast and swatch checks use ratchet baselines that are currently empty: adding a theme, or editing a token without updating the picker/other themes, fails the check. Re-run after any change under `packages/ui/src/globals.css` or `apps/desktop/src/lib/themes.ts`.
 
 ### Per-package
 

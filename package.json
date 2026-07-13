@@ -12,6 +12,7 @@
     "build:e2e": "pnpm --filter @git-manager/desktop build:e2e",
     "lint": "turbo lint",
     "test": "turbo test",
+    "test:a11y": "turbo test:a11y",
     "test:e2e": "pnpm build:e2e && pnpm --filter @git-manager/e2e test:e2e",
     "test:e2e:fast": "pnpm --filter @git-manager/e2e test:e2e",
     "typecheck": "turbo typecheck",
