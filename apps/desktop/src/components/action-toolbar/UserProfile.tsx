@@ -47,7 +47,7 @@ export function UserProfile({ onOpenSettings }: UserProfileProps) {
         <button
           type="button"
           title={name}
-          className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-secondary text-[10px] font-semibold text-secondary-foreground transition-colors hover:bg-accent"
+          className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-sidebar-border bg-secondary text-[10px] font-semibold text-secondary-foreground transition-colors hover:bg-sidebar-accent"
         >
           {avatarUrl ? (
             <img src={avatarUrl} alt={name} className="h-full w-full object-cover" />

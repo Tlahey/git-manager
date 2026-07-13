@@ -158,7 +158,7 @@ export function RepositorySidebar({
   if (isBlameOrHistoryActive) {
     return (
       <div
-        className="relative flex h-full shrink-0 flex-col overflow-hidden border-r border-border bg-card"
+        className="relative flex h-full shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar"
         style={{ width: isCollapsed ? 350 : width }}
       >
         <BlameHistoryPanel
@@ -176,7 +176,7 @@ export function RepositorySidebar({
   if (isCollapsed) {
     return (
       <div
-        className="relative flex h-full shrink-0 flex-col overflow-hidden border-r border-border bg-card"
+        className="relative flex h-full shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar"
         style={{ width: RAIL_WIDTH }}
       >
         <SidebarRail
@@ -193,41 +193,41 @@ export function RepositorySidebar({
   // ── Mode déplié : sidebar complète ─────────────────────────────────
   return (
     <div
-      className="relative flex h-full shrink-0 flex-col border-r border-border bg-card"
+      className="relative flex h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar"
       style={{ width }}
     >
       {/* En-tête sidebar avec bouton collapse */}
-      <div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-2">
-        <span className="select-none text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+      <div className="flex h-9 shrink-0 items-center justify-between border-b border-sidebar-border px-2">
+        <span className="select-none text-[10px] font-bold uppercase tracking-widest text-sidebar-muted-foreground/60">
           Repository
         </span>
         <button
           onClick={collapse}
           title="Réduire la sidebar"
           aria-label="Réduire la sidebar"
-          className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex h-6 w-6 items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
         >
           <PanelLeftClose className="h-4 w-4" />
         </button>
       </div>
 
       {/* Barre de recherche dans les branches */}
-      <div className="shrink-0 border-b border-border px-2 py-1.5">
+      <div className="shrink-0 border-b border-sidebar-border px-2 py-1.5">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sidebar-muted-foreground/60" />
           <input
             type="text"
             value={branchQuery}
             onChange={(e) => setBranchQuery(e.target.value)}
             placeholder="Filtrer les branches…"
             aria-label="Filtrer les branches"
-            className="h-7 w-full rounded-md border border-input bg-background pl-7 pr-7 text-xs text-foreground outline-none transition-colors placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-ring"
+            className="h-7 w-full rounded-md border border-sidebar-border bg-sidebar-accent pl-7 pr-7 text-xs text-sidebar-foreground outline-none transition-colors placeholder:text-sidebar-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-ring"
           />
           {branchQuery && (
             <button
               onClick={() => setBranchQuery('')}
               aria-label="Effacer le filtre"
-              className="absolute right-1.5 top-1/2 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="absolute right-1.5 top-1/2 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
             >
               <X className="h-3 w-3" />
             </button>

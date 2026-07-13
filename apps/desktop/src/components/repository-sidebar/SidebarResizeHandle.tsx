@@ -18,7 +18,7 @@ export function SidebarResizeHandle({
       aria-hidden
     >
       {/* Barre visuelle */}
-      <div className="h-full w-px bg-border transition-colors group-hover/handle:w-[2px] group-hover/handle:bg-primary/60 group-active/handle:w-[2px] group-active/handle:bg-primary" />
+      <div className="h-full w-px bg-sidebar-border transition-colors group-hover/handle:w-[2px] group-hover/handle:bg-primary/60 group-active/handle:w-[2px] group-active/handle:bg-primary" />
     </div>
   )
 }

@@ -42,6 +42,16 @@ export default {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
+        sidebar: {
+          DEFAULT: 'hsl(var(--sidebar-background))',
+          foreground: 'hsl(var(--sidebar-foreground))',
+        },
+        'sidebar-border': 'hsl(var(--sidebar-border))',
+        'sidebar-accent': {
+          DEFAULT: 'hsl(var(--sidebar-accent))',
+          foreground: 'hsl(var(--sidebar-accent-foreground))',
+        },
+        'sidebar-muted-foreground': 'hsl(var(--sidebar-muted-foreground))',
         // Git graph palette (stable colors for branches)
         'graph-1': '#7c3aed',
         'graph-2': '#2563eb',

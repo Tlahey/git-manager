@@ -62,16 +62,19 @@ test.describe('ThreeWayMerge story', () => {
 test.describe('TwoPanelDiff story', () => {
   const STORY = 'codeview-conflictresolver--two-panel-diff'
 
-  test('renders two read-only panes and no toolbar', async ({ page }) => {
+  test('renders two read-only panes with the header toolbar', async ({ page }) => {
     await openStory(page, STORY)
 
     await expect(page.getByTestId('merge-pane-theirs-wrapper')).toBeVisible()
     await expect(page.getByTestId('merge-pane-center-wrapper')).toBeVisible()
     await expect(page.getByTestId('merge-pane-ours-wrapper')).toHaveCount(0)
 
-    // 2-panel mode never renders the merge toolbar.
-    await expect(page.getByTestId('merge-nav-prev')).toHaveCount(0)
-    await expect(page.getByTestId('merge-stats')).toHaveCount(0)
+    // The story doesn't pass a `header` prop, so ConflictResolver defaults to `header = true` —
+    // the toolbar (nav + stats) renders the same as in 3-panel mode. Only the merge-only actions
+    // (apply/auto-merge/reset/recalculate) are suppressed in 2-panel mode.
+    await expect(page.getByTestId('merge-nav-prev')).toBeVisible()
+    // Read-only diff panes have nothing to "touch"/resolve, so changes/conflicts stay at 0.
+    await expect(page.getByTestId('merge-stats')).toHaveText('0 changes. 0 conflicts.')
 
     await expect(page.getByTestId('merge-pane-theirs-wrapper')).toContainText(/retries\s*=\s*5/)
     await expect(page.getByTestId('merge-pane-center-wrapper')).toContainText(/retries\s*=\s*2/)

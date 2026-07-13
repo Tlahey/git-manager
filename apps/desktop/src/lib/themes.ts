@@ -72,6 +72,12 @@ export const BUILTIN_THEMES: ThemeDefinition[] = [
     isDark: false,
   },
   {
+    id: 'obsidian',
+    labelKey: 'settings.appearance.theme.obsidian',
+    colors: { bg: '#f9fafb', fg: '#020817', primary: '#9064f7', accent: '#edeff3' },
+    isDark: false,
+  },
+  {
     id: 'amethyst',
     labelKey: 'settings.appearance.theme.amethyst',
     colors: { bg: '#0f0915', fg: '#f2f0f5', primary: '#be5eed', accent: '#261f2e' },

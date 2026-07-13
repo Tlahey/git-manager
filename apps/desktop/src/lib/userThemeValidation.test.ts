@@ -39,6 +39,12 @@ describe('warnOnInvalidUserTheme', () => {
       '--input: 0 0% 85%',
       '--ring: 0 0% 10%',
       '--radius: 0.5rem',
+      '--sidebar-background: 0 0% 100%',
+      '--sidebar-foreground: 0 0% 5%',
+      '--sidebar-border: 0 0% 85%',
+      '--sidebar-muted-foreground: 0 0% 30%',
+      '--sidebar-accent: 0 0% 92%',
+      '--sidebar-accent-foreground: 0 0% 10%',
     ].join('; ')
     warnOnInvalidUserTheme(theme(`html[data-theme="my-theme"] { ${tokens}; }`), warn)
     expect(warn).not.toHaveBeenCalled()
