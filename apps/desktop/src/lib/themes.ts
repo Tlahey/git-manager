@@ -1,8 +1,11 @@
 // ─── Theme definitions ────────────────────────────────────────────────────────
 //
 // `colors` holds hex values used to render the swatch previews in the Settings
-// theme picker.  They intentionally replicate the CSS variable values above so
-// the preview is accurate without having to parse the live CSS.
+// theme picker.  They are the exact sRGB conversions of the `--background`,
+// `--foreground`, `--primary` and `--accent` HSL tokens for each theme in
+// packages/ui/src/globals.css, so the preview matches what actually renders.
+// Keep them in sync when editing the CSS — themesRegistry.test.ts fails if a
+// swatch drifts more than a few units per channel from its token.
 
 export interface ThemeDefinition {
   id: string
@@ -23,73 +26,73 @@ export const BUILTIN_THEMES: ThemeDefinition[] = [
   {
     id: 'dark',
     labelKey: 'settings.appearance.theme.dark',
-    colors: { bg: '#0f172a', fg: '#f8fafc', primary: '#3b82f6', accent: '#1e3a5f' },
+    colors: { bg: '#020817', fg: '#f8fafc', primary: '#3b82f6', accent: '#1e293b' },
     isDark: true,
   },
   {
     id: 'light',
     labelKey: 'settings.appearance.theme.light',
-    colors: { bg: '#ffffff', fg: '#0f172a', primary: '#3b82f6', accent: '#dbeafe' },
+    colors: { bg: '#ffffff', fg: '#020817', primary: '#3b82f6', accent: '#f1f5f9' },
     isDark: false,
   },
   {
     id: 'github-light',
     labelKey: 'settings.appearance.theme.github-light',
-    colors: { bg: '#ffffff', fg: '#1f2328', primary: '#0969da', accent: '#f6f8fa' },
+    colors: { bg: '#ffffff', fg: '#242529', primary: '#036be2', accent: '#edf0f2' },
     isDark: false,
   },
   {
     id: 'github-dark',
     labelKey: 'settings.appearance.theme.github-dark',
-    colors: { bg: '#0d1117', fg: '#e6edf3', primary: '#2f81f7', accent: '#161b22' },
+    colors: { bg: '#101114', fg: '#e7ebee', primary: '#2e8bf5', accent: '#292d33' },
     isDark: true,
   },
   {
     id: 'nord',
     labelKey: 'settings.appearance.theme.nord',
-    colors: { bg: '#2e3440', fg: '#eceff4', primary: '#88c0d0', accent: '#81a1c1' },
+    colors: { bg: '#2f3541', fg: '#eceff4', primary: '#8ac1d0', accent: '#8da6c4' },
     isDark: true,
   },
   {
     id: 'dracula',
     labelKey: 'settings.appearance.theme.dracula',
-    colors: { bg: '#282a36', fg: '#f8f8f2', primary: '#bd93f9', accent: '#44475a' },
+    colors: { bg: '#272935', fg: '#f8f8f2', primary: '#bf95f9', accent: '#44475a' },
     isDark: true,
   },
   {
     id: 'catppuccin-mocha',
     labelKey: 'settings.appearance.theme.catppuccin-mocha',
-    colors: { bg: '#1e1e2e', fg: '#cdd6f4', primary: '#cba6f7', accent: '#313244' },
+    colors: { bg: '#1c1c2b', fg: '#cdd6f4', primary: '#cba6f7', accent: '#464858' },
     isDark: true,
   },
   {
     id: 'solarized-light',
     labelKey: 'settings.appearance.theme.solarized-light',
-    colors: { bg: '#fdf6e3', fg: '#073642', primary: '#268bd2', accent: '#eee8d5' },
+    colors: { bg: '#fdf6e2', fg: '#073541', primary: '#2075b1', accent: '#ede7d4' },
     isDark: false,
   },
   {
     id: 'amethyst',
     labelKey: 'settings.appearance.theme.amethyst',
-    colors: { bg: '#180b24', fg: '#f3e8ff', primary: '#c084fc', accent: '#3b1d54' },
+    colors: { bg: '#0f0915', fg: '#f2f0f5', primary: '#be5eed', accent: '#261f2e' },
     isDark: true,
   },
   {
     id: 'forest',
     labelKey: 'settings.appearance.theme.forest',
-    colors: { bg: '#0a1c12', fg: '#e6f4ea', primary: '#34a853', accent: '#133821' },
+    colors: { bg: '#0b140e', fg: '#f0f5f1', primary: '#2eb867', accent: '#212c24' },
     isDark: true,
   },
   {
     id: 'cyberpunk',
     labelKey: 'settings.appearance.theme.cyberpunk',
-    colors: { bg: '#120216', fg: '#d9fffb', primary: '#ff007f', accent: '#ffff00' },
+    colors: { bg: '#12080e', fg: '#d6ffff', primary: '#ff33bb', accent: '#ffff00' },
     isDark: true,
   },
   {
     id: 'platinum',
     labelKey: 'settings.appearance.theme.platinum',
-    colors: { bg: '#0e121a', fg: '#f1f5f9', primary: '#67e8f9', accent: '#f472b6' },
+    colors: { bg: '#14161a', fg: '#f9fafa', primary: '#80ffff', accent: '#ff80ff' },
     isDark: true,
   },
 ]

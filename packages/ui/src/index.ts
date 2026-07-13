@@ -62,3 +62,25 @@ export {
   CommandSeparator,
   CommandShortcut,
 } from './components/command'
+
+// ─── Theme validation (accessibility / token consistency) ──────────────────────
+export {
+  parseThemeTokens,
+  evaluateThemeContrast,
+  validateThemeTokens,
+  isThemeValid,
+  THEME_TOKEN_KEYS,
+  NON_COLOR_TOKENS,
+  CONTRAST_PAIRS,
+  AA_NORMAL_TEXT,
+  AA_LARGE_TEXT,
+} from './lib/themeTokens'
+export type { ThemeTokens, ThemeValidation, ContrastPair, ContrastResult } from './lib/themeTokens'
+export {
+  parseHslTriplet,
+  hslToRgb,
+  relativeLuminance,
+  contrastRatio,
+  contrastRatioForHslTriplets,
+} from './lib/colorContrast'
+export type { Rgb } from './lib/colorContrast'
