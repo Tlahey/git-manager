@@ -78,6 +78,7 @@
   "settings.appearance.density.comfortable": "Comfortable",
   "settings.appearance.showAvatars": "Show avatars (Gravatar)",
   "settings.appearance.animations": "Enable animations",
+  "settings.appearance.stickyScroll": "Sticky scroll in code/diff editors (pins the enclosing function/class name to the top while scrolling)",
   "settings.language.en": "English",
   "settings.language.fr": "Français",
   "settings.language.note": "Language changes take effect immediately.",

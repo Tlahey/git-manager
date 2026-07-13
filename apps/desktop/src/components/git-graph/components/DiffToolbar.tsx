@@ -1,22 +1,16 @@
-import { useTranslation } from '@git-manager/i18n'
 import { Button, Badge, cn } from '@git-manager/ui'
 import {
   X,
   ChevronLeft,
-  Columns,
-  List,
   RotateCcw,
   Plus,
   Minus,
   Copy,
   Check as CheckedIcon,
-  ChevronUp,
-  ChevronDown,
   GitCompare,
   FileText,
   Eye,
   History,
-  FoldVertical,
 } from 'lucide-react'
 import type { GitDiffFile } from '@git-manager/git-types'
 
@@ -52,14 +46,6 @@ interface DiffToolbarProps {
   onChangeActiveTab: (tab: 'diff' | 'file') => void
   activeLeftPanel: 'sidebar' | 'blame' | 'history'
   onChangeActiveLeftPanel: (panel: 'sidebar' | 'blame' | 'history') => void
-  onPrevChange: () => void
-  onNextChange: () => void
-  viewMode: 'inline' | 'split'
-  onChangeViewMode: (mode: 'inline' | 'split') => void
-  ignoreWhitespace: boolean
-  onToggleIgnoreWhitespace: () => void
-  collapseUnchanged: boolean
-  onToggleCollapseUnchanged: () => void
   isProcessing: boolean
   onToggleStage: () => void
   onRollback: () => void
@@ -67,7 +53,9 @@ interface DiffToolbarProps {
 
 /**
  * Header/toolbar for `DiffViewCenter`: file identity + status, diff/file view tabs, blame/history
- * toggle, diff navigation, split/inline + whitespace toggles, and WIP stage/discard actions.
+ * toggle, and WIP stage/discard actions. Diff-viewing controls (change navigation, whitespace,
+ * collapse-unchanged) live in `ConflictResolver`'s own header now that the diff tab renders
+ * through `@git-manager/code-view`'s `ThreeWayMergeEditor` instead of a raw Monaco diff editor.
  * Purely presentational — all state and handlers live in `DiffViewCenter`.
  */
 export function DiffToolbar({
@@ -82,20 +70,10 @@ export function DiffToolbar({
   onChangeActiveTab,
   activeLeftPanel,
   onChangeActiveLeftPanel,
-  onPrevChange,
-  onNextChange,
-  viewMode,
-  onChangeViewMode,
-  ignoreWhitespace,
-  onToggleIgnoreWhitespace,
-  collapseUnchanged,
-  onToggleCollapseUnchanged,
   isProcessing,
   onToggleStage,
   onRollback,
 }: DiffToolbarProps) {
-  const { t } = useTranslation('git')
-
   return (
     <div className="flex shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 shadow-sm">
       {/* Left Side: Back button + File info */}
@@ -226,74 +204,6 @@ export function DiffToolbar({
             <span>History</span>
           </Button>
         </div>
-
-        {/* Unified/Split Toggle & Change Navigation (only in Diff view) */}
-        {activeTab === 'diff' && (
-          <div className="animate-in fade-in slide-in-from-right-1 mr-2 flex items-center gap-2 duration-150">
-            <div className="flex items-center overflow-hidden rounded border border-border">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 rounded-none border-r border-border hover:bg-accent"
-                onClick={onPrevChange}
-                title="Previous Change"
-              >
-                <ChevronUp className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 rounded-none hover:bg-accent"
-                onClick={onNextChange}
-                title="Next Change"
-              >
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="flex items-center overflow-hidden rounded border border-border">
-              <Button
-                variant={viewMode === 'inline' ? 'default' : 'ghost'}
-                size="sm"
-                className="h-7 gap-1 rounded-none border-r border-border px-2.5 text-[10px] font-bold"
-                onClick={() => onChangeViewMode('inline')}
-              >
-                <List className="h-3.5 w-3.5" />
-                <span>{t('commitDetails.diffInline')}</span>
-              </Button>
-              <Button
-                variant={viewMode === 'split' ? 'default' : 'ghost'}
-                size="sm"
-                className="h-7 gap-1 rounded-none px-2.5 text-[10px] font-bold"
-                onClick={() => onChangeViewMode('split')}
-              >
-                <Columns className="h-3.5 w-3.5" />
-                <span>{t('commitDetails.diffSplit')}</span>
-              </Button>
-            </div>
-
-            <Button
-              variant={ignoreWhitespace ? 'default' : 'outline'}
-              size="sm"
-              className="ml-2 h-7 shrink-0 px-2.5 text-[10px] font-bold"
-              onClick={onToggleIgnoreWhitespace}
-              title="Ignore trim whitespace in diff"
-            >
-              Hide Whitespace
-            </Button>
-
-            <Button
-              variant={collapseUnchanged ? 'default' : 'outline'}
-              size="icon"
-              className="ml-2 h-7 w-7 shrink-0"
-              onClick={onToggleCollapseUnchanged}
-              title={t('commitDetails.collapseUnchanged')}
-              data-testid="diff-collapse-unchanged-btn"
-            >
-              <FoldVertical className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        )}
 
         {/* WIP Action buttons */}
         {isWip && diffData && (

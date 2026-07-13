@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
+import type { BlockPlacement } from './mergeBlockLayout'
 import type { MergeBlock } from './types'
 import { computeInitialPlacements, updatePlacementAfterToggle } from './mergeBlockLayout'
-import { changedCharRanges, computeIntraLineHighlights } from './mergeIntraLineDiff'
+import {
+  changedCharRanges,
+  computeIntraLineHighlights,
+  computeTwoWayIntraLineHighlights,
+} from './mergeIntraLineDiff'
 
 describe('changedCharRanges — token-level intra-line diff', () => {
   it('returns empty ranges for identical lines', () => {
@@ -46,6 +51,43 @@ describe('changedCharRanges — token-level intra-line diff', () => {
 
   it('does not count shared whitespace alone as similarity', () => {
     expect(changedCharRanges('foo bar', 'baz qux')).toBeUndefined()
+  })
+
+  // Regression: JS's `\w` is ASCII-only, so a naive tokenizer splits an accented word like
+  // "modifié" into "modifi" + "é" as two separate tokens — fragmenting the highlight (or, worse,
+  // letting the lone "é" spuriously "match" an unrelated accented char elsewhere on the line).
+  // `diffWordsWithSpace`'s word-character set covers Latin diacritics, so these stay whole.
+  it('treats an accented word as one token instead of splitting off the diacritic', () => {
+    const ranges = changedCharRanges('// café chaud', '// thé chaud')
+    expect(ranges).toEqual({
+      a: [{ start: 3, end: 7 }], // "café"
+      b: [{ start: 3, end: 6 }], // "thé"
+    })
+  })
+
+  it('highlights just the added word when it is itself accented, appended after shared text', () => {
+    const ranges = changedCharRanges(
+      '// Ceci est un commentaire',
+      '// Ceci est un commentaire modifié'
+    )
+    expect(ranges?.a).toEqual([])
+    expect(ranges?.b).toEqual([{ start: 26, end: 34 }]) // " modifié"
+  })
+
+  it('renames a word ending in a diacritic without fragmenting the accented character', () => {
+    const ranges = changedCharRanges('const résumé = a;', 'const résumés = a;')
+    expect(ranges).toEqual({
+      a: [{ start: 6, end: 12 }], // "résumé"
+      b: [{ start: 6, end: 13 }], // "résumés"
+    })
+  })
+
+  // Regression: a whitespace-only edit must still highlight — it's a real content change, not
+  // "nothing to compare" — so it can't be silently absorbed into a "common" token.
+  it('highlights a whitespace-only change (trailing spaces added inside a comment)', () => {
+    const ranges = changedCharRanges('// comment', '// comment  ')
+    expect(ranges?.a).toEqual([])
+    expect(ranges?.b).toEqual([{ start: 10, end: 12 }])
   })
 })
 
@@ -217,5 +259,130 @@ describe('computeIntraLineHighlights', () => {
     expect(highlights.ours).toEqual([])
     expect(highlights.center).toEqual([])
     expect(highlights.theirs).toEqual([])
+  })
+})
+
+/** 2-way placements mirror the block's `ours*` (modified-pane) geometry, like the resolver's
+ * dynamic-view seeding does. */
+function twoWayPlacementFor(block: MergeBlock): Map<number, BlockPlacement> {
+  return new Map([
+    [
+      block.blockId,
+      {
+        blockId: block.blockId,
+        centerStartLine: block.oursStartLine,
+        centerLineCount: block.oursLineCount,
+        oursIncluded: false,
+        theirsIncluded: false,
+        oursTouched: false,
+        theirsTouched: false,
+      },
+    ],
+  ])
+}
+
+describe('computeTwoWayIntraLineHighlights', () => {
+  it('pinpoints the differing word on both the theirs pane and the center for a modification', () => {
+    const block: MergeBlock = {
+      blockId: 0,
+      kind: 'theirs-only',
+      theirsStartLine: 2,
+      theirsLineCount: 1,
+      oursStartLine: 2,
+      oursLineCount: 1,
+      oursLines: [],
+      theirsLines: ['const value = theirs;'],
+    }
+    const centerLines = ['header', 'const value = modified;']
+
+    const highlights = computeTwoWayIntraLineHighlights(
+      [block],
+      twoWayPlacementFor(block),
+      (n) => centerLines[n - 1] ?? ''
+    )
+
+    expect(highlights.ours).toEqual([])
+    expect(highlights.theirs).toEqual([
+      { line: 2, startColumn: 15, endColumn: 21, inlineClassName: 'merge-inline-modification' },
+    ])
+    expect(highlights.center).toEqual([
+      { line: 2, startColumn: 15, endColumn: 23, inlineClassName: 'merge-inline-modification' },
+    ])
+  })
+
+  it('never intra-highlights a pure addition — there is no counterpart original text to compare against', () => {
+    const block: MergeBlock = {
+      blockId: 0,
+      kind: 'theirs-only',
+      theirsStartLine: 1,
+      theirsLineCount: 0,
+      oursStartLine: 1,
+      oursLineCount: 2,
+      oursLines: [],
+      theirsLines: [],
+    }
+    const highlights = computeTwoWayIntraLineHighlights(
+      [block],
+      twoWayPlacementFor(block),
+      (n) => ['new line one', 'new line two'][n - 1] ?? ''
+    )
+    expect(highlights.theirs).toEqual([])
+    expect(highlights.center).toEqual([])
+  })
+
+  it('never intra-highlights a pure deletion — there is no counterpart modified text to compare against', () => {
+    const block: MergeBlock = {
+      blockId: 0,
+      kind: 'theirs-only',
+      theirsStartLine: 1,
+      theirsLineCount: 2,
+      oursStartLine: 1,
+      oursLineCount: 0,
+      oursLines: [],
+      theirsLines: ['old line one', 'old line two'],
+    }
+    const highlights = computeTwoWayIntraLineHighlights(
+      [block],
+      twoWayPlacementFor(block),
+      () => ''
+    )
+    expect(highlights.theirs).toEqual([])
+    expect(highlights.center).toEqual([])
+  })
+
+  it('never intra-highlights a synthesized unchanged gap block, even if the center text somehow drifted', () => {
+    const block: MergeBlock = {
+      blockId: 0,
+      kind: 'unchanged',
+      theirsStartLine: 1,
+      theirsLineCount: 1,
+      oursStartLine: 1,
+      oursLineCount: 1,
+      oursLines: [],
+      theirsLines: ['same line'],
+    }
+    const highlights = computeTwoWayIntraLineHighlights(
+      [block],
+      twoWayPlacementFor(block),
+      () => 'completely different'
+    )
+    expect(highlights.theirs).toEqual([])
+    expect(highlights.center).toEqual([])
+  })
+
+  it('produces no highlight when the two lines are identical', () => {
+    const block: MergeBlock = {
+      blockId: 0,
+      kind: 'theirs-only',
+      theirsStartLine: 1,
+      theirsLineCount: 1,
+      oursStartLine: 1,
+      oursLineCount: 1,
+      oursLines: [],
+      theirsLines: ['same line'],
+    }
+    const highlights = computeTwoWayIntraLineHighlights([block], twoWayPlacementFor(block), () => 'same line')
+    expect(highlights.theirs).toEqual([])
+    expect(highlights.center).toEqual([])
   })
 })

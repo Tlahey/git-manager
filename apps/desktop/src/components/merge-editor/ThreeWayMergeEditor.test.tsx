@@ -6,6 +6,8 @@ import type { MergeBlock, ThreeWayMergeView } from '@git-manager/git-types'
 import { ThreeWayMergeEditor, type ThreeWayMergeEditorRef } from './ThreeWayMergeEditor'
 import { fakeEditors, resetFakeEditors } from './__tests__/fakeMonacoPane'
 
+vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
+
 // `vi.mock` factories are hoisted above the imports, so they must not close over top-level
 // bindings directly: the fake editor is pulled in via a dynamic import inside the factory, and
 // the auto-merge spy is created through `vi.hoisted` so it exists before the factory runs.

@@ -92,7 +92,7 @@ describe('AppearanceSection — notification location and checkboxes', () => {
     expect(useSettingsStore.getState().settings.appearance.notificationLocation).toBe('bottom-left')
   })
 
-  it('toggles showAvatars and enableAnimations independently', async () => {
+  it('toggles showAvatars, enableAnimations and stickyScroll independently', async () => {
     const user = userEvent.setup()
     render(<AppearanceSection />)
     const checkboxes = screen.getAllByRole('checkbox')
@@ -100,5 +100,13 @@ describe('AppearanceSection — notification location and checkboxes', () => {
     expect(useSettingsStore.getState().settings.appearance.showAvatars).toBe(false)
     await user.click(checkboxes[1])
     expect(useSettingsStore.getState().settings.appearance.enableAnimations).toBe(false)
+    await user.click(checkboxes[2])
+    expect(useSettingsStore.getState().settings.appearance.stickyScroll).toBe(true)
+  })
+
+  it('defaults stickyScroll off', () => {
+    render(<AppearanceSection />)
+    const checkboxes = screen.getAllByRole('checkbox')
+    expect(checkboxes[2]).not.toBeChecked()
   })
 })

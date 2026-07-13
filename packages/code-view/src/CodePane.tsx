@@ -39,6 +39,9 @@ interface CodePaneProps {
   /** Host-supplied replacement for the default `@monaco-editor/react` Editor. */
   editorComponent?: CodePaneEditorComponent
   loadingFallback?: ReactNode
+  /** Host overrides merged underneath this pane's own required options (below) — a host can add
+   * e.g. `stickyScroll`, but can't override `readOnly`/`glyphMargin`/etc. through this. */
+  options?: editor.IStandaloneEditorConstructionOptions
 }
 
 /** One of the resolver's independent (non-diff) Monaco instances — each pane renders its own
@@ -54,6 +57,7 @@ export function CodePane({
   onChange,
   editorComponent,
   loadingFallback,
+  options,
 }: CodePaneProps) {
   const EditorComponent = editorComponent ?? DefaultMonacoEditor
 
@@ -76,6 +80,7 @@ export function CodePane({
         onMount={onMount}
         onChange={onChange ? (v) => onChange(v ?? '') : undefined}
         options={{
+          ...options,
           readOnly,
           // Accept/ignore actions live in the connector gap between panes (see
           // MergeConnectorOverlay), not in Monaco's own gutter, so no glyph margin or extra

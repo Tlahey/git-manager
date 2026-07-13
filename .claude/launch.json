@@ -14,6 +14,12 @@
       "port": 6007
     },
     {
+      "name": "code-view-storybook",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@git-manager/code-view", "storybook", "--no-open"],
+      "port": 6006
+    },
+    {
       "name": "desktop-frontend",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@git-manager/desktop", "run", "dev:frontend"],

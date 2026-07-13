@@ -183,6 +183,11 @@ export interface FakeEditorInstance {
   trigger: (source: string, actionId: string, payload: unknown) => void
   layout: () => void
   getOption: (id: number) => number
+  /** Test-only: a real (but otherwise inert) DOM node — enough for code that reads
+   * `getComputedStyle`/observes attribute mutations on it (e.g. the leftmost pane's
+   * background-sync in ConflictResolver.tsx) without needing a real Monaco instance. */
+  getDomNode: () => HTMLElement
+  onDidDispose: (cb: () => void) => { dispose: () => void }
   /** Test-only: the most recent array passed to the decorations collection's `.set()`. */
   decorations: unknown[]
   /** Test-only: the currently-live view zones (adds minus removes across `changeViewZones` calls). */
@@ -202,6 +207,7 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
   let zoneCounter = 0
   let scrollTop = 0
   const commands = new Map<number, () => void>()
+  const domNode = document.createElement('div')
 
   const instance: FakeEditorInstance = {
     path,
@@ -216,6 +222,8 @@ function createFakeEditor(path: string, initialValue: string): FakeEditorInstanc
     },
     onDidScrollChange: () => ({ dispose: () => {} }),
     onDidLayoutChange: () => ({ dispose: () => {} }),
+    getDomNode: () => domNode,
+    onDidDispose: () => ({ dispose: () => {} }),
     onDidChangeModelContent: (cb) => model.onDidChangeContent(cb),
     executeEdits: (_source, edits) => model.applyEdits(edits),
     changeViewZones: (cb) => {
