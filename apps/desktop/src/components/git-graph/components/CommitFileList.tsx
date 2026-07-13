@@ -63,6 +63,10 @@ interface CommitFileListProps {
    * All"/"Unstage All" equivalent for a single zone. Direction/icon follows `hoverStage`; only
    * meaningful together with it. */
   onBulkStage?: () => void
+  /** Overrides the bulk-stage button's testid (defaults to `file-list-bulk-stage`) — needed when
+   * more than one zone in the same view renders one (e.g. the staged zone's unstage-all button and
+   * the unstaged zone's stage-all button), since they'd otherwise share the same testid. */
+  bulkStageTestId?: string
 }
 
 export function CommitFileList({
@@ -81,6 +85,7 @@ export function CommitFileList({
   hoverStage,
   collapsible,
   onBulkStage,
+  bulkStageTestId = 'file-list-bulk-stage',
 }: CommitFileListProps) {
   const { t } = useTranslation('git')
   const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree')
@@ -538,7 +543,7 @@ export function CommitFileList({
                 title={
                   hoverStage === 'add' ? t('workingTree.stageAll') : t('workingTree.unstageAll')
                 }
-                data-testid="file-list-bulk-stage"
+                data-testid={bulkStageTestId}
               >
                 {hoverStage === 'add' ? (
                   <Plus className="h-2.5 w-2.5" />

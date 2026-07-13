@@ -15,3 +15,16 @@ Feature: Undo and redo a branch checkout
     Then the branch indicator reads "main"
     When I redo the last undone action
     Then the branch indicator reads "feature/login"
+
+  Scenario: Undoing a reset restores HEAD and redo re-applies it
+    Given the "rollback-history" fixture repository is opened
+    When I select the "HEAD~2" commit in the graph
+    And I open the command palette
+    And I run the command palette action "commit-reset-mixed"
+    Then the reset dialog is shown
+    When I confirm the reset
+    Then the repository HEAD commit subject is "chore: bump counter to 2"
+    When I undo the last action
+    Then the repository HEAD commit subject is "chore: bump counter to 4"
+    When I redo the last undone action
+    Then the repository HEAD commit subject is "chore: bump counter to 2"

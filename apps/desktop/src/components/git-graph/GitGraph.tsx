@@ -84,6 +84,10 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
   const pendingGraphSelection = useRepoUIStore((s) => s.pendingGraphSelection)
   const setPendingGraphSelection = useRepoUIStore((s) => s.setPendingGraphSelection)
+  const setSelectedCommitOid = useRepoUIStore((s) => s.setSelectedCommitOid)
+  const setSelectedStashIndex = useRepoUIStore((s) => s.setSelectedStashIndex)
+  const pendingGraphAction = useRepoUIStore((s) => s.pendingGraphAction)
+  const setPendingGraphAction = useRepoUIStore((s) => s.setPendingGraphAction)
   const hiddenStashes = useRepoDataStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
   const toggleStashVisibility = useRepoDataStore((s) => s.toggleStashVisibility)
 
@@ -162,20 +166,72 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     setActiveDiffFile(null)
   }, [primaryOid, repoPath, setActiveDiffFile])
 
+  // Stash index (same detection as `useGitGraphActions.ts`'s native stash-menu path) when the
+  // selection is a stash row, `null` otherwise. Derived via useMemo — rather than read directly
+  // inside the publish effect below — so the effect's dependency is a stable primitive instead of
+  // the raw `nodes` array: `nodes` (react-query's `data`, defaulted to `[]`) is a fresh reference
+  // on every render while the query has no data yet, which previously fed straight into the
+  // effect's deps and re-ran it (hence re-publishing to the store) on every single render. Several
+  // consumers (`TabBar`, `NewTabMenu`, `UserProfile`) subscribe to the whole `repoUI` store without
+  // a selector, so *any* publish — even to an unchanged value — re-renders them; that compounded
+  // into a "Maximum update depth exceeded" loop. Memoizing to a primitive here means the effect
+  // only re-publishes when the actual stash index changes, not on every `nodes` reference churn.
+  const derivedStashIndex = useMemo(() => {
+    if (!primaryOid || primaryOid === 'WIP' || primaryOid === 'CONFLICT') return null
+    const stashRef = nodes
+      .find((n) => n.commit.oid === primaryOid)
+      ?.refs.find((r) => r.type === 'stash')
+    const stashMatch = stashRef?.shortName.match(/stash@\{(\d+)\}/)
+    return stashMatch ? parseInt(stashMatch[1], 10) : null
+  }, [primaryOid, nodes])
+
+  // Publish the selected commit OID to the store so out-of-tree UI (the command palette) can act on
+  // it. The synthetic WIP/CONFLICT rows aren't valid commit-action targets → publish null. Cleared
+  // on unmount so a closed tab doesn't leave a stale selection behind.
+  useEffect(() => {
+    const isRealCommit = !!primaryOid && primaryOid !== 'WIP' && primaryOid !== 'CONFLICT'
+    setSelectedCommitOid(isRealCommit ? primaryOid : null)
+    setSelectedStashIndex(derivedStashIndex)
+  }, [primaryOid, derivedStashIndex, setSelectedCommitOid, setSelectedStashIndex])
+  useEffect(
+    () => () => {
+      setSelectedCommitOid(null)
+      setSelectedStashIndex(null)
+    },
+    [setSelectedCommitOid, setSelectedStashIndex]
+  )
+
   // ── Menu contextuel natif (macOS) + dialogs + actions du graphe ───────────
-  const { pendingAction, setPendingAction, openMenuAt, handleCommitWip } = useGitGraphActions({
-    repoPath,
-    nodes,
-    selected,
-    primaryOid,
-    setPrimaryOid,
-    selectSingle,
-    hiddenStashes,
-    toggleStashVisibility,
-    status,
-    isRebasePaused,
-    t,
-  })
+  const { pendingAction, setPendingAction, openMenuAt, handleCommitWip, openFixupWindow } =
+    useGitGraphActions({
+      repoPath,
+      nodes,
+      selected,
+      primaryOid,
+      setPrimaryOid,
+      selectSingle,
+      hiddenStashes,
+      toggleStashVisibility,
+      status,
+      isRebasePaused,
+      t,
+    })
+
+  // Bridge: lets out-of-tree UI (the command palette) trigger a commit-scoped action on the
+  // currently selected commit. Dialog-based actions forward into the graph's own `setPendingAction`
+  // (which opens the matching dialog against `primaryOid`); `fixup` instead opens the dedicated
+  // "Commit Changes" window directly (same as the native menu's `onFixup`), since there's no
+  // in-page dialog to route it through. Either way, we clear the pending action once handled.
+  useEffect(() => {
+    if (pendingGraphAction && primaryOid) {
+      if (pendingGraphAction.kind === 'fixup') {
+        void openFixupWindow(primaryOid).catch(console.error)
+      } else {
+        setPendingAction(pendingGraphAction)
+      }
+      setPendingGraphAction(null)
+    }
+  }, [pendingGraphAction, primaryOid, setPendingAction, setPendingGraphAction, openFixupWindow])
 
   // ── Virtualisation ─────────────────────────────────────────────────────────
   const parentRef = useRef<HTMLDivElement>(null)
@@ -335,6 +391,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                           <div
                             key={virtualItem.key}
                             data-testid={`graph-row-${oid}`}
+                            data-selected={oid === primaryOid || selected.has(oid)}
                             className="hover:z-[60]"
                             style={{
                               position: 'absolute',

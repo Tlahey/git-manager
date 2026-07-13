@@ -21,6 +21,7 @@ import { useDevFixtureImport } from './hooks/useDevFixtureImport'
 import { Footer } from './components/footer/Footer'
 
 import { Toaster } from '@git-manager/ui'
+import { CommandPalette } from './components/command-palette/CommandPalette'
 import { TrophyToast } from './components/trophy/TrophyToast'
 import { OperationProgressBar } from './components/layout/OperationProgressBar'
 import { appEventBus } from './lib/appEventBus'
@@ -127,7 +128,11 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <div className="animate-fadeIn flex h-screen flex-col bg-background text-foreground">
         {showSettings ? (
-          <SettingsPage initialSection={settingsSection} onClose={() => setShowSettings(false)} />
+          <SettingsPage
+            key={settingsSection}
+            initialSection={settingsSection}
+            onClose={() => setShowSettings(false)}
+          />
         ) : (
           <>
             <TabBar onOpenSettings={handleOpenSettings} />
@@ -146,6 +151,10 @@ export default function App() {
             <Footer onOpenSettings={handleOpenSettings} />
           </>
         )}
+        <CommandPalette
+          onOpenSettings={handleOpenSettings}
+          onCloseSettings={() => setShowSettings(false)}
+        />
         <TrophyToast />
         <Toaster />
       </div>

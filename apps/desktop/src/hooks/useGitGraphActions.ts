@@ -20,7 +20,7 @@ import {
   apiIsCommitOnCurrentBranch,
 } from '../api/git.api'
 import { apiAddWorktree } from '../api/worktree.api'
-import { useRepoUIStore } from '../stores/repoUI.store'
+import { useRepoUIStore, type GraphCommitAction } from '../stores/repoUI.store'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
@@ -38,13 +38,9 @@ interface UseGitGraphActionsParams {
   t: TranslateFn
 }
 
-export type PendingAction =
-  | { kind: 'reset'; mode: 'soft' | 'mixed' | 'hard'; targetOid?: string; targetSubject?: string }
-  | { kind: 'revert' }
-  | { kind: 'branch' }
-  | { kind: 'tag'; annotated: boolean }
-  | { kind: 'compare' }
-  | null
+/** The graph's local pending-dialog action: the shared {@link GraphCommitAction} union, or `null`
+ *  for "no dialog open". The store's `pendingGraphAction` bridge feeds straight into this. */
+export type PendingAction = GraphCommitAction | null
 
 /**
  * Encapsule les actions impératives déclenchées depuis le graphe : menu
@@ -355,5 +351,5 @@ export function useGitGraphActions({
     }).catch(console.error)
   }
 
-  return { pendingAction, setPendingAction, openMenuAt, handleCommitWip }
+  return { pendingAction, setPendingAction, openMenuAt, handleCommitWip, openFixupWindow }
 }

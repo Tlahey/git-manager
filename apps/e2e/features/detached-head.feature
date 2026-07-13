@@ -9,3 +9,8 @@ Feature: Detached HEAD state
 
   Scenario: The toolbar shows HEAD instead of a branch name
     Then the branch indicator reads "HEAD"
+
+  Scenario: Checking out a branch from a detached HEAD returns to a named branch
+    Then the branch indicator reads "HEAD"
+    When I check out the "main" branch
+    Then the branch indicator reads "main"

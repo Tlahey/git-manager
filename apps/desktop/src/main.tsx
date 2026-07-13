@@ -6,6 +6,7 @@ import { FixupCommitWindow } from './components/git-graph/fixup/FixupCommitWindo
 import { RebasingCommitWindow } from './components/rebase-editor/RebasingCommitWindow'
 import { initI18n } from '@git-manager/i18n'
 import { useSettingsStore } from './stores/settings.store'
+import { useRepoUIStore } from './stores/repoUI.store'
 import '@git-manager/ui/globals.css'
 import '@git-manager/code-view/styles.css'
 import './index.css'
@@ -15,6 +16,15 @@ import './index.css'
 // @wdio/tauri-plugin chunk) is dead-code-eliminated from every non-e2e build.
 const e2eSetup =
   import.meta.env.VITE_E2E === 'true' ? import('@wdio/tauri-plugin') : Promise.resolve()
+
+// e2e-only debug hook: lets step definitions read live Zustand state directly (e.g.
+// `selectedCommitOid`) instead of inferring it from a DOM attribute, which can't tell "React
+// state never changed" apart from "the DOM just hasn't reflected it yet". Same dead-code-elimination
+// guarantee as the wdio plugin above — stripped from every non-e2e build.
+if (import.meta.env.VITE_E2E === 'true') {
+  ;(window as unknown as { __e2eRepoUIStore: typeof useRepoUIStore }).__e2eRepoUIStore =
+    useRepoUIStore
+}
 
 // Initialize i18n before rendering, honoring the persisted language choice
 // (the zustand store rehydrates synchronously from localStorage on import).

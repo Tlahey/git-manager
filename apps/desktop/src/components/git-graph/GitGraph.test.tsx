@@ -181,6 +181,7 @@ function actionsState(overrides: Partial<ReturnType<typeof useGitGraphActions>> 
     setPendingAction: vi.fn(),
     openMenuAt: vi.fn(),
     handleCommitWip: vi.fn(),
+    openFixupWindow: vi.fn(),
     ...overrides,
   }
 }

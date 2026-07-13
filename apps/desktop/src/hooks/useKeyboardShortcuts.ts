@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useRepoUIStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../stores/repoUI.store'
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
+import { useCommandPaletteStore } from '../stores/commandPalette.store'
 import { queryClient } from '../lib/queryClient'
 
 interface UseKeyboardShortcutsProps {
@@ -18,6 +19,15 @@ export function useKeyboardShortcuts({
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      // Command palette: ⌘K / Ctrl+K — handled before the input guard so it toggles even while
+      // typing (standard palette behaviour); cmdk owns arrow/Escape once the palette is open.
+      const isModK = navigator.userAgent.includes('Mac') ? e.metaKey : e.ctrlKey
+      if (isModK && !e.altKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        useCommandPaletteStore.getState().toggle()
+        return
+      }
+
       // Ignore shortcuts if user is typing in an input, textarea or contenteditable element
       const target = e.target as HTMLElement
       if (
