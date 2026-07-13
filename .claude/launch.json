@@ -12,6 +12,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@git-manager/mascot", "storybook", "--no-open"],
       "port": 6007
+    },
+    {
+      "name": "desktop-frontend",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@git-manager/desktop", "run", "dev:frontend"],
+      "port": 1420
     }
   ]
 }
