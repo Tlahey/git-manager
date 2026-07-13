@@ -33,8 +33,8 @@ function PinnedTab({ icon, label, active, onClick, hideLabel }: PinnedTabProps) 
         onClick={onClick}
         className={`group relative flex h-7 items-center gap-2 rounded-md px-3 text-xs transition-colors ${
           active
-            ? 'bg-muted text-foreground'
-            : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+            ? 'bg-sidebar-accent text-sidebar-foreground'
+            : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/40 hover:text-sidebar-foreground'
         }`}
       >
         {icon}
@@ -78,7 +78,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
       />
       <div
         data-tauri-drag-region
-        className={`flex h-9 shrink-0 items-stretch gap-0.5 border-b border-border bg-card pr-1 ${
+        className={`flex h-9 shrink-0 items-stretch gap-0.5 border-b border-sidebar-border bg-sidebar pr-1 ${
           isMac ? 'pl-[72px]' : 'pl-1'
         }`}
       >
@@ -136,8 +136,8 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
                 onClick={() => setActiveTab(path)}
                 className={`group relative flex h-7 min-w-[120px] max-w-[200px] shrink-0 items-center gap-2 rounded-md px-3 text-xs transition-colors ${
                   isActive
-                    ? 'bg-muted text-foreground'
-                    : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                    ? 'bg-sidebar-accent text-sidebar-foreground'
+                    : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/40 hover:text-sidebar-foreground'
                 } ${dragIndex === index ? 'opacity-40' : ''} ${
                   isDragOver
                     ? 'before:absolute before:bottom-0 before:left-0 before:top-0 before:w-0.5 before:bg-primary'
@@ -173,8 +173,8 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
                 onClick={() => setActiveRepo(fixture.path)}
                 className={`group relative flex h-7 min-w-[120px] max-w-[200px] shrink-0 items-center gap-2 rounded-md border border-dashed border-amber-500/50 px-3 text-xs transition-colors ${
                   isActive
-                    ? 'bg-muted text-foreground'
-                    : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                    ? 'bg-sidebar-accent text-sidebar-foreground'
+                    : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/40 hover:text-sidebar-foreground'
                 }`}
               >
                 <FlaskConical className="h-3.5 w-3.5 shrink-0 text-amber-500" />
@@ -204,11 +204,11 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
         </div>
 
         {/* Réglages & Profil (extrême droite) */}
-        <div className="flex shrink-0 items-center gap-2 border-l border-border px-3">
+        <div className="flex shrink-0 items-center gap-2 border-l border-sidebar-border px-3">
           <NotificationDropdown />
           <button
             onClick={() => onOpenSettings('general')}
-            className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="flex h-7 w-7 items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
             title="Réglages"
           >
             <Settings className="h-3.5 w-3.5" />

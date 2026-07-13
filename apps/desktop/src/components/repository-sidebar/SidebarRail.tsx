@@ -35,7 +35,7 @@ function RailIcon({ icon, label, count, onClick }: RailIconProps) {
       onClick={onClick}
       title={count !== undefined ? `${label} (${count})` : label}
       aria-label={label}
-      className="group/rail relative flex h-10 w-full items-center justify-center text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+      className="group/rail relative flex h-10 w-full items-center justify-center text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
     >
       {icon}
       {count !== undefined && count > 0 && (
@@ -83,7 +83,7 @@ export function SidebarRail({
         onClick={onExpand}
         title="Déplier la sidebar"
         aria-label="Déplier la sidebar"
-        className="flex h-9 w-full items-center justify-center border-b border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        className="flex h-9 w-full items-center justify-center border-b border-sidebar-border text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
       >
         <PanelLeftOpen className="h-4 w-4" />
       </button>

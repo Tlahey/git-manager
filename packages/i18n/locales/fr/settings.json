@@ -57,6 +57,7 @@
   "settings.appearance.theme.dracula": "Dracula",
   "settings.appearance.theme.catppuccin-mocha": "Catppuccin Mocha",
   "settings.appearance.theme.solarized-light": "Solarized Light",
+  "settings.appearance.theme.obsidian": "Obsidian",
   "settings.appearance.theme.custom": "Personnalisé",
   "settings.appearance.customThemes": "Thèmes personnalisés",
   "settings.appearance.customThemesHint": "Placez vos fichiers .css dans ~/.git-manager/themes/",

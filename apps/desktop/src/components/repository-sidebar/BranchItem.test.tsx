@@ -44,7 +44,7 @@ describe('BranchItem — rendering', () => {
 
   it('applies the selected background when isSelected', () => {
     const { container } = render(<BranchItem branch={branch()} isSelected onSelect={vi.fn()} />)
-    expect(container.firstElementChild).toHaveClass('bg-accent')
+    expect(container.firstElementChild).toHaveClass('bg-sidebar-accent')
   })
 
   it('shows ahead/behind counts only when non-zero', () => {

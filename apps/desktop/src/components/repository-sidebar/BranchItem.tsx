@@ -29,8 +29,8 @@ export function BranchItem({
     <div
       className={`group/branch relative flex items-center gap-1.5 py-[3px] pr-1 text-xs transition-colors ${paddingLeft} ${
         isSelected
-          ? 'bg-accent text-foreground'
-          : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+          ? 'bg-sidebar-accent text-sidebar-foreground'
+          : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
       }`}
       onClick={() => onSelect(branch.shortName)}
       onContextMenu={onContextMenu ? (e) => onContextMenu(e, branch) : undefined}
@@ -42,7 +42,7 @@ export function BranchItem({
       <BranchIcon className="h-3 w-3 shrink-0 opacity-40" />
 
       {/* Nom de la branche — hover-expand robuste (overlay fixed) */}
-      <HoverExpandLabel className={branch.isHead ? 'font-medium text-foreground' : ''}>
+      <HoverExpandLabel className={branch.isHead ? 'font-medium text-sidebar-foreground' : ''}>
         {branch.isHead && <span className="mr-1 text-[10px] text-emerald-400">●</span>}
         {branch.shortName}
       </HoverExpandLabel>
@@ -60,8 +60,8 @@ export function BranchItem({
       {/* Bouton pin / unpin — toujours visible si épinglé, sinon au survol */}
       {canPin && onTogglePin && (
         <button
-          className={`shrink-0 rounded p-0.5 transition-colors hover:bg-accent ${
-            isPinned ? 'text-muted-foreground/70' : 'hidden group-hover/branch:inline-flex'
+          className={`shrink-0 rounded p-0.5 transition-colors hover:bg-sidebar-accent ${
+            isPinned ? 'text-sidebar-muted-foreground/70' : 'hidden group-hover/branch:inline-flex'
           }`}
           onClick={(e) => {
             e.stopPropagation()
@@ -76,7 +76,7 @@ export function BranchItem({
 
       {/* Bouton ⋮ contexte — au survol */}
       <button
-        className="hidden shrink-0 rounded p-0.5 transition-colors hover:bg-accent group-hover/branch:inline-flex"
+        className="hidden shrink-0 rounded p-0.5 transition-colors hover:bg-sidebar-accent group-hover/branch:inline-flex"
         onClick={(e) => {
           e.stopPropagation()
           onContextMenu?.(e as unknown as React.MouseEvent, branch)

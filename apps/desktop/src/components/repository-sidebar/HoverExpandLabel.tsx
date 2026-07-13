@@ -97,13 +97,14 @@ export function HoverExpandLabel({
 
       {overlay &&
         createPortal(
-          // Base opaque = fond de la sidebar (bg-card) pour masquer le contenu
-          // dessous, puis la couleur de hover par défaut (bg-accent/60 + text-foreground)
-          // par-dessus → même ligne, même design. La police est copiée du texte (le
-          // portail n'hérite pas du CSS → sinon taille du body, trop grande). La
-          // hauteur matche la ligne entière (élément sélectionné).
+          // Base opaque = fond de la sidebar (bg-sidebar) pour masquer le contenu
+          // dessous, puis la couleur de hover par défaut (bg-sidebar-accent/60 +
+          // text-sidebar-foreground) par-dessus → même ligne, même design. La police
+          // est copiée du texte (le portail n'hérite pas du CSS → sinon taille du
+          // body, trop grande). La hauteur matche la ligne entière (élément
+          // sélectionné).
           <span
-            className="pointer-events-none fixed z-[100] flex items-center whitespace-nowrap bg-card text-foreground"
+            className="pointer-events-none fixed z-[100] flex items-center whitespace-nowrap bg-sidebar text-sidebar-foreground"
             style={{
               top: overlay.top,
               height: overlay.height,
@@ -116,7 +117,7 @@ export function HoverExpandLabel({
               lineHeight: overlay.lineHeight,
             }}
           >
-            <span className="flex h-full items-center whitespace-nowrap bg-accent/60 pr-2">
+            <span className="flex h-full items-center whitespace-nowrap bg-sidebar-accent/60 pr-2">
               {children}
             </span>
           </span>,
