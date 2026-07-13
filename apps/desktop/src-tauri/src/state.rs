@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 pub struct AppState {
-    /// Repos ouverts : path → chemin validé
+    /// Open repos: path → validated path
     pub open_repos: Mutex<HashMap<String, String>>,
-    /// Token d'annulation pour la génération AI
+    /// Cancellation token for AI generation
     pub generation_cancel: Mutex<bool>,
 }
 

@@ -42,7 +42,7 @@ impl From<AiGenerateConfig> for GenerateConfig {
     }
 }
 
-/// Vérifie si le provider AI configuré est disponible et liste les modèles
+/// Checks whether the configured AI provider is reachable and lists its models
 #[tauri::command]
 pub async fn check_ai_status(config: AiCheckConfig) -> Result<AiProviderStatus, String> {
     let provider = provider_for(&config.protocol);
@@ -65,7 +65,7 @@ pub async fn check_ai_status(config: AiCheckConfig) -> Result<AiProviderStatus, 
         .map_err(Into::into)
 }
 
-/// Lance la génération d'un message de commit depuis le diff, en streaming
+/// Starts streaming a commit message generated from the diff
 #[tauri::command]
 pub async fn generate_commit_message(
     path: String,
@@ -90,7 +90,7 @@ pub async fn generate_commit_message(
         .map_err(Into::into)
 }
 
-/// Annule la génération en cours
+/// Cancels the generation in progress
 #[tauri::command]
 pub async fn cancel_generation(state: State<'_, AppState>) -> Result<(), String> {
     *state.generation_cancel.lock().unwrap() = true;

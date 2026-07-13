@@ -76,7 +76,7 @@ pub async fn create_commit(
 
 // ─── get_staged_diff ──────────────────────────────────────────────────────────
 
-/// Retourne le diff des fichiers staged (structuré, pour la vue de diff de l'UI)
+/// Returns the staged files' diff (structured, for the UI's diff view)
 #[tauri::command]
 pub async fn get_staged_diff(path: String) -> Result<GitDiff, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
