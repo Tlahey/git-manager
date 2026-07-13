@@ -20,6 +20,7 @@
     "test": {
       "dependsOn": ["^build"]
     },
+    "test:a11y": {},
     "typecheck": {
       "dependsOn": ["^build"]
     },
