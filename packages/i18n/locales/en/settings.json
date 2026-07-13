@@ -84,6 +84,14 @@
   "settings.advanced.openDataFolder": "Open app data folder",
   "settings.advanced.exclusions": "Scan exclusions",
   "settings.dangerZone": "Danger zone",
+  "settings.rewards.title": "Git Achievements & Rewards",
+  "settings.rewards.description": "Manage the playful progression system, level XP and cosmetic rewards.",
+  "settings.rewards.enable": "Enable Gamification",
+  "settings.rewards.enableHint": "Shows the achievements tab, tracks your XP and unlocks custom themes / avatar frames as you perform Git actions.",
+  "settings.rewards.controlZone": "Achievements Control Zone",
+  "settings.rewards.controlZoneHint": "Resets the history of completed achievements, your XP and re-locks cosmetic themes.",
+  "settings.rewards.reset": "Reset all progress",
+  "settings.rewards.resetConfirm": "Do you really want to reset ALL your accumulated achievements and XP? This action is irreversible.",
   "commit.history": "Recent messages",
   "commit.historyEmpty": "No recent messages"
 }

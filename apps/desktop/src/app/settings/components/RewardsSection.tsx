@@ -1,15 +1,13 @@
+import { useTranslation } from '@git-manager/i18n'
 import { Trophy, Trash2 } from 'lucide-react'
 import { useGameStore } from '../../../stores/game.store'
 
 export function RewardsSection() {
+  const { t } = useTranslation('settings')
   const { rewardsEnabled, setRewardsEnabled, resetGameProgress } = useGameStore()
 
   const handleReset = () => {
-    if (
-      confirm(
-        'Voulez-vous vraiment réinitialiser TOUS vos succès et XP accumulés ? Cette action est irréversible.'
-      )
-    ) {
+    if (confirm(t('settings.rewards.resetConfirm'))) {
       resetGameProgress()
     }
   }
@@ -18,12 +16,9 @@ export function RewardsSection() {
     <div className="space-y-6" data-testid="rewards-settings-section">
       <div className="space-y-1">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <Trophy className="h-4 w-4 text-amber-500" /> Succès & Récompenses Git
+          <Trophy className="h-4 w-4 text-amber-500" /> {t('settings.rewards.title')}
         </h3>
-        <p className="text-[11px] text-muted-foreground">
-          Gérez le système de progression ludique, l&apos;XP de niveau et les récompenses
-          cosmétiques.
-        </p>
+        <p className="text-[11px] text-muted-foreground">{t('settings.rewards.description')}</p>
       </div>
 
       <div className="h-px bg-border" />
@@ -35,12 +30,9 @@ export function RewardsSection() {
             className="cursor-pointer text-xs font-semibold text-foreground"
             htmlFor="toggle-rewards"
           >
-            Activer la Gamification
+            {t('settings.rewards.enable')}
           </label>
-          <p className="text-[10px] text-muted-foreground">
-            Affiche l&apos;onglet de succès, suit votre XP et débloque des thèmes personnalisés /
-            cadres d&apos;avatars au cours de vos actions Git.
-          </p>
+          <p className="text-[10px] text-muted-foreground">{t('settings.rewards.enableHint')}</p>
         </div>
         <input
           type="checkbox"
@@ -55,10 +47,11 @@ export function RewardsSection() {
       {/* Control Actions / Reset */}
       <div className="space-y-3 rounded-lg border border-destructive/20 bg-destructive/5 p-4">
         <div className="space-y-0.5">
-          <h4 className="text-xs font-semibold text-destructive">Zone de Contrôle des Succès</h4>
+          <h4 className="text-xs font-semibold text-destructive">
+            {t('settings.rewards.controlZone')}
+          </h4>
           <p className="text-[10px] text-muted-foreground">
-            Remet à zéro l&apos;historique des succès complétés, votre XP et reverrouille les thèmes
-            cosmétiques.
+            {t('settings.rewards.controlZoneHint')}
           </p>
         </div>
         <button
@@ -66,7 +59,7 @@ export function RewardsSection() {
           className="flex h-8 items-center gap-1.5 rounded-lg border border-destructive/30 px-3 text-xs text-destructive/80 transition-colors hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
         >
           <Trash2 className="h-3.5 w-3.5" />
-          Réinitialiser toute la progression
+          {t('settings.rewards.reset')}
         </button>
       </div>
     </div>
