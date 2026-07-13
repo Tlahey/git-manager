@@ -1,3 +1,5 @@
+import { useState, createElement } from 'react'
+import { Github } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import {
   CommandDialog,
@@ -6,14 +8,51 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandItem,
+  toast,
 } from '@git-manager/ui'
 import { useCommandPaletteStore } from '../../stores/commandPalette.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
+import { apiGetCommitWebUrl } from '../../api/git.api'
+import { apiOpenUrl } from '../../api/shell.api'
 import { useGlobalCommands } from './commands/useGlobalCommands'
 import { useCommitCommands } from './commands/useCommitCommands'
 import { useStashCommands } from './commands/useStashCommands'
 import type { Section } from '../../app/settings/SettingsPage'
 import type { PaletteCommand, PaletteGroup } from './commands/types'
+
+/** A commit-ish string the user can paste to jump straight to a commit on GitHub. */
+const SHA_PATTERN = /^[0-9a-f]{7,40}$/i
+
+/** Builds the free-text "open this commit on GitHub" command when the query looks like a SHA. */
+function useCommitLookupCommands(query: string): PaletteCommand[] {
+  const { t } = useTranslation('common')
+  const { t: tGit } = useTranslation('git')
+  const activeRepo = useRepoUIStore((s) => s.activeRepo)
+
+  const sha = query.trim()
+  if (!activeRepo || !SHA_PATTERN.test(sha)) return []
+
+  return [
+    {
+      id: 'lookup-open-commit',
+      group: 'lookup',
+      title: t('commandPalette.lookup.openCommit', { sha: sha.slice(0, 12) }),
+      keywords: [sha],
+      icon: createElement(Github),
+      run: () => {
+        apiGetCommitWebUrl(activeRepo, sha)
+          .then((url) => {
+            if (!url) {
+              toast.error(tGit('gitTree.contextMenu.noRemoteLink'))
+              return
+            }
+            return apiOpenUrl(url)
+          })
+          .catch((err) => toast.error(String(err)))
+      },
+    },
+  ]
+}
 
 interface CommandPaletteProps {
   onOpenSettings: (section: Section) => void
@@ -55,14 +94,16 @@ interface CommandPaletteBodyProps {
 
 function CommandPaletteBody({ onOpenSettings, onCloseSettings, onDone }: CommandPaletteBodyProps) {
   const { t } = useTranslation('common')
+  const [search, setSearch] = useState('')
   const selectedCommitOid = useRepoUIStore((s) => s.selectedCommitOid)
   const selectedStashIndex = useRepoUIStore((s) => s.selectedStashIndex)
   const globalCommands = useGlobalCommands({ onOpenSettings })
   const commitCommands = useCommitCommands()
   const stashCommands = useStashCommands()
+  const lookupCommands = useCommitLookupCommands(search)
 
-  // Commit/stash actions first — they're the most contextual when a row is selected.
-  const allCommands = [...commitCommands, ...stashCommands, ...globalCommands]
+  // Lookup (paste-a-sha) first, then commit/stash actions — the most contextual ones.
+  const allCommands = [...lookupCommands, ...commitCommands, ...stashCommands, ...globalCommands]
 
   function run(cmd: PaletteCommand) {
     // Running any non-settings command should return the user to the main view if they triggered it
@@ -73,6 +114,7 @@ function CommandPaletteBody({ onOpenSettings, onCloseSettings, onDone }: Command
   }
 
   const groups: { group: PaletteGroup; heading: string }[] = [
+    { group: 'lookup', heading: t('commandPalette.group.lookup') },
     {
       group: 'commit',
       heading: t('commandPalette.group.commit', { sha: selectedCommitOid?.slice(0, 7) ?? '' }),
@@ -91,6 +133,8 @@ function CommandPaletteBody({ onOpenSettings, onCloseSettings, onDone }: Command
       <CommandInput
         data-testid="command-palette-input"
         placeholder={t('commandPalette.placeholder')}
+        value={search}
+        onValueChange={setSearch}
       />
       <CommandList data-testid="command-palette">
         <CommandEmpty>{t('commandPalette.empty')}</CommandEmpty>
@@ -109,6 +153,11 @@ function CommandPaletteBody({ onOpenSettings, onCloseSettings, onDone }: Command
                 >
                   {cmd.icon}
                   <span>{cmd.title}</span>
+                  {cmd.subtitle && (
+                    <span className="ml-auto truncate pl-2 font-mono text-[11px] text-muted-foreground">
+                      {cmd.subtitle}
+                    </span>
+                  )}
                 </CommandItem>
               ))}
             </CommandGroup>

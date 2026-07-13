@@ -6,9 +6,10 @@ mod state;
 mod utils;
 
 use commands::ai::{cancel_generation, check_ai_status, generate_commit_message};
+use commands::blame::{get_file_history, git_blame_file};
 use commands::branch::{
-    checkout_branch, create_branch, create_tag, delete_branch, delete_tag, get_branches, get_tags,
-    is_commit_on_current_branch,
+    checkout_branch, create_branch, create_tag, delete_branch, delete_tag, get_branches,
+    get_tag_containing_commit, get_tags, is_commit_on_current_branch,
 };
 use commands::cherry_pick::cherry_pick_commit;
 use commands::commit::{
@@ -22,7 +23,10 @@ use commands::conflict::{
 use commands::fixup::{
     autosquash_preview, check_fixup_target, create_fixup_commit, get_pending_fixups, run_autosquash,
 };
-use commands::github::{github_device_code, github_get_user, github_list_repos, github_poll_token};
+use commands::github::{
+    github_commit_avatars, github_device_code, github_get_user, github_list_repos,
+    github_poll_token,
+};
 use commands::interactive_rebase::{list_rebase_commits, run_interactive_rebase};
 use commands::log::{compare_commit_to_workdir, get_commit_diff, get_commit_file, get_log};
 use commands::patch::create_patch;
@@ -145,6 +149,9 @@ pub fn run() {
             get_commit_diff,
             get_commit_file,
             compare_commit_to_workdir,
+            // Blame / File history
+            git_blame_file,
+            get_file_history,
             // Branches & Tags
             get_branches,
             get_tags,
@@ -153,6 +160,7 @@ pub fn run() {
             checkout_branch,
             delete_branch,
             delete_tag,
+            get_tag_containing_commit,
             is_commit_on_current_branch,
             // Rebase
             get_rebase_state,
@@ -206,6 +214,7 @@ pub fn run() {
             github_poll_token,
             github_get_user,
             github_list_repos,
+            github_commit_avatars,
             // SSH
             generate_ssh_key,
             read_ssh_public_key,

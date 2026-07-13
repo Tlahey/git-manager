@@ -88,14 +88,14 @@ interface SettingsState {
  * every other group undefined and crash their consumers.
  */
 export function mergeSettingsWithDefaults(persisted: Partial<AppSettings> | undefined): AppSettings {
-  const merged = { ...DEFAULT_SETTINGS, ...(persisted ?? {}) }
+  const merged = { ...DEFAULT_SETTINGS, ...persisted }
   for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof AppSettings)[]) {
     const def = DEFAULT_SETTINGS[key]
     const stored = persisted?.[key]
     if (def && typeof def === 'object' && !Array.isArray(def)) {
       ;(merged as Record<string, unknown>)[key] = {
         ...(def as unknown as Record<string, unknown>),
-        ...((stored as unknown as Record<string, unknown> | undefined) ?? {}),
+        ...(stored as unknown as Record<string, unknown> | undefined),
       }
     }
   }

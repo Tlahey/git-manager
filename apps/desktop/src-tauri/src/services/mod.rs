@@ -2,6 +2,7 @@ pub mod ai_anthropic;
 pub mod ai_openai_compatible;
 pub mod ai_provider;
 pub mod ai_registry;
+pub mod git_blame;
 pub mod git_branch;
 pub mod git_cherry_pick;
 pub mod git_commit;

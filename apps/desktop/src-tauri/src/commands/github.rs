@@ -1,6 +1,7 @@
 use crate::error::AppError;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 const GITHUB_CLIENT_ID: &str = "Ov23li6mKsqDplEY33m8";
 
@@ -294,4 +295,58 @@ pub async fn github_list_repos(token: String) -> Result<Vec<GitHubRepoInfo>, Str
         repos.len()
     );
     Ok(repos)
+}
+
+// ─── Commit Author Avatars ────────────────────────────────────────────────────
+
+/// Resolves the GitHub avatar URL for each commit SHA in `shas` (deduplicated) via
+/// `GET /repos/{owner}/{repo}/commits/{sha}`. Best-effort: SHAs whose author can't be resolved
+/// (404, non-GitHub author, request error) are simply absent from the returned map, and the
+/// frontend falls back to initials for those. Used by the diff viewer's blame gutter and history
+/// panel to show real author photos when the repo lives on GitHub and a token is available.
+#[tauri::command]
+pub async fn github_commit_avatars(
+    token: String,
+    owner: String,
+    repo: String,
+    shas: Vec<String>,
+) -> Result<HashMap<String, String>, String> {
+    let client = Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(AppError::Http)?;
+
+    let mut avatars: HashMap<String, String> = HashMap::new();
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+    for sha in shas {
+        if !seen.insert(sha.clone()) {
+            continue;
+        }
+
+        let url = format!("https://api.github.com/repos/{owner}/{repo}/commits/{sha}");
+        let res = client
+            .get(&url)
+            .header("Accept", "application/vnd.github.v3+json")
+            .header("Authorization", format!("Bearer {}", token))
+            .header("User-Agent", "git-manager-desktop")
+            .send()
+            .await;
+
+        let Ok(res) = res else { continue };
+        if !res.status().is_success() {
+            continue;
+        }
+        let Ok(data) = res.json::<serde_json::Value>().await else {
+            continue;
+        };
+
+        if let Some(avatar) = data["author"]["avatar_url"].as_str() {
+            if !avatar.is_empty() {
+                avatars.insert(sha, avatar.to_string());
+            }
+        }
+    }
+
+    Ok(avatars)
 }

@@ -18,6 +18,8 @@ import type {
   AppSettings,
   UserTheme,
   GitRepoSummary,
+  BlameHunk,
+  FileHistoryEntry,
 } from '@git-manager/git-types'
 import type { AiProviderStatus, AiCheckConfig, AiGenerateConfig } from '@git-manager/ai'
 
@@ -97,6 +99,18 @@ export const compareCommitToWorkdir = (path: string, oid: string) =>
 
 export const getCommitFile = (path: string, oid: string, filePath: string) =>
   invoke<string>('get_commit_file', { path, oid, filePath })
+
+// ─── Blame / File history ───────────────────────────────────────────────────────
+
+export const gitBlameFile = (path: string, filePath: string, oid?: string) =>
+  invoke<BlameHunk[]>('git_blame_file', { path, filePath, oid })
+
+export const getFileHistory = (path: string, filePath: string, limit?: number) =>
+  invoke<FileHistoryEntry[]>('get_file_history', { path, filePath, limit })
+
+/** Short name of the earliest tag whose history contains `oid`, or null. */
+export const getTagContainingCommit = (path: string, oid: string) =>
+  invoke<string | null>('get_tag_containing_commit', { path, oid })
 
 // ─── Branches ─────────────────────────────────────────────────────────────────
 
@@ -468,6 +482,14 @@ export interface GitHubRepoInfo {
 
 export const githubListRepos = (token: string) =>
   invoke<GitHubRepoInfo[]>('github_list_repos', { token })
+
+/** Resolves `sha → avatar URL` for the given commit SHAs; unresolved SHAs are simply absent. */
+export const githubCommitAvatars = (
+  token: string,
+  owner: string,
+  repo: string,
+  shas: string[]
+) => invoke<Record<string, string>>('github_commit_avatars', { token, owner, repo, shas })
 
 // ─── Extended Repo Stats & Tools ─────────────────────────────────────────────
 

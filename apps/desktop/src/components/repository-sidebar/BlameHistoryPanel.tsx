@@ -1,31 +1,50 @@
-import { X, Eye, History } from 'lucide-react'
-import { Button } from '@git-manager/ui'
+import { useEffect, useRef } from 'react'
+import { X, History, Dot } from 'lucide-react'
+import { Button, cn, Spinner } from '@git-manager/ui'
+import { useTranslation } from '@git-manager/i18n'
+import type { FileHistoryEntry, FileHistoryStatus } from '@git-manager/git-types'
+import { useFileHistory } from '../../hooks/useFileHistory'
+import { useCommitAvatars } from '../../hooks/useCommitAvatars'
+import { useRepoUIStore } from '../../stores/repoUI.store'
+import { CommitAvatar } from '../git-graph/components/CommitAvatar'
+import { formatRelativeTime, formatExactDate } from '../../lib/relativeDate'
 
 interface BlameHistoryPanelProps {
-  mode: 'blame' | 'history'
   file: { path: string; staged: boolean; oid?: string } | null
+  repoPath: string | null
   onClose: () => void
 }
 
-export function BlameHistoryPanel({ mode, file, onClose }: BlameHistoryPanelProps) {
-  const isBlame = mode === 'blame'
+/** Color + single-letter marker per change type, shown alongside each history row. */
+const STATUS_STYLE: Record<FileHistoryStatus, { letter: string; className: string }> = {
+  added: { letter: 'A', className: 'text-green-500' },
+  modified: { letter: 'M', className: 'text-amber-500' },
+  deleted: { letter: 'D', className: 'text-red-500' },
+  renamed: { letter: 'R', className: 'text-blue-400' },
+}
 
-  const fileName = file ? file.path.split('/').pop() || file.path : 'Unknown file'
-  const fileDir =
-    file && file.path.includes('/') ? file.path.substring(0, file.path.lastIndexOf('/') + 1) : ''
+export function BlameHistoryPanel({ file, repoPath, onClose }: BlameHistoryPanelProps) {
+  const { t, i18n } = useTranslation('git')
+
+  const selectedHistoryOid = useRepoUIStore((s) => s.selectedHistoryOid)
+  const setSelectedHistoryOid = useRepoUIStore((s) => s.setSelectedHistoryOid)
+
+  const { data: history, isLoading } = useFileHistory(repoPath, file?.path ?? null)
+  const avatars = useCommitAvatars(
+    repoPath,
+    (history ?? []).map((h) => h.oid)
+  )
+
+  const hasHistory = (history?.length ?? 0) > 0
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-sidebar">
       {/* Header */}
       <div className="flex shrink-0 items-center justify-between border-b border-sidebar-border bg-sidebar-accent/20 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
-          {isBlame ? (
-            <Eye className="h-4 w-4 shrink-0 animate-pulse text-primary" />
-          ) : (
-            <History className="h-4 w-4 shrink-0 text-primary" />
-          )}
+          <History className="h-4 w-4 shrink-0 text-primary" />
           <h2 className="select-none truncate text-xs font-semibold text-sidebar-foreground">
-            {isBlame ? 'Git Blame' : 'File History'}
+            {t('fileHistory.title')}
           </h2>
         </div>
         <Button
@@ -33,67 +52,157 @@ export function BlameHistoryPanel({ mode, file, onClose }: BlameHistoryPanelProp
           size="icon"
           className="h-7 w-7 shrink-0 hover:bg-sidebar-accent hover:text-sidebar-foreground"
           onClick={onClose}
-          title="Close panel"
+          title={t('fileHistory.close')}
         >
           <X className="h-4 w-4" />
         </Button>
       </div>
 
-      {/* File Info Banner */}
-      {file && (
-        <div className="shrink-0 select-none border-b border-sidebar-border/50 bg-sidebar-accent/10 px-4 py-2">
-          <div className="flex min-w-0 flex-col">
-            {fileDir && (
-              <span className="animate-in fade-in mb-0.5 truncate font-mono text-[9px] leading-none text-sidebar-muted-foreground/60 duration-200">
-                {fileDir}
-              </span>
-            )}
-            <span className="animate-in fade-in duration-250 truncate font-mono text-xs font-medium text-sidebar-foreground">
-              {fileName}
+      {/* Content: version list */}
+      <div className="flex flex-1 flex-col overflow-y-auto" data-testid="file-history-list">
+        {!file && (
+          <div className="flex flex-1 items-center justify-center p-6 text-center text-[11px] text-sidebar-muted-foreground">
+            {t('fileHistory.openFile')}
+          </div>
+        )}
+
+        {file && isLoading && (
+          <div className="flex flex-1 items-center justify-center p-6">
+            <Spinner className="mr-2 h-4 w-4 text-sidebar-muted-foreground" />
+            <span className="text-[11px] text-sidebar-muted-foreground">
+              {t('fileHistory.loading')}
             </span>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Content Area */}
-      <div className="relative flex flex-1 select-none flex-col items-center justify-center overflow-y-auto bg-sidebar p-6 text-center">
-        {/* Glow decorative background */}
-        <div className="pointer-events-none absolute left-1/2 top-1/3 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-[50px]" />
-
-        <div className="z-10 flex w-full max-w-[280px] flex-col items-center space-y-5">
-          <div className="group relative flex h-12 w-12 items-center justify-center rounded-xl border border-primary/10 bg-gradient-to-tr from-primary/15 to-primary/5 shadow-sm">
-            {isBlame ? (
-              <Eye className="h-6 w-6 text-primary transition-transform duration-300 group-hover:scale-110" />
-            ) : (
-              <History className="h-6 w-6 text-primary transition-transform duration-300 group-hover:rotate-[-15deg] group-hover:scale-110" />
-            )}
-            <span className="absolute -right-1 -top-1 flex h-3 w-3">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
-              <span className="relative inline-flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[6px] font-bold text-primary-foreground">
-                ✨
-              </span>
-            </span>
+        {file && !isLoading && !hasHistory && (
+          <div className="flex flex-1 items-center justify-center p-6 text-center text-[11px] text-sidebar-muted-foreground">
+            {t('fileHistory.empty')}
           </div>
+        )}
 
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold tracking-tight text-sidebar-foreground">
-              {isBlame ? 'Git Blame Panel' : 'File History Panel'}
-            </h3>
-            <p className="text-[11px] leading-relaxed text-sidebar-muted-foreground">
-              {isBlame
-                ? 'Line-by-line commit information, authors, dates, and click-to-open commits will show up here.'
-                : 'Timeline of revisions, commit list modifying this file, and interactive diff selectors.'}
-            </p>
-          </div>
+        {file && !isLoading && hasHistory && (
+          <ul className="flex flex-col py-1">
+            {/* Current (working) version */}
+            <li>
+              <button
+                data-testid="history-current-version"
+                onClick={() => setSelectedHistoryOid(null)}
+                className={cn(
+                  'flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-sidebar-accent/50',
+                  selectedHistoryOid === null && 'bg-sidebar-accent'
+                )}
+              >
+                <Dot className="h-5 w-5 shrink-0 text-green-500" />
+                <span className="truncate text-[11px] font-semibold text-sidebar-foreground">
+                  {t('fileHistory.currentVersion')}
+                </span>
+              </button>
+            </li>
 
-          <div className="flex w-full flex-col items-center space-y-1 pt-2">
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-[9px] font-medium text-primary">
-              <span className="h-1 w-1 animate-pulse rounded-full bg-primary" />
-              Coming Soon
-            </div>
-          </div>
-        </div>
+            {(history ?? []).map((entry) => (
+              <HistoryRow
+                key={entry.oid}
+                entry={entry}
+                avatarUrl={avatars[entry.oid]}
+                isSelected={selectedHistoryOid === entry.oid}
+                statusLabel={t(`fileHistory.status.${entry.status}`)}
+                relativeTime={formatRelativeTime(entry.timestamp, i18n.language)}
+                exactTime={formatExactDate(entry.timestamp, i18n.language)}
+                noMessage={t('fileHistory.noMessage')}
+                onSelect={() => setSelectedHistoryOid(entry.oid)}
+              />
+            ))}
+
+            {/* End-of-history marker */}
+            <li
+              data-testid="history-end"
+              className="flex select-none items-center gap-2 px-3 py-3 text-[9px] uppercase tracking-wide text-sidebar-muted-foreground/60"
+            >
+              <span className="h-px flex-1 bg-sidebar-border/60" />
+              <span>{t('fileHistory.endOfHistory')}</span>
+              <span className="h-px flex-1 bg-sidebar-border/60" />
+            </li>
+          </ul>
+        )}
       </div>
     </div>
+  )
+}
+
+interface HistoryRowProps {
+  entry: FileHistoryEntry
+  avatarUrl?: string
+  isSelected: boolean
+  statusLabel: string
+  relativeTime: string
+  exactTime: string
+  noMessage: string
+  onSelect: () => void
+}
+
+function HistoryRow({
+  entry,
+  avatarUrl,
+  isSelected,
+  statusLabel,
+  relativeTime,
+  exactTime,
+  noMessage,
+  onSelect,
+}: HistoryRowProps) {
+  const status = STATUS_STYLE[entry.status]
+  const rowRef = useRef<HTMLButtonElement>(null)
+
+  // Scroll the row into view when it becomes selected — e.g. from clicking a blame-gutter avatar,
+  // which selects a commit that may be far down the list.
+  useEffect(() => {
+    // `scrollIntoView` is optional-chained: jsdom doesn't implement it, and we only need it in-app.
+    if (isSelected) rowRef.current?.scrollIntoView?.({ block: 'nearest' })
+  }, [isSelected])
+
+  return (
+    <li>
+      <button
+        ref={rowRef}
+        data-testid={`history-row-${entry.shortOid}`}
+        onClick={onSelect}
+        title={`${entry.summary}\n${entry.authorName} · ${exactTime}`}
+        className={cn(
+          'flex w-full items-start gap-2 px-3 py-2 text-left transition-colors hover:bg-sidebar-accent/50',
+          isSelected && 'bg-sidebar-accent'
+        )}
+      >
+        <CommitAvatar
+          avatarUrl={avatarUrl}
+          name={entry.authorName || entry.authorEmail || '?'}
+          size={22}
+          className="mt-0.5"
+        />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="flex items-center gap-1.5">
+            <span
+              data-testid={`history-status-${entry.shortOid}`}
+              title={statusLabel}
+              className={cn('shrink-0 font-mono text-[10px] font-bold', status.className)}
+            >
+              {status.letter}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-[11px] font-medium leading-tight text-sidebar-foreground">
+              {entry.summary || noMessage}
+            </span>
+            {/* Commit SHA, top-right — prominent for quick scanning */}
+            <span className="shrink-0 rounded border border-sidebar-border bg-sidebar-accent/60 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary">
+              {entry.shortOid}
+            </span>
+          </span>
+          <span className="flex items-center gap-1.5 truncate text-[9px] text-sidebar-muted-foreground">
+            <span className="truncate">{entry.authorName}</span>
+            <span>·</span>
+            <span className="shrink-0">{relativeTime}</span>
+          </span>
+        </div>
+      </button>
+    </li>
   )
 }

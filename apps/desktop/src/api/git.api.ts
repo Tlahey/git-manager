@@ -34,6 +34,10 @@ import {
   getFileDiff,
   getFileRawContents,
   getCommitFileVsWorkdir,
+  getCommitFile,
+  gitBlameFile,
+  getFileHistory,
+  getTagContainingCommit,
   isCommitOnCurrentBranch,
   getTags,
   listSubmodules,
@@ -670,6 +674,22 @@ export async function apiGetFileRawContents(
 
 export async function apiGetCommitFileVsWorkdir(path: string, oid: string, filePath: string) {
   return getCommitFileVsWorkdir(path, oid, filePath)
+}
+
+export async function apiGetCommitFile(path: string, oid: string, filePath: string) {
+  return getCommitFile(path, oid, filePath)
+}
+
+export async function apiBlameFile(path: string, filePath: string, oid?: string) {
+  return gitBlameFile(path, filePath, oid)
+}
+
+export async function apiGetFileHistory(path: string, filePath: string, limit?: number) {
+  return getFileHistory(path, filePath, limit)
+}
+
+export async function apiGetTagContainingCommit(path: string, oid: string) {
+  return getTagContainingCommit(path, oid)
 }
 
 export async function apiIsCommitOnCurrentBranch(path: string, oid: string) {

@@ -9,10 +9,17 @@ const { useFileDiff, useFileRawContents } = vi.hoisted(() => ({
 }))
 vi.mock('../../hooks/useFileDiff', () => ({ useFileDiff }))
 vi.mock('../../hooks/useFileRawContents', () => ({ useFileRawContents }))
+// Commit-association hooks aren't under test here; keep them inert (no SWR/network).
+vi.mock('../../hooks/useRepoGitHub', () => ({
+  useRepoGitHub: () => ({ ownerRepo: null, token: null }),
+}))
+vi.mock('../../hooks/useCommitTag', () => ({ useCommitTag: () => null }))
+vi.mock('../../hooks/useCommitPullRequest', () => ({ useCommitPullRequest: () => null }))
 vi.mock('../../api/git.api', () => ({
   apiDiscardFileChanges: vi.fn(),
   apiStageFile: vi.fn(),
   apiUnstageFile: vi.fn(),
+  apiGetCommitWebUrl: vi.fn(),
 }))
 
 const { lastMergeEditorProps, lastFileViewerProps, lastToolbarProps } = vi.hoisted(() => ({
@@ -26,10 +33,10 @@ vi.mock('../merge-editor/ThreeWayMergeEditor', () => ({
     return <div data-testid="three-way-merge-editor" />
   },
 }))
-vi.mock('./MonacoFileViewer', () => ({
-  MonacoFileViewer: (props: Record<string, unknown>) => {
+vi.mock('./BlameFileViewer', () => ({
+  BlameFileViewer: (props: Record<string, unknown>) => {
     lastFileViewerProps.current = props
-    return <div data-testid="monaco-file-viewer" />
+    return <div data-testid="blame-file-viewer" />
   },
 }))
 vi.mock('./components/DiffToolbar', () => ({
@@ -138,15 +145,16 @@ describe('DiffViewCenter — diff/file wiring', () => {
       modified: 'new content',
       isTwoWay: true,
     })
-    expect(screen.queryByTestId('monaco-file-viewer')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('blame-file-viewer')).not.toBeInTheDocument()
   })
 
-  it('switches to MonacoFileViewer when the "file" tab is selected', () => {
+  it('switches to the blame File viewer when the "file" tab is selected', () => {
     renderCenter()
     act(() => toolbarProps().onChangeActiveTab('file'))
     expect(lastFileViewerProps.current).toMatchObject({
       content: 'new content',
       filePath: 'src/a.ts',
+      repoPath: '/repo',
     })
     expect(screen.queryByTestId('three-way-merge-editor')).not.toBeInTheDocument()
   })

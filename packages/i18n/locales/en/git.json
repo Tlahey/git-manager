@@ -332,5 +332,21 @@
   "conflictEditor.continueRebase": "Continue Rebase",
   "conflictEditor.abortRebase": "Abort Rebase",
   "conflictEditor.amendPreviousCommit": "Amend previous commit",
-  "conflictEditor.stepProgress": "Step {{current}} of {{total}}"
+  "conflictEditor.stepProgress": "Step {{current}} of {{total}}",
+  "fileHistory.title": "History",
+  "fileHistory.close": "Close",
+  "fileHistory.currentVersion": "Current version",
+  "fileHistory.loading": "Loading history…",
+  "fileHistory.empty": "No commit history found for this file.",
+  "fileHistory.openFile": "Open a file to see its history.",
+  "fileHistory.endOfHistory": "End of history",
+  "fileHistory.noMessage": "(no message)",
+  "fileHistory.viewingVersion": "Viewing version",
+  "fileHistory.backToCurrent": "Back to current",
+  "fileHistory.copySha": "Copy commit SHA",
+  "fileHistory.openOnGithub": "Open commit on GitHub",
+  "fileHistory.status.added": "Added",
+  "fileHistory.status.modified": "Modified",
+  "fileHistory.status.deleted": "Deleted",
+  "fileHistory.status.renamed": "Renamed"
 }

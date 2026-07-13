@@ -7,11 +7,31 @@ vi.mock('@git-manager/ui', () => ({ toast: { success: vi.fn(), error: vi.fn() } 
 const invalidateQueries = vi.fn()
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries }) }))
 
-const { apiCopyCommitSha, apiCherryPickCommit } = vi.hoisted(() => ({
+const { apiCopyCommitSha, apiCherryPickCommit, apiGetCommitWebUrl, apiOpenUrl } = vi.hoisted(() => ({
   apiCopyCommitSha: vi.fn(),
   apiCherryPickCommit: vi.fn(),
+  apiGetCommitWebUrl: vi.fn(),
+  apiOpenUrl: vi.fn(),
 }))
-vi.mock('../../../api/git.api', () => ({ apiCopyCommitSha, apiCherryPickCommit }))
+vi.mock('../../../api/git.api', () => ({
+  apiCopyCommitSha,
+  apiCherryPickCommit,
+  apiGetCommitWebUrl,
+}))
+vi.mock('../../../api/shell.api', () => ({ apiOpenUrl }))
+
+const { resolveTagOrReleaseUrl } = vi.hoisted(() => ({ resolveTagOrReleaseUrl: vi.fn() }))
+vi.mock('../../../api/github.api', () => ({ resolveTagOrReleaseUrl }))
+
+// Commit-association hooks are exercised in their own tests; stub them here for determinism.
+const { useRepoGitHub, useCommitTag, useCommitPullRequest } = vi.hoisted(() => ({
+  useRepoGitHub: vi.fn(),
+  useCommitTag: vi.fn(),
+  useCommitPullRequest: vi.fn(),
+}))
+vi.mock('../../../hooks/useRepoGitHub', () => ({ useRepoGitHub }))
+vi.mock('../../../hooks/useCommitTag', () => ({ useCommitTag }))
+vi.mock('../../../hooks/useCommitPullRequest', () => ({ useCommitPullRequest }))
 
 import { useCommitCommands } from './useCommitCommands'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
@@ -23,6 +43,12 @@ beforeEach(() => {
   useRepoUIStore.setState(INITIAL, true)
   apiCopyCommitSha.mockResolvedValue(undefined)
   apiCherryPickCommit.mockResolvedValue('newoid')
+  apiGetCommitWebUrl.mockResolvedValue('https://github.com/o/r/commit/deadbeefcafe')
+  apiOpenUrl.mockResolvedValue(undefined)
+  resolveTagOrReleaseUrl.mockResolvedValue('https://github.com/o/r/releases/tag/v1.0')
+  useRepoGitHub.mockReturnValue({ ownerRepo: null, token: null })
+  useCommitTag.mockReturnValue(null)
+  useCommitPullRequest.mockReturnValue(null)
 })
 
 function commands() {
@@ -63,6 +89,7 @@ describe('useCommitCommands', () => {
       'commit-fixup',
       'commit-cherry-pick',
       'commit-copy-sha',
+      'commit-open-github',
     ])
   })
 
@@ -92,6 +119,54 @@ describe('useCommitCommands', () => {
       .find((c) => c.id === 'commit-copy-sha')!
       .run()
     expect(apiCopyCommitSha).toHaveBeenCalledWith('deadbeefcafe')
+  })
+
+  it('adds an open-PR command with the PR number as subtitle when a PR is associated', () => {
+    useRepoUIStore.setState({ selectedCommitOid: 'deadbeefcafe', activeRepo: '/repo' })
+    useCommitPullRequest.mockReturnValue({
+      number: 42,
+      url: 'https://github.com/o/r/pull/42',
+      title: 'Add feature',
+      state: 'closed',
+      merged: true,
+    })
+    const cmd = commands().find((c) => c.id === 'commit-open-pr')!
+    expect(cmd).toBeTruthy()
+    expect(cmd.subtitle).toBe('#42')
+    cmd.run()
+    expect(apiOpenUrl).toHaveBeenCalledWith('https://github.com/o/r/pull/42')
+  })
+
+  it('adds an open-tag command that resolves the release/tag URL and opens it', async () => {
+    useRepoUIStore.setState({ selectedCommitOid: 'deadbeefcafe', activeRepo: '/repo' })
+    useCommitTag.mockReturnValue('v1.0')
+    useRepoGitHub.mockReturnValue({ ownerRepo: { owner: 'o', repo: 'r' }, token: 'tok' })
+    const cmd = commands().find((c) => c.id === 'commit-open-tag')!
+    expect(cmd).toBeTruthy()
+    expect(cmd.subtitle).toBe('v1.0')
+    cmd.run()
+    expect(resolveTagOrReleaseUrl).toHaveBeenCalledWith('o', 'r', 'v1.0', 'tok')
+    await vi.waitFor(() => {
+      expect(apiOpenUrl).toHaveBeenCalledWith('https://github.com/o/r/releases/tag/v1.0')
+    })
+  })
+
+  it('omits the open-tag command when the tag is known but the repo is not on GitHub', () => {
+    useRepoUIStore.setState({ selectedCommitOid: 'deadbeefcafe', activeRepo: '/repo' })
+    useCommitTag.mockReturnValue('v1.0')
+    useRepoGitHub.mockReturnValue({ ownerRepo: null, token: null })
+    expect(commands().find((c) => c.id === 'commit-open-tag')).toBeUndefined()
+  })
+
+  it('open-github resolves the commit web URL and opens it', async () => {
+    useRepoUIStore.setState({ selectedCommitOid: 'deadbeefcafe', activeRepo: '/repo' })
+    commands()
+      .find((c) => c.id === 'commit-open-github')!
+      .run()
+    expect(apiGetCommitWebUrl).toHaveBeenCalledWith('/repo', 'deadbeefcafe')
+    await vi.waitFor(() => {
+      expect(apiOpenUrl).toHaveBeenCalledWith('https://github.com/o/r/commit/deadbeefcafe')
+    })
   })
 
   it('cherry-pick calls the API directly and invalidates log/status on success', async () => {

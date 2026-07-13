@@ -2,14 +2,7 @@ import useSWR from 'swr'
 import type { PullRequest } from '@git-manager/git-types'
 import { useSettingsStore } from '../stores/settings.store'
 import { fetchRepoPRs } from '../api/github.api'
-
-/** Parse une URL GitHub (HTTPS ou SSH) et retourne { owner, repo } ou null */
-function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
-  // HTTPS: https://github.com/owner/repo.git
-  const httpsMatch = url.match(/github\.com[/:]([^/]+)\/([^/.]+)/)
-  if (httpsMatch) return { owner: httpsMatch[1], repo: httpsMatch[2] }
-  return null
-}
+import { firstGitHubOwnerRepo } from '../lib/githubRemote'
 
 export interface UsePullRequestsOptions {
   remoteUrls: string[]
@@ -40,7 +33,7 @@ export function usePullRequests({
   const resolvedUser = currentUser || (activeAccount?.user?.login ?? undefined)
 
   // Détecte le premier remote GitHub
-  const ownerRepo = remoteUrls.map((url) => parseGitHubUrl(url)).find((r) => r !== null) ?? null
+  const ownerRepo = firstGitHubOwnerRepo(remoteUrls)
 
   const isGithub = ownerRepo !== null
 

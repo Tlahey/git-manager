@@ -1,4 +1,5 @@
 pub mod ai;
+pub mod blame;
 pub mod branch;
 pub mod cherry_pick;
 pub mod commit;

@@ -329,5 +329,21 @@
   "conflictEditor.continueRebase": "Continuer le rebase",
   "conflictEditor.abortRebase": "Annuler le rebase",
   "conflictEditor.amendPreviousCommit": "Amender le commit précédent",
-  "conflictEditor.stepProgress": "Étape {{current}} sur {{total}}"
+  "conflictEditor.stepProgress": "Étape {{current}} sur {{total}}",
+  "fileHistory.title": "Historique",
+  "fileHistory.close": "Fermer",
+  "fileHistory.currentVersion": "Version actuelle",
+  "fileHistory.loading": "Chargement de l'historique…",
+  "fileHistory.empty": "Aucun historique de commits pour ce fichier.",
+  "fileHistory.openFile": "Ouvrez un fichier pour voir son historique.",
+  "fileHistory.endOfHistory": "Fin de l'historique",
+  "fileHistory.noMessage": "(sans message)",
+  "fileHistory.viewingVersion": "Version",
+  "fileHistory.backToCurrent": "Revenir à la version actuelle",
+  "fileHistory.copySha": "Copier le SHA du commit",
+  "fileHistory.openOnGithub": "Ouvrir le commit sur GitHub",
+  "fileHistory.status.added": "Ajouté",
+  "fileHistory.status.modified": "Modifié",
+  "fileHistory.status.deleted": "Supprimé",
+  "fileHistory.status.renamed": "Renommé"
 }

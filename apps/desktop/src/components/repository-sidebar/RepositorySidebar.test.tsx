@@ -47,8 +47,8 @@ vi.mock('./SidebarRail', () => ({
   ),
 }))
 vi.mock('./BlameHistoryPanel', () => ({
-  BlameHistoryPanel: (props: { mode: string; file: unknown; onClose: () => void }) => (
-    <div data-testid="blame-history-panel" data-mode={props.mode} onClick={props.onClose} />
+  BlameHistoryPanel: (props: { file: unknown; onClose: () => void }) => (
+    <div data-testid="blame-history-panel" onClick={props.onClose} />
   ),
 }))
 vi.mock('./SidebarResizeHandle', () => ({
@@ -141,7 +141,7 @@ describe('RepositorySidebar — mode routing', () => {
   it('shows the BlameHistoryPanel when the left panel is in blame/history mode', () => {
     act(() => useRepoUIStore.setState({ activeLeftPanel: 'blame' }))
     renderSidebar()
-    expect(screen.getByTestId('blame-history-panel')).toHaveAttribute('data-mode', 'blame')
+    expect(screen.getByTestId('blame-history-panel')).toBeInTheDocument()
     expect(screen.queryByLabelText('Filtrer les branches')).not.toBeInTheDocument()
   })
 

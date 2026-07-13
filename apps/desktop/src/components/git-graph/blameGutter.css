@@ -1,0 +1,75 @@
+/* Per-block border rendered in Monaco's line-decorations margin for the blame File view. The block's
+ * color is chosen deterministically from its commit oid (see `blameColorIndex` / `BLAME_COLOR_COUNT`).
+ * `.blame-left` puts the border right after the line numbers (default File view); `.blame-right` puts
+ * it at the right edge of the (widened) margin, i.e. between the blame text column and the code. */
+
+.blame-c-0 {
+  --blame-color: #a78bfa;
+}
+.blame-c-1 {
+  --blame-color: #60a5fa;
+}
+.blame-c-2 {
+  --blame-color: #34d399;
+}
+.blame-c-3 {
+  --blame-color: #fbbf24;
+}
+.blame-c-4 {
+  --blame-color: #f87171;
+}
+.blame-c-5 {
+  --blame-color: #f472b6;
+}
+.blame-c-6 {
+  --blame-color: #22d3ee;
+}
+.blame-c-7 {
+  --blame-color: #a3e635;
+}
+.blame-c-8 {
+  --blame-color: #fb923c;
+}
+.blame-c-9 {
+  --blame-color: #c084fc;
+}
+.blame-c-10 {
+  --blame-color: #2dd4bf;
+}
+.blame-c-11 {
+  --blame-color: #facc15;
+}
+
+/* Both views render the block color as a free-standing bar (an `::after` on the empty `.cldr`
+ * line-decoration) with a gap on each side, so it reads as a separator instead of hugging the line
+ * numbers or the code. `.blame-left` (File / History view) sits just after the line numbers;
+ * `.blame-right` (Blame view) sits at the right of the widened margin, before the folding chevron
+ * and the code. */
+.blame-left::after,
+.blame-right::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: var(--blame-color);
+}
+
+.blame-left::after {
+  left: 6px;
+}
+
+.blame-right::after {
+  right: 24px;
+}
+
+/* Blame view: keep Monaco's folding chevron pinned to the right of the widened margin (next to the
+ * code, to the right of the block bar) instead of stranded in the middle of the blame column. */
+.blame-mode .cldr.codicon-folding-expanded,
+.blame-mode .cldr.codicon-folding-collapsed {
+  left: auto !important;
+  right: 2px !important;
+  /* Monaco stretches the chevron's decoration to the full widened margin (316px); keep its natural
+   * 18px so it stays a small glyph pinned to the right rather than a full-width hit area. */
+  width: 18px !important;
+}
