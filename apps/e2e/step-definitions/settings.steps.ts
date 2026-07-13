@@ -203,3 +203,36 @@ Then(/^the "([^"]*)" theme card matches the visual snapshot "([^"]*)"$/, async (
   await stabiliseForSnapshot()
   await expect(card).toMatchElementSnapshot(tag, 1)
 })
+
+// The "integrations" tab defaults to the GitHub sub-provider (IntegrationSection.tsx's
+// `activeProvider` initial state), so no extra sub-tab click is needed to reach this button.
+When(/^I click the GitHub OAuth login button$/, async () => {
+  const button = $('[data-testid="github-login-oauth-button"]')
+  await button.waitForDisplayed({ timeout: 10000 })
+  await button.click()
+})
+
+// This hits the REAL github_device_code command — a genuine network call to
+// github.com/login/device/code — rather than a mock. Unlike the Ollama test-connection button
+// (whose outcome depends on whether *this* machine happens to run a local server), requesting a
+// device code needs no auth and always succeeds against GitHub's public endpoint, so asserting the
+// real response shape here is safe and deterministic, not machine-dependent.
+Then(/^the GitHub device code and activation link are shown$/, async () => {
+  await $('[data-testid="github-device-flow-card"]').waitForDisplayed({ timeout: 15000 })
+  const userCode = await $('[data-testid="github-device-user-code"]').getText()
+  expect(userCode).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/)
+  const href = await $('[data-testid="github-device-verification-link"]').getAttribute('href')
+  expect(href).toMatch(/^https:\/\/github\.com\/login\/device/)
+})
+
+When(/^I cancel the GitHub OAuth login$/, async () => {
+  const button = $('[data-testid="github-device-cancel-button"]')
+  await button.waitForEnabled({ timeout: 10000 })
+  await button.click()
+})
+
+Then(/^the GitHub login options are shown again$/, async () => {
+  await expect($('[data-testid="github-login-oauth-button"]')).toBeDisplayed()
+  await expect($('[data-testid="github-login-pat-button"]')).toBeDisplayed()
+  await expect($('[data-testid="github-device-flow-card"]')).not.toBeDisplayed()
+})

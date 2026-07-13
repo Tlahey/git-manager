@@ -86,3 +86,12 @@ Feature: Settings
     When I open the settings
     And I open the "ui_customization" settings tab
     Then the "dark" theme card matches the visual snapshot "theme-card-dark"
+
+  Scenario: Starting the GitHub OAuth device flow shows a real device code, and it can be cancelled
+    Given the git-manager application is running
+    When I open the settings
+    And I open the "integrations" settings tab
+    And I click the GitHub OAuth login button
+    Then the GitHub device code and activation link are shown
+    When I cancel the GitHub OAuth login
+    Then the GitHub login options are shown again

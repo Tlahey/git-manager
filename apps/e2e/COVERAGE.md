@@ -17,13 +17,13 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (18 feature files / ~160 steps, 7 visual snapshots)
+## Covered today (18 feature files / ~170 steps, 7 visual snapshots)
 
 | Feature                                                            | Area       | Setup                    | Snapshot                          | Status                                                      |
 | ------------------------------------------------------------------ | ---------- | ------------------------ | --------------------------------- | ----------------------------------------------------------- |
 | **Command palette (⌘K)**: 11 scenarios across settings/commit/stash | palette    | rollback-history · feature-branches · stash-stack | — | ✅ (settings section; reset soft/mixed/hard incl. RESET-confirm gate/revert/create-branch/create-tag (lightweight + annotated)/cherry-pick on a commit; stash drop/apply/pop — each asserted via git on disk) |
 | App launches, React mounts                                         | app shell  | —                        | —                                 | ✅                                                          |
-| Tauri command mock: success / reject / restore                     | IPC        | mock                     | —                                 | ✅                                                          |
+| Tauri command mock: success / reject / restore, **GitHub poll-token contract (pending/success/expired)** | IPC | mock | — | ✅ |
 | Fixup autosquash grouping + **create fixup commit (via ⌘K palette)** | fixup      | fixture:fixup-chain      | 📷 ✅ (preview groups)            | ✅                                                          |
 | Rebase conflict panel auto-opens + **snapshot** + continue/skip/abort | rebase     | fixture:rebase-conflict  | 📷 ✅ (panel layout)              | ✅ (panel shown + snapshotted; continue/skip/abort ✅; merge-editor block resolution now driven separately) |
 | **Merge editor** opens for a conflicted file + **snapshot** + **block resolution** | merge      | fixture:rebase-conflict  | 📷 ✅ (full Monaco editor)        | ✅ (opens + snapshotted; **wand + per-block accept + Apply ✅**, real second window, result asserted via git/file content) |
@@ -32,7 +32,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | **Undo / redo a branch checkout** (Cmd+Z / Cmd+Shift+Z)            | undo/redo  | fixture:feature-branches | —                                 | ✅                                                          |
 | Detached HEAD indicator reads "HEAD", checkout back to a branch                                                          | repo state | fixture:detached-head    | —                                 | ✅                                                          |
 | Sidebar lists stashes                                              | stash      | fixture:stash-stack      | —                                 | ✅ (list ✅; **drop/apply/pop ✅ via ⌘K palette**, each asserted via `git stash list` / a restored file) |
-| Settings screen opens + **snapshot**                               | settings   | keyboard (Mod+,)         | 📷 ✅ (general + notifications)   | 🟡 (general & notifications snapshotted; row-height persistence ✅; **ssh key generation ✅ · AI provider test-connection ✅ · rewards toggle ✅ · AI preset dropdown ✅**; appearance snapshot skipped on purpose, see below) |
+| Settings screen opens + **snapshot**                               | settings   | keyboard (Mod+,)         | 📷 ✅ (general + notifications)   | 🟡 (general & notifications snapshotted; row-height persistence ✅; **ssh key generation ✅ · AI provider test-connection ✅ · rewards toggle ✅ · AI preset dropdown ✅ · GitHub OAuth device code ✅**; appearance snapshot skipped on purpose, see below) |
 | **AI commit-message generation**: streaming + prompt-wiring + cancel | AI         | fake HTTP server         | —                                 | ✅ (see "6. AI commit-message generation" below)            |
 | **Worktree** list / add / remove (incl. dirty-remove force gate)  | worktree   | fixture:worktree-repo    | —                                 | ✅ (see "Worktree management" below)                        |
 
@@ -255,6 +255,33 @@ usable and e2e-coverable, rather than documenting it as blocked like Clone/Scan:
   the linked worktree's tracked file directly on disk, reloads, and asserts the force-checkbox gate
   before removal succeeds.
 
+### 8. GitHub OAuth device flow ✅
+
+Unlike the AI/Worktree gaps, the feature itself was already fully built and working
+(`github_device_code`/`github_poll_token`/`github_get_user`, `useGithubDeviceFlow.ts`,
+`GithubSection.tsx` — including a PAT-token login path alongside OAuth, and a multi-account list).
+The only real gap was e2e coverage itself, plus `GithubSection.tsx` having **zero** `data-testid`
+attributes anywhere (added: `github-login-oauth-button`/`github-login-pat-button`,
+`github-device-flow-card`/`-user-code`/`-verification-link`/`-cancel-button`, `github-pat-input`/
+`-submit-button`, `github-back-to-choice-button`, `github-error-message`,
+`github-account-item-<id>`/`-switch-<id>`/`-remove-<id>`).
+
+The flow itself splits into two genuinely different testing tiers, same distinction the AI
+test-connection button already established:
+
+- **Real, UI-driven** (`settings.feature`): clicking the OAuth button hits the *real*
+  `github_device_code` endpoint (`github.com/login/device/code`) — this needs no auth and always
+  succeeds, so asserting the real `user_code`/`verification_uri` shape is safe and deterministic,
+  not machine-dependent. The scenario stops there and cancels — completing the flow needs a human
+  to authorize the code on github.com, which isn't automatable.
+- **Mocked, via the test bridge** (`command-mocking.feature`): `github_poll_token` is what
+  `useGithubDeviceFlow.ts` calls in a loop while waiting — its `authorization_pending`/success/
+  `expired_token` outcomes are exercised through `browser.tauri.execute` (not a real click, per the
+  documented mock limitation), the same pattern as the existing `check_ai_status` scenarios. Its
+  response shape stays snake_case on the wire (`DeviceCodeResponse`/`PollTokenResponse` in
+  `github.rs` have no `#[serde(rename_all = "camelCase")]`, unlike their sibling commands) — the
+  mocked payloads match that exactly.
+
 ---
 
 ## Rest of the surface (lower priority / smaller)
@@ -273,7 +300,7 @@ usable and e2e-coverable, rather than documenting it as blocked like Clone/Scan:
 | Clone a repo                            | repo          | native            | —        | 🚫 (native dialog + network)                                                         |
 | Scan a folder for repos                 | repo          | native            | —        | 🚫 (native dialog)                                                                   |
 | AI commit-message generation            | AI            | fake HTTP server  | —        | ✅ (streaming + prompt-wiring + cancel + settings dropdown — see "AI generation" below) |
-| GitHub OAuth device flow                | github        | mock              | —        | ⬜ (mock the poll)                                                                   |
+| GitHub OAuth device flow                | github        | mock + real call  | —        | ✅ (real device-code request + cancel via Settings; poll contract mocked — see "GitHub OAuth" below) |
 | SSH key generate / read                 | ssh           | seed              | —        | ✅ (generate via Settings → ssh, real `ssh-keygen` against a temp dir — see "3. Settings" above) |
 | Submodule list                          | submodule     | dedicated fixture | —        | ✅ (`fixture:submodule-repo`, a real `git submodule add`; sidebar row asserted via `SidebarRowView.tsx` — see gotchas for the dead-code detour) |
 | Worktree add / list / remove            | worktree      | dedicated fixture | —        | ✅ (list/add/remove + dirty-remove force gate — see "Worktree management" below)     |
