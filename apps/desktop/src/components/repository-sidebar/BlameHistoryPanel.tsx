@@ -15,23 +15,23 @@ export function BlameHistoryPanel({ mode, file, onClose }: BlameHistoryPanelProp
     file && file.path.includes('/') ? file.path.substring(0, file.path.lastIndexOf('/') + 1) : ''
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-card">
+    <div className="flex h-full w-full flex-col overflow-hidden bg-sidebar">
       {/* Header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-border bg-muted/20 px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between border-b border-sidebar-border bg-sidebar-accent/20 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
           {isBlame ? (
             <Eye className="h-4 w-4 shrink-0 animate-pulse text-primary" />
           ) : (
             <History className="h-4 w-4 shrink-0 text-primary" />
           )}
-          <h2 className="select-none truncate text-xs font-semibold text-foreground">
+          <h2 className="select-none truncate text-xs font-semibold text-sidebar-foreground">
             {isBlame ? 'Git Blame' : 'File History'}
           </h2>
         </div>
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 shrink-0 hover:bg-accent"
+          className="h-7 w-7 shrink-0 hover:bg-sidebar-accent hover:text-sidebar-foreground"
           onClick={onClose}
           title="Close panel"
         >
@@ -41,14 +41,14 @@ export function BlameHistoryPanel({ mode, file, onClose }: BlameHistoryPanelProp
 
       {/* File Info Banner */}
       {file && (
-        <div className="shrink-0 select-none border-b border-border/50 bg-muted/10 px-4 py-2">
+        <div className="shrink-0 select-none border-b border-sidebar-border/50 bg-sidebar-accent/10 px-4 py-2">
           <div className="flex min-w-0 flex-col">
             {fileDir && (
-              <span className="animate-in fade-in mb-0.5 truncate font-mono text-[9px] leading-none text-muted-foreground/60 duration-200">
+              <span className="animate-in fade-in mb-0.5 truncate font-mono text-[9px] leading-none text-sidebar-muted-foreground/60 duration-200">
                 {fileDir}
               </span>
             )}
-            <span className="animate-in fade-in duration-250 truncate font-mono text-xs font-medium text-foreground">
+            <span className="animate-in fade-in duration-250 truncate font-mono text-xs font-medium text-sidebar-foreground">
               {fileName}
             </span>
           </div>
@@ -56,7 +56,7 @@ export function BlameHistoryPanel({ mode, file, onClose }: BlameHistoryPanelProp
       )}
 
       {/* Content Area */}
-      <div className="relative flex flex-1 select-none flex-col items-center justify-center overflow-y-auto bg-gradient-to-b from-card to-background p-6 text-center">
+      <div className="relative flex flex-1 select-none flex-col items-center justify-center overflow-y-auto bg-sidebar p-6 text-center">
         {/* Glow decorative background */}
         <div className="pointer-events-none absolute left-1/2 top-1/3 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-[50px]" />
 
@@ -76,10 +76,10 @@ export function BlameHistoryPanel({ mode, file, onClose }: BlameHistoryPanelProp
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold tracking-tight text-foreground">
+            <h3 className="text-sm font-semibold tracking-tight text-sidebar-foreground">
               {isBlame ? 'Git Blame Panel' : 'File History Panel'}
             </h3>
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
+            <p className="text-[11px] leading-relaxed text-sidebar-muted-foreground">
               {isBlame
                 ? 'Line-by-line commit information, authors, dates, and click-to-open commits will show up here.'
                 : 'Timeline of revisions, commit list modifying this file, and interactive diff selectors.'}

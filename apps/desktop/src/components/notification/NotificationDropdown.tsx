@@ -72,8 +72,8 @@ export function NotificationDropdown() {
       <PopoverTrigger asChild>
         <button
           data-testid="notification-bell-button"
-          className={`relative flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground ${
-            menuOpen ? 'bg-accent text-foreground' : ''
+          className={`relative flex h-7 w-7 items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground ${
+            menuOpen ? 'bg-sidebar-accent text-sidebar-foreground' : ''
           }`}
           title={t('notifications.title')}
         >
@@ -81,7 +81,7 @@ export function NotificationDropdown() {
           {unreadCount > 0 && (
             <span
               data-testid="notification-unread-badge"
-              className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 animate-pulse items-center justify-center rounded-full bg-primary text-[8px] font-bold text-primary-foreground ring-2 ring-card"
+              className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 animate-pulse items-center justify-center rounded-full bg-primary text-[8px] font-bold text-primary-foreground ring-2 ring-sidebar"
             >
               {unreadCount}
             </span>

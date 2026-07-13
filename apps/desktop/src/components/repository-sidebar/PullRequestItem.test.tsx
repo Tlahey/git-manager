@@ -65,7 +65,7 @@ describe('PullRequestItem — content', () => {
 
   it('applies the selected styling when isSelected', () => {
     const { container } = render(<PullRequestItem pr={pr()} isSelected />)
-    expect(container.firstElementChild).toHaveClass('bg-accent')
+    expect(container.firstElementChild).toHaveClass('bg-sidebar-accent')
   })
 })
 

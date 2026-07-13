@@ -41,6 +41,15 @@ export const THEME_TOKEN_KEYS = [
   '--input',
   '--ring',
   '--radius',
+  // Chrome-only surface (sidebar rail + tab bar), kept independent from --card so a
+  // theme can give persistent nav chrome a different tone than in-content panels
+  // (diff views, KPI cards, dialogs, ...) which stay on --card/--background.
+  '--sidebar-background',
+  '--sidebar-foreground',
+  '--sidebar-border',
+  '--sidebar-muted-foreground',
+  '--sidebar-accent',
+  '--sidebar-accent-foreground',
 ] as const
 
 // WCAG 2.1 thresholds.
@@ -71,6 +80,8 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   { label: 'muted-foreground', fg: '--muted-foreground', bg: '--muted', minRatio: AA_LARGE_TEXT },
   // muted-foreground is also commonly rendered directly on the base background.
   { label: 'muted-foreground/background', fg: '--muted-foreground', bg: '--background', minRatio: AA_LARGE_TEXT },
+  { label: 'sidebar', fg: '--sidebar-foreground', bg: '--sidebar-background', minRatio: AA_NORMAL_TEXT },
+  { label: 'sidebar-accent', fg: '--sidebar-accent-foreground', bg: '--sidebar-accent', minRatio: AA_NORMAL_TEXT },
 ]
 
 export type ThemeTokens = Map<string, string>

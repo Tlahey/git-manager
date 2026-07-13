@@ -10,7 +10,7 @@ interface PullRequestItemProps {
 
 const STATE_STYLES: Record<string, string> = {
   open: 'bg-green-500/15 text-green-400 border-green-500/30',
-  draft: 'bg-muted text-muted-foreground border-border',
+  draft: 'bg-sidebar-accent text-sidebar-muted-foreground border-sidebar-border',
   merged: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
   closed: 'bg-destructive/15 text-destructive border-destructive/30',
 }
@@ -33,7 +33,7 @@ export function PullRequestItem({ pr, onOpen, isSelected = false }: PullRequestI
   return (
     <div
       className={`group/pr relative flex cursor-pointer items-start gap-2 py-1.5 pl-6 pr-2 transition-colors ${
-        isSelected ? 'bg-accent font-medium text-foreground' : 'hover:bg-accent/60'
+        isSelected ? 'bg-sidebar-accent font-medium text-sidebar-foreground' : 'hover:bg-sidebar-accent/60'
       }`}
       onClick={() => onOpen?.(pr)}
       role="button"
@@ -47,7 +47,7 @@ export function PullRequestItem({ pr, onOpen, isSelected = false }: PullRequestI
         ) : (
           <Circle
             className={`h-3.5 w-3.5 ${
-              pr.state === 'open' ? 'fill-green-400 text-green-400' : 'text-muted-foreground'
+              pr.state === 'open' ? 'fill-green-400 text-green-400' : 'text-sidebar-muted-foreground'
             }`}
           />
         )}
@@ -57,7 +57,7 @@ export function PullRequestItem({ pr, onOpen, isSelected = false }: PullRequestI
       <div className="min-w-0 flex-1">
         {/* Titre avec hover-expand */}
         <HoverExpandLabel
-          className={`text-xs ${isSelected ? 'font-medium text-foreground' : 'text-foreground'}`}
+          className={`text-xs ${isSelected ? 'font-medium text-sidebar-foreground' : 'text-sidebar-foreground'}`}
         >
           #{pr.number} {pr.title}
         </HoverExpandLabel>
@@ -71,7 +71,7 @@ export function PullRequestItem({ pr, onOpen, isSelected = false }: PullRequestI
           >
             {STATE_LABELS[pr.state] ?? pr.state}
           </span>
-          <span className="text-[10px] text-muted-foreground">{pr.author}</span>
+          <span className="text-[10px] text-sidebar-muted-foreground">{pr.author}</span>
           <CiIcon status={pr.ciStatus} />
         </div>
       </div>
@@ -85,7 +85,7 @@ export function PullRequestItem({ pr, onOpen, isSelected = false }: PullRequestI
         className="shrink-0 opacity-0 transition-opacity group-hover/pr:opacity-100"
         aria-label="Ouvrir dans GitHub"
       >
-        <ExternalLink className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+        <ExternalLink className="h-3 w-3 text-sidebar-muted-foreground hover:text-sidebar-foreground" />
       </a>
     </div>
   )
