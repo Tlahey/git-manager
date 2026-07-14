@@ -84,3 +84,40 @@ export interface AiContext {
   /** Optional regex (from Settings) the generated subject must match. Frontend-populated. */
   commitPattern?: string
 }
+
+/** One commit in an {@link AiActivity} window. Mirrors the Rust `ActivityCommit` serde struct. */
+export interface AiActivityCommit {
+  shortOid: string
+  subject: string
+  /** Commit body (message minus the subject line), trimmed; empty when subject-only. */
+  body: string
+  author: string
+  /** Author timestamp, seconds since the epoch. */
+  timestamp: number
+  filesChanged: number
+  insertions: number
+  deletions: number
+}
+
+/** One uncommitted change in an {@link AiActivity}'s `pending` snapshot. */
+export interface AiActivityPending {
+  path: string
+  status: string
+}
+
+/** Recent-activity context for the daily-summary feature — produced by the `get_ai_activity` Tauri
+ * command (git2 logic stays in Rust). Looks *backwards* (commits authored in a recent window) plus a
+ * light snapshot of the still-uncommitted work. Mirrors the Rust `AiActivity` serde struct. */
+export interface AiActivity {
+  repoName: string
+  branch: string
+  /** Non-merge commits authored within the requested window, newest first. */
+  commits: AiActivityCommit[]
+  /** Light snapshot of uncommitted work (staged + unstaged + untracked). May be empty. */
+  pending: AiActivityPending[]
+  /** True when the window held more commits than the backend cap, so the summary is a sample. */
+  truncated: boolean
+  /** BCP-47-ish language tag (`'fr'` / `'en'`) the summary should be written in. Frontend-populated
+   * from app Settings (not from Rust) so the briefing matches the user's UI language. */
+  language?: string
+}

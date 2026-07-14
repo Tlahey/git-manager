@@ -297,6 +297,16 @@ export interface GitHubSettings {
   activeAccountId: string | null
 }
 
+/** Settings for the AI "daily summary" launchpad briefing. Deliberately kept OUT of `ai` (which is
+ * connection-only): these tune *whether/when* the feature runs, not how to reach a provider. */
+export interface DailySummarySettings {
+  /** Master switch — when false the feature is hidden from the launchpad and never generates. */
+  enabled: boolean
+  /** When true, a stale per-project summary is regenerated automatically the first time the
+   * launchpad is opened each morning; when false the user triggers it manually. */
+  autoGenerate: boolean
+}
+
 export interface AppSettings {
   ai: AiConnectionConfig
   git: GitSettings
@@ -308,6 +318,7 @@ export interface AppSettings {
   externalTools?: ExternalToolsSettings
   notifications?: NotificationSettings
   integrations?: IntegrationSettings
+  dailySummary?: DailySummarySettings
 }
 
 export interface ProviderAccount {

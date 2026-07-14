@@ -69,6 +69,10 @@ const DEFAULT_SETTINGS: AppSettings = {
     bitbucketAccounts: [],
     bitbucketActiveAccountId: null,
   },
+  dailySummary: {
+    enabled: true,
+    autoGenerate: true,
+  },
 }
 
 interface SettingsState {

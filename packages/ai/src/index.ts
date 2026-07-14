@@ -11,6 +11,9 @@ export type {
   AiContext,
   AiContextFile,
   AiContextScope,
+  AiActivity,
+  AiActivityCommit,
+  AiActivityPending,
   CommitConvention,
   JsonSchema,
 } from './config'
@@ -44,6 +47,11 @@ export {
   FILE_GROUPING_SCHEMA,
   buildGroupingUserPrompt,
   parseCommitPlan,
+  dailySummaryFeature,
+  DAILY_SUMMARY_INSTRUCTION,
+  DAILY_SUMMARY_SCHEMA,
+  buildDailySummaryPrompt,
+  parseDailySummary,
   DEFAULT_COMMIT_TYPES,
   parseCommitlintRules,
   isConventionalHistory,
@@ -56,6 +64,7 @@ export {
 } from './features'
 export type {
   ProposedCommit,
+  DailySummary,
   CommitlintRules,
   CommitStyleContext,
   CommitValidation,

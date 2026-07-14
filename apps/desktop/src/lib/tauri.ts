@@ -27,6 +27,7 @@ import type {
   AiGenerateConfig,
   AiContext,
   AiContextScope,
+  AiActivity,
   JsonSchema,
 } from '@git-manager/ai'
 
@@ -223,6 +224,9 @@ export const checkAiStatus = (config: AiCheckConfig) =>
 
 export const getAiContext = (path: string, scope: AiContextScope) =>
   invoke<AiContext>('get_ai_context', { path, scope })
+
+export const getAiActivity = (path: string, sinceHours: number) =>
+  invoke<AiActivity>('get_ai_activity', { path, sinceHours })
 
 export const aiGenerateStream = (
   config: AiGenerateConfig,

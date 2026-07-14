@@ -104,5 +104,9 @@
   "settings.rewards.reset": "Reset all progress",
   "settings.rewards.resetConfirm": "Do you really want to reset ALL your accumulated achievements and XP? This action is irreversible.",
   "commit.history": "Recent messages",
-  "commit.historyEmpty": "No recent messages"
+  "commit.historyEmpty": "No recent messages",
+  "settings.ai.dailySummary.enabled": "Daily summary",
+  "settings.ai.dailySummary.enabledHint": "Show an AI briefing per project in the launchpad, recapping yesterday's work and suggesting today's plan.",
+  "settings.ai.dailySummary.autoGenerate": "Generate every morning",
+  "settings.ai.dailySummary.autoGenerateHint": "Automatically refresh each project's briefing the first time you open the launchpad each day."
 }

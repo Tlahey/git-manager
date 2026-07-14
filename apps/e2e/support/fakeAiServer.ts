@@ -16,6 +16,10 @@ export interface FakeAiServerOptions {
   /** Message used for the single group returned by the non-streaming (grouping) completion path.
    * Defaults to a Conventional-Commits-shaped string. */
   groupingMessage?: string
+  /** Structured response returned for the daily-summary completion path (matched by its
+   * `json_schema.name === 'daily_summary'`). Defaults to a deterministic briefing so scenarios can
+   * assert on exact headline/bullets. */
+  dailySummary?: { headline: string; yesterday: string[]; today: string[] }
   /** Accepts the request and records its body, but never sends a real token or `[DONE]` — instead
    * writes a periodic SSE comment line (`: keep-alive`) so the connection keeps producing bytes
    * without ever completing. Real backends do something similar, and it matters here because the
@@ -50,7 +54,13 @@ export async function startFakeAiServer(
         body += chunk.toString('utf8')
       })
       req.on('end', () => {
-        let parsed: { stream?: boolean; messages?: { role: string; content: string }[] } | undefined
+        let parsed:
+          | {
+              stream?: boolean
+              messages?: { role: string; content: string }[]
+              response_format?: { json_schema?: { name?: string } }
+            }
+          | undefined
         try {
           parsed = JSON.parse(body)
           state.lastRequestBody = parsed
@@ -58,11 +68,26 @@ export async function startFakeAiServer(
           state.lastRequestBody = body
         }
 
-        // Non-streaming completion (the file-grouping feature sends `stream: false` with a JSON
-        // schema). Echo the exact file paths listed in the user prompt back as a single commit, in
-        // the schema shape `{ commits: [...] }`, so the response is valid regardless of which
-        // fixture's changes were snapshotted.
+        // Non-streaming completion (`stream: false` with a JSON schema). Two features use this path;
+        // they're told apart by their schema name so each gets a response its parser accepts.
         if (parsed?.stream === false) {
+          const schemaName = parsed.response_format?.json_schema?.name
+
+          // Daily-summary feature: return the `{ headline, yesterday, today }` shape.
+          if (schemaName === 'daily_summary') {
+            const summary = options.dailySummary ?? {
+              headline: 'Shipped the fake feature',
+              yesterday: ['did the fake work'],
+              today: ['plan the next thing'],
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(summary) } }] }))
+            return
+          }
+
+          // File-grouping feature: echo the exact file paths listed in the user prompt back as a
+          // single commit, in the schema shape `{ commits: [...] }`, so the response is valid
+          // regardless of which fixture's changes were snapshotted.
           const userMessage = parsed.messages?.find((m) => m.role === 'user')?.content ?? ''
           const files = [...userMessage.matchAll(/^- (.+?) \(/gm)].map((m) => m[1])
           const commitMessage = options.groupingMessage ?? 'feat: grouped changes'

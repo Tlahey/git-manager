@@ -29,5 +29,19 @@
   "dashboard.untrackedChanges": "untracked",
   "dashboard.conflictedChanges": "conflits",
   "dashboard.browse": "Browse",
-  "dashboard.clone": "Clone"
+  "dashboard.clone": "Clone",
+  "dashboard.summary.title": "Briefing du jour",
+  "dashboard.summary.button": "Briefing du jour",
+  "dashboard.summary.regenerate": "Régénérer",
+  "dashboard.summary.close": "Fermer",
+  "dashboard.summary.generating": "Génération du briefing…",
+  "dashboard.summary.error": "Impossible de générer le briefing",
+  "dashboard.summary.retry": "Réessayer",
+  "dashboard.summary.generatedAt": "Généré {{when}}",
+  "dashboard.summary.yesterday": "Hier",
+  "dashboard.summary.today": "Aujourd'hui",
+  "dashboard.summary.noYesterday": "Aucune activité récente.",
+  "dashboard.summary.noToday": "Rien de suggéré.",
+  "dashboard.summary.empty": "Générez un briefing pour voir ce qui a été fait et ce qui pourrait être planifié.",
+  "dashboard.summary.generate": "Générer"
 }
