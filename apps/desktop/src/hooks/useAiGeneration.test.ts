@@ -17,15 +17,17 @@ function emit(event: string, payload?: unknown) {
 }
 
 vi.mock('../api/ai.api', () => ({
-  apiGenerateCommitMessage: vi.fn(),
-  apiCancelGeneration: vi.fn(),
+  aiService: {
+    generateCommitMessage: vi.fn(),
+    cancelGeneration: vi.fn(),
+  },
 }))
 
-import { apiGenerateCommitMessage, apiCancelGeneration } from '../api/ai.api'
+import { aiService } from '../api/ai.api'
 import { useAiGeneration } from './useAiGeneration'
 
-const mockedGenerate = apiGenerateCommitMessage as unknown as ReturnType<typeof vi.fn>
-const mockedCancel = apiCancelGeneration as unknown as ReturnType<typeof vi.fn>
+const mockedGenerate = aiService.generateCommitMessage as unknown as ReturnType<typeof vi.fn>
+const mockedCancel = aiService.cancelGeneration as unknown as ReturnType<typeof vi.fn>
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -132,7 +134,7 @@ describe('useAiGeneration', () => {
     expect(result.current.status).toBe('cancelled')
   })
 
-  it('sets status "error" when apiGenerateCommitMessage itself rejects', async () => {
+  it('sets status "error" when aiService.generateCommitMessage itself rejects', async () => {
     mockedGenerate.mockRejectedValue(new Error('backend unreachable'))
     const { result } = renderHook(() => useAiGeneration('/repo'))
 
@@ -165,7 +167,7 @@ describe('useAiGeneration', () => {
     expect(listeners.get('ai:done')?.size).toBe(1)
   })
 
-  it('cancel() calls apiCancelGeneration', async () => {
+  it('cancel() calls aiService.cancelGeneration', async () => {
     mockedCancel.mockResolvedValue(undefined)
     const { result } = renderHook(() => useAiGeneration('/repo'))
     await act(async () => result.current.cancel())

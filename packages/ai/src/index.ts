@@ -1,3 +1,7 @@
+export { DEFAULT_SYSTEM_PROMPT, resolveSystemPrompt } from './prompts'
+export { createAiService } from './service'
+export type { AiService, AiTransport } from './service'
+
 /** The actual wire format a Rust provider implementation speaks. Multiple presets (`AiPresetId`)
  * can share one protocol — e.g. Ollama, LM Studio, and OpenAI itself all speak
  * `openai-compatible` — so adding a new preset rarely means writing a new provider. */

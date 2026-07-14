@@ -1,7 +1,6 @@
 import { listen } from '@tauri-apps/api/event'
 import { useCallback, useRef, useState } from 'react'
-import { getAiPreset } from '@git-manager/ai'
-import { apiCancelGeneration, apiGenerateCommitMessage } from '../api/ai.api'
+import { aiService } from '../api/ai.api'
 import { useSettingsStore } from '../stores/settings.store'
 
 export type GenerationStatus = 'idle' | 'connecting' | 'streaming' | 'done' | 'error' | 'cancelled'
@@ -58,18 +57,7 @@ export function useAiGeneration(repoPath: string) {
       unlistenRef.current = cleanup
 
       try {
-        const { protocol } = getAiPreset(settings.ai.preset)
-        await apiGenerateCommitMessage(repoPath, {
-          protocol,
-          url: settings.ai.url,
-          model: settings.ai.model,
-          apiKey: settings.ai.apiKey,
-          temperature: settings.ai.temperature,
-          timeoutSeconds: settings.ai.timeoutSeconds,
-          systemPrompt: settings.ai.systemPrompt,
-          includeRepoContext: settings.ai.includeRepoContext,
-          autoDetectScope: settings.ai.autoDetectScope,
-        })
+        await aiService.generateCommitMessage(repoPath, settings.ai)
       } catch (err) {
         setStatus('error')
         setError(String(err))
@@ -80,7 +68,7 @@ export function useAiGeneration(repoPath: string) {
   )
 
   const cancel = useCallback(async () => {
-    await apiCancelGeneration()
+    await aiService.cancelGeneration()
   }, [])
 
   return { generate, cancel, status, error }

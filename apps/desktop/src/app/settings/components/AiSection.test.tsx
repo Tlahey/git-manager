@@ -8,13 +8,13 @@ vi.mock('@git-manager/i18n', () => ({
       opts ? `${key}:${JSON.stringify(opts)}` : key,
   }),
 }))
-vi.mock('../../../api/ai.api', () => ({ apiCheckAiStatus: vi.fn() }))
+vi.mock('../../../api/ai.api', () => ({ aiService: { checkStatus: vi.fn() } }))
 
-import { apiCheckAiStatus } from '../../../api/ai.api'
+import { aiService } from '../../../api/ai.api'
 import { AiSection } from './AiSection'
 import { useSettingsStore } from '../../../stores/settings.store'
 
-const mockedCheckStatus = apiCheckAiStatus as unknown as ReturnType<typeof vi.fn>
+const mockedCheckStatus = aiService.checkStatus as unknown as ReturnType<typeof vi.fn>
 const INITIAL_SETTINGS = useSettingsStore.getState()
 
 beforeEach(() => {
@@ -71,11 +71,9 @@ describe('AiSection — connection test', () => {
     const user = userEvent.setup()
     render(<AiSection />)
     await user.click(screen.getByText('settings.ai.test'))
-    expect(mockedCheckStatus).toHaveBeenCalledWith({
-      protocol: 'openai-compatible',
-      url: 'http://localhost:11434',
-      apiKey: undefined,
-    })
+    // The service (mocked here) resolves preset→protocol internally; the component just hands it
+    // the current AI settings. That resolution is unit-tested in `@git-manager/ai`'s service.test.
+    expect(mockedCheckStatus).toHaveBeenCalledWith(useSettingsStore.getState().settings.ai)
     expect(await screen.findByText('settings.ai.connected:{"count":2}')).toBeInTheDocument()
   })
 

@@ -2,9 +2,15 @@ import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Input, Textarea } from '@git-manager/ui'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { AI_PRESETS, getAiPreset, type AiPresetId, type AiProviderStatus } from '@git-manager/ai'
+import {
+  AI_PRESETS,
+  DEFAULT_SYSTEM_PROMPT,
+  getAiPreset,
+  type AiPresetId,
+  type AiProviderStatus,
+} from '@git-manager/ai'
 import { useSettingsStore } from '../../../stores/settings.store'
-import { apiCheckAiStatus } from '../../../api/ai.api'
+import { aiService } from '../../../api/ai.api'
 import { ProviderCombobox } from './ProviderCombobox'
 
 export function AiSection() {
@@ -30,11 +36,7 @@ export function AiSection() {
   async function handleTestConnection() {
     setIsTesting(true)
     try {
-      const status = await apiCheckAiStatus({
-        protocol: activePreset.protocol,
-        url: ai.url,
-        apiKey: ai.apiKey,
-      })
+      const status = await aiService.checkStatus(ai)
       setConnectionStatus(status)
     } catch {
       setConnectionStatus({ connected: false, models: [] })
@@ -201,6 +203,7 @@ export function AiSection() {
             <Textarea
               value={ai.systemPrompt}
               onChange={(e) => updateAi({ systemPrompt: e.target.value })}
+              placeholder={DEFAULT_SYSTEM_PROMPT}
               rows={5}
               className="resize-none font-mono text-xs"
             />
