@@ -9,7 +9,31 @@ import { stabiliseForSnapshot } from '../support/visual.js'
 // The embedded provider shares ONE app instance across features, run sequentially. This feature
 // navigates that shared window to the merge route, so it must hand it back on the main route or
 // every feature that runs after it inherits `?window=merge` and can't find the main app.
+//
+// The "click conflicted file" flow below also opens a REAL second WebviewWindow, only closed by
+// the "click apply" step — if a scenario fails/errors before reaching that step, the window (and
+// `browser`'s focus) is left stranded on it. Since every feature shares this one app instance,
+// that leaks into whichever feature runs next: it inherits a stray extra window handle, and any
+// generic step that walks all handles can end up clicking into that stale, half-torn-down webview
+// (surfaces as a "JavaScript exception occurred" WebDriverError with no obvious cause in the
+// failing feature's own log). Closing every window but the first before navigating handles that
+// regardless of which flow was in play or whether the scenario passed.
 After({ tags: '@merge' }, async () => {
+  const handles = await browser.getWindowHandles()
+  for (const handle of handles.slice(1)) {
+    await browser.switchToWindow(handle)
+    try {
+      await browser.closeWindow()
+    } catch {
+      // Already closing/closed — same "no such window" quirk as fixup.steps.ts's self-close case.
+    }
+  }
+  // Re-query rather than reusing the pre-close `handles` array: closing a window transiently
+  // invalidates the driver's handle set for a moment, so switching straight back to the captured
+  // `handles[0]` intermittently fails with "No window could be found" (recovered by WebdriverIO's
+  // own command retry, but a fresh query avoids depending on that).
+  const [remaining] = await browser.getWindowHandles()
+  await browser.switchToWindow(remaining)
   await browser.execute(() => {
     window.location.href = '/'
   })
@@ -53,7 +77,15 @@ Then(/^the merge editor matches the visual snapshot "([^"]*)"$/, async (tag: str
   await $('[data-testid="merge-auto-merge-button"]').waitForDisplayed({ timeout: 20000 })
   await browser.pause(1500)
   await stabiliseForSnapshot()
-  await expect($('[data-testid="merge-editor-window"]')).toMatchElementSnapshot(tag, 1)
+  // The rebased commit's short SHA is baked fresh into the fixture on every rebuild (a new commit
+  // means a new hash) — it will never match a saved baseline, no matter how stable everything
+  // else is, so hide it rather than let it perpetually fail the comparison. hideElements needs an
+  // already-resolved element, not a lazy ChainablePromiseElement — passing the latter silently
+  // does nothing (no error, no warning, just never hidden).
+  const commitShaEl = await $('[data-testid="merge-rebase-commit-sha"]')
+  await expect($('[data-testid="merge-editor-window"]')).toMatchElementSnapshot(tag, 1, {
+    hideElements: [commitShaEl],
+  })
 })
 
 // Everything below drives block resolution — unlike the "opens + snapshot" scenarios above (which
