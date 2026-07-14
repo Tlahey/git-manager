@@ -1,5 +1,5 @@
 {
-  "name": "@git-manager/code-view",
+  "name": "@git-manager/editor",
   "version": "0.1.0",
   "private": true,
   "type": "module",

@@ -8,7 +8,7 @@ import { initI18n } from '@git-manager/i18n'
 import { useSettingsStore } from './stores/settings.store'
 import { useRepoUIStore } from './stores/repoUI.store'
 import '@git-manager/ui/globals.css'
-import '@git-manager/code-view/styles.css'
+import '@git-manager/editor/styles.css'
 import './index.css'
 
 // WebdriverIO's Tauri plugin auto-initializes on import and must load before tests run.

@@ -10,7 +10,7 @@ vi.mock('monaco-editor', () => ({
 }))
 
 import * as monaco from 'monaco-editor'
-import { monacoThemes, registerMonacoThemes, registerAndApplyDynamicTheme } from './monacoThemes'
+import { monacoThemes, registerMonacoThemes, registerAndApplyDynamicTheme } from './themes'
 
 beforeEach(() => {
   defineTheme.mockReset()

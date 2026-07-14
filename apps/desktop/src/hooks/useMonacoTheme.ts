@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useSettingsStore } from '../stores/settings.store'
-import { registerAndApplyDynamicTheme } from '../lib/monacoThemes'
+import { registerAndApplyDynamicTheme } from '@git-manager/editor'
 import { loader } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 

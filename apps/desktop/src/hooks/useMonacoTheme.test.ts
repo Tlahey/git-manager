@@ -5,7 +5,7 @@ const { config } = vi.hoisted(() => ({ config: vi.fn() }))
 vi.mock('@monaco-editor/react', () => ({ loader: { config } }))
 
 const registerAndApplyDynamicTheme = vi.fn()
-vi.mock('../lib/monacoThemes', () => ({
+vi.mock('@git-manager/editor', () => ({
   registerAndApplyDynamicTheme: (...args: unknown[]) => registerAndApplyDynamicTheme(...args),
 }))
 

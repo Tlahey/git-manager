@@ -1,14 +1,20 @@
-# @git-manager/code-view
+# @git-manager/editor
 
-Generic, host-agnostic multi-panel code viewer / conflict resolver (Monaco-based), extracted
-from the desktop app's 3-way merge editor. No Tauri/SWR/store dependency — everything
-app-specific is injected through props.
+Generic, host-agnostic Monaco integration for the desktop app: the single home for both editor
+types — the block-based **diff / merge** editor (`ConflictResolver` + `CodePane`) and the
+read-only single-pane **`CodeEditor`** — plus the shared Monaco primitives (lazy
+`MonacoEditor` / `MonacoDiffEditor` loaders, `languageForFilePath`, and the dynamic-theme
+registration). No Tauri/SWR/store dependency — everything app-specific is injected through
+props (theme id, sticky-scroll flag, editor component, …).
 
 ## Usage
 
 ```tsx
-import { ConflictResolver } from '@git-manager/code-view'
-import '@git-manager/code-view/styles.css'
+import { ConflictResolver, CodeEditor } from '@git-manager/editor'
+import '@git-manager/editor/styles.css'
+
+// Read-only single-pane file viewer
+<CodeEditor content={fileText} filePath="src/client.ts" theme={appThemeId} />
 
 // 2 panels = side-by-side diff (block geometry computed live by Monaco's diff engine)
 <ConflictResolver
@@ -51,14 +57,14 @@ Components use Tailwind utility classes: consumers must include `src/**/*.{ts,ts
 package in their Tailwind `content` globs (the desktop app does), plus the theme tokens
 (`--foreground`, `--muted-foreground`, …) from `@git-manager/ui/globals.css`. The
 merge-specific classes (block fills, connector ribbons, action buttons) ship in
-`@git-manager/code-view/styles.css`.
+`@git-manager/editor/styles.css`.
 
 ## Development
 
 ```bash
-pnpm --filter @git-manager/code-view test        # vitest unit tests (block layout, decorations, …)
-pnpm --filter @git-manager/code-view storybook   # play with the component at http://localhost:6006
-pnpm --filter @git-manager/code-view test:e2e    # Playwright suite against Storybook (starts it itself)
+pnpm --filter @git-manager/editor test        # vitest unit tests (block layout, decorations, …)
+pnpm --filter @git-manager/editor storybook   # play with the component at http://localhost:6006
+pnpm --filter @git-manager/editor test:e2e    # Playwright suite against Storybook (starts it itself)
 ```
 
 First e2e run needs the browser once: `npx playwright install chromium` from this package.

@@ -11,16 +11,18 @@ vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) 
 // `vi.mock` factories are hoisted above the imports, so they must not close over top-level
 // bindings directly: the fake editor is pulled in via a dynamic import inside the factory, and
 // the auto-merge spy is created through `vi.hoisted` so it exists before the factory runs.
-vi.mock('../../lib/monacoSetup', async () => {
+// Monaco primitives now live in `@git-manager/editor`; keep the real `ConflictResolver` (the
+// suite exercises it through the injected fake editors) and override only the Monaco wiring.
+vi.mock('@git-manager/editor', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@git-manager/editor')>()
   const { FakeMonacoEditor } = await import('./__tests__/fakeMonacoPane')
   return {
+    ...actual,
     MonacoEditor: FakeMonacoEditor,
     languageForFilePath: () => 'plaintext',
+    registerAndApplyDynamicTheme: () => {},
   }
 })
-vi.mock('../../lib/monacoThemes', () => ({
-  registerAndApplyDynamicTheme: () => {},
-}))
 vi.mock('../../stores/settings.store', () => ({
   useSettingsStore: (selector: (s: { settings: { appearance: { theme: string } } }) => unknown) =>
     selector({ settings: { appearance: { theme: 'dark' } } }),

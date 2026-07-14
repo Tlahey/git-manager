@@ -1,52 +1,42 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import { useEffect } from 'react'
+import { render } from '@testing-library/react'
 
-interface FakeMonacoEditorProps {
-  path?: string
-  value?: string
-  onMount?: (editor: unknown, monacoInstance: unknown) => void
-}
-
-function FakeMonacoEditor({ path, value, onMount }: FakeMonacoEditorProps) {
-  useEffect(() => {
-    onMount?.({}, {})
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path])
-  return (
-    <div data-testid="fake-monaco-editor" data-path={path}>
-      {value}
-    </div>
-  )
-}
-
-vi.mock('@monaco-editor/react', () => ({
-  default: FakeMonacoEditor,
-  loader: { config: vi.fn() },
+// Capture the props the wrapper forwards to the library's presentational CodeEditor.
+const { codeEditorSpy } = vi.hoisted(() => ({ codeEditorSpy: vi.fn() }))
+vi.mock('@git-manager/editor', () => ({
+  CodeEditor: (props: Record<string, unknown>) => {
+    codeEditorSpy(props)
+    return null
+  },
 }))
-
-const { registerAndApplyDynamicTheme } = vi.hoisted(() => ({
-  registerAndApplyDynamicTheme: vi.fn(),
-}))
-vi.mock('../../lib/monacoThemes', () => ({ registerAndApplyDynamicTheme }))
 
 import { MonacoFileViewer } from './MonacoFileViewer'
+import { useSettingsStore } from '../../stores/settings.store'
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('MonacoFileViewer', () => {
-  it('renders the file contents in a read-only single-pane editor', async () => {
-    render(<MonacoFileViewer content="const a = 1" filePath="src/a.ts" />)
-    const editor = await screen.findByTestId('fake-monaco-editor')
-    expect(editor).toHaveTextContent('const a = 1')
-    expect(editor.dataset.path).toBe('src/a.ts')
-  })
+describe('MonacoFileViewer (app wrapper)', () => {
+  it('forwards content/filePath and the store theme + sticky-scroll to CodeEditor', () => {
+    useSettingsStore.setState((s) => ({
+      settings: {
+        ...s.settings,
+        appearance: { ...s.settings.appearance, theme: 'git-manager-nord', stickyScroll: true },
+      },
+    }))
 
-  it('applies the dynamic theme once Monaco mounts', async () => {
-    render(<MonacoFileViewer content="line1" filePath="src/a.ts" />)
-    await screen.findByTestId('fake-monaco-editor')
-    expect(registerAndApplyDynamicTheme).toHaveBeenCalled()
+    const onMount = vi.fn()
+    render(<MonacoFileViewer content="const a = 1" filePath="src/a.ts" onMount={onMount} />)
+
+    expect(codeEditorSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: 'const a = 1',
+        filePath: 'src/a.ts',
+        theme: 'git-manager-nord',
+        stickyScroll: true,
+        onMount,
+      })
+    )
   })
 })
