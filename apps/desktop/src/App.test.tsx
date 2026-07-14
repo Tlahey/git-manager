@@ -76,6 +76,7 @@ vi.mock('./hooks/useTheme', () => ({ useTheme: vi.fn() }))
 vi.mock('./hooks/useMonacoTheme', () => ({ useMonacoTheme: vi.fn() }))
 vi.mock('./hooks/useNotificationWatcher', () => ({ useNotificationWatcher: vi.fn() }))
 vi.mock('./hooks/useDevFixtureImport', () => ({ useDevFixtureImport: vi.fn() }))
+vi.mock('./hooks/useAppUpdateCheck', () => ({ useAppUpdateCheck: vi.fn() }))
 
 import App from './App'
 import {

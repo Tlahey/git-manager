@@ -18,6 +18,7 @@ import { useMonacoTheme } from './hooks/useMonacoTheme'
 import { useNotificationWatcher } from './hooks/useNotificationWatcher'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useDevFixtureImport } from './hooks/useDevFixtureImport'
+import { useAppUpdateCheck } from './hooks/useAppUpdateCheck'
 import { Footer } from './components/footer/Footer'
 
 import { Toaster } from '@git-manager/ui'
@@ -39,6 +40,7 @@ export default function App() {
   useMonacoTheme()
   useNotificationWatcher()
   useDevFixtureImport()
+  useAppUpdateCheck()
 
   useKeyboardShortcuts({
     onOpenSettings: () => handleOpenSettings('general'),

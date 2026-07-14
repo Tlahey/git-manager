@@ -9,12 +9,12 @@ vi.mock('@git-manager/i18n', () => ({
   }),
 }))
 
-const { useAppUpdater } = vi.hoisted(() => ({ useAppUpdater: vi.fn() }))
-vi.mock('../../../hooks/useAppUpdater', () => ({ useAppUpdater }))
+const { useUpdaterStore } = vi.hoisted(() => ({ useUpdaterStore: vi.fn() }))
+vi.mock('../../../stores/updater.store', () => ({ useUpdaterStore }))
 
 import { UpdateCheck } from './UpdateCheck'
 
-function updaterState(overrides: Partial<ReturnType<typeof useAppUpdater>> = {}) {
+function updaterState(overrides: Partial<ReturnType<typeof useUpdaterStore>> = {}) {
   return {
     status: 'idle',
     currentVersion: '1.0.0',
@@ -35,7 +35,7 @@ beforeEach(() => {
 
 describe('UpdateCheck — idle', () => {
   it('shows the current version and a check button', () => {
-    useAppUpdater.mockReturnValue(updaterState())
+    useUpdaterStore.mockReturnValue(updaterState())
     render(<UpdateCheck />)
     expect(screen.getByText(/1\.0\.0/)).toBeInTheDocument()
     expect(screen.getByTestId('update-check-button')).toBeInTheDocument()
@@ -43,7 +43,7 @@ describe('UpdateCheck — idle', () => {
 
   it('triggers checkForUpdate on click', async () => {
     const checkForUpdate = vi.fn()
-    useAppUpdater.mockReturnValue(updaterState({ checkForUpdate }))
+    useUpdaterStore.mockReturnValue(updaterState({ checkForUpdate }))
     const user = userEvent.setup()
     render(<UpdateCheck />)
     await user.click(screen.getByTestId('update-check-button'))
@@ -53,7 +53,7 @@ describe('UpdateCheck — idle', () => {
 
 describe('UpdateCheck — up to date', () => {
   it('shows the up-to-date message', () => {
-    useAppUpdater.mockReturnValue(updaterState({ status: 'up-to-date' }))
+    useUpdaterStore.mockReturnValue(updaterState({ status: 'up-to-date' }))
     render(<UpdateCheck />)
     expect(screen.getByTestId('update-up-to-date')).toBeInTheDocument()
   })
@@ -62,7 +62,7 @@ describe('UpdateCheck — up to date', () => {
 describe('UpdateCheck — error', () => {
   it('shows the error message and a retry button', async () => {
     const checkForUpdate = vi.fn()
-    useAppUpdater.mockReturnValue(
+    useUpdaterStore.mockReturnValue(
       updaterState({ status: 'error', error: 'network down', checkForUpdate })
     )
     const user = userEvent.setup()
@@ -76,7 +76,7 @@ describe('UpdateCheck — error', () => {
 describe('UpdateCheck — available', () => {
   it('shows the available version, release notes, and a download button', async () => {
     const downloadAndInstall = vi.fn()
-    useAppUpdater.mockReturnValue(
+    useUpdaterStore.mockReturnValue(
       updaterState({
         status: 'available',
         availableVersion: '1.1.0',
@@ -94,7 +94,7 @@ describe('UpdateCheck — available', () => {
 
 describe('UpdateCheck — downloading', () => {
   it('shows a progress bar sized to the download percentage', () => {
-    useAppUpdater.mockReturnValue(
+    useUpdaterStore.mockReturnValue(
       updaterState({
         status: 'downloading',
         availableVersion: '1.1.0',
@@ -110,7 +110,7 @@ describe('UpdateCheck — downloading', () => {
 describe('UpdateCheck — ready', () => {
   it('shows a restart button that relaunches the app', async () => {
     const relaunch = vi.fn()
-    useAppUpdater.mockReturnValue(
+    useUpdaterStore.mockReturnValue(
       updaterState({ status: 'ready', availableVersion: '1.1.0', relaunch })
     )
     const user = userEvent.setup()

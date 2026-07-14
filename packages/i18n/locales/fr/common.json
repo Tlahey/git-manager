@@ -59,6 +59,7 @@
   "footer.notConnected": "GitHub non connecté",
   "footer.connectedAs": "GitHub : {{name}}",
   "footer.version": "v{{version}}",
+  "footer.updateAvailable": "Mise à jour v{{version}} disponible",
   "footer.dirty": "Modifié",
   "footer.clean": "Propre",
   "footer.remotes": "Remotes",
