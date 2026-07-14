@@ -19,8 +19,29 @@ When(/^I select the working-tree changes in the graph$/, async () => {
   // (GraphRow) — so a plain click never reaches the row's onSelect. Click near the left edge,
   // over the commit-graph node, which is inside the row's clickable element.
   const { width } = await wipRow.getSize()
-  await wipRow.click({ x: -Math.floor(width / 2) + 12, y: 0 })
-  await $('[data-testid="wip-staging-panel"]').waitForDisplayed({ timeout: 10000 })
+  const clickX = -Math.floor(width / 2) + 12
+  // Retry the select-click rather than clicking once: right after the fixture-opening reload the
+  // graph row can be painted (so waitForDisplayed above passes) a beat before its onSelect wiring
+  // is live, so the first click's selection is silently dropped and wip-staging-panel never renders
+  // — the waitForDisplayed then burned its full 10s, in ~6 of this feature's 7 scenarios (the
+  // single largest time sink in the whole suite). Selecting the WIP node is selectSingle →
+  // setPrimaryOid, an idempotent set (not a toggle), so re-clicking is safe; the check-first
+  // condition means a click that already landed exits immediately without clicking again. Elements
+  // are re-queried each pass to survive the graph re-rendering its rows between attempts.
+  await browser.waitUntil(
+    async () => {
+      if (await $('[data-testid="wip-staging-panel"]').isDisplayed().catch(() => false)) return true
+      await $('[data-testid="graph-row-WIP"]')
+        .click({ x: clickX, y: 0 })
+        .catch(() => {})
+      return $('[data-testid="wip-staging-panel"]').isDisplayed().catch(() => false)
+    },
+    {
+      timeout: 10000,
+      interval: 500,
+      timeoutMsg: 'wip-staging-panel never appeared after selecting the WIP row',
+    }
+  )
 })
 
 Then(/^the staging panel is shown$/, async () => {

@@ -21,8 +21,29 @@ export async function stabiliseForSnapshot(): Promise<void> {
     if (document.getElementById('wdio-vrt-stabilise')) return
     const style = document.createElement('style')
     style.id = 'wdio-vrt-stabilise'
-    style.textContent =
-      '*, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; }'
+    // The blinking cursor (random blink phase at capture time), the current-line highlight
+    // (tracks wherever the last click/edit left it), and the custom scrollbars (fade in/out on
+    // interaction, so a transition frozen mid-fade can leave one at a random opacity) are all
+    // known non-deterministic Monaco chrome — packages/editor's own Playwright visual suite
+    // already neutralizes exactly these three via its `e2e/screenshot.css` (not used by this
+    // WebdriverIO suite, so mirrored here).
+    style.textContent = `
+      *, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; }
+      .monaco-editor .cursors-layer { display: none !important; }
+      .monaco-editor .view-overlays .current-line,
+      .monaco-editor .margin-view-overlays .current-line-margin { display: none !important; }
+      .monaco-editor .scrollbar { opacity: 0 !important; }
+    `
     document.head.appendChild(style)
+  })
+  // The gamification TrophyToast (fixed bottom-right, 4.5s auto-dismiss) can still be on screen
+  // from an achievement unlocked earlier in the same run — every feature shares one app instance
+  // (see merge.steps.ts's note on that), so e.g. a prior scenario's first commit bleeds a toast
+  // into a totally unrelated feature's snapshot a few steps later. Its exact presence/timing isn't
+  // deterministic (depends on scenario execution order), so baking it into a baseline would just
+  // make that snapshot flaky the other way — yank it from the DOM instead of waiting out its own
+  // close animation, since we're about to screenshot and don't need the app to observe the close.
+  await browser.execute(() => {
+    document.querySelector('[data-testid="trophy-toast"]')?.remove()
   })
 }

@@ -133,7 +133,13 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
               <Lock className="h-3 w-3 shrink-0 text-muted-foreground/45" />
               <span className="truncate">
                 Rebasing{' '}
-                <span className="font-mono font-medium text-foreground/90">{commitSha}</span> from{' '}
+                <span
+                  data-testid="merge-rebase-commit-sha"
+                  className="font-mono font-medium text-foreground/90"
+                >
+                  {commitSha}
+                </span>{' '}
+                from{' '}
                 <strong className="font-semibold text-foreground/95">theirs</strong>
               </span>
             </div>

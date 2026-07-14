@@ -93,4 +93,30 @@ export const config: WebdriverIO.Config = {
     ignoreUndefinedDefinitions: false,
   },
   outputDir: join(__dirname, 'logs'),
+  // Diagnostic only: prints how long each step actually took, using cucumber's own step timer
+  // (not a hand-rolled one) — helpful for telling apart "the app is genuinely slow here" from "this
+  // step's waitFor just burned its whole timeout because the element never showed up". A worker's
+  // own spec-reporter output is already prefixed with its instance id, so these lines stay
+  // attributable even with several .feature files queued (maxInstances: 1 above still runs them
+  // one at a time, never concurrently).
+  //
+  // afterStep alone doesn't cover time spent in cucumber's own Before/After scenario hooks (fixture
+  // rebuilds, mock resets, etc. declared with Before()/After() across step-definitions/*.ts) — that
+  // shows up as a gap between one scenario's last [timing] step line and the next scenario's first.
+  // beforeScenario/afterScenario below report the *whole* scenario's duration so that gap is
+  // visible directly: (scenario duration) − (sum of its steps' durations) = hook-only overhead.
+  beforeScenario: function (world) {
+    console.log(`[timing] ▶ scenario — ${world.pickle.name}`)
+  },
+  afterScenario: function (world, result) {
+    const durationMs = result.duration ?? 0
+    const status = result.passed ? 'ok' : 'FAILED'
+    console.log(`[timing] ◀ scenario ${status} in ${durationMs}ms — ${world.pickle.name}`)
+  },
+  afterStep: function (step, _scenario, result) {
+    const durationMs = result.duration ?? 0
+    const flag = durationMs > 3000 ? ' [SLOW]' : ''
+    const status = result.passed ? 'ok' : 'FAILED'
+    console.log(`[timing]${flag} ${durationMs}ms ${status} — ${step.text}`)
+  },
 }

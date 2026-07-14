@@ -16,8 +16,25 @@ When(/^I open the settings$/, async () => {
   // Settings is bound to Mod+, (useKeyboardShortcuts) and opens from any view as a full-screen
   // overlay — more robust than the dashboard-only gear button, which wouldn't be reachable if a
   // prior worker left a repo tab open. On macOS the modifier is Cmd (Meta).
-  await browser.keys([META, ','])
-  await $('[data-testid="settings-page"]').waitForDisplayed({ timeout: 10000 })
+  //
+  // Retry the chord instead of firing it once: this step also runs straight after
+  // "I reload the application" (window.location.reload) in the "persists across a reload"
+  // scenarios, and a single Mod+, can land in the gap between the reload and useKeyboardShortcuts'
+  // `window.addEventListener('keydown', ...)` re-attaching on remount — the keypress is then lost
+  // for good and settings-page never appears, burning the full waitForDisplayed timeout (this was
+  // the dominant, run-to-run-flaky cost of the whole suite). onOpenSettings only does
+  // setShowSettings(true) (open-only, never a toggle), so repeating the chord is idempotent and
+  // safe. The happy path (listener already attached) satisfies the condition on the first pass, so
+  // scenarios that open settings without a preceding reload are not slowed down.
+  const page = $('[data-testid="settings-page"]')
+  await browser.waitUntil(
+    async () => {
+      if (await page.isDisplayed().catch(() => false)) return true
+      await browser.keys([META, ','])
+      return page.isDisplayed().catch(() => false)
+    },
+    { timeout: 10000, interval: 500, timeoutMsg: 'settings-page never appeared after Mod+,' }
+  )
 })
 
 Then(/^the settings screen is shown$/, async () => {
