@@ -9,6 +9,7 @@ import {
 } from '../../stores/repoUI.store'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useGameStore, getLevelInfo } from '../../stores/game.store'
+import { useUpdaterStore } from '../../stores/updater.store'
 import {
   LayoutDashboard,
   Rocket,
@@ -21,6 +22,7 @@ import {
   ClipboardCopy,
   ClipboardCheck,
   Trophy,
+  DownloadCloud,
 } from 'lucide-react'
 import {
   Dialog,
@@ -43,6 +45,7 @@ export function Footer({ onOpenSettings }: FooterProps) {
   const { settings } = useSettingsStore()
   const { points, rewardsEnabled } = useGameStore()
   const { level } = getLevelInfo(points)
+  const { status: updateStatus, currentVersion, availableVersion } = useUpdaterStore()
 
   const [copied, setCopied] = useState(false)
   const [isShortcutOpen, setIsShortcutOpen] = useState(false)
@@ -65,7 +68,8 @@ export function Footer({ onOpenSettings }: FooterProps) {
   const github = settings.github || { accounts: [], activeAccountId: null }
   const activeAccount = github.accounts.find((a) => a.id === github.activeAccountId) || null
 
-  const appVersion = '0.1.0' // Version statique définie dans package.json
+  const updateAvailable =
+    updateStatus === 'available' || updateStatus === 'downloading' || updateStatus === 'ready'
 
   // Copie le chemin du dépôt dans le presse-papier
   const handleCopyPath = async () => {
@@ -314,10 +318,25 @@ export function Footer({ onOpenSettings }: FooterProps) {
 
         <span className="text-border">|</span>
 
+        {/* Update available badge */}
+        {updateAvailable && (
+          <button
+            onClick={() => onOpenSettings('general')}
+            className="flex animate-pulse items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 font-semibold text-primary transition-colors hover:bg-primary/20"
+            data-testid="footer-update-badge"
+            title={t('footer.updateAvailable', { version: availableVersion })}
+          >
+            <DownloadCloud className="h-3 w-3" />
+            <span>{t('footer.updateAvailable', { version: availableVersion })}</span>
+          </button>
+        )}
+
         {/* Version App */}
-        <div className="flex items-center gap-1 rounded-full border border-border/50 bg-muted/80 px-2 py-0.5 font-mono text-[10px] font-semibold text-foreground/75 shadow-sm">
-          <span>{t('footer.version', { version: appVersion })}</span>
-        </div>
+        {currentVersion && (
+          <div className="flex items-center gap-1 rounded-full border border-border/50 bg-muted/80 px-2 py-0.5 font-mono text-[10px] font-semibold text-foreground/75 shadow-sm">
+            <span>{t('footer.version', { version: currentVersion })}</span>
+          </div>
+        )}
       </div>
     </footer>
   )

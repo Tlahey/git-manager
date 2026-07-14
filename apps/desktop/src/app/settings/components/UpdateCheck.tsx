@@ -1,9 +1,11 @@
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Spinner } from '@git-manager/ui'
-import { useAppUpdater } from '../../../hooks/useAppUpdater'
+import { useUpdaterStore } from '../../../stores/updater.store'
 
 /** Settings → General: shows the running version and drives tauri-plugin-updater's
- *  check → download+install → relaunch flow behind a single button. */
+ *  check → download+install → relaunch flow. `status` is shared with the footer badge via
+ *  `useUpdaterStore` — a startup check (`useAppUpdateCheck`) may have already populated it by
+ *  the time this mounts, so opening Settings reflects it immediately instead of starting idle. */
 export function UpdateCheck() {
   const { t } = useTranslation('settings')
   const {
@@ -16,7 +18,7 @@ export function UpdateCheck() {
     checkForUpdate,
     downloadAndInstall,
     relaunch,
-  } = useAppUpdater()
+  } = useUpdaterStore()
 
   const percent =
     progress?.contentLength && progress.contentLength > 0
@@ -40,7 +42,7 @@ export function UpdateCheck() {
             size="sm"
             variant="outline"
             className="h-7 gap-1.5 px-2.5 text-[11px]"
-            onClick={checkForUpdate}
+            onClick={() => checkForUpdate()}
             disabled={status === 'checking'}
             data-testid="update-check-button"
           >
@@ -65,7 +67,7 @@ export function UpdateCheck() {
             size="sm"
             variant="ghost"
             className="h-6 px-2 text-[11px]"
-            onClick={checkForUpdate}
+            onClick={() => checkForUpdate()}
           >
             {t('settings.update.retry')}
           </Button>

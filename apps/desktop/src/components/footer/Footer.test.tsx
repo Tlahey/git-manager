@@ -20,11 +20,13 @@ import {
 } from '../../stores/repoUI.store'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useGameStore } from '../../stores/game.store'
+import { useUpdaterStore } from '../../stores/updater.store'
 
 const INITIAL_REPO_DATA = useRepoDataStore.getState()
 const INITIAL_REPO_UI = useRepoUIStore.getState()
 const INITIAL_SETTINGS = useSettingsStore.getState()
 const INITIAL_GAME = useGameStore.getState()
+const INITIAL_UPDATER = useUpdaterStore.getState()
 
 function repo(overrides: Partial<GitRepo> = {}): GitRepo {
   return {
@@ -57,6 +59,7 @@ beforeEach(() => {
   useRepoUIStore.setState({ ...INITIAL_REPO_UI, activeTab: DASHBOARD_TAB })
   useSettingsStore.setState(INITIAL_SETTINGS)
   useGameStore.setState({ ...INITIAL_GAME, points: 0, rewardsEnabled: true })
+  useUpdaterStore.setState({ ...INITIAL_UPDATER, status: 'idle', currentVersion: '0.1.0' })
   Object.defineProperty(navigator, 'clipboard', {
     value: { writeText: vi.fn().mockResolvedValue(undefined) },
     configurable: true,
@@ -232,8 +235,41 @@ describe('Footer — GitHub account link', () => {
 })
 
 describe('Footer — version', () => {
-  it('shows the app version', () => {
+  it('shows the app version once known', () => {
     render(<Footer onOpenSettings={vi.fn()} />)
     expect(screen.getByText('footer.version:{"version":"0.1.0"}')).toBeInTheDocument()
+  })
+
+  it('shows no version badge before it has been resolved', () => {
+    useUpdaterStore.setState({ currentVersion: null })
+    render(<Footer onOpenSettings={vi.fn()} />)
+    expect(screen.queryByText(/footer\.version/)).not.toBeInTheDocument()
+  })
+})
+
+describe('Footer — update badge', () => {
+  it('is hidden when no update is available', () => {
+    render(<Footer onOpenSettings={vi.fn()} />)
+    expect(screen.queryByTestId('footer-update-badge')).not.toBeInTheDocument()
+  })
+
+  it.each(['available', 'downloading', 'ready'] as const)(
+    'shows the badge when status is "%s"',
+    (status) => {
+      useUpdaterStore.setState({ status, availableVersion: '1.2.0' })
+      render(<Footer onOpenSettings={vi.fn()} />)
+      expect(screen.getByTestId('footer-update-badge')).toHaveTextContent(
+        'footer.updateAvailable:{"version":"1.2.0"}'
+      )
+    }
+  )
+
+  it('opens Settings → General when clicked', async () => {
+    useUpdaterStore.setState({ status: 'available', availableVersion: '1.2.0' })
+    const onOpenSettings = vi.fn()
+    const user = userEvent.setup()
+    render(<Footer onOpenSettings={onOpenSettings} />)
+    await user.click(screen.getByTestId('footer-update-badge'))
+    expect(onOpenSettings).toHaveBeenCalledWith('general')
   })
 })
