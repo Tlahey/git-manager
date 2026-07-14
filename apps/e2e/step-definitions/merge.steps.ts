@@ -151,20 +151,32 @@ async function countAcceptRightButtons(): Promise<number> {
   return found.length
 }
 
+// Each accept-right click synchronously updates placements, but the connector overlay's own
+// segment geometry (and thus which testids are actually present) only catches up a rAF later
+// (useMergeConnectors' scheduleRecompute). Capturing every testid upfront and firing all the
+// clicks back-to-back raced that catch-up — clicking a testid that hadn't been repositioned/
+// removed yet worked most of the time, but occasionally lost a click depending on exactly when
+// the rAF landed relative to the next browser.execute() round-trip. Re-querying for "whichever
+// accept-right button is first right now" and waiting for the count to actually drop before
+// moving on ties each click to the app's real state instead of a timing guess.
 When(/^I accept the right side for every remaining conflicting block$/, async () => {
   await browser.waitUntil(async () => (await countAcceptRightButtons()) > 0, {
     timeout: 10000,
     timeoutMsg: 'No remaining merge-connector-accept-right buttons appeared',
   })
-  const buttons = await $$('[data-testid^="merge-connector-accept-right-"]')
-  const testids: string[] = []
-  for (const btn of buttons) {
+  let remaining = await countAcceptRightButtons()
+  expect(remaining).toBeGreaterThan(0)
+  while (remaining > 0) {
+    const btn = await $('[data-testid^="merge-connector-accept-right-"]')
     const testid = await btn.getAttribute('data-testid')
-    if (testid) testids.push(testid)
-  }
-  expect(testids.length).toBeGreaterThan(0)
-  for (const testid of testids) {
+    if (!testid) throw new Error('Accept-right button is missing its data-testid attribute')
     await clickViaJs(testid)
+    const expected = remaining - 1
+    await browser.waitUntil(async () => (await countAcceptRightButtons()) === expected, {
+      timeout: 5000,
+      timeoutMsg: `Accept-right button count did not drop to ${expected} after clicking "${testid}"`,
+    })
+    remaining = expected
   }
 })
 

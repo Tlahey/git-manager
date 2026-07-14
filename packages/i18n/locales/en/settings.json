@@ -7,6 +7,7 @@
   "settings.sections.external_tools": "External Tools",
   "settings.sections.notifications": "Notifications",
   "settings.sections.ui_customization": "UI Customization",
+  "settings.sections.rewards": "Achievements & Rewards",
   "settings.sections.debug": "Debug",
   "settings.ai.preset": "Provider",
   "settings.ai.comingSoon": "(coming soon)",
