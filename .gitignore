@@ -18,3 +18,7 @@ coverage/
 .aider*
 apps/e2e/logs/
 apps/e2e/__visual__/
+
+# Tauri updater signing keypair — private key must never be committed; it lives only in the
+# GitHub Actions secret (TAURI_SIGNING_PRIVATE_KEY). See .github/workflows/release.yml.
+apps/desktop/.updater-keys/

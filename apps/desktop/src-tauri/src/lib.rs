@@ -104,7 +104,9 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_notification::init());
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init());
 
     // Embedded WebDriver server for WebdriverIO e2e tests (see apps/desktop/e2e/). Only
     // compiled in when built with `--features e2e`; never present in a normal dev or

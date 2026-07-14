@@ -1,0 +1,62 @@
+name: Release
+
+# Triggered by pushing a tag like `v0.2.0` (must match the `version` field in
+# apps/desktop/src-tauri/tauri.conf.json — bump that first, commit, then tag).
+# Builds a universal (Apple Silicon + Intel) macOS bundle, signs it for the
+# Tauri updater, and publishes it as a GitHub Release including `latest.json`
+# — the manifest apps/desktop/src-tauri/tauri.conf.json's `plugins.updater.endpoints`
+# points at. See docs/architecture or CLAUDE.md for the updater flow.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Build & publish macOS release
+    runs-on: macos-14
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'package.json'
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: Install macOS system dependencies
+        run: brew install pkg-config openssl libssh2
+
+      - name: Install Node dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build & publish
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ github.ref_name }}
+          releaseName: 'git-manager ${{ github.ref_name }}'
+          releaseDraft: true
+          prerelease: false
+          args: --target universal-apple-darwin
