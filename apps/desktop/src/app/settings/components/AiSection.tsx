@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { AI_PRESETS, getAiPreset, type AiPresetId, type AiProviderStatus } from '@git-manager/ai'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { apiCheckAiStatus } from '../../../api/ai.api'
+import { ProviderCombobox } from './ProviderCombobox'
 
 export function AiSection() {
   const { t } = useTranslation('settings')
@@ -47,19 +48,14 @@ export function AiSection() {
       {/* Provider preset */}
       <div className="space-y-1.5">
         <label className="text-xs font-medium text-foreground">{t('settings.ai.preset')}</label>
-        <select
-          data-testid="ai-provider-select"
+        <ProviderCombobox
+          presets={AI_PRESETS}
           value={ai.preset}
-          onChange={(e) => handlePresetChange(e.target.value as AiPresetId)}
-          className="h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-        >
-          {AI_PRESETS.map((preset) => (
-            <option key={preset.id} value={preset.id} disabled={!preset.implemented}>
-              {preset.label}
-              {preset.implemented ? '' : ` ${t('settings.ai.comingSoon')}`}
-            </option>
-          ))}
-        </select>
+          onChange={handlePresetChange}
+          searchPlaceholder={t('settings.ai.searchPlaceholder')}
+          emptyLabel={t('settings.ai.noProviderFound')}
+          comingSoonLabel={t('settings.ai.comingSoon')}
+        />
       </div>
 
       {/* URL + Test */}

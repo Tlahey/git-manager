@@ -97,17 +97,24 @@ Then(/^the AI provider connection status is reported$/, async () => {
   expect(reportsAKnownState).toBe(true)
 })
 
+// The provider picker is a searchable popover (Popover + cmdk), not a native <select> — its options
+// only exist in the DOM while open, so open it first unless a prior step in the same scenario
+// already left it open (re-clicking the trigger would just close it again).
 Then(
   /^the "([^"]*)" AI provider option is (enabled|disabled)$/,
   async (presetId: string, state: string) => {
-    const select = $('[data-testid="ai-provider-select"]')
-    await select.waitForDisplayed({ timeout: 10000 })
-    const option = select.$(`option[value="${presetId}"]`)
-    const disabledAttr = await option.getAttribute('disabled')
+    const trigger = $('[data-testid="ai-provider-select"]')
+    await trigger.waitForDisplayed({ timeout: 10000 })
+    const option = $(`[data-testid="ai-provider-option-${presetId}"]`)
+    if (!(await option.isExisting())) {
+      await trigger.click()
+    }
+    await option.waitForDisplayed({ timeout: 10000 })
+    const disabledAttr = await option.getAttribute('data-disabled')
     if (state === 'enabled') {
-      expect(disabledAttr).toBeNull()
+      expect(disabledAttr).toBe('false')
     } else {
-      expect(disabledAttr).not.toBeNull()
+      expect(disabledAttr).toBe('true')
     }
   }
 )

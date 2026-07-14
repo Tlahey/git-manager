@@ -23,29 +23,44 @@ beforeEach(() => {
 })
 
 describe('AiSection — provider preset', () => {
-  it('lists every preset, disabling the ones not implemented yet', () => {
+  it('lists every preset once opened, disabling the ones not implemented yet', async () => {
+    const user = userEvent.setup()
     render(<AiSection />)
-    const select = screen.getByTestId('ai-provider-select')
-    const options = Array.from(select.querySelectorAll('option'))
-    const ollama = options.find((o) => o.value === 'ollama')!
-    const anthropic = options.find((o) => o.value === 'anthropic')!
-    expect(ollama.disabled).toBe(false)
-    expect(anthropic.disabled).toBe(true)
+    await user.click(screen.getByTestId('ai-provider-select'))
+    expect(screen.getByTestId('ai-provider-option-ollama')).toHaveAttribute('aria-disabled', 'false')
+    expect(screen.getByTestId('ai-provider-option-anthropic')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    )
   })
 
-  it('selecting a preset updates the URL to its default and clears the connection status', async () => {
+  it('filters the provider list via the search bar', async () => {
+    const user = userEvent.setup()
+    render(<AiSection />)
+    await user.click(screen.getByTestId('ai-provider-select'))
+    await user.type(screen.getByTestId('ai-provider-search'), 'anthro')
+    expect(screen.getByTestId('ai-provider-option-anthropic')).toBeInTheDocument()
+    expect(screen.queryByTestId('ai-provider-option-ollama')).not.toBeInTheDocument()
+  })
+
+  it('selecting a preset resets the URL to its default and clears the connection status', async () => {
     mockedCheckStatus.mockResolvedValue({ connected: true, models: [] })
     const user = userEvent.setup()
     render(<AiSection />)
     await user.click(screen.getByText('settings.ai.test'))
     await screen.findByTestId('ai-connection-status')
 
-    // "lmstudio" is a real, valid preset — just not yet implemented (disabled in the dropdown, see
-    // the test above), so userEvent.selectOptions (which respects that, like a real browser) can't
-    // reach it. fireEvent dispatches the change event directly, exercising handlePresetChange's own
-    // logic independent of which presets happen to be selectable today.
-    fireEvent.change(screen.getByTestId('ai-provider-select'), { target: { value: 'lmstudio' } })
-    expect(useSettingsStore.getState().settings.ai.url).toBe('http://localhost:1234')
+    // Move the URL away from Ollama's default first, so re-selecting "ollama" — the only
+    // implemented preset today, since the searchable list (unlike the old native <select>) can't
+    // reach a disabled option through real UI interaction — is observably a reset, not a no-op.
+    fireEvent.change(screen.getByDisplayValue('http://localhost:11434'), {
+      target: { value: 'http://localhost:9999' },
+    })
+
+    await user.click(screen.getByTestId('ai-provider-select'))
+    await user.click(screen.getByTestId('ai-provider-option-ollama'))
+
+    expect(useSettingsStore.getState().settings.ai.url).toBe('http://localhost:11434')
     expect(screen.queryByTestId('ai-connection-status')).not.toBeInTheDocument()
   })
 })
@@ -118,14 +133,16 @@ describe('AiSection — fields', () => {
     expect(useSettingsStore.getState().settings.ai.autoDetectScope).toBe(false)
   })
 
-  it('shows an API key field only for presets that require one', () => {
+  it('shows an API key field only for presets that require one', async () => {
     render(<AiSection />)
     expect(screen.queryByTestId('ai-api-key-input')).not.toBeInTheDocument()
     // "openai" isn't selectable via the UI yet (disabled, see the preset-listing test above) —
-    // fireEvent exercises the field's conditional rendering directly, same reasoning as the
-    // preset-switch test above.
-    fireEvent.change(screen.getByTestId('ai-provider-select'), { target: { value: 'openai' } })
-    expect(screen.getByTestId('ai-api-key-input')).toBeInTheDocument()
+    // AiSection subscribes to the whole settings store, so setting it directly exercises the
+    // field's conditional rendering, same reasoning as the preset-switch test above.
+    useSettingsStore.setState((state) => ({
+      settings: { ...state.settings, ai: { ...state.settings.ai, preset: 'openai' } },
+    }))
+    expect(await screen.findByTestId('ai-api-key-input')).toBeInTheDocument()
   })
 })
 

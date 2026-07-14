@@ -10,6 +10,8 @@
   "settings.sections.debug": "Debug",
   "settings.ai.preset": "Provider",
   "settings.ai.comingSoon": "(coming soon)",
+  "settings.ai.searchPlaceholder": "Search providers…",
+  "settings.ai.noProviderFound": "No provider found.",
   "settings.ai.url": "Server URL",
   "settings.ai.apiKey": "API key",
   "settings.ai.test": "Test connection",

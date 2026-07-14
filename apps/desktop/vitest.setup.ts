@@ -18,6 +18,11 @@ class ResizeObserverStub {
 }
 globalThis.ResizeObserver ??= ResizeObserverStub
 
+// jsdom doesn't implement scrollIntoView — cmdk (the Command list backing the command palette and
+// settings' provider combobox) calls it unconditionally on mount/selection to keep the highlighted
+// item in view, with no optional chaining we can rely on since it's third-party code.
+Element.prototype.scrollIntoView ??= () => {}
+
 // jsdom doesn't schedule real frames — fall back to a macrotask so `scheduleRecompute`'s
 // rAF-coalesced connector redraw still resolves deterministically in tests.
 globalThis.requestAnimationFrame ??= (cb: FrameRequestCallback) =>
