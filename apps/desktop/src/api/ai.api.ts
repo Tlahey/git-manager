@@ -1,4 +1,5 @@
 import type {
+  AiActivity,
   AiCheckConfig,
   AiContext,
   AiContextScope,
@@ -11,6 +12,7 @@ import {
   createCompletionService,
   createStatusService,
   createStreamingService,
+  dailySummaryFeature,
   fileGroupingFeature,
 } from '@git-manager/ai'
 import {
@@ -18,6 +20,7 @@ import {
   aiGenerateStream,
   cancelGeneration,
   checkAiStatus,
+  getAiActivity,
   getAiContext,
 } from '../lib/tauri'
 
@@ -28,6 +31,12 @@ export async function apiCheckAiStatus(config: AiCheckConfig) {
 /** Snapshots the repo's uncommitted changes so a feature can build its prompt from them. */
 export async function apiGetAiContext(path: string, scope: AiContextScope): Promise<AiContext> {
   return getAiContext(path, scope)
+}
+
+/** Gathers the repo's recent commit activity (last `sinceHours`) + uncommitted work for the
+ * daily-summary feature's prompt. */
+export async function apiGetAiActivity(path: string, sinceHours: number): Promise<AiActivity> {
+  return getAiActivity(path, sinceHours)
 }
 
 export async function apiCancelGeneration() {
@@ -56,6 +65,7 @@ const tauriAiTransport: AiTransport = {
  * command explanation, …) is: define it in `@git-manager/ai`, then add one line here. */
 export const commitMessageService = createStreamingService(commitMessageFeature, tauriAiTransport)
 export const fileGroupingService = createCompletionService(fileGroupingFeature, tauriAiTransport)
+export const dailySummaryService = createCompletionService(dailySummaryFeature, tauriAiTransport)
 
 /** Connection health check for Settings (validates a provider and lists its models). */
 export const aiStatusService = createStatusService(tauriAiTransport)

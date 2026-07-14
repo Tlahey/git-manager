@@ -14,6 +14,14 @@ export {
 } from './fileGrouping'
 export type { ProposedCommit } from './fileGrouping'
 export {
+  dailySummaryFeature,
+  DAILY_SUMMARY_INSTRUCTION,
+  DAILY_SUMMARY_SCHEMA,
+  buildDailySummaryPrompt,
+  parseDailySummary,
+} from './dailySummary'
+export type { DailySummary } from './dailySummary'
+export {
   DEFAULT_COMMIT_TYPES,
   parseCommitlintRules,
   isConventionalHistory,

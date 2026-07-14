@@ -116,12 +116,27 @@ describe('AiSection — fields', () => {
     expect(useSettingsStore.getState().settings.ai.timeoutSeconds).toBe(60)
   })
 
-  it('does not expose feature tuning (temperature / system prompt / scope toggles)', () => {
+  it('does not expose feature tuning (temperature / system prompt / auto-scope)', () => {
     render(<AiSection />)
-    // These are owned per-feature inside @git-manager/ai and must never surface in Settings.
+    // Instruction/temperature/scope are owned per-feature inside @git-manager/ai and must never
+    // surface in Settings. (The daily-summary enable/auto toggles below are feature *enablement*,
+    // not prompt tuning, so they are allowed.)
     expect(screen.queryByText('settings.ai.temperature')).not.toBeInTheDocument()
     expect(screen.queryByText('settings.llm.systemPrompt')).not.toBeInTheDocument()
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    expect(screen.queryByText('settings.llm.autoScope')).not.toBeInTheDocument()
+  })
+
+  it('exposes the daily-summary enable toggle and its auto-generate sub-toggle', async () => {
+    const user = userEvent.setup()
+    render(<AiSection />)
+    const enable = screen.getByTestId('daily-summary-enabled-toggle')
+    expect(enable).toBeChecked()
+    expect(screen.getByTestId('daily-summary-auto-toggle')).toBeInTheDocument()
+
+    // Turning the feature off hides the auto-generate sub-toggle.
+    await user.click(enable)
+    expect(useSettingsStore.getState().settings.dailySummary?.enabled).toBe(false)
+    expect(screen.queryByTestId('daily-summary-auto-toggle')).not.toBeInTheDocument()
   })
 
   it('shows an API key field only for presets that require one', async () => {

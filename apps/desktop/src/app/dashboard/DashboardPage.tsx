@@ -21,8 +21,11 @@ import { apiScanRepos } from '../../api/repo.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../../stores/repoUI.store'
 import { useOpenRepository } from '../../hooks/useOpenRepository'
+import { useMorningSummaries } from '../../hooks/useMorningSummaries'
+import { useSettingsStore } from '../../stores/settings.store'
 import { RepoRow } from './components/RepoRow'
 import { ReadmePanel } from './components/ReadmePanel'
+import { DailySummaryPanel } from './components/DailySummaryPanel'
 
 interface DashboardPageProps {
   onOpenSettings: () => void
@@ -34,11 +37,25 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
   const { openTabs } = useRepoUIStore()
   const openRepository = useOpenRepository()
 
+  const summaryEnabled = useSettingsStore((s) => s.settings.dailySummary?.enabled ?? true)
+
   const [error, setError] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
   const [filterText, setFilterText] = useState('')
   const [selectedReadmePath, setSelectedReadmePath] = useState<string | null>(null)
+  const [selectedSummaryPath, setSelectedSummaryPath] = useState<string | null>(null)
   const [isCloneOpen, setIsCloneOpen] = useState(false)
+
+  // The launchpad's right pane hosts either the README or the daily-summary briefing — opening one
+  // closes the other so they never fight over the slot.
+  const toggleReadme = useCallback((path: string) => {
+    setSelectedSummaryPath(null)
+    setSelectedReadmePath((cur) => (cur === path ? null : path))
+  }, [])
+  const toggleSummary = useCallback((path: string) => {
+    setSelectedReadmePath(null)
+    setSelectedSummaryPath((cur) => (cur === path ? null : path))
+  }, [])
 
   async function handleOpenRepo() {
     setError(null)
@@ -119,6 +136,16 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
   }, [discoveredRepos, savedRepos, filterFn])
 
   const totalKnownCount = allRepos.length
+
+  // Morning auto-briefing runs only for a bounded, relevant set — the repos open in tabs plus the
+  // favorites — never every discovered repo. The hook itself no-ops when the feature is disabled.
+  const morningCandidatePaths = useMemo(() => {
+    const set = new Set<string>()
+    activeTabs.forEach((r) => set.add(r.path))
+    favoriteRepos.forEach((r) => set.add(r.path))
+    return Array.from(set)
+  }, [activeTabs, favoriteRepos])
+  useMorningSummaries(morningCandidatePaths)
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
@@ -250,10 +277,11 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
                         name={repo.name}
                         isSaved={savedRepos.some((r) => r.path === repo.path)}
                         isPinned={savedRepos.find((r) => r.path === repo.path)?.pinned || false}
-                        onToggleReadme={() => {
-                          setSelectedReadmePath(selectedReadmePath === repo.path ? null : repo.path)
-                        }}
+                        onToggleReadme={() => toggleReadme(repo.path)}
                         isReadmeActive={selectedReadmePath === repo.path}
+                        onToggleSummary={() => toggleSummary(repo.path)}
+                        isSummaryActive={selectedSummaryPath === repo.path}
+                        summaryEnabled={summaryEnabled}
                       />
                     ))}
                   </div>
@@ -284,10 +312,11 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
                         name={repo.name}
                         isSaved={true}
                         isPinned={true}
-                        onToggleReadme={() => {
-                          setSelectedReadmePath(selectedReadmePath === repo.path ? null : repo.path)
-                        }}
+                        onToggleReadme={() => toggleReadme(repo.path)}
                         isReadmeActive={selectedReadmePath === repo.path}
+                        onToggleSummary={() => toggleSummary(repo.path)}
+                        isSummaryActive={selectedSummaryPath === repo.path}
+                        summaryEnabled={summaryEnabled}
                       />
                     ))}
                   </div>
@@ -318,10 +347,11 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
                         name={repo.name}
                         isSaved={savedRepos.some((r) => r.path === repo.path)}
                         isPinned={savedRepos.find((r) => r.path === repo.path)?.pinned || false}
-                        onToggleReadme={() => {
-                          setSelectedReadmePath(selectedReadmePath === repo.path ? null : repo.path)
-                        }}
+                        onToggleReadme={() => toggleReadme(repo.path)}
                         isReadmeActive={selectedReadmePath === repo.path}
+                        onToggleSummary={() => toggleSummary(repo.path)}
+                        isSummaryActive={selectedSummaryPath === repo.path}
+                        summaryEnabled={summaryEnabled}
                       />
                     ))}
                   </div>
@@ -332,12 +362,19 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
         </main>
       </div>
 
-      {/* RIGHT CONTAINER: README Panel */}
-      {selectedReadmePath && (
+      {/* RIGHT CONTAINER: README or Daily-summary panel (mutually exclusive) */}
+      {selectedSummaryPath ? (
+        <div className="animate-in slide-in-from-right flex h-full w-[450px] shrink-0 flex-col overflow-hidden border-l border-border bg-card/45 shadow-2xl backdrop-blur duration-200">
+          <DailySummaryPanel
+            path={selectedSummaryPath}
+            onClose={() => setSelectedSummaryPath(null)}
+          />
+        </div>
+      ) : selectedReadmePath ? (
         <div className="animate-in slide-in-from-right flex h-full w-[450px] shrink-0 flex-col overflow-hidden border-l border-border bg-card/45 shadow-2xl backdrop-blur duration-200">
           <ReadmePanel path={selectedReadmePath} onClose={() => setSelectedReadmePath(null)} />
         </div>
-      )}
+      ) : null}
 
       <CloneRepoDialog open={isCloneOpen} onOpenChange={setIsCloneOpen} />
     </div>

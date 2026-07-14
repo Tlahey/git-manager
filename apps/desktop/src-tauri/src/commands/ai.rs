@@ -1,4 +1,5 @@
 use crate::models::AiProviderStatus;
+use crate::services::ai_activity::{build_ai_activity, AiActivity};
 use crate::services::ai_context::{build_ai_context, AiContext, AiContextScope};
 use crate::services::ai_provider::GenerateConfig;
 use crate::services::ai_registry::provider_for;
@@ -66,6 +67,14 @@ pub async fn check_ai_status(config: AiCheckConfig) -> Result<AiProviderStatus, 
 #[tauri::command]
 pub async fn get_ai_context(path: String, scope: String) -> Result<AiContext, String> {
     build_ai_context(&path, AiContextScope::from_str(&scope)).map_err(Into::into)
+}
+
+/// Gathers the recent-activity context (commits authored in the last `since_hours` hours + current
+/// uncommitted work) for the daily-summary feature. `since_hours` is computed by the frontend, which
+/// knows the local clock and weekend boundaries; the backend stays a pure git query.
+#[tauri::command]
+pub async fn get_ai_activity(path: String, since_hours: i64) -> Result<AiActivity, String> {
+    build_ai_activity(&path, since_hours).map_err(Into::into)
 }
 
 /// Generic streaming generation: relays a fully built system/user prompt to the selected provider

@@ -41,6 +41,9 @@ function renderRow(props: Partial<React.ComponentProps<typeof RepoRow>> = {}) {
       isPinned={false}
       onToggleReadme={vi.fn()}
       isReadmeActive={false}
+      onToggleSummary={vi.fn()}
+      isSummaryActive={false}
+      summaryEnabled
       {...props}
     />
   )
@@ -90,6 +93,9 @@ describe('RepoRow — pin star', () => {
         isPinned
         onToggleReadme={vi.fn()}
         isReadmeActive={false}
+        onToggleSummary={vi.fn()}
+        isSummaryActive={false}
+        summaryEnabled
       />
     )
     expect(container.querySelector('.lucide-star')).toHaveClass('fill-amber-500')
@@ -207,6 +213,28 @@ describe('RepoRow — readme toggle', () => {
     const { container } = renderRow({ isReadmeActive: true })
     const readmeButton = container.querySelector('.lucide-book-open')!.closest('button')!
     expect(readmeButton).toHaveClass('text-primary')
+  })
+})
+
+describe('RepoRow — daily-summary toggle', () => {
+  it('calls onToggleSummary without opening the tab', async () => {
+    const onToggleSummary = vi.fn()
+    const user = userEvent.setup()
+    renderRow({ onToggleSummary })
+    await user.click(screen.getByTestId('repo-summary-button'))
+    expect(onToggleSummary).toHaveBeenCalledOnce()
+    expect(useRepoUIStore.getState().openTabs).not.toContain('/repo/a')
+  })
+
+  it('hides the summary button when the feature is disabled', () => {
+    renderRow({ summaryEnabled: false })
+    expect(screen.queryByTestId('repo-summary-button')).toBeNull()
+  })
+
+  it('hides the summary button when the repo errored', () => {
+    useRepoSummary.mockReturnValue({ data: undefined, isLoading: false, error: new Error('bad') })
+    renderRow()
+    expect(screen.queryByTestId('repo-summary-button')).toBeNull()
   })
 })
 

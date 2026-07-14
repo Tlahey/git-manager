@@ -10,6 +10,7 @@ export function AiSection() {
   const { t } = useTranslation('settings')
   const { settings, updateSettings } = useSettingsStore()
   const ai = settings.ai
+  const dailySummary = settings.dailySummary ?? { enabled: true, autoGenerate: true }
   const [connectionStatus, setConnectionStatus] = useState<AiProviderStatus | null>(null)
   const [isTesting, setIsTesting] = useState(false)
 
@@ -17,6 +18,10 @@ export function AiSection() {
 
   function updateAi(partial: Partial<typeof ai>) {
     updateSettings({ ai: { ...ai, ...partial } })
+  }
+
+  function updateDailySummary(partial: Partial<typeof dailySummary>) {
+    updateSettings({ dailySummary: { ...dailySummary, ...partial } })
   }
 
   function handlePresetChange(presetId: AiPresetId) {
@@ -136,6 +141,50 @@ export function AiSection() {
           onChange={(e) => updateAi({ timeoutSeconds: parseInt(e.target.value, 10) })}
           className="h-8 w-24 text-xs"
         />
+      </div>
+
+      {/* Daily summary (launchpad briefing) feature toggles */}
+      <div className="space-y-3 border-t border-border pt-5">
+        <label className="flex cursor-pointer items-center justify-between">
+          <div className="flex flex-col gap-0.5 pr-4">
+            <span className="text-xs font-medium text-foreground">
+              {t('settings.ai.dailySummary.enabled')}
+            </span>
+            <span className="text-[10px] text-muted-foreground">
+              {t('settings.ai.dailySummary.enabledHint')}
+            </span>
+          </div>
+          <div className="relative inline-flex shrink-0 items-center">
+            <input
+              type="checkbox"
+              checked={dailySummary.enabled}
+              onChange={(e) => updateDailySummary({ enabled: e.target.checked })}
+              className="peer sr-only"
+              data-testid="daily-summary-enabled-toggle"
+            />
+            <div className="peer h-5 w-9 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-border after:bg-background after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>
+          </div>
+        </label>
+
+        {dailySummary.enabled && (
+          <label className="flex cursor-pointer items-center justify-between pl-1">
+            <div className="flex flex-col gap-0.5 pr-4">
+              <span className="text-xs text-foreground">
+                {t('settings.ai.dailySummary.autoGenerate')}
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                {t('settings.ai.dailySummary.autoGenerateHint')}
+              </span>
+            </div>
+            <input
+              type="checkbox"
+              checked={dailySummary.autoGenerate}
+              onChange={(e) => updateDailySummary({ autoGenerate: e.target.checked })}
+              className="h-4 w-4 shrink-0 rounded border-border"
+              data-testid="daily-summary-auto-toggle"
+            />
+          </label>
+        )}
       </div>
 
       {/* Instructions & tuning (temperature, system prompt, scope detection) are owned per-feature

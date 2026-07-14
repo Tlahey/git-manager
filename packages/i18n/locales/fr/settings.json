@@ -104,5 +104,9 @@
   "settings.rewards.reset": "Réinitialiser toute la progression",
   "settings.rewards.resetConfirm": "Voulez-vous vraiment réinitialiser TOUS vos succès et XP accumulés ? Cette action est irréversible.",
   "commit.history": "Messages récents",
-  "commit.historyEmpty": "Aucun message récent"
+  "commit.historyEmpty": "Aucun message récent",
+  "settings.ai.dailySummary.enabled": "Résumé quotidien",
+  "settings.ai.dailySummary.enabledHint": "Afficher un briefing IA par projet dans le launchpad, récapitulant le travail d'hier et suggérant le plan du jour.",
+  "settings.ai.dailySummary.autoGenerate": "Générer chaque matin",
+  "settings.ai.dailySummary.autoGenerateHint": "Actualiser automatiquement le briefing de chaque projet à la première ouverture du launchpad chaque jour."
 }

@@ -10,11 +10,14 @@ import {
   Plus,
   X,
   Star,
+  Sparkles,
 } from 'lucide-react'
 import { useRepoDataStore } from '../../../stores/repoData.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { useSettingsStore } from '../../../stores/settings.store'
+import { useDailySummaryStore } from '../../../stores/dailySummary.store'
 import { useRepoSummary } from '../../../hooks/useRepoSummary'
+import { isSummaryStale } from '../../../lib/dailySummaryWindow'
 import { apiOpenInEditor } from '../../../api/repo.api'
 
 interface RepoRowProps {
@@ -24,6 +27,9 @@ interface RepoRowProps {
   isPinned: boolean
   onToggleReadme: () => void
   isReadmeActive: boolean
+  onToggleSummary: () => void
+  isSummaryActive: boolean
+  summaryEnabled: boolean
 }
 
 export function RepoRow({
@@ -33,6 +39,9 @@ export function RepoRow({
   isPinned,
   onToggleReadme,
   isReadmeActive,
+  onToggleSummary,
+  isSummaryActive,
+  summaryEnabled,
 }: RepoRowProps) {
   const { t } = useTranslation('dashboard')
   const { togglePin } = useRepoDataStore()
@@ -41,6 +50,9 @@ export function RepoRow({
 
   const { data: summary, isLoading, error } = useRepoSummary(path)
   const loading = isLoading || (!summary && !error)
+
+  const storedSummary = useDailySummaryStore((s) => s.summaries[path])
+  const hasFreshSummary = storedSummary != null && !isSummaryStale(storedSummary.generatedAt)
 
   async function handleOpenEditor(e: React.MouseEvent) {
     e.stopPropagation()
@@ -86,6 +98,7 @@ export function RepoRow({
 
   return (
     <div
+      data-testid="dashboard-repo-row"
       onClick={() => openTab(path)}
       className="group/row flex cursor-pointer select-none items-center justify-between border-b border-border/10 bg-transparent px-4 py-3 transition-all duration-150 first:rounded-t-lg last:rounded-b-lg last:border-0 hover:bg-accent/40"
     >
@@ -215,6 +228,33 @@ export function RepoRow({
             </button>
             <div className="pointer-events-none absolute right-full top-1/2 z-50 mr-2 hidden -translate-y-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 font-sans text-[9px] text-popover-foreground shadow-md group-hover/edit:block">
               {`${t('dashboard.openInEditor') || 'Ouvrir dans'} ${editorName}`}
+            </div>
+          </div>
+        )}
+
+        {/* Daily-summary (AI briefing) button */}
+        {!error && summaryEnabled && (
+          <div className="group/summary relative">
+            <button
+              data-testid="repo-summary-button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleSummary()
+              }}
+              className={`relative flex h-7 w-7 items-center justify-center rounded border transition-colors ${
+                isSummaryActive
+                  ? 'border-primary/40 bg-primary/15 text-primary hover:bg-primary/20'
+                  : 'border-border text-muted-foreground hover:border-border/80 hover:bg-accent/60 hover:text-foreground'
+              }`}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {/* Fresh briefing available for today */}
+              {hasFreshSummary && !isSummaryActive && (
+                <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-1 ring-card" />
+              )}
+            </button>
+            <div className="pointer-events-none absolute right-full top-1/2 z-50 mr-2 hidden -translate-y-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 font-sans text-[9px] text-popover-foreground shadow-md group-hover/summary:block">
+              {t('dashboard.summary.button') || 'Briefing du jour'}
             </div>
           </div>
         )}

@@ -221,6 +221,25 @@ be added later without reworking today's code:
   Anthropic disabled/"coming soon"; `command-mocking.feature`/`mocking.steps.ts` updated for the
   renamed `check_ai_status` command and its new `{config: {protocol, url}}` argument shape.
 
+### 6b. AI daily summary (launchpad briefing) ✅
+
+`daily-summary.feature`/`daily-summary.steps.ts` cover the per-project "yesterday / today" briefing
+shown in the launchpad, reusing the same fake-server harness (its `stream: false` completion branch
+now forks on `response_format.json_schema.name` — `daily_summary` returns a
+`{ headline, yesterday, today }` object, `commit_plan` the existing `{ commits: [...] }`). Three
+scenarios: (1) opening the launchpad **auto-generates** the morning briefing for an open project —
+asserts the rendered headline/bullets **and**, via the recorded request body, that the daily-summary
+instruction + `Repository: <name>` context were actually sent (real `get_ai_activity` →
+`ai_complete(schema)` → parse chain); (2) with `dailySummary.autoGenerate` off, the panel opens on
+its empty state and the briefing is produced on demand; (3) with `dailySummary.enabled` off the
+`repo-summary-button` never renders. **Gotcha**: the briefings persist in
+`git-manager-daily-summaries` localStorage, which survives across scenarios in the shared app window
+— a leftover *fresh* (same-day) summary makes the morning auto-run skip (so no request is sent) and
+breaks the "empty state" scenario, so a Background step (`no daily briefing has been generated yet`)
+clears that key and reloads before each scenario. The dashboard tab has no testid, so the
+"open the launchpad dashboard" step switches to it via the e2e-exposed `__e2eRepoUIStore`
+(`setActiveTab('dashboard')`) rather than a click.
+
 ### 7. Worktree management ✅
 
 Requested as "e2e coverage for worktree add/list/remove," but investigating first found the Rust
