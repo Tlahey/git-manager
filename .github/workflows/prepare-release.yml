@@ -1,9 +1,12 @@
 name: Prepare Release
 
 # Manually triggered from the Actions tab. Bumps the app version everywhere it's declared
-# (root + desktop package.json, tauri.conf.json, Cargo.toml), commits that bump straight to
-# main, then tags the commit — which is what actually triggers `release.yml` (it watches for
-# `v*.*.*` tag pushes) to build, sign and publish the release.
+# (root + desktop package.json, tauri.conf.json, Cargo.toml), auto-generates a CHANGELOG.md
+# entry for the new version from Conventional Commit subjects since the last tag (grouped into
+# Added/Changed/Fixed — see the "Update CHANGELOG.md" step), commits it all straight to main,
+# then tags the commit — which is what actually triggers `release.yml` (it watches for
+# `v*.*.*` tag pushes) to build, sign and publish the release using that same CHANGELOG.md
+# section as the GitHub Release body.
 on:
   workflow_dispatch:
     inputs:
@@ -40,6 +43,7 @@ jobs:
           esac
           next="$major.$minor.$patch"
           echo "Bumping $current -> $next (${{ inputs.bump }})"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
           echo "next=$next" >> "$GITHUB_OUTPUT"
 
       - name: Update package.json / tauri.conf.json
@@ -66,11 +70,72 @@ jobs:
             fs.writeFileSync(path, updated);
           "
 
+      - name: Update CHANGELOG.md
+        run: |
+          node -e "
+            const fs = require('fs');
+            const { execSync } = require('child_process');
+
+            const next = '${{ steps.version.outputs.next }}';
+            const current = '${{ steps.version.outputs.current }}';
+            const prevTag = 'v' + current;
+            const date = new Date().toISOString().slice(0, 10);
+
+            let subjects = [];
+            try {
+              const out = execSync('git log ' + prevTag + '..HEAD --no-merges --format=%s', { encoding: 'utf8' });
+              subjects = out.split('\n').filter(Boolean);
+            } catch (err) {
+              // No prevTag (first automated release) or git log failed — ship an empty section.
+            }
+
+            const typeToBucket = { feat: 'Added', fix: 'Fixed', perf: 'Changed', refactor: 'Changed' };
+            const buckets = { Added: [], Changed: [], Fixed: [] };
+            for (const subject of subjects) {
+              const match = subject.match(/^(\w+)(\([^)]*\))?!?:\s*(.+)/);
+              if (!match) continue;
+              const bucket = typeToBucket[match[1]];
+              if (!bucket) continue;
+              const text = match[3].charAt(0).toUpperCase() + match[3].slice(1);
+              buckets[bucket].push(text);
+            }
+
+            const sectionLines = [];
+            for (const heading of ['Added', 'Changed', 'Fixed']) {
+              const items = buckets[heading];
+              if (items.length === 0) continue;
+              sectionLines.push('### ' + heading);
+              sectionLines.push('');
+              for (const item of items) sectionLines.push('- ' + item);
+              sectionLines.push('');
+            }
+            if (sectionLines.length === 0) {
+              sectionLines.push('_No notable changes._');
+              sectionLines.push('');
+            }
+
+            const entry = ['## [' + next + '] - ' + date, ''].concat(sectionLines).join('\n');
+            const unreleasedNote = '_Auto-populated at release time from Conventional Commit subjects since the last tag — see .github/workflows/prepare-release.yml._';
+
+            const path = 'CHANGELOG.md';
+            const content = fs.readFileSync(path, 'utf8');
+            const marker = '## [Unreleased]';
+            const markerIdx = content.indexOf(marker);
+            if (markerIdx === -1) throw new Error('CHANGELOG.md is missing an ## [Unreleased] heading');
+            const bodyStart = content.indexOf('\n', markerIdx) + 1;
+            const nextHeadingIdx = content.indexOf('\n## [', bodyStart);
+            const bodyEnd = nextHeadingIdx === -1 ? content.length : nextHeadingIdx + 1;
+            const updated = content.slice(0, bodyStart) + '\n' + unreleasedNote + '\n\n' + entry + '\n' + content.slice(bodyEnd);
+            fs.writeFileSync(path, updated);
+
+            console.log('Inserted CHANGELOG.md entry for ' + next + ' (' + subjects.length + ' commits scanned since ' + prevTag + ')');
+          "
+
       - name: Commit and tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json apps/desktop/package.json apps/desktop/src-tauri/tauri.conf.json apps/desktop/src-tauri/Cargo.toml
+          git add package.json apps/desktop/package.json apps/desktop/src-tauri/tauri.conf.json apps/desktop/src-tauri/Cargo.toml CHANGELOG.md
           git commit -m "chore(release): bump version to v${{ steps.version.outputs.next }}"
           git tag "v${{ steps.version.outputs.next }}"
           git push origin HEAD:main --follow-tags
