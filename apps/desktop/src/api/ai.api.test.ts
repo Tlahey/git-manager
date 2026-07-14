@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { AiCheckConfig, AiGenerateConfig } from '@git-manager/ai'
+import { DEFAULT_SYSTEM_PROMPT, type AiCheckConfig, type AiGenerateConfig } from '@git-manager/ai'
 
 vi.mock('../lib/tauri', () => ({
   checkAiStatus: vi.fn(),
@@ -43,5 +43,28 @@ describe('ai.api pass-throughs', () => {
     mocked.cancelGeneration.mockResolvedValue(undefined)
     await api.apiCancelGeneration()
     expect(mocked.cancelGeneration).toHaveBeenCalledOnce()
+  })
+})
+
+describe('aiService wiring', () => {
+  it('resolves preset→protocol + default prompt, then forwards to the Tauri transport', async () => {
+    mocked.generateCommitMessage.mockResolvedValue(undefined)
+    await api.aiService.generateCommitMessage('/repo', {
+      preset: 'ollama',
+      url: 'http://localhost:11434',
+      model: 'llama3.2',
+      temperature: 0.3,
+      timeoutSeconds: 30,
+      systemPrompt: '',
+      includeRepoContext: true,
+      autoDetectScope: true,
+    })
+    expect(mocked.generateCommitMessage).toHaveBeenCalledWith(
+      '/repo',
+      expect.objectContaining({
+        protocol: 'openai-compatible',
+        systemPrompt: DEFAULT_SYSTEM_PROMPT,
+      })
+    )
   })
 })

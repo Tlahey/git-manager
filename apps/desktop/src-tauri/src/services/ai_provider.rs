@@ -54,27 +54,6 @@ pub trait AiProvider: Send + Sync {
     ) -> Result<(), AppError>;
 }
 
-pub const DEFAULT_SYSTEM_PROMPT: &str = r#"You are a Git commit message generator. Your task is to write a concise, meaningful commit message following the Conventional Commits specification.
-
-Rules:
-- First line: <type>(<scope>): <description> (max 72 chars)
-- Use imperative mood: "add", "fix", "update"
-- Scope is optional but recommended
-- Add a body only if the change needs explanation
-- Output ONLY the commit message, nothing else
-
-Types: feat, fix, chore, docs, style, refactor, test, perf, build, ci"#;
-
-/// `config.system_prompt` wins when the user has customized it (a blank string, the "reset to
-/// default" state in `AiSection.tsx`, falls through to the default); shared across every provider
-/// so a future provider can't accidentally skip a user's customization.
-pub fn system_prompt_for(config: &GenerateConfig) -> String {
-    match &config.system_prompt {
-        Some(p) if !p.trim().is_empty() => p.clone(),
-        _ => DEFAULT_SYSTEM_PROMPT.to_string(),
-    }
-}
-
 /// Builds the user-turn prompt: optional repo-context line, optional detected-scope hint, then
 /// the (possibly truncated) diff. Shared across every provider so prompt construction lives in
 /// exactly one place regardless of how many wire protocols exist.

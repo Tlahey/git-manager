@@ -1,6 +1,4 @@
-use super::ai_provider::{
-    build_user_prompt, system_prompt_for, AiProvider, GenerateConfig, GenerateContext,
-};
+use super::ai_provider::{build_user_prompt, AiProvider, GenerateConfig, GenerateContext};
 use crate::error::AppError;
 use crate::models::AiProviderStatus;
 use async_trait::async_trait;
@@ -111,7 +109,9 @@ impl AiProvider for OpenAiCompatibleProvider {
             messages: vec![
                 ChatMessage {
                     role: "system",
-                    content: system_prompt_for(config),
+                    // The effective instruction (default included) is resolved in `@git-manager/ai`
+                    // and always sent down; the backend just relays it.
+                    content: config.system_prompt.clone().unwrap_or_default(),
                 },
                 ChatMessage {
                     role: "user",
