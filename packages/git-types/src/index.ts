@@ -1,4 +1,4 @@
-import type { AiGenerationConfig } from '@git-manager/ai'
+import type { AiConnectionConfig } from '@git-manager/ai'
 
 // ─── Repository ───────────────────────────────────────────────────────────────
 
@@ -298,7 +298,7 @@ export interface GitHubSettings {
 }
 
 export interface AppSettings {
-  ai: AiGenerationConfig
+  ai: AiConnectionConfig
   git: GitSettings
   appearance: AppearanceSettings
   language: 'fr' | 'en'
@@ -360,6 +360,13 @@ export interface GitSettings {
   showStashesInGraph?: boolean
   externalEditor: string
   externalEditorCommand: string
+  /** User-authored guidance on how commit messages should be written (free text). Fed to the AI
+   * commit features as an authoritative style source, alongside the repo's commitlint config and
+   * recent history. Empty = no extra guidance. */
+  commitInstructions?: string
+  /** Optional regular expression the generated commit subject must match. Injected into the prompt
+   * and used by the lightweight validator. Empty = no pattern constraint. */
+  commitPattern?: string
 }
 
 export interface AppearanceSettings {

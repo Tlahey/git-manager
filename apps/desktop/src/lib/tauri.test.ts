@@ -282,29 +282,63 @@ const cases: {
     args: { config: { protocol: 'openai-compatible', url: 'http://localhost:11434' } },
   },
   {
-    name: 'generateCommitMessage',
+    name: 'getAiContext',
+    call: () => tauri.getAiContext('/repo', 'staged'),
+    command: 'get_ai_context',
+    args: { path: '/repo', scope: 'staged' },
+  },
+  {
+    name: 'aiGenerateStream',
     call: () =>
-      tauri.generateCommitMessage('/repo', {
-        protocol: 'openai-compatible',
-        url: 'http://localhost:11434',
-        model: 'llama3',
-        temperature: 0.3,
-        timeoutSeconds: 30,
-        includeRepoContext: true,
-        autoDetectScope: true,
-      }),
-    command: 'generate_commit_message',
+      tauri.aiGenerateStream(
+        {
+          protocol: 'openai-compatible',
+          url: 'http://localhost:11434',
+          model: 'llama3',
+          temperature: 0.3,
+          timeoutSeconds: 30,
+        },
+        'system',
+        'user'
+      ),
+    command: 'ai_generate_stream',
     args: {
-      path: '/repo',
       config: {
         protocol: 'openai-compatible',
         url: 'http://localhost:11434',
         model: 'llama3',
         temperature: 0.3,
         timeoutSeconds: 30,
-        includeRepoContext: true,
-        autoDetectScope: true,
       },
+      systemPrompt: 'system',
+      userPrompt: 'user',
+    },
+  },
+  {
+    name: 'aiComplete',
+    call: () =>
+      tauri.aiComplete(
+        {
+          protocol: 'openai-compatible',
+          url: 'http://localhost:11434',
+          model: 'llama3',
+          temperature: 0.2,
+          timeoutSeconds: 30,
+        },
+        'system',
+        'user'
+      ),
+    command: 'ai_complete',
+    args: {
+      config: {
+        protocol: 'openai-compatible',
+        url: 'http://localhost:11434',
+        model: 'llama3',
+        temperature: 0.2,
+        timeoutSeconds: 30,
+      },
+      systemPrompt: 'system',
+      userPrompt: 'user',
     },
   },
   { name: 'cancelGeneration', call: () => tauri.cancelGeneration(), command: 'cancel_generation' },

@@ -1,4 +1,6 @@
 pub mod ai_anthropic;
+pub mod ai_context;
+pub mod ai_convention;
 pub mod ai_openai_compatible;
 pub mod ai_provider;
 pub mod ai_registry;

@@ -1,6 +1,8 @@
 import { listen } from '@tauri-apps/api/event'
 import { useCallback, useRef, useState } from 'react'
-import { aiService } from '../api/ai.api'
+import type { CommitConvention, CommitValidation } from '@git-manager/ai'
+import { validateCommitSubject } from '@git-manager/ai'
+import { apiGetAiContext, commitMessageService } from '../api/ai.api'
 import { useSettingsStore } from '../stores/settings.store'
 
 export type GenerationStatus = 'idle' | 'connecting' | 'streaming' | 'done' | 'error' | 'cancelled'
@@ -8,6 +10,9 @@ export type GenerationStatus = 'idle' | 'connecting' | 'streaming' | 'done' | 'e
 export function useAiGeneration(repoPath: string) {
   const [status, setStatus] = useState<GenerationStatus>('idle')
   const [error, setError] = useState<string | null>(null)
+  // Best-effort structural check of the generated message against the project's convention. Null
+  // until a generation completes; non-blocking (the primary guarantee is instructing the model).
+  const [validation, setValidation] = useState<CommitValidation | null>(null)
   const unlistenRef = useRef<(() => void) | null>(null)
   const settings = useSettingsStore((s) => s.settings)
 
@@ -15,6 +20,7 @@ export function useAiGeneration(repoPath: string) {
     async (onToken: (token: string) => void, onDone: (full: string) => void) => {
       setStatus('connecting')
       setError(null)
+      setValidation(null)
 
       if (unlistenRef.current) {
         unlistenRef.current()
@@ -22,6 +28,11 @@ export function useAiGeneration(repoPath: string) {
       }
 
       let accumulated = ''
+      // Captured after the context fetch below; the done handler validates against them.
+      let convention: CommitConvention | null = null
+      let recentCommits: string[] = []
+      const userInstructions = settings.git.commitInstructions
+      const pattern = settings.git.commitPattern
 
       const unlistenToken = await listen<string>('ai:token', (e) => {
         accumulated += e.payload
@@ -32,6 +43,9 @@ export function useAiGeneration(repoPath: string) {
       const unlistenDone = await listen<void>('ai:done', () => {
         setStatus('done')
         onDone(accumulated)
+        setValidation(
+          validateCommitSubject(accumulated, { convention, recentCommits, userInstructions, pattern })
+        )
         cleanup()
       })
 
@@ -57,19 +71,33 @@ export function useAiGeneration(repoPath: string) {
       unlistenRef.current = cleanup
 
       try {
-        await aiService.generateCommitMessage(repoPath, settings.ai)
+        // The package builds the prompt from the repo's staged changes; git2 stays in Rust.
+        const context = await apiGetAiContext(repoPath, 'staged')
+        if (!context.diff.trim()) {
+          setStatus('error')
+          setError('No staged changes')
+          cleanup()
+          return
+        }
+        convention = context.commitConvention ?? null
+        recentCommits = context.recentCommits ?? []
+        // The user's Settings guidance/pattern are frontend-only — merge them into the context so
+        // the package injects them into the prompt.
+        context.commitInstructions = userInstructions
+        context.commitPattern = pattern
+        await commitMessageService.run(settings.ai, context)
       } catch (err) {
         setStatus('error')
         setError(String(err))
         cleanup()
       }
     },
-    [repoPath, settings.ai]
+    [repoPath, settings.ai, settings.git]
   )
 
   const cancel = useCallback(async () => {
-    await aiService.cancelGeneration()
+    await commitMessageService.cancel()
   }, [])
 
-  return { generate, cancel, status, error }
+  return { generate, cancel, status, error, validation }
 }

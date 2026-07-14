@@ -12,7 +12,8 @@ type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
  * Logique du panneau de commit WIP : mode classique (message unique) et mode
  * "batch commit" (regroupement par dossier racine, génération IA et commit
  * par groupe, avec restauration de l'état de staging original entre chaque
- * étape).
+ * étape). Le découpage IA en plusieurs commits (case 2) vit dans son propre
+ * écran de revue — voir `useCommitBatchReview` / `CommitBatchReviewDialog`.
  */
 export function useWipCommitPanel(
   repoPath: string,
@@ -34,11 +35,13 @@ export function useWipCommitPanel(
     generate: runLlmGenerate,
     cancel: cancelLlmGenerate,
     status: llmStatus,
+    validation: commitValidation,
   } = useAiGeneration(repoPath)
   const { history, addMessage } = useCommitMessageHistory()
 
   const isGenerating = llmStatus === 'connecting' || llmStatus === 'streaming'
 
+  // Default grouping: bucket changed files by their top-level directory.
   const wipBatches = useMemo(() => {
     const batches: Record<string, typeof allWipChanges> = {}
     allWipChanges.forEach((f) => {
@@ -216,6 +219,7 @@ export function useWipCommitPanel(
     handleCommitWip,
     handleGenerateCommitMessage,
     isGenerating,
+    commitValidation,
     history,
     historyOpen,
     setHistoryOpen,

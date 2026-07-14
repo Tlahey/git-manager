@@ -27,6 +27,7 @@ function panelState(overrides: Partial<ReturnType<typeof useWipCommitPanel>> = {
     handleCommitWip: vi.fn(),
     handleGenerateCommitMessage: vi.fn(),
     isGenerating: false,
+    commitValidation: null,
     history: [],
     historyOpen: false,
     setHistoryOpen: vi.fn(),

@@ -7,11 +7,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     preset: 'ollama',
     url: 'http://localhost:11434',
     model: 'llama3.2',
-    temperature: 0.3,
     timeoutSeconds: 30,
-    systemPrompt: '',
-    includeRepoContext: true,
-    autoDetectScope: true,
   },
   git: {
     defaultAuthorName: '',
@@ -20,6 +16,8 @@ const DEFAULT_SETTINGS: AppSettings = {
     showStashesInGraph: true,
     externalEditor: 'vscode',
     externalEditorCommand: '',
+    commitInstructions: '',
+    commitPattern: '',
   },
   appearance: {
     theme: 'dark',

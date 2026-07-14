@@ -1,5 +1,6 @@
 use crate::models::AiProviderStatus;
-use crate::services::ai_provider::{build_generate_context, GenerateConfig};
+use crate::services::ai_context::{build_ai_context, AiContext, AiContextScope};
+use crate::services::ai_provider::GenerateConfig;
 use crate::services::ai_registry::provider_for;
 use crate::state::AppState;
 use serde::Deserialize;
@@ -13,6 +14,10 @@ pub struct AiCheckConfig {
     pub api_key: Option<String>,
 }
 
+/// Wire config for the generic `ai_generate_stream` / `ai_complete` commands. Connection-only plus
+/// the per-request `temperature` (chosen by the *feature* in `@git-manager/ai`, not by Settings).
+/// The `protocol` selects the provider; there is deliberately no system prompt or prompt-building
+/// toggle here — the caller passes fully built `system_prompt`/`user_prompt` strings.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AiGenerateConfig {
@@ -22,9 +27,6 @@ pub struct AiGenerateConfig {
     pub api_key: Option<String>,
     pub temperature: f32,
     pub timeout_seconds: u64,
-    pub system_prompt: Option<String>,
-    pub include_repo_context: bool,
-    pub auto_detect_scope: bool,
 }
 
 impl From<AiGenerateConfig> for GenerateConfig {
@@ -35,9 +37,6 @@ impl From<AiGenerateConfig> for GenerateConfig {
             api_key: c.api_key,
             temperature: c.temperature,
             timeout_seconds: c.timeout_seconds,
-            system_prompt: c.system_prompt,
-            include_repo_context: c.include_repo_context,
-            auto_detect_scope: c.auto_detect_scope,
         }
     }
 }
@@ -55,9 +54,6 @@ pub async fn check_ai_status(config: AiCheckConfig) -> Result<AiProviderStatus, 
         api_key: config.api_key,
         temperature: 0.0,
         timeout_seconds: 5,
-        system_prompt: None,
-        include_repo_context: false,
-        auto_detect_scope: false,
     };
     provider
         .check_status(&generate_config)
@@ -65,32 +61,66 @@ pub async fn check_ai_status(config: AiCheckConfig) -> Result<AiProviderStatus, 
         .map_err(Into::into)
 }
 
-/// Starts streaming a commit message generated from the diff
+/// Snapshots the repo's uncommitted changes for a feature's prompt (git2 logic lives in the
+/// service layer). `scope` is `"staged"` or `"working"`.
 #[tauri::command]
-pub async fn generate_commit_message(
-    path: String,
+pub async fn get_ai_context(path: String, scope: String) -> Result<AiContext, String> {
+    build_ai_context(&path, AiContextScope::from_str(&scope)).map_err(Into::into)
+}
+
+/// Generic streaming generation: relays a fully built system/user prompt to the selected provider
+/// and streams tokens back via `ai:token`/`ai:done` events. Feature-agnostic — every streaming AI
+/// feature (commit message, future report generation, …) goes through this one command.
+#[tauri::command]
+pub async fn ai_generate_stream(
     config: AiGenerateConfig,
+    system_prompt: String,
+    user_prompt: String,
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<(), String> {
     *state.generation_cancel.lock().unwrap() = false;
 
-    let context = build_generate_context(&path)?;
-    if context.diff.is_empty() {
-        return Err("No staged changes".to_string());
-    }
-
-    let protocol = config.protocol.clone();
-    let provider = provider_for(&protocol);
+    let provider = provider_for(&config.protocol);
     let generate_config: GenerateConfig = config.into();
 
     provider
-        .generate(&generate_config, context, &app, &state.generation_cancel)
+        .generate(
+            &generate_config,
+            &system_prompt,
+            &user_prompt,
+            &app,
+            &state.generation_cancel,
+        )
         .await
         .map_err(Into::into)
 }
 
-/// Cancels the generation in progress
+/// Generic non-streaming completion: relays a fully built system/user prompt and returns the full
+/// response as a string. Used by features that need a complete, parseable answer (e.g. file→commit
+/// grouping) rather than incremental tokens.
+#[tauri::command]
+pub async fn ai_complete(
+    config: AiGenerateConfig,
+    system_prompt: String,
+    user_prompt: String,
+    schema: Option<serde_json::Value>,
+) -> Result<String, String> {
+    let provider = provider_for(&config.protocol);
+    let generate_config: GenerateConfig = config.into();
+
+    provider
+        .complete(
+            &generate_config,
+            &system_prompt,
+            &user_prompt,
+            schema.as_ref(),
+        )
+        .await
+        .map_err(Into::into)
+}
+
+/// Cancels the streaming generation in progress
 #[tauri::command]
 pub async fn cancel_generation(state: State<'_, AppState>) -> Result<(), String> {
     *state.generation_cancel.lock().unwrap() = true;
