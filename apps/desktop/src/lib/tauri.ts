@@ -21,7 +21,14 @@ import type {
   BlameHunk,
   FileHistoryEntry,
 } from '@git-manager/git-types'
-import type { AiProviderStatus, AiCheckConfig, AiGenerateConfig } from '@git-manager/ai'
+import type {
+  AiProviderStatus,
+  AiCheckConfig,
+  AiGenerateConfig,
+  AiContext,
+  AiContextScope,
+  JsonSchema,
+} from '@git-manager/ai'
 
 /**
  * Single chokepoint for every frontend→backend call. Wraps Tauri's `invoke` so the debug log
@@ -214,8 +221,21 @@ export const resolveConflictBinary = (path: string, filePath: string, side: 'our
 export const checkAiStatus = (config: AiCheckConfig) =>
   invoke<AiProviderStatus>('check_ai_status', { config })
 
-export const generateCommitMessage = (path: string, config: AiGenerateConfig) =>
-  invoke<void>('generate_commit_message', { path, config })
+export const getAiContext = (path: string, scope: AiContextScope) =>
+  invoke<AiContext>('get_ai_context', { path, scope })
+
+export const aiGenerateStream = (
+  config: AiGenerateConfig,
+  systemPrompt: string,
+  userPrompt: string
+) => invoke<void>('ai_generate_stream', { config, systemPrompt, userPrompt })
+
+export const aiComplete = (
+  config: AiGenerateConfig,
+  systemPrompt: string,
+  userPrompt: string,
+  schema?: JsonSchema
+) => invoke<string>('ai_complete', { config, systemPrompt, userPrompt, schema })
 
 export const cancelGeneration = () => invoke<void>('cancel_generation')
 

@@ -8,13 +8,13 @@ vi.mock('@git-manager/i18n', () => ({
       opts ? `${key}:${JSON.stringify(opts)}` : key,
   }),
 }))
-vi.mock('../../../api/ai.api', () => ({ aiService: { checkStatus: vi.fn() } }))
+vi.mock('../../../api/ai.api', () => ({ aiStatusService: { check: vi.fn() } }))
 
-import { aiService } from '../../../api/ai.api'
+import { aiStatusService } from '../../../api/ai.api'
 import { AiSection } from './AiSection'
 import { useSettingsStore } from '../../../stores/settings.store'
 
-const mockedCheckStatus = aiService.checkStatus as unknown as ReturnType<typeof vi.fn>
+const mockedCheck = aiStatusService.check as unknown as ReturnType<typeof vi.fn>
 const INITIAL_SETTINGS = useSettingsStore.getState()
 
 beforeEach(() => {
@@ -44,7 +44,7 @@ describe('AiSection — provider preset', () => {
   })
 
   it('selecting a preset resets the URL to its default and clears the connection status', async () => {
-    mockedCheckStatus.mockResolvedValue({ connected: true, models: [] })
+    mockedCheck.mockResolvedValue({ connected: true, models: [] })
     const user = userEvent.setup()
     render(<AiSection />)
     await user.click(screen.getByText('settings.ai.test'))
@@ -67,18 +67,18 @@ describe('AiSection — provider preset', () => {
 
 describe('AiSection — connection test', () => {
   it('tests the connection and shows a connected message with the model count', async () => {
-    mockedCheckStatus.mockResolvedValue({ connected: true, models: ['llama3.2', 'mistral'] })
+    mockedCheck.mockResolvedValue({ connected: true, models: ['llama3.2', 'mistral'] })
     const user = userEvent.setup()
     render(<AiSection />)
     await user.click(screen.getByText('settings.ai.test'))
-    // The service (mocked here) resolves preset→protocol internally; the component just hands it
-    // the current AI settings. That resolution is unit-tested in `@git-manager/ai`'s service.test.
-    expect(mockedCheckStatus).toHaveBeenCalledWith(useSettingsStore.getState().settings.ai)
+    // The status service (mocked here) resolves preset→protocol internally; the component just
+    // hands it the current connection settings.
+    expect(mockedCheck).toHaveBeenCalledWith(useSettingsStore.getState().settings.ai)
     expect(await screen.findByText('settings.ai.connected:{"count":2}')).toBeInTheDocument()
   })
 
   it('shows a disconnected message when not connected', async () => {
-    mockedCheckStatus.mockResolvedValue({ connected: false, models: [] })
+    mockedCheck.mockResolvedValue({ connected: false, models: [] })
     const user = userEvent.setup()
     render(<AiSection />)
     await user.click(screen.getByText('settings.ai.test'))
@@ -86,7 +86,7 @@ describe('AiSection — connection test', () => {
   })
 
   it('treats a thrown error as disconnected', async () => {
-    mockedCheckStatus.mockRejectedValue(new Error('network error'))
+    mockedCheck.mockRejectedValue(new Error('network error'))
     const user = userEvent.setup()
     render(<AiSection />)
     await user.click(screen.getByText('settings.ai.test'))
@@ -94,7 +94,7 @@ describe('AiSection — connection test', () => {
   })
 
   it('switches to a model dropdown listing the detected models once connected', async () => {
-    mockedCheckStatus.mockResolvedValue({ connected: true, models: ['llama3.2', 'mistral'] })
+    mockedCheck.mockResolvedValue({ connected: true, models: ['llama3.2', 'mistral'] })
     const user = userEvent.setup()
     render(<AiSection />)
     await user.click(screen.getByText('settings.ai.test'))
@@ -107,28 +107,21 @@ describe('AiSection — connection test', () => {
 })
 
 describe('AiSection — fields', () => {
-  it('binds temperature and timeout', async () => {
+  it('binds the request timeout', async () => {
     const user = userEvent.setup()
     render(<AiSection />)
-    const temperatureInput = screen.getByDisplayValue('0.3')
-    await user.clear(temperatureInput)
-    await user.type(temperatureInput, '0.7')
-    expect(useSettingsStore.getState().settings.ai.temperature).toBe(0.7)
-
     const timeoutInput = screen.getByDisplayValue('30')
     await user.clear(timeoutInput)
     await user.type(timeoutInput, '60')
     expect(useSettingsStore.getState().settings.ai.timeoutSeconds).toBe(60)
   })
 
-  it('toggles includeRepoContext and autoDetectScope', async () => {
-    const user = userEvent.setup()
+  it('does not expose feature tuning (temperature / system prompt / scope toggles)', () => {
     render(<AiSection />)
-    const checkboxes = screen.getAllByRole('checkbox')
-    await user.click(checkboxes[0])
-    expect(useSettingsStore.getState().settings.ai.includeRepoContext).toBe(false)
-    await user.click(checkboxes[1])
-    expect(useSettingsStore.getState().settings.ai.autoDetectScope).toBe(false)
+    // These are owned per-feature inside @git-manager/ai and must never surface in Settings.
+    expect(screen.queryByText('settings.ai.temperature')).not.toBeInTheDocument()
+    expect(screen.queryByText('settings.llm.systemPrompt')).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
   })
 
   it('shows an API key field only for presets that require one', async () => {
@@ -141,31 +134,5 @@ describe('AiSection — fields', () => {
       settings: { ...state.settings, ai: { ...state.settings.ai, preset: 'openai' } },
     }))
     expect(await screen.findByTestId('ai-api-key-input')).toBeInTheDocument()
-  })
-})
-
-describe('AiSection — system prompt', () => {
-  it('is collapsed by default and expands on click', async () => {
-    const user = userEvent.setup()
-    render(<AiSection />)
-    // url + model inputs both have role "textbox"; the system-prompt textarea is a 3rd once expanded.
-    expect(screen.getAllByRole('textbox')).toHaveLength(2)
-    await user.click(screen.getByText('settings.llm.systemPrompt'))
-    expect(screen.getAllByRole('textbox')).toHaveLength(3)
-  })
-
-  it('resets the prompt via the reset button', async () => {
-    useSettingsStore.setState({
-      settings: {
-        ...INITIAL_SETTINGS.settings,
-        ai: { ...INITIAL_SETTINGS.settings.ai, systemPrompt: 'custom prompt' },
-      },
-    })
-    const user = userEvent.setup()
-    render(<AiSection />)
-    await user.click(screen.getByText('settings.llm.systemPrompt'))
-    expect(screen.getByDisplayValue('custom prompt')).toBeInTheDocument()
-    await user.click(screen.getByText('settings.llm.resetPrompt'))
-    expect(useSettingsStore.getState().settings.ai.systemPrompt).toBe('')
   })
 })

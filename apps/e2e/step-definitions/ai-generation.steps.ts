@@ -35,17 +35,13 @@ async function seedAiSettingsAndReload(ai: Record<string, unknown>) {
   })
 }
 
-Given(/^the AI provider is pointed at a fake server with a custom prompt$/, async () => {
+Given(/^the AI provider is pointed at a fake server$/, async () => {
   server = await startFakeAiServer({ tokens: ['feat: ', 'add ', 'fake', ' thing'] })
   await seedAiSettingsAndReload({
     preset: 'ollama',
     url: server.url,
     model: 'fake-model',
-    temperature: 0.3,
     timeoutSeconds: 10,
-    systemPrompt: 'Respond like a pirate.',
-    includeRepoContext: true,
-    autoDetectScope: true,
   })
 })
 
@@ -55,12 +51,31 @@ Given(/^the AI provider is pointed at a fake server that never responds$/, async
     preset: 'ollama',
     url: server.url,
     model: 'fake-model',
-    temperature: 0.3,
     timeoutSeconds: 30,
-    systemPrompt: '',
-    includeRepoContext: false,
-    autoDetectScope: false,
   })
+})
+
+When(/^I click the generate-commit-batches button$/, async () => {
+  const button = $('[data-testid="ai-batch-generate-button"]')
+  await button.waitForEnabled({ timeout: 10000 })
+  await button.click()
+})
+
+Then(/^the AI batch dialog proposes a first commit "([^"]*)"$/, async (expected: string) => {
+  // The first proposal's editable message is pre-filled from the parsed structured response —
+  // proving the real get_ai_context('working') → ai_complete(schema) → parse chain ran end to end.
+  const message = $('[data-testid="ai-batch-message-0"]')
+  await message.waitForExist({ timeout: 15000 })
+  await browser.waitUntil(async () => (await message.getValue()) === expected, {
+    timeout: 15000,
+    timeoutMsg: `AI batch commit message never became "${expected}"`,
+  })
+})
+
+When(/^I apply the AI commit batch$/, async () => {
+  const button = $('[data-testid="ai-batch-apply"]')
+  await button.waitForEnabled({ timeout: 10000 })
+  await button.click()
 })
 
 When(/^I click the commit-generate button$/, async () => {

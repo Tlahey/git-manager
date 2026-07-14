@@ -13,6 +13,9 @@ export interface FakeAiServerHandle {
 export interface FakeAiServerOptions {
   /** Tokens streamed back as separate SSE chunks, in order. */
   tokens?: string[]
+  /** Message used for the single group returned by the non-streaming (grouping) completion path.
+   * Defaults to a Conventional-Commits-shaped string. */
+  groupingMessage?: string
   /** Accepts the request and records its body, but never sends a real token or `[DONE]` — instead
    * writes a periodic SSE comment line (`: keep-alive`) so the connection keeps producing bytes
    * without ever completing. Real backends do something similar, and it matters here because the
@@ -24,7 +27,7 @@ export interface FakeAiServerOptions {
 }
 
 /** A minimal OpenAI-compatible server (`/v1/chat/completions` streaming SSE + `/v1/models`) for
- * driving the real `generate_commit_message`/`check_ai_status` Rust commands end to end — the
+ * driving the real `ai_generate_stream`/`check_ai_status` Rust commands end to end — the
  * app's own Settings just needs `url` pointed here, exactly like a user pointing Ollama's preset
  * at a different OpenAI-compatible host. No mocking of the IPC layer involved (see
  * command-mocking.feature's own note on why that wouldn't reach a real UI click anyway). */
@@ -47,10 +50,26 @@ export async function startFakeAiServer(
         body += chunk.toString('utf8')
       })
       req.on('end', () => {
+        let parsed: { stream?: boolean; messages?: { role: string; content: string }[] } | undefined
         try {
-          state.lastRequestBody = JSON.parse(body)
+          parsed = JSON.parse(body)
+          state.lastRequestBody = parsed
         } catch {
           state.lastRequestBody = body
+        }
+
+        // Non-streaming completion (the file-grouping feature sends `stream: false` with a JSON
+        // schema). Echo the exact file paths listed in the user prompt back as a single commit, in
+        // the schema shape `{ commits: [...] }`, so the response is valid regardless of which
+        // fixture's changes were snapshotted.
+        if (parsed?.stream === false) {
+          const userMessage = parsed.messages?.find((m) => m.role === 'user')?.content ?? ''
+          const files = [...userMessage.matchAll(/^- (.+?) \(/gm)].map((m) => m[1])
+          const commitMessage = options.groupingMessage ?? 'feat: grouped changes'
+          const content = JSON.stringify({ commits: [{ commitMessage, files }] })
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ choices: [{ message: { content } }] }))
+          return
         }
 
         res.writeHead(200, {

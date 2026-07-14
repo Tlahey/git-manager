@@ -1,27 +1,61 @@
-import type { AiCheckConfig, AiGenerateConfig, AiTransport } from '@git-manager/ai'
-import { createAiService } from '@git-manager/ai'
-import { checkAiStatus, generateCommitMessage, cancelGeneration } from '../lib/tauri'
+import type {
+  AiCheckConfig,
+  AiContext,
+  AiContextScope,
+  AiGenerateConfig,
+  AiTransport,
+  JsonSchema,
+} from '@git-manager/ai'
+import {
+  commitMessageFeature,
+  createCompletionService,
+  createStatusService,
+  createStreamingService,
+  fileGroupingFeature,
+} from '@git-manager/ai'
+import {
+  aiComplete,
+  aiGenerateStream,
+  cancelGeneration,
+  checkAiStatus,
+  getAiContext,
+} from '../lib/tauri'
 
 export async function apiCheckAiStatus(config: AiCheckConfig) {
   return checkAiStatus(config)
 }
 
-export async function apiGenerateCommitMessage(path: string, config: AiGenerateConfig) {
-  return generateCommitMessage(path, config)
+/** Snapshots the repo's uncommitted changes so a feature can build its prompt from them. */
+export async function apiGetAiContext(path: string, scope: AiContextScope): Promise<AiContext> {
+  return getAiContext(path, scope)
 }
 
 export async function apiCancelGeneration() {
   return cancelGeneration()
 }
 
-/** Tauri-backed transport for `@git-manager/ai`'s service — the invoke wrappers above are the
- * only place IPC touches AI, keeping the package Tauri-agnostic. */
+/** Tauri-backed transport for `@git-manager/ai`'s runtime — the invoke wrappers are the only place
+ * IPC touches AI, keeping the package Tauri-agnostic. `runStream` triggers a streaming generation
+ * whose tokens arrive via `ai:token`/`ai:done` events (see `useAiGeneration`); `runComplete`
+ * resolves with the full response for structured features. */
 const tauriAiTransport: AiTransport = {
-  generateCommitMessage: apiGenerateCommitMessage,
+  runStream: (config: AiGenerateConfig, systemPrompt: string, userPrompt: string) =>
+    aiGenerateStream(config, systemPrompt, userPrompt),
+  runComplete: (
+    config: AiGenerateConfig,
+    systemPrompt: string,
+    userPrompt: string,
+    schema?: JsonSchema
+  ) => aiComplete(config, systemPrompt, userPrompt, schema),
   checkStatus: apiCheckAiStatus,
-  cancelGeneration: apiCancelGeneration,
+  cancel: apiCancelGeneration,
 }
 
-/** The single entry point components/hooks use for AI features. It owns instruction/config
- * resolution (default system prompt, preset→protocol) and delegates the call to Tauri. */
-export const aiService = createAiService(tauriAiTransport)
+/** One service per AI feature, each assembled from its package-owned descriptor (instruction +
+ * temperature + prompt) and the shared transport. Adding a future feature (report generation, git
+ * command explanation, …) is: define it in `@git-manager/ai`, then add one line here. */
+export const commitMessageService = createStreamingService(commitMessageFeature, tauriAiTransport)
+export const fileGroupingService = createCompletionService(fileGroupingFeature, tauriAiTransport)
+
+/** Connection health check for Settings (validates a provider and lists its models). */
+export const aiStatusService = createStatusService(tauriAiTransport)

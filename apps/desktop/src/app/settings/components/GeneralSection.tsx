@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation, i18next } from '@git-manager/i18n'
-import { Button, Input, Separator } from '@git-manager/ui'
+import { Button, Input, Separator, Textarea } from '@git-manager/ui'
 import { TagInput } from './TagInput'
 import { useSettingsStore } from '../../../stores/settings.store'
 
@@ -110,6 +110,45 @@ export function GeneralSection() {
             onChange={(branches) => updateGit({ protectedBranches: branches })}
             placeholder="main, master…"
           />
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Commit style — guidance the AI commit features follow, on top of any commitlint config
+          and the repo's own history. Not an AI system prompt: a project/user commit convention. */}
+      <div className="space-y-4">
+        <h4 className="text-xs font-semibold text-foreground">{t('settings.git.commitStyle')}</h4>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-foreground">
+            {t('settings.git.commitInstructions')}
+          </label>
+          <Textarea
+            data-testid="commit-instructions-input"
+            value={git.commitInstructions ?? ''}
+            onChange={(e) => updateGit({ commitInstructions: e.target.value })}
+            placeholder={t('settings.git.commitInstructionsPlaceholder')}
+            rows={3}
+            className="resize-none text-xs"
+          />
+          <p className="text-[10px] text-muted-foreground">
+            {t('settings.git.commitInstructionsHint')}
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-foreground">
+            {t('settings.git.commitPattern')}
+          </label>
+          <Input
+            data-testid="commit-pattern-input"
+            value={git.commitPattern ?? ''}
+            onChange={(e) => updateGit({ commitPattern: e.target.value })}
+            placeholder="^(feat|fix|chore)(\\(.+\\))?: .+"
+            className="h-8 font-mono text-xs"
+          />
+          <p className="text-[10px] text-muted-foreground">{t('settings.git.commitPatternHint')}</p>
         </div>
       </div>
 

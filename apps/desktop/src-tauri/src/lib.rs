@@ -5,7 +5,9 @@ mod services;
 mod state;
 mod utils;
 
-use commands::ai::{cancel_generation, check_ai_status, generate_commit_message};
+use commands::ai::{
+    ai_complete, ai_generate_stream, cancel_generation, check_ai_status, get_ai_context,
+};
 use commands::blame::{get_file_history, git_blame_file};
 use commands::branch::{
     checkout_branch, create_branch, create_tag, delete_branch, delete_tag, get_branches,
@@ -172,7 +174,9 @@ pub fn run() {
             run_interactive_rebase,
             // AI
             check_ai_status,
-            generate_commit_message,
+            get_ai_context,
+            ai_generate_stream,
+            ai_complete,
             cancel_generation,
             // Working Tree
             stage_file,

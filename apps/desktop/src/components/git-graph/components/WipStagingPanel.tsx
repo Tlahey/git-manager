@@ -1,8 +1,19 @@
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Textarea, Badge, cn } from '@git-manager/ui'
-import { ChevronDown, Layers, Sparkles, Check, History, Square } from 'lucide-react'
+import {
+  ChevronDown,
+  Layers,
+  Sparkles,
+  Check,
+  History,
+  Square,
+  Wand2,
+  AlertTriangle,
+} from 'lucide-react'
 import type { GitStatus } from '@git-manager/git-types'
 import { useWipCommitPanel } from '../../../hooks/useWipCommitPanel'
+import { useCommitBatchReview } from '../../../hooks/useCommitBatchReview'
+import { CommitBatchReviewDialog } from './CommitBatchReviewDialog'
 import type { ProcessedFileItem } from './CommitFileList'
 
 interface WipStagingPanelProps {
@@ -35,10 +46,14 @@ export function WipStagingPanel({
     handleCommitWip,
     handleGenerateCommitMessage,
     isGenerating,
+    commitValidation,
     history,
     historyOpen,
     setHistoryOpen,
   } = useWipCommitPanel(repoPath, gitStatus, allWipChanges, t, onRefresh)
+
+  // Case 2: AI splits all working changes into a plan of atomic commits, reviewed in a dialog.
+  const batchReview = useCommitBatchReview(repoPath, allWipChanges, t, onRefresh)
 
   const statusIcons: Record<string, string> = {
     added: 'text-green-500 font-bold text-[10px]',
@@ -63,6 +78,7 @@ export function WipStagingPanel({
     >
       <div className="flex items-center justify-between">
         <button
+          data-testid="batch-mode-toggle"
           onClick={() => setBatchMode((b) => !b)}
           className="flex select-none items-center gap-1.5 text-xs font-bold text-primary hover:opacity-85"
         >
@@ -88,6 +104,7 @@ export function WipStagingPanel({
             return (
               <div
                 key={groupName}
+                data-testid={`batch-group-${groupName}`}
                 className="space-y-2.5 rounded-lg border border-border/40 bg-muted/10 p-3"
               >
                 {/* Group Header */}
@@ -140,6 +157,7 @@ export function WipStagingPanel({
                 {/* Message Box */}
                 <div className="space-y-1.5">
                   <Textarea
+                    data-testid={`batch-message-${groupName}`}
                     value={msg}
                     onChange={(e) =>
                       setBatchMessages((prev) => ({
@@ -173,6 +191,7 @@ export function WipStagingPanel({
 
                     <Button
                       size="sm"
+                      data-testid={`batch-commit-${groupName}`}
                       className="h-7 flex-1 gap-1 text-[10px] font-semibold"
                       onClick={() => commitBatch(groupName, files)}
                       disabled={isGen || !msg.trim()}
@@ -202,6 +221,20 @@ export function WipStagingPanel({
               className="resize-none font-mono text-xs"
               disabled={isGenerating}
             />
+            {commitValidation && !commitValidation.valid && (
+              <div
+                data-testid="commit-validation-warning"
+                className="flex items-start gap-1.5 rounded border border-yellow-500/40 bg-yellow-500/10 px-2 py-1.5 text-[10px] text-yellow-600 dark:text-yellow-400"
+              >
+                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                <div className="space-y-0.5">
+                  <p className="font-semibold">{t('commit.conventionWarning')}</p>
+                  {commitValidation.problems.map((p) => (
+                    <p key={p.code}>{p.message}</p>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2">
@@ -282,8 +315,23 @@ export function WipStagingPanel({
               {t('commit.commit')}
             </Button>
           </div>
+
+          {/* Case 2: AI splits every change into a plan of atomic commits, reviewed in a dialog. */}
+          <Button
+            variant="outline"
+            size="sm"
+            data-testid="ai-batch-generate-button"
+            className="h-8 w-full gap-1.5 text-xs"
+            onClick={batchReview.openAndGenerate}
+            disabled={allWipChanges.length === 0 || batchReview.isGenerating}
+          >
+            <Wand2 className="h-3.5 w-3.5 text-primary" />
+            {t('commitDetails.aiBatch.trigger')}
+          </Button>
         </div>
       )}
+
+      <CommitBatchReviewDialog review={batchReview} />
     </div>
   )
 }

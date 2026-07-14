@@ -1,16 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, Textarea } from '@git-manager/ui'
-import { ChevronDown, ChevronRight } from 'lucide-react'
-import {
-  AI_PRESETS,
-  DEFAULT_SYSTEM_PROMPT,
-  getAiPreset,
-  type AiPresetId,
-  type AiProviderStatus,
-} from '@git-manager/ai'
+import { Button, Input } from '@git-manager/ui'
+import { AI_PRESETS, getAiPreset, type AiPresetId, type AiProviderStatus } from '@git-manager/ai'
 import { useSettingsStore } from '../../../stores/settings.store'
-import { aiService } from '../../../api/ai.api'
+import { aiStatusService } from '../../../api/ai.api'
 import { ProviderCombobox } from './ProviderCombobox'
 
 export function AiSection() {
@@ -19,7 +12,6 @@ export function AiSection() {
   const ai = settings.ai
   const [connectionStatus, setConnectionStatus] = useState<AiProviderStatus | null>(null)
   const [isTesting, setIsTesting] = useState(false)
-  const [promptExpanded, setPromptExpanded] = useState(false)
 
   const activePreset = getAiPreset(ai.preset)
 
@@ -36,7 +28,7 @@ export function AiSection() {
   async function handleTestConnection() {
     setIsTesting(true)
     try {
-      const status = await aiService.checkStatus(ai)
+      const status = await aiStatusService.check(ai)
       setConnectionStatus(status)
     } catch {
       setConnectionStatus({ connected: false, models: [] })
@@ -133,22 +125,6 @@ export function AiSection() {
         )}
       </div>
 
-      {/* Temperature */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-medium text-foreground">
-          {t('settings.ai.temperature')}
-        </label>
-        <Input
-          type="number"
-          min={0}
-          max={1}
-          step={0.1}
-          value={ai.temperature}
-          onChange={(e) => updateAi({ temperature: parseFloat(e.target.value) })}
-          className="h-8 w-24 text-xs"
-        />
-      </div>
-
       {/* Timeout */}
       <div className="space-y-1.5">
         <label className="text-xs font-medium text-foreground">{t('settings.ai.timeout')}</label>
@@ -162,62 +138,8 @@ export function AiSection() {
         />
       </div>
 
-      {/* Checkboxes */}
-      <div className="space-y-2">
-        <label className="flex cursor-pointer items-center gap-2">
-          <input
-            type="checkbox"
-            checked={ai.includeRepoContext}
-            onChange={(e) => updateAi({ includeRepoContext: e.target.checked })}
-            className="h-4 w-4 rounded border-border"
-          />
-          <span className="text-xs text-foreground">{t('settings.llm.includeContext')}</span>
-        </label>
-        <label className="flex cursor-pointer items-center gap-2">
-          <input
-            type="checkbox"
-            checked={ai.autoDetectScope}
-            onChange={(e) => updateAi({ autoDetectScope: e.target.checked })}
-            className="h-4 w-4 rounded border-border"
-          />
-          <span className="text-xs text-foreground">{t('settings.llm.autoScope')}</span>
-        </label>
-      </div>
-
-      {/* System prompt (collapsible) */}
-      <div className="space-y-1.5">
-        <button
-          type="button"
-          onClick={() => setPromptExpanded((v) => !v)}
-          className="flex items-center gap-1 text-xs font-medium text-foreground transition-colors hover:text-primary"
-        >
-          {promptExpanded ? (
-            <ChevronDown className="h-3.5 w-3.5" />
-          ) : (
-            <ChevronRight className="h-3.5 w-3.5" />
-          )}
-          {t('settings.llm.systemPrompt')}
-        </button>
-        {promptExpanded && (
-          <div className="space-y-1.5">
-            <Textarea
-              value={ai.systemPrompt}
-              onChange={(e) => updateAi({ systemPrompt: e.target.value })}
-              placeholder={DEFAULT_SYSTEM_PROMPT}
-              rows={5}
-              className="resize-none font-mono text-xs"
-            />
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-6 px-2 text-xs"
-              onClick={() => updateAi({ systemPrompt: '' })}
-            >
-              {t('settings.llm.resetPrompt')}
-            </Button>
-          </div>
-        )}
-      </div>
+      {/* Instructions & tuning (temperature, system prompt, scope detection) are owned per-feature
+          inside @git-manager/ai and intentionally not exposed here — see AiSection's note. */}
     </div>
   )
 }
