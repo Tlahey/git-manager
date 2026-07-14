@@ -1,0 +1,76 @@
+name: Prepare Release
+
+# Manually triggered from the Actions tab. Bumps the app version everywhere it's declared
+# (root + desktop package.json, tauri.conf.json, Cargo.toml), commits that bump straight to
+# main, then tags the commit — which is what actually triggers `release.yml` (it watches for
+# `v*.*.*` tag pushes) to build, sign and publish the release.
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version part to bump'
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  bump-and-tag:
+    name: Bump version & tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Compute next version
+        id: version
+        run: |
+          current=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+          IFS='.' read -r major minor patch <<< "$current"
+          case "${{ inputs.bump }}" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            patch) patch=$((patch + 1)) ;;
+          esac
+          next="$major.$minor.$patch"
+          echo "Bumping $current -> $next (${{ inputs.bump }})"
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+
+      - name: Update package.json / tauri.conf.json
+        run: |
+          node -e "
+            const fs = require('fs');
+            const next = '${{ steps.version.outputs.next }}';
+            for (const file of ['package.json', 'apps/desktop/package.json', 'apps/desktop/src-tauri/tauri.conf.json']) {
+              const json = JSON.parse(fs.readFileSync(file, 'utf8'));
+              json.version = next;
+              fs.writeFileSync(file, JSON.stringify(json, null, 2) + '\n');
+            }
+          "
+
+      - name: Update Cargo.toml
+        run: |
+          node -e "
+            const fs = require('fs');
+            const path = 'apps/desktop/src-tauri/Cargo.toml';
+            const next = '${{ steps.version.outputs.next }}';
+            const content = fs.readFileSync(path, 'utf8');
+            const updated = content.replace(/^version = \"\d+\.\d+\.\d+\"/m, \`version = \"\${next}\"\`);
+            if (updated === content) throw new Error('Cargo.toml version line not found');
+            fs.writeFileSync(path, updated);
+          "
+
+      - name: Commit and tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json apps/desktop/package.json apps/desktop/src-tauri/tauri.conf.json apps/desktop/src-tauri/Cargo.toml
+          git commit -m "chore(release): bump version to v${{ steps.version.outputs.next }}"
+          git tag "v${{ steps.version.outputs.next }}"
+          git push origin HEAD:main --follow-tags

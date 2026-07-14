@@ -108,5 +108,17 @@
   "settings.ai.dailySummary.enabled": "Daily summary",
   "settings.ai.dailySummary.enabledHint": "Show an AI briefing per project in the launchpad, recapping yesterday's work and suggesting today's plan.",
   "settings.ai.dailySummary.autoGenerate": "Generate every morning",
-  "settings.ai.dailySummary.autoGenerateHint": "Automatically refresh each project's briefing the first time you open the launchpad each day."
+  "settings.ai.dailySummary.autoGenerateHint": "Automatically refresh each project's briefing the first time you open the launchpad each day.",
+  "settings.update.title": "Updates",
+  "settings.update.currentVersion": "Current version: {{version}}",
+  "settings.update.check": "Check for updates",
+  "settings.update.checking": "Checking…",
+  "settings.update.upToDate": "You're up to date.",
+  "settings.update.available": "Version {{version}} is available.",
+  "settings.update.download": "Download & Install",
+  "settings.update.downloading": "Downloading… {{percent}}%",
+  "settings.update.ready": "Update installed. Restart to apply it.",
+  "settings.update.restart": "Restart now",
+  "settings.update.error": "Update check failed: {{message}}",
+  "settings.update.retry": "Retry"
 }

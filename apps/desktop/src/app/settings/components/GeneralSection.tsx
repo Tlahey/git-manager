@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation, i18next } from '@git-manager/i18n'
 import { Button, Input, Separator, Textarea } from '@git-manager/ui'
 import { TagInput } from './TagInput'
+import { UpdateCheck } from './UpdateCheck'
 import { useSettingsStore } from '../../../stores/settings.store'
 
 export function GeneralSection() {
@@ -45,6 +46,11 @@ export function GeneralSection() {
 
   return (
     <div className="space-y-6">
+      {/* Updates */}
+      <UpdateCheck />
+
+      <Separator />
+
       {/* Language */}
       <div className="space-y-2">
         <p className="text-xs font-medium text-foreground">{t('settings.language.title')}</p>

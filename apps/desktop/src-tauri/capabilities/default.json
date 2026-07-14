@@ -13,6 +13,8 @@
     "core:image:allow-from-path",
     "core:webview:allow-create-webview-window",
     "core:webview:allow-webview-close",
-    "core:window:allow-close"
+    "core:window:allow-close",
+    "updater:default",
+    "process:allow-restart"
   ]
 }
