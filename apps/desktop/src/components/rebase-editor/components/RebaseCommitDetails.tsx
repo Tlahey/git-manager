@@ -17,7 +17,7 @@ interface RebaseCommitDetailsProps {
 /**
  * Right panel of the "Rebasing Commit" editor: the selected commit's changed
  * files (reused `CommitFileList`) on top, the selected file's diff below —
- * rendered with the same `@git-manager/code-view`-backed `ThreeWayMergeEditor`
+ * rendered with the same `@git-manager/editor`-backed `ThreeWayMergeEditor`
  * (two-way mode) as the fixup "Commit Changes" window, so navigation,
  * whitespace/highlight modes and the collapse-unchanged toggle all come from
  * the library's own header — then commit metadata (title, author, date) at

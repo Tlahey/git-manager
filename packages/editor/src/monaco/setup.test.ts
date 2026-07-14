@@ -6,9 +6,13 @@ vi.mock('@monaco-editor/react', () => ({
   DiffEditor: () => null,
   default: () => null,
 }))
+// Mock `monaco-editor` at the test level too: the package aliases bare `monaco-editor` imports to
+// `.storybook/vitest.setup.ts`, which self-mocks `@monaco-editor/react` — importing it here would
+// clobber the loader mock above. Mocking `monaco-editor` short-circuits that alias entirely.
+vi.mock('monaco-editor', () => ({ editor: {}, languages: {}, default: {} }))
 
 import * as monaco from 'monaco-editor'
-import { languageForFilePath, MonacoEditor, MonacoDiffEditor } from './monacoSetup'
+import { languageForFilePath, MonacoEditor, MonacoDiffEditor } from './setup'
 
 describe('module-level side effect', () => {
   it('configures the @monaco-editor/react loader with the local monaco instance once on import', () => {

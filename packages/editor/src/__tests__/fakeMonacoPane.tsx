@@ -474,7 +474,7 @@ interface FakeMonacoEditorProps {
 
 /** Stand-in for `@monaco-editor/react`'s `Editor`, injected directly via
  * `ConflictResolverProps.editor.component` (no module mock needed here — unlike the desktop
- * app's `lib/monacoSetup` wrapper, `CodePane.tsx` takes the editor component as a plain prop).
+ * app's `MonacoEditor` binding, `CodePane.tsx` takes the editor component as a plain prop).
  * Synchronous, no Suspense/dynamic-import involved. Mounts a fresh fake editor+model for each
  * distinct `path` and hands it to the real `onMount` callback, so switching files (a new
  * `modelPathPrefix`, same component tree position) is observable in tests via

@@ -293,7 +293,7 @@ interface FakeMonacoEditorProps {
 }
 
 /** Stand-in for `@monaco-editor/react`'s `Editor` (as re-exported, lazy-wrapped, by
- * `lib/monacoSetup.ts`'s `MonacoEditor`) — synchronous, no Suspense/dynamic-import involved, so
+ * `@git-manager/editor`'s `MonacoEditor`) — synchronous, no Suspense/dynamic-import involved, so
  * tests don't need to await a lazy chunk load. Mounts a fresh fake editor+model for each
  * distinct `path` and hands it to the real `onMount` callback, so switching files (a new
  * `modelPath`, same component tree position — see ThreeWayMergeEditor.tsx's `modelPath` prop)

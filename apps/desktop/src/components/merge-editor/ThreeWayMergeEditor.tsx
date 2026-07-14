@@ -5,17 +5,18 @@ import { useTranslation } from '@git-manager/i18n'
 import type { ThreeWayMergeView } from '@git-manager/git-types'
 import {
   ConflictResolver,
+  registerAndApplyDynamicTheme,
+  MonacoEditor,
+  languageForFilePath,
   type ConflictResolverPanel,
   type ConflictResolverRef,
   type ConflictResolverLabels,
   type CodePaneEditorComponent,
-} from '@git-manager/code-view'
+} from '@git-manager/editor'
 import { useSWRConfig } from 'swr'
 import { apiAutoMergeConflictView } from '../../api/conflict.api'
 import { useRebaseState } from '../../hooks/useRebaseState'
 import { useSettingsStore } from '../../stores/settings.store'
-import { registerAndApplyDynamicTheme } from '../../lib/monacoThemes'
-import { MonacoEditor, languageForFilePath } from '../../lib/monacoSetup'
 
 interface ThreeWayMergeEditorProps {
   repoPath: string
@@ -39,7 +40,7 @@ interface ThreeWayMergeEditorProps {
 
 export type ThreeWayMergeEditorRef = ConflictResolverRef
 
-/** App-side binding of `@git-manager/code-view`'s generic `ConflictResolver`: wires the
+/** App-side binding of `@git-manager/editor`'s generic `ConflictResolver`: wires the
  * auto-merge Tauri command, SWR revalidation behind the recalculate button, the rebase-state
  * commit sha shown in the header statuses, and the app's shared lazy Monaco instance + dynamic
  * theme. All merge/diff behavior itself lives in the library component. */

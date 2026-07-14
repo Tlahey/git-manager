@@ -75,7 +75,7 @@ git-manager/
 │   ├── i18n/                       # react-i18next setup + EN/FR locale files
 │   ├── ui/                         # shadcn/ui base components
 │   ├── components/                 # Shared presentational React components
-│   ├── code-view/                  # Monaco-based diff/merge components
+│   ├── editor/                     # Monaco integration: diff/merge + single-pane editors
 │   └── config/                     # Shared ESLint + Tailwind + tsconfig
 ├── tools/
 │   └── git-fixtures/               # Scripted fixture repos (dev tabs + e2e scenarios)

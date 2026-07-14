@@ -55,7 +55,7 @@ interface DiffToolbarProps {
  * Header/toolbar for `DiffViewCenter`: file identity + status, diff/file view tabs, blame/history
  * toggle, and WIP stage/discard actions. Diff-viewing controls (change navigation, whitespace,
  * collapse-unchanged) live in `ConflictResolver`'s own header now that the diff tab renders
- * through `@git-manager/code-view`'s `ThreeWayMergeEditor` instead of a raw Monaco diff editor.
+ * through `@git-manager/editor`'s `ThreeWayMergeEditor` instead of a raw Monaco diff editor.
  * Purely presentational — all state and handlers live in `DiffViewCenter`.
  */
 export function DiffToolbar({

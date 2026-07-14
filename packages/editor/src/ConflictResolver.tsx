@@ -463,6 +463,15 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
     const onEditorMountRef = useRef(editorConfig?.onEditorMount)
     onEditorMountRef.current = editorConfig?.onEditorMount
 
+    // Pending follow-up recompute timers (see the belt-and-suspenders block in handlePaneMount).
+    // Tracked so unmounting before they fire clears them — otherwise a leaked timeout runs
+    // `scheduleRecompute` (→ `requestAnimationFrame`) after teardown, which throws under jsdom.
+    const followUpTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+    useEffect(() => {
+      const timers = followUpTimersRef.current
+      return () => timers.forEach(clearTimeout)
+    }, [])
+
     const handlePaneMount = useCallback(
       (pane: 'ours' | 'center' | 'theirs') =>
         (editorInstance: editor.IStandaloneCodeEditor, monacoInstance: Monaco) => {
@@ -557,8 +566,10 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
             // Belt-and-suspenders: schedule a couple of follow-up recomputes a moment after all
             // three editors report ready, in case the very first layout pass (and thus the very
             // first `getTopForLineNumber` reads) happened before the browser's first paint.
-            setTimeout(() => scheduleRecompute(), 50)
-            setTimeout(() => scheduleRecompute(), 250)
+            followUpTimersRef.current.push(
+              setTimeout(() => scheduleRecompute(), 50),
+              setTimeout(() => scheduleRecompute(), 250)
+            )
           }
         },
       [

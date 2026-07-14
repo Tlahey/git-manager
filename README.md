@@ -86,7 +86,7 @@ pnpm --filter @git-manager/e2e screenshots     # re-capture docs/screenshots/*.p
 The full annotated monorepo tree lives in [docs/README.md](docs/README.md#monorepo-structure).
 In short: `apps/desktop` (Tauri app: Rust backend in `src-tauri/`, React frontend in `src/`),
 `apps/landing-page`, `apps/e2e`, and shared `packages/` (`git-types`, `mascot`, `i18n`, `ui`,
-`components`, `code-view`, `config`).
+`components`, `editor`, `config`).
 
 ---
 

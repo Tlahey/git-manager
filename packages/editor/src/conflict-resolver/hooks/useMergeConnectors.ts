@@ -204,6 +204,14 @@ export function useMergeConnectors({
     })
   }, [recomputeConnectors])
 
+  // Cancel a still-pending recompute frame on unmount so it can't run after teardown.
+  useEffect(
+    () => () => {
+      if (connectorRafRef.current !== null) cancelAnimationFrame(connectorRafRef.current)
+    },
+    [connectorRafRef]
+  )
+
   // Mount-time Monaco subscriptions (onDidLayoutChange in handlePaneMount) are registered once
   // and never re-subscribed, so they can only ever close over whatever scheduleRecompute (and
   // transitively recomputeConnectors, and expandedBlocks) was at that first render. Reading
