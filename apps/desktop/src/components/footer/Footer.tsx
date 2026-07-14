@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from '@git-manager/i18n'
+import { apiGetAppVersion } from '../../api/updater.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import {
   useRepoUIStore,
@@ -46,6 +47,15 @@ export function Footer({ onOpenSettings }: FooterProps) {
 
   const [copied, setCopied] = useState(false)
   const [isShortcutOpen, setIsShortcutOpen] = useState(false)
+  const [appVersion, setAppVersion] = useState<string | null>(null)
+
+  useEffect(() => {
+    apiGetAppVersion()
+      .then(setAppVersion)
+      .catch(() => {
+        // Not running inside Tauri (e.g. component preview) — leave version unset.
+      })
+  }, [])
 
   // Calcule le nombre total de dépôts uniques connus
   const totalRepos = useMemo(() => {
@@ -64,8 +74,6 @@ export function Footer({ onOpenSettings }: FooterProps) {
   // Compte GitHub connecté
   const github = settings.github || { accounts: [], activeAccountId: null }
   const activeAccount = github.accounts.find((a) => a.id === github.activeAccountId) || null
-
-  const appVersion = '0.1.0' // Version statique définie dans package.json
 
   // Copie le chemin du dépôt dans le presse-papier
   const handleCopyPath = async () => {
@@ -314,10 +322,17 @@ export function Footer({ onOpenSettings }: FooterProps) {
 
         <span className="text-border">|</span>
 
-        {/* Version App */}
-        <div className="flex items-center gap-1 rounded-full border border-border/50 bg-muted/80 px-2 py-0.5 font-mono text-[10px] font-semibold text-foreground/75 shadow-sm">
-          <span>{t('footer.version', { version: appVersion })}</span>
-        </div>
+        {/* Version App — click opens the in-app changelog */}
+        {appVersion && (
+          <button
+            onClick={() => onOpenSettings('changelog')}
+            title={t('footer.viewChangelog')}
+            data-testid="footer-version-button"
+            className="flex cursor-pointer items-center gap-1 rounded-full border border-border/50 bg-muted/80 px-2 py-0.5 font-mono text-[10px] font-semibold text-foreground/75 shadow-sm transition-colors hover:border-primary/50 hover:text-primary"
+          >
+            <span>{t('footer.version', { version: appVersion })}</span>
+          </button>
+        )}
       </div>
     </footer>
   )

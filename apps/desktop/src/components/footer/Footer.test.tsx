@@ -10,6 +10,9 @@ vi.mock('@git-manager/i18n', () => ({
   }),
 }))
 
+const { apiGetAppVersion } = vi.hoisted(() => ({ apiGetAppVersion: vi.fn() }))
+vi.mock('../../api/updater.api', () => ({ apiGetAppVersion }))
+
 import { Footer } from './Footer'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import {
@@ -48,6 +51,7 @@ function account(overrides: Partial<GitHubAccount> = {}): GitHubAccount {
 }
 
 beforeEach(() => {
+  apiGetAppVersion.mockResolvedValue('0.1.0')
   useRepoDataStore.setState({
     ...INITIAL_REPO_DATA,
     repoCache: {},
@@ -232,8 +236,22 @@ describe('Footer — GitHub account link', () => {
 })
 
 describe('Footer — version', () => {
-  it('shows the app version', () => {
+  it('shows the app version once read from Tauri', async () => {
     render(<Footer onOpenSettings={vi.fn()} />)
-    expect(screen.getByText('footer.version:{"version":"0.1.0"}')).toBeInTheDocument()
+    expect(await screen.findByText('footer.version:{"version":"0.1.0"}')).toBeInTheDocument()
+  })
+
+  it('does not render the version badge when the version cannot be read', () => {
+    apiGetAppVersion.mockRejectedValue(new Error('not in tauri'))
+    render(<Footer onOpenSettings={vi.fn()} />)
+    expect(screen.queryByTestId('footer-version-button')).not.toBeInTheDocument()
+  })
+
+  it('opens the changelog settings section when clicked', async () => {
+    const onOpenSettings = vi.fn()
+    const user = userEvent.setup()
+    render(<Footer onOpenSettings={onOpenSettings} />)
+    await user.click(await screen.findByTestId('footer-version-button'))
+    expect(onOpenSettings).toHaveBeenCalledWith('changelog')
   })
 })
