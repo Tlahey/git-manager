@@ -197,6 +197,118 @@ describe('useGitGraphNodes — originMainIndex', () => {
   })
 })
 
+describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)', () => {
+  function branchRef(shortName: string, commitOid: string) {
+    return { name: `refs/heads/${shortName}`, shortName, type: 'branch' as const, commitOid }
+  }
+
+  it('inserts a synthetic WIP:<path> row directly above the matching branch tip, offset one column with a fixed WIP color', () => {
+    const nodes = [
+      node('a', { column: 0, color: '#111' }),
+      node('b', { column: 1, color: '#222', refs: [branchRef('feature-x', 'b')] }),
+      node('c', { column: 0, color: '#111' }),
+    ]
+    const { result } = renderHook(() =>
+      useGitGraphNodes(nodes, undefined, 0, t, null, [
+        { path: '/wt/feature-x', branch: 'feature-x', totalChanges: 2 },
+      ])
+    )
+    const oids = result.current.filteredNodes.map((n) => n.commit.oid)
+    expect(oids).toEqual(['a', 'WIP:/wt/feature-x', 'b', 'c'])
+    const wtNode = result.current.filteredNodes[1]
+    expect(wtNode.column).toBe(2) // anchor's column (1) + 1, never the branch's own column
+    expect(wtNode.color).toBe('#7c3aed') // fixed WIP color, never the branch's own color
+    expect(wtNode.commit.parentOids).toEqual(['b'])
+    // Own column only — the diagonal that actually reaches the anchor is patched onto the
+    // anchor's row instead (see the "patches the anchor commit" test below).
+    expect(wtNode.connections).toEqual([
+      { fromColumn: 2, toColumn: 2, color: '#7c3aed', dashed: true },
+    ])
+  })
+
+  it('carries over every active lane from the anchor — including its OWN column — as plain pass-throughs, so nothing shows a gap through the inserted row', () => {
+    const nodes = [
+      node('a', {
+        column: 1,
+        color: '#222',
+        refs: [branchRef('feature-x', 'a')],
+        // Column 0 (e.g. main) passes through untouched; column 1 is the anchor's own lane,
+        // arriving at its real commit with `endsAtNode` — that flag must NOT leak into the
+        // synthetic row above, which just needs a plain flow-through, not a node arrival.
+        connections: [
+          { fromColumn: 0, toColumn: 0, color: '#2563eb' },
+          { fromColumn: 1, toColumn: 1, color: '#222', endsAtNode: true },
+        ],
+      }),
+    ]
+    const { result } = renderHook(() =>
+      useGitGraphNodes(nodes, undefined, 0, t, null, [
+        { path: '/wt/x', branch: 'feature-x', totalChanges: 1 },
+      ])
+    )
+    const wtNode = result.current.filteredNodes[0]
+    expect(wtNode.connections).toContainEqual({ fromColumn: 0, toColumn: 0, color: '#2563eb' })
+    // The anchor's own column is carried over too, but stripped of `endsAtNode` — a plain
+    // continuation, not an arrival, since no real commit sits in this synthetic row.
+    expect(wtNode.connections).toContainEqual({ fromColumn: 1, toColumn: 1, color: '#222' })
+    expect(wtNode.connections).toHaveLength(3) // both pass-throughs + its own column-2 WIP connector
+  })
+
+  it('supports several simultaneous worktree WIP rows on different branches, plus the primary WIP', () => {
+    const nodes = [
+      node('a', { column: 0, color: '#111' }),
+      node('b', { column: 1, color: '#222', refs: [branchRef('feature-x', 'b')] }),
+      node('c', { column: 2, color: '#333', refs: [branchRef('feature-y', 'c')] }),
+    ]
+    const { result } = renderHook(() =>
+      useGitGraphNodes(nodes, undefined, 1, t, null, [
+        { path: '/wt/x', branch: 'feature-x', totalChanges: 1 },
+        { path: '/wt/y', branch: 'feature-y', totalChanges: 5 },
+      ])
+    )
+    const oids = result.current.filteredNodes.map((n) => n.commit.oid)
+    expect(oids).toEqual(['WIP', 'a', 'WIP:/wt/x', 'b', 'WIP:/wt/y', 'c'])
+  })
+
+  it('skips a worktree WIP status when no node carries a matching branch ref', () => {
+    const nodes = [node('a')]
+    const { result } = renderHook(() =>
+      useGitGraphNodes(nodes, undefined, 0, t, null, [
+        { path: '/wt/gone', branch: 'deleted-branch', totalChanges: 3 },
+      ])
+    )
+    expect(result.current.filteredNodes.map((n) => n.commit.oid)).toEqual(['a'])
+  })
+
+  it('matches "wip" search against a worktree WIP row too', () => {
+    const nodes = [node('a', { refs: [branchRef('feature-x', 'a')] })]
+    const { result } = renderHook(() =>
+      useGitGraphNodes(nodes, 'wi', 0, t, null, [
+        { path: '/wt/x', branch: 'feature-x', totalChanges: 1 },
+      ])
+    )
+    expect(result.current.matchingOids).toContain('WIP:/wt/x')
+  })
+
+  it('patches the anchor commit with a diagonal connector rising FROM its own row INTO the offset WIP column above — not a straight vertical', () => {
+    const nodes = [node('a', { column: 2, color: '#456', refs: [branchRef('feature-x', 'a')] })]
+    const { result } = renderHook(() =>
+      useGitGraphNodes(nodes, undefined, 0, t, null, [
+        { path: '/wt/x', branch: 'feature-x', totalChanges: 1 },
+      ])
+    )
+    // index 1 = the anchor ("a"), right after its WIP row at index 0
+    const anchor = result.current.renderNodes[1]
+    // fromColumn (3) = the WIP row's offset column, toColumn (2) = the anchor's own column —
+    // i.e. the line starts at the anchor's own row and rises into the WIP row, not the reverse.
+    expect(
+      anchor.connections.some(
+        (c) => c.fromColumn === 3 && c.toColumn === 2 && c.dashed && c.color === '#7c3aed'
+      )
+    ).toBe(true)
+  })
+})
+
 describe('useGitGraphNodes — renderNodes patching', () => {
   it('adds a dashed WIP connector at index 1 when there are pending changes and no existing column-0 link', () => {
     const nodes = [node('a'), node('b')]
@@ -238,5 +350,107 @@ describe('useGitGraphNodes — renderNodes patching', () => {
       const col0 = n.connections.find((c) => c.fromColumn === 0 && c.toColumn === 0)
       if (col0) expect(col0.dashed).toBe(true)
     }
+  })
+
+  // Regression: a diamond `origin/main(b) → {p1, s1} → m` where the merge `m` is ahead of
+  // origin/main. The merge's straight-down departure to its real first parent (the mainline
+  // continuing below the merge dot) must stay SOLID, while the line arriving from above stays
+  // dashed and the diagonal to the side branch stays solid. See useGitGraphNodes' originMainIndex
+  // block and the matching Rust test `merge_row_ahead_of_origin_stays_solid_in_rust`.
+  it("keeps a merge commit's first-parent departure solid while it is ahead of origin/main", () => {
+    const nodes = [
+      node('m', {
+        column: 0,
+        commit: { ...node('m').commit, parentOids: ['p1', 's1'] },
+        connections: [
+          { fromColumn: 0, toColumn: 0, color: '#2563eb', endsAtNode: true },
+          { fromColumn: 0, toColumn: 0, color: '#2563eb', startsAtNode: true },
+          { fromColumn: 0, toColumn: 1, color: '#7c3aed', startsAtNode: true },
+        ],
+      }),
+      node('p1', {
+        column: 0,
+        commit: { ...node('p1').commit, parentOids: ['b'] },
+        connections: [
+          { fromColumn: 0, toColumn: 0, color: '#2563eb', endsAtNode: true },
+          { fromColumn: 0, toColumn: 0, color: '#2563eb', startsAtNode: true },
+          { fromColumn: 1, toColumn: 1, color: '#7c3aed' },
+        ],
+      }),
+      node('s1', {
+        column: 1,
+        commit: { ...node('s1').commit, parentOids: ['b'] },
+        connections: [
+          { fromColumn: 0, toColumn: 0, color: '#2563eb' },
+          { fromColumn: 1, toColumn: 1, color: '#7c3aed', endsAtNode: true },
+          { fromColumn: 1, toColumn: 1, color: '#7c3aed', startsAtNode: true },
+        ],
+      }),
+      node('b', {
+        column: 0,
+        refs: [
+          {
+            name: 'refs/remotes/origin/main',
+            shortName: 'origin/main',
+            type: 'remote',
+            commitOid: 'b',
+          },
+        ],
+        connections: [
+          { fromColumn: 0, toColumn: 0, color: '#2563eb', endsAtNode: true },
+          { fromColumn: 1, toColumn: 0, color: '#7c3aed' },
+          { fromColumn: 0, toColumn: 0, color: '#2563eb', startsAtNode: true },
+        ],
+      }),
+    ]
+    const { result } = renderHook(() => useGitGraphNodes(nodes, undefined, 0, t, null))
+    const merge = result.current.renderNodes[0]
+    // The mainline segment BELOW the merge dot (its real first-parent link) stays solid.
+    const departure = merge.connections.find(
+      (c) => c.fromColumn === 0 && c.toColumn === 0 && c.startsAtNode
+    )
+    expect(departure?.dashed).toBeFalsy()
+    // The line arriving from above (still ahead of origin) stays dashed.
+    const arriving = merge.connections.find(
+      (c) => c.fromColumn === 0 && c.toColumn === 0 && c.endsAtNode
+    )
+    expect(arriving?.dashed).toBe(true)
+    // The diagonal to the side branch (already solid, not a column-0→0 edge) stays solid.
+    const diagonal = merge.connections.find((c) => c.fromColumn === 0 && c.toColumn === 1)
+    expect(diagonal?.dashed).toBeFalsy()
+  })
+
+  // Regression guard for the common case: a plain (single-parent) unpushed commit must still have
+  // BOTH its arriving and its departing column-0 verticals dashed, so a straight run of unpushed
+  // commits reads as one continuous dashed line — the merge exception above must not leak here.
+  it('dashes both the arriving and the departing vertical of a plain unpushed commit', () => {
+    const nodes = [
+      node('a', {
+        column: 0,
+        commit: { ...node('a').commit, parentOids: ['b'] },
+        connections: [
+          { fromColumn: 0, toColumn: 0, color: '#2563eb', endsAtNode: true },
+          { fromColumn: 0, toColumn: 0, color: '#2563eb', startsAtNode: true },
+        ],
+      }),
+      node('b', {
+        column: 0,
+        refs: [
+          {
+            name: 'refs/remotes/origin/main',
+            shortName: 'origin/main',
+            type: 'remote',
+            commitOid: 'b',
+          },
+        ],
+        connections: [{ fromColumn: 0, toColumn: 0, color: '#2563eb', endsAtNode: true }],
+      }),
+    ]
+    const { result } = renderHook(() => useGitGraphNodes(nodes, undefined, 0, t, null))
+    const plain = result.current.renderNodes[0]
+    const arriving = plain.connections.find((c) => c.endsAtNode)
+    const departing = plain.connections.find((c) => c.startsAtNode)
+    expect(arriving?.dashed).toBe(true)
+    expect(departing?.dashed).toBe(true)
   })
 })

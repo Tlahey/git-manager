@@ -86,6 +86,7 @@
   "gitTree.contextMenu.rebaseContinue": "Continue",
   "gitTree.contextMenu.rebaseAbort": "Abort",
   "gitTree.contextMenu.conflictBannerMessage": "{{count}} file conflicts were found when attempting to merge into {{branch}}",
+  "gitTree.wip.openWorktree": "Open Worktree",
   "gitTree.fixupDialog.targetCommit": "Target commit",
   "gitTree.fixupDialog.messageLabel": "Commit Message",
   "gitTree.fixupDialog.currentVersion": "Current version",
