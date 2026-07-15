@@ -4,6 +4,7 @@ import { validateCommitSubject } from '@git-manager/ai'
 import { apiCreateCommit, apiStageFile, apiUnstageAll } from '../api/git.api'
 import { apiGetAiContext, fileGroupingService } from '../api/ai.api'
 import { useSettingsStore } from '../stores/settings.store'
+import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
 import type { ProcessedFileItem } from '../components/git-graph/components/CommitFileList'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
@@ -31,7 +32,7 @@ export function useCommitBatchReview(
   onRefresh?: () => void
 ) {
   const aiConnection = useSettingsStore((s) => s.settings.ai)
-  const gitSettings = useSettingsStore((s) => s.settings.git)
+  const { commitInstructions, commitPattern } = useEffectiveRepoSettings(repoPath)
 
   const [isOpen, setIsOpen] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -61,8 +62,8 @@ export function useCommitBatchReview(
       setRecentCommits(context.recentCommits ?? [])
       // The user's Settings guidance/pattern are frontend-only — merge them into the context so the
       // package injects them into the grouping prompt.
-      context.commitInstructions = gitSettings.commitInstructions
-      context.commitPattern = gitSettings.commitPattern
+      context.commitInstructions = commitInstructions
+      context.commitPattern = commitPattern
       const commits = await fileGroupingService.run(aiConnection, context)
 
       const byPath = new Map(allWipChanges.map((f) => [f.path, f]))
@@ -111,8 +112,8 @@ export function useCommitBatchReview(
     validateCommitSubject(p.commitMessage, {
       convention,
       recentCommits,
-      userInstructions: gitSettings.commitInstructions,
-      pattern: gitSettings.commitPattern,
+      userInstructions: commitInstructions,
+      pattern: commitPattern,
     })
   )
 

@@ -1,16 +1,15 @@
-import { useState } from 'react'
 import { useTranslation, i18next } from '@git-manager/i18n'
-import { Button, Input, Separator, Textarea } from '@git-manager/ui'
+import { Button, Input, Separator } from '@git-manager/ui'
 import { TagInput } from './TagInput'
 import { UpdateCheck } from './UpdateCheck'
+import { OverriddenBadge } from './OverriddenBadge'
 import { useSettingsStore } from '../../../stores/settings.store'
 
 export function GeneralSection() {
   const { t } = useTranslation('settings')
-  const { settings, updateSettings, resetSettings } = useSettingsStore()
+  const { settings, updateSettings } = useSettingsStore()
   const git = settings.git
   const advanced = settings.advanced
-  const [confirmReset, setConfirmReset] = useState(false)
 
   function handleLanguageChange(lang: 'en' | 'fr') {
     updateSettings({ language: lang })
@@ -28,15 +27,6 @@ export function GeneralSection() {
   async function handleOpenDataFolder() {
     const { open } = await import('@tauri-apps/plugin-shell')
     await open('~/.config/git-manager/').catch(() => {})
-  }
-
-  function handleReset() {
-    if (confirmReset) {
-      resetSettings()
-      setConfirmReset(false)
-    } else {
-      setConfirmReset(true)
-    }
   }
 
   const languages: { value: 'en' | 'fr'; label: string }[] = [
@@ -108,53 +98,17 @@ export function GeneralSection() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">
-            {t('settings.git.protectedBranches')}
-          </label>
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-foreground">
+              {t('settings.git.protectedBranches')}
+            </label>
+            <OverriddenBadge field="protectedBranches" />
+          </div>
           <TagInput
             tags={git.protectedBranches}
             onChange={(branches) => updateGit({ protectedBranches: branches })}
             placeholder="main, master…"
           />
-        </div>
-      </div>
-
-      <Separator />
-
-      {/* Commit style — guidance the AI commit features follow, on top of any commitlint config
-          and the repo's own history. Not an AI system prompt: a project/user commit convention. */}
-      <div className="space-y-4">
-        <h4 className="text-xs font-semibold text-foreground">{t('settings.git.commitStyle')}</h4>
-
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">
-            {t('settings.git.commitInstructions')}
-          </label>
-          <Textarea
-            data-testid="commit-instructions-input"
-            value={git.commitInstructions ?? ''}
-            onChange={(e) => updateGit({ commitInstructions: e.target.value })}
-            placeholder={t('settings.git.commitInstructionsPlaceholder')}
-            rows={3}
-            className="resize-none text-xs"
-          />
-          <p className="text-[10px] text-muted-foreground">
-            {t('settings.git.commitInstructionsHint')}
-          </p>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">
-            {t('settings.git.commitPattern')}
-          </label>
-          <Input
-            data-testid="commit-pattern-input"
-            value={git.commitPattern ?? ''}
-            onChange={(e) => updateGit({ commitPattern: e.target.value })}
-            placeholder="^(feat|fix|chore)(\\(.+\\))?: .+"
-            className="h-8 font-mono text-xs"
-          />
-          <p className="text-[10px] text-muted-foreground">{t('settings.git.commitPatternHint')}</p>
         </div>
       </div>
 
@@ -192,31 +146,6 @@ export function GeneralSection() {
         <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleOpenDataFolder}>
           {t('settings.advanced.openDataFolder')}
         </Button>
-      </div>
-
-      <Separator />
-
-      {/* Danger zone */}
-      <div className="space-y-2 rounded border border-destructive/40 bg-destructive/5 p-4">
-        <p className="text-xs font-semibold text-destructive">{t('settings.dangerZone')}</p>
-        {confirmReset && (
-          <p className="text-xs text-muted-foreground">{t('settings.advanced.resetConfirm')}</p>
-        )}
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="destructive" className="h-8 text-xs" onClick={handleReset}>
-            {confirmReset ? 'Confirmer — réinitialiser' : t('settings.advanced.reset')}
-          </Button>
-          {confirmReset && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => setConfirmReset(false)}
-            >
-              Annuler
-            </Button>
-          )}
-        </div>
       </div>
     </div>
   )

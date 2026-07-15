@@ -350,3 +350,16 @@ pub async fn github_commit_avatars(
 
     Ok(avatars)
 }
+
+// ─── Pull-Request Template Detection ──────────────────────────────────────────
+
+/// Detects the repo's GitHub PR template(s) so the composer can pre-fill the description like
+/// github.com. Filesystem-only (no network), so it lives in `services::pr_template`; this is just
+/// the thin command boundary. Grouped with the other GitHub-support commands even though it reads
+/// local files, mirroring how `github.rs` already hosts non-network helpers.
+#[tauri::command]
+pub fn get_pr_template(
+    path: String,
+) -> Result<crate::services::pr_template::PrTemplateDetection, String> {
+    Ok(crate::services::pr_template::detect_pr_template(&path))
+}

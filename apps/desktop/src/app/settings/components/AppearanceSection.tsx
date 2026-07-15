@@ -1,6 +1,7 @@
 import { useTranslation } from '@git-manager/i18n'
 import { Monitor, Check } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settings.store'
+import { OverriddenBadge } from './OverriddenBadge'
 import { useUserThemes } from '../../../hooks/useUserThemes'
 import { BUILTIN_THEMES } from '../../../lib/themes'
 import { useGameStore } from '../../../stores/game.store'
@@ -109,7 +110,10 @@ export function AppearanceSection() {
     <div className="space-y-6">
       {/* Theme picker */}
       <div className="space-y-3">
-        <p className="text-xs font-medium text-foreground">{t('settings.appearance.theme')}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-medium text-foreground">{t('settings.appearance.theme')}</p>
+          <OverriddenBadge field="theme" />
+        </div>
         <div className="grid grid-cols-3 gap-2">
           {unlockedBuiltinThemes.map((theme) => (
             <ThemeCard

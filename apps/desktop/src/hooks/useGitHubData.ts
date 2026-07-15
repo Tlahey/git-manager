@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 import useSWR from 'swr'
 import { useSettingsStore } from '../stores/settings.store'
 import { useNotificationStore } from '../stores/notification.store'
-import type { MockPR, MockIssue, DayCommit, CiStatus, CiDetail } from '../app/pull-requests/types'
+import type { MockPR, MockIssue, DayCommit } from '../app/pull-requests/types'
 import { MOCK_ISSUES, getMockContributions } from '../app/pull-requests/mockData'
 import {
   fetchGitHubPRs,
@@ -11,9 +11,8 @@ import {
   fetchGitHubPRDetails,
   fetchGitHubCommitCiStatus,
   fetchGitHubContributions,
-  type GhCheckRun,
-  type GhCommitStatus,
 } from '../api/github.api'
+import { resolveCiStatus } from '../lib/ciStatus'
 
 interface GitHubData {
   prs: MockPR[]
@@ -99,89 +98,11 @@ export function useGitHubData(): GitHubData {
               tok
             )
 
-            const checkRuns = checkRunsRes?.check_runs ?? []
-            const totalCheckRuns = checkRunsRes?.total_count ?? 0
-            const statuses = statusRes?.statuses ?? []
-            const commitStatusState = statusRes?.state
-            const totalStatuses = statusRes?.total_count ?? 0
-
-            const hasCheckRuns = totalCheckRuns > 0
-            const hasStatuses = totalStatuses > 0
-
-            let resolvedCiStatus: CiStatus = null
-
-            if (hasCheckRuns || hasStatuses) {
-              const hasFailure =
-                (hasCheckRuns &&
-                  checkRuns.some((run: GhCheckRun) =>
-                    ['failure', 'timed_out', 'cancelled'].includes(run.conclusion ?? '')
-                  )) ||
-                (hasStatuses && ['failure', 'error'].includes(commitStatusState ?? ''))
-
-              if (hasFailure) {
-                resolvedCiStatus = 'failure'
-              } else {
-                const hasRunning =
-                  (hasCheckRuns &&
-                    checkRuns.some((run: GhCheckRun) =>
-                      ['in_progress', 'queued'].includes(run.status)
-                    )) ||
-                  (hasStatuses && commitStatusState === 'pending')
-
-                if (hasRunning) {
-                  resolvedCiStatus = 'running'
-                } else {
-                  const hasSuccess =
-                    (hasCheckRuns &&
-                      checkRuns.some((run: GhCheckRun) => run.conclusion === 'success')) ||
-                    (hasStatuses && commitStatusState === 'success')
-
-                  if (hasSuccess) {
-                    resolvedCiStatus = 'success'
-                  } else {
-                    const allSkipped =
-                      hasCheckRuns &&
-                      checkRuns.every((run: GhCheckRun) =>
-                        ['skipped', 'neutral'].includes(run.conclusion ?? '')
-                      )
-                    resolvedCiStatus = allSkipped ? 'skipped' : null
-                  }
-                }
-              }
-
-              // Build details list
-              const checkRunsDetails: CiDetail[] = checkRuns.map((run: GhCheckRun) => {
-                let s: CiDetail['status'] = 'unknown'
-                if (run.status === 'in_progress' || run.status === 'queued') {
-                  s = 'running'
-                } else if (run.status === 'completed') {
-                  if (run.conclusion === 'success') s = 'success'
-                  else if (['failure', 'timed_out', 'cancelled'].includes(run.conclusion ?? ''))
-                    s = 'failure'
-                  else if (['skipped', 'neutral'].includes(run.conclusion ?? '')) s = 'skipped'
-                }
-                return {
-                  name: run.name ?? 'Check run',
-                  status: s,
-                  url: run.html_url,
-                }
-              })
-
-              const statusesDetails: CiDetail[] = statuses.map((status: GhCommitStatus) => {
-                let s: CiDetail['status'] = 'unknown'
-                if (status.state === 'success') s = 'success'
-                else if (['failure', 'error'].includes(status.state)) s = 'failure'
-                else if (status.state === 'pending') s = 'running'
-                return {
-                  name: status.context ?? 'Status check',
-                  status: s,
-                  url: status.target_url,
-                }
-              })
-
-              pr.ciDetails = [...checkRunsDetails, ...statusesDetails]
+            const { overall, details } = resolveCiStatus(checkRunsRes, statusRes)
+            if (details.length > 0) {
+              pr.ciDetails = details
             }
-            pr.ciStatus = resolvedCiStatus
+            pr.ciStatus = overall
           }
         } catch (e) {
           console.error('Failed to enrich PR details', pr.number, e)

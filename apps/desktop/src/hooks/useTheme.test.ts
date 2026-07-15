@@ -7,6 +7,7 @@ vi.mock('../lib/themes', () => ({ resolveSystemTheme: vi.fn() }))
 import { apiGetUserThemes } from '../api/theme.api'
 import { resolveSystemTheme } from '../lib/themes'
 import { useSettingsStore } from '../stores/settings.store'
+import { useRepoUIStore } from '../stores/repoUI.store'
 import { useTheme } from './useTheme'
 
 const mockedGetUserThemes = apiGetUserThemes as unknown as ReturnType<typeof vi.fn>
@@ -22,6 +23,7 @@ function setThemeSetting(theme: string) {
 beforeEach(() => {
   vi.clearAllMocks()
   useSettingsStore.setState({ settings: DEFAULT_SETTINGS })
+  useRepoUIStore.setState({ activeRepo: null })
   mockedGetUserThemes.mockResolvedValue([])
   mockedResolveSystemTheme.mockReturnValue('dark')
   document.documentElement.removeAttribute('data-theme')
@@ -93,6 +95,45 @@ describe('useTheme — applying the theme attribute', () => {
 
     expect(mq.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function))
     vi.unstubAllGlobals()
+  })
+})
+
+describe('useTheme — repo-aware theme resolution', () => {
+  it('applies the active repo\'s theme override over the global theme', () => {
+    setThemeSetting('dark')
+    useSettingsStore.getState().setRepoSetting('/repo', 'theme', 'dracula')
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    renderHook(() => useTheme())
+    expect(document.documentElement.dataset.theme).toBe('dracula')
+  })
+
+  it('falls back to the global theme for an active repo with no theme override', () => {
+    setThemeSetting('light')
+    useSettingsStore.getState().setRepoSetting('/repo', 'protectedBranches', ['main'])
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    renderHook(() => useTheme())
+    expect(document.documentElement.dataset.theme).toBe('light')
+  })
+
+  it('honors an explicit repoPathOverride (separate windows) regardless of the active repo', () => {
+    setThemeSetting('dark')
+    useSettingsStore.getState().setRepoSetting('/win-repo', 'theme', 'nord')
+    useRepoUIStore.setState({ activeRepo: null })
+    renderHook(() => useTheme('/win-repo'))
+    expect(document.documentElement.dataset.theme).toBe('nord')
+  })
+
+  it('re-applies when the active repo changes to one with a different theme override', () => {
+    setThemeSetting('dark')
+    useSettingsStore.getState().setRepoSetting('/a', 'theme', 'light')
+    useSettingsStore.getState().setRepoSetting('/b', 'theme', 'nord')
+    useRepoUIStore.setState({ activeRepo: '/a' })
+    const { rerender } = renderHook(() => useTheme())
+    expect(document.documentElement.dataset.theme).toBe('light')
+
+    useRepoUIStore.setState({ activeRepo: '/b' })
+    rerender()
+    expect(document.documentElement.dataset.theme).toBe('nord')
   })
 })
 

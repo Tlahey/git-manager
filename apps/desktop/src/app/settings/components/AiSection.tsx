@@ -44,6 +44,24 @@ export function AiSection() {
 
   return (
     <div className="space-y-5">
+      {/* Master AI switch — gates AI-specific settings (e.g. the AI-commit section). */}
+      <label className="flex cursor-pointer items-center justify-between">
+        <div className="flex flex-col gap-0.5 pr-4">
+          <span className="text-xs font-medium text-foreground">{t('settings.ai.enabled')}</span>
+          <span className="text-[10px] text-muted-foreground">{t('settings.ai.enabledHint')}</span>
+        </div>
+        <div className="relative inline-flex shrink-0 items-center">
+          <input
+            type="checkbox"
+            checked={ai.enabled !== false}
+            onChange={(e) => updateAi({ enabled: e.target.checked })}
+            className="peer sr-only"
+            data-testid="ai-enabled-toggle"
+          />
+          <div className="peer h-5 w-9 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-border after:bg-background after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>
+        </div>
+      </label>
+
       {/* Provider preset */}
       <div className="space-y-1.5">
         <label className="text-xs font-medium text-foreground">{t('settings.ai.preset')}</label>

@@ -27,7 +27,7 @@ use commands::fixup::{
     autosquash_preview, check_fixup_target, create_fixup_commit, get_pending_fixups, run_autosquash,
 };
 use commands::github::{
-    github_commit_avatars, github_device_code, github_get_user, github_list_repos,
+    get_pr_template, github_commit_avatars, github_device_code, github_get_user, github_list_repos,
     github_poll_token,
 };
 use commands::interactive_rebase::{list_rebase_commits, run_interactive_rebase};
@@ -223,6 +223,7 @@ pub fn run() {
             github_get_user,
             github_list_repos,
             github_commit_avatars,
+            get_pr_template,
             // SSH
             generate_ssh_key,
             read_ssh_public_key,

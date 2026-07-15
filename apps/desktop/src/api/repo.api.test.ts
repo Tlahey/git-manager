@@ -8,6 +8,7 @@ vi.mock('../lib/tauri', () => ({
   getRepoReadme: vi.fn(),
   cloneRepo: vi.fn(),
   initRepo: vi.fn(),
+  getPrTemplate: vi.fn(),
 }))
 
 import * as tauri from '../lib/tauri'
@@ -65,5 +66,11 @@ describe('repo.api pass-throughs', () => {
   it('apiGetRepoReadme delegates to getRepoReadme', async () => {
     mocked.getRepoReadme.mockResolvedValue('# Readme')
     expect(await api.apiGetRepoReadme(PATH)).toBe('# Readme')
+  })
+
+  it('apiGetPrTemplate delegates to getPrTemplate', async () => {
+    mocked.getPrTemplate.mockResolvedValue({ kind: 'none' })
+    expect(await api.apiGetPrTemplate(PATH)).toEqual({ kind: 'none' })
+    expect(mocked.getPrTemplate).toHaveBeenCalledWith(PATH)
   })
 })

@@ -9,7 +9,20 @@ vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) 
 const { useWipCommitPanel } = vi.hoisted(() => ({ useWipCommitPanel: vi.fn() }))
 vi.mock('../../../hooks/useWipCommitPanel', () => ({ useWipCommitPanel }))
 
+// The publish-PR button has its own flow (query client, SWR, GitHub) and its own test — stub it here
+// so this panel test stays focused on the commit form.
+vi.mock('../pr/PrPublishButton', () => ({ PrPublishButton: () => null }))
+
 import { WipStagingPanel } from './WipStagingPanel'
+import { useSettingsStore } from '../../../stores/settings.store'
+
+const INITIAL_SETTINGS = useSettingsStore.getState()
+
+function setAiEnabled(enabled: boolean) {
+  useSettingsStore.setState((s) => ({
+    settings: { ...s.settings, ai: { ...s.settings.ai, enabled } },
+  }))
+}
 
 function panelState(overrides: Partial<ReturnType<typeof useWipCommitPanel>> = {}) {
   return {
@@ -45,6 +58,7 @@ function file(overrides: Partial<ProcessedFileItem> = {}): ProcessedFileItem {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  useSettingsStore.setState(INITIAL_SETTINGS, true)
   useWipCommitPanel.mockReturnValue(panelState())
 })
 
@@ -171,6 +185,24 @@ describe('WipStagingPanel — classic commit form', () => {
     renderPanel({ gitStatus: gitStatus({ staged: [{ path: 'a', status: 'modified' }] }) })
     await user.click(screen.getByText('commit.commit'))
     expect(handleCommitWip).toHaveBeenCalledOnce()
+  })
+})
+
+describe('WipStagingPanel — AI gating', () => {
+  it('shows the AI generate + batch buttons when AI is enabled (default)', () => {
+    renderPanel()
+    expect(screen.getByTestId('commit-generate-button')).toBeInTheDocument()
+    expect(screen.getByTestId('ai-batch-generate-button')).toBeInTheDocument()
+  })
+
+  it('hides the AI buttons when AI is disabled, keeping commit + history', () => {
+    setAiEnabled(false)
+    renderPanel()
+    expect(screen.queryByTestId('commit-generate-button')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('ai-batch-generate-button')).not.toBeInTheDocument()
+    // Non-AI controls remain.
+    expect(screen.getByTestId('commit-button')).toBeInTheDocument()
+    expect(screen.getByTestId('commit-history-button')).toBeInTheDocument()
   })
 })
 

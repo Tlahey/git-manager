@@ -22,6 +22,12 @@ import {
   fetchRepoPRs,
   fetchCommitPullRequest,
   resolveTagOrReleaseUrl,
+  createPullRequest,
+  fetchPrFiles,
+  postPrComment,
+  submitPrReview,
+  mergePullRequest,
+  fetchRepoDefaultBranch,
   apiGithubDeviceCode,
   apiGithubPollToken,
   apiGithubGetUser,
@@ -496,5 +502,119 @@ describe('Tauri GitHub integration pass-throughs', () => {
     mockedTauri.githubListRepos.mockResolvedValue([])
     await apiGithubListRepos('tok')
     expect(mockedTauri.githubListRepos).toHaveBeenCalledWith('tok')
+  })
+})
+
+describe('PR write operations', () => {
+  it('createPullRequest POSTs the PR body with an auth header', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(rawPR()))
+    vi.stubGlobal('fetch', fetchMock)
+    await createPullRequest(
+      'org',
+      'repo',
+      { title: 'T', head: 'feat', base: 'main', body: 'B' },
+      'tok'
+    )
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.github.com/repos/org/repo/pulls',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ title: 'T', head: 'feat', base: 'main', body: 'B' }),
+        headers: expect.objectContaining({
+          Authorization: 'token tok',
+          'Content-Type': 'application/json',
+        }),
+      })
+    )
+  })
+
+  it('fetchPrFiles builds the files listing URL', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse([]))
+    vi.stubGlobal('fetch', fetchMock)
+    await fetchPrFiles('org', 'repo', 42, 'tok')
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.github.com/repos/org/repo/pulls/42/files?per_page=100',
+      expect.anything()
+    )
+  })
+
+  it('postPrComment POSTs to the issues comments endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ id: 1, html_url: 'u' }))
+    vi.stubGlobal('fetch', fetchMock)
+    await postPrComment('org', 'repo', 42, 'hello', 'tok')
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.github.com/repos/org/repo/issues/42/comments',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ body: 'hello' }) })
+    )
+  })
+
+  it('submitPrReview POSTs the review event', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ id: 1, state: 'APPROVED' }))
+    vi.stubGlobal('fetch', fetchMock)
+    await submitPrReview('org', 'repo', 42, { event: 'APPROVE', body: 'lgtm' }, 'tok')
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.github.com/repos/org/repo/pulls/42/reviews',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ event: 'APPROVE', body: 'lgtm' }),
+      })
+    )
+  })
+
+  it('mergePullRequest PUTs the chosen merge method', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ sha: 'abc', merged: true, message: 'ok' }))
+    vi.stubGlobal('fetch', fetchMock)
+    await mergePullRequest('org', 'repo', 42, { mergeMethod: 'squash' }, 'tok')
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.github.com/repos/org/repo/pulls/42/merge',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({
+          merge_method: 'squash',
+          commit_title: undefined,
+          commit_message: undefined,
+        }),
+      })
+    )
+  })
+
+  it('fetchRepoDefaultBranch returns the default branch, falling back to main', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ default_branch: 'develop' })))
+    expect(await fetchRepoDefaultBranch('org', 'repo', 'tok')).toBe('develop')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({})))
+    expect(await fetchRepoDefaultBranch('org', 'repo', 'tok')).toBe('main')
+  })
+
+  it('propagates a non-2xx response as an error', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({}, false, 422)))
+    await expect(
+      createPullRequest('org', 'repo', { title: 'T', head: 'h', base: 'b' }, 'tok')
+    ).rejects.toThrow()
+  })
+
+  it("includes GitHub's error message and field errors in the thrown error", async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          {
+            message: 'Validation Failed',
+            errors: [{ message: 'No commits between main and feature-x' }],
+          },
+          false,
+          422
+        )
+      )
+    )
+    let err: unknown
+    try {
+      await createPullRequest('org', 'repo', { title: 'T', head: 'feature-x', base: 'main' }, 'tok')
+    } catch (e) {
+      err = e
+    }
+    expect(String(err)).toContain('Validation Failed')
+    expect(String(err)).toContain('No commits between main and feature-x')
   })
 })

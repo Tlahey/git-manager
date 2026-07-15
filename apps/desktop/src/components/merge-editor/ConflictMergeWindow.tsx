@@ -319,7 +319,7 @@ export function ConflictMergeWindow({
   repoPath: string
   filePath: string
 }) {
-  useTheme()
+  useTheme(repoPath)
   useMonacoTheme()
 
   return (

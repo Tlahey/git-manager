@@ -23,6 +23,7 @@ import { useRepoUIStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../../stores/r
 import { useOpenRepository } from '../../hooks/useOpenRepository'
 import { useMorningSummaries } from '../../hooks/useMorningSummaries'
 import { useSettingsStore } from '../../stores/settings.store'
+import { useAiEnabled } from '../../hooks/useAiEnabled'
 import { RepoRow } from './components/RepoRow'
 import { ReadmePanel } from './components/ReadmePanel'
 import { DailySummaryPanel } from './components/DailySummaryPanel'
@@ -37,7 +38,10 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
   const { openTabs } = useRepoUIStore()
   const openRepository = useOpenRepository()
 
-  const summaryEnabled = useSettingsStore((s) => s.settings.dailySummary?.enabled ?? true)
+  const aiEnabled = useAiEnabled()
+  // The daily summary is AI-generated, so the master AI switch gates it on top of its own toggle.
+  const summaryEnabled =
+    useSettingsStore((s) => s.settings.dailySummary?.enabled ?? true) && aiEnabled
 
   const [error, setError] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)

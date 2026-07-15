@@ -231,9 +231,10 @@ describe('GitGraph — loading/error/empty states', () => {
     expect(screen.getByText('Failed to load history')).toBeInTheDocument()
   })
 
-  it('shows a "no commits" message when the log is empty', () => {
+  it('shows the empty-repo initialize prompt when the log is empty (no commits yet)', () => {
     renderGraph()
-    expect(screen.getByText('gitTree.noCommits')).toBeInTheDocument()
+    expect(screen.getByTestId('empty-repo-panel')).toBeInTheDocument()
+    expect(screen.getByTestId('empty-repo-initialize')).toBeInTheDocument()
   })
 
   it('shows a "no results" message when a search filters everything out, but still renders the header', () => {

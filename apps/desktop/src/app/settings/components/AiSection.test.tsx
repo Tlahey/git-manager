@@ -151,3 +151,14 @@ describe('AiSection — fields', () => {
     expect(await screen.findByTestId('ai-api-key-input')).toBeInTheDocument()
   })
 })
+
+describe('AiSection — enable toggle', () => {
+  it('is on by default and persists the enabled flag when toggled off', async () => {
+    const user = userEvent.setup()
+    render(<AiSection />)
+    const toggle = screen.getByTestId('ai-enabled-toggle')
+    expect(toggle).toBeChecked()
+    await user.click(toggle)
+    expect(useSettingsStore.getState().settings.ai.enabled).toBe(false)
+  })
+})

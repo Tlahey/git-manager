@@ -4,6 +4,7 @@ import type { CommitConvention, CommitValidation } from '@git-manager/ai'
 import { validateCommitSubject } from '@git-manager/ai'
 import { apiGetAiContext, commitMessageService } from '../api/ai.api'
 import { useSettingsStore } from '../stores/settings.store'
+import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
 
 export type GenerationStatus = 'idle' | 'connecting' | 'streaming' | 'done' | 'error' | 'cancelled'
 
@@ -14,7 +15,8 @@ export function useAiGeneration(repoPath: string) {
   // until a generation completes; non-blocking (the primary guarantee is instructing the model).
   const [validation, setValidation] = useState<CommitValidation | null>(null)
   const unlistenRef = useRef<(() => void) | null>(null)
-  const settings = useSettingsStore((s) => s.settings)
+  const aiConnection = useSettingsStore((s) => s.settings.ai)
+  const { commitInstructions, commitPattern } = useEffectiveRepoSettings(repoPath)
 
   const generate = useCallback(
     async (onToken: (token: string) => void, onDone: (full: string) => void) => {
@@ -31,8 +33,8 @@ export function useAiGeneration(repoPath: string) {
       // Captured after the context fetch below; the done handler validates against them.
       let convention: CommitConvention | null = null
       let recentCommits: string[] = []
-      const userInstructions = settings.git.commitInstructions
-      const pattern = settings.git.commitPattern
+      const userInstructions = commitInstructions
+      const pattern = commitPattern
 
       const unlistenToken = await listen<string>('ai:token', (e) => {
         accumulated += e.payload
@@ -85,14 +87,14 @@ export function useAiGeneration(repoPath: string) {
         // the package injects them into the prompt.
         context.commitInstructions = userInstructions
         context.commitPattern = pattern
-        await commitMessageService.run(settings.ai, context)
+        await commitMessageService.run(aiConnection, context)
       } catch (err) {
         setStatus('error')
         setError(String(err))
         cleanup()
       }
     },
-    [repoPath, settings.ai, settings.git]
+    [repoPath, aiConnection, commitInstructions, commitPattern]
   )
 
   const cancel = useCallback(async () => {

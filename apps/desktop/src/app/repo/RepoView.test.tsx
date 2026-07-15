@@ -49,7 +49,7 @@ vi.mock('../../components/repository-sidebar', () => ({
     currentUser?: string
     githubToken?: string
     onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
-    onOpenPr?: (pr: { headRef: string }) => void
+    onOpenPr?: (pr: { headRef: string; number: number }) => void
   }) => (
     <div data-testid="fake-sidebar">
       <span data-testid="sidebar-remotes">{(props.remoteUrls ?? []).join(',')}</span>
@@ -58,7 +58,7 @@ vi.mock('../../components/repository-sidebar', () => ({
       <span data-testid="sidebar-token">{props.githubToken ?? ''}</span>
       <button onClick={() => props.onSelectBranch('feature-x')}>select-feature-x</button>
       <button onClick={() => props.onSelectBranch(null)}>select-none</button>
-      <button onClick={() => props.onOpenPr?.({ headRef: 'pr-branch' })}>open-pr</button>
+      <button onClick={() => props.onOpenPr?.({ headRef: 'pr-branch', number: 42 })}>open-pr</button>
       <button
         onClick={(e) =>
           props.onContextMenu?.(e, {
@@ -223,12 +223,13 @@ describe('RepoView — branch selection threading', () => {
     expect(screen.getByTestId('sidebar-selected')).toHaveTextContent('feature-x')
   })
 
-  it('sets selectedBranch from onOpenPr using the PR headRef', async () => {
+  it('sets selectedBranch from onOpenPr using the PR headRef and opens the in-app PR view', async () => {
     const user = userEvent.setup()
-    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoUIStore.setState({ activeRepo: '/repo', activePrNumber: null })
     render(<RepoView />)
     await user.click(screen.getByText('open-pr'))
     expect(screen.getByTestId('graph-branch')).toHaveTextContent('pr-branch')
+    expect(useRepoUIStore.getState().activePrNumber).toBe(42)
   })
 })
 

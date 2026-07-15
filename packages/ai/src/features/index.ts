@@ -22,6 +22,12 @@ export {
 } from './dailySummary'
 export type { DailySummary } from './dailySummary'
 export {
+  prDescriptionFeature,
+  PR_DESCRIPTION_INSTRUCTION,
+  buildPrDescriptionUserPrompt,
+} from './prDescription'
+export type { PrDescriptionInput } from './prDescription'
+export {
   DEFAULT_COMMIT_TYPES,
   parseCommitlintRules,
   isConventionalHistory,

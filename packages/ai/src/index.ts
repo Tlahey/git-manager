@@ -52,6 +52,9 @@ export {
   DAILY_SUMMARY_SCHEMA,
   buildDailySummaryPrompt,
   parseDailySummary,
+  prDescriptionFeature,
+  PR_DESCRIPTION_INSTRUCTION,
+  buildPrDescriptionUserPrompt,
   DEFAULT_COMMIT_TYPES,
   parseCommitlintRules,
   isConventionalHistory,
@@ -65,6 +68,7 @@ export {
 export type {
   ProposedCommit,
   DailySummary,
+  PrDescriptionInput,
   CommitlintRules,
   CommitStyleContext,
   CommitValidation,

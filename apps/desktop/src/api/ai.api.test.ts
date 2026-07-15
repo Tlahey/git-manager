@@ -49,7 +49,13 @@ describe('ai.api pass-throughs', () => {
   it('apiGetAiContext delegates to getAiContext with path + scope', async () => {
     mocked.getAiContext.mockResolvedValue(context)
     expect(await api.apiGetAiContext('/repo', 'working')).toEqual(context)
-    expect(mocked.getAiContext).toHaveBeenCalledWith('/repo', 'working')
+    expect(mocked.getAiContext).toHaveBeenCalledWith('/repo', 'working', undefined)
+  })
+
+  it('apiGetAiContext forwards a base ref for range scope', async () => {
+    mocked.getAiContext.mockResolvedValue(context)
+    await api.apiGetAiContext('/repo', 'range', 'main')
+    expect(mocked.getAiContext).toHaveBeenCalledWith('/repo', 'range', 'main')
   })
 
   it('apiCancelGeneration delegates to cancelGeneration', async () => {

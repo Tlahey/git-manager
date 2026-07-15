@@ -8,6 +8,7 @@ import { useGitStatus } from '../../hooks/useGitStatus'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
 
 import { useSettingsStore } from '../../stores/settings.store'
+import { useEffectiveRepoSettings } from '../../hooks/useEffectiveRepoSettings'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useCommitSelection } from '../../hooks/useCommitSelection'
@@ -19,6 +20,10 @@ import { GraphRow } from './GraphRow'
 import { GraphHeader } from './GraphHeader'
 import { CommitDetailsPanel } from './CommitDetailsPanel'
 import { DiffViewCenter } from './DiffViewCenter'
+import { PrDetailCenter } from './pr/PrDetailCenter'
+import { PrComposerCenter } from './pr/PrComposerCenter'
+import { PrSidePanel } from './pr/PrSidePanel'
+import { EmptyRepoPanel } from './EmptyRepoPanel'
 import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
 import { ConflictResolutionPanel } from './ConflictResolutionPanel'
 import { Waterline } from './Waterline'
@@ -39,7 +44,7 @@ const EMPTY_ARRAY: string[] = []
 export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitGraphProps) {
   const { t } = useTranslation('git')
   const queryClient = useQueryClient()
-  const protectedBranches = useSettingsStore((s) => s.settings.git.protectedBranches)
+  const { protectedBranches } = useEffectiveRepoSettings(repoPath)
   const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
   const rowHeight = rowHeightSetting === 'small' ? 32 : 40
   // Current HEAD branch name from repo cache (e.g. "main", "feat/xyz")
@@ -50,6 +55,9 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
   const activeDiffFile = useRepoUIStore((s) => s.activeDiffFile)
   const setActiveDiffFile = useRepoUIStore((s) => s.setActiveDiffFile)
+  const activePrNumber = useRepoUIStore((s) => s.activePrNumber)
+  const setActivePrNumber = useRepoUIStore((s) => s.setActivePrNumber)
+  const prComposer = useRepoUIStore((s) => s.prComposer)
   const conflictFilePath = useRepoUIStore((s) => s.conflictFilePath)
   const setConflictFilePath = useRepoUIStore((s) => s.setConflictFilePath)
 
@@ -333,9 +341,17 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
   return (
     <div className="flex h-full select-none overflow-hidden">
-      {/* Zone principale : tableau virtualisé ou DiffViewCenter */}
+      {/* Zone principale : vue PR (priorité), composer de PR, DiffViewCenter, ou tableau virtualisé */}
       <div className="flex min-w-[280px] flex-1 flex-col overflow-hidden">
-        {activeDiffFile ? (
+        {activePrNumber != null ? (
+          <PrDetailCenter
+            repoPath={repoPath}
+            prNumber={activePrNumber}
+            onClose={() => setActivePrNumber(null)}
+          />
+        ) : prComposer != null ? (
+          <PrComposerCenter repoPath={repoPath} />
+        ) : activeDiffFile ? (
           <DiffViewCenter
             repoPath={repoPath}
             file={activeDiffFile}
@@ -361,9 +377,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
             )}
 
             {!isLoading && !isError && nodes.length === 0 && (
-              <div className="flex flex-1 items-center justify-center">
-                <p className="text-sm text-muted-foreground">{t('gitTree.noCommits')}</p>
-              </div>
+              <EmptyRepoPanel repoPath={repoPath} />
             )}
 
             {!isLoading && !isError && nodes.length > 0 && (
@@ -442,8 +456,23 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
         )}
       </div>
 
-      {/* Panneau latéral : résolution de conflits (priorité) ou détails du commit primaire */}
-      {primaryNode && (
+      {/* Panneau latéral : fichiers de la PR (priorité), résolution de conflits, ou détails du commit */}
+      {activePrNumber != null ? (
+        <>
+          <div
+            {...resizeProps}
+            className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
+          >
+            <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
+          </div>
+          <div
+            className="h-full min-w-[350px] shrink-0 overflow-hidden"
+            style={{ width: panelWidthState }}
+          >
+            <PrSidePanel repoPath={repoPath} prNumber={activePrNumber} />
+          </div>
+        </>
+      ) : primaryNode ? (
         <>
           {/* Handle de redimensionnement */}
           <div
@@ -475,7 +504,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
             )}
           </div>
         </>
-      )}
+      ) : null}
 
       {/* Overlays (dialogs déclenchés par le menu natif) */}
       <GitGraphOverlayManager

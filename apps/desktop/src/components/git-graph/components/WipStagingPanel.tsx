@@ -13,7 +13,9 @@ import {
 import type { GitStatus } from '@git-manager/git-types'
 import { useWipCommitPanel } from '../../../hooks/useWipCommitPanel'
 import { useCommitBatchReview } from '../../../hooks/useCommitBatchReview'
+import { useAiEnabled } from '../../../hooks/useAiEnabled'
 import { CommitBatchReviewDialog } from './CommitBatchReviewDialog'
+import { PrPublishButton } from '../pr/PrPublishButton'
 import type { ProcessedFileItem } from './CommitFileList'
 
 interface WipStagingPanelProps {
@@ -30,6 +32,7 @@ export function WipStagingPanel({
   onRefresh,
 }: WipStagingPanelProps) {
   const { t } = useTranslation('git')
+  const aiEnabled = useAiEnabled()
 
   const {
     batchMode,
@@ -172,22 +175,24 @@ export function WipStagingPanel({
                   />
 
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 flex-1 gap-1 text-[10px] font-semibold"
-                      onClick={() => generateMessageForBatch(groupName, files)}
-                      disabled={isGen}
-                    >
-                      {isGen ? (
-                        <Spinner className="h-2.5 w-2.5" />
-                      ) : (
-                        <Sparkles className="h-3 w-3 text-primary" />
-                      )}
-                      <span>
-                        {isGen ? t('commitDetails.batchCommit.generating') : t('commit.generate')}
-                      </span>
-                    </Button>
+                    {aiEnabled && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 flex-1 gap-1 text-[10px] font-semibold"
+                        onClick={() => generateMessageForBatch(groupName, files)}
+                        disabled={isGen}
+                      >
+                        {isGen ? (
+                          <Spinner className="h-2.5 w-2.5" />
+                        ) : (
+                          <Sparkles className="h-3 w-3 text-primary" />
+                        )}
+                        <span>
+                          {isGen ? t('commitDetails.batchCommit.generating') : t('commit.generate')}
+                        </span>
+                      </Button>
+                    )}
 
                     <Button
                       size="sm"
@@ -239,34 +244,45 @@ export function WipStagingPanel({
 
           <div className="flex gap-2">
             <div className="relative flex flex-1">
+              {aiEnabled && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-testid="commit-generate-button"
+                  className="h-8 flex-1 gap-1 rounded-r-none border-r-0 text-xs"
+                  onClick={handleGenerateCommitMessage}
+                  disabled={gitStatus?.staged?.length === 0 && !isGenerating}
+                >
+                  {isGenerating ? (
+                    <>
+                      <Square className="h-3 w-3 animate-pulse text-destructive" />
+                      {t('commit.stop')}
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3 w-3 text-primary" />
+                      {t('commit.generate')}
+                    </>
+                  )}
+                </Button>
+              )}
+              {/* History dropdown (reuse past commit messages) — not AI, so it stands alone when AI
+                  is off, taking the full width instead of the split-button caret. */}
               <Button
                 variant="outline"
                 size="sm"
-                data-testid="commit-generate-button"
-                className="h-8 flex-1 gap-1 rounded-r-none border-r-0 text-xs"
-                onClick={handleGenerateCommitMessage}
-                disabled={gitStatus?.staged?.length === 0 && !isGenerating}
-              >
-                {isGenerating ? (
-                  <>
-                    <Square className="h-3 w-3 animate-pulse text-destructive" />
-                    {t('commit.stop')}
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-3 w-3 text-primary" />
-                    {t('commit.generate')}
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 w-7 rounded-l-none px-0 text-xs"
+                data-testid="commit-history-button"
+                className={
+                  aiEnabled
+                    ? 'h-8 w-7 rounded-l-none px-0 text-xs'
+                    : 'h-8 flex-1 gap-1.5 text-xs'
+                }
                 onClick={() => setHistoryOpen((v) => !v)}
                 disabled={isGenerating}
                 title={t('commit.history')}
               >
+                {!aiEnabled && <History className="h-3 w-3" />}
+                {!aiEnabled && <span>{t('commit.history')}</span>}
                 <ChevronDown className="h-3 w-3" />
               </Button>
 
@@ -316,18 +332,27 @@ export function WipStagingPanel({
             </Button>
           </div>
 
+          {/* Commit + push + open a GitHub PR in one flow (creates a branch first if on a protected one). */}
+          <PrPublishButton
+            repoPath={repoPath}
+            commitMessage={commitMessage}
+            disabled={(gitStatus?.staged?.length ?? 0) === 0 || !commitMessage.trim() || isCommitting}
+          />
+
           {/* Case 2: AI splits every change into a plan of atomic commits, reviewed in a dialog. */}
-          <Button
-            variant="outline"
-            size="sm"
-            data-testid="ai-batch-generate-button"
-            className="h-8 w-full gap-1.5 text-xs"
-            onClick={batchReview.openAndGenerate}
-            disabled={allWipChanges.length === 0 || batchReview.isGenerating}
-          >
-            <Wand2 className="h-3.5 w-3.5 text-primary" />
-            {t('commitDetails.aiBatch.trigger')}
-          </Button>
+          {aiEnabled && (
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="ai-batch-generate-button"
+              className="h-8 w-full gap-1.5 text-xs"
+              onClick={batchReview.openAndGenerate}
+              disabled={allWipChanges.length === 0 || batchReview.isGenerating}
+            >
+              <Wand2 className="h-3.5 w-3.5 text-primary" />
+              {t('commitDetails.aiBatch.trigger')}
+            </Button>
+          )}
         </div>
       )}
 

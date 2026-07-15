@@ -196,11 +196,12 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
               </button>
             )
           })}
+        </div>
 
-          {/* Bouton + (nouveau) — en ligne juste après les onglets */}
-          <div className="flex shrink-0 items-center px-1">
-            <NewTabMenu />
-          </div>
+        {/* Bouton + (nouveau) — hors de la zone scrollable pour rester toujours visible à droite
+            des onglets, même quand la bande d'onglets déborde. */}
+        <div className="flex shrink-0 items-center px-1">
+          <NewTabMenu />
         </div>
 
         {/* Réglages & Profil (extrême droite) */}

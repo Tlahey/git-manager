@@ -7,10 +7,15 @@ export interface GhUser {
 
 export interface GhLabel {
   name: string
+  /** 6-hex (no leading #) — GitHub's label color. */
+  color?: string
+  description?: string | null
 }
 
 export interface GhRawPR {
   number: number
+  /** GraphQL global node id — needed for the draft toggle (a GraphQL-only mutation). */
+  node_id?: string
   title: string
   body?: string | null
   html_url: string
@@ -19,6 +24,7 @@ export interface GhRawPR {
   merged_at: string | null
   user?: GhUser
   requested_reviewers?: GhUser[]
+  assignees?: GhUser[]
   labels?: GhLabel[]
   changed_files?: number
   additions?: number
@@ -81,10 +87,80 @@ function ghHeaders(token?: string): HeadersInit {
   return h
 }
 
-async function ghFetch<T>(url: string, token?: string): Promise<T> {
-  const res = await fetch(url, { headers: ghHeaders(token) })
-  if (!res.ok) throw new Error(`GitHub API ${res.status}`)
+interface GhRequestOptions {
+  method?: string
+  body?: unknown
+  token?: string
+}
+
+/**
+ * Low-level GitHub REST call with shared auth headers + error handling.
+ * Backs both reads (`ghFetch`) and writes (create PR, comment, review, merge).
+ */
+async function ghRequest<T>(url: string, opts: GhRequestOptions = {}): Promise<T> {
+  const { method = 'GET', body, token } = opts
+  const headers = ghHeaders(token)
+  if (body !== undefined) {
+    ;(headers as Record<string, string>)['Content-Type'] = 'application/json'
+  }
+  const res = await fetch(url, {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+  if (!res.ok) {
+    // Surface GitHub's own error detail (e.g. "Validation Failed: No commits between main and x",
+    // "A pull request already exists") instead of a bare status — vital for debugging PR creation.
+    const detail = await extractGitHubError(res)
+    throw new Error(`GitHub API ${res.status}${detail ? `: ${detail}` : ''}`)
+  }
   return res.json()
+}
+
+/** Best-effort extraction of a human-readable message from a GitHub error response body. */
+async function extractGitHubError(res: Response): Promise<string> {
+  try {
+    const data = (await res.json()) as {
+      message?: string
+      errors?: Array<{ message?: string; field?: string; code?: string }>
+    }
+    const parts: string[] = []
+    if (data.message) parts.push(data.message)
+    for (const e of data.errors ?? []) {
+      if (e.message) parts.push(e.message)
+      else if (e.field && e.code) parts.push(`${e.field}: ${e.code}`)
+    }
+    return parts.join(' — ')
+  } catch {
+    return ''
+  }
+}
+
+async function ghFetch<T>(url: string, token?: string): Promise<T> {
+  return ghRequest<T>(url, { token })
+}
+
+/** GitHub GraphQL v4 call — for the operations REST can't do (draft toggle, `mergeStateStatus`,
+ * per-check `isRequired`). `accept` lets callers opt into a preview media type when needed. */
+async function ghGraphQL<T>(
+  query: string,
+  variables: Record<string, unknown>,
+  token: string,
+  accept = 'application/json'
+): Promise<T> {
+  const res = await fetch('https://api.github.com/graphql', {
+    method: 'POST',
+    headers: { Authorization: `bearer ${token}`, 'Content-Type': 'application/json', Accept: accept },
+    body: JSON.stringify({ query, variables }),
+  })
+  if (!res.ok) {
+    throw new Error(`GitHub GraphQL ${res.status}`)
+  }
+  const json = (await res.json()) as { data?: T; errors?: Array<{ message?: string }> }
+  if (json.errors?.length) {
+    throw new Error(`GitHub GraphQL: ${json.errors.map((e) => e.message).join(' — ')}`)
+  }
+  return json.data as T
 }
 
 export function parsePRStatus(pr: {
@@ -365,6 +441,513 @@ export async function resolveTagOrReleaseUrl(
   return (
     releaseUrl ?? `https://github.com/${owner}/${repo}/releases/tag/${encodeURIComponent(tag)}`
   )
+}
+
+/** A single file changed by a pull request (`GET /pulls/{n}/files`). */
+export interface GhPrFile {
+  filename: string
+  status: string
+  additions: number
+  deletions: number
+  changes: number
+  previous_filename?: string
+}
+
+export interface CreatePrInput {
+  title: string
+  head: string
+  base: string
+  body?: string
+}
+
+/** Create a pull request. Requires the `repo` scope on the token. */
+export async function createPullRequest(
+  owner: string,
+  repo: string,
+  input: CreatePrInput,
+  token: string
+): Promise<GhRawPR> {
+  return ghRequest<GhRawPR>(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
+    method: 'POST',
+    body: input,
+    token,
+  })
+}
+
+/** The list of files changed by a pull request. */
+export async function fetchPrFiles(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  token: string
+): Promise<GhPrFile[]> {
+  return ghFetch<GhPrFile[]>(
+    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100`,
+    token
+  )
+}
+
+/** Post a plain issue-style comment on a pull request. */
+export async function postPrComment(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  body: string,
+  token: string
+): Promise<{ id: number; html_url: string }> {
+  return ghRequest(`https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments`, {
+    method: 'POST',
+    body: { body },
+    token,
+  })
+}
+
+export type PrReviewEvent = 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT'
+
+/** Submit a formal review (Approve / Request changes / Comment) on a pull request. */
+export async function submitPrReview(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  input: { event: PrReviewEvent; body?: string },
+  token: string
+): Promise<{ id: number; state: string }> {
+  return ghRequest(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
+    method: 'POST',
+    body: input,
+    token,
+  })
+}
+
+export type MergeMethod = 'merge' | 'squash' | 'rebase'
+
+/** Merge a pull request with the chosen strategy. */
+export async function mergePullRequest(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  input: { mergeMethod: MergeMethod; commitTitle?: string; commitMessage?: string },
+  token: string
+): Promise<{ sha: string; merged: boolean; message: string }> {
+  return ghRequest(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/merge`, {
+    method: 'PUT',
+    body: {
+      merge_method: input.mergeMethod,
+      commit_title: input.commitTitle,
+      commit_message: input.commitMessage,
+    },
+    token,
+  })
+}
+
+/** Patch a pull request's editable fields: title, body, or open/closed `state`. Requires the `repo`
+ * scope. Note: the `draft` flag is *not* patchable over REST — use {@link setPullRequestDraft}. */
+export async function updatePullRequest(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  patch: { title?: string; body?: string; state?: 'open' | 'closed'; base?: string },
+  token: string
+): Promise<GhRawPR> {
+  return ghRequest<GhRawPR>(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`, {
+    method: 'PATCH',
+    body: patch,
+    token,
+  })
+}
+
+/**
+ * Toggle a PR's draft state. GitHub's REST API can't change `draft`, so this uses the GraphQL
+ * `convertPullRequestToDraft` / `markPullRequestReadyForReview` mutations, keyed by the PR's global
+ * `node_id`. Returns the resulting draft flag.
+ */
+export async function setPullRequestDraft(
+  nodeId: string,
+  draft: boolean,
+  token: string
+): Promise<boolean> {
+  const mutation = draft
+    ? `mutation($id:ID!){convertPullRequestToDraft(input:{pullRequestId:$id}){pullRequest{isDraft}}}`
+    : `mutation($id:ID!){markPullRequestReadyForReview(input:{pullRequestId:$id}){pullRequest{isDraft}}}`
+  const data = await ghGraphQL<{
+    convertPullRequestToDraft?: { pullRequest?: { isDraft: boolean } }
+    markPullRequestReadyForReview?: { pullRequest?: { isDraft: boolean } }
+  }>(mutation, { id: nodeId }, token)
+  const pr = data.convertPullRequestToDraft?.pullRequest ?? data.markPullRequestReadyForReview?.pullRequest
+  return pr?.isDraft ?? draft
+}
+
+export interface GhComment {
+  id: number
+  body: string
+  html_url: string
+  created_at: string
+  updated_at: string
+  user?: GhUser
+}
+
+/** Issue-style comments on a pull request (the conversation timeline, not inline review comments). */
+export async function fetchPrComments(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  token: string
+): Promise<GhComment[]> {
+  return ghFetch<GhComment[]>(
+    `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments?per_page=100`,
+    token
+  )
+}
+
+/** Normalised category for a single check/status row (drives its icon + grouping). */
+export type PrCheckCategory = 'success' | 'failure' | 'in_progress' | 'skipped' | 'neutral'
+
+export interface PrCheck {
+  name: string
+  category: PrCheckCategory
+  /** Required by branch protection for this PR (the "Required" badge). */
+  isRequired: boolean
+  url?: string | null
+  startedAt?: string | null
+  /** The app/integration that produced the check (e.g. "GitHub Actions"). */
+  appName?: string | null
+}
+
+/** GitHub's mergeability signal — same enum GitHub's merge box is driven by. */
+export type PrMergeStateStatus =
+  | 'BEHIND'
+  | 'BLOCKED'
+  | 'CLEAN'
+  | 'DIRTY'
+  | 'DRAFT'
+  | 'HAS_HOOKS'
+  | 'UNKNOWN'
+  | 'UNSTABLE'
+
+export type PrReviewDecision = 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null
+
+export interface PrMergeability {
+  mergeable: 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN'
+  mergeStateStatus: PrMergeStateStatus
+  reviewDecision: PrReviewDecision
+  checks: PrCheck[]
+}
+
+interface RawCheckContext {
+  __typename: 'CheckRun' | 'StatusContext'
+  name?: string
+  status?: string
+  conclusion?: string | null
+  startedAt?: string | null
+  detailsUrl?: string | null
+  context?: string
+  state?: string
+  targetUrl?: string | null
+  isRequired?: boolean
+  checkSuite?: { app?: { name?: string } | null } | null
+}
+
+function checkRunCategory(status?: string, conclusion?: string | null): PrCheckCategory {
+  if (status !== 'COMPLETED') return 'in_progress'
+  switch (conclusion) {
+    case 'SUCCESS':
+      return 'success'
+    case 'SKIPPED':
+      return 'skipped'
+    case 'NEUTRAL':
+    case 'STALE':
+      return 'neutral'
+    default:
+      // FAILURE, TIMED_OUT, CANCELLED, ACTION_REQUIRED, STARTUP_FAILURE
+      return 'failure'
+  }
+}
+
+function statusContextCategory(state?: string): PrCheckCategory {
+  switch (state) {
+    case 'SUCCESS':
+      return 'success'
+    case 'PENDING':
+    case 'EXPECTED':
+      return 'in_progress'
+    default:
+      return 'failure' // FAILURE, ERROR
+  }
+}
+
+function normalizeCheckContext(c: RawCheckContext): PrCheck {
+  if (c.__typename === 'StatusContext') {
+    return {
+      name: c.context ?? 'status',
+      category: statusContextCategory(c.state),
+      isRequired: !!c.isRequired,
+      url: c.targetUrl ?? null,
+      startedAt: null,
+      appName: null,
+    }
+  }
+  return {
+    name: c.name ?? 'check',
+    category: checkRunCategory(c.status, c.conclusion),
+    isRequired: !!c.isRequired,
+    url: c.detailsUrl ?? null,
+    startedAt: c.startedAt ?? null,
+    appName: c.checkSuite?.app?.name ?? null,
+  }
+}
+
+/**
+ * Full mergeability + checks for one PR, via GraphQL (REST can't give per-check `isRequired`,
+ * `mergeStateStatus` or `reviewDecision`). Powers the GitHub-style merge box.
+ */
+export async function fetchPrMergeability(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  token: string
+): Promise<PrMergeability> {
+  const query = `query($owner:String!,$repo:String!,$number:Int!){
+    repository(owner:$owner,name:$repo){
+      pullRequest(number:$number){
+        mergeable
+        mergeStateStatus
+        reviewDecision
+        commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){nodes{
+          __typename
+          ... on CheckRun{name status conclusion startedAt detailsUrl isRequired(pullRequestNumber:$number) checkSuite{app{name}}}
+          ... on StatusContext{context state targetUrl isRequired(pullRequestNumber:$number)}
+        }}}}}}
+      }
+    }
+  }`
+  const data = await ghGraphQL<{
+    repository?: {
+      pullRequest?: {
+        mergeable?: PrMergeability['mergeable']
+        mergeStateStatus?: PrMergeStateStatus
+        reviewDecision?: PrReviewDecision
+        commits?: { nodes?: Array<{ commit?: { statusCheckRollup?: { contexts?: { nodes?: RawCheckContext[] } } } }> }
+      }
+    }
+  }>(query, { owner, repo, number: prNumber }, token, 'application/vnd.github.merge-info-preview+json')
+
+  const prNode = data.repository?.pullRequest
+  const contexts = prNode?.commits?.nodes?.[0]?.commit?.statusCheckRollup?.contexts?.nodes ?? []
+  return {
+    mergeable: prNode?.mergeable ?? 'UNKNOWN',
+    mergeStateStatus: prNode?.mergeStateStatus ?? 'UNKNOWN',
+    reviewDecision: prNode?.reviewDecision ?? null,
+    checks: contexts.map(normalizeCheckContext),
+  }
+}
+
+/** Update (merge base into) the PR's branch so it's no longer behind — the "Update branch" action. */
+export async function updatePrBranch(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  token: string
+): Promise<void> {
+  await ghRequest(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/update-branch`, {
+    method: 'PUT',
+    body: {},
+    token,
+  })
+}
+
+// ─── reviewers / assignees / labels ───────────────────────────────────────────
+
+/** Users assignable to issues/PRs in the repo (also the candidate reviewer pool). */
+export async function fetchAssignableUsers(
+  owner: string,
+  repo: string,
+  token: string
+): Promise<GhUser[]> {
+  return ghFetch<GhUser[]>(
+    `https://api.github.com/repos/${owner}/${repo}/assignees?per_page=100`,
+    token
+  )
+}
+
+/** All labels defined in the repo (the candidate pool for a PR's labels). */
+export async function fetchRepoLabels(
+  owner: string,
+  repo: string,
+  token: string
+): Promise<GhLabel[]> {
+  return ghFetch<GhLabel[]>(
+    `https://api.github.com/repos/${owner}/${repo}/labels?per_page=100`,
+    token
+  )
+}
+
+/** Request reviews from the given logins. */
+export async function addReviewers(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  reviewers: string[],
+  token: string
+): Promise<unknown> {
+  return ghRequest(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/requested_reviewers`, {
+    method: 'POST',
+    body: { reviewers },
+    token,
+  })
+}
+
+/** Cancel a pending review request for the given logins. */
+export async function removeReviewers(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  reviewers: string[],
+  token: string
+): Promise<unknown> {
+  return ghRequest(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/requested_reviewers`, {
+    method: 'DELETE',
+    body: { reviewers },
+    token,
+  })
+}
+
+/** Add assignees (issue/PR share the assignee endpoints). */
+export async function addAssignees(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  assignees: string[],
+  token: string
+): Promise<unknown> {
+  return ghRequest(`https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/assignees`, {
+    method: 'POST',
+    body: { assignees },
+    token,
+  })
+}
+
+/** Remove assignees. */
+export async function removeAssignees(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  assignees: string[],
+  token: string
+): Promise<unknown> {
+  return ghRequest(`https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/assignees`, {
+    method: 'DELETE',
+    body: { assignees },
+    token,
+  })
+}
+
+/** Add labels by name. */
+export async function addLabels(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  labels: string[],
+  token: string
+): Promise<unknown> {
+  return ghRequest(`https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/labels`, {
+    method: 'POST',
+    body: { labels },
+    token,
+  })
+}
+
+/** Remove a single label by name. */
+export async function removeLabel(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  label: string,
+  token: string
+): Promise<unknown> {
+  return ghRequest(
+    `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/labels/${encodeURIComponent(label)}`,
+    { method: 'DELETE', token }
+  )
+}
+
+// ─── unresolved review threads ("code suggestions") ────────────────────────────
+
+export interface PrReviewThread {
+  id: string
+  path: string
+  line: number | null
+  isOutdated: boolean
+  author: string
+  snippet: string
+  /** Link to the first comment of the thread (for the "go to comment" click-through). */
+  url: string
+}
+
+/**
+ * Unresolved review threads on a PR — the inline code comments/suggestions still open. Only GraphQL
+ * exposes a thread's `isResolved`, so this is a GraphQL query. Returns the still-open threads only.
+ */
+export async function fetchPrReviewThreads(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  token: string
+): Promise<PrReviewThread[]> {
+  const query = `query($owner:String!,$repo:String!,$number:Int!){
+    repository(owner:$owner,name:$repo){
+      pullRequest(number:$number){
+        reviewThreads(first:100){nodes{
+          id isResolved isOutdated path line
+          comments(first:1){nodes{ author{login} bodyText url }}
+        }}
+      }
+    }
+  }`
+  const data = await ghGraphQL<{
+    repository?: {
+      pullRequest?: {
+        reviewThreads?: {
+          nodes?: Array<{
+            id: string
+            isResolved: boolean
+            isOutdated: boolean
+            path: string
+            line: number | null
+            comments?: { nodes?: Array<{ author?: { login?: string }; bodyText?: string; url?: string }> }
+          }>
+        }
+      }
+    }
+  }>(query, { owner, repo, number: prNumber }, token)
+
+  const nodes = data.repository?.pullRequest?.reviewThreads?.nodes ?? []
+  return nodes
+    .filter((n) => !n.isResolved)
+    .map((n) => {
+      const first = n.comments?.nodes?.[0]
+      return {
+        id: n.id,
+        path: n.path,
+        line: n.line,
+        isOutdated: n.isOutdated,
+        author: first?.author?.login ?? '—',
+        snippet: (first?.bodyText ?? '').trim(),
+        url: first?.url ?? '',
+      }
+    })
+}
+
+/** The repository's default branch (the base a PR targets unless overridden). */
+export async function fetchRepoDefaultBranch(
+  owner: string,
+  repo: string,
+  token?: string
+): Promise<string> {
+  const data = await ghFetch<{ default_branch?: string }>(
+    `https://api.github.com/repos/${owner}/${repo}`,
+    token
+  )
+  return data.default_branch ?? 'main'
 }
 
 // Tauri backend GitHub integration wrappers
