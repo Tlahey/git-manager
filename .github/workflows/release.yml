@@ -1,11 +1,14 @@
 name: Release
 
 # Triggered by pushing a tag like `v0.2.0` (must match the `version` field in
-# apps/desktop/src-tauri/tauri.conf.json — bump that first, commit, then tag).
+# apps/desktop/src-tauri/tauri.conf.json — bump that first, commit, then tag; normally done by
+# prepare-release.yml, which also generates the matching CHANGELOG.md section this workflow reads
+# for the release body).
 # Builds a universal (Apple Silicon + Intel) macOS bundle, signs it for the
 # Tauri updater, and publishes it as a GitHub Release including `latest.json`
 # — the manifest apps/desktop/src-tauri/tauri.conf.json's `plugins.updater.endpoints`
-# points at. See docs/architecture or CLAUDE.md for the updater flow.
+# points at, whose `body` is what Settings → General's update-available panel shows
+# (see useAppUpdater.ts). See docs/architecture or CLAUDE.md for the updater flow.
 on:
   push:
     tags:
@@ -47,6 +50,32 @@ jobs:
       - name: Install Node dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Extract CHANGELOG.md section for this release
+        id: changelog
+        run: |
+          node -e "
+            const fs = require('fs');
+            const crypto = require('crypto');
+
+            const tag = '${{ github.ref_name }}';
+            const version = tag.replace(/^v/, '');
+            const content = fs.readFileSync('CHANGELOG.md', 'utf8');
+            const marker = '## [' + version + ']';
+            const idx = content.indexOf(marker);
+
+            let body = '';
+            if (idx === -1) {
+              console.log('No CHANGELOG.md section found for ' + marker + ' — release body will be empty.');
+            } else {
+              const afterHeading = content.indexOf('\n', idx) + 1;
+              const nextIdx = content.indexOf('\n## [', afterHeading);
+              body = content.slice(afterHeading, nextIdx === -1 ? content.length : nextIdx + 1).trim();
+            }
+
+            const delimiter = crypto.randomBytes(8).toString('hex');
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, 'body<<' + delimiter + '\n' + body + '\n' + delimiter + '\n');
+          "
+
       - name: Build & publish
         uses: tauri-apps/tauri-action@v0
         env:
@@ -57,6 +86,7 @@ jobs:
           projectPath: apps/desktop
           tagName: ${{ github.ref_name }}
           releaseName: 'git-manager ${{ github.ref_name }}'
+          releaseBody: ${{ steps.changelog.outputs.body }}
           releaseDraft: true
           prerelease: false
           args: --target universal-apple-darwin

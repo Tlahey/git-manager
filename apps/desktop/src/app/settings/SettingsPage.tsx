@@ -11,6 +11,7 @@ import { NotificationSection } from './components/NotificationSection'
 import { AppearanceSection } from './components/AppearanceSection'
 import { RewardsSection } from './components/RewardsSection'
 import { DebugSection } from './components/DebugSection'
+import { ChangelogSection } from './components/ChangelogSection'
 import { defineTabs, renderActiveTab, type TabDef } from '../../lib/navigation/tabRegistry'
 
 export type Section =
@@ -23,6 +24,7 @@ export type Section =
   | 'ui_customization'
   | 'rewards'
   | 'debug'
+  | 'changelog'
 
 interface SettingsPageProps {
   onClose: () => void
@@ -89,6 +91,11 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
       id: 'debug',
       label: t('settings.sections.debug') || 'Debug',
       render: () => scrolled(<DebugSection />),
+    },
+    {
+      id: 'changelog',
+      label: t('settings.sections.changelog'),
+      render: () => scrolled(<ChangelogSection />),
     },
   ])
 

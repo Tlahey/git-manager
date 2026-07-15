@@ -9,6 +9,7 @@
   "settings.sections.ui_customization": "UI Customization",
   "settings.sections.rewards": "Achievements & Rewards",
   "settings.sections.debug": "Debug",
+  "settings.sections.changelog": "Changelog",
   "settings.ai.preset": "Provider",
   "settings.ai.comingSoon": "(coming soon)",
   "settings.ai.searchPlaceholder": "Search providers…",
@@ -120,5 +121,8 @@
   "settings.update.ready": "Update installed. Restart to apply it.",
   "settings.update.restart": "Restart now",
   "settings.update.error": "Update check failed: {{message}}",
-  "settings.update.retry": "Retry"
+  "settings.update.retry": "Retry",
+  "settings.changelog.title": "What's new",
+  "settings.changelog.unreleased": "Unreleased",
+  "settings.changelog.current": "Current"
 }

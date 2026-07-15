@@ -9,6 +9,7 @@
   "settings.sections.ui_customization": "Personnalisation UI",
   "settings.sections.rewards": "Succès & Récompenses",
   "settings.sections.debug": "Debug",
+  "settings.sections.changelog": "Journal des modifications",
   "settings.ai.preset": "Fournisseur",
   "settings.ai.comingSoon": "(bientôt)",
   "settings.ai.searchPlaceholder": "Rechercher un fournisseur…",
@@ -120,5 +121,8 @@
   "settings.update.ready": "Mise à jour installée. Redémarrez pour l'appliquer.",
   "settings.update.restart": "Redémarrer maintenant",
   "settings.update.error": "Échec de la vérification : {{message}}",
-  "settings.update.retry": "Réessayer"
+  "settings.update.retry": "Réessayer",
+  "settings.changelog.title": "Nouveautés",
+  "settings.changelog.unreleased": "À venir",
+  "settings.changelog.current": "Actuelle"
 }
