@@ -1,12 +1,12 @@
 name: Prepare Release
 
 # Manually triggered from the Actions tab. Bumps the app version everywhere it's declared
-# (root + desktop package.json, tauri.conf.json, Cargo.toml), auto-generates a CHANGELOG.md
-# entry for the new version from Conventional Commit subjects since the last tag (grouped into
-# Added/Changed/Fixed — see the "Update CHANGELOG.md" step), commits it all straight to main,
-# then tags the commit — which is what actually triggers `release.yml` (it watches for
-# `v*.*.*` tag pushes) to build, sign and publish the release using that same CHANGELOG.md
-# section as the GitHub Release body.
+# (root + desktop package.json, tauri.conf.json, Cargo.toml), auto-generates a CHANGELOG.md entry
+# for the new version from GitHub's own "generate release notes" API (the same merged-PR list
+# shown when you click "Generate release notes" on a GitHub Release — see the "Fetch PR-based
+# release notes" and "Update CHANGELOG.md" steps), commits it all straight to main, then tags the
+# commit — which is what actually triggers `release.yml` (it watches for `v*.*.*` tag pushes) to
+# build, sign and publish the release using that same CHANGELOG.md section as the Release body.
 on:
   workflow_dispatch:
     inputs:
@@ -19,6 +19,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
   bump-and-tag:
@@ -70,52 +71,28 @@ jobs:
             fs.writeFileSync(path, updated);
           "
 
+      - name: Fetch PR-based release notes from GitHub
+        id: notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${{ github.repository }}/releases/generate-notes" \
+            -f "tag_name=v${{ steps.version.outputs.next }}" \
+            -f "previous_tag_name=v${{ steps.version.outputs.current }}" \
+            -f "target_commitish=main" \
+            --jq .body > /tmp/release-notes.md
+
       - name: Update CHANGELOG.md
         run: |
           node -e "
             const fs = require('fs');
-            const { execSync } = require('child_process');
 
             const next = '${{ steps.version.outputs.next }}';
-            const current = '${{ steps.version.outputs.current }}';
-            const prevTag = 'v' + current;
             const date = new Date().toISOString().slice(0, 10);
+            const notes = fs.readFileSync('/tmp/release-notes.md', 'utf8').trim();
 
-            let subjects = [];
-            try {
-              const out = execSync('git log ' + prevTag + '..HEAD --no-merges --format=%s', { encoding: 'utf8' });
-              subjects = out.split('\n').filter(Boolean);
-            } catch (err) {
-              // No prevTag (first automated release) or git log failed — ship an empty section.
-            }
-
-            const typeToBucket = { feat: 'Added', fix: 'Fixed', perf: 'Changed', refactor: 'Changed' };
-            const buckets = { Added: [], Changed: [], Fixed: [] };
-            for (const subject of subjects) {
-              const match = subject.match(/^(\w+)(\([^)]*\))?!?:\s*(.+)/);
-              if (!match) continue;
-              const bucket = typeToBucket[match[1]];
-              if (!bucket) continue;
-              const text = match[3].charAt(0).toUpperCase() + match[3].slice(1);
-              buckets[bucket].push(text);
-            }
-
-            const sectionLines = [];
-            for (const heading of ['Added', 'Changed', 'Fixed']) {
-              const items = buckets[heading];
-              if (items.length === 0) continue;
-              sectionLines.push('### ' + heading);
-              sectionLines.push('');
-              for (const item of items) sectionLines.push('- ' + item);
-              sectionLines.push('');
-            }
-            if (sectionLines.length === 0) {
-              sectionLines.push('_No notable changes._');
-              sectionLines.push('');
-            }
-
-            const entry = ['## [' + next + '] - ' + date, ''].concat(sectionLines).join('\n');
-            const unreleasedNote = '_Auto-populated at release time from Conventional Commit subjects since the last tag — see .github/workflows/prepare-release.yml._';
+            const entry = '## [' + next + '] - ' + date + '\n\n' + (notes || '_No notable changes._') + '\n';
+            const unreleasedNote = '_Auto-populated at release time from the merged pull requests since the last tag, via the GitHub release notes API — see .github/workflows/prepare-release.yml._';
 
             const path = 'CHANGELOG.md';
             const content = fs.readFileSync(path, 'utf8');
@@ -128,7 +105,7 @@ jobs:
             const updated = content.slice(0, bodyStart) + '\n' + unreleasedNote + '\n\n' + entry + '\n' + content.slice(bodyEnd);
             fs.writeFileSync(path, updated);
 
-            console.log('Inserted CHANGELOG.md entry for ' + next + ' (' + subjects.length + ' commits scanned since ' + prevTag + ')');
+            console.log('Inserted CHANGELOG.md entry for ' + next);
           "
 
       - name: Commit and tag

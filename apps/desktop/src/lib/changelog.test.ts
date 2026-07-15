@@ -29,6 +29,12 @@ Initial release.
 - First feature
 `
 
+const prFixture = `## [0.3.0] - 2026-07-15
+
+* PR one by @user in https://github.com/owner/repo/pull/1
+* PR two by @user in https://github.com/owner/repo/pull/2
+`
+
 describe('parseChangelog', () => {
   it('parses each version heading into an entry, newest first', () => {
     const entries = parseChangelog(fixture)
@@ -58,5 +64,30 @@ describe('parseChangelog', () => {
 
   it('returns an empty list for content with no version headings', () => {
     expect(parseChangelog('# Changelog\n\nNothing here yet.\n')).toEqual([])
+  })
+
+  it('groups bullets found directly under a version heading (no ### subsection) into an implicit section', () => {
+    const entries = parseChangelog(prFixture)
+    expect(entries).toEqual([
+      {
+        version: '0.3.0',
+        date: '2026-07-15',
+        sections: [
+          {
+            heading: '',
+            items: [
+              'PR one by @user in https://github.com/owner/repo/pull/1',
+              'PR two by @user in https://github.com/owner/repo/pull/2',
+            ],
+          },
+        ],
+      },
+    ])
+  })
+
+  it('accepts both "-" and "*" as bullet markers', () => {
+    const mixed = '## [1.0.0]\n\n- dash item\n* star item\n'
+    const entries = parseChangelog(mixed)
+    expect(entries[0].sections[0].items).toEqual(['dash item', 'star item'])
   })
 })
