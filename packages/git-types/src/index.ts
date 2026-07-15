@@ -377,11 +377,7 @@ export interface SSHSettings {
 }
 
 export interface ExternalToolsSettings {
-  mergeTool: string
-  mergeToolCommand: string
-  diffTool: string
-  diffToolCommand: string
-  externalTerminal: string
+  /** Absolute path to the user-picked terminal .app (or executable). Empty = not configured. */
   externalTerminalCommand: string
 }
 
@@ -403,7 +399,7 @@ export interface GitSettings {
   defaultAuthorEmail: string
   protectedBranches: string[]
   showStashesInGraph?: boolean
-  externalEditor: string
+  /** Absolute path to the user-picked editor .app (or executable). Empty = not configured. */
   externalEditorCommand: string
   /** User-authored guidance on how commit messages should be written (free text). Fed to the AI
    * commit features as an authoritative style source, alongside the repo's commitlint config and

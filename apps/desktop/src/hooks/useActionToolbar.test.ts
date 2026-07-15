@@ -26,6 +26,7 @@ vi.mock('../api/git.api', () => ({
   apiCreateBranch: vi.fn(),
 }))
 vi.mock('../api/shell.api', () => ({ apiOpenTerminal: vi.fn() }))
+vi.mock('../api/repo.api', () => ({ apiOpenInEditor: vi.fn() }))
 
 const useGitStatusMock = vi.fn()
 const useGitStashesMock = vi.fn()
@@ -41,6 +42,7 @@ import {
   apiCreateBranch,
 } from '../api/git.api'
 import { apiOpenTerminal } from '../api/shell.api'
+import { apiOpenInEditor } from '../api/repo.api'
 import { useRepoDataStore } from '../stores/repoData.store'
 import { useRepoUIStore } from '../stores/repoUI.store'
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
@@ -55,6 +57,7 @@ const mocked = {
   apiPushBranch: apiPushBranch as unknown as ReturnType<typeof vi.fn>,
   apiCreateBranch: apiCreateBranch as unknown as ReturnType<typeof vi.fn>,
   apiOpenTerminal: apiOpenTerminal as unknown as ReturnType<typeof vi.fn>,
+  apiOpenInEditor: apiOpenInEditor as unknown as ReturnType<typeof vi.fn>,
 }
 
 const DEFAULT_SETTINGS = useSettingsStore.getState().settings
@@ -139,27 +142,84 @@ describe('useActionToolbar — derived state', () => {
 })
 
 describe('useActionToolbar — terminal', () => {
-  it('opens the terminal with the configured tool and custom command', async () => {
+  it('opens the terminal with the configured app, and exposes hasTerminal', async () => {
     useSettingsStore.setState({
       settings: {
         ...DEFAULT_SETTINGS,
         externalTools: {
           ...DEFAULT_SETTINGS.externalTools!,
-          externalTerminal: 'iterm',
-          externalTerminalCommand: 'custom {path}',
+          externalTerminalCommand: '/Applications/iTerm.app',
         },
       },
     })
     const { result } = renderHook(() => useActionToolbar(t))
+    expect(result.current.hasTerminal).toBe(true)
     await act(async () => result.current.handleOpenTerminal())
-    expect(mocked.apiOpenTerminal).toHaveBeenCalledWith('/repo', 'iterm', 'custom {path}')
+    expect(mocked.apiOpenTerminal).toHaveBeenCalledWith('/repo', '/Applications/iTerm.app')
+  })
+
+  it('hasTerminal is false and the handler is a no-op when no app is configured', async () => {
+    const { result } = renderHook(() => useActionToolbar(t))
+    expect(result.current.hasTerminal).toBe(false)
+    await act(async () => result.current.handleOpenTerminal())
+    expect(mocked.apiOpenTerminal).not.toHaveBeenCalled()
   })
 
   it('does nothing without an active repo', async () => {
+    useSettingsStore.setState({
+      settings: {
+        ...DEFAULT_SETTINGS,
+        externalTools: {
+          ...DEFAULT_SETTINGS.externalTools!,
+          externalTerminalCommand: '/Applications/iTerm.app',
+        },
+      },
+    })
     useRepoUIStore.setState({ activeRepo: null })
     const { result } = renderHook(() => useActionToolbar(t))
     await act(async () => result.current.handleOpenTerminal())
     expect(mocked.apiOpenTerminal).not.toHaveBeenCalled()
+  })
+})
+
+describe('useActionToolbar — editor', () => {
+  it('opens the editor with the configured app, and exposes hasEditor', async () => {
+    useSettingsStore.setState({
+      settings: {
+        ...DEFAULT_SETTINGS,
+        git: {
+          ...DEFAULT_SETTINGS.git,
+          externalEditorCommand: '/Applications/Sublime Text.app',
+        },
+      },
+    })
+    const { result } = renderHook(() => useActionToolbar(t))
+    expect(result.current.hasEditor).toBe(true)
+    await act(async () => result.current.handleOpenEditor())
+    expect(mocked.apiOpenInEditor).toHaveBeenCalledWith('/repo', '/Applications/Sublime Text.app')
+  })
+
+  it('hasEditor is false and the handler is a no-op when no app is configured', async () => {
+    const { result } = renderHook(() => useActionToolbar(t))
+    expect(result.current.hasEditor).toBe(false)
+    await act(async () => result.current.handleOpenEditor())
+    expect(mocked.apiOpenInEditor).not.toHaveBeenCalled()
+  })
+
+  it('does nothing without an active repo', async () => {
+    useSettingsStore.setState({
+      settings: {
+        ...DEFAULT_SETTINGS,
+        git: {
+          ...DEFAULT_SETTINGS.git,
+          externalEditorCommand: '/Applications/Sublime Text.app',
+        },
+      },
+    })
+    useRepoUIStore.setState({ activeRepo: null })
+    const { result } = renderHook(() => useActionToolbar(t))
+    await act(async () => result.current.handleOpenEditor())
+    expect(mocked.apiOpenInEditor).not.toHaveBeenCalled()
   })
 })
 

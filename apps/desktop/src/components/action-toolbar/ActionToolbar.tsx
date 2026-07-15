@@ -4,6 +4,7 @@ import {
   GitPullRequest,
   Redo2,
   Terminal as TerminalIcon,
+  Code as CodeIcon,
   Undo2,
   Archive,
   ArchiveRestore,
@@ -37,7 +38,10 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
     canRedo,
     undoLabel,
     redoLabel,
+    hasTerminal,
+    hasEditor,
     handleOpenTerminal,
+    handleOpenEditor,
     handleFetch,
     handleFetchAll,
     handlePull,
@@ -128,16 +132,28 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
           onClick={handlePop}
         />
 
-        <div className="mx-1 h-6 w-px shrink-0 bg-border" />
+        {(hasTerminal || hasEditor) && <div className="mx-1 h-6 w-px shrink-0 bg-border" />}
 
-        <ToolbarButton
-          icon={<TerminalIcon className="h-4 w-4 text-emerald-400" />}
-          label={t('toolbar.terminal')}
-          title="Ouvrir le terminal dans ce dépôt"
-          disabled={!activeRepo}
-          onClick={handleOpenTerminal}
-          data-testid="toolbar-terminal-button"
-        />
+        {hasTerminal && (
+          <ToolbarButton
+            icon={<TerminalIcon className="h-4 w-4 text-emerald-400" />}
+            label={t('toolbar.terminal')}
+            title="Ouvrir le terminal dans ce dépôt"
+            disabled={!activeRepo}
+            onClick={handleOpenTerminal}
+            data-testid="toolbar-terminal-button"
+          />
+        )}
+        {hasEditor && (
+          <ToolbarButton
+            icon={<CodeIcon className="h-4 w-4 text-sky-400" />}
+            label={t('toolbar.editor')}
+            title="Ouvrir l'éditeur de code dans ce dépôt"
+            disabled={!activeRepo}
+            onClick={handleOpenEditor}
+            data-testid="toolbar-editor-button"
+          />
+        )}
       </div>
 
       {/* ── Section droite : recherche & outils ───────────────── */}

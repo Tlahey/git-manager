@@ -34,8 +34,8 @@ export async function apiGetRepoSummary(path: string) {
   return getRepoSummary(path)
 }
 
-export async function apiOpenInEditor(path: string, editor: string, customCommand?: string) {
-  return openInEditor(path, editor, customCommand)
+export async function apiOpenInEditor(path: string, command: string) {
+  return openInEditor(path, command)
 }
 
 export async function apiGetRepoReadme(path: string) {

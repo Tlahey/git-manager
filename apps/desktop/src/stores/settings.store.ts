@@ -15,7 +15,6 @@ const DEFAULT_SETTINGS: AppSettings = {
     defaultAuthorEmail: '',
     protectedBranches: ['main', 'master', 'develop'],
     showStashesInGraph: true,
-    externalEditor: 'vscode',
     externalEditorCommand: '',
     commitInstructions: '',
     commitPattern: '',
@@ -45,11 +44,6 @@ const DEFAULT_SETTINGS: AppSettings = {
     useSystemAgent: true,
   },
   externalTools: {
-    mergeTool: 'integrated',
-    mergeToolCommand: '',
-    diffTool: 'integrated',
-    diffToolCommand: '',
-    externalTerminal: 'system',
     externalTerminalCommand: '',
   },
   notifications: {

@@ -293,64 +293,36 @@ pub async fn get_repo_summary(path: String) -> Result<GitRepoSummary, String> {
     })
 }
 
-/// Ouvre un dépôt Git dans un éditeur externe configuré
+/// Ouvre un dépôt Git dans l'application d'édition choisie par l'utilisateur
+/// (chemin absolu vers un .app ou un exécutable, sélectionné via le picker natif)
 #[tauri::command]
-pub async fn open_in_editor(
-    path: String,
-    editor: String,
-    custom_command: Option<String>,
-) -> Result<(), String> {
-    let program = match editor.as_str() {
-        "vscode" => "code".to_string(),
-        "cursor" => "cursor".to_string(),
-        "sublime" => "subl".to_string(),
-        "intellij" => "idea".to_string(),
-        "custom" => {
-            if let Some(cmd) = custom_command {
-                if cmd.is_empty() {
-                    return Err("Custom editor command is empty".to_string());
-                }
-                cmd
-            } else {
-                return Err("No custom editor command specified".to_string());
-            }
-        }
-        _ => return Err(format!("Unknown editor: {}", editor)),
-    };
+pub async fn open_in_editor(path: String, command: String) -> Result<(), String> {
+    if command.is_empty() {
+        return Err("No editor application configured".to_string());
+    }
+
+    // macOS .app bundles (picked via the native file dialog) can't be
+    // executed directly — they must be launched through `open -a`.
+    #[cfg(target_os = "macos")]
+    if command.ends_with(".app") {
+        return std::process::Command::new("open")
+            .args(["-a", &command, &path])
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("Failed to open editor: {}", e));
+    }
 
     #[cfg(target_os = "windows")]
     let status = std::process::Command::new("cmd")
-        .args(&["/C", &program, &path])
+        .args(["/C", &command, &path])
         .spawn();
 
     #[cfg(not(target_os = "windows"))]
-    let status = std::process::Command::new(&program).arg(&path).spawn();
+    let status = std::process::Command::new(&command).arg(&path).spawn();
 
-    match status {
-        Ok(_) => Ok(()),
-        Err(e) => {
-            #[cfg(target_os = "macos")]
-            {
-                let app_name = match editor.as_str() {
-                    "vscode" => Some("Visual Studio Code"),
-                    "cursor" => Some("Cursor"),
-                    "sublime" => Some("Sublime Text"),
-                    "intellij" => Some("IntelliJ IDEA"),
-                    _ => None,
-                };
-                if let Some(app) = app_name {
-                    if std::process::Command::new("open")
-                        .args(&["-a", app, &path])
-                        .spawn()
-                        .is_ok()
-                    {
-                        return Ok(());
-                    }
-                }
-            }
-            Err(format!("Failed to open editor: {}", e))
-        }
-    }
+    status
+        .map(|_| ())
+        .map_err(|e| format!("Failed to open editor: {}", e))
 }
 
 /// Lit le contenu du fichier README du dépôt s'il existe
@@ -383,78 +355,39 @@ pub async fn get_repo_readme(path: String) -> Result<String, String> {
     Err("No README file found in this repository".to_string())
 }
 
-/// Ouvre un terminal dans le répertoire spécifié
+/// Ouvre un terminal dans le répertoire spécifié, avec l'application choisie
+/// par l'utilisateur (chemin absolu vers un .app ou un exécutable)
 #[tauri::command]
-pub async fn open_in_terminal(
-    path: String,
-    terminal: String,
-    custom_command: Option<String>,
-) -> Result<(), String> {
-    let program = match terminal.as_str() {
-        "system" => {
-            #[cfg(target_os = "macos")]
-            {
-                "Terminal".to_string()
-            }
-            #[cfg(target_os = "windows")]
-            {
-                "cmd".to_string()
-            }
-            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-            {
-                "x-terminal-emulator".to_string()
-            }
-        }
-        "custom" => {
-            if let Some(cmd) = custom_command {
-                if cmd.is_empty() {
-                    return Err("Custom terminal command is empty".to_string());
-                }
-                cmd
-            } else {
-                return Err("No custom terminal command specified".to_string());
-            }
-        }
-        _ => return Err(format!("Unknown terminal choice: {}", terminal)),
-    };
+pub async fn open_in_terminal(path: String, command: String) -> Result<(), String> {
+    if command.is_empty() {
+        return Err("No terminal application configured".to_string());
+    }
 
+    // macOS .app bundles (picked via the native file dialog) can't be
+    // executed directly — they must be launched through `open -a`.
     #[cfg(target_os = "macos")]
-    {
-        if terminal == "system" {
-            std::process::Command::new("open")
-                .args(&["-a", "Terminal", &path])
-                .spawn()
-                .map_err(|e| e.to_string())?;
-            return Ok(());
-        }
+    if command.ends_with(".app") {
+        return std::process::Command::new("open")
+            .args(["-a", &command, &path])
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("Failed to open terminal: {}", e));
     }
 
     #[cfg(target_os = "windows")]
-    {
-        if terminal == "system" {
-            std::process::Command::new("cmd")
-                .args(&["/C", "start", "cmd.exe", "/K", "cd", "/d", &path])
-                .spawn()
-                .map_err(|e| e.to_string())?;
-            return Ok(());
-        }
-    }
+    let status = std::process::Command::new("cmd")
+        .args(["/C", "start", &command])
+        .current_dir(&path)
+        .spawn();
 
-    let status = if cfg!(target_os = "windows") {
-        std::process::Command::new("cmd")
-            .args(&["/C", &program])
-            .current_dir(&path)
-            .spawn()
-    } else {
-        std::process::Command::new(&program)
-            .current_dir(&path)
-            .spawn()
-    };
+    #[cfg(not(target_os = "windows"))]
+    let status = std::process::Command::new(&command)
+        .current_dir(&path)
+        .spawn();
 
-    match status {
-        Ok(_) => Ok(()),
-        Err(e) => Err(format!("Failed to open terminal: {}", e)),
-    }
+    status
+        .map(|_| ())
+        .map_err(|e| format!("Failed to open terminal: {}", e))
 }
 
 /// Lit l'historique zsh/bash du système et extrait les commandes commençant par git

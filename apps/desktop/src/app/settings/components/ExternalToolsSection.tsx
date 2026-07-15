@@ -1,18 +1,18 @@
-import { Input, Separator } from '@git-manager/ui'
-import { GitPullRequest, GitCompare, FileCode, Terminal } from 'lucide-react'
+import { Button, Separator } from '@git-manager/ui'
+import { FileCode, FolderOpen, Terminal, X } from 'lucide-react'
+import { open } from '@tauri-apps/plugin-dialog'
 import { useSettingsStore } from '../../../stores/settings.store'
+
+/** Derives a human-readable app name from a picked `.app` bundle (or executable) path. */
+function appLabel(path: string): string {
+  const base = path.split('/').pop() || path
+  return base.replace(/\.app$/, '')
+}
 
 export function ExternalToolsSection() {
   const { settings, updateSettings } = useSettingsStore()
 
-  const tools = settings.externalTools || {
-    mergeTool: 'integrated',
-    mergeToolCommand: '',
-    diffTool: 'integrated',
-    diffToolCommand: '',
-    externalTerminal: 'system',
-    externalTerminalCommand: '',
-  }
+  const tools = settings.externalTools || { externalTerminalCommand: '' }
   const git = settings.git
 
   function updateTools(partial: Partial<typeof tools>) {
@@ -23,114 +23,81 @@ export function ExternalToolsSection() {
     updateSettings({ git: { ...git, ...partial } })
   }
 
+  async function pickApplication(title: string) {
+    const selected = await open({
+      multiple: false,
+      directory: false,
+      title,
+      defaultPath: '/Applications',
+      filters: [{ name: 'Application', extensions: ['app'] }],
+    })
+    return typeof selected === 'string' ? selected : null
+  }
+
+  async function handlePickEditorApp() {
+    const selected = await pickApplication("Sélectionner l'application de l'éditeur")
+    if (selected) updateGit({ externalEditorCommand: selected })
+  }
+
+  async function handlePickTerminalApp() {
+    const selected = await pickApplication("Sélectionner l'application du terminal")
+    if (selected) updateTools({ externalTerminalCommand: selected })
+  }
+
   return (
     <div className="space-y-6">
-      {/* Merge Tool */}
-      <div className="space-y-3">
-        <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-          <GitPullRequest className="h-4 w-4 text-muted-foreground" />
-          Outil de fusion (Merge Tool)
-        </h4>
-        <div className="space-y-2">
-          <select
-            value={tools.mergeTool}
-            onChange={(e) => updateTools({ mergeTool: e.target.value })}
-            className="h-8 w-full rounded-md border border-input bg-background px-3 font-sans text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-          >
-            <option value="integrated">Éditeur de fusion intégré</option>
-            <option value="vscode">VS Code</option>
-            <option value="meld">Meld</option>
-            <option value="kdiff3">KDiff3</option>
-            <option value="custom">Commande personnalisée</option>
-          </select>
-
-          {tools.mergeTool === 'custom' && (
-            <div className="space-y-1">
-              <label className="text-[10px] font-medium text-muted-foreground">
-                Commande de fusion personnalisée
-              </label>
-              <Input
-                value={tools.mergeToolCommand}
-                onChange={(e) => updateTools({ mergeToolCommand: e.target.value })}
-                placeholder="Ex: meld $LOCAL $BASE $REMOTE --output $MERGED"
-                className="h-8 font-mono text-xs"
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      <Separator />
-
-      {/* Diff Tool */}
-      <div className="space-y-3">
-        <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-          <GitCompare className="h-4 w-4 text-muted-foreground" />
-          Outil de comparaison (Diff Tool)
-        </h4>
-        <div className="space-y-2">
-          <select
-            value={tools.diffTool}
-            onChange={(e) => updateTools({ diffTool: e.target.value })}
-            className="h-8 w-full rounded-md border border-input bg-background px-3 font-sans text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-          >
-            <option value="integrated">Comparateur intégré</option>
-            <option value="vscode">VS Code</option>
-            <option value="delta">git-delta</option>
-            <option value="custom">Commande personnalisée</option>
-          </select>
-
-          {tools.diffTool === 'custom' && (
-            <div className="space-y-1">
-              <label className="text-[10px] font-medium text-muted-foreground">
-                Commande de comparaison personnalisée
-              </label>
-              <Input
-                value={tools.diffToolCommand}
-                onChange={(e) => updateTools({ diffToolCommand: e.target.value })}
-                placeholder="Ex: diffmerge $LOCAL $REMOTE"
-                className="h-8 font-mono text-xs"
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      <Separator />
-
       {/* External Editor */}
       <div className="space-y-3">
         <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
           <FileCode className="h-4 w-4 text-muted-foreground" />
           Éditeur de code externe
         </h4>
-        <div className="space-y-2">
-          <select
-            value={git.externalEditor}
-            onChange={(e) => updateGit({ externalEditor: e.target.value })}
-            className="h-8 w-full rounded-md border border-input bg-background px-3 font-sans text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-          >
-            <option value="vscode">VS Code</option>
-            <option value="cursor">Cursor</option>
-            <option value="sublime">Sublime Text</option>
-            <option value="intellij">IntelliJ IDEA</option>
-            <option value="custom">Commande personnalisée</option>
-          </select>
-
-          {git.externalEditor === 'custom' && (
-            <div className="space-y-1">
-              <label className="text-[10px] font-medium text-muted-foreground">
-                Commande de l&apos;éditeur
-              </label>
-              <Input
-                value={git.externalEditorCommand}
-                onChange={(e) => updateGit({ externalEditorCommand: e.target.value })}
-                placeholder="Ex: /usr/local/bin/code"
-                className="h-8 font-mono text-xs"
-              />
+        {git.externalEditorCommand ? (
+          <div className="flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2">
+            <span
+              className="truncate font-mono text-xs text-foreground"
+              data-testid="externalEditor-value"
+            >
+              {appLabel(git.externalEditorCommand)}
+            </span>
+            <div className="flex shrink-0 gap-1.5">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1.5 text-xs"
+                onClick={handlePickEditorApp}
+                data-testid="externalEditor-change"
+              >
+                <FolderOpen className="h-3.5 w-3.5" />
+                Changer
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0 text-muted-foreground"
+                onClick={() => updateGit({ externalEditorCommand: '' })}
+                title="Retirer l'application"
+                data-testid="externalEditor-clear"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 text-xs"
+            onClick={handlePickEditorApp}
+            data-testid="externalEditor-select"
+          >
+            <FolderOpen className="h-3.5 w-3.5" />
+            Sélectionner mon éditeur…
+          </Button>
+        )}
       </div>
 
       <Separator />
@@ -141,33 +108,52 @@ export function ExternalToolsSection() {
           <Terminal className="h-4 w-4 text-muted-foreground" />
           Terminal externe
         </h4>
-        <div className="space-y-2">
-          <select
-            value={tools.externalTerminal}
-            onChange={(e) => updateTools({ externalTerminal: e.target.value })}
-            className="h-8 w-full rounded-md border border-input bg-background px-3 font-sans text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-          >
-            <option value="system">Terminal système par défaut</option>
-            <option value="iterm2">iTerm2</option>
-            <option value="warp">Warp</option>
-            <option value="alacritty">Alacritty</option>
-            <option value="custom">Commande personnalisée</option>
-          </select>
-
-          {tools.externalTerminal === 'custom' && (
-            <div className="space-y-1">
-              <label className="text-[10px] font-medium text-muted-foreground">
-                Commande du terminal
-              </label>
-              <Input
-                value={tools.externalTerminalCommand}
-                onChange={(e) => updateTools({ externalTerminalCommand: e.target.value })}
-                placeholder="Ex: alacritty --working-directory $PATH"
-                className="h-8 font-mono text-xs"
-              />
+        {tools.externalTerminalCommand ? (
+          <div className="flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2">
+            <span
+              className="truncate font-mono text-xs text-foreground"
+              data-testid="externalTerminal-value"
+            >
+              {appLabel(tools.externalTerminalCommand)}
+            </span>
+            <div className="flex shrink-0 gap-1.5">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1.5 text-xs"
+                onClick={handlePickTerminalApp}
+                data-testid="externalTerminal-change"
+              >
+                <FolderOpen className="h-3.5 w-3.5" />
+                Changer
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0 text-muted-foreground"
+                onClick={() => updateTools({ externalTerminalCommand: '' })}
+                title="Retirer l'application"
+                data-testid="externalTerminal-clear"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 text-xs"
+            onClick={handlePickTerminalApp}
+            data-testid="externalTerminal-select"
+          >
+            <FolderOpen className="h-3.5 w-3.5" />
+            Sélectionner mon terminal…
+          </Button>
+        )}
       </div>
     </div>
   )

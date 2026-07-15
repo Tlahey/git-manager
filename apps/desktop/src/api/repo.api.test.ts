@@ -57,10 +57,10 @@ describe('repo.api pass-throughs', () => {
     expect(mocked.getRepoSummary).toHaveBeenCalledWith(PATH)
   })
 
-  it('apiOpenInEditor forwards an optional custom command', async () => {
+  it('apiOpenInEditor forwards the configured editor command', async () => {
     mocked.openInEditor.mockResolvedValue(undefined)
-    await api.apiOpenInEditor(PATH, 'custom', 'my-editor {path}')
-    expect(mocked.openInEditor).toHaveBeenCalledWith(PATH, 'custom', 'my-editor {path}')
+    await api.apiOpenInEditor(PATH, '/Applications/Sublime Text.app')
+    expect(mocked.openInEditor).toHaveBeenCalledWith(PATH, '/Applications/Sublime Text.app')
   })
 
   it('apiGetRepoReadme delegates to getRepoReadme', async () => {

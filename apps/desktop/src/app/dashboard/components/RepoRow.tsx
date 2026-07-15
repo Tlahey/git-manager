@@ -57,9 +57,7 @@ export function RepoRow({
   async function handleOpenEditor(e: React.MouseEvent) {
     e.stopPropagation()
     try {
-      const editor = settings.git.externalEditor || 'vscode'
-      const customCmd = settings.git.externalEditorCommand || ''
-      await apiOpenInEditor(path, editor, customCmd)
+      await apiOpenInEditor(path, settings.git.externalEditorCommand)
     } catch (err) {
       console.error('Failed to launch editor:', err)
     }
@@ -81,20 +79,10 @@ export function RepoRow({
   }
 
   const editorName = useMemo(() => {
-    const key = settings.git.externalEditor || 'vscode'
-    switch (key) {
-      case 'vscode':
-        return 'VS Code'
-      case 'cursor':
-        return 'Cursor'
-      case 'sublime':
-        return 'Sublime Text'
-      case 'intellij':
-        return 'IntelliJ'
-      default:
-        return 'Éditeur personnalisé'
-    }
-  }, [settings.git.externalEditor])
+    const command = settings.git.externalEditorCommand
+    const base = command.split('/').pop() || command
+    return base.replace(/\.app$/, '')
+  }, [settings.git.externalEditorCommand])
 
   return (
     <div
@@ -218,7 +206,7 @@ export function RepoRow({
       {/* ACTIONS ON THE FAR RIGHT */}
       <div className="flex shrink-0 items-center gap-1.5">
         {/* Open in Editor button */}
-        {!error && (
+        {!error && settings.git.externalEditorCommand && (
           <div className="group/edit relative">
             <button
               onClick={handleOpenEditor}

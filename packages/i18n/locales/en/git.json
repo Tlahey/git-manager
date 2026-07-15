@@ -287,6 +287,7 @@
   "toolbar.pop": "Pop",
   "toolbar.terminal": "Terminal",
   "toolbar.terminalSoon": "Integrated terminal — coming soon",
+  "toolbar.editor": "Editor",
   "undoRedo.commit": "Undo commit {{sha}}",
   "undoRedo.discard": "Undo discard on {{file}}",
   "undoRedo.checkout": "Undo checkout to {{branch}}",

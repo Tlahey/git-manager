@@ -15,6 +15,7 @@ import {
   apiCreateBranch,
 } from '../api/git.api'
 import { apiOpenTerminal } from '../api/shell.api'
+import { apiOpenInEditor } from '../api/repo.api'
 import { useGitStatus } from './useGitStatus'
 import { useGitStashes } from './useGitStashes'
 
@@ -62,11 +63,19 @@ export function useActionToolbar(t: TranslateFn) {
   const undoLabel = useUndoHistoryStore((s) => (activeRepo ? s.peekUndoLabel(activeRepo) : null))
   const redoLabel = useUndoHistoryStore((s) => (activeRepo ? s.peekRedoLabel(activeRepo) : null))
 
+  const terminalCommand = settings.externalTools?.externalTerminalCommand || ''
+  const editorCommand = settings.git.externalEditorCommand || ''
+  const hasTerminal = terminalCommand.length > 0
+  const hasEditor = editorCommand.length > 0
+
   const handleOpenTerminal = async () => {
-    if (!activeRepo) return
-    const terminal = settings.externalTools?.externalTerminal || 'system'
-    const customCommand = settings.externalTools?.externalTerminalCommand
-    await apiOpenTerminal(activeRepo, terminal, customCommand)
+    if (!activeRepo || !hasTerminal) return
+    await apiOpenTerminal(activeRepo, terminalCommand)
+  }
+
+  const handleOpenEditor = async () => {
+    if (!activeRepo || !hasEditor) return
+    await apiOpenInEditor(activeRepo, editorCommand)
   }
 
   function invalidateRepo() {
@@ -191,7 +200,10 @@ export function useActionToolbar(t: TranslateFn) {
     canRedo,
     undoLabel,
     redoLabel,
+    hasTerminal,
+    hasEditor,
     handleOpenTerminal,
+    handleOpenEditor,
     handleFetch,
     handleFetchAll,
     handlePull,
