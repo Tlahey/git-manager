@@ -1,8 +1,15 @@
 import { useTranslation } from '@git-manager/i18n'
 import { Spinner } from '@git-manager/ui'
-import { ChevronLeft, GitPullRequest, PanelRightClose, PanelRightOpen } from 'lucide-react'
+import {
+  ChevronLeft,
+  ExternalLink,
+  GitPullRequest,
+  PanelRightClose,
+  PanelRightOpen,
+} from 'lucide-react'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { usePrDetail } from '../../../hooks/usePrDetail'
+import { apiOpenUrl } from '../../../api/shell.api'
 import { PrTitle } from './PrTitle'
 import { PrMeta } from './PrMeta'
 import { PrDescription } from './PrDescription'
@@ -41,19 +48,31 @@ export function PrDetailCenter({ repoPath, prNumber, onClose }: PrDetailCenterPr
         <GitPullRequest className="ml-1 h-3.5 w-3.5 text-primary" />
         <span className="text-xs text-muted-foreground">{t('pr.view.title')}</span>
 
-        <button
-          onClick={togglePrFiles}
-          data-testid="pr-toggle-files"
-          aria-pressed={prFilesVisible}
-          title={prFilesVisible ? t('pr.files.hide') : t('pr.files.show')}
-          className="ml-auto flex items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        >
-          {prFilesVisible ? (
-            <PanelRightClose className="h-3.5 w-3.5" />
-          ) : (
-            <PanelRightOpen className="h-3.5 w-3.5" />
+        <div className="ml-auto flex items-center gap-1">
+          {pr && (
+            <button
+              onClick={() => apiOpenUrl(pr.html_url)}
+              data-testid="pr-detail-open-github"
+              title={t('pr.view.openOnGithub')}
+              className="flex items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </button>
           )}
-        </button>
+          <button
+            onClick={togglePrFiles}
+            data-testid="pr-toggle-files"
+            aria-pressed={prFilesVisible}
+            title={prFilesVisible ? t('pr.files.hide') : t('pr.files.show')}
+            className="flex items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            {prFilesVisible ? (
+              <PanelRightClose className="h-3.5 w-3.5" />
+            ) : (
+              <PanelRightOpen className="h-3.5 w-3.5" />
+            )}
+          </button>
+        </div>
       </div>
 
       {isLoading || !pr ? (

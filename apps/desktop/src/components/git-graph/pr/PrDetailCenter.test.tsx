@@ -6,8 +6,12 @@ vi.mock('@git-manager/i18n', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }))
 
-const { usePrDetailMock } = vi.hoisted(() => ({ usePrDetailMock: vi.fn() }))
+const { usePrDetailMock, apiOpenUrlMock } = vi.hoisted(() => ({
+  usePrDetailMock: vi.fn(),
+  apiOpenUrlMock: vi.fn(),
+}))
 vi.mock('../../../hooks/usePrDetail', () => ({ usePrDetail: usePrDetailMock }))
+vi.mock('../../../api/shell.api', () => ({ apiOpenUrl: apiOpenUrlMock }))
 
 // Neutralise the data/action hooks the composed blocks pull in, so this test stays on composition.
 vi.mock('../../../hooks/usePrActions', () => ({
@@ -33,6 +37,7 @@ function pr(overrides: Record<string, unknown> = {}) {
     number: 7,
     title: 'Add feature',
     body: '## Summary\n\nHello',
+    html_url: 'https://github.com/org/repo/pull/7',
     state: 'open',
     draft: false,
     merged_at: null,
@@ -63,6 +68,19 @@ describe('PrDetailCenter', () => {
     expect(screen.getByTestId('stub-merge')).toBeInTheDocument()
     expect(screen.getByTestId('stub-comment')).toBeInTheDocument()
     expect(screen.getByTestId('pr-state-badge')).toHaveTextContent('pr.state.open')
+  })
+
+  it('hides the "open on GitHub" link while loading', () => {
+    usePrDetailMock.mockReturnValue({ pr: undefined, isLoading: true, error: null, mutate: vi.fn() })
+    render(<PrDetailCenter repoPath="/repo" prNumber={7} onClose={vi.fn()} />)
+    expect(screen.queryByTestId('pr-detail-open-github')).not.toBeInTheDocument()
+  })
+
+  it('opens the PR on GitHub from the header link', async () => {
+    usePrDetailMock.mockReturnValue({ pr: pr(), isLoading: false, error: null, mutate: vi.fn() })
+    render(<PrDetailCenter repoPath="/repo" prNumber={7} onClose={vi.fn()} />)
+    await userEvent.setup().click(screen.getByTestId('pr-detail-open-github'))
+    expect(apiOpenUrlMock).toHaveBeenCalledWith('https://github.com/org/repo/pull/7')
   })
 
   it('toggles the files panel from the header button', async () => {

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, act, waitFor } from '@testing-library/react'
+import { renderHook, render, act, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
-import { SWRConfig } from 'swr'
+import useSWR, { SWRConfig } from 'swr'
 
 const postPrComment = vi.fn()
 const submitPrReview = vi.fn()
@@ -164,5 +164,71 @@ describe('usePrActions', () => {
       await result.current.comment('x')
     })
     expect(postPrComment).not.toHaveBeenCalled()
+  })
+})
+
+describe('usePrActions — cross-cache revalidation on status-changing actions', () => {
+  function harness(githubDataFetcher: () => Promise<unknown>, commitPrFetcher: () => Promise<unknown>) {
+    let actions!: ReturnType<typeof usePrActions>
+    function Harness() {
+      useSWR(['github-data', 'tok', 'me'], githubDataFetcher)
+      useSWR(['commit-pr', 'org', 'repo', 'sha', 'tok'], commitPrFetcher)
+      actions = usePrActions('/repo', 7)
+      return null
+    }
+    render(
+      createElement(
+        SWRConfig,
+        { value: { provider: () => new Map(), dedupingInterval: 0 } },
+        createElement(Harness)
+      )
+    )
+    return () => actions
+  }
+
+  it('merge revalidates the global PR list ("github-data") and commit-PR annotation caches', async () => {
+    const githubDataFetcher = vi.fn().mockResolvedValue({ prs: [] })
+    const commitPrFetcher = vi.fn().mockResolvedValue(null)
+    const getActions = harness(githubDataFetcher, commitPrFetcher)
+
+    await waitFor(() => expect(githubDataFetcher).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(commitPrFetcher).toHaveBeenCalledTimes(1))
+
+    await act(async () => {
+      await getActions().merge({ mergeMethod: 'merge' })
+    })
+
+    await waitFor(() => expect(githubDataFetcher).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(commitPrFetcher).toHaveBeenCalledTimes(2))
+  })
+
+  it('setState (close/reopen) also revalidates those caches', async () => {
+    const githubDataFetcher = vi.fn().mockResolvedValue({ prs: [] })
+    const commitPrFetcher = vi.fn().mockResolvedValue(null)
+    const getActions = harness(githubDataFetcher, commitPrFetcher)
+
+    await waitFor(() => expect(githubDataFetcher).toHaveBeenCalledTimes(1))
+
+    await act(async () => {
+      await getActions().setState('closed')
+    })
+
+    await waitFor(() => expect(githubDataFetcher).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(commitPrFetcher).toHaveBeenCalledTimes(2))
+  })
+
+  it('a comment does not trigger the expensive global revalidation', async () => {
+    const githubDataFetcher = vi.fn().mockResolvedValue({ prs: [] })
+    const commitPrFetcher = vi.fn().mockResolvedValue(null)
+    const getActions = harness(githubDataFetcher, commitPrFetcher)
+
+    await waitFor(() => expect(githubDataFetcher).toHaveBeenCalledTimes(1))
+
+    await act(async () => {
+      await getActions().comment('hi')
+    })
+
+    expect(githubDataFetcher).toHaveBeenCalledTimes(1)
+    expect(commitPrFetcher).toHaveBeenCalledTimes(1)
   })
 })
