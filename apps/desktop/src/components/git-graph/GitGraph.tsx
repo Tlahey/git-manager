@@ -23,7 +23,7 @@ import { DiffViewCenter } from './DiffViewCenter'
 import { PrDetailCenter } from './pr/PrDetailCenter'
 import { PrComposerCenter } from './pr/PrComposerCenter'
 import { PrFileDiffCenter } from './pr/PrFileDiffCenter'
-import { PrSidePanel } from './pr/PrSidePanel'
+import { PrFilesPanel } from './pr/PrFilesPanel'
 import { EmptyRepoPanel } from './EmptyRepoPanel'
 import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
 import { ConflictResolutionPanel } from './ConflictResolutionPanel'
@@ -481,7 +481,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
             className="h-full min-w-[350px] shrink-0 overflow-hidden"
             style={{ width: panelWidthState }}
           >
-            <PrSidePanel repoPath={repoPath} prNumber={activePrNumber} />
+            <PrFilesPanel repoPath={repoPath} prNumber={activePrNumber} />
           </div>
         </>
       ) : primaryNode ? (

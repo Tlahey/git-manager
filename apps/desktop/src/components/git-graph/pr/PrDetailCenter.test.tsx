@@ -23,6 +23,7 @@ vi.mock('../../../hooks/usePrMergeability', () => ({
 // Stub the interactive children so this test focuses on composition + header.
 vi.mock('./PrMergeButton', () => ({ PrMergeButton: () => <div data-testid="stub-merge" /> }))
 vi.mock('./PrCommentBox', () => ({ PrCommentBox: () => <div data-testid="stub-comment" /> }))
+vi.mock('./PrMetaSidebar', () => ({ PrMetaSidebar: () => <div data-testid="stub-meta-sidebar" /> }))
 
 import { PrDetailCenter } from './PrDetailCenter'
 
