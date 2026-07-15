@@ -426,6 +426,7 @@
   "pr.merge.methodMergeDesc": "Tous les commits de cette branche sont ajoutés à la branche de base via un commit de merge.",
   "pr.merge.methodSquashDesc": "Les commits sont regroupés en un seul nouveau commit sur la branche de base.",
   "pr.merge.methodRebaseDesc": "Les commits sont rebasés et ajoutés un à un sur la branche de base.",
+  "pr.merge.chooseMethod": "Choisir une méthode de fusion",
   "pr.review.submit": "Soumettre une review",
   "pr.side.reviewers": "Reviewers",
   "pr.side.noReviewers": "Aucun reviewer pour le moment",

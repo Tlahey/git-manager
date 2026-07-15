@@ -22,15 +22,16 @@ export function PrMergePanel({ repoPath, prNumber, pr }: PrMergePanelProps) {
   const inMergeQueue = pr.mergeable_state === 'queued'
 
   return (
-    <section data-testid="pr-merge-panel" className="border-t border-border">
-      <div className="flex items-center gap-2 px-4 py-3">
-        <Icon className={`h-4 w-4 ${visual.iconClassName}`} />
-        <span className="text-xs font-medium text-foreground">
-          {t(inMergeQueue ? 'pr.merge.stateQueued' : visual.labelKey)}
-        </span>
-      </div>
+    <section data-testid="pr-merge-panel" className="border-t border-border px-4 py-3">
+      {/* The state + checks/review + merge action, grouped in a bordered card (GitHub's merge box). */}
+      <div className="overflow-hidden rounded-lg border border-border">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
+          <Icon className={`h-4 w-4 ${visual.iconClassName}`} />
+          <span className="text-xs font-medium text-foreground">
+            {t(inMergeQueue ? 'pr.merge.stateQueued' : visual.labelKey)}
+          </span>
+        </div>
 
-      <div className="border-t border-border">
         <PrChecksBox
           repoPath={repoPath}
           prNumber={prNumber}
@@ -38,17 +39,17 @@ export function PrMergePanel({ repoPath, prNumber, pr }: PrMergePanelProps) {
           mergeability={mergeability}
           isLoading={isLoading}
         />
-      </div>
 
-      <PrMergeButton
-        repoPath={repoPath}
-        prNumber={prNumber}
-        mergeState={mergeability?.mergeStateStatus ?? 'UNKNOWN'}
-        prState={pr.state}
-        isDraft={pr.draft}
-        merged={!!pr.merged_at}
-        mergeable={pr.mergeable}
-      />
+        <PrMergeButton
+          repoPath={repoPath}
+          prNumber={prNumber}
+          mergeState={mergeability?.mergeStateStatus ?? 'UNKNOWN'}
+          prState={pr.state}
+          isDraft={pr.draft}
+          merged={!!pr.merged_at}
+          mergeable={pr.mergeable}
+        />
+      </div>
     </section>
   )
 }

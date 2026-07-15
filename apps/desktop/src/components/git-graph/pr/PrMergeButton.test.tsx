@@ -75,24 +75,33 @@ describe('PrMergeButton — gating', () => {
   })
 })
 
-describe('PrMergeButton — action', () => {
-  it('defaults to a merge commit and shows the method description', () => {
+describe('PrMergeButton — split-button method dropdown', () => {
+  it('defaults to a merge commit (main button reflects the method)', () => {
     renderButton()
-    expect(screen.getByTestId('pr-merge-method')).toHaveValue('merge')
-    expect(screen.getByTestId('pr-merge-method-desc')).toHaveTextContent('pr.merge.methodMergeDesc')
+    expect(screen.getByTestId('pr-merge-button')).toHaveTextContent('pr.merge.button')
+    // The method menu is closed until the caret is clicked.
+    expect(screen.queryByTestId('pr-merge-method-menu')).not.toBeInTheDocument()
   })
 
-  it('updates the description when the method changes', async () => {
+  it('opens the dropdown and lists methods with their descriptions', async () => {
     const user = userEvent.setup()
     renderButton()
-    await user.selectOptions(screen.getByTestId('pr-merge-method'), 'squash')
-    expect(screen.getByTestId('pr-merge-method-desc')).toHaveTextContent('pr.merge.methodSquashDesc')
+    await user.click(screen.getByTestId('pr-merge-method'))
+    const menu = screen.getByTestId('pr-merge-method-menu')
+    expect(menu).toHaveTextContent('pr.merge.methodSquash')
+    expect(menu).toHaveTextContent('pr.merge.methodSquashDesc')
+    expect(menu).toHaveTextContent('pr.merge.methodRebaseDesc')
   })
 
-  it('merges with the chosen method', async () => {
+  it('picks a method: the main button relabels and merges with it', async () => {
     const user = userEvent.setup()
     renderButton()
-    await user.selectOptions(screen.getByTestId('pr-merge-method'), 'rebase')
+    await user.click(screen.getByTestId('pr-merge-method'))
+    await user.click(screen.getByTestId('pr-merge-method-rebase'))
+    // Menu closes and the main button now shows the chosen method.
+    expect(screen.queryByTestId('pr-merge-method-menu')).not.toBeInTheDocument()
+    expect(screen.getByTestId('pr-merge-button')).toHaveTextContent('pr.merge.methodRebase')
+
     await user.click(screen.getByTestId('pr-merge-button'))
     expect(mergeMock).toHaveBeenCalledWith({ mergeMethod: 'rebase' })
   })
