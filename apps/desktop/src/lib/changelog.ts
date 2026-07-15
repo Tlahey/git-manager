@@ -12,9 +12,12 @@ export interface ChangelogEntry {
 }
 
 /**
- * Parses the repo's root CHANGELOG.md — `## [x.y.z] - date` version headings, `### Category`
- * subheadings, `- ` bullet items — into structured entries, in file order (newest first, by
- * convention of how the file is maintained).
+ * Parses the repo's root CHANGELOG.md — `## [x.y.z] - date` version headings, optional
+ * `### Category` subheadings, and `-`/`*` bullet items (hand-written entries use `-`; GitHub's
+ * generated release notes, used by prepare-release.yml, use a flat `*` list with no subheading)
+ * — into structured entries, in file order (newest first, by convention of how the file is
+ * maintained). Bullets found directly under a version heading with no `### ` subheading yet are
+ * grouped into an implicit section with an empty heading.
  */
 export function parseChangelog(raw: string = changelogRaw): ChangelogEntry[] {
   const entries: ChangelogEntry[] = []
@@ -38,8 +41,12 @@ export function parseChangelog(raw: string = changelogRaw): ChangelogEntry[] {
       continue
     }
 
-    const itemMatch = line.match(/^-\s+(.+)/)
-    if (itemMatch && currentSection) {
+    const itemMatch = line.match(/^[-*]\s+(.+)/)
+    if (itemMatch) {
+      if (!currentSection) {
+        currentSection = { heading: '', items: [] }
+        current.sections.push(currentSection)
+      }
       currentSection.items.push(itemMatch[1].trim())
     }
   }

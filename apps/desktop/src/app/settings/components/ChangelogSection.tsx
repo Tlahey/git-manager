@@ -3,8 +3,57 @@ import { useTranslation } from '@git-manager/i18n'
 import { ScrollText } from 'lucide-react'
 import { getAppChangelog } from '../../../lib/changelog'
 import { apiGetAppVersion } from '../../../api/updater.api'
+import { apiOpenUrl } from '../../../api/shell.api'
 
 const CHANGELOG_ENTRIES = getAppChangelog()
+
+// Matches GitHub's own "generate release notes" bullet format: "<title> by @<user> in <PR url>".
+const PR_BULLET = /^(.*?)\s+by\s+(@\S+)\s+in\s+(https:\/\/\S+)$/
+const URL_PATTERN = /(https?:\/\/\S+)/g
+
+/** Renders one changelog bullet, turning a trailing GitHub "by @user in <url>" into a compact
+ *  clickable PR reference, or linkifying any other bare URL found in the text. */
+function ChangelogItemText({ item }: { item: string }) {
+  const prMatch = item.match(PR_BULLET)
+  if (prMatch) {
+    const [, title, author, url] = prMatch
+    const prNumberMatch = url.match(/\/pull\/(\d+)$/)
+    const label = prNumberMatch ? `#${prNumberMatch[1]}` : url
+    return (
+      <>
+        {title} <span className="text-muted-foreground/70">{author}</span>{' '}
+        <button
+          type="button"
+          onClick={() => apiOpenUrl(url)}
+          className="text-primary hover:underline"
+        >
+          {label}
+        </button>
+      </>
+    )
+  }
+
+  // A capturing-group split interleaves matches at odd indices: [text, url, text, url, ...].
+  const parts = item.split(URL_PATTERN)
+  return (
+    <>
+      {parts.map((part, idx) =>
+        idx % 2 === 1 ? (
+          <button
+            key={idx}
+            type="button"
+            onClick={() => apiOpenUrl(part)}
+            className="text-primary hover:underline"
+          >
+            {part}
+          </button>
+        ) : (
+          part
+        )
+      )}
+    </>
+  )
+}
 
 /** Settings → Changelog: renders the repo's root CHANGELOG.md (bundled at build time, see
  *  lib/changelog.ts), newest entry first, highlighting whichever version is currently running. */
@@ -62,14 +111,18 @@ export function ChangelogSection() {
               )}
             </div>
 
-            {entry.sections.map((section) => (
-              <div key={section.heading} className="space-y-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {section.heading}
-                </p>
+            {entry.sections.map((section, idx) => (
+              <div key={idx} className="space-y-1">
+                {section.heading && (
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {section.heading}
+                  </p>
+                )}
                 <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-foreground/80">
                   {section.items.map((item) => (
-                    <li key={item}>{item}</li>
+                    <li key={item}>
+                      <ChangelogItemText item={item} />
+                    </li>
                   ))}
                 </ul>
               </div>

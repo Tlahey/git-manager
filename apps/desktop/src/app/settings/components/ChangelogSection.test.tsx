@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 vi.mock('@git-manager/i18n', () => ({
   useTranslation: () => ({
@@ -11,12 +12,22 @@ vi.mock('@git-manager/i18n', () => ({
 const { apiGetAppVersion } = vi.hoisted(() => ({ apiGetAppVersion: vi.fn() }))
 vi.mock('../../../api/updater.api', () => ({ apiGetAppVersion }))
 
+const { apiOpenUrl } = vi.hoisted(() => ({ apiOpenUrl: vi.fn() }))
+vi.mock('../../../api/shell.api', () => ({ apiOpenUrl }))
+
 vi.mock('../../../lib/changelog', () => ({
   getAppChangelog: () => [
     {
       version: 'Unreleased',
       date: null,
-      sections: [{ heading: 'Added', items: ['Work in progress feature'] }],
+      sections: [
+        {
+          heading: '',
+          items: [
+            'feat: add thing by @octocat in https://github.com/owner/repo/pull/42',
+          ],
+        },
+      ],
     },
     {
       version: '1.1.0',
@@ -62,5 +73,17 @@ describe('ChangelogSection', () => {
     render(<ChangelogSection />)
 
     expect(screen.queryByTestId('changelog-current-badge')).not.toBeInTheDocument()
+  })
+
+  it('renders a GitHub "by @user in <url>" bullet as a compact PR link and opens it via apiOpenUrl on click', async () => {
+    apiGetAppVersion.mockResolvedValue('1.1.0')
+    const user = userEvent.setup()
+    render(<ChangelogSection />)
+
+    expect(screen.getByText(/feat: add thing/)).toBeInTheDocument()
+    expect(screen.getByText('@octocat')).toBeInTheDocument()
+    const link = screen.getByText('#42')
+    await user.click(link)
+    expect(apiOpenUrl).toHaveBeenCalledWith('https://github.com/owner/repo/pull/42')
   })
 })
