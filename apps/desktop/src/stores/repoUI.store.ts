@@ -50,6 +50,13 @@ interface RepoUIState {
   activePrNumber: number | null
   setActivePrNumber: (n: number | null) => void
   /**
+   * Filename of the PR file whose diff is shown in the center panel (only meaningful while
+   * `activePrNumber` is set). `null` = show the PR detail view. Reset whenever the active PR changes
+   * or closes. Session-scoped, not persisted.
+   */
+  activePrFile: string | null
+  setActivePrFile: (filename: string | null) => void
+  /**
    * When set, the repo view swaps its center panel for the PR-creation composer (title, base branch,
    * template/AI description). Set by `usePrPublishFlow.commitAndPrepare` after the commit exists,
    * cleared on create/cancel. Mutually exclusive with `activePrNumber`/`activeDiffFile` (all three
@@ -121,6 +128,7 @@ export const useRepoUIStore = create<RepoUIState>()(
       activeTab: DASHBOARD_TAB,
       activeDiffFile: null,
       activePrNumber: null,
+      activePrFile: null,
       prComposer: null,
       activeLeftPanel: 'sidebar',
       selectedHistoryOid: null,
@@ -141,18 +149,23 @@ export const useRepoUIStore = create<RepoUIState>()(
             activeLeftPanel: nextPanel,
             selectedHistoryOid: null,
             activePrNumber: file ? null : state.activePrNumber,
+            activePrFile: file ? null : state.activePrFile,
             prComposer: file ? null : state.prComposer,
           }
         }),
 
       // Opening a PR view claims the center/right panels; drop any open file diff or PR composer so
       // the center panel-swap sources don't fight (`GitGraph` gives the PR view precedence regardless).
+      // Switching or closing a PR always resets the selected PR file (the diff view is per-PR).
       setActivePrNumber: (n) =>
         set((state) => ({
           activePrNumber: n,
+          activePrFile: null,
           activeDiffFile: n != null ? null : state.activeDiffFile,
           prComposer: n != null ? null : state.prComposer,
         })),
+
+      setActivePrFile: (filename) => set({ activePrFile: filename }),
 
       // Opening the composer claims the center panel; drop any open file diff / PR view.
       setPrComposer: (composer) =>
@@ -160,6 +173,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           prComposer: composer,
           activeDiffFile: composer ? null : state.activeDiffFile,
           activePrNumber: composer ? null : state.activePrNumber,
+          activePrFile: composer ? null : state.activePrFile,
         })),
 
       setActiveLeftPanel: (panel) => set({ activeLeftPanel: panel }),
@@ -184,6 +198,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           activeTab: path ?? DASHBOARD_TAB,
           activeDiffFile: null,
           activePrNumber: null,
+          activePrFile: null,
           prComposer: null,
           activeLeftPanel: 'sidebar',
           selectedHistoryOid: null,
@@ -199,6 +214,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           activeRepo: state.openTabs.includes(id) ? id : null,
           activeDiffFile: null,
           activePrNumber: null,
+          activePrFile: null,
           prComposer: null,
           activeLeftPanel: 'sidebar',
           selectedHistoryOid: null,
@@ -249,6 +265,7 @@ export const useRepoUIStore = create<RepoUIState>()(
             activeRepo: state.activeRepo === path ? null : state.activeRepo,
             activeTab: wasActive ? DASHBOARD_TAB : state.activeTab,
             activePrNumber: wasActive ? null : state.activePrNumber,
+            activePrFile: wasActive ? null : state.activePrFile,
             prComposer: wasActive ? null : state.prComposer,
           }
         }),

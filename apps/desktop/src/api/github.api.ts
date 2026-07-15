@@ -451,6 +451,8 @@ export interface GhPrFile {
   deletions: number
   changes: number
   previous_filename?: string
+  /** Unified-diff hunks for the file. Absent for binary files and very large diffs. */
+  patch?: string
 }
 
 export interface CreatePrInput {

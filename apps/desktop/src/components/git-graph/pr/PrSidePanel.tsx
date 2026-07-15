@@ -3,6 +3,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { Spinner } from '@git-manager/ui'
 import { MessageSquarePlus } from 'lucide-react'
 import type { GhUser } from '../../../api/github.api'
+import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { usePrDetail } from '../../../hooks/usePrDetail'
 import { usePrComments } from '../../../hooks/usePrComments'
 import { usePrActions } from '../../../hooks/usePrActions'
@@ -32,6 +33,8 @@ export function PrSidePanel({ repoPath, prNumber }: PrSidePanelProps) {
   const { comments } = usePrComments(repoPath, prNumber)
   const { requestReviewer, unrequestReviewer, assign, unassign, addLabel, deleteLabel, pending } =
     usePrActions(repoPath, prNumber)
+  const activePrFile = useRepoUIStore((s) => s.activePrFile)
+  const setActivePrFile = useRepoUIStore((s) => s.setActivePrFile)
   const [reviewOpen, setReviewOpen] = useState(false)
   const [editing, setEditing] = useState<EditTarget>(null)
 
@@ -90,6 +93,8 @@ export function PrSidePanel({ repoPath, prNumber }: PrSidePanelProps) {
         <PrFilesList
           repoPath={repoPath}
           prNumber={prNumber}
+          onSelect={setActivePrFile}
+          activeFile={activePrFile}
           headerAction={
             <button
               onClick={() => setReviewOpen((v) => !v)}

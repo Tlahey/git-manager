@@ -22,6 +22,7 @@ import { CommitDetailsPanel } from './CommitDetailsPanel'
 import { DiffViewCenter } from './DiffViewCenter'
 import { PrDetailCenter } from './pr/PrDetailCenter'
 import { PrComposerCenter } from './pr/PrComposerCenter'
+import { PrFileDiffCenter } from './pr/PrFileDiffCenter'
 import { PrSidePanel } from './pr/PrSidePanel'
 import { EmptyRepoPanel } from './EmptyRepoPanel'
 import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
@@ -57,6 +58,8 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   const setActiveDiffFile = useRepoUIStore((s) => s.setActiveDiffFile)
   const activePrNumber = useRepoUIStore((s) => s.activePrNumber)
   const setActivePrNumber = useRepoUIStore((s) => s.setActivePrNumber)
+  const activePrFile = useRepoUIStore((s) => s.activePrFile)
+  const setActivePrFile = useRepoUIStore((s) => s.setActivePrFile)
   const prComposer = useRepoUIStore((s) => s.prComposer)
   const conflictFilePath = useRepoUIStore((s) => s.conflictFilePath)
   const setConflictFilePath = useRepoUIStore((s) => s.setConflictFilePath)
@@ -344,11 +347,20 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
       {/* Zone principale : vue PR (priorité), composer de PR, DiffViewCenter, ou tableau virtualisé */}
       <div className="flex min-w-[280px] flex-1 flex-col overflow-hidden">
         {activePrNumber != null ? (
-          <PrDetailCenter
-            repoPath={repoPath}
-            prNumber={activePrNumber}
-            onClose={() => setActivePrNumber(null)}
-          />
+          activePrFile != null ? (
+            <PrFileDiffCenter
+              repoPath={repoPath}
+              prNumber={activePrNumber}
+              filename={activePrFile}
+              onClose={() => setActivePrFile(null)}
+            />
+          ) : (
+            <PrDetailCenter
+              repoPath={repoPath}
+              prNumber={activePrNumber}
+              onClose={() => setActivePrNumber(null)}
+            />
+          )
         ) : prComposer != null ? (
           <PrComposerCenter repoPath={repoPath} />
         ) : activeDiffFile ? (

@@ -7,6 +7,7 @@ const INITIAL = {
   activeTab: DASHBOARD_TAB,
   activeDiffFile: null as { path: string; staged: boolean; oid?: string } | null,
   activePrNumber: null as number | null,
+  activePrFile: null as string | null,
   prComposer: null as ReturnType<typeof useRepoUIStore.getState>['prComposer'],
   activeLeftPanel: 'sidebar' as const,
   editingOid: null as string | null,
@@ -181,6 +182,35 @@ describe('useRepoUIStore — activePrNumber', () => {
     useRepoUIStore.getState().setActivePrNumber(11)
     useRepoUIStore.getState().clearTabStateForRemovedRepo('/repo/a')
     expect(useRepoUIStore.getState().activePrNumber).toBeNull()
+  })
+})
+
+describe('useRepoUIStore — activePrFile', () => {
+  it('sets and clears the selected PR file', () => {
+    useRepoUIStore.getState().setActivePrFile('src/a.ts')
+    expect(useRepoUIStore.getState().activePrFile).toBe('src/a.ts')
+    useRepoUIStore.getState().setActivePrFile(null)
+    expect(useRepoUIStore.getState().activePrFile).toBeNull()
+  })
+
+  it('is reset whenever the active PR changes or closes', () => {
+    useRepoUIStore.getState().setActivePrNumber(7)
+    useRepoUIStore.getState().setActivePrFile('src/a.ts')
+    // Switching to another PR resets the selected file.
+    useRepoUIStore.getState().setActivePrNumber(8)
+    expect(useRepoUIStore.getState().activePrFile).toBeNull()
+
+    useRepoUIStore.getState().setActivePrFile('src/b.ts')
+    // Closing the PR view resets it too.
+    useRepoUIStore.getState().setActivePrNumber(null)
+    expect(useRepoUIStore.getState().activePrFile).toBeNull()
+  })
+
+  it('is cleared when a file diff or the composer takes the center panel', () => {
+    useRepoUIStore.getState().setActivePrNumber(7)
+    useRepoUIStore.getState().setActivePrFile('src/a.ts')
+    useRepoUIStore.getState().setActiveDiffFile({ path: 'x.ts', staged: false })
+    expect(useRepoUIStore.getState().activePrFile).toBeNull()
   })
 })
 
