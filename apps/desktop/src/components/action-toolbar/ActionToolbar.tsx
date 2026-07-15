@@ -1,8 +1,10 @@
 import {
   ArrowUpFromLine,
   ChevronRight,
+  Command as CommandIcon,
   GitPullRequest,
   Redo2,
+  Search,
   Terminal as TerminalIcon,
   Code as CodeIcon,
   Undo2,
@@ -11,21 +13,18 @@ import {
 } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { useActionToolbar } from '../../hooks/useActionToolbar'
+import { useIsCommitsView } from '../../hooks/useIsCommitsView'
+import { useCommandPaletteStore } from '../../stores/commandPalette.store'
+import { useCommitSearchStore } from '../../stores/commitSearch.store'
 import { RepoSelector } from './RepoSelector'
 import { BranchContext } from './BranchContext'
 import { StateTags } from './StateTags'
 import { FetchButton } from './FetchButton'
 import { BranchButton } from './BranchButton'
 import { ToolbarButton } from './ToolbarButton'
-import { ToolbarSearch } from './ToolbarSearch'
-
-interface ActionToolbarProps {
-  searchQuery: string
-  onSearchChange: (value: string) => void
-}
 
 /** Barre d'actions principale (Partie 2) située sous les onglets. */
-export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProps) {
+export function ActionToolbar() {
   const { t } = useTranslation('git')
 
   const {
@@ -53,6 +52,7 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
     handleCreateBranch,
   } = useActionToolbar(t)
 
+  const isCommitsView = useIsCommitsView()
   const disabled = !activeRepo
 
   return (
@@ -156,9 +156,23 @@ export function ActionToolbar({ searchQuery, onSearchChange }: ActionToolbarProp
         )}
       </div>
 
-      {/* ── Section droite : recherche & outils ───────────────── */}
+      {/* ── Section droite : actions & recherche ──────────────── */}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
-        <ToolbarSearch value={searchQuery} onChange={onSearchChange} />
+        <ToolbarButton
+          icon={<CommandIcon className="h-4 w-4 text-muted-foreground" />}
+          label={t('toolbar.actions')}
+          title={`${t('toolbar.actions')} (⌘K)`}
+          onClick={() => useCommandPaletteStore.getState().toggle()}
+          data-testid="toolbar-actions-button"
+        />
+        <ToolbarButton
+          icon={<Search className="h-4 w-4 text-muted-foreground" />}
+          label={t('toolbar.searchLabel')}
+          title={`${t('toolbar.search')} (⌘F)`}
+          disabled={disabled || !isCommitsView}
+          onClick={() => useCommitSearchStore.getState().toggle()}
+          data-testid="toolbar-search-button"
+        />
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useTranslation } from '@git-manager/i18n'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -18,6 +18,7 @@ import { useGitGraphActions } from '../../hooks/useGitGraphActions'
 import { apiGetRebaseState } from '../../api/git.api'
 import { GraphRow } from './GraphRow'
 import { GraphHeader } from './GraphHeader'
+import { CommitSearchPanel } from './CommitSearchPanel'
 import { CommitDetailsPanel } from './CommitDetailsPanel'
 import { DiffViewCenter } from './DiffViewCenter'
 import { PrDetailCenter } from './pr/PrDetailCenter'
@@ -154,13 +155,32 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   })
 
   // ── Dérivation des données du graphe (WIP, conflit, recherche, waterlines) ──
-  const { wipNode, conflictNode, filteredNodes, renderNodes, waterlines } = useGitGraphNodes(
-    nodes,
-    searchQuery,
-    totalChanges,
-    t,
-    conflictInfo
+  const { wipNode, conflictNode, filteredNodes, renderNodes, waterlines, matchingOids } =
+    useGitGraphNodes(nodes, searchQuery, totalChanges, t, conflictInfo)
+
+  // Set for O(1) row-level "does this commit match the active search" lookups (see `dimmed`
+  // below) — `null` mirrors `matchingOids`'s "no active search" meaning (nothing dimmed).
+  const matchSet = useMemo(
+    () => (matchingOids ? new Set(matchingOids) : null),
+    [matchingOids]
   )
+  const totalMatches = matchingOids?.length ?? 0
+
+  // ── Search result navigation (up/down in the floating CommitSearchPanel) ───────────────────
+  const [activeMatchIndex, setActiveMatchIndex] = useState(0)
+  // Jump back to the first match whenever the query itself changes (find-as-you-type).
+  useEffect(() => {
+    setActiveMatchIndex(0)
+  }, [searchQuery])
+  const clampedMatchIndex = totalMatches === 0 ? 0 : Math.min(activeMatchIndex, totalMatches - 1)
+  function goToNextMatch() {
+    if (totalMatches === 0) return
+    setActiveMatchIndex((i) => (i + 1) % totalMatches)
+  }
+  function goToPreviousMatch() {
+    if (totalMatches === 0) return
+    setActiveMatchIndex((i) => (i - 1 + totalMatches) % totalMatches)
+  }
 
   // ── Sélection (multiple) hook ──────────────────────────────────────────────
   const { selected, primaryOid, setPrimaryOid, selectSingle, handleRowSelect, clearSelection } =
@@ -261,6 +281,19 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     overscan: 20,
   })
 
+  // Select and scroll the currently focused search match into view — as if it had been clicked —
+  // whenever the up/down navigation (or a fresh query) moves it.
+  useEffect(() => {
+    if (!matchingOids || matchingOids.length === 0) return
+    const oid = matchingOids[clampedMatchIndex]
+    selectSingle(oid)
+    const index = filteredNodes.findIndex((n) => n.commit.oid === oid)
+    if (index !== -1) {
+      virtualizer.scrollToIndex(index, { align: 'center' })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clampedMatchIndex, matchingOids])
+
   // One-shot guard so the conflict panel auto-opens once per pause (below) without snapping
   // back to the CONFLICT row every time the user navigates away to inspect another commit.
   const autoOpenedConflictRef = useRef(false)
@@ -348,7 +381,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   return (
     <div className="flex h-full select-none overflow-hidden">
       {/* Zone principale : vue PR (priorité), composer de PR, DiffViewCenter, ou tableau virtualisé */}
-      <div className="flex min-w-[280px] flex-1 flex-col overflow-hidden">
+      <div className="relative flex min-w-[280px] flex-1 flex-col overflow-hidden">
         {activePrNumber != null ? (
           activePrFile != null ? (
             <PrFileDiffCenter
@@ -380,6 +413,13 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
           />
         ) : (
           <>
+            <CommitSearchPanel
+              resultCount={totalMatches}
+              activeIndex={clampedMatchIndex}
+              onPrevious={goToPreviousMatch}
+              onNext={goToNextMatch}
+            />
+
             {isLoading && (
               <div className="flex flex-1 items-center justify-center">
                 <Spinner className="h-5 w-5 text-muted-foreground" />
@@ -401,72 +441,67 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
               <>
                 <GraphHeader columns={visibleColumns} />
 
-                {filteredNodes.length === 0 ? (
-                  <div className="flex flex-1 items-center justify-center">
-                    <p className="text-sm text-muted-foreground">{t('gitTree.noResults')}</p>
-                  </div>
-                ) : (
-                  <div ref={parentRef} className="flex-1 overflow-y-auto overflow-x-hidden">
-                    <div
-                      style={{
-                        height: virtualizer.getTotalSize(),
-                        width: '100%',
-                        position: 'relative',
-                      }}
-                    >
-                      {virtualizer.getVirtualItems().map((virtualItem) => {
-                        const node = renderNodes[virtualItem.index]
-                        const oid = node.commit.oid
+                <div ref={parentRef} className="flex-1 overflow-y-auto overflow-x-hidden">
+                  <div
+                    style={{
+                      height: virtualizer.getTotalSize(),
+                      width: '100%',
+                      position: 'relative',
+                    }}
+                  >
+                    {virtualizer.getVirtualItems().map((virtualItem) => {
+                      const node = renderNodes[virtualItem.index]
+                      const oid = node.commit.oid
 
-                        return (
-                          <div
-                            key={virtualItem.key}
-                            data-testid={`graph-row-${oid}`}
-                            data-selected={oid === primaryOid || selected.has(oid)}
-                            className="hover:z-[60]"
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              width: '100%',
-                              height: rowHeight,
-                              transform: `translateY(${virtualItem.start}px)`,
-                            }}
-                          >
-                            <GraphRow
-                              node={node}
-                              columns={visibleColumns}
-                              isSelected={selected.has(oid)}
-                              isPrimary={oid === primaryOid}
-                              onSelect={(e) => handleRowSelect(e, virtualItem.index)}
-                              onContextMenu={(e) => openMenuAt(e, oid)}
-                              onOpenMenu={(e) => openMenuAt(e, oid)}
-                              totalChanges={totalChanges}
-                              onCommitWip={handleCommitWip}
-                              isFirst={virtualItem.index === 0}
-                              conflictInfo={conflictInfo}
-                            />
-                          </div>
-                        )
-                      })}
-
-                      {/* Waterlines : overlays plein-largeur sur les frontières, hors flux */}
-                      {waterlines.map((wl) => (
+                      return (
                         <div
-                          key={wl.id}
-                          className="pointer-events-none absolute left-0 z-10 w-full"
+                          key={virtualItem.key}
+                          data-testid={`graph-row-${oid}`}
+                          data-selected={oid === primaryOid || selected.has(oid)}
+                          className="hover:z-[60]"
                           style={{
+                            position: 'absolute',
                             top: 0,
+                            left: 0,
+                            width: '100%',
                             height: rowHeight,
-                            transform: `translateY(${wl.index * rowHeight - rowHeight / 2}px)`,
+                            transform: `translateY(${virtualItem.start}px)`,
                           }}
                         >
-                          <Waterline label={wl.label} />
+                          <GraphRow
+                            node={node}
+                            columns={visibleColumns}
+                            isSelected={selected.has(oid)}
+                            isPrimary={oid === primaryOid}
+                            onSelect={(e) => handleRowSelect(e, virtualItem.index)}
+                            onContextMenu={(e) => openMenuAt(e, oid)}
+                            onOpenMenu={(e) => openMenuAt(e, oid)}
+                            totalChanges={totalChanges}
+                            onCommitWip={handleCommitWip}
+                            isFirst={virtualItem.index === 0}
+                            conflictInfo={conflictInfo}
+                            dimmed={matchSet !== null && !matchSet.has(oid)}
+                          />
                         </div>
-                      ))}
-                    </div>
+                      )
+                    })}
+
+                    {/* Waterlines : overlays plein-largeur sur les frontières, hors flux */}
+                    {waterlines.map((wl) => (
+                      <div
+                        key={wl.id}
+                        className="pointer-events-none absolute left-0 z-10 w-full"
+                        style={{
+                          top: 0,
+                          height: rowHeight,
+                          transform: `translateY(${wl.index * rowHeight - rowHeight / 2}px)`,
+                        }}
+                      >
+                        <Waterline label={wl.label} />
+                      </div>
+                    ))}
                   </div>
-                )}
+                </div>
               </>
             )}
           </>

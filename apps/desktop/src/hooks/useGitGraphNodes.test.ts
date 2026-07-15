@@ -66,41 +66,65 @@ describe('useGitGraphNodes — conflictNode / wipNode', () => {
   })
 })
 
-describe('useGitGraphNodes — filteredNodes / search', () => {
+describe('useGitGraphNodes — filteredNodes (never removes rows)', () => {
   it('prepends the special node (WIP) to the list when present', () => {
     const { result } = renderHook(() => useGitGraphNodes([node('a')], undefined, 1, t, null))
     expect(result.current.filteredNodes.map((n) => n.commit.oid)).toEqual(['WIP', 'a'])
   })
 
-  it('returns every node unfiltered when there is no search query', () => {
+  it('returns every node when there is no search query', () => {
     const nodes = [node('a'), node('b')]
     const { result } = renderHook(() => useGitGraphNodes(nodes, '', 0, t, null))
     expect(result.current.filteredNodes).toHaveLength(2)
   })
 
-  it('filters by commit subject/body/author/oid, case-insensitively', () => {
+  it('keeps every node even when the search query matches nothing', () => {
+    const nodes = [node('a'), node('b')]
+    const { result } = renderHook(() => useGitGraphNodes(nodes, 'nomatch', 0, t, null))
+    expect(result.current.filteredNodes.map((n) => n.commit.oid)).toEqual(['a', 'b'])
+  })
+})
+
+describe('useGitGraphNodes — matchingOids', () => {
+  it('is null when there is no search query', () => {
+    const { result } = renderHook(() => useGitGraphNodes([node('a')], '', 0, t, null))
+    expect(result.current.matchingOids).toBeNull()
+  })
+
+  it('is null when the search query is undefined', () => {
+    const { result } = renderHook(() => useGitGraphNodes([node('a')], undefined, 0, t, null))
+    expect(result.current.matchingOids).toBeNull()
+  })
+
+  it('matches by commit subject/body/author/oid, case-insensitively', () => {
     const nodes = [
       node('a', { commit: { ...node('a').commit, subject: 'Fix the bug' } }),
       node('b'),
     ]
     const { result } = renderHook(() => useGitGraphNodes(nodes, 'FIX THE', 0, t, null))
-    expect(result.current.filteredNodes.map((n) => n.commit.oid)).toEqual(['a'])
+    expect(result.current.matchingOids).toEqual(['a'])
+  })
+
+  it('is an empty array when the search query matches nothing', () => {
+    const nodes = [node('a'), node('b')]
+    const { result } = renderHook(() => useGitGraphNodes(nodes, 'nomatch', 0, t, null))
+    expect(result.current.matchingOids).toEqual([])
   })
 
   it('matches "wip" against the synthetic WIP row', () => {
     const { result } = renderHook(() => useGitGraphNodes([node('a')], 'wi', 1, t, null))
-    expect(result.current.filteredNodes.map((n) => n.commit.oid)).toEqual(['WIP'])
+    expect(result.current.matchingOids).toEqual(['WIP'])
   })
 
   it('matches "conflict" against the synthetic CONFLICT row', () => {
     const { result } = renderHook(() => useGitGraphNodes([node('a')], 'confl', 0, t, { count: 1 }))
-    expect(result.current.filteredNodes.map((n) => n.commit.oid)).toEqual(['CONFLICT'])
+    expect(result.current.matchingOids).toEqual(['CONFLICT'])
   })
 
   it('trims and ignores case in the search query', () => {
     const nodes = [node('a')]
     const { result } = renderHook(() => useGitGraphNodes(nodes, '  A SUBJECT  ', 0, t, null))
-    expect(result.current.filteredNodes).toHaveLength(1)
+    expect(result.current.matchingOids).toEqual(['a'])
   })
 })
 

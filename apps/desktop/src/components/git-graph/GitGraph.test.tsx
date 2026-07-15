@@ -117,6 +117,16 @@ vi.mock('./Waterline', () => ({
   },
 }))
 
+const { lastCommitSearchPanelProps } = vi.hoisted(() => ({
+  lastCommitSearchPanelProps: { current: null as Record<string, unknown> | null },
+}))
+vi.mock('./CommitSearchPanel', () => ({
+  CommitSearchPanel: (props: Record<string, unknown>) => {
+    lastCommitSearchPanelProps.current = props
+    return <div data-testid="commit-search-panel-mock" />
+  },
+}))
+
 import { GitGraph } from './GitGraph'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useRepoDataStore } from '../../stores/repoData.store'
@@ -171,6 +181,7 @@ function graphNodesState(
     renderNodes: nodes,
     waterlines: [],
     originMainIndex: -1,
+    matchingOids: null as string[] | null,
     ...overrides,
   }
 }
@@ -204,6 +215,7 @@ beforeEach(() => {
   lastOverlayManagerProps.current = null
   lastConflictPanelProps.current = null
   lastWaterlineLabels.current = []
+  lastCommitSearchPanelProps.current = null
 
   useSettingsStore.setState(INITIAL_SETTINGS, true)
   useRepoDataStore.setState(INITIAL_REPO_DATA, true)
@@ -237,13 +249,14 @@ describe('GitGraph — loading/error/empty states', () => {
     expect(screen.getByTestId('empty-repo-initialize')).toBeInTheDocument()
   })
 
-  it('shows a "no results" message when a search filters everything out, but still renders the header', () => {
+  it('keeps rendering every row even when a search matches nothing (dims instead of hiding)', () => {
     const nodes = [commitNode('a')]
     useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
-    useGitGraphNodes.mockReturnValue(graphNodesState([]))
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes, { matchingOids: [] }))
     renderGraph({ searchQuery: 'nomatch' })
     expect(screen.getByTestId('graph-header')).toBeInTheDocument()
-    expect(screen.getByText('gitTree.noResults')).toBeInTheDocument()
+    expect(lastGraphRowCalls.current).toHaveLength(1)
+    expect(lastGraphRowCalls.current[0]).toMatchObject({ dimmed: true })
   })
 })
 
@@ -302,6 +315,131 @@ describe('GitGraph — rendering rows', () => {
     const onSelect = lastGraphRowCalls.current[1].onSelect as (e: unknown) => void
     onSelect({} as never)
     expect(handleRowSelect).toHaveBeenCalledWith({}, 1)
+  })
+})
+
+describe('GitGraph — search row dimming', () => {
+  it('does not dim any row when there is no active search', () => {
+    const nodes = [commitNode('a'), commitNode('b')]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes, { matchingOids: null }))
+    renderGraph()
+    expect(lastGraphRowCalls.current[0]).toMatchObject({ dimmed: false })
+    expect(lastGraphRowCalls.current[1]).toMatchObject({ dimmed: false })
+  })
+
+  it('dims rows that do not match the active search, without removing them', () => {
+    const nodes = [commitNode('a'), commitNode('b')]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes, { matchingOids: ['b'] }))
+    renderGraph({ searchQuery: 'b' })
+    expect(lastGraphRowCalls.current).toHaveLength(2)
+    expect(lastGraphRowCalls.current[0]).toMatchObject({ dimmed: true })
+    expect(lastGraphRowCalls.current[1]).toMatchObject({ dimmed: false })
+  })
+})
+
+describe('GitGraph — commit search panel wiring', () => {
+  it('passes the result count and a 0-based active index to CommitSearchPanel', () => {
+    const nodes = [commitNode('a'), commitNode('b'), commitNode('c')]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes, { matchingOids: ['b', 'c'] }))
+    renderGraph({ searchQuery: 'x' })
+    expect(lastCommitSearchPanelProps.current).toMatchObject({ resultCount: 2, activeIndex: 0 })
+  })
+
+  it('cycles forward through matches on onNext, wrapping around', () => {
+    const nodes = [commitNode('a'), commitNode('b'), commitNode('c')]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes, { matchingOids: ['a', 'b'] }))
+    renderGraph({ searchQuery: 'x' })
+    const onNext = lastCommitSearchPanelProps.current!.onNext as () => void
+    act(() => onNext())
+    expect(lastCommitSearchPanelProps.current!.activeIndex).toBe(1)
+    act(() => onNext())
+    expect(lastCommitSearchPanelProps.current!.activeIndex).toBe(0)
+  })
+
+  it('cycles backward through matches on onPrevious, wrapping around', () => {
+    const nodes = [commitNode('a'), commitNode('b'), commitNode('c')]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes, { matchingOids: ['a', 'b'] }))
+    renderGraph({ searchQuery: 'x' })
+    const onPrevious = lastCommitSearchPanelProps.current!.onPrevious as () => void
+    act(() => onPrevious())
+    expect(lastCommitSearchPanelProps.current!.activeIndex).toBe(1)
+  })
+
+  it('scrolls the active match into view', () => {
+    const nodes = [commitNode('a'), commitNode('b'), commitNode('c')]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes, { matchingOids: ['c'] }))
+    renderGraph({ searchQuery: 'x' })
+    expect(virtualizerScrollToIndex).toHaveBeenCalledWith(2, { align: 'center' })
+  })
+
+  it('selects the first match as soon as a search produces results, like a click', () => {
+    const nodes = [commitNode('a'), commitNode('b'), commitNode('c')]
+    const selectSingle = vi.fn()
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes, { matchingOids: ['b', 'c'] }))
+    useCommitSelection.mockReturnValue(selectionState({ selectSingle }))
+    renderGraph({ searchQuery: 'x' })
+    expect(selectSingle).toHaveBeenCalledWith('b')
+  })
+
+  it('selects the next/previous match when navigating with the chevrons', () => {
+    const nodes = [commitNode('a'), commitNode('b'), commitNode('c')]
+    const selectSingle = vi.fn()
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes, { matchingOids: ['a', 'b', 'c'] }))
+    useCommitSelection.mockReturnValue(selectionState({ selectSingle }))
+    renderGraph({ searchQuery: 'x' })
+    expect(selectSingle).toHaveBeenCalledWith('a')
+
+    const onNext = lastCommitSearchPanelProps.current!.onNext as () => void
+    act(() => onNext())
+    expect(selectSingle).toHaveBeenCalledWith('b')
+
+    const onPrevious = lastCommitSearchPanelProps.current!.onPrevious as () => void
+    act(() => onPrevious())
+    expect(selectSingle).toHaveBeenCalledWith('a')
+  })
+
+  it('does not select anything from search when there is no active query (only the mount auto-select fires)', () => {
+    const nodes = [commitNode('a'), commitNode('b')]
+    const selectSingle = vi.fn()
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes, { matchingOids: null }))
+    useCommitSelection.mockReturnValue(selectionState({ selectSingle }))
+    renderGraph()
+    // The graph auto-selects the first node on mount regardless of search — that's unrelated to
+    // this feature. What matters here is that it's the *only* call: the search-driven selection
+    // effect is a no-op while `matchingOids` is null (no active query).
+    expect(selectSingle).toHaveBeenCalledTimes(1)
+    expect(selectSingle).toHaveBeenCalledWith('a')
+  })
+
+  it('resets the active index to 0 when the search query changes', () => {
+    const nodes = [commitNode('a'), commitNode('b')]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes, { matchingOids: ['a', 'b'] }))
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const { rerender } = render(
+      <QueryClientProvider client={client}>
+        <GitGraph repoPath="/repo" searchQuery="a" />
+      </QueryClientProvider>
+    )
+    const onNext = lastCommitSearchPanelProps.current!.onNext as () => void
+    act(() => onNext())
+    expect(lastCommitSearchPanelProps.current!.activeIndex).toBe(1)
+
+    rerender(
+      <QueryClientProvider client={client}>
+        <GitGraph repoPath="/repo" searchQuery="ab" />
+      </QueryClientProvider>
+    )
+    expect(lastCommitSearchPanelProps.current!.activeIndex).toBe(0)
   })
 })
 

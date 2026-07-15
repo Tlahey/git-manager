@@ -30,6 +30,9 @@ interface GraphRowProps {
   onCommitWip?: (message: string) => void
   isFirst?: boolean
   conflictInfo?: ConflictRowInfo | null
+  /** True while a search is active and this row doesn't match it — mutes its text instead of
+   * hiding the row, so the graph's shape stays intact while browsing results. */
+  dimmed?: boolean
 }
 
 // ── Author avatar helpers ─────────────────────────────────────────────────────
@@ -285,6 +288,7 @@ function CellContent({
   onCommitWip,
   isFirst,
   conflictInfo,
+  dimmed,
 }: {
   col: ColumnKey
   node: GitGraphNode
@@ -293,6 +297,7 @@ function CellContent({
   onCommitWip?: (message: string) => void
   isFirst?: boolean
   conflictInfo?: ConflictRowInfo | null
+  dimmed?: boolean
 }) {
   const { commit } = node
   const activeRepo = useRepoUIStore((s) => s.activeRepo)
@@ -399,18 +404,29 @@ function CellContent({
       const displaySubject = stash ? stash.message : commit.subject
       const isFixup = displaySubject.startsWith('fixup!')
       return (
-        <span className="min-w-0 flex-1 truncate text-[11px] leading-tight">
-          <span className="text-foreground">
+        <span
+          className={cn(
+            'min-w-0 flex-1 truncate text-[11px] leading-tight',
+            dimmed && 'italic'
+          )}
+        >
+          <span className={dimmed ? 'text-muted-foreground/40' : 'text-foreground'}>
             {isFixup ? (
               <>
-                <span className="font-semibold text-orange-400">fixup!</span>
+                <span className={dimmed ? undefined : 'font-semibold text-orange-400'}>
+                  fixup!
+                </span>
                 {displaySubject.slice('fixup!'.length)}
               </>
             ) : (
               displaySubject
             )}
           </span>
-          {body && <span className="ml-2 text-muted-foreground/70">{body}</span>}
+          {body && (
+            <span className={dimmed ? 'ml-2 text-muted-foreground/40' : 'ml-2 text-muted-foreground/70'}>
+              {body}
+            </span>
+          )}
         </span>
       )
     }
@@ -425,7 +441,14 @@ function CellContent({
             email={commit.author.email}
             isStash={isStashCommit}
           />
-          <span className="truncate text-[10px] text-muted-foreground">{commit.author.name}</span>
+          <span
+            className={cn(
+              'truncate text-[10px] text-muted-foreground',
+              dimmed && 'italic text-muted-foreground/40'
+            )}
+          >
+            {commit.author.name}
+          </span>
         </div>
       )
     }
@@ -434,7 +457,10 @@ function CellContent({
       if (node.commit.oid === 'WIP' || node.commit.oid === 'CONFLICT') return null
       return (
         <span
-          className="truncate text-[10px] text-muted-foreground/70"
+          className={cn(
+            'truncate text-[10px] text-muted-foreground/70',
+            dimmed && 'italic text-muted-foreground/40'
+          )}
           title={formatExactDate(commit.author.timestamp)}
         >
           {formatRelativeDate(commit.author.timestamp)}
@@ -444,7 +470,13 @@ function CellContent({
     case 'sha':
       if (node.commit.oid === 'WIP' || node.commit.oid === 'CONFLICT') return null
       return (
-        <code className="truncate font-mono text-[10px] text-muted-foreground" title={commit.oid}>
+        <code
+          className={cn(
+            'truncate font-mono text-[10px] text-muted-foreground',
+            dimmed && 'italic text-muted-foreground/40'
+          )}
+          title={commit.oid}
+        >
           {commit.shortOid}
         </code>
       )
@@ -465,6 +497,7 @@ export const GraphRow = memo(function GraphRow({
   onCommitWip,
   isFirst,
   conflictInfo,
+  dimmed,
 }: GraphRowProps) {
   const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
   const rowHeight = rowHeightSetting === 'small' ? 32 : 40
@@ -551,6 +584,7 @@ export const GraphRow = memo(function GraphRow({
             onCommitWip={onCommitWip}
             isFirst={isFirst}
             conflictInfo={conflictInfo}
+            dimmed={dimmed}
           />
         </div>
       ))}

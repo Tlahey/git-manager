@@ -4,6 +4,7 @@ import type { GitBranch } from '@git-manager/git-types'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useUndoHistoryStore } from '../../stores/undoHistory.store'
+import { useCommitSearchStore } from '../../stores/commitSearch.store'
 import { GitGraph } from '../../components/git-graph/GitGraph'
 import { RepositorySidebar } from '../../components/repository-sidebar'
 import { ActionToolbar } from '../../components/action-toolbar'
@@ -17,7 +18,7 @@ export function RepoView() {
   const { activeRepo } = useRepoUIStore()
   const { repoCache, setRepoCache } = useRepoDataStore()
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
+  const searchQuery = useCommitSearchStore((s) => s.query)
   const queryClient = useQueryClient()
 
   // Le cache repo n'est pas persisté : on (ré)ouvre le dépôt actif au besoin
@@ -64,7 +65,7 @@ export function RepoView() {
 
   return (
     <div data-testid="repo-view" className="flex h-full flex-col">
-      <ActionToolbar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+      <ActionToolbar />
 
       <PendingFixupsBanner repoPath={activeRepo} />
 
