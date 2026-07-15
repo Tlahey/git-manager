@@ -20,7 +20,7 @@ export function SectionHeader({
   testId,
 }: SectionHeaderProps) {
   return (
-    <div className="group/header flex items-center">
+    <div className="group/header relative flex items-center">
       <button
         data-testid={testId}
         onClick={onToggle}
@@ -38,13 +38,19 @@ export function SectionHeader({
           {title}
         </span>
         {count !== undefined && (
-          <span className="shrink-0 text-[10px] tabular-nums text-sidebar-muted-foreground/40">
+          <span
+            className={`shrink-0 text-[10px] tabular-nums text-sidebar-muted-foreground/40 transition-opacity ${
+              action ? 'group-hover/header:opacity-0' : ''
+            }`}
+          >
             {count}
           </span>
         )}
       </button>
+      {/* The action overlays the count's right-most slot: the count stays flush right, and on hover
+          it fades out while the action fades in over the same spot. */}
       {action && (
-        <div className="shrink-0 opacity-0 transition-opacity group-hover/header:opacity-100">
+        <div className="absolute right-1 top-1/2 flex shrink-0 -translate-y-1/2 items-center opacity-0 transition-opacity group-hover/header:opacity-100">
           {action}
         </div>
       )}

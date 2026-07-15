@@ -460,6 +460,8 @@ export interface CreatePrInput {
   head: string
   base: string
   body?: string
+  /** Open the PR as a draft. Accepted by GitHub's `POST /pulls` endpoint. */
+  draft?: boolean
 }
 
 /** Create a pull request. Requires the `repo` scope on the token. */

@@ -131,6 +131,7 @@ function baseHandlers() {
     onTogglePin: vi.fn(),
     onContextMenu: vi.fn(),
     onOpenPr: vi.fn(),
+    onCreatePr: vi.fn(),
     onCreateBranch: vi.fn(),
     onStashContextMenu: vi.fn(),
     onToggleStashVisibility: vi.fn(),
@@ -197,6 +198,33 @@ describe('SidebarRowView — section', () => {
     })
     await user.click(screen.getByTestId('worktree-add-button'))
     expect(h.onAddWorktree).toHaveBeenCalledOnce()
+  })
+
+  it('shows the create-PR action only for the prs section with onCreatePr', async () => {
+    const user = userEvent.setup()
+    const { h } = renderRow({
+      kind: 'section',
+      id: 'sec-prs',
+      sectionKey: 'prs',
+      title: 'Pull Requests',
+      isOpen: true,
+    })
+    await user.click(screen.getByTestId('pr-create-button'))
+    expect(h.onCreatePr).toHaveBeenCalledOnce()
+  })
+
+  it('hides the create-PR action when onCreatePr is not provided', () => {
+    renderRow(
+      {
+        kind: 'section',
+        id: 'sec-prs',
+        sectionKey: 'prs',
+        title: 'Pull Requests',
+        isOpen: true,
+      },
+      { onCreatePr: undefined }
+    )
+    expect(screen.queryByTestId('pr-create-button')).not.toBeInTheDocument()
   })
 })
 

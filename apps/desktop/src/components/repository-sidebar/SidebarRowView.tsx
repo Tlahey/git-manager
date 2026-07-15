@@ -41,6 +41,7 @@ interface SidebarRowViewProps {
   onTogglePin: (shortName: string) => void
   onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
   onOpenPr?: (pr: PullRequest) => void
+  onCreatePr?: () => void
   onCreateBranch?: () => void
   onStashContextMenu?: (e: React.MouseEvent, stash: GitStash) => void
   hiddenStashes?: string[]
@@ -56,6 +57,7 @@ export function SidebarRowView({
   onTogglePin,
   onContextMenu,
   onOpenPr,
+  onCreatePr,
   onCreateBranch,
   onStashContextMenu,
   hiddenStashes = [],
@@ -90,6 +92,16 @@ export function SidebarRowView({
                 aria-label="Add worktree"
                 title="Add worktree"
                 data-testid="worktree-add-button"
+              >
+                <Plus className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
+              </button>
+            ) : row.sectionKey === 'prs' && onCreatePr ? (
+              <button
+                onClick={onCreatePr}
+                className="mr-1 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
+                aria-label="Create pull request"
+                title="Create pull request"
+                data-testid="pr-create-button"
               >
                 <Plus className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
               </button>
