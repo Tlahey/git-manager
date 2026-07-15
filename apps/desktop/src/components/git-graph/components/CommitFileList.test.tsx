@@ -137,6 +137,23 @@ describe('CommitFileList — view mode toggle', () => {
   })
 })
 
+describe('CommitFileList — viewed indicator', () => {
+  it('shows a check in front of a viewed file in tree view, not for an unviewed one', () => {
+    renderList({
+      processedFiles: [file('a.ts', { viewed: true }), file('b.ts', { viewed: false })],
+    })
+    expect(screen.getByTestId('file-tree-viewed-a.ts')).toBeInTheDocument()
+    expect(screen.queryByTestId('file-tree-viewed-b.ts')).not.toBeInTheDocument()
+  })
+
+  it('shows the same indicator in list view', async () => {
+    const user = userEvent.setup()
+    renderList({ processedFiles: [file('a.ts', { viewed: true })] })
+    await user.click(screen.getByTitle('commitDetails.viewModeList'))
+    expect(screen.getByTestId('file-list-viewed-a.ts')).toBeInTheDocument()
+  })
+})
+
 describe('CommitFileList — tree view interactions', () => {
   it('expands/collapses a folder on click', async () => {
     const user = userEvent.setup()

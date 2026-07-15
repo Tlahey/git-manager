@@ -491,6 +491,76 @@ export async function fetchPrFiles(
   )
 }
 
+/** GitHub's per-viewer "reviewed this file" state — mirrors github.com's Files Changed checkboxes.
+ * GitHub itself resets a file back to UNVIEWED whenever new commits touch it, so this is always
+ * read fresh from the API rather than diffed/cached locally. */
+export type PrFileViewedState = 'VIEWED' | 'DISMISSED' | 'UNVIEWED'
+
+export interface PrFilesViewedState {
+  /** The PR's GraphQL node id — required by the mark/unmark-as-viewed mutations. */
+  pullRequestId: string
+  /** Per-path viewed state for every file GitHub currently reports on the PR. */
+  viewedByPath: Record<string, PrFileViewedState>
+}
+
+/** Fetches viewer-viewed state for every file on a PR (GraphQL-only — the REST files endpoint has no
+ * equivalent field), plus the PR's node id needed to mark/unmark a file. */
+export async function fetchPrFilesViewedState(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  token: string
+): Promise<PrFilesViewedState> {
+  const query = `query($owner:String!,$repo:String!,$number:Int!){
+    repository(owner:$owner,name:$repo){
+      pullRequest(number:$number){
+        id
+        files(first:100){nodes{path viewerViewedState}}
+      }
+    }
+  }`
+  const data = await ghGraphQL<{
+    repository?: {
+      pullRequest?: {
+        id?: string
+        files?: { nodes?: Array<{ path: string; viewerViewedState: PrFileViewedState }> }
+      }
+    }
+  }>(query, { owner, repo, number: prNumber }, token)
+  const prNode = data.repository?.pullRequest
+  const nodes = prNode?.files?.nodes ?? []
+  return {
+    pullRequestId: prNode?.id ?? '',
+    viewedByPath: Object.fromEntries(nodes.map((n) => [n.path, n.viewerViewedState])),
+  }
+}
+
+/** Marks a single PR file as reviewed for the current viewer (GitHub's "Viewed" checkbox). */
+export async function markPrFileAsViewed(
+  pullRequestId: string,
+  path: string,
+  token: string
+): Promise<void> {
+  await ghGraphQL(
+    `mutation($id:ID!,$path:String!){markFileAsViewed(input:{pullRequestId:$id,path:$path}){clientMutationId}}`,
+    { id: pullRequestId, path },
+    token
+  )
+}
+
+/** Reverts a PR file to unviewed for the current viewer. */
+export async function unmarkPrFileAsViewed(
+  pullRequestId: string,
+  path: string,
+  token: string
+): Promise<void> {
+  await ghGraphQL(
+    `mutation($id:ID!,$path:String!){unmarkFileAsViewed(input:{pullRequestId:$id,path:$path}){clientMutationId}}`,
+    { id: pullRequestId, path },
+    token
+  )
+}
+
 /**
  * Raw text content of a file at a git ref, via the contents API `raw` media type. Returns null when
  * the file doesn't exist at that ref (e.g. an added file has no version on the base) — the caller
@@ -657,6 +727,9 @@ export interface PrMergeability {
   mergeStateStatus: PrMergeStateStatus
   reviewDecision: PrReviewDecision
   checks: PrCheck[]
+  /** Whether the current viewer can bypass branch protections and merge immediately
+   * (GitHub's own "Merge without waiting for requirements to be met" affordance). */
+  viewerCanMergeAsAdmin: boolean
 }
 
 interface RawCheckContext {
@@ -738,6 +811,7 @@ export async function fetchPrMergeability(
         mergeable
         mergeStateStatus
         reviewDecision
+        viewerCanMergeAsAdmin
         commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){nodes{
           __typename
           ... on CheckRun{name status conclusion startedAt detailsUrl isRequired(pullRequestNumber:$number) checkSuite{app{name}}}
@@ -752,6 +826,7 @@ export async function fetchPrMergeability(
         mergeable?: PrMergeability['mergeable']
         mergeStateStatus?: PrMergeStateStatus
         reviewDecision?: PrReviewDecision
+        viewerCanMergeAsAdmin?: boolean
         commits?: { nodes?: Array<{ commit?: { statusCheckRollup?: { contexts?: { nodes?: RawCheckContext[] } } } }> }
       }
     }
@@ -764,6 +839,7 @@ export async function fetchPrMergeability(
     mergeStateStatus: prNode?.mergeStateStatus ?? 'UNKNOWN',
     reviewDecision: prNode?.reviewDecision ?? null,
     checks: contexts.map(normalizeCheckContext),
+    viewerCanMergeAsAdmin: prNode?.viewerCanMergeAsAdmin ?? false,
   }
 }
 

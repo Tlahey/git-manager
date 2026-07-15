@@ -5,13 +5,29 @@ import type { GhPrFile } from '../../../api/github.api'
 
 vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 
-const { usePrFileContentsMock } = vi.hoisted(() => ({ usePrFileContentsMock: vi.fn() }))
+const { usePrFileContentsMock, usePrFilesViewedStateMock, toggleViewedMock } = vi.hoisted(() => ({
+  usePrFileContentsMock: vi.fn(),
+  usePrFilesViewedStateMock: vi.fn(),
+  toggleViewedMock: vi.fn(),
+}))
 vi.mock('../../../hooks/usePrFileContents', () => ({ usePrFileContents: usePrFileContentsMock }))
+vi.mock('../../../hooks/usePrFilesViewedState', () => ({
+  usePrFilesViewedState: usePrFilesViewedStateMock,
+}))
 
 // Monaco can't run in jsdom — stub the shared editors and assert they receive the right content.
 vi.mock('../../merge-editor/ThreeWayMergeEditor', () => ({
-  ThreeWayMergeEditor: (p: { original?: string; modified?: string }) => (
-    <div data-testid="stub-diff-editor" data-original={p.original} data-modified={p.modified} />
+  ThreeWayMergeEditor: (p: {
+    original?: string
+    modified?: string
+    defaultCollapseUnchanged?: boolean
+  }) => (
+    <div
+      data-testid="stub-diff-editor"
+      data-original={p.original}
+      data-modified={p.modified}
+      data-default-collapse-unchanged={String(p.defaultCollapseUnchanged)}
+    />
   ),
 }))
 vi.mock('@git-manager/editor', () => ({
@@ -35,7 +51,17 @@ function contents(overrides: Partial<ReturnType<typeof usePrFileContentsMock>> =
   }
 }
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  toggleViewedMock.mockResolvedValue(undefined)
+  usePrFilesViewedStateMock.mockReturnValue({
+    pullRequestId: 'PR_node_id',
+    viewedByPath: {},
+    isLoading: false,
+    isToggling: false,
+    toggleViewed: toggleViewedMock,
+  })
+})
 
 function renderCenter(onClose = vi.fn()) {
   return render(
@@ -51,6 +77,15 @@ describe('PrFileDiffCenter', () => {
     expect(editor).toHaveAttribute('data-original', 'old content')
     expect(editor).toHaveAttribute('data-modified', 'new content')
     expect(screen.getByText('+3')).toBeInTheDocument()
+  })
+
+  it('defaults to collapsed unchanged regions', () => {
+    usePrFileContentsMock.mockReturnValue(contents())
+    renderCenter()
+    expect(screen.getByTestId('stub-diff-editor')).toHaveAttribute(
+      'data-default-collapse-unchanged',
+      'true'
+    )
   })
 
   it('toggles to the file view (read-only content)', async () => {
@@ -85,5 +120,56 @@ describe('PrFileDiffCenter', () => {
     usePrFileContentsMock.mockReturnValue(contents({ file: undefined, isLoading: false }))
     rerender(<PrFileDiffCenter repoPath="/repo" prNumber={7} filename="gone.ts" onClose={vi.fn()} />)
     expect(screen.getByText('pr.diff.notFound')).toBeInTheDocument()
+  })
+})
+
+describe('PrFileDiffCenter — mark as viewed', () => {
+  it('is unchecked when the file is not viewed, and clicking it toggles the current file', async () => {
+    usePrFileContentsMock.mockReturnValue(contents())
+    const user = userEvent.setup()
+    renderCenter()
+    const checkbox = screen.getByTestId('pr-file-diff-viewed')
+    expect(checkbox).not.toBeChecked()
+    await user.click(checkbox)
+    expect(toggleViewedMock).toHaveBeenCalledWith('src/a.ts')
+  })
+
+  it('is checked when GitHub reports the file as VIEWED', () => {
+    usePrFilesViewedStateMock.mockReturnValue({
+      pullRequestId: 'PR_node_id',
+      viewedByPath: { 'src/a.ts': 'VIEWED' },
+      isLoading: false,
+      isToggling: false,
+      toggleViewed: toggleViewedMock,
+    })
+    usePrFileContentsMock.mockReturnValue(contents())
+    renderCenter()
+    expect(screen.getByTestId('pr-file-diff-viewed')).toBeChecked()
+  })
+
+  it('is disabled until the PR node id is available', () => {
+    usePrFilesViewedStateMock.mockReturnValue({
+      pullRequestId: null,
+      viewedByPath: {},
+      isLoading: true,
+      isToggling: false,
+      toggleViewed: toggleViewedMock,
+    })
+    usePrFileContentsMock.mockReturnValue(contents())
+    renderCenter()
+    expect(screen.getByTestId('pr-file-diff-viewed')).toBeDisabled()
+  })
+
+  it('is disabled while a toggle is in flight', () => {
+    usePrFilesViewedStateMock.mockReturnValue({
+      pullRequestId: 'PR_node_id',
+      viewedByPath: {},
+      isLoading: false,
+      isToggling: true,
+      toggleViewed: toggleViewedMock,
+    })
+    usePrFileContentsMock.mockReturnValue(contents())
+    renderCenter()
+    expect(screen.getByTestId('pr-file-diff-viewed')).toBeDisabled()
   })
 })

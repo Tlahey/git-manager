@@ -21,6 +21,8 @@ interface PrMergeButtonProps {
   isDraft: boolean
   merged: boolean
   mergeable?: boolean | null
+  /** Whether the viewer can bypass branch protections (GitHub admin/bypass rights on this repo). */
+  viewerCanMergeAsAdmin?: boolean
 }
 
 /** States in which GitHub lets you merge: clean, or with only non-required checks failing / repo
@@ -56,10 +58,12 @@ export function PrMergeButton({
   isDraft,
   merged,
   mergeable,
+  viewerCanMergeAsAdmin,
 }: PrMergeButtonProps) {
   const { t } = useTranslation('git')
   const { merge, pending } = usePrActions(repoPath, prNumber)
   const [method, setMethod] = useState<MergeMethod>('merge')
+  const [bypassRules, setBypassRules] = useState(false)
 
   if (merged) {
     return (
@@ -76,10 +80,29 @@ export function PrMergeButton({
     )
   }
 
-  const canMerge = MERGEABLE_STATES.includes(mergeState) && !isDraft && mergeable !== false && !pending
+  // GitHub also lets an admin/bypass-capable user merge a BLOCKED PR once they explicitly opt in —
+  // mirrors github.com's "Merge without waiting for requirements to be met" checkbox.
+  const canBypass = mergeState === 'BLOCKED' && !!viewerCanMergeAsAdmin
+  const canMerge =
+    (MERGEABLE_STATES.includes(mergeState) || (canBypass && bypassRules)) &&
+    !isDraft &&
+    mergeable !== false &&
+    !pending
 
   return (
     <section data-testid="pr-merge" className="border-t border-border px-4 py-3">
+      {canBypass && (
+        <label className="mb-2 flex items-start gap-2 text-[11px] text-muted-foreground">
+          <input
+            type="checkbox"
+            data-testid="pr-merge-bypass-rules"
+            checked={bypassRules}
+            onChange={(e) => setBypassRules(e.target.checked)}
+            className="mt-0.5 h-3 w-3 shrink-0 accent-primary"
+          />
+          {t('pr.merge.bypassRules')}
+        </label>
+      )}
       <div className="inline-flex">
         <Button
           size="sm"

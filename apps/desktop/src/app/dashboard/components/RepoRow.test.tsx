@@ -162,26 +162,30 @@ describe('RepoRow — loading / error / summary', () => {
 })
 
 describe('RepoRow — open in editor', () => {
-  it('opens the configured editor with the repo path', async () => {
+  function withEditorConfigured(command = '/Applications/Cursor.app') {
     useSettingsStore.setState({
       settings: {
         ...INITIAL_SETTINGS.settings,
         git: {
           ...INITIAL_SETTINGS.settings.git,
-          externalEditor: 'cursor',
-          externalEditorCommand: '',
+          externalEditorCommand: command,
         },
       },
     })
+  }
+
+  it('opens the configured editor with the repo path', async () => {
+    withEditorConfigured('/Applications/Cursor.app')
     mockedOpenInEditor.mockResolvedValue(undefined)
     const user = userEvent.setup()
     const { container } = renderRow()
     const editorButton = container.querySelector('.lucide-code')!.closest('button')!
     await user.click(editorButton)
-    expect(mockedOpenInEditor).toHaveBeenCalledWith('/repo/a', 'cursor', '')
+    expect(mockedOpenInEditor).toHaveBeenCalledWith('/repo/a', '/Applications/Cursor.app')
   })
 
   it('logs an error instead of throwing when the editor fails to launch', async () => {
+    withEditorConfigured()
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     mockedOpenInEditor.mockRejectedValue(new Error('editor not found'))
     const user = userEvent.setup()
@@ -192,7 +196,13 @@ describe('RepoRow — open in editor', () => {
   })
 
   it('hides the editor button when the repo errored', () => {
+    withEditorConfigured()
     useRepoSummary.mockReturnValue({ data: undefined, isLoading: false, error: new Error('bad') })
+    const { container } = renderRow()
+    expect(container.querySelector('.lucide-code')).toBeFalsy()
+  })
+
+  it('hides the editor button when no editor app is configured', () => {
     const { container } = renderRow()
     expect(container.querySelector('.lucide-code')).toBeFalsy()
   })

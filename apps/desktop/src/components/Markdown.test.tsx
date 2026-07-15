@@ -27,6 +27,31 @@ describe('Markdown — lists', () => {
     expect(items[0]).toHaveTextContent('first')
     expect(items[1]).toHaveTextContent('second')
   })
+
+  it('renders GFM task list items as real checkboxes, not literal "[x]" text', () => {
+    const { container } = render(<Markdown content={'- [ ] todo\n- [x] done'} />)
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]')
+    expect(checkboxes).toHaveLength(2)
+    expect(checkboxes[0]).not.toBeChecked()
+    expect(checkboxes[1]).toBeChecked()
+    expect(checkboxes[0]).toBeDisabled()
+    expect(screen.getByText('todo')).toBeInTheDocument()
+    expect(screen.getByText('done')).toBeInTheDocument()
+    expect(container.textContent).not.toContain('[ ]')
+    expect(container.textContent).not.toContain('[x]')
+  })
+
+  it('supports uppercase "[X]" and the "*" list marker for task items', () => {
+    const { container } = render(<Markdown content="* [X] done via asterisk" />)
+    const checkbox = container.querySelector('input[type="checkbox"]')!
+    expect(checkbox).toBeChecked()
+    expect(screen.getByText('done via asterisk')).toBeInTheDocument()
+  })
+
+  it('applies inline formatting inside task list item text', () => {
+    render(<Markdown content="- [ ] a **bold** todo" />)
+    expect(screen.getByText('bold').tagName).toBe('STRONG')
+  })
 })
 
 describe('Markdown — blockquotes and paragraphs', () => {

@@ -614,9 +614,9 @@ const cases: {
   },
   {
     name: 'openInEditor',
-    call: () => tauri.openInEditor('/repo', 'vscode', 'code {path}'),
+    call: () => tauri.openInEditor('/repo', '/Applications/Visual Studio Code.app'),
     command: 'open_in_editor',
-    args: { path: '/repo', editor: 'vscode', customCommand: 'code {path}' },
+    args: { path: '/repo', command: '/Applications/Visual Studio Code.app' },
   },
   {
     name: 'getRepoReadme',

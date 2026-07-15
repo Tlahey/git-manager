@@ -26,20 +26,19 @@ describe('apiGetTerminalCommands', () => {
 })
 
 describe('apiOpenTerminal', () => {
-  it('invokes "open_in_terminal" with path/terminal/customCommand', async () => {
+  it('invokes "open_in_terminal" with path/command', async () => {
     invoke.mockResolvedValue(undefined)
-    await api.apiOpenTerminal('/repo/a', 'iterm', 'my-term {path}')
+    await api.apiOpenTerminal('/repo/a', '/Applications/iTerm.app')
     expect(invoke).toHaveBeenCalledWith('open_in_terminal', {
       path: '/repo/a',
-      terminal: 'iterm',
-      customCommand: 'my-term {path}',
+      command: '/Applications/iTerm.app',
     })
   })
 
   it('logs and swallows the error instead of throwing when the backend call fails', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     invoke.mockRejectedValue(new Error('no terminal'))
-    await expect(api.apiOpenTerminal('/repo/a', 'iterm')).resolves.toBeUndefined()
+    await expect(api.apiOpenTerminal('/repo/a', '/Applications/iTerm.app')).resolves.toBeUndefined()
     expect(errorSpy).toHaveBeenCalled()
   })
 })

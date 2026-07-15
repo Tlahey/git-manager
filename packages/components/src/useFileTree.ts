@@ -6,6 +6,9 @@ export interface FileTreeInputFile {
   additions?: number
   deletions?: number
   staged?: boolean
+  /** Generic per-file "reviewed" flag (e.g. GitHub's PR file-viewed state) — purely passed through
+   * to the resulting node, this hook attaches no behavior to it. */
+  viewed?: boolean
 }
 
 export interface TreeNode {
@@ -16,6 +19,7 @@ export interface TreeNode {
   additions?: number
   deletions?: number
   staged?: boolean
+  viewed?: boolean
   children?: Record<string, TreeNode>
   stats?: {
     added: number
@@ -47,6 +51,7 @@ function buildFileTree(files: FileTreeInputFile[]): Record<string, TreeNode> {
           additions: isLast ? file.additions : undefined,
           deletions: isLast ? file.deletions : undefined,
           staged: isLast ? file.staged : undefined,
+          viewed: isLast ? file.viewed : undefined,
           children: isLast ? undefined : {},
         }
       }

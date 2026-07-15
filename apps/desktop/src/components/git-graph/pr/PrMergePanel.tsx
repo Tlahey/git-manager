@@ -48,6 +48,7 @@ export function PrMergePanel({ repoPath, prNumber, pr }: PrMergePanelProps) {
           isDraft={pr.draft}
           merged={!!pr.merged_at}
           mergeable={pr.mergeable}
+          viewerCanMergeAsAdmin={mergeability?.viewerCanMergeAsAdmin}
         />
       </div>
     </section>

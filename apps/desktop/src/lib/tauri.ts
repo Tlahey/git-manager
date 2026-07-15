@@ -524,8 +524,8 @@ export const getPrTemplate = (path: string) =>
 
 export const getRepoSummary = (path: string) => invoke<GitRepoSummary>('get_repo_summary', { path })
 
-export const openInEditor = (path: string, editor: string, customCommand?: string) =>
-  invoke<void>('open_in_editor', { path, editor, customCommand })
+export const openInEditor = (path: string, command: string) =>
+  invoke<void>('open_in_editor', { path, command })
 
 export const getRepoReadme = (path: string) => invoke<string>('get_repo_readme', { path })
 

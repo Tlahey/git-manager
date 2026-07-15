@@ -41,6 +41,7 @@ function mergeability(overrides: Partial<PrMergeability> = {}): PrMergeability {
     mergeStateStatus: 'CLEAN',
     reviewDecision: null,
     checks: [],
+    viewerCanMergeAsAdmin: false,
     ...overrides,
   }
 }

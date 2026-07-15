@@ -72,6 +72,31 @@ export function Markdown({ content }: MarkdownProps) {
               )
             }
 
+            // GFM task list items: "- [ ] todo" / "- [x] done" (must be checked before
+            // the generic unordered-list branch below, since they share the "- "/"* " prefix)
+            const taskMatch = trimmed.match(/^[-*]\s+\[([ xX])\]\s+(.*)$/)
+            if (taskMatch) {
+              const checked = taskMatch[1].toLowerCase() === 'x'
+              return (
+                <ul
+                  key={lIdx}
+                  className="my-1 list-none space-y-1 pl-1 font-sans text-xs text-muted-foreground"
+                >
+                  <li className="flex items-start gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled
+                      className="mt-0.5 h-3 w-3 shrink-0 accent-primary"
+                    />
+                    <span className={checked ? 'text-muted-foreground/60 line-through' : undefined}>
+                      {parseInline(taskMatch[2])}
+                    </span>
+                  </li>
+                </ul>
+              )
+            }
+
             // Unordered list items
             if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
               return (
