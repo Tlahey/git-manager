@@ -185,6 +185,21 @@ export interface PullRequest {
   isDraft: boolean
 }
 
+/** One template inside a `PULL_REQUEST_TEMPLATE/` directory. `name` is the file name (GitHub's
+ * `?template=` value). Mirrors the Rust `PrTemplateOption`. */
+export interface PrTemplateOption {
+  name: string
+  content: string
+}
+
+/** The repo's GitHub PR template(s), as detected on disk. Mirrors the Rust `PrTemplateDetection`
+ * enum (`#[serde(tag = "kind")]`). `none` = no template, `single` = one top-level template file,
+ * `multiple` = a chooser directory. */
+export type PrTemplateDetection =
+  | { kind: 'none' }
+  | { kind: 'single'; source: string; content: string }
+  | { kind: 'multiple'; options: PrTemplateOption[] }
+
 // ─── Stash ────────────────────────────────────────────────────────────────────
 
 export interface GitStash {
@@ -307,6 +322,22 @@ export interface DailySummarySettings {
   autoGenerate: boolean
 }
 
+/**
+ * The subset of settings that can be overridden per repository, stored locally keyed by repo path
+ * in `AppSettings.repoOverrides`. Every field is optional: `undefined` means "inherit the global
+ * value". Resolution is always `repoOverride ?? global` (see `useEffectiveRepoSettings`).
+ */
+export interface RepoScopedSettings {
+  /** Overrides `git.protectedBranches` for this repo. */
+  protectedBranches?: string[]
+  /** Overrides `git.commitInstructions` for this repo. */
+  commitInstructions?: string
+  /** Overrides `git.commitPattern` for this repo. */
+  commitPattern?: string
+  /** Overrides `appearance.theme` for this repo. */
+  theme?: string
+}
+
 export interface AppSettings {
   ai: AiConnectionConfig
   git: GitSettings
@@ -319,6 +350,9 @@ export interface AppSettings {
   notifications?: NotificationSettings
   integrations?: IntegrationSettings
   dailySummary?: DailySummarySettings
+  /** Per-repository overrides for the subset of settings in `RepoScopedSettings`, keyed by repo
+   * path. A repo absent from this map (or with an absent field) inherits every global setting. */
+  repoOverrides: Record<string, RepoScopedSettings>
 }
 
 export interface ProviderAccount {

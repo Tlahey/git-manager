@@ -14,6 +14,7 @@ import {
   createStreamingService,
   dailySummaryFeature,
   fileGroupingFeature,
+  prDescriptionFeature,
 } from '@git-manager/ai'
 import {
   aiComplete,
@@ -28,9 +29,14 @@ export async function apiCheckAiStatus(config: AiCheckConfig) {
   return checkAiStatus(config)
 }
 
-/** Snapshots the repo's uncommitted changes so a feature can build its prompt from them. */
-export async function apiGetAiContext(path: string, scope: AiContextScope): Promise<AiContext> {
-  return getAiContext(path, scope)
+/** Snapshots repo changes so a feature can build its prompt. `range` scope requires `baseRef` and
+ * diffs `baseRef..HEAD` (the whole branch, for a PR description). */
+export async function apiGetAiContext(
+  path: string,
+  scope: AiContextScope,
+  baseRef?: string
+): Promise<AiContext> {
+  return getAiContext(path, scope, baseRef)
 }
 
 /** Gathers the repo's recent commit activity (last `sinceHours`) + uncommitted work for the
@@ -66,6 +72,7 @@ const tauriAiTransport: AiTransport = {
 export const commitMessageService = createStreamingService(commitMessageFeature, tauriAiTransport)
 export const fileGroupingService = createCompletionService(fileGroupingFeature, tauriAiTransport)
 export const dailySummaryService = createCompletionService(dailySummaryFeature, tauriAiTransport)
+export const prDescriptionService = createStreamingService(prDescriptionFeature, tauriAiTransport)
 
 /** Connection health check for Settings (validates a provider and lists its models). */
 export const aiStatusService = createStatusService(tauriAiTransport)

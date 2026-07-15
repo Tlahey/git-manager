@@ -20,12 +20,53 @@ export type GraphCommitAction =
   | { kind: 'compare' }
   | { kind: 'fixup' }
 
+/**
+ * Handoff for the PR-creation composer, set once "ship from here" has made the local commit (and, on
+ * a protected branch, the new branch). Held here — not in the WIP staging column that triggered it —
+ * because that commit clears the working tree, which unmounts the WIP panel; the composer instead
+ * renders as a center-panel takeover (like `activePrNumber`) driven by this state, so it survives.
+ */
+export interface PrComposerState {
+  /** Branch to push + open the PR from (the current branch, or the freshly created one). */
+  head: string
+  /** Default base branch to pre-fill (the user can still override in the composer). */
+  baseRef: string
+  /** Default PR title (the commit message that was just used). */
+  title: string
+}
+
 interface RepoUIState {
   openTabs: string[] // paths des repos ouverts en onglet
   activeRepo: string | null
   activeTab: string // 'dashboard' | 'pull-requests' | <repoPath>
   activeDiffFile: { path: string; staged: boolean; oid?: string } | null
   setActiveDiffFile: (file: { path: string; staged: boolean; oid?: string } | null) => void
+  /**
+   * When set, the repo view swaps its center panel for the in-app PR view (description, CI status,
+   * comment/review, merge) and its right panel for the PR's changed-files list — mirroring how
+   * `activeDiffFile`/`conflictFilePath` each independently drive a panel swap. `null` = normal graph
+   * view. Not persisted (session-scoped, like `activeDiffFile`).
+   */
+  activePrNumber: number | null
+  setActivePrNumber: (n: number | null) => void
+  /**
+   * Filename of the PR file whose diff is shown in the center panel (only meaningful while
+   * `activePrNumber` is set). `null` = show the PR detail view. Reset whenever the active PR changes
+   * or closes. Session-scoped, not persisted.
+   */
+  activePrFile: string | null
+  setActivePrFile: (filename: string | null) => void
+  /** Whether the always-on-right PR files panel is shown (toggled from the PR header). Default on. */
+  prFilesVisible: boolean
+  togglePrFiles: () => void
+  /**
+   * When set, the repo view swaps its center panel for the PR-creation composer (title, base branch,
+   * template/AI description). Set by `usePrPublishFlow.commitAndPrepare` after the commit exists,
+   * cleared on create/cancel. Mutually exclusive with `activePrNumber`/`activeDiffFile` (all three
+   * claim the center panel). Not persisted (session-scoped, like `activePrNumber`).
+   */
+  prComposer: PrComposerState | null
+  setPrComposer: (composer: PrComposerState | null) => void
   activeLeftPanel: 'sidebar' | 'blame' | 'history'
   setActiveLeftPanel: (panel: 'sidebar' | 'blame' | 'history') => void
   /**
@@ -89,6 +130,10 @@ export const useRepoUIStore = create<RepoUIState>()(
       activeRepo: null,
       activeTab: DASHBOARD_TAB,
       activeDiffFile: null,
+      activePrNumber: null,
+      activePrFile: null,
+      prFilesVisible: true,
+      prComposer: null,
       activeLeftPanel: 'sidebar',
       selectedHistoryOid: null,
       editingOid: null,
@@ -101,9 +146,41 @@ export const useRepoUIStore = create<RepoUIState>()(
       setActiveDiffFile: (file) =>
         set((state) => {
           const nextPanel = file ? state.activeLeftPanel : 'sidebar'
-          // A new file invalidates any previously pinned historic version.
-          return { activeDiffFile: file, activeLeftPanel: nextPanel, selectedHistoryOid: null }
+          // A new file invalidates any previously pinned historic version, and takes the center
+          // panel back from the PR view / composer (they're mutually exclusive there).
+          return {
+            activeDiffFile: file,
+            activeLeftPanel: nextPanel,
+            selectedHistoryOid: null,
+            activePrNumber: file ? null : state.activePrNumber,
+            activePrFile: file ? null : state.activePrFile,
+            prComposer: file ? null : state.prComposer,
+          }
         }),
+
+      // Opening a PR view claims the center/right panels; drop any open file diff or PR composer so
+      // the center panel-swap sources don't fight (`GitGraph` gives the PR view precedence regardless).
+      // Switching or closing a PR always resets the selected PR file (the diff view is per-PR).
+      setActivePrNumber: (n) =>
+        set((state) => ({
+          activePrNumber: n,
+          activePrFile: null,
+          activeDiffFile: n != null ? null : state.activeDiffFile,
+          prComposer: n != null ? null : state.prComposer,
+        })),
+
+      setActivePrFile: (filename) => set({ activePrFile: filename }),
+
+      togglePrFiles: () => set((state) => ({ prFilesVisible: !state.prFilesVisible })),
+
+      // Opening the composer claims the center panel; drop any open file diff / PR view.
+      setPrComposer: (composer) =>
+        set((state) => ({
+          prComposer: composer,
+          activeDiffFile: composer ? null : state.activeDiffFile,
+          activePrNumber: composer ? null : state.activePrNumber,
+          activePrFile: composer ? null : state.activePrFile,
+        })),
 
       setActiveLeftPanel: (panel) => set({ activeLeftPanel: panel }),
 
@@ -126,6 +203,9 @@ export const useRepoUIStore = create<RepoUIState>()(
           activeRepo: path,
           activeTab: path ?? DASHBOARD_TAB,
           activeDiffFile: null,
+          activePrNumber: null,
+          activePrFile: null,
+          prComposer: null,
           activeLeftPanel: 'sidebar',
           selectedHistoryOid: null,
           conflictFilePath: null,
@@ -139,6 +219,9 @@ export const useRepoUIStore = create<RepoUIState>()(
           activeTab: id,
           activeRepo: state.openTabs.includes(id) ? id : null,
           activeDiffFile: null,
+          activePrNumber: null,
+          activePrFile: null,
+          prComposer: null,
           activeLeftPanel: 'sidebar',
           selectedHistoryOid: null,
           conflictFilePath: null,
@@ -187,6 +270,9 @@ export const useRepoUIStore = create<RepoUIState>()(
             openTabs: state.openTabs.filter((p) => p !== path),
             activeRepo: state.activeRepo === path ? null : state.activeRepo,
             activeTab: wasActive ? DASHBOARD_TAB : state.activeTab,
+            activePrNumber: wasActive ? null : state.activePrNumber,
+            activePrFile: wasActive ? null : state.activePrFile,
+            prComposer: wasActive ? null : state.prComposer,
           }
         }),
     }),

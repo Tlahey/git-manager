@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
-import { useSettingsStore } from '../stores/settings.store'
 import { resolveSystemTheme } from '../lib/themes'
 import { apiGetUserThemes } from '../api/theme.api'
 import { warnOnInvalidUserTheme } from '../lib/userThemeValidation'
+import { useRepoUIStore } from '../stores/repoUI.store'
+import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
 import type { UserTheme } from '@git-manager/git-types'
 
 const STYLE_TAG_PREFIX = 'user-theme-'
@@ -26,10 +27,18 @@ function removeAllUserThemeStyles() {
  * Also loads user-defined themes from ~/.git-manager/themes/ on mount
  * and injects them as <style> tags so that data-theme selectors work.
  *
- * Call this hook once at the root of the application.
+ * The effective theme is repo-aware: if a repo is in play (the explicit `repoPathOverride`, else
+ * the active repo tab), its per-repo theme override wins over the global theme; with no repo, or a
+ * repo that doesn't override the theme, the global theme applies. Switching repo tabs re-applies
+ * because the apply effect keys on the resolved theme.
+ *
+ * Call this hook once at the root of the application. Separate WebviewWindows (merge/rebase
+ * editors) pass their own `repoPathOverride` so they honor that repo's theme.
  */
-export function useTheme() {
-  const theme = useSettingsStore((s) => s.settings.appearance.theme)
+export function useTheme(repoPathOverride?: string) {
+  const activeRepo = useRepoUIStore((s) => s.activeRepo)
+  const repoPath = repoPathOverride ?? activeRepo
+  const { theme } = useEffectiveRepoSettings(repoPath)
   const mediaQueryRef = useRef<MediaQueryList | null>(null)
 
   // ── Apply theme on change ───────────────────────────────────────────────────

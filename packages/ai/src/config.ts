@@ -11,6 +11,9 @@ export interface AiConnectionConfig {
   model: string
   apiKey?: string
   timeoutSeconds: number
+  /** Whether the user has turned AI features on. UI/feature gate (e.g. the AI-commit settings
+   * section), not part of the transport — `undefined` is treated as enabled for back-compat. */
+  enabled?: boolean
 }
 
 /** Generalizes the old, Ollama-only `OllamaStatus`. */
@@ -44,10 +47,11 @@ export interface AiGenerateConfig {
  * `response_format: { type: "json_schema" }` surface (supported by Ollama/LM Studio/OpenAI). */
 export type JsonSchema = Record<string, unknown>
 
-/** Which uncommitted state a git-context request should snapshot. `staged` = index vs HEAD (what a
- * plain commit would capture); `working` = worktree vs HEAD (everything uncommitted, for grouping
- * into several commits). Mirrors the Rust `AiContextScope`. */
-export type AiContextScope = 'staged' | 'working'
+/** Which state a git-context request should snapshot. `staged` = index vs HEAD (what a plain commit
+ * would capture); `working` = worktree vs HEAD (everything uncommitted, for grouping into several
+ * commits); `range` = `merge-base(base, HEAD)..HEAD` (a whole branch's changes vs its base, for a
+ * PR description — requires a base ref). Mirrors the Rust `AiContextScope`. */
+export type AiContextScope = 'staged' | 'working' | 'range'
 
 /** One changed file in an {@link AiContext}. `status` is git's short status word
  * (`added`/`modified`/`deleted`/`renamed`/`untracked`). */
@@ -83,6 +87,11 @@ export interface AiContext {
   commitInstructions?: string
   /** Optional regex (from Settings) the generated subject must match. Frontend-populated. */
   commitPattern?: string
+  /** The base branch a `range`-scope context was diffed against (only set for `range`). */
+  baseRef?: string
+  /** Subjects of every non-merge commit in `base..HEAD`, newest first — the commits a PR would
+   * contain (only set for `range` scope). */
+  rangeCommits?: string[]
 }
 
 /** One commit in an {@link AiActivity} window. Mirrors the Rust `ActivityCommit` serde struct. */

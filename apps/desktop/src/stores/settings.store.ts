@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { AppSettings } from '@git-manager/git-types'
+import type { AppSettings, RepoScopedSettings } from '@git-manager/git-types'
 
 const DEFAULT_SETTINGS: AppSettings = {
   ai: {
@@ -8,6 +8,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     url: 'http://localhost:11434',
     model: 'llama3.2',
     timeoutSeconds: 30,
+    enabled: true,
   },
   git: {
     defaultAuthorName: '',
@@ -73,12 +74,32 @@ const DEFAULT_SETTINGS: AppSettings = {
     enabled: true,
     autoGenerate: true,
   },
+  repoOverrides: {},
 }
 
 interface SettingsState {
   settings: AppSettings
   updateSettings: (partial: Partial<AppSettings>) => void
   resetSettings: () => void
+  /** Resets only the given top-level settings groups (e.g. `['ai']`, `['git','advanced']`) back to
+   * their defaults — the per-page "reset to default" affordance. Other groups are left untouched. */
+  resetSettingsGroups: (groups: (keyof AppSettings)[]) => void
+  /** Resets specific fields within one group back to their defaults, for pages that only expose part
+   * of a group (e.g. the General and AI-commit pages both draw from `git`). */
+  resetSettingsFields: <G extends keyof AppSettings>(
+    group: G,
+    fields: (keyof NonNullable<AppSettings[G]>)[]
+  ) => void
+  /** Sets a single per-repository override field. Pass the resolved/desired value; use
+   * `resetRepoSetting` (not `undefined` here) to go back to inheriting the global value. */
+  setRepoSetting: <K extends keyof RepoScopedSettings>(
+    repoPath: string,
+    key: K,
+    value: RepoScopedSettings[K]
+  ) => void
+  /** Removes a single override field so the repo inherits the global value again. Drops the repo's
+   * entry entirely once it has no remaining overrides, keeping `repoOverrides` free of empty shells. */
+  resetRepoSetting: (repoPath: string, key: keyof RepoScopedSettings) => void
 }
 
 /**
@@ -115,6 +136,58 @@ export const useSettingsStore = create<SettingsState>()(
         })),
 
       resetSettings: () => set({ settings: DEFAULT_SETTINGS }),
+
+      resetSettingsGroups: (groups) =>
+        set((state) => {
+          const next = { ...state.settings }
+          for (const group of groups) {
+            ;(next as Record<string, unknown>)[group] = DEFAULT_SETTINGS[group]
+          }
+          return { settings: next }
+        }),
+
+      resetSettingsFields: (group, fields) =>
+        set((state) => {
+          const current = state.settings[group] as Record<string, unknown>
+          const defaults = DEFAULT_SETTINGS[group] as Record<string, unknown>
+          const nextGroup = { ...current }
+          for (const field of fields) {
+            nextGroup[field as string] = defaults[field as string]
+          }
+          return { settings: { ...state.settings, [group]: nextGroup } }
+        }),
+
+      setRepoSetting: (repoPath, key, value) =>
+        set((state) => {
+          const existing = state.settings.repoOverrides[repoPath]
+          return {
+            settings: {
+              ...state.settings,
+              repoOverrides: {
+                ...state.settings.repoOverrides,
+                [repoPath]: { ...existing, [key]: value },
+              },
+            },
+          }
+        }),
+
+      resetRepoSetting: (repoPath, key) =>
+        set((state) => {
+          const existing = state.settings.repoOverrides[repoPath]
+          if (!existing || !(key in existing)) return state
+          // Drop the field; if nothing is left, drop the whole repo entry too.
+          const nextEntry: RepoScopedSettings = { ...existing }
+          delete nextEntry[key]
+          const nextOverrides = { ...state.settings.repoOverrides }
+          if (Object.keys(nextEntry).length === 0) {
+            delete nextOverrides[repoPath]
+          } else {
+            nextOverrides[repoPath] = nextEntry
+          }
+          return {
+            settings: { ...state.settings, repoOverrides: nextOverrides },
+          }
+        }),
     }),
     {
       name: 'git-manager-settings',

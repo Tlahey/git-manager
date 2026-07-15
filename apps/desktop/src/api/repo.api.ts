@@ -6,6 +6,7 @@ import {
   getRepoReadme,
   cloneRepo,
   initRepo,
+  getPrTemplate,
 } from '../lib/tauri'
 
 export async function apiOpenRepo(path: string) {
@@ -39,4 +40,9 @@ export async function apiOpenInEditor(path: string, editor: string, customComman
 
 export async function apiGetRepoReadme(path: string) {
   return getRepoReadme(path)
+}
+
+/** Detects the repo's GitHub PR template(s) on disk, to pre-fill the PR composer like github.com. */
+export async function apiGetPrTemplate(path: string) {
+  return getPrTemplate(path)
 }

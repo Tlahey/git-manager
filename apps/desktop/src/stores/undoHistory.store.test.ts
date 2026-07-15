@@ -87,6 +87,45 @@ describe('useUndoHistoryStore — push/canUndo/canRedo/peek', () => {
   })
 })
 
+describe('useUndoHistoryStore — corrupted-state resilience', () => {
+  it('peekUndoLabel returns null (no crash) on a null stack entry', () => {
+    useUndoHistoryStore.setState({
+      byRepo: { [REPO]: { stack: [null as unknown as UndoAction], pointer: 1 } },
+    })
+    expect(() => useUndoHistoryStore.getState().peekUndoLabel(REPO)).not.toThrow()
+    expect(useUndoHistoryStore.getState().peekUndoLabel(REPO)).toBeNull()
+  })
+
+  it('peekUndoLabel returns null when the pointer is out of the stack bounds', () => {
+    useUndoHistoryStore.setState({ byRepo: { [REPO]: { stack: [action('a')], pointer: 5 } } })
+    expect(useUndoHistoryStore.getState().peekUndoLabel(REPO)).toBeNull()
+  })
+
+  it('undo/redo are no-ops on a null entry', async () => {
+    useUndoHistoryStore.setState({
+      byRepo: { [REPO]: { stack: [null as unknown as UndoAction], pointer: 1 } },
+    })
+    await useUndoHistoryStore.getState().undo(REPO)
+    expect(executeUndo).not.toHaveBeenCalled()
+  })
+
+  it('sanitizes a corrupted persisted stack on rehydration (drops nulls, realigns pointer)', async () => {
+    localStorage.setItem(
+      'git-manager-undo-history',
+      JSON.stringify({
+        state: { byRepo: { [REPO]: { stack: [null, action('a'), null], pointer: 3 } } },
+        version: 0,
+      })
+    )
+    await useUndoHistoryStore.persist.rehydrate()
+    const h = useUndoHistoryStore.getState().byRepo[REPO]
+    expect(h.stack).toHaveLength(1)
+    expect(h.stack[0].id).toBe('a')
+    expect(h.pointer).toBe(1)
+    expect(useUndoHistoryStore.getState().peekUndoLabel(REPO)).toEqual({ key: 'label.a' })
+  })
+})
+
 describe('useUndoHistoryStore — undo/redo', () => {
   it('undo executes the top action and decrements the pointer', async () => {
     useUndoHistoryStore.getState().push(REPO, action('a1'))

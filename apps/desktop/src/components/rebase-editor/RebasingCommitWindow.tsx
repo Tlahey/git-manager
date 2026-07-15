@@ -337,7 +337,7 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
 }
 
 export function RebasingCommitWindow(props: RebasingCommitWindowProps) {
-  useTheme()
+  useTheme(props.repoPath)
   useMonacoTheme()
 
   return (

@@ -6,6 +6,10 @@ const INITIAL = {
   activeRepo: null as string | null,
   activeTab: DASHBOARD_TAB,
   activeDiffFile: null as { path: string; staged: boolean; oid?: string } | null,
+  activePrNumber: null as number | null,
+  activePrFile: null as string | null,
+  prFilesVisible: true,
+  prComposer: null as ReturnType<typeof useRepoUIStore.getState>['prComposer'],
   activeLeftPanel: 'sidebar' as const,
   editingOid: null as string | null,
   conflictFilePath: null as string | null,
@@ -139,6 +143,133 @@ describe('useRepoUIStore — active repo/tab selection', () => {
 
     useRepoUIStore.getState().setActiveDiffFile(null)
     expect(useRepoUIStore.getState().activeLeftPanel).toBe('sidebar')
+  })
+})
+
+describe('useRepoUIStore — activePrNumber', () => {
+  it('sets and clears the active PR number', () => {
+    useRepoUIStore.getState().setActivePrNumber(42)
+    expect(useRepoUIStore.getState().activePrNumber).toBe(42)
+    useRepoUIStore.getState().setActivePrNumber(null)
+    expect(useRepoUIStore.getState().activePrNumber).toBeNull()
+  })
+
+  it('opening a PR clears any open file diff (mutually exclusive center panels)', () => {
+    useRepoUIStore.getState().setActiveDiffFile({ path: 'a.ts', staged: false })
+    useRepoUIStore.getState().setActivePrNumber(7)
+    expect(useRepoUIStore.getState().activeDiffFile).toBeNull()
+    expect(useRepoUIStore.getState().activePrNumber).toBe(7)
+  })
+
+  it('opening a file diff clears any active PR view', () => {
+    useRepoUIStore.getState().setActivePrNumber(7)
+    useRepoUIStore.getState().setActiveDiffFile({ path: 'a.ts', staged: false })
+    expect(useRepoUIStore.getState().activePrNumber).toBeNull()
+    expect(useRepoUIStore.getState().activeDiffFile).toEqual({ path: 'a.ts', staged: false })
+  })
+
+  it('is reset by setActiveRepo and setActiveTab', () => {
+    useRepoUIStore.getState().setActivePrNumber(7)
+    useRepoUIStore.getState().setActiveRepo('/repo/a')
+    expect(useRepoUIStore.getState().activePrNumber).toBeNull()
+
+    useRepoUIStore.getState().setActivePrNumber(9)
+    useRepoUIStore.getState().setActiveTab('pull-requests')
+    expect(useRepoUIStore.getState().activePrNumber).toBeNull()
+  })
+
+  it('is cleared when the active repo tab is removed', () => {
+    useRepoUIStore.getState().openTab('/repo/a')
+    useRepoUIStore.getState().setActivePrNumber(11)
+    useRepoUIStore.getState().clearTabStateForRemovedRepo('/repo/a')
+    expect(useRepoUIStore.getState().activePrNumber).toBeNull()
+  })
+})
+
+describe('useRepoUIStore — activePrFile', () => {
+  it('sets and clears the selected PR file', () => {
+    useRepoUIStore.getState().setActivePrFile('src/a.ts')
+    expect(useRepoUIStore.getState().activePrFile).toBe('src/a.ts')
+    useRepoUIStore.getState().setActivePrFile(null)
+    expect(useRepoUIStore.getState().activePrFile).toBeNull()
+  })
+
+  it('is reset whenever the active PR changes or closes', () => {
+    useRepoUIStore.getState().setActivePrNumber(7)
+    useRepoUIStore.getState().setActivePrFile('src/a.ts')
+    // Switching to another PR resets the selected file.
+    useRepoUIStore.getState().setActivePrNumber(8)
+    expect(useRepoUIStore.getState().activePrFile).toBeNull()
+
+    useRepoUIStore.getState().setActivePrFile('src/b.ts')
+    // Closing the PR view resets it too.
+    useRepoUIStore.getState().setActivePrNumber(null)
+    expect(useRepoUIStore.getState().activePrFile).toBeNull()
+  })
+
+  it('is cleared when a file diff or the composer takes the center panel', () => {
+    useRepoUIStore.getState().setActivePrNumber(7)
+    useRepoUIStore.getState().setActivePrFile('src/a.ts')
+    useRepoUIStore.getState().setActiveDiffFile({ path: 'x.ts', staged: false })
+    expect(useRepoUIStore.getState().activePrFile).toBeNull()
+  })
+})
+
+describe('useRepoUIStore — prFilesVisible', () => {
+  it('defaults to visible and toggles', () => {
+    expect(useRepoUIStore.getState().prFilesVisible).toBe(true)
+    useRepoUIStore.getState().togglePrFiles()
+    expect(useRepoUIStore.getState().prFilesVisible).toBe(false)
+    useRepoUIStore.getState().togglePrFiles()
+    expect(useRepoUIStore.getState().prFilesVisible).toBe(true)
+  })
+})
+
+describe('useRepoUIStore — prComposer', () => {
+  const composer = { head: 'feat/x', baseRef: 'main', title: 'feat: x' }
+
+  it('sets and clears the PR composer', () => {
+    useRepoUIStore.getState().setPrComposer(composer)
+    expect(useRepoUIStore.getState().prComposer).toEqual(composer)
+    useRepoUIStore.getState().setPrComposer(null)
+    expect(useRepoUIStore.getState().prComposer).toBeNull()
+  })
+
+  it('opening the composer clears any open file diff and PR view (mutually exclusive)', () => {
+    useRepoUIStore.getState().setActiveDiffFile({ path: 'a.ts', staged: false })
+    useRepoUIStore.getState().setActivePrNumber(7)
+    useRepoUIStore.getState().setPrComposer(composer)
+    const state = useRepoUIStore.getState()
+    expect(state.activeDiffFile).toBeNull()
+    expect(state.activePrNumber).toBeNull()
+    expect(state.prComposer).toEqual(composer)
+  })
+
+  it('opening a PR view or a file diff clears the composer', () => {
+    useRepoUIStore.getState().setPrComposer(composer)
+    useRepoUIStore.getState().setActivePrNumber(7)
+    expect(useRepoUIStore.getState().prComposer).toBeNull()
+
+    useRepoUIStore.getState().setPrComposer(composer)
+    useRepoUIStore.getState().setActiveDiffFile({ path: 'a.ts', staged: false })
+    expect(useRepoUIStore.getState().prComposer).toBeNull()
+  })
+
+  it('is reset by setActiveRepo and setActiveTab', () => {
+    useRepoUIStore.getState().setPrComposer(composer)
+    useRepoUIStore.getState().setActiveRepo('/repo/a')
+    expect(useRepoUIStore.getState().prComposer).toBeNull()
+
+    useRepoUIStore.getState().setPrComposer(composer)
+    useRepoUIStore.getState().setActiveTab('pull-requests')
+    expect(useRepoUIStore.getState().prComposer).toBeNull()
+  })
+
+  it('is cleared when the active repo tab is removed', () => {
+    useRepoUIStore.getState().openTab('/repo/a')
+    useRepoUIStore.getState().setPrComposer(composer)
+    useRepoUIStore.getState().clearTabStateForRemovedRepo('/repo/a')
+    expect(useRepoUIStore.getState().prComposer).toBeNull()
   })
 })
 

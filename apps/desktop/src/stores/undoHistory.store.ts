@@ -37,6 +37,23 @@ function emptyHistory(): RepoHistory {
   return { stack: [], pointer: 0 }
 }
 
+/** Repairs a persisted history: drops any null/invalid entries (a corrupted snapshot could hold
+ * `null` holes serialized from `undefined`) and re-aligns the pointer to the surviving entries. */
+function sanitizeHistory(raw: unknown): RepoHistory {
+  const h = (raw ?? {}) as Partial<RepoHistory>
+  const rawStack = Array.isArray(h.stack) ? h.stack : []
+  const rawPointer = Math.min(Math.max(typeof h.pointer === 'number' ? h.pointer : 0, 0), rawStack.length)
+  const stack: UndoAction[] = []
+  let pointer = 0
+  rawStack.forEach((action, i) => {
+    if (action && typeof action === 'object' && 'label' in action) {
+      stack.push(action as UndoAction)
+      if (i < rawPointer) pointer++
+    }
+  })
+  return { stack, pointer }
+}
+
 function unpinEntries(repoPath: string, entries: UndoAction[]) {
   for (const entry of entries) {
     for (const refName of entry.pinnedRefs) {
@@ -73,6 +90,7 @@ export const useUndoHistoryStore = create<UndoHistoryState>()(
         const history = get().byRepo[repoPath]
         if (!history || history.pointer <= 0) return
         const action = history.stack[history.pointer - 1]
+        if (!action) return
         await executeUndo(repoPath, action)
         set((state) => {
           const h = state.byRepo[repoPath]
@@ -85,6 +103,7 @@ export const useUndoHistoryStore = create<UndoHistoryState>()(
         const history = get().byRepo[repoPath]
         if (!history || history.pointer >= history.stack.length) return
         const action = history.stack[history.pointer]
+        if (!action) return
         await executeRedo(repoPath, action)
         set((state) => {
           const h = state.byRepo[repoPath]
@@ -123,13 +142,15 @@ export const useUndoHistoryStore = create<UndoHistoryState>()(
       peekUndoLabel: (repoPath) => {
         const history = get().byRepo[repoPath]
         if (!history || history.pointer <= 0) return null
-        return history.stack[history.pointer - 1].label
+        // `?.` guards against a corrupted/out-of-bounds entry so a bad persisted stack can't crash
+        // the whole toolbar on render (see the sanitizing `merge` below).
+        return history.stack[history.pointer - 1]?.label ?? null
       },
 
       peekRedoLabel: (repoPath) => {
         const history = get().byRepo[repoPath]
         if (!history || history.pointer >= history.stack.length) return null
-        return history.stack[history.pointer].label
+        return history.stack[history.pointer]?.label ?? null
       },
 
       validateAndPrune: async (repoPath) => {
@@ -167,8 +188,12 @@ export const useUndoHistoryStore = create<UndoHistoryState>()(
 
         set((state) => {
           const h = state.byRepo[repoPath]
-          if (!h) return state
-          const newStack = keptIndices.map((i) => h.stack[i])
+          // `keptIndices` were computed from `history.stack` before the async check above. If the
+          // stack was replaced in the meantime (a concurrent push/undo), those indices no longer
+          // align — bail rather than map them onto a different array (which would leave `undefined`
+          // holes that JSON persists as `null` and later crash `peekUndoLabel`).
+          if (!h || h.stack !== history.stack) return state
+          const newStack = keptIndices.map((i) => h.stack[i]).filter((a): a is UndoAction => !!a)
           const newPointer = keptIndices.filter((i) => i < pointerBefore).length
           return {
             byRepo: { ...state.byRepo, [repoPath]: { stack: newStack, pointer: newPointer } },
@@ -178,6 +203,16 @@ export const useUndoHistoryStore = create<UndoHistoryState>()(
     }),
     {
       name: 'git-manager-undo-history',
+      // Sanitize the persisted snapshot on rehydration so a corrupted stack (null holes / a pointer
+      // out of sync with the stack) can't crash the toolbar. Rebuilds each repo's history cleanly.
+      merge: (persisted, current) => {
+        const p = persisted as { byRepo?: Record<string, unknown> } | undefined
+        const byRepo: Record<string, RepoHistory> = {}
+        for (const [repoPath, raw] of Object.entries(p?.byRepo ?? {})) {
+          byRepo[repoPath] = sanitizeHistory(raw)
+        }
+        return { ...current, byRepo }
+      },
     }
   )
 )

@@ -20,6 +20,7 @@ import type {
   GitRepoSummary,
   BlameHunk,
   FileHistoryEntry,
+  PrTemplateDetection,
 } from '@git-manager/git-types'
 import type {
   AiProviderStatus,
@@ -222,8 +223,8 @@ export const resolveConflictBinary = (path: string, filePath: string, side: 'our
 export const checkAiStatus = (config: AiCheckConfig) =>
   invoke<AiProviderStatus>('check_ai_status', { config })
 
-export const getAiContext = (path: string, scope: AiContextScope) =>
-  invoke<AiContext>('get_ai_context', { path, scope })
+export const getAiContext = (path: string, scope: AiContextScope, baseRef?: string) =>
+  invoke<AiContext>('get_ai_context', { path, scope, baseRef: baseRef ?? null })
 
 export const getAiActivity = (path: string, sinceHours: number) =>
   invoke<AiActivity>('get_ai_activity', { path, sinceHours })
@@ -514,6 +515,10 @@ export const githubCommitAvatars = (
   repo: string,
   shas: string[]
 ) => invoke<Record<string, string>>('github_commit_avatars', { token, owner, repo, shas })
+
+/** Detects the repo's GitHub PR template(s) on disk (single file, multi-template dir, or none). */
+export const getPrTemplate = (path: string) =>
+  invoke<PrTemplateDetection>('get_pr_template', { path })
 
 // ─── Extended Repo Stats & Tools ─────────────────────────────────────────────
 

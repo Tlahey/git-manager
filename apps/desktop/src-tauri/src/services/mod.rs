@@ -21,3 +21,4 @@ pub mod git_repo;
 pub mod git_rollback;
 pub mod git_stash;
 pub mod git_worktree;
+pub mod pr_template;

@@ -62,11 +62,16 @@ pub async fn check_ai_status(config: AiCheckConfig) -> Result<AiProviderStatus, 
         .map_err(Into::into)
 }
 
-/// Snapshots the repo's uncommitted changes for a feature's prompt (git2 logic lives in the
-/// service layer). `scope` is `"staged"` or `"working"`.
+/// Snapshots repo changes for a feature's prompt (git2 logic lives in the service layer). `scope` is
+/// `"staged"`, `"working"`, or `"range"`; `range` diffs `base_ref..HEAD` and requires `base_ref`.
 #[tauri::command]
-pub async fn get_ai_context(path: String, scope: String) -> Result<AiContext, String> {
-    build_ai_context(&path, AiContextScope::from_str(&scope)).map_err(Into::into)
+pub async fn get_ai_context(
+    path: String,
+    scope: String,
+    base_ref: Option<String>,
+) -> Result<AiContext, String> {
+    build_ai_context(&path, AiContextScope::from_str(&scope), base_ref.as_deref())
+        .map_err(Into::into)
 }
 
 /// Gathers the recent-activity context (commits authored in the last `since_hours` hours + current

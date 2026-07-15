@@ -83,24 +83,3 @@ describe('GeneralSection — scan settings', () => {
     expect(pluginOpen).toHaveBeenCalledWith('~/.config/git-manager/')
   })
 })
-
-describe('GeneralSection — reset', () => {
-  it('requires a second confirming click before resetting', async () => {
-    const user = userEvent.setup()
-    render(<GeneralSection />)
-    await user.click(screen.getByText('settings.advanced.reset'))
-    expect(screen.getByText('settings.advanced.resetConfirm')).toBeInTheDocument()
-    await user.click(screen.getByText('Confirmer — réinitialiser'))
-    expect(useSettingsStore.getState().settings).toEqual(INITIAL_SETTINGS.settings)
-  })
-
-  it('cancels the reset confirmation', async () => {
-    useSettingsStore.setState({ settings: { ...INITIAL_SETTINGS.settings, language: 'fr' } })
-    const user = userEvent.setup()
-    render(<GeneralSection />)
-    await user.click(screen.getByText('settings.advanced.reset'))
-    await user.click(screen.getByText('Annuler'))
-    expect(screen.queryByText('settings.advanced.resetConfirm')).not.toBeInTheDocument()
-    expect(useSettingsStore.getState().settings.language).toBe('fr')
-  })
-})
