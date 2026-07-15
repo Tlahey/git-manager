@@ -60,6 +60,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   const setActivePrNumber = useRepoUIStore((s) => s.setActivePrNumber)
   const activePrFile = useRepoUIStore((s) => s.activePrFile)
   const setActivePrFile = useRepoUIStore((s) => s.setActivePrFile)
+  const prFilesVisible = useRepoUIStore((s) => s.prFilesVisible)
   const prComposer = useRepoUIStore((s) => s.prComposer)
   const conflictFilePath = useRepoUIStore((s) => s.conflictFilePath)
   const setConflictFilePath = useRepoUIStore((s) => s.setConflictFilePath)
@@ -470,20 +471,22 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
       {/* Panneau latéral : fichiers de la PR (priorité), résolution de conflits, ou détails du commit */}
       {activePrNumber != null ? (
-        <>
-          <div
-            {...resizeProps}
-            className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
-          >
-            <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
-          </div>
-          <div
-            className="h-full min-w-[350px] shrink-0 overflow-hidden"
-            style={{ width: panelWidthState }}
-          >
-            <PrFilesPanel repoPath={repoPath} prNumber={activePrNumber} />
-          </div>
-        </>
+        prFilesVisible ? (
+          <>
+            <div
+              {...resizeProps}
+              className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
+            >
+              <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
+            </div>
+            <div
+              className="h-full min-w-[350px] shrink-0 overflow-hidden"
+              style={{ width: panelWidthState }}
+            >
+              <PrFilesPanel repoPath={repoPath} prNumber={activePrNumber} />
+            </div>
+          </>
+        ) : null
       ) : primaryNode ? (
         <>
           {/* Handle de redimensionnement */}

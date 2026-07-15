@@ -2,11 +2,33 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GhPrFile } from '../../../api/github.api'
+import type { ProcessedFileItem } from '../components/CommitFileList'
 
 vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 
 const { usePrFilesMock } = vi.hoisted(() => ({ usePrFilesMock: vi.fn() }))
 vi.mock('../../../hooks/usePrFiles', () => ({ usePrFiles: usePrFilesMock }))
+
+// Use the shared list/tree component, but stub it here to assert the mapping + selection wiring.
+vi.mock('../components/CommitFileList', () => ({
+  CommitFileList: (p: {
+    processedFiles: ProcessedFileItem[]
+    onSelectFileDiff?: (f: { path: string; staged: boolean }) => void
+  }) => (
+    <div data-testid="stub-file-list">
+      {p.processedFiles.map((f) => (
+        <button
+          key={f.path}
+          data-testid={`row-${f.path}`}
+          data-status={f.status}
+          onClick={() => p.onSelectFileDiff?.({ path: f.path, staged: false })}
+        >
+          {f.path}
+        </button>
+      ))}
+    </div>
+  ),
+}))
 
 import { PrFilesPanel } from './PrFilesPanel'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
@@ -19,23 +41,30 @@ beforeEach(() => {
   vi.clearAllMocks()
   useRepoUIStore.getState().setActivePrFile(null)
   usePrFilesMock.mockReturnValue({
-    files: [file(), file({ filename: 'src/b.ts' })],
+    files: [file(), file({ filename: 'src/b.ts', status: 'removed' })],
     isLoading: false,
   })
 })
 
 describe('PrFilesPanel', () => {
-  it('lists the PR files', () => {
+  it('feeds the shared list/tree component with mapped file statuses', () => {
     render(<PrFilesPanel repoPath="/repo" prNumber={7} />)
-    expect(screen.getByTestId('pr-files-panel')).toBeInTheDocument()
-    expect(screen.getByTestId('pr-file-src/a.ts')).toBeInTheDocument()
-    expect(screen.getByTestId('pr-file-src/b.ts')).toBeInTheDocument()
+    expect(screen.getByTestId('stub-file-list')).toBeInTheDocument()
+    expect(screen.getByTestId('row-src/a.ts')).toHaveAttribute('data-status', 'modified')
+    // GitHub "removed" maps to the app's "deleted".
+    expect(screen.getByTestId('row-src/b.ts')).toHaveAttribute('data-status', 'deleted')
   })
 
   it('selects a file into the store (drives the center diff)', async () => {
     const user = userEvent.setup()
     render(<PrFilesPanel repoPath="/repo" prNumber={7} />)
-    await user.click(screen.getByTestId('pr-file-src/b.ts'))
+    await user.click(screen.getByTestId('row-src/b.ts'))
     expect(useRepoUIStore.getState().activePrFile).toBe('src/b.ts')
+  })
+
+  it('shows a spinner while loading', () => {
+    usePrFilesMock.mockReturnValue({ files: [], isLoading: true })
+    render(<PrFilesPanel repoPath="/repo" prNumber={7} />)
+    expect(screen.queryByTestId('stub-file-list')).not.toBeInTheDocument()
   })
 })

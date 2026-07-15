@@ -26,6 +26,7 @@ vi.mock('./PrCommentBox', () => ({ PrCommentBox: () => <div data-testid="stub-co
 vi.mock('./PrMetaSidebar', () => ({ PrMetaSidebar: () => <div data-testid="stub-meta-sidebar" /> }))
 
 import { PrDetailCenter } from './PrDetailCenter'
+import { useRepoUIStore } from '../../../stores/repoUI.store'
 
 function pr(overrides: Record<string, unknown> = {}) {
   return {
@@ -62,6 +63,14 @@ describe('PrDetailCenter', () => {
     expect(screen.getByTestId('stub-merge')).toBeInTheDocument()
     expect(screen.getByTestId('stub-comment')).toBeInTheDocument()
     expect(screen.getByTestId('pr-state-badge')).toHaveTextContent('pr.state.open')
+  })
+
+  it('toggles the files panel from the header button', async () => {
+    useRepoUIStore.setState({ prFilesVisible: true })
+    usePrDetailMock.mockReturnValue({ pr: pr(), isLoading: false, error: null, mutate: vi.fn() })
+    render(<PrDetailCenter repoPath="/repo" prNumber={7} onClose={vi.fn()} />)
+    await userEvent.setup().click(screen.getByTestId('pr-toggle-files'))
+    expect(useRepoUIStore.getState().prFilesVisible).toBe(false)
   })
 
   it('calls onClose when the back button is clicked', async () => {

@@ -8,6 +8,7 @@ const INITIAL = {
   activeDiffFile: null as { path: string; staged: boolean; oid?: string } | null,
   activePrNumber: null as number | null,
   activePrFile: null as string | null,
+  prFilesVisible: true,
   prComposer: null as ReturnType<typeof useRepoUIStore.getState>['prComposer'],
   activeLeftPanel: 'sidebar' as const,
   editingOid: null as string | null,
@@ -211,6 +212,16 @@ describe('useRepoUIStore — activePrFile', () => {
     useRepoUIStore.getState().setActivePrFile('src/a.ts')
     useRepoUIStore.getState().setActiveDiffFile({ path: 'x.ts', staged: false })
     expect(useRepoUIStore.getState().activePrFile).toBeNull()
+  })
+})
+
+describe('useRepoUIStore — prFilesVisible', () => {
+  it('defaults to visible and toggles', () => {
+    expect(useRepoUIStore.getState().prFilesVisible).toBe(true)
+    useRepoUIStore.getState().togglePrFiles()
+    expect(useRepoUIStore.getState().prFilesVisible).toBe(false)
+    useRepoUIStore.getState().togglePrFiles()
+    expect(useRepoUIStore.getState().prFilesVisible).toBe(true)
   })
 })
 

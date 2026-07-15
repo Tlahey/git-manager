@@ -487,6 +487,8 @@
   "pr.diff.noPatch": "Aucun diff texte disponible (binaire ou trop volumineux).",
   "pr.diff.renamedOnly": "Fichier renommé sans changement de contenu.",
   "pr.diff.notFound": "Fichier introuvable dans cette pull request.",
+  "pr.files.show": "Afficher les fichiers",
+  "pr.files.hide": "Masquer les fichiers",
   "emptyRepo.message": "{{repo}} n'a encore aucun commit. Créer un commit initial pour pouvoir commencer ?",
   "emptyRepo.initialize": "Initialiser",
   "emptyRepo.cancel": "Annuler",

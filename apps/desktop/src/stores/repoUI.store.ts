@@ -56,6 +56,9 @@ interface RepoUIState {
    */
   activePrFile: string | null
   setActivePrFile: (filename: string | null) => void
+  /** Whether the always-on-right PR files panel is shown (toggled from the PR header). Default on. */
+  prFilesVisible: boolean
+  togglePrFiles: () => void
   /**
    * When set, the repo view swaps its center panel for the PR-creation composer (title, base branch,
    * template/AI description). Set by `usePrPublishFlow.commitAndPrepare` after the commit exists,
@@ -129,6 +132,7 @@ export const useRepoUIStore = create<RepoUIState>()(
       activeDiffFile: null,
       activePrNumber: null,
       activePrFile: null,
+      prFilesVisible: true,
       prComposer: null,
       activeLeftPanel: 'sidebar',
       selectedHistoryOid: null,
@@ -166,6 +170,8 @@ export const useRepoUIStore = create<RepoUIState>()(
         })),
 
       setActivePrFile: (filename) => set({ activePrFile: filename }),
+
+      togglePrFiles: () => set((state) => ({ prFilesVisible: !state.prFilesVisible })),
 
       // Opening the composer claims the center panel; drop any open file diff / PR view.
       setPrComposer: (composer) =>

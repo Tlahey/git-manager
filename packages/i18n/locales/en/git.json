@@ -490,6 +490,8 @@
   "pr.diff.noPatch": "No text diff available (binary or too large).",
   "pr.diff.renamedOnly": "File renamed with no content changes.",
   "pr.diff.notFound": "File not found in this pull request.",
+  "pr.files.show": "Show files",
+  "pr.files.hide": "Hide files",
   "emptyRepo.message": "{{repo}} has no commits yet. Create an initial commit so you can start working?",
   "emptyRepo.initialize": "Initialize",
   "emptyRepo.cancel": "Cancel",
