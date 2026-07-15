@@ -14,6 +14,7 @@ import {
   X,
   Plus,
   Minus,
+  Check,
 } from 'lucide-react'
 import { apiStageFile, apiUnstageFile, apiDiscardFileChanges } from '../../../api/git.api'
 import { useFileTree, getSortedNodes, type TreeNode } from '@git-manager/components'
@@ -24,6 +25,10 @@ export interface ProcessedFileItem {
   additions?: number
   deletions?: number
   staged: boolean
+  /** Generic per-file "reviewed" flag (e.g. GitHub's PR file-viewed state) — renders a small check
+   * in front of the filename when true. Purely a passive indicator; toggling it is the caller's
+   * responsibility (this list has no click handler for it). */
+  viewed?: boolean
 }
 
 interface CommitFileListProps {
@@ -360,6 +365,12 @@ export function CommitFileList({
             <div className="w-3 shrink-0" />
           ) : null}
           <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+          {node.viewed && (
+            <Check
+              className="h-3 w-3 shrink-0 text-emerald-500"
+              data-testid={`file-tree-viewed-${node.path}`}
+            />
+          )}
           <span className="min-w-0 flex-1 truncate font-mono text-[11px] font-semibold leading-tight text-foreground">
             {node.name}
           </span>
@@ -672,6 +683,12 @@ export function CommitFileList({
                       </button>
                     )}
                     <FileText className="mr-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+                    {file.viewed && (
+                      <Check
+                        className="mr-1.5 h-3 w-3 shrink-0 text-emerald-500"
+                        data-testid={`file-list-viewed-${file.path}`}
+                      />
+                    )}
                     <div className="flex min-w-0 flex-1 select-text items-center overflow-hidden font-mono text-[11px] leading-tight">
                       {(() => {
                         const lastSlash = file.path.lastIndexOf('/')

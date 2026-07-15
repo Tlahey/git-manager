@@ -47,11 +47,19 @@ describe('useFileTree — tree building', () => {
     expect(root['README.md'].isFolder).toBe(false)
   })
 
-  it('carries file metadata (status/additions/deletions/staged) onto the leaf node only', () => {
-    const files = [file('a.ts', 'modified', { additions: 3, deletions: 1, staged: true })]
+  it('carries file metadata (status/additions/deletions/staged/viewed) onto the leaf node only', () => {
+    const files = [
+      file('a.ts', 'modified', { additions: 3, deletions: 1, staged: true, viewed: true }),
+    ]
     const { result } = renderHook(() => useFileTree(files, 'key1'))
     const leaf = result.current.treeRoot['a.ts']
-    expect(leaf).toMatchObject({ status: 'modified', additions: 3, deletions: 1, staged: true })
+    expect(leaf).toMatchObject({
+      status: 'modified',
+      additions: 3,
+      deletions: 1,
+      staged: true,
+      viewed: true,
+    })
   })
 
   it('aggregates per-folder stats from descendant file statuses', () => {

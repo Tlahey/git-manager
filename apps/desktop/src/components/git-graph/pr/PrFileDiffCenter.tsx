@@ -4,6 +4,7 @@ import { Spinner, cn } from '@git-manager/ui'
 import { CodeEditor } from '@git-manager/editor'
 import { ChevronLeft, FileText, GitCompare } from 'lucide-react'
 import { usePrFileContents } from '../../../hooks/usePrFileContents'
+import { usePrFilesViewedState } from '../../../hooks/usePrFilesViewedState'
 import { ThreeWayMergeEditor } from '../../merge-editor/ThreeWayMergeEditor'
 
 interface PrFileDiffCenterProps {
@@ -25,6 +26,11 @@ export function PrFileDiffCenter({ repoPath, prNumber, filename, onClose }: PrFi
     prNumber,
     filename
   )
+  const { pullRequestId, viewedByPath, isToggling, toggleViewed } = usePrFilesViewedState(
+    repoPath,
+    prNumber
+  )
+  const isViewed = viewedByPath[filename] === 'VIEWED'
 
   return (
     <div data-testid="pr-file-diff-center" className="flex h-full flex-col overflow-hidden">
@@ -47,29 +53,52 @@ export function PrFileDiffCenter({ repoPath, prNumber, filename, onClose }: PrFi
           </span>
         )}
 
-        <div className="ml-auto flex shrink-0 items-center overflow-hidden rounded border border-border">
-          <button
-            onClick={() => setTab('diff')}
-            data-testid="pr-file-diff-tab-diff"
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <label
             className={cn(
-              'flex items-center gap-1 px-2 py-1 text-[11px] transition-colors',
-              tab === 'diff' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'
+              'flex cursor-pointer items-center gap-1.5 rounded border px-2 py-1 text-[11px] font-medium transition-colors',
+              isViewed
+                ? 'border-primary/40 bg-primary/15 text-primary'
+                : 'border-border text-muted-foreground hover:bg-accent'
             )}
           >
-            <GitCompare className="h-3 w-3" />
-            {t('pr.diff.viewDiff')}
-          </button>
-          <button
-            onClick={() => setTab('file')}
-            data-testid="pr-file-diff-tab-file"
-            className={cn(
-              'flex items-center gap-1 px-2 py-1 text-[11px] transition-colors',
-              tab === 'file' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'
-            )}
-          >
-            <FileText className="h-3 w-3" />
-            {t('pr.diff.viewFile')}
-          </button>
+            <input
+              type="checkbox"
+              data-testid="pr-file-diff-viewed"
+              checked={isViewed}
+              disabled={isToggling || !pullRequestId}
+              onChange={() => {
+                toggleViewed(filename).catch((err) => console.error('Failed to toggle viewed:', err))
+              }}
+              className="h-3.5 w-3.5 accent-primary"
+            />
+            {t('pr.diff.viewed')}
+          </label>
+
+          <div className="flex shrink-0 items-center overflow-hidden rounded border border-border">
+            <button
+              onClick={() => setTab('diff')}
+              data-testid="pr-file-diff-tab-diff"
+              className={cn(
+                'flex items-center gap-1 px-2 py-1 text-[11px] transition-colors',
+                tab === 'diff' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'
+              )}
+            >
+              <GitCompare className="h-3 w-3" />
+              {t('pr.diff.viewDiff')}
+            </button>
+            <button
+              onClick={() => setTab('file')}
+              data-testid="pr-file-diff-tab-file"
+              className={cn(
+                'flex items-center gap-1 px-2 py-1 text-[11px] transition-colors',
+                tab === 'file' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'
+              )}
+            >
+              <FileText className="h-3 w-3" />
+              {t('pr.diff.viewFile')}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -94,6 +123,7 @@ export function PrFileDiffCenter({ repoPath, prNumber, filename, onClose }: PrFi
             original={original}
             modified={modified}
             isTwoWay
+            defaultCollapseUnchanged
           />
         )}
       </div>

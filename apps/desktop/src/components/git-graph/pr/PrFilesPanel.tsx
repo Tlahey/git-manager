@@ -3,6 +3,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { Spinner } from '@git-manager/ui'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { usePrFiles } from '../../../hooks/usePrFiles'
+import { usePrFilesViewedState } from '../../../hooks/usePrFilesViewedState'
 import { CommitFileList, type ProcessedFileItem } from '../components/CommitFileList'
 
 interface PrFilesPanelProps {
@@ -31,6 +32,7 @@ function mapStatus(status: string): ProcessedFileItem['status'] {
 export function PrFilesPanel({ repoPath, prNumber }: PrFilesPanelProps) {
   const { t } = useTranslation('git')
   const { files, isLoading } = usePrFiles(repoPath, prNumber)
+  const { viewedByPath } = usePrFilesViewedState(repoPath, prNumber)
   const setActivePrFile = useRepoUIStore((s) => s.setActivePrFile)
 
   const processedFiles = useMemo<ProcessedFileItem[]>(
@@ -41,8 +43,9 @@ export function PrFilesPanel({ repoPath, prNumber }: PrFilesPanelProps) {
         additions: f.additions,
         deletions: f.deletions,
         staged: false,
+        viewed: viewedByPath[f.filename] === 'VIEWED',
       })),
-    [files]
+    [files, viewedByPath]
   )
 
   return (

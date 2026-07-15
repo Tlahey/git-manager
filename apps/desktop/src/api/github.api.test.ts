@@ -24,9 +24,13 @@ import {
   resolveTagOrReleaseUrl,
   createPullRequest,
   fetchPrFiles,
+  fetchPrFilesViewedState,
+  markPrFileAsViewed,
+  unmarkPrFileAsViewed,
   postPrComment,
   submitPrReview,
   mergePullRequest,
+  fetchPrMergeability,
   fetchRepoDefaultBranch,
   apiGithubDeviceCode,
   apiGithubPollToken,
@@ -479,6 +483,45 @@ describe('fetchGitHubContributions', () => {
   })
 })
 
+describe('fetchPrMergeability', () => {
+  it('reports viewerCanMergeAsAdmin from the GraphQL response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          data: {
+            repository: {
+              pullRequest: {
+                mergeable: 'CONFLICTING',
+                mergeStateStatus: 'BLOCKED',
+                reviewDecision: 'REVIEW_REQUIRED',
+                viewerCanMergeAsAdmin: true,
+                commits: { nodes: [{ commit: { statusCheckRollup: null } }] },
+              },
+            },
+          },
+        })
+      )
+    )
+
+    const result = await fetchPrMergeability('org', 'repo', 42, 'tok')
+
+    expect(result.mergeStateStatus).toBe('BLOCKED')
+    expect(result.viewerCanMergeAsAdmin).toBe(true)
+  })
+
+  it('defaults viewerCanMergeAsAdmin to false when absent', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse({ data: { repository: { pullRequest: null } } }))
+    )
+
+    const result = await fetchPrMergeability('org', 'repo', 42, 'tok')
+
+    expect(result.viewerCanMergeAsAdmin).toBe(false)
+  })
+})
+
 describe('Tauri GitHub integration pass-throughs', () => {
   it('apiGithubDeviceCode delegates to githubDeviceCode', async () => {
     mockedTauri.githubDeviceCode.mockResolvedValue({ device_code: 'x' })
@@ -536,6 +579,63 @@ describe('PR write operations', () => {
       'https://api.github.com/repos/org/repo/pulls/42/files?per_page=100',
       expect.anything()
     )
+  })
+
+  it('fetchPrFilesViewedState queries per-file viewerViewedState plus the PR node id', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        data: {
+          repository: {
+            pullRequest: {
+              id: 'PR_kwABC',
+              files: {
+                nodes: [
+                  { path: 'a.ts', viewerViewedState: 'VIEWED' },
+                  { path: 'b.ts', viewerViewedState: 'UNVIEWED' },
+                ],
+              },
+            },
+          },
+        },
+      })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const result = await fetchPrFilesViewedState('org', 'repo', 42, 'tok')
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.github.com/graphql',
+      expect.objectContaining({ method: 'POST' })
+    )
+    expect(result).toEqual({
+      pullRequestId: 'PR_kwABC',
+      viewedByPath: { 'a.ts': 'VIEWED', 'b.ts': 'UNVIEWED' },
+    })
+  })
+
+  it('fetchPrFilesViewedState defaults to an empty id/map when the PR is missing', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse({ data: { repository: { pullRequest: null } } }))
+    )
+    const result = await fetchPrFilesViewedState('org', 'repo', 42, 'tok')
+    expect(result).toEqual({ pullRequestId: '', viewedByPath: {} })
+  })
+
+  it('markPrFileAsViewed sends the markFileAsViewed mutation with pullRequestId/path', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ data: { markFileAsViewed: {} } }))
+    vi.stubGlobal('fetch', fetchMock)
+    await markPrFileAsViewed('PR_kwABC', 'a.ts', 'tok')
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.query).toContain('markFileAsViewed')
+    expect(body.variables).toEqual({ id: 'PR_kwABC', path: 'a.ts' })
+  })
+
+  it('unmarkPrFileAsViewed sends the unmarkFileAsViewed mutation with pullRequestId/path', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ data: { unmarkFileAsViewed: {} } }))
+    vi.stubGlobal('fetch', fetchMock)
+    await unmarkPrFileAsViewed('PR_kwABC', 'a.ts', 'tok')
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.query).toContain('unmarkFileAsViewed')
+    expect(body.variables).toEqual({ id: 'PR_kwABC', path: 'a.ts' })
   })
 
   it('postPrComment POSTs to the issues comments endpoint', async () => {

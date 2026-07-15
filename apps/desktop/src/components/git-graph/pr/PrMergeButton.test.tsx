@@ -75,6 +75,36 @@ describe('PrMergeButton — gating', () => {
   })
 })
 
+describe('PrMergeButton — bypass branch protections', () => {
+  it('does not show the bypass checkbox when the viewer lacks bypass rights', () => {
+    renderButton({ mergeState: 'BLOCKED', viewerCanMergeAsAdmin: false })
+    expect(screen.queryByTestId('pr-merge-bypass-rules')).not.toBeInTheDocument()
+    expect(screen.getByTestId('pr-merge-button')).toBeDisabled()
+  })
+
+  it('does not show the bypass checkbox for a non-BLOCKED disabled state (e.g. BEHIND)', () => {
+    renderButton({ mergeState: 'BEHIND', viewerCanMergeAsAdmin: true })
+    expect(screen.queryByTestId('pr-merge-bypass-rules')).not.toBeInTheDocument()
+  })
+
+  it('shows the bypass checkbox when blocked and the viewer can bypass, unchecked by default', () => {
+    renderButton({ mergeState: 'BLOCKED', viewerCanMergeAsAdmin: true })
+    const checkbox = screen.getByTestId('pr-merge-bypass-rules')
+    expect(checkbox).not.toBeChecked()
+    expect(screen.getByTestId('pr-merge-button')).toBeDisabled()
+  })
+
+  it('checking the bypass checkbox enables the merge button and merge proceeds normally', async () => {
+    const user = userEvent.setup()
+    renderButton({ mergeState: 'BLOCKED', viewerCanMergeAsAdmin: true })
+    await user.click(screen.getByTestId('pr-merge-bypass-rules'))
+    const button = screen.getByTestId('pr-merge-button')
+    expect(button).toBeEnabled()
+    await user.click(button)
+    expect(mergeMock).toHaveBeenCalledWith({ mergeMethod: 'merge' })
+  })
+})
+
 describe('PrMergeButton — split-button method dropdown', () => {
   it('defaults to a merge commit (main button reflects the method)', () => {
     renderButton()

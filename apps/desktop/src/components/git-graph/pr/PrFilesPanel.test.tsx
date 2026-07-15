@@ -6,8 +6,14 @@ import type { ProcessedFileItem } from '../components/CommitFileList'
 
 vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 
-const { usePrFilesMock } = vi.hoisted(() => ({ usePrFilesMock: vi.fn() }))
+const { usePrFilesMock, usePrFilesViewedStateMock } = vi.hoisted(() => ({
+  usePrFilesMock: vi.fn(),
+  usePrFilesViewedStateMock: vi.fn(),
+}))
 vi.mock('../../../hooks/usePrFiles', () => ({ usePrFiles: usePrFilesMock }))
+vi.mock('../../../hooks/usePrFilesViewedState', () => ({
+  usePrFilesViewedState: usePrFilesViewedStateMock,
+}))
 
 // Use the shared list/tree component, but stub it here to assert the mapping + selection wiring.
 vi.mock('../components/CommitFileList', () => ({
@@ -21,6 +27,7 @@ vi.mock('../components/CommitFileList', () => ({
           key={f.path}
           data-testid={`row-${f.path}`}
           data-status={f.status}
+          data-viewed={String(!!f.viewed)}
           onClick={() => p.onSelectFileDiff?.({ path: f.path, staged: false })}
         >
           {f.path}
@@ -42,6 +49,11 @@ beforeEach(() => {
   useRepoUIStore.getState().setActivePrFile(null)
   usePrFilesMock.mockReturnValue({
     files: [file(), file({ filename: 'src/b.ts', status: 'removed' })],
+    isLoading: false,
+  })
+  usePrFilesViewedStateMock.mockReturnValue({
+    pullRequestId: 'PR_node_id',
+    viewedByPath: {},
     isLoading: false,
   })
 })
@@ -66,5 +78,16 @@ describe('PrFilesPanel', () => {
     usePrFilesMock.mockReturnValue({ files: [], isLoading: true })
     render(<PrFilesPanel repoPath="/repo" prNumber={7} />)
     expect(screen.queryByTestId('stub-file-list')).not.toBeInTheDocument()
+  })
+
+  it('marks a file as viewed only when GitHub reports its state as VIEWED', () => {
+    usePrFilesViewedStateMock.mockReturnValue({
+      pullRequestId: 'PR_node_id',
+      viewedByPath: { 'src/a.ts': 'VIEWED', 'src/b.ts': 'DISMISSED' },
+      isLoading: false,
+    })
+    render(<PrFilesPanel repoPath="/repo" prNumber={7} />)
+    expect(screen.getByTestId('row-src/a.ts')).toHaveAttribute('data-viewed', 'true')
+    expect(screen.getByTestId('row-src/b.ts')).toHaveAttribute('data-viewed', 'false')
   })
 })
