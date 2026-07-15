@@ -308,6 +308,40 @@ describe('GraphRow — message column: normal commit', () => {
   })
 })
 
+describe('GraphRow — dimmed (search non-match)', () => {
+  it('renders subject/author/sha in normal styling when not dimmed', () => {
+    renderRow({
+      columns: [col('message'), col('author'), col('sha')],
+      node: node({ commit: { ...node().commit, subject: 'Add feature' } }),
+    })
+    expect(screen.getByText('Add feature')).toHaveClass('text-foreground')
+    expect(screen.getByText('Add feature').parentElement).not.toHaveClass('italic')
+    expect(screen.getByText('Ada Lovelace')).not.toHaveClass('italic')
+    expect(screen.getByText('abc1234')).not.toHaveClass('italic')
+  })
+
+  it('mutes and italicizes the subject/author/sha text when dimmed', () => {
+    renderRow({
+      columns: [col('message'), col('author'), col('sha')],
+      node: node({ commit: { ...node().commit, subject: 'Add feature' } }),
+      dimmed: true,
+    })
+    expect(screen.getByText('Add feature')).toHaveClass('text-muted-foreground/40')
+    expect(screen.getByText('Add feature').parentElement).toHaveClass('italic')
+    expect(screen.getByText('Ada Lovelace')).toHaveClass('italic', 'text-muted-foreground/40')
+    expect(screen.getByText('abc1234')).toHaveClass('italic', 'text-muted-foreground/40')
+  })
+
+  it('still renders the row (does not hide it) when dimmed', () => {
+    renderRow({
+      columns: [col('message')],
+      node: node({ commit: { ...node().commit, subject: 'Add feature' } }),
+      dimmed: true,
+    })
+    expect(screen.getByText('Add feature')).toBeInTheDocument()
+  })
+})
+
 describe('GraphRow — author/date/sha columns', () => {
   it('shows author initials and name for a normal commit', () => {
     renderRow({

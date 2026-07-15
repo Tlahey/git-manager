@@ -116,31 +116,45 @@ export function useGitGraphNodes(
     return buildWipNode(nodes)
   }, [totalChanges, nodes, conflictNode])
 
+  // All nodes to render (WIP/CONFLICT synthetic row prepended when present). Search no longer
+  // removes rows from here — see `matchingOids` below — so the graph's column/connection shape
+  // (computed for the full history) never gets distorted by a search that would otherwise hide
+  // some of the commits it depends on.
   const filteredNodes = useMemo(() => {
-    const search = searchQuery?.trim().toLowerCase() ?? ''
     const specialNode = conflictNode ?? wipNode
-    const baseNodes = specialNode ? [specialNode, ...nodes] : nodes
-    if (!search) return baseNodes
-    return baseNodes.filter((node) => {
-      if (node.commit.oid === 'WIP') {
-        return 'wip'.includes(search)
-      }
-      if (node.commit.oid === 'CONFLICT') {
-        return 'conflict'.includes(search)
-      }
-      const { commit } = node
-      const haystack = [
-        commit.subject,
-        commit.body,
-        commit.author.name,
-        commit.author.email,
-        commit.oid,
-      ]
-        .join(' ')
-        .toLowerCase()
-      return haystack.includes(search)
-    })
-  }, [nodes, searchQuery, wipNode, conflictNode])
+    return specialNode ? [specialNode, ...nodes] : nodes
+  }, [nodes, wipNode, conflictNode])
+
+  /**
+   * Ordered OIDs (display order) of commits matching the active search — `null` when there's no
+   * active search. Drives the search panel's result count / up-down navigation, and lets row
+   * rendering dim the commits that *don't* match instead of hiding them.
+   */
+  const matchingOids = useMemo(() => {
+    const search = searchQuery?.trim().toLowerCase() ?? ''
+    if (!search) return null
+    return filteredNodes
+      .filter((node) => {
+        if (node.commit.oid === 'WIP') {
+          return 'wip'.includes(search)
+        }
+        if (node.commit.oid === 'CONFLICT') {
+          return 'conflict'.includes(search)
+        }
+        const { commit } = node
+        const haystack = [
+          commit.subject,
+          commit.body,
+          commit.author.name,
+          commit.author.email,
+          commit.oid,
+        ]
+          .join(' ')
+          .toLowerCase()
+        return haystack.includes(search)
+      })
+      .map((node) => node.commit.oid)
+  }, [filteredNodes, searchQuery])
 
   // Waterlines : émises de façon MONOTONE (rang croissant) : un palier n'apparaît
   // qu'en entrant dans une période plus ancienne, jamais en arrière (commits pas
@@ -204,5 +218,5 @@ export function useGitGraphNodes(
     })
   }, [filteredNodes, totalChanges, originMainIndex, conflictNode])
 
-  return { wipNode, conflictNode, filteredNodes, renderNodes, waterlines, originMainIndex }
+  return { wipNode, conflictNode, filteredNodes, renderNodes, waterlines, originMainIndex, matchingOids }
 }

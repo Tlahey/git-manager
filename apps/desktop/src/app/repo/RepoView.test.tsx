@@ -29,15 +29,7 @@ vi.mock('../../components/git-graph/GitGraph', () => ({
 }))
 
 vi.mock('../../components/action-toolbar', () => ({
-  ActionToolbar: (props: { searchQuery: string; onSearchChange: (v: string) => void }) => (
-    <div data-testid="fake-action-toolbar">
-      <input
-        data-testid="toolbar-search-input"
-        value={props.searchQuery}
-        onChange={(e) => props.onSearchChange(e.target.value)}
-      />
-    </div>
-  ),
+  ActionToolbar: () => <div data-testid="fake-action-toolbar" />,
 }))
 
 vi.mock('../../components/repository-sidebar', () => ({
@@ -108,6 +100,7 @@ import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useUndoHistoryStore } from '../../stores/undoHistory.store'
+import { useCommitSearchStore } from '../../stores/commitSearch.store'
 
 const INITIAL_REPO_UI = useRepoUIStore.getState()
 const INITIAL_REPO_DATA = useRepoDataStore.getState()
@@ -130,6 +123,7 @@ beforeEach(() => {
   useRepoUIStore.setState(INITIAL_REPO_UI, true)
   useRepoDataStore.setState(INITIAL_REPO_DATA, true)
   useSettingsStore.setState(INITIAL_SETTINGS, true)
+  useCommitSearchStore.setState({ open: false, query: '' })
   apiOpenRepo.mockResolvedValue(repo())
   vi.spyOn(useUndoHistoryStore.getState(), 'validateAndPrune').mockResolvedValue(undefined)
 })
@@ -234,11 +228,12 @@ describe('RepoView — branch selection threading', () => {
 })
 
 describe('RepoView — search query threading', () => {
-  it('threads the toolbar search query into the graph', async () => {
-    const user = userEvent.setup()
+  it('threads the commit search store query into the graph', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     render(<RepoView />)
-    await user.type(screen.getByTestId('toolbar-search-input'), 'fix bug')
+    act(() => {
+      useCommitSearchStore.getState().setQuery('fix bug')
+    })
     expect(screen.getByTestId('graph-search')).toHaveTextContent('fix bug')
   })
 })

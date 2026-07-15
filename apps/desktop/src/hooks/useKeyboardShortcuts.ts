@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { useRepoUIStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../stores/repoUI.store'
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
 import { useCommandPaletteStore } from '../stores/commandPalette.store'
+import { useCommitSearchStore } from '../stores/commitSearch.store'
+import { useIsCommitsView } from './useIsCommitsView'
 import { queryClient } from '../lib/queryClient'
 
 interface UseKeyboardShortcutsProps {
@@ -16,6 +18,7 @@ export function useKeyboardShortcuts({
   showSettings,
 }: UseKeyboardShortcutsProps) {
   const { openTabs, activeTab, activeRepo, setActiveTab, closeTab } = useRepoUIStore()
+  const isCommitsView = useIsCommitsView()
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -26,6 +29,21 @@ export function useKeyboardShortcuts({
         e.preventDefault()
         useCommandPaletteStore.getState().toggle()
         return
+      }
+
+      // Commit search: ⌘F / Ctrl+F — toggles the floating commit search panel. Also handled
+      // before the input guard (like ⌘K) so it works while focus is elsewhere, but yields to
+      // Monaco's own in-file find widget when focused inside a diff/merge editor, and only
+      // applies while the plain commit graph is on screen (the panel only exists there — see
+      // `useIsCommitsView`, not while viewing a PR/diff/composer or with no repo open).
+      const isModF = navigator.userAgent.includes('Mac') ? e.metaKey : e.ctrlKey
+      if (isModF && !e.altKey && e.key.toLowerCase() === 'f' && activeRepo && isCommitsView) {
+        const targetEl = e.target as HTMLElement
+        if (!targetEl.closest('.monaco-editor')) {
+          e.preventDefault()
+          useCommitSearchStore.getState().toggle()
+          return
+        }
       }
 
       // Ignore shortcuts if user is typing in an input, textarea or contenteditable element
@@ -123,6 +141,7 @@ export function useKeyboardShortcuts({
     openTabs,
     activeTab,
     activeRepo,
+    isCommitsView,
     showSettings,
     setActiveTab,
     closeTab,
