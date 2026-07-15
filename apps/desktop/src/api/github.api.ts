@@ -106,6 +106,11 @@ async function ghRequest<T>(url: string, opts: GhRequestOptions = {}): Promise<T
   const res = await fetch(url, {
     method,
     headers,
+    // GitHub's REST API sends `Cache-Control: max-age=60` on GETs (e.g. a PR's own detail
+    // endpoint), so the webview's HTTP cache can silently serve a pre-merge response for up to a
+    // minute even when SWR asks us to revalidate right after a merge/comment/review — the fetch()
+    // call never reaches the network. Force every call through.
+    cache: 'no-store',
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
   if (!res.ok) {
