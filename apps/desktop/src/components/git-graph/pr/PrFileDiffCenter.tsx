@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Spinner } from '@git-manager/ui'
-import { ChevronLeft } from 'lucide-react'
-import { usePrFiles } from '../../../hooks/usePrFiles'
-import { PrFileDiff } from './PrFileDiff'
+import { Spinner, cn } from '@git-manager/ui'
+import { CodeEditor } from '@git-manager/editor'
+import { ChevronLeft, FileText, GitCompare } from 'lucide-react'
+import { usePrFileContents } from '../../../hooks/usePrFileContents'
+import { ThreeWayMergeEditor } from '../../merge-editor/ThreeWayMergeEditor'
 
 interface PrFileDiffCenterProps {
   repoPath: string
@@ -12,12 +14,17 @@ interface PrFileDiffCenterProps {
   onClose: () => void
 }
 
-/** Center-panel takeover showing one PR file's diff, reached by clicking a file in the side panel.
- * Keeps the PR's file list on the right; the back button returns to the PR detail view. */
+/** Center-panel takeover showing one PR file — the same Monaco diff/file view as a commit file
+ * (collapsible unchanged regions, syntax highlighting, a diff ⇄ file toggle). The two versions are
+ * fetched from GitHub ({@link usePrFileContents}). The PR's file list stays on the right. */
 export function PrFileDiffCenter({ repoPath, prNumber, filename, onClose }: PrFileDiffCenterProps) {
   const { t } = useTranslation('git')
-  const { files, isLoading } = usePrFiles(repoPath, prNumber)
-  const file = files.find((f) => f.filename === filename)
+  const [tab, setTab] = useState<'diff' | 'file'>('diff')
+  const { file, original, modified, isBinary, isLoading } = usePrFileContents(
+    repoPath,
+    prNumber,
+    filename
+  )
 
   return (
     <div data-testid="pr-file-diff-center" className="flex h-full flex-col overflow-hidden">
@@ -34,23 +41,60 @@ export function PrFileDiffCenter({ repoPath, prNumber, filename, onClose }: PrFi
           {filename}
         </span>
         {file && (
-          <span className="ml-auto shrink-0 font-mono text-[10px]">
+          <span className="shrink-0 font-mono text-[10px]">
             <span className="text-green-500">+{file.additions}</span>{' '}
             <span className="text-destructive">-{file.deletions}</span>
           </span>
         )}
+
+        <div className="ml-auto flex shrink-0 items-center overflow-hidden rounded border border-border">
+          <button
+            onClick={() => setTab('diff')}
+            data-testid="pr-file-diff-tab-diff"
+            className={cn(
+              'flex items-center gap-1 px-2 py-1 text-[11px] transition-colors',
+              tab === 'diff' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'
+            )}
+          >
+            <GitCompare className="h-3 w-3" />
+            {t('pr.diff.viewDiff')}
+          </button>
+          <button
+            onClick={() => setTab('file')}
+            data-testid="pr-file-diff-tab-file"
+            className={cn(
+              'flex items-center gap-1 px-2 py-1 text-[11px] transition-colors',
+              tab === 'file' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'
+            )}
+          >
+            <FileText className="h-3 w-3" />
+            {t('pr.diff.viewFile')}
+          </button>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        {isLoading && !file ? (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {isLoading ? (
           <div className="flex items-center gap-2 p-4">
             <Spinner className="h-4 w-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">{t('pr.view.loading')}</span>
           </div>
         ) : !file ? (
           <p className="p-4 text-xs italic text-muted-foreground">{t('pr.diff.notFound')}</p>
+        ) : isBinary ? (
+          <p data-testid="pr-file-diff-binary" className="p-4 text-xs italic text-muted-foreground">
+            {t('pr.diff.binary')}
+          </p>
+        ) : tab === 'file' ? (
+          <CodeEditor content={modified || original} filePath={filename} />
         ) : (
-          <PrFileDiff patch={file.patch} status={file.status} />
+          <ThreeWayMergeEditor
+            repoPath={repoPath}
+            filePath={filename}
+            original={original}
+            modified={modified}
+            isTwoWay
+          />
         )}
       </div>
     </div>

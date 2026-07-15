@@ -32,7 +32,7 @@ export interface GhRawPR {
   created_at: string
   updated_at: string
   comments?: number
-  base?: { ref?: string; repo?: { name?: string; html_url?: string; full_name?: string } }
+  base?: { ref?: string; sha?: string; repo?: { name?: string; html_url?: string; full_name?: string } }
   head?: { ref?: string; sha?: string }
   repository_url?: string
   mergeable?: boolean | null
@@ -487,6 +487,28 @@ export async function fetchPrFiles(
     `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100`,
     token
   )
+}
+
+/**
+ * Raw text content of a file at a git ref, via the contents API `raw` media type. Returns null when
+ * the file doesn't exist at that ref (e.g. an added file has no version on the base) — the caller
+ * treats that as an empty side of the diff.
+ */
+export async function fetchFileContentAtRef(
+  owner: string,
+  repo: string,
+  path: string,
+  ref: string,
+  token: string
+): Promise<string | null> {
+  const encodedPath = path.split('/').map(encodeURIComponent).join('/')
+  const res = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(ref)}`,
+    { headers: { Accept: 'application/vnd.github.raw', Authorization: `token ${token}` } }
+  )
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`GitHub API ${res.status}`)
+  return res.text()
 }
 
 /** Post a plain issue-style comment on a pull request. */
