@@ -4,6 +4,7 @@ import { Button, Spinner, Textarea } from '@git-manager/ui'
 import { Pencil } from 'lucide-react'
 import { Markdown } from '../../Markdown'
 import { usePrActions } from '../../../hooks/usePrActions'
+import { toggleMarkdownCheckbox } from '../../../lib/toggleMarkdownCheckbox'
 
 interface PrDescriptionProps {
   repoPath: string
@@ -12,16 +13,24 @@ interface PrDescriptionProps {
 }
 
 /** The PR description: a caption label with an edit button, rendering the body as markdown and, on
- * edit, an inline textarea saved via `PATCH /pulls/{n}`. */
+ * edit, an inline textarea saved via `PATCH /pulls/{n}`. Clicking a task-list checkbox in the
+ * rendered body toggles it and saves immediately (optimistic — reverts on failure), without
+ * entering edit mode. */
 export function PrDescription({ repoPath, prNumber, body }: PrDescriptionProps) {
   const { t } = useTranslation('git')
   const { updatePr, pending } = usePrActions(repoPath, prNumber)
   const trimmed = body?.trim() ?? ''
   const [editing, setEditing] = useState(false)
+  // Mirrors `trimmed`, but flipped immediately on a checkbox click (before the PATCH resolves) so
+  // the UI feels instant and rapid clicks compose on the latest state, not the stale prop.
+  const [localBody, setLocalBody] = useState(trimmed)
   const [draft, setDraft] = useState(trimmed)
 
   useEffect(() => {
-    if (!editing) setDraft(trimmed)
+    if (!editing) {
+      setLocalBody(trimmed)
+      setDraft(trimmed)
+    }
   }, [trimmed, editing])
 
   async function save() {
@@ -30,6 +39,17 @@ export function PrDescription({ repoPath, prNumber, body }: PrDescriptionProps) 
       setEditing(false)
     } catch {
       // Error surfaced by usePrActions; keep the editor open for a retry.
+    }
+  }
+
+  async function handleToggleCheckbox(index: number) {
+    const previous = localBody
+    const next = toggleMarkdownCheckbox(localBody, index)
+    setLocalBody(next)
+    try {
+      await updatePr({ body: next })
+    } catch {
+      setLocalBody(previous)
     }
   }
 
@@ -70,7 +90,7 @@ export function PrDescription({ repoPath, prNumber, body }: PrDescriptionProps) 
               disabled={pending}
               onClick={() => {
                 setEditing(false)
-                setDraft(trimmed)
+                setDraft(localBody)
               }}
             >
               {t('pr.title.cancel')}
@@ -87,8 +107,8 @@ export function PrDescription({ repoPath, prNumber, body }: PrDescriptionProps) 
             </Button>
           </div>
         </div>
-      ) : trimmed ? (
-        <Markdown content={trimmed} />
+      ) : localBody ? (
+        <Markdown content={localBody} onToggleCheckbox={handleToggleCheckbox} />
       ) : (
         <p className="text-xs italic text-muted-foreground">{t('pr.view.noDescription')}</p>
       )}

@@ -45,3 +45,36 @@ describe('PrDescription', () => {
     expect(updatePr).toHaveBeenCalledWith({ body: 'new body' })
   })
 })
+
+describe('PrDescription — clickable checkboxes', () => {
+  it('clicking a task-list checkbox saves the toggled body without entering edit mode', async () => {
+    const user = userEvent.setup()
+    const { container } = renderDescription('- [ ] todo')
+    await user.click(container.querySelector('input[type="checkbox"]')!)
+    expect(updatePr).toHaveBeenCalledWith({ body: '- [x] todo' })
+    expect(screen.queryByTestId('pr-description-input')).not.toBeInTheDocument()
+  })
+
+  it('updates the rendered checkbox immediately, before the PATCH resolves (optimistic)', async () => {
+    let resolveUpdate: () => void = () => {}
+    updatePr.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveUpdate = resolve
+      })
+    )
+    const user = userEvent.setup()
+    const { container } = renderDescription('- [ ] todo')
+    await user.click(container.querySelector('input[type="checkbox"]')!)
+
+    expect(container.querySelector('input[type="checkbox"]')).toBeChecked()
+    resolveUpdate()
+  })
+
+  it('reverts the checkbox if the save fails', async () => {
+    updatePr.mockRejectedValueOnce(new Error('offline'))
+    const user = userEvent.setup()
+    const { container } = renderDescription('- [ ] todo')
+    await user.click(container.querySelector('input[type="checkbox"]')!)
+    expect(container.querySelector('input[type="checkbox"]')).not.toBeChecked()
+  })
+})

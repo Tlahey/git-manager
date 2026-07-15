@@ -422,6 +422,7 @@
   "pr.state.merged": "Merged",
   "pr.state.closed": "Closed",
   "pr.view.title": "Pull request",
+  "pr.view.openOnGithub": "Open on GitHub",
   "pr.title.save": "Save title",
   "pr.title.cancel": "Cancel",
   "pr.title.editHint": "Click to edit the title",

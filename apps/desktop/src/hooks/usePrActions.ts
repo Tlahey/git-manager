@@ -36,14 +36,28 @@ export function usePrActions(repoPath: string | null, prNumber: number | null) {
     )
   }, [mutate])
 
+  /** Revalidates the two caches keyed outside the `pr-`/`repo-pull-requests` convention that only
+   * change when the PR's open/closed/merged status itself changes: the standalone Pull Requests
+   * page's global list (`useGitHubData`'s `github-data` key) and the git-graph "commit has an open
+   * PR" annotation (`useCommitPullRequest`'s `commit-pr` key, which also disables
+   * `revalidateIfStale`). Deliberately only called from `merge`/`setState` — not every action —
+   * since `github-data` re-fetches every open PR across every repo plus CI status per PR, too
+   * expensive to redo after e.g. a single comment or label change. */
+  const refreshGlobalPrState = useCallback(() => {
+    return mutate(
+      (key) => Array.isArray(key) && (key[0] === 'github-data' || key[0] === 'commit-pr')
+    )
+  }, [mutate])
+
   const run = useCallback(
-    async <T>(op: () => Promise<T>): Promise<T | undefined> => {
+    async <T>(op: () => Promise<T>, onSettled?: () => Promise<unknown>): Promise<T | undefined> => {
       if (!ownerRepo || !token || prNumber == null) return
       setPending(true)
       setError(null)
       try {
         const result = await op()
         await refreshPrData()
+        await onSettled?.()
         return result
       } catch (e) {
         setError(String(e))
@@ -69,8 +83,11 @@ export function usePrActions(repoPath: string | null, prNumber: number | null) {
 
   const merge = useCallback(
     (input: { mergeMethod: MergeMethod; commitTitle?: string; commitMessage?: string }) =>
-      run(() => mergePullRequest(ownerRepo!.owner, ownerRepo!.repo, prNumber!, input, token!)),
-    [run, ownerRepo, prNumber, token]
+      run(
+        () => mergePullRequest(ownerRepo!.owner, ownerRepo!.repo, prNumber!, input, token!),
+        refreshGlobalPrState
+      ),
+    [run, ownerRepo, prNumber, token, refreshGlobalPrState]
   )
 
   /** Edit the PR's title and/or body (GitHub `PATCH /pulls/{n}`). */
@@ -83,8 +100,11 @@ export function usePrActions(repoPath: string | null, prNumber: number | null) {
   /** Close or reopen the PR. */
   const setState = useCallback(
     (state: 'open' | 'closed') =>
-      run(() => updatePullRequest(ownerRepo!.owner, ownerRepo!.repo, prNumber!, { state }, token!)),
-    [run, ownerRepo, prNumber, token]
+      run(
+        () => updatePullRequest(ownerRepo!.owner, ownerRepo!.repo, prNumber!, { state }, token!),
+        refreshGlobalPrState
+      ),
+    [run, ownerRepo, prNumber, token, refreshGlobalPrState]
   )
 
   /** Toggle the draft flag (GraphQL — REST can't). Needs the PR's global `node_id`. */

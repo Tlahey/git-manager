@@ -2,12 +2,18 @@ import React, { useMemo } from 'react'
 
 interface MarkdownProps {
   content: string
+  /** When provided, GFM task-list checkboxes become clickable instead of a read-only indicator.
+   * Called with the checkbox's 0-indexed position in document order — pair with
+   * `toggleMarkdownCheckbox` (lib/toggleMarkdownCheckbox.ts) to compute the new content. */
+  onToggleCheckbox?: (index: number) => void
 }
 
-export function Markdown({ content }: MarkdownProps) {
+export function Markdown({ content, onToggleCheckbox }: MarkdownProps) {
   // Split by code blocks first
   const parsedContent = useMemo(() => {
     if (!content) return null
+
+    let checkboxIndex = 0
 
     // Split by code blocks: ```lang ... ```
     const parts = content.split(/(```[\s\S]*?```)/g)
@@ -77,6 +83,7 @@ export function Markdown({ content }: MarkdownProps) {
             const taskMatch = trimmed.match(/^[-*]\s+\[([ xX])\]\s+(.*)$/)
             if (taskMatch) {
               const checked = taskMatch[1].toLowerCase() === 'x'
+              const index = checkboxIndex++
               return (
                 <ul
                   key={lIdx}
@@ -86,8 +93,9 @@ export function Markdown({ content }: MarkdownProps) {
                     <input
                       type="checkbox"
                       checked={checked}
-                      disabled
-                      className="mt-0.5 h-3 w-3 shrink-0 accent-primary"
+                      disabled={!onToggleCheckbox}
+                      onChange={onToggleCheckbox ? () => onToggleCheckbox(index) : undefined}
+                      className={`mt-0.5 h-3 w-3 shrink-0 accent-primary${onToggleCheckbox ? ' cursor-pointer' : ''}`}
                     />
                     <span className={checked ? 'text-muted-foreground/60 line-through' : undefined}>
                       {parseInline(taskMatch[2])}
@@ -147,7 +155,7 @@ export function Markdown({ content }: MarkdownProps) {
         </div>
       )
     })
-  }, [content])
+  }, [content, onToggleCheckbox])
 
   return <div className="space-y-3 pr-1">{parsedContent}</div>
 }

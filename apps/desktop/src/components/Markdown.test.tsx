@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Markdown } from './Markdown'
 
 describe('Markdown — headers', () => {
@@ -51,6 +52,45 @@ describe('Markdown — lists', () => {
   it('applies inline formatting inside task list item text', () => {
     render(<Markdown content="- [ ] a **bold** todo" />)
     expect(screen.getByText('bold').tagName).toBe('STRONG')
+  })
+})
+
+describe('Markdown — interactive checkboxes (onToggleCheckbox)', () => {
+  it('stays disabled and non-interactive without the prop', () => {
+    const { container } = render(<Markdown content="- [ ] todo" />)
+    expect(container.querySelector('input[type="checkbox"]')).toBeDisabled()
+  })
+
+  it('becomes clickable when onToggleCheckbox is provided, and reports the checkbox index', async () => {
+    const onToggleCheckbox = vi.fn()
+    const user = userEvent.setup()
+    const { container } = render(
+      <Markdown content={'- [ ] first\n- [x] second'} onToggleCheckbox={onToggleCheckbox} />
+    )
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]')
+    expect(checkboxes[0]).toBeEnabled()
+    expect(checkboxes[1]).toBeEnabled()
+
+    await user.click(checkboxes[1])
+    expect(onToggleCheckbox).toHaveBeenCalledWith(1)
+
+    await user.click(checkboxes[0])
+    expect(onToggleCheckbox).toHaveBeenCalledWith(0)
+  })
+
+  it('indices skip fenced code blocks, matching toggleMarkdownCheckbox', async () => {
+    const onToggleCheckbox = vi.fn()
+    const user = userEvent.setup()
+    const { container } = render(
+      <Markdown
+        content={'- [ ] real\n```\n- [ ] fake\n```\n- [ ] also real'}
+        onToggleCheckbox={onToggleCheckbox}
+      />
+    )
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]')
+    expect(checkboxes).toHaveLength(2)
+    await user.click(checkboxes[1])
+    expect(onToggleCheckbox).toHaveBeenCalledWith(1)
   })
 })
 
