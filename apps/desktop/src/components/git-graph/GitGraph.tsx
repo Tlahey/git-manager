@@ -22,6 +22,7 @@ import { CommitDetailsPanel } from './CommitDetailsPanel'
 import { DiffViewCenter } from './DiffViewCenter'
 import { PrDetailCenter } from './pr/PrDetailCenter'
 import { PrComposerCenter } from './pr/PrComposerCenter'
+import { PrCreateCenter } from './pr/PrCreateCenter'
 import { PrFileDiffCenter } from './pr/PrFileDiffCenter'
 import { PrFilesPanel } from './pr/PrFilesPanel'
 import { EmptyRepoPanel } from './EmptyRepoPanel'
@@ -62,6 +63,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   const setActivePrFile = useRepoUIStore((s) => s.setActivePrFile)
   const prFilesVisible = useRepoUIStore((s) => s.prFilesVisible)
   const prComposer = useRepoUIStore((s) => s.prComposer)
+  const prCreateOpen = useRepoUIStore((s) => s.prCreateOpen)
   const conflictFilePath = useRepoUIStore((s) => s.conflictFilePath)
   const setConflictFilePath = useRepoUIStore((s) => s.setConflictFilePath)
 
@@ -362,6 +364,8 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
               onClose={() => setActivePrNumber(null)}
             />
           )
+        ) : prCreateOpen ? (
+          <PrCreateCenter repoPath={repoPath} />
         ) : prComposer != null ? (
           <PrComposerCenter repoPath={repoPath} />
         ) : activeDiffFile ? (

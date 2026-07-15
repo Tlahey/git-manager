@@ -51,6 +51,7 @@ export function RepositorySidebar({
   const activeLeftPanel = useRepoUIStore((s) => s.activeLeftPanel)
   const activeDiffFile = useRepoUIStore((s) => s.activeDiffFile)
   const setActiveLeftPanel = useRepoUIStore((s) => s.setActiveLeftPanel)
+  const setPrCreateOpen = useRepoUIStore((s) => s.setPrCreateOpen)
   const setEditingOid = useRepoUIStore((s) => s.setEditingOid)
   const queryClient = useQueryClient()
   const [openState, setOpenState] = useState<Record<string, boolean>>({})
@@ -266,6 +267,7 @@ export function RepositorySidebar({
                   onTogglePin={onTogglePin}
                   onContextMenu={onContextMenu}
                   onOpenPr={onOpenPr}
+                  onCreatePr={githubToken ? () => setPrCreateOpen(true) : undefined}
                   onCreateBranch={onCreateBranch}
                   onStashContextMenu={handleStashContextMenu}
                   hiddenStashes={hiddenStashes}

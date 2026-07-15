@@ -67,6 +67,15 @@ interface RepoUIState {
    */
   prComposer: PrComposerState | null
   setPrComposer: (composer: PrComposerState | null) => void
+  /**
+   * When true, the repo view swaps its center panel for the standalone PR-creation view (pick
+   * head/base branch, title, template/AI description, draft). Opened from the sidebar "Pull
+   * Requests" section "+" button — unlike `prComposer`, no prior commit is required. Mutually
+   * exclusive with `activePrNumber`/`activeDiffFile`/`prComposer` (all claim the center panel).
+   * Not persisted (session-scoped).
+   */
+  prCreateOpen: boolean
+  setPrCreateOpen: (open: boolean) => void
   activeLeftPanel: 'sidebar' | 'blame' | 'history'
   setActiveLeftPanel: (panel: 'sidebar' | 'blame' | 'history') => void
   /**
@@ -134,6 +143,7 @@ export const useRepoUIStore = create<RepoUIState>()(
       activePrFile: null,
       prFilesVisible: true,
       prComposer: null,
+      prCreateOpen: false,
       activeLeftPanel: 'sidebar',
       selectedHistoryOid: null,
       editingOid: null,
@@ -155,6 +165,7 @@ export const useRepoUIStore = create<RepoUIState>()(
             activePrNumber: file ? null : state.activePrNumber,
             activePrFile: file ? null : state.activePrFile,
             prComposer: file ? null : state.prComposer,
+            prCreateOpen: file ? false : state.prCreateOpen,
           }
         }),
 
@@ -167,6 +178,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           activePrFile: null,
           activeDiffFile: n != null ? null : state.activeDiffFile,
           prComposer: n != null ? null : state.prComposer,
+          prCreateOpen: n != null ? false : state.prCreateOpen,
         })),
 
       setActivePrFile: (filename) => set({ activePrFile: filename }),
@@ -180,6 +192,17 @@ export const useRepoUIStore = create<RepoUIState>()(
           activeDiffFile: composer ? null : state.activeDiffFile,
           activePrNumber: composer ? null : state.activePrNumber,
           activePrFile: composer ? null : state.activePrFile,
+          prCreateOpen: composer ? false : state.prCreateOpen,
+        })),
+
+      // Opening the create view claims the center panel; drop any open file diff / PR view / composer.
+      setPrCreateOpen: (open) =>
+        set((state) => ({
+          prCreateOpen: open,
+          activeDiffFile: open ? null : state.activeDiffFile,
+          activePrNumber: open ? null : state.activePrNumber,
+          activePrFile: open ? null : state.activePrFile,
+          prComposer: open ? null : state.prComposer,
         })),
 
       setActiveLeftPanel: (panel) => set({ activeLeftPanel: panel }),
@@ -206,6 +229,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           activePrNumber: null,
           activePrFile: null,
           prComposer: null,
+          prCreateOpen: false,
           activeLeftPanel: 'sidebar',
           selectedHistoryOid: null,
           conflictFilePath: null,
@@ -222,6 +246,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           activePrNumber: null,
           activePrFile: null,
           prComposer: null,
+          prCreateOpen: false,
           activeLeftPanel: 'sidebar',
           selectedHistoryOid: null,
           conflictFilePath: null,
@@ -273,6 +298,7 @@ export const useRepoUIStore = create<RepoUIState>()(
             activePrNumber: wasActive ? null : state.activePrNumber,
             activePrFile: wasActive ? null : state.activePrFile,
             prComposer: wasActive ? null : state.prComposer,
+            prCreateOpen: wasActive ? false : state.prCreateOpen,
           }
         }),
     }),
