@@ -185,9 +185,50 @@ describe('Footer — keyboard shortcuts dialog', () => {
     const user = userEvent.setup()
     render(<Footer onOpenSettings={vi.fn()} />)
     await user.click(screen.getByText('footer.keyboardShortcuts'))
+    expect(screen.getByText('Général')).toBeInTheDocument()
     expect(screen.getByText('Navigation')).toBeInTheDocument()
-    expect(screen.getByText('Dépôts & Actions')).toBeInTheDocument()
+    expect(screen.getByText('Recherche')).toBeInTheDocument()
+    expect(screen.getByText('Dépôt & Git')).toBeInTheDocument()
     expect(screen.getByText(/Aller à l.accueil/)).toBeInTheDocument()
+    expect(screen.getByText('Ouvrir la palette de commandes')).toBeInTheDocument()
+  })
+
+  it('filters the list by description text as the user types', async () => {
+    const user = userEvent.setup()
+    render(<Footer onOpenSettings={vi.fn()} />)
+    await user.click(screen.getByText('footer.keyboardShortcuts'))
+    await user.type(screen.getByTestId('shortcuts-search-input'), 'palette')
+    expect(screen.getByText('Ouvrir la palette de commandes')).toBeInTheDocument()
+    expect(screen.queryByText('Navigation')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Aller à l.accueil/)).not.toBeInTheDocument()
+  })
+
+  it('filters the list by key text as the user types', async () => {
+    const user = userEvent.setup()
+    render(<Footer onOpenSettings={vi.fn()} />)
+    await user.click(screen.getByText('footer.keyboardShortcuts'))
+    await user.type(screen.getByTestId('shortcuts-search-input'), 'esc')
+    expect(screen.getByText('Fermer les boîtes de dialogue / volets')).toBeInTheDocument()
+    expect(screen.queryByText('Ouvrir la palette de commandes')).not.toBeInTheDocument()
+  })
+
+  it('shows an empty-state message when nothing matches the search', async () => {
+    const user = userEvent.setup()
+    render(<Footer onOpenSettings={vi.fn()} />)
+    await user.click(screen.getByText('footer.keyboardShortcuts'))
+    await user.type(screen.getByTestId('shortcuts-search-input'), 'zzzznomatch')
+    expect(screen.getByText('Aucun raccourci ne correspond à « zzzznomatch ».')).toBeInTheDocument()
+  })
+
+  it('resets the search query after the dialog is closed and reopened', async () => {
+    const user = userEvent.setup()
+    render(<Footer onOpenSettings={vi.fn()} />)
+    await user.click(screen.getByText('footer.keyboardShortcuts'))
+    await user.type(screen.getByTestId('shortcuts-search-input'), 'palette')
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByText('footer.keyboardShortcuts'))
+    expect(screen.getByTestId('shortcuts-search-input')).toHaveValue('')
+    expect(screen.getByText('Navigation')).toBeInTheDocument()
   })
 })
 

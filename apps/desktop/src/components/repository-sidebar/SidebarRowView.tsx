@@ -4,35 +4,21 @@ import {
   FolderGit2,
   Globe,
   GitBranch as BranchIcon,
-  HardDrive,
-  GitPullRequest,
   Tag as TagIcon,
-  GitFork,
-  Plus,
   Archive as ArchiveIcon,
   Eye,
   EyeOff,
   Layers,
   Lock,
   Trash2,
+  GitFork,
 } from 'lucide-react'
 import { Spinner } from '@git-manager/ui'
 import type { GitBranch, GitWorktree, PullRequest, GitStash } from '@git-manager/git-types'
-import type { SidebarRow, SectionKey } from './types'
-import { SectionHeader } from './SectionHeader'
+import type { SidebarRow } from './types'
 import { BranchItem } from './BranchItem'
 import { PullRequestItem } from './PullRequestItem'
 import { HoverExpandLabel } from './HoverExpandLabel'
-
-const SECTION_ICONS: Record<SectionKey, React.ReactNode> = {
-  local: <HardDrive className="h-3 w-3" />,
-  remotes: <Globe className="h-3 w-3" />,
-  prs: <GitPullRequest className="h-3 w-3" />,
-  tags: <TagIcon className="h-3 w-3" />,
-  submodules: <GitFork className="h-3 w-3" />,
-  stashes: <ArchiveIcon className="h-3 w-3" />,
-  worktrees: <Layers className="h-3 w-3" />,
-}
 
 interface SidebarRowViewProps {
   row: SidebarRow
@@ -41,12 +27,9 @@ interface SidebarRowViewProps {
   onTogglePin: (shortName: string) => void
   onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
   onOpenPr?: (pr: PullRequest) => void
-  onCreatePr?: () => void
-  onCreateBranch?: () => void
   onStashContextMenu?: (e: React.MouseEvent, stash: GitStash) => void
   hiddenStashes?: string[]
   onToggleStashVisibility?: (oid: string) => void
-  onAddWorktree?: () => void
   onRemoveWorktree?: (wt: GitWorktree) => void
 }
 
@@ -57,59 +40,12 @@ export function SidebarRowView({
   onTogglePin,
   onContextMenu,
   onOpenPr,
-  onCreatePr,
-  onCreateBranch,
   onStashContextMenu,
   hiddenStashes = [],
   onToggleStashVisibility,
-  onAddWorktree,
   onRemoveWorktree,
 }: SidebarRowViewProps) {
   switch (row.kind) {
-    case 'section':
-      return (
-        <SectionHeader
-          title={row.title}
-          icon={SECTION_ICONS[row.sectionKey]}
-          count={row.count}
-          isOpen={row.isOpen}
-          onToggle={() => onToggleOpen(row.id)}
-          testId={`sidebar-section-${row.sectionKey}`}
-          action={
-            row.sectionKey === 'local' && onCreateBranch ? (
-              <button
-                onClick={onCreateBranch}
-                className="mr-1 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
-                aria-label="Créer une branche"
-                title="Créer une branche"
-              >
-                <Plus className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
-              </button>
-            ) : row.sectionKey === 'worktrees' && onAddWorktree ? (
-              <button
-                onClick={onAddWorktree}
-                className="mr-1 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
-                aria-label="Add worktree"
-                title="Add worktree"
-                data-testid="worktree-add-button"
-              >
-                <Plus className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
-              </button>
-            ) : row.sectionKey === 'prs' && onCreatePr ? (
-              <button
-                onClick={onCreatePr}
-                className="mr-1 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
-                aria-label="Create pull request"
-                title="Create pull request"
-                data-testid="pr-create-button"
-              >
-                <Plus className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
-              </button>
-            ) : undefined
-          }
-        />
-      )
-
     case 'branch':
       return (
         <BranchItem

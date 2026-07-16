@@ -10,6 +10,7 @@ import { apiGetTags, apiListSubmodules } from '../api/git.api'
 import { apiListWorktrees } from '../api/worktree.api'
 import {
   type SidebarRow,
+  type SidebarSection,
   type SectionKey,
   DEFAULT_SECTION_OPEN,
   DEFAULT_PINNED,
@@ -27,7 +28,7 @@ interface UseSidebarRowsParams {
 }
 
 interface UseSidebarRowsResult {
-  rows: SidebarRow[]
+  sections: SidebarSection[]
   /** État épinglé effectif d'une branche locale. */
   isPinned: (shortName: string) => boolean
 }
@@ -131,9 +132,9 @@ export function useSidebarRows({
   }, [allBranches, q])
   const remoteCount = remoteGroups.reduce((n, [, bs]) => n + bs.length, 0)
 
-  // ── Construction de la liste plate ─────────────────────────────────
-  const rows = useMemo(() => {
-    const out: SidebarRow[] = []
+  // ── Construction par section ────────────────────────────────────────
+  const sections = useMemo(() => {
+    const list: SidebarSection[] = []
 
     const sectionOpen = (key: SectionKey) =>
       openState[`section:${key}`] ?? DEFAULT_SECTION_OPEN[key]
@@ -143,17 +144,10 @@ export function useSidebarRows({
 
     // ----- Local -----
     const localOpen = sectionOpen('local')
-    out.push({
-      kind: 'section',
-      id: 'section:local',
-      sectionKey: 'local',
-      title: 'Local',
-      count: localBranches.length,
-      isOpen: localOpen,
-    })
+    const localRows: SidebarRow[] = []
     if (localOpen) {
       for (const b of pinnedBranches) {
-        out.push({
+        localRows.push({
           kind: 'branch',
           id: `local:${b.name}`,
           branch: b,
@@ -164,10 +158,10 @@ export function useSidebarRows({
         })
       }
       if (pinnedBranches.length > 0 && (ungrouped.length > 0 || groups.length > 0)) {
-        out.push({ kind: 'divider', id: 'div:pinned' })
+        localRows.push({ kind: 'divider', id: 'div:pinned' })
       }
       for (const b of ungrouped) {
-        out.push({
+        localRows.push({
           kind: 'branch',
           id: `local:${b.name}`,
           branch: b,
@@ -180,7 +174,7 @@ export function useSidebarRows({
       for (const { prefix, branches } of groups) {
         const fid = `folder:${prefix}`
         const open = subOpen(fid, true)
-        out.push({
+        localRows.push({
           kind: 'folder',
           id: fid,
           prefix,
@@ -190,7 +184,7 @@ export function useSidebarRows({
         })
         if (open) {
           for (const b of branches) {
-            out.push({
+            localRows.push({
               kind: 'branch',
               id: `local:${b.name}`,
               branch: b,
@@ -203,24 +197,23 @@ export function useSidebarRows({
         }
       }
     }
+    list.push({
+      key: 'local',
+      title: 'Local',
+      count: localBranches.length,
+      isOpen: localOpen,
+      rows: localRows,
+    })
 
     // ----- Remotes -----
     if (remoteGroups.length > 0) {
-      out.push({ kind: 'divider', id: 'div:remotes' })
       const open = sectionOpen('remotes')
-      out.push({
-        kind: 'section',
-        id: 'section:remotes',
-        sectionKey: 'remotes',
-        title: 'Remotes',
-        count: remoteCount,
-        isOpen: open,
-      })
+      const remoteRows: SidebarRow[] = []
       if (open) {
         for (const [remoteName, branches] of remoteGroups) {
           const gid = `remote:${remoteName}`
           const gopen = subOpen(gid, true)
-          out.push({
+          remoteRows.push({
             kind: 'remote-group',
             id: gid,
             remoteName,
@@ -229,7 +222,7 @@ export function useSidebarRows({
           })
           if (gopen) {
             for (const b of branches) {
-              out.push({
+              remoteRows.push({
                 kind: 'remote-branch',
                 id: `remote-branch:${b.name}`,
                 branch: b,
@@ -240,40 +233,39 @@ export function useSidebarRows({
           }
         }
       }
+      list.push({
+        key: 'remotes',
+        title: 'Remotes',
+        count: remoteCount,
+        isOpen: open,
+        rows: remoteRows,
+      })
     }
 
     // ----- Pull Requests -----
     {
-      out.push({ kind: 'divider', id: 'div:prs' })
       const open = sectionOpen('prs')
-      out.push({
-        kind: 'section',
-        id: 'section:prs',
-        sectionKey: 'prs',
-        title: 'Pull Requests',
-        count: allPrs.length || undefined,
-        isOpen: open,
-      })
+      const prRows: SidebarRow[] = []
       if (open) {
         if (prsLoading) {
-          out.push({
+          prRows.push({
             kind: 'message',
             id: 'pr:loading',
             text: 'Chargement des PRs…',
             loading: true,
           })
         } else if (!isGithub) {
-          out.push({
+          prRows.push({
             kind: 'message',
             id: 'pr:nogithub',
             text: 'Connectez un dépôt GitHub pour voir les PRs.',
           })
         } else {
           if (allPrs.length === 0) {
-            out.push({ kind: 'message', id: 'pr:empty', text: 'Aucune PR ouverte.' })
+            prRows.push({ kind: 'message', id: 'pr:empty', text: 'Aucune PR ouverte.' })
           } else {
             for (const pr of allPrs) {
-              out.push({
+              prRows.push({
                 kind: 'pr',
                 id: `pr:${pr.number}`,
                 pr,
@@ -283,23 +275,22 @@ export function useSidebarRows({
           }
         }
       }
+      list.push({
+        key: 'prs',
+        title: 'Pull Requests',
+        count: allPrs.length || undefined,
+        isOpen: open,
+        rows: prRows,
+      })
     }
 
     // ----- Tags -----
     if (tags.length > 0) {
-      out.push({ kind: 'divider', id: 'div:tags' })
       const open = sectionOpen('tags')
-      out.push({
-        kind: 'section',
-        id: 'section:tags',
-        sectionKey: 'tags',
-        title: 'Tags',
-        count: tags.length,
-        isOpen: open,
-      })
+      const tagRows: SidebarRow[] = []
       if (open) {
         for (const tag of tags.slice(0, TAGS_LIMIT)) {
-          out.push({
+          tagRows.push({
             kind: 'tag',
             id: `tag:${tag.name}`,
             tag,
@@ -307,30 +298,23 @@ export function useSidebarRows({
           })
         }
         if (tags.length > TAGS_LIMIT) {
-          out.push({
+          tagRows.push({
             kind: 'message',
             id: 'tag:more',
             text: `+ ${tags.length - TAGS_LIMIT} autres tags`,
           })
         }
       }
+      list.push({ key: 'tags', title: 'Tags', count: tags.length, isOpen: open, rows: tagRows })
     }
 
     // ----- Stashes -----
     if (stashes.length > 0) {
-      out.push({ kind: 'divider', id: 'div:stashes' })
       const open = sectionOpen('stashes')
-      out.push({
-        kind: 'section',
-        id: 'section:stashes',
-        sectionKey: 'stashes',
-        title: 'Stashes',
-        count: stashes.length,
-        isOpen: open,
-      })
+      const stashRows: SidebarRow[] = []
       if (open) {
         for (const stash of stashes) {
-          out.push({
+          stashRows.push({
             kind: 'stash',
             id: `stash:${stash.index}`,
             stash,
@@ -338,53 +322,58 @@ export function useSidebarRows({
           })
         }
       }
+      list.push({
+        key: 'stashes',
+        title: 'Stashes',
+        count: stashes.length,
+        isOpen: open,
+        rows: stashRows,
+      })
     }
 
     // ----- Submodules -----
     if (submodules.length > 0) {
-      out.push({ kind: 'divider', id: 'div:submodules' })
       const open = sectionOpen('submodules')
-      out.push({
-        kind: 'section',
-        id: 'section:submodules',
-        sectionKey: 'submodules',
+      const smRows: SidebarRow[] = []
+      if (open) {
+        for (const sm of submodules) {
+          smRows.push({ kind: 'submodule', id: `sm:${sm.path}`, sm })
+        }
+      }
+      list.push({
+        key: 'submodules',
         title: 'Submodules',
         count: submodules.length,
         isOpen: open,
+        rows: smRows,
       })
-      if (open) {
-        for (const sm of submodules) {
-          out.push({ kind: 'submodule', id: `sm:${sm.path}`, sm })
-        }
-      }
     }
 
     // ----- Worktrees -----
     // Always shown (unlike Submodules/Tags/Stashes, which hide when empty) — this is the only
     // section whose header carries an "add" action, so it must stay reachable with zero worktrees.
     {
-      out.push({ kind: 'divider', id: 'div:worktrees' })
       const open = sectionOpen('worktrees')
-      out.push({
-        kind: 'section',
-        id: 'section:worktrees',
-        sectionKey: 'worktrees',
-        title: 'Worktrees',
-        count: worktrees.length || undefined,
-        isOpen: open,
-      })
+      const wtRows: SidebarRow[] = []
       if (open) {
         if (worktrees.length === 0) {
-          out.push({ kind: 'message', id: 'wt:empty', text: 'No linked worktrees.' })
+          wtRows.push({ kind: 'message', id: 'wt:empty', text: 'No linked worktrees.' })
         } else {
           for (const wt of worktrees) {
-            out.push({ kind: 'worktree', id: `wt:${wt.path}`, wt })
+            wtRows.push({ kind: 'worktree', id: `wt:${wt.path}`, wt })
           }
         }
       }
+      list.push({
+        key: 'worktrees',
+        title: 'Worktrees',
+        count: worktrees.length || undefined,
+        isOpen: open,
+        rows: wtRows,
+      })
     }
 
-    return out
+    return list
   }, [
     openState,
     selectedBranch,
@@ -403,5 +392,5 @@ export function useSidebarRows({
     worktrees,
   ])
 
-  return { rows, isPinned }
+  return { sections, isPinned }
 }

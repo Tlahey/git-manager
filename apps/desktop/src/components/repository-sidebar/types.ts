@@ -18,19 +18,11 @@ export type SectionKey =
   | 'worktrees'
 
 /**
- * Ligne unitaire de la sidebar aplatie pour la virtualisation.
- * L'accordéon (sections / dossiers repliables) est transformé en une liste
- * plate ne contenant que les lignes actuellement visibles.
+ * Ligne unitaire du corps d'une section de la sidebar (branches, dossiers,
+ * tags, etc.) — n'inclut pas l'en-tête de section, rendu séparément par
+ * `SidebarSectionHeader` et propriétaire de son propre état d'ouverture.
  */
 export type SidebarRow =
-  | {
-      kind: 'section'
-      id: string
-      sectionKey: SectionKey
-      title: string
-      count?: number
-      isOpen: boolean
-    }
   | {
       kind: 'branch'
       id: string
@@ -78,28 +70,27 @@ export type SidebarRow =
   | { kind: 'message'; id: string; text: string; loading?: boolean }
   | { kind: 'divider'; id: string }
 
-/** Hauteur estimée (px) par type de ligne — sert d'estimation au virtualizer. */
-export const ROW_HEIGHT: Record<SidebarRow['kind'], number> = {
-  section: 30,
-  branch: 24,
-  folder: 24,
-  'remote-group': 24,
-  'remote-branch': 24,
-  subgroup: 22,
-  pr: 46,
-  tag: 24,
-  stash: 24,
-  submodule: 40,
-  worktree: 40,
-  message: 28,
-  divider: 9,
+/** Une section de la sidebar (en-tête + corps repliable). */
+export interface SidebarSection {
+  key: SectionKey
+  title: string
+  count?: number
+  isOpen: boolean
+  rows: SidebarRow[]
 }
 
-/** Valeurs d'ouverture par défaut des sections. */
+/**
+ * Hauteur maximale (px) du corps d'une section dépliée avant qu'il ne devienne
+ * scrollable — évite qu'ouvrir une section (ex: des dizaines de branches)
+ * ne repousse les sections suivantes hors de vue.
+ */
+export const MAX_SECTION_BODY_HEIGHT = 256
+
+/** Valeurs d'ouverture par défaut des sections — toutes repliées. */
 export const DEFAULT_SECTION_OPEN: Record<SectionKey, boolean> = {
-  local: true,
-  remotes: true,
-  prs: true,
+  local: false,
+  remotes: false,
+  prs: false,
   tags: false,
   submodules: false,
   stashes: false,
