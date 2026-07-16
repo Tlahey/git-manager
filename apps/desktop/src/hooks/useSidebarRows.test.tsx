@@ -147,6 +147,35 @@ describe('useSidebarRows — local section', () => {
     expect(findRow(result.current.rows, 'folder:feat/')).toMatchObject({ count: 2, isOpen: true })
   })
 
+  it('strips the folder prefix from a grouped branch displayName, keeping the full shortName', async () => {
+    useBranchesMock.mockReturnValue({ data: [branch('feat/a'), branch('feat/b')] })
+    const { result } = renderRows()
+    await waitFor(() =>
+      expect(result.current.rows.find((r) => r.kind === 'branch')).toBeDefined()
+    )
+    const grouped = result.current.rows.find(
+      (r) => r.kind === 'branch' && r.branch.shortName === 'feat/a'
+    )
+    expect(grouped).toMatchObject({ displayName: 'a' })
+    expect((grouped as { branch: GitBranch }).branch.shortName).toBe('feat/a')
+  })
+
+  it('keeps the full shortName as displayName for ungrouped/pinned branches', async () => {
+    useBranchesMock.mockReturnValue({ data: [branch('main'), branch('feature-x')] })
+    const { result } = renderRows()
+    await waitFor(() =>
+      expect(result.current.rows.find((r) => r.kind === 'branch')).toBeDefined()
+    )
+    const main = result.current.rows.find(
+      (r) => r.kind === 'branch' && r.branch.shortName === 'main'
+    )
+    const featureX = result.current.rows.find(
+      (r) => r.kind === 'branch' && r.branch.shortName === 'feature-x'
+    )
+    expect(main).toMatchObject({ displayName: 'main' })
+    expect(featureX).toMatchObject({ displayName: 'feature-x' })
+  })
+
   it('respects an explicit closed override for a folder', async () => {
     useBranchesMock.mockReturnValue({ data: [branch('feat/a'), branch('feat/b')] })
     const { result } = renderRows({ openState: { 'folder:feat/': false } })

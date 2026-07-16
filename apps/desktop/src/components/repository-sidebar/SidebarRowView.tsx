@@ -114,6 +114,7 @@ export function SidebarRowView({
       return (
         <BranchItem
           branch={row.branch}
+          displayName={row.displayName}
           isSelected={row.isSelected}
           depth={row.depth}
           isPinned={row.isPinned}
@@ -139,7 +140,7 @@ export function SidebarRowView({
           <FolderGit2 className="h-3 w-3 shrink-0 opacity-50" />
           <span className="flex-1 truncate font-medium">
             {row.hasHead && <span className="mr-1 text-[9px] text-emerald-400">●</span>}
-            {row.prefix}
+            {row.prefix.replace(/\/$/, '')}
           </span>
           <span className="shrink-0 text-[10px] tabular-nums text-sidebar-muted-foreground/40">
             {row.count}

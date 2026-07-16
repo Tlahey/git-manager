@@ -234,6 +234,7 @@ describe('SidebarRowView — branch', () => {
       kind: 'branch',
       id: 'b-main',
       branch: branch(),
+      displayName: 'main',
       isSelected: true,
       depth: 1,
       isPinned: true,
@@ -254,10 +255,10 @@ describe('SidebarRowView — folder', () => {
       isOpen: false,
       hasHead: true,
     })
-    expect(screen.getByText('feature/')).toBeInTheDocument()
+    expect(screen.getByText('feature')).toBeInTheDocument()
     expect(screen.getByText('4')).toBeInTheDocument()
     expect(screen.getByText('●')).toBeInTheDocument()
-    await user.click(screen.getByText('feature/'))
+    await user.click(screen.getByText('feature'))
     expect(h.onToggleOpen).toHaveBeenCalledWith('f-feature')
   })
 
