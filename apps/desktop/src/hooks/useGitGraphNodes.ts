@@ -104,8 +104,9 @@ function buildConflictNode(nodes: GitGraphNode[]): GitGraphNode {
 /**
  * Synthetic WIP row for a linked worktree other than the active repo (see
  * `useWorktreeWipStatuses`). Inserted directly above `anchor` — the node whose commit is the
- * tip of that worktree's checked-out branch — but deliberately offset one lane to the side
- * (`anchor.column + 1`) rather than sitting exactly on the branch's own lane. The connector is
+ * tip of that worktree's checked-out branch — but deliberately offset to the first free lane to
+ * the side of the anchor (see the column search below) rather than sitting exactly on the
+ * branch's own lane or on top of any other active lane crossing this row. The connector is
  * drawn the other way round from a normal merge line: it starts at `anchor`'s own row (from the
  * right of that commit) and rises straight up into this row — see the matching `toColumn:
  * anchor.column` patch added to `anchor`'s own connections in `useGitGraphNodes`'s
@@ -124,7 +125,21 @@ function buildConflictNode(nodes: GitGraphNode[]): GitGraphNode {
  * each other.
  */
 function buildWorktreeWipNode(anchor: GitGraphNode, wip: WorktreeWipStatus): GitGraphNode {
-  const column = anchor.column + 1
+  // Pick a lane that no line already occupies at the anchor row. Placing the synthetic node
+  // blindly on `anchor.column + 1` breaks whenever another branch's lane already runs there:
+  // that lane's pass-through gets dropped by the `!== column` filter below, so its line shows a
+  // gap through this row, and the WIP node/connector lands right on top of it — the visible
+  // "décalage" where a WIP sits in the middle of an unrelated branch's path. Every column
+  // touched by any of the anchor's edges (verticals AND the diagonal legs of a merge/split) is
+  // occupied, so walk outward from just right of the anchor to the first genuinely free lane.
+  const occupied = new Set<number>([anchor.column])
+  for (const c of anchor.connections) {
+    occupied.add(c.fromColumn)
+    occupied.add(c.toColumn)
+  }
+  let column = anchor.column + 1
+  while (occupied.has(column)) column++
+
   const passThroughs = anchor.connections
     .filter((c) => c.fromColumn === c.toColumn && c.fromColumn !== column)
     .map((c) => ({ fromColumn: c.fromColumn, toColumn: c.toColumn, color: c.color }))
@@ -321,17 +336,26 @@ export function useGitGraphNodes(
 
       const patch = continuityPatches.find((p) => p.index === index && node.column === p.toColumn)
       if (patch) {
-        const hasEdge = node.connections.some(
-          (c) => c.fromColumn === patch.fromColumn && c.toColumn === patch.toColumn
+        // Only an edge that reaches UP into this node (arriving from the top of the row) already
+        // wires it to the WIP row above. A `startsAtNode`-only edge is a *departure* going down to
+        // a parent — e.g. a merge commit's straight line to its first parent — and does NOT reach
+        // the WIP; treating it as "already connected" is what left the top merge unlinked. So we
+        // still add the connector unless a non-`startsAtNode` edge on that lane is present.
+        const hasUpwardEdge = node.connections.some(
+          (c) =>
+            c.fromColumn === patch.fromColumn && c.toColumn === patch.toColumn && !c.startsAtNode
         )
-        if (!hasEdge) {
+        if (!hasUpwardEdge) {
           // Annotated as `GitGraphEdge` so `connections` stays `GitGraphEdge[]` (not a widened
           // union) and downstream code can read the optional `startsAtNode`/`endsAtNode` flags.
+          // `endsAtNode` makes the dashed line arrive at the node center (like a real incoming
+          // edge) instead of stopping short with the synthetic HEAD-line geometry.
           const wipEdge: GitGraphEdge = {
             fromColumn: patch.fromColumn,
             toColumn: patch.toColumn,
             color: patch.color,
             dashed: true,
+            endsAtNode: true,
           }
           patched = {
             ...patched,

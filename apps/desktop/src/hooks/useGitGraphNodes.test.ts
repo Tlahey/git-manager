@@ -254,6 +254,45 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     expect(wtNode.connections).toHaveLength(3) // both pass-throughs + its own column-2 WIP connector
   })
 
+  it('skips a lane already occupied at the anchor row instead of landing on top of it', () => {
+    // Anchor at column 1 with another branch's lane already passing through at column 2 — the
+    // WIP row must move to the first free lane (column 3), never sit on the occupied column 2,
+    // and it must carry column 2's pass-through so that lane keeps flowing through this row.
+    const nodes = [
+      node('a', {
+        column: 1,
+        color: '#222',
+        refs: [branchRef('feature-x', 'a')],
+        connections: [
+          { fromColumn: 0, toColumn: 0, color: '#2563eb' },
+          { fromColumn: 1, toColumn: 1, color: '#222', endsAtNode: true },
+          { fromColumn: 2, toColumn: 2, color: '#16a34a' },
+        ],
+      }),
+    ]
+    const { result } = renderHook(() =>
+      useGitGraphNodes(nodes, undefined, 0, t, null, [
+        { path: '/wt/x', branch: 'feature-x', totalChanges: 1 },
+      ])
+    )
+    const wtNode = result.current.filteredNodes[0]
+    expect(wtNode.column).toBe(3) // not the occupied column 2
+    // The occupied lane keeps flowing through the inserted row (no gap / no décalage).
+    expect(wtNode.connections).toContainEqual({ fromColumn: 2, toColumn: 2, color: '#16a34a' })
+    // Own dashed connector sits on the free lane, out of every other line's path.
+    expect(wtNode.connections).toContainEqual({
+      fromColumn: 3,
+      toColumn: 3,
+      color: '#7c3aed',
+      dashed: true,
+    })
+    // The anchor's rising diagonal targets the same free lane.
+    const anchor = result.current.renderNodes[1]
+    expect(
+      anchor.connections.some((c) => c.fromColumn === 3 && c.toColumn === 1 && c.dashed)
+    ).toBe(true)
+  })
+
   it('supports several simultaneous worktree WIP rows on different branches, plus the primary WIP', () => {
     const nodes = [
       node('a', { column: 0, color: '#111' }),
@@ -318,6 +357,31 @@ describe('useGitGraphNodes — renderNodes patching', () => {
     expect(
       patchedNode.connections.some((c) => c.fromColumn === 0 && c.toColumn === 0 && c.dashed)
     ).toBe(true)
+  })
+
+  it('links the WIP row to a top merge commit whose only column-0 edge departs downward', () => {
+    // A merge at the very top of a fresh lane (e.g. a feature branch) has just a `startsAtNode`
+    // column-0 edge (its straight line down to the first parent) plus a diagonal to the second
+    // parent — nothing arriving from the top. That departure must NOT count as "already linked",
+    // or the WIP circle above floats disconnected. Regression for the missing merge↔WIP link.
+    const nodes = [
+      node('m', {
+        column: 0,
+        commit: { ...node('m').commit, parentOids: ['p1', 's1'] },
+        connections: [
+          { fromColumn: 0, toColumn: 0, color: '#111', startsAtNode: true },
+          { fromColumn: 0, toColumn: 1, color: '#222', startsAtNode: true },
+        ],
+      }),
+      node('p1', { column: 0 }),
+    ]
+    const { result } = renderHook(() => useGitGraphNodes(nodes, undefined, 1, t, null))
+    const merge = result.current.renderNodes[1] // index 0 is the WIP row
+    const wipLink = merge.connections.find(
+      (c) => c.fromColumn === 0 && c.toColumn === 0 && c.dashed
+    )
+    expect(wipLink).toBeDefined()
+    expect(wipLink?.endsAtNode).toBe(true) // reaches the node center, not a floating stub
   })
 
   it('does not duplicate an already-existing column-0 connector', () => {
