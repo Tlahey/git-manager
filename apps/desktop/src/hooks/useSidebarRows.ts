@@ -34,6 +34,10 @@ interface UseSidebarRowsResult {
   /** Nombre d'éléments correspondant au filtre actif vs. total du panel, tous types confondus —
    * affiché au-dessus de la barre de recherche pour donner une vue d'ensemble du résultat. */
   filterStats: { matched: number; total: number }
+  /** Worktrees flagged prunable by git (folder gone from disk), unfiltered by search query. */
+  prunableWorktrees: GitWorktree[]
+  /** Every non-main worktree, unfiltered by search query — the full bulk-action candidate set. */
+  worktrees: GitWorktree[]
 }
 
 const TAGS_LIMIT = 100
@@ -81,7 +85,15 @@ export function useSidebarRows({
     enabled: !!repoPath,
     staleTime: 30_000,
   })
-  const worktrees = useMemo(() => allWorktrees.filter((wt) => !wt.isMain), [allWorktrees])
+  // Detached-HEAD worktrees are hidden — they're typically stale leftovers from a removed
+  // branch/worktree (no branch to switch to, can't be merged via PR), so they'd only add noise.
+  const worktrees = useMemo(
+    () => allWorktrees.filter((wt) => !wt.isMain && wt.branch !== '(detached HEAD)'),
+    [allWorktrees]
+  )
+  // Unfiltered by search query — the section header's prune-button visibility shouldn't
+  // depend on whether the sidebar search box happens to currently hide the stale entry.
+  const prunableWorktrees = useMemo(() => worktrees.filter((wt) => wt.isPrunable), [worktrees])
 
   const q = filter.trim().toLowerCase()
   const includesQuery = (text: string) => !q || text.toLowerCase().includes(q)
@@ -487,5 +499,5 @@ export function useSidebarRows({
     ]
   )
 
-  return { sections, isPinned, filterStats }
+  return { sections, isPinned, filterStats, prunableWorktrees, worktrees }
 }

@@ -12,10 +12,25 @@ import {
   Lock,
   Trash2,
   GitFork,
+  MoreVertical,
+  Copy,
+  Hash,
+  FilePlus,
+  FilePen,
+  FileMinus,
 } from 'lucide-react'
-import { Spinner } from '@git-manager/ui'
+import {
+  Spinner,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@git-manager/ui'
 import { highlightMatch } from '@git-manager/components'
+import { Tooltip } from '../ui/Tooltip'
+import { copyWithToast } from '../../lib/clipboard'
 import type { GitBranch, GitWorktree, PullRequest, GitStash } from '@git-manager/git-types'
+import type { WorktreeWipStatus } from '../../hooks/useWorktreeWipStatuses'
 import type { SidebarRow } from './types'
 import { BranchItem } from './BranchItem'
 import { PullRequestItem } from './PullRequestItem'
@@ -32,6 +47,10 @@ interface SidebarRowViewProps {
   hiddenStashes?: string[]
   onToggleStashVisibility?: (oid: string) => void
   onRemoveWorktree?: (wt: GitWorktree) => void
+  onOpenWorktree?: (wt: GitWorktree) => void
+  /** Pending-changes info for linked worktrees with uncommitted changes — drives the bubble/hover
+   * breakdown on a worktree row. Absent or no match for a given row = no bubble. */
+  worktreeWipStatuses?: WorktreeWipStatus[]
   /** Active sidebar search query — matched substrings are highlighted in the row's label(s). */
   filterQuery?: string
 }
@@ -47,6 +66,8 @@ export function SidebarRowView({
   hiddenStashes = [],
   onToggleStashVisibility,
   onRemoveWorktree,
+  onOpenWorktree,
+  worktreeWipStatuses = [],
   filterQuery = '',
 }: SidebarRowViewProps) {
   switch (row.kind) {
@@ -284,41 +305,90 @@ export function SidebarRowView({
         </div>
       )
 
-    case 'worktree':
+    case 'worktree': {
+      const wipStatus = worktreeWipStatuses.find((s) => s.path === row.wt.path)
       return (
         <div
           data-testid={`worktree-item-${row.wt.path}`}
-          className="group/wt relative flex items-start gap-1.5 py-[3px] pl-6 pr-2 text-xs text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+          onDoubleClick={() => onOpenWorktree?.(row.wt)}
+          className="group/wt relative flex cursor-pointer items-center gap-1.5 py-[3px] pl-6 pr-7 text-xs text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
         >
-          <Layers className="mt-0.5 h-3 w-3 shrink-0 opacity-30" />
-          <div className="min-w-0 flex-1">
-            <HoverExpandLabel className="font-medium">
-              {row.wt.isLocked && <Lock className="mr-1 inline h-2.5 w-2.5 text-amber-400" />}
-              {highlightMatch(row.wt.branch, filterQuery)}
-            </HoverExpandLabel>
-            <span className="block truncate text-[10px] text-sidebar-muted-foreground/50">
-              {highlightMatch(row.wt.path, filterQuery)}
-            </span>
-          </div>
-          <span className="shrink-0 font-mono text-[10px] tabular-nums text-sidebar-muted-foreground/30">
-            {row.wt.commitOid.slice(0, 7)}
-          </span>
-          {onRemoveWorktree && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onRemoveWorktree(row.wt)
-              }}
-              className="absolute right-1 top-1 shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-destructive group-hover/wt:opacity-100"
-              aria-label="Remove worktree"
-              title="Remove worktree"
-              data-testid={`worktree-remove-button-${row.wt.path}`}
+          <Layers className="h-3 w-3 shrink-0 opacity-30" />
+          <HoverExpandLabel className="min-w-0 flex-1 truncate font-medium">
+            {row.wt.isLocked && <Lock className="mr-1 inline h-2.5 w-2.5 text-amber-400" />}
+            {highlightMatch(row.wt.branch, filterQuery)}
+          </HoverExpandLabel>
+          {wipStatus && (
+            <Tooltip
+              delay={0}
+              placement="top"
+              content={
+                <span className="flex items-center gap-2 font-mono tabular-nums">
+                  <span className="flex items-center gap-0.5 text-emerald-400">
+                    <FilePlus className="h-3 w-3" />
+                    {wipStatus.added}
+                  </span>
+                  <span className="flex items-center gap-0.5 text-amber-400">
+                    <FilePen className="h-3 w-3" />
+                    {wipStatus.modified}
+                  </span>
+                  <span className="flex items-center gap-0.5 text-rose-400">
+                    <FileMinus className="h-3 w-3" />
+                    {wipStatus.deleted}
+                  </span>
+                </span>
+              }
             >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+              <span
+                className="mr-1 h-1.5 w-1.5 shrink-0 cursor-default rounded-full bg-amber-400"
+                data-testid={`worktree-changes-bubble-${row.wt.path}`}
+              />
+            </Tooltip>
           )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-1 top-1/2 -translate-y-1/2 shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/wt:opacity-100 data-[state=open]:opacity-100"
+                aria-label="Worktree actions"
+                title="Worktree actions"
+                data-testid={`worktree-actions-button-${row.wt.path}`}
+              >
+                <MoreVertical className="h-3.5 w-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={() => copyWithToast(row.wt.path, 'Path')}
+                className="gap-2 text-xs"
+                data-testid={`worktree-copy-path-${row.wt.path}`}
+              >
+                <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                Copy path
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => copyWithToast(row.wt.commitOid, 'SHA')}
+                className="gap-2 text-xs"
+                data-testid={`worktree-copy-sha-${row.wt.path}`}
+              >
+                <Hash className="h-3.5 w-3.5 text-muted-foreground" />
+                Copy SHA
+              </DropdownMenuItem>
+              {onRemoveWorktree && (
+                <DropdownMenuItem
+                  onSelect={() => onRemoveWorktree(row.wt)}
+                  className="gap-2 text-xs text-destructive focus:text-destructive"
+                  data-testid={`worktree-remove-${row.wt.path}`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )
+    }
 
     case 'message':
       return (

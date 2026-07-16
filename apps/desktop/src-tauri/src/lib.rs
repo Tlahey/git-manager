@@ -55,7 +55,9 @@ use commands::undo::{
     objects_exist, pin_object, recreate_branch_ref, restore_file_blob, restore_worktree_snapshot,
     snapshot_file, snapshot_worktree, snapshot_worktree_always, unpin_object,
 };
-use commands::worktree::{add_worktree, list_worktrees, remove_worktree};
+use commands::worktree::{
+    add_worktree, gone_upstream_branches, list_worktrees, prune_worktrees, remove_worktree,
+};
 use state::AppState;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
@@ -249,6 +251,8 @@ pub fn run() {
             add_worktree,
             list_worktrees,
             remove_worktree,
+            prune_worktrees,
+            gone_upstream_branches,
             // Patch
             create_patch,
             // Conflict resolution

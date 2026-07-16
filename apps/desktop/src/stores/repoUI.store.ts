@@ -39,6 +39,16 @@ interface RepoUIState {
   openTabs: string[] // paths des repos ouverts en onglet
   activeRepo: string | null
   activeTab: string // 'dashboard' | 'pull-requests' | <repoPath>
+  /**
+   * Path of the linked worktree currently being viewed "in place" of the active repo tab — the
+   * graph/sidebar/status all switch to this path's data while it's set (see `RepoView.tsx`'s
+   * `effectiveRepoPath`), but the tab bar/`activeRepo` never change: entering a workspace is a view
+   * switch, not a new tab. `null` = viewing the repo tab's own branch normally. Not persisted
+   * (session-scoped, like `activeDiffFile`) — reset wherever the active repo/tab itself changes,
+   * since a workspace only makes sense relative to the tab it was entered from.
+   */
+  activeWorkspacePath: string | null
+  setActiveWorkspacePath: (path: string | null) => void
   activeDiffFile: { path: string; staged: boolean; oid?: string } | null
   setActiveDiffFile: (file: { path: string; staged: boolean; oid?: string } | null) => void
   /**
@@ -138,6 +148,7 @@ export const useRepoUIStore = create<RepoUIState>()(
       openTabs: [],
       activeRepo: null,
       activeTab: DASHBOARD_TAB,
+      activeWorkspacePath: null,
       activeDiffFile: null,
       activePrNumber: null,
       activePrFile: null,
@@ -221,10 +232,13 @@ export const useRepoUIStore = create<RepoUIState>()(
 
       setPendingGraphAction: (action) => set({ pendingGraphAction: action }),
 
+      setActiveWorkspacePath: (path) => set({ activeWorkspacePath: path }),
+
       setActiveRepo: (path) =>
         set({
           activeRepo: path,
           activeTab: path ?? DASHBOARD_TAB,
+          activeWorkspacePath: null,
           activeDiffFile: null,
           activePrNumber: null,
           activePrFile: null,
@@ -242,6 +256,7 @@ export const useRepoUIStore = create<RepoUIState>()(
         set((state) => ({
           activeTab: id,
           activeRepo: state.openTabs.includes(id) ? id : null,
+          activeWorkspacePath: null,
           activeDiffFile: null,
           activePrNumber: null,
           activePrFile: null,
@@ -260,6 +275,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           openTabs: state.openTabs.includes(path) ? state.openTabs : [...state.openTabs, path],
           activeRepo: path,
           activeTab: path,
+          activeWorkspacePath: null,
         })),
 
       closeTab: (path) =>
@@ -275,6 +291,7 @@ export const useRepoUIStore = create<RepoUIState>()(
                 : null
               : state.activeRepo,
             activeTab: wasActive ? fallback : state.activeTab,
+            activeWorkspacePath: wasActive ? null : state.activeWorkspacePath,
           }
         }),
 
@@ -295,6 +312,7 @@ export const useRepoUIStore = create<RepoUIState>()(
             openTabs: state.openTabs.filter((p) => p !== path),
             activeRepo: state.activeRepo === path ? null : state.activeRepo,
             activeTab: wasActive ? DASHBOARD_TAB : state.activeTab,
+            activeWorkspacePath: wasActive ? null : state.activeWorkspacePath,
             activePrNumber: wasActive ? null : state.activePrNumber,
             activePrFile: wasActive ? null : state.activePrFile,
             prComposer: wasActive ? null : state.prComposer,

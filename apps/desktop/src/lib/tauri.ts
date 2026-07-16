@@ -179,6 +179,12 @@ export const addWorktree = (path: string, branch: string, worktreePath: string) 
 export const removeWorktree = (path: string, worktreePath: string, force = false) =>
   invoke<void>('remove_worktree', { path, worktreePath, force })
 
+export const pruneWorktrees = (path: string) => invoke<void>('prune_worktrees', { path })
+
+/** Local branch names whose upstream remote branch is gone (merged & pruned) — bulk-removal signal. */
+export const goneUpstreamBranches = (path: string) =>
+  invoke<string[]>('gone_upstream_branches', { path })
+
 // ─── Rebase ───────────────────────────────────────────────────────────────────
 
 export const getRebaseState = (path: string) => invoke<RebaseState>('get_rebase_state', { path })

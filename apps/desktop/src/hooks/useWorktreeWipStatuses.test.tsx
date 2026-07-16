@@ -53,11 +53,40 @@ describe('useWorktreeWipStatuses', () => {
 
     await waitFor(() =>
       expect(result.current.data).toEqual([
-        { path: '/repo-worktree', branch: 'feature-x', totalChanges: 1 },
+        {
+          path: '/repo-worktree',
+          branch: 'feature-x',
+          totalChanges: 1,
+          added: 0,
+          modified: 1,
+          deleted: 0,
+        },
       ])
     )
     expect(mockedGetRepoStatus).toHaveBeenCalledWith('/repo-worktree')
     expect(mockedGetRepoStatus).not.toHaveBeenCalledWith('/repo')
+  })
+
+  it('buckets staged/unstaged entries by kind, folding untracked into added and renamed/copied/typechange into modified', async () => {
+    mockedListWorktrees.mockResolvedValue([worktree({ path: '/repo-worktree' })])
+    mockedGetRepoStatus.mockResolvedValue(
+      status({
+        staged: [
+          { path: 'new.ts', status: 'added' },
+          { path: 'gone.ts', status: 'deleted' },
+        ],
+        unstaged: [
+          { path: 'edited.ts', status: 'modified' },
+          { path: 'moved.ts', status: 'renamed', oldPath: 'old.ts' },
+        ],
+        untracked: ['scratch.ts'],
+      })
+    )
+
+    const { result } = renderHook(() => useWorktreeWipStatuses('/repo'), { wrapper })
+
+    await waitFor(() => expect(result.current.data).toHaveLength(1))
+    expect(result.current.data?.[0]).toMatchObject({ added: 2, modified: 2, deleted: 1 })
   })
 
   it('excludes the main worktree, the active repo path, detached HEADs, and clean worktrees', async () => {

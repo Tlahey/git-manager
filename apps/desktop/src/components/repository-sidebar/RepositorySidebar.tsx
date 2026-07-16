@@ -18,8 +18,11 @@ import { mutate } from 'swr'
 import { showStashNativeContextMenu } from '../../api/nativeMenu.api'
 import { apiStashApply, apiStashPop, apiStashDrop } from '../../api/git.api'
 import type { GitStash } from '@git-manager/git-types'
+import { useWorktreeWipStatuses } from '../../hooks/useWorktreeWipStatuses'
 import { AddWorktreeDialog } from './AddWorktreeDialog'
 import { RemoveWorktreeDialog } from './RemoveWorktreeDialog'
+import { PruneWorktreesDialog } from './PruneWorktreesDialog'
+import { RemoveMergedWorktreesDialog } from './RemoveMergedWorktreesDialog'
 
 interface RepositorySidebarProps {
   repoPath: string
@@ -60,9 +63,21 @@ export function RepositorySidebar({
 
   const hiddenStashes = useRepoDataStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
   const toggleStashVisibility = useRepoDataStore((s) => s.toggleStashVisibility)
+  // The repo tab's own path (stable, unlike `repoPath` which may already be a workspace) — used to
+  // key the pending-changes bubble so a worktree's own row still shows it while that worktree is
+  // the active workspace, and to drive entering a workspace (a view switch, not a new tab).
+  const activeRepo = useRepoUIStore((s) => s.activeRepo)
+  const setActiveWorkspacePath = useRepoUIStore((s) => s.setActiveWorkspacePath)
+  const { data: worktreeWipStatuses = [] } = useWorktreeWipStatuses(activeRepo ?? '')
+
+  function handleOpenWorktree(wt: GitWorktree) {
+    setActiveWorkspacePath(wt.path)
+  }
 
   const [addWorktreeOpen, setAddWorktreeOpen] = useState(false)
   const [worktreeToRemove, setWorktreeToRemove] = useState<GitWorktree | null>(null)
+  const [pruneWorktreesOpen, setPruneWorktreesOpen] = useState(false)
+  const [removeMergedWorktreesOpen, setRemoveMergedWorktreesOpen] = useState(false)
 
   const handleStashContextMenu = (_e: React.MouseEvent, stash: GitStash) => {
     const isHidden = hiddenStashes.includes(stash.commitOid)
@@ -111,7 +126,7 @@ export function RepositorySidebar({
   const setPin = usePinnedBranchesStore((s) => s.setPin)
   const overrides = usePinnedBranchesStore((s) => s.overrides[repoPath])
 
-  const { sections, filterStats } = useSidebarRows({
+  const { sections, filterStats, prunableWorktrees, worktrees } = useSidebarRows({
     repoPath,
     remoteUrls,
     currentUser,
@@ -287,6 +302,12 @@ export function RepositorySidebar({
               onAddWorktree={
                 section.key === 'worktrees' ? () => setAddWorktreeOpen(true) : undefined
               }
+              onPruneWorktrees={
+                section.key === 'worktrees' ? () => setPruneWorktreesOpen(true) : undefined
+              }
+              onRemoveMergedWorktrees={
+                section.key === 'worktrees' ? () => setRemoveMergedWorktreesOpen(true) : undefined
+              }
               onCreatePr={
                 section.key === 'prs' && githubToken ? () => setPrCreateOpen(true) : undefined
               }
@@ -311,6 +332,8 @@ export function RepositorySidebar({
                     hiddenStashes={hiddenStashes}
                     onToggleStashVisibility={(oid) => toggleStashVisibility(repoPath, oid)}
                     onRemoveWorktree={(wt) => setWorktreeToRemove(wt)}
+                    onOpenWorktree={handleOpenWorktree}
+                    worktreeWipStatuses={worktreeWipStatuses}
                   />
                 ))}
               </div>
@@ -331,6 +354,20 @@ export function RepositorySidebar({
         repoPath={repoPath}
         worktree={worktreeToRemove}
         onClose={() => setWorktreeToRemove(null)}
+      />
+      <PruneWorktreesDialog
+        repoPath={repoPath}
+        worktrees={prunableWorktrees}
+        open={pruneWorktreesOpen}
+        onClose={() => setPruneWorktreesOpen(false)}
+      />
+      <RemoveMergedWorktreesDialog
+        repoPath={repoPath}
+        worktrees={worktrees}
+        remoteUrls={remoteUrls}
+        githubToken={githubToken}
+        open={removeMergedWorktreesOpen}
+        onClose={() => setRemoveMergedWorktreesOpen(false)}
       />
     </div>
   )

@@ -210,7 +210,7 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     ]
     const { result } = renderHook(() =>
       useGitGraphNodes(nodes, undefined, 0, t, null, [
-        { path: '/wt/feature-x', branch: 'feature-x', totalChanges: 2 },
+        { path: '/wt/feature-x', branch: 'feature-x', totalChanges: 2, added: 0, modified: 0, deleted: 0 },
       ])
     )
     const oids = result.current.filteredNodes.map((n) => n.commit.oid)
@@ -243,7 +243,7 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     ]
     const { result } = renderHook(() =>
       useGitGraphNodes(nodes, undefined, 0, t, null, [
-        { path: '/wt/x', branch: 'feature-x', totalChanges: 1 },
+        { path: '/wt/x', branch: 'feature-x', totalChanges: 1, added: 0, modified: 0, deleted: 0 },
       ])
     )
     const wtNode = result.current.filteredNodes[0]
@@ -262,8 +262,8 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     ]
     const { result } = renderHook(() =>
       useGitGraphNodes(nodes, undefined, 1, t, null, [
-        { path: '/wt/x', branch: 'feature-x', totalChanges: 1 },
-        { path: '/wt/y', branch: 'feature-y', totalChanges: 5 },
+        { path: '/wt/x', branch: 'feature-x', totalChanges: 1, added: 0, modified: 0, deleted: 0 },
+        { path: '/wt/y', branch: 'feature-y', totalChanges: 5, added: 0, modified: 0, deleted: 0 },
       ])
     )
     const oids = result.current.filteredNodes.map((n) => n.commit.oid)
@@ -274,7 +274,7 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     const nodes = [node('a')]
     const { result } = renderHook(() =>
       useGitGraphNodes(nodes, undefined, 0, t, null, [
-        { path: '/wt/gone', branch: 'deleted-branch', totalChanges: 3 },
+        { path: '/wt/gone', branch: 'deleted-branch', totalChanges: 3, added: 0, modified: 0, deleted: 0 },
       ])
     )
     expect(result.current.filteredNodes.map((n) => n.commit.oid)).toEqual(['a'])
@@ -284,7 +284,7 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     const nodes = [node('a', { refs: [branchRef('feature-x', 'a')] })]
     const { result } = renderHook(() =>
       useGitGraphNodes(nodes, 'wi', 0, t, null, [
-        { path: '/wt/x', branch: 'feature-x', totalChanges: 1 },
+        { path: '/wt/x', branch: 'feature-x', totalChanges: 1, added: 0, modified: 0, deleted: 0 },
       ])
     )
     expect(result.current.matchingOids).toContain('WIP:/wt/x')
@@ -294,7 +294,7 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     const nodes = [node('a', { column: 2, color: '#456', refs: [branchRef('feature-x', 'a')] })]
     const { result } = renderHook(() =>
       useGitGraphNodes(nodes, undefined, 0, t, null, [
-        { path: '/wt/x', branch: 'feature-x', totalChanges: 1 },
+        { path: '/wt/x', branch: 'feature-x', totalChanges: 1, added: 0, modified: 0, deleted: 0 },
       ])
     )
     // index 1 = the anchor ("a"), right after its WIP row at index 0

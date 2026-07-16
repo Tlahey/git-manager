@@ -1,12 +1,24 @@
 import { useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Input, Textarea, cn } from '@git-manager/ui'
-import { Copy, Check, GitCommit, Layers, Pencil, X, Github, Gitlab } from 'lucide-react'
+import {
+  Copy,
+  Check,
+  GitCommit,
+  Layers,
+  Pencil,
+  X,
+  Github,
+  Gitlab,
+  GitMerge,
+  GitPullRequest,
+} from 'lucide-react'
 import { CommitDetailsAvatar } from './CommitDetailsAvatar'
 import { apiOpenUrl } from '../../../api/shell.api'
 import type { GitGraphNode, GitRef } from '@git-manager/git-types'
 import { useGitStashes } from '../../../hooks/useGitStashes'
 import { useCommitMessageEdit } from '../../../hooks/useCommitMessageEdit'
+import { useCommitPullRequest } from '../../../hooks/useCommitPullRequest'
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp * 1000).toLocaleString(undefined, {
@@ -51,6 +63,9 @@ export function CommitHeaderInfo({
     if (!isStash) return null
     return stashes?.find((s) => s.commitOid === commit?.oid)
   }, [isStash, stashes, commit?.oid])
+
+  // The GitHub pull request this commit belongs to (the one that merged it), if any.
+  const commitPr = useCommitPullRequest(repoPath, isWip || isStash ? null : commit.oid)
 
   const {
     copied,
@@ -344,6 +359,29 @@ export function CommitHeaderInfo({
                 </Button>
               )}
             </div>
+
+            {/* Associated pull request (the one that merged this commit), if any */}
+            {commitPr && (
+              <button
+                onClick={() => apiOpenUrl(commitPr.url)}
+                className="flex w-full items-center gap-1.5 rounded-md border border-border/50 bg-muted/40 px-2 py-1 text-left transition-colors hover:border-primary/45 hover:bg-accent/40"
+                data-testid="commit-pr-label"
+                title={t('commitDetails.openPullRequest', { number: commitPr.number })}
+              >
+                <Github className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                {commitPr.merged ? (
+                  <GitMerge className="h-3.5 w-3.5 shrink-0 text-violet-400" />
+                ) : (
+                  <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                )}
+                <span className="shrink-0 font-mono text-[11px] font-bold text-foreground">
+                  #{commitPr.number}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
+                  {commitPr.title}
+                </span>
+              </button>
+            )}
 
             {/* Parents */}
             {parentOids.length > 0 && (

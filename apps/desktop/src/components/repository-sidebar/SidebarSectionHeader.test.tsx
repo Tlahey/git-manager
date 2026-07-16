@@ -67,6 +67,93 @@ describe('SidebarSectionHeader', () => {
     expect(onAddWorktree).toHaveBeenCalledOnce()
   })
 
+  it('shows the worktree-actions menu only for the worktrees section with onPruneWorktrees, and its prune item fires the callback', async () => {
+    const user = userEvent.setup()
+    const onPruneWorktrees = vi.fn()
+    render(
+      <SidebarSectionHeader
+        sectionKey="worktrees"
+        title="Worktrees"
+        isOpen={true}
+        onToggle={vi.fn()}
+        onPruneWorktrees={onPruneWorktrees}
+      />
+    )
+    await user.click(screen.getByTestId('worktree-actions-menu-trigger'))
+    await user.click(screen.getByTestId('worktree-prune-menu-item'))
+    expect(onPruneWorktrees).toHaveBeenCalledOnce()
+  })
+
+  it('hides the worktree-actions menu for a non-worktrees section', () => {
+    render(
+      <SidebarSectionHeader
+        sectionKey="local"
+        title="Local"
+        isOpen={true}
+        onToggle={vi.fn()}
+        onPruneWorktrees={vi.fn()}
+      />
+    )
+    expect(screen.queryByTestId('worktree-actions-menu-trigger')).not.toBeInTheDocument()
+  })
+
+  it('shows the worktree-actions menu for onRemoveMergedWorktrees alone, and its item fires the callback', async () => {
+    const user = userEvent.setup()
+    const onRemoveMergedWorktrees = vi.fn()
+    render(
+      <SidebarSectionHeader
+        sectionKey="worktrees"
+        title="Worktrees"
+        isOpen={true}
+        onToggle={vi.fn()}
+        onRemoveMergedWorktrees={onRemoveMergedWorktrees}
+      />
+    )
+    await user.click(screen.getByTestId('worktree-actions-menu-trigger'))
+    await user.click(screen.getByTestId('worktree-remove-merged-menu-item'))
+    expect(onRemoveMergedWorktrees).toHaveBeenCalledOnce()
+  })
+
+  it('renders both menu items together when both callbacks are provided', async () => {
+    const user = userEvent.setup()
+    const onPruneWorktrees = vi.fn()
+    const onRemoveMergedWorktrees = vi.fn()
+    render(
+      <SidebarSectionHeader
+        sectionKey="worktrees"
+        title="Worktrees"
+        isOpen={true}
+        onToggle={vi.fn()}
+        onPruneWorktrees={onPruneWorktrees}
+        onRemoveMergedWorktrees={onRemoveMergedWorktrees}
+      />
+    )
+    await user.click(screen.getByTestId('worktree-actions-menu-trigger'))
+    expect(screen.getByTestId('worktree-prune-menu-item')).toBeInTheDocument()
+    expect(screen.getByTestId('worktree-remove-merged-menu-item')).toBeInTheDocument()
+  })
+
+  it('renders both the actions menu and the add button together for the worktrees section', async () => {
+    const user = userEvent.setup()
+    const onAddWorktree = vi.fn()
+    const onPruneWorktrees = vi.fn()
+    render(
+      <SidebarSectionHeader
+        sectionKey="worktrees"
+        title="Worktrees"
+        isOpen={true}
+        onToggle={vi.fn()}
+        onAddWorktree={onAddWorktree}
+        onPruneWorktrees={onPruneWorktrees}
+      />
+    )
+    await user.click(screen.getByTestId('worktree-actions-menu-trigger'))
+    await user.click(screen.getByTestId('worktree-prune-menu-item'))
+    await user.click(screen.getByTestId('worktree-add-button'))
+    expect(onPruneWorktrees).toHaveBeenCalledOnce()
+    expect(onAddWorktree).toHaveBeenCalledOnce()
+  })
+
   it('shows the create-PR action only for the prs section with onCreatePr', async () => {
     const user = userEvent.setup()
     const onCreatePr = vi.fn()

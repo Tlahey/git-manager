@@ -31,3 +31,20 @@ pub async fn remove_worktree(
 ) -> Result<(), String> {
     git_worktree::remove_worktree(&path, &worktree_path, force.unwrap_or(false)).map_err(Into::into)
 }
+
+// ─── prune_worktrees ──────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn prune_worktrees(path: String) -> Result<(), String> {
+    git_worktree::prune_worktrees(&path).map_err(Into::into)
+}
+
+// ─── gone_upstream_branches ───────────────────────────────────────────────────
+
+/// Returns local branch names whose upstream remote branch no longer exists ("gone") — a local
+/// signal that the branch was merged and its remote counterpart deleted/pruned, so a worktree on
+/// it is eligible for bulk removal. Complements the frontend's GitHub pull-request lookup.
+#[tauri::command]
+pub async fn gone_upstream_branches(path: String) -> Result<Vec<String>, String> {
+    git_worktree::gone_upstream_branches(&path).map_err(Into::into)
+}
