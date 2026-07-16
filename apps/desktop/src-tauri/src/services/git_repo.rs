@@ -24,7 +24,15 @@ pub fn build_git_repo(repo: &Repository, path: String) -> GitRepo {
         .unwrap_or_else(|| "HEAD".to_string());
 
     let is_detached = repo.head_detached().unwrap_or(false);
-    let is_dirty = repo.statuses(None).map(|s| !s.is_empty()).unwrap_or(false);
+    // Same options as `get_repo_status`: untracked files count as dirty, gitignored ones don't —
+    // `statuses(None)` falls back to libgit2 defaults that include ignored entries, which kept
+    // any repo containing build artifacts (node_modules/, target/, …) permanently flagged dirty.
+    let mut status_opts = git2::StatusOptions::new();
+    status_opts.include_untracked(true);
+    let is_dirty = repo
+        .statuses(Some(&mut status_opts))
+        .map(|s| !s.is_empty())
+        .unwrap_or(false);
     let mut remotes = Vec::new();
     if let Ok(repo_remotes) = repo.remotes() {
         for remote_name in repo_remotes.iter().flatten() {

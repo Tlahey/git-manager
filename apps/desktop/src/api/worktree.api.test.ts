@@ -4,6 +4,8 @@ vi.mock('../lib/tauri', () => ({
   listWorktrees: vi.fn(),
   addWorktree: vi.fn(),
   removeWorktree: vi.fn(),
+  pruneWorktrees: vi.fn(),
+  goneUpstreamBranches: vi.fn(),
 }))
 
 import * as tauri from '../lib/tauri'
@@ -39,5 +41,17 @@ describe('worktree.api pass-throughs', () => {
     mocked.removeWorktree.mockResolvedValue(undefined)
     await api.apiRemoveWorktree(PATH, '/repo/a-worktree', true)
     expect(mocked.removeWorktree).toHaveBeenCalledWith(PATH, '/repo/a-worktree', true)
+  })
+
+  it('apiPruneWorktrees delegates to pruneWorktrees', async () => {
+    mocked.pruneWorktrees.mockResolvedValue(undefined)
+    await api.apiPruneWorktrees(PATH)
+    expect(mocked.pruneWorktrees).toHaveBeenCalledWith(PATH)
+  })
+
+  it('apiGoneUpstreamBranches delegates to goneUpstreamBranches with the repo path', async () => {
+    mocked.goneUpstreamBranches.mockResolvedValue(['feature/x'])
+    await api.apiGoneUpstreamBranches(PATH)
+    expect(mocked.goneUpstreamBranches).toHaveBeenCalledWith(PATH)
   })
 })

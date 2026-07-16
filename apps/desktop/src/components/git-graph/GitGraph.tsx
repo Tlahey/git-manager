@@ -17,7 +17,6 @@ import { useHorizontalResize } from '@git-manager/components'
 import { useGitGraphNodes, type ConflictRowInfo } from '../../hooks/useGitGraphNodes'
 import { useGitGraphActions } from '../../hooks/useGitGraphActions'
 import { apiGetRebaseState } from '../../api/git.api'
-import { apiOpenRepo } from '../../api/repo.api'
 import { GraphRow } from './GraphRow'
 import { GraphHeader } from './GraphHeader'
 import { CommitSearchPanel } from './CommitSearchPanel'
@@ -135,17 +134,9 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   // WIP status of every OTHER linked worktree with uncommitted changes — lets several "// WIP"
   // rows coexist on different branches at once (see useGitGraphNodes' worktreeWipNodes).
   const { data: worktreeWipStatuses = [] } = useWorktreeWipStatuses(repoPath)
-  const addRepo = useRepoDataStore((s) => s.addRepo)
-  const openTab = useRepoUIStore((s) => s.openTab)
-  async function handleOpenWorktree(worktreePath: string) {
-    try {
-      const repo = await apiOpenRepo(worktreePath)
-      addRepo(repo)
-      openTab(repo.path)
-    } catch (err) {
-      console.error(err)
-    }
-  }
+  // Opening a worktree is a view switch, not a new tab — it only sets which path the graph/sidebar
+  // render data for (see repoUI.store.ts's `activeWorkspacePath`).
+  const setActiveWorkspacePath = useRepoUIStore((s) => s.setActiveWorkspacePath)
 
   // ── Colonnes ──────────────────────────────────────────────────────────────
   const columnState = useGitGraphColumnsStore((s) => s.columns)
@@ -504,7 +495,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                             conflictInfo={conflictInfo}
                             dimmed={matchSet !== null && !matchSet.has(oid)}
                             worktreeWipStatuses={worktreeWipStatuses}
-                            onOpenWorktree={handleOpenWorktree}
+                            onOpenWorktree={setActiveWorkspacePath}
                           />
                         </div>
                       )

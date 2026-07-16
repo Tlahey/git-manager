@@ -7,7 +7,11 @@ import {
   Archive as ArchiveIcon,
   Layers,
   Plus,
+  Recycle,
+  MoreVertical,
+  GitMerge,
 } from 'lucide-react'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@git-manager/ui'
 import type { SectionKey } from './types'
 import { SectionHeader } from './SectionHeader'
 
@@ -29,6 +33,8 @@ interface SidebarSectionHeaderProps {
   onToggle: () => void
   onCreateBranch?: () => void
   onAddWorktree?: () => void
+  onPruneWorktrees?: () => void
+  onRemoveMergedWorktrees?: () => void
   onCreatePr?: () => void
   /** When true, `count` reflects an active search filter rather than the section's full contents. */
   isFiltered?: boolean
@@ -42,6 +48,8 @@ export function SidebarSectionHeader({
   onToggle,
   onCreateBranch,
   onAddWorktree,
+  onPruneWorktrees,
+  onRemoveMergedWorktrees,
   onCreatePr,
   isFiltered = false,
 }: SidebarSectionHeaderProps) {
@@ -64,16 +72,57 @@ export function SidebarSectionHeader({
           >
             <Plus className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
           </button>
-        ) : sectionKey === 'worktrees' && onAddWorktree ? (
-          <button
-            onClick={onAddWorktree}
-            className="mr-1 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
-            aria-label="Add worktree"
-            title="Add worktree"
-            data-testid="worktree-add-button"
-          >
-            <Plus className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
-          </button>
+        ) : sectionKey === 'worktrees' &&
+          (onAddWorktree || onPruneWorktrees || onRemoveMergedWorktrees) ? (
+          <>
+            {(onPruneWorktrees || onRemoveMergedWorktrees) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="mr-0.5 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
+                    aria-label="Worktree actions"
+                    title="Worktree actions"
+                    data-testid="worktree-actions-menu-trigger"
+                  >
+                    <MoreVertical className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {onPruneWorktrees && (
+                    <DropdownMenuItem
+                      onSelect={onPruneWorktrees}
+                      className="gap-2 text-xs"
+                      data-testid="worktree-prune-menu-item"
+                    >
+                      <Recycle className="h-3.5 w-3.5 text-muted-foreground" />
+                      Prune worktrees
+                    </DropdownMenuItem>
+                  )}
+                  {onRemoveMergedWorktrees && (
+                    <DropdownMenuItem
+                      onSelect={onRemoveMergedWorktrees}
+                      className="gap-2 text-xs"
+                      data-testid="worktree-remove-merged-menu-item"
+                    >
+                      <GitMerge className="h-3.5 w-3.5 text-muted-foreground" />
+                      Remove merged worktrees
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            {onAddWorktree && (
+              <button
+                onClick={onAddWorktree}
+                className="mr-1 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
+                aria-label="Add worktree"
+                title="Add worktree"
+                data-testid="worktree-add-button"
+              >
+                <Plus className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
+              </button>
+            )}
+          </>
         ) : sectionKey === 'prs' && onCreatePr ? (
           <button
             onClick={onCreatePr}

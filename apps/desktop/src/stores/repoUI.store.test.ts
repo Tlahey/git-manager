@@ -5,6 +5,7 @@ const INITIAL = {
   openTabs: [] as string[],
   activeRepo: null as string | null,
   activeTab: DASHBOARD_TAB,
+  activeWorkspacePath: null as string | null,
   activeDiffFile: null as { path: string; staged: boolean; oid?: string } | null,
   activePrNumber: null as number | null,
   activePrFile: null as string | null,
@@ -348,6 +349,59 @@ describe('useRepoUIStore — command-palette bridges', () => {
     expect(useRepoUIStore.getState().pendingGraphAction).toEqual({ kind: 'tag', annotated: true })
     useRepoUIStore.getState().setPendingGraphAction(null)
     expect(useRepoUIStore.getState().pendingGraphAction).toBeNull()
+  })
+})
+
+describe('useRepoUIStore — activeWorkspacePath', () => {
+  it('sets and clears it directly', () => {
+    useRepoUIStore.getState().setActiveWorkspacePath('/repo/a/.git/worktrees/wt')
+    expect(useRepoUIStore.getState().activeWorkspacePath).toBe('/repo/a/.git/worktrees/wt')
+    useRepoUIStore.getState().setActiveWorkspacePath(null)
+    expect(useRepoUIStore.getState().activeWorkspacePath).toBeNull()
+  })
+
+  it('does not touch openTabs/activeRepo — entering a workspace is a view switch, not a new tab', () => {
+    useRepoUIStore.getState().openTab('/repo/a')
+    useRepoUIStore.getState().setActiveWorkspacePath('/wt/a')
+    const state = useRepoUIStore.getState()
+    expect(state.openTabs).toEqual(['/repo/a'])
+    expect(state.activeRepo).toBe('/repo/a')
+    expect(state.activeWorkspacePath).toBe('/wt/a')
+  })
+
+  it('is reset by setActiveRepo and setActiveTab', () => {
+    useRepoUIStore.getState().setActiveWorkspacePath('/wt/a')
+    useRepoUIStore.getState().setActiveRepo('/repo/a')
+    expect(useRepoUIStore.getState().activeWorkspacePath).toBeNull()
+
+    useRepoUIStore.getState().setActiveWorkspacePath('/wt/a')
+    useRepoUIStore.getState().setActiveTab('pull-requests')
+    expect(useRepoUIStore.getState().activeWorkspacePath).toBeNull()
+  })
+
+  it('is reset by openTab, including re-opening the same tab', () => {
+    useRepoUIStore.getState().openTab('/repo/a')
+    useRepoUIStore.getState().setActiveWorkspacePath('/wt/a')
+    useRepoUIStore.getState().openTab('/repo/a')
+    expect(useRepoUIStore.getState().activeWorkspacePath).toBeNull()
+  })
+
+  it('is reset by closeTab only when the closed tab was active', () => {
+    useRepoUIStore.getState().openTab('/repo/a')
+    useRepoUIStore.getState().openTab('/repo/b')
+    useRepoUIStore.getState().setActiveWorkspacePath('/wt/b')
+    useRepoUIStore.getState().closeTab('/repo/a')
+    expect(useRepoUIStore.getState().activeWorkspacePath).toBe('/wt/b')
+
+    useRepoUIStore.getState().closeTab('/repo/b')
+    expect(useRepoUIStore.getState().activeWorkspacePath).toBeNull()
+  })
+
+  it('is cleared when the active repo tab is removed', () => {
+    useRepoUIStore.getState().openTab('/repo/a')
+    useRepoUIStore.getState().setActiveWorkspacePath('/wt/a')
+    useRepoUIStore.getState().clearTabStateForRemovedRepo('/repo/a')
+    expect(useRepoUIStore.getState().activeWorkspacePath).toBeNull()
   })
 })
 

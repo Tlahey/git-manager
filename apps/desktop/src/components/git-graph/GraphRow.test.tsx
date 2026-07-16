@@ -242,16 +242,19 @@ describe('GraphRow — message column: WIP', () => {
 })
 
 describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
-  it('shows the branch name and file count, but hides the Open Worktree button when not selected', () => {
+  it('shows the // WIP marker and file count (no worktree name), and hides the Open Worktree button when not selected', () => {
     renderRow({
       columns: [col('message')],
       node: node({ commit: { ...node().commit, oid: 'WIP:/repo-worktree' } }),
-      worktreeWipStatuses: [{ path: '/repo-worktree', branch: 'feature-x', totalChanges: 4 }],
+      worktreeWipStatuses: [
+        { path: '/repo-worktree', branch: 'feature-x', totalChanges: 4, added: 1, modified: 2, deleted: 1 },
+      ],
       isSelected: false,
       isPrimary: false,
     })
-    expect(screen.getByText(/feature-x/)).toBeInTheDocument()
+    expect(screen.getByText(/\/\/ WIP/)).toBeInTheDocument()
     expect(screen.getByText('4')).toBeInTheDocument()
+    expect(screen.queryByText(/feature-x/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'gitTree.wip.openWorktree' })).not.toBeInTheDocument()
   })
 
@@ -261,7 +264,9 @@ describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
     renderRow({
       columns: [col('message')],
       node: node({ commit: { ...node().commit, oid: 'WIP:/repo-worktree' } }),
-      worktreeWipStatuses: [{ path: '/repo-worktree', branch: 'feature-x', totalChanges: 4 }],
+      worktreeWipStatuses: [
+        { path: '/repo-worktree', branch: 'feature-x', totalChanges: 4, added: 1, modified: 2, deleted: 1 },
+      ],
       onOpenWorktree,
       isSelected: true,
     })
@@ -274,7 +279,9 @@ describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
     renderRow({
       columns: [col('message')],
       node: node({ commit: { ...node().commit, oid: 'WIP:/repo-worktree' } }),
-      worktreeWipStatuses: [{ path: '/repo-worktree', branch: 'feature-x', totalChanges: 4 }],
+      worktreeWipStatuses: [
+        { path: '/repo-worktree', branch: 'feature-x', totalChanges: 4, added: 1, modified: 2, deleted: 1 },
+      ],
       isPrimary: true,
     })
     expect(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' })).toBeInTheDocument()
@@ -284,7 +291,9 @@ describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
     renderRow({
       columns: [col('message')],
       node: node({ commit: { ...node().commit, oid: 'WIP:/repo-worktree' } }),
-      worktreeWipStatuses: [{ path: '/repo-worktree', branch: 'feature-x', totalChanges: 4 }],
+      worktreeWipStatuses: [
+        { path: '/repo-worktree', branch: 'feature-x', totalChanges: 4, added: 1, modified: 2, deleted: 1 },
+      ],
     })
     expect(screen.queryByPlaceholderText('// WIP')).not.toBeInTheDocument()
   })
@@ -295,7 +304,9 @@ describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
     renderRow({
       columns: [col('message')],
       node: node({ commit: { ...node().commit, oid: 'WIP:/repo-worktree' } }),
-      worktreeWipStatuses: [{ path: '/repo-worktree', branch: 'feature-x', totalChanges: 4 }],
+      worktreeWipStatuses: [
+        { path: '/repo-worktree', branch: 'feature-x', totalChanges: 4, added: 1, modified: 2, deleted: 1 },
+      ],
       onSelect,
       isSelected: true,
     })

@@ -15,28 +15,33 @@ import { apiOpenRepo } from '../../api/repo.api'
 import { PendingFixupsBanner } from '../../components/fixup/PendingFixupsBanner'
 
 export function RepoView() {
-  const { activeRepo } = useRepoUIStore()
+  const { activeRepo, activeWorkspacePath } = useRepoUIStore()
   const { repoCache, setRepoCache } = useRepoDataStore()
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null)
   const searchQuery = useCommitSearchStore((s) => s.query)
   const queryClient = useQueryClient()
 
-  // Le cache repo n'est pas persisté : on (ré)ouvre le dépôt actif au besoin
+  // Viewing a workspace (linked worktree) swaps every data-driven view (sidebar, graph) onto its
+  // path instead of the repo tab's own — the tab/`activeRepo` itself never changes, only what's
+  // displayed. See repoUI.store.ts's `activeWorkspacePath` doc comment for why.
+  const effectiveRepoPath = activeWorkspacePath ?? activeRepo
+
+  // Le cache repo n'est pas persisté : on (ré)ouvre le dépôt/workspace actif au besoin
   // pour alimenter head/isDetached/isDirty/remotes (toolbar, badges d'état…).
   useEffect(() => {
-    if (activeRepo && !repoCache[activeRepo]) {
-      apiOpenRepo(activeRepo)
+    if (effectiveRepoPath && !repoCache[effectiveRepoPath]) {
+      apiOpenRepo(effectiveRepoPath)
         .then((r) => {
-          setRepoCache(activeRepo, r)
+          setRepoCache(effectiveRepoPath, r)
           // Purge les entrées undo/redo persistées dont l'objet Git référencé a disparu
           // depuis la dernière session (ex. git gc manuel en dehors de l'app).
-          useUndoHistoryStore.getState().validateAndPrune(activeRepo)
+          useUndoHistoryStore.getState().validateAndPrune(effectiveRepoPath)
         })
         .catch(() => {
           /* dépôt introuvable / non-git : ignoré */
         })
     }
-  }, [activeRepo, repoCache, setRepoCache])
+  }, [effectiveRepoPath, repoCache, setRepoCache])
 
   const github = useSettingsStore((s) => s.settings.github)
   const activeAccount = github?.accounts?.find((a) => a.id === github.activeAccountId) || null
@@ -63,6 +68,8 @@ export function RepoView() {
 
   if (!activeRepo) return null
 
+  const repoPath = effectiveRepoPath ?? activeRepo
+
   return (
     <div data-testid="repo-view" className="flex h-full flex-col">
       <ActionToolbar />
@@ -73,7 +80,7 @@ export function RepoView() {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar branches — redimensionnable */}
         <RepositorySidebar
-          repoPath={activeRepo}
+          repoPath={repoPath}
           remoteUrls={repoCache[activeRepo]?.remotes ?? []}
           selectedBranch={selectedBranch}
           onSelectBranch={(name) => setSelectedBranch(name)}
@@ -89,7 +96,7 @@ export function RepoView() {
         {/* Zone centrale — historique plein largeur */}
         <div className="flex flex-1 flex-col overflow-hidden">
           <GitGraph
-            repoPath={activeRepo}
+            repoPath={repoPath}
             branch={selectedBranch ?? undefined}
             searchQuery={searchQuery}
           />

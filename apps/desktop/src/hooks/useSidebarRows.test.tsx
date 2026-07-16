@@ -395,6 +395,20 @@ describe('useSidebarRows — worktrees section', () => {
     expect(findRow(result.current.sections, 'wt:/repo')).toBeUndefined()
     expect(findRow(result.current.sections, 'wt:/tmp/repo-linked')).toBeDefined()
   })
+
+  it('hides detached-HEAD worktrees from the section and the worktree lists', async () => {
+    mockedListWorktrees.mockResolvedValue([
+      worktree('/tmp/repo-linked', { branch: 'feature/login' }),
+      worktree('/tmp/repo-detached', { branch: '(detached HEAD)' }),
+    ])
+    const { result } = renderRows({ openState: { 'section:worktrees': true } })
+    await waitFor(() =>
+      expect(findSection(result.current.sections, 'worktrees')).toMatchObject({ count: 1 })
+    )
+    expect(findRow(result.current.sections, 'wt:/tmp/repo-detached')).toBeUndefined()
+    expect(findRow(result.current.sections, 'wt:/tmp/repo-linked')).toBeDefined()
+    expect(result.current.worktrees.map((w) => w.path)).toEqual(['/tmp/repo-linked'])
+  })
 })
 
 describe('useSidebarRows — filter reaches every section, not just branches', () => {
@@ -454,6 +468,39 @@ describe('useSidebarRows — filter reaches every section, not just branches', (
     await waitFor(() =>
       expect(findSection(result.current.sections, 'worktrees')).toMatchObject({ count: 1 })
     )
+  })
+
+  it('exposes prunable worktrees (excluding main) regardless of isPrunable status', async () => {
+    mockedListWorktrees.mockResolvedValue([
+      worktree('/repo', { isMain: true, isPrunable: true }),
+      worktree('/tmp/repo-stale', { branch: 'old', isPrunable: true }),
+      worktree('/tmp/repo-live', { branch: 'active', isPrunable: false }),
+    ])
+    const { result } = renderRows()
+    await waitFor(() => expect(result.current.prunableWorktrees).toHaveLength(1))
+    expect(result.current.prunableWorktrees[0].path).toBe('/tmp/repo-stale')
+  })
+
+  it('keeps prunableWorktrees unaffected by an active search filter', async () => {
+    mockedListWorktrees.mockResolvedValue([
+      worktree('/tmp/repo-stale', { branch: 'old', isPrunable: true }),
+    ])
+    const { result } = renderRows({ filter: 'zzz' })
+    await waitFor(() => expect(result.current.prunableWorktrees).toHaveLength(1))
+  })
+
+  it('exposes the full non-main worktree list, unaffected by an active search filter', async () => {
+    mockedListWorktrees.mockResolvedValue([
+      worktree('/repo', { isMain: true }),
+      worktree('/tmp/repo-a', { branch: 'a' }),
+      worktree('/tmp/repo-b', { branch: 'b' }),
+    ])
+    const { result } = renderRows({ filter: 'zzz' })
+    await waitFor(() => expect(result.current.worktrees).toHaveLength(2))
+    expect(result.current.worktrees.map((wt) => wt.path).sort()).toEqual([
+      '/tmp/repo-a',
+      '/tmp/repo-b',
+    ])
   })
 })
 

@@ -21,6 +21,8 @@ import {
   fetchGitHubContributions,
   fetchRepoPRs,
   fetchCommitPullRequest,
+  fetchCommitMergedPullRequestForBranch,
+  fetchClosedPullRequests,
   resolveTagOrReleaseUrl,
   createPullRequest,
   fetchPrFiles,
@@ -362,6 +364,89 @@ describe('fetchCommitPullRequest', () => {
       state: 'closed',
       merged: true,
     })
+  })
+})
+
+describe('fetchCommitMergedPullRequestForBranch', () => {
+  it('returns the merged PR whose head.ref matches the branch', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse([
+          rawPR({ number: 3, merged_at: '2024-01-01', title: 'Mine', head: { ref: 'feature/mine' } }),
+        ])
+      )
+    )
+    expect(
+      await fetchCommitMergedPullRequestForBranch('org', 'repo', 'sha1', 'feature/mine', 'tok')
+    ).toEqual({ number: 3, title: 'Mine' })
+  })
+
+  it('REGRESSION: ignores a merged PR from another branch (fork-point commit of a fresh worktree)', async () => {
+    // A branch created from main with no unique commits: its HEAD commit belongs to whatever PR
+    // shipped that commit — accepting it once bulk-deleted a never-merged worktree.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse([
+          rawPR({ number: 87, merged_at: '2024-01-01', head: { ref: 'claude/other-branch' } }),
+        ])
+      )
+    )
+    expect(
+      await fetchCommitMergedPullRequestForBranch('org', 'repo', 'sha1', 'feature/mine', 'tok')
+    ).toBeNull()
+  })
+
+  it('ignores an unmerged PR even when its head.ref matches the branch', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse([rawPR({ number: 4, merged_at: null, head: { ref: 'feature/mine' } })])
+      )
+    )
+    expect(
+      await fetchCommitMergedPullRequestForBranch('org', 'repo', 'sha1', 'feature/mine', 'tok')
+    ).toBeNull()
+  })
+
+  it('returns null (not throw) when GitHub responds non-ok', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({}, false, 500)))
+    expect(
+      await fetchCommitMergedPullRequestForBranch('org', 'repo', 'sha1', 'feature/mine', 'tok')
+    ).toBeNull()
+  })
+})
+
+describe('fetchClosedPullRequests', () => {
+  it('builds the closed-PRs listing URL, sorted by most recently updated', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse([]))
+    vi.stubGlobal('fetch', fetchMock)
+    await fetchClosedPullRequests('org', 'repo', 'tok')
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.github.com/repos/org/repo/pulls?state=closed&sort=updated&direction=desc&per_page=100',
+      expect.anything()
+    )
+  })
+
+  it('returns the raw list, including head.ref and merged_at for each item', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse([
+          rawPR({ number: 7, merged_at: '2024-01-01', head: { ref: 'feature/login' } }),
+        ])
+      )
+    )
+    const prs = await fetchClosedPullRequests('org', 'repo', 'tok')
+    expect(prs).toEqual([
+      expect.objectContaining({ number: 7, merged_at: '2024-01-01', head: { ref: 'feature/login' } }),
+    ])
+  })
+
+  it('returns an empty list (not throw) when GitHub responds non-ok', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({}, false, 500)))
+    expect(await fetchClosedPullRequests('org', 'repo', 'tok')).toEqual([])
   })
 })
 

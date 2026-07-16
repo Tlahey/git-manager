@@ -35,12 +35,18 @@ export function WipCommitInput({
   }
 
   return (
-    <div className="flex w-full items-center gap-2 pr-4" onClick={(e) => e.stopPropagation()}>
+    <div className="flex w-full items-center gap-2 pr-4">
+      {/* Only the input itself blocks the row's onSelect — typing/placing the cursor shouldn't
+          fight with row selection. Clicking anywhere else in this cell (e.g. the badge) still
+          bubbles up and selects the 'WIP' row, which is what actually shows the changed files
+          (CommitDetailsPanel). Previously the whole cell stopped propagation, which silently
+          swallowed that click and made "click WIP to see changed files" look broken. */}
       <input
         type="text"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
+        onClick={(e) => e.stopPropagation()}
         placeholder="// WIP"
         className="h-6 min-w-0 flex-1 rounded border border-border bg-transparent px-2 text-[11px] text-foreground placeholder-muted-foreground/60 transition-colors focus:border-primary/60 focus:outline-none"
       />
@@ -55,28 +61,29 @@ export function WipCommitInput({
   )
 }
 
-/** Message-column content for a secondary "// WIP" row anchored to another linked worktree's
- * branch: read-only file count, plus an "Open Worktree" action revealed only once the row is
- * selected/primary (`showOpenButton`) — kept out of the way otherwise so it doesn't compete with
- * every other row's message text. No commit input — committing into another worktree isn't
- * something this row does. */
+/** Message-column content for a secondary "// WIP" row anchored to another linked worktree:
+ * just a "// WIP" marker, its read-only changed-file count, and an "Open Worktree" tag revealed
+ * only once the row is selected/primary (`showOpenButton`). The worktree's branch is already shown
+ * by the row's own ref label, so it isn't repeated here. No commit input — committing into another
+ * worktree isn't something this row does.
+ *
+ * Clicking the row itself just *selects* it (the click bubbles up to the graph's row-select
+ * handler, which is what flips `showOpenButton` on and surfaces the tag) — it does NOT switch to
+ * the worktree. Switching is a deliberate click on the "Open Worktree" tag, which stops
+ * propagation so it opens the worktree without re-selecting the row. */
 export function WorktreeWipRow({
-  branch,
   totalChanges,
   onOpenWorktree,
   showOpenButton,
 }: {
-  branch: string
   totalChanges: number
   onOpenWorktree?: () => void
   showOpenButton?: boolean
 }) {
   const { t } = useTranslation('git')
   return (
-    <div className="flex w-full items-center gap-2 pr-4" onClick={(e) => e.stopPropagation()}>
-      <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground/70">
-        // WIP <span className="text-muted-foreground/50">— {branch}</span>
-      </span>
+    <div className="flex w-full items-center gap-2 pr-4">
+      <span className="shrink-0 text-[11px] text-muted-foreground/70">// WIP</span>
       <div
         className="flex shrink-0 items-center gap-1 rounded border border-border/30 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground"
         title={`${totalChanges} files changed`}
@@ -87,8 +94,11 @@ export function WorktreeWipRow({
       {showOpenButton && (
         <button
           type="button"
-          onClick={onOpenWorktree}
-          className="flex shrink-0 items-center gap-1 rounded border border-border bg-card px-2 py-0.5 text-[10px] font-medium text-foreground transition-colors hover:bg-accent"
+          onClick={(e) => {
+            e.stopPropagation()
+            onOpenWorktree?.()
+          }}
+          className="flex shrink-0 items-center gap-1 rounded border border-primary/40 bg-primary/20 px-2 py-0.5 text-[10px] font-medium text-foreground transition-colors hover:bg-primary/30"
         >
           <FolderGit2 className="h-3 w-3" />
           {t('gitTree.wip.openWorktree')}

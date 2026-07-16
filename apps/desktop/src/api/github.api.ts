@@ -396,6 +396,30 @@ export interface CommitPrRef {
   merged: boolean
 }
 
+/**
+ * The repo's most recently updated closed pull requests (merged or not), for matching a local
+ * branch name against its PR's `head.ref`/`merged_at` fields client-side. This is deliberately
+ * NOT commit- or search-based: `fetchCommitPullRequest`'s `commits/{sha}/pulls` only reports a
+ * "merged" PR when the commit is reachable from the default branch — never true for a squash/
+ * rebase merge — and GitHub search's `head:`/REST `head=` filters both key off the *live* branch
+ * ref, which is unreliable once GitHub auto-deletes the branch after merge (the common case).
+ * `head.ref`/`merged_at` on a plain PR list item, by contrast, are just stored fields on the PR
+ * resource itself and persist regardless of whether the branch still exists. A merge always
+ * touches `updated_at`, so sorting by `updated` means a just-merged PR is virtually guaranteed to
+ * land within the first page even on a repo with a long PR history — matching the single-page
+ * approach every other GitHub list call in this file already uses (no pagination anywhere else).
+ */
+export async function fetchClosedPullRequests(
+  owner: string,
+  repo: string,
+  token?: string
+): Promise<GhRawPR[]> {
+  return ghFetch<GhRawPR[]>(
+    `https://api.github.com/repos/${owner}/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=100`,
+    token
+  ).catch(() => [] as GhRawPR[])
+}
+
 /** The pull request associated with a commit (the one that introduced/merged it), or null. */
 export async function fetchCommitPullRequest(
   owner: string,
@@ -417,6 +441,30 @@ export async function fetchCommitPullRequest(
     state: best.state,
     merged: !!best.merged_at,
   }
+}
+
+/**
+ * The merged pull request whose source branch is exactly `branch` AND which contains `sha`, or
+ * null. This is the branch-eligibility variant of `fetchCommitPullRequest`: `commits/{sha}/pulls`
+ * lists every PR *containing* the commit, so a branch with no unique commits (freshly created from
+ * main, or whose work only exists remotely) reports the unrelated PR that shipped its fork-point
+ * commit — accepting any merged association there once bulk-deleted a worktree whose own branch
+ * had never been merged. Requiring `head.ref === branch` keeps only the PR that actually merged
+ * *this* branch.
+ */
+export async function fetchCommitMergedPullRequestForBranch(
+  owner: string,
+  repo: string,
+  sha: string,
+  branch: string,
+  token?: string
+): Promise<{ number: number; title: string } | null> {
+  const items = await ghFetch<GhRawPR[]>(
+    `https://api.github.com/repos/${owner}/${repo}/commits/${sha}/pulls`,
+    token
+  ).catch(() => [] as GhRawPR[])
+  const match = items?.find((p) => p.head?.ref === branch && p.merged_at)
+  return match ? { number: match.number, title: match.title } : null
 }
 
 /** GitHub release page URL for a tag if a release exists, else null (a 404 = no release). */

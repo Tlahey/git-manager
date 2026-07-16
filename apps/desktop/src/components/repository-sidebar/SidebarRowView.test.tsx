@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type {
   GitBranch,
@@ -11,6 +11,26 @@ import type {
 } from '@git-manager/git-types'
 import type { SidebarRow } from './types'
 import { SidebarRowView } from './SidebarRowView'
+
+// Partial-mock so the real Radix components still render; only `toast` is spied on.
+vi.mock('@git-manager/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@git-manager/ui')>()
+  return {
+    ...actual,
+    toast: Object.assign(vi.fn(), {
+      success: vi.fn(),
+      error: vi.fn(),
+      info: vi.fn(),
+      warning: vi.fn(),
+      dismiss: vi.fn(),
+    }),
+  }
+})
+import { toast } from '@git-manager/ui'
+const mockedToast = toast as unknown as {
+  success: ReturnType<typeof vi.fn>
+  error: ReturnType<typeof vi.fn>
+}
 
 vi.mock('./HoverExpandLabel', () => ({
   HoverExpandLabel: ({
@@ -134,6 +154,7 @@ function baseHandlers() {
     onStashContextMenu: vi.fn(),
     onToggleStashVisibility: vi.fn(),
     onRemoveWorktree: vi.fn(),
+    onOpenWorktree: vi.fn(),
   }
 }
 
@@ -414,15 +435,15 @@ describe('SidebarRowView — submodule', () => {
 })
 
 describe('SidebarRowView — worktree', () => {
-  it('shows the branch, path, and short commit oid', () => {
+  it('shows only the branch label — no path, no commit oid', () => {
     renderRow({
       kind: 'worktree',
       id: 'wt-1',
       wt: worktree({ branch: 'feature/login', path: '/tmp/repo-linked' }),
     })
     expect(screen.getByText('feature/login')).toBeInTheDocument()
-    expect(screen.getByText('/tmp/repo-linked')).toBeInTheDocument()
-    expect(screen.getByText('abcdef1')).toBeInTheDocument()
+    expect(screen.queryByText('/tmp/repo-linked')).not.toBeInTheDocument()
+    expect(screen.queryByText('abcdef1')).not.toBeInTheDocument()
   })
 
   it('shows a lock icon when locked', () => {
@@ -434,14 +455,112 @@ describe('SidebarRowView — worktree', () => {
     expect(container.querySelector('.lucide-lock')).toBeTruthy()
   })
 
-  it('calls onRemoveWorktree with the worktree when the trash button is clicked', () => {
+  it('calls onRemoveWorktree from the actions menu Delete item', async () => {
+    const user = userEvent.setup()
     const wt = worktree({ path: '/tmp/repo-linked' })
     const { h } = renderRow({ kind: 'worktree', id: 'wt-1', wt })
-    fireEvent.click(screen.getByTestId('worktree-remove-button-/tmp/repo-linked'))
+    await user.click(screen.getByTestId('worktree-actions-button-/tmp/repo-linked'))
+    await user.click(screen.getByTestId('worktree-remove-/tmp/repo-linked'))
     expect(h.onRemoveWorktree).toHaveBeenCalledWith(wt)
   })
 
-  it('highlights matches in both the branch and the path when filterQuery is provided', () => {
+  it('copies the path and the SHA from the actions menu, each with a confirmation toast', async () => {
+    mockedToast.success.mockClear()
+    const user = userEvent.setup()
+    // Defined after setup(): userEvent installs its own clipboard stub on navigator during setup.
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    const wt = worktree({ path: '/tmp/repo-linked', commitOid: 'abcdef1234567890' })
+    renderRow({ kind: 'worktree', id: 'wt-1', wt })
+
+    await user.click(screen.getByTestId('worktree-actions-button-/tmp/repo-linked'))
+    await user.click(screen.getByTestId('worktree-copy-path-/tmp/repo-linked'))
+    expect(writeText).toHaveBeenCalledWith('/tmp/repo-linked')
+    await waitFor(() =>
+      expect(mockedToast.success).toHaveBeenCalledWith('Path copied to clipboard', {
+        description: '/tmp/repo-linked',
+      })
+    )
+
+    await user.click(screen.getByTestId('worktree-actions-button-/tmp/repo-linked'))
+    await user.click(screen.getByTestId('worktree-copy-sha-/tmp/repo-linked'))
+    expect(writeText).toHaveBeenCalledWith('abcdef1234567890')
+    await waitFor(() =>
+      expect(mockedToast.success).toHaveBeenCalledWith('SHA copied to clipboard', {
+        description: 'abcdef1234567890',
+      })
+    )
+  })
+
+  it('calls onOpenWorktree with the worktree when the row is double-clicked', () => {
+    const wt = worktree({ path: '/tmp/repo-linked' })
+    const { h } = renderRow({ kind: 'worktree', id: 'wt-1', wt })
+    fireEvent.doubleClick(screen.getByTestId('worktree-item-/tmp/repo-linked'))
+    expect(h.onOpenWorktree).toHaveBeenCalledWith(wt)
+  })
+
+  it('does nothing on a single click of the row', () => {
+    const wt = worktree({ path: '/tmp/repo-linked' })
+    const { h } = renderRow({ kind: 'worktree', id: 'wt-1', wt })
+    fireEvent.click(screen.getByTestId('worktree-item-/tmp/repo-linked'))
+    expect(h.onOpenWorktree).not.toHaveBeenCalled()
+  })
+
+  it('opening the actions menu does not trigger onOpenWorktree', async () => {
+    const user = userEvent.setup()
+    const wt = worktree({ path: '/tmp/repo-linked' })
+    const { h } = renderRow({ kind: 'worktree', id: 'wt-1', wt })
+    await user.click(screen.getByTestId('worktree-actions-button-/tmp/repo-linked'))
+    expect(h.onOpenWorktree).not.toHaveBeenCalled()
+  })
+
+  it('shows an instant tooltip with the add/change/delete breakdown when the bubble is hovered', () => {
+    vi.useFakeTimers()
+    try {
+      render(
+        <SidebarRowView
+          row={{ kind: 'worktree', id: 'wt-1', wt: worktree({ path: '/tmp/repo-linked' }) }}
+          {...baseHandlers()}
+          worktreeWipStatuses={[
+            {
+              path: '/tmp/repo-linked',
+              branch: 'feature/login',
+              totalChanges: 10,
+              added: 3,
+              modified: 5,
+              deleted: 2,
+            },
+          ]}
+        />
+      )
+      // No tooltip until hover; delay={0} means it appears on the next tick, not after a wait.
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+      fireEvent.mouseEnter(screen.getByTestId('worktree-changes-bubble-/tmp/repo-linked'))
+      act(() => vi.advanceTimersByTime(1))
+
+      const tip = screen.getByRole('tooltip')
+      expect(tip).toHaveTextContent('3')
+      expect(tip).toHaveTextContent('5')
+      expect(tip).toHaveTextContent('2')
+      // One icon each for add / change / delete.
+      expect(tip.querySelectorAll('svg')).toHaveLength(3)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('shows no bubble when there is no matching pending-changes entry', () => {
+    render(
+      <SidebarRowView
+        row={{ kind: 'worktree', id: 'wt-1', wt: worktree({ path: '/tmp/repo-linked' }) }}
+        {...baseHandlers()}
+        worktreeWipStatuses={[]}
+      />
+    )
+    expect(screen.queryByTestId('worktree-changes-bubble-/tmp/repo-linked')).not.toBeInTheDocument()
+  })
+
+  it('highlights the matched substring in the branch label when filterQuery is provided', () => {
     const { container } = render(
       <SidebarRowView
         row={{
@@ -450,12 +569,12 @@ describe('SidebarRowView — worktree', () => {
           wt: worktree({ branch: 'feature/login', path: '/tmp/repo-linked' }),
         }}
         {...baseHandlers()}
-        filterQuery="repo-linked"
+        filterQuery="login"
       />
     )
     const marks = container.querySelectorAll('mark')
     expect(marks).toHaveLength(1)
-    expect(marks[0].textContent).toBe('repo-linked')
+    expect(marks[0].textContent).toBe('login')
   })
 })
 

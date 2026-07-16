@@ -368,7 +368,6 @@ function CellContent({
         const wip = worktreeWipStatuses?.find((w) => w.path === path)
         return (
           <WorktreeWipRow
-            branch={wip?.branch ?? ''}
             totalChanges={wip?.totalChanges ?? 0}
             onOpenWorktree={() => onOpenWorktree?.(path)}
             showOpenButton={isActive}

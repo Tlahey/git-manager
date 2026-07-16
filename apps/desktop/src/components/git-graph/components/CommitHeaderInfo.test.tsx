@@ -8,14 +8,16 @@ vi.mock('./CommitDetailsAvatar', () => ({
   CommitDetailsAvatar: () => <div data-testid="avatar" />,
 }))
 
-const { useGitStashes, useCommitMessageEdit, apiOpenUrl } = vi.hoisted(() => ({
+const { useGitStashes, useCommitMessageEdit, apiOpenUrl, useCommitPullRequest } = vi.hoisted(() => ({
   useGitStashes: vi.fn(),
   useCommitMessageEdit: vi.fn(),
   apiOpenUrl: vi.fn(),
+  useCommitPullRequest: vi.fn(),
 }))
 vi.mock('../../../hooks/useGitStashes', () => ({ useGitStashes }))
 vi.mock('../../../hooks/useCommitMessageEdit', () => ({ useCommitMessageEdit }))
 vi.mock('../../../api/shell.api', () => ({ apiOpenUrl }))
+vi.mock('../../../hooks/useCommitPullRequest', () => ({ useCommitPullRequest }))
 
 import { CommitHeaderInfo } from './CommitHeaderInfo'
 
@@ -53,6 +55,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   useGitStashes.mockReturnValue({ data: undefined })
   useCommitMessageEdit.mockReturnValue(editState())
+  useCommitPullRequest.mockReturnValue(null)
 })
 
 function baseProps(
@@ -322,5 +325,37 @@ describe('CommitHeaderInfo — SHA / remote link / parents', () => {
     )
     expect(screen.queryByTestId('github-commit-link')).not.toBeInTheDocument()
     expect(screen.queryByTitle('gitTree.detailPanel.copy')).not.toBeInTheDocument()
+  })
+})
+
+describe('CommitHeaderInfo — pull request label', () => {
+  it('shows no PR label when the commit has no associated PR', () => {
+    useCommitPullRequest.mockReturnValue(null)
+    render(<CommitHeaderInfo {...baseProps()} />)
+    expect(screen.queryByTestId('commit-pr-label')).not.toBeInTheDocument()
+  })
+
+  it('shows the PR number and title, and opens the PR on click', async () => {
+    useCommitPullRequest.mockReturnValue({
+      number: 89,
+      url: 'https://github.com/owner/repo/pull/89',
+      title: 'feat(splash): enlarge mascot, title, spinner',
+      state: 'closed',
+      merged: true,
+    })
+    apiOpenUrl.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    render(<CommitHeaderInfo {...baseProps()} />)
+
+    const label = screen.getByTestId('commit-pr-label')
+    expect(label).toHaveTextContent('#89')
+    expect(label).toHaveTextContent('feat(splash): enlarge mascot, title, spinner')
+    await user.click(label)
+    expect(apiOpenUrl).toHaveBeenCalledWith('https://github.com/owner/repo/pull/89')
+  })
+
+  it('does not query a PR for WIP or stash rows', () => {
+    render(<CommitHeaderInfo {...baseProps({ isWip: true })} />)
+    expect(useCommitPullRequest).toHaveBeenCalledWith('/repo', null)
   })
 })

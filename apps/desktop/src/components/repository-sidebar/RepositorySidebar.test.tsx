@@ -4,16 +4,22 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { SidebarRow, SidebarSection } from './types'
 
-const { useSidebarResize, useSidebarRows, showStashNativeContextMenu, swrMutate } = vi.hoisted(
-  () => ({
-    useSidebarResize: vi.fn(),
-    useSidebarRows: vi.fn(),
-    showStashNativeContextMenu: vi.fn(),
-    swrMutate: vi.fn(),
-  })
-)
+const {
+  useSidebarResize,
+  useSidebarRows,
+  useWorktreeWipStatuses,
+  showStashNativeContextMenu,
+  swrMutate,
+} = vi.hoisted(() => ({
+  useSidebarResize: vi.fn(),
+  useSidebarRows: vi.fn(),
+  useWorktreeWipStatuses: vi.fn(),
+  showStashNativeContextMenu: vi.fn(),
+  swrMutate: vi.fn(),
+}))
 vi.mock('../../hooks/useSidebarResize', () => ({ useSidebarResize, RAIL_WIDTH: 48 }))
 vi.mock('../../hooks/useSidebarRows', () => ({ useSidebarRows }))
+vi.mock('../../hooks/useWorktreeWipStatuses', () => ({ useWorktreeWipStatuses }))
 vi.mock('../../api/nativeMenu.api', () => ({ showStashNativeContextMenu }))
 vi.mock('../../api/git.api', () => ({
   apiStashApply: vi.fn(),
@@ -70,6 +76,24 @@ vi.mock('./AddWorktreeDialog', () => ({
 vi.mock('./RemoveWorktreeDialog', () => ({
   RemoveWorktreeDialog: (props: { worktree: { path: string } | null }) => (
     <div data-testid="remove-worktree-dialog" data-worktree={props.worktree?.path ?? ''} />
+  ),
+}))
+vi.mock('./PruneWorktreesDialog', () => ({
+  PruneWorktreesDialog: (props: { worktrees: { path: string }[]; open: boolean }) => (
+    <div
+      data-testid="prune-worktrees-dialog"
+      data-open={props.open}
+      data-count={props.worktrees?.length ?? 0}
+    />
+  ),
+}))
+vi.mock('./RemoveMergedWorktreesDialog', () => ({
+  RemoveMergedWorktreesDialog: (props: { worktrees: { path: string }[]; open: boolean }) => (
+    <div
+      data-testid="remove-merged-worktrees-dialog"
+      data-open={props.open}
+      data-count={props.worktrees?.length ?? 0}
+    />
   ),
 }))
 
@@ -134,6 +158,7 @@ beforeEach(() => {
   useSidebarSearchStore.setState({ focusToken: 0 })
   useSidebarResize.mockReturnValue(resizeState())
   useSidebarRows.mockReturnValue({ sections: [], filterStats: { matched: 0, total: 0 } })
+  useWorktreeWipStatuses.mockReturnValue({ data: [] })
 })
 
 describe('RepositorySidebar — mode routing', () => {
@@ -426,11 +451,55 @@ describe('RepositorySidebar — sections', () => {
   it('opens the add-worktree dialog via the worktrees section header', () => {
     useSidebarRows.mockReturnValue({
       sections: [section({ key: 'worktrees', title: 'Worktrees' })],
+      prunableWorktrees: [],
     })
     renderSidebar()
     expect(screen.getByTestId('add-worktree-dialog')).toHaveAttribute('data-open', 'false')
     act(() => (lastHeaderCalls.current[0].onAddWorktree as () => void)())
     expect(screen.getByTestId('add-worktree-dialog')).toHaveAttribute('data-open', 'true')
+  })
+
+  it('opens the prune-worktrees dialog via the worktrees section header when there are prunable worktrees', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'worktrees', title: 'Worktrees' })],
+      prunableWorktrees: [{ path: '/tmp/stale', branch: 'old', isPrunable: true }],
+    })
+    renderSidebar()
+    expect(screen.getByTestId('prune-worktrees-dialog')).toHaveAttribute('data-open', 'false')
+    expect(screen.getByTestId('prune-worktrees-dialog')).toHaveAttribute('data-count', '1')
+    act(() => (lastHeaderCalls.current[0].onPruneWorktrees as () => void)())
+    expect(screen.getByTestId('prune-worktrees-dialog')).toHaveAttribute('data-open', 'true')
+  })
+
+  it('still passes onPruneWorktrees on the worktrees section header when nothing is prunable — the dialog itself shows the empty state', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'worktrees', title: 'Worktrees' })],
+      prunableWorktrees: [],
+    })
+    renderSidebar()
+    expect(lastHeaderCalls.current[0].onPruneWorktrees).toBeInstanceOf(Function)
+    expect(screen.getByTestId('prune-worktrees-dialog')).toHaveAttribute('data-count', '0')
+  })
+
+  it('opens the remove-merged-worktrees dialog via the worktrees section header, passing the full worktree list', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'worktrees', title: 'Worktrees' })],
+      worktrees: [
+        { path: '/tmp/a', branch: 'a', isPrunable: false },
+        { path: '/tmp/b', branch: 'b', isPrunable: false },
+      ],
+    })
+    renderSidebar()
+    expect(screen.getByTestId('remove-merged-worktrees-dialog')).toHaveAttribute(
+      'data-open',
+      'false'
+    )
+    expect(screen.getByTestId('remove-merged-worktrees-dialog')).toHaveAttribute('data-count', '2')
+    act(() => (lastHeaderCalls.current[0].onRemoveMergedWorktrees as () => void)())
+    expect(screen.getByTestId('remove-merged-worktrees-dialog')).toHaveAttribute(
+      'data-open',
+      'true'
+    )
   })
 
   it('passes the clicked worktree to the remove-worktree dialog via onRemoveWorktree', () => {
@@ -446,6 +515,32 @@ describe('RepositorySidebar — sections', () => {
       'data-worktree',
       '/tmp/repo-linked'
     )
+  })
+
+  it('enters workspace mode via onOpenWorktree, without touching the tab bar', () => {
+    useSidebarRows.mockReturnValue({ sections: [section({ rows: [row({ id: 'r1' })] })] })
+    const openTabsBefore = useRepoUIStore.getState().openTabs
+    const activeRepoBefore = useRepoUIStore.getState().activeRepo
+    renderSidebar()
+    act(() =>
+      (
+        lastRowViewCalls.current[0].onOpenWorktree as (wt: { path: string }) => void
+      )({ path: '/tmp/repo-linked' })
+    )
+    expect(useRepoUIStore.getState().activeWorkspacePath).toBe('/tmp/repo-linked')
+    // No new tab, and the tab identity/active repo itself is untouched.
+    expect(useRepoUIStore.getState().openTabs).toBe(openTabsBefore)
+    expect(useRepoUIStore.getState().activeRepo).toBe(activeRepoBefore)
+  })
+
+  it('passes the pending-changes bubble data through to SidebarRowView', () => {
+    useSidebarRows.mockReturnValue({ sections: [section({ rows: [row({ id: 'r1' })] })] })
+    const statuses = [
+      { path: '/tmp/repo-linked', branch: 'feature/login', totalChanges: 2, added: 1, modified: 1, deleted: 0 },
+    ]
+    useWorktreeWipStatuses.mockReturnValue({ data: statuses })
+    renderSidebar()
+    expect(lastRowViewCalls.current[0].worktreeWipStatuses).toBe(statuses)
   })
 })
 

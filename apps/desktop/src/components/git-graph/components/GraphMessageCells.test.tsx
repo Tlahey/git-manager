@@ -49,38 +49,94 @@ describe('WipCommitInput', () => {
     await user.type(screen.getByPlaceholderText('// WIP'), '{Enter}')
     expect(onCommit).not.toHaveBeenCalled()
   })
+
+  it('clicking the file-count badge bubbles up to a parent row click handler (selects the WIP row)', async () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    const onRowClick = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <div onClick={onRowClick}>
+        <WipCommitInput totalChanges={3} />
+      </div>
+    )
+    await user.click(screen.getByText('3'))
+    expect(onRowClick).toHaveBeenCalledOnce()
+  })
+
+  it('clicking the input itself does not bubble up (typing should not fight row selection)', async () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    const onRowClick = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <div onClick={onRowClick}>
+        <WipCommitInput totalChanges={3} />
+      </div>
+    )
+    await user.click(screen.getByPlaceholderText('// WIP'))
+    expect(onRowClick).not.toHaveBeenCalled()
+  })
 })
 
 describe('WorktreeWipRow', () => {
-  it('shows the branch name and file count', () => {
-    render(<WorktreeWipRow branch="feature-x" totalChanges={4} />)
-    expect(screen.getByText(/feature-x/)).toBeInTheDocument()
+  it('shows the // WIP marker and file count, without the worktree name', () => {
+    render(<WorktreeWipRow totalChanges={4} />)
+    expect(screen.getByText(/\/\/ WIP/)).toBeInTheDocument()
     expect(screen.getByText('4')).toBeInTheDocument()
+    expect(screen.queryByText(/feature-x/)).not.toBeInTheDocument()
   })
 
   it('hides the Open Worktree button by default (showOpenButton unset)', () => {
-    render(<WorktreeWipRow branch="feature-x" totalChanges={4} />)
+    render(<WorktreeWipRow totalChanges={4} />)
     expect(screen.queryByRole('button', { name: 'gitTree.wip.openWorktree' })).not.toBeInTheDocument()
   })
 
   it('shows the Open Worktree button and calls onOpenWorktree on click when showOpenButton is set', async () => {
     const onOpenWorktree = vi.fn()
     const user = userEvent.setup()
-    render(
-      <WorktreeWipRow
-        branch="feature-x"
-        totalChanges={4}
-        onOpenWorktree={onOpenWorktree}
-        showOpenButton
-      />
-    )
+    render(<WorktreeWipRow totalChanges={4} onOpenWorktree={onOpenWorktree} showOpenButton />)
     await user.click(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' }))
     expect(onOpenWorktree).toHaveBeenCalledOnce()
   })
 
   it('does not render an editable input', () => {
-    render(<WorktreeWipRow branch="feature-x" totalChanges={0} showOpenButton />)
+    render(<WorktreeWipRow totalChanges={0} showOpenButton />)
     expect(screen.queryByPlaceholderText('// WIP')).not.toBeInTheDocument()
+  })
+
+  it('clicking the row body selects it (bubbles to the parent row handler) without opening the worktree', async () => {
+    const onOpenWorktree = vi.fn()
+    const onRowClick = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <div onClick={onRowClick}>
+        <WorktreeWipRow totalChanges={4} onOpenWorktree={onOpenWorktree} />
+      </div>
+    )
+    await user.click(screen.getByText(/\/\/ WIP/))
+    expect(onRowClick).toHaveBeenCalledOnce()
+    expect(onOpenWorktree).not.toHaveBeenCalled()
+  })
+
+  it('does not double-fire onOpenWorktree when the explicit button is clicked (row + button both wired)', async () => {
+    const onOpenWorktree = vi.fn()
+    const user = userEvent.setup()
+    render(<WorktreeWipRow totalChanges={4} onOpenWorktree={onOpenWorktree} showOpenButton />)
+    await user.click(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' }))
+    expect(onOpenWorktree).toHaveBeenCalledOnce()
+  })
+
+  it('the Open Worktree tag opens the worktree without bubbling to the parent row handler', async () => {
+    const onOpenWorktree = vi.fn()
+    const onRowClick = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <div onClick={onRowClick}>
+        <WorktreeWipRow totalChanges={4} onOpenWorktree={onOpenWorktree} showOpenButton />
+      </div>
+    )
+    await user.click(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' }))
+    expect(onOpenWorktree).toHaveBeenCalledOnce()
+    expect(onRowClick).not.toHaveBeenCalled()
   })
 })
 
