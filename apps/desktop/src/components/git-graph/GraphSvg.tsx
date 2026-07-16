@@ -10,6 +10,8 @@ interface GraphSvgProps {
 }
 
 const COL_WIDTH = 36
+/** Corner radius for the rounded turns where a connection line changes column. */
+const CORNER_RADIUS = 8
 
 export function GraphSvg({ column, connections, isWip, isStash, isFirst }: GraphSvgProps) {
   const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
@@ -37,12 +39,19 @@ export function GraphSvg({ column, connections, isWip, isStash, isFirst }: Graph
         const yStart = -2
         const yEnd = rowHeight + 2
 
+        // Whether an edge renders dashed is decided entirely upstream (in Rust): pass-through and
+        // structural stash-bridge segments already carry `dashed: true`, so the SVG just trusts
+        // the flag — no per-row inference here (see `build_graph_nodes` in `git_graph.rs`).
+
         let d = ''
         if (x1 === x2) {
           // Ligne droite verticale : passe à travers toute la ligne pour assurer la continuité
           let yS = yStart
           let yE = yEnd
-          if (edge.dashed) {
+          // Structural segments (anchored at a node via starts/ends-at-node) always use the
+          // node-anchored geometry, dashed or not. Only the synthetic dashed connectors that
+          // carry no structural anchor (WIP / HEAD / origin-main) use the special geometry below.
+          if (edge.dashed && !edge.startsAtNode && !edge.endsAtNode) {
             if (isWip && edge.toColumn === column) {
               // Dans la ligne WIP, la ligne part du bas du rond
               yS = nodeY + avatarRadius
@@ -64,9 +73,9 @@ export function GraphSvg({ column, connections, isWip, isStash, isFirst }: Graph
             d = `M ${x1} ${yS} L ${x1} ${yE}`
           }
         } else {
-          // Transition droite avec angles arrondis R = 4
+          // Transition droite avec angles arrondis (R = CORNER_RADIUS)
           const sign = x2 > x1 ? 1 : -1
-          const R = 4
+          const R = CORNER_RADIUS
 
           if (isFirst) {
             if (edge.fromColumn !== column && edge.toColumn !== column) {

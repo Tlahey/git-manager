@@ -241,6 +241,70 @@ describe('GraphRow — message column: WIP', () => {
   })
 })
 
+describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
+  it('shows the branch name and file count, but hides the Open Worktree button when not selected', () => {
+    renderRow({
+      columns: [col('message')],
+      node: node({ commit: { ...node().commit, oid: 'WIP:/repo-worktree' } }),
+      worktreeWipStatuses: [{ path: '/repo-worktree', branch: 'feature-x', totalChanges: 4 }],
+      isSelected: false,
+      isPrimary: false,
+    })
+    expect(screen.getByText(/feature-x/)).toBeInTheDocument()
+    expect(screen.getByText('4')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'gitTree.wip.openWorktree' })).not.toBeInTheDocument()
+  })
+
+  it('shows the Open Worktree button once the row is selected, and calls onOpenWorktree with the worktree path', async () => {
+    const onOpenWorktree = vi.fn()
+    const user = userEvent.setup()
+    renderRow({
+      columns: [col('message')],
+      node: node({ commit: { ...node().commit, oid: 'WIP:/repo-worktree' } }),
+      worktreeWipStatuses: [{ path: '/repo-worktree', branch: 'feature-x', totalChanges: 4 }],
+      onOpenWorktree,
+      isSelected: true,
+    })
+    // The i18n mock echoes back the raw key for calls without interpolation opts.
+    await user.click(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' }))
+    expect(onOpenWorktree).toHaveBeenCalledWith('/repo-worktree')
+  })
+
+  it('also shows the Open Worktree button when the row is primary (not just isSelected)', () => {
+    renderRow({
+      columns: [col('message')],
+      node: node({ commit: { ...node().commit, oid: 'WIP:/repo-worktree' } }),
+      worktreeWipStatuses: [{ path: '/repo-worktree', branch: 'feature-x', totalChanges: 4 }],
+      isPrimary: true,
+    })
+    expect(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' })).toBeInTheDocument()
+  })
+
+  it('does not render an editable WIP input for a worktree WIP row', () => {
+    renderRow({
+      columns: [col('message')],
+      node: node({ commit: { ...node().commit, oid: 'WIP:/repo-worktree' } }),
+      worktreeWipStatuses: [{ path: '/repo-worktree', branch: 'feature-x', totalChanges: 4 }],
+    })
+    expect(screen.queryByPlaceholderText('// WIP')).not.toBeInTheDocument()
+  })
+
+  it('does not bubble a click on the Open Worktree button up to the row (onSelect)', async () => {
+    const onSelect = vi.fn()
+    const user = userEvent.setup()
+    renderRow({
+      columns: [col('message')],
+      node: node({ commit: { ...node().commit, oid: 'WIP:/repo-worktree' } }),
+      worktreeWipStatuses: [{ path: '/repo-worktree', branch: 'feature-x', totalChanges: 4 }],
+      onSelect,
+      isSelected: true,
+    })
+    // The i18n mock echoes back the raw key for calls without interpolation opts.
+    await user.click(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' }))
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+})
+
 describe('GraphRow — message column: CONFLICT', () => {
   it('shows the conflict banner with the count/branch from conflictInfo', () => {
     renderRow({
@@ -437,5 +501,29 @@ describe('GraphAvatarTooltip', () => {
     const { container } = render(<GraphAvatarTooltip node={stashNode} />)
     expect(container.querySelector('.lucide-archive')).toBeTruthy()
     expect(screen.queryByText('AL')).not.toBeInTheDocument()
+  })
+
+  it('shows a flat color-filled circle instead of an avatar for a merge commit', () => {
+    const mergeNode = node({
+      color: '#16a34a',
+      commit: { ...node().commit, parentOids: ['parent1', 'parent2'] },
+    })
+    const { container } = render(<GraphAvatarTooltip node={mergeNode} />)
+    expect(screen.queryByText('AL')).not.toBeInTheDocument()
+    const circle = container.querySelector('.pointer-events-auto > div') as HTMLElement
+    expect(circle.style.backgroundColor).toBe('rgb(22, 163, 74)')
+  })
+
+  it('does not treat a normal commit (0-1 parents) as a merge', () => {
+    // No email -> getAvatarUrl() returns null -> falls back to initials, same as the hover test above
+    const normalNode = node({
+      commit: {
+        ...node().commit,
+        parentOids: ['parent1'],
+        author: { name: 'Ada Lovelace', email: '', timestamp: 0 },
+      },
+    })
+    render(<GraphAvatarTooltip node={normalNode} />)
+    expect(screen.getByText('AL')).toBeInTheDocument()
   })
 })

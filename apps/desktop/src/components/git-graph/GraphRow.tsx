@@ -8,12 +8,22 @@ import type { ColumnKey, ResolvedColumn } from './columns'
 import { getAvatarUrl } from '../../lib/avatar'
 import { formatRelativeDate, formatExactDate } from '../../lib/relativeDate'
 import { useSettingsStore } from '../../stores/settings.store'
-import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
-import { MoreVertical, FileText, Archive, AlertTriangle, GitMerge } from 'lucide-react'
+import { MoreVertical, Archive, AlertTriangle } from 'lucide-react'
 import { useGitStashes } from '../../hooks/useGitStashes'
-import { useTranslation } from '@git-manager/i18n'
 import type { ConflictRowInfo } from '../../hooks/useGitGraphNodes'
+import type { WorktreeWipStatus } from '../../hooks/useWorktreeWipStatuses'
+import { WipCommitInput, WorktreeWipRow, ConflictRowMessage } from './components/GraphMessageCells'
+
+/** True for both the primary WIP row (`'WIP'`) and per-worktree WIP rows (`'WIP:<path>'`). */
+function isWipRow(oid: string): boolean {
+  return oid === 'WIP' || oid.startsWith('WIP:')
+}
+
+/** Opacity (hex alpha suffix appended to `node.color`) of the horizontal line connecting a
+ * ref label (branch/tag) to its commit's node in the graph column — except when the ref is
+ * origin/main, which stays fully opaque instead (see `hasOriginMain` below). */
+const REF_CONNECTOR_LINE_OPACITY_HEX = '40'
 
 interface GraphRowProps {
   node: GitGraphNode
@@ -33,6 +43,10 @@ interface GraphRowProps {
   /** True while a search is active and this row doesn't match it — mutes its text instead of
    * hiding the row, so the graph's shape stays intact while browsing results. */
   dimmed?: boolean
+  /** WIP status of every other linked worktree — used to resolve the file-count badge for a
+   * `WIP:<path>` synthetic row (its `commit.oid` carries the worktree path). */
+  worktreeWipStatuses?: WorktreeWipStatus[]
+  onOpenWorktree?: (path: string) => void
 }
 
 // ── Author avatar helpers ─────────────────────────────────────────────────────
@@ -137,6 +151,7 @@ export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
   }
 
   const isStash = node.refs.some((r) => r.type === 'stash')
+  const isMerge = commit.parentOids.length > 1
 
   return (
     <div
@@ -164,6 +179,17 @@ export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
           >
             <Archive className={avatarSize === 24 ? 'h-3 w-3' : 'h-3.5 w-3.5'} />
           </div>
+        ) : isMerge ? (
+          /* Merge commit: flat circle filled with the target branch's lane color, no avatar —
+           * half the avatar's diameter so it reads as a plain graph node, not a person. */
+          <div
+            className="cursor-pointer select-none rounded-full border border-background shadow-sm transition-all duration-150 hover:scale-110 hover:shadow-md"
+            style={{
+              width: avatarSize / 2,
+              height: avatarSize / 2,
+              backgroundColor: node.color,
+            }}
+          />
         ) : (
           /* Avatar Circle */
           <div
@@ -215,69 +241,6 @@ export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
   )
 }
 
-function WipCommitInput({
-  totalChanges,
-  onCommit,
-}: {
-  totalChanges: number
-  onCommit?: (message: string) => void
-}) {
-  const activeRepo = useRepoUIStore((s) => s.activeRepo)
-  const wipMessages = useRepoDataStore((s) => s.wipMessages)
-  const setWipMessage = useRepoDataStore((s) => s.setWipMessage)
-
-  const value = activeRepo ? wipMessages[activeRepo] || '' : ''
-
-  function setValue(val: string) {
-    if (activeRepo) {
-      setWipMessage(activeRepo, val)
-    }
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      e.stopPropagation()
-      if (value.trim()) {
-        onCommit?.(value)
-      }
-    }
-  }
-
-  return (
-    <div className="flex w-full items-center gap-2 pr-4" onClick={(e) => e.stopPropagation()}>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="// WIP"
-        className="h-6 min-w-0 flex-1 rounded border border-border bg-transparent px-2 text-[11px] text-foreground placeholder-muted-foreground/60 transition-colors focus:border-primary/60 focus:outline-none"
-      />
-      <div
-        className="flex shrink-0 items-center gap-1 rounded border border-border/30 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground"
-        title={`${totalChanges} files changed`}
-      >
-        <FileText className="h-3 w-3 text-muted-foreground/60" />
-        <span>{totalChanges}</span>
-      </div>
-    </div>
-  )
-}
-
-function ConflictRowMessage({ count, branchName }: { count: number; branchName?: string }) {
-  const { t } = useTranslation('git')
-  return (
-    <div className="flex min-w-0 flex-1 items-center gap-2 pr-4">
-      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-white" />
-      <GitMerge className="h-3.5 w-3.5 shrink-0 text-white" />
-      <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-white">
-        {t('gitTree.contextMenu.conflictBannerMessage', { count, branch: branchName ?? '' })}
-      </span>
-    </div>
-  )
-}
-
 // ── Cellules ──────────────────────────────────────────────────────────────────
 
 function CellContent({
@@ -289,6 +252,9 @@ function CellContent({
   isFirst,
   conflictInfo,
   dimmed,
+  worktreeWipStatuses,
+  onOpenWorktree,
+  isActive,
 }: {
   col: ColumnKey
   node: GitGraphNode
@@ -298,6 +264,9 @@ function CellContent({
   isFirst?: boolean
   conflictInfo?: ConflictRowInfo | null
   dimmed?: boolean
+  worktreeWipStatuses?: WorktreeWipStatus[]
+  onOpenWorktree?: (path: string) => void
+  isActive?: boolean
 }) {
   const { commit } = node
   const activeRepo = useRepoUIStore((s) => s.activeRepo)
@@ -322,7 +291,9 @@ function CellContent({
           <div
             className="pointer-events-none ml-2 h-[2px] flex-1 transition-colors"
             style={{
-              backgroundColor: hasOriginMain ? node.color : `${node.color}75`,
+              backgroundColor: hasOriginMain
+                ? node.color
+                : `${node.color}${REF_CONNECTOR_LINE_OPACITY_HEX}`,
               marginRight: `-${node.column * 36 + 26}px`,
             }}
           />
@@ -349,7 +320,7 @@ function CellContent({
               <GraphSvg
                 column={node.column}
                 connections={node.connections}
-                isWip={node.commit.oid === 'WIP' || node.commit.oid === 'CONFLICT'}
+                isWip={isWipRow(node.commit.oid) || node.commit.oid === 'CONFLICT'}
                 isStash={isStash}
                 isFirst={isFirst}
               />
@@ -358,7 +329,7 @@ function CellContent({
 
           {/* Conteneur de découpe simple et direct pour les avatars */}
           <div className="pointer-events-none absolute inset-y-0 left-0 right-0 overflow-hidden">
-            {node.commit.oid === 'WIP' || node.commit.oid === 'CONFLICT' ? (
+            {isWipRow(node.commit.oid) || node.commit.oid === 'CONFLICT' ? (
               <div
                 className="pointer-events-none absolute flex h-full items-center justify-center"
                 style={{ left: nodeX - avatarSize / 2, width: avatarSize }}
@@ -392,6 +363,18 @@ function CellContent({
       if (node.commit.oid === 'WIP') {
         return <WipCommitInput totalChanges={totalChanges ?? 0} onCommit={onCommitWip} />
       }
+      if (node.commit.oid.startsWith('WIP:')) {
+        const path = node.commit.oid.slice('WIP:'.length)
+        const wip = worktreeWipStatuses?.find((w) => w.path === path)
+        return (
+          <WorktreeWipRow
+            branch={wip?.branch ?? ''}
+            totalChanges={wip?.totalChanges ?? 0}
+            onOpenWorktree={() => onOpenWorktree?.(path)}
+            showOpenButton={isActive}
+          />
+        )
+      }
       if (node.commit.oid === 'CONFLICT') {
         return (
           <ConflictRowMessage
@@ -405,17 +388,12 @@ function CellContent({
       const isFixup = displaySubject.startsWith('fixup!')
       return (
         <span
-          className={cn(
-            'min-w-0 flex-1 truncate text-[11px] leading-tight',
-            dimmed && 'italic'
-          )}
+          className={cn('min-w-0 flex-1 truncate text-[11px] leading-tight', dimmed && 'italic')}
         >
           <span className={dimmed ? 'text-muted-foreground/40' : 'text-foreground'}>
             {isFixup ? (
               <>
-                <span className={dimmed ? undefined : 'font-semibold text-orange-400'}>
-                  fixup!
-                </span>
+                <span className={dimmed ? undefined : 'font-semibold text-orange-400'}>fixup!</span>
                 {displaySubject.slice('fixup!'.length)}
               </>
             ) : (
@@ -423,7 +401,9 @@ function CellContent({
             )}
           </span>
           {body && (
-            <span className={dimmed ? 'ml-2 text-muted-foreground/40' : 'ml-2 text-muted-foreground/70'}>
+            <span
+              className={dimmed ? 'ml-2 text-muted-foreground/40' : 'ml-2 text-muted-foreground/70'}
+            >
               {body}
             </span>
           )}
@@ -432,7 +412,7 @@ function CellContent({
     }
 
     case 'author': {
-      if (node.commit.oid === 'WIP' || node.commit.oid === 'CONFLICT') return null
+      if (isWipRow(node.commit.oid) || node.commit.oid === 'CONFLICT') return null
       const isStashCommit = node.refs.some((r) => r.type === 'stash')
       return (
         <div className="flex min-w-0 items-center gap-1.5">
@@ -454,7 +434,7 @@ function CellContent({
     }
 
     case 'date':
-      if (node.commit.oid === 'WIP' || node.commit.oid === 'CONFLICT') return null
+      if (isWipRow(node.commit.oid) || node.commit.oid === 'CONFLICT') return null
       return (
         <span
           className={cn(
@@ -468,7 +448,7 @@ function CellContent({
       )
 
     case 'sha':
-      if (node.commit.oid === 'WIP' || node.commit.oid === 'CONFLICT') return null
+      if (isWipRow(node.commit.oid) || node.commit.oid === 'CONFLICT') return null
       return (
         <code
           className={cn(
@@ -498,6 +478,8 @@ export const GraphRow = memo(function GraphRow({
   isFirst,
   conflictInfo,
   dimmed,
+  worktreeWipStatuses,
+  onOpenWorktree,
 }: GraphRowProps) {
   const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
   const rowHeight = rowHeightSetting === 'small' ? 32 : 40
@@ -585,6 +567,9 @@ export const GraphRow = memo(function GraphRow({
             isFirst={isFirst}
             conflictInfo={conflictInfo}
             dimmed={dimmed}
+            worktreeWipStatuses={worktreeWipStatuses}
+            onOpenWorktree={onOpenWorktree}
+            isActive={isSelected || isPrimary}
           />
         </div>
       ))}

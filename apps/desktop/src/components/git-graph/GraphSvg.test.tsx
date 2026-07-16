@@ -87,6 +87,64 @@ describe('GraphSvg — straight vertical lines', () => {
     expect(svg.querySelector('path')!.getAttribute('d')).toBe('M 18 -2 L 18 4')
   })
 
+  it('renders the arriving line on a stash row solid when the edge is not marked dashed', () => {
+    // The line coming from above is the branch's real history passing through the stash's lane;
+    // only the stash-to-base tether below carries dashed:true (set in Rust), not this segment.
+    const svg = renderSvg({ connections: [edge({ endsAtNode: true, dashed: false })], isStash: true })
+    expect(svg.querySelector('path')!.getAttribute('stroke-dasharray')).toBeNull()
+  })
+
+  it('does NOT dash the arriving line on a non-stash row', () => {
+    const svg = renderSvg({ connections: [edge({ endsAtNode: true, dashed: false })] })
+    expect(svg.querySelector('path')!.getAttribute('stroke-dasharray')).toBeNull()
+  })
+
+  it('does not dash a solid pass-through line on a stash row for an unrelated column', () => {
+    const svg = renderSvg({
+      connections: [edge({ fromColumn: 1, toColumn: 1, dashed: false })],
+      column: 0,
+      isStash: true,
+    })
+    expect(svg.querySelector('path')!.getAttribute('stroke-dasharray')).toBeNull()
+  })
+
+  it('draws the dashed outgoing stash tether as the bottom half below the avatar', () => {
+    // Rust marks the stash's downward segment dashed; the geometry must still anchor at the
+    // avatar (structural startsAtNode), not fall back to the synthetic-dashed geometry.
+    const svg = renderSvg({
+      connections: [edge({ startsAtNode: true, dashed: true })],
+      isStash: true,
+    })
+    const path = svg.querySelector('path')!
+    expect(path.getAttribute('d')).toBe('M 18 36 L 18 42')
+    expect(path.getAttribute('stroke-dasharray')).toBe('4 4')
+  })
+
+  it('draws a dashed bridge segment arriving at the base commit to the node center', () => {
+    // The base commit row is not itself a stash; the tether arrives dashed at its node center.
+    const svg = renderSvg({ connections: [edge({ endsAtNode: true, dashed: true })] })
+    const path = svg.querySelector('path')!
+    expect(path.getAttribute('d')).toBe('M 18 -2 L 18 20')
+    expect(path.getAttribute('stroke-dasharray')).toBe('4 4')
+  })
+
+  it('draws a dashed pass-through bridge segment full-height on an intermediate row', () => {
+    // An unrelated commit row between the stash and its base: the bridge column (here col 1) is a
+    // plain pass-through, marked dashed in Rust, spanning the whole row.
+    const svg = renderSvg({
+      connections: [edge({ fromColumn: 1, toColumn: 1, dashed: true })],
+      column: 0,
+    })
+    const path = svg.querySelector('path')!
+    expect(path.getAttribute('d')).toBe('M 54 -2 L 54 42')
+    expect(path.getAttribute('stroke-dasharray')).toBe('4 4')
+  })
+
+  it('does NOT dash the outgoing line on a non-stash row when the edge is not marked dashed', () => {
+    const svg = renderSvg({ connections: [edge({ startsAtNode: true, dashed: false })] })
+    expect(svg.querySelector('path')!.getAttribute('stroke-dasharray')).toBeNull()
+  })
+
   it('the WIP dashed line starts below the avatar', () => {
     const svg = renderSvg({ connections: [edge({ dashed: true })], isWip: true })
     expect(svg.querySelector('path')!.getAttribute('d')).toBe('M 18 36 L 18 42')
@@ -107,31 +165,47 @@ describe('GraphSvg — diagonal transitions', () => {
   it("draws a full pass-through diagonal when neither endpoint is this row's column", () => {
     const svg = renderSvg({ connections: [edge({ fromColumn: 1, toColumn: 2 })] })
     const d = svg.querySelector('path')!.getAttribute('d')!
-    expect(d).toBe('M 54 -2 L 54 16 Q 54 20, 58 20 L 86 20 Q 90 20, 90 24 L 90 42')
+    expect(d).toBe('M 54 -2 L 54 12 Q 54 20, 62 20 L 82 20 Q 90 20, 90 28 L 90 42')
   })
 
   it("draws a split starting at this row's node", () => {
     const svg = renderSvg({ connections: [edge({ fromColumn: 0, toColumn: 1 })] })
     const d = svg.querySelector('path')!.getAttribute('d')!
-    expect(d).toBe('M 18 20 L 50 20 Q 54 20, 54 24 L 54 42')
+    expect(d).toBe('M 18 20 L 46 20 Q 54 20, 54 28 L 54 42')
   })
 
   it("draws a merge ending at this row's node", () => {
     const svg = renderSvg({ connections: [edge({ fromColumn: 1, toColumn: 0 })] })
     const d = svg.querySelector('path')!.getAttribute('d')!
-    expect(d).toBe('M 54 -2 L 54 16 Q 54 20, 50 20 L 18 20')
+    expect(d).toBe('M 54 -2 L 54 12 Q 54 20, 46 20 L 18 20')
   })
 
   it('offsets a stash split by the avatar radius', () => {
     const svg = renderSvg({ connections: [edge({ fromColumn: 0, toColumn: 1 })], isStash: true })
     const d = svg.querySelector('path')!.getAttribute('d')!
-    expect(d).toBe('M 34 20 L 50 20 Q 54 20, 54 24 L 54 42') // xStart = 18 + 16 (avatarRadius)
+    expect(d).toBe('M 34 20 L 46 20 Q 54 20, 54 28 L 54 42') // xStart = 18 + 16 (avatarRadius)
   })
 
   it('offsets a stash merge by the avatar radius', () => {
     const svg = renderSvg({ connections: [edge({ fromColumn: 1, toColumn: 0 })], isStash: true })
     const d = svg.querySelector('path')!.getAttribute('d')!
-    expect(d).toBe('M 54 -2 L 54 16 Q 54 20, 50 20 L 34 20') // xEnd = 18 + 16
+    expect(d).toBe('M 54 -2 L 54 12 Q 54 20, 46 20 L 34 20') // xEnd = 18 + 16
+  })
+
+  it('renders a diagonal merge solid on a stash row when the edge is not marked dashed', () => {
+    const svg = renderSvg({
+      connections: [edge({ fromColumn: 1, toColumn: 0, dashed: false })],
+      isStash: true,
+    })
+    expect(svg.querySelector('path')!.getAttribute('stroke-dasharray')).toBeNull()
+  })
+
+  it('dashes a diagonal segment when the edge is marked dashed (e.g. a stash bridge)', () => {
+    const svg = renderSvg({
+      connections: [edge({ fromColumn: 0, toColumn: 1, dashed: true })],
+      isStash: true,
+    })
+    expect(svg.querySelector('path')!.getAttribute('stroke-dasharray')).toBe('4 4')
   })
 
   it('hides a pass-through diagonal on the very first row', () => {
@@ -147,6 +221,6 @@ describe('GraphSvg — diagonal transitions', () => {
   it('still draws a split diagonal on the very first row', () => {
     const svg = renderSvg({ connections: [edge({ fromColumn: 0, toColumn: 1 })], isFirst: true })
     const d = svg.querySelector('path')!.getAttribute('d')!
-    expect(d).toBe('M 18 20 L 50 20 Q 54 20, 54 24 L 54 42')
+    expect(d).toBe('M 18 20 L 46 20 Q 54 20, 54 28 L 54 42')
   })
 })

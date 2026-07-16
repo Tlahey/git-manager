@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Spinner } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { useGitStatus } from '../../hooks/useGitStatus'
+import { useWorktreeWipStatuses } from '../../hooks/useWorktreeWipStatuses'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
 
 import { useSettingsStore } from '../../stores/settings.store'
@@ -16,6 +17,7 @@ import { useHorizontalResize } from '@git-manager/components'
 import { useGitGraphNodes, type ConflictRowInfo } from '../../hooks/useGitGraphNodes'
 import { useGitGraphActions } from '../../hooks/useGitGraphActions'
 import { apiGetRebaseState } from '../../api/git.api'
+import { apiOpenRepo } from '../../api/repo.api'
 import { GraphRow } from './GraphRow'
 import { GraphHeader } from './GraphHeader'
 import { CommitSearchPanel } from './CommitSearchPanel'
@@ -130,6 +132,21 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     )
   }, [status])
 
+  // WIP status of every OTHER linked worktree with uncommitted changes — lets several "// WIP"
+  // rows coexist on different branches at once (see useGitGraphNodes' worktreeWipNodes).
+  const { data: worktreeWipStatuses = [] } = useWorktreeWipStatuses(repoPath)
+  const addRepo = useRepoDataStore((s) => s.addRepo)
+  const openTab = useRepoUIStore((s) => s.openTab)
+  async function handleOpenWorktree(worktreePath: string) {
+    try {
+      const repo = await apiOpenRepo(worktreePath)
+      addRepo(repo)
+      openTab(repo.path)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   // ── Colonnes ──────────────────────────────────────────────────────────────
   const columnState = useGitGraphColumnsStore((s) => s.columns)
   const visibleColumns: ResolvedColumn[] = useMemo(
@@ -156,7 +173,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
   // ── Dérivation des données du graphe (WIP, conflit, recherche, waterlines) ──
   const { wipNode, conflictNode, filteredNodes, renderNodes, waterlines, matchingOids } =
-    useGitGraphNodes(nodes, searchQuery, totalChanges, t, conflictInfo)
+    useGitGraphNodes(nodes, searchQuery, totalChanges, t, conflictInfo, worktreeWipStatuses)
 
   // Set for O(1) row-level "does this commit match the active search" lookups (see `dimmed`
   // below) — `null` mirrors `matchingOids`'s "no active search" meaning (nothing dimmed).
@@ -211,7 +228,8 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   // into a "Maximum update depth exceeded" loop. Memoizing to a primitive here means the effect
   // only re-publishes when the actual stash index changes, not on every `nodes` reference churn.
   const derivedStashIndex = useMemo(() => {
-    if (!primaryOid || primaryOid === 'WIP' || primaryOid === 'CONFLICT') return null
+    if (!primaryOid || primaryOid === 'WIP' || primaryOid === 'CONFLICT' || primaryOid.startsWith('WIP:'))
+      return null
     const stashRef = nodes
       .find((n) => n.commit.oid === primaryOid)
       ?.refs.find((r) => r.type === 'stash')
@@ -223,7 +241,11 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   // it. The synthetic WIP/CONFLICT rows aren't valid commit-action targets → publish null. Cleared
   // on unmount so a closed tab doesn't leave a stale selection behind.
   useEffect(() => {
-    const isRealCommit = !!primaryOid && primaryOid !== 'WIP' && primaryOid !== 'CONFLICT'
+    const isRealCommit =
+      !!primaryOid &&
+      primaryOid !== 'WIP' &&
+      primaryOid !== 'CONFLICT' &&
+      !primaryOid.startsWith('WIP:')
     setSelectedCommitOid(isRealCommit ? primaryOid : null)
     setSelectedStashIndex(derivedStashIndex)
   }, [primaryOid, derivedStashIndex, setSelectedCommitOid, setSelectedStashIndex])
@@ -481,6 +503,8 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                             isFirst={virtualItem.index === 0}
                             conflictInfo={conflictInfo}
                             dimmed={matchSet !== null && !matchSet.has(oid)}
+                            worktreeWipStatuses={worktreeWipStatuses}
+                            onOpenWorktree={handleOpenWorktree}
                           />
                         </div>
                       )
