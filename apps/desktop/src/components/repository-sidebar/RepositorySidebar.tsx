@@ -1,14 +1,15 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PanelLeftClose, Search, X } from 'lucide-react'
-import { useVirtualizer } from '@tanstack/react-virtual'
 import type { GitBranch, GitWorktree, PullRequest } from '@git-manager/git-types'
 import { useSidebarResize, RAIL_WIDTH } from '../../hooks/useSidebarResize'
 import { useSidebarRows } from '../../hooks/useSidebarRows'
 import { usePinnedBranchesStore } from '../../stores/pinned-branches.store'
+import { useSidebarSearchStore } from '../../stores/sidebarSearch.store'
 import { SidebarResizeHandle } from './SidebarResizeHandle'
 import { SidebarRail } from './SidebarRail'
 import { SidebarRowView } from './SidebarRowView'
-import { ROW_HEIGHT, DEFAULT_PINNED } from './types'
+import { SidebarSectionHeader } from './SidebarSectionHeader'
+import { MAX_SECTION_BODY_HEIGHT, DEFAULT_PINNED } from './types'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { BlameHistoryPanel } from './BlameHistoryPanel'
@@ -106,12 +107,10 @@ export function RepositorySidebar({
     }).catch(console.error)
   }
 
-  const scrollRef = useRef<HTMLDivElement>(null)
-
   const setPin = usePinnedBranchesStore((s) => s.setPin)
   const overrides = usePinnedBranchesStore((s) => s.overrides[repoPath])
 
-  const { rows } = useSidebarRows({
+  const { sections } = useSidebarRows({
     repoPath,
     remoteUrls,
     currentUser,
@@ -119,14 +118,6 @@ export function RepositorySidebar({
     selectedBranch,
     filter: branchQuery,
     openState,
-  })
-
-  const virtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: (index) => ROW_HEIGHT[rows[index].kind],
-    getItemKey: (index) => rows[index].id,
-    overscan: 12,
   })
 
   const toggleOpen = (id: string, currentlyOpen: boolean) =>
@@ -137,25 +128,43 @@ export function RepositorySidebar({
     setPin(repoPath, shortName, !isPinned)
   }
 
-  // Map id -> isOpen pour résoudre l'état courant lors du toggle.
+  // Map id -> isOpen pour résoudre l'état courant lors du toggle (sections + sous-groupes
+  // repliables imbriqués dans leur corps : dossiers de branches locales, groupes de remotes).
   const openById = useMemo(() => {
     const m = new Map<string, boolean>()
-    for (const r of rows) {
-      if (
-        r.kind === 'section' ||
-        r.kind === 'folder' ||
-        r.kind === 'remote-group' ||
-        r.kind === 'subgroup'
-      ) {
-        m.set(r.id, r.isOpen)
+    for (const s of sections) {
+      m.set(`section:${s.key}`, s.isOpen)
+      for (const r of s.rows) {
+        if (r.kind === 'folder' || r.kind === 'remote-group' || r.kind === 'subgroup') {
+          m.set(r.id, r.isOpen)
+        }
       }
     }
     return m
-  }, [rows])
+  }, [sections])
 
-  // ── Blame / History panel overlay ──────────────────────────────────
+  // ── Focus shortcut (⌥⌘F) ────────────────────────────────────────────
+  const focusToken = useSidebarSearchStore((s) => s.focusToken)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const isBlameOrHistoryActive = activeLeftPanel === 'blame' || activeLeftPanel === 'history'
 
+  useEffect(() => {
+    if (focusToken === 0) return
+    // Reveal the filter input first if it's hidden behind the rail or the blame/history panel —
+    // this effect re-runs once that state change lands, then falls through to focus() below.
+    if (isCollapsed) {
+      expand()
+      return
+    }
+    if (isBlameOrHistoryActive) {
+      setActiveLeftPanel('sidebar')
+      return
+    }
+    searchInputRef.current?.focus()
+    searchInputRef.current?.select()
+  }, [focusToken, isCollapsed, isBlameOrHistoryActive, expand, setActiveLeftPanel])
+
+  // ── Blame / History panel overlay ──────────────────────────────────
   if (isBlameOrHistoryActive) {
     return (
       <div
@@ -217,6 +226,7 @@ export function RepositorySidebar({
         <div className="relative">
           <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sidebar-muted-foreground/60" />
           <input
+            ref={searchInputRef}
             type="text"
             value={branchQuery}
             onChange={(e) => setBranchQuery(e.target.value)}
@@ -236,49 +246,50 @@ export function RepositorySidebar({
         </div>
       </div>
 
-      {/* Contenu virtualisé (scroll natif requis par react-virtual) */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden">
-        <div
-          style={{
-            height: virtualizer.getTotalSize(),
-            width: '100%',
-            position: 'relative',
-          }}
-        >
-          {virtualizer.getVirtualItems().map((vi) => {
-            const row = rows[vi.index]
-            return (
-              <div
-                key={row.id}
-                data-index={vi.index}
-                ref={virtualizer.measureElement}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  transform: `translateY(${vi.start}px)`,
-                }}
-              >
-                <SidebarRowView
-                  row={row}
-                  onToggleOpen={(id) => toggleOpen(id, openById.get(id) ?? false)}
-                  onSelectBranch={onSelectBranch}
-                  onTogglePin={onTogglePin}
-                  onContextMenu={onContextMenu}
-                  onOpenPr={onOpenPr}
-                  onCreatePr={githubToken ? () => setPrCreateOpen(true) : undefined}
-                  onCreateBranch={onCreateBranch}
-                  onStashContextMenu={handleStashContextMenu}
-                  hiddenStashes={hiddenStashes}
-                  onToggleStashVisibility={(oid) => toggleStashVisibility(repoPath, oid)}
-                  onAddWorktree={() => setAddWorktreeOpen(true)}
-                  onRemoveWorktree={(wt) => setWorktreeToRemove(wt)}
-                />
+      {/* Sections repliables — chaque corps déplié est borné en hauteur avec son propre
+          scroll, pour ne pas repousser les sections suivantes hors de vue. */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        {sections.map((section) => (
+          <div
+            key={section.key}
+            className="border-b border-sidebar-border last:border-b-0"
+            data-testid={`sidebar-section-container-${section.key}`}
+          >
+            <SidebarSectionHeader
+              sectionKey={section.key}
+              title={section.title}
+              count={section.count}
+              isOpen={section.isOpen}
+              onToggle={() => toggleOpen(`section:${section.key}`, section.isOpen)}
+              onCreateBranch={section.key === 'local' ? onCreateBranch : undefined}
+              onAddWorktree={
+                section.key === 'worktrees' ? () => setAddWorktreeOpen(true) : undefined
+              }
+              onCreatePr={
+                section.key === 'prs' && githubToken ? () => setPrCreateOpen(true) : undefined
+              }
+            />
+            {section.isOpen && (
+              <div className="overflow-y-auto" style={{ maxHeight: MAX_SECTION_BODY_HEIGHT }}>
+                {section.rows.map((row) => (
+                  <SidebarRowView
+                    key={row.id}
+                    row={row}
+                    onToggleOpen={(id) => toggleOpen(id, openById.get(id) ?? false)}
+                    onSelectBranch={onSelectBranch}
+                    onTogglePin={onTogglePin}
+                    onContextMenu={onContextMenu}
+                    onOpenPr={onOpenPr}
+                    onStashContextMenu={handleStashContextMenu}
+                    hiddenStashes={hiddenStashes}
+                    onToggleStashVisibility={(oid) => toggleStashVisibility(repoPath, oid)}
+                    onRemoveWorktree={(wt) => setWorktreeToRemove(wt)}
+                  />
+                ))}
               </div>
-            )
-          })}
-        </div>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* Handle de resize */}

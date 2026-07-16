@@ -18,7 +18,7 @@ import { apiGetTags, apiListSubmodules } from '../api/git.api'
 import { apiListWorktrees } from '../api/worktree.api'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
 import { useSidebarRows } from './useSidebarRows'
-import type { SidebarRow } from '../components/repository-sidebar/types'
+import type { SectionKey, SidebarRow, SidebarSection } from '../components/repository-sidebar/types'
 
 const mockedGetTags = apiGetTags as unknown as ReturnType<typeof vi.fn>
 const mockedListSubmodules = apiListSubmodules as unknown as ReturnType<typeof vi.fn>
@@ -82,8 +82,16 @@ function worktree(path: string, overrides: Partial<GitWorktree> = {}): GitWorktr
   }
 }
 
-function findRow(rows: SidebarRow[], id: string) {
-  return rows.find((r) => r.id === id)
+function findSection(sections: SidebarSection[], key: SectionKey) {
+  return sections.find((s) => s.key === key)
+}
+
+function findRow(sections: SidebarSection[], id: string) {
+  return sections.flatMap((s) => s.rows).find((r) => r.id === id)
+}
+
+function allRows(sections: SidebarSection[]): SidebarRow[] {
+  return sections.flatMap((s) => s.rows)
 }
 
 const DEFAULT_PR_DATA = { allPrs: [], isGithub: false, isLoading: false }
@@ -115,19 +123,25 @@ function renderRows(params: Partial<Parameters<typeof useSidebarRows>[0]> = {}) 
 }
 
 describe('useSidebarRows — local section', () => {
-  it('always renders the local section header with the branch count', async () => {
+  it('is collapsed by default, with the branch count still shown on the header', async () => {
     useBranchesMock.mockReturnValue({ data: [branch('main'), branch('feature-x')] })
     const { result } = renderRows()
-    await waitFor(() => expect(findRow(result.current.rows, 'section:local')).toBeDefined())
-    expect(findRow(result.current.rows, 'section:local')).toMatchObject({ count: 2, isOpen: true })
+    await waitFor(() => expect(findSection(result.current.sections, 'local')).toBeDefined())
+    expect(findSection(result.current.sections, 'local')).toMatchObject({
+      count: 2,
+      isOpen: false,
+      rows: [],
+    })
   })
 
   it('pins main/master by default, ahead of other branches, with a divider between them', async () => {
     useBranchesMock.mockReturnValue({ data: [branch('feature-x'), branch('main')] })
-    const { result } = renderRows()
-    await waitFor(() => expect(result.current.rows.length).toBeGreaterThan(1))
+    const { result } = renderRows({ openState: { 'section:local': true } })
+    await waitFor(() => expect(allRows(result.current.sections).length).toBeGreaterThan(1))
 
-    const kinds = result.current.rows.filter((r) => r.kind === 'branch' || r.kind === 'divider')
+    const kinds = allRows(result.current.sections).filter(
+      (r) => r.kind === 'branch' || r.kind === 'divider'
+    )
     expect(kinds[0]).toMatchObject({ kind: 'branch', id: 'local:refs/heads/main', isPinned: true })
     expect(kinds[1]).toMatchObject({ kind: 'divider', id: 'div:pinned' })
   })
@@ -142,18 +156,21 @@ describe('useSidebarRows — local section', () => {
 
   it('groups remaining branches into folders by prefix (via useGroupedBranches)', async () => {
     useBranchesMock.mockReturnValue({ data: [branch('feat/a'), branch('feat/b')] })
-    const { result } = renderRows()
-    await waitFor(() => expect(findRow(result.current.rows, 'folder:feat/')).toBeDefined())
-    expect(findRow(result.current.rows, 'folder:feat/')).toMatchObject({ count: 2, isOpen: true })
+    const { result } = renderRows({ openState: { 'section:local': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'folder:feat/')).toBeDefined())
+    expect(findRow(result.current.sections, 'folder:feat/')).toMatchObject({
+      count: 2,
+      isOpen: true,
+    })
   })
 
   it('strips the folder prefix from a grouped branch displayName, keeping the full shortName', async () => {
     useBranchesMock.mockReturnValue({ data: [branch('feat/a'), branch('feat/b')] })
-    const { result } = renderRows()
+    const { result } = renderRows({ openState: { 'section:local': true } })
     await waitFor(() =>
-      expect(result.current.rows.find((r) => r.kind === 'branch')).toBeDefined()
+      expect(allRows(result.current.sections).find((r) => r.kind === 'branch')).toBeDefined()
     )
-    const grouped = result.current.rows.find(
+    const grouped = allRows(result.current.sections).find(
       (r) => r.kind === 'branch' && r.branch.shortName === 'feat/a'
     )
     expect(grouped).toMatchObject({ displayName: 'a' })
@@ -162,14 +179,14 @@ describe('useSidebarRows — local section', () => {
 
   it('keeps the full shortName as displayName for ungrouped/pinned branches', async () => {
     useBranchesMock.mockReturnValue({ data: [branch('main'), branch('feature-x')] })
-    const { result } = renderRows()
+    const { result } = renderRows({ openState: { 'section:local': true } })
     await waitFor(() =>
-      expect(result.current.rows.find((r) => r.kind === 'branch')).toBeDefined()
+      expect(allRows(result.current.sections).find((r) => r.kind === 'branch')).toBeDefined()
     )
-    const main = result.current.rows.find(
+    const main = allRows(result.current.sections).find(
       (r) => r.kind === 'branch' && r.branch.shortName === 'main'
     )
-    const featureX = result.current.rows.find(
+    const featureX = allRows(result.current.sections).find(
       (r) => r.kind === 'branch' && r.branch.shortName === 'feature-x'
     )
     expect(main).toMatchObject({ displayName: 'main' })
@@ -178,28 +195,34 @@ describe('useSidebarRows — local section', () => {
 
   it('respects an explicit closed override for a folder', async () => {
     useBranchesMock.mockReturnValue({ data: [branch('feat/a'), branch('feat/b')] })
-    const { result } = renderRows({ openState: { 'folder:feat/': false } })
-    await waitFor(() => expect(findRow(result.current.rows, 'folder:feat/')).toBeDefined())
-    expect(findRow(result.current.rows, 'folder:feat/')).toMatchObject({ isOpen: false })
+    const { result } = renderRows({
+      openState: { 'section:local': true, 'folder:feat/': false },
+    })
+    await waitFor(() => expect(findRow(result.current.sections, 'folder:feat/')).toBeDefined())
+    expect(findRow(result.current.sections, 'folder:feat/')).toMatchObject({ isOpen: false })
     expect(
-      result.current.rows.find((r) => r.kind === 'branch' && r.id === 'local:refs/heads/feat/a')
+      allRows(result.current.sections).find(
+        (r) => r.kind === 'branch' && r.id === 'local:refs/heads/feat/a'
+      )
     ).toBeUndefined()
   })
 
   it('filters local branches by the filter string (case-insensitive)', async () => {
     useBranchesMock.mockReturnValue({ data: [branch('feature-x'), branch('bugfix-y')] })
-    const { result } = renderRows({ filter: 'FEAT' })
-    await waitFor(() => expect(result.current.rows.some((r) => r.kind === 'branch')).toBe(true))
-    const branchRows = result.current.rows.filter((r) => r.kind === 'branch')
+    const { result } = renderRows({ filter: 'FEAT', openState: { 'section:local': true } })
+    await waitFor(() =>
+      expect(allRows(result.current.sections).some((r) => r.kind === 'branch')).toBe(true)
+    )
+    const branchRows = allRows(result.current.sections).filter((r) => r.kind === 'branch')
     expect(branchRows).toHaveLength(1)
     expect((branchRows[0] as { branch: GitBranch }).branch.shortName).toBe('feature-x')
   })
 
-  it('collapses the whole local section when overridden closed', async () => {
+  it('keeps the local section closed when no override is given, even with branches present', async () => {
     useBranchesMock.mockReturnValue({ data: [branch('main')] })
-    const { result } = renderRows({ openState: { 'section:local': false } })
-    await waitFor(() => expect(findRow(result.current.rows, 'section:local')).toBeDefined())
-    expect(result.current.rows.some((r) => r.kind === 'branch')).toBe(false)
+    const { result } = renderRows()
+    await waitFor(() => expect(findSection(result.current.sections, 'local')).toBeDefined())
+    expect(allRows(result.current.sections).some((r) => r.kind === 'branch')).toBe(false)
   })
 })
 
@@ -207,11 +230,21 @@ describe('useSidebarRows — remotes section', () => {
   it('is omitted entirely when there are no remote branches', async () => {
     useBranchesMock.mockReturnValue({ data: [branch('main')] })
     const { result } = renderRows()
-    await waitFor(() => expect(findRow(result.current.rows, 'section:local')).toBeDefined())
-    expect(findRow(result.current.rows, 'section:remotes')).toBeUndefined()
+    await waitFor(() => expect(findSection(result.current.sections, 'local')).toBeDefined())
+    expect(findSection(result.current.sections, 'remotes')).toBeUndefined()
   })
 
-  it('groups remote branches by remote name', async () => {
+  it('is collapsed by default when there are remote branches', async () => {
+    useBranchesMock.mockReturnValue({ data: [remoteBranch('origin/main')] })
+    const { result } = renderRows()
+    await waitFor(() => expect(findSection(result.current.sections, 'remotes')).toBeDefined())
+    expect(findSection(result.current.sections, 'remotes')).toMatchObject({
+      isOpen: false,
+      rows: [],
+    })
+  })
+
+  it('groups remote branches by remote name once opened', async () => {
     useBranchesMock.mockReturnValue({
       data: [
         remoteBranch('origin/main'),
@@ -219,37 +252,44 @@ describe('useSidebarRows — remotes section', () => {
         remoteBranch('upstream/main'),
       ],
     })
-    const { result } = renderRows()
-    await waitFor(() => expect(findRow(result.current.rows, 'section:remotes')).toBeDefined())
-    expect(findRow(result.current.rows, 'remote:origin')).toMatchObject({ count: 2 })
-    expect(findRow(result.current.rows, 'remote:upstream')).toMatchObject({ count: 1 })
-    expect(findRow(result.current.rows, 'section:remotes')).toMatchObject({ count: 3 })
+    const { result } = renderRows({ openState: { 'section:remotes': true } })
+    await waitFor(() => expect(findSection(result.current.sections, 'remotes')).toBeDefined())
+    expect(findRow(result.current.sections, 'remote:origin')).toMatchObject({ count: 2 })
+    expect(findRow(result.current.sections, 'remote:upstream')).toMatchObject({ count: 1 })
+    expect(findSection(result.current.sections, 'remotes')).toMatchObject({ count: 3 })
   })
 
   it('defaults a slash-less remote branch name to the "origin" group', async () => {
     useBranchesMock.mockReturnValue({ data: [remoteBranch('HEAD', { shortName: 'HEAD' })] })
-    const { result } = renderRows()
-    await waitFor(() => expect(findRow(result.current.rows, 'remote:origin')).toBeDefined())
+    const { result } = renderRows({ openState: { 'section:remotes': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
   })
 })
 
 describe('useSidebarRows — pull requests section', () => {
+  it('is collapsed by default', async () => {
+    usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
+    const { result } = renderRows()
+    await waitFor(() => expect(findSection(result.current.sections, 'prs')).toBeDefined())
+    expect(findSection(result.current.sections, 'prs')).toMatchObject({ isOpen: false, rows: [] })
+  })
+
   it('shows a loading message while PRs are loading', async () => {
     usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: true })
-    const { result } = renderRows()
-    await waitFor(() => expect(findRow(result.current.rows, 'pr:loading')).toBeDefined())
+    const { result } = renderRows({ openState: { 'section:prs': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'pr:loading')).toBeDefined())
   })
 
   it('shows a "connect GitHub" message when not a GitHub repo', async () => {
     usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: false, isLoading: false })
-    const { result } = renderRows()
-    await waitFor(() => expect(findRow(result.current.rows, 'pr:nogithub')).toBeDefined())
+    const { result } = renderRows({ openState: { 'section:prs': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'pr:nogithub')).toBeDefined())
   })
 
   it('shows an empty message when there are no open PRs', async () => {
     usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
-    const { result } = renderRows()
-    await waitFor(() => expect(findRow(result.current.rows, 'pr:empty')).toBeDefined())
+    const { result } = renderRows({ openState: { 'section:prs': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'pr:empty')).toBeDefined())
   })
 
   it('renders one row per PR, marking the row matching selectedBranch as selected', async () => {
@@ -261,48 +301,57 @@ describe('useSidebarRows — pull requests section', () => {
       isGithub: true,
       isLoading: false,
     })
-    const { result } = renderRows({ selectedBranch: 'feature-y' })
-    await waitFor(() => expect(findRow(result.current.rows, 'pr:2')).toBeDefined())
-    expect(findRow(result.current.rows, 'pr:1')).toMatchObject({ isSelected: false })
-    expect(findRow(result.current.rows, 'pr:2')).toMatchObject({ isSelected: true })
+    const { result } = renderRows({
+      selectedBranch: 'feature-y',
+      openState: { 'section:prs': true },
+    })
+    await waitFor(() => expect(findRow(result.current.sections, 'pr:2')).toBeDefined())
+    expect(findRow(result.current.sections, 'pr:1')).toMatchObject({ isSelected: false })
+    expect(findRow(result.current.sections, 'pr:2')).toMatchObject({ isSelected: true })
   })
 })
 
 describe('useSidebarRows — tags/stashes/submodules', () => {
   it('omits the tags section when there are no tags', async () => {
     const { result } = renderRows()
-    await waitFor(() => expect(findRow(result.current.rows, 'section:local')).toBeDefined())
-    expect(findRow(result.current.rows, 'section:tags')).toBeUndefined()
+    await waitFor(() => expect(findSection(result.current.sections, 'local')).toBeDefined())
+    expect(findSection(result.current.sections, 'tags')).toBeUndefined()
   })
 
   it('renders the tags section (closed by default) once tags load', async () => {
     mockedGetTags.mockResolvedValue([tag('v1.0'), tag('v2.0')])
     const { result } = renderRows()
-    await waitFor(() => expect(findRow(result.current.rows, 'section:tags')).toBeDefined())
-    expect(findRow(result.current.rows, 'section:tags')).toMatchObject({ count: 2, isOpen: false })
-    expect(result.current.rows.some((r) => r.kind === 'tag')).toBe(false)
+    await waitFor(() => expect(findSection(result.current.sections, 'tags')).toBeDefined())
+    expect(findSection(result.current.sections, 'tags')).toMatchObject({ count: 2, isOpen: false })
+    expect(allRows(result.current.sections).some((r) => r.kind === 'tag')).toBe(false)
   })
 
   it('shows tag rows once the section is explicitly opened', async () => {
     mockedGetTags.mockResolvedValue([tag('v1.0')])
     const { result } = renderRows({ openState: { 'section:tags': true } })
-    await waitFor(() => expect(result.current.rows.some((r) => r.kind === 'tag')).toBe(true))
-    expect(findRow(result.current.rows, 'tag:refs/tags/v1.0')).toBeDefined()
+    await waitFor(() =>
+      expect(allRows(result.current.sections).some((r) => r.kind === 'tag')).toBe(true)
+    )
+    expect(findRow(result.current.sections, 'tag:refs/tags/v1.0')).toBeDefined()
   })
 
   it('truncates the tag list at TAGS_LIMIT (100) with a "+N more" message', async () => {
     mockedGetTags.mockResolvedValue(Array.from({ length: 105 }, (_, i) => tag(`v${i}`)))
     const { result } = renderRows({ openState: { 'section:tags': true } })
-    await waitFor(() => expect(result.current.rows.some((r) => r.kind === 'tag')).toBe(true))
-    expect(result.current.rows.filter((r) => r.kind === 'tag')).toHaveLength(100)
-    expect(findRow(result.current.rows, 'tag:more')).toMatchObject({ text: '+ 5 autres tags' })
+    await waitFor(() =>
+      expect(allRows(result.current.sections).some((r) => r.kind === 'tag')).toBe(true)
+    )
+    expect(allRows(result.current.sections).filter((r) => r.kind === 'tag')).toHaveLength(100)
+    expect(findRow(result.current.sections, 'tag:more')).toMatchObject({
+      text: '+ 5 autres tags',
+    })
   })
 
   it('renders the stashes section (closed by default) once stashes load', async () => {
     useGitStashesMock.mockReturnValue({ data: [stash(0), stash(1)] })
     const { result } = renderRows()
-    await waitFor(() => expect(findRow(result.current.rows, 'section:stashes')).toBeDefined())
-    expect(findRow(result.current.rows, 'section:stashes')).toMatchObject({
+    await waitFor(() => expect(findSection(result.current.sections, 'stashes')).toBeDefined())
+    expect(findSection(result.current.sections, 'stashes')).toMatchObject({
       count: 2,
       isOpen: false,
     })
@@ -311,8 +360,8 @@ describe('useSidebarRows — tags/stashes/submodules', () => {
   it('renders the submodules section (closed by default) once submodules load', async () => {
     mockedListSubmodules.mockResolvedValue([submodule('libs/a'), submodule('libs/b')])
     const { result } = renderRows()
-    await waitFor(() => expect(findRow(result.current.rows, 'section:submodules')).toBeDefined())
-    expect(findRow(result.current.rows, 'section:submodules')).toMatchObject({
+    await waitFor(() => expect(findSection(result.current.sections, 'submodules')).toBeDefined())
+    expect(findSection(result.current.sections, 'submodules')).toMatchObject({
       count: 2,
       isOpen: false,
     })
@@ -320,10 +369,10 @@ describe('useSidebarRows — tags/stashes/submodules', () => {
 })
 
 describe('useSidebarRows — worktrees section', () => {
-  it('always shows the worktrees section header, even with none — unlike submodules/tags/stashes', async () => {
+  it('always shows the worktrees section, even with none — unlike submodules/tags/stashes', async () => {
     const { result } = renderRows()
-    await waitFor(() => expect(findRow(result.current.rows, 'section:worktrees')).toBeDefined())
-    expect(findRow(result.current.rows, 'section:worktrees')).toMatchObject({
+    await waitFor(() => expect(findSection(result.current.sections, 'worktrees')).toBeDefined())
+    expect(findSection(result.current.sections, 'worktrees')).toMatchObject({
       count: undefined,
       isOpen: false,
     })
@@ -331,7 +380,7 @@ describe('useSidebarRows — worktrees section', () => {
 
   it('shows an empty message when the section is opened with no worktrees', async () => {
     const { result } = renderRows({ openState: { 'section:worktrees': true } })
-    await waitFor(() => expect(findRow(result.current.rows, 'wt:empty')).toBeDefined())
+    await waitFor(() => expect(findRow(result.current.sections, 'wt:empty')).toBeDefined())
   })
 
   it('filters out the main worktree and renders one row per linked worktree once opened', async () => {
@@ -340,8 +389,10 @@ describe('useSidebarRows — worktrees section', () => {
       worktree('/tmp/repo-linked'),
     ])
     const { result } = renderRows({ openState: { 'section:worktrees': true } })
-    await waitFor(() => expect(findRow(result.current.rows, 'section:worktrees')).toMatchObject({ count: 1 }))
-    expect(findRow(result.current.rows, 'wt:/repo')).toBeUndefined()
-    expect(findRow(result.current.rows, 'wt:/tmp/repo-linked')).toBeDefined()
+    await waitFor(() =>
+      expect(findSection(result.current.sections, 'worktrees')).toMatchObject({ count: 1 })
+    )
+    expect(findRow(result.current.sections, 'wt:/repo')).toBeUndefined()
+    expect(findRow(result.current.sections, 'wt:/tmp/repo-linked')).toBeDefined()
   })
 })

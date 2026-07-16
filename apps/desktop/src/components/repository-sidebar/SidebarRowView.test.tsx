@@ -131,11 +131,8 @@ function baseHandlers() {
     onTogglePin: vi.fn(),
     onContextMenu: vi.fn(),
     onOpenPr: vi.fn(),
-    onCreatePr: vi.fn(),
-    onCreateBranch: vi.fn(),
     onStashContextMenu: vi.fn(),
     onToggleStashVisibility: vi.fn(),
-    onAddWorktree: vi.fn(),
     onRemoveWorktree: vi.fn(),
   }
 }
@@ -145,88 +142,6 @@ function renderRow(row: SidebarRow, handlers: Partial<ReturnType<typeof baseHand
   const utils = render(<SidebarRowView row={row} {...h} />)
   return { ...utils, h }
 }
-
-describe('SidebarRowView — section', () => {
-  it('renders the section header with title/count and toggles via onToggleOpen', async () => {
-    const user = userEvent.setup()
-    const { h } = renderRow({
-      kind: 'section',
-      id: 'sec-local',
-      sectionKey: 'local',
-      title: 'Local',
-      count: 3,
-      isOpen: true,
-    })
-    expect(screen.getByText('Local')).toBeInTheDocument()
-    expect(screen.getByText('3')).toBeInTheDocument()
-    await user.click(screen.getByText('Local'))
-    expect(h.onToggleOpen).toHaveBeenCalledWith('sec-local')
-  })
-
-  it('shows the create-branch action only for the local section with onCreateBranch', async () => {
-    const user = userEvent.setup()
-    const { h } = renderRow({
-      kind: 'section',
-      id: 'sec-local',
-      sectionKey: 'local',
-      title: 'Local',
-      isOpen: true,
-    })
-    await user.click(screen.getByLabelText('Créer une branche'))
-    expect(h.onCreateBranch).toHaveBeenCalledOnce()
-  })
-
-  it('hides the create-branch action for a non-local section', () => {
-    renderRow({
-      kind: 'section',
-      id: 'sec-remotes',
-      sectionKey: 'remotes',
-      title: 'Remotes',
-      isOpen: true,
-    })
-    expect(screen.queryByLabelText('Créer une branche')).not.toBeInTheDocument()
-  })
-
-  it('shows the add-worktree action only for the worktrees section with onAddWorktree', async () => {
-    const user = userEvent.setup()
-    const { h } = renderRow({
-      kind: 'section',
-      id: 'sec-worktrees',
-      sectionKey: 'worktrees',
-      title: 'Worktrees',
-      isOpen: true,
-    })
-    await user.click(screen.getByTestId('worktree-add-button'))
-    expect(h.onAddWorktree).toHaveBeenCalledOnce()
-  })
-
-  it('shows the create-PR action only for the prs section with onCreatePr', async () => {
-    const user = userEvent.setup()
-    const { h } = renderRow({
-      kind: 'section',
-      id: 'sec-prs',
-      sectionKey: 'prs',
-      title: 'Pull Requests',
-      isOpen: true,
-    })
-    await user.click(screen.getByTestId('pr-create-button'))
-    expect(h.onCreatePr).toHaveBeenCalledOnce()
-  })
-
-  it('hides the create-PR action when onCreatePr is not provided', () => {
-    renderRow(
-      {
-        kind: 'section',
-        id: 'sec-prs',
-        sectionKey: 'prs',
-        title: 'Pull Requests',
-        isOpen: true,
-      },
-      { onCreatePr: undefined }
-    )
-    expect(screen.queryByTestId('pr-create-button')).not.toBeInTheDocument()
-  })
-})
 
 describe('SidebarRowView — branch', () => {
   it('forwards branch/isSelected/depth/isPinned to BranchItem', () => {

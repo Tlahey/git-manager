@@ -22,6 +22,7 @@ import {
   ClipboardCopy,
   ClipboardCheck,
   Trophy,
+  Search,
 } from 'lucide-react'
 import {
   Dialog,
@@ -30,6 +31,8 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogDescription,
+  Input,
+  ScrollArea,
 } from '@git-manager/ui'
 import type { Section } from '../../app/settings/SettingsPage'
 
@@ -47,6 +50,7 @@ export function Footer({ onOpenSettings }: FooterProps) {
 
   const [copied, setCopied] = useState(false)
   const [isShortcutOpen, setIsShortcutOpen] = useState(false)
+  const [shortcutQuery, setShortcutQuery] = useState('')
   const [appVersion, setAppVersion] = useState<string | null>(null)
 
   useEffect(() => {
@@ -87,33 +91,57 @@ export function Footer({ onOpenSettings }: FooterProps) {
     }
   }
 
-  // Raccourcis clavier pour l'affichage
+  // Raccourcis clavier pour l'affichage — doit rester en phase avec useKeyboardShortcuts.ts
+  // et les raccourcis locaux au panneau de recherche de commits (CommitSearchPanel.tsx).
   const shortcuts = [
-    {
-      category: 'Navigation',
-      items: [
-        { keys: ['Alt', '1'], desc: "Aller à l'accueil (Dashboard)" },
-        { keys: ['Alt', '2'], desc: 'Aller au Launchpad (PRs)' },
-        { keys: ['Alt', '3-9'], desc: 'Basculer vers les dépôts ouverts (onglets 3 à 9)' },
-      ],
-    },
-    {
-      category: 'Dépôts & Actions',
-      items: [
-        { keys: ['⌘', 'O'], desc: 'Ouvrir un dépôt Git local' },
-        { keys: ['⌘', 'D'], desc: 'Scanner un dossier pour trouver des dépôts' },
-        { keys: ['⌘', 'F'], desc: 'Filtrer/Rechercher un dépôt dans la liste' },
-      ],
-    },
     {
       category: 'Général',
       items: [
+        { keys: ['⌘', 'K'], desc: 'Ouvrir la palette de commandes' },
         { keys: ['Alt', ','], desc: 'Ouvrir les Paramètres' },
         { keys: ['Alt', 'W'], desc: "Fermer l'onglet du dépôt actif" },
         { keys: ['Esc'], desc: 'Fermer les boîtes de dialogue / volets' },
       ],
     },
+    {
+      category: 'Navigation',
+      items: [
+        { keys: ['Alt', '1'], desc: "Aller à l'accueil (Dashboard)" },
+        { keys: ['Alt', '2'], desc: 'Aller au Launchpad (Pull Requests)' },
+        { keys: ['Alt', '3-9'], desc: 'Basculer vers les dépôts ouverts (onglets 3 à 9)' },
+      ],
+    },
+    {
+      category: 'Recherche',
+      items: [
+        { keys: ['⌘', 'F'], desc: 'Rechercher un commit dans le graphe' },
+        { keys: ['↵'], desc: 'Résultat suivant (recherche de commit)' },
+        { keys: ['⇧', '↵'], desc: 'Résultat précédent (recherche de commit)' },
+        { keys: ['Alt', '⌘', 'F'], desc: 'Filtrer les branches/tags du panneau latéral' },
+      ],
+    },
+    {
+      category: 'Dépôt & Git',
+      items: [
+        { keys: ['⌘', 'Z'], desc: 'Annuler la dernière action Git' },
+        { keys: ['⌘', '⇧', 'Z'], desc: 'Rétablir la dernière action Git' },
+      ],
+    },
   ]
+
+  const shortcutQueryLower = shortcutQuery.trim().toLowerCase()
+  const filteredShortcuts = shortcutQueryLower
+    ? shortcuts
+        .map((cat) => ({
+          ...cat,
+          items: cat.items.filter(
+            (item) =>
+              item.desc.toLowerCase().includes(shortcutQueryLower) ||
+              item.keys.some((k) => k.toLowerCase().includes(shortcutQueryLower))
+          ),
+        }))
+        .filter((cat) => cat.items.length > 0)
+    : shortcuts
 
   return (
     <footer className="flex h-8 w-full shrink-0 select-none items-center justify-between border-t border-border bg-card/60 px-4 text-[11px] text-muted-foreground backdrop-blur-sm">
@@ -212,7 +240,13 @@ export function Footer({ onOpenSettings }: FooterProps) {
 
       {/* SECTION CENTRALE : Raccourcis Clavier Dialog */}
       <div>
-        <Dialog open={isShortcutOpen} onOpenChange={setIsShortcutOpen}>
+        <Dialog
+          open={isShortcutOpen}
+          onOpenChange={(open) => {
+            setIsShortcutOpen(open)
+            if (!open) setShortcutQuery('')
+          }}
+        >
           <DialogTrigger asChild>
             <button className="flex items-center gap-1.5 rounded border border-transparent px-2 py-0.5 font-medium shadow-none transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground active:scale-95">
               <Keyboard className="h-3.5 w-3.5" />
@@ -230,39 +264,59 @@ export function Footer({ onOpenSettings }: FooterProps) {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-2">
-              {shortcuts.map((cat, idx) => (
-                <div key={idx} className="space-y-1.5">
-                  <h4 className="pl-1 text-[10px] font-bold uppercase tracking-widest text-primary/70">
-                    {cat.category}
-                  </h4>
-                  <div className="divide-y divide-border/40 rounded-lg border border-border bg-card/40 p-1">
-                    {cat.items.map((item, keyIdx) => (
-                      <div
-                        key={keyIdx}
-                        className="flex items-center justify-between rounded px-2.5 py-1.5 text-xs transition-colors hover:bg-muted/30"
-                      >
-                        <span className="font-sans text-foreground/80">{item.desc}</span>
-                        <div className="flex items-center gap-1">
-                          {item.keys.map((k, kIdx) => (
-                            <span key={kIdx} className="flex items-center gap-1">
-                              <kbd className="inline-flex h-5 min-w-[20px] items-center justify-center rounded border border-border bg-muted/95 px-1.5 font-mono text-[10px] font-bold text-foreground shadow-sm">
-                                {k}
-                              </kbd>
-                              {kIdx < item.keys.length - 1 && (
-                                <span className="text-[9px] font-semibold text-muted-foreground/60">
-                                  +
-                                </span>
-                              )}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+            <div className="relative shrink-0">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
+              <Input
+                value={shortcutQuery}
+                onChange={(e) => setShortcutQuery(e.target.value)}
+                placeholder="Rechercher un raccourci…"
+                aria-label="Rechercher un raccourci"
+                data-testid="shortcuts-search-input"
+                className="h-8 pl-8 text-xs"
+              />
             </div>
+
+            <ScrollArea className="-mr-3 max-h-[50vh] pr-3">
+              <div className="space-y-4 py-2">
+                {filteredShortcuts.length === 0 ? (
+                  <p className="py-6 text-center text-xs text-muted-foreground">
+                    Aucun raccourci ne correspond à « {shortcutQuery} ».
+                  </p>
+                ) : (
+                  filteredShortcuts.map((cat, idx) => (
+                    <div key={idx} className="space-y-1.5">
+                      <h4 className="pl-1 text-[10px] font-bold uppercase tracking-widest text-primary/70">
+                        {cat.category}
+                      </h4>
+                      <div className="divide-y divide-border/40 rounded-lg border border-border bg-card/40 p-1">
+                        {cat.items.map((item, keyIdx) => (
+                          <div
+                            key={keyIdx}
+                            className="flex items-center justify-between rounded px-2.5 py-1.5 text-xs transition-colors hover:bg-muted/30"
+                          >
+                            <span className="font-sans text-foreground/80">{item.desc}</span>
+                            <div className="flex items-center gap-1">
+                              {item.keys.map((k, kIdx) => (
+                                <span key={kIdx} className="flex items-center gap-1">
+                                  <kbd className="inline-flex h-5 min-w-[20px] items-center justify-center rounded border border-border bg-muted/95 px-1.5 font-mono text-[10px] font-bold text-foreground shadow-sm">
+                                    {k}
+                                  </kbd>
+                                  {kIdx < item.keys.length - 1 && (
+                                    <span className="text-[9px] font-semibold text-muted-foreground/60">
+                                      +
+                                    </span>
+                                  )}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       </div>

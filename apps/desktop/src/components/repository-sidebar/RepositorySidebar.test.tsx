@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { SidebarRow } from './types'
+import type { SidebarRow, SidebarSection } from './types'
 
 const { useSidebarResize, useSidebarRows, showStashNativeContextMenu, swrMutate } = vi.hoisted(
   () => ({
@@ -22,16 +22,6 @@ vi.mock('../../api/git.api', () => ({
 }))
 vi.mock('swr', () => ({ mutate: swrMutate }))
 
-vi.mock('@tanstack/react-virtual', () => ({
-  useVirtualizer: (opts: { count: number; estimateSize: (i: number) => number }) => ({
-    getTotalSize: () =>
-      Array.from({ length: opts.count }, (_, i) => opts.estimateSize(i)).reduce((a, b) => a + b, 0),
-    getVirtualItems: () =>
-      Array.from({ length: opts.count }, (_, index) => ({ key: index, index, start: 0 })),
-    measureElement: () => {},
-  }),
-}))
-
 const { lastRowViewCalls } = vi.hoisted(() => ({
   lastRowViewCalls: { current: [] as Record<string, unknown>[] },
 }))
@@ -41,6 +31,24 @@ vi.mock('./SidebarRowView', () => ({
     return <div data-testid={`row-${(props.row as SidebarRow).id}`} />
   },
 }))
+
+const { lastHeaderCalls } = vi.hoisted(() => ({
+  lastHeaderCalls: { current: [] as Record<string, unknown>[] },
+}))
+vi.mock('./SidebarSectionHeader', () => ({
+  SidebarSectionHeader: (props: Record<string, unknown>) => {
+    lastHeaderCalls.current.push(props)
+    return (
+      <button
+        data-testid={`header-${props.sectionKey}`}
+        onClick={props.onToggle as () => void}
+      >
+        {props.title as string}
+      </button>
+    )
+  },
+}))
+
 vi.mock('./SidebarRail', () => ({
   SidebarRail: (props: { onExpand: () => void }) => (
     <button data-testid="sidebar-rail" onClick={props.onExpand} />
@@ -70,6 +78,7 @@ import { RepositorySidebar } from './RepositorySidebar'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { usePinnedBranchesStore } from '../../stores/pinned-branches.store'
+import { useSidebarSearchStore } from '../../stores/sidebarSearch.store'
 
 const mockedStashApply = apiStashApply as unknown as ReturnType<typeof vi.fn>
 const mockedStashPop = apiStashPop as unknown as ReturnType<typeof vi.fn>
@@ -94,6 +103,10 @@ function row(overrides: Partial<SidebarRow> = {}): SidebarRow {
   return { kind: 'divider', id: 'row-1', ...overrides } as SidebarRow
 }
 
+function section(overrides: Partial<SidebarSection> = {}): SidebarSection {
+  return { key: 'local', title: 'Local', isOpen: true, rows: [], ...overrides }
+}
+
 function renderSidebar(props: Partial<React.ComponentProps<typeof RepositorySidebar>> = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const invalidateSpy = vi.spyOn(client, 'invalidateQueries')
@@ -114,11 +127,13 @@ function renderSidebar(props: Partial<React.ComponentProps<typeof RepositorySide
 beforeEach(() => {
   vi.clearAllMocks()
   lastRowViewCalls.current = []
+  lastHeaderCalls.current = []
   useRepoUIStore.setState(INITIAL_REPO_UI, true)
   useRepoDataStore.setState(INITIAL_REPO_DATA, true)
   usePinnedBranchesStore.setState(INITIAL_PINNED, true)
+  useSidebarSearchStore.setState({ focusToken: 0 })
   useSidebarResize.mockReturnValue(resizeState())
-  useSidebarRows.mockReturnValue({ rows: [] })
+  useSidebarRows.mockReturnValue({ sections: [] })
 })
 
 describe('RepositorySidebar — mode routing', () => {
@@ -187,39 +202,130 @@ describe('RepositorySidebar — search filter', () => {
   })
 })
 
-describe('RepositorySidebar — rows', () => {
-  it('renders one SidebarRowView per row and forwards the standard callbacks', () => {
-    useSidebarRows.mockReturnValue({ rows: [row({ id: 'r1' }), row({ id: 'r2' })] })
-    const onContextMenu = vi.fn()
-    const onOpenPr = vi.fn()
-    const onCreateBranch = vi.fn()
-    renderSidebar({ onContextMenu, onOpenPr, onCreateBranch })
-    expect(screen.getByTestId('row-r1')).toBeInTheDocument()
-    expect(screen.getByTestId('row-r2')).toBeInTheDocument()
-    expect(lastRowViewCalls.current[0]).toMatchObject({ onContextMenu, onOpenPr, onCreateBranch })
+describe('RepositorySidebar — focus shortcut (⌥⌘F)', () => {
+  it('focuses and selects the filter input when the sidebar is already visible', () => {
+    renderSidebar()
+    const input = screen.getByLabelText('Filtrer les branches') as HTMLInputElement
+    const focusSpy = vi.spyOn(input, 'focus')
+    act(() => useSidebarSearchStore.getState().requestFocus())
+    expect(focusSpy).toHaveBeenCalled()
   })
 
-  it('toggles a section/folder open state, feeding it back into useSidebarRows on the next render', () => {
+  it('expands the sidebar first when collapsed, then focuses the input', () => {
+    const expand = vi.fn()
+    useSidebarResize.mockReturnValue(resizeState({ isCollapsed: true, expand }))
+    renderSidebar()
+    act(() => useSidebarSearchStore.getState().requestFocus())
+    expect(expand).toHaveBeenCalledOnce()
+  })
+
+  it('exits blame/history mode first when active, then focuses the input', () => {
+    act(() => useRepoUIStore.setState({ activeLeftPanel: 'blame' }))
+    renderSidebar()
+    act(() => useSidebarSearchStore.getState().requestFocus())
+    expect(useRepoUIStore.getState().activeLeftPanel).toBe('sidebar')
+  })
+
+  it('does nothing on initial render (token starts at 0)', () => {
+    renderSidebar()
+    const input = screen.getByLabelText('Filtrer les branches') as HTMLInputElement
+    expect(document.activeElement).not.toBe(input)
+  })
+})
+
+describe('RepositorySidebar — sections', () => {
+  it('renders one section header per section and one SidebarRowView per body row', () => {
     useSidebarRows.mockReturnValue({
-      rows: [
-        {
-          kind: 'section',
-          id: 'sec-local',
-          sectionKey: 'local',
-          title: 'Local',
-          isOpen: true,
-        } as SidebarRow,
+      sections: [
+        section({ key: 'local', rows: [row({ id: 'r1' }), row({ id: 'r2' })] }),
+        section({ key: 'remotes', rows: [] }),
+      ],
+    })
+    const onContextMenu = vi.fn()
+    const onOpenPr = vi.fn()
+    renderSidebar({ onContextMenu, onOpenPr })
+    expect(screen.getByTestId('header-local')).toBeInTheDocument()
+    expect(screen.getByTestId('header-remotes')).toBeInTheDocument()
+    expect(screen.getByTestId('row-r1')).toBeInTheDocument()
+    expect(screen.getByTestId('row-r2')).toBeInTheDocument()
+    expect(lastRowViewCalls.current[0]).toMatchObject({ onContextMenu, onOpenPr })
+  })
+
+  it('does not render body rows for a closed section', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'tags', isOpen: false, rows: [] })],
+    })
+    renderSidebar()
+    expect(screen.getByTestId('header-tags')).toBeInTheDocument()
+    expect(lastRowViewCalls.current).toHaveLength(0)
+  })
+
+  it('forwards onCreateBranch to the local section header only', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'local' }), section({ key: 'remotes', title: 'Remotes' })],
+    })
+    const onCreateBranch = vi.fn()
+    renderSidebar({ onCreateBranch })
+    expect(lastHeaderCalls.current[0]).toMatchObject({ sectionKey: 'local', onCreateBranch })
+    expect(lastHeaderCalls.current[1]).toMatchObject({
+      sectionKey: 'remotes',
+      onCreateBranch: undefined,
+    })
+  })
+
+  it('forwards onCreatePr to the prs section header only when a githubToken is set', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'prs', title: 'Pull Requests' })],
+    })
+    renderSidebar({ githubToken: 'token' })
+    expect(lastHeaderCalls.current[0]).toMatchObject({ sectionKey: 'prs' })
+    expect(lastHeaderCalls.current[0].onCreatePr).toBeInstanceOf(Function)
+  })
+
+  it('omits onCreatePr on the prs section header when there is no githubToken', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'prs', title: 'Pull Requests' })],
+    })
+    renderSidebar()
+    expect(lastHeaderCalls.current[0].onCreatePr).toBeUndefined()
+  })
+
+  it('toggles a section open state via its header, feeding it back into useSidebarRows', () => {
+    useSidebarRows.mockReturnValue({ sections: [section({ key: 'local', isOpen: true })] })
+    renderSidebar()
+    act(() => (lastHeaderCalls.current[0].onToggle as () => void)())
+    expect(useSidebarRows).toHaveBeenLastCalledWith(
+      expect.objectContaining({ openState: { 'section:local': false } })
+    )
+  })
+
+  it('toggles a nested folder open state via openById, feeding it back into useSidebarRows', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [
+        section({
+          key: 'local',
+          rows: [
+            {
+              kind: 'folder',
+              id: 'folder:feat/',
+              prefix: 'feat/',
+              count: 2,
+              isOpen: true,
+              hasHead: false,
+            },
+          ],
+        }),
       ],
     })
     renderSidebar()
-    act(() => (lastRowViewCalls.current[0].onToggleOpen as (id: string) => void)('sec-local'))
+    act(() => (lastRowViewCalls.current[0].onToggleOpen as (id: string) => void)('folder:feat/'))
     expect(useSidebarRows).toHaveBeenLastCalledWith(
-      expect.objectContaining({ openState: { 'sec-local': false } })
+      expect.objectContaining({ openState: { 'folder:feat/': false } })
     )
   })
 
   it('forwards branch selection to onSelectBranch and pin toggling through the pinned-branches store', () => {
-    useSidebarRows.mockReturnValue({ rows: [row({ id: 'r1' })] })
+    useSidebarRows.mockReturnValue({ sections: [section({ rows: [row({ id: 'r1' })] })] })
     const { onSelectBranch } = renderSidebar()
     ;(lastRowViewCalls.current[0].onSelectBranch as (n: string) => void)('main')
     expect(onSelectBranch).toHaveBeenCalledWith('main')
@@ -229,23 +335,25 @@ describe('RepositorySidebar — rows', () => {
 
   it('forwards hiddenStashes and wires stash-visibility toggling to the repoData store', () => {
     useRepoDataStore.setState({ hiddenStashes: { '/repo': ['oid1'] } })
-    useSidebarRows.mockReturnValue({ rows: [row({ id: 'r1' })] })
+    useSidebarRows.mockReturnValue({ sections: [section({ rows: [row({ id: 'r1' })] })] })
     renderSidebar()
     expect(lastRowViewCalls.current[0].hiddenStashes).toEqual(['oid1'])
     ;(lastRowViewCalls.current[0].onToggleStashVisibility as (oid: string) => void)('oid2')
     expect(useRepoDataStore.getState().hiddenStashes['/repo']).toContain('oid2')
   })
 
-  it('opens the add-worktree dialog via onAddWorktree', async () => {
-    useSidebarRows.mockReturnValue({ rows: [row({ id: 'r1' })] })
+  it('opens the add-worktree dialog via the worktrees section header', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'worktrees', title: 'Worktrees' })],
+    })
     renderSidebar()
     expect(screen.getByTestId('add-worktree-dialog')).toHaveAttribute('data-open', 'false')
-    act(() => (lastRowViewCalls.current[0].onAddWorktree as () => void)())
+    act(() => (lastHeaderCalls.current[0].onAddWorktree as () => void)())
     expect(screen.getByTestId('add-worktree-dialog')).toHaveAttribute('data-open', 'true')
   })
 
   it('passes the clicked worktree to the remove-worktree dialog via onRemoveWorktree', () => {
-    useSidebarRows.mockReturnValue({ rows: [row({ id: 'r1' })] })
+    useSidebarRows.mockReturnValue({ sections: [section({ rows: [row({ id: 'r1' })] })] })
     renderSidebar()
     expect(screen.getByTestId('remove-worktree-dialog')).toHaveAttribute('data-worktree', '')
     act(() =>
@@ -275,7 +383,7 @@ describe('RepositorySidebar — stash context menu', () => {
   }
 
   function triggerStashContextMenu() {
-    useSidebarRows.mockReturnValue({ rows: [row({ id: 'r1' })] })
+    useSidebarRows.mockReturnValue({ sections: [section({ rows: [row({ id: 'r1' })] })] })
     renderSidebar()
     ;(
       lastRowViewCalls.current[0].onStashContextMenu as (
@@ -334,7 +442,7 @@ describe('RepositorySidebar — stash context menu', () => {
 
   it('routes to edit-message: selects the stash commit and sets editingOid', () => {
     showStashNativeContextMenu.mockResolvedValue(undefined)
-    useSidebarRows.mockReturnValue({ rows: [row({ id: 'r1' })] })
+    useSidebarRows.mockReturnValue({ sections: [section({ rows: [row({ id: 'r1' })] })] })
     const { onSelectBranch } = renderSidebar()
     ;(
       lastRowViewCalls.current.at(-1)!.onStashContextMenu as (

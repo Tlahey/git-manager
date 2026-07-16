@@ -5,6 +5,7 @@ import { useRepoUIStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../stores/repo
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
 import { useCommandPaletteStore } from '../stores/commandPalette.store'
 import { useCommitSearchStore } from '../stores/commitSearch.store'
+import { useSidebarSearchStore } from '../stores/sidebarSearch.store'
 import { queryClient } from '../lib/queryClient'
 
 function setUserAgent(ua: string) {
@@ -32,6 +33,7 @@ beforeEach(() => {
   useUndoHistoryStore.setState({ byRepo: {} })
   useCommandPaletteStore.setState({ open: false })
   useCommitSearchStore.setState({ open: false, query: '' })
+  useSidebarSearchStore.setState({ focusToken: 0 })
   plainEl = document.createElement('div')
   inputEl = document.createElement('input')
   document.body.append(plainEl, inputEl)
@@ -441,6 +443,55 @@ describe('useKeyboardShortcuts — commit search (⌘F)', () => {
     expect(useCommitSearchStore.getState().open).toBe(false)
     dispatchFrom(plainEl, { key: 'f', metaKey: true })
     expect(useCommitSearchStore.getState().open).toBe(true)
+  })
+})
+
+describe('useKeyboardShortcuts — sidebar search (⌥⌘F)', () => {
+  it('requests focus on Ctrl+Alt+F when a repo is active', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    renderHook(() =>
+      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+    )
+    dispatchFrom(plainEl, { key: 'f', ctrlKey: true, altKey: true })
+    expect(useSidebarSearchStore.getState().focusToken).toBe(1)
+  })
+
+  it('requests focus even while focused inside a plain input (handled before the typing guard)', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    renderHook(() =>
+      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+    )
+    dispatchFrom(inputEl, { key: 'f', ctrlKey: true, altKey: true })
+    expect(useSidebarSearchStore.getState().focusToken).toBe(1)
+  })
+
+  it('does nothing without an active repo', () => {
+    renderHook(() =>
+      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+    )
+    dispatchFrom(plainEl, { key: 'f', ctrlKey: true, altKey: true })
+    expect(useSidebarSearchStore.getState().focusToken).toBe(0)
+  })
+
+  it('does not fire on plain Ctrl+F (that toggles commit search instead)', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    renderHook(() =>
+      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+    )
+    dispatchFrom(plainEl, { key: 'f', ctrlKey: true })
+    expect(useSidebarSearchStore.getState().focusToken).toBe(0)
+  })
+
+  it('uses metaKey on a Mac user agent', () => {
+    setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    renderHook(() =>
+      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+    )
+    dispatchFrom(plainEl, { key: 'f', ctrlKey: true, altKey: true }) // ctrl alone shouldn't trigger on Mac
+    expect(useSidebarSearchStore.getState().focusToken).toBe(0)
+    dispatchFrom(plainEl, { key: 'f', metaKey: true, altKey: true })
+    expect(useSidebarSearchStore.getState().focusToken).toBe(1)
   })
 })
 

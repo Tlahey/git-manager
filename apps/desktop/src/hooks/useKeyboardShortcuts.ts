@@ -3,6 +3,7 @@ import { useRepoUIStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../stores/repo
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
 import { useCommandPaletteStore } from '../stores/commandPalette.store'
 import { useCommitSearchStore } from '../stores/commitSearch.store'
+import { useSidebarSearchStore } from '../stores/sidebarSearch.store'
 import { useIsCommitsView } from './useIsCommitsView'
 import { queryClient } from '../lib/queryClient'
 
@@ -44,6 +45,15 @@ export function useKeyboardShortcuts({
           useCommitSearchStore.getState().toggle()
           return
         }
+      }
+
+      // Sidebar search: ⌥⌘F / Ctrl+Alt+F — focuses the left panel's filter input, regardless of
+      // current focus (handled before the input guard below, like ⌘K/⌘F above).
+      const isModOptF = navigator.userAgent.includes('Mac') ? e.metaKey : e.ctrlKey
+      if (isModOptF && e.altKey && e.key.toLowerCase() === 'f' && activeRepo) {
+        e.preventDefault()
+        useSidebarSearchStore.getState().requestFocus()
+        return
       }
 
       // Ignore shortcuts if user is typing in an input, textarea or contenteditable element
