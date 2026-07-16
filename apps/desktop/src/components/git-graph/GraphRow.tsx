@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import type { GitGraphNode } from '@git-manager/git-types'
 import { cn } from '@git-manager/ui'
 import { GraphSvg } from './GraphSvg'
+import { COL_WIDTH } from './graphLayout'
 import { RefLabelGroup } from './RefLabelGroup'
 import type { ColumnKey, ResolvedColumn } from './columns'
 import { getAvatarUrl } from '../../lib/avatar'
@@ -137,7 +138,6 @@ export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
   const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
   const avatarSize = rowHeightSetting === 'small' ? 24 : 32
 
-  const COL_WIDTH = 36
   const nodeX = node.column * COL_WIDTH + COL_WIDTH / 2
 
   function handleMouseEnter(e: React.MouseEvent) {
@@ -295,7 +295,7 @@ function CellContent({
               backgroundColor: hasOriginMain
                 ? node.color
                 : `${node.color}${REF_CONNECTOR_LINE_OPACITY_HEX}`,
-              marginRight: `-${node.column * 36 + 26}px`,
+              marginRight: `-${node.column * COL_WIDTH + 26}px`,
             }}
           />
         </div>
@@ -304,7 +304,6 @@ function CellContent({
 
     case 'graph': {
       const isStash = node.refs.some((r) => r.type === 'stash')
-      const COL_WIDTH = 36
       const nodeX = node.column * COL_WIDTH + COL_WIDTH / 2
       return (
         <div className="relative flex h-full w-full items-center overflow-visible">
@@ -488,7 +487,6 @@ export const GraphRow = memo(function GraphRow({
   const refsWidth = refsColumn ? refsColumn.width : 160
   const graphColumn = columns.find((c) => c.key === 'graph')
   const graphWidth = graphColumn ? graphColumn.width : 120
-  const COL_WIDTH = 36
   const nodeX = node.column * COL_WIDTH + COL_WIDTH / 2
   // Start the band at the node's vertical line (the avatar/point center), so the left half of the
   // node stays clear. Node center in row coords = refsWidth + 8px cell padding + nodeX.

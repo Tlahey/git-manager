@@ -1,5 +1,6 @@
 import type { GitGraphEdge } from '@git-manager/git-types'
 import { useSettingsStore } from '../../stores/settings.store'
+import { COL_WIDTH } from './graphLayout'
 
 interface GraphSvgProps {
   column: number
@@ -9,7 +10,6 @@ interface GraphSvgProps {
   isFirst?: boolean
 }
 
-const COL_WIDTH = 36
 /** Corner radius for the rounded turns where a connection line changes column. */
 const CORNER_RADIUS = 8
 
