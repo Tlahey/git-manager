@@ -14,6 +14,7 @@ import {
   GitFork,
 } from 'lucide-react'
 import { Spinner } from '@git-manager/ui'
+import { highlightMatch } from '@git-manager/components'
 import type { GitBranch, GitWorktree, PullRequest, GitStash } from '@git-manager/git-types'
 import type { SidebarRow } from './types'
 import { BranchItem } from './BranchItem'
@@ -31,6 +32,8 @@ interface SidebarRowViewProps {
   hiddenStashes?: string[]
   onToggleStashVisibility?: (oid: string) => void
   onRemoveWorktree?: (wt: GitWorktree) => void
+  /** Active sidebar search query — matched substrings are highlighted in the row's label(s). */
+  filterQuery?: string
 }
 
 export function SidebarRowView({
@@ -44,6 +47,7 @@ export function SidebarRowView({
   hiddenStashes = [],
   onToggleStashVisibility,
   onRemoveWorktree,
+  filterQuery = '',
 }: SidebarRowViewProps) {
   switch (row.kind) {
     case 'branch':
@@ -57,6 +61,7 @@ export function SidebarRowView({
           onSelect={onSelectBranch}
           onTogglePin={onTogglePin}
           onContextMenu={onContextMenu}
+          filterQuery={filterQuery}
         />
       )
 
@@ -120,7 +125,7 @@ export function SidebarRowView({
           onKeyDown={(e) => e.key === 'Enter' && onSelectBranch(row.branch.name)}
         >
           <BranchIcon className="h-3 w-3 shrink-0 opacity-30" />
-          <HoverExpandLabel>{displayName}</HoverExpandLabel>
+          <HoverExpandLabel>{highlightMatch(displayName, filterQuery)}</HoverExpandLabel>
           {(row.branch.aheadCount > 0 || row.branch.behindCount > 0) && (
             <span className="shrink-0 text-[10px] tabular-nums">
               {row.branch.aheadCount > 0 && (
@@ -154,7 +159,14 @@ export function SidebarRowView({
       )
 
     case 'pr':
-      return <PullRequestItem pr={row.pr} onOpen={onOpenPr} isSelected={row.isSelected} />
+      return (
+        <PullRequestItem
+          pr={row.pr}
+          onOpen={onOpenPr}
+          isSelected={row.isSelected}
+          filterQuery={filterQuery}
+        />
+      )
 
     case 'tag':
       return (
@@ -170,7 +182,7 @@ export function SidebarRowView({
           onKeyDown={(e) => e.key === 'Enter' && onSelectBranch(row.tag.name)}
         >
           <TagIcon className="h-3 w-3 shrink-0 opacity-30" />
-          <HoverExpandLabel>{row.tag.shortName}</HoverExpandLabel>
+          <HoverExpandLabel>{highlightMatch(row.tag.shortName, filterQuery)}</HoverExpandLabel>
           <span className="shrink-0 font-mono text-[10px] font-normal tabular-nums text-sidebar-muted-foreground/40">
             {row.tag.commitOid.slice(0, 7)}
           </span>
@@ -240,7 +252,7 @@ export function SidebarRowView({
           </span>
           <ArchiveIcon className="h-3 w-3 shrink-0 text-violet-400 opacity-40" />
           <HoverExpandLabel className="min-w-0 flex-1 truncate">
-            {row.stash.message || `stash@{${row.stash.index}}`}
+            {highlightMatch(row.stash.message || `stash@{${row.stash.index}}`, filterQuery)}
           </HoverExpandLabel>
           <span className="shrink-0 font-mono text-[10px] font-normal tabular-nums text-sidebar-muted-foreground/40">
             {row.stash.commitOid.slice(0, 7)}
@@ -257,7 +269,9 @@ export function SidebarRowView({
         >
           <GitFork className="mt-0.5 h-3 w-3 shrink-0 opacity-30" />
           <div className="min-w-0 flex-1">
-            <HoverExpandLabel className="font-medium">{row.sm.path}</HoverExpandLabel>
+            <HoverExpandLabel className="font-medium">
+              {highlightMatch(row.sm.path, filterQuery)}
+            </HoverExpandLabel>
             <span className="block truncate text-[10px] text-sidebar-muted-foreground/50">
               {row.sm.url.replace(/^(https?:\/\/|git@)/, '').replace(/\.git$/, '')}
             </span>
@@ -280,10 +294,10 @@ export function SidebarRowView({
           <div className="min-w-0 flex-1">
             <HoverExpandLabel className="font-medium">
               {row.wt.isLocked && <Lock className="mr-1 inline h-2.5 w-2.5 text-amber-400" />}
-              {row.wt.branch}
+              {highlightMatch(row.wt.branch, filterQuery)}
             </HoverExpandLabel>
             <span className="block truncate text-[10px] text-sidebar-muted-foreground/50">
-              {row.wt.path}
+              {highlightMatch(row.wt.path, filterQuery)}
             </span>
           </div>
           <span className="shrink-0 font-mono text-[10px] tabular-nums text-sidebar-muted-foreground/30">

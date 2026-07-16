@@ -1,4 +1,5 @@
 import { GitBranch as BranchIcon, MoreHorizontal, Pin } from 'lucide-react'
+import { highlightMatch } from '@git-manager/components'
 import type { GitBranch } from '@git-manager/git-types'
 import { HoverExpandLabel } from './HoverExpandLabel'
 
@@ -13,6 +14,8 @@ interface BranchItemProps {
   onSelect: (name: string) => void
   onTogglePin?: (shortName: string) => void
   onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
+  /** Active sidebar search query — matched substrings are highlighted in the branch name. */
+  filterQuery?: string
 }
 
 export function BranchItem({
@@ -25,6 +28,7 @@ export function BranchItem({
   onSelect,
   onTogglePin,
   onContextMenu,
+  filterQuery = '',
 }: BranchItemProps) {
   const paddingLeft = depth === 1 ? 'pl-10' : 'pl-6'
 
@@ -47,7 +51,7 @@ export function BranchItem({
       {/* Nom de la branche — hover-expand robuste (overlay fixed) */}
       <HoverExpandLabel className={branch.isHead ? 'font-medium text-sidebar-foreground' : ''}>
         {branch.isHead && <span className="mr-1 text-[10px] text-emerald-400">●</span>}
-        {displayName}
+        {highlightMatch(displayName, filterQuery)}
       </HoverExpandLabel>
 
       {/* Ahead / Behind — toujours affiché (push/pull) */}

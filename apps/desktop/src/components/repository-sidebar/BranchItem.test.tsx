@@ -75,6 +75,27 @@ describe('BranchItem — rendering', () => {
     expect(screen.getByText('feat/a')).toBeInTheDocument()
   })
 
+  it('highlights the matched substring when filterQuery is provided', () => {
+    const { container } = render(
+      <BranchItem
+        branch={branch({ shortName: 'feature-x' })}
+        isSelected={false}
+        onSelect={vi.fn()}
+        filterQuery="eat"
+      />
+    )
+    const mark = container.querySelector('mark')
+    expect(mark?.textContent).toBe('eat')
+    expect(container.textContent).toContain('feature-x')
+  })
+
+  it('renders the plain name with no <mark> when filterQuery is empty', () => {
+    const { container } = render(
+      <BranchItem branch={branch({ shortName: 'feature-x' })} isSelected={false} onSelect={vi.fn()} />
+    )
+    expect(container.querySelector('mark')).toBeFalsy()
+  })
+
   it('shows ahead/behind counts only when non-zero', () => {
     const { rerender } = render(
       <BranchItem branch={branch()} isSelected={false} onSelect={vi.fn()} />

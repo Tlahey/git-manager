@@ -9,7 +9,7 @@ import { SidebarResizeHandle } from './SidebarResizeHandle'
 import { SidebarRail } from './SidebarRail'
 import { SidebarRowView } from './SidebarRowView'
 import { SidebarSectionHeader } from './SidebarSectionHeader'
-import { MAX_SECTION_BODY_HEIGHT, DEFAULT_PINNED } from './types'
+import { MIN_SECTION_BODY_HEIGHT, MIN_SECTION_HEIGHT, DEFAULT_PINNED } from './types'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { BlameHistoryPanel } from './BlameHistoryPanel'
@@ -48,6 +48,7 @@ export function RepositorySidebar({
 }: RepositorySidebarProps) {
   const { width, isCollapsed, collapse, expand, resizeHandleProps } = useSidebarResize()
   const [branchQuery, setBranchQuery] = useState('')
+  const isFilterActive = branchQuery.trim().length > 0
 
   const activeLeftPanel = useRepoUIStore((s) => s.activeLeftPanel)
   const activeDiffFile = useRepoUIStore((s) => s.activeDiffFile)
@@ -110,7 +111,7 @@ export function RepositorySidebar({
   const setPin = usePinnedBranchesStore((s) => s.setPin)
   const overrides = usePinnedBranchesStore((s) => s.overrides[repoPath])
 
-  const { sections } = useSidebarRows({
+  const { sections, filterStats } = useSidebarRows({
     repoPath,
     remoteUrls,
     currentUser,
@@ -223,6 +224,15 @@ export function RepositorySidebar({
 
       {/* Barre de recherche dans les branches */}
       <div className="shrink-0 border-b border-sidebar-border px-2 py-1.5">
+        {isFilterActive && (
+          <div
+            className="mb-1 px-0.5 text-[10px] text-sidebar-muted-foreground"
+            data-testid="sidebar-filter-stats"
+          >
+            <span className="font-semibold text-primary">{filterStats.matched}</span>
+            {` / ${filterStats.total} résultats`}
+          </div>
+        )}
         <div className="relative">
           <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sidebar-muted-foreground/60" />
           <input
@@ -246,13 +256,25 @@ export function RepositorySidebar({
         </div>
       </div>
 
-      {/* Sections repliables — chaque corps déplié est borné en hauteur avec son propre
-          scroll, pour ne pas repousser les sections suivantes hors de vue. */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+      {/* Sections repliables — chaque section ouverte est `flex-1` (poids égal, base 0%) : les
+          sections ouvertes se partagent toujours la hauteur disponible à parts strictement
+          égales, même une section clairsemée (ex: un seul worktree) — c'est voulu, pour que toutes
+          les sections ouvertes s'alignent sur la même hauteur. Chaque section ouverte a un
+          plancher (min-height) fixé explicitement en style inline plutôt que de compter sur la
+          taille minimale automatique dérivée du contenu (voir le commentaire de
+          `MIN_SECTION_HEIGHT` dans types.ts pour le pourquoi — c'est ce qui causait
+          l'agrandissement non borné puis le chevauchement des sections suivantes). Si la somme des
+          planchers des sections ouvertes dépasse la hauteur du panel, c'est la liste de sections
+          entière qui devient scrollable (un seul scrollbar global). Les sections fermées restent
+          `flex-none` (ne rétrécissent jamais sous leur en-tête). */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
         {sections.map((section) => (
           <div
             key={section.key}
-            className="border-b border-sidebar-border last:border-b-0"
+            className={`flex flex-col border-b border-sidebar-border last:border-b-0 ${
+              section.isOpen ? 'flex-1' : 'flex-none'
+            }`}
+            style={section.isOpen ? { minHeight: MIN_SECTION_HEIGHT } : undefined}
             data-testid={`sidebar-section-container-${section.key}`}
           >
             <SidebarSectionHeader
@@ -268,13 +290,18 @@ export function RepositorySidebar({
               onCreatePr={
                 section.key === 'prs' && githubToken ? () => setPrCreateOpen(true) : undefined
               }
+              isFiltered={isFilterActive}
             />
             {section.isOpen && (
-              <div className="overflow-y-auto" style={{ maxHeight: MAX_SECTION_BODY_HEIGHT }}>
+              <div
+                className="flex-1 overflow-y-auto"
+                style={{ minHeight: MIN_SECTION_BODY_HEIGHT }}
+              >
                 {section.rows.map((row) => (
                   <SidebarRowView
                     key={row.id}
                     row={row}
+                    filterQuery={branchQuery}
                     onToggleOpen={(id) => toggleOpen(id, openById.get(id) ?? false)}
                     onSelectBranch={onSelectBranch}
                     onTogglePin={onTogglePin}

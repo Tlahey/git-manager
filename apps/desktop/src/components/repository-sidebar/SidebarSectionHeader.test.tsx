@@ -94,4 +94,29 @@ describe('SidebarSectionHeader', () => {
     )
     expect(screen.queryByTestId('pr-create-button')).not.toBeInTheDocument()
   })
+
+  it('forwards isFiltered to the underlying SectionHeader as a filter icon', () => {
+    const { container, rerender } = render(
+      <SidebarSectionHeader
+        sectionKey="local"
+        title="Local"
+        count={2}
+        isOpen={true}
+        onToggle={vi.fn()}
+      />
+    )
+    expect(container.querySelector('.lucide-filter')).toBeFalsy()
+
+    rerender(
+      <SidebarSectionHeader
+        sectionKey="local"
+        title="Local"
+        count={2}
+        isOpen={true}
+        onToggle={vi.fn()}
+        isFiltered
+      />
+    )
+    expect(container.querySelector('.lucide-filter')).toBeTruthy()
+  })
 })

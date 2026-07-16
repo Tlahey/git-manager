@@ -67,6 +67,15 @@ describe('PullRequestItem — content', () => {
     const { container } = render(<PullRequestItem pr={pr()} isSelected />)
     expect(container.firstElementChild).toHaveClass('bg-sidebar-accent')
   })
+
+  it('highlights the matched substring in the title when filterQuery is provided', () => {
+    const { container } = render(
+      <PullRequestItem pr={pr({ title: 'Fix login bug' })} filterQuery="login" />
+    )
+    const mark = container.querySelector('mark')
+    expect(mark?.textContent).toBe('login')
+    expect(container.textContent).toContain('Fix login bug')
+  })
 })
 
 describe('PullRequestItem — CI status icon', () => {

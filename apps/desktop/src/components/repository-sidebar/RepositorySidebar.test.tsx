@@ -133,7 +133,7 @@ beforeEach(() => {
   usePinnedBranchesStore.setState(INITIAL_PINNED, true)
   useSidebarSearchStore.setState({ focusToken: 0 })
   useSidebarResize.mockReturnValue(resizeState())
-  useSidebarRows.mockReturnValue({ sections: [] })
+  useSidebarRows.mockReturnValue({ sections: [], filterStats: { matched: 0, total: 0 } })
 })
 
 describe('RepositorySidebar — mode routing', () => {
@@ -200,6 +200,41 @@ describe('RepositorySidebar — search filter', () => {
     await user.click(screen.getByLabelText('Effacer le filtre'))
     expect(input).toHaveValue('')
   })
+
+  it('forwards the typed filter to SidebarRowView and marks section headers as filtered', async () => {
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'local', rows: [row({ id: 'r1' })] })],
+      filterStats: { matched: 1, total: 5 },
+    })
+    const user = userEvent.setup()
+    renderSidebar()
+    await user.type(screen.getByLabelText('Filtrer les branches'), 'feat')
+    expect(lastRowViewCalls.current.at(-1)).toMatchObject({ filterQuery: 'feat' })
+    expect(lastHeaderCalls.current.at(-1)).toMatchObject({ isFiltered: true })
+  })
+
+  it('does not mark section headers as filtered when the search box is empty', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'local', rows: [row({ id: 'r1' })] })],
+      filterStats: { matched: 0, total: 5 },
+    })
+    renderSidebar()
+    expect(lastHeaderCalls.current.at(-1)).toMatchObject({ isFiltered: false })
+    expect(lastRowViewCalls.current.at(-1)).toMatchObject({ filterQuery: '' })
+  })
+
+  it('shows the matched/total count above the search box only while filtering', async () => {
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'local', rows: [row({ id: 'r1' })] })],
+      filterStats: { matched: 3, total: 139 },
+    })
+    const user = userEvent.setup()
+    renderSidebar()
+    expect(screen.queryByTestId('sidebar-filter-stats')).not.toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('Filtrer les branches'), 'feat')
+    expect(screen.getByTestId('sidebar-filter-stats')).toHaveTextContent('3 / 139 résultats')
+  })
 })
 
 describe('RepositorySidebar — focus shortcut (⌥⌘F)', () => {
@@ -258,6 +293,52 @@ describe('RepositorySidebar — sections', () => {
     renderSidebar()
     expect(screen.getByTestId('header-tags')).toBeInTheDocument()
     expect(lastRowViewCalls.current).toHaveLength(0)
+  })
+
+  it('gives every open section container flex-1 so open sections always share height equally (even a sparse one), and leaves closed ones flex-none', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [
+        section({ key: 'local', isOpen: true, rows: [] }),
+        section({ key: 'remotes', isOpen: false, rows: [] }),
+      ],
+    })
+    renderSidebar()
+    expect(screen.getByTestId('sidebar-section-container-local')).toHaveClass('flex-1')
+    expect(screen.getByTestId('sidebar-section-container-remotes')).toHaveClass('flex-none')
+  })
+
+  it("gives an open section container an explicit min-height floor (268px = header + body floor) so shrinking is deterministic — an automatic content-based floor previously caused sections to overlap instead of being pushed down", () => {
+    useSidebarRows.mockReturnValue({
+      sections: [
+        section({ key: 'local', isOpen: true, rows: [] }),
+        section({ key: 'remotes', isOpen: false, rows: [] }),
+      ],
+    })
+    renderSidebar()
+    expect(screen.getByTestId('sidebar-section-container-local')).toHaveStyle({
+      minHeight: '148px',
+    })
+    expect(screen.getByTestId('sidebar-section-container-remotes').style.minHeight).toBe('')
+  })
+
+  it('the section list itself scrolls (not the individual sections) once open sections’ combined floors exceed the panel height', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'local', isOpen: true, rows: [] })],
+    })
+    renderSidebar()
+    const list = screen.getByTestId('sidebar-section-container-local').parentElement!
+    expect(list).toHaveClass('min-h-0', 'overflow-y-auto')
+  })
+
+  it("gives an open section's body a min-height floor with no max-height, so equally-shared sections only shrink (never grow past their share) under space pressure", () => {
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'local', isOpen: true, rows: [row({ id: 'r1' })] })],
+    })
+    renderSidebar()
+    const body = screen.getByTestId('row-r1').parentElement!
+    expect(body).toHaveClass('flex-1', 'overflow-y-auto')
+    expect(body).toHaveStyle({ minHeight: '120px' })
+    expect(body.style.maxHeight).toBe('')
   })
 
   it('forwards onCreateBranch to the local section header only', () => {

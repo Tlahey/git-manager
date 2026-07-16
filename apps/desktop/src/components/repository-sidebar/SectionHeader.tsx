@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Filter } from 'lucide-react'
 
 interface SectionHeaderProps {
   title: string
@@ -8,6 +8,9 @@ interface SectionHeaderProps {
   onToggle: () => void
   action?: React.ReactNode
   testId?: string
+  /** When true, `count` reflects a search filter rather than the section's full contents — shown
+   * with a small funnel icon so the (often smaller) number isn't mistaken for the total. */
+  isFiltered?: boolean
 }
 
 export function SectionHeader({
@@ -18,6 +21,7 @@ export function SectionHeader({
   onToggle,
   action,
   testId,
+  isFiltered = false,
 }: SectionHeaderProps) {
   return (
     <div className="group/header relative flex items-center">
@@ -39,10 +43,13 @@ export function SectionHeader({
         </span>
         {count !== undefined && (
           <span
-            className={`shrink-0 text-[10px] tabular-nums text-sidebar-muted-foreground/40 transition-opacity ${
+            className={`flex shrink-0 items-center gap-1 text-[10px] tabular-nums text-sidebar-muted-foreground/40 transition-opacity ${
               action ? 'group-hover/header:opacity-0' : ''
             }`}
           >
+            {isFiltered && (
+              <Filter className="h-2.5 w-2.5 text-primary" aria-label="Résultats filtrés" />
+            )}
             {count}
           </span>
         )}

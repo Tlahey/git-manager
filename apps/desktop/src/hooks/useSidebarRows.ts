@@ -31,6 +31,9 @@ interface UseSidebarRowsResult {
   sections: SidebarSection[]
   /** État épinglé effectif d'une branche locale. */
   isPinned: (shortName: string) => boolean
+  /** Nombre d'éléments correspondant au filtre actif vs. total du panel, tous types confondus —
+   * affiché au-dessus de la barre de recherche pour donner une vue d'ensemble du résultat. */
+  filterStats: { matched: number; total: number }
 }
 
 const TAGS_LIMIT = 100
@@ -81,7 +84,47 @@ export function useSidebarRows({
   const worktrees = useMemo(() => allWorktrees.filter((wt) => !wt.isMain), [allWorktrees])
 
   const q = filter.trim().toLowerCase()
-  const matchesFilter = (b: GitBranch) => !q || b.shortName.toLowerCase().includes(q)
+  const includesQuery = (text: string) => !q || text.toLowerCase().includes(q)
+  const matchesFilter = (b: GitBranch) => includesQuery(b.shortName)
+
+  // ── Filtrage des sections non-branches — la barre de recherche du panel gauche doit
+  // porter sur l'ensemble de son contenu, pas seulement les branches locales/remotes.
+  const filteredPrs = useMemo(
+    () =>
+      allPrs.filter(
+        (pr) =>
+          includesQuery(pr.title) ||
+          includesQuery(pr.headRef) ||
+          includesQuery(pr.author) ||
+          includesQuery(String(pr.number))
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allPrs, q]
+  )
+
+  const filteredTags = useMemo(
+    () => tags.filter((t) => includesQuery(t.shortName)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tags, q]
+  )
+
+  const filteredStashes = useMemo(
+    () => stashes.filter((s) => includesQuery(s.message) || includesQuery(s.branch)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [stashes, q]
+  )
+
+  const filteredSubmodules = useMemo(
+    () => submodules.filter((sm) => includesQuery(sm.path)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [submodules, q]
+  )
+
+  const filteredWorktrees = useMemo(
+    () => worktrees.filter((wt) => includesQuery(wt.branch) || includesQuery(wt.path)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [worktrees, q]
+  )
 
   const isPinned = (shortName: string): boolean =>
     overrides?.[shortName] ?? DEFAULT_PINNED.includes(shortName)
@@ -197,13 +240,17 @@ export function useSidebarRows({
         }
       }
     }
-    list.push({
-      key: 'local',
-      title: 'Local',
-      count: localBranches.length,
-      isOpen: localOpen,
-      rows: localRows,
-    })
+    // Hidden entirely when actively filtering down to zero matches — a non-empty repo always has
+    // a local section otherwise, so this only ever fires while `q` is set.
+    if (!(q && localBranches.length === 0)) {
+      list.push({
+        key: 'local',
+        title: 'Local',
+        count: localBranches.length,
+        isOpen: localOpen,
+        rows: localRows,
+      })
+    }
 
     // ----- Remotes -----
     if (remoteGroups.length > 0) {
@@ -243,6 +290,8 @@ export function useSidebarRows({
     }
 
     // ----- Pull Requests -----
+    // Hidden while actively filtering down to zero matches; the "loading"/"connect GitHub" states
+    // stay visible regardless of the filter since they aren't about matching, just reachability.
     {
       const open = sectionOpen('prs')
       const prRows: SidebarRow[] = []
@@ -261,10 +310,10 @@ export function useSidebarRows({
             text: 'Connectez un dépôt GitHub pour voir les PRs.',
           })
         } else {
-          if (allPrs.length === 0) {
+          if (filteredPrs.length === 0) {
             prRows.push({ kind: 'message', id: 'pr:empty', text: 'Aucune PR ouverte.' })
           } else {
-            for (const pr of allPrs) {
+            for (const pr of filteredPrs) {
               prRows.push({
                 kind: 'pr',
                 id: `pr:${pr.number}`,
@@ -275,21 +324,24 @@ export function useSidebarRows({
           }
         }
       }
-      list.push({
-        key: 'prs',
-        title: 'Pull Requests',
-        count: allPrs.length || undefined,
-        isOpen: open,
-        rows: prRows,
-      })
+      const hideForFilter = q && isGithub && !prsLoading && filteredPrs.length === 0
+      if (!hideForFilter) {
+        list.push({
+          key: 'prs',
+          title: 'Pull Requests',
+          count: filteredPrs.length || undefined,
+          isOpen: open,
+          rows: prRows,
+        })
+      }
     }
 
     // ----- Tags -----
-    if (tags.length > 0) {
+    if (filteredTags.length > 0) {
       const open = sectionOpen('tags')
       const tagRows: SidebarRow[] = []
       if (open) {
-        for (const tag of tags.slice(0, TAGS_LIMIT)) {
+        for (const tag of filteredTags.slice(0, TAGS_LIMIT)) {
           tagRows.push({
             kind: 'tag',
             id: `tag:${tag.name}`,
@@ -297,23 +349,29 @@ export function useSidebarRows({
             isSelected: selectedBranch === tag.name || selectedBranch === tag.shortName,
           })
         }
-        if (tags.length > TAGS_LIMIT) {
+        if (filteredTags.length > TAGS_LIMIT) {
           tagRows.push({
             kind: 'message',
             id: 'tag:more',
-            text: `+ ${tags.length - TAGS_LIMIT} autres tags`,
+            text: `+ ${filteredTags.length - TAGS_LIMIT} autres tags`,
           })
         }
       }
-      list.push({ key: 'tags', title: 'Tags', count: tags.length, isOpen: open, rows: tagRows })
+      list.push({
+        key: 'tags',
+        title: 'Tags',
+        count: filteredTags.length,
+        isOpen: open,
+        rows: tagRows,
+      })
     }
 
     // ----- Stashes -----
-    if (stashes.length > 0) {
+    if (filteredStashes.length > 0) {
       const open = sectionOpen('stashes')
       const stashRows: SidebarRow[] = []
       if (open) {
-        for (const stash of stashes) {
+        for (const stash of filteredStashes) {
           stashRows.push({
             kind: 'stash',
             id: `stash:${stash.index}`,
@@ -325,41 +383,42 @@ export function useSidebarRows({
       list.push({
         key: 'stashes',
         title: 'Stashes',
-        count: stashes.length,
+        count: filteredStashes.length,
         isOpen: open,
         rows: stashRows,
       })
     }
 
     // ----- Submodules -----
-    if (submodules.length > 0) {
+    if (filteredSubmodules.length > 0) {
       const open = sectionOpen('submodules')
       const smRows: SidebarRow[] = []
       if (open) {
-        for (const sm of submodules) {
+        for (const sm of filteredSubmodules) {
           smRows.push({ kind: 'submodule', id: `sm:${sm.path}`, sm })
         }
       }
       list.push({
         key: 'submodules',
         title: 'Submodules',
-        count: submodules.length,
+        count: filteredSubmodules.length,
         isOpen: open,
         rows: smRows,
       })
     }
 
     // ----- Worktrees -----
-    // Always shown (unlike Submodules/Tags/Stashes, which hide when empty) — this is the only
-    // section whose header carries an "add" action, so it must stay reachable with zero worktrees.
-    {
+    // Always shown when unfiltered (unlike Submodules/Tags/Stashes, which hide when empty) — this
+    // is the only section whose header carries an "add" action, so it must stay reachable with
+    // zero worktrees. It still hides while actively filtering down to zero matches.
+    if (!(q && filteredWorktrees.length === 0)) {
       const open = sectionOpen('worktrees')
       const wtRows: SidebarRow[] = []
       if (open) {
-        if (worktrees.length === 0) {
+        if (filteredWorktrees.length === 0) {
           wtRows.push({ kind: 'message', id: 'wt:empty', text: 'No linked worktrees.' })
         } else {
-          for (const wt of worktrees) {
+          for (const wt of filteredWorktrees) {
             wtRows.push({ kind: 'worktree', id: `wt:${wt.path}`, wt })
           }
         }
@@ -367,7 +426,7 @@ export function useSidebarRows({
       list.push({
         key: 'worktrees',
         title: 'Worktrees',
-        count: worktrees.length || undefined,
+        count: filteredWorktrees.length || undefined,
         isOpen: open,
         rows: wtRows,
       })
@@ -375,6 +434,7 @@ export function useSidebarRows({
 
     return list
   }, [
+    q,
     openState,
     selectedBranch,
     localBranches.length,
@@ -383,14 +443,49 @@ export function useSidebarRows({
     groups,
     remoteGroups,
     remoteCount,
-    allPrs,
+    filteredPrs,
     isGithub,
     prsLoading,
-    tags,
-    stashes,
-    submodules,
-    worktrees,
+    filteredTags,
+    filteredStashes,
+    filteredSubmodules,
+    filteredWorktrees,
   ])
 
-  return { sections, isPinned }
+  const filterStats = useMemo(
+    () => ({
+      matched:
+        localBranches.length +
+        remoteCount +
+        filteredPrs.length +
+        filteredTags.length +
+        filteredStashes.length +
+        filteredSubmodules.length +
+        filteredWorktrees.length,
+      total:
+        allBranches.length +
+        allPrs.length +
+        tags.length +
+        stashes.length +
+        submodules.length +
+        worktrees.length,
+    }),
+    [
+      localBranches.length,
+      remoteCount,
+      filteredPrs,
+      filteredTags,
+      filteredStashes,
+      filteredSubmodules,
+      filteredWorktrees,
+      allBranches.length,
+      allPrs.length,
+      tags.length,
+      stashes.length,
+      submodules.length,
+      worktrees.length,
+    ]
+  )
+
+  return { sections, isPinned, filterStats }
 }

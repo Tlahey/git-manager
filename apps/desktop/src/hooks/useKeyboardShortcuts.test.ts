@@ -452,7 +452,7 @@ describe('useKeyboardShortcuts — sidebar search (⌥⌘F)', () => {
     renderHook(() =>
       useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
     )
-    dispatchFrom(plainEl, { key: 'f', ctrlKey: true, altKey: true })
+    dispatchFrom(plainEl, { code: 'KeyF', ctrlKey: true, altKey: true })
     expect(useSidebarSearchStore.getState().focusToken).toBe(1)
   })
 
@@ -461,7 +461,7 @@ describe('useKeyboardShortcuts — sidebar search (⌥⌘F)', () => {
     renderHook(() =>
       useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
     )
-    dispatchFrom(inputEl, { key: 'f', ctrlKey: true, altKey: true })
+    dispatchFrom(inputEl, { code: 'KeyF', ctrlKey: true, altKey: true })
     expect(useSidebarSearchStore.getState().focusToken).toBe(1)
   })
 
@@ -469,7 +469,7 @@ describe('useKeyboardShortcuts — sidebar search (⌥⌘F)', () => {
     renderHook(() =>
       useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
     )
-    dispatchFrom(plainEl, { key: 'f', ctrlKey: true, altKey: true })
+    dispatchFrom(plainEl, { code: 'KeyF', ctrlKey: true, altKey: true })
     expect(useSidebarSearchStore.getState().focusToken).toBe(0)
   })
 
@@ -478,7 +478,7 @@ describe('useKeyboardShortcuts — sidebar search (⌥⌘F)', () => {
     renderHook(() =>
       useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
     )
-    dispatchFrom(plainEl, { key: 'f', ctrlKey: true })
+    dispatchFrom(plainEl, { code: 'KeyF', key: 'f', ctrlKey: true })
     expect(useSidebarSearchStore.getState().focusToken).toBe(0)
   })
 
@@ -488,9 +488,20 @@ describe('useKeyboardShortcuts — sidebar search (⌥⌘F)', () => {
     renderHook(() =>
       useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
     )
-    dispatchFrom(plainEl, { key: 'f', ctrlKey: true, altKey: true }) // ctrl alone shouldn't trigger on Mac
+    dispatchFrom(plainEl, { code: 'KeyF', ctrlKey: true, altKey: true }) // ctrl alone shouldn't trigger on Mac
     expect(useSidebarSearchStore.getState().focusToken).toBe(0)
-    dispatchFrom(plainEl, { key: 'f', metaKey: true, altKey: true })
+    dispatchFrom(plainEl, { code: 'KeyF', metaKey: true, altKey: true })
+    expect(useSidebarSearchStore.getState().focusToken).toBe(1)
+  })
+
+  it('fires on the real macOS Option+F keypress, where e.key is the composed "ƒ" character, not "f"', () => {
+    setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    renderHook(() =>
+      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+    )
+    // What macOS actually reports for a physical Option+Cmd+F keypress on a US layout.
+    dispatchFrom(plainEl, { code: 'KeyF', key: 'ƒ', metaKey: true, altKey: true })
     expect(useSidebarSearchStore.getState().focusToken).toBe(1)
   })
 })
