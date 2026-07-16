@@ -115,7 +115,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
       id: 'integrations',
       label: t('settings.sections.integrations'),
       render: () => (
-        <div className="h-full flex-1 overflow-hidden p-6">
+        <div className="h-full flex-1 overflow-hidden">
           <IntegrationSection />
         </div>
       ),
