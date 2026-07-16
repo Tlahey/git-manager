@@ -12,6 +12,7 @@
   "settings.sections.rewards": "Achievements & Rewards",
   "settings.sections.debug": "Debug",
   "settings.sections.changelog": "Changelog",
+  "settings.sections.support": "Support",
   "settings.ai.enabled": "Enable AI",
   "settings.ai.enabledHint": "Turn AI features on. When off, AI-specific settings (like AI - commit) are hidden.",
   "settings.ai.preset": "Provider",
@@ -139,5 +140,9 @@
   "settings.reset.confirmAction": "Confirm",
   "settings.reset.cancel": "Cancel",
   "settings.repository.overriddenTag": "Overridden",
-  "settings.repository.overriddenHint": "The current workspace overrides this in its Local configuration"
+  "settings.repository.overriddenHint": "The current workspace overrides this in its Local configuration",
+  "settings.support.title": "Support the project",
+  "settings.support.description": "git-manager is free and 100% local, with nothing extra unlocked by sponsoring.",
+  "settings.support.hint": "If you enjoy the tool and want to help support the developer, this is the place.",
+  "settings.support.sponsorButton": "Sponsor on GitHub"
 }

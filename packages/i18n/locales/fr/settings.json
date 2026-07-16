@@ -12,6 +12,7 @@
   "settings.sections.rewards": "Succès & Récompenses",
   "settings.sections.debug": "Debug",
   "settings.sections.changelog": "Journal des modifications",
+  "settings.sections.support": "Soutenir",
   "settings.ai.enabled": "Activer l'IA",
   "settings.ai.enabledHint": "Active les fonctionnalités IA. Désactivé, les réglages spécifiques à l'IA (comme IA - commit) sont masqués.",
   "settings.ai.preset": "Fournisseur",
@@ -139,5 +140,9 @@
   "settings.reset.confirmAction": "Confirmer",
   "settings.reset.cancel": "Annuler",
   "settings.repository.overriddenTag": "Overridé",
-  "settings.repository.overriddenHint": "Le workspace courant surcharge ce réglage dans sa configuration Locale"
+  "settings.repository.overriddenHint": "Le workspace courant surcharge ce réglage dans sa configuration Locale",
+  "settings.support.title": "Soutenir le projet",
+  "settings.support.description": "git-manager est gratuit et 100% local, sans aucune contrepartie liée au parrainage.",
+  "settings.support.hint": "Si vous aimez l'outil et que vous souhaitez aider à soutenir le développeur, c'est ici que ça se passe.",
+  "settings.support.sponsorButton": "Parrainer sur GitHub"
 }
