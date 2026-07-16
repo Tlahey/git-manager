@@ -4,6 +4,8 @@ import { HoverExpandLabel } from './HoverExpandLabel'
 
 interface BranchItemProps {
   branch: GitBranch
+  /** Nom affiché — par défaut le shortName complet (ex: préfixe de dossier retiré par l'appelant). */
+  displayName?: string
   isSelected: boolean
   depth?: 0 | 1
   isPinned?: boolean
@@ -15,6 +17,7 @@ interface BranchItemProps {
 
 export function BranchItem({
   branch,
+  displayName = branch.shortName,
   isSelected,
   depth = 0,
   isPinned = false,
@@ -44,7 +47,7 @@ export function BranchItem({
       {/* Nom de la branche — hover-expand robuste (overlay fixed) */}
       <HoverExpandLabel className={branch.isHead ? 'font-medium text-sidebar-foreground' : ''}>
         {branch.isHead && <span className="mr-1 text-[10px] text-emerald-400">●</span>}
-        {branch.shortName}
+        {displayName}
       </HoverExpandLabel>
 
       {/* Ahead / Behind — toujours affiché (push/pull) */}

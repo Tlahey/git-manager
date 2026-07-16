@@ -47,6 +47,34 @@ describe('BranchItem — rendering', () => {
     expect(container.firstElementChild).toHaveClass('bg-sidebar-accent')
   })
 
+  it('renders displayName instead of the full shortName when provided, but still selects/pins by shortName', async () => {
+    const onSelect = vi.fn()
+    const onTogglePin = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <BranchItem
+        branch={branch({ shortName: 'feat/ma_branche' })}
+        displayName="ma_branche"
+        isSelected={false}
+        onSelect={onSelect}
+        onTogglePin={onTogglePin}
+      />
+    )
+    expect(screen.getByText('ma_branche')).toBeInTheDocument()
+    expect(screen.queryByText('feat/ma_branche')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('ma_branche'))
+    expect(onSelect).toHaveBeenCalledWith('feat/ma_branche')
+
+    await user.click(screen.getByLabelText('Épingler feat/ma_branche'))
+    expect(onTogglePin).toHaveBeenCalledWith('feat/ma_branche')
+  })
+
+  it('falls back to the full shortName when displayName is not provided', () => {
+    render(<BranchItem branch={branch({ shortName: 'feat/a' })} isSelected={false} onSelect={vi.fn()} />)
+    expect(screen.getByText('feat/a')).toBeInTheDocument()
+  })
+
   it('shows ahead/behind counts only when non-zero', () => {
     const { rerender } = render(
       <BranchItem branch={branch()} isSelected={false} onSelect={vi.fn()} />

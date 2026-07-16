@@ -35,6 +35,8 @@ export type SidebarRow =
       kind: 'branch'
       id: string
       branch: GitBranch
+      /** Nom affiché — préfixe de dossier (ex: "feat/") retiré quand la branche est dans un groupe. */
+      displayName: string
       depth: 0 | 1
       isSelected: boolean
       isPinned: boolean
