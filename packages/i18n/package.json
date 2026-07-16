@@ -9,7 +9,8 @@
     "./locales/*": "./locales/*"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "translation:check": "node scripts/validate-translations.mts"
   },
   "dependencies": {
     "i18next": "^23.16.6",

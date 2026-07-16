@@ -17,6 +17,9 @@
     "lint": {
       "dependsOn": ["^build"]
     },
+    "translation:check": {
+      "cache": false
+    },
     "test": {
       "dependsOn": ["^build"]
     },
