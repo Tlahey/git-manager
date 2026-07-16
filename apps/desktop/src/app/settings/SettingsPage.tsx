@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, ScrollArea } from '@git-manager/ui'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Heart } from 'lucide-react'
 import { GeneralSection } from './components/GeneralSection'
 import { RepositorySection } from './components/RepositorySection'
 import { AiCommitSection } from './components/AiCommitSection'
@@ -14,6 +14,7 @@ import { AppearanceSection } from './components/AppearanceSection'
 import { RewardsSection } from './components/RewardsSection'
 import { DebugSection } from './components/DebugSection'
 import { ChangelogSection } from './components/ChangelogSection'
+import { SupportSection } from './components/SupportSection'
 import { ResetToDefaultButton } from './components/ResetToDefaultButton'
 import { defineTabs, renderActiveTab, type TabDef } from '../../lib/navigation/tabRegistry'
 import { useSettingsStore } from '../../stores/settings.store'
@@ -31,6 +32,7 @@ export type Section =
   | 'rewards'
   | 'debug'
   | 'changelog'
+  | 'support'
 
 /** Top-level split: global settings (all repos) vs. settings local to the current workspace/repo. */
 type Scope = 'general' | 'local'
@@ -170,6 +172,12 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
       label: t('settings.sections.changelog'),
       render: () => scrolled(<ChangelogSection />),
     },
+    {
+      id: 'support',
+      label: t('settings.sections.support'),
+      icon: Heart,
+      render: () => scrolled(<SupportSection />),
+    },
   ])
 
   const LOCAL_TABS: { id: LocalSection; label: string }[] = [
@@ -259,20 +267,24 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
         <div className="flex flex-1 overflow-hidden">
           {/* Left nav */}
           <nav className="w-44 shrink-0 border-r border-border bg-muted/20 p-2">
-            {SETTINGS_TABS.map((tab) => (
-              <button
-                key={tab.id}
-                data-testid={`settings-tab-${tab.id}`}
-                onClick={() => setActiveSection(tab.id)}
-                className={`w-full cursor-pointer rounded px-3 py-2 text-left text-xs transition-colors ${
-                  activeSection === tab.id
-                    ? 'bg-accent font-medium text-foreground'
-                    : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+            {SETTINGS_TABS.map((tab) => {
+              const Icon = tab.icon
+              return (
+                <button
+                  key={tab.id}
+                  data-testid={`settings-tab-${tab.id}`}
+                  onClick={() => setActiveSection(tab.id)}
+                  className={`flex w-full cursor-pointer items-center gap-1.5 rounded px-3 py-2 text-left text-xs transition-colors ${
+                    activeSection === tab.id
+                      ? 'bg-accent font-medium text-foreground'
+                      : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+                  }`}
+                >
+                  {Icon && <Icon className="h-3.5 w-3.5 text-red-500" />}
+                  {tab.label}
+                </button>
+              )
+            })}
           </nav>
 
           {/* Content */}

@@ -12,10 +12,11 @@
 [![Tauri](https://img.shields.io/badge/Tauri-v2-purple)](https://tauri.app/)
 [![Platform](https://img.shields.io/badge/Platform-macOS-black)](https://github.com/Tlahey/git-manager)
 [![Themes: WCAG AA](https://img.shields.io/badge/Themes-WCAG_AA-brightgreen)](#theme-accessibility--consistency)
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-db61a2?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/Tlahey)
 
 _100% local — no telemetry, no cloud, no data leaves your machine._
 
-**[✨ Visit the landing page](https://tlahey.github.io/git-manager/)**
+**[✨ Visit the landing page](https://tlahey.github.io/git-manager/)** · **[💜 Sponsor this project](https://github.com/sponsors/Tlahey)**
 
 <img src="docs/screenshots/app-commit-graph.png" alt="Git Manager — visual commit graph with branches, tags and a WIP row" width="900" />
 
@@ -290,6 +291,15 @@ Everything project-state and design related lives in [docs/](docs/):
 - **Tauri ACL** — strict capability permissions via Tauri v2's permission system
 - **Protected branches** — configurable list of branches that block destructive operations
 - **Confirmation gates** — hard reset requires typing `RESET`, force-push requires explicit opt-in
+
+---
+
+## Support
+
+git-manager is free, open source and 100% local. If it's useful to you, consider
+[sponsoring its development on GitHub Sponsors](https://github.com/sponsors/Tlahey) — 100% of
+individual sponsorships go directly to the project, GitHub takes no cut. You can also sponsor
+from within the app itself, via **Settings → Support**.
 
 ---
 
