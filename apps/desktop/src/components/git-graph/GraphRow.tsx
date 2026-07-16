@@ -174,7 +174,8 @@ export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
               height: avatarSize,
               borderColor: node.color,
               color: node.color,
-              backgroundColor: 'transparent',
+              // Opaque page background so the colored band doesn't show through the dashed ring.
+              backgroundColor: 'hsl(var(--background))',
             }}
           >
             <Archive className={avatarSize === 24 ? 'h-3 w-3' : 'h-3.5 w-3.5'} />
@@ -340,7 +341,8 @@ function CellContent({
                     width: avatarSize,
                     height: avatarSize,
                     borderColor: node.color,
-                    backgroundColor: 'transparent',
+                    // Opaque page background so the colored band doesn't show through the dashed ring.
+                    backgroundColor: 'hsl(var(--background))',
                   }}
                 >
                   {node.commit.oid === 'CONFLICT' && (
@@ -489,8 +491,9 @@ export const GraphRow = memo(function GraphRow({
   const graphWidth = graphColumn ? graphColumn.width : 120
   const COL_WIDTH = 36
   const nodeX = node.column * COL_WIDTH + COL_WIDTH / 2
-  // Left edge of the avatar is nodeX - 16. Shifted by 8px cell padding: refsWidth + 8 + nodeX - 16 = refsWidth + nodeX - 8
-  const startX = refsWidth + nodeX - 8
+  // Start the band at the node's vertical line (the avatar/point center), so the left half of the
+  // node stays clear. Node center in row coords = refsWidth + 8px cell padding + nodeX.
+  const startX = refsWidth + nodeX + 8
   const endX = refsWidth + graphWidth
 
   return (
