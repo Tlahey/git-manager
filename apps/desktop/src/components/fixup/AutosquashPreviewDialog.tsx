@@ -102,12 +102,7 @@ export function AutosquashPreviewDialog({ repoPath, open, onClose }: AutosquashP
               ))}
             </div>
 
-            <p className="text-xs text-muted-foreground opacity-70">
-              {t('fixup.autosquash.warning', {
-                defaultValue:
-                  'Warning: if some commits have been pushed, a force push will be required.',
-              })}
-            </p>
+            <p className="text-xs text-muted-foreground opacity-70">{t('fixup.autosquash.warning')}</p>
           </div>
         )}
 
