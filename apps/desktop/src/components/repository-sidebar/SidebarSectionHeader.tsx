@@ -30,6 +30,8 @@ interface SidebarSectionHeaderProps {
   onCreateBranch?: () => void
   onAddWorktree?: () => void
   onCreatePr?: () => void
+  /** When true, `count` reflects an active search filter rather than the section's full contents. */
+  isFiltered?: boolean
 }
 
 export function SidebarSectionHeader({
@@ -41,6 +43,7 @@ export function SidebarSectionHeader({
   onCreateBranch,
   onAddWorktree,
   onCreatePr,
+  isFiltered = false,
 }: SidebarSectionHeaderProps) {
   return (
     <SectionHeader
@@ -50,6 +53,7 @@ export function SidebarSectionHeader({
       isOpen={isOpen}
       onToggle={onToggle}
       testId={`sidebar-section-${sectionKey}`}
+      isFiltered={isFiltered}
       action={
         sectionKey === 'local' && onCreateBranch ? (
           <button

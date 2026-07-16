@@ -274,6 +274,23 @@ describe('SidebarRowView — tag', () => {
     fireEvent.click(screen.getByText('v1.0.0').closest('[role="button"]')!)
     expect(h.onSelectBranch).toHaveBeenCalledWith('refs/tags/v1.0.0')
   })
+
+  it('highlights the matched substring when filterQuery is provided', () => {
+    const { container } = renderRow(
+      { kind: 'tag', id: 't-1', tag: tag({ shortName: 'v1.0.0' }), isSelected: false },
+      {}
+    )
+    expect(container.querySelector('mark')).toBeFalsy()
+
+    const { container: filteredContainer } = render(
+      <SidebarRowView
+        row={{ kind: 'tag', id: 't-1', tag: tag({ shortName: 'v1.0.0' }), isSelected: false }}
+        {...baseHandlers()}
+        filterQuery="1.0"
+      />
+    )
+    expect(filteredContainer.querySelector('mark')?.textContent).toBe('1.0')
+  })
 })
 
 describe('SidebarRowView — stash', () => {
@@ -287,6 +304,22 @@ describe('SidebarRowView — stash', () => {
     expect(screen.getByText('WIP on main')).toBeInTheDocument()
     fireEvent.click(screen.getByTestId('stash-item-0'))
     expect(h.onSelectBranch).toHaveBeenCalledWith('stashoid1234567')
+  })
+
+  it('highlights the matched substring in the message when filterQuery is provided', () => {
+    const { container } = render(
+      <SidebarRowView
+        row={{
+          kind: 'stash',
+          id: 's-1',
+          stash: stash({ message: 'WIP on main' }),
+          isSelected: false,
+        }}
+        {...baseHandlers()}
+        filterQuery="on main"
+      />
+    )
+    expect(container.querySelector('mark')?.textContent).toBe('on main')
   })
 
   it('falls back to "stash@{index}" when the stash has no message', () => {
@@ -367,6 +400,17 @@ describe('SidebarRowView — submodule', () => {
     renderRow({ kind: 'submodule', id: 'sm-1', sm: submodule({ headOid: '' }) })
     expect(screen.queryByText('abcdef1')).not.toBeInTheDocument()
   })
+
+  it('highlights the matched substring in the path when filterQuery is provided', () => {
+    const { container } = render(
+      <SidebarRowView
+        row={{ kind: 'submodule', id: 'sm-1', sm: submodule({ path: 'vendor/lib' }) }}
+        {...baseHandlers()}
+        filterQuery="vendor"
+      />
+    )
+    expect(container.querySelector('mark')?.textContent).toBe('vendor')
+  })
 })
 
 describe('SidebarRowView — worktree', () => {
@@ -395,6 +439,23 @@ describe('SidebarRowView — worktree', () => {
     const { h } = renderRow({ kind: 'worktree', id: 'wt-1', wt })
     fireEvent.click(screen.getByTestId('worktree-remove-button-/tmp/repo-linked'))
     expect(h.onRemoveWorktree).toHaveBeenCalledWith(wt)
+  })
+
+  it('highlights matches in both the branch and the path when filterQuery is provided', () => {
+    const { container } = render(
+      <SidebarRowView
+        row={{
+          kind: 'worktree',
+          id: 'wt-1',
+          wt: worktree({ branch: 'feature/login', path: '/tmp/repo-linked' }),
+        }}
+        {...baseHandlers()}
+        filterQuery="repo-linked"
+      />
+    )
+    const marks = container.querySelectorAll('mark')
+    expect(marks).toHaveLength(1)
+    expect(marks[0].textContent).toBe('repo-linked')
   })
 })
 

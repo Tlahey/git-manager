@@ -48,9 +48,12 @@ export function useKeyboardShortcuts({
       }
 
       // Sidebar search: ⌥⌘F / Ctrl+Alt+F — focuses the left panel's filter input, regardless of
-      // current focus (handled before the input guard below, like ⌘K/⌘F above).
+      // current focus (handled before the input guard below, like ⌘K/⌘F above). Matched via
+      // `e.code` (physical key), not `e.key`: on macOS, Option acts as a dead-key composer, so a
+      // real Option+F keypress reports `e.key === 'ƒ'` (florin sign), not `'f'` — `e.key` would
+      // never match and the shortcut would silently never fire.
       const isModOptF = navigator.userAgent.includes('Mac') ? e.metaKey : e.ctrlKey
-      if (isModOptF && e.altKey && e.key.toLowerCase() === 'f' && activeRepo) {
+      if (isModOptF && e.altKey && e.code === 'KeyF' && activeRepo) {
         e.preventDefault()
         useSidebarSearchStore.getState().requestFocus()
         return

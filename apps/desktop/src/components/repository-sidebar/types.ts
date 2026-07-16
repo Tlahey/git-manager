@@ -80,11 +80,36 @@ export interface SidebarSection {
 }
 
 /**
- * Hauteur maximale (px) du corps d'une section dépliée avant qu'il ne devienne
- * scrollable — évite qu'ouvrir une section (ex: des dizaines de branches)
- * ne repousse les sections suivantes hors de vue.
+ * Hauteur approximative (px) de l'en-tête d'une section (icône + titre + compteur, `py-1.5` dans
+ * `SectionHeader`). Utilisée uniquement pour composer le plancher total du conteneur de section
+ * (`MIN_SECTION_HEIGHT` ci-dessous) — une valeur approchée suffit, ce n'est qu'un plancher.
  */
-export const MAX_SECTION_BODY_HEIGHT = 256
+export const SECTION_HEADER_HEIGHT = 28
+
+/**
+ * Hauteur minimale (px) du corps d'une section dépliée.
+ */
+export const MIN_SECTION_BODY_HEIGHT = 120
+
+/**
+ * Hauteur minimale (px) du conteneur d'une section dépliée dans son ensemble (en-tête + corps).
+ * Chaque section ouverte est un enfant `flex-1` (poids égal, base 0%) de la liste : les sections
+ * ouvertes se partagent toujours la hauteur disponible à parts strictement égales, même une
+ * section clairsemée (ex: un seul worktree) — c'est voulu, pour que toutes les sections ouvertes
+ * s'alignent sur la même hauteur.
+ *
+ * Ce plancher est appliqué directement (valeur numérique explicite) sur le conteneur de section
+ * lui-même, plutôt que de compter sur la taille minimale automatique que le moteur de mise en
+ * page dériverait de son contenu — un conteneur flex dont l'`overflow` est `visible` (le cas de
+ * ce conteneur, contrairement à son corps en `overflow-y-auto`) peut sinon refuser de rétrécir en
+ * dessous de la hauteur totale de son contenu non tronqué, ce qui a déjà produit deux bugs
+ * distincts (agrandissement non borné, puis chevauchement des sections suivantes) avant qu'on ne
+ * fixe le plancher explicitement ici. Avec un plancher explicite, le calcul de `flex-shrink` est
+ * sans ambiguïté : si la somme des planchers des sections ouvertes dépasse la hauteur du panel,
+ * c'est la liste de sections entière qui devient scrollable (un seul scrollbar global) plutôt que
+ * de continuer à réduire une section illisible ou de laisser les sections se chevaucher.
+ */
+export const MIN_SECTION_HEIGHT = SECTION_HEADER_HEIGHT + MIN_SECTION_BODY_HEIGHT
 
 /** Valeurs d'ouverture par défaut des sections — toutes repliées. */
 export const DEFAULT_SECTION_OPEN: Record<SectionKey, boolean> = {

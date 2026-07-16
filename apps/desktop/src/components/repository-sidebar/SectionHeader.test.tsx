@@ -45,6 +45,25 @@ describe('SectionHeader — rendering', () => {
     expect(screen.getByText('0')).toBeInTheDocument()
   })
 
+  it('shows a filter icon next to the count only when isFiltered', () => {
+    const { container, rerender } = render(
+      <SectionHeader title="Branches" icon={null} isOpen={false} onToggle={vi.fn()} count={1} />
+    )
+    expect(container.querySelector('.lucide-filter')).toBeFalsy()
+
+    rerender(
+      <SectionHeader
+        title="Branches"
+        icon={null}
+        isOpen={false}
+        onToggle={vi.fn()}
+        count={1}
+        isFiltered
+      />
+    )
+    expect(container.querySelector('.lucide-filter')).toBeTruthy()
+  })
+
   it('shows the action slot only when provided', () => {
     const { rerender } = render(
       <SectionHeader title="Branches" icon={null} isOpen={false} onToggle={vi.fn()} />

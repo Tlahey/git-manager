@@ -1,4 +1,5 @@
 import { CheckCircle2, Circle, GitMerge, XCircle, Loader2, ExternalLink } from 'lucide-react'
+import { highlightMatch } from '@git-manager/components'
 import type { PullRequest } from '@git-manager/git-types'
 import { HoverExpandLabel } from './HoverExpandLabel'
 
@@ -6,6 +7,8 @@ interface PullRequestItemProps {
   pr: PullRequest
   onOpen?: (pr: PullRequest) => void
   isSelected?: boolean
+  /** Active sidebar search query — matched substrings are highlighted in the PR title. */
+  filterQuery?: string
 }
 
 const STATE_STYLES: Record<string, string> = {
@@ -29,7 +32,12 @@ function CiIcon({ status }: { status: PullRequest['ciStatus'] }) {
   return <Loader2 className="h-3 w-3 animate-spin text-orange-400" />
 }
 
-export function PullRequestItem({ pr, onOpen, isSelected = false }: PullRequestItemProps) {
+export function PullRequestItem({
+  pr,
+  onOpen,
+  isSelected = false,
+  filterQuery = '',
+}: PullRequestItemProps) {
   return (
     <div
       className={`group/pr relative flex cursor-pointer items-start gap-2 py-1.5 pl-6 pr-2 transition-colors ${
@@ -59,7 +67,7 @@ export function PullRequestItem({ pr, onOpen, isSelected = false }: PullRequestI
         <HoverExpandLabel
           className={`text-xs ${isSelected ? 'font-medium text-sidebar-foreground' : 'text-sidebar-foreground'}`}
         >
-          #{pr.number} {pr.title}
+          #{pr.number} {highlightMatch(pr.title, filterQuery)}
         </HoverExpandLabel>
 
         {/* Méta */}
