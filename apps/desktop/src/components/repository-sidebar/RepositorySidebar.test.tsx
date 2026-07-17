@@ -88,11 +88,60 @@ vi.mock('./PruneWorktreesDialog', () => ({
   ),
 }))
 vi.mock('./RemoveMergedWorktreesDialog', () => ({
-  RemoveMergedWorktreesDialog: (props: { worktrees: { path: string }[]; open: boolean }) => (
+  RemoveMergedWorktreesDialog: (props: {
+    worktrees: { path: string }[]
+    open: boolean
+    mineOnly?: boolean
+    currentUser?: string
+  }) => (
     <div
       data-testid="remove-merged-worktrees-dialog"
       data-open={props.open}
       data-count={props.worktrees?.length ?? 0}
+      data-mine-only={props.mineOnly ? 'true' : 'false'}
+      data-current-user={props.currentUser ?? ''}
+    />
+  ),
+}))
+vi.mock('./RemoveMergedBranchesDialog', () => ({
+  RemoveMergedBranchesDialog: (props: {
+    branches: { shortName: string }[]
+    worktreeBranches: string[]
+    open: boolean
+    mineOnly?: boolean
+    currentUser?: string
+  }) => (
+    <div
+      data-testid="remove-merged-branches-dialog"
+      data-open={props.open}
+      data-count={props.branches?.length ?? 0}
+      data-worktree-branches={(props.worktreeBranches ?? []).join(',')}
+      data-mine-only={props.mineOnly ? 'true' : 'false'}
+      data-current-user={props.currentUser ?? ''}
+    />
+  ),
+}))
+vi.mock('./PruneBranchesDialog', () => ({
+  PruneBranchesDialog: (props: {
+    branches: { shortName: string }[]
+    worktreeBranches: string[]
+    open: boolean
+  }) => (
+    <div
+      data-testid="prune-branches-dialog"
+      data-open={props.open}
+      data-count={props.branches?.length ?? 0}
+      data-worktree-branches={(props.worktreeBranches ?? []).join(',')}
+    />
+  ),
+}))
+vi.mock('../git-graph/CreateBranchHereDialog', () => ({
+  CreateBranchHereDialog: (props: { open: boolean; oid: string; shortOid: string }) => (
+    <div
+      data-testid="create-branch-dialog-stub"
+      data-open={props.open}
+      data-oid={props.oid}
+      data-short={props.shortOid}
     />
   ),
 }))
@@ -366,7 +415,7 @@ describe('RepositorySidebar — sections', () => {
     expect(body.style.maxHeight).toBe('')
   })
 
-  it('forwards onCreateBranch to the local section header only', () => {
+  it('forwards an explicit onCreateBranch to the local section header only', () => {
     useSidebarRows.mockReturnValue({
       sections: [section({ key: 'local' }), section({ key: 'remotes', title: 'Remotes' })],
     })
@@ -377,6 +426,24 @@ describe('RepositorySidebar — sections', () => {
       sectionKey: 'remotes',
       onCreateBranch: undefined,
     })
+  })
+
+  it('opens the create-branch dialog (sourced at HEAD) from the local header when no handler is given', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'local', title: 'Local', isOpen: true })],
+      allLocalBranches: [{ shortName: 'main', isHead: true, commitOid: 'deadbeef1234' }],
+    })
+    renderSidebar()
+
+    const stub = screen.getByTestId('create-branch-dialog-stub')
+    expect(stub).toHaveAttribute('data-open', 'false')
+    expect(stub).toHaveAttribute('data-oid', 'deadbeef1234')
+    expect(stub).toHaveAttribute('data-short', 'deadbee')
+
+    const localHeader = lastHeaderCalls.current.find((p) => p.sectionKey === 'local')!
+    expect(localHeader.onCreateBranch).toBeInstanceOf(Function)
+    act(() => (localHeader.onCreateBranch as () => void)())
+    expect(screen.getByTestId('create-branch-dialog-stub')).toHaveAttribute('data-open', 'true')
   })
 
   it('forwards onCreatePr to the prs section header only when a githubToken is set', () => {
@@ -457,6 +524,78 @@ describe('RepositorySidebar — sections', () => {
     expect(screen.getByTestId('add-worktree-dialog')).toHaveAttribute('data-open', 'false')
     act(() => (lastHeaderCalls.current[0].onAddWorktree as () => void)())
     expect(screen.getByTestId('add-worktree-dialog')).toHaveAttribute('data-open', 'true')
+  })
+
+  it('opens the remove-merged-branches dialog from the local header, with local + worktree branches', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'local', title: 'Local', isOpen: true })],
+      worktrees: [{ path: '/wt-a', branch: 'feature/a' }],
+      allLocalBranches: [
+        { shortName: 'main' },
+        { shortName: 'feature/a' },
+        { shortName: 'feature/b' },
+      ],
+    })
+    renderSidebar()
+
+    const dialog = screen.getByTestId('remove-merged-branches-dialog')
+    expect(dialog).toHaveAttribute('data-open', 'false')
+    expect(dialog).toHaveAttribute('data-count', '3')
+    expect(dialog).toHaveAttribute('data-worktree-branches', 'feature/a')
+
+    const localHeader = lastHeaderCalls.current.find((p) => p.sectionKey === 'local')!
+    act(() => (localHeader.onRemoveMergedBranches as () => void)())
+    const dlg = screen.getByTestId('remove-merged-branches-dialog')
+    expect(dlg).toHaveAttribute('data-open', 'true')
+    expect(dlg).toHaveAttribute('data-mine-only', 'false')
+  })
+
+  it('opens the branches dialog in mine-only mode, forwarding the current user', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'local', title: 'Local', isOpen: true })],
+      allLocalBranches: [{ shortName: 'feature/a' }],
+    })
+    renderSidebar({ currentUser: 'alice' })
+
+    const localHeader = lastHeaderCalls.current.find((p) => p.sectionKey === 'local')!
+    act(() => (localHeader.onRemoveMyMergedBranches as () => void)())
+    const dlg = screen.getByTestId('remove-merged-branches-dialog')
+    expect(dlg).toHaveAttribute('data-open', 'true')
+    expect(dlg).toHaveAttribute('data-mine-only', 'true')
+    expect(dlg).toHaveAttribute('data-current-user', 'alice')
+  })
+
+  it('opens the worktrees dialog in mine-only mode from its header', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'worktrees', title: 'Worktrees', isOpen: true })],
+      worktrees: [{ path: '/wt-a', branch: 'feature/a' }],
+    })
+    renderSidebar({ currentUser: 'bob' })
+
+    const wtHeader = lastHeaderCalls.current.find((p) => p.sectionKey === 'worktrees')!
+    act(() => (wtHeader.onRemoveMyMergedWorktrees as () => void)())
+    const dlg = screen.getByTestId('remove-merged-worktrees-dialog')
+    expect(dlg).toHaveAttribute('data-open', 'true')
+    expect(dlg).toHaveAttribute('data-mine-only', 'true')
+    expect(dlg).toHaveAttribute('data-current-user', 'bob')
+  })
+
+  it('opens the prune-branches dialog from the local header, with local + worktree branches', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [section({ key: 'local', title: 'Local', isOpen: true })],
+      worktrees: [{ path: '/wt-a', branch: 'feature/a' }],
+      allLocalBranches: [{ shortName: 'main' }, { shortName: 'feature/a' }],
+    })
+    renderSidebar()
+
+    const dialog = screen.getByTestId('prune-branches-dialog')
+    expect(dialog).toHaveAttribute('data-open', 'false')
+    expect(dialog).toHaveAttribute('data-count', '2')
+    expect(dialog).toHaveAttribute('data-worktree-branches', 'feature/a')
+
+    const localHeader = lastHeaderCalls.current.find((p) => p.sectionKey === 'local')!
+    act(() => (localHeader.onPruneBranches as () => void)())
+    expect(screen.getByTestId('prune-branches-dialog')).toHaveAttribute('data-open', 'true')
   })
 
   it('opens the prune-worktrees dialog via the worktrees section header when there are prunable worktrees', () => {

@@ -23,6 +23,9 @@ interface RemoveMergedWorktreesDialogProps {
   worktrees: GitWorktree[]
   remoteUrls: string[]
   githubToken?: string
+  /** When set, only worktrees whose merged PR was authored by `currentUser` are offered. */
+  mineOnly?: boolean
+  currentUser?: string
   open: boolean
   onClose: () => void
 }
@@ -90,6 +93,8 @@ export function RemoveMergedWorktreesDialog({
   worktrees,
   remoteUrls,
   githubToken,
+  mineOnly = false,
+  currentUser,
   open,
   onClose,
 }: RemoveMergedWorktreesDialogProps) {
@@ -99,7 +104,7 @@ export function RemoveMergedWorktreesDialog({
   const [failedPaths, setFailedPaths] = useState<string[]>([])
   const [removedPaths, setRemovedPaths] = useState<string[]>([])
 
-  const { checks, mergedWorktrees, isLoading: isChecking, isGithub, hasToken } = useMergedWorktrees(
+  const { checks, isLoading: isChecking, isGithub, hasToken } = useMergedWorktrees(
     repoPath,
     worktrees,
     remoteUrls,
@@ -107,8 +112,25 @@ export function RemoveMergedWorktreesDialog({
     open
   )
 
-  const candidates = mergedWorktrees.filter((wt) => !removedPaths.includes(wt.path))
-  const visibleChecks = checks.filter((c) => !removedPaths.includes(c.worktree.path))
+  // "Mine" = the merged PR was authored by the signed-in GitHub user. Only PR-detected worktrees
+  // carry an author, so in mine-mode gone-upstream-only ones (no PR) are never offered.
+  const isMine = (status: WorktreeMergeStatus): boolean =>
+    typeof status === 'object' &&
+    !!currentUser &&
+    status.merged.author?.toLowerCase() === currentUser.toLowerCase()
+  const inScope = (status: WorktreeMergeStatus) => (mineOnly ? isMine(status) : true)
+
+  const candidates = checks
+    .filter(
+      (c) =>
+        !removedPaths.includes(c.worktree.path) &&
+        (typeof c.status === 'object' || c.status === 'branch-gone') &&
+        inScope(c.status)
+    )
+    .map((c) => c.worktree)
+  const visibleChecks = checks.filter(
+    (c) => !removedPaths.includes(c.worktree.path) && inScope(c.status)
+  )
 
   async function handleConfirm() {
     setIsLoading(true)
@@ -147,7 +169,9 @@ export function RemoveMergedWorktreesDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent data-testid="worktree-remove-merged-dialog">
         <DialogHeader>
-          <DialogTitle>{t('worktree.removeMerged')}</DialogTitle>
+          <DialogTitle>
+            {t(mineOnly ? 'worktree.removeMyMerged' : 'worktree.removeMerged')}
+          </DialogTitle>
           <DialogDescription>
             {isChecking
               ? t('worktree.removeMergedChecking')
@@ -236,7 +260,7 @@ export function RemoveMergedWorktreesDialog({
             data-testid="worktree-remove-merged-confirm-button"
           >
             {isLoading && <Spinner className="h-3 w-3" />}
-            {t('worktree.removeMerged')}
+            {t(mineOnly ? 'worktree.removeMyMerged' : 'worktree.removeMerged')}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -59,7 +59,11 @@ fn resolve_remote_name(repo: &Repository, remote: Option<String>) -> String {
 // ─── fetch ────────────────────────────────────────────────────────────────────
 
 /// Fetch depuis un remote (défaut : "origin")
-pub fn fetch(repo: &Repository, remote: Option<String>) -> Result<FetchResult, AppError> {
+pub fn fetch(
+    repo: &Repository,
+    remote: Option<String>,
+    prune: bool,
+) -> Result<FetchResult, AppError> {
     let remote_name = resolve_remote_name(repo, remote);
     let mut remote_obj = repo.find_remote(&remote_name).map_err(AppError::Git)?;
 
@@ -81,6 +85,9 @@ pub fn fetch(repo: &Repository, remote: Option<String>) -> Result<FetchResult, A
 
     let mut fetch_opts = FetchOptions::new();
     fetch_opts.remote_callbacks(callbacks);
+    if prune {
+        fetch_opts.prune(git2::FetchPrune::On);
+    }
 
     let refspec = format!("+refs/heads/*:refs/remotes/{remote_name}/*");
     remote_obj
@@ -104,7 +111,7 @@ pub fn pull(
     rebase: bool,
 ) -> Result<PullResult, AppError> {
     // 1. Fetch
-    fetch(repo, remote.clone())?;
+    fetch(repo, remote.clone(), false)?;
 
     let remote_name = resolve_remote_name(repo, remote);
 

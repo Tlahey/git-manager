@@ -16,7 +16,7 @@ export type WorktreeMergeStatus =
   | 'checking'
   | 'no-match'
   | 'branch-gone'
-  | { merged: { number: number; title: string } }
+  | { merged: { number: number; title: string; author?: string } }
 
 export interface WorktreeMergeCheck {
   worktree: GitWorktree
@@ -150,11 +150,17 @@ export function useMergedWorktrees(
     // Most direct signal: the HEAD commit belongs to a merged PR of this very branch.
     const commitPr = commitPrMap?.get(`${wt.commitOid}@${wt.branch}`)
     if (commitPr) {
-      return { worktree: wt, status: { merged: { number: commitPr.number, title: commitPr.title } } }
+      return {
+        worktree: wt,
+        status: { merged: { number: commitPr.number, title: commitPr.title, author: commitPr.author } },
+      }
     }
     const prMatch = prList?.find((pr) => pr.head?.ref === wt.branch && pr.merged_at)
     if (prMatch) {
-      return { worktree: wt, status: { merged: { number: prMatch.number, title: prMatch.title } } }
+      return {
+        worktree: wt,
+        status: { merged: { number: prMatch.number, title: prMatch.title, author: prMatch.user?.login } },
+      }
     }
     if (goneBranches?.has(wt.branch)) return { worktree: wt, status: 'branch-gone' }
     if (stillChecking) return { worktree: wt, status: 'checking' }
