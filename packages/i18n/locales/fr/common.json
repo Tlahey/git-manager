@@ -71,7 +71,7 @@
   "commandPalette.group.commit": "Commit {{sha}}",
   "commandPalette.group.stash": "Stash #{{index}}",
   "commandPalette.group.settings": "Réglages",
-  "commandPalette.lookup.openCommit": "Ouvrir le commit {{sha}} sur GitHub",
+  "commandPalette.lookup.focusCommit": "Cibler le commit {{sha}} dans le graphe",
   "commandPalette.nav.dashboard": "Aller au tableau de bord",
   "commandPalette.nav.pullRequests": "Aller aux pull requests",
   "commandPalette.nav.rewards": "Aller aux récompenses",

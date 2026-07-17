@@ -1,6 +1,7 @@
 {
   "gitTree.title": "Historique",
   "gitTree.noCommits": "Aucun commit",
+  "gitTree.commitNotFound": "Commit {{sha}} introuvable dans la vue actuelle",
   "gitTree.loading": "Chargement de l'historique...",
   "gitTree.filterBranch": "Filtrer par branche",
   "gitTree.filterAuthor": "Filtrer par auteur",
