@@ -8,13 +8,6 @@ vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) 
 // Fake cmdk primitives — cmdk's internal filtering/keyboard handling isn't what we're testing here,
 // and it's brittle in jsdom (same rationale as the Monaco fake). We test the palette's own wiring:
 // grouping, testids, and the run → close/onCloseSettings behaviour.
-const { apiGetCommitWebUrl, apiOpenUrl } = vi.hoisted(() => ({
-  apiGetCommitWebUrl: vi.fn(),
-  apiOpenUrl: vi.fn(),
-}))
-vi.mock('../../api/git.api', () => ({ apiGetCommitWebUrl }))
-vi.mock('../../api/shell.api', () => ({ apiOpenUrl }))
-
 vi.mock('@git-manager/ui', () => ({
   toast: { error: vi.fn(), success: vi.fn() },
   CommandDialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
@@ -129,23 +122,30 @@ describe('CommandPalette', () => {
     expect(useCommandPaletteStore.getState().open).toBe(false)
   })
 
-  it('offers a GitHub lookup command only when the query is a commit sha', async () => {
+  it('offers a focus-commit lookup only when the query is a commit sha, and hands it to the graph', async () => {
     const user = userEvent.setup()
-    useRepoUIStore.setState({ activeRepo: '/repo' })
-    apiGetCommitWebUrl.mockResolvedValue('https://github.com/o/r/commit/deadbeefcafe')
-    apiOpenUrl.mockResolvedValue(undefined)
+    useRepoUIStore.setState({ activeRepo: '/repo', pendingGraphSelection: null })
     useCommandPaletteStore.setState({ open: true })
     renderPalette()
 
-    expect(screen.queryByTestId('command-item-lookup-open-commit')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('command-item-lookup-focus-commit')).not.toBeInTheDocument()
     await user.type(screen.getByTestId('command-palette-input'), 'deadbeefcafe')
 
-    const item = screen.getByTestId('command-item-lookup-open-commit')
+    const item = screen.getByTestId('command-item-lookup-focus-commit')
     await user.click(item)
-    expect(apiGetCommitWebUrl).toHaveBeenCalledWith('/repo', 'deadbeefcafe')
-    await vi.waitFor(() =>
-      expect(apiOpenUrl).toHaveBeenCalledWith('https://github.com/o/r/commit/deadbeefcafe')
-    )
+    // The SHA is published for GitGraph to resolve, and the palette closes.
+    expect(useRepoUIStore.getState().pendingGraphSelection).toBe('deadbeefcafe')
+    expect(useCommandPaletteStore.getState().open).toBe(false)
+  })
+
+  it('does not offer a focus-commit lookup for a non-sha query', async () => {
+    const user = userEvent.setup()
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useCommandPaletteStore.setState({ open: true })
+    renderPalette()
+
+    await user.type(screen.getByTestId('command-palette-input'), 'not a sha')
+    expect(screen.queryByTestId('command-item-lookup-focus-commit')).not.toBeInTheDocument()
   })
 
   it('running a settings command does not force-close settings', async () => {

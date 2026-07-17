@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { toast } from '@git-manager/ui'
 import type { GitGraphNode } from '@git-manager/git-types'
 
 vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
@@ -603,6 +604,32 @@ describe('GitGraph — pending graph selection bridge', () => {
     renderGraph()
     await waitFor(() => expect(selectSingle).toHaveBeenCalledWith('CONFLICT'))
     expect(useRepoUIStore.getState().pendingGraphSelection).toBeNull()
+  })
+
+  it('resolves an abbreviated SHA to a loaded commit, then selects and scrolls to it', async () => {
+    const nodes = [commitNode('deadbeef11'), commitNode('cafe123456'), commitNode('beef567890')]
+    const selectSingle = vi.fn()
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
+    useCommitSelection.mockReturnValue(selectionState({ selectSingle }))
+    useRepoUIStore.setState({ pendingGraphSelection: 'cafe' })
+    renderGraph()
+    await waitFor(() => expect(selectSingle).toHaveBeenCalledWith('cafe123456'))
+    expect(virtualizerScrollToIndex).toHaveBeenCalledWith(1, { align: 'center' })
+    expect(useRepoUIStore.getState().pendingGraphSelection).toBeNull()
+  })
+
+  it('reports a SHA that is not among the loaded commits and clears the pending selection', async () => {
+    const errorSpy = vi.spyOn(toast, 'error').mockImplementation(() => '')
+    const nodes = [commitNode('deadbeef11'), commitNode('cafe123456')]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
+    useRepoUIStore.setState({ pendingGraphSelection: 'ffffffff' })
+    renderGraph()
+    // The i18n mock returns the bare key, so only the translation key reaches the toast.
+    await waitFor(() => expect(errorSpy).toHaveBeenCalledWith('gitTree.commitNotFound'))
+    expect(useRepoUIStore.getState().pendingGraphSelection).toBeNull()
+    errorSpy.mockRestore()
   })
 })
 

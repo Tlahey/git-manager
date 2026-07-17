@@ -1,5 +1,5 @@
 import { useState, createElement } from 'react'
-import { Github } from 'lucide-react'
+import { Crosshair } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import {
   CommandDialog,
@@ -8,47 +8,49 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandItem,
-  toast,
 } from '@git-manager/ui'
 import { useCommandPaletteStore } from '../../stores/commandPalette.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
-import { apiGetCommitWebUrl } from '../../api/git.api'
-import { apiOpenUrl } from '../../api/shell.api'
 import { useGlobalCommands } from './commands/useGlobalCommands'
 import { useCommitCommands } from './commands/useCommitCommands'
 import { useStashCommands } from './commands/useStashCommands'
 import type { Section } from '../../app/settings/SettingsPage'
 import type { PaletteCommand, PaletteGroup } from './commands/types'
 
-/** A commit-ish string the user can paste to jump straight to a commit on GitHub. */
+/** A commit-ish string the user can paste to jump straight to that commit in the graph. */
 const SHA_PATTERN = /^[0-9a-f]{7,40}$/i
 
-/** Builds the free-text "open this commit on GitHub" command when the query looks like a SHA. */
+/**
+ * Builds the "focus this commit in the graph" command when the query looks like a SHA. Running it
+ * hands the (possibly abbreviated) SHA to `GitGraph` via `pendingGraphSelection`, which resolves it
+ * to a loaded commit, selects the row and scrolls it into view. GitHub-open / copy-SHA / reset / …
+ * then become reachable through the "Commit" group once the row is selected.
+ */
 function useCommitLookupCommands(query: string): PaletteCommand[] {
   const { t } = useTranslation('common')
-  const { t: tGit } = useTranslation('git')
   const activeRepo = useRepoUIStore((s) => s.activeRepo)
+  const setPendingGraphSelection = useRepoUIStore((s) => s.setPendingGraphSelection)
+  const setActivePrNumber = useRepoUIStore((s) => s.setActivePrNumber)
+  const setPrComposer = useRepoUIStore((s) => s.setPrComposer)
+  const setPrCreateOpen = useRepoUIStore((s) => s.setPrCreateOpen)
 
   const sha = query.trim()
   if (!activeRepo || !SHA_PATTERN.test(sha)) return []
 
   return [
     {
-      id: 'lookup-open-commit',
+      id: 'lookup-focus-commit',
       group: 'lookup',
-      title: t('commandPalette.lookup.openCommit', { sha: sha.slice(0, 12) }),
+      title: t('commandPalette.lookup.focusCommit', { sha: sha.slice(0, 12) }),
       keywords: [sha],
-      icon: createElement(Github),
+      icon: createElement(Crosshair),
       run: () => {
-        apiGetCommitWebUrl(activeRepo, sha)
-          .then((url) => {
-            if (!url) {
-              toast.error(tGit('gitTree.contextMenu.noRemoteLink'))
-              return
-            }
-            return apiOpenUrl(url)
-          })
-          .catch((err) => toast.error(String(err)))
+        // The graph cedes its center panel to any open PR view/composer; clear those so the newly
+        // focused commit is actually visible (an open file diff clears itself on selection change).
+        setActivePrNumber(null)
+        setPrComposer(null)
+        setPrCreateOpen(false)
+        setPendingGraphSelection(sha)
       },
     },
   ]

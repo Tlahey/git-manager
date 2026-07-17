@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useTranslation } from '@git-manager/i18n'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Spinner } from '@git-manager/ui'
+import { Spinner, toast } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { useGitStatus } from '../../hooks/useGitStatus'
 import { useWorktreeWipStatuses } from '../../hooks/useWorktreeWipStatuses'
@@ -194,15 +194,6 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   const { selected, primaryOid, setPrimaryOid, selectSingle, handleRowSelect, clearSelection } =
     useCommitSelection(filteredNodes, onSelectCommit)
 
-  // Bridge: lets components outside GitGraph (e.g. the toolbar's conflict indicator) select
-  // the synthetic "CONFLICT" row via the store, since `selectSingle` is local to this component.
-  useEffect(() => {
-    if (pendingGraphSelection) {
-      selectSingle(pendingGraphSelection)
-      setPendingGraphSelection(null)
-    }
-  }, [pendingGraphSelection, selectSingle, setPendingGraphSelection])
-
   // Reset active diff on commit selection or repo changes
   useEffect(() => {
     setActiveDiffFile(null)
@@ -306,6 +297,31 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clampedMatchIndex, matchingOids])
+
+  // Bridge: lets out-of-tree UI (the command palette's SHA lookup, the toolbar's conflict indicator)
+  // select a graph row by OID. A pasted SHA may be abbreviated, so resolve it to a loaded commit by
+  // prefix; the synthetic 'WIP'/'CONFLICT' rows pass through untouched. On a hit we select and scroll
+  // the row into view, exactly as a click would; a SHA outside the loaded window reports "not found".
+  useEffect(() => {
+    if (!pendingGraphSelection) return
+    const raw = pendingGraphSelection
+    const isSynthetic = raw === 'CONFLICT' || raw === 'WIP' || raw.startsWith('WIP:')
+    // Wait for the log to load before resolving a real SHA, so a selection dispatched just before
+    // the graph mounts isn't dropped against an empty list.
+    if (!isSynthetic && filteredNodes.length === 0) return
+    setPendingGraphSelection(null)
+    const prefix = raw.toLowerCase()
+    const target = isSynthetic
+      ? raw
+      : filteredNodes.find((n) => n.commit.oid.toLowerCase().startsWith(prefix))?.commit.oid
+    if (!target) {
+      toast.error(t('gitTree.commitNotFound', { sha: raw.slice(0, 12) }))
+      return
+    }
+    selectSingle(target)
+    const index = filteredNodes.findIndex((n) => n.commit.oid === target)
+    if (index !== -1) virtualizer.scrollToIndex(index, { align: 'center' })
+  }, [pendingGraphSelection, filteredNodes, virtualizer, selectSingle, setPendingGraphSelection, t])
 
   // One-shot guard so the conflict panel auto-opens once per pause (below) without snapping
   // back to the CONFLICT row every time the user navigates away to inspect another commit.
