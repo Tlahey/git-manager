@@ -102,6 +102,31 @@ function buildConflictNode(nodes: GitGraphNode[]): GitGraphNode {
 }
 
 /**
+ * Every lane that flows straight up through a synthetic row spliced in *above* `anchor`, as
+ * plain vertical pass-throughs. Generic over any number of lanes: a lane crosses the anchor
+ * row's TOP edge — and so must continue up through the inserted row — for every edge EXCEPT the
+ * anchor node's own downward departures to its parents. Those departures are the only edges that
+ * start at the commit dot and head down: the straight first-parent line (`startsAtNode`) and any
+ * diagonal split whose `fromColumn` is the anchor's own column. Everything else enters from the
+ * top: plain pass-throughs (`fromColumn === toColumn`, a different lane), the anchor's own
+ * incoming vertical (`endsAtNode`), AND merge lines arriving diagonally from a side lane
+ * (`toColumn === anchor.column`) — the last of which the old `fromColumn === toColumn`-only copy
+ * dropped, cutting a merge commit's incoming lanes at the inserted row. Each carried lane is
+ * emitted at its `fromColumn` (where it touches the top) as a flag-free flow-through, since this
+ * synthetic row holds no real commit to arrive at or depart from. `excludeColumn` is the
+ * inserted row's own lane, skipped so its own connector isn't duplicated. */
+function laneContinuations(anchor: GitGraphNode, excludeColumn: number): GitGraphEdge[] {
+  const laneColors = new Map<number, string>()
+  for (const c of anchor.connections) {
+    const isDownwardDeparture =
+      c.fromColumn === anchor.column && (c.startsAtNode === true || c.toColumn !== anchor.column)
+    if (isDownwardDeparture || c.fromColumn === excludeColumn) continue
+    if (!laneColors.has(c.fromColumn)) laneColors.set(c.fromColumn, c.color)
+  }
+  return Array.from(laneColors, ([col, color]) => ({ fromColumn: col, toColumn: col, color }))
+}
+
+/**
  * Synthetic WIP row for a linked worktree other than the active repo (see
  * `useWorktreeWipStatuses`). Inserted directly above `anchor` — the node whose commit is the
  * tip of that worktree's checked-out branch — but deliberately offset to the first free lane to
@@ -112,23 +137,20 @@ function buildConflictNode(nodes: GitGraphNode[]): GitGraphNode {
  * anchor.column` patch added to `anchor`'s own connections in `useGitGraphNodes`'s
  * `renderNodes` — while this node itself only carries a plain dashed vertical for its own
  * column (`isWip`-aware in `GraphSvg`, so it visibly starts at the bottom of its own circle).
- * Also carries every other active lane's pass-through connection from `anchor` (any column
- * besides this node's own offset one) — INCLUDING `anchor.column` itself, since splicing this
- * row in between `anchor` and whatever real commit sits above it would otherwise cut that lane's
- * own line in two: this row needs to draw both its own dashed WIP connector AND a plain solid
- * continuation of the real branch's line straight through it. `anchor.connections` already knows
- * exactly which lanes are active there since it's a real, backend-computed row — we just strip
- * any `dashed`/`startsAtNode`/`endsAtNode` flags when copying, because those describe an
- * arrival/departure at `anchor`'s specific commit, not a plain flow-through of this synthetic
- * row. The oid is namespaced (`WIP:<path>`) so multiple of these can coexist and `GraphRow.tsx`
+ * Also carries a plain vertical continuation of every lane that crosses `anchor`'s top edge (see
+ * `laneContinuations`) — INCLUDING `anchor.column` itself, and including lanes that merge *into*
+ * `anchor` diagonally — since splicing this row in between `anchor` and whatever real commit sits
+ * above it would otherwise cut those lanes in two: this row needs to draw both its own dashed WIP
+ * connector AND a plain solid continuation of every through-lane. The oid is namespaced
+ * (`WIP:<path>`) so multiple of these can coexist and `GraphRow.tsx`
  * can tell them apart from the primary `'WIP'` row (which stays editable/committable) and from
  * each other.
  */
 function buildWorktreeWipNode(anchor: GitGraphNode, wip: WorktreeWipStatus): GitGraphNode {
   // Pick a lane that no line already occupies at the anchor row. Placing the synthetic node
   // blindly on `anchor.column + 1` breaks whenever another branch's lane already runs there:
-  // that lane's pass-through gets dropped by the `!== column` filter below, so its line shows a
-  // gap through this row, and the WIP node/connector lands right on top of it — the visible
+  // `laneContinuations` skips the WIP's own column, so that lane's continuation is dropped and its
+  // line shows a gap through this row, and the WIP node/connector lands right on top of it — the
   // "décalage" where a WIP sits in the middle of an unrelated branch's path. Every column
   // touched by any of the anchor's edges (verticals AND the diagonal legs of a merge/split) is
   // occupied, so walk outward from just right of the anchor to the first genuinely free lane.
@@ -140,9 +162,7 @@ function buildWorktreeWipNode(anchor: GitGraphNode, wip: WorktreeWipStatus): Git
   let column = anchor.column + 1
   while (occupied.has(column)) column++
 
-  const passThroughs = anchor.connections
-    .filter((c) => c.fromColumn === c.toColumn && c.fromColumn !== column)
-    .map((c) => ({ fromColumn: c.fromColumn, toColumn: c.toColumn, color: c.color }))
+  const passThroughs = laneContinuations(anchor, column)
   return {
     commit: {
       oid: `WIP:${wip.path}`,

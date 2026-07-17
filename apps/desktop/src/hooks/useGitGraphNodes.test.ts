@@ -254,6 +254,41 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     expect(wtNode.connections).toHaveLength(3) // both pass-throughs + its own column-2 WIP connector
   })
 
+  it('continues a lane that merges diagonally INTO the anchor as a straight vertical (merge-commit anchor)', () => {
+    // Regression: the anchor is a merge commit. A branch merging into it arrives as a *diagonal*
+    // edge (fromColumn 2 → toColumn 0, the anchor's own column). The old copy only kept
+    // `fromColumn === toColumn` verticals, so that incoming lane was dropped and its line was cut
+    // at the inserted WIP row (the reported "ligne verte coupée" at the WIP-33 row). It must now
+    // flow straight up through the synthetic row at its own column (2), keeping its color.
+    const nodes = [
+      node('m', {
+        column: 0,
+        color: '#16a34a',
+        refs: [branchRef('feature-x', 'm')],
+        commit: { ...node('m').commit, parentOids: ['p1', 's1'] },
+        connections: [
+          { fromColumn: 0, toColumn: 0, color: '#16a34a', endsAtNode: true },
+          { fromColumn: 0, toColumn: 0, color: '#16a34a', startsAtNode: true },
+          { fromColumn: 2, toColumn: 0, color: '#0891b2' }, // side branch merging in (diagonal)
+        ],
+      }),
+    ]
+    const { result } = renderHook(() =>
+      useGitGraphNodes(nodes, undefined, 0, t, null, [
+        { path: '/wt/x', branch: 'feature-x', totalChanges: 33, added: 0, modified: 0, deleted: 0 },
+      ])
+    )
+    const wtNode = result.current.filteredNodes[0]
+    // The diagonally-merging lane keeps flowing up at its own column, no longer cut.
+    expect(wtNode.connections).toContainEqual({ fromColumn: 2, toColumn: 2, color: '#0891b2' })
+    // The anchor's own mainline column continues too (from its `endsAtNode` incoming vertical)…
+    expect(wtNode.connections).toContainEqual({ fromColumn: 0, toColumn: 0, color: '#16a34a' })
+    // …but its downward departures to parents (the `startsAtNode` first-parent line) are NOT
+    // duplicated as an upward continuation.
+    const col0 = wtNode.connections.filter((c) => c.fromColumn === 0 && c.toColumn === 0)
+    expect(col0).toHaveLength(1)
+  })
+
   it('skips a lane already occupied at the anchor row instead of landing on top of it', () => {
     // Anchor at column 1 with another branch's lane already passing through at column 2 — the
     // WIP row must move to the first free lane (column 3), never sit on the occupied column 2,
