@@ -22,6 +22,7 @@ import type {
   BlameHunk,
   FileHistoryEntry,
   PrTemplateDetection,
+  ProjectCommand,
 } from '@git-manager/git-types'
 import type {
   AiProviderStatus,
@@ -546,6 +547,15 @@ export const openInEditor = (path: string, command: string) =>
 export const getRepoReadme = (path: string) => invoke<string>('get_repo_readme', { path })
 
 export const getTerminalCommands = () => invoke<string[]>('get_terminal_commands')
+
+/** Runs a project task's `command` in the configured external terminal (`terminalCommand`, empty →
+ * system default), with `path` (the repo) as the working directory. */
+export const runTaskInTerminal = (path: string, command: string, terminalCommand: string) =>
+  invoke<void>('run_task_in_terminal', { path, command, terminalCommand })
+
+/** Lists runnable commands declared by the project at `path` (today: package.json scripts). */
+export const getProjectCommands = (path: string) =>
+  invoke<ProjectCommand[]>('get_project_commands', { path })
 
 // ─── SSH ─────────────────────────────────────────────────────────────────────
 

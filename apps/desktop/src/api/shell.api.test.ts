@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const invoke = vi.fn()
 vi.mock('@tauri-apps/api/core', () => ({ invoke: (...args: unknown[]) => invoke(...args) }))
-vi.mock('../lib/tauri', () => ({ getTerminalCommands: vi.fn() }))
+vi.mock('../lib/tauri', () => ({
+  getTerminalCommands: vi.fn(),
+  runTaskInTerminal: vi.fn(),
+  getProjectCommands: vi.fn(),
+}))
 
 import * as tauri from '../lib/tauri'
 import * as api from './shell.api'
@@ -40,6 +44,32 @@ describe('apiOpenTerminal', () => {
     invoke.mockRejectedValue(new Error('no terminal'))
     await expect(api.apiOpenTerminal('/repo/a', '/Applications/iTerm.app')).resolves.toBeUndefined()
     expect(errorSpy).toHaveBeenCalled()
+  })
+})
+
+describe('apiRunTask', () => {
+  it('delegates to runTaskInTerminal with path/command/terminal', async () => {
+    mocked.runTaskInTerminal.mockResolvedValue(undefined)
+    await api.apiRunTask('/repo', 'pnpm dev', '/Applications/iTerm.app')
+    expect(mocked.runTaskInTerminal).toHaveBeenCalledWith(
+      '/repo',
+      'pnpm dev',
+      '/Applications/iTerm.app'
+    )
+  })
+
+  it('propagates backend errors (unlike apiOpenTerminal)', async () => {
+    mocked.runTaskInTerminal.mockRejectedValue(new Error('boom'))
+    await expect(api.apiRunTask('/repo', 'pnpm dev', '')).rejects.toThrow()
+  })
+})
+
+describe('apiGetProjectCommands', () => {
+  it('delegates to getProjectCommands', async () => {
+    const commands = [{ name: 'dev', command: 'pnpm dev', source: 'package.json' }]
+    mocked.getProjectCommands.mockResolvedValue(commands)
+    expect(await api.apiGetProjectCommands('/repo')).toEqual(commands)
+    expect(mocked.getProjectCommands).toHaveBeenCalledWith('/repo')
   })
 })
 

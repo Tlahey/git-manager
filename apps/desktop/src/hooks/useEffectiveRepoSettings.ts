@@ -1,4 +1,4 @@
-import type { RepoScopedSettings } from '@git-manager/git-types'
+import type { RepoScopedSettings, RunTask } from '@git-manager/git-types'
 import { useSettingsStore } from '../stores/settings.store'
 import { useCanonicalRepoPath } from './useCanonicalRepoPath'
 
@@ -14,6 +14,12 @@ export interface EffectiveRepoSettings {
   /** Glob patterns for gitignored local files to copy into new worktrees. Per-repo only — no
    * global fallback, so a repo without an override resolves to an empty list. */
   worktreeDefaultFiles: string[]
+  /** Project tasks runnable from the toolbar. Per-repo only — resolves to an empty list when the
+   * repo has no override. */
+  runTasks: RunTask[]
+  /** Id of the default task launched by the primary "Lancer" button, or `undefined` to fall back to
+   * the first task. Per-repo only. */
+  defaultRunTaskId: string | undefined
 }
 
 /**
@@ -47,5 +53,7 @@ export function useEffectiveRepoSettings(repoPath: string | null): EffectiveRepo
     commitPattern: override?.commitPattern ?? globalCommitPattern,
     theme: override?.theme ?? globalTheme,
     worktreeDefaultFiles: override?.worktreeDefaultFiles ?? [],
+    runTasks: override?.runTasks ?? [],
+    defaultRunTaskId: override?.defaultRunTaskId,
   }
 }

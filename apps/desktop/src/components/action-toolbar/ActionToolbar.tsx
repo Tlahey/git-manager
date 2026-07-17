@@ -14,6 +14,7 @@ import {
 import { useTranslation } from '@git-manager/i18n'
 import { useActionToolbar } from '../../hooks/useActionToolbar'
 import { useIsCommitsView } from '../../hooks/useIsCommitsView'
+import { useRunTasks } from '../../hooks/useRunTasks'
 import { useCommandPaletteStore } from '../../stores/commandPalette.store'
 import { useCommitSearchStore } from '../../stores/commitSearch.store'
 import { RepoSelector } from './RepoSelector'
@@ -21,6 +22,7 @@ import { BranchContext } from './BranchContext'
 import { StateTags } from './StateTags'
 import { FetchButton } from './FetchButton'
 import { BranchButton } from './BranchButton'
+import { RunButton } from './RunButton'
 import { ToolbarButton } from './ToolbarButton'
 
 /** Barre d'actions principale (Partie 2) située sous les onglets. */
@@ -53,6 +55,7 @@ export function ActionToolbar() {
   } = useActionToolbar(t)
 
   const isCommitsView = useIsCommitsView()
+  const { tasks, defaultTask, hasTasks, runTask } = useRunTasks()
   const disabled = !activeRepo
 
   return (
@@ -131,6 +134,13 @@ export function ActionToolbar() {
           disabled={disabled || !hasStashes}
           onClick={handlePop}
         />
+
+        {hasTasks && (
+          <>
+            <div className="mx-1 h-6 w-px shrink-0 bg-border" />
+            <RunButton tasks={tasks} defaultTask={defaultTask} onRun={runTask} />
+          </>
+        )}
 
         {(hasTerminal || hasEditor) && <div className="mx-1 h-6 w-px shrink-0 bg-border" />}
 
