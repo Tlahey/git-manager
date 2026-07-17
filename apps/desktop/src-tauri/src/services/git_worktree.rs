@@ -1,5 +1,5 @@
 use crate::error::AppError;
-use crate::models::GitWorktree;
+use crate::models::{GitWorktree, WorktreeAddResult};
 use git2::Repository;
 use std::path::Path;
 
@@ -36,6 +36,105 @@ pub fn add_worktree(repo_path: &str, dest_path: &str, from_ref: &str) -> Result<
     }
 
     Ok(())
+}
+
+/// Copies "default files" — gitignored local files the main worktree relies on (`.env`, local
+/// config, …) that a fresh worktree checkout won't contain — from `repo_path` into a freshly
+/// created worktree at `dest_path`, following per-repo glob `patterns` (e.g. `.env*`,
+/// `config/*.local.json`, `**/*.pem`).
+///
+/// Each pattern is expanded against the source repo with `glob::glob`, which only yields paths
+/// that actually exist — so a pattern that matches nothing (a listed-but-absent file) is simply
+/// reported in `skipped` rather than treated as an error, and copying never blocks worktree
+/// creation. Only regular files are copied (directories a glob resolves to are skipped; use `**`
+/// to reach their contents), anything under `.git/` is ignored, and each file keeps its path
+/// relative to the repo root. An individual copy that fails (e.g. a permission error) is counted
+/// as skipped rather than aborting the whole operation, since the worktree already exists.
+pub fn copy_default_files(
+    repo_path: &str,
+    dest_path: &str,
+    patterns: &[String],
+) -> Result<WorktreeAddResult, AppError> {
+    let repo_root = Path::new(repo_path);
+    let dest_root = Path::new(dest_path);
+    let mut result = WorktreeAddResult::default();
+
+    for pattern in patterns {
+        if pattern.trim().is_empty() {
+            continue;
+        }
+
+        let files = match_default_files(repo_root, pattern);
+        let mut copied_any = false;
+        for rel in files {
+            let src = repo_root.join(&rel);
+            let dest_file = dest_root.join(&rel);
+            let copied = dest_file
+                .parent()
+                .map(std::fs::create_dir_all)
+                .transpose()
+                .and_then(|_| std::fs::copy(&src, &dest_file))
+                .is_ok();
+            if copied {
+                copied_any = true;
+                result.copied.push(rel);
+            }
+        }
+
+        if !copied_any {
+            result.skipped.push(pattern.clone());
+        }
+    }
+
+    Ok(result)
+}
+
+/// Counts, per input pattern (aligned by index), how many repo files each glob matches — a
+/// preview for the worktree-creation UI so the user sees how many files a `.env*`-style pattern
+/// will copy. Same matching rules as `copy_default_files`; an empty or malformed pattern yields 0.
+pub fn count_default_file_matches(repo_path: &str, patterns: &[String]) -> Vec<usize> {
+    let repo_root = Path::new(repo_path);
+    patterns
+        .iter()
+        .map(|pattern| match_default_files(repo_root, pattern).len())
+        .collect()
+}
+
+/// Repo-relative paths of the regular files under `repo_root` matching one glob `pattern`,
+/// excluding anything in `.git/`. Shared by `copy_default_files` and `count_default_file_matches`
+/// so the preview count and the actual copy stay in lockstep. `glob::glob` only yields paths that
+/// exist, so a no-match (or malformed) pattern returns an empty vec.
+fn match_default_files(repo_root: &Path, pattern: &str) -> Vec<String> {
+    let trimmed = pattern.trim();
+    if trimmed.is_empty() {
+        return Vec::new();
+    }
+
+    // Join the pattern onto the repo root so globbing is scoped to this repo.
+    let full_pattern = repo_root.join(trimmed);
+    let full_pattern = full_pattern.to_string_lossy();
+    let matches = match glob::glob(&full_pattern) {
+        Ok(paths) => paths,
+        Err(_) => return Vec::new(),
+    };
+
+    let mut out = Vec::new();
+    for entry in matches.flatten() {
+        // Only regular files count; a glob can resolve to a directory (skip it — `**` reaches its
+        // contents) and we never touch git's own metadata.
+        if !entry.is_file() {
+            continue;
+        }
+        let rel = match entry.strip_prefix(repo_root) {
+            Ok(rel) => rel,
+            Err(_) => continue,
+        };
+        if rel.components().any(|c| c.as_os_str() == ".git") {
+            continue;
+        }
+        out.push(rel.to_string_lossy().into_owned());
+    }
+    out
 }
 
 /// Lists all worktrees for the repository via `git worktree list --porcelain`.
@@ -378,5 +477,89 @@ mod tests {
 
         std::fs::remove_dir_all(&wt_dir).ok();
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn copy_default_files_copies_glob_matches_and_reports_missing() {
+        let src = std::env::temp_dir().join(format!("gm-test-wt-copy-src-{}", std::process::id()));
+        let dest = std::env::temp_dir().join(format!("gm-test-wt-copy-dst-{}", std::process::id()));
+        std::fs::remove_dir_all(&src).ok();
+        std::fs::remove_dir_all(&dest).ok();
+        std::fs::create_dir_all(src.join("config")).unwrap();
+        std::fs::create_dir_all(&dest).unwrap();
+
+        // Source files: a couple of gitignored-style locals plus a nested config file.
+        std::fs::write(src.join(".env"), "SECRET=1").unwrap();
+        std::fs::write(src.join(".env.local"), "LOCAL=1").unwrap();
+        std::fs::write(src.join("config/app.local.json"), "{}").unwrap();
+        std::fs::write(src.join("keep.txt"), "no").unwrap();
+
+        let patterns = vec![
+            ".env*".to_string(),
+            "config/*.local.json".to_string(),
+            "does-not-exist/*.toml".to_string(),
+        ];
+        let result =
+            copy_default_files(src.to_str().unwrap(), dest.to_str().unwrap(), &patterns).unwrap();
+
+        // The two `.env*` files and the nested config are copied, preserving relative structure.
+        assert!(dest.join(".env").exists());
+        assert!(dest.join(".env.local").exists());
+        assert!(dest.join("config/app.local.json").exists());
+        // A pattern that didn't appear must NOT pull an unrelated file.
+        assert!(!dest.join("keep.txt").exists());
+        assert_eq!(result.copied.len(), 3);
+        // The pattern with no on-disk match is reported as skipped.
+        assert_eq!(result.skipped, vec!["does-not-exist/*.toml".to_string()]);
+
+        std::fs::remove_dir_all(&src).ok();
+        std::fs::remove_dir_all(&dest).ok();
+    }
+
+    #[test]
+    fn count_default_file_matches_reports_per_pattern_counts() {
+        let src = std::env::temp_dir().join(format!("gm-test-wt-count-{}", std::process::id()));
+        std::fs::remove_dir_all(&src).ok();
+        std::fs::create_dir_all(src.join("config")).unwrap();
+        std::fs::write(src.join(".env"), "x").unwrap();
+        std::fs::write(src.join(".env.local"), "x").unwrap();
+        std::fs::write(src.join("config/app.local.json"), "{}").unwrap();
+
+        let patterns = vec![
+            ".env*".to_string(),
+            "config/*.local.json".to_string(),
+            "nope/*.toml".to_string(),
+            "".to_string(),
+        ];
+        let counts = count_default_file_matches(src.to_str().unwrap(), &patterns);
+        // Aligned by index: two `.env*`, one nested config, zero for the missing pattern and the
+        // empty one.
+        assert_eq!(counts, vec![2, 1, 0, 0]);
+
+        std::fs::remove_dir_all(&src).ok();
+    }
+
+    #[test]
+    fn copy_default_files_never_copies_git_metadata() {
+        let src =
+            std::env::temp_dir().join(format!("gm-test-wt-copy-git-src-{}", std::process::id()));
+        let dest =
+            std::env::temp_dir().join(format!("gm-test-wt-copy-git-dst-{}", std::process::id()));
+        std::fs::remove_dir_all(&src).ok();
+        std::fs::remove_dir_all(&dest).ok();
+        std::fs::create_dir_all(src.join(".git")).unwrap();
+        std::fs::create_dir_all(&dest).unwrap();
+        std::fs::write(src.join(".git/config"), "x").unwrap();
+
+        // A greedy pattern must still never drag `.git/` internals into the new worktree.
+        let patterns = vec!["**/*".to_string()];
+        let result =
+            copy_default_files(src.to_str().unwrap(), dest.to_str().unwrap(), &patterns).unwrap();
+
+        assert!(!dest.join(".git").exists());
+        assert!(result.copied.iter().all(|p| !p.contains(".git")));
+
+        std::fs::remove_dir_all(&src).ok();
+        std::fs::remove_dir_all(&dest).ok();
     }
 }

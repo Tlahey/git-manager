@@ -56,7 +56,8 @@ use commands::undo::{
     snapshot_file, snapshot_worktree, snapshot_worktree_always, unpin_object,
 };
 use commands::worktree::{
-    add_worktree, gone_upstream_branches, list_worktrees, prune_worktrees, remove_worktree,
+    add_worktree, count_default_file_matches, gone_upstream_branches, list_worktrees,
+    prune_worktrees, remove_worktree,
 };
 use state::AppState;
 use tauri::menu::{Menu, MenuItem};
@@ -249,6 +250,7 @@ pub fn run() {
             objects_exist,
             // Worktree
             add_worktree,
+            count_default_file_matches,
             list_worktrees,
             remove_worktree,
             prune_worktrees,

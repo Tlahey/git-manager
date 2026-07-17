@@ -1,6 +1,7 @@
 import {
   listWorktrees,
   addWorktree,
+  countDefaultFileMatches,
   removeWorktree,
   pruneWorktrees,
   goneUpstreamBranches,
@@ -10,8 +11,17 @@ export async function apiListWorktrees(path: string) {
   return listWorktrees(path)
 }
 
-export async function apiAddWorktree(path: string, branch: string, worktreePath: string) {
-  return addWorktree(path, branch, worktreePath)
+export async function apiAddWorktree(
+  path: string,
+  branch: string,
+  worktreePath: string,
+  defaultFiles?: string[]
+) {
+  return addWorktree(path, branch, worktreePath, defaultFiles)
+}
+
+export async function apiCountDefaultFileMatches(path: string, patterns: string[]) {
+  return countDefaultFileMatches(path, patterns)
 }
 
 export async function apiRemoveWorktree(path: string, worktreePath: string, force = false) {

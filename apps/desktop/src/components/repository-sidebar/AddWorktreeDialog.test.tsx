@@ -16,9 +16,16 @@ vi.mock('../../hooks/useBranches', () => ({ useBranches: () => useBranchesMock()
 vi.mock('../../api/worktree.api', () => ({
   apiAddWorktree: vi.fn(),
   apiListWorktrees: vi.fn(),
+  apiCountDefaultFileMatches: vi.fn().mockResolvedValue([]),
+}))
+// Treat the patterns exercised here as matching files, so the 0-file guard on "save as default"
+// doesn't disable the button.
+vi.mock('../../hooks/useDefaultFileMatchCounts', () => ({
+  useDefaultFileMatchCounts: () => ({ '.env*': 3, '.env.local': 3 }),
 }))
 
 import { apiAddWorktree, apiListWorktrees } from '../../api/worktree.api'
+import { useSettingsStore } from '../../stores/settings.store'
 import { AddWorktreeDialog } from './AddWorktreeDialog'
 
 const mockedAddWorktree = apiAddWorktree as unknown as ReturnType<typeof vi.fn>
@@ -65,6 +72,8 @@ function renderDialog(props: Partial<React.ComponentProps<typeof AddWorktreeDial
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Start every test from a repo with no saved default files.
+  useSettingsStore.getState().resetRepoSetting('/repo', 'worktreeDefaultFiles')
   useBranchesMock.mockReturnValue({
     data: [branch('main', { isHead: true }), branch('feature/login'), branch('feature/settings')],
   })
@@ -114,7 +123,7 @@ describe('AddWorktreeDialog — branch picker', () => {
 
 describe('AddWorktreeDialog — creating a worktree', () => {
   it('creates the worktree with the selected branch and path, invalidates, and closes', async () => {
-    mockedAddWorktree.mockResolvedValue(undefined)
+    mockedAddWorktree.mockResolvedValue({ copied: [], skipped: [] })
     const onClose = vi.fn()
     const user = userEvent.setup()
     const { invalidateSpy } = renderDialog({ onClose })
@@ -127,7 +136,8 @@ describe('AddWorktreeDialog — creating a worktree', () => {
     await user.type(screen.getByTestId('worktree-add-path-input'), '/tmp/new-wt')
     await user.click(screen.getByTestId('worktree-add-confirm-button'))
 
-    expect(mockedAddWorktree).toHaveBeenCalledWith('/repo', 'feature/settings', '/tmp/new-wt')
+    // No default files configured → empty list forwarded, and the dialog closes immediately.
+    expect(mockedAddWorktree).toHaveBeenCalledWith('/repo', 'feature/settings', '/tmp/new-wt', [])
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['worktrees', '/repo'] })
   })
@@ -160,5 +170,44 @@ describe('AddWorktreeDialog — creating a worktree', () => {
     await user.click(screen.getByText('gitTree.contextMenu.cancel'))
     expect(onClose).toHaveBeenCalledOnce()
     expect(mockedAddWorktree).not.toHaveBeenCalled()
+  })
+})
+
+describe('AddWorktreeDialog — default files panel', () => {
+  it('seeds the panel from the repo saved defaults and forwards them, keeping the summary open', async () => {
+    useSettingsStore.getState().setRepoSetting('/repo', 'worktreeDefaultFiles', ['.env*'])
+    mockedAddWorktree.mockResolvedValue({ copied: ['.env'], skipped: ['missing/*'] })
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    renderDialog({ onClose })
+
+    // The saved pattern pre-fills a row.
+    await waitFor(() =>
+      expect(screen.getByTestId<HTMLInputElement>('default-files-input')).toHaveValue('.env*')
+    )
+    await user.type(screen.getByTestId('worktree-add-path-input'), '/tmp/new-wt')
+    await user.click(screen.getByTestId('worktree-add-confirm-button'))
+
+    expect(mockedAddWorktree).toHaveBeenCalledWith('/repo', 'feature/settings', '/tmp/new-wt', [
+      '.env*',
+    ])
+    // With files requested, the dialog stays open to show the copy summary instead of closing.
+    expect(await screen.findByTestId('worktree-add-result')).toBeInTheDocument()
+    expect(screen.getByTestId('worktree-add-skipped')).toHaveTextContent('missing/*')
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('"save as project default" persists the edited list to the repo settings', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await screen.findByTestId('worktree-add-branch-select')
+
+    await user.click(screen.getByTestId('default-files-add'))
+    await user.type(screen.getByTestId('default-files-input'), '.env.local')
+    await user.click(screen.getByTestId('worktree-default-files-save'))
+
+    expect(
+      useSettingsStore.getState().settings.repoOverrides['/repo']?.worktreeDefaultFiles
+    ).toEqual(['.env.local'])
   })
 })

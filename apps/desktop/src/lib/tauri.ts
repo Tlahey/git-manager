@@ -10,6 +10,7 @@ import type {
   GitDiff,
   GitStash,
   GitWorktree,
+  WorktreeAddResult,
   GitSubmodule,
   RebaseState,
   RebaseTodoStep,
@@ -173,8 +174,17 @@ export const editStashMessage = (path: string, index: number, message: string) =
 
 export const listWorktrees = (path: string) => invoke<GitWorktree[]>('list_worktrees', { path })
 
-export const addWorktree = (path: string, branch: string, worktreePath: string) =>
-  invoke<void>('add_worktree', { path, branch, worktreePath })
+export const addWorktree = (
+  path: string,
+  branch: string,
+  worktreePath: string,
+  defaultFiles?: string[]
+) => invoke<WorktreeAddResult>('add_worktree', { path, branch, worktreePath, defaultFiles })
+
+/** Per-pattern count (aligned by index) of repo files each default-file glob matches — a live
+ * preview for the worktree-creation UI. */
+export const countDefaultFileMatches = (path: string, patterns: string[]) =>
+  invoke<number[]>('count_default_file_matches', { path, patterns })
 
 export const removeWorktree = (path: string, worktreePath: string, force = false) =>
   invoke<void>('remove_worktree', { path, worktreePath, force })

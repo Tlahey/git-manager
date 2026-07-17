@@ -190,9 +190,15 @@ const cases: {
   },
   {
     name: 'addWorktree',
-    call: () => tauri.addWorktree('/repo', 'feat', '/repo-feat'),
+    call: () => tauri.addWorktree('/repo', 'feat', '/repo-feat', ['.env*']),
     command: 'add_worktree',
-    args: { path: '/repo', branch: 'feat', worktreePath: '/repo-feat' },
+    args: { path: '/repo', branch: 'feat', worktreePath: '/repo-feat', defaultFiles: ['.env*'] },
+  },
+  {
+    name: 'countDefaultFileMatches',
+    call: () => tauri.countDefaultFileMatches('/repo', ['.env*']),
+    command: 'count_default_file_matches',
+    args: { path: '/repo', patterns: ['.env*'] },
   },
   {
     name: 'removeWorktree (default force)',
