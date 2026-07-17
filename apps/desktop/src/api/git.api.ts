@@ -801,8 +801,8 @@ export async function apiCreateTag(path: string, name: string, fromRef: string, 
 
 // ─── Fetch / Pull / Push ───────────────────────────────────────────────────
 
-export async function apiFetchRemote(path: string, remote?: string) {
-  return fetchRemote(path, remote)
+export async function apiFetchRemote(path: string, remote?: string, prune?: boolean) {
+  return fetchRemote(path, remote, prune)
 }
 
 export async function apiPullBranch(path: string, remote?: string, rebase?: boolean) {

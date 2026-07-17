@@ -12,7 +12,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@git-manager/ui'
-import { Save } from 'lucide-react'
+import { FolderOpen, Save } from 'lucide-react'
+import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { useBranches } from '../../hooks/useBranches'
 import { useCanonicalRepoPath } from '../../hooks/useCanonicalRepoPath'
 import { useDefaultFileMatchCounts } from '../../hooks/useDefaultFileMatchCounts'
@@ -20,6 +21,8 @@ import { useEffectiveRepoSettings } from '../../hooks/useEffectiveRepoSettings'
 import { useSettingsStore } from '../../stores/settings.store'
 import { apiAddWorktree, apiListWorktrees } from '../../api/worktree.api'
 import { DefaultFilesEditor } from '../worktree/DefaultFilesEditor'
+import { BranchCombobox } from './BranchCombobox'
+import { defaultWorktreePath, worktreePathInParent } from './worktreePath'
 
 interface AddWorktreeDialogProps {
   repoPath: string
@@ -27,10 +30,13 @@ interface AddWorktreeDialogProps {
   onClose: () => void
 }
 
-/** Creates a new linked worktree — a plain path input, not a native folder picker, since the
- * destination must NOT already exist (`add_worktree` errors otherwise). A right-hand panel lists
- * the "default files" (gitignored locals like `.env`) copied into the new worktree; it's seeded
- * from the repo's saved defaults but edits there are transient unless explicitly saved back. */
+/** Creates a new linked worktree. The base branch is picked from a searchable dropdown (defaulting
+ * to the current branch); the destination path defaults to a sibling `<project>.worktrees/<branch>`
+ * folder and can be relocated with a native folder picker. A branch already checked out by any
+ * worktree can't be checked out again, so selecting one surfaces an inline warning and blocks
+ * creation. A right-hand panel lists the "default files" (gitignored locals like `.env`) copied into
+ * the new worktree; it's seeded from the repo's saved defaults but edits there are transient unless
+ * explicitly saved back. */
 export function AddWorktreeDialog({ repoPath, open, onClose }: AddWorktreeDialogProps) {
   const { t } = useTranslation('git')
   const queryClient = useQueryClient()
@@ -49,21 +55,30 @@ export function AddWorktreeDialog({ repoPath, open, onClose }: AddWorktreeDialog
   })
   // A branch already checked out in ANY worktree (the main one included) can't be checked out
   // again — `git worktree add` refuses with "'<branch>' is already used by worktree at '<path>'".
-  // Excluding those from the picker (not just the default) avoids that error entirely rather than
-  // just avoiding it for the common case.
   const checkedOutBranches = new Set(worktrees.map((wt) => wt.branch))
-  const localBranches = allBranches.filter(
-    (b) => !b.isRemote && !checkedOutBranches.has(b.shortName)
-  )
+  // Anchor the default destination on the MAIN worktree's root, not `repoPath` — the active tab may
+  // itself be a linked worktree, and nesting new worktrees inside it is exactly the wrong place.
+  const repoRoot = worktrees.find((wt) => wt.isMain)?.path ?? repoPath
+  const localBranches = allBranches.filter((b) => !b.isRemote)
+  const branchOptions = localBranches.map((b) => ({
+    shortName: b.shortName,
+    isCheckedOut: checkedOutBranches.has(b.shortName),
+  }))
+
   const [branch, setBranch] = useState('')
   const [path, setPath] = useState('')
   const [defaultFiles, setDefaultFiles] = useState<string[]>([])
+  // Once the user relocates the destination (typed it or picked a folder), stop re-deriving it
+  // from the branch so their choice isn't clobbered when the selection changes.
+  const [pathEdited, setPathEdited] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<WorktreeAddResult | null>(null)
   // Live "N files" hint per pattern, counted against the copy source (`repoPath`) — only while the
   // dialog is open (and not showing the result summary).
   const matchCounts = useDefaultFileMatchCounts(open && !result ? repoPath : null, defaultFiles)
+
+  const branchInUse = !!branch && checkedOutBranches.has(branch)
 
   // Seed the transient file list from the repo's saved defaults each time the dialog opens, so
   // per-creation edits never leak between openings and always start from the current defaults.
@@ -76,12 +91,27 @@ export function AddWorktreeDialog({ repoPath, open, onClose }: AddWorktreeDialog
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
+  // Default the selection to the current branch (falling back to the first local branch). Re-runs
+  // whenever the branch list changes — the branches query commonly resolves after the first render —
+  // so the default lands once the real list arrives, but leaves an explicit user choice alone.
+  useEffect(() => {
+    if (!open || localBranches.length === 0) return
+    if (branch && localBranches.some((b) => b.shortName === branch)) return
+    const head = localBranches.find((b) => b.isHead)
+    setBranch(head?.shortName ?? localBranches[0].shortName)
+  }, [open, localBranches, branch])
+
+  // Keep the destination in sync with the selected branch until the user takes it over.
+  useEffect(() => {
+    if (!open || pathEdited || !branch) return
+    setPath(defaultWorktreePath(repoRoot, branch))
+  }, [open, pathEdited, branch, repoRoot])
+
   // The current list differs from what's saved for the repo — enables "Save as project default".
   const savedFiles = effective.worktreeDefaultFiles
   const cleanedFiles = defaultFiles.map((f) => f.trim()).filter(Boolean)
   const dirtyDefaults =
-    cleanedFiles.length !== savedFiles.length ||
-    cleanedFiles.some((f, i) => f !== savedFiles[i])
+    cleanedFiles.length !== savedFiles.length || cleanedFiles.some((f, i) => f !== savedFiles[i])
   // Don't persist a pattern that matches no files (keeps saved defaults free of dead patterns). A
   // pattern whose count hasn't resolved yet also blocks, so we never save an unverified one.
   const allDefaultsMatch = cleanedFiles.every((f) => (matchCounts[f] ?? 0) > 0)
@@ -95,9 +125,17 @@ export function AddWorktreeDialog({ repoPath, open, onClose }: AddWorktreeDialog
     }
   }
 
+  async function pickParentDir() {
+    const selected = await openDialog({ directory: true, multiple: false })
+    if (selected && typeof selected === 'string') {
+      setPath(worktreePathInParent(selected, branch))
+      setPathEdited(true)
+    }
+  }
+
   async function handleConfirm() {
     const trimmed = path.trim()
-    if (!trimmed || !branch) return
+    if (!trimmed || !branch || branchInUse) return
     setIsLoading(true)
     setError(null)
     try {
@@ -107,11 +145,9 @@ export function AddWorktreeDialog({ repoPath, open, onClose }: AddWorktreeDialog
       // close immediately as before.
       if (cleanedFiles.length > 0) {
         setResult(res)
-        setPath('')
-        setBranch('')
+        resetForm()
       } else {
-        setPath('')
-        setBranch('')
+        resetForm()
         onClose()
       }
     } catch (err) {
@@ -121,9 +157,16 @@ export function AddWorktreeDialog({ repoPath, open, onClose }: AddWorktreeDialog
     }
   }
 
+  function resetForm() {
+    setPath('')
+    setBranch('')
+    setPathEdited(false)
+  }
+
   function handleOpenChange(next: boolean) {
     if (!next) {
       setError(null)
+      resetForm()
       onClose()
     }
   }
@@ -161,32 +204,62 @@ export function AddWorktreeDialog({ repoPath, open, onClose }: AddWorktreeDialog
               {localBranches.length === 0 ? (
                 <p className="text-xs text-muted-foreground">{t('worktree.addNoBranches')}</p>
               ) : (
-                <label className="block space-y-1 text-xs text-muted-foreground">
-                  {t('worktree.addBranchLabel')}
-                  <select
-                    value={branch}
-                    onChange={(e) => setBranch(e.target.value)}
-                    className="block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-                    data-testid="worktree-add-branch-select"
-                  >
-                    {localBranches.map((b) => (
-                      <option key={b.name} value={b.shortName}>
-                        {b.shortName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <>
+                  <div className="space-y-1">
+                    <label className="block text-xs text-muted-foreground">
+                      {t('worktree.addBranchLabel')}
+                    </label>
+                    <BranchCombobox
+                      branches={branchOptions}
+                      value={branch}
+                      onChange={setBranch}
+                      placeholder={t('worktree.addBranchPlaceholder')}
+                      searchPlaceholder={t('worktree.addBranchSearchPlaceholder')}
+                      emptyLabel={t('worktree.addBranchEmpty')}
+                      inUseLabel={t('worktree.addBranchInUse')}
+                    />
+                    {branchInUse && (
+                      <p
+                        className="text-xs text-destructive"
+                        data-testid="worktree-add-branch-in-use-warning"
+                      >
+                        {t('worktree.addBranchCheckedOutWarning')}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs text-muted-foreground">
+                      {t('worktree.addPathLabel')}
+                    </label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={path}
+                        onChange={(e) => {
+                          setPath(e.target.value)
+                          setPathEdited(true)
+                        }}
+                        placeholder={t('worktree.addPathPlaceholder')}
+                        data-testid="worktree-add-path-input"
+                        className="flex-1"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleConfirm()
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={pickParentDir}
+                        aria-label={t('worktree.addPathBrowse')}
+                        data-testid="worktree-add-path-browse"
+                      >
+                        <FolderOpen className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </>
               )}
-              <Input
-                autoFocus
-                value={path}
-                onChange={(e) => setPath(e.target.value)}
-                placeholder={t('worktree.addPathPlaceholder')}
-                data-testid="worktree-add-path-input"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleConfirm()
-                }}
-              />
               {error && <p className="text-xs text-destructive">{error}</p>}
             </div>
 
@@ -207,7 +280,9 @@ export function AddWorktreeDialog({ repoPath, open, onClose }: AddWorktreeDialog
                   {t('worktree.defaultFiles.saveAsDefault')}
                 </button>
               </div>
-              <p className="text-[11px] text-muted-foreground">{t('worktree.defaultFiles.helper')}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {t('worktree.defaultFiles.helper')}
+              </p>
               <DefaultFilesEditor
                 patterns={defaultFiles}
                 matchCounts={matchCounts}
@@ -225,13 +300,18 @@ export function AddWorktreeDialog({ repoPath, open, onClose }: AddWorktreeDialog
             </Button>
           ) : (
             <>
-              <Button variant="ghost" size="sm" onClick={onClose} disabled={isLoading}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleOpenChange(false)}
+                disabled={isLoading}
+              >
                 {t('gitTree.contextMenu.cancel')}
               </Button>
               <Button
                 size="sm"
                 onClick={handleConfirm}
-                disabled={!path.trim() || !branch || isLoading}
+                disabled={!path.trim() || !branch || branchInUse || isLoading}
                 className="gap-1.5"
                 data-testid="worktree-add-confirm-button"
               >

@@ -7,11 +7,16 @@ pub use crate::services::git_remote::{FetchResult, PullResult, RemoteInfo};
 
 // ─── fetch_remote ─────────────────────────────────────────────────────────────
 
-/// Fetch depuis un remote (défaut : "origin")
+/// Fetch depuis un remote (défaut : "origin"). `prune` supprime les refs de suivi
+/// (`origin/*`) dont la branche distante a disparu — `git fetch --prune`.
 #[tauri::command]
-pub async fn fetch_remote(path: String, remote: Option<String>) -> Result<FetchResult, String> {
+pub async fn fetch_remote(
+    path: String,
+    remote: Option<String>,
+    prune: Option<bool>,
+) -> Result<FetchResult, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_remote::fetch(&repo, remote).map_err(Into::into)
+    git_remote::fetch(&repo, remote, prune.unwrap_or(false)).map_err(Into::into)
 }
 
 // ─── pull_branch ──────────────────────────────────────────────────────────────

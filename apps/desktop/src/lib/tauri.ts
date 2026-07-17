@@ -321,8 +321,8 @@ export const isCommitOnCurrentBranch = (path: string, oid: string) =>
 
 // ─── Remote ───────────────────────────────────────────────────────────────────
 
-export const fetchRemote = (path: string, remote?: string) =>
-  invoke<{ remote: string; updatedRefs: string[] }>('fetch_remote', { path, remote })
+export const fetchRemote = (path: string, remote?: string, prune?: boolean) =>
+  invoke<{ remote: string; updatedRefs: string[] }>('fetch_remote', { path, remote, prune })
 
 export const pullBranch = (path: string, remote?: string, rebase?: boolean) =>
   invoke<{ fastForwarded: boolean; commitsMerged: number; conflicts: string[] }>('pull_branch', {

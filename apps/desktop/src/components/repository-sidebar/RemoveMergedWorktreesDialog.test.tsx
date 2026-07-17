@@ -234,3 +234,30 @@ describe('RemoveMergedWorktreesDialog — confirming', () => {
     expect(mockedRemoveWorktree).not.toHaveBeenCalled()
   })
 })
+
+describe('RemoveMergedWorktreesDialog — mine-only mode', () => {
+  it('offers and removes only worktrees whose merged PR was authored by currentUser', async () => {
+    mockedRemoveWorktree.mockResolvedValue(undefined)
+    const mine = worktree({ path: '/tmp/mine', branch: 'feature/mine' })
+    const theirs = worktree({ path: '/tmp/theirs', branch: 'feature/theirs' })
+    const goneNoPr = worktree({ path: '/tmp/gone', branch: 'feature/gone' })
+    useMergedWorktreesMock.mockReturnValue(
+      hookResult([
+        { worktree: mine, status: { merged: { number: 1, title: 'Mine', author: 'alice' } } },
+        { worktree: theirs, status: { merged: { number: 2, title: 'Theirs', author: 'bob' } } },
+        { worktree: goneNoPr, status: 'branch-gone' },
+      ])
+    )
+    const user = userEvent.setup()
+    renderDialog({ mineOnly: true, currentUser: 'Alice' })
+
+    expect(screen.getAllByText('worktree.removeMyMerged').length).toBeGreaterThan(0)
+    expect(screen.getByTestId('worktree-remove-merged-item-/tmp/mine')).toBeInTheDocument()
+    expect(screen.queryByTestId('worktree-remove-merged-item-/tmp/theirs')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('worktree-remove-merged-item-/tmp/gone')).not.toBeInTheDocument()
+
+    await user.click(screen.getByTestId('worktree-remove-merged-confirm-button'))
+    expect(mockedRemoveWorktree).toHaveBeenCalledWith('/repo', '/tmp/mine')
+    expect(mockedRemoveWorktree).not.toHaveBeenCalledWith('/repo', '/tmp/theirs')
+  })
+})

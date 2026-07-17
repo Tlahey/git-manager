@@ -123,7 +123,7 @@ describe('read-only pass-throughs', () => {
     ['apiListSubmodules', 'listSubmodules', [PATH]],
     ['apiGetRebaseState', 'getRebaseState', [PATH]],
     ['apiListRebaseCommits', 'listRebaseCommits', [PATH, 'baseOid']],
-    ['apiFetchRemote', 'fetchRemote', [PATH, 'origin']],
+    ['apiFetchRemote', 'fetchRemote', [PATH, 'origin', true]],
     ['apiPullBranch', 'pullBranch', [PATH, 'origin', true]],
     ['apiPushBranch', 'pushBranch', [PATH, 'origin', false]],
   ] as const)(

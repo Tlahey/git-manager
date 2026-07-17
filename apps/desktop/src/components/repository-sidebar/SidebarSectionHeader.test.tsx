@@ -51,6 +51,88 @@ describe('SidebarSectionHeader', () => {
     expect(screen.queryByLabelText('Créer une branche')).not.toBeInTheDocument()
   })
 
+  it('shows a branch-actions menu on the local section whose item fires onRemoveMergedBranches', async () => {
+    const user = userEvent.setup()
+    const onRemoveMergedBranches = vi.fn()
+    render(
+      <SidebarSectionHeader
+        sectionKey="local"
+        title="Local"
+        isOpen={true}
+        onToggle={vi.fn()}
+        onCreateBranch={vi.fn()}
+        onRemoveMergedBranches={onRemoveMergedBranches}
+      />
+    )
+    await user.click(screen.getByTestId('branch-actions-menu-trigger'))
+    await user.click(screen.getByTestId('branch-remove-merged-menu-item'))
+    expect(onRemoveMergedBranches).toHaveBeenCalledOnce()
+  })
+
+  it('hides the branch-actions menu when neither prune nor remove-merged is given', () => {
+    render(
+      <SidebarSectionHeader
+        sectionKey="local"
+        title="Local"
+        isOpen={true}
+        onToggle={vi.fn()}
+        onCreateBranch={vi.fn()}
+      />
+    )
+    expect(screen.queryByTestId('branch-actions-menu-trigger')).not.toBeInTheDocument()
+  })
+
+  it('fires onPruneBranches from the branch-actions menu, and shows the menu on prune alone', async () => {
+    const user = userEvent.setup()
+    const onPruneBranches = vi.fn()
+    render(
+      <SidebarSectionHeader
+        sectionKey="local"
+        title="Local"
+        isOpen={true}
+        onToggle={vi.fn()}
+        onPruneBranches={onPruneBranches}
+      />
+    )
+    await user.click(screen.getByTestId('branch-actions-menu-trigger'))
+    await user.click(screen.getByTestId('branch-prune-menu-item'))
+    expect(onPruneBranches).toHaveBeenCalledOnce()
+  })
+
+  it('fires onRemoveMyMergedBranches from the branch-actions menu', async () => {
+    const user = userEvent.setup()
+    const onRemoveMyMergedBranches = vi.fn()
+    render(
+      <SidebarSectionHeader
+        sectionKey="local"
+        title="Local"
+        isOpen={true}
+        onToggle={vi.fn()}
+        onRemoveMyMergedBranches={onRemoveMyMergedBranches}
+      />
+    )
+    await user.click(screen.getByTestId('branch-actions-menu-trigger'))
+    await user.click(screen.getByTestId('branch-remove-my-merged-menu-item'))
+    expect(onRemoveMyMergedBranches).toHaveBeenCalledOnce()
+  })
+
+  it('fires onRemoveMyMergedWorktrees from the worktree-actions menu', async () => {
+    const user = userEvent.setup()
+    const onRemoveMyMergedWorktrees = vi.fn()
+    render(
+      <SidebarSectionHeader
+        sectionKey="worktrees"
+        title="Worktrees"
+        isOpen={true}
+        onToggle={vi.fn()}
+        onRemoveMyMergedWorktrees={onRemoveMyMergedWorktrees}
+      />
+    )
+    await user.click(screen.getByTestId('worktree-actions-menu-trigger'))
+    await user.click(screen.getByTestId('worktree-remove-my-merged-menu-item'))
+    expect(onRemoveMyMergedWorktrees).toHaveBeenCalledOnce()
+  })
+
   it('shows the add-worktree action only for the worktrees section with onAddWorktree', async () => {
     const user = userEvent.setup()
     const onAddWorktree = vi.fn()

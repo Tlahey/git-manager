@@ -272,7 +272,7 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     ]
     const { result } = renderHook(() =>
       useGitGraphNodes(nodes, undefined, 0, t, null, [
-        { path: '/wt/x', branch: 'feature-x', totalChanges: 1 },
+        { path: '/wt/x', branch: 'feature-x', totalChanges: 1, added: 0, modified: 0, deleted: 0 },
       ])
     )
     const wtNode = result.current.filteredNodes[0]
