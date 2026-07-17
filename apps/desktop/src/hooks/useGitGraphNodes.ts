@@ -325,18 +325,43 @@ export function useGitGraphNodes(
   // rather than per visible row on every render (that used to re-run this reasoning inside
   // the virtualization loop's .map() callback).
   const renderNodes = useMemo(() => {
-    // Every synthetic WIP row needs the row immediately below it (its anchor commit) to carry a
-    // matching connection, or GraphSvg has nothing to draw the dashed line into. The primary WIP
-    // row always anchors at index 1/column 0 with a plain vertical (same column both ends).
-    // Per-worktree WIP rows anchor wherever they were inserted, but the connector is a diagonal
-    // "arrival" patched onto the anchor (fromColumn = the WIP row's offset column, toColumn =
-    // the anchor's own column) — see `buildWorktreeWipNode`'s comment for why it's this way
-    // round (starts at the commit, rises into the WIP row) rather than the other.
+    // Every synthetic WIP row needs a real row below it (its anchor commit) to carry a matching
+    // connection, or GraphSvg has nothing to draw the dashed line into. Per-worktree WIP rows
+    // anchor wherever they were inserted, but the connector is a diagonal "arrival" patched onto
+    // the anchor (fromColumn = the WIP row's offset column, toColumn = the anchor's own column) —
+    // see `buildWorktreeWipNode`'s comment for why it's this way round (starts at the commit,
+    // rises into the WIP row) rather than the other.
     const continuityPatches: { index: number; fromColumn: number; toColumn: number; color: string }[] =
       []
 
-    if (totalChanges > 0 || conflictNode) {
-      continuityPatches.push({ index: 1, fromColumn: 0, toColumn: 0, color: '#7c3aed' })
+    // The primary WIP/CONFLICT row's dashed connector runs down its own lane until it actually
+    // TOUCHES a node: the first real (non-synthetic) commit rendered ON that column — NOT merely
+    // the first real commit in display order. When the checked-out main is behind origin/main,
+    // the display-first commit (origin/main's tip) sits on another column entirely, while column
+    // 0 is the lane reserved for the local main further down: every column-0 segment in between
+    // crosses those rows without contacting any node, so the whole run must stay dashed until the
+    // local main node itself (see the dashing block below), then turn solid exactly there.
+    const hasPrimarySpecial =
+      filteredNodes.length > 0 &&
+      (filteredNodes[0].commit.oid === 'WIP' || filteredNodes[0].commit.oid === 'CONFLICT')
+    const wipColumn = hasPrimarySpecial ? filteredNodes[0].column : 0
+    const primaryAnchorIndex = hasPrimarySpecial
+      ? filteredNodes.findIndex(
+          (n) =>
+            n.commit.oid !== 'WIP' &&
+            n.commit.oid !== 'CONFLICT' &&
+            !n.commit.oid.startsWith('WIP:') &&
+            n.column === wipColumn
+        )
+      : -1
+
+    if (primaryAnchorIndex !== -1) {
+      continuityPatches.push({
+        index: primaryAnchorIndex,
+        fromColumn: wipColumn,
+        toColumn: wipColumn,
+        color: WIP_COLOR,
+      })
     }
 
     for (const { anchor, node: syntheticNode } of worktreeWipNodes) {
@@ -384,21 +409,42 @@ export function useGitGraphNodes(
         }
       }
 
+      // Keep the primary WIP/CONFLICT connector dashed the WHOLE way down its lane — from its own
+      // row to the anchor node it drops into. Rows in between (synthetic worktree WIP rows, and
+      // real commits sitting on other columns) only carry pass-through segments on this lane: none
+      // of them is a node the line touches, so each one must render dashed (and in the WIP violet,
+      // so the run reads as one connector). At the anchor row itself, only the edge arriving at the
+      // node center (`endsAtNode`) is dashed; the anchor's own downward departure (`startsAtNode`)
+      // is real history below the node and stays solid. When the anchor commit is below the loaded
+      // page (`primaryAnchorIndex === -1` with the WIP row present), the whole visible stretch of
+      // the lane is above it, so dash it all.
+      if (hasPrimarySpecial && index >= 1 && (primaryAnchorIndex === -1 || index <= primaryAnchorIndex)) {
+        patched = {
+          ...patched,
+          connections: patched.connections.map((conn) => {
+            if (conn.fromColumn !== wipColumn || conn.toColumn !== wipColumn) return conn
+            if (conn.startsAtNode) return conn
+            if (index === primaryAnchorIndex && !conn.endsAtNode) return conn
+            return { ...conn, dashed: true, color: WIP_COLOR }
+          }),
+        }
+      }
+
       if (originMainIndex !== -1 && index <= originMainIndex) {
-        // A merge commit's own straight-down departure to its real first parent — the mainline
-        // continuing solid *below* the merge dot — is already-established history, not something
-        // "not yet pushed". Keep that one structural segment solid even though the merge itself is
-        // ahead of origin/main (its other, diagonal, parent leg is already left solid because it
-        // isn't a column-0→column-0 edge). Everything else on column 0 — the line arriving from
-        // above, and every plain non-merge commit's full vertical — still gets the dashed
-        // "ahead of origin" treatment, so a straight run of unpushed commits stays continuously
-        // dashed down to the origin/main boundary.
-        const isMerge = node.commit.parentOids.length >= 2
+        // Everything on column 0 above origin/main is unpushed, so the *whole* mainline vertical
+        // there must be dashed — including a merge commit's straight-down departure to its first
+        // parent. A mainline built of "Merge pull request" commits is the common case: keeping each
+        // merge's downward leg solid (as an earlier version did) shattered the dashed line into
+        // mostly-solid segments that visibly stopped short of the origin/main node instead of
+        // reaching it. The one column-0 departure that stays solid is the origin/main commit's OWN
+        // (`index === originMainIndex`): it leads into already-pushed history below the boundary, so
+        // the dashed→solid transition lands exactly on that node. (A merge's diagonal leg to its
+        // second parent is left untouched here — it isn't a column-0→column-0 edge.)
         patched = {
           ...patched,
           connections: patched.connections.map((conn) => {
             if (conn.fromColumn !== 0 || conn.toColumn !== 0) return conn
-            if (isMerge && conn.startsAtNode) return conn
+            if (conn.startsAtNode && index === originMainIndex) return conn
             return { ...conn, dashed: true }
           }),
         }

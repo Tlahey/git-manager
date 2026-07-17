@@ -429,6 +429,78 @@ describe('useGitGraphNodes — renderNodes patching', () => {
     expect(patchedNode.connections).toHaveLength(1)
   })
 
+  // Regression (real-repo repro): local main is checked out but BEHIND origin/main. Column 0 is
+  // the lane reserved for local main, while origin/main's tip — the display-first commit — sits
+  // on column 1. The WIP row's connector must anchor on the first real commit rendered ON its own
+  // column (the local main node several rows down), NOT merely the first real commit in display
+  // order: none of the rows in between has a node on column 0, so every column-0 segment crossing
+  // them stays dashed, and the line only turns solid at (and below) the local main node itself.
+  it('keeps the WIP lane dashed down to the first real commit on its own column when local main is behind origin/main', () => {
+    const nodes = [
+      node('remoteTip', {
+        column: 1,
+        commit: { ...node('remoteTip').commit, parentOids: ['mid', 'x'] },
+        refs: [
+          {
+            name: 'refs/remotes/origin/main',
+            shortName: 'origin/main',
+            type: 'remote',
+            commitOid: 'remoteTip',
+          },
+        ],
+        connections: [
+          { fromColumn: 0, toColumn: 0, color: '#2563eb' }, // reserved local-main lane passing through
+          { fromColumn: 1, toColumn: 1, color: '#7c3aed', startsAtNode: true },
+        ],
+      }),
+      node('mid', {
+        column: 1,
+        commit: { ...node('mid').commit, parentOids: ['localMain'] },
+        connections: [
+          { fromColumn: 0, toColumn: 0, color: '#2563eb' }, // still passing through, no node contact
+          { fromColumn: 1, toColumn: 1, color: '#7c3aed', endsAtNode: true },
+          { fromColumn: 1, toColumn: 1, color: '#7c3aed', startsAtNode: true },
+        ],
+      }),
+      node('localMain', {
+        column: 0,
+        commit: { ...node('localMain').commit, parentOids: ['below', 's'] },
+        connections: [
+          { fromColumn: 0, toColumn: 0, color: '#2563eb', endsAtNode: true }, // lane arriving at its node
+          { fromColumn: 0, toColumn: 0, color: '#2563eb', startsAtNode: true }, // real history below
+          { fromColumn: 1, toColumn: 0, color: '#7c3aed' }, // mainline merging down into it
+        ],
+      }),
+      node('below', {
+        column: 0,
+        connections: [{ fromColumn: 0, toColumn: 0, color: '#2563eb', endsAtNode: true }],
+      }),
+    ]
+    const { result } = renderHook(() => useGitGraphNodes(nodes, undefined, 2, t, null))
+    const rn = result.current.renderNodes
+    expect(rn.map((n) => n.commit.oid)).toEqual(['WIP', 'remoteTip', 'mid', 'localMain', 'below'])
+
+    // Every column-0 segment crossing the remote-tip and intermediate rows stays dashed.
+    const tipCol0 = rn[1].connections.find((c) => c.fromColumn === 0 && c.toColumn === 0)
+    expect(tipCol0?.dashed).toBe(true)
+    const midCol0 = rn[2].connections.find((c) => c.fromColumn === 0 && c.toColumn === 0)
+    expect(midCol0?.dashed).toBe(true)
+
+    // The local main node's incoming column-0 edge is dashed and reaches the node center…
+    const incoming = rn[3].connections.find(
+      (c) => c.fromColumn === 0 && c.toColumn === 0 && c.endsAtNode
+    )
+    expect(incoming?.dashed).toBe(true)
+    // …its departure into real history below stays solid…
+    const departure = rn[3].connections.find(
+      (c) => c.fromColumn === 0 && c.toColumn === 0 && c.startsAtNode
+    )
+    expect(departure?.dashed).toBeFalsy()
+    // …and history below the node is untouched.
+    const belowCol0 = rn[4].connections.find((c) => c.fromColumn === 0 && c.toColumn === 0)
+    expect(belowCol0?.dashed).toBeFalsy()
+  })
+
   it('marks connections up to and including originMainIndex as dashed', () => {
     const nodes = [
       node('a', { connections: [{ fromColumn: 0, toColumn: 0, color: '#123', dashed: false }] }),
@@ -451,12 +523,73 @@ describe('useGitGraphNodes — renderNodes patching', () => {
     }
   })
 
+  // Regression: the origin/main commit's OWN downward departure leads into already-pushed
+  // history, so it must stay solid — otherwise the "ahead of origin" dashing runs half a row past
+  // the origin/main node and the dashed→solid transition lands in the empty gap below it instead
+  // of on the node. `b` is origin/main (a plain, non-merge commit) with an incoming edge from the
+  // unpushed commit above and a departure to its pushed parent below.
+  it("keeps the origin/main commit's own departure to pushed history solid", () => {
+    const nodes = [
+      node('a', {
+        column: 0,
+        commit: { ...node('a').commit, parentOids: ['b'] },
+        connections: [
+          { fromColumn: 0, toColumn: 0, color: '#7c3aed', startsAtNode: true }, // unpushed → dashed
+        ],
+      }),
+      node('b', {
+        column: 0,
+        commit: { ...node('b').commit, parentOids: ['c'] },
+        refs: [
+          {
+            name: 'refs/remotes/origin/main',
+            shortName: 'origin/main',
+            type: 'remote',
+            commitOid: 'b',
+          },
+        ],
+        connections: [
+          { fromColumn: 0, toColumn: 0, color: '#7c3aed', endsAtNode: true }, // incoming from above
+          { fromColumn: 0, toColumn: 0, color: '#7c3aed', startsAtNode: true }, // departure to pushed parent
+        ],
+      }),
+      node('c', {
+        column: 0,
+        connections: [{ fromColumn: 0, toColumn: 0, color: '#7c3aed', endsAtNode: true }],
+      }),
+    ]
+    const { result } = renderHook(() => useGitGraphNodes(nodes, undefined, 0, t, null))
+    const originMain = result.current.renderNodes[1]
+    // The line arriving from the unpushed commit above stays dashed…
+    const incoming = originMain.connections.find(
+      (c) => c.fromColumn === 0 && c.toColumn === 0 && c.endsAtNode
+    )
+    expect(incoming?.dashed).toBe(true)
+    // …but the departure down into already-pushed history stays SOLID (was wrongly dashed).
+    const departure = originMain.connections.find(
+      (c) => c.fromColumn === 0 && c.toColumn === 0 && c.startsAtNode
+    )
+    expect(departure?.dashed).toBeFalsy()
+    // The unpushed commit above stays fully dashed.
+    const above = result.current.renderNodes[0].connections.find(
+      (c) => c.fromColumn === 0 && c.toColumn === 0
+    )
+    expect(above?.dashed).toBe(true)
+    // Real history below origin/main is untouched (solid).
+    const below = result.current.renderNodes[2].connections.find(
+      (c) => c.fromColumn === 0 && c.toColumn === 0
+    )
+    expect(below?.dashed).toBeFalsy()
+  })
+
   // Regression: a diamond `origin/main(b) → {p1, s1} → m` where the merge `m` is ahead of
-  // origin/main. The merge's straight-down departure to its real first parent (the mainline
-  // continuing below the merge dot) must stay SOLID, while the line arriving from above stays
-  // dashed and the diagonal to the side branch stays solid. See useGitGraphNodes' originMainIndex
-  // block and the matching Rust test `merge_row_ahead_of_origin_stays_solid_in_rust`.
-  it("keeps a merge commit's first-parent departure solid while it is ahead of origin/main", () => {
+  // origin/main. The merge sits ABOVE the origin/main boundary, so its whole column-0 mainline
+  // vertical — including the straight-down departure to its first parent — is unpushed and must be
+  // DASHED (an earlier version wrongly kept that leg solid, which shattered a merge-heavy mainline's
+  // dashed line into mostly-solid segments that stopped short of the origin/main node). Only the
+  // diagonal to the side branch stays solid (it isn't a column-0→0 edge). The origin/main commit's
+  // OWN departure staying solid is covered by the test above.
+  it("dashes a merge commit's whole column-0 vertical while it is ahead of origin/main", () => {
     const nodes = [
       node('m', {
         column: 0,
@@ -504,17 +637,17 @@ describe('useGitGraphNodes — renderNodes patching', () => {
     ]
     const { result } = renderHook(() => useGitGraphNodes(nodes, undefined, 0, t, null))
     const merge = result.current.renderNodes[0]
-    // The mainline segment BELOW the merge dot (its real first-parent link) stays solid.
+    // The mainline segment BELOW the merge dot (its first-parent link) is unpushed → dashed.
     const departure = merge.connections.find(
       (c) => c.fromColumn === 0 && c.toColumn === 0 && c.startsAtNode
     )
-    expect(departure?.dashed).toBeFalsy()
+    expect(departure?.dashed).toBe(true)
     // The line arriving from above (still ahead of origin) stays dashed.
     const arriving = merge.connections.find(
       (c) => c.fromColumn === 0 && c.toColumn === 0 && c.endsAtNode
     )
     expect(arriving?.dashed).toBe(true)
-    // The diagonal to the side branch (already solid, not a column-0→0 edge) stays solid.
+    // The diagonal to the side branch (not a column-0→0 edge) stays solid.
     const diagonal = merge.connections.find((c) => c.fromColumn === 0 && c.toColumn === 1)
     expect(diagonal?.dashed).toBeFalsy()
   })
