@@ -21,6 +21,10 @@ pub struct GitRepo {
     pub is_detached: bool,
     pub is_dirty: bool,
     pub remotes: Vec<String>,
+    /// Path of the main worktree that owns this repo. Equal to `path` for a normal repo/main
+    /// worktree; for a linked worktree it's the owning repository's main worktree, so the frontend
+    /// can scope per-repo settings to the repo instead of each worktree.
+    pub main_worktree_path: String,
 }
 
 // ─── Signatures / Commits ─────────────────────────────────────────────────────
@@ -147,6 +151,15 @@ pub struct GitWorktree {
     pub is_dirty: bool,
     pub is_prunable: bool,
     pub locked_reason: Option<String>,
+}
+
+/// Outcome of `add_worktree` once optional default-file copying has run: which repo-relative
+/// files were copied into the new worktree, and which configured glob patterns matched nothing.
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct WorktreeAddResult {
+    pub copied: Vec<String>,
+    pub skipped: Vec<String>,
 }
 
 // ─── Rebase ───────────────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@ import { useTranslation } from '@git-manager/i18n'
 import type { RepoScopedSettings } from '@git-manager/git-types'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { useSettingsStore } from '../../../stores/settings.store'
+import { useCanonicalRepoPath } from '../../../hooks/useCanonicalRepoPath'
 
 interface OverriddenBadgeProps {
   field: keyof RepoScopedSettings
@@ -14,7 +15,8 @@ interface OverriddenBadgeProps {
  */
 export function OverriddenBadge({ field }: OverriddenBadgeProps) {
   const { t } = useTranslation('settings')
-  const activeRepo = useRepoUIStore((s) => s.activeRepo)
+  // Scope to the owning repo (main worktree) so a linked worktree reflects the repo's overrides.
+  const activeRepo = useCanonicalRepoPath(useRepoUIStore((s) => s.activeRepo))
   const overridden = useSettingsStore((s) =>
     activeRepo ? s.settings.repoOverrides[activeRepo]?.[field] !== undefined : false
   )

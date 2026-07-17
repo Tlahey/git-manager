@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../lib/tauri', () => ({
   listWorktrees: vi.fn(),
   addWorktree: vi.fn(),
+  countDefaultFileMatches: vi.fn(),
   removeWorktree: vi.fn(),
   pruneWorktrees: vi.fn(),
   goneUpstreamBranches: vi.fn(),
@@ -26,9 +27,26 @@ describe('worktree.api pass-throughs', () => {
   })
 
   it('apiAddWorktree delegates to addWorktree with the branch and target path', async () => {
-    mocked.addWorktree.mockResolvedValue(undefined)
+    mocked.addWorktree.mockResolvedValue({ copied: [], skipped: [] })
     await api.apiAddWorktree(PATH, 'feature-x', '/repo/a-worktree')
-    expect(mocked.addWorktree).toHaveBeenCalledWith(PATH, 'feature-x', '/repo/a-worktree')
+    expect(mocked.addWorktree).toHaveBeenCalledWith(
+      PATH,
+      'feature-x',
+      '/repo/a-worktree',
+      undefined
+    )
+  })
+
+  it('apiAddWorktree forwards default-file glob patterns', async () => {
+    mocked.addWorktree.mockResolvedValue({ copied: ['.env'], skipped: [] })
+    await api.apiAddWorktree(PATH, 'feature-x', '/repo/a-worktree', ['.env*'])
+    expect(mocked.addWorktree).toHaveBeenCalledWith(PATH, 'feature-x', '/repo/a-worktree', ['.env*'])
+  })
+
+  it('apiCountDefaultFileMatches delegates to countDefaultFileMatches with the patterns', async () => {
+    mocked.countDefaultFileMatches.mockResolvedValue([2, 0])
+    await api.apiCountDefaultFileMatches(PATH, ['.env*', 'nope/*'])
+    expect(mocked.countDefaultFileMatches).toHaveBeenCalledWith(PATH, ['.env*', 'nope/*'])
   })
 
   it('apiRemoveWorktree defaults force to false', async () => {

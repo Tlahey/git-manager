@@ -9,6 +9,11 @@ export interface GitRepo {
   isDetached: boolean
   isDirty: boolean
   remotes: string[]
+  /** Path of the main worktree that owns this repo. Equal to `path` for a normal repo/main
+   * worktree; for a linked worktree it's the owning repository's main worktree. Per-repo settings
+   * are scoped to this so every worktree shares the owning repo's configuration. Optional only so
+   * older cached snapshots / test fixtures stay valid — the Rust backend always populates it. */
+  mainWorktreePath?: string
 }
 
 // ─── Commits ──────────────────────────────────────────────────────────────────
@@ -226,6 +231,13 @@ export interface GitWorktree {
   lockedReason?: string
 }
 
+/** Outcome of `add_worktree` after optional default-file copying: repo-relative paths actually
+ * copied into the new worktree, and configured glob patterns that matched nothing. */
+export interface WorktreeAddResult {
+  copied: string[]
+  skipped: string[]
+}
+
 // ─── Rebase ───────────────────────────────────────────────────────────────────
 
 export type RebaseAction = 'pick' | 'reword' | 'edit' | 'squash' | 'fixup' | 'drop'
@@ -336,6 +348,10 @@ export interface RepoScopedSettings {
   commitPattern?: string
   /** Overrides `appearance.theme` for this repo. */
   theme?: string
+  /** Glob patterns for gitignored local files (`.env`, local config, …) to copy from this repo
+   * into every newly created worktree. Per-repo only — there is no global fallback, so an absent
+   * value means "no default files". See `WorktreeAddResult` for the copy outcome. */
+  worktreeDefaultFiles?: string[]
 }
 
 export interface AppSettings {

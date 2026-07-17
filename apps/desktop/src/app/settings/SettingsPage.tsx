@@ -19,6 +19,7 @@ import { ResetToDefaultButton } from './components/ResetToDefaultButton'
 import { defineTabs, renderActiveTab, type TabDef } from '../../lib/navigation/tabRegistry'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
+import { useCanonicalRepoPath } from '../../hooks/useCanonicalRepoPath'
 
 export type Section =
   | 'general'
@@ -37,8 +38,9 @@ export type Section =
 /** Top-level split: global settings (all repos) vs. settings local to the current workspace/repo. */
 type Scope = 'general' | 'local'
 
-/** The Local scope's own side-menu pages, mirroring the matching global sections. */
-type LocalSection = 'general' | 'appearance' | 'ai_commit'
+/** The Local scope's own side-menu pages, mirroring the matching global sections (plus `worktree`,
+ * which is repo-only and has no global counterpart). */
+type LocalSection = 'general' | 'appearance' | 'ai_commit' | 'worktree'
 
 interface SettingsPageProps {
   onClose: () => void
@@ -76,7 +78,9 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
   const resetSettingsGroups = useSettingsStore((s) => s.resetSettingsGroups)
   const resetSettingsFields = useSettingsStore((s) => s.resetSettingsFields)
   const resetRepoSetting = useSettingsStore((s) => s.resetRepoSetting)
-  const activeRepo = useRepoUIStore((s) => s.activeRepo)
+  // The active tab may be a linked worktree; the Local scope always targets the owning repo so a
+  // worktree shows and edits its repo's configuration, not its own.
+  const activeRepo = useCanonicalRepoPath(useRepoUIStore((s) => s.activeRepo))
   // AI-scoped pages (the AI-commit section) only show when AI is enabled. `undefined` = enabled.
   const aiEnabled = useSettingsStore((s) => s.settings.ai.enabled !== false)
 
@@ -88,6 +92,8 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
     } else if (cat === 'ai_commit') {
       resetRepoSetting(activeRepo, 'commitInstructions')
       resetRepoSetting(activeRepo, 'commitPattern')
+    } else if (cat === 'worktree') {
+      resetRepoSetting(activeRepo, 'worktreeDefaultFiles')
     } else {
       resetRepoSetting(activeRepo, 'protectedBranches')
     }
@@ -186,6 +192,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
     ...(aiEnabled
       ? [{ id: 'ai_commit' as const, label: t('settings.sections.ai_commit') }]
       : []),
+    { id: 'worktree', label: t('settings.sections.worktree') },
   ]
 
   // The Local scope only makes sense with a workspace open; without one, there's only the global

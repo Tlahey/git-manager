@@ -4,6 +4,10 @@ import userEvent from '@testing-library/user-event'
 
 vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 vi.mock('../../../hooks/useUserThemes', () => ({ useUserThemes: () => ({ data: [] }) }))
+// The default-file match-count hook hits the IPC layer; the override tests don't exercise it.
+vi.mock('../../../hooks/useDefaultFileMatchCounts', () => ({
+  useDefaultFileMatchCounts: () => ({}),
+}))
 
 import { RepositorySection } from './RepositorySection'
 import { useSettingsStore } from '../../../stores/settings.store'
@@ -129,5 +133,19 @@ describe('RepositorySection — ai_commit page', () => {
     render(<RepositorySection category="ai_commit" />)
     await user.click(screen.getByTestId('repo-override-commitInstructions-override'))
     expect(screen.getByTestId('repo-commit-pattern')).toBeDisabled()
+  })
+})
+
+describe('RepositorySection — worktree page', () => {
+  const REPO = '/repo'
+  beforeEach(() => useRepoUIStore.setState({ activeRepo: REPO }))
+
+  it('renders the worktree default-files setting (with an add button) and no other page', () => {
+    render(<RepositorySection category="worktree" />)
+    expect(screen.getByTestId('repo-worktree-default-files')).toBeInTheDocument()
+    expect(screen.getByTestId('worktree-df-add')).toBeInTheDocument()
+    // Other pages' controls aren't present here.
+    expect(screen.queryByTestId('repo-protected-branches-inherited')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('repo-theme-select')).not.toBeInTheDocument()
   })
 })

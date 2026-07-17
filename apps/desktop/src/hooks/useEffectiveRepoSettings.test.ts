@@ -45,6 +45,7 @@ describe('useEffectiveRepoSettings', () => {
       commitInstructions: '',
       commitPattern: '^feat',
       theme: 'dark',
+      worktreeDefaultFiles: [],
     })
   })
 
@@ -80,6 +81,14 @@ describe('useEffectiveRepoSettings', () => {
     useSettingsStore.getState().setRepoSetting('/a', 'theme', 'nord')
     const { result } = renderHook(() => useEffectiveRepoSettings('/b'))
     expect(result.current.theme).toBe('dark')
+  })
+
+  it('resolves worktreeDefaultFiles to the repo override, empty when unset (no global fallback)', () => {
+    const { result: unset } = renderHook(() => useEffectiveRepoSettings('/repo'))
+    expect(unset.current.worktreeDefaultFiles).toEqual([])
+    useSettingsStore.getState().setRepoSetting('/repo', 'worktreeDefaultFiles', ['.env*'])
+    const { result } = renderHook(() => useEffectiveRepoSettings('/repo'))
+    expect(result.current.worktreeDefaultFiles).toEqual(['.env*'])
   })
 
   it('reacts to override changes across rerenders', () => {

@@ -1,5 +1,6 @@
 import type { RepoScopedSettings } from '@git-manager/git-types'
 import { useSettingsStore } from '../stores/settings.store'
+import { useCanonicalRepoPath } from './useCanonicalRepoPath'
 
 /**
  * The overridable settings resolved for a specific repository. Each field is the repo's local
@@ -10,6 +11,9 @@ export interface EffectiveRepoSettings {
   commitInstructions: string | undefined
   commitPattern: string | undefined
   theme: string
+  /** Glob patterns for gitignored local files to copy into new worktrees. Per-repo only — no
+   * global fallback, so a repo without an override resolves to an empty list. */
+  worktreeDefaultFiles: string[]
 }
 
 /**
@@ -18,16 +22,23 @@ export interface EffectiveRepoSettings {
  * global values. A repo with no overrides is indistinguishable from global — the critical
  * backward-compatibility guarantee.
  *
- * Only the four overridable fields are exposed here; every other setting stays global and is read
- * from `useSettingsStore` directly.
+ * `repoPath` may be a linked worktree; overrides are always looked up by the owning repo's main
+ * worktree (see `useCanonicalRepoPath`) so every worktree shares the repo's configuration.
+ *
+ * Only the overridable fields are exposed here; every other setting stays global and is read from
+ * `useSettingsStore` directly. `worktreeDefaultFiles` is repo-only (no global), so it resolves to
+ * an empty list when the repo has no override.
  */
 export function useEffectiveRepoSettings(repoPath: string | null): EffectiveRepoSettings {
   const globalProtectedBranches = useSettingsStore((s) => s.settings.git.protectedBranches)
   const globalCommitInstructions = useSettingsStore((s) => s.settings.git.commitInstructions)
   const globalCommitPattern = useSettingsStore((s) => s.settings.git.commitPattern)
   const globalTheme = useSettingsStore((s) => s.settings.appearance.theme)
+  const canonicalPath = useCanonicalRepoPath(repoPath)
   const override = useSettingsStore((s) =>
-    repoPath ? (s.settings.repoOverrides[repoPath] as RepoScopedSettings | undefined) : undefined
+    canonicalPath
+      ? (s.settings.repoOverrides[canonicalPath] as RepoScopedSettings | undefined)
+      : undefined
   )
 
   return {
@@ -35,5 +46,6 @@ export function useEffectiveRepoSettings(repoPath: string | null): EffectiveRepo
     commitInstructions: override?.commitInstructions ?? globalCommitInstructions,
     commitPattern: override?.commitPattern ?? globalCommitPattern,
     theme: override?.theme ?? globalTheme,
+    worktreeDefaultFiles: override?.worktreeDefaultFiles ?? [],
   }
 }

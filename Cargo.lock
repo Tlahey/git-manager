@@ -1434,6 +1434,7 @@ dependencies = [
  "chrono",
  "futures-util",
  "git2",
+ "glob",
  "reqwest 0.12.28",
  "serde",
  "serde_json",

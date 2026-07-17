@@ -1,17 +1,37 @@
-use crate::models::GitWorktree;
+use crate::models::{GitWorktree, WorktreeAddResult};
 use crate::services::git_worktree;
 
 // ─── add_worktree ─────────────────────────────────────────────────────────────
 
 /// Adds a new worktree at `worktree_path`, checking out `branch` (a branch name or
 /// raw commit OID — e.g. "create worktree from this commit" passes the commit's OID).
+///
+/// `default_files` is an optional list of per-repo glob patterns for gitignored local files
+/// (`.env`, local config, …) to copy from the source repo into the new worktree after it's
+/// created; the returned `WorktreeAddResult` reports what was copied vs. skipped. An empty or
+/// absent list does no copying.
 #[tauri::command]
 pub async fn add_worktree(
     path: String,
     branch: String,
     worktree_path: String,
-) -> Result<(), String> {
-    git_worktree::add_worktree(&path, &worktree_path, &branch).map_err(Into::into)
+    default_files: Option<Vec<String>>,
+) -> Result<WorktreeAddResult, String> {
+    git_worktree::add_worktree(&path, &worktree_path, &branch)?;
+    let files = default_files.unwrap_or_default();
+    git_worktree::copy_default_files(&path, &worktree_path, &files).map_err(Into::into)
+}
+
+// ─── count_default_file_matches ───────────────────────────────────────────────
+
+/// Counts, per input glob pattern (aligned by index), how many files under `path` it matches — a
+/// live preview for the worktree-creation UI. Same matching rules as the default-file copy.
+#[tauri::command]
+pub async fn count_default_file_matches(
+    path: String,
+    patterns: Vec<String>,
+) -> Result<Vec<usize>, String> {
+    Ok(git_worktree::count_default_file_matches(&path, &patterns))
 }
 
 // ─── list_worktrees ───────────────────────────────────────────────────────────

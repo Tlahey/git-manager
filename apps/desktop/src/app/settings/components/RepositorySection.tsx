@@ -2,8 +2,10 @@ import type { ReactNode } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Input, Textarea } from '@git-manager/ui'
 import { TagInput } from './TagInput'
+import { WorktreeDefaultFilesSetting } from './WorktreeDefaultFilesSetting'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { useSettingsStore } from '../../../stores/settings.store'
+import { useCanonicalRepoPath } from '../../../hooks/useCanonicalRepoPath'
 import { useEffectiveRepoSettings } from '../../../hooks/useEffectiveRepoSettings'
 import { useUserThemes } from '../../../hooks/useUserThemes'
 import { BUILTIN_THEMES } from '../../../lib/themes'
@@ -65,11 +67,13 @@ function OverrideField({
   )
 }
 
-/** Which local settings sub-page is shown (mirrors the corresponding global sections). */
-export type RepoSettingsCategory = 'general' | 'appearance' | 'ai_commit'
+/** Which local settings sub-page is shown (mirrors the corresponding global sections, plus the
+ * repo-only `worktree` page). */
+export type RepoSettingsCategory = 'general' | 'appearance' | 'ai_commit' | 'worktree'
 
 interface RepositorySectionProps {
-  /** `general` → protected branches; `appearance` → theme; `ai_commit` → commit style. */
+  /** `general` → protected branches; `appearance` → theme; `ai_commit` → commit style;
+   * `worktree` → default files copied into new worktrees. */
   category: RepoSettingsCategory
 }
 
@@ -81,7 +85,9 @@ interface RepositorySectionProps {
  */
 export function RepositorySection({ category }: RepositorySectionProps) {
   const { t } = useTranslation('settings')
-  const activeRepo = useRepoUIStore((s) => s.activeRepo)
+  // The active tab may be a linked worktree; scope every override to the repo that owns it so all
+  // its worktrees share one configuration (and the panel shows the repo, not the worktree).
+  const activeRepo = useCanonicalRepoPath(useRepoUIStore((s) => s.activeRepo))
   const setRepoSetting = useSettingsStore((s) => s.setRepoSetting)
   const resetRepoSetting = useSettingsStore((s) => s.resetRepoSetting)
   const override = useSettingsStore((s) =>
@@ -218,6 +224,12 @@ export function RepositorySection({ category }: RepositorySectionProps) {
             />
           </OverrideField>
         </>
+      )}
+
+      {/* Worktree default files (worktree category) — repo-only, so no inherit/override toggle.
+          Keyed by repo so switching repos re-seeds its per-line editing state. */}
+      {category === 'worktree' && (
+        <WorktreeDefaultFilesSetting key={activeRepo} repoPath={activeRepo} />
       )}
     </div>
   )
