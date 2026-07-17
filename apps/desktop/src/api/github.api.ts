@@ -458,13 +458,13 @@ export async function fetchCommitMergedPullRequestForBranch(
   sha: string,
   branch: string,
   token?: string
-): Promise<{ number: number; title: string } | null> {
+): Promise<{ number: number; title: string; author?: string } | null> {
   const items = await ghFetch<GhRawPR[]>(
     `https://api.github.com/repos/${owner}/${repo}/commits/${sha}/pulls`,
     token
   ).catch(() => [] as GhRawPR[])
   const match = items?.find((p) => p.head?.ref === branch && p.merged_at)
-  return match ? { number: match.number, title: match.title } : null
+  return match ? { number: match.number, title: match.title, author: match.user?.login } : null
 }
 
 /** GitHub release page URL for a tag if a release exists, else null (a 404 = no release). */

@@ -420,9 +420,9 @@ const cases: {
 
   {
     name: 'fetchRemote',
-    call: () => tauri.fetchRemote('/repo', 'origin'),
+    call: () => tauri.fetchRemote('/repo', 'origin', true),
     command: 'fetch_remote',
-    args: { path: '/repo', remote: 'origin' },
+    args: { path: '/repo', remote: 'origin', prune: true },
   },
   {
     name: 'pullBranch',

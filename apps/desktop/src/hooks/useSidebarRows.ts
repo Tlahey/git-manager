@@ -38,6 +38,8 @@ interface UseSidebarRowsResult {
   prunableWorktrees: GitWorktree[]
   /** Every non-main worktree, unfiltered by search query — the full bulk-action candidate set. */
   worktrees: GitWorktree[]
+  /** Every local branch, unfiltered by search query — the bulk merged-branch-prune candidate set. */
+  allLocalBranches: GitBranch[]
 }
 
 const TAGS_LIMIT = 100
@@ -147,6 +149,9 @@ export function useSidebarRows({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [allBranches, q]
   )
+
+  // Toutes les branches locales, non filtrées par la recherche — jeu de candidats du prune.
+  const allLocalBranches = useMemo(() => allBranches.filter((b) => !b.isRemote), [allBranches])
 
   const pinnedBranches = useMemo(
     () =>
@@ -499,5 +504,5 @@ export function useSidebarRows({
     ]
   )
 
-  return { sections, isPinned, filterStats, prunableWorktrees, worktrees }
+  return { sections, isPinned, filterStats, prunableWorktrees, worktrees, allLocalBranches }
 }

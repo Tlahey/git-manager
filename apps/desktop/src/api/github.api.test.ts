@@ -368,18 +368,24 @@ describe('fetchCommitPullRequest', () => {
 })
 
 describe('fetchCommitMergedPullRequestForBranch', () => {
-  it('returns the merged PR whose head.ref matches the branch', async () => {
+  it('returns the merged PR (with its author) whose head.ref matches the branch', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
         jsonResponse([
-          rawPR({ number: 3, merged_at: '2024-01-01', title: 'Mine', head: { ref: 'feature/mine' } }),
+          rawPR({
+            number: 3,
+            merged_at: '2024-01-01',
+            title: 'Mine',
+            head: { ref: 'feature/mine' },
+            user: { login: 'alice', avatar_url: '' },
+          }),
         ])
       )
     )
     expect(
       await fetchCommitMergedPullRequestForBranch('org', 'repo', 'sha1', 'feature/mine', 'tok')
-    ).toEqual({ number: 3, title: 'Mine' })
+    ).toEqual({ number: 3, title: 'Mine', author: 'alice' })
   })
 
   it('REGRESSION: ignores a merged PR from another branch (fork-point commit of a fresh worktree)', async () => {

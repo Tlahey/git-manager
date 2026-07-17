@@ -23,6 +23,9 @@ import { AddWorktreeDialog } from './AddWorktreeDialog'
 import { RemoveWorktreeDialog } from './RemoveWorktreeDialog'
 import { PruneWorktreesDialog } from './PruneWorktreesDialog'
 import { RemoveMergedWorktreesDialog } from './RemoveMergedWorktreesDialog'
+import { RemoveMergedBranchesDialog } from './RemoveMergedBranchesDialog'
+import { PruneBranchesDialog } from './PruneBranchesDialog'
+import { CreateBranchHereDialog } from '../git-graph/CreateBranchHereDialog'
 
 interface RepositorySidebarProps {
   repoPath: string
@@ -77,7 +80,11 @@ export function RepositorySidebar({
   const [addWorktreeOpen, setAddWorktreeOpen] = useState(false)
   const [worktreeToRemove, setWorktreeToRemove] = useState<GitWorktree | null>(null)
   const [pruneWorktreesOpen, setPruneWorktreesOpen] = useState(false)
-  const [removeMergedWorktreesOpen, setRemoveMergedWorktreesOpen] = useState(false)
+  // null = closed; 'all' / 'mine' = open, filtered to the current user's merged PRs when 'mine'.
+  const [removeMergedWorktrees, setRemoveMergedWorktrees] = useState<null | 'all' | 'mine'>(null)
+  const [removeMergedBranches, setRemoveMergedBranches] = useState<null | 'all' | 'mine'>(null)
+  const [pruneBranchesOpen, setPruneBranchesOpen] = useState(false)
+  const [createBranchOpen, setCreateBranchOpen] = useState(false)
 
   const handleStashContextMenu = (_e: React.MouseEvent, stash: GitStash) => {
     const isHidden = hiddenStashes.includes(stash.commitOid)
@@ -126,7 +133,13 @@ export function RepositorySidebar({
   const setPin = usePinnedBranchesStore((s) => s.setPin)
   const overrides = usePinnedBranchesStore((s) => s.overrides[repoPath])
 
-  const { sections, filterStats, prunableWorktrees, worktrees } = useSidebarRows({
+  const {
+    sections,
+    filterStats,
+    prunableWorktrees = [],
+    worktrees = [],
+    allLocalBranches = [],
+  } = useSidebarRows({
     repoPath,
     remoteUrls,
     currentUser,
@@ -135,6 +148,12 @@ export function RepositorySidebar({
     filter: branchQuery,
     openState,
   })
+
+  // New branches from the sidebar "+" are created off the current HEAD commit (or the ref "HEAD"
+  // when detached, which the backend still resolves).
+  const headBranch = allLocalBranches.find((b) => b.isHead)
+  const createBranchOid = headBranch?.commitOid ?? 'HEAD'
+  const createBranchShortOid = headBranch ? headBranch.commitOid.slice(0, 7) : 'HEAD'
 
   const toggleOpen = (id: string, currentlyOpen: boolean) =>
     setOpenState((prev) => ({ ...prev, [id]: !currentlyOpen }))
@@ -298,7 +317,20 @@ export function RepositorySidebar({
               count={section.count}
               isOpen={section.isOpen}
               onToggle={() => toggleOpen(`section:${section.key}`, section.isOpen)}
-              onCreateBranch={section.key === 'local' ? onCreateBranch : undefined}
+              onCreateBranch={
+                section.key === 'local'
+                  ? (onCreateBranch ?? (() => setCreateBranchOpen(true)))
+                  : undefined
+              }
+              onPruneBranches={
+                section.key === 'local' ? () => setPruneBranchesOpen(true) : undefined
+              }
+              onRemoveMergedBranches={
+                section.key === 'local' ? () => setRemoveMergedBranches('all') : undefined
+              }
+              onRemoveMyMergedBranches={
+                section.key === 'local' ? () => setRemoveMergedBranches('mine') : undefined
+              }
               onAddWorktree={
                 section.key === 'worktrees' ? () => setAddWorktreeOpen(true) : undefined
               }
@@ -306,7 +338,10 @@ export function RepositorySidebar({
                 section.key === 'worktrees' ? () => setPruneWorktreesOpen(true) : undefined
               }
               onRemoveMergedWorktrees={
-                section.key === 'worktrees' ? () => setRemoveMergedWorktreesOpen(true) : undefined
+                section.key === 'worktrees' ? () => setRemoveMergedWorktrees('all') : undefined
+              }
+              onRemoveMyMergedWorktrees={
+                section.key === 'worktrees' ? () => setRemoveMergedWorktrees('mine') : undefined
               }
               onCreatePr={
                 section.key === 'prs' && githubToken ? () => setPrCreateOpen(true) : undefined
@@ -366,8 +401,35 @@ export function RepositorySidebar({
         worktrees={worktrees}
         remoteUrls={remoteUrls}
         githubToken={githubToken}
-        open={removeMergedWorktreesOpen}
-        onClose={() => setRemoveMergedWorktreesOpen(false)}
+        mineOnly={removeMergedWorktrees === 'mine'}
+        currentUser={currentUser}
+        open={removeMergedWorktrees !== null}
+        onClose={() => setRemoveMergedWorktrees(null)}
+      />
+      <RemoveMergedBranchesDialog
+        repoPath={repoPath}
+        branches={allLocalBranches}
+        worktreeBranches={worktrees.map((w) => w.branch)}
+        remoteUrls={remoteUrls}
+        githubToken={githubToken}
+        mineOnly={removeMergedBranches === 'mine'}
+        currentUser={currentUser}
+        open={removeMergedBranches !== null}
+        onClose={() => setRemoveMergedBranches(null)}
+      />
+      <PruneBranchesDialog
+        repoPath={repoPath}
+        branches={allLocalBranches}
+        worktreeBranches={worktrees.map((w) => w.branch)}
+        open={pruneBranchesOpen}
+        onClose={() => setPruneBranchesOpen(false)}
+      />
+      <CreateBranchHereDialog
+        repoPath={repoPath}
+        oid={createBranchOid}
+        shortOid={createBranchShortOid}
+        open={createBranchOpen}
+        onClose={() => setCreateBranchOpen(false)}
       />
     </div>
   )
