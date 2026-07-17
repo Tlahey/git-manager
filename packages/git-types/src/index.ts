@@ -335,6 +335,35 @@ export interface DailySummarySettings {
 }
 
 /**
+ * A user-defined project task runnable from the toolbar (e.g. "Lancer l'app" → `pnpm dev`, "Tests"
+ * → `pnpm test`). Stored per-repo in `RepoScopedSettings.runTasks`; the command is executed in the
+ * user's configured external terminal, in the repo directory.
+ */
+export interface RunTask {
+  /** Stable id (e.g. `crypto.randomUUID()`), used to pick the default task and as a React key. */
+  id: string
+  /** Human label shown in the toolbar dropdown. */
+  name: string
+  /** Shell command run in the external terminal at the repo root (e.g. `pnpm dev`). */
+  command: string
+}
+
+/**
+ * A runnable command discovered in the project (today: a package.json script), surfaced as an
+ * autocomplete suggestion in the task editor. Mirrors the Rust `ProjectCommand`.
+ */
+export interface ProjectCommand {
+  /** The script name, e.g. `dev`. */
+  name: string
+  /** The shell command that runs it via the detected package manager, e.g. `pnpm dev`. */
+  command: string
+  /** The raw script body, shown as a hint, e.g. `vite`. Absent when unknown. */
+  detail?: string
+  /** Where this command came from, e.g. `package.json`. */
+  source: string
+}
+
+/**
  * The subset of settings that can be overridden per repository, stored locally keyed by repo path
  * in `AppSettings.repoOverrides`. Every field is optional: `undefined` means "inherit the global
  * value". Resolution is always `repoOverride ?? global` (see `useEffectiveRepoSettings`).
@@ -352,6 +381,12 @@ export interface RepoScopedSettings {
    * into every newly created worktree. Per-repo only — there is no global fallback, so an absent
    * value means "no default files". See `WorktreeAddResult` for the copy outcome. */
   worktreeDefaultFiles?: string[]
+  /** Project tasks runnable from the toolbar's "Lancer" button. Per-repo only (no global fallback);
+   * an absent value means "no tasks". */
+  runTasks?: RunTask[]
+  /** Id of the `runTasks` entry launched by the primary "Lancer" button. Falls back to the first
+   * task when absent or dangling. Per-repo only. */
+  defaultRunTaskId?: string
 }
 
 export interface AppSettings {

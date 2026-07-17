@@ -38,9 +38,9 @@ export type Section =
 /** Top-level split: global settings (all repos) vs. settings local to the current workspace/repo. */
 type Scope = 'general' | 'local'
 
-/** The Local scope's own side-menu pages, mirroring the matching global sections (plus `worktree`,
- * which is repo-only and has no global counterpart). */
-type LocalSection = 'general' | 'appearance' | 'ai_commit' | 'worktree'
+/** The Local scope's own side-menu pages, mirroring the matching global sections (plus `worktree`
+ * and `run`, which are repo-only and have no global counterpart). */
+type LocalSection = 'general' | 'appearance' | 'ai_commit' | 'worktree' | 'run'
 
 interface SettingsPageProps {
   onClose: () => void
@@ -94,6 +94,9 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
       resetRepoSetting(activeRepo, 'commitPattern')
     } else if (cat === 'worktree') {
       resetRepoSetting(activeRepo, 'worktreeDefaultFiles')
+    } else if (cat === 'run') {
+      resetRepoSetting(activeRepo, 'runTasks')
+      resetRepoSetting(activeRepo, 'defaultRunTaskId')
     } else {
       resetRepoSetting(activeRepo, 'protectedBranches')
     }
@@ -193,6 +196,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
       ? [{ id: 'ai_commit' as const, label: t('settings.sections.ai_commit') }]
       : []),
     { id: 'worktree', label: t('settings.sections.worktree') },
+    { id: 'run', label: t('settings.sections.run') },
   ]
 
   // The Local scope only makes sense with a workspace open; without one, there's only the global

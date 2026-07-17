@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
+import { Info } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { Input, Textarea } from '@git-manager/ui'
 import { TagInput } from './TagInput'
 import { WorktreeDefaultFilesSetting } from './WorktreeDefaultFilesSetting'
+import { RunTasksSetting } from './RunTasksSetting'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { useCanonicalRepoPath } from '../../../hooks/useCanonicalRepoPath'
@@ -69,11 +71,11 @@ function OverrideField({
 
 /** Which local settings sub-page is shown (mirrors the corresponding global sections, plus the
  * repo-only `worktree` page). */
-export type RepoSettingsCategory = 'general' | 'appearance' | 'ai_commit' | 'worktree'
+export type RepoSettingsCategory = 'general' | 'appearance' | 'ai_commit' | 'worktree' | 'run'
 
 interface RepositorySectionProps {
   /** `general` → protected branches; `appearance` → theme; `ai_commit` → commit style;
-   * `worktree` → default files copied into new worktrees. */
+   * `worktree` → default files copied into new worktrees; `run` → runnable project tasks. */
   category: RepoSettingsCategory
 }
 
@@ -119,7 +121,17 @@ export function RepositorySection({ category }: RepositorySectionProps) {
         <p data-testid="repository-name" className="font-mono text-xs text-foreground">
           {repoDisplayName(activeRepo)}
         </p>
-        <p className="text-[11px] text-muted-foreground">{t('settings.repository.hint')}</p>
+      </div>
+
+      {/* Scope hint as a standalone info card rather than a plain caption. */}
+      <div
+        data-testid="repository-hint"
+        className="flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2"
+      >
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/70" />
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          {t('settings.repository.hint')}
+        </p>
       </div>
 
       {/* Theme (appearance category) */}
@@ -231,6 +243,9 @@ export function RepositorySection({ category }: RepositorySectionProps) {
       {category === 'worktree' && (
         <WorktreeDefaultFilesSetting key={activeRepo} repoPath={activeRepo} />
       )}
+
+      {/* Runnable project tasks (run category) — repo-only, no inherit/override toggle. */}
+      {category === 'run' && <RunTasksSetting key={activeRepo} repoPath={activeRepo} />}
     </div>
   )
 }

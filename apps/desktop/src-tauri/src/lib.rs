@@ -50,6 +50,7 @@ use commands::stash::{
     edit_stash_message, stash_apply, stash_drop, stash_list, stash_pop, stash_push, stash_store,
 };
 use commands::submodule::list_submodules;
+use commands::tasks::{get_project_commands, run_task_in_terminal};
 use commands::themes::get_user_themes;
 use commands::undo::{
     objects_exist, pin_object, recreate_branch_ref, restore_file_blob, restore_worktree_snapshot,
@@ -152,6 +153,9 @@ pub fn run() {
             get_repo_readme,
             open_in_terminal,
             get_terminal_commands,
+            // Tasks
+            run_task_in_terminal,
+            get_project_commands,
             // Log / Graph
             get_log,
             get_commit_diff,

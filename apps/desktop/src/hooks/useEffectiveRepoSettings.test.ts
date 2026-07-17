@@ -46,6 +46,8 @@ describe('useEffectiveRepoSettings', () => {
       commitPattern: '^feat',
       theme: 'dark',
       worktreeDefaultFiles: [],
+      runTasks: [],
+      defaultRunTaskId: undefined,
     })
   })
 
@@ -89,6 +91,19 @@ describe('useEffectiveRepoSettings', () => {
     useSettingsStore.getState().setRepoSetting('/repo', 'worktreeDefaultFiles', ['.env*'])
     const { result } = renderHook(() => useEffectiveRepoSettings('/repo'))
     expect(result.current.worktreeDefaultFiles).toEqual(['.env*'])
+  })
+
+  it('resolves runTasks / defaultRunTaskId to the repo override, empty/undefined when unset', () => {
+    const { result: unset } = renderHook(() => useEffectiveRepoSettings('/repo'))
+    expect(unset.current.runTasks).toEqual([])
+    expect(unset.current.defaultRunTaskId).toBeUndefined()
+
+    const tasks = [{ id: 'a', name: 'Launch', command: 'pnpm dev' }]
+    useSettingsStore.getState().setRepoSetting('/repo', 'runTasks', tasks)
+    useSettingsStore.getState().setRepoSetting('/repo', 'defaultRunTaskId', 'a')
+    const { result } = renderHook(() => useEffectiveRepoSettings('/repo'))
+    expect(result.current.runTasks).toEqual(tasks)
+    expect(result.current.defaultRunTaskId).toBe('a')
   })
 
   it('reacts to override changes across rerenders', () => {
