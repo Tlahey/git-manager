@@ -44,4 +44,14 @@ body {
 .tab-strip-scroll::-webkit-scrollbar {
   height: 3px;
 }
+/* The tab strip sits on the dark nav chrome (bg-sidebar); the global scrollbar thumb
+   is --border (light content hairline), so it read as a white bar on Twilight. Use a
+   chrome tone a step lighter than the tab bar instead. */
+.tab-strip-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tab-strip-scroll::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--sidebar-border));
+  border-radius: 9999px;
+}
 

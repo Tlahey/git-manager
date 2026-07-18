@@ -212,7 +212,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
       {/* Header */}
       <header
         data-tauri-drag-region
-        className={`flex shrink-0 items-center gap-3 border-b border-border px-4 py-3 ${
+        className={`chrome-surface flex shrink-0 items-center gap-3 border-b border-border bg-sidebar px-4 py-3 ${
           isMac ? 'pl-[72px]' : ''
         }`}
       >
@@ -250,7 +250,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
       {effectiveScope === 'local' ? (
         <div className="flex flex-1 overflow-hidden">
           {/* Left nav (mirrors the global one, with only the repo-overridable pages) */}
-          <nav className="w-44 shrink-0 border-r border-border bg-muted/20 p-2">
+          <nav className="chrome-surface w-44 shrink-0 border-r border-border bg-sidebar p-2">
             {LOCAL_TABS.map((tab) => (
               <button
                 key={tab.id}
@@ -277,7 +277,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
       ) : (
         <div className="flex flex-1 overflow-hidden">
           {/* Left nav */}
-          <nav className="w-44 shrink-0 border-r border-border bg-muted/20 p-2">
+          <nav className="chrome-surface w-44 shrink-0 border-r border-border bg-sidebar p-2">
             {SETTINGS_TABS.map((tab) => {
               const Icon = tab.icon
               return (

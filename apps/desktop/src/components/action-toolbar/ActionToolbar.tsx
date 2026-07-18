@@ -59,7 +59,7 @@ export function ActionToolbar() {
   const disabled = !activeRepo
 
   return (
-    <div className="flex h-[52px] shrink-0 items-center gap-1 overflow-hidden border-b border-border bg-muted/30 px-2">
+    <div className="chrome-surface flex h-[52px] shrink-0 items-center gap-1 overflow-hidden border-b border-border bg-sidebar px-2">
       {/* ── Section gauche : contexte ─────────────────────────── */}
       <div className="flex min-w-0 shrink items-center gap-1">
         <RepoSelector />

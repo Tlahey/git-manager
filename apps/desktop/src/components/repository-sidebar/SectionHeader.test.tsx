@@ -45,6 +45,17 @@ describe('SectionHeader — rendering', () => {
     expect(screen.getByText('0')).toBeInTheDocument()
   })
 
+  it('renders the count at readable contrast (not the faint /40 muted variant)', () => {
+    // Twilight a11y regression: the PR/section count was text-sidebar-muted-foreground/40,
+    // barely legible on the dark chrome. It must use the full-opacity muted token.
+    render(
+      <SectionHeader title="Pull Requests" icon={null} isOpen={false} onToggle={vi.fn()} count={7} />
+    )
+    const count = screen.getByText('7')
+    expect(count.className).toContain('text-sidebar-muted-foreground')
+    expect(count.className).not.toMatch(/text-sidebar-muted-foreground\/\d/)
+  })
+
   it('shows a filter icon next to the count only when isFiltered', () => {
     const { container, rerender } = render(
       <SectionHeader title="Branches" icon={null} isOpen={false} onToggle={vi.fn()} count={1} />

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Input, cn } from '@git-manager/ui'
+import { Input, Tag, cn } from '@git-manager/ui'
 import {
   ChevronDown,
   ChevronRight,
@@ -259,24 +259,24 @@ export function CommitFileList({
             {node.stats && (
               <div className="ml-2 flex shrink-0 select-none items-center gap-1 text-[9px] font-bold">
                 {node.stats.added > 0 && (
-                  <span className="rounded bg-green-500/10 px-1 text-green-500">
+                  <Tag tone="success" className="px-1 py-0 text-[9px]">
                     +{node.stats.added}
-                  </span>
+                  </Tag>
                 )}
                 {node.stats.modified > 0 && (
-                  <span className="rounded bg-yellow-500/10 px-1 text-yellow-500">
+                  <Tag tone="warning" className="px-1 py-0 text-[9px]">
                     ~{node.stats.modified}
-                  </span>
+                  </Tag>
                 )}
                 {node.stats.deleted > 0 && (
-                  <span className="rounded bg-red-500/10 px-1 text-red-500">
+                  <Tag tone="danger" className="px-1 py-0 text-[9px]">
                     -{node.stats.deleted}
-                  </span>
+                  </Tag>
                 )}
                 {node.stats.renamed > 0 && (
-                  <span className="rounded bg-blue-500/10 px-1 text-blue-500">
+                  <Tag tone="info" className="px-1 py-0 text-[9px]">
                     →{node.stats.renamed}
-                  </span>
+                  </Tag>
                 )}
               </div>
             )}

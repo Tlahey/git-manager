@@ -1,15 +1,19 @@
 export { Button, buttonVariants } from './components/button'
 export type { ButtonProps } from './components/button'
 
-export { Badge } from './components/badge'
-export type { BadgeProps } from './components/badge'
+export { Badge, NumberBadge } from './components/badge'
+export type { BadgeProps, NumberBadgeProps } from './components/badge'
+export { Chip } from './components/chip'
+export type { ChipProps } from './components/chip'
+export { Tag } from './components/tag'
+export type { TagProps, TagTone } from './components/tag'
 
 export { ScrollArea, ScrollBar } from './components/scroll-area'
 
 export { Separator } from './components/separator'
 
 export { Input } from './components/input'
-export type { InputProps } from './components/input'
+export type { InputProps, InputVariant } from './components/input'
 
 export { Textarea } from './components/textarea'
 export type { TextareaProps } from './components/textarea'
@@ -43,6 +47,21 @@ export {
 
 export { Popover, PopoverTrigger, PopoverAnchor, PopoverContent } from './components/popover'
 
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './components/tooltip'
+
+export {
+  Select,
+  SelectGroup,
+  SelectValue,
+  SelectTrigger,
+  SelectContent,
+  SelectLabel,
+  SelectItem,
+  SelectSeparator,
+  SelectScrollUpButton,
+  SelectScrollDownButton,
+} from './components/select'
+
 export {
   ContextMenu,
   ContextMenuTrigger,
@@ -64,6 +83,8 @@ export {
 } from './components/command'
 
 // ─── Theme validation (accessibility / token consistency) ──────────────────────
+// Re-exported from @git-manager/theme (the single source of truth) so existing
+// `@git-manager/ui` consumers keep working unchanged.
 export {
   parseThemeTokens,
   evaluateThemeContrast,
@@ -74,13 +95,16 @@ export {
   CONTRAST_PAIRS,
   AA_NORMAL_TEXT,
   AA_LARGE_TEXT,
-} from './lib/themeTokens'
-export type { ThemeTokens, ThemeValidation, ContrastPair, ContrastResult } from './lib/themeTokens'
-export {
   parseHslTriplet,
   hslToRgb,
   relativeLuminance,
   contrastRatio,
   contrastRatioForHslTriplets,
-} from './lib/colorContrast'
-export type { Rgb } from './lib/colorContrast'
+} from '@git-manager/theme'
+export type {
+  ThemeTokens,
+  ThemeValidation,
+  ContrastPair,
+  ContrastResult,
+  Rgb,
+} from '@git-manager/theme'

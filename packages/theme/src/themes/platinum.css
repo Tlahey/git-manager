@@ -1,0 +1,75 @@
+@layer base {
+  /* Platinum (Metallic Shiny & Flashing) */
+  html[data-theme="platinum"] {
+    --background: 220 15% 9%;
+    --foreground: 220 10% 98%;
+    --card: 220 15% 13%;
+    --card-foreground: 220 10% 98%;
+    --popover: 220 15% 11%;
+    --popover-foreground: 220 10% 98%;
+    --primary: 180 100% 75%;
+    --primary-foreground: 220 15% 9%;
+    --secondary: 220 10% 18%;
+    --secondary-foreground: 220 10% 90%;
+    --muted: 220 10% 16%;
+    --muted-foreground: 220 5% 75%;
+    --accent: 300 100% 75%;
+    --accent-foreground: 220 15% 9%;
+    --destructive: 0 100% 60%;
+    --destructive-foreground: 0 25% 11%;
+    --success: 160 100% 45%;
+    --success-foreground: 220 15% 9%;
+    --border: 220 10% 18%;
+    --input: 220 10% 18%;
+    --ring: 180 100% 75%;
+    --radius: 0.5rem;
+    /* APCA Bronze: deep destructive/success fills + light labels. The primary button
+       and badge already clear on the bright cyan --primary, so they're left alone. */
+    --button-destructive-bg: 0 100% 40%;
+    --button-destructive-foreground: 210 40% 98%;
+    --button-success-bg: 160 100% 24%;
+    --button-success-foreground: 210 40% 98%;
+    /* Destructive badge: raw --destructive is only ~40Lc as a 12px chip label. Light
+       fill + near-black text (~85Lc, AA 13.7, fill ≥12:1 vs the dark surfaces). */
+    --badge-destructive-bg: 0 100% 91%;
+    --badge-destructive-foreground: 0 30% 8%;
+    /* Tone-chip text, per-theme: platinum's neon /15 tints blend just past what the
+       shared dark-group shades clear (worst ~72Lc), so success/info are brightened
+       (warning/danger keep the group shades) — every tone ≥75Lc / AA ≥8.7 on all 4
+       surfaces. Platinum must stay out of the shared polarity group in themes.css
+       (it would override these later). */
+    --tone-success-foreground: 142 66% 80%;
+    --tone-warning-foreground: 43 95% 71%;
+    --tone-danger-foreground: 0 92% 88%;
+    --tone-info-foreground: 205 96% 88%;
+    --sidebar-background: 220 15% 13%;
+    --sidebar-foreground: 220 10% 98%;
+    --sidebar-border: 220 10% 18%;
+    --sidebar-muted-foreground: 220 5% 75%;
+    /* Chrome accent: the 75% magenta under near-black was only ~61Lc for the chrome
+       buttons/badges/input riding this pair (14px → APCA 75 bar). Lighter magenta +
+       magenta-tinted ink lands ~79Lc / AA 12.5 and keeps the neon identity. */
+    --sidebar-accent: 300 100% 87%;
+    --sidebar-accent-foreground: 300 40% 8%;
+  }
+
+  @keyframes platinum-border-glow {
+    0%, 100% {
+      border-color: rgba(0, 255, 255, 0.25);
+      box-shadow: 0 0 2px rgba(0, 255, 255, 0.1);
+    }
+    50% {
+      border-color: rgba(255, 0, 255, 0.35);
+      box-shadow: 0 0 8px rgba(255, 0, 255, 0.25);
+    }
+  }
+
+  /* Applique le clignotement doux de platine à toutes les bordures de cartes et barres */
+  html[data-theme="platinum"] .border,
+  html[data-theme="platinum"] .border-b,
+  html[data-theme="platinum"] .border-t,
+  html[data-theme="platinum"] .border-r,
+  html[data-theme="platinum"] .border-l {
+    animation: platinum-border-glow 4s infinite alternate;
+  }
+}

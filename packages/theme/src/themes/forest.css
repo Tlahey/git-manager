@@ -1,0 +1,47 @@
+@layer base {
+  /* Forest (Dark Green) */
+  html[data-theme="forest"] {
+    --background: 140 30% 6%;
+    --foreground: 140 20% 95%;
+    --card: 140 20% 10%;
+    --card-foreground: 140 20% 95%;
+    --popover: 140 25% 8%;
+    --popover-foreground: 140 20% 95%;
+    --primary: 145 60% 45%;
+    --primary-foreground: 140 30% 6%;
+    /* Count badge off --primary (APCA ~53 on the raw fill). Brighter green +
+       near-black text clears APCA 60 + WCAG + the non-text fill bar. */
+    --badge-bg: 145 70% 70%; /* lightened so the dark label clears APCA Bronze; still pops on the dark surface (1.4.11) */
+    --badge-foreground: 145 25% 10%;
+    /* Destructive badge: light-red fill + near-black label (raw --destructive was
+       under 3:1 vs this near-black surface — 1.4.11). Fill pops ~10:1, label ~77Lc. */
+    --badge-destructive-bg: 0 85% 87%;
+    --badge-destructive-foreground: 0 30% 12%;
+    /* APCA Bronze: deep fills + light labels for the button CTAs; lighten the link. */
+    --button-bg: 145 60% 30%;
+    --button-foreground: 210 40% 98%;
+    --button-success-bg: 100 45% 32%;
+    --button-success-foreground: 210 40% 98%;
+    --link: 145 60% 71.5%;
+    --secondary: 140 15% 15%;
+    --secondary-foreground: 140 15% 90%;
+    --muted: 140 15% 15%;
+    --muted-foreground: 140 10% 65%;
+    --accent: 140 15% 15%;
+    --accent-foreground: 140 20% 95%;
+    --destructive: 350 70% 40%;
+    --destructive-foreground: 140 20% 95%;
+    --success: 100 45% 43.8%;
+    --success-foreground: 100 25% 14%;
+    --border: 140 15% 15%;
+    --input: 140 15% 15%;
+    --ring: 145 60% 45%;
+    --radius: 0.5rem;
+    --sidebar-background: 140 20% 10%;
+    --sidebar-foreground: 140 20% 95%;
+    --sidebar-border: 140 15% 15%;
+    --sidebar-muted-foreground: 140 10% 65%;
+    --sidebar-accent: 140 15% 15%;
+    --sidebar-accent-foreground: 140 20% 95%;
+  }
+}

@@ -14,6 +14,18 @@
       "port": 6007
     },
     {
+      "name": "theme-storybook",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@git-manager/theme", "storybook", "--no-open"],
+      "port": 6008
+    },
+    {
+      "name": "ui-storybook",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@git-manager/ui", "storybook", "--no-open"],
+      "port": 6009
+    },
+    {
       "name": "code-view-storybook",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@git-manager/code-view", "storybook", "--no-open"],

@@ -116,6 +116,12 @@ export function mergeSettingsWithDefaults(persisted: Partial<AppSettings> | unde
       }
     }
   }
+  // Legacy theme-id migration: the "obsidian" theme was renamed to "twilight"
+  // (it's a light theme with dark chrome, so "obsidian" read as misleading). Remap
+  // a persisted selection so existing users don't silently fall back to the default.
+  if (merged.appearance?.theme === 'obsidian') {
+    merged.appearance = { ...merged.appearance, theme: 'twilight' }
+  }
   return merged
 }
 

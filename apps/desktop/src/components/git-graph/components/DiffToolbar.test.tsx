@@ -53,6 +53,15 @@ describe('DiffToolbar — path and copy', () => {
     expect(screen.queryByTestId('diff-header-path')).not.toBeInTheDocument()
   })
 
+  it('renders the path at readable contrast (not the faint /60 muted variant)', () => {
+    // Twilight a11y regression: the dir line was text-muted-foreground/60, a faint
+    // gray on the light bg-card. It must use the full-opacity muted token.
+    render(<DiffToolbar {...baseProps()} />)
+    const path = screen.getByTestId('diff-header-path')
+    expect(path.className).toContain('text-muted-foreground')
+    expect(path.className).not.toMatch(/text-muted-foreground\/\d/)
+  })
+
   it('calls onCopyPath when the copy button is clicked, and reflects "copied" via its icon', async () => {
     const onCopyPath = vi.fn()
     const user = userEvent.setup()

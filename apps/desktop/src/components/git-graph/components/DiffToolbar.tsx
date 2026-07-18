@@ -92,7 +92,7 @@ export function DiffToolbar({
           {parsedPath.dir && (
             <span
               data-testid="diff-header-path"
-              className="mb-0.5 select-none truncate font-mono text-[10px] leading-none text-muted-foreground/60"
+              className="mb-0.5 select-none truncate font-mono text-[10px] leading-none text-muted-foreground"
             >
               {parsedPath.dir}
             </span>

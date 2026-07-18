@@ -1,0 +1,110 @@
+/* ─── @git-manager/theme — theme aggregator ──────────────────────────────────
+ *
+ * One file per theme lives in ./themes/<id>.css (each a single
+ * html[data-theme="<id>"] token block). This aggregator @imports them all so
+ * @git-manager/ui/globals.css can keep a single import, and defines the
+ * theme-agnostic component-token layer underneath. Every theme block is graded
+ * for token completeness + WCAG contrast by themeTokens.test.ts and mirrored by
+ * the picker swatches in registry.ts (registry.test.ts guards drift); those tests
+ * read ./themes/*.css directly, so adding a theme file is picked up automatically.
+ *
+ * @import rules must precede all other rules, so the component block comes last.
+ */
+@import "./themes/dark.css";
+@import "./themes/light.css";
+@import "./themes/github-light.css";
+@import "./themes/github-dark.css";
+@import "./themes/nord.css";
+@import "./themes/dracula.css";
+@import "./themes/catppuccin-mocha.css";
+@import "./themes/solarized-light.css";
+@import "./themes/twilight.css";
+@import "./themes/amethyst.css";
+@import "./themes/forest.css";
+@import "./themes/cyberpunk.css";
+@import "./themes/platinum.css";
+
+/* ── Tier 3: component tokens (per-component override surface) ──────────────────
+   Theme-agnostic defaults that point at the semantic layer, so a per-element
+   correction is a one-line token override without editing the component: a theme
+   redeclares one of these inside its own html[data-theme] block when it needs a
+   component-specific color (e.g. a darker button fill for AA contrast). Button is
+   the reference consumer (see packages/config/tailwind.js + packages/ui button).
+
+   These defaults MUST mirror COMPONENT_TOKEN_DEFAULTS in themeTokens.ts (the source
+   of truth for the grader; themeTokens.test.ts guards the drift). Each filled pair
+   is graded per theme by evaluateComponentContrast — overrides get WCAG-checked. */
+@layer base {
+  :root {
+    --button-bg: var(--primary);
+    --button-foreground: var(--primary-foreground);
+    --button-secondary-bg: var(--secondary);
+    --button-secondary-foreground: var(--secondary-foreground);
+    --button-destructive-bg: var(--destructive);
+    --button-destructive-foreground: var(--destructive-foreground);
+    --button-success-bg: var(--success);
+    --button-success-foreground: var(--success-foreground);
+    --badge-bg: var(--primary);
+    --badge-foreground: var(--primary-foreground);
+    --badge-secondary-bg: var(--secondary);
+    --badge-secondary-foreground: var(--secondary-foreground);
+    --badge-destructive-bg: var(--destructive);
+    --badge-destructive-foreground: var(--destructive-foreground);
+    /* Soft tone chips (Tag + Badge success/warning/danger/info): the *text* color,
+       on a translucent /15 tint of the tone. A light-content theme darkens these;
+       .chrome-surface lightens them for the dark nav. Defaults reproduce the old
+       hard-coded shades (amber-600 / blue-600), so un-migrated themes don't move. */
+    --tone-success-foreground: var(--success);
+    --tone-warning-foreground: 32 95% 44%;
+    --tone-danger-foreground: var(--destructive);
+    --tone-info-foreground: 221 83% 53%;
+    --link: var(--primary);
+  }
+}
+
+/* ── Soft-tone chip text per surface polarity ──────────────────────────────────
+   The success/warning/danger/info Tag+Badge chips are a translucent /15 tint with
+   the tone color as *text*. A mid-saturation color can't be AA (4.5:1) as text on
+   both light and dark, so the readable shade depends on the theme's content
+   polarity. These two groups set the tone text once per polarity (dark text for
+   light-content themes, light text for dark-content themes); the /15 tint fill is
+   untouched. Twilight (dark nav under light content) and nord/platinum (mixed /
+   stylized surfaces) are handled in their own files, not here. Kept in themes.css
+   (not themes/*.css) so they never enter the token grader — the axe story matrix
+   grades their real rendered contrast instead. */
+@layer base {
+  /* Light-content themes → darker tone text (+ darker link than the light primary).
+     Solarized-light is NOT in this group: its beige surfaces shift every /15 blend,
+     so it carries its own (deeper) tone set in themes/solarized-light.css — these
+     group blocks come after the theme files in source order and would override it. */
+  html[data-theme="light"],
+  html[data-theme="github-light"] {
+    /* Darkened again past the AA shades: the chips are small text (≤12px) on a pale
+       /15 tint, so APCA Bronze wants |Lc| ≥ 75 — clearing it on the white light /
+       github-light surfaces needs these deeper shades. (info was 35%, just short of
+       75Lc on the light sidebar's blended tint — 32% clears every surface.) */
+    --tone-success-foreground: 152 78% 16%;
+    --tone-warning-foreground: 26 86% 26%;
+    --tone-danger-foreground: 0 74% 23%;
+    --tone-info-foreground: 221 80% 32%;
+    --link: 221 80% 35%;
+  }
+
+  /* Dark-content themes → lighter tone text (link already rides their light primary).
+     Only the truly-dark-surface themes ride these shared shades; themes whose /15
+     blends land on lighter or tinted mids (nord, dracula, catppuccin-mocha,
+     platinum, github-dark) declare their own brighter sets in themes/<id>.css —
+     they must stay OUT of this group or this later block would override them. */
+  html[data-theme="dark"],
+  html[data-theme="amethyst"],
+  html[data-theme="forest"],
+  html[data-theme="cyberpunk"] {
+    /* Brightened past the AA shades so the small (≤12px) chip text clears APCA Bronze
+       (|Lc| ≥ 75) on the dark /15 tints, with margin on every surface (success/info
+       were right at the bar on the popover/sidebar blends of dark & forest). */
+    --tone-success-foreground: 142 66% 75%;
+    --tone-warning-foreground: 43 95% 71%;
+    --tone-danger-foreground: 0 92% 88%;
+    --tone-info-foreground: 205 96% 85%;
+  }
+}

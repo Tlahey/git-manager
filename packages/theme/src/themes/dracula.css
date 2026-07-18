@@ -1,0 +1,54 @@
+@layer base {
+  html[data-theme="dracula"] {
+    --background: 231 15% 18%;
+    --foreground: 60 30% 96%;
+    --card: 231 14% 21%;
+    --card-foreground: 60 30% 96%;
+    --popover: 232 14% 22%;
+    --popover-foreground: 60 30% 96%;
+    --primary: 265 89% 78%;
+    --primary-foreground: 231 15% 18%;
+    /* Count badge off --primary (APCA ~53 on the raw fill). Brighter purple +
+       near-black text clears APCA 60 + WCAG + the non-text fill bar. */
+    --badge-bg: 265 89% 88.5%; /* lightened so the dark label clears APCA Bronze; still pops on the dark surface (1.4.11) */
+    --badge-foreground: 265 25% 10%;
+    /* APCA Bronze: deep fills + light labels for the button CTAs; lighten the link. */
+    --button-bg: 265 89% 58.5%;
+    --button-foreground: 210 40% 98%;
+    --button-destructive-bg: 0 100% 40%;
+    --button-destructive-foreground: 210 40% 98%;
+    /* Destructive badge: raw --destructive is only ~44Lc as a 12px chip label. Light
+       fill + near-black text (~81Lc, AA 12.8, fill ≥8.9:1 vs the content surfaces). */
+    --badge-destructive-bg: 0 100% 89%;
+    --badge-destructive-foreground: 0 30% 8%;
+    /* Tone-chip text, per-theme: dracula's mid-slate surfaces blend the /15 tints
+       into mids the shared dark-group shades can't clear (worst ~66Lc), so every
+       tone is brightened — ≥79Lc / AA ≥7.1 on all 4 surfaces. Dracula must stay out
+       of the shared polarity group in themes.css (it would override these later). */
+    --tone-success-foreground: 142 66% 86%;
+    --tone-warning-foreground: 43 95% 86%;
+    --tone-danger-foreground: 0 92% 95%;
+    --tone-info-foreground: 205 96% 91%;
+    --link: 265 89% 90%;
+    --secondary: 232 14% 31%;
+    --secondary-foreground: 60 30% 96%;
+    --muted: 232 14% 26%;
+    --muted-foreground: 232 35% 72%;
+    --accent: 232 14% 31%;
+    --accent-foreground: 60 30% 96%;
+    --destructive: 0 100% 67%;
+    --destructive-foreground: 0 25% 14%;
+    --success: 135 94% 65%;
+    --success-foreground: 231 15% 18%;
+    --border: 232 14% 31%;
+    --input: 232 14% 31%;
+    --ring: 265 89% 78%;
+    --radius: 0.5rem;
+    --sidebar-background: 231 14% 21%;
+    --sidebar-foreground: 60 30% 96%;
+    --sidebar-border: 232 14% 31%;
+    --sidebar-muted-foreground: 232 35% 72%;
+    --sidebar-accent: 232 14% 31%;
+    --sidebar-accent-foreground: 60 30% 96%;
+  }
+}

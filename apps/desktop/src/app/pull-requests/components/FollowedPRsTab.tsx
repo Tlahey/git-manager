@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { Plus, Trash2, BookOpen, GitPullRequest } from 'lucide-react'
+import { Button } from '@git-manager/ui'
 import { Toolbar } from './Toolbar'
 import { TableHeader, LoadMore, usePRSort, useSetFilter } from './ListHelpers'
 import { PRRowSkeleton } from './RowSkeletons'
@@ -154,12 +155,13 @@ export function FollowedPRsTab({
             <p className="mb-4 max-w-[280px] text-xs text-muted-foreground">
               Keep an eye on specific external pull requests by adding their GitHub URLs.
             </p>
-            <button
+            <Button
+              size="sm"
               onClick={() => setShowFollowDialog(true)}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+              className="gap-1.5 rounded-lg"
             >
               <Plus className="h-3.5 w-3.5" /> Add PR by URL
-            </button>
+            </Button>
           </div>
         ) : sortedPRs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/50">

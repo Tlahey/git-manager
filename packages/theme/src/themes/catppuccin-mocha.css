@@ -1,0 +1,60 @@
+@layer base {
+  html[data-theme="catppuccin-mocha"] {
+    --background: 240 21% 14%;
+    --foreground: 226 64% 88%;
+    --card: 237 14% 23%;
+    --card-foreground: 226 64% 88%;
+    --popover: 240 21% 17%;
+    --popover-foreground: 226 64% 88%;
+    --primary: 267 83% 81%;
+    --primary-foreground: 240 21% 14%;
+    --secondary: 234 11% 31%;
+    --secondary-foreground: 226 64% 88%;
+    --muted: 237 14% 23%;
+    --muted-foreground: 233 21% 72%;
+    --accent: 234 11% 31%;
+    --accent-foreground: 226 64% 88%;
+    --destructive: 343 81% 75%;
+    --destructive-foreground: 240 21% 14%;
+    --success: 115 54% 76%;
+    --success-foreground: 240 21% 14%;
+    --border: 237 14% 23%;
+    --input: 237 14% 23%;
+    --ring: 267 83% 81%;
+    --radius: 0.5rem;
+    /* APCA Bronze component overrides: deep button fills + light labels; lightened badge (dark label, still pops) + link. */
+    --button-bg: 267 83% 57%;
+    --button-foreground: 210 40% 98%;
+    --button-destructive-bg: 343 81% 43.5%;
+    --button-destructive-foreground: 210 40% 98%;
+    /* Secondary button/badge: --secondary-foreground (88%) on the --secondary fill is
+       only ~69Lc for 12–14px labels (APCA 75 bar). Brightening just the *label* on the
+       component tokens clears it (~80Lc, AA 7.3) without moving --secondary itself,
+       which is also a surface. */
+    --button-secondary-foreground: 226 64% 93%;
+    --badge-secondary-foreground: 226 64% 93%;
+    --badge-bg: 267 83% 88.5%;
+    --badge-foreground: 240 21% 14%;
+    /* Destructive badge: raw --destructive (rosewater pink + dark text) is ~57Lc as a
+       12px chip label. Lighter pink + near-black text (~81Lc, AA 12.8, fill ≥8.4:1). */
+    --badge-destructive-bg: 343 81% 88%;
+    --badge-destructive-foreground: 343 30% 8%;
+    /* Tone-chip text, per-theme: mocha's surfaces blend the /15 tints into mids the
+       shared dark-group shades can't clear (worst ~70Lc), so the tones are brightened
+       — every tone ≥79Lc / AA ≥6.7 on all 4 surfaces. Mocha must stay out of the
+       shared polarity group in themes.css (it would override these later). */
+    --tone-success-foreground: 142 66% 86%;
+    --tone-warning-foreground: 43 95% 80%;
+    --tone-danger-foreground: 0 92% 95%;
+    --tone-info-foreground: 205 96% 91%;
+    --link: 267 83% 88.5%;
+    --sidebar-background: 240 21% 14%;
+    --sidebar-foreground: 226 64% 88%;
+    --sidebar-border: 237 14% 23%;
+    --sidebar-muted-foreground: 233 21% 72%;
+    --sidebar-accent: 234 11% 31%;
+    /* Brightened like the secondary label: the chrome buttons/badges/input ride this
+       pair at 12–14px and 88% only reached ~69Lc (bar 75). */
+    --sidebar-accent-foreground: 226 64% 93%;
+  }
+}

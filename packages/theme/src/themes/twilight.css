@@ -1,0 +1,116 @@
+/* Twilight (light content, dark purple-tinted chrome) ─────────────────────────
+   Formerly shipped as "Obsidian". Sidebar rail + tab bar use a distinct dark
+   surface (--sidebar-*) tinted toward the theme's purple --primary, while every
+   content surface (--background/--card/--popover) stays light — see the
+   --sidebar-* token block comment in themeTokens.ts for why this is a separate
+   token family instead of reusing --card. The editor derives from the light
+   content tokens (see packages/theme/src/monaco.ts), so code panes read as light
+   surfaces framed by the dark chrome.
+
+   Reference implementation of the layered token model (palette → semantic →
+   component). Other themes still declare literal semantic tokens; they migrate to
+   this shape incrementally. See themeTokens.ts for how var() references are
+   resolved during validation. */
+@layer base {
+  html[data-theme="twilight"] {
+    /* ── Tier 1: palette (primitives) — the only place raw colors live ──────── */
+    --brand-300: 258 90% 82%; /* light violet — kept for reference/accents (no longer the button fill; APCA can't clear 75 with dark text on it) */
+    --brand-500: 258 90% 68%; /* violet */
+    --brand-600: 258 74% 52%; /* deep violet — badge + button fill that pops on light content, under light text */
+    --brand-700: 258 72% 46%; /* darker violet — link text that clears AA (4.5) on light content */
+    --brand-950: 258 40% 8%;
+    --neutral-0: 220 20% 99%; /* near-white surfaces */
+    --neutral-50: 220 20% 98%;
+    --neutral-100: 220 20% 96%;
+    --neutral-200: 220 20% 94%;
+    --neutral-300: 214.3 31.8% 91.4%; /* hairline borders */
+    --neutral-500: 220 10% 32%; /* muted text — darkened further (was 40%) so small muted labels clear APCA Bronze (|Lc| ≥ 75) on the light muted/card fills; still comfortably AA */
+    --neutral-950: 222.2 84% 4.9%; /* near-black text */
+    --on-color: 210 40% 98%; /* light text on saturated status fills */
+    --chrome-900: 258 26% 10%; /* dark, purple-tinted nav chrome (sidebar/tabbar/toolbar/footer) */
+    --chrome-700: 258 18% 22%;
+    --chrome-accent: 258 62% 32%;
+    --chrome-fg: 258 18% 93%;
+    --chrome-muted-fg: 258 12% 68%;
+    --chrome-accent-fg: 258 30% 98%;
+    --danger-500: 0 84.2% 44%; /* darkened from 48.2% so light text on the solid destructive fill clears APCA Bronze (white-on-red hit only ~73Lc at 48.2%) */
+    --success-600: 142 76% 27%; /* darkened from 29.3% so light text on the solid success fill clears APCA Bronze (was ~75.0Lc, right on the edge) */
+
+    /* ── Tier 2: semantic (roles) — reference the palette above ─────────────── */
+    --background: var(--neutral-50);
+    --foreground: var(--neutral-950);
+    --card: var(--neutral-100);
+    --card-foreground: var(--neutral-950);
+    --popover: var(--neutral-0);
+    --popover-foreground: var(--neutral-950);
+    --primary: var(--brand-500);
+    --primary-foreground: var(--brand-950);
+    --secondary: var(--neutral-200);
+    --secondary-foreground: var(--neutral-950);
+    --muted: var(--neutral-200);
+    --muted-foreground: var(--neutral-500);
+    --accent: var(--neutral-200);
+    --accent-foreground: var(--neutral-950);
+    --destructive: var(--danger-500);
+    --destructive-foreground: var(--on-color);
+    --success: var(--success-600);
+    --success-foreground: var(--on-color);
+    --border: var(--neutral-300);
+    --input: var(--neutral-300);
+    --ring: var(--brand-500);
+    --radius: 0.5rem;
+    --sidebar-background: var(--chrome-900);
+    --sidebar-foreground: var(--chrome-fg);
+    --sidebar-border: var(--chrome-700);
+    --sidebar-muted-foreground: var(--chrome-muted-fg);
+    --sidebar-accent: var(--chrome-accent);
+    --sidebar-accent-foreground: var(--chrome-accent-fg);
+
+    /* ── Tier 3: component overrides ────────────────────────────────────────
+       The default primary button rides --primary (violet 68%) under a near-black
+       label — AA but perceptually weak, and APCA is unforgiving here: no dark text
+       can clear the Bronze 75Lc bar on a light violet fill (pure black on --brand-300
+       tops out at ~64Lc). So mirror the badge fix instead — deepen the fill to
+       --brand-600 and flip the label to light --on-color, which lands ~85Lc (and AA
+       ~6.9:1). --primary still drives links / focus ring / accents. Graded by
+       evaluateComponentContrast() + the APCA component grader. */
+    --button-bg: var(--brand-600);
+    --button-foreground: var(--on-color);
+    /* The default badge rode --primary (violet 68%) + near-black at ~4.9:1 — AA but
+       weak, and lightening it like the button would let the small chip blend into
+       the light content. Use the deeper --brand-600 with light --on-color instead:
+       the chip pops on the page and the label lands ~6.8:1. */
+    --badge-bg: var(--brand-600);
+    --badge-foreground: var(--on-color);
+    /* Soft tone chips + link: content surfaces are light, so the tone *text* must be
+       darkened well past the shared defaults. These were AA-tuned first, then pushed
+       deeper again for APCA: the chips are small text (≤12px) on a pale /15 tint, so
+       Bronze demands |Lc| ≥ 75 — clearing it needs |Lc| ~77+ against the darkest light
+       surface (card). Values below give card ≥ ~77Lc (and AA ~7–10:1). The /15 tint
+       fill is unchanged. Twilight's *dark* nav re-lightens these in the scoped
+       .chrome-surface block below. */
+    --tone-success-foreground: 142 72% 15%; /* deep green */
+    --tone-warning-foreground: 26 84% 25%; /* amber-900 */
+    --tone-danger-foreground: 0 74% 20%; /* deep red */
+    --tone-info-foreground: 224 76% 33%; /* deep blue */
+    --link: var(--brand-700); /* darker violet, ~4.5+ as text on light (brand-500 was 3.6) */
+  }
+}
+
+/* Twilight is the one theme with a *dark* nav under *light* content, so on its
+   chrome subtree the tone-chip + link text must flip back to LIGHT shades to stay
+   AA on the dark sidebar/tab-bar. Scoped to this theme (not the generic
+   .chrome-surface) precisely because chrome lightness is theme-specific — a
+   light-chrome theme like Solarized-light must keep its dark content tones here.
+   The descendant selector is skipped by parseThemeTokens, so it adds no tokens to
+   Twilight's graded set. */
+html[data-theme="twilight"] .chrome-surface {
+  /* Brightened past the AA shades: on the very dark chrome the /15 tint stays dark,
+     so small chip text needs |Lc| ≥ 75 (APCA Bronze) — these land ≥77Lc on the
+     chrome tints. */
+  --tone-success-foreground: 142 62% 73%;
+  --tone-warning-foreground: 43 92% 70%;
+  --tone-danger-foreground: 0 84% 88%;
+  --tone-info-foreground: 213 92% 87%; /* 83% was ~73Lc on the chrome's blue /15 tint — 87% lands ~80Lc */
+  --link: 258 90% 89%;
+}

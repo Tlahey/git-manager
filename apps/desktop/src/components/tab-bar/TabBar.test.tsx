@@ -154,6 +154,19 @@ describe('TabBar — dev fixture tabs', () => {
   })
 })
 
+describe('TabBar — window chrome', () => {
+  it('paints the top drag spacer with the chrome background (not the light content bg)', () => {
+    // Twilight a11y regression: the drag spacer had no background, so the light
+    // --background showed through as a white strip above the dark tab bar. It must
+    // carry bg-sidebar like the tab bar beneath it.
+    const { container } = render(<TabBar onOpenSettings={vi.fn()} />)
+    const spacer = container.querySelector('[data-tauri-drag-region]') as HTMLElement
+    expect(spacer).toBeTruthy()
+    expect(spacer.style.height).toBe('var(--tab-bar-drag-spacer-height)')
+    expect(spacer.className).toContain('bg-sidebar')
+  })
+})
+
 describe('TabBar — settings/profile', () => {
   it('calls onOpenSettings("general") from the settings button', async () => {
     const onOpenSettings = vi.fn()

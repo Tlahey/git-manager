@@ -1,0 +1,61 @@
+@layer base {
+  html[data-theme="nord"] {
+    --background: 220 16% 22%;
+    --foreground: 218 27% 94%;
+    --card: 222 16% 28%;
+    --card-foreground: 218 27% 94%;
+    --popover: 221 16% 26%;
+    --popover-foreground: 218 27% 94%;
+    --primary: 193 43% 68%;
+    --primary-foreground: 220 16% 22%;
+    /* Count badge off --primary (APCA ~58 on the raw frost fill). A more saturated
+       frost + near-black text clears APCA 60 + WCAG + the non-text fill bar. */
+    --badge-bg: 210 70% 83%; /* lightened so the dark label clears APCA Bronze; still pops on the dark surface (1.4.11) */
+    --badge-foreground: 210 25% 10%;
+    /* APCA Bronze: deep fills + light labels for the button CTAs; lighten the link. */
+    --button-bg: 193 43% 36%;
+    --button-foreground: 210 40% 98%;
+    --button-destructive-bg: 354 42% 48.5%;
+    --button-destructive-foreground: 210 40% 98%;
+    --button-success-bg: 92 28% 35%;
+    --button-success-foreground: 210 40% 98%;
+    /* Destructive badge: the raw --destructive pair is only ~38Lc as a 12px chip
+       label. Same treatment as --badge-bg — light fill + near-black text (~82Lc,
+       AA 13.0, fill ≥6.8:1 vs both content surfaces). */
+    --badge-destructive-bg: 354 42% 87%;
+    --badge-destructive-foreground: 354 30% 8%;
+    /* Tone-chip text, per-theme: nord's mid-slate surfaces blend the /15 tints into
+       mids the shared dark-group shades can't clear (worst ~64Lc on the sidebar), so
+       the text is pushed near-pastel — every tone ≥79Lc / AA ≥6.6 on all 4 surfaces.
+       Nord must stay out of the shared polarity group in themes.css (that block comes
+       later in source order and would override these). */
+    --tone-success-foreground: 142 66% 88%;
+    --tone-warning-foreground: 43 95% 87%;
+    --tone-danger-foreground: 0 92% 95%;
+    --tone-info-foreground: 205 96% 93%;
+    --link: 193 43% 86%; /* clears APCA on nord's lightest content surface (popover) too, not just the darker background */
+    --secondary: 220 16% 32%;
+    --secondary-foreground: 218 27% 94%;
+    --muted: 221 16% 31%;
+    --muted-foreground: 220 14% 74%;
+    --accent: 213 32% 66%;
+    --accent-foreground: 220 16% 22%;
+    --destructive: 354 42% 60.3%;
+    --destructive-foreground: 354 25% 14%;
+    --success: 92 28% 55%;
+    --success-foreground: 220 16% 22%;
+    --border: 220 16% 36%;
+    --input: 220 16% 36%;
+    --ring: 193 43% 68%;
+    --radius: 0.5rem;
+    --sidebar-background: 222 16% 28%;
+    --sidebar-foreground: 218 27% 94%;
+    --sidebar-border: 220 16% 36%;
+    --sidebar-muted-foreground: 220 14% 74%;
+    /* Chrome accent: 66% frost under the dark fg was only ~47Lc for the chrome
+       buttons/badges/input that ride this pair (14px → APCA 75 bar). Lightened fill +
+       deeper ink lands ~81Lc / AA 12.4 while staying nord's frost-blue family. */
+    --sidebar-accent: 213 32% 85%;
+    --sidebar-accent-foreground: 220 25% 10%;
+  }
+}

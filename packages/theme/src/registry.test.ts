@@ -1,35 +1,41 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { parseThemeTokens, parseHslTriplet, hslToRgb } from '@git-manager/ui'
-import { BUILTIN_THEMES } from './themes'
+import { parseThemeTokens, resolveTokenValue } from './themeTokens'
+import { parseHslTriplet, hslToRgb } from './colorContrast'
+import { BUILTIN_THEMES } from './registry'
 
-// vitest runs with cwd = apps/desktop; globals.css lives in the ui package.
-const css = readFileSync(resolve(process.cwd(), '../../packages/ui/src/globals.css'), 'utf8')
+// vitest runs with cwd = packages/theme; tokens live one file per theme under
+// src/themes/. Concatenate them all before parsing.
+const themesDir = resolve(process.cwd(), 'src/themes')
+const css = readdirSync(themesDir)
+  .filter((f) => f.endsWith('.css'))
+  .map((f) => readFileSync(resolve(themesDir, f), 'utf8'))
+  .join('\n')
 const cssThemes = parseThemeTokens(css)
 
 const registered = BUILTIN_THEMES.filter((t) => t.id !== 'system')
 
-// ── Registration parity: picker list ⇔ globals.css ──────────────────────────
+// ── Registration parity: picker list ⇔ themes.css ───────────────────────────
 describe('theme registration parity', () => {
-  it('every non-system theme in the picker has a globals.css block', () => {
+  it('every non-system theme in the picker has a themes.css block', () => {
     const missing = registered.filter((t) => !cssThemes.has(t.id)).map((t) => t.id)
-    expect(missing, `Registered in themes.ts but no CSS block: ${missing.join(', ')}`).toEqual([])
+    expect(missing, `Registered in registry.ts but no CSS block: ${missing.join(', ')}`).toEqual([])
   })
 
-  it('every globals.css theme is registered in the picker', () => {
+  it('every themes.css theme is registered in the picker', () => {
     const registeredIds = new Set(registered.map((t) => t.id))
     const orphan = [...cssThemes.keys()].filter((id) => !registeredIds.has(id))
-    expect(orphan, `CSS block with no themes.ts entry: ${orphan.join(', ')}`).toEqual([])
+    expect(orphan, `CSS block with no registry entry: ${orphan.join(', ')}`).toEqual([])
   })
 })
 
 // ── Swatch drift: the picker preview vs the real theme tokens ────────────────
 //
 // BUILTIN_THEMES.colors are hex previews that mirror the CSS tokens (see the
-// comment in themes.ts).  This ratchet caps drift at TOLERANCE per RGB channel;
+// comment in registry.ts).  This ratchet caps drift at TOLERANCE per RGB channel;
 // the baseline is empty because the swatches are currently exact conversions of
-// the tokens.  If you edit globals.css without updating the swatch, this fails —
+// the tokens.  If you edit themes.css without updating the swatch, this fails —
 // re-derive the hex (see the node snippet in the PR) or add it to the baseline.
 const TOLERANCE = 8
 
@@ -66,7 +72,9 @@ describe('swatch preview drift', () => {
       const tokens = cssThemes.get(theme.id)
       if (!tokens || !theme.colors) continue
       for (const [swatchKey, tokenName] of Object.entries(SWATCH_TO_TOKEN)) {
-        const tokenValue = tokens.get(tokenName)
+        const rawValue = tokens.get(tokenName)
+        // Resolve var() so a palette-referencing theme (twilight) is still checked.
+        const tokenValue = rawValue !== undefined ? resolveTokenValue(tokens, rawValue) : undefined
         const hex = theme.colors[swatchKey as keyof typeof theme.colors]
         if (!tokenValue || !hex) continue
         const delta = maxChannelDelta(hex, tokenValue)
@@ -79,7 +87,7 @@ describe('swatch preview drift', () => {
 
     expect(
       regressions,
-      `Swatch preview drifted from the CSS token (>${TOLERANCE}/channel). Align the hex in themes.ts:\n  ${regressions.join('\n  ')}`,
+      `Swatch preview drifted from the CSS token (>${TOLERANCE}/channel). Align the hex in registry.ts:\n  ${regressions.join('\n  ')}`,
     ).toEqual([])
     expect(
       fixed,

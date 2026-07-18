@@ -1,0 +1,57 @@
+@layer base {
+  html[data-theme="github-dark"] {
+    --background: 220 10% 7%;
+    --foreground: 210 19% 92%;
+    --card: 220 13% 11%;
+    --card-foreground: 210 19% 92%;
+    --popover: 218 13% 13%;
+    --popover-foreground: 210 19% 92%;
+    --primary: 212 91% 57%;
+    --primary-foreground: 212 25% 14%;
+    /* Count badge off --primary (APCA ~40 on the raw blue fill). Brighter blue +
+       near-black text clears APCA 60 + WCAG + the non-text fill bar. */
+    --badge-bg: 212 91% 84%; /* lightened so the dark label clears APCA Bronze; still pops on the dark surface (1.4.11) */
+    --badge-foreground: 212 25% 10%;
+    /* APCA Bronze: deep fills + light labels for the button CTAs; lighten the link. */
+    --button-bg: 212 91% 43%;
+    --button-foreground: 210 40% 98%;
+    --button-destructive-bg: 4 66% 46%;
+    --button-destructive-foreground: 210 40% 98%;
+    --button-success-bg: 137 55% 30.5%;
+    --button-success-foreground: 210 40% 98%;
+    /* Destructive badge: raw --destructive is only ~39Lc as a 12px chip label. Light
+       fill + near-black text (~84Lc, AA 13.5, fill ≥12:1 vs the dark surfaces). */
+    --badge-destructive-bg: 4 66% 89%;
+    --badge-destructive-foreground: 4 30% 8%;
+    /* Tone-chip text, per-theme: the popover/sidebar /15 blends land just past what
+       the shared dark-group shades clear (worst ~73Lc), so success/danger/info get a
+       small brighten (warning keeps the group shade) — every tone ≥76Lc / AA ≥8.6 on
+       all 4 surfaces. Github-dark must stay out of the shared polarity group in
+       themes.css (it would override these later). */
+    --tone-success-foreground: 142 66% 78%;
+    --tone-warning-foreground: 43 95% 71%;
+    --tone-danger-foreground: 0 92% 92%;
+    --tone-info-foreground: 205 96% 87%;
+    --link: 212 91% 84%;
+    --secondary: 216 11% 21%;
+    --secondary-foreground: 210 19% 85%;
+    --muted: 216 11% 18%;
+    --muted-foreground: 215 14% 60%;
+    --accent: 216 11% 18%;
+    --accent-foreground: 210 19% 92%;
+    --destructive: 4 66% 60.8%;
+    --destructive-foreground: 4 25% 14%;
+    --success: 137 55% 46%;
+    --success-foreground: 137 25% 14%;
+    --border: 216 11% 21%;
+    --input: 216 11% 21%;
+    --ring: 212 91% 57%;
+    --radius: 0.375rem;
+    --sidebar-background: 220 13% 11%;
+    --sidebar-foreground: 210 19% 92%;
+    --sidebar-border: 216 11% 21%;
+    --sidebar-muted-foreground: 215 14% 60%;
+    --sidebar-accent: 216 11% 18%;
+    --sidebar-accent-foreground: 210 19% 92%;
+  }
+}

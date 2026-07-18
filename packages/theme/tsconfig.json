@@ -1,0 +1,4 @@
+{
+  "extends": "@git-manager/config/typescript",
+  "include": ["src", "stories", ".storybook"]
+}

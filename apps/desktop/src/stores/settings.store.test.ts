@@ -177,4 +177,20 @@ describe('mergeSettingsWithDefaults', () => {
     })
     expect(merged.advanced.scanExclusions).toEqual(['only-this'])
   })
+
+  it('migrates the renamed "obsidian" theme id to "twilight"', () => {
+    const merged = mergeSettingsWithDefaults({
+      appearance: { ...DEFAULT_SETTINGS.appearance, theme: 'obsidian' },
+    })
+    expect(merged.appearance.theme).toBe('twilight')
+    // Other appearance fields survive the migration untouched.
+    expect(merged.appearance.fontSize).toBe(DEFAULT_SETTINGS.appearance.fontSize)
+  })
+
+  it('leaves a non-obsidian theme id unchanged', () => {
+    const merged = mergeSettingsWithDefaults({
+      appearance: { ...DEFAULT_SETTINGS.appearance, theme: 'dracula' },
+    })
+    expect(merged.appearance.theme).toBe('dracula')
+  })
 })

@@ -144,7 +144,7 @@ export function Footer({ onOpenSettings }: FooterProps) {
     : shortcuts
 
   return (
-    <footer className="flex h-8 w-full shrink-0 select-none items-center justify-between border-t border-border bg-card/60 px-4 text-[11px] text-muted-foreground backdrop-blur-sm">
+    <footer className="chrome-surface flex h-8 w-full shrink-0 select-none items-center justify-between border-t border-border bg-sidebar px-4 text-[11px] text-muted-foreground">
       {/* SECTION GAUCHE : État contextuel */}
       <div className="flex items-center gap-3 overflow-hidden">
         {activeTab === DASHBOARD_TAB && (
@@ -328,10 +328,12 @@ export function Footer({ onOpenSettings }: FooterProps) {
           <>
             <button
               onClick={() => setActiveTab(REWARDS_TAB)}
-              className={`flex cursor-pointer items-center gap-1.5 rounded border border-transparent px-2 py-0.5 transition-all duration-150 hover:border-border hover:bg-accent ${
+              className={`flex cursor-pointer items-center gap-1.5 rounded border px-2 py-0.5 transition-all duration-150 ${
                 activeTab === REWARDS_TAB
-                  ? 'border-border bg-accent/40 font-bold text-primary'
-                  : 'font-semibold text-amber-500 hover:text-amber-600'
+                  ? // Light-violet pill + near-black label (button component tokens): the old
+                    // text-primary violet sat at ~4.4:1 on the dark chrome footer (below AA).
+                    'border-button bg-button font-bold text-button-foreground shadow-sm'
+                  : 'border-transparent font-semibold text-amber-500 hover:border-border hover:bg-accent hover:text-amber-600'
               }`}
               title="Consulter vos succès et récompenses Git"
             >

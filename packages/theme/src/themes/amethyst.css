@@ -1,0 +1,48 @@
+@layer base {
+  /* Amethyst (Dark Purple) */
+  html[data-theme="amethyst"] {
+    --background: 270 40% 6%;
+    --foreground: 270 20% 95%;
+    --card: 270 30% 10%;
+    --card-foreground: 270 20% 95%;
+    --popover: 270 35% 8%;
+    --popover-foreground: 270 20% 95%;
+    --primary: 280 80% 65%;
+    --primary-foreground: 270 40% 6%;
+    /* Count badge re-pointed off the primary fill — WCAG 2.x rated it "AA" but APCA
+       read it ~40 (unreadable). Brighter accent fill + near-black text clears
+       APCA 60 + WCAG + the non-text fill bar. */
+    --badge-bg: 280 80% 87%; /* lightened so the dark label clears APCA Bronze; still pops on the dark surface (1.4.11) */
+    --badge-foreground: 280 25% 10%;
+    /* Destructive badge: light-red fill + near-black label (raw --destructive was
+       under 3:1 vs this near-black surface — 1.4.11). Fill pops ~11:1, label ~77Lc. */
+    --badge-destructive-bg: 0 85% 87%;
+    --badge-destructive-foreground: 0 30% 12%;
+    /* APCA Bronze: deep fills + light labels for the button CTAs; lighten the link. */
+    --button-bg: 280 80% 49.5%;
+    --button-foreground: 210 40% 98%;
+    --button-success-bg: 142 55% 30.5%;
+    --button-success-foreground: 210 40% 98%;
+    --link: 280 80% 87%;
+    --secondary: 270 20% 15%;
+    --secondary-foreground: 270 20% 90%;
+    --muted: 270 20% 15%;
+    --muted-foreground: 270 12% 65%;
+    --accent: 270 20% 15%;
+    --accent-foreground: 270 20% 95%;
+    --destructive: 350 70% 40%;
+    --destructive-foreground: 270 20% 95%;
+    --success: 142 55% 41.8%;
+    --success-foreground: 142 25% 14%;
+    --border: 270 20% 15%;
+    --input: 270 20% 15%;
+    --ring: 280 80% 65%;
+    --radius: 0.5rem;
+    --sidebar-background: 270 30% 10%;
+    --sidebar-foreground: 270 20% 95%;
+    --sidebar-border: 270 20% 15%;
+    --sidebar-muted-foreground: 270 12% 65%;
+    --sidebar-accent: 270 20% 15%;
+    --sidebar-accent-foreground: 270 20% 95%;
+  }
+}

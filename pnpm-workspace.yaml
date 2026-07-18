@@ -13,6 +13,7 @@ catalog:
   "@types/react-dom": ^18.3.1
   "@types/node": ^26.0.0
   vitest: ^3.0.7
+  "@vitest/browser": ^3.0.7
   "@testing-library/jest-dom": ^6.6.3
   "@testing-library/react": ^16.1.0
   "@testing-library/user-event": ^14.5.2
@@ -26,6 +27,11 @@ catalog:
   storybook: ^10.4.6
   "@storybook/react": ^10.4.6
   "@storybook/react-vite": ^10.4.6
+  # Pinned exact: Storybook requires every @storybook/* package on the identical
+  # version. A caret let addon-a11y float to 10.5.2 while core stayed 10.4.6, which
+  # crashed the preview (react interop) and desynced the UniversalStore.
+  "@storybook/addon-a11y": 10.4.6
+  "@storybook/addon-vitest": 10.4.6
   "@monaco-editor/react": ^4.6.0
   monaco-editor: ^0.52.0
 
