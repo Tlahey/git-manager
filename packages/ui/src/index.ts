@@ -82,29 +82,6 @@ export {
   CommandShortcut,
 } from './components/command'
 
-// ─── Theme validation (accessibility / token consistency) ──────────────────────
-// Re-exported from @git-manager/theme (the single source of truth) so existing
-// `@git-manager/ui` consumers keep working unchanged.
-export {
-  parseThemeTokens,
-  evaluateThemeContrast,
-  validateThemeTokens,
-  isThemeValid,
-  THEME_TOKEN_KEYS,
-  NON_COLOR_TOKENS,
-  CONTRAST_PAIRS,
-  AA_NORMAL_TEXT,
-  AA_LARGE_TEXT,
-  parseHslTriplet,
-  hslToRgb,
-  relativeLuminance,
-  contrastRatio,
-  contrastRatioForHslTriplets,
-} from '@git-manager/theme'
-export type {
-  ThemeTokens,
-  ThemeValidation,
-  ContrastPair,
-  ContrastResult,
-  Rgb,
-} from '@git-manager/theme'
+// Theme validation (accessibility / token consistency) lives in @git-manager/theme,
+// the single source of truth — import it directly from there rather than through this
+// barrel.

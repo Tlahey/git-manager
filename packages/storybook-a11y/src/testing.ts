@@ -4,5 +4,4 @@
 // which stays preview-safe. Import from "@git-manager/storybook-a11y/testing" in
 // *.test.tsx files only.
 export { runAxe, DEFAULT_DISABLED_RULES } from './axe'
-export { summarizeViolations } from './reporter'
 export { runA11yMatrix, type A11yMatrixOptions } from './matrix'
