@@ -23,6 +23,7 @@
     "@git-manager/git-types": "workspace:*",
     "@git-manager/i18n": "workspace:*",
     "@git-manager/mascot": "workspace:*",
+    "@git-manager/theme": "workspace:*",
     "@git-manager/ui": "workspace:*",
     "@monaco-editor/react": "catalog:",
     "@tanstack/react-query": "^5.62.7",

@@ -41,4 +41,30 @@ describe('Input', () => {
     render(<Input ref={ref} />)
     expect(ref.current).toBeInstanceOf(HTMLInputElement)
   })
+
+  it('applies the chrome variant tokens with a full-opacity placeholder', () => {
+    // The field fill is sidebar-accent, so text + placeholder ride sidebar-accent-
+    // foreground — the AA-graded pair for that fill (sidebar-foreground washed out on
+    // light/saturated accents like nord/platinum). Full opacity, not a faint /60.
+    render(<Input variant="chrome" data-testid="input" placeholder="Filtrer" />)
+    const el = screen.getByTestId('input')
+    expect(el.className).toContain('bg-sidebar-accent')
+    expect(el.className).toContain('placeholder:text-sidebar-accent-foreground')
+    expect(el.className).not.toMatch(/placeholder:text-sidebar-accent-foreground\/\d/)
+  })
+
+  it('renders start/end icon slots and pads the field for them', () => {
+    render(
+      <Input
+        data-testid="input"
+        startIcon={<span data-testid="start-icon" />}
+        endIcon={<button data-testid="end-icon" />}
+      />
+    )
+    expect(screen.getByTestId('start-icon')).toBeInTheDocument()
+    expect(screen.getByTestId('end-icon')).toBeInTheDocument()
+    const el = screen.getByTestId('input')
+    expect(el.className).toContain('pl-8')
+    expect(el.className).toContain('pr-8')
+  })
 })

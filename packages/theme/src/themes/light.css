@@ -1,0 +1,50 @@
+@layer base {
+  html[data-theme="light"] {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 210 25% 97%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Count badge off the primary fill — WCAG 2.x rated the mid-blue "AA" (4.85) but
+       APCA read the label ~39 (the pill that "doesn't pop"). A deeper blue fill +
+       near-white text clears APCA 60 + WCAG + the non-text fill bar. */
+    --badge-bg: 217.2 91.2% 48%;
+    --badge-foreground: 217.2 30% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 42%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 48.2%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 142 76% 29.3%;
+    --success-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 217.2 91.2% 59.8%;
+    /* APCA Bronze: deep button fills + light labels (badge already deep, link handled
+       by the shared light-content block in themes.css). */
+    --button-bg: 217.2 91.2% 47.5%;
+    --button-foreground: 210 40% 98%;
+    --button-destructive-bg: 0 84.2% 43.5%;
+    --button-destructive-foreground: 210 40% 98%;
+    /* Destructive badge: white-on-red at 48.2% is ~73Lc for the 12px chip label
+       (bar 75). Deepen the fill a touch further than the button (~80Lc, AA 5.8,
+       fill ≥5.7:1 vs the light surfaces). */
+    --badge-destructive-bg: 0 84.2% 42%;
+    --badge-destructive-foreground: 210 40% 98%;
+    --button-success-bg: 142 76% 27.5%;
+    --button-success-foreground: 210 40% 98%;
+    --radius: 0.5rem;
+    --sidebar-background: 210 25% 97%;
+    --sidebar-foreground: 222.2 84% 4.9%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-muted-foreground: 215.4 16.3% 42%;
+    --sidebar-accent: 210 40% 96.1%;
+    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+  }
+}

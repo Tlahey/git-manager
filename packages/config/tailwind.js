@@ -19,6 +19,43 @@ export default {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
         },
+        // Component-token layer (Tier 3): each filled Button variant defaults to
+        // its semantic pair via themes.css, so a button-only fix (incl. per-theme
+        // a11y overrides) is a token change, not a code change. Graded by
+        // evaluateComponentContrast in @git-manager/theme.
+        button: {
+          DEFAULT: 'hsl(var(--button-bg))',
+          foreground: 'hsl(var(--button-foreground))',
+          secondary: 'hsl(var(--button-secondary-bg))',
+          'secondary-foreground': 'hsl(var(--button-secondary-foreground))',
+          destructive: 'hsl(var(--button-destructive-bg))',
+          'destructive-foreground': 'hsl(var(--button-destructive-foreground))',
+          success: 'hsl(var(--button-success-bg))',
+          'success-foreground': 'hsl(var(--button-success-foreground))',
+        },
+        // Component token for the default Badge fill — defaults to --primary, but a
+        // theme can re-point it (Twilight uses a deeper violet so the chip stays
+        // visible + AA). Graded by evaluateComponentContrast.
+        badge: {
+          DEFAULT: 'hsl(var(--badge-bg))',
+          foreground: 'hsl(var(--badge-foreground))',
+          // Secondary/destructive Badge variants get their own tokens (default to
+          // --secondary/--destructive) so a theme can fix the chip label's contrast
+          // without moving the semantic color it borrows from.
+          secondary: 'hsl(var(--badge-secondary-bg))',
+          'secondary-foreground': 'hsl(var(--badge-secondary-foreground))',
+          destructive: 'hsl(var(--badge-destructive-bg))',
+          'destructive-foreground': 'hsl(var(--badge-destructive-foreground))',
+        },
+        // Soft "tone" chip text (Tag + Badge success/warning/danger/info). The chip
+        // fill stays a translucent /15 tint of the tone color; only the *text* rides
+        // these tokens, so a theme can darken/lighten it per surface for AA. `link`
+        // is the same idea for the link button / inline links (ex-text-primary).
+        'tone-success': 'hsl(var(--tone-success-foreground))',
+        'tone-warning': 'hsl(var(--tone-warning-foreground))',
+        'tone-danger': 'hsl(var(--tone-danger-foreground))',
+        'tone-info': 'hsl(var(--tone-info-foreground))',
+        link: 'hsl(var(--link))',
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',
           foreground: 'hsl(var(--secondary-foreground))',

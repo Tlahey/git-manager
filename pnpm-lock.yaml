@@ -9,6 +9,12 @@ catalogs:
     '@monaco-editor/react':
       specifier: ^4.6.0
       version: 4.7.0
+    '@storybook/addon-a11y':
+      specifier: 10.4.6
+      version: 10.4.6
+    '@storybook/addon-vitest':
+      specifier: 10.4.6
+      version: 10.4.6
     '@storybook/react':
       specifier: ^10.4.6
       version: 10.4.6
@@ -36,6 +42,9 @@ catalogs:
     '@vitejs/plugin-react':
       specifier: ^4.3.4
       version: 4.7.0
+    '@vitest/browser':
+      specifier: ^3.0.7
+      version: 3.2.7
     autoprefixer:
       specifier: ^10.4.20
       version: 10.5.0
@@ -119,6 +128,9 @@ importers:
       '@git-manager/mascot':
         specifier: workspace:*
         version: link:../../packages/mascot
+      '@git-manager/theme':
+        specifier: workspace:*
+        version: link:../../packages/theme
       '@git-manager/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -337,6 +349,9 @@ importers:
 
   packages/editor:
     dependencies:
+      '@git-manager/theme':
+        specifier: workspace:*
+        version: link:../theme
       diff:
         specifier: ^8.0.4
         version: 8.0.4
@@ -512,8 +527,93 @@ importers:
         specifier: 'catalog:'
         version: 3.2.7(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@2.7.0)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(tsx@4.23.0)(yaml@2.9.0)
 
+  packages/storybook-a11y:
+    dependencies:
+      '@git-manager/theme':
+        specifier: workspace:*
+        version: link:../theme
+      apca-check:
+        specifier: ^0.1.1
+        version: 0.1.1(axe-core@4.12.1)
+      axe-core:
+        specifier: ^4.10.2
+        version: 4.12.1
+    devDependencies:
+      '@git-manager/config':
+        specifier: workspace:*
+        version: link:../config
+      '@storybook/react':
+        specifier: 'catalog:'
+        version: 10.4.6(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1))(typescript@7.0.2)
+      '@storybook/react-vite':
+        specifier: 'catalog:'
+        version: 10.4.6(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(esbuild@0.28.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rollup@4.62.2)(storybook@10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1))(typescript@7.0.2)(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))
+      '@testing-library/react':
+        specifier: 'catalog:'
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@types/react':
+        specifier: 'catalog:'
+        version: 18.3.31
+      react:
+        specifier: 'catalog:'
+        version: 18.3.1
+      react-dom:
+        specifier: 'catalog:'
+        version: 18.3.1(react@18.3.1)
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.7(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@2.7.0)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(tsx@4.23.0)(yaml@2.9.0)
+
+  packages/theme:
+    devDependencies:
+      '@git-manager/config':
+        specifier: workspace:*
+        version: link:../config
+      '@storybook/addon-a11y':
+        specifier: 'catalog:'
+        version: 10.4.6(storybook@10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1))
+      '@storybook/react':
+        specifier: 'catalog:'
+        version: 10.4.6(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1))(typescript@7.0.2)
+      '@storybook/react-vite':
+        specifier: 'catalog:'
+        version: 10.4.6(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(esbuild@0.28.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rollup@4.62.2)(storybook@10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1))(typescript@7.0.2)(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))
+      '@types/react':
+        specifier: 'catalog:'
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 18.3.7(@types/react@18.3.31)
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1(supports-color@8.1.1)
+      react:
+        specifier: 'catalog:'
+        version: 18.3.1
+      react-dom:
+        specifier: 'catalog:'
+        version: 18.3.1(react@18.3.1)
+      storybook:
+        specifier: 'catalog:'
+        version: 10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1)
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 6.4.3(@types/node@26.0.0)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.7(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@2.7.0)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(tsx@4.23.0)(yaml@2.9.0)
+
   packages/ui:
     dependencies:
+      '@git-manager/theme':
+        specifier: workspace:*
+        version: link:../theme
       '@radix-ui/react-context-menu':
         specifier: ^2.2.2
         version: 2.3.3(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -553,12 +653,6 @@ importers:
       lucide-react:
         specifier: 'catalog:'
         version: 0.468.0(react@18.3.1)
-      react:
-        specifier: ^18.0.0
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.0.0
-        version: 18.3.1(react@18.3.1)
       tailwind-merge:
         specifier: ^2.5.5
         version: 2.6.1
@@ -566,6 +660,21 @@ importers:
       '@git-manager/config':
         specifier: workspace:*
         version: link:../config
+      '@git-manager/storybook-a11y':
+        specifier: workspace:*
+        version: link:../storybook-a11y
+      '@storybook/addon-a11y':
+        specifier: 'catalog:'
+        version: 10.4.6(storybook@10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1))
+      '@storybook/addon-vitest':
+        specifier: 'catalog:'
+        version: 10.4.6(@vitest/browser@3.2.7)(@vitest/runner@3.2.7)(react@18.3.1)(storybook@10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1))(vitest@3.2.7)
+      '@storybook/react':
+        specifier: 'catalog:'
+        version: 10.4.6(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1))(typescript@7.0.2)
+      '@storybook/react-vite':
+        specifier: 'catalog:'
+        version: 10.4.6(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(esbuild@0.28.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rollup@4.62.2)(storybook@10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1))(typescript@7.0.2)(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: 'catalog:'
         version: 6.9.1
@@ -581,15 +690,36 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 18.3.7(@types/react@18.3.31)
+      '@vitest/browser':
+        specifier: 'catalog:'
+        version: 3.2.7(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(playwright@1.61.1)(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))(vitest@3.2.7)(webdriverio@9.29.1)
+      axe-core:
+        specifier: ^4.10.2
+        version: 4.12.1
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1(supports-color@8.1.1)
+      playwright:
+        specifier: ^1.48.0
+        version: 1.61.1
+      react:
+        specifier: 'catalog:'
+        version: 18.3.1
+      react-dom:
+        specifier: 'catalog:'
+        version: 18.3.1(react@18.3.1)
+      storybook:
+        specifier: 'catalog:'
+        version: 10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1)
       tailwindcss:
         specifier: 'catalog:'
         version: 3.4.19(tsx@4.23.0)(yaml@2.9.0)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 6.4.3(@types/node@26.0.0)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0)
       vitest:
         specifier: 'catalog:'
         version: 3.2.7(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@2.7.0)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(tsx@4.23.0)(yaml@2.9.0)
@@ -2823,6 +2953,11 @@ packages:
   '@sinonjs/fake-timers@15.4.0':
     resolution: {integrity: sha512-DsG+8/LscQIQg68J6Ef3dv10u6nVyetYn923s3/sus5eaGfTo1of5WMZSLf0UJc9KDuKPilPH0UDJCjvNbDNCA==}
 
+  '@storybook/addon-a11y@10.4.6':
+    resolution: {integrity: sha512-XCJy+f0DFOiCgUU9knRDlLDxVFI+AAQ3/wE/NF85zB9iDPPS2DwkSN+mas3zDgHt66zhN8Cq3/UiyCDUweV9Zw==}
+    peerDependencies:
+      storybook: ^10.4.6
+
   '@storybook/addon-actions@8.6.14':
     resolution: {integrity: sha512-mDQxylxGGCQSK7tJPkD144J8jWh9IU9ziJMHfB84PKpI/V5ZgqMDnpr2bssTrUaGDqU5e1/z8KcRF+Melhs9pQ==}
     peerDependencies:
@@ -3884,6 +4019,14 @@ packages:
   anynum@1.0.1:
     resolution: {integrity: sha512-N6//FLET/tXYNM/F6ABca1oH6fWB+KlTt909Le28WMDBk8oaT4vY17DCrwg2MvmuqUKt3Ni4N5dGJ/EoBgcO6A==}
 
+  apca-check@0.1.1:
+    resolution: {integrity: sha512-4sddIrbFb1db+E5IWJFMIcokNYbFc0Q+hYFBys/N0LZfwVf+fzVaUQ+oR9lyo/B4rO7NHiyytY5StP4MMA6eww==}
+    peerDependencies:
+      axe-core: ^4.0.0
+
+  apca-w3@0.1.9:
+    resolution: {integrity: sha512-Zrf6AeBeQjNe/fxK7U1jCo5zfdjDl6T4/kdw5Xlky3G7u+EJTZkyItjMYQGtwf9pkftsINxcYyOpuLkzKf1ITQ==}
+
   append-transform@2.0.0:
     resolution: {integrity: sha512-7yeyCEurROLQJFv5Xj4lEGTy0borxepjFv1g22oAdqFu//SrAlDl1O1Nxx15SH1RoliUml6p8dwJW9jvZughhg==}
     engines: {node: '>=8'}
@@ -3950,6 +4093,10 @@ packages:
     hasBin: true
     peerDependencies:
       postcss: ^8.1.0
+
+  axe-core@4.12.1:
+    resolution: {integrity: sha512-s7iGf5GaVMxEG0ENN9x+xTr7GFZCb1ZP/1uATUpCEK2X78nDB3RwbtFCo9pGAf9ru+VwoQ464DkaLEeRM08wJA==}
+    engines: {node: '>=4'}
 
   axios@1.18.1:
     resolution: {integrity: sha512-3nTvFlvpn9Zu/RkHUqtc7/+al4UpRW5az71ap5zccp6e8RAYEzhMTecX8Dz1wWDYrPpUoB1HAQEGEAEvUr7S9g==}
@@ -4234,6 +4381,9 @@ packages:
 
   color-name@1.1.4:
     resolution: {integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==}
+
+  colorparsley@0.1.8:
+    resolution: {integrity: sha512-rObESTTTE6G5qO5WFwFxWPggpw4KfpxnLC6Ssl8bITBnNVRhDsyCeTRAUxWQNVTx2pRknKlO2nddYTxjkdNFaw==}
 
   combined-stream@1.0.8:
     resolution: {integrity: sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==}
@@ -9232,6 +9382,12 @@ snapshots:
     dependencies:
       '@sinonjs/commons': 3.0.1
 
+  '@storybook/addon-a11y@10.4.6(storybook@10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1))':
+    dependencies:
+      '@storybook/global': 5.0.0
+      axe-core: 4.12.1
+      storybook: 10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1)
+
   '@storybook/addon-actions@8.6.14(storybook@10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1))':
     dependencies:
       '@storybook/global': 5.0.0
@@ -10435,6 +10591,15 @@ snapshots:
 
   anynum@1.0.1: {}
 
+  apca-check@0.1.1(axe-core@4.12.1):
+    dependencies:
+      apca-w3: 0.1.9
+      axe-core: 4.12.1
+
+  apca-w3@0.1.9:
+    dependencies:
+      colorparsley: 0.1.8
+
   append-transform@2.0.0:
     dependencies:
       default-require-extensions: 3.0.1
@@ -10517,6 +10682,8 @@ snapshots:
       picocolors: 1.1.1
       postcss: 8.5.15
       postcss-value-parser: 4.2.0
+
+  axe-core@4.12.1: {}
 
   axios@1.18.1(supports-color@8.1.1):
     dependencies:
@@ -10834,6 +11001,8 @@ snapshots:
   color-name@1.1.3: {}
 
   color-name@1.1.4: {}
+
+  colorparsley@0.1.8: {}
 
   combined-stream@1.0.8:
     dependencies:

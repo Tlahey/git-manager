@@ -1,0 +1,57 @@
+@layer base {
+  html[data-theme="solarized-light"] {
+    --background: 44 87% 94%;
+    --foreground: 192 81% 14%;
+    --card: 46 40% 88%;
+    --card-foreground: 192 81% 14%;
+    --popover: 44 87% 94%;
+    --popover-foreground: 192 81% 14%;
+    --primary: 205 69% 41%;
+    --primary-foreground: 44 87% 94%;
+    --secondary: 46 40% 88%;
+    --secondary-foreground: 192 81% 14%;
+    --muted: 46 40% 91%;
+    --muted-foreground: 194 20% 36%;
+    --accent: 46 40% 88%;
+    --accent-foreground: 192 81% 14%;
+    --destructive: 1 71% 49.3%;
+    --destructive-foreground: 44 87% 94%;
+    --success: 68 100% 23.3%;
+    --success-foreground: 44 87% 94%;
+    --border: 46 18% 82%;
+    --input: 46 18% 82%;
+    --ring: 205 69% 49%;
+    --radius: 0.5rem;
+    /* APCA Bronze: deepen the primary/badge fills + light labels for the light surface
+       (link is handled by the shared light-content block in themes.css). */
+    --button-bg: 205 69% 39%;
+    --button-foreground: 210 40% 98%;
+    --button-destructive-bg: 1 71% 45.5%;
+    --button-destructive-foreground: 210 40% 98%;
+    --button-success-bg: 68 100% 22%;
+    --button-success-foreground: 210 40% 98%;
+    --badge-bg: 205 69% 39%;
+    --badge-foreground: 44 87% 94%;
+    /* Destructive badge: light text on the raw --destructive is ~72Lc as a 12px chip
+       label. Deepened fill + light text (~82Lc, AA 6.2, fill ≥5.2:1 vs the beige
+       surfaces). */
+    --badge-destructive-bg: 1 71% 42%;
+    --badge-destructive-foreground: 210 40% 98%;
+    /* Tone-chip text + link, per-theme: the beige surfaces (esp. the darker sidebar)
+       shift every /15 blend, so the shared light-group shades fall short (worst
+       ~67Lc). Deeper inks clear every tone ≥77Lc / AA ≥11.2 on all 4 surfaces; the
+       link keeps the group value. Solarized-light must stay out of the shared
+       polarity group in themes.css (it would override these later). */
+    --tone-success-foreground: 152 78% 8%;
+    --tone-warning-foreground: 26 86% 12%;
+    --tone-danger-foreground: 0 74% 10%;
+    --tone-info-foreground: 221 80% 14%;
+    --link: 221 80% 35%;
+    --sidebar-background: 46 40% 88%;
+    --sidebar-foreground: 192 81% 14%;
+    --sidebar-border: 46 18% 82%;
+    --sidebar-muted-foreground: 194 20% 36%;
+    --sidebar-accent: 46 40% 88%;
+    --sidebar-accent-foreground: 192 81% 14%;
+  }
+}

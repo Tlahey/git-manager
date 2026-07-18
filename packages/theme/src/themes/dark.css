@@ -1,0 +1,47 @@
+@layer base {
+  /* Dark — also the :root fallback when no data-theme is set. */
+  :root,
+  html[data-theme="dark"] {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222 55% 9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 45% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Count badge off --primary (APCA ~39 on the raw blue fill). Brighter blue +
+       near-black text clears APCA 60 + WCAG + the non-text fill bar. */
+    --badge-bg: 217 91% 85.5%; /* lightened so the small chip's dark label clears APCA Bronze; still pops on the dark surface (1.4.11) */
+    --badge-foreground: 217 25% 10%;
+    /* Destructive badge: light-red fill + near-black label. The raw --destructive
+       (deep red) sat under 3:1 vs this near-black surface (1.4.11); a light fill pops
+       (~12:1) and the dark label clears APCA (~77Lc). */
+    --badge-destructive-bg: 0 85% 87%;
+    --badge-destructive-foreground: 0 30% 12%;
+    /* APCA Bronze: deep primary fill + light label for the button CTA; lighten the link on the dark bg. */
+    --button-bg: 217.2 91.2% 47.5%;
+    --button-foreground: 210 40% 98%;
+    --link: 217 91% 85%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 142 60% 28%;
+    --success-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+    --radius: 0.5rem;
+    --sidebar-background: 222 55% 9%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 17.5%;
+    --sidebar-muted-foreground: 215 20.2% 65.1%;
+    --sidebar-accent: 217.2 32.6% 17.5%;
+    --sidebar-accent-foreground: 210 40% 98%;
+  }
+}

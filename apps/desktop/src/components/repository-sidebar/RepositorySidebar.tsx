@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PanelLeftClose, Search, X } from 'lucide-react'
+import { Input } from '@git-manager/ui'
 import type { GitBranch, GitWorktree, PullRequest } from '@git-manager/git-types'
 import { useSidebarResize, RAIL_WIDTH } from '../../hooks/useSidebarResize'
 import { useSidebarRows } from '../../hooks/useSidebarRows'
@@ -267,27 +268,28 @@ export function RepositorySidebar({
             {` / ${filterStats.total} résultats`}
           </div>
         )}
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sidebar-muted-foreground/60" />
-          <input
-            ref={searchInputRef}
-            type="text"
-            value={branchQuery}
-            onChange={(e) => setBranchQuery(e.target.value)}
-            placeholder="Filtrer les branches…"
-            aria-label="Filtrer les branches"
-            className="h-7 w-full rounded-md border border-sidebar-border bg-sidebar-accent pl-7 pr-7 text-xs text-sidebar-foreground outline-none transition-colors placeholder:text-sidebar-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-ring"
-          />
-          {branchQuery && (
-            <button
-              onClick={() => setBranchQuery('')}
-              aria-label="Effacer le filtre"
-              className="absolute right-1.5 top-1/2 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          )}
-        </div>
+        <Input
+          ref={searchInputRef}
+          variant="chrome"
+          type="text"
+          value={branchQuery}
+          onChange={(e) => setBranchQuery(e.target.value)}
+          placeholder="Filtrer les branches…"
+          aria-label="Filtrer les branches"
+          className="h-7 text-xs shadow-none"
+          startIcon={<Search className="h-3.5 w-3.5 text-sidebar-muted-foreground" />}
+          endIcon={
+            branchQuery ? (
+              <button
+                onClick={() => setBranchQuery('')}
+                aria-label="Effacer le filtre"
+                className="flex h-4 w-4 items-center justify-center rounded text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            ) : undefined
+          }
+        />
       </div>
 
       {/* Sections repliables — chaque section ouverte est `flex-1` (poids égal, base 0%) : les

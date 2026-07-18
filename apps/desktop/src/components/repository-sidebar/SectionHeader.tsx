@@ -43,7 +43,7 @@ export function SectionHeader({
         </span>
         {count !== undefined && (
           <span
-            className={`flex shrink-0 items-center gap-1 text-[10px] tabular-nums text-sidebar-muted-foreground/40 transition-opacity ${
+            className={`flex shrink-0 items-center gap-1 text-[10px] tabular-nums text-sidebar-muted-foreground transition-opacity ${
               action ? 'group-hover/header:opacity-0' : ''
             }`}
           >

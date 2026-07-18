@@ -46,7 +46,8 @@ describe('Button', () => {
     render(<Button className="my-extra-class">Go</Button>)
     const button = screen.getByRole('button')
     expect(button.className).toContain('my-extra-class')
-    expect(button.className).toContain('bg-primary')
+    // Default variant consumes the Tier-3 component token (defaults to --primary).
+    expect(button.className).toContain('bg-button')
   })
 
   it('renders as the child element (Slot) instead of a button when asChild is set', () => {
@@ -59,7 +60,7 @@ describe('Button', () => {
     expect(link.tagName).toBe('A')
     expect(link).toHaveAttribute('href', '/somewhere')
     // Slot still applies the button's computed classes onto the rendered child.
-    expect(link.className).toContain('bg-primary')
+    expect(link.className).toContain('bg-button')
   })
 
   it('forwards the ref to the underlying button element', () => {

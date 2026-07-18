@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Trophy, CheckCircle2, Lock } from 'lucide-react'
+import { Chip } from '@git-manager/ui'
 import { useGameStore, getLevelInfo } from '../../../stores/game.store'
 
 type StatusFilter = 'all' | 'in_progress' | 'completed'
@@ -77,9 +78,12 @@ export function RewardsTab() {
     >
       {/* Top dashboard row: rank details & PlayStation-like trophy counts */}
       <div className="grid shrink-0 grid-cols-1 gap-4 md:grid-cols-3">
-        {/* Tier rank card */}
+        {/* Tier rank card — chrome-surface: this card is designed for a dark backdrop
+            (bg-black/xx overlays, colored-on-dark rank glow), so on light themes like
+            Twilight it opts into the dark nav-chrome palette instead of the light --card,
+            keeping the "Rang Git Actuel" subtitle and progress track legible. */}
         <div
-          className={`flex flex-col gap-3 rounded-xl border bg-card/40 p-4 shadow-md backdrop-blur-sm ${rankGlow}`}
+          className={`chrome-surface flex flex-col gap-3 rounded-xl border bg-sidebar p-4 shadow-md backdrop-blur-sm ${rankGlow}`}
         >
           <div className="flex items-center gap-3">
             <div
@@ -185,17 +189,14 @@ export function RewardsTab() {
               { id: 'completed', label: 'Terminés' },
             ] as const
           ).map((opt) => (
-            <button
+            <Chip
               key={opt.id}
+              active={filter === opt.id}
               onClick={() => setFilter(opt.id)}
-              className={`cursor-pointer rounded-full border px-3 py-1 text-[10px] font-semibold transition-all ${
-                filter === opt.id
-                  ? 'border-primary bg-primary font-bold text-primary-foreground shadow-sm'
-                  : 'border-border bg-card/30 text-muted-foreground hover:text-foreground'
-              }`}
+              data-testid={`rewards-filter-${opt.id}`}
             >
               {opt.label}
-            </button>
+            </Chip>
           ))}
         </div>
       </div>

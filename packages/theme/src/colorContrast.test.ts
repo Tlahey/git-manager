@@ -8,7 +8,7 @@ import {
 } from './colorContrast'
 
 describe('parseHslTriplet', () => {
-  it('parses a globals.css-style triplet', () => {
+  it('parses a themes.css-style triplet', () => {
     expect(parseHslTriplet('222.2 84% 4.9%')).toEqual({ h: 222.2, s: 84, l: 4.9 })
   })
 

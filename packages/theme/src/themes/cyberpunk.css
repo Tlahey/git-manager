@@ -1,0 +1,49 @@
+@layer base {
+  /* Cyberpunk (Neon Dark) */
+  html[data-theme="cyberpunk"] {
+    --background: 320 40% 5%;
+    --foreground: 180 100% 92%;
+    --card: 320 30% 9%;
+    --card-foreground: 180 100% 92%;
+    --popover: 320 35% 7%;
+    --popover-foreground: 180 100% 92%;
+    --primary: 320 100% 60%;
+    --primary-foreground: 320 40% 5%;
+    /* Count badge off --primary (APCA ~46 on the raw fill). Bright accent + near-black
+       text clears APCA 60 + WCAG + the non-text fill bar. */
+    --badge-bg: 320 100% 87%; /* lightened so the dark label clears APCA Bronze; still pops on the dark surface (1.4.11) */
+    --badge-foreground: 320 25% 10%;
+    /* APCA Bronze: deep fills + light labels for the button CTAs; lighten the link. */
+    --button-bg: 320 100% 38%;
+    --button-foreground: 210 40% 98%;
+    --button-destructive-bg: 0 100% 40%;
+    --button-destructive-foreground: 210 40% 98%;
+    /* Destructive badge: raw --destructive is only ~40Lc as a 12px chip label. Light
+       fill + near-black text (~81Lc, AA 12.8, fill ≥12:1 vs the dark surfaces). */
+    --badge-destructive-bg: 0 100% 89%;
+    --badge-destructive-foreground: 0 30% 8%;
+    --button-success-bg: 130 100% 24%;
+    --button-success-foreground: 210 40% 98%;
+    --link: 320 100% 86.5%;
+    --secondary: 180 100% 10%;
+    --secondary-foreground: 180 100% 80%;
+    --muted: 320 20% 14%;
+    --muted-foreground: 180 30% 60%;
+    --accent: 60 100% 50%;
+    --accent-foreground: 320 40% 5%;
+    --destructive: 0 100% 61.3%;
+    --destructive-foreground: 0 25% 14%;
+    --success: 130 100% 45%;
+    --success-foreground: 320 40% 5%;
+    --border: 320 25% 16%;
+    --input: 320 25% 16%;
+    --ring: 320 100% 60%;
+    --radius: 0.25rem;
+    --sidebar-background: 320 30% 9%;
+    --sidebar-foreground: 180 100% 92%;
+    --sidebar-border: 320 25% 16%;
+    --sidebar-muted-foreground: 180 30% 60%;
+    --sidebar-accent: 60 100% 50%;
+    --sidebar-accent-foreground: 320 40% 5%;
+  }
+}

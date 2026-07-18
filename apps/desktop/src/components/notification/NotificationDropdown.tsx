@@ -7,7 +7,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { Bell, CheckCheck, Trash2, Play, Sparkles } from 'lucide-react'
 import { getNotificationIcon, getNotificationText } from './utils'
 import { showNativeNotification } from '../../hooks/useNotificationWatcher'
-import { Popover, PopoverTrigger, PopoverContent } from '@git-manager/ui'
+import { Popover, PopoverTrigger, PopoverContent, Badge, NumberBadge } from '@git-manager/ui'
 import type { TFunction } from '@git-manager/i18n'
 
 function formatRelativeTime(timestamp: number, t: TFunction): string {
@@ -78,14 +78,11 @@ export function NotificationDropdown() {
           title={t('notifications.title')}
         >
           <Bell className="h-3.5 w-3.5" />
-          {unreadCount > 0 && (
-            <span
-              data-testid="notification-unread-badge"
-              className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 animate-pulse items-center justify-center rounded-full bg-primary text-[8px] font-bold text-primary-foreground ring-2 ring-sidebar"
-            >
-              {unreadCount}
-            </span>
-          )}
+          <NumberBadge
+            count={unreadCount}
+            data-testid="notification-unread-badge"
+            className="absolute -right-1 -top-1 animate-pulse ring-2 ring-sidebar"
+          />
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -100,9 +97,7 @@ export function NotificationDropdown() {
               {t('notifications.title')}
             </span>
             {unreadCount > 0 && (
-              <span className="py-0.2 rounded-full bg-primary/10 px-1.5 text-[9px] font-medium text-primary">
-                {unreadCount} new
-              </span>
+              <Badge className="px-1.5 py-0 text-[9px] font-medium">{unreadCount} new</Badge>
             )}
           </div>
           <div className="flex items-center gap-1">

@@ -70,10 +70,12 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
 
   return (
     <>
-      {/* Zone de drag supplémentaire pour faciliter le déplacement de la fenêtre (hauteur: --tab-bar-drag-spacer-height) */}
+      {/* Zone de drag supplémentaire pour faciliter le déplacement de la fenêtre (hauteur: --tab-bar-drag-spacer-height).
+          bg-sidebar la fond dans la couleur du chrome comme la barre d'onglets sous elle — sans quoi elle laisse
+          transparaître le --background clair (blanc sur Twilight) au-dessus des onglets sombres. */}
       <div
         data-tauri-drag-region
-        className="shrink-0"
+        className="shrink-0 bg-sidebar"
         style={{ height: 'var(--tab-bar-drag-spacer-height)' }}
       />
       <div
