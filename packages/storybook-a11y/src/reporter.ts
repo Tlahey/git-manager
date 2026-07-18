@@ -47,8 +47,3 @@ export function summarizeRecords(records: ViolationNodeRecord[]): string[] {
   })
   return [...new Set(lines)]
 }
-
-/** Deduped one-line-per-node summaries, used as the matrix assertion diff. */
-export function summarizeViolations(violations: axe.Result[]): string[] {
-  return summarizeRecords(collectViolationRecords(violations))
-}

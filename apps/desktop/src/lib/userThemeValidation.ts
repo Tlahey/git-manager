@@ -6,7 +6,7 @@
 // them at load time and surfaces problems in the console instead of letting a
 // custom theme silently ship white-on-yellow text or half its tokens.
 
-import { parseThemeTokens, validateThemeTokens, isThemeValid } from '@git-manager/ui'
+import { parseThemeTokens, validateThemeTokens, isThemeValid } from '@git-manager/theme'
 import type { UserTheme } from '@git-manager/git-types'
 
 /**
