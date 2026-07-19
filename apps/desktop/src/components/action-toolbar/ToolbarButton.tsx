@@ -1,4 +1,4 @@
-import { Spinner } from '@git-manager/ui'
+import { Spinner, NumberBadge } from '@git-manager/ui'
 
 export interface ToolbarButtonProps {
   icon: React.ReactNode
@@ -39,12 +39,15 @@ export function ToolbarButton({
       <span className="relative flex h-4 w-4 items-center justify-center">
         {loading ? <Spinner className="h-4 w-4 text-muted-foreground" /> : icon}
         {showBadge && (
-          <span
+          <NumberBadge
+            count={badge}
             data-testid="toolbar-button-badge"
-            className="absolute -right-2 -top-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold leading-none text-primary-foreground"
-          >
-            {badge > 99 ? '99+' : badge}
-          </span>
+            // Screen readers get the descriptive title (e.g. "2 commits to pull") instead of a
+            // bare "2"; the `--badge` tokens keep the pill AA-legible on every theme, and the
+            // sidebar-matched ring lifts it clear of the icon it overlaps.
+            aria-label={title ?? label}
+            className="absolute -right-2 -top-1 min-h-0 min-w-3.5 px-1 text-[9px] ring-2 ring-sidebar"
+          />
         )}
       </span>
       <span

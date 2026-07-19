@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import type { GitGraphNode, GitRef } from '@git-manager/git-types'
+import type { GitGraphNode, GitRef, WorktreeAgentActivity } from '@git-manager/git-types'
 import { cn } from '@git-manager/ui'
 import { RefLabel } from './RefLabel'
 import { RefLabelGroup } from './RefLabelGroup'
@@ -47,6 +47,11 @@ interface GraphRowProps {
    * `WIP:<path>` synthetic row (its `commit.oid` carries the worktree path). */
   worktreeWipStatuses?: WorktreeWipStatus[]
   onOpenWorktree?: (path: string) => void
+  /** AI-agent activity for every linked worktree — resolved (by path) to the agent working in a
+   * `WIP:<path>` row's worktree. */
+  worktreeAgentActivity?: WorktreeAgentActivity[]
+  /** AI-agent activity for the active repo/worktree — attached to the primary `WIP` row. */
+  wipAgentActivity?: WorktreeAgentActivity
   /** Branch (or worktree) the active repo's primary "// WIP" row is on — shown as a tag. */
   wipRef?: WipRef
   /** Branch owning this row's colored lane. Shown faintly, on hover only, in the refs column of a
@@ -72,6 +77,7 @@ function CellContent({
   onOpenWorktree,
   isActive,
   laneRef,
+  agentActivity,
 }: {
   col: Exclude<ColumnKey, 'graph'>
   node: GitGraphNode
@@ -87,6 +93,8 @@ function CellContent({
   onOpenWorktree?: (path: string) => void
   isActive?: boolean
   laneRef?: GitRef
+  /** AI agent working in this row's worktree (already resolved for WIP / WIP:<path> rows). */
+  agentActivity?: WorktreeAgentActivity
 }) {
   const { commit } = node
   const activeRepo = useRepoUIStore((s) => s.activeRepo)
@@ -138,6 +146,7 @@ function CellContent({
             wipStats={wipStats ?? { added: 0, modified: 0, deleted: 0 }}
             refInfo={wipRef}
             onCommit={onCommitWip}
+            agentActivity={agentActivity}
           />
         )
       }
@@ -154,6 +163,7 @@ function CellContent({
             refInfo={wip ? { name: wip.branch, isWorktree: true } : undefined}
             onOpenWorktree={() => onOpenWorktree?.(path)}
             showOpenButton={isActive}
+            agentActivity={agentActivity}
           />
         )
       }
@@ -260,6 +270,8 @@ export const GraphRow = memo(function GraphRow({
   dimmed,
   worktreeWipStatuses,
   onOpenWorktree,
+  worktreeAgentActivity,
+  wipAgentActivity,
   wipRef,
   laneRef,
   graphMaxColumn = 0,
@@ -274,6 +286,15 @@ export const GraphRow = memo(function GraphRow({
   const layout = getGraphColumnLayout(graphWidth, graphMaxColumn, avatarSize)
   const marker = getMarkerPlacement(node.column, layout, avatarSize)
   const isActiveRow = isSelected || isPrimary
+  // Agent working in this row's worktree: the primary WIP row uses the active repo's activity;
+  // a `WIP:<path>` row resolves it by path from the per-worktree list. Non-WIP rows have none.
+  const oid = node.commit.oid
+  const rowAgent =
+    oid === 'WIP'
+      ? wipAgentActivity
+      : oid.startsWith('WIP:')
+        ? worktreeAgentActivity?.find((a) => a.path === oid.slice('WIP:'.length))
+        : undefined
   // Start the band at the row marker's vertical line (the avatar/point center), so the left half
   // of the marker stays clear. Marker center in row coords = refsWidth + 8px cell margin + x.
   const startX = refsWidth + 8 + marker.x
@@ -363,6 +384,7 @@ export const GraphRow = memo(function GraphRow({
               marker={marker}
               avatarSize={avatarSize}
               isFirst={isFirst}
+              agentActivity={rowAgent}
             />
           ) : (
             <CellContent
@@ -378,6 +400,7 @@ export const GraphRow = memo(function GraphRow({
               onOpenWorktree={onOpenWorktree}
               isActive={isActiveRow}
               laneRef={laneRef}
+              agentActivity={rowAgent}
             />
           )}
         </div>

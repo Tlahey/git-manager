@@ -54,6 +54,14 @@ describe('ToolbarButton', () => {
     expect(screen.getByTestId('toolbar-button-badge')).toHaveTextContent('99+')
   })
 
+  it('gives the badge the descriptive title as its accessible label', () => {
+    render(<ToolbarButton icon={<svg />} label="Pull" title="2 commits to pull" badge={2} />)
+    expect(screen.getByTestId('toolbar-button-badge')).toHaveAttribute(
+      'aria-label',
+      '2 commits to pull'
+    )
+  })
+
   it('renders no badge when badge is 0 or undefined', () => {
     const { rerender } = render(<ToolbarButton icon={<svg />} label="Push" badge={0} />)
     expect(screen.queryByTestId('toolbar-button-badge')).not.toBeInTheDocument()

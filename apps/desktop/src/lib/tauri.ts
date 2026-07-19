@@ -11,6 +11,7 @@ import type {
   GitStash,
   GitWorktree,
   WorktreeAddResult,
+  WorktreeAgentActivity,
   GitSubmodule,
   RebaseState,
   RebaseTodoStep,
@@ -195,6 +196,12 @@ export const pruneWorktrees = (path: string) => invoke<void>('prune_worktrees', 
 /** Local branch names whose upstream remote branch is gone (merged & pruned) — bulk-removal signal. */
 export const goneUpstreamBranches = (path: string) =>
   invoke<string[]>('gone_upstream_branches', { path })
+
+/** For each given worktree path, whether an AI coding agent (Claude Code) is currently working in
+ * it — derived from the agent's on-disk session logs. Only worktrees with a recent session are
+ * returned. */
+export const getWorktreeAgentActivity = (paths: string[]) =>
+  invoke<WorktreeAgentActivity[]>('get_worktree_agent_activity', { paths })
 
 // ─── Rebase ───────────────────────────────────────────────────────────────────
 

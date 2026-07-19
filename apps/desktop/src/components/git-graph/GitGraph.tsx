@@ -6,6 +6,7 @@ import { Spinner, toast } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { useGitStatus } from '../../hooks/useGitStatus'
 import { useWorktreeWipStatuses } from '../../hooks/useWorktreeWipStatuses'
+import { useWorktreeAgentActivity } from '../../hooks/useWorktreeAgentActivity'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
 
 import { useSettingsStore } from '../../stores/settings.store'
@@ -161,6 +162,18 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   // WIP status of every OTHER linked worktree with uncommitted changes — lets several "// WIP"
   // rows coexist on different branches at once (see useGitGraphNodes' worktreeWipNodes).
   const { data: worktreeWipStatuses = [] } = useWorktreeWipStatuses(repoPath)
+  // Live AI-agent activity for the active repo plus every linked worktree with a WIP row — drives
+  // the agent logo in the dashed ring and the working/idle status tag. Only worktrees that actually
+  // carry a WIP row can surface it, so this asks about exactly those paths.
+  const agentActivityPaths = useMemo(
+    () => [repoPath, ...worktreeWipStatuses.map((w) => w.path)],
+    [repoPath, worktreeWipStatuses]
+  )
+  const worktreeAgentActivity = useWorktreeAgentActivity(agentActivityPaths)
+  const wipAgentActivity = useMemo(
+    () => worktreeAgentActivity.find((a) => a.path === repoPath),
+    [worktreeAgentActivity, repoPath]
+  )
   // Opening a worktree is a view switch, not a new tab — it only sets which path the graph/sidebar
   // render data for (see repoUI.store.ts's `activeWorkspacePath`).
   const setActiveWorkspacePath = useRepoUIStore((s) => s.setActiveWorkspacePath)
@@ -633,6 +646,8 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                             dimmed={dimmed}
                             worktreeWipStatuses={worktreeWipStatuses}
                             onOpenWorktree={setActiveWorkspacePath}
+                            worktreeAgentActivity={worktreeAgentActivity}
+                            wipAgentActivity={wipAgentActivity}
                             wipRef={wipRef}
                             laneRef={laneRefByOid.get(oid)}
                             graphMaxColumn={graphMaxColumn}

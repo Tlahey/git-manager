@@ -75,7 +75,9 @@ export function ActionToolbar() {
       <div className="mx-1 hidden h-6 w-px shrink-0 bg-border sm:block" />
 
       {/* ── Section centrale : actions rapides ────────────────── */}
-      <div className="flex min-w-0 shrink items-center gap-0.5 overflow-x-auto">
+      {/* `py-1.5` gives the buttons' overflowing count badges vertical headroom: `overflow-x-auto`
+          also clips the y-axis, so without padding a badge poking above its icon gets cropped. */}
+      <div className="flex min-w-0 shrink items-center gap-0.5 overflow-x-auto py-1.5">
         <ToolbarButton
           icon={<Undo2 className="h-4 w-4 text-muted-foreground" />}
           label={t('toolbar.undo')}

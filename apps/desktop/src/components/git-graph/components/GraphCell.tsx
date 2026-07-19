@@ -6,11 +6,13 @@
 //                tomberaient dessous y sont recentrés en semi-transparence.
 // - `compact`  : aucune ligne, uniquement le marqueur centré dans la colonne.
 
-import type { GitGraphNode } from '@git-manager/git-types'
+import type { GitGraphNode, WorktreeAgentActivity } from '@git-manager/git-types'
+import { cn } from '@git-manager/ui'
 import { AlertTriangle } from 'lucide-react'
 import { GraphSvg } from '../GraphSvg'
 import type { GraphColumnLayout, MarkerPlacement } from '../graphColumnSizing'
 import { GraphAvatarTooltip } from './GraphAvatarTooltip'
+import { AgentLogo, agentColor, agentLabel } from './AgentLogo'
 
 /** True for both the primary WIP row (`'WIP'`) and per-worktree WIP rows (`'WIP:<path>'`). */
 export function isWipRow(oid: string): boolean {
@@ -27,6 +29,9 @@ interface GraphCellProps {
   marker: MarkerPlacement
   avatarSize: number
   isFirst?: boolean
+  /** AI agent working in this WIP row's worktree, if any — its logo replaces the empty dashed ring
+   * and its accent recolours the ring. Only meaningful on WIP rows. */
+  agentActivity?: WorktreeAgentActivity
 }
 
 export function GraphCell({
@@ -37,9 +42,13 @@ export function GraphCell({
   marker,
   avatarSize,
   isFirst,
+  agentActivity,
 }: GraphCellProps) {
   const isStash = node.refs.some((r) => r.type === 'stash')
   const isWipLike = isWipRow(node.commit.oid) || node.commit.oid === 'CONFLICT'
+  // Show the agent glyph on a WIP ring (never on the CONFLICT ring, which owns the warning icon).
+  // Narrowed to a nullable value (not a boolean) so property access below type-checks.
+  const agent = agentActivity && node.commit.oid !== 'CONFLICT' ? agentActivity : null
 
   return (
     <div className="relative flex h-full w-full items-center overflow-visible">
@@ -86,21 +95,30 @@ export function GraphCell({
             }}
           >
             <div
-              className="flex select-none items-center justify-center rounded-full border border-dashed shadow-sm transition-all duration-150"
+              // Pulse the whole ring while the agent is actively producing output — a passive
+              // "something is happening here" cue that complements the working/idle status tag.
+              className={cn(
+                'flex select-none items-center justify-center rounded-full border border-dashed shadow-sm transition-all duration-150',
+                agent?.state === 'working' && 'animate-pulse'
+              )}
               style={{
                 width: avatarSize,
                 height: avatarSize,
-                borderColor: node.color,
+                // The agent's accent recolours the ring so it reads as "an agent owns this row".
+                borderColor: agent ? agentColor(agent.agent) : node.color,
                 // Opaque page background so the colored band doesn't show through the dashed ring.
                 backgroundColor: 'hsl(var(--background))',
               }}
+              title={agent ? `${agentLabel(agent.agent)} · ${agent.state}` : undefined}
             >
-              {node.commit.oid === 'CONFLICT' && (
+              {node.commit.oid === 'CONFLICT' ? (
                 <AlertTriangle
                   className="text-orange-400"
                   style={{ width: avatarSize * 0.5, height: avatarSize * 0.5 }}
                 />
-              )}
+              ) : agent ? (
+                <AgentLogo agent={agent.agent} size={avatarSize * 0.56} />
+              ) : null}
             </div>
           </div>
         ) : (

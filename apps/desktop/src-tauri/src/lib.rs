@@ -5,6 +5,7 @@ mod services;
 mod state;
 mod utils;
 
+use commands::agent::get_worktree_agent_activity;
 use commands::ai::{
     ai_complete, ai_generate_stream, cancel_generation, check_ai_status, get_ai_activity,
     get_ai_context,
@@ -259,6 +260,8 @@ pub fn run() {
             remove_worktree,
             prune_worktrees,
             gone_upstream_branches,
+            // Agent activity
+            get_worktree_agent_activity,
             // Patch
             create_patch,
             // Conflict resolution
