@@ -34,6 +34,7 @@ import { Waterline } from './Waterline'
 import { COLUMN_DEFS, COLUMN_ORDER, type ResolvedColumn } from './columns.config'
 import { getGraphColumnLayout, getGraphMaxWidth } from './graphColumnSizing'
 import { collectGraphAuthors } from './graphAuthors'
+import { computeLaneBranchByOid } from './laneBranch'
 import { useGraphAuthorFilterStore } from '../../stores/graphAuthorFilter.store'
 
 interface GitGraphProps {
@@ -225,6 +226,11 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     }
     return max
   }, [renderNodes])
+
+  // For a commit that carries no ref badge of its own, we still hint — faintly, on hover — which
+  // branch's lane it sits on. Ownership is derived by walking first-parent chains from branch tips
+  // (see computeLaneBranchByOid); lane colour can't be used because the backend palette recycles.
+  const laneRefByOid = useMemo(() => computeLaneBranchByOid(nodes), [nodes])
 
   const avatarSize = rowHeight === 32 ? 24 : 32
   const visibleColumns: ResolvedColumn[] = useMemo(() => {
@@ -628,6 +634,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                             worktreeWipStatuses={worktreeWipStatuses}
                             onOpenWorktree={setActiveWorkspacePath}
                             wipRef={wipRef}
+                            laneRef={laneRefByOid.get(oid)}
                             graphMaxColumn={graphMaxColumn}
                           />
                         </div>

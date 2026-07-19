@@ -151,6 +151,50 @@ describe('GraphRow — refs column', () => {
   })
 })
 
+describe('GraphRow — lane branch hint', () => {
+  const laneRef = {
+    name: 'refs/heads/feature',
+    shortName: 'feature',
+    type: 'branch' as const,
+    commitOid: 'deadbeef',
+  }
+
+  it("shows the lane's branch faintly in the refs cell for a refless commit", () => {
+    renderRow({ columns: [col('refs')], node: node({ refs: [] }), laneRef })
+    const hint = screen.getByTestId('lane-branch-hint')
+    expect(hint).toBeInTheDocument()
+    expect(hint).toHaveTextContent('feature')
+    // Hidden until the row is hovered.
+    expect(hint).toHaveClass('opacity-0', 'group-hover:opacity-40')
+  })
+
+  it('does not show the hint when the commit already carries its own refs', () => {
+    const refs = [
+      { name: 'refs/heads/main', shortName: 'main', type: 'branch' as const, commitOid: 'abc' },
+    ]
+    renderRow({ columns: [col('refs')], node: node({ refs }), laneRef })
+    expect(screen.queryByTestId('lane-branch-hint')).not.toBeInTheDocument()
+    expect(screen.getByTestId('ref-label-group')).toBeInTheDocument()
+  })
+
+  it('does not show the hint on the synthetic WIP or CONFLICT rows', () => {
+    for (const oid of ['WIP', 'CONFLICT']) {
+      const { unmount } = renderRow({
+        columns: [col('refs')],
+        node: node({ refs: [], commit: { ...node().commit, oid } }),
+        laneRef,
+      })
+      expect(screen.queryByTestId('lane-branch-hint')).not.toBeInTheDocument()
+      unmount()
+    }
+  })
+
+  it('shows nothing for a refless commit whose lane has no owning branch', () => {
+    renderRow({ columns: [col('refs')], node: node({ refs: [] }), laneRef: undefined })
+    expect(screen.queryByTestId('lane-branch-hint')).not.toBeInTheDocument()
+  })
+})
+
 describe('GraphRow — graph column', () => {
   it('renders the real GraphSvg (mocked) plus an avatar tooltip for a normal commit', () => {
     const { container } = renderRow({ columns: [col('graph')] })
