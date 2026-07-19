@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Input, cn } from '@git-manager/ui'
 import { Play } from 'lucide-react'
 
@@ -37,6 +37,10 @@ export function CommandAutocomplete({
   testId,
 }: CommandAutocompleteProps) {
   const [open, setOpen] = useState(false)
+  const blurTimeout = useRef<ReturnType<typeof setTimeout>>()
+
+  // Clear any pending blur-close timer on unmount so it can't call setOpen after teardown.
+  useEffect(() => () => clearTimeout(blurTimeout.current), [])
 
   const query = value.trim().toLowerCase()
   const filtered = suggestions.filter(
@@ -55,7 +59,10 @@ export function CommandAutocomplete({
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => setOpen(true)}
         // Delay so a suggestion's mousedown lands before the blur closes the list.
-        onBlur={() => setTimeout(() => setOpen(false), 120)}
+        onBlur={() => {
+          clearTimeout(blurTimeout.current)
+          blurTimeout.current = setTimeout(() => setOpen(false), 120)
+        }}
         onKeyDown={(e) => {
           if (e.key === 'Escape') setOpen(false)
           else if (e.key === 'Enter' && !showList) onEnter?.()
