@@ -1,8 +1,11 @@
 import { useRef } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { ContextMenu, ContextMenuTrigger } from '@git-manager/ui'
+import { Network } from 'lucide-react'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
+import { useSettingsStore } from '../../stores/settings.store'
 import { HeaderColumnsMenu } from './HeaderColumnsMenu'
+import { isGraphCompact } from './graphColumnSizing'
 import type { ResolvedColumn } from './columns'
 import type { ColumnKey } from './columns'
 
@@ -19,18 +22,27 @@ interface GraphHeaderProps {
 export function GraphHeader({ columns }: GraphHeaderProps) {
   const { t } = useTranslation('git')
   const setWidth = useGitGraphColumnsStore((s) => s.setWidth)
+  const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
+  const avatarSize = rowHeightSetting === 'small' ? 24 : 32
 
-  const drag = useRef<{ key: ColumnKey; startX: number; startWidth: number } | null>(null)
+  const drag = useRef<{
+    key: ColumnKey
+    startX: number
+    startWidth: number
+    maxWidth?: number
+  } | null>(null)
 
   function handleResizeDown(e: React.PointerEvent, col: ResolvedColumn, fromLeft = false) {
     e.preventDefault()
     e.stopPropagation()
-    drag.current = { key: col.key, startX: e.clientX, startWidth: col.width }
+    drag.current = { key: col.key, startX: e.clientX, startWidth: col.width, maxWidth: col.maxWidth }
 
     function onMove(ev: PointerEvent) {
       if (!drag.current) return
       const delta = ev.clientX - drag.current.startX
-      const newWidth = fromLeft ? drag.current.startWidth - delta : drag.current.startWidth + delta
+      let newWidth = fromLeft ? drag.current.startWidth - delta : drag.current.startWidth + delta
+      // La colonne graph ne s'élargit pas au-delà de ce que son contenu occupe réellement.
+      if (drag.current.maxWidth !== undefined) newWidth = Math.min(newWidth, drag.current.maxWidth)
       setWidth(drag.current.key, newWidth)
     }
     function onUp() {
@@ -49,6 +61,8 @@ export function GraphHeader({ columns }: GraphHeaderProps) {
           {columns.map((col, idx) => {
             const prevCol = idx > 0 ? columns[idx - 1] : null
             const isAfterFlex = prevCol?.flex ?? false
+            // En largeur compacte le libellé "Graph" ne tient plus : on affiche une icône.
+            const showGraphIcon = col.key === 'graph' && isGraphCompact(col.width, avatarSize)
 
             return (
               <div
@@ -66,7 +80,11 @@ export function GraphHeader({ columns }: GraphHeaderProps) {
                   </div>
                 )}
 
-                <span className="truncate">{t(col.labelKey)}</span>
+                {showGraphIcon ? (
+                  <Network className="h-3.5 w-3.5 shrink-0" aria-label={t(col.labelKey)} />
+                ) : (
+                  <span className="truncate">{t(col.labelKey)}</span>
+                )}
 
                 {/* Poignée de redimensionnement sur la droite (sauf colonne flex) */}
                 {!col.flex && (

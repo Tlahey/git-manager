@@ -1,15 +1,53 @@
-import { FileText, FolderGit2, AlertTriangle, GitMerge } from 'lucide-react'
+import { FolderGit2, GitBranch, AlertTriangle, GitMerge } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { useRepoDataStore } from '../../../stores/repoData.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
+import { Tag } from '@git-manager/ui'
+
+interface WipStats {
+  added: number
+  modified: number
+  deleted: number
+}
+
+/** Ref (branch or worktree) a "// WIP" row belongs to. `isWorktree` wins over a plain branch —
+ * a linked worktree gets the worktree icon even though it is also checked out on a branch. */
+export interface WipRef {
+  name: string
+  isWorktree: boolean
+}
+
+/** Longest branch/worktree name shown inline in a "// WIP" tag before it's cropped (the full
+ * name stays available on hover via `title`). */
+const WIP_REF_MAX_CHARS = 31
+
+/** Small tag identifying the branch (or worktree) a "// WIP" row is on: a worktree/branch icon
+ * plus the name cropped to `WIP_REF_MAX_CHARS`, with the full name revealed on hover. */
+function WipRefTag({ refInfo }: { refInfo: WipRef }) {
+  if (!refInfo.name) return null
+  const Icon = refInfo.isWorktree ? FolderGit2 : GitBranch
+  const cropped =
+    refInfo.name.length > WIP_REF_MAX_CHARS
+      ? `${refInfo.name.slice(0, WIP_REF_MAX_CHARS)}…`
+      : refInfo.name
+  return (
+    <Tag tone="neutral" className="min-w-0 shrink-0 px-1 py-0.5 text-[9px]" title={refInfo.name}>
+      <Icon className="h-2.5 w-2.5 shrink-0" />
+      <span className="truncate">{cropped}</span>
+    </Tag>
+  )
+}
 
 /** Message-column content for the primary (own-repo) "// WIP" row: an editable commit message
  * input bound to the per-repo WIP draft, committable on Enter. */
 export function WipCommitInput({
-  totalChanges,
+  wipStats,
+  refInfo,
   onCommit,
 }: {
-  totalChanges: number
+  wipStats: WipStats
+  /** Branch (or worktree) the active repo's WIP is on — shown as a tag. */
+  refInfo?: WipRef
   onCommit?: (message: string) => void
 }) {
   const activeRepo = useRepoUIStore((s) => s.activeRepo)
@@ -50,12 +88,23 @@ export function WipCommitInput({
         placeholder="// WIP"
         className="h-6 min-w-0 flex-1 rounded border border-border bg-transparent px-2 text-[11px] text-foreground placeholder-muted-foreground/60 transition-colors focus:border-primary/60 focus:outline-none"
       />
-      <div
-        className="flex shrink-0 items-center gap-1 rounded border border-border/30 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground"
-        title={`${totalChanges} files changed`}
-      >
-        <FileText className="h-3 w-3 text-muted-foreground/60" />
-        <span>{totalChanges}</span>
+      {refInfo && <WipRefTag refInfo={refInfo} />}
+      <div className="flex shrink-0 select-none items-center gap-1 text-[9px] font-bold">
+        {wipStats.added > 0 && (
+          <Tag tone="success" className="px-1 py-0.5 text-[9px]">
+            +{wipStats.added}
+          </Tag>
+        )}
+        {wipStats.modified > 0 && (
+          <Tag tone="warning" className="px-1 py-0.5 text-[9px]">
+            ~{wipStats.modified}
+          </Tag>
+        )}
+        {wipStats.deleted > 0 && (
+          <Tag tone="danger" className="px-1 py-0.5 text-[9px]">
+            -{wipStats.deleted}
+          </Tag>
+        )}
       </div>
     </div>
   )
@@ -70,13 +119,19 @@ export function WipCommitInput({
  * Clicking the row itself just *selects* it (the click bubbles up to the graph's row-select
  * handler, which is what flips `showOpenButton` on and surfaces the tag) — it does NOT switch to
  * the worktree. Switching is a deliberate click on the "Open Worktree" tag, which stops
- * propagation so it opens the worktree without re-selecting the row. */
+ * propagation so it opens the worktree without re-selecting the row.
+ *
+ * The worktree's branch is shown as a `WipRefTag` (worktree icon + name) since the synthetic row
+ * carries no ref label of its own. */
 export function WorktreeWipRow({
-  totalChanges,
+  wipStats,
+  refInfo,
   onOpenWorktree,
   showOpenButton,
 }: {
-  totalChanges: number
+  wipStats: WipStats
+  /** Worktree (branch) this WIP row is anchored to — shown as a tag with the worktree icon. */
+  refInfo?: WipRef
   onOpenWorktree?: () => void
   showOpenButton?: boolean
 }) {
@@ -84,12 +139,23 @@ export function WorktreeWipRow({
   return (
     <div className="flex w-full items-center gap-2 pr-4">
       <span className="shrink-0 text-[11px] text-muted-foreground/70">// WIP</span>
-      <div
-        className="flex shrink-0 items-center gap-1 rounded border border-border/30 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground"
-        title={`${totalChanges} files changed`}
-      >
-        <FileText className="h-3 w-3 text-muted-foreground/60" />
-        <span>{totalChanges}</span>
+      {refInfo && <WipRefTag refInfo={refInfo} />}
+      <div className="flex shrink-0 select-none items-center gap-1 text-[9px] font-bold">
+        {wipStats.added > 0 && (
+          <Tag tone="success" className="px-1 py-0.5 text-[9px]">
+            +{wipStats.added}
+          </Tag>
+        )}
+        {wipStats.modified > 0 && (
+          <Tag tone="warning" className="px-1 py-0.5 text-[9px]">
+            ~{wipStats.modified}
+          </Tag>
+        )}
+        {wipStats.deleted > 0 && (
+          <Tag tone="danger" className="px-1 py-0.5 text-[9px]">
+            -{wipStats.deleted}
+          </Tag>
+        )}
       </div>
       {showOpenButton && (
         <button

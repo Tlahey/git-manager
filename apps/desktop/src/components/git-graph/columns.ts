@@ -2,6 +2,8 @@
 // L'ordre est fixe (pas de réordonnancement). La visibilité et la largeur sont
 // persistées via `stores/gitGraphColumns.store.ts`.
 
+import { GRAPH_MIN_WIDTH } from './graphLayout'
+
 export type ColumnKey = 'refs' | 'graph' | 'message' | 'author' | 'date' | 'sha'
 
 export interface ColumnDef {
@@ -33,7 +35,9 @@ export const COLUMN_DEFS: Record<ColumnKey, ColumnDef> = {
     key: 'graph',
     labelKey: 'gitTree.columns.graph',
     defaultWidth: 200,
-    minWidth: 100,
+    // Un avatar (32) + un peu d'air autour + la marge droite de la cellule (8) : le mode
+    // `compact` de `graphColumnSizing.ts` n'affiche alors plus que le marqueur de chaque commit.
+    minWidth: GRAPH_MIN_WIDTH,
     defaultVisible: true,
   },
   message: {
@@ -70,4 +74,7 @@ export const COLUMN_DEFS: Record<ColumnKey, ColumnDef> = {
 /** Colonne résolue (def + état courant) prête à être rendue. */
 export interface ResolvedColumn extends ColumnDef {
   width: number
+  /** Largeur maximale dynamique (px) lors du redimensionnement — calculée par rendu pour la
+   * colonne `graph` (voir `graphColumnSizing.getGraphMaxWidth`), absente pour les autres. */
+  maxWidth?: number
 }

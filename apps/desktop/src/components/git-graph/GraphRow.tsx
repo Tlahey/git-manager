@@ -1,30 +1,32 @@
 import { memo, useState } from 'react'
-import { createPortal } from 'react-dom'
 import type { GitGraphNode } from '@git-manager/git-types'
 import { cn } from '@git-manager/ui'
-import { GraphSvg } from './GraphSvg'
-import { COL_WIDTH } from './graphLayout'
 import { RefLabelGroup } from './RefLabelGroup'
 import type { ColumnKey, ResolvedColumn } from './columns'
+import { getGraphColumnLayout, getMarkerPlacement } from './graphColumnSizing'
+import {
+  REF_CONNECTOR_LINE_OPACITY_HEX,
+  BAND_ALPHA_HEX,
+  BAND_ALPHA_SELECTED_HEX,
+} from './graphLayout'
 import { getAvatarUrl } from '../../lib/avatar'
 import { formatRelativeDate, formatExactDate } from '../../lib/relativeDate'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
-import { MoreVertical, Archive, AlertTriangle } from 'lucide-react'
+import { MoreVertical, Archive } from 'lucide-react'
 import { useGitStashes } from '../../hooks/useGitStashes'
 import type { ConflictRowInfo } from '../../hooks/useGitGraphNodes'
 import type { WorktreeWipStatus } from '../../hooks/useWorktreeWipStatuses'
-import { WipCommitInput, WorktreeWipRow, ConflictRowMessage } from './components/GraphMessageCells'
+import {
+  WipCommitInput,
+  WorktreeWipRow,
+  ConflictRowMessage,
+  type WipRef,
+} from './components/GraphMessageCells'
+import { GraphCell, isWipRow } from './components/GraphCell'
+import { getAuthorInitials } from './components/GraphAvatarTooltip'
 
-/** True for both the primary WIP row (`'WIP'`) and per-worktree WIP rows (`'WIP:<path>'`). */
-function isWipRow(oid: string): boolean {
-  return oid === 'WIP' || oid.startsWith('WIP:')
-}
-
-/** Opacity (hex alpha suffix appended to `node.color`) of the horizontal line connecting a
- * ref label (branch/tag) to its commit's node in the graph column — except when the ref is
- * origin/main, which stays fully opaque instead (see `hasOriginMain` below). */
-const REF_CONNECTOR_LINE_OPACITY_HEX = '40'
+export { GraphAvatarTooltip } from './components/GraphAvatarTooltip'
 
 interface GraphRowProps {
   node: GitGraphNode
@@ -37,7 +39,7 @@ interface GraphRowProps {
   onContextMenu: (e: React.MouseEvent) => void
   /** Clic sur l'icône ⋮ : ouvre le menu contextuel d'actions. */
   onOpenMenu: (e: React.MouseEvent) => void
-  totalChanges?: number
+  wipStats?: { added: number; modified: number; deleted: number }
   onCommitWip?: (message: string) => void
   isFirst?: boolean
   conflictInfo?: ConflictRowInfo | null
@@ -48,6 +50,11 @@ interface GraphRowProps {
    * `WIP:<path>` synthetic row (its `commit.oid` carries the worktree path). */
   worktreeWipStatuses?: WorktreeWipStatus[]
   onOpenWorktree?: (path: string) => void
+  /** Branch (or worktree) the active repo's primary "// WIP" row is on — shown as a tag. */
+  wipRef?: WipRef
+  /** Plus grande colonne (lane) utilisée par le graphe entier — détermine le mode d'affichage
+   * de la colonne graph (full / overflow / compact) partagé par toutes les lignes. */
+  graphMaxColumn?: number
 }
 
 // ── Author avatar helpers ─────────────────────────────────────────────────────
@@ -74,14 +81,6 @@ function hashString(str: string): number {
 
 function getAuthorColor(name: string): string {
   return AVATAR_COLORS[hashString(name) % AVATAR_COLORS.length]
-}
-
-function getAuthorInitials(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-  }
-  return name.slice(0, 2).toUpperCase()
 }
 
 function AuthorAvatar({
@@ -127,142 +126,29 @@ function AuthorAvatar({
   )
 }
 
-export function GraphAvatarTooltip({ node }: { node: GitGraphNode }) {
-  const [isHovered, setIsHovered] = useState(false)
-  const [pos, setPos] = useState({ top: 0, left: 0 })
-  const { commit } = node
-  const initials = getAuthorInitials(commit.author.name)
-  const avatarUrl = getAvatarUrl(commit.author.email, commit.author.name)
-  const [imgError, setImgError] = useState(false)
-
-  const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
-  const avatarSize = rowHeightSetting === 'small' ? 24 : 32
-
-  const nodeX = node.column * COL_WIDTH + COL_WIDTH / 2
-
-  function handleMouseEnter(e: React.MouseEvent) {
-    const r = e.currentTarget.getBoundingClientRect()
-    setPos({ top: r.top, left: r.left + r.width / 2 })
-    setIsHovered(true)
-  }
-
-  function handleMouseLeave() {
-    setIsHovered(false)
-  }
-
-  const isStash = node.refs.some((r) => r.type === 'stash')
-  const isMerge = commit.parentOids.length > 1
-
-  return (
-    <div
-      className="pointer-events-none absolute flex h-full items-center justify-center"
-      style={{ left: nodeX - avatarSize / 2, width: avatarSize }}
-    >
-      <div
-        className="pointer-events-auto"
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
-        {isStash ? (
-          <div
-            className={cn(
-              'flex cursor-pointer select-none items-center justify-center overflow-hidden rounded-md border-2 border-dashed font-bold shadow-sm transition-all duration-150 hover:scale-110 hover:shadow-md',
-              avatarSize === 24 ? 'text-[8px]' : 'text-[11px]'
-            )}
-            style={{
-              width: avatarSize,
-              height: avatarSize,
-              borderColor: node.color,
-              color: node.color,
-              // Opaque page background so the colored band doesn't show through the dashed ring.
-              backgroundColor: 'hsl(var(--background))',
-            }}
-          >
-            <Archive className={avatarSize === 24 ? 'h-3 w-3' : 'h-3.5 w-3.5'} />
-          </div>
-        ) : isMerge ? (
-          /* Merge commit: flat circle filled with the target branch's lane color, no avatar —
-           * half the avatar's diameter so it reads as a plain graph node, not a person. */
-          <div
-            className="cursor-pointer select-none rounded-full border border-background shadow-sm transition-all duration-150 hover:scale-110 hover:shadow-md"
-            style={{
-              width: avatarSize / 2,
-              height: avatarSize / 2,
-              backgroundColor: node.color,
-            }}
-          />
-        ) : (
-          /* Avatar Circle */
-          <div
-            className={cn(
-              'flex cursor-pointer select-none items-center justify-center overflow-hidden rounded-full border border-background font-bold text-white shadow-sm transition-all duration-150 hover:scale-110 hover:shadow-md',
-              avatarSize === 24 ? 'text-[8px]' : 'text-[11px]'
-            )}
-            style={{
-              width: avatarSize,
-              height: avatarSize,
-              backgroundColor: avatarUrl && !imgError ? undefined : node.color,
-            }}
-          >
-            {avatarUrl && !imgError ? (
-              <img
-                src={avatarUrl}
-                alt={commit.author.name}
-                className="h-full w-full object-cover"
-                onError={() => setImgError(true)}
-              />
-            ) : (
-              initials
-            )}
-          </div>
-        )}
-      </div>
-
-      {isHovered &&
-        createPortal(
-          <div
-            style={{
-              position: 'fixed',
-              top: pos.top - 10,
-              left: pos.left,
-              transform: 'translate(-50%, -100%)',
-            }}
-            className="animate-in fade-in-0 zoom-in-95 pointer-events-none z-[100] flex flex-col gap-0.5 whitespace-nowrap rounded-md border border-border bg-popover/95 px-2.5 py-1.5 text-popover-foreground shadow-xl backdrop-blur-md duration-100"
-          >
-            <span className="text-[10px] font-semibold leading-none">{commit.author.name}</span>
-            <span className="mt-0.5 text-[9px] leading-none text-muted-foreground/90">
-              {commit.author.email}
-            </span>
-            {/* Petit triangle en bas */}
-            <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-popover/95" />
-          </div>,
-          document.body
-        )}
-    </div>
-  )
-}
-
 // ── Cellules ──────────────────────────────────────────────────────────────────
 
 function CellContent({
   col,
   node,
-  refsWidth,
-  totalChanges,
+  markerX,
+  wipStats,
+  wipRef,
   onCommitWip,
-  isFirst,
   conflictInfo,
   dimmed,
   worktreeWipStatuses,
   onOpenWorktree,
   isActive,
 }: {
-  col: ColumnKey
+  col: Exclude<ColumnKey, 'graph'>
   node: GitGraphNode
-  refsWidth: number
-  totalChanges?: number
+  /** Center x (cell-relative to the graph column) where this row's marker renders — the refs
+   * connector line extends up to it, clamped or not (see `graphColumnSizing.ts`). */
+  markerX: number
+  wipStats?: { added: number; modified: number; deleted: number }
+  wipRef?: WipRef
   onCommitWip?: (message: string) => void
-  isFirst?: boolean
   conflictInfo?: ConflictRowInfo | null
   dimmed?: boolean
   worktreeWipStatuses?: WorktreeWipStatus[]
@@ -274,12 +160,9 @@ function CellContent({
   const { data: stashes } = useGitStashes(activeRepo)
   const isStashCommit = node.refs.some((r) => r.type === 'stash')
   const stash = isStashCommit ? stashes?.find((s) => s.commitOid === commit.oid) : null
-  const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
-  const avatarSize = rowHeightSetting === 'small' ? 24 : 32
 
   switch (col) {
     case 'refs': {
-      const isStashCommit = node.refs.some((r) => r.type === 'stash')
       if (isStashCommit) return null
       const filteredRefs = node.refs
       if (filteredRefs.length === 0) return null
@@ -295,81 +178,34 @@ function CellContent({
               backgroundColor: hasOriginMain
                 ? node.color
                 : `${node.color}${REF_CONNECTOR_LINE_OPACITY_HEX}`,
-              marginRight: `-${node.column * COL_WIDTH + 26}px`,
+              marginRight: `-${markerX + 15}px`,
             }}
           />
         </div>
       )
     }
 
-    case 'graph': {
-      const isStash = node.refs.some((r) => r.type === 'stash')
-      const nodeX = node.column * COL_WIDTH + COL_WIDTH / 2
-      return (
-        <div className="relative flex h-full w-full items-center overflow-visible">
-          {/* Conteneur de découpe (clip) élargi pour le graph uniquement */}
-          <div
-            className="pointer-events-none absolute overflow-hidden"
-            style={{ left: -refsWidth, right: 0, top: -4, bottom: -5 }}
-          >
-            {/* Conteneur interne réaligné sur la colonne graph */}
-            <div
-              className="pointer-events-none absolute"
-              style={{ left: refsWidth, right: 0, top: 0, bottom: 0 }}
-            >
-              <GraphSvg
-                column={node.column}
-                connections={node.connections}
-                isWip={isWipRow(node.commit.oid) || node.commit.oid === 'CONFLICT'}
-                isStash={isStash}
-                isFirst={isFirst}
-              />
-            </div>
-          </div>
-
-          {/* Conteneur de découpe simple et direct pour les avatars */}
-          <div className="pointer-events-none absolute inset-y-0 left-0 right-0 overflow-hidden">
-            {isWipRow(node.commit.oid) || node.commit.oid === 'CONFLICT' ? (
-              <div
-                className="pointer-events-none absolute flex h-full items-center justify-center"
-                style={{ left: nodeX - avatarSize / 2, width: avatarSize }}
-              >
-                <div
-                  className="flex select-none items-center justify-center rounded-full border border-dashed shadow-sm transition-all duration-150"
-                  style={{
-                    width: avatarSize,
-                    height: avatarSize,
-                    borderColor: node.color,
-                    // Opaque page background so the colored band doesn't show through the dashed ring.
-                    backgroundColor: 'hsl(var(--background))',
-                  }}
-                >
-                  {node.commit.oid === 'CONFLICT' && (
-                    <AlertTriangle
-                      className="text-orange-400"
-                      style={{ width: avatarSize * 0.5, height: avatarSize * 0.5 }}
-                    />
-                  )}
-                </div>
-              </div>
-            ) : (
-              <GraphAvatarTooltip node={node} />
-            )}
-          </div>
-        </div>
-      )
-    }
-
     case 'message': {
       if (node.commit.oid === 'WIP') {
-        return <WipCommitInput totalChanges={totalChanges ?? 0} onCommit={onCommitWip} />
+        return (
+          <WipCommitInput
+            wipStats={wipStats ?? { added: 0, modified: 0, deleted: 0 }}
+            refInfo={wipRef}
+            onCommit={onCommitWip}
+          />
+        )
       }
       if (node.commit.oid.startsWith('WIP:')) {
         const path = node.commit.oid.slice('WIP:'.length)
         const wip = worktreeWipStatuses?.find((w) => w.path === path)
         return (
           <WorktreeWipRow
-            totalChanges={wip?.totalChanges ?? 0}
+            wipStats={
+              wip
+                ? { added: wip.added, modified: wip.modified, deleted: wip.deleted }
+                : { added: 0, modified: 0, deleted: 0 }
+            }
+            refInfo={wip ? { name: wip.branch, isWorktree: true } : undefined}
             onOpenWorktree={() => onOpenWorktree?.(path)}
             showOpenButton={isActive}
           />
@@ -413,7 +249,6 @@ function CellContent({
 
     case 'author': {
       if (isWipRow(node.commit.oid) || node.commit.oid === 'CONFLICT') return null
-      const isStashCommit = node.refs.some((r) => r.type === 'stash')
       return (
         <div className="flex min-w-0 items-center gap-1.5">
           <AuthorAvatar
@@ -473,24 +308,29 @@ export const GraphRow = memo(function GraphRow({
   onSelect,
   onContextMenu,
   onOpenMenu,
-  totalChanges,
+  wipStats,
   onCommitWip,
   isFirst,
   conflictInfo,
   dimmed,
   worktreeWipStatuses,
   onOpenWorktree,
+  wipRef,
+  graphMaxColumn = 0,
 }: GraphRowProps) {
   const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
   const rowHeight = rowHeightSetting === 'small' ? 32 : 40
+  const avatarSize = rowHeightSetting === 'small' ? 24 : 32
   const refsColumn = columns.find((c) => c.key === 'refs')
   const refsWidth = refsColumn ? refsColumn.width : 160
   const graphColumn = columns.find((c) => c.key === 'graph')
   const graphWidth = graphColumn ? graphColumn.width : 120
-  const nodeX = node.column * COL_WIDTH + COL_WIDTH / 2
-  // Start the band at the node's vertical line (the avatar/point center), so the left half of the
-  // node stays clear. Node center in row coords = refsWidth + 8px cell padding + nodeX.
-  const startX = refsWidth + nodeX + 8
+  const layout = getGraphColumnLayout(graphWidth, graphMaxColumn, avatarSize)
+  const marker = getMarkerPlacement(node.column, layout, avatarSize)
+  const isActiveRow = isSelected || isPrimary
+  // Start the band at the row marker's vertical line (the avatar/point center), so the left half
+  // of the marker stays clear. Marker center in row coords = refsWidth + 8px cell margin + x.
+  const startX = refsWidth + 8 + marker.x
   const endX = refsWidth + graphWidth
 
   return (
@@ -508,13 +348,19 @@ export const GraphRow = memo(function GraphRow({
         style={{
           left: startX,
           width: Math.max(0, endX - startX),
-          backgroundColor: `${node.color}15`, // ~8% opacity
+          // The band of a marker pulled into the overflow zone would live entirely under the fade
+          // zone — drop its tint (the colored border-right on the far edge stays), unless the row
+          // is selected: the vivid selection tint stays visible even under the zone.
+          backgroundColor:
+            marker.overflowed && !isActiveRow
+              ? 'transparent'
+              : `${node.color}${isActiveRow ? BAND_ALPHA_SELECTED_HEX : BAND_ALPHA_HEX}`,
           borderRightColor: node.color,
         }}
       />
 
       {/* Selection background starting from the end of the graph column to the right end of the row */}
-      {(isSelected || isPrimary) && (
+      {isActiveRow && (
         <div
           className={cn(
             'pointer-events-none absolute inset-y-0 transition-colors',
@@ -558,19 +404,31 @@ export const GraphRow = memo(function GraphRow({
           )}
           style={col.flex ? { flex: '1 1 0%' } : { width: col.width, flexShrink: 0 }}
         >
-          <CellContent
-            col={col.key}
-            node={node}
-            refsWidth={refsWidth}
-            totalChanges={totalChanges}
-            onCommitWip={onCommitWip}
-            isFirst={isFirst}
-            conflictInfo={conflictInfo}
-            dimmed={dimmed}
-            worktreeWipStatuses={worktreeWipStatuses}
-            onOpenWorktree={onOpenWorktree}
-            isActive={isSelected || isPrimary}
-          />
+          {col.key === 'graph' ? (
+            <GraphCell
+              node={node}
+              refsWidth={refsWidth}
+              graphWidth={graphWidth}
+              layout={layout}
+              marker={marker}
+              avatarSize={avatarSize}
+              isFirst={isFirst}
+            />
+          ) : (
+            <CellContent
+              col={col.key}
+              node={node}
+              markerX={marker.x}
+              wipStats={wipStats}
+              wipRef={wipRef}
+              onCommitWip={onCommitWip}
+              conflictInfo={conflictInfo}
+              dimmed={dimmed}
+              worktreeWipStatuses={worktreeWipStatuses}
+              onOpenWorktree={onOpenWorktree}
+              isActive={isActiveRow}
+            />
+          )}
         </div>
       ))}
 

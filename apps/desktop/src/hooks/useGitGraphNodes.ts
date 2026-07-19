@@ -22,8 +22,7 @@ type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
  * at a glance regardless of which branch it's attached to. */
 const WIP_COLOR = '#7c3aed'
 
-function buildWipNode(nodes: GitGraphNode[]): GitGraphNode {
-  const firstNode = nodes[0]
+function buildWipNode(parentOid: string, column: number): GitGraphNode {
   return {
     commit: {
       oid: 'WIP',
@@ -41,14 +40,14 @@ function buildWipNode(nodes: GitGraphNode[]): GitGraphNode {
         email: '',
         timestamp: Date.now() / 1000,
       },
-      parentOids: [firstNode.commit.oid],
+      parentOids: [parentOid],
     },
-    column: 0,
+    column,
     color: WIP_COLOR,
     connections: [
       {
-        fromColumn: 0,
-        toColumn: 0,
+        fromColumn: column,
+        toColumn: column,
         color: WIP_COLOR,
         dashed: true,
       },
@@ -64,8 +63,7 @@ function buildWipNode(nodes: GitGraphNode[]): GitGraphNode {
  * showing both at once would break the WIP→first-commit connector math, and a paused rebase
  * already IS the repo's "in-progress work" state.
  */
-function buildConflictNode(nodes: GitGraphNode[]): GitGraphNode {
-  const firstNode = nodes[0]
+function buildConflictNode(parentOid: string, column: number): GitGraphNode {
   return {
     commit: {
       oid: 'CONFLICT',
@@ -83,20 +81,18 @@ function buildConflictNode(nodes: GitGraphNode[]): GitGraphNode {
         email: '',
         timestamp: Date.now() / 1000,
       },
-      parentOids: firstNode ? [firstNode.commit.oid] : [],
+      parentOids: [parentOid],
     },
-    column: 0,
+    column,
     color: '#f97316',
-    connections: firstNode
-      ? [
-          {
-            fromColumn: 0,
-            toColumn: 0,
-            color: '#f97316',
-            dashed: true,
-          },
-        ]
-      : [],
+    connections: [
+      {
+        fromColumn: column,
+        toColumn: column,
+        color: '#f97316',
+        dashed: true,
+      },
+    ],
     refs: [],
   }
 }
@@ -146,22 +142,7 @@ function laneContinuations(anchor: GitGraphNode, excludeColumn: number): GitGrap
  * can tell them apart from the primary `'WIP'` row (which stays editable/committable) and from
  * each other.
  */
-function buildWorktreeWipNode(anchor: GitGraphNode, wip: WorktreeWipStatus): GitGraphNode {
-  // Pick a lane that no line already occupies at the anchor row. Placing the synthetic node
-  // blindly on `anchor.column + 1` breaks whenever another branch's lane already runs there:
-  // `laneContinuations` skips the WIP's own column, so that lane's continuation is dropped and its
-  // line shows a gap through this row, and the WIP node/connector lands right on top of it — the
-  // "décalage" where a WIP sits in the middle of an unrelated branch's path. Every column
-  // touched by any of the anchor's edges (verticals AND the diagonal legs of a merge/split) is
-  // occupied, so walk outward from just right of the anchor to the first genuinely free lane.
-  const occupied = new Set<number>([anchor.column])
-  for (const c of anchor.connections) {
-    occupied.add(c.fromColumn)
-    occupied.add(c.toColumn)
-  }
-  let column = anchor.column + 1
-  while (occupied.has(column)) column++
-
+function buildWorktreeWipNode(anchor: GitGraphNode, wip: WorktreeWipStatus, column: number): GitGraphNode {
   const passThroughs = laneContinuations(anchor, column)
   return {
     commit: {
@@ -197,6 +178,50 @@ function buildWorktreeWipNode(anchor: GitGraphNode, wip: WorktreeWipStatus): Git
   }
 }
 
+function assignColumnsToSyntheticNodes(
+  anchor: GitGraphNode,
+  synthSpecs: Array<{ type: 'primary' | 'conflict' | 'worktree'; wip?: WorktreeWipStatus }>
+): Map<unknown, number> {
+  const columnMap = new Map<unknown, number>()
+  // Lanes crossing the anchor row's TOP edge — the same set `laneContinuations` carries up through
+  // every WIP row spliced above the anchor. A WIP must not land on one of these or it sits right on
+  // an active branch line's path (the reported bug where a WIP is drawn *on* a merged feature-tip's
+  // incoming line instead of beside it). The anchor's OWN column only counts as free when the
+  // branch truly ends at the tip — i.e. no line continues down into it from above; the merge that
+  // reintegrates a feature branch leaves an `endsAtNode` vertical on the tip's own column, which is
+  // exactly what makes that lane occupied here.
+  const crossing = new Set<number>()
+  for (const c of anchor.connections) {
+    const isDownwardDeparture =
+      c.fromColumn === anchor.column && (c.startsAtNode === true || c.toColumn !== anchor.column)
+    if (isDownwardDeparture) continue
+    crossing.add(c.fromColumn)
+  }
+
+  const used = new Set<number>()
+  for (const spec of synthSpecs) {
+    let col: number
+    if (spec.type === 'primary' || spec.type === 'conflict') {
+      // The own-repo WIP / paused-rebase row sits on the anchor's own lane — column 0 for main's
+      // tip, and when local main is behind origin/main the reserved column-0 lane running down to
+      // it IS this row's own connector, so a crossing there must not push it aside.
+      col = anchor.column
+    } else {
+      // A worktree WIP takes the leftmost lane at/after the anchor's column that no crossing line
+      // (a merged feature tip's incoming branch line) and no earlier WIP row on this anchor already
+      // occupies — so it never draws on top of an active branch line, and stacked siblings each get
+      // their own lane. It falls on the anchor's own lane only when that lane is free above.
+      col = anchor.column
+      while (crossing.has(col) || used.has(col)) col++
+    }
+    used.add(col)
+    const key = spec.type === 'worktree' ? spec.wip : spec.type
+    columnMap.set(key, col)
+  }
+
+  return columnMap
+}
+
 /**
  * Dérive les données d'affichage du graphe (nœud WIP, nœud conflit, filtrage recherche,
  * paliers temporels, position de origin/main) à partir des commits bruts.
@@ -209,30 +234,105 @@ export function useGitGraphNodes(
   conflictInfo: ConflictRowInfo | null,
   worktreeWipStatuses: WorktreeWipStatus[] = []
 ) {
+  const primaryAnchor = useMemo(() => {
+    if (nodes.length === 0) return null
+    return (
+      nodes.find((n) => n.refs.some((r) => r.type === 'HEAD')) ||
+      nodes.find((n) => n.column === 0) ||
+      nodes[0]
+    )
+  }, [nodes])
+
+  const worktreeWipsByAnchor = useMemo(() => {
+    const map = new Map<string, { anchor: GitGraphNode; wips: WorktreeWipStatus[] }>()
+    if (nodes.length === 0) return map
+
+    for (const wip of worktreeWipStatuses) {
+      const anchor = nodes.find((n) =>
+        n.refs.some((r) => r.type === 'branch' && r.shortName === wip.branch)
+      )
+      if (anchor) {
+        let entry = map.get(anchor.commit.oid)
+        if (!entry) {
+          entry = { anchor, wips: [] }
+          map.set(anchor.commit.oid, entry)
+        }
+        entry.wips.push(wip)
+      }
+    }
+    return map
+  }, [nodes, worktreeWipStatuses])
+
+  const syntheticColumns = useMemo(() => {
+    const columnMap = new Map<unknown, number>() // key: 'primary' | 'conflict' | WorktreeWipStatus
+    if (nodes.length === 0 || !primaryAnchor) return columnMap
+
+    const hasConflict = !!conflictInfo
+    const hasPrimaryWip = !hasConflict && totalChanges > 0
+
+    // Process primaryAnchor
+    const primaryWips = worktreeWipsByAnchor.get(primaryAnchor.commit.oid)?.wips ?? []
+    const primarySpecs: Array<{ type: 'primary' | 'conflict' | 'worktree'; wip?: WorktreeWipStatus }> = []
+    if (hasConflict) {
+      primarySpecs.push({ type: 'conflict' })
+    } else if (hasPrimaryWip) {
+      primarySpecs.push({ type: 'primary' })
+    }
+    for (let i = primaryWips.length - 1; i >= 0; i--) {
+      primarySpecs.push({ type: 'worktree', wip: primaryWips[i] })
+    }
+
+    if (primarySpecs.length > 0) {
+      const primaryCols = assignColumnsToSyntheticNodes(primaryAnchor, primarySpecs)
+      for (const [key, col] of primaryCols.entries()) {
+        columnMap.set(key, col)
+      }
+    }
+
+    // Process other anchors
+    for (const [oid, entry] of worktreeWipsByAnchor.entries()) {
+      if (oid === primaryAnchor.commit.oid) continue
+      const specs: Array<{ type: 'primary' | 'conflict' | 'worktree'; wip?: WorktreeWipStatus }> = []
+      for (let i = entry.wips.length - 1; i >= 0; i--) {
+        specs.push({ type: 'worktree', wip: entry.wips[i] })
+      }
+      const cols = assignColumnsToSyntheticNodes(entry.anchor, specs)
+      for (const [key, col] of cols.entries()) {
+        columnMap.set(key, col)
+      }
+    }
+
+    return columnMap
+  }, [nodes, primaryAnchor, worktreeWipsByAnchor, conflictInfo, totalChanges])
+
   const conflictNode = useMemo(() => {
-    if (!conflictInfo || nodes.length === 0) return null
-    return buildConflictNode(nodes)
-  }, [conflictInfo, nodes])
+    if (!conflictInfo || nodes.length === 0 || !primaryAnchor) return null
+    const col = syntheticColumns.get('conflict') ?? 0
+    return buildConflictNode(primaryAnchor.commit.oid, col)
+  }, [conflictInfo, nodes, primaryAnchor, syntheticColumns])
 
   const wipNode = useMemo(() => {
-    if (conflictNode || totalChanges === 0 || nodes.length === 0) return null
-    return buildWipNode(nodes)
-  }, [totalChanges, nodes, conflictNode])
+    if (conflictNode || totalChanges === 0 || nodes.length === 0 || !primaryAnchor) return null
+    const col = syntheticColumns.get('primary') ?? 0
+    return buildWipNode(primaryAnchor.commit.oid, col)
+  }, [totalChanges, nodes, conflictNode, primaryAnchor, syntheticColumns])
 
-  // One extra WIP row per dirty linked worktree, anchored to that worktree's checked-out
-  // branch tip (when that tip is present in the currently loaded `nodes` page) — lets several
-  // "// WIP" rows coexist across different branches/lanes at once.
   const worktreeWipNodes = useMemo(() => {
     if (worktreeWipStatuses.length === 0 || nodes.length === 0) return []
-    return worktreeWipStatuses
-      .map((wip) => {
-        const anchor = nodes.find((n) =>
-          n.refs.some((r) => r.type === 'branch' && r.shortName === wip.branch)
-        )
-        return anchor ? { anchor, node: buildWorktreeWipNode(anchor, wip) } : null
-      })
-      .filter((entry): entry is { anchor: GitGraphNode; node: GitGraphNode } => entry !== null)
-  }, [nodes, worktreeWipStatuses])
+    const resultList: { anchor: GitGraphNode; node: GitGraphNode }[] = []
+    for (const wip of worktreeWipStatuses) {
+      const anchor = nodes.find((n) =>
+        n.refs.some((r) => r.type === 'branch' && r.shortName === wip.branch)
+      )
+      if (anchor) {
+        const col = syntheticColumns.get(wip)
+        if (col !== undefined) {
+          resultList.push({ anchor, node: buildWorktreeWipNode(anchor, wip, col) })
+        }
+      }
+    }
+    return resultList
+  }, [nodes, worktreeWipStatuses, syntheticColumns])
 
   // All nodes to render (WIP/CONFLICT synthetic row prepended when present, plus one synthetic
   // row per dirty linked worktree inserted right above its branch's tip commit). Search no
@@ -364,29 +464,61 @@ export function useGitGraphNodes(
       })
     }
 
+    // Dashed vertical runs that must stay continuous: each worktree WIP connector flows down its
+    // own lane from its row to its anchor. When several WIP rows stack above one shared anchor
+    // (e.g. several branches pointing at main's tip), the rows in between don't carry that lane
+    // naturally — their pass-throughs only mirror the anchor's own edges — so add it explicitly.
+    const laneRuns: { start: number; end: number; column: number }[] = []
+
     for (const { anchor, node: syntheticNode } of worktreeWipNodes) {
       const syntheticIndex = filteredNodes.indexOf(syntheticNode)
-      if (syntheticIndex !== -1) {
-        continuityPatches.push({
-          index: syntheticIndex + 1,
-          fromColumn: syntheticNode.column,
-          toColumn: anchor.column,
-          color: WIP_COLOR,
-        })
+      // The anchor is NOT always the row directly below the WIP: several worktree WIP rows can
+      // stack above one shared anchor commit, so resolve the anchor's real display index rather
+      // than assuming `syntheticIndex + 1` (which would target the next WIP row and, since its
+      // column differs, silently drop the connector — the "décalage" bug where the top WIP never
+      // links down to main).
+      const anchorIndex = filteredNodes.indexOf(anchor)
+      if (syntheticIndex === -1 || anchorIndex === -1) continue
+      continuityPatches.push({
+        index: anchorIndex,
+        fromColumn: syntheticNode.column,
+        toColumn: anchor.column,
+        color: WIP_COLOR,
+      })
+      if (anchorIndex - syntheticIndex > 1) {
+        laneRuns.push({ start: syntheticIndex, end: anchorIndex, column: syntheticNode.column })
       }
     }
 
     return filteredNodes.map((node, index) => {
       let patched = node
 
-      const patch = continuityPatches.find((p) => p.index === index && node.column === p.toColumn)
-      if (patch) {
+      // Rows strictly inside a worktree connector's vertical run get its dashed lane added when
+      // nothing occupies that column yet — without it the connector shows a row-tall gap.
+      for (const run of laneRuns) {
+        if (
+          index > run.start &&
+          index < run.end &&
+          !patched.connections.some((c) => c.fromColumn === run.column && c.toColumn === run.column)
+        ) {
+          patched = {
+            ...patched,
+            connections: [
+              ...patched.connections,
+              { fromColumn: run.column, toColumn: run.column, color: WIP_COLOR, dashed: true },
+            ],
+          }
+        }
+      }
+
+      const matchingPatches = continuityPatches.filter((p) => p.index === index && patched.column === p.toColumn)
+      for (const patch of matchingPatches) {
         // Only an edge that reaches UP into this node (arriving from the top of the row) already
         // wires it to the WIP row above. A `startsAtNode`-only edge is a *departure* going down to
         // a parent — e.g. a merge commit's straight line to its first parent — and does NOT reach
         // the WIP; treating it as "already connected" is what left the top merge unlinked. So we
         // still add the connector unless a non-`startsAtNode` edge on that lane is present.
-        const hasUpwardEdge = node.connections.some(
+        const hasUpwardEdge = patched.connections.some(
           (c) =>
             c.fromColumn === patch.fromColumn && c.toColumn === patch.toColumn && !c.startsAtNode
         )

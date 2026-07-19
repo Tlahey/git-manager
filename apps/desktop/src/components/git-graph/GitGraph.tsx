@@ -32,6 +32,7 @@ import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
 import { ConflictResolutionPanel } from './ConflictResolutionPanel'
 import { Waterline } from './Waterline'
 import { COLUMN_DEFS, COLUMN_ORDER, type ResolvedColumn } from './columns'
+import { getGraphColumnLayout, getGraphMaxWidth } from './graphColumnSizing'
 
 interface GitGraphProps {
   repoPath: string
@@ -53,6 +54,17 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   const rowHeight = rowHeightSetting === 'small' ? 32 : 40
   // Current HEAD branch name from repo cache (e.g. "main", "feat/xyz")
   const headBranchName = useRepoDataStore((s) => s.repoCache[repoPath]?.head)
+  // A linked worktree's `mainWorktreePath` points at the owning repo, not itself — so when it
+  // differs from `repoPath` the active view is a worktree (its "// WIP" tag uses the worktree icon).
+  const activeRepoIsWorktree = useRepoDataStore((s) => {
+    const cached = s.repoCache[repoPath]
+    return !!cached?.mainWorktreePath && cached.mainWorktreePath !== repoPath
+  })
+  // Ref shown in the primary "// WIP" row's tag (own repo's current branch / worktree).
+  const wipRef = useMemo(
+    () => (headBranchName ? { name: headBranchName, isWorktree: activeRepoIsWorktree } : undefined),
+    [headBranchName, activeRepoIsWorktree]
+  )
 
   // ── Sizing / Resizing details panel hook ───────────────────────────────────
   const { width: panelWidthState, resizeProps } = useHorizontalResize(400)
@@ -130,6 +142,18 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
       (status.conflicted?.length || 0)
     )
   }, [status])
+  const wipStats = useMemo(() => {
+    if (!status) return { added: 0, modified: 0, deleted: 0 }
+    let added = status.untracked?.length || 0
+    let modified = status.conflicted?.length || 0
+    let deleted = 0
+    for (const entry of [...(status.staged || []), ...(status.unstaged || [])]) {
+      if (entry.status === 'added') added++
+      else if (entry.status === 'deleted') deleted++
+      else modified++
+    }
+    return { added, modified, deleted }
+  }, [status])
 
   // WIP status of every OTHER linked worktree with uncommitted changes — lets several "// WIP"
   // rows coexist on different branches at once (see useGitGraphNodes' worktreeWipNodes).
@@ -140,14 +164,6 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
   // ── Colonnes ──────────────────────────────────────────────────────────────
   const columnState = useGitGraphColumnsStore((s) => s.columns)
-  const visibleColumns: ResolvedColumn[] = useMemo(
-    () =>
-      COLUMN_ORDER.filter((k) => columnState[k].visible).map((k) => ({
-        ...COLUMN_DEFS[k],
-        width: columnState[k].width,
-      })),
-    [columnState]
-  )
 
   const showStashesInGraph = useSettingsStore((s) => s.settings.git.showStashesInGraph ?? true)
 
@@ -165,6 +181,60 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   // ── Dérivation des données du graphe (WIP, conflit, recherche, waterlines) ──
   const { wipNode, conflictNode, filteredNodes, renderNodes, waterlines, matchingOids } =
     useGitGraphNodes(nodes, searchQuery, totalChanges, t, conflictInfo, worktreeWipStatuses)
+
+  // Plus grande lane occupée par le graphe (nœuds + lignes de connexion) : détermine la largeur
+  // au-delà de laquelle élargir la colonne graph n'apporte rien, et le mode d'affichage
+  // (full / overflow / compact) partagé par toutes les lignes.
+  const graphMaxColumn = useMemo(() => {
+    let max = 0
+    for (const n of renderNodes) {
+      if (n.column > max) max = n.column
+      for (const c of n.connections) {
+        if (c.fromColumn > max) max = c.fromColumn
+        if (c.toColumn > max) max = c.toColumn
+      }
+    }
+    return max
+  }, [renderNodes])
+
+  const avatarSize = rowHeight === 32 ? 24 : 32
+  const visibleColumns: ResolvedColumn[] = useMemo(() => {
+    // La colonne graph ne dépasse jamais la largeur réellement utile du graphe, même si une
+    // largeur plus grande a été persistée (le flex `message` absorbe la différence).
+    const graphMaxWidth = Math.max(
+      getGraphMaxWidth(graphMaxColumn, avatarSize),
+      COLUMN_DEFS.graph.minWidth
+    )
+    return COLUMN_ORDER.filter((k) => columnState[k].visible).map((k) =>
+      k === 'graph'
+        ? {
+            ...COLUMN_DEFS[k],
+            width: Math.min(columnState[k].width, graphMaxWidth),
+            maxWidth: graphMaxWidth,
+          }
+        : { ...COLUMN_DEFS[k], width: columnState[k].width }
+    )
+  }, [columnState, graphMaxColumn, avatarSize])
+
+  // Zone de débordement de la colonne graph : un seul overlay continu sur toute la hauteur de la
+  // liste (un segment par ligne laissait un raccord d'un pixel sans ombre entre les lignes).
+  const graphOverflowZone = useMemo(() => {
+    const graphCol = visibleColumns.find((c) => c.key === 'graph')
+    if (!graphCol) return null
+    const layout = getGraphColumnLayout(graphCol.width, graphMaxColumn, avatarSize)
+    if (layout.overlayOpacity <= 0) return null
+    const refsCol = visibleColumns.find((c) => c.key === 'refs')
+    // Même convention de repli que GraphRow (bande/marqueurs) pour rester aligné au pixel.
+    const refsWidth = refsCol ? refsCol.width : 160
+    return {
+      left: refsWidth + 8 + layout.overlayStart,
+      // La zone grandit avec le déficit de largeur (overlayStart recule progressivement) et
+      // s'arrête 3px avant le bord de la colonne pour laisser la border-right colorée visible.
+      width: Math.max(0, layout.innerWidth - layout.overlayStart - 3),
+      // Fondu de l'ombre pendant la croissance de la zone et sur la plage compacte.
+      opacity: layout.overlayOpacity,
+    }
+  }, [visibleColumns, graphMaxColumn, avatarSize])
 
   // Set for O(1) row-level "does this commit match the active search" lookups (see `dimmed`
   // below) — `null` mirrors `matchingOids`'s "no active search" meaning (nothing dimmed).
@@ -505,17 +575,37 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                             onSelect={(e) => handleRowSelect(e, virtualItem.index)}
                             onContextMenu={(e) => openMenuAt(e, oid)}
                             onOpenMenu={(e) => openMenuAt(e, oid)}
-                            totalChanges={totalChanges}
+                            wipStats={wipStats}
                             onCommitWip={handleCommitWip}
                             isFirst={virtualItem.index === 0}
                             conflictInfo={conflictInfo}
                             dimmed={matchSet !== null && !matchSet.has(oid)}
                             worktreeWipStatuses={worktreeWipStatuses}
                             onOpenWorktree={setActiveWorkspacePath}
+                            wipRef={wipRef}
+                            graphMaxColumn={graphMaxColumn}
                           />
                         </div>
                       )
                     })}
+
+                    {/* Zone de débordement : pleine hauteur, au-dessus des bandes colorées
+                        (z-[1]) mais sous les cellules (z-10) — les marqueurs restent visibles. */}
+                    {graphOverflowZone && (
+                      <div
+                        data-testid="graph-overflow-zone"
+                        className="pointer-events-none absolute inset-y-0 z-[1]"
+                        style={{
+                          left: graphOverflowZone.left,
+                          width: graphOverflowZone.width,
+                          opacity: graphOverflowZone.opacity,
+                          // La zone est une « card » transparente : son contenu garde ses
+                          // couleurs, seule une ombre extérieure sur son bord gauche la détache
+                          // du reste du graphe.
+                          boxShadow: '-8px 0 12px -4px rgb(0 0 0 / 0.35)',
+                        }}
+                      />
+                    )}
 
                     {/* Waterlines : overlays plein-largeur sur les frontières, hors flux */}
                     {waterlines.map((wl) => (

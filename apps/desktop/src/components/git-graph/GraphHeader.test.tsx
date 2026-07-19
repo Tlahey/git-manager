@@ -6,8 +6,10 @@ vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) 
 
 import { GraphHeader } from './GraphHeader'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
+import { useSettingsStore } from '../../stores/settings.store'
 
 const INITIAL = useGitGraphColumnsStore.getState()
+const INITIAL_SETTINGS = useSettingsStore.getState()
 
 // jsdom has no PointerEvent constructor, and testing-library's fireEvent.pointerDown silently
 // drops clientX when it falls back to a plain Event — so we build/dispatch pointer events by
@@ -39,6 +41,7 @@ function col(overrides: Partial<ResolvedColumn>): ResolvedColumn {
 
 beforeEach(() => {
   useGitGraphColumnsStore.setState(INITIAL, true)
+  useSettingsStore.setState(INITIAL_SETTINGS, true)
 })
 
 describe('GraphHeader — rendering', () => {
@@ -103,6 +106,30 @@ describe('GraphHeader — resizing', () => {
     expect(useGitGraphColumnsStore.getState().columns.author?.width).toBe(110)
   })
 
+  it('caps resizing at the column maxWidth when provided (graph column)', () => {
+    const columns = [col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 100, maxWidth: 120 })]
+    const { container } = render(<GraphHeader columns={columns} />)
+    const handle = container.querySelector('.cursor-col-resize')!
+
+    firePointer(handle, 'pointerdown', 100)
+    firePointer(window, 'pointermove', 300)
+    firePointer(window, 'pointerup')
+
+    expect(useGitGraphColumnsStore.getState().columns.graph?.width).toBe(120)
+  })
+
+  it('does not cap resizing when the column has no maxWidth', () => {
+    const columns = [col({ key: 'refs', width: 160 })]
+    const { container } = render(<GraphHeader columns={columns} />)
+    const handle = container.querySelector('.cursor-col-resize')!
+
+    firePointer(handle, 'pointerdown', 100)
+    firePointer(window, 'pointermove', 400)
+    firePointer(window, 'pointerup')
+
+    expect(useGitGraphColumnsStore.getState().columns.refs?.width).toBe(460)
+  })
+
   it('stops updating width after pointerup', () => {
     const columns = [col({ key: 'refs', width: 160 })]
     const { container } = render(<GraphHeader columns={columns} />)
@@ -113,6 +140,46 @@ describe('GraphHeader — resizing', () => {
     firePointer(window, 'pointermove', 999)
 
     expect(useGitGraphColumnsStore.getState().columns.refs?.width).toBe(160)
+  })
+})
+
+describe('GraphHeader — compact graph label', () => {
+  it('shows the text label at regular graph widths', () => {
+    render(<GraphHeader columns={[col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 120 })]} />)
+    expect(screen.getByText('gitTree.columns.graph')).toBeInTheDocument()
+  })
+
+  it('swaps the Graph label for an icon below the compact width threshold', () => {
+    // Standard row height: compact below 70px (22 lane + 40 overlay + 8 margin)
+    render(<GraphHeader columns={[col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 48 })]} />)
+    expect(screen.queryByText('gitTree.columns.graph')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('gitTree.columns.graph')).toBeInTheDocument()
+  })
+
+  it('uses the smaller compact threshold with the small row height (24px avatar)', () => {
+    useSettingsStore.setState((s) => ({
+      ...s,
+      settings: {
+        ...s.settings,
+        appearance: { ...s.settings.appearance, rowHeight: 'small' as const },
+      },
+    }))
+    // Small avatar: compact below 62px (22 lane + 32 overlay + 8 margin), so 64 keeps the label.
+    render(<GraphHeader columns={[col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 64 })]} />)
+    expect(screen.getByText('gitTree.columns.graph')).toBeInTheDocument()
+  })
+
+  it('falls back to the standard row height when the setting is absent', () => {
+    useSettingsStore.setState((s) => ({
+      ...s,
+      settings: {
+        ...s.settings,
+        appearance: { ...s.settings.appearance, rowHeight: undefined },
+      },
+    }))
+    // Standard threshold applies: 64 < 70 → icon
+    render(<GraphHeader columns={[col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 64 })]} />)
+    expect(screen.queryByText('gitTree.columns.graph')).not.toBeInTheDocument()
   })
 })
 
