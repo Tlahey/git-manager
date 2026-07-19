@@ -104,7 +104,7 @@ export function HoverExpandLabel({
           // body, trop grande). La hauteur matche la ligne entière (élément
           // sélectionné).
           <span
-            className="pointer-events-none fixed z-[100] flex items-center whitespace-nowrap bg-sidebar text-sidebar-foreground"
+            className="pointer-events-none fixed z-overlay flex items-center whitespace-nowrap bg-sidebar text-sidebar-foreground"
             style={{
               top: overlay.top,
               height: overlay.height,

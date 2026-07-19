@@ -93,7 +93,7 @@ export function TrophyToast() {
   return (
     <div
       data-testid="trophy-toast"
-      className={`fixed bottom-16 right-4 z-50 flex max-w-sm items-center gap-3 rounded-xl border ${typeColors.border} ${typeColors.bg} p-4 text-foreground shadow-lg backdrop-blur-md transition-all duration-300 ${typeColors.shadow} ${
+      className={`fixed bottom-16 right-4 z-overlay flex max-w-sm items-center gap-3 rounded-xl border ${typeColors.border} ${typeColors.bg} p-4 text-foreground shadow-lg backdrop-blur-md transition-all duration-300 ${typeColors.shadow} ${
         visible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-4 scale-95 opacity-0'
       }`}
     >

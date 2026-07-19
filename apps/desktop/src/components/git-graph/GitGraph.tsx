@@ -33,6 +33,8 @@ import { ConflictResolutionPanel } from './ConflictResolutionPanel'
 import { Waterline } from './Waterline'
 import { COLUMN_DEFS, COLUMN_ORDER, type ResolvedColumn } from './columns.config'
 import { getGraphColumnLayout, getGraphMaxWidth } from './graphColumnSizing'
+import { collectGraphAuthors } from './graphAuthors'
+import { useGraphAuthorFilterStore } from '../../stores/graphAuthorFilter.store'
 
 interface GitGraphProps {
   repoPath: string
@@ -165,6 +167,15 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   // ── Colonnes ──────────────────────────────────────────────────────────────
   const columnState = useGitGraphColumnsStore((s) => s.columns)
 
+  // ── Filtre par auteur (colonne « auteur ») ─────────────────────────────────
+  const selectedAuthors = useGraphAuthorFilterStore((s) => s.selected)
+  const clearAuthorFilter = useGraphAuthorFilterStore((s) => s.clear)
+  // Emails are repo-specific, so a filter left over from another repo would blank the whole graph.
+  // Reset it whenever the active repo changes.
+  useEffect(() => {
+    clearAuthorFilter()
+  }, [repoPath, clearAuthorFilter])
+
   const showStashesInGraph = useSettingsStore((s) => s.settings.git.showStashesInGraph ?? true)
 
   const {
@@ -178,9 +189,27 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     hiddenStashes,
   })
 
+  // Unique authors of the loaded commits, for the AUTHOR column filter autocomplete.
+  const authorOptions = useMemo(() => collectGraphAuthors(nodes), [nodes])
+
   // ── Dérivation des données du graphe (WIP, conflit, recherche, waterlines) ──
-  const { wipNode, conflictNode, filteredNodes, renderNodes, waterlines, matchingOids } =
-    useGitGraphNodes(nodes, searchQuery, totalChanges, t, conflictInfo, worktreeWipStatuses)
+  const {
+    wipNode,
+    conflictNode,
+    filteredNodes,
+    renderNodes,
+    waterlines,
+    matchingOids,
+    authorMatchingOids,
+  } = useGitGraphNodes(
+    nodes,
+    searchQuery,
+    totalChanges,
+    t,
+    conflictInfo,
+    worktreeWipStatuses,
+    selectedAuthors
+  )
 
   // Plus grande lane occupée par le graphe (nœuds + lignes de connexion) : détermine la largeur
   // au-delà de laquelle élargir la colonne graph n'apporte rien, et le mode d'affichage
@@ -243,6 +272,12 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     [matchingOids]
   )
   const totalMatches = matchingOids?.length ?? 0
+
+  // Same O(1) lookup set for the AUTHOR column filter — `null` when no author is selected.
+  const authorMatchSet = useMemo(
+    () => (authorMatchingOids ? new Set(authorMatchingOids) : null),
+    [authorMatchingOids]
+  )
 
   // ── Search result navigation (up/down in the floating CommitSearchPanel) ───────────────────
   const [activeMatchIndex, setActiveMatchIndex] = useState(0)
@@ -538,7 +573,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
             {!isLoading && !isError && nodes.length > 0 && (
               <>
-                <GraphHeader columns={visibleColumns} />
+                <GraphHeader columns={visibleColumns} authorOptions={authorOptions} />
 
                 <div ref={parentRef} className="flex-1 overflow-y-auto overflow-x-hidden">
                   <div
@@ -552,12 +587,23 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                       const node = renderNodes[virtualItem.index]
                       const oid = node.commit.oid
 
+                      // Dim rows the active filters exclude. Search and the author filter combine
+                      // with OR: a row stays fully visible if it matches EITHER active filter, and
+                      // is dimmed only when both are active-and-unmatched (or the single active one
+                      // is unmatched). With neither filter active, nothing is dimmed.
+                      const searchActive = matchSet !== null
+                      const authorActive = authorMatchSet !== null
+                      const dimmed =
+                        (searchActive || authorActive) &&
+                        !(searchActive && matchSet.has(oid)) &&
+                        !(authorActive && authorMatchSet.has(oid))
+
                       return (
                         <div
                           key={virtualItem.key}
                           data-testid={`graph-row-${oid}`}
                           data-selected={oid === primaryOid || selected.has(oid)}
-                          className="hover:z-[60]"
+                          className="hover:z-graph-row-hover"
                           style={{
                             position: 'absolute',
                             top: 0,
@@ -578,7 +624,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                             onCommitWip={handleCommitWip}
                             isFirst={virtualItem.index === 0}
                             conflictInfo={conflictInfo}
-                            dimmed={matchSet !== null && !matchSet.has(oid)}
+                            dimmed={dimmed}
                             worktreeWipStatuses={worktreeWipStatuses}
                             onOpenWorktree={setActiveWorkspacePath}
                             wipRef={wipRef}
@@ -589,11 +635,12 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                     })}
 
                     {/* Zone de débordement : pleine hauteur, au-dessus des bandes colorées
-                        (z-[1]) mais sous les cellules (z-10) — les marqueurs restent visibles. */}
+                        (z-graph-overflow) mais sous les cellules (z-content) — les marqueurs
+                        restent visibles. */}
                     {graphOverflowZone && (
                       <div
                         data-testid="graph-overflow-zone"
-                        className="pointer-events-none absolute inset-y-0 z-[1]"
+                        className="pointer-events-none absolute inset-y-0 z-graph-overflow"
                         style={{
                           left: graphOverflowZone.left,
                           width: graphOverflowZone.width,
@@ -610,7 +657,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                     {waterlines.map((wl) => (
                       <div
                         key={wl.id}
-                        className="pointer-events-none absolute left-0 z-10 w-full"
+                        className="pointer-events-none absolute left-0 z-content w-full"
                         style={{
                           top: 0,
                           height: rowHeight,

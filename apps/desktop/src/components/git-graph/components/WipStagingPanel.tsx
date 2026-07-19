@@ -287,7 +287,7 @@ export function WipStagingPanel({
               </Button>
 
               {historyOpen && (
-                <div className="animate-in fade-in absolute bottom-full left-0 z-50 mb-1.5 w-full min-w-[220px] rounded-lg border border-border bg-background p-1 shadow-xl duration-100">
+                <div className="animate-in fade-in absolute bottom-full left-0 z-popover mb-1.5 w-full min-w-[220px] rounded-lg border border-border bg-background p-1 shadow-xl duration-100">
                   <div className="flex items-center gap-1.5 border-b border-border/40 px-2 py-1.5">
                     <History className="h-3 w-3 text-muted-foreground" />
                     <span className="text-xs font-semibold text-muted-foreground">

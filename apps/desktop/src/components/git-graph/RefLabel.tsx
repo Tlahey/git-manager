@@ -125,7 +125,7 @@ export function RefLabel({ gitRef, color }: RefLabelProps) {
       // texte tient. L'overlay est épinglé (fixed) sur le badge inline et laisse
       // passer la souris (pointer-events-none) pour que le `onMouseLeave` du badge
       // sous-jacent le referme.
-      className={cn(badgeClasses, overlay ? 'pointer-events-none fixed z-[100]' : 'max-w-[180px]')}
+      className={cn(badgeClasses, overlay ? 'pointer-events-none fixed z-overlay' : 'max-w-[180px]')}
       style={
         overlay && overlayPos
           ? { ...customStyle, top: overlayPos.top, left: overlayPos.left }

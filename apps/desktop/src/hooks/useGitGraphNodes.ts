@@ -17,6 +17,9 @@ export interface ConflictRowInfo {
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
+/** Stable empty default so an omitted author filter doesn't create a fresh Set every render. */
+const EMPTY_AUTHOR_SET: Set<string> = new Set()
+
 /** Fixed color for every "// WIP" synthetic row (own repo and other worktrees alike) — always
  * this violet, never the target branch's own color, so a WIP row reads as "not a real commit"
  * at a glance regardless of which branch it's attached to. */
@@ -232,7 +235,8 @@ export function useGitGraphNodes(
   totalChanges: number,
   t: TranslateFn,
   conflictInfo: ConflictRowInfo | null,
-  worktreeWipStatuses: WorktreeWipStatus[] = []
+  worktreeWipStatuses: WorktreeWipStatus[] = [],
+  selectedAuthorEmails: Set<string> = EMPTY_AUTHOR_SET
 ) {
   const primaryAnchor = useMemo(() => {
     if (nodes.length === 0) return null
@@ -391,6 +395,24 @@ export function useGitGraphNodes(
       })
       .map((node) => node.commit.oid)
   }, [filteredNodes, searchQuery])
+
+  /**
+   * OIDs of rows kept fully visible by the AUTHOR column filter — `null` when no author is
+   * selected (filter inactive). A row matches when its (lowercased) author email is in the
+   * selected set; every synthetic row (WIP/CONFLICT/`WIP:<path>`) is always included so a
+   * commit-less in-progress row is never dimmed by an author filter. Consumed alongside
+   * `matchingOids` for the row-dimming decision in `GitGraph`.
+   */
+  const authorMatchingOids = useMemo(() => {
+    if (selectedAuthorEmails.size === 0) return null
+    return filteredNodes
+      .filter((node) => {
+        const { oid } = node.commit
+        if (oid === 'WIP' || oid === 'CONFLICT' || oid.startsWith('WIP:')) return true
+        return selectedAuthorEmails.has((node.commit.author?.email ?? '').trim().toLowerCase())
+      })
+      .map((node) => node.commit.oid)
+  }, [filteredNodes, selectedAuthorEmails])
 
   // Waterlines : émises de façon MONOTONE (rang croissant) : un palier n'apparaît
   // qu'en entrant dans une période plus ancienne, jamais en arrière (commits pas
@@ -586,5 +608,14 @@ export function useGitGraphNodes(
     })
   }, [filteredNodes, totalChanges, originMainIndex, conflictNode, worktreeWipNodes])
 
-  return { wipNode, conflictNode, filteredNodes, renderNodes, waterlines, originMainIndex, matchingOids }
+  return {
+    wipNode,
+    conflictNode,
+    filteredNodes,
+    renderNodes,
+    waterlines,
+    originMainIndex,
+    matchingOids,
+    authorMatchingOids,
+  }
 }

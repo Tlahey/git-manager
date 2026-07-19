@@ -98,7 +98,7 @@ export function RepoRow({
             className="group/star relative shrink-0 text-muted-foreground/35 transition-colors duration-150 hover:text-amber-500"
           >
             <Star className={`h-4 w-4 ${isPinned ? 'fill-amber-500 text-amber-500' : ''}`} />
-            <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 font-sans text-[9px] text-popover-foreground shadow-md group-hover/star:block">
+            <div className="pointer-events-none absolute left-full top-1/2 z-popover ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 font-sans text-[9px] text-popover-foreground shadow-md group-hover/star:block">
               {isPinned ? 'Retirer des favoris' : 'Ajouter aux favoris'}
             </div>
           </button>
@@ -214,7 +214,7 @@ export function RepoRow({
             >
               <Code className="h-3.5 w-3.5" />
             </button>
-            <div className="pointer-events-none absolute right-full top-1/2 z-50 mr-2 hidden -translate-y-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 font-sans text-[9px] text-popover-foreground shadow-md group-hover/edit:block">
+            <div className="pointer-events-none absolute right-full top-1/2 z-popover mr-2 hidden -translate-y-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 font-sans text-[9px] text-popover-foreground shadow-md group-hover/edit:block">
               {`${t('dashboard.openInEditor') || 'Ouvrir dans'} ${editorName}`}
             </div>
           </div>
@@ -241,7 +241,7 @@ export function RepoRow({
                 <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-1 ring-card" />
               )}
             </button>
-            <div className="pointer-events-none absolute right-full top-1/2 z-50 mr-2 hidden -translate-y-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 font-sans text-[9px] text-popover-foreground shadow-md group-hover/summary:block">
+            <div className="pointer-events-none absolute right-full top-1/2 z-popover mr-2 hidden -translate-y-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 font-sans text-[9px] text-popover-foreground shadow-md group-hover/summary:block">
               {t('dashboard.summary.button') || 'Briefing du jour'}
             </div>
           </div>
@@ -263,7 +263,7 @@ export function RepoRow({
             >
               <BookOpen className="h-3.5 w-3.5" />
             </button>
-            <div className="pointer-events-none absolute right-full top-1/2 z-50 mr-2 hidden -translate-y-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 font-sans text-[9px] text-popover-foreground shadow-md group-hover/readme:block">
+            <div className="pointer-events-none absolute right-full top-1/2 z-popover mr-2 hidden -translate-y-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 font-sans text-[9px] text-popover-foreground shadow-md group-hover/readme:block">
               {t('dashboard.showReadme') || 'Afficher le README'}
             </div>
           </div>
@@ -289,7 +289,7 @@ export function RepoRow({
                   <Plus className="h-3.5 w-3.5" />
                 </button>
               )}
-              <div className="pointer-events-none absolute right-full top-1/2 z-50 mr-2 hidden -translate-y-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 font-sans text-[9px] text-popover-foreground shadow-md group-hover/list-action:block">
+              <div className="pointer-events-none absolute right-full top-1/2 z-popover mr-2 hidden -translate-y-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 font-sans text-[9px] text-popover-foreground shadow-md group-hover/list-action:block">
                 {isOpen ? "Fermer l'onglet" : 'Ouvrir dans un onglet'}
               </div>
             </div>

@@ -102,6 +102,23 @@ export default {
       fontFamily: {
         mono: ['JetBrains Mono', 'Fira Code', 'ui-monospace', 'monospace'],
       },
+      // Central stacking scale (Tier: layout). Values live as `--z-*` CSS variables in
+      // packages/ui/src/globals.css (the single source of truth — theme-independent, unlike
+      // colors), and these named utilities (`z-popover`, `z-graph-row-hover`, …) map to them so a
+      // component never hardcodes a magic z-index. Adding/reordering a layer is a one-file change
+      // in globals.css. Merged onto Tailwind's defaults, so plain `z-10`/`z-50` still work.
+      zIndex: {
+        'graph-overflow': 'var(--z-graph-overflow)',
+        content: 'var(--z-content)',
+        raised: 'var(--z-raised)',
+        'resize-handle': 'var(--z-resize-handle)',
+        panel: 'var(--z-panel)',
+        'graph-row-hover': 'var(--z-graph-row-hover)',
+        popover: 'var(--z-popover)',
+        notification: 'var(--z-notification)',
+        overlay: 'var(--z-overlay)',
+        tooltip: 'var(--z-tooltip)',
+      },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',

@@ -5,12 +5,16 @@ import { Network, Calendar, Hash } from 'lucide-react'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
 import { useSettingsStore } from '../../stores/settings.store'
 import { HeaderColumnsMenu } from './HeaderColumnsMenu'
+import { GraphHeaderAuthorFilter } from './GraphHeaderAuthorFilter'
 import { isGraphCompact } from './graphColumnSizing'
 import type { ResolvedColumn } from './columns.config'
+import type { AuthorOption } from './graphAuthors'
 
 interface GraphHeaderProps {
   /** Colonnes visibles, dans l'ordre, avec largeurs résolues. */
   columns: ResolvedColumn[]
+  /** Auteurs uniques des commits chargés — alimente le filtre de la colonne « auteur ». */
+  authorOptions?: AuthorOption[]
 }
 
 /** En dessous de cette largeur (px), les colonnes date/sha affichent une icône
@@ -26,7 +30,7 @@ const COMPACT_LABEL_ICON = { date: Calendar, sha: Hash } as const
  * redimensionnement, et menu contextuel (clic droit) pour afficher / masquer
  * les colonnes.
  */
-export function GraphHeader({ columns }: GraphHeaderProps) {
+export function GraphHeader({ columns, authorOptions = [] }: GraphHeaderProps) {
   const { t } = useTranslation('git')
   const setWidth = useGitGraphColumnsStore((s) => s.setWidth)
   const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
@@ -147,11 +151,18 @@ export function GraphHeader({ columns }: GraphHeaderProps) {
                   <span className="truncate">{t(col.labelKey)}</span>
                 )}
 
+                {/* Bouton de filtrage par auteur, poussé à droite de la colonne « auteur ». */}
+                {col.key === 'author' && (
+                  <span className="ml-auto pl-1">
+                    <GraphHeaderAuthorFilter authors={authorOptions} />
+                  </span>
+                )}
+
                 {/* Poignée de redimensionnement à la frontière `col` | `nextCol` (splitter). */}
                 {nextCol && (
                   <div
                     onPointerDown={(e) => handleResizeDown(e, col, nextCol)}
-                    className="group absolute right-0 top-0 z-10 h-full w-2 translate-x-1/2 cursor-col-resize"
+                    className="group absolute right-0 top-0 z-content h-full w-2 translate-x-1/2 cursor-col-resize"
                   >
                     <div className="mx-auto h-full w-px bg-border transition-colors group-hover:bg-primary/60" />
                   </div>

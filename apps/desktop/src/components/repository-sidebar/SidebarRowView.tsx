@@ -257,7 +257,7 @@ export function SidebarRowView({
               e.stopPropagation()
               e.preventDefault()
             }}
-            className="absolute left-1 z-10 shrink-0 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/stash:opacity-100"
+            className="absolute left-1 z-content shrink-0 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/stash:opacity-100"
             title={
               isHidden ? 'Afficher le stash dans le graphe' : 'Masquer le stash dans le graphe'
             }

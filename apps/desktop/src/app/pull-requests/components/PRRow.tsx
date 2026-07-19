@@ -27,8 +27,8 @@ interface ActionMenuProps {
 function ActionMenu({ items, onClose }: ActionMenuProps) {
   return (
     <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-lg border border-border bg-popover py-1 shadow-xl">
+      <div className="fixed inset-0 z-panel" onClick={onClose} />
+      <div className="absolute right-0 top-full z-popover mt-1 w-44 overflow-hidden rounded-lg border border-border bg-popover py-1 shadow-xl">
         {items.map((item) => (
           <button
             key={item.label}

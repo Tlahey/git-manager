@@ -43,7 +43,7 @@ describe('HoverExpandLabel — overlay on overflow', () => {
 
     const overlays = screen.getAllByText('Long overflowing label')
     expect(overlays).toHaveLength(2) // the truncated span + the portal copy
-    expect(document.body.querySelector('.fixed.z-\\[100\\]')).toBeTruthy()
+    expect(document.body.querySelector('.fixed.z-overlay')).toBeTruthy()
   })
 
   it('hides the overlay on mouse leave', () => {

@@ -88,7 +88,7 @@ export function NotificationDropdown() {
       <PopoverContent
         align="end"
         data-testid="notification-dropdown"
-        className="z-[99] flex w-80 flex-col rounded-lg border border-border bg-popover text-popover-foreground shadow-2xl backdrop-blur-sm"
+        className="z-notification flex w-80 flex-col rounded-lg border border-border bg-popover text-popover-foreground shadow-2xl backdrop-blur-sm"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">

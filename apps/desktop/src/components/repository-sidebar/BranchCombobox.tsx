@@ -73,7 +73,7 @@ export function BranchCombobox({
       </Button>
       {open && (
         <div
-          className="absolute left-0 top-full z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg"
+          className="absolute left-0 top-full z-popover mt-1 w-full rounded-md border border-border bg-popover shadow-lg"
           onKeyDown={(event) => {
             // Swallow Escape so it dismisses the dropdown without also closing the parent Dialog.
             if (event.key === 'Escape') {

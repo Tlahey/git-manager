@@ -37,7 +37,7 @@ export function CommitSearchPanel({
 
   return (
     <div
-      className="absolute right-3 top-3 z-40 flex h-9 items-center gap-1.5 rounded-md border border-border bg-popover px-2.5 shadow-lg"
+      className="absolute right-3 top-3 z-panel flex h-9 items-center gap-1.5 rounded-md border border-border bg-popover px-2.5 shadow-lg"
       data-testid="commit-search-panel"
     >
       <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />

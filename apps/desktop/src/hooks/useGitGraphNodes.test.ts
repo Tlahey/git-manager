@@ -128,6 +128,47 @@ describe('useGitGraphNodes — matchingOids', () => {
   })
 })
 
+describe('useGitGraphNodes — authorMatchingOids', () => {
+  it('is null when no author is selected', () => {
+    const { result } = renderHook(() => useGitGraphNodes([node('a')], undefined, 0, t, null))
+    expect(result.current.authorMatchingOids).toBeNull()
+  })
+
+  it('is null when the selected set is empty', () => {
+    const { result } = renderHook(() =>
+      useGitGraphNodes([node('a')], undefined, 0, t, null, [], new Set())
+    )
+    expect(result.current.authorMatchingOids).toBeNull()
+  })
+
+  it('returns the OIDs whose author email is selected (case-insensitive)', () => {
+    const nodes = [
+      node('a', { commit: { ...node('a').commit, author: { name: 'A', email: 'A@x.com', timestamp: NOW } } }),
+      node('b', { commit: { ...node('b').commit, author: { name: 'B', email: 'b@x.com', timestamp: NOW } } }),
+    ]
+    const { result } = renderHook(() =>
+      useGitGraphNodes(nodes, undefined, 0, t, null, [], new Set(['a@x.com']))
+    )
+    expect(result.current.authorMatchingOids).toEqual(['a'])
+  })
+
+  it('always includes the synthetic WIP row so in-progress work is never dimmed', () => {
+    const { result } = renderHook(() =>
+      useGitGraphNodes([node('a')], undefined, 1, t, null, [], new Set(['someone-else@x.com']))
+    )
+    // WIP prepended, its author matches nobody, yet it stays in the match set.
+    expect(result.current.authorMatchingOids).toContain('WIP')
+    expect(result.current.authorMatchingOids).not.toContain('a')
+  })
+
+  it('always includes the synthetic CONFLICT row', () => {
+    const { result } = renderHook(() =>
+      useGitGraphNodes([node('a')], undefined, 0, t, { count: 1 }, [], new Set(['nobody@x.com']))
+    )
+    expect(result.current.authorMatchingOids).toContain('CONFLICT')
+  })
+})
+
 describe('useGitGraphNodes — waterlines', () => {
   it('never emits a waterline at index 0', () => {
     const oldTimestamp = NOW - 400 * 86400

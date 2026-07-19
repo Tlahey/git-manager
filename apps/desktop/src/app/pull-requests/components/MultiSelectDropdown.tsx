@@ -57,7 +57,7 @@ export function MultiSelectDropdown({
       </button>
 
       {open && (
-        <div className="animate-in fade-in slide-in-from-top-1 absolute left-0 top-full z-50 mt-1.5 max-h-[280px] min-w-[180px] overflow-hidden rounded-lg border border-border bg-popover shadow-xl duration-150">
+        <div className="animate-in fade-in slide-in-from-top-1 absolute left-0 top-full z-popover mt-1.5 max-h-[280px] min-w-[180px] overflow-hidden rounded-lg border border-border bg-popover shadow-xl duration-150">
           {/* Header with clear button */}
           {activeCount > 0 && (
             <div className="flex items-center justify-between border-b border-border/50 bg-muted/10 px-3 py-1.5">

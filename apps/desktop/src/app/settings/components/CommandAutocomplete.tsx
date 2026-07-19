@@ -66,7 +66,7 @@ export function CommandAutocomplete({
       />
       {showList && (
         <ul
-          className="absolute left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-md"
+          className="absolute left-0 right-0 z-popover mt-1 max-h-48 overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-md"
           data-testid={testId ? `${testId}-list` : 'command-autocomplete-list'}
         >
           {filtered.map((s) => (
