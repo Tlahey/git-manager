@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo } from 'react'
 import type { GitGraphNode } from '@git-manager/git-types'
 import { cn } from '@git-manager/ui'
 import { RefLabelGroup } from './RefLabelGroup'
@@ -9,11 +9,9 @@ import {
   BAND_ALPHA_HEX,
   BAND_ALPHA_SELECTED_HEX,
 } from './graphLayout'
-import { getAvatarUrl } from '../../lib/avatar'
 import { formatRelativeDate, formatExactDate } from '../../lib/relativeDate'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
-import { Archive } from 'lucide-react'
 import { useGitStashes } from '../../hooks/useGitStashes'
 import type { ConflictRowInfo } from '../../hooks/useGitGraphNodes'
 import type { WorktreeWipStatus } from '../../hooks/useWorktreeWipStatuses'
@@ -24,7 +22,7 @@ import {
   type WipRef,
 } from './components/GraphMessageCells'
 import { GraphCell, isWipRow } from './components/GraphCell'
-import { getAuthorInitials } from './components/GraphAvatarTooltip'
+import { AuthorAvatar } from './components/AuthorAvatar'
 
 export { GraphAvatarTooltip } from './components/GraphAvatarTooltip'
 
@@ -53,75 +51,6 @@ interface GraphRowProps {
   /** Plus grande colonne (lane) utilisée par le graphe entier — détermine le mode d'affichage
    * de la colonne graph (full / overflow / compact) partagé par toutes les lignes. */
   graphMaxColumn?: number
-}
-
-// ── Author avatar helpers ─────────────────────────────────────────────────────
-
-const AVATAR_COLORS = [
-  '#7c3aed',
-  '#2563eb',
-  '#16a34a',
-  '#d97706',
-  '#dc2626',
-  '#0891b2',
-  '#be185d',
-  '#65a30d',
-]
-
-function hashString(str: string): number {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash)
-    hash |= 0
-  }
-  return Math.abs(hash)
-}
-
-function getAuthorColor(name: string): string {
-  return AVATAR_COLORS[hashString(name) % AVATAR_COLORS.length]
-}
-
-function AuthorAvatar({
-  name,
-  email,
-  isStash,
-}: {
-  name: string
-  email?: string
-  isStash?: boolean
-}) {
-  const avatarUrl = getAvatarUrl(email, name)
-  const [imgError, setImgError] = useState(false)
-
-  if (isStash) {
-    return (
-      <div
-        className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-dashed border-violet-400/60 bg-transparent text-violet-400"
-        title="Stash"
-      >
-        <Archive className="h-2.5 w-2.5" />
-      </div>
-    )
-  }
-
-  return (
-    <div
-      className="flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded-full text-[7px] font-bold text-white"
-      style={{ backgroundColor: avatarUrl && !imgError ? undefined : getAuthorColor(name) }}
-      title={name}
-    >
-      {avatarUrl && !imgError ? (
-        <img
-          src={avatarUrl}
-          alt={name}
-          className="h-full w-full object-cover"
-          onError={() => setImgError(true)}
-        />
-      ) : (
-        getAuthorInitials(name)
-      )}
-    </div>
-  )
 }
 
 // ── Cellules ──────────────────────────────────────────────────────────────────
@@ -335,7 +264,7 @@ export const GraphRow = memo(function GraphRow({
       onClick={onSelect}
       onContextMenu={onContextMenu}
       className={cn(
-        'group relative flex cursor-pointer select-none items-center border-b border-transparent transition-colors hover:z-[60]',
+        'group relative flex cursor-pointer select-none items-center border-b border-transparent transition-colors hover:z-graph-row-hover',
         rowHeight === 32 ? 'my-[4px] h-[24px]' : 'my-[4px] h-[32px]'
       )}
     >
@@ -395,7 +324,7 @@ export const GraphRow = memo(function GraphRow({
         <div
           key={col.key}
           className={cn(
-            'relative z-10 flex h-full min-w-0 items-center',
+            'relative z-content flex h-full min-w-0 items-center',
             col.key === 'refs' ? 'justify-start pl-2' : 'mx-2',
             col.key === 'graph' && 'px-0'
           )}

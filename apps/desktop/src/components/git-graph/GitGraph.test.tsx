@@ -183,6 +183,7 @@ function graphNodesState(
     waterlines: [],
     originMainIndex: -1,
     matchingOids: null as string[] | null,
+    authorMatchingOids: null as string[] | null,
     ...overrides,
   }
 }
@@ -475,6 +476,30 @@ describe('GitGraph — search row dimming', () => {
     expect(lastGraphRowCalls.current).toHaveLength(2)
     expect(lastGraphRowCalls.current[0]).toMatchObject({ dimmed: true })
     expect(lastGraphRowCalls.current[1]).toMatchObject({ dimmed: false })
+  })
+})
+
+describe('GitGraph — author filter row dimming', () => {
+  it('dims rows the author filter excludes', () => {
+    const nodes = [commitNode('a'), commitNode('b')]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes, { authorMatchingOids: ['b'] }))
+    renderGraph()
+    expect(lastGraphRowCalls.current[0]).toMatchObject({ dimmed: true })
+    expect(lastGraphRowCalls.current[1]).toMatchObject({ dimmed: false })
+  })
+
+  it('combines search and author filter with OR — a row matching either stays visible', () => {
+    const nodes = [commitNode('a'), commitNode('b'), commitNode('c')]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(
+      // 'a' matches search only, 'b' matches author only, 'c' matches neither.
+      graphNodesState(nodes, { matchingOids: ['a'], authorMatchingOids: ['b'] })
+    )
+    renderGraph({ searchQuery: 'x' })
+    expect(lastGraphRowCalls.current[0]).toMatchObject({ dimmed: false }) // search match
+    expect(lastGraphRowCalls.current[1]).toMatchObject({ dimmed: false }) // author match
+    expect(lastGraphRowCalls.current[2]).toMatchObject({ dimmed: true }) // neither
   })
 })
 

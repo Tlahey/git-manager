@@ -7,6 +7,37 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Stacking scale (z-index) ────────────────────────────────────────────────
+   The single, theme-independent source of truth for layering. Each layer is a
+   named `--z-*` token consumed through the Tailwind `zIndex` scale in
+   packages/config/tailwind.js (e.g. `z-popover`, `hover:z-graph-row-hover`).
+   Reorder or insert a layer HERE and every component follows — never hardcode a
+   raw z-index in a component. Ordered low → high:
+
+     graph-overflow (1)   graph column's overflow fade zone, under the cells
+     content       (10)   graph cells, waterlines, in-pane resize handles
+     raised        (20)   small raised in-flow elements (blame hover card)
+     resize-handle (30)   pane resize handles
+     panel         (40)   floating panels inside the content (commit search)
+     graph-row-hover (45) a hovered graph row — above panels, BELOW popovers
+                          (so a header popover is never covered by a hovered row)
+     popover       (50)   popovers, dropdowns, menus, selects, dialogs, tooltips
+     notification  (99)   notification dropdown
+     overlay      (100)   floating tooltips/labels + the toast stack
+     tooltip     (9999)   the global cursor-following tooltip, always on top */
+:root {
+  --z-graph-overflow: 1;
+  --z-content: 10;
+  --z-raised: 20;
+  --z-resize-handle: 30;
+  --z-panel: 40;
+  --z-graph-row-hover: 45;
+  --z-popover: 50;
+  --z-notification: 99;
+  --z-overlay: 100;
+  --z-tooltip: 9999;
+}
+
 @layer base {
   /* Avatar Frames */
   .avatar-frame-bronze {

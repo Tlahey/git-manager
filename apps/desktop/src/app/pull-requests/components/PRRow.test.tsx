@@ -254,7 +254,7 @@ describe('PRRow — action menu', () => {
     const [moreButton] = screen.getAllByRole('button').slice(-1)
     await user.click(moreButton)
     expect(screen.getByText('Open on GitHub')).toBeInTheDocument()
-    const backdrop = container.querySelector('.fixed.inset-0.z-40')!
+    const backdrop = container.querySelector('.fixed.inset-0.z-panel')!
     fireEvent.click(backdrop)
     expect(screen.queryByText('Open on GitHub')).not.toBeInTheDocument()
   })

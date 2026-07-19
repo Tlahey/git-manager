@@ -135,7 +135,7 @@ export function Toaster() {
   if (items.length === 0) return null
 
   return createPortal(
-    <div className="pointer-events-none fixed bottom-4 right-4 z-[100] flex flex-col gap-2">
+    <div className="pointer-events-none fixed bottom-4 right-4 z-overlay flex flex-col gap-2">
       {items.map((item) => (
         <ToastCard key={item.id} item={item} />
       ))}

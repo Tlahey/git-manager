@@ -131,7 +131,7 @@ export function GraphAvatarTooltip({ node, centerX, opacity }: GraphAvatarToolti
               left: pos.left,
               transform: 'translate(-50%, -100%)',
             }}
-            className="animate-in fade-in-0 zoom-in-95 pointer-events-none z-[100] flex flex-col gap-0.5 whitespace-nowrap rounded-md border border-border bg-popover/95 px-2.5 py-1.5 text-popover-foreground shadow-xl backdrop-blur-md duration-100"
+            className="animate-in fade-in-0 zoom-in-95 pointer-events-none z-overlay flex flex-col gap-0.5 whitespace-nowrap rounded-md border border-border bg-popover/95 px-2.5 py-1.5 text-popover-foreground shadow-xl backdrop-blur-md duration-100"
           >
             <span className="text-[10px] font-semibold leading-none">{commit.author.name}</span>
             <span className="mt-0.5 text-[9px] leading-none text-muted-foreground/90">

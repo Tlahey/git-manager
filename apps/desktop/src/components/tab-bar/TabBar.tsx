@@ -41,7 +41,7 @@ function PinnedTab({ icon, label, active, onClick, hideLabel }: PinnedTabProps) 
         {!hideLabel && <span className="font-medium">{label}</span>}
       </button>
       {hideLabel && (
-        <div className="pointer-events-none absolute left-1/2 top-[34px] z-50 hidden -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 text-[10px] text-popover-foreground shadow-md group-hover/tab:block">
+        <div className="pointer-events-none absolute left-1/2 top-[34px] z-popover hidden -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-1.5 py-0.5 text-[10px] text-popover-foreground shadow-md group-hover/tab:block">
           {label}
         </div>
       )}

@@ -120,7 +120,7 @@ function TooltipBubble({
       ref={ref}
       role="tooltip"
       className={[
-        'fixed z-[9999] rounded-lg px-2.5 py-1.5',
+        'fixed z-tooltip rounded-lg px-2.5 py-1.5',
         'border border-border bg-popover shadow-xl',
         'text-[11px] leading-snug text-foreground',
         'pointer-events-none whitespace-nowrap',
@@ -243,7 +243,7 @@ export function useImperativeTooltip() {
     ? createPortal(
         <div
           role="tooltip"
-          className="pointer-events-none fixed z-[9999] whitespace-nowrap rounded-lg border border-border bg-popover px-2.5 py-1.5 text-[11px] leading-snug text-foreground shadow-xl"
+          className="pointer-events-none fixed z-tooltip whitespace-nowrap rounded-lg border border-border bg-popover px-2.5 py-1.5 text-[11px] leading-snug text-foreground shadow-xl"
           style={{
             position: 'fixed',
             top: state.rect.top - 32,
