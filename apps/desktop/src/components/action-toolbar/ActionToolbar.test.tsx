@@ -34,6 +34,8 @@ function hookState(overrides: Partial<ReturnType<typeof useActionToolbarMock>> =
     },
     hasChanges: false,
     hasStashes: false,
+    aheadCount: 0,
+    behindCount: 0,
     canUndo: false,
     canRedo: false,
     undoLabel: null,
@@ -121,6 +123,19 @@ describe('ActionToolbar — composition', () => {
     expect(state.handleOpenTerminal).toHaveBeenCalledOnce()
     await user.click(screen.getByRole('button', { name: 'toolbar.editor' }))
     expect(state.handleOpenEditor).toHaveBeenCalledOnce()
+  })
+
+  it('shows ahead/behind badges on the push/pull buttons when the branch has unpushed/unpulled commits', () => {
+    useActionToolbarMock.mockReturnValue(hookState({ aheadCount: 3, behindCount: 2 }))
+    render(<ActionToolbar />)
+    expect(screen.getByRole('button', { name: /remote\.push/ })).toHaveTextContent('3')
+    expect(screen.getByRole('button', { name: /remote\.pull/ })).toHaveTextContent('2')
+    expect(screen.getAllByTestId('toolbar-button-badge')).toHaveLength(2)
+  })
+
+  it('shows no push/pull badges when the branch is in sync', () => {
+    render(<ActionToolbar />)
+    expect(screen.queryByTestId('toolbar-button-badge')).not.toBeInTheDocument()
   })
 
   it('hides the terminal button entirely when no terminal app is configured', () => {
