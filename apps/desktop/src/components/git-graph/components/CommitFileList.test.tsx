@@ -68,10 +68,11 @@ describe('CommitFileList — stats summary', () => {
         file('e.ts', { status: 'renamed' }),
       ],
     })
-    expect(screen.getByText(/2 .*added/)).toBeInTheDocument()
-    expect(screen.getByText(/1 .*modified/)).toBeInTheDocument()
-    expect(screen.getByText(/1 .*deleted/)).toBeInTheDocument()
-    expect(screen.getByText(/1 .*renamed/)).toBeInTheDocument()
+    // Counts are shown as icon tags; the full "N label" text lives in the title.
+    expect(screen.getByTitle(/2 .*added/)).toBeInTheDocument()
+    expect(screen.getByTitle(/1 .*modified/)).toBeInTheDocument()
+    expect(screen.getByTitle(/1 .*deleted/)).toBeInTheDocument()
+    expect(screen.getByTitle(/1 .*renamed/)).toBeInTheDocument()
     expect(screen.getByText('5 files changed')).toBeInTheDocument()
   })
 

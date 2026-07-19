@@ -7,7 +7,7 @@ vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) 
 
 import { HeaderColumnsMenu } from './HeaderColumnsMenu'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
-import { COLUMN_ORDER } from './columns'
+import { COLUMN_ORDER } from './columns.config'
 
 const INITIAL = useGitGraphColumnsStore.getState()
 

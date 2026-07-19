@@ -31,7 +31,7 @@ import { EmptyRepoPanel } from './EmptyRepoPanel'
 import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
 import { ConflictResolutionPanel } from './ConflictResolutionPanel'
 import { Waterline } from './Waterline'
-import { COLUMN_DEFS, COLUMN_ORDER, type ResolvedColumn } from './columns'
+import { COLUMN_DEFS, COLUMN_ORDER, type ResolvedColumn } from './columns.config'
 import { getGraphColumnLayout, getGraphMaxWidth } from './graphColumnSizing'
 
 interface GitGraphProps {
@@ -574,7 +574,6 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                             isPrimary={oid === primaryOid}
                             onSelect={(e) => handleRowSelect(e, virtualItem.index)}
                             onContextMenu={(e) => openMenuAt(e, oid)}
-                            onOpenMenu={(e) => openMenuAt(e, oid)}
                             wipStats={wipStats}
                             onCommitWip={handleCommitWip}
                             isFirst={virtualItem.index === 0}
