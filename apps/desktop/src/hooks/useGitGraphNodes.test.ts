@@ -202,7 +202,7 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     return { name: `refs/heads/${shortName}`, shortName, type: 'branch' as const, commitOid }
   }
 
-  it('inserts a synthetic WIP:<path> row directly above the matching branch tip, offset one column with a fixed WIP color', () => {
+  it('inserts a synthetic WIP:<path> row directly above the matching branch tip, using the branch column when it is the first/only WIP', () => {
     const nodes = [
       node('a', { column: 0, color: '#111' }),
       node('b', { column: 1, color: '#222', refs: [branchRef('feature-x', 'b')] }),
@@ -216,25 +216,26 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     const oids = result.current.filteredNodes.map((n) => n.commit.oid)
     expect(oids).toEqual(['a', 'WIP:/wt/feature-x', 'b', 'c'])
     const wtNode = result.current.filteredNodes[1]
-    expect(wtNode.column).toBe(2) // anchor's column (1) + 1, never the branch's own column
+    expect(wtNode.column).toBe(1) // anchor's column (1), since it is the first/only WIP
     expect(wtNode.color).toBe('#7c3aed') // fixed WIP color, never the branch's own color
     expect(wtNode.commit.parentOids).toEqual(['b'])
-    // Own column only — the diagonal that actually reaches the anchor is patched onto the
-    // anchor's row instead (see the "patches the anchor commit" test below).
+    // Own column only
     expect(wtNode.connections).toEqual([
-      { fromColumn: 2, toColumn: 2, color: '#7c3aed', dashed: true },
+      { fromColumn: 1, toColumn: 1, color: '#7c3aed', dashed: true },
     ])
   })
 
-  it('carries over every active lane from the anchor — including its OWN column — as plain pass-throughs, so nothing shows a gap through the inserted row', () => {
+  it('offsets off the anchor lane when a line crosses above it, carrying every through-lane as a plain pass-through', () => {
     const nodes = [
       node('a', {
         column: 1,
         color: '#222',
         refs: [branchRef('feature-x', 'a')],
-        // Column 0 (e.g. main) passes through untouched; column 1 is the anchor's own lane,
-        // arriving at its real commit with `endsAtNode` — that flag must NOT leak into the
-        // synthetic row above, which just needs a plain flow-through, not a node arrival.
+        // Column 0 (e.g. main) passes through untouched; column 1 is the anchor's own lane, but a
+        // line ARRIVES at it from above (`endsAtNode`) — a merged feature tip whose merge sits
+        // above. So the WIP must NOT sit on column 1 (it would land on that incoming line); it
+        // offsets to the first free lane (2), and both crossing lanes flow through as plain
+        // pass-throughs (the `endsAtNode` flag never leaks into the synthetic row).
         connections: [
           { fromColumn: 0, toColumn: 0, color: '#2563eb' },
           { fromColumn: 1, toColumn: 1, color: '#222', endsAtNode: true },
@@ -247,11 +248,11 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
       ])
     )
     const wtNode = result.current.filteredNodes[0]
+    expect(wtNode.column).toBe(2) // offset off the occupied anchor lane (1)
     expect(wtNode.connections).toContainEqual({ fromColumn: 0, toColumn: 0, color: '#2563eb' })
-    // The anchor's own column is carried over too, but stripped of `endsAtNode` — a plain
-    // continuation, not an arrival, since no real commit sits in this synthetic row.
     expect(wtNode.connections).toContainEqual({ fromColumn: 1, toColumn: 1, color: '#222' })
-    expect(wtNode.connections).toHaveLength(3) // both pass-throughs + its own column-2 WIP connector
+    expect(wtNode.connections).toContainEqual({ fromColumn: 2, toColumn: 2, color: '#7c3aed', dashed: true })
+    expect(wtNode.connections).toHaveLength(3)
   })
 
   it('continues a lane that merges diagonally INTO the anchor as a straight vertical (merge-commit anchor)', () => {
@@ -281,17 +282,19 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     const wtNode = result.current.filteredNodes[0]
     // The diagonally-merging lane keeps flowing up at its own column, no longer cut.
     expect(wtNode.connections).toContainEqual({ fromColumn: 2, toColumn: 2, color: '#0891b2' })
-    // The anchor's own mainline column continues too (from its `endsAtNode` incoming vertical)…
+    // The anchor's own column 0 has a line arriving from above (`endsAtNode`), so it's occupied:
+    // the WIP offsets to column 1, and column 0 flows through as a plain mainline pass-through.
+    expect(wtNode.column).toBe(1)
     expect(wtNode.connections).toContainEqual({ fromColumn: 0, toColumn: 0, color: '#16a34a' })
-    // …but its downward departures to parents (the `startsAtNode` first-parent line) are NOT
-    // duplicated as an upward continuation.
+    expect(wtNode.connections).toContainEqual({ fromColumn: 1, toColumn: 1, color: '#7c3aed', dashed: true })
     const col0 = wtNode.connections.filter((c) => c.fromColumn === 0 && c.toColumn === 0)
     expect(col0).toHaveLength(1)
   })
 
-  it('skips a lane already occupied at the anchor row instead of landing on top of it', () => {
-    // Anchor at column 1 with another branch's lane already passing through at column 2 — the
-    // WIP row must move to the first free lane (column 3), never sit on the occupied column 2,
+  it('skips a lane already occupied at the anchor row instead of landing on top of it when multiple WIPs are present', () => {
+    // Anchor at column 1 with another branch's lane already passing through at column 2.
+    // If we have both primary WIP and worktree WIP, the primary WIP takes column 1, and the
+    // worktree WIP row must move to the first free lane (column 3), never sit on the occupied column 2,
     // and it must carry column 2's pass-through so that lane keeps flowing through this row.
     const nodes = [
       node('a', {
@@ -306,11 +309,11 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
       }),
     ]
     const { result } = renderHook(() =>
-      useGitGraphNodes(nodes, undefined, 0, t, null, [
+      useGitGraphNodes(nodes, undefined, 1, t, null, [
         { path: '/wt/x', branch: 'feature-x', totalChanges: 1, added: 0, modified: 0, deleted: 0 },
       ])
     )
-    const wtNode = result.current.filteredNodes[0]
+    const wtNode = result.current.filteredNodes[1] // index 0 is primary WIP, index 1 is worktree WIP
     expect(wtNode.column).toBe(3) // not the occupied column 2
     // The occupied lane keeps flowing through the inserted row (no gap / no décalage).
     expect(wtNode.connections).toContainEqual({ fromColumn: 2, toColumn: 2, color: '#16a34a' })
@@ -322,7 +325,7 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
       dashed: true,
     })
     // The anchor's rising diagonal targets the same free lane.
-    const anchor = result.current.renderNodes[1]
+    const anchor = result.current.renderNodes[2]
     expect(
       anchor.connections.some((c) => c.fromColumn === 3 && c.toColumn === 1 && c.dashed)
     ).toBe(true)
@@ -367,12 +370,12 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
   it('patches the anchor commit with a diagonal connector rising FROM its own row INTO the offset WIP column above — not a straight vertical', () => {
     const nodes = [node('a', { column: 2, color: '#456', refs: [branchRef('feature-x', 'a')] })]
     const { result } = renderHook(() =>
-      useGitGraphNodes(nodes, undefined, 0, t, null, [
+      useGitGraphNodes(nodes, undefined, 1, t, null, [
         { path: '/wt/x', branch: 'feature-x', totalChanges: 1, added: 0, modified: 0, deleted: 0 },
       ])
     )
-    // index 1 = the anchor ("a"), right after its WIP row at index 0
-    const anchor = result.current.renderNodes[1]
+    // index 2 = the anchor ("a"), right after primary WIP (index 0) and its worktree WIP row at index 1
+    const anchor = result.current.renderNodes[2]
     // fromColumn (3) = the WIP row's offset column, toColumn (2) = the anchor's own column —
     // i.e. the line starts at the anchor's own row and rises into the WIP row, not the reverse.
     expect(
@@ -380,6 +383,157 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
         (c) => c.fromColumn === 3 && c.toColumn === 2 && c.dashed && c.color === '#7c3aed'
       )
     ).toBe(true)
+  })
+})
+
+describe('useGitGraphNodes — worktree WIP on a merged feature tip (occupied lane)', () => {
+  const WIP = '#7c3aed'
+  const branchRef = (s: string, oid: string) => ({
+    name: `refs/heads/${s}`,
+    shortName: s,
+    type: 'branch' as const,
+    commitOid: oid,
+  })
+
+  // Screenshot bug: the branch tip was already merged, so the merge commit above leaves an
+  // incoming line on the tip's OWN lane. Placing the WIP there draws it on top of that branch
+  // line — it must offset to a free lane while the branch line flows through unbroken.
+  function renderScenario() {
+    const nodes = [
+      node('merge', {
+        column: 0,
+        color: '#2563eb',
+        commit: { ...node('merge').commit, parentOids: ['prev', 'feat'] },
+        connections: [
+          { fromColumn: 0, toColumn: 0, color: '#2563eb', startsAtNode: true },
+          { fromColumn: 0, toColumn: 1, color: '#16a34a', startsAtNode: true }, // diagonal down to the feature tip
+        ],
+      }),
+      node('feat', {
+        column: 1,
+        color: '#16a34a',
+        refs: [branchRef('feat-x', 'feat')],
+        connections: [
+          { fromColumn: 1, toColumn: 1, color: '#16a34a', endsAtNode: true }, // merge's line arrives from above
+          { fromColumn: 1, toColumn: 1, color: '#16a34a', startsAtNode: true },
+        ],
+      }),
+      node('older', { column: 0, connections: [{ fromColumn: 0, toColumn: 0, color: '#2563eb' }] }),
+    ]
+    return renderHook(() =>
+      useGitGraphNodes(nodes, undefined, 0, t, null, [
+        { path: '/wt', branch: 'feat-x', totalChanges: 1, added: 0, modified: 1, deleted: 0 },
+      ])
+    )
+  }
+
+  it('offsets the WIP off the occupied feature-tip lane', () => {
+    const { result } = renderScenario()
+    const wip = result.current.filteredNodes[1]
+    expect(wip.commit.oid).toBe('WIP:/wt')
+    expect(wip.column).toBe(2) // not the tip's own lane (1), which the merge line occupies
+  })
+
+  it('keeps the feature branch line flowing through the WIP row unbroken', () => {
+    const { result } = renderScenario()
+    const wip = result.current.filteredNodes[1]
+    // The green lane (column 1) passes straight through as a plain pass-through…
+    expect(wip.connections).toContainEqual({ fromColumn: 1, toColumn: 1, color: '#16a34a' })
+    // …and the WIP's own dashed connector sits on its offset lane.
+    expect(wip.connections).toContainEqual({ fromColumn: 2, toColumn: 2, color: WIP, dashed: true })
+  })
+
+  it('links the WIP to the tip via a diagonal from its offset lane', () => {
+    const { result } = renderScenario()
+    const feat = result.current.renderNodes[2]
+    expect(feat.connections).toContainEqual(
+      expect.objectContaining({ fromColumn: 2, toColumn: 1, dashed: true, endsAtNode: true })
+    )
+  })
+})
+
+describe('useGitGraphNodes — several worktree WIP rows stacked on one shared anchor', () => {
+  const WIP = '#7c3aed' // fixed WIP-row color (see WIP_COLOR in the hook)
+  function branchRef(shortName: string, commitOid: string) {
+    return { name: `refs/heads/${shortName}`, shortName, type: 'branch' as const, commitOid }
+  }
+
+  // Real-world shape from the screenshot: several branches all point at main's tip, each with a
+  // dirty linked worktree, so their "// WIP" rows stack directly above that one commit.
+  function renderScenario(primaryChanges = 0) {
+    const nodes = [
+      node('mainTip', {
+        column: 0,
+        color: '#2563eb',
+        refs: [
+          { name: 'HEAD', shortName: 'HEAD', type: 'HEAD' as const, commitOid: 'mainTip' },
+          branchRef('main', 'mainTip'),
+          branchRef('feat-a', 'mainTip'),
+          branchRef('feat-b', 'mainTip'),
+        ],
+        commit: { ...node('mainTip').commit, parentOids: ['older'] },
+        connections: [{ fromColumn: 0, toColumn: 0, color: '#2563eb', startsAtNode: true }],
+      }),
+      node('older', { column: 0, connections: [{ fromColumn: 0, toColumn: 0, color: '#2563eb' }] }),
+    ]
+    return renderHook(() =>
+      useGitGraphNodes(nodes, undefined, primaryChanges, t, null, [
+        { path: '/wt-a', branch: 'feat-a', totalChanges: 15, added: 0, modified: 0, deleted: 0 },
+        { path: '/wt-b', branch: 'feat-b', totalChanges: 1, added: 0, modified: 0, deleted: 0 },
+      ])
+    )
+  }
+
+  it('puts the topmost WIP row on the anchor lane and offsets the next one', () => {
+    const { result } = renderScenario()
+    const rows = result.current.filteredNodes.map((n) => ({ oid: n.commit.oid, col: n.column }))
+    // wt-b is spliced on top (later status), so it takes main's own lane (0); wt-a offsets.
+    expect(rows).toEqual([
+      { oid: 'WIP:/wt-b', col: 0 },
+      { oid: 'WIP:/wt-a', col: 1 },
+      { oid: 'mainTip', col: 0 },
+      { oid: 'older', col: 0 },
+    ])
+  })
+
+  it('runs the top WIP connector straight down its lane to the anchor, unbroken', () => {
+    const { result } = renderScenario()
+    const [wtB, wtA, mainTip] = result.current.renderNodes
+    // wt-b's own dashed vertical on column 0…
+    expect(wtB.connections).toContainEqual({ fromColumn: 0, toColumn: 0, color: WIP, dashed: true })
+    // …carried through the WIP row spliced between it and the anchor (no row-tall gap)…
+    expect(wtA.connections).toContainEqual({ fromColumn: 0, toColumn: 0, color: WIP, dashed: true })
+    // …arriving at the anchor node center (this is the connector the old syntheticIndex+1 patch
+    // dropped, leaving the top WIP linked to nothing).
+    expect(mainTip.connections).toContainEqual({
+      fromColumn: 0,
+      toColumn: 0,
+      color: WIP,
+      dashed: true,
+      endsAtNode: true,
+    })
+  })
+
+  it('patches the shared anchor with one arriving connector per stacked WIP row', () => {
+    const { result } = renderScenario()
+    const mainTip = result.current.renderNodes[2]
+    // straight vertical for the on-lane top WIP…
+    expect(mainTip.connections).toContainEqual(
+      expect.objectContaining({ fromColumn: 0, toColumn: 0, dashed: true, endsAtNode: true })
+    )
+    // …and the offset WIP's rising diagonal.
+    expect(mainTip.connections).toContainEqual(
+      expect.objectContaining({ fromColumn: 1, toColumn: 0, dashed: true, endsAtNode: true })
+    )
+  })
+
+  it('keeps the primary WIP on the anchor lane and offsets the worktree WIPs when the repo is dirty too', () => {
+    const { result } = renderScenario(5)
+    const rows = result.current.filteredNodes.map((n) => ({ oid: n.commit.oid, col: n.column }))
+    // The editable primary WIP is prepended on main's lane; the worktree WIPs offset off it.
+    expect(rows[0]).toEqual({ oid: 'WIP', col: 0 })
+    const worktreeCols = rows.filter((r) => r.oid.startsWith('WIP:')).map((r) => r.col)
+    expect(worktreeCols.every((c) => c > 0)).toBe(true)
   })
 })
 

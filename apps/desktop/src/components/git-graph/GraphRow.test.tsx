@@ -186,15 +186,26 @@ describe('GraphRow — graph column', () => {
 })
 
 describe('GraphRow — message column: WIP', () => {
-  it('binds the WIP input to the per-repo wip message and shows the total-changes count', async () => {
+  it('shows the branch tag on the primary WIP row when wipRef is provided', () => {
+    const { container } = renderRow({
+      columns: [col('message')],
+      node: node({ commit: { ...node().commit, oid: 'WIP' } }),
+      wipRef: { name: 'main', isWorktree: false },
+    })
+    expect(screen.getByText('main')).toBeInTheDocument()
+    expect(container.querySelector('.lucide-git-branch')).toBeTruthy()
+  })
+
+  it('renders the draft message and updates the store on change', async () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     const user = userEvent.setup()
     renderRow({
       columns: [col('message')],
       node: node({ commit: { ...node().commit, oid: 'WIP' } }),
-      totalChanges: 3,
+      wipStats: { added: 1, modified: 2, deleted: 0 },
     })
-    expect(screen.getByText('3')).toBeInTheDocument()
+    expect(screen.getByText('+1')).toBeInTheDocument()
+    expect(screen.getByText('~2')).toBeInTheDocument()
 
     await user.type(screen.getByPlaceholderText('// WIP'), 'my wip message')
     expect(useRepoDataStore.getState().wipMessages['/repo']).toBe('my wip message')
@@ -242,7 +253,7 @@ describe('GraphRow — message column: WIP', () => {
 })
 
 describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
-  it('shows the // WIP marker and file count (no worktree name), and hides the Open Worktree button when not selected', () => {
+  it('shows the // WIP marker, the worktree branch tag and file count, and hides the Open Worktree button when not selected', () => {
     renderRow({
       columns: [col('message')],
       node: node({ commit: { ...node().commit, oid: 'WIP:/repo-worktree' } }),
@@ -253,8 +264,12 @@ describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
       isPrimary: false,
     })
     expect(screen.getByText(/\/\/ WIP/)).toBeInTheDocument()
-    expect(screen.getByText('4')).toBeInTheDocument()
-    expect(screen.queryByText(/feature-x/)).not.toBeInTheDocument()
+    expect(screen.getByText('+1')).toBeInTheDocument()
+    expect(screen.getByText('~2')).toBeInTheDocument()
+    expect(screen.getByText('-1')).toBeInTheDocument()
+    // The worktree's branch is now surfaced as a tag (worktree icon + name).
+    expect(screen.getByText('feature-x')).toBeInTheDocument()
+    expect(screen.getByText('feature-x').closest('[title]')).toHaveAttribute('title', 'feature-x')
     expect(screen.queryByRole('button', { name: 'gitTree.wip.openWorktree' })).not.toBeInTheDocument()
   })
 
@@ -285,6 +300,16 @@ describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
       isPrimary: true,
     })
     expect(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' })).toBeInTheDocument()
+  })
+
+  it('renders a worktree WIP row with no branch tag when its status is missing', () => {
+    const { container } = renderRow({
+      columns: [col('message')],
+      node: node({ commit: { ...node().commit, oid: 'WIP:/gone' } }),
+      worktreeWipStatuses: [], // no matching status for this path
+    })
+    expect(screen.getByText(/\/\/ WIP/)).toBeInTheDocument()
+    expect(container.querySelector('.lucide-folder-git2')).toBeNull() // no worktree branch tag
   })
 
   it('does not render an editable WIP input for a worktree WIP row', () => {
@@ -487,6 +512,99 @@ describe('GraphRow — selection/conflict styling', () => {
   })
 })
 
+describe('GraphRow — graph column width modes', () => {
+  // Standard 32px avatar: at maxColumn 6 the graph needs ~171px, so width 120 is `overflow`
+  // and 48 is `compact` (see graphColumnSizing).
+  it('keeps the band tint and renders lines in full width', () => {
+    const { container } = renderRow({
+      columns: [col('graph', { width: 200 })],
+      node: node({ column: 1 }),
+      graphMaxColumn: 3,
+    })
+    const band = container.querySelector('[class*="border-r-"]') as HTMLElement
+    expect(band.style.backgroundColor).not.toBe('transparent')
+    expect(screen.getByTestId('graph-svg')).toBeInTheDocument()
+  })
+
+  it('drops the band tint for an overflowed node in overflow mode', () => {
+    const { container } = renderRow({
+      columns: [col('graph', { width: 120 })],
+      node: node({ column: 5 }),
+      graphMaxColumn: 6,
+    })
+    const band = container.querySelector('[class*="border-r-"]') as HTMLElement
+    expect(band.style.backgroundColor).toBe('transparent')
+  })
+
+  it('keeps the band tint of a non-overflowed node in overflow mode', () => {
+    const { container } = renderRow({
+      columns: [col('graph', { width: 120 })],
+      node: node({ column: 0 }),
+      graphMaxColumn: 6,
+    })
+    const band = container.querySelector('[class*="border-r-"]') as HTMLElement
+    expect(band.style.backgroundColor).not.toBe('transparent')
+  })
+
+  it('hides the connection lines entirely at the compact minimum width', () => {
+    renderRow({
+      columns: [col('graph', { width: 48 })],
+      node: node({ column: 3 }),
+      graphMaxColumn: 6,
+    })
+    expect(screen.queryByTestId('graph-svg')).not.toBeInTheDocument()
+  })
+
+  it('applies a more vivid band tint when the row is selected, even for an overflowed node', () => {
+    const bandColor = (props: Parameters<typeof renderRow>[0]) => {
+      const { container, unmount } = renderRow(props)
+      const c = (container.querySelector('[class*="border-r-"]') as HTMLElement).style
+        .backgroundColor
+      unmount()
+      return c
+    }
+    const normal = bandColor({
+      columns: [col('graph', { width: 200 })],
+      node: node({ column: 1, color: '#2563eb' }),
+      graphMaxColumn: 3,
+    })
+    const selected = bandColor({
+      columns: [col('graph', { width: 200 })],
+      node: node({ column: 1, color: '#2563eb' }),
+      graphMaxColumn: 3,
+      isPrimary: true,
+    })
+    expect(normal).toBeTruthy()
+    expect(selected).not.toBe(normal)
+    // An overflowed node normally has no tint, but keeps the vivid one once selected.
+    const overflowedSelected = bandColor({
+      columns: [col('graph', { width: 120 })],
+      node: node({ column: 5, color: '#2563eb' }),
+      graphMaxColumn: 6,
+      isSelected: true,
+    })
+    expect(overflowedSelected).toBe(selected)
+  })
+})
+
+describe('GraphRow — author avatar image fallback', () => {
+  it('falls back to initials when the author avatar image fails to load', () => {
+    const { container } = renderRow({
+      columns: [col('author')],
+      node: node({
+        commit: {
+          ...node().commit,
+          author: { name: 'Ada Lovelace', email: 'ada@example.com', timestamp: 0 },
+        },
+      }),
+    })
+    const img = container.querySelector('img')
+    expect(img).toBeTruthy()
+    fireEvent.error(img!)
+    expect(screen.getByText('AL')).toBeInTheDocument()
+  })
+})
+
 describe('GraphAvatarTooltip', () => {
   it('shows a name/email tooltip on hover and hides it on mouse leave', () => {
     // No email -> getAvatarUrl() returns null -> falls back to initials, which we can target
@@ -536,5 +654,81 @@ describe('GraphAvatarTooltip', () => {
     })
     render(<GraphAvatarTooltip node={normalNode} />)
     expect(screen.getByText('AL')).toBeInTheDocument()
+  })
+})
+
+describe('GraphRow — remaining branch coverage', () => {
+  it('mutes the body, date, and fixup prefix when dimmed', () => {
+    renderRow({
+      columns: [col('message'), col('date')],
+      node: node({
+        commit: {
+          ...node().commit,
+          subject: 'fixup! Add feature',
+          body: 'some body',
+          author: { name: 'A', email: '', timestamp: Math.floor(Date.now() / 1000) - 7200 },
+        },
+      }),
+      dimmed: true,
+    })
+    expect(screen.getByText('some body')).toHaveClass('text-muted-foreground/40')
+    expect(screen.getByText('2h ago')).toHaveClass('italic', 'text-muted-foreground/40')
+    // The "fixup!" prefix loses its orange highlight when the row is dimmed.
+    expect(screen.getByText('fixup!')).not.toHaveClass('text-orange-400')
+  })
+
+  it('renders the ref connector fully opaque when the row carries origin/main', () => {
+    const refs = [
+      {
+        name: 'refs/remotes/origin/main',
+        shortName: 'origin/main',
+        type: 'branch' as const,
+        commitOid: 'abc1234567890',
+      },
+    ]
+    const { container } = renderRow({
+      columns: [col('refs')],
+      node: node({ refs, color: '#123456' }),
+    })
+    const connector = container.querySelector('.ml-2.flex-1') as HTMLElement
+    // jsdom serializes the opaque hex to rgb(); the non-main path would append a '40' alpha.
+    expect(connector.style.backgroundColor).toBe('rgb(18, 52, 86)')
+  })
+
+  it('shows a dashed archive mini-avatar in the author column for a stash commit', () => {
+    const refs = [
+      {
+        name: 'stash@{0}',
+        shortName: 'stash@{0}',
+        type: 'stash' as const,
+        commitOid: 'abc1234567890',
+      },
+    ]
+    const { container } = renderRow({ columns: [col('author')], node: node({ refs }) })
+    expect(container.querySelector('.lucide-archive')).toBeTruthy()
+  })
+
+  it('uses the shorter row and 24px avatar for the small row height setting', () => {
+    useSettingsStore.setState((s) => ({
+      ...s,
+      settings: {
+        ...s.settings,
+        appearance: { ...s.settings.appearance, rowHeight: 'small' as const },
+      },
+    }))
+    const { container } = renderRow({ columns: [col('graph')] })
+    expect(container.querySelector('.h-\\[24px\\]')).toBeTruthy()
+  })
+
+  it('falls back to the standard row height when the setting is absent', () => {
+    useSettingsStore.setState((s) => ({
+      ...s,
+      settings: {
+        ...s.settings,
+        appearance: { ...s.settings.appearance, rowHeight: undefined },
+      },
+    }))
+    const { container } = renderRow({ columns: [col('graph')] })
+    expect(container.querySelector('.h-\\[32px\\]')).toBeTruthy()
   })
 })

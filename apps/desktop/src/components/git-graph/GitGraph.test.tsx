@@ -319,6 +319,144 @@ describe('GitGraph — rendering rows', () => {
   })
 })
 
+describe('GitGraph — graph overflow zone', () => {
+  it('renders one full-height zone overlay when the graph column is too narrow', () => {
+    // A lane-6 node needs 171px (see graphColumnSizing); force the stored width down to 120.
+    const nodes = [commitNode('a', { column: 6 })]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
+    useGitGraphColumnsStore.setState((s) => ({
+      columns: { ...s.columns, graph: { visible: true, width: 120 } },
+    }))
+    renderGraph()
+    const zone = screen.getByTestId('graph-overflow-zone')
+    // Full height of the virtualized list container, not one segment per row.
+    expect(zone).toHaveClass('inset-y-0')
+    // refs 160 + 8px margin + overlayStart 72 (inner 112 - overlay 40)
+    expect(zone).toHaveStyle({ left: '240px' })
+  })
+
+  it('renders no zone when the graph column shows every lane in full', () => {
+    const nodes = [commitNode('a', { column: 0 })]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
+    renderGraph()
+    expect(screen.getByTestId('graph-header')).toBeInTheDocument()
+    expect(screen.queryByTestId('graph-overflow-zone')).not.toBeInTheDocument()
+  })
+
+  it('sizes the zone with the 24px avatar for the small row height', () => {
+    useSettingsStore.setState((s) => ({
+      ...s,
+      settings: {
+        ...s.settings,
+        appearance: { ...s.settings.appearance, rowHeight: 'small' as const },
+      },
+    }))
+    const nodes = [commitNode('a', { column: 6 })]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
+    useGitGraphColumnsStore.setState((s) => ({
+      columns: { ...s.columns, graph: { visible: true, width: 120 } },
+    }))
+    renderGraph()
+    // refs 160 + 8px margin + overlayStart 80 (inner 112 - overlay 24+8)
+    expect(screen.getByTestId('graph-overflow-zone')).toHaveStyle({ left: '248px' })
+  })
+
+  it('renders no zone when the graph column is hidden', () => {
+    const nodes = [commitNode('a', { column: 6 })]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
+    useGitGraphColumnsStore.setState((s) => ({
+      columns: { ...s.columns, graph: { visible: false, width: 120 } },
+    }))
+    renderGraph()
+    expect(screen.queryByTestId('graph-overflow-zone')).not.toBeInTheDocument()
+  })
+
+  it('positions the zone with the same refs fallback width as GraphRow when refs is hidden', () => {
+    const nodes = [commitNode('a', { column: 6 })]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
+    useGitGraphColumnsStore.setState((s) => ({
+      columns: {
+        ...s.columns,
+        refs: { visible: false, width: 160 },
+        graph: { visible: true, width: 120 },
+      },
+    }))
+    renderGraph()
+    // fallback refsWidth 160 + 8px cell margin + overlayStart 72 (inner 112 - overlay 40)
+    expect(screen.getByTestId('graph-overflow-zone')).toHaveStyle({ left: '240px' })
+  })
+
+  it('passes the shared graphMaxColumn down to every row', () => {
+    const nodes = [
+      commitNode('a', {
+        column: 0,
+        connections: [
+          { fromColumn: 3, toColumn: 4, color: '#000' },
+          { fromColumn: 1, toColumn: 0, color: '#000' },
+        ],
+      }),
+      commitNode('b', { column: 2 }),
+    ]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
+    renderGraph()
+    expect(lastGraphRowCalls.current[0]).toMatchObject({ graphMaxColumn: 4 })
+    expect(lastGraphRowCalls.current[1]).toMatchObject({ graphMaxColumn: 4 })
+  })
+})
+
+describe('GitGraph — primary WIP ref tag (wipRef)', () => {
+  function cacheRepo(head: string | undefined, mainWorktreePath: string) {
+    useRepoDataStore.setState({
+      repoCache: {
+        '/repo': {
+          path: '/repo',
+          name: 'repo',
+          head: head as string,
+          isDetached: false,
+          isDirty: false,
+          remotes: [],
+          mainWorktreePath,
+        },
+      },
+    })
+  }
+
+  function renderWithNodes() {
+    const nodes = [commitNode('a')]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
+    renderGraph()
+  }
+
+  it('passes a branch wipRef when the active repo is its own main worktree', () => {
+    cacheRepo('main', '/repo') // mainWorktreePath === repoPath → not a worktree
+    renderWithNodes()
+    expect(lastGraphRowCalls.current[0]).toMatchObject({
+      wipRef: { name: 'main', isWorktree: false },
+    })
+  })
+
+  it('marks the wipRef as a worktree when the active repo is a linked worktree', () => {
+    cacheRepo('feat', '/owning-repo') // mainWorktreePath !== repoPath → worktree
+    renderWithNodes()
+    expect(lastGraphRowCalls.current[0]).toMatchObject({
+      wipRef: { name: 'feat', isWorktree: true },
+    })
+  })
+
+  it('passes no wipRef when the head branch is unknown', () => {
+    // no repoCache entry → headBranchName undefined
+    renderWithNodes()
+    expect(lastGraphRowCalls.current[0].wipRef).toBeUndefined()
+  })
+})
+
 describe('GitGraph — search row dimming', () => {
   it('does not dim any row when there is no active search', () => {
     const nodes = [commitNode('a'), commitNode('b')]

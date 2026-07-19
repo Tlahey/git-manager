@@ -21,11 +21,12 @@ beforeEach(() => {
 })
 
 describe('WipCommitInput', () => {
-  it('binds to the per-repo WIP message and shows the total-changes count', async () => {
+  it('binds to the per-repo WIP message and shows the detailed file changes tags', async () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     const user = userEvent.setup()
-    render(<WipCommitInput totalChanges={3} />)
-    expect(screen.getByText('3')).toBeInTheDocument()
+    render(<WipCommitInput wipStats={{ added: 1, modified: 2, deleted: 0 }} />)
+    expect(screen.getByText('+1')).toBeInTheDocument()
+    expect(screen.getByText('~2')).toBeInTheDocument()
 
     await user.type(screen.getByPlaceholderText('// WIP'), 'my wip message')
     expect(useRepoDataStore.getState().wipMessages['/repo']).toBe('my wip message')
@@ -36,7 +37,7 @@ describe('WipCommitInput', () => {
     useRepoDataStore.setState({ wipMessages: { '/repo': '  do the thing  ' } })
     const onCommit = vi.fn()
     const user = userEvent.setup()
-    render(<WipCommitInput totalChanges={0} onCommit={onCommit} />)
+    render(<WipCommitInput wipStats={{ added: 1, modified: 0, deleted: 0 }} onCommit={onCommit} />)
     await user.type(screen.getByPlaceholderText('// WIP'), '{Enter}')
     expect(onCommit).toHaveBeenCalledWith('  do the thing  ')
   })
@@ -45,21 +46,21 @@ describe('WipCommitInput', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     const onCommit = vi.fn()
     const user = userEvent.setup()
-    render(<WipCommitInput totalChanges={0} onCommit={onCommit} />)
+    render(<WipCommitInput wipStats={{ added: 1, modified: 0, deleted: 0 }} onCommit={onCommit} />)
     await user.type(screen.getByPlaceholderText('// WIP'), '{Enter}')
     expect(onCommit).not.toHaveBeenCalled()
   })
 
-  it('clicking the file-count badge bubbles up to a parent row click handler (selects the WIP row)', async () => {
+  it('clicking the detailed changes tags bubbles up to a parent row click handler (selects the WIP row)', async () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     const onRowClick = vi.fn()
     const user = userEvent.setup()
     render(
       <div onClick={onRowClick}>
-        <WipCommitInput totalChanges={3} />
+        <WipCommitInput wipStats={{ added: 3, modified: 0, deleted: 0 }} />
       </div>
     )
-    await user.click(screen.getByText('3'))
+    await user.click(screen.getByText('+3'))
     expect(onRowClick).toHaveBeenCalledOnce()
   })
 
@@ -69,7 +70,7 @@ describe('WipCommitInput', () => {
     const user = userEvent.setup()
     render(
       <div onClick={onRowClick}>
-        <WipCommitInput totalChanges={3} />
+        <WipCommitInput wipStats={{ added: 3, modified: 0, deleted: 0 }} />
       </div>
     )
     await user.click(screen.getByPlaceholderText('// WIP'))
@@ -78,28 +79,30 @@ describe('WipCommitInput', () => {
 })
 
 describe('WorktreeWipRow', () => {
-  it('shows the // WIP marker and file count, without the worktree name', () => {
-    render(<WorktreeWipRow totalChanges={4} />)
+  it('shows the // WIP marker and detailed file counts, without the worktree name', () => {
+    render(<WorktreeWipRow wipStats={{ added: 1, modified: 2, deleted: 1 }} />)
     expect(screen.getByText(/\/\/ WIP/)).toBeInTheDocument()
-    expect(screen.getByText('4')).toBeInTheDocument()
+    expect(screen.getByText('+1')).toBeInTheDocument()
+    expect(screen.getByText('~2')).toBeInTheDocument()
+    expect(screen.getByText('-1')).toBeInTheDocument()
     expect(screen.queryByText(/feature-x/)).not.toBeInTheDocument()
   })
 
   it('hides the Open Worktree button by default (showOpenButton unset)', () => {
-    render(<WorktreeWipRow totalChanges={4} />)
+    render(<WorktreeWipRow wipStats={{ added: 1, modified: 0, deleted: 0 }} />)
     expect(screen.queryByRole('button', { name: 'gitTree.wip.openWorktree' })).not.toBeInTheDocument()
   })
 
   it('shows the Open Worktree button and calls onOpenWorktree on click when showOpenButton is set', async () => {
     const onOpenWorktree = vi.fn()
     const user = userEvent.setup()
-    render(<WorktreeWipRow totalChanges={4} onOpenWorktree={onOpenWorktree} showOpenButton />)
+    render(<WorktreeWipRow wipStats={{ added: 1, modified: 0, deleted: 0 }} onOpenWorktree={onOpenWorktree} showOpenButton />)
     await user.click(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' }))
     expect(onOpenWorktree).toHaveBeenCalledOnce()
   })
 
   it('does not render an editable input', () => {
-    render(<WorktreeWipRow totalChanges={0} showOpenButton />)
+    render(<WorktreeWipRow wipStats={{ added: 0, modified: 0, deleted: 0 }} showOpenButton />)
     expect(screen.queryByPlaceholderText('// WIP')).not.toBeInTheDocument()
   })
 
@@ -109,7 +112,7 @@ describe('WorktreeWipRow', () => {
     const user = userEvent.setup()
     render(
       <div onClick={onRowClick}>
-        <WorktreeWipRow totalChanges={4} onOpenWorktree={onOpenWorktree} />
+        <WorktreeWipRow wipStats={{ added: 1, modified: 0, deleted: 0 }} onOpenWorktree={onOpenWorktree} />
       </div>
     )
     await user.click(screen.getByText(/\/\/ WIP/))
@@ -120,7 +123,7 @@ describe('WorktreeWipRow', () => {
   it('does not double-fire onOpenWorktree when the explicit button is clicked (row + button both wired)', async () => {
     const onOpenWorktree = vi.fn()
     const user = userEvent.setup()
-    render(<WorktreeWipRow totalChanges={4} onOpenWorktree={onOpenWorktree} showOpenButton />)
+    render(<WorktreeWipRow wipStats={{ added: 1, modified: 0, deleted: 0 }} onOpenWorktree={onOpenWorktree} showOpenButton />)
     await user.click(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' }))
     expect(onOpenWorktree).toHaveBeenCalledOnce()
   })
@@ -131,7 +134,7 @@ describe('WorktreeWipRow', () => {
     const user = userEvent.setup()
     render(
       <div onClick={onRowClick}>
-        <WorktreeWipRow totalChanges={4} onOpenWorktree={onOpenWorktree} showOpenButton />
+        <WorktreeWipRow wipStats={{ added: 1, modified: 0, deleted: 0 }} onOpenWorktree={onOpenWorktree} showOpenButton />
       </div>
     )
     await user.click(screen.getByRole('button', { name: 'gitTree.wip.openWorktree' }))
@@ -146,5 +149,55 @@ describe('ConflictRowMessage', () => {
     expect(
       screen.getByText('gitTree.contextMenu.conflictBannerMessage:{"count":2,"branch":"feature-x"}')
     ).toBeInTheDocument()
+  })
+})
+
+describe('WipRefTag (via WipCommitInput / WorktreeWipRow)', () => {
+  const noStats = { added: 0, modified: 0, deleted: 0 }
+
+  it('renders no tag when no ref info is provided', () => {
+    const { container } = render(<WipCommitInput wipStats={noStats} />)
+    expect(container.querySelector('[title]')).toBeNull()
+  })
+
+  it('renders no tag for an empty ref name', () => {
+    const { container } = render(
+      <WipCommitInput wipStats={noStats} refInfo={{ name: '', isWorktree: false }} />
+    )
+    expect(container.querySelector('[title]')).toBeNull()
+  })
+
+  it('shows a branch icon and name for a plain branch ref (primary WIP)', () => {
+    const { container } = render(
+      <WipCommitInput wipStats={noStats} refInfo={{ name: 'feat/xyz', isWorktree: false }} />
+    )
+    expect(screen.getByText('feat/xyz')).toBeInTheDocument()
+    expect(container.querySelector('.lucide-git-branch')).toBeTruthy()
+    expect(container.querySelector('.lucide-folder-git2')).toBeNull()
+  })
+
+  it('shows the worktree icon (over the branch icon) for a worktree ref', () => {
+    const { container } = render(
+      <WorktreeWipRow wipStats={noStats} refInfo={{ name: 'feature-x', isWorktree: true }} />
+    )
+    expect(screen.getByText('feature-x')).toBeInTheDocument()
+    expect(container.querySelector('.lucide-folder-git2')).toBeTruthy()
+    expect(container.querySelector('.lucide-git-branch')).toBeNull()
+  })
+
+  it('crops a name longer than 31 chars and keeps the full name in the title', () => {
+    const long = 'feature/really-long-branch-name-that-overflows'
+    render(<WipCommitInput wipStats={noStats} refInfo={{ name: long, isWorktree: false }} />)
+    const cropped = `${long.slice(0, 31)}…`
+    const el = screen.getByText(cropped)
+    expect(el).toBeInTheDocument()
+    expect(el.closest('[title]')).toHaveAttribute('title', long)
+  })
+
+  it('does not crop a name of exactly 31 chars', () => {
+    const name = 'a'.repeat(31)
+    render(<WipCommitInput wipStats={noStats} refInfo={{ name, isWorktree: false }} />)
+    expect(screen.getByText(name)).toBeInTheDocument()
+    expect(screen.queryByText(`${name}…`)).toBeNull()
   })
 })
