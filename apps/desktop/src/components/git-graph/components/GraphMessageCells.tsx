@@ -1,8 +1,10 @@
 import { FolderGit2, GitBranch, AlertTriangle, GitMerge } from 'lucide-react'
+import type { WorktreeAgentActivity } from '@git-manager/git-types'
 import { useTranslation } from '@git-manager/i18n'
 import { useRepoDataStore } from '../../../stores/repoData.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
-import { Tag } from '@git-manager/ui'
+import { Tag, cn } from '@git-manager/ui'
+import { AgentLogo, agentLabel } from './AgentLogo'
 
 interface WipStats {
   added: number
@@ -38,17 +40,39 @@ function WipRefTag({ refInfo }: { refInfo: WipRef }) {
   )
 }
 
+/** Small tag reporting a worktree's AI-agent progress: the agent glyph plus a localized
+ * working/idle label. `working` rides the `info` tone and pulses (live output); `idle` is a quiet
+ * neutral (a session is open but waiting). Rendered next to the "// WIP" ref tag. */
+function AgentStatusTag({ activity }: { activity: WorktreeAgentActivity }) {
+  const { t } = useTranslation('git')
+  const working = activity.state === 'working'
+  const stateLabel = t(working ? 'gitTree.agent.working' : 'gitTree.agent.idle')
+  return (
+    <Tag
+      tone={working ? 'info' : 'neutral'}
+      className={cn('min-w-0 gap-1 px-1 py-0.5 text-[9px]', working && 'animate-pulse')}
+      title={`${agentLabel(activity.agent)} · ${stateLabel}`}
+    >
+      <AgentLogo agent={activity.agent} size={10} />
+      <span className="truncate">{stateLabel}</span>
+    </Tag>
+  )
+}
+
 /** Message-column content for the primary (own-repo) "// WIP" row: an editable commit message
  * input bound to the per-repo WIP draft, committable on Enter. */
 export function WipCommitInput({
   wipStats,
   refInfo,
   onCommit,
+  agentActivity,
 }: {
   wipStats: WipStats
   /** Branch (or worktree) the active repo's WIP is on — shown as a tag. */
   refInfo?: WipRef
   onCommit?: (message: string) => void
+  /** AI agent working in this worktree, if any — shown as a working/idle status tag. */
+  agentActivity?: WorktreeAgentActivity
 }) {
   const activeRepo = useRepoUIStore((s) => s.activeRepo)
   const wipMessages = useRepoDataStore((s) => s.wipMessages)
@@ -74,6 +98,7 @@ export function WipCommitInput({
 
   return (
     <div className="flex w-full min-w-0 items-center gap-2 overflow-hidden pr-4">
+      {agentActivity && <AgentStatusTag activity={agentActivity} />}
       {/* Only the input itself blocks the row's onSelect — typing/placing the cursor shouldn't
           fight with row selection. Clicking anywhere else in this cell (e.g. the badge) still
           bubbles up and selects the 'WIP' row, which is what actually shows the changed files
@@ -128,16 +153,20 @@ export function WorktreeWipRow({
   refInfo,
   onOpenWorktree,
   showOpenButton,
+  agentActivity,
 }: {
   wipStats: WipStats
   /** Worktree (branch) this WIP row is anchored to — shown as a tag with the worktree icon. */
   refInfo?: WipRef
   onOpenWorktree?: () => void
   showOpenButton?: boolean
+  /** AI agent working in this worktree, if any — shown as a working/idle status tag. */
+  agentActivity?: WorktreeAgentActivity
 }) {
   const { t } = useTranslation('git')
   return (
     <div className="flex w-full min-w-0 items-center gap-2 overflow-hidden pr-4">
+      {agentActivity && <AgentStatusTag activity={agentActivity} />}
       <span className="shrink-0 text-[11px] text-muted-foreground/70">// WIP</span>
       {refInfo && <WipRefTag refInfo={refInfo} />}
       <div className="flex shrink-0 select-none items-center gap-1 text-[9px] font-bold">

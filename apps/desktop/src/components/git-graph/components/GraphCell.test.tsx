@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import type { GitGraphNode } from '@git-manager/git-types'
+import type { GitGraphNode, WorktreeAgentActivity } from '@git-manager/git-types'
 import { GraphCell, isWipRow } from './GraphCell'
 import { getGraphColumnLayout, getMarkerPlacement } from '../graphColumnSizing'
 import { useSettingsStore } from '../../../stores/settings.store'
@@ -38,7 +38,12 @@ function node(overrides: Partial<GitGraphNode> = {}): GitGraphNode {
   }
 }
 
-function renderCell(n: GitGraphNode, graphWidth: number, maxColumn: number) {
+function renderCell(
+  n: GitGraphNode,
+  graphWidth: number,
+  maxColumn: number,
+  agentActivity?: WorktreeAgentActivity
+) {
   const layout = getGraphColumnLayout(graphWidth, maxColumn, AVATAR)
   const marker = getMarkerPlacement(n.column, layout, AVATAR)
   const utils = render(
@@ -49,6 +54,7 @@ function renderCell(n: GitGraphNode, graphWidth: number, maxColumn: number) {
       layout={layout}
       marker={marker}
       avatarSize={AVATAR}
+      agentActivity={agentActivity}
     />
   )
   return { ...utils, layout, marker }
@@ -89,6 +95,44 @@ describe('GraphCell — full mode', () => {
     expect(lastGraphSvgProps.current).toMatchObject({ isWip: true })
     expect(container.querySelector('.border-dashed')).toBeTruthy()
     expect(container.querySelector('.lucide-triangle-alert')).not.toBeInTheDocument()
+  })
+
+  it('renders the agent glyph and recolours the ring when an agent is working on a WIP row', () => {
+    const activity: WorktreeAgentActivity = {
+      path: '/repo-worktree',
+      agent: 'claude',
+      state: 'working',
+      lastActivityMs: 1_700_000_000_000,
+    }
+    const { container } = renderCell(
+      node({ commit: { ...node().commit, oid: 'WIP:/repo-worktree' } }),
+      200,
+      3,
+      activity
+    )
+    const ring = container.querySelector('.border-dashed') as HTMLElement
+    // Claude burst glyph (12 rays) sits inside the dashed ring, tinted with the agent accent.
+    expect(ring.querySelectorAll('line')).toHaveLength(12)
+    expect(ring.style.borderColor).toBe('rgb(217, 119, 87)') // #D97757
+    // "working" pulses the ring.
+    expect(ring.className).toContain('animate-pulse')
+  })
+
+  it('does not render the agent glyph on the CONFLICT ring', () => {
+    const activity: WorktreeAgentActivity = {
+      path: '/repo-worktree',
+      agent: 'claude',
+      state: 'working',
+      lastActivityMs: 1_700_000_000_000,
+    }
+    const { container } = renderCell(
+      node({ commit: { ...node().commit, oid: 'CONFLICT' } }),
+      200,
+      3,
+      activity
+    )
+    expect(container.querySelector('.lucide-triangle-alert')).toBeTruthy()
+    expect(container.querySelector('.border-dashed svg line')).toBeNull()
   })
 
   it('shows the warning triangle inside the CONFLICT ring', () => {

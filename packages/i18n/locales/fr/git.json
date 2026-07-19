@@ -92,6 +92,8 @@
   "gitTree.contextMenu.rebaseAbort": "Annuler",
   "gitTree.contextMenu.conflictBannerMessage": "{{count}} conflits de fichiers ont été trouvés en tentant de fusionner dans {{branch}}",
   "gitTree.wip.openWorktree": "Ouvrir le worktree",
+  "gitTree.agent.working": "en cours",
+  "gitTree.agent.idle": "en pause",
   "gitTree.fixupDialog.targetCommit": "Commit cible",
   "gitTree.fixupDialog.messageLabel": "Message de commit",
   "gitTree.fixupDialog.currentVersion": "Version actuelle",

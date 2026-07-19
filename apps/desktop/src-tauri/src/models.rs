@@ -162,6 +162,26 @@ pub struct WorktreeAddResult {
     pub skipped: Vec<String>,
 }
 
+// ─── Agent activity ─────────────────────────────────────────────────────────────
+
+/// Live signal that an AI coding agent (Claude Code today) is running inside a worktree, derived
+/// from the agent's on-disk session logs. See `services/agent_session.rs`.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct WorktreeAgentActivity {
+    /// Absolute path of the worktree the agent is working in.
+    pub path: String,
+    /// Which agent is active — `"claude"` today (the only detector implemented). A plain string so
+    /// more agents can be added without a breaking wire change.
+    pub agent: String,
+    /// `"working"` when the session log was touched within the freshness window (the agent is
+    /// actively producing output), or `"idle"` when a session exists but is quiet (likely awaiting
+    /// input).
+    pub state: String,
+    /// Epoch-millis mtime of the most recently touched session log for this worktree.
+    pub last_activity_ms: i64,
+}
+
 // ─── Rebase ───────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -1,3 +1,4 @@
+pub mod agent_session;
 pub mod ai_activity;
 pub mod ai_anthropic;
 pub mod ai_context;

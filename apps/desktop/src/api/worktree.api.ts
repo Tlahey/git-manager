@@ -5,6 +5,7 @@ import {
   removeWorktree,
   pruneWorktrees,
   goneUpstreamBranches,
+  getWorktreeAgentActivity,
 } from '../lib/tauri'
 
 export async function apiListWorktrees(path: string) {
@@ -34,4 +35,8 @@ export async function apiPruneWorktrees(path: string) {
 
 export async function apiGoneUpstreamBranches(path: string) {
   return goneUpstreamBranches(path)
+}
+
+export async function apiGetWorktreeAgentActivity(paths: string[]) {
+  return getWorktreeAgentActivity(paths)
 }

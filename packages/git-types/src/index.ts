@@ -238,6 +238,29 @@ export interface WorktreeAddResult {
   skipped: string[]
 }
 
+/** Which AI coding agent is detected working in a worktree. A string union kept open-ended on the
+ * wire (Rust sends a plain string) so new agents don't force a breaking change; `'unknown'` is the
+ * frontend's fallback bucket for an agent id it doesn't have a logo for yet. */
+export type WorktreeAgentKind = 'claude' | 'gpt' | 'gemini' | 'grok' | 'copilot' | 'unknown'
+
+/** How far along the detected agent is on its current turn. `'working'` = actively producing
+ * output; `'idle'` = a session is open but quiet (likely awaiting input). */
+export type WorktreeAgentState = 'working' | 'idle'
+
+/** Live signal that an AI coding agent is running inside a worktree, derived from the agent's
+ * on-disk session logs (see `services/agent_session.rs`). Only worktrees with a recent session are
+ * returned — a quiet/absent worktree has no entry. */
+export interface WorktreeAgentActivity {
+  /** Absolute path of the worktree the agent is working in. */
+  path: string
+  /** Agent id — `'claude'` today. Widen via {@link WorktreeAgentKind} as detectors are added. */
+  agent: string
+  /** `'working'` or `'idle'` — see {@link WorktreeAgentState}. */
+  state: string
+  /** Epoch-millis mtime of the most recently touched session log for this worktree. */
+  lastActivityMs: number
+}
+
 // ─── Rebase ───────────────────────────────────────────────────────────────────
 
 export type RebaseAction = 'pick' | 'reword' | 'edit' | 'squash' | 'fixup' | 'drop'
