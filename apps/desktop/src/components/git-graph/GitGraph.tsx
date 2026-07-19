@@ -191,13 +191,18 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   }, [repoPath, clearAuthorFilter])
 
   const showStashesInGraph = useSettingsStore((s) => s.settings.git.showStashesInGraph ?? true)
+  // How many commits to load on first render. Clamped to the documented 500 floor so a stale/edited
+  // persisted value can't starve the graph.
+  const initialGraphCommits = useSettingsStore((s) =>
+    Math.max(500, s.settings.git.initialGraphCommits ?? 2000)
+  )
 
   const {
     data: nodes = [],
     isLoading,
     isError,
   } = useGitLog(repoPath, {
-    limit: 500,
+    limit: initialGraphCommits,
     branch: branch || undefined,
     showStashes: showStashesInGraph,
     hiddenStashes,

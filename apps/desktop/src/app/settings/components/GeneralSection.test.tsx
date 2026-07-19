@@ -49,6 +49,74 @@ describe('GeneralSection — git identity', () => {
   })
 })
 
+describe('GeneralSection — fetch & default branch', () => {
+  it('defaults to auto-prune on, interval 0, and default branch "main"', () => {
+    render(<GeneralSection />)
+    expect(screen.getByTestId('settings-auto-prune')).toBeChecked()
+    expect(screen.getByTestId('settings-auto-fetch-interval')).toHaveValue(0)
+    expect(screen.getByTestId('settings-default-branch-name')).toHaveValue('main')
+  })
+
+  it('toggles auto-prune off', async () => {
+    const user = userEvent.setup()
+    render(<GeneralSection />)
+    await user.click(screen.getByTestId('settings-auto-prune'))
+    expect(useSettingsStore.getState().settings.git.autoPrune).toBe(false)
+  })
+
+  it('clamps the auto-fetch interval to the 0–60 range', async () => {
+    const user = userEvent.setup()
+    render(<GeneralSection />)
+    const input = screen.getByTestId('settings-auto-fetch-interval')
+    await user.clear(input)
+    await user.type(input, '90')
+    expect(useSettingsStore.getState().settings.git.autoFetchIntervalMinutes).toBe(60)
+  })
+
+  it('updates the default branch name', async () => {
+    const user = userEvent.setup()
+    render(<GeneralSection />)
+    const input = screen.getByTestId('settings-default-branch-name')
+    await user.clear(input)
+    await user.type(input, 'trunk')
+    expect(useSettingsStore.getState().settings.git.defaultBranchName).toBe('trunk')
+  })
+})
+
+describe('GeneralSection — graph', () => {
+  it('defaults to 2000 initial commits with lazy loading enabled', () => {
+    render(<GeneralSection />)
+    expect(screen.getByTestId('settings-initial-graph-commits')).toHaveValue(2000)
+    expect(screen.getByTestId('settings-lazy-load-graph-commits')).toBeChecked()
+  })
+
+  it('updates the initial graph commit count', async () => {
+    const user = userEvent.setup()
+    render(<GeneralSection />)
+    const input = screen.getByTestId('settings-initial-graph-commits')
+    await user.clear(input)
+    await user.type(input, '5000')
+    expect(useSettingsStore.getState().settings.git.initialGraphCommits).toBe(5000)
+  })
+
+  it('clamps a below-minimum value up to 500 on blur', async () => {
+    const user = userEvent.setup()
+    render(<GeneralSection />)
+    const input = screen.getByTestId('settings-initial-graph-commits')
+    await user.clear(input)
+    await user.type(input, '100')
+    input.blur()
+    expect(useSettingsStore.getState().settings.git.initialGraphCommits).toBe(500)
+  })
+
+  it('toggles lazy loading off', async () => {
+    const user = userEvent.setup()
+    render(<GeneralSection />)
+    await user.click(screen.getByTestId('settings-lazy-load-graph-commits'))
+    expect(useSettingsStore.getState().settings.git.lazyLoadGraphCommits).toBe(false)
+  })
+})
+
 describe('GeneralSection — scan settings', () => {
   it('adds a scan exclusion via the tag input', async () => {
     const user = userEvent.setup()

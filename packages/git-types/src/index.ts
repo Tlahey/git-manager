@@ -473,6 +473,13 @@ export interface GitSettings {
   defaultAuthorEmail: string
   protectedBranches: string[]
   showStashesInGraph?: boolean
+  /** How many commits to load into the Graph on first render. Minimum 500; default 2000. When
+   * `lazyLoadGraphCommits` is enabled, more are fetched as the user reaches the earliest loaded
+   * commit. */
+  initialGraphCommits?: number
+  /** Whether the Graph fetches additional commits once the user scrolls to the earliest loaded
+   * commit. Enabled by default. */
+  lazyLoadGraphCommits?: boolean
   /** Absolute path to the user-picked editor .app (or executable). Empty = not configured. */
   externalEditorCommand: string
   /** User-authored guidance on how commit messages should be written (free text). Fed to the AI
@@ -482,6 +489,13 @@ export interface GitSettings {
   /** Optional regular expression the generated commit subject must match. Injected into the prompt
    * and used by the lightweight validator. Empty = no pattern constraint. */
   commitPattern?: string
+  /** Prune deleted remote-tracking branches on fetch (`git fetch --prune`). Enabled by default. */
+  autoPrune?: boolean
+  /** Interval, in minutes, at which the active repo is fetched automatically. 0 disables it. Range
+   * 0–60; default 0. */
+  autoFetchIntervalMinutes?: number
+  /** Branch name used when initializing a new repository. Defaults to `main`. */
+  defaultBranchName?: string
 }
 
 export interface AppearanceSettings {

@@ -74,50 +74,52 @@ describe('SettingsPage — navigation', () => {
       'ui_customization',
       'rewards',
     ]) {
-      await user.click(screen.getByText(`settings.sections.${key}`))
+      await user.click(screen.getByTestId(`settings-tab-${key}`))
       expect(screen.getByTestId(`section-${key}`)).toBeInTheDocument()
     }
   })
 })
 
-describe('SettingsPage — scope tabs', () => {
-  it('defaults to the General scope (global sections nav visible)', () => {
+describe('SettingsPage — grouped side panel', () => {
+  it('defaults to the first Global section, showing both nav groups', () => {
     render(<SettingsPage onClose={vi.fn()} />)
+    expect(screen.getByTestId('settings-group-global')).toBeInTheDocument()
+    expect(screen.getByTestId('settings-group-repository')).toBeInTheDocument()
     expect(screen.getByTestId('settings-tab-general')).toBeInTheDocument()
     expect(screen.queryByTestId('section-repository')).not.toBeInTheDocument()
   })
 
-  it('labels the Local scope tab with the project name (last path segment)', () => {
+  it('labels the Repository group with the project name (last path segment)', () => {
     useRepoUIStore.setState({ activeRepo: '/home/me/gm-sandbox' })
     render(<SettingsPage onClose={vi.fn()} />)
-    expect(screen.getByTestId('settings-scope-local')).toHaveTextContent('gm-sandbox')
+    expect(screen.getByTestId('settings-group-repository')).toHaveTextContent('gm-sandbox')
   })
 
-  it('hides the Local scope entirely when no workspace is open', () => {
+  it('hides the Repository group entirely when no workspace is open', () => {
     useRepoUIStore.setState({ activeRepo: null })
     render(<SettingsPage onClose={vi.fn()} />)
-    expect(screen.queryByTestId('settings-scope-local')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('settings-scope-general')).not.toBeInTheDocument()
-    // Global settings still render (no scope bar needed).
+    expect(screen.queryByTestId('settings-group-repository')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('settings-local-tab-general')).not.toBeInTheDocument()
+    // Global settings still render, and the Global group header is still shown.
+    expect(screen.getByTestId('settings-group-global')).toBeInTheDocument()
     expect(screen.getByTestId('section-general')).toBeInTheDocument()
   })
 
-  it('switches to the Local scope, showing its own side menu + repository section, hiding the global nav', async () => {
+  it('switches to a Repository page from the same side panel, keeping the global nav visible', async () => {
     const user = userEvent.setup()
     render(<SettingsPage onClose={vi.fn()} />)
-    await user.click(screen.getByTestId('settings-scope-local'))
+    await user.click(screen.getByTestId('settings-local-tab-general'))
     expect(screen.getByTestId('section-repository')).toBeInTheDocument()
-    // Local side menu present; global nav gone.
-    expect(screen.getByTestId('settings-local-tab-general')).toBeInTheDocument()
+    // Both groups' nav items remain in the single side panel.
     expect(screen.getByTestId('settings-local-tab-appearance')).toBeInTheDocument()
-    expect(screen.queryByTestId('settings-tab-ssh')).not.toBeInTheDocument()
+    expect(screen.getByTestId('settings-tab-ssh')).toBeInTheDocument()
   })
 
-  it('returns to the General scope', async () => {
+  it('returns to a Global section', async () => {
     const user = userEvent.setup()
     render(<SettingsPage onClose={vi.fn()} />)
-    await user.click(screen.getByTestId('settings-scope-local'))
-    await user.click(screen.getByTestId('settings-scope-general'))
+    await user.click(screen.getByTestId('settings-local-tab-general'))
+    await user.click(screen.getByTestId('settings-tab-general'))
     expect(screen.getByTestId('section-general')).toBeInTheDocument()
     expect(screen.queryByTestId('section-repository')).not.toBeInTheDocument()
   })
@@ -137,10 +139,8 @@ describe('SettingsPage — AI-commit section gating', () => {
     expect(screen.queryByTestId('settings-tab-ai_commit')).not.toBeInTheDocument()
   })
 
-  it('also exposes an AI-commit page in the Local scope when AI is enabled', async () => {
-    const user = userEvent.setup()
+  it('also exposes an AI-commit page in the Repository group when AI is enabled', () => {
     render(<SettingsPage onClose={vi.fn()} />)
-    await user.click(screen.getByTestId('settings-scope-local'))
     expect(screen.getByTestId('settings-local-tab-ai_commit')).toBeInTheDocument()
   })
 })
@@ -151,10 +151,10 @@ describe('SettingsPage — per-page reset', () => {
     expect(screen.getByTestId('reset-to-default')).toBeInTheDocument()
   })
 
-  it('shows a reset button on the Local pages too', async () => {
+  it('shows a reset button on the Repository pages too', async () => {
     const user = userEvent.setup()
     render(<SettingsPage onClose={vi.fn()} />)
-    await user.click(screen.getByTestId('settings-scope-local'))
+    await user.click(screen.getByTestId('settings-local-tab-general'))
     expect(screen.getByTestId('reset-to-default')).toBeInTheDocument()
   })
 

@@ -1,7 +1,25 @@
-import { useState } from 'react'
+import { useState, type ComponentType } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, ScrollArea } from '@git-manager/ui'
-import { ArrowLeft, Heart } from 'lucide-react'
+import {
+  ArrowLeft,
+  Bell,
+  Bug,
+  FolderTree,
+  GitCommitHorizontal,
+  Heart,
+  KeyRound,
+  Palette,
+  Play,
+  Puzzle,
+  ScrollText,
+  Settings2,
+  Shield,
+  Sparkles,
+  Trophy,
+  Wrench,
+  type LucideIcon,
+} from 'lucide-react'
 import { GeneralSection } from './components/GeneralSection'
 import { RepositorySection } from './components/RepositorySection'
 import { AiCommitSection } from './components/AiCommitSection'
@@ -70,6 +88,39 @@ function withReset(node: React.ReactNode, onReset: () => void) {
   )
 }
 
+/** One side-panel nav entry (icon + label), shared by the Global, Repository, and pinned Support
+ * groups so they stay visually identical. */
+function NavItem({
+  testId,
+  icon: Icon,
+  label,
+  active,
+  onClick,
+  iconClassName,
+}: {
+  testId: string
+  icon?: ComponentType<{ className?: string }>
+  label: string
+  active: boolean
+  onClick: () => void
+  iconClassName?: string
+}) {
+  return (
+    <button
+      data-testid={testId}
+      onClick={onClick}
+      className={`flex w-full cursor-pointer items-center gap-2 rounded py-2 pl-5 pr-3 text-left text-xs transition-colors ${
+        active
+          ? 'bg-accent font-medium text-foreground'
+          : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+      }`}
+    >
+      {Icon && <Icon className={`h-3.5 w-3.5 shrink-0 ${iconClassName ?? ''}`} />}
+      {label}
+    </button>
+  )
+}
+
 export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
   const { t } = useTranslation('settings')
   const [scope, setScope] = useState<Scope>('general')
@@ -105,11 +156,21 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
   const SETTINGS_TABS: TabDef<Section>[] = defineTabs([
     {
       id: 'general',
+      icon: Settings2,
       // Commit style lives on its own AI-commit page, so General resets only its own fields.
       render: () =>
         scrolled(
           withReset(<GeneralSection />, () => {
-            resetSettingsFields('git', ['defaultAuthorName', 'defaultAuthorEmail', 'protectedBranches'])
+            resetSettingsFields('git', [
+              'defaultAuthorName',
+              'defaultAuthorEmail',
+              'protectedBranches',
+              'initialGraphCommits',
+              'lazyLoadGraphCommits',
+              'autoPrune',
+              'autoFetchIntervalMinutes',
+              'defaultBranchName',
+            ])
             resetSettingsGroups(['advanced'])
           })
         ),
@@ -117,11 +178,13 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
     },
     {
       id: 'ssh',
+      icon: KeyRound,
       label: t('settings.sections.ssh'),
       render: () => scrolled(withReset(<SshSection />, () => resetSettingsGroups(['ssh']))),
     },
     {
       id: 'integrations',
+      icon: Puzzle,
       label: t('settings.sections.integrations'),
       render: () => (
         <div className="h-full flex-1 overflow-hidden">
@@ -131,6 +194,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
     },
     {
       id: 'local_ai',
+      icon: Sparkles,
       label: t('settings.sections.local_ai'),
       render: () => scrolled(withReset(<AiSection />, () => resetSettingsGroups(['ai']))),
     },
@@ -138,6 +202,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
       ? [
           {
             id: 'ai_commit' as const,
+            icon: GitCommitHorizontal,
             label: t('settings.sections.ai_commit'),
             render: () =>
               scrolled(
@@ -150,34 +215,40 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
       : []),
     {
       id: 'external_tools',
+      icon: Wrench,
       label: t('settings.sections.external_tools'),
       render: () =>
         scrolled(withReset(<ExternalToolsSection />, () => resetSettingsGroups(['externalTools']))),
     },
     {
       id: 'notifications',
+      icon: Bell,
       label: t('settings.sections.notifications'),
       render: () =>
         scrolled(withReset(<NotificationSection />, () => resetSettingsGroups(['notifications']))),
     },
     {
       id: 'ui_customization',
+      icon: Palette,
       label: t('settings.sections.ui_customization'),
       render: () =>
         scrolled(withReset(<AppearanceSection />, () => resetSettingsGroups(['appearance']))),
     },
     {
       id: 'rewards',
+      icon: Trophy,
       label: t('settings.sections.rewards') || 'Succès & Récompenses',
       render: () => scrolled(<RewardsSection />),
     },
     {
       id: 'debug',
+      icon: Bug,
       label: t('settings.sections.debug') || 'Debug',
       render: () => scrolled(<DebugSection />),
     },
     {
       id: 'changelog',
+      icon: ScrollText,
       label: t('settings.sections.changelog'),
       render: () => scrolled(<ChangelogSection />),
     },
@@ -189,22 +260,26 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
     },
   ])
 
-  const LOCAL_TABS: { id: LocalSection; label: string }[] = [
-    { id: 'general', label: t('settings.sections.general') },
-    { id: 'appearance', label: t('settings.sections.ui_customization') },
+  // Support is pinned to the bottom of the panel, so it's rendered apart from the scrolling group.
+  const supportTab = SETTINGS_TABS.find((tab) => tab.id === 'support')
+  const globalTabs = SETTINGS_TABS.filter((tab) => tab.id !== 'support')
+
+  const LOCAL_TABS: { id: LocalSection; label: string; icon: LucideIcon }[] = [
+    { id: 'general', label: t('settings.sections.general'), icon: Shield },
+    { id: 'appearance', label: t('settings.sections.ui_customization'), icon: Palette },
     ...(aiEnabled
-      ? [{ id: 'ai_commit' as const, label: t('settings.sections.ai_commit') }]
+      ? [{ id: 'ai_commit' as const, label: t('settings.sections.ai_commit'), icon: GitCommitHorizontal }]
       : []),
-    { id: 'worktree', label: t('settings.sections.worktree') },
-    { id: 'run', label: t('settings.sections.run') },
+    { id: 'worktree', label: t('settings.sections.worktree'), icon: FolderTree },
+    { id: 'run', label: t('settings.sections.run'), icon: Play },
   ]
 
-  // The Local scope only makes sense with a workspace open; without one, there's only the global
-  // scope (and no scope tab bar to choose from).
+  // The Repository group only makes sense with a workspace open; without one, the side panel shows
+  // only the Global group.
   const showLocalScope = !!activeRepo
   const effectiveScope: Scope = showLocalScope ? scope : 'general'
-  // The Local tab is labelled with the project name (last path segment) rather than a generic
-  // "Local", so it's clear which workspace's settings are being edited.
+  // The Repository group is labelled with the project name (last path segment) rather than a
+  // generic "Local", so it's clear which workspace's settings are being edited.
   const projectName = activeRepo?.split('/').filter(Boolean).pop() ?? ''
 
   return (
@@ -223,85 +298,90 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
         <h1 className="text-sm font-semibold">{t('settings.title')}</h1>
       </header>
 
-      {/* Top-level scope tabs — placed in the content (not the header) so they read as the primary
-          split the user chooses between: global settings vs. the current workspace. Only shown when
-          a workspace is open (otherwise there's nothing "local" to configure). */}
-      {showLocalScope && (
-        <div className="flex shrink-0 gap-1 border-b border-border px-4">
-          {(['general', 'local'] as const).map((s) => (
-            <button
-              key={s}
-              data-testid={`settings-scope-${s}`}
-              onClick={() => setScope(s)}
-              title={s === 'local' ? activeRepo ?? undefined : undefined}
-              className={`-mb-px max-w-[200px] cursor-pointer truncate border-b-2 px-4 py-2.5 text-sm transition-colors ${
-                scope === s
-                  ? 'border-primary font-medium text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+      {/* Body — a single side panel holds both the Global and the Repository configuration groups
+          (the top-level scope tab bar was removed in favour of this grouped nav). */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left nav / side panel — groups scroll, the Support entry is pinned to the bottom. */}
+        <nav className="chrome-surface flex w-44 shrink-0 flex-col border-r border-border bg-sidebar p-2">
+          <div className="flex-1 overflow-y-auto">
+            {/* Global configuration group */}
+            <p
+              data-testid="settings-group-global"
+              className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70"
             >
-              {s === 'local' ? projectName : t('settings.scope.general')}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Body */}
-      {effectiveScope === 'local' ? (
-        <div className="flex flex-1 overflow-hidden">
-          {/* Left nav (mirrors the global one, with only the repo-overridable pages) */}
-          <nav className="chrome-surface w-44 shrink-0 border-r border-border bg-sidebar p-2">
-            {LOCAL_TABS.map((tab) => (
-              <button
+              {t('settings.scope.global')}
+            </p>
+            {globalTabs.map((tab) => (
+              <NavItem
                 key={tab.id}
-                data-testid={`settings-local-tab-${tab.id}`}
-                onClick={() => setActiveLocal(tab.id)}
-                className={`w-full cursor-pointer rounded px-3 py-2 text-left text-xs transition-colors ${
-                  activeLocal === tab.id
-                    ? 'bg-accent font-medium text-foreground'
-                    : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-                }`}
-              >
-                {tab.label}
-              </button>
+                testId={`settings-tab-${tab.id}`}
+                icon={tab.icon}
+                label={tab.label}
+                active={effectiveScope === 'general' && activeSection === tab.id}
+                onClick={() => {
+                  setScope('general')
+                  setActiveSection(tab.id)
+                }}
+              />
             ))}
-          </nav>
 
-          {/* Content */}
-          {scrolled(
-            withReset(<RepositorySection category={activeLocal} />, () =>
-              resetLocalCategory(activeLocal)
-            )
-          )}
-        </div>
-      ) : (
-        <div className="flex flex-1 overflow-hidden">
-          {/* Left nav */}
-          <nav className="chrome-surface w-44 shrink-0 border-r border-border bg-sidebar p-2">
-            {SETTINGS_TABS.map((tab) => {
-              const Icon = tab.icon
-              return (
-                <button
-                  key={tab.id}
-                  data-testid={`settings-tab-${tab.id}`}
-                  onClick={() => setActiveSection(tab.id)}
-                  className={`flex w-full cursor-pointer items-center gap-1.5 rounded px-3 py-2 text-left text-xs transition-colors ${
-                    activeSection === tab.id
-                      ? 'bg-accent font-medium text-foreground'
-                      : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-                  }`}
+            {/* Repository configuration group — only when a workspace is open */}
+            {showLocalScope && (
+              <>
+                <p
+                  data-testid="settings-group-repository"
+                  title={activeRepo ?? undefined}
+                  className="mt-3 truncate px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70"
                 >
-                  {Icon && <Icon className="h-3.5 w-3.5 text-red-500" />}
-                  {tab.label}
-                </button>
-              )
-            })}
-          </nav>
+                  {t('settings.scope.repository')}
+                  {projectName && (
+                    <span className="ml-1 normal-case text-muted-foreground/50">· {projectName}</span>
+                  )}
+                </p>
+                {LOCAL_TABS.map((tab) => (
+                  <NavItem
+                    key={tab.id}
+                    testId={`settings-local-tab-${tab.id}`}
+                    icon={tab.icon}
+                    label={tab.label}
+                    active={effectiveScope === 'local' && activeLocal === tab.id}
+                    onClick={() => {
+                      setScope('local')
+                      setActiveLocal(tab.id)
+                    }}
+                  />
+                ))}
+              </>
+            )}
+          </div>
 
-          {/* Content */}
-          {renderActiveTab(SETTINGS_TABS, activeSection)}
-        </div>
-      )}
+          {/* Support — pinned to the bottom of the panel, visually separated from the groups. */}
+          {supportTab && (
+            <div className="mt-2 shrink-0 border-t border-border pt-2">
+              <NavItem
+                testId={`settings-tab-${supportTab.id}`}
+                icon={supportTab.icon}
+                iconClassName="text-red-500"
+                label={supportTab.label}
+                active={effectiveScope === 'general' && activeSection === supportTab.id}
+                onClick={() => {
+                  setScope('general')
+                  setActiveSection(supportTab.id)
+                }}
+              />
+            </div>
+          )}
+        </nav>
+
+        {/* Content */}
+        {effectiveScope === 'local'
+          ? scrolled(
+              withReset(<RepositorySection category={activeLocal} />, () =>
+                resetLocalCategory(activeLocal)
+              )
+            )
+          : renderActiveTab(SETTINGS_TABS, activeSection)}
+      </div>
     </div>
   )
 }
