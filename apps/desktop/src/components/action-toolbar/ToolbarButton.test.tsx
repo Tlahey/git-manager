@@ -43,4 +43,26 @@ describe('ToolbarButton', () => {
     render(<ToolbarButton icon={<svg />} label="Fetch" hideLabelOnNarrow={false} />)
     expect(screen.getByText('Fetch').className).not.toContain('hidden')
   })
+
+  it('renders a numbered badge when badge > 0', () => {
+    render(<ToolbarButton icon={<svg />} label="Push" badge={4} />)
+    expect(screen.getByTestId('toolbar-button-badge')).toHaveTextContent('4')
+  })
+
+  it('caps the badge at 99+', () => {
+    render(<ToolbarButton icon={<svg />} label="Push" badge={150} />)
+    expect(screen.getByTestId('toolbar-button-badge')).toHaveTextContent('99+')
+  })
+
+  it('renders no badge when badge is 0 or undefined', () => {
+    const { rerender } = render(<ToolbarButton icon={<svg />} label="Push" badge={0} />)
+    expect(screen.queryByTestId('toolbar-button-badge')).not.toBeInTheDocument()
+    rerender(<ToolbarButton icon={<svg />} label="Push" />)
+    expect(screen.queryByTestId('toolbar-button-badge')).not.toBeInTheDocument()
+  })
+
+  it('hides the badge while loading (spinner takes over)', () => {
+    render(<ToolbarButton icon={<svg />} label="Push" badge={4} loading />)
+    expect(screen.queryByTestId('toolbar-button-badge')).not.toBeInTheDocument()
+  })
 })

@@ -30,8 +30,10 @@ vi.mock('../api/repo.api', () => ({ apiOpenInEditor: vi.fn() }))
 
 const useGitStatusMock = vi.fn()
 const useGitStashesMock = vi.fn()
+const useBranchesMock = vi.fn()
 vi.mock('./useGitStatus', () => ({ useGitStatus: () => useGitStatusMock() }))
 vi.mock('./useGitStashes', () => ({ useGitStashes: () => useGitStashesMock() }))
+vi.mock('./useBranches', () => ({ useBranches: () => useBranchesMock() }))
 
 import {
   apiStashPush,
@@ -88,6 +90,7 @@ beforeEach(() => {
   useSettingsStore.setState({ settings: DEFAULT_SETTINGS })
   useGitStatusMock.mockReturnValue({ data: undefined })
   useGitStashesMock.mockReturnValue({ data: undefined })
+  useBranchesMock.mockReturnValue({ data: undefined })
 })
 
 afterEach(() => {
@@ -126,6 +129,24 @@ describe('useActionToolbar — derived state', () => {
   it('fromRef falls back to the branch head when not detached', () => {
     const { result } = renderHook(() => useActionToolbar(t))
     expect(result.current.fromRef).toBe('main')
+  })
+
+  it('aheadCount/behindCount default to 0 without branch data', () => {
+    const { result } = renderHook(() => useActionToolbar(t))
+    expect(result.current.aheadCount).toBe(0)
+    expect(result.current.behindCount).toBe(0)
+  })
+
+  it('aheadCount/behindCount come from the current (HEAD, non-remote) branch', () => {
+    useBranchesMock.mockReturnValue({
+      data: [
+        { shortName: 'main', isHead: true, isRemote: false, aheadCount: 3, behindCount: 2 },
+        { shortName: 'origin/main', isHead: false, isRemote: true, aheadCount: 9, behindCount: 9 },
+      ],
+    })
+    const { result } = renderHook(() => useActionToolbar(t))
+    expect(result.current.aheadCount).toBe(3)
+    expect(result.current.behindCount).toBe(2)
   })
 
   it('exposes canUndo/canRedo/undoLabel/redoLabel scoped to the active repo', () => {

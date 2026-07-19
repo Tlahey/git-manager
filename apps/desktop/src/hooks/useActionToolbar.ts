@@ -18,6 +18,7 @@ import { apiOpenTerminal } from '../api/shell.api'
 import { apiOpenInEditor } from '../api/repo.api'
 import { useGitStatus } from './useGitStatus'
 import { useGitStashes } from './useGitStashes'
+import { useBranches } from './useBranches'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
@@ -51,6 +52,14 @@ export function useActionToolbar(t: TranslateFn) {
 
   const { data: gitStatus } = useGitStatus(activeRepo || '')
   const { data: stashes } = useGitStashes(activeRepo)
+  const { data: branches } = useBranches(activeRepo || '')
+
+  // Commits locaux non poussés (ahead) / commits distants non récupérés (behind) de la branche
+  // courante — alimente les pastilles des boutons Push/Pull. Après un fixup/rebase/commit local,
+  // `aheadCount` reflète directement ce qu'il reste à pousser.
+  const headBranch = branches?.find((b) => b.isHead && !b.isRemote)
+  const aheadCount = headBranch?.aheadCount ?? 0
+  const behindCount = headBranch?.behindCount ?? 0
 
   const hasChanges = gitStatus
     ? gitStatus.staged.length > 0 || gitStatus.unstaged.length > 0 || gitStatus.untracked.length > 0
@@ -196,6 +205,8 @@ export function useActionToolbar(t: TranslateFn) {
     loading,
     hasChanges,
     hasStashes,
+    aheadCount,
+    behindCount,
     canUndo,
     canRedo,
     undoLabel,

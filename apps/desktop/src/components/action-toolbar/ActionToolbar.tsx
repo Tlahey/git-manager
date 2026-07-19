@@ -35,6 +35,8 @@ export function ActionToolbar() {
     loading,
     hasChanges,
     hasStashes,
+    aheadCount,
+    behindCount,
     canUndo,
     canRedo,
     undoLabel,
@@ -104,15 +106,27 @@ export function ActionToolbar() {
         <ToolbarButton
           icon={<GitPullRequest className="h-4 w-4 text-blue-400" />}
           label={t('remote.pull')}
+          title={
+            behindCount > 0
+              ? t('remote.commitsToPull', { count: behindCount })
+              : t('remote.pull')
+          }
           loading={loading.pull}
           disabled={disabled}
+          badge={behindCount}
           onClick={handlePull}
         />
         <ToolbarButton
           icon={<ArrowUpFromLine className="h-4 w-4 text-green-400" />}
           label={t('remote.push')}
+          title={
+            aheadCount > 0
+              ? t('remote.commitsToPush', { count: aheadCount })
+              : t('remote.push')
+          }
           loading={loading.push}
           disabled={disabled}
+          badge={aheadCount}
           onClick={handlePush}
         />
 
