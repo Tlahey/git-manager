@@ -1,6 +1,7 @@
 import { memo } from 'react'
-import type { GitGraphNode } from '@git-manager/git-types'
+import type { GitGraphNode, GitRef } from '@git-manager/git-types'
 import { cn } from '@git-manager/ui'
+import { RefLabel } from './RefLabel'
 import { RefLabelGroup } from './RefLabelGroup'
 import type { ColumnKey, ResolvedColumn } from './columns.config'
 import { getGraphColumnLayout, getMarkerPlacement } from './graphColumnSizing'
@@ -48,6 +49,9 @@ interface GraphRowProps {
   onOpenWorktree?: (path: string) => void
   /** Branch (or worktree) the active repo's primary "// WIP" row is on — shown as a tag. */
   wipRef?: WipRef
+  /** Branch owning this row's colored lane. Shown faintly, on hover only, in the refs column of a
+   * commit that carries no ref badge of its own — hints which branch the commit sits on. */
+  laneRef?: GitRef
   /** Plus grande colonne (lane) utilisée par le graphe entier — détermine le mode d'affichage
    * de la colonne graph (full / overflow / compact) partagé par toutes les lignes. */
   graphMaxColumn?: number
@@ -67,6 +71,7 @@ function CellContent({
   worktreeWipStatuses,
   onOpenWorktree,
   isActive,
+  laneRef,
 }: {
   col: Exclude<ColumnKey, 'graph'>
   node: GitGraphNode
@@ -81,6 +86,7 @@ function CellContent({
   worktreeWipStatuses?: WorktreeWipStatus[]
   onOpenWorktree?: (path: string) => void
   isActive?: boolean
+  laneRef?: GitRef
 }) {
   const { commit } = node
   const activeRepo = useRepoUIStore((s) => s.activeRepo)
@@ -92,7 +98,20 @@ function CellContent({
     case 'refs': {
       if (isStashCommit) return null
       const filteredRefs = node.refs
-      if (filteredRefs.length === 0) return null
+      if (filteredRefs.length === 0) {
+        // No ref badge of its own: on hover, faintly hint the branch owning this commit's lane.
+        // Never on the synthetic WIP / conflict rows.
+        const isRealCommit = !isWipRow(commit.oid) && commit.oid !== 'CONFLICT'
+        if (!isRealCommit || !laneRef) return null
+        return (
+          <div
+            className="pointer-events-none flex h-full w-full min-w-0 items-center overflow-hidden opacity-0 transition-opacity duration-150 group-hover:opacity-40"
+            data-testid="lane-branch-hint"
+          >
+            <RefLabel gitRef={laneRef} color={node.color} />
+          </div>
+        )
+      }
       const hasOriginMain = filteredRefs.some(
         (r) => r.shortName.endsWith('/main') || r.shortName.endsWith('/master')
       )
@@ -242,6 +261,7 @@ export const GraphRow = memo(function GraphRow({
   worktreeWipStatuses,
   onOpenWorktree,
   wipRef,
+  laneRef,
   graphMaxColumn = 0,
 }: GraphRowProps) {
   const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
@@ -357,6 +377,7 @@ export const GraphRow = memo(function GraphRow({
               worktreeWipStatuses={worktreeWipStatuses}
               onOpenWorktree={onOpenWorktree}
               isActive={isActiveRow}
+              laneRef={laneRef}
             />
           )}
         </div>
