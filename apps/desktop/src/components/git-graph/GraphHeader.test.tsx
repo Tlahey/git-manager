@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import type { ResolvedColumn } from './columns'
+import type { ResolvedColumn } from './columns.config'
 
 vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 
@@ -55,59 +55,76 @@ describe('GraphHeader — rendering', () => {
     expect(screen.getByText('gitTree.columns.graph')).toBeInTheDocument()
   })
 
-  it('does not render a left resize handle for the first column', () => {
+  it('renders no resize handle for a single column (no boundary to drag)', () => {
     const columns = [col({ key: 'refs' })]
     const { container } = render(<GraphHeader columns={columns} />)
-    // only one handle group should exist: the right-side one (col is not flex)
+    expect(container.querySelectorAll('.cursor-col-resize')).toHaveLength(0)
+  })
+
+  it('renders one handle per adjacent-column boundary', () => {
+    const columns = [
+      col({ key: 'refs' }),
+      col({ key: 'graph', labelKey: 'gitTree.columns.graph' }),
+      col({ key: 'message', labelKey: 'gitTree.columns.message', flex: true }),
+      col({ key: 'author', labelKey: 'gitTree.columns.author' }),
+    ]
+    const { container } = render(<GraphHeader columns={columns} />)
+    // 4 columns → 3 boundaries → 3 handles (including one on the flex column).
+    expect(container.querySelectorAll('.cursor-col-resize')).toHaveLength(3)
+  })
+
+  it('renders a handle on the flex column when a column follows it', () => {
+    const columns = [col({ key: 'message', flex: true }), col({ key: 'author', flex: false })]
+    const { container } = render(<GraphHeader columns={columns} />)
+    // one boundary (message|author) → one handle, rendered on the flex column's right edge
     expect(container.querySelectorAll('.cursor-col-resize')).toHaveLength(1)
   })
 
-  it('renders a left resize handle when the previous column is flex', () => {
-    const columns = [col({ key: 'message', flex: true }), col({ key: 'author', flex: false })]
+  it('renders no handle after the last column even when it is flex', () => {
+    const columns = [col({ key: 'refs' }), col({ key: 'message', flex: true })]
     const { container } = render(<GraphHeader columns={columns} />)
-    // message (flex): no left handle (first), no right handle (flex) => 0
-    // author: gets a left handle (prev is flex) + a right handle (not flex) => 2
-    expect(container.querySelectorAll('.cursor-col-resize')).toHaveLength(2)
-  })
-
-  it('omits the right resize handle for a flex column', () => {
-    const columns = [col({ key: 'message', flex: true })]
-    const { container } = render(<GraphHeader columns={columns} />)
-    expect(container.querySelectorAll('.cursor-col-resize')).toHaveLength(0)
+    // only the refs|message boundary → 1 handle; nothing trails the last column
+    expect(container.querySelectorAll('.cursor-col-resize')).toHaveLength(1)
   })
 })
 
 describe('GraphHeader — resizing', () => {
-  it('grows the column width when dragging the right handle to the right', () => {
-    const columns = [col({ key: 'refs', width: 160 })]
+  it('splits width between two fixed columns: left grows, right shrinks by the same delta', () => {
+    const columns = [
+      col({ key: 'refs', width: 160 }),
+      col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 200 }),
+    ]
     const { container } = render(<GraphHeader columns={columns} />)
     const handle = container.querySelector('.cursor-col-resize')!
 
     firePointer(handle, 'pointerdown', 100)
-    firePointer(window, 'pointermove', 140)
+    firePointer(window, 'pointermove', 140) // +40
     firePointer(window, 'pointerup')
 
     expect(useGitGraphColumnsStore.getState().columns.refs?.width).toBe(200)
+    expect(useGitGraphColumnsStore.getState().columns.graph?.width).toBe(160)
   })
 
-  it('shrinks the column width when dragging the left handle to the right (inverted delta)', () => {
+  it('resizes only the fixed neighbour when the other side is the flex column', () => {
     const columns = [
       col({ key: 'message', flex: true }),
       col({ key: 'author', flex: false, width: 150 }),
     ]
     const { container } = render(<GraphHeader columns={columns} />)
-    const leftHandle = container.querySelectorAll('.cursor-col-resize')[0]
+    const handle = container.querySelector('.cursor-col-resize')!
 
-    firePointer(leftHandle, 'pointerdown', 100)
-    firePointer(window, 'pointermove', 140)
+    firePointer(handle, 'pointerdown', 100)
+    firePointer(window, 'pointermove', 140) // +40 → author (right side) shrinks by 40
     firePointer(window, 'pointerup')
 
-    // fromLeft: newWidth = startWidth - delta = 150 - 40 = 110
     expect(useGitGraphColumnsStore.getState().columns.author?.width).toBe(110)
   })
 
-  it('caps resizing at the column maxWidth when provided (graph column)', () => {
-    const columns = [col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 100, maxWidth: 120 })]
+  it('caps growth at the left column maxWidth (graph)', () => {
+    const columns = [
+      col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 100, maxWidth: 120 }),
+      col({ key: 'message', labelKey: 'gitTree.columns.message', flex: true }),
+    ]
     const { container } = render(<GraphHeader columns={columns} />)
     const handle = container.querySelector('.cursor-col-resize')!
 
@@ -118,20 +135,44 @@ describe('GraphHeader — resizing', () => {
     expect(useGitGraphColumnsStore.getState().columns.graph?.width).toBe(120)
   })
 
-  it('does not cap resizing when the column has no maxWidth', () => {
-    const columns = [col({ key: 'refs', width: 160 })]
+  it('caps a fixed column growth so the flex neighbour cannot shrink below its minWidth', () => {
+    // The flex neighbour absorbs the opposite change; once it would hit its 100px min it can
+    // no longer absorb, so the resize must stop instead of overflowing the row.
+    const columns = [
+      col({ key: 'refs', width: 160 }),
+      col({ key: 'message', labelKey: 'gitTree.columns.message', flex: true, width: 300 }),
+    ]
     const { container } = render(<GraphHeader columns={columns} />)
     const handle = container.querySelector('.cursor-col-resize')!
 
     firePointer(handle, 'pointerdown', 100)
-    firePointer(window, 'pointermove', 400)
+    firePointer(window, 'pointermove', 500) // +400 requested, but message can only give up 300-100=200
     firePointer(window, 'pointerup')
 
-    expect(useGitGraphColumnsStore.getState().columns.refs?.width).toBe(460)
+    expect(useGitGraphColumnsStore.getState().columns.refs?.width).toBe(360) // 160 + 200
+  })
+
+  it('clamps the delta at the shrinking neighbour minWidth, keeping the sum constant', () => {
+    const columns = [
+      col({ key: 'refs', width: 160 }),
+      col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 200 }),
+    ]
+    const { container } = render(<GraphHeader columns={columns} />)
+    const handle = container.querySelector('.cursor-col-resize')!
+
+    firePointer(handle, 'pointerdown', 100)
+    firePointer(window, 'pointermove', 300) // +200 would push graph below its 100 min → clamp to +100
+    firePointer(window, 'pointerup')
+
+    expect(useGitGraphColumnsStore.getState().columns.graph?.width).toBe(100)
+    expect(useGitGraphColumnsStore.getState().columns.refs?.width).toBe(260)
   })
 
   it('stops updating width after pointerup', () => {
-    const columns = [col({ key: 'refs', width: 160 })]
+    const columns = [
+      col({ key: 'refs', width: 160 }),
+      col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 200 }),
+    ]
     const { container } = render(<GraphHeader columns={columns} />)
     const handle = container.querySelector('.cursor-col-resize')!
 
@@ -180,6 +221,39 @@ describe('GraphHeader — compact graph label', () => {
     // Standard threshold applies: 64 < 70 → icon
     render(<GraphHeader columns={[col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 64 })]} />)
     expect(screen.queryByText('gitTree.columns.graph')).not.toBeInTheDocument()
+  })
+})
+
+describe('GraphHeader — compact date/sha labels', () => {
+  it('shows the text label for date and sha at regular widths', () => {
+    render(
+      <GraphHeader
+        columns={[
+          col({ key: 'date', labelKey: 'gitTree.columns.date', width: 110 }),
+          col({ key: 'sha', labelKey: 'gitTree.columns.sha', width: 100 }),
+        ]}
+      />
+    )
+    expect(screen.getByText('gitTree.columns.date')).toBeInTheDocument()
+    expect(screen.getByText('gitTree.columns.sha')).toBeInTheDocument()
+  })
+
+  it('swaps the date label for a calendar icon below the compact threshold', () => {
+    const { container } = render(
+      <GraphHeader columns={[col({ key: 'date', labelKey: 'gitTree.columns.date', width: 64 })]} />
+    )
+    expect(screen.queryByText('gitTree.columns.date')).not.toBeInTheDocument()
+    expect(container.querySelector('.lucide-calendar')).toBeTruthy()
+    expect(screen.getByLabelText('gitTree.columns.date')).toBeInTheDocument()
+  })
+
+  it('swaps the sha label for a hash icon below the compact threshold', () => {
+    const { container } = render(
+      <GraphHeader columns={[col({ key: 'sha', labelKey: 'gitTree.columns.sha', width: 64 })]} />
+    )
+    expect(screen.queryByText('gitTree.columns.sha')).not.toBeInTheDocument()
+    expect(container.querySelector('.lucide-hash')).toBeTruthy()
+    expect(screen.getByLabelText('gitTree.columns.sha')).toBeInTheDocument()
   })
 })
 

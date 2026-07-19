@@ -65,7 +65,11 @@ export function RefLabelGroup({ refs, color }: RefLabelGroupProps) {
   }
 
   return (
-    <div className="flex min-w-0 items-center gap-1 overflow-hidden">
+    // `max-w-full` borne le groupe à la largeur de la colonne « refs » : la ligne
+    // de connexion voisine porte une marge droite négative qui rendrait sinon
+    // l'espace libre flex positif, empêchant le groupe de rétrécir — les badges
+    // déborderaient alors par-dessus la colonne graphe au redimensionnement.
+    <div className="flex min-w-0 max-w-full items-center gap-1 overflow-hidden">
       <RefLabel gitRef={first} color={color} />
 
       {extra > 0 && (

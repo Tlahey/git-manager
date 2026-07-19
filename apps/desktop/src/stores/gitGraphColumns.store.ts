@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { COLUMN_DEFS, COLUMN_ORDER, type ColumnKey } from '../components/git-graph/columns'
+import { COLUMN_DEFS, COLUMN_ORDER, type ColumnKey } from '../components/git-graph/columns.config'
 
 interface ColumnState {
   visible: boolean

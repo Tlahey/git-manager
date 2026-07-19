@@ -1,7 +1,27 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, afterEach } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
 import type { GitRef } from '@git-manager/git-types'
 import { RefLabel } from './RefLabel'
+
+/**
+ * jsdom reports 0 for scrollWidth/clientWidth, so overflow never triggers by
+ * default. Stub the prototype getters to simulate a name that does (or doesn't)
+ * overflow its badge, matching the pattern in HoverExpandLabel.test.tsx.
+ */
+function stubOverflow(overflowing: boolean) {
+  Object.defineProperty(HTMLElement.prototype, 'scrollWidth', {
+    configurable: true,
+    get: () => (overflowing ? 300 : 100),
+  })
+  Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+    configurable: true,
+    get: () => 100,
+  })
+}
+afterEach(() => {
+  Reflect.deleteProperty(HTMLElement.prototype, 'scrollWidth')
+  Reflect.deleteProperty(HTMLElement.prototype, 'clientWidth')
+})
 
 function ref(overrides: Partial<GitRef> = {}): GitRef {
   return {
@@ -77,6 +97,27 @@ describe('RefLabel — tags', () => {
     expect(screen.getByText('v1.0.0')).toBeInTheDocument()
     expect(container.querySelector('.lucide-tag')).toBeTruthy()
     expect(screen.getByText('v1.0.0').parentElement).toHaveClass('opacity-90')
+  })
+})
+
+describe('RefLabel — long name hover overlay', () => {
+  it('reveals a full-name overlay clone when hovering an overflowing (ellipsis) badge', () => {
+    stubOverflow(true)
+    render(<RefLabel gitRef={ref({ type: 'tag', shortName: 'a-very-long-tag-name-1.0.0' })} />)
+    const badge = screen.getByTestId('ref-label-tag-a-very-long-tag-name-1.0.0')
+    expect(screen.getAllByText('a-very-long-tag-name-1.0.0')).toHaveLength(1)
+    fireEvent.mouseEnter(badge)
+    // Two copies now: the truncated inline badge + the fixed overlay clone.
+    expect(screen.getAllByText('a-very-long-tag-name-1.0.0')).toHaveLength(2)
+    fireEvent.mouseLeave(badge)
+    expect(screen.getAllByText('a-very-long-tag-name-1.0.0')).toHaveLength(1)
+  })
+
+  it('shows no overlay when the label fits', () => {
+    stubOverflow(false)
+    render(<RefLabel gitRef={ref({ type: 'tag', shortName: 'v1.0.0' })} />)
+    fireEvent.mouseEnter(screen.getByTestId('ref-label-tag-v1.0.0'))
+    expect(screen.getAllByText('v1.0.0')).toHaveLength(1)
   })
 })
 

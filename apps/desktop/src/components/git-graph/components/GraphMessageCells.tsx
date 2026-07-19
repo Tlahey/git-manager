@@ -31,7 +31,7 @@ function WipRefTag({ refInfo }: { refInfo: WipRef }) {
       ? `${refInfo.name.slice(0, WIP_REF_MAX_CHARS)}…`
       : refInfo.name
   return (
-    <Tag tone="neutral" className="min-w-0 shrink-0 px-1 py-0.5 text-[9px]" title={refInfo.name}>
+    <Tag tone="neutral" className="min-w-0 px-1 py-0.5 text-[9px]" title={refInfo.name}>
       <Icon className="h-2.5 w-2.5 shrink-0" />
       <span className="truncate">{cropped}</span>
     </Tag>
@@ -73,7 +73,7 @@ export function WipCommitInput({
   }
 
   return (
-    <div className="flex w-full items-center gap-2 pr-4">
+    <div className="flex w-full min-w-0 items-center gap-2 overflow-hidden pr-4">
       {/* Only the input itself blocks the row's onSelect — typing/placing the cursor shouldn't
           fight with row selection. Clicking anywhere else in this cell (e.g. the badge) still
           bubbles up and selects the 'WIP' row, which is what actually shows the changed files
@@ -137,7 +137,7 @@ export function WorktreeWipRow({
 }) {
   const { t } = useTranslation('git')
   return (
-    <div className="flex w-full items-center gap-2 pr-4">
+    <div className="flex w-full min-w-0 items-center gap-2 overflow-hidden pr-4">
       <span className="shrink-0 text-[11px] text-muted-foreground/70">// WIP</span>
       {refInfo && <WipRefTag refInfo={refInfo} />}
       <div className="flex shrink-0 select-none items-center gap-1 text-[9px] font-bold">

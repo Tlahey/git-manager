@@ -23,50 +23,79 @@ export interface ColumnDef {
 /** Ordre d'affichage fixe des colonnes (gauche → droite). */
 export const COLUMN_ORDER: ColumnKey[] = ['refs', 'graph', 'message', 'author', 'date', 'sha']
 
+/**
+ * Largeur par défaut de chaque colonne au premier lancement (px). Ignorée pour la
+ * colonne `flex` (message), qui absorbe l'espace restant.
+ */
+export const COLUMN_DEFAULT_WIDTH: Record<ColumnKey, number> = {
+  refs: 160,
+  graph: 200,
+  message: 400,
+  author: 150,
+  date: 110,
+  sha: 80,
+}
+
+/**
+ * Largeur minimale de chaque colonne lors du redimensionnement (px). Appliquée
+ * aussi comme plancher de la colonne `flex` (message) pour qu'elle ne s'effondre
+ * pas sous son contenu.
+ */
+export const COLUMN_MIN_WIDTH: Record<ColumnKey, number> = {
+  refs: 100,
+  // Un avatar (32) + un peu d'air autour + la marge droite de la cellule (8) : le mode
+  // `compact` de `graphColumnSizing.ts` n'affiche alors plus que le marqueur de chaque commit.
+  graph: GRAPH_MIN_WIDTH,
+  message: 100,
+  author: 100,
+  // date et sha basculent leur libellé d'en-tête en icône sous ~72px (voir
+  // GraphHeader) : min plus serré pour que cet état compact soit atteignable.
+  date: 60,
+  sha: 60,
+}
+
 export const COLUMN_DEFS: Record<ColumnKey, ColumnDef> = {
   refs: {
     key: 'refs',
     labelKey: 'gitTree.columns.refs',
-    defaultWidth: 160,
-    minWidth: 100,
+    defaultWidth: COLUMN_DEFAULT_WIDTH.refs,
+    minWidth: COLUMN_MIN_WIDTH.refs,
     defaultVisible: true,
   },
   graph: {
     key: 'graph',
     labelKey: 'gitTree.columns.graph',
-    defaultWidth: 200,
-    // Un avatar (32) + un peu d'air autour + la marge droite de la cellule (8) : le mode
-    // `compact` de `graphColumnSizing.ts` n'affiche alors plus que le marqueur de chaque commit.
-    minWidth: GRAPH_MIN_WIDTH,
+    defaultWidth: COLUMN_DEFAULT_WIDTH.graph,
+    minWidth: COLUMN_MIN_WIDTH.graph,
     defaultVisible: true,
   },
   message: {
     key: 'message',
     labelKey: 'gitTree.columns.message',
-    defaultWidth: 400,
-    minWidth: 100,
+    defaultWidth: COLUMN_DEFAULT_WIDTH.message,
+    minWidth: COLUMN_MIN_WIDTH.message,
     defaultVisible: true,
     flex: true,
   },
   author: {
     key: 'author',
     labelKey: 'gitTree.columns.author',
-    defaultWidth: 150,
-    minWidth: 100,
+    defaultWidth: COLUMN_DEFAULT_WIDTH.author,
+    minWidth: COLUMN_MIN_WIDTH.author,
     defaultVisible: false,
   },
   date: {
     key: 'date',
     labelKey: 'gitTree.columns.date',
-    defaultWidth: 110,
-    minWidth: 100,
+    defaultWidth: COLUMN_DEFAULT_WIDTH.date,
+    minWidth: COLUMN_MIN_WIDTH.date,
     defaultVisible: false,
   },
   sha: {
     key: 'sha',
     labelKey: 'gitTree.columns.sha',
-    defaultWidth: 100,
-    minWidth: 100,
+    defaultWidth: COLUMN_DEFAULT_WIDTH.sha,
+    minWidth: COLUMN_MIN_WIDTH.sha,
     defaultVisible: false,
   },
 }

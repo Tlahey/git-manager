@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitGraphNode } from '@git-manager/git-types'
-import type { ResolvedColumn } from './columns'
+import type { ResolvedColumn } from './columns.config'
 import { GraphRow, GraphAvatarTooltip } from './GraphRow'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useRepoDataStore } from '../../stores/repoData.store'
@@ -88,7 +88,6 @@ function renderRow(
       isPrimary={false}
       onSelect={vi.fn()}
       onContextMenu={vi.fn()}
-      onOpenMenu={vi.fn()}
       {...props}
     />
   )
@@ -113,14 +112,6 @@ describe('GraphRow — row interaction', () => {
     fireEvent.contextMenu(row)
     expect(onSelect).toHaveBeenCalledOnce()
     expect(onContextMenu).toHaveBeenCalledOnce()
-  })
-
-  it('fires onOpenMenu from the actions (⋮) button', async () => {
-    const onOpenMenu = vi.fn()
-    const user = userEvent.setup()
-    renderRow({ columns: [col('message')], onOpenMenu })
-    await user.click(screen.getByTitle('Actions'))
-    expect(onOpenMenu).toHaveBeenCalledOnce()
   })
 })
 

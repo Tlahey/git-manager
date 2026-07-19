@@ -12,7 +12,7 @@ export function OperationProgressBar() {
 
   return (
     <div
-      className="relative h-[2px] w-full shrink-0 overflow-hidden bg-border/10"
+      className="relative h-[2px] w-full shrink-0 overflow-hidden bg-sidebar"
       data-testid="operation-progress-bar"
     >
       {isActive && (

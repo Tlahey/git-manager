@@ -14,6 +14,8 @@ import {
   X,
   Plus,
   Minus,
+  Pencil,
+  ArrowRight,
   Check,
 } from 'lucide-react'
 import { apiStageFile, apiUnstageFile, apiDiscardFileChanges } from '../../../api/git.api'
@@ -446,41 +448,33 @@ export function CommitFileList({
               {filteredFiles.length} {filteredFiles.length === 1 ? 'file' : 'files'} changed
             </span>
           </div>
-          <div className="flex flex-wrap gap-2 rounded-md border border-border/20 bg-muted/5 p-2 text-[10px] font-medium text-muted-foreground">
+          <div className="flex flex-wrap gap-1.5 rounded-md border border-border/20 bg-muted/5 p-2">
             {fileStats.added > 0 && (
-              <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-green-500" />
-                <span>
-                  {fileStats.added} {t('commitDetails.stats.added') || 'added'}
-                </span>
-              </span>
+              <Tag tone="success" title={`${fileStats.added} ${t('commitDetails.stats.added') || 'added'}`}>
+                <Plus className="h-3 w-3" />
+                {fileStats.added}
+              </Tag>
             )}
             {fileStats.modified > 0 && (
-              <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-yellow-500" />
-                <span>
-                  {fileStats.modified} {t('commitDetails.stats.modified') || 'modified'}
-                </span>
-              </span>
+              <Tag tone="warning" title={`${fileStats.modified} ${t('commitDetails.stats.modified') || 'modified'}`}>
+                <Pencil className="h-3 w-3" />
+                {fileStats.modified}
+              </Tag>
             )}
             {fileStats.deleted > 0 && (
-              <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-red-500" />
-                <span>
-                  {fileStats.deleted} {t('commitDetails.stats.deleted') || 'deleted'}
-                </span>
-              </span>
+              <Tag tone="danger" title={`${fileStats.deleted} ${t('commitDetails.stats.deleted') || 'deleted'}`}>
+                <Minus className="h-3 w-3" />
+                {fileStats.deleted}
+              </Tag>
             )}
             {fileStats.renamed > 0 && (
-              <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-blue-500" />
-                <span>
-                  {fileStats.renamed} {t('commitDetails.stats.renamed') || 'renamed'}
-                </span>
-              </span>
+              <Tag tone="info" title={`${fileStats.renamed} ${t('commitDetails.stats.renamed') || 'renamed'}`}>
+                <ArrowRight className="h-3 w-3" />
+                {fileStats.renamed}
+              </Tag>
             )}
             {processedFiles.length === 0 && (
-              <span className="italic text-muted-foreground/60">{noChangesLabel}</span>
+              <span className="text-[10px] italic text-muted-foreground/60">{noChangesLabel}</span>
             )}
           </div>
         </div>

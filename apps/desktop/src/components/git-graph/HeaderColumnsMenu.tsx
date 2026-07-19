@@ -2,7 +2,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { Check } from 'lucide-react'
 import { ContextMenuContent, ContextMenuItem, ContextMenuLabel } from '@git-manager/ui'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
-import { COLUMN_DEFS, COLUMN_ORDER } from './columns'
+import { COLUMN_DEFS, COLUMN_ORDER } from './columns.config'
 
 /** Menu (clic droit sur l'en-tête) pour afficher / masquer les colonnes. */
 export function HeaderColumnsMenu() {

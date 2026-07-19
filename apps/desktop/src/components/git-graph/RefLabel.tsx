@@ -1,3 +1,5 @@
+import { useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { GitRef } from '@git-manager/git-types'
 import { cn } from '@git-manager/ui'
 import { GitCommitHorizontal, Check, Laptop, Tag, Archive } from 'lucide-react'
@@ -39,6 +41,39 @@ export function RefLabel({ gitRef, color }: RefLabelProps) {
   const isStash = gitRef.type === 'stash'
 
   const displayName = cleanName(gitRef)
+  const label = isHEAD ? 'HEAD' : displayName
+
+  // Au survol d'un badge tronqué (ellipsis), on révèle le nom complet dans un
+  // clone du badge rendu en `position: fixed` via un portail — même principe que
+  // le HoverExpandLabel du panneau de gauche : même style/couleur, épinglé au
+  // même endroit mais sans largeur max ni troncature, donc tout le texte tient.
+  // On mesure le débordement à la demande (`scrollWidth > clientWidth`) et on
+  // n'ouvre l'overlay que s'il déborde réellement.
+  const badgeRef = useRef<HTMLSpanElement>(null)
+  const nameRef = useRef<HTMLSpanElement>(null)
+  const [overlayPos, setOverlayPos] = useState<{ top: number; left: number } | null>(null)
+
+  const showOverlay = () => {
+    const nameEl = nameRef.current
+    const badgeEl = badgeRef.current
+    if (!nameEl || !badgeEl) return
+    if (nameEl.scrollWidth <= nameEl.clientWidth + 1) return // pas de débordement
+    const r = badgeEl.getBoundingClientRect()
+    setOverlayPos({ top: r.top, left: r.left })
+  }
+  const hideOverlay = () => setOverlayPos(null)
+
+  // Un défilement / redimensionnement pendant le survol déplacerait le badge :
+  // on masque l'overlay plutôt que de le laisser flotter au mauvais endroit.
+  useLayoutEffect(() => {
+    if (!overlayPos) return
+    window.addEventListener('scroll', hideOverlay, true)
+    window.addEventListener('resize', hideOverlay)
+    return () => {
+      window.removeEventListener('scroll', hideOverlay, true)
+      window.removeEventListener('resize', hideOverlay)
+    }
+  }, [overlayPos])
 
   const isLocalMainOrMaster = gitRef.shortName === 'main' || gitRef.shortName === 'master'
 
@@ -55,7 +90,7 @@ export function RefLabel({ gitRef, color }: RefLabelProps) {
   }
 
   let badgeClasses = cn(
-    'inline-flex min-w-0 max-w-[180px] items-center gap-1 rounded px-1.5 py-0 text-[11px] leading-5 font-medium border bg-background transition-all duration-150'
+    'inline-flex min-w-0 items-center gap-1 rounded px-1.5 py-0 text-[11px] leading-5 font-medium border bg-background transition-all duration-150'
   )
 
   // Custom inline styles for coloring (non-HEAD)
@@ -83,21 +118,41 @@ export function RefLabel({ gitRef, color }: RefLabelProps) {
     badgeClasses = cn(badgeClasses, 'opacity-90')
   }
 
-  return (
+  const renderBadge = (overlay: boolean) => (
     <span
-      className={badgeClasses}
-      style={customStyle}
-      data-testid={`ref-label-${gitRef.type}-${gitRef.shortName}`}
+      ref={overlay ? undefined : badgeRef}
+      // Inline : largeur bornée + troncature. Overlay : aucune borne → tout le
+      // texte tient. L'overlay est épinglé (fixed) sur le badge inline et laisse
+      // passer la souris (pointer-events-none) pour que le `onMouseLeave` du badge
+      // sous-jacent le referme.
+      className={cn(badgeClasses, overlay ? 'pointer-events-none fixed z-[100]' : 'max-w-[180px]')}
+      style={
+        overlay && overlayPos
+          ? { ...customStyle, top: overlayPos.top, left: overlayPos.left }
+          : customStyle
+      }
+      data-testid={overlay ? undefined : `ref-label-${gitRef.type}-${gitRef.shortName}`}
+      onMouseEnter={overlay ? undefined : showOverlay}
+      onMouseLeave={overlay ? undefined : hideOverlay}
     >
       {isHEAD && <GitCommitHorizontal className="h-3 w-3 shrink-0" />}
       {!isHEAD && !isRemote && !isTag && !isStash && <Check className="h-3 w-3 shrink-0" />}
       {isTag && <Tag className="h-3 w-3 shrink-0" />}
       {isStash && <Archive className="h-3 w-3 shrink-0" />}
 
-      <span className="truncate">{isHEAD ? 'HEAD' : displayName}</span>
+      <span ref={overlay ? undefined : nameRef} className={overlay ? undefined : 'truncate'}>
+        {label}
+      </span>
 
       {isRemote && <GithubIcon className="ml-0.5 h-3 w-3 shrink-0" />}
       {!isHEAD && !isRemote && !isTag && !isStash && <Laptop className="ml-0.5 h-3 w-3 shrink-0" />}
     </span>
+  )
+
+  return (
+    <>
+      {renderBadge(false)}
+      {overlayPos && createPortal(renderBadge(true), document.body)}
+    </>
   )
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { COLUMN_ORDER, COLUMN_DEFS } from './columns'
+import { COLUMN_ORDER, COLUMN_DEFS } from './columns.config'
 
 describe('COLUMN_ORDER / COLUMN_DEFS', () => {
   it('COLUMN_ORDER lists exactly the same keys as COLUMN_DEFS, with no duplicates', () => {

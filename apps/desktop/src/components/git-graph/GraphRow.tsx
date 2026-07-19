@@ -2,7 +2,7 @@ import { memo, useState } from 'react'
 import type { GitGraphNode } from '@git-manager/git-types'
 import { cn } from '@git-manager/ui'
 import { RefLabelGroup } from './RefLabelGroup'
-import type { ColumnKey, ResolvedColumn } from './columns'
+import type { ColumnKey, ResolvedColumn } from './columns.config'
 import { getGraphColumnLayout, getMarkerPlacement } from './graphColumnSizing'
 import {
   REF_CONNECTOR_LINE_OPACITY_HEX,
@@ -13,7 +13,7 @@ import { getAvatarUrl } from '../../lib/avatar'
 import { formatRelativeDate, formatExactDate } from '../../lib/relativeDate'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
-import { MoreVertical, Archive } from 'lucide-react'
+import { Archive } from 'lucide-react'
 import { useGitStashes } from '../../hooks/useGitStashes'
 import type { ConflictRowInfo } from '../../hooks/useGitGraphNodes'
 import type { WorktreeWipStatus } from '../../hooks/useWorktreeWipStatuses'
@@ -37,8 +37,6 @@ interface GraphRowProps {
   onSelect: (e: React.MouseEvent) => void
   /** Clic droit : ouvre le menu contextuel d'actions. */
   onContextMenu: (e: React.MouseEvent) => void
-  /** Clic sur l'icône ⋮ : ouvre le menu contextuel d'actions. */
-  onOpenMenu: (e: React.MouseEvent) => void
   wipStats?: { added: number; modified: number; deleted: number }
   onCommitWip?: (message: string) => void
   isFirst?: boolean
@@ -307,7 +305,6 @@ export const GraphRow = memo(function GraphRow({
   isPrimary,
   onSelect,
   onContextMenu,
-  onOpenMenu,
   wipStats,
   onCommitWip,
   isFirst,
@@ -402,7 +399,11 @@ export const GraphRow = memo(function GraphRow({
             col.key === 'refs' ? 'justify-start pl-2' : 'mx-2',
             col.key === 'graph' && 'px-0'
           )}
-          style={col.flex ? { flex: '1 1 0%' } : { width: col.width, flexShrink: 0 }}
+          style={
+            col.flex
+              ? { flex: '1 1 0%', minWidth: col.minWidth }
+              : { width: col.width, flexShrink: 0 }
+          }
         >
           {col.key === 'graph' ? (
             <GraphCell
@@ -432,15 +433,6 @@ export const GraphRow = memo(function GraphRow({
         </div>
       ))}
 
-      {/* Icône ⋮ — actions au survol de la ligne (clic gauche alternatif) */}
-      <button
-        type="button"
-        onClick={onOpenMenu}
-        className="absolute right-1 top-1/2 hidden h-6 w-6 -translate-y-1/2 items-center justify-center rounded bg-card/90 text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground group-hover:flex"
-        title="Actions"
-      >
-        <MoreVertical className="h-3.5 w-3.5" />
-      </button>
     </div>
   )
 })
