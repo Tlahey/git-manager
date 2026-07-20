@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, ScrollArea, Alert, Tag } from '@git-manager/ui'
+import { Button, Input, ScrollArea, Alert, Tag, Card } from '@git-manager/ui'
 import {
   ArrowLeft,
   Check,
@@ -178,7 +178,7 @@ export function GithubSection() {
                 </div>
               </div>
             ) : loginMethod === 'oauth' ? (
-              <div className="space-y-4 rounded-lg border border-border bg-card/30 p-4">
+              <Card className="space-y-4 bg-card/30 p-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-semibold text-foreground">
                     {t('settings.github.addUser')}
@@ -229,9 +229,9 @@ export function GithubSection() {
                     </Alert>
                   )}
                 </div>
-              </div>
+              </Card>
             ) : loginMethod === 'pat' ? (
-              <div className="space-y-4 rounded-lg border border-border bg-card/30 p-4">
+              <Card className="space-y-4 bg-card/30 p-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-semibold text-foreground">
                     {t('settings.github.addUser')}
@@ -300,9 +300,9 @@ export function GithubSection() {
                     </Alert>
                   )}
                 </div>
-              </div>
+              </Card>
             ) : (
-              <div className="space-y-4 rounded-lg border border-border bg-card/30 p-4">
+              <Card className="space-y-4 bg-card/30 p-4">
                 <h4 className="text-xs font-semibold text-foreground">
                   {t('settings.github.addUser')}
                 </h4>
@@ -331,7 +331,7 @@ export function GithubSection() {
                     <span>{t('settings.github.loginWithPAT')}</span>
                   </Button>
                 </div>
-              </div>
+              </Card>
             )}
 
             {/* Accounts List */}

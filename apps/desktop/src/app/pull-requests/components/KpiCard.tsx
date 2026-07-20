@@ -1,5 +1,5 @@
 import React from 'react'
-import { Skeleton } from '@git-manager/ui'
+import { Skeleton, Card } from '@git-manager/ui'
 
 interface KpiCardProps {
   icon: React.ReactNode
@@ -12,8 +12,8 @@ interface KpiCardProps {
 
 export function KpiCard({ icon, label, value, sub, accent, loading }: KpiCardProps) {
   return (
-    <div
-      className={`flex min-w-0 flex-1 flex-col gap-1.5 rounded-xl border border-border bg-card/60 px-4 py-3 shadow-sm backdrop-blur-sm transition-all hover:border-border/80 hover:shadow-md ${
+    <Card
+      className={`flex min-w-0 flex-1 flex-col gap-1.5 rounded-xl bg-card/60 px-4 py-3 shadow-sm backdrop-blur-sm transition-all hover:border-border/80 hover:shadow-md ${
         accent ?? ''
       }`}
     >
@@ -27,6 +27,6 @@ export function KpiCard({ icon, label, value, sub, accent, loading }: KpiCardPro
         <span className="text-2xl font-bold leading-none text-foreground">{value}</span>
       )}
       {sub && <span className="text-[10px] text-muted-foreground">{sub}</span>}
-    </div>
+    </Card>
   )
 }

@@ -1,5 +1,5 @@
 import { GitCommit, Activity, TrendingUp, Star, BarChart2 } from 'lucide-react'
-import { Skeleton, Progress } from '@git-manager/ui'
+import { Skeleton, Progress, Card } from '@git-manager/ui'
 import type { DayCommit } from '../types'
 import { KpiCard } from './KpiCard'
 import { YearHeatmap } from './YearHeatmap'
@@ -61,7 +61,7 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
             loading={loading}
           />
         </div>
-        <div className="rounded-xl border border-border bg-card/50 p-5">
+        <Card className="rounded-xl bg-card/50 p-5">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-primary" />
@@ -84,8 +84,8 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
               <YearHeatmap yearDays={yearDays} />
             )}
           </div>
-        </div>
-        <div className="rounded-xl border border-border bg-card/50 p-5">
+        </Card>
+        <Card className="rounded-xl bg-card/50 p-5">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <BarChart2 className="h-4 w-4 text-primary" />
@@ -139,8 +139,8 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
               </div>
             </>
           )}
-        </div>
-        <div className="overflow-hidden rounded-xl border border-border bg-card/50">
+        </Card>
+        <Card className="overflow-hidden rounded-xl bg-card/50">
           <div className="flex items-center gap-2 border-b border-border bg-muted/10 px-4 py-3">
             <GitCommit className="h-3.5 w-3.5 text-primary/60" />
             <h3 className="text-xs font-semibold">Daily breakdown — last 14 days</h3>
@@ -174,7 +174,7 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
               ))}
             </div>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   )

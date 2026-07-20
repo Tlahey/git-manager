@@ -35,6 +35,7 @@ import {
   ScrollArea,
   Kbd,
   Tag,
+  Card,
 } from '@git-manager/ui'
 import type { Section } from '../../app/settings/SettingsPage'
 
@@ -290,7 +291,7 @@ export function Footer({ onOpenSettings }: FooterProps) {
                       <h4 className="pl-1 text-[10px] font-bold uppercase tracking-widest text-primary/70">
                         {cat.category}
                       </h4>
-                      <div className="divide-y divide-border/40 rounded-lg border border-border bg-card/40 p-1">
+                      <Card className="divide-y divide-border/40 bg-card/40 p-1">
                         {cat.items.map((item, keyIdx) => (
                           <div
                             key={keyIdx}
@@ -311,7 +312,7 @@ export function Footer({ onOpenSettings }: FooterProps) {
                             </div>
                           </div>
                         ))}
-                      </div>
+                      </Card>
                     </div>
                   ))
                 )}

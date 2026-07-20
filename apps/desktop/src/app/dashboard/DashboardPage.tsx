@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input } from '@git-manager/ui'
+import { Button, Input, Card } from '@git-manager/ui'
 import {
   FolderOpen,
   FolderSearch,
@@ -273,7 +273,7 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
                     {t('dashboard.noTabs') || 'Aucun dépôt ouvert en onglet.'}
                   </p>
                 ) : (
-                  <div className="relative divide-y divide-border/20 rounded-lg border border-border bg-card/30 shadow-sm">
+                  <Card className="relative divide-y divide-border/20 bg-card/30 shadow-sm">
                     {activeTabs.map((repo) => (
                       <RepoRow
                         key={repo.path}
@@ -288,7 +288,7 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
                         summaryEnabled={summaryEnabled}
                       />
                     ))}
-                  </div>
+                  </Card>
                 )}
               </div>
 
@@ -308,7 +308,7 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
                     {t('dashboard.noFavorites') || 'Aucun dépôt favori.'}
                   </p>
                 ) : (
-                  <div className="relative divide-y divide-border/20 rounded-lg border border-border bg-card/30 shadow-sm">
+                  <Card className="relative divide-y divide-border/20 bg-card/30 shadow-sm">
                     {favoriteRepos.map((repo) => (
                       <RepoRow
                         key={repo.path}
@@ -323,7 +323,7 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
                         summaryEnabled={summaryEnabled}
                       />
                     ))}
-                  </div>
+                  </Card>
                 )}
               </div>
 
@@ -343,7 +343,7 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
                     {t('dashboard.noAllRepos') || 'Aucun dépôt trouvé.'}
                   </p>
                 ) : (
-                  <div className="relative divide-y divide-border/20 rounded-lg border border-border bg-card/30 shadow-sm">
+                  <Card className="relative divide-y divide-border/20 bg-card/30 shadow-sm">
                     {allRepos.map((repo) => (
                       <RepoRow
                         key={repo.path}
@@ -358,7 +358,7 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
                         summaryEnabled={summaryEnabled}
                       />
                     ))}
-                  </div>
+                  </Card>
                 )}
               </div>
             </div>
