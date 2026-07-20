@@ -33,6 +33,7 @@ import {
   DialogDescription,
   Input,
   ScrollArea,
+  Kbd,
 } from '@git-manager/ui'
 import type { Section } from '../../app/settings/SettingsPage'
 
@@ -298,9 +299,7 @@ export function Footer({ onOpenSettings }: FooterProps) {
                             <div className="flex items-center gap-1">
                               {item.keys.map((k, kIdx) => (
                                 <span key={kIdx} className="flex items-center gap-1">
-                                  <kbd className="inline-flex h-5 min-w-[20px] items-center justify-center rounded border border-border bg-muted/95 px-1.5 font-mono text-[10px] font-bold text-foreground shadow-sm">
-                                    {k}
-                                  </kbd>
+                                  <Kbd>{k}</Kbd>
                                   {kIdx < item.keys.length - 1 && (
                                     <span className="text-[9px] font-semibold text-muted-foreground/60">
                                       +

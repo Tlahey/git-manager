@@ -27,6 +27,12 @@ export type { NativeSelectProps } from './components/native-select'
 export { Skeleton } from './components/skeleton'
 export type { SkeletonProps } from './components/skeleton'
 
+export { Kbd } from './components/kbd'
+export type { KbdProps } from './components/kbd'
+
+export { Progress } from './components/progress'
+export type { ProgressProps } from './components/progress'
+
 export { Checkbox } from './components/checkbox'
 export type { CheckboxProps } from './components/checkbox'
 

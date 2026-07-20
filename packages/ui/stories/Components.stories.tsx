@@ -48,6 +48,8 @@ import {
   NativeSelect,
   Skeleton,
   Alert,
+  Kbd,
+  Progress,
   toast,
 } from '../src'
 
@@ -258,6 +260,31 @@ export const Overview: Story = {
           <Alert variant="success">Branch created and checked out.</Alert>
           <Alert variant="warning">This worktree has uncommitted changes.</Alert>
           <Alert variant="info">Fetch runs automatically every minute.</Alert>
+        </div>
+      </Section>
+
+      <Section title="Kbd — shortcut keys">
+        <span className="flex items-center gap-1">
+          <Kbd>⌘</Kbd>
+          <Kbd>K</Kbd>
+        </span>
+        <span className="flex items-center gap-1">
+          <Kbd>⇧</Kbd>
+          <Kbd>⌘</Kbd>
+          <Kbd>P</Kbd>
+        </span>
+        <Kbd>Esc</Kbd>
+      </Section>
+
+      <Section title="Progress">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 240 }}>
+          <Progress value={25} aria-label="Download progress 25%" />
+          <Progress value={60} aria-label="Download progress 60%" />
+          <Progress
+            value={100}
+            aria-label="Complete"
+            indicatorClassName="bg-success"
+          />
         </div>
       </Section>
 

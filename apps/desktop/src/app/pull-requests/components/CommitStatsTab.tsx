@@ -1,5 +1,5 @@
 import { GitCommit, Activity, TrendingUp, Star, BarChart2 } from 'lucide-react'
-import { Skeleton } from '@git-manager/ui'
+import { Skeleton, Progress } from '@git-manager/ui'
 import type { DayCommit } from '../types'
 import { KpiCard } from './KpiCard'
 import { YearHeatmap } from './YearHeatmap'
@@ -161,12 +161,12 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
                   <span className="w-20 shrink-0 text-xs text-muted-foreground">
                     {fmtDate(day.date)}
                   </span>
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted/20">
-                    <div
-                      className="h-full rounded-full bg-primary/70 transition-all duration-500"
-                      style={{ width: max14 > 0 ? `${(day.commits / max14) * 100}%` : '0%' }}
-                    />
-                  </div>
+                  <Progress
+                    value={max14 > 0 ? (day.commits / max14) * 100 : 0}
+                    className="h-1.5 flex-1 bg-muted/20"
+                    indicatorClassName="bg-primary/70 duration-500"
+                    aria-hidden
+                  />
                   <span className="w-8 shrink-0 text-right font-mono text-xs text-foreground">
                     {day.commits}
                   </span>

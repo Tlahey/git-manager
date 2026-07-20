@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Trophy, CheckCircle2, Lock } from 'lucide-react'
-import { Chip } from '@git-manager/ui'
+import { Chip, Progress } from '@git-manager/ui'
 import { useGameStore, getLevelInfo } from '../../../stores/game.store'
 
 type StatusFilter = 'all' | 'in_progress' | 'completed'
@@ -313,14 +313,15 @@ export function RewardsTab() {
                                     {currentProgress} / {item.milestoneValue}
                                   </span>
                                 </div>
-                                <div className="h-1.5 w-full overflow-hidden rounded-full border border-border/20 bg-black/25">
-                                  <div
-                                    className="h-full bg-primary/70 transition-all duration-300"
-                                    style={{
-                                      width: `${Math.min(100, (currentProgress / (item.milestoneValue || 1)) * 100)}%`,
-                                    }}
-                                  />
-                                </div>
+                                <Progress
+                                  value={Math.min(
+                                    100,
+                                    (currentProgress / (item.milestoneValue || 1)) * 100
+                                  )}
+                                  className="border border-border/20 bg-black/25"
+                                  indicatorClassName="bg-primary/70 duration-300"
+                                  aria-hidden
+                                />
                               </div>
                             )
                           })()}
