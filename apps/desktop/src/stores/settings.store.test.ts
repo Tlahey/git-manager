@@ -41,7 +41,7 @@ describe('useSettingsStore', () => {
   it('resetSettingsGroups resets only the listed groups, leaving others untouched', () => {
     useSettingsStore.getState().updateSettings({
       ai: { ...DEFAULT_SETTINGS.ai, model: 'custom' },
-      git: { ...DEFAULT_SETTINGS.git, protectedBranches: ['x'] },
+      git: { ...DEFAULT_SETTINGS.git, autoPrune: false },
       language: 'en',
     })
     useSettingsStore.getState().resetSettingsGroups(['git', 'ai'])
@@ -56,13 +56,13 @@ describe('useSettingsStore', () => {
     useSettingsStore.getState().updateSettings({
       git: {
         ...DEFAULT_SETTINGS.git,
-        protectedBranches: ['x'],
+        autoPrune: false,
         commitInstructions: 'keep me',
       },
     })
-    useSettingsStore.getState().resetSettingsFields('git', ['protectedBranches'])
+    useSettingsStore.getState().resetSettingsFields('git', ['autoPrune'])
     const git = useSettingsStore.getState().settings.git
-    expect(git.protectedBranches).toEqual(DEFAULT_SETTINGS.git.protectedBranches)
+    expect(git.autoPrune).toEqual(DEFAULT_SETTINGS.git.autoPrune)
     // Other fields in the same group are untouched.
     expect(git.commitInstructions).toBe('keep me')
   })

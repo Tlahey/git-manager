@@ -25,11 +25,13 @@ afterEach(() => {
 })
 
 describe('GeneralSection — language', () => {
-  it('switches language: updates the store and i18next', async () => {
+  it('switches language via the dropdown: updates the store and i18next', async () => {
     useSettingsStore.setState({ settings: { ...INITIAL_SETTINGS.settings, language: 'fr' } })
     const user = userEvent.setup()
     render(<GeneralSection />)
-    await user.click(screen.getByRole('radio', { name: 'settings.language.en' }))
+    const select = screen.getByTestId('language-select')
+    expect(select).toHaveValue('fr')
+    await user.selectOptions(select, 'en')
     expect(useSettingsStore.getState().settings.language).toBe('en')
     expect(i18next.changeLanguage).toHaveBeenCalledWith('en')
   })
@@ -46,6 +48,69 @@ describe('GeneralSection — git identity', () => {
     expect(useSettingsStore.getState().settings.git.defaultAuthorName).toBe('Ada')
     await user.type(emailInput, 'ada@example.com')
     expect(useSettingsStore.getState().settings.git.defaultAuthorEmail).toBe('ada@example.com')
+  })
+})
+
+describe('GeneralSection — fetch', () => {
+  it('defaults to auto-prune on and interval 1', () => {
+    render(<GeneralSection />)
+    expect(screen.getByTestId('settings-auto-prune')).toBeChecked()
+    expect(screen.getByTestId('settings-auto-fetch-interval')).toHaveValue(1)
+  })
+
+  it('toggles auto-prune off', async () => {
+    const user = userEvent.setup()
+    render(<GeneralSection />)
+    await user.click(screen.getByTestId('settings-auto-prune'))
+    expect(useSettingsStore.getState().settings.git.autoPrune).toBe(false)
+  })
+
+  it('clamps the auto-fetch interval to the 0–60 range', async () => {
+    const user = userEvent.setup()
+    render(<GeneralSection />)
+    const input = screen.getByTestId('settings-auto-fetch-interval')
+    await user.clear(input)
+    await user.type(input, '90')
+    expect(useSettingsStore.getState().settings.git.autoFetchIntervalMinutes).toBe(60)
+  })
+
+  it('does not expose default branch name or protected branches here (moved to the repo GitFlow page)', () => {
+    render(<GeneralSection />)
+    expect(screen.queryByTestId('settings-default-branch-name')).not.toBeInTheDocument()
+  })
+})
+
+describe('GeneralSection — graph', () => {
+  it('defaults to 2000 initial commits with lazy loading enabled', () => {
+    render(<GeneralSection />)
+    expect(screen.getByTestId('settings-initial-graph-commits')).toHaveValue(2000)
+    expect(screen.getByTestId('settings-lazy-load-graph-commits')).toBeChecked()
+  })
+
+  it('updates the initial graph commit count', async () => {
+    const user = userEvent.setup()
+    render(<GeneralSection />)
+    const input = screen.getByTestId('settings-initial-graph-commits')
+    await user.clear(input)
+    await user.type(input, '5000')
+    expect(useSettingsStore.getState().settings.git.initialGraphCommits).toBe(5000)
+  })
+
+  it('clamps a below-minimum value up to 500 on blur', async () => {
+    const user = userEvent.setup()
+    render(<GeneralSection />)
+    const input = screen.getByTestId('settings-initial-graph-commits')
+    await user.clear(input)
+    await user.type(input, '100')
+    input.blur()
+    expect(useSettingsStore.getState().settings.git.initialGraphCommits).toBe(500)
+  })
+
+  it('toggles lazy loading off', async () => {
+    const user = userEvent.setup()
+    render(<GeneralSection />)
+    await user.click(screen.getByTestId('settings-lazy-load-graph-commits'))
+    expect(useSettingsStore.getState().settings.git.lazyLoadGraphCommits).toBe(false)
   })
 })
 

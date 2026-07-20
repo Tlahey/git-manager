@@ -679,7 +679,7 @@ describe('GitGraph — overlay manager wiring', () => {
     useSettingsStore.setState({
       settings: {
         ...INITIAL_SETTINGS.settings,
-        git: { ...INITIAL_SETTINGS.settings.git, protectedBranches: ['main'] },
+        repoOverrides: { '/repo': { protectedBranches: ['main'] } },
       },
     })
     useGitGraphActions.mockReturnValue(actionsState({ pendingAction: { kind: 'branch' } }))

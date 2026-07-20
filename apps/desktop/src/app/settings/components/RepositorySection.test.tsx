@@ -27,9 +27,9 @@ afterEach(() => {
 
 describe('RepositorySection — no repo', () => {
   it('shows a hint and no controls when no repo is active', () => {
-    render(<RepositorySection category="general" />)
+    render(<RepositorySection category="gitflow" />)
     expect(screen.getByTestId('repository-no-repo')).toBeInTheDocument()
-    expect(screen.queryByTestId('repo-protected-branches-inherited')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('repo-default-branch-input')).not.toBeInTheDocument()
   })
 })
 
@@ -73,39 +73,46 @@ describe('RepositorySection — appearance page', () => {
   })
 })
 
-describe('RepositorySection — general page', () => {
+describe('RepositorySection — GitFlow page', () => {
   const REPO = '/repo'
   beforeEach(() => useRepoUIStore.setState({ activeRepo: REPO }))
 
-  it('shows only protected branches (read-only while inheriting); theme/commit are on other pages', () => {
-    render(<RepositorySection category="general" />)
-    expect(screen.getByTestId('repo-protected-branches-inherited')).toBeInTheDocument()
-    expect(screen.queryByTestId('repo-protected-branches')).not.toBeInTheDocument()
+  it('shows the default branch + protected branches editors; theme/commit are on other pages', () => {
+    render(<RepositorySection category="gitflow" />)
+    expect(screen.getByTestId('repo-default-branch-input')).toBeInTheDocument()
+    expect(screen.getByTestId('repo-protected-branches')).toBeInTheDocument()
     expect(screen.queryByTestId('repo-theme-select')).not.toBeInTheDocument()
     expect(screen.queryByTestId('repo-commit-pattern')).not.toBeInTheDocument()
   })
 
-  it('previews the inherited global protected branches', () => {
-    render(<RepositorySection category="general" />)
-    expect(screen.getByTestId('repo-protected-branches-inherited')).toHaveTextContent(
-      'main, master, develop'
-    )
+  it('seeds the built-in defaults when the repo has no override', () => {
+    render(<RepositorySection category="gitflow" />)
+    expect(screen.getByTestId('repo-default-branch-input')).toHaveValue('main')
+    expect(screen.getByTestId('repo-protected-branches')).toHaveTextContent('main')
+    // Displaying defaults must not itself write an override.
+    expect(useSettingsStore.getState().settings.repoOverrides[REPO]).toBeUndefined()
   })
 
-  it('overriding protected branches swaps in the editable tag input seeded from global', async () => {
+  it('editing the default branch name writes the per-repo override', async () => {
     const user = userEvent.setup()
-    render(<RepositorySection category="general" />)
-    await user.click(screen.getByTestId('repo-override-protectedBranches-override'))
+    render(<RepositorySection category="gitflow" />)
+    const input = screen.getByTestId('repo-default-branch-input')
+    await user.clear(input)
+    await user.type(input, 'trunk')
+    expect(useSettingsStore.getState().settings.repoOverrides[REPO]?.defaultBranchName).toBe('trunk')
+  })
+
+  it('adding a protected branch writes the per-repo override (seeded from defaults)', async () => {
+    const user = userEvent.setup()
+    render(<RepositorySection category="gitflow" />)
+    const tagInput = screen.getByTestId('repo-protected-branches').querySelector('input')!
+    await user.type(tagInput, 'release{Enter}')
     expect(useSettingsStore.getState().settings.repoOverrides[REPO]?.protectedBranches).toEqual([
       'main',
       'master',
       'develop',
+      'release',
     ])
-    const tagInput = screen.getByTestId('repo-protected-branches').querySelector('input')!
-    await user.type(tagInput, 'release{Enter}')
-    expect(useSettingsStore.getState().settings.repoOverrides[REPO]?.protectedBranches).toContain(
-      'release'
-    )
   })
 })
 
@@ -117,7 +124,7 @@ describe('RepositorySection — ai_commit page', () => {
     render(<RepositorySection category="ai_commit" />)
     expect(screen.getByTestId('repo-commit-instructions')).toBeDisabled()
     expect(screen.getByTestId('repo-commit-pattern')).toBeDisabled()
-    expect(screen.queryByTestId('repo-protected-branches-inherited')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('repo-protected-branches')).not.toBeInTheDocument()
   })
 
   it('overriding and editing the commit pattern writes the override', async () => {
@@ -145,7 +152,7 @@ describe('RepositorySection — worktree page', () => {
     expect(screen.getByTestId('repo-worktree-default-files')).toBeInTheDocument()
     expect(screen.getByTestId('worktree-df-add')).toBeInTheDocument()
     // Other pages' controls aren't present here.
-    expect(screen.queryByTestId('repo-protected-branches-inherited')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('repo-protected-branches')).not.toBeInTheDocument()
     expect(screen.queryByTestId('repo-theme-select')).not.toBeInTheDocument()
   })
 })

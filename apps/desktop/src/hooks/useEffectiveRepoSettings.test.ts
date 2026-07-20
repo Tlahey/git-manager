@@ -10,7 +10,6 @@ beforeEach(() => {
 })
 
 function setGlobal(partial: {
-  protectedBranches?: string[]
   commitInstructions?: string
   commitPattern?: string
   theme?: string
@@ -20,9 +19,6 @@ function setGlobal(partial: {
       ...s.settings,
       git: {
         ...s.settings.git,
-        ...(partial.protectedBranches !== undefined && {
-          protectedBranches: partial.protectedBranches,
-        }),
         ...(partial.commitInstructions !== undefined && {
           commitInstructions: partial.commitInstructions,
         }),
@@ -37,11 +33,12 @@ function setGlobal(partial: {
 }
 
 describe('useEffectiveRepoSettings', () => {
-  it('returns the global values when repoPath is null', () => {
-    setGlobal({ protectedBranches: ['main'], commitPattern: '^feat', theme: 'dark' })
+  it('returns inherited globals and built-in GitFlow defaults when repoPath is null', () => {
+    setGlobal({ commitPattern: '^feat', theme: 'dark' })
     const { result } = renderHook(() => useEffectiveRepoSettings(null))
     expect(result.current).toEqual({
-      protectedBranches: ['main'],
+      protectedBranches: ['main', 'master', 'develop'],
+      defaultBranchName: 'main',
       commitInstructions: '',
       commitPattern: '^feat',
       theme: 'dark',
@@ -51,21 +48,25 @@ describe('useEffectiveRepoSettings', () => {
     })
   })
 
-  it('returns the global values for a repo with no overrides (backward-compat)', () => {
-    setGlobal({ protectedBranches: ['main', 'develop'], theme: 'light' })
+  it('resolves the GitFlow fields to built-in defaults for a repo with no override', () => {
+    setGlobal({ theme: 'light' })
     const { result } = renderHook(() => useEffectiveRepoSettings('/repo'))
-    expect(result.current.protectedBranches).toEqual(['main', 'develop'])
+    expect(result.current.protectedBranches).toEqual(['main', 'master', 'develop'])
+    expect(result.current.defaultBranchName).toBe('main')
+    // Globally-inherited fields still resolve.
     expect(result.current.theme).toBe('light')
   })
 
-  it('prefers a repo override over the global value, per field', () => {
-    setGlobal({ protectedBranches: ['main'], commitPattern: 'global', theme: 'dark' })
+  it('resolves protectedBranches / defaultBranchName to the repo override', () => {
+    setGlobal({ commitPattern: 'global', theme: 'dark' })
     useSettingsStore.getState().setRepoSetting('/repo', 'theme', 'dracula')
     useSettingsStore.getState().setRepoSetting('/repo', 'protectedBranches', ['release'])
+    useSettingsStore.getState().setRepoSetting('/repo', 'defaultBranchName', 'trunk')
     const { result } = renderHook(() => useEffectiveRepoSettings('/repo'))
     expect(result.current.theme).toBe('dracula')
     expect(result.current.protectedBranches).toEqual(['release'])
-    // Non-overridden fields still inherit the global value.
+    expect(result.current.defaultBranchName).toBe('trunk')
+    // Non-overridden inherited fields still resolve to the global value.
     expect(result.current.commitPattern).toBe('global')
   })
 

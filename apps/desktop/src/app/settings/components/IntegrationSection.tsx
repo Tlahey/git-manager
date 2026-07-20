@@ -133,7 +133,7 @@ export function IntegrationSection() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-140px)] w-full overflow-hidden border border-border bg-card text-card-foreground">
+    <div className="flex h-[calc(100vh-53px)] w-full overflow-hidden border border-border bg-card text-card-foreground">
       {/* Sub-panel left: select provider */}
       <div className="flex w-40 shrink-0 flex-col gap-1 border-r border-border bg-muted/10 p-2">
         <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

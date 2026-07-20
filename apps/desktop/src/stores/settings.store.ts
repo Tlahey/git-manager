@@ -13,11 +13,14 @@ const DEFAULT_SETTINGS: AppSettings = {
   git: {
     defaultAuthorName: '',
     defaultAuthorEmail: '',
-    protectedBranches: ['main', 'master', 'develop'],
     showStashesInGraph: true,
+    initialGraphCommits: 2000,
+    lazyLoadGraphCommits: true,
     externalEditorCommand: '',
     commitInstructions: '',
     commitPattern: '',
+    autoPrune: true,
+    autoFetchIntervalMinutes: 1,
   },
   appearance: {
     theme: 'dark',
