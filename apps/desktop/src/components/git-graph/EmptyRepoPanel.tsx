@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Spinner } from '@git-manager/ui'
+import { Button, Spinner, Card } from '@git-manager/ui'
 import { GitCommitHorizontal } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiCreateCommit, apiGetRemotes, apiPushBranch } from '../../api/git.api'
@@ -55,9 +55,9 @@ export function EmptyRepoPanel({ repoPath }: EmptyRepoPanelProps) {
 
   return (
     <div className="flex flex-1 items-center justify-center p-6">
-      <div
+      <Card
         data-testid="empty-repo-panel"
-        className="max-w-sm space-y-3 rounded-lg border border-border bg-card p-5 text-center"
+        className="max-w-sm space-y-3 p-5 text-center"
       >
         <GitCommitHorizontal className="mx-auto h-6 w-6 text-muted-foreground" />
         <p className="text-sm text-foreground">{t('emptyRepo.message', { repo: repoName })}</p>
@@ -84,7 +84,7 @@ export function EmptyRepoPanel({ repoPath }: EmptyRepoPanelProps) {
             {initializing ? t('emptyRepo.initializing') : t('emptyRepo.initialize')}
           </Button>
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

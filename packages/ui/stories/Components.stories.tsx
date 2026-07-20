@@ -51,6 +51,7 @@ import {
   Kbd,
   Progress,
   Avatar,
+  Card,
   toast,
 } from '../src'
 
@@ -253,6 +254,19 @@ export const Overview: Story = {
             <option value="main">Disabled</option>
           </NativeSelect>
         </div>
+      </Section>
+
+      <Section title="Card — surface container">
+        <Card className="w-64 p-4">
+          <p className="mb-1 text-sm font-semibold text-foreground">Repository</p>
+          <p className="text-xs text-muted-foreground">
+            A themed surface panel — border, fill and text ride the card tokens.
+          </p>
+        </Card>
+        <Card className="w-64 bg-card/30 p-4 shadow-sm">
+          <p className="mb-1 text-sm font-semibold text-foreground">Translucent</p>
+          <p className="text-xs text-muted-foreground">bg-card/30 over the surface.</p>
+        </Card>
       </Section>
 
       <Section title="Alert — message boxes">

@@ -11,6 +11,9 @@ export type { TagProps, TagTone } from './components/tag'
 export { Alert } from './components/alert'
 export type { AlertProps, AlertVariant } from './components/alert'
 
+export { Card } from './components/card'
+export type { CardProps } from './components/card'
+
 export { ScrollArea, ScrollBar } from './components/scroll-area'
 
 export { Separator } from './components/separator'
