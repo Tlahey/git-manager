@@ -1,13 +1,17 @@
 /** Shared helpers for rendering author avatars as colored initials when no image is available.
  * Extracted from `CommitDetailsAvatar` so the blame gutter / history panel reuse the same look. */
 
+// White initials render over these gradients, so BOTH endpoints must clear APCA
+// Bronze (≥75Lc) for white text — the lighter `from-*` shade is the binding
+// constraint. Each pair was shifted a shade or two darker (the -500 ends failed,
+// e.g. green-500 #22c55e was only 49Lc) while keeping the hue recognizable.
 const AVATAR_COLORS = [
-  'from-purple-500 to-indigo-600',
-  'from-blue-500 to-cyan-600',
-  'from-green-500 to-teal-600',
-  'from-orange-500 to-amber-600',
-  'from-red-500 to-rose-600',
-  'from-pink-500 to-fuchsia-600',
+  'from-purple-600 to-indigo-700', // 81.0 → 91.3Lc
+  'from-blue-600 to-cyan-700', // 80.3 → 81.6Lc
+  'from-green-700 to-teal-800', // 79.6 → 90.8Lc
+  'from-orange-700 to-amber-700', // 79.9 → 79.5Lc
+  'from-red-600 to-rose-700', // 77.0 → 84.4Lc
+  'from-pink-600 to-fuchsia-700', // 75.7 → 85.1Lc
 ]
 
 function hashString(str: string): number {
