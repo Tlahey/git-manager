@@ -33,7 +33,10 @@ use commands::github::{
 };
 use commands::interactive_rebase::{list_rebase_commits, run_interactive_rebase};
 use commands::log::{compare_commit_to_workdir, get_commit_diff, get_commit_file, get_log};
-use commands::patch::create_patch;
+use commands::patch::{
+    apply_patch, commit_dependency_patch, create_patch, create_working_patch,
+    list_patchable_dependencies, prepare_dependency_patch, preview_working_patch, read_patch_file,
+};
 use commands::rebase::{
     abort_rebase, continue_rebase, get_rebase_state, rebase_onto_commit, skip_rebase,
 };
@@ -264,6 +267,13 @@ pub fn run() {
             get_worktree_agent_activity,
             // Patch
             create_patch,
+            create_working_patch,
+            preview_working_patch,
+            read_patch_file,
+            apply_patch,
+            list_patchable_dependencies,
+            prepare_dependency_patch,
+            commit_dependency_patch,
             // Conflict resolution
             list_conflicted_files,
             get_merge_view,

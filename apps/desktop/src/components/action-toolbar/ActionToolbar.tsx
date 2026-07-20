@@ -23,6 +23,7 @@ import { StateTags } from './StateTags'
 import { FetchButton } from './FetchButton'
 import { BranchButton } from './BranchButton'
 import { RunButton } from './RunButton'
+import { PatchMenu } from './PatchMenu'
 import { ToolbarButton } from '@git-manager/components'
 
 /** Barre d'actions principale (Partie 2) située sous les onglets. */
@@ -150,6 +151,10 @@ export function ActionToolbar() {
           disabled={disabled || !hasStashes}
           onClick={handlePop}
         />
+
+        <div className="mx-1 h-6 w-px shrink-0 bg-border" />
+
+        <PatchMenu repoPath={activeRepo} />
 
         {hasTasks && (
           <>

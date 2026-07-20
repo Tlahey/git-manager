@@ -439,6 +439,36 @@ export const cherryPickCommit = (path: string, oid: string) =>
 export const createPatch = (path: string, oid: string, destPath: string) =>
   invoke<void>('create_patch', { path, oid, destPath })
 
+export const createWorkingPatch = (path: string, filePaths: string[], destPath: string) =>
+  invoke<void>('create_working_patch', { path, filePaths, destPath })
+
+export const previewWorkingPatch = (path: string, filePaths: string[]) =>
+  invoke<string>('preview_working_patch', { path, filePaths })
+
+export const readPatchFile = (patchPath: string) =>
+  invoke<string>('read_patch_file', { patchPath })
+
+export const applyPatch = (path: string, patchPath: string, checkOnly: boolean) =>
+  invoke<void>('apply_patch', { path, patchPath, checkOnly })
+
+export const listPatchableDependencies = (path: string) =>
+  invoke<import('@git-manager/git-types').PatchableDependency[]>('list_patchable_dependencies', {
+    path,
+  })
+
+export const prepareDependencyPatch = (path: string, name: string, version: string) =>
+  invoke<import('@git-manager/git-types').PreparedDependencyPatch>('prepare_dependency_patch', {
+    path,
+    name,
+    version,
+  })
+
+export const commitDependencyPatch = (path: string, editDir: string) =>
+  invoke<import('@git-manager/git-types').CommittedDependencyPatch>('commit_dependency_patch', {
+    path,
+    editDir,
+  })
+
 // ─── Fixup ────────────────────────────────────────────────────────────────────
 
 export interface FixupInfo {

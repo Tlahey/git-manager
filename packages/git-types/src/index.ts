@@ -161,6 +161,26 @@ export interface GitDiff {
   totalDeletions: number
 }
 
+// ─── Dependency (node_modules) patching ───────────────────────────────────────
+
+export interface PatchableDependency {
+  name: string
+  version: string
+  installed: boolean
+  patched: boolean
+}
+
+export interface PreparedDependencyPatch {
+  editDir: string
+  diff: string
+  unchanged: boolean
+}
+
+export interface CommittedDependencyPatch {
+  patchFile: string
+  key: string
+}
+
 // ─── Submodules ───────────────────────────────────────────────────────────────
 
 export interface GitSubmodule {

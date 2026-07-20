@@ -29,6 +29,9 @@ import { PrCreateCenter } from './pr/PrCreateCenter'
 import { PrFileDiffCenter } from './pr/PrFileDiffCenter'
 import { PrFilesPanel } from './pr/PrFilesPanel'
 import { EmptyRepoPanel } from './EmptyRepoPanel'
+import { PatchWorkspaceCenter } from '../patch/PatchWorkspaceCenter'
+import { PatchWorkspacePanel } from '../patch/PatchWorkspacePanel'
+import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
 import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
 import { ConflictResolutionPanel } from './ConflictResolutionPanel'
 import { Waterline } from './Waterline'
@@ -84,6 +87,15 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   const prCreateOpen = useRepoUIStore((s) => s.prCreateOpen)
   const conflictFilePath = useRepoUIStore((s) => s.conflictFilePath)
   const setConflictFilePath = useRepoUIStore((s) => s.setConflictFilePath)
+
+  // Patch workspace (create / apply / dependency) claims both the center and the
+  // right panel, taking precedence over the commit/diff/PR views below.
+  const patchMode = usePatchWorkspaceStore((s) => s.mode)
+  const closePatch = usePatchWorkspaceStore((s) => s.close)
+  // Switching repo/tab abandons any in-progress patch workspace.
+  useEffect(() => {
+    closePatch()
+  }, [repoPath, closePatch])
 
   useEffect(() => {
     if (!conflictFilePath) return
@@ -540,7 +552,9 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     <div className="flex h-full select-none overflow-hidden">
       {/* Zone principale : vue PR (priorité), composer de PR, DiffViewCenter, ou tableau virtualisé */}
       <div className="relative flex min-w-[280px] flex-1 flex-col overflow-hidden">
-        {activePrNumber != null ? (
+        {patchMode ? (
+          <PatchWorkspaceCenter repoPath={repoPath} />
+        ) : activePrNumber != null ? (
           activePrFile != null ? (
             <PrFileDiffCenter
               repoPath={repoPath}
@@ -702,8 +716,23 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
         )}
       </div>
 
-      {/* Panneau latéral : fichiers de la PR (priorité), résolution de conflits, ou détails du commit */}
-      {activePrNumber != null ? (
+      {/* Panneau latéral : workspace de patch (priorité), fichiers de la PR, résolution de conflits, ou détails du commit */}
+      {patchMode ? (
+        <>
+          <div
+            {...resizeProps}
+            className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
+          >
+            <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
+          </div>
+          <div
+            className="h-full min-w-[350px] shrink-0 overflow-hidden"
+            style={{ width: panelWidthState }}
+          >
+            <PatchWorkspacePanel repoPath={repoPath} />
+          </div>
+        </>
+      ) : activePrNumber != null ? (
         prFilesVisible ? (
           <>
             <div

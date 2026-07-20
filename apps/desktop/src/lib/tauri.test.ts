@@ -548,6 +548,48 @@ const cases: {
     command: 'create_patch',
     args: { path: '/repo', oid: 'abc', destPath: '/out.patch' },
   },
+  {
+    name: 'createWorkingPatch',
+    call: () => tauri.createWorkingPatch('/repo', ['a.ts', 'b.ts'], '/out.patch'),
+    command: 'create_working_patch',
+    args: { path: '/repo', filePaths: ['a.ts', 'b.ts'], destPath: '/out.patch' },
+  },
+  {
+    name: 'previewWorkingPatch',
+    call: () => tauri.previewWorkingPatch('/repo', ['a.ts']),
+    command: 'preview_working_patch',
+    args: { path: '/repo', filePaths: ['a.ts'] },
+  },
+  {
+    name: 'readPatchFile',
+    call: () => tauri.readPatchFile('/some.patch'),
+    command: 'read_patch_file',
+    args: { patchPath: '/some.patch' },
+  },
+  {
+    name: 'applyPatch',
+    call: () => tauri.applyPatch('/repo', '/some.patch', true),
+    command: 'apply_patch',
+    args: { path: '/repo', patchPath: '/some.patch', checkOnly: true },
+  },
+  {
+    name: 'listPatchableDependencies',
+    call: () => tauri.listPatchableDependencies('/repo'),
+    command: 'list_patchable_dependencies',
+    args: { path: '/repo' },
+  },
+  {
+    name: 'prepareDependencyPatch',
+    call: () => tauri.prepareDependencyPatch('/repo', 'left-pad', '1.3.0'),
+    command: 'prepare_dependency_patch',
+    args: { path: '/repo', name: 'left-pad', version: '1.3.0' },
+  },
+  {
+    name: 'commitDependencyPatch',
+    call: () => tauri.commitDependencyPatch('/repo', '/tmp/edit'),
+    command: 'commit_dependency_patch',
+    args: { path: '/repo', editDir: '/tmp/edit' },
+  },
 
   {
     name: 'createFixupCommit',

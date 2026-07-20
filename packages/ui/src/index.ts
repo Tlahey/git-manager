@@ -76,6 +76,7 @@ export {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from './components/dropdown-menu'
 
 export { Popover, PopoverTrigger, PopoverAnchor, PopoverContent } from './components/popover'
