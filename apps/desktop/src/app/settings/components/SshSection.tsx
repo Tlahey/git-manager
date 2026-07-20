@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Button, Input, Separator, Textarea, Checkbox, NativeSelect } from '@git-manager/ui'
+import { Button, Input, Separator, Textarea, Checkbox, NativeSelect, Alert } from '@git-manager/ui'
 import { Key, FolderOpen, Copy, Check, Plus, AlertCircle, RefreshCw } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { open } from '@tauri-apps/plugin-dialog'
@@ -312,10 +312,9 @@ export function SshSection() {
             </div>
 
             {genError && (
-              <div className="flex items-center gap-2 rounded border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>Erreur : {genError}</span>
-              </div>
+              <Alert className="items-center" icon={<AlertCircle className="h-4 w-4" />}>
+                Erreur : {genError}
+              </Alert>
             )}
 
             {generatedPubKey ? (

@@ -47,6 +47,7 @@ import {
   RadioGroupItem,
   NativeSelect,
   Skeleton,
+  Alert,
   toast,
 } from '../src'
 
@@ -248,6 +249,15 @@ export const Overview: Story = {
           <NativeSelect aria-label="Disabled select" disabled defaultValue="main">
             <option value="main">Disabled</option>
           </NativeSelect>
+        </div>
+      </Section>
+
+      <Section title="Alert — message boxes">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 320 }}>
+          <Alert variant="destructive">Failed to push: remote rejected the update.</Alert>
+          <Alert variant="success">Branch created and checked out.</Alert>
+          <Alert variant="warning">This worktree has uncommitted changes.</Alert>
+          <Alert variant="info">Fetch runs automatically every minute.</Alert>
         </div>
       </Section>
 

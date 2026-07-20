@@ -8,6 +8,9 @@ export type { ChipProps } from './components/chip'
 export { Tag } from './components/tag'
 export type { TagProps, TagTone } from './components/tag'
 
+export { Alert } from './components/alert'
+export type { AlertProps, AlertVariant } from './components/alert'
+
 export { ScrollArea, ScrollBar } from './components/scroll-area'
 
 export { Separator } from './components/separator'

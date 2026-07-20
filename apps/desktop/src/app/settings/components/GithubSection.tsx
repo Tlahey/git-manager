@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, ScrollArea } from '@git-manager/ui'
+import { Button, Input, ScrollArea, Alert } from '@git-manager/ui'
 import {
   ArrowLeft,
   Check,
@@ -220,13 +220,13 @@ export function GithubSection() {
                   </div>
 
                   {error && (
-                    <div
+                    <Alert
                       data-testid="github-error-message"
-                      className="flex items-center gap-2 rounded border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive"
+                      className="items-center"
+                      icon={<AlertCircle className="h-4 w-4" />}
                     >
-                      <AlertCircle className="h-4 w-4 shrink-0" />
-                      <span>{error}</span>
-                    </div>
+                      {error}
+                    </Alert>
                   )}
                 </div>
               </div>
@@ -291,13 +291,13 @@ export function GithubSection() {
                   </form>
 
                   {error && (
-                    <div
+                    <Alert
                       data-testid="github-error-message"
-                      className="flex items-center gap-2 rounded border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive"
+                      className="items-center"
+                      icon={<AlertCircle className="h-4 w-4" />}
                     >
-                      <AlertCircle className="h-4 w-4 shrink-0" />
-                      <span>{error}</span>
-                    </div>
+                      {error}
+                    </Alert>
                   )}
                 </div>
               </div>
