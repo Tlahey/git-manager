@@ -45,6 +45,22 @@ pub async fn push_branch(
     git_remote::push(&repo, remote, force.unwrap_or(false)).map_err(Into::into)
 }
 
+// ─── push_branch_to ───────────────────────────────────────────────────────────
+
+/// Pushes local branch `source` to remote branch `target` (refspec `source:target`) on `remote`
+/// (defaults to "origin") — drag-and-drop of one branch badge onto another.
+#[tauri::command]
+pub async fn push_branch_to(
+    path: String,
+    remote: Option<String>,
+    source: String,
+    target: String,
+    force: Option<bool>,
+) -> Result<(), String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    git_remote::push_to(&repo, remote, &source, &target, force.unwrap_or(false)).map_err(Into::into)
+}
+
 // ─── get_remotes ──────────────────────────────────────────────────────────────
 
 /// Liste les remotes avec leur nom (GitRepo.remotes ne fournit que les URLs)

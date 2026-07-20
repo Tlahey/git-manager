@@ -85,6 +85,114 @@ pub async fn checkout_branch(
     git_branch::checkout_branch(&repo, &ref_name, force.unwrap_or(false)).map_err(Into::into)
 }
 
+/// Merges branch `source` into `target` (drag-and-drop of one ref badge onto another).
+///
+/// `target` is checked out, then `git merge --no-edit source` runs. On conflict the merge is
+/// **aborted** (`git merge --abort`) and the error is surfaced: unlike rebase, the app has no UI
+/// yet to drive a merge-conflict resolution (the conflict panel is driven by rebase state, see
+/// `git_rebase::get_rebase_state`), so leaving the repo stuck in a `MERGE_HEAD` state with no way
+/// out would be worse than refusing cleanly.
+#[tauri::command]
+pub async fn merge_branch(
+    path: String,
+    source: String,
+    target: String,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    use tauri_plugin_shell::ShellExt;
+
+    let checkout = app
+        .shell()
+        .command("git")
+        .args(["-C", &path, "checkout", &target])
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !checkout.status.success() {
+        return Err(String::from_utf8_lossy(&checkout.stderr).to_string());
+    }
+
+    let merge = app
+        .shell()
+        .command("git")
+        .args(["-C", &path, "merge", "--no-edit", &source])
+        .env("GIT_EDITOR", "true")
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !merge.status.success() {
+        // Restore a clean state — the app can't drive merge-conflict resolution yet.
+        let _ = app
+            .shell()
+            .command("git")
+            .args(["-C", &path, "merge", "--abort"])
+            .output()
+            .await;
+        return Err(String::from_utf8_lossy(&merge.stderr).to_string());
+    }
+    Ok(())
+}
+
+/// Advances branch `target` up to `source` (fast-forward only — rejected if `target` isn't an
+/// ancestor of `source`). If `target` is the current branch, `git merge --ff-only` also updates the
+/// working tree; otherwise the ref is moved without touching the worktree (`git branch -f`, safe
+/// since `target` isn't checked out).
+#[tauri::command]
+pub async fn fast_forward_branch(
+    path: String,
+    source: String,
+    target: String,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    use tauri_plugin_shell::ShellExt;
+
+    // `git merge-base --is-ancestor target source` exits 0 iff target is reachable from source,
+    // i.e. the update is a genuine fast-forward.
+    let ancestor = app
+        .shell()
+        .command("git")
+        .args(["-C", &path, "merge-base", "--is-ancestor", &target, &source])
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !ancestor.status.success() {
+        return Err(AppError::InvalidInput(format!(
+            "{target} is not an ancestor of {source}; fast-forward is not possible"
+        ))
+        .into());
+    }
+
+    let current = app
+        .shell()
+        .command("git")
+        .args(["-C", &path, "symbolic-ref", "--quiet", "--short", "HEAD"])
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+    let current_branch = String::from_utf8_lossy(&current.stdout).trim().to_string();
+
+    let output = if current.status.success() && current_branch == target {
+        app.shell()
+            .command("git")
+            .args(["-C", &path, "merge", "--ff-only", &source])
+            .output()
+            .await
+    } else {
+        app.shell()
+            .command("git")
+            .args(["-C", &path, "branch", "-f", &target, &source])
+            .output()
+            .await
+    }
+    .map_err(|e| e.to_string())?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+    }
+    Ok(())
+}
+
 /// Supprime une branche locale (et sa branche de tracking distante si demandé).
 /// `force = false` refuse la suppression si la branche n'est pas fusionnée dans HEAD
 /// (équivalent `git branch -d`) ; `force = true` supprime sans vérification (`-D`).

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { GitGraphNode, GitRef } from '@git-manager/git-types'
-import { computeLaneBranchByOid } from './laneBranch'
+import { computeLaneBranchByOid, collectRefDropHighlight } from './laneBranch'
 
 function ref(shortName: string, type: GitRef['type'] = 'branch'): GitRef {
   return { name: `refs/${shortName}`, shortName, type, commitOid: '' }
@@ -132,5 +132,56 @@ describe('computeLaneBranchByOid', () => {
   it('leaves commits with no owning branch tip unmapped', () => {
     const nodes = [node('c2', ['c1']), node('c1', [])]
     expect(computeLaneBranchByOid(nodes).size).toBe(0)
+  })
+})
+
+describe('collectRefDropHighlight', () => {
+  // main:  M2 (tip) → M1 → base ;  feat:  F2 (tip) → F1 → base  (forked at base)
+  const nodes = [
+    node('F2', ['F1'], [ref('feat')]),
+    node('M2', ['M1'], [ref('main')]),
+    node('F1', ['base']),
+    node('M1', ['base']),
+    node('base', []),
+  ]
+  const owner = computeLaneBranchByOid(nodes)
+  const refAt = (shortName: string, type: GitRef['type'], oid: string): GitRef => ({
+    name: `refs/${shortName}`,
+    shortName,
+    type,
+    commitOid: oid,
+  })
+
+  it('returns null when nothing is hovered', () => {
+    expect(collectRefDropHighlight(null, owner)).toBeNull()
+  })
+
+  it('highlights only the branch’s own commits, not the shared parent line or children', () => {
+    const set = collectRefDropHighlight(refAt('feat', 'branch', 'F2'), owner)
+    expect([...set!].sort()).toEqual(['F1', 'F2'])
+    expect(set!.has('base')).toBe(false) // shared ancestor belongs to main
+    expect(set!.has('M2')).toBe(false)
+    expect(set!.has('M1')).toBe(false)
+  })
+
+  it('highlights main’s whole first-parent line when hovering main', () => {
+    const set = collectRefDropHighlight(refAt('main', 'branch', 'M2'), owner)
+    expect([...set!].sort()).toEqual(['M1', 'M2', 'base'])
+  })
+
+  it('treats a remote ref the same as its local branch (origin/feat → feat)', () => {
+    const set = collectRefDropHighlight(refAt('origin/feat', 'remote', 'F2'), owner)
+    expect([...set!].sort()).toEqual(['F1', 'F2'])
+  })
+
+  it('attributes a tag to the branch owning the commit it points at', () => {
+    const set = collectRefDropHighlight(refAt('v1', 'tag', 'F1'), owner)
+    expect([...set!].sort()).toEqual(['F1', 'F2'])
+  })
+
+  it('falls back to just the commit for a tag on an unowned commit', () => {
+    const orphan = [node('x', [])]
+    const set = collectRefDropHighlight(refAt('v1', 'tag', 'x'), computeLaneBranchByOid(orphan))
+    expect([...set!]).toEqual(['x'])
   })
 })

@@ -140,6 +140,12 @@ export const checkoutBranch = (path: string, refName: string, force = false) =>
 export const deleteBranch = (path: string, name: string, force = false, deleteRemote = false) =>
   invoke<void>('delete_branch', { path, name, force, deleteRemote })
 
+export const mergeBranch = (path: string, source: string, target: string) =>
+  invoke<void>('merge_branch', { path, source, target })
+
+export const fastForwardBranch = (path: string, source: string, target: string) =>
+  invoke<void>('fast_forward_branch', { path, source, target })
+
 export const renameBranch = (path: string, oldName: string, newName: string) =>
   invoke<void>('rename_branch', { path, oldName, newName })
 
@@ -341,6 +347,14 @@ export const pullBranch = (path: string, remote?: string, rebase?: boolean) =>
 
 export const pushBranch = (path: string, remote?: string, force?: boolean) =>
   invoke<void>('push_branch', { path, remote, force })
+
+export const pushBranchTo = (
+  path: string,
+  source: string,
+  target: string,
+  remote?: string,
+  force?: boolean
+) => invoke<void>('push_branch_to', { path, remote, source, target, force })
 
 export interface RemoteInfo {
   name: string

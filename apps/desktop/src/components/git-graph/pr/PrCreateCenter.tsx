@@ -1,6 +1,7 @@
 import { useTranslation } from '@git-manager/i18n'
 import { X, GitPullRequest } from 'lucide-react'
 import { usePrCreateFlow } from '../../../hooks/usePrCreateFlow'
+import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { PrCreateForm } from './PrCreateForm'
 
 interface PrCreateCenterProps {
@@ -15,6 +16,9 @@ interface PrCreateCenterProps {
 export function PrCreateCenter({ repoPath }: PrCreateCenterProps) {
   const { t } = useTranslation('git')
   const flow = usePrCreateFlow(repoPath)
+  // Ref drag-and-drop "Start a PR" pre-selects head/base; the sidebar "+" leaves it null and the
+  // form falls back to the current branch / GitHub default base.
+  const prefill = useRepoUIStore((s) => s.prCreatePrefill)
 
   return (
     <div className="flex h-full flex-col overflow-hidden" data-testid="pr-create-center">
@@ -38,8 +42,8 @@ export function PrCreateCenter({ repoPath }: PrCreateCenterProps) {
         <div className="mx-auto max-w-2xl">
           <PrCreateForm
             repoPath={repoPath}
-            currentBranch={flow.currentBranch}
-            defaultBase={flow.defaultBase}
+            currentBranch={prefill?.head ?? flow.currentBranch}
+            defaultBase={prefill?.base ?? flow.defaultBase}
             isSubmitting={flow.busy}
             error={flow.error}
             onCreate={(input) => void flow.createPr(input).catch(() => {})}

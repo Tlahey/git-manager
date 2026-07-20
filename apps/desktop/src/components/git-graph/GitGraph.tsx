@@ -19,6 +19,8 @@ import { useGitGraphNodes, type ConflictRowInfo } from '../../hooks/useGitGraphN
 import { useGitGraphActions } from '../../hooks/useGitGraphActions'
 import { apiGetRebaseState } from '../../api/git.api'
 import { GraphRow } from './GraphRow'
+import { RefDropProvider } from './RefDropContext'
+import { useRefDragStore } from '../../stores/refDrag.store'
 import { GraphHeader } from './GraphHeader'
 import { CommitSearchPanel } from './CommitSearchPanel'
 import { CommitDetailsPanel } from './CommitDetailsPanel'
@@ -39,7 +41,7 @@ import { Waterline } from './Waterline'
 import { COLUMN_DEFS, COLUMN_ORDER, type ResolvedColumn } from './columns.config'
 import { getGraphColumnLayout, getGraphMaxWidth } from './graphColumnSizing'
 import { collectGraphAuthors } from './graphAuthors'
-import { computeLaneBranchByOid } from './laneBranch'
+import { computeLaneBranchByOid, collectRefDropHighlight } from './laneBranch'
 import { useGraphAuthorFilterStore } from '../../stores/graphAuthorFilter.store'
 
 interface GitGraphProps {
@@ -324,6 +326,15 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     [authorMatchingOids]
   )
 
+  // While a ref badge is drag-hovered as a drop target, highlight that ref's *own* lane commits
+  // (first-parent attribution — not the shared ancestors below the fork, nor any children) and dim
+  // the rest, the same muting the search uses. The sticky hover ref lives in the drag store.
+  const dragHoverRef = useRefDragStore((s) => s.hoverRef)
+  const dragHighlightSet = useMemo(
+    () => collectRefDropHighlight(dragHoverRef, laneRefByOid),
+    [dragHoverRef, laneRefByOid]
+  )
+
   // ── Search result navigation (up/down in the floating CommitSearchPanel) ───────────────────
   const [activeMatchIndex, setActiveMatchIndex] = useState(0)
   // Jump back to the first match whenever the query itself changes (find-as-you-type).
@@ -575,8 +586,9 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   }, [primaryNode, nodes, headBranchName])
 
   return (
-    <div className="flex h-full select-none overflow-hidden">
-      {/* Zone principale : vue PR (priorité), composer de PR, DiffViewCenter, ou tableau virtualisé */}
+    <RefDropProvider repoPath={repoPath}>
+      <div className="flex h-full select-none overflow-hidden">
+        {/* Zone principale : vue PR (priorité), composer de PR, DiffViewCenter, ou tableau virtualisé */}
       <div className="relative flex min-w-[280px] flex-1 flex-col overflow-hidden">
         {patchMode ? (
           <PatchWorkspaceCenter repoPath={repoPath} />
@@ -657,10 +669,12 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                       // is unmatched). With neither filter active, nothing is dimmed.
                       const searchActive = matchSet !== null
                       const authorActive = authorMatchSet !== null
-                      const dimmed =
-                        (searchActive || authorActive) &&
-                        !(searchActive && matchSet.has(oid)) &&
-                        !(authorActive && authorMatchSet.has(oid))
+                      // A drag-hovered ref takes over the dimming: only its commits stay lit.
+                      const dimmed = dragHighlightSet
+                        ? !dragHighlightSet.has(oid)
+                        : (searchActive || authorActive) &&
+                          !(searchActive && matchSet.has(oid)) &&
+                          !(authorActive && authorMatchSet.has(oid))
 
                       // Timeline preview: commits newer than the previewed HEAD collapse into a thin
                       // colored marker (height + color animation) to show they'd be undone. The
@@ -831,6 +845,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
         pendingAction={pendingAction}
         onClearPendingAction={() => setPendingAction(null)}
       />
-    </div>
+      </div>
+    </RefDropProvider>
   )
 }

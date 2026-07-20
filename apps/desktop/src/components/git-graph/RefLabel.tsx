@@ -1,12 +1,21 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { GitRef } from '@git-manager/git-types'
 import { cn } from '@git-manager/ui'
 import { GitCommitHorizontal, Check, Laptop, Tag, Archive } from 'lucide-react'
+import { useRefDragStore, isValidRefDropTarget, isSameRef } from '../../stores/refDrag.store'
+import { useRefDropHandler } from './RefDropContext'
 
 interface RefLabelProps {
   gitRef: GitRef
   color?: string
+  /**
+   * Whether this badge takes part in drag-and-drop. `false` for the faint *lane hint* badges
+   * `GraphRow` renders on every commit of a branch's lane — they mustn't each pop the drag overlay
+   * when their branch is the drop target (that looked like every tag being hovered at once). Only
+   * the real ref badge (at the branch tip) is interactive. Defaults to `true`.
+   */
+  interactive?: boolean
 }
 
 function GithubIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -34,7 +43,7 @@ const cleanName = (ref: GitRef) => {
   return ref.shortName
 }
 
-export function RefLabel({ gitRef, color }: RefLabelProps) {
+export function RefLabel({ gitRef, color, interactive = true }: RefLabelProps) {
   const isHEAD = gitRef.type === 'HEAD'
   const isRemote = gitRef.type === 'remote'
   const isTag = gitRef.type === 'tag'
@@ -43,12 +52,11 @@ export function RefLabel({ gitRef, color }: RefLabelProps) {
   const displayName = cleanName(gitRef)
   const label = isHEAD ? 'HEAD' : displayName
 
-  // Au survol d'un badge tronqué (ellipsis), on révèle le nom complet dans un
-  // clone du badge rendu en `position: fixed` via un portail — même principe que
-  // le HoverExpandLabel du panneau de gauche : même style/couleur, épinglé au
-  // même endroit mais sans largeur max ni troncature, donc tout le texte tient.
-  // On mesure le débordement à la demande (`scrollWidth > clientWidth`) et on
-  // n'ouvre l'overlay que s'il déborde réellement.
+  // Hovering a truncated (ellipsized) badge reveals its full name in a clone of the badge rendered
+  // `position: fixed` through a portal — same idea as the left panel's HoverExpandLabel: same
+  // style/color, pinned to the same spot but with no max width or truncation, so the whole text
+  // fits. Overflow is measured on demand (`scrollWidth > clientWidth`) and the overlay only opens
+  // when the label actually overflows.
   const badgeRef = useRef<HTMLSpanElement>(null)
   const nameRef = useRef<HTMLSpanElement>(null)
   const [overlayPos, setOverlayPos] = useState<{ top: number; left: number } | null>(null)
@@ -57,14 +65,14 @@ export function RefLabel({ gitRef, color }: RefLabelProps) {
     const nameEl = nameRef.current
     const badgeEl = badgeRef.current
     if (!nameEl || !badgeEl) return
-    if (nameEl.scrollWidth <= nameEl.clientWidth + 1) return // pas de débordement
+    if (nameEl.scrollWidth <= nameEl.clientWidth + 1) return // no overflow
     const r = badgeEl.getBoundingClientRect()
     setOverlayPos({ top: r.top, left: r.left })
   }
   const hideOverlay = () => setOverlayPos(null)
 
-  // Un défilement / redimensionnement pendant le survol déplacerait le badge :
-  // on masque l'overlay plutôt que de le laisser flotter au mauvais endroit.
+  // A scroll / resize during hover would move the badge, so hide the overlay rather than let it
+  // float at the wrong spot.
   useLayoutEffect(() => {
     if (!overlayPos) return
     window.addEventListener('scroll', hideOverlay, true)
@@ -74,6 +82,106 @@ export function RefLabel({ gitRef, color }: RefLabelProps) {
       window.removeEventListener('resize', hideOverlay)
     }
   }, [overlayPos])
+
+  // ── Drag-and-drop (branch/tag onto another ref) ────────────────────────────
+  // Only real, mutable refs take part — never the bare HEAD pointer or a stash.
+  const onDropRefs = useRefDropHandler()
+  const startDrag = useRefDragStore((s) => s.startDrag)
+  const endDrag = useRefDragStore((s) => s.endDrag)
+  const setHoverRef = useRefDragStore((s) => s.setHoverRef)
+  const hoverRef = useRefDragStore((s) => s.hoverRef)
+  const canDragDrop = interactive && !!onDropRefs && !isHEAD && !isStash
+  // This badge is the current (sticky) drop target — drives its highlight ring + full-name overlay.
+  const isDropTarget = canDragDrop && isSameRef(hoverRef, gitRef)
+
+  // While this badge is the sticky drag target, force its full-name overlay on (the native drag
+  // suppresses the mouse events the hover overlay normally rides on) and clear it when it stops
+  // being the target — switched to another ref, dropped, or cancelled.
+  useEffect(() => {
+    if (!isDropTarget) return
+    const badgeEl = badgeRef.current
+    if (!badgeEl) return
+    const r = badgeEl.getBoundingClientRect()
+    setOverlayPos({ top: r.top, left: r.left })
+    return () => setOverlayPos(null)
+  }, [isDropTarget])
+
+  const handleDragStart = (e: React.DragEvent) => {
+    startDrag(gitRef)
+    // A custom type marks this as our drag so a target can allow the drop in `dragover`, where the
+    // payload itself is unreadable; the source ref is read from the store on drop.
+    e.dataTransfer.setData('application/x-gm-ref', gitRef.name)
+    e.dataTransfer.effectAllowed = 'copy'
+
+    // Explicit drag image: a floating copy of the badge follows the cursor. We clone the live badge
+    // (rendered off-screen so it isn't visible in place) rather than trusting the default snapshot,
+    // which WKWebView renders inconsistently for small inline elements.
+    const el = badgeRef.current
+    if (el && typeof e.dataTransfer.setDragImage === 'function') {
+      const clone = el.cloneNode(true) as HTMLElement
+      clone.style.position = 'fixed'
+      clone.style.top = '-1000px'
+      clone.style.left = '-1000px'
+      clone.style.margin = '0'
+      clone.style.opacity = '0.9'
+      clone.style.pointerEvents = 'none'
+      document.body.appendChild(clone)
+      e.dataTransfer.setDragImage(clone, 12, 12)
+      // Remove once the browser has snapshotted it for the drag.
+      setTimeout(() => clone.remove(), 0)
+    }
+  }
+  // Little flourish: after the drop, a ghost of the badge glides from where it was dropped back to
+  // its home spot in the list. Purely cosmetic — the real badge never moved.
+  const animateBackHome = (dropX: number, dropY: number) => {
+    const el = badgeRef.current
+    // Some engines report 0,0 for a keyboard-/cancel-ended drag — skip the flourish then.
+    if (!el || (dropX === 0 && dropY === 0)) return
+    const home = el.getBoundingClientRect()
+    if (home.width === 0) return
+    const ghost = el.cloneNode(true) as HTMLElement
+    const startLeft = dropX - home.width / 2
+    const startTop = dropY - home.height / 2
+    Object.assign(ghost.style, {
+      position: 'fixed',
+      margin: '0',
+      left: `${startLeft}px`,
+      top: `${startTop}px`,
+      pointerEvents: 'none',
+      zIndex: '9999',
+      transition: 'transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+    })
+    document.body.appendChild(ghost)
+    requestAnimationFrame(() => {
+      ghost.style.transform = `translate(${home.left - startLeft}px, ${home.top - startTop}px)`
+    })
+    const cleanup = () => ghost.remove()
+    ghost.addEventListener('transitionend', cleanup, { once: true })
+    setTimeout(cleanup, 500) // fallback if the drop landed on home (no transition to end)
+  }
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    animateBackHome(e.clientX, e.clientY)
+    endDrag() // clears draggingRef + the sticky hoverRef → every target's highlight/overlay resets
+  }
+  const handleDragOver = (e: React.DragEvent) => {
+    if (isValidRefDropTarget(useRefDragStore.getState().draggingRef, gitRef)) {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'copy' // green "+" cursor
+    }
+  }
+  const handleDragEnter = () => {
+    // Entering a valid target makes it *the* sticky target: its highlight/overlay persists until
+    // another target is entered or the drag ends — we deliberately don't clear it on drag-leave.
+    if (isValidRefDropTarget(useRefDragStore.getState().draggingRef, gitRef)) setHoverRef(gitRef)
+  }
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    const dragging = useRefDragStore.getState().draggingRef
+    if (onDropRefs && dragging && isValidRefDropTarget(dragging, gitRef)) {
+      onDropRefs(dragging, gitRef)
+    }
+  }
 
   const isLocalMainOrMaster = gitRef.shortName === 'main' || gitRef.shortName === 'master'
 
@@ -121,19 +229,35 @@ export function RefLabel({ gitRef, color }: RefLabelProps) {
   const renderBadge = (overlay: boolean) => (
     <span
       ref={overlay ? undefined : badgeRef}
-      // Inline : largeur bornée + troncature. Overlay : aucune borne → tout le
-      // texte tient. L'overlay est épinglé (fixed) sur le badge inline et laisse
-      // passer la souris (pointer-events-none) pour que le `onMouseLeave` du badge
-      // sous-jacent le referme.
-      className={cn(badgeClasses, overlay ? 'pointer-events-none fixed z-overlay' : 'max-w-[180px]')}
+      // Inline: bounded width + truncation. Overlay: no bound → the whole text fits. The overlay is
+      // pinned (fixed) over the inline badge and lets the mouse through (pointer-events-none) so the
+      // underlying badge's `onMouseLeave` closes it.
+      className={cn(
+        badgeClasses,
+        overlay ? 'pointer-events-none fixed z-overlay' : 'max-w-[180px]',
+        // WKWebView (Tauri) refuses to start a native drag on an element inside a `user-select:none`
+        // subtree — which the whole graph is — unless the drag is re-enabled here: `select-auto`
+        // lifts the inherited `user-select:none` and `-webkit-user-drag:element` turns the badge
+        // itself into a draggable object.
+        !overlay && canDragDrop && 'cursor-grab select-auto active:cursor-grabbing [-webkit-user-drag:element]',
+        // Drop highlight — also on the portaled overlay (which isn't clipped by the ref group's
+        // overflow-hidden), so short-named branch targets get visible feedback too.
+        isDropTarget && 'ring-2 ring-emerald-400 ring-offset-1 ring-offset-background'
+      )}
       style={
         overlay && overlayPos
           ? { ...customStyle, top: overlayPos.top, left: overlayPos.left }
           : customStyle
       }
       data-testid={overlay ? undefined : `ref-label-${gitRef.type}-${gitRef.shortName}`}
-      onMouseEnter={overlay ? undefined : showOverlay}
+      onMouseEnter={overlay ? undefined : () => showOverlay()}
       onMouseLeave={overlay ? undefined : hideOverlay}
+      draggable={!overlay && canDragDrop ? true : undefined}
+      onDragStart={!overlay && canDragDrop ? handleDragStart : undefined}
+      onDragEnd={!overlay && canDragDrop ? handleDragEnd : undefined}
+      onDragOver={!overlay && canDragDrop ? handleDragOver : undefined}
+      onDragEnter={!overlay && canDragDrop ? handleDragEnter : undefined}
+      onDrop={!overlay && canDragDrop ? handleDrop : undefined}
     >
       {isHEAD && <GitCommitHorizontal className="h-3 w-3 shrink-0" />}
       {!isHEAD && !isRemote && !isTag && !isStash && <Check className="h-3 w-3 shrink-0" />}

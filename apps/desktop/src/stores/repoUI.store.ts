@@ -86,6 +86,14 @@ interface RepoUIState {
    */
   prCreateOpen: boolean
   setPrCreateOpen: (open: boolean) => void
+  /**
+   * Head/base branch pre-selection for the PR-create view when opened from the ref drag-and-drop
+   * menu ("Start a pull request … from … to …"). `null` for the plain sidebar "+" entry, which
+   * falls back to the current branch / GitHub default base. Consumed by `PrCreateCenter`.
+   */
+  prCreatePrefill: { head: string; base: string } | null
+  /** Opens the PR-create view with head/base pre-selected (ref drag-and-drop "Start a PR"). */
+  openPrCreateWith: (head: string, base: string) => void
   activeLeftPanel: 'sidebar' | 'blame' | 'history'
   setActiveLeftPanel: (panel: 'sidebar' | 'blame' | 'history') => void
   /**
@@ -155,6 +163,7 @@ export const useRepoUIStore = create<RepoUIState>()(
       prFilesVisible: true,
       prComposer: null,
       prCreateOpen: false,
+      prCreatePrefill: null,
       activeLeftPanel: 'sidebar',
       selectedHistoryOid: null,
       editingOid: null,
@@ -207,14 +216,26 @@ export const useRepoUIStore = create<RepoUIState>()(
         })),
 
       // Opening the create view claims the center panel; drop any open file diff / PR view / composer.
+      // The plain "+" entry carries no prefill (falls back to current branch / default base).
       setPrCreateOpen: (open) =>
         set((state) => ({
           prCreateOpen: open,
+          prCreatePrefill: null,
           activeDiffFile: open ? null : state.activeDiffFile,
           activePrNumber: open ? null : state.activePrNumber,
           activePrFile: open ? null : state.activePrFile,
           prComposer: open ? null : state.prComposer,
         })),
+
+      openPrCreateWith: (head, base) =>
+        set({
+          prCreateOpen: true,
+          prCreatePrefill: { head, base },
+          activeDiffFile: null,
+          activePrNumber: null,
+          activePrFile: null,
+          prComposer: null,
+        }),
 
       setActiveLeftPanel: (panel) => set({ activeLeftPanel: panel }),
 

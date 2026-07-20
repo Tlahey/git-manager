@@ -429,3 +429,110 @@ describe('showBranchNativeContextMenu', () => {
     expect(menuPopup).toHaveBeenCalledOnce()
   })
 })
+
+describe('showRefDropNativeContextMenu', () => {
+  function refDropOpts(
+    overrides: Partial<Parameters<NativeMenuModule['showRefDropNativeContextMenu']>[0]> = {}
+  ) {
+    return {
+      labels: {
+        fastForward: 'Fast-forward main to feat',
+        merge: 'Merge feat into main',
+        rebase: 'Rebase feat onto main',
+        interactiveRebase: 'Interactive Rebase feat onto main',
+        push: 'Push feat to origin/main',
+        resetSubmenu: 'Reset feat to this commit',
+        resetSoft: 'Soft',
+        resetMixed: 'Mixed',
+        resetHard: 'Hard',
+        startPr: 'Start a pull request to origin/main from origin/feat',
+      },
+      fastForwardEnabled: true,
+      mergeEnabled: true,
+      rebaseEnabled: true,
+      interactiveRebaseEnabled: true,
+      pushEnabled: true,
+      resetEnabled: true,
+      prEnabled: true,
+      onFastForward: vi.fn(),
+      onMerge: vi.fn(),
+      onRebase: vi.fn(),
+      onInteractiveRebase: vi.fn(),
+      onPush: vi.fn(),
+      onReset: vi.fn(),
+      onStartPr: vi.fn(),
+      ...overrides,
+    }
+  }
+
+  it('renders all seven actions with the provided labels', async () => {
+    const api = await freshApi()
+    await api.showRefDropNativeContextMenu(refDropOpts())
+    for (const text of [
+      'Fast-forward main to feat',
+      'Merge feat into main',
+      'Rebase feat onto main',
+      'Interactive Rebase feat onto main',
+      'Push feat to origin/main',
+      'Start a pull request to origin/main from origin/feat',
+    ]) {
+      expect(iconMenuItemNew).toHaveBeenCalledWith(expect.objectContaining({ text }))
+    }
+    expect(submenuNew).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'Reset feat to this commit' })
+    )
+  })
+
+  it('disables actions per the *Enabled flags', async () => {
+    const api = await freshApi()
+    await api.showRefDropNativeContextMenu(
+      refDropOpts({ fastForwardEnabled: false, mergeEnabled: false, resetEnabled: false })
+    )
+    expect(iconMenuItemNew).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'Fast-forward main to feat', enabled: false })
+    )
+    expect(iconMenuItemNew).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'Merge feat into main', enabled: false })
+    )
+    expect(submenuNew).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }))
+  })
+
+  it('wires the reset submenu soft/mixed/hard to onReset', async () => {
+    const onReset = vi.fn()
+    const api = await freshApi()
+    await api.showRefDropNativeContextMenu(refDropOpts({ onReset }))
+    for (const [text] of [['Soft'], ['Mixed'], ['Hard']]) {
+      const call = iconMenuItemNew.mock.calls.find(
+        ([opts]) => (opts as { text: string }).text === text
+      )
+      ;(call![0] as { action: () => void }).action()
+    }
+    expect(onReset).toHaveBeenNthCalledWith(1, 'soft')
+    expect(onReset).toHaveBeenNthCalledWith(2, 'mixed')
+    expect(onReset).toHaveBeenNthCalledWith(3, 'hard')
+  })
+
+  it('wires the fast-forward and start-PR actions to their callbacks', async () => {
+    const onFastForward = vi.fn()
+    const onStartPr = vi.fn()
+    const api = await freshApi()
+    await api.showRefDropNativeContextMenu(refDropOpts({ onFastForward, onStartPr }))
+    const ff = iconMenuItemNew.mock.calls.find(
+      ([opts]) => (opts as { text: string }).text === 'Fast-forward main to feat'
+    )
+    const pr = iconMenuItemNew.mock.calls.find(
+      ([opts]) => (opts as { text: string }).text === 'Start a pull request to origin/main from origin/feat'
+    )
+    ;(ff![0] as { action: () => void }).action()
+    ;(pr![0] as { action: () => void }).action()
+    expect(onFastForward).toHaveBeenCalledOnce()
+    expect(onStartPr).toHaveBeenCalledOnce()
+  })
+
+  it('builds and pops up the assembled menu', async () => {
+    const api = await freshApi()
+    await api.showRefDropNativeContextMenu(refDropOpts())
+    expect(menuNew).toHaveBeenCalledOnce()
+    expect(menuPopup).toHaveBeenCalledOnce()
+  })
+})
