@@ -1,4 +1,5 @@
 import { Search, X, Layers, Circle, Pencil, ArrowUpDown } from 'lucide-react'
+import { Input } from '@git-manager/ui'
 import { MultiSelectDropdown } from './MultiSelectDropdown'
 import type { SortKey, SortDir } from '../types'
 
@@ -56,12 +57,12 @@ export function Toolbar({
       {/* Search */}
       <div className="relative max-w-xs flex-1">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-        <input
+        <Input
           type="text"
           value={search}
           onChange={(e) => onSearch(e.target.value)}
           placeholder="Search…"
-          className="h-7 w-full rounded-md border border-border bg-card pl-7 pr-6 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+          className="h-7 w-full border-border bg-card pl-7 pr-6 text-xs shadow-none focus:ring-1 focus:ring-primary/40"
         />
         {search && (
           <button

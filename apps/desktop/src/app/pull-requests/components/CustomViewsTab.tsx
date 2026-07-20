@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Search, X, GitPullRequest, AlertCircle, Plus, Layers, Pencil, Trash2 } from 'lucide-react'
+import { Input } from '@git-manager/ui'
 import {
   useLaunchpadStore,
   type SavedFilter,
@@ -90,12 +91,12 @@ function CustomViewResults({
       <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/5 px-4 py-2">
         <div className="relative max-w-xs flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-          <input
+          <Input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search within this view…"
-            className="h-7 w-full rounded-md border border-border bg-card pl-7 pr-6 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+            className="h-7 w-full border-border bg-card pl-7 pr-6 text-xs shadow-none focus:ring-1 focus:ring-primary/40"
           />
           {search && (
             <button
