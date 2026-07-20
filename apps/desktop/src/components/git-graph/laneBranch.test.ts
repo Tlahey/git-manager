@@ -70,7 +70,7 @@ describe('computeLaneBranchByOid', () => {
     expect(owner.get('c1')?.shortName).toBe('x')
   })
 
-  it('attributes commits merged into main to main (full reachability, both parents)', () => {
+  it('credits commits merged into main to the branch they came from', () => {
     // merge (main tip) has parents [main-line p1, merged topic tip t1]; t1 → t0.
     const nodes = [
       node('merge', ['p1', 't1'], [ref('main')]),
@@ -79,9 +79,25 @@ describe('computeLaneBranchByOid', () => {
       node('t0', []),
     ]
     const owner = computeLaneBranchByOid(nodes)
+    // The merge commit and main's first-parent line stay on main.
+    expect(owner.get('merge')?.shortName).toBe('main')
     expect(owner.get('p1')?.shortName).toBe('main')
-    // The merged topic commits are contained in main → main wins by priority, even though `topic`
-    // still points at t1.
+    // The merged-in commits are credited to `topic` (which still points at t1), not main — main only
+    // contains them via the merge's second parent, off its first-parent line.
+    expect(owner.get('t1')?.shortName).toBe('topic')
+    expect(owner.get('t0')?.shortName).toBe('topic')
+  })
+
+  it('falls back to main for a merged branch whose ref was deleted', () => {
+    // Same shape but the topic tip t1 has no ref (branch merged then deleted). With no branch to
+    // credit, the second full-reachability pass attributes the orphaned commits to main.
+    const nodes = [
+      node('merge', ['p1', 't1'], [ref('main')]),
+      node('p1', []),
+      node('t1', ['t0']),
+      node('t0', []),
+    ]
+    const owner = computeLaneBranchByOid(nodes)
     expect(owner.get('t1')?.shortName).toBe('main')
     expect(owner.get('t0')?.shortName).toBe('main')
   })
