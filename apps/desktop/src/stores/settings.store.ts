@@ -13,7 +13,6 @@ const DEFAULT_SETTINGS: AppSettings = {
   git: {
     defaultAuthorName: '',
     defaultAuthorEmail: '',
-    protectedBranches: ['main', 'master', 'develop'],
     showStashesInGraph: true,
     initialGraphCommits: 2000,
     lazyLoadGraphCommits: true,
@@ -21,8 +20,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     commitInstructions: '',
     commitPattern: '',
     autoPrune: true,
-    autoFetchIntervalMinutes: 0,
-    defaultBranchName: 'main',
+    autoFetchIntervalMinutes: 1,
   },
   appearance: {
     theme: 'dark',

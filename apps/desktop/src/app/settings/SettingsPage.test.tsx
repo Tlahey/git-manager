@@ -99,7 +99,7 @@ describe('SettingsPage — grouped side panel', () => {
     useRepoUIStore.setState({ activeRepo: null })
     render(<SettingsPage onClose={vi.fn()} />)
     expect(screen.queryByTestId('settings-group-repository')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('settings-local-tab-general')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('settings-local-tab-gitflow')).not.toBeInTheDocument()
     // Global settings still render, and the Global group header is still shown.
     expect(screen.getByTestId('settings-group-global')).toBeInTheDocument()
     expect(screen.getByTestId('section-general')).toBeInTheDocument()
@@ -108,7 +108,7 @@ describe('SettingsPage — grouped side panel', () => {
   it('switches to a Repository page from the same side panel, keeping the global nav visible', async () => {
     const user = userEvent.setup()
     render(<SettingsPage onClose={vi.fn()} />)
-    await user.click(screen.getByTestId('settings-local-tab-general'))
+    await user.click(screen.getByTestId('settings-local-tab-gitflow'))
     expect(screen.getByTestId('section-repository')).toBeInTheDocument()
     // Both groups' nav items remain in the single side panel.
     expect(screen.getByTestId('settings-local-tab-appearance')).toBeInTheDocument()
@@ -118,7 +118,7 @@ describe('SettingsPage — grouped side panel', () => {
   it('returns to a Global section', async () => {
     const user = userEvent.setup()
     render(<SettingsPage onClose={vi.fn()} />)
-    await user.click(screen.getByTestId('settings-local-tab-general'))
+    await user.click(screen.getByTestId('settings-local-tab-gitflow'))
     await user.click(screen.getByTestId('settings-tab-general'))
     expect(screen.getByTestId('section-general')).toBeInTheDocument()
     expect(screen.queryByTestId('section-repository')).not.toBeInTheDocument()
@@ -154,7 +154,7 @@ describe('SettingsPage — per-page reset', () => {
   it('shows a reset button on the Repository pages too', async () => {
     const user = userEvent.setup()
     render(<SettingsPage onClose={vi.fn()} />)
-    await user.click(screen.getByTestId('settings-local-tab-general'))
+    await user.click(screen.getByTestId('settings-local-tab-gitflow'))
     expect(screen.getByTestId('reset-to-default')).toBeInTheDocument()
   })
 

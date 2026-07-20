@@ -392,8 +392,11 @@ export interface ProjectCommand {
  * value". Resolution is always `repoOverride ?? global` (see `useEffectiveRepoSettings`).
  */
 export interface RepoScopedSettings {
-  /** Overrides `git.protectedBranches` for this repo. */
+  /** Branches protected from destructive actions (reset, force-push) in this repo. Per-repo only —
+   * there is no global fallback, so an absent value means "no protected branches". */
   protectedBranches?: string[]
+  /** Branch name used when initializing a new repository. Per-repo only; absent = `main`. */
+  defaultBranchName?: string
   /** Overrides `git.commitInstructions` for this repo. */
   commitInstructions?: string
   /** Overrides `git.commitPattern` for this repo. */
@@ -471,7 +474,6 @@ export interface NotificationSettings {
 export interface GitSettings {
   defaultAuthorName: string
   defaultAuthorEmail: string
-  protectedBranches: string[]
   showStashesInGraph?: boolean
   /** How many commits to load into the Graph on first render. Minimum 500; default 2000. When
    * `lazyLoadGraphCommits` is enabled, more are fetched as the user reaches the earliest loaded
@@ -492,10 +494,8 @@ export interface GitSettings {
   /** Prune deleted remote-tracking branches on fetch (`git fetch --prune`). Enabled by default. */
   autoPrune?: boolean
   /** Interval, in minutes, at which the active repo is fetched automatically. 0 disables it. Range
-   * 0–60; default 0. */
+   * 0–60; default 1. */
   autoFetchIntervalMinutes?: number
-  /** Branch name used when initializing a new repository. Defaults to `main`. */
-  defaultBranchName?: string
 }
 
 export interface AppearanceSettings {

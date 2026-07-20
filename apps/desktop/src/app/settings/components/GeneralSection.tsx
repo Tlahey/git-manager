@@ -3,7 +3,6 @@ import { useTranslation, i18next } from '@git-manager/i18n'
 import { Button, Input, Separator } from '@git-manager/ui'
 import { TagInput } from './TagInput'
 import { UpdateCheck } from './UpdateCheck'
-import { OverriddenBadge } from './OverriddenBadge'
 import { useSettingsStore } from '../../../stores/settings.store'
 
 /** Graph commit-load bounds — kept in sync with the GitSettings defaults and GitGraph's fetch. */
@@ -44,9 +43,9 @@ export function GeneralSection() {
     await open('~/.config/git-manager/').catch(() => {})
   }
 
-  const languages: { value: 'en' | 'fr'; label: string }[] = [
-    { value: 'en', label: t('settings.language.en') },
-    { value: 'fr', label: t('settings.language.fr') },
+  const languages: { value: 'en' | 'fr'; label: string; flag: string }[] = [
+    { value: 'en', label: t('settings.language.en'), flag: '🇬🇧' },
+    { value: 'fr', label: t('settings.language.fr'), flag: '🇫🇷' },
   ]
 
   return (
@@ -59,28 +58,18 @@ export function GeneralSection() {
       {/* Language */}
       <div className="space-y-2">
         <p className="text-xs font-medium text-foreground">{t('settings.language.title')}</p>
-        <div className="flex gap-3">
+        <select
+          data-testid="language-select"
+          value={settings.language}
+          onChange={(e) => handleLanguageChange(e.target.value as 'en' | 'fr')}
+          className="h-8 w-full max-w-[220px] rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+        >
           {languages.map((lang) => (
-            <label
-              key={lang.value}
-              className={`flex cursor-pointer items-center gap-2 rounded border px-4 py-2 text-sm transition-colors ${
-                settings.language === lang.value
-                  ? 'border-primary bg-primary/10 font-medium text-foreground'
-                  : 'border-border text-muted-foreground hover:bg-accent'
-              }`}
-            >
-              <input
-                type="radio"
-                name="language"
-                value={lang.value}
-                checked={settings.language === lang.value}
-                onChange={() => handleLanguageChange(lang.value)}
-                className="sr-only"
-              />
-              {lang.label}
-            </label>
+            <option key={lang.value} value={lang.value}>
+              {lang.flag} {lang.label}
+            </option>
           ))}
-        </div>
+        </select>
       </div>
 
       <Separator />
@@ -111,33 +100,6 @@ export function GeneralSection() {
             className="h-8 text-xs"
           />
         </div>
-
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">
-            {t('settings.git.defaultBranchName')}
-          </label>
-          <Input
-            data-testid="settings-default-branch-name"
-            value={git.defaultBranchName ?? 'main'}
-            onChange={(e) => updateGit({ defaultBranchName: e.target.value })}
-            placeholder="main"
-            className="h-8 w-40 text-xs"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-foreground">
-              {t('settings.git.protectedBranches')}
-            </label>
-            <OverriddenBadge field="protectedBranches" />
-          </div>
-          <TagInput
-            tags={git.protectedBranches}
-            onChange={(branches) => updateGit({ protectedBranches: branches })}
-            placeholder="main, master…"
-          />
-        </div>
       </div>
 
       <Separator />
@@ -166,7 +128,7 @@ export function GeneralSection() {
             type="number"
             min={0}
             max={60}
-            value={git.autoFetchIntervalMinutes ?? 0}
+            value={git.autoFetchIntervalMinutes ?? 1}
             onChange={(e) => {
               const n = parseInt(e.target.value, 10)
               const clamped = Number.isNaN(n) ? 0 : Math.min(60, Math.max(0, n))

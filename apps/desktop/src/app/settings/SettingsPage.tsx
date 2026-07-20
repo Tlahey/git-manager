@@ -6,6 +6,7 @@ import {
   Bell,
   Bug,
   FolderTree,
+  GitBranch,
   GitCommitHorizontal,
   Heart,
   KeyRound,
@@ -14,7 +15,6 @@ import {
   Puzzle,
   ScrollText,
   Settings2,
-  Shield,
   Sparkles,
   Trophy,
   Wrench,
@@ -56,9 +56,9 @@ export type Section =
 /** Top-level split: global settings (all repos) vs. settings local to the current workspace/repo. */
 type Scope = 'general' | 'local'
 
-/** The Local scope's own side-menu pages, mirroring the matching global sections (plus `worktree`
- * and `run`, which are repo-only and have no global counterpart). */
-type LocalSection = 'general' | 'appearance' | 'ai_commit' | 'worktree' | 'run'
+/** The Repository scope's own side-menu pages. `gitflow`, `worktree` and `run` are repo-only (no
+ * global counterpart); `appearance` and `ai_commit` mirror the matching global sections. */
+type LocalSection = 'gitflow' | 'appearance' | 'ai_commit' | 'worktree' | 'run'
 
 interface SettingsPageProps {
   onClose: () => void
@@ -125,7 +125,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
   const { t } = useTranslation('settings')
   const [scope, setScope] = useState<Scope>('general')
   const [activeSection, setActiveSection] = useState<Section>(initialSection || 'general')
-  const [activeLocal, setActiveLocal] = useState<LocalSection>('general')
+  const [activeLocal, setActiveLocal] = useState<LocalSection>('gitflow')
   const resetSettingsGroups = useSettingsStore((s) => s.resetSettingsGroups)
   const resetSettingsFields = useSettingsStore((s) => s.resetSettingsFields)
   const resetRepoSetting = useSettingsStore((s) => s.resetRepoSetting)
@@ -135,7 +135,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
   // AI-scoped pages (the AI-commit section) only show when AI is enabled. `undefined` = enabled.
   const aiEnabled = useSettingsStore((s) => s.settings.ai.enabled !== false)
 
-  /** Reverts the active repo's overrides for the given Local page back to inheriting the global. */
+  /** Clears the active repo's overrides for the given Repository page. */
   function resetLocalCategory(cat: LocalSection) {
     if (!activeRepo) return
     if (cat === 'appearance') {
@@ -150,6 +150,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
       resetRepoSetting(activeRepo, 'defaultRunTaskId')
     } else {
       resetRepoSetting(activeRepo, 'protectedBranches')
+      resetRepoSetting(activeRepo, 'defaultBranchName')
     }
   }
 
@@ -164,12 +165,10 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
             resetSettingsFields('git', [
               'defaultAuthorName',
               'defaultAuthorEmail',
-              'protectedBranches',
               'initialGraphCommits',
               'lazyLoadGraphCommits',
               'autoPrune',
               'autoFetchIntervalMinutes',
-              'defaultBranchName',
             ])
             resetSettingsGroups(['advanced'])
           })
@@ -265,7 +264,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
   const globalTabs = SETTINGS_TABS.filter((tab) => tab.id !== 'support')
 
   const LOCAL_TABS: { id: LocalSection; label: string; icon: LucideIcon }[] = [
-    { id: 'general', label: t('settings.sections.general'), icon: Shield },
+    { id: 'gitflow', label: t('settings.sections.gitflow'), icon: GitBranch },
     { id: 'appearance', label: t('settings.sections.ui_customization'), icon: Palette },
     ...(aiEnabled
       ? [{ id: 'ai_commit' as const, label: t('settings.sections.ai_commit'), icon: GitCommitHorizontal }]

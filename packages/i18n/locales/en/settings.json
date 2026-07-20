@@ -17,6 +17,7 @@
   "settings.sections.support": "Support",
   "settings.sections.worktree": "Worktree",
   "settings.sections.run": "Tasks",
+  "settings.sections.gitflow": "GitFlow",
   "settings.ai.enabled": "Enable AI",
   "settings.ai.enabledHint": "Turn AI features on. When off, AI-specific settings (like AI - commit) are hidden.",
   "settings.ai.preset": "Provider",

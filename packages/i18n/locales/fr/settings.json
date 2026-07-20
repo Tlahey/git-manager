@@ -17,6 +17,7 @@
   "settings.sections.support": "Soutenir",
   "settings.sections.worktree": "Worktree",
   "settings.sections.run": "Tâches",
+  "settings.sections.gitflow": "GitFlow",
   "settings.ai.enabled": "Activer l'IA",
   "settings.ai.enabledHint": "Active les fonctionnalités IA. Désactivé, les réglages spécifiques à l'IA (comme IA - commit) sont masqués.",
   "settings.ai.preset": "Fournisseur",

@@ -25,11 +25,13 @@ afterEach(() => {
 })
 
 describe('GeneralSection — language', () => {
-  it('switches language: updates the store and i18next', async () => {
+  it('switches language via the dropdown: updates the store and i18next', async () => {
     useSettingsStore.setState({ settings: { ...INITIAL_SETTINGS.settings, language: 'fr' } })
     const user = userEvent.setup()
     render(<GeneralSection />)
-    await user.click(screen.getByRole('radio', { name: 'settings.language.en' }))
+    const select = screen.getByTestId('language-select')
+    expect(select).toHaveValue('fr')
+    await user.selectOptions(select, 'en')
     expect(useSettingsStore.getState().settings.language).toBe('en')
     expect(i18next.changeLanguage).toHaveBeenCalledWith('en')
   })
@@ -49,12 +51,11 @@ describe('GeneralSection — git identity', () => {
   })
 })
 
-describe('GeneralSection — fetch & default branch', () => {
-  it('defaults to auto-prune on, interval 0, and default branch "main"', () => {
+describe('GeneralSection — fetch', () => {
+  it('defaults to auto-prune on and interval 1', () => {
     render(<GeneralSection />)
     expect(screen.getByTestId('settings-auto-prune')).toBeChecked()
-    expect(screen.getByTestId('settings-auto-fetch-interval')).toHaveValue(0)
-    expect(screen.getByTestId('settings-default-branch-name')).toHaveValue('main')
+    expect(screen.getByTestId('settings-auto-fetch-interval')).toHaveValue(1)
   })
 
   it('toggles auto-prune off', async () => {
@@ -73,13 +74,9 @@ describe('GeneralSection — fetch & default branch', () => {
     expect(useSettingsStore.getState().settings.git.autoFetchIntervalMinutes).toBe(60)
   })
 
-  it('updates the default branch name', async () => {
-    const user = userEvent.setup()
+  it('does not expose default branch name or protected branches here (moved to the repo GitFlow page)', () => {
     render(<GeneralSection />)
-    const input = screen.getByTestId('settings-default-branch-name')
-    await user.clear(input)
-    await user.type(input, 'trunk')
-    expect(useSettingsStore.getState().settings.git.defaultBranchName).toBe('trunk')
+    expect(screen.queryByTestId('settings-default-branch-name')).not.toBeInTheDocument()
   })
 })
 

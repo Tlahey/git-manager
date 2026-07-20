@@ -69,13 +69,13 @@ function OverrideField({
   )
 }
 
-/** Which local settings sub-page is shown (mirrors the corresponding global sections, plus the
- * repo-only `worktree` page). */
-export type RepoSettingsCategory = 'general' | 'appearance' | 'ai_commit' | 'worktree' | 'run'
+/** Which local settings sub-page is shown. `gitflow` and `worktree`/`run` are repo-only (no global
+ * counterpart); `appearance` and `ai_commit` mirror the corresponding global sections. */
+export type RepoSettingsCategory = 'gitflow' | 'appearance' | 'ai_commit' | 'worktree' | 'run'
 
 interface RepositorySectionProps {
-  /** `general` → protected branches; `appearance` → theme; `ai_commit` → commit style;
-   * `worktree` → default files copied into new worktrees; `run` → runnable project tasks. */
+  /** `gitflow` → default branch name + protected branches; `appearance` → theme; `ai_commit` →
+   * commit style; `worktree` → default files copied into new worktrees; `run` → runnable tasks. */
   category: RepoSettingsCategory
 }
 
@@ -110,7 +110,6 @@ export function RepositorySection({ category }: RepositorySectionProps) {
   }
 
   const themeOverridden = override?.theme !== undefined
-  const branchesOverridden = override?.protectedBranches !== undefined
   const instructionsOverridden = override?.commitInstructions !== undefined
   const patternOverridden = override?.commitPattern !== undefined
 
@@ -164,34 +163,34 @@ export function RepositorySection({ category }: RepositorySectionProps) {
         </OverrideField>
       )}
 
-      {/* Protected branches (general category) */}
-      {category === 'general' && (
-        <OverrideField
-          label={t('settings.git.protectedBranches')}
-          isOverridden={branchesOverridden}
-          onInherit={() => resetRepoSetting(activeRepo, 'protectedBranches')}
-          onOverride={() =>
-            setRepoSetting(activeRepo, 'protectedBranches', effective.protectedBranches)
-          }
-          testId="repo-override-protectedBranches"
-        >
-          {branchesOverridden ? (
-            <div data-testid="repo-protected-branches">
-              <TagInput
-                tags={effective.protectedBranches}
-                onChange={(branches) => setRepoSetting(activeRepo, 'protectedBranches', branches)}
-                placeholder="main, master…"
-              />
-            </div>
-          ) : (
-            <div
-              data-testid="repo-protected-branches-inherited"
-              className="min-h-[38px] rounded-md border border-input bg-muted/30 px-3 py-2 text-xs text-muted-foreground opacity-60"
-            >
-              {effective.protectedBranches.join(', ') || '—'}
-            </div>
-          )}
-        </OverrideField>
+      {/* GitFlow (gitflow category) — default branch name + protected branches, per-repo only (no
+          global setting). Seeded from built-in defaults; editing persists a per-repo override. */}
+      {category === 'gitflow' && (
+        <>
+          <div className="space-y-2" data-testid="repo-default-branch-name">
+            <label className="text-xs font-medium text-foreground">
+              {t('settings.git.defaultBranchName')}
+            </label>
+            <Input
+              data-testid="repo-default-branch-input"
+              value={effective.defaultBranchName}
+              onChange={(e) => setRepoSetting(activeRepo, 'defaultBranchName', e.target.value)}
+              placeholder="main"
+              className="h-8 w-40 text-xs"
+            />
+          </div>
+
+          <div className="space-y-2" data-testid="repo-protected-branches">
+            <label className="text-xs font-medium text-foreground">
+              {t('settings.git.protectedBranches')}
+            </label>
+            <TagInput
+              tags={effective.protectedBranches}
+              onChange={(branches) => setRepoSetting(activeRepo, 'protectedBranches', branches)}
+              placeholder="main, master…"
+            />
+          </div>
+        </>
       )}
 
       {/* Commit style (ai_commit category) */}
