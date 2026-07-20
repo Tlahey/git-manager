@@ -1,4 +1,5 @@
 import { useTranslation } from '@git-manager/i18n'
+import { Checkbox } from '@git-manager/ui'
 import { Trophy, Trash2 } from 'lucide-react'
 import { useGameStore } from '../../../stores/game.store'
 
@@ -34,13 +35,12 @@ export function RewardsSection() {
           </label>
           <p className="text-[10px] text-muted-foreground">{t('settings.rewards.enableHint')}</p>
         </div>
-        <input
-          type="checkbox"
+        <Checkbox
           id="toggle-rewards"
           data-testid="rewards-toggle"
           checked={rewardsEnabled}
           onChange={(e) => setRewardsEnabled(e.target.checked)}
-          className="h-4 w-4 cursor-pointer rounded border-border text-primary accent-primary focus:ring-primary"
+          className="cursor-pointer"
         />
       </div>
 

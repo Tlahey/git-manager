@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Spinner } from '@git-manager/ui'
+import { Button, Spinner, Checkbox } from '@git-manager/ui'
 import {
   Dialog,
   DialogContent,
@@ -67,12 +67,10 @@ export function RevertDialog({
         </DialogHeader>
 
         <div className="flex items-center gap-2 py-2">
-          <input
-            type="checkbox"
+          <Checkbox
             id="no-commit"
             checked={noCommit}
             onChange={(e) => setNoCommit(e.target.checked)}
-            className="h-4 w-4 rounded border-border"
           />
           <label htmlFor="no-commit" className="cursor-pointer text-sm text-foreground">
             {t('rollback.revert.noCommit')}

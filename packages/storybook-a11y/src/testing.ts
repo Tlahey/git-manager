@@ -5,3 +5,9 @@
 // *.test.tsx files only.
 export { runAxe, DEFAULT_DISABLED_RULES } from './axe'
 export { runA11yMatrix, type A11yMatrixOptions } from './matrix'
+export {
+  checkGraphicalContrast,
+  effectiveBackground,
+  parseCssColor,
+  MIN_GRAPHICAL_RATIO,
+} from './graphicalContrast'

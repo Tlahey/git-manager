@@ -1,6 +1,7 @@
 import { useTranslation } from '@git-manager/i18n'
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -97,12 +98,10 @@ export function CommitBatchReviewDialog({ review }: { review: CommitBatchReview 
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       data-testid={`ai-batch-accept-${index}`}
                       checked={proposal.accepted}
                       onChange={() => toggleAccepted(index)}
-                      className="h-4 w-4 rounded border-border"
                     />
                     <span className="text-xs font-bold text-primary">
                       {t('commitDetails.aiBatch.commitLabel', { index: index + 1 })}

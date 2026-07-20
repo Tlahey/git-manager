@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation, i18next } from '@git-manager/i18n'
-import { Button, Input, Separator } from '@git-manager/ui'
+import { Button, Input, Separator, Checkbox } from '@git-manager/ui'
 import { TagInput } from './TagInput'
 import { UpdateCheck } from './UpdateCheck'
 import { useSettingsStore } from '../../../stores/settings.store'
@@ -109,12 +109,10 @@ export function GeneralSection() {
         <h4 className="text-xs font-semibold text-foreground">{t('settings.git.fetchTitle')}</h4>
 
         <label className="flex cursor-pointer items-center gap-2">
-          <input
+          <Checkbox
             data-testid="settings-auto-prune"
-            type="checkbox"
             checked={git.autoPrune ?? true}
             onChange={(e) => updateGit({ autoPrune: e.target.checked })}
-            className="h-4 w-4 rounded border-border"
           />
           <span className="text-xs text-foreground">{t('settings.git.autoPrune')}</span>
         </label>
@@ -177,12 +175,10 @@ export function GeneralSection() {
         </div>
 
         <label className="flex cursor-pointer items-center gap-2">
-          <input
+          <Checkbox
             data-testid="settings-lazy-load-graph-commits"
-            type="checkbox"
             checked={git.lazyLoadGraphCommits ?? true}
             onChange={(e) => updateGit({ lazyLoadGraphCommits: e.target.checked })}
-            className="h-4 w-4 rounded border-border"
           />
           <span className="text-xs text-foreground">{t('settings.git.lazyLoadGraphCommits')}</span>
         </label>

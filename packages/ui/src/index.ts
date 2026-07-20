@@ -18,6 +18,18 @@ export type { InputProps, InputVariant } from './components/input'
 export { Textarea } from './components/textarea'
 export type { TextareaProps } from './components/textarea'
 
+export { Checkbox } from './components/checkbox'
+export type { CheckboxProps } from './components/checkbox'
+
+export { Switch } from './components/switch'
+export type { SwitchProps } from './components/switch'
+
+export { Label } from './components/label'
+export type { LabelProps } from './components/label'
+
+export { RadioGroup, RadioGroupItem } from './components/radio-group'
+export type { RadioGroupProps, RadioGroupItemProps } from './components/radio-group'
+
 export { Spinner } from './components/spinner'
 
 export { toast, Toaster } from './components/toast'

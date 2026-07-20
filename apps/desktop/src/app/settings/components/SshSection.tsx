@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Button, Input, Separator, Textarea } from '@git-manager/ui'
+import { Button, Input, Separator, Textarea, Checkbox } from '@git-manager/ui'
 import { Key, FolderOpen, Copy, Check, Plus, AlertCircle, RefreshCw } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { open } from '@tauri-apps/plugin-dialog'
@@ -163,11 +163,9 @@ export function SshSection() {
         </div>
 
         <label className="flex cursor-pointer items-center gap-2 pt-1">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={ssh.useSystemAgent}
             onChange={(e) => updateSsh({ useSystemAgent: e.target.checked })}
-            className="h-4 w-4 rounded border-border"
           />
           <span className="text-xs text-foreground">
             Utiliser l&apos;agent SSH système (recommandé)

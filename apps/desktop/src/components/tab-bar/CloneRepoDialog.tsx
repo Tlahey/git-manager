@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -122,23 +123,13 @@ export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogP
 
           <div className="mt-1 flex gap-4 font-sans">
             <label className="flex cursor-pointer select-none items-center gap-2">
-              <input
-                type="checkbox"
-                checked={shallow}
-                onChange={(e) => setShallow(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-border bg-card text-primary focus:ring-primary focus:ring-offset-background"
-              />
+              <Checkbox checked={shallow} onChange={(e) => setShallow(e.target.checked)} />
               <span className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">
                 Shallow clone
               </span>
             </label>
             <label className="flex cursor-pointer select-none items-center gap-2">
-              <input
-                type="checkbox"
-                checked={sparse}
-                onChange={(e) => setSparse(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-border bg-card text-primary focus:ring-primary focus:ring-offset-background"
-              />
+              <Checkbox checked={sparse} onChange={(e) => setSparse(e.target.checked)} />
               <span className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">
                 Sparse checkout
               </span>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, Spinner, Textarea } from '@git-manager/ui'
+import { Button, Checkbox, Input, Spinner, Textarea } from '@git-manager/ui'
 import { Sparkles, ArrowRight } from 'lucide-react'
 import { useBranches } from '../../../hooks/useBranches'
 import { usePrTemplate } from '../../../hooks/usePrTemplate'
@@ -188,12 +188,10 @@ export function PrCreateForm({
       </div>
 
       <label className="flex items-center gap-2 text-xs text-foreground">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={draft}
           onChange={(e) => setDraft(e.target.checked)}
           data-testid="pr-create-draft"
-          className="h-3.5 w-3.5 rounded border-input"
         />
         {t('pr.create.draftLabel')}
       </label>

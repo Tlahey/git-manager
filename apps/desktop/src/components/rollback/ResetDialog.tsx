@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Button, Spinner, Input } from '@git-manager/ui'
+import { Button, Spinner, Input, RadioGroup, RadioGroupItem } from '@git-manager/ui'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@git-manager/ui'
 import { apiGetCommitsBetween, apiResetToCommit } from '../../api/git.api'
 
@@ -113,7 +113,11 @@ export function ResetDialog({
         </div>
 
         {/* Reset mode radio */}
-        <div className="space-y-2">
+        <RadioGroup
+          name="reset-mode"
+          value={mode}
+          onValueChange={(value) => setMode(value as ResetMode)}
+        >
           {modeOptions.map((opt) => (
             <label
               key={opt.value}
@@ -123,18 +127,11 @@ export function ResetDialog({
                   : 'border-border text-muted-foreground hover:bg-accent'
               }`}
             >
-              <input
-                type="radio"
-                name="reset-mode"
-                value={opt.value}
-                checked={mode === opt.value}
-                onChange={() => setMode(opt.value)}
-                className="h-3.5 w-3.5"
-              />
+              <RadioGroupItem value={opt.value} />
               {opt.label}
             </label>
           ))}
-        </div>
+        </RadioGroup>
 
         {/* Hard reset warning */}
         {mode === 'hard' && (

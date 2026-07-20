@@ -41,7 +41,8 @@ describe('NotificationSection — global toggle', () => {
   it('toggles the global switch', async () => {
     const user = userEvent.setup()
     render(<NotificationSection />)
-    const toggles = screen.getAllByRole('checkbox')
+    // The global enable control is a Switch (role="switch"), rendered first.
+    const toggles = screen.getAllByRole('switch')
     await user.click(toggles[0])
     expect(useSettingsStore.getState().settings.notifications!.enabled).toBe(false)
   })
@@ -51,12 +52,13 @@ describe('NotificationSection — event toggles', () => {
   it('toggles each event notification independently', async () => {
     const user = userEvent.setup()
     render(<NotificationSection />)
-    // checkbox order: [0] global enable, [1..7] the 7 events, [8] sound toggle
+    // The global enable + sound controls are Switches (role="switch"); the 7 event
+    // controls are the only checkboxes, in declaration order.
     const checkboxes = screen.getAllByRole('checkbox')
-    await user.click(checkboxes[1]) // notifyOnFetch
+    await user.click(checkboxes[0]) // notifyOnFetch
     expect(useSettingsStore.getState().settings.notifications!.notifyOnFetch).toBe(false)
 
-    await user.click(checkboxes[4]) // notifyOnNewPr
+    await user.click(checkboxes[3]) // notifyOnNewPr
     expect(useSettingsStore.getState().settings.notifications!.notifyOnNewPr).toBe(false)
   })
 })
@@ -67,7 +69,8 @@ describe('NotificationSection — sounds', () => {
     render(<NotificationSection />)
     expect(screen.queryByText('Type de son macOS')).not.toBeInTheDocument()
 
-    const soundToggle = screen.getAllByRole('checkbox').at(-1)!
+    // The sound control is a Switch (role="switch"), rendered after the global one.
+    const soundToggle = screen.getAllByRole('switch').at(-1)!
     await user.click(soundToggle)
     expect(useSettingsStore.getState().settings.notifications!.enableSound).toBe(true)
   })

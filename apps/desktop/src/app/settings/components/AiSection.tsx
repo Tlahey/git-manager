@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input } from '@git-manager/ui'
+import { Button, Input, Switch, Checkbox } from '@git-manager/ui'
 import { AI_PRESETS, getAiPreset, type AiPresetId, type AiProviderStatus } from '@git-manager/ai'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { aiStatusService } from '../../../api/ai.api'
@@ -50,16 +50,12 @@ export function AiSection() {
           <span className="text-xs font-medium text-foreground">{t('settings.ai.enabled')}</span>
           <span className="text-[10px] text-muted-foreground">{t('settings.ai.enabledHint')}</span>
         </div>
-        <div className="relative inline-flex shrink-0 items-center">
-          <input
-            type="checkbox"
-            checked={ai.enabled !== false}
-            onChange={(e) => updateAi({ enabled: e.target.checked })}
-            className="peer sr-only"
-            data-testid="ai-enabled-toggle"
-          />
-          <div className="peer h-5 w-9 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-border after:bg-background after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>
-        </div>
+        <Switch
+          checked={ai.enabled !== false}
+          onChange={(e) => updateAi({ enabled: e.target.checked })}
+          data-testid="ai-enabled-toggle"
+          aria-label={t('settings.ai.enabled')}
+        />
       </label>
 
       {/* Provider preset */}
@@ -172,16 +168,12 @@ export function AiSection() {
               {t('settings.ai.dailySummary.enabledHint')}
             </span>
           </div>
-          <div className="relative inline-flex shrink-0 items-center">
-            <input
-              type="checkbox"
-              checked={dailySummary.enabled}
-              onChange={(e) => updateDailySummary({ enabled: e.target.checked })}
-              className="peer sr-only"
-              data-testid="daily-summary-enabled-toggle"
-            />
-            <div className="peer h-5 w-9 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-border after:bg-background after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>
-          </div>
+          <Switch
+            checked={dailySummary.enabled}
+            onChange={(e) => updateDailySummary({ enabled: e.target.checked })}
+            data-testid="daily-summary-enabled-toggle"
+            aria-label={t('settings.ai.dailySummary.enabled')}
+          />
         </label>
 
         {dailySummary.enabled && (
@@ -194,11 +186,9 @@ export function AiSection() {
                 {t('settings.ai.dailySummary.autoGenerateHint')}
               </span>
             </div>
-            <input
-              type="checkbox"
+            <Checkbox
               checked={dailySummary.autoGenerate}
               onChange={(e) => updateDailySummary({ autoGenerate: e.target.checked })}
-              className="h-4 w-4 shrink-0 rounded border-border"
               data-testid="daily-summary-auto-toggle"
             />
           </label>

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react'
 import {
   Button,
@@ -39,6 +40,11 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
+  Checkbox,
+  Switch,
+  Label,
+  RadioGroup,
+  RadioGroupItem,
   toast,
 } from '../src'
 
@@ -80,6 +86,89 @@ const SearchIcon = () => (
     <path d="m21 21-4.3-4.3" />
   </svg>
 )
+
+// Interactive showcase of the form controls so their checked/on states are visible
+// in the canvas and exercised by addon-a11y. Controlled via local state, mirroring
+// how the settings sections wire them to the settings store.
+function FormControlsDemo() {
+  const [checks, setChecks] = useState({ prune: true, lazy: false })
+  const [notifications, setNotifications] = useState(true)
+  const [sound, setSound] = useState(false)
+  const [density, setDensity] = useState('comfortable')
+
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 32, alignItems: 'flex-start' }}>
+      {/* Checkbox */}
+      <div className="flex flex-col gap-2">
+        <label className="flex cursor-pointer items-center gap-2">
+          <Checkbox
+            checked={checks.prune}
+            onChange={(e) => setChecks((c) => ({ ...c, prune: e.target.checked }))}
+          />
+          <span className="text-xs text-foreground">Auto-prune on fetch</span>
+        </label>
+        <label className="flex cursor-pointer items-center gap-2">
+          <Checkbox
+            checked={checks.lazy}
+            onChange={(e) => setChecks((c) => ({ ...c, lazy: e.target.checked }))}
+          />
+          <span className="text-xs text-foreground">Lazy-load graph</span>
+        </label>
+        <label className="flex cursor-pointer items-center gap-2">
+          <Checkbox indeterminate aria-label="Some selected" />
+          <span className="text-xs text-foreground">Indeterminate</span>
+        </label>
+        <label className="flex cursor-not-allowed items-center gap-2 opacity-70">
+          <Checkbox disabled aria-label="Disabled checkbox" />
+          <span className="text-xs text-foreground">Disabled</span>
+        </label>
+      </div>
+
+      {/* Switch — both an ON and an enabled OFF instance so the graphical-contrast
+          gate grades the thumb over BOTH tracks (badge on, muted off). */}
+      <div className="flex flex-col gap-2">
+        <label className="flex cursor-pointer items-center gap-2">
+          <Switch
+            checked={notifications}
+            onChange={(e) => setNotifications(e.target.checked)}
+            aria-label="Enable notifications"
+          />
+          <span className="text-xs text-foreground">Notifications</span>
+        </label>
+        <label className="flex cursor-pointer items-center gap-2">
+          <Switch
+            checked={sound}
+            onChange={(e) => setSound(e.target.checked)}
+            aria-label="Enable sound"
+          />
+          <span className="text-xs text-foreground">Sound (off)</span>
+        </label>
+        <label className="flex cursor-not-allowed items-center gap-2">
+          <Switch disabled aria-label="Disabled switch" />
+          <span className="text-xs text-foreground">Disabled</span>
+        </label>
+      </div>
+
+      {/* Radio group + Label */}
+      <div className="flex flex-col gap-2">
+        <Label id="density-label">Density</Label>
+        <RadioGroup
+          value={density}
+          onValueChange={setDensity}
+          aria-labelledby="density-label"
+          className="gap-1.5"
+        >
+          {['compact', 'comfortable', 'spacious'].map((d) => (
+            <label key={d} className="flex cursor-pointer items-center gap-2">
+              <RadioGroupItem value={d} aria-label={d} />
+              <span className="text-xs capitalize text-foreground">{d}</span>
+            </label>
+          ))}
+        </RadioGroup>
+      </div>
+    </div>
+  )
+}
 
 export const Overview: Story = {
   render: () => (
@@ -139,6 +228,10 @@ export const Overview: Story = {
         <div style={{ width: 260 }}>
           <Textarea aria-label="Commit message" placeholder="Write a commit message…" />
         </div>
+      </Section>
+
+      <Section title="Form controls — Checkbox / Switch / Radio / Label">
+        <FormControlsDemo />
       </Section>
 
       <Section title="Chip — toggle">
