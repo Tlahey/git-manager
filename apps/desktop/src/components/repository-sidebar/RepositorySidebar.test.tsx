@@ -215,7 +215,7 @@ describe('RepositorySidebar — mode routing', () => {
     useSidebarResize.mockReturnValue(resizeState({ isCollapsed: true }))
     renderSidebar()
     expect(screen.getByTestId('sidebar-rail')).toBeInTheDocument()
-    expect(screen.queryByLabelText('Filtrer les branches')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("Filter branches")).not.toBeInTheDocument()
   })
 
   it('expands from the rail via onExpand', async () => {
@@ -231,7 +231,7 @@ describe('RepositorySidebar — mode routing', () => {
     act(() => useRepoUIStore.setState({ activeLeftPanel: 'blame' }))
     renderSidebar()
     expect(screen.getByTestId('blame-history-panel')).toBeInTheDocument()
-    expect(screen.queryByLabelText('Filtrer les branches')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("Filter branches")).not.toBeInTheDocument()
   })
 
   it('closing the blame/history panel resets the left panel to "sidebar"', async () => {
@@ -245,7 +245,7 @@ describe('RepositorySidebar — mode routing', () => {
   it('shows the full sidebar (header/search/rows) otherwise', () => {
     renderSidebar()
     expect(screen.getByText('Repository')).toBeInTheDocument()
-    expect(screen.getByLabelText('Filtrer les branches')).toBeInTheDocument()
+    expect(screen.getByLabelText("Filter branches")).toBeInTheDocument()
   })
 
   it('collapses the sidebar from the header button', async () => {
@@ -253,7 +253,7 @@ describe('RepositorySidebar — mode routing', () => {
     useSidebarResize.mockReturnValue(resizeState({ collapse }))
     const user = userEvent.setup()
     renderSidebar()
-    await user.click(screen.getByLabelText('Réduire la sidebar'))
+    await user.click(screen.getByLabelText("Collapse sidebar"))
     expect(collapse).toHaveBeenCalledOnce()
   })
 })
@@ -262,16 +262,16 @@ describe('RepositorySidebar — search filter', () => {
   it('passes the typed filter through to useSidebarRows', async () => {
     const user = userEvent.setup()
     renderSidebar()
-    await user.type(screen.getByLabelText('Filtrer les branches'), 'feat')
+    await user.type(screen.getByLabelText("Filter branches"), 'feat')
     expect(useSidebarRows).toHaveBeenLastCalledWith(expect.objectContaining({ filter: 'feat' }))
   })
 
   it('clears the filter via the clear button', async () => {
     const user = userEvent.setup()
     renderSidebar()
-    const input = screen.getByLabelText('Filtrer les branches')
+    const input = screen.getByLabelText("Filter branches")
     await user.type(input, 'feat')
-    await user.click(screen.getByLabelText('Effacer le filtre'))
+    await user.click(screen.getByLabelText("Clear filter"))
     expect(input).toHaveValue('')
   })
 
@@ -282,7 +282,7 @@ describe('RepositorySidebar — search filter', () => {
     })
     const user = userEvent.setup()
     renderSidebar()
-    await user.type(screen.getByLabelText('Filtrer les branches'), 'feat')
+    await user.type(screen.getByLabelText("Filter branches"), 'feat')
     expect(lastRowViewCalls.current.at(-1)).toMatchObject({ filterQuery: 'feat' })
     expect(lastHeaderCalls.current.at(-1)).toMatchObject({ isFiltered: true })
   })
@@ -306,7 +306,7 @@ describe('RepositorySidebar — search filter', () => {
     renderSidebar()
     expect(screen.queryByTestId('sidebar-filter-stats')).not.toBeInTheDocument()
 
-    await user.type(screen.getByLabelText('Filtrer les branches'), 'feat')
+    await user.type(screen.getByLabelText("Filter branches"), 'feat')
     expect(screen.getByTestId('sidebar-filter-stats')).toHaveTextContent('3 / 139 résultats')
   })
 })
@@ -314,7 +314,7 @@ describe('RepositorySidebar — search filter', () => {
 describe('RepositorySidebar — focus shortcut (⌥⌘F)', () => {
   it('focuses and selects the filter input when the sidebar is already visible', () => {
     renderSidebar()
-    const input = screen.getByLabelText('Filtrer les branches') as HTMLInputElement
+    const input = screen.getByLabelText("Filter branches") as HTMLInputElement
     const focusSpy = vi.spyOn(input, 'focus')
     act(() => useSidebarSearchStore.getState().requestFocus())
     expect(focusSpy).toHaveBeenCalled()
@@ -337,7 +337,7 @@ describe('RepositorySidebar — focus shortcut (⌥⌘F)', () => {
 
   it('does nothing on initial render (token starts at 0)', () => {
     renderSidebar()
-    const input = screen.getByLabelText('Filtrer les branches') as HTMLInputElement
+    const input = screen.getByLabelText("Filter branches") as HTMLInputElement
     expect(document.activeElement).not.toBe(input)
   })
 })

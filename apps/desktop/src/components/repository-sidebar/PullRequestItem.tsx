@@ -1,6 +1,7 @@
 import { CheckCircle2, Circle, GitMerge, XCircle, Loader2, ExternalLink } from 'lucide-react'
 import { highlightMatch } from '@git-manager/components'
 import type { PullRequest } from '@git-manager/git-types'
+import { useTranslation } from '@git-manager/i18n'
 import { HoverExpandLabel } from './HoverExpandLabel'
 
 interface PullRequestItemProps {
@@ -38,6 +39,7 @@ export function PullRequestItem({
   isSelected = false,
   filterQuery = '',
 }: PullRequestItemProps) {
+  const { t } = useTranslation('git')
   return (
     <div
       className={`group/pr relative flex cursor-pointer items-start gap-2 py-1.5 pl-6 pr-2 transition-colors ${
@@ -91,7 +93,7 @@ export function PullRequestItem({
         rel="noreferrer"
         onClick={(e) => e.stopPropagation()}
         className="shrink-0 opacity-0 transition-opacity group-hover/pr:opacity-100"
-        aria-label="Ouvrir dans GitHub"
+        aria-label={t('sidebar.openInGitHub')}
       >
         <ExternalLink className="h-3 w-3 text-sidebar-muted-foreground hover:text-sidebar-foreground" />
       </a>

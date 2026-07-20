@@ -12,6 +12,7 @@ import {
   Spinner,
 } from '@git-manager/ui'
 import { FolderOpen } from 'lucide-react'
+import { useTranslation } from '@git-manager/i18n'
 import { open } from '@tauri-apps/plugin-dialog'
 import { apiCloneRepo } from '../../api/repo.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
@@ -33,6 +34,7 @@ function deriveFolderName(url: string): string {
 }
 
 export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogProps) {
+  const { t } = useTranslation('git')
   const { addRepo } = useRepoDataStore()
   const { openTab } = useRepoUIStore()
   const [url, setUrl] = useState('')
@@ -84,15 +86,15 @@ export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogP
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Cloner un dépôt</DialogTitle>
-          <DialogDescription>
-            Saisissez l&apos;URL du dépôt distant et choisissez où le cloner.
-          </DialogDescription>
+          <DialogTitle>{t('cloneDialog.title')}</DialogTitle>
+          <DialogDescription>{t('cloneDialog.description')}</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">URL du dépôt</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              {t('cloneDialog.urlLabel')}
+            </label>
             <Input
               autoFocus
               placeholder="git@github.com:owner/repo.git"
@@ -102,11 +104,13 @@ export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogP
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Dossier parent</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              {t('cloneDialog.parentFolder')}
+            </label>
             <div className="flex gap-2">
               <Input
                 readOnly
-                placeholder="Choisir un dossier…"
+                placeholder={t('cloneDialog.pickFolder')}
                 value={parentDir}
                 className="flex-1"
               />
@@ -116,7 +120,7 @@ export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogP
             </div>
             {parentDir && folderName && (
               <p className="truncate text-[11px] text-muted-foreground">
-                Destination : {parentDir}/{folderName}
+                {t('cloneDialog.destination')} : {parentDir}/{folderName}
               </p>
             )}
           </div>
@@ -145,11 +149,11 @@ export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogP
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => handleClose(false)} disabled={loading}>
-            Annuler
+            {t('cloneDialog.cancel')}
           </Button>
           <Button onClick={handleClone} disabled={loading || !url.trim() || !parentDir}>
             {loading && <Spinner className="mr-2 h-4 w-4" />}
-            Cloner
+            {t('cloneDialog.clone')}
           </Button>
         </DialogFooter>
       </DialogContent>

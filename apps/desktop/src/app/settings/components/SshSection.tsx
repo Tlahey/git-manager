@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { Button, Input, Separator, Textarea, Checkbox, NativeSelect, Alert } from '@git-manager/ui'
 import { Key, FolderOpen, Copy, Check, Plus, AlertCircle, RefreshCw } from 'lucide-react'
+import { useTranslation } from '@git-manager/i18n'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { open } from '@tauri-apps/plugin-dialog'
 import { apiGenerateSshKey } from '../../../api/ssh.api'
 import { useSshPublicKey } from '../../../hooks/useSshPublicKey'
 
 export function SshSection() {
+  const { t } = useTranslation('settings')
   const { settings, updateSettings } = useSettingsStore()
 
   const ssh = settings.ssh || {
@@ -49,7 +51,7 @@ export function SshSection() {
     const selected = await open({
       multiple: false,
       directory: false,
-      title: 'Sélectionner la clé privée SSH',
+      title: t('settings.ssh.pickPrivateTitle'),
     })
     if (selected && typeof selected === 'string') {
       const pubPath = selected.endsWith('.pub') ? selected : `${selected}.pub`
@@ -66,8 +68,8 @@ export function SshSection() {
     const selected = await open({
       multiple: false,
       directory: false,
-      title: 'Sélectionner la clé publique SSH (.pub)',
-      filters: [{ name: 'Clé Publique', extensions: ['pub'] }],
+      title: t('settings.ssh.pickPublicTitle'),
+      filters: [{ name: t('settings.ssh.pubFilterName'), extensions: ['pub'] }],
     })
     if (selected && typeof selected === 'string') {
       updateSsh({ publicKeyPath: selected })
@@ -120,10 +122,14 @@ export function SshSection() {
     <div className="space-y-6">
       {/* Paths */}
       <div className="space-y-4">
-        <h4 className="text-xs font-semibold text-foreground">Configuration des chemins</h4>
+        <h4 className="text-xs font-semibold text-foreground">
+          {t('settings.ssh.pathsTitle')}
+        </h4>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">Clé privée SSH</label>
+          <label className="text-xs font-medium text-foreground">
+            {t('settings.ssh.privateKeyLabel')}
+          </label>
           <div className="flex gap-2">
             <Input
               value={ssh.privateKeyPath}
@@ -137,13 +143,15 @@ export function SshSection() {
               onClick={handlePickPrivateKey}
             >
               <FolderOpen className="h-3.5 w-3.5" />
-              Parcourir
+              {t('settings.ssh.browse')}
             </Button>
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">Clé publique SSH</label>
+          <label className="text-xs font-medium text-foreground">
+            {t('settings.ssh.publicKeyLabel')}
+          </label>
           <div className="flex gap-2">
             <Input
               value={ssh.publicKeyPath}
@@ -157,7 +165,7 @@ export function SshSection() {
               onClick={handlePickPublicKey}
             >
               <FolderOpen className="h-3.5 w-3.5" />
-              Parcourir
+              {t('settings.ssh.browse')}
             </Button>
           </div>
         </div>
@@ -167,9 +175,7 @@ export function SshSection() {
             checked={ssh.useSystemAgent}
             onChange={(e) => updateSsh({ useSystemAgent: e.target.checked })}
           />
-          <span className="text-xs text-foreground">
-            Utiliser l&apos;agent SSH système (recommandé)
-          </span>
+          <span className="text-xs text-foreground">{t('settings.ssh.useAgent')}</span>
         </label>
       </div>
 
@@ -178,7 +184,9 @@ export function SshSection() {
       {/* Public Key Display */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <h4 className="text-xs font-semibold text-foreground">Contenu de la clé publique</h4>
+          <h4 className="text-xs font-semibold text-foreground">
+            {t('settings.ssh.pubContentTitle')}
+          </h4>
           {pubKeyContent && (
             <Button
               size="sm"
@@ -189,12 +197,12 @@ export function SshSection() {
               {copiedKey ? (
                 <>
                   <Check className="h-3 w-3 text-green-500" />
-                  Copié !
+                  {t('settings.ssh.copied')}
                 </>
               ) : (
                 <>
                   <Copy className="h-3 w-3" />
-                  Copier
+                  {t('settings.ssh.copy')}
                 </>
               )}
             </Button>
@@ -210,11 +218,11 @@ export function SshSection() {
         ) : pubKeyError ? (
           <div className="border-warning/30 bg-warning/5 flex items-center gap-2 rounded border p-3 text-xs text-muted-foreground">
             <AlertCircle className="text-warning h-4 w-4 shrink-0" />
-            <span>Impossible de charger la clé publique. Vérifiez le chemin.</span>
+            <span>{t('settings.ssh.loadError')}</span>
           </div>
         ) : (
           <div className="flex h-16 items-center justify-center rounded border border-dashed border-border bg-muted/5 text-xs text-muted-foreground">
-            Aucune clé publique SSH chargée
+            {t('settings.ssh.noPubKey')}
           </div>
         )}
       </div>
@@ -225,11 +233,10 @@ export function SshSection() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h4 className="text-xs font-semibold text-foreground">Générer une nouvelle clé SSH</h4>
-            <p className="text-[10px] text-muted-foreground">
-              Générez un nouveau couple de clés privée / publique directement dans votre dossier
-              SSH.
-            </p>
+            <h4 className="text-xs font-semibold text-foreground">
+              {t('settings.ssh.generateTitle')}
+            </h4>
+            <p className="text-[10px] text-muted-foreground">{t('settings.ssh.generateDesc')}</p>
           </div>
           <Button
             size="sm"
@@ -239,7 +246,7 @@ export function SshSection() {
             data-testid="ssh-generator-toggle"
           >
             <Plus className="h-3.5 w-3.5" />
-            {showGenerator ? 'Masquer' : 'Ouvrir le générateur'}
+            {showGenerator ? t('settings.ssh.hideGenerator') : t('settings.ssh.openGenerator')}
           </Button>
         </div>
 
@@ -247,27 +254,31 @@ export function SshSection() {
           <div className="space-y-4 rounded-lg border border-border bg-muted/5 p-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-medium text-foreground">Type de clé</label>
+                <label className="text-[11px] font-medium text-foreground">
+                  {t('settings.ssh.keyType')}
+                </label>
                 <NativeSelect
                   value={genType}
                   onChange={(e) => setGenType(e.target.value as 'ed25519' | 'rsa')}
                   className="h-8 w-full rounded border border-input bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                 >
-                  <option value="ed25519">ED25519 (Recommandé)</option>
+                  <option value="ed25519">{t('settings.ssh.ed25519Recommended')}</option>
                   <option value="rsa">RSA</option>
                 </NativeSelect>
               </div>
 
               {genType === 'rsa' && (
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-medium text-foreground">Taille en bits</label>
+                  <label className="text-[11px] font-medium text-foreground">
+                    {t('settings.ssh.keyBits')}
+                  </label>
                   <NativeSelect
                     value={genBits}
                     onChange={(e) => setGenBits(parseInt(e.target.value, 10))}
                     className="h-8 w-full rounded border border-input bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                   >
                     <option value={2048}>2048 bits</option>
-                    <option value={3072}>3072 bits (Sécurisé)</option>
+                    <option value={3072}>{t('settings.ssh.bitsSecure')}</option>
                     <option value={4096}>4096 bits</option>
                   </NativeSelect>
                 </div>
@@ -276,7 +287,7 @@ export function SshSection() {
 
             <div className="space-y-1.5">
               <label className="text-[11px] font-medium text-foreground">
-                Commentaire (ex: e-mail)
+                {t('settings.ssh.commentLabel')}
               </label>
               <Input
                 placeholder="votre.email@domain.com"
@@ -288,11 +299,11 @@ export function SshSection() {
 
             <div className="space-y-1.5">
               <label className="text-[11px] font-medium text-foreground">
-                Mot de passe (optionnel)
+                {t('settings.ssh.passphraseLabel')}
               </label>
               <Input
                 type="password"
-                placeholder="Laisser vide pour pas de mot de passe"
+                placeholder={t('settings.ssh.passphrasePlaceholder')}
                 value={genPassphrase}
                 onChange={(e) => setGenPassphrase(e.target.value)}
                 className="h-8 text-xs"
@@ -301,7 +312,7 @@ export function SshSection() {
 
             <div className="space-y-1.5">
               <label className="text-[11px] font-medium text-foreground">
-                Chemin de destination
+                {t('settings.ssh.destPath')}
               </label>
               <Input
                 value={genPath}
@@ -313,7 +324,7 @@ export function SshSection() {
 
             {genError && (
               <Alert className="items-center" icon={<AlertCircle className="h-4 w-4" />}>
-                Erreur : {genError}
+                {t('settings.ssh.errorLabel')} : {genError}
               </Alert>
             )}
 
@@ -321,11 +332,10 @@ export function SshSection() {
               <div className="space-y-3 rounded-md border border-green-500/20 bg-green-500/5 p-3">
                 <p className="flex items-center gap-1.5 text-xs font-semibold text-green-500">
                   <Check className="h-4 w-4" />
-                  Clé générée avec succès !
+                  {t('settings.ssh.genSuccess')}
                 </p>
                 <p className="text-[10px] leading-relaxed text-muted-foreground">
-                  Ajoutez cette clé publique SSH à vos fournisseurs d&apos;intégration (GitHub,
-                  GitLab, etc.).
+                  {t('settings.ssh.genSuccessDesc')}
                 </p>
                 <div className="relative">
                   <Textarea
@@ -340,7 +350,7 @@ export function SshSection() {
                     className="absolute bottom-2 right-2 h-7 gap-1 px-2 text-[10px]"
                     onClick={() => handleCopyPubKey(generatedPubKey)}
                   >
-                    {copiedKey ? 'Copié !' : 'Copier'}
+                    {copiedKey ? t('settings.ssh.copied') : t('settings.ssh.copy')}
                   </Button>
                 </div>
               </div>
@@ -355,12 +365,12 @@ export function SshSection() {
                 {generating ? (
                   <>
                     <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                    Génération en cours...
+                    {t('settings.ssh.generating')}
                   </>
                 ) : (
                   <>
                     <Key className="h-3.5 w-3.5" />
-                    Générer le couple de clés
+                    {t('settings.ssh.generateButton')}
                   </>
                 )}
               </Button>

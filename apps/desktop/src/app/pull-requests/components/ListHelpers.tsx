@@ -1,17 +1,19 @@
 import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
+import { useTranslation } from '@git-manager/i18n'
 
 export function TableHeader() {
+  const { t } = useTranslation('launchpad')
   return (
     <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
       <div className="w-3 shrink-0" />
       <div className="w-4 shrink-0" />
-      <div className="min-w-0 flex-1">Item</div>
-      <div className="w-[52px] shrink-0 text-right">Updated</div>
-      <div className="w-[80px] shrink-0 text-center">Status</div>
-      <div className="w-[90px] shrink-0">Author</div>
-      <div className="w-[60px] shrink-0 text-center">With</div>
-      <div className="w-[110px] shrink-0">Repo</div>
-      <div className="w-[60px] shrink-0 text-center">CI</div>
+      <div className="min-w-0 flex-1">{t('table.item')}</div>
+      <div className="w-[52px] shrink-0 text-right">{t('table.updated')}</div>
+      <div className="w-[80px] shrink-0 text-center">{t('table.status')}</div>
+      <div className="w-[90px] shrink-0">{t('table.author')}</div>
+      <div className="w-[60px] shrink-0 text-center">{t('table.with')}</div>
+      <div className="w-[110px] shrink-0">{t('table.repo')}</div>
+      <div className="w-[60px] shrink-0 text-center">{t('table.ci')}</div>
       <div className="w-6 shrink-0" />
     </div>
   )
@@ -59,6 +61,7 @@ interface LoadMoreProps {
 }
 
 export function LoadMore({ total, shown, onLoadMore }: LoadMoreProps) {
+  const { t } = useTranslation('launchpad')
   if (shown >= total) return null
   return (
     <div className="flex shrink-0 items-center justify-center border-t border-border/30 py-3">
@@ -66,7 +69,7 @@ export function LoadMore({ total, shown, onLoadMore }: LoadMoreProps) {
         onClick={onLoadMore}
         className="flex items-center gap-2 rounded-lg border border-border px-4 py-1.5 text-[11px] text-muted-foreground transition-colors hover:border-border/80 hover:bg-accent/40 hover:text-foreground"
       >
-        <RefreshCw className="h-3 w-3" /> Load more ({total - shown} remaining)
+        <RefreshCw className="h-3 w-3" /> {t('loadMore', { count: total - shown })}
       </button>
     </div>
   )

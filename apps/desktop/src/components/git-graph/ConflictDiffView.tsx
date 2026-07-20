@@ -94,7 +94,7 @@ export function ConflictDiffView({
             size="icon"
             className="h-8 w-8 shrink-0 hover:bg-accent"
             onClick={onClose}
-            title="Back to graph"
+            title={t('actions.backToGraph')}
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>

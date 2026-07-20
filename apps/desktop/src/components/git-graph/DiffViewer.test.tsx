@@ -29,20 +29,20 @@ describe('DiffViewer — header', () => {
   it('shows the new path for a modified file', () => {
     render(<DiffViewer file={file({ status: 'modified' })} />)
     expect(screen.getByText('src/a.ts')).toBeInTheDocument()
-    expect(screen.getByText('Modified')).toBeInTheDocument()
+    expect(screen.getByText("Modified")).toBeInTheDocument()
   })
 
   it('shows "old → new" for a renamed file', () => {
     render(<DiffViewer file={file({ status: 'renamed', oldPath: 'old.ts', newPath: 'new.ts' })} />)
     expect(screen.getByText('old.ts → new.ts')).toBeInTheDocument()
-    expect(screen.getByText('Renamed')).toBeInTheDocument()
+    expect(screen.getByText("Renamed")).toBeInTheDocument()
   })
 
   it.each([
-    ['added', 'Added'],
-    ['deleted', 'Deleted'],
-    ['copied', 'Copied'],
-    ['typechange', 'Typechange'],
+    ['added', "Added"],
+    ['deleted', "Deleted"],
+    ['copied', "Copied"],
+    ['typechange', "Typechange"],
   ] as const)('labels a %s file as "%s"', (status, label) => {
     render(<DiffViewer file={file({ status })} />)
     expect(screen.getByText(label)).toBeInTheDocument()
@@ -63,7 +63,7 @@ describe('DiffViewer — header', () => {
 describe('DiffViewer — binary files', () => {
   it('shows a "Binary file" placeholder and hides counts/hunks', () => {
     render(<DiffViewer file={file({ isBinary: true })} />)
-    expect(screen.getByText('Binary file')).toBeInTheDocument()
+    expect(screen.getByText("Binary file")).toBeInTheDocument()
     expect(screen.queryByText('+2')).not.toBeInTheDocument()
     expect(screen.queryByText('unchanged')).not.toBeInTheDocument()
   })

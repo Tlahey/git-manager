@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Sliders, CheckCircle2, Save } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, NativeSelect, Input } from '@git-manager/ui'
+import { useTranslation } from '@git-manager/i18n'
 import type { SavedFilter, FilterType, FilterStatus } from '../../../stores/launchpad.store'
 
 const ALL_STATUSES: FilterStatus[] = [
@@ -29,20 +30,23 @@ const EMOJI_OPTIONS = [
   '⭐',
 ]
 
-const STATUS_CONFIG: Record<FilterStatus, { label: string; className: string }> = {
-  open: { label: 'Open', className: 'bg-green-500/15 text-green-400 border-green-500/30' },
-  draft: { label: 'Draft', className: 'bg-muted text-muted-foreground border-border' },
+const STATUS_CONFIG: Record<FilterStatus, { labelKey: string; className: string }> = {
+  open: { labelKey: 'status.open', className: 'bg-green-500/15 text-green-400 border-green-500/30' },
+  draft: { labelKey: 'status.draft', className: 'bg-muted text-muted-foreground border-border' },
   approved: {
-    label: 'Approved',
+    labelKey: 'status.approved',
     className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
   },
   changes_requested: {
-    label: 'Changes',
+    labelKey: 'status.changes',
     className: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
   },
-  merged: { label: 'Merged', className: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
+  merged: {
+    labelKey: 'status.merged',
+    className: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
+  },
   closed: {
-    label: 'Closed',
+    labelKey: 'status.closed',
     className: 'bg-destructive/15 text-destructive border-destructive/30',
   },
 }
@@ -56,6 +60,7 @@ interface FilterEditorDialogProps {
 }
 
 export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDialogProps) {
+  const { t } = useTranslation('launchpad')
   const [form, setForm] = useState<FilterDraft>(
     initial ?? {
       name: '',
@@ -94,7 +99,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
         <DialogHeader className="space-y-0 border-b border-border bg-muted/10 px-5 py-4">
           <DialogTitle className="flex items-center gap-2 text-sm">
             <Sliders className="h-4 w-4 text-primary" />
-            {initial ? 'Edit filter' : 'New custom filter'}
+            {initial ? t('filterEditor.editTitle') : t('filterEditor.newTitle')}
           </DialogTitle>
         </DialogHeader>
 
@@ -103,19 +108,19 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
           <div className="flex gap-3">
             <div className="flex-1">
               <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Filter name
+                {t('filterEditor.nameLabel')}
               </label>
               <Input
                 type="text"
                 value={form.name}
                 onChange={(e) => set('name', e.target.value)}
-                placeholder="e.g. My bugfixes"
+                placeholder={t('filterEditor.namePlaceholder')}
                 className="h-8 w-full rounded-md border border-border bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
             <div>
               <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Emoji
+                {t('filterEditor.emoji')}
               </label>
               <div className="relative">
                 <NativeSelect
@@ -137,14 +142,14 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
           {/* Type */}
           <div>
             <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Applies to
+              {t('filterEditor.appliesTo')}
             </label>
             <div className="flex gap-2">
               {(
                 [
-                  ['prs', 'Pull Requests'],
-                  ['issues', 'Issues'],
-                  ['both', 'Both'],
+                  ['prs', t('filterEditor.typePrs')],
+                  ['issues', t('filterEditor.typeIssues')],
+                  ['both', t('filterEditor.typeBoth')],
                 ] as [FilterType, string][]
               ).map(([v, lbl]) => (
                 <button
@@ -164,59 +169,59 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
 
           <div className="border-t border-border/40 pt-3">
             <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Filter criteria{' '}
-              <span className="font-normal normal-case">
-                (all active criteria are combined with AND)
-              </span>
+              {t('filterEditor.criteria')}{' '}
+              <span className="font-normal normal-case">{t('filterEditor.criteriaHint')}</span>
             </p>
             <div className="space-y-3">
               {/* Title contains */}
               <div className="flex items-center gap-3">
                 <label className="w-32 shrink-0 text-xs text-muted-foreground">
-                  Title contains
+                  {t('filterEditor.titleContains')}
                 </label>
                 <Input
                   type="text"
                   value={form.titleContains ?? ''}
                   onChange={(e) => set('titleContains', e.target.value)}
-                  placeholder="e.g. bug, feat, hotfix…"
+                  placeholder={t('filterEditor.titlePlaceholder')}
                   className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
                 />
               </div>
               {/* Author contains */}
               <div className="flex items-center gap-3">
                 <label className="w-32 shrink-0 text-xs text-muted-foreground">
-                  Author contains
+                  {t('filterEditor.authorContains')}
                 </label>
                 <Input
                   type="text"
                   value={form.authorContains ?? ''}
                   onChange={(e) => set('authorContains', e.target.value)}
-                  placeholder="e.g. antoine"
+                  placeholder={t('filterEditor.authorPlaceholder')}
                   className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
                 />
               </div>
               {/* Repo */}
               <div className="flex items-center gap-3">
-                <label className="w-32 shrink-0 text-xs text-muted-foreground">Repository</label>
+                <label className="w-32 shrink-0 text-xs text-muted-foreground">
+                  {t('filterEditor.repository')}
+                </label>
                 <Input
                   type="text"
                   value={form.repo ?? ''}
                   onChange={(e) => set('repo', e.target.value)}
-                  placeholder="e.g. git-manager (exact)"
+                  placeholder={t('filterEditor.repoPlaceholder')}
                   className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
                 />
               </div>
               {/* Label contains */}
               <div className="flex items-center gap-3">
                 <label className="w-32 shrink-0 text-xs text-muted-foreground">
-                  Label contains
+                  {t('filterEditor.labelContains')}
                 </label>
                 <Input
                   type="text"
                   value={form.labelContains ?? ''}
                   onChange={(e) => set('labelContains', e.target.value)}
-                  placeholder="e.g. bug, enhancement…"
+                  placeholder={t('filterEditor.labelPlaceholder')}
                   className="h-7 flex-1 rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
                 />
               </div>
@@ -225,7 +230,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
               {(form.type === 'prs' || form.type === 'both') && (
                 <div className="flex items-start gap-3">
                   <label className="w-32 shrink-0 pt-1 text-xs text-muted-foreground">
-                    PR status
+                    {t('filterEditor.prStatus')}
                   </label>
                   <div className="flex flex-wrap gap-1.5">
                     {ALL_STATUSES.map((s) => {
@@ -242,7 +247,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                           }`}
                         >
                           {active && <CheckCircle2 className="mr-1 h-2.5 w-2.5" />}
-                          {cfg.label}
+                          {t(cfg.labelKey)}
                         </button>
                       )
                     })}
@@ -251,7 +256,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                         onClick={() => set('statuses', [])}
                         className="text-[9px] text-muted-foreground/60 underline hover:text-muted-foreground"
                       >
-                        Clear
+                        {t('filterEditor.clear')}
                       </button>
                     )}
                   </div>
@@ -262,14 +267,14 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
               {(form.type === 'prs' || form.type === 'both') && (
                 <div className="flex items-center gap-3">
                   <label className="w-32 shrink-0 text-xs text-muted-foreground">
-                    Needs my review
+                    {t('filterEditor.needsMyReview')}
                   </label>
                   <div className="flex gap-2">
                     {(
                       [
-                        ['yes', true],
-                        ['no', false],
-                        ['any', undefined],
+                        [t('filterEditor.yes'), true],
+                        [t('filterEditor.no'), false],
+                        [t('filterEditor.any'), undefined],
                       ] as [string, boolean | undefined][]
                     ).map(([lbl, val]) => (
                       <button
@@ -297,14 +302,15 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
             onClick={onClose}
             className="h-8 rounded-lg border border-border px-3 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
-            Cancel
+            {t('filterEditor.cancel')}
           </button>
           <button
             onClick={handleSave}
             disabled={!isValid}
             className="flex h-8 items-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
           >
-            <Save className="h-3 w-3" /> {initial ? 'Save changes' : 'Create filter'}
+            <Save className="h-3 w-3" />{' '}
+            {initial ? t('filterEditor.saveChanges') : t('filterEditor.createFilter')}
           </button>
         </DialogFooter>
       </DialogContent>

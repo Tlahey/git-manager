@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { AlertCircle } from 'lucide-react'
+import { useTranslation } from '@git-manager/i18n'
 import { Toolbar } from './Toolbar'
 import { IssueRowSkeleton } from './RowSkeletons'
 import { IssueRow } from './IssueRow'
@@ -14,6 +15,7 @@ interface IssuesTabProps {
 }
 
 export function IssuesTab({ allIssues, loading }: IssuesTabProps) {
+  const { t } = useTranslation('launchpad')
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -84,12 +86,12 @@ export function IssuesTab({ allIssues, loading }: IssuesTabProps) {
       />
       <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
         <div className="w-4 shrink-0" />
-        <div className="min-w-0 flex-1">Item</div>
-        <div className="w-[52px] shrink-0 text-right">Updated</div>
-        <div className="w-[70px] shrink-0 text-center">Status</div>
-        <div className="w-[90px] shrink-0">Author</div>
-        <div className="w-[60px] shrink-0 text-center">Assigned</div>
-        <div className="w-[110px] shrink-0">Repo</div>
+        <div className="min-w-0 flex-1">{t('table.item')}</div>
+        <div className="w-[52px] shrink-0 text-right">{t('table.updated')}</div>
+        <div className="w-[70px] shrink-0 text-center">{t('table.status')}</div>
+        <div className="w-[90px] shrink-0">{t('table.author')}</div>
+        <div className="w-[60px] shrink-0 text-center">{t('table.assigned')}</div>
+        <div className="w-[110px] shrink-0">{t('table.repo')}</div>
         <div className="w-6 shrink-0" />
       </div>
       <div className="flex-1 overflow-y-auto">
@@ -103,7 +105,7 @@ export function IssuesTab({ allIssues, loading }: IssuesTabProps) {
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground/50">
             <AlertCircle className="h-6 w-6 opacity-30" />
-            <p className="text-xs">No issues match your filters</p>
+            <p className="text-xs">{t('issues.noMatch')}</p>
           </div>
         ) : (
           <>

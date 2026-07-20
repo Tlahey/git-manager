@@ -13,6 +13,7 @@ import {
   UserCheck,
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@git-manager/ui'
+import { useTranslation } from '@git-manager/i18n'
 import type { SectionKey } from './types'
 import { SectionHeader } from './SectionHeader'
 
@@ -62,6 +63,7 @@ export function SidebarSectionHeader({
   onCreatePr,
   isFiltered = false,
 }: SidebarSectionHeaderProps) {
+  const { t } = useTranslation('git')
   return (
     <SectionHeader
       title={title}
@@ -83,8 +85,8 @@ export function SidebarSectionHeader({
                 <DropdownMenuTrigger asChild>
                   <button
                     className="mr-0.5 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
-                    aria-label="Branch actions"
-                    title="Branch actions"
+                    aria-label={t('sidebar.branchActions')}
+                    title={t('sidebar.branchActions')}
                     data-testid="branch-actions-menu-trigger"
                   >
                     <MoreVertical className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
@@ -98,7 +100,7 @@ export function SidebarSectionHeader({
                       data-testid="branch-prune-menu-item"
                     >
                       <Recycle className="h-3.5 w-3.5 text-muted-foreground" />
-                      Prune local branches
+                      {t('sidebar.pruneLocalBranches')}
                     </DropdownMenuItem>
                   )}
                   {onRemoveMergedBranches && (
@@ -108,7 +110,7 @@ export function SidebarSectionHeader({
                       data-testid="branch-remove-merged-menu-item"
                     >
                       <GitMerge className="h-3.5 w-3.5 text-muted-foreground" />
-                      Remove merged branches
+                      {t('sidebar.removeMergedBranches')}
                     </DropdownMenuItem>
                   )}
                   {onRemoveMyMergedBranches && (
@@ -118,7 +120,7 @@ export function SidebarSectionHeader({
                       data-testid="branch-remove-my-merged-menu-item"
                     >
                       <UserCheck className="h-3.5 w-3.5 text-muted-foreground" />
-                      Remove my merged branches
+                      {t('sidebar.removeMyMergedBranches')}
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
@@ -128,8 +130,8 @@ export function SidebarSectionHeader({
               <button
                 onClick={onCreateBranch}
                 className="mr-1 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
-                aria-label="Créer une branche"
-                title="Créer une branche"
+                aria-label={t('sidebar.createBranch')}
+                title={t('sidebar.createBranch')}
               >
                 <Plus className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
               </button>
@@ -146,8 +148,8 @@ export function SidebarSectionHeader({
                 <DropdownMenuTrigger asChild>
                   <button
                     className="mr-0.5 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
-                    aria-label="Worktree actions"
-                    title="Worktree actions"
+                    aria-label={t('sidebar.worktreeActions')}
+                    title={t('sidebar.worktreeActions')}
                     data-testid="worktree-actions-menu-trigger"
                   >
                     <MoreVertical className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
@@ -161,7 +163,7 @@ export function SidebarSectionHeader({
                       data-testid="worktree-prune-menu-item"
                     >
                       <Recycle className="h-3.5 w-3.5 text-muted-foreground" />
-                      Prune worktrees
+                      {t('sidebar.pruneWorktrees')}
                     </DropdownMenuItem>
                   )}
                   {onRemoveMergedWorktrees && (
@@ -171,7 +173,7 @@ export function SidebarSectionHeader({
                       data-testid="worktree-remove-merged-menu-item"
                     >
                       <GitMerge className="h-3.5 w-3.5 text-muted-foreground" />
-                      Remove merged worktrees
+                      {t('sidebar.removeMergedWorktrees')}
                     </DropdownMenuItem>
                   )}
                   {onRemoveMyMergedWorktrees && (
@@ -181,7 +183,7 @@ export function SidebarSectionHeader({
                       data-testid="worktree-remove-my-merged-menu-item"
                     >
                       <UserCheck className="h-3.5 w-3.5 text-muted-foreground" />
-                      Remove my merged worktrees
+                      {t('sidebar.removeMyMergedWorktrees')}
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
@@ -191,8 +193,8 @@ export function SidebarSectionHeader({
               <button
                 onClick={onAddWorktree}
                 className="mr-1 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
-                aria-label="Add worktree"
-                title="Add worktree"
+                aria-label={t('sidebar.addWorktree')}
+                title={t('sidebar.addWorktree')}
                 data-testid="worktree-add-button"
               >
                 <Plus className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
@@ -203,8 +205,8 @@ export function SidebarSectionHeader({
           <button
             onClick={onCreatePr}
             className="mr-1 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
-            aria-label="Create pull request"
-            title="Create pull request"
+            aria-label={t('sidebar.createPullRequest')}
+            title={t('sidebar.createPullRequest')}
             data-testid="pr-create-button"
           >
             <Plus className="h-3.5 w-3.5 text-sidebar-muted-foreground" />

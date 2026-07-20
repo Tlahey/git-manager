@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 const { showNativeNotification } = vi.hoisted(() => ({ showNativeNotification: vi.fn() }))
 vi.mock('../../../hooks/useNotificationWatcher', () => ({ showNativeNotification }))
 
@@ -23,7 +22,7 @@ describe('NotificationSection — global toggle', () => {
   it('shows the Bell icon and event sections when enabled', () => {
     render(<NotificationSection />)
     expect(document.querySelector('.lucide-bell')).toBeTruthy()
-    expect(screen.getByText('Événements de notification')).toBeInTheDocument()
+    expect(screen.getByText("Notification events")).toBeInTheDocument()
   })
 
   it('shows the BellOff icon and hides everything else when disabled', () => {
@@ -93,7 +92,7 @@ describe('NotificationSection — test notification', () => {
   it('adds a test notification and fires a native notification', async () => {
     const user = userEvent.setup()
     render(<NotificationSection />)
-    await user.click(screen.getByText('Tester la notification macOS'))
+    await user.click(screen.getByText("Test macOS notification"))
 
     expect(useNotificationStore.getState().notifications).toHaveLength(1)
     expect(useNotificationStore.getState().notifications[0]).toMatchObject({

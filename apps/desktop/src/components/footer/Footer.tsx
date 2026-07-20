@@ -182,7 +182,7 @@ export function Footer({ onOpenSettings }: FooterProps) {
             <button
               onClick={handleCopyPath}
               className="group flex shrink-0 cursor-pointer items-center gap-1.5 font-medium text-foreground/90 transition-colors hover:text-primary"
-              title="Cliquer pour copier le chemin absolu"
+              title={t('footer.copyAbsolutePath')}
             >
               <Terminal className="h-3.5 w-3.5 text-primary/70" />
               <span>{currentRepo?.name || activeTab.split('/').pop()}</span>
@@ -273,7 +273,7 @@ export function Footer({ onOpenSettings }: FooterProps) {
                 value={shortcutQuery}
                 onChange={(e) => setShortcutQuery(e.target.value)}
                 placeholder="Rechercher un raccourci…"
-                aria-label="Rechercher un raccourci"
+                aria-label={t('footer.searchShortcut')}
                 data-testid="shortcuts-search-input"
                 className="h-8 pl-8 text-xs"
               />

@@ -218,7 +218,7 @@ export function RemoveMergedWorktreesDialog({
                         onClick={() => copyWithToast(wt.path, 'Path')}
                         className="mt-1 flex max-w-full items-center gap-1 rounded border border-border/40 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                         title={wt.path}
-                        aria-label="Copy path"
+                        aria-label={t('actions.copyPath')}
                         data-testid={`worktree-remove-merged-copy-path-${wt.path}`}
                       >
                         <span className="truncate">{wt.path}</span>

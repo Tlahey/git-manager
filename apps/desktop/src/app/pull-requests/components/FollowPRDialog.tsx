@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@git-manager/ui'
+import { useTranslation } from '@git-manager/i18n'
 
 interface FollowPRDialogProps {
   onAdd: (url: string) => void
@@ -16,6 +17,7 @@ interface FollowPRDialogProps {
 }
 
 export function FollowPRDialog({ onAdd, onClose }: FollowPRDialogProps) {
+  const { t } = useTranslation('launchpad')
   const [url, setUrl] = useState('')
   const isValid = url.includes('github.com') && url.includes('/pull/')
 
@@ -32,7 +34,7 @@ export function FollowPRDialog({ onAdd, onClose }: FollowPRDialogProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-sm">
             <BookOpen className="h-4 w-4 text-primary" />
-            Follow a Pull Request
+            {t('followDialog.title')}
           </DialogTitle>
         </DialogHeader>
 
@@ -47,10 +49,10 @@ export function FollowPRDialog({ onAdd, onClose }: FollowPRDialogProps) {
 
         <DialogFooter>
           <Button variant="ghost" size="sm" onClick={onClose}>
-            Cancel
+            {t('followDialog.cancel')}
           </Button>
           <Button size="sm" onClick={handleAdd} disabled={!isValid}>
-            Follow PR
+            {t('followDialog.follow')}
           </Button>
         </DialogFooter>
       </DialogContent>

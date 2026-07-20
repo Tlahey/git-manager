@@ -3,7 +3,6 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitGraphNode, GitStash } from '@git-manager/git-types'
 
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 vi.mock('./CommitDetailsAvatar', () => ({
   CommitDetailsAvatar: () => <div data-testid="avatar" />,
 }))
@@ -74,17 +73,17 @@ function baseProps(
 describe('CommitHeaderInfo — header title', () => {
   it('shows the working-tree title for WIP', () => {
     render(<CommitHeaderInfo {...baseProps({ isWip: true })} />)
-    expect(screen.getByText('workingTree.title')).toBeInTheDocument()
+    expect(screen.getByText("Working Tree")).toBeInTheDocument()
   })
 
   it('shows the stash title for a stash entry', () => {
     render(<CommitHeaderInfo {...baseProps({ isStash: true })} />)
-    expect(screen.getByText('stash.title')).toBeInTheDocument()
+    expect(screen.getByText("Stashes")).toBeInTheDocument()
   })
 
   it('shows the commit-details title otherwise', () => {
     render(<CommitHeaderInfo {...baseProps()} />)
-    expect(screen.getByText('commitDetails.title')).toBeInTheDocument()
+    expect(screen.getByText("Commit Details")).toBeInTheDocument()
   })
 
   it('renders a close button only when onClose is given, and calls it when clicked', async () => {
@@ -261,7 +260,7 @@ describe('CommitHeaderInfo — SHA / remote link / parents', () => {
     const user = userEvent.setup()
     const { container, rerender } = render(<CommitHeaderInfo {...baseProps()} />)
     expect(container.querySelector('.lucide-copy')).toBeTruthy()
-    await user.click(screen.getByTitle('gitTree.detailPanel.copy'))
+    await user.click(screen.getByTitle("Copy SHA"))
     expect(handleCopySha).toHaveBeenCalledOnce()
 
     useCommitMessageEdit.mockReturnValue(editState({ copied: true }))
@@ -297,7 +296,7 @@ describe('CommitHeaderInfo — SHA / remote link / parents', () => {
 
   it('hides the parents section when there are none', () => {
     render(<CommitHeaderInfo {...baseProps({ commit: commit({ parentOids: [] }) })} />)
-    expect(screen.queryByText('commitDetails.parents')).not.toBeInTheDocument()
+    expect(screen.queryByText("Parents")).not.toBeInTheDocument()
   })
 
   it('renders a button per parent oid and navigates on click', async () => {
@@ -324,7 +323,7 @@ describe('CommitHeaderInfo — SHA / remote link / parents', () => {
       />
     )
     expect(screen.queryByTestId('github-commit-link')).not.toBeInTheDocument()
-    expect(screen.queryByTitle('gitTree.detailPanel.copy')).not.toBeInTheDocument()
+    expect(screen.queryByTitle("Copy SHA")).not.toBeInTheDocument()
   })
 })
 

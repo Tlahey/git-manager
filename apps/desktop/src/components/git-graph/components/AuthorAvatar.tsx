@@ -1,5 +1,6 @@
 import { Archive } from 'lucide-react'
 import { Avatar } from '@git-manager/ui'
+import { useTranslation } from '@git-manager/i18n'
 import { getAvatarUrl } from '../../../lib/avatar'
 import { getAuthorInitials } from './GraphAvatarTooltip'
 
@@ -53,13 +54,14 @@ export function AuthorAvatar({
   isStash,
   className = 'h-4 w-4 text-[7px]',
 }: AuthorAvatarProps) {
+  const { t } = useTranslation('git')
   const avatarUrl = getAvatarUrl(email, name)
 
   if (isStash) {
     return (
       <div
         className={`flex shrink-0 items-center justify-center rounded border border-dashed border-violet-400/60 bg-transparent text-violet-400 ${className}`}
-        title="Stash"
+        title={t('commitGraph.stashTitle')}
       >
         <Archive className="h-2.5 w-2.5" />
       </div>

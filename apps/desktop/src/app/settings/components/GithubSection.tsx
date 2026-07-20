@@ -492,7 +492,7 @@ export function GithubSection() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                      title="Open on GitHub"
+                      title={t('settings.github.openOnGitHub')}
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
                     </a>

@@ -11,6 +11,7 @@ import {
   Link,
 } from 'lucide-react'
 import { Tag } from '@git-manager/ui'
+import { useTranslation } from '@git-manager/i18n'
 import type { MockPR } from '../types'
 import { StatusBadge, CiBadge } from './Badges'
 import { AvatarStack } from './AvatarStack'
@@ -55,6 +56,7 @@ interface PRRowProps {
 }
 
 export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
+  const { t } = useTranslation('launchpad')
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
@@ -67,7 +69,7 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
           e.stopPropagation()
           onTogglePin(pr.id)
         }}
-        title={pinned ? 'Unpin' : 'Pin'}
+        title={pinned ? t('row.unpin') : t('row.pin')}
         className={`shrink-0 transition-colors ${
           pinned ? 'text-amber-400' : 'text-muted-foreground/30 hover:text-amber-400'
         }`}
@@ -100,12 +102,14 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
               <span className="text-green-400">+{pr.additions}</span>
               <span className="text-red-400">−{pr.deletions}</span>
               {pr.filesChanged > 0 && (
-                <span className="text-muted-foreground/40">· {pr.filesChanged} files</span>
+                <span className="text-muted-foreground/40">
+                  · {t('row.filesCount', { count: pr.filesChanged })}
+                </span>
               )}
             </span>
           ) : pr.filesChanged > 0 ? (
             <span className="font-mono text-[10px] text-muted-foreground/60">
-              {pr.filesChanged} files
+              {t('row.filesCount', { count: pr.filesChanged })}
             </span>
           ) : null}
           {pr.labels.slice(0, 2).map((l) => (
@@ -118,7 +122,7 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
           ))}
           {pr.needsRebase && (
             <Tag tone="warning" className="shrink-0 gap-0.5 px-1 text-[9px] font-medium">
-              <AlertCircle className="h-2.5 w-2.5" /> Rebase required
+              <AlertCircle className="h-2.5 w-2.5" /> {t('row.rebaseRequired')}
             </Tag>
           )}
         </div>
@@ -164,17 +168,17 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
           <ActionMenu
             items={[
               {
-                label: 'Open on GitHub',
+                label: t('row.openOnGitHub'),
                 icon: <ExternalLink className="h-3 w-3" />,
                 action: () => openUrl(pr.url),
               },
               {
-                label: 'Copy link',
+                label: t('row.copyLink'),
                 icon: <Link className="h-3 w-3" />,
                 action: () => navigator.clipboard.writeText(pr.url),
               },
               {
-                label: pinned ? 'Unpin' : 'Pin',
+                label: pinned ? t('row.unpin') : t('row.pin'),
                 icon: <Pin className="h-3 w-3" />,
                 action: () => onTogglePin(pr.id),
               },

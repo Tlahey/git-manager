@@ -1,6 +1,7 @@
 import { GitCommit, Activity, TrendingUp, Star, BarChart2 } from 'lucide-react'
 import { Skeleton, Progress, Card } from '@git-manager/ui'
 import { KpiCard } from '@git-manager/components'
+import { useTranslation } from '@git-manager/i18n'
 import type { DayCommit } from '../types'
 import { YearHeatmap } from './YearHeatmap'
 
@@ -11,6 +12,7 @@ interface CommitStatsTabProps {
 }
 
 export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTabProps) {
+  const { t, i18n } = useTranslation('launchpad')
   const max14 = Math.max(...commitDays.map((d) => d.commits), 1)
   const total14 = commitDays.reduce((s, d) => s + d.commits, 0)
   const avg14 = commitDays.length ? (total14 / commitDays.length).toFixed(1) : '0'
@@ -25,7 +27,10 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
   })()
 
   function fmtDate(ds: string): string {
-    return new Date(ds + 'T00:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' })
+    return new Date(ds + 'T00:00:00').toLocaleDateString(i18n.language, {
+      month: 'short',
+      day: 'numeric',
+    })
   }
 
   return (
@@ -34,30 +39,30 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
         <div className="grid grid-cols-4 gap-3">
           <KpiCard
             icon={<GitCommit className="h-3.5 w-3.5" />}
-            label="Total commits"
+            label={t('stats.totalCommits')}
             value={totalYear}
-            sub="Last 365 days"
+            sub={t('stats.last365')}
             loading={loading}
           />
           <KpiCard
             icon={<Activity className="h-3.5 w-3.5" />}
-            label="Daily avg (14d)"
+            label={t('stats.dailyAvg')}
             value={avg14}
-            sub="Commits / day"
+            sub={t('stats.commitsPerDay')}
             loading={loading}
           />
           <KpiCard
             icon={<TrendingUp className="h-3.5 w-3.5" />}
-            label="Last 14 days"
+            label={t('stats.last14')}
             value={total14}
-            sub="Push events"
+            sub={t('stats.pushEvents')}
             loading={loading}
           />
           <KpiCard
             icon={<Star className="h-3.5 w-3.5" />}
-            label="Current streak"
-            value={`${streak}d`}
-            sub="Consecutive days"
+            label={t('stats.currentStreak')}
+            value={t('stats.streakValue', { count: streak })}
+            sub={t('stats.consecutiveDays')}
             loading={loading}
           />
         </div>
@@ -65,20 +70,20 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold">Contribution activity</h3>
+              <h3 className="text-sm font-semibold">{t('stats.contributionActivity')}</h3>
             </div>
             {loading ? (
               <Skeleton className="h-3 w-32 rounded bg-muted/40" />
             ) : (
               <span className="text-[10px] text-muted-foreground">
-                {totalYear} contributions in the last year
+                {t('stats.contributionsLastYear', { count: totalYear })}
               </span>
             )}
           </div>
           <div className="heatmap-container relative overflow-x-auto pb-1">
             {loading ? (
               <Skeleton className="flex h-[100px] w-full items-center justify-center rounded-lg bg-muted/20 text-[10px] text-muted-foreground/40">
-                Loading contribution map...
+                {t('stats.loadingMap')}
               </Skeleton>
             ) : (
               <YearHeatmap yearDays={yearDays} />
@@ -89,7 +94,7 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <BarChart2 className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold">Last 14 days — daily activity</h3>
+              <h3 className="text-sm font-semibold">{t('stats.dailyActivity')}</h3>
             </div>
           </div>
           {loading ? (
@@ -143,7 +148,7 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
         <Card className="overflow-hidden rounded-xl bg-card/50">
           <div className="flex items-center gap-2 border-b border-border bg-muted/10 px-4 py-3">
             <GitCommit className="h-3.5 w-3.5 text-primary/60" />
-            <h3 className="text-xs font-semibold">Daily breakdown — last 14 days</h3>
+            <h3 className="text-xs font-semibold">{t('stats.dailyBreakdown')}</h3>
           </div>
           {loading ? (
             <div className="space-y-3 p-4">

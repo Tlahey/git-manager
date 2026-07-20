@@ -3,13 +3,6 @@ import { render, screen, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitRepo, GitHubAccount } from '@git-manager/git-types'
 
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) =>
-      opts ? `${key}:${JSON.stringify(opts)}` : key,
-  }),
-}))
-
 const { apiGetAppVersion } = vi.hoisted(() => ({ apiGetAppVersion: vi.fn() }))
 vi.mock('../../api/updater.api', () => ({ apiGetAppVersion }))
 
@@ -75,8 +68,8 @@ describe('Footer — contextual left section', () => {
   it('shows the dashboard state with the total repo count', () => {
     useRepoDataStore.setState({ savedRepos: [{ path: '/a', name: 'a', pinned: false }] })
     render(<Footer onOpenSettings={vi.fn()} />)
-    expect(screen.getByText('footer.dashboard')).toBeInTheDocument()
-    expect(screen.getByText('footer.totalRepos:{"count":1}')).toBeInTheDocument()
+    expect(screen.getByText("Dashboard")).toBeInTheDocument()
+    expect(screen.getByText("1 registered repo")).toBeInTheDocument()
   })
 
   it('uses the plural repo-count key once more than one repo is known', () => {
@@ -87,7 +80,7 @@ describe('Footer — contextual left section', () => {
       ],
     })
     render(<Footer onOpenSettings={vi.fn()} />)
-    expect(screen.getByText('footer.totalRepos_plural:{"count":2}')).toBeInTheDocument()
+    expect(screen.getByText("2 registered repos")).toBeInTheDocument()
   })
 
   it('deduplicates saved and discovered repos sharing the same path', () => {
@@ -99,13 +92,13 @@ describe('Footer — contextual left section', () => {
       ],
     })
     render(<Footer onOpenSettings={vi.fn()} />)
-    expect(screen.getByText('footer.totalRepos_plural:{"count":2}')).toBeInTheDocument()
+    expect(screen.getByText("2 registered repos")).toBeInTheDocument()
   })
 
   it('shows the launchpad state on the pull-requests tab', () => {
     useRepoUIStore.setState({ activeTab: PULL_REQUESTS_TAB })
     render(<Footer onOpenSettings={vi.fn()} />)
-    expect(screen.getByText('footer.launchpad')).toBeInTheDocument()
+    expect(screen.getByText("Launchpad")).toBeInTheDocument()
   })
 
   it('shows the rewards state on the rewards tab', () => {
@@ -124,7 +117,7 @@ describe('Footer — contextual left section', () => {
       render(<Footer onOpenSettings={vi.fn()} />)
       expect(screen.getByText('repo-a')).toBeInTheDocument()
       expect(screen.getByText('main')).toBeInTheDocument()
-      expect(screen.getByText('footer.clean')).toBeInTheDocument()
+      expect(screen.getByText("Clean")).toBeInTheDocument()
     })
 
     it('falls back to the last path segment when the repo is not cached', () => {
@@ -138,7 +131,7 @@ describe('Footer — contextual left section', () => {
         repoCache: { '/repo/a': repo({ isDirty: true, remotes: ['origin', 'upstream'] }) },
       })
       render(<Footer onOpenSettings={vi.fn()} />)
-      expect(screen.getByText('footer.dirty')).toBeInTheDocument()
+      expect(screen.getByText("Modified")).toBeInTheDocument()
       expect(screen.getByText('origin, upstream')).toBeInTheDocument()
     })
 
@@ -148,15 +141,15 @@ describe('Footer — contextual left section', () => {
       render(<Footer onOpenSettings={vi.fn()} />)
 
       await act(async () => {
-        fireEvent.click(screen.getByTitle('Cliquer pour copier le chemin absolu'))
+        fireEvent.click(screen.getByTitle("Click to copy the absolute path"))
         await Promise.resolve()
         await Promise.resolve()
       })
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('/repo/a')
-      expect(screen.getByText('footer.copiedPath')).toBeInTheDocument()
+      expect(screen.getByText("Repository path copied!")).toBeInTheDocument()
 
       await act(async () => vi.advanceTimersByTime(2000))
-      expect(screen.queryByText('footer.copiedPath')).not.toBeInTheDocument()
+      expect(screen.queryByText("Repository path copied!")).not.toBeInTheDocument()
       vi.useRealTimers()
     })
 
@@ -170,12 +163,12 @@ describe('Footer — contextual left section', () => {
       render(<Footer onOpenSettings={vi.fn()} />)
 
       await act(async () => {
-        fireEvent.click(screen.getByTitle('Cliquer pour copier le chemin absolu'))
+        fireEvent.click(screen.getByTitle("Click to copy the absolute path"))
         await Promise.resolve()
         await Promise.resolve()
       })
       expect(consoleError).toHaveBeenCalled()
-      expect(screen.queryByText('footer.copiedPath')).not.toBeInTheDocument()
+      expect(screen.queryByText("Repository path copied!")).not.toBeInTheDocument()
     })
   })
 })
@@ -184,7 +177,7 @@ describe('Footer — keyboard shortcuts dialog', () => {
   it('opens the dialog and lists shortcut categories on trigger click', async () => {
     const user = userEvent.setup()
     render(<Footer onOpenSettings={vi.fn()} />)
-    await user.click(screen.getByText('footer.keyboardShortcuts'))
+    await user.click(screen.getByText("Keyboard Shortcuts"))
     expect(screen.getByText('Général')).toBeInTheDocument()
     expect(screen.getByText('Navigation')).toBeInTheDocument()
     expect(screen.getByText('Recherche')).toBeInTheDocument()
@@ -196,7 +189,7 @@ describe('Footer — keyboard shortcuts dialog', () => {
   it('filters the list by description text as the user types', async () => {
     const user = userEvent.setup()
     render(<Footer onOpenSettings={vi.fn()} />)
-    await user.click(screen.getByText('footer.keyboardShortcuts'))
+    await user.click(screen.getByText("Keyboard Shortcuts"))
     await user.type(screen.getByTestId('shortcuts-search-input'), 'palette')
     expect(screen.getByText('Ouvrir la palette de commandes')).toBeInTheDocument()
     expect(screen.queryByText('Navigation')).not.toBeInTheDocument()
@@ -206,7 +199,7 @@ describe('Footer — keyboard shortcuts dialog', () => {
   it('filters the list by key text as the user types', async () => {
     const user = userEvent.setup()
     render(<Footer onOpenSettings={vi.fn()} />)
-    await user.click(screen.getByText('footer.keyboardShortcuts'))
+    await user.click(screen.getByText("Keyboard Shortcuts"))
     await user.type(screen.getByTestId('shortcuts-search-input'), 'esc')
     expect(screen.getByText('Fermer les boîtes de dialogue / volets')).toBeInTheDocument()
     expect(screen.queryByText('Ouvrir la palette de commandes')).not.toBeInTheDocument()
@@ -215,7 +208,7 @@ describe('Footer — keyboard shortcuts dialog', () => {
   it('shows an empty-state message when nothing matches the search', async () => {
     const user = userEvent.setup()
     render(<Footer onOpenSettings={vi.fn()} />)
-    await user.click(screen.getByText('footer.keyboardShortcuts'))
+    await user.click(screen.getByText("Keyboard Shortcuts"))
     await user.type(screen.getByTestId('shortcuts-search-input'), 'zzzznomatch')
     expect(screen.getByText('Aucun raccourci ne correspond à « zzzznomatch ».')).toBeInTheDocument()
   })
@@ -223,10 +216,10 @@ describe('Footer — keyboard shortcuts dialog', () => {
   it('resets the search query after the dialog is closed and reopened', async () => {
     const user = userEvent.setup()
     render(<Footer onOpenSettings={vi.fn()} />)
-    await user.click(screen.getByText('footer.keyboardShortcuts'))
+    await user.click(screen.getByText("Keyboard Shortcuts"))
     await user.type(screen.getByTestId('shortcuts-search-input'), 'palette')
     await user.keyboard('{Escape}')
-    await user.click(screen.getByText('footer.keyboardShortcuts'))
+    await user.click(screen.getByText("Keyboard Shortcuts"))
     expect(screen.getByTestId('shortcuts-search-input')).toHaveValue('')
     expect(screen.getByText('Navigation')).toBeInTheDocument()
   })
@@ -253,7 +246,7 @@ describe('Footer — rewards link', () => {
 describe('Footer — GitHub account link', () => {
   it('shows "not connected" when there is no active account', () => {
     render(<Footer onOpenSettings={vi.fn()} />)
-    expect(screen.getByText('footer.notConnected')).toBeInTheDocument()
+    expect(screen.getByText("GitHub disconnected")).toBeInTheDocument()
   })
 
   it('shows the connected account name once a token is active', () => {
@@ -271,7 +264,7 @@ describe('Footer — GitHub account link', () => {
     const onOpenSettings = vi.fn()
     const user = userEvent.setup()
     render(<Footer onOpenSettings={onOpenSettings} />)
-    await user.click(screen.getByText('footer.notConnected').closest('button')!)
+    await user.click(screen.getByText("GitHub disconnected").closest('button')!)
     expect(onOpenSettings).toHaveBeenCalledWith('integrations')
   })
 })
@@ -279,7 +272,7 @@ describe('Footer — GitHub account link', () => {
 describe('Footer — version', () => {
   it('shows the app version once read from Tauri', async () => {
     render(<Footer onOpenSettings={vi.fn()} />)
-    expect(await screen.findByText('footer.version:{"version":"0.1.0"}')).toBeInTheDocument()
+    expect(await screen.findByText("v0.1.0")).toBeInTheDocument()
   })
 
   it('does not render the version badge when the version cannot be read', () => {

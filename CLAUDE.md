@@ -80,6 +80,17 @@ Before adding non-trivial logic to a component, hook, or store, see [.claude/ski
 - **If a genuinely new primitive is needed, build it _in the package_, never inline in the app.** Add it to `packages/ui` (primitive) or `packages/components` (composed), **validate every case** — all variants/states, accessibility (contrast + ARIA + keyboard), and a co-located `*.test.tsx` — export it via the package `index.ts`, then consume it from `apps/desktop`. A one-off styled element inside a feature component is the anti-pattern this rule exists to prevent.
 - See the **`reusable-components`** skill for the placement decision (`ui` vs `components` vs stays in `apps/desktop`) and **`architecture-guardian`** for splitting.
 
+### Internationalization (i18n): never hardcode user-facing text
+
+**Every user-visible string MUST come from `@git-manager/i18n` via `t()` — never write a literal in JSX text or in a `title=`/`aria-label`/`placeholder`/`label` attribute.** This is a hard invariant: the app ships `en` and `fr` and a hardcoded string is simply untranslatable (and invisible to the parity check below).
+
+- Use `const { t } = useTranslation('<namespace>')` and reference keys by name. Namespaces: `common`, `git`, `dashboard`, `settings`, `errors`, `launchpad` (the Pull Requests / Launchpad feature). `defaultNS` is `common`; cross-reference another namespace with a prefix, e.g. `t('git:actions.close')`.
+- **Add each key to BOTH `packages/i18n/locales/en/<ns>.json` and `.../fr/<ns>.json`** — en↔fr key parity is enforced and must stay at 0 mismatches (flatten both files and diff the key sets). Never add a key to only one locale.
+- **Module-level label maps** (e.g. `const STATUS_LABELS = { open: 'Open' }`) can't call `t()` — store an i18n **key** instead (`{ open: 'status.open' }`) and resolve with `t(map[x])` inside the component.
+- **Tests run against real English copy.** `vitest.setup.ts` calls `initI18n('en')`, so `t()` returns the actual English string (interpolation included) — assert the **real visible text** (`getByText('Login with GitHub')`), never a raw key. This keeps tests meaningful: they catch wrong/blank copy and verify injected content (counts, dates, names). To test another locale, use `renderWithLanguage(ui, 'fr')` from [apps/desktop/src/test/i18n.tsx](apps/desktop/src/test/i18n.tsx); it resets to English after each test.
+  - **Do NOT** add `vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (k) => k }) }))`. That old pattern (still present in ~87 legacy test files, pre-global-provider) makes `t` return the key, defeating content assertions — remove it and switch to real-text assertions when you touch such a file.
+- **Intentionally left untranslated** (do not wrap these in `t()`): proper nouns (Git Manager, GitHub, Launchpad, theme names), git jargon kept in English in toolbars (Push/Pull/Fetch/Commit/Stash/Squash/SHA, `ours`/`theirs`), macOS system sound names, and example placeholder values (URLs, branch names like `main`).
+
 ### Monorepo packages
 
 | Package              | Purpose                                                                                                        |
@@ -87,7 +98,7 @@ Before adding non-trivial logic to a component, hook, or store, see [.claude/ski
 | `apps/desktop`       | The Tauri app (Rust backend in `src-tauri/`, React frontend in `src/`)                                         |
 | `packages/git-types` | Shared TypeScript DTOs mirroring the Rust `serde` structs used over IPC                                        |
 | `packages/ai`        | The app's AI brain: `AiPresetId`/`AiProtocol` + `AI_PRESETS` registry, the connection-only `AiConnectionConfig` (persisted in Settings — no instructions/temperature there), and the **feature runtime** (`AiFeature` descriptors under `features/`, each owning its instruction + temperature + prompt-building, and — for completion features — an optional JSON `schema` for structured output; `createStreamingService`/`createCompletionService` turn one into a typed "service per feature"). Two shipped features: `commitMessageFeature` (streaming, one commit's message) and `fileGroupingFeature` (completion + JSON schema → `ProposedCommit[]`, splitting all working changes into a reviewable commit plan). Add a new AI capability here, not in Rust. |
-| `packages/i18n`      | `react-i18next` setup + `en`/`fr` locale JSON (namespaces: `common`, `git`, `dashboard`, `settings`, `errors`) |
+| `packages/i18n`      | `react-i18next` setup + `en`/`fr` locale JSON (namespaces: `common`, `git`, `dashboard`, `settings`, `errors`, `launchpad`) — all user-facing text goes through here, never hardcoded (see i18n rules above) |
 | `packages/ui`        | shadcn/ui + Radix primitive components, Tailwind-based (accessibility-audited — consume before hand-rolling)   |
 | `packages/components` | Composed, domain-agnostic presentational building blocks one level up from `ui` (`SplitButton`, `StepRailRow`, `useFileTree`…) — no IPC/store/domain types                                                    |
 | `packages/config`    | Shared Oxlint config, Tailwind preset, base `tsconfig.json`                                                    |

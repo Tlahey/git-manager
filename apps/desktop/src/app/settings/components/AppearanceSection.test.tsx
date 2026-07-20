@@ -2,8 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
-
 const { useUserThemes } = vi.hoisted(() => ({ useUserThemes: vi.fn() }))
 vi.mock('../../../hooks/useUserThemes', () => ({ useUserThemes }))
 
@@ -71,7 +69,7 @@ describe('AppearanceSection — font size / density / row height', () => {
   it('switches density', async () => {
     const user = userEvent.setup()
     render(<AppearanceSection />)
-    await user.click(screen.getByRole('radio', { name: 'settings.appearance.density.compact' }))
+    await user.click(screen.getByRole('radio', { name: "Compact" }))
     expect(useSettingsStore.getState().settings.appearance.density).toBe('compact')
   })
 

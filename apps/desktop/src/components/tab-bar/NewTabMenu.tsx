@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Plus, FolderOpen, GitBranch, FolderPlus } from 'lucide-react'
+import { useTranslation } from '@git-manager/i18n'
 import { open } from '@tauri-apps/plugin-dialog'
 import { apiOpenRepo, apiInitRepo } from '../../api/repo.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
@@ -34,6 +35,7 @@ function MenuItem({ icon, label, description, onSelect }: MenuItemProps) {
 }
 
 export function NewTabMenu() {
+  const { t } = useTranslation('common')
   const { addRepo } = useRepoDataStore()
   const { openTab } = useRepoUIStore()
   const [cloneOpen, setCloneOpen] = useState(false)
@@ -72,7 +74,7 @@ export function NewTabMenu() {
         <DropdownMenuTrigger asChild>
           <button
             className="flex h-8 w-8 items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-            title="Nouveau"
+            title={t('tabBar.newTab')}
           >
             <Plus className="h-4 w-4" />
           </button>
@@ -80,20 +82,20 @@ export function NewTabMenu() {
         <DropdownMenuContent align="start" className="w-60">
           <MenuItem
             icon={<FolderOpen className="h-4 w-4" />}
-            label="Ouvrir un dossier"
-            description="Ouvrir un dépôt Git existant"
+            label={t('tabBar.openFolder')}
+            description={t('tabBar.openFolderDesc')}
             onSelect={handleOpenFolder}
           />
           <MenuItem
             icon={<GitBranch className="h-4 w-4" />}
-            label="Cloner un dépôt"
-            description="Cloner depuis une URL distante"
+            label={t('tabBar.cloneRepo')}
+            description={t('tabBar.cloneRepoDesc')}
             onSelect={handleClone}
           />
           <MenuItem
             icon={<FolderPlus className="h-4 w-4" />}
-            label="Créer un dépôt"
-            description="Initialiser un nouveau dépôt"
+            label={t('tabBar.createRepo')}
+            description={t('tabBar.createRepoDesc')}
             onSelect={handleCreateRepo}
           />
         </DropdownMenuContent>

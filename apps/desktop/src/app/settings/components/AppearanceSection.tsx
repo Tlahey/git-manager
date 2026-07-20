@@ -223,7 +223,9 @@ export function AppearanceSection() {
 
       {/* Notification location */}
       <div className="space-y-1.5 font-sans">
-        <label className="text-xs font-medium text-foreground">Emplacement des notifications</label>
+        <label className="text-xs font-medium text-foreground">
+          {t('settings.appearance.notificationLocation')}
+        </label>
         <NativeSelect
           value={appearance.notificationLocation || 'top-right'}
           onChange={(e) =>

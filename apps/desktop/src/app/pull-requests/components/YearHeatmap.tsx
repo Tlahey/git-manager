@@ -1,8 +1,6 @@
 import { useImperativeTooltip } from '@git-manager/ui'
+import { useTranslation } from '@git-manager/i18n'
 import type { DayCommit } from '../types'
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const DAYS_LABELS = ['', 'Mon', '', 'Wed', '', 'Fri', '']
 
 function heatColor(count: number, max: number): string {
   if (count === 0) return 'bg-muted/40'
@@ -19,6 +17,9 @@ interface YearHeatmapProps {
 }
 
 export function YearHeatmap({ yearDays }: YearHeatmapProps) {
+  const { t, i18n } = useTranslation('launchpad')
+  const lang = i18n.language
+  const daysLabels = ['', t('heatmap.mon'), '', t('heatmap.wed'), '', t('heatmap.fri'), '']
   const max = Math.max(...yearDays.map((d) => d.commits), 1)
   const firstDay = yearDays[0] ? new Date(yearDays[0].date + 'T00:00:00') : new Date()
   const startDow = (firstDay.getDay() + 6) % 7
@@ -30,9 +31,13 @@ export function YearHeatmap({ yearDays }: YearHeatmapProps) {
   weeks.forEach((week, wi) => {
     const first = week.find((c) => c !== null)
     if (!first) return
-    const m = new Date(first.date + 'T00:00:00').getMonth()
+    const monthDate = new Date(first.date + 'T00:00:00')
+    const m = monthDate.getMonth()
     if (m !== lastMonth) {
-      monthLabels.push({ week: wi, label: MONTHS[m] })
+      monthLabels.push({
+        week: wi,
+        label: monthDate.toLocaleDateString(lang, { month: 'short' }),
+      })
       lastMonth = m
     }
   })
@@ -60,7 +65,7 @@ export function YearHeatmap({ yearDays }: YearHeatmapProps) {
       <div className="flex">
         {/* Day-of-week labels */}
         <div className="mr-1 flex flex-col gap-0.5" style={{ width: 24 }}>
-          {DAYS_LABELS.map((d, i) => (
+          {daysLabels.map((d, i) => (
             <div
               key={i}
               style={{
@@ -92,12 +97,12 @@ export function YearHeatmap({ yearDays }: YearHeatmapProps) {
                     />
                   )
                 }
-                const fmtDate = new Date(cell.date + 'T00:00:00').toLocaleDateString('en', {
+                const fmtDate = new Date(cell.date + 'T00:00:00').toLocaleDateString(lang, {
                   month: 'short',
                   day: 'numeric',
                   year: 'numeric',
                 })
-                const label = `${cell.commits} contribution${cell.commits !== 1 ? 's' : ''} on ${fmtDate}`
+                const label = t('heatmap.contributions', { count: cell.commits, date: fmtDate })
                 return (
                   <div
                     key={di}
@@ -121,7 +126,7 @@ export function YearHeatmap({ yearDays }: YearHeatmapProps) {
 
       {/* Legend */}
       <div className="mt-2 flex items-center justify-end gap-1">
-        <span className="text-[9px] text-muted-foreground">Less</span>
+        <span className="text-[9px] text-muted-foreground">{t('heatmap.less')}</span>
         {[
           'bg-muted/40',
           'bg-green-900/60',
@@ -132,7 +137,7 @@ export function YearHeatmap({ yearDays }: YearHeatmapProps) {
         ].map((c, i) => (
           <div key={i} style={{ width: 11, height: 11 }} className={`rounded-sm ${c}`} />
         ))}
-        <span className="text-[9px] text-muted-foreground">More</span>
+        <span className="text-[9px] text-muted-foreground">{t('heatmap.more')}</span>
       </div>
     </div>
   )
