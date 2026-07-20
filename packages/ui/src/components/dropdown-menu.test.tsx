@@ -6,6 +6,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from './dropdown-menu'
 
 function ExampleMenu({ onSelectRename = vi.fn(), onSelectDelete = vi.fn() } = {}) {
@@ -14,6 +15,7 @@ function ExampleMenu({ onSelectRename = vi.fn(), onSelectDelete = vi.fn() } = {}
       <DropdownMenuTrigger>Actions</DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem onSelect={onSelectRename}>Rename</DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={onSelectDelete} disabled>
           Delete
         </DropdownMenuItem>
@@ -57,6 +59,13 @@ describe('DropdownMenu', () => {
     expect(deleteItem).toHaveAttribute('data-disabled')
     await user.click(deleteItem)
     expect(onSelectDelete).not.toHaveBeenCalled()
+  })
+
+  it('renders a separator between groups of items', async () => {
+    const user = userEvent.setup()
+    render(<ExampleMenu />)
+    await user.click(screen.getByText('Actions'))
+    expect(screen.getByRole('separator')).toBeInTheDocument()
   })
 
   it('closes on Escape', async () => {

@@ -57,6 +57,13 @@ import {
   listRebaseCommits,
   runInteractiveRebase,
   createPatch,
+  createWorkingPatch,
+  previewWorkingPatch,
+  readPatchFile,
+  applyPatch,
+  listPatchableDependencies,
+  prepareDependencyPatch,
+  commitDependencyPatch,
 } from '../lib/tauri'
 import type { RebaseTodoStep } from '@git-manager/git-types'
 import { callCommand } from './service'
@@ -421,6 +428,34 @@ export async function apiRebaseSkip(path: string) {
 
 export async function apiCreatePatch(path: string, oid: string, destPath: string) {
   return createPatch(path, oid, destPath)
+}
+
+export async function apiCreateWorkingPatch(path: string, filePaths: string[], destPath: string) {
+  return createWorkingPatch(path, filePaths, destPath)
+}
+
+export async function apiPreviewWorkingPatch(path: string, filePaths: string[]) {
+  return previewWorkingPatch(path, filePaths)
+}
+
+export async function apiReadPatchFile(patchPath: string) {
+  return readPatchFile(patchPath)
+}
+
+export async function apiApplyPatch(path: string, patchPath: string, checkOnly = false) {
+  return applyPatch(path, patchPath, checkOnly)
+}
+
+export async function apiListPatchableDependencies(path: string) {
+  return listPatchableDependencies(path)
+}
+
+export async function apiPrepareDependencyPatch(path: string, name: string, version: string) {
+  return prepareDependencyPatch(path, name, version)
+}
+
+export async function apiCommitDependencyPatch(path: string, editDir: string) {
+  return commitDependencyPatch(path, editDir)
 }
 
 export async function apiStashPush(path: string, message?: string, includeUntracked = false) {
