@@ -5,12 +5,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { GitBranch } from '@git-manager/git-types'
 import type { BranchMergeCheck } from '../../hooks/useMergedBranches'
 
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) =>
-      opts ? `${key}:${JSON.stringify(opts)}` : key,
-  }),
-}))
 vi.mock('../../api/git.api', () => ({ apiDeleteBranch: vi.fn() }))
 vi.mock('../../lib/clipboard', () => ({ copyWithToast: vi.fn() }))
 
@@ -92,14 +86,14 @@ describe('RemoveMergedBranchesDialog — body states', () => {
   it('shows a no-GitHub-remote hint and disables confirm when nothing qualifies', () => {
     useMergedBranchesMock.mockReturnValue(hookResult([], { isGithub: false }))
     renderDialog()
-    expect(screen.getByText('branch.removeMergedNoGithubRemote')).toBeInTheDocument()
+    expect(screen.getByText("No GitHub remote — detecting merged branches locally (deleted remote branch) only.")).toBeInTheDocument()
     expect(screen.getByTestId('branch-remove-merged-confirm-button')).toBeDisabled()
   })
 
   it('shows a checking message while loading', () => {
     useMergedBranchesMock.mockReturnValue(hookResult([], { isLoading: true }))
     renderDialog()
-    expect(screen.getByText('branch.removeMergedChecking')).toBeInTheDocument()
+    expect(screen.getByText("Checking merge status…")).toBeInTheDocument()
     expect(screen.getByTestId('branch-remove-merged-confirm-button')).toBeDisabled()
   })
 
@@ -108,7 +102,7 @@ describe('RemoveMergedBranchesDialog — body states', () => {
       hookResult([{ branch: branch(), status: 'no-match' }])
     )
     renderDialog()
-    expect(screen.getByText('branch.removeMergedEmpty')).toBeInTheDocument()
+    expect(screen.getByText("No branches qualify right now — none are merged (merged pull request or deleted remote branch).")).toBeInTheDocument()
     expect(screen.getByTestId('branch-remove-merged-confirm-button')).toBeDisabled()
   })
 
@@ -129,14 +123,14 @@ describe('RemoveMergedBranchesDialog — body states', () => {
     expect(card).toHaveTextContent('feature/a')
     expect(card).toHaveTextContent('aaaaaaa') // short SHA
     expect(card.querySelector('.lucide-git-branch')).toBeTruthy()
-    expect(screen.getByTitle('branch.removeMergedStatusMerged:{"number":1}')).toBeInTheDocument()
+    expect(screen.getByTitle("Merged in PR #1")).toBeInTheDocument()
     expect(screen.queryByTestId('branch-remove-merged-reason-feature/a')).not.toBeInTheDocument()
 
     expect(screen.getByTestId('branch-remove-merged-reason-feature/b')).toHaveTextContent(
-      'branch.removeMergedStatusWorktree'
+      "Checked out in a worktree"
     )
     expect(screen.getByTestId('branch-remove-merged-reason-feature/c')).toHaveTextContent(
-      'branch.removeMergedStatusNoMatch'
+      "Not merged (remote branch still exists, no merged PR)"
     )
     expect(screen.getByTestId('branch-remove-merged-confirm-button')).toBeEnabled()
   })
@@ -187,7 +181,7 @@ describe('RemoveMergedBranchesDialog — confirming', () => {
     await user.click(screen.getByTestId('branch-remove-merged-confirm-button'))
 
     await waitFor(() =>
-      expect(screen.getByText(/branch.removeMergedPartialFailure/)).toBeInTheDocument()
+      expect(screen.getByText(/Some branches could not be deleted/)).toBeInTheDocument()
     )
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.queryByTestId('branch-remove-merged-item-feature/ok')).not.toBeInTheDocument()
@@ -198,7 +192,7 @@ describe('RemoveMergedBranchesDialog — confirming', () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
     renderDialog({ onClose })
-    await user.click(screen.getByText('gitTree.contextMenu.cancel'))
+    await user.click(screen.getByText("Cancel"))
     expect(onClose).toHaveBeenCalledOnce()
     expect(mockedDeleteBranch).not.toHaveBeenCalled()
   })
@@ -218,7 +212,7 @@ describe('RemoveMergedBranchesDialog — mine-only mode', () => {
     )
     renderDialog({ mineOnly: true, currentUser: 'Alice' })
 
-    expect(screen.getAllByText('branch.removeMyMerged').length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Remove my merged branches").length).toBeGreaterThan(0)
     expect(screen.getByTestId('branch-remove-merged-item-feature/mine')).toBeInTheDocument()
     // Someone else's PR, and a gone-upstream branch with no PR author, are both excluded.
     expect(screen.queryByTestId('branch-remove-merged-item-feature/theirs')).not.toBeInTheDocument()

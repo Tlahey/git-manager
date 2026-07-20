@@ -68,7 +68,7 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
           <button
             onClick={onClose}
             className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title="Fermer"
+            title={t('git:actions.close')}
             data-testid="readme-panel-close-button"
           >
             <X className="h-3.5 w-3.5" />

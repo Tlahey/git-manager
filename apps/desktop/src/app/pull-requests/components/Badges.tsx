@@ -1,83 +1,86 @@
 import { CheckCircle2, XCircle, Loader2, Circle } from 'lucide-react'
 import { Tooltip } from '@git-manager/ui'
+import { useTranslation } from '@git-manager/i18n'
 import type { PRStatus, CiStatus, CiDetail } from '../types'
 
-const STATUS_CONFIG: Record<PRStatus, { label: string; className: string }> = {
+const STATUS_CONFIG: Record<PRStatus, { labelKey: string; className: string }> = {
   // Text colours ride the graded --tone-*-foreground tokens (the same pair the shared
   // Tag/Alert use) so they retint per theme and clear APCA, instead of the fixed
   // palette shades (text-green-400…) that washed out on light themes. `merged` keeps
   // GitHub's conventional purple — there's no purple tone token.
   open: {
-    label: 'Open',
+    labelKey: 'status.open',
     className: 'bg-success/15 text-tone-success border-success/30',
   },
   draft: {
-    label: 'Draft',
+    labelKey: 'status.draft',
     className: 'bg-muted text-muted-foreground border-border',
   },
   approved: {
-    label: 'Approved',
+    labelKey: 'status.approved',
     className: 'bg-success/15 text-tone-success border-success/30',
   },
   changes_requested: {
-    label: 'Changes',
+    labelKey: 'status.changes',
     className: 'bg-amber-500/15 text-tone-warning border-amber-500/30',
   },
   merged: {
-    label: 'Merged',
+    labelKey: 'status.merged',
     className: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
   },
   closed: {
-    label: 'Closed',
+    labelKey: 'status.closed',
     className: 'bg-destructive/15 text-tone-danger border-destructive/30',
   },
 }
 
 export function StatusBadge({ status }: { status: PRStatus }) {
+  const { t } = useTranslation('launchpad')
   const cfg = STATUS_CONFIG[status]
   return (
     <span
       className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${cfg.className}`}
     >
-      {cfg.label}
+      {t(cfg.labelKey)}
     </span>
   )
 }
 
 export function CiBadge({ status, details }: { status: CiStatus; details?: CiDetail[] }) {
+  const { t } = useTranslation('launchpad')
   let badgeEl = <span className="text-[9px] text-muted-foreground/40">—</span>
 
   if (status === 'success') {
     badgeEl = (
       <span className="flex cursor-help items-center gap-0.5 text-[9px] text-tone-success">
         <CheckCircle2 className="h-3 w-3" />
-        Pass
+        {t('ci.pass')}
       </span>
     )
   } else if (status === 'failure') {
     badgeEl = (
       <span className="flex cursor-help items-center gap-0.5 text-[9px] text-tone-danger">
         <XCircle className="h-3 w-3" />
-        Fail
+        {t('ci.fail')}
       </span>
     )
   } else if (status === 'running') {
     badgeEl = (
       <span className="flex cursor-help items-center gap-0.5 text-[9px] text-tone-warning">
         <Loader2 className="h-3 w-3 animate-spin" />
-        Running
+        {t('ci.running')}
       </span>
     )
   } else if (status === 'skipped') {
-    badgeEl = <span className="cursor-help text-[9px] text-muted-foreground/40">Skip</span>
+    badgeEl = <span className="cursor-help text-[9px] text-muted-foreground/40">{t('ci.skip')}</span>
   }
 
   if (details && details.length > 0) {
     const tooltipContent = (
       <div className="flex max-w-[280px] flex-col gap-1 p-1">
         <div className="mb-1.5 flex items-center justify-between border-b border-border/40 pb-1 text-[10px] font-bold text-muted-foreground/85">
-          <span>CI Check Steps</span>
-          <span className="text-[8px] font-normal normal-case opacity-60">hover to see status</span>
+          <span>{t('ci.checkSteps')}</span>
+          <span className="text-[8px] font-normal normal-case opacity-60">{t('ci.hoverHint')}</span>
         </div>
         <div className="flex flex-col gap-1.5">
           {details.map((d, idx) => (

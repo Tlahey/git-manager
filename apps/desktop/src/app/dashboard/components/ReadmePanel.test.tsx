@@ -2,12 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) => (opts?.ns === 'git' ? '' : key),
-  }),
-}))
-
 const { useRepoReadme } = vi.hoisted(() => ({ useRepoReadme: vi.fn() }))
 vi.mock('../../../hooks/useRepoReadme', () => ({ useRepoReadme }))
 vi.mock('../../../components/Markdown', () => ({
@@ -107,7 +101,7 @@ describe('ReadmePanel — content states', () => {
       error: new Error('not found'),
     })
     render(<ReadmePanel path="/repo" onClose={vi.fn()} />)
-    expect(screen.getByText('dashboard.noReadme')).toBeInTheDocument()
+    expect(screen.getByText("No README file found.")).toBeInTheDocument()
   })
 
   it('renders the README content via Markdown once loaded', () => {

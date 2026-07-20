@@ -53,7 +53,7 @@ describe('SshSection — key paths', () => {
     // userEvent's internal delay() calls hang under fake timers without an `advanceTimers`
     // option wired up — use fireEvent (synchronous) instead for this fake-timers test.
     await act(async () => {
-      fireEvent.click(screen.getAllByText('Parcourir')[0])
+      fireEvent.click(screen.getAllByText("Browse")[0])
       await Promise.resolve()
       await Promise.resolve()
     })
@@ -74,7 +74,7 @@ describe('SshSection — key paths', () => {
     dialogOpen.mockResolvedValue('/Users/me/.ssh/id_ed25519.pub')
     const user = userEvent.setup()
     render(<SshSection />)
-    await user.click(screen.getAllByText('Parcourir')[1])
+    await user.click(screen.getAllByText("Browse")[1])
     expect(useSettingsStore.getState().settings.ssh!.publicKeyPath).toBe(
       '/Users/me/.ssh/id_ed25519.pub'
     )
@@ -84,7 +84,7 @@ describe('SshSection — key paths', () => {
     dialogOpen.mockResolvedValue(null)
     const user = userEvent.setup()
     render(<SshSection />)
-    await user.click(screen.getAllByText('Parcourir')[0])
+    await user.click(screen.getAllByText("Browse")[0])
     expect(useSettingsStore.getState().settings.ssh!.privateKeyPath).toBe(
       INITIAL_SETTINGS.settings.ssh!.privateKeyPath
     )
@@ -101,7 +101,7 @@ describe('SshSection — key paths', () => {
 describe('SshSection — public key display', () => {
   it('shows a placeholder when no key is loaded', () => {
     render(<SshSection />)
-    expect(screen.getByText('Aucune clé publique SSH chargée')).toBeInTheDocument()
+    expect(screen.getByText("No SSH public key loaded")).toBeInTheDocument()
   })
 
   it('shows an error state when the key fails to load', () => {
@@ -111,7 +111,7 @@ describe('SshSection — public key display', () => {
       mutate: vi.fn(),
     })
     render(<SshSection />)
-    expect(screen.getByText(/Impossible de charger la clé publique/)).toBeInTheDocument()
+    expect(screen.getByText("Unable to load the public key. Check the path.")).toBeInTheDocument()
   })
 
   it('shows the key content and copies it, reverting the label after 2s', async () => {
@@ -124,12 +124,12 @@ describe('SshSection — public key display', () => {
     render(<SshSection />)
     expect(screen.getByText('ssh-ed25519 AAAA... me@host')).toBeInTheDocument()
 
-    act(() => fireEvent.click(screen.getByText('Copier')))
+    act(() => fireEvent.click(screen.getByText("Copy")))
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('ssh-ed25519 AAAA... me@host')
-    expect(screen.getByText('Copié !')).toBeInTheDocument()
+    expect(screen.getByText("Copied!")).toBeInTheDocument()
 
     await act(async () => vi.advanceTimersByTime(2000))
-    expect(screen.getByText('Copier')).toBeInTheDocument()
+    expect(screen.getByText("Copy")).toBeInTheDocument()
     vi.useRealTimers()
   })
 })
@@ -138,26 +138,26 @@ describe('SshSection — key generator', () => {
   it('is hidden by default and toggles open/closed', async () => {
     const user = userEvent.setup()
     render(<SshSection />)
-    expect(screen.queryByText('Type de clé')).not.toBeInTheDocument()
-    await user.click(screen.getByText('Ouvrir le générateur'))
-    expect(screen.getByText('Type de clé')).toBeInTheDocument()
-    await user.click(screen.getByText('Masquer'))
-    expect(screen.queryByText('Type de clé')).not.toBeInTheDocument()
+    expect(screen.queryByText("Key type")).not.toBeInTheDocument()
+    await user.click(screen.getByText("Open the generator"))
+    expect(screen.getByText("Key type")).toBeInTheDocument()
+    await user.click(screen.getByText("Hide"))
+    expect(screen.queryByText("Key type")).not.toBeInTheDocument()
   })
 
   it('defaults to ed25519 with its default path, switching to rsa reveals the bit-size selector and default path', async () => {
     const user = userEvent.setup()
     render(<SshSection />)
-    await user.click(screen.getByText('Ouvrir le générateur'))
+    await user.click(screen.getByText("Open the generator"))
     // The generator's own destination-path input starts with the same default value as the
     // top-level private-key-path input, so scope the query to the "Chemin de destination" field.
     const destPathInput = () =>
-      screen.getByText('Chemin de destination').nextElementSibling as HTMLInputElement
+      screen.getByText("Destination path").nextElementSibling as HTMLInputElement
     expect(destPathInput()).toHaveValue('~/.ssh/id_ed25519')
-    expect(screen.queryByText('Taille en bits')).not.toBeInTheDocument()
+    expect(screen.queryByText("Key size (bits)")).not.toBeInTheDocument()
 
-    await user.selectOptions(screen.getByDisplayValue('ED25519 (Recommandé)'), 'rsa')
-    expect(screen.getByText('Taille en bits')).toBeInTheDocument()
+    await user.selectOptions(screen.getByDisplayValue("ED25519 (Recommended)"), 'rsa')
+    expect(screen.getByText("Key size (bits)")).toBeInTheDocument()
     expect(destPathInput()).toHaveValue('~/.ssh/id_rsa')
   })
 
@@ -167,9 +167,9 @@ describe('SshSection — key generator', () => {
     useSshPublicKey.mockReturnValue({ data: undefined, error: undefined, mutate })
     const user = userEvent.setup()
     render(<SshSection />)
-    await user.click(screen.getByText('Ouvrir le générateur'))
+    await user.click(screen.getByText("Open the generator"))
     await user.type(screen.getByPlaceholderText('votre.email@domain.com'), 'me@host')
-    await user.click(screen.getByText('Générer le couple de clés'))
+    await user.click(screen.getByText("Generate the key pair"))
 
     expect(mockedGenerateKey).toHaveBeenCalledWith(
       'ed25519',
@@ -178,7 +178,7 @@ describe('SshSection — key generator', () => {
       '~/.ssh/id_ed25519',
       undefined
     )
-    expect(await screen.findByText('Clé générée avec succès !')).toBeInTheDocument()
+    expect(await screen.findByText("Key generated successfully!")).toBeInTheDocument()
     expect(screen.getByDisplayValue('ssh-ed25519 AAAAgenerated me@host')).toBeInTheDocument()
     expect(useSettingsStore.getState().settings.ssh!.privateKeyPath).toBe('~/.ssh/id_ed25519')
     expect(useSettingsStore.getState().settings.ssh!.publicKeyPath).toBe('~/.ssh/id_ed25519.pub')
@@ -189,11 +189,11 @@ describe('SshSection — key generator', () => {
     mockedGenerateKey.mockResolvedValue('ssh-rsa AAAA...')
     const user = userEvent.setup()
     render(<SshSection />)
-    await user.click(screen.getByText('Ouvrir le générateur'))
-    await user.selectOptions(screen.getByDisplayValue('ED25519 (Recommandé)'), 'rsa')
-    await user.selectOptions(screen.getByDisplayValue('3072 bits (Sécurisé)'), '4096')
-    await user.type(screen.getByPlaceholderText('Laisser vide pour pas de mot de passe'), 'secret')
-    await user.click(screen.getByText('Générer le couple de clés'))
+    await user.click(screen.getByText("Open the generator"))
+    await user.selectOptions(screen.getByDisplayValue("ED25519 (Recommended)"), 'rsa')
+    await user.selectOptions(screen.getByDisplayValue("3072 bits (Secure)"), '4096')
+    await user.type(screen.getByPlaceholderText("Leave empty for no passphrase"), 'secret')
+    await user.click(screen.getByText("Generate the key pair"))
 
     expect(mockedGenerateKey).toHaveBeenCalledWith(
       'rsa',
@@ -208,8 +208,8 @@ describe('SshSection — key generator', () => {
     mockedGenerateKey.mockRejectedValue(new Error('permission denied'))
     const user = userEvent.setup()
     render(<SshSection />)
-    await user.click(screen.getByText('Ouvrir le générateur'))
-    await user.click(screen.getByText('Générer le couple de clés'))
+    await user.click(screen.getByText("Open the generator"))
+    await user.click(screen.getByText("Generate the key pair"))
     expect(await screen.findByText(/permission denied/)).toBeInTheDocument()
   })
 })

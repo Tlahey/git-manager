@@ -4,13 +4,6 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { GitStatus } from '@git-manager/git-types'
 
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) =>
-      opts ? `${key}:${JSON.stringify(opts)}` : key,
-  }),
-}))
-
 const { useConflictedFiles, useGitStatus, swrMutate } = vi.hoisted(() => ({
   useConflictedFiles: vi.fn(),
   useGitStatus: vi.fn(),
@@ -97,7 +90,7 @@ describe('ConflictResolutionPanel — header', () => {
     mockedGetRebaseState.mockResolvedValue({ currentStep: 2, totalSteps: 5 })
     renderPanel()
     expect(
-      await screen.findByText('conflictEditor.stepProgress:{"current":2,"total":5}')
+      await screen.findByText("Step 2 of 5")
     ).toBeInTheDocument()
   })
 
@@ -159,7 +152,7 @@ describe('ConflictResolutionPanel — message editing across polls', () => {
     })
     renderPanel()
     await waitFor(() =>
-      expect(screen.getByPlaceholderText('commit.placeholder')).toHaveValue('fix: step a')
+      expect(screen.getByPlaceholderText("Commit message...")).toHaveValue('fix: step a')
     )
   })
 
@@ -167,13 +160,13 @@ describe('ConflictResolutionPanel — message editing across polls', () => {
     mockedGetRebaseState.mockResolvedValue({ currentOid: 'step-a', currentMessage: 'original' })
     const { client } = renderPanel()
     await waitFor(() =>
-      expect(screen.getByPlaceholderText('commit.placeholder')).toHaveValue('original')
+      expect(screen.getByPlaceholderText("Commit message...")).toHaveValue('original')
     )
 
     const user = userEvent.setup()
     await user.click(screen.getByTestId('conflict-amend-toggle'))
-    await user.clear(screen.getByPlaceholderText('commit.placeholder'))
-    await user.type(screen.getByPlaceholderText('commit.placeholder'), 'my edit')
+    await user.clear(screen.getByPlaceholderText("Commit message..."))
+    await user.type(screen.getByPlaceholderText("Commit message..."), 'my edit')
 
     mockedGetRebaseState.mockResolvedValue({
       currentOid: 'step-a',
@@ -182,14 +175,14 @@ describe('ConflictResolutionPanel — message editing across polls', () => {
     await act(async () => {
       await client.refetchQueries({ queryKey: ['rebase-state', '/repo'] })
     })
-    expect(screen.getByPlaceholderText('commit.placeholder')).toHaveValue('my edit')
+    expect(screen.getByPlaceholderText("Commit message...")).toHaveValue('my edit')
   })
 
   it('resets the message once the rebase advances to a new step', async () => {
     mockedGetRebaseState.mockResolvedValue({ currentOid: 'step-a', currentMessage: 'original' })
     const { client } = renderPanel()
     await waitFor(() =>
-      expect(screen.getByPlaceholderText('commit.placeholder')).toHaveValue('original')
+      expect(screen.getByPlaceholderText("Commit message...")).toHaveValue('original')
     )
 
     const user = userEvent.setup()
@@ -203,16 +196,16 @@ describe('ConflictResolutionPanel — message editing across polls', () => {
       await client.refetchQueries({ queryKey: ['rebase-state', '/repo'] })
     })
     await waitFor(() =>
-      expect(screen.getByPlaceholderText('commit.placeholder')).toHaveValue('next step message')
+      expect(screen.getByPlaceholderText("Commit message...")).toHaveValue('next step message')
     )
   })
 
   it('disables the message textarea unless "amend" is toggled on', async () => {
     const user = userEvent.setup()
     renderPanel()
-    expect(screen.getByPlaceholderText('commit.placeholder')).toBeDisabled()
+    expect(screen.getByPlaceholderText("Commit message...")).toBeDisabled()
     await user.click(screen.getByTestId('conflict-amend-toggle'))
-    expect(screen.getByPlaceholderText('commit.placeholder')).toBeEnabled()
+    expect(screen.getByPlaceholderText("Commit message...")).toBeEnabled()
   })
 })
 
@@ -278,7 +271,7 @@ describe('ConflictResolutionPanel — actions', () => {
     const user = userEvent.setup()
     renderPanel()
     await user.click(screen.getByTestId('conflict-amend-toggle'))
-    await user.type(screen.getByPlaceholderText('commit.placeholder'), 'amended message')
+    await user.type(screen.getByPlaceholderText("Commit message..."), 'amended message')
     await user.click(screen.getByTestId('conflict-panel-continue-button'))
 
     await waitFor(() => expect(mockedContinue).toHaveBeenCalledWith('/repo', 'amended message'))

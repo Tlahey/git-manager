@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { Eye, GitPullRequest } from 'lucide-react'
+import { useTranslation } from '@git-manager/i18n'
 
 import { Toolbar } from './Toolbar'
 import { TableHeader, GroupHeader, LoadMore, usePRSort, useSetFilter } from './ListHelpers'
@@ -17,6 +18,7 @@ interface PullRequestsTabProps {
 }
 
 export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: PullRequestsTabProps) {
+  const { t } = useTranslation('launchpad')
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -120,7 +122,7 @@ export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: Pul
             {pinnedPRs.length > 0 && (
               <>
                 <GroupHeader
-                  label="Pinned"
+                  label={t('group.pinned')}
                   count={pinnedPRs.length}
                   open={gPinnedOpen}
                   onToggle={() => setGPinnedOpen((v) => !v)}
@@ -133,7 +135,7 @@ export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: Pul
               </>
             )}
             <GroupHeader
-              label="Needs my review"
+              label={t('group.needsReview')}
               count={needsReview.length}
               open={gNeedsOpen}
               onToggle={() => setGNeedsOpen((v) => !v)}
@@ -143,7 +145,7 @@ export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: Pul
               <>
                 {needsReview.length === 0 && (
                   <div className="flex items-center justify-center py-6 text-xs text-muted-foreground/50">
-                    <Eye className="mr-2 h-4 w-4 opacity-30" /> No PRs waiting for your review
+                    <Eye className="mr-2 h-4 w-4 opacity-30" /> {t('group.noWaitingReview')}
                   </div>
                 )}
                 {needsReview.slice(0, shownNeeds).map((pr) => (
@@ -157,7 +159,7 @@ export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: Pul
               </>
             )}
             <GroupHeader
-              label="Other pull requests"
+              label={t('group.other')}
               count={other.length}
               open={gOtherOpen}
               onToggle={() => setGOtherOpen((v) => !v)}
@@ -166,7 +168,7 @@ export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: Pul
               <>
                 {other.length === 0 && (
                   <div className="flex items-center justify-center py-6 text-xs text-muted-foreground/50">
-                    <GitPullRequest className="mr-2 h-4 w-4 opacity-30" /> No pull requests
+                    <GitPullRequest className="mr-2 h-4 w-4 opacity-30" /> {t('group.noPrs')}
                   </div>
                 )}
                 {other.slice(0, shownOther).map((pr) => (

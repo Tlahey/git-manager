@@ -627,7 +627,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
             {isError && (
               <div className="flex flex-1 items-center justify-center">
-                <p className="text-sm text-destructive">Failed to load history</p>
+                <p className="text-sm text-destructive">{t('gitGraph.loadError')}</p>
               </div>
             )}
 

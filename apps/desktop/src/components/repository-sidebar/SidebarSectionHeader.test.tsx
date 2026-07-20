@@ -34,7 +34,7 @@ describe('SidebarSectionHeader', () => {
         onCreateBranch={onCreateBranch}
       />
     )
-    await user.click(screen.getByLabelText('Créer une branche'))
+    await user.click(screen.getByLabelText("Create branch"))
     expect(onCreateBranch).toHaveBeenCalledOnce()
   })
 
@@ -48,7 +48,7 @@ describe('SidebarSectionHeader', () => {
         onCreateBranch={vi.fn()}
       />
     )
-    expect(screen.queryByLabelText('Créer une branche')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("Create branch")).not.toBeInTheDocument()
   })
 
   it('shows a branch-actions menu on the local section whose item fires onRemoveMergedBranches', async () => {

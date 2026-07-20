@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { Plus, Trash2, BookOpen, GitPullRequest } from 'lucide-react'
 import { Button } from '@git-manager/ui'
+import { useTranslation } from '@git-manager/i18n'
 import { Toolbar } from './Toolbar'
 import { TableHeader, LoadMore, usePRSort, useSetFilter } from './ListHelpers'
 import { PRRowSkeleton } from './RowSkeletons'
@@ -57,6 +58,7 @@ export function FollowedPRsTab({
   onRemoveFollowed,
   loading,
 }: FollowedPRsTabProps) {
+  const { t } = useTranslation('launchpad')
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -133,7 +135,7 @@ export function FollowedPRsTab({
           onClick={() => setShowFollowDialog(true)}
           className="flex h-7 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:bg-primary/95"
         >
-          <Plus className="h-3.5 w-3.5" /> Follow PR
+          <Plus className="h-3.5 w-3.5" /> {t('followDialog.follow')}
         </button>
       </Toolbar>
 
@@ -151,22 +153,24 @@ export function FollowedPRsTab({
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/10 bg-primary/5">
               <BookOpen className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="mb-1 text-sm font-semibold text-foreground">No followed PRs yet</h3>
+            <h3 className="mb-1 text-sm font-semibold text-foreground">
+              {t('followed.emptyTitle')}
+            </h3>
             <p className="mb-4 max-w-[280px] text-xs text-muted-foreground">
-              Keep an eye on specific external pull requests by adding their GitHub URLs.
+              {t('followed.emptyDesc')}
             </p>
             <Button
               size="sm"
               onClick={() => setShowFollowDialog(true)}
               className="gap-1.5 rounded-lg"
             >
-              <Plus className="h-3.5 w-3.5" /> Add PR by URL
+              <Plus className="h-3.5 w-3.5" /> {t('followed.addByUrl')}
             </Button>
           </div>
         ) : sortedPRs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/50">
             <GitPullRequest className="mb-2 h-6 w-6 opacity-30" />
-            <p className="text-xs">No PRs match your search or filters.</p>
+            <p className="text-xs">{t('followed.noMatch')}</p>
           </div>
         ) : (
           <>
@@ -179,7 +183,7 @@ export function FollowedPRsTab({
                     onRemoveFollowed(pr.id)
                   }}
                   className="absolute right-10 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md border border-border bg-card/85 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-all duration-150 hover:border-destructive/20 hover:text-destructive group-hover/followed:opacity-100"
-                  title="Unfollow PR"
+                  title={t('followed.unfollow')}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

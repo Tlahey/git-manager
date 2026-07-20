@@ -1,17 +1,8 @@
 import { Search, X, Layers, Circle, Pencil, ArrowUpDown } from 'lucide-react'
 import { Input } from '@git-manager/ui'
 import { MultiSelectDropdown } from '@git-manager/components'
+import { useTranslation } from '@git-manager/i18n'
 import type { SortKey, SortDir } from '../types'
-
-// Shared labels for the filter dropdowns. This PR view is not internationalized yet
-// (labels like "Repo"/"Status" below are also literals), so these stay literal too;
-// they're passed as props because MultiSelectDropdown (in @git-manager/components) is
-// presentational and takes its text from the caller.
-const FILTER_DROPDOWN_LABELS = {
-  clearAllLabel: 'Clear all',
-  emptyLabel: 'No options available',
-  selectedLabel: (n: number) => `${n} selected`,
-}
 
 interface ToolbarProps {
   search: string
@@ -54,6 +45,12 @@ export function Toolbar({
   authors,
   children,
 }: ToolbarProps) {
+  const { t } = useTranslation('launchpad')
+  const filterDropdownLabels = {
+    clearAllLabel: t('filter.clearAll'),
+    emptyLabel: t('filter.noOptions'),
+    selectedLabel: (n: number) => t('filter.selected', { count: n }),
+  }
   const totalActiveFilters = statusFilter.size + repoFilter.size + authorFilter.size
 
   function clearAll() {
@@ -71,7 +68,7 @@ export function Toolbar({
           type="text"
           value={search}
           onChange={(e) => onSearch(e.target.value)}
-          placeholder="Search…"
+          placeholder={t('toolbar.searchPlaceholder')}
           className="h-7 w-full border-border bg-card pl-7 pr-6 text-xs shadow-none focus:ring-1 focus:ring-primary/40"
         />
         {search && (
@@ -89,31 +86,31 @@ export function Toolbar({
 
       {/* Quick filter dropdowns */}
       <MultiSelectDropdown
-        label="Repo"
+        label={t('table.repo')}
         icon={<Layers className="h-3 w-3" />}
         options={repos}
         selected={repoFilter}
         onToggle={onToggleRepo}
         onClear={onClearRepo}
-        {...FILTER_DROPDOWN_LABELS}
+        {...filterDropdownLabels}
       />
       <MultiSelectDropdown
-        label="Status"
+        label={t('table.status')}
         icon={<Circle className="h-3 w-3" />}
         options={statuses}
         selected={statusFilter}
         onToggle={onToggleStatus}
         onClear={onClearStatus}
-        {...FILTER_DROPDOWN_LABELS}
+        {...filterDropdownLabels}
       />
       <MultiSelectDropdown
-        label="Author"
+        label={t('table.author')}
         icon={<Pencil className="h-3 w-3" />}
         options={authors}
         selected={authorFilter}
         onToggle={onToggleAuthor}
         onClear={onClearAuthor}
-        {...FILTER_DROPDOWN_LABELS}
+        {...filterDropdownLabels}
       />
 
       {/* Clear all badge */}
@@ -122,7 +119,7 @@ export function Toolbar({
           onClick={clearAll}
           className="flex h-6 items-center gap-1 rounded-md border border-transparent px-2 text-[10px] text-muted-foreground transition-all hover:border-destructive/20 hover:bg-destructive/5 hover:text-destructive"
         >
-          <X className="h-2.5 w-2.5" /> Clear all ({totalActiveFilters})
+          <X className="h-2.5 w-2.5" /> {t('toolbar.clearAllCount', { count: totalActiveFilters })}
         </button>
       )}
 
@@ -142,14 +139,14 @@ export function Toolbar({
             }`}
           >
             {k === 'date'
-              ? 'Date'
+              ? t('sort.date')
               : k === 'status'
-                ? 'Status'
+                ? t('table.status')
                 : k === 'author'
-                  ? 'Author'
+                  ? t('table.author')
                   : k === 'repo'
-                    ? 'Repo'
-                    : 'Files'}
+                    ? t('table.repo')
+                    : t('sort.files')}
             {sortKey === k && (
               <ArrowUpDown
                 className="h-2.5 w-2.5"

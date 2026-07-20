@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { CheckSquare } from 'lucide-react'
+import { useTranslation } from '@git-manager/i18n'
 import { Toolbar } from './Toolbar'
 import { TableHeader, LoadMore, useSetFilter } from './ListHelpers'
 import { PRRowSkeleton } from './RowSkeletons'
@@ -21,6 +22,7 @@ export function WaitingForReviewTab({
   onTogglePin,
   loading,
 }: WaitingForReviewTabProps) {
+  const { t } = useTranslation('launchpad')
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -101,7 +103,7 @@ export function WaitingForReviewTab({
         ) : waitingPRs.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground/50">
             <CheckSquare className="h-6 w-6 opacity-30" />
-            <p className="text-xs">You&apos;re all caught up</p>
+            <p className="text-xs">{t('waiting.allCaughtUp')}</p>
           </div>
         ) : (
           <>

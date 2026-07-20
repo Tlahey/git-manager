@@ -125,7 +125,7 @@ describe('PullRequestItem — interaction', () => {
     render(
       <PullRequestItem pr={pr({ url: 'https://github.com/owner/repo/pull/42' })} onOpen={onOpen} />
     )
-    const link = screen.getByLabelText('Ouvrir dans GitHub')
+    const link = screen.getByLabelText("Open in GitHub")
     expect(link).toHaveAttribute('href', 'https://github.com/owner/repo/pull/42')
     expect(link).toHaveAttribute('target', '_blank')
     await user.click(link)

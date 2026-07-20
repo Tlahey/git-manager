@@ -12,16 +12,17 @@ import {
   Eye,
   History,
 } from 'lucide-react'
+import { useTranslation } from '@git-manager/i18n'
 import type { GitDiffFile } from '@git-manager/git-types'
 
-const STATUS_LABELS: Record<string, string> = {
-  added: 'Added',
-  modified: 'Modified',
-  deleted: 'Deleted',
-  renamed: 'Renamed',
-  copied: 'Copied',
-  typechange: 'Typechange',
-  untracked: 'Untracked',
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  added: 'diffToolbar.status.added',
+  modified: 'diffToolbar.status.modified',
+  deleted: 'diffToolbar.status.deleted',
+  renamed: 'diffToolbar.status.renamed',
+  copied: 'diffToolbar.status.copied',
+  typechange: 'diffToolbar.status.typechange',
+  untracked: 'diffToolbar.status.untracked',
 }
 
 const STATUS_VARIANTS: Record<string, 'success' | 'destructive' | 'secondary' | 'warning'> = {
@@ -74,6 +75,7 @@ export function DiffToolbar({
   onToggleStage,
   onRollback,
 }: DiffToolbarProps) {
+  const { t } = useTranslation('git')
   return (
     <div className="flex shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 shadow-sm">
       {/* Left Side: Back button + File info */}
@@ -83,7 +85,7 @@ export function DiffToolbar({
           size="icon"
           className="h-8 w-8 shrink-0 hover:bg-accent"
           onClick={onClose}
-          title="Back to graph"
+          title={t('actions.backToGraph')}
         >
           <ChevronLeft className="h-5 w-5" />
         </Button>
@@ -110,7 +112,7 @@ export function DiffToolbar({
               size="icon"
               className="h-5 w-5 shrink-0 hover:bg-accent"
               onClick={onCopyPath}
-              title="Copy path"
+              title={t('actions.copyPath')}
             >
               {copied ? (
                 <CheckedIcon className="h-3 w-3 text-green-400" />
@@ -126,7 +128,9 @@ export function DiffToolbar({
                 variant={STATUS_VARIANTS[diffData.status] ?? 'secondary'}
                 className="select-none px-1 py-0 text-[9px]"
               >
-                {STATUS_LABELS[diffData.status] ?? diffData.status}
+                {diffData.status in STATUS_LABEL_KEYS
+                  ? t(STATUS_LABEL_KEYS[diffData.status])
+                  : diffData.status}
               </Badge>
               {!diffData.isBinary && (
                 <span>
@@ -139,7 +143,7 @@ export function DiffToolbar({
                   variant={file.staged ? 'success' : 'secondary'}
                   className="select-none px-1 py-0 text-[9px]"
                 >
-                  {file.staged ? 'Staged' : 'Unstaged'}
+                  {file.staged ? t('diffToolbar.staged') : t('diffToolbar.unstaged')}
                 </Badge>
               )}
             </div>
@@ -160,7 +164,7 @@ export function DiffToolbar({
           )}
         >
           <GitCompare className="h-3.5 w-3.5" />
-          <span>Diff</span>
+          <span>{t('diffToolbar.tabDiff')}</span>
         </button>
         <button
           data-testid="diff-tab-file"
@@ -173,7 +177,7 @@ export function DiffToolbar({
           )}
         >
           <FileText className="h-3.5 w-3.5" />
-          <span>File</span>
+          <span>{t('diffToolbar.tabFile')}</span>
         </button>
       </div>
 
@@ -189,10 +193,10 @@ export function DiffToolbar({
             onClick={() =>
               onChangeActiveLeftPanel(activeLeftPanel === 'blame' ? 'sidebar' : 'blame')
             }
-            title="Git Blame"
+            title={t('diffToolbar.blameTitle')}
           >
             <Eye className="h-3.5 w-3.5" />
-            <span>Blame</span>
+            <span>{t('diffToolbar.blame')}</span>
           </Button>
           <Button
             data-testid="diff-history-toggle"
@@ -202,10 +206,10 @@ export function DiffToolbar({
             onClick={() =>
               onChangeActiveLeftPanel(activeLeftPanel === 'history' ? 'sidebar' : 'history')
             }
-            title="File History"
+            title={t('diffToolbar.historyTitle')}
           >
             <History className="h-3.5 w-3.5" />
-            <span>History</span>
+            <span>{t('diffToolbar.history')}</span>
           </Button>
         </div>
 
@@ -222,12 +226,12 @@ export function DiffToolbar({
               {file.staged ? (
                 <>
                   <Minus className="h-3.5 w-3.5" />
-                  Unstage
+                  {t('diffToolbar.unstage')}
                 </>
               ) : (
                 <>
                   <Plus className="h-3.5 w-3.5" />
-                  Stage File
+                  {t('diffToolbar.stageFile')}
                 </>
               )}
             </Button>
@@ -240,7 +244,7 @@ export function DiffToolbar({
               disabled={isProcessing}
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              Discard
+              {t('diffToolbar.discard')}
             </Button>
           </>
         )}
@@ -250,7 +254,7 @@ export function DiffToolbar({
           size="icon"
           className="ml-1 h-8 w-8 hover:bg-accent"
           onClick={onClose}
-          title="Close"
+          title={t('actions.close')}
         >
           <X className="h-4 w-4" />
         </Button>

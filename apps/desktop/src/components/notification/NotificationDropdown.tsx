@@ -304,7 +304,7 @@ export function NotificationDropdown() {
                     className="flex h-6 items-center justify-center gap-1 rounded bg-primary text-[9px] font-medium text-primary-foreground transition-colors hover:bg-primary/95"
                   >
                     <Play className="h-2.5 w-2.5 fill-current" />
-                    <span>Run Sim</span>
+                    <span>{t('notifications.runSim')}</span>
                   </button>
                 </>
               )}

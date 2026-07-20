@@ -35,6 +35,7 @@ import type { SidebarRow } from './types'
 import { BranchItem } from './BranchItem'
 import { PullRequestItem } from './PullRequestItem'
 import { HoverExpandLabel } from './HoverExpandLabel'
+import { useTranslation } from '@git-manager/i18n'
 
 interface SidebarRowViewProps {
   row: SidebarRow
@@ -70,6 +71,7 @@ export function SidebarRowView({
   worktreeWipStatuses = [],
   filterQuery = '',
 }: SidebarRowViewProps) {
+  const { t } = useTranslation('git')
   switch (row.kind) {
     case 'branch':
       return (
@@ -350,8 +352,8 @@ export function SidebarRowView({
               <button
                 onClick={(e) => e.stopPropagation()}
                 className="absolute right-1 top-1/2 -translate-y-1/2 shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/wt:opacity-100 data-[state=open]:opacity-100"
-                aria-label="Worktree actions"
-                title="Worktree actions"
+                aria-label={t('sidebar.worktreeActions')}
+                title={t('sidebar.worktreeActions')}
                 data-testid={`worktree-actions-button-${row.wt.path}`}
               >
                 <MoreVertical className="h-3.5 w-3.5" />

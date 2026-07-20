@@ -111,7 +111,7 @@ describe('RewardsTab — status filter', () => {
     const user = userEvent.setup()
     useGameStore.setState({ achievements: [unlockedAch, inProgressAch] })
     render(<RewardsTab />)
-    await user.click(screen.getByText('En cours'))
+    await user.click(screen.getByText("In progress"))
     expect(screen.queryByText('Done achievement')).not.toBeInTheDocument()
     expect(screen.getByText('Todo achievement')).toBeInTheDocument()
   })
@@ -120,7 +120,7 @@ describe('RewardsTab — status filter', () => {
     const user = userEvent.setup()
     useGameStore.setState({ achievements: [unlockedAch, inProgressAch] })
     render(<RewardsTab />)
-    await user.click(screen.getByText('Terminés'))
+    await user.click(screen.getByTestId('rewards-filter-completed'))
     expect(screen.getByText('Done achievement')).toBeInTheDocument()
     expect(screen.queryByText('Todo achievement')).not.toBeInTheDocument()
   })
@@ -141,12 +141,12 @@ describe('RewardsTab — difficulty groups', () => {
       ],
     })
     render(<RewardsTab />)
-    expect(screen.getByText('Niveau Débutant')).toBeInTheDocument()
-    expect(screen.getByText('Niveau Intermédiaire')).toBeInTheDocument()
+    expect(screen.getByText("Beginner level")).toBeInTheDocument()
+    expect(screen.getByText("Intermediate level")).toBeInTheDocument()
 
-    await user.click(screen.getByText('Terminés'))
-    expect(screen.getByText('Niveau Débutant')).toBeInTheDocument()
-    expect(screen.queryByText('Niveau Intermédiaire')).not.toBeInTheDocument()
+    await user.click(screen.getByTestId('rewards-filter-completed'))
+    expect(screen.getByText("Beginner level")).toBeInTheDocument()
+    expect(screen.queryByText("Intermediate level")).not.toBeInTheDocument()
   })
 
   it('shows the unlocked/total count per difficulty group', () => {
@@ -157,7 +157,7 @@ describe('RewardsTab — difficulty groups', () => {
       ],
     })
     render(<RewardsTab />)
-    expect(screen.getByText('1 / 2 Complétés')).toBeInTheDocument()
+    expect(screen.getByText('1 / 2 completed')).toBeInTheDocument()
   })
 })
 
@@ -187,7 +187,7 @@ describe('RewardsTab — achievement card content', () => {
       achievements: [achievement({ id: 'a1', unlocked: true, unlockedAt: ts })],
     })
     render(<RewardsTab />)
-    expect(screen.getByText(`Obtenu le ${new Date(ts).toLocaleDateString()}`)).toBeInTheDocument()
+    expect(screen.getByText(`Earned on ${new Date(ts).toLocaleDateString()}`)).toBeInTheDocument()
   })
 
   it('masks the title and description behind a locked prerequisite', () => {
@@ -207,7 +207,7 @@ describe('RewardsTab — achievement card content', () => {
     expect(within(card).getByText('???')).toBeInTheDocument()
     expect(within(card).queryByText('Secret achievement')).not.toBeInTheDocument()
     expect(
-      within(card).getByText(/Débloquez d'abord le succès "The prerequisite"/)
+      within(card).getByText(/Mystery challenge/)
     ).toBeInTheDocument()
   })
 
@@ -237,9 +237,9 @@ describe('RewardsTab — achievement card content', () => {
     })
     render(<RewardsTab />)
     const cosmeticCard = screen.getByTestId('achievement-card-cosmetic')
-    expect(within(cosmeticCard).getByText('Gain : ???')).toBeInTheDocument()
+    expect(within(cosmeticCard).getByText('Reward: ???')).toBeInTheDocument()
     const xpCard = screen.getByTestId('achievement-card-xp-only')
-    expect(within(xpCard).getByText("Gain : Amélioration d'XP")).toBeInTheDocument()
+    expect(within(xpCard).getByText("Reward: Amélioration d'XP")).toBeInTheDocument()
   })
 
   it('reveals the cosmetic reward name once unlocked', () => {
@@ -249,7 +249,7 @@ describe('RewardsTab — achievement card content', () => {
       ],
     })
     render(<RewardsTab />)
-    expect(screen.getByText('Gain : Thème Forêt')).toBeInTheDocument()
+    expect(screen.getByText('Reward: Thème Forêt')).toBeInTheDocument()
   })
 })
 
@@ -269,7 +269,7 @@ describe('RewardsTab — milestone progress bar', () => {
     })
     render(<RewardsTab />)
     expect(screen.getByText('4 / 10')).toBeInTheDocument()
-    expect(screen.getByText('Fil Rouge')).toBeInTheDocument()
+    expect(screen.getByText("Milestone")).toBeInTheDocument()
   })
 
   it('hides the progress bar once the achievement is unlocked', () => {
@@ -286,7 +286,7 @@ describe('RewardsTab — milestone progress bar', () => {
       ],
     })
     render(<RewardsTab />)
-    expect(screen.queryByText('Fil Rouge')).not.toBeInTheDocument()
+    expect(screen.queryByText("Milestone")).not.toBeInTheDocument()
   })
 
   it('hides the progress bar while masked behind a locked prerequisite', () => {
@@ -305,6 +305,6 @@ describe('RewardsTab — milestone progress bar', () => {
       ],
     })
     render(<RewardsTab />)
-    expect(screen.queryByText('Fil Rouge')).not.toBeInTheDocument()
+    expect(screen.queryByText("Milestone")).not.toBeInTheDocument()
   })
 })

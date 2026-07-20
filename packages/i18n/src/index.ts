@@ -7,6 +7,7 @@ import frGit from '../locales/fr/git.json'
 import frDashboard from '../locales/fr/dashboard.json'
 import frSettings from '../locales/fr/settings.json'
 import frErrors from '../locales/fr/errors.json'
+import frLaunchpad from '../locales/fr/launchpad.json'
 
 // EN
 import enCommon from '../locales/en/common.json'
@@ -14,6 +15,7 @@ import enGit from '../locales/en/git.json'
 import enDashboard from '../locales/en/dashboard.json'
 import enSettings from '../locales/en/settings.json'
 import enErrors from '../locales/en/errors.json'
+import enLaunchpad from '../locales/en/launchpad.json'
 
 export type SupportedLanguage = 'fr' | 'en'
 
@@ -25,6 +27,7 @@ export const resources = {
     dashboard: frDashboard,
     settings: frSettings,
     errors: frErrors,
+    launchpad: frLaunchpad,
   },
   en: {
     common: enCommon,
@@ -32,6 +35,7 @@ export const resources = {
     dashboard: enDashboard,
     settings: enSettings,
     errors: enErrors,
+    launchpad: enLaunchpad,
   },
 } as const
 

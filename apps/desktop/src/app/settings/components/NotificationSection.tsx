@@ -37,16 +37,18 @@ export function NotificationSection() {
               <BellOff className="h-5 w-5 text-muted-foreground" />
             )}
             <div>
-              <h4 className="text-xs font-semibold text-foreground">Autoriser les notifications</h4>
+              <h4 className="text-xs font-semibold text-foreground">
+                {t('notifications.settings.enableTitle')}
+              </h4>
               <p className="text-[10px] text-muted-foreground">
-                Activer ou désactiver toutes les notifications de l&apos;application.
+                {t('notifications.settings.enableDesc')}
               </p>
             </div>
           </div>
           <Switch
             checked={notifications.enabled}
             onChange={(e) => updateNotifications({ enabled: e.target.checked })}
-            aria-label="Autoriser les notifications"
+            aria-label={t('notifications.settings.enableTitle')}
           />
         </div>
       </div>
@@ -57,14 +59,18 @@ export function NotificationSection() {
 
           {/* Events settings */}
           <div className="space-y-3">
-            <h4 className="text-xs font-semibold text-foreground">Événements de notification</h4>
+            <h4 className="text-xs font-semibold text-foreground">
+              {t('notifications.settings.eventsTitle')}
+            </h4>
 
             <div className="space-y-3 pl-1">
               <label className="flex cursor-pointer items-center justify-between">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-foreground">Fetch automatique</span>
+                  <span className="text-xs text-foreground">
+                    {t('notifications.settings.fetchTitle')}
+                  </span>
                   <span className="text-[10px] text-muted-foreground">
-                    Notifier quand de nouvelles modifications sont récupérées du remote
+                    {t('notifications.settings.fetchDesc')}
                   </span>
                 </div>
                 <Checkbox
@@ -76,10 +82,10 @@ export function NotificationSection() {
               <label className="flex cursor-pointer items-center justify-between">
                 <div className="flex flex-col gap-0.5">
                   <span className="font-sans text-xs text-foreground">
-                    Résultat de Pull (Mise à jour)
+                    {t('notifications.settings.pullTitle')}
                   </span>
                   <span className="font-sans text-[10px] text-muted-foreground">
-                    Notifier lors de la réussite ou de l&apos;échec de la récupération des commits
+                    {t('notifications.settings.pullDesc')}
                   </span>
                 </div>
                 <Checkbox
@@ -90,9 +96,11 @@ export function NotificationSection() {
 
               <label className="flex cursor-pointer items-center justify-between">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-foreground">Résultat de Push (Envoi)</span>
+                  <span className="text-xs text-foreground">
+                    {t('notifications.settings.pushTitle')}
+                  </span>
                   <span className="text-[10px] text-muted-foreground">
-                    Notifier lors de l&apos;envoi de vos commits locaux vers le serveur distant
+                    {t('notifications.settings.pushDesc')}
                   </span>
                 </div>
                 <Checkbox
@@ -103,9 +111,11 @@ export function NotificationSection() {
 
               <label className="flex cursor-pointer items-center justify-between">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-foreground">Nouvelles Pull Requests</span>
+                  <span className="text-xs text-foreground">
+                    {t('notifications.settings.newPrTitle')}
+                  </span>
                   <span className="text-[10px] text-muted-foreground">
-                    Notifier quand une nouvelle Pull Request apparaît
+                    {t('notifications.settings.newPrDesc')}
                   </span>
                 </div>
                 <Checkbox
@@ -116,9 +126,11 @@ export function NotificationSection() {
 
               <label className="flex cursor-pointer items-center justify-between">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-foreground">PRs fusionnées ou fermées</span>
+                  <span className="text-xs text-foreground">
+                    {t('notifications.settings.prMergedTitle')}
+                  </span>
                   <span className="text-[10px] text-muted-foreground">
-                    Notifier quand une PR est fusionnée ou fermée
+                    {t('notifications.settings.prMergedDesc')}
                   </span>
                 </div>
                 <Checkbox
@@ -129,9 +141,11 @@ export function NotificationSection() {
 
               <label className="flex cursor-pointer items-center justify-between">
                 <div className="flex flex-col gap-0.5">
-                  <span className="font-sans text-xs text-foreground">Demandes de revue</span>
+                  <span className="font-sans text-xs text-foreground">
+                    {t('notifications.settings.reviewRequestedTitle')}
+                  </span>
                   <span className="font-sans text-[10px] text-muted-foreground">
-                    Notifier quand on vous demande de revoir une PR
+                    {t('notifications.settings.reviewRequestedDesc')}
                   </span>
                 </div>
                 <Checkbox
@@ -144,9 +158,11 @@ export function NotificationSection() {
 
               <label className="flex cursor-pointer items-center justify-between">
                 <div className="flex flex-col gap-0.5">
-                  <span className="font-sans text-xs text-foreground">Mises à jour des revues</span>
+                  <span className="font-sans text-xs text-foreground">
+                    {t('notifications.settings.reviewStatusTitle')}
+                  </span>
                   <span className="font-sans text-[10px] text-muted-foreground">
-                    Notifier quand l&apos;état d&apos;approbation d&apos;une PR est mis à jour
+                    {t('notifications.settings.reviewStatusDesc')}
                   </span>
                 </div>
                 <Checkbox
@@ -172,22 +188,26 @@ export function NotificationSection() {
                     <VolumeX className="h-4 w-4 text-muted-foreground" />
                   )}
                   <div className="flex flex-col">
-                    <h4 className="text-xs font-semibold text-foreground">Effets sonores</h4>
+                    <h4 className="text-xs font-semibold text-foreground">
+                      {t('notifications.settings.soundTitle')}
+                    </h4>
                     <p className="font-sans text-[10px] text-muted-foreground">
-                      Jouer un son lors d&apos;une notification.
+                      {t('notifications.settings.soundDesc')}
                     </p>
                   </div>
                 </div>
                 <Switch
                   checked={notifications.enableSound}
                   onChange={(e) => updateNotifications({ enableSound: e.target.checked })}
-                  aria-label="Effets sonores"
+                  aria-label={t('notifications.settings.soundTitle')}
                 />
               </div>
 
               {notifications.enableSound && (
                 <div className="mt-1.5 flex items-center justify-between pl-7">
-                  <span className="text-[10px] text-muted-foreground">Type de son macOS</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {t('notifications.settings.soundType')}
+                  </span>
                   <NativeSelect
                     value={notifications.soundName || 'default'}
                     onChange={(e) => updateNotifications({ soundName: e.target.value })}
@@ -217,9 +237,11 @@ export function NotificationSection() {
 
           {/* Test notifications */}
           <div className="space-y-3">
-            <h4 className="text-xs font-semibold text-foreground">Test de notifications</h4>
+            <h4 className="text-xs font-semibold text-foreground">
+              {t('notifications.settings.testTitle')}
+            </h4>
             <p className="text-[10px] text-muted-foreground">
-              Envoyer une notification native macOS de test.
+              {t('notifications.settings.testDesc')}
             </p>
             <button
               type="button"
@@ -239,7 +261,7 @@ export function NotificationSection() {
               className="mt-1 flex items-center gap-2 rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/95"
             >
               <Bell className="h-3.5 w-3.5" />
-              <span>Tester la notification macOS</span>
+              <span>{t('notifications.settings.testButton')}</span>
             </button>
           </div>
         </>

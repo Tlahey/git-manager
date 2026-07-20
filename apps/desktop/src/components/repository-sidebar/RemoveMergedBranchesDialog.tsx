@@ -217,7 +217,7 @@ export function RemoveMergedBranchesDialog({
                         onClick={() => copyWithToast(b.commitOid, 'SHA')}
                         className="mt-1 flex items-center gap-1 rounded border border-border/40 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                         title={b.commitOid}
-                        aria-label="Copy SHA"
+                        aria-label={t('sidebar.copySha')}
                         data-testid={`branch-remove-merged-copy-sha-${b.shortName}`}
                       >
                         <span className="truncate">{b.commitOid.slice(0, 7)}</span>

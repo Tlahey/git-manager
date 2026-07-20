@@ -152,7 +152,7 @@ export function ConflictResolutionPanel({
             <button
               onClick={onClose}
               className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              title="Close"
+              title={t('actions.close')}
               data-testid="conflict-panel-close-button"
             >
               <X className="h-3.5 w-3.5" />

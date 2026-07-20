@@ -129,7 +129,7 @@ export function CommitHeaderInfo({
               <button
                 onClick={onClose}
                 className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                title="Close"
+                title={t('actions.close')}
                 data-testid="commit-details-close-button"
               >
                 <X className="h-3.5 w-3.5" />
@@ -264,7 +264,7 @@ export function CommitHeaderInfo({
                 if (e.key === 'Enter' || e.key === ' ') setIsEditingMessage(true)
               }}
               className="group cursor-pointer space-y-2 rounded-lg border border-border/30 bg-muted/15 p-3 transition-all hover:border-primary/50 hover:bg-accent/15"
-              title="Click to edit stash message"
+              title={t('commitHeaderInfo.editStashMessage')}
             >
               <div className="flex items-start justify-between gap-2">
                 <h4 className="flex-1 break-words text-xs font-bold leading-snug text-foreground">
@@ -292,7 +292,7 @@ export function CommitHeaderInfo({
                 if (e.key === 'Enter' || e.key === ' ') setIsEditingMessage(true)
               }}
               className="group cursor-pointer space-y-2 rounded-lg border border-border/30 bg-muted/15 p-3 transition-all hover:border-primary/50 hover:bg-accent/15"
-              title="Click to edit commit message"
+              title={t('commitHeaderInfo.editCommitMessage')}
             >
               <div className="flex items-start justify-between gap-2">
                 <h4 className="flex-1 break-words text-xs font-bold leading-snug text-foreground">

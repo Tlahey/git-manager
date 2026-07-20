@@ -64,12 +64,12 @@ describe('CloneRepoDialog', () => {
   it('disables Clone until both a URL and a parent directory are set', async () => {
     const user = userEvent.setup()
     render(<CloneRepoDialog open onOpenChange={vi.fn()} />)
-    expect(screen.getByRole('button', { name: 'Cloner' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: "Clone" })).toBeDisabled()
     await user.type(
       screen.getByPlaceholderText('git@github.com:owner/repo.git'),
       'git@github.com:owner/repo.git'
     )
-    expect(screen.getByRole('button', { name: 'Cloner' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: "Clone" })).toBeDisabled()
   })
 
   it('clones with the shallow/sparse flags and opens the resulting repo', async () => {
@@ -80,7 +80,7 @@ describe('CloneRepoDialog', () => {
     await fillAndPickDir(user, 'git@github.com:owner/repo.git')
     await user.click(screen.getByText('Shallow clone'))
     await user.click(screen.getByText('Sparse checkout'))
-    await user.click(screen.getByRole('button', { name: 'Cloner' }))
+    await user.click(screen.getByRole('button', { name: "Clone" }))
 
     expect(mockedClone).toHaveBeenCalledWith(
       'git@github.com:owner/repo.git',
@@ -98,7 +98,7 @@ describe('CloneRepoDialog', () => {
     const user = userEvent.setup()
     render(<CloneRepoDialog open onOpenChange={onOpenChange} />)
     await fillAndPickDir(user, 'git@github.com:owner/repo.git')
-    await user.click(screen.getByRole('button', { name: 'Cloner' }))
+    await user.click(screen.getByRole('button', { name: "Clone" }))
 
     expect(await screen.findByText(/clone failed/)).toBeInTheDocument()
     expect(onOpenChange).not.toHaveBeenCalled()
@@ -112,7 +112,7 @@ describe('CloneRepoDialog', () => {
       screen.getByPlaceholderText('git@github.com:owner/repo.git'),
       'git@github.com:owner/repo.git'
     )
-    await user.click(screen.getByRole('button', { name: 'Annuler' }))
+    await user.click(screen.getByRole('button', { name: "Cancel" }))
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 })

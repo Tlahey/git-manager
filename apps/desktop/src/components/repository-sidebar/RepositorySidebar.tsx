@@ -4,6 +4,7 @@ import { Input } from '@git-manager/ui'
 import type { GitBranch, GitWorktree, PullRequest } from '@git-manager/git-types'
 import { useSidebarResize, RAIL_WIDTH } from '../../hooks/useSidebarResize'
 import { useSidebarRows } from '../../hooks/useSidebarRows'
+import { useTranslation } from '@git-manager/i18n'
 import { usePinnedBranchesStore } from '../../stores/pinned-branches.store'
 import { useSidebarSearchStore } from '../../stores/sidebarSearch.store'
 import { SidebarResizeHandle } from './SidebarResizeHandle'
@@ -53,6 +54,7 @@ export function RepositorySidebar({
   onContextMenu,
   onOpenPr,
 }: RepositorySidebarProps) {
+  const { t } = useTranslation('git')
   const { width, isCollapsed, collapse, expand, resizeHandleProps } = useSidebarResize()
   const [branchQuery, setBranchQuery] = useState('')
   const isFilterActive = branchQuery.trim().length > 0
@@ -249,8 +251,8 @@ export function RepositorySidebar({
         </span>
         <button
           onClick={collapse}
-          title="Réduire la sidebar"
-          aria-label="Réduire la sidebar"
+          title={t('sidebar.collapse')}
+          aria-label={t('sidebar.collapse')}
           className="flex h-6 w-6 items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
         >
           <PanelLeftClose className="h-4 w-4" />
@@ -274,15 +276,15 @@ export function RepositorySidebar({
           type="text"
           value={branchQuery}
           onChange={(e) => setBranchQuery(e.target.value)}
-          placeholder="Filtrer les branches…"
-          aria-label="Filtrer les branches"
+          placeholder={t('sidebar.filterBranchesPlaceholder')}
+          aria-label={t('sidebar.filterBranches')}
           className="h-7 text-xs shadow-none"
           startIcon={<Search className="h-3.5 w-3.5 text-sidebar-muted-foreground" />}
           endIcon={
             branchQuery ? (
               <button
                 onClick={() => setBranchQuery('')}
-                aria-label="Effacer le filtre"
+                aria-label={t('sidebar.clearFilter')}
                 className="flex h-4 w-4 items-center justify-center rounded text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
               >
                 <X className="h-3 w-3" />

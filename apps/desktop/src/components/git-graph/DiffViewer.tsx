@@ -1,18 +1,19 @@
 import type { GitDiffFile } from '@git-manager/git-types'
 import { Badge } from '@git-manager/ui'
 import { cn } from '@git-manager/ui'
+import { useTranslation } from '@git-manager/i18n'
 
 interface DiffViewerProps {
   file: GitDiffFile
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  added: 'Added',
-  modified: 'Modified',
-  deleted: 'Deleted',
-  renamed: 'Renamed',
-  copied: 'Copied',
-  typechange: 'Typechange',
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  added: 'diffToolbar.status.added',
+  modified: 'diffToolbar.status.modified',
+  deleted: 'diffToolbar.status.deleted',
+  renamed: 'diffToolbar.status.renamed',
+  copied: 'diffToolbar.status.copied',
+  typechange: 'diffToolbar.status.typechange',
 }
 
 const STATUS_VARIANTS: Record<string, 'success' | 'destructive' | 'secondary' | 'warning'> = {
@@ -25,6 +26,7 @@ const STATUS_VARIANTS: Record<string, 'success' | 'destructive' | 'secondary' | 
 }
 
 export function DiffViewer({ file }: DiffViewerProps) {
+  const { t } = useTranslation('git')
   const displayPath = file.status === 'renamed' ? `${file.oldPath} → ${file.newPath}` : file.newPath
 
   return (
@@ -33,7 +35,7 @@ export function DiffViewer({ file }: DiffViewerProps) {
       <div className="flex items-center gap-2 border-b border-border bg-muted/50 px-3 py-1.5">
         <span className="flex-1 truncate text-foreground">{displayPath}</span>
         <Badge variant={STATUS_VARIANTS[file.status] ?? 'secondary'}>
-          {STATUS_LABELS[file.status] ?? file.status}
+          {file.status in STATUS_LABEL_KEYS ? t(STATUS_LABEL_KEYS[file.status]) : file.status}
         </Badge>
         {!file.isBinary && (
           <span className="whitespace-nowrap text-muted-foreground">
@@ -45,7 +47,7 @@ export function DiffViewer({ file }: DiffViewerProps) {
 
       {/* Contenu diff */}
       {file.isBinary ? (
-        <div className="px-3 py-2 italic text-muted-foreground">Binary file</div>
+        <div className="px-3 py-2 italic text-muted-foreground">{t('diffViewer.binaryFile')}</div>
       ) : (
         <div className="overflow-x-auto">
           {file.hunks.map((hunk, hi) => (

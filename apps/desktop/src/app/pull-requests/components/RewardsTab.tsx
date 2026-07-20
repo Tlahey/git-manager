@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Trophy, CheckCircle2, Lock } from 'lucide-react'
 import { Chip, Progress, Card } from '@git-manager/ui'
+import { useTranslation } from '@git-manager/i18n'
 import { useGameStore, getLevelInfo } from '../../../stores/game.store'
 
 type StatusFilter = 'all' | 'in_progress' | 'completed'
 
 export function RewardsTab() {
+  const { t } = useTranslation('launchpad')
   const {
     achievements,
     points,
@@ -56,17 +58,17 @@ export function RewardsTab() {
   const difficulties = [
     {
       id: 'beginner',
-      label: 'Niveau Débutant',
+      label: t('rewards.levelBeginner'),
       colorClass: 'text-foreground border-border bg-card/30',
     },
     {
       id: 'intermediate',
-      label: 'Niveau Intermédiaire',
+      label: t('rewards.levelIntermediate'),
       colorClass: 'text-foreground border-border bg-card/30',
     },
     {
       id: 'expert',
-      label: 'Niveau Expert',
+      label: t('rewards.levelExpert'),
       colorClass: 'text-foreground border-border bg-card/30',
     },
   ] as const
@@ -93,7 +95,7 @@ export function RewardsTab() {
             </div>
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Rang Git Actuel
+                {t('rewards.currentRank')}
               </span>
               <h2 className="max-w-[180px] truncate text-sm font-extrabold tracking-wide">
                 {name}
@@ -102,7 +104,7 @@ export function RewardsTab() {
           </div>
           <div className="mt-1">
             <div className="mb-1 flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
-              <span>Niveau {level}</span>
+              <span>{t('rewards.level', { level })}</span>
               <span>
                 {points} / {max} XP
               </span>
@@ -120,7 +122,7 @@ export function RewardsTab() {
         <Card className="col-span-1 flex flex-col justify-between rounded-xl bg-card/40 p-4 shadow-md backdrop-blur-sm md:col-span-2">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Cabinet de Trophées
+              {t('rewards.trophyCabinet')}
             </span>
             <div className="mt-3 flex flex-wrap items-center gap-4 sm:gap-6">
               <div className="flex items-center gap-1.5">
@@ -128,7 +130,7 @@ export function RewardsTab() {
                 <div>
                   <div className="text-xs font-extrabold text-foreground">{bronzeCount}</div>
                   <div className="text-[8px] font-semibold uppercase text-muted-foreground">
-                    Bronze
+                    {t('rewards.bronze')}
                   </div>
                 </div>
               </div>
@@ -137,7 +139,7 @@ export function RewardsTab() {
                 <div>
                   <div className="text-xs font-extrabold text-foreground">{silverCount}</div>
                   <div className="text-[8px] font-semibold uppercase text-muted-foreground">
-                    Argent
+                    {t('rewards.silver')}
                   </div>
                 </div>
               </div>
@@ -145,7 +147,9 @@ export function RewardsTab() {
                 <Trophy className="h-5.5 w-5.5 text-[#ffd700] drop-shadow-[0_2px_4px_rgba(255,215,0,0.3)]" />
                 <div>
                   <div className="text-xs font-extrabold text-foreground">{goldCount}</div>
-                  <div className="text-[8px] font-semibold uppercase text-muted-foreground">Or</div>
+                  <div className="text-[8px] font-semibold uppercase text-muted-foreground">
+                    {t('rewards.gold')}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
@@ -153,7 +157,7 @@ export function RewardsTab() {
                 <div>
                   <div className="text-xs font-extrabold text-foreground">{platinumCount}</div>
                   <div className="text-[8px] font-semibold uppercase text-muted-foreground">
-                    Platine
+                    {t('rewards.platinum')}
                   </div>
                 </div>
               </div>
@@ -164,14 +168,14 @@ export function RewardsTab() {
                   <span className="text-[10px] text-muted-foreground">/ {totalCount}</span>
                 </div>
                 <div className="text-[8px] font-semibold uppercase text-muted-foreground">
-                  Succès Complétés
+                  {t('rewards.achievementsCompleted')}
                 </div>
               </div>
             </div>
           </div>
           <div className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground/80">
             <CheckCircle2 className="h-3 w-3 text-green-400" />
-            Les récompenses se débloquent automatiquement en arrière-plan.
+            {t('rewards.autoUnlock')}
           </div>
         </Card>
       </div>
@@ -179,14 +183,14 @@ export function RewardsTab() {
       {/* Filter toolbar */}
       <div className="flex shrink-0 items-center justify-between border-b border-border pb-3">
         <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          <Trophy className="h-3.5 w-3.5 text-primary" /> Liste des Défis
+          <Trophy className="h-3.5 w-3.5 text-primary" /> {t('rewards.challengeList')}
         </h3>
         <div className="flex gap-1.5">
           {(
             [
-              { id: 'all', label: 'Tous' },
-              { id: 'in_progress', label: 'En cours' },
-              { id: 'completed', label: 'Terminés' },
+              { id: 'all', label: t('rewards.filterAll') },
+              { id: 'in_progress', label: t('rewards.filterInProgress') },
+              { id: 'completed', label: t('rewards.filterCompleted') },
             ] as const
           ).map((opt) => (
             <Chip
@@ -226,7 +230,7 @@ export function RewardsTab() {
               >
                 <span>{diff.label}</span>
                 <span className="rounded bg-black/15 px-2 py-0.5 text-[10px] font-normal">
-                  {groupUnlocked} / {groupTotal} Complétés
+                  {t('rewards.groupCompleted', { unlocked: groupUnlocked, total: groupTotal })}
                 </span>
               </div>
 
@@ -239,9 +243,11 @@ export function RewardsTab() {
                   // Conceal details if prerequisite is locked
                   const displayTitle = isPrereqLocked ? '???' : item.title
                   const displayDesc = isPrereqLocked
-                    ? `Défi mystère. Débloquez d'abord le succès "${
-                        achievements.find((a) => a.id === item.prerequisiteId)?.title || 'prérequis'
-                      }" pour le révéler.`
+                    ? t('rewards.mysteryChallenge', {
+                        title:
+                          achievements.find((a) => a.id === item.prerequisiteId)?.title ||
+                          t('rewards.prerequisiteFallback'),
+                      })
                     : item.description
 
                   // Cosmetic rewards: hide reward name behind ??? until unlocked
@@ -307,7 +313,7 @@ export function RewardsTab() {
                               <div className="mt-2 space-y-1">
                                 <div className="flex justify-between text-[9px] font-semibold text-muted-foreground">
                                   <span className="rounded bg-primary/10 px-1 text-[8px] uppercase tracking-wider text-primary">
-                                    Fil Rouge
+                                    {t('rewards.filRouge')}
                                   </span>
                                   <span>
                                     {currentProgress} / {item.milestoneValue}
@@ -330,11 +336,12 @@ export function RewardsTab() {
                           <span
                             className={`text-[9px] font-bold ${item.unlocked ? 'text-primary' : 'text-primary/70'}`}
                           >
-                            Gain : {displayReward}
+                            {t('rewards.gain')} {displayReward}
                           </span>
                           {item.unlockedAt && (
                             <span className="text-[8px] text-muted-foreground/60">
-                              Obtenu le {new Date(item.unlockedAt).toLocaleDateString()}
+                              {t('rewards.obtainedOn')}{' '}
+                              {new Date(item.unlockedAt).toLocaleDateString()}
                             </span>
                           )}
                         </div>

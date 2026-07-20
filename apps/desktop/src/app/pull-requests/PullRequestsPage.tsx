@@ -15,6 +15,7 @@ import {
 import { usePullRequestsPage } from '../../hooks/usePullRequestsPage'
 import { timeAgo } from './utils'
 import { Spinner } from '@git-manager/ui'
+import { useTranslation } from '@git-manager/i18n'
 import { InnerTab, KpiCard } from '@git-manager/components'
 import { PullRequestsTab } from './components/PullRequestsTab'
 import { FollowedPRsTab } from './components/FollowedPRsTab'
@@ -27,6 +28,7 @@ import { defineTabs, renderActiveTab, type TabDef } from '../../lib/navigation/t
 import type { InnerTab as InnerTabType } from './types'
 
 export function PullRequestsPage() {
+  const { t } = useTranslation('launchpad')
   const {
     activeTab,
     setActiveTab,
@@ -57,7 +59,7 @@ export function PullRequestsPage() {
   const PR_TABS: TabDef<InnerTabType>[] = defineTabs([
     {
       id: 'prs',
-      label: 'My Pull Requests',
+      label: t('tab.myPrs'),
       icon: GitPullRequest,
       render: () => (
         <PullRequestsTab
@@ -70,7 +72,7 @@ export function PullRequestsPage() {
     },
     {
       id: 'followed',
-      label: 'Followed PRs',
+      label: t('tab.followed'),
       icon: BookOpen,
       render: () => (
         <FollowedPRsTab
@@ -85,13 +87,13 @@ export function PullRequestsPage() {
     },
     {
       id: 'issues',
-      label: 'My Issues',
+      label: t('tab.myIssues'),
       icon: AlertCircle,
       render: () => <IssuesTab allIssues={issues} loading={loading} />,
     },
     {
       id: 'waiting',
-      label: 'Waiting for Review',
+      label: t('tab.waiting'),
       icon: Eye,
       render: () => (
         <WaitingForReviewTab
@@ -104,7 +106,7 @@ export function PullRequestsPage() {
     },
     {
       id: 'stats',
-      label: 'Commit Stats',
+      label: t('tab.commitStats'),
       icon: BarChart2,
       render: () => (
         <CommitStatsTab commitDays={commitDays} yearDays={yearDays} loading={loading} />
@@ -112,7 +114,7 @@ export function PullRequestsPage() {
     },
     {
       id: 'views',
-      label: 'Custom Views',
+      label: t('tab.customViews'),
       icon: Sliders,
       render: () => (
         <CustomViewsTab
@@ -144,7 +146,7 @@ export function PullRequestsPage() {
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             {loading || isValidating ? (
               <>
-                <Spinner className="h-3 w-3" /> Fetching…
+                <Spinner className="h-3 w-3" /> {t('page.fetching')}
               </>
             ) : error ? (
               <>
@@ -153,14 +155,14 @@ export function PullRequestsPage() {
               </>
             ) : (
               <>
-                <CheckCircle2 className="h-3 w-3 text-green-400" /> Synced as{' '}
+                <CheckCircle2 className="h-3 w-3 text-green-400" /> {t('page.syncedAs')}{' '}
                 <strong className="ml-0.5 text-foreground">{username}</strong>
               </>
             )}
           </span>
         ) : (
           <span className="flex items-center gap-1.5 text-xs text-amber-400/80">
-            <WifiOff className="h-3 w-3" /> No GitHub account — showing demo data
+            <WifiOff className="h-3 w-3" /> {t('page.noAccount')}
           </span>
         )}
         <div className="ml-auto flex items-center gap-3">
@@ -174,9 +176,10 @@ export function PullRequestsPage() {
             disabled={isValidating}
             data-testid="manual-refresh-button"
             className="flex h-7 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs text-muted-foreground transition-colors hover:border-border/80 hover:bg-accent/40 hover:text-foreground disabled:opacity-40"
-            title="Refresh now"
+            title={t('page.refreshNow')}
           >
-            <RefreshCw className={`h-3 w-3 ${isValidating ? 'animate-spin' : ''}`} /> Refresh
+            <RefreshCw className={`h-3 w-3 ${isValidating ? 'animate-spin' : ''}`} />{' '}
+            {t('page.refresh')}
           </button>
         </div>
       </header>
@@ -195,38 +198,38 @@ export function PullRequestsPage() {
       <div className="flex shrink-0 items-stretch gap-3 border-b border-border bg-card/20 px-5 py-3">
         <KpiCard
           icon={<GitPullRequest className="h-3.5 w-3.5 text-green-400" />}
-          label="Open PRs"
+          label={t('kpi.openPrs')}
           value={openPRsCount}
-          sub="Across all repos"
+          sub={t('kpi.openPrsSub')}
           loading={loading}
         />
         <KpiCard
           icon={<Eye className="h-3.5 w-3.5 text-orange-400" />}
-          label="Needs review"
+          label={t('kpi.needsReview')}
           value={needsReviewCount}
-          sub="Waiting for you"
+          sub={t('kpi.needsReviewSub')}
           accent="hover:border-orange-500/20"
           loading={loading}
         />
         <KpiCard
           icon={<AlertCircle className="h-3.5 w-3.5 text-blue-400" />}
-          label="Open issues"
+          label={t('kpi.openIssues')}
           value={openIssuesCount}
-          sub="Assigned or watching"
+          sub={t('kpi.openIssuesSub')}
           loading={loading}
         />
         <KpiCard
           icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />}
-          label="CI pass rate"
+          label={t('kpi.ciPassRate')}
           value={`${ciPassRate}%`}
-          sub="Last 30 days"
+          sub={t('kpi.ciPassRateSub')}
           loading={loading}
         />
         <KpiCard
           icon={<GitCommit className="h-3.5 w-3.5 text-purple-400" />}
-          label="Commits"
+          label={t('kpi.commits')}
           value={weekCommits}
-          sub="This week"
+          sub={t('kpi.commitsSub')}
           loading={loading}
         />
       </div>

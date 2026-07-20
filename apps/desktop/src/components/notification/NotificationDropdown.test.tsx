@@ -2,13 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) =>
-      opts ? `${key}:${JSON.stringify(opts)}` : key,
-  }),
-}))
-
 const { showNativeNotification } = vi.hoisted(() => ({ showNativeNotification: vi.fn() }))
 vi.mock('../../hooks/useNotificationWatcher', () => ({ showNativeNotification }))
 
@@ -70,8 +63,8 @@ describe('NotificationDropdown — list', () => {
   it('shows an empty state when there are no notifications', async () => {
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle('notifications.title'))
-    expect(screen.getByText('notifications.empty')).toBeInTheDocument()
+    await user.click(screen.getByTitle("Notifications"))
+    expect(screen.getByText("No notifications yet")).toBeInTheDocument()
   })
 
   it('lists up to the 5 most recent notifications', async () => {
@@ -79,22 +72,22 @@ describe('NotificationDropdown — list', () => {
     useNotificationStore.setState({ notifications: notifs })
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle('notifications.title'))
-    expect(screen.getAllByText(/notifications\.types\.pr_merged/)).toHaveLength(5)
+    await user.click(screen.getByTitle("Notifications"))
+    expect(screen.getAllByText(/PR #\d+ Merged/)).toHaveLength(5)
   })
 
   it('marks a notification read, routes to the launchpad tab, and closes the popover on click', async () => {
     useNotificationStore.setState({ notifications: [notification({ targetTab: 'waiting' })] })
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle('notifications.title'))
-    await user.click(screen.getByText(/notifications\.types\.pr_merged/))
+    await user.click(screen.getByTitle("Notifications"))
+    await user.click(screen.getByText(/PR #\d+ Merged/))
 
     expect(useNotificationStore.getState().notifications[0].read).toBe(true)
     expect(useRepoUIStore.getState().activeTab).toBe(PULL_REQUESTS_TAB)
     expect(useLaunchpadStore.getState().activeTab).toBe('waiting')
-    expect(screen.queryByText('notifications.empty')).not.toBeInTheDocument()
-    expect(screen.queryByText(/notifications\.types\.pr_merged/)).not.toBeInTheDocument()
+    expect(screen.queryByText("No notifications yet")).not.toBeInTheDocument()
+    expect(screen.queryByText(/PR #\d+ Merged/)).not.toBeInTheDocument()
   })
 
   it('marks all as read', async () => {
@@ -103,8 +96,8 @@ describe('NotificationDropdown — list', () => {
     })
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle('notifications.title'))
-    await user.click(screen.getByTitle('notifications.markAllAsRead'))
+    await user.click(screen.getByTitle("Notifications"))
+    await user.click(screen.getByTitle("Mark all as read"))
     expect(useNotificationStore.getState().notifications.every((n) => n.read)).toBe(true)
   })
 
@@ -112,8 +105,8 @@ describe('NotificationDropdown — list', () => {
     useNotificationStore.setState({ notifications: [notification()] })
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle('notifications.title'))
-    await user.click(screen.getByTitle('notifications.clearAll'))
+    await user.click(screen.getByTitle("Notifications"))
+    await user.click(screen.getByTitle("Clear all"))
     expect(useNotificationStore.getState().notifications).toEqual([])
   })
 })
@@ -122,8 +115,8 @@ describe('NotificationDropdown — simulator panel visibility', () => {
   it('shows the simulator when there is no active GitHub token', async () => {
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle('notifications.title'))
-    expect(screen.getByText('notifications.simulator')).toBeInTheDocument()
+    await user.click(screen.getByTitle("Notifications"))
+    expect(screen.getByText("Simulate Change")).toBeInTheDocument()
   })
 
   it('hides the PR mutator (but keeps the simulator panel) once a GitHub token is active in production', async () => {
@@ -138,15 +131,15 @@ describe('NotificationDropdown — simulator panel visibility', () => {
     })
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle('notifications.title'))
-    expect(screen.queryByText('notifications.simulator')).not.toBeInTheDocument()
+    await user.click(screen.getByTitle("Notifications"))
+    expect(screen.queryByText("Simulate Change")).not.toBeInTheDocument()
   })
 
   it('shows dev-mode test-trigger buttons only when DEV is true', async () => {
     vi.stubEnv('DEV', true)
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle('notifications.title'))
+    await user.click(screen.getByTitle("Notifications"))
     expect(screen.getByText('Test Review')).toBeInTheDocument()
     expect(screen.getByText('DEV MODE')).toBeInTheDocument()
   })
@@ -154,7 +147,7 @@ describe('NotificationDropdown — simulator panel visibility', () => {
   it('does not show dev-mode test-trigger buttons when DEV is false', async () => {
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle('notifications.title'))
+    await user.click(screen.getByTitle("Notifications"))
     expect(screen.queryByText('Test Review')).not.toBeInTheDocument()
   })
 })
@@ -164,7 +157,7 @@ describe('NotificationDropdown — dev test triggers', () => {
     vi.stubEnv('DEV', true)
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle('notifications.title'))
+    await user.click(screen.getByTitle("Notifications"))
     await user.click(screen.getByText('Test Review'))
 
     expect(useNotificationStore.getState().notifications).toHaveLength(1)
@@ -186,8 +179,8 @@ describe('NotificationDropdown — PR simulator', () => {
   it('runs the simulation with the selected PR and (default "merge") action', async () => {
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle('notifications.title'))
-    await user.click(screen.getByText('Run Sim'))
+    await user.click(screen.getByTitle("Notifications"))
+    await user.click(screen.getByText("Run Sim"))
     expect(useNotificationStore.getState().mockPRs[0]).toMatchObject({
       id: 'pr-1',
       status: 'merged',

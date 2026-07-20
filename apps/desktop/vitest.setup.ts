@@ -1,12 +1,25 @@
 import '@testing-library/jest-dom/vitest'
 import { afterEach } from 'vitest'
 import { cleanup } from '@testing-library/react'
+import { initI18n, i18next } from '@git-manager/i18n'
+
+// Initialize i18n in English for the whole test run. Components under test then render the real
+// (source-locale) copy through `t()` — including interpolated values — so assertions verify the
+// actual user-visible text and injected content, NOT raw translation keys. `resources` are inline
+// in @git-manager/i18n, so init resolves synchronously and `t()` returns strings on first render.
+// For special cases needing another language, use `renderWithLanguage()` from `src/test/i18n.tsx`.
+initI18n('en')
 
 // Testing-library's automatic between-test cleanup only kicks in when vitest runs with
 // `globals: true` (it looks for a global `afterEach`), which this config doesn't use — without
 // this explicit hook, every `render()` accumulates into the same jsdom document across tests,
 // so `screen` queries start matching stale duplicates from earlier tests in the file.
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  // Reset language so a test that switched to another locale (via renderWithLanguage) doesn't
+  // leak into the next test — the global default for assertions is English.
+  if (i18next.language !== 'en') i18next.changeLanguage('en')
+})
 
 // jsdom doesn't implement ResizeObserver — ThreeWayMergeEditor observes its outer container to
 // recompute connector geometry on resize. Tests don't need real resize behavior, just a stub

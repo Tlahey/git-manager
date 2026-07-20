@@ -239,7 +239,7 @@ export function CommitFileList({
                     ? 'border-primary bg-primary text-white'
                     : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
                 )}
-                title={allStaged ? 'Unstage folder' : 'Stage folder'}
+                title={allStaged ? t('commitFileList.unstageFolder') : t('commitFileList.stageFolder')}
                 data-testid={`file-tree-folder-checkbox-${node.path}`}
               >
                 {someStaged ? '-' : '✓'}
@@ -294,7 +294,7 @@ export function CommitFileList({
                     ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
                     : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
                 )}
-                title={hoverStage === 'add' ? 'Stage folder' : 'Unstage folder'}
+                title={hoverStage === 'add' ? t('commitFileList.stageFolder') : t('commitFileList.unstageFolder')}
                 data-testid={`file-tree-folder-hover-stage-${node.path}`}
               >
                 {hoverStage === 'add' ? (
@@ -359,7 +359,7 @@ export function CommitFileList({
                   ? 'border-primary bg-primary text-white'
                   : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
               )}
-              title={node.staged ? 'Unstage' : 'Stage'}
+              title={node.staged ? t('commitFileList.unstage') : t('commitFileList.stage')}
             >
               ✓
             </button>
@@ -400,7 +400,7 @@ export function CommitFileList({
                 'shrink-0 rounded border border-border p-0.5 text-destructive transition-colors hover:bg-destructive/10',
                 hoverStage && 'opacity-0 group-hover/file:opacity-100'
               )}
-              title="Discard Changes"
+              title={t('actions.discardChanges')}
             >
               <RotateCcw className="h-2.5 w-2.5" />
             </button>
@@ -417,7 +417,7 @@ export function CommitFileList({
                   ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
                   : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
               )}
-              title={hoverStage === 'add' ? 'Stage' : 'Unstage'}
+              title={hoverStage === 'add' ? t('commitFileList.stage') : t('commitFileList.unstage')}
             >
               {hoverStage === 'add' ? (
                 <Plus className="h-2.5 w-2.5" />
@@ -531,7 +531,7 @@ export function CommitFileList({
                 <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               ))}
             <span className="select-none text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              {title ?? 'Modifications'}
+              {title ?? t('commitFileList.modifications')}
             </span>
             {onBulkStage && hoverStage && (
               <button
@@ -671,7 +671,7 @@ export function CommitFileList({
                             ? 'border-primary bg-primary text-white'
                             : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
                         )}
-                        title={file.staged ? 'Unstage' : 'Stage'}
+                        title={file.staged ? t('commitFileList.unstage') : t('commitFileList.stage')}
                       >
                         ✓
                       </button>
@@ -735,7 +735,7 @@ export function CommitFileList({
                           'shrink-0 rounded border border-border p-0.5 text-destructive transition-colors hover:bg-destructive/10',
                           hoverStage && 'opacity-0 group-hover/file:opacity-100'
                         )}
-                        title="Discard Changes"
+                        title={t('actions.discardChanges')}
                       >
                         <RotateCcw className="h-2.5 w-2.5" />
                       </button>
@@ -752,7 +752,7 @@ export function CommitFileList({
                             ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
                             : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
                         )}
-                        title={hoverStage === 'add' ? 'Stage' : 'Unstage'}
+                        title={hoverStage === 'add' ? t('commitFileList.stage') : t('commitFileList.unstage')}
                       >
                         {hoverStage === 'add' ? (
                           <Plus className="h-2.5 w-2.5" />

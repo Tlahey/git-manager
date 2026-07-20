@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Search, X, GitPullRequest, AlertCircle, Plus, Layers, Pencil, Trash2 } from 'lucide-react'
 import { Input } from '@git-manager/ui'
+import { useTranslation } from '@git-manager/i18n'
 import {
   useLaunchpadStore,
   type SavedFilter,
@@ -63,6 +64,7 @@ function CustomViewResults({
   onTogglePin,
   loading,
 }: CustomViewResultsProps) {
+  const { t } = useTranslation('launchpad')
   const [shownPRs, setShownPRs] = useState(PAGE_SIZE)
   const [shownIssues, setShownIssues] = useState(PAGE_SIZE)
   const [search, setSearch] = useState('')
@@ -95,7 +97,7 @@ function CustomViewResults({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search within this view…"
+            placeholder={t('views.searchPlaceholder')}
             className="h-7 w-full border-border bg-card pl-7 pr-6 text-xs shadow-none focus:ring-1 focus:ring-primary/40"
           />
           {search && (
@@ -108,7 +110,7 @@ function CustomViewResults({
           )}
         </div>
         <span className="text-[10px] text-muted-foreground">
-          {total} result{total !== 1 ? 's' : ''}
+          {t('views.results', { count: total })}
         </span>
       </div>
 
@@ -121,7 +123,7 @@ function CustomViewResults({
                   <div className="flex shrink-0 items-center gap-2 border-b border-border/50 bg-muted/15 px-4 py-2">
                     <GitPullRequest className="h-3 w-3 text-green-400" />
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Pull Requests
+                      {t('filterEditor.typePrs')}
                     </span>
                   </div>
                 )}
@@ -136,18 +138,18 @@ function CustomViewResults({
                   <div className="mt-4 flex shrink-0 items-center gap-2 border-b border-border/50 bg-muted/15 px-4 py-2">
                     <AlertCircle className="h-3 w-3 text-blue-400" />
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Issues
+                      {t('filterEditor.typeIssues')}
                     </span>
                   </div>
                 )}
                 <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
                   <div className="w-4 shrink-0" />
-                  <div className="min-w-0 flex-1">Item</div>
-                  <div className="w-[52px] shrink-0 text-right">Updated</div>
-                  <div className="w-[70px] shrink-0 text-center">Status</div>
-                  <div className="w-[90px] shrink-0">Author</div>
-                  <div className="w-[60px] shrink-0 text-center">Assigned</div>
-                  <div className="w-[110px] shrink-0">Repo</div>
+                  <div className="min-w-0 flex-1">{t('table.item')}</div>
+                  <div className="w-[52px] shrink-0 text-right">{t('table.updated')}</div>
+                  <div className="w-[70px] shrink-0 text-center">{t('table.status')}</div>
+                  <div className="w-[90px] shrink-0">{t('table.author')}</div>
+                  <div className="w-[60px] shrink-0 text-center">{t('table.assigned')}</div>
+                  <div className="w-[110px] shrink-0">{t('table.repo')}</div>
                   <div className="w-6 shrink-0" />
                 </div>
                 <IssueRowSkeleton />
@@ -158,7 +160,7 @@ function CustomViewResults({
         ) : total === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground/50">
             <span className="text-3xl">{filter.emoji}</span>
-            <p className="text-xs">No results match this filter</p>
+            <p className="text-xs">{t('views.noResults')}</p>
           </div>
         ) : (
           <>
@@ -168,7 +170,7 @@ function CustomViewResults({
                   <div className="flex shrink-0 items-center gap-2 border-b border-border/50 bg-muted/15 px-4 py-2">
                     <GitPullRequest className="h-3 w-3 text-green-400" />
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Pull Requests
+                      {t('filterEditor.typePrs')}
                     </span>
                     <span className="rounded-full bg-muted px-1.5 py-px text-[9px] font-bold leading-none text-muted-foreground">
                       {matchedPRs.length}
@@ -198,7 +200,7 @@ function CustomViewResults({
                   <div className="flex shrink-0 items-center gap-2 border-b border-border/50 bg-muted/15 px-4 py-2">
                     <AlertCircle className="h-3 w-3 text-blue-400" />
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Issues
+                      {t('filterEditor.typeIssues')}
                     </span>
                     <span className="rounded-full bg-muted px-1.5 py-px text-[9px] font-bold leading-none text-muted-foreground">
                       {matchedIssues.length}
@@ -207,12 +209,12 @@ function CustomViewResults({
                 )}
                 <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
                   <div className="w-4 shrink-0" />
-                  <div className="min-w-0 flex-1">Item</div>
-                  <div className="w-[52px] shrink-0 text-right">Updated</div>
-                  <div className="w-[70px] shrink-0 text-center">Status</div>
-                  <div className="w-[90px] shrink-0">Author</div>
-                  <div className="w-[60px] shrink-0 text-center">Assigned</div>
-                  <div className="w-[110px] shrink-0">Repo</div>
+                  <div className="min-w-0 flex-1">{t('table.item')}</div>
+                  <div className="w-[52px] shrink-0 text-right">{t('table.updated')}</div>
+                  <div className="w-[70px] shrink-0 text-center">{t('table.status')}</div>
+                  <div className="w-[90px] shrink-0">{t('table.author')}</div>
+                  <div className="w-[60px] shrink-0 text-center">{t('table.assigned')}</div>
+                  <div className="w-[110px] shrink-0">{t('table.repo')}</div>
                   <div className="w-6 shrink-0" />
                 </div>
                 {matchedIssues.slice(0, shownIssues).map((issue) => (
@@ -247,6 +249,7 @@ export function CustomViewsTab({
   onTogglePin,
   loading,
 }: CustomViewsTabProps) {
+  const { t } = useTranslation('launchpad')
   const { savedFilters, addFilter, updateFilter, deleteFilter } = useLaunchpadStore()
   const [activeFilterId, setActiveFilterId] = useState<string | null>(savedFilters[0]?.id ?? null)
   const [showEditor, setShowEditor] = useState(false)
@@ -283,7 +286,7 @@ export function CustomViewsTab({
       <div className="flex w-52 shrink-0 flex-col border-r border-border bg-muted/5">
         <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Saved filters
+            {t('views.savedFilters')}
           </span>
           <button
             onClick={() => {
@@ -291,7 +294,7 @@ export function CustomViewsTab({
               setShowEditor(true)
             }}
             className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
-            title="New filter"
+            title={t('views.newFilter')}
           >
             <Plus className="h-3.5 w-3.5" />
           </button>
@@ -302,9 +305,9 @@ export function CustomViewsTab({
             <div className="flex flex-col items-center justify-center gap-2 px-3 py-8 text-muted-foreground/50">
               <Layers className="h-5 w-5 opacity-30" />
               <p className="text-center text-[10px]">
-                No filters yet.
+                {t('views.noFiltersTitle')}
                 <br />
-                Click + to create one.
+                {t('views.noFiltersHint')}
               </p>
             </div>
           )}
@@ -338,7 +341,7 @@ export function CustomViewsTab({
                       setShowEditor(true)
                     }}
                     className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
-                    title="Edit"
+                    title={t('views.edit')}
                   >
                     <Pencil className="h-2.5 w-2.5" />
                   </button>
@@ -350,7 +353,7 @@ export function CustomViewsTab({
                       }}
                       className="flex h-5 items-center justify-center rounded bg-destructive/10 px-1 text-[9px] font-medium text-destructive"
                     >
-                      Confirm
+                      {t('views.confirm')}
                     </button>
                   ) : (
                     <button
@@ -359,7 +362,7 @@ export function CustomViewsTab({
                         setConfirmDeleteId(f.id)
                       }}
                       className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      title="Delete"
+                      title={t('views.delete')}
                     >
                       <Trash2 className="h-2.5 w-2.5" />
                     </button>
@@ -374,39 +377,41 @@ export function CustomViewsTab({
         {activeFilter && (
           <div className="space-y-1.5 border-t border-border px-3 py-3">
             <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-              Criteria
+              {t('views.criteria')}
             </p>
             {activeFilter.titleContains && (
               <p className="text-[10px] text-muted-foreground">
-                <span className="font-medium text-foreground/70">Title:</span> &quot;
+                <span className="font-medium text-foreground/70">{t('views.criteriaTitle')}</span>{' '}
+                &quot;
                 {activeFilter.titleContains}&quot;
               </p>
             )}
             {activeFilter.authorContains && (
               <p className="text-[10px] text-muted-foreground">
-                <span className="font-medium text-foreground/70">Author:</span>{' '}
+                <span className="font-medium text-foreground/70">{t('views.criteriaAuthor')}</span>{' '}
                 {activeFilter.authorContains}
               </p>
             )}
             {activeFilter.repo && (
               <p className="text-[10px] text-muted-foreground">
-                <span className="font-medium text-foreground/70">Repo:</span> {activeFilter.repo}
+                <span className="font-medium text-foreground/70">{t('views.criteriaRepo')}</span>{' '}
+                {activeFilter.repo}
               </p>
             )}
             {activeFilter.labelContains && (
               <p className="text-[10px] text-muted-foreground">
-                <span className="font-medium text-foreground/70">Label:</span>{' '}
+                <span className="font-medium text-foreground/70">{t('views.criteriaLabel')}</span>{' '}
                 {activeFilter.labelContains}
               </p>
             )}
             {(activeFilter.statuses?.length ?? 0) > 0 && (
               <p className="text-[10px] text-muted-foreground">
-                <span className="font-medium text-foreground/70">Status:</span>{' '}
+                <span className="font-medium text-foreground/70">{t('views.criteriaStatus')}</span>{' '}
                 {activeFilter.statuses?.join(', ')}
               </p>
             )}
             {activeFilter.needsMyReview === true && (
-              <p className="text-[10px] text-muted-foreground">Needs my review</p>
+              <p className="text-[10px] text-muted-foreground">{t('filterEditor.needsMyReview')}</p>
             )}
             {!activeFilter.titleContains &&
               !activeFilter.authorContains &&
@@ -415,7 +420,7 @@ export function CustomViewsTab({
               !activeFilter.statuses?.length &&
               activeFilter.needsMyReview === undefined && (
                 <p className="text-[10px] italic text-muted-foreground/40">
-                  No criteria (matches all)
+                  {t('views.noCriteria')}
                 </p>
               )}
           </div>
@@ -432,10 +437,10 @@ export function CustomViewsTab({
               <span className="text-[10px] capitalize text-muted-foreground/60">
                 —{' '}
                 {activeFilter.type === 'both'
-                  ? 'PRs & Issues'
+                  ? t('views.typeBoth')
                   : activeFilter.type === 'prs'
-                    ? 'Pull Requests'
-                    : 'Issues'}
+                    ? t('filterEditor.typePrs')
+                    : t('filterEditor.typeIssues')}
               </span>
             </div>
             <CustomViewResults
@@ -451,8 +456,8 @@ export function CustomViewsTab({
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-muted-foreground/50">
             <Layers className="h-8 w-8 opacity-20" />
             <div className="text-center">
-              <p className="text-sm font-medium">No filter selected</p>
-              <p className="mt-1 text-xs">Create a filter to get started</p>
+              <p className="text-sm font-medium">{t('views.noFilterSelected')}</p>
+              <p className="mt-1 text-xs">{t('views.createToStart')}</p>
             </div>
             <button
               onClick={() => {
@@ -461,7 +466,7 @@ export function CustomViewsTab({
               }}
               className="flex h-8 items-center gap-2 rounded-lg border border-dashed border-border px-4 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
             >
-              <Plus className="h-3.5 w-3.5" /> New filter
+              <Plus className="h-3.5 w-3.5" /> {t('views.newFilter')}
             </button>
           </div>
         )}

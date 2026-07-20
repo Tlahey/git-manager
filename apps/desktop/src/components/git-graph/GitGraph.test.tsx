@@ -4,8 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { toast } from '@git-manager/ui'
 import type { GitGraphNode } from '@git-manager/git-types'
 
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
-
 const {
   useGitLog,
   useGitStatus,
@@ -236,13 +234,13 @@ describe('GitGraph — loading/error/empty states', () => {
   it('shows a loading indicator', () => {
     useGitLog.mockReturnValue({ data: [], isLoading: true, isError: false })
     renderGraph()
-    expect(screen.getByText('gitTree.loading')).toBeInTheDocument()
+    expect(screen.getByText("Loading history...")).toBeInTheDocument()
   })
 
   it('shows an error message', () => {
     useGitLog.mockReturnValue({ data: [], isLoading: false, isError: true })
     renderGraph()
-    expect(screen.getByText('Failed to load history')).toBeInTheDocument()
+    expect(screen.getByText("Failed to load history")).toBeInTheDocument()
   })
 
   it('shows the empty-repo initialize prompt when the log is empty (no commits yet)', () => {
@@ -790,7 +788,7 @@ describe('GitGraph — pending graph selection bridge', () => {
     useRepoUIStore.setState({ pendingGraphSelection: 'ffffffff' })
     renderGraph()
     // The i18n mock returns the bare key, so only the translation key reaches the toast.
-    await waitFor(() => expect(errorSpy).toHaveBeenCalledWith('gitTree.commitNotFound'))
+    await waitFor(() => expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('not found in the current view')))
     expect(useRepoUIStore.getState().pendingGraphSelection).toBeNull()
     errorSpy.mockRestore()
   })

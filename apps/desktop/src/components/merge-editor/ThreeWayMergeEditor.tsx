@@ -132,14 +132,14 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
             <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground/75">
               <Lock className="h-3 w-3 shrink-0 text-muted-foreground/45" />
               <span className="truncate">
-                Rebasing{' '}
+                {t('mergeEditor.rebasing')}{' '}
                 <span
                   data-testid="merge-rebase-commit-sha"
                   className="font-mono font-medium text-foreground/90"
                 >
                   {commitSha}
                 </span>{' '}
-                from{' '}
+                {t('mergeEditor.from')}{' '}
                 <strong className="font-semibold text-foreground/95">theirs</strong>
               </span>
             </div>
@@ -148,7 +148,9 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
         {
           status: (
             <div className="truncate text-muted-foreground/70">
-              <span className="mr-1 text-xs font-semibold text-foreground/95">Result</span>
+              <span className="mr-1 text-xs font-semibold text-foreground/95">
+                {t('mergeEditor.result')}
+              </span>
               <span className="font-mono text-muted-foreground/85">{fileName}</span>
             </div>
           ),
@@ -159,7 +161,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
             <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground/75">
               <Lock className="h-3 w-3 shrink-0 text-muted-foreground/45" />
               <span className="truncate">
-                Already rebased commits and commits from{' '}
+                {t('mergeEditor.alreadyRebased')}{' '}
                 <strong className="font-semibold text-foreground/95">ours</strong>
               </span>
             </div>

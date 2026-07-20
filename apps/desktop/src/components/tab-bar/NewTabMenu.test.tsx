@@ -45,10 +45,10 @@ describe('NewTabMenu', () => {
   it('lists the three menu items', async () => {
     const user = userEvent.setup()
     render(<NewTabMenu />)
-    await user.click(screen.getByTitle('Nouveau'))
-    expect(screen.getByText('Ouvrir un dossier')).toBeInTheDocument()
-    expect(screen.getByText('Cloner un dépôt')).toBeInTheDocument()
-    expect(screen.getByText('Créer un dépôt')).toBeInTheDocument()
+    await user.click(screen.getByTitle("New"))
+    expect(screen.getByText("Open a folder")).toBeInTheDocument()
+    expect(screen.getByText("Clone a repository")).toBeInTheDocument()
+    expect(screen.getByText("Create a repository")).toBeInTheDocument()
   })
 
   it('opens a folder, adds and activates the repo', async () => {
@@ -56,8 +56,8 @@ describe('NewTabMenu', () => {
     mockedOpenRepo.mockResolvedValue(repo())
     const user = userEvent.setup()
     render(<NewTabMenu />)
-    await user.click(screen.getByTitle('Nouveau'))
-    await user.click(screen.getByText('Ouvrir un dossier'))
+    await user.click(screen.getByTitle("New"))
+    await user.click(screen.getByText("Open a folder"))
 
     expect(mockedOpenRepo).toHaveBeenCalledWith('/repo/a')
     expect(useRepoDataStore.getState().savedRepos.map((r) => r.path)).toContain('/repo/a')
@@ -68,8 +68,8 @@ describe('NewTabMenu', () => {
     dialogOpen.mockResolvedValue(null)
     const user = userEvent.setup()
     render(<NewTabMenu />)
-    await user.click(screen.getByTitle('Nouveau'))
-    await user.click(screen.getByText('Ouvrir un dossier'))
+    await user.click(screen.getByTitle("New"))
+    await user.click(screen.getByText("Open a folder"))
     expect(mockedOpenRepo).not.toHaveBeenCalled()
   })
 
@@ -78,8 +78,8 @@ describe('NewTabMenu', () => {
     mockedOpenRepo.mockRejectedValue(new Error('not a git repo'))
     const user = userEvent.setup()
     render(<NewTabMenu />)
-    await user.click(screen.getByTitle('Nouveau'))
-    await expect(user.click(screen.getByText('Ouvrir un dossier'))).resolves.toBeUndefined()
+    await user.click(screen.getByTitle("New"))
+    await expect(user.click(screen.getByText("Open a folder"))).resolves.toBeUndefined()
     expect(useRepoDataStore.getState().savedRepos).toEqual([])
   })
 
@@ -88,8 +88,8 @@ describe('NewTabMenu', () => {
     mockedInitRepo.mockResolvedValue(repo({ path: '/repo/new', name: 'new' }))
     const user = userEvent.setup()
     render(<NewTabMenu />)
-    await user.click(screen.getByTitle('Nouveau'))
-    await user.click(screen.getByText('Créer un dépôt'))
+    await user.click(screen.getByTitle("New"))
+    await user.click(screen.getByText("Create a repository"))
 
     expect(mockedInitRepo).toHaveBeenCalledWith('/repo/new')
     expect(useRepoUIStore.getState().activeRepo).toBe('/repo/new')
@@ -98,8 +98,8 @@ describe('NewTabMenu', () => {
   it('opens the clone dialog', async () => {
     const user = userEvent.setup()
     render(<NewTabMenu />)
-    await user.click(screen.getByTitle('Nouveau'))
-    await user.click(screen.getByText('Cloner un dépôt'))
+    await user.click(screen.getByTitle("New"))
+    await user.click(screen.getByText("Clone a repository"))
     expect(screen.getByTestId('clone-dialog')).toBeInTheDocument()
   })
 })

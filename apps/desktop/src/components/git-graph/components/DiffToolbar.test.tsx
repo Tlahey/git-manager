@@ -4,8 +4,6 @@ import userEvent from '@testing-library/user-event'
 import type { GitDiffFile } from '@git-manager/git-types'
 import { DiffToolbar } from './DiffToolbar'
 
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
-
 function diffFile(overrides: Partial<GitDiffFile> = {}): GitDiffFile {
   return {
     oldPath: 'a.ts',
@@ -87,7 +85,7 @@ describe('DiffToolbar — status badge', () => {
         {...baseProps({ diffData: diffFile({ status: 'added', additions: 10, deletions: 2 }) })}
       />
     )
-    expect(screen.getByText('Added')).toBeInTheDocument()
+    expect(screen.getByText("Added")).toBeInTheDocument()
     expect(screen.getByText('+10')).toBeInTheDocument()
     expect(screen.getByText('-2')).toBeInTheDocument()
   })
@@ -103,14 +101,14 @@ describe('DiffToolbar — status badge', () => {
         {...baseProps({ diffData: diffFile(), isWip: true, file: { path: 'a', staged: false } })}
       />
     )
-    expect(screen.getByText('Unstaged')).toBeInTheDocument()
+    expect(screen.getByText("Unstaged")).toBeInTheDocument()
 
     rerender(
       <DiffToolbar
         {...baseProps({ diffData: diffFile(), isWip: true, file: { path: 'a', staged: true } })}
       />
     )
-    expect(screen.getByText('Staged')).toBeInTheDocument()
+    expect(screen.getByText("Staged")).toBeInTheDocument()
 
     rerender(<DiffToolbar {...baseProps({ diffData: diffFile(), isWip: false })} />)
     expect(screen.queryByText('Staged')).not.toBeInTheDocument()
@@ -123,9 +121,9 @@ describe('DiffToolbar — tabs', () => {
     const onChangeActiveTab = vi.fn()
     const user = userEvent.setup()
     render(<DiffToolbar {...baseProps({ onChangeActiveTab })} />)
-    await user.click(screen.getByText('File'))
+    await user.click(screen.getByText("File"))
     expect(onChangeActiveTab).toHaveBeenCalledWith('file')
-    await user.click(screen.getByText('Diff'))
+    await user.click(screen.getByText("Diff"))
     expect(onChangeActiveTab).toHaveBeenCalledWith('diff')
   })
 })
@@ -135,7 +133,7 @@ describe('DiffToolbar — blame/history panel toggle', () => {
     const onChangeActiveLeftPanel = vi.fn()
     const user = userEvent.setup()
     render(<DiffToolbar {...baseProps({ onChangeActiveLeftPanel, activeLeftPanel: 'sidebar' })} />)
-    await user.click(screen.getByTitle('Git Blame'))
+    await user.click(screen.getByTitle("Git Blame"))
     expect(onChangeActiveLeftPanel).toHaveBeenCalledWith('blame')
   })
 
@@ -143,7 +141,7 @@ describe('DiffToolbar — blame/history panel toggle', () => {
     const onChangeActiveLeftPanel = vi.fn()
     const user = userEvent.setup()
     render(<DiffToolbar {...baseProps({ onChangeActiveLeftPanel, activeLeftPanel: 'blame' })} />)
-    await user.click(screen.getByTitle('Git Blame'))
+    await user.click(screen.getByTitle("Git Blame"))
     expect(onChangeActiveLeftPanel).toHaveBeenCalledWith('sidebar')
   })
 
@@ -151,7 +149,7 @@ describe('DiffToolbar — blame/history panel toggle', () => {
     const onChangeActiveLeftPanel = vi.fn()
     const user = userEvent.setup()
     render(<DiffToolbar {...baseProps({ onChangeActiveLeftPanel, activeLeftPanel: 'sidebar' })} />)
-    await user.click(screen.getByTitle('File History'))
+    await user.click(screen.getByTitle("File History"))
     expect(onChangeActiveLeftPanel).toHaveBeenCalledWith('history')
   })
 })
@@ -180,7 +178,7 @@ describe('DiffToolbar — WIP actions', () => {
         })}
       />
     )
-    await user.click(screen.getByText('Stage File'))
+    await user.click(screen.getByText("Stage File"))
     expect(onToggleStage).toHaveBeenCalledOnce()
   })
 
@@ -190,14 +188,14 @@ describe('DiffToolbar — WIP actions', () => {
         {...baseProps({ isWip: true, diffData: diffFile(), file: { path: 'a', staged: true } })}
       />
     )
-    expect(screen.getByText('Unstage')).toBeInTheDocument()
+    expect(screen.getByText("Unstage")).toBeInTheDocument()
   })
 
   it('calls onRollback from the Discard button', async () => {
     const onRollback = vi.fn()
     const user = userEvent.setup()
     render(<DiffToolbar {...baseProps({ isWip: true, diffData: diffFile(), onRollback })} />)
-    await user.click(screen.getByText('Discard'))
+    await user.click(screen.getByText("Discard"))
     expect(onRollback).toHaveBeenCalledOnce()
   })
 
@@ -205,8 +203,8 @@ describe('DiffToolbar — WIP actions', () => {
     render(
       <DiffToolbar {...baseProps({ isWip: true, diffData: diffFile(), isProcessing: true })} />
     )
-    expect(screen.getByText('Stage File').closest('button')).toBeDisabled()
-    expect(screen.getByText('Discard').closest('button')).toBeDisabled()
+    expect(screen.getByText("Stage File").closest('button')).toBeDisabled()
+    expect(screen.getByText("Discard").closest('button')).toBeDisabled()
   })
 })
 
@@ -215,8 +213,8 @@ describe('DiffToolbar — close', () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
     render(<DiffToolbar {...baseProps({ onClose })} />)
-    await user.click(screen.getByTitle('Back to graph'))
-    await user.click(screen.getByTitle('Close'))
+    await user.click(screen.getByTitle("Back to graph"))
+    await user.click(screen.getByTitle("Close"))
     expect(onClose).toHaveBeenCalledTimes(2)
   })
 })
