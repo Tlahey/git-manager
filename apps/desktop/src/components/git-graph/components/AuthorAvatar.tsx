@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { Archive } from 'lucide-react'
+import { Avatar } from '@git-manager/ui'
 import { getAvatarUrl } from '../../../lib/avatar'
 import { getAuthorInitials } from './GraphAvatarTooltip'
 
@@ -51,7 +51,6 @@ export function AuthorAvatar({
   className = 'h-4 w-4 text-[7px]',
 }: AuthorAvatarProps) {
   const avatarUrl = getAvatarUrl(email, name)
-  const [imgError, setImgError] = useState(false)
 
   if (isStash) {
     return (
@@ -65,21 +64,13 @@ export function AuthorAvatar({
   }
 
   return (
-    <div
-      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full font-bold text-white ${className}`}
-      style={{ backgroundColor: avatarUrl && !imgError ? undefined : getAuthorColor(name) }}
-      title={name}
-    >
-      {avatarUrl && !imgError ? (
-        <img
-          src={avatarUrl}
-          alt={name}
-          className="h-full w-full object-cover"
-          onError={() => setImgError(true)}
-        />
-      ) : (
-        getAuthorInitials(name)
-      )}
-    </div>
+    <Avatar
+      src={avatarUrl}
+      alt={name}
+      fallback={getAuthorInitials(name)}
+      className={className}
+      // Name-hashed fill behind the initials; the image (when present) covers it.
+      style={{ backgroundColor: getAuthorColor(name) }}
+    />
   )
 }

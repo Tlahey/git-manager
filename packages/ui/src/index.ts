@@ -33,6 +33,9 @@ export type { KbdProps } from './components/kbd'
 export { Progress } from './components/progress'
 export type { ProgressProps } from './components/progress'
 
+export { Avatar } from './components/avatar'
+export type { AvatarProps } from './components/avatar'
+
 export { Checkbox } from './components/checkbox'
 export type { CheckboxProps } from './components/checkbox'
 

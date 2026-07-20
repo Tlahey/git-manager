@@ -50,6 +50,7 @@ import {
   Alert,
   Kbd,
   Progress,
+  Avatar,
   toast,
 } from '../src'
 
@@ -261,6 +262,21 @@ export const Overview: Story = {
           <Alert variant="warning">This worktree has uncommitted changes.</Alert>
           <Alert variant="info">Fetch runs automatically every minute.</Alert>
         </div>
+      </Section>
+
+      <Section title="Avatar — image + initials fallback">
+        {/* White initials sit on the caller's fallback background — the story uses the
+            darker end of the branch palette where white clears contrast. */}
+        <Avatar alt="Ada Lovelace" fallback="AL" size={32} style={{ backgroundColor: '#7c3aed' }} />
+        <Avatar alt="Grace Hopper" fallback="GH" size={32} style={{ backgroundColor: '#2563eb' }} />
+        <Avatar alt="Alan Turing" fallback="AT" size={32} style={{ backgroundColor: '#15803d' }} />
+        <Avatar
+          alt="Square avatar"
+          fallback="SQ"
+          size={32}
+          square
+          style={{ backgroundColor: '#be185d' }}
+        />
       </Section>
 
       <Section title="Kbd — shortcut keys">
