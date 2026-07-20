@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 
-interface TagInputProps {
+export interface TagInputProps {
   tags: string[]
   onChange: (tags: string[]) => void
   placeholder?: string

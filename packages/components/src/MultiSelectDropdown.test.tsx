@@ -12,6 +12,9 @@ function renderDropdown(props: Partial<React.ComponentProps<typeof MultiSelectDr
       selected={new Set()}
       onToggle={vi.fn()}
       onClear={vi.fn()}
+      clearAllLabel="Clear all"
+      emptyLabel="No options available"
+      selectedLabel={(n) => `${n} selected`}
       {...props}
     />
   )
@@ -72,6 +75,9 @@ describe('MultiSelectDropdown — opening', () => {
           selected={new Set()}
           onToggle={vi.fn()}
           onClear={vi.fn()}
+          clearAllLabel="Clear all"
+          emptyLabel="No options available"
+          selectedLabel={(n) => `${n} selected`}
         />
         <button>outside</button>
       </div>

@@ -23,7 +23,7 @@ import { StateTags } from './StateTags'
 import { FetchButton } from './FetchButton'
 import { BranchButton } from './BranchButton'
 import { RunButton } from './RunButton'
-import { ToolbarButton } from './ToolbarButton'
+import { ToolbarButton } from '@git-manager/components'
 
 /** Barre d'actions principale (Partie 2) située sous les onglets. */
 export function ActionToolbar() {

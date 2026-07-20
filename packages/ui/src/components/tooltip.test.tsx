@@ -1,30 +1,289 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './tooltip'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, renderHook, act } from '@testing-library/react'
+import { createRef } from 'react'
+import { Tooltip, useImperativeTooltip } from './tooltip'
 
-describe('Tooltip', () => {
-  it('renders the trigger', () => {
+function stubRect(el: Element, rect: Partial<DOMRect>) {
+  vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
+    top: 0,
+    left: 0,
+    bottom: 0,
+    right: 0,
+    width: 0,
+    height: 0,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+    ...rect,
+  } as DOMRect)
+}
+
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+  vi.restoreAllMocks()
+})
+
+describe('Tooltip — show/hide timing', () => {
+  it('does not render the tooltip initially', () => {
     render(
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger>Hover me</TooltipTrigger>
-          <TooltipContent>Tip text</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Tooltip content="Hello">
+        <button>Trigger</button>
+      </Tooltip>
     )
-    expect(screen.getByText('Hover me')).toBeInTheDocument()
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
 
-  it('reveals the content on focus with role="tooltip"', async () => {
+  it('shows the tooltip after the default delay on hover', () => {
     render(
-      <TooltipProvider delayDuration={0}>
-        <Tooltip>
-          <TooltipTrigger>Info</TooltipTrigger>
-          <TooltipContent>Helpful tip</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Tooltip content="Hello">
+        <button>Trigger</button>
+      </Tooltip>
     )
-    screen.getByText('Info').focus()
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Helpful tip')
+    fireEvent.mouseEnter(screen.getByText('Trigger'))
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+
+    act(() => vi.advanceTimersByTime(150))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Hello')
+  })
+
+  it('respects a custom delay', () => {
+    render(
+      <Tooltip content="Hello" delay={500}>
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    fireEvent.mouseEnter(screen.getByText('Trigger'))
+    act(() => vi.advanceTimersByTime(150))
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+
+    act(() => vi.advanceTimersByTime(350))
+    expect(screen.getByRole('tooltip')).toBeInTheDocument()
+  })
+
+  it('hides immediately on mouse leave, even before the delay elapses', () => {
+    render(
+      <Tooltip content="Hello">
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    fireEvent.mouseEnter(screen.getByText('Trigger'))
+    fireEvent.mouseLeave(screen.getByText('Trigger'))
+    act(() => vi.advanceTimersByTime(150))
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('hides an already-visible tooltip on mouse leave', () => {
+    render(
+      <Tooltip content="Hello">
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    fireEvent.mouseEnter(screen.getByText('Trigger'))
+    act(() => vi.advanceTimersByTime(150))
+    expect(screen.getByRole('tooltip')).toBeInTheDocument()
+
+    fireEvent.mouseLeave(screen.getByText('Trigger'))
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('shows on focus and hides on blur', () => {
+    render(
+      <Tooltip content="Hello">
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    fireEvent.focus(screen.getByText('Trigger'))
+    act(() => vi.advanceTimersByTime(150))
+    expect(screen.getByRole('tooltip')).toBeInTheDocument()
+
+    fireEvent.blur(screen.getByText('Trigger'))
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('never shows when disabled', () => {
+    render(
+      <Tooltip content="Hello" disabled>
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    fireEvent.mouseEnter(screen.getByText('Trigger'))
+    act(() => vi.advanceTimersByTime(1000))
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('still invokes the child element own mouse/focus handlers', () => {
+    const onMouseEnter = vi.fn()
+    const onBlur = vi.fn()
+    render(
+      <Tooltip content="Hello">
+        <button onMouseEnter={onMouseEnter} onBlur={onBlur}>
+          Trigger
+        </button>
+      </Tooltip>
+    )
+    fireEvent.mouseEnter(screen.getByText('Trigger'))
+    fireEvent.blur(screen.getByText('Trigger'))
+    expect(onMouseEnter).toHaveBeenCalledOnce()
+    expect(onBlur).toHaveBeenCalledOnce()
+  })
+
+  it('clears the pending timer on unmount so no late state update occurs', () => {
+    const { unmount } = render(
+      <Tooltip content="Hello">
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    fireEvent.mouseEnter(screen.getByText('Trigger'))
+    unmount()
+    expect(() => act(() => vi.advanceTimersByTime(150))).not.toThrow()
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+})
+
+describe('Tooltip — accessibility', () => {
+  it('wires the trigger to the bubble via aria-describedby only while visible', () => {
+    render(
+      <Tooltip content="Hello">
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    const trigger = screen.getByText('Trigger')
+    expect(trigger).not.toHaveAttribute('aria-describedby')
+
+    fireEvent.mouseEnter(trigger)
+    act(() => vi.advanceTimersByTime(150))
+
+    const describedBy = trigger.getAttribute('aria-describedby')
+    expect(describedBy).toBeTruthy()
+    expect(screen.getByRole('tooltip')).toHaveAttribute('id', describedBy)
+
+    fireEvent.mouseLeave(trigger)
+    expect(trigger).not.toHaveAttribute('aria-describedby')
+  })
+
+  it('preserves an existing aria-describedby on the child when hidden', () => {
+    render(
+      <Tooltip content="Hello">
+        <button aria-describedby="external-hint">Trigger</button>
+      </Tooltip>
+    )
+    expect(screen.getByText('Trigger')).toHaveAttribute('aria-describedby', 'external-hint')
+  })
+
+  it('dismisses on Escape and forwards the child own onKeyDown', () => {
+    const onKeyDown = vi.fn()
+    render(
+      <Tooltip content="Hello">
+        <button onKeyDown={onKeyDown}>Trigger</button>
+      </Tooltip>
+    )
+    const trigger = screen.getByText('Trigger')
+    fireEvent.mouseEnter(trigger)
+    act(() => vi.advanceTimersByTime(150))
+    expect(screen.getByRole('tooltip')).toBeInTheDocument()
+
+    fireEvent.keyDown(trigger, { key: 'Escape' })
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    expect(onKeyDown).toHaveBeenCalledOnce()
+  })
+})
+
+describe('Tooltip — ref forwarding', () => {
+  it('forwards the DOM node to an existing object ref on the child', () => {
+    const externalRef = createRef<HTMLButtonElement>()
+    render(
+      <Tooltip content="Hello">
+        <button ref={externalRef}>Trigger</button>
+      </Tooltip>
+    )
+    expect(externalRef.current).toBeInstanceOf(HTMLButtonElement)
+  })
+
+  it('forwards the DOM node to an existing function ref on the child', () => {
+    const fnRef = vi.fn()
+    render(
+      <Tooltip content="Hello">
+        <button ref={fnRef}>Trigger</button>
+      </Tooltip>
+    )
+    expect(fnRef).toHaveBeenCalledWith(expect.any(HTMLButtonElement))
+  })
+})
+
+describe('Tooltip — positioning', () => {
+  it('places the bubble below the trigger and flips away from an edge that does not fit', () => {
+    const { container } = render(
+      <Tooltip content="Hello" placement="top">
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    const trigger = screen.getByText('Trigger')
+    // Near the very top of the viewport: a "top" placement would go negative and not fit.
+    stubRect(trigger, { top: 2, left: 500, right: 600, bottom: 22, width: 100, height: 20 })
+
+    fireEvent.mouseEnter(trigger)
+    act(() => vi.advanceTimersByTime(150))
+
+    const bubble = container.ownerDocument.querySelector('[role="tooltip"]') as HTMLElement
+    expect(bubble.style.top).toBe('28px') // trigger.bottom(22) + scrollY(0) + GAP(6)
+    expect(bubble.style.left).toBe('550px') // trigger.left(500) + width/2(50)
+  })
+
+  it('clamps the bubble within the viewport instead of overflowing', () => {
+    const { container } = render(
+      <Tooltip content="Hello" placement="right">
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    const trigger = screen.getByText('Trigger')
+    // Far right edge: a "right" placement would overflow past window.innerWidth.
+    stubRect(trigger, {
+      top: 300,
+      left: window.innerWidth - 10,
+      right: window.innerWidth,
+      bottom: 320,
+      width: 10,
+      height: 20,
+    })
+
+    fireEvent.mouseEnter(trigger)
+    act(() => vi.advanceTimersByTime(150))
+
+    const bubble = container.ownerDocument.querySelector('[role="tooltip"]') as HTMLElement
+    expect(Number(bubble.style.left.replace('px', ''))).toBeLessThanOrEqual(window.innerWidth - 4)
+  })
+})
+
+function ImperativeTooltipHost({ el }: { el: HTMLElement }) {
+  const { show, hide, portal } = useImperativeTooltip()
+  return (
+    <>
+      <button onClick={() => show('Cell info', el)}>show</button>
+      <button onClick={hide}>hide</button>
+      {portal}
+    </>
+  )
+}
+
+describe('useImperativeTooltip', () => {
+  it('starts with no portal', () => {
+    const { result } = renderHook(() => useImperativeTooltip())
+    expect(result.current.portal).toBeNull()
+  })
+
+  it('show() renders a tooltip near the given element, hide() removes it', () => {
+    const el = document.createElement('div')
+    stubRect(el, { top: 100, left: 50, width: 40, height: 20 })
+    render(<ImperativeTooltipHost el={el} />)
+
+    fireEvent.click(screen.getByText('show'))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Cell info')
+
+    fireEvent.click(screen.getByText('hide'))
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
 })

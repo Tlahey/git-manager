@@ -71,6 +71,15 @@ Before adding non-trivial logic to a component, hook, or store, see [.claude/ski
 - Add `data-testid` attributes to interactive/structural elements (buttons, rows, panels) to ease debugging — no test framework currently consumes these, but the convention is followed throughout the codebase.
 - Do not attempt to browser-test this app (see note above) — it's Tauri-only.
 
+### UI components: consume-first (do not re-invent primitives)
+
+**Before writing any UI, reach for the shared component libraries — do not hand-roll it.**
+
+- **Import from `@git-manager/ui` first** (low-level primitives) and **`@git-manager/components`** (composed, still domain-agnostic building blocks). `packages/ui/src/index.ts` is the source-of-truth inventory — read it before styling anything. It already ships `Button`, `Badge`/`NumberBadge`, `Chip`, `Tag`, `Alert`, `Card`, `Input`, `Textarea`, `NativeSelect`, `Select`, `Checkbox`, `Switch`, `RadioGroup`, `Label`, `Skeleton`, `Spinner`, `Kbd`, `Progress`, `Avatar`, `Dialog`, `Popover`, `Tooltip` (+ `useImperativeTooltip`), `DropdownMenu`, `ContextMenu`, `Command`, `ScrollArea`, `Separator`, `toast`/`Toaster`, and `cn`.
+- **Do not re-implement a primitive with raw Tailwind** (an ad-hoc `<button className="...">`, a bespoke tooltip, a custom badge/pill, a `title=` attribute used as a tooltip, etc.). The shared components are **accessibility-audited** — APCA contrast gates enforced by `@git-manager/theme`, correct ARIA roles, keyboard/focus support. Re-rolling one silently drops those guarantees and forks the design system. If a shared component looks like it's _almost_ right, extend it (a new variant/prop) rather than cloning it locally.
+- **If a genuinely new primitive is needed, build it _in the package_, never inline in the app.** Add it to `packages/ui` (primitive) or `packages/components` (composed), **validate every case** — all variants/states, accessibility (contrast + ARIA + keyboard), and a co-located `*.test.tsx` — export it via the package `index.ts`, then consume it from `apps/desktop`. A one-off styled element inside a feature component is the anti-pattern this rule exists to prevent.
+- See the **`reusable-components`** skill for the placement decision (`ui` vs `components` vs stays in `apps/desktop`) and **`architecture-guardian`** for splitting.
+
 ### Monorepo packages
 
 | Package              | Purpose                                                                                                        |
@@ -79,7 +88,8 @@ Before adding non-trivial logic to a component, hook, or store, see [.claude/ski
 | `packages/git-types` | Shared TypeScript DTOs mirroring the Rust `serde` structs used over IPC                                        |
 | `packages/ai`        | The app's AI brain: `AiPresetId`/`AiProtocol` + `AI_PRESETS` registry, the connection-only `AiConnectionConfig` (persisted in Settings — no instructions/temperature there), and the **feature runtime** (`AiFeature` descriptors under `features/`, each owning its instruction + temperature + prompt-building, and — for completion features — an optional JSON `schema` for structured output; `createStreamingService`/`createCompletionService` turn one into a typed "service per feature"). Two shipped features: `commitMessageFeature` (streaming, one commit's message) and `fileGroupingFeature` (completion + JSON schema → `ProposedCommit[]`, splitting all working changes into a reviewable commit plan). Add a new AI capability here, not in Rust. |
 | `packages/i18n`      | `react-i18next` setup + `en`/`fr` locale JSON (namespaces: `common`, `git`, `dashboard`, `settings`, `errors`) |
-| `packages/ui`        | shadcn/ui + Radix primitive components, Tailwind-based                                                         |
+| `packages/ui`        | shadcn/ui + Radix primitive components, Tailwind-based (accessibility-audited — consume before hand-rolling)   |
+| `packages/components` | Composed, domain-agnostic presentational building blocks one level up from `ui` (`SplitButton`, `StepRailRow`, `useFileTree`…) — no IPC/store/domain types                                                    |
 | `packages/config`    | Shared Oxlint config, Tailwind preset, base `tsconfig.json`                                                    |
 
 ### State management

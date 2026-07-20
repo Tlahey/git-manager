@@ -1,5 +1,5 @@
 import { CheckCircle2, XCircle, Loader2, Circle } from 'lucide-react'
-import { Tooltip } from '../../../components/ui/Tooltip'
+import { Tooltip } from '@git-manager/ui'
 import type { PRStatus, CiStatus, CiDetail } from '../types'
 
 const STATUS_CONFIG: Record<PRStatus, { label: string; className: string }> = {

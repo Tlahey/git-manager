@@ -1,7 +1,7 @@
 import React from 'react'
 import { Skeleton, Card } from '@git-manager/ui'
 
-interface KpiCardProps {
+export interface KpiCardProps {
   icon: React.ReactNode
   label: string
   value: string | number

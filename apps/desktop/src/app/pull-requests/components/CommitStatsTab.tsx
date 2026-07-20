@@ -1,7 +1,7 @@
 import { GitCommit, Activity, TrendingUp, Star, BarChart2 } from 'lucide-react'
 import { Skeleton, Progress, Card } from '@git-manager/ui'
+import { KpiCard } from '@git-manager/components'
 import type { DayCommit } from '../types'
-import { KpiCard } from './KpiCard'
 import { YearHeatmap } from './YearHeatmap'
 
 interface CommitStatsTabProps {

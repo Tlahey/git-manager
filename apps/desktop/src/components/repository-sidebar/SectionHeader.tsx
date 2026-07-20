@@ -1,4 +1,5 @@
 import { ChevronDown, ChevronRight, Filter } from 'lucide-react'
+import { useTranslation } from '@git-manager/i18n'
 
 interface SectionHeaderProps {
   title: string
@@ -23,6 +24,7 @@ export function SectionHeader({
   testId,
   isFiltered = false,
 }: SectionHeaderProps) {
+  const { t } = useTranslation('git')
   return (
     <div className="group/header relative flex items-center">
       <button
@@ -48,7 +50,10 @@ export function SectionHeader({
             }`}
           >
             {isFiltered && (
-              <Filter className="h-2.5 w-2.5 text-primary" aria-label="Résultats filtrés" />
+              <Filter
+                className="h-2.5 w-2.5 text-primary"
+                aria-label={t('sidebar.filteredResults')}
+              />
             )}
             {count}
           </span>

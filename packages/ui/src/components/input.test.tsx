@@ -53,6 +53,23 @@ describe('Input', () => {
     expect(el.className).not.toMatch(/placeholder:text-sidebar-accent-foreground\/\d/)
   })
 
+  it('defaults to the md size (36px field, text-sm, with shadow)', () => {
+    render(<Input data-testid="input" />)
+    const el = screen.getByTestId('input')
+    expect(el.className).toContain('h-9')
+    expect(el.className).toContain('text-sm')
+    expect(el.className).toContain('shadow-sm')
+  })
+
+  it('applies the sm size (compact 28px field, text-xs, no shadow)', () => {
+    render(<Input inputSize="sm" data-testid="input" />)
+    const el = screen.getByTestId('input')
+    expect(el.className).toContain('h-7')
+    expect(el.className).toContain('text-xs')
+    expect(el.className).not.toContain('h-9')
+    expect(el.className).not.toContain('shadow-sm')
+  })
+
   it('renders start/end icon slots and pads the field for them', () => {
     render(
       <Input

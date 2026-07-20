@@ -65,7 +65,7 @@ describe('CiBadge — with details tooltip', () => {
 
   it('reveals the per-step CI details after the hover delay', () => {
     render(<CiBadge status="success" details={details} />)
-    // components/ui/Tooltip clones the mouse handlers directly onto the badge span (no extra
+    // @git-manager/ui Tooltip clones the mouse handlers directly onto the badge span (no extra
     // wrapper element) and shows its portal-rendered content after a delay — not based on
     // text overflow (that's a different component, HoverExpandLabel).
     fireEvent.mouseEnter(screen.getByText('Pass'))

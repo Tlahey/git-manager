@@ -1,7 +1,7 @@
 import React from 'react'
 import { Skeleton } from '@git-manager/ui'
 
-interface InnerTabProps {
+export interface InnerTabProps {
   active: boolean
   onClick: () => void
   children: React.ReactNode

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation, i18next } from '@git-manager/i18n'
 import { Button, Input, Separator, Checkbox, NativeSelect } from '@git-manager/ui'
-import { TagInput } from './TagInput'
+import { TagInput } from '@git-manager/components'
 import { UpdateCheck } from './UpdateCheck'
 import { useSettingsStore } from '../../../stores/settings.store'
 

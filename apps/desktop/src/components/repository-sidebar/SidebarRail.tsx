@@ -8,6 +8,7 @@ import {
   GitFork,
   Archive as ArchiveIcon,
 } from 'lucide-react'
+import { NumberBadge } from '@git-manager/ui'
 import type { GitRef, GitSubmodule } from '@git-manager/git-types'
 import { useBranches } from '../../hooks/useBranches'
 import { usePullRequests } from '../../hooks/usePullRequests'
@@ -38,11 +39,10 @@ function RailIcon({ icon, label, count, onClick }: RailIconProps) {
       className="group/rail relative flex h-10 w-full items-center justify-center text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
     >
       {icon}
-      {count !== undefined && count > 0 && (
-        <span className="absolute right-1 top-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary/80 px-0.5 text-[8px] font-bold tabular-nums text-primary-foreground">
-          {count > 99 ? '99+' : count}
-        </span>
-      )}
+      <NumberBadge
+        count={count ?? 0}
+        className="absolute right-1 top-1 h-3.5 min-h-0 min-w-[14px] px-0.5 text-[8px]"
+      />
     </button>
   )
 }

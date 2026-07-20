@@ -25,9 +25,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  Tooltip,
 } from '@git-manager/ui'
 import { highlightMatch } from '@git-manager/components'
-import { Tooltip } from '../ui/Tooltip'
 import { copyWithToast } from '../../lib/clipboard'
 import type { GitBranch, GitWorktree, PullRequest, GitStash } from '@git-manager/git-types'
 import type { WorktreeWipStatus } from '../../hooks/useWorktreeWipStatuses'

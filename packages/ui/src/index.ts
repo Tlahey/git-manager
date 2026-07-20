@@ -19,7 +19,7 @@ export { ScrollArea, ScrollBar } from './components/scroll-area'
 export { Separator } from './components/separator'
 
 export { Input } from './components/input'
-export type { InputProps, InputVariant } from './components/input'
+export type { InputProps, InputVariant, InputSize } from './components/input'
 
 export { Textarea } from './components/textarea'
 export type { TextareaProps } from './components/textarea'
@@ -80,7 +80,8 @@ export {
 
 export { Popover, PopoverTrigger, PopoverAnchor, PopoverContent } from './components/popover'
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './components/tooltip'
+export { Tooltip, useImperativeTooltip } from './components/tooltip'
+export type { TooltipProps } from './components/tooltip'
 
 export {
   Select,
