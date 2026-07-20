@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, ScrollArea, Alert } from '@git-manager/ui'
+import { Button, Input, ScrollArea, Alert, Tag } from '@git-manager/ui'
 import {
   ArrowLeft,
   Check,
@@ -364,9 +364,9 @@ export function GithubSection() {
                                 {acc.user.name || acc.user.login}
                               </span>
                               {isActive && (
-                                <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-semibold leading-none text-emerald-500 ring-1 ring-emerald-500/20">
+                                <Tag tone="success" className="rounded-full text-[8px] leading-none">
                                   {t('settings.github.activeAccount')}
-                                </span>
+                                </Tag>
                               )}
                             </div>
                             <span className="truncate text-[10px] text-muted-foreground">

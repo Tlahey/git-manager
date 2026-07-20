@@ -34,6 +34,7 @@ import {
   Input,
   ScrollArea,
   Kbd,
+  Tag,
 } from '@git-manager/ui'
 import type { Section } from '../../app/settings/SettingsPage'
 
@@ -185,10 +186,10 @@ export function Footer({ onOpenSettings }: FooterProps) {
               <Terminal className="h-3.5 w-3.5 text-primary/70" />
               <span>{currentRepo?.name || activeTab.split('/').pop()}</span>
               {copied ? (
-                <span className="animate-fade-in flex shrink-0 items-center gap-1 rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-normal text-emerald-500">
+                <Tag tone="success" className="animate-fade-in shrink-0 font-normal">
                   <ClipboardCheck className="h-2.5 w-2.5" />
                   {t('footer.copiedPath')}
-                </span>
+                </Tag>
               ) : (
                 <ClipboardCopy className="h-2.5 w-2.5 shrink-0 text-muted-foreground/60 opacity-0 transition-opacity group-hover:opacity-100" />
               )}
