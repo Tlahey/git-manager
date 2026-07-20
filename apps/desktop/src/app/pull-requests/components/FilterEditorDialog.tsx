@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Sliders, CheckCircle2, Save } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@git-manager/ui'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, NativeSelect } from '@git-manager/ui'
 import type { SavedFilter, FilterType, FilterStatus } from '../../../stores/launchpad.store'
 
 const ALL_STATUSES: FilterStatus[] = [
@@ -118,7 +118,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                 Emoji
               </label>
               <div className="relative">
-                <select
+                <NativeSelect
                   value={form.emoji}
                   onChange={(e) => set('emoji', e.target.value)}
                   className="h-8 appearance-none rounded-md border border-border bg-background px-2 pr-6 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -129,7 +129,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                       {e}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
             </div>
           </div>

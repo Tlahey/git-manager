@@ -45,6 +45,8 @@ import {
   Label,
   RadioGroup,
   RadioGroupItem,
+  NativeSelect,
+  Skeleton,
   toast,
 } from '../src'
 
@@ -232,6 +234,32 @@ export const Overview: Story = {
 
       <Section title="Form controls — Checkbox / Switch / Radio / Label">
         <FormControlsDemo />
+      </Section>
+
+      <Section title="NativeSelect">
+        <div style={{ width: 200 }}>
+          <NativeSelect aria-label="Branch" defaultValue="main">
+            <option value="main">main</option>
+            <option value="develop">develop</option>
+            <option value="feature">feature/ui</option>
+          </NativeSelect>
+        </div>
+        <div style={{ width: 160 }}>
+          <NativeSelect aria-label="Disabled select" disabled defaultValue="main">
+            <option value="main">Disabled</option>
+          </NativeSelect>
+        </div>
+      </Section>
+
+      <Section title="Skeleton — loading placeholders">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 240 }}>
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-4 flex-1" />
+          </div>
+        </div>
       </Section>
 
       <Section title="Chip — toggle">

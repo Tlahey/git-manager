@@ -1,4 +1,5 @@
 import React from 'react'
+import { Skeleton } from '@git-manager/ui'
 
 interface InnerTabProps {
   active: boolean
@@ -21,7 +22,7 @@ export function InnerTab({ active, onClick, children, count, loading }: InnerTab
       {children}
       {count !== undefined &&
         (loading ? (
-          <span className="h-3.5 w-5 animate-pulse rounded-full bg-muted/65" />
+          <Skeleton className="inline-block h-3.5 w-5 rounded-full bg-muted/65" />
         ) : (
           <span
             className={`rounded-full px-1.5 py-px text-[9px] font-semibold leading-none ${

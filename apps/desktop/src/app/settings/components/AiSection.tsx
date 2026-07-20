@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, Switch, Checkbox } from '@git-manager/ui'
+import { Button, Input, Switch, Checkbox, NativeSelect } from '@git-manager/ui'
 import { AI_PRESETS, getAiPreset, type AiPresetId, type AiProviderStatus } from '@git-manager/ai'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { aiStatusService } from '../../../api/ai.api'
@@ -123,7 +123,7 @@ export function AiSection() {
       <div className="space-y-1.5">
         <label className="text-xs font-medium text-foreground">{t('settings.ai.model')}</label>
         {connectionStatus?.connected && connectionStatus.models.length > 0 ? (
-          <select
+          <NativeSelect
             data-testid="ai-model-select"
             value={ai.model}
             onChange={(e) => updateAi({ model: e.target.value })}
@@ -134,7 +134,7 @@ export function AiSection() {
                 {m}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         ) : (
           <Input
             value={ai.model}

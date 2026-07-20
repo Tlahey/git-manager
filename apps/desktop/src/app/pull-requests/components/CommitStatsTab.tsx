@@ -1,4 +1,5 @@
 import { GitCommit, Activity, TrendingUp, Star, BarChart2 } from 'lucide-react'
+import { Skeleton } from '@git-manager/ui'
 import type { DayCommit } from '../types'
 import { KpiCard } from './KpiCard'
 import { YearHeatmap } from './YearHeatmap'
@@ -67,7 +68,7 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
               <h3 className="text-sm font-semibold">Contribution activity</h3>
             </div>
             {loading ? (
-              <div className="h-3 w-32 animate-pulse rounded bg-muted/40" />
+              <Skeleton className="h-3 w-32 rounded bg-muted/40" />
             ) : (
               <span className="text-[10px] text-muted-foreground">
                 {totalYear} contributions in the last year
@@ -76,9 +77,9 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
           </div>
           <div className="heatmap-container relative overflow-x-auto pb-1">
             {loading ? (
-              <div className="flex h-[100px] w-full animate-pulse items-center justify-center rounded-lg bg-muted/20 text-[10px] text-muted-foreground/40">
+              <Skeleton className="flex h-[100px] w-full items-center justify-center rounded-lg bg-muted/20 text-[10px] text-muted-foreground/40">
                 Loading contribution map...
-              </div>
+              </Skeleton>
             ) : (
               <YearHeatmap yearDays={yearDays} />
             )}
@@ -92,7 +93,7 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
             </div>
           </div>
           {loading ? (
-            <div className="h-24 w-full animate-pulse rounded-lg bg-muted/20" />
+            <Skeleton className="h-24 w-full rounded-lg bg-muted/20" />
           ) : (
             <>
               <div className="flex items-end gap-1" style={{ height: 100 }}>
@@ -146,9 +147,9 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
           </div>
           {loading ? (
             <div className="space-y-3 p-4">
-              <div className="h-3 w-full animate-pulse rounded bg-muted/40" />
-              <div className="h-3 w-5/6 animate-pulse rounded bg-muted/40" />
-              <div className="h-3 w-4/5 animate-pulse rounded bg-muted/40" />
+              <Skeleton className="h-3 w-full rounded bg-muted/40" />
+              <Skeleton className="h-3 w-5/6 rounded bg-muted/40" />
+              <Skeleton className="h-3 w-4/5 rounded bg-muted/40" />
             </div>
           ) : (
             <div className="divide-y divide-border/30">

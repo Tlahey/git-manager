@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, Spinner, Textarea } from '@git-manager/ui'
+import { Button, Input, Spinner, Textarea, NativeSelect } from '@git-manager/ui'
 import { Sparkles, GitBranch as GitBranchIcon } from 'lucide-react'
 import { usePrTemplate } from '../../../hooks/usePrTemplate'
 import { usePrDescriptionGeneration } from '../../../hooks/usePrDescriptionGeneration'
@@ -111,7 +111,7 @@ export function PrComposerExpander({
       {template?.kind === 'multiple' && (
         <label className="block space-y-1 text-[11px] text-muted-foreground">
           {t('pr.publish.templateLabel')}
-          <select
+          <NativeSelect
             value={selectedTemplate ?? template.options[0]?.name}
             onChange={(e) => {
               setSelectedTemplate(e.target.value)
@@ -125,7 +125,7 @@ export function PrComposerExpander({
                 {o.name}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </label>
       )}
 

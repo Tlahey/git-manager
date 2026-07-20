@@ -18,6 +18,12 @@ export type { InputProps, InputVariant } from './components/input'
 export { Textarea } from './components/textarea'
 export type { TextareaProps } from './components/textarea'
 
+export { NativeSelect } from './components/native-select'
+export type { NativeSelectProps } from './components/native-select'
+
+export { Skeleton } from './components/skeleton'
+export type { SkeletonProps } from './components/skeleton'
+
 export { Checkbox } from './components/checkbox'
 export type { CheckboxProps } from './components/checkbox'
 

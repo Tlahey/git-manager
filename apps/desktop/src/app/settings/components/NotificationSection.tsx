@@ -1,6 +1,6 @@
 import { Bell, BellOff, Volume2, VolumeX } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settings.store'
-import { Separator, Switch, Checkbox } from '@git-manager/ui'
+import { Separator, Switch, Checkbox, NativeSelect } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { useNotificationStore } from '../../../stores/notification.store'
 import { showNativeNotification } from '../../../hooks/useNotificationWatcher'
@@ -188,7 +188,7 @@ export function NotificationSection() {
               {notifications.enableSound && (
                 <div className="mt-1.5 flex items-center justify-between pl-7">
                   <span className="text-[10px] text-muted-foreground">Type de son macOS</span>
-                  <select
+                  <NativeSelect
                     value={notifications.soundName || 'default'}
                     onChange={(e) => updateNotifications({ soundName: e.target.value })}
                     className="h-7 min-w-[120px] rounded border border-border bg-background px-2 text-[10px] font-medium text-foreground outline-none transition-colors hover:border-accent-foreground/30 focus:border-primary"
@@ -207,7 +207,7 @@ export function NotificationSection() {
                     <option value="Purr">Purr</option>
                     <option value="Submarine">Submarine</option>
                     <option value="Tink">Tink</option>
-                  </select>
+                  </NativeSelect>
                 </div>
               )}
             </div>

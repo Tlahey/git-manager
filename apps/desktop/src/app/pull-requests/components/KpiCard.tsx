@@ -1,4 +1,5 @@
 import React from 'react'
+import { Skeleton } from '@git-manager/ui'
 
 interface KpiCardProps {
   icon: React.ReactNode
@@ -21,7 +22,7 @@ export function KpiCard({ icon, label, value, sub, accent, loading }: KpiCardPro
         <span className="text-[10px] font-medium uppercase tracking-wider">{label}</span>
       </div>
       {loading ? (
-        <div className="my-1 h-6 w-12 animate-pulse rounded bg-muted/60" />
+        <Skeleton className="my-1 h-6 w-12 rounded bg-muted/60" />
       ) : (
         <span className="text-2xl font-bold leading-none text-foreground">{value}</span>
       )}

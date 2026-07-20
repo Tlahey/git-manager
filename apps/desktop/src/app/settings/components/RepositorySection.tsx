@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Info } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
-import { Input, Textarea } from '@git-manager/ui'
+import { Input, Textarea, NativeSelect } from '@git-manager/ui'
 import { TagInput } from './TagInput'
 import { WorktreeDefaultFilesSetting } from './WorktreeDefaultFilesSetting'
 import { RunTasksSetting } from './RunTasksSetting'
@@ -142,7 +142,7 @@ export function RepositorySection({ category }: RepositorySectionProps) {
           onOverride={() => setRepoSetting(activeRepo, 'theme', effective.theme)}
           testId="repo-override-theme"
         >
-          <select
+          <NativeSelect
             data-testid="repo-theme-select"
             disabled={!themeOverridden}
             value={effective.theme}
@@ -159,7 +159,7 @@ export function RepositorySection({ category }: RepositorySectionProps) {
                 {th.name}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </OverrideField>
       )}
 

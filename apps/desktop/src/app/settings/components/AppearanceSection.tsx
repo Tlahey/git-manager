@@ -1,5 +1,5 @@
 import { useTranslation } from '@git-manager/i18n'
-import { Checkbox } from '@git-manager/ui'
+import { Checkbox, NativeSelect } from '@git-manager/ui'
 import { Monitor, Check } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { OverriddenBadge } from './OverriddenBadge'
@@ -153,7 +153,7 @@ export function AppearanceSection() {
         <label className="text-xs font-medium text-foreground">
           {t('settings.appearance.fontSize')}
         </label>
-        <select
+        <NativeSelect
           value={appearance.fontSize}
           onChange={(e) => updateAppearance({ fontSize: parseInt(e.target.value, 10) })}
           className="h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -163,7 +163,7 @@ export function AppearanceSection() {
               {size}px
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </div>
 
       {/* Density */}
@@ -224,7 +224,7 @@ export function AppearanceSection() {
       {/* Notification location */}
       <div className="space-y-1.5 font-sans">
         <label className="text-xs font-medium text-foreground">Emplacement des notifications</label>
-        <select
+        <NativeSelect
           value={appearance.notificationLocation || 'top-right'}
           onChange={(e) =>
             updateAppearance({
@@ -241,7 +241,7 @@ export function AppearanceSection() {
           <option value="top-left">Haut gauche (Top Left)</option>
           <option value="bottom-right">Bas droit (Bottom Right)</option>
           <option value="bottom-left">Bas gauche (Bottom Left)</option>
-        </select>
+        </NativeSelect>
       </div>
 
       {/* Checkboxes */}

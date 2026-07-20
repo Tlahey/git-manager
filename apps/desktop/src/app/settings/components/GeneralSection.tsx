@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation, i18next } from '@git-manager/i18n'
-import { Button, Input, Separator, Checkbox } from '@git-manager/ui'
+import { Button, Input, Separator, Checkbox, NativeSelect } from '@git-manager/ui'
 import { TagInput } from './TagInput'
 import { UpdateCheck } from './UpdateCheck'
 import { useSettingsStore } from '../../../stores/settings.store'
@@ -58,18 +58,18 @@ export function GeneralSection() {
       {/* Language */}
       <div className="space-y-2">
         <p className="text-xs font-medium text-foreground">{t('settings.language.title')}</p>
-        <select
+        <NativeSelect
           data-testid="language-select"
           value={settings.language}
           onChange={(e) => handleLanguageChange(e.target.value as 'en' | 'fr')}
-          className="h-8 w-full max-w-[220px] rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          className="max-w-[220px]"
         >
           {languages.map((lang) => (
             <option key={lang.value} value={lang.value}>
               {lang.flag} {lang.label}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </div>
 
       <Separator />
