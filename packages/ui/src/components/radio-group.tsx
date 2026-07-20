@@ -6,8 +6,13 @@ import { cn } from '../lib/utils'
 // form participation with no JS. A small context passes the group's `name`, the
 // selected `value`, the change handler and a group-level `disabled` down to each
 // `RadioGroupItem`, mirroring the Radix API shape used elsewhere in this package
-// while staying dependency-free. Replaces the ad-hoc `type="radio"` rows in
-// AppearanceSection (density / row height).
+// while staying dependency-free.
+//
+// `RadioGroupItem` renders a classic radio *dot* indicator (see ResetDialog's
+// reset-mode picker). It is deliberately NOT used for segmented-button controls
+// like AppearanceSection's density / row-height selectors, which keep full-width
+// labelled buttons wrapping an `sr-only` native radio — a different visual pattern,
+// already accessible via native `name`-grouped radios.
 
 interface RadioGroupContextValue {
   name: string

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronDown, GitBranch, Layers, Search, X } from 'lucide-react'
-import { Spinner, Popover, PopoverTrigger, PopoverContent } from '@git-manager/ui'
+import { Spinner, Popover, PopoverTrigger, PopoverContent, Input } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import type { GitWorktree } from '@git-manager/git-types'
 import { useRepoDataStore } from '../../stores/repoData.store'
@@ -148,14 +148,15 @@ export function BranchContext() {
             </button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-64 overflow-hidden p-0">
-            <div className="flex items-center gap-2 border-b border-border px-2.5 py-2">
-              <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <input
+            <div className="border-b border-border p-1.5">
+              <Input
+                variant="ghost"
+                inputSize="sm"
                 autoFocus
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t('branch.checkout')}
-                className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+                startIcon={<Search className="h-3.5 w-3.5 text-muted-foreground" />}
               />
             </div>
 

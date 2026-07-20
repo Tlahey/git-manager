@@ -9,10 +9,11 @@ import {
   DialogHeader,
   DialogTitle,
   ScrollArea,
+  Spinner,
   Textarea,
   cn,
 } from '@git-manager/ui'
-import { AlertTriangle, Check, Loader2, RefreshCw, Sparkles } from 'lucide-react'
+import { AlertTriangle, Check, RefreshCw, Sparkles } from 'lucide-react'
 import type { CommitBatchReview } from '../../../hooks/useCommitBatchReview'
 
 const statusLetters: Record<string, string> = {
@@ -70,7 +71,7 @@ export function CommitBatchReviewDialog({ review }: { review: CommitBatchReview 
             data-testid="ai-batch-loading"
             className="flex flex-col items-center justify-center gap-2 py-10 text-xs text-muted-foreground"
           >
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <Spinner className="h-5 w-5 text-primary" />
             {t('commitDetails.aiBatch.analyzing')}
           </div>
         ) : error ? (
@@ -184,7 +185,7 @@ export function CommitBatchReviewDialog({ review }: { review: CommitBatchReview 
             disabled={!canApply || isApplying || isGenerating}
           >
             {isApplying ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
+              <Spinner className="h-3 w-3" />
             ) : (
               <Check className="h-3 w-3" />
             )}

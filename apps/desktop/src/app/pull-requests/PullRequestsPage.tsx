@@ -2,7 +2,6 @@ import {
   Rocket,
   WifiOff,
   CheckCircle2,
-  Loader2,
   Clock,
   RefreshCw,
   GitPullRequest,
@@ -15,8 +14,8 @@ import {
 } from 'lucide-react'
 import { usePullRequestsPage } from '../../hooks/usePullRequestsPage'
 import { timeAgo } from './utils'
-import { InnerTab } from './components/InnerTab'
-import { KpiCard } from './components/KpiCard'
+import { Spinner } from '@git-manager/ui'
+import { InnerTab, KpiCard } from '@git-manager/components'
 import { PullRequestsTab } from './components/PullRequestsTab'
 import { FollowedPRsTab } from './components/FollowedPRsTab'
 import { IssuesTab } from './components/IssuesTab'
@@ -145,7 +144,7 @@ export function PullRequestsPage() {
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             {loading || isValidating ? (
               <>
-                <Loader2 className="h-3 w-3 animate-spin" /> Fetching…
+                <Spinner className="h-3 w-3" /> Fetching…
               </>
             ) : error ? (
               <>

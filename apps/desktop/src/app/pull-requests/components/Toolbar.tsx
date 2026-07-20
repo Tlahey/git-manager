@@ -1,7 +1,17 @@
 import { Search, X, Layers, Circle, Pencil, ArrowUpDown } from 'lucide-react'
 import { Input } from '@git-manager/ui'
-import { MultiSelectDropdown } from './MultiSelectDropdown'
+import { MultiSelectDropdown } from '@git-manager/components'
 import type { SortKey, SortDir } from '../types'
+
+// Shared labels for the filter dropdowns. This PR view is not internationalized yet
+// (labels like "Repo"/"Status" below are also literals), so these stay literal too;
+// they're passed as props because MultiSelectDropdown (in @git-manager/components) is
+// presentational and takes its text from the caller.
+const FILTER_DROPDOWN_LABELS = {
+  clearAllLabel: 'Clear all',
+  emptyLabel: 'No options available',
+  selectedLabel: (n: number) => `${n} selected`,
+}
 
 interface ToolbarProps {
   search: string
@@ -85,6 +95,7 @@ export function Toolbar({
         selected={repoFilter}
         onToggle={onToggleRepo}
         onClear={onClearRepo}
+        {...FILTER_DROPDOWN_LABELS}
       />
       <MultiSelectDropdown
         label="Status"
@@ -93,6 +104,7 @@ export function Toolbar({
         selected={statusFilter}
         onToggle={onToggleStatus}
         onClear={onClearStatus}
+        {...FILTER_DROPDOWN_LABELS}
       />
       <MultiSelectDropdown
         label="Author"
@@ -101,6 +113,7 @@ export function Toolbar({
         selected={authorFilter}
         onToggle={onToggleAuthor}
         onClear={onClearAuthor}
+        {...FILTER_DROPDOWN_LABELS}
       />
 
       {/* Clear all badge */}

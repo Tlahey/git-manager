@@ -1,4 +1,4 @@
-import { useImperativeTooltip } from '../../../components/ui/Tooltip'
+import { useImperativeTooltip } from '@git-manager/ui'
 import type { DayCommit } from '../types'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']

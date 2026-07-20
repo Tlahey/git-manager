@@ -3,8 +3,15 @@ import { cn } from '../lib/utils'
 
 export type InputVariant = 'default' | 'chrome' | 'ghost'
 
+// `md` is the standard 36px form field; `sm` is the compact 28px field used by dense
+// chrome (toolbar/popover searches, inline editors) that would otherwise hand-roll a
+// bare `<input>` to escape the taller default.
+export type InputSize = 'sm' | 'md'
+
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   variant?: InputVariant
+  /** Field density. `md` (default) is the 36px form field; `sm` is the compact 28px field. */
+  inputSize?: InputSize
   /** Icon rendered inside the field on the leading edge (styling/colour is the caller's). */
   startIcon?: React.ReactNode
   /** Element rendered inside the field on the trailing edge — e.g. a clear button. */
@@ -30,11 +37,25 @@ const VARIANT_CLASSES: Record<InputVariant, string> = {
 }
 
 const BASE =
-  'flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm outline-none transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50'
+  'flex w-full rounded-md border outline-none transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50'
+
+const SIZE_CLASSES: Record<InputSize, string> = {
+  md: 'h-9 px-3 py-1 text-sm shadow-sm',
+  sm: 'h-7 px-2 py-0.5 text-xs',
+}
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   (
-    { className, containerClassName, variant = 'default', type, startIcon, endIcon, ...props },
+    {
+      className,
+      containerClassName,
+      variant = 'default',
+      inputSize = 'md',
+      type,
+      startIcon,
+      endIcon,
+      ...props
+    },
     ref
   ) => {
     const field = (
@@ -43,6 +64,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         ref={ref}
         className={cn(
           BASE,
+          SIZE_CLASSES[inputSize],
           VARIANT_CLASSES[variant],
           startIcon && 'pl-8',
           endIcon && 'pr-8',

@@ -3,7 +3,7 @@ import { ChevronDown, GitBranch, Search } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
-import { Popover, PopoverTrigger, PopoverContent } from '@git-manager/ui'
+import { Popover, PopoverTrigger, PopoverContent, Input } from '@git-manager/ui'
 
 /** Dropdown de sélection / recherche du dépôt courant. */
 export function RepoSelector() {
@@ -50,14 +50,15 @@ export function RepoSelector() {
           </button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-72 overflow-hidden p-0">
-          <div className="flex items-center gap-2 border-b border-border px-2.5 py-2">
-            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-            <input
+          <div className="border-b border-border p-1.5">
+            <Input
+              variant="ghost"
+              inputSize="sm"
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('toolbar.searchRepo')}
-              className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+              startIcon={<Search className="h-3.5 w-3.5 text-muted-foreground" />}
             />
           </div>
 

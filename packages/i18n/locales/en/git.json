@@ -580,5 +580,6 @@
   "emptyRepo.message": "{{repo}} has no commits yet. Create an initial commit so you can start working?",
   "emptyRepo.initialize": "Initialize",
   "emptyRepo.cancel": "Cancel",
-  "emptyRepo.initializing": "Creating initial commit…"
+  "emptyRepo.initializing": "Creating initial commit…",
+  "sidebar.filteredResults": "Filtered results"
 }

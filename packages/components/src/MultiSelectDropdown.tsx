@@ -1,13 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { ChevronDown, CheckCircle2 } from 'lucide-react'
 
-interface MultiSelectDropdownProps {
+export interface MultiSelectDropdownProps {
   label: string
   icon: React.ReactNode
   options: string[]
   selected: Set<string>
   onToggle: (value: string) => void
   onClear: () => void
+  /** Label for the "clear all" action, e.g. "Clear all". */
+  clearAllLabel: string
+  /** Message shown when there are no options, e.g. "No options available". */
+  emptyLabel: string
+  /** Header label for the active-selection count, e.g. `(n) => `${n} selected``. */
+  selectedLabel: (count: number) => string
 }
 
 export function MultiSelectDropdown({
@@ -17,6 +23,9 @@ export function MultiSelectDropdown({
   selected,
   onToggle,
   onClear,
+  clearAllLabel,
+  emptyLabel,
+  selectedLabel,
 }: MultiSelectDropdownProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -62,7 +71,7 @@ export function MultiSelectDropdown({
           {activeCount > 0 && (
             <div className="flex items-center justify-between border-b border-border/50 bg-muted/10 px-3 py-1.5">
               <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {activeCount} selected
+                {selectedLabel(activeCount)}
               </span>
               <button
                 onClick={(e) => {
@@ -71,7 +80,7 @@ export function MultiSelectDropdown({
                 }}
                 className="text-[9px] text-muted-foreground/60 underline transition-colors hover:text-primary"
               >
-                Clear all
+                {clearAllLabel}
               </button>
             </div>
           )}
@@ -80,7 +89,7 @@ export function MultiSelectDropdown({
           <div className="max-h-[240px] overflow-y-auto py-1">
             {options.length === 0 ? (
               <div className="px-3 py-3 text-center text-[10px] italic text-muted-foreground/50">
-                No options available
+                {emptyLabel}
               </div>
             ) : (
               options.map((opt) => {

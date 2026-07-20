@@ -32,9 +32,6 @@ import {
   ContextMenuItem,
   ContextMenuLabel,
   Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipProvider,
   Select,
   SelectTrigger,
   SelectValue,
@@ -408,14 +405,9 @@ export const Overview: Story = {
       </Section>
 
       <Section title="Tooltip & Select">
-        <TooltipProvider delayDuration={200}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline">Hover / focus me</Button>
-            </TooltipTrigger>
-            <TooltipContent>An accessible tooltip (role=tooltip).</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Tooltip content="An accessible tooltip (role=tooltip).">
+          <Button variant="outline">Hover / focus me</Button>
+        </Tooltip>
 
         <div style={{ width: 200 }}>
           <Select>
