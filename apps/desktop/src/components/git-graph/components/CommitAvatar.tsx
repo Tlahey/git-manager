@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import { cn } from '@git-manager/ui'
+import { Avatar, cn } from '@git-manager/ui'
 import { getAuthorAvatarStyle, getAuthorInitials } from '../../../lib/authorAvatar'
 
 interface CommitAvatarProps {
@@ -27,37 +26,17 @@ export function CommitAvatar({
   className,
   title,
 }: CommitAvatarProps) {
-  const [imgError, setImgError] = useState(false)
-
-  useEffect(() => {
-    setImgError(false)
-  }, [avatarUrl])
-
-  const showImage = avatarUrl && !imgError
-  const fontSize = Math.max(8, Math.round(size * 0.42))
-
   return (
-    <div
+    <Avatar
       data-testid="commit-avatar"
+      src={avatarUrl}
+      alt={name}
       title={title ?? name}
-      className={cn(
-        'flex shrink-0 items-center justify-center overflow-hidden font-bold text-white shadow-sm',
-        square ? 'rounded-none' : 'rounded-full',
-        showImage ? '' : `bg-gradient-to-tr ${getAuthorAvatarStyle(name)}`,
-        className
-      )}
-      style={{ width: size, height: size, fontSize }}
-    >
-      {showImage ? (
-        <img
-          src={avatarUrl}
-          alt={name}
-          className="h-full w-full object-cover"
-          onError={() => setImgError(true)}
-        />
-      ) : (
-        getAuthorInitials(name)
-      )}
-    </div>
+      fallback={getAuthorInitials(name)}
+      size={size}
+      square={square}
+      // The name-hashed gradient is the fallback fill; Avatar drops it under an image.
+      className={cn('shadow-sm', `bg-gradient-to-tr ${getAuthorAvatarStyle(name)}`, className)}
+    />
   )
 }

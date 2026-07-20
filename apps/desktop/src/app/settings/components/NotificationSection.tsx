@@ -1,6 +1,6 @@
 import { Bell, BellOff, Volume2, VolumeX } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settings.store'
-import { Separator } from '@git-manager/ui'
+import { Separator, Switch, Checkbox, NativeSelect } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { useNotificationStore } from '../../../stores/notification.store'
 import { showNativeNotification } from '../../../hooks/useNotificationWatcher'
@@ -43,15 +43,11 @@ export function NotificationSection() {
               </p>
             </div>
           </div>
-          <label className="relative inline-flex cursor-pointer items-center">
-            <input
-              type="checkbox"
-              checked={notifications.enabled}
-              onChange={(e) => updateNotifications({ enabled: e.target.checked })}
-              className="peer sr-only"
-            />
-            <div className="peer h-5 w-9 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-border after:bg-background after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>
-          </label>
+          <Switch
+            checked={notifications.enabled}
+            onChange={(e) => updateNotifications({ enabled: e.target.checked })}
+            aria-label="Autoriser les notifications"
+          />
         </div>
       </div>
 
@@ -71,11 +67,9 @@ export function NotificationSection() {
                     Notifier quand de nouvelles modifications sont récupérées du remote
                   </span>
                 </div>
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={notifications.notifyOnFetch}
                   onChange={(e) => updateNotifications({ notifyOnFetch: e.target.checked })}
-                  className="h-4 w-4 rounded border-border"
                 />
               </label>
 
@@ -88,11 +82,9 @@ export function NotificationSection() {
                     Notifier lors de la réussite ou de l&apos;échec de la récupération des commits
                   </span>
                 </div>
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={notifications.notifyOnPull}
                   onChange={(e) => updateNotifications({ notifyOnPull: e.target.checked })}
-                  className="h-4 w-4 rounded border-border font-sans"
                 />
               </label>
 
@@ -103,11 +95,9 @@ export function NotificationSection() {
                     Notifier lors de l&apos;envoi de vos commits locaux vers le serveur distant
                   </span>
                 </div>
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={notifications.notifyOnPush}
                   onChange={(e) => updateNotifications({ notifyOnPush: e.target.checked })}
-                  className="h-4 w-4 rounded border-border"
                 />
               </label>
 
@@ -118,11 +108,9 @@ export function NotificationSection() {
                     Notifier quand une nouvelle Pull Request apparaît
                   </span>
                 </div>
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={notifications.notifyOnNewPr ?? true}
                   onChange={(e) => updateNotifications({ notifyOnNewPr: e.target.checked })}
-                  className="h-4 w-4 rounded border-border"
                 />
               </label>
 
@@ -133,11 +121,9 @@ export function NotificationSection() {
                     Notifier quand une PR est fusionnée ou fermée
                   </span>
                 </div>
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={notifications.notifyOnPrMerged ?? true}
                   onChange={(e) => updateNotifications({ notifyOnPrMerged: e.target.checked })}
-                  className="h-4 w-4 rounded border-border"
                 />
               </label>
 
@@ -148,13 +134,11 @@ export function NotificationSection() {
                     Notifier quand on vous demande de revoir une PR
                   </span>
                 </div>
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={notifications.notifyOnReviewRequested ?? true}
                   onChange={(e) =>
                     updateNotifications({ notifyOnReviewRequested: e.target.checked })
                   }
-                  className="h-4 w-4 rounded border-border font-sans"
                 />
               </label>
 
@@ -165,13 +149,11 @@ export function NotificationSection() {
                     Notifier quand l&apos;état d&apos;approbation d&apos;une PR est mis à jour
                   </span>
                 </div>
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={notifications.notifyOnReviewStatusChanged ?? true}
                   onChange={(e) =>
                     updateNotifications({ notifyOnReviewStatusChanged: e.target.checked })
                   }
-                  className="h-4 w-4 rounded border-border font-sans"
                 />
               </label>
             </div>
@@ -196,21 +178,17 @@ export function NotificationSection() {
                     </p>
                   </div>
                 </div>
-                <label className="relative inline-flex cursor-pointer items-center">
-                  <input
-                    type="checkbox"
-                    checked={notifications.enableSound}
-                    onChange={(e) => updateNotifications({ enableSound: e.target.checked })}
-                    className="peer sr-only"
-                  />
-                  <div className="peer h-5 w-9 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-border after:bg-background after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>
-                </label>
+                <Switch
+                  checked={notifications.enableSound}
+                  onChange={(e) => updateNotifications({ enableSound: e.target.checked })}
+                  aria-label="Effets sonores"
+                />
               </div>
 
               {notifications.enableSound && (
                 <div className="mt-1.5 flex items-center justify-between pl-7">
                   <span className="text-[10px] text-muted-foreground">Type de son macOS</span>
-                  <select
+                  <NativeSelect
                     value={notifications.soundName || 'default'}
                     onChange={(e) => updateNotifications({ soundName: e.target.value })}
                     className="h-7 min-w-[120px] rounded border border-border bg-background px-2 text-[10px] font-medium text-foreground outline-none transition-colors hover:border-accent-foreground/30 focus:border-primary"
@@ -229,7 +207,7 @@ export function NotificationSection() {
                     <option value="Purr">Purr</option>
                     <option value="Submarine">Submarine</option>
                     <option value="Tink">Tink</option>
-                  </select>
+                  </NativeSelect>
                 </div>
               )}
             </div>

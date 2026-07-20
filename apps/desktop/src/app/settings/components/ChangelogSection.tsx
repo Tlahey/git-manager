@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { ScrollText } from 'lucide-react'
+import { Card } from '@git-manager/ui'
 import { getAppChangelog } from '../../../lib/changelog'
 import { apiGetAppVersion } from '../../../api/updater.api'
 import { apiOpenUrl } from '../../../api/shell.api'
@@ -87,10 +88,10 @@ export function ChangelogSection() {
 
       <div className="space-y-5">
         {CHANGELOG_ENTRIES.map((entry) => (
-          <div
+          <Card
             key={entry.version}
             data-testid={`changelog-entry-${entry.version}`}
-            className="space-y-3 rounded-lg border border-border bg-card/25 p-4 shadow-sm"
+            className="space-y-3 bg-card/25 p-4 shadow-sm"
           >
             <div className="flex items-center gap-2">
               <h4 className="font-mono text-xs font-semibold text-foreground">
@@ -127,7 +128,7 @@ export function ChangelogSection() {
                 </ul>
               </div>
             ))}
-          </div>
+          </Card>
         ))}
       </div>
     </div>

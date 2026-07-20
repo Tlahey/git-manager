@@ -12,7 +12,9 @@
     "./vitest-apca-reporter": "./src/vitest-apca-reporter.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@git-manager/theme": "workspace:*",
@@ -32,6 +34,7 @@
     "@storybook/react-vite": "catalog:",
     "@testing-library/react": "catalog:",
     "@types/react": "catalog:",
+    "jsdom": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "typescript": "catalog:",

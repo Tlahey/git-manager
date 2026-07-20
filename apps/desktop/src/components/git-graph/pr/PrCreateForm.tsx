@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, Spinner, Textarea } from '@git-manager/ui'
+import { Button, Checkbox, Input, Spinner, Textarea, NativeSelect } from '@git-manager/ui'
 import { Sparkles, ArrowRight } from 'lucide-react'
 import { useBranches } from '../../../hooks/useBranches'
 import { usePrTemplate } from '../../../hooks/usePrTemplate'
@@ -96,7 +96,7 @@ export function PrCreateForm({
       <div className="flex items-end gap-2">
         <label className="block flex-1 space-y-1 text-[11px] text-muted-foreground">
           {t('pr.create.headLabel')}
-          <select
+          <NativeSelect
             value={head}
             onChange={(e) => setHead(e.target.value)}
             data-testid="pr-create-head"
@@ -107,12 +107,12 @@ export function PrCreateForm({
                 {b.shortName}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </label>
         <ArrowRight className="mb-2 h-4 w-4 shrink-0 text-muted-foreground" />
         <label className="block flex-1 space-y-1 text-[11px] text-muted-foreground">
           {t('pr.create.baseLabel')}
-          <select
+          <NativeSelect
             value={base}
             onChange={(e) => setBase(e.target.value)}
             data-testid="pr-create-base"
@@ -123,7 +123,7 @@ export function PrCreateForm({
                 {b.shortName}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </label>
       </div>
 
@@ -141,7 +141,7 @@ export function PrCreateForm({
       {template?.kind === 'multiple' && (
         <label className="block space-y-1 text-[11px] text-muted-foreground">
           {t('pr.publish.templateLabel')}
-          <select
+          <NativeSelect
             value={selectedTemplate ?? template.options[0]?.name}
             onChange={(e) => {
               setSelectedTemplate(e.target.value)
@@ -155,7 +155,7 @@ export function PrCreateForm({
                 {o.name}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </label>
       )}
 
@@ -188,12 +188,10 @@ export function PrCreateForm({
       </div>
 
       <label className="flex items-center gap-2 text-xs text-foreground">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={draft}
           onChange={(e) => setDraft(e.target.checked)}
           data-testid="pr-create-draft"
-          className="h-3.5 w-3.5 rounded border-input"
         />
         {t('pr.create.draftLabel')}
       </label>

@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { GitWorktree } from '@git-manager/git-types'
 import {
   Button,
+  Checkbox,
   Spinner,
   Dialog,
   DialogContent,
@@ -78,11 +79,9 @@ export function RemoveWorktreeDialog({ repoPath, worktree, onClose }: RemoveWork
               <div className="space-y-2">
                 <p className="text-xs text-destructive">{t('worktree.removeDirtyWarning')}</p>
                 <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={force}
                     onChange={(e) => setForce(e.target.checked)}
-                    className="accent-primary"
                     data-testid="worktree-remove-force-checkbox"
                   />
                   {t('worktree.removeForceLabel')}

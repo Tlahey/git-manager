@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation, i18next } from '@git-manager/i18n'
-import { Button, Input, Separator } from '@git-manager/ui'
+import { Button, Input, Separator, Checkbox, NativeSelect } from '@git-manager/ui'
 import { TagInput } from './TagInput'
 import { UpdateCheck } from './UpdateCheck'
 import { useSettingsStore } from '../../../stores/settings.store'
@@ -58,18 +58,18 @@ export function GeneralSection() {
       {/* Language */}
       <div className="space-y-2">
         <p className="text-xs font-medium text-foreground">{t('settings.language.title')}</p>
-        <select
+        <NativeSelect
           data-testid="language-select"
           value={settings.language}
           onChange={(e) => handleLanguageChange(e.target.value as 'en' | 'fr')}
-          className="h-8 w-full max-w-[220px] rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          className="max-w-[220px]"
         >
           {languages.map((lang) => (
             <option key={lang.value} value={lang.value}>
               {lang.flag} {lang.label}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </div>
 
       <Separator />
@@ -109,12 +109,10 @@ export function GeneralSection() {
         <h4 className="text-xs font-semibold text-foreground">{t('settings.git.fetchTitle')}</h4>
 
         <label className="flex cursor-pointer items-center gap-2">
-          <input
+          <Checkbox
             data-testid="settings-auto-prune"
-            type="checkbox"
             checked={git.autoPrune ?? true}
             onChange={(e) => updateGit({ autoPrune: e.target.checked })}
-            className="h-4 w-4 rounded border-border"
           />
           <span className="text-xs text-foreground">{t('settings.git.autoPrune')}</span>
         </label>
@@ -177,12 +175,10 @@ export function GeneralSection() {
         </div>
 
         <label className="flex cursor-pointer items-center gap-2">
-          <input
+          <Checkbox
             data-testid="settings-lazy-load-graph-commits"
-            type="checkbox"
             checked={git.lazyLoadGraphCommits ?? true}
             onChange={(e) => updateGit({ lazyLoadGraphCommits: e.target.checked })}
-            className="h-4 w-4 rounded border-border"
           />
           <span className="text-xs text-foreground">{t('settings.git.lazyLoadGraphCommits')}</span>
         </label>

@@ -1,4 +1,5 @@
 import { useTranslation } from '@git-manager/i18n'
+import { Checkbox, NativeSelect } from '@git-manager/ui'
 import { Monitor, Check } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { OverriddenBadge } from './OverriddenBadge'
@@ -152,7 +153,7 @@ export function AppearanceSection() {
         <label className="text-xs font-medium text-foreground">
           {t('settings.appearance.fontSize')}
         </label>
-        <select
+        <NativeSelect
           value={appearance.fontSize}
           onChange={(e) => updateAppearance({ fontSize: parseInt(e.target.value, 10) })}
           className="h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -162,7 +163,7 @@ export function AppearanceSection() {
               {size}px
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </div>
 
       {/* Density */}
@@ -223,7 +224,7 @@ export function AppearanceSection() {
       {/* Notification location */}
       <div className="space-y-1.5 font-sans">
         <label className="text-xs font-medium text-foreground">Emplacement des notifications</label>
-        <select
+        <NativeSelect
           value={appearance.notificationLocation || 'top-right'}
           onChange={(e) =>
             updateAppearance({
@@ -240,35 +241,29 @@ export function AppearanceSection() {
           <option value="top-left">Haut gauche (Top Left)</option>
           <option value="bottom-right">Bas droit (Bottom Right)</option>
           <option value="bottom-left">Bas gauche (Bottom Left)</option>
-        </select>
+        </NativeSelect>
       </div>
 
       {/* Checkboxes */}
       <div className="space-y-2">
         <label className="flex cursor-pointer items-center gap-2">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={appearance.showAvatars}
             onChange={(e) => updateAppearance({ showAvatars: e.target.checked })}
-            className="h-4 w-4 rounded border-border"
           />
           <span className="text-xs text-foreground">{t('settings.appearance.showAvatars')}</span>
         </label>
         <label className="flex cursor-pointer items-center gap-2">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={appearance.enableAnimations}
             onChange={(e) => updateAppearance({ enableAnimations: e.target.checked })}
-            className="h-4 w-4 rounded border-border"
           />
           <span className="text-xs text-foreground">{t('settings.appearance.animations')}</span>
         </label>
         <label className="flex cursor-pointer items-center gap-2">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={appearance.stickyScroll ?? false}
             onChange={(e) => updateAppearance({ stickyScroll: e.target.checked })}
-            className="h-4 w-4 rounded border-border"
           />
           <span className="text-xs text-foreground">{t('settings.appearance.stickyScroll')}</span>
         </label>

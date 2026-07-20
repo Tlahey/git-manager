@@ -1,4 +1,5 @@
 import { GitCommit, Activity, TrendingUp, Star, BarChart2 } from 'lucide-react'
+import { Skeleton, Progress, Card } from '@git-manager/ui'
 import type { DayCommit } from '../types'
 import { KpiCard } from './KpiCard'
 import { YearHeatmap } from './YearHeatmap'
@@ -60,14 +61,14 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
             loading={loading}
           />
         </div>
-        <div className="rounded-xl border border-border bg-card/50 p-5">
+        <Card className="rounded-xl bg-card/50 p-5">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-primary" />
               <h3 className="text-sm font-semibold">Contribution activity</h3>
             </div>
             {loading ? (
-              <div className="h-3 w-32 animate-pulse rounded bg-muted/40" />
+              <Skeleton className="h-3 w-32 rounded bg-muted/40" />
             ) : (
               <span className="text-[10px] text-muted-foreground">
                 {totalYear} contributions in the last year
@@ -76,15 +77,15 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
           </div>
           <div className="heatmap-container relative overflow-x-auto pb-1">
             {loading ? (
-              <div className="flex h-[100px] w-full animate-pulse items-center justify-center rounded-lg bg-muted/20 text-[10px] text-muted-foreground/40">
+              <Skeleton className="flex h-[100px] w-full items-center justify-center rounded-lg bg-muted/20 text-[10px] text-muted-foreground/40">
                 Loading contribution map...
-              </div>
+              </Skeleton>
             ) : (
               <YearHeatmap yearDays={yearDays} />
             )}
           </div>
-        </div>
-        <div className="rounded-xl border border-border bg-card/50 p-5">
+        </Card>
+        <Card className="rounded-xl bg-card/50 p-5">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <BarChart2 className="h-4 w-4 text-primary" />
@@ -92,7 +93,7 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
             </div>
           </div>
           {loading ? (
-            <div className="h-24 w-full animate-pulse rounded-lg bg-muted/20" />
+            <Skeleton className="h-24 w-full rounded-lg bg-muted/20" />
           ) : (
             <>
               <div className="flex items-end gap-1" style={{ height: 100 }}>
@@ -138,17 +139,17 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
               </div>
             </>
           )}
-        </div>
-        <div className="overflow-hidden rounded-xl border border-border bg-card/50">
+        </Card>
+        <Card className="overflow-hidden rounded-xl bg-card/50">
           <div className="flex items-center gap-2 border-b border-border bg-muted/10 px-4 py-3">
             <GitCommit className="h-3.5 w-3.5 text-primary/60" />
             <h3 className="text-xs font-semibold">Daily breakdown — last 14 days</h3>
           </div>
           {loading ? (
             <div className="space-y-3 p-4">
-              <div className="h-3 w-full animate-pulse rounded bg-muted/40" />
-              <div className="h-3 w-5/6 animate-pulse rounded bg-muted/40" />
-              <div className="h-3 w-4/5 animate-pulse rounded bg-muted/40" />
+              <Skeleton className="h-3 w-full rounded bg-muted/40" />
+              <Skeleton className="h-3 w-5/6 rounded bg-muted/40" />
+              <Skeleton className="h-3 w-4/5 rounded bg-muted/40" />
             </div>
           ) : (
             <div className="divide-y divide-border/30">
@@ -160,12 +161,12 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
                   <span className="w-20 shrink-0 text-xs text-muted-foreground">
                     {fmtDate(day.date)}
                   </span>
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted/20">
-                    <div
-                      className="h-full rounded-full bg-primary/70 transition-all duration-500"
-                      style={{ width: max14 > 0 ? `${(day.commits / max14) * 100}%` : '0%' }}
-                    />
-                  </div>
+                  <Progress
+                    value={max14 > 0 ? (day.commits / max14) * 100 : 0}
+                    className="h-1.5 flex-1 bg-muted/20"
+                    indicatorClassName="bg-primary/70 duration-500"
+                    aria-hidden
+                  />
                   <span className="w-8 shrink-0 text-right font-mono text-xs text-foreground">
                     {day.commits}
                   </span>
@@ -173,7 +174,7 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
               ))}
             </div>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   )

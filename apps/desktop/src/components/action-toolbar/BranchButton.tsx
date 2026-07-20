@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { GitBranch } from 'lucide-react'
-import { Spinner, Popover, PopoverTrigger, PopoverContent } from '@git-manager/ui'
+import { Spinner, Popover, PopoverTrigger, PopoverContent, Input } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 
 interface BranchButtonProps {
@@ -54,12 +54,12 @@ export function BranchButton({ fromRef, onCreate }: BranchButtonProps) {
           <p className="mb-2 truncate text-[10px] text-muted-foreground">
             {t('toolbar.fromHead', { ref: fromRef })}
           </p>
-          <input
+          <Input
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t('toolbar.branchNamePlaceholder')}
-            className="mb-2 w-full rounded border border-input bg-background px-2 py-1 text-xs outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="mb-2 h-auto rounded px-2 py-1 text-xs shadow-none"
           />
           <div className="flex justify-end gap-1.5">
             <button

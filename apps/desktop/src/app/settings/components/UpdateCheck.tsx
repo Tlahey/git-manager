@@ -1,5 +1,5 @@
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Spinner } from '@git-manager/ui'
+import { Button, Spinner, Progress } from '@git-manager/ui'
 import { useAppUpdater } from '../../../hooks/useAppUpdater'
 
 /** Settings → General: shows the running version and drives tauri-plugin-updater's
@@ -86,12 +86,10 @@ export function UpdateCheck() {
 
           {status === 'downloading' && (
             <div className="space-y-1" data-testid="update-progress">
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary transition-all"
-                  style={{ width: `${percent ?? 0}%` }}
-                />
-              </div>
+              <Progress
+                value={percent ?? 0}
+                aria-label={t('settings.update.downloading', { percent: percent ?? 0 })}
+              />
               <p className="text-[10px] text-muted-foreground">
                 {t('settings.update.downloading', { percent: percent ?? 0 })}
               </p>

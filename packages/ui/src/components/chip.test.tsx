@@ -25,14 +25,17 @@ describe('Chip', () => {
     expect(chip).toHaveAttribute('aria-pressed', 'true')
   })
 
-  it('uses the muted, unpressed styling when inactive', () => {
+  it('uses the outline, unpressed styling when inactive', () => {
     render(
       <Chip data-testid="chip">
         Tous
       </Chip>
     )
     const chip = screen.getByTestId('chip')
-    expect(chip.className).toContain('text-muted-foreground')
+    // Inactive inherits the surface foreground (full contrast, APCA Bronze) instead of
+    // the muted token, which only reached ~53Lc at 10px/600 — see chip.tsx.
+    expect(chip.className).toContain('text-inherit')
+    expect(chip.className).not.toContain('text-muted-foreground')
     expect(chip.className).not.toContain('bg-button')
     expect(chip).toHaveAttribute('aria-pressed', 'false')
   })

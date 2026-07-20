@@ -33,6 +33,9 @@ import {
   DialogDescription,
   Input,
   ScrollArea,
+  Kbd,
+  Tag,
+  Card,
 } from '@git-manager/ui'
 import type { Section } from '../../app/settings/SettingsPage'
 
@@ -184,10 +187,10 @@ export function Footer({ onOpenSettings }: FooterProps) {
               <Terminal className="h-3.5 w-3.5 text-primary/70" />
               <span>{currentRepo?.name || activeTab.split('/').pop()}</span>
               {copied ? (
-                <span className="animate-fade-in flex shrink-0 items-center gap-1 rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-normal text-emerald-500">
+                <Tag tone="success" className="animate-fade-in shrink-0 font-normal">
                   <ClipboardCheck className="h-2.5 w-2.5" />
                   {t('footer.copiedPath')}
-                </span>
+                </Tag>
               ) : (
                 <ClipboardCopy className="h-2.5 w-2.5 shrink-0 text-muted-foreground/60 opacity-0 transition-opacity group-hover:opacity-100" />
               )}
@@ -288,7 +291,7 @@ export function Footer({ onOpenSettings }: FooterProps) {
                       <h4 className="pl-1 text-[10px] font-bold uppercase tracking-widest text-primary/70">
                         {cat.category}
                       </h4>
-                      <div className="divide-y divide-border/40 rounded-lg border border-border bg-card/40 p-1">
+                      <Card className="divide-y divide-border/40 bg-card/40 p-1">
                         {cat.items.map((item, keyIdx) => (
                           <div
                             key={keyIdx}
@@ -298,9 +301,7 @@ export function Footer({ onOpenSettings }: FooterProps) {
                             <div className="flex items-center gap-1">
                               {item.keys.map((k, kIdx) => (
                                 <span key={kIdx} className="flex items-center gap-1">
-                                  <kbd className="inline-flex h-5 min-w-[20px] items-center justify-center rounded border border-border bg-muted/95 px-1.5 font-mono text-[10px] font-bold text-foreground shadow-sm">
-                                    {k}
-                                  </kbd>
+                                  <Kbd>{k}</Kbd>
                                   {kIdx < item.keys.length - 1 && (
                                     <span className="text-[9px] font-semibold text-muted-foreground/60">
                                       +
@@ -311,7 +312,7 @@ export function Footer({ onOpenSettings }: FooterProps) {
                             </div>
                           </div>
                         ))}
-                      </div>
+                      </Card>
                     </div>
                   ))
                 )}

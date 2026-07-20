@@ -1,6 +1,6 @@
 import { useTranslation } from '@git-manager/i18n'
 import { Sparkles, X, RefreshCw, CalendarClock, CheckCircle2, ListTodo, AlertTriangle } from 'lucide-react'
-import { Button } from '@git-manager/ui'
+import { Button, Alert } from '@git-manager/ui'
 import { useDailySummary } from '../../../hooks/useDailySummary'
 
 interface DailySummaryPanelProps {
@@ -74,7 +74,7 @@ export function DailySummaryPanel({ path, onClose }: DailySummaryPanelProps) {
             </p>
           </div>
         ) : error ? (
-          <div className="flex flex-col items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
+          <Alert variant="destructive" className="flex-col items-start gap-2 rounded-lg">
             <div className="flex items-center gap-2 font-medium">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               {t('dashboard.summary.error') || 'Impossible de générer le briefing'}
@@ -83,7 +83,7 @@ export function DailySummaryPanel({ path, onClose }: DailySummaryPanelProps) {
             <Button variant="outline" size="sm" className="mt-1 h-7 text-xs" onClick={generate}>
               {t('dashboard.summary.retry') || 'Réessayer'}
             </Button>
-          </div>
+          </Alert>
         ) : summary ? (
           <div className="space-y-5" data-testid="daily-summary-content">
             {/* Headline */}

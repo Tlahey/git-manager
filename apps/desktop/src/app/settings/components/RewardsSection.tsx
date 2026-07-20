@@ -1,4 +1,5 @@
 import { useTranslation } from '@git-manager/i18n'
+import { Checkbox, Card } from '@git-manager/ui'
 import { Trophy, Trash2 } from 'lucide-react'
 import { useGameStore } from '../../../stores/game.store'
 
@@ -24,7 +25,7 @@ export function RewardsSection() {
       <div className="h-px bg-border" />
 
       {/* Activation Toggle */}
-      <div className="flex items-center justify-between rounded-lg border border-border bg-card/25 p-4 shadow-sm">
+      <Card className="flex items-center justify-between bg-card/25 p-4 shadow-sm">
         <div className="max-w-[80%] space-y-0.5">
           <label
             className="cursor-pointer text-xs font-semibold text-foreground"
@@ -34,15 +35,14 @@ export function RewardsSection() {
           </label>
           <p className="text-[10px] text-muted-foreground">{t('settings.rewards.enableHint')}</p>
         </div>
-        <input
-          type="checkbox"
+        <Checkbox
           id="toggle-rewards"
           data-testid="rewards-toggle"
           checked={rewardsEnabled}
           onChange={(e) => setRewardsEnabled(e.target.checked)}
-          className="h-4 w-4 cursor-pointer rounded border-border text-primary accent-primary focus:ring-primary"
+          className="cursor-pointer"
         />
-      </div>
+      </Card>
 
       {/* Control Actions / Reset */}
       <div className="space-y-3 rounded-lg border border-destructive/20 bg-destructive/5 p-4">

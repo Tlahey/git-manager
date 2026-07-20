@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Link,
 } from 'lucide-react'
+import { Tag } from '@git-manager/ui'
 import type { MockPR } from '../types'
 import { StatusBadge, CiBadge } from './Badges'
 import { AvatarStack } from './AvatarStack'
@@ -116,9 +117,9 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
             </span>
           ))}
           {pr.needsRebase && (
-            <span className="flex shrink-0 items-center gap-0.5 rounded border border-amber-500/35 bg-amber-500/15 px-1 py-0.5 text-[9px] font-medium text-amber-500">
-              <AlertCircle className="h-2.5 w-2.5 text-amber-500" /> Rebase required
-            </span>
+            <Tag tone="warning" className="shrink-0 gap-0.5 px-1 text-[9px] font-medium">
+              <AlertCircle className="h-2.5 w-2.5" /> Rebase required
+            </Tag>
           )}
         </div>
       </div>

@@ -3,6 +3,7 @@ import { cleanup, render } from '@testing-library/react'
 import { composeStory } from '@storybook/react-vite'
 import { DEFAULT_SURFACES, DEFAULT_THEMES, type SurfaceId } from './constants'
 import { runAxe } from './axe'
+import { checkGraphicalContrast } from './graphicalContrast'
 import { collectViolationRecords, summarizeRecords } from './reporter'
 import type { ApcaTaskMeta } from './apca-report-types'
 
@@ -56,6 +57,11 @@ export function runA11yMatrix({
         const { container } = render(<Story />)
         const violations = await runAxe(container, disabledRules)
         const records = collectViolationRecords(violations)
+        // WCAG 1.4.11 non-text contrast for opted-in control graphics (checkbox tick,
+        // switch thumb, radio dot) — axe/APCA grade text only, so without this a
+        // low-contrast decorative state indicator passes on every theme. Merged in
+        // before the exempt pass so it's both reported and asserted.
+        records.push(...checkGraphicalContrast(container))
         // Flag exempt nodes (documented muted-decorative policy) — recorded + reported
         // by vitest-apca-reporter, but not asserted on. Everything else is enforced.
         for (const r of records) {

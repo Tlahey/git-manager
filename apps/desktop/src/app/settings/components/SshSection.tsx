@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Button, Input, Separator, Textarea } from '@git-manager/ui'
+import { Button, Input, Separator, Textarea, Checkbox, NativeSelect, Alert } from '@git-manager/ui'
 import { Key, FolderOpen, Copy, Check, Plus, AlertCircle, RefreshCw } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { open } from '@tauri-apps/plugin-dialog'
@@ -163,11 +163,9 @@ export function SshSection() {
         </div>
 
         <label className="flex cursor-pointer items-center gap-2 pt-1">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={ssh.useSystemAgent}
             onChange={(e) => updateSsh({ useSystemAgent: e.target.checked })}
-            className="h-4 w-4 rounded border-border"
           />
           <span className="text-xs text-foreground">
             Utiliser l&apos;agent SSH système (recommandé)
@@ -250,20 +248,20 @@ export function SshSection() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-[11px] font-medium text-foreground">Type de clé</label>
-                <select
+                <NativeSelect
                   value={genType}
                   onChange={(e) => setGenType(e.target.value as 'ed25519' | 'rsa')}
                   className="h-8 w-full rounded border border-input bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                 >
                   <option value="ed25519">ED25519 (Recommandé)</option>
                   <option value="rsa">RSA</option>
-                </select>
+                </NativeSelect>
               </div>
 
               {genType === 'rsa' && (
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-medium text-foreground">Taille en bits</label>
-                  <select
+                  <NativeSelect
                     value={genBits}
                     onChange={(e) => setGenBits(parseInt(e.target.value, 10))}
                     className="h-8 w-full rounded border border-input bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
@@ -271,7 +269,7 @@ export function SshSection() {
                     <option value={2048}>2048 bits</option>
                     <option value={3072}>3072 bits (Sécurisé)</option>
                     <option value={4096}>4096 bits</option>
-                  </select>
+                  </NativeSelect>
                 </div>
               )}
             </div>
@@ -314,10 +312,9 @@ export function SshSection() {
             </div>
 
             {genError && (
-              <div className="flex items-center gap-2 rounded border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>Erreur : {genError}</span>
-              </div>
+              <Alert className="items-center" icon={<AlertCircle className="h-4 w-4" />}>
+                Erreur : {genError}
+              </Alert>
             )}
 
             {generatedPubKey ? (

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, ScrollArea } from '@git-manager/ui'
+import { Button, Input, ScrollArea, Alert, Tag, Card } from '@git-manager/ui'
 import {
   ArrowLeft,
   Check,
@@ -178,7 +178,7 @@ export function GithubSection() {
                 </div>
               </div>
             ) : loginMethod === 'oauth' ? (
-              <div className="space-y-4 rounded-lg border border-border bg-card/30 p-4">
+              <Card className="space-y-4 bg-card/30 p-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-semibold text-foreground">
                     {t('settings.github.addUser')}
@@ -220,18 +220,18 @@ export function GithubSection() {
                   </div>
 
                   {error && (
-                    <div
+                    <Alert
                       data-testid="github-error-message"
-                      className="flex items-center gap-2 rounded border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive"
+                      className="items-center"
+                      icon={<AlertCircle className="h-4 w-4" />}
                     >
-                      <AlertCircle className="h-4 w-4 shrink-0" />
-                      <span>{error}</span>
-                    </div>
+                      {error}
+                    </Alert>
                   )}
                 </div>
-              </div>
+              </Card>
             ) : loginMethod === 'pat' ? (
-              <div className="space-y-4 rounded-lg border border-border bg-card/30 p-4">
+              <Card className="space-y-4 bg-card/30 p-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-semibold text-foreground">
                     {t('settings.github.addUser')}
@@ -291,18 +291,18 @@ export function GithubSection() {
                   </form>
 
                   {error && (
-                    <div
+                    <Alert
                       data-testid="github-error-message"
-                      className="flex items-center gap-2 rounded border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive"
+                      className="items-center"
+                      icon={<AlertCircle className="h-4 w-4" />}
                     >
-                      <AlertCircle className="h-4 w-4 shrink-0" />
-                      <span>{error}</span>
-                    </div>
+                      {error}
+                    </Alert>
                   )}
                 </div>
-              </div>
+              </Card>
             ) : (
-              <div className="space-y-4 rounded-lg border border-border bg-card/30 p-4">
+              <Card className="space-y-4 bg-card/30 p-4">
                 <h4 className="text-xs font-semibold text-foreground">
                   {t('settings.github.addUser')}
                 </h4>
@@ -331,7 +331,7 @@ export function GithubSection() {
                     <span>{t('settings.github.loginWithPAT')}</span>
                   </Button>
                 </div>
-              </div>
+              </Card>
             )}
 
             {/* Accounts List */}
@@ -364,9 +364,9 @@ export function GithubSection() {
                                 {acc.user.name || acc.user.login}
                               </span>
                               {isActive && (
-                                <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-semibold leading-none text-emerald-500 ring-1 ring-emerald-500/20">
+                                <Tag tone="success" className="rounded-full text-[8px] leading-none">
                                   {t('settings.github.activeAccount')}
-                                </span>
+                                </Tag>
                               )}
                             </div>
                             <span className="truncate text-[10px] text-muted-foreground">

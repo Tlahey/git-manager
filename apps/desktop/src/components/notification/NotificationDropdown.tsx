@@ -7,7 +7,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { Bell, CheckCheck, Trash2, Play, Sparkles } from 'lucide-react'
 import { getNotificationIcon, getNotificationText } from './utils'
 import { showNativeNotification } from '../../hooks/useNotificationWatcher'
-import { Popover, PopoverTrigger, PopoverContent, Badge, NumberBadge } from '@git-manager/ui'
+import { Popover, PopoverTrigger, PopoverContent, Badge, NumberBadge, NativeSelect } from '@git-manager/ui'
 import type { TFunction } from '@git-manager/i18n'
 
 function formatRelativeTime(timestamp: number, t: TFunction): string {
@@ -269,7 +269,7 @@ export function NotificationDropdown() {
               {!hasToken && (
                 <>
                   <div className="flex items-center gap-2">
-                    <select
+                    <NativeSelect
                       value={simPrId}
                       onChange={(e) => setSimPrId(e.target.value)}
                       className="h-6 flex-1 rounded border border-border bg-background px-1.5 text-[9px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -279,9 +279,9 @@ export function NotificationDropdown() {
                           PR #{pr.number} ({pr.repo})
                         </option>
                       ))}
-                    </select>
+                    </NativeSelect>
 
-                    <select
+                    <NativeSelect
                       value={simAction}
                       onChange={(e) =>
                         setSimAction(e.target.value as Parameters<typeof simulateChange>[1])
@@ -297,7 +297,7 @@ export function NotificationDropdown() {
                       <option value="new_pr">{t('notifications.sim.newPR')}</option>
                       <option value="ci_success">{t('notifications.sim.ciSuccess')}</option>
                       <option value="ci_failed">{t('notifications.sim.ciFailed')}</option>
-                    </select>
+                    </NativeSelect>
                   </div>
                   <button
                     onClick={runSimulation}

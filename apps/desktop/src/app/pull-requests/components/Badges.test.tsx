@@ -26,7 +26,7 @@ describe('CiBadge — status only', () => {
   it('shows Pass with a green check for success', () => {
     const { container } = render(<CiBadge status="success" />)
     expect(screen.getByText('Pass')).toBeInTheDocument()
-    expect(container.querySelector('.text-green-400')).toBeTruthy()
+    expect(container.querySelector('.text-tone-success')).toBeTruthy()
   })
 
   it('shows Fail with a red X for failure', () => {

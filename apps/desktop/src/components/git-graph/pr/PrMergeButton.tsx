@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import {
   Button,
+  Checkbox,
   Spinner,
   DropdownMenu,
   DropdownMenuTrigger,
@@ -93,12 +94,11 @@ export function PrMergeButton({
     <section data-testid="pr-merge" className="border-t border-border px-4 py-3">
       {canBypass && (
         <label className="mb-2 flex items-start gap-2 text-[11px] text-muted-foreground">
-          <input
-            type="checkbox"
+          <Checkbox
             data-testid="pr-merge-bypass-rules"
             checked={bypassRules}
             onChange={(e) => setBypassRules(e.target.checked)}
-            className="mt-0.5 h-3 w-3 shrink-0 accent-primary"
+            className="mt-0.5"
           />
           {t('pr.merge.bypassRules')}
         </label>

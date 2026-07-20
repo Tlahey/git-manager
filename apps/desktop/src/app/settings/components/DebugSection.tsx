@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Bug, Copy, Check, Trash2 } from 'lucide-react'
-import { Button, Separator } from '@git-manager/ui'
+import { Button, Separator, Switch } from '@git-manager/ui'
 import { useDebugLogStore } from '../../../stores/debugLog.store'
 import { formatDebugLogText, formatDebugTimestamp } from '../../../lib/formatDebugLog'
 
@@ -41,16 +41,12 @@ export function DebugSection() {
             </p>
           </div>
         </div>
-        <label className="relative inline-flex cursor-pointer items-center">
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => setEnabled(e.target.checked)}
-            className="peer sr-only"
-            data-testid="debug-enable-toggle"
-          />
-          <div className="peer h-5 w-9 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-border after:bg-background after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none" />
-        </label>
+        <Switch
+          checked={enabled}
+          onChange={(e) => setEnabled(e.target.checked)}
+          data-testid="debug-enable-toggle"
+          aria-label="Activer le journal de débogage"
+        />
       </div>
 
       <Separator />

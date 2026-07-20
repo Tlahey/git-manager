@@ -3,9 +3,13 @@ import { Tooltip } from '../../../components/ui/Tooltip'
 import type { PRStatus, CiStatus, CiDetail } from '../types'
 
 const STATUS_CONFIG: Record<PRStatus, { label: string; className: string }> = {
+  // Text colours ride the graded --tone-*-foreground tokens (the same pair the shared
+  // Tag/Alert use) so they retint per theme and clear APCA, instead of the fixed
+  // palette shades (text-green-400…) that washed out on light themes. `merged` keeps
+  // GitHub's conventional purple — there's no purple tone token.
   open: {
     label: 'Open',
-    className: 'bg-green-500/15 text-green-400 border-green-500/30',
+    className: 'bg-success/15 text-tone-success border-success/30',
   },
   draft: {
     label: 'Draft',
@@ -13,11 +17,11 @@ const STATUS_CONFIG: Record<PRStatus, { label: string; className: string }> = {
   },
   approved: {
     label: 'Approved',
-    className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+    className: 'bg-success/15 text-tone-success border-success/30',
   },
   changes_requested: {
     label: 'Changes',
-    className: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+    className: 'bg-amber-500/15 text-tone-warning border-amber-500/30',
   },
   merged: {
     label: 'Merged',
@@ -25,7 +29,7 @@ const STATUS_CONFIG: Record<PRStatus, { label: string; className: string }> = {
   },
   closed: {
     label: 'Closed',
-    className: 'bg-destructive/15 text-destructive border-destructive/30',
+    className: 'bg-destructive/15 text-tone-danger border-destructive/30',
   },
 }
 
@@ -45,21 +49,21 @@ export function CiBadge({ status, details }: { status: CiStatus; details?: CiDet
 
   if (status === 'success') {
     badgeEl = (
-      <span className="flex cursor-help items-center gap-0.5 text-[9px] text-green-400">
+      <span className="flex cursor-help items-center gap-0.5 text-[9px] text-tone-success">
         <CheckCircle2 className="h-3 w-3" />
         Pass
       </span>
     )
   } else if (status === 'failure') {
     badgeEl = (
-      <span className="flex cursor-help items-center gap-0.5 text-[9px] text-red-400">
+      <span className="flex cursor-help items-center gap-0.5 text-[9px] text-tone-danger">
         <XCircle className="h-3 w-3" />
         Fail
       </span>
     )
   } else if (status === 'running') {
     badgeEl = (
-      <span className="flex cursor-help items-center gap-0.5 text-[9px] text-amber-400">
+      <span className="flex cursor-help items-center gap-0.5 text-[9px] text-tone-warning">
         <Loader2 className="h-3 w-3 animate-spin" />
         Running
       </span>

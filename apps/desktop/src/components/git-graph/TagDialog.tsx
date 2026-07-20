@@ -5,6 +5,7 @@ import {
   Button,
   Spinner,
   Input,
+  Textarea,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -82,11 +83,11 @@ export function TagDialog({ repoPath, oid, shortOid, annotated, open, onClose }:
             }}
           />
           {annotated && (
-            <textarea
+            <Textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder={t('gitTree.contextMenu.tagMessagePlaceholder')}
-              className="min-h-20 w-full rounded border border-border bg-background p-2 text-sm"
+              className="min-h-20"
             />
           )}
           {error && <p className="text-xs text-destructive">{error}</p>}

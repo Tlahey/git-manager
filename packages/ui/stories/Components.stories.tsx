@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react'
 import {
   Button,
@@ -39,6 +40,18 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
+  Checkbox,
+  Switch,
+  Label,
+  RadioGroup,
+  RadioGroupItem,
+  NativeSelect,
+  Skeleton,
+  Alert,
+  Kbd,
+  Progress,
+  Avatar,
+  Card,
   toast,
 } from '../src'
 
@@ -80,6 +93,89 @@ const SearchIcon = () => (
     <path d="m21 21-4.3-4.3" />
   </svg>
 )
+
+// Interactive showcase of the form controls so their checked/on states are visible
+// in the canvas and exercised by addon-a11y. Controlled via local state, mirroring
+// how the settings sections wire them to the settings store.
+function FormControlsDemo() {
+  const [checks, setChecks] = useState({ prune: true, lazy: false })
+  const [notifications, setNotifications] = useState(true)
+  const [sound, setSound] = useState(false)
+  const [density, setDensity] = useState('comfortable')
+
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 32, alignItems: 'flex-start' }}>
+      {/* Checkbox */}
+      <div className="flex flex-col gap-2">
+        <label className="flex cursor-pointer items-center gap-2">
+          <Checkbox
+            checked={checks.prune}
+            onChange={(e) => setChecks((c) => ({ ...c, prune: e.target.checked }))}
+          />
+          <span className="text-xs text-foreground">Auto-prune on fetch</span>
+        </label>
+        <label className="flex cursor-pointer items-center gap-2">
+          <Checkbox
+            checked={checks.lazy}
+            onChange={(e) => setChecks((c) => ({ ...c, lazy: e.target.checked }))}
+          />
+          <span className="text-xs text-foreground">Lazy-load graph</span>
+        </label>
+        <label className="flex cursor-pointer items-center gap-2">
+          <Checkbox indeterminate aria-label="Some selected" />
+          <span className="text-xs text-foreground">Indeterminate</span>
+        </label>
+        <label className="flex cursor-not-allowed items-center gap-2 opacity-70">
+          <Checkbox disabled aria-label="Disabled checkbox" />
+          <span className="text-xs text-foreground">Disabled</span>
+        </label>
+      </div>
+
+      {/* Switch — both an ON and an enabled OFF instance so the graphical-contrast
+          gate grades the thumb over BOTH tracks (badge on, muted off). */}
+      <div className="flex flex-col gap-2">
+        <label className="flex cursor-pointer items-center gap-2">
+          <Switch
+            checked={notifications}
+            onChange={(e) => setNotifications(e.target.checked)}
+            aria-label="Enable notifications"
+          />
+          <span className="text-xs text-foreground">Notifications</span>
+        </label>
+        <label className="flex cursor-pointer items-center gap-2">
+          <Switch
+            checked={sound}
+            onChange={(e) => setSound(e.target.checked)}
+            aria-label="Enable sound"
+          />
+          <span className="text-xs text-foreground">Sound (off)</span>
+        </label>
+        <label className="flex cursor-not-allowed items-center gap-2">
+          <Switch disabled aria-label="Disabled switch" />
+          <span className="text-xs text-foreground">Disabled</span>
+        </label>
+      </div>
+
+      {/* Radio group + Label */}
+      <div className="flex flex-col gap-2">
+        <Label id="density-label">Density</Label>
+        <RadioGroup
+          value={density}
+          onValueChange={setDensity}
+          aria-labelledby="density-label"
+          className="gap-1.5"
+        >
+          {['compact', 'comfortable', 'spacious'].map((d) => (
+            <label key={d} className="flex cursor-pointer items-center gap-2">
+              <RadioGroupItem value={d} aria-label={d} />
+              <span className="text-xs capitalize text-foreground">{d}</span>
+            </label>
+          ))}
+        </RadioGroup>
+      </div>
+    </div>
+  )
+}
 
 export const Overview: Story = {
   render: () => (
@@ -138,6 +234,98 @@ export const Overview: Story = {
         </div>
         <div style={{ width: 260 }}>
           <Textarea aria-label="Commit message" placeholder="Write a commit message…" />
+        </div>
+      </Section>
+
+      <Section title="Form controls — Checkbox / Switch / Radio / Label">
+        <FormControlsDemo />
+      </Section>
+
+      <Section title="NativeSelect">
+        <div style={{ width: 200 }}>
+          <NativeSelect aria-label="Branch" defaultValue="main">
+            <option value="main">main</option>
+            <option value="develop">develop</option>
+            <option value="feature">feature/ui</option>
+          </NativeSelect>
+        </div>
+        <div style={{ width: 160 }}>
+          <NativeSelect aria-label="Disabled select" disabled defaultValue="main">
+            <option value="main">Disabled</option>
+          </NativeSelect>
+        </div>
+      </Section>
+
+      <Section title="Card — surface container">
+        <Card className="w-64 p-4">
+          <p className="mb-1 text-sm font-semibold text-foreground">Repository</p>
+          <p className="text-xs text-muted-foreground">
+            A themed surface panel — border, fill and text ride the card tokens.
+          </p>
+        </Card>
+        <Card className="w-64 bg-card/30 p-4 shadow-sm">
+          <p className="mb-1 text-sm font-semibold text-foreground">Translucent</p>
+          <p className="text-xs text-muted-foreground">bg-card/30 over the surface.</p>
+        </Card>
+      </Section>
+
+      <Section title="Alert — message boxes">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 320 }}>
+          <Alert variant="destructive">Failed to push: remote rejected the update.</Alert>
+          <Alert variant="success">Branch created and checked out.</Alert>
+          <Alert variant="warning">This worktree has uncommitted changes.</Alert>
+          <Alert variant="info">Fetch runs automatically every minute.</Alert>
+        </div>
+      </Section>
+
+      <Section title="Avatar — image + initials fallback">
+        {/* White initials sit on the caller's fallback background — the story uses the
+            darker end of the branch palette where white clears contrast. */}
+        <Avatar alt="Ada Lovelace" fallback="AL" size={32} style={{ backgroundColor: '#7c3aed' }} />
+        <Avatar alt="Grace Hopper" fallback="GH" size={32} style={{ backgroundColor: '#2563eb' }} />
+        <Avatar alt="Alan Turing" fallback="AT" size={32} style={{ backgroundColor: '#15803d' }} />
+        <Avatar
+          alt="Square avatar"
+          fallback="SQ"
+          size={32}
+          square
+          style={{ backgroundColor: '#be185d' }}
+        />
+      </Section>
+
+      <Section title="Kbd — shortcut keys">
+        <span className="flex items-center gap-1">
+          <Kbd>⌘</Kbd>
+          <Kbd>K</Kbd>
+        </span>
+        <span className="flex items-center gap-1">
+          <Kbd>⇧</Kbd>
+          <Kbd>⌘</Kbd>
+          <Kbd>P</Kbd>
+        </span>
+        <Kbd>Esc</Kbd>
+      </Section>
+
+      <Section title="Progress">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 240 }}>
+          <Progress value={25} aria-label="Download progress 25%" />
+          <Progress value={60} aria-label="Download progress 60%" />
+          <Progress
+            value={100}
+            aria-label="Complete"
+            indicatorClassName="bg-success"
+          />
+        </div>
+      </Section>
+
+      <Section title="Skeleton — loading placeholders">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 240 }}>
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-4 flex-1" />
+          </div>
         </div>
       </Section>
 

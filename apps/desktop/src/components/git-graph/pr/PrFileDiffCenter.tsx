@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Spinner, cn } from '@git-manager/ui'
+import { Checkbox, Spinner, cn } from '@git-manager/ui'
 import { CodeEditor } from '@git-manager/editor'
 import { ChevronLeft, FileText, GitCompare } from 'lucide-react'
 import { usePrFileContents } from '../../../hooks/usePrFileContents'
@@ -62,15 +62,13 @@ export function PrFileDiffCenter({ repoPath, prNumber, filename, onClose }: PrFi
                 : 'border-border text-muted-foreground hover:bg-accent'
             )}
           >
-            <input
-              type="checkbox"
+            <Checkbox
               data-testid="pr-file-diff-viewed"
               checked={isViewed}
               disabled={isToggling || !pullRequestId}
               onChange={() => {
                 toggleViewed(filename).catch((err) => console.error('Failed to toggle viewed:', err))
               }}
-              className="h-3.5 w-3.5 accent-primary"
             />
             {t('pr.diff.viewed')}
           </label>

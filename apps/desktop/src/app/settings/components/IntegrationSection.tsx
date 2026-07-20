@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Input, ScrollArea } from '@git-manager/ui'
+import { Button, Input, ScrollArea, Tag } from '@git-manager/ui'
 import {
   Github,
   Flame,
@@ -259,9 +259,9 @@ export function IntegrationSection() {
                           </div>
                           <div className="flex items-center gap-2">
                             {isActive ? (
-                              <span className="flex items-center gap-1 rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] text-green-500">
+                              <Tag tone="success" className="font-normal">
                                 <Check className="h-3 w-3" /> Actif
-                              </span>
+                              </Tag>
                             ) : (
                               <Button
                                 size="sm"
@@ -392,9 +392,9 @@ export function IntegrationSection() {
                           </div>
                           <div className="flex items-center gap-2">
                             {isActive ? (
-                              <span className="flex items-center gap-1 rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] text-green-500">
+                              <Tag tone="success" className="font-normal">
                                 <Check className="h-3 w-3" /> Actif
-                              </span>
+                              </Tag>
                             ) : (
                               <Button
                                 size="sm"

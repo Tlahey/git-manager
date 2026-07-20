@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Trophy, CheckCircle2, Lock } from 'lucide-react'
-import { Chip } from '@git-manager/ui'
+import { Chip, Progress, Card } from '@git-manager/ui'
 import { useGameStore, getLevelInfo } from '../../../stores/game.store'
 
 type StatusFilter = 'all' | 'in_progress' | 'completed'
@@ -117,7 +117,7 @@ export function RewardsTab() {
         </div>
 
         {/* Trophy Cabinet stats */}
-        <div className="col-span-1 flex flex-col justify-between rounded-xl border border-border bg-card/40 p-4 shadow-md backdrop-blur-sm md:col-span-2">
+        <Card className="col-span-1 flex flex-col justify-between rounded-xl bg-card/40 p-4 shadow-md backdrop-blur-sm md:col-span-2">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Cabinet de Trophées
@@ -173,7 +173,7 @@ export function RewardsTab() {
             <CheckCircle2 className="h-3 w-3 text-green-400" />
             Les récompenses se débloquent automatiquement en arrière-plan.
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Filter toolbar */}
@@ -313,14 +313,15 @@ export function RewardsTab() {
                                     {currentProgress} / {item.milestoneValue}
                                   </span>
                                 </div>
-                                <div className="h-1.5 w-full overflow-hidden rounded-full border border-border/20 bg-black/25">
-                                  <div
-                                    className="h-full bg-primary/70 transition-all duration-300"
-                                    style={{
-                                      width: `${Math.min(100, (currentProgress / (item.milestoneValue || 1)) * 100)}%`,
-                                    }}
-                                  />
-                                </div>
+                                <Progress
+                                  value={Math.min(
+                                    100,
+                                    (currentProgress / (item.milestoneValue || 1)) * 100
+                                  )}
+                                  className="border border-border/20 bg-black/25"
+                                  indicatorClassName="bg-primary/70 duration-300"
+                                  aria-hidden
+                                />
                               </div>
                             )
                           })()}

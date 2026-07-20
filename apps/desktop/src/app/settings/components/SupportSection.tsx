@@ -1,5 +1,5 @@
 import { useTranslation } from '@git-manager/i18n'
-import { Button } from '@git-manager/ui'
+import { Button, Card } from '@git-manager/ui'
 import { Heart } from 'lucide-react'
 import { apiOpenUrl } from '../../../api/shell.api'
 
@@ -21,7 +21,7 @@ export function SupportSection() {
 
       <div className="h-px bg-border" />
 
-      <div className="space-y-3 rounded-lg border border-border bg-card/25 p-4 shadow-sm">
+      <Card className="space-y-3 bg-card/25 p-4 shadow-sm">
         <p className="text-xs text-muted-foreground">{t('settings.support.hint')}</p>
         <Button
           size="sm"
@@ -32,7 +32,7 @@ export function SupportSection() {
           <Heart className="h-3.5 w-3.5" />
           {t('settings.support.sponsorButton')}
         </Button>
-      </div>
+      </Card>
     </div>
   )
 }

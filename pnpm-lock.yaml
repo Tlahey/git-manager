@@ -554,6 +554,9 @@ importers:
       '@types/react':
         specifier: 'catalog:'
         version: 18.3.31
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1(supports-color@8.1.1)
       react:
         specifier: 'catalog:'
         version: 18.3.1

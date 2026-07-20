@@ -3,6 +3,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   Button,
+  Checkbox,
   Spinner,
   Input,
   Dialog,
@@ -85,12 +86,7 @@ export function CreateBranchHereDialog({
             }}
           />
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={checkout}
-              onChange={(e) => setCheckout(e.target.checked)}
-              className="accent-primary"
-            />
+            <Checkbox checked={checkout} onChange={(e) => setCheckout(e.target.checked)} />
             {t('gitTree.createBranch.checkout')}
           </label>
           {error && <p className="text-xs text-destructive">{error}</p>}
