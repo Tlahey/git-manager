@@ -13,6 +13,7 @@ import { showBranchNativeContextMenu } from '../../api/nativeMenu.api'
 import { apiDeleteBranch } from '../../api/git.api'
 import { apiOpenRepo } from '../../api/repo.api'
 import { PendingFixupsBanner } from '../../components/fixup/PendingFixupsBanner'
+import { TimelineBar } from '../../components/timeline/TimelineBar'
 
 export function RepoView() {
   const { activeRepo, activeWorkspacePath } = useRepoUIStore()
@@ -77,7 +78,7 @@ export function RepoView() {
       <PendingFixupsBanner repoPath={activeRepo} />
 
       {/* ── Layout principal : sidebar | zone centrale ──────────── */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="relative flex flex-1 overflow-hidden">
         {/* Sidebar branches — redimensionnable */}
         <RepositorySidebar
           repoPath={repoPath}
@@ -101,6 +102,8 @@ export function RepoView() {
             searchQuery={searchQuery}
           />
         </div>
+
+        <TimelineBar repoPath={repoPath} />
       </div>
     </div>
   )

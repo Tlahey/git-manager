@@ -25,3 +25,6 @@ export type { ToolbarButtonProps } from './ToolbarButton'
 
 export { MultiSelectDropdown } from './MultiSelectDropdown'
 export type { MultiSelectDropdownProps } from './MultiSelectDropdown'
+
+export { TimelineScrubber } from './TimelineScrubber'
+export type { TimelineScrubberProps } from './TimelineScrubber'
