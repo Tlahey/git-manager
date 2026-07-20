@@ -8,11 +8,14 @@ import {
   Terminal as TerminalIcon,
   Code as CodeIcon,
   Undo2,
+  History,
   Archive,
   ArchiveRestore,
 } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { useActionToolbar } from '../../hooks/useActionToolbar'
+import { useTimelineNavStore } from '../../stores/timelineNav.store'
+import { useUndoHistoryStore } from '../../stores/undoHistory.store'
 import { useIsCommitsView } from '../../hooks/useIsCommitsView'
 import { useRunTasks } from '../../hooks/useRunTasks'
 import { useCommandPaletteStore } from '../../stores/commandPalette.store'
@@ -61,6 +64,12 @@ export function ActionToolbar() {
   const { tasks, defaultTask, hasTasks, runTask } = useRunTasks()
   const disabled = !activeRepo
 
+  const openTimeline = () => {
+    if (!activeRepo) return
+    const pointer = useUndoHistoryStore.getState().byRepo[activeRepo]?.pointer ?? 0
+    useTimelineNavStore.getState().open(activeRepo, pointer)
+  }
+
   return (
     <div className="chrome-surface flex h-[52px] shrink-0 items-center gap-1 overflow-hidden border-b border-border bg-sidebar px-2">
       {/* ── Section gauche : contexte ─────────────────────────── */}
@@ -96,6 +105,14 @@ export function ActionToolbar() {
           disabled={disabled || !canRedo}
           onClick={handleRedo}
           data-testid="toolbar-redo-button"
+        />
+        <ToolbarButton
+          icon={<History className="h-4 w-4 text-muted-foreground" />}
+          label={t('timeline.open')}
+          title={t('timeline.openTitle')}
+          disabled={disabled || !(canUndo || canRedo)}
+          onClick={openTimeline}
+          data-testid="toolbar-timeline-button"
         />
 
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />

@@ -32,6 +32,7 @@ import { EmptyRepoPanel } from './EmptyRepoPanel'
 import { PatchWorkspaceCenter } from '../patch/PatchWorkspaceCenter'
 import { PatchWorkspacePanel } from '../patch/PatchWorkspacePanel'
 import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
+import { useTimelineNavStore } from '../../stores/timelineNav.store'
 import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
 import { ConflictResolutionPanel } from './ConflictResolutionPanel'
 import { Waterline } from './Waterline'
@@ -125,6 +126,14 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
     openMergeWindow()
   }, [conflictFilePath, repoPath, setConflictFilePath])
+
+  // While the undo/redo timeline overlay is open for this repo, the previewed commit's changes take
+  // over the center (contentview) and the native right-hand detail panel is suppressed — the
+  // timeline's own steps panel owns the right side instead.
+  const timelinePreviewOpen = useTimelineNavStore(
+    (s) => s.isOpen && s.repoPath === repoPath
+  )
+  const timelinePreviewOid = useTimelineNavStore((s) => s.previewHeadOid)
 
   const pendingGraphSelection = useRepoUIStore((s) => s.pendingGraphSelection)
   const setPendingGraphSelection = useRepoUIStore((s) => s.setPendingGraphSelection)
@@ -523,6 +532,23 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     return nodes.find((n) => n.commit.oid === primaryOid) ?? null
   }, [primaryOid, nodes, wipNode, conflictNode])
 
+  // OIDs of the commits that would be undone by the previewed step — i.e. every real commit newer
+  // than the previewed HEAD (above it in the walk). Those rows animate out (collapse + color) while
+  // the timeline is open; scrubbing back toward the current position grows them back in. `null`
+  // when nothing is removed (tip at the top, or a step with no commit to resolve).
+  const timelinePreviewRemoved = useMemo(() => {
+    if (!timelinePreviewOpen || !timelinePreviewOid) return null
+    const tipIndex = renderNodes.findIndex((n) => n.commit.oid === timelinePreviewOid)
+    if (tipIndex <= 0) return null
+    const set = new Set<string>()
+    for (let i = 0; i < tipIndex; i++) {
+      const oid = renderNodes[i].commit.oid
+      if (oid === 'WIP' || oid === 'CONFLICT' || oid.startsWith('WIP:')) continue
+      set.add(oid)
+    }
+    return set
+  }, [timelinePreviewOpen, timelinePreviewOid, renderNodes])
+
   const isConflictPanelOpen = primaryNode?.commit.oid === 'CONFLICT'
 
   function closeConflictPanel() {
@@ -636,19 +662,32 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                         !(searchActive && matchSet.has(oid)) &&
                         !(authorActive && authorMatchSet.has(oid))
 
+                      // Timeline preview: commits newer than the previewed HEAD collapse into a thin
+                      // colored marker (height + color animation) to show they'd be undone. The
+                      // transition is gated on preview mode so it never adds lag to normal scrolling
+                      // (where the virtualizer rewrites `translateY` on every frame).
+                      const previewRemoved = timelinePreviewRemoved?.has(oid) ?? false
+
                       return (
                         <div
                           key={virtualItem.key}
                           data-testid={`graph-row-${oid}`}
                           data-selected={oid === primaryOid || selected.has(oid)}
-                          className="hover:z-graph-row-hover"
+                          data-preview-removed={previewRemoved || undefined}
+                          className={`hover:z-graph-row-hover${previewRemoved ? ' bg-destructive/15' : ''}`}
                           style={{
                             position: 'absolute',
                             top: 0,
                             left: 0,
                             width: '100%',
                             height: rowHeight,
-                            transform: `translateY(${virtualItem.start}px)`,
+                            transformOrigin: 'top',
+                            transform: `translateY(${virtualItem.start}px)${previewRemoved ? ' scaleY(0.22)' : ''}`,
+                            opacity: previewRemoved ? 0.55 : 1,
+                            transition: timelinePreviewOpen
+                              ? 'transform 300ms ease, opacity 300ms ease'
+                              : undefined,
+                            overflow: previewRemoved ? 'hidden' : undefined,
                           }}
                         >
                           <GraphRow
@@ -749,7 +788,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
             </div>
           </>
         ) : null
-      ) : primaryNode ? (
+      ) : !timelinePreviewOpen && primaryNode ? (
         <>
           {/* Handle de redimensionnement */}
           <div
