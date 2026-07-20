@@ -16,14 +16,23 @@ interface Tip {
  * Maps each commit OID to the branch it should be attributed to, so a commit with no ref badge of
  * its own can hint — on hover — which branch it belongs to.
  *
- * A commit is attributed to the **highest-priority branch that contains it** (i.e. from whose tip it
- * is reachable through *any* parent, not just the first — so commits merged into a branch count as
- * part of it). Priority is: local `main`/`master` first, then other local branches, then remotes;
- * ties keep the caller's order (newest-first). Concretely we walk each tip's full ancestor DAG in
- * priority order, claiming unclaimed commits and pruning at already-claimed ones — every ancestor of
- * a claimed commit is itself claimed, so pruning is safe and the whole pass stays O(V + E). Net
- * effect: anything reachable from `main` shows `main`; a feature branch only owns the commits unique
- * to it (those not contained in a higher-priority branch).
+ * The attribution is **first-parent aware**, so a commit developed on a feature branch and merged
+ * into `main` is credited to the branch it came from, not to `main`. This runs in two passes over
+ * the tips, both ordered by priority — local `main`/`master` first, then other local branches, then
+ * remotes; ties keep the caller's order (newest-first):
+ *
+ *  1. **First-parent chains.** Each tip walks only its first-parent line (`parentOids[0]`), claiming
+ *     unclaimed commits and pruning at claimed ones. Because `main` runs first it reserves its own
+ *     mainline (including its merge commits) down to the root, so a feature branch's first-parent
+ *     walk stops at the fork point (already owned by `main`) and keeps only the commits unique to the
+ *     branch — i.e. the ones it merged in.
+ *  2. **Full ancestor DAG.** A second pass walks every parent to mop up commits that no branch's
+ *     first-parent line reached — e.g. a branch that was merged and then deleted, whose commits now
+ *     hang off a merge's second parent with no ref of their own. These fall to the highest-priority
+ *     branch that contains them (usually `main`), matching the old reachability behaviour.
+ *
+ * Both passes prune at already-owned commits, and every ancestor of a claimed commit is claimed
+ * before it, so pruning is safe and the whole thing stays O(V + E).
  *
  * Reachability is used rather than lane colour because the backend's 8-hue palette recycles — it
  * even reuses main's exact blue/purple — so colour can't identify a branch.
@@ -47,9 +56,10 @@ export function computeLaneBranchByOid(nodes: GitGraphNode[]): Map<string, GitRe
   // Stable sort keeps the caller's (newest-first) node order within each priority tier.
   tips.sort((a, b) => a.priority - b.priority)
 
+  // Pass 1: walk each tip's first-parent line, crediting merged-in commits to their own branch.
+  // Pruning at an already-owned commit is safe here — a first-parent line is linear, so everything
+  // above the prune point already belongs to a higher-priority branch.
   for (const tip of tips) {
-    // Full ancestor walk (every parent). Pruning at an already-owned commit is safe: all of its
-    // ancestors were claimed when that owner ran, so nothing unique is missed.
     const stack = [tip.oid]
     while (stack.length > 0) {
       const cur = stack.pop() as string
@@ -57,6 +67,25 @@ export function computeLaneBranchByOid(nodes: GitGraphNode[]): Map<string, GitRe
       const n = byOid.get(cur)
       if (!n) continue // parent outside the loaded window
       owner.set(cur, tip.ref)
+      if (n.commit.parentOids.length > 0) stack.push(n.commit.parentOids[0])
+    }
+  }
+
+  // Pass 2: full reachability mops up commits no first-parent line reached (e.g. a merged-then-
+  // deleted branch, now hanging off a merge's second parent). A shared `visited` set keeps this
+  // O(V + E): we still traverse *through* pass-1-owned commits — a merge commit owned by main via
+  // its first parent still has an unclaimed second-parent subtree below it — but only claim the ones
+  // no branch owns yet, to the highest-priority tip that reaches them (tips are in priority order).
+  const visited = new Set<string>()
+  for (const tip of tips) {
+    const stack = [tip.oid]
+    while (stack.length > 0) {
+      const cur = stack.pop() as string
+      if (visited.has(cur)) continue
+      visited.add(cur)
+      const n = byOid.get(cur)
+      if (!n) continue // parent outside the loaded window
+      if (!owner.has(cur)) owner.set(cur, tip.ref)
       for (const p of n.commit.parentOids) stack.push(p)
     }
   }
