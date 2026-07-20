@@ -105,6 +105,27 @@ describe('GraphHeader — resizing', () => {
     expect(useGitGraphColumnsStore.getState().columns.graph?.width).toBe(160)
   })
 
+  it('resizes refs against the flex column (not the capped graph) when graph is its neighbour', () => {
+    // The refs|graph handle must not trade with graph (capped at its useful width, can't absorb);
+    // it resizes refs and lets the flex `message` column absorb, leaving graph untouched.
+    const columns = [
+      col({ key: 'refs', width: 160 }),
+      col({ key: 'graph', labelKey: 'gitTree.columns.graph', width: 120, maxWidth: 120 }),
+      col({ key: 'message', labelKey: 'gitTree.columns.message', flex: true, width: 400 }),
+    ]
+    const graphBefore = useGitGraphColumnsStore.getState().columns.graph?.width
+    const { container } = render(<GraphHeader columns={columns} />)
+    // First handle sits at the refs|graph border.
+    const handle = container.querySelectorAll('.cursor-col-resize')[0]
+
+    firePointer(handle, 'pointerdown', 100)
+    firePointer(window, 'pointermove', 140) // +40 → refs grows, message (flex) absorbs
+    firePointer(window, 'pointerup')
+
+    expect(useGitGraphColumnsStore.getState().columns.refs?.width).toBe(200)
+    expect(useGitGraphColumnsStore.getState().columns.graph?.width).toBe(graphBefore)
+  })
+
   it('resizes only the fixed neighbour when the other side is the flex column', () => {
     const columns = [
       col({ key: 'message', flex: true }),

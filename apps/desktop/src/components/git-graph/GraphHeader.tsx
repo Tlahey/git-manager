@@ -159,14 +159,27 @@ export function GraphHeader({ columns, authorOptions = [] }: GraphHeaderProps) {
                 )}
 
                 {/* Poignée de redimensionnement à la frontière `col` | `nextCol` (splitter). */}
-                {nextCol && (
-                  <div
-                    onPointerDown={(e) => handleResizeDown(e, col, nextCol)}
-                    className="group absolute right-0 top-0 z-content h-full w-2 translate-x-1/2 cursor-col-resize"
-                  >
-                    <div className="mx-auto h-full w-px bg-border transition-colors group-hover:bg-primary/60" />
-                  </div>
-                )}
+                {nextCol &&
+                  (() => {
+                    // `refs` n'a que la frontière refs|graph pour se redimensionner. Or `graph`
+                    // est plafonnée à sa largeur utile et ne peut pas absorber : la trade
+                    // refs↔graph se bloquait (refs ne pouvait pas rétrécir). Quand `graph` suit
+                    // directement `refs`, on redimensionne donc `refs` contre la colonne flex
+                    // (message) — refs grandit/rétrécit, le flex absorbe, `graph` garde sa
+                    // largeur. Sinon (graph masqué…), splitter normal avec `nextCol`.
+                    const partner =
+                      col.key === 'refs' && nextCol.key === 'graph'
+                        ? (columns.find((c) => c.flex) ?? nextCol)
+                        : nextCol
+                    return (
+                      <div
+                        onPointerDown={(e) => handleResizeDown(e, col, partner)}
+                        className="group absolute right-0 top-0 z-content h-full w-2 translate-x-1/2 cursor-col-resize"
+                      >
+                        <div className="mx-auto h-full w-px bg-border transition-colors group-hover:bg-primary/60" />
+                      </div>
+                    )
+                  })()}
               </div>
             )
           })}
