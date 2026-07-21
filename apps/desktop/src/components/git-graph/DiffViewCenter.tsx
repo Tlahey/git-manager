@@ -26,6 +26,9 @@ interface DiffViewCenterProps {
     path: string
     staged: boolean
     oid?: string // defined if reviewing a historic commit
+    // Set only for a merged multi-commit selection: the diff spans `baseOid^..oid` instead of
+    // `oid` vs its own first parent (see the summary panel).
+    baseOid?: string
   }
   onClose: () => void
   onRefresh?: () => void
@@ -47,6 +50,9 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
   // the file's own review commit. Both the "Diff" tab (this commit vs its parent) and the "File" tab
   // (the file as it was at this commit) are scoped to it via the shared diff/raw-contents hooks.
   const effectiveOid = selectedHistoryOid ?? file.oid
+  // The merged-range base only applies to the file's own commit; a version picked from the History
+  // panel is a single historic commit, so it diffs against that commit's own parent (no range).
+  const effectiveBaseOid = selectedHistoryOid ? undefined : file.baseOid
 
   // GitHub associations for the version on screen: the PR that introduced it and the tag/release it
   // shipped in. Buttons appear only once resolved (and only for GitHub repos).
@@ -59,14 +65,15 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
     data: diffData,
     isLoading: isLoadingMeta,
     refetch,
-  } = useFileDiff(repoPath, file.path, file.staged, effectiveOid)
+  } = useFileDiff(repoPath, file.path, file.staged, effectiveOid, effectiveBaseOid)
 
   // Use hook to fetch raw contents
   const { data: rawContents, isLoading: isLoadingRaw } = useFileRawContents(
     repoPath,
     file.path,
     file.staged,
-    effectiveOid
+    effectiveOid,
+    effectiveBaseOid
   )
 
   const isLoading = isLoadingMeta || isLoadingRaw

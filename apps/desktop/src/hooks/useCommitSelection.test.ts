@@ -123,5 +123,23 @@ describe('useCommitSelection', () => {
       act(() => result.current.handleRowSelect(clickEvent(), 0))
       expect(result.current.selected).toEqual(new Set(['CONFLICT']))
     })
+
+    it('treats a per-worktree WIP:<path> row as synthetic too', () => {
+      const nodes = [node('WIP:/some/worktree'), ...NODES]
+      const { result } = renderHook(() => useCommitSelection(nodes))
+      act(() => result.current.handleRowSelect(clickEvent({ metaKey: true }), 0))
+      expect(result.current.selected).toEqual(new Set(['WIP:/some/worktree']))
+    })
+
+    it('excludes a synthetic row caught inside a shift-click range', () => {
+      // WIP sits at the top (index 0). Selecting it, then shift-clicking a commit builds a range
+      // spanning WIP — it must not be pulled into the group.
+      const nodes = [node('WIP'), node('a'), node('b'), node('c')]
+      const { result } = renderHook(() => useCommitSelection(nodes))
+      act(() => result.current.handleRowSelect(clickEvent(), 0)) // anchor = WIP
+      act(() => result.current.handleRowSelect(clickEvent({ shiftKey: true }), 3)) // shift down to c
+      expect(result.current.selected).toEqual(new Set(['a', 'b', 'c']))
+      expect(result.current.selected.has('WIP')).toBe(false)
+    })
   })
 })

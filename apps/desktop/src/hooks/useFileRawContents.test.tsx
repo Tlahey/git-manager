@@ -24,14 +24,24 @@ describe('useFileRawContents', () => {
     mockedApi.mockResolvedValue('file contents')
     const { result } = renderHook(() => useFileRawContents('/repo', 'a.ts', false), { wrapper })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(mockedApi).toHaveBeenCalledWith('/repo', 'a.ts', false, undefined)
+    expect(mockedApi).toHaveBeenCalledWith('/repo', 'a.ts', false, undefined, undefined)
     expect(result.current.data).toBe('file contents')
   })
 
   it('forwards the oid when given', async () => {
     mockedApi.mockResolvedValue('file contents')
     renderHook(() => useFileRawContents('/repo', 'a.ts', true, 'oid1'), { wrapper })
-    await waitFor(() => expect(mockedApi).toHaveBeenCalledWith('/repo', 'a.ts', true, 'oid1'))
+    await waitFor(() =>
+      expect(mockedApi).toHaveBeenCalledWith('/repo', 'a.ts', true, 'oid1', undefined)
+    )
+  })
+
+  it('forwards the merged-range base oid when given', async () => {
+    mockedApi.mockResolvedValue('file contents')
+    renderHook(() => useFileRawContents('/repo', 'a.ts', false, 'head', 'base'), { wrapper })
+    await waitFor(() =>
+      expect(mockedApi).toHaveBeenCalledWith('/repo', 'a.ts', false, 'head', 'base')
+    )
   })
 
   it('is disabled when filePath is null', () => {

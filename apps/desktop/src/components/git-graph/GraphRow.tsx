@@ -329,12 +329,14 @@ export const GraphRow = memo(function GraphRow({
         }}
       />
 
-      {/* Selection background starting from the end of the graph column to the right end of the row */}
+      {/* Selection background starting from the end of the graph column to the right end of the row.
+          A light tint of the theme's primary (purple in the default theme) reads more clearly as a
+          selection than the neutral accent, while staying theme-aware and contrast-safe. */}
       {isActiveRow && (
         <div
           className={cn(
             'pointer-events-none absolute inset-y-0 transition-colors',
-            isPrimary ? 'bg-accent' : 'bg-accent/70'
+            isPrimary ? 'bg-primary/20' : 'bg-primary/10'
           )}
           style={{
             left: endX,

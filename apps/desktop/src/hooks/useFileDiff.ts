@@ -5,11 +5,12 @@ export function useFileDiff(
   repoPath: string,
   filePath: string | null,
   staged: boolean,
-  oid?: string
+  oid?: string,
+  baseOid?: string
 ) {
   return useQuery({
-    queryKey: ['file-diff', repoPath, filePath, staged, oid],
-    queryFn: () => apiGetFileDiff(repoPath, filePath!, staged, oid),
+    queryKey: ['file-diff', repoPath, filePath, staged, oid, baseOid],
+    queryFn: () => apiGetFileDiff(repoPath, filePath!, staged, oid, baseOid),
     enabled: !!repoPath && !!filePath,
   })
 }

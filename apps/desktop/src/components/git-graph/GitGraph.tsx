@@ -24,6 +24,7 @@ import { useRefDragStore } from '../../stores/refDrag.store'
 import { GraphHeader } from './GraphHeader'
 import { CommitSearchPanel } from './CommitSearchPanel'
 import { CommitDetailsPanel } from './CommitDetailsPanel'
+import { MultiCommitDetailsPanel } from './MultiCommitDetailsPanel'
 import { DiffViewCenter } from './DiffViewCenter'
 import { PrDetailCenter } from './pr/PrDetailCenter'
 import { PrComposerCenter } from './pr/PrComposerCenter'
@@ -543,6 +544,20 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     return nodes.find((n) => n.commit.oid === primaryOid) ?? null
   }, [primaryOid, nodes, wipNode, conflictNode])
 
+  // Real commits currently multi-selected, kept in graph order (newest first). The synthetic
+  // WIP/CONFLICT rows never take part in a merged-diff selection. When more than one is selected the
+  // right panel swaps to the multi-commit summary instead of a single commit's details.
+  const selectedCommitNodes = useMemo(() => {
+    if (selected.size < 2) return []
+    return filteredNodes.filter((n) => {
+      const oid = n.commit.oid
+      return (
+        selected.has(oid) && oid !== 'WIP' && oid !== 'CONFLICT' && !oid.startsWith('WIP:')
+      )
+    })
+  }, [selected, filteredNodes])
+  const isMultiSelect = selectedCommitNodes.length > 1
+
   // OIDs of the commits that would be undone by the previewed step — i.e. every real commit newer
   // than the previewed HEAD (above it in the walk). Those rows animate out (collapse + color) while
   // the timeline is open; scrubbing back toward the current position grows them back in. `null`
@@ -821,6 +836,13 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                 activeFile={conflictFilePath}
                 onSelectFile={setConflictFilePath}
                 onClose={closeConflictPanel}
+              />
+            ) : isMultiSelect ? (
+              <MultiCommitDetailsPanel
+                nodes={selectedCommitNodes}
+                repoPath={repoPath}
+                onSelectFileDiff={(file) => setActiveDiffFile(file)}
+                onClose={clearSelection}
               />
             ) : (
               <CommitDetailsPanel

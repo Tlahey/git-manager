@@ -520,18 +520,18 @@ describe('GraphRow — author/date/sha columns', () => {
 })
 
 describe('GraphRow — selection/conflict styling', () => {
-  it('applies the primary accent background when isPrimary', () => {
+  it('applies the primary selection tint when isPrimary', () => {
     const { container } = renderRow({ columns: [col('message')], isPrimary: true })
-    expect(container.querySelector('.bg-accent')).toBeTruthy()
+    expect(container.querySelector('.bg-primary\\/20')).toBeTruthy()
   })
 
-  it('applies the softer selected background when isSelected but not primary', () => {
+  it('applies the softer selection tint when isSelected but not primary', () => {
     const { container } = renderRow({
       columns: [col('message')],
       isSelected: true,
       isPrimary: false,
     })
-    expect(container.querySelector('.bg-accent\\/70')).toBeTruthy()
+    expect(container.querySelector('.bg-primary\\/10')).toBeTruthy()
   })
 
   it('adds the CONFLICT-specific background layer only for the CONFLICT row', () => {

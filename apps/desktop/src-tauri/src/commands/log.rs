@@ -200,6 +200,20 @@ pub async fn get_log(
         .map_err(Into::into)
 }
 
+/// Returns the merged diff spanning a multi-commit selection — the cumulative change set from
+/// just before the oldest selected commit (`base_oid`) up to the newest (`head_oid`). Used by the
+/// graph's right-hand panel when more than one commit is selected. See
+/// `git_diff::merged_commits_diff` for the exact `base_oid^..head_oid` semantics.
+#[tauri::command]
+pub async fn get_commits_merged_diff(
+    path: String,
+    base_oid: String,
+    head_oid: String,
+) -> Result<GitDiff, String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    git_diff::merged_commits_diff(&repo, &base_oid, &head_oid).map_err(Into::into)
+}
+
 /// Retourne le diff complet d'un commit vs son premier parent
 #[tauri::command]
 pub async fn get_commit_diff(path: String, oid: String) -> Result<GitDiff, String> {

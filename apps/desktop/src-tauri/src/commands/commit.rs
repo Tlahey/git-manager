@@ -98,13 +98,18 @@ pub async fn get_staged_diff(path: String) -> Result<GitDiff, String> {
 
 // ─── get_file_diff ────────────────────────────────────────────────────────────
 
-/// Retourne le diff d'un fichier spécifique (staged, unstaged, ou d'un commit historique)
+/// Retourne le diff d'un fichier spécifique (staged, unstaged, ou d'un commit historique).
+///
+/// `base_oid`, when present, scopes the diff to a multi-commit range: the left side becomes the
+/// first-parent tree of `base_oid` (the oldest selected commit) instead of `oid`'s own first
+/// parent — matching the merged-range diff shown when several commits are selected together.
 #[tauri::command]
 pub async fn get_file_diff(
     path: String,
     file_path: String,
     staged: bool,
     oid: Option<String>,
+    base_oid: Option<String>,
 ) -> Result<GitDiffFile, String> {
     let full_diff = if let Some(oid_str) = oid {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
@@ -112,8 +117,16 @@ pub async fn get_file_diff(
         let commit = repo.find_commit(commit_oid).map_err(AppError::Git)?;
 
         let commit_tree = commit.tree().map_err(AppError::Git)?;
-        let parent_tree = if commit.parent_count() > 0 {
-            let parent = commit.parent(0).map_err(AppError::Git)?;
+        // The "before" side: for a merged range it's the oldest selected commit's first parent;
+        // otherwise it's this commit's own first parent.
+        let base_commit = match &base_oid {
+            Some(b) => repo
+                .find_commit(Oid::from_str(b).map_err(AppError::Git)?)
+                .map_err(AppError::Git)?,
+            None => commit.clone(),
+        };
+        let parent_tree = if base_commit.parent_count() > 0 {
+            let parent = base_commit.parent(0).map_err(AppError::Git)?;
             Some(parent.tree().map_err(AppError::Git)?)
         } else {
             None
@@ -175,12 +188,18 @@ pub async fn get_file_raw_contents(
     file_path: String,
     staged: bool,
     oid: Option<String>,
+    base_oid: Option<String>,
 ) -> Result<RawFileDiffContents, String> {
     let repo = Repository::open(&path).map_err(|e| e.to_string())?;
 
     let original = if let Some(ref oid_str) = oid {
-        let commit_oid = Oid::from_str(oid_str).map_err(|e| e.to_string())?;
-        let commit = repo.find_commit(commit_oid).map_err(|e| e.to_string())?;
+        // For a merged range the "before" side is the oldest selected commit's first parent
+        // (`base_oid`); otherwise it's this commit's own first parent.
+        let base_oid_str = base_oid.as_ref().unwrap_or(oid_str);
+        let base_commit_oid = Oid::from_str(base_oid_str).map_err(|e| e.to_string())?;
+        let commit = repo
+            .find_commit(base_commit_oid)
+            .map_err(|e| e.to_string())?;
         if commit.parent_count() > 0 {
             let parent = commit.parent(0).map_err(|e| e.to_string())?;
             get_file_content_from_tree(
