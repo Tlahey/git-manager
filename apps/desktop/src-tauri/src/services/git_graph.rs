@@ -5,13 +5,13 @@ use git2::{Oid, Repository};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-// ─── Palette de couleurs ──────────────────────────────────────────────────────
+// ─── Color palette ──────────────────────────────────────────────────────────
 
 const COLORS: &[&str] = &[
     "#7c3aed", "#2563eb", "#16a34a", "#d97706", "#dc2626", "#0891b2", "#be185d", "#65a30d",
 ];
 
-// ─── Structs (match exact avec les types TypeScript) ───────────────────────────
+// ─── Structs (exact match with the TypeScript types) ───────────────────────
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -33,14 +33,14 @@ pub struct LogGraphNode {
     pub refs: Vec<LogRef>,
 }
 
-/// Assigne à chaque commit une colonne, une couleur et les connexions (lignes SVG) vers ses
-/// parents, dans l'ordre de `oids` (déjà paginé/trié par l'appelant via un `Revwalk`).
+/// Assigns each commit a column, a color, and the connections (SVG lines) to its parents, in the
+/// order of `oids` (already paginated/sorted by the caller via a `Revwalk`).
 ///
-/// C'est l'algorithme de layout du graphe de commits : `active_lanes`/`lane_colors` suivent
-/// quelle colonne "attend" quel commit au fur et à mesure qu'on avance dans l'historique, et
-/// `color_map` fixe la couleur de chaque commit une seule fois pour qu'elle reste stable le long
-/// d'une lane. Les stashes (dont le 2ᵉ+ parent n'est pas un vrai parent de merge) et la branche
-/// main/master (colorée différemment en local vs origin) ont un traitement dédié.
+/// This is the commit graph's layout algorithm: `active_lanes`/`lane_colors` track which column is
+/// "waiting" for which commit as we advance through history, and `color_map` fixes each commit's
+/// color once so it stays stable along a lane. Stashes (whose 2nd+ parent isn't a real merge
+/// parent) and the main/master branch (colored differently local vs. origin) get dedicated
+/// handling.
 pub fn build_graph_nodes(
     repo: &Repository,
     oids: &[Oid],
@@ -49,7 +49,7 @@ pub fn build_graph_nodes(
     branch: Option<&str>,
     head_has_wip: bool,
 ) -> Result<Vec<LogGraphNode>, AppError> {
-    // active_lanes[i] = Some(oid) signifie que la lane i attend ce commit
+    // active_lanes[i] = Some(oid) means lane i is waiting for this commit
     let mut active_lanes: Vec<Option<String>> = Vec::new();
     let mut lane_colors: Vec<String> = Vec::new();
     let mut color_map: HashMap<String, String> = HashMap::new();
@@ -206,7 +206,7 @@ pub fn build_graph_nodes(
             }
         }
 
-        // Assigner la couleur du commit courant (stable par lane, propagée au 1er parent)
+        // Assign the current commit's color (stable per lane, propagated to the 1st parent)
         let mut color = color_map
             .entry(oid_str.clone())
             .or_insert_with(|| {
@@ -225,7 +225,7 @@ pub fn build_graph_nodes(
 
         let mut is_new_lane = false;
 
-        // S'assurer que ce commit est dans active_lanes (nouveau nœud non attendu)
+        // Make sure this commit is in active_lanes (new, unexpected node)
         if let Some(idx) = col_override {
             active_lanes[idx] = Some(oid_str.clone());
         } else if !active_lanes
@@ -247,7 +247,7 @@ pub fn build_graph_nodes(
             }
         }
 
-        // Trouver toutes les colonnes de ce commit (merge possible de plusieurs lanes)
+        // Find every column this commit sits on (a merge can span several lanes)
         let merge_cols: Vec<usize> = active_lanes
             .iter()
             .enumerate()
@@ -257,27 +257,27 @@ pub fn build_graph_nodes(
 
         let col = merge_cols[0];
 
-        // ── Calcul de next_lanes ──────────────────────────────────────────────
+        // ── Compute next_lanes ─────────────────────────────────────────────────
         let mut next_lanes = active_lanes.clone();
         let mut next_lane_colors = lane_colors.clone();
 
-        // Effacer toutes les occurrences de ce commit
+        // Clear every occurrence of this commit
         for &mc in &merge_cols {
             next_lanes[mc] = None;
         }
 
         let mut parent_to_col = HashMap::new();
 
-        // Premier parent : prend la colonne principale (col)
+        // First parent: takes the main column (col)
         if let Some(p0) = parent_oids.first() {
             next_lanes[col] = Some(p0.clone());
             next_lane_colors[col] = color.clone();
             parent_to_col.insert(p0.clone(), col);
-            // Propager la couleur au premier parent
+            // Propagate the color to the first parent
             color_map.entry(p0.clone()).or_insert_with(|| color.clone());
         }
 
-        // Parents supplémentaires : nouvelles lanes
+        // Additional parents: new lanes
         for p in parent_oids.iter().skip(1) {
             let target_col = if let Some(existing_idx) = next_lanes
                 .iter()
@@ -308,22 +308,22 @@ pub fn build_graph_nodes(
             parent_to_col.insert(p.clone(), target_col);
         }
 
-        // Nettoyer les None en fin de vecteur
+        // Clean up trailing Nones
         while next_lanes.last() == Some(&None) {
             next_lanes.pop();
             next_lane_colors.pop();
         }
 
-        // ── Calcul des connexions (lignes full-row pour le SVG) ───────────────
+        // ── Compute connections (full-row lines for the SVG) ──────────────────
         let mut connections: Vec<GitGraphEdge> = Vec::new();
 
-        // 1. Lanes pass-through (non liées à ce commit)
+        // 1. Pass-through lanes (unrelated to this commit)
         for (from_col, lane_oid) in active_lanes.iter().enumerate() {
             if let Some(ref oid) = lane_oid {
                 if oid == &oid_str {
-                    continue; // La lane de ce commit : gérée via merge/outgoing
+                    continue; // This commit's own lane: handled via merge/outgoing
                 }
-                // Une lane pass-through reste toujours dans la même colonne et garde sa couleur
+                // A pass-through lane always stays in the same column and keeps its color
                 let edge_color = lane_colors
                     .get(from_col)
                     .cloned()
@@ -339,7 +339,7 @@ pub fn build_graph_nodes(
             }
         }
 
-        // 2. Lignes de merge entrant (colonnes secondaires → col principal)
+        // 2. Incoming merge lines (secondary columns → main column)
         for &mc in &merge_cols {
             let edge_color = lane_colors
                 .get(mc)
@@ -366,7 +366,7 @@ pub fn build_graph_nodes(
             }
         }
 
-        // 3. Lignes sortantes vers les parents
+        // 3. Outgoing lines to the parents
         for p_oid in &parent_oids {
             if let Some(&to_col) = parent_to_col.get(p_oid) {
                 let edge_color = next_lane_colors
@@ -388,7 +388,7 @@ pub fn build_graph_nodes(
         active_lanes = next_lanes;
         lane_colors = next_lane_colors;
 
-        // ── Construction du commit ────────────────────────────────────────────
+        // ── Build the commit ───────────────────────────────────────────────────
         let author = commit.author();
         let committer = commit.committer();
         let raw_message = commit.message().unwrap_or("").to_string();
@@ -428,17 +428,16 @@ pub fn build_graph_nodes(
         });
     }
 
-    // ── Pointillés du "pont" reliant chaque stash à son commit de base ────────────
-    // Un stash est dessiné *à l'intérieur* de la lane sur laquelle il a été créé (voir le
-    // hijack `col_override` plus haut), si bien que la ligne qui relie le nœud du stash à son
-    // vrai commit de base — son unique parent (tronqué) — descend le long de cette lane en
-    // traversant potentiellement plusieurs lignes de commits sans rapport. Cette ligne n'est pas
-    // de l'historique réel : elle doit être en pointillé sur TOUTE sa longueur, pas seulement sur
-    // la ligne du stash lui-même. On connaît la colonne exacte (celle du stash, conservée par les
-    // lanes pass-through en dessous) et l'oid de base, donc on marque `dashed` sur chaque segment
-    // de cette colonne, de la ligne du stash jusqu'à celle de son commit de base (inclus). La
-    // ligne *au-dessus* du stash reste pleine : c'est l'historique réel qui passe par là, pas le
-    // lien du stash (un stash n'a pas de vrai enfant qui pointe vers lui).
+    // ── Dashing the "bridge" connecting each stash to its base commit ────────────
+    // A stash is drawn *inside* the lane it was created on (see the `col_override` hijack
+    // above), so the line connecting the stash's node to its real base commit — its single
+    // (truncated) parent — runs down that lane, potentially crossing several unrelated commit
+    // rows. That line isn't real history: it must be dashed along its ENTIRE length, not just
+    // on the stash's own row. We know the exact column (the stash's, kept by the pass-through
+    // lanes below) and the base oid, so we mark `dashed` on every segment of that column, from
+    // the stash's row down to its base commit's row (inclusive). The line *above* the stash
+    // stays solid: that's real history passing through, not the stash's link (a stash has no
+    // real child pointing to it).
     let stash_oid_set: std::collections::HashSet<String> =
         stash_oids.iter().map(|o| o.to_string()).collect();
     let stash_indices: Vec<usize> = nodes
@@ -454,20 +453,20 @@ pub fn build_graph_nodes(
             continue;
         };
 
-        // Ligne du stash : uniquement le segment sortant (vers le bas, vers la base).
+        // Stash's own row: only the outgoing segment (downward, toward the base).
         for edge in &mut nodes[stash_idx].connections {
             if edge.from_column == bridge_col && edge.starts_at_node == Some(true) {
                 edge.dashed = Some(true);
             }
         }
 
-        // Lignes en dessous : pass-through sur la colonne du pont, jusqu'à la ligne de la base.
+        // Rows below: pass-through on the bridge column, down to the base's row.
         for row in &mut nodes[stash_idx + 1..] {
             if row.commit.oid == base_oid {
-                // Ligne de la base : le segment qui arrive depuis la colonne du pont (vertical
-                // `ends_at_node`, ou merge diagonal vers le nœud). On exclut le segment *sortant*
-                // de la base (`starts_at_node`) : le lien de la base vers son propre parent est
-                // de l'historique réel.
+                // Base's row: the segment arriving from the bridge column (vertical
+                // `ends_at_node`, or a diagonal merge into the node). We exclude the base's
+                // *outgoing* segment (`starts_at_node`): the base's link to its own parent is
+                // real history.
                 for edge in &mut row.connections {
                     if edge.from_column == bridge_col
                         && edge.starts_at_node != Some(true)

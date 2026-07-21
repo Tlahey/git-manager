@@ -147,7 +147,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   const hiddenStashes = useRepoDataStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
   const toggleStashVisibility = useRepoDataStore((s) => s.toggleStashVisibility)
 
-  // ── État de rebase (pour la ligne de conflit synthétique dans le graphe) ────
+  // ── Rebase state (for the synthetic conflict row in the graph) ─────────────
   const { data: rebaseState } = useQuery({
     queryKey: ['rebase-state', repoPath],
     queryFn: () => apiGetRebaseState(repoPath),
@@ -239,7 +239,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   // Unique authors of the loaded commits, for the AUTHOR column filter autocomplete.
   const authorOptions = useMemo(() => collectGraphAuthors(nodes), [nodes])
 
-  // ── Dérivation des données du graphe (WIP, conflit, recherche, waterlines) ──
+  // ── Derive the graph's display data (WIP, conflict, search, waterlines) ────
   const {
     wipNode,
     conflictNode,
@@ -258,9 +258,9 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     selectedAuthors
   )
 
-  // Plus grande lane occupée par le graphe (nœuds + lignes de connexion) : détermine la largeur
-  // au-delà de laquelle élargir la colonne graph n'apporte rien, et le mode d'affichage
-  // (full / overflow / compact) partagé par toutes les lignes.
+  // Largest lane occupied by the graph (nodes + connection lines): determines the width beyond
+  // which widening the graph column brings nothing, and the display mode (full / overflow /
+  // compact) shared by every row.
   const graphMaxColumn = useMemo(() => {
     let max = 0
     for (const n of renderNodes) {
@@ -280,8 +280,8 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
   const avatarSize = rowHeight === 32 ? 24 : 32
   const visibleColumns: ResolvedColumn[] = useMemo(() => {
-    // La colonne graph ne dépasse jamais la largeur réellement utile du graphe, même si une
-    // largeur plus grande a été persistée (le flex `message` absorbe la différence).
+    // The graph column never exceeds the graph's actually useful width, even if a wider value
+    // was persisted (the flex `message` column absorbs the difference).
     const graphMaxWidth = Math.max(
       getGraphMaxWidth(graphMaxColumn, avatarSize),
       COLUMN_DEFS.graph.minWidth
@@ -297,22 +297,22 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     )
   }, [columnState, graphMaxColumn, avatarSize])
 
-  // Zone de débordement de la colonne graph : un seul overlay continu sur toute la hauteur de la
-  // liste (un segment par ligne laissait un raccord d'un pixel sans ombre entre les lignes).
+  // Graph column overflow zone: a single continuous overlay spanning the whole list height (one
+  // segment per row left a one-pixel shadowless seam between rows).
   const graphOverflowZone = useMemo(() => {
     const graphCol = visibleColumns.find((c) => c.key === 'graph')
     if (!graphCol) return null
     const layout = getGraphColumnLayout(graphCol.width, graphMaxColumn, avatarSize)
     if (layout.overlayOpacity <= 0) return null
     const refsCol = visibleColumns.find((c) => c.key === 'refs')
-    // Même convention de repli que GraphRow (bande/marqueurs) pour rester aligné au pixel.
+    // Same fallback convention as GraphRow (band/markers) to stay pixel-aligned.
     const refsWidth = refsCol ? refsCol.width : 160
     return {
       left: refsWidth + 8 + layout.overlayStart,
-      // La zone grandit avec le déficit de largeur (overlayStart recule progressivement) et
-      // s'arrête 3px avant le bord de la colonne pour laisser la border-right colorée visible.
+      // The zone grows with the width deficit (overlayStart recedes progressively) and stops
+      // 3px before the column's edge to keep the colored border-right visible.
       width: Math.max(0, layout.innerWidth - layout.overlayStart - 3),
-      // Fondu de l'ombre pendant la croissance de la zone et sur la plage compacte.
+      // Shadow fade while the zone grows and over the compact range.
       opacity: layout.overlayOpacity,
     }
   }, [visibleColumns, graphMaxColumn, avatarSize])
@@ -356,7 +356,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     setActiveMatchIndex((i) => (i - 1 + totalMatches) % totalMatches)
   }
 
-  // ── Sélection (multiple) hook ──────────────────────────────────────────────
+  // ── Selection (multiple) hook ───────────────────────────────────────────────
   const { selected, primaryOid, setPrimaryOid, selectSingle, handleRowSelect, clearSelection } =
     useCommitSelection(filteredNodes, onSelectCommit)
 
@@ -405,7 +405,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     [setSelectedCommitOid, setSelectedStashIndex]
   )
 
-  // ── Menu contextuel natif (macOS) + dialogs + actions du graphe ───────────
+  // ── Native context menu (macOS) + dialogs + graph actions ─────────────────
   const { pendingAction, setPendingAction, openMenuAt, handleCommitWip, openFixupWindow } =
     useGitGraphActions({
       repoPath,
@@ -607,7 +607,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   return (
     <RefDropProvider repoPath={repoPath}>
       <div className="flex h-full select-none overflow-hidden">
-        {/* Zone principale : vue PR (priorité), composer de PR, DiffViewCenter, ou tableau virtualisé */}
+        {/* Main area: PR view (priority), PR composer, DiffViewCenter, or virtualized table */}
       <div className="relative flex min-w-[280px] flex-1 flex-col overflow-hidden">
         {patchMode ? (
           <PatchWorkspaceCenter repoPath={repoPath} />
@@ -747,9 +747,8 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                       )
                     })}
 
-                    {/* Zone de débordement : pleine hauteur, au-dessus des bandes colorées
-                        (z-graph-overflow) mais sous les cellules (z-content) — les marqueurs
-                        restent visibles. */}
+                    {/* Overflow zone: full height, above the colored bands (z-graph-overflow) but
+                        below the cells (z-content) — markers stay visible. */}
                     {graphOverflowZone && (
                       <div
                         data-testid="graph-overflow-zone"
@@ -758,15 +757,15 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
                           left: graphOverflowZone.left,
                           width: graphOverflowZone.width,
                           opacity: graphOverflowZone.opacity,
-                          // La zone est une « card » transparente : son contenu garde ses
-                          // couleurs, seule une ombre extérieure sur son bord gauche la détache
-                          // du reste du graphe.
+                          // The zone is a transparent "card": its content keeps its own colors,
+                          // only an outer shadow on its left edge detaches it from the rest of
+                          // the graph.
                           boxShadow: '-8px 0 12px -4px rgb(0 0 0 / 0.35)',
                         }}
                       />
                     )}
 
-                    {/* Waterlines : overlays plein-largeur sur les frontières, hors flux */}
+                    {/* Waterlines: full-width overlays on the boundaries, out of flow */}
                     {waterlines.map((wl) => (
                       <div
                         key={wl.id}
@@ -788,7 +787,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
         )}
       </div>
 
-      {/* Panneau latéral : workspace de patch (priorité), fichiers de la PR, résolution de conflits, ou détails du commit */}
+      {/* Side panel: patch workspace (priority), PR files, conflict resolution, or commit details */}
       {patchMode ? (
         <>
           <div
@@ -862,7 +861,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
         </>
       ) : null}
 
-      {/* Overlays (dialogs déclenchés par le menu natif) */}
+      {/* Overlays (dialogs triggered by the native menu) */}
       <GitGraphOverlayManager
         repoPath={repoPath}
         nodes={nodes}
