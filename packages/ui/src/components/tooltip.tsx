@@ -24,6 +24,8 @@ export interface TooltipProps {
   className?: string
   /** Disable the tooltip entirely */
   disabled?: boolean
+  /** Play the fade/zoom entry animation when appearing (default: true). */
+  animate?: boolean
 }
 
 // ─── Positioning logic ───────────────────────────────────────────────────────
@@ -107,12 +109,14 @@ function TooltipBubble({
   triggerRect,
   placement,
   className,
+  animate,
 }: {
   id: string
   content: React.ReactNode
   triggerRect: DOMRect
   placement: Placement
   className?: string
+  animate: boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ top: number; left: number; actual: Placement } | null>(null)
@@ -133,7 +137,7 @@ function TooltipBubble({
         'border border-border bg-popover shadow-xl',
         'text-[11px] leading-snug text-foreground',
         'pointer-events-none whitespace-nowrap',
-        'animate-in fade-in-0 zoom-in-95 duration-150',
+        animate ? 'animate-in fade-in-0 zoom-in-95 duration-150' : '',
         className,
       ]
         .filter(Boolean)
@@ -159,6 +163,7 @@ export function Tooltip({
   delay = 150,
   className,
   disabled = false,
+  animate = true,
 }: TooltipProps) {
   const [show, setShow] = useState(false)
   const [triggerRect, setTriggerRect] = useState<DOMRect | null>(null)
@@ -234,6 +239,7 @@ export function Tooltip({
           triggerRect={triggerRect}
           placement={placement}
           className={className}
+          animate={animate}
         />
       )}
     </>
