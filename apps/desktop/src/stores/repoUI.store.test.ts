@@ -327,6 +327,19 @@ describe('useRepoUIStore — prCreateOpen', () => {
     useRepoUIStore.getState().clearTabStateForRemovedRepo('/repo/a')
     expect(useRepoUIStore.getState().prCreateOpen).toBe(false)
   })
+
+  it('openPrCreateWith opens the view with head/base pre-selected', () => {
+    useRepoUIStore.getState().openPrCreateWith('feat/x', 'main')
+    const state = useRepoUIStore.getState()
+    expect(state.prCreateOpen).toBe(true)
+    expect(state.prCreatePrefill).toEqual({ head: 'feat/x', base: 'main' })
+  })
+
+  it('the plain setPrCreateOpen entry carries no prefill', () => {
+    useRepoUIStore.getState().openPrCreateWith('feat/x', 'main')
+    useRepoUIStore.getState().setPrCreateOpen(true)
+    expect(useRepoUIStore.getState().prCreatePrefill).toBeNull()
+  })
 })
 
 describe('useRepoUIStore — command-palette bridges', () => {

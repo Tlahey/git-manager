@@ -22,6 +22,9 @@ import {
   getBranches,
   checkoutBranch,
   deleteBranch,
+  mergeBranch,
+  fastForwardBranch,
+  pushBranchTo,
   getRemotes,
   removeRemote,
   pinObject,
@@ -599,6 +602,32 @@ export async function apiCheckoutBranch(
   } else {
     clearRedo(path)
   }
+}
+
+// ─── Ref drag-and-drop integrations ──────────────────────────────────────────
+
+/** Merges `source` into `target` (checks out `target` first). Rewrites the target ref, so
+ * the snapshot-based undo doesn't apply — clear the redo stack like the other rewriting ops. */
+export async function apiMergeBranch(path: string, source: string, target: string) {
+  await mergeBranch(path, source, target)
+  clearRedo(path)
+}
+
+/** Fast-forwards `target` up to `source` (ff-only; rejected if not an ancestor). */
+export async function apiFastForwardBranch(path: string, source: string, target: string) {
+  await fastForwardBranch(path, source, target)
+  clearRedo(path)
+}
+
+/** Pushes local branch `source` to remote branch `target` (refspec `source:target`). */
+export async function apiPushBranchTo(
+  path: string,
+  source: string,
+  target: string,
+  remote?: string,
+  force?: boolean
+) {
+  await pushBranchTo(path, source, target, remote, force)
 }
 
 // ─── Delete branch ─────────────────────────────────────────────────────────

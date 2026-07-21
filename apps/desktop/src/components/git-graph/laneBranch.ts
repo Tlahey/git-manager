@@ -37,6 +37,48 @@ interface Tip {
  * Reachability is used rather than lane colour because the backend's 8-hue palette recycles — it
  * even reuses main's exact blue/purple — so colour can't identify a branch.
  */
+/** Normalized branch identity, so a local branch and its remote counterpart map together
+ *  (`origin/feat` → `feat`) and hovering either highlights the same lane. */
+function branchKey(ref: GitRef): string {
+  if (ref.type === 'remote') {
+    const parts = ref.shortName.split('/')
+    if (parts.length > 1) return parts.slice(1).join('/')
+  }
+  return ref.shortName
+}
+
+/**
+ * The commits to highlight while `hoveredRef` is the drag drop target: the commits that *belong to*
+ * that ref's branch lane — its own first-parent-attributed work — and nothing else. This is the
+ * lane attribution from {@link computeLaneBranchByOid}, so it excludes the shared ancestors below
+ * the fork (they belong to `main`) and any children (owned by whatever branch they're on).
+ *
+ * A tag isn't a lane owner, so it's attributed to the branch owning the commit it points at (or, if
+ * none, highlights just that commit). Returns `null` when nothing is hovered.
+ */
+export function collectRefDropHighlight(
+  hoveredRef: GitRef | null | undefined,
+  laneRefByOid: Map<string, GitRef>
+): Set<string> | null {
+  if (!hoveredRef) return null
+
+  let targetRef: GitRef | undefined = hoveredRef
+  if (hoveredRef.type === 'tag') {
+    targetRef = laneRefByOid.get(hoveredRef.commitOid)
+    if (!targetRef) return new Set([hoveredRef.commitOid])
+  }
+  const key = branchKey(targetRef)
+
+  const set = new Set<string>()
+  for (const [oid, ownerRef] of laneRefByOid) {
+    if (branchKey(ownerRef) === key) set.add(oid)
+  }
+  // Always light the hovered ref's own tip, even if attribution credited it to a higher-priority
+  // branch (e.g. a branch pointing at a commit main's first-parent line already owns).
+  set.add(hoveredRef.commitOid)
+  return set
+}
+
 export function computeLaneBranchByOid(nodes: GitGraphNode[]): Map<string, GitRef> {
   const byOid = new Map(nodes.map((n) => [n.commit.oid, n] as const))
   const owner = new Map<string, GitRef>()

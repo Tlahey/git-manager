@@ -367,6 +367,135 @@ export async function showCommitNativeContextMenu(opts: CommitNativeMenuOptions)
   }
 }
 
+export interface RefDropNativeMenuLabels {
+  fastForward: string
+  merge: string
+  rebase: string
+  interactiveRebase: string
+  push: string
+  resetSubmenu: string
+  resetSoft: string
+  resetMixed: string
+  resetHard: string
+  startPr: string
+}
+
+export interface RefDropNativeMenuOptions {
+  /** Pre-translated, pre-interpolated item text (this module has no React/i18n context). */
+  labels: RefDropNativeMenuLabels
+  fastForwardEnabled: boolean
+  mergeEnabled: boolean
+  rebaseEnabled: boolean
+  interactiveRebaseEnabled: boolean
+  pushEnabled: boolean
+  resetEnabled: boolean
+  prEnabled: boolean
+  onFastForward: () => void
+  onMerge: () => void
+  onRebase: () => void
+  onInteractiveRebase: () => void
+  onPush: () => void
+  onReset: (mode: 'soft' | 'mixed' | 'hard') => void
+  onStartPr: () => void
+}
+
+/**
+ * Builds and pops up the native context menu shown when one ref badge (branch/tag) is dropped
+ * onto another in the commit graph. Mirrors {@link showCommitNativeContextMenu}: item text is
+ * passed in pre-translated via `labels`, enablement per action via `*Enabled`, and each action
+ * wired via an `on*` callback. Item order matches the drop-menu spec.
+ */
+export async function showRefDropNativeContextMenu(opts: RefDropNativeMenuOptions): Promise<void> {
+  const {
+    labels,
+    fastForwardEnabled,
+    mergeEnabled,
+    rebaseEnabled,
+    interactiveRebaseEnabled,
+    pushEnabled,
+    resetEnabled,
+    prEnabled,
+    onFastForward,
+    onMerge,
+    onRebase,
+    onInteractiveRebase,
+    onPush,
+    onReset,
+    onStartPr,
+  } = opts
+
+  try {
+    await loadIcons()
+  } catch (err) {
+    console.error('[nativeMenu] Error loading icons:', err)
+  }
+
+  await refreshThemeState()
+
+  const fastForwardItem = await makeItem({
+    text: labels.fastForward,
+    enabled: fastForwardEnabled,
+    action: () => onFastForward(),
+  })
+  const mergeItem = await makeItem({
+    text: labels.merge,
+    enabled: mergeEnabled,
+    action: () => onMerge(),
+  })
+  const rebaseItem = await makeItem({
+    text: labels.rebase,
+    enabled: rebaseEnabled,
+    action: () => onRebase(),
+  })
+  const interactiveRebaseItem = await makeItem({
+    text: labels.interactiveRebase,
+    enabled: interactiveRebaseEnabled,
+    action: () => onInteractiveRebase(),
+  })
+  const pushItem = await makeItem({
+    text: labels.push,
+    enabled: pushEnabled,
+    action: () => onPush(),
+  })
+
+  const resetSoftItem = await makeItem({ text: labels.resetSoft, action: () => onReset('soft') })
+  const resetMixedItem = await makeItem({ text: labels.resetMixed, action: () => onReset('mixed') })
+  const resetHardItem = await makeItem({ text: labels.resetHard, action: () => onReset('hard') })
+  const resetSubmenu = await Submenu.new({
+    text: labels.resetSubmenu,
+    icon: blankImg,
+    enabled: resetEnabled,
+    items: [resetSoftItem, resetMixedItem, resetHardItem],
+  })
+
+  const startPrItem = await makeItem({
+    text: labels.startPr,
+    enabled: prEnabled,
+    action: () => onStartPr(),
+  })
+
+  const sep = () => PredefinedMenuItem.new({ item: 'Separator' })
+
+  const items = [
+    fastForwardItem,
+    mergeItem,
+    rebaseItem,
+    interactiveRebaseItem,
+    await sep(),
+    pushItem,
+    resetSubmenu,
+    await sep(),
+    startPrItem,
+  ]
+
+  try {
+    const menu = await Menu.new({ items })
+    await menu.popup()
+  } catch (err) {
+    console.error('[nativeMenu] Failed to create or popup native ref-drop menu:', err)
+  }
+}
+
 export interface StashNativeMenuOptions {
   isHidden: boolean
   onApply: () => void

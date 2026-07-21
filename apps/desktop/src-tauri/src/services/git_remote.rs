@@ -250,6 +250,34 @@ pub fn push(repo: &Repository, remote: Option<String>, force: bool) -> Result<()
     Ok(())
 }
 
+/// Pushes local branch `source` to remote branch `target` on `remote` (refspec `source:target`) —
+/// used by the drag-and-drop of one ref badge onto another. Reuses the same auth callbacks as
+/// `push` to keep credentials on the Rust side.
+pub fn push_to(
+    repo: &Repository,
+    remote: Option<String>,
+    source: &str,
+    target: &str,
+    force: bool,
+) -> Result<(), AppError> {
+    let remote_name = resolve_remote_name(repo, remote);
+
+    let prefix = if force { "+" } else { "" };
+    let refspec = format!("{prefix}refs/heads/{source}:refs/heads/{target}");
+
+    let mut remote_obj = repo.find_remote(&remote_name).map_err(AppError::Git)?;
+
+    let callbacks = make_auth_callbacks();
+    let mut push_opts = PushOptions::new();
+    push_opts.remote_callbacks(callbacks);
+
+    remote_obj
+        .push(&[refspec.as_str()], Some(&mut push_opts))
+        .map_err(AppError::Git)?;
+
+    Ok(())
+}
+
 // ─── remotes CRUD ─────────────────────────────────────────────────────────────
 
 /// Liste les remotes avec leur nom (GitRepo.remotes ne fournit que les URLs)

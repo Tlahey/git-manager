@@ -1,7 +1,15 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import type { GitRef } from '@git-manager/git-types'
 import { RefLabel } from './RefLabel'
+import { RefDropProvider } from './RefDropContext'
+import { useRefDragStore } from '../../stores/refDrag.store'
+
+// RefDropProvider pulls in the graph's stores via useRefDrop; stub it to a bare handler so the
+// context supplies a droppable handler without wiring react-query / repo stores. Hoisted so the
+// vi.mock factory can reference it safely (it runs during the hoisted static imports).
+const { handleDrop } = vi.hoisted(() => ({ handleDrop: vi.fn() }))
+vi.mock('../../hooks/useRefDrop', () => ({ useRefDrop: () => ({ handleDrop }) }))
 
 /**
  * jsdom reports 0 for scrollWidth/clientWidth, so overflow never triggers by
@@ -130,5 +138,141 @@ describe('RefLabel — stash', () => {
     expect(container.querySelector('.lucide-archive')).toBeTruthy()
     expect(badge.style.color).toBe('rgb(167, 139, 250)') // #a78bfa
     expect(badge.style.borderStyle).toBe('dashed')
+  })
+})
+
+describe('RefLabel — drag and drop', () => {
+  function fakeDataTransfer() {
+    return { setData: vi.fn(), dropEffect: '', effectAllowed: '' } as unknown as DataTransfer
+  }
+
+  function renderPair() {
+    return render(
+      <RefDropProvider repoPath="/r">
+        <RefLabel gitRef={ref({ shortName: 'feat', name: 'refs/heads/feat' })} />
+        <RefLabel gitRef={ref({ shortName: 'main', name: 'refs/heads/main' })} />
+      </RefDropProvider>
+    )
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useRefDragStore.setState({ draggingRef: null, hoverRef: null })
+  })
+
+  it('makes a branch badge draggable inside a provider', () => {
+    render(
+      <RefDropProvider repoPath="/r">
+        <RefLabel gitRef={ref({ shortName: 'feat' })} />
+      </RefDropProvider>
+    )
+    const badge = screen.getByTestId('ref-label-branch-feat')
+    expect(badge).toHaveAttribute('draggable', 'true')
+    // WKWebView needs these to start a drag under the graph's inherited user-select:none.
+    expect(badge).toHaveClass('select-auto')
+    expect(badge.className).toContain('[-webkit-user-drag:element]')
+  })
+
+  it('does not make the bare HEAD or a stash draggable', () => {
+    render(
+      <RefDropProvider repoPath="/r">
+        <RefLabel gitRef={ref({ type: 'HEAD', shortName: 'HEAD' })} />
+        <RefLabel gitRef={ref({ type: 'stash', shortName: 'stash@{0}' })} />
+      </RefDropProvider>
+    )
+    expect(screen.getByTestId('ref-label-HEAD-HEAD')).not.toHaveAttribute('draggable')
+    expect(screen.getByTestId('ref-label-stash-stash@{0}')).not.toHaveAttribute('draggable')
+  })
+
+  it('a non-interactive lane-hint badge never drags nor shows the sticky-hover overlay', () => {
+    // Simulate a drag already in progress with `main` as the sticky target.
+    useRefDragStore.setState({
+      draggingRef: ref({ shortName: 'feat', name: 'refs/heads/feat' }),
+      hoverRef: ref({ shortName: 'main', name: 'refs/heads/main' }),
+    })
+    render(
+      <RefDropProvider repoPath="/r">
+        <RefLabel gitRef={ref({ shortName: 'main', name: 'refs/heads/main' })} interactive={false} />
+      </RefDropProvider>
+    )
+    const badge = screen.getByTestId('ref-label-branch-main')
+    expect(badge).not.toHaveAttribute('draggable')
+    // Even though `main` is the sticky target, a hint badge shows no overlay clone (no duplication).
+    expect(screen.getAllByText('main')).toHaveLength(1)
+  })
+
+  it('records the dragged ref on drag start', () => {
+    renderPair()
+    fireEvent.dragStart(screen.getByTestId('ref-label-branch-feat'), {
+      dataTransfer: fakeDataTransfer(),
+    })
+    expect(useRefDragStore.getState().draggingRef?.shortName).toBe('feat')
+  })
+
+  it('allows the drop with a copy cursor over a different ref', () => {
+    renderPair()
+    fireEvent.dragStart(screen.getByTestId('ref-label-branch-feat'), {
+      dataTransfer: fakeDataTransfer(),
+    })
+    const dtOver = fakeDataTransfer()
+    fireEvent.dragOver(screen.getByTestId('ref-label-branch-main'), { dataTransfer: dtOver })
+    expect(dtOver.dropEffect).toBe('copy')
+  })
+
+  it('calls the drop handler with (dragged source, drop target)', () => {
+    renderPair()
+    fireEvent.dragStart(screen.getByTestId('ref-label-branch-feat'), {
+      dataTransfer: fakeDataTransfer(),
+    })
+    fireEvent.drop(screen.getByTestId('ref-label-branch-main'), {
+      dataTransfer: fakeDataTransfer(),
+    })
+    expect(handleDrop).toHaveBeenCalledTimes(1)
+    expect(handleDrop.mock.calls[0][0].shortName).toBe('feat')
+    expect(handleDrop.mock.calls[0][1].shortName).toBe('main')
+  })
+
+  it('reveals the target’s full name and keeps it (sticky) until the drag ends', () => {
+    renderPair()
+    const source = screen.getByTestId('ref-label-branch-feat')
+    fireEvent.dragStart(source, { dataTransfer: fakeDataTransfer() })
+    const target = screen.getByTestId('ref-label-branch-main')
+    // A short name that fits gets no hover overlay, but a drag-hover forces it (like a hover).
+    expect(screen.getAllByText('main')).toHaveLength(1)
+    fireEvent.dragEnter(target)
+    expect(screen.getAllByText('main')).toHaveLength(2)
+    // Sticky: leaving the badge keeps the overlay up (no onDragLeave clears it).
+    fireEvent.dragLeave(target)
+    expect(screen.getAllByText('main')).toHaveLength(2)
+    // Ending the drag clears the sticky target.
+    fireEvent.dragEnd(source)
+    expect(screen.getAllByText('main')).toHaveLength(1)
+  })
+
+  it('switches the sticky highlight when the drag enters a different target', () => {
+    render(
+      <RefDropProvider repoPath="/r">
+        <RefLabel gitRef={ref({ shortName: 'feat', name: 'refs/heads/feat' })} />
+        <RefLabel gitRef={ref({ shortName: 'main', name: 'refs/heads/main' })} />
+        <RefLabel gitRef={ref({ shortName: 'dev', name: 'refs/heads/dev' })} />
+      </RefDropProvider>
+    )
+    fireEvent.dragStart(screen.getByTestId('ref-label-branch-feat'), {
+      dataTransfer: fakeDataTransfer(),
+    })
+    fireEvent.dragEnter(screen.getByTestId('ref-label-branch-main'))
+    expect(screen.getAllByText('main')).toHaveLength(2)
+    fireEvent.dragEnter(screen.getByTestId('ref-label-branch-dev'))
+    // The previous target's overlay is gone; the new one's is up.
+    expect(screen.getAllByText('main')).toHaveLength(1)
+    expect(screen.getAllByText('dev')).toHaveLength(2)
+  })
+
+  it('does not fire the handler when dropping a ref onto itself', () => {
+    renderPair()
+    const feat = screen.getByTestId('ref-label-branch-feat')
+    fireEvent.dragStart(feat, { dataTransfer: fakeDataTransfer() })
+    fireEvent.drop(feat, { dataTransfer: fakeDataTransfer() })
+    expect(handleDrop).not.toHaveBeenCalled()
   })
 })

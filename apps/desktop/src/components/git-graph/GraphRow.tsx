@@ -116,7 +116,7 @@ function CellContent({
             className="pointer-events-none flex h-full w-full min-w-0 items-center overflow-hidden opacity-0 transition-opacity duration-150 group-hover:opacity-40"
             data-testid="lane-branch-hint"
           >
-            <RefLabel gitRef={laneRef} color={node.color} />
+            <RefLabel gitRef={laneRef} color={node.color} interactive={false} />
           </div>
         )
       }

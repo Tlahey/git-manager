@@ -12,8 +12,8 @@ use commands::ai::{
 };
 use commands::blame::{get_file_history, git_blame_file};
 use commands::branch::{
-    checkout_branch, create_branch, create_tag, delete_branch, delete_tag, get_branches,
-    get_tag_containing_commit, get_tags, is_commit_on_current_branch,
+    checkout_branch, create_branch, create_tag, delete_branch, delete_tag, fast_forward_branch,
+    get_branches, get_tag_containing_commit, get_tags, is_commit_on_current_branch, merge_branch,
 };
 use commands::cherry_pick::cherry_pick_commit;
 use commands::commit::{
@@ -42,7 +42,7 @@ use commands::rebase::{
 };
 use commands::remote::{
     add_remote, fetch_remote, get_commit_web_url, get_remotes, pull_branch, push_branch,
-    remove_remote,
+    push_branch_to, remove_remote,
 };
 use commands::repo::{
     clone_repo, get_repo_readme, get_repo_status, get_repo_summary, get_terminal_commands,
@@ -178,6 +178,8 @@ pub fn run() {
             delete_tag,
             get_tag_containing_commit,
             is_commit_on_current_branch,
+            merge_branch,
+            fast_forward_branch,
             // Rebase
             get_rebase_state,
             rebase_onto_commit,
@@ -208,6 +210,7 @@ pub fn run() {
             fetch_remote,
             pull_branch,
             push_branch,
+            push_branch_to,
             get_remotes,
             add_remote,
             remove_remote,
