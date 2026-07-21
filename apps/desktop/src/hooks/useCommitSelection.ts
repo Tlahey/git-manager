@@ -1,6 +1,15 @@
 import { useState, useCallback } from 'react'
 import type { GitGraphNode } from '@git-manager/git-types'
 
+/**
+ * Synthetic graph rows (the working tree "WIP", per-worktree "WIP:<path>", and the rebase-conflict
+ * "CONFLICT" row) aren't real commits, so they can never be part of a multi-commit selection group —
+ * only picked on their own.
+ */
+function isSyntheticOid(oid: string): boolean {
+  return oid === 'WIP' || oid === 'CONFLICT' || oid.startsWith('WIP:')
+}
+
 export function useCommitSelection(
   filteredNodes: GitGraphNode[],
   onSelectCommit?: (oid: string) => void
@@ -29,7 +38,9 @@ export function useCommitSelection(
   const handleRowSelect = useCallback(
     (e: React.MouseEvent, index: number) => {
       const oid = filteredNodes[index].commit.oid
-      if (oid === 'WIP' || oid === 'CONFLICT') {
+      // A synthetic row (WIP/CONFLICT) is only ever selectable on its own — a modifier click on it
+      // toggles just that row rather than adding it to a group.
+      if (isSyntheticOid(oid)) {
         if (primaryOid === oid) {
           clearSelection()
         } else {
@@ -42,7 +53,12 @@ export function useCommitSelection(
         const start = fromIndex === -1 ? index : Math.min(fromIndex, index)
         const end = fromIndex === -1 ? index : Math.max(fromIndex, index)
         const next = new Set<string>()
-        for (let i = start; i <= end; i++) next.add(filteredNodes[i].commit.oid)
+        // Skip synthetic rows caught inside the range (e.g. the WIP row at the top) so a group is
+        // never contaminated by the working tree / conflict rows.
+        for (let i = start; i <= end; i++) {
+          const rowOid = filteredNodes[i].commit.oid
+          if (!isSyntheticOid(rowOid)) next.add(rowOid)
+        }
         setSelected(next)
         setPrimaryOid(oid)
         onSelectCommit?.(oid)

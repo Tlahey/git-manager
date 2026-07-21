@@ -5,11 +5,12 @@ export function useFileRawContents(
   repoPath: string,
   filePath: string | null,
   staged: boolean,
-  oid?: string
+  oid?: string,
+  baseOid?: string
 ) {
   return useQuery({
-    queryKey: ['file-raw-contents', repoPath, filePath, staged, oid],
-    queryFn: () => apiGetFileRawContents(repoPath, filePath!, staged, oid),
+    queryKey: ['file-raw-contents', repoPath, filePath, staged, oid, baseOid],
+    queryFn: () => apiGetFileRawContents(repoPath, filePath!, staged, oid, baseOid),
     enabled: !!repoPath && !!filePath,
   })
 }

@@ -106,6 +106,10 @@ export const getLog = (
 export const getCommitDiff = (path: string, oid: string) =>
   invoke<GitDiff>('get_commit_diff', { path, oid })
 
+/** Merged diff across a multi-commit selection: `baseOid^..headOid` (see the Rust command). */
+export const getCommitsMergedDiff = (path: string, baseOid: string, headOid: string) =>
+  invoke<GitDiff>('get_commits_merged_diff', { path, baseOid, headOid })
+
 export const compareCommitToWorkdir = (path: string, oid: string) =>
   invoke<GitDiff>('compare_commit_to_workdir', { path, oid })
 
@@ -309,12 +313,21 @@ export const createCommit = (path: string, message: string, amend = false, amend
 
 export const getStagedDiff = (path: string) => invoke<GitDiff>('get_staged_diff', { path })
 
-export const getFileDiff = (path: string, filePath: string, staged: boolean, oid?: string) =>
+export const getFileDiff = (
+  path: string,
+  filePath: string,
+  staged: boolean,
+  oid?: string,
+  // Present only for a merged multi-commit selection: scopes the diff's "before" side to the
+  // oldest selected commit's first parent (see the `get_file_diff` Rust command).
+  baseOid?: string
+) =>
   invoke<import('@git-manager/git-types').GitDiffFile>('get_file_diff', {
     path,
     filePath,
     staged,
     oid,
+    baseOid,
   })
 
 export interface RawFileDiffContents {
@@ -322,8 +335,13 @@ export interface RawFileDiffContents {
   modified: string
 }
 
-export const getFileRawContents = (path: string, filePath: string, staged: boolean, oid?: string) =>
-  invoke<RawFileDiffContents>('get_file_raw_contents', { path, filePath, staged, oid })
+export const getFileRawContents = (
+  path: string,
+  filePath: string,
+  staged: boolean,
+  oid?: string,
+  baseOid?: string
+) => invoke<RawFileDiffContents>('get_file_raw_contents', { path, filePath, staged, oid, baseOid })
 
 /** Target commit's version of a file (original) vs the current working-tree version (modified). */
 export const getCommitFileVsWorkdir = (path: string, oid: string, filePath: string) =>

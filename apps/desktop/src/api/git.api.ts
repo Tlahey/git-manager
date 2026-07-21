@@ -34,6 +34,7 @@ import {
   getRepoStatus,
   getLog,
   getCommitDiff,
+  getCommitsMergedDiff,
   getFileDiff,
   getFileRawContents,
   getCommitFileVsWorkdir,
@@ -714,6 +715,10 @@ export async function apiGetCommitDiff(path: string, oid: string) {
   return getCommitDiff(path, oid)
 }
 
+export async function apiGetCommitsMergedDiff(path: string, baseOid: string, headOid: string) {
+  return getCommitsMergedDiff(path, baseOid, headOid)
+}
+
 export async function apiCompareCommitToWorkdir(path: string, oid: string) {
   return compareCommitToWorkdir(path, oid)
 }
@@ -722,18 +727,20 @@ export async function apiGetFileDiff(
   path: string,
   filePath: string,
   staged: boolean,
-  oid?: string
+  oid?: string,
+  baseOid?: string
 ) {
-  return getFileDiff(path, filePath, staged, oid)
+  return getFileDiff(path, filePath, staged, oid, baseOid)
 }
 
 export async function apiGetFileRawContents(
   path: string,
   filePath: string,
   staged: boolean,
-  oid?: string
+  oid?: string,
+  baseOid?: string
 ) {
-  return getFileRawContents(path, filePath, staged, oid)
+  return getFileRawContents(path, filePath, staged, oid, baseOid)
 }
 
 export async function apiGetCommitFileVsWorkdir(path: string, oid: string, filePath: string) {

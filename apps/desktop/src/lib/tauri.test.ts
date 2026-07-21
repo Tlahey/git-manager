@@ -72,6 +72,12 @@ const cases: {
     args: { path: '/repo', oid: 'abc' },
   },
   {
+    name: 'getCommitsMergedDiff',
+    call: () => tauri.getCommitsMergedDiff('/repo', 'base', 'head'),
+    command: 'get_commits_merged_diff',
+    args: { path: '/repo', baseOid: 'base', headOid: 'head' },
+  },
+  {
     name: 'compareCommitToWorkdir',
     call: () => tauri.compareCommitToWorkdir('/repo', 'abc'),
     command: 'compare_commit_to_workdir',
@@ -404,6 +410,12 @@ const cases: {
     call: () => tauri.getFileDiff('/repo', 'a.ts', true, 'abc'),
     command: 'get_file_diff',
     args: { path: '/repo', filePath: 'a.ts', staged: true, oid: 'abc' },
+  },
+  {
+    name: 'getFileDiff (merged range)',
+    call: () => tauri.getFileDiff('/repo', 'a.ts', false, 'head', 'base'),
+    command: 'get_file_diff',
+    args: { path: '/repo', filePath: 'a.ts', staged: false, oid: 'head', baseOid: 'base' },
   },
   {
     name: 'getFileRawContents',

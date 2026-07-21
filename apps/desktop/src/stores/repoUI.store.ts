@@ -35,6 +35,19 @@ export interface PrComposerState {
   title: string
 }
 
+/**
+ * A file whose diff takes over the center panel. `oid` is the commit whose version is shown (unset
+ * for a working-tree file). `baseOid` is only set for a merged multi-commit selection: it names the
+ * oldest selected commit, so the diff spans `baseOid^..oid` (the same range as the summary panel)
+ * instead of `oid` vs its own first parent.
+ */
+export interface ActiveDiffFile {
+  path: string
+  staged: boolean
+  oid?: string
+  baseOid?: string
+}
+
 interface RepoUIState {
   openTabs: string[] // paths des repos ouverts en onglet
   activeRepo: string | null
@@ -49,8 +62,8 @@ interface RepoUIState {
    */
   activeWorkspacePath: string | null
   setActiveWorkspacePath: (path: string | null) => void
-  activeDiffFile: { path: string; staged: boolean; oid?: string } | null
-  setActiveDiffFile: (file: { path: string; staged: boolean; oid?: string } | null) => void
+  activeDiffFile: ActiveDiffFile | null
+  setActiveDiffFile: (file: ActiveDiffFile | null) => void
   /**
    * When set, the repo view swaps its center panel for the in-app PR view (description, CI status,
    * comment/review, merge) and its right panel for the PR's changed-files list — mirroring how
