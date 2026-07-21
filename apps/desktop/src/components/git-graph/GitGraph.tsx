@@ -230,6 +230,10 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
     branch: branch || undefined,
     showStashes: showStashesInGraph,
     hiddenStashes,
+    // The WIP / paused-rebase row is an INPUT of the Rust column layout: when it exists it is the
+    // graph's first element, so the lane running down to HEAD's tip must own column 0. Same
+    // condition as useGitGraphNodes' "primary special row" (conflict row wins over WIP).
+    headHasWip: isRebasePaused || totalChanges > 0,
   })
 
   // Unique authors of the loaded commits, for the AUTHOR column filter autocomplete.

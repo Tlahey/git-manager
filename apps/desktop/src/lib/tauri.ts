@@ -100,6 +100,9 @@ export const getLog = (
     author?: string
     showStashes?: boolean
     hiddenStashes?: string[]
+    /** Whether a synthetic WIP / paused-rebase row will be rendered above the graph — an input
+     * of the Rust column layout (seeds HEAD's lane at column 0 only when that row exists). */
+    headHasWip?: boolean
   }
 ) => invoke<GitGraphNode[]>('get_log', { path, ...opts })
 

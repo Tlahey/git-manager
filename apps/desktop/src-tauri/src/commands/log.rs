@@ -9,7 +9,12 @@ pub use crate::services::git_graph::{LogGraphNode, LogRef};
 
 // ─── Commandes Tauri ──────────────────────────────────────────────────────────
 
-/// Retourne l'historique paginé sous forme de nœuds de graphe
+/// Retourne l'historique paginé sous forme de nœuds de graphe.
+///
+/// `head_has_wip` — whether the frontend will render a synthetic WIP / paused-rebase row above
+/// the graph, anchored on HEAD. It is an input of the column layout (see `build_graph_nodes`):
+/// when true, the lane running down to HEAD's tip is seeded at column 0 because that synthetic
+/// row is the graph's true first element; when false, columns follow pure top-to-bottom order.
 #[tauri::command]
 pub async fn get_log(
     path: String,
@@ -18,6 +23,7 @@ pub async fn get_log(
     branch: Option<String>,
     show_stashes: Option<bool>,
     hidden_stashes: Option<Vec<String>>,
+    head_has_wip: Option<bool>,
 ) -> Result<Vec<LogGraphNode>, String> {
     let mut repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
 
@@ -196,8 +202,15 @@ pub async fn get_log(
         .take(limit_n)
         .collect();
 
-    git_graph::build_graph_nodes(&repo, &oids, &stash_oids, &refs_map, branch.as_deref())
-        .map_err(Into::into)
+    git_graph::build_graph_nodes(
+        &repo,
+        &oids,
+        &stash_oids,
+        &refs_map,
+        branch.as_deref(),
+        head_has_wip.unwrap_or(false),
+    )
+    .map_err(Into::into)
 }
 
 /// Returns the merged diff spanning a multi-commit selection — the cumulative change set from
