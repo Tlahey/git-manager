@@ -20,35 +20,52 @@ export function RefLabelGroup({ refs, color }: RefLabelGroupProps) {
 
   if (refs.length === 0) return null
 
-  // Trier les références pour afficher les branches clés (main) en premier et les tags en dernier
-  const sortedRefs = [...refs].sort((a, b) => {
-    // 1. Local main branch first
-    const isLocalMainA = a.type === 'branch' && a.shortName === 'main'
-    const isLocalMainB = b.type === 'branch' && b.shortName === 'main'
-    if (isLocalMainA && !isLocalMainB) return -1
-    if (!isLocalMainA && isLocalMainB) return 1
+  const isLocalMain = (r: GitRef) =>
+    r.type === 'branch' && (r.shortName === 'main' || r.shortName === 'master')
+  const isRemoteMain = (r: GitRef) =>
+    r.type === 'remote' && (r.shortName.endsWith('/main') || r.shortName.endsWith('/master'))
 
-    // 2. Remote main branch second
-    const isRemoteMainA = a.type === 'remote' && a.shortName.endsWith('/main')
-    const isRemoteMainB = b.type === 'remote' && b.shortName.endsWith('/main')
-    if (isRemoteMainA && !isRemoteMainB) return -1
-    if (!isRemoteMainA && isRemoteMainB) return 1
+  // When a non-main local branch sits on the SAME commit as a main ref — local main OR origin/main,
+  // whichever is present (the local main is often a couple commits behind, so origin/main is the
+  // one actually on the branch tip) — surface that branch instead: it becomes the primary badge and
+  // the main ref(s) fall into the "+N" overflow (revealed on hover). Otherwise the usual priority
+  // applies (local main first).
+  const branchWithMain =
+    refs.some((r) => isLocalMain(r) || isRemoteMain(r)) &&
+    refs.some((r) => r.type === 'branch' && !isLocalMain(r))
 
-    // 3. Other local branches
-    if (a.type === 'branch' && b.type !== 'branch') return -1
-    if (a.type !== 'branch' && b.type === 'branch') return 1
-
-    // 4. Other remote branches
-    if (a.type === 'remote' && b.type !== 'remote') return -1
-    if (a.type !== 'remote' && b.type === 'remote') return 1
-
-    // 5. HEAD
-    if (a.type === 'HEAD' && b.type !== 'HEAD') return -1
-    if (a.type !== 'HEAD' && b.type === 'HEAD') return 1
-
-    // 6. Tags last
-    return 0
+  const hasLocalBranch = refs.some((r) => r.type === 'branch')
+  const hasRemoteMain = refs.some(isRemoteMain)
+  const visibleRefs = refs.filter((r) => {
+    // The bare HEAD pointer is redundant whenever a local branch already marks this commit — the
+    // branch badge shows where HEAD is. Keep it only for a detached HEAD (no branch here).
+    if (r.type === 'HEAD' && hasLocalBranch) return false
+    // A branch coexisting with both local main and origin/main gets a single "main" in the overflow:
+    // drop the local main duplicate (origin/main stays).
+    if (branchWithMain && isLocalMain(r) && hasRemoteMain) return false
+    return true
   })
+
+  // Lower rank = shown earlier. `branchWithMain` promotes the coexisting branch ahead of main.
+  const rank = (r: GitRef): number => {
+    const otherLocalBranch = r.type === 'branch' && !isLocalMain(r)
+    if (branchWithMain) {
+      if (otherLocalBranch) return 0
+      if (isLocalMain(r)) return 1
+      if (isRemoteMain(r)) return 2
+      if (r.type === 'remote') return 3
+      return 4 // tags / anything else (HEAD already filtered out)
+    }
+    if (isLocalMain(r)) return 0
+    if (isRemoteMain(r)) return 1
+    if (otherLocalBranch) return 2
+    if (r.type === 'remote') return 3
+    if (r.type === 'HEAD') return 4
+    return 5 // tags last
+  }
+
+  // Stable sort (V8 Array.sort is stable) keeps input order within a rank tier.
+  const sortedRefs = [...visibleRefs].sort((a, b) => rank(a) - rank(b))
 
   const first = sortedRefs[0]
   const extra = sortedRefs.length - 1

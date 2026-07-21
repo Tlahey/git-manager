@@ -712,11 +712,11 @@ describe('GraphRow — remaining branch coverage', () => {
     expect(screen.getByText('fixup!')).not.toHaveClass('text-orange-400')
   })
 
-  it('renders the ref connector fully opaque when the row carries origin/main', () => {
+  it('renders the ref connector fully opaque when the row carries the local main branch', () => {
     const refs = [
       {
-        name: 'refs/remotes/origin/main',
-        shortName: 'origin/main',
+        name: 'refs/heads/main',
+        shortName: 'main',
         type: 'branch' as const,
         commitOid: 'abc1234567890',
       },
@@ -728,6 +728,24 @@ describe('GraphRow — remaining branch coverage', () => {
     const connector = container.querySelector('.ml-2.flex-1') as HTMLElement
     // jsdom serializes the opaque hex to rgb(); the non-main path would append a '40' alpha.
     expect(connector.style.backgroundColor).toBe('rgb(18, 52, 86)')
+  })
+
+  it('renders the ref connector faint for origin/main, like any other ref', () => {
+    const refs = [
+      {
+        name: 'refs/remotes/origin/main',
+        shortName: 'origin/main',
+        type: 'remote' as const,
+        commitOid: 'abc1234567890',
+      },
+    ]
+    const { container } = renderRow({
+      columns: [col('refs')],
+      node: node({ refs, color: '#123456' }),
+    })
+    const connector = container.querySelector('.ml-2.flex-1') as HTMLElement
+    // The '40' alpha is appended → jsdom serializes it as an rgba() with ~0.25 opacity.
+    expect(connector.style.backgroundColor).toBe('rgba(18, 52, 86, 0.25)')
   })
 
   it('shows a dashed archive mini-avatar in the author column for a stash commit', () => {

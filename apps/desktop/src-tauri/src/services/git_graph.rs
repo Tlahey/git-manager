@@ -83,12 +83,33 @@ pub fn build_graph_nodes(
         None
     };
 
+    // In the full graph (all branches) while checked out on a non-main/master branch, reserve the
+    // leftmost lane (column 0) for the current branch's tip, so it — and the WIP row that sits on
+    // it — stays the primary vertical instead of whichever branch happens to carry the most recent
+    // commit grabbing column 0. Mirrors the main/master reservation below. Skipped for the
+    // single-branch view (`branch` is Some), where the walked branch already owns column 0.
+    let head_tip_oid = if branch.is_none() && !is_main_or_master {
+        repo.head().ok().and_then(|h| {
+            h.target()
+                .or_else(|| h.peel_to_commit().ok().map(|c| c.id()))
+        })
+    } else {
+        None
+    };
+
     if let Some(oid) = local_main_oid {
         active_lanes.push(Some(oid.to_string()));
         lane_colors.push("#2563eb".to_string()); // Blue for local main
     } else if let Some(oid) = origin_main_oid {
         active_lanes.push(Some(oid.to_string()));
         lane_colors.push("#7c3aed".to_string()); // Purple for origin/main
+    } else if let Some(oid) = head_tip_oid {
+        // Blue, like local main: the current branch reads as the repo's primary line. Seeding
+        // `color_map` here fixes the tip's color (propagated down its first-parent chain) so the
+        // reserved lane's pass-through segments above the tip match.
+        active_lanes.push(Some(oid.to_string()));
+        lane_colors.push("#2563eb".to_string());
+        color_map.insert(oid.to_string(), "#2563eb".to_string());
     }
 
     if is_main_or_master {
@@ -775,6 +796,62 @@ mod tests {
             merge.connections.iter().all(|e| e.dashed.is_none()),
             "Rust must leave every merge-row edge solid: {:?}",
             merge.connections
+        );
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Full graph (all branches) while checked out on a feature branch whose tip is OLDER than
+    /// main's tip: the checked-out branch must still own column 0 (so the WIP row sitting on it
+    /// stays the primary vertical), and main's newer tip is pushed to a lane on the right.
+    #[test]
+    fn checked_out_branch_tip_owns_column_zero_in_full_graph() {
+        let dir = std::env::temp_dir().join(format!("gm-test-graph-head-{}", std::process::id()));
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = Repository::init(&dir).unwrap();
+
+        let c1 = commit_file(&repo, "file.txt", "one\n", "c1");
+        let c2 = commit_file(&repo, "file.txt", "two\n", "c2");
+
+        // Full ref of the initial branch (libgit2 default is "master", but don't assume).
+        let main_ref = repo.head().unwrap().name().unwrap().to_string();
+        let sig = get_git_signature(&repo).unwrap();
+
+        // Branch `feature` off c2 and point HEAD at it (no working-tree checkout needed here).
+        {
+            let c2_commit = repo.find_commit(c2).unwrap();
+            repo.branch("feature", &c2_commit, false).unwrap();
+        }
+        repo.set_head("refs/heads/feature").unwrap();
+
+        // Feature tip (HEAD), committed first …
+        let f1 = commit_file(&repo, "feature.txt", "f1\n", "f1");
+
+        // … then a NEWER commit on main, without moving HEAD (HEAD stays on feature).
+        let c3 = {
+            let c2_commit = repo.find_commit(c2).unwrap();
+            let tree = c2_commit.tree().unwrap();
+            repo.commit(Some(&main_ref), &sig, &sig, "c3", &tree, &[&c2_commit])
+                .unwrap()
+        };
+
+        let refs_map: HashMap<String, Vec<LogRef>> = HashMap::new();
+        // Display order newest-first: main's newer tip c3 would normally grab column 0.
+        let oids = vec![c3, f1, c2, c1];
+
+        // Full graph view (branch = None).
+        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None).unwrap();
+
+        assert_eq!(
+            node(&nodes, f1).column,
+            0,
+            "checked-out feature tip should own column 0"
+        );
+        assert_ne!(
+            node(&nodes, c3).column,
+            0,
+            "main's newer tip should be pushed off column 0"
         );
 
         std::fs::remove_dir_all(&dir).ok();

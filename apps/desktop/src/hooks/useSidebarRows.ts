@@ -6,6 +6,7 @@ import { useGitStashes } from './useGitStashes'
 import { useGroupedBranches } from './useGroupedBranches'
 import { usePullRequests } from './usePullRequests'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
+import { useRepoUIStore } from '../stores/repoUI.store'
 import { apiGetTags, apiListSubmodules } from '../api/git.api'
 import { apiListWorktrees } from '../api/worktree.api'
 import {
@@ -56,6 +57,9 @@ export function useSidebarRows({
   const { data: allBranches = [] } = useBranches(repoPath)
   const { data: stashes = [] } = useGitStashes(repoPath)
   const overrides = usePinnedBranchesStore((s) => s.overrides[repoPath])
+  // A tag row highlights when its commit is the one selected in the graph — clicking a tag scrolls
+  // to that commit rather than filtering the log, so selection follows the commit, not `selectedBranch`.
+  const selectedCommitOid = useRepoUIStore((s) => s.selectedCommitOid)
 
   const {
     allPrs,
@@ -363,7 +367,7 @@ export function useSidebarRows({
             kind: 'tag',
             id: `tag:${tag.name}`,
             tag,
-            isSelected: selectedBranch === tag.name || selectedBranch === tag.shortName,
+            isSelected: !!selectedCommitOid && selectedCommitOid === tag.commitOid,
           })
         }
         if (filteredTags.length > TAGS_LIMIT) {
@@ -454,6 +458,7 @@ export function useSidebarRows({
     q,
     openState,
     selectedBranch,
+    selectedCommitOid,
     localBranches.length,
     pinnedBranches,
     ungrouped,

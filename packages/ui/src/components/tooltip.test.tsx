@@ -104,6 +104,28 @@ describe('Tooltip — show/hide timing', () => {
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
 
+  it('plays the entry animation by default', () => {
+    render(
+      <Tooltip content="Hello">
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    fireEvent.mouseEnter(screen.getByText('Trigger'))
+    act(() => vi.advanceTimersByTime(150))
+    expect(screen.getByRole('tooltip').className).toContain('animate-in')
+  })
+
+  it('omits the entry animation when animate is false', () => {
+    render(
+      <Tooltip content="Hello" animate={false}>
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    fireEvent.mouseEnter(screen.getByText('Trigger'))
+    act(() => vi.advanceTimersByTime(150))
+    expect(screen.getByRole('tooltip').className).not.toContain('animate-in')
+  })
+
   it('never shows when disabled', () => {
     render(
       <Tooltip content="Hello" disabled>

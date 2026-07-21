@@ -41,6 +41,9 @@ interface SidebarRowViewProps {
   row: SidebarRow
   onToggleOpen: (id: string) => void
   onSelectBranch: (name: string) => void
+  /** Clicking a tag scrolls to / selects its commit in the graph instead of re-filtering the whole
+   * log to that tag. Falls back to `onSelectBranch(tag.name)` when not provided. */
+  onSelectTag?: (commitOid: string) => void
   onTogglePin: (shortName: string) => void
   onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
   onOpenPr?: (pr: PullRequest) => void
@@ -60,6 +63,7 @@ export function SidebarRowView({
   row,
   onToggleOpen,
   onSelectBranch,
+  onSelectTag,
   onTogglePin,
   onContextMenu,
   onOpenPr,
@@ -199,10 +203,15 @@ export function SidebarRowView({
               ? 'bg-sidebar-accent font-medium text-sidebar-foreground'
               : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
           }`}
-          onClick={() => onSelectBranch(row.tag.name)}
+          onClick={() =>
+            onSelectTag ? onSelectTag(row.tag.commitOid) : onSelectBranch(row.tag.name)
+          }
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && onSelectBranch(row.tag.name)}
+          onKeyDown={(e) =>
+            e.key === 'Enter' &&
+            (onSelectTag ? onSelectTag(row.tag.commitOid) : onSelectBranch(row.tag.name))
+          }
         >
           <TagIcon className="h-3 w-3 shrink-0 opacity-30" />
           <HoverExpandLabel>{highlightMatch(row.tag.shortName, filterQuery)}</HoverExpandLabel>

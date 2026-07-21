@@ -34,6 +34,8 @@ interface RepositorySidebarProps {
   remoteUrls?: string[]
   selectedBranch: string | null
   onSelectBranch: (name: string | null) => void
+  /** Clicking a tag scrolls to / selects its commit in the graph rather than re-filtering the log. */
+  onSelectTag?: (commitOid: string) => void
   currentUser?: string
   githubToken?: string
   onCreateBranch?: () => void
@@ -48,6 +50,7 @@ export function RepositorySidebar({
   remoteUrls = [],
   selectedBranch,
   onSelectBranch,
+  onSelectTag,
   currentUser,
   githubToken,
   onCreateBranch,
@@ -364,6 +367,7 @@ export function RepositorySidebar({
                     filterQuery={branchQuery}
                     onToggleOpen={(id) => toggleOpen(id, openById.get(id) ?? false)}
                     onSelectBranch={onSelectBranch}
+                    onSelectTag={onSelectTag}
                     onTogglePin={onTogglePin}
                     onContextMenu={onContextMenu}
                     onOpenPr={onOpenPr}

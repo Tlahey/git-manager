@@ -143,6 +143,14 @@ pub async fn get_log(
                 Some(n) => n.to_string(),
                 None => continue,
             };
+
+            // Skip the remote's symbolic HEAD (e.g. `refs/remotes/origin/HEAD` → `origin/main`):
+            // it's just a pointer mirroring the default branch, so it renders as a duplicate
+            // "HEAD" badge on top of `origin/main`. Never show it in the graph.
+            if name.starts_with("refs/remotes/") && name.ends_with("/HEAD") {
+                continue;
+            }
+
             let short_name = reference.shorthand().unwrap_or("").to_string();
 
             let ref_type = if reference.is_branch() {

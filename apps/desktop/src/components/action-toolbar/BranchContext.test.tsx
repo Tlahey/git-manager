@@ -92,14 +92,14 @@ describe('BranchContext — visibility/label', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     useBranchesMock.mockReturnValue({ data: [branch('main', { isHead: true })] })
     render(<BranchContext />, { wrapper })
-    expect(screen.getByTitle('main')).toBeInTheDocument()
+    expect(screen.getByTestId('branch-context-label')).toHaveTextContent('main')
   })
 
   it('falls back to the cached repo head when no branch is marked HEAD', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     useRepoDataStore.setState({ repoCache: { '/repo': repo({ head: 'develop' }) } })
     render(<BranchContext />, { wrapper })
-    expect(screen.getByTitle('develop')).toBeInTheDocument()
+    expect(screen.getByTestId('branch-context-label')).toHaveTextContent('develop')
   })
 
   it('truncates the sha for a detached HEAD', () => {
@@ -108,7 +108,7 @@ describe('BranchContext — visibility/label', () => {
       repoCache: { '/repo': repo({ isDetached: true, head: 'abcdefabcdefabcdef' }) },
     })
     render(<BranchContext />, { wrapper })
-    expect(screen.getByTitle('abcdefabcd')).toBeInTheDocument()
+    expect(screen.getByTestId('branch-context-label')).toHaveTextContent('abcdefabcd')
   })
 })
 
@@ -127,7 +127,7 @@ describe('BranchContext — branch list & filtering', () => {
   it('lists only local branches', async () => {
     const user = userEvent.setup()
     render(<BranchContext />, { wrapper })
-    await user.click(screen.getByTitle('main'))
+    await user.click(screen.getByTestId('branch-context-trigger'))
     expect(screen.getByText('feature-x')).toBeInTheDocument()
     expect(screen.queryByText('origin/main')).not.toBeInTheDocument()
   })
@@ -135,7 +135,7 @@ describe('BranchContext — branch list & filtering', () => {
   it('filters branches by the search query', async () => {
     const user = userEvent.setup()
     render(<BranchContext />, { wrapper })
-    await user.click(screen.getByTitle('main'))
+    await user.click(screen.getByTestId('branch-context-trigger'))
     // Both the trigger label and the "main" list row match this text before filtering.
     expect(screen.getAllByText('main')).toHaveLength(2)
 
@@ -160,7 +160,7 @@ describe('BranchContext — checkout', () => {
     mockedOpenRepo.mockResolvedValue(repo({ head: 'feature-x' }))
     const user = userEvent.setup()
     render(<BranchContext />, { wrapper })
-    await user.click(screen.getByTitle('main'))
+    await user.click(screen.getByTestId('branch-context-trigger'))
     await user.click(screen.getByText('feature-x'))
 
     expect(mockedCheckout).toHaveBeenCalledWith('/repo', 'feature-x', {
@@ -175,7 +175,7 @@ describe('BranchContext — checkout', () => {
     mockedOpenRepo.mockResolvedValue(repo())
     const user = userEvent.setup()
     render(<BranchContext />, { wrapper })
-    await user.click(screen.getByTitle('main'))
+    await user.click(screen.getByTestId('branch-context-trigger'))
     await user.click(screen.getByText('feature-x'))
     await waitFor(() =>
       expect(screen.queryByPlaceholderText('branch.checkout')).not.toBeInTheDocument()
@@ -186,7 +186,7 @@ describe('BranchContext — checkout', () => {
     mockedCheckout.mockRejectedValue(new Error('checkout conflict'))
     const user = userEvent.setup()
     render(<BranchContext />, { wrapper })
-    await user.click(screen.getByTitle('main'))
+    await user.click(screen.getByTestId('branch-context-trigger'))
     await user.click(screen.getByText('feature-x'))
 
     expect(await screen.findByText(/checkout conflict/)).toBeInTheDocument()
@@ -198,7 +198,7 @@ describe('BranchContext — checkout', () => {
     mockedCheckout.mockRejectedValue(new Error('checkout conflict'))
     const user = userEvent.setup({ delay: null })
     render(<BranchContext />, { wrapper })
-    await user.click(screen.getByTitle('main'))
+    await user.click(screen.getByTestId('branch-context-trigger'))
     await user.click(screen.getByText('feature-x'))
     await vi.waitFor(() => expect(screen.getByText(/checkout conflict/)).toBeInTheDocument())
 
@@ -223,7 +223,7 @@ describe('BranchContext — merged worktree/branch list', () => {
   it('lists the pinned current branch, then worktrees (Layers icon), then other branches (GitBranch icon)', async () => {
     const user = userEvent.setup()
     render(<BranchContext />, { wrapper })
-    await user.click(screen.getByTitle('main'))
+    await user.click(screen.getByTestId('branch-context-trigger'))
 
     const current = await screen.findByTestId('branch-context-current')
     expect(current).toHaveTextContent('main')
@@ -237,10 +237,30 @@ describe('BranchContext — merged worktree/branch list', () => {
     expect(branchOption.querySelector('.lucide-git-branch')).toBeTruthy()
   })
 
+  it('shows only the worktree when a branch and a worktree share the same name', async () => {
+    // feature-shared exists both as a local branch and as a linked worktree.
+    useBranchesMock.mockReturnValue({
+      data: [branch('main', { isHead: true }), branch('feature-x'), branch('feature-shared')],
+    })
+    mockedListWorktrees.mockResolvedValue([
+      worktree({ path: '/repo', branch: 'main', isMain: true }),
+      worktree({ path: '/wt/shared', branch: 'feature-shared', isMain: false }),
+    ])
+    const user = userEvent.setup()
+    render(<BranchContext />, { wrapper })
+    await user.click(screen.getByTestId('branch-context-trigger'))
+
+    // The worktree row is shown; the duplicate branch row is not.
+    expect(await screen.findByTestId('workspace-option-/wt/shared')).toBeInTheDocument()
+    expect(screen.queryByTestId('branch-option-feature-shared')).not.toBeInTheDocument()
+    // Branches without a matching worktree are still listed.
+    expect(screen.getByTestId('branch-option-feature-x')).toBeInTheDocument()
+  })
+
   it('excludes the main worktree from the workspace list', async () => {
     const user = userEvent.setup()
     render(<BranchContext />, { wrapper })
-    await user.click(screen.getByTitle('main'))
+    await user.click(screen.getByTestId('branch-context-trigger'))
     await screen.findByTestId('workspace-option-/wt/other')
     expect(screen.queryByTestId('workspace-option-/repo')).not.toBeInTheDocument()
   })
@@ -248,7 +268,7 @@ describe('BranchContext — merged worktree/branch list', () => {
   it('filters both worktrees and branches by the search query', async () => {
     const user = userEvent.setup()
     render(<BranchContext />, { wrapper })
-    await user.click(screen.getByTitle('main'))
+    await user.click(screen.getByTestId('branch-context-trigger'))
     await screen.findByTestId('workspace-option-/wt/other')
 
     await user.type(screen.getByPlaceholderText('branch.checkout'), 'feature-y')
@@ -270,7 +290,7 @@ describe('BranchContext — entering a workspace', () => {
   it('clicking a worktree sets activeWorkspacePath without checking out anything', async () => {
     const user = userEvent.setup()
     render(<BranchContext />, { wrapper })
-    await user.click(screen.getByTitle('main'))
+    await user.click(screen.getByTestId('branch-context-trigger'))
     await user.click(await screen.findByTestId('workspace-option-/wt/other'))
 
     expect(useRepoUIStore.getState().activeWorkspacePath).toBe('/wt/other')
@@ -280,7 +300,7 @@ describe('BranchContext — entering a workspace', () => {
   it('closes the popover and clears the search query after entering a workspace', async () => {
     const user = userEvent.setup()
     render(<BranchContext />, { wrapper })
-    await user.click(screen.getByTitle('main'))
+    await user.click(screen.getByTestId('branch-context-trigger'))
     await user.click(await screen.findByTestId('workspace-option-/wt/other'))
 
     await waitFor(() =>
@@ -326,7 +346,7 @@ describe('BranchContext — exiting a workspace', () => {
     mockedOpenRepo.mockResolvedValue(repo())
     const user = userEvent.setup()
     render(<BranchContext />, { wrapper })
-    await user.click(await screen.findByTitle('feature-y'))
+    await user.click(await screen.findByTestId('branch-context-trigger'))
     await user.click(await screen.findByTestId('branch-option-main'))
 
     expect(mockedCheckout).toHaveBeenCalledWith('/repo', 'main', expect.anything())

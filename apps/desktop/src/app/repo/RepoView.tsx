@@ -85,6 +85,11 @@ export function RepoView() {
           remoteUrls={repoCache[activeRepo]?.remotes ?? []}
           selectedBranch={selectedBranch}
           onSelectBranch={(name) => setSelectedBranch(name)}
+          // A tag isn't a filterable ref: instead of reloading the whole log, scroll to and select
+          // its commit in the current graph via the graph-selection bridge.
+          onSelectTag={(commitOid) =>
+            useRepoUIStore.getState().setPendingGraphSelection(commitOid)
+          }
           onOpenPr={(pr) => {
             setSelectedBranch(pr.headRef)
             useRepoUIStore.getState().setActivePrNumber(pr.number)

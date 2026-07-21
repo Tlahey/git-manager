@@ -28,3 +28,6 @@ export type { MultiSelectDropdownProps } from './MultiSelectDropdown'
 
 export { TimelineScrubber } from './TimelineScrubber'
 export type { TimelineScrubberProps } from './TimelineScrubber'
+
+export { TruncatedLabel } from './TruncatedLabel'
+export type { TruncatedLabelProps } from './TruncatedLabel'

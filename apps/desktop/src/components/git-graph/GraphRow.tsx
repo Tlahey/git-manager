@@ -120,8 +120,11 @@ function CellContent({
           </div>
         )
       }
-      const hasOriginMain = filteredRefs.some(
-        (r) => r.shortName.endsWith('/main') || r.shortName.endsWith('/master')
+      // Only the LOCAL main/master branch's row draws a solid, full-color connector — its mainline
+      // reads as the repo's primary line. Every other ref (origin/main included) gets the faint
+      // connector like the rest.
+      const hasLocalMain = filteredRefs.some(
+        (r) => r.type === 'branch' && (r.shortName === 'main' || r.shortName === 'master')
       )
       return (
         <div className="flex h-full w-full min-w-0 items-center overflow-visible">
@@ -129,7 +132,7 @@ function CellContent({
           <div
             className="pointer-events-none ml-2 h-[2px] flex-1 transition-colors"
             style={{
-              backgroundColor: hasOriginMain
+              backgroundColor: hasLocalMain
                 ? node.color
                 : `${node.color}${REF_CONNECTOR_LINE_OPACITY_HEX}`,
               marginRight: `-${markerX + 15}px`,
