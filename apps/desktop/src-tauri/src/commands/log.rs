@@ -7,9 +7,14 @@ use std::collections::HashMap;
 
 pub use crate::services::git_graph::{LogGraphNode, LogRef};
 
-// ─── Commandes Tauri ──────────────────────────────────────────────────────────
+// ─── Tauri commands ─────────────────────────────────────────────────────────
 
-/// Retourne l'historique paginé sous forme de nœuds de graphe
+/// Returns the paginated history as graph nodes.
+///
+/// `head_has_wip` — whether the frontend will render a synthetic WIP / paused-rebase row above
+/// the graph, anchored on HEAD. It is an input of the column layout (see `build_graph_nodes`):
+/// when true, the lane running down to HEAD's tip is seeded at column 0 because that synthetic
+/// row is the graph's true first element; when false, columns follow pure top-to-bottom order.
 #[tauri::command]
 pub async fn get_log(
     path: String,
@@ -18,6 +23,7 @@ pub async fn get_log(
     branch: Option<String>,
     show_stashes: Option<bool>,
     hidden_stashes: Option<Vec<String>>,
+    head_has_wip: Option<bool>,
 ) -> Result<Vec<LogGraphNode>, String> {
     let mut repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
 
@@ -87,10 +93,10 @@ pub async fn get_log(
             ));
         }
     } else {
-        // Parcourir toutes les branches et remotes
+        // Walk every branch and remote
         let _ = revwalk.push_glob("refs/heads/*");
         let _ = revwalk.push_glob("refs/remotes/*");
-        // Parcourir et pousser tous les stashes
+        // Walk and push every stash
         if show_stashes.unwrap_or(true) {
             for oid in &stash_oids {
                 let oid_str = oid.to_string();
@@ -110,7 +116,7 @@ pub async fn get_log(
         }
     }
 
-    // ── Construction de la map refs (oid → Vec<LogRef>) ──────────────────────
+    // ── Build the refs map (oid → Vec<LogRef>) ──────────────────────────────
     let mut refs_map: HashMap<String, Vec<LogRef>> = HashMap::new();
 
     // HEAD – resolve through symbolic refs (normal non-detached HEAD is symbolic: HEAD → refs/heads/main → oid)
@@ -185,7 +191,7 @@ pub async fn get_log(
         });
     }
 
-    // ── Collecte des OIDs avec pagination ────────────────────────────────────
+    // ── Collect the OIDs with pagination ────────────────────────────────────
     let skip_n = skip.unwrap_or(0);
     let limit_n = limit.unwrap_or(200);
 
@@ -196,8 +202,15 @@ pub async fn get_log(
         .take(limit_n)
         .collect();
 
-    git_graph::build_graph_nodes(&repo, &oids, &stash_oids, &refs_map, branch.as_deref())
-        .map_err(Into::into)
+    git_graph::build_graph_nodes(
+        &repo,
+        &oids,
+        &stash_oids,
+        &refs_map,
+        branch.as_deref(),
+        head_has_wip.unwrap_or(false),
+    )
+    .map_err(Into::into)
 }
 
 /// Returns the merged diff spanning a multi-commit selection — the cumulative change set from
@@ -214,7 +227,7 @@ pub async fn get_commits_merged_diff(
     git_diff::merged_commits_diff(&repo, &base_oid, &head_oid).map_err(Into::into)
 }
 
-/// Retourne le diff complet d'un commit vs son premier parent
+/// Returns the full diff of a commit vs. its first parent
 #[tauri::command]
 pub async fn get_commit_diff(path: String, oid: String) -> Result<GitDiff, String> {
     let mut repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
@@ -271,14 +284,14 @@ pub async fn get_commit_diff(path: String, oid: String) -> Result<GitDiff, Strin
     Ok(git_diff::finalize(files.into_inner()))
 }
 
-/// Diffe l'arbre d'un commit contre le working directory actuel (pas l'index).
+/// Diffs a commit's tree against the current working directory (not the index).
 #[tauri::command]
 pub async fn compare_commit_to_workdir(path: String, oid: String) -> Result<GitDiff, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
     git_diff::diff_commit_to_workdir(&repo, &oid).map_err(Into::into)
 }
 
-/// Retourne le contenu brut d'un fichier à un commit donné
+/// Returns a file's raw content at a given commit
 #[tauri::command]
 pub async fn get_commit_file(
     path: String,

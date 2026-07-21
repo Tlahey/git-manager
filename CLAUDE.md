@@ -115,7 +115,7 @@ Zustand stores in `apps/desktop/src/stores/` hold client-side UI/app state (open
 
 ### Conventions
 
-- **All code is written in English — no exceptions.** Identifiers, comments, doc comments, commit messages, and any other in-code text must be in English. Some older files still contain French comments; do not add more, and translate any French you touch while editing. (User-facing strings are separate: they always go through `@git-manager/i18n`, never hardcoded — see the i18n rules above.)
+- **All code is written in English — no exceptions.** Identifiers, comments, doc comments, commit messages, and any other in-code text must be in English. Never write a comment in French or any other non-English language. Some older files still contain French comments; do not add more. **Whenever you open a file and notice a comment in French (or any non-English language), translate it to English as part of your edit — even if that comment isn't the part you were asked to change.** If you touch a file with lingering non-English comments, leave the whole file clean rather than adding new English comments next to old French ones. (User-facing strings are separate: they always go through `@git-manager/i18n`, never hardcoded — see the i18n rules above.)
 - Conventional Commits (`feat:`, `fix:`, `chore:`, ...) for commit messages.
 - TypeScript strict mode, no `any`.
 - Naming: camelCase in TS, snake_case in Rust, kebab-case filenames.

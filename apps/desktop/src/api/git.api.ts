@@ -183,13 +183,13 @@ export async function apiCreateCommit(
   const result = await callCommand('commit', () => createCommit(path, message, amend, amendOid))
 
   if (amend) {
-    // L'amend n'est pas dans le périmètre undo/redo (seul le commit initial l'est) —
-    // il modifie déjà un commit qui pouvait lui-même être issu d'un undo/redo.
+    // Amend is out of undo/redo's scope (only the initial commit is) — it already modifies a
+    // commit that could itself be the result of an undo/redo.
     clearRedo(path)
   } else if (previousOid) {
     const id = generateId()
-    // Épingle le nouveau commit : son parent (previousOid) reste automatiquement atteignable
-    // en tant qu'ancêtre tant que newOid est protégé.
+    // Pin the new commit: its parent (previousOid) automatically stays reachable as an ancestor
+    // as long as newOid is protected.
     await pinObject(path, id, result.oid).catch(() => {})
     pushAction(path, {
       id,
@@ -246,8 +246,8 @@ export async function apiCreateFixupCommit(path: string, targetOid: string, mess
 
   if (previousOid) {
     const id = generateId()
-    // Un fixup est un commit tout à fait normal au-dessus de HEAD — mêmes garanties qu'un commit
-    // classique (previousOid reste atteignable en tant qu'ancêtre tant que newOid est épinglé).
+    // A fixup is a perfectly normal commit on top of HEAD — same guarantees as a regular commit
+    // (previousOid stays reachable as an ancestor as long as newOid is pinned).
     await pinObject(path, id, result.oid).catch(() => {})
     pushAction(path, {
       id,
@@ -308,8 +308,8 @@ export async function apiRevertCommit(path: string, oid: string, noCommit = fals
   const result = await revertCommit(path, oid, noCommit)
 
   if (noCommit) {
-    // Sans commit, revert ne fait que modifier l'index/working dir — pas de nouveau commit à
-    // rejouer via reset (même limitation que l'amend dans apiCreateCommit).
+    // With no commit, revert only modifies the index/working dir — no new commit to replay via
+    // reset (same limitation as amend in apiCreateCommit).
     clearRedo(path)
     return result
   }
@@ -360,8 +360,8 @@ export async function apiResetToCommit(path: string, oid: string, mode: 'soft' |
   }
 
   if (previousOid) {
-    // previousOid ET targetOid sont épinglés séparément (pas d'hypothèse d'ancestralité entre
-    // les deux — un reset peut cibler un commit qui n'est pas un ancêtre direct).
+    // previousOid AND targetOid are pinned separately (no assumption of ancestry between the
+    // two — a reset can target a commit that isn't a direct ancestor).
     await Promise.all([
       pinObject(path, `${id}-previous`, previousOid).catch(() => {}),
       pinObject(path, `${id}-target`, oid).catch(() => {}),
@@ -578,7 +578,7 @@ export async function apiCheckoutBranch(
     snapshot = await snapshotWorktree(path, id)
   }
   if (opts?.fromDetached) {
-    // Le commit détaché ne sera plus référencé par aucune branche une fois qu'on en part.
+    // The detached commit won't be referenced by any branch anymore once we leave it.
     await pinObject(path, `${id}-detached`, opts.fromRef).catch(() => {})
   }
 
@@ -639,7 +639,7 @@ export async function apiDeleteBranch(
   opts: { targetOid: string; upstream?: string; force?: boolean; deleteRemote?: boolean }
 ) {
   const id = generateId()
-  // Épingler avant suppression : une fois la ref supprimée, ce commit peut devenir inatteignable.
+  // Pin before deleting: once the ref is gone, this commit can become unreachable.
   await pinObject(path, id, opts.targetOid).catch(() => {})
 
   await deleteBranch(path, name, opts.force ?? false, opts.deleteRemote ?? false)
@@ -702,6 +702,9 @@ export async function apiGetLog(
     author?: string
     showStashes?: boolean
     hiddenStashes?: string[]
+    /** Whether a synthetic WIP / paused-rebase row will be rendered above the graph — an input
+     * of the Rust column layout (seeds HEAD's lane at column 0 only when that row exists). */
+    headHasWip?: boolean
   }
 ) {
   return getLog(path, opts)

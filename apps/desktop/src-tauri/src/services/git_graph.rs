@@ -5,13 +5,13 @@ use git2::{Oid, Repository};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-// ─── Palette de couleurs ──────────────────────────────────────────────────────
+// ─── Color palette ──────────────────────────────────────────────────────────
 
 const COLORS: &[&str] = &[
     "#7c3aed", "#2563eb", "#16a34a", "#d97706", "#dc2626", "#0891b2", "#be185d", "#65a30d",
 ];
 
-// ─── Structs (match exact avec les types TypeScript) ───────────────────────────
+// ─── Structs (exact match with the TypeScript types) ───────────────────────
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -33,22 +33,23 @@ pub struct LogGraphNode {
     pub refs: Vec<LogRef>,
 }
 
-/// Assigne à chaque commit une colonne, une couleur et les connexions (lignes SVG) vers ses
-/// parents, dans l'ordre de `oids` (déjà paginé/trié par l'appelant via un `Revwalk`).
+/// Assigns each commit a column, a color, and the connections (SVG lines) to its parents, in the
+/// order of `oids` (already paginated/sorted by the caller via a `Revwalk`).
 ///
-/// C'est l'algorithme de layout du graphe de commits : `active_lanes`/`lane_colors` suivent
-/// quelle colonne "attend" quel commit au fur et à mesure qu'on avance dans l'historique, et
-/// `color_map` fixe la couleur de chaque commit une seule fois pour qu'elle reste stable le long
-/// d'une lane. Les stashes (dont le 2ᵉ+ parent n'est pas un vrai parent de merge) et la branche
-/// main/master (colorée différemment en local vs origin) ont un traitement dédié.
+/// This is the commit graph's layout algorithm: `active_lanes`/`lane_colors` track which column is
+/// "waiting" for which commit as we advance through history, and `color_map` fixes each commit's
+/// color once so it stays stable along a lane. Stashes (whose 2nd+ parent isn't a real merge
+/// parent) and the main/master branch (colored differently local vs. origin) get dedicated
+/// handling.
 pub fn build_graph_nodes(
     repo: &Repository,
     oids: &[Oid],
     stash_oids: &[Oid],
     refs_map: &HashMap<String, Vec<LogRef>>,
     branch: Option<&str>,
+    head_has_wip: bool,
 ) -> Result<Vec<LogGraphNode>, AppError> {
-    // active_lanes[i] = Some(oid) signifie que la lane i attend ce commit
+    // active_lanes[i] = Some(oid) means lane i is waiting for this commit
     let mut active_lanes: Vec<Option<String>> = Vec::new();
     let mut lane_colors: Vec<String> = Vec::new();
     let mut color_map: HashMap<String, String> = HashMap::new();
@@ -83,12 +84,19 @@ pub fn build_graph_nodes(
         None
     };
 
-    // In the full graph (all branches) while checked out on a non-main/master branch, reserve the
-    // leftmost lane (column 0) for the current branch's tip, so it — and the WIP row that sits on
-    // it — stays the primary vertical instead of whichever branch happens to carry the most recent
-    // commit grabbing column 0. Mirrors the main/master reservation below. Skipped for the
-    // single-branch view (`branch` is Some), where the walked branch already owns column 0.
-    let head_tip_oid = if branch.is_none() && !is_main_or_master {
+    // Columns are assigned top-to-bottom: the first displayed element owns column 0, and so on.
+    // A lane is therefore never seeded "blindly" from a ref — that used to leave a phantom
+    // column-0 lane hanging "cut" above the checked-out tip's row whenever that tip was
+    // merged/behind (nothing above it connects to the lane, and the first row hides its own top
+    // segment — see `isFirst` in GraphSvg). The ONE legitimate seed is a synthetic row the
+    // frontend will render ABOVE the first commit: the WIP / paused-rebase row anchored on HEAD
+    // (`head_has_wip`, driven by the same status that decides whether that row is shown at all).
+    // When it exists, that row IS the graph's first element: it sits at the top of column 0 and
+    // the seeded lane is simply its connector running down to HEAD's tip — the "reservation"
+    // exists exactly because a first row exists to anchor it. Skipped for the single-branch view
+    // (`branch` is Some), where the walked branch already owns column 0, and for main/master,
+    // which keep their dedicated local/origin seeding below.
+    let head_tip_oid = if branch.is_none() && !is_main_or_master && head_has_wip {
         repo.head().ok().and_then(|h| {
             h.target()
                 .or_else(|| h.peel_to_commit().ok().map(|c| c.id()))
@@ -198,7 +206,7 @@ pub fn build_graph_nodes(
             }
         }
 
-        // Assigner la couleur du commit courant (stable par lane, propagée au 1er parent)
+        // Assign the current commit's color (stable per lane, propagated to the 1st parent)
         let mut color = color_map
             .entry(oid_str.clone())
             .or_insert_with(|| {
@@ -217,7 +225,7 @@ pub fn build_graph_nodes(
 
         let mut is_new_lane = false;
 
-        // S'assurer que ce commit est dans active_lanes (nouveau nœud non attendu)
+        // Make sure this commit is in active_lanes (new, unexpected node)
         if let Some(idx) = col_override {
             active_lanes[idx] = Some(oid_str.clone());
         } else if !active_lanes
@@ -239,7 +247,7 @@ pub fn build_graph_nodes(
             }
         }
 
-        // Trouver toutes les colonnes de ce commit (merge possible de plusieurs lanes)
+        // Find every column this commit sits on (a merge can span several lanes)
         let merge_cols: Vec<usize> = active_lanes
             .iter()
             .enumerate()
@@ -249,27 +257,27 @@ pub fn build_graph_nodes(
 
         let col = merge_cols[0];
 
-        // ── Calcul de next_lanes ──────────────────────────────────────────────
+        // ── Compute next_lanes ─────────────────────────────────────────────────
         let mut next_lanes = active_lanes.clone();
         let mut next_lane_colors = lane_colors.clone();
 
-        // Effacer toutes les occurrences de ce commit
+        // Clear every occurrence of this commit
         for &mc in &merge_cols {
             next_lanes[mc] = None;
         }
 
         let mut parent_to_col = HashMap::new();
 
-        // Premier parent : prend la colonne principale (col)
+        // First parent: takes the main column (col)
         if let Some(p0) = parent_oids.first() {
             next_lanes[col] = Some(p0.clone());
             next_lane_colors[col] = color.clone();
             parent_to_col.insert(p0.clone(), col);
-            // Propager la couleur au premier parent
+            // Propagate the color to the first parent
             color_map.entry(p0.clone()).or_insert_with(|| color.clone());
         }
 
-        // Parents supplémentaires : nouvelles lanes
+        // Additional parents: new lanes
         for p in parent_oids.iter().skip(1) {
             let target_col = if let Some(existing_idx) = next_lanes
                 .iter()
@@ -300,22 +308,22 @@ pub fn build_graph_nodes(
             parent_to_col.insert(p.clone(), target_col);
         }
 
-        // Nettoyer les None en fin de vecteur
+        // Clean up trailing Nones
         while next_lanes.last() == Some(&None) {
             next_lanes.pop();
             next_lane_colors.pop();
         }
 
-        // ── Calcul des connexions (lignes full-row pour le SVG) ───────────────
+        // ── Compute connections (full-row lines for the SVG) ──────────────────
         let mut connections: Vec<GitGraphEdge> = Vec::new();
 
-        // 1. Lanes pass-through (non liées à ce commit)
+        // 1. Pass-through lanes (unrelated to this commit)
         for (from_col, lane_oid) in active_lanes.iter().enumerate() {
             if let Some(ref oid) = lane_oid {
                 if oid == &oid_str {
-                    continue; // La lane de ce commit : gérée via merge/outgoing
+                    continue; // This commit's own lane: handled via merge/outgoing
                 }
-                // Une lane pass-through reste toujours dans la même colonne et garde sa couleur
+                // A pass-through lane always stays in the same column and keeps its color
                 let edge_color = lane_colors
                     .get(from_col)
                     .cloned()
@@ -331,7 +339,7 @@ pub fn build_graph_nodes(
             }
         }
 
-        // 2. Lignes de merge entrant (colonnes secondaires → col principal)
+        // 2. Incoming merge lines (secondary columns → main column)
         for &mc in &merge_cols {
             let edge_color = lane_colors
                 .get(mc)
@@ -358,7 +366,7 @@ pub fn build_graph_nodes(
             }
         }
 
-        // 3. Lignes sortantes vers les parents
+        // 3. Outgoing lines to the parents
         for p_oid in &parent_oids {
             if let Some(&to_col) = parent_to_col.get(p_oid) {
                 let edge_color = next_lane_colors
@@ -380,7 +388,7 @@ pub fn build_graph_nodes(
         active_lanes = next_lanes;
         lane_colors = next_lane_colors;
 
-        // ── Construction du commit ────────────────────────────────────────────
+        // ── Build the commit ───────────────────────────────────────────────────
         let author = commit.author();
         let committer = commit.committer();
         let raw_message = commit.message().unwrap_or("").to_string();
@@ -420,17 +428,16 @@ pub fn build_graph_nodes(
         });
     }
 
-    // ── Pointillés du "pont" reliant chaque stash à son commit de base ────────────
-    // Un stash est dessiné *à l'intérieur* de la lane sur laquelle il a été créé (voir le
-    // hijack `col_override` plus haut), si bien que la ligne qui relie le nœud du stash à son
-    // vrai commit de base — son unique parent (tronqué) — descend le long de cette lane en
-    // traversant potentiellement plusieurs lignes de commits sans rapport. Cette ligne n'est pas
-    // de l'historique réel : elle doit être en pointillé sur TOUTE sa longueur, pas seulement sur
-    // la ligne du stash lui-même. On connaît la colonne exacte (celle du stash, conservée par les
-    // lanes pass-through en dessous) et l'oid de base, donc on marque `dashed` sur chaque segment
-    // de cette colonne, de la ligne du stash jusqu'à celle de son commit de base (inclus). La
-    // ligne *au-dessus* du stash reste pleine : c'est l'historique réel qui passe par là, pas le
-    // lien du stash (un stash n'a pas de vrai enfant qui pointe vers lui).
+    // ── Dashing the "bridge" connecting each stash to its base commit ────────────
+    // A stash is drawn *inside* the lane it was created on (see the `col_override` hijack
+    // above), so the line connecting the stash's node to its real base commit — its single
+    // (truncated) parent — runs down that lane, potentially crossing several unrelated commit
+    // rows. That line isn't real history: it must be dashed along its ENTIRE length, not just
+    // on the stash's own row. We know the exact column (the stash's, kept by the pass-through
+    // lanes below) and the base oid, so we mark `dashed` on every segment of that column, from
+    // the stash's row down to its base commit's row (inclusive). The line *above* the stash
+    // stays solid: that's real history passing through, not the stash's link (a stash has no
+    // real child pointing to it).
     let stash_oid_set: std::collections::HashSet<String> =
         stash_oids.iter().map(|o| o.to_string()).collect();
     let stash_indices: Vec<usize> = nodes
@@ -446,20 +453,20 @@ pub fn build_graph_nodes(
             continue;
         };
 
-        // Ligne du stash : uniquement le segment sortant (vers le bas, vers la base).
+        // Stash's own row: only the outgoing segment (downward, toward the base).
         for edge in &mut nodes[stash_idx].connections {
             if edge.from_column == bridge_col && edge.starts_at_node == Some(true) {
                 edge.dashed = Some(true);
             }
         }
 
-        // Lignes en dessous : pass-through sur la colonne du pont, jusqu'à la ligne de la base.
+        // Rows below: pass-through on the bridge column, down to the base's row.
         for row in &mut nodes[stash_idx + 1..] {
             if row.commit.oid == base_oid {
-                // Ligne de la base : le segment qui arrive depuis la colonne du pont (vertical
-                // `ends_at_node`, ou merge diagonal vers le nœud). On exclut le segment *sortant*
-                // de la base (`starts_at_node`) : le lien de la base vers son propre parent est
-                // de l'historique réel.
+                // Base's row: the segment arriving from the bridge column (vertical
+                // `ends_at_node`, or a diagonal merge into the node). We exclude the base's
+                // *outgoing* segment (`starts_at_node`): the base's link to its own parent is
+                // real history.
                 for edge in &mut row.connections {
                     if edge.from_column == bridge_col
                         && edge.starts_at_node != Some(true)
@@ -621,7 +628,8 @@ mod tests {
         // Display order places F1 (an unrelated commit) between the stash and its base commit.
         let oids = vec![f.c4, f.c3, f.s, f.f1, f.c2, f.c1];
 
-        let nodes = build_graph_nodes(&f.repo, &oids, &[f.s], &refs_map, Some("dev")).unwrap();
+        let nodes =
+            build_graph_nodes(&f.repo, &oids, &[f.s], &refs_map, Some("dev"), false).unwrap();
 
         let stash = node(&nodes, f.s);
         let bridge_col = stash.column;
@@ -686,7 +694,8 @@ mod tests {
         let refs_map: HashMap<String, Vec<LogRef>> = HashMap::new();
         let oids = vec![f.c4, f.c3, f.s, f.c2, f.c1];
 
-        let nodes = build_graph_nodes(&f.repo, &oids, &[f.s], &refs_map, Some("dev")).unwrap();
+        let nodes =
+            build_graph_nodes(&f.repo, &oids, &[f.s], &refs_map, Some("dev"), false).unwrap();
 
         let stash = node(&nodes, f.s);
         let bridge_col = stash.column;
@@ -767,7 +776,7 @@ mod tests {
         let refs_map: HashMap<String, Vec<LogRef>> = HashMap::new();
         // Display order (newest first) — the merge is the first unpushed row.
         let oids = vec![m, p1, s1, b, _r];
-        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, Some("main")).unwrap();
+        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, Some("main"), false).unwrap();
 
         let merge = node(&nodes, m);
         assert_eq!(merge.column, 0, "merge sits on the mainline column");
@@ -802,8 +811,10 @@ mod tests {
     }
 
     /// Full graph (all branches) while checked out on a feature branch whose tip is OLDER than
-    /// main's tip: the checked-out branch must still own column 0 (so the WIP row sitting on it
-    /// stays the primary vertical), and main's newer tip is pushed to a lane on the right.
+    /// main's tip, WITH a WIP row above the graph (`head_has_wip = true`): the WIP row is the
+    /// graph's first element, so its lane — running down to the checked-out tip — owns column 0,
+    /// and main's newer tip is pushed to a lane on the right. Without a WIP row, columns follow
+    /// pure top-to-bottom order instead: the newest displayed commit owns column 0.
     #[test]
     fn checked_out_branch_tip_owns_column_zero_in_full_graph() {
         let dir = std::env::temp_dir().join(format!("gm-test-graph-head-{}", std::process::id()));
@@ -840,18 +851,201 @@ mod tests {
         // Display order newest-first: main's newer tip c3 would normally grab column 0.
         let oids = vec![c3, f1, c2, c1];
 
-        // Full graph view (branch = None).
-        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None).unwrap();
+        // Full graph view (branch = None), dirty working tree → a WIP row anchors column 0.
+        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, true).unwrap();
 
         assert_eq!(
             node(&nodes, f1).column,
             0,
-            "checked-out feature tip should own column 0"
+            "checked-out feature tip should own column 0 under its WIP row"
         );
         assert_ne!(
             node(&nodes, c3).column,
             0,
             "main's newer tip should be pushed off column 0"
+        );
+
+        // Clean working tree → no WIP row → no seed: pure top-to-bottom order.
+        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, false).unwrap();
+
+        assert_eq!(
+            node(&nodes, c3).column,
+            0,
+            "without a WIP row the first displayed commit owns column 0"
+        );
+        assert_ne!(
+            node(&nodes, f1).column,
+            0,
+            "without a WIP row the older checked-out tip takes a natural side lane"
+        );
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Full graph, clean working tree, checked out on a branch whose tip sits on the topmost
+    /// commit's first-parent mainline (a merged / behind branch, like the `main-pending-changes`
+    /// worktree bug): with no WIP row there is nothing to seed — the topmost displayed commit owns
+    /// column 0 and the checked-out tip keeps column 0 naturally through the mainline, so no
+    /// phantom "cut" lane hangs above it.
+    #[test]
+    fn merged_checked_out_tip_does_not_reserve_column_zero() {
+        let dir = std::env::temp_dir().join(format!("gm-test-graph-merged-{}", std::process::id()));
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = Repository::init(&dir).unwrap();
+
+        let r = commit_file(&repo, "file.txt", "r\n", "r");
+        let base = commit_file(&repo, "file.txt", "base\n", "base"); // future feature tip
+
+        // Full ref of the initial branch (libgit2 default is "master", but don't assume) — read
+        // after the first commit so HEAD is born.
+        let main_ref = repo.head().unwrap().name().unwrap().to_string();
+        let sig = get_git_signature(&repo).unwrap();
+
+        // Feature branch merged into main: `feat` is a side commit off `base`, merged by `m1`
+        // (first parent `base`, second parent `feat`). `feat_tip` points at `base` (the checked-out
+        // worktree is "behind", its tip already on main's first-parent chain).
+        let (feat, m1) = {
+            let base_commit = repo.find_commit(base).unwrap();
+            let base_tree = base_commit.tree().unwrap();
+            let feat = repo
+                .commit(None, &sig, &sig, "feat", &base_tree, &[&base_commit])
+                .unwrap();
+            let feat_commit = repo.find_commit(feat).unwrap();
+            let m1 = repo
+                .commit(
+                    Some(&main_ref),
+                    &sig,
+                    &sig,
+                    "m1",
+                    &base_tree,
+                    &[&base_commit, &feat_commit],
+                )
+                .unwrap();
+            (feat, m1)
+        };
+
+        // The checked-out branch's tip is `base` — already merged, on m1's first-parent chain.
+        {
+            let base_commit = repo.find_commit(base).unwrap();
+            repo.branch("pending", &base_commit, false).unwrap();
+        }
+        repo.set_head("refs/heads/pending").unwrap();
+
+        let refs_map: HashMap<String, Vec<LogRef>> = HashMap::new();
+        // Display order newest-first — the merge tip `m1` sits at the top.
+        let oids = vec![m1, feat, base, r];
+        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, false).unwrap();
+
+        assert_eq!(
+            node(&nodes, m1).column,
+            0,
+            "topmost displayed commit must own column 0 (read top-to-bottom)"
+        );
+        assert_eq!(
+            node(&nodes, base).column,
+            0,
+            "the merged checked-out tip keeps column 0 through the mainline"
+        );
+        // No phantom column-0 lane hanging above the top: the top row's only column-0 edge is the
+        // merge's own departure to its first parent (a real, node-anchored segment), never a bare
+        // pass-through waiting on a far-below tip.
+        let top = node(&nodes, m1);
+        assert!(
+            top.connections
+                .iter()
+                .filter(|e| e.from_column == 0 && e.to_column == 0)
+                .all(|e| e.starts_at_node == Some(true) || e.ends_at_node == Some(true)),
+            "top row must carry no bare column-0 pass-through: {:?}",
+            top.connections
+        );
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Full graph, checked out on a branch whose tip is the SECOND parent of the topmost merge
+    /// (a feature branch already merged into main — the `multi-select-changes-summary` worktree
+    /// bug, which the first-parent-only ancestry check missed). Clean tree: no seed at all, so the
+    /// top merge owns column 0 and the merged tip takes the natural second-parent lane (column 1)
+    /// with no cut lane above it. Dirty tree: the WIP row anchors column 0, so the tip holds
+    /// column 0 and the top merge is pushed right.
+    #[test]
+    fn second_parent_merged_tip_follows_top_down_order() {
+        let dir = std::env::temp_dir().join(format!("gm-test-graph-p2-{}", std::process::id()));
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = Repository::init(&dir).unwrap();
+
+        let r = commit_file(&repo, "file.txt", "r\n", "r");
+        let base = commit_file(&repo, "file.txt", "base\n", "base");
+
+        let main_ref = repo.head().unwrap().name().unwrap().to_string();
+        let sig = get_git_signature(&repo).unwrap();
+
+        // `feat` hangs off `base`; `m1` merges it into main (first parent `base`, second `feat`).
+        let (feat, m1) = {
+            let base_commit = repo.find_commit(base).unwrap();
+            let base_tree = base_commit.tree().unwrap();
+            let feat = repo
+                .commit(None, &sig, &sig, "feat", &base_tree, &[&base_commit])
+                .unwrap();
+            let feat_commit = repo.find_commit(feat).unwrap();
+            let m1 = repo
+                .commit(
+                    Some(&main_ref),
+                    &sig,
+                    &sig,
+                    "m1",
+                    &base_tree,
+                    &[&base_commit, &feat_commit],
+                )
+                .unwrap();
+            (feat, m1)
+        };
+
+        // The checked-out branch's tip is `feat` — merged via m1's SECOND parent.
+        {
+            let feat_commit = repo.find_commit(feat).unwrap();
+            repo.branch("pending", &feat_commit, false).unwrap();
+        }
+        repo.set_head("refs/heads/pending").unwrap();
+
+        let refs_map: HashMap<String, Vec<LogRef>> = HashMap::new();
+        let oids = vec![m1, feat, base, r];
+
+        // Clean tree: pure top-down — no phantom lane above `feat`.
+        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, false).unwrap();
+        assert_eq!(
+            node(&nodes, m1).column,
+            0,
+            "clean tree: topmost merge owns column 0"
+        );
+        assert_eq!(
+            node(&nodes, feat).column,
+            1,
+            "clean tree: merged tip takes the natural second-parent lane"
+        );
+        let top = node(&nodes, m1);
+        assert!(
+            top.connections
+                .iter()
+                .filter(|e| e.from_column == 0 && e.to_column == 0)
+                .all(|e| e.starts_at_node == Some(true) || e.ends_at_node == Some(true)),
+            "clean tree: no bare column-0 pass-through above the top merge: {:?}",
+            top.connections
+        );
+
+        // Dirty tree: the WIP row anchors column 0 for the checked-out tip.
+        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, true).unwrap();
+        assert_eq!(
+            node(&nodes, feat).column,
+            0,
+            "dirty tree: checked-out tip holds column 0 under its WIP row"
+        );
+        assert_ne!(
+            node(&nodes, m1).column,
+            0,
+            "dirty tree: the top merge is pushed off column 0"
         );
 
         std::fs::remove_dir_all(&dir).ok();
