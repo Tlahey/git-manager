@@ -17,6 +17,7 @@ vi.mock('../api/worktree.api', () => ({ apiListWorktrees: vi.fn() }))
 import { apiGetTags, apiListSubmodules } from '../api/git.api'
 import { apiListWorktrees } from '../api/worktree.api'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
+import { useRepoUIStore } from '../stores/repoUI.store'
 import { useSidebarRows } from './useSidebarRows'
 import type { SectionKey, SidebarRow, SidebarSection } from '../components/repository-sidebar/types'
 
@@ -99,6 +100,7 @@ const DEFAULT_PR_DATA = { allPrs: [], isGithub: false, isLoading: false }
 beforeEach(() => {
   vi.clearAllMocks()
   usePinnedBranchesStore.setState({ overrides: {} })
+  useRepoUIStore.setState({ selectedCommitOid: null })
   useBranchesMock.mockReturnValue({ data: [] })
   useGitStashesMock.mockReturnValue({ data: [] })
   usePullRequestsMock.mockReturnValue(DEFAULT_PR_DATA)
@@ -333,6 +335,20 @@ describe('useSidebarRows — tags/stashes/submodules', () => {
       expect(allRows(result.current.sections).some((r) => r.kind === 'tag')).toBe(true)
     )
     expect(findRow(result.current.sections, 'tag:refs/tags/v1.0')).toBeDefined()
+  })
+
+  it('marks a tag row as selected when its commit is the one selected in the graph', async () => {
+    mockedGetTags.mockResolvedValue([
+      { name: 'refs/tags/v1.0', shortName: 'v1.0', type: 'tag', commitOid: 'commit-a' },
+      { name: 'refs/tags/v2.0', shortName: 'v2.0', type: 'tag', commitOid: 'commit-b' },
+    ])
+    useRepoUIStore.setState({ selectedCommitOid: 'commit-b' })
+    const { result } = renderRows({ openState: { 'section:tags': true } })
+    await waitFor(() =>
+      expect(allRows(result.current.sections).some((r) => r.kind === 'tag')).toBe(true)
+    )
+    expect(findRow(result.current.sections, 'tag:refs/tags/v1.0')).toMatchObject({ isSelected: false })
+    expect(findRow(result.current.sections, 'tag:refs/tags/v2.0')).toMatchObject({ isSelected: true })
   })
 
   it('truncates the tag list at TAGS_LIMIT (100) with a "+N more" message', async () => {

@@ -296,6 +296,26 @@ describe('SidebarRowView — tag', () => {
     expect(h.onSelectBranch).toHaveBeenCalledWith('refs/tags/v1.0.0')
   })
 
+  it('scrolls to the tag commit via onSelectTag (not onSelectBranch) when provided', () => {
+    const h = baseHandlers()
+    const onSelectTag = vi.fn()
+    render(
+      <SidebarRowView
+        row={{
+          kind: 'tag',
+          id: 't-1',
+          tag: tag({ name: 'refs/tags/v1.0.0', shortName: 'v1.0.0', commitOid: 'abcdef1234567890' }),
+          isSelected: false,
+        }}
+        {...h}
+        onSelectTag={onSelectTag}
+      />
+    )
+    fireEvent.click(screen.getByText('v1.0.0').closest('[role="button"]')!)
+    expect(onSelectTag).toHaveBeenCalledWith('abcdef1234567890')
+    expect(h.onSelectBranch).not.toHaveBeenCalled()
+  })
+
   it('highlights the matched substring when filterQuery is provided', () => {
     const { container } = renderRow(
       { kind: 'tag', id: 't-1', tag: tag({ shortName: 'v1.0.0' }), isSelected: false },
