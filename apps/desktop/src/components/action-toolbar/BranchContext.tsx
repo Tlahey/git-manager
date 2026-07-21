@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronDown, GitBranch, Layers, Search, X } from 'lucide-react'
 import { Spinner, Popover, PopoverTrigger, PopoverContent, Input } from '@git-manager/ui'
+import { TruncatedLabel } from '@git-manager/components'
 import { useTranslation } from '@git-manager/i18n'
 import type { GitWorktree } from '@git-manager/git-types'
 import { useRepoDataStore } from '../../stores/repoData.store'
@@ -64,18 +65,26 @@ export function BranchContext() {
   const q = query.trim().toLowerCase()
   const matchesQuery = (label: string) => !q || label.toLowerCase().includes(q)
 
+  const workspaceEntries = worktrees.filter(
+    (wt) =>
+      !wt.isMain &&
+      wt.branch !== '(detached HEAD)' &&
+      wt.path !== activeWorkspacePath &&
+      matchesQuery(wt.branch)
+  )
+  // A branch already checked out in one of the listed worktrees is shown as its worktree only.
+  const workspaceBranchNames = new Set(workspaceEntries.map((wt) => wt.branch))
   const entries: ContextEntry[] = [
-    ...worktrees
-      .filter(
-        (wt) =>
-          !wt.isMain &&
-          wt.branch !== '(detached HEAD)' &&
-          wt.path !== activeWorkspacePath &&
-          matchesQuery(wt.branch)
-      )
-      .map((wt): ContextEntry => ({ kind: 'workspace', key: wt.path, label: wt.branch, path: wt.path })),
+    ...workspaceEntries.map(
+      (wt): ContextEntry => ({ kind: 'workspace', key: wt.path, label: wt.branch, path: wt.path })
+    ),
     ...locals
-      .filter((b) => (activeWorkspacePath ? true : !b.isHead) && matchesQuery(b.shortName))
+      .filter(
+        (b) =>
+          (activeWorkspacePath ? true : !b.isHead) &&
+          matchesQuery(b.shortName) &&
+          !workspaceBranchNames.has(b.shortName)
+      )
       .map((b): ContextEntry => ({ kind: 'branch', key: b.name, label: b.shortName, name: b.shortName })),
   ]
   const showCurrentRow = matchesQuery(currentLabel)
@@ -135,14 +144,11 @@ export function BranchContext() {
           <PopoverTrigger asChild>
             <button
               type="button"
-              title={currentLabel}
+              data-testid="branch-context-trigger"
               className="flex h-5 min-w-0 max-w-[200px] items-center gap-1 rounded px-1 text-sm font-bold transition-colors hover:bg-accent"
             >
-              <span
-                data-testid="branch-context-label"
-                className="min-w-0 flex-1 truncate text-left"
-              >
-                {currentLabel}
+              <span data-testid="branch-context-label" className="min-w-0 flex-1 text-left">
+                <TruncatedLabel label={currentLabel} placement="bottom" />
               </span>
               <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             </button>
@@ -171,9 +177,10 @@ export function BranchContext() {
                   ) : (
                     <GitBranch className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   )}
-                  <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
-                    {currentLabel}
-                  </span>
+                  <TruncatedLabel
+                    label={currentLabel}
+                    className="min-w-0 flex-1 text-xs font-medium text-foreground"
+                  />
                   <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
                 </div>
               )}
@@ -204,9 +211,10 @@ export function BranchContext() {
                     ) : (
                       <GitBranch className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     )}
-                    <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
-                      {entry.label}
-                    </span>
+                    <TruncatedLabel
+                      label={entry.label}
+                      className="min-w-0 flex-1 text-xs font-medium text-foreground"
+                    />
                     {busy === entry.label && <Spinner className="h-3 w-3 shrink-0" />}
                   </button>
                 ))
