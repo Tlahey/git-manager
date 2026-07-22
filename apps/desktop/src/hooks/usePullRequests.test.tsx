@@ -3,7 +3,10 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import type { ReactNode } from 'react'
 
-vi.mock('../api/github.api', () => ({ fetchRepoPRs: vi.fn() }))
+vi.mock('../api/github.api', async (importActual) => {
+  const actual = await importActual<typeof import('../api/github.api')>()
+  return { ...actual, fetchRepoPRs: vi.fn() }
+})
 
 import { fetchRepoPRs } from '../api/github.api'
 import { useSettingsStore } from '../stores/settings.store'

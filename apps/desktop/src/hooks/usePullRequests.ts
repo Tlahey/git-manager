@@ -1,7 +1,7 @@
 import useSWR from 'swr'
 import type { PullRequest } from '@git-manager/git-types'
 import { useSettingsStore } from '../stores/settings.store'
-import { fetchRepoPRs } from '../api/github.api'
+import { fetchRepoPRs, rawToPullRequest } from '../api/github.api'
 import { firstGitHubOwnerRepo } from '../lib/githubRemote'
 
 export interface UsePullRequestsOptions {
@@ -46,23 +46,7 @@ export function usePullRequests({
     swrKey,
     async ([_, owner, repo, tok]) => {
       const raw = await fetchRepoPRs(owner, repo, tok ?? undefined)
-      return raw.map(
-        (pr): PullRequest => ({
-          number: pr.number,
-          title: pr.title,
-          body: pr.body ?? '',
-          state: pr.draft ? 'draft' : (pr.state as PullRequest['state']),
-          author: pr.user?.login ?? '—',
-          authorAvatar: pr.user?.avatar_url ?? '',
-          headRef: pr.head?.ref ?? '',
-          baseRef: pr.base?.ref ?? '',
-          url: pr.html_url,
-          ciStatus: null,
-          createdAt: pr.created_at,
-          updatedAt: pr.updated_at,
-          isDraft: pr.draft,
-        })
-      )
+      return raw.map(rawToPullRequest)
     },
     {
       refreshInterval: 60_000,

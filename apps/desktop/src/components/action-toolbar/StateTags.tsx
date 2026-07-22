@@ -1,28 +1,21 @@
-import { Badge } from '@git-manager/ui'
-import { useTranslation } from '@git-manager/i18n'
-import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
+import { useActiveBranchPr } from '../../hooks/useActiveBranchPr'
+import { PrStatusTag } from '../repository-sidebar/PrStatusTag'
 
 /**
- * Badge dynamique indiquant l'état du dépôt : `MODIFIÉ`.
- * Detached HEAD et rebase/conflit sont déjà visibles via BranchContext et la
- * ligne CONFLICT synthétique dans le graphe, donc pas dupliqués ici.
+ * Status tag for the active repo/workspace: the linked pull request (GitHub mark + status +
+ * `#number`), when there is one. Detached HEAD and rebase/conflict are already surfaced via
+ * BranchContext and the synthetic CONFLICT graph row, so they aren't duplicated here.
  */
 export function StateTags() {
-  const { t } = useTranslation('git')
-  const { activeRepo } = useRepoUIStore()
-  const { repoCache } = useRepoDataStore()
-  const repo = activeRepo ? repoCache[activeRepo] : undefined
+  const setActivePrNumber = useRepoUIStore((s) => s.setActivePrNumber)
+  const activePr = useActiveBranchPr()
 
-  if (!repo) return null
+  if (!activePr) return null
 
   return (
     <div className="flex shrink-0 items-center gap-1">
-      {repo.isDirty && (
-        <Badge variant="outline" className="rounded px-1.5 py-0 text-[10px] tracking-wide">
-          {t('toolbar.dirty')}
-        </Badge>
-      )}
+      <PrStatusTag pr={activePr} onOpen={(pr) => setActivePrNumber(pr.number)} />
     </div>
   )
 }

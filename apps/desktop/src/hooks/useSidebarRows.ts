@@ -5,6 +5,7 @@ import { useBranches } from './useBranches'
 import { useGitStashes } from './useGitStashes'
 import { useGroupedBranches } from './useGroupedBranches'
 import { usePullRequests } from './usePullRequests'
+import { useMergedPrsByBranch } from './useMergedPrsByBranch'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
 import { useRepoUIStore } from '../stores/repoUI.store'
 import { apiGetTags, apiListSubmodules } from '../api/git.api'
@@ -100,6 +101,22 @@ export function useSidebarRows({
   // Unfiltered by search query — the section header's prune-button visibility shouldn't
   // depend on whether the sidebar search box happens to currently hide the stale entry.
   const prunableWorktrees = useMemo(() => worktrees.filter((wt) => wt.isPrunable), [worktrees])
+
+  // Merged PRs by head branch — `usePullRequests` only fetches open PRs, so a branch/worktree that's
+  // already merged has no open PR to match; this fills that gap from the closed-PR list.
+  const mergedPrByBranch = useMergedPrsByBranch({ remoteUrls, githubToken })
+
+  // Index PRs by their head branch (unfiltered by the search box — a branch/worktree row shows its
+  // PR tag regardless of what's typed). Start from merged PRs, then let open PRs win over a stale
+  // merged one sharing a headRef (a reused branch name), so an active PR is never masked.
+  const prByBranch = useMemo(() => {
+    const map = new Map<string, (typeof allPrs)[number]>(mergedPrByBranch)
+    for (const pr of allPrs) {
+      if (pr.state === 'open') map.set(pr.headRef, pr)
+      else if (!map.has(pr.headRef)) map.set(pr.headRef, pr)
+    }
+    return map
+  }, [allPrs, mergedPrByBranch])
 
   const q = filter.trim().toLowerCase()
   const includesQuery = (text: string) => !q || text.toLowerCase().includes(q)
@@ -219,6 +236,7 @@ export function useSidebarRows({
           depth: 0,
           isSelected: isSelected(b),
           isPinned: true,
+          pr: prByBranch.get(b.shortName),
         })
       }
       if (pinnedBranches.length > 0 && (ungrouped.length > 0 || groups.length > 0)) {
@@ -233,6 +251,7 @@ export function useSidebarRows({
           depth: 0,
           isSelected: isSelected(b),
           isPinned: false,
+          pr: prByBranch.get(b.shortName),
         })
       }
       for (const { prefix, branches } of groups) {
@@ -256,6 +275,7 @@ export function useSidebarRows({
               depth: 1,
               isSelected: isSelected(b),
               isPinned: false,
+              pr: prByBranch.get(b.shortName),
             })
           }
         }
@@ -440,7 +460,7 @@ export function useSidebarRows({
           wtRows.push({ kind: 'message', id: 'wt:empty', text: 'No linked worktrees.' })
         } else {
           for (const wt of filteredWorktrees) {
-            wtRows.push({ kind: 'worktree', id: `wt:${wt.path}`, wt })
+            wtRows.push({ kind: 'worktree', id: `wt:${wt.path}`, wt, pr: prByBranch.get(wt.branch) })
           }
         }
       }
@@ -466,6 +486,7 @@ export function useSidebarRows({
     remoteGroups,
     remoteCount,
     filteredPrs,
+    prByBranch,
     isGithub,
     prsLoading,
     filteredTags,

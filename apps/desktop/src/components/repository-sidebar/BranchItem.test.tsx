@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { GitBranch } from '@git-manager/git-types'
+import type { GitBranch, PullRequest } from '@git-manager/git-types'
 import { BranchItem } from './BranchItem'
 
 vi.mock('./HoverExpandLabel', () => ({
@@ -288,6 +288,52 @@ describe('BranchItem — solo toggle', () => {
     )
     await user.click(screen.getByTestId('branch-solo-toggle'))
     expect(onToggleSolo).toHaveBeenCalledWith('feature-x')
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+})
+
+describe('BranchItem — linked PR tag', () => {
+  function pr(overrides: Partial<PullRequest> = {}): PullRequest {
+    return {
+      number: 321,
+      title: 'PR',
+      body: '',
+      state: 'open',
+      author: 'a',
+      authorAvatar: '',
+      headRef: 'feature-x',
+      baseRef: 'main',
+      url: '',
+      ciStatus: null,
+      createdAt: '',
+      updatedAt: '',
+      isDraft: false,
+      ...overrides,
+    }
+  }
+
+  it('renders no PR tag when the branch has no linked PR', () => {
+    render(<BranchItem branch={branch()} isSelected={false} onSelect={vi.fn()} />)
+    expect(screen.queryByTestId('pr-status-tag-321')).not.toBeInTheDocument()
+  })
+
+  it('shows the PR tag and opens the PR without selecting the branch', () => {
+    const onSelect = vi.fn()
+    const onOpenPr = vi.fn()
+    const linked = pr()
+    render(
+      <BranchItem
+        branch={branch()}
+        isSelected={false}
+        onSelect={onSelect}
+        pr={linked}
+        onOpenPr={onOpenPr}
+      />
+    )
+    const tag = screen.getByTestId('pr-status-tag-321')
+    expect(tag).toHaveTextContent('#321')
+    fireEvent.click(tag)
+    expect(onOpenPr).toHaveBeenCalledWith(linked)
     expect(onSelect).not.toHaveBeenCalled()
   })
 })
