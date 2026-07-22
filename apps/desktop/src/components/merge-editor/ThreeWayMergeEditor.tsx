@@ -168,7 +168,7 @@ export const ThreeWayMergeEditor = forwardRef<ThreeWayMergeEditorRef, ThreeWayMe
           ),
         },
       ]
-    }, [isTwoWay, original, modified, originalLabel, modifiedLabel, view, commitSha, fileName])
+    }, [isTwoWay, original, modified, originalLabel, modifiedLabel, view, commitSha, fileName, t])
 
     const handleAutoMerge = useCallback(
       () => apiAutoMergeConflictView(repoPath, filePath),

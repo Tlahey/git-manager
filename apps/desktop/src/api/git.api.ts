@@ -77,6 +77,7 @@ import {
 } from '../lib/tauri'
 import type { RebaseTodoStep } from '@git-manager/git-types'
 import { callCommand } from './service'
+import { runActivity } from '../lib/activityCorrelation'
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
 import type { UndoAction } from '../lib/undoActions'
 
@@ -176,39 +177,41 @@ export async function apiCreateCommit(
   amend = false,
   amendOid?: string
 ) {
-  let previousOid: string | null = null
-  if (!amend) {
-    try {
-      const branches = await getBranches(path, false)
-      previousOid = branches.find((b) => b.isHead)?.commitOid ?? null
-    } catch {
-      previousOid = null
+  return runActivity('git.commit', async () => {
+    let previousOid: string | null = null
+    if (!amend) {
+      try {
+        const branches = await getBranches(path, false)
+        previousOid = branches.find((b) => b.isHead)?.commitOid ?? null
+      } catch {
+        previousOid = null
+      }
     }
-  }
 
-  const result = await callCommand('commit', () => createCommit(path, message, amend, amendOid))
+    const result = await callCommand('commit', () => createCommit(path, message, amend, amendOid))
 
-  if (amend) {
-    // Amend is out of undo/redo's scope (only the initial commit is) — it already modifies a
-    // commit that could itself be the result of an undo/redo.
-    clearRedo(path)
-  } else if (previousOid) {
-    const id = generateId()
-    // Pin the new commit: its parent (previousOid) automatically stays reachable as an ancestor
-    // as long as newOid is protected.
-    await pinObject(path, id, result.oid).catch(() => {})
-    pushAction(path, {
-      id,
-      timestamp: Date.now(),
-      label: { key: 'undoRedo.commit', params: { sha: result.shortOid } },
-      pinnedRefs: [id],
-      type: 'commit',
-      previousOid,
-      newOid: result.oid,
-    })
-  }
+    if (amend) {
+      // Amend is out of undo/redo's scope (only the initial commit is) — it already modifies a
+      // commit that could itself be the result of an undo/redo.
+      clearRedo(path)
+    } else if (previousOid) {
+      const id = generateId()
+      // Pin the new commit: its parent (previousOid) automatically stays reachable as an ancestor
+      // as long as newOid is protected.
+      await pinObject(path, id, result.oid).catch(() => {})
+      pushAction(path, {
+        id,
+        timestamp: Date.now(),
+        label: { key: 'undoRedo.commit', params: { sha: result.shortOid } },
+        pinnedRefs: [id],
+        type: 'commit',
+        previousOid,
+        newOid: result.oid,
+      })
+    }
 
-  return result
+    return result
+  })
 }
 
 export async function apiDiscardFileChanges(path: string, filePath: string) {
@@ -276,24 +279,26 @@ export async function apiAutosquashPreview(path: string) {
 }
 
 export async function apiRunAutosquash(path: string) {
-  let previousOid: string | null = null
-  try {
-    const branches = await getBranches(path, false)
-    previousOid = branches.find((b) => b.isHead)?.commitOid ?? null
-  } catch {
-    previousOid = null
-  }
+  return runActivity('git.autosquash', async () => {
+    let previousOid: string | null = null
+    try {
+      const branches = await getBranches(path, false)
+      previousOid = branches.find((b) => b.isHead)?.commitOid ?? null
+    } catch {
+      previousOid = null
+    }
 
-  const result = await callCommand('autosquash', () => runAutosquash(path))
+    const result = await callCommand('autosquash', () => runAutosquash(path))
 
-  // Same conflict-pause caveat as apiRunInteractiveRebase: `run_autosquash` shells out to
-  // `git rebase -i --autosquash` and pauses gracefully (err_unless_paused) instead of erroring,
-  // so HEAD may not have moved yet. Stash previousOid either way and let settleRebaseUndo record
-  // the undo entry now, or later via apiRebaseContinue/apiRebaseSkip once it reaches idle.
-  pendingRebasePreviousOid.set(path, { previousOid, kind: 'autosquash' })
-  await settleRebaseUndo(path)
+    // Same conflict-pause caveat as apiRunInteractiveRebase: `run_autosquash` shells out to
+    // `git rebase -i --autosquash` and pauses gracefully (err_unless_paused) instead of erroring,
+    // so HEAD may not have moved yet. Stash previousOid either way and let settleRebaseUndo record
+    // the undo entry now, or later via apiRebaseContinue/apiRebaseSkip once it reaches idle.
+    pendingRebasePreviousOid.set(path, { previousOid, kind: 'autosquash' })
+    await settleRebaseUndo(path)
 
-  return result
+    return result
+  })
 }
 
 export async function apiGetPendingFixups(path: string) {
@@ -351,48 +356,50 @@ export async function apiRevertCommit(path: string, oid: string, noCommit = fals
 }
 
 export async function apiResetToCommit(path: string, oid: string, mode: 'soft' | 'mixed' | 'hard') {
-  let previousOid: string | null = null
-  try {
-    const branches = await getBranches(path, false)
-    previousOid = branches.find((b) => b.isHead)?.commitOid ?? null
-  } catch {
-    previousOid = null
-  }
+  return runActivity('git.reset', async () => {
+    let previousOid: string | null = null
+    try {
+      const branches = await getBranches(path, false)
+      previousOid = branches.find((b) => b.isHead)?.commitOid ?? null
+    } catch {
+      previousOid = null
+    }
 
-  const id = generateId()
-  let snapshot: WorktreeSnapshot | null = null
-  if (mode === 'hard') {
-    snapshot = await snapshotWorktree(path, id)
-  }
+    const id = generateId()
+    let snapshot: WorktreeSnapshot | null = null
+    if (mode === 'hard') {
+      snapshot = await snapshotWorktree(path, id)
+    }
 
-  if (previousOid) {
-    // previousOid AND targetOid are pinned separately (no assumption of ancestry between the
-    // two — a reset can target a commit that isn't a direct ancestor).
-    await Promise.all([
-      pinObject(path, `${id}-previous`, previousOid).catch(() => {}),
-      pinObject(path, `${id}-target`, oid).catch(() => {}),
-    ])
-  }
+    if (previousOid) {
+      // previousOid AND targetOid are pinned separately (no assumption of ancestry between the
+      // two — a reset can target a commit that isn't a direct ancestor).
+      await Promise.all([
+        pinObject(path, `${id}-previous`, previousOid).catch(() => {}),
+        pinObject(path, `${id}-target`, oid).catch(() => {}),
+      ])
+    }
 
-  await resetToCommit(path, oid, mode)
+    await resetToCommit(path, oid, mode)
 
-  if (previousOid) {
-    const pinnedRefs = [`${id}-previous`, `${id}-target`]
-    if (snapshot) pinnedRefs.push(snapshot.indexRefName, snapshot.workdirRefName)
-    pushAction(path, {
-      id,
-      timestamp: Date.now(),
-      label: { key: 'undoRedo.reset', params: { sha: oid.slice(0, 7) } },
-      pinnedRefs,
-      type: 'reset',
-      previousOid,
-      targetOid: oid,
-      mode,
-      snapshot,
-    })
-  } else {
-    clearRedo(path)
-  }
+    if (previousOid) {
+      const pinnedRefs = [`${id}-previous`, `${id}-target`]
+      if (snapshot) pinnedRefs.push(snapshot.indexRefName, snapshot.workdirRefName)
+      pushAction(path, {
+        id,
+        timestamp: Date.now(),
+        label: { key: 'undoRedo.reset', params: { sha: oid.slice(0, 7) } },
+        pinnedRefs,
+        type: 'reset',
+        previousOid,
+        targetOid: oid,
+        mode,
+        snapshot,
+      })
+    } else {
+      clearRedo(path)
+    }
+  })
 }
 
 export async function apiGetCommitsBetween(path: string, fromOid: string, toOid: string) {
@@ -582,38 +589,40 @@ export async function apiCheckoutBranch(
   toRef: string,
   opts?: { fromRef: string; fromDetached: boolean; force?: boolean }
 ) {
-  const force = opts?.force ?? false
-  const id = generateId()
-  let snapshot: WorktreeSnapshot | null = null
-  if (force) {
-    snapshot = await snapshotWorktree(path, id)
-  }
-  if (opts?.fromDetached) {
-    // The detached commit won't be referenced by any branch anymore once we leave it.
-    await pinObject(path, `${id}-detached`, opts.fromRef).catch(() => {})
-  }
+  return runActivity('git.checkout', async () => {
+    const force = opts?.force ?? false
+    const id = generateId()
+    let snapshot: WorktreeSnapshot | null = null
+    if (force) {
+      snapshot = await snapshotWorktree(path, id)
+    }
+    if (opts?.fromDetached) {
+      // The detached commit won't be referenced by any branch anymore once we leave it.
+      await pinObject(path, `${id}-detached`, opts.fromRef).catch(() => {})
+    }
 
-  await checkoutBranch(path, toRef, force)
+    await checkoutBranch(path, toRef, force)
 
-  if (opts) {
-    const pinnedRefs: string[] = []
-    if (snapshot) pinnedRefs.push(snapshot.indexRefName, snapshot.workdirRefName)
-    if (opts.fromDetached) pinnedRefs.push(`${id}-detached`)
+    if (opts) {
+      const pinnedRefs: string[] = []
+      if (snapshot) pinnedRefs.push(snapshot.indexRefName, snapshot.workdirRefName)
+      if (opts.fromDetached) pinnedRefs.push(`${id}-detached`)
 
-    pushAction(path, {
-      id,
-      timestamp: Date.now(),
-      label: { key: 'undoRedo.checkout', params: { branch: toRef } },
-      pinnedRefs,
-      type: 'checkout',
-      fromRef: opts.fromRef,
-      toRef,
-      force,
-      snapshot,
-    })
-  } else {
-    clearRedo(path)
-  }
+      pushAction(path, {
+        id,
+        timestamp: Date.now(),
+        label: { key: 'undoRedo.checkout', params: { branch: toRef } },
+        pinnedRefs,
+        type: 'checkout',
+        fromRef: opts.fromRef,
+        toRef,
+        force,
+        snapshot,
+      })
+    } else {
+      clearRedo(path)
+    }
+  })
 }
 
 // ─── Ref drag-and-drop integrations ──────────────────────────────────────────
@@ -804,25 +813,27 @@ export async function apiRunInteractiveRebase(
   baseOid: string,
   steps: RebaseTodoStep[]
 ) {
-  let previousOid: string | null = null
-  try {
-    const branches = await getBranches(path, false)
-    previousOid = branches.find((b) => b.isHead)?.commitOid ?? null
-  } catch {
-    previousOid = null
-  }
+  return runActivity('git.rebaseInteractive', async () => {
+    let previousOid: string | null = null
+    try {
+      const branches = await getBranches(path, false)
+      previousOid = branches.find((b) => b.isHead)?.commitOid ?? null
+    } catch {
+      previousOid = null
+    }
 
-  const result = await runInteractiveRebase(path, baseOid, steps)
+    const result = await runInteractiveRebase(path, baseOid, steps)
 
-  // A conflict/edit pause resolves without throwing (err_unless_paused treats it as expected —
-  // the ConflictResolutionPanel takes over from here), so HEAD may have moved to an
-  // intermediate replay step without the rebase actually being done. Stash previousOid either
-  // way: settleRebaseUndo records the undo entry now if it already settled, or later — via
-  // apiRebaseContinue/apiRebaseSkip — once the paused rebase finally reaches idle.
-  pendingRebasePreviousOid.set(path, { previousOid, kind: 'interactiveRebase' })
-  await settleRebaseUndo(path)
+    // A conflict/edit pause resolves without throwing (err_unless_paused treats it as expected —
+    // the ConflictResolutionPanel takes over from here), so HEAD may have moved to an
+    // intermediate replay step without the rebase actually being done. Stash previousOid either
+    // way: settleRebaseUndo records the undo entry now if it already settled, or later — via
+    // apiRebaseContinue/apiRebaseSkip — once the paused rebase finally reaches idle.
+    pendingRebasePreviousOid.set(path, { previousOid, kind: 'interactiveRebase' })
+    await settleRebaseUndo(path)
 
-  return result
+    return result
+  })
 }
 
 // ─── Branch creation ───────────────────────────────────────────────────────
@@ -950,13 +961,13 @@ export async function apiGetBranchWebUrl(path: string, branchName: string, remot
 // ─── Fetch / Pull / Push ───────────────────────────────────────────────────
 
 export async function apiFetchRemote(path: string, remote?: string, prune?: boolean) {
-  return fetchRemote(path, remote, prune)
+  return runActivity('git.fetch', () => fetchRemote(path, remote, prune))
 }
 
 export async function apiPullBranch(path: string, remote?: string, rebase?: boolean) {
-  return pullBranch(path, remote, rebase)
+  return runActivity('git.pull', () => pullBranch(path, remote, rebase))
 }
 
 export async function apiPushBranch(path: string, remote?: string, force?: boolean) {
-  return pushBranch(path, remote, force)
+  return runActivity('git.push', () => pushBranch(path, remote, force))
 }

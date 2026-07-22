@@ -1,7 +1,7 @@
 /**
- * Sanitises the argument object of a Tauri IPC call before it's stored in the in-memory debug
- * log (see `stores/debugLog.store.ts`). The debug log is copy/exportable by the user, so it must
- * never leak credentials — SSH keys and tokens are supposed to stay in Rust, but a few command
+ * Sanitises the argument object of a Tauri IPC call before it's stored in the in-memory activity
+ * log (see `stores/activityLog.store.ts`). The activity log is copy/exportable by the user, so it
+ * must never leak credentials — SSH keys and tokens are supposed to stay in Rust, but a few command
  * arguments can still carry secrets (PATs, passphrases, remote URLs with embedded creds). We also
  * truncate large payloads (diffs, commit bodies, rebase todo lists) so 200 buffered entries can't
  * balloon memory or drown the useful signal.

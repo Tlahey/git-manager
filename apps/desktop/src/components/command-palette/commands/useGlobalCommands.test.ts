@@ -42,8 +42,8 @@ beforeEach(() => {
   toolbar.hasStashes = false
 })
 
-function ids(onOpenSettings = vi.fn()) {
-  const { result } = renderHook(() => useGlobalCommands({ onOpenSettings }))
+function ids(onOpenSettings = vi.fn(), onOpenActivityLogs = vi.fn()) {
+  const { result } = renderHook(() => useGlobalCommands({ onOpenSettings, onOpenActivityLogs }))
   return { commands: result.current, byId: (id: string) => result.current.find((c) => c.id === id) }
 }
 
@@ -72,8 +72,12 @@ describe('useGlobalCommands — availability', () => {
   it('exposes one settings command per section', () => {
     const settingsIds = ids().commands.filter((c) => c.group === 'settings').map((c) => c.id)
     expect(settingsIds).toContain('settings-ui_customization')
-    expect(settingsIds).toContain('settings-debug')
-    expect(settingsIds).toHaveLength(9)
+    expect(settingsIds).not.toContain('settings-debug')
+    expect(settingsIds).toHaveLength(8)
+  })
+
+  it('exposes the activity logs navigation command', () => {
+    expect(ids().commands.some((c) => c.id === 'nav-activity-logs')).toBe(true)
   })
 })
 
@@ -109,5 +113,11 @@ describe('useGlobalCommands — run', () => {
     const onOpenSettings = vi.fn()
     ids(onOpenSettings).byId('settings-ssh')!.run()
     expect(onOpenSettings).toHaveBeenCalledWith('ssh')
+  })
+
+  it('the activity logs command calls onOpenActivityLogs', () => {
+    const onOpenActivityLogs = vi.fn()
+    ids(vi.fn(), onOpenActivityLogs).byId('nav-activity-logs')!.run()
+    expect(onOpenActivityLogs).toHaveBeenCalledOnce()
   })
 })

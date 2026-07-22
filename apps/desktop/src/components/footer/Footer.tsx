@@ -16,34 +16,34 @@ import {
   GitBranch,
   Keyboard,
   Github,
-  CheckCircle2,
-  AlertCircle,
   Terminal,
   ClipboardCopy,
   ClipboardCheck,
   Trophy,
   Search,
+  Activity,
 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogDescription,
   Input,
   ScrollArea,
   Kbd,
   Tag,
   Card,
+  Tooltip,
 } from '@git-manager/ui'
 import type { Section } from '../../app/settings/SettingsPage'
 
 interface FooterProps {
   onOpenSettings: (section?: Section) => void
+  onOpenActivityLogs: () => void
 }
 
-export function Footer({ onOpenSettings }: FooterProps) {
+export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
   const { t } = useTranslation('common')
   const { repoCache, savedRepos, discoveredRepos } = useRepoDataStore()
   const { activeTab, setActiveTab } = useRepoUIStore()
@@ -204,45 +204,44 @@ export function Footer({ onOpenSettings }: FooterProps) {
               <span className="font-semibold">{currentRepo?.head || '...'}</span>
             </div>
 
-            {currentRepo && (
+            {currentRepo && currentRepo.remotes.length > 0 && (
               <>
                 <span className="text-border">|</span>
-
-                {/* Statut Dirty/Clean */}
-                <div className="flex items-center gap-1">
-                  {currentRepo.isDirty ? (
-                    <span className="flex items-center gap-1 font-medium text-amber-500/90">
-                      <AlertCircle className="h-3.5 w-3.5 animate-pulse" />
-                      {t('footer.dirty')}
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 font-medium text-emerald-500/90">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      {t('footer.clean')}
-                    </span>
-                  )}
+                {/* Remotes */}
+                <div className="hidden items-center gap-1 sm:flex">
+                  <span className="text-muted-foreground/60">{t('footer.remotes')}:</span>
+                  <span className="font-mono text-foreground/70">
+                    {currentRepo.remotes.join(', ')}
+                  </span>
                 </div>
-
-                {currentRepo.remotes.length > 0 && (
-                  <>
-                    <span className="text-border">|</span>
-                    {/* Remotes */}
-                    <div className="hidden items-center gap-1 sm:flex">
-                      <span className="text-muted-foreground/60">{t('footer.remotes')}:</span>
-                      <span className="font-mono text-foreground/70">
-                        {currentRepo.remotes.join(', ')}
-                      </span>
-                    </div>
-                  </>
-                )}
               </>
             )}
           </div>
         )}
       </div>
 
-      {/* SECTION CENTRALE : Raccourcis Clavier Dialog */}
-      <div>
+      {/* SECTION CENTRALE : Activity Logs + Raccourcis Clavier (icônes seules, tooltip au hover) */}
+      <div className="flex items-center gap-1">
+        <Tooltip content={t('footer.activityLogs')}>
+          <button
+            onClick={onOpenActivityLogs}
+            aria-label={t('footer.activityLogs')}
+            data-testid="footer-activity-logs-button"
+            className="flex items-center justify-center rounded border border-transparent p-1 shadow-none transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground active:scale-95"
+          >
+            <Activity className="h-3.5 w-3.5" />
+          </button>
+        </Tooltip>
+        <Tooltip content={t('footer.keyboardShortcuts')}>
+          <button
+            onClick={() => setIsShortcutOpen(true)}
+            aria-label={t('footer.keyboardShortcuts')}
+            data-testid="footer-shortcuts-button"
+            className="flex items-center justify-center rounded border border-transparent p-1 shadow-none transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground active:scale-95"
+          >
+            <Keyboard className="h-3.5 w-3.5" />
+          </button>
+        </Tooltip>
         <Dialog
           open={isShortcutOpen}
           onOpenChange={(open) => {
@@ -250,12 +249,6 @@ export function Footer({ onOpenSettings }: FooterProps) {
             if (!open) setShortcutQuery('')
           }}
         >
-          <DialogTrigger asChild>
-            <button className="flex items-center gap-1.5 rounded border border-transparent px-2 py-0.5 font-medium shadow-none transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground active:scale-95">
-              <Keyboard className="h-3.5 w-3.5" />
-              <span>{t('footer.keyboardShortcuts')}</span>
-            </button>
-          </DialogTrigger>
           <DialogContent className="max-w-md rounded-xl border border-border bg-background/95 shadow-2xl backdrop-blur">
             <DialogHeader className="border-b border-border pb-3">
               <DialogTitle className="flex items-center gap-2 text-sm font-semibold tracking-wide">

@@ -1,5 +1,7 @@
 import { invoke as tauriInvoke } from '@tauri-apps/api/core'
-import { useDebugLogStore } from '../stores/debugLog.store'
+import { useActivityLogStore } from '../stores/activityLog.store'
+import { getActiveCorrelation } from './activityCorrelation'
+import { persistActivityEntry } from './activityLogPersistence'
 import { redactArgs } from './debugLogRedact'
 import type {
   GitRepo,
@@ -36,11 +38,13 @@ import type {
 } from '@git-manager/ai'
 
 /**
- * Single chokepoint for every frontend→backend call. Wraps Tauri's `invoke` so the debug log
- * (`stores/debugLog.store.ts`, surfaced in Settings → Debug) can record the command name,
- * redacted arguments, duration and success/error of each IPC round-trip — capturing 100% of what
- * the app asks the backend to do (git2 and shell-outs alike), which is otherwise invisible from
- * outside the native window. Transparent when logging is disabled (the default): just a passthrough.
+ * Single chokepoint for every frontend→backend call. Wraps Tauri's `invoke` so the activity log
+ * (`stores/activityLog.store.ts`, surfaced in the footer's Activity Logs view) can record the
+ * command name, redacted arguments, duration, targeted repository and success/error of each IPC
+ * round-trip — capturing 100% of what the app asks the backend to do (git2 and shell-outs alike),
+ * which is otherwise invisible from outside the native window. Calls made inside a `runActivity`
+ * block (`lib/activityCorrelation.ts`) are additionally tagged so they group into one action.
+ * Capture is always on — there is no disable switch.
  */
 async function invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   const start = performance.now()
@@ -64,16 +68,37 @@ function record(
   status: 'ok' | 'error',
   error?: string
 ) {
-  const store = useDebugLogStore.getState()
-  if (!store.enabled) return
+  const store = useActivityLogStore.getState()
+  const correlation = getActiveCorrelation()
   store.add({
     command,
     args: redactArgs(command, args),
     durationMs: Math.round(performance.now() - start),
     status,
     error,
+    repoPath: repoPathOf(args),
+    correlationId: correlation?.id,
+    correlationLabel: correlation?.label,
   })
+  // Stream the entry just stored (now carrying its generated id + timestamp) to the rotating
+  // on-disk log. Best-effort and fire-and-forget — see `activityLogPersistence.ts`.
+  persistActivityEntry(useActivityLogStore.getState().entries[0])
 }
+
+/**
+ * The repository an IPC call targets, read from the conventional `path`/`repoPath` argument (never
+ * sensitive). Lets the Activity Logs view scope down to the active repository's operations.
+ */
+function repoPathOf(args: Record<string, unknown> | undefined): string | undefined {
+  if (!args) return undefined
+  const candidate = args.path ?? args.repoPath
+  return typeof candidate === 'string' ? candidate : undefined
+}
+
+// ─── Activity log ─────────────────────────────────────────────────────────────
+
+/** Reveals the on-disk activity-logs directory in the Finder (creating it if needed). */
+export const openActivityLogsDir = () => invoke<void>('open_activity_logs_dir')
 
 // ─── Repository ───────────────────────────────────────────────────────────────
 

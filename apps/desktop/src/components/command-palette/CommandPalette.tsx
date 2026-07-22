@@ -59,6 +59,7 @@ function useCommitLookupCommands(query: string): PaletteCommand[] {
 interface CommandPaletteProps {
   onOpenSettings: (section: Section) => void
   onCloseSettings: () => void
+  onOpenActivityLogs: () => void
 }
 
 /**
@@ -66,7 +67,11 @@ interface CommandPaletteProps {
  * `commandPalette.store`; the actual command list is built by the registry hooks only while the
  * dialog is open (they mount inside the dialog content, which Radix unmounts when closed).
  */
-export function CommandPalette({ onOpenSettings, onCloseSettings }: CommandPaletteProps) {
+export function CommandPalette({
+  onOpenSettings,
+  onCloseSettings,
+  onOpenActivityLogs,
+}: CommandPaletteProps) {
   const open = useCommandPaletteStore((s) => s.open)
   const closePalette = useCommandPaletteStore((s) => s.closePalette)
 
@@ -81,6 +86,7 @@ export function CommandPalette({ onOpenSettings, onCloseSettings }: CommandPalet
         <CommandPaletteBody
           onOpenSettings={onOpenSettings}
           onCloseSettings={onCloseSettings}
+          onOpenActivityLogs={onOpenActivityLogs}
           onDone={closePalette}
         />
       )}
@@ -91,15 +97,21 @@ export function CommandPalette({ onOpenSettings, onCloseSettings }: CommandPalet
 interface CommandPaletteBodyProps {
   onOpenSettings: (section: Section) => void
   onCloseSettings: () => void
+  onOpenActivityLogs: () => void
   onDone: () => void
 }
 
-function CommandPaletteBody({ onOpenSettings, onCloseSettings, onDone }: CommandPaletteBodyProps) {
+function CommandPaletteBody({
+  onOpenSettings,
+  onCloseSettings,
+  onOpenActivityLogs,
+  onDone,
+}: CommandPaletteBodyProps) {
   const { t } = useTranslation('common')
   const [search, setSearch] = useState('')
   const selectedCommitOid = useRepoUIStore((s) => s.selectedCommitOid)
   const selectedStashIndex = useRepoUIStore((s) => s.selectedStashIndex)
-  const globalCommands = useGlobalCommands({ onOpenSettings })
+  const globalCommands = useGlobalCommands({ onOpenSettings, onOpenActivityLogs })
   const commitCommands = useCommitCommands()
   const stashCommands = useStashCommands()
   const lookupCommands = useCommitLookupCommands(search)

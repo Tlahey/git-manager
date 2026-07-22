@@ -4,7 +4,6 @@ import { Button, ScrollArea } from '@git-manager/ui'
 import {
   ArrowLeft,
   Bell,
-  Bug,
   FolderTree,
   GitBranch,
   GitCommitHorizontal,
@@ -30,7 +29,6 @@ import { ExternalToolsSection } from './components/ExternalToolsSection'
 import { NotificationSection } from './components/NotificationSection'
 import { AppearanceSection } from './components/AppearanceSection'
 import { RewardsSection } from './components/RewardsSection'
-import { DebugSection } from './components/DebugSection'
 import { ChangelogSection } from './components/ChangelogSection'
 import { SupportSection } from './components/SupportSection'
 import { ResetToDefaultButton } from './components/ResetToDefaultButton'
@@ -49,7 +47,6 @@ export type Section =
   | 'notifications'
   | 'ui_customization'
   | 'rewards'
-  | 'debug'
   | 'changelog'
   | 'support'
 
@@ -238,12 +235,6 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
       icon: Trophy,
       label: t('settings.sections.rewards') || 'Succès & Récompenses',
       render: () => scrolled(<RewardsSection />),
-    },
-    {
-      id: 'debug',
-      icon: Bug,
-      label: t('settings.sections.debug') || 'Debug',
-      render: () => scrolled(<DebugSection />),
     },
     {
       id: 'changelog',

@@ -5,6 +5,7 @@ mod services;
 mod state;
 mod utils;
 
+use commands::activity_log::{append_activity_log, open_activity_logs_dir};
 use commands::agent::get_worktree_agent_activity;
 use commands::ai::{
     ai_complete, ai_generate_stream, cancel_generation, check_ai_status, get_ai_activity,
@@ -148,6 +149,9 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            // Activity log
+            append_activity_log,
+            open_activity_logs_dir,
             // Repo
             open_repo,
             get_repo_status,
