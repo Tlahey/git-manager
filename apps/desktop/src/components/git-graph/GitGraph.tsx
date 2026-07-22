@@ -21,6 +21,7 @@ import { useGitGraphActions } from '../../hooks/useGitGraphActions'
 import { useTagContextMenu } from '../../hooks/useTagContextMenu'
 import { apiGetRebaseState } from '../../api/git.api'
 import { GraphRow } from './GraphRow'
+import { TagCreationInput } from './TagCreationInput'
 import { RefDropProvider } from './RefDropContext'
 import { TagMenuProvider } from './TagMenuContext'
 import { TagDialogsManager } from './components/TagDialogsManager'
@@ -325,8 +326,9 @@ export function GitGraph({
     const layout = getGraphColumnLayout(graphCol.width, graphMaxColumn, avatarSize)
     if (layout.overlayOpacity <= 0) return null
     const refsCol = visibleColumns.find((c) => c.key === 'refs')
-    // Same fallback convention as GraphRow (band/markers) to stay pixel-aligned.
-    const refsWidth = refsCol ? refsCol.width : 160
+    // Graph-column x-offset = width of everything to its left, i.e. the refs column's width when
+    // visible and 0 when hidden. Same convention as GraphRow (band/markers) to stay pixel-aligned.
+    const refsWidth = refsCol ? refsCol.width : 0
     return {
       left: refsWidth + 8 + layout.overlayStart,
       // The zone grows with the width deficit (overlayStart recedes progressively) and stops
@@ -426,8 +428,17 @@ export function GitGraph({
   )
 
   // ── Native context menu (macOS) + dialogs + graph actions ─────────────────
-  const { pendingAction, setPendingAction, openMenuAt, handleCommitWip, openFixupWindow } =
-    useGitGraphActions({
+  const {
+    pendingAction,
+    setPendingAction,
+    tagDraft,
+    setTagDraft,
+    submitTagDraft,
+    cancelTagDraft,
+    openMenuAt,
+    handleCommitWip,
+    openFixupWindow,
+  } = useGitGraphActions({
       repoPath,
       nodes,
       selected,
@@ -461,12 +472,22 @@ export function GitGraph({
     if (pendingGraphAction && primaryOid) {
       if (pendingGraphAction.kind === 'fixup') {
         void openFixupWindow(primaryOid).catch(console.error)
+      } else if (pendingGraphAction.kind === 'tag') {
+        // Tag creation is an inline input on the row (or top bar), not a dialog.
+        setTagDraft({ oid: primaryOid, annotated: pendingGraphAction.annotated })
       } else {
         setPendingAction(pendingGraphAction)
       }
       setPendingGraphAction(null)
     }
-  }, [pendingGraphAction, primaryOid, setPendingAction, setPendingGraphAction, openFixupWindow])
+  }, [
+    pendingGraphAction,
+    primaryOid,
+    setPendingAction,
+    setTagDraft,
+    setPendingGraphAction,
+    openFixupWindow,
+  ])
 
   // ── Virtualisation ─────────────────────────────────────────────────────────
   const parentRef = useRef<HTMLDivElement>(null)
@@ -701,6 +722,16 @@ export function GitGraph({
               </div>
             )}
 
+            {/* When the refs column is hidden there's no row cell to host the inline tag input, so
+                the tag name is entered from a top bar instead. */}
+            {tagDraft && !visibleColumns.some((c) => c.key === 'refs') && (
+              <TagCreationInput
+                variant="bar"
+                onSubmit={submitTagDraft}
+                onCancel={cancelTagDraft}
+              />
+            )}
+
             {isLoading && (
               <div className="flex flex-1 items-center justify-center">
                 <Spinner className="h-5 w-5 text-muted-foreground" />
@@ -753,6 +784,10 @@ export function GitGraph({
                       // (where the virtualizer rewrites `translateY` on every frame).
                       const previewRemoved = timelinePreviewRemoved?.has(oid) ?? false
 
+                      // Only the drafted row shows the inline tag input; wiring the callbacks
+                      // solely on that row keeps every other (memoized) row from re-rendering.
+                      const isTagDraftRow = tagDraft?.oid === oid
+
                       return (
                         <div
                           key={virtualItem.key}
@@ -794,6 +829,9 @@ export function GitGraph({
                             wipRef={wipRef}
                             laneRef={laneRefByOid.get(oid)}
                             graphMaxColumn={graphMaxColumn}
+                            isTagDraft={isTagDraftRow}
+                            onSubmitTag={isTagDraftRow ? submitTagDraft : undefined}
+                            onCancelTag={isTagDraftRow ? cancelTagDraft : undefined}
                           />
                         </div>
                       )

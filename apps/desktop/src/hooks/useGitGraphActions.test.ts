@@ -51,6 +51,7 @@ vi.mock('../api/git.api', () => ({
   apiFastForwardBranch: vi.fn(),
   apiMergeBranch: vi.fn(),
   apiDeleteBranch: vi.fn(),
+  apiCreateTag: vi.fn(),
 }))
 vi.mock('../api/worktree.api', () => ({ apiAddWorktree: vi.fn() }))
 
@@ -412,16 +413,56 @@ describe('useGitGraphActions — openMenuAt: regular commit rows', () => {
     expect(getSubmenu('gitTree.contextMenu.resetSubmenu').text).toContain('"branch":"dev"')
   })
 
-  it('onRevert/onCreateTag/onCreateAnnotatedTag set the matching pending action', async () => {
+  it('onRevert sets the matching pending action', async () => {
     const { result } = renderHook(() => useGitGraphActions(baseParams()))
     await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
 
     act(() => getItem('gitTree.contextMenu.revert').action!())
     expect(result.current.pendingAction).toEqual({ kind: 'revert' })
+  })
+
+  it('onCreateTag/onCreateAnnotatedTag start an inline tag draft on the clicked commit', async () => {
+    const { result } = renderHook(() => useGitGraphActions(baseParams()))
+    await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
+
     act(() => getItem('gitTree.contextMenu.createTag').action!())
-    expect(result.current.pendingAction).toEqual({ kind: 'tag', annotated: false })
+    expect(result.current.tagDraft).toEqual({ oid: 'a', annotated: false })
     act(() => getItem('gitTree.contextMenu.createAnnotatedTag').action!())
-    expect(result.current.pendingAction).toEqual({ kind: 'tag', annotated: true })
+    expect(result.current.tagDraft).toEqual({ oid: 'a', annotated: true })
+  })
+
+  it('submitTagDraft creates the tag (annotated → empty message) then clears the draft', async () => {
+    mocked.apiCreateTag.mockResolvedValue(undefined)
+    const { result } = renderHook(() => useGitGraphActions(baseParams()))
+    await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
+
+    act(() => getItem('gitTree.contextMenu.createAnnotatedTag').action!())
+    await act(async () => result.current.submitTagDraft('  v1.2.0  '))
+
+    expect(mocked.apiCreateTag).toHaveBeenCalledWith(REPO, 'v1.2.0', 'a', '')
+    expect(result.current.tagDraft).toBeNull()
+  })
+
+  it('submitTagDraft passes no message for a lightweight tag', async () => {
+    mocked.apiCreateTag.mockResolvedValue(undefined)
+    const { result } = renderHook(() => useGitGraphActions(baseParams()))
+    await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
+
+    act(() => getItem('gitTree.contextMenu.createTag').action!())
+    await act(async () => result.current.submitTagDraft('v1'))
+
+    expect(mocked.apiCreateTag).toHaveBeenCalledWith(REPO, 'v1', 'a', undefined)
+  })
+
+  it('cancelTagDraft clears the draft without creating a tag', async () => {
+    const { result } = renderHook(() => useGitGraphActions(baseParams()))
+    await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
+
+    act(() => getItem('gitTree.contextMenu.createTag').action!())
+    act(() => result.current.cancelTagDraft())
+
+    expect(result.current.tagDraft).toBeNull()
+    expect(mocked.apiCreateTag).not.toHaveBeenCalled()
   })
 
   it('no longer offers the retired rebase-onto/undo/fixup/compare items', async () => {

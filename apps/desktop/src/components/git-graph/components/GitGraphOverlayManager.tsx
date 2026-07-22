@@ -3,7 +3,6 @@ import { CreateBranchHereDialog } from '../CreateBranchHereDialog'
 import { RenameBranchDialog } from '../RenameBranchDialog'
 import { ResetDialog } from '../../rollback/ResetDialog'
 import { RevertDialog } from '../../rollback/RevertDialog'
-import { TagDialog } from '../TagDialog'
 import { CompareToWorkdirDialog } from '../CompareToWorkdirDialog'
 import type { GitGraphNode } from '@git-manager/git-types'
 import type { PendingAction } from '../../../hooks/useGitGraphActions'
@@ -88,17 +87,6 @@ export function GitGraphOverlayManager({
           key={activeDialog.branch}
           repoPath={repoPath}
           branch={activeDialog.branch}
-          open
-          onClose={closeDialog}
-        />
-      )
-    case 'tag':
-      return (
-        <TagDialog
-          repoPath={repoPath}
-          oid={activeNode.commit.oid}
-          shortOid={activeNode.commit.shortOid}
-          annotated={activeDialog.annotated}
           open
           onClose={closeDialog}
         />
