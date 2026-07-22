@@ -26,6 +26,7 @@ import {
   apiFastForwardBranch,
   apiMergeBranch,
   apiDeleteBranch,
+  apiCreateTag,
 } from '../api/git.api'
 import { apiAddWorktree } from '../api/worktree.api'
 import {
@@ -83,6 +84,9 @@ export function useGitGraphActions({
   const enableSolo = useSoloModeStore((s) => s.enable)
 
   const [pendingAction, setPendingAction] = useState<PendingAction>(null)
+  // Inline tag creation: the commit awaiting a tag name (via the row's refs-column input, or the
+  // top bar when that column is hidden), plus whether the tag should be annotated. `null` = idle.
+  const [tagDraft, setTagDraft] = useState<{ oid: string; annotated: boolean } | null>(null)
 
   function refreshLogAndStatus() {
     queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
@@ -191,6 +195,28 @@ export function useGitGraphActions({
     } catch (err) {
       toast.error(String(err))
     }
+  }
+
+  /** Creates the tag currently being drafted inline (see {@link tagDraft}). Annotated tags are
+   *  created with an empty message — the inline flow collects a name only. */
+  async function submitTagDraft(name: string) {
+    const draft = tagDraft
+    if (!draft) return
+    const trimmed = name.trim()
+    if (!trimmed) return
+    try {
+      await apiCreateTag(repoPath, trimmed, draft.oid, draft.annotated ? '' : undefined)
+      queryClient.invalidateQueries({ queryKey: ['tags', repoPath] })
+      queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+      toast.success(t('gitTree.contextMenu.tagCreated'))
+      setTagDraft(null)
+    } catch (err) {
+      toast.error(String(err))
+    }
+  }
+
+  function cancelTagDraft() {
+    setTagDraft(null)
   }
 
   async function openMenuAt(e: React.MouseEvent, oid: string) {
@@ -448,8 +474,8 @@ export function useGitGraphActions({
           onCopySha: () => void handleCopySha(oid),
           onCopyLink: () => void handleCopyWebLink(oid),
           onCreatePatch: () => void handleCreatePatch(oid),
-          onCreateTag: () => setPendingAction({ kind: 'tag', annotated: false }),
-          onCreateAnnotatedTag: () => setPendingAction({ kind: 'tag', annotated: true }),
+          onCreateTag: () => setTagDraft({ oid, annotated: false }),
+          onCreateAnnotatedTag: () => setTagDraft({ oid, annotated: true }),
           onCherryPickSelection: () => void handleCherryPickSelection(),
           onRebaseOntoCommit: () => void handleRebaseOntoCommit(),
           onCreatePatchSelection: () => void handleCreatePatchSelection(),
@@ -461,5 +487,15 @@ export function useGitGraphActions({
     ).catch(console.error)
   }
 
-  return { pendingAction, setPendingAction, openMenuAt, handleCommitWip, openFixupWindow }
+  return {
+    pendingAction,
+    setPendingAction,
+    tagDraft,
+    setTagDraft,
+    submitTagDraft,
+    cancelTagDraft,
+    openMenuAt,
+    handleCommitWip,
+    openFixupWindow,
+  }
 }

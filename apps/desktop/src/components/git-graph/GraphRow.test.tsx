@@ -890,3 +890,21 @@ describe('GraphRow — remaining branch coverage', () => {
     expect(container.querySelector('.h-\\[32px\\]')).toBeTruthy()
   })
 })
+
+describe('GraphRow — background band alignment', () => {
+  function bandLeft(columns: ResolvedColumn[]): number {
+    const { container, unmount } = renderRow({ columns })
+    const band = container.querySelector('[data-testid="graph-row-band"]') as HTMLElement
+    const left = parseFloat(band.style.left)
+    unmount()
+    return left
+  }
+
+  it('starts the band at x=0 offset when the refs column is hidden (not a hard-coded fallback)', () => {
+    // The graph column becomes the first column when refs is hidden, so the colored band must shift
+    // left by exactly the refs column width (160) instead of staying pinned to the old 160 fallback.
+    const withRefs = bandLeft([col('refs'), col('graph'), col('message')])
+    const withoutRefs = bandLeft([col('graph'), col('message')])
+    expect(withRefs - withoutRefs).toBe(160)
+  })
+})

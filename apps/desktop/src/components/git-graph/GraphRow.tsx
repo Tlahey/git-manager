@@ -3,6 +3,7 @@ import type { GitGraphNode, GitRef, WorktreeAgentActivity } from '@git-manager/g
 import { cn } from '@git-manager/ui'
 import { RefLabel } from './RefLabel'
 import { RefLabelGroup } from './RefLabelGroup'
+import { TagCreationInput } from './TagCreationInput'
 import { useTagMenuHandler } from './TagMenuContext'
 import type { ColumnKey, ResolvedColumn } from './columns.config'
 import { getGraphColumnLayout, getMarkerPlacement } from './graphColumnSizing'
@@ -61,6 +62,13 @@ interface GraphRowProps {
   /** Plus grande colonne (lane) utilisée par le graphe entier — détermine le mode d'affichage
    * de la colonne graph (full / overflow / compact) partagé par toutes les lignes. */
   graphMaxColumn?: number
+  /** True while this row is awaiting an inline tag name — its refs cell shows the name input
+   * instead of the ref badges. Only ever set on a single row at a time. */
+  isTagDraft?: boolean
+  /** Confirm the inline tag name (only wired on the `isTagDraft` row). */
+  onSubmitTag?: (name: string) => void
+  /** Dismiss the inline tag input (only wired on the `isTagDraft` row). */
+  onCancelTag?: () => void
 }
 
 // ── Cellules ──────────────────────────────────────────────────────────────────
@@ -79,6 +87,9 @@ function CellContent({
   isActive,
   laneRef,
   agentActivity,
+  isTagDraft,
+  onSubmitTag,
+  onCancelTag,
 }: {
   col: Exclude<ColumnKey, 'graph'>
   node: GitGraphNode
@@ -96,6 +107,9 @@ function CellContent({
   laneRef?: GitRef
   /** AI agent working in this row's worktree (already resolved for WIP / WIP:<path> rows). */
   agentActivity?: WorktreeAgentActivity
+  isTagDraft?: boolean
+  onSubmitTag?: (name: string) => void
+  onCancelTag?: () => void
 }) {
   const { commit } = node
   const activeRepo = useRepoUIStore((s) => s.activeRepo)
@@ -105,6 +119,13 @@ function CellContent({
 
   switch (col) {
     case 'refs': {
+      if (isTagDraft && onSubmitTag && onCancelTag) {
+        return (
+          <div className="flex h-full w-full min-w-0 items-center">
+            <TagCreationInput variant="inline" onSubmit={onSubmitTag} onCancel={onCancelTag} />
+          </div>
+        )
+      }
       if (isStashCommit) return null
       const filteredRefs = node.refs
       if (filteredRefs.length === 0) {
@@ -279,12 +300,19 @@ export const GraphRow = memo(function GraphRow({
   wipRef,
   laneRef,
   graphMaxColumn = 0,
+  isTagDraft,
+  onSubmitTag,
+  onCancelTag,
 }: GraphRowProps) {
   const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
   const rowHeight = rowHeightSetting === 'small' ? 32 : 40
   const avatarSize = rowHeightSetting === 'small' ? 24 : 32
   const refsColumn = columns.find((c) => c.key === 'refs')
-  const refsWidth = refsColumn ? refsColumn.width : 160
+  // `refsWidth` is the x-offset at which the graph column begins within the row — i.e. the width of
+  // everything to its left. `refs` is the only column before `graph` (see COLUMN_ORDER), so this is
+  // its width when visible and 0 when it's hidden. Falling back to a non-zero default here would
+  // shift the colored band/markers rightward by that amount once the refs column is toggled off.
+  const refsWidth = refsColumn ? refsColumn.width : 0
   const graphColumn = columns.find((c) => c.key === 'graph')
   const graphWidth = graphColumn ? graphColumn.width : 120
   const layout = getGraphColumnLayout(graphWidth, graphMaxColumn, avatarSize)
@@ -336,6 +364,7 @@ export const GraphRow = memo(function GraphRow({
     >
       {/* Background colored band starting from the avatar to the right boundary of the graph column, with border-right */}
       <div
+        data-testid="graph-row-band"
         className="pointer-events-none absolute inset-y-0 border-r-[3px] transition-colors"
         style={{
           left: startX,
@@ -428,6 +457,9 @@ export const GraphRow = memo(function GraphRow({
               isActive={isActiveRow}
               laneRef={laneRef}
               agentActivity={rowAgent}
+              isTagDraft={isTagDraft}
+              onSubmitTag={onSubmitTag}
+              onCancelTag={onCancelTag}
             />
           )}
         </div>

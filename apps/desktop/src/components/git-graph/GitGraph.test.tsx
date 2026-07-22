@@ -374,7 +374,7 @@ describe('GitGraph — graph overflow zone', () => {
     expect(screen.queryByTestId('graph-overflow-zone')).not.toBeInTheDocument()
   })
 
-  it('positions the zone with the same refs fallback width as GraphRow when refs is hidden', () => {
+  it('offsets the zone by 0 (not the refs width) when the refs column is hidden', () => {
     const nodes = [commitNode('a', { column: 6 })]
     useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
     useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
@@ -386,8 +386,9 @@ describe('GitGraph — graph overflow zone', () => {
       },
     }))
     renderGraph()
-    // fallback refsWidth 160 + 8px cell margin + overlayStart 72 (inner 112 - overlay 40)
-    expect(screen.getByTestId('graph-overflow-zone')).toHaveStyle({ left: '240px' })
+    // The graph column is leftmost when refs is hidden, so no refs offset: 0 + 8px cell margin +
+    // overlayStart 72 (inner 112 - overlay 40). Matches GraphRow's band, which starts at x=0 too.
+    expect(screen.getByTestId('graph-overflow-zone')).toHaveStyle({ left: '80px' })
   })
 
   it('passes the shared graphMaxColumn down to every row', () => {

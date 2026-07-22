@@ -36,18 +36,6 @@ vi.mock('../../rollback/RevertDialog', () => ({
     </div>
   ),
 }))
-vi.mock('../TagDialog', () => ({
-  TagDialog: (p: { oid: string; shortOid: string; annotated: boolean; onClose: () => void }) => (
-    <div
-      data-testid="tag-dialog"
-      data-oid={p.oid}
-      data-short-oid={p.shortOid}
-      data-annotated={String(p.annotated)}
-    >
-      <button onClick={p.onClose}>close-tag</button>
-    </div>
-  ),
-}))
 vi.mock('../CompareToWorkdirDialog', () => ({
   CompareToWorkdirDialog: (p: { oid: string; shortOid: string; onClose: () => void }) => (
     <div data-testid="compare-dialog" data-oid={p.oid} data-short-oid={p.shortOid}>
@@ -158,9 +146,9 @@ describe('GitGraphOverlayManager — routing', () => {
     expect(screen.getByTestId('compare-dialog')).toBeInTheDocument()
   })
 
-  it('opens the tag dialog, forwarding the "annotated" flag', () => {
-    renderManager({ kind: 'tag', annotated: true })
-    expect(screen.getByTestId('tag-dialog').dataset.annotated).toBe('true')
+  it('ignores the tag action — inline tag creation is handled by the graph, not this overlay', () => {
+    const { container } = renderManager({ kind: 'tag', annotated: true })
+    expect(container).toBeEmptyDOMElement()
   })
 
   it('opens the reset dialog, falling back to the primary node oid/subject when the action omits a target', () => {
