@@ -396,3 +396,27 @@ describe('createTag', () => {
     expect(tauri.createTag).toHaveBeenCalledWith(REPO, 'v1.0', 'sha1', 'release')
   })
 })
+
+describe('deleteTag', () => {
+  const action: UndoAction = {
+    ...base,
+    type: 'deleteTag',
+    name: 'v1.0',
+    targetOid: 'sha1',
+    message: 'release',
+  }
+
+  it('collects the target oid', () => {
+    expect(collectActionOids(action)).toEqual(['sha1'])
+  })
+
+  it('undo recreates the deleted tag at the same oid with its message', async () => {
+    await executeUndo(REPO, action)
+    expect(tauri.createTag).toHaveBeenCalledWith(REPO, 'v1.0', 'sha1', 'release')
+  })
+
+  it('redo deletes the tag again', async () => {
+    await executeRedo(REPO, action)
+    expect(tauri.deleteTag).toHaveBeenCalledWith(REPO, 'v1.0')
+  })
+})

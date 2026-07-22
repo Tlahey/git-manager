@@ -164,6 +164,18 @@ export const createTag = (path: string, name: string, fromRef: string, message?:
 
 export const deleteTag = (path: string, name: string) => invoke<void>('delete_tag', { path, name })
 
+/** Deletes tag `tagName` on `remote` (default "origin") — `git push origin :refs/tags/<name>`. */
+export const deleteRemoteTag = (path: string, tagName: string, remote?: string) =>
+  invoke<void>('delete_remote_tag', { path, tagName, remote })
+
+/** Tag's GitHub release page URL on `remote` (default "origin"), or null if not a GitHub remote. */
+export const getTagWebUrl = (path: string, tagName: string, remote?: string) =>
+  invoke<string | null>('get_tag_web_url', { path, tagName, remote })
+
+/** Branch's GitHub tree page URL on `remote` (default "origin"), or null if not a GitHub remote. */
+export const getBranchWebUrl = (path: string, branchName: string, remote?: string) =>
+  invoke<string | null>('get_branch_web_url', { path, branchName, remote })
+
 // ─── Stash ────────────────────────────────────────────────────────────────────
 
 export const stashList = (path: string) => invoke<GitStash[]>('stash_list', { path })
@@ -473,6 +485,10 @@ export const cherryPickCommit = (path: string, oid: string) =>
 
 export const createPatch = (path: string, oid: string, destPath: string) =>
   invoke<void>('create_patch', { path, oid, destPath })
+
+/** Patch spanning several commits (a multi-selection). `oids` ordered oldest→newest. */
+export const createCommitsPatch = (path: string, oids: string[], destPath: string) =>
+  invoke<void>('create_commits_patch', { path, oids, destPath })
 
 export const createWorkingPatch = (path: string, filePaths: string[], destPath: string) =>
   invoke<void>('create_working_patch', { path, filePaths, destPath })

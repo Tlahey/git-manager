@@ -47,7 +47,12 @@ import {
   listSubmodules,
   getRebaseState,
   createBranch,
+  renameBranch,
   createTag,
+  deleteTag,
+  deleteRemoteTag,
+  getTagWebUrl,
+  getBranchWebUrl,
   fetchRemote,
   pullBranch,
   pushBranch,
@@ -61,6 +66,7 @@ import {
   listRebaseCommits,
   runInteractiveRebase,
   createPatch,
+  createCommitsPatch,
   createWorkingPatch,
   previewWorkingPatch,
   readPatchFile,
@@ -432,6 +438,11 @@ export async function apiRebaseSkip(path: string) {
 
 export async function apiCreatePatch(path: string, oid: string, destPath: string) {
   return createPatch(path, oid, destPath)
+}
+
+/** Writes a patch spanning several commits (a multi-selection); `oids` ordered oldest→newest. */
+export async function apiCreateCommitsPatch(path: string, oids: string[], destPath: string) {
+  return createCommitsPatch(path, oids, destPath)
 }
 
 export async function apiCreateWorkingPatch(path: string, filePaths: string[], destPath: string) {
@@ -842,6 +853,14 @@ export async function apiCreateBranch(path: string, name: string, fromRef: strin
   }
 }
 
+// ─── Branch rename ─────────────────────────────────────────────────────────
+
+/** Renames a local branch. Not snapshot-undoable (a rename back restores it), so only clears redo. */
+export async function apiRenameBranch(path: string, oldName: string, newName: string) {
+  await renameBranch(path, oldName, newName)
+  clearRedo(path)
+}
+
 // ─── Tag creation ──────────────────────────────────────────────────────────
 
 export async function apiCreateTag(path: string, name: string, fromRef: string, message?: string) {
@@ -871,6 +890,59 @@ export async function apiCreateTag(path: string, name: string, fromRef: string, 
   } else {
     clearRedo(path)
   }
+}
+
+/**
+ * Deletes a local tag, pushing an undo entry that recreates it on `targetOid`. Pass `message` when
+ * the tag is annotated so the undo restores an annotated tag; otherwise it is recreated lightweight.
+ */
+export async function apiDeleteTag(
+  path: string,
+  name: string,
+  opts: { targetOid: string; message?: string }
+) {
+  const id = generateId()
+  // Pin before deleting: once the ref is gone, this commit can become unreachable.
+  await pinObject(path, id, opts.targetOid).catch(() => {})
+
+  await deleteTag(path, name)
+
+  pushAction(path, {
+    id,
+    timestamp: Date.now(),
+    label: { key: 'undoRedo.deleteTag', params: { tag: name } },
+    pinnedRefs: [id],
+    type: 'deleteTag',
+    name,
+    targetOid: opts.targetOid,
+    message: opts.message,
+  })
+}
+
+/**
+ * Turns an existing tag into an annotated one by recreating it with `message` on the same commit
+ * (`git tag -d` + `git tag -a`). A replacement rather than an in-place edit, so it clears the redo
+ * stack instead of pushing an invertible entry.
+ */
+export async function apiAnnotateTag(path: string, name: string, oid: string, message: string) {
+  await deleteTag(path, name)
+  await createTag(path, name, oid, message)
+  clearRedo(path)
+}
+
+/** Deletes a tag on the remote (default "origin"). A network op, so it pushes no undo entry. */
+export async function apiDeleteRemoteTag(path: string, tagName: string, remote?: string) {
+  return deleteRemoteTag(path, tagName, remote)
+}
+
+/** The tag's GitHub release page URL on the remote (default "origin"), or null if unavailable. */
+export async function apiGetTagWebUrl(path: string, tagName: string, remote?: string) {
+  return getTagWebUrl(path, tagName, remote)
+}
+
+/** The branch's GitHub tree page URL on the remote (default "origin"), or null if unavailable. */
+export async function apiGetBranchWebUrl(path: string, branchName: string, remote?: string) {
+  return getBranchWebUrl(path, branchName, remote)
 }
 
 // ─── Fetch / Pull / Push ───────────────────────────────────────────────────

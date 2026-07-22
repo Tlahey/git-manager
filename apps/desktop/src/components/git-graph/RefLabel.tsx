@@ -16,6 +16,12 @@ interface RefLabelProps {
    * the real ref badge (at the branch tip) is interactive. Defaults to `true`.
    */
   interactive?: boolean
+  /**
+   * Fill the parent's width instead of capping at the inline badge width. Used by
+   * `RefLabelGroup`'s hover panel, where the stacked badges span the panel and the full ref name
+   * must stay readable (no truncation).
+   */
+  expand?: boolean
 }
 
 function GithubIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -43,7 +49,7 @@ const cleanName = (ref: GitRef) => {
   return ref.shortName
 }
 
-export function RefLabel({ gitRef, color, interactive = true }: RefLabelProps) {
+export function RefLabel({ gitRef, color, interactive = true, expand = false }: RefLabelProps) {
   const isHEAD = gitRef.type === 'HEAD'
   const isRemote = gitRef.type === 'remote'
   const isTag = gitRef.type === 'tag'
@@ -60,6 +66,9 @@ export function RefLabel({ gitRef, color, interactive = true }: RefLabelProps) {
   const badgeRef = useRef<HTMLSpanElement>(null)
   const nameRef = useRef<HTMLSpanElement>(null)
   const [overlayPos, setOverlayPos] = useState<{ top: number; left: number } | null>(null)
+  // Hovering a badge darkens its tinted background (stronger alpha) so the hovered ref stands out —
+  // especially among the stacked badges of RefLabelGroup's hover panel.
+  const [hovered, setHovered] = useState(false)
 
   const showOverlay = () => {
     const nameEl = nameRef.current
@@ -86,6 +95,23 @@ export function RefLabel({ gitRef, color, interactive = true }: RefLabelProps) {
   // ── Drag-and-drop (branch/tag onto another ref) ────────────────────────────
   // Only real, mutable refs take part — never the bare HEAD pointer or a stash.
   const onDropRefs = useRefDropHandler()
+  // A real tag badge is tagged with `data-ref-tag` so the row's context-menu handler can detect a
+  // right-click landing on it and open the tag menu instead of the commit menu (see GraphRow).
+  const tagRefAttr = interactive && isTag ? gitRef.shortName : undefined
+  // WKWebView does not deliver `contextmenu` to a permanently-`draggable` element (the right-click
+  // is retargeted past the badge, so the row opened the commit menu instead of the tag menu). The
+  // badge is therefore inert by default and only *armed* as draggable while the left button is held
+  // — which is the only window a native HTML5 drag can start in anyway. React flushes the discrete
+  // `mousedown` synchronously, so `draggable` is set before the drag-start movement threshold.
+  const [dragArmed, setDragArmed] = useState(false)
+  useEffect(() => {
+    if (!dragArmed) return
+    // Disarm on release anywhere (the badge's own mouseup misses a release outside it). A drag that
+    // did start ends through `handleDragEnd`, which also disarms.
+    const disarm = () => setDragArmed(false)
+    window.addEventListener('mouseup', disarm)
+    return () => window.removeEventListener('mouseup', disarm)
+  }, [dragArmed])
   const startDrag = useRefDragStore((s) => s.startDrag)
   const endDrag = useRefDragStore((s) => s.endDrag)
   const setHoverRef = useRefDragStore((s) => s.setHoverRef)
@@ -163,6 +189,7 @@ export function RefLabel({ gitRef, color, interactive = true }: RefLabelProps) {
   const handleDragEnd = (e: React.DragEvent) => {
     animateBackHome(e.clientX, e.clientY)
     endDrag() // clears draggingRef + the sticky hoverRef → every target's highlight/overlay resets
+    setDragArmed(false) // back to the inert (right-clickable) state
   }
   const handleDragOver = (e: React.DragEvent) => {
     if (isValidRefDropTarget(useRefDragStore.getState().draggingRef, gitRef)) {
@@ -206,10 +233,12 @@ export function RefLabel({ gitRef, color, interactive = true }: RefLabelProps) {
 
   if (isHEAD) {
     badgeClasses = cn(badgeClasses, 'text-emerald-300 border-emerald-500/40 font-semibold')
-    customStyle.backgroundImage =
-      'linear-gradient(rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.2))'
+    const headAlpha = hovered ? 0.35 : 0.2
+    customStyle.backgroundImage = `linear-gradient(rgba(16, 185, 129, ${headAlpha}), rgba(16, 185, 129, ${headAlpha}))`
   } else {
-    customStyle.backgroundImage = `linear-gradient(${refColor}25, ${refColor}25)` // ~15% opacity overlay over solid bg-background
+    // ~15% opacity overlay over the solid bg-background, darkened to ~27% while hovered.
+    const alpha = hovered ? '45' : '25'
+    customStyle.backgroundImage = `linear-gradient(${refColor}${alpha}, ${refColor}${alpha})`
     customStyle.borderColor = `${refColor}50` // ~30% opacity
     customStyle.color = refColor
     if (isRemote) {
@@ -234,12 +263,13 @@ export function RefLabel({ gitRef, color, interactive = true }: RefLabelProps) {
       // underlying badge's `onMouseLeave` closes it.
       className={cn(
         badgeClasses,
-        overlay ? 'pointer-events-none fixed z-overlay' : 'max-w-[180px]',
+        overlay ? 'pointer-events-none fixed z-overlay' : expand ? 'w-full' : 'max-w-[180px]',
+        !overlay && canDragDrop && 'cursor-grab select-auto active:cursor-grabbing',
         // WKWebView (Tauri) refuses to start a native drag on an element inside a `user-select:none`
         // subtree — which the whole graph is — unless the drag is re-enabled here: `select-auto`
         // lifts the inherited `user-select:none` and `-webkit-user-drag:element` turns the badge
-        // itself into a draggable object.
-        !overlay && canDragDrop && 'cursor-grab select-auto active:cursor-grabbing [-webkit-user-drag:element]',
+        // itself into a draggable object. Only while armed (left button held) — see `dragArmed`.
+        !overlay && canDragDrop && dragArmed && '[-webkit-user-drag:element]',
         // Drop highlight — also on the portaled overlay (which isn't clipped by the ref group's
         // overflow-hidden), so short-named branch targets get visible feedback too.
         isDropTarget && 'ring-2 ring-emerald-400 ring-offset-1 ring-offset-background'
@@ -250,9 +280,31 @@ export function RefLabel({ gitRef, color, interactive = true }: RefLabelProps) {
           : customStyle
       }
       data-testid={overlay ? undefined : `ref-label-${gitRef.type}-${gitRef.shortName}`}
-      onMouseEnter={overlay ? undefined : () => showOverlay()}
-      onMouseLeave={overlay ? undefined : hideOverlay}
-      draggable={!overlay && canDragDrop ? true : undefined}
+      data-ref-tag={overlay ? undefined : tagRefAttr}
+      onMouseEnter={
+        overlay
+          ? undefined
+          : () => {
+              setHovered(true)
+              showOverlay()
+            }
+      }
+      onMouseLeave={
+        overlay
+          ? undefined
+          : () => {
+              setHovered(false)
+              hideOverlay()
+            }
+      }
+      onMouseDown={
+        !overlay && canDragDrop
+          ? (e) => {
+              if (e.button === 0) setDragArmed(true)
+            }
+          : undefined
+      }
+      draggable={!overlay && canDragDrop && dragArmed ? true : undefined}
       onDragStart={!overlay && canDragDrop ? handleDragStart : undefined}
       onDragEnd={!overlay && canDragDrop ? handleDragEnd : undefined}
       onDragOver={!overlay && canDragDrop ? handleDragOver : undefined}

@@ -1,16 +1,14 @@
 import { useEffect, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import type { GitBranch } from '@git-manager/git-types'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useUndoHistoryStore } from '../../stores/undoHistory.store'
 import { useCommitSearchStore } from '../../stores/commitSearch.store'
 import { GitGraph } from '../../components/git-graph/GitGraph'
 import { RepositorySidebar } from '../../components/repository-sidebar'
+import { RenameBranchDialog } from '../../components/git-graph/RenameBranchDialog'
 import { ActionToolbar } from '../../components/action-toolbar'
 import { useSettingsStore } from '../../stores/settings.store'
-import { showBranchNativeContextMenu } from '../../api/nativeMenu.api'
-import { apiDeleteBranch } from '../../api/git.api'
+import { useSidebarBranchMenu } from '../../hooks/useSidebarBranchMenu'
 import { apiOpenRepo } from '../../api/repo.api'
 import { PendingFixupsBanner } from '../../components/fixup/PendingFixupsBanner'
 import { TimelineBar } from '../../components/timeline/TimelineBar'
@@ -20,7 +18,6 @@ export function RepoView() {
   const { repoCache, setRepoCache } = useRepoDataStore()
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null)
   const searchQuery = useCommitSearchStore((s) => s.query)
-  const queryClient = useQueryClient()
 
   // Viewing a workspace (linked worktree) swaps every data-driven view (sidebar, graph) onto its
   // path instead of the repo tab's own — the tab/`activeRepo` itself never changes, only what's
@@ -47,25 +44,8 @@ export function RepoView() {
   const github = useSettingsStore((s) => s.settings.github)
   const activeAccount = github?.accounts?.find((a) => a.id === github.activeAccountId) || null
 
-  async function handleBranchContextMenu(e: React.MouseEvent, branch: GitBranch) {
-    e.preventDefault()
-    if (branch.isRemote || !activeRepo) return
-    await showBranchNativeContextMenu({
-      isHead: branch.isHead,
-      onDelete: async () => {
-        if (!window.confirm(`Delete branch "${branch.shortName}"?`)) return
-        try {
-          await apiDeleteBranch(activeRepo, branch.shortName, {
-            targetOid: branch.commitOid,
-            upstream: branch.upstream ?? undefined,
-          })
-          queryClient.invalidateQueries({ queryKey: ['branches', activeRepo] })
-        } catch (err) {
-          alert(String(err))
-        }
-      },
-    })
-  }
+  const branchMenuPath = effectiveRepoPath ?? activeRepo ?? ''
+  const { openBranchMenu, renameTarget, setRenameTarget } = useSidebarBranchMenu(branchMenuPath)
 
   if (!activeRepo) return null
 
@@ -96,7 +76,7 @@ export function RepoView() {
           }}
           currentUser={activeAccount?.user?.login}
           githubToken={activeAccount?.token ?? undefined}
-          onContextMenu={handleBranchContextMenu}
+          onContextMenu={openBranchMenu}
         />
 
         {/* Zone centrale — historique plein largeur */}
@@ -110,6 +90,16 @@ export function RepoView() {
 
         <TimelineBar repoPath={repoPath} />
       </div>
+
+      {renameTarget && (
+        <RenameBranchDialog
+          key={renameTarget}
+          repoPath={branchMenuPath}
+          branch={renameTarget}
+          open
+          onClose={() => setRenameTarget(null)}
+        />
+      )}
     </div>
   )
 }

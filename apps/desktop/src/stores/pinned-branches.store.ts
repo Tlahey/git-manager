@@ -3,12 +3,12 @@ import { persist } from 'zustand/middleware'
 
 interface PinnedBranchesState {
   /**
-   * Map repoPath -> (shortName -> override explicite).
-   * `true` = épinglée explicitement, `false` = désépinglée explicitement.
-   * Une branche absente suit la valeur par défaut (main/master épinglées).
+   * Map repoPath -> (shortName -> explicit override).
+   * `true` = explicitly pinned, `false` = explicitly unpinned.
+   * An absent branch follows the default (main/master pinned).
    */
   overrides: Record<string, Record<string, boolean>>
-  /** Fixe l'état épinglé explicite d'une branche. */
+  /** Sets a branch's explicit pinned state. */
   setPin: (repoPath: string, shortName: string, pinned: boolean) => void
 }
 

@@ -17,9 +17,12 @@ import { useCommitSelection } from '../../hooks/useCommitSelection'
 import { useHorizontalResize } from '@git-manager/components'
 import { useGitGraphNodes, type ConflictRowInfo } from '../../hooks/useGitGraphNodes'
 import { useGitGraphActions } from '../../hooks/useGitGraphActions'
+import { useTagContextMenu } from '../../hooks/useTagContextMenu'
 import { apiGetRebaseState } from '../../api/git.api'
 import { GraphRow } from './GraphRow'
 import { RefDropProvider } from './RefDropContext'
+import { TagMenuProvider } from './TagMenuContext'
+import { TagDialogsManager } from './components/TagDialogsManager'
 import { useRefDragStore } from '../../stores/refDrag.store'
 import { GraphHeader } from './GraphHeader'
 import { CommitSearchPanel } from './CommitSearchPanel'
@@ -65,6 +68,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   const rowHeight = rowHeightSetting === 'small' ? 32 : 40
   // Current HEAD branch name from repo cache (e.g. "main", "feat/xyz")
   const headBranchName = useRepoDataStore((s) => s.repoCache[repoPath]?.head)
+  const headIsDetached = useRepoDataStore((s) => s.repoCache[repoPath]?.isDetached ?? false)
   // A linked worktree's `mainWorktreePath` points at the owning repo, not itself — so when it
   // differs from `repoPath` the active view is a worktree (its "// WIP" tag uses the worktree icon).
   const activeRepoIsWorktree = useRepoDataStore((s) => {
@@ -411,15 +415,26 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
       repoPath,
       nodes,
       selected,
-      primaryOid,
       setPrimaryOid,
       selectSingle,
       hiddenStashes,
       toggleStashVisibility,
       status,
-      isRebasePaused,
+      currentBranch: headBranchName ?? null,
+      isDetached: headIsDetached,
       t,
     })
+
+  // Tag badge right-click menu: reuses the commit dialogs above (via selectSingle + setPendingAction)
+  // and owns its two tag-only dialogs through `pendingTagAction`.
+  const { openTagMenu, pendingTagAction, setPendingTagAction } = useTagContextMenu({
+    repoPath,
+    currentBranch: headBranchName ?? null,
+    isDetached: headIsDetached,
+    selectCommit: selectSingle,
+    setPendingCommitAction: setPendingAction,
+    t,
+  })
 
   // Bridge: lets out-of-tree UI (the command palette) trigger a commit-scoped action on the
   // currently selected commit. Dialog-based actions forward into the graph's own `setPendingAction`
@@ -606,6 +621,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
 
   return (
     <RefDropProvider repoPath={repoPath}>
+     <TagMenuProvider handler={openTagMenu}>
       <div className="flex h-full select-none overflow-hidden">
         {/* Main area: PR view (priority), PR composer, DiffViewCenter, or virtualized table */}
       <div className="relative flex min-w-[280px] flex-1 flex-col overflow-hidden">
@@ -870,7 +886,15 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
         pendingAction={pendingAction}
         onClearPendingAction={() => setPendingAction(null)}
       />
+
+      {/* Tag-only dialogs (annotate / remote delete) driven by the tag context menu */}
+      <TagDialogsManager
+        repoPath={repoPath}
+        pendingTagAction={pendingTagAction}
+        onClearPendingTagAction={() => setPendingTagAction(null)}
+      />
       </div>
+     </TagMenuProvider>
     </RefDropProvider>
   )
 }

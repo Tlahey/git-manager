@@ -74,6 +74,42 @@ describe('RefLabel — local branches', () => {
     render(<RefLabel gitRef={ref({ shortName: 'feature-x' })} />)
     expect(screen.getByText('feature-x').parentElement!.style.color).toBe('rgb(37, 99, 235)')
   })
+
+  it('darkens the tinted background while hovered', () => {
+    render(<RefLabel gitRef={ref({ shortName: 'feature-x' })} color="#ff0000" />)
+    const badge = screen.getByTestId('ref-label-branch-feature-x')
+    expect(badge.style.backgroundImage).toContain('#ff000025')
+    fireEvent.mouseEnter(badge)
+    expect(badge.style.backgroundImage).toContain('#ff000045')
+    fireEvent.mouseLeave(badge)
+    expect(badge.style.backgroundImage).toContain('#ff000025')
+  })
+})
+
+describe('RefLabel — tag context-menu marker', () => {
+  // The badge only marks itself with `data-ref-tag`; the row's context-menu handler reads it to open
+  // the tag menu (WKWebView doesn't reliably deliver mouse events to the draggable badge itself).
+  it('marks an interactive tag badge with data-ref-tag carrying its short name', () => {
+    render(
+      <RefLabel gitRef={ref({ type: 'tag', shortName: 'v1.0.0', name: 'refs/tags/v1.0.0' })} />
+    )
+    expect(screen.getByTestId('ref-label-tag-v1.0.0')).toHaveAttribute('data-ref-tag', 'v1.0.0')
+  })
+
+  it('does not mark a branch badge', () => {
+    render(<RefLabel gitRef={ref({ type: 'branch', shortName: 'feature-x' })} />)
+    expect(screen.getByTestId('ref-label-branch-feature-x')).not.toHaveAttribute('data-ref-tag')
+  })
+
+  it('does not mark a non-interactive (lane-hint) tag badge', () => {
+    render(
+      <RefLabel
+        gitRef={ref({ type: 'tag', shortName: 'v1.0.0', name: 'refs/tags/v1.0.0' })}
+        interactive={false}
+      />
+    )
+    expect(screen.getByTestId('ref-label-tag-v1.0.0')).not.toHaveAttribute('data-ref-tag')
+  })
 })
 
 describe('RefLabel — remote branches', () => {
@@ -160,17 +196,47 @@ describe('RefLabel — drag and drop', () => {
     useRefDragStore.setState({ draggingRef: null, hoverRef: null })
   })
 
-  it('makes a branch badge draggable inside a provider', () => {
+  it('arms a branch badge as draggable only while the left button is held', () => {
     render(
       <RefDropProvider repoPath="/r">
         <RefLabel gitRef={ref({ shortName: 'feat' })} />
       </RefDropProvider>
     )
     const badge = screen.getByTestId('ref-label-branch-feat')
-    expect(badge).toHaveAttribute('draggable', 'true')
-    // WKWebView needs these to start a drag under the graph's inherited user-select:none.
+    // Inert by default: a permanently-draggable element never receives `contextmenu` in WKWebView,
+    // which broke the tag right-click menu. `select-auto` (needed to drag at all) stays on.
+    expect(badge).not.toHaveAttribute('draggable')
+    expect(badge.className).not.toContain('[-webkit-user-drag:element]')
     expect(badge).toHaveClass('select-auto')
+    // Left press arms the native drag machinery…
+    fireEvent.mouseDown(badge, { button: 0 })
+    expect(badge).toHaveAttribute('draggable', 'true')
     expect(badge.className).toContain('[-webkit-user-drag:element]')
+    // …and releasing anywhere disarms it.
+    fireEvent.mouseUp(window)
+    expect(badge).not.toHaveAttribute('draggable')
+    expect(badge.className).not.toContain('[-webkit-user-drag:element]')
+  })
+
+  it('does not arm on a right press (the tag context menu must win)', () => {
+    render(
+      <RefDropProvider repoPath="/r">
+        <RefLabel gitRef={ref({ shortName: 'feat' })} />
+      </RefDropProvider>
+    )
+    const badge = screen.getByTestId('ref-label-branch-feat')
+    fireEvent.mouseDown(badge, { button: 2 })
+    expect(badge).not.toHaveAttribute('draggable')
+  })
+
+  it('disarms when the drag ends', () => {
+    renderPair()
+    const badge = screen.getByTestId('ref-label-branch-feat')
+    fireEvent.mouseDown(badge, { button: 0 })
+    fireEvent.dragStart(badge, { dataTransfer: fakeDataTransfer() })
+    expect(badge).toHaveAttribute('draggable', 'true')
+    fireEvent.dragEnd(badge)
+    expect(badge).not.toHaveAttribute('draggable')
   })
 
   it('does not make the bare HEAD or a stash draggable', () => {
@@ -192,7 +258,10 @@ describe('RefLabel — drag and drop', () => {
     })
     render(
       <RefDropProvider repoPath="/r">
-        <RefLabel gitRef={ref({ shortName: 'main', name: 'refs/heads/main' })} interactive={false} />
+        <RefLabel
+          gitRef={ref({ shortName: 'main', name: 'refs/heads/main' })}
+          interactive={false}
+        />
       </RefDropProvider>
     )
     const badge = screen.getByTestId('ref-label-branch-main')

@@ -1,14 +1,14 @@
 use crate::error::AppError;
 use crate::services::git_remote;
-use crate::utils::github_web_url;
+use crate::utils::{github_branch_url, github_tag_url, github_web_url};
 use git2::Repository;
 
 pub use crate::services::git_remote::{FetchResult, PullResult, RemoteInfo};
 
 // ─── fetch_remote ─────────────────────────────────────────────────────────────
 
-/// Fetch depuis un remote (défaut : "origin"). `prune` supprime les refs de suivi
-/// (`origin/*`) dont la branche distante a disparu — `git fetch --prune`.
+/// Fetch from a remote (defaults to "origin"). `prune` removes tracking refs
+/// (`origin/*`) whose remote branch has vanished — `git fetch --prune`.
 #[tauri::command]
 pub async fn fetch_remote(
     path: String,
@@ -21,7 +21,7 @@ pub async fn fetch_remote(
 
 // ─── pull_branch ──────────────────────────────────────────────────────────────
 
-/// Pull (fetch + merge fast-forward ou rebase)
+/// Pull (fetch + fast-forward merge or rebase)
 #[tauri::command]
 pub async fn pull_branch(
     path: String,
@@ -34,7 +34,7 @@ pub async fn pull_branch(
 
 // ─── push_branch ──────────────────────────────────────────────────────────────
 
-/// Push vers le remote
+/// Push to the remote
 #[tauri::command]
 pub async fn push_branch(
     path: String,
@@ -63,7 +63,7 @@ pub async fn push_branch_to(
 
 // ─── get_remotes ──────────────────────────────────────────────────────────────
 
-/// Liste les remotes avec leur nom (GitRepo.remotes ne fournit que les URLs)
+/// Lists the remotes with their name (GitRepo.remotes only exposes the URLs)
 #[tauri::command]
 pub async fn get_remotes(path: String) -> Result<Vec<RemoteInfo>, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
@@ -101,4 +101,52 @@ pub async fn get_commit_web_url(
     let remotes = git_remote::list_remotes(&repo)?;
     let remote_info = remotes.into_iter().find(|r| r.name == remote_name);
     Ok(remote_info.and_then(|r| github_web_url(&r.url, &oid)))
+}
+
+// ─── get_tag_web_url ───────────────────────────────────────────────────────────
+
+/// Builds a tag's release page URL on the given remote (defaults to "origin"), GitHub only.
+/// Returns `None` if the remote isn't configured or isn't a GitHub URL.
+#[tauri::command]
+pub async fn get_tag_web_url(
+    path: String,
+    tag_name: String,
+    remote: Option<String>,
+) -> Result<Option<String>, String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    let remote_name = remote.as_deref().unwrap_or("origin");
+    let remotes = git_remote::list_remotes(&repo)?;
+    let remote_info = remotes.into_iter().find(|r| r.name == remote_name);
+    Ok(remote_info.and_then(|r| github_tag_url(&r.url, &tag_name)))
+}
+
+// ─── get_branch_web_url ────────────────────────────────────────────────────────
+
+/// Builds a branch's tree page URL on the given remote (defaults to "origin"), GitHub only.
+/// Returns `None` if the remote isn't configured or isn't a GitHub URL.
+#[tauri::command]
+pub async fn get_branch_web_url(
+    path: String,
+    branch_name: String,
+    remote: Option<String>,
+) -> Result<Option<String>, String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    let remote_name = remote.as_deref().unwrap_or("origin");
+    let remotes = git_remote::list_remotes(&repo)?;
+    let remote_info = remotes.into_iter().find(|r| r.name == remote_name);
+    Ok(remote_info.and_then(|r| github_branch_url(&r.url, &branch_name)))
+}
+
+// ─── delete_remote_tag ─────────────────────────────────────────────────────────
+
+/// Deletes tag `tag_name` on `remote` (defaults to "origin") by pushing an empty-source
+/// refspec — the equivalent of `git push origin :refs/tags/<name>`.
+#[tauri::command]
+pub async fn delete_remote_tag(
+    path: String,
+    tag_name: String,
+    remote: Option<String>,
+) -> Result<(), String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    git_remote::delete_remote_tag(&repo, remote, &tag_name).map_err(Into::into)
 }

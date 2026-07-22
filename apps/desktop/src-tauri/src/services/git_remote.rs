@@ -4,7 +4,7 @@ use git2::{Cred, FetchOptions, PushOptions, RemoteCallbacks, Repository};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
-// ─── Types de résultat ────────────────────────────────────────────────────────
+// ─── Result types ─────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -58,7 +58,7 @@ fn resolve_remote_name(repo: &Repository, remote: Option<String>) -> String {
 
 // ─── fetch ────────────────────────────────────────────────────────────────────
 
-/// Fetch depuis un remote (défaut : "origin")
+/// Fetch from a remote (defaults to "origin")
 pub fn fetch(
     repo: &Repository,
     remote: Option<String>,
@@ -156,7 +156,7 @@ pub fn pull(
         .ok_or_else(|| AppError::Unknown("HEAD has no target".to_string()))?;
 
     if head_oid == remote_oid {
-        // Déjà à jour
+        // Already up to date
         return Ok(PullResult {
             fast_forwarded: false,
             commits_merged: 0,
@@ -164,7 +164,7 @@ pub fn pull(
         });
     }
 
-    // 4. Vérifier si fast-forward possible
+    // 4. Check whether a fast-forward is possible
     let merge_base = repo
         .merge_base(head_oid, remote_oid)
         .map_err(AppError::Git)?;
@@ -176,19 +176,19 @@ pub fn pull(
             .ok_or_else(|| AppError::Unknown("HEAD ref name invalid".to_string()))?
             .to_string();
 
-        // Compter les commits qui arrivent
+        // Count the incoming commits
         let mut walk = repo.revwalk().map_err(AppError::Git)?;
         walk.push(remote_oid).map_err(AppError::Git)?;
         walk.hide(head_oid).map_err(AppError::Git)?;
         let commits_count = walk.count();
 
-        // Avancer la ref locale
+        // Advance the local ref
         let mut local_ref = repo.find_reference(&head_ref_name).map_err(AppError::Git)?;
         local_ref
             .set_target(remote_oid, "pull: Fast-forward")
             .map_err(AppError::Git)?;
 
-        // Mettre à jour le working tree
+        // Update the working tree
         let remote_commit = repo.find_commit(remote_oid).map_err(AppError::Git)?;
         let mut checkout_opts = git2::build::CheckoutBuilder::new();
         checkout_opts.safe();
@@ -202,11 +202,10 @@ pub fn pull(
         })
     } else if rebase {
         Err(AppError::Unknown(
-            "Le rebase pull n'est pas encore implémenté. Utilisez le merge fast-forward."
-                .to_string(),
+            "Rebase pull is not implemented yet. Use fast-forward merge.".to_string(),
         ))
     } else {
-        // Merge nécessaire — détecter les conflits potentiels
+        // Merge needed — detect potential conflicts
         let statuses = repo.statuses(None).map_err(AppError::Git)?;
         let conflicts: Vec<String> = statuses
             .iter()
@@ -224,7 +223,7 @@ pub fn pull(
 
 // ─── push ─────────────────────────────────────────────────────────────────────
 
-/// Push vers le remote
+/// Push to the remote
 pub fn push(repo: &Repository, remote: Option<String>, force: bool) -> Result<(), AppError> {
     let remote_name = resolve_remote_name(repo, remote);
 
@@ -278,9 +277,34 @@ pub fn push_to(
     Ok(())
 }
 
+/// Deletes tag `tag_name` on `remote` (defaults to "origin") by pushing an empty-source
+/// refspec (`:refs/tags/<name>`), the porcelain equivalent of `git push origin :refs/tags/<name>`.
+/// Reuses the same auth callbacks as `push` to keep credentials on the Rust side.
+pub fn delete_remote_tag(
+    repo: &Repository,
+    remote: Option<String>,
+    tag_name: &str,
+) -> Result<(), AppError> {
+    let remote_name = resolve_remote_name(repo, remote);
+
+    let refspec = format!(":refs/tags/{tag_name}");
+
+    let mut remote_obj = repo.find_remote(&remote_name).map_err(AppError::Git)?;
+
+    let callbacks = make_auth_callbacks();
+    let mut push_opts = PushOptions::new();
+    push_opts.remote_callbacks(callbacks);
+
+    remote_obj
+        .push(&[refspec.as_str()], Some(&mut push_opts))
+        .map_err(AppError::Git)?;
+
+    Ok(())
+}
+
 // ─── remotes CRUD ─────────────────────────────────────────────────────────────
 
-/// Liste les remotes avec leur nom (GitRepo.remotes ne fournit que les URLs)
+/// Lists the remotes with their name (GitRepo.remotes only exposes the URLs)
 pub fn list_remotes(repo: &Repository) -> Result<Vec<RemoteInfo>, AppError> {
     let mut remotes = Vec::new();
 

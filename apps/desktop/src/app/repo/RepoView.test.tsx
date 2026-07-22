@@ -2,15 +2,29 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitBranch, GitRepo } from '@git-manager/git-types'
+import { normalizeMenuSpec, type MenuSpecNode } from '../../lib/nativeMenuSpec'
 
 const { apiOpenRepo } = vi.hoisted(() => ({ apiOpenRepo: vi.fn() }))
 vi.mock('../../api/repo.api', () => ({ apiOpenRepo }))
 
 const { apiDeleteBranch } = vi.hoisted(() => ({ apiDeleteBranch: vi.fn() }))
-vi.mock('../../api/git.api', () => ({ apiDeleteBranch }))
+vi.mock('../../api/git.api', () => ({
+  apiDeleteBranch,
+  apiPullBranch: vi.fn(),
+  apiPushBranch: vi.fn(),
+  apiFastForwardBranch: vi.fn(),
+  apiMergeBranch: vi.fn(),
+  apiRebaseOntoCommit: vi.fn(),
+  apiCheckoutBranch: vi.fn(),
+  apiCopyCommitSha: vi.fn(),
+  apiGetCommitWebUrl: vi.fn(),
+  apiGetBranchWebUrl: vi.fn(),
+  apiCreatePatch: vi.fn(),
+}))
+vi.mock('../../api/worktree.api', () => ({ apiAddWorktree: vi.fn() }))
 
-const { showBranchNativeContextMenu } = vi.hoisted(() => ({ showBranchNativeContextMenu: vi.fn() }))
-vi.mock('../../api/nativeMenu.api', () => ({ showBranchNativeContextMenu }))
+const { showNativeMenu } = vi.hoisted(() => ({ showNativeMenu: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('../../api/nativeMenu.api', () => ({ showNativeMenu }))
 
 const { invalidateQueries } = vi.hoisted(() => ({ invalidateQueries: vi.fn() }))
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -239,70 +253,57 @@ describe('RepoView — search query threading', () => {
 })
 
 describe('RepoView — branch context menu', () => {
-  it('ignores context menu on a remote branch', async () => {
+  // The sidebar branch menu reuses the shared declarative builder → showNativeMenu(spec). Address
+  // items in the spec by their real English label (i18n runs live in tests).
+  type ItemNode = Extract<MenuSpecNode, { kind: 'item' }>
+  function menuItemByText(prefix: string): ItemNode | undefined {
+    const spec = normalizeMenuSpec(showNativeMenu.mock.calls[showNativeMenu.mock.calls.length - 1][0])
+    const flat = (nodes: MenuSpecNode[]): MenuSpecNode[] =>
+      nodes.flatMap((n) => (n.kind === 'submenu' ? [n, ...flat(normalizeMenuSpec(n.items))] : [n]))
+    return flat(spec).find((n): n is ItemNode => n.kind === 'item' && n.text.startsWith(prefix))
+  }
+
+  it('opens the shared branch menu for a local branch (offers rename + delete)', async () => {
+    const user = userEvent.setup()
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    render(<RepoView />)
+    await user.click(screen.getByText('context-menu-local'))
+    expect(showNativeMenu).toHaveBeenCalledOnce()
+    expect(menuItemByText('Rename local-branch')).toBeDefined()
+    expect(menuItemByText('Delete local-branch')).toBeDefined()
+  })
+
+  it('opens the menu for a remote branch too (checkout, no rename, disabled delete)', async () => {
     const user = userEvent.setup()
     useRepoUIStore.setState({ activeRepo: '/repo' })
     render(<RepoView />)
     await user.click(screen.getByText('context-menu-remote'))
-    expect(showBranchNativeContextMenu).not.toHaveBeenCalled()
+    expect(showNativeMenu).toHaveBeenCalledOnce()
+    expect(menuItemByText('Checkout origin/main')).toBeDefined()
+    expect(menuItemByText('Rename origin/main')).toBeUndefined()
+    expect(menuItemByText('Delete origin/main')?.enabled).toBe(false)
   })
 
-  it('opens the native menu for a local branch with isHead and onDelete', async () => {
+  it('the delete item deletes the branch and refreshes', async () => {
     const user = userEvent.setup()
-    useRepoUIStore.setState({ activeRepo: '/repo' })
-    render(<RepoView />)
-    await user.click(screen.getByText('context-menu-local'))
-    expect(showBranchNativeContextMenu).toHaveBeenCalledWith(
-      expect.objectContaining({ isHead: false, onDelete: expect.any(Function) })
-    )
-  })
-
-  it('deletes the branch and invalidates the branches query when confirmed', async () => {
-    const user = userEvent.setup()
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     apiDeleteBranch.mockResolvedValue(undefined)
     useRepoUIStore.setState({ activeRepo: '/repo' })
     render(<RepoView />)
     await user.click(screen.getByText('context-menu-local'))
-    const { onDelete } = showBranchNativeContextMenu.mock.calls[0][0]
-    await act(async () => {
-      await onDelete()
-    })
+    await act(async () => menuItemByText('Delete local-branch')!.action!())
     expect(apiDeleteBranch).toHaveBeenCalledWith('/repo', 'local-branch', {
       targetOid: 'sha123',
       upstream: undefined,
     })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['branches', '/repo'] })
-    confirmSpy.mockRestore()
   })
 
-  it('does not delete the branch when the confirm dialog is declined', async () => {
+  it('the rename item opens the rename dialog', async () => {
     const user = userEvent.setup()
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
     useRepoUIStore.setState({ activeRepo: '/repo' })
     render(<RepoView />)
     await user.click(screen.getByText('context-menu-local'))
-    const { onDelete } = showBranchNativeContextMenu.mock.calls[0][0]
-    await act(async () => {
-      await onDelete()
-    })
-    expect(apiDeleteBranch).not.toHaveBeenCalled()
-    confirmSpy.mockRestore()
-  })
-
-  it('shows an alert when branch deletion fails', async () => {
-    const user = userEvent.setup()
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
-    apiDeleteBranch.mockRejectedValue(new Error('branch is checked out'))
-    useRepoUIStore.setState({ activeRepo: '/repo' })
-    render(<RepoView />)
-    await user.click(screen.getByText('context-menu-local'))
-    const { onDelete } = showBranchNativeContextMenu.mock.calls[0][0]
-    await act(async () => {
-      await onDelete()
-    })
-    expect(alertSpy).toHaveBeenCalledWith('Error: branch is checked out')
-    alertSpy.mockRestore()
+    await act(async () => menuItemByText('Rename local-branch')!.action!())
+    expect(await screen.findByTestId('rename-branch-dialog')).toBeInTheDocument()
   })
 })

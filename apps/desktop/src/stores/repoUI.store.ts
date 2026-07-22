@@ -16,6 +16,7 @@ export type GraphCommitAction =
   | { kind: 'reset'; mode: 'soft' | 'mixed' | 'hard'; targetOid?: string; targetSubject?: string }
   | { kind: 'revert' }
   | { kind: 'branch' }
+  | { kind: 'renameBranch'; branch: string }
   | { kind: 'tag'; annotated: boolean }
   | { kind: 'compare' }
   | { kind: 'fixup' }

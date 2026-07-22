@@ -2,7 +2,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from '@git-manager/i18n'
 import { toast } from '@git-manager/ui'
 import type { GitRef } from '@git-manager/git-types'
-import { showRefDropNativeContextMenu } from '../api/nativeMenu.api'
+import { showNativeMenu } from '../api/nativeMenu.api'
+import { buildRefDropMenuSpec } from '../lib/graphContextMenus'
 import {
   apiCheckoutBranch,
   apiMergeBranch,
@@ -13,6 +14,7 @@ import {
 } from '../api/git.api'
 import { useRepoDataStore } from '../stores/repoData.store'
 import { useRepoUIStore } from '../stores/repoUI.store'
+import { openRebaseWindow } from '../lib/graphWindows'
 
 /** Human-readable name for a ref — strips the remote prefix (`origin/main` → `main`). */
 function displayName(ref: GitRef): string {
@@ -30,31 +32,6 @@ function remoteOf(ref: GitRef): string {
     if (parts.length > 1) return parts[0]
   }
   return 'origin'
-}
-
-/** Opens the interactive-rebase editor window for `baseOid` (same pattern as the fixup window). */
-async function openRebaseWindow(repoPath: string, baseOid: string): Promise<void> {
-  const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
-  const safeLabel = `rebase-${repoPath.replace(/[^a-zA-Z0-9_-]/g, '-')}`
-  const url =
-    `/?window=rebase&repoPath=${encodeURIComponent(repoPath)}` +
-    `&baseOid=${encodeURIComponent(baseOid)}`
-
-  const existing = await WebviewWindow.getByLabel(safeLabel)
-  if (existing) {
-    await existing.show()
-    await existing.setFocus()
-  } else {
-    new WebviewWindow(safeLabel, {
-      url,
-      title: 'Interactive Rebase',
-      width: 1200,
-      height: 850,
-      minWidth: 900,
-      minHeight: 600,
-      decorations: true,
-    })
-  }
 }
 
 /**
@@ -108,61 +85,51 @@ export function useRefDrop(repoPath: string) {
     const targetIsBranch = target.type === 'branch'
     const params = { source: sourceName, target: targetName, remote }
 
-    void showRefDropNativeContextMenu({
-      labels: {
-        fastForward: t('gitTree.dragDrop.fastForward', params),
-        merge: t('gitTree.dragDrop.merge', params),
-        rebase: t('gitTree.dragDrop.rebase', params),
-        interactiveRebase: t('gitTree.dragDrop.interactiveRebase', params),
-        push: t('gitTree.dragDrop.push', params),
-        resetSubmenu: t('gitTree.dragDrop.resetSubmenu', params),
-        resetSoft: t('gitTree.dragDrop.resetSoft'),
-        resetMixed: t('gitTree.dragDrop.resetMixed'),
-        resetHard: t('gitTree.dragDrop.resetHard'),
-        startPr: t('gitTree.dragDrop.startPr', params),
-      },
-      // Fast-forward and merge move the *target* branch, so it must be a local branch.
-      fastForwardEnabled: targetIsBranch,
-      mergeEnabled: targetIsBranch,
-      // Rebase / reset / push rewrite or publish the *source* branch, so it must be local.
-      rebaseEnabled: sourceIsBranch,
-      interactiveRebaseEnabled: sourceIsBranch,
-      pushEnabled: sourceIsBranch,
-      resetEnabled: sourceIsBranch,
-      // A pull request needs branch heads on both sides — tags can't be a PR head or base.
-      prEnabled: source.type !== 'tag' && target.type !== 'tag',
-      onFastForward: () =>
-        void run(
-          () => apiFastForwardBranch(repoPath, source.shortName, target.shortName),
-          t('gitTree.dragDrop.fastForwarded', params)
-        ),
-      onMerge: () =>
-        void run(
-          () => apiMergeBranch(repoPath, source.shortName, target.shortName),
-          t('gitTree.dragDrop.merged', params)
-        ),
-      onRebase: () =>
-        void run(async () => {
-          await ensureCheckedOut(source.shortName)
-          await apiRebaseOntoCommit(repoPath, target.commitOid)
-        }, t('gitTree.dragDrop.rebased', params)),
-      onInteractiveRebase: () =>
-        void run(async () => {
-          await ensureCheckedOut(source.shortName)
-          await openRebaseWindow(repoPath, target.commitOid)
-        }),
-      onPush: () =>
-        void run(
-          () => apiPushBranchTo(repoPath, source.shortName, targetName, remote),
-          t('gitTree.dragDrop.pushed', params)
-        ),
-      onReset: (mode) =>
-        void run(async () => {
-          await ensureCheckedOut(source.shortName)
-          await apiResetToCommit(repoPath, target.commitOid, mode)
-        }, t('gitTree.dragDrop.reset', params)),
-      onStartPr: () => openPrCreateWith(sourceName, targetName),
-    })
+    void showNativeMenu(
+      buildRefDropMenuSpec(
+        {
+          params,
+          targetIsBranch,
+          sourceIsBranch,
+          // A pull request needs branch heads on both sides — tags can't be a PR head or base.
+          prEnabled: source.type !== 'tag' && target.type !== 'tag',
+        },
+        {
+          onFastForward: () =>
+            void run(
+              () => apiFastForwardBranch(repoPath, source.shortName, target.shortName),
+              t('gitTree.dragDrop.fastForwarded', params)
+            ),
+          onMerge: () =>
+            void run(
+              () => apiMergeBranch(repoPath, source.shortName, target.shortName),
+              t('gitTree.dragDrop.merged', params)
+            ),
+          onRebase: () =>
+            void run(async () => {
+              await ensureCheckedOut(source.shortName)
+              await apiRebaseOntoCommit(repoPath, target.commitOid)
+            }, t('gitTree.dragDrop.rebased', params)),
+          onInteractiveRebase: () =>
+            void run(async () => {
+              await ensureCheckedOut(source.shortName)
+              await openRebaseWindow(repoPath, target.commitOid)
+            }),
+          onPush: () =>
+            void run(
+              () => apiPushBranchTo(repoPath, source.shortName, targetName, remote),
+              t('gitTree.dragDrop.pushed', params)
+            ),
+          onReset: (mode) =>
+            void run(async () => {
+              await ensureCheckedOut(source.shortName)
+              await apiResetToCommit(repoPath, target.commitOid, mode)
+            }, t('gitTree.dragDrop.reset', params)),
+          onStartPr: () => openPrCreateWith(sourceName, targetName),
+        },
+        t
+      )
+    )
   }
 
   return { handleDrop }

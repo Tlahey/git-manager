@@ -25,6 +25,35 @@ pub async fn create_patch(path: String, oid: String, dest_path: String) -> Resul
     Ok(())
 }
 
+// ─── create_commits_patch ─────────────────────────────────────────────────────
+
+/// Writes a `git am`-compatible patch covering several commits (a multi-selection) to `dest_path`.
+/// `oids` must be ordered oldest→newest; each commit's `format-patch -1` mbox is concatenated, so
+/// non-contiguous selections work (unlike a single `<base>..<head>` range).
+#[tauri::command]
+pub async fn create_commits_patch(
+    path: String,
+    oids: Vec<String>,
+    dest_path: String,
+) -> Result<(), String> {
+    let mut buffer: Vec<u8> = Vec::new();
+    for oid in &oids {
+        let output = std::process::Command::new("git")
+            .args(["-C", &path, "format-patch", "-1", oid, "--stdout"])
+            .output()
+            .map_err(|e| format!("Failed to run git format-patch: {e}"))?;
+
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        }
+        buffer.extend_from_slice(&output.stdout);
+    }
+
+    std::fs::write(&dest_path, &buffer).map_err(|e| format!("Failed to write patch file: {e}"))?;
+
+    Ok(())
+}
+
 // ─── create_working_patch ─────────────────────────────────────────────────────
 
 /// Writes a `git apply`-compatible patch built from the selected working-tree
