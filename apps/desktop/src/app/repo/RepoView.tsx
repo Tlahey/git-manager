@@ -3,6 +3,7 @@ import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useUndoHistoryStore } from '../../stores/undoHistory.store'
 import { useCommitSearchStore } from '../../stores/commitSearch.store'
+import { useSoloModeStore } from '../../stores/soloMode.store'
 import { GitGraph } from '../../components/git-graph/GitGraph'
 import { RepositorySidebar } from '../../components/repository-sidebar'
 import { RenameBranchDialog } from '../../components/git-graph/RenameBranchDialog'
@@ -18,6 +19,9 @@ export function RepoView() {
   const { repoCache, setRepoCache } = useRepoDataStore()
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null)
   const searchQuery = useCommitSearchStore((s) => s.query)
+  // Solo mode: when active, the graph is isolated to the soloed branches (see soloMode.store.ts).
+  const soloActive = useSoloModeStore((s) => s.active)
+  const soloed = useSoloModeStore((s) => s.soloed)
 
   // Viewing a workspace (linked worktree) swaps every data-driven view (sidebar, graph) onto its
   // path instead of the repo tab's own — the tab/`activeRepo` itself never changes, only what's
@@ -84,6 +88,7 @@ export function RepoView() {
           <GitGraph
             repoPath={repoPath}
             branch={selectedBranch ?? undefined}
+            soloBranches={soloActive ? Array.from(soloed) : undefined}
             searchQuery={searchQuery}
           />
         </div>

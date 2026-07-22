@@ -6,6 +6,9 @@ interface UseGitLogOptions {
   limit?: number
   skip?: number
   branch?: string
+  /** Solo mode: branch shortNames to isolate. When non-empty the graph loads only the commits
+   * reachable from these branches (server-side filter in `get_log`). Part of the query key. */
+  soloBranches?: string[]
   showStashes?: boolean
   hiddenStashes?: string[]
   /** Whether a synthetic WIP / paused-rebase row will be rendered above the graph. Part of the

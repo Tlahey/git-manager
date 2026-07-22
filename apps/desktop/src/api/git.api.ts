@@ -710,6 +710,8 @@ export async function apiGetLog(
     limit?: number
     skip?: number
     branch?: string
+    /** Solo mode: branch shortNames to isolate — graph loads only commits reachable from these. */
+    soloBranches?: string[]
     author?: string
     showStashes?: boolean
     hiddenStashes?: string[]

@@ -65,6 +65,7 @@ const branchActions = (): BranchMenuActions => ({
   onCopyBranchName: vi.fn(),
   onCopyBranchLink: vi.fn(),
   onPinToLeft: vi.fn(),
+  onSolo: vi.fn(),
 })
 
 const commitActions = (): CommitMenuActions => ({
@@ -114,7 +115,7 @@ describe('buildBranchSubmenu — current local branch', () => {
     expect(labels).toContain('Open worktree from main')
     expect(item(nodes, 'Explain branch changes (Preview)')?.enabled).toBe(false)
     expect(labels).toContain('Pin to left')
-    expect(item(nodes, 'Solo')?.enabled).toBe(false)
+    expect(item(nodes, 'Solo')?.enabled).not.toBe(false)
   })
 })
 
@@ -158,6 +159,7 @@ describe('buildBranchSubmenu — another local branch', () => {
     expect(actions.onCopyBranchName).toHaveBeenCalledWith(target)
     expect(actions.onOpenWorktreeFrom).toHaveBeenCalledWith(target)
     expect(actions.onPinToLeft).toHaveBeenCalledWith(target)
+    expect(actions.onSolo).toHaveBeenCalledWith(target)
   })
 })
 

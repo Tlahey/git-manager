@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useTranslation } from '@git-manager/i18n'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Focus, X } from 'lucide-react'
 import { Spinner, toast } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
 import { useGitStatus } from '../../hooks/useGitStatus'
@@ -47,10 +48,14 @@ import { getGraphColumnLayout, getGraphMaxWidth } from './graphColumnSizing'
 import { collectGraphAuthors } from './graphAuthors'
 import { computeLaneBranchByOid, collectRefDropHighlight } from './laneBranch'
 import { useGraphAuthorFilterStore } from '../../stores/graphAuthorFilter.store'
+import { useSoloModeStore } from '../../stores/soloMode.store'
 
 interface GitGraphProps {
   repoPath: string
   branch?: string
+  /** Solo mode: branch shortNames to isolate — the graph loads only commits reachable from these,
+   * taking precedence over the single-branch `branch` filter. */
+  soloBranches?: string[]
   /** Recherche globale issue de la barre d'actions (Partie 2). */
   searchQuery?: string
   onSelectCommit?: (oid: string) => void
@@ -60,7 +65,13 @@ interface GitGraphProps {
 
 const EMPTY_ARRAY: string[] = []
 
-export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitGraphProps) {
+export function GitGraph({
+  repoPath,
+  branch,
+  soloBranches,
+  searchQuery,
+  onSelectCommit,
+}: GitGraphProps) {
   const { t } = useTranslation('git')
   const queryClient = useQueryClient()
   const { protectedBranches } = useEffectiveRepoSettings(repoPath)
@@ -212,11 +223,15 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   // ── Filtre par auteur (colonne « auteur ») ─────────────────────────────────
   const selectedAuthors = useGraphAuthorFilterStore((s) => s.selected)
   const clearAuthorFilter = useGraphAuthorFilterStore((s) => s.clear)
-  // Emails are repo-specific, so a filter left over from another repo would blank the whole graph.
-  // Reset it whenever the active repo changes.
+  // ── Solo mode (branch-visibility filter, driven from the sidebar) ───────────
+  const soloActive = useSoloModeStore((s) => s.active)
+  const clearSolo = useSoloModeStore((s) => s.clear)
+  // Both filters are repo-specific: a set left over from another repo would blank/wrong-filter the
+  // graph. Reset them whenever the active repo changes.
   useEffect(() => {
     clearAuthorFilter()
-  }, [repoPath, clearAuthorFilter])
+    clearSolo()
+  }, [repoPath, clearAuthorFilter, clearSolo])
 
   const showStashesInGraph = useSettingsStore((s) => s.settings.git.showStashesInGraph ?? true)
   // How many commits to load on first render. Clamped to the documented 500 floor so a stale/edited
@@ -232,6 +247,7 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
   } = useGitLog(repoPath, {
     limit: initialGraphCommits,
     branch: branch || undefined,
+    soloBranches: soloActive && soloBranches && soloBranches.length > 0 ? soloBranches : undefined,
     showStashes: showStashesInGraph,
     hiddenStashes,
     // The WIP / paused-rebase row is an INPUT of the Rust column layout: when it exists it is the
@@ -664,6 +680,26 @@ export function GitGraph({ repoPath, branch, searchQuery, onSelectCommit }: GitG
               onPrevious={goToPreviousMatch}
               onNext={goToNextMatch}
             />
+
+            {soloActive && (
+              <div
+                className="flex shrink-0 items-center gap-2 border-b border-primary/30 bg-primary/10 px-3 py-1.5 text-xs text-primary"
+                data-testid="graph-solo-banner"
+              >
+                <Focus className="h-3.5 w-3.5 shrink-0" />
+                <span className="flex-1 truncate font-medium">
+                  {t('sidebar.solo.active', { count: soloBranches?.length ?? 0 })}
+                </span>
+                <button
+                  onClick={clearSolo}
+                  className="flex items-center gap-1 rounded px-1.5 py-0.5 font-medium transition-colors hover:bg-primary/20"
+                  data-testid="graph-solo-clear"
+                >
+                  <X className="h-3 w-3" />
+                  {t('sidebar.solo.clear')}
+                </button>
+              </div>
+            )}
 
             {isLoading && (
               <div className="flex flex-1 items-center justify-center">

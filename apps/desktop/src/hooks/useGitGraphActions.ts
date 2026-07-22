@@ -36,6 +36,7 @@ import {
 } from '../lib/graphContextMenus'
 import { useRepoUIStore, type GraphCommitAction } from '../stores/repoUI.store'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
+import { useSoloModeStore } from '../stores/soloMode.store'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
@@ -79,6 +80,7 @@ export function useGitGraphActions({
   const setEditingOid = useRepoUIStore((s) => s.setEditingOid)
   const openPrCreateWith = useRepoUIStore((s) => s.openPrCreateWith)
   const setPin = usePinnedBranchesStore((s) => s.setPin)
+  const enableSolo = useSoloModeStore((s) => s.enable)
 
   const [pendingAction, setPendingAction] = useState<PendingAction>(null)
 
@@ -406,6 +408,7 @@ export function useGitGraphActions({
         setPin(repoPath, ref.shortName, true)
         toast.success(t('gitTree.branchMenu.pinned', relParams(ref)))
       },
+      onSolo: (ref) => enableSolo([ref.shortName]),
     }
 
     // The current branch as a ref pointing at its OWN tip (the node carrying that branch label),
