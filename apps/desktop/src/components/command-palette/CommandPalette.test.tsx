@@ -76,8 +76,15 @@ beforeEach(() => {
 function renderPalette() {
   const onOpenSettings = vi.fn()
   const onCloseSettings = vi.fn()
-  render(<CommandPalette onOpenSettings={onOpenSettings} onCloseSettings={onCloseSettings} />)
-  return { onOpenSettings, onCloseSettings }
+  const onOpenActivityLogs = vi.fn()
+  render(
+    <CommandPalette
+      onOpenSettings={onOpenSettings}
+      onCloseSettings={onCloseSettings}
+      onOpenActivityLogs={onOpenActivityLogs}
+    />
+  )
+  return { onOpenSettings, onCloseSettings, onOpenActivityLogs }
 }
 
 describe('CommandPalette', () => {

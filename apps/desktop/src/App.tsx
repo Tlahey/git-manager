@@ -12,6 +12,7 @@ import { RewardsTab } from './app/pull-requests/components/RewardsTab'
 import { RepoView } from './app/repo/RepoView'
 import { PullRequestsPage } from './app/pull-requests/PullRequestsPage'
 import { SettingsPage, type Section } from './app/settings/SettingsPage'
+import { ActivityLogsPage } from './app/activity-logs/ActivityLogsPage'
 import { TabBar } from './components/tab-bar'
 import { useTheme } from './hooks/useTheme'
 import { useMonacoTheme } from './hooks/useMonacoTheme'
@@ -34,6 +35,7 @@ export default function App() {
   const activeTab = useRepoUIStore((s) => s.activeTab)
   const [showSettings, setShowSettings] = useState(false)
   const [settingsSection, setSettingsSection] = useState<Section>('general')
+  const [showActivityLogs, setShowActivityLogs] = useState(false)
 
   useTheme()
   useMonacoTheme()
@@ -133,6 +135,8 @@ export default function App() {
             initialSection={settingsSection}
             onClose={() => setShowSettings(false)}
           />
+        ) : showActivityLogs ? (
+          <ActivityLogsPage onClose={() => setShowActivityLogs(false)} />
         ) : (
           <>
             <TabBar onOpenSettings={handleOpenSettings} />
@@ -148,12 +152,16 @@ export default function App() {
                 <RepoView />
               )}
             </div>
-            <Footer onOpenSettings={handleOpenSettings} />
+            <Footer
+              onOpenSettings={handleOpenSettings}
+              onOpenActivityLogs={() => setShowActivityLogs(true)}
+            />
           </>
         )}
         <CommandPalette
           onOpenSettings={handleOpenSettings}
           onCloseSettings={() => setShowSettings(false)}
+          onOpenActivityLogs={() => setShowActivityLogs(true)}
         />
         <TrophyToast />
         <Toaster />

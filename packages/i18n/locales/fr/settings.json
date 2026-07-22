@@ -12,7 +12,6 @@
   "settings.sections.notifications": "Notifications",
   "settings.sections.ui_customization": "Personnalisation UI",
   "settings.sections.rewards": "Succès & Récompenses",
-  "settings.sections.debug": "Debug",
   "settings.sections.changelog": "Journal des modifications",
   "settings.sections.support": "Soutenir",
   "settings.sections.worktree": "Worktree",

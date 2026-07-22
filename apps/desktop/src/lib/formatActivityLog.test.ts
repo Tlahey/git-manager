@@ -1,8 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import type { DebugLogEntry } from '../stores/debugLog.store'
-import { formatDebugLogEntry, formatDebugLogText, formatDebugTimestamp } from './formatDebugLog'
+import type { ActivityLogEntry } from '../stores/activityLog.store'
+import {
+  formatActivityLogEntry,
+  formatActivityLogText,
+  formatActivityTimestamp,
+} from './formatActivityLog'
 
-function entry(overrides: Partial<DebugLogEntry> = {}): DebugLogEntry {
+function entry(overrides: Partial<ActivityLogEntry> = {}): ActivityLogEntry {
   return {
     id: '1',
     timestamp: new Date('2026-07-12T09:08:07.006').getTime(),
@@ -14,15 +18,17 @@ function entry(overrides: Partial<DebugLogEntry> = {}): DebugLogEntry {
   }
 }
 
-describe('formatDebugTimestamp', () => {
+describe('formatActivityTimestamp', () => {
   it('formats local wall-clock time with milliseconds', () => {
-    expect(formatDebugTimestamp(new Date('2026-07-12T09:08:07.006').getTime())).toBe('09:08:07.006')
+    expect(formatActivityTimestamp(new Date('2026-07-12T09:08:07.006').getTime())).toBe(
+      '09:08:07.006'
+    )
   })
 })
 
-describe('formatDebugLogEntry', () => {
+describe('formatActivityLogEntry', () => {
   it('renders a single line for a successful entry with args', () => {
-    const line = formatDebugLogEntry(entry())
+    const line = formatActivityLogEntry(entry())
     expect(line).toContain('OK')
     expect(line).toContain('12ms')
     expect(line).toContain('get_log')
@@ -31,21 +37,21 @@ describe('formatDebugLogEntry', () => {
   })
 
   it('appends an indented error line when the entry failed', () => {
-    const line = formatDebugLogEntry(entry({ status: 'error', error: 'boom' }))
+    const line = formatActivityLogEntry(entry({ status: 'error', error: 'boom' }))
     expect(line).toContain('ERROR')
     expect(line).toMatch(/\n\s+↳ boom/)
   })
 
   it('renders string args verbatim (already redacted upstream)', () => {
-    expect(formatDebugLogEntry(entry({ args: '[redacted]' }))).toContain('[redacted]')
+    expect(formatActivityLogEntry(entry({ args: '[redacted]' }))).toContain('[redacted]')
   })
 })
 
-describe('formatDebugLogText', () => {
+describe('formatActivityLogText', () => {
   it('emits entries oldest-first (buffer is stored newest-first)', () => {
     const newest = entry({ id: 'b', command: 'second' })
     const oldest = entry({ id: 'a', command: 'first' })
-    const text = formatDebugLogText([newest, oldest])
+    const text = formatActivityLogText([newest, oldest])
     expect(text.indexOf('first')).toBeLessThan(text.indexOf('second'))
   })
 })

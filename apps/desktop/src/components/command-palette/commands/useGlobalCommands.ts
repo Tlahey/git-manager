@@ -12,6 +12,7 @@ import {
   ArchiveRestore,
   TerminalSquare,
   Settings,
+  Activity,
 } from 'lucide-react'
 import { createElement } from 'react'
 import { toast } from '@git-manager/ui'
@@ -36,18 +37,21 @@ const SETTINGS_SECTIONS: Section[] = [
   'external_tools',
   'notifications',
   'rewards',
-  'debug',
 ]
 
 interface UseGlobalCommandsParams {
   onOpenSettings: (section: Section) => void
+  onOpenActivityLogs: () => void
 }
 
 /**
  * Always-available palette commands: tab navigation, open-repo, per-section settings, and — when a
  * repo is active — the main toolbar actions (reused from {@link useActionToolbar}, not reimplemented).
  */
-export function useGlobalCommands({ onOpenSettings }: UseGlobalCommandsParams): PaletteCommand[] {
+export function useGlobalCommands({
+  onOpenSettings,
+  onOpenActivityLogs,
+}: UseGlobalCommandsParams): PaletteCommand[] {
   const { t } = useTranslation('common')
   const { t: tGit } = useTranslation('git')
   const setActiveTab = useRepoUIStore((s) => s.setActiveTab)
@@ -87,6 +91,14 @@ export function useGlobalCommands({ onOpenSettings }: UseGlobalCommandsParams): 
       run: () => {
         openRepository().catch((err) => toast.error(String(err)))
       },
+    },
+    {
+      id: 'nav-activity-logs',
+      group: 'navigation',
+      title: t('activityLogs.commandPalette'),
+      keywords: ['logs', 'activity', 'debug', 'ipc'],
+      icon: createElement(Activity),
+      run: () => onOpenActivityLogs(),
     },
   ]
 

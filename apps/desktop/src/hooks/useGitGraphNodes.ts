@@ -606,7 +606,7 @@ export function useGitGraphNodes(
 
       return patched
     })
-  }, [filteredNodes, totalChanges, originMainIndex, conflictNode, worktreeWipNodes])
+  }, [filteredNodes, originMainIndex, worktreeWipNodes])
 
   return {
     wipNode,
