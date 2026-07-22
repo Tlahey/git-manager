@@ -1,4 +1,5 @@
 import type { MockPR, MockIssue, DayCommit, PRStatus } from '../app/pull-requests/types'
+import type { PullRequest } from '@git-manager/git-types'
 
 export interface GhUser {
   login: string
@@ -177,6 +178,41 @@ export function parsePRStatus(pr: {
   if (pr.draft) return 'draft'
   if (pr.state === 'closed') return 'closed'
   return 'open'
+}
+
+/**
+ * Narrow a raw GitHub PR to the DTO's `PrState`. A merged PR reports GitHub `state: 'closed'` +
+ * `merged_at` (never `'merged'`), so merge must be detected via `merged_at` rather than taken
+ * verbatim. (Distinct from `parsePRStatus`, whose wider `PRStatus` carries review states the DTO
+ * doesn't model.)
+ */
+function toPrState(raw: Pick<GhRawPR, 'state' | 'draft' | 'merged_at'>): PullRequest['state'] {
+  if (raw.merged_at) return 'merged'
+  if (raw.draft) return 'draft'
+  if (raw.state === 'closed') return 'closed'
+  return 'open'
+}
+
+/**
+ * Map a raw GitHub PR list item to the IPC-shaped `PullRequest` DTO. `ciStatus` is left null — the
+ * list endpoint doesn't carry it.
+ */
+export function rawToPullRequest(raw: GhRawPR): PullRequest {
+  return {
+    number: raw.number,
+    title: raw.title,
+    body: raw.body ?? '',
+    state: toPrState(raw),
+    author: raw.user?.login ?? '—',
+    authorAvatar: raw.user?.avatar_url ?? '',
+    headRef: raw.head?.ref ?? '',
+    baseRef: raw.base?.ref ?? '',
+    url: raw.html_url,
+    ciStatus: null,
+    createdAt: raw.created_at,
+    updatedAt: raw.updated_at,
+    isDraft: raw.draft,
+  }
 }
 
 /** Extract repo name from various fields available in search results */

@@ -32,6 +32,8 @@ export type SidebarRow =
       depth: 0 | 1
       isSelected: boolean
       isPinned: boolean
+      /** PR liée à cette branche (headRef == shortName), si le dépôt est sur GitHub. */
+      pr?: PullRequest
     }
   | {
       kind: 'folder'
@@ -66,7 +68,7 @@ export type SidebarRow =
   | { kind: 'tag'; id: string; tag: GitRef; isSelected: boolean }
   | { kind: 'stash'; id: string; stash: GitStash; isSelected: boolean }
   | { kind: 'submodule'; id: string; sm: GitSubmodule }
-  | { kind: 'worktree'; id: string; wt: GitWorktree }
+  | { kind: 'worktree'; id: string; wt: GitWorktree; pr?: PullRequest }
   | { kind: 'message'; id: string; text: string; loading?: boolean }
   | { kind: 'divider'; id: string }
 

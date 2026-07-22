@@ -10,6 +10,7 @@ vi.mock('../lib/tauri', () => ({
 import * as tauri from '../lib/tauri'
 import {
   parsePRStatus,
+  rawToPullRequest,
   extractRepoInfo,
   rawToMockPR,
   rawToMockIssue,
@@ -85,6 +86,41 @@ describe('parsePRStatus', () => {
 
   it('defaults to open', () => {
     expect(parsePRStatus({ state: 'open', draft: false, merged_at: null })).toBe('open')
+  })
+})
+
+describe('rawToPullRequest', () => {
+  it('maps the core fields and derives an open PR', () => {
+    const pr = rawToPullRequest(
+      rawPR({
+        number: 7,
+        title: 'Fix bug',
+        user: { login: 'marie', avatar_url: 'm.png' },
+        head: { ref: 'feature-x' },
+        base: { ref: 'main' },
+      })
+    )
+    expect(pr).toMatchObject({
+      number: 7,
+      title: 'Fix bug',
+      author: 'marie',
+      authorAvatar: 'm.png',
+      headRef: 'feature-x',
+      baseRef: 'main',
+      state: 'open',
+      ciStatus: null,
+    })
+  })
+
+  it('derives state "merged" from merged_at even though GitHub reports state "closed"', () => {
+    expect(rawToPullRequest(rawPR({ state: 'closed', merged_at: '2024-02-01' })).state).toBe(
+      'merged'
+    )
+  })
+
+  it('derives state "draft" and "closed" for the remaining cases', () => {
+    expect(rawToPullRequest(rawPR({ draft: true })).state).toBe('draft')
+    expect(rawToPullRequest(rawPR({ state: 'closed', merged_at: null })).state).toBe('closed')
   })
 })
 

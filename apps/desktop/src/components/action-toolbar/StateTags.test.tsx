@@ -1,8 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import type { GitRepo } from '@git-manager/git-types'
+import type { GitRepo, PullRequest } from '@git-manager/git-types'
 
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
+const useActiveBranchPrMock = vi.fn()
+vi.mock('../../hooks/useActiveBranchPr', () => ({
+  useActiveBranchPr: () => useActiveBranchPrMock(),
+}))
 
 import { StateTags } from './StateTags'
 import { useRepoDataStore } from '../../stores/repoData.store'
@@ -20,28 +23,45 @@ function repo(overrides: Partial<GitRepo> = {}): GitRepo {
   }
 }
 
+function pr(overrides: Partial<PullRequest> = {}): PullRequest {
+  return {
+    number: 55,
+    title: 'PR',
+    body: '',
+    state: 'merged',
+    author: 'a',
+    authorAvatar: '',
+    headRef: 'feature',
+    baseRef: 'main',
+    url: '',
+    ciStatus: null,
+    createdAt: '',
+    updatedAt: '',
+    isDraft: false,
+    ...overrides,
+  }
+}
+
 beforeEach(() => {
+  vi.clearAllMocks()
+  useActiveBranchPrMock.mockReturnValue(undefined)
   useRepoUIStore.setState({ activeRepo: null })
   useRepoDataStore.setState({ repoCache: {} })
 })
 
 describe('StateTags', () => {
-  it('renders nothing when there is no active repo', () => {
+  it('renders nothing when the active branch has no linked PR', () => {
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoDataStore.setState({ repoCache: { '/repo': repo() } })
     const { container } = render(<StateTags />)
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('renders nothing when the active repo is clean', () => {
+  it('shows the PR status tag when the active branch is linked to a PR', () => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
-    useRepoDataStore.setState({ repoCache: { '/repo': repo({ isDirty: false }) } })
+    useRepoDataStore.setState({ repoCache: { '/repo': repo() } })
+    useActiveBranchPrMock.mockReturnValue(pr({ number: 55, state: 'merged' }))
     render(<StateTags />)
-    expect(screen.queryByText('toolbar.dirty')).not.toBeInTheDocument()
-  })
-
-  it('shows a dirty badge when the active repo has uncommitted changes', () => {
-    useRepoUIStore.setState({ activeRepo: '/repo' })
-    useRepoDataStore.setState({ repoCache: { '/repo': repo({ isDirty: true }) } })
-    render(<StateTags />)
-    expect(screen.getByText('toolbar.dirty')).toBeInTheDocument()
+    expect(screen.getByTestId('pr-status-tag-55')).toHaveTextContent('#55')
   })
 })

@@ -35,6 +35,7 @@ import type { SidebarRow } from './types'
 import { BranchItem } from './BranchItem'
 import { SoloToggle } from './SoloToggle'
 import { PullRequestItem } from './PullRequestItem'
+import { PrStatusTag } from './PrStatusTag'
 import { HoverExpandLabel } from './HoverExpandLabel'
 import { useTranslation } from '@git-manager/i18n'
 
@@ -98,6 +99,8 @@ export function SidebarRowView({
           onSelect={onSelectBranch}
           onTogglePin={onTogglePin}
           onContextMenu={onContextMenu}
+          pr={row.pr}
+          onOpenPr={onOpenPr}
           filterQuery={filterQuery}
           soloActive={soloActive}
           isSoloed={soloed?.has(row.branch.shortName) ?? false}
@@ -350,6 +353,7 @@ export function SidebarRowView({
             {row.wt.isLocked && <Lock className="mr-1 inline h-2.5 w-2.5 text-amber-400" />}
             {highlightMatch(row.wt.branch, filterQuery)}
           </HoverExpandLabel>
+          {row.pr && <PrStatusTag pr={row.pr} onOpen={onOpenPr} />}
           {wipStatus && (
             <Tooltip
               delay={0}

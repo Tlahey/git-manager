@@ -1,8 +1,9 @@
 import { GitBranch as BranchIcon, MoreHorizontal, Pin } from 'lucide-react'
 import { highlightMatch } from '@git-manager/components'
-import type { GitBranch } from '@git-manager/git-types'
+import type { GitBranch, PullRequest } from '@git-manager/git-types'
 import { HoverExpandLabel } from './HoverExpandLabel'
 import { SoloToggle } from './SoloToggle'
+import { PrStatusTag } from './PrStatusTag'
 
 interface BranchItemProps {
   branch: GitBranch
@@ -15,6 +16,10 @@ interface BranchItemProps {
   onSelect: (name: string) => void
   onTogglePin?: (shortName: string) => void
   onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
+  /** PR linked to this branch (headRef == shortName), if any — shown as a status tag on the right. */
+  pr?: PullRequest
+  /** Opens the linked PR when its tag is clicked. */
+  onOpenPr?: (pr: PullRequest) => void
   /** Active sidebar search query — matched substrings are highlighted in the branch name. */
   filterQuery?: string
   /** Solo mode on: show the eye/eye-off toggle and dim the row when this branch is hidden. */
@@ -35,6 +40,8 @@ export function BranchItem({
   onSelect,
   onTogglePin,
   onContextMenu,
+  pr,
+  onOpenPr,
   filterQuery = '',
   soloActive = false,
   isSoloed = false,
@@ -79,6 +86,9 @@ export function BranchItem({
           )}
         </span>
       )}
+
+      {/* Tag PR — visible en permanence quand la branche est liée à une pull request */}
+      {pr && <PrStatusTag pr={pr} onOpen={onOpenPr} />}
 
       {/* Bouton pin / unpin — toujours visible si épinglé, sinon au survol */}
       {canPin && onTogglePin && (
