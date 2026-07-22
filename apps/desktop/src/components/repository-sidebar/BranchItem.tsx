@@ -2,6 +2,7 @@ import { GitBranch as BranchIcon, MoreHorizontal, Pin } from 'lucide-react'
 import { highlightMatch } from '@git-manager/components'
 import type { GitBranch } from '@git-manager/git-types'
 import { HoverExpandLabel } from './HoverExpandLabel'
+import { SoloToggle } from './SoloToggle'
 
 interface BranchItemProps {
   branch: GitBranch
@@ -16,6 +17,12 @@ interface BranchItemProps {
   onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
   /** Active sidebar search query — matched substrings are highlighted in the branch name. */
   filterQuery?: string
+  /** Solo mode on: show the eye/eye-off toggle and dim the row when this branch is hidden. */
+  soloActive?: boolean
+  /** Whether this branch is soloed (visible in the graph). */
+  isSoloed?: boolean
+  /** Toggle this branch's solo status by shortName. */
+  onToggleSolo?: (shortName: string) => void
 }
 
 export function BranchItem({
@@ -29,8 +36,13 @@ export function BranchItem({
   onTogglePin,
   onContextMenu,
   filterQuery = '',
+  soloActive = false,
+  isSoloed = false,
+  onToggleSolo,
 }: BranchItemProps) {
   const paddingLeft = depth === 1 ? 'pl-10' : 'pl-6'
+  // In solo mode a hidden (non-soloed) branch is dimmed so the visible set stands out.
+  const dimmed = soloActive && !isSoloed
 
   return (
     <div
@@ -38,13 +50,17 @@ export function BranchItem({
         isSelected
           ? 'bg-sidebar-accent text-sidebar-foreground'
           : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
-      }`}
+      } ${dimmed ? 'opacity-50' : ''}`}
       onClick={() => onSelect(branch.shortName)}
       onContextMenu={onContextMenu ? (e) => onContextMenu(e, branch) : undefined}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onSelect(branch.shortName)}
     >
+      {soloActive && onToggleSolo && (
+        <SoloToggle isSoloed={isSoloed} onToggle={() => onToggleSolo(branch.shortName)} />
+      )}
+
       {/* Icône branche */}
       <BranchIcon className="h-3 w-3 shrink-0 opacity-40" />
 

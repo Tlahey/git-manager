@@ -89,6 +89,8 @@ export interface BranchMenuActions {
   onCopyBranchName: (ref: GitRef) => void
   onCopyBranchLink: (ref: GitRef) => void
   onPinToLeft: (ref: GitRef) => void
+  /** Isolate this branch in the graph (solo mode): enable solo and show only its history. */
+  onSolo: (ref: GitRef) => void
 }
 
 // ── Rules ────────────────────────────────────────────────────────────────────
@@ -246,7 +248,7 @@ function copySection(
   ]
 }
 
-/** Pin to left (wired to the pinned-branches store) + the not-yet-implemented Solo filter. */
+/** Pin to left (wired to the pinned-branches store) + Solo (isolate this branch in the graph). */
 function tailSection(
   b: BranchItemContext,
   actions: BranchMenuActions,
@@ -257,7 +259,10 @@ function tailSection(
       text: t('gitTree.branchMenu.pinToLeft'),
       action: () => actions.onPinToLeft(b.ref),
     }),
-    menuItem({ text: t('gitTree.branchMenu.solo'), enabled: false }),
+    menuItem({
+      text: t('gitTree.branchMenu.solo'),
+      action: () => actions.onSolo(b.ref),
+    }),
   ]
 }
 

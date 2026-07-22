@@ -7,6 +7,40 @@ use std::collections::HashMap;
 
 pub use crate::services::git_graph::{LogGraphNode, LogRef};
 
+/// Resolves a branch/reference name to a commit OID, trying (in order) a local branch, a remote
+/// branch, `<remote>/<name>` for every configured remote, a generic `revparse_single`, then a tag
+/// ref. Shared by the single-branch `branch` filter and the multi-branch `solo_branches` filter.
+fn resolve_ref_target(repo: &Repository, name: &str) -> Option<Oid> {
+    if let Ok(b) = repo.find_branch(name, git2::BranchType::Local) {
+        if let Some(oid) = b.get().target() {
+            return Some(oid);
+        }
+    }
+    if let Ok(b) = repo.find_branch(name, git2::BranchType::Remote) {
+        if let Some(oid) = b.get().target() {
+            return Some(oid);
+        }
+    }
+    if let Ok(remotes) = repo.remotes() {
+        for remote in remotes.iter().flatten() {
+            let full_remote_branch = format!("{}/{}", remote, name);
+            if let Ok(b) = repo.find_branch(&full_remote_branch, git2::BranchType::Remote) {
+                if let Some(oid) = b.get().target() {
+                    return Some(oid);
+                }
+            }
+        }
+    }
+    if let Ok(obj) = repo.revparse_single(name) {
+        return Some(obj.id());
+    }
+    let tag_ref = format!("refs/tags/{}", name);
+    if let Ok(obj) = repo.revparse_single(&tag_ref) {
+        return Some(obj.id());
+    }
+    None
+}
+
 // ─── Tauri commands ─────────────────────────────────────────────────────────
 
 /// Returns the paginated history as graph nodes.
@@ -16,16 +50,20 @@ pub use crate::services::git_graph::{LogGraphNode, LogRef};
 /// when true, the lane running down to HEAD's tip is seeded at column 0 because that synthetic
 /// row is the graph's true first element; when false, columns follow pure top-to-bottom order.
 #[tauri::command]
+// A Tauri command surface: each field is a distinct named `invoke` argument, so grouping them
+// into a struct would only obscure the wire contract.
+#[allow(clippy::too_many_arguments)]
 pub async fn get_log(
     path: String,
     limit: Option<usize>,
     skip: Option<usize>,
     branch: Option<String>,
+    solo_branches: Option<Vec<String>>,
     show_stashes: Option<bool>,
     hidden_stashes: Option<Vec<String>>,
     head_has_wip: Option<bool>,
 ) -> Result<Vec<LogGraphNode>, String> {
-    let mut repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
+    let mut repo = Repository::open(&path).map_err(AppError::Git)?;
 
     let mut stash_oids = Vec::new();
     let mut stash_refs = Vec::new();
@@ -46,46 +84,40 @@ pub async fn get_log(
         }
     }
 
-    let mut revwalk = repo.revwalk().map_err(|e| AppError::Git(e))?;
+    let mut revwalk = repo.revwalk().map_err(AppError::Git)?;
     revwalk
         .set_sorting(Sort::TOPOLOGICAL | Sort::TIME)
-        .map_err(|e| AppError::Git(e))?;
+        .map_err(AppError::Git)?;
 
-    if let Some(ref branch_name) = branch {
-        let mut target = None;
-        if let Ok(b) = repo.find_branch(branch_name, git2::BranchType::Local) {
-            target = b.get().target();
-        }
-        if target.is_none() {
-            if let Ok(b) = repo.find_branch(branch_name, git2::BranchType::Remote) {
-                target = b.get().target();
+    // Solo mode (the graph's branch-visibility filter) takes precedence over the single-branch
+    // `branch` filter: keep only the non-blank names the frontend sent.
+    let solo_names: Vec<String> = solo_branches
+        .into_iter()
+        .flatten()
+        .filter(|n| !n.trim().is_empty())
+        .collect();
+
+    if !solo_names.is_empty() {
+        // Only commits reachable from the soloed branches. Skip a name that no longer resolves (a
+        // soloed branch may have been deleted since it was picked) rather than failing the whole
+        // log; if none resolve, fall back to HEAD so the graph isn't blank.
+        let mut pushed_any = false;
+        for name in &solo_names {
+            if let Some(oid) = resolve_ref_target(&repo, name) {
+                let _ = revwalk.push(oid);
+                pushed_any = true;
             }
         }
-        if target.is_none() {
-            if let Ok(remotes) = repo.remotes() {
-                for remote in remotes.iter().flatten() {
-                    let full_remote_branch = format!("{}/{}", remote, branch_name);
-                    if let Ok(b) = repo.find_branch(&full_remote_branch, git2::BranchType::Remote) {
-                        target = b.get().target();
-                        break;
-                    }
+        if !pushed_any {
+            if let Ok(head) = repo.head() {
+                if let Some(oid) = head.target() {
+                    let _ = revwalk.push(oid);
                 }
             }
         }
-        if target.is_none() {
-            if let Ok(obj) = repo.revparse_single(branch_name) {
-                target = Some(obj.id());
-            }
-        }
-        if target.is_none() {
-            let tag_ref = format!("refs/tags/{}", branch_name);
-            if let Ok(obj) = repo.revparse_single(&tag_ref) {
-                target = Some(obj.id());
-            }
-        }
-
-        if let Some(oid) = target {
-            revwalk.push(oid).map_err(|e| AppError::Git(e))?;
+    } else if let Some(ref branch_name) = branch {
+        if let Some(oid) = resolve_ref_target(&repo, branch_name) {
+            revwalk.push(oid).map_err(AppError::Git)?;
         } else {
             return Err(format!(
                 "Could not resolve branch/reference '{}'",
@@ -230,8 +262,8 @@ pub async fn get_commits_merged_diff(
 /// Returns the full diff of a commit vs. its first parent
 #[tauri::command]
 pub async fn get_commit_diff(path: String, oid: String) -> Result<GitDiff, String> {
-    let mut repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
-    let commit_oid = Oid::from_str(&oid).map_err(|e| AppError::Git(e))?;
+    let mut repo = Repository::open(&path).map_err(AppError::Git)?;
+    let commit_oid = Oid::from_str(&oid).map_err(AppError::Git)?;
 
     // Check if the commit is a stash commit
     let mut is_stash = false;
@@ -244,12 +276,12 @@ pub async fn get_commit_diff(path: String, oid: String) -> Result<GitDiff, Strin
         }
     });
 
-    let commit = repo.find_commit(commit_oid).map_err(|e| AppError::Git(e))?;
+    let commit = repo.find_commit(commit_oid).map_err(AppError::Git)?;
 
-    let commit_tree = commit.tree().map_err(|e| AppError::Git(e))?;
+    let commit_tree = commit.tree().map_err(AppError::Git)?;
     let parent_tree = if commit.parent_count() > 0 {
-        let parent = commit.parent(0).map_err(|e| AppError::Git(e))?;
-        Some(parent.tree().map_err(|e| AppError::Git(e))?)
+        let parent = commit.parent(0).map_err(AppError::Git)?;
+        Some(parent.tree().map_err(AppError::Git)?)
     } else {
         None
     };
@@ -263,7 +295,7 @@ pub async fn get_commit_diff(path: String, oid: String) -> Result<GitDiff, Strin
             Some(&commit_tree),
             Some(&mut diff_opts),
         )
-        .map_err(|e| AppError::Git(e))?;
+        .map_err(AppError::Git)?;
 
     let files: RefCell<Vec<GitDiffFile>> = RefCell::new(Vec::new());
 
@@ -298,16 +330,16 @@ pub async fn get_commit_file(
     oid: String,
     file_path: String,
 ) -> Result<String, String> {
-    let repo = Repository::open(&path).map_err(|e| AppError::Git(e))?;
-    let commit_oid = Oid::from_str(&oid).map_err(|e| AppError::Git(e))?;
-    let commit = repo.find_commit(commit_oid).map_err(|e| AppError::Git(e))?;
-    let tree = commit.tree().map_err(|e| AppError::Git(e))?;
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    let commit_oid = Oid::from_str(&oid).map_err(AppError::Git)?;
+    let commit = repo.find_commit(commit_oid).map_err(AppError::Git)?;
+    let tree = commit.tree().map_err(AppError::Git)?;
 
     let entry = tree
         .get_path(std::path::Path::new(&file_path))
-        .map_err(|e| AppError::Git(e))?;
+        .map_err(AppError::Git)?;
 
-    let blob = repo.find_blob(entry.id()).map_err(|e| AppError::Git(e))?;
+    let blob = repo.find_blob(entry.id()).map_err(AppError::Git)?;
 
     let content = std::str::from_utf8(blob.content())
         .map_err(|_| AppError::Unknown("File content is not valid UTF-8".to_string()))?

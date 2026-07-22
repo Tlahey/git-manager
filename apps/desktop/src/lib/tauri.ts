@@ -97,6 +97,9 @@ export const getLog = (
     limit?: number
     skip?: number
     branch?: string
+    /** Solo mode: branch shortNames to isolate — the graph loads only commits reachable from these
+     * (Tauri camelCase → `solo_branches`). Takes precedence over the single-branch `branch` filter. */
+    soloBranches?: string[]
     author?: string
     showStashes?: boolean
     hiddenStashes?: string[]

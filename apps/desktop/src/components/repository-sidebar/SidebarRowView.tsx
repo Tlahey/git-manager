@@ -33,6 +33,7 @@ import type { GitBranch, GitWorktree, PullRequest, GitStash } from '@git-manager
 import type { WorktreeWipStatus } from '../../hooks/useWorktreeWipStatuses'
 import type { SidebarRow } from './types'
 import { BranchItem } from './BranchItem'
+import { SoloToggle } from './SoloToggle'
 import { PullRequestItem } from './PullRequestItem'
 import { HoverExpandLabel } from './HoverExpandLabel'
 import { useTranslation } from '@git-manager/i18n'
@@ -57,6 +58,12 @@ interface SidebarRowViewProps {
   worktreeWipStatuses?: WorktreeWipStatus[]
   /** Active sidebar search query — matched substrings are highlighted in the row's label(s). */
   filterQuery?: string
+  /** Solo mode on: branch rows show an eye/eye-off toggle to include/exclude them from the graph. */
+  soloActive?: boolean
+  /** Branch shortNames currently soloed (visible). Used to pick the eye vs eye-off state. */
+  soloed?: Set<string>
+  /** Toggle a branch's solo (visible) status by its shortName. */
+  onToggleSolo?: (shortName: string) => void
 }
 
 export function SidebarRowView({
@@ -74,6 +81,9 @@ export function SidebarRowView({
   onOpenWorktree,
   worktreeWipStatuses = [],
   filterQuery = '',
+  soloActive = false,
+  soloed,
+  onToggleSolo,
 }: SidebarRowViewProps) {
   const { t } = useTranslation('git')
   switch (row.kind) {
@@ -89,6 +99,9 @@ export function SidebarRowView({
           onTogglePin={onTogglePin}
           onContextMenu={onContextMenu}
           filterQuery={filterQuery}
+          soloActive={soloActive}
+          isSoloed={soloed?.has(row.branch.shortName) ?? false}
+          onToggleSolo={onToggleSolo}
         />
       )
 
@@ -139,18 +152,26 @@ export function SidebarRowView({
 
     case 'remote-branch': {
       const displayName = row.branch.shortName.replace(new RegExp(`^${row.remoteName}/`), '')
+      const isSoloed = soloed?.has(row.branch.shortName) ?? false
+      const dimmed = soloActive && !isSoloed
       return (
         <div
           className={`group/rbranch relative flex items-center gap-1.5 py-[3px] pl-10 pr-2 text-xs transition-colors ${
             row.isSelected
               ? 'bg-sidebar-accent text-sidebar-foreground'
               : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
-          }`}
+          } ${dimmed ? 'opacity-50' : ''}`}
           onClick={() => onSelectBranch(row.branch.name)}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => e.key === 'Enter' && onSelectBranch(row.branch.name)}
         >
+          {soloActive && onToggleSolo && (
+            <SoloToggle
+              isSoloed={isSoloed}
+              onToggle={() => onToggleSolo(row.branch.shortName)}
+            />
+          )}
           <BranchIcon className="h-3 w-3 shrink-0 opacity-30" />
           <HoverExpandLabel>{highlightMatch(displayName, filterQuery)}</HoverExpandLabel>
           {(row.branch.aheadCount > 0 || row.branch.behindCount > 0) && (

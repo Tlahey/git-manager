@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { PanelLeftClose, Search, X } from 'lucide-react'
+import { Focus, PanelLeftClose, Search, X } from 'lucide-react'
 import { Input } from '@git-manager/ui'
 import type { GitBranch, GitWorktree, PullRequest } from '@git-manager/git-types'
 import { useSidebarResize, RAIL_WIDTH } from '../../hooks/useSidebarResize'
@@ -7,6 +7,7 @@ import { useSidebarRows } from '../../hooks/useSidebarRows'
 import { useTranslation } from '@git-manager/i18n'
 import { usePinnedBranchesStore } from '../../stores/pinned-branches.store'
 import { useSidebarSearchStore } from '../../stores/sidebarSearch.store'
+import { useSoloModeStore } from '../../stores/soloMode.store'
 import { SidebarResizeHandle } from './SidebarResizeHandle'
 import { SidebarRail } from './SidebarRail'
 import { SidebarRowView } from './SidebarRowView'
@@ -141,6 +142,15 @@ export function RepositorySidebar({
     openState,
   })
 
+  // ── Solo mode (branch-visibility filter) ───────────────────────────────────
+  const soloActive = useSoloModeStore((s) => s.active)
+  const soloed = useSoloModeStore((s) => s.soloed)
+  const soloCount = soloed.size
+  const enableSolo = useSoloModeStore((s) => s.enable)
+  const disableSolo = useSoloModeStore((s) => s.disable)
+  const clearSolo = useSoloModeStore((s) => s.clear)
+  const toggleSolo = useSoloModeStore((s) => s.toggle)
+
   // New branches from the sidebar "+" are created off the current HEAD commit (or the ref "HEAD"
   // when detached, which the backend still resolves).
   const headBranch = allLocalBranches.find((b) => b.isHead)
@@ -153,6 +163,13 @@ export function RepositorySidebar({
   const onTogglePin = (shortName: string) => {
     const isPinned = overrides?.[shortName] ?? DEFAULT_PINNED.includes(shortName)
     setPin(repoPath, shortName, !isPinned)
+  }
+
+  // Toggle solo mode. Seed the soloed set with the current HEAD branch (or the selected branch) so
+  // the graph isn't blank on entry — "everything hidden except the branch we solo".
+  const onToggleSoloMode = () => {
+    if (soloActive) disableSolo()
+    else enableSolo([headBranch?.shortName ?? selectedBranch])
   }
 
   // Map id -> isOpen pour résoudre l'état courant lors du toggle (sections + sous-groupes
@@ -238,17 +255,33 @@ export function RepositorySidebar({
         <span className="select-none text-[10px] font-bold uppercase tracking-widest text-sidebar-muted-foreground/60">
           Repository
         </span>
-        <button
-          onClick={collapse}
-          title={t('sidebar.collapse')}
-          aria-label={t('sidebar.collapse')}
-          className="flex h-6 w-6 items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-        >
-          <PanelLeftClose className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-0.5">
+          <button
+            onClick={onToggleSoloMode}
+            title={soloActive ? t('sidebar.solo.exit') : t('sidebar.solo.enable')}
+            aria-label={soloActive ? t('sidebar.solo.exit') : t('sidebar.solo.enable')}
+            aria-pressed={soloActive}
+            data-testid="sidebar-solo-toggle"
+            className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
+              soloActive
+                ? 'bg-primary/15 text-primary hover:bg-primary/25'
+                : 'text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground'
+            }`}
+          >
+            <Focus className="h-4 w-4" />
+          </button>
+          <button
+            onClick={collapse}
+            title={t('sidebar.collapse')}
+            aria-label={t('sidebar.collapse')}
+            className="flex h-6 w-6 items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          >
+            <PanelLeftClose className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
-      {/* Barre de recherche dans les branches */}
+      {/* Barre de recherche dans les branches — l'anneau primaire signale le mode solo actif */}
       <div className="shrink-0 border-b border-sidebar-border px-2 py-1.5">
         {isFilterActive && (
           <div
@@ -267,8 +300,14 @@ export function RepositorySidebar({
           onChange={(e) => setBranchQuery(e.target.value)}
           placeholder={t('sidebar.filterBranchesPlaceholder')}
           aria-label={t('sidebar.filterBranches')}
-          className="h-7 text-xs shadow-none"
-          startIcon={<Search className="h-3.5 w-3.5 text-sidebar-muted-foreground" />}
+          className={`h-7 text-xs shadow-none ${
+            soloActive ? 'ring-1 ring-primary focus-visible:ring-primary' : ''
+          }`}
+          startIcon={
+            <Search
+              className={`h-3.5 w-3.5 ${soloActive ? 'text-primary' : 'text-sidebar-muted-foreground'}`}
+            />
+          }
           endIcon={
             branchQuery ? (
               <button
@@ -281,6 +320,25 @@ export function RepositorySidebar({
             ) : undefined
           }
         />
+        {soloActive && (
+          <div
+            className="mt-1.5 flex items-center gap-1.5 rounded bg-primary/10 px-1.5 py-1 text-[10px] text-primary"
+            data-testid="sidebar-solo-strip"
+          >
+            <Focus className="h-3 w-3 shrink-0" />
+            <span className="flex-1 truncate font-medium">
+              {t('sidebar.solo.active', { count: soloCount })}
+            </span>
+            <button
+              onClick={clearSolo}
+              className="flex items-center gap-0.5 rounded px-1 py-0.5 font-medium transition-colors hover:bg-primary/20"
+              data-testid="sidebar-solo-clear"
+            >
+              <X className="h-2.5 w-2.5" />
+              {t('sidebar.solo.clear')}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Sections repliables — chaque section ouverte est `flex-1` (poids égal, base 0%) : les
@@ -351,6 +409,9 @@ export function RepositorySidebar({
                     key={row.id}
                     row={row}
                     filterQuery={branchQuery}
+                    soloActive={soloActive}
+                    soloed={soloed}
+                    onToggleSolo={toggleSolo}
                     onToggleOpen={(id) => toggleOpen(id, openById.get(id) ?? false)}
                     onSelectBranch={onSelectBranch}
                     onSelectTag={onSelectTag}

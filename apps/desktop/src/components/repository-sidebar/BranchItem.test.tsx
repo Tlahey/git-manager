@@ -216,3 +216,78 @@ describe('BranchItem — pin button', () => {
     expect(screen.getByLabelText('Épingler feature-x')).toBeInTheDocument()
   })
 })
+
+describe('BranchItem — solo toggle', () => {
+  it('does not render the solo toggle when solo mode is off', () => {
+    render(
+      <BranchItem
+        branch={branch()}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onToggleSolo={vi.fn()}
+      />
+    )
+    expect(screen.queryByTestId('branch-solo-toggle')).not.toBeInTheDocument()
+  })
+
+  it('renders a "Show this branch" toggle for a hidden branch in solo mode', () => {
+    render(
+      <BranchItem
+        branch={branch()}
+        isSelected={false}
+        onSelect={vi.fn()}
+        soloActive
+        isSoloed={false}
+        onToggleSolo={vi.fn()}
+      />
+    )
+    expect(screen.getByLabelText('Show this branch')).toBeInTheDocument()
+  })
+
+  it('renders a "Hide this branch" toggle for a soloed branch in solo mode', () => {
+    render(
+      <BranchItem
+        branch={branch()}
+        isSelected={false}
+        onSelect={vi.fn()}
+        soloActive
+        isSoloed
+        onToggleSolo={vi.fn()}
+      />
+    )
+    expect(screen.getByLabelText('Hide this branch')).toBeInTheDocument()
+  })
+
+  it('dims a hidden branch row in solo mode', () => {
+    const { container } = render(
+      <BranchItem
+        branch={branch()}
+        isSelected={false}
+        onSelect={vi.fn()}
+        soloActive
+        isSoloed={false}
+        onToggleSolo={vi.fn()}
+      />
+    )
+    expect(container.firstElementChild).toHaveClass('opacity-50')
+  })
+
+  it('toggles solo by shortName without selecting the branch', async () => {
+    const onSelect = vi.fn()
+    const onToggleSolo = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <BranchItem
+        branch={branch({ shortName: 'feature-x' })}
+        isSelected={false}
+        onSelect={onSelect}
+        soloActive
+        isSoloed={false}
+        onToggleSolo={onToggleSolo}
+      />
+    )
+    await user.click(screen.getByTestId('branch-solo-toggle'))
+    expect(onToggleSolo).toHaveBeenCalledWith('feature-x')
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+})

@@ -23,6 +23,7 @@ import { apiAddWorktree } from '../api/worktree.api'
 import { useRepoDataStore } from '../stores/repoData.store'
 import { useRepoUIStore } from '../stores/repoUI.store'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
+import { useSoloModeStore } from '../stores/soloMode.store'
 
 /** A `GitBranch` rendered as the `GitRef` the shared menu builder expects (pointing at its tip). */
 function branchToRef(branch: GitBranch): GitRef {
@@ -46,6 +47,7 @@ export function useSidebarBranchMenu(repoPath: string) {
   const repo = useRepoDataStore((s) => s.repoCache[repoPath])
   const openPrCreateWith = useRepoUIStore((s) => s.openPrCreateWith)
   const setPin = usePinnedBranchesStore((s) => s.setPin)
+  const enableSolo = useSoloModeStore((s) => s.enable)
   // The branch whose rename dialog is open, or null. The caller renders `<RenameBranchDialog>`.
   const [renameTarget, setRenameTarget] = useState<string | null>(null)
 
@@ -158,6 +160,7 @@ export function useSidebarBranchMenu(repoPath: string) {
         setPin(repoPath, r.shortName, true)
         toast.success(t('gitTree.branchMenu.pinned', rel(r)))
       },
+      onSolo: (r) => enableSolo([r.shortName]),
     }
 
     const copyActions = {
