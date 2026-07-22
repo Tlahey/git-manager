@@ -3,6 +3,7 @@ import type { GitGraphNode, GitRef, WorktreeAgentActivity } from '@git-manager/g
 import { cn } from '@git-manager/ui'
 import { RefLabel } from './RefLabel'
 import { RefLabelGroup } from './RefLabelGroup'
+import { useTagMenuHandler } from './TagMenuContext'
 import type { ColumnKey, ResolvedColumn } from './columns.config'
 import { getGraphColumnLayout, getMarkerPlacement } from './graphColumnSizing'
 import {
@@ -303,10 +304,31 @@ export const GraphRow = memo(function GraphRow({
   const startX = refsWidth + 8 + marker.x
   const endX = refsWidth + graphWidth
 
+  // A right-click that lands on a tag badge opens the tag menu instead of the commit menu. Detection
+  // happens here, on the row, rather than on the badge itself: one handler covers the inline badge
+  // AND the badges revealed in RefLabelGroup's portaled hover panel (portal events bubble through
+  // the React tree, but `closest` on the DOM target still finds the badge's own marker). The badge
+  // marks itself with `data-ref-tag="<shortName>"`; we resolve that back to the ref on the row.
+  const onTagMenu = useTagMenuHandler()
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (onTagMenu) {
+      const tagEl = (e.target as HTMLElement).closest?.('[data-ref-tag]')
+      const tagName = tagEl?.getAttribute('data-ref-tag')
+      if (tagName) {
+        const tagRef = node.refs.find((r) => r.type === 'tag' && r.shortName === tagName)
+        if (tagRef) {
+          onTagMenu(e, tagRef)
+          return
+        }
+      }
+    }
+    onContextMenu(e)
+  }
+
   return (
     <div
       onClick={onSelect}
-      onContextMenu={onContextMenu}
+      onContextMenu={handleContextMenu}
       className={cn(
         'group relative flex cursor-pointer select-none items-center border-b border-transparent transition-colors hover:z-graph-row-hover',
         rowHeight === 32 ? 'my-[4px] h-[24px]' : 'my-[4px] h-[32px]'
@@ -410,7 +432,6 @@ export const GraphRow = memo(function GraphRow({
           )}
         </div>
       ))}
-
     </div>
   )
 })

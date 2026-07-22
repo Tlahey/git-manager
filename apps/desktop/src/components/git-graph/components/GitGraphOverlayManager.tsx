@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { CreateBranchHereDialog } from '../CreateBranchHereDialog'
+import { RenameBranchDialog } from '../RenameBranchDialog'
 import { ResetDialog } from '../../rollback/ResetDialog'
 import { RevertDialog } from '../../rollback/RevertDialog'
 import { TagDialog } from '../TagDialog'
@@ -76,6 +77,17 @@ export function GitGraphOverlayManager({
           repoPath={repoPath}
           oid={activeNode.commit.oid}
           shortOid={activeNode.commit.shortOid}
+          open
+          onClose={closeDialog}
+        />
+      )
+    case 'renameBranch':
+      return (
+        // Keyed on the branch so reopening for another branch resets the prefilled input.
+        <RenameBranchDialog
+          key={activeDialog.branch}
+          repoPath={repoPath}
+          branch={activeDialog.branch}
           open
           onClose={closeDialog}
         />

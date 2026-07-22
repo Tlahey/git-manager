@@ -21,7 +21,7 @@ import {
 
 export type ResetMode = 'soft' | 'mixed' | 'hard'
 
-/** Clé i18n (namespace 'git') + params, résolue via t() au moment de l'affichage du tooltip. */
+/** i18n key (namespace 'git') + params, resolved via t() when the tooltip is displayed. */
 export interface UndoLabel {
   key: string
   params?: Record<string, string | number>
@@ -31,7 +31,7 @@ interface ActionBase {
   id: string
   label: UndoLabel
   timestamp: number
-  /** Refs cachées (refs/git-manager/undo/<name>) à libérer quand l'entrée sort de l'historique. */
+  /** Hidden refs (refs/git-manager/undo/<name>) to release when the entry leaves the history. */
   pinnedRefs: string[]
 }
 
@@ -65,13 +65,14 @@ export type UndoAction = ActionBase &
     | { type: 'revert'; previousOid: string; newOid: string }
     | { type: 'createBranch'; name: string; targetOid: string }
     | { type: 'createTag'; name: string; targetOid: string; message?: string }
+    | { type: 'deleteTag'; name: string; targetOid: string; message?: string }
   )
 
 function snapshotOids(snapshot: WorktreeSnapshot | null): string[] {
   return snapshot ? [snapshot.indexTreeOid, snapshot.workdirTreeOid] : []
 }
 
-/** OID Git référencés par une entrée — utilisé pour la vérification de validité au démarrage. */
+/** Git OIDs referenced by an entry — used for the validity check at startup. */
 export function collectActionOids(action: UndoAction): string[] {
   switch (action.type) {
     case 'commit':
@@ -101,6 +102,7 @@ export function collectActionOids(action: UndoAction): string[] {
       return [action.previousOid, action.newOid]
     case 'createBranch':
     case 'createTag':
+    case 'deleteTag':
       return [action.targetOid]
   }
 }
@@ -161,6 +163,9 @@ export async function executeUndo(path: string, action: UndoAction): Promise<voi
     case 'createTag':
       await deleteTag(path, action.name)
       return
+    case 'deleteTag':
+      await createTag(path, action.name, action.targetOid, action.message)
+      return
   }
 }
 
@@ -207,6 +212,9 @@ export async function executeRedo(path: string, action: UndoAction): Promise<voi
       return
     case 'createTag':
       await createTag(path, action.name, action.targetOid, action.message)
+      return
+    case 'deleteTag':
+      await deleteTag(path, action.name)
       return
   }
 }

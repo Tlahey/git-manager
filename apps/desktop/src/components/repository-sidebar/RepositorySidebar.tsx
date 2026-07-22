@@ -17,7 +17,8 @@ import { useRepoUIStore } from '../../stores/repoUI.store'
 import { BlameHistoryPanel } from './BlameHistoryPanel'
 import { useQueryClient } from '@tanstack/react-query'
 import { mutate } from 'swr'
-import { showStashNativeContextMenu } from '../../api/nativeMenu.api'
+import { showNativeMenu } from '../../api/nativeMenu.api'
+import { buildStashMenuSpec } from '../../lib/graphContextMenus'
 import { apiStashApply, apiStashPop, apiStashDrop } from '../../api/git.api'
 import type { GitStash } from '@git-manager/git-types'
 import { useWorktreeWipStatuses } from '../../hooks/useWorktreeWipStatuses'
@@ -93,47 +94,32 @@ export function RepositorySidebar({
   const [createBranchOpen, setCreateBranchOpen] = useState(false)
 
   const handleStashContextMenu = (_e: React.MouseEvent, stash: GitStash) => {
-    const isHidden = hiddenStashes.includes(stash.commitOid)
-    showStashNativeContextMenu({
-      isHidden,
-      onApply: async () => {
-        try {
-          await apiStashApply(repoPath, stash.index)
-          mutate(['git-stashes', repoPath])
-          queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-          queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-        } catch (err) {
-          alert(String(err))
-        }
-      },
-      onPop: async () => {
-        try {
-          await apiStashPop(repoPath, stash.index)
-          mutate(['git-stashes', repoPath])
-          queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-          queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-        } catch (err) {
-          alert(String(err))
-        }
-      },
-      onDelete: async () => {
-        try {
-          await apiStashDrop(repoPath, stash.index)
-          mutate(['git-stashes', repoPath])
-          queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-          queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-        } catch (err) {
-          alert(String(err))
-        }
-      },
-      onEditMessage: () => {
-        onSelectBranch(stash.commitOid)
-        setEditingOid(stash.commitOid)
-      },
-      onToggleVisibility: () => {
-        toggleStashVisibility(repoPath, stash.commitOid)
-      },
-    }).catch(console.error)
+    const runStash = async (fn: () => Promise<unknown>) => {
+      try {
+        await fn()
+        mutate(['git-stashes', repoPath])
+        queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+        queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+      } catch (err) {
+        alert(String(err))
+      }
+    }
+    void showNativeMenu(
+      buildStashMenuSpec(
+        { isHidden: hiddenStashes.includes(stash.commitOid) },
+        {
+          onApply: () => void runStash(() => apiStashApply(repoPath, stash.index)),
+          onPop: () => void runStash(() => apiStashPop(repoPath, stash.index)),
+          onDelete: () => void runStash(() => apiStashDrop(repoPath, stash.index)),
+          onEditMessage: () => {
+            onSelectBranch(stash.commitOid)
+            setEditingOid(stash.commitOid)
+          },
+          onToggleVisibility: () => toggleStashVisibility(repoPath, stash.commitOid),
+        },
+        t
+      )
+    ).catch(console.error)
   }
 
   const setPin = usePinnedBranchesStore((s) => s.setPin)

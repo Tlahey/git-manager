@@ -36,15 +36,15 @@ use commands::log::{
     compare_commit_to_workdir, get_commit_diff, get_commit_file, get_commits_merged_diff, get_log,
 };
 use commands::patch::{
-    apply_patch, commit_dependency_patch, create_patch, create_working_patch,
+    apply_patch, commit_dependency_patch, create_commits_patch, create_patch, create_working_patch,
     list_patchable_dependencies, prepare_dependency_patch, preview_working_patch, read_patch_file,
 };
 use commands::rebase::{
     abort_rebase, continue_rebase, get_rebase_state, rebase_onto_commit, skip_rebase,
 };
 use commands::remote::{
-    add_remote, fetch_remote, get_commit_web_url, get_remotes, pull_branch, push_branch,
-    push_branch_to, remove_remote,
+    add_remote, delete_remote_tag, fetch_remote, get_branch_web_url, get_commit_web_url,
+    get_remotes, get_tag_web_url, pull_branch, push_branch, push_branch_to, remove_remote,
 };
 use commands::repo::{
     clone_repo, get_repo_readme, get_repo_status, get_repo_summary, get_terminal_commands,
@@ -218,6 +218,9 @@ pub fn run() {
             add_remote,
             remove_remote,
             get_commit_web_url,
+            get_tag_web_url,
+            get_branch_web_url,
+            delete_remote_tag,
             // Rollback
             revert_commit,
             reset_to_commit,
@@ -273,6 +276,7 @@ pub fn run() {
             get_worktree_agent_activity,
             // Patch
             create_patch,
+            create_commits_patch,
             create_working_patch,
             preview_working_patch,
             read_patch_file,

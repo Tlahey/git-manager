@@ -9,14 +9,16 @@ interface RefLabelGroupProps {
 }
 
 /**
- * Affiche un seul ref par défaut. S'il y en a plusieurs, un badge « +N » est
- * ajouté ; au survol, l'ensemble des refs est révélé dans un panneau flottant
- * (portal) positionné juste en dessous.
+ * Shows a single ref by default. When more share the commit, a "+N" badge is added and hovering
+ * anywhere on the group reveals EVERY ref, stacked vertically in a floating panel (portal)
+ * anchored over the group. The panel stays open while the pointer is inside the group or the
+ * panel itself, so each revealed badge behaves exactly like the inline one — right-clickable
+ * (tag context menu, via React-tree event bubbling back to the row) and drag-and-droppable.
  */
 export function RefLabelGroup({ refs, color }: RefLabelGroupProps) {
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState({ top: 0, left: 0 })
-  const badgeRef = useRef<HTMLSpanElement>(null)
+  const groupRef = useRef<HTMLDivElement>(null)
 
   if (refs.length === 0) return null
 
@@ -71,10 +73,12 @@ export function RefLabelGroup({ refs, color }: RefLabelGroupProps) {
   const extra = sortedRefs.length - 1
 
   function show() {
-    const el = badgeRef.current
+    const el = groupRef.current
     if (!el) return
     const r = el.getBoundingClientRect()
-    setPos({ top: r.bottom, left: r.left })
+    // Anchor the panel so its first stacked badge sits exactly over the inline badge — the offset
+    // compensates the panel's own padding (p-1.5 = 6px).
+    setPos({ top: r.top - 6, left: r.left - 6 })
     setOpen(true)
   }
   function hide() {
@@ -82,18 +86,21 @@ export function RefLabelGroup({ refs, color }: RefLabelGroupProps) {
   }
 
   return (
-    // `max-w-full` borne le groupe à la largeur de la colonne « refs » : la ligne
-    // de connexion voisine porte une marge droite négative qui rendrait sinon
-    // l'espace libre flex positif, empêchant le groupe de rétrécir — les badges
-    // déborderaient alors par-dessus la colonne graphe au redimensionnement.
-    <div className="flex min-w-0 max-w-full items-center gap-1 overflow-hidden">
+    // `max-w-full` bounds the group to the "refs" column width: the neighbouring connector line
+    // carries a negative right margin that would otherwise make the free flex space positive,
+    // preventing the group from shrinking — the badges would then overflow across the graph
+    // column when resizing.
+    <div
+      ref={groupRef}
+      data-testid="ref-label-group"
+      className="flex min-w-0 max-w-full items-center gap-1 overflow-hidden"
+      onMouseEnter={extra > 0 ? show : undefined}
+      onMouseLeave={extra > 0 ? hide : undefined}
+    >
       <RefLabel gitRef={first} color={color} />
 
       {extra > 0 && (
         <span
-          ref={badgeRef}
-          onMouseEnter={show}
-          onMouseLeave={hide}
           data-testid="ref-label-group-more-badge"
           className="inline-flex shrink-0 cursor-default items-center rounded border border-border bg-muted px-1.5 py-0 text-[11px] font-medium leading-5 text-muted-foreground hover:bg-accent hover:text-foreground"
         >
@@ -108,11 +115,14 @@ export function RefLabelGroup({ refs, color }: RefLabelGroupProps) {
             style={{ position: 'fixed', top: pos.top, left: pos.left }}
             onMouseEnter={show}
             onMouseLeave={hide}
+            // A drag started from a stacked badge suppresses mouse events until it ends — close
+            // the panel once the drop finished so it doesn't linger open.
+            onDragEnd={hide}
             data-testid="ref-label-group-more-popover"
-            className="z-popover flex max-w-xs flex-col items-start gap-1 rounded-md border border-border bg-popover p-1.5 shadow-lg"
+            className="z-popover flex max-w-xs flex-col items-stretch gap-1 rounded-md border border-border bg-popover p-1.5 shadow-lg"
           >
-            {sortedRefs.slice(1).map((ref, i) => (
-              <RefLabel key={i} gitRef={ref} color={color} />
+            {sortedRefs.map((ref, i) => (
+              <RefLabel key={i} gitRef={ref} color={color} expand />
             ))}
           </div>,
           document.body

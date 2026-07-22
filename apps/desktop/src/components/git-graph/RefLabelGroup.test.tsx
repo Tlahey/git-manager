@@ -52,8 +52,8 @@ describe('RefLabelGroup — sorting priority', () => {
     expect(screen.queryByText('main')).not.toBeInTheDocument()
     expect(screen.queryByText('HEAD')).not.toBeInTheDocument()
 
-    // main is revealed on hover (in the overflow); HEAD never appears.
-    fireEvent.mouseEnter(screen.getByText('+2'))
+    // main is revealed on hovering the group (in the overflow panel); HEAD never appears.
+    fireEvent.mouseEnter(screen.getByTestId('ref-label-group'))
     expect(screen.getByText('main')).toBeInTheDocument()
     expect(screen.getByText('v1.0')).toBeInTheDocument()
     expect(screen.queryByText('HEAD')).not.toBeInTheDocument()
@@ -71,8 +71,8 @@ describe('RefLabelGroup — sorting priority', () => {
     expect(screen.queryByText('main')).not.toBeInTheDocument() // origin/main is in the overflow
     expect(screen.queryByText('HEAD')).not.toBeInTheDocument()
 
-    // origin/main (rendered as "main") shows on hover; HEAD never appears.
-    fireEvent.mouseEnter(screen.getByText('+1'))
+    // origin/main (rendered as "main") shows on hovering the group; HEAD never appears.
+    fireEvent.mouseEnter(screen.getByTestId('ref-label-group'))
     expect(screen.getByText('main')).toBeInTheDocument()
     expect(screen.queryByText('HEAD')).not.toBeInTheDocument()
   })
@@ -89,7 +89,7 @@ describe('RefLabelGroup — sorting priority', () => {
     expect(screen.getByText('claude/menu-worktree')).toBeInTheDocument()
     expect(screen.getByText('+1')).toBeInTheDocument()
 
-    fireEvent.mouseEnter(screen.getByText('+1'))
+    fireEvent.mouseEnter(screen.getByTestId('ref-label-group'))
     expect(screen.getAllByText('main')).toHaveLength(1)
     expect(screen.queryByText('HEAD')).not.toBeInTheDocument()
   })
@@ -130,7 +130,7 @@ describe('RefLabelGroup — sorting priority', () => {
 })
 
 describe('RefLabelGroup — hover panel', () => {
-  it('reveals the remaining refs on hover and hides them again on mouse leave', () => {
+  it('reveals every ref (stacked, primary included) on group hover and hides them on leave', () => {
     const refs = [
       ref({ type: 'branch', shortName: 'develop' }),
       ref({ type: 'branch', shortName: 'feature-a' }),
@@ -139,20 +139,32 @@ describe('RefLabelGroup — hover panel', () => {
     render(<RefLabelGroup refs={refs} />)
     expect(screen.queryByText('feature-a')).not.toBeInTheDocument()
 
-    fireEvent.mouseEnter(screen.getByText('+2'))
+    // Hovering anywhere on the group (not just the "+N" badge) opens the panel.
+    fireEvent.mouseEnter(screen.getByTestId('ref-label-group'))
     expect(screen.getByText('feature-a')).toBeInTheDocument()
     expect(screen.getByText('v2.0')).toBeInTheDocument()
+    // The primary ref is repeated inside the panel so the stack lists the commit's full set.
+    expect(screen.getAllByText('develop')).toHaveLength(2)
 
-    fireEvent.mouseLeave(screen.getByText('+2'))
+    fireEvent.mouseLeave(screen.getByTestId('ref-label-group'))
     expect(screen.queryByText('feature-a')).not.toBeInTheDocument()
   })
 
   it('keeps the panel open while hovering the panel itself', () => {
     const refs = [ref({ shortName: 'develop' }), ref({ shortName: 'feature-a' })]
     render(<RefLabelGroup refs={refs} />)
-    fireEvent.mouseEnter(screen.getByText('+1'))
-    const panelText = screen.getByText('feature-a')
-    fireEvent.mouseEnter(panelText.closest('div')!)
+    fireEvent.mouseEnter(screen.getByTestId('ref-label-group'))
+    const panel = screen.getByTestId('ref-label-group-more-popover')
+    fireEvent.mouseEnter(panel)
     expect(screen.getByText('feature-a')).toBeInTheDocument()
+  })
+
+  it('closes the panel when a drag started from a stacked badge ends', () => {
+    const refs = [ref({ shortName: 'develop' }), ref({ shortName: 'feature-a' })]
+    render(<RefLabelGroup refs={refs} />)
+    fireEvent.mouseEnter(screen.getByTestId('ref-label-group'))
+    const panel = screen.getByTestId('ref-label-group-more-popover')
+    fireEvent.dragEnd(panel)
+    expect(screen.queryByTestId('ref-label-group-more-popover')).not.toBeInTheDocument()
   })
 })

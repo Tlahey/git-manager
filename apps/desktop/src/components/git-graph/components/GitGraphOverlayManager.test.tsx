@@ -56,6 +56,14 @@ vi.mock('../CompareToWorkdirDialog', () => ({
   ),
 }))
 
+vi.mock('../RenameBranchDialog', () => ({
+  RenameBranchDialog: (p: { branch: string; onClose: () => void }) => (
+    <div data-testid="rename-branch-dialog" data-branch={p.branch}>
+      <button onClick={p.onClose}>close-rename</button>
+    </div>
+  ),
+}))
+
 import { GitGraphOverlayManager } from './GitGraphOverlayManager'
 
 function node(oid: string, overrides: Partial<GitGraphNode['commit']> = {}): GitGraphNode {
@@ -131,6 +139,11 @@ describe('GitGraphOverlayManager — routing', () => {
     const dialog = screen.getByTestId('branch-dialog')
     expect(dialog.dataset.oid).toBe('aaa1111')
     expect(dialog.dataset.shortOid).toBe('aaa1111')
+  })
+
+  it('opens the rename-branch dialog with the branch carried by the action', () => {
+    renderManager({ kind: 'renameBranch', branch: 'feat' })
+    expect(screen.getByTestId('rename-branch-dialog').dataset.branch).toBe('feat')
   })
 
   it('opens the revert dialog with the primary node oid/subject', () => {

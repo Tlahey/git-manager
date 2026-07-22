@@ -25,6 +25,7 @@ const STEP_ICONS: Record<TimelineStepType, ComponentType<{ className?: string }>
   createBranch: GitBranch,
   deleteBranch: GitBranch,
   createTag: Tag,
+  deleteTag: Tag,
   removeRemote: Cloud,
   stashPush: Archive,
   stashPop: ArchiveRestore,

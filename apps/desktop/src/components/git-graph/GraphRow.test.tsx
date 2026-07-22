@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { GitGraphNode } from '@git-manager/git-types'
 import type { ResolvedColumn } from './columns.config'
 import { GraphRow, GraphAvatarTooltip } from './GraphRow'
+import { TagMenuProvider } from './TagMenuContext'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
@@ -22,7 +23,24 @@ const { lastRefLabelGroupProps } = vi.hoisted(() => ({
 vi.mock('./RefLabelGroup', () => ({
   RefLabelGroup: (props: Record<string, unknown>) => {
     lastRefLabelGroupProps.current = props
-    return <div data-testid="ref-label-group" />
+    // Mirror the real badge's `data-ref-tag` marker for tag refs so the row's context-menu detection
+    // can be exercised (the real RefLabel is otherwise not rendered here).
+    const refs = (props.refs as { type: string; shortName: string }[]) ?? []
+    return (
+      <div data-testid="ref-label-group">
+        {refs
+          .filter((r) => r.type === 'tag')
+          .map((r) => (
+            <span
+              key={r.shortName}
+              data-ref-tag={r.shortName}
+              data-testid={`tag-badge-${r.shortName}`}
+            >
+              {r.shortName}
+            </span>
+          ))}
+      </div>
+    )
   },
 }))
 
@@ -112,6 +130,56 @@ describe('GraphRow — row interaction', () => {
     fireEvent.contextMenu(row)
     expect(onSelect).toHaveBeenCalledOnce()
     expect(onContextMenu).toHaveBeenCalledOnce()
+  })
+})
+
+describe('GraphRow — tag badge right-click routing', () => {
+  const tagRef = {
+    name: 'refs/tags/v1.0.0',
+    shortName: 'v1.0.0',
+    type: 'tag' as const,
+    commitOid: 'abc1234567890',
+  }
+
+  it('routes a right-click on a tag badge to the tag menu, not the commit menu', () => {
+    const onContextMenu = vi.fn()
+    const onTagMenu = vi.fn()
+    render(
+      <TagMenuProvider handler={onTagMenu}>
+        <GraphRow
+          node={node({ refs: [tagRef] })}
+          columns={[col('refs')]}
+          isSelected={false}
+          isPrimary={false}
+          onSelect={vi.fn()}
+          onContextMenu={onContextMenu}
+        />
+      </TagMenuProvider>
+    )
+    fireEvent.contextMenu(screen.getByTestId('tag-badge-v1.0.0'))
+    expect(onTagMenu).toHaveBeenCalledOnce()
+    expect(onTagMenu.mock.calls[0][1]).toMatchObject({ type: 'tag', shortName: 'v1.0.0' })
+    expect(onContextMenu).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the commit menu for a right-click elsewhere on the row', () => {
+    const onContextMenu = vi.fn()
+    const onTagMenu = vi.fn()
+    const { container } = render(
+      <TagMenuProvider handler={onTagMenu}>
+        <GraphRow
+          node={node({ refs: [tagRef] })}
+          columns={[col('message')]}
+          isSelected={false}
+          isPrimary={false}
+          onSelect={vi.fn()}
+          onContextMenu={onContextMenu}
+        />
+      </TagMenuProvider>
+    )
+    fireEvent.contextMenu(container.firstElementChild!)
+    expect(onContextMenu).toHaveBeenCalledOnce()
+    expect(onTagMenu).not.toHaveBeenCalled()
   })
 })
 
@@ -293,7 +361,14 @@ describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
       columns: [col('message')],
       node: node({ commit: { ...node().commit, oid: 'WIP:/repo-worktree' } }),
       worktreeWipStatuses: [
-        { path: '/repo-worktree', branch: 'feature-x', totalChanges: 4, added: 1, modified: 2, deleted: 1 },
+        {
+          path: '/repo-worktree',
+          branch: 'feature-x',
+          totalChanges: 4,
+          added: 1,
+          modified: 2,
+          deleted: 1,
+        },
       ],
       isSelected: false,
       isPrimary: false,
@@ -305,7 +380,9 @@ describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
     // The worktree's branch is now surfaced as a tag (worktree icon + name).
     expect(screen.getByText('feature-x')).toBeInTheDocument()
     expect(screen.getByText('feature-x').closest('[title]')).toHaveAttribute('title', 'feature-x')
-    expect(screen.queryByRole('button', { name: 'gitTree.wip.openWorktree' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'gitTree.wip.openWorktree' })
+    ).not.toBeInTheDocument()
   })
 
   it('shows the Open Worktree button once the row is selected, and calls onOpenWorktree with the worktree path', async () => {
@@ -315,7 +392,14 @@ describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
       columns: [col('message')],
       node: node({ commit: { ...node().commit, oid: 'WIP:/repo-worktree' } }),
       worktreeWipStatuses: [
-        { path: '/repo-worktree', branch: 'feature-x', totalChanges: 4, added: 1, modified: 2, deleted: 1 },
+        {
+          path: '/repo-worktree',
+          branch: 'feature-x',
+          totalChanges: 4,
+          added: 1,
+          modified: 2,
+          deleted: 1,
+        },
       ],
       onOpenWorktree,
       isSelected: true,
@@ -330,7 +414,14 @@ describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
       columns: [col('message')],
       node: node({ commit: { ...node().commit, oid: 'WIP:/repo-worktree' } }),
       worktreeWipStatuses: [
-        { path: '/repo-worktree', branch: 'feature-x', totalChanges: 4, added: 1, modified: 2, deleted: 1 },
+        {
+          path: '/repo-worktree',
+          branch: 'feature-x',
+          totalChanges: 4,
+          added: 1,
+          modified: 2,
+          deleted: 1,
+        },
       ],
       isPrimary: true,
     })
@@ -352,7 +443,14 @@ describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
       columns: [col('message')],
       node: node({ commit: { ...node().commit, oid: 'WIP:/repo-worktree' } }),
       worktreeWipStatuses: [
-        { path: '/repo-worktree', branch: 'feature-x', totalChanges: 4, added: 1, modified: 2, deleted: 1 },
+        {
+          path: '/repo-worktree',
+          branch: 'feature-x',
+          totalChanges: 4,
+          added: 1,
+          modified: 2,
+          deleted: 1,
+        },
       ],
     })
     expect(screen.queryByPlaceholderText('// WIP')).not.toBeInTheDocument()
@@ -365,7 +463,14 @@ describe('GraphRow — message column: worktree WIP (WIP:<path>)', () => {
       columns: [col('message')],
       node: node({ commit: { ...node().commit, oid: 'WIP:/repo-worktree' } }),
       worktreeWipStatuses: [
-        { path: '/repo-worktree', branch: 'feature-x', totalChanges: 4, added: 1, modified: 2, deleted: 1 },
+        {
+          path: '/repo-worktree',
+          branch: 'feature-x',
+          totalChanges: 4,
+          added: 1,
+          modified: 2,
+          deleted: 1,
+        },
       ],
       onSelect,
       isSelected: true,

@@ -3,24 +3,20 @@ import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { SidebarRow, SidebarSection } from './types'
+import { normalizeMenuSpec, type MenuSpecNode } from '../../lib/nativeMenuSpec'
 
-const {
-  useSidebarResize,
-  useSidebarRows,
-  useWorktreeWipStatuses,
-  showStashNativeContextMenu,
-  swrMutate,
-} = vi.hoisted(() => ({
-  useSidebarResize: vi.fn(),
-  useSidebarRows: vi.fn(),
-  useWorktreeWipStatuses: vi.fn(),
-  showStashNativeContextMenu: vi.fn(),
-  swrMutate: vi.fn(),
-}))
+const { useSidebarResize, useSidebarRows, useWorktreeWipStatuses, showNativeMenu, swrMutate } =
+  vi.hoisted(() => ({
+    useSidebarResize: vi.fn(),
+    useSidebarRows: vi.fn(),
+    useWorktreeWipStatuses: vi.fn(),
+    showNativeMenu: vi.fn().mockResolvedValue(undefined),
+    swrMutate: vi.fn(),
+  }))
 vi.mock('../../hooks/useSidebarResize', () => ({ useSidebarResize, RAIL_WIDTH: 48 }))
 vi.mock('../../hooks/useSidebarRows', () => ({ useSidebarRows }))
 vi.mock('../../hooks/useWorktreeWipStatuses', () => ({ useWorktreeWipStatuses }))
-vi.mock('../../api/nativeMenu.api', () => ({ showStashNativeContextMenu }))
+vi.mock('../../api/nativeMenu.api', () => ({ showNativeMenu }))
 vi.mock('../../api/git.api', () => ({
   apiStashApply: vi.fn(),
   apiStashPop: vi.fn(),
@@ -697,85 +693,74 @@ describe('RepositorySidebar — stash context menu', () => {
     }
   }
 
+  // The stash menu is now a declarative spec handed to showNativeMenu; address items by their real
+  // English label (i18n runs live) and fire the item's action.
+  type ItemNode = Extract<MenuSpecNode, { kind: 'item' }>
+  function stashItem(prefix: string): ItemNode {
+    const spec = normalizeMenuSpec(showNativeMenu.mock.calls.at(-1)![0])
+    const found = spec.find((n): n is ItemNode => n.kind === 'item' && n.text.startsWith(prefix))
+    expect(found, `stash item "${prefix}"`).toBeDefined()
+    return found as ItemNode
+  }
+
   function triggerStashContextMenu() {
     useSidebarRows.mockReturnValue({ sections: [section({ rows: [row({ id: 'r1' })] })] })
-    renderSidebar()
+    const view = renderSidebar()
     ;(
-      lastRowViewCalls.current[0].onStashContextMenu as (
+      lastRowViewCalls.current.at(-1)!.onStashContextMenu as (
         e: unknown,
         s: ReturnType<typeof stash>
       ) => void
-    )({}, stash())
+    )({ preventDefault: () => {} }, stash())
+    return view
   }
 
-  it('opens the native menu with isHidden reflecting the repoData store', () => {
+  it('labels the visibility toggle "Show" when the stash is hidden', () => {
     useRepoDataStore.setState({ hiddenStashes: { '/repo': ['stash-oid'] } })
-    showStashNativeContextMenu.mockResolvedValue(undefined)
     triggerStashContextMenu()
-    expect(showStashNativeContextMenu).toHaveBeenCalledWith(
-      expect.objectContaining({ isHidden: true })
-    )
+    expect(() => stashItem('Show the stash')).not.toThrow()
   })
 
-  it('applies the stash, refreshes stashes/log/status, on "apply"', async () => {
+  it('applies the stash and refreshes stashes/log/status', async () => {
     mockedStashApply.mockResolvedValue(undefined)
-    showStashNativeContextMenu.mockResolvedValue(undefined)
     triggerStashContextMenu()
-    const args = showStashNativeContextMenu.mock.calls[0][0]
-    await act(async () => args.onApply())
+    await act(async () => stashItem('Apply stash').action!())
     expect(mockedStashApply).toHaveBeenCalledWith('/repo', 0)
     expect(swrMutate).toHaveBeenCalledWith(['git-stashes', '/repo'])
   })
 
-  it('pops the stash on "pop"', async () => {
+  it('pops the stash', async () => {
     mockedStashPop.mockResolvedValue(undefined)
-    showStashNativeContextMenu.mockResolvedValue(undefined)
     triggerStashContextMenu()
-    const args = showStashNativeContextMenu.mock.calls[0][0]
-    await act(async () => args.onPop())
+    await act(async () => stashItem('Pop stash').action!())
     expect(mockedStashPop).toHaveBeenCalledWith('/repo', 0)
   })
 
-  it('drops the stash on "delete"', async () => {
+  it('drops the stash', async () => {
     mockedStashDrop.mockResolvedValue(undefined)
-    showStashNativeContextMenu.mockResolvedValue(undefined)
     triggerStashContextMenu()
-    const args = showStashNativeContextMenu.mock.calls[0][0]
-    await act(async () => args.onDelete())
+    await act(async () => stashItem('Delete stash').action!())
     expect(mockedStashDrop).toHaveBeenCalledWith('/repo', 0)
   })
 
   it('alerts when the apply/pop/delete action fails', async () => {
     vi.spyOn(window, 'alert').mockImplementation(() => {})
     mockedStashApply.mockRejectedValue(new Error('apply failed'))
-    showStashNativeContextMenu.mockResolvedValue(undefined)
     triggerStashContextMenu()
-    const args = showStashNativeContextMenu.mock.calls[0][0]
-    await act(async () => args.onApply())
+    await act(async () => stashItem('Apply stash').action!())
     expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('apply failed'))
   })
 
   it('routes to edit-message: selects the stash commit and sets editingOid', () => {
-    showStashNativeContextMenu.mockResolvedValue(undefined)
-    useSidebarRows.mockReturnValue({ sections: [section({ rows: [row({ id: 'r1' })] })] })
-    const { onSelectBranch } = renderSidebar()
-    ;(
-      lastRowViewCalls.current.at(-1)!.onStashContextMenu as (
-        e: unknown,
-        s: ReturnType<typeof stash>
-      ) => void
-    )({}, stash())
-    const args = showStashNativeContextMenu.mock.calls[0][0]
-    act(() => args.onEditMessage())
+    const { onSelectBranch } = triggerStashContextMenu()
+    act(() => stashItem('Edit stash message').action!())
     expect(onSelectBranch).toHaveBeenCalledWith('stash-oid')
     expect(useRepoUIStore.getState().editingOid).toBe('stash-oid')
   })
 
   it('toggles stash visibility through the repoData store', () => {
-    showStashNativeContextMenu.mockResolvedValue(undefined)
     triggerStashContextMenu()
-    const args = showStashNativeContextMenu.mock.calls[0][0]
-    act(() => args.onToggleVisibility())
+    act(() => stashItem('Hide the stash').action!())
     expect(useRepoDataStore.getState().hiddenStashes['/repo']).toContain('stash-oid')
   })
 })
