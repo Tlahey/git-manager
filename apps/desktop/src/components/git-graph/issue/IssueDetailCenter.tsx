@@ -1,9 +1,10 @@
 import { ChevronLeft, CircleDot, CircleCheck } from 'lucide-react'
 import { Spinner } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
-import { Markdown } from '../../Markdown'
 import { PrComments } from '../pr/PrComments'
 import { PrCommentBox } from '../pr/PrCommentBox'
+import { IssueTitle } from './IssueTitle'
+import { IssueDescription } from './IssueDescription'
 import { IssueMetaSidebar } from './IssueMetaSidebar'
 import { useIssueDetail } from '../../../hooks/useIssueDetail'
 import type { MockIssue } from '../../../app/pull-requests/types'
@@ -57,12 +58,7 @@ export function IssueDetailCenter({
         <div className="flex flex-1 overflow-hidden">
           <div className="min-w-0 flex-1 overflow-y-auto">
             <div className="border-b border-border px-4 py-3">
-              <h2 className="text-sm font-semibold [overflow-wrap:anywhere]">
-                <span className="text-foreground">{detail.title}</span>{' '}
-                <span className="whitespace-nowrap font-mono text-xs font-normal text-muted-foreground/60">
-                  #{detail.number}
-                </span>
-              </h2>
+              <IssueTitle repoPath={repoPath} issueNumber={issueNumber} title={detail.title} />
               <div className="mt-2 flex items-center gap-2">
                 <span
                   className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
@@ -80,13 +76,11 @@ export function IssueDetailCenter({
               </div>
             </div>
 
-            <div className="border-b border-border px-4 py-3 text-xs">
-              {detail.body ? (
-                <Markdown content={detail.body} />
-              ) : (
-                <p className="italic text-muted-foreground">{t('issue.view.noDescription')}</p>
-              )}
-            </div>
+            <IssueDescription
+              repoPath={repoPath}
+              issueNumber={issueNumber}
+              body={detail.body ?? ''}
+            />
 
             <PrComments repoPath={repoPath} prNumber={issueNumber} />
             <PrCommentBox repoPath={repoPath} prNumber={issueNumber} />

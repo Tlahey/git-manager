@@ -365,6 +365,22 @@ export async function fetchIssueDetail(
   )
 }
 
+/** Patch an issue's editable fields (title, body, and/or open/closed state) via
+ * `PATCH /repos/{o}/{r}/issues/{n}`. Requires the token's `repo` scope. */
+export async function updateIssue(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  patch: { title?: string; body?: string; state?: 'open' | 'closed' },
+  token: string
+): Promise<GhRawIssue> {
+  return ghRequest(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`, {
+    method: 'PATCH',
+    body: patch,
+    token,
+  })
+}
+
 /** Close an issue (`state: 'closed'`) or reopen it (`state: 'open'`). Shares the issues REST resource
  * with labels/assignees; requires the token's `repo` scope. */
 export async function setIssueState(

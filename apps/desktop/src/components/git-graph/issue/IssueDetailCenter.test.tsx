@@ -11,6 +11,14 @@ vi.mock('../pr/PrCommentBox', () => ({
 vi.mock('./IssueMetaSidebar', () => ({
   IssueMetaSidebar: () => <div data-testid="issue-meta-sidebar-stub" />,
 }))
+vi.mock('./IssueTitle', () => ({
+  IssueTitle: ({ title }: { title: string }) => <div data-testid="issue-title-stub">{title}</div>,
+}))
+vi.mock('./IssueDescription', () => ({
+  IssueDescription: ({ body }: { body: string }) => (
+    <div data-testid="issue-description-stub">{body}</div>
+  ),
+}))
 vi.mock('../../../hooks/useIssueDetail', () => ({ useIssueDetail: vi.fn() }))
 
 import { useIssueDetail } from '../../../hooks/useIssueDetail'
@@ -71,12 +79,11 @@ describe('IssueDetailCenter', () => {
     expect(screen.getByText('Loading issue…')).toBeInTheDocument()
   })
 
-  it('renders the title, number, body, state, the comment thread and the metadata sidebar', () => {
+  it('renders the title, body, state, the comment thread and the metadata sidebar', () => {
     mockDetail(raw())
     renderCenter()
-    expect(screen.getByText('A broken thing')).toBeInTheDocument()
-    expect(screen.getByText('#7')).toBeInTheDocument()
-    expect(screen.getByText('Plain body text')).toBeInTheDocument()
+    expect(screen.getByTestId('issue-title-stub')).toHaveTextContent('A broken thing')
+    expect(screen.getByTestId('issue-description-stub')).toHaveTextContent('Plain body text')
     expect(screen.getByText('Open')).toBeInTheDocument()
     expect(screen.getByTestId('pr-comments-stub')).toBeInTheDocument()
     expect(screen.getByTestId('pr-comment-box-stub')).toBeInTheDocument()

@@ -18,6 +18,7 @@ import {
   fetchGitHubReviewRequestedPRs,
   fetchGitHubRepoIssues,
   setIssueState,
+  updateIssue,
   fetchIssueDetail,
   fetchGitHubPRDetails,
   fetchGitHubCommitCiStatus,
@@ -367,6 +368,21 @@ describe('fetchGitHubPRs / fetchGitHubReviewRequestedPRs / fetchGitHubIssues', (
       expect.anything()
     )
     expect(issue.body).toBe('hi')
+  })
+
+  it('updateIssue PATCHes the issue resource with title/body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ number: 7 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await updateIssue('org', 'repo', 7, { title: 'New', body: 'Body' }, 'tok')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.github.com/repos/org/repo/issues/7',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ title: 'New', body: 'Body' }),
+      })
+    )
   })
 
   it('setIssueState PATCHes the issue resource with the new state', async () => {

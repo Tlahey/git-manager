@@ -663,6 +663,7 @@
   "issue.view.closed": "Issue fermée",
   "issue.view.reopened": "Issue rouverte",
   "issue.view.stateFailed": "Impossible de mettre à jour l'issue",
+  "issue.view.editFailed": "Impossible d'enregistrer vos modifications",
   "issue.side.status": "Statut",
   "issue.side.editStatus": "Changer le statut",
   "issue.side.createBranch": "Créer une branche pour cette issue",
