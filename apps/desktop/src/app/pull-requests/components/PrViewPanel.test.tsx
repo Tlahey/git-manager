@@ -51,10 +51,16 @@ describe('PrViewPanel', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 
-  it('hides the files panel when the shared toggle is off', () => {
+  it('exposes a resize handle for the files panel, matching the repo graph view', () => {
+    render(<PrViewPanel pr={pr()} onClose={vi.fn()} />)
+    expect(screen.getByTestId('launchpad-pr-files-resize')).toBeInTheDocument()
+  })
+
+  it('hides the files panel and its resize handle when the shared toggle is off', () => {
     useRepoUIStore.setState({ prFilesVisible: false })
     render(<PrViewPanel pr={pr()} onClose={vi.fn()} />)
     expect(screen.queryByTestId('pr-files-panel')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('launchpad-pr-files-resize')).not.toBeInTheDocument()
   })
 
   it('resets any stale file selection so the PR opens on its conversation', () => {
