@@ -1,4 +1,33 @@
-import type { CiStatus, CiDetail } from './types'
+import type { CiStatus, CiDetail, MockIssue } from './types'
+
+/**
+ * Whether an issue is "mine" for the signed-in user — authored by me or assigned to me. Used to
+ * default the Issues tab to my own issues while still fetching every issue in the added repos.
+ * Always `false` without a known user (e.g. signed out / demo mode), so no filtering is implied.
+ */
+export function isMyIssue(issue: MockIssue, username: string | null): boolean {
+  if (!username) return false
+  return issue.author === username || issue.assignees.some((a) => a.login === username)
+}
+
+/** Branch name suggested when creating a local branch from an issue, e.g. `312-tab-close-button`.
+ * The title is slugified and capped so the ref stays short; falls back to just the number. */
+export function issueBranchName(issue: Pick<MockIssue, 'number' | 'title'>): string {
+  const slug = issue.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40)
+    .replace(/-+$/g, '')
+  return slug ? `${issue.number}-${slug}` : `${issue.number}`
+}
+
+/** Whether a local branch name references the given issue number as a standalone token — so branch
+ * `312-fix` matches issue 312 but not issue 31 or 3123. Used to show a linked-branch tag on the row
+ * instead of the "Create a branch" button. */
+export function branchMatchesIssue(branchName: string, issueNumber: number): boolean {
+  return new RegExp(`(^|[^0-9])${issueNumber}([^0-9]|$)`).test(branchName)
+}
 
 export async function openUrl(url: string) {
   try {

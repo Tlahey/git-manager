@@ -6,7 +6,6 @@ import type { ReactNode } from 'react'
 vi.mock('../api/github.api', () => ({
   fetchGitHubPRs: vi.fn(),
   fetchGitHubReviewRequestedPRs: vi.fn(),
-  fetchGitHubIssues: vi.fn(),
   fetchGitHubPRDetails: vi.fn(),
   fetchGitHubCommitCiStatus: vi.fn(),
   fetchGitHubContributions: vi.fn(),
@@ -15,7 +14,6 @@ vi.mock('../api/github.api', () => ({
 import {
   fetchGitHubPRs,
   fetchGitHubReviewRequestedPRs,
-  fetchGitHubIssues,
   fetchGitHubPRDetails,
   fetchGitHubCommitCiStatus,
   fetchGitHubContributions,
@@ -23,7 +21,6 @@ import {
 import { useSettingsStore } from '../stores/settings.store'
 import { useNotificationStore } from '../stores/notification.store'
 import { useGitHubData } from './useGitHubData'
-import { MOCK_ISSUES } from '../app/pull-requests/mockData'
 import type { MockPR } from '../app/pull-requests/types'
 
 const mocked = {
@@ -31,7 +28,6 @@ const mocked = {
   fetchGitHubReviewRequestedPRs: fetchGitHubReviewRequestedPRs as unknown as ReturnType<
     typeof vi.fn
   >,
-  fetchGitHubIssues: fetchGitHubIssues as unknown as ReturnType<typeof vi.fn>,
   fetchGitHubPRDetails: fetchGitHubPRDetails as unknown as ReturnType<typeof vi.fn>,
   fetchGitHubCommitCiStatus: fetchGitHubCommitCiStatus as unknown as ReturnType<typeof vi.fn>,
   fetchGitHubContributions: fetchGitHubContributions as unknown as ReturnType<typeof vi.fn>,
@@ -97,7 +93,6 @@ beforeEach(() => {
   useNotificationStore.setState({ mockPRs: [] })
   mocked.fetchGitHubPRs.mockResolvedValue([])
   mocked.fetchGitHubReviewRequestedPRs.mockResolvedValue([])
-  mocked.fetchGitHubIssues.mockResolvedValue([])
   mocked.fetchGitHubPRDetails.mockResolvedValue({})
   mocked.fetchGitHubCommitCiStatus.mockResolvedValue({ checkRunsRes: null, statusRes: null })
   mocked.fetchGitHubContributions.mockResolvedValue([])
@@ -115,7 +110,6 @@ describe('useGitHubData — no GitHub token (mock data mode)', () => {
 
     expect(result.current.hasToken).toBe(false)
     expect(result.current.prs).toEqual([mockPr])
-    expect(result.current.issues).toBe(MOCK_ISSUES)
     expect(result.current.loading).toBe(false)
     expect(result.current.username).toBeNull()
     expect(mocked.fetchGitHubPRs).not.toHaveBeenCalled()

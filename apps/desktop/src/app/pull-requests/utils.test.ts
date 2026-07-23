@@ -1,6 +1,36 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { timeAgo, openUrl, ciActionUrl, isSnoozed, snoozeUntil, timeUntil } from './utils'
-import type { CiDetail } from './types'
+import {
+  timeAgo,
+  openUrl,
+  ciActionUrl,
+  isSnoozed,
+  snoozeUntil,
+  timeUntil,
+  isMyIssue,
+  issueBranchName,
+  branchMatchesIssue,
+} from './utils'
+import type { CiDetail, MockIssue } from './types'
+
+function issue(overrides: Partial<MockIssue> = {}): MockIssue {
+  return {
+    id: '1',
+    number: 42,
+    title: 'Fix the thing',
+    repo: 'repo',
+    url: '',
+    status: 'open',
+    author: 'octocat',
+    authorAvatar: '',
+    assignees: [],
+    labels: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    comments: 0,
+    thumbsUp: 0,
+    ...overrides,
+  }
+}
 
 describe('timeAgo', () => {
   const NOW = new Date('2024-06-15T12:00:00.000Z')
@@ -196,5 +226,50 @@ describe('timeUntil', () => {
 
   it('clamps a past wake time to at least one minute', () => {
     expect(timeUntil(NOW - 5000, NOW)).toBe('1m')
+  })
+})
+
+describe('isMyIssue', () => {
+  it('is false without a signed-in user', () => {
+    expect(isMyIssue(issue({ author: 'me' }), null)).toBe(false)
+  })
+
+  it('matches on author or assignee', () => {
+    expect(isMyIssue(issue({ author: 'me' }), 'me')).toBe(true)
+    expect(isMyIssue(issue({ author: 'x', assignees: [{ login: 'me', avatar: '' }] }), 'me')).toBe(
+      true
+    )
+    expect(isMyIssue(issue({ author: 'x' }), 'me')).toBe(false)
+  })
+})
+
+describe('issueBranchName', () => {
+  it('slugifies the title and prefixes the number', () => {
+    expect(issueBranchName({ number: 312, title: 'Tab close button overlaps text!' })).toBe(
+      '312-tab-close-button-overlaps-text'
+    )
+  })
+
+  it('caps the slug length', () => {
+    const name = issueBranchName({ number: 1, title: 'a'.repeat(80) })
+    expect(name.length).toBeLessThanOrEqual('1-'.length + 40)
+  })
+
+  it('falls back to just the number when the title has no usable characters', () => {
+    expect(issueBranchName({ number: 7, title: '!!!' })).toBe('7')
+  })
+})
+
+describe('branchMatchesIssue', () => {
+  it('matches the number as a standalone token', () => {
+    expect(branchMatchesIssue('312-fix', 312)).toBe(true)
+    expect(branchMatchesIssue('fix-312', 312)).toBe(true)
+    expect(branchMatchesIssue('gh/312/fix', 312)).toBe(true)
+  })
+
+  it('does not match a different number that merely contains the digits', () => {
+    expect(branchMatchesIssue('3120-fix', 312)).toBe(false)
+    expect(branchMatchesIssue('1312-fix', 312)).toBe(false)
+    expect(branchMatchesIssue('main', 312)).toBe(false)
   })
 })

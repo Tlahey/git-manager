@@ -2,7 +2,22 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, act, renderHook } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { MockPR, SortDir } from '../types'
-import { TableHeader, GroupHeader, LoadMore, usePRSort, useSetFilter } from './ListHelpers'
+import {
+  TableHeader,
+  GroupHeader,
+  LoadMore,
+  InfiniteScrollSentinel,
+  usePRSort,
+  useSetFilter,
+} from './ListHelpers'
+
+function lastObserver() {
+  return (
+    globalThis.IntersectionObserver as unknown as {
+      instances: { trigger: () => void }[]
+    }
+  ).instances.at(-1)
+}
 
 describe('TableHeader', () => {
   it('renders every column label', () => {
@@ -64,6 +79,39 @@ describe('LoadMore', () => {
     expect(screen.getByText('Load more (15 remaining)')).toBeInTheDocument()
     await user.click(screen.getByText('Load more (15 remaining)'))
     expect(onLoadMore).toHaveBeenCalledOnce()
+  })
+})
+
+describe('InfiniteScrollSentinel', () => {
+  it('renders nothing when there is no more to load', () => {
+    const { container } = render(
+      <InfiniteScrollSentinel hasMore={false} onLoadMore={vi.fn()} loadedCount={10} />
+    )
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('calls onLoadMore when the sentinel scrolls into view', () => {
+    const onLoadMore = vi.fn()
+    render(<InfiniteScrollSentinel hasMore onLoadMore={onLoadMore} loadedCount={10} />)
+    expect(screen.getByTestId('infinite-scroll-sentinel')).toBeInTheDocument()
+
+    act(() => lastObserver()?.trigger())
+    expect(onLoadMore).toHaveBeenCalledOnce()
+  })
+
+  it('does not fire while the sentinel stays out of view', () => {
+    const onLoadMore = vi.fn()
+    render(<InfiniteScrollSentinel hasMore onLoadMore={onLoadMore} loadedCount={10} />)
+    act(() =>
+      (
+        globalThis.IntersectionObserver as unknown as {
+          instances: { trigger: (v: boolean) => void }[]
+        }
+      ).instances
+        .at(-1)
+        ?.trigger(false)
+    )
+    expect(onLoadMore).not.toHaveBeenCalled()
   })
 })
 

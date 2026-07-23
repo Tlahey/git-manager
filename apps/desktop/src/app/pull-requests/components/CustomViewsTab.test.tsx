@@ -60,6 +60,7 @@ function issue(overrides: Partial<MockIssue> = {}): MockIssue {
     authorAvatar: 'x',
     assignees: [],
     labels: [],
+    thumbsUp: 0,
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
     comments: 0,

@@ -229,7 +229,12 @@ function CustomViewResults({
                   <div className="w-6 shrink-0" />
                 </div>
                 {matchedIssues.slice(0, shownIssues).map((issue) => (
-                  <IssueRow key={issue.id} issue={issue} />
+                  <IssueRow
+                    key={issue.id}
+                    issue={issue}
+                    pinned={pinnedIds.has(issue.id)}
+                    onTogglePin={onTogglePin}
+                  />
                 ))}
                 <LoadMore
                   total={matchedIssues.length}

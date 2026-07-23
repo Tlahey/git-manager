@@ -84,8 +84,51 @@ export function LoadMore({ total, shown, onLoadMore }: LoadMoreProps) {
   )
 }
 
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import type { MockPR, SortKey, SortDir } from '../types'
+
+interface InfiniteScrollSentinelProps {
+  /** Whether more rows remain to reveal. When false, nothing renders and no observer is attached. */
+  hasMore: boolean
+  onLoadMore: () => void
+  /**
+   * The number of rows currently rendered. Passed as a dependency so the observer reconnects after
+   * each load — if the sentinel is still in view (e.g. the viewport isn't filled yet), it fires
+   * again to reveal the next page rather than stalling until the user scrolls.
+   */
+  loadedCount: number
+}
+
+/**
+ * Bottom marker that reveals the next page when it scrolls into view — the lazy-loading counterpart
+ * to {@link LoadMore}'s explicit button. A generous `rootMargin` starts the load slightly before the
+ * marker is actually visible, so rows are ready by the time the user reaches them.
+ */
+export function InfiniteScrollSentinel({
+  hasMore,
+  onLoadMore,
+  loadedCount,
+}: InfiniteScrollSentinelProps) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const onLoadMoreRef = useRef(onLoadMore)
+  onLoadMoreRef.current = onLoadMore
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el || !hasMore) return
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) onLoadMoreRef.current()
+      },
+      { rootMargin: '300px' }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [hasMore, loadedCount])
+
+  if (!hasMore) return null
+  return <div ref={ref} data-testid="infinite-scroll-sentinel" className="h-4 w-full shrink-0" />
+}
 
 export function usePRSort(prs: MockPR[], sortKey: SortKey, sortDir: SortDir): MockPR[] {
   return useMemo(
@@ -103,8 +146,10 @@ export function usePRSort(prs: MockPR[], sortKey: SortKey, sortDir: SortDir): Mo
   )
 }
 
-export function useSetFilter(): [Set<string>, (v: string) => void, () => void] {
-  const [set, setSet] = useState<Set<string>>(new Set())
+export function useSetFilter(
+  initial?: Iterable<string>
+): [Set<string>, (v: string) => void, () => void] {
+  const [set, setSet] = useState<Set<string>>(() => new Set(initial))
   const toggle = useCallback(
     (v: string) =>
       setSet((prev) => {

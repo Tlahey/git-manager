@@ -49,6 +49,8 @@ export function PullRequestsPage() {
     visiblePRs,
     snoozedPRs,
     issues,
+    issuesLoading,
+    refreshIssues,
     commitDays,
     yearDays,
     loading,
@@ -115,7 +117,16 @@ export function PullRequestsPage() {
       id: 'issues',
       label: t('tab.myIssues'),
       icon: AlertCircle,
-      render: () => <IssuesTab allIssues={issues} loading={loading} />,
+      render: () => (
+        <IssuesTab
+          allIssues={issues}
+          loading={issuesLoading}
+          currentUser={username}
+          pinnedIds={pinnedIds}
+          onTogglePin={togglePin}
+          onIssueChanged={refreshIssues}
+        />
+      ),
     },
     {
       id: 'waiting',

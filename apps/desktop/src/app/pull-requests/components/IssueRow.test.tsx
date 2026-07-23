@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import type { MockIssue } from '../types'
+import type { IssueActions } from '../../../hooks/useIssueActions'
 
 const { pluginOpen } = vi.hoisted(() => ({ pluginOpen: vi.fn() }))
 vi.mock('@tauri-apps/plugin-shell', () => ({ open: pluginOpen }))
+
+const { useIssueActions } = vi.hoisted(() => ({ useIssueActions: vi.fn() }))
+vi.mock('../../../hooks/useIssueActions', () => ({ useIssueActions }))
 
 import { IssueRow } from './IssueRow'
 
@@ -13,6 +17,7 @@ function issue(overrides: Partial<MockIssue> = {}): MockIssue {
     number: 42,
     title: 'Fix the thing',
     repo: 'git-manager',
+    fullName: 'owner/git-manager',
     url: 'https://github.com/owner/repo/issues/42',
     status: 'open',
     author: 'octocat',
@@ -22,51 +27,139 @@ function issue(overrides: Partial<MockIssue> = {}): MockIssue {
     createdAt: new Date(),
     updatedAt: new Date(),
     comments: 3,
+    thumbsUp: 0,
     ...overrides,
   }
+}
+
+function mockActions(overrides: Partial<IssueActions> = {}) {
+  useIssueActions.mockReturnValue({
+    repoPath: null,
+    branch: null,
+    viewRepo: vi.fn(),
+    createBranch: vi.fn(),
+    creatingBranch: false,
+    close: vi.fn(),
+    closing: false,
+    canClose: false,
+    ...overrides,
+  } satisfies IssueActions)
+}
+
+function renderRow(props: Partial<Parameters<typeof IssueRow>[0]> = {}) {
+  return render(
+    <IssueRow issue={issue()} pinned={false} onTogglePin={vi.fn()} {...props} />
+  )
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
   pluginOpen.mockResolvedValue(undefined)
+  mockActions()
 })
 
 describe('IssueRow — content', () => {
-  it('shows the title, number, labels, comment count, author, and repo', () => {
-    render(<IssueRow issue={issue()} />)
+  it('shows the title, number, label, comment count, author, repo, and status', () => {
+    renderRow()
     expect(screen.getByText('Fix the thing')).toBeInTheDocument()
     expect(screen.getByText('#42')).toBeInTheDocument()
     expect(screen.getByText('bug')).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument()
     expect(screen.getByText('octocat')).toBeInTheDocument()
     expect(screen.getByText('git-manager')).toBeInTheDocument()
+    expect(screen.getByText('Open')).toBeInTheDocument()
   })
 
-  it('shows an open badge with a green alert icon', () => {
-    const { container } = render(<IssueRow issue={issue({ status: 'open' })} />)
-    expect(screen.getByText('open')).toBeInTheDocument()
-    expect(container.querySelector('.text-green-400')).toBeTruthy()
+  it('shows the 👍 count only when there are reactions', () => {
+    const { rerender } = renderRow({ issue: issue({ thumbsUp: 0 }) })
+    expect(screen.queryByText('7')).not.toBeInTheDocument()
+    rerender(<IssueRow issue={issue({ thumbsUp: 7 })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByText('7')).toBeInTheDocument()
   })
 
-  it('shows a closed badge with a purple check icon', () => {
-    const { container } = render(<IssueRow issue={issue({ status: 'closed' })} />)
-    expect(screen.getByText('closed')).toBeInTheDocument()
-    expect(container.querySelector('.text-purple-400')).toBeTruthy()
+  it('collapses extra labels into a +N tag', () => {
+    renderRow({ issue: issue({ labels: ['bug', 'ui', 'p1'] }) })
+    expect(screen.getByText('bug')).toBeInTheDocument()
+    expect(screen.getByText('+2')).toBeInTheDocument()
+    expect(screen.queryByText('ui')).not.toBeInTheDocument()
   })
 
   it('shows an em-dash when there are no assignees, an avatar stack otherwise', () => {
-    const { rerender } = render(<IssueRow issue={issue({ assignees: [] })} />)
+    const { rerender } = renderRow({ issue: issue({ assignees: [] }) })
     expect(screen.getByText('—')).toBeInTheDocument()
-
-    rerender(<IssueRow issue={issue({ assignees: [{ login: 'bob', avatar: 'b.png' }] })} />)
-    expect(screen.queryByText('—')).not.toBeInTheDocument()
+    rerender(
+      <IssueRow
+        issue={issue({ assignees: [{ login: 'bob', avatar: 'b.png' }] })}
+        pinned={false}
+        onTogglePin={vi.fn()}
+      />
+    )
     expect(screen.getByAltText('bob')).toBeInTheDocument()
   })
 })
 
-describe('IssueRow — interaction', () => {
-  it('opens the issue URL when the row is clicked', async () => {
-    render(<IssueRow issue={issue({ url: 'https://github.com/owner/repo/issues/42' })} />)
+describe('IssueRow — repo / branch cell', () => {
+  it('offers "Create a branch" when the repo is local and has no linked branch', () => {
+    const createBranch = vi.fn()
+    mockActions({ repoPath: '/local/git-manager', branch: null, createBranch })
+    renderRow()
+    const btn = screen.getByTestId('issue-create-branch-1')
+    fireEvent.click(btn)
+    expect(createBranch).toHaveBeenCalledOnce()
+  })
+
+  it('shows the linked branch instead of the create button when one exists', () => {
+    mockActions({ repoPath: '/local/git-manager', branch: '42-fix-the-thing' })
+    renderRow()
+    expect(screen.getByTestId('issue-branch-1')).toHaveTextContent('42-fix-the-thing')
+    expect(screen.queryByTestId('issue-create-branch-1')).not.toBeInTheDocument()
+  })
+
+  it('hides the create button entirely when the repo is not added locally', () => {
+    mockActions({ repoPath: null, branch: null })
+    renderRow()
+    expect(screen.queryByTestId('issue-create-branch-1')).not.toBeInTheDocument()
+  })
+})
+
+describe('IssueRow — actions', () => {
+  it('toggles the pin', () => {
+    const onTogglePin = vi.fn()
+    renderRow({ onTogglePin })
+    fireEvent.click(screen.getByTitle('Pin'))
+    expect(onTogglePin).toHaveBeenCalledWith('1')
+  })
+
+  it('calls viewRepo from the View repo button', () => {
+    const viewRepo = vi.fn()
+    mockActions({ viewRepo })
+    renderRow()
+    fireEvent.click(screen.getByTestId('issue-view-repo-1'))
+    expect(viewRepo).toHaveBeenCalledOnce()
+  })
+
+  it('confirms before closing, then calls close', async () => {
+    const close = vi.fn().mockResolvedValue(undefined)
+    mockActions({ canClose: true, close })
+    renderRow()
+    fireEvent.click(screen.getByTestId('issue-close-1'))
+    // Confirmation dialog then the confirm button.
+    expect(screen.getByText('Close this issue?')).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.click(screen.getByText('Mark as closed'))
+      await Promise.resolve()
+    })
+    expect(close).toHaveBeenCalledOnce()
+  })
+
+  it('hides the close action when closing is not possible', () => {
+    mockActions({ canClose: false })
+    renderRow()
+    expect(screen.queryByTestId('issue-close-1')).not.toBeInTheDocument()
+  })
+
+  it('opens the issue URL when the row is clicked and no panel is available', async () => {
+    renderRow()
     await act(async () => {
       fireEvent.click(screen.getByText('Fix the thing'))
       await Promise.resolve()

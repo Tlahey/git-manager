@@ -31,6 +31,41 @@ class ResizeObserverStub {
 }
 globalThis.ResizeObserver ??= ResizeObserverStub
 
+// jsdom doesn't implement IntersectionObserver — the Launchpad's infinite-scroll sentinel observes a
+// bottom marker to lazy-load more rows. This stub records every instance (and the elements it
+// observes) so tests can drive intersection deterministically via `trigger()`; it never fires on its
+// own, and `instances.at(-1)` is always the most recently mounted sentinel's observer.
+class IntersectionObserverStub {
+  static instances: IntersectionObserverStub[] = []
+  private callback: IntersectionObserverCallback
+  elements: Element[] = []
+  constructor(cb: IntersectionObserverCallback) {
+    this.callback = cb
+    IntersectionObserverStub.instances.push(this)
+  }
+  observe(el: Element) {
+    this.elements.push(el)
+  }
+  unobserve(el: Element) {
+    this.elements = this.elements.filter((e) => e !== el)
+  }
+  disconnect() {
+    this.elements = []
+  }
+  takeRecords(): IntersectionObserverEntry[] {
+    return []
+  }
+  /** Test-only: simulate the observed element(s) scrolling into (or out of) view. */
+  trigger(isIntersecting = true) {
+    this.callback(
+      this.elements.map((target) => ({ isIntersecting, target }) as IntersectionObserverEntry),
+      this as unknown as IntersectionObserver
+    )
+  }
+}
+globalThis.IntersectionObserver ??=
+  IntersectionObserverStub as unknown as typeof IntersectionObserver
+
 // jsdom doesn't implement scrollIntoView — cmdk (the Command list backing the command palette and
 // settings' provider combobox) calls it unconditionally on mount/selection to keep the highlighted
 // item in view, with no optional chaining we can rely on since it's third-party code.
