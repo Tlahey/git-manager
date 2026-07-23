@@ -62,11 +62,11 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2">
-          <span className="truncate text-xs font-medium text-foreground transition-colors group-hover/pr:text-primary">
+        <div className="leading-snug">
+          <span className="text-xs font-medium text-foreground transition-colors [overflow-wrap:anywhere] group-hover/pr:text-primary">
             {pr.title}
-          </span>
-          <span className="shrink-0 font-mono text-[10px] text-muted-foreground/60">
+          </span>{' '}
+          <span className="whitespace-nowrap font-mono text-[10px] text-muted-foreground/60">
             #{pr.number}
           </span>
         </div>
