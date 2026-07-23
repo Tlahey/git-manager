@@ -11,6 +11,8 @@ import {
   Sliders,
   GitCommit,
   BookOpen,
+  FolderGit2,
+  BellOff,
 } from 'lucide-react'
 import { useState } from 'react'
 import { usePullRequestsPage } from '../../hooks/usePullRequestsPage'
@@ -21,9 +23,11 @@ import { InnerTab, KpiCard } from '@git-manager/components'
 import { OpenPrContext } from './OpenPrContext'
 import { PrViewPanel } from './components/PrViewPanel'
 import { PullRequestsTab } from './components/PullRequestsTab'
+import { WipTab } from './components/WipTab'
 import { FollowedPRsTab } from './components/FollowedPRsTab'
 import { IssuesTab } from './components/IssuesTab'
 import { WaitingForReviewTab } from './components/WaitingForReviewTab'
+import { SnoozedPRsTab } from './components/SnoozedPRsTab'
 import { CommitStatsTab } from './components/CommitStatsTab'
 import { CustomViewsTab } from './components/CustomViewsTab'
 import { appEventBus } from '../../lib/appEventBus'
@@ -36,7 +40,8 @@ export function PullRequestsPage() {
   const {
     activeTab,
     setActiveTab,
-    prs,
+    visiblePRs,
+    snoozedPRs,
     issues,
     commitDays,
     yearDays,
@@ -67,12 +72,18 @@ export function PullRequestsPage() {
       icon: GitPullRequest,
       render: () => (
         <PullRequestsTab
-          allPRs={prs}
+          allPRs={visiblePRs}
           pinnedIds={pinnedIds}
           onTogglePin={togglePin}
           loading={loading}
         />
       ),
+    },
+    {
+      id: 'wip',
+      label: t('tab.wip'),
+      icon: FolderGit2,
+      render: () => <WipTab />,
     },
     {
       id: 'followed',
@@ -101,7 +112,20 @@ export function PullRequestsPage() {
       icon: Eye,
       render: () => (
         <WaitingForReviewTab
-          allPRs={prs}
+          allPRs={visiblePRs}
+          pinnedIds={pinnedIds}
+          onTogglePin={togglePin}
+          loading={loading}
+        />
+      ),
+    },
+    {
+      id: 'snoozed',
+      label: t('tab.snoozed'),
+      icon: BellOff,
+      render: () => (
+        <SnoozedPRsTab
+          snoozedPRs={snoozedPRs}
           pinnedIds={pinnedIds}
           onTogglePin={togglePin}
           loading={loading}
@@ -122,7 +146,7 @@ export function PullRequestsPage() {
       icon: Sliders,
       render: () => (
         <CustomViewsTab
-          allPRs={prs}
+          allPRs={visiblePRs}
           allIssues={issues}
           pinnedIds={pinnedIds}
           onTogglePin={togglePin}

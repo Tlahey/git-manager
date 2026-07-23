@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react'
 import { useGitHubData } from './useGitHubData'
+import { useLocalWipRepos } from './useLocalWipRepos'
 import { useLaunchpadStore } from '../stores/launchpad.store'
+import { isSnoozed } from '../app/pull-requests/utils'
 import type { InnerTab as InnerTabType, MockPR } from '../app/pull-requests/types'
 
 /**
@@ -9,9 +11,10 @@ import type { InnerTab as InnerTabType, MockPR } from '../app/pull-requests/type
  * same shape as `useActionToolbar`/`useWipCommitPanel` elsewhere in the app.
  */
 export function usePullRequestsPage() {
-  const { activeTab, setActiveTab, savedFilters } = useLaunchpadStore()
+  const { activeTab, setActiveTab, savedFilters, snoozed } = useLaunchpadStore()
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set())
   const [followedPRs, setFollowedPRs] = useState<MockPR[]>([])
+  const { wipRepos } = useLocalWipRepos()
 
   const {
     prs,
@@ -47,20 +50,30 @@ export function usePullRequestsPage() {
     []
   )
 
-  const openPRsCount = prs.filter((p) => p.status === 'open' || p.status === 'draft').length
-  const needsReviewCount = prs.filter((p) => p.needsMyReview).length
+  // Snooze splits the PR list: snoozed PRs leave the normal tabs and feed the dedicated Snoozed tab.
+  // Expiry is handled by `isSnoozed` (a past wake time counts as woken), so no timer is needed.
+  const now = Date.now()
+  const snoozedPRs = prs.filter((p) => isSnoozed(p.id, snoozed, now))
+  const visiblePRs = prs.filter((p) => !isSnoozed(p.id, snoozed, now))
+
+  const openPRsCount = visiblePRs.filter((p) => p.status === 'open' || p.status === 'draft').length
+  const needsReviewCount = visiblePRs.filter((p) => p.needsMyReview).length
   const openIssuesCount = issues.filter((i) => i.status === 'open').length
   const ciPassRate =
-    prs.length > 0
-      ? Math.round((prs.filter((p) => p.ciStatus === 'success').length / prs.length) * 100)
+    visiblePRs.length > 0
+      ? Math.round(
+          (visiblePRs.filter((p) => p.ciStatus === 'success').length / visiblePRs.length) * 100
+        )
       : 0
   const weekCommits = commitDays.slice(-7).reduce((s, d) => s + d.commits, 0)
 
   const tabCounts: Record<InnerTabType, number | undefined> = {
-    prs: prs.filter((p) => p.status !== 'closed' && p.status !== 'merged').length,
+    prs: visiblePRs.filter((p) => p.status !== 'closed' && p.status !== 'merged').length,
+    wip: wipRepos.length,
     followed: followedPRs.length,
     issues: issues.filter((i) => i.status === 'open').length,
     waiting: needsReviewCount,
+    snoozed: snoozedPRs.length,
     stats: undefined,
     views: savedFilters.length,
   }
@@ -70,6 +83,8 @@ export function usePullRequestsPage() {
     setActiveTab,
     savedFilters,
     prs,
+    visiblePRs,
+    snoozedPRs,
     issues,
     commitDays,
     yearDays,

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { timeAgo, openUrl, ciActionUrl } from './utils'
+import { timeAgo, openUrl, ciActionUrl, isSnoozed, snoozeUntil, timeUntil } from './utils'
 import type { CiDetail } from './types'
 
 describe('timeAgo', () => {
@@ -135,5 +135,66 @@ describe('ciActionUrl', () => {
       { name: 'build', status: 'success', url: 'https://ci/success' },
     ]
     expect(ciActionUrl('failure', details, PR)).toBe('https://ci/success')
+  })
+})
+
+describe('isSnoozed', () => {
+  const NOW = 1_000_000
+
+  it('is false for a PR with no snooze entry', () => {
+    expect(isSnoozed('pr-1', {}, NOW)).toBe(false)
+  })
+
+  it('is true for an indefinite (null) snooze', () => {
+    expect(isSnoozed('pr-1', { 'pr-1': null }, NOW)).toBe(true)
+  })
+
+  it('is true while the wake time is still in the future', () => {
+    expect(isSnoozed('pr-1', { 'pr-1': NOW + 1000 }, NOW)).toBe(true)
+  })
+
+  it('is false once the wake time has passed (auto-expiry)', () => {
+    expect(isSnoozed('pr-1', { 'pr-1': NOW - 1000 }, NOW)).toBe(false)
+  })
+})
+
+describe('snoozeUntil', () => {
+  const NOW = new Date('2024-06-15T12:00:00.000Z').getTime()
+
+  it('adds an hour for the hour preset', () => {
+    expect(snoozeUntil('hour', NOW)).toBe(NOW + 60 * 60 * 1000)
+  })
+
+  it('returns null for an indefinite snooze', () => {
+    expect(snoozeUntil('indefinitely', NOW)).toBeNull()
+  })
+
+  it('resolves tomorrow to 09:00 local on the next day', () => {
+    const d = new Date(snoozeUntil('tomorrow', NOW) as number)
+    expect(d.getHours()).toBe(9)
+    expect(d.getDate()).toBe(16)
+  })
+
+  it('resolves next week to 7 days ahead', () => {
+    const d = new Date(snoozeUntil('nextWeek', NOW) as number)
+    expect(d.getDate()).toBe(22)
+  })
+})
+
+describe('timeUntil', () => {
+  const NOW = 1_000_000_000
+
+  it('returns null for an indefinite snooze', () => {
+    expect(timeUntil(null, NOW)).toBeNull()
+  })
+
+  it('formats minutes, hours and days', () => {
+    expect(timeUntil(NOW + 30 * 60_000, NOW)).toBe('30m')
+    expect(timeUntil(NOW + 3 * 3_600_000, NOW)).toBe('3h')
+    expect(timeUntil(NOW + 2 * 86_400_000, NOW)).toBe('2d')
+  })
+
+  it('clamps a past wake time to at least one minute', () => {
+    expect(timeUntil(NOW - 5000, NOW)).toBe('1m')
   })
 })

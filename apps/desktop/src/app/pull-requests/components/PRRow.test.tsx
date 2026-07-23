@@ -200,79 +200,26 @@ describe('PRRow — row click', () => {
   })
 })
 
-describe('PRRow — action menu', () => {
-  it('is closed by default', () => {
+describe('PRRow — quick actions', () => {
+  it('renders a state-dependent primary split button (View for a plain open PR)', () => {
     render(<PRRow pr={pr()} pinned={false} onTogglePin={vi.fn()} />)
-    expect(screen.queryByText('Open on GitHub')).not.toBeInTheDocument()
+    expect(screen.getByTestId('pr-actions-1-btn')).toHaveTextContent('View')
   })
 
-  it('opens on the more-actions button, without triggering the row click', async () => {
+  it('exposes the secondary actions in the caret dropdown', async () => {
     const user = userEvent.setup()
     render(<PRRow pr={pr()} pinned={false} onTogglePin={vi.fn()} />)
-    const [moreButton] = screen.getAllByRole('button').slice(-1)
-    await user.click(moreButton)
-    expect(screen.getByText('Open on GitHub')).toBeInTheDocument()
-    expect(screen.getByText('Copy link')).toBeInTheDocument()
-    expect(pluginOpen).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'More options' }))
+    expect(screen.getByRole('menuitem', { name: 'Open on GitHub' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Copy link' })).toBeInTheDocument()
   })
 
-  it('opens the PR url via the "Open on GitHub" menu item and closes the menu', async () => {
-    const user = userEvent.setup()
-    render(
-      <PRRow
-        pr={pr({ url: 'https://github.com/owner/git-manager/pull/42' })}
-        pinned={false}
-        onTogglePin={vi.fn()}
-      />
-    )
-    const [moreButton] = screen.getAllByRole('button').slice(-1)
-    await user.click(moreButton)
-    await act(async () => {
-      fireEvent.click(screen.getByText('Open on GitHub'))
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-    expect(pluginOpen).toHaveBeenCalledWith('https://github.com/owner/git-manager/pull/42')
-    expect(screen.queryByText('Open on GitHub')).not.toBeInTheDocument()
-  })
-
-  it('copies the PR url via the "Copy link" menu item', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined)
-    const user = userEvent.setup()
-    // userEvent.setup() installs its own navigator.clipboard stub, so ours must be defined after.
-    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
-    render(
-      <PRRow
-        pr={pr({ url: 'https://github.com/owner/git-manager/pull/42' })}
-        pinned={false}
-        onTogglePin={vi.fn()}
-      />
-    )
-    const [moreButton] = screen.getAllByRole('button').slice(-1)
-    await user.click(moreButton)
-    await user.click(screen.getByText('Copy link'))
-    expect(writeText).toHaveBeenCalledWith('https://github.com/owner/git-manager/pull/42')
-  })
-
-  it('toggles pin via the menu item, reflecting the current pinned state in its label', async () => {
+  it('toggles pin via the caret dropdown, reflecting the current pinned state', async () => {
     const onTogglePin = vi.fn()
     const user = userEvent.setup()
     render(<PRRow pr={pr({ id: 'pr-2' })} pinned onTogglePin={onTogglePin} />)
-    const [moreButton] = screen.getAllByRole('button').slice(-1)
-    await user.click(moreButton)
-    expect(screen.getByText('Unpin')).toBeInTheDocument()
-    await user.click(screen.getByText('Unpin'))
+    await user.click(screen.getByRole('button', { name: 'More options' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Unpin' }))
     expect(onTogglePin).toHaveBeenCalledWith('pr-2')
-  })
-
-  it('closes the menu when clicking the backdrop', async () => {
-    const user = userEvent.setup()
-    const { container } = render(<PRRow pr={pr()} pinned={false} onTogglePin={vi.fn()} />)
-    const [moreButton] = screen.getAllByRole('button').slice(-1)
-    await user.click(moreButton)
-    expect(screen.getByText('Open on GitHub')).toBeInTheDocument()
-    const backdrop = container.querySelector('.fixed.inset-0.z-panel')!
-    fireEvent.click(backdrop)
-    expect(screen.queryByText('Open on GitHub')).not.toBeInTheDocument()
   })
 })

@@ -69,6 +69,8 @@ function mockHook(overrides: Partial<ReturnType<typeof usePullRequestsPage>> = {
     activeTab: 'prs',
     setActiveTab: vi.fn(),
     prs: [] as MockPR[],
+    visiblePRs: [] as MockPR[],
+    snoozedPRs: [] as MockPR[],
     issues: [] as MockIssue[],
     commitDays: [],
     yearDays: [],
@@ -89,7 +91,16 @@ function mockHook(overrides: Partial<ReturnType<typeof usePullRequestsPage>> = {
     openIssuesCount: 0,
     ciPassRate: 0,
     weekCommits: 0,
-    tabCounts: { prs: 0, followed: 0, issues: 0, waiting: 0, stats: undefined, views: undefined },
+    tabCounts: {
+      prs: 0,
+      wip: 0,
+      followed: 0,
+      issues: 0,
+      waiting: 0,
+      snoozed: 0,
+      stats: undefined,
+      views: undefined,
+    },
     ...overrides,
   }
   usePullRequestsPage.mockReturnValue(base)
@@ -193,7 +204,7 @@ describe('PullRequestsPage — KPI bar', () => {
 
 describe('PullRequestsPage — tab navigation', () => {
   it('renders the My Pull Requests tab content by default and lists PRs', () => {
-    mockHook({ activeTab: 'prs', prs: [pr({ title: 'Default tab PR' })] })
+    mockHook({ activeTab: 'prs', visiblePRs: [pr({ title: 'Default tab PR' })] })
     render(<PullRequestsPage />)
     expect(screen.getByText('Default tab PR')).toBeInTheDocument()
   })
@@ -237,7 +248,16 @@ describe('PullRequestsPage — tab navigation', () => {
 
   it('shows per-tab counts from tabCounts', () => {
     mockHook({
-      tabCounts: { prs: 5, followed: 0, issues: 2, waiting: 1, stats: undefined, views: undefined },
+      tabCounts: {
+        prs: 5,
+        wip: 0,
+        followed: 0,
+        issues: 2,
+        waiting: 1,
+        snoozed: 0,
+        stats: undefined,
+        views: undefined,
+      },
     })
     const { container } = render(<PullRequestsPage />)
     const tabBar = container.querySelector(
@@ -251,7 +271,7 @@ describe('PullRequestsPage — tab navigation', () => {
 describe('PullRequestsPage — opening a PR in the in-app view', () => {
   it('takes over the page with the interactive PR view on row click, then returns via Back', async () => {
     const user = userEvent.setup()
-    mockHook({ activeTab: 'prs', prs: [pr({ title: 'Openable PR', fullName: 'owner/repo' })] })
+    mockHook({ activeTab: 'prs', visiblePRs: [pr({ title: 'Openable PR', fullName: 'owner/repo' })] })
     render(<PullRequestsPage />)
 
     await user.click(screen.getByText('Openable PR'))
@@ -268,7 +288,7 @@ describe('PullRequestsPage — pin toggling forwarded to a tab', () => {
   it('forwards togglePin from the My Pull Requests tab', async () => {
     const togglePin = vi.fn()
     const user = userEvent.setup()
-    mockHook({ activeTab: 'prs', prs: [pr({ id: 'pr-1' })], togglePin })
+    mockHook({ activeTab: 'prs', visiblePRs: [pr({ id: 'pr-1' })], togglePin })
     render(<PullRequestsPage />)
     await user.click(screen.getByTitle('Pin'))
     expect(togglePin).toHaveBeenCalledWith('pr-1')

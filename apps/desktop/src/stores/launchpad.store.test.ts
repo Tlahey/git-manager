@@ -4,7 +4,7 @@ import { useLaunchpadStore } from './launchpad.store'
 const INITIAL_FILTERS = useLaunchpadStore.getState().savedFilters
 
 beforeEach(() => {
-  useLaunchpadStore.setState({ savedFilters: INITIAL_FILTERS, activeTab: 'prs' })
+  useLaunchpadStore.setState({ savedFilters: INITIAL_FILTERS, activeTab: 'prs', snoozed: {} })
   localStorage.clear()
 })
 
@@ -53,5 +53,22 @@ describe('useLaunchpadStore', () => {
       'Third',
       'Needs My Review',
     ])
+  })
+
+  it('snoozePr stores a wake timestamp keyed by pr id', () => {
+    useLaunchpadStore.getState().snoozePr('pr-1', 1234)
+    expect(useLaunchpadStore.getState().snoozed).toEqual({ 'pr-1': 1234 })
+  })
+
+  it('snoozePr stores null for an indefinite snooze', () => {
+    useLaunchpadStore.getState().snoozePr('pr-2', null)
+    expect(useLaunchpadStore.getState().snoozed).toEqual({ 'pr-2': null })
+  })
+
+  it('unsnoozePr removes only the matching entry', () => {
+    useLaunchpadStore.getState().snoozePr('pr-1', 1234)
+    useLaunchpadStore.getState().snoozePr('pr-2', null)
+    useLaunchpadStore.getState().unsnoozePr('pr-1')
+    expect(useLaunchpadStore.getState().snoozed).toEqual({ 'pr-2': null })
   })
 })

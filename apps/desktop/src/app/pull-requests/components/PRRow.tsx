@@ -1,54 +1,12 @@
-import React, { useState } from 'react'
-import {
-  Pin,
-  GitMerge,
-  XCircle,
-  Circle,
-  GitPullRequest,
-  AlertCircle,
-  MoreHorizontal,
-  ExternalLink,
-  Link,
-} from 'lucide-react'
+import { Pin, GitMerge, XCircle, Circle, GitPullRequest, AlertCircle } from 'lucide-react'
 import { Tag } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import type { MockPR } from '../types'
 import { StatusBadge, CiBadge } from './Badges'
 import { AvatarStack } from './AvatarStack'
+import { PrQuickActions } from './PrQuickActions'
 import { openUrl, timeAgo } from '../utils'
 import { useOpenPr } from '../OpenPrContext'
-
-interface ActionMenuProps {
-  items: {
-    label: string
-    icon: React.ReactNode
-    action: () => void
-  }[]
-  onClose: () => void
-}
-
-function ActionMenu({ items, onClose }: ActionMenuProps) {
-  return (
-    <>
-      <div className="fixed inset-0 z-panel" onClick={onClose} />
-      <div className="absolute right-0 top-full z-popover mt-1 w-44 overflow-hidden rounded-lg border border-border bg-popover py-1 shadow-xl">
-        {items.map((item) => (
-          <button
-            key={item.label}
-            onClick={() => {
-              item.action()
-              onClose()
-            }}
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-accent"
-          >
-            <span className="text-muted-foreground">{item.icon}</span>
-            {item.label}
-          </button>
-        ))}
-      </div>
-    </>
-  )
-}
 
 interface PRRowProps {
   pr: MockPR
@@ -58,7 +16,6 @@ interface PRRowProps {
 
 export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
   const { t } = useTranslation('launchpad')
-  const [menuOpen, setMenuOpen] = useState(false)
   const openPr = useOpenPr()
 
   return (
@@ -159,35 +116,8 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
       <div className="flex w-[60px] shrink-0 justify-center">
         <CiBadge status={pr.ciStatus} details={pr.ciDetails} prUrl={pr.url} />
       </div>
-      <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
-        <button
-          onClick={() => setMenuOpen((v) => !v)}
-          className="flex h-6 w-6 items-center justify-center rounded border border-transparent text-muted-foreground transition-colors hover:border-border hover:bg-accent hover:text-foreground"
-        >
-          <MoreHorizontal className="h-3.5 w-3.5" />
-        </button>
-        {menuOpen && (
-          <ActionMenu
-            items={[
-              {
-                label: t('row.openOnGitHub'),
-                icon: <ExternalLink className="h-3 w-3" />,
-                action: () => openUrl(pr.url),
-              },
-              {
-                label: t('row.copyLink'),
-                icon: <Link className="h-3 w-3" />,
-                action: () => navigator.clipboard.writeText(pr.url),
-              },
-              {
-                label: pinned ? t('row.unpin') : t('row.pin'),
-                icon: <Pin className="h-3 w-3" />,
-                action: () => onTogglePin(pr.id),
-              },
-            ]}
-            onClose={() => setMenuOpen(false)}
-          />
-        )}
+      <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+        <PrQuickActions pr={pr} pinned={pinned} onTogglePin={onTogglePin} />
       </div>
     </div>
   )

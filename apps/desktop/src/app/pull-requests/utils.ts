@@ -43,3 +43,43 @@ export function timeAgo(date: Date): string {
   if (d < 30) return `${d}d ago`
   return `${Math.floor(d / 30)}mo ago`
 }
+
+// ─── Snooze ─────────────────────────────────────────────────────────────────
+
+export type SnoozeDuration = 'hour' | 'tomorrow' | 'nextWeek' | 'indefinitely'
+
+/**
+ * Whether a PR is currently snoozed given the store map and a reference time. An entry with a wake
+ * timestamp in the past counts as woken (auto-expiry) and returns `false`; `null` means indefinite.
+ */
+export function isSnoozed(
+  id: string,
+  snoozed: Record<string, number | null>,
+  now: number = Date.now()
+): boolean {
+  if (!(id in snoozed)) return false
+  const until = snoozed[id]
+  return until === null || until > now
+}
+
+/** Wake timestamp (ms) for a snooze preset, or `null` for an indefinite snooze. `tomorrow` and
+ * `nextWeek` resolve to 09:00 local on the target day so PRs surface at the start of the day. */
+export function snoozeUntil(duration: SnoozeDuration, now: number = Date.now()): number | null {
+  if (duration === 'indefinitely') return null
+  if (duration === 'hour') return now + 60 * 60 * 1000
+  const d = new Date(now)
+  d.setDate(d.getDate() + (duration === 'nextWeek' ? 7 : 1))
+  d.setHours(9, 0, 0, 0)
+  return d.getTime()
+}
+
+/** Short label for a snooze wake time (e.g. `2h`, `3d`), or `null` when the snooze is indefinite. */
+export function timeUntil(until: number | null, now: number = Date.now()): string | null {
+  if (until === null) return null
+  const s = Math.max(0, Math.floor((until - now) / 1000))
+  const m = Math.floor(s / 60)
+  if (m < 60) return `${Math.max(1, m)}m`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h`
+  return `${Math.floor(h / 24)}d`
+}

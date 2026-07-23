@@ -1,7 +1,7 @@
 import useSWR from 'swr'
-import type { GitStatus } from '@git-manager/git-types'
 import { apiListWorktrees } from '../api/worktree.api'
 import { apiGetRepoStatus } from '../api/git.api'
+import { countChanges, bucketChanges } from '../lib/gitStatusCounts'
 
 export interface WorktreeWipStatus {
   path: string
@@ -10,26 +10,6 @@ export interface WorktreeWipStatus {
   added: number
   modified: number
   deleted: number
-}
-
-function countChanges(status: GitStatus): number {
-  return (
-    status.staged.length + status.unstaged.length + status.untracked.length + status.conflicted.length
-  )
-}
-
-/** Buckets staged+unstaged entries by kind for the sidebar's hover breakdown — untracked files
- * count as added; renamed/copied/typechange entries count as modified (still edited content). */
-function bucketChanges(status: GitStatus): { added: number; modified: number; deleted: number } {
-  let added = status.untracked.length
-  let modified = 0
-  let deleted = 0
-  for (const entry of [...status.staged, ...status.unstaged]) {
-    if (entry.status === 'added') added++
-    else if (entry.status === 'deleted') deleted++
-    else modified++
-  }
-  return { added, modified, deleted }
 }
 
 async function fetchWorktreeWipStatuses(repoPath: string): Promise<WorktreeWipStatus[]> {
