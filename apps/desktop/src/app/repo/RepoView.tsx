@@ -13,6 +13,10 @@ import { useSidebarBranchMenu } from '../../hooks/useSidebarBranchMenu'
 import { apiOpenRepo } from '../../api/repo.api'
 import { PendingFixupsBanner } from '../../components/fixup/PendingFixupsBanner'
 import { TimelineBar } from '../../components/timeline/TimelineBar'
+import { BisectBanner } from '../../components/bisect/BisectBanner'
+import { BisectResultBanner } from '../../components/bisect/BisectResultBanner'
+import { BisectSetupBanner } from '../../components/bisect/BisectSetupBanner'
+import { BisectStashDialog } from '../../components/bisect/BisectStashDialog'
 
 export function RepoView() {
   const { activeRepo, activeWorkspacePath } = useRepoUIStore()
@@ -60,6 +64,7 @@ export function RepoView() {
       <ActionToolbar />
 
       <PendingFixupsBanner repoPath={activeRepo} />
+      <BisectBanner repoPath={repoPath} />
 
       {/* ── Layout principal : sidebar | zone centrale ──────────── */}
       <div className="relative flex flex-1 overflow-hidden">
@@ -94,7 +99,12 @@ export function RepoView() {
         </div>
 
         <TimelineBar repoPath={repoPath} />
+
+        <BisectSetupBanner repoPath={repoPath} />
       </div>
+
+      <BisectResultBanner repoPath={repoPath} />
+      <BisectStashDialog repoPath={repoPath} />
 
       {renameTarget && (
         <RenameBranchDialog

@@ -173,5 +173,7 @@
   "commandPalette.settings.external_tools": "Settings: External Tools",
   "commandPalette.settings.notifications": "Settings: Notifications",
   "commandPalette.settings.ui_customization": "Settings: Appearance",
-  "commandPalette.settings.rewards": "Settings: Rewards"
+  "commandPalette.settings.rewards": "Settings: Rewards",
+  "activityLogs.detail.error": "Error",
+  "activityLogs.detail.copyError": "Copy error"
 }

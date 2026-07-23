@@ -40,6 +40,10 @@ import { EmptyRepoPanel } from './EmptyRepoPanel'
 import { PatchWorkspaceCenter } from '../patch/PatchWorkspaceCenter'
 import { PatchWorkspacePanel } from '../patch/PatchWorkspacePanel'
 import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
+import { BisectPanel } from '../bisect/BisectPanel'
+import { useBisectState } from '../../hooks/useBisectState'
+import { useBisectUIStore } from '../../stores/bisectUI.store'
+import { buildBisectStatusMap } from './bisectStatus'
 import { useTimelineNavStore } from '../../stores/timelineNav.store'
 import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
 import { ConflictResolutionPanel } from './ConflictResolutionPanel'
@@ -116,6 +120,27 @@ export function GitGraph({
   useEffect(() => {
     closePatch()
   }, [repoPath, closePatch])
+
+  // Bisect: an active session claims the right panel (top priority) and annotates the graph rows.
+  const { data: bisect } = useBisectState(repoPath)
+  const bisectActive = bisect?.active ?? false
+  const bisectSettingUp = useBisectUIStore((s) => s.setupActive)
+  const bisectPendingBadOid = useBisectUIStore((s) => s.pendingBadOid)
+  const bisectPendingGoodOid = useBisectUIStore((s) => s.pendingGoodOid)
+  const bisectStatusMap = useMemo(() => {
+    const map = buildBisectStatusMap(bisect)
+    // While setting up, preview the chosen bad/good commits with the same row treatment.
+    if (bisectPendingBadOid) map.set(bisectPendingBadOid, 'bad')
+    if (bisectPendingGoodOid) map.set(bisectPendingGoodOid, 'good')
+    return map
+  }, [bisect, bisectPendingBadOid, bisectPendingGoodOid])
+
+  // During graph-driven setup, a commit click fills the active bisect slot instead of selecting it.
+  // Synthetic rows (WIP / CONFLICT) are not valid bisect targets.
+  function handleBisectPick(oid: string) {
+    if (oid === 'WIP' || oid === 'CONFLICT' || oid.startsWith('WIP:')) return
+    useBisectUIStore.getState().pickCommit(oid)
+  }
 
   useEffect(() => {
     if (!conflictFilePath) return
@@ -815,13 +840,22 @@ export function GitGraph({
                             columns={visibleColumns}
                             isSelected={selected.has(oid)}
                             isPrimary={oid === primaryOid}
-                            onSelect={(e) => handleRowSelect(e, virtualItem.index)}
+                            onSelect={(e) => {
+                              if (bisectSettingUp) {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handleBisectPick(oid)
+                                return
+                              }
+                              handleRowSelect(e, virtualItem.index)
+                            }}
                             onContextMenu={(e) => openMenuAt(e, oid)}
                             wipStats={wipStats}
                             onCommitWip={handleCommitWip}
                             isFirst={virtualItem.index === 0}
                             conflictInfo={conflictInfo}
                             dimmed={dimmed}
+                            bisectStatus={bisectStatusMap.get(oid)}
                             worktreeWipStatuses={worktreeWipStatuses}
                             onOpenWorktree={setActiveWorkspacePath}
                             worktreeAgentActivity={worktreeAgentActivity}
@@ -877,8 +911,23 @@ export function GitGraph({
         )}
       </div>
 
-      {/* Side panel: patch workspace (priority), PR files, conflict resolution, or commit details */}
-      {patchMode ? (
+      {/* Side panel: bisect (top priority), patch workspace, PR files, conflict resolution, or commit details */}
+      {bisectActive ? (
+        <>
+          <div
+            {...resizeProps}
+            className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
+          >
+            <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
+          </div>
+          <div
+            className="h-full min-w-[350px] shrink-0 overflow-hidden"
+            style={{ width: panelWidthState }}
+          >
+            <BisectPanel repoPath={repoPath} />
+          </div>
+        </>
+      ) : patchMode ? (
         <>
           <div
             {...resizeProps}

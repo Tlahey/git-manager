@@ -8,6 +8,7 @@ pub mod ai_openai_compatible;
 pub mod ai_provider;
 pub mod ai_registry;
 pub mod dependency_patch;
+pub mod git_bisect;
 pub mod git_blame;
 pub mod git_branch;
 pub mod git_cherry_pick;

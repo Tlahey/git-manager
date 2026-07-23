@@ -65,6 +65,11 @@ import {
   skipRebase,
   listRebaseCommits,
   runInteractiveRebase,
+  getBisectState,
+  bisectCheckRange,
+  bisectStart,
+  bisectMark,
+  bisectReset,
   createPatch,
   createCommitsPatch,
   createWorkingPatch,
@@ -75,7 +80,7 @@ import {
   prepareDependencyPatch,
   commitDependencyPatch,
 } from '../lib/tauri'
-import type { RebaseTodoStep } from '@git-manager/git-types'
+import type { RebaseTodoStep, BisectTerm } from '@git-manager/git-types'
 import { callCommand } from './service'
 import { runActivity } from '../lib/activityCorrelation'
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
@@ -802,6 +807,26 @@ export async function apiListSubmodules(path: string) {
 
 export async function apiGetRebaseState(path: string) {
   return getRebaseState(path)
+}
+
+export async function apiGetBisectState(path: string) {
+  return getBisectState(path)
+}
+
+export async function apiBisectCheckRange(path: string, badRev: string, goodRev: string) {
+  return bisectCheckRange(path, badRev, goodRev)
+}
+
+export async function apiBisectStart(path: string, badRev: string, goodRev: string) {
+  return bisectStart(path, badRev, goodRev)
+}
+
+export async function apiBisectMark(path: string, term: BisectTerm) {
+  return bisectMark(path, term)
+}
+
+export async function apiBisectReset(path: string) {
+  return bisectReset(path)
 }
 
 export async function apiListRebaseCommits(path: string, baseOid: string) {

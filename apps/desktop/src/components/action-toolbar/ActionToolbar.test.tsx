@@ -8,7 +8,7 @@ vi.mock('./BranchContext', () => ({ BranchContext: () => <div data-testid="branc
 vi.mock('./StateTags', () => ({ StateTags: () => <div data-testid="state-tags" /> }))
 vi.mock('./FetchButton', () => ({ FetchButton: () => <button>remote.fetch</button> }))
 vi.mock('./BranchButton', () => ({ BranchButton: () => <button>toolbar.branch</button> }))
-vi.mock('./PatchMenu', () => ({ PatchMenu: () => <div data-testid="patch-menu" /> }))
+vi.mock('./ToolsMenu', () => ({ ToolsMenu: () => <div data-testid="tools-menu" /> }))
 
 const useActionToolbarMock = vi.fn()
 vi.mock('../../hooks/useActionToolbar', () => ({ useActionToolbar: () => useActionToolbarMock() }))
