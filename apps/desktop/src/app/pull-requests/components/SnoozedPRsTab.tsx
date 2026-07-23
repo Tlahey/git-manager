@@ -14,12 +14,11 @@ interface SnoozedPRsTabProps {
   loading: boolean
 }
 
-/** The Snoozed tab: PRs hidden from the other lists until their wake time (or an explicit unsnooze).
- * Each row shows how long it stays snoozed and an inline control to bring it back now. */
+/** The Snoozed tab: PRs hidden from the other lists until their wake time. Each row shows how long
+ * it stays snoozed; the row's own snooze control (left edge) is used to bring it back now. */
 export function SnoozedPRsTab({ snoozedPRs, pinnedIds, onTogglePin, loading }: SnoozedPRsTabProps) {
   const { t } = useTranslation('launchpad')
   const snoozed = useLaunchpadStore((s) => s.snoozed)
-  const unsnoozePr = useLaunchpadStore((s) => s.unsnoozePr)
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -45,7 +44,7 @@ export function SnoozedPRsTab({ snoozedPRs, pinnedIds, onTogglePin, loading }: S
             return (
               <div key={pr.id} className="group/snoozed relative">
                 <PRRow pr={pr} pinned={pinnedIds.has(pr.id)} onTogglePin={onTogglePin} />
-                <div className="absolute right-[150px] top-1/2 flex -translate-y-1/2 items-center gap-1.5">
+                <div className="pointer-events-none absolute right-[150px] top-1/2 flex -translate-y-1/2 items-center gap-1.5">
                   <span
                     className="rounded border border-border/50 bg-muted/60 px-1.5 py-px text-[10px] text-muted-foreground"
                     data-testid={`snoozed-until-${pr.id}`}
@@ -54,16 +53,6 @@ export function SnoozedPRsTab({ snoozedPRs, pinnedIds, onTogglePin, loading }: S
                       ? t('snooze.snoozedFor', { time: remaining })
                       : t('snooze.snoozedIndefinitely')}
                   </span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      unsnoozePr(pr.id)
-                    }}
-                    className="flex h-6 items-center gap-1 rounded-md border border-border bg-card/85 px-1.5 text-[10px] text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-all duration-150 hover:text-foreground group-hover/snoozed:opacity-100"
-                    title={t('snooze.unsnooze')}
-                  >
-                    <BellOff className="h-3 w-3" /> {t('snooze.unsnooze')}
-                  </button>
                 </div>
               </div>
             )

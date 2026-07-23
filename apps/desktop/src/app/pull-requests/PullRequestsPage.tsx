@@ -21,7 +21,7 @@ import { Spinner } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { InnerTab, KpiCard } from '@git-manager/components'
 import { OpenPrContext } from './OpenPrContext'
-import { PrViewPanel } from './components/PrViewPanel'
+import { PrSidePanel } from './components/PrSidePanel'
 import { PullRequestsTab } from './components/PullRequestsTab'
 import { WipTab } from './components/WipTab'
 import { FollowedPRsTab } from './components/FollowedPRsTab'
@@ -161,17 +161,10 @@ export function PullRequestsPage() {
     if (id === 'waiting') appEventBus.notify('view_waiting_reviews')
   }
 
-  if (openedPr) {
-    return (
-      <div className="flex h-full flex-col overflow-hidden bg-background">
-        <PrViewPanel pr={openedPr} onClose={() => setOpenedPr(null)} />
-      </div>
-    )
-  }
-
   return (
     <OpenPrContext.Provider value={setOpenedPr}>
-      <div className="flex h-full flex-col overflow-hidden bg-background">
+      <div className="flex h-full overflow-hidden bg-background">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Page Header */}
         <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card/50 px-5 py-2.5 backdrop-blur-sm">
           <div className="flex items-center gap-2">
@@ -291,6 +284,8 @@ export function PullRequestsPage() {
 
         {/* Tab Content */}
         <div className="min-h-0 flex-1">{renderActiveTab(PR_TABS, activeTab)}</div>
+        </div>
+        {openedPr && <PrSidePanel pr={openedPr} onClose={() => setOpenedPr(null)} />}
       </div>
     </OpenPrContext.Provider>
   )

@@ -214,12 +214,30 @@ describe('PRRow — quick actions', () => {
     expect(screen.getByRole('menuitem', { name: 'Copy link' })).toBeInTheDocument()
   })
 
-  it('toggles pin via the caret dropdown, reflecting the current pinned state', async () => {
-    const onTogglePin = vi.fn()
+  it('renders a snooze control on the row edge, not in the dropdown', async () => {
     const user = userEvent.setup()
-    render(<PRRow pr={pr({ id: 'pr-2' })} pinned onTogglePin={onTogglePin} />)
+    render(<PRRow pr={pr({ id: 'pr-2' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByTestId('snooze-trigger-pr-2')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'More options' }))
-    await user.click(screen.getByRole('menuitem', { name: 'Unpin' }))
-    expect(onTogglePin).toHaveBeenCalledWith('pr-2')
+    expect(screen.queryByRole('menuitem', { name: /Snooze/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /Pin/ })).not.toBeInTheDocument()
+  })
+
+  it('renders an open-in-app icon that opens the in-app view when available', async () => {
+    const onOpen = vi.fn()
+    const thePr = pr({ id: 'pr-3' })
+    const user = userEvent.setup()
+    render(
+      <OpenPrContext.Provider value={onOpen}>
+        <PRRow pr={thePr} pinned={false} onTogglePin={vi.fn()} />
+      </OpenPrContext.Provider>
+    )
+    await user.click(screen.getByTestId('pr-open-in-app-pr-3'))
+    expect(onOpen).toHaveBeenCalledWith(thePr)
+  })
+
+  it('hides the open-in-app icon when no in-app view is available', () => {
+    render(<PRRow pr={pr({ id: 'pr-4' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.queryByTestId('pr-open-in-app-pr-4')).not.toBeInTheDocument()
   })
 })

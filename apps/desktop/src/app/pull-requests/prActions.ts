@@ -1,8 +1,10 @@
 import type { MockPR } from './types'
 
-/** Every quick action a PR row can offer. The row assembles labelled/icon'd `SplitButtonAction`s
- * from these; the primary is picked by {@link defaultPrActionKey}. `review`/`view` both open the
- * embedded PR panel — they differ only in labelling (a review you owe vs. a plain look). */
+/** Every GitHub action a PR row's split button can offer. The row assembles labelled/icon'd
+ * `SplitButtonAction`s from these; the primary is picked by {@link defaultPrActionKey}. `review`/
+ * `view` both open the embedded PR panel — they differ only in labelling (a review you owe vs. a
+ * plain look). Pin and snooze are deliberately NOT here: they live as hover icons on the row's left
+ * edge (see `SnoozeControl` and the pin button in `PRRow`), not in this menu. */
 export type PrActionKey =
   | 'review'
   | 'view'
@@ -11,8 +13,6 @@ export type PrActionKey =
   | 'openGitHub'
   | 'viewRepo'
   | 'copyLink'
-  | 'snooze'
-  | 'pin'
 
 /** Whether merging this PR from the app is offered: it must be your own, still open (not draft),
  * green CI, and not behind its base. Mirrors the guards GitHub itself would apply. */

@@ -269,18 +269,33 @@ describe('PullRequestsPage — tab navigation', () => {
 })
 
 describe('PullRequestsPage — opening a PR in the in-app view', () => {
-  it('takes over the page with the interactive PR view on row click, then returns via Back', async () => {
+  it('opens the interactive PR view in a resizable side panel on row click, then closes via Back', async () => {
     const user = userEvent.setup()
     mockHook({ activeTab: 'prs', visiblePRs: [pr({ title: 'Openable PR', fullName: 'owner/repo' })] })
     render(<PullRequestsPage />)
 
     await user.click(screen.getByText('Openable PR'))
+    expect(screen.getByTestId('launchpad-pr-panel')).toBeInTheDocument()
+    expect(screen.getByTestId('launchpad-pr-panel-resize')).toBeInTheDocument()
     expect(screen.getByTestId('launchpad-pr-view')).toBeInTheDocument()
-    expect(screen.getByTestId('pr-detail-center')).toBeInTheDocument()
+    // The list stays mounted alongside the panel (no full-page takeover).
+    expect(screen.getByText('Openable PR')).toBeInTheDocument()
 
     await user.click(screen.getByTestId('pr-detail-back'))
-    expect(screen.queryByTestId('launchpad-pr-view')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('launchpad-pr-panel')).not.toBeInTheDocument()
     expect(screen.getByText('Openable PR')).toBeInTheDocument()
+  })
+
+  it('opens the panel from the row\'s open-in-app icon', async () => {
+    const user = userEvent.setup()
+    mockHook({
+      activeTab: 'prs',
+      visiblePRs: [pr({ id: 'pr-x', title: 'Iconable PR', fullName: 'owner/repo' })],
+    })
+    render(<PullRequestsPage />)
+
+    await user.click(screen.getByTestId('pr-open-in-app-pr-x'))
+    expect(screen.getByTestId('launchpad-pr-panel')).toBeInTheDocument()
   })
 })
 

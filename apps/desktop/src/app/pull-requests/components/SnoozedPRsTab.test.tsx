@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import type { MockPR } from '../types'
 import { SnoozedPRsTab } from './SnoozedPRsTab'
 import { useLaunchpadStore } from '../../../stores/launchpad.store'
@@ -70,9 +69,8 @@ describe('SnoozedPRsTab', () => {
     expect(screen.getByTestId('snoozed-until-pr-1')).toHaveTextContent('Snoozed')
   })
 
-  it('unsnoozes a PR via its inline control', async () => {
+  it('exposes the row snooze control (labelled Unsnooze) for bringing a PR back', () => {
     useLaunchpadStore.setState({ snoozed: { 'pr-1': null } })
-    const user = userEvent.setup()
     render(
       <SnoozedPRsTab
         snoozedPRs={[pr()]}
@@ -81,7 +79,7 @@ describe('SnoozedPRsTab', () => {
         loading={false}
       />
     )
-    await user.click(screen.getByRole('button', { name: 'Unsnooze' }))
-    expect(useLaunchpadStore.getState().snoozed['pr-1']).toBeUndefined()
+    const trigger = screen.getByTestId('snooze-trigger-pr-1')
+    expect(trigger).toHaveAttribute('aria-label', 'Unsnooze')
   })
 })

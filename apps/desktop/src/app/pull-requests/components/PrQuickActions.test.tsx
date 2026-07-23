@@ -69,7 +69,7 @@ describe('PrQuickActions', () => {
   it('leads with Merge for your own green PR and merges after confirmation', async () => {
     signIn()
     const user = userEvent.setup()
-    render(<PrQuickActions pr={pr()} pinned={false} onTogglePin={vi.fn()} />)
+    render(<PrQuickActions pr={pr()} />)
 
     const primary = screen.getByTestId('pr-actions-pr-1-btn')
     expect(primary).toHaveTextContent('Merge')
@@ -93,39 +93,28 @@ describe('PrQuickActions', () => {
   it('leads with View for a PR you cannot merge and offers no merge action', async () => {
     signIn()
     const user = userEvent.setup()
-    render(<PrQuickActions pr={pr({ ciStatus: 'failure' })} pinned={false} onTogglePin={vi.fn()} />)
+    render(<PrQuickActions pr={pr({ ciStatus: 'failure' })} />)
 
     expect(screen.getByTestId('pr-actions-pr-1-btn')).toHaveTextContent('View')
     await user.click(screen.getByRole('button', { name: 'More options' }))
     expect(screen.queryByRole('menuitem', { name: 'Merge' })).not.toBeInTheDocument()
   })
 
-  it('snoozes a PR from the dropdown', async () => {
+  it('does not expose pin or snooze in the dropdown (those live on the row edge)', async () => {
+    signIn()
     const user = userEvent.setup()
-    render(<PrQuickActions pr={pr()} pinned={false} onTogglePin={vi.fn()} />)
+    render(<PrQuickActions pr={pr({ ciStatus: 'running' })} />)
 
     await user.click(screen.getByRole('button', { name: 'More options' }))
-    await user.click(screen.getByRole('menuitem', { name: 'Snooze until tomorrow' }))
-
-    expect(useLaunchpadStore.getState().snoozed['pr-1']).toBeTypeOf('number')
-  })
-
-  it('offers Unsnooze for an already-snoozed PR', async () => {
-    useLaunchpadStore.setState({ snoozed: { 'pr-1': null } })
-    const user = userEvent.setup()
-    render(<PrQuickActions pr={pr()} pinned={false} onTogglePin={vi.fn()} />)
-
-    await user.click(screen.getByRole('button', { name: 'More options' }))
-    await user.click(screen.getByRole('menuitem', { name: 'Unsnooze' }))
-
-    expect(useLaunchpadStore.getState().snoozed['pr-1']).toBeUndefined()
+    expect(screen.queryByRole('menuitem', { name: /Snooze/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /Pin/ })).not.toBeInTheDocument()
   })
 
   it('closes a PR after confirmation', async () => {
     signIn()
     const user = userEvent.setup()
     // A running-CI PR is not mergeable, so the primary is View and Close lives in the dropdown.
-    render(<PrQuickActions pr={pr({ ciStatus: 'running' })} pinned={false} onTogglePin={vi.fn()} />)
+    render(<PrQuickActions pr={pr({ ciStatus: 'running' })} />)
 
     await user.click(screen.getByRole('button', { name: 'More options' }))
     await user.click(screen.getByRole('menuitem', { name: 'Close PR' }))

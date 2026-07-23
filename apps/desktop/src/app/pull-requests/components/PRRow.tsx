@@ -1,10 +1,11 @@
-import { Pin, GitMerge, XCircle, Circle, GitPullRequest, AlertCircle } from 'lucide-react'
+import { Pin, GitMerge, XCircle, Circle, GitPullRequest, AlertCircle, PanelRight } from 'lucide-react'
 import { Tag } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import type { MockPR } from '../types'
 import { StatusBadge, CiBadge } from './Badges'
 import { AvatarStack } from './AvatarStack'
 import { PrQuickActions } from './PrQuickActions'
+import { SnoozeControl } from './SnoozeControl'
 import { openUrl, timeAgo } from '../utils'
 import { useOpenPr } from '../OpenPrContext'
 
@@ -23,18 +24,23 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
       className="group/pr relative flex cursor-pointer items-center gap-3 border-b border-border/30 px-4 py-2.5 transition-colors last:border-0 hover:bg-accent/30"
       onClick={() => (openPr ? openPr(pr) : openUrl(pr.url))}
     >
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          onTogglePin(pr.id)
-        }}
-        title={pinned ? t('row.unpin') : t('row.pin')}
-        className={`shrink-0 transition-colors ${
-          pinned ? 'text-amber-400' : 'text-muted-foreground/30 hover:text-amber-400'
-        }`}
-      >
-        <Pin className={`h-3 w-3 ${pinned ? 'fill-amber-400' : ''}`} />
-      </button>
+      <div className="flex shrink-0 items-center gap-1">
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onTogglePin(pr.id)
+          }}
+          title={pinned ? t('row.unpin') : t('row.pin')}
+          className={`shrink-0 transition-all ${
+            pinned
+              ? 'text-amber-400'
+              : 'text-muted-foreground/30 opacity-0 hover:text-amber-400 group-hover/pr:opacity-100'
+          }`}
+        >
+          <Pin className={`h-3 w-3 ${pinned ? 'fill-amber-400' : ''}`} />
+        </button>
+        <SnoozeControl prId={pr.id} />
+      </div>
       <div className="shrink-0">
         {pr.status === 'merged' ? (
           <GitMerge className="h-4 w-4 text-purple-400" />
@@ -117,8 +123,22 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
         <CiBadge status={pr.ciStatus} details={pr.ciDetails} prUrl={pr.url} />
       </div>
       <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-        <PrQuickActions pr={pr} pinned={pinned} onTogglePin={onTogglePin} />
+        <PrQuickActions pr={pr} />
       </div>
+      {openPr && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            openPr(pr)
+          }}
+          title={t('row.openInApp')}
+          aria-label={t('row.openInApp')}
+          data-testid={`pr-open-in-app-${pr.id}`}
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all hover:border-border hover:bg-accent hover:text-foreground group-hover/pr:opacity-100"
+        >
+          <PanelRight className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   )
 }
