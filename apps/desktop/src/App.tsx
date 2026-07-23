@@ -25,6 +25,8 @@ import { Toaster } from '@git-manager/ui'
 import { CommandPalette } from './components/command-palette/CommandPalette'
 import { TrophyToast } from './components/trophy/TrophyToast'
 import { OperationProgressBar } from './components/layout/OperationProgressBar'
+import { LoadingOverlay } from './components/layout/LoadingOverlay'
+import { useAppReadySplash } from './hooks/useAppReadySplash'
 import { appEventBus } from './lib/appEventBus'
 import { useOperationProgressStore } from './stores/operationProgress.store'
 import { useUndoHistoryStore } from './stores/undoHistory.store'
@@ -42,6 +44,7 @@ export default function App() {
   useMonacoTheme()
   useNotificationWatcher()
   useDevFixtureImport()
+  useAppReadySplash()
 
   useKeyboardShortcuts({
     onOpenSettings: () => handleOpenSettings('general'),
@@ -174,6 +177,7 @@ export default function App() {
         />
         <TrophyToast />
         <Toaster />
+        <LoadingOverlay />
       </div>
     </QueryClientProvider>
   )

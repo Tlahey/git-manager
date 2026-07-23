@@ -5,6 +5,8 @@ import { Toolbar } from './Toolbar'
 import { TableHeader, LoadMore, useSetFilter } from './ListHelpers'
 import { PRRowSkeleton } from './RowSkeletons'
 import { PRRow } from './PRRow'
+import { matchesPrSearch } from '../prSearch'
+import { useLaunchpadControlsStore } from '../../../stores/launchpadControls.store'
 import type { MockPR, SortKey, SortDir } from '../types'
 
 const PAGE_SIZE = 20
@@ -30,6 +32,7 @@ export function WaitingForReviewTab({
   const [repoFilter, toggleRepo, clearRepo] = useSetFilter()
   const [authorFilter, toggleAuthor, clearAuthor] = useSetFilter()
   const [shown, setShown] = useState(PAGE_SIZE)
+  const globalSearch = useLaunchpadControlsStore((s) => s.search)
 
   const repos = useMemo(() => [...new Set(allPRs.map((p) => p.repo))].sort(), [allPRs])
   const statuses = useMemo(() => [...new Set(allPRs.map((p) => p.status))].sort(), [allPRs])
@@ -51,15 +54,7 @@ export function WaitingForReviewTab({
         if (statusFilter.size > 0 && !statusFilter.has(pr.status)) return false
         if (repoFilter.size > 0 && !repoFilter.has(pr.repo)) return false
         if (authorFilter.size > 0 && !authorFilter.has(pr.author)) return false
-        if (search) {
-          const q = search.toLowerCase()
-          return (
-            pr.title.toLowerCase().includes(q) ||
-            pr.author.toLowerCase().includes(q) ||
-            pr.repo.toLowerCase().includes(q)
-          )
-        }
-        return true
+        return matchesPrSearch(pr, search) && matchesPrSearch(pr, globalSearch)
       })
       .sort((a, b) => {
         let cmp = 0
@@ -68,7 +63,7 @@ export function WaitingForReviewTab({
         else if (sortKey === 'repo') cmp = a.repo.localeCompare(b.repo)
         return sortDir === 'desc' ? -cmp : cmp
       })
-  }, [allPRs, search, statusFilter, repoFilter, authorFilter, sortKey, sortDir])
+  }, [allPRs, search, globalSearch, statusFilter, repoFilter, authorFilter, sortKey, sortDir])
 
   return (
     <div className="flex h-full flex-col overflow-hidden">

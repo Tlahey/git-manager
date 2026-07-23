@@ -76,6 +76,24 @@ describe('CommitHeaderInfo — header title', () => {
     expect(screen.getByText("Working Tree")).toBeInTheDocument()
   })
 
+  it('shows "WIP on <branch>" when a WIP branch is provided', () => {
+    render(<CommitHeaderInfo {...baseProps({ isWip: true, wipBranch: 'feature/x' })} />)
+    expect(screen.getByText('WIP on feature/x')).toBeInTheDocument()
+    expect(screen.queryByText('Working Tree')).not.toBeInTheDocument()
+  })
+
+  it('falls back to the working-tree title when detached (no WIP branch)', () => {
+    render(<CommitHeaderInfo {...baseProps({ isWip: true, wipBranch: null })} />)
+    expect(screen.getByText('Working Tree')).toBeInTheDocument()
+  })
+
+  it('shows a WIP tag with the changed-file count when provided', () => {
+    render(<CommitHeaderInfo {...baseProps({ isWip: true, wipFileCount: 3 })} />)
+    const badge = screen.getByTestId('wip-file-count')
+    expect(badge).toHaveTextContent('WIP')
+    expect(badge).toHaveTextContent('3 files changed')
+  })
+
   it('shows the stash title for a stash entry', () => {
     render(<CommitHeaderInfo {...baseProps({ isStash: true })} />)
     expect(screen.getByText("Stashes")).toBeInTheDocument()

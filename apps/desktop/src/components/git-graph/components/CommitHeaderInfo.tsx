@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, Textarea, Spinner, cn } from '@git-manager/ui'
+import { Button, Input, Textarea, Spinner, Tag, cn } from '@git-manager/ui'
 import {
   Copy,
   Check,
@@ -42,6 +42,10 @@ interface CommitHeaderInfoProps {
   onRefresh?: () => void
   onClose?: () => void
   refs?: GitRef[]
+  /** Branch the working tree is on (null when detached) — shown as "WIP on <branch>". WIP only. */
+  wipBranch?: string | null
+  /** Total number of changed files in the working tree — shown next to a "WIP" tag. WIP only. */
+  wipFileCount?: number
 }
 
 export function CommitHeaderInfo({
@@ -55,6 +59,8 @@ export function CommitHeaderInfo({
   onRefresh,
   onClose,
   refs = [],
+  wipBranch,
+  wipFileCount,
 }: CommitHeaderInfoProps) {
   const { t } = useTranslation('git')
 
@@ -110,7 +116,9 @@ export function CommitHeaderInfo({
             {isWip ? (
               <>
                 <Layers className="h-3.5 w-3.5 text-primary" />
-                {t('workingTree.title')}
+                {wipBranch
+                  ? t('workingTree.onBranch', { branch: wipBranch })
+                  : t('workingTree.title')}
               </>
             ) : isStash ? (
               <>
@@ -137,6 +145,17 @@ export function CommitHeaderInfo({
             )}
           </div>
         </div>
+
+        {isWip && wipFileCount !== undefined && (
+          <div className="flex items-center gap-1.5" data-testid="wip-file-count">
+            <Tag tone="warning" className="px-1.5 py-0.5 text-[9px]">
+              WIP
+            </Tag>
+            <span className="text-[11px] font-medium text-muted-foreground">
+              {t('workingTree.filesChanged', { count: wipFileCount })}
+            </span>
+          </div>
+        )}
 
         {!isWip && (
           <div className="mt-1 flex items-center gap-2.5 border-t border-border/20 pt-2">

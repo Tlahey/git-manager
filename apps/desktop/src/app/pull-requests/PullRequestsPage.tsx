@@ -12,7 +12,7 @@ import {
   GitCommit,
   BookOpen,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePullRequestsPage } from '../../hooks/usePullRequestsPage'
 import { timeAgo } from './utils'
 import { Spinner } from '@git-manager/ui'
@@ -20,6 +20,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { InnerTab, KpiCard } from '@git-manager/components'
 import { OpenPrContext } from './OpenPrContext'
 import { PrViewPanel } from './components/PrViewPanel'
+import { LaunchpadToolbar } from './components/LaunchpadToolbar'
 import { PullRequestsTab } from './components/PullRequestsTab'
 import { FollowedPRsTab } from './components/FollowedPRsTab'
 import { IssuesTab } from './components/IssuesTab'
@@ -28,11 +29,16 @@ import { CommitStatsTab } from './components/CommitStatsTab'
 import { CustomViewsTab } from './components/CustomViewsTab'
 import { appEventBus } from '../../lib/appEventBus'
 import { defineTabs, renderActiveTab, type TabDef } from '../../lib/navigation/tabRegistry'
+import { useLaunchpadControlsStore } from '../../stores/launchpadControls.store'
+import { useGlobalLoadingWhile } from '../../hooks/useGlobalLoadingWhile'
 import type { InnerTab as InnerTabType, MockPR } from './types'
 
 export function PullRequestsPage() {
   const { t } = useTranslation('launchpad')
   const [openedPr, setOpenedPr] = useState<MockPR | null>(null)
+
+  // Clear the global search when leaving the Launchpad so the filter doesn't linger next visit.
+  useEffect(() => () => useLaunchpadControlsStore.getState().reset(), [])
   const {
     activeTab,
     setActiveTab,
@@ -59,6 +65,11 @@ export function PullRequestsPage() {
     weekCommits,
     tabCounts,
   } = usePullRequestsPage()
+
+  // Drive the global loading overlay while the Launchpad's first data load is in flight. This also
+  // holds the startup splash until the Launchpad is ready when it's the active tab (see
+  // useAppReadySplash) — no token means an instant mock load, so nothing blocks in that case.
+  useGlobalLoadingWhile(loading, t('page.fetching'))
 
   const PR_TABS: TabDef<InnerTabType>[] = defineTabs([
     {
@@ -246,6 +257,9 @@ export function PullRequestsPage() {
             loading={loading}
           />
         </div>
+
+        {/* Global controls shared across every inner tab (search + collapse/expand all) */}
+        <LaunchpadToolbar />
 
         {/* Inner Tab Bar */}
         <div className="flex shrink-0 items-center border-b border-border bg-card/30 px-3">

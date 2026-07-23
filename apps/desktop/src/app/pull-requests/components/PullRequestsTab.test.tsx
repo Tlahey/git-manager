@@ -1,11 +1,16 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { MockPR } from '../types'
 
 vi.mock('@tauri-apps/plugin-shell', () => ({ open: vi.fn() }))
 
 import { PullRequestsTab } from './PullRequestsTab'
+import { useLaunchpadControlsStore } from '../../../stores/launchpadControls.store'
+
+beforeEach(() => {
+  useLaunchpadControlsStore.setState({ search: '', collapseAllNonce: 0, expandAllNonce: 0 })
+})
 
 function makePR(overrides: Partial<MockPR> = {}): MockPR {
   return {
@@ -55,11 +60,14 @@ describe('PullRequestsTab — grouping', () => {
     expect(screen.queryByText('Pinned')).not.toBeInTheDocument()
   })
 
-  it('shows Pinned, Needs my review and Other groups with correct counts', () => {
+  it('splits PRs into the actionable groups by state', () => {
     const prs = [
-      makePR({ id: '1', title: 'Pinned PR' }),
+      makePR({ id: '1', title: 'Pinned PR', collaborators: [{ login: 'r', avatar: '' }] }),
       makePR({ id: '2', title: 'Needs review PR', needsMyReview: true }),
-      makePR({ id: '3', title: 'Other PR' }),
+      makePR({ id: '3', title: 'Ready PR', status: 'approved' }),
+      makePR({ id: '4', title: 'Conflicted PR', needsRebase: true }),
+      makePR({ id: '5', title: 'Unassigned PR', collaborators: [] }),
+      makePR({ id: '6', title: 'Draft PR', isDraft: true }),
     ]
     render(
       <PullRequestsTab
@@ -70,9 +78,14 @@ describe('PullRequestsTab — grouping', () => {
       />
     )
     expect(screen.getByText('Pinned')).toBeInTheDocument()
-    expect(screen.getByText('Pinned PR')).toBeInTheDocument()
-    expect(screen.getByText('Needs review PR')).toBeInTheDocument()
-    expect(screen.getByText('Other PR')).toBeInTheDocument()
+    expect(screen.getByText('Ready to merge')).toBeInTheDocument()
+    expect(screen.getByText('Unassigned reviewers')).toBeInTheDocument()
+    expect(screen.getByText('Resolve conflicts')).toBeInTheDocument()
+    expect(screen.getByText('Needs my review')).toBeInTheDocument()
+    expect(screen.getByText('Draft')).toBeInTheDocument()
+    // Every PR is rendered exactly once (pinned shown on top, the rest in their bucket).
+    expect(screen.getByText('Ready PR')).toBeInTheDocument()
+    expect(screen.getByText('Draft PR')).toBeInTheDocument()
   })
 
   it('a pinned PR that also needsMyReview only shows in the Pinned group', () => {
@@ -86,21 +99,36 @@ describe('PullRequestsTab — grouping', () => {
       />
     )
     expect(screen.getAllByText('Pinned and needed')).toHaveLength(1)
-    expect(screen.getByText('No PRs waiting for your review')).toBeInTheDocument()
+    // With the only PR pinned, no unpinned group renders → the global empty state shows.
+    expect(screen.getByText('No pull requests')).toBeInTheDocument()
   })
 
-  it('shows empty-state messages for empty needs-review and other groups', () => {
+  it('shows the empty state when there are no pull requests', () => {
     render(
       <PullRequestsTab allPRs={[]} pinnedIds={new Set()} onTogglePin={vi.fn()} loading={false} />
     )
-    expect(screen.getByText('No PRs waiting for your review')).toBeInTheDocument()
     expect(screen.getByText('No pull requests')).toBeInTheDocument()
+  })
+
+  it('omits a group entirely when it has no PRs', () => {
+    render(
+      <PullRequestsTab
+        allPRs={[makePR({ id: '1', title: 'Draft PR', isDraft: true })]}
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+        loading={false}
+      />
+    )
+    expect(screen.getByText('Draft')).toBeInTheDocument()
+    expect(screen.queryByText('Ready to merge')).not.toBeInTheDocument()
+    expect(screen.queryByText('Resolve conflicts')).not.toBeInTheDocument()
   })
 })
 
 describe('PullRequestsTab — collapsing groups', () => {
-  it('collapses and expands the Other pull requests group', async () => {
+  it('collapses and expands a group independently', async () => {
     const user = userEvent.setup()
+    // A default PR (open, no requested reviewers) lands in the "Unassigned reviewers" group.
     render(
       <PullRequestsTab
         allPRs={[makePR({ title: 'Collapsible PR' })]}
@@ -110,9 +138,9 @@ describe('PullRequestsTab — collapsing groups', () => {
       />
     )
     expect(screen.getByText('Collapsible PR')).toBeInTheDocument()
-    await user.click(screen.getByText('Other pull requests'))
+    await user.click(screen.getByText('Unassigned reviewers'))
     expect(screen.queryByText('Collapsible PR')).not.toBeInTheDocument()
-    await user.click(screen.getByText('Other pull requests'))
+    await user.click(screen.getByText('Unassigned reviewers'))
     expect(screen.getByText('Collapsible PR')).toBeInTheDocument()
   })
 })
@@ -154,6 +182,39 @@ describe('PullRequestsTab — pagination per group', () => {
 
     await user.click(screen.getByText('Load more (5 remaining)'))
     expect(screen.getByText('Other PR 24')).toBeInTheDocument()
+  })
+})
+
+describe('PullRequestsTab — global Launchpad controls', () => {
+  it('applies the global search on top of the local filters', () => {
+    const prs = [
+      makePR({ id: '1', title: 'Fix bug', collaborators: [] }),
+      makePR({ id: '2', title: 'Add feature', collaborators: [] }),
+    ]
+    useLaunchpadControlsStore.setState({ search: 'feature' })
+    render(
+      <PullRequestsTab allPRs={prs} pinnedIds={new Set()} onTogglePin={vi.fn()} loading={false} />
+    )
+    expect(screen.getByText('Add feature')).toBeInTheDocument()
+    expect(screen.queryByText('Fix bug')).not.toBeInTheDocument()
+  })
+
+  it('collapses and expands every group via the global nonces', () => {
+    render(
+      <PullRequestsTab
+        allPRs={[makePR({ id: '1', title: 'Grouped PR', collaborators: [] })]}
+        pinnedIds={new Set()}
+        onTogglePin={vi.fn()}
+        loading={false}
+      />
+    )
+    expect(screen.getByText('Grouped PR')).toBeInTheDocument()
+
+    act(() => useLaunchpadControlsStore.getState().collapseAll())
+    expect(screen.queryByText('Grouped PR')).not.toBeInTheDocument()
+
+    act(() => useLaunchpadControlsStore.getState().expandAll())
+    expect(screen.getByText('Grouped PR')).toBeInTheDocument()
   })
 })
 

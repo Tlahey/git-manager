@@ -8,6 +8,7 @@ import { initI18n } from '@git-manager/i18n'
 import { useSettingsStore } from './stores/settings.store'
 import { useRepoUIStore } from './stores/repoUI.store'
 import { useBisectUIStore } from './stores/bisectUI.store'
+import { hideAppSplash } from './lib/appSplash'
 import '@git-manager/ui/globals.css'
 import '@git-manager/editor/styles.css'
 import './index.css'
@@ -32,18 +33,6 @@ if (import.meta.env.VITE_E2E === 'true') {
     useBisectUIStore
 }
 
-// Fades out and removes the static splash markup painted instantly by index.html once the
-// real app has committed its first frame. The setTimeout fallback guarantees removal even
-// if `transitionend` never fires (e.g. reduced-motion, or no matching CSS transition).
-function hideSplash() {
-  const splash = document.getElementById('app-splash')
-  if (!splash) return
-  splash.classList.add('is-hidden')
-  const remove = () => splash.remove()
-  splash.addEventListener('transitionend', remove, { once: true })
-  setTimeout(remove, 300)
-}
-
 // Initialize i18n before rendering, honoring the persisted language choice
 // (the zustand store rehydrates synchronously from localStorage on import).
 e2eSetup
@@ -59,6 +48,10 @@ e2eSetup
     const baseOid = params.get('baseOid')
 
     let content: React.ReactNode
+    // The main App window keeps the splash up until it's actually ready (see
+    // useAppReadySplash); the dedicated merge/rebase/fixup windows have no such
+    // startup load, so they drop the splash on their first frame.
+    let isAppWindow = false
     if (windowKind === 'merge' && repoPath && filePath) {
       content = <ConflictMergeWindow repoPath={repoPath} filePath={filePath} />
     } else if (windowKind === 'rebase' && repoPath && baseOid) {
@@ -74,10 +67,11 @@ e2eSetup
       )
     } else {
       content = <App />
+      isAppWindow = true
     }
 
     ReactDOM.createRoot(document.getElementById('root')!).render(
       <React.StrictMode>{content}</React.StrictMode>
     )
-    requestAnimationFrame(hideSplash)
+    if (!isAppWindow) requestAnimationFrame(hideAppSplash)
   })

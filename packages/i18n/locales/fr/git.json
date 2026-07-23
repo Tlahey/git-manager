@@ -338,6 +338,8 @@
   "branch.merge": "Merger ici",
   "branch.aheadBehind": "↑{{ahead}} ↓{{behind}}",
   "workingTree.title": "Working Tree",
+  "workingTree.onBranch": "WIP sur {{branch}}",
+  "workingTree.filesChanged": "{{count}} fichiers modifiés",
   "workingTree.unmerged": "Unmerged ({{count}})",
   "workingTree.staged": "Staged ({{count}})",
   "workingTree.unstaged": "Unstaged ({{count}})",

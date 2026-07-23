@@ -7,6 +7,8 @@ import { TableHeader, LoadMore, usePRSort, useSetFilter } from './ListHelpers'
 import { PRRowSkeleton } from './RowSkeletons'
 import { PRRow } from './PRRow'
 import { FollowPRDialog } from './FollowPRDialog'
+import { matchesPrSearch } from '../prSearch'
+import { useLaunchpadControlsStore } from '../../../stores/launchpadControls.store'
 import type { MockPR, SortKey, SortDir } from '../types'
 
 const PAGE_SIZE = 20
@@ -67,6 +69,7 @@ export function FollowedPRsTab({
   const [authorFilter, toggleAuthor, clearAuthor] = useSetFilter()
   const [shown, setShown] = useState(PAGE_SIZE)
   const [showFollowDialog, setShowFollowDialog] = useState(false)
+  const globalSearch = useLaunchpadControlsStore((s) => s.search)
 
   const handleSort = useCallback((k: SortKey) => {
     setSortKey((prevKey) => {
@@ -95,18 +98,9 @@ export function FollowedPRsTab({
       if (statusFilter.size > 0 && !statusFilter.has(pr.status)) return false
       if (repoFilter.size > 0 && !repoFilter.has(pr.repo)) return false
       if (authorFilter.size > 0 && !authorFilter.has(pr.author)) return false
-      if (search) {
-        const q = search.toLowerCase()
-        return (
-          pr.title.toLowerCase().includes(q) ||
-          pr.author.toLowerCase().includes(q) ||
-          pr.repo.toLowerCase().includes(q) ||
-          String(pr.number).includes(q)
-        )
-      }
-      return true
+      return matchesPrSearch(pr, search) && matchesPrSearch(pr, globalSearch)
     })
-  }, [followedPRs, search, statusFilter, repoFilter, authorFilter])
+  }, [followedPRs, search, globalSearch, statusFilter, repoFilter, authorFilter])
 
   const sortedPRs = usePRSort(filtered, sortKey, sortDir)
 
