@@ -163,7 +163,7 @@ export function PullRequestsPage() {
 
   return (
     <OpenPrContext.Provider value={setOpenedPr}>
-      <div className="flex h-full overflow-hidden bg-background">
+      <div className="relative flex h-full overflow-hidden bg-background">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Page Header */}
         <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card/50 px-5 py-2.5 backdrop-blur-sm">

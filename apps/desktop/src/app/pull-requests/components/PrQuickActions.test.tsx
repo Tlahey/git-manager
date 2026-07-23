@@ -100,6 +100,11 @@ describe('PrQuickActions', () => {
     expect(screen.queryByRole('menuitem', { name: 'Merge' })).not.toBeInTheDocument()
   })
 
+  it('uses a short "Open" primary label for a merged PR', () => {
+    render(<PrQuickActions pr={pr({ status: 'merged' })} />)
+    expect(screen.getByTestId('pr-actions-pr-1-btn')).toHaveTextContent('Open')
+  })
+
   it('does not expose pin or snooze in the dropdown (those live on the row edge)', async () => {
     signIn()
     const user = userEvent.setup()

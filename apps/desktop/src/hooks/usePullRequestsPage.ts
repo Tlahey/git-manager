@@ -14,7 +14,7 @@ export function usePullRequestsPage() {
   const { activeTab, setActiveTab, savedFilters, snoozed } = useLaunchpadStore()
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set())
   const [followedPRs, setFollowedPRs] = useState<MockPR[]>([])
-  const { wipRepos } = useLocalWipRepos()
+  const { entries: wipEntries } = useLocalWipRepos()
 
   const {
     prs,
@@ -69,7 +69,7 @@ export function usePullRequestsPage() {
 
   const tabCounts: Record<InnerTabType, number | undefined> = {
     prs: visiblePRs.filter((p) => p.status !== 'closed' && p.status !== 'merged').length,
-    wip: wipRepos.length,
+    wip: wipEntries.length,
     followed: followedPRs.length,
     issues: issues.filter((i) => i.status === 'open').length,
     waiting: needsReviewCount,

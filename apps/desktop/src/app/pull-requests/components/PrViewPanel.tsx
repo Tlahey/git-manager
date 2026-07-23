@@ -26,6 +26,7 @@ export function PrViewPanel({ pr, onClose }: PrViewPanelProps) {
   const activePrFile = useRepoUIStore((s) => s.activePrFile)
   const prFilesVisible = useRepoUIStore((s) => s.prFilesVisible)
   const setActivePrFile = useRepoUIStore((s) => s.setActivePrFile)
+  const setPrFilesVisible = useRepoUIStore((s) => s.setPrFilesVisible)
   const { width: filesWidth, resizeProps } = useHorizontalResize(400)
 
   const ownerRepo = useMemo(() => {
@@ -39,6 +40,14 @@ export function PrViewPanel({ pr, onClose }: PrViewPanelProps) {
     setActivePrFile(null)
     return () => setActivePrFile(null)
   }, [pr.id, setActivePrFile])
+
+  // The Launchpad PR panel opens with the files list collapsed (conversation first). Restore the
+  // previous shared value on close so the repo-graph PR view keeps its own preference.
+  useEffect(() => {
+    const prev = useRepoUIStore.getState().prFilesVisible
+    setPrFilesVisible(false)
+    return () => setPrFilesVisible(prev)
+  }, [setPrFilesVisible])
 
   const repoPath = pr.fullName ?? ''
 

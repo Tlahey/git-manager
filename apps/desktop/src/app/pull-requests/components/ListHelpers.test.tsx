@@ -32,17 +32,22 @@ describe('GroupHeader', () => {
     expect(button.querySelector('.lucide-chevron-down')).toBeTruthy()
   })
 
-  it('applies the accent color when given', () => {
+  it('renders the section icon, a count tag, and a foreground label', () => {
     render(
       <GroupHeader
         label="Urgent"
         count={1}
         open={false}
         onToggle={vi.fn()}
-        accent="text-amber-400"
+        icon={<span data-testid="group-icon" />}
+        iconClassName="text-amber-400"
+        tone="warning"
       />
     )
-    expect(screen.getByText('Urgent')).toHaveClass('text-amber-400')
+    expect(screen.getByTestId('group-icon')).toBeInTheDocument()
+    expect(screen.getByText('1')).toBeInTheDocument()
+    // The label itself stays foreground/black (only the icon carries the section colour).
+    expect(screen.getByText('Urgent')).toHaveClass('text-foreground')
   })
 })
 

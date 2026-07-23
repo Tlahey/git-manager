@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { MockPR } from '../types'
 
 vi.mock('./PrViewPanel', () => ({
@@ -40,16 +41,26 @@ function pr(overrides: Partial<MockPR> = {}): MockPR {
 }
 
 describe('PrSidePanel', () => {
-  it('renders the PR view inside a resizable panel with a drag handle', () => {
+  it('renders the PR view inside a right-hand overlay panel with a backdrop', () => {
     render(<PrSidePanel pr={pr()} onClose={vi.fn()} />)
-    expect(screen.getByTestId('launchpad-pr-panel-resize')).toBeInTheDocument()
+    expect(screen.getByTestId('launchpad-pr-panel-overlay')).toBeInTheDocument()
+    expect(screen.getByTestId('launchpad-pr-panel-backdrop')).toBeInTheDocument()
     expect(screen.getByTestId('launchpad-pr-panel')).toBeInTheDocument()
     expect(screen.getByTestId('pr-view-stub')).toBeInTheDocument()
   })
 
-  it('opens at 60% of the viewport width (min 50%)', () => {
-    // jsdom defaults window.innerWidth to 1024 → 60% = 614px.
+  it('is resizable via a left-edge handle, opening at 65% of the viewport', () => {
+    // jsdom defaults window.innerWidth to 1024 → 65% = 666px.
     render(<PrSidePanel pr={pr()} onClose={vi.fn()} />)
-    expect(screen.getByTestId('launchpad-pr-panel')).toHaveStyle({ width: '614px' })
+    expect(screen.getByTestId('launchpad-pr-panel-resize')).toBeInTheDocument()
+    expect(screen.getByTestId('launchpad-pr-panel')).toHaveStyle({ width: '666px' })
+  })
+
+  it('closes when the backdrop is clicked', async () => {
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    render(<PrSidePanel pr={pr()} onClose={onClose} />)
+    await user.click(screen.getByTestId('launchpad-pr-panel-backdrop'))
+    expect(onClose).toHaveBeenCalledOnce()
   })
 })

@@ -37,8 +37,16 @@ describe('canMergePr', () => {
     expect(canMergePr(pr({ author: 'other' }), 'me')).toBe(false)
   })
 
-  it('is false when CI is not successful', () => {
+  it('is false when CI is failing', () => {
     expect(canMergePr(pr({ ciStatus: 'failure' }), 'me')).toBe(false)
+  })
+
+  it('is false while CI is still running', () => {
+    expect(canMergePr(pr({ ciStatus: 'running' }), 'me')).toBe(false)
+  })
+
+  it('is true when there is no CI at all (null status)', () => {
+    expect(canMergePr(pr({ ciStatus: null }), 'me')).toBe(true)
   })
 
   it('is false when the branch is behind (needs rebase)', () => {

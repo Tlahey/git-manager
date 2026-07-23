@@ -86,6 +86,18 @@ describe('PRRow — content', () => {
     expect(screen.queryByText('wontfix')).not.toBeInTheDocument()
   })
 
+  it('shows the source branch in a tag under the repo when present', () => {
+    render(
+      <PRRow pr={pr({ id: 'pr-b', headRef: 'feat/thing' })} pinned={false} onTogglePin={vi.fn()} />
+    )
+    expect(screen.getByTestId('pr-branch-pr-b')).toHaveTextContent('feat/thing')
+  })
+
+  it('omits the branch tag when there is no head ref', () => {
+    render(<PRRow pr={pr({ id: 'pr-c' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.queryByTestId('pr-branch-pr-c')).not.toBeInTheDocument()
+  })
+
   it('shows a rebase-required badge when needsRebase is true', () => {
     render(<PRRow pr={pr({ needsRebase: true })} pinned={false} onTogglePin={vi.fn()} />)
     expect(screen.getByText('Rebase required')).toBeInTheDocument()

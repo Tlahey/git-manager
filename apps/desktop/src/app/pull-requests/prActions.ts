@@ -15,12 +15,14 @@ export type PrActionKey =
   | 'copyLink'
 
 /** Whether merging this PR from the app is offered: it must be your own, still open (not draft),
- * green CI, and not behind its base. Mirrors the guards GitHub itself would apply. */
+ * not behind its base, and its CI must not be failing or still running (no CI at all is fine — many
+ * repos have none). Mirrors the guards GitHub itself would apply. */
 export function canMergePr(pr: MockPR, currentUser: string | null): boolean {
   const isOwn = !!currentUser && pr.author === currentUser
   const isOpen =
     pr.status === 'open' || pr.status === 'approved' || pr.status === 'changes_requested'
-  return isOwn && isOpen && !pr.isDraft && pr.ciStatus === 'success' && !pr.needsRebase
+  const ciNotBlocking = pr.ciStatus !== 'failure' && pr.ciStatus !== 'running'
+  return isOwn && isOpen && !pr.isDraft && ciNotBlocking && !pr.needsRebase
 }
 
 /**

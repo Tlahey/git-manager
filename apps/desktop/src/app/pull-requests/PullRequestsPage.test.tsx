@@ -276,7 +276,7 @@ describe('PullRequestsPage — opening a PR in the in-app view', () => {
 
     await user.click(screen.getByText('Openable PR'))
     expect(screen.getByTestId('launchpad-pr-panel')).toBeInTheDocument()
-    expect(screen.getByTestId('launchpad-pr-panel-resize')).toBeInTheDocument()
+    expect(screen.getByTestId('launchpad-pr-panel-overlay')).toBeInTheDocument()
     expect(screen.getByTestId('launchpad-pr-view')).toBeInTheDocument()
     // The list stays mounted alongside the panel (no full-page takeover).
     expect(screen.getByText('Openable PR')).toBeInTheDocument()

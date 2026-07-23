@@ -2,15 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import type { ReactNode } from 'react'
-import type { GitStatus } from '@git-manager/git-types'
+import type { GitStatus, GitWorktree } from '@git-manager/git-types'
 
 vi.mock('../api/git.api', () => ({ apiGetRepoStatus: vi.fn() }))
+vi.mock('../api/worktree.api', () => ({ apiListWorktrees: vi.fn() }))
 
 import { apiGetRepoStatus } from '../api/git.api'
+import { apiListWorktrees } from '../api/worktree.api'
 import { useRepoDataStore } from '../stores/repoData.store'
 import { useLocalWipRepos } from './useLocalWipRepos'
 
 const mockedGetRepoStatus = apiGetRepoStatus as unknown as ReturnType<typeof vi.fn>
+const mockedListWorktrees = apiListWorktrees as unknown as ReturnType<typeof vi.fn>
 
 function wrapper({ children }: { children: ReactNode }) {
   return (
@@ -22,66 +25,100 @@ function status(overrides: Partial<GitStatus> = {}): GitStatus {
   return { staged: [], unstaged: [], untracked: [], conflicted: [], ...overrides }
 }
 
+function worktree(overrides: Partial<GitWorktree> = {}): GitWorktree {
+  return {
+    path: '/repo',
+    branch: 'main',
+    commitOid: 'abc',
+    isMain: true,
+    isLocked: false,
+    isDirty: true,
+    isPrunable: false,
+    ...overrides,
+  }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   useRepoDataStore.setState({ savedRepos: [], repoCache: {} })
 })
 
 describe('useLocalWipRepos', () => {
-  it('returns only repos with uncommitted changes, with a +/~/− breakdown', async () => {
+  it('returns one entry per dirty worktree (main + linked branches)', async () => {
     useRepoDataStore.setState({
-      savedRepos: [
-        { path: '/dirty', name: 'dirty', pinned: false },
-        { path: '/clean', name: 'clean', pinned: false },
-      ],
-      repoCache: {
-        '/dirty': {
-          path: '/dirty',
-          name: 'dirty',
-          head: 'feature-x',
-          isDetached: false,
-          isDirty: true,
-          remotes: [],
-        },
-      },
+      savedRepos: [{ path: '/repo', name: 'my-repo', pinned: false }],
+      repoCache: {},
     })
+    mockedListWorktrees.mockResolvedValue([
+      worktree({ path: '/repo', branch: 'main', isMain: true }),
+      worktree({ path: '/repo-feat', branch: 'feature-x', isMain: false }),
+    ])
     mockedGetRepoStatus.mockImplementation(async (path: string) =>
-      path === '/dirty'
-        ? status({ unstaged: [{ path: 'a.ts', status: 'modified' }], untracked: ['b.ts'] })
-        : status()
+      path === '/repo'
+        ? status({ unstaged: [{ path: 'a.ts', status: 'modified' }] })
+        : status({ untracked: ['b.ts'] })
     )
 
     const { result } = renderHook(() => useLocalWipRepos(), { wrapper })
 
-    await waitFor(() => expect(result.current.wipRepos).toHaveLength(1))
-    expect(result.current.wipRepos[0]).toEqual({
-      path: '/dirty',
-      name: 'dirty',
-      head: 'feature-x',
-      totalChanges: 2,
-      conflicted: 0,
-      added: 1,
-      modified: 1,
-      deleted: 0,
-    })
+    await waitFor(() => expect(result.current.entries).toHaveLength(2))
+    expect(result.current.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          repoPath: '/repo',
+          worktreePath: '/repo',
+          repoName: 'my-repo',
+          branch: 'main',
+          isMainWorktree: true,
+          totalChanges: 1,
+          modified: 1,
+        }),
+        expect.objectContaining({
+          worktreePath: '/repo-feat',
+          branch: 'feature-x',
+          isMainWorktree: false,
+          totalChanges: 1,
+          added: 1,
+        }),
+      ])
+    )
   })
 
-  it('drops a repo whose status read throws', async () => {
+  it('drops clean worktrees', async () => {
+    useRepoDataStore.setState({
+      savedRepos: [{ path: '/repo', name: 'my-repo', pinned: false }],
+      repoCache: {},
+    })
+    mockedListWorktrees.mockResolvedValue([
+      worktree({ path: '/repo', branch: 'main', isMain: true }),
+      worktree({ path: '/repo-clean', branch: 'clean', isMain: false }),
+    ])
+    mockedGetRepoStatus.mockImplementation(async (path: string) =>
+      path === '/repo' ? status({ untracked: ['x'] }) : status()
+    )
+
+    const { result } = renderHook(() => useLocalWipRepos(), { wrapper })
+
+    await waitFor(() => expect(result.current.entries).toHaveLength(1))
+    expect(result.current.entries[0].worktreePath).toBe('/repo')
+  })
+
+  it('drops a repo whose worktree listing throws', async () => {
     useRepoDataStore.setState({
       savedRepos: [{ path: '/gone', name: 'gone', pinned: false }],
       repoCache: {},
     })
-    mockedGetRepoStatus.mockRejectedValue(new Error('no such repo'))
+    mockedListWorktrees.mockRejectedValue(new Error('no such repo'))
 
     const { result } = renderHook(() => useLocalWipRepos(), { wrapper })
 
     await waitFor(() => expect(result.current.loading).toBe(false))
-    expect(result.current.wipRepos).toEqual([])
+    expect(result.current.entries).toEqual([])
   })
 
   it('does not fetch when there are no saved repos', () => {
     const { result } = renderHook(() => useLocalWipRepos(), { wrapper })
-    expect(mockedGetRepoStatus).not.toHaveBeenCalled()
-    expect(result.current.wipRepos).toEqual([])
+    expect(mockedListWorktrees).not.toHaveBeenCalled()
+    expect(result.current.entries).toEqual([])
   })
 })

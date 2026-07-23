@@ -20,6 +20,8 @@ export interface MockPR {
   repo: string
   repoUrl: string
   fullName?: string
+  /** Source branch name (`head.ref`), shown as a tag under the repo. Populated during enrichment. */
+  headRef?: string
   url: string
   status: PRStatus
   ciStatus: CiStatus

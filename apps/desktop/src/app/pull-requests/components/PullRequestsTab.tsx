@@ -1,6 +1,7 @@
-import { useState, useMemo, useCallback } from 'react'
-import { Eye, GitPullRequest } from 'lucide-react'
+import { useState, useMemo, useCallback, type ReactNode } from 'react'
+import { GitMerge, UserPlus, AlertTriangle, Eye, PencilRuler, Pin } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
+import type { TagTone } from '@git-manager/ui'
 
 import { Toolbar } from './Toolbar'
 import { TableHeader, GroupHeader, LoadMore, usePRSort, useSetFilter } from './ListHelpers'
@@ -9,6 +10,21 @@ import { PRRow } from './PRRow'
 import type { MockPR, SortKey, SortDir } from '../types'
 
 const PAGE_SIZE = 20
+
+type BucketKey = 'ready' | 'unassigned' | 'conflicts' | 'needsReview' | 'draft'
+
+/**
+ * Bucket a (non-pinned, still-open) PR by the next action it needs. Priority order matters: a draft
+ * with conflicts is a draft first; conflicts outrank a pending review; an approved, mergeable PR is
+ * "ready"; anything else is still waiting on reviewers.
+ */
+function bucketOf(pr: MockPR): BucketKey {
+  if (pr.isDraft) return 'draft'
+  if (pr.needsRebase) return 'conflicts'
+  if (pr.needsMyReview) return 'needsReview'
+  if (pr.reviewStatus === 'approved' || pr.status === 'approved') return 'ready'
+  return 'unassigned'
+}
 
 interface PullRequestsTabProps {
   allPRs: MockPR[]
@@ -25,21 +41,22 @@ export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: Pul
   const [statusFilter, toggleStatus, clearStatus] = useSetFilter()
   const [repoFilter, toggleRepo, clearRepo] = useSetFilter()
   const [authorFilter, toggleAuthor, clearAuthor] = useSetFilter()
-  const [gNeedsOpen, setGNeedsOpen] = useState(true)
-  const [gOtherOpen, setGOtherOpen] = useState(true)
-  const [gPinnedOpen, setGPinnedOpen] = useState(true)
-  const [shownNeeds, setShownNeeds] = useState(PAGE_SIZE)
-  const [shownOther, setShownOther] = useState(PAGE_SIZE)
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
+  const [shown, setShown] = useState<Record<string, number>>({})
+
+  const isOpen = (k: string) => openGroups[k] !== false
+  const toggleGroup = (k: string) => setOpenGroups((p) => ({ ...p, [k]: !(p[k] !== false) }))
+  const shownFor = (k: string) => shown[k] ?? PAGE_SIZE
+  const loadMore = (k: string) => setShown((p) => ({ ...p, [k]: (p[k] ?? PAGE_SIZE) + PAGE_SIZE }))
 
   const handleSort = useCallback((k: SortKey) => {
     setSortKey((prevKey) => {
       if (k === prevKey) {
         setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
         return prevKey
-      } else {
-        setSortDir('desc')
-        return k
       }
+      setSortDir('desc')
+      return k
     })
   }, [])
 
@@ -70,22 +87,78 @@ export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: Pul
     sortKey,
     sortDir
   )
-  const needsReview = usePRSort(
-    useMemo(
-      () => filtered.filter((pr) => pr.needsMyReview && !pinnedIds.has(pr.id)),
-      [filtered, pinnedIds]
-    ),
-    sortKey,
-    sortDir
-  )
-  const other = usePRSort(
-    useMemo(
-      () => filtered.filter((pr) => !pr.needsMyReview && !pinnedIds.has(pr.id)),
-      [filtered, pinnedIds]
-    ),
-    sortKey,
-    sortDir
-  )
+
+  // Non-pinned, still-open PRs bucketed by needed action (merged/closed drop out of this view).
+  const grouped = useMemo(() => {
+    const g: Record<BucketKey, MockPR[]> = {
+      ready: [],
+      unassigned: [],
+      conflicts: [],
+      needsReview: [],
+      draft: [],
+    }
+    for (const pr of filtered) {
+      if (pinnedIds.has(pr.id) || pr.status === 'merged' || pr.status === 'closed') continue
+      g[bucketOf(pr)].push(pr)
+    }
+    return g
+  }, [filtered, pinnedIds])
+
+  const readySorted = usePRSort(grouped.ready, sortKey, sortDir)
+  const unassignedSorted = usePRSort(grouped.unassigned, sortKey, sortDir)
+  const conflictsSorted = usePRSort(grouped.conflicts, sortKey, sortDir)
+  const needsReviewSorted = usePRSort(grouped.needsReview, sortKey, sortDir)
+  const draftSorted = usePRSort(grouped.draft, sortKey, sortDir)
+
+  const buckets: {
+    key: BucketKey
+    label: string
+    icon: ReactNode
+    iconClassName: string
+    tone: TagTone
+    items: MockPR[]
+  }[] = [
+    {
+      key: 'ready',
+      label: t('group.readyToMerge'),
+      icon: <GitMerge className="h-3 w-3" />,
+      iconClassName: 'text-green-400',
+      tone: 'success',
+      items: readySorted,
+    },
+    {
+      key: 'unassigned',
+      label: t('group.unassignedReviewers'),
+      icon: <UserPlus className="h-3 w-3" />,
+      iconClassName: 'text-blue-400',
+      tone: 'info',
+      items: unassignedSorted,
+    },
+    {
+      key: 'conflicts',
+      label: t('group.resolveConflicts'),
+      icon: <AlertTriangle className="h-3 w-3" />,
+      iconClassName: 'text-red-400',
+      tone: 'danger',
+      items: conflictsSorted,
+    },
+    {
+      key: 'needsReview',
+      label: t('group.needsReview'),
+      icon: <Eye className="h-3 w-3" />,
+      iconClassName: 'text-orange-400',
+      tone: 'warning',
+      items: needsReviewSorted,
+    },
+    {
+      key: 'draft',
+      label: t('group.draft'),
+      icon: <PencilRuler className="h-3 w-3" />,
+      iconClassName: 'text-muted-foreground',
+      tone: 'neutral',
+      items: draftSorted,
+    },
+  ]
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -124,63 +197,43 @@ export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: Pul
                 <GroupHeader
                   label={t('group.pinned')}
                   count={pinnedPRs.length}
-                  open={gPinnedOpen}
-                  onToggle={() => setGPinnedOpen((v) => !v)}
-                  accent="text-amber-400"
+                  open={isOpen('pinned')}
+                  onToggle={() => toggleGroup('pinned')}
+                  icon={<Pin className="h-3 w-3" />}
+                  iconClassName="text-amber-400"
+                  tone="warning"
                 />
-                {gPinnedOpen &&
+                {isOpen('pinned') &&
                   pinnedPRs.map((pr) => (
                     <PRRow key={pr.id} pr={pr} pinned onTogglePin={onTogglePin} />
                   ))}
               </>
             )}
-            <GroupHeader
-              label={t('group.needsReview')}
-              count={needsReview.length}
-              open={gNeedsOpen}
-              onToggle={() => setGNeedsOpen((v) => !v)}
-              accent="text-orange-400"
-            />
-            {gNeedsOpen && (
-              <>
-                {needsReview.length === 0 && (
-                  <div className="flex items-center justify-center py-6 text-xs text-muted-foreground/50">
-                    <Eye className="mr-2 h-4 w-4 opacity-30" /> {t('group.noWaitingReview')}
-                  </div>
-                )}
-                {needsReview.slice(0, shownNeeds).map((pr) => (
-                  <PRRow key={pr.id} pr={pr} pinned={false} onTogglePin={onTogglePin} />
-                ))}
-                <LoadMore
-                  total={needsReview.length}
-                  shown={shownNeeds}
-                  onLoadMore={() => setShownNeeds((n) => n + PAGE_SIZE)}
+            {buckets.map((b) => (
+              <div key={b.key}>
+                <GroupHeader
+                  label={b.label}
+                  count={b.items.length}
+                  open={isOpen(b.key)}
+                  onToggle={() => toggleGroup(b.key)}
+                  icon={b.icon}
+                  iconClassName={b.iconClassName}
+                  tone={b.tone}
                 />
-              </>
-            )}
-            <GroupHeader
-              label={t('group.other')}
-              count={other.length}
-              open={gOtherOpen}
-              onToggle={() => setGOtherOpen((v) => !v)}
-            />
-            {gOtherOpen && (
-              <>
-                {other.length === 0 && (
-                  <div className="flex items-center justify-center py-6 text-xs text-muted-foreground/50">
-                    <GitPullRequest className="mr-2 h-4 w-4 opacity-30" /> {t('group.noPrs')}
-                  </div>
+                {isOpen(b.key) && (
+                  <>
+                    {b.items.slice(0, shownFor(b.key)).map((pr) => (
+                      <PRRow key={pr.id} pr={pr} pinned={false} onTogglePin={onTogglePin} />
+                    ))}
+                    <LoadMore
+                      total={b.items.length}
+                      shown={shownFor(b.key)}
+                      onLoadMore={() => loadMore(b.key)}
+                    />
+                  </>
                 )}
-                {other.slice(0, shownOther).map((pr) => (
-                  <PRRow key={pr.id} pr={pr} pinned={false} onTogglePin={onTogglePin} />
-                ))}
-                <LoadMore
-                  total={other.length}
-                  shown={shownOther}
-                  onLoadMore={() => setShownOther((n) => n + PAGE_SIZE)}
-                />
-              </>
-            )}
+              </div>
+            ))}
           </>
         )}
       </div>

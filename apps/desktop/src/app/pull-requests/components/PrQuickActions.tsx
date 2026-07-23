@@ -108,6 +108,9 @@ export function PrQuickActions({ pr }: PrQuickActionsProps) {
 
   const primaryKey = defaultPrActionKey(pr, currentUser)
   const primary = descriptors[primaryKey] ?? descriptors.view!
+  // Keep the primary segment short so the fixed-width actions cell stays aligned across rows —
+  // "Open on GitHub" is fine in the dropdown but too wide as the primary label.
+  const primaryLabel = primary.key === 'openGitHub' ? t('row.open') : primary.label
 
   const restKeys: PrActionKey[] = [
     pr.needsMyReview ? 'review' : 'view',
@@ -127,7 +130,7 @@ export function PrQuickActions({ pr }: PrQuickActionsProps) {
       <SplitButton
         size="sm"
         variant={primary.key === 'merge' ? 'success' : 'outline'}
-        label={primary.label}
+        label={primaryLabel}
         icon={primary.icon}
         onClick={primary.onSelect}
         actions={restActions}

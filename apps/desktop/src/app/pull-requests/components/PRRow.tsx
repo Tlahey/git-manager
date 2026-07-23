@@ -1,4 +1,13 @@
-import { Pin, GitMerge, XCircle, Circle, GitPullRequest, AlertCircle, PanelRight } from 'lucide-react'
+import {
+  Pin,
+  GitMerge,
+  XCircle,
+  Circle,
+  GitPullRequest,
+  AlertCircle,
+  PanelRight,
+  GitBranch,
+} from 'lucide-react'
 import { Tag } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import type { MockPR } from '../types'
@@ -24,7 +33,7 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
       className="group/pr relative flex cursor-pointer items-center gap-3 border-b border-border/30 px-4 py-2.5 transition-colors last:border-0 hover:bg-accent/30"
       onClick={() => (openPr ? openPr(pr) : openUrl(pr.url))}
     >
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex w-7 shrink-0 items-center gap-1">
         <button
           onClick={(e) => {
             e.stopPropagation()
@@ -118,27 +127,40 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
         <span className="block truncate font-mono text-[10px] text-muted-foreground/70">
           {pr.repo}
         </span>
+        {pr.headRef && (
+          <span
+            className="mt-0.5 flex w-fit max-w-full items-center gap-0.5 rounded border border-border/50 bg-muted/60 px-1 py-px text-[9px] text-muted-foreground"
+            title={pr.headRef}
+            data-testid={`pr-branch-${pr.id}`}
+          >
+            <GitBranch className="h-2.5 w-2.5 shrink-0" />
+            <span className="truncate font-mono">{pr.headRef}</span>
+          </span>
+        )}
       </div>
       <div className="flex w-[60px] shrink-0 justify-center">
         <CiBadge status={pr.ciStatus} details={pr.ciDetails} prUrl={pr.url} />
       </div>
-      <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="flex w-[150px] shrink-0 items-center justify-end gap-1"
+        onClick={(e) => e.stopPropagation()}
+      >
         <PrQuickActions pr={pr} />
+        {openPr && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              openPr(pr)
+            }}
+            title={t('row.openInApp')}
+            aria-label={t('row.openInApp')}
+            data-testid={`pr-open-in-app-${pr.id}`}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all hover:border-border hover:bg-accent hover:text-foreground group-hover/pr:opacity-100"
+          >
+            <PanelRight className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
-      {openPr && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            openPr(pr)
-          }}
-          title={t('row.openInApp')}
-          aria-label={t('row.openInApp')}
-          data-testid={`pr-open-in-app-${pr.id}`}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all hover:border-border hover:bg-accent hover:text-foreground group-hover/pr:opacity-100"
-        >
-          <PanelRight className="h-3.5 w-3.5" />
-        </button>
-      )}
     </div>
   )
 }

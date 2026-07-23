@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { ChevronDown, CheckCircle2 } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
+import { Checkbox } from '@git-manager/ui'
 
 export interface MultiSelectDropdownProps {
   label: string
@@ -95,20 +96,11 @@ export function MultiSelectDropdown({
               options.map((opt) => {
                 const isActive = selected.has(opt)
                 return (
-                  <button
+                  <label
                     key={opt}
-                    onClick={() => onToggle(opt)}
-                    className="group/opt flex w-full items-center gap-2.5 px-3 py-1.5 text-xs transition-colors hover:bg-accent/50"
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-1.5 text-xs transition-colors hover:bg-accent/50"
                   >
-                    <div
-                      className={`flex h-3.5 w-3.5 items-center justify-center rounded border transition-all duration-100 ${
-                        isActive
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-border/80 bg-transparent group-hover/opt:border-muted-foreground/50'
-                      }`}
-                    >
-                      {isActive && <CheckCircle2 className="h-2.5 w-2.5" />}
-                    </div>
+                    <Checkbox checked={isActive} onChange={() => onToggle(opt)} />
                     <span
                       className={`truncate transition-colors ${
                         isActive ? 'font-medium text-foreground' : 'text-muted-foreground'
@@ -116,7 +108,7 @@ export function MultiSelectDropdown({
                     >
                       {opt}
                     </span>
-                  </button>
+                  </label>
                 )
               })
             )}
