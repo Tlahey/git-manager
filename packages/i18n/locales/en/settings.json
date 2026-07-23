@@ -222,7 +222,7 @@
   "settings.update.downloading": "Downloading… {{percent}}%",
   "settings.update.ready": "Update installed. Restart to apply it.",
   "settings.update.restart": "Restart now",
-  "settings.update.error": "Update check failed: {{message}}",
+  "settings.update.error": "Update check failed. Try again, or see the activity log for details.",
   "settings.update.retry": "Retry",
   "settings.changelog.title": "What's new",
   "settings.changelog.unreleased": "Unreleased",

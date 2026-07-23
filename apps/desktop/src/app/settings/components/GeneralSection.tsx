@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useTranslation, i18next } from '@git-manager/i18n'
 import { Button, Input, Separator, Checkbox, NativeSelect } from '@git-manager/ui'
 import { TagInput } from '@git-manager/components'
-import { UpdateCheck } from './UpdateCheck'
 import { FilterableSetting, Highlight } from './settingsSearch'
 import { useSettingsStore } from '../../../stores/settings.store'
 
@@ -51,18 +50,12 @@ export function GeneralSection() {
 
   return (
     <div className="space-y-6">
-      {/* Updates */}
-      <FilterableSetting match="update updates mise à jour version check">
-        <UpdateCheck />
-      </FilterableSetting>
-
       {/* Language */}
       <FilterableSetting
         className="space-y-2"
         testId="setting-language"
         match={`${t('settings.language.title')} language langue english français anglais francais`}
       >
-        <Separator className="mb-4" />
         <p className="text-xs font-medium text-foreground">
           <Highlight text={t('settings.language.title')} />
         </p>

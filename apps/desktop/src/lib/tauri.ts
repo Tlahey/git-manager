@@ -88,6 +88,29 @@ function record(
 }
 
 /**
+ * Records a synthetic Activity Logs entry for an operation that does NOT go through `invoke` — e.g.
+ * the Tauri updater/process/app plugins, which the frontend calls directly (see `updater.api.ts`).
+ * Without this those calls (and their failures) would be invisible in the journal. `durationMs`
+ * defaults to 0 for instantaneous operations.
+ */
+export function recordActivity(
+  command: string,
+  status: 'ok' | 'error',
+  options: { durationMs?: number; error?: string } = {}
+) {
+  const correlation = getActiveCorrelation()
+  useActivityLogStore.getState().add({
+    command,
+    durationMs: options.durationMs ?? 0,
+    status,
+    error: options.error,
+    correlationId: correlation?.id,
+    correlationLabel: correlation?.label,
+  })
+  persistActivityEntry(useActivityLogStore.getState().entries[0])
+}
+
+/**
  * The repository an IPC call targets, read from the conventional `path`/`repoPath` argument (never
  * sensitive). Lets the Activity Logs view scope down to the active repository's operations.
  */
