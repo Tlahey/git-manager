@@ -1,30 +1,11 @@
-import { useState } from 'react'
-import {
-  Pin,
-  MessageSquare,
-  ThumbsUp,
-  GitBranch,
-  GitBranchPlus,
-  FolderGit2,
-  CircleCheck,
-  PanelRight,
-  Loader2,
-} from 'lucide-react'
-import {
-  Tag,
-  Button,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@git-manager/ui'
+import { Pin, MessageSquare, ThumbsUp, GitBranch, GitBranchPlus, Loader2 } from 'lucide-react'
+import { Tag } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import type { MockIssue } from '../types'
 import { StatusBadge } from './Badges'
 import { AvatarStack } from './AvatarStack'
 import { SnoozeControl } from './SnoozeControl'
+import { IssueQuickActions } from './IssueQuickActions'
 import { openUrl, timeAgo } from '../utils'
 import { useOpenIssue } from '../OpenIssueContext'
 import { useIssueActions } from '../../../hooks/useIssueActions'
@@ -42,7 +23,6 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
   const openIssue = useOpenIssue()
   const { repoPath, branch, viewRepo, createBranch, creatingBranch, close, closing, canClose } =
     useIssueActions(issue, onChanged)
-  const [confirmClose, setConfirmClose] = useState(false)
 
   const open = () => (openIssue ? openIssue(issue) : openUrl(issue.url))
   const extraLabels = issue.labels.length - 1
@@ -165,74 +145,19 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
         ) : null}
       </div>
 
-      {/* Actions */}
+      {/* Actions: a split button with a dropdown (View / Mark as closed / View repo / …) */}
       <div
-        className="flex w-[96px] shrink-0 items-center justify-end gap-1"
+        className="flex w-[124px] shrink-0 items-center justify-end"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          onClick={viewRepo}
-          title={t('row.viewRepo')}
-          aria-label={t('row.viewRepo')}
-          data-testid={`issue-view-repo-${issue.id}`}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all hover:border-border hover:bg-accent hover:text-foreground group-hover/pr:opacity-100"
-        >
-          <FolderGit2 className="h-3.5 w-3.5" />
-        </button>
-        {issue.status === 'open' && canClose && (
-          <button
-            onClick={() => setConfirmClose(true)}
-            title={t('row.markClosed')}
-            aria-label={t('row.markClosed')}
-            data-testid={`issue-close-${issue.id}`}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all hover:border-border hover:bg-accent hover:text-tone-success group-hover/pr:opacity-100"
-          >
-            <CircleCheck className="h-3.5 w-3.5" />
-          </button>
-        )}
-        {openIssue && (
-          <button
-            onClick={open}
-            title={t('row.openInApp')}
-            aria-label={t('row.openInApp')}
-            data-testid={`issue-open-in-app-${issue.id}`}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all hover:border-border hover:bg-accent hover:text-foreground group-hover/pr:opacity-100"
-          >
-            <PanelRight className="h-3.5 w-3.5" />
-          </button>
-        )}
+        <IssueQuickActions
+          issue={issue}
+          viewRepo={viewRepo}
+          close={close}
+          closing={closing}
+          canClose={canClose}
+        />
       </div>
-
-      {confirmClose && (
-        <Dialog open onOpenChange={(next) => !next && setConfirmClose(false)}>
-          <DialogContent className="w-[420px]" onClick={(e) => e.stopPropagation()}>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-sm">
-                <CircleCheck className="h-4 w-4 text-tone-success" />
-                {t('issue.closeConfirmTitle')}
-              </DialogTitle>
-              <DialogDescription>
-                {t('issue.closeConfirmBody', { number: issue.number, title: issue.title })}
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="ghost" size="sm" onClick={() => setConfirmClose(false)}>
-                {t('issue.closeConfirmCancel')}
-              </Button>
-              <Button
-                size="sm"
-                disabled={closing}
-                onClick={async () => {
-                  await close()
-                  setConfirmClose(false)
-                }}
-              >
-                {closing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t('row.markClosed')}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   )
 }

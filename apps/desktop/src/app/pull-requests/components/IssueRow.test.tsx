@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent, act, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { MockIssue } from '../types'
 import type { IssueActions } from '../../../hooks/useIssueActions'
 
@@ -130,32 +131,35 @@ describe('IssueRow — actions', () => {
     expect(onTogglePin).toHaveBeenCalledWith('1')
   })
 
-  it('calls viewRepo from the View repo button', () => {
+  it('calls viewRepo from the actions dropdown', async () => {
+    const user = userEvent.setup()
     const viewRepo = vi.fn()
     mockActions({ viewRepo })
     renderRow()
-    fireEvent.click(screen.getByTestId('issue-view-repo-1'))
+    await user.click(screen.getByRole('button', { name: 'More options' }))
+    await user.click(screen.getByRole('menuitem', { name: 'View repo' }))
     expect(viewRepo).toHaveBeenCalledOnce()
   })
 
   it('confirms before closing, then calls close', async () => {
+    const user = userEvent.setup()
     const close = vi.fn().mockResolvedValue(undefined)
     mockActions({ canClose: true, close })
     renderRow()
-    fireEvent.click(screen.getByTestId('issue-close-1'))
-    // Confirmation dialog then the confirm button.
-    expect(screen.getByText('Close this issue?')).toBeInTheDocument()
-    await act(async () => {
-      fireEvent.click(screen.getByText('Mark as closed'))
-      await Promise.resolve()
-    })
+    await user.click(screen.getByRole('button', { name: 'More options' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Mark as closed' }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('Close this issue?')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Mark as closed' }))
     expect(close).toHaveBeenCalledOnce()
   })
 
-  it('hides the close action when closing is not possible', () => {
+  it('omits the close action from the menu when closing is not possible', async () => {
+    const user = userEvent.setup()
     mockActions({ canClose: false })
     renderRow()
-    expect(screen.queryByTestId('issue-close-1')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'More options' }))
+    expect(screen.queryByRole('menuitem', { name: 'Mark as closed' })).not.toBeInTheDocument()
   })
 
   it('opens the issue URL when the row is clicked and no panel is available', async () => {

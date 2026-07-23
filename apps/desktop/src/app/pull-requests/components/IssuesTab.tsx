@@ -152,7 +152,7 @@ export function IssuesTab({
         <div className="w-[90px] shrink-0">{t('table.author')}</div>
         <div className="w-[60px] shrink-0 text-center">{t('table.assigned')}</div>
         <div className="w-[130px] shrink-0">{t('table.repo')}</div>
-        <div className="w-[96px] shrink-0" />
+        <div className="w-[124px] shrink-0" />
       </div>
       <div className="flex-1 overflow-y-auto">
         {loading ? (
