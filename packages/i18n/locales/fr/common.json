@@ -133,6 +133,7 @@
   "commandPalette.placeholder": "Tapez une commande ou recherchez…",
   "commandPalette.empty": "Aucun résultat.",
   "commandPalette.group.lookup": "Recherche",
+  "commandPalette.group.files": "Fichiers",
   "commandPalette.group.navigation": "Navigation",
   "commandPalette.group.repo": "Dépôt",
   "commandPalette.group.commit": "Commit {{sha}}",

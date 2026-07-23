@@ -111,6 +111,10 @@ export const getRepoStatus = (path: string) => invoke<GitStatus>('get_repo_statu
 export const scanRepos = (rootPath: string, maxDepth: number) =>
   invoke<string[]>('scan_repos', { rootPath, maxDepth })
 
+/** Tracked file paths of the repo (`git ls-files`), sorted and de-duplicated. */
+export const listTrackedFiles = (path: string) =>
+  invoke<string[]>('list_tracked_files', { path })
+
 export const cloneRepo = (url: string, destPath: string, shallow?: boolean, sparse?: boolean) =>
   invoke<GitRepo>('clone_repo', { url, destPath, shallow, sparse })
 

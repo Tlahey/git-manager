@@ -447,3 +447,11 @@ pub async fn get_terminal_commands() -> Result<Vec<String>, String> {
 
     Ok(commands)
 }
+
+/// Returns the repository's tracked file paths (equivalent to `git ls-files`), sorted and
+/// de-duplicated. Powers the command palette's "open a file" lookup.
+#[tauri::command]
+pub async fn list_tracked_files(path: String) -> Result<Vec<String>, String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    crate::services::git_files::list_tracked_files(&repo).map_err(Into::into)
+}

@@ -52,7 +52,7 @@ use commands::remote::{
 };
 use commands::repo::{
     clone_repo, get_repo_readme, get_repo_status, get_repo_summary, get_terminal_commands,
-    init_repo, open_in_editor, open_in_terminal, open_repo, scan_repos,
+    init_repo, list_tracked_files, open_in_editor, open_in_terminal, open_repo, scan_repos,
 };
 use commands::rollback::{get_commits_between, reset_to_commit, revert_commit};
 use commands::ssh::{generate_ssh_key, read_ssh_public_key};
@@ -158,6 +158,7 @@ pub fn run() {
             // Repo
             open_repo,
             get_repo_status,
+            list_tracked_files,
             scan_repos,
             clone_repo,
             init_repo,

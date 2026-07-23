@@ -133,6 +133,7 @@
   "commandPalette.placeholder": "Type a command or search…",
   "commandPalette.empty": "No results found.",
   "commandPalette.group.lookup": "Lookup",
+  "commandPalette.group.files": "Files",
   "commandPalette.group.navigation": "Navigation",
   "commandPalette.group.repo": "Repository",
   "commandPalette.group.commit": "Commit {{sha}}",
