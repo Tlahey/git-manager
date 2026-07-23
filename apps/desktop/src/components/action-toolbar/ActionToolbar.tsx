@@ -5,7 +5,6 @@ import {
   GitPullRequest,
   Redo2,
   Search,
-  Terminal as TerminalIcon,
   Code as CodeIcon,
   Undo2,
   History,
@@ -26,6 +25,7 @@ import { StateTags } from './StateTags'
 import { FetchButton } from './FetchButton'
 import { BranchButton } from './BranchButton'
 import { RunButton } from './RunButton'
+import { TerminalButton } from './TerminalButton'
 import { ToolsMenu } from './ToolsMenu'
 import { ToolbarButton } from '@git-manager/components'
 
@@ -45,9 +45,7 @@ export function ActionToolbar() {
     canRedo,
     undoLabel,
     redoLabel,
-    hasTerminal,
     hasEditor,
-    handleOpenTerminal,
     handleOpenEditor,
     handleFetch,
     handleFetchAll,
@@ -180,18 +178,10 @@ export function ActionToolbar() {
           </>
         )}
 
-        {(hasTerminal || hasEditor) && <div className="mx-1 h-6 w-px shrink-0 bg-border" />}
+        <div className="mx-1 h-6 w-px shrink-0 bg-border" />
 
-        {hasTerminal && (
-          <ToolbarButton
-            icon={<TerminalIcon className="h-4 w-4 text-emerald-400" />}
-            label={t('toolbar.terminal')}
-            title="Ouvrir le terminal dans ce dépôt"
-            disabled={!activeRepo}
-            onClick={handleOpenTerminal}
-            data-testid="toolbar-terminal-button"
-          />
-        )}
+        <TerminalButton />
+
         {hasEditor && (
           <ToolbarButton
             icon={<CodeIcon className="h-4 w-4 text-sky-400" />}

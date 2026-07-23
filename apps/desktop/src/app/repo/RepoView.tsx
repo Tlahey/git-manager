@@ -17,6 +17,11 @@ import { BisectBanner } from '../../components/bisect/BisectBanner'
 import { BisectResultBanner } from '../../components/bisect/BisectResultBanner'
 import { BisectSetupBanner } from '../../components/bisect/BisectSetupBanner'
 import { BisectStashDialog } from '../../components/bisect/BisectStashDialog'
+import { TerminalPanel } from '../../components/terminal/TerminalPanel'
+import { TerminalStatusBar } from '../../components/terminal/TerminalStatusBar'
+import { useTerminalStore } from '../../stores/terminal.store'
+import { setTerminalTheme } from '../../lib/terminalRegistry'
+import { useEffectiveRepoSettings } from '../../hooks/useEffectiveRepoSettings'
 
 export function RepoView() {
   const { activeRepo, activeWorkspacePath } = useRepoUIStore()
@@ -48,6 +53,16 @@ export function RepoView() {
         })
     }
   }, [effectiveRepoPath, repoCache, setRepoCache])
+
+  const terminalOpen = useTerminalStore((s) => s.open)
+  // Terminal colours resolve per-repo (repo override → global appearance value), so the active
+  // repo/worktree's configuration themes its shells.
+  const { terminalBackground, terminalForeground } = useEffectiveRepoSettings(effectiveRepoPath)
+
+  // Keep every open terminal (and any spawned later) themed with the user's chosen colours.
+  useEffect(() => {
+    setTerminalTheme({ background: terminalBackground, foreground: terminalForeground })
+  }, [terminalBackground, terminalForeground])
 
   const github = useSettingsStore((s) => s.settings.github)
   const activeAccount = github?.accounts?.find((a) => a.id === github.activeAccountId) || null
@@ -102,6 +117,12 @@ export function RepoView() {
 
         <BisectSetupBanner repoPath={repoPath} />
       </div>
+
+      {terminalOpen ? (
+        <TerminalPanel path={repoPath} />
+      ) : (
+        <TerminalStatusBar path={repoPath} />
+      )}
 
       <BisectResultBanner repoPath={repoPath} />
       <BisectStashDialog repoPath={repoPath} />

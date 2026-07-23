@@ -2,6 +2,7 @@ import { Button, Separator } from '@git-manager/ui'
 import { FileCode, FolderOpen, Terminal, X } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useSettingsStore } from '../../../stores/settings.store'
+import { FilterableSetting, Highlight } from './settingsSearch'
 
 /** Derives a human-readable app name from a picked `.app` bundle (or executable) path. */
 function appLabel(path: string): string {
@@ -47,10 +48,14 @@ export function ExternalToolsSection() {
   return (
     <div className="space-y-6">
       {/* External Editor */}
-      <div className="space-y-3">
+      <FilterableSetting
+        className="space-y-3"
+        testId="setting-external-editor"
+        match="external editor éditeur code externe vscode ide application"
+      >
         <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
           <FileCode className="h-4 w-4 text-muted-foreground" />
-          Éditeur de code externe
+          <Highlight text="Éditeur de code externe" />
         </h4>
         {git.externalEditorCommand ? (
           <div className="flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2">
@@ -98,15 +103,18 @@ export function ExternalToolsSection() {
             Sélectionner mon éditeur…
           </Button>
         )}
-      </div>
-
-      <Separator />
+      </FilterableSetting>
 
       {/* External Terminal */}
-      <div className="space-y-3">
+      <FilterableSetting
+        className="space-y-3"
+        testId="setting-external-terminal"
+        match="external terminal externe iterm terminal.app application shell console"
+      >
+        <Separator className="mb-3" />
         <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
           <Terminal className="h-4 w-4 text-muted-foreground" />
-          Terminal externe
+          <Highlight text="Terminal externe" />
         </h4>
         {tools.externalTerminalCommand ? (
           <div className="flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2">
@@ -154,7 +162,7 @@ export function ExternalToolsSection() {
             Sélectionner mon terminal…
           </Button>
         )}
-      </div>
+      </FilterableSetting>
     </div>
   )
 }

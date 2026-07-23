@@ -31,6 +31,8 @@ const DEFAULT_SETTINGS: AppSettings = {
     notificationLocation: 'top-right',
     rowHeight: 'standard',
     stickyScroll: false,
+    terminalBackground: '#000000',
+    terminalForeground: '#e4e4e7',
   },
   language: 'fr',
   advanced: {

@@ -699,6 +699,24 @@ export const runTaskInTerminal = (path: string, command: string, terminalCommand
 export const getProjectCommands = (path: string) =>
   invoke<ProjectCommand[]>('get_project_commands', { path })
 
+// ─── Integrated terminal (PTY) ───────────────────────────────────────────────
+
+/** Opens a PTY-backed login shell in `cwd`, sized `cols`×`rows`. Returns the session id used for
+ * writes/resizes/close and to subscribe to `terminal:output:<id>` / `terminal:exit:<id>` events. */
+export const terminalOpen = (cwd: string, cols: number, rows: number) =>
+  invoke<string>('terminal_open', { cwd, cols, rows })
+
+/** Writes keystrokes/pasted text to the shell's stdin. */
+export const terminalWrite = (id: string, data: string) =>
+  invoke<void>('terminal_write', { id, data })
+
+/** Resizes the PTY to match the xterm.js viewport (character cells). */
+export const terminalResize = (id: string, cols: number, rows: number) =>
+  invoke<void>('terminal_resize', { id, cols, rows })
+
+/** Kills the shell process and drops the session. */
+export const terminalClose = (id: string) => invoke<void>('terminal_close', { id })
+
 // ─── SSH ─────────────────────────────────────────────────────────────────────
 
 export const generateSshKey = (

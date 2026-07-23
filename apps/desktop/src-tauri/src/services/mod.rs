@@ -28,3 +28,4 @@ pub mod git_rollback;
 pub mod git_stash;
 pub mod git_worktree;
 pub mod pr_template;
+pub mod terminal_pty;

@@ -3,6 +3,7 @@ import { Checkbox, NativeSelect } from '@git-manager/ui'
 import { Monitor, Check } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { OverriddenBadge } from './OverriddenBadge'
+import { FilterableSetting, Highlight } from './settingsSearch'
 import { useUserThemes } from '../../../hooks/useUserThemes'
 import { BUILTIN_THEMES } from '../../../lib/themes'
 import { useGameStore } from '../../../stores/game.store'
@@ -110,9 +111,15 @@ export function AppearanceSection() {
   return (
     <div className="space-y-6">
       {/* Theme picker */}
-      <div className="space-y-3">
+      <FilterableSetting
+        className="space-y-3"
+        testId="setting-theme"
+        match={`${t('settings.appearance.theme')} theme thème couleur apparence`}
+      >
         <div className="flex items-center gap-2">
-          <p className="text-xs font-medium text-foreground">{t('settings.appearance.theme')}</p>
+          <p className="text-xs font-medium text-foreground">
+            <Highlight text={t('settings.appearance.theme')} />
+          </p>
           <OverriddenBadge field="theme" />
         </div>
         <div className="grid grid-cols-3 gap-2">
@@ -146,12 +153,76 @@ export function AppearanceSection() {
             ~/.git-manager/themes/
           </code>
         </p>
-      </div>
+      </FilterableSetting>
+
+      {/* Integrated terminal colours */}
+      <FilterableSetting
+        className="space-y-2"
+        testId="setting-terminal-colors"
+        match={`${t('settings.appearance.terminalColors')} terminal background foreground text colours couleurs fond texte shell zsh console`}
+      >
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-medium text-foreground">
+            <Highlight text={t('settings.appearance.terminalColors')} />
+          </p>
+          <OverriddenBadge field="terminalBackground" />
+          <OverriddenBadge field="terminalForeground" />
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          {t('settings.appearance.terminalColorsHelp')}
+        </p>
+        <div className="flex flex-wrap items-end gap-4">
+          <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
+            {t('settings.appearance.terminalBackground')}
+            <input
+              type="color"
+              value={appearance.terminalBackground ?? '#000000'}
+              onChange={(e) => updateAppearance({ terminalBackground: e.target.value })}
+              data-testid="appearance-terminal-bg"
+              className="h-8 w-16 cursor-pointer rounded border border-input bg-background"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
+            {t('settings.appearance.terminalForeground')}
+            <input
+              type="color"
+              value={appearance.terminalForeground ?? '#e4e4e7'}
+              onChange={(e) => updateAppearance({ terminalForeground: e.target.value })}
+              data-testid="appearance-terminal-fg"
+              className="h-8 w-16 cursor-pointer rounded border border-input bg-background"
+            />
+          </label>
+          <div
+            className="flex h-8 items-center rounded border border-input px-3 font-mono text-xs"
+            style={{
+              backgroundColor: appearance.terminalBackground ?? '#000000',
+              color: appearance.terminalForeground ?? '#e4e4e7',
+            }}
+            data-testid="appearance-terminal-preview"
+          >
+            $ git status
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              updateAppearance({ terminalBackground: '#000000', terminalForeground: '#e4e4e7' })
+            }
+            data-testid="appearance-terminal-reset"
+            className="h-7 rounded border border-border px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            {t('settings.appearance.resetTerminalColors')}
+          </button>
+        </div>
+      </FilterableSetting>
 
       {/* Font size */}
-      <div className="space-y-1.5">
+      <FilterableSetting
+        className="space-y-1.5"
+        testId="setting-font-size"
+        match={`${t('settings.appearance.fontSize')} font size police taille`}
+      >
         <label className="text-xs font-medium text-foreground">
-          {t('settings.appearance.fontSize')}
+          <Highlight text={t('settings.appearance.fontSize')} />
         </label>
         <NativeSelect
           value={appearance.fontSize}
@@ -164,11 +235,17 @@ export function AppearanceSection() {
             </option>
           ))}
         </NativeSelect>
-      </div>
+      </FilterableSetting>
 
       {/* Density */}
-      <div className="space-y-2">
-        <p className="text-xs font-medium text-foreground">{t('settings.appearance.density')}</p>
+      <FilterableSetting
+        className="space-y-2"
+        testId="setting-density"
+        match={`${t('settings.appearance.density')} density densité`}
+      >
+        <p className="text-xs font-medium text-foreground">
+          <Highlight text={t('settings.appearance.density')} />
+        </p>
         <div className="flex gap-2">
           {densities.map((d) => (
             <label
@@ -191,11 +268,17 @@ export function AppearanceSection() {
             </label>
           ))}
         </div>
-      </div>
+      </FilterableSetting>
 
       {/* Row height */}
-      <div className="space-y-2">
-        <p className="text-xs font-medium text-foreground">{t('settings.appearance.rowHeight')}</p>
+      <FilterableSetting
+        className="space-y-2"
+        testId="setting-row-height"
+        match={`${t('settings.appearance.rowHeight')} row height hauteur ligne`}
+      >
+        <p className="text-xs font-medium text-foreground">
+          <Highlight text={t('settings.appearance.rowHeight')} />
+        </p>
         <div className="flex gap-2">
           {rowHeights.map((rh) => (
             <label
@@ -219,12 +302,16 @@ export function AppearanceSection() {
             </label>
           ))}
         </div>
-      </div>
+      </FilterableSetting>
 
       {/* Notification location */}
-      <div className="space-y-1.5 font-sans">
+      <FilterableSetting
+        className="space-y-1.5 font-sans"
+        testId="setting-notification-location"
+        match={`${t('settings.appearance.notificationLocation')} notification location emplacement`}
+      >
         <label className="text-xs font-medium text-foreground">
-          {t('settings.appearance.notificationLocation')}
+          <Highlight text={t('settings.appearance.notificationLocation')} />
         </label>
         <NativeSelect
           value={appearance.notificationLocation || 'top-right'}
@@ -244,32 +331,49 @@ export function AppearanceSection() {
           <option value="bottom-right">Bas droit (Bottom Right)</option>
           <option value="bottom-left">Bas gauche (Bottom Left)</option>
         </NativeSelect>
-      </div>
+      </FilterableSetting>
 
       {/* Checkboxes */}
-      <div className="space-y-2">
-        <label className="flex cursor-pointer items-center gap-2">
-          <Checkbox
-            checked={appearance.showAvatars}
-            onChange={(e) => updateAppearance({ showAvatars: e.target.checked })}
-          />
-          <span className="text-xs text-foreground">{t('settings.appearance.showAvatars')}</span>
-        </label>
-        <label className="flex cursor-pointer items-center gap-2">
-          <Checkbox
-            checked={appearance.enableAnimations}
-            onChange={(e) => updateAppearance({ enableAnimations: e.target.checked })}
-          />
-          <span className="text-xs text-foreground">{t('settings.appearance.animations')}</span>
-        </label>
-        <label className="flex cursor-pointer items-center gap-2">
-          <Checkbox
-            checked={appearance.stickyScroll ?? false}
-            onChange={(e) => updateAppearance({ stickyScroll: e.target.checked })}
-          />
-          <span className="text-xs text-foreground">{t('settings.appearance.stickyScroll')}</span>
-        </label>
-      </div>
+      <FilterableSetting
+        className="space-y-2"
+        match={`${t('settings.appearance.showAvatars')} ${t('settings.appearance.animations')} ${t('settings.appearance.stickyScroll')} avatars animations sticky scroll défilement`}
+      >
+        <FilterableSetting match={`${t('settings.appearance.showAvatars')} avatars`}>
+          <label className="flex cursor-pointer items-center gap-2">
+            <Checkbox
+              checked={appearance.showAvatars}
+              onChange={(e) => updateAppearance({ showAvatars: e.target.checked })}
+            />
+            <span className="text-xs text-foreground">
+              <Highlight text={t('settings.appearance.showAvatars')} />
+            </span>
+          </label>
+        </FilterableSetting>
+        <FilterableSetting match={`${t('settings.appearance.animations')} animations`}>
+          <label className="flex cursor-pointer items-center gap-2">
+            <Checkbox
+              checked={appearance.enableAnimations}
+              onChange={(e) => updateAppearance({ enableAnimations: e.target.checked })}
+            />
+            <span className="text-xs text-foreground">
+              <Highlight text={t('settings.appearance.animations')} />
+            </span>
+          </label>
+        </FilterableSetting>
+        <FilterableSetting
+          match={`${t('settings.appearance.stickyScroll')} sticky scroll défilement`}
+        >
+          <label className="flex cursor-pointer items-center gap-2">
+            <Checkbox
+              checked={appearance.stickyScroll ?? false}
+              onChange={(e) => updateAppearance({ stickyScroll: e.target.checked })}
+            />
+            <span className="text-xs text-foreground">
+              <Highlight text={t('settings.appearance.stickyScroll')} />
+            </span>
+          </label>
+        </FilterableSetting>
+      </FilterableSetting>
     </div>
   )
 }

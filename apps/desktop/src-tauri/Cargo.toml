@@ -35,6 +35,8 @@ thiserror = "1"
 chrono = { version = "0.4", features = ["serde"] }
 async-trait = "0.1"
 glob = "0.3"
+# Real PTY for the integrated terminal (spawns the user's login shell so ~/.zshrc is sourced).
+portable-pty = "0.8"
 
 # WebdriverIO E2E testing support (behind the "e2e" feature, see docs/architecture — this
 # embeds a WebDriver server in the binary, so it must never be compiled into a real build).

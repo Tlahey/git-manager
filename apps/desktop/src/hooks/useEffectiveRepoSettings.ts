@@ -21,6 +21,11 @@ export interface EffectiveRepoSettings {
   commitInstructions: string | undefined
   commitPattern: string | undefined
   theme: string
+  /** Integrated terminal background colour for this repo — falls back to the global appearance value
+   * (`appearance.terminalBackground`) when the repo has no override. */
+  terminalBackground: string
+  /** Integrated terminal text colour for this repo — falls back to the global appearance value. */
+  terminalForeground: string
   /** Glob patterns for gitignored local files to copy into new worktrees. Per-repo only — no
    * global fallback, so a repo without an override resolves to an empty list. */
   worktreeDefaultFiles: string[]
@@ -49,6 +54,8 @@ export function useEffectiveRepoSettings(repoPath: string | null): EffectiveRepo
   const globalCommitInstructions = useSettingsStore((s) => s.settings.git.commitInstructions)
   const globalCommitPattern = useSettingsStore((s) => s.settings.git.commitPattern)
   const globalTheme = useSettingsStore((s) => s.settings.appearance.theme)
+  const globalTerminalBackground = useSettingsStore((s) => s.settings.appearance.terminalBackground)
+  const globalTerminalForeground = useSettingsStore((s) => s.settings.appearance.terminalForeground)
   const canonicalPath = useCanonicalRepoPath(repoPath)
   const override = useSettingsStore((s) =>
     canonicalPath
@@ -62,6 +69,8 @@ export function useEffectiveRepoSettings(repoPath: string | null): EffectiveRepo
     commitInstructions: override?.commitInstructions ?? globalCommitInstructions,
     commitPattern: override?.commitPattern ?? globalCommitPattern,
     theme: override?.theme ?? globalTheme,
+    terminalBackground: override?.terminalBackground ?? globalTerminalBackground,
+    terminalForeground: override?.terminalForeground ?? globalTerminalForeground,
     worktreeDefaultFiles: override?.worktreeDefaultFiles ?? [],
     runTasks: override?.runTasks ?? [],
     defaultRunTaskId: override?.defaultRunTaskId,

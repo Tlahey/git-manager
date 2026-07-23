@@ -9,6 +9,9 @@ vi.mock('./StateTags', () => ({ StateTags: () => <div data-testid="state-tags" /
 vi.mock('./FetchButton', () => ({ FetchButton: () => <button>remote.fetch</button> }))
 vi.mock('./BranchButton', () => ({ BranchButton: () => <button>toolbar.branch</button> }))
 vi.mock('./ToolsMenu', () => ({ ToolsMenu: () => <div data-testid="tools-menu" /> }))
+// TerminalButton is a self-contained split button (integrated panel + external menu) with its own
+// test — stub it here so the toolbar composition test doesn't depend on its internals.
+vi.mock('./TerminalButton', () => ({ TerminalButton: () => <div data-testid="terminal-button" /> }))
 
 const useActionToolbarMock = vi.fn()
 vi.mock('../../hooks/useActionToolbar', () => ({ useActionToolbar: () => useActionToolbarMock() }))
@@ -41,9 +44,7 @@ function hookState(overrides: Partial<ReturnType<typeof useActionToolbarMock>> =
     canRedo: false,
     undoLabel: null,
     redoLabel: null,
-    hasTerminal: true,
     hasEditor: true,
-    handleOpenTerminal: vi.fn(),
     handleOpenEditor: vi.fn(),
     handleFetch: vi.fn(),
     handleFetchAll: vi.fn(),
@@ -74,7 +75,7 @@ describe('ActionToolbar — composition', () => {
     expect(screen.getByTestId('state-tags')).toBeInTheDocument()
   })
 
-  it('disables undo/redo/pull/push/stash/pop/terminal/editor when there is no active repo', () => {
+  it('disables undo/redo/pull/push/stash/pop/editor when there is no active repo', () => {
     useActionToolbarMock.mockReturnValue(hookState({ activeRepo: null }))
     render(<ActionToolbar />)
     expect(screen.getByRole('button', { name: 'toolbar.undo' })).toBeDisabled()
@@ -83,7 +84,6 @@ describe('ActionToolbar — composition', () => {
     expect(screen.getByRole('button', { name: 'remote.push' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'toolbar.stash' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'toolbar.pop' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'toolbar.terminal' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'toolbar.editor' })).toBeDisabled()
   })
 
@@ -106,7 +106,7 @@ describe('ActionToolbar — composition', () => {
     expect(screen.getByRole('button', { name: 'toolbar.pop' })).toBeEnabled()
   })
 
-  it('wires the undo/pull/push/pop/terminal/editor buttons to their handlers', async () => {
+  it('wires the undo/pull/push/pop/editor buttons to their handlers', async () => {
     const user = userEvent.setup()
     const state = hookState({ canUndo: true, hasStashes: true })
     useActionToolbarMock.mockReturnValue(state)
@@ -120,8 +120,6 @@ describe('ActionToolbar — composition', () => {
     expect(state.handlePush).toHaveBeenCalledOnce()
     await user.click(screen.getByRole('button', { name: 'toolbar.pop' }))
     expect(state.handlePop).toHaveBeenCalledOnce()
-    await user.click(screen.getByRole('button', { name: 'toolbar.terminal' }))
-    expect(state.handleOpenTerminal).toHaveBeenCalledOnce()
     await user.click(screen.getByRole('button', { name: 'toolbar.editor' }))
     expect(state.handleOpenEditor).toHaveBeenCalledOnce()
   })
@@ -139,25 +137,17 @@ describe('ActionToolbar — composition', () => {
     expect(screen.queryByTestId('toolbar-button-badge')).not.toBeInTheDocument()
   })
 
-  it('hides the terminal button entirely when no terminal app is configured', () => {
-    useActionToolbarMock.mockReturnValue(hookState({ hasTerminal: false }))
+  it('always renders the terminal button (the integrated terminal needs no configured app)', () => {
+    useActionToolbarMock.mockReturnValue(hookState({ hasEditor: false }))
     render(<ActionToolbar />)
-    expect(screen.queryByRole('button', { name: 'toolbar.terminal' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'toolbar.editor' })).toBeInTheDocument()
+    expect(screen.getByTestId('terminal-button')).toBeInTheDocument()
   })
 
   it('hides the editor button entirely when no editor app is configured', () => {
     useActionToolbarMock.mockReturnValue(hookState({ hasEditor: false }))
     render(<ActionToolbar />)
     expect(screen.queryByRole('button', { name: 'toolbar.editor' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'toolbar.terminal' })).toBeInTheDocument()
-  })
-
-  it('hides both terminal and editor buttons when neither app is configured', () => {
-    useActionToolbarMock.mockReturnValue(hookState({ hasTerminal: false, hasEditor: false }))
-    render(<ActionToolbar />)
-    expect(screen.queryByRole('button', { name: 'toolbar.terminal' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'toolbar.editor' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('terminal-button')).toBeInTheDocument()
   })
 
   it('shows a loading spinner (no icon) on a button while its action is in flight', () => {

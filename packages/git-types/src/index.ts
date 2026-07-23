@@ -455,6 +455,10 @@ export interface RepoScopedSettings {
   commitPattern?: string
   /** Overrides `appearance.theme` for this repo. */
   theme?: string
+  /** Overrides `appearance.terminalBackground` (integrated terminal background) for this repo. */
+  terminalBackground?: string
+  /** Overrides `appearance.terminalForeground` (integrated terminal text colour) for this repo. */
+  terminalForeground?: string
   /** Glob patterns for gitignored local files (`.env`, local config, …) to copy from this repo
    * into every newly created worktree. Per-repo only — there is no global fallback, so an absent
    * value means "no default files". See `WorktreeAddResult` for the copy outcome. */
@@ -561,6 +565,11 @@ export interface AppearanceSettings {
   /** Monaco's sticky scroll (pins the enclosing function/class header to the top of the pane
    * while scrolling through its body). Off by default — see `settings.appearance.stickyScroll`. */
   stickyScroll?: boolean
+  /** Integrated terminal background colour (hex). Defaults to black. Per-repo overridable via
+   * `RepoScopedSettings.terminalBackground`. */
+  terminalBackground: string
+  /** Integrated terminal text/foreground colour (hex). Per-repo overridable. */
+  terminalForeground: string
 }
 
 export interface UserTheme {

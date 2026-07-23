@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ExternalToolsSection } from './ExternalToolsSection'
+import { SettingsSearchProvider } from './settingsSearch'
 import { useSettingsStore } from '../../../stores/settings.store'
 
 const openMock = vi.fn()
@@ -112,3 +113,25 @@ describe.each(SECTIONS)(
     })
   }
 )
+
+describe('ExternalToolsSection — in-page search filtering', () => {
+  it('shows only the external-terminal setting when searching "terminal"', () => {
+    render(
+      <SettingsSearchProvider query="terminal">
+        <ExternalToolsSection />
+      </SettingsSearchProvider>
+    )
+    expect(screen.getByTestId('setting-external-terminal')).toBeInTheDocument()
+    expect(screen.queryByTestId('setting-external-editor')).not.toBeInTheDocument()
+  })
+
+  it('shows both settings when the query is empty', () => {
+    render(
+      <SettingsSearchProvider query="">
+        <ExternalToolsSection />
+      </SettingsSearchProvider>
+    )
+    expect(screen.getByTestId('setting-external-editor')).toBeInTheDocument()
+    expect(screen.getByTestId('setting-external-terminal')).toBeInTheDocument()
+  })
+})

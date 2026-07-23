@@ -3,6 +3,7 @@ import { useTranslation, i18next } from '@git-manager/i18n'
 import { Button, Input, Separator, Checkbox, NativeSelect } from '@git-manager/ui'
 import { TagInput } from '@git-manager/components'
 import { UpdateCheck } from './UpdateCheck'
+import { FilterableSetting, Highlight } from './settingsSearch'
 import { useSettingsStore } from '../../../stores/settings.store'
 
 /** Graph commit-load bounds — kept in sync with the GitSettings defaults and GitGraph's fetch. */
@@ -51,13 +52,20 @@ export function GeneralSection() {
   return (
     <div className="space-y-6">
       {/* Updates */}
-      <UpdateCheck />
-
-      <Separator />
+      <FilterableSetting match="update updates mise à jour version check">
+        <UpdateCheck />
+      </FilterableSetting>
 
       {/* Language */}
-      <div className="space-y-2">
-        <p className="text-xs font-medium text-foreground">{t('settings.language.title')}</p>
+      <FilterableSetting
+        className="space-y-2"
+        testId="setting-language"
+        match={`${t('settings.language.title')} language langue english français anglais francais`}
+      >
+        <Separator className="mb-4" />
+        <p className="text-xs font-medium text-foreground">
+          <Highlight text={t('settings.language.title')} />
+        </p>
         <NativeSelect
           data-testid="language-select"
           value={settings.language}
@@ -70,13 +78,18 @@ export function GeneralSection() {
             </option>
           ))}
         </NativeSelect>
-      </div>
-
-      <Separator />
+      </FilterableSetting>
 
       {/* Git Identity */}
-      <div className="space-y-4">
-        <h4 className="text-xs font-semibold text-foreground">Identité Git par défaut</h4>
+      <FilterableSetting
+        className="space-y-4"
+        testId="setting-git-identity"
+        match={`${t('settings.git.defaultName')} ${t('settings.git.defaultEmail')} git identity author name email identité auteur nom courriel adresse`}
+      >
+        <Separator className="mb-4" />
+        <h4 className="text-xs font-semibold text-foreground">
+          <Highlight text="Identité Git par défaut" />
+        </h4>
 
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-foreground">
@@ -100,13 +113,18 @@ export function GeneralSection() {
             className="h-8 text-xs"
           />
         </div>
-      </div>
-
-      <Separator />
+      </FilterableSetting>
 
       {/* Fetch */}
-      <div className="space-y-4">
-        <h4 className="text-xs font-semibold text-foreground">{t('settings.git.fetchTitle')}</h4>
+      <FilterableSetting
+        className="space-y-4"
+        testId="setting-fetch"
+        match={`${t('settings.git.fetchTitle')} ${t('settings.git.autoPrune')} ${t('settings.git.autoFetchInterval')} fetch prune récupération élaguer intervalle`}
+      >
+        <Separator className="mb-4" />
+        <h4 className="text-xs font-semibold text-foreground">
+          <Highlight text={t('settings.git.fetchTitle')} />
+        </h4>
 
         <label className="flex cursor-pointer items-center gap-2">
           <Checkbox
@@ -138,13 +156,18 @@ export function GeneralSection() {
             {t('settings.git.autoFetchIntervalHint')}
           </p>
         </div>
-      </div>
-
-      <Separator />
+      </FilterableSetting>
 
       {/* Graph */}
-      <div className="space-y-4">
-        <h4 className="text-xs font-semibold text-foreground">{t('settings.git.graphTitle')}</h4>
+      <FilterableSetting
+        className="space-y-4"
+        testId="setting-graph"
+        match={`${t('settings.git.graphTitle')} ${t('settings.git.initialGraphCommits')} ${t('settings.git.lazyLoadGraphCommits')} graph graphe commits lazy chargement`}
+      >
+        <Separator className="mb-4" />
+        <h4 className="text-xs font-semibold text-foreground">
+          <Highlight text={t('settings.git.graphTitle')} />
+        </h4>
 
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-foreground">
@@ -182,13 +205,18 @@ export function GeneralSection() {
           />
           <span className="text-xs text-foreground">{t('settings.git.lazyLoadGraphCommits')}</span>
         </label>
-      </div>
-
-      <Separator />
+      </FilterableSetting>
 
       {/* Advanced Scan */}
-      <div className="space-y-4">
-        <h4 className="text-xs font-semibold text-foreground">Indexation & Recherche</h4>
+      <FilterableSetting
+        className="space-y-4"
+        testId="setting-advanced-scan"
+        match={`${t('settings.advanced.exclusions')} ${t('settings.advanced.scanDepth')} ${t('settings.advanced.openDataFolder')} index scan exclusions depth indexation recherche profondeur dossier données`}
+      >
+        <Separator className="mb-4" />
+        <h4 className="text-xs font-semibold text-foreground">
+          <Highlight text="Indexation & Recherche" />
+        </h4>
 
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-foreground">
@@ -218,7 +246,7 @@ export function GeneralSection() {
         <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleOpenDataFolder}>
           {t('settings.advanced.openDataFolder')}
         </Button>
-      </div>
+      </FilterableSetting>
     </div>
   )
 }

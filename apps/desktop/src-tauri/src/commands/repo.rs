@@ -355,23 +355,32 @@ pub async fn get_repo_readme(path: String) -> Result<String, String> {
     Err("No README file found in this repository".to_string())
 }
 
-/// Ouvre un terminal dans le répertoire spécifié, avec l'application choisie
-/// par l'utilisateur (chemin absolu vers un .app ou un exécutable)
+/// Opens a terminal in the given directory using the user's chosen application (an absolute path to
+/// a `.app` bundle or an executable). An empty `command` means "use the system default terminal".
 #[tauri::command]
 pub async fn open_in_terminal(path: String, command: String) -> Result<(), String> {
-    if command.is_empty() {
-        return Err("No terminal application configured".to_string());
+    #[cfg(target_os = "macos")]
+    {
+        // An empty command falls back to the system default terminal (Terminal.app). Both it and a
+        // configured `.app` bundle (picked via the native file dialog) must be launched via `open -a`
+        // rather than executed directly.
+        if command.trim().is_empty() || command.ends_with(".app") {
+            let app = if command.trim().is_empty() {
+                "Terminal"
+            } else {
+                command.as_str()
+            };
+            return std::process::Command::new("open")
+                .args(["-a", app, &path])
+                .spawn()
+                .map(|_| ())
+                .map_err(|e| format!("Failed to open terminal: {e}"));
+        }
     }
 
-    // macOS .app bundles (picked via the native file dialog) can't be
-    // executed directly — they must be launched through `open -a`.
-    #[cfg(target_os = "macos")]
-    if command.ends_with(".app") {
-        return std::process::Command::new("open")
-            .args(["-a", &command, &path])
-            .spawn()
-            .map(|_| ())
-            .map_err(|e| format!("Failed to open terminal: {}", e));
+    #[cfg(not(target_os = "macos"))]
+    if command.is_empty() {
+        return Err("No terminal application configured".to_string());
     }
 
     #[cfg(target_os = "windows")]
@@ -387,7 +396,7 @@ pub async fn open_in_terminal(path: String, command: String) -> Result<(), Strin
 
     status
         .map(|_| ())
-        .map_err(|e| format!("Failed to open terminal: {}", e))
+        .map_err(|e| format!("Failed to open terminal: {e}"))
 }
 
 /// Lit l'historique zsh/bash du système et extrait les commandes commençant par git
