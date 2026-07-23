@@ -11,6 +11,8 @@
   "ci.skip": "Skip",
   "ci.checkSteps": "CI Check Steps",
   "ci.hoverHint": "hover to see status",
+  "ci.clickHint": "click to open the run",
+  "ci.viewAction": "View CI run on GitHub",
   "table.item": "Item",
   "table.updated": "Updated",
   "table.status": "Status",

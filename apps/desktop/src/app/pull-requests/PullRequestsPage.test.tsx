@@ -248,6 +248,22 @@ describe('PullRequestsPage — tab navigation', () => {
   })
 })
 
+describe('PullRequestsPage — opening a PR in the in-app view', () => {
+  it('takes over the page with the interactive PR view on row click, then returns via Back', async () => {
+    const user = userEvent.setup()
+    mockHook({ activeTab: 'prs', prs: [pr({ title: 'Openable PR', fullName: 'owner/repo' })] })
+    render(<PullRequestsPage />)
+
+    await user.click(screen.getByText('Openable PR'))
+    expect(screen.getByTestId('launchpad-pr-view')).toBeInTheDocument()
+    expect(screen.getByTestId('pr-detail-center')).toBeInTheDocument()
+
+    await user.click(screen.getByTestId('pr-detail-back'))
+    expect(screen.queryByTestId('launchpad-pr-view')).not.toBeInTheDocument()
+    expect(screen.getByText('Openable PR')).toBeInTheDocument()
+  })
+})
+
 describe('PullRequestsPage — pin toggling forwarded to a tab', () => {
   it('forwards togglePin from the My Pull Requests tab', async () => {
     const togglePin = vi.fn()

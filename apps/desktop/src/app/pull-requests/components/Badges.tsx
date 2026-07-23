@@ -1,7 +1,9 @@
-import { CheckCircle2, XCircle, Loader2, Circle } from 'lucide-react'
+import type { ReactNode, ReactElement } from 'react'
+import { CheckCircle2, XCircle, Loader2, Circle, ExternalLink } from 'lucide-react'
 import { Tooltip } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import type { PRStatus, CiStatus, CiDetail } from '../types'
+import { ciActionUrl, openUrl } from '../utils'
 
 const STATUS_CONFIG: Record<PRStatus, { labelKey: string; className: string }> = {
   // Text colours ride the graded --tone-*-foreground tokens (the same pair the shared
@@ -46,41 +48,83 @@ export function StatusBadge({ status }: { status: PRStatus }) {
   )
 }
 
-export function CiBadge({ status, details }: { status: CiStatus; details?: CiDetail[] }) {
+export function CiBadge({
+  status,
+  details,
+  prUrl,
+}: {
+  status: CiStatus
+  details?: CiDetail[]
+  /** The PR URL, used to fall back to its Checks tab when no per-check link exists. */
+  prUrl?: string
+}) {
   const { t } = useTranslation('launchpad')
-  let badgeEl = <span className="text-[9px] text-muted-foreground/40">—</span>
+  const actionUrl = ciActionUrl(status, details, prUrl)
+
+  // The icon + label for the current status; the em-dash is the "no CI" default.
+  let inner: ReactNode = <span className="text-[9px] text-muted-foreground/40">—</span>
+  let toneClass = ''
 
   if (status === 'success') {
-    badgeEl = (
-      <span className="flex cursor-help items-center gap-0.5 text-[9px] text-tone-success">
+    toneClass = 'text-tone-success'
+    inner = (
+      <>
         <CheckCircle2 className="h-3 w-3" />
         {t('ci.pass')}
-      </span>
+      </>
     )
   } else if (status === 'failure') {
-    badgeEl = (
-      <span className="flex cursor-help items-center gap-0.5 text-[9px] text-tone-danger">
+    toneClass = 'text-tone-danger'
+    inner = (
+      <>
         <XCircle className="h-3 w-3" />
         {t('ci.fail')}
-      </span>
+      </>
     )
   } else if (status === 'running') {
-    badgeEl = (
-      <span className="flex cursor-help items-center gap-0.5 text-[9px] text-tone-warning">
+    toneClass = 'text-tone-warning'
+    inner = (
+      <>
         <Loader2 className="h-3 w-3 animate-spin" />
         {t('ci.running')}
-      </span>
+      </>
     )
   } else if (status === 'skipped') {
-    badgeEl = <span className="cursor-help text-[9px] text-muted-foreground/40">{t('ci.skip')}</span>
+    toneClass = 'text-muted-foreground/40'
+    inner = t('ci.skip')
   }
+
+  const baseClass = `flex items-center gap-0.5 text-[9px] ${toneClass}`
+
+  // When there's a run to open, the badge becomes a real link to the CI action so
+  // the state and its "why" are one click away; stop propagation so it doesn't also
+  // trigger the row's open-PR handler.
+  let badgeEl: ReactElement = actionUrl ? (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        openUrl(actionUrl)
+      }}
+      title={t('ci.viewAction')}
+      aria-label={t('ci.viewAction')}
+      className={`${baseClass} cursor-pointer rounded px-0.5 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring`}
+    >
+      {inner}
+      <ExternalLink className="h-2.5 w-2.5 opacity-50" />
+    </button>
+  ) : (
+    <span className={`${baseClass} ${status ? 'cursor-help' : ''}`}>{inner}</span>
+  )
 
   if (details && details.length > 0) {
     const tooltipContent = (
       <div className="flex max-w-[280px] flex-col gap-1 p-1">
         <div className="mb-1.5 flex items-center justify-between border-b border-border/40 pb-1 text-[10px] font-bold text-muted-foreground/85">
           <span>{t('ci.checkSteps')}</span>
-          <span className="text-[8px] font-normal normal-case opacity-60">{t('ci.hoverHint')}</span>
+          <span className="text-[8px] font-normal normal-case opacity-60">
+            {actionUrl ? t('ci.clickHint') : t('ci.hoverHint')}
+          </span>
         </div>
         <div className="flex flex-col gap-1.5">
           {details.map((d, idx) => (

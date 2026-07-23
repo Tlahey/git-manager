@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import type { PRStatus, CiDetail } from '../types'
+
+const { pluginOpen } = vi.hoisted(() => ({ pluginOpen: vi.fn() }))
+vi.mock('@tauri-apps/plugin-shell', () => ({ open: pluginOpen }))
+
 import { StatusBadge, CiBadge } from './Badges'
 
 describe('StatusBadge', () => {
@@ -94,5 +98,76 @@ describe('CiBadge — with details tooltip', () => {
     fireEvent.mouseEnter(screen.getByText('Pass'))
     act(() => vi.advanceTimersByTime(150))
     expect(screen.queryByText('CI Check Steps')).not.toBeInTheDocument()
+  })
+})
+
+describe('CiBadge — link to the CI action', () => {
+  const PR = 'https://github.com/owner/repo/pull/7'
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    pluginOpen.mockResolvedValue(undefined)
+  })
+
+  it('renders a plain, non-interactive badge when there is no run to open', () => {
+    render(<CiBadge status="success" />)
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('renders a link to the failing check and opens it on click', async () => {
+    const details: CiDetail[] = [
+      { name: 'build', status: 'success', url: 'https://ci/ok' },
+      { name: 'lint', status: 'failure', url: 'https://ci/fail' },
+    ]
+    render(<CiBadge status="failure" details={details} prUrl={PR} />)
+    const btn = screen.getByRole('button', { name: 'View CI run on GitHub' })
+    await act(async () => {
+      fireEvent.click(btn)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(pluginOpen).toHaveBeenCalledWith('https://ci/fail')
+  })
+
+  it('falls back to the PR Checks tab when no check carries a link', async () => {
+    render(<CiBadge status="success" prUrl={PR} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'View CI run on GitHub' }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(pluginOpen).toHaveBeenCalledWith(`${PR}/checks`)
+  })
+
+  it('does not bubble the click up to a parent row handler', async () => {
+    const onRowClick = vi.fn()
+    render(
+      <div onClick={onRowClick}>
+        <CiBadge status="running" prUrl={PR} />
+      </div>
+    )
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'View CI run on GitHub' }))
+      await Promise.resolve()
+    })
+    expect(onRowClick).not.toHaveBeenCalled()
+  })
+
+  it('shows the click hint in the details tooltip when the run is openable', () => {
+    vi.useFakeTimers()
+    try {
+      render(
+        <CiBadge
+          status="failure"
+          details={[{ name: 'lint', status: 'failure', url: 'https://ci/fail' }]}
+          prUrl={PR}
+        />
+      )
+      fireEvent.mouseEnter(screen.getByRole('button', { name: 'View CI run on GitHub' }))
+      act(() => vi.advanceTimersByTime(150))
+      expect(screen.getByText('click to open the run')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
