@@ -20,6 +20,7 @@ pub mod ssh;
 pub mod stash;
 pub mod submodule;
 pub mod tasks;
+pub mod terminal;
 pub mod themes;
 pub mod undo;
 pub mod worktree;

@@ -11,6 +11,7 @@ import { useCanonicalRepoPath } from '../../../hooks/useCanonicalRepoPath'
 import { useEffectiveRepoSettings } from '../../../hooks/useEffectiveRepoSettings'
 import { useUserThemes } from '../../../hooks/useUserThemes'
 import { BUILTIN_THEMES } from '../../../lib/themes'
+import { FilterableSetting, Highlight } from './settingsSearch'
 
 /** Last path segment of a repo path, e.g. "/home/me/proj" → "proj". */
 function repoDisplayName(path: string): string {
@@ -44,7 +45,9 @@ function OverrideField({
   return (
     <div className="space-y-2" data-testid={testId}>
       <div className="flex items-center justify-between gap-2">
-        <label className="text-xs font-medium text-foreground">{label}</label>
+        <label className="text-xs font-medium text-foreground">
+          <Highlight text={label} />
+        </label>
         <div className="flex gap-1">
           <button
             type="button"
@@ -110,6 +113,10 @@ export function RepositorySection({ category }: RepositorySectionProps) {
   }
 
   const themeOverridden = override?.theme !== undefined
+  // Terminal colours are overridden as a unit (both the background and text), mirroring the global
+  // "Integrated terminal colours" block — so the repo view matches and the toggle governs both.
+  const terminalOverridden =
+    override?.terminalBackground !== undefined || override?.terminalForeground !== undefined
   const instructionsOverridden = override?.commitInstructions !== undefined
   const patternOverridden = override?.commitPattern !== undefined
 
@@ -135,32 +142,91 @@ export function RepositorySection({ category }: RepositorySectionProps) {
 
       {/* Theme (appearance category) */}
       {category === 'appearance' && (
-        <OverrideField
-          label={t('settings.appearance.theme')}
-          isOverridden={themeOverridden}
-          onInherit={() => resetRepoSetting(activeRepo, 'theme')}
-          onOverride={() => setRepoSetting(activeRepo, 'theme', effective.theme)}
-          testId="repo-override-theme"
-        >
-          <NativeSelect
-            data-testid="repo-theme-select"
-            disabled={!themeOverridden}
-            value={effective.theme}
-            onChange={(e) => setRepoSetting(activeRepo, 'theme', e.target.value)}
-            className="h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
+        <FilterableSetting match={`${t('settings.appearance.theme')} theme thème couleur apparence`}>
+          <OverrideField
+            label={t('settings.appearance.theme')}
+            isOverridden={themeOverridden}
+            onInherit={() => resetRepoSetting(activeRepo, 'theme')}
+            onOverride={() => setRepoSetting(activeRepo, 'theme', effective.theme)}
+            testId="repo-override-theme"
           >
-            {BUILTIN_THEMES.map((th) => (
-              <option key={th.id} value={th.id}>
-                {t(th.labelKey)}
-              </option>
-            ))}
-            {(userThemes ?? []).map((th) => (
-              <option key={th.id} value={th.id}>
-                {th.name}
-              </option>
-            ))}
-          </NativeSelect>
-        </OverrideField>
+            <NativeSelect
+              data-testid="repo-theme-select"
+              disabled={!themeOverridden}
+              value={effective.theme}
+              onChange={(e) => setRepoSetting(activeRepo, 'theme', e.target.value)}
+              className="h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
+            >
+              {BUILTIN_THEMES.map((th) => (
+                <option key={th.id} value={th.id}>
+                  {t(th.labelKey)}
+                </option>
+              ))}
+              {(userThemes ?? []).map((th) => (
+                <option key={th.id} value={th.id}>
+                  {th.name}
+                </option>
+              ))}
+            </NativeSelect>
+          </OverrideField>
+        </FilterableSetting>
+      )}
+
+      {/* Integrated terminal colours (appearance category) — same two-swatch + preview view as the
+          global page, wrapped in one inherit/override toggle governing both colours. */}
+      {category === 'appearance' && (
+        <FilterableSetting
+          match={`${t('settings.appearance.terminalColors')} terminal background foreground text colours couleurs fond texte shell zsh console`}
+        >
+          <OverrideField
+            label={t('settings.appearance.terminalColors')}
+            isOverridden={terminalOverridden}
+            onInherit={() => {
+              resetRepoSetting(activeRepo, 'terminalBackground')
+              resetRepoSetting(activeRepo, 'terminalForeground')
+            }}
+            onOverride={() => {
+              setRepoSetting(activeRepo, 'terminalBackground', effective.terminalBackground)
+              setRepoSetting(activeRepo, 'terminalForeground', effective.terminalForeground)
+            }}
+            testId="repo-override-terminal"
+          >
+            <div className="flex flex-wrap items-end gap-4">
+              <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
+                {t('settings.appearance.terminalBackground')}
+                <input
+                  type="color"
+                  data-testid="repo-terminal-bg"
+                  disabled={!terminalOverridden}
+                  value={effective.terminalBackground}
+                  onChange={(e) => setRepoSetting(activeRepo, 'terminalBackground', e.target.value)}
+                  className="h-8 w-16 cursor-pointer rounded border border-input bg-background disabled:opacity-60"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
+                {t('settings.appearance.terminalForeground')}
+                <input
+                  type="color"
+                  data-testid="repo-terminal-fg"
+                  disabled={!terminalOverridden}
+                  value={effective.terminalForeground}
+                  onChange={(e) => setRepoSetting(activeRepo, 'terminalForeground', e.target.value)}
+                  className="h-8 w-16 cursor-pointer rounded border border-input bg-background disabled:opacity-60"
+                />
+              </label>
+              <div
+                className="flex h-8 items-center rounded border border-input px-3 font-mono text-xs"
+                style={{
+                  backgroundColor: effective.terminalBackground,
+                  color: effective.terminalForeground,
+                }}
+                data-testid="repo-terminal-preview"
+              >
+                $ git status
+              </div>
+            </div>
+          </OverrideField>
+        </FilterableSetting>
       )}
 
       {/* GitFlow (gitflow category) — default branch name + protected branches, per-repo only (no
@@ -169,7 +235,7 @@ export function RepositorySection({ category }: RepositorySectionProps) {
         <>
           <div className="space-y-2" data-testid="repo-default-branch-name">
             <label className="text-xs font-medium text-foreground">
-              {t('settings.git.defaultBranchName')}
+              <Highlight text={t('settings.git.defaultBranchName')} />
             </label>
             <Input
               data-testid="repo-default-branch-input"
@@ -182,7 +248,7 @@ export function RepositorySection({ category }: RepositorySectionProps) {
 
           <div className="space-y-2" data-testid="repo-protected-branches">
             <label className="text-xs font-medium text-foreground">
-              {t('settings.git.protectedBranches')}
+              <Highlight text={t('settings.git.protectedBranches')} />
             </label>
             <TagInput
               tags={effective.protectedBranches}

@@ -13,6 +13,7 @@ import {
   Play,
   Puzzle,
   ScrollText,
+  Search,
   Settings2,
   Sparkles,
   Trophy,
@@ -36,6 +37,8 @@ import { defineTabs, renderActiveTab, type TabDef } from '../../lib/navigation/t
 import { useSettingsStore } from '../../stores/settings.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useCanonicalRepoPath } from '../../hooks/useCanonicalRepoPath'
+import { highlightMatch, normalizeForSearch } from '../../lib/highlightMatch'
+import { SettingsSearchProvider } from './components/settingsSearch'
 
 export type Section =
   | 'general'
@@ -97,7 +100,7 @@ function NavItem({
 }: {
   testId: string
   icon?: ComponentType<{ className?: string }>
-  label: string
+  label: React.ReactNode
   active: boolean
   onClick: () => void
   iconClassName?: string
@@ -123,6 +126,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
   const [scope, setScope] = useState<Scope>('general')
   const [activeSection, setActiveSection] = useState<Section>(initialSection || 'general')
   const [activeLocal, setActiveLocal] = useState<LocalSection>('gitflow')
+  const [query, setQuery] = useState('')
   const resetSettingsGroups = useSettingsStore((s) => s.resetSettingsGroups)
   const resetSettingsFields = useSettingsStore((s) => s.resetSettingsFields)
   const resetRepoSetting = useSettingsStore((s) => s.resetRepoSetting)
@@ -137,6 +141,8 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
     if (!activeRepo) return
     if (cat === 'appearance') {
       resetRepoSetting(activeRepo, 'theme')
+      resetRepoSetting(activeRepo, 'terminalBackground')
+      resetRepoSetting(activeRepo, 'terminalForeground')
     } else if (cat === 'ai_commit') {
       resetRepoSetting(activeRepo, 'commitInstructions')
       resetRepoSetting(activeRepo, 'commitPattern')
@@ -272,6 +278,39 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
   // generic "Local", so it's clear which workspace's settings are being edited.
   const projectName = activeRepo?.split('/').filter(Boolean).pop() ?? ''
 
+  // ── Settings search ──────────────────────────────────────────────────────────
+  // Filters the side-nav entries by the query, matched against each page's label plus a set of
+  // localized synonym keywords (`settings.search.keywords.<id>`) so e.g. "terminal" or "couleur"
+  // surfaces the Personnalisation page. Accent-insensitive to keep FR search forgiving.
+  const searchQuery = normalizeForSearch(query.trim())
+  const tabMatches = (label: string, keywordsKey: string) =>
+    searchQuery === '' || normalizeForSearch(`${label} ${t(keywordsKey)}`).includes(searchQuery)
+
+  // Local pages reuse the global keyword keys where they mirror one (appearance, ai_commit); the
+  // repo-only pages (gitflow, worktree, run) have their own.
+  const localKeywordId: Record<LocalSection, string> = {
+    gitflow: 'gitflow',
+    appearance: 'ui_customization',
+    ai_commit: 'ai_commit',
+    worktree: 'worktree',
+    run: 'run',
+  }
+
+  const visibleGlobalTabs = globalTabs.filter((tab) =>
+    tabMatches(tab.label, `settings.search.keywords.${tab.id}`)
+  )
+  const visibleLocalTabs = LOCAL_TABS.filter((tab) =>
+    tabMatches(tab.label, `settings.search.keywords.${localKeywordId[tab.id]}`)
+  )
+  const supportMatches = supportTab
+    ? tabMatches(supportTab.label, 'settings.search.keywords.support')
+    : false
+  const noResults =
+    searchQuery !== '' &&
+    visibleGlobalTabs.length === 0 &&
+    visibleLocalTabs.length === 0 &&
+    !supportMatches
+
   return (
     <div data-testid="settings-page" className="flex h-screen flex-col bg-background text-foreground">
       {/* Header */}
@@ -293,20 +332,35 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
       <div className="flex flex-1 overflow-hidden">
         {/* Left nav / side panel — groups scroll, the Support entry is pinned to the bottom. */}
         <nav className="chrome-surface flex w-44 shrink-0 flex-col border-r border-border bg-sidebar p-2">
+          {/* Quick search across every settings page */}
+          <div className="relative mb-2 shrink-0">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('settings.search.placeholder')}
+              data-testid="settings-search"
+              className="h-8 w-full rounded-md border border-input bg-background pl-7 pr-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+
           <div className="flex-1 overflow-y-auto">
             {/* Global configuration group */}
-            <p
-              data-testid="settings-group-global"
-              className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70"
-            >
-              {t('settings.scope.global')}
-            </p>
-            {globalTabs.map((tab) => (
+            {visibleGlobalTabs.length > 0 && (
+              <p
+                data-testid="settings-group-global"
+                className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70"
+              >
+                {t('settings.scope.global')}
+              </p>
+            )}
+            {visibleGlobalTabs.map((tab) => (
               <NavItem
                 key={tab.id}
                 testId={`settings-tab-${tab.id}`}
                 icon={tab.icon}
-                label={tab.label}
+                label={highlightMatch(tab.label, query)}
                 active={effectiveScope === 'general' && activeSection === tab.id}
                 onClick={() => {
                   setScope('general')
@@ -316,7 +370,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
             ))}
 
             {/* Repository configuration group — only when a workspace is open */}
-            {showLocalScope && (
+            {showLocalScope && visibleLocalTabs.length > 0 && (
               <>
                 <p
                   data-testid="settings-group-repository"
@@ -328,12 +382,12 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
                     <span className="ml-1 normal-case text-muted-foreground/50">· {projectName}</span>
                   )}
                 </p>
-                {LOCAL_TABS.map((tab) => (
+                {visibleLocalTabs.map((tab) => (
                   <NavItem
                     key={tab.id}
                     testId={`settings-local-tab-${tab.id}`}
                     icon={tab.icon}
-                    label={tab.label}
+                    label={highlightMatch(tab.label, query)}
                     active={effectiveScope === 'local' && activeLocal === tab.id}
                     onClick={() => {
                       setScope('local')
@@ -343,16 +397,25 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
                 ))}
               </>
             )}
+
+            {noResults && (
+              <p
+                data-testid="settings-search-no-results"
+                className="px-3 pt-2 text-[11px] text-muted-foreground"
+              >
+                {t('settings.search.noResults')}
+              </p>
+            )}
           </div>
 
           {/* Support — pinned to the bottom of the panel, visually separated from the groups. */}
-          {supportTab && (
+          {supportTab && supportMatches && (
             <div className="mt-2 shrink-0 border-t border-border pt-2">
               <NavItem
                 testId={`settings-tab-${supportTab.id}`}
                 icon={supportTab.icon}
                 iconClassName="text-red-500"
-                label={supportTab.label}
+                label={highlightMatch(supportTab.label, query)}
                 active={effectiveScope === 'general' && activeSection === supportTab.id}
                 onClick={() => {
                   setScope('general')
@@ -363,14 +426,16 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
           )}
         </nav>
 
-        {/* Content */}
-        {effectiveScope === 'local'
-          ? scrolled(
-              withReset(<RepositorySection category={activeLocal} />, () =>
-                resetLocalCategory(activeLocal)
+        {/* Content — the search query filters/highlights individual settings inside each page. */}
+        <SettingsSearchProvider query={searchQuery}>
+          {effectiveScope === 'local'
+            ? scrolled(
+                withReset(<RepositorySection category={activeLocal} />, () =>
+                  resetLocalCategory(activeLocal)
+                )
               )
-            )
-          : renderActiveTab(SETTINGS_TABS, activeSection)}
+            : renderActiveTab(SETTINGS_TABS, activeSection)}
+        </SettingsSearchProvider>
       </div>
     </div>
   )

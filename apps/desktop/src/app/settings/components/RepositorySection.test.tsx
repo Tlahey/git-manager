@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
@@ -10,6 +10,7 @@ vi.mock('../../../hooks/useDefaultFileMatchCounts', () => ({
 }))
 
 import { RepositorySection } from './RepositorySection'
+import { SettingsSearchProvider } from './settingsSearch'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 
@@ -70,6 +71,62 @@ describe('RepositorySection — appearance page', () => {
     await user.click(screen.getByTestId('repo-override-theme-inherit'))
     expect(useSettingsStore.getState().settings.repoOverrides[REPO]).toBeUndefined()
     expect(screen.getByTestId('repo-theme-select')).toBeDisabled()
+  })
+
+  it('shows terminal colour pickers disabled while inheriting, enabled once overridden', async () => {
+    const user = userEvent.setup()
+    render(<RepositorySection category="appearance" />)
+    expect(screen.getByTestId('repo-terminal-bg')).toBeDisabled()
+    expect(screen.getByTestId('repo-terminal-fg')).toBeDisabled()
+    // One toggle governs both colours; overriding seeds both from the effective (global) values.
+    await user.click(screen.getByTestId('repo-override-terminal-override'))
+    expect(screen.getByTestId('repo-terminal-bg')).toBeEnabled()
+    expect(screen.getByTestId('repo-terminal-fg')).toBeEnabled()
+    expect(useSettingsStore.getState().settings.repoOverrides[REPO]?.terminalBackground).toBe(
+      '#000000'
+    )
+    expect(useSettingsStore.getState().settings.repoOverrides[REPO]?.terminalForeground).toBe(
+      '#e4e4e7'
+    )
+  })
+
+  it('editing a terminal colour writes the per-repo override', async () => {
+    const user = userEvent.setup()
+    render(<RepositorySection category="appearance" />)
+    await user.click(screen.getByTestId('repo-override-terminal-override'))
+    fireEvent.change(screen.getByTestId('repo-terminal-fg'), { target: { value: '#ff8800' } })
+    expect(useSettingsStore.getState().settings.repoOverrides[REPO]?.terminalForeground).toBe(
+      '#ff8800'
+    )
+  })
+
+  it('inherit clears both terminal-colour overrides at once', async () => {
+    const user = userEvent.setup()
+    useSettingsStore.getState().setRepoSetting(REPO, 'terminalBackground', '#111111')
+    useSettingsStore.getState().setRepoSetting(REPO, 'terminalForeground', '#222222')
+    render(<RepositorySection category="appearance" />)
+    expect(screen.getByTestId('repo-terminal-bg')).toBeEnabled()
+    await user.click(screen.getByTestId('repo-override-terminal-inherit'))
+    expect(
+      useSettingsStore.getState().settings.repoOverrides[REPO]?.terminalBackground
+    ).toBeUndefined()
+    expect(
+      useSettingsStore.getState().settings.repoOverrides[REPO]?.terminalForeground
+    ).toBeUndefined()
+  })
+
+  it('filters to only the terminal-colours setting when searching "terminal"', () => {
+    render(
+      <SettingsSearchProvider query="terminal">
+        <RepositorySection category="appearance" />
+      </SettingsSearchProvider>
+    )
+    const terminal = screen.getByTestId('repo-override-terminal')
+    expect(terminal).toBeInTheDocument()
+    // The theme override is hidden — this was the reported bug.
+    expect(screen.queryByTestId('repo-override-theme')).not.toBeInTheDocument()
+    // The matched word is highlighted in the label (the second reported issue).
+    expect(terminal.querySelector('mark')).toHaveTextContent('terminal')
   })
 })
 

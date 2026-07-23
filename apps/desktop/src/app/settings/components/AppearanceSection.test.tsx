@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 const { useUserThemes } = vi.hoisted(() => ({ useUserThemes: vi.fn() }))
 vi.mock('../../../hooks/useUserThemes', () => ({ useUserThemes }))
 
 import { AppearanceSection } from './AppearanceSection'
+import { SettingsSearchProvider } from './settingsSearch'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { useGameStore } from '../../../stores/game.store'
 
@@ -106,5 +107,84 @@ describe('AppearanceSection — notification location and checkboxes', () => {
     render(<AppearanceSection />)
     const checkboxes = screen.getAllByRole('checkbox')
     expect(checkboxes[2]).not.toBeChecked()
+  })
+})
+
+describe('AppearanceSection — integrated terminal colours', () => {
+  it('seeds the pickers from the current settings (black background by default)', () => {
+    render(<AppearanceSection />)
+    expect(screen.getByTestId('appearance-terminal-bg')).toHaveValue('#000000')
+    expect(screen.getByTestId('appearance-terminal-fg')).toHaveValue('#e4e4e7')
+  })
+
+  it('updates the background and text colours', () => {
+    render(<AppearanceSection />)
+    // `<input type="color">` can't be typed into with userEvent — fire the change directly.
+    fireEvent.change(screen.getByTestId('appearance-terminal-bg'), {
+      target: { value: '#123456' },
+    })
+    fireEvent.change(screen.getByTestId('appearance-terminal-fg'), {
+      target: { value: '#ffffff' },
+    })
+    expect(useSettingsStore.getState().settings.appearance.terminalBackground).toBe('#123456')
+    expect(useSettingsStore.getState().settings.appearance.terminalForeground).toBe('#ffffff')
+  })
+
+  it('resets the colours to their defaults', async () => {
+    const user = userEvent.setup()
+    useSettingsStore.setState((s) => ({
+      settings: {
+        ...s.settings,
+        appearance: {
+          ...s.settings.appearance,
+          terminalBackground: '#abcdef',
+          terminalForeground: '#fedcba',
+        },
+      },
+    }))
+    render(<AppearanceSection />)
+    await user.click(screen.getByTestId('appearance-terminal-reset'))
+    expect(useSettingsStore.getState().settings.appearance.terminalBackground).toBe('#000000')
+    expect(useSettingsStore.getState().settings.appearance.terminalForeground).toBe('#e4e4e7')
+  })
+})
+
+describe('AppearanceSection — in-page search filtering', () => {
+  it('shows only the settings matching the query, and highlights the match', () => {
+    render(
+      <SettingsSearchProvider query="terminal">
+        <AppearanceSection />
+      </SettingsSearchProvider>
+    )
+    const terminal = screen.getByTestId('setting-terminal-colors')
+    expect(terminal).toBeInTheDocument()
+    // The unrelated settings are hidden.
+    expect(screen.queryByTestId('setting-theme')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('setting-font-size')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('setting-density')).not.toBeInTheDocument()
+    // The matched word is highlighted in the visible label.
+    expect(terminal.querySelector('mark')).toHaveTextContent(/terminal/i)
+  })
+
+  it('matches a setting via its synonym keywords, not just the visible label', () => {
+    // "console" isn't in the label but is a keyword of the terminal-colours setting.
+    render(
+      <SettingsSearchProvider query="console">
+        <AppearanceSection />
+      </SettingsSearchProvider>
+    )
+    expect(screen.getByTestId('setting-terminal-colors')).toBeInTheDocument()
+    expect(screen.queryByTestId('setting-theme')).not.toBeInTheDocument()
+  })
+
+  it('shows everything again once the query is cleared', () => {
+    render(
+      <SettingsSearchProvider query="">
+        <AppearanceSection />
+      </SettingsSearchProvider>
+    )
+    expect(screen.getByTestId('setting-theme')).toBeInTheDocument()
+    expect(screen.getByTestId('setting-terminal-colors')).toBeInTheDocument()
+    expect(screen.getByTestId('setting-font-size')).toBeInTheDocument()
   })
 })

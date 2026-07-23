@@ -166,6 +166,44 @@ describe('SettingsPage — per-page reset', () => {
   })
 })
 
+describe('SettingsPage — search', () => {
+  // NOTE: this suite's i18n mock returns the key, so labels/keywords are the key strings; the search
+  // matches on substrings of those (e.g. "ssh" ⊂ "settings.sections.ssh"). Real synonym matching
+  // (e.g. "terminal" → Personnalisation) is exercised by the locale keyword keys + parity check.
+  it('filters the nav to the matching pages', async () => {
+    const user = userEvent.setup()
+    render(<SettingsPage onClose={vi.fn()} />)
+    await user.type(screen.getByTestId('settings-search'), 'ssh')
+    expect(screen.getByTestId('settings-tab-ssh')).toBeInTheDocument()
+    expect(screen.queryByTestId('settings-tab-general')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('settings-tab-notifications')).not.toBeInTheDocument()
+  })
+
+  it('highlights the matched text within the visible options', async () => {
+    const user = userEvent.setup()
+    render(<SettingsPage onClose={vi.fn()} />)
+    await user.type(screen.getByTestId('settings-search'), 'ssh')
+    const mark = screen.getByTestId('settings-tab-ssh').querySelector('mark')
+    expect(mark).not.toBeNull()
+    expect(mark).toHaveTextContent('ssh')
+  })
+
+  it('shows a no-results message when nothing matches', async () => {
+    const user = userEvent.setup()
+    render(<SettingsPage onClose={vi.fn()} />)
+    await user.type(screen.getByTestId('settings-search'), 'zzzzznope')
+    expect(screen.getByTestId('settings-search-no-results')).toBeInTheDocument()
+    expect(screen.queryByTestId('settings-group-global')).not.toBeInTheDocument()
+  })
+
+  it('keeps every page visible when the query is empty', () => {
+    render(<SettingsPage onClose={vi.fn()} />)
+    expect(screen.getByTestId('settings-tab-general')).toBeInTheDocument()
+    expect(screen.getByTestId('settings-tab-ssh')).toBeInTheDocument()
+    expect(screen.queryByTestId('settings-search-no-results')).not.toBeInTheDocument()
+  })
+})
+
 describe('SettingsPage — close', () => {
   it('calls onClose from the back button', async () => {
     const onClose = vi.fn()

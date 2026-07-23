@@ -4,6 +4,7 @@ import { Separator, Switch, Checkbox, NativeSelect } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { useNotificationStore } from '../../../stores/notification.store'
 import { showNativeNotification } from '../../../hooks/useNotificationWatcher'
+import { FilterableSetting, Highlight } from './settingsSearch'
 
 export function NotificationSection() {
   const { t } = useTranslation('common')
@@ -28,7 +29,10 @@ export function NotificationSection() {
   return (
     <div className="space-y-6">
       {/* Global toggle */}
-      <div className="space-y-4">
+      <FilterableSetting
+        className="space-y-4"
+        match={`${t('notifications.settings.enableTitle')} notifications enable activer notification`}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {notifications.enabled ? (
@@ -38,7 +42,7 @@ export function NotificationSection() {
             )}
             <div>
               <h4 className="text-xs font-semibold text-foreground">
-                {t('notifications.settings.enableTitle')}
+                <Highlight text={t('notifications.settings.enableTitle')} />
               </h4>
               <p className="text-[10px] text-muted-foreground">
                 {t('notifications.settings.enableDesc')}
@@ -51,16 +55,19 @@ export function NotificationSection() {
             aria-label={t('notifications.settings.enableTitle')}
           />
         </div>
-      </div>
+      </FilterableSetting>
 
       {notifications.enabled && (
         <>
-          <Separator />
-
           {/* Events settings */}
-          <div className="space-y-3">
+          <FilterableSetting
+            className="space-y-3"
+            testId="setting-notif-events"
+            match={`${t('notifications.settings.eventsTitle')} ${t('notifications.settings.fetchTitle')} ${t('notifications.settings.pullTitle')} ${t('notifications.settings.pushTitle')} ${t('notifications.settings.newPrTitle')} ${t('notifications.settings.prMergedTitle')} ${t('notifications.settings.reviewRequestedTitle')} ${t('notifications.settings.reviewStatusTitle')} events événements push pull fetch pr review revue`}
+          >
+            <Separator className="mb-3" />
             <h4 className="text-xs font-semibold text-foreground">
-              {t('notifications.settings.eventsTitle')}
+              <Highlight text={t('notifications.settings.eventsTitle')} />
             </h4>
 
             <div className="space-y-3 pl-1">
@@ -173,12 +180,15 @@ export function NotificationSection() {
                 />
               </label>
             </div>
-          </div>
-
-          <Separator />
+          </FilterableSetting>
 
           {/* Sounds */}
-          <div className="space-y-4">
+          <FilterableSetting
+            className="space-y-4"
+            testId="setting-notif-sound"
+            match={`${t('notifications.settings.soundTitle')} sound son volume audio`}
+          >
+            <Separator className="mb-4" />
             <div className="flex flex-col gap-2 py-1">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -189,7 +199,7 @@ export function NotificationSection() {
                   )}
                   <div className="flex flex-col">
                     <h4 className="text-xs font-semibold text-foreground">
-                      {t('notifications.settings.soundTitle')}
+                      <Highlight text={t('notifications.settings.soundTitle')} />
                     </h4>
                     <p className="font-sans text-[10px] text-muted-foreground">
                       {t('notifications.settings.soundDesc')}
@@ -231,14 +241,17 @@ export function NotificationSection() {
                 </div>
               )}
             </div>
-          </div>
-
-          <Separator />
+          </FilterableSetting>
 
           {/* Test notifications */}
-          <div className="space-y-3">
+          <FilterableSetting
+            className="space-y-3"
+            testId="setting-notif-test"
+            match={`${t('notifications.settings.testTitle')} test tester notification`}
+          >
+            <Separator className="mb-3" />
             <h4 className="text-xs font-semibold text-foreground">
-              {t('notifications.settings.testTitle')}
+              <Highlight text={t('notifications.settings.testTitle')} />
             </h4>
             <p className="text-[10px] text-muted-foreground">
               {t('notifications.settings.testDesc')}
@@ -263,7 +276,7 @@ export function NotificationSection() {
               <Bell className="h-3.5 w-3.5" />
               <span>{t('notifications.settings.testButton')}</span>
             </button>
-          </div>
+          </FilterableSetting>
         </>
       )}
     </div>

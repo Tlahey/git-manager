@@ -42,10 +42,30 @@ describe('useEffectiveRepoSettings', () => {
       commitInstructions: '',
       commitPattern: '^feat',
       theme: 'dark',
+      terminalBackground: '#000000',
+      terminalForeground: '#e4e4e7',
       worktreeDefaultFiles: [],
       runTasks: [],
       defaultRunTaskId: undefined,
     })
+  })
+
+  it('resolves terminal colours to the global appearance value, or the repo override', () => {
+    useSettingsStore.setState((s) => ({
+      settings: {
+        ...s.settings,
+        appearance: { ...s.settings.appearance, terminalBackground: '#111111' },
+      },
+    }))
+    const { result: inherited } = renderHook(() => useEffectiveRepoSettings('/repo'))
+    expect(inherited.current.terminalBackground).toBe('#111111')
+    expect(inherited.current.terminalForeground).toBe('#e4e4e7')
+
+    useSettingsStore.getState().setRepoSetting('/repo', 'terminalBackground', '#abcdef')
+    const { result } = renderHook(() => useEffectiveRepoSettings('/repo'))
+    expect(result.current.terminalBackground).toBe('#abcdef')
+    // The non-overridden colour still inherits the global value.
+    expect(result.current.terminalForeground).toBe('#e4e4e7')
   })
 
   it('resolves the GitFlow fields to built-in defaults for a repo with no override', () => {
