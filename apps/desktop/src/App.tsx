@@ -25,9 +25,12 @@ import { Toaster } from '@git-manager/ui'
 import { CommandPalette } from './components/command-palette/CommandPalette'
 import { TrophyToast } from './components/trophy/TrophyToast'
 import { OperationProgressBar } from './components/layout/OperationProgressBar'
+import { LoadingOverlay } from './components/layout/LoadingOverlay'
+import { useAppReadySplash } from './hooks/useAppReadySplash'
 import { appEventBus } from './lib/appEventBus'
 import { useOperationProgressStore } from './stores/operationProgress.store'
 import { useUndoHistoryStore } from './stores/undoHistory.store'
+import { useAppUpdaterStore } from './stores/appUpdater.store'
 import { listen } from '@tauri-apps/api/event'
 import { mutate } from 'swr'
 
@@ -41,6 +44,7 @@ export default function App() {
   useMonacoTheme()
   useNotificationWatcher()
   useDevFixtureImport()
+  useAppReadySplash()
 
   useKeyboardShortcuts({
     onOpenSettings: () => handleOpenSettings('general'),
@@ -51,6 +55,14 @@ export default function App() {
   // Firing open_app event on launch
   useEffect(() => {
     appEventBus.notify('open_app')
+  }, [])
+
+  // Load the running version and silently check for updates on launch. A found update flips the
+  // updater footer's button (pinned in Settings) to its highlighted "available" state.
+  useEffect(() => {
+    const { loadVersion, checkForUpdate } = useAppUpdaterStore.getState()
+    loadVersion()
+    checkForUpdate({ silent: true })
   }, [])
 
   // Listen for conflict-resolved events from dedicated merge windows
@@ -165,6 +177,7 @@ export default function App() {
         />
         <TrophyToast />
         <Toaster />
+        <LoadingOverlay />
       </div>
     </QueryClientProvider>
   )

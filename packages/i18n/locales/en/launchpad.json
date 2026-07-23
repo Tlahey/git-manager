@@ -127,7 +127,7 @@
   "followed.unfollow": "Unfollow PR",
   "waiting.allCaughtUp": "You're all caught up",
   "group.pinned": "Pinned",
-  "group.needsReview": "Need my review",
+  "group.needsReview": "Needs my review",
   "group.other": "Other pull requests",
   "group.readyToMerge": "Ready to merge",
   "group.unassignedReviewers": "Unassigned reviewers",
@@ -208,5 +208,8 @@
   "tab.waiting": "Waiting for Review",
   "tab.snoozed": "Snoozed",
   "tab.commitStats": "Commit Stats",
-  "tab.customViews": "Custom Views"
+  "tab.customViews": "Custom Views",
+  "toolbar.globalSearchPlaceholder": "Search all tabs…",
+  "toolbar.expandAll": "Expand all",
+  "toolbar.collapseAll": "Collapse all"
 }

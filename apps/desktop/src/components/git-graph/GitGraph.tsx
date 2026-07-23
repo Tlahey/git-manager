@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Focus, X } from 'lucide-react'
 import { Spinner, toast } from '@git-manager/ui'
 import { useGitLog } from '../../hooks/useGitLog'
+import { useGlobalLoadingWhile } from '../../hooks/useGlobalLoadingWhile'
 import { useGitStatus } from '../../hooks/useGitStatus'
 import { useWorktreeWipStatuses } from '../../hooks/useWorktreeWipStatuses'
 import { useWorktreeAgentActivity } from '../../hooks/useWorktreeAgentActivity'
@@ -281,6 +282,10 @@ export function GitGraph({
     // condition as useGitGraphNodes' "primary special row" (conflict row wins over WIP).
     headHasWip: isRebasePaused || totalChanges > 0,
   })
+
+  // Surface the whole-app loading overlay (dark scrim + animated mascot) while the graph loads
+  // its history for the first time — i.e. when switching to a repo whose data isn't cached yet.
+  useGlobalLoadingWhile(isLoading, t('gitTree.loading'))
 
   // Unique authors of the loaded commits, for the AUTHOR column filter autocomplete.
   const authorOptions = useMemo(() => collectGraphAuthors(nodes), [nodes])

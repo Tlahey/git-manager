@@ -222,7 +222,7 @@
   "settings.update.downloading": "Téléchargement… {{percent}}%",
   "settings.update.ready": "Mise à jour installée. Redémarrez pour l'appliquer.",
   "settings.update.restart": "Redémarrer maintenant",
-  "settings.update.error": "Échec de la vérification : {{message}}",
+  "settings.update.error": "Échec de la vérification. Réessayez, ou consultez le journal pour plus de détails.",
   "settings.update.retry": "Réessayer",
   "settings.changelog.title": "Nouveautés",
   "settings.changelog.unreleased": "À venir",

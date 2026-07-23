@@ -129,10 +129,10 @@
   "group.pinned": "Épinglées",
   "group.needsReview": "À relire par moi",
   "group.other": "Autres pull requests",
-  "group.readyToMerge": "Prêtes à fusionner",
+  "group.readyToMerge": "Prêtes à merger",
   "group.unassignedReviewers": "Relecteurs non assignés",
-  "group.resolveConflicts": "Résoudre les conflits",
-  "group.draft": "Brouillons",
+  "group.resolveConflicts": "Conflits à résoudre",
+  "group.draft": "Brouillon",
   "group.noWaitingReview": "Aucune PR en attente de votre relecture",
   "group.noPrs": "Aucune pull request",
   "table.assigned": "Assigné",
@@ -208,5 +208,8 @@
   "tab.waiting": "En attente de relecture",
   "tab.snoozed": "Reportées",
   "tab.commitStats": "Stats de commits",
-  "tab.customViews": "Vues personnalisées"
+  "tab.customViews": "Vues personnalisées",
+  "toolbar.globalSearchPlaceholder": "Rechercher dans tous les onglets…",
+  "toolbar.expandAll": "Tout déplier",
+  "toolbar.collapseAll": "Tout replier"
 }

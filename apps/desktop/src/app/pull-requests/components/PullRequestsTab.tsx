@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback, type ReactNode } from 'react'
-import { GitMerge, UserPlus, AlertTriangle, Eye, PencilRuler, Pin } from 'lucide-react'
+import { useState, useMemo, useCallback, useEffect, type ReactNode } from 'react'
+import { GitPullRequest, GitMerge, UserPlus, AlertTriangle, Eye, PencilRuler, Pin } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import type { TagTone } from '@git-manager/ui'
 
@@ -7,23 +7,27 @@ import { Toolbar } from './Toolbar'
 import { TableHeader, GroupHeader, LoadMore, usePRSort, useSetFilter } from './ListHelpers'
 import { PRRowSkeleton } from './RowSkeletons'
 import { PRRow } from './PRRow'
+import { groupPrs, PR_GROUP_ORDER, PR_GROUP_META, type PrGroupKey } from '../prGroups'
+import { useLaunchpadControlsStore } from '../../../stores/launchpadControls.store'
+import { matchesPrSearch } from '../prSearch'
 import type { MockPR, SortKey, SortDir } from '../types'
 
 const PAGE_SIZE = 20
 
-type BucketKey = 'ready' | 'unassigned' | 'conflicts' | 'needsReview' | 'draft'
+/** A page-size counter per group id, so "load more" paginates each group independently. */
+type ShownState = Record<string, number>
+/** Open/closed collapse state per group id (defaults to open). */
+type OpenState = Record<string, boolean>
 
-/**
- * Bucket a (non-pinned, still-open) PR by the next action it needs. Priority order matters: a draft
- * with conflicts is a draft first; conflicts outrank a pending review; an approved, mergeable PR is
- * "ready"; anything else is still waiting on reviewers.
- */
-function bucketOf(pr: MockPR): BucketKey {
-  if (pr.isDraft) return 'draft'
-  if (pr.needsRebase) return 'conflicts'
-  if (pr.needsMyReview) return 'needsReview'
-  if (pr.reviewStatus === 'approved' || pr.status === 'approved') return 'ready'
-  return 'unassigned'
+/** Per-group header presentation: a coloured icon + count-tag tone. The label itself stays
+ * foreground/black (see `GroupHeader`); only the icon and count tag carry the section colour. */
+const GROUP_DECOR: Record<PrGroupKey, { icon: ReactNode; iconClassName: string; tone: TagTone }> = {
+  readyToMerge: { icon: <GitMerge className="h-3 w-3" />, iconClassName: 'text-emerald-400', tone: 'success' },
+  unassignedReviewers: { icon: <UserPlus className="h-3 w-3" />, iconClassName: 'text-sky-400', tone: 'info' },
+  resolveConflicts: { icon: <AlertTriangle className="h-3 w-3" />, iconClassName: 'text-red-400', tone: 'danger' },
+  needsMyReview: { icon: <Eye className="h-3 w-3" />, iconClassName: 'text-orange-400', tone: 'warning' },
+  draft: { icon: <PencilRuler className="h-3 w-3" />, iconClassName: 'text-muted-foreground', tone: 'neutral' },
+  other: { icon: <GitPullRequest className="h-3 w-3" />, iconClassName: 'text-muted-foreground', tone: 'neutral' },
 }
 
 interface PullRequestsTabProps {
@@ -41,22 +45,49 @@ export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: Pul
   const [statusFilter, toggleStatus, clearStatus] = useSetFilter()
   const [repoFilter, toggleRepo, clearRepo] = useSetFilter()
   const [authorFilter, toggleAuthor, clearAuthor] = useSetFilter()
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
-  const [shown, setShown] = useState<Record<string, number>>({})
+  // Collapse + pagination state is keyed by group id ('pinned' plus every PrGroupKey) so each
+  // section folds and paginates on its own. Missing keys default to open / one page shown.
+  const [openState, setOpenState] = useState<OpenState>({})
+  const [shownState, setShownState] = useState<ShownState>({})
 
-  const isOpen = (k: string) => openGroups[k] !== false
-  const toggleGroup = (k: string) => setOpenGroups((p) => ({ ...p, [k]: !(p[k] !== false) }))
-  const shownFor = (k: string) => shown[k] ?? PAGE_SIZE
-  const loadMore = (k: string) => setShown((p) => ({ ...p, [k]: (p[k] ?? PAGE_SIZE) + PAGE_SIZE }))
+  // Global Launchpad controls (search + collapse/expand-all), shared across every tab.
+  const globalSearch = useLaunchpadControlsStore((s) => s.search)
+  const collapseNonce = useLaunchpadControlsStore((s) => s.collapseAllNonce)
+  const expandNonce = useLaunchpadControlsStore((s) => s.expandAllNonce)
+
+  const isOpen = useCallback((key: string) => openState[key] ?? true, [openState])
+  const toggleOpen = useCallback(
+    (key: string) => setOpenState((s) => ({ ...s, [key]: !(s[key] ?? true) })),
+    []
+  )
+
+  // "Collapse all" folds every section; "Expand all" clears the overrides back to the open default.
+  // Skip the initial mount (nonce 0) so the tab starts fully expanded.
+  useEffect(() => {
+    if (collapseNonce === 0) return
+    const folded: OpenState = { pinned: false }
+    for (const key of PR_GROUP_ORDER) folded[key] = false
+    setOpenState(folded)
+  }, [collapseNonce])
+  useEffect(() => {
+    if (expandNonce === 0) return
+    setOpenState({})
+  }, [expandNonce])
+  const shownFor = useCallback((key: string) => shownState[key] ?? PAGE_SIZE, [shownState])
+  const loadMore = useCallback(
+    (key: string) => setShownState((s) => ({ ...s, [key]: (s[key] ?? PAGE_SIZE) + PAGE_SIZE })),
+    []
+  )
 
   const handleSort = useCallback((k: SortKey) => {
     setSortKey((prevKey) => {
       if (k === prevKey) {
         setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
         return prevKey
+      } else {
+        setSortDir('desc')
+        return k
       }
-      setSortDir('desc')
-      return k
     })
   }, [])
 
@@ -69,96 +100,24 @@ export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: Pul
       if (statusFilter.size > 0 && !statusFilter.has(pr.status)) return false
       if (repoFilter.size > 0 && !repoFilter.has(pr.repo)) return false
       if (authorFilter.size > 0 && !authorFilter.has(pr.author)) return false
-      if (search) {
-        const q = search.toLowerCase()
-        return (
-          pr.title.toLowerCase().includes(q) ||
-          pr.author.toLowerCase().includes(q) ||
-          pr.repo.toLowerCase().includes(q) ||
-          String(pr.number).includes(q)
-        )
-      }
-      return true
+      // The tab's own search box and the global Launchpad search both narrow the list.
+      return matchesPrSearch(pr, search) && matchesPrSearch(pr, globalSearch)
     })
-  }, [allPRs, search, statusFilter, repoFilter, authorFilter])
+  }, [allPRs, search, globalSearch, statusFilter, repoFilter, authorFilter])
 
   const pinnedPRs = usePRSort(
     useMemo(() => filtered.filter((pr) => pinnedIds.has(pr.id)), [filtered, pinnedIds]),
     sortKey,
     sortDir
   )
-
-  // Non-pinned, still-open PRs bucketed by needed action (merged/closed drop out of this view).
-  const grouped = useMemo(() => {
-    const g: Record<BucketKey, MockPR[]> = {
-      ready: [],
-      unassigned: [],
-      conflicts: [],
-      needsReview: [],
-      draft: [],
-    }
-    for (const pr of filtered) {
-      if (pinnedIds.has(pr.id) || pr.status === 'merged' || pr.status === 'closed') continue
-      g[bucketOf(pr)].push(pr)
-    }
-    return g
-  }, [filtered, pinnedIds])
-
-  const readySorted = usePRSort(grouped.ready, sortKey, sortDir)
-  const unassignedSorted = usePRSort(grouped.unassigned, sortKey, sortDir)
-  const conflictsSorted = usePRSort(grouped.conflicts, sortKey, sortDir)
-  const needsReviewSorted = usePRSort(grouped.needsReview, sortKey, sortDir)
-  const draftSorted = usePRSort(grouped.draft, sortKey, sortDir)
-
-  const buckets: {
-    key: BucketKey
-    label: string
-    icon: ReactNode
-    iconClassName: string
-    tone: TagTone
-    items: MockPR[]
-  }[] = [
-    {
-      key: 'ready',
-      label: t('group.readyToMerge'),
-      icon: <GitMerge className="h-3 w-3" />,
-      iconClassName: 'text-green-400',
-      tone: 'success',
-      items: readySorted,
-    },
-    {
-      key: 'unassigned',
-      label: t('group.unassignedReviewers'),
-      icon: <UserPlus className="h-3 w-3" />,
-      iconClassName: 'text-blue-400',
-      tone: 'info',
-      items: unassignedSorted,
-    },
-    {
-      key: 'conflicts',
-      label: t('group.resolveConflicts'),
-      icon: <AlertTriangle className="h-3 w-3" />,
-      iconClassName: 'text-red-400',
-      tone: 'danger',
-      items: conflictsSorted,
-    },
-    {
-      key: 'needsReview',
-      label: t('group.needsReview'),
-      icon: <Eye className="h-3 w-3" />,
-      iconClassName: 'text-orange-400',
-      tone: 'warning',
-      items: needsReviewSorted,
-    },
-    {
-      key: 'draft',
-      label: t('group.draft'),
-      icon: <PencilRuler className="h-3 w-3" />,
-      iconClassName: 'text-muted-foreground',
-      tone: 'neutral',
-      items: draftSorted,
-    },
-  ]
+  // Everything not pinned, sorted once, then partitioned into the display buckets (a PR lands in
+  // exactly one). Pinned PRs are shown separately on top and excluded here to avoid duplication.
+  const sortedUnpinned = usePRSort(
+    useMemo(() => filtered.filter((pr) => !pinnedIds.has(pr.id)), [filtered, pinnedIds]),
+    sortKey,
+    sortDir
+  )
+  const groups = useMemo(() => groupPrs(sortedUnpinned), [sortedUnpinned])
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -198,7 +157,7 @@ export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: Pul
                   label={t('group.pinned')}
                   count={pinnedPRs.length}
                   open={isOpen('pinned')}
-                  onToggle={() => toggleGroup('pinned')}
+                  onToggle={() => toggleOpen('pinned')}
                   icon={<Pin className="h-3 w-3" />}
                   iconClassName="text-amber-400"
                   tone="warning"
@@ -209,31 +168,41 @@ export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: Pul
                   ))}
               </>
             )}
-            {buckets.map((b) => (
-              <div key={b.key}>
-                <GroupHeader
-                  label={b.label}
-                  count={b.items.length}
-                  open={isOpen(b.key)}
-                  onToggle={() => toggleGroup(b.key)}
-                  icon={b.icon}
-                  iconClassName={b.iconClassName}
-                  tone={b.tone}
-                />
-                {isOpen(b.key) && (
-                  <>
-                    {b.items.slice(0, shownFor(b.key)).map((pr) => (
-                      <PRRow key={pr.id} pr={pr} pinned={false} onTogglePin={onTogglePin} />
-                    ))}
-                    <LoadMore
-                      total={b.items.length}
-                      shown={shownFor(b.key)}
-                      onLoadMore={() => loadMore(b.key)}
-                    />
-                  </>
-                )}
+            {sortedUnpinned.length === 0 && (
+              <div className="flex items-center justify-center py-10 text-xs text-muted-foreground/50">
+                <GitPullRequest className="mr-2 h-4 w-4 opacity-30" /> {t('group.noPrs')}
               </div>
-            ))}
+            )}
+            {PR_GROUP_ORDER.map((key: PrGroupKey) => {
+              const list = groups[key]
+              if (list.length === 0) return null
+              const decor = GROUP_DECOR[key]
+              return (
+                <div key={key}>
+                  <GroupHeader
+                    label={t(PR_GROUP_META[key].labelKey)}
+                    count={list.length}
+                    open={isOpen(key)}
+                    onToggle={() => toggleOpen(key)}
+                    icon={decor.icon}
+                    iconClassName={decor.iconClassName}
+                    tone={decor.tone}
+                  />
+                  {isOpen(key) && (
+                    <>
+                      {list.slice(0, shownFor(key)).map((pr) => (
+                        <PRRow key={pr.id} pr={pr} pinned={false} onTogglePin={onTogglePin} />
+                      ))}
+                      <LoadMore
+                        total={list.length}
+                        shown={shownFor(key)}
+                        onLoadMore={() => loadMore(key)}
+                      />
+                    </>
+                  )}
+                </div>
+              )
+            })}
           </>
         )}
       </div>

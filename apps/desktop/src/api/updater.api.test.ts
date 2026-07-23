@@ -34,6 +34,27 @@ describe('apiCheckForUpdate', () => {
     const { apiCheckForUpdate } = await import('./updater.api')
     expect(await apiCheckForUpdate()).toBeNull()
   })
+
+  it('logs a successful check to the activity journal', async () => {
+    const check = vi.fn().mockResolvedValue(null)
+    vi.doMock('@tauri-apps/plugin-updater', () => ({ check }))
+    const { apiCheckForUpdate } = await import('./updater.api')
+    const { useActivityLogStore } = await import('../stores/activityLog.store')
+    await apiCheckForUpdate()
+    const entry = useActivityLogStore.getState().entries[0]
+    expect(entry).toMatchObject({ command: 'updater.check', status: 'ok' })
+  })
+
+  it('logs a failed check to the activity journal and rethrows', async () => {
+    const check = vi.fn().mockRejectedValue(new Error('Could not fetch a valid release JSON'))
+    vi.doMock('@tauri-apps/plugin-updater', () => ({ check }))
+    const { apiCheckForUpdate } = await import('./updater.api')
+    const { useActivityLogStore } = await import('../stores/activityLog.store')
+    await expect(apiCheckForUpdate()).rejects.toThrow()
+    const entry = useActivityLogStore.getState().entries[0]
+    expect(entry).toMatchObject({ command: 'updater.check', status: 'error' })
+    expect(entry.error).toContain('Could not fetch a valid release JSON')
+  })
 })
 
 describe('apiDownloadAndInstallUpdate', () => {

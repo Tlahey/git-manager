@@ -8,6 +8,7 @@ import {
   type FilterStatus,
 } from '../../../stores/launchpad.store'
 import type { MockPR, MockIssue } from '../types'
+import { useLaunchpadControlsStore } from '../../../stores/launchpadControls.store'
 import { TableHeader, LoadMore } from './ListHelpers'
 import { PRRowSkeleton, IssueRowSkeleton } from './RowSkeletons'
 import { PRRow } from './PRRow'
@@ -68,22 +69,32 @@ function CustomViewResults({
   const [shownPRs, setShownPRs] = useState(PAGE_SIZE)
   const [shownIssues, setShownIssues] = useState(PAGE_SIZE)
   const [search, setSearch] = useState('')
+  const globalSearch = useLaunchpadControlsStore((s) => s.search)
 
   const matchedPRs = useMemo(() => {
     if (filter.type === 'issues') return []
+    // Local view search AND global Launchpad search both narrow by title.
+    const local = search.trim().toLowerCase()
+    const global = globalSearch.trim().toLowerCase()
     return allPRs.filter((pr) => {
-      if (search && !pr.title.toLowerCase().includes(search.toLowerCase())) return false
+      const title = pr.title.toLowerCase()
+      if (local && !title.includes(local)) return false
+      if (global && !title.includes(global)) return false
       return matchesPR(pr, filter)
     })
-  }, [allPRs, filter, search])
+  }, [allPRs, filter, search, globalSearch])
 
   const matchedIssues = useMemo(() => {
     if (filter.type === 'prs') return []
+    const local = search.trim().toLowerCase()
+    const global = globalSearch.trim().toLowerCase()
     return allIssues.filter((issue) => {
-      if (search && !issue.title.toLowerCase().includes(search.toLowerCase())) return false
+      const title = issue.title.toLowerCase()
+      if (local && !title.includes(local)) return false
+      if (global && !title.includes(global)) return false
       return matchesIssue(issue, filter)
     })
-  }, [allIssues, filter, search])
+  }, [allIssues, filter, search, globalSearch])
 
   const total = matchedPRs.length + matchedIssues.length
 

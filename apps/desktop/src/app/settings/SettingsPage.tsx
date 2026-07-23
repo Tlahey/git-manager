@@ -32,6 +32,7 @@ import { AppearanceSection } from './components/AppearanceSection'
 import { RewardsSection } from './components/RewardsSection'
 import { ChangelogSection } from './components/ChangelogSection'
 import { SupportSection } from './components/SupportSection'
+import { SidebarUpdater } from './components/SidebarUpdater'
 import { ResetToDefaultButton } from './components/ResetToDefaultButton'
 import { defineTabs, renderActiveTab, type TabDef } from '../../lib/navigation/tabRegistry'
 import { useSettingsStore } from '../../stores/settings.store'
@@ -424,6 +425,9 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
               />
             </div>
           )}
+
+          {/* App updater — pinned below Support, highlights when a new version is available. */}
+          <SidebarUpdater />
         </nav>
 
         {/* Content — the search query filters/highlights individual settings inside each page. */}
