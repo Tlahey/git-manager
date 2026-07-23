@@ -37,7 +37,7 @@ export function SnoozeControl({ prId }: SnoozeControlProps) {
   }
 
   const menuItem =
-    'flex w-full items-center gap-2 px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-accent'
+    'flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-accent'
 
   return (
     <div
@@ -80,7 +80,8 @@ export function SnoozeControl({ prId }: SnoozeControlProps) {
                   setOpen(false)
                 }}
               >
-                <BellOff className="h-3 w-3 text-muted-foreground" /> {t('snooze.unsnooze')}
+                <BellOff className="h-3 w-3 shrink-0 text-muted-foreground" />
+                <span>{t('snooze.unsnooze')}</span>
               </button>
             </>
           ) : (
@@ -94,7 +95,8 @@ export function SnoozeControl({ prId }: SnoozeControlProps) {
                   setOpen(false)
                 }}
               >
-                <Clock className="h-3 w-3 text-muted-foreground" /> {t(`snooze.${d}`)}
+                <Clock className="h-3 w-3 shrink-0 text-muted-foreground" />
+                <span>{t(`snooze.${d}`)}</span>
               </button>
             ))
           )}
