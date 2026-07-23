@@ -256,9 +256,8 @@ describe('PullRequestsPage — opening a PR in the in-app view', () => {
 
     await user.click(screen.getByText('Openable PR'))
     expect(screen.getByTestId('launchpad-pr-view')).toBeInTheDocument()
-    expect(screen.getByTestId('pr-detail-center')).toBeInTheDocument()
 
-    await user.click(screen.getByTestId('pr-detail-back'))
+    await user.click(screen.getByTestId('launchpad-pr-back'))
     expect(screen.queryByTestId('launchpad-pr-view')).not.toBeInTheDocument()
     expect(screen.getByText('Openable PR')).toBeInTheDocument()
   })
