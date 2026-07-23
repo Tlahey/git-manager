@@ -122,6 +122,11 @@ export function CommitDetailsPanel({
 
   const isStash = node.refs.some((r) => r.type === 'stash')
 
+  // Branch the working tree is on (null when detached) and the total changed-file count — shown as
+  // "WIP on <branch>" and a "WIP" tag in the panel header. WIP row only.
+  const wipBranch = isWip ? (cachedRepo?.isDetached ? null : (cachedRepo?.head ?? null)) : undefined
+  const wipFileCount = isWip ? processedFiles.length + unmergedFiles.length : undefined
+
   return (
     <div className="flex h-full w-full min-w-0 flex-col border-l border-border bg-card shadow-2xl">
       {/* ── HEADER ── */}
@@ -136,6 +141,8 @@ export function CommitDetailsPanel({
         onRefresh={handleRefresh}
         onClose={onClose}
         refs={node.refs}
+        wipBranch={wipBranch}
+        wipFileCount={wipFileCount}
       />
 
       {/* ── SCROLLABLE FILE LIST ── */}

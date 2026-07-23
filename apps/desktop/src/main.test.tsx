@@ -111,14 +111,22 @@ describe('main entry', () => {
     await waitFor(() => expect(screen.getByTestId('fake-app')).toBeInTheDocument())
   })
 
-  it('fades out and removes the static splash markup once the app mounts', async () => {
+  it('fades out and removes the static splash markup once a dedicated window mounts', async () => {
+    document.body.innerHTML = '<div id="root"></div><div id="app-splash"></div>'
+    setSearch('?window=merge&repoPath=%2Ftmp%2Frepo&filePath=src%2Ffoo.ts')
+    await import('./main')
+    await waitFor(() => expect(screen.getByTestId('fake-merge-window')).toBeInTheDocument())
+    await waitFor(() => expect(document.getElementById('app-splash')).toHaveClass('is-hidden'))
+  })
+
+  it('leaves the splash for the App window to hide itself once it is ready', async () => {
+    // The main App window keeps the splash up until useAppReadySplash decides it's ready, so
+    // main.tsx must NOT hide it on first frame (App is mocked here, so it never gets hidden).
     document.body.innerHTML = '<div id="root"></div><div id="app-splash"></div>'
     setSearch('')
     await import('./main')
     await waitFor(() => expect(screen.getByTestId('fake-app')).toBeInTheDocument())
-    await waitFor(() =>
-      expect(document.getElementById('app-splash')).toHaveClass('is-hidden')
-    )
+    expect(document.getElementById('app-splash')).not.toHaveClass('is-hidden')
   })
 
   it('does nothing when the splash markup is absent (e.g. secondary windows in tests)', async () => {

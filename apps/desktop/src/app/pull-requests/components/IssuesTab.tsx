@@ -5,7 +5,20 @@ import { Toolbar } from './Toolbar'
 import { IssueRowSkeleton } from './RowSkeletons'
 import { IssueRow } from './IssueRow'
 import { LoadMore, useSetFilter } from './ListHelpers'
+import { useLaunchpadControlsStore } from '../../../stores/launchpadControls.store'
 import type { MockIssue, SortKey, SortDir } from '../types'
+
+/** Free-text match for an issue (title/author/repo/number). Empty query matches everything. */
+function matchesIssueSearch(issue: MockIssue, query: string): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  return (
+    issue.title.toLowerCase().includes(q) ||
+    issue.author.toLowerCase().includes(q) ||
+    issue.repo.toLowerCase().includes(q) ||
+    String(issue.number).includes(q)
+  )
+}
 
 const PAGE_SIZE = 20
 
@@ -23,6 +36,7 @@ export function IssuesTab({ allIssues, loading }: IssuesTabProps) {
   const [repoFilter, toggleRepo, clearRepo] = useSetFilter()
   const [authorFilter, toggleAuthor, clearAuthor] = useSetFilter()
   const [shown, setShown] = useState(PAGE_SIZE)
+  const globalSearch = useLaunchpadControlsStore((s) => s.search)
 
   const repos = useMemo(() => [...new Set(allIssues.map((i) => i.repo))].sort(), [allIssues])
   const statuses = useMemo(() => [...new Set(allIssues.map((i) => i.status))].sort(), [allIssues])
@@ -43,15 +57,7 @@ export function IssuesTab({ allIssues, loading }: IssuesTabProps) {
         if (statusFilter.size > 0 && !statusFilter.has(issue.status)) return false
         if (repoFilter.size > 0 && !repoFilter.has(issue.repo)) return false
         if (authorFilter.size > 0 && !authorFilter.has(issue.author)) return false
-        if (search) {
-          const q = search.toLowerCase()
-          return (
-            issue.title.toLowerCase().includes(q) ||
-            issue.author.toLowerCase().includes(q) ||
-            String(issue.number).includes(q)
-          )
-        }
-        return true
+        return matchesIssueSearch(issue, search) && matchesIssueSearch(issue, globalSearch)
       })
       .sort((a, b) => {
         let cmp = 0
@@ -61,7 +67,7 @@ export function IssuesTab({ allIssues, loading }: IssuesTabProps) {
         else if (sortKey === 'status') cmp = a.status.localeCompare(b.status)
         return sortDir === 'desc' ? -cmp : cmp
       })
-  }, [allIssues, search, statusFilter, repoFilter, authorFilter, sortKey, sortDir])
+  }, [allIssues, search, globalSearch, statusFilter, repoFilter, authorFilter, sortKey, sortDir])
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
