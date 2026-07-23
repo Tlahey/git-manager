@@ -104,13 +104,14 @@ beforeEach(() => {
 })
 
 describe('IssueMetaSidebar — status', () => {
-  it('shows the state and toggles it closed', async () => {
+  it('shows the state and sets it closed from the edit dropdown', async () => {
     const user = userEvent.setup()
     const onChanged = vi.fn()
     renderSidebar(onChanged)
     expect(screen.getByTestId('issue-status')).toHaveTextContent('Open')
+    await user.click(screen.getByTestId('issue-status-edit'))
     await act(async () => {
-      await user.click(screen.getByTestId('issue-status-toggle'))
+      await user.click(screen.getByTestId('issue-status-closed'))
     })
     expect(m.setIssueState).toHaveBeenCalledWith('org', 'repo', 7, 'closed', 'tok')
     expect(refresh).toHaveBeenCalled()

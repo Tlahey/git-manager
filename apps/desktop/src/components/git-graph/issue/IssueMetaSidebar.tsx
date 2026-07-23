@@ -1,6 +1,13 @@
 import { useMemo, useState } from 'react'
-import { CircleDot, CircleCheck, GitBranch, GitBranchPlus, Loader2 } from 'lucide-react'
-import { Spinner, toast } from '@git-manager/ui'
+import { CircleDot, CircleCheck, GitBranch, GitBranchPlus, Loader2, Pencil } from 'lucide-react'
+import {
+  Spinner,
+  toast,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { useIssueDetail } from '../../../hooks/useIssueDetail'
 import { useRepoGitHub } from '../../../hooks/useRepoGitHub'
@@ -90,7 +97,7 @@ export function IssueMetaSidebar({ repoPath, issueNumber, issue, onChanged }: Is
 
   return (
     <div data-testid="issue-meta-sidebar">
-      {/* Status — a toggle (close ↔ reopen) rather than a search popover. */}
+      {/* Status — pick Open/Closed from a dropdown opened by the edit icon. */}
       <PrSidebarSection title={t('issue.side.status')} testId="issue-status">
         <div className="flex items-center justify-between gap-2">
           <span
@@ -104,32 +111,47 @@ export function IssueMetaSidebar({ repoPath, issueNumber, issue, onChanged }: Is
             {isOpen ? t('issue.view.stateOpen') : t('issue.view.stateClosed')}
           </span>
           {ownerRepo && token && (
-            <button
-              onClick={() =>
-                run(() =>
-                  setIssueState(
-                    ownerRepo.owner,
-                    ownerRepo.repo,
-                    issueNumber,
-                    isOpen ? 'closed' : 'open',
-                    token
-                  )
-                )
-              }
-              disabled={pending}
-              data-testid="issue-status-toggle"
-              title={isOpen ? t('issue.view.close') : t('issue.view.reopen')}
-              className="flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-            >
-              {pending ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : isOpen ? (
-                <CircleCheck className="h-3 w-3" />
-              ) : (
-                <CircleDot className="h-3 w-3" />
-              )}
-              {isOpen ? t('issue.view.close') : t('issue.view.reopen')}
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  disabled={pending}
+                  data-testid="issue-status-edit"
+                  title={t('issue.side.editStatus')}
+                  aria-label={t('issue.side.editStatus')}
+                  className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                >
+                  {pending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Pencil className="h-3 w-3" />
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[140px]">
+                <DropdownMenuItem
+                  data-testid="issue-status-open"
+                  className="gap-2 text-xs"
+                  onSelect={() =>
+                    run(() => setIssueState(ownerRepo.owner, ownerRepo.repo, issueNumber, 'open', token))
+                  }
+                >
+                  <CircleDot className="h-3.5 w-3.5 text-tone-success" />
+                  {t('issue.view.stateOpen')}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  data-testid="issue-status-closed"
+                  className="gap-2 text-xs"
+                  onSelect={() =>
+                    run(() =>
+                      setIssueState(ownerRepo.owner, ownerRepo.repo, issueNumber, 'closed', token)
+                    )
+                  }
+                >
+                  <CircleCheck className="h-3.5 w-3.5 text-tone-danger" />
+                  {t('issue.view.stateClosed')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </PrSidebarSection>
@@ -215,12 +237,12 @@ export function IssueMetaSidebar({ repoPath, issueNumber, issue, onChanged }: Is
             onClick={createBranch}
             disabled={creatingBranch}
             data-testid="issue-create-branch"
-            className="flex items-center gap-1 rounded border border-border px-1.5 py-1 text-[11px] text-primary transition-colors hover:bg-accent disabled:opacity-50"
+            className="flex w-full items-center justify-start gap-1.5 rounded border border-border px-2 py-1.5 text-left text-[11px] text-primary transition-colors hover:bg-accent disabled:opacity-50"
           >
             {creatingBranch ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
+              <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
             ) : (
-              <GitBranchPlus className="h-3 w-3" />
+              <GitBranchPlus className="h-3 w-3 shrink-0" />
             )}
             {t('issue.side.createBranch')}
           </button>

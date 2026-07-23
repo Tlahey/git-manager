@@ -664,6 +664,7 @@
   "issue.view.reopened": "Issue reopened",
   "issue.view.stateFailed": "Could not update the issue",
   "issue.side.status": "Status",
+  "issue.side.editStatus": "Change status",
   "issue.side.createBranch": "Create a branch for this issue",
   "issue.side.noLocalRepo": "Repo not added locally",
   "pr.view.loading": "Loading pull request…",
