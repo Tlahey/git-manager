@@ -1,10 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
-import type { MockPR, CiDetail } from '../types'
-
-const { pluginOpen } = vi.hoisted(() => ({ pluginOpen: vi.fn() }))
-vi.mock('@tauri-apps/plugin-shell', () => ({ open: pluginOpen }))
-
+import { render, screen, fireEvent } from '@testing-library/react'
+import type { MockPR } from '../types'
+import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { PrViewPanel } from './PrViewPanel'
 
 function pr(overrides: Partial<MockPR> = {}): MockPR {
@@ -35,67 +32,35 @@ function pr(overrides: Partial<MockPR> = {}): MockPR {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks()
-  pluginOpen.mockResolvedValue(undefined)
+  // A fresh PR always starts on its conversation with the files panel shown.
+  useRepoUIStore.setState({ activePrFile: null, prFilesVisible: true })
 })
 
 describe('PrViewPanel', () => {
-  it('renders the PR title, number and an in-app (non-GitHub) view container', () => {
+  it('shows the interactive PR detail view and the changed-files panel', () => {
     render(<PrViewPanel pr={pr()} onClose={vi.fn()} />)
     expect(screen.getByTestId('launchpad-pr-view')).toBeInTheDocument()
-    expect(screen.getByText('Add feature X')).toBeInTheDocument()
-    expect(screen.getByText('#42')).toBeInTheDocument()
+    expect(screen.getByTestId('pr-detail-center')).toBeInTheDocument()
+    expect(screen.getByTestId('pr-files-panel')).toBeInTheDocument()
   })
 
   it('returns to the list via the top-left Back button', () => {
     const onClose = vi.fn()
     render(<PrViewPanel pr={pr()} onClose={onClose} />)
-    fireEvent.click(screen.getByTestId('launchpad-pr-back'))
+    fireEvent.click(screen.getByTestId('pr-detail-back'))
     expect(onClose).toHaveBeenCalledOnce()
   })
 
-  it('opens the PR on GitHub from the header escape hatch', async () => {
+  it('hides the files panel when the shared toggle is off', () => {
+    useRepoUIStore.setState({ prFilesVisible: false })
     render(<PrViewPanel pr={pr()} onClose={vi.fn()} />)
-    await act(async () => {
-      fireEvent.click(screen.getByText('Open on GitHub'))
-      await Promise.resolve()
-    })
-    expect(pluginOpen).toHaveBeenCalledWith('https://github.com/owner/git-manager/pull/42')
+    expect(screen.queryByTestId('pr-files-panel')).not.toBeInTheDocument()
   })
 
-  it('lists every CI check and opens its run on click', async () => {
-    const ciDetails: CiDetail[] = [
-      { name: 'build', status: 'success', url: 'https://ci/build' },
-      { name: 'lint', status: 'failure', url: 'https://ci/lint' },
-    ]
-    render(<PrViewPanel pr={pr({ ciStatus: 'failure', ciDetails })} onClose={vi.fn()} />)
-    expect(screen.getByText('build')).toBeInTheDocument()
-    expect(screen.getByText('lint')).toBeInTheDocument()
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('lint'))
-      await Promise.resolve()
-    })
-    expect(pluginOpen).toHaveBeenCalledWith('https://ci/lint')
-  })
-
-  it('shows a "no checks" message when there is no CI', () => {
-    render(<PrViewPanel pr={pr({ ciStatus: null, ciDetails: [] })} onClose={vi.fn()} />)
-    expect(screen.getByText('No CI checks reported')).toBeInTheDocument()
-  })
-
-  it('lists reviewers when present', () => {
-    render(
-      <PrViewPanel
-        pr={pr({ collaborators: [{ login: 'reviewer1', avatar: 'r.png' }] })}
-        onClose={vi.fn()}
-      />
-    )
-    expect(screen.getByText('reviewer1')).toBeInTheDocument()
-  })
-
-  it('falls back to a no-description note when signed out (no body fetched)', () => {
+  it('resets any stale file selection so the PR opens on its conversation', () => {
+    useRepoUIStore.setState({ activePrFile: 'src/leftover.ts' })
     render(<PrViewPanel pr={pr()} onClose={vi.fn()} />)
-    expect(screen.getByText('No description provided.')).toBeInTheDocument()
+    expect(useRepoUIStore.getState().activePrFile).toBeNull()
+    expect(screen.getByTestId('pr-detail-center')).toBeInTheDocument()
   })
 })
