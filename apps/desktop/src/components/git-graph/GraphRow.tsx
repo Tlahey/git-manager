@@ -1,11 +1,13 @@
 import { memo } from 'react'
 import type { GitGraphNode, GitRef, WorktreeAgentActivity } from '@git-manager/git-types'
 import { cn } from '@git-manager/ui'
+import { useTranslation } from '@git-manager/i18n'
 import { RefLabel } from './RefLabel'
 import { RefLabelGroup } from './RefLabelGroup'
 import { TagCreationInput } from './TagCreationInput'
 import { useTagMenuHandler } from './TagMenuContext'
 import type { ColumnKey, ResolvedColumn } from './columns.config'
+import type { BisectRowStatus } from './bisectStatus'
 import { getGraphColumnLayout, getMarkerPlacement } from './graphColumnSizing'
 import {
   REF_CONNECTOR_LINE_OPACITY_HEX,
@@ -45,6 +47,9 @@ interface GraphRowProps {
   /** True while a search is active and this row doesn't match it — mutes its text instead of
    * hiding the row, so the graph's shape stays intact while browsing results. */
   dimmed?: boolean
+  /** Bisect annotation for this commit (good/bad/skip/under-test/first-bad), shown as a left-edge
+   * colored dot while a `git bisect` session is running. */
+  bisectStatus?: BisectRowStatus
   /** WIP status of every other linked worktree — used to resolve the file-count badge for a
    * `WIP:<path>` synthetic row (its `commit.oid` carries the worktree path). */
   worktreeWipStatuses?: WorktreeWipStatus[]
@@ -281,6 +286,33 @@ function CellContent({
 
 // ── GraphRow ──────────────────────────────────────────────────────────────────
 
+/** Left-stripe color per bisect status. */
+const BISECT_STRIPE: Record<BisectRowStatus, string> = {
+  firstBad: 'bg-red-600',
+  current: 'bg-amber-500',
+  bad: 'bg-red-500',
+  good: 'bg-green-500',
+  skip: 'bg-muted-foreground',
+}
+
+/** Full-row background tint per bisect status, so a marked commit reads at a glance. */
+const BISECT_ROW_BG: Record<BisectRowStatus, string> = {
+  firstBad: 'bg-red-500/15',
+  current: 'bg-amber-500/15',
+  bad: 'bg-red-500/10',
+  good: 'bg-green-500/10',
+  skip: 'bg-muted-foreground/10',
+}
+
+/** i18n key (git namespace) for each bisect status, used as the stripe's accessible label. */
+const BISECT_LABEL: Record<BisectRowStatus, string> = {
+  firstBad: 'bisect.status.firstBad',
+  current: 'bisect.status.current',
+  bad: 'bisect.status.bad',
+  good: 'bisect.status.good',
+  skip: 'bisect.status.skip',
+}
+
 export const GraphRow = memo(function GraphRow({
   node,
   columns,
@@ -293,6 +325,7 @@ export const GraphRow = memo(function GraphRow({
   isFirst,
   conflictInfo,
   dimmed,
+  bisectStatus,
   worktreeWipStatuses,
   onOpenWorktree,
   worktreeAgentActivity,
@@ -304,6 +337,7 @@ export const GraphRow = memo(function GraphRow({
   onSubmitTag,
   onCancelTag,
 }: GraphRowProps) {
+  const { t } = useTranslation('git')
   const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
   const rowHeight = rowHeightSetting === 'small' ? 32 : 40
   const avatarSize = rowHeightSetting === 'small' ? 24 : 32
@@ -362,6 +396,23 @@ export const GraphRow = memo(function GraphRow({
         rowHeight === 32 ? 'my-[4px] h-[24px]' : 'my-[4px] h-[32px]'
       )}
     >
+      {bisectStatus && (
+        <>
+          <span
+            aria-hidden
+            className={cn('pointer-events-none absolute inset-0', BISECT_ROW_BG[bisectStatus])}
+          />
+          <span
+            data-testid="bisect-row-marker"
+            aria-label={t(BISECT_LABEL[bisectStatus])}
+            className={cn(
+              'pointer-events-none absolute inset-y-0 left-0 z-graph-row-hover w-[3px] rounded-r',
+              BISECT_STRIPE[bisectStatus]
+            )}
+          />
+        </>
+      )}
+
       {/* Background colored band starting from the avatar to the right boundary of the graph column, with border-right */}
       <div
         data-testid="graph-row-band"

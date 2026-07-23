@@ -11,6 +11,9 @@ use commands::ai::{
     ai_complete, ai_generate_stream, cancel_generation, check_ai_status, get_ai_activity,
     get_ai_context,
 };
+use commands::bisect::{
+    bisect_check_range, bisect_mark, bisect_reset, bisect_start, get_bisect_state,
+};
 use commands::blame::{get_file_history, git_blame_file};
 use commands::branch::{
     checkout_branch, create_branch, create_tag, delete_branch, delete_tag, fast_forward_branch,
@@ -195,6 +198,12 @@ pub fn run() {
             skip_rebase,
             list_rebase_commits,
             run_interactive_rebase,
+            // Bisect
+            get_bisect_state,
+            bisect_check_range,
+            bisect_start,
+            bisect_mark,
+            bisect_reset,
             // AI
             check_ai_status,
             get_ai_context,

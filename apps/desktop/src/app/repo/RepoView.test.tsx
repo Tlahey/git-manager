@@ -109,6 +109,19 @@ vi.mock('../../components/fixup/PendingFixupsBanner', () => ({
   ),
 }))
 
+vi.mock('../../components/bisect/BisectBanner', () => ({
+  BisectBanner: () => <div data-testid="fake-bisect-banner" />,
+}))
+vi.mock('../../components/bisect/BisectResultBanner', () => ({
+  BisectResultBanner: () => <div data-testid="fake-bisect-result-banner" />,
+}))
+vi.mock('../../components/bisect/BisectSetupBanner', () => ({
+  BisectSetupBanner: () => <div data-testid="fake-bisect-setup-banner" />,
+}))
+vi.mock('../../components/bisect/BisectStashDialog', () => ({
+  BisectStashDialog: () => <div data-testid="fake-bisect-stash-dialog" />,
+}))
+
 import { RepoView } from './RepoView'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useRepoDataStore } from '../../stores/repoData.store'

@@ -31,6 +31,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | **Commit staged changes** (write message → Commit → HEAD advances) | commits    | fixture:stash-stack      | —                                 | ✅                                                          |
 | **Undo / redo a branch checkout** (Cmd+Z / Cmd+Shift+Z)            | undo/redo  | fixture:feature-branches | —                                 | ✅                                                          |
 | Detached HEAD indicator reads "HEAD", checkout back to a branch                                                          | repo state | fixture:detached-head    | —                                 | ✅                                                          |
+| **Git bisect**: tools menu → pick bad/good in graph → run to first bad commit | bisect     | fixture:bisect-history   | —                                 | ✅ (setup bar open/cancel; inverted-range rejected + start disabled; full run marks by bug presence and converges on commit 5 — asserted via `.git/BISECT_LOG`; abort clears `.git/BISECT_START`) |
 | Sidebar lists stashes                                              | stash      | fixture:stash-stack      | —                                 | ✅ (list ✅; **drop/apply/pop ✅ via ⌘K palette**, each asserted via `git stash list` / a restored file) |
 | Settings screen opens + **snapshot**                               | settings   | keyboard (Mod+,)         | 📷 ✅ (general + notifications)   | 🟡 (general & notifications snapshotted; row-height persistence ✅; **ssh key generation ✅ · AI provider test-connection ✅ · rewards toggle ✅ · AI preset dropdown ✅ · GitHub OAuth device code ✅**; appearance snapshot skipped on purpose, see below) |
 | **AI commit-message generation**: streaming + prompt-wiring + cancel | AI         | fake HTTP server         | —                                 | ✅ (see "6. AI commit-message generation" below)            |
@@ -91,6 +92,7 @@ fixture:
 | feature-branches | branch checkout ✅ · undo/redo of the checkout ✅ · **cherry-pick (via ⌘K palette) ✅**         | ✅                                  |
 | stash-stack      | list ✅ · WIP staging panel ✅ · stage/unstage individual files ✅ · file diff ✅ · commit ✅ · **drop/apply/pop (via ⌘K palette) ✅** | ✅                                  |
 | rollback-history | **reset (soft/mixed/hard incl. RESET-confirm gate), revert, create-branch, create-tag — all via ⌘K palette ✅** · **undo/redo of a reset ✅** · **create-tag's ref badge shown in the graph ✅** · undo/redo of revert/branch/tag 🚫 (not a test gap — `undoActions.ts` has no case for these three actions at all; the app doesn't support undoing them yet, see the "Add undo/redo support" follow-up) | ✅ |
+| bisect-history   | **bisect setup bar (open/cancel) ✅** · **inverted good/bad range rejected + start disabled ✅** · **full bisect run: pick bad/good in the graph, mark by bug presence, converge on the first bad commit ✅** (asserted via `.git/BISECT_LOG`) · **abort ✅** | ✅ |
 
 ### 3. Settings 🟡 📷
 

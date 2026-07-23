@@ -7,6 +7,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from './dropdown-menu'
 
 function ExampleMenu({ onSelectRename = vi.fn(), onSelectDelete = vi.fn() } = {}) {
@@ -75,5 +78,27 @@ describe('DropdownMenu', () => {
     expect(screen.getByRole('menu')).toBeInTheDocument()
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('expands a submenu to reveal nested items', async () => {
+    const user = userEvent.setup()
+    render(
+      <DropdownMenu>
+        <DropdownMenuTrigger>Actions</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>More</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem>Nested</DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+    await user.click(screen.getByText('Actions'))
+    const subTrigger = screen.getByText('More')
+    expect(subTrigger).toBeInTheDocument()
+    await user.click(subTrigger)
+    expect(await screen.findByRole('menuitem', { name: 'Nested' })).toBeInTheDocument()
   })
 })

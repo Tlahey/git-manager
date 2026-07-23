@@ -206,6 +206,40 @@ pub struct RebaseState {
     pub current_message: Option<String>,
 }
 
+/// State of a `git bisect` session, mirrored by `BisectState` in packages/git-types.
+///
+/// Read directly from git's on-disk plumbing (`.git/BISECT_*` files + `refs/bisect/*`) the same
+/// way `RebaseState` reads `.git/rebase-merge` — libgit2 has no bisect API. `revsRemaining` /
+/// `stepsRemaining` come from `git rev-list --bisect-vars`, and `firstBadOid` is set once the
+/// search resolves (the `# first bad commit:` line git appends to `BISECT_LOG`).
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct BisectState {
+    /// Whether a bisect session is in progress (`.git/BISECT_START` exists).
+    pub active: bool,
+    /// Branch the bisect was started from (`.git/BISECT_START`), restored on `bisect reset`.
+    pub start_branch: Option<String>,
+    /// Bisect terms — normally "bad"/"good", but a session can use custom terms.
+    pub bad_term: String,
+    pub good_term: String,
+    /// The known-bad commit (`refs/bisect/bad`).
+    pub bad_oid: Option<String>,
+    /// The known-good commits (`refs/bisect/good-*`).
+    pub good_oids: Vec<String>,
+    /// Commits explicitly skipped (`refs/bisect/skip-*`).
+    pub skipped_oids: Vec<String>,
+    /// The commit currently checked out for testing (detached HEAD during a bisect).
+    pub current_oid: Option<String>,
+    pub current_summary: Option<String>,
+    pub current_author: Option<String>,
+    /// Remaining search space, from `git rev-list --bisect-vars` (`bisect_nr` / `bisect_steps`).
+    pub revs_remaining: Option<u32>,
+    pub steps_remaining: Option<u32>,
+    /// Set once the search resolves: the first bad commit and its subject.
+    pub first_bad_oid: Option<String>,
+    pub first_bad_summary: Option<String>,
+}
+
 // ─── Conflict Resolution (3-way merge editor) ─────────────────────────────────
 // Miroir exact de MergeBlockKind / MergeBlock / ThreeWayMergeView dans packages/git-types.
 

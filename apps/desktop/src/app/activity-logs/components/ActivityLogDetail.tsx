@@ -35,6 +35,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 export function ActivityLogDetail({ entry, block, onTrace, onClose }: ActivityLogDetailProps) {
   const { t } = useTranslation('common')
   const [copiedData, setCopiedData] = useState(false)
+  const [copiedError, setCopiedError] = useState(false)
   const isError = entry.status === 'error'
   const commandLine = activityCommandLine(block?.label)
   // Always show an id: the correlation id for wrapped actions, else the operation's own id.
@@ -50,6 +51,17 @@ export function ActivityLogDetail({ entry, block, onTrace, onClose }: ActivityLo
       await navigator.clipboard.writeText(data)
       setCopiedData(true)
       setTimeout(() => setCopiedData(false), 1200)
+    } catch {
+      // Clipboard unavailable (denied/insecure context) — nothing else we can do here.
+    }
+  }
+
+  async function copyError() {
+    if (!entry.error) return
+    try {
+      await navigator.clipboard.writeText(entry.error)
+      setCopiedError(true)
+      setTimeout(() => setCopiedError(false), 1200)
     } catch {
       // Clipboard unavailable (denied/insecure context) — nothing else we can do here.
     }
@@ -167,9 +179,27 @@ export function ActivityLogDetail({ entry, block, onTrace, onClose }: ActivityLo
               {data || t('activityLogs.detail.noData')}
             </pre>
             {entry.error && (
-              <pre className="mt-1 whitespace-pre-wrap break-all rounded-md border border-destructive/40 bg-destructive/10 p-2 font-mono text-[10px] text-destructive">
-                {entry.error}
-              </pre>
+              <div className="mt-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground/60">
+                    {t('activityLogs.detail.error')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={copyError}
+                    aria-label={t('activityLogs.detail.copyError')}
+                    title={t('activityLogs.detail.copyError')}
+                    data-testid="activity-detail-copy-error"
+                    className="flex items-center gap-1 rounded px-1 py-0.5 text-[10px] text-muted-foreground/70 hover:text-foreground"
+                  >
+                    {copiedError ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                    {copiedError ? t('activityLogs.copied') : t('activityLogs.detail.copyError')}
+                  </button>
+                </div>
+                <pre className="mt-1 whitespace-pre-wrap break-all rounded-md border border-destructive/40 bg-destructive/10 p-2 font-mono text-[10px] text-destructive">
+                  {entry.error}
+                </pre>
+              </div>
             )}
           </div>
         </div>

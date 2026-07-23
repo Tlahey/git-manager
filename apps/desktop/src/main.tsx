@@ -7,6 +7,7 @@ import { RebasingCommitWindow } from './components/rebase-editor/RebasingCommitW
 import { initI18n } from '@git-manager/i18n'
 import { useSettingsStore } from './stores/settings.store'
 import { useRepoUIStore } from './stores/repoUI.store'
+import { useBisectUIStore } from './stores/bisectUI.store'
 import '@git-manager/ui/globals.css'
 import '@git-manager/editor/styles.css'
 import './index.css'
@@ -24,6 +25,11 @@ const e2eSetup =
 if (import.meta.env.VITE_E2E === 'true') {
   ;(window as unknown as { __e2eRepoUIStore: typeof useRepoUIStore }).__e2eRepoUIStore =
     useRepoUIStore
+  // Exposed for the bisect e2e steps: reading `pendingBadOid`/`pendingGoodOid` confirms a
+  // graph-row pick actually filled a slot (row clicks are intercepted during setup, so the
+  // repoUI `selectedCommitOid` bridge stays untouched and can't be used as the signal).
+  ;(window as unknown as { __e2eBisectUIStore: typeof useBisectUIStore }).__e2eBisectUIStore =
+    useBisectUIStore
 }
 
 // Fades out and removes the static splash markup painted instantly by index.html once the

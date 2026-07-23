@@ -17,6 +17,8 @@ import type {
   GitSubmodule,
   RebaseState,
   RebaseTodoStep,
+  BisectState,
+  BisectTerm,
   GitCommit,
   ThreeWayMergeView,
   AppSettings,
@@ -277,6 +279,26 @@ export const skipRebase = (path: string) => invoke<void>('skip_rebase', { path }
 
 export const rebaseOntoCommit = (path: string, targetOid: string) =>
   invoke<void>('rebase_onto_commit', { path, targetOid })
+
+// ─── Bisect ─────────────────────────────────────────────────────────────────
+
+export const getBisectState = (path: string) =>
+  invoke<BisectState>('get_bisect_state', { path })
+
+/** Whether `goodRev` is an ancestor of `badRev` — the only valid bisect orientation. */
+export const bisectCheckRange = (path: string, badRev: string, goodRev: string) =>
+  invoke<boolean>('bisect_check_range', { path, badRev, goodRev })
+
+/** Starts a bisect session, marking `badRev` bad and `goodRev` good in one shot. */
+export const bisectStart = (path: string, badRev: string, goodRev: string) =>
+  invoke<BisectState>('bisect_start', { path, badRev, goodRev })
+
+/** Marks the commit currently under test as good/bad/skip and advances. */
+export const bisectMark = (path: string, term: BisectTerm) =>
+  invoke<BisectState>('bisect_mark', { path, term })
+
+/** Ends the bisect session, restoring the original branch/HEAD. */
+export const bisectReset = (path: string) => invoke<BisectState>('bisect_reset', { path })
 
 // ─── Conflict Resolution ──────────────────────────────────────────────────────
 

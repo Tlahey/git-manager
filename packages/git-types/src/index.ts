@@ -303,6 +303,38 @@ export interface RebaseState {
   currentMessage?: string
 }
 
+// ─── Bisect ──────────────────────────────────────────────────────────────────
+
+/** Mirrors `BisectState` in `apps/desktop/src-tauri/src/models.rs`. */
+export interface BisectState {
+  /** Whether a bisect session is in progress. */
+  active: boolean
+  /** Branch the bisect was started from, restored on reset. */
+  startBranch?: string
+  /** Bisect terms — normally "bad"/"good". */
+  badTerm: string
+  goodTerm: string
+  /** The known-bad commit (`refs/bisect/bad`). */
+  badOid?: string
+  /** The known-good commits (`refs/bisect/good-*`). */
+  goodOids: string[]
+  /** Commits explicitly skipped (`refs/bisect/skip-*`). */
+  skippedOids: string[]
+  /** The commit currently checked out for testing. */
+  currentOid?: string
+  currentSummary?: string
+  currentAuthor?: string
+  /** Remaining search space from `git rev-list --bisect-vars`. */
+  revsRemaining?: number
+  stepsRemaining?: number
+  /** Set once the search resolves: the first bad commit and its subject. */
+  firstBadOid?: string
+  firstBadSummary?: string
+}
+
+/** The three ways to mark the commit currently under test. */
+export type BisectTerm = 'good' | 'bad' | 'skip'
+
 // ─── Interactive rebase (Rebasing Commit editor) ─────────────────────────────
 
 export type RebaseTodoAction = 'pick' | 'reword' | 'squash' | 'fixup' | 'drop'
