@@ -7,6 +7,7 @@ const { pluginOpen } = vi.hoisted(() => ({ pluginOpen: vi.fn() }))
 vi.mock('@tauri-apps/plugin-shell', () => ({ open: pluginOpen }))
 
 import { PRRow } from './PRRow'
+import { OpenPrContext } from '../OpenPrContext'
 
 function pr(overrides: Partial<MockPR> = {}): MockPR {
   return {
@@ -166,7 +167,7 @@ describe('PRRow — pin button', () => {
 })
 
 describe('PRRow — row click', () => {
-  it('opens the PR url when the row is clicked', async () => {
+  it('opens the PR url on GitHub when no in-app view is available', async () => {
     render(
       <PRRow
         pr={pr({ url: 'https://github.com/owner/git-manager/pull/42' })}
@@ -180,6 +181,22 @@ describe('PRRow — row click', () => {
       await Promise.resolve()
     })
     expect(pluginOpen).toHaveBeenCalledWith('https://github.com/owner/git-manager/pull/42')
+  })
+
+  it('opens the in-app PR view instead of GitHub when a handler is provided', async () => {
+    const onOpen = vi.fn()
+    const thePr = pr({ id: 'pr-9', url: 'https://github.com/owner/git-manager/pull/42' })
+    render(
+      <OpenPrContext.Provider value={onOpen}>
+        <PRRow pr={thePr} pinned={false} onTogglePin={vi.fn()} />
+      </OpenPrContext.Provider>
+    )
+    await act(async () => {
+      fireEvent.click(screen.getByText('Add feature X'))
+      await Promise.resolve()
+    })
+    expect(onOpen).toHaveBeenCalledWith(thePr)
+    expect(pluginOpen).not.toHaveBeenCalled()
   })
 })
 

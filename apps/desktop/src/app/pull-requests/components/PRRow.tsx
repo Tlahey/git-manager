@@ -16,6 +16,7 @@ import type { MockPR } from '../types'
 import { StatusBadge, CiBadge } from './Badges'
 import { AvatarStack } from './AvatarStack'
 import { openUrl, timeAgo } from '../utils'
+import { useOpenPr } from '../OpenPrContext'
 
 interface ActionMenuProps {
   items: {
@@ -58,11 +59,12 @@ interface PRRowProps {
 export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
   const { t } = useTranslation('launchpad')
   const [menuOpen, setMenuOpen] = useState(false)
+  const openPr = useOpenPr()
 
   return (
     <div
       className="group/pr relative flex cursor-pointer items-center gap-3 border-b border-border/30 px-4 py-2.5 transition-colors last:border-0 hover:bg-accent/30"
-      onClick={() => openUrl(pr.url)}
+      onClick={() => (openPr ? openPr(pr) : openUrl(pr.url))}
     >
       <button
         onClick={(e) => {
