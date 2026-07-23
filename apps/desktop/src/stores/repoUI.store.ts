@@ -47,6 +47,12 @@ export interface ActiveDiffFile {
   staged: boolean
   oid?: string
   baseOid?: string
+  /**
+   * Which tab `DiffViewCenter` should open on. Defaults to `'diff'`; the command-palette file lookup
+   * sets `'file'` so the file's contents are shown straight away (there's no meaningful diff when
+   * just browsing a file).
+   */
+  initialTab?: 'diff' | 'file'
 }
 
 interface RepoUIState {

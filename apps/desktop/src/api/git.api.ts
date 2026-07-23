@@ -32,6 +32,7 @@ import {
   snapshotWorktreeAlways,
   type WorktreeSnapshot,
   getRepoStatus,
+  listTrackedFiles,
   getLog,
   getCommitDiff,
   getCommitsMergedDiff,
@@ -787,6 +788,10 @@ export async function apiBlameFile(path: string, filePath: string, oid?: string)
 
 export async function apiGetFileHistory(path: string, filePath: string, limit?: number) {
   return getFileHistory(path, filePath, limit)
+}
+
+export async function apiListTrackedFiles(path: string) {
+  return listTrackedFiles(path)
 }
 
 export async function apiGetTagContainingCommit(path: string, oid: string) {

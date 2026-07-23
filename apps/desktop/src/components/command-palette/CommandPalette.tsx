@@ -14,6 +14,7 @@ import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useGlobalCommands } from './commands/useGlobalCommands'
 import { useCommitCommands } from './commands/useCommitCommands'
 import { useStashCommands } from './commands/useStashCommands'
+import { useFileLookupCommands } from './commands/useFileLookupCommands'
 import type { Section } from '../../app/settings/SettingsPage'
 import type { PaletteCommand, PaletteGroup } from './commands/types'
 
@@ -115,9 +116,16 @@ function CommandPaletteBody({
   const commitCommands = useCommitCommands()
   const stashCommands = useStashCommands()
   const lookupCommands = useCommitLookupCommands(search)
+  const fileCommands = useFileLookupCommands(search)
 
-  // Lookup (paste-a-sha) first, then commit/stash actions — the most contextual ones.
-  const allCommands = [...lookupCommands, ...commitCommands, ...stashCommands, ...globalCommands]
+  // Lookup (paste-a-sha) first, then file search, then commit/stash actions — the most contextual.
+  const allCommands = [
+    ...lookupCommands,
+    ...fileCommands,
+    ...commitCommands,
+    ...stashCommands,
+    ...globalCommands,
+  ]
 
   function run(cmd: PaletteCommand) {
     // Running any non-settings command should return the user to the main view if they triggered it
@@ -129,6 +137,7 @@ function CommandPaletteBody({
 
   const groups: { group: PaletteGroup; heading: string }[] = [
     { group: 'lookup', heading: t('commandPalette.group.lookup') },
+    { group: 'files', heading: t('commandPalette.group.files') },
     {
       group: 'commit',
       heading: t('commandPalette.group.commit', { sha: selectedCommitOid?.slice(0, 7) ?? '' }),
@@ -160,7 +169,7 @@ function CommandPaletteBody({
               {cmds.map((cmd) => (
                 <CommandItem
                   key={cmd.id}
-                  value={cmd.title}
+                  value={cmd.value ?? cmd.title}
                   keywords={cmd.keywords}
                   data-testid={`command-item-${cmd.id}`}
                   onSelect={() => run(cmd)}

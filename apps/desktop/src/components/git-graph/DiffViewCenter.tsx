@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Spinner, Button, toast } from '@git-manager/ui'
 import { Copy, Check as CheckIcon, Github, GitPullRequest, Tags } from 'lucide-react'
@@ -29,6 +29,8 @@ interface DiffViewCenterProps {
     // Set only for a merged multi-commit selection: the diff spans `baseOid^..oid` instead of
     // `oid` vs its own first parent (see the summary panel).
     baseOid?: string
+    // Which tab to open on ('diff' by default); the file-lookup palette sets 'file'.
+    initialTab?: 'diff' | 'file'
   }
   onClose: () => void
   onRefresh?: () => void
@@ -38,7 +40,13 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
   const { t } = useTranslation('git')
   const [copied, setCopied] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [activeTab, setActiveTab] = useState<'diff' | 'file'>('diff')
+  const [activeTab, setActiveTab] = useState<'diff' | 'file'>(file.initialTab ?? 'diff')
+
+  // The initializer above only runs on mount; when a different file is opened into an already-mounted
+  // viewer (e.g. picking another file from the command palette) re-apply its requested initial tab.
+  useEffect(() => {
+    if (file.initialTab) setActiveTab(file.initialTab)
+  }, [file.path, file.oid, file.initialTab])
 
   const activeLeftPanel = useRepoUIStore((s) => s.activeLeftPanel)
   const setActiveLeftPanel = useRepoUIStore((s) => s.setActiveLeftPanel)
