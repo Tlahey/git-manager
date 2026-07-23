@@ -1,6 +1,7 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
-import { GitPullRequest } from 'lucide-react'
+import { useState, useMemo, useCallback, useEffect, type ReactNode } from 'react'
+import { GitPullRequest, GitMerge, UserPlus, AlertTriangle, Eye, PencilRuler, Pin } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
+import type { TagTone } from '@git-manager/ui'
 
 import { Toolbar } from './Toolbar'
 import { TableHeader, GroupHeader, LoadMore, usePRSort, useSetFilter } from './ListHelpers'
@@ -17,6 +18,17 @@ const PAGE_SIZE = 20
 type ShownState = Record<string, number>
 /** Open/closed collapse state per group id (defaults to open). */
 type OpenState = Record<string, boolean>
+
+/** Per-group header presentation: a coloured icon + count-tag tone. The label itself stays
+ * foreground/black (see `GroupHeader`); only the icon and count tag carry the section colour. */
+const GROUP_DECOR: Record<PrGroupKey, { icon: ReactNode; iconClassName: string; tone: TagTone }> = {
+  readyToMerge: { icon: <GitMerge className="h-3 w-3" />, iconClassName: 'text-emerald-400', tone: 'success' },
+  unassignedReviewers: { icon: <UserPlus className="h-3 w-3" />, iconClassName: 'text-sky-400', tone: 'info' },
+  resolveConflicts: { icon: <AlertTriangle className="h-3 w-3" />, iconClassName: 'text-red-400', tone: 'danger' },
+  needsMyReview: { icon: <Eye className="h-3 w-3" />, iconClassName: 'text-orange-400', tone: 'warning' },
+  draft: { icon: <PencilRuler className="h-3 w-3" />, iconClassName: 'text-muted-foreground', tone: 'neutral' },
+  other: { icon: <GitPullRequest className="h-3 w-3" />, iconClassName: 'text-muted-foreground', tone: 'neutral' },
+}
 
 interface PullRequestsTabProps {
   allPRs: MockPR[]
@@ -63,8 +75,7 @@ export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: Pul
   }, [expandNonce])
   const shownFor = useCallback((key: string) => shownState[key] ?? PAGE_SIZE, [shownState])
   const loadMore = useCallback(
-    (key: string) =>
-      setShownState((s) => ({ ...s, [key]: (s[key] ?? PAGE_SIZE) + PAGE_SIZE })),
+    (key: string) => setShownState((s) => ({ ...s, [key]: (s[key] ?? PAGE_SIZE) + PAGE_SIZE })),
     []
   )
 
@@ -147,7 +158,9 @@ export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: Pul
                   count={pinnedPRs.length}
                   open={isOpen('pinned')}
                   onToggle={() => toggleOpen('pinned')}
-                  accent="text-amber-400"
+                  icon={<Pin className="h-3 w-3" />}
+                  iconClassName="text-amber-400"
+                  tone="warning"
                 />
                 {isOpen('pinned') &&
                   pinnedPRs.map((pr) => (
@@ -163,15 +176,17 @@ export function PullRequestsTab({ allPRs, pinnedIds, onTogglePin, loading }: Pul
             {PR_GROUP_ORDER.map((key: PrGroupKey) => {
               const list = groups[key]
               if (list.length === 0) return null
-              const meta = PR_GROUP_META[key]
+              const decor = GROUP_DECOR[key]
               return (
                 <div key={key}>
                   <GroupHeader
-                    label={t(meta.labelKey)}
+                    label={t(PR_GROUP_META[key].labelKey)}
                     count={list.length}
                     open={isOpen(key)}
                     onToggle={() => toggleOpen(key)}
-                    accent={meta.accent}
+                    icon={decor.icon}
+                    iconClassName={decor.iconClassName}
+                    tone={decor.tone}
                   />
                   {isOpen(key) && (
                     <>

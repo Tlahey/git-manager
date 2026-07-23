@@ -86,6 +86,18 @@ describe('PRRow — content', () => {
     expect(screen.queryByText('wontfix')).not.toBeInTheDocument()
   })
 
+  it('shows the source branch in a tag under the repo when present', () => {
+    render(
+      <PRRow pr={pr({ id: 'pr-b', headRef: 'feat/thing' })} pinned={false} onTogglePin={vi.fn()} />
+    )
+    expect(screen.getByTestId('pr-branch-pr-b')).toHaveTextContent('feat/thing')
+  })
+
+  it('omits the branch tag when there is no head ref', () => {
+    render(<PRRow pr={pr({ id: 'pr-c' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.queryByTestId('pr-branch-pr-c')).not.toBeInTheDocument()
+  })
+
   it('shows a rebase-required badge when needsRebase is true', () => {
     render(<PRRow pr={pr({ needsRebase: true })} pinned={false} onTogglePin={vi.fn()} />)
     expect(screen.getByText('Rebase required')).toBeInTheDocument()
@@ -200,79 +212,44 @@ describe('PRRow — row click', () => {
   })
 })
 
-describe('PRRow — action menu', () => {
-  it('is closed by default', () => {
+describe('PRRow — quick actions', () => {
+  it('renders a state-dependent primary split button (View for a plain open PR)', () => {
     render(<PRRow pr={pr()} pinned={false} onTogglePin={vi.fn()} />)
-    expect(screen.queryByText('Open on GitHub')).not.toBeInTheDocument()
+    expect(screen.getByTestId('pr-actions-1-btn')).toHaveTextContent('View')
   })
 
-  it('opens on the more-actions button, without triggering the row click', async () => {
+  it('exposes the secondary actions in the caret dropdown', async () => {
     const user = userEvent.setup()
     render(<PRRow pr={pr()} pinned={false} onTogglePin={vi.fn()} />)
-    const [moreButton] = screen.getAllByRole('button').slice(-1)
-    await user.click(moreButton)
-    expect(screen.getByText('Open on GitHub')).toBeInTheDocument()
-    expect(screen.getByText('Copy link')).toBeInTheDocument()
-    expect(pluginOpen).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'More options' }))
+    expect(screen.getByRole('menuitem', { name: 'Open on GitHub' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Copy link' })).toBeInTheDocument()
   })
 
-  it('opens the PR url via the "Open on GitHub" menu item and closes the menu', async () => {
+  it('renders a snooze control on the row edge, not in the dropdown', async () => {
+    const user = userEvent.setup()
+    render(<PRRow pr={pr({ id: 'pr-2' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByTestId('snooze-trigger-pr-2')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'More options' }))
+    expect(screen.queryByRole('menuitem', { name: /Snooze/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /Pin/ })).not.toBeInTheDocument()
+  })
+
+  it('renders an open-in-app icon that opens the in-app view when available', async () => {
+    const onOpen = vi.fn()
+    const thePr = pr({ id: 'pr-3' })
     const user = userEvent.setup()
     render(
-      <PRRow
-        pr={pr({ url: 'https://github.com/owner/git-manager/pull/42' })}
-        pinned={false}
-        onTogglePin={vi.fn()}
-      />
+      <OpenPrContext.Provider value={onOpen}>
+        <PRRow pr={thePr} pinned={false} onTogglePin={vi.fn()} />
+      </OpenPrContext.Provider>
     )
-    const [moreButton] = screen.getAllByRole('button').slice(-1)
-    await user.click(moreButton)
-    await act(async () => {
-      fireEvent.click(screen.getByText('Open on GitHub'))
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-    expect(pluginOpen).toHaveBeenCalledWith('https://github.com/owner/git-manager/pull/42')
-    expect(screen.queryByText('Open on GitHub')).not.toBeInTheDocument()
+    await user.click(screen.getByTestId('pr-open-in-app-pr-3'))
+    expect(onOpen).toHaveBeenCalledWith(thePr)
   })
 
-  it('copies the PR url via the "Copy link" menu item', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined)
-    const user = userEvent.setup()
-    // userEvent.setup() installs its own navigator.clipboard stub, so ours must be defined after.
-    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
-    render(
-      <PRRow
-        pr={pr({ url: 'https://github.com/owner/git-manager/pull/42' })}
-        pinned={false}
-        onTogglePin={vi.fn()}
-      />
-    )
-    const [moreButton] = screen.getAllByRole('button').slice(-1)
-    await user.click(moreButton)
-    await user.click(screen.getByText('Copy link'))
-    expect(writeText).toHaveBeenCalledWith('https://github.com/owner/git-manager/pull/42')
-  })
-
-  it('toggles pin via the menu item, reflecting the current pinned state in its label', async () => {
-    const onTogglePin = vi.fn()
-    const user = userEvent.setup()
-    render(<PRRow pr={pr({ id: 'pr-2' })} pinned onTogglePin={onTogglePin} />)
-    const [moreButton] = screen.getAllByRole('button').slice(-1)
-    await user.click(moreButton)
-    expect(screen.getByText('Unpin')).toBeInTheDocument()
-    await user.click(screen.getByText('Unpin'))
-    expect(onTogglePin).toHaveBeenCalledWith('pr-2')
-  })
-
-  it('closes the menu when clicking the backdrop', async () => {
-    const user = userEvent.setup()
-    const { container } = render(<PRRow pr={pr()} pinned={false} onTogglePin={vi.fn()} />)
-    const [moreButton] = screen.getAllByRole('button').slice(-1)
-    await user.click(moreButton)
-    expect(screen.getByText('Open on GitHub')).toBeInTheDocument()
-    const backdrop = container.querySelector('.fixed.inset-0.z-panel')!
-    fireEvent.click(backdrop)
-    expect(screen.queryByText('Open on GitHub')).not.toBeInTheDocument()
+  it('hides the open-in-app icon when no in-app view is available', () => {
+    render(<PRRow pr={pr({ id: 'pr-4' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.queryByTestId('pr-open-in-app-pr-4')).not.toBeInTheDocument()
   })
 })

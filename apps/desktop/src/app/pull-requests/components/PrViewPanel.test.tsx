@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import type { MockPR } from '../types'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { PrViewPanel } from './PrViewPanel'
@@ -32,16 +32,17 @@ function pr(overrides: Partial<MockPR> = {}): MockPR {
 }
 
 beforeEach(() => {
-  // A fresh PR always starts on its conversation with the files panel shown.
+  // Simulate a previously-expanded files panel so the collapse-on-open behaviour is observable.
   useRepoUIStore.setState({ activePrFile: null, prFilesVisible: true })
 })
 
 describe('PrViewPanel', () => {
-  it('shows the interactive PR detail view and the changed-files panel', () => {
+  it('opens on the conversation with the files panel collapsed by default', () => {
     render(<PrViewPanel pr={pr()} onClose={vi.fn()} />)
     expect(screen.getByTestId('launchpad-pr-view')).toBeInTheDocument()
     expect(screen.getByTestId('pr-detail-center')).toBeInTheDocument()
-    expect(screen.getByTestId('pr-files-panel')).toBeInTheDocument()
+    expect(screen.queryByTestId('pr-files-panel')).not.toBeInTheDocument()
+    expect(useRepoUIStore.getState().prFilesVisible).toBe(false)
   })
 
   it('returns to the list via the top-left Back button', () => {
@@ -51,16 +52,19 @@ describe('PrViewPanel', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 
-  it('exposes a resize handle for the files panel, matching the repo graph view', () => {
+  it('shows the files panel and its resize handle once toggled on', () => {
     render(<PrViewPanel pr={pr()} onClose={vi.fn()} />)
+    expect(screen.queryByTestId('pr-files-panel')).not.toBeInTheDocument()
+    act(() => useRepoUIStore.getState().togglePrFiles())
+    expect(screen.getByTestId('pr-files-panel')).toBeInTheDocument()
     expect(screen.getByTestId('launchpad-pr-files-resize')).toBeInTheDocument()
   })
 
-  it('hides the files panel and its resize handle when the shared toggle is off', () => {
-    useRepoUIStore.setState({ prFilesVisible: false })
-    render(<PrViewPanel pr={pr()} onClose={vi.fn()} />)
-    expect(screen.queryByTestId('pr-files-panel')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('launchpad-pr-files-resize')).not.toBeInTheDocument()
+  it('restores the previous files visibility when it unmounts', () => {
+    const { unmount } = render(<PrViewPanel pr={pr()} onClose={vi.fn()} />)
+    expect(useRepoUIStore.getState().prFilesVisible).toBe(false)
+    unmount()
+    expect(useRepoUIStore.getState().prFilesVisible).toBe(true)
   })
 
   it('resets any stale file selection so the PR opens on its conversation', () => {

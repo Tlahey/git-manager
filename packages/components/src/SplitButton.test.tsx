@@ -72,4 +72,24 @@ describe('SplitButton', () => {
     expect(screen.getByTestId('commit-btn')).toBeInTheDocument()
     expect(screen.getByTestId('commit-menu-btn')).toBeInTheDocument()
   })
+
+  it('forwards size and variant to both button segments', () => {
+    render(
+      <SplitButton
+        label="Merge"
+        onClick={vi.fn()}
+        actions={actions()}
+        size="sm"
+        variant="success"
+        testIdPrefix="merge"
+      />
+    )
+    const primary = screen.getByTestId('merge-btn')
+    const caret = screen.getByTestId('merge-menu-btn')
+    // `sm` size (h-8) and the `success` variant class land on both segments.
+    expect(primary.className).toContain('h-8')
+    expect(primary.className).toContain('bg-button-success')
+    expect(caret.className).toContain('h-8')
+    expect(caret.className).toContain('bg-button-success')
+  })
 })

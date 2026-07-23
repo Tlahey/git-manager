@@ -20,6 +20,8 @@ export interface MockPR {
   repo: string
   repoUrl: string
   fullName?: string
+  /** Source branch name (`head.ref`), shown as a tag under the repo. Populated during enrichment. */
+  headRef?: string
   url: string
   status: PRStatus
   ciStatus: CiStatus
@@ -64,4 +66,12 @@ export interface DayCommit {
 
 export type SortKey = 'date' | 'status' | 'author' | 'repo' | 'files'
 export type SortDir = 'asc' | 'desc'
-export type InnerTab = 'prs' | 'followed' | 'issues' | 'waiting' | 'stats' | 'views'
+export type InnerTab =
+  | 'prs'
+  | 'wip'
+  | 'followed'
+  | 'issues'
+  | 'waiting'
+  | 'snoozed'
+  | 'stats'
+  | 'views'

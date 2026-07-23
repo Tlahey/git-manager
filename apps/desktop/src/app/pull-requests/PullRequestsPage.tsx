@@ -11,6 +11,8 @@ import {
   Sliders,
   GitCommit,
   BookOpen,
+  FolderGit2,
+  BellOff,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { usePullRequestsPage } from '../../hooks/usePullRequestsPage'
@@ -19,12 +21,14 @@ import { Spinner } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { InnerTab, KpiCard } from '@git-manager/components'
 import { OpenPrContext } from './OpenPrContext'
-import { PrViewPanel } from './components/PrViewPanel'
+import { PrSidePanel } from './components/PrSidePanel'
 import { LaunchpadToolbar } from './components/LaunchpadToolbar'
 import { PullRequestsTab } from './components/PullRequestsTab'
+import { WipTab } from './components/WipTab'
 import { FollowedPRsTab } from './components/FollowedPRsTab'
 import { IssuesTab } from './components/IssuesTab'
 import { WaitingForReviewTab } from './components/WaitingForReviewTab'
+import { SnoozedPRsTab } from './components/SnoozedPRsTab'
 import { CommitStatsTab } from './components/CommitStatsTab'
 import { CustomViewsTab } from './components/CustomViewsTab'
 import { appEventBus } from '../../lib/appEventBus'
@@ -42,7 +46,8 @@ export function PullRequestsPage() {
   const {
     activeTab,
     setActiveTab,
-    prs,
+    visiblePRs,
+    snoozedPRs,
     issues,
     commitDays,
     yearDays,
@@ -78,12 +83,18 @@ export function PullRequestsPage() {
       icon: GitPullRequest,
       render: () => (
         <PullRequestsTab
-          allPRs={prs}
+          allPRs={visiblePRs}
           pinnedIds={pinnedIds}
           onTogglePin={togglePin}
           loading={loading}
         />
       ),
+    },
+    {
+      id: 'wip',
+      label: t('tab.wip'),
+      icon: FolderGit2,
+      render: () => <WipTab />,
     },
     {
       id: 'followed',
@@ -112,7 +123,20 @@ export function PullRequestsPage() {
       icon: Eye,
       render: () => (
         <WaitingForReviewTab
-          allPRs={prs}
+          allPRs={visiblePRs}
+          pinnedIds={pinnedIds}
+          onTogglePin={togglePin}
+          loading={loading}
+        />
+      ),
+    },
+    {
+      id: 'snoozed',
+      label: t('tab.snoozed'),
+      icon: BellOff,
+      render: () => (
+        <SnoozedPRsTab
+          snoozedPRs={snoozedPRs}
           pinnedIds={pinnedIds}
           onTogglePin={togglePin}
           loading={loading}
@@ -133,7 +157,7 @@ export function PullRequestsPage() {
       icon: Sliders,
       render: () => (
         <CustomViewsTab
-          allPRs={prs}
+          allPRs={visiblePRs}
           allIssues={issues}
           pinnedIds={pinnedIds}
           onTogglePin={togglePin}
@@ -148,17 +172,10 @@ export function PullRequestsPage() {
     if (id === 'waiting') appEventBus.notify('view_waiting_reviews')
   }
 
-  if (openedPr) {
-    return (
-      <div className="flex h-full flex-col overflow-hidden bg-background">
-        <PrViewPanel pr={openedPr} onClose={() => setOpenedPr(null)} />
-      </div>
-    )
-  }
-
   return (
     <OpenPrContext.Provider value={setOpenedPr}>
-      <div className="flex h-full flex-col overflow-hidden bg-background">
+      <div className="relative flex h-full overflow-hidden bg-background">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Page Header */}
         <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card/50 px-5 py-2.5 backdrop-blur-sm">
           <div className="flex items-center gap-2">
@@ -281,6 +298,8 @@ export function PullRequestsPage() {
 
         {/* Tab Content */}
         <div className="min-h-0 flex-1">{renderActiveTab(PR_TABS, activeTab)}</div>
+        </div>
+        {openedPr && <PrSidePanel pr={openedPr} onClose={() => setOpenedPr(null)} />}
       </div>
     </OpenPrContext.Provider>
   )

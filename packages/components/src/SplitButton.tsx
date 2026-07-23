@@ -6,6 +6,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  type ButtonProps,
 } from '@git-manager/ui'
 
 export interface SplitButtonAction {
@@ -24,6 +25,10 @@ interface SplitButtonProps {
   busy?: boolean
   /** Menu anchor alignment relative to the caret trigger. */
   align?: 'left' | 'right'
+  /** Underlying `Button` visual variant for both segments. Defaults to `default` (primary fill). */
+  variant?: ButtonProps['variant']
+  /** Underlying `Button` size for both segments. `sm` fits dense contexts like table rows. */
+  size?: ButtonProps['size']
   /** Base id for `data-testid`s: `${testIdPrefix}-btn` / `${testIdPrefix}-menu-btn`. Omitted
    * entirely (no attribute) when not provided. */
   testIdPrefix?: string
@@ -42,11 +47,17 @@ export function SplitButton({
   disabled,
   busy,
   align = 'right',
+  variant,
+  size,
   testIdPrefix,
 }: SplitButtonProps) {
+  // A compact size keeps the caret segment from ballooning; `icon` sizing is squashed to a caret.
+  const caretPadding = size === 'sm' ? 'px-1' : 'px-1.5'
   return (
     <div className="flex items-stretch">
       <Button
+        variant={variant}
+        size={size}
         data-testid={testIdPrefix ? `${testIdPrefix}-btn` : undefined}
         disabled={disabled || busy}
         className="gap-1.5 rounded-r-none"
@@ -59,9 +70,11 @@ export function SplitButton({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
+              variant={variant}
+              size={size}
               data-testid={testIdPrefix ? `${testIdPrefix}-menu-btn` : undefined}
               disabled={disabled || busy}
-              className="border-primary-foreground/20 rounded-l-none border-l px-1.5"
+              className={`border-primary-foreground/20 rounded-l-none border-l ${caretPadding}`}
               aria-label="More options"
             >
               <ChevronDown className="h-3.5 w-3.5" />

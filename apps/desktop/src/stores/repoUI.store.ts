@@ -89,6 +89,7 @@ interface RepoUIState {
   /** Whether the always-on-right PR files panel is shown (toggled from the PR header). Default on. */
   prFilesVisible: boolean
   togglePrFiles: () => void
+  setPrFilesVisible: (visible: boolean) => void
   /**
    * When set, the repo view swaps its center panel for the PR-creation composer (title, base branch,
    * template/AI description). Set by `usePrPublishFlow.commitAndPrepare` after the commit exists,
@@ -224,6 +225,7 @@ export const useRepoUIStore = create<RepoUIState>()(
       setActivePrFile: (filename) => set({ activePrFile: filename }),
 
       togglePrFiles: () => set((state) => ({ prFilesVisible: !state.prFilesVisible })),
+      setPrFilesVisible: (prFilesVisible) => set({ prFilesVisible }),
 
       // Opening the composer claims the center panel; drop any open file diff / PR view.
       setPrComposer: (composer) =>

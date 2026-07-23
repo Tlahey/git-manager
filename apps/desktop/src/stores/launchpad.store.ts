@@ -27,11 +27,16 @@ export interface SavedFilter {
 interface LaunchpadState {
   savedFilters: SavedFilter[]
   activeTab: InnerTab
+  /** Snoozed PRs keyed by `pr.id`. Value is the wake timestamp (ms), or `null` for indefinite. An
+   * entry with a past timestamp is considered woken and ignored (see `isSnoozed` in the page utils). */
+  snoozed: Record<string, number | null>
   setActiveTab: (tab: InnerTab) => void
   addFilter: (filter: Omit<SavedFilter, 'id' | 'createdAt'>) => void
   updateFilter: (id: string, patch: Partial<Omit<SavedFilter, 'id' | 'createdAt'>>) => void
   deleteFilter: (id: string) => void
   reorderFilters: (from: number, to: number) => void
+  snoozePr: (id: string, until: number | null) => void
+  unsnoozePr: (id: string) => void
 }
 
 export const useLaunchpadStore = create<LaunchpadState>()(
@@ -58,7 +63,18 @@ export const useLaunchpadStore = create<LaunchpadState>()(
         },
       ],
       activeTab: 'prs',
+      snoozed: {},
       setActiveTab: (activeTab) => set({ activeTab }),
+
+      snoozePr: (id, until) =>
+        set((state) => ({ snoozed: { ...state.snoozed, [id]: until } })),
+
+      unsnoozePr: (id) =>
+        set((state) => {
+          const next = { ...state.snoozed }
+          delete next[id]
+          return { snoozed: next }
+        }),
 
       addFilter: (filter) =>
         set((state) => ({

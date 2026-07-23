@@ -75,7 +75,7 @@ function mockGitHubData(overrides: Partial<ReturnType<typeof useGitHubData>> = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useLaunchpadStore.setState({ savedFilters: INITIAL_FILTERS, activeTab: 'prs' })
+  useLaunchpadStore.setState({ savedFilters: INITIAL_FILTERS, activeTab: 'prs', snoozed: {} })
   mockGitHubData()
 })
 
@@ -134,6 +134,33 @@ describe('usePullRequestsPage — derived counts', () => {
     expect(result.current.tabCounts.issues).toBe(1)
     expect(result.current.tabCounts.stats).toBeUndefined()
     expect(result.current.tabCounts.views).toBe(INITIAL_FILTERS.length)
+  })
+})
+
+describe('usePullRequestsPage — snooze', () => {
+  it('moves snoozed PRs out of the visible list and into snoozedPRs', () => {
+    useLaunchpadStore.setState({ snoozed: { 'pr-a': null } })
+    mockGitHubData({ prs: [pr({ id: 'pr-a' }), pr({ id: 'pr-b' })] })
+    const { result } = renderHook(() => usePullRequestsPage())
+    expect(result.current.visiblePRs.map((p) => p.id)).toEqual(['pr-b'])
+    expect(result.current.snoozedPRs.map((p) => p.id)).toEqual(['pr-a'])
+    expect(result.current.tabCounts.snoozed).toBe(1)
+  })
+
+  it('excludes snoozed PRs from the derived counts', () => {
+    useLaunchpadStore.setState({ snoozed: { 'pr-a': null } })
+    mockGitHubData({ prs: [pr({ id: 'pr-a', status: 'open' }), pr({ id: 'pr-b', status: 'open' })] })
+    const { result } = renderHook(() => usePullRequestsPage())
+    expect(result.current.openPRsCount).toBe(1)
+    expect(result.current.tabCounts.prs).toBe(1)
+  })
+
+  it('treats an expired snooze as woken', () => {
+    useLaunchpadStore.setState({ snoozed: { 'pr-a': Date.now() - 1000 } })
+    mockGitHubData({ prs: [pr({ id: 'pr-a' })] })
+    const { result } = renderHook(() => usePullRequestsPage())
+    expect(result.current.visiblePRs.map((p) => p.id)).toEqual(['pr-a'])
+    expect(result.current.snoozedPRs).toHaveLength(0)
   })
 })
 

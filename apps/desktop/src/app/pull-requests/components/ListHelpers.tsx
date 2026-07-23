@@ -1,11 +1,13 @@
+import type { ReactNode } from 'react'
 import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
+import { Tag, type TagTone } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 
 export function TableHeader() {
   const { t } = useTranslation('launchpad')
   return (
     <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-      <div className="w-3 shrink-0" />
+      <div className="w-7 shrink-0" />
       <div className="w-4 shrink-0" />
       <div className="min-w-0 flex-1">{t('table.item')}</div>
       <div className="w-[52px] shrink-0 text-right">{t('table.updated')}</div>
@@ -14,7 +16,7 @@ export function TableHeader() {
       <div className="w-[60px] shrink-0 text-center">{t('table.with')}</div>
       <div className="w-[110px] shrink-0">{t('table.repo')}</div>
       <div className="w-[60px] shrink-0 text-center">{t('table.ci')}</div>
-      <div className="w-6 shrink-0" />
+      <div className="w-[150px] shrink-0" />
     </div>
   )
 }
@@ -24,10 +26,24 @@ interface GroupHeaderProps {
   count: number
   open: boolean
   onToggle: () => void
-  accent?: string
+  /** Section icon, rendered before the count/label and coloured via {@link iconClassName}. */
+  icon?: ReactNode
+  /** Colour class for the icon (e.g. `text-green-400`) — the only coloured element; the label
+   * itself stays foreground/black. */
+  iconClassName?: string
+  /** Tone of the count `Tag`. Defaults to `neutral`. */
+  tone?: TagTone
 }
 
-export function GroupHeader({ label, count, open, onToggle, accent }: GroupHeaderProps) {
+export function GroupHeader({
+  label,
+  count,
+  open,
+  onToggle,
+  icon,
+  iconClassName,
+  tone = 'neutral',
+}: GroupHeaderProps) {
   return (
     <button
       onClick={onToggle}
@@ -38,17 +54,10 @@ export function GroupHeader({ label, count, open, onToggle, accent }: GroupHeade
       ) : (
         <ChevronRight className="h-3 w-3 text-muted-foreground" />
       )}
-      <span
-        className={`text-[10px] font-semibold uppercase tracking-wider ${accent ?? 'text-muted-foreground'}`}
-      >
+      {icon && <span className={`flex items-center ${iconClassName ?? ''}`}>{icon}</span>}
+      <Tag tone={tone}>{count}</Tag>
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground">
         {label}
-      </span>
-      <span
-        className={`rounded-full px-1.5 py-px text-[9px] font-bold leading-none ${
-          accent ? 'bg-amber-500/20 text-amber-400' : 'bg-muted text-muted-foreground'
-        }`}
-      >
-        {count}
       </span>
     </button>
   )

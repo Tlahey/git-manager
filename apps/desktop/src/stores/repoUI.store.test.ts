@@ -225,6 +225,13 @@ describe('useRepoUIStore — prFilesVisible', () => {
     useRepoUIStore.getState().togglePrFiles()
     expect(useRepoUIStore.getState().prFilesVisible).toBe(true)
   })
+
+  it('setPrFilesVisible sets an explicit value', () => {
+    useRepoUIStore.getState().setPrFilesVisible(false)
+    expect(useRepoUIStore.getState().prFilesVisible).toBe(false)
+    useRepoUIStore.getState().setPrFilesVisible(true)
+    expect(useRepoUIStore.getState().prFilesVisible).toBe(true)
+  })
 })
 
 describe('useRepoUIStore — prComposer', () => {

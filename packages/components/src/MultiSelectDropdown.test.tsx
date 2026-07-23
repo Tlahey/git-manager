@@ -99,11 +99,22 @@ describe('MultiSelectDropdown — selecting options', () => {
     expect(onToggle).toHaveBeenCalledWith('open')
   })
 
-  it('shows a check mark only for selected options', async () => {
+  it('renders options as accessible checkboxes reflecting the selection', async () => {
     const user = userEvent.setup()
-    const { container } = renderDropdown({ selected: new Set(['closed']) })
+    renderDropdown({ selected: new Set(['closed']) })
     await user.click(screen.getByText('Status'))
-    expect(container.querySelectorAll('.lucide-circle-check')).toHaveLength(1)
+    expect(screen.getAllByRole('checkbox')).toHaveLength(3)
+    expect(screen.getByRole('checkbox', { name: 'closed' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'open' })).not.toBeChecked()
+  })
+
+  it('toggles an option via its checkbox', async () => {
+    const onToggle = vi.fn()
+    const user = userEvent.setup()
+    renderDropdown({ onToggle })
+    await user.click(screen.getByText('Status'))
+    await user.click(screen.getByRole('checkbox', { name: 'merged' }))
+    expect(onToggle).toHaveBeenCalledWith('merged')
   })
 })
 

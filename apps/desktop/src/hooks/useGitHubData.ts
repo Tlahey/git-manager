@@ -83,6 +83,7 @@ export function useGitHubData(): GitHubData {
           pr.deletions = full.deletions ?? 0
           pr.filesChanged = full.changed_files ?? pr.filesChanged
           pr.needsRebase = full.mergeable === false || full.mergeable_state === 'behind'
+          pr.headRef = full.head?.ref ?? pr.headRef
 
           const sha = full.head?.sha
           const parts = ownerRepo.split('/')
