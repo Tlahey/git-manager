@@ -155,7 +155,7 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
         </span>
       </div>
       <div className="flex w-[60px] shrink-0 justify-center">
-        <CiBadge status={pr.ciStatus} details={pr.ciDetails} />
+        <CiBadge status={pr.ciStatus} details={pr.ciDetails} prUrl={pr.url} />
       </div>
       <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
         <button

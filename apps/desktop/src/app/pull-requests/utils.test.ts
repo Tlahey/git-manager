@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { timeAgo, openUrl } from './utils'
+import { timeAgo, openUrl, ciActionUrl } from './utils'
+import type { CiDetail } from './types'
 
 describe('timeAgo', () => {
   const NOW = new Date('2024-06-15T12:00:00.000Z')
@@ -84,5 +85,55 @@ describe('openUrl', () => {
 
   it('is exported and callable directly from the module under test', () => {
     expect(typeof openUrl).toBe('function')
+  })
+})
+
+describe('ciActionUrl', () => {
+  const PR = 'https://github.com/owner/repo/pull/7'
+
+  it('returns undefined when there is no CI and no PR url', () => {
+    expect(ciActionUrl(null, undefined)).toBeUndefined()
+    expect(ciActionUrl(null, [])).toBeUndefined()
+  })
+
+  it('falls back to the PR Checks tab when a status exists but no check carries a link', () => {
+    expect(ciActionUrl('success', [{ name: 'build', status: 'success' }], PR)).toBe(`${PR}/checks`)
+  })
+
+  it('never falls back for a null (no-CI) status even with a PR url', () => {
+    expect(ciActionUrl(null, [], PR)).toBeUndefined()
+  })
+
+  it('prefers the failing check link over any other', () => {
+    const details: CiDetail[] = [
+      { name: 'build', status: 'success', url: 'https://ci/success' },
+      { name: 'lint', status: 'failure', url: 'https://ci/fail' },
+      { name: 'e2e', status: 'running', url: 'https://ci/run' },
+    ]
+    expect(ciActionUrl('failure', details, PR)).toBe('https://ci/fail')
+  })
+
+  it('prefers a running check when nothing is failing', () => {
+    const details: CiDetail[] = [
+      { name: 'build', status: 'success', url: 'https://ci/success' },
+      { name: 'e2e', status: 'running', url: 'https://ci/run' },
+    ]
+    expect(ciActionUrl('running', details, PR)).toBe('https://ci/run')
+  })
+
+  it('uses the first linked check when none are failing or running', () => {
+    const details: CiDetail[] = [
+      { name: 'build', status: 'success', url: 'https://ci/success' },
+      { name: 'test', status: 'success', url: 'https://ci/success-2' },
+    ]
+    expect(ciActionUrl('success', details, PR)).toBe('https://ci/success')
+  })
+
+  it('ignores checks without a url when picking by status', () => {
+    const details: CiDetail[] = [
+      { name: 'lint', status: 'failure' },
+      { name: 'build', status: 'success', url: 'https://ci/success' },
+    ]
+    expect(ciActionUrl('failure', details, PR)).toBe('https://ci/success')
   })
 })

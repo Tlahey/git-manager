@@ -11,6 +11,8 @@
   "ci.skip": "Ignoré",
   "ci.checkSteps": "Étapes de vérification CI",
   "ci.hoverHint": "survolez pour voir le statut",
+  "ci.clickHint": "cliquez pour ouvrir l'exécution",
+  "ci.viewAction": "Voir l'exécution CI sur GitHub",
   "table.item": "Élément",
   "table.updated": "Mis à jour",
   "table.status": "Statut",
