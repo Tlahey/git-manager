@@ -1,4 +1,4 @@
-import { Pin, MessageSquare, ThumbsUp, GitBranch, GitBranchPlus, Loader2 } from 'lucide-react'
+import { Pin, MessageSquare, ThumbsUp, GitBranch, GitBranchPlus, PanelRight, Loader2 } from 'lucide-react'
 import { Tag } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import type { MockIssue } from '../types'
@@ -145,9 +145,10 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
         ) : null}
       </div>
 
-      {/* Actions: a split button with a dropdown (View / Mark as closed / View repo / …) */}
+      {/* Actions: a split button with a dropdown (View / Mark as closed / View repo / …) plus a
+          dedicated "open in app" button, mirroring the PR row. */}
       <div
-        className="flex w-[124px] shrink-0 items-center justify-end"
+        className="flex w-[150px] shrink-0 items-center justify-end gap-1"
         onClick={(e) => e.stopPropagation()}
       >
         <IssueQuickActions
@@ -157,6 +158,17 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
           closing={closing}
           canClose={canClose}
         />
+        {openIssue && (
+          <button
+            onClick={open}
+            title={t('row.openInApp')}
+            aria-label={t('row.openInApp')}
+            data-testid={`issue-open-in-app-${issue.id}`}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all hover:border-border hover:bg-accent hover:text-foreground group-hover/pr:opacity-100"
+          >
+            <PanelRight className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
     </div>
   )

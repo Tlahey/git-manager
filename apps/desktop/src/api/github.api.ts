@@ -43,6 +43,7 @@ export interface GhRawPR {
 export interface GhRawIssue {
   number: number
   title: string
+  body?: string | null
   repository_url?: string
   html_url: string
   state: string
@@ -348,6 +349,20 @@ export async function fetchGitHubRepoIssues(
     'application/vnd.github.squirrel-girl-preview+json'
   )
   return (data.items ?? []).map(rawToMockIssue)
+}
+
+/** Full details of one issue (adds the markdown `body` the search list omits). */
+export async function fetchIssueDetail(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  token: string
+): Promise<GhRawIssue> {
+  return ghFetch<GhRawIssue>(
+    `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`,
+    token,
+    'application/vnd.github.squirrel-girl-preview+json'
+  )
 }
 
 /** Close an issue (`state: 'closed'`) or reopen it (`state: 'open'`). Shares the issues REST resource

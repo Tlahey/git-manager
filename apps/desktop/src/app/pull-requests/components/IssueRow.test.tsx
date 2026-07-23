@@ -11,6 +11,7 @@ const { useIssueActions } = vi.hoisted(() => ({ useIssueActions: vi.fn() }))
 vi.mock('../../../hooks/useIssueActions', () => ({ useIssueActions }))
 
 import { IssueRow } from './IssueRow'
+import { OpenIssueContext } from '../OpenIssueContext'
 
 function issue(overrides: Partial<MockIssue> = {}): MockIssue {
   return {
@@ -170,5 +171,21 @@ describe('IssueRow — actions', () => {
       await Promise.resolve()
     })
     expect(pluginOpen).toHaveBeenCalledWith('https://github.com/owner/repo/issues/42')
+  })
+
+  it('shows a dedicated open-in-app button that opens the panel when available', () => {
+    const openIssue = vi.fn()
+    render(
+      <OpenIssueContext.Provider value={openIssue}>
+        <IssueRow issue={issue()} pinned={false} onTogglePin={vi.fn()} />
+      </OpenIssueContext.Provider>
+    )
+    fireEvent.click(screen.getByTestId('issue-open-in-app-1'))
+    expect(openIssue).toHaveBeenCalledOnce()
+  })
+
+  it('has no open-in-app button when no panel is available', () => {
+    renderRow()
+    expect(screen.queryByTestId('issue-open-in-app-1')).not.toBeInTheDocument()
   })
 })
