@@ -26,6 +26,7 @@ export function IssueViewPanel({ issue, onClose, onChanged }: IssueViewPanelProp
       <IssueDetailCenter
         repoPath={issue.fullName ?? ''}
         issueNumber={issue.number}
+        issue={issue}
         onClose={onClose}
         onChanged={onChanged}
       />
