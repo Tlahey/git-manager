@@ -100,12 +100,12 @@ describe('PRRow — content', () => {
 
   it('shows a rebase-required icon when needsRebase is true', () => {
     render(<PRRow pr={pr({ needsRebase: true })} pinned={false} onTogglePin={vi.fn()} />)
-    expect(screen.getByTitle('Rebase required')).toBeInTheDocument()
+    expect(screen.getByLabelText('Rebase required')).toBeInTheDocument()
   })
 
   it('hides the rebase-required icon otherwise', () => {
     render(<PRRow pr={pr({ needsRebase: false })} pinned={false} onTogglePin={vi.fn()} />)
-    expect(screen.queryByTitle('Rebase required')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Rebase required')).not.toBeInTheDocument()
   })
 
   it('shows an em-dash when there are no collaborators, an avatar stack otherwise', () => {
@@ -129,22 +129,22 @@ describe('PRRow — content', () => {
 describe('PRRow — status icons', () => {
   it('shows a merged icon for merged PRs', () => {
     render(<PRRow pr={pr({ status: 'merged' })} pinned={false} onTogglePin={vi.fn()} />)
-    expect(screen.getByTitle('Merged')).toBeInTheDocument()
+    expect(screen.getByLabelText('Merged')).toBeInTheDocument()
   })
 
   it('shows a closed icon for closed PRs', () => {
     render(<PRRow pr={pr({ status: 'closed' })} pinned={false} onTogglePin={vi.fn()} />)
-    expect(screen.getByTitle('Closed')).toBeInTheDocument()
+    expect(screen.getByLabelText('Closed')).toBeInTheDocument()
   })
 
   it('shows a draft icon for draft PRs', () => {
     render(<PRRow pr={pr({ status: 'draft' })} pinned={false} onTogglePin={vi.fn()} />)
-    expect(screen.getByTitle('Draft')).toBeInTheDocument()
+    expect(screen.getByLabelText('Draft')).toBeInTheDocument()
   })
 
   it('shows an open icon for open PRs', () => {
     render(<PRRow pr={pr({ status: 'open' })} pinned={false} onTogglePin={vi.fn()} />)
-    expect(screen.getByTitle('Open')).toBeInTheDocument()
+    expect(screen.getByLabelText('Open')).toBeInTheDocument()
   })
 })
 
