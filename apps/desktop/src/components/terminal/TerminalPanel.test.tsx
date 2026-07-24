@@ -4,12 +4,14 @@ import userEvent from '@testing-library/user-event'
 
 const addSession = vi.fn()
 const closeSession = vi.fn()
+const closeAllSessions = vi.fn()
 
 vi.mock('../../hooks/useIntegratedTerminal', () => ({
   useIntegratedTerminal: () => ({
     open: true,
     addSession,
     closeSession,
+    closeAllSessions,
     openTerminal: vi.fn(),
     toggle: vi.fn(),
   }),
@@ -38,6 +40,7 @@ const seed = () =>
 beforeEach(() => {
   addSession.mockReset()
   closeSession.mockReset()
+  closeAllSessions.mockReset()
   seed()
 })
 
@@ -76,5 +79,12 @@ describe('TerminalPanel', () => {
     render(<TerminalPanel path="/repo" />)
     await user.click(screen.getByTestId('terminal-hide'))
     expect(useTerminalStore.getState().open).toBe(false)
+  })
+
+  it('closes all sessions and the panel from the close button', async () => {
+    const user = userEvent.setup()
+    render(<TerminalPanel path="/repo" />)
+    await user.click(screen.getByTestId('terminal-close'))
+    expect(closeAllSessions).toHaveBeenCalledTimes(1)
   })
 })

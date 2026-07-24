@@ -85,6 +85,24 @@ describe('useIntegratedTerminal', () => {
     expect(useTerminalStore.getState().tabsFor('/repo').tabs).toEqual([])
   })
 
+  it('closeAllSessions disposes all xterm sessions and closes the panel', async () => {
+    apiTerminalOpen.mockResolvedValueOnce('id-1').mockResolvedValueOnce('id-2')
+    useTerminalStore.setState({ open: true })
+    const { result } = renderHook(() => useIntegratedTerminal('/repo'))
+    await act(async () => {
+      await result.current.addSession()
+      await result.current.addSession()
+    })
+
+    act(() => {
+      result.current.closeAllSessions()
+    })
+    expect(disposeTerminal).toHaveBeenCalledWith('id-1')
+    expect(disposeTerminal).toHaveBeenCalledWith('id-2')
+    expect(useTerminalStore.getState().tabsFor('/repo').tabs).toEqual([])
+    expect(useTerminalStore.getState().open).toBe(false)
+  })
+
   it('does nothing without a path', async () => {
     const { result } = renderHook(() => useIntegratedTerminal(null))
     await act(async () => {

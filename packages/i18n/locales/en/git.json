@@ -538,6 +538,7 @@
   "terminal.newTab": "New terminal",
   "terminal.closeTab": "Close terminal",
   "terminal.hidePanel": "Hide terminal",
+  "terminal.closePanel": "Close terminal completely",
   "terminal.restore": "Show terminal",
   "terminal.externalHeader": "Open in an external terminal",
   "terminal.openIn": "Open in {{name}}",

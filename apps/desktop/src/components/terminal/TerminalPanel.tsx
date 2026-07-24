@@ -25,7 +25,7 @@ export function TerminalPanel({ path }: TerminalPanelProps) {
   const repoTerminals = useTerminalStore((s) => s.byPath[path])
   const tabs = repoTerminals?.tabs ?? []
   const activeId = repoTerminals?.activeId ?? null
-  const { addSession, closeSession } = useIntegratedTerminal(path)
+  const { addSession, closeSession, closeAllSessions } = useIntegratedTerminal(path)
 
   const drag = useRef<{ startY: number; startHeight: number } | null>(null)
 
@@ -104,16 +104,28 @@ export function TerminalPanel({ path }: TerminalPanelProps) {
           <Plus className="h-3.5 w-3.5" />
         </button>
 
-        <button
-          type="button"
-          onClick={closePanel}
-          aria-label={t('terminal.hidePanel')}
-          title={t('terminal.hidePanel')}
-          data-testid="terminal-hide"
-          className="ml-auto rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        >
-          <ChevronDown className="h-4 w-4" />
-        </button>
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            type="button"
+            onClick={closePanel}
+            aria-label={t('terminal.hidePanel')}
+            title={t('terminal.hidePanel')}
+            data-testid="terminal-hide"
+            className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={closeAllSessions}
+            aria-label={t('terminal.closePanel')}
+            title={t('terminal.closePanel')}
+            data-testid="terminal-close"
+            className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* Active session viewport */}
