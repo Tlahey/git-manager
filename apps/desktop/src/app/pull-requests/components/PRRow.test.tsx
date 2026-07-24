@@ -98,14 +98,14 @@ describe('PRRow — content', () => {
     expect(screen.queryByTestId('pr-branch-pr-c')).not.toBeInTheDocument()
   })
 
-  it('shows a rebase-required badge when needsRebase is true', () => {
+  it('shows a rebase-required icon when needsRebase is true', () => {
     render(<PRRow pr={pr({ needsRebase: true })} pinned={false} onTogglePin={vi.fn()} />)
-    expect(screen.getByText('Rebase required')).toBeInTheDocument()
+    expect(screen.getByTitle('Rebase required')).toBeInTheDocument()
   })
 
-  it('hides the rebase-required badge otherwise', () => {
+  it('hides the rebase-required icon otherwise', () => {
     render(<PRRow pr={pr({ needsRebase: false })} pinned={false} onTogglePin={vi.fn()} />)
-    expect(screen.queryByText('Rebase required')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('Rebase required')).not.toBeInTheDocument()
   })
 
   it('shows an em-dash when there are no collaborators, an avatar stack otherwise', () => {
@@ -126,33 +126,25 @@ describe('PRRow — content', () => {
   })
 })
 
-describe('PRRow — status icon', () => {
-  it('shows a purple merge icon for merged PRs', () => {
-    const { container } = render(
-      <PRRow pr={pr({ status: 'merged' })} pinned={false} onTogglePin={vi.fn()} />
-    )
-    expect(container.querySelector('.text-purple-400')).toBeTruthy()
+describe('PRRow — status icons', () => {
+  it('shows a merged icon for merged PRs', () => {
+    render(<PRRow pr={pr({ status: 'merged' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByTitle('Merged')).toBeInTheDocument()
   })
 
-  it('shows a destructive X icon for closed PRs', () => {
-    const { container } = render(
-      <PRRow pr={pr({ status: 'closed' })} pinned={false} onTogglePin={vi.fn()} />
-    )
-    expect(container.querySelector('.text-destructive')).toBeTruthy()
+  it('shows a closed icon for closed PRs', () => {
+    render(<PRRow pr={pr({ status: 'closed' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByTitle('Closed')).toBeInTheDocument()
   })
 
-  it('shows a muted circle icon for draft PRs', () => {
-    const { container } = render(
-      <PRRow pr={pr({ status: 'open', isDraft: true })} pinned={false} onTogglePin={vi.fn()} />
-    )
-    expect(container.querySelector('.lucide-circle')).toBeTruthy()
+  it('shows a draft icon for draft PRs', () => {
+    render(<PRRow pr={pr({ status: 'draft' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByTitle('Draft')).toBeInTheDocument()
   })
 
-  it('shows a green PR icon for open, non-draft PRs', () => {
-    const { container } = render(
-      <PRRow pr={pr({ status: 'open', isDraft: false })} pinned={false} onTogglePin={vi.fn()} />
-    )
-    expect(container.querySelector('.text-green-400')).toBeTruthy()
+  it('shows an open icon for open PRs', () => {
+    render(<PRRow pr={pr({ status: 'open' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByTitle('Open')).toBeInTheDocument()
   })
 })
 

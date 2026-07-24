@@ -22,7 +22,7 @@ function lastObserver() {
 describe('TableHeader', () => {
   it('renders every column label', () => {
     render(<TableHeader />)
-    for (const label of ['Item', 'Updated', 'Status', 'Author', 'With', 'Repo', 'CI']) {
+    for (const label of ['Item', 'Updated', 'Status', 'Author', 'With', 'Repo']) {
       expect(screen.getByText(label)).toBeInTheDocument()
     }
   })
