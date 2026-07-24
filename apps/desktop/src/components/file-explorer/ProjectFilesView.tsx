@@ -6,6 +6,9 @@ import { useRepoFiles } from '../../hooks/useRepoFiles'
 import { useGitStatus } from '../../hooks/useGitStatus'
 import { buildFileTree } from './utils'
 import { DiffViewCenter } from '../git-graph/DiffViewCenter'
+import { TerminalPanel } from '../terminal/TerminalPanel'
+import { TerminalStatusBar } from '../terminal/TerminalStatusBar'
+import { useTerminalStore } from '../../stores/terminal.store'
 
 const isImageFile = (path: string | null) => 
   Boolean(path && /\.(png|jpe?g|gif|webp|svg|ico)$/i.test(path))
@@ -25,6 +28,7 @@ export function ProjectFilesView() {
   const isSidebarOpen = useFileExplorerStore((s: any) => s.isSidebarOpen)
   const toggleSidebar = useFileExplorerStore((s: any) => s.actions.toggleSidebar)
   const setActiveDiffFile = useRepoUIStore((s: any) => s.setActiveDiffFile)
+  const terminalOpen = useTerminalStore((s: any) => s.open)
 
   React.useEffect(() => {
     // If no file is selected in the explorer, ensure global state is cleared
@@ -193,6 +197,14 @@ export function ProjectFilesView() {
           </div>
         )}
       </div>
+
+      {effectiveRepoPath && (
+        terminalOpen ? (
+          <TerminalPanel path={effectiveRepoPath} />
+        ) : (
+          <TerminalStatusBar path={effectiveRepoPath} />
+        )
+      )}
     </div>
   )
 }

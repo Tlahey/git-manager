@@ -10,6 +10,8 @@ export interface UseIntegratedTerminal {
   addSession: () => Promise<void>
   /** Kills a session and removes its tab. */
   closeSession: (id: string) => void
+  /** Kills all sessions for the active path and closes the panel. */
+  closeAllSessions: () => void
   /** Opens the panel, spawning a first session if none exist yet. */
   openTerminal: () => Promise<void>
   /** Toggles the panel: closes if open, otherwise opens (spawning a session when empty). */
@@ -46,6 +48,16 @@ export function useIntegratedTerminal(path: string | null): UseIntegratedTermina
     [path, removeTab]
   )
 
+  const closeAllSessions = useCallback(() => {
+    if (!path) return
+    const tabs = useTerminalStore.getState().tabsFor(path).tabs
+    for (const tab of tabs) {
+      disposeTerminal(tab.id)
+      removeTab(path, tab.id)
+    }
+    closePanel()
+  }, [path, removeTab, closePanel])
+
   const openTerminal = useCallback(async () => {
     if (!path) return
     openPanel()
@@ -62,5 +74,5 @@ export function useIntegratedTerminal(path: string | null): UseIntegratedTermina
     }
   }, [closePanel, openTerminal])
 
-  return { open, addSession, closeSession, openTerminal, toggle }
+  return { open, addSession, closeSession, closeAllSessions, openTerminal, toggle }
 }

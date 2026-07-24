@@ -55,6 +55,9 @@ import { collectGraphAuthors } from './graphAuthors'
 import { computeLaneBranchByOid, collectRefDropHighlight } from './laneBranch'
 import { useGraphAuthorFilterStore } from '../../stores/graphAuthorFilter.store'
 import { useSoloModeStore } from '../../stores/soloMode.store'
+import { TerminalPanel } from '../terminal/TerminalPanel'
+import { TerminalStatusBar } from '../terminal/TerminalStatusBar'
+import { useTerminalStore } from '../../stores/terminal.store'
 
 interface GitGraphProps {
   repoPath: string
@@ -79,6 +82,7 @@ export function GitGraph({
   onSelectCommit,
 }: GitGraphProps) {
   const { t } = useTranslation('git')
+  const terminalOpen = useTerminalStore((s) => s.open)
   const queryClient = useQueryClient()
   const { protectedBranches } = useEffectiveRepoSettings(repoPath)
   const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
@@ -913,6 +917,12 @@ export function GitGraph({
               </>
             )}
           </>
+        )}
+
+        {terminalOpen ? (
+          <TerminalPanel path={repoPath} />
+        ) : (
+          <TerminalStatusBar path={repoPath} />
         )}
       </div>
 

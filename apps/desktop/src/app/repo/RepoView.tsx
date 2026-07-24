@@ -20,9 +20,6 @@ import { BisectBanner } from '../../components/bisect/BisectBanner'
 import { BisectResultBanner } from '../../components/bisect/BisectResultBanner'
 import { BisectSetupBanner } from '../../components/bisect/BisectSetupBanner'
 import { BisectStashDialog } from '../../components/bisect/BisectStashDialog'
-import { TerminalPanel } from '../../components/terminal/TerminalPanel'
-import { TerminalStatusBar } from '../../components/terminal/TerminalStatusBar'
-import { useTerminalStore } from '../../stores/terminal.store'
 import { setTerminalTheme } from '../../lib/terminalRegistry'
 import { useEffectiveRepoSettings } from '../../hooks/useEffectiveRepoSettings'
 
@@ -60,7 +57,6 @@ export function RepoView() {
     }
   }, [effectiveRepoPath, repoCache, setRepoCache])
 
-  const terminalOpen = useTerminalStore((s) => s.open)
   // Terminal colours resolve per-repo (repo override → global appearance value), so the active
   // repo/worktree's configuration themes its shells.
   const { terminalBackground, terminalForeground } = useEffectiveRepoSettings(effectiveRepoPath)
@@ -129,12 +125,6 @@ export function RepoView() {
 
         <BisectSetupBanner repoPath={repoPath} />
       </div>
-
-      {terminalOpen ? (
-        <TerminalPanel path={repoPath} />
-      ) : (
-        <TerminalStatusBar path={repoPath} />
-      )}
 
       <BisectResultBanner repoPath={repoPath} />
       <BisectStashDialog repoPath={repoPath} />
