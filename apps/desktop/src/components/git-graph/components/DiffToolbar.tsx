@@ -50,7 +50,8 @@ interface DiffToolbarProps {
   isProcessing: boolean
   onToggleStage: () => void
   onRollback: () => void
-  isMarkdown?: boolean
+  hasPreview?: boolean
+  isImage?: boolean
 }
 
 /**
@@ -75,7 +76,8 @@ export function DiffToolbar({
   isProcessing,
   onToggleStage,
   onRollback,
-  isMarkdown,
+  hasPreview,
+  isImage,
 }: DiffToolbarProps) {
   const { t } = useTranslation('git')
   return (
@@ -155,33 +157,37 @@ export function DiffToolbar({
 
       {/* Center: View mode tabs (Diff, File, Preview) */}
       <div className="mx-4 flex shrink-0 items-center rounded-lg border border-border/50 bg-muted/60 p-0.5">
-        <button
-          data-testid="diff-tab-diff"
-          onClick={() => onChangeActiveTab('diff')}
-          className={cn(
-            'flex items-center gap-1.5 rounded-md px-4 py-1 text-xs font-medium transition-all duration-200',
-            activeTab === 'diff'
-              ? 'border-b border-border/10 bg-background font-semibold text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          <GitCompare className="h-3.5 w-3.5" />
-          <span>{t('diffToolbar.tabDiff')}</span>
-        </button>
-        <button
-          data-testid="diff-tab-file"
-          onClick={() => onChangeActiveTab('file')}
-          className={cn(
-            'flex items-center gap-1.5 rounded-md px-4 py-1 text-xs font-medium transition-all duration-200',
-            activeTab === 'file'
-              ? 'border-b border-border/10 bg-background font-semibold text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          <FileText className="h-3.5 w-3.5" />
-          <span>{t('diffToolbar.tabFile')}</span>
-        </button>
-        {isMarkdown && (
+        {!isImage && (
+          <>
+            <button
+              data-testid="diff-tab-diff"
+              onClick={() => onChangeActiveTab('diff')}
+              className={cn(
+                'flex items-center gap-1.5 rounded-md px-4 py-1 text-xs font-medium transition-all duration-200',
+                activeTab === 'diff'
+                  ? 'border-b border-border/10 bg-background font-semibold text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <GitCompare className="h-3.5 w-3.5" />
+              <span>{t('diffToolbar.tabDiff')}</span>
+            </button>
+            <button
+              data-testid="diff-tab-file"
+              onClick={() => onChangeActiveTab('file')}
+              className={cn(
+                'flex items-center gap-1.5 rounded-md px-4 py-1 text-xs font-medium transition-all duration-200',
+                activeTab === 'file'
+                  ? 'border-b border-border/10 bg-background font-semibold text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              <span>{t('diffToolbar.tabFile')}</span>
+            </button>
+          </>
+        )}
+        {hasPreview && (
           <button
             data-testid="diff-tab-preview"
             onClick={() => onChangeActiveTab('preview')}
