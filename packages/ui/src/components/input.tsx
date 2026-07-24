@@ -54,6 +54,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       type,
       startIcon,
       endIcon,
+      autoCapitalize = 'off',
+      autoCorrect = 'off',
+      spellCheck = false,
       ...props
     },
     ref
@@ -62,6 +65,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       <input
         type={type}
         ref={ref}
+        autoCapitalize={autoCapitalize}
+        autoCorrect={autoCorrect}
+        spellCheck={spellCheck}
         className={cn(
           BASE,
           SIZE_CLASSES[inputSize],
