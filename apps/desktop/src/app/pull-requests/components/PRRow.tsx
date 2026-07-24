@@ -4,7 +4,6 @@ import {
   GitPullRequest,
   CheckCircle2,
   XCircle,
-  Circle,
   AlertTriangle,
   PanelRight,
   GitBranch,
@@ -86,44 +85,37 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
             {pr.status === 'merged' ? (
               <GitMerge
                 className="h-4 w-4 text-purple-500 dark:text-purple-400"
-                title={t('status.merged')}
                 aria-label={t('status.merged')}
               />
             ) : pr.status === 'closed' ? (
               <XCircle
                 className="h-4 w-4 text-red-500 dark:text-red-400"
-                title={t('status.closed')}
                 aria-label={t('status.closed')}
               />
             ) : pr.status === 'changes_requested' ? (
               <GitPullRequest
                 className="h-4 w-4 text-red-500 dark:text-red-400"
-                title={t('status.changes')}
                 aria-label={t('status.changes')}
               />
             ) : pr.isDraft || pr.status === 'draft' ? (
               <GitPullRequest
                 className="h-4 w-4 text-muted-foreground"
-                title={t('status.draft')}
                 aria-label={t('status.draft')}
               />
             ) : pr.status === 'approved' ? (
               <CheckCircle2
                 className="h-4 w-4 text-green-500 dark:text-green-400"
-                title={t('status.approved')}
                 aria-label={t('status.approved')}
               />
             ) : (
               <GitPullRequest
                 className="h-4 w-4 text-green-500 dark:text-green-400"
-                title={t('status.open')}
                 aria-label={t('status.open')}
               />
             )}
             {pr.needsRebase && (
               <AlertTriangle
                 className="h-4 w-4 text-amber-500 dark:text-amber-400"
-                title={t('row.rebaseRequired')}
                 aria-label={t('row.rebaseRequired')}
                 data-testid={`pr-rebase-icon-${pr.id}`}
               />
