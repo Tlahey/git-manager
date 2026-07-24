@@ -1,0 +1,157 @@
+/* Modern GitHub-Flavored Markdown styling integrated with Git Manager design system */
+
+.markdown-body {
+  word-wrap: break-word;
+  line-height: 1.6;
+}
+
+.markdown-body [align="center"] {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.markdown-body [align="center"] > p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+}
+
+.markdown-body p {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+/* Badge inline flow: when paragraph contains multiple images or image links, flow inline horizontally */
+.markdown-body p:has(img) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.markdown-body a {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.markdown-body img {
+  display: inline-block;
+  vertical-align: middle;
+  max-width: 100%;
+}
+
+.markdown-body sub,
+.markdown-body sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+
+.markdown-body sub {
+  bottom: -0.25em;
+}
+
+.markdown-body sup {
+  top: -0.5em;
+}
+
+/* Syntax Highlighting Theme for Highlight.js */
+
+.hljs {
+  color: var(--foreground, #c9d1d9);
+  background: transparent;
+}
+
+.hljs-doctag,
+.hljs-keyword,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-variable.language_ {
+  color: #ff7b72;
+  font-weight: 600;
+}
+
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-title.function_ {
+  color: #d2a8ff;
+  font-weight: 600;
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-literal,
+.hljs-meta,
+.hljs-number,
+.hljs-operator,
+.hljs-variable,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id {
+  color: #79c0ff;
+}
+
+.hljs-regexp,
+.hljs-string,
+.hljs-meta .hljs-string {
+  color: #a5d6ff;
+}
+
+.hljs-built_in,
+.hljs-symbol {
+  color: #ffa657;
+}
+
+.hljs-comment,
+.hljs-code,
+.hljs-formula {
+  color: #8b949e;
+  font-style: italic;
+}
+
+.hljs-name,
+.hljs-quote,
+.hljs-selector-tag,
+.hljs-selector-pseudo {
+  color: #7ee787;
+}
+
+.hljs-subst {
+  color: #c9d1d9;
+}
+
+.hljs-section {
+  color: #1f6feb;
+  font-weight: bold;
+}
+
+.hljs-bullet {
+  color: #f2cc60;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
+.hljs-addition {
+  color: #aff5b4;
+  background-color: #033a16;
+}
+
+.hljs-deletion {
+  color: #ffdcd7;
+  background-color: #67060c;
+}

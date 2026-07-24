@@ -17,6 +17,7 @@ import { apiOpenUrl } from '../../api/shell.api'
 import { resolveTagOrReleaseUrl } from '../../api/github.api'
 import { ThreeWayMergeEditor } from '../merge-editor/ThreeWayMergeEditor'
 import { BlameFileViewer } from './BlameFileViewer'
+import { Markdown } from '../Markdown'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { DiffToolbar } from './components/DiffToolbar'
 
@@ -30,7 +31,7 @@ interface DiffViewCenterProps {
     // `oid` vs its own first parent (see the summary panel).
     baseOid?: string
     // Which tab to open on ('diff' by default); the file-lookup palette sets 'file'.
-    initialTab?: 'diff' | 'file'
+    initialTab?: 'diff' | 'file' | 'preview'
   }
   onClose: () => void
   onRefresh?: () => void
@@ -40,7 +41,8 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
   const { t } = useTranslation('git')
   const [copied, setCopied] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [activeTab, setActiveTab] = useState<'diff' | 'file'>(file.initialTab ?? 'diff')
+  const isMarkdown = Boolean(file.path && /\.(md|markdown|mdown|mkdn|mdwn)$/i.test(file.path))
+  const [activeTab, setActiveTab] = useState<'diff' | 'file' | 'preview'>(file.initialTab ?? 'diff')
 
   // The initializer above only runs on mount; when a different file is opened into an already-mounted
   // viewer (e.g. picking another file from the command palette) re-apply its requested initial tab.
@@ -211,6 +213,7 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
         isProcessing={isProcessing}
         onToggleStage={handleToggleStage}
         onRollback={handleRollback}
+        isMarkdown={isMarkdown}
       />
 
       {/* ── DIFF CONTENT AREA ─────────────────────────────────────────────────── */}
@@ -317,7 +320,14 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
                     )}
                   </div>
                 )}
-                {activeTab === 'file' ? (
+                {activeTab === 'preview' ? (
+                  <div
+                    data-testid="markdown-file-preview"
+                    className="flex-1 overflow-y-auto bg-card/10 p-6 select-text"
+                  >
+                    <Markdown content={rawContents?.modified || ''} repoPath={repoPath} />
+                  </div>
+                ) : activeTab === 'file' ? (
                   <BlameFileViewer
                     repoPath={repoPath}
                     filePath={file.path}

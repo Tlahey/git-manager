@@ -77,7 +77,7 @@ describe('Markdown — code blocks', () => {
     const pre = container.querySelector('pre')!
     expect(pre).toBeInTheDocument()
     expect(pre.querySelector('code')).toHaveTextContent('const a = 1')
-    expect(pre.textContent).toContain('ts')
+    expect(pre.textContent?.toLowerCase()).toContain('ts')
   })
 
   it('omits the language label when the fence has no language', () => {

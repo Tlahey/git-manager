@@ -441,6 +441,7 @@
   "diffToolbar.unstaged": "Non indexé",
   "diffToolbar.tabDiff": "Diff",
   "diffToolbar.tabFile": "Fichier",
+  "diffToolbar.tabPreview": "Aperçu",
   "diffToolbar.blame": "Blame",
   "diffToolbar.history": "Historique",
   "diffToolbar.blameTitle": "Git Blame",

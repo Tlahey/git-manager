@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { BookOpen, X, RefreshCw, FileText, Github, Gitlab } from 'lucide-react'
+import { BookOpen, X, RefreshCw, FileText, Github, Gitlab, Code, Eye } from 'lucide-react'
 import { Button } from '@git-manager/ui'
 import { Markdown } from '../../../components/Markdown'
 import { useRepoReadme } from '../../../hooks/useRepoReadme'
@@ -16,6 +16,7 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
   const { t } = useTranslation(['dashboard', 'git'])
   const { data: content, isLoading, error } = useRepoReadme(path)
   const loading = isLoading || (content === undefined && !error)
+  const [showRaw, setShowRaw] = useState(false)
 
   const name = path.split('/').pop() || path
 
@@ -43,6 +44,17 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
           <span className="truncate text-xs font-semibold text-foreground">{name}</span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex h-7 items-center gap-1 px-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            onClick={() => setShowRaw(!showRaw)}
+            title={showRaw ? 'Mode Aperçu' : 'Mode Code Source'}
+            data-testid="readme-toggle-mode"
+          >
+            {showRaw ? <Eye className="h-3.5 w-3.5" /> : <Code className="h-3.5 w-3.5" />}
+            <span className="hidden sm:inline">{showRaw ? 'Aperçu' : 'Code'}</span>
+          </Button>
           {remoteUrl && (
             <Button
               variant="ghost"
@@ -90,10 +102,18 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
               {t('dashboard.noReadme') || 'Aucun fichier README trouvé.'}
             </p>
           </div>
+        ) : showRaw ? (
+          <pre
+            className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-foreground select-text p-2 rounded bg-muted/20 border border-border/40"
+            data-testid="readme-raw-content"
+          >
+            {content}
+          </pre>
         ) : (
-          <Markdown content={content} />
+          <Markdown content={content} repoPath={path} />
         )}
       </div>
     </div>
   )
 }
+
