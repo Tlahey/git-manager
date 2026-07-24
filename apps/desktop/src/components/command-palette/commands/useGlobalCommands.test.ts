@@ -58,6 +58,7 @@ describe('useGlobalCommands — availability', () => {
   it('adds repo commands when a repo is active', () => {
     toolbar.activeRepo = '/repo'
     const { commands } = ids()
+    expect(commands.some((c) => c.id === 'repo-create-pr')).toBe(true)
     expect(commands.some((c) => c.id === 'repo-fetch')).toBe(true)
     expect(commands.some((c) => c.id === 'repo-terminal')).toBe(true)
   })
@@ -89,6 +90,13 @@ describe('useGlobalCommands — run', () => {
     expect(useRepoUIStore.getState().activeTab).toBe(PULL_REQUESTS_TAB)
     ids().byId('nav-rewards')!.run()
     expect(useRepoUIStore.getState().activeTab).toBe(REWARDS_TAB)
+  })
+
+  it('repo-create-pr opens the create PR view and switches to the active repo tab', () => {
+    toolbar.activeRepo = '/repo'
+    ids().byId('repo-create-pr')!.run()
+    expect(useRepoUIStore.getState().activeTab).toBe('/repo')
+    expect(useRepoUIStore.getState().prCreateOpen).toBe(true)
   })
 
   it('repo commands delegate to the toolbar handlers', () => {

@@ -10,7 +10,10 @@ import { RenameBranchDialog } from '../../components/git-graph/RenameBranchDialo
 import { ActionToolbar } from '../../components/action-toolbar'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useSidebarBranchMenu } from '../../hooks/useSidebarBranchMenu'
+import { useFileExplorerStore } from '../../stores/fileExplorer.store'
 import { apiOpenRepo } from '../../api/repo.api'
+import { ProjectFilesView } from '../../components/file-explorer/ProjectFilesView'
+import { FileTreeSidebar } from '../../components/file-explorer/FileTreeSidebar'
 import { PendingFixupsBanner } from '../../components/fixup/PendingFixupsBanner'
 import { TimelineBar } from '../../components/timeline/TimelineBar'
 import { BisectBanner } from '../../components/bisect/BisectBanner'
@@ -31,6 +34,9 @@ export function RepoView() {
   // Solo mode: when active, the graph is isolated to the soloed branches (see soloMode.store.ts).
   const soloActive = useSoloModeStore((s) => s.active)
   const soloed = useSoloModeStore((s) => s.soloed)
+
+  const isFileExplorerOpen = useFileExplorerStore((s) => s.isOpen)
+  const isSidebarOpen = useFileExplorerStore((s) => s.isSidebarOpen)
 
   // Viewing a workspace (linked worktree) swaps every data-driven view (sidebar, graph) onto its
   // path instead of the repo tab's own — the tab/`activeRepo` itself never changes, only what's
@@ -103,15 +109,21 @@ export function RepoView() {
           onContextMenu={openBranchMenu}
         />
 
-        {/* Zone centrale — historique plein largeur */}
+        {/* Zone centrale — historique plein largeur ou fichiers */}
         <div className="flex flex-1 flex-col overflow-hidden">
-          <GitGraph
-            repoPath={repoPath}
-            branch={selectedBranch ?? undefined}
-            soloBranches={soloActive ? Array.from(soloed) : undefined}
-            searchQuery={searchQuery}
-          />
+          {isFileExplorerOpen ? (
+            <ProjectFilesView />
+          ) : (
+            <GitGraph
+              repoPath={repoPath}
+              branch={selectedBranch ?? undefined}
+              soloBranches={soloActive ? Array.from(soloed) : undefined}
+              searchQuery={searchQuery}
+            />
+          )}
         </div>
+
+        {isFileExplorerOpen && isSidebarOpen && <FileTreeSidebar />}
 
         <TimelineBar repoPath={repoPath} />
 

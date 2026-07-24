@@ -10,6 +10,7 @@ import {
   History,
   Archive,
   ArchiveRestore,
+  FolderOpen,
 } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { useActionToolbar } from '../../hooks/useActionToolbar'
@@ -19,6 +20,7 @@ import { useIsCommitsView } from '../../hooks/useIsCommitsView'
 import { useRunTasks } from '../../hooks/useRunTasks'
 import { useCommandPaletteStore } from '../../stores/commandPalette.store'
 import { useCommitSearchStore } from '../../stores/commitSearch.store'
+import { useFileExplorerStore } from '../../stores/fileExplorer.store'
 import { RepoSelector } from './RepoSelector'
 import { BranchContext } from './BranchContext'
 import { StateTags } from './StateTags'
@@ -67,6 +69,9 @@ export function ActionToolbar() {
     const pointer = useUndoHistoryStore.getState().byRepo[activeRepo]?.pointer ?? 0
     useTimelineNavStore.getState().open(activeRepo, pointer)
   }
+
+  const isFileExplorerOpen = useFileExplorerStore((s) => s.isOpen)
+  const toggleFileExplorer = useFileExplorerStore((s) => s.actions.toggleOpen)
 
   return (
     <div className="chrome-surface flex h-[52px] shrink-0 items-center gap-1 overflow-hidden border-b border-border bg-sidebar px-2">
@@ -197,10 +202,18 @@ export function ActionToolbar() {
       {/* ── Section droite : actions & recherche ──────────────── */}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         <ToolbarButton
+          icon={<FolderOpen className={`h-4 w-4 ${isFileExplorerOpen ? 'text-primary' : 'text-muted-foreground'}`} />}
+          label={isFileExplorerOpen ? 'Fermer fichiers' : 'Fichiers'}
+          title="Afficher les fichiers du dépôt"
+          disabled={disabled}
+          onClick={() => toggleFileExplorer()}
+          data-testid="toolbar-files-button"
+        />
+        <ToolbarButton
           icon={<CommandIcon className="h-4 w-4 text-muted-foreground" />}
           label={t('toolbar.actions')}
           title={`${t('toolbar.actions')} (⌘K)`}
-          onClick={() => useCommandPaletteStore.getState().toggle()}
+          onClick={() => useCommandPaletteStore.getState().toggle('all')}
           data-testid="toolbar-actions-button"
         />
         <ToolbarButton

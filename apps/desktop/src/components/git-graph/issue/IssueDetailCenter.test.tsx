@@ -4,6 +4,9 @@ import userEvent from '@testing-library/user-event'
 import type { GhRawIssue } from '../../../api/github.api'
 import type { MockIssue } from '../../../app/pull-requests/types'
 
+const { pluginOpen } = vi.hoisted(() => ({ pluginOpen: vi.fn() }))
+vi.mock('@tauri-apps/plugin-shell', () => ({ open: pluginOpen }))
+
 vi.mock('../pr/PrComments', () => ({ PrComments: () => <div data-testid="pr-comments-stub" /> }))
 vi.mock('../pr/PrCommentBox', () => ({
   PrCommentBox: () => <div data-testid="pr-comment-box-stub" />,
@@ -97,5 +100,13 @@ describe('IssueDetailCenter', () => {
     renderCenter(onClose)
     await user.click(screen.getByTestId('issue-detail-back'))
     expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('opens GitHub when the open-github header button is clicked', async () => {
+    const user = userEvent.setup()
+    mockDetail(raw({ html_url: 'https://github.com/org/repo/issues/7' }))
+    renderCenter()
+    await user.click(screen.getByTestId('issue-open-github'))
+    expect(pluginOpen).toHaveBeenCalledWith('https://github.com/org/repo/issues/7')
   })
 })

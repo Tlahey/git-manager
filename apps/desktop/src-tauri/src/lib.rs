@@ -51,7 +51,7 @@ use commands::remote::{
     get_remotes, get_tag_web_url, pull_branch, push_branch, push_branch_to, remove_remote,
 };
 use commands::repo::{
-    clone_repo, get_repo_readme, get_repo_status, get_repo_summary, get_terminal_commands,
+    clone_repo, get_repo_files, get_repo_readme, get_repo_status, get_repo_summary, get_terminal_commands,
     init_repo, list_tracked_files, open_in_editor, open_in_terminal, open_repo, scan_repos,
 };
 use commands::rollback::{get_commits_between, reset_to_commit, revert_commit};
@@ -159,6 +159,7 @@ pub fn run() {
             // Repo
             open_repo,
             get_repo_status,
+            get_repo_files,
             list_tracked_files,
             scan_repos,
             clone_repo,

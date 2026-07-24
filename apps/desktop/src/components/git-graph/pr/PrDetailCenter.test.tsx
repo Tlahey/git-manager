@@ -6,6 +6,9 @@ vi.mock('@git-manager/i18n', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }))
 
+const { pluginOpen } = vi.hoisted(() => ({ pluginOpen: vi.fn() }))
+vi.mock('@tauri-apps/plugin-shell', () => ({ open: pluginOpen }))
+
 const { usePrDetailMock } = vi.hoisted(() => ({ usePrDetailMock: vi.fn() }))
 vi.mock('../../../hooks/usePrDetail', () => ({ usePrDetail: usePrDetailMock }))
 
@@ -84,5 +87,17 @@ describe('PrDetailCenter', () => {
     render(<PrDetailCenter repoPath="/repo" prNumber={7} onClose={onClose} />)
     await userEvent.setup().click(screen.getByTestId('pr-detail-back'))
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('opens GitHub when the open-github header button is clicked', async () => {
+    usePrDetailMock.mockReturnValue({
+      pr: pr({ html_url: 'https://github.com/owner/repo/pull/7' }),
+      isLoading: false,
+      error: null,
+      mutate: vi.fn(),
+    })
+    render(<PrDetailCenter repoPath="owner/repo" prNumber={7} onClose={vi.fn()} />)
+    await userEvent.setup().click(screen.getByTestId('pr-open-github'))
+    expect(pluginOpen).toHaveBeenCalledWith('https://github.com/owner/repo/pull/7')
   })
 })

@@ -271,6 +271,64 @@ describe('useKeyboardShortcuts — settings shortcut', () => {
   })
 })
 
+describe('useKeyboardShortcuts — command palette (⌘K)', () => {
+  it('toggles the palette open in "all" mode on Ctrl+K', () => {
+    renderHook(() =>
+      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+    )
+    dispatchFrom(plainEl, { key: 'k', ctrlKey: true })
+    expect(useCommandPaletteStore.getState().open).toBe(true)
+    expect(useCommandPaletteStore.getState().mode).toBe('all')
+  })
+})
+
+describe('useKeyboardShortcuts — file search palette (⌘P)', () => {
+  it('toggles the palette open in "files" mode on Ctrl+P', () => {
+    renderHook(() =>
+      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+    )
+    dispatchFrom(plainEl, { key: 'p', ctrlKey: true })
+    expect(useCommandPaletteStore.getState().open).toBe(true)
+    expect(useCommandPaletteStore.getState().mode).toBe('files')
+  })
+
+  it('toggles back closed on a second Ctrl+P', () => {
+    useCommandPaletteStore.setState({ open: true, mode: 'files' })
+    renderHook(() =>
+      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+    )
+    dispatchFrom(plainEl, { key: 'p', ctrlKey: true })
+    expect(useCommandPaletteStore.getState().open).toBe(false)
+  })
+
+  it('opens even while focused inside an input (handled before the typing guard)', () => {
+    renderHook(() =>
+      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+    )
+    dispatchFrom(inputEl, { key: 'p', ctrlKey: true })
+    expect(useCommandPaletteStore.getState().open).toBe(true)
+  })
+
+  it('does not toggle when Alt is also held', () => {
+    renderHook(() =>
+      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+    )
+    dispatchFrom(plainEl, { key: 'p', ctrlKey: true, altKey: true })
+    expect(useCommandPaletteStore.getState().open).toBe(false)
+  })
+
+  it('uses metaKey on a Mac user agent', () => {
+    setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
+    renderHook(() =>
+      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
+    )
+    dispatchFrom(plainEl, { key: 'p', ctrlKey: true }) // ctrl alone shouldn't trigger on Mac
+    expect(useCommandPaletteStore.getState().open).toBe(false)
+    dispatchFrom(plainEl, { key: 'p', metaKey: true })
+    expect(useCommandPaletteStore.getState().open).toBe(true)
+  })
+})
+
 describe('useKeyboardShortcuts — close tab shortcut', () => {
   it('Mod+W closes the active repo tab', () => {
     useRepoUIStore.setState({ openTabs: ['/repo/a'], activeTab: '/repo/a' })
@@ -312,52 +370,6 @@ describe('useKeyboardShortcuts — close tab shortcut', () => {
     )
     dispatchFrom(plainEl, { key: 'w', ctrlKey: true })
     expect(closeTabSpy).not.toHaveBeenCalled()
-  })
-})
-
-describe('useKeyboardShortcuts — command palette (⌘K)', () => {
-  it('toggles the palette open on Ctrl+K', () => {
-    renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
-    )
-    dispatchFrom(plainEl, { key: 'k', ctrlKey: true })
-    expect(useCommandPaletteStore.getState().open).toBe(true)
-  })
-
-  it('toggles back closed on a second Ctrl+K', () => {
-    useCommandPaletteStore.setState({ open: true })
-    renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
-    )
-    dispatchFrom(plainEl, { key: 'k', ctrlKey: true })
-    expect(useCommandPaletteStore.getState().open).toBe(false)
-  })
-
-  it('opens even while focused inside an input (handled before the typing guard)', () => {
-    renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
-    )
-    dispatchFrom(inputEl, { key: 'k', ctrlKey: true })
-    expect(useCommandPaletteStore.getState().open).toBe(true)
-  })
-
-  it('does not toggle when Alt is also held', () => {
-    renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
-    )
-    dispatchFrom(plainEl, { key: 'k', ctrlKey: true, altKey: true })
-    expect(useCommandPaletteStore.getState().open).toBe(false)
-  })
-
-  it('uses metaKey on a Mac user agent', () => {
-    setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
-    renderHook(() =>
-      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings: vi.fn(), showSettings: false })
-    )
-    dispatchFrom(plainEl, { key: 'k', ctrlKey: true }) // ctrl alone shouldn't trigger on Mac
-    expect(useCommandPaletteStore.getState().open).toBe(false)
-    dispatchFrom(plainEl, { key: 'k', metaKey: true })
-    expect(useCommandPaletteStore.getState().open).toBe(true)
   })
 })
 

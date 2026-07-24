@@ -43,13 +43,15 @@ interface DiffToolbarProps {
   copied: boolean
   onCopyPath: () => void
   onClose: () => void
-  activeTab: 'diff' | 'file'
-  onChangeActiveTab: (tab: 'diff' | 'file') => void
+  activeTab: 'diff' | 'file' | 'preview'
+  onChangeActiveTab: (tab: 'diff' | 'file' | 'preview') => void
   activeLeftPanel: 'sidebar' | 'blame' | 'history'
   onChangeActiveLeftPanel: (panel: 'sidebar' | 'blame' | 'history') => void
   isProcessing: boolean
   onToggleStage: () => void
   onRollback: () => void
+  hasPreview?: boolean
+  isImage?: boolean
 }
 
 /**
@@ -74,6 +76,8 @@ export function DiffToolbar({
   isProcessing,
   onToggleStage,
   onRollback,
+  hasPreview,
+  isImage,
 }: DiffToolbarProps) {
   const { t } = useTranslation('git')
   return (
@@ -151,34 +155,53 @@ export function DiffToolbar({
         </div>
       </div>
 
-      {/* Center: View mode tabs (Diff, File) */}
+      {/* Center: View mode tabs (Diff, File, Preview) */}
       <div className="mx-4 flex shrink-0 items-center rounded-lg border border-border/50 bg-muted/60 p-0.5">
-        <button
-          data-testid="diff-tab-diff"
-          onClick={() => onChangeActiveTab('diff')}
-          className={cn(
-            'flex items-center gap-1.5 rounded-md px-4 py-1 text-xs font-medium transition-all duration-200',
-            activeTab === 'diff'
-              ? 'border-b border-border/10 bg-background font-semibold text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          <GitCompare className="h-3.5 w-3.5" />
-          <span>{t('diffToolbar.tabDiff')}</span>
-        </button>
-        <button
-          data-testid="diff-tab-file"
-          onClick={() => onChangeActiveTab('file')}
-          className={cn(
-            'flex items-center gap-1.5 rounded-md px-4 py-1 text-xs font-medium transition-all duration-200',
-            activeTab === 'file'
-              ? 'border-b border-border/10 bg-background font-semibold text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          <FileText className="h-3.5 w-3.5" />
-          <span>{t('diffToolbar.tabFile')}</span>
-        </button>
+        {!isImage && (
+          <>
+            <button
+              data-testid="diff-tab-diff"
+              onClick={() => onChangeActiveTab('diff')}
+              className={cn(
+                'flex items-center gap-1.5 rounded-md px-4 py-1 text-xs font-medium transition-all duration-200',
+                activeTab === 'diff'
+                  ? 'border-b border-border/10 bg-background font-semibold text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <GitCompare className="h-3.5 w-3.5" />
+              <span>{t('diffToolbar.tabDiff')}</span>
+            </button>
+            <button
+              data-testid="diff-tab-file"
+              onClick={() => onChangeActiveTab('file')}
+              className={cn(
+                'flex items-center gap-1.5 rounded-md px-4 py-1 text-xs font-medium transition-all duration-200',
+                activeTab === 'file'
+                  ? 'border-b border-border/10 bg-background font-semibold text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              <span>{t('diffToolbar.tabFile')}</span>
+            </button>
+          </>
+        )}
+        {hasPreview && (
+          <button
+            data-testid="diff-tab-preview"
+            onClick={() => onChangeActiveTab('preview')}
+            className={cn(
+              'flex items-center gap-1.5 rounded-md px-4 py-1 text-xs font-medium transition-all duration-200',
+              activeTab === 'preview'
+                ? 'border-b border-border/10 bg-background font-semibold text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Eye className="h-3.5 w-3.5" />
+            <span>{t('diffToolbar.tabPreview')}</span>
+          </button>
+        )}
       </div>
 
       {/* Right Side: Diff toggle + Stage/Rollback Actions */}

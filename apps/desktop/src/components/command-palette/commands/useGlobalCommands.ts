@@ -22,6 +22,7 @@ import {
   PULL_REQUESTS_TAB,
   REWARDS_TAB,
 } from '../../../stores/repoUI.store'
+import { useFileExplorerStore } from '../../../stores/fileExplorer.store'
 import { useActionToolbar } from '../../../hooks/useActionToolbar'
 import { useOpenRepository } from '../../../hooks/useOpenRepository'
 import type { Section } from '../../../app/settings/SettingsPage'
@@ -55,8 +56,10 @@ export function useGlobalCommands({
   const { t } = useTranslation('common')
   const { t: tGit } = useTranslation('git')
   const setActiveTab = useRepoUIStore((s) => s.setActiveTab)
+  const setPrCreateOpen = useRepoUIStore((s) => s.setPrCreateOpen)
   const openRepository = useOpenRepository()
   const toolbar = useActionToolbar(tGit)
+  const toggleFileExplorer = useFileExplorerStore((s) => s.actions.toggleOpen)
 
   const commands: PaletteCommand[] = [
     {
@@ -104,6 +107,17 @@ export function useGlobalCommands({
 
   if (toolbar.activeRepo) {
     commands.push(
+      {
+        id: 'repo-create-pr',
+        group: 'repo',
+        title: t('commandPalette.repo.createPr'),
+        keywords: ['pr', 'pull request', 'create pr', 'new pr', 'github'],
+        icon: createElement(GitPullRequest),
+        run: () => {
+          setActiveTab(toolbar.activeRepo!)
+          setPrCreateOpen(true)
+        },
+      },
       {
         id: 'repo-fetch',
         group: 'repo',
@@ -156,6 +170,17 @@ export function useGlobalCommands({
       keywords: ['shell', 'console'],
       icon: createElement(TerminalSquare),
       run: () => void toolbar.handleOpenTerminal(),
+    })
+    commands.push({
+      id: 'repo-files',
+      group: 'repo',
+      title: t('commandPalette.repo.files', { defaultValue: 'Open file view' }),
+      keywords: ['files', 'tree', 'explorer'],
+      icon: createElement(FolderOpen),
+      run: () => {
+        setActiveTab(toolbar.activeRepo!)
+        toggleFileExplorer()
+      },
     })
   }
 

@@ -15,9 +15,12 @@ import {
 } from '../../api/git.api'
 import { apiOpenUrl } from '../../api/shell.api'
 import { resolveTagOrReleaseUrl } from '../../api/github.api'
+import { convertFileSrc } from '@tauri-apps/api/core'
 import { ThreeWayMergeEditor } from '../merge-editor/ThreeWayMergeEditor'
 import { BlameFileViewer } from './BlameFileViewer'
+import { Markdown } from '../Markdown'
 import { useRepoUIStore } from '../../stores/repoUI.store'
+import { useFileHistory } from '../../hooks/useFileHistory'
 import { DiffToolbar } from './components/DiffToolbar'
 
 interface DiffViewCenterProps {
@@ -30,7 +33,8 @@ interface DiffViewCenterProps {
     // `oid` vs its own first parent (see the summary panel).
     baseOid?: string
     // Which tab to open on ('diff' by default); the file-lookup palette sets 'file'.
-    initialTab?: 'diff' | 'file'
+    initialTab?: 'diff' | 'file' | 'preview'
+    unmodified?: boolean
   }
   onClose: () => void
   onRefresh?: () => void
@@ -40,7 +44,10 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
   const { t } = useTranslation('git')
   const [copied, setCopied] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [activeTab, setActiveTab] = useState<'diff' | 'file'>(file.initialTab ?? 'diff')
+  const isMarkdown = Boolean(file.path && /\.(md|markdown|mdown|mkdn|mdwn)$/i.test(file.path))
+  const isImage = Boolean(file.path && /\.(png|jpe?g|gif|webp|svg|ico)$/i.test(file.path))
+  const hasPreview = isMarkdown || isImage
+  const [activeTab, setActiveTab] = useState<'diff' | 'file' | 'preview'>(file.initialTab ?? 'diff')
 
   // The initializer above only runs on mount; when a different file is opened into an already-mounted
   // viewer (e.g. picking another file from the command palette) re-apply its requested initial tab.
@@ -52,7 +59,15 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
   const setActiveLeftPanel = useRepoUIStore((s) => s.setActiveLeftPanel)
   const selectedHistoryOid = useRepoUIStore((s) => s.selectedHistoryOid)
   const setSelectedHistoryOid = useRepoUIStore((s) => s.setSelectedHistoryOid)
+  const setActiveDiffFile = useRepoUIStore((s) => s.setActiveDiffFile)
   const [shaCopied, setShaCopied] = useState(false)
+
+  // Auto-inject the currently viewed file into the global UI store so that
+  // side panels (like Blame/History) always have the correct file context,
+  // regardless of which parent component (GitGraph, ProjectFilesView) rendered us.
+  useEffect(() => {
+    setActiveDiffFile(file)
+  }, [file.path, file.staged, file.oid, file.baseOid, file.initialTab, setActiveDiffFile])
 
   // Commit whose version we're showing: a version picked in the History panel takes precedence over
   // the file's own review commit. Both the "Diff" tab (this commit vs its parent) and the "File" tab
@@ -86,6 +101,23 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
 
   const isLoading = isLoadingMeta || isLoadingRaw
   const isWip = !effectiveOid
+
+  const isUnmodifiedWip = isWip && file.unmodified
+  const { data: history } = useFileHistory(repoPath, isUnmodifiedWip ? file.path : null)
+  const [hasAutoSelected, setHasAutoSelected] = useState(false)
+
+  // Reset auto-select flag if we switch to a different file
+  useEffect(() => {
+    setHasAutoSelected(false)
+  }, [file.path])
+
+  // Automatically select the latest commit if the user tries to view an unmodified file
+  useEffect(() => {
+    if (isUnmodifiedWip && history && history.length > 0 && !hasAutoSelected) {
+      setSelectedHistoryOid(history[0].oid)
+      setHasAutoSelected(true)
+    }
+  }, [isUnmodifiedWip, history, hasAutoSelected, setSelectedHistoryOid])
 
   const displayPath = useMemo(() => {
     if (!diffData) return file.path
@@ -211,6 +243,8 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
         isProcessing={isProcessing}
         onToggleStage={handleToggleStage}
         onRollback={handleRollback}
+        hasPreview={hasPreview}
+        isImage={isImage}
       />
 
       {/* ── DIFF CONTENT AREA ─────────────────────────────────────────────────── */}
@@ -225,15 +259,15 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
           </div>
         )}
 
-        {!isLoading && !diffData && (
+        {!isLoading && !diffData && activeTab === 'diff' && (
           <div className="flex h-40 w-full items-center justify-center text-muted-foreground">
             No difference data found.
           </div>
         )}
 
-        {!isLoading && diffData && (
+        {!isLoading && (diffData || activeTab !== 'diff') && (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
-            {diffData.isBinary ? (
+            {diffData?.isBinary ? (
               <div
                 data-testid="diff-binary-placeholder"
                 className="rounded-lg border border-border bg-muted/20 px-4 py-8 text-center italic text-muted-foreground"
@@ -317,7 +351,33 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
                     )}
                   </div>
                 )}
-                {activeTab === 'file' ? (
+                {activeTab === 'preview' ? (
+                  <div
+                    data-testid="file-preview-area"
+                    className="flex-1 overflow-y-auto bg-card/10 p-6 select-text flex items-center justify-center"
+                  >
+                    {isMarkdown ? (
+                      <div className="w-full h-full max-w-4xl mx-auto block">
+                        <Markdown content={rawContents?.modified || ''} repoPath={repoPath} />
+                      </div>
+                    ) : isImage ? (
+                      <div className="flex flex-col items-center gap-4">
+                        <img 
+                          src={convertFileSrc(`${repoPath}/${file.path}`)} 
+                          alt="File preview" 
+                          className="max-w-full max-h-[70vh] rounded shadow-sm object-contain bg-neutral-100 dark:bg-neutral-800" 
+                        />
+                        {effectiveOid && (
+                          <div className="text-[10px] text-muted-foreground italic">
+                            Note: Preview shows current local file, not historic version.
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-muted-foreground">Preview not available</div>
+                    )}
+                  </div>
+                ) : activeTab === 'file' ? (
                   <BlameFileViewer
                     repoPath={repoPath}
                     filePath={file.path}

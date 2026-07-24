@@ -8,14 +8,12 @@ export function TableHeader() {
   return (
     <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/10 px-4 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
       <div className="w-7 shrink-0" />
-      <div className="w-4 shrink-0" />
-      <div className="min-w-0 flex-1">{t('table.item')}</div>
       <div className="w-[52px] shrink-0 text-right">{t('table.updated')}</div>
-      <div className="w-[80px] shrink-0 text-center">{t('table.status')}</div>
+      <div className="w-[70px] shrink-0 text-left">{t('table.status')}</div>
+      <div className="min-w-0 flex-1">{t('table.item')}</div>
       <div className="w-[90px] shrink-0">{t('table.author')}</div>
       <div className="w-[60px] shrink-0 text-center">{t('table.with')}</div>
-      <div className="w-[110px] shrink-0">{t('table.repo')}</div>
-      <div className="w-[60px] shrink-0 text-center">{t('table.ci')}</div>
+      <div className="w-[130px] shrink-0">{t('table.repo')}</div>
       <div className="w-[150px] shrink-0" />
     </div>
   )

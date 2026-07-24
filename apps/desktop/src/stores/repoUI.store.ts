@@ -52,7 +52,8 @@ export interface ActiveDiffFile {
    * sets `'file'` so the file's contents are shown straight away (there's no meaningful diff when
    * just browsing a file).
    */
-  initialTab?: 'diff' | 'file'
+  initialTab?: 'diff' | 'file' | 'preview'
+  unmodified?: boolean
 }
 
 interface RepoUIState {

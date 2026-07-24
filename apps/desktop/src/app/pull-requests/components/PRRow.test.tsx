@@ -98,14 +98,14 @@ describe('PRRow — content', () => {
     expect(screen.queryByTestId('pr-branch-pr-c')).not.toBeInTheDocument()
   })
 
-  it('shows a rebase-required badge when needsRebase is true', () => {
+  it('shows a rebase-required icon when needsRebase is true', () => {
     render(<PRRow pr={pr({ needsRebase: true })} pinned={false} onTogglePin={vi.fn()} />)
-    expect(screen.getByText('Rebase required')).toBeInTheDocument()
+    expect(screen.getByLabelText('Rebase required')).toBeInTheDocument()
   })
 
-  it('hides the rebase-required badge otherwise', () => {
+  it('hides the rebase-required icon otherwise', () => {
     render(<PRRow pr={pr({ needsRebase: false })} pinned={false} onTogglePin={vi.fn()} />)
-    expect(screen.queryByText('Rebase required')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Rebase required')).not.toBeInTheDocument()
   })
 
   it('shows an em-dash when there are no collaborators, an avatar stack otherwise', () => {
@@ -126,33 +126,25 @@ describe('PRRow — content', () => {
   })
 })
 
-describe('PRRow — status icon', () => {
-  it('shows a purple merge icon for merged PRs', () => {
-    const { container } = render(
-      <PRRow pr={pr({ status: 'merged' })} pinned={false} onTogglePin={vi.fn()} />
-    )
-    expect(container.querySelector('.text-purple-400')).toBeTruthy()
+describe('PRRow — status icons', () => {
+  it('shows a merged icon for merged PRs', () => {
+    render(<PRRow pr={pr({ status: 'merged' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByLabelText('Merged')).toBeInTheDocument()
   })
 
-  it('shows a destructive X icon for closed PRs', () => {
-    const { container } = render(
-      <PRRow pr={pr({ status: 'closed' })} pinned={false} onTogglePin={vi.fn()} />
-    )
-    expect(container.querySelector('.text-destructive')).toBeTruthy()
+  it('shows a closed icon for closed PRs', () => {
+    render(<PRRow pr={pr({ status: 'closed' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByLabelText('Closed')).toBeInTheDocument()
   })
 
-  it('shows a muted circle icon for draft PRs', () => {
-    const { container } = render(
-      <PRRow pr={pr({ status: 'open', isDraft: true })} pinned={false} onTogglePin={vi.fn()} />
-    )
-    expect(container.querySelector('.lucide-circle')).toBeTruthy()
+  it('shows a draft icon for draft PRs', () => {
+    render(<PRRow pr={pr({ status: 'draft' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByLabelText('Draft')).toBeInTheDocument()
   })
 
-  it('shows a green PR icon for open, non-draft PRs', () => {
-    const { container } = render(
-      <PRRow pr={pr({ status: 'open', isDraft: false })} pinned={false} onTogglePin={vi.fn()} />
-    )
-    expect(container.querySelector('.text-green-400')).toBeTruthy()
+  it('shows an open icon for open PRs', () => {
+    render(<PRRow pr={pr({ status: 'open' })} pinned={false} onTogglePin={vi.fn()} />)
+    expect(screen.getByLabelText('Open')).toBeInTheDocument()
   })
 })
 
@@ -178,8 +170,8 @@ describe('PRRow — pin button', () => {
   })
 })
 
-describe('PRRow — row click', () => {
-  it('opens the PR url on GitHub when no in-app view is available', async () => {
+describe('PRRow — PR number link and row click', () => {
+  it('opens the PR url on GitHub when clicking the #number link', async () => {
     render(
       <PRRow
         pr={pr({ url: 'https://github.com/owner/git-manager/pull/42' })}
@@ -188,14 +180,14 @@ describe('PRRow — row click', () => {
       />
     )
     await act(async () => {
-      fireEvent.click(screen.getByText('Add feature X'))
+      fireEvent.click(screen.getByText('#42'))
       await Promise.resolve()
       await Promise.resolve()
     })
     expect(pluginOpen).toHaveBeenCalledWith('https://github.com/owner/git-manager/pull/42')
   })
 
-  it('opens the in-app PR view instead of GitHub when a handler is provided', async () => {
+  it('does not open GitHub or panel when clicking on the row title', async () => {
     const onOpen = vi.fn()
     const thePr = pr({ id: 'pr-9', url: 'https://github.com/owner/git-manager/pull/42' })
     render(
@@ -207,7 +199,7 @@ describe('PRRow — row click', () => {
       fireEvent.click(screen.getByText('Add feature X'))
       await Promise.resolve()
     })
-    expect(onOpen).toHaveBeenCalledWith(thePr)
+    expect(onOpen).not.toHaveBeenCalled()
     expect(pluginOpen).not.toHaveBeenCalled()
   })
 })

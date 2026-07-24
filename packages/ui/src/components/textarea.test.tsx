@@ -36,4 +36,20 @@ describe('Textarea', () => {
     render(<Textarea ref={ref} />)
     expect(ref.current).toBeInstanceOf(HTMLTextAreaElement)
   })
+
+  it('disables autoCapitalize, autoCorrect, and spellCheck by default', () => {
+    render(<Textarea data-testid="textarea" />)
+    const el = screen.getByTestId('textarea')
+    expect(el).toHaveAttribute('autocapitalize', 'off')
+    expect(el).toHaveAttribute('autocorrect', 'off')
+    expect(el.getAttribute('spellcheck')).toBe('false')
+  })
+
+  it('allows overriding autoCapitalize, autoCorrect, and spellCheck props', () => {
+    render(<Textarea data-testid="textarea" autoCapitalize="on" autoCorrect="on" spellCheck={true} />)
+    const el = screen.getByTestId('textarea')
+    expect(el).toHaveAttribute('autocapitalize', 'on')
+    expect(el).toHaveAttribute('autocorrect', 'on')
+    expect(el.getAttribute('spellcheck')).toBe('true')
+  })
 })

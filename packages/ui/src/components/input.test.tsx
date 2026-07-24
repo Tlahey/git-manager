@@ -84,4 +84,20 @@ describe('Input', () => {
     expect(el.className).toContain('pl-8')
     expect(el.className).toContain('pr-8')
   })
+
+  it('disables autoCapitalize, autoCorrect, and spellCheck by default', () => {
+    render(<Input data-testid="input" />)
+    const el = screen.getByTestId('input')
+    expect(el).toHaveAttribute('autocapitalize', 'off')
+    expect(el).toHaveAttribute('autocorrect', 'off')
+    expect(el.getAttribute('spellcheck')).toBe('false')
+  })
+
+  it('allows overriding autoCapitalize, autoCorrect, and spellCheck props', () => {
+    render(<Input data-testid="input" autoCapitalize="on" autoCorrect="on" spellCheck={true} />)
+    const el = screen.getByTestId('input')
+    expect(el).toHaveAttribute('autocapitalize', 'on')
+    expect(el).toHaveAttribute('autocorrect', 'on')
+    expect(el.getAttribute('spellcheck')).toBe('true')
+  })
 })

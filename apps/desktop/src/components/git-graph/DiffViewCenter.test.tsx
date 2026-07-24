@@ -158,6 +158,16 @@ describe('DiffViewCenter — diff/file wiring', () => {
     })
     expect(screen.queryByTestId('three-way-merge-editor')).not.toBeInTheDocument()
   })
+
+  it('passes hasPreview=true to DiffToolbar and renders preview area when "preview" tab is selected', () => {
+    renderCenter({ path: 'README.md' })
+    expect((lastToolbarProps.current as any).hasPreview).toBe(true)
+
+    act(() => (lastToolbarProps.current as any).onChangeActiveTab('preview'))
+    expect(screen.getByTestId('file-preview-area')).toBeInTheDocument()
+    expect(screen.queryByTestId('three-way-merge-editor')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('blame-file-viewer')).not.toBeInTheDocument()
+  })
 })
 
 describe('DiffViewCenter — copy path', () => {

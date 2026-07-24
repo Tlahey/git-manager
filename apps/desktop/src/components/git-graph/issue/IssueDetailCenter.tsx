@@ -1,4 +1,4 @@
-import { ChevronLeft, CircleDot, CircleCheck } from 'lucide-react'
+import { ChevronLeft, CircleDot, CircleCheck, ExternalLink } from 'lucide-react'
 import { Spinner } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { PrComments } from '../pr/PrComments'
@@ -7,6 +7,7 @@ import { IssueTitle } from './IssueTitle'
 import { IssueDescription } from './IssueDescription'
 import { IssueMetaSidebar } from './IssueMetaSidebar'
 import { useIssueDetail } from '../../../hooks/useIssueDetail'
+import { openUrl } from '../../../app/pull-requests/utils'
 import type { MockIssue } from '../../../app/pull-requests/types'
 
 interface IssueDetailCenterProps {
@@ -34,6 +35,11 @@ export function IssueDetailCenter({
   const { issue: detail, isLoading } = useIssueDetail(repoPath, issueNumber)
   const isOpen = detail?.state === 'open'
 
+  const issueUrl =
+    issue.url ||
+    detail?.html_url ||
+    (repoPath.includes('/') ? `https://github.com/${repoPath}/issues/${issueNumber}` : undefined)
+
   return (
     <div data-testid="issue-detail-center" className="flex h-full flex-col overflow-hidden">
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
@@ -47,6 +53,18 @@ export function IssueDetailCenter({
         </button>
         <CircleDot className="ml-1 h-3.5 w-3.5 text-primary" />
         <span className="text-xs text-muted-foreground">{t('issue.view.title')}</span>
+
+        <button
+          onClick={() => issueUrl && openUrl(issueUrl)}
+          disabled={!issueUrl}
+          data-testid="issue-open-github"
+          title={t('issue.view.openOnGitHub')}
+          aria-label={t('issue.view.openOnGitHub')}
+          className="ml-auto flex items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          <span>{t('issue.view.openOnGitHub')}</span>
+        </button>
       </div>
 
       {isLoading || !detail ? (

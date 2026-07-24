@@ -1,8 +1,9 @@
 import { useTranslation } from '@git-manager/i18n'
 import { Spinner } from '@git-manager/ui'
-import { ChevronLeft, GitPullRequest, PanelRightClose, PanelRightOpen } from 'lucide-react'
+import { ChevronLeft, ExternalLink, GitPullRequest, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { usePrDetail } from '../../../hooks/usePrDetail'
+import { openUrl } from '../../../app/pull-requests/utils'
 import { PrTitle } from './PrTitle'
 import { PrMeta } from './PrMeta'
 import { PrDescription } from './PrDescription'
@@ -27,6 +28,8 @@ export function PrDetailCenter({ repoPath, prNumber, onClose }: PrDetailCenterPr
   const prFilesVisible = useRepoUIStore((s) => s.prFilesVisible)
   const togglePrFiles = useRepoUIStore((s) => s.togglePrFiles)
 
+  const prUrl = pr?.html_url ?? (repoPath.includes('/') ? `https://github.com/${repoPath}/pull/${prNumber}` : undefined)
+
   return (
     <div data-testid="pr-detail-center" className="flex h-full flex-col overflow-hidden">
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
@@ -42,11 +45,23 @@ export function PrDetailCenter({ repoPath, prNumber, onClose }: PrDetailCenterPr
         <span className="text-xs text-muted-foreground">{t('pr.view.title')}</span>
 
         <button
+          onClick={() => prUrl && openUrl(prUrl)}
+          disabled={!prUrl}
+          data-testid="pr-open-github"
+          title={t('pr.view.openOnGitHub')}
+          aria-label={t('pr.view.openOnGitHub')}
+          className="ml-auto flex items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          <span>{t('pr.view.openOnGitHub')}</span>
+        </button>
+
+        <button
           onClick={togglePrFiles}
           data-testid="pr-toggle-files"
           aria-pressed={prFilesVisible}
           title={prFilesVisible ? t('pr.files.hide') : t('pr.files.show')}
-          className="ml-auto flex items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           {prFilesVisible ? (
             <PanelRightClose className="h-3.5 w-3.5" />

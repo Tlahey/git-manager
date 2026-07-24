@@ -64,7 +64,7 @@ interface CommandPaletteProps {
 }
 
 /**
- * Spotlight-style command palette (⌘K), mounted once at the app root. Open/close state lives in
+ * Spotlight-style command palette (⌘P), mounted once at the app root. Open/close state lives in
  * `commandPalette.store`; the actual command list is built by the registry hooks only while the
  * dialog is open (they mount inside the dialog content, which Radix unmounts when closed).
  */
@@ -110,13 +110,15 @@ function CommandPaletteBody({
 }: CommandPaletteBodyProps) {
   const { t } = useTranslation('common')
   const [search, setSearch] = useState('')
+  const mode = useCommandPaletteStore((s) => s.mode)
   const selectedCommitOid = useRepoUIStore((s) => s.selectedCommitOid)
   const selectedStashIndex = useRepoUIStore((s) => s.selectedStashIndex)
   const globalCommands = useGlobalCommands({ onOpenSettings, onOpenActivityLogs })
   const commitCommands = useCommitCommands()
   const stashCommands = useStashCommands()
+  const isFilesOnly = mode === 'files'
   const lookupCommands = useCommitLookupCommands(search)
-  const fileCommands = useFileLookupCommands(search)
+  const fileCommands = useFileLookupCommands(isFilesOnly ? search : '')
 
   // Lookup (paste-a-sha) first, then file search, then commit/stash actions — the most contextual.
   const allCommands = [
@@ -135,27 +137,31 @@ function CommandPaletteBody({
     onDone()
   }
 
-  const groups: { group: PaletteGroup; heading: string }[] = [
-    { group: 'lookup', heading: t('commandPalette.group.lookup') },
-    { group: 'files', heading: t('commandPalette.group.files') },
-    {
-      group: 'commit',
-      heading: t('commandPalette.group.commit', { sha: selectedCommitOid?.slice(0, 7) ?? '' }),
-    },
-    {
-      group: 'stash',
-      heading: t('commandPalette.group.stash', { index: selectedStashIndex ?? '' }),
-    },
-    { group: 'navigation', heading: t('commandPalette.group.navigation') },
-    { group: 'repo', heading: t('commandPalette.group.repo') },
-    { group: 'settings', heading: t('commandPalette.group.settings') },
-  ]
+  const groups: { group: PaletteGroup; heading: string }[] = isFilesOnly
+    ? [
+        { group: 'lookup', heading: t('commandPalette.group.lookup') },
+        { group: 'files', heading: t('commandPalette.group.files') },
+      ]
+    : [
+        { group: 'lookup', heading: t('commandPalette.group.lookup') },
+        {
+          group: 'commit',
+          heading: t('commandPalette.group.commit', { sha: selectedCommitOid?.slice(0, 7) ?? '' }),
+        },
+        {
+          group: 'stash',
+          heading: t('commandPalette.group.stash', { index: selectedStashIndex ?? '' }),
+        },
+        { group: 'navigation', heading: t('commandPalette.group.navigation') },
+        { group: 'repo', heading: t('commandPalette.group.repo') },
+        { group: 'settings', heading: t('commandPalette.group.settings') },
+      ]
 
   return (
     <>
       <CommandInput
         data-testid="command-palette-input"
-        placeholder={t('commandPalette.placeholder')}
+        placeholder={isFilesOnly ? t('commandPalette.placeholderFiles') : t('commandPalette.placeholder')}
         value={search}
         onValueChange={setSearch}
       />

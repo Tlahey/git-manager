@@ -43,10 +43,11 @@ export function PrCreateForm({
 
   const [head, setHead] = useState(currentBranch ?? '')
   const [base, setBase] = useState(defaultBase ?? '')
-  const [title, setTitle] = useState('')
+  const [title, setTitle] = useState(currentBranch ?? '')
   const [body, setBody] = useState('')
   const [draft, setDraft] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
+  const [titleTouched, setTitleTouched] = useState(false)
   const [bodyTouched, setBodyTouched] = useState(false)
 
   // Keep head/base in sync once their async defaults resolve (only while still unset).
@@ -56,6 +57,13 @@ export function PrCreateForm({
   useEffect(() => {
     if (defaultBase && !base) setBase(defaultBase)
   }, [defaultBase, base])
+
+  // Default title to the selected head branch name until manually edited by the user.
+  useEffect(() => {
+    if (!titleTouched && head) {
+      setTitle(head)
+    }
+  }, [head, titleTouched])
 
   const templateContent = useMemo<string | null>(() => {
     if (!template) return null
@@ -131,7 +139,10 @@ export function PrCreateForm({
         {t('pr.publish.titleLabel')}
         <Input
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => {
+            setTitle(e.target.value)
+            setTitleTouched(true)
+          }}
           placeholder={t('pr.publish.titlePlaceholder')}
           className="h-8 text-xs"
           data-testid="pr-create-title"
