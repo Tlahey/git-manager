@@ -178,8 +178,8 @@ describe('PRRow — pin button', () => {
   })
 })
 
-describe('PRRow — row click', () => {
-  it('opens the PR url on GitHub when no in-app view is available', async () => {
+describe('PRRow — PR number link and row click', () => {
+  it('opens the PR url on GitHub when clicking the #number link', async () => {
     render(
       <PRRow
         pr={pr({ url: 'https://github.com/owner/git-manager/pull/42' })}
@@ -188,14 +188,14 @@ describe('PRRow — row click', () => {
       />
     )
     await act(async () => {
-      fireEvent.click(screen.getByText('Add feature X'))
+      fireEvent.click(screen.getByText('#42'))
       await Promise.resolve()
       await Promise.resolve()
     })
     expect(pluginOpen).toHaveBeenCalledWith('https://github.com/owner/git-manager/pull/42')
   })
 
-  it('opens the in-app PR view instead of GitHub when a handler is provided', async () => {
+  it('does not open GitHub or panel when clicking on the row title', async () => {
     const onOpen = vi.fn()
     const thePr = pr({ id: 'pr-9', url: 'https://github.com/owner/git-manager/pull/42' })
     render(
@@ -207,7 +207,7 @@ describe('PRRow — row click', () => {
       fireEvent.click(screen.getByText('Add feature X'))
       await Promise.resolve()
     })
-    expect(onOpen).toHaveBeenCalledWith(thePr)
+    expect(onOpen).not.toHaveBeenCalled()
     expect(pluginOpen).not.toHaveBeenCalled()
   })
 })

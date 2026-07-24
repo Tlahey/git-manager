@@ -30,8 +30,7 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
   return (
     // The `pr` group name is intentional: SnoozeControl + the pin reveal on `group-hover/pr`.
     <div
-      className="group/pr relative flex cursor-pointer items-center gap-3 border-b border-border/30 px-4 py-2.5 transition-colors last:border-0 hover:bg-accent/30"
-      onClick={open}
+      className="group/pr relative flex items-center gap-3 border-b border-border/30 px-4 py-2.5 transition-colors last:border-0 hover:bg-accent/30"
       data-testid={`issue-row-${issue.id}`}
     >
       {/* Pin + snooze */}
@@ -66,9 +65,17 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
           <span className="text-xs font-medium text-foreground transition-colors [overflow-wrap:anywhere] group-hover/pr:text-primary">
             {issue.title}
           </span>{' '}
-          <span className="whitespace-nowrap font-mono text-[10px] text-muted-foreground/60">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              openUrl(issue.url)
+            }}
+            title={t('row.openOnGitHub')}
+            data-testid={`issue-number-link-${issue.id}`}
+            className="whitespace-nowrap font-mono text-[10px] text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
+          >
             #{issue.number}
-          </span>
+          </button>
         </div>
         <div className="mt-0.5 flex items-center gap-2">
           <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/50">

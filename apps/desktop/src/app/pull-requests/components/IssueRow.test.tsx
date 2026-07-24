@@ -163,14 +163,23 @@ describe('IssueRow — actions', () => {
     expect(screen.queryByRole('menuitem', { name: 'Mark as closed' })).not.toBeInTheDocument()
   })
 
-  it('opens the issue URL when the row is clicked and no panel is available', async () => {
+  it('opens the issue URL when clicking the #number link', async () => {
     renderRow()
     await act(async () => {
-      fireEvent.click(screen.getByText('Fix the thing'))
+      fireEvent.click(screen.getByText('#42'))
       await Promise.resolve()
       await Promise.resolve()
     })
     expect(pluginOpen).toHaveBeenCalledWith('https://github.com/owner/repo/issues/42')
+  })
+
+  it('does not open GitHub when clicking on the row title', async () => {
+    renderRow()
+    await act(async () => {
+      fireEvent.click(screen.getByText('Fix the thing'))
+      await Promise.resolve()
+    })
+    expect(pluginOpen).not.toHaveBeenCalled()
   })
 
   it('shows a dedicated open-in-app button that opens the panel when available', () => {

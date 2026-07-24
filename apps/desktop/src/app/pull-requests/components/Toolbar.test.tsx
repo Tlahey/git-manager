@@ -109,7 +109,7 @@ describe('Toolbar — sort buttons', () => {
     expect(onSort).toHaveBeenCalledWith('author')
   })
 
-  it('shows the sort direction arrow only on the active sort key, flipped for asc vs desc', () => {
+  it('shows the sort direction arrow only on the active sort key (ArrowDown for desc)', () => {
     const { container } = renderToolbar({ sortKey: 'author', sortDir: 'desc' })
     const buttons = sortButtons(container)
     const [dateBtn, statusBtn, authorBtn, repoBtn, filesBtn] = buttons
@@ -119,14 +119,15 @@ describe('Toolbar — sort buttons', () => {
     expect(filesBtn.querySelector('svg')).toBeNull()
     const arrow = authorBtn.querySelector('svg')
     expect(arrow).toBeTruthy()
-    expect(arrow!.style.transform).toBe('scaleY(-1)')
+    expect(arrow).toHaveClass('lucide-arrow-down')
   })
 
-  it('flips the arrow direction for ascending sort', () => {
+  it('renders ArrowUp for ascending sort', () => {
     const { container } = renderToolbar({ sortKey: 'repo', sortDir: 'asc' })
     const repoBtn = sortButtons(container)[3]
     const arrow = repoBtn.querySelector('svg')
-    expect(arrow!.style.transform).toBe('scaleY(1)')
+    expect(arrow).toBeTruthy()
+    expect(arrow).toHaveClass('lucide-arrow-up')
   })
 })
 

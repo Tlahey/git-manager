@@ -1,4 +1,4 @@
-import { Search, X, Layers, Circle, Pencil, ArrowUpDown } from 'lucide-react'
+import { Search, X, Layers, Circle, Pencil, ArrowUp, ArrowDown } from 'lucide-react'
 import { Input } from '@git-manager/ui'
 import { MultiSelectDropdown } from '@git-manager/components'
 import { useTranslation } from '@git-manager/i18n'
@@ -147,12 +147,12 @@ export function Toolbar({
                   : k === 'repo'
                     ? t('table.repo')
                     : t('sort.files')}
-            {sortKey === k && (
-              <ArrowUpDown
-                className="h-2.5 w-2.5"
-                style={{ transform: sortDir === 'asc' ? 'scaleY(1)' : 'scaleY(-1)' }}
-              />
-            )}
+            {sortKey === k &&
+              (sortDir === 'asc' ? (
+                <ArrowUp className="h-2.5 w-2.5" />
+              ) : (
+                <ArrowDown className="h-2.5 w-2.5" />
+              ))}
           </button>
         ))}
       </div>

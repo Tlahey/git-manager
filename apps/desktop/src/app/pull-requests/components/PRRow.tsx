@@ -30,8 +30,7 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
 
   return (
     <div
-      className="group/pr relative flex cursor-pointer items-center gap-3 border-b border-border/30 px-4 py-2.5 transition-colors last:border-0 hover:bg-accent/30"
-      onClick={() => (openPr ? openPr(pr) : openUrl(pr.url))}
+      className="group/pr relative flex items-center gap-3 border-b border-border/30 px-4 py-2.5 transition-colors last:border-0 hover:bg-accent/30"
     >
       <div className="flex w-7 shrink-0 items-center gap-1">
         <button
@@ -66,9 +65,17 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
           <span className="text-xs font-medium text-foreground transition-colors [overflow-wrap:anywhere] group-hover/pr:text-primary">
             {pr.title}
           </span>{' '}
-          <span className="whitespace-nowrap font-mono text-[10px] text-muted-foreground/60">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              openUrl(pr.url)
+            }}
+            title={t('row.openOnGitHub')}
+            data-testid={`pr-number-link-${pr.id}`}
+            className="whitespace-nowrap font-mono text-[10px] text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
+          >
             #{pr.number}
-          </span>
+          </button>
         </div>
         <div className="mt-0.5 flex items-center gap-2">
           {pr.additions > 0 || pr.deletions > 0 ? (

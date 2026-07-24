@@ -273,12 +273,12 @@ describe('PullRequestsPage — tab navigation', () => {
 })
 
 describe('PullRequestsPage — opening a PR in the in-app view', () => {
-  it('opens the interactive PR view in a resizable side panel on row click, then closes via Back', async () => {
+  it('opens the interactive PR view in a resizable side panel via open-in-app button, then closes via Back', async () => {
     const user = userEvent.setup()
-    mockHook({ activeTab: 'prs', visiblePRs: [pr({ title: 'Openable PR', fullName: 'owner/repo' })] })
+    mockHook({ activeTab: 'prs', visiblePRs: [pr({ id: 'pr-1', title: 'Openable PR', fullName: 'owner/repo' })] })
     render(<PullRequestsPage />)
 
-    await user.click(screen.getByText('Openable PR'))
+    await user.click(screen.getByTestId('pr-open-in-app-pr-1'))
     expect(screen.getByTestId('launchpad-pr-panel')).toBeInTheDocument()
     expect(screen.getByTestId('launchpad-pr-panel-overlay')).toBeInTheDocument()
     expect(screen.getByTestId('launchpad-pr-view')).toBeInTheDocument()
