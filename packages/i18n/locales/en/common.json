@@ -131,6 +131,7 @@
   "notifications.runSim": "Run Sim",
   "footer.remotes": "Remotes",
   "commandPalette.placeholder": "Type a command or search…",
+  "commandPalette.placeholderFiles": "Search files by name…",
   "commandPalette.empty": "No results found.",
   "commandPalette.group.lookup": "Lookup",
   "commandPalette.group.files": "Files",

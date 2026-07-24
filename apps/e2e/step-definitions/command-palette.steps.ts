@@ -99,9 +99,9 @@ When(/^I select the "([^"]*)" commit in the graph$/, async (ref: string) => {
   }
 })
 
-// ⌘K toggles the palette open (useKeyboardShortcuts). The input appearing is the "open" marker.
+// ⌘P toggles the palette open (useKeyboardShortcuts). The input appearing is the "open" marker.
 When(/^I open the command palette$/, async () => {
-  await browser.keys([META, 'k'])
+  await browser.keys([META, 'p'])
   await $('[data-testid="command-palette-input"]').waitForDisplayed({ timeout: 10000 })
 })
 

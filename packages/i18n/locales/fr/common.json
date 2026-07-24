@@ -131,6 +131,7 @@
   "notifications.runSim": "Lancer la sim",
   "footer.remotes": "Remotes",
   "commandPalette.placeholder": "Tapez une commande ou recherchez…",
+  "commandPalette.placeholderFiles": "Rechercher un fichier par son nom…",
   "commandPalette.empty": "Aucun résultat.",
   "commandPalette.group.lookup": "Recherche",
   "commandPalette.group.files": "Fichiers",

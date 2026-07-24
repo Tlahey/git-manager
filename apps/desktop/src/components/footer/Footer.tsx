@@ -101,7 +101,8 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
       category: 'Général',
       items: [
         { keys: ['⌘', 'K'], desc: 'Ouvrir la palette de commandes' },
-        { keys: ['Alt', ','], desc: 'Ouvrir les Paramètres' },
+        { keys: ['⌘', 'P'], desc: 'Rechercher un fichier dans le dépôt' },
+        { keys: ['⌘', ','], desc: 'Ouvrir les Paramètres' },
         { keys: ['Alt', 'W'], desc: "Fermer l'onglet du dépôt actif" },
         { keys: ['Esc'], desc: 'Fermer les boîtes de dialogue / volets' },
       ],

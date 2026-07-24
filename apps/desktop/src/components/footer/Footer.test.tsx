@@ -192,6 +192,7 @@ describe('Footer — keyboard shortcuts dialog', () => {
     expect(screen.getByText('Dépôt & Git')).toBeInTheDocument()
     expect(screen.getByText(/Aller à l.accueil/)).toBeInTheDocument()
     expect(screen.getByText('Ouvrir la palette de commandes')).toBeInTheDocument()
+    expect(screen.getByText('Rechercher un fichier dans le dépôt')).toBeInTheDocument()
   })
 
   it('filters the list by description text as the user types', async () => {

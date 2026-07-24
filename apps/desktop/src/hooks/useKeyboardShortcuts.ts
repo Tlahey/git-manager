@@ -23,12 +23,19 @@ export function useKeyboardShortcuts({
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      // Command palette: ⌘K / Ctrl+K — handled before the input guard so it toggles even while
-      // typing (standard palette behaviour); cmdk owns arrow/Escape once the palette is open.
+      // File search palette: ⌘P / Ctrl+P — handled before input guard
+      const isModP = navigator.userAgent.includes('Mac') ? e.metaKey : e.ctrlKey
+      if (isModP && !e.altKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault()
+        useCommandPaletteStore.getState().toggle('files')
+        return
+      }
+
+      // Command palette (shortcuts & actions): ⌘K / Ctrl+K — handled before input guard
       const isModK = navigator.userAgent.includes('Mac') ? e.metaKey : e.ctrlKey
       if (isModK && !e.altKey && e.key.toLowerCase() === 'k') {
         e.preventDefault()
-        useCommandPaletteStore.getState().toggle()
+        useCommandPaletteStore.getState().toggle('all')
         return
       }
 

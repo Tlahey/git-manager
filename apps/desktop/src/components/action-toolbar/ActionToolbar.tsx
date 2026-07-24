@@ -200,7 +200,7 @@ export function ActionToolbar() {
           icon={<CommandIcon className="h-4 w-4 text-muted-foreground" />}
           label={t('toolbar.actions')}
           title={`${t('toolbar.actions')} (⌘K)`}
-          onClick={() => useCommandPaletteStore.getState().toggle()}
+          onClick={() => useCommandPaletteStore.getState().toggle('all')}
           data-testid="toolbar-actions-button"
         />
         <ToolbarButton
