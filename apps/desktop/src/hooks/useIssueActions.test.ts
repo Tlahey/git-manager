@@ -84,9 +84,11 @@ describe('useIssueActions — viewRepo', () => {
     expect(useRepoUIStore.getState().openTabs).toContain('/local/git-manager')
   })
 
-  it('falls back to the GitHub repo URL when not added locally', () => {
+  it('falls back to the GitHub repo URL when not added locally', async () => {
     const { result } = renderHook(() => useIssueActions(issue()))
-    act(() => result.current.viewRepo())
+    await act(async () => {
+      await result.current.viewRepo()
+    })
     expect(pluginOpen).toHaveBeenCalledWith('https://github.com/owner/git-manager')
   })
 })

@@ -74,6 +74,7 @@ describe('IssueQuickActions', () => {
     const { rerender } = renderActions({ canClose: false })
     await user.click(screen.getByRole('button', { name: 'More options' }))
     expect(screen.queryByRole('menuitem', { name: 'Mark as closed' })).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
 
     rerender(
       <IssueQuickActions

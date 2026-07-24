@@ -15,7 +15,7 @@ export interface IssueActions {
   /** A local branch already referencing the issue, or `null` (→ offer "Create a branch"). */
   branch: string | null
   /** Open the repo's local tab (added repos) or the repo page on GitHub. */
-  viewRepo: () => void
+  viewRepo: () => void | Promise<void>
   /** Create + check out a local branch named from the issue. No-op without a local repo. */
   createBranch: () => Promise<void>
   creatingBranch: boolean
@@ -49,7 +49,7 @@ export function useIssueActions(issue: MockIssue, onChanged?: () => void): Issue
 
   const viewRepo = () => {
     if (repoPath) openTab(repoPath)
-    else openUrl(issue.fullName ? `https://github.com/${issue.fullName}` : issue.url)
+    else return openUrl(issue.fullName ? `https://github.com/${issue.fullName}` : issue.url)
   }
 
   const createBranch = async () => {
