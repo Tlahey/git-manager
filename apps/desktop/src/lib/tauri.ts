@@ -138,6 +138,9 @@ export const scanRepos = (rootPath: string, maxDepth: number) =>
 export const listTrackedFiles = (path: string) =>
   invoke<string[]>('list_tracked_files', { path })
 
+/** All repository files (tracked and untracked, excluding gitignored). */
+export const getRepoFiles = (path: string) => invoke<string[]>('get_repo_files', { path })
+
 export const cloneRepo = (url: string, destPath: string, shallow?: boolean, sparse?: boolean) =>
   invoke<GitRepo>('clone_repo', { url, destPath, shallow, sparse })
 

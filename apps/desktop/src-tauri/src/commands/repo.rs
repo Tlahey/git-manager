@@ -464,3 +464,33 @@ pub async fn list_tracked_files(path: String) -> Result<Vec<String>, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
     crate::services::git_files::list_tracked_files(&repo).map_err(Into::into)
 }
+
+#[tauri::command]
+pub async fn get_repo_files(path: String) -> Result<Vec<String>, String> {
+    use std::process::Command;
+
+    #[cfg(target_os = "windows")]
+    let mut cmd = Command::new("cmd");
+    #[cfg(target_os = "windows")]
+    cmd.args(&["/C", "git", "ls-files", "-co", "--exclude-standard"]).current_dir(&path);
+
+    #[cfg(not(target_os = "windows"))]
+    let mut cmd = Command::new("git");
+    #[cfg(not(target_os = "windows"))]
+    cmd.args(&["ls-files", "-co", "--exclude-standard"]).current_dir(&path);
+
+    let output = cmd.output().map_err(|e| format!("Failed to run git ls-files: {}", e))?;
+
+    if !output.status.success() {
+        let err_msg = String::from_utf8_lossy(&output.stderr).into_owned();
+        return Err(format!("git ls-files failed: {}", err_msg));
+    }
+
+    let files = String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(|s| s.to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    Ok(files)
+}
