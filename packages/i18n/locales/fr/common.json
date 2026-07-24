@@ -144,6 +144,7 @@
   "commandPalette.nav.pullRequests": "Aller aux pull requests",
   "commandPalette.nav.rewards": "Aller aux récompenses",
   "commandPalette.nav.openRepo": "Ouvrir un dépôt…",
+  "commandPalette.repo.createPr": "Créer une PR",
   "commandPalette.repo.fetch": "Fetch",
   "commandPalette.repo.fetchAll": "Fetch tous les remotes",
   "commandPalette.repo.pull": "Pull",

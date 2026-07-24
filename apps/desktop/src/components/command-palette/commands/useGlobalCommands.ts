@@ -55,6 +55,7 @@ export function useGlobalCommands({
   const { t } = useTranslation('common')
   const { t: tGit } = useTranslation('git')
   const setActiveTab = useRepoUIStore((s) => s.setActiveTab)
+  const setPrCreateOpen = useRepoUIStore((s) => s.setPrCreateOpen)
   const openRepository = useOpenRepository()
   const toolbar = useActionToolbar(tGit)
 
@@ -104,6 +105,17 @@ export function useGlobalCommands({
 
   if (toolbar.activeRepo) {
     commands.push(
+      {
+        id: 'repo-create-pr',
+        group: 'repo',
+        title: t('commandPalette.repo.createPr'),
+        keywords: ['pr', 'pull request', 'create pr', 'new pr', 'github'],
+        icon: createElement(GitPullRequest),
+        run: () => {
+          setActiveTab(toolbar.activeRepo!)
+          setPrCreateOpen(true)
+        },
+      },
       {
         id: 'repo-fetch',
         group: 'repo',

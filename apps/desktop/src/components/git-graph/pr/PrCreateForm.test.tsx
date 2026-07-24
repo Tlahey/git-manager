@@ -78,7 +78,9 @@ describe('PrCreateForm', () => {
 
     expect(screen.getByTestId('pr-create-head')).toHaveValue('feat/x')
     expect(screen.getByTestId('pr-create-base')).toHaveValue('main')
+    expect(screen.getByTestId('pr-create-title')).toHaveValue('feat/x')
 
+    await user.clear(screen.getByTestId('pr-create-title'))
     await user.type(screen.getByTestId('pr-create-title'), 'My PR')
     await user.type(screen.getByTestId('pr-create-body'), 'body text')
     await user.click(screen.getByTestId('pr-create-draft'))
@@ -101,12 +103,26 @@ describe('PrCreateForm', () => {
     expect(options).toEqual(['main', 'feat/x'])
   })
 
-  it('disables submit until a title is entered', async () => {
+  it('disables submit when title is empty', async () => {
     const user = userEvent.setup()
     renderForm()
-    expect(screen.getByTestId('pr-create-submit')).toBeDisabled()
-    await user.type(screen.getByTestId('pr-create-title'), 'x')
     expect(screen.getByTestId('pr-create-submit')).toBeEnabled()
+    await user.clear(screen.getByTestId('pr-create-title'))
+    expect(screen.getByTestId('pr-create-submit')).toBeDisabled()
+  })
+
+  it('defaults title to head branch and updates when head branch changes if untouched', async () => {
+    const user = userEvent.setup()
+    renderForm({ currentBranch: 'feat/x' })
+    expect(screen.getByTestId('pr-create-title')).toHaveValue('feat/x')
+
+    await user.selectOptions(screen.getByTestId('pr-create-head'), 'main')
+    expect(screen.getByTestId('pr-create-title')).toHaveValue('main')
+
+    // Once user types in title, changing head should not overwrite title
+    await user.type(screen.getByTestId('pr-create-title'), ' - custom')
+    await user.selectOptions(screen.getByTestId('pr-create-head'), 'feat/x')
+    expect(screen.getByTestId('pr-create-title')).toHaveValue('main - custom')
   })
 
   it('triggers AI generation with the base ref and template content', async () => {
