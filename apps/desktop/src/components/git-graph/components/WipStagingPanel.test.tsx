@@ -26,6 +26,17 @@ function setAiEnabled(enabled: boolean) {
 
 function panelState(overrides: Partial<ReturnType<typeof useWipCommitPanel>> = {}) {
   return {
+    activeTab: 'commit' as const,
+    setActiveTab: vi.fn(),
+    isAmend: false,
+    setIsAmend: vi.fn(),
+    handleToggleAmend: vi.fn(),
+    stashMessage: '',
+    setStashMessage: vi.fn(),
+    includeUntracked: true,
+    setIncludeUntracked: vi.fn(),
+    isStashing: false,
+    handleStash: vi.fn(),
     batchMode: false,
     setBatchMode: vi.fn(),
     wipBatches: {},
@@ -87,6 +98,39 @@ describe('WipStagingPanel — mode toggle', () => {
     expect(setBatchMode).toHaveBeenCalledOnce()
   })
 })
+
+describe('WipStagingPanel — tabs (Commit & Stash)', () => {
+  it('switches tabs when tab buttons are clicked', async () => {
+    const setActiveTab = vi.fn()
+    useWipCommitPanel.mockReturnValue(panelState({ setActiveTab }))
+    const user = userEvent.setup()
+    renderPanel()
+
+    await user.click(screen.getByTestId('tab-stash'))
+    expect(setActiveTab).toHaveBeenCalledWith('stash')
+  })
+
+  it('renders stash inputs when stash tab is active', async () => {
+    const handleStash = vi.fn()
+    useWipCommitPanel.mockReturnValue(
+      panelState({
+        activeTab: 'stash',
+        stashMessage: 'wip stash',
+        handleStash,
+      })
+    )
+    renderPanel({ gitStatus: gitStatus({ unstaged: [{ path: 'a.ts', status: 'modified' }] }) })
+
+    expect(screen.getByTestId('stash-message-input')).toHaveValue('wip stash')
+    expect(screen.getByTestId('stash-untracked-checkbox')).toBeInTheDocument()
+    expect(screen.getByTestId('stash-submit-button')).toBeEnabled()
+
+    const user = userEvent.setup()
+    await user.click(screen.getByTestId('stash-submit-button'))
+    expect(handleStash).toHaveBeenCalledOnce()
+  })
+})
+
 
 describe('WipStagingPanel — classic commit form', () => {
   it('binds the commit message textarea and disables it while generating', () => {

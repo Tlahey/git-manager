@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import type { GitStatus, GitStatusEntry } from '@git-manager/git-types'
-import { apiUnstageAll, apiStageFile, apiUnstageFile, apiCreateCommit } from '../api/git.api'
+import { mutate } from 'swr'
+import type { GitStatus, GitStatusEntry, GitGraphNode } from '@git-manager/git-types'
+import { apiUnstageAll, apiStageFile, apiUnstageFile, apiCreateCommit, apiStashPush } from '../api/git.api'
 import { useAiGeneration } from './useAiGeneration'
 import { useCommitMessageHistory } from './useCommitMessageHistory'
 import type { ProcessedFileItem } from '../components/git-graph/components/CommitFileList'
@@ -9,11 +10,10 @@ import type { ProcessedFileItem } from '../components/git-graph/components/Commi
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
 /**
- * Logique du panneau de commit WIP : mode classique (message unique) et mode
- * "batch commit" (regroupement par dossier racine, génération IA et commit
+ * Logique du panneau de commit WIP : mode classique (message unique), mode stash
+ * et mode "batch commit" (regroupement par dossier racine, génération IA et commit
  * par groupe, avec restauration de l'état de staging original entre chaque
- * étape). Le découpage IA en plusieurs commits (case 2) vit dans son propre
- * écran de revue — voir `useCommitBatchReview` / `CommitBatchReviewDialog`.
+ * étape).
  */
 export function useWipCommitPanel(
   repoPath: string,
@@ -24,8 +24,14 @@ export function useWipCommitPanel(
 ) {
   const queryClient = useQueryClient()
 
+  const [activeTab, setActiveTab] = useState<'commit' | 'stash'>('commit')
+  const [isAmend, setIsAmend] = useState(false)
   const [commitMessage, setCommitMessage] = useState('')
   const [isCommitting, setIsCommitting] = useState(false)
+  const [stashMessage, setStashMessage] = useState('')
+  const [includeUntracked, setIncludeUntracked] = useState(true)
+  const [isStashing, setIsStashing] = useState(false)
+
   const [historyOpen, setHistoryOpen] = useState(false)
   const [batchMode, setBatchMode] = useState(false)
   const [batchMessages, setBatchMessages] = useState<Record<string, string>>({})
@@ -40,6 +46,24 @@ export function useWipCommitPanel(
   const { history, addMessage } = useCommitMessageHistory()
 
   const isGenerating = llmStatus === 'connecting' || llmStatus === 'streaming'
+
+  function handleToggleAmend(checked: boolean) {
+    setIsAmend(checked)
+    if (checked && !commitMessage.trim()) {
+      const logData = queryClient.getQueryData<{ nodes?: GitGraphNode[] }>([
+        'git-log',
+        repoPath,
+      ])
+      if (logData?.nodes) {
+        const headNode =
+          logData.nodes.find((n) => n.refs?.some((r) => r.type === 'HEAD')) ||
+          logData.nodes.find((n) => n.commit.oid !== 'WIP')
+        if (headNode?.commit) {
+          setCommitMessage(headNode.commit.message || headNode.commit.summary || '')
+        }
+      }
+    }
+  }
 
   // Default grouping: bucket changed files by their top-level directory.
   const wipBatches = useMemo(() => {
@@ -192,8 +216,9 @@ export function useWipCommitPanel(
     if (!commitMessage.trim()) return
     setIsCommitting(true)
     try {
-      await apiCreateCommit(repoPath, commitMessage)
+      await apiCreateCommit(repoPath, commitMessage, isAmend)
       setCommitMessage('')
+      setIsAmend(false)
       onRefresh?.()
     } catch (err) {
       alert(String(err))
@@ -202,8 +227,34 @@ export function useWipCommitPanel(
     }
   }
 
+  async function handleStash() {
+    setIsStashing(true)
+    try {
+      await apiStashPush(repoPath, stashMessage.trim() || undefined, includeUntracked)
+      setStashMessage('')
+      queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
+      queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
+      mutate(['git-stashes', repoPath])
+      onRefresh?.()
+    } catch (err) {
+      alert(String(err))
+    } finally {
+      setIsStashing(false)
+    }
+  }
+
   return {
-    // Batch mode
+    activeTab,
+    setActiveTab,
+    isAmend,
+    setIsAmend,
+    handleToggleAmend,
+    stashMessage,
+    setStashMessage,
+    includeUntracked,
+    setIncludeUntracked,
+    isStashing,
+    handleStash,
     batchMode,
     setBatchMode,
     wipBatches,
@@ -212,7 +263,6 @@ export function useWipCommitPanel(
     batchGenerating,
     generateMessageForBatch,
     commitBatch,
-    // Classic mode
     commitMessage,
     setCommitMessage,
     isCommitting,

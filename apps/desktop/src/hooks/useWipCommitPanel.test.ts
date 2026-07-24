@@ -4,13 +4,16 @@ import type { GitStatus } from '@git-manager/git-types'
 import type { ProcessedFileItem } from '../components/git-graph/components/CommitFileList'
 
 const fetchQuery = vi.fn()
-vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ fetchQuery }) }))
+const invalidateQueries = vi.fn()
+vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ fetchQuery, invalidateQueries }) }))
+vi.mock('swr', () => ({ mutate: vi.fn() }))
 
 vi.mock('../api/git.api', () => ({
   apiUnstageAll: vi.fn(),
   apiStageFile: vi.fn(),
   apiUnstageFile: vi.fn(),
   apiCreateCommit: vi.fn(),
+  apiStashPush: vi.fn(),
 }))
 
 const { runLlmGenerate, cancelLlmGenerate, llmStatus, addMessage } = vi.hoisted(() => ({
@@ -30,7 +33,7 @@ vi.mock('./useCommitMessageHistory', () => ({
   useCommitMessageHistory: () => ({ history: ['past message'], addMessage }),
 }))
 
-import { apiUnstageAll, apiStageFile, apiUnstageFile, apiCreateCommit } from '../api/git.api'
+import { apiUnstageAll, apiStageFile, apiUnstageFile, apiCreateCommit, apiStashPush } from '../api/git.api'
 import { useWipCommitPanel } from './useWipCommitPanel'
 
 const mocked = {
@@ -38,6 +41,7 @@ const mocked = {
   apiStageFile: apiStageFile as unknown as ReturnType<typeof vi.fn>,
   apiUnstageFile: apiUnstageFile as unknown as ReturnType<typeof vi.fn>,
   apiCreateCommit: apiCreateCommit as unknown as ReturnType<typeof vi.fn>,
+  apiStashPush: apiStashPush as unknown as ReturnType<typeof vi.fn>,
 }
 
 const t = (key: string) => key
@@ -89,9 +93,37 @@ describe('useWipCommitPanel — classic commit', () => {
     act(() => result.current.setCommitMessage('Add feature'))
     await act(async () => result.current.handleCommitWip())
 
-    expect(mocked.apiCreateCommit).toHaveBeenCalledWith('/repo', 'Add feature')
+    expect(mocked.apiCreateCommit).toHaveBeenCalledWith('/repo', 'Add feature', false)
     expect(result.current.commitMessage).toBe('')
     expect(result.current.isCommitting).toBe(false)
+    expect(onRefresh).toHaveBeenCalledOnce()
+  })
+
+  it('commits with amend: true when isAmend is true', async () => {
+    mocked.apiCreateCommit.mockResolvedValue({ oid: 'amended' })
+    const { result } = renderHook(() => useWipCommitPanel('/repo', status(), [], t))
+    act(() => {
+      result.current.setIsAmend(true)
+      result.current.setCommitMessage('Amended commit msg')
+    })
+    await act(async () => result.current.handleCommitWip())
+
+    expect(mocked.apiCreateCommit).toHaveBeenCalledWith('/repo', 'Amended commit msg', true)
+    expect(result.current.isAmend).toBe(false)
+  })
+
+  it('pushes a stash and refreshes on handleStash', async () => {
+    mocked.apiStashPush.mockResolvedValue({ oid: 'stash1' })
+    const onRefresh = vi.fn()
+    const { result } = renderHook(() => useWipCommitPanel('/repo', status(), [], t, onRefresh))
+    act(() => {
+      result.current.setStashMessage('my stash message')
+      result.current.setIncludeUntracked(true)
+    })
+    await act(async () => result.current.handleStash())
+
+    expect(mocked.apiStashPush).toHaveBeenCalledWith('/repo', 'my stash message', true)
+    expect(result.current.stashMessage).toBe('')
     expect(onRefresh).toHaveBeenCalledOnce()
   })
 
