@@ -16,7 +16,10 @@ import {
   rawToMockIssue,
   fetchGitHubPRs,
   fetchGitHubReviewRequestedPRs,
-  fetchGitHubIssues,
+  fetchGitHubRepoIssues,
+  setIssueState,
+  updateIssue,
+  fetchIssueDetail,
   fetchGitHubPRDetails,
   fetchGitHubCommitCiStatus,
   fetchGitHubContributions,
@@ -284,6 +287,16 @@ describe('rawToMockIssue', () => {
     expect(issue.assignees).toEqual([{ login: 'bob', avatar: 'b.png' }])
     expect(issue.labels).toEqual(['help wanted'])
   })
+
+  it('derives fullName from repository_url and the 👍 count from reactions', () => {
+    const issue = rawToMockIssue(rawIssue({ reactions: { '+1': 9 } }))
+    expect(issue.fullName).toBe('org/repo')
+    expect(issue.thumbsUp).toBe(9)
+  })
+
+  it('defaults thumbsUp to 0 when reactions are absent', () => {
+    expect(rawToMockIssue(rawIssue()).thumbsUp).toBe(0)
+  })
 })
 
 describe('fetchGitHubPRs / fetchGitHubReviewRequestedPRs / fetchGitHubIssues', () => {
@@ -318,15 +331,69 @@ describe('fetchGitHubPRs / fetchGitHubReviewRequestedPRs / fetchGitHubIssues', (
     expect(prs[0].needsMyReview).toBe(true) // forced true even though rawToMockPR would say false (author === me)
   })
 
-  it('fetchGitHubIssues queries assigned issues', async () => {
+  it('fetchGitHubRepoIssues queries issues across the given repos', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ items: [] }))
     vi.stubGlobal('fetch', fetchMock)
 
-    await fetchGitHubIssues('me', 'tok')
+    await fetchGitHubRepoIssues(
+      [
+        { owner: 'me', repo: 'git-manager' },
+        { owner: 'org', repo: 'other' },
+      ],
+      'tok'
+    )
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('is:issue+assignee:me'),
+      expect.stringContaining('is:issue+repo:me/git-manager+repo:org/other'),
       expect.anything()
+    )
+  })
+
+  it('fetchGitHubRepoIssues short-circuits to [] for an empty repo list without fetching', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    expect(await fetchGitHubRepoIssues([], 'tok')).toEqual([])
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('fetchIssueDetail GETs the issue resource', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ number: 7, body: 'hi' }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const issue = await fetchIssueDetail('org', 'repo', 7, 'tok')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.github.com/repos/org/repo/issues/7',
+      expect.anything()
+    )
+    expect(issue.body).toBe('hi')
+  })
+
+  it('updateIssue PATCHes the issue resource with title/body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ number: 7 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await updateIssue('org', 'repo', 7, { title: 'New', body: 'Body' }, 'tok')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.github.com/repos/org/repo/issues/7',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ title: 'New', body: 'Body' }),
+      })
+    )
+  })
+
+  it('setIssueState PATCHes the issue resource with the new state', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ number: 7, state: 'closed' }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await setIssueState('org', 'repo', 7, 'closed', 'tok')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.github.com/repos/org/repo/issues/7',
+      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ state: 'closed' }) })
     )
   })
 

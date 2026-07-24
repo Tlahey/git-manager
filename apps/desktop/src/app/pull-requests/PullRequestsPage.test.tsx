@@ -57,6 +57,7 @@ function issue(overrides: Partial<MockIssue> = {}): MockIssue {
     authorAvatar: 'x',
     assignees: [],
     labels: [],
+    thumbsUp: 0,
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
     comments: 0,
@@ -72,6 +73,8 @@ function mockHook(overrides: Partial<ReturnType<typeof usePullRequestsPage>> = {
     visiblePRs: [] as MockPR[],
     snoozedPRs: [] as MockPR[],
     issues: [] as MockIssue[],
+    issuesLoading: false,
+    refreshIssues: vi.fn(),
     commitDays: [],
     yearDays: [],
     loading: false,
@@ -219,7 +222,8 @@ describe('PullRequestsPage — tab navigation', () => {
   })
 
   it('renders the Issues tab content when activeTab is "issues"', () => {
-    mockHook({ activeTab: 'issues', issues: [issue({ title: 'An assigned issue' })] })
+    // Authored by the signed-in user so the Issues tab's default "Mine" filter keeps it visible.
+    mockHook({ activeTab: 'issues', issues: [issue({ title: 'An assigned issue', author: 'octocat' })] })
     render(<PullRequestsPage />)
     expect(screen.getByText('An assigned issue')).toBeInTheDocument()
   })

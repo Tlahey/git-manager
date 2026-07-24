@@ -21,7 +21,9 @@ import { Spinner } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { InnerTab, KpiCard } from '@git-manager/components'
 import { OpenPrContext } from './OpenPrContext'
+import { OpenIssueContext } from './OpenIssueContext'
 import { PrSidePanel } from './components/PrSidePanel'
+import { IssueSidePanel } from './components/IssueSidePanel'
 import { LaunchpadToolbar } from './components/LaunchpadToolbar'
 import { PullRequestsTab } from './components/PullRequestsTab'
 import { WipTab } from './components/WipTab'
@@ -35,11 +37,12 @@ import { appEventBus } from '../../lib/appEventBus'
 import { defineTabs, renderActiveTab, type TabDef } from '../../lib/navigation/tabRegistry'
 import { useLaunchpadControlsStore } from '../../stores/launchpadControls.store'
 import { useGlobalLoadingWhile } from '../../hooks/useGlobalLoadingWhile'
-import type { InnerTab as InnerTabType, MockPR } from './types'
+import type { InnerTab as InnerTabType, MockPR, MockIssue } from './types'
 
 export function PullRequestsPage() {
   const { t } = useTranslation('launchpad')
   const [openedPr, setOpenedPr] = useState<MockPR | null>(null)
+  const [openedIssue, setOpenedIssue] = useState<MockIssue | null>(null)
 
   // Clear the global search when leaving the Launchpad so the filter doesn't linger next visit.
   useEffect(() => () => useLaunchpadControlsStore.getState().reset(), [])
@@ -49,6 +52,8 @@ export function PullRequestsPage() {
     visiblePRs,
     snoozedPRs,
     issues,
+    issuesLoading,
+    refreshIssues,
     commitDays,
     yearDays,
     loading,
@@ -115,7 +120,16 @@ export function PullRequestsPage() {
       id: 'issues',
       label: t('tab.myIssues'),
       icon: AlertCircle,
-      render: () => <IssuesTab allIssues={issues} loading={loading} />,
+      render: () => (
+        <IssuesTab
+          allIssues={issues}
+          loading={issuesLoading}
+          currentUser={username}
+          pinnedIds={pinnedIds}
+          onTogglePin={togglePin}
+          onIssueChanged={refreshIssues}
+        />
+      ),
     },
     {
       id: 'waiting',
@@ -174,6 +188,7 @@ export function PullRequestsPage() {
 
   return (
     <OpenPrContext.Provider value={setOpenedPr}>
+      <OpenIssueContext.Provider value={setOpenedIssue}>
       <div className="relative flex h-full overflow-hidden bg-background">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Page Header */}
@@ -300,7 +315,15 @@ export function PullRequestsPage() {
         <div className="min-h-0 flex-1">{renderActiveTab(PR_TABS, activeTab)}</div>
         </div>
         {openedPr && <PrSidePanel pr={openedPr} onClose={() => setOpenedPr(null)} />}
+        {openedIssue && (
+          <IssueSidePanel
+            issue={openedIssue}
+            onClose={() => setOpenedIssue(null)}
+            onChanged={refreshIssues}
+          />
+        )}
       </div>
+      </OpenIssueContext.Provider>
     </OpenPrContext.Provider>
   )
 }

@@ -2,12 +2,11 @@ import { useState, useCallback } from 'react'
 import useSWR from 'swr'
 import { useSettingsStore } from '../stores/settings.store'
 import { useNotificationStore } from '../stores/notification.store'
-import type { MockPR, MockIssue, DayCommit } from '../app/pull-requests/types'
-import { MOCK_ISSUES, getMockContributions } from '../app/pull-requests/mockData'
+import type { MockPR, DayCommit } from '../app/pull-requests/types'
+import { getMockContributions } from '../app/pull-requests/mockData'
 import {
   fetchGitHubPRs,
   fetchGitHubReviewRequestedPRs,
-  fetchGitHubIssues,
   fetchGitHubPRDetails,
   fetchGitHubCommitCiStatus,
   fetchGitHubContributions,
@@ -16,7 +15,6 @@ import { resolveCiStatus } from '../lib/ciStatus'
 
 interface GitHubData {
   prs: MockPR[]
-  issues: MockIssue[]
   commitDays: DayCommit[]
   yearDays: DayCommit[]
   loading: boolean
@@ -54,10 +52,9 @@ export function useGitHubData(): GitHubData {
     swrKey,
     async ([_, tok, user]) => {
       // 1. Fetch lists
-      const [prSearch, reviewSearch, issueSearch] = await Promise.all([
+      const [prSearch, reviewSearch] = await Promise.all([
         fetchGitHubPRs(user, tok),
         fetchGitHubReviewRequestedPRs(user, tok),
-        fetchGitHubIssues(user, tok),
       ])
 
       const prMap = new Map<string, MockPR>()
@@ -130,7 +127,6 @@ export function useGitHubData(): GitHubData {
 
       return {
         prs: [...prMap.values()],
-        issues: issueSearch,
         yearDays,
         commitDays: yearDays.slice(-14),
       }
@@ -149,7 +145,6 @@ export function useGitHubData(): GitHubData {
   if (!hasToken) {
     return {
       prs: mockPRs,
-      issues: MOCK_ISSUES,
       yearDays: fallbackContributions,
       commitDays: fallbackCommitDays,
       loading: false,
@@ -164,7 +159,6 @@ export function useGitHubData(): GitHubData {
 
   return {
     prs: data?.prs ?? [],
-    issues: data?.issues ?? [],
     yearDays: data?.yearDays ?? [],
     commitDays: data?.commitDays ?? [],
     loading: !data && !error,

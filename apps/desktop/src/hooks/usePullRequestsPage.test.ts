@@ -5,6 +5,9 @@ import type { MockPR, MockIssue, DayCommit } from '../app/pull-requests/types'
 const useGitHubData = vi.fn()
 vi.mock('./useGitHubData', () => ({ useGitHubData: () => useGitHubData() }))
 
+const useGitHubRepoIssues = vi.fn()
+vi.mock('./useGitHubRepoIssues', () => ({ useGitHubRepoIssues: () => useGitHubRepoIssues() }))
+
 import { useLaunchpadStore } from '../stores/launchpad.store'
 import { usePullRequestsPage } from './usePullRequestsPage'
 
@@ -49,6 +52,7 @@ function issue(overrides: Partial<MockIssue> = {}): MockIssue {
     authorAvatar: '',
     assignees: [],
     labels: [],
+    thumbsUp: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
     comments: 0,
@@ -59,7 +63,6 @@ function issue(overrides: Partial<MockIssue> = {}): MockIssue {
 function mockGitHubData(overrides: Partial<ReturnType<typeof useGitHubData>> = {}) {
   useGitHubData.mockReturnValue({
     prs: [],
-    issues: [],
     commitDays: [] as DayCommit[],
     yearDays: [],
     loading: false,
@@ -73,10 +76,21 @@ function mockGitHubData(overrides: Partial<ReturnType<typeof useGitHubData>> = {
   })
 }
 
+function mockRepoIssues(issues: MockIssue[] = []) {
+  useGitHubRepoIssues.mockReturnValue({
+    issues,
+    loading: false,
+    isValidating: false,
+    error: null,
+    refresh: vi.fn(),
+  })
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   useLaunchpadStore.setState({ savedFilters: INITIAL_FILTERS, activeTab: 'prs', snoozed: {} })
   mockGitHubData()
+  mockRepoIssues()
 })
 
 describe('usePullRequestsPage — derived counts', () => {
@@ -94,8 +108,27 @@ describe('usePullRequestsPage — derived counts', () => {
     expect(result.current.needsReviewCount).toBe(1)
   })
 
-  it('counts open issues', () => {
-    mockGitHubData({ issues: [issue({ status: 'open' }), issue({ status: 'closed' })] })
+  it('counts my open issues, ignoring closed and other people’s', () => {
+    mockRepoIssues([
+      issue({ id: 'i1', author: 'me', status: 'open' }),
+      issue({ id: 'i2', author: 'me', status: 'closed' }),
+      issue({ id: 'i3', author: 'someone-else', status: 'open' }),
+    ])
+    const { result } = renderHook(() => usePullRequestsPage())
+    // Every added-repo issue is exposed, but the count reflects the default "mine + open" view.
+    expect(result.current.issues.map((i) => i.id)).toEqual(['i1', 'i2', 'i3'])
+    expect(result.current.openIssuesCount).toBe(1)
+  })
+
+  it('counts an issue assigned to me even when authored by someone else', () => {
+    mockRepoIssues([
+      issue({
+        id: 'i1',
+        author: 'someone-else',
+        status: 'open',
+        assignees: [{ login: 'me', avatar: '' }],
+      }),
+    ])
     const { result } = renderHook(() => usePullRequestsPage())
     expect(result.current.openIssuesCount).toBe(1)
   })
@@ -127,8 +160,8 @@ describe('usePullRequestsPage — derived counts', () => {
   it('derives tabCounts, excluding closed/merged from the prs tab', () => {
     mockGitHubData({
       prs: [pr({ status: 'open' }), pr({ status: 'merged' }), pr({ status: 'closed' })],
-      issues: [issue({ status: 'open' })],
     })
+    mockRepoIssues([issue({ author: 'me', status: 'open' })])
     const { result } = renderHook(() => usePullRequestsPage())
     expect(result.current.tabCounts.prs).toBe(1)
     expect(result.current.tabCounts.issues).toBe(1)

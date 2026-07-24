@@ -43,6 +43,7 @@ export interface GhRawPR {
 export interface GhRawIssue {
   number: number
   title: string
+  body?: string | null
   repository_url?: string
   html_url: string
   state: string
@@ -52,6 +53,7 @@ export interface GhRawIssue {
   created_at: string
   updated_at: string
   comments?: number
+  reactions?: { '+1'?: number }
 }
 
 interface GhSearchResult<T> {
@@ -82,8 +84,8 @@ export interface GhCommitStatusResponse {
   statuses?: GhCommitStatus[]
 }
 
-function ghHeaders(token?: string): HeadersInit {
-  const h: HeadersInit = { Accept: 'application/vnd.github.v3+json' }
+function ghHeaders(token?: string, accept = 'application/vnd.github.v3+json'): HeadersInit {
+  const h: HeadersInit = { Accept: accept }
   if (token) (h as Record<string, string>)['Authorization'] = `token ${token}`
   return h
 }
@@ -92,6 +94,8 @@ interface GhRequestOptions {
   method?: string
   body?: unknown
   token?: string
+  /** Override the `Accept` media type (e.g. a preview flag). Defaults to `v3+json`. */
+  accept?: string
 }
 
 /**
@@ -99,8 +103,8 @@ interface GhRequestOptions {
  * Backs both reads (`ghFetch`) and writes (create PR, comment, review, merge).
  */
 async function ghRequest<T>(url: string, opts: GhRequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, token } = opts
-  const headers = ghHeaders(token)
+  const { method = 'GET', body, token, accept } = opts
+  const headers = ghHeaders(token, accept)
   if (body !== undefined) {
     ;(headers as Record<string, string>)['Content-Type'] = 'application/json'
   }
@@ -142,8 +146,8 @@ async function extractGitHubError(res: Response): Promise<string> {
   }
 }
 
-async function ghFetch<T>(url: string, token?: string): Promise<T> {
-  return ghRequest<T>(url, { token })
+async function ghFetch<T>(url: string, token?: string, accept?: string): Promise<T> {
+  return ghRequest<T>(url, { token, accept })
 }
 
 /** GitHub GraphQL v4 call — for the operations REST can't do (draft toggle, `mergeStateStatus`,
@@ -288,6 +292,7 @@ export function rawToMockIssue(raw: GhRawIssue): MockIssue {
     number: raw.number,
     title: raw.title,
     repo: raw.repository_url?.split('/').slice(-1)[0] ?? 'unknown',
+    fullName: raw.repository_url?.split('/repos/')[1],
     url: raw.html_url,
     status: raw.state === 'open' ? 'open' : 'closed',
     author: raw.user?.login ?? '—',
@@ -297,6 +302,7 @@ export function rawToMockIssue(raw: GhRawIssue): MockIssue {
     createdAt: new Date(raw.created_at),
     updatedAt: new Date(raw.updated_at),
     comments: raw.comments ?? 0,
+    thumbsUp: raw.reactions?.['+1'] ?? 0,
   }
 }
 
@@ -323,12 +329,72 @@ export async function fetchGitHubReviewRequestedPRs(
   })
 }
 
-export async function fetchGitHubIssues(username: string, token: string): Promise<MockIssue[]> {
+/**
+ * Issues across a set of repositories (the projects added to the app), newest first — not scoped to
+ * a single user. Uses one search query with an OR'd list of `repo:` qualifiers so every added repo's
+ * issues arrive in a single request; `is:issue` keeps pull requests (which GitHub also models as
+ * issues) out. Returns `[]` for an empty repo list rather than issuing a match-everything search.
+ */
+export async function fetchGitHubRepoIssues(
+  repos: { owner: string; repo: string }[],
+  token: string
+): Promise<MockIssue[]> {
+  if (repos.length === 0) return []
+  const repoQualifiers = repos.map((r) => `repo:${r.owner}/${r.repo}`).join('+')
   const data = await ghFetch<GhSearchResult<GhRawIssue>>(
-    `https://api.github.com/search/issues?q=is:issue+assignee:${username}&per_page=50&sort=updated`,
-    token
+    `https://api.github.com/search/issues?q=is:issue+${repoQualifiers}&per_page=100&sort=updated`,
+    token,
+    // The squirrel-girl preview makes the search include each item's `reactions` summary, so the row
+    // can show a 👍 count without a follow-up request per issue.
+    'application/vnd.github.squirrel-girl-preview+json'
   )
   return (data.items ?? []).map(rawToMockIssue)
+}
+
+/** Full details of one issue (adds the markdown `body` the search list omits). */
+export async function fetchIssueDetail(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  token: string
+): Promise<GhRawIssue> {
+  return ghFetch<GhRawIssue>(
+    `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`,
+    token,
+    'application/vnd.github.squirrel-girl-preview+json'
+  )
+}
+
+/** Patch an issue's editable fields (title, body, and/or open/closed state) via
+ * `PATCH /repos/{o}/{r}/issues/{n}`. Requires the token's `repo` scope. */
+export async function updateIssue(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  patch: { title?: string; body?: string; state?: 'open' | 'closed' },
+  token: string
+): Promise<GhRawIssue> {
+  return ghRequest(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`, {
+    method: 'PATCH',
+    body: patch,
+    token,
+  })
+}
+
+/** Close an issue (`state: 'closed'`) or reopen it (`state: 'open'`). Shares the issues REST resource
+ * with labels/assignees; requires the token's `repo` scope. */
+export async function setIssueState(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  state: 'open' | 'closed',
+  token: string
+): Promise<{ number: number; state: string }> {
+  return ghRequest(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`, {
+    method: 'PATCH',
+    body: { state },
+    token,
+  })
 }
 
 export async function fetchGitHubPRDetails(prApiUrl: string, token: string): Promise<GhRawPR> {
