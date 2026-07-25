@@ -110,6 +110,8 @@
   "settings.ssh.generating": "Génération en cours...",
   "settings.ssh.generateButton": "Générer le couple de clés",
   "settings.git.protectedBranches": "Branches protégées",
+  "settings.git.targetBranches": "Branches cibles de fusion",
+  "settings.git.targetBranchesHelper": "La branche dans laquelle le travail de ce dépôt est fusionné. La première qui existe dans le dépôt est utilisée.",
   "settings.git.commitStyle": "Style de commit",
   "settings.git.commitInstructions": "Instructions de commit",
   "settings.git.commitInstructionsPlaceholder": "ex. Préfixer avec l'id du ticket ; sujet sous 60 caractères ; écrire en anglais…",

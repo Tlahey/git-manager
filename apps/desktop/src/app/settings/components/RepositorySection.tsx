@@ -246,6 +246,20 @@ export function RepositorySection({ category }: RepositorySectionProps) {
             />
           </div>
 
+          <div className="space-y-2" data-testid="repo-target-branches">
+            <label className="text-xs font-medium text-foreground">
+              <Highlight text={t('settings.git.targetBranches')} />
+            </label>
+            <TagInput
+              tags={effective.targetBranches}
+              onChange={(branches) => setRepoSetting(activeRepo, 'targetBranches', branches)}
+              placeholder="origin/main, origin/develop…"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              {t('settings.git.targetBranchesHelper')}
+            </p>
+          </div>
+
           <div className="space-y-2" data-testid="repo-protected-branches">
             <label className="text-xs font-medium text-foreground">
               <Highlight text={t('settings.git.protectedBranches')} />

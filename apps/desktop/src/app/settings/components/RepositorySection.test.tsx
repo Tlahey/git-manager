@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 vi.mock('../../../hooks/useUserThemes', () => ({ useUserThemes: () => ({ data: [] }) }))
 // The default-file match-count hook hits the IPC layer; the override tests don't exercise it.
 vi.mock('../../../hooks/useDefaultFileMatchCounts', () => ({
@@ -157,6 +156,26 @@ describe('RepositorySection — GitFlow page', () => {
     await user.clear(input)
     await user.type(input, 'trunk')
     expect(useSettingsStore.getState().settings.repoOverrides[REPO]?.defaultBranchName).toBe('trunk')
+  })
+
+  it('seeds the merge-target branches from the built-in defaults', () => {
+    render(<RepositorySection category="gitflow" />)
+    const targets = screen.getByTestId('repo-target-branches')
+    expect(targets).toHaveTextContent('origin/main')
+    expect(targets).toHaveTextContent('origin/master')
+    expect(useSettingsStore.getState().settings.repoOverrides[REPO]).toBeUndefined()
+  })
+
+  it('adding a merge-target branch writes the per-repo override (seeded from defaults)', async () => {
+    const user = userEvent.setup()
+    render(<RepositorySection category="gitflow" />)
+    const tagInput = screen.getByTestId('repo-target-branches').querySelector('input')!
+    await user.type(tagInput, 'origin/develop{Enter}')
+    expect(useSettingsStore.getState().settings.repoOverrides[REPO]?.targetBranches).toEqual([
+      'origin/main',
+      'origin/master',
+      'origin/develop',
+    ])
   })
 
   it('adding a protected branch writes the per-repo override (seeded from defaults)', async () => {

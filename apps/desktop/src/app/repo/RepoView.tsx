@@ -8,6 +8,7 @@ import { GitGraph } from '../../components/git-graph/GitGraph'
 import { RepositorySidebar } from '../../components/repository-sidebar'
 import { RenameBranchDialog } from '../../components/git-graph/RenameBranchDialog'
 import { ActionToolbar } from '../../components/action-toolbar'
+import type { Section, Scope } from '../settings/SettingsPage'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useSidebarBranchMenu } from '../../hooks/useSidebarBranchMenu'
 import { useFileExplorerStore } from '../../stores/fileExplorer.store'
@@ -24,7 +25,13 @@ import { CheckoutStashConfirm } from '../../components/checkout/CheckoutStashCon
 import { setTerminalTheme } from '../../lib/terminalRegistry'
 import { useEffectiveRepoSettings } from '../../hooks/useEffectiveRepoSettings'
 
-export function RepoView() {
+interface RepoViewProps {
+  /** Opens Settings on a given page/scope — forwarded to the toolbar, whose merge-target popover
+   * links to this repo's GitFlow settings. */
+  onOpenSettings?: (section?: Section, scope?: Scope) => void
+}
+
+export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
   const { activeRepo, activeWorkspacePath } = useRepoUIStore()
   const { repoCache, setRepoCache } = useRepoDataStore()
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null)
@@ -87,14 +94,14 @@ export function RepoView() {
 
   return (
     <div data-testid="repo-view" className="flex h-full flex-col">
-      <ActionToolbar />
+      <ActionToolbar onOpenSettings={onOpenSettings} />
 
       <PendingFixupsBanner repoPath={activeRepo} />
       <BisectBanner repoPath={repoPath} />
 
-      {/* ── Layout principal : sidebar | zone centrale ──────────── */}
+      {/* ── Main layout: sidebar | central area ─────────────────── */}
       <div className="relative flex flex-1 overflow-hidden">
-        {/* Sidebar branches — redimensionnable */}
+        {/* Branch sidebar — resizable */}
         <RepositorySidebar
           repoPath={repoPath}
           remoteUrls={repoCache[activeRepo]?.remotes ?? []}
@@ -114,7 +121,7 @@ export function RepoView() {
           onContextMenu={openBranchMenu}
         />
 
-        {/* Zone centrale — historique plein largeur ou fichiers */}
+        {/* Central area — full-width history, or the file explorer */}
         <div className="flex flex-1 flex-col overflow-hidden">
           {isFileExplorerOpen ? (
             <ProjectFilesView />

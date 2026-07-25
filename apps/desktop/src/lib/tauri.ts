@@ -8,6 +8,7 @@ import type {
   GitStatus,
   GitGraphNode,
   GitBranch,
+  MergeTargetStatus,
   GitRef,
   GitDiff,
   GitStash,
@@ -212,6 +213,11 @@ export const mergeBranch = (path: string, source: string, target: string) =>
 
 export const fastForwardBranch = (path: string, source: string, target: string) =>
   invoke<void>('fast_forward_branch', { path, source, target })
+
+/** Relation between HEAD and the first of `candidates` that exists in the repo (merge simulated
+ * in memory — nothing is written to the repository). */
+export const getMergeTargetStatus = (path: string, candidates: string[]) =>
+  invoke<MergeTargetStatus>('get_merge_target_status', { path, candidates })
 
 export const renameBranch = (path: string, oldName: string, newName: string) =>
   invoke<void>('rename_branch', { path, oldName, newName })

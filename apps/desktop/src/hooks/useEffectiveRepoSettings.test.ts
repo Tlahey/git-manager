@@ -39,6 +39,7 @@ describe('useEffectiveRepoSettings', () => {
     expect(result.current).toEqual({
       protectedBranches: ['main', 'master', 'develop'],
       defaultBranchName: 'main',
+      targetBranches: ['origin/main', 'origin/master'],
       commitInstructions: '',
       commitPattern: '^feat',
       theme: 'dark',
@@ -73,8 +74,17 @@ describe('useEffectiveRepoSettings', () => {
     const { result } = renderHook(() => useEffectiveRepoSettings('/repo'))
     expect(result.current.protectedBranches).toEqual(['main', 'master', 'develop'])
     expect(result.current.defaultBranchName).toBe('main')
+    expect(result.current.targetBranches).toEqual(['origin/main', 'origin/master'])
     // Globally-inherited fields still resolve.
     expect(result.current.theme).toBe('light')
+  })
+
+  it('resolves targetBranches to the repo override', () => {
+    useSettingsStore
+      .getState()
+      .setRepoSetting('/repo', 'targetBranches', ['origin/develop', 'origin/main'])
+    const { result } = renderHook(() => useEffectiveRepoSettings('/repo'))
+    expect(result.current.targetBranches).toEqual(['origin/develop', 'origin/main'])
   })
 
   it('resolves protectedBranches / defaultBranchName to the repo override', () => {
