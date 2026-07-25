@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState, useId } from 'react'
-import mermaid from 'mermaid'
 import { AlertTriangle } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 
 interface MermaidBlockProps {
   code: string
+}
+
+/**
+ * Mermaid is loaded on demand, and only for documents that actually contain a diagram.
+ *
+ * Statically imported it added ~640 kB (~150 kB gzipped) to the chunk the app boots from, for a
+ * feature most READMEs never use — and the renderer that pulls this component in is mounted by the
+ * dashboard, so every launch paid for it.
+ */
+async function loadMermaid() {
+  return (await import('mermaid')).default
 }
 
 function unescapeHtml(str: string) {
@@ -44,6 +54,9 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
         setLoading(true)
         setError(null)
 
+        const mermaid = await loadMermaid()
+        if (!isMounted) return
+
         const currentTheme = document.documentElement.dataset.theme || ''
         const isDark =
           currentTheme.includes('dark') ||
@@ -52,10 +65,14 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
             window.matchMedia &&
             window.matchMedia('(prefers-color-scheme: dark)').matches)
 
+        // `strict` (Mermaid's own default) is what makes the generated SVG safe to hand to
+        // `dangerouslySetInnerHTML` below: it escapes HTML labels and ignores `click` directives.
+        // The diagrams rendered here come from READMEs and PR descriptions we don't control, so
+        // `loose` would let that content inject markup straight into the app.
         mermaid.initialize({
           startOnLoad: false,
           theme: isDark ? 'dark' : 'default',
-          securityLevel: 'loose',
+          securityLevel: 'strict',
           fontFamily: 'inherit',
         })
 

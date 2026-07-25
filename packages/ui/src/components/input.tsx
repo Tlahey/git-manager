@@ -36,6 +36,17 @@ const VARIANT_CLASSES: Record<InputVariant, string> = {
   ghost: 'border-transparent bg-transparent placeholder:text-muted-foreground focus-visible:ring-0',
 }
 
+// Colour the icon slots inherit by default. An icon sits *inside* the field, so it has to be
+// graded against the field's own fill, exactly like the text and the placeholder above — left to
+// the cascade it picks up whatever colour the surrounding panel happens to use, which on `chrome`'s
+// saturated accent fill is how you end up with a search icon that doesn't match its own placeholder.
+// A colour class on the icon element itself still wins (it's a different element, not a conflict).
+const ICON_CLASSES: Record<InputVariant, string> = {
+  default: 'text-muted-foreground',
+  chrome: 'text-sidebar-accent-foreground',
+  ghost: 'text-muted-foreground',
+}
+
 const BASE =
   'flex w-full rounded-md border outline-none transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50'
 
@@ -85,13 +96,23 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className={cn('relative', containerClassName)}>
         {startIcon && (
-          <span className="pointer-events-none absolute left-2 top-1/2 flex -translate-y-1/2 items-center">
+          <span
+            className={cn(
+              'pointer-events-none absolute left-2 top-1/2 flex -translate-y-1/2 items-center',
+              ICON_CLASSES[variant]
+            )}
+          >
             {startIcon}
           </span>
         )}
         {field}
         {endIcon && (
-          <span className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center">
+          <span
+            className={cn(
+              'absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center',
+              ICON_CLASSES[variant]
+            )}
+          >
             {endIcon}
           </span>
         )}

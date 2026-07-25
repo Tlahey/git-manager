@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, fireEvent } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 
 const { useFileDiff, useFileRawContents } = vi.hoisted(() => ({
@@ -61,7 +61,7 @@ function toolbarProps() {
 }
 
 function renderCenter(
-  fileOverrides: Partial<{ path: string; staged: boolean; oid?: string }> = {},
+  fileOverrides: Partial<React.ComponentProps<typeof DiffViewCenter>['file']> = {},
   extra: Partial<React.ComponentProps<typeof DiffViewCenter>> = {}
 ) {
   const onClose = vi.fn()
@@ -104,6 +104,14 @@ describe('DiffViewCenter — loading/empty states', () => {
   it('shows a fallback when there is no diff data once loaded', () => {
     renderCenter()
     expect(screen.getByText('No difference data found.')).toBeInTheDocument()
+  })
+
+  it('explains an empty diff for an unmodified file rather than blaming missing data', () => {
+    // `unmodified` is set by the file explorer, which opens files that have no pending change.
+    renderCenter({ unmodified: true })
+    expect(screen.getByTestId('diff-no-data')).toHaveTextContent(
+      'This file has no uncommitted changes.'
+    )
   })
 
   it('shows a binary placeholder instead of the diff editor for binary files', () => {
@@ -162,6 +170,28 @@ describe('DiffViewCenter — diff/file wiring', () => {
     expect(screen.getByTestId('file-preview-area')).toBeInTheDocument()
     expect(screen.queryByTestId('three-way-merge-editor')).not.toBeInTheDocument()
     expect(screen.queryByTestId('blame-file-viewer')).not.toBeInTheDocument()
+  })
+
+  it('offers a preview for an SVG without giving up its diff', () => {
+    renderCenter({ path: 'docs/logo.svg' })
+    expect(toolbarProps().hasPreview).toBe(true)
+    // The toolbar no longer takes an `isImage` prop: Diff and File stay available for every file.
+    expect(toolbarProps()).not.toHaveProperty('isImage')
+  })
+
+  it('falls back to a message when an image preview cannot be loaded off disk', () => {
+    renderCenter({ path: 'logo.png' })
+    act(() => toolbarProps().onChangeActiveTab('preview'))
+
+    const image = screen.getByTestId('file-preview-image')
+    expect(image).toHaveAttribute('alt', 'Preview of logo.png')
+
+    act(() => {
+      fireEvent.error(image)
+    })
+
+    expect(screen.queryByTestId('file-preview-image')).not.toBeInTheDocument()
+    expect(screen.getByTestId('file-preview-image-error')).toBeInTheDocument()
   })
 })
 

@@ -35,28 +35,36 @@ export function RepoView() {
 
   const isFileExplorerOpen = useFileExplorerStore((s) => s.isOpen)
   const isSidebarOpen = useFileExplorerStore((s) => s.isSidebarOpen)
+  const syncFileExplorerRepo = useFileExplorerStore((s) => s.actions.syncRepo)
 
   // Viewing a workspace (linked worktree) swaps every data-driven view (sidebar, graph) onto its
   // path instead of the repo tab's own — the tab/`activeRepo` itself never changes, only what's
   // displayed. See repoUI.store.ts's `activeWorkspacePath` doc comment for why.
   const effectiveRepoPath = activeWorkspacePath ?? activeRepo
 
-  // Le cache repo n'est pas persisté : on (ré)ouvre le dépôt/workspace actif au besoin
-  // pour alimenter head/isDetached/isDirty/remotes (toolbar, badges d'état…).
+  // The repo cache isn't persisted: (re)open the active repo/worktree when needed to feed
+  // head/isDetached/isDirty/remotes (toolbar, status badges…).
   useEffect(() => {
     if (effectiveRepoPath && !repoCache[effectiveRepoPath]) {
       apiOpenRepo(effectiveRepoPath)
         .then((r) => {
           setRepoCache(effectiveRepoPath, r)
-          // Purge les entrées undo/redo persistées dont l'objet Git référencé a disparu
-          // depuis la dernière session (ex. git gc manuel en dehors de l'app).
+          // Drop persisted undo/redo entries whose Git object has disappeared since the last
+          // session (e.g. a manual `git gc` outside the app).
           useUndoHistoryStore.getState().validateAndPrune(effectiveRepoPath)
         })
         .catch(() => {
-          /* dépôt introuvable / non-git : ignoré */
+          /* repository not found / not a git repo: ignored */
         })
     }
   }, [effectiveRepoPath, repoCache, setRepoCache])
+
+  // The file explorer browses one repository at a time; a tab (or worktree) switch has to drop the
+  // previous one's selected file and directory rather than carry them into a tree they don't exist
+  // in. Kept here, outside the explorer's own components, so it happens even while it's closed.
+  useEffect(() => {
+    syncFileExplorerRepo(effectiveRepoPath)
+  }, [effectiveRepoPath, syncFileExplorerRepo])
 
   // Terminal colours resolve per-repo (repo override → global appearance value), so the active
   // repo/worktree's configuration themes its shells.

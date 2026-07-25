@@ -15,13 +15,13 @@ import {
 } from '../../api/git.api'
 import { apiOpenUrl } from '../../api/shell.api'
 import { resolveTagOrReleaseUrl } from '../../api/github.api'
-import { convertFileSrc } from '@tauri-apps/api/core'
+import { toAssetUrl, joinRepoPath } from '../../lib/assetUrl'
 import { ThreeWayMergeEditor } from '../merge-editor/ThreeWayMergeEditor'
 import { BlameFileViewer } from './BlameFileViewer'
 import { Markdown } from '../Markdown'
 import { useRepoUIStore, type ActiveDiffFile } from '../../stores/repoUI.store'
-import { useFileHistory } from '../../hooks/useFileHistory'
 import { DiffToolbar } from './components/DiffToolbar'
+import { hasPreviewTab, isPreviewableImage, isPreviewableMarkdown } from './previewableFile'
 
 interface DiffViewCenterProps {
   repoPath: string
@@ -44,9 +44,9 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
   const { t } = useTranslation('git')
   const [copied, setCopied] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
-  const isMarkdown = Boolean(file.path && /\.(md|markdown|mdown|mkdn|mdwn)$/i.test(file.path))
-  const isImage = Boolean(file.path && /\.(png|jpe?g|gif|webp|svg|ico)$/i.test(file.path))
-  const hasPreview = isMarkdown || isImage
+  const isMarkdown = isPreviewableMarkdown(file.path)
+  const isImage = isPreviewableImage(file.path)
+  const hasPreview = hasPreviewTab(file.path)
   const [activeTab, setActiveTab] = useState<'diff' | 'file' | 'preview'>(file.initialTab ?? 'diff')
 
   // The initializer above only runs on mount; when a different file is opened into an already-mounted
@@ -116,22 +116,22 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
   const isLoading = isLoadingMeta || isLoadingRaw
   const isWip = !effectiveOid
 
-  const isUnmodifiedWip = isWip && file.unmodified
-  const { data: history } = useFileHistory(repoPath, isUnmodifiedWip ? file.path : null)
-  const [hasAutoSelected, setHasAutoSelected] = useState(false)
-
-  // Reset auto-select flag if we switch to a different file
+  // Image previews are read off disk through the asset protocol: a file that was deleted, renamed,
+  // or lives outside the granted scope resolves to a broken `<img>` unless the failure is caught.
+  const [imageFailed, setImageFailed] = useState(false)
   useEffect(() => {
-    setHasAutoSelected(false)
+    setImageFailed(false)
   }, [file.path])
+  const workingCopyUrl = useMemo(
+    () => (isImage ? toAssetUrl(joinRepoPath(repoPath, file.path)) : ''),
+    [isImage, repoPath, file.path]
+  )
 
-  // Automatically select the latest commit if the user tries to view an unmodified file
-  useEffect(() => {
-    if (isUnmodifiedWip && history && history.length > 0 && !hasAutoSelected) {
-      setSelectedHistoryOid(history[0].oid)
-      setHasAutoSelected(true)
-    }
-  }, [isUnmodifiedWip, history, hasAutoSelected, setSelectedHistoryOid])
+  // A file opened from the explorer that has no pending change: there is no diff to show, and the
+  // Diff tab says so explicitly instead of falling through to the generic "no data" message.
+  // (Pinning its latest commit automatically instead would write to the *shared* `selectedHistoryOid`
+  // — the History panel's own selection — and leave a "Back to current" button that returns here.)
+  const isUnmodifiedWip = isWip && file.unmodified
 
   const displayPath = useMemo(() => {
     if (!diffData) return file.path
@@ -258,7 +258,6 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
         onToggleStage={handleToggleStage}
         onRollback={handleRollback}
         hasPreview={hasPreview}
-        isImage={isImage}
       />
 
       {/* ── DIFF CONTENT AREA ─────────────────────────────────────────────────── */}
@@ -274,8 +273,11 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
         )}
 
         {!isLoading && !diffData && activeTab === 'diff' && (
-          <div className="flex h-40 w-full items-center justify-center text-muted-foreground">
-            {t('diffView.noDiffData')}
+          <div
+            className="flex h-40 w-full items-center justify-center text-muted-foreground"
+            data-testid="diff-no-data"
+          >
+            {isUnmodifiedWip ? t('diffView.noPendingChanges') : t('diffView.noDiffData')}
           </div>
         )}
 
@@ -371,24 +373,37 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
                     className="flex-1 overflow-y-auto bg-card/10 p-6 select-text flex items-center justify-center"
                   >
                     {isMarkdown ? (
-                      <div className="w-full h-full max-w-4xl mx-auto block">
+                      <div className="mx-auto block h-full w-full max-w-4xl">
                         <Markdown content={rawContents?.modified || ''} repoPath={repoPath} />
                       </div>
                     ) : isImage ? (
                       <div className="flex flex-col items-center gap-4">
-                        <img 
-                          src={convertFileSrc(`${repoPath}/${file.path}`)} 
-                          alt="File preview" 
-                          className="max-w-full max-h-[70vh] rounded shadow-sm object-contain bg-neutral-100 dark:bg-neutral-800" 
-                        />
-                        {effectiveOid && (
-                          <div className="text-[10px] text-muted-foreground italic">
-                            Note: Preview shows current local file, not historic version.
+                        {imageFailed ? (
+                          <div
+                            className="rounded-lg border border-border bg-muted/20 px-4 py-8 text-center italic text-muted-foreground"
+                            data-testid="file-preview-image-error"
+                          >
+                            {t('diffView.previewImageUnavailable')}
+                          </div>
+                        ) : (
+                          <img
+                            src={workingCopyUrl}
+                            alt={t('diffView.previewImageAlt', { path: file.path })}
+                            onError={() => setImageFailed(true)}
+                            className="max-h-[70vh] max-w-full rounded bg-muted object-contain shadow-sm"
+                            data-testid="file-preview-image"
+                          />
+                        )}
+                        {/* The image always comes off disk: git blobs aren't served over `asset:`, so
+                            a historic version can't be rendered and the caveat has to be explicit. */}
+                        {effectiveOid && !imageFailed && (
+                          <div className="text-[10px] italic text-muted-foreground">
+                            {t('diffView.previewWorkingCopyNote')}
                           </div>
                         )}
                       </div>
                     ) : (
-                      <div className="text-muted-foreground">Preview not available</div>
+                      <div className="text-muted-foreground">{t('diffView.previewUnavailable')}</div>
                     )}
                   </div>
                 ) : activeTab === 'file' ? (

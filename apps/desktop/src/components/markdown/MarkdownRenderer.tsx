@@ -2,7 +2,10 @@ import type { ComponentPropsWithoutRef, CSSProperties } from 'react'
 import ReactMarkdown, { type ExtraProps } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
+import rehypeSanitize from 'rehype-sanitize'
+import rehypeSlug from 'rehype-slug'
 import rehypeHighlight from 'rehype-highlight'
+import { markdownSanitizeSchema } from './sanitizeSchema'
 import { CodeBlock } from './components/CodeBlock'
 import { MarkdownLink } from './components/MarkdownLink'
 import { MarkdownTable, MarkdownTableCell, MarkdownTableHead } from './components/MarkdownTable'
@@ -18,7 +21,8 @@ export interface MarkdownRendererProps {
 
 /** remark-gfm encodes a table column's alignment as an inline `text-align` style, whose CSS type is
  * far wider than the three values MarkdownTableCell renders — anything else falls back to `null`
- * (its default, left-aligned). */
+ * (its default, left-aligned). The sanitizer leaves this alone: the alignment travels as the legacy
+ * `align` attribute (which its allow-list keeps) and react-markdown turns that into the style. */
 function cellAlign(textAlign: CSSProperties['textAlign']): 'left' | 'center' | 'right' | null {
   return textAlign === 'left' || textAlign === 'center' || textAlign === 'right' ? textAlign : null
 }
@@ -37,7 +41,15 @@ export function MarkdownRenderer({ content, className = '', repoPath }: Markdown
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw, rehypeHighlight]}
+        // `rehype-slug` runs after the sanitizer on purpose: the ids it generates are ours, and
+        // the schema prefixes any id coming from the document with `user-content-` to keep it from
+        // clobbering the app's own elements. Without it a README's table of contents links nowhere.
+        rehypePlugins={[
+          rehypeRaw,
+          [rehypeSanitize, markdownSanitizeSchema],
+          rehypeSlug,
+          rehypeHighlight,
+        ]}
         components={{
           a: MarkdownLink,
           table: ({ children }) => <MarkdownTable>{children}</MarkdownTable>,
@@ -66,23 +78,25 @@ export function MarkdownRenderer({ content, className = '', repoPath }: Markdown
               </CodeBlock>
             )
           },
-          h1: ({ children }) => (
-            <h1 className="mb-3 mt-6 scroll-m-20 border-b border-border pb-1 text-lg font-extrabold tracking-tight text-foreground">
+          // `id` comes from rehype-slug and must survive the override, or every anchor link in a
+          // README points at a heading that no longer has a target.
+          h1: ({ children, id }) => (
+            <h1 id={id} className="mb-3 mt-6 scroll-m-20 border-b border-border pb-1 text-lg font-extrabold tracking-tight text-foreground">
               {children}
             </h1>
           ),
-          h2: ({ children }) => (
-            <h2 className="mb-2.5 mt-5 scroll-m-20 text-base font-bold tracking-tight text-foreground/90">
+          h2: ({ children, id }) => (
+            <h2 id={id} className="mb-2.5 mt-5 scroll-m-20 text-base font-bold tracking-tight text-foreground/90">
               {children}
             </h2>
           ),
-          h3: ({ children }) => (
-            <h3 className="mb-2 mt-4 scroll-m-20 text-sm font-semibold tracking-tight text-foreground/85">
+          h3: ({ children, id }) => (
+            <h3 id={id} className="mb-2 mt-4 scroll-m-20 text-sm font-semibold tracking-tight text-foreground/85">
               {children}
             </h3>
           ),
-          h4: ({ children }) => (
-            <h4 className="mb-1.5 mt-3 text-xs font-semibold text-foreground/80">{children}</h4>
+          h4: ({ children, id }) => (
+            <h4 id={id} className="mb-1.5 mt-3 text-xs font-semibold text-foreground/80">{children}</h4>
           ),
           p: ({ children }) => (
             <p className="my-1.5 text-xs leading-relaxed text-muted-foreground">{children}</p>
