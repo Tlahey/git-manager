@@ -19,7 +19,7 @@ import { convertFileSrc } from '@tauri-apps/api/core'
 import { ThreeWayMergeEditor } from '../merge-editor/ThreeWayMergeEditor'
 import { BlameFileViewer } from './BlameFileViewer'
 import { Markdown } from '../Markdown'
-import { useRepoUIStore } from '../../stores/repoUI.store'
+import { useRepoUIStore, type ActiveDiffFile } from '../../stores/repoUI.store'
 import { useFileHistory } from '../../hooks/useFileHistory'
 import { DiffToolbar } from './components/DiffToolbar'
 
@@ -65,9 +65,23 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
   // Auto-inject the currently viewed file into the global UI store so that
   // side panels (like Blame/History) always have the correct file context,
   // regardless of which parent component (GitGraph, ProjectFilesView) rendered us.
+  // Our parents rebuild the `file` prop on every render, so the store is keyed on its *contents*:
+  // re-publishing on identity alone would loop through the store update it triggers.
+  const activeDiffFile = useMemo<ActiveDiffFile>(
+    () => ({
+      path: file.path,
+      staged: file.staged,
+      oid: file.oid,
+      baseOid: file.baseOid,
+      initialTab: file.initialTab,
+      unmodified: file.unmodified,
+    }),
+    [file.path, file.staged, file.oid, file.baseOid, file.initialTab, file.unmodified]
+  )
+
   useEffect(() => {
-    setActiveDiffFile(file)
-  }, [file.path, file.staged, file.oid, file.baseOid, file.initialTab, setActiveDiffFile])
+    setActiveDiffFile(activeDiffFile)
+  }, [activeDiffFile, setActiveDiffFile])
 
   // Commit whose version we're showing: a version picked in the History panel takes precedence over
   // the file's own review commit. Both the "Diff" tab (this commit vs its parent) and the "File" tab
@@ -255,13 +269,13 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
         {isLoading && (
           <div className="flex h-40 w-full items-center justify-center">
             <Spinner className="mr-2 h-5 w-5 text-muted-foreground" />
-            <span className="text-muted-foreground">Loading diff…</span>
+            <span className="text-muted-foreground">{t('diffView.loading')}</span>
           </div>
         )}
 
         {!isLoading && !diffData && activeTab === 'diff' && (
           <div className="flex h-40 w-full items-center justify-center text-muted-foreground">
-            No difference data found.
+            {t('diffView.noDiffData')}
           </div>
         )}
 

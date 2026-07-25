@@ -114,7 +114,7 @@ describe('MermaidBlock — Diagram rendering & fallback', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('mermaid-error-fallback')).toBeInTheDocument()
-      expect(screen.getByText("Impossible d'afficher le diagramme Mermaid")).toBeInTheDocument()
+      expect(screen.getByText('Cannot display the Mermaid diagram')).toBeInTheDocument()
     })
   })
 })

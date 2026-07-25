@@ -8,7 +8,6 @@ function reset() {
     pendingBadOid: null,
     pendingGoodOid: null,
     autoStashed: false,
-    stashDialogOpen: false,
   })
 }
 
@@ -65,18 +64,9 @@ describe('useBisectUIStore', () => {
     expect(s.pendingGoodOid).toBeNull()
   })
 
-  it('toggles the auto-stash flag and opens the stash dialog', () => {
+  it('toggles the auto-stash flag', () => {
     const st = useBisectUIStore.getState()
     st.setAutoStashed(true)
     expect(useBisectUIStore.getState().autoStashed).toBe(true)
-
-    st.openStashDialog()
-    expect(useBisectUIStore.getState().stashDialogOpen).toBe(true)
-  })
-
-  it('cancelSetup also closes the stash dialog', () => {
-    useBisectUIStore.getState().openStashDialog()
-    useBisectUIStore.getState().cancelSetup()
-    expect(useBisectUIStore.getState().stashDialogOpen).toBe(false)
   })
 })

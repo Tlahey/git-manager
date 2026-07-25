@@ -1,4 +1,5 @@
-import ReactMarkdown from 'react-markdown'
+import type { ComponentPropsWithoutRef, CSSProperties } from 'react'
+import ReactMarkdown, { type ExtraProps } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import rehypeHighlight from 'rehype-highlight'
@@ -14,6 +15,17 @@ export interface MarkdownRendererProps {
   className?: string
   repoPath?: string
 }
+
+/** remark-gfm encodes a table column's alignment as an inline `text-align` style, whose CSS type is
+ * far wider than the three values MarkdownTableCell renders — anything else falls back to `null`
+ * (its default, left-aligned). */
+function cellAlign(textAlign: CSSProperties['textAlign']): 'left' | 'center' | 'right' | null {
+  return textAlign === 'left' || textAlign === 'center' || textAlign === 'right' ? textAlign : null
+}
+
+/** `align` is a legacy HTML attribute React doesn't type on `div`, but rehype-raw passes it through
+ * from raw HTML in the markdown (READMEs use `<div align="center">` for banners). */
+type MarkdownDivProps = ComponentPropsWithoutRef<'div'> & ExtraProps & { align?: string }
 
 export function MarkdownRenderer({ content, className = '', repoPath }: MarkdownRendererProps) {
   if (!content) return null
@@ -31,12 +43,12 @@ export function MarkdownRenderer({ content, className = '', repoPath }: Markdown
           table: ({ children }) => <MarkdownTable>{children}</MarkdownTable>,
           thead: ({ children }) => <MarkdownTableHead>{children}</MarkdownTableHead>,
           th: ({ children, style }) => (
-            <MarkdownTableCell isHeader align={style?.textAlign as any}>
+            <MarkdownTableCell isHeader align={cellAlign(style?.textAlign)}>
               {children}
             </MarkdownTableCell>
           ),
           td: ({ children, style }) => (
-            <MarkdownTableCell align={style?.textAlign as any}>{children}</MarkdownTableCell>
+            <MarkdownTableCell align={cellAlign(style?.textAlign)}>{children}</MarkdownTableCell>
           ),
           input: ({ type, checked }) => {
             if (type === 'checkbox') {
@@ -44,8 +56,10 @@ export function MarkdownRenderer({ content, className = '', repoPath }: Markdown
             }
             return <input type={type} checked={checked} disabled />
           },
-          code: ({ node, inline, className, children, ...props }: any) => {
-            const isInline = inline ?? (!className && !String(children || '').includes('\n'))
+          // react-markdown dropped the `inline` prop in v9, so inline-ness is inferred: fenced code
+          // carries a `language-*` class, inline code doesn't (and never spans several lines).
+          code: ({ node: _node, className, children, ...props }) => {
+            const isInline = !className && !String(children || '').includes('\n')
             return (
               <CodeBlock inline={isInline} className={className} {...props}>
                 {children}
@@ -89,7 +103,7 @@ export function MarkdownRenderer({ content, className = '', repoPath }: Markdown
             </blockquote>
           ),
           hr: () => <hr className="my-4 border-border" />,
-          img: ({ src, alt, width, height, ...props }: any) => (
+          img: ({ node: _node, src, alt, width, height, ...props }) => (
             <MarkdownImage
               src={src}
               alt={alt}
@@ -99,11 +113,16 @@ export function MarkdownRenderer({ content, className = '', repoPath }: Markdown
               {...props}
             />
           ),
-          div: ({ align, children, className, ...props }: any) => {
+          div: ({ node: _node, align, children, className, ...props }: MarkdownDivProps) => {
             if (align === 'center') {
+              // The attribute is re-emitted on purpose: markdown.css styles `[align="center"]`
+              // (and its direct `p` children) for raw-HTML banners, not just this element.
+              // React 18's typings dropped the legacy `align` attribute, hence the narrow cast —
+              // the DOM still honours it.
+              const alignAttr = { align: 'center' } as ComponentPropsWithoutRef<'div'>
               return (
                 <div
-                  align="center"
+                  {...alignAttr}
                   className={`flex flex-col items-center justify-center text-center space-y-3 my-4 ${className || ''}`}
                   {...props}
                 >

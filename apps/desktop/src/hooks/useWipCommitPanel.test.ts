@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import type { GitStatus } from '@git-manager/git-types'
+import type { GitCommit, GitGraphNode, GitRef, GitStatus } from '@git-manager/git-types'
 import type { ProcessedFileItem } from '../components/git-graph/components/CommitFileList'
 
 const fetchQuery = vi.fn()
 const invalidateQueries = vi.fn()
-vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ fetchQuery, invalidateQueries }) }))
+const getQueryData = vi.fn()
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({ fetchQuery, invalidateQueries, getQueryData }),
+}))
 vi.mock('swr', () => ({ mutate: vi.fn() }))
 
 vi.mock('../api/git.api', () => ({
@@ -54,10 +57,16 @@ function status(overrides: Partial<GitStatus> = {}): GitStatus {
   return { staged: [], unstaged: [], untracked: [], conflicted: [], ...overrides } as GitStatus
 }
 
+/** A graph node carrying just what `handleToggleAmend` reads off the cached `git-log` query. */
+function node(commit: Partial<GitCommit>, refs: Partial<GitRef>[] = []): GitGraphNode {
+  return { commit: { oid: 'head', ...commit }, refs } as GitGraphNode
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   llmStatus.current = 'idle'
   fetchQuery.mockResolvedValue(status())
+  getQueryData.mockReturnValue(undefined)
 })
 
 afterEach(() => {
@@ -110,6 +119,43 @@ describe('useWipCommitPanel — classic commit', () => {
 
     expect(mocked.apiCreateCommit).toHaveBeenCalledWith('/repo', 'Amended commit msg', true)
     expect(result.current.isAmend).toBe(false)
+  })
+
+  it('prefills the empty message with the HEAD commit when amend is switched on', () => {
+    getQueryData.mockReturnValue({
+      nodes: [
+        node({ message: 'WIP', oid: 'WIP' }),
+        node({ message: 'feat: previous commit\n\nbody', subject: 'feat: previous commit' }, [
+          { type: 'HEAD' },
+        ]),
+      ],
+    })
+    const { result } = renderHook(() => useWipCommitPanel('/repo', status(), [], t))
+    act(() => result.current.handleToggleAmend(true))
+
+    expect(result.current.isAmend).toBe(true)
+    expect(result.current.commitMessage).toBe('feat: previous commit\n\nbody')
+  })
+
+  it('falls back to the subject when the HEAD commit has no full message', () => {
+    getQueryData.mockReturnValue({
+      nodes: [node({ message: '', subject: 'feat: subject only' }, [{ type: 'HEAD' }])],
+    })
+    const { result } = renderHook(() => useWipCommitPanel('/repo', status(), [], t))
+    act(() => result.current.handleToggleAmend(true))
+
+    expect(result.current.commitMessage).toBe('feat: subject only')
+  })
+
+  it('leaves a message the user already typed untouched when amend is switched on', () => {
+    getQueryData.mockReturnValue({
+      nodes: [node({ message: 'feat: previous commit' }, [{ type: 'HEAD' }])],
+    })
+    const { result } = renderHook(() => useWipCommitPanel('/repo', status(), [], t))
+    act(() => result.current.setCommitMessage('my own message'))
+    act(() => result.current.handleToggleAmend(true))
+
+    expect(result.current.commitMessage).toBe('my own message')
   })
 
   it('pushes a stash and refreshes on handleStash', async () => {

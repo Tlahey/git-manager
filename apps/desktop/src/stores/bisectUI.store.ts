@@ -18,8 +18,6 @@ interface BisectUIState {
   pendingGoodOid: string | null
   /** True when the session's working changes were auto-stashed at start (restored on reset). */
   autoStashed: boolean
-  /** Confirm-stash dialog (shown at start when the worktree is dirty). */
-  stashDialogOpen: boolean
   /** Enter setup, waiting for the bad commit first. */
   beginSetup: () => void
   /** Focus a slot so the next graph click (re-)fills it. */
@@ -29,8 +27,6 @@ interface BisectUIState {
   /** Leave setup without starting a bisect. */
   cancelSetup: () => void
   setAutoStashed: (value: boolean) => void
-  openStashDialog: () => void
-  closeStashDialog: () => void
 }
 
 export const useBisectUIStore = create<BisectUIState>((set) => ({
@@ -39,7 +35,6 @@ export const useBisectUIStore = create<BisectUIState>((set) => ({
   pendingBadOid: null,
   pendingGoodOid: null,
   autoStashed: false,
-  stashDialogOpen: false,
   beginSetup: () =>
     set({ setupActive: true, activeSlot: 'bad', pendingBadOid: null, pendingGoodOid: null }),
   setActiveSlot: (slot) => set({ activeSlot: slot }),
@@ -59,9 +54,6 @@ export const useBisectUIStore = create<BisectUIState>((set) => ({
       activeSlot: 'bad',
       pendingBadOid: null,
       pendingGoodOid: null,
-      stashDialogOpen: false,
     }),
   setAutoStashed: (value) => set({ autoStashed: value }),
-  openStashDialog: () => set({ stashDialogOpen: true }),
-  closeStashDialog: () => set({ stashDialogOpen: false }),
 }))

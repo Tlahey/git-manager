@@ -59,7 +59,7 @@ export function useWipCommitPanel(
           logData.nodes.find((n) => n.refs?.some((r) => r.type === 'HEAD')) ||
           logData.nodes.find((n) => n.commit.oid !== 'WIP')
         if (headNode?.commit) {
-          setCommitMessage(headNode.commit.message || headNode.commit.summary || '')
+          setCommitMessage(headNode.commit.message || headNode.commit.subject || '')
         }
       }
     }

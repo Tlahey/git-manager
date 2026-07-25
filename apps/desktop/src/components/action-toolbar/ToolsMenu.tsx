@@ -12,6 +12,7 @@ import {
 import { useTranslation } from '@git-manager/i18n'
 import { usePatchWorkspaceStore, type PatchMode } from '../../stores/patchWorkspace.store'
 import { useBisectUIStore } from '../../stores/bisectUI.store'
+import { useStashDialogStore } from '../../stores/stashDialog.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useBisectState } from '../../hooks/useBisectState'
 import { useGitStatus } from '../../hooks/useGitStatus'
@@ -21,7 +22,7 @@ interface ToolsMenuProps {
 }
 
 /**
- * Toolbar "Tools" dropdown. Groups the patch actions (each opening the in-layout patch workspace)
+ * Global tools menu dropdown (ActionToolbar): houses Patch Workspace actions (apply/import/create)
  * under a Patch submenu, plus the bisect entry point which opens the start dialog. Replaces the
  * former standalone Patch menu.
  */
@@ -29,13 +30,13 @@ export function ToolsMenu({ repoPath }: ToolsMenuProps) {
   const { t } = useTranslation('git')
   const openPatch = usePatchWorkspaceStore((s) => s.open)
   const beginBisectSetup = useBisectUIStore((s) => s.beginSetup)
-  const openBisectStashDialog = useBisectUIStore((s) => s.openStashDialog)
+  const openStashDialog = useStashDialogStore((s) => s.openBisectDialog)
   const bisectSettingUp = useBisectUIStore((s) => s.setupActive)
   const { data: bisect } = useBisectState(repoPath)
   const { data: status } = useGitStatus(repoPath ?? '')
   const disabled = !repoPath
   const bisectActive = bisect?.active ?? false
-  const bisectBusy = bisectActive || bisectSettingUp
+  const bisectBusy = disabled || bisectActive || bisectSettingUp
 
   // Tracked modifications block bisect's checkouts; untracked-only files generally don't.
   const isDirty =
@@ -47,7 +48,8 @@ export function ToolsMenu({ repoPath }: ToolsMenuProps) {
   // git bisect needs a clean tree before the selection even begins: prompt to stash up front when
   // dirty, otherwise go straight to picking the bad/good commits in the graph.
   function startBisect() {
-    if (isDirty) openBisectStashDialog()
+    if (!repoPath) return
+    if (isDirty) openStashDialog(repoPath)
     else beginBisectSetup()
   }
 
