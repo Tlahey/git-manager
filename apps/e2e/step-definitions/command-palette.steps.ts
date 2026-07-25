@@ -3,18 +3,14 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { browser, expect, $ } from '@wdio/globals'
 import { Given, When, Then } from '@wdio/cucumber-framework'
+// The repo this scenario opened, tracked on the Node side rather than read back out of the app —
+// see support/activeRepo.ts for why asking the app produced `git -C <wrong-fixture> …` failures.
+import { getActiveRepoPath as activeRepoPath } from '../support/activeRepo'
 
 // W3C WebDriver key value for Meta (Command on macOS), U+E03D. Built via fromCharCode to keep the
 // source ASCII-clean; passed in an array to browser.keys() it presses as a chord — same pattern as
 // settings.steps.ts / undo-redo.steps.ts.
 const META = String.fromCharCode(0xe03d)
-
-function activeRepoPath(): Promise<string | null> {
-  return browser.execute(() => {
-    const raw = localStorage.getItem('git-manager-repos-ui')
-    return raw ? (JSON.parse(raw).state.activeRepo as string) : null
-  })
-}
 
 // e2e-only debug hook (main.tsx, VITE_E2E-gated) exposing the live repoUI Zustand store on
 // `window`. Reads `selectedCommitOid` directly rather than inferring selection from a DOM
@@ -44,31 +40,74 @@ function selectedCommitOid(): Promise<string | null> {
 // normal-width row's center lands inside it (confirmed via elementFromPoint + a live store read),
 // not over the message text. `message` is unambiguous, always visible, and non-interactive.
 When(/^I select the "([^"]*)" commit in the graph$/, async (ref: string) => {
-  const repoPath = await activeRepoPath()
-  expect(repoPath).toBeTruthy()
-  const oid = execFileSync('git', ['-C', repoPath as string, 'rev-parse', ref], {
+  const repoPath = activeRepoPath()
+  const oid = execFileSync('git', ['-C', repoPath, 'rev-parse', ref], {
     encoding: 'utf8',
   }).trim()
-  const subject = execFileSync('git', ['-C', repoPath as string, 'log', '-1', '--format=%s', oid], {
+  const subject = execFileSync('git', ['-C', repoPath, 'log', '-1', '--format=%s', oid], {
     encoding: 'utf8',
   }).trim()
 
   const row = $(`[data-testid="graph-row-${oid}"]`)
-  await row.waitForDisplayed({ timeout: 10000 })
-  const messageCell = row.$(`span*=${subject}`)
-  await messageCell.waitForDisplayed({ timeout: 10000 })
-  await messageCell.click()
   try {
-    await browser.waitUntil(async () => (await selectedCommitOid()) === oid, {
-      timeout: 10000,
-      timeoutMsg: `commit row ${oid} (${ref}) never became selected after clicking it`,
+    await row.waitForDisplayed({ timeout: 10000 })
+  } catch (err) {
+    // Now that the git commands above take their path from the scenario rather than from the app,
+    // "the row isn't there" is the shape an app-on-the-wrong-repo mix-up takes. Report what the app
+    // actually has open so that's one line of output rather than another investigation.
+    const state = await browser.execute(() => {
+      const store = (window as unknown as { __e2eRepoUIStore?: { getState: () => unknown } })
+        .__e2eRepoUIStore
+      return {
+        url: window.location.href,
+        liveActiveRepo: store
+          ? (store.getState() as { activeRepo: string | null }).activeRepo
+          : 'no-store',
+        persisted: localStorage.getItem('git-manager-repos-ui'),
+        rows: Array.from(document.querySelectorAll('[data-testid^="graph-row-"]'))
+          .slice(0, 5)
+          .map((el) => el.getAttribute('data-testid')),
+      }
     })
+    throw new Error(
+      `${(err as Error).message}\n[probe] scenario repo: ${repoPath}\n[probe] app: ${JSON.stringify(state)}`
+    )
+  }
+  // The global loading scrim (LoadingOverlay — `fixed inset-0 z-[9998]`) covers the graph while the
+  // repo's data loads, and this WebKit driver clicks *it* rather than raising the usual "element
+  // click intercepted" — so the click silently lands on nothing, the row never gets selected, and
+  // the only symptom is the store wait below timing out. Wait it out before clicking.
+  await $('[data-testid="loading-overlay"]').waitForExist({ timeout: 15000, reverse: true })
+
+  await row.$(`span*=${subject}`).waitForDisplayed({ timeout: 10000 })
+  try {
+    // Re-resolve the cell and re-click on each attempt. The graph re-renders as its stash/ref
+    // queries land and the virtualizer re-keys rows, so a cell resolved a moment earlier can be
+    // detached by the time the click fires — the click then reaches nothing at all and the row
+    // simply never selects (seen intermittently on the stash rows, whose section loads last).
+    //
+    // The pre-click store read is not an optimisation and must stay: a plain click on the row
+    // that's *already* primary calls `clearSelection()` (useCommitSelection.ts), so a blind retry
+    // loop would toggle a successful selection straight back off.
+    await browser.waitUntil(
+      async () => {
+        if ((await selectedCommitOid()) === oid) return true
+        const cell = row.$(`span*=${subject}`)
+        if (await cell.isExisting()) await cell.click()
+        return (await selectedCommitOid()) === oid
+      },
+      {
+        timeout: 15000,
+        interval: 1500,
+        timeoutMsg: `commit row ${oid} (${ref}) never became selected after clicking it`,
+      }
+    )
   } catch (err) {
     // Diagnostic: reveals *which* commit actually got selected (and, walking up from the hit-tested
     // element, which row visually owns that pixel) so a future regression here is diagnosable
     // without another round of guessing.
     const actualOid = await selectedCommitOid()
-    const log = execFileSync('git', ['-C', repoPath as string, 'log', '--format=%H %s', '-n', '20'], {
+    const log = execFileSync('git', ['-C', repoPath, 'log', '--format=%H %s', '-n', '20'], {
       encoding: 'utf8',
     })
       .trim()
@@ -99,9 +138,13 @@ When(/^I select the "([^"]*)" commit in the graph$/, async (ref: string) => {
   }
 })
 
-// ⌘P toggles the palette open (useKeyboardShortcuts). The input appearing is the "open" marker.
+// ⌘K toggles the *actions* palette open in `all` mode (useKeyboardShortcuts). ⌘P opens the same
+// dialog in `files` mode, which renders only the lookup/files groups — no commit/stash/settings
+// commands at all — so pressing it here makes every downstream `command-item-*` / group-heading
+// step time out on an element that was never rendered. The input appearing is the "open" marker,
+// and it appears in *both* modes, which is why swapping this to ⌘P looked harmless.
 When(/^I open the command palette$/, async () => {
-  await browser.keys([META, 'p'])
+  await browser.keys([META, 'k'])
   await $('[data-testid="command-palette-input"]').waitForDisplayed({ timeout: 10000 })
 })
 
@@ -124,8 +167,8 @@ Then(/^the command palette is shown$/, async () => {
 // test fake). If this fails but the row's `data-selected` check upstream passed, the break is
 // between the store bridge and the palette rather than the row click itself.
 Then(/^the command palette shows commit actions for "([^"]*)"$/, async (ref: string) => {
-  const repoPath = await activeRepoPath()
-  const shortOid = execFileSync('git', ['-C', repoPath as string, 'rev-parse', '--short', ref], {
+  const repoPath = activeRepoPath()
+  const shortOid = execFileSync('git', ['-C', repoPath, 'rev-parse', '--short', ref], {
     encoding: 'utf8',
   }).trim()
   const heading = $('[cmdk-group-heading]')
@@ -166,10 +209,9 @@ When(/^I type "([^"]*)" into the reset confirmation input$/, async (value: strin
 // Soft reset moves HEAD but leaves the index untouched, so the target..oldHEAD diff shows up as a
 // staged change — the distinguishing behaviour versus mixed (unstaged) and hard (no diff at all).
 Then(/^the working tree has staged changes$/, async () => {
-  const repoPath = await activeRepoPath()
-  expect(repoPath).toBeTruthy()
+  const repoPath = activeRepoPath()
   const hasStagedDiff = () => {
-    const result = execFileSync('git', ['-C', repoPath as string, 'diff', '--cached', '--name-only'], {
+    const result = execFileSync('git', ['-C', repoPath, 'diff', '--cached', '--name-only'], {
       encoding: 'utf8',
     }).trim()
     return result.length > 0
@@ -183,10 +225,9 @@ Then(/^the working tree has staged changes$/, async () => {
 // Hard reset resets both the index and the working tree to the target commit — nothing should be
 // left staged or unstaged.
 Then(/^the working tree is clean$/, async () => {
-  const repoPath = await activeRepoPath()
-  expect(repoPath).toBeTruthy()
+  const repoPath = activeRepoPath()
   const isClean = () =>
-    execFileSync('git', ['-C', repoPath as string, 'status', '--porcelain'], {
+    execFileSync('git', ['-C', repoPath, 'status', '--porcelain'], {
       encoding: 'utf8',
     }).trim().length === 0
   await browser.waitUntil(isClean, {
@@ -196,10 +237,9 @@ Then(/^the working tree is clean$/, async () => {
 })
 
 Then(/^the repository HEAD commit subject contains "([^"]*)"$/, async (expected: string) => {
-  const repoPath = await activeRepoPath()
-  expect(repoPath).toBeTruthy()
+  const repoPath = activeRepoPath()
   const headSubject = () =>
-    execFileSync('git', ['-C', repoPath as string, 'log', '-1', '--pretty=%s'], {
+    execFileSync('git', ['-C', repoPath, 'log', '-1', '--pretty=%s'], {
       encoding: 'utf8',
     }).trim()
   await browser.waitUntil(() => headSubject().includes(expected), {
@@ -244,34 +284,38 @@ When(/^I confirm the branch creation$/, async () => {
 // "HEAD~1" — the mutating action above (checkout-on-create, for branches) can change what a
 // relative ref means, but the target commit's subject is a stable, unambiguous anchor.
 Then(/^the branch "([^"]*)" points at the commit "([^"]*)"$/, async (branch: string, subject: string) => {
-  const repoPath = await activeRepoPath()
-  expect(repoPath).toBeTruthy()
-  const actual = execFileSync('git', ['-C', repoPath as string, 'log', '-1', '--format=%s', branch], {
+  const repoPath = activeRepoPath()
+  const actual = execFileSync('git', ['-C', repoPath, 'log', '-1', '--format=%s', branch], {
     encoding: 'utf8',
   }).trim()
   expect(actual).toBe(subject)
 })
 
-Then(/^the create tag dialog is shown$/, async () => {
-  await expect($('[data-testid="tag-dialog"]')).toBeDisplayed()
+// Tag creation is no longer a modal: `TagCreationInput` (added by the "inline tag creation input in
+// the refs column" change, which deleted TagDialog.tsx) renders a bare name input *inside the
+// drafted commit row's refs cell*. The `bar` variant only appears when the refs column is hidden,
+// which isn't the default, so `inline` is what these scenarios drive. Both lightweight and
+// annotated tags go through this same input — annotated ones are created with an empty message
+// rather than prompting for one — so there's no second dialog to fill in either case.
+Then(/^the tag name input is shown$/, async () => {
+  await $('[data-testid="tag-creation-inline-input"]').waitForDisplayed({ timeout: 10000 })
 })
 
 When(/^I enter the tag name "([^"]*)"$/, async (name: string) => {
-  const input = $('[data-testid="tag-name-input"]')
+  const input = $('[data-testid="tag-creation-inline-input"]')
   await input.waitForDisplayed({ timeout: 10000 })
   await input.setValue(name)
 })
 
+// The inline variant has no submit button (only the `bar` variant does) — Enter confirms. Typing
+// into the input already leaves it focused, so the keypress lands on it.
 When(/^I confirm the tag creation$/, async () => {
-  const button = $('[data-testid="tag-confirm-button"]')
-  await button.waitForEnabled({ timeout: 10000 })
-  await button.click()
+  await browser.keys('Enter')
 })
 
 Then(/^the tag "([^"]*)" points at the commit "([^"]*)"$/, async (tag: string, subject: string) => {
-  const repoPath = await activeRepoPath()
-  expect(repoPath).toBeTruthy()
-  const actual = execFileSync('git', ['-C', repoPath as string, 'log', '-1', '--format=%s', tag], {
+  const repoPath = activeRepoPath()
+  const actual = execFileSync('git', ['-C', repoPath, 'log', '-1', '--format=%s', tag], {
     encoding: 'utf8',
   }).trim()
   expect(actual).toBe(subject)
@@ -281,9 +325,8 @@ Then(/^the tag "([^"]*)" points at the commit "([^"]*)"$/, async (tag: string, s
 // pointing straight at the commit (reports "commit"). This is the real distinguishing proof that
 // `annotated: true` took effect, rather than just checking the ref exists.
 Then(/^the tag "([^"]*)" is annotated$/, async (tag: string) => {
-  const repoPath = await activeRepoPath()
-  expect(repoPath).toBeTruthy()
-  const type = execFileSync('git', ['-C', repoPath as string, 'cat-file', '-t', tag], {
+  const repoPath = activeRepoPath()
+  const type = execFileSync('git', ['-C', repoPath, 'cat-file', '-t', tag], {
     encoding: 'utf8',
   }).trim()
   expect(type).toBe('tag')
@@ -294,9 +337,8 @@ Then(/^the tag "([^"]*)" is annotated$/, async (tag: string) => {
 // rides out that refetch. `ref-label-tag-<name>` (RefLabel.tsx) is scoped inside the commit's own
 // `graph-row-<oid>` row so it can't match a same-named tag on a different commit.
 Then(/^the tag "([^"]*)" is shown as a ref in the graph$/, async (tag: string) => {
-  const repoPath = await activeRepoPath()
-  expect(repoPath).toBeTruthy()
-  const oid = execFileSync('git', ['-C', repoPath as string, 'rev-parse', `${tag}^{commit}`], {
+  const repoPath = activeRepoPath()
+  const oid = execFileSync('git', ['-C', repoPath, 'rev-parse', `${tag}^{commit}`], {
     encoding: 'utf8',
   }).trim()
   const row = $(`[data-testid="graph-row-${oid}"]`)
@@ -307,9 +349,8 @@ Then(/^the tag "([^"]*)" is shown as a ref in the graph$/, async (tag: string) =
 // Cherry-pick creates a *new* commit (different oid, same subject) on the target ref rather than
 // moving anything — checking `<ref>`'s log for the subject (not oid equality) is the correct proof.
 Then(/^the commit "([^"]*)" is reachable from "([^"]*)"$/, async (subject: string, ref: string) => {
-  const repoPath = await activeRepoPath()
-  expect(repoPath).toBeTruthy()
-  const subjects = execFileSync('git', ['-C', repoPath as string, 'log', ref, '--format=%s'], {
+  const repoPath = activeRepoPath()
+  const subjects = execFileSync('git', ['-C', repoPath, 'log', ref, '--format=%s'], {
     encoding: 'utf8',
   })
     .trim()
@@ -318,10 +359,9 @@ Then(/^the commit "([^"]*)" is reachable from "([^"]*)"$/, async (subject: strin
 })
 
 Then(/^the repository has (\d+) stash(?:es)?$/, async (count: string) => {
-  const repoPath = await activeRepoPath()
-  expect(repoPath).toBeTruthy()
+  const repoPath = activeRepoPath()
   const stashCount = () => {
-    const list = execFileSync('git', ['-C', repoPath as string, 'stash', 'list'], {
+    const list = execFileSync('git', ['-C', repoPath, 'stash', 'list'], {
       encoding: 'utf8',
     }).trim()
     return list ? list.split('\n').length : 0
@@ -340,19 +380,17 @@ Then(/^the repository has (\d+) stash(?:es)?$/, async (count: string) => {
 // conflict with; this only touches the real on-disk repo, not the app's (possibly now-stale)
 // status cache, which doesn't matter since the stash rows being selected don't depend on it.
 Given(/^the working tree starts clean$/, async () => {
-  const repoPath = await activeRepoPath()
-  expect(repoPath).toBeTruthy()
-  execFileSync('git', ['-C', repoPath as string, 'reset', '--hard', 'HEAD'])
-  execFileSync('git', ['-C', repoPath as string, 'clean', '-fd'])
+  const repoPath = activeRepoPath()
+  execFileSync('git', ['-C', repoPath, 'reset', '--hard', 'HEAD'])
+  execFileSync('git', ['-C', repoPath, 'clean', '-fd'])
 })
 
 // Apply/pop restore the stash's changes onto the working tree — checking for the untracked file
 // stash@{0} carries (notes.txt, from stash-stack.sh's `-u` push) sidesteps asserting on config.yml,
 // whose content would otherwise need a 3-way merge against the fixture's other leftover changes.
 Then(/^the file "([^"]*)" exists in the working tree$/, async (filePath: string) => {
-  const repoPath = await activeRepoPath()
-  expect(repoPath).toBeTruthy()
-  await browser.waitUntil(() => existsSync(join(repoPath as string, filePath)), {
+  const repoPath = activeRepoPath()
+  await browser.waitUntil(() => existsSync(join(repoPath, filePath)), {
     timeout: 10000,
     timeoutMsg: `expected "${filePath}" to exist in the working tree at ${repoPath}`,
   })

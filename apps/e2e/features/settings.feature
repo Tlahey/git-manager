@@ -85,7 +85,13 @@ Feature: Settings
     Given the git-manager application is running
     When I open the settings
     And I open the "ui_customization" settings tab
-    Then the "dark" theme card matches the visual snapshot "theme-card-dark"
+    # Select it here rather than inheriting whatever the previous scenario left persisted: the card
+    # draws a blue ring when its theme is the active one, and on a card this small that ring alone
+    # is ~3% of the pixels — more than enough to fail the 1% threshold. Selecting explicitly also
+    # rules out snapshotting before the persisted settings have rehydrated after the reload.
+    And I select the "dark" theme
+    Then the active theme is "dark"
+    And the "dark" theme card matches the visual snapshot "theme-card-dark"
 
   Scenario: Starting the GitHub OAuth device flow shows a real device code, and it can be cancelled
     Given the git-manager application is running

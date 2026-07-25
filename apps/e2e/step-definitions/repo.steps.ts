@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { browser, $ } from '@wdio/globals'
 import { Given } from '@wdio/cucumber-framework'
+import { setActiveRepoPath } from '../support/activeRepo'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const FIXTURE_ROOT = '/tmp/git-manager-fixtures'
@@ -65,6 +66,10 @@ function openedRepo(): Promise<string | null> {
 Given(/^the "([^"]*)" fixture repository is opened$/, async (fixtureName: string) => {
   execFileSync('bash', [join(SCENARIOS_DIR, `${fixtureName}.sh`)], { stdio: 'inherit' })
   const repoPath = join(FIXTURE_ROOT, fixtureName)
+  // Recorded for the assertion steps that shell out to `git`: they take the path from here rather
+  // than reading `activeRepo` back out of the app, which can lag or land on a different fixture —
+  // see support/activeRepo.ts.
+  setActiveRepoPath(repoPath)
 
   // The seed races the app's own zustand-persist writes: any store update in the page still on
   // screen re-writes this key from the *previous* repo's state, and when that lands between our

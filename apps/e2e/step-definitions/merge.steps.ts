@@ -34,10 +34,13 @@ After({ tags: '@merge' }, async () => {
   // own command retry, but a fresh query avoids depending on that).
   const [remaining] = await browser.getWindowHandles()
   await browser.switchToWindow(remaining)
-  await browser.execute(() => {
-    window.location.href = '/'
-  })
-  await browser.pause(500)
+  // Driver-owned navigation rather than assigning `window.location.href` inside an `execute` — same
+  // reason as repo.steps.ts's fixture-open step: that assignment tears the document down mid-call,
+  // and any command issued before the new one commits runs the tauri service's per-command
+  // window-state script against a dying document, taking the whole app process down. It surfaces as
+  // ECONNREFUSED in the *next* scenario rather than here.
+  const origin = await browser.execute(() => window.location.origin)
+  await browser.url(`${origin}/`)
 })
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -55,10 +58,9 @@ When(/^I open the merge editor for "([^"]*)"$/, async (filePath: string) => {
   // The merge editor renders directly from URL params — main.tsx routes `?window=merge` to
   // ConflictMergeWindow, independent of the repoUI store — so navigating the current window is
   // enough; no need to drive the native second-window flow (WebviewWindowBuilder).
-  const url = `/?window=merge&repoPath=${encodeURIComponent(currentRepoPath)}&filePath=${encodeURIComponent(filePath)}`
-  await browser.execute((u: string) => {
-    window.location.href = u
-  }, url)
+  const origin = await browser.execute(() => window.location.origin)
+  const url = `${origin}/?window=merge&repoPath=${encodeURIComponent(currentRepoPath)}&filePath=${encodeURIComponent(filePath)}`
+  await browser.url(url)
   // merge-auto-merge-button appears once get_merge_view resolves and the view is renderable.
   await $('[data-testid="merge-auto-merge-button"]').waitForDisplayed({ timeout: 20000 })
 })
@@ -99,6 +101,24 @@ Then(/^the merge editor matches the visual snapshot "([^"]*)"$/, async (tag: str
 let mainWindowHandle = ''
 let mergeWindowHandle = ''
 
+/**
+ * Re-point the driver at the merge window before touching it.
+ *
+ * Switching to it once (when it opens) isn't enough: the tauri service runs an
+ * "ensure the active window is focused" hook *before every command*, so whenever the OS moves focus
+ * back to the main app window — which it does at some point after the auto-merge wand's IPC round
+ * trip — the driver silently follows, and every subsequent query runs against the main window's
+ * document instead. That reads as "the merge editor's buttons vanished" (a `$$` for the connector
+ * buttons comes back empty, with no `merge-*` testid present at all) rather than as a window mix-up,
+ * which is what made this look like a merge-editor regression.
+ */
+async function ensureMergeWindow() {
+  // Switches unconditionally rather than checking the current handle first: the check would itself
+  // be a command, and the focus hook can move the driver between that check and whatever the check
+  // was guarding — so "already on it" is never a safe conclusion.
+  await browser.switchToWindow(mergeWindowHandle)
+}
+
 // WebdriverIO's native `element.click()` throws in real secondary windows (see fixup.steps.ts) —
 // dispatch via injected JS instead. Only needed for clicks *inside* the merge window; the file-row
 // click below happens in the always-focused main window, where native `.click()` is fine.
@@ -130,6 +150,28 @@ When(/^I click the conflicted file "([^"]*)" to resolve it$/, async (filePath: s
   // and-suspenders for a layout pass that lands before first paint) — so the accept/reject
   // buttons queried below aren't reliably present the instant the wand button itself is.
   await browser.pause(1000)
+  // ...and a fixed pause is only a guess, so wait for the overlay to have actually emitted
+  // segments. Without this, a slow layout surfaces two steps later as "no accept-right buttons
+  // after the wand", which reads like an auto-merge behaviour change rather than "the overlay
+  // never rendered" (the giveaway being *zero* `merge-connector-*` testids in the document).
+  //
+  // Re-focusing the merge window on every poll is the point of the loop, not just a safety net:
+  // the overlay's geometry pass is rAF-scheduled (useMergeConnectors' scheduleRecompute), and rAF
+  // is throttled or suspended while a window isn't being painted — so an unfocused secondary
+  // window can sit there indefinitely with three mounted Monaco panes and no segments, which is
+  // what this used to fail on under machine load. Generous timeout on top: three panes have to
+  // mount and report ready, and the first merge view of an app session is far slower than the rest.
+  await browser.waitUntil(
+    async () => {
+      await ensureMergeWindow()
+      return (await countConnectorSegments()) > 0
+    },
+    {
+      timeout: 30000,
+      interval: 1000,
+      timeoutMsg: 'The merge connector overlay never rendered any segments',
+    }
+  )
 })
 
 // handleApplyNonConflicting (the button's onClick) is async — it awaits the backend
@@ -137,9 +179,16 @@ When(/^I click the conflicted file "([^"]*)" to resolve it$/, async (filePath: s
 // placements. clickViaJs's browser.execute resolves as soon as the DOM .click() call returns,
 // well before that promise (and the resulting re-render) settles.
 When(/^I click the merge editor auto-merge wand$/, async () => {
+  await ensureMergeWindow()
   await clickViaJs('merge-auto-merge-button')
   await browser.pause(1000)
 })
+
+/** Any overlay segment at all — the "has the connector overlay laid out yet" signal. */
+async function countConnectorSegments(): Promise<number> {
+  const found = await $$('[data-testid^="merge-connector-"]')
+  return found.length
+}
 
 // The fixture's two "both-different" occurrences are the only blocks still actionable from the
 // right gap after the wand runs (it only auto-merges one-sided blocks — see
@@ -147,6 +196,7 @@ When(/^I click the merge editor auto-merge wand$/, async () => {
 // picked (mergeBlockLayout's isChangeSource/`actionable` semantics), so this always finds exactly
 // those 2 remaining buttons regardless of their blockId.
 async function countAcceptRightButtons(): Promise<number> {
+  await ensureMergeWindow()
   const found = await $$('[data-testid^="merge-connector-accept-right-"]')
   return found.length
 }
@@ -160,17 +210,53 @@ async function countAcceptRightButtons(): Promise<number> {
 // accept-right button is first right now" and waiting for the count to actually drop before
 // moving on ties each click to the app's real state instead of a timing guess.
 When(/^I accept the right side for every remaining conflicting block$/, async () => {
-  await browser.waitUntil(async () => (await countAcceptRightButtons()) > 0, {
-    timeout: 10000,
-    timeoutMsg: 'No remaining merge-connector-accept-right buttons appeared',
-  })
-  let remaining = await countAcceptRightButtons()
-  expect(remaining).toBeGreaterThan(0)
+  // Captures the count *inside* the wait rather than re-querying after it: a second query is a
+  // second chance for the driver to have drifted off the merge window, and re-reading 0 there is
+  // indistinguishable from "the buttons went away".
+  let remaining = 0
+  try {
+    await browser.waitUntil(
+      async () => {
+        remaining = await countAcceptRightButtons()
+        return remaining > 0
+      },
+      { timeout: 10000, timeoutMsg: 'No remaining merge-connector-accept-right buttons appeared' }
+    )
+  } catch (err) {
+    // Reports what the document *does* hold, which is what distinguishes "the merge editor changed"
+    // from "we're looking at the wrong window" (the latter shows no `merge-*` testid at all).
+    const present = await browser.execute(() =>
+      Array.from(document.querySelectorAll('[data-testid^="merge-"]'))
+        .map((el) => el.getAttribute('data-testid'))
+        .slice(0, 60)
+    )
+    throw new Error(
+      `${(err as Error).message}\n[probe] merge-* testids present: ${JSON.stringify(present)}`
+    )
+  }
+
   while (remaining > 0) {
-    const btn = await $('[data-testid^="merge-connector-accept-right-"]')
-    const testid = await btn.getAttribute('data-testid')
-    if (!testid) throw new Error('Accept-right button is missing its data-testid attribute')
-    await clickViaJs(testid)
+    // Look the button up and click it inside a *single* injected script rather than as separate
+    // find / getAttribute / click round-trips, and retry the whole thing: each round-trip is a
+    // chance for the tauri service's focus hook to move the driver off the merge window
+    // mid-sequence, which showed up as `getElementAttribute` being handed an undefined elementId —
+    // the element had been "found" in one window and read in another.
+    let testid: string | null = null
+    await browser.waitUntil(
+      async () => {
+        await ensureMergeWindow()
+        testid = await browser.execute(() => {
+          const el = document.querySelector(
+            '[data-testid^="merge-connector-accept-right-"]'
+          ) as HTMLElement | null
+          if (!el) return null
+          el.click()
+          return el.getAttribute('data-testid')
+        })
+        return testid !== null
+      },
+      { timeout: 10000, timeoutMsg: 'No accept-right button was clickable in the merge window' }
+    )
     const expected = remaining - 1
     await browser.waitUntil(async () => (await countAcceptRightButtons()) === expected, {
       timeout: 5000,
@@ -189,6 +275,7 @@ Then(/^the merge apply button is enabled$/, async () => {
 // immediately after, before polling handles again, avoids depending on the closing window's own
 // context (see fixup.steps.ts's "no such window" gotcha).
 When(/^I click the merge editor apply button$/, async () => {
+  await ensureMergeWindow()
   await clickViaJs('merge-apply')
   await browser.pause(500)
   await browser.switchToWindow(mainWindowHandle)
