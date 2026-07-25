@@ -15,30 +15,30 @@
 **git-manager** is a desktop application built with [Tauri v2](https://tauri.app/) + React (Vite), offering:
 
 - 🌲 **Git Tree visualizer** — interactive multi-branch commit graph
-- 🤖 **Commit generation** — conventional messages generated locally via Ollama
+- 🤖 **Commit generation** — AI-written commit messages, local-first (Ollama) or via a configured provider
 - 🔄 **Rollback / Revert** — safe undo with preview
 - 🔧 **Fixup & Autosquash** — guided history cleanup
 - 🌿 **Worktree management** — visual multi-worktree management
 - ♻️ **Interactive rebase** — drag & drop actions
 - 📦 **Stash** — stash management with messages
 - 🌐 **i18n** — interface in French and English
-- 🔒 **100% local** — no data leaves your machine
+- 🔒 **Local-first** — no telemetry; the only outbound calls are to the AI provider you configure and to GitHub
 
 ---
 
 ## Tech stack
 
-| Layer                | Technology                    |
-| -------------------- | ----------------------------- |
-| Desktop runtime      | Tauri v2                      |
-| Frontend             | React 18 + Vite + TypeScript  |
-| UI Components        | shadcn/ui + Tailwind CSS      |
-| Backend              | Rust + `git2` crate (libgit2) |
-| State management     | Zustand                       |
-| Internationalization | react-i18next (FR / EN)       |
-| LLM (AI commit)      | Ollama (local)                |
-| Remote auth          | SSH + HTTPS (token)           |
-| Monorepo             | pnpm workspaces + Turborepo   |
+| Layer                | Technology                                |
+| -------------------- | ----------------------------------------- |
+| Desktop runtime      | Tauri v2                                  |
+| Frontend             | React 18 + Vite + TypeScript              |
+| UI Components        | shadcn/ui + Tailwind CSS                  |
+| Backend              | Rust + `git2` crate (libgit2)             |
+| State management     | Zustand                                   |
+| Internationalization | react-i18next (FR / EN)                   |
+| LLM (AI commit)      | Ollama, LM Studio, MLX, OpenAI, Anthropic |
+| Remote auth          | SSH + HTTPS (token)                       |
+| Monorepo             | pnpm workspaces + Turborepo               |
 
 ---
 
@@ -52,13 +52,16 @@ git-manager/
 │   │   │   └── src/
 │   │   │       ├── commands/       # Thin Tauri IPC commands, one file per domain
 │   │   │       │                   #   (repo, log, branch, commit, remote, stash, rollback,
-│   │   │       │                   #   fixup, undo, github, ollama, ssh, submodule, themes)
+│   │   │       │                   #   fixup, rebase, interactive_rebase, cherry_pick, bisect,
+│   │   │       │                   #   blame, conflict, patch, worktree, submodule, undo,
+│   │   │       │                   #   github, pr_template, ai, agent, tasks, terminal,
+│   │   │       │                   #   activity_log, ssh, themes)
 │   │   │       ├── services/       # git2 business logic, called from commands/
 │   │   │       │                   #   (git_diff, git_commit, git_repo, git_graph, …)
 │   │   │       ├── error.rs        # Unified AppError → JSON string
 │   │   │       ├── models.rs       # serde structs mirroring TypeScript types
 │   │   │       ├── utils.rs        # Shared helpers (short_oid, get_git_signature)
-│   │   │       ├── state.rs        # AppState (repos, ollama config, cancellation)
+│   │   │       ├── state.rs        # AppState (open repos, cancellation flag)
 │   │   │       └── lib.rs          # Builder + invoke_handler registration
 │   │   └── src/                    # React frontend
 │   │       ├── app/                # Pages (dashboard, repo, settings, pull-requests)
@@ -71,20 +74,23 @@ git-manager/
 │   └── e2e/                        # WebdriverIO + Cucumber e2e suite (drives the real app)
 ├── packages/
 │   ├── git-types/                  # Shared TypeScript interfaces (DTOs)
+│   ├── ai/                         # AI presets, providers and per-feature descriptors
 │   ├── mascot/                     # Octopus mascot as a shared <git-mascot> web component
 │   ├── i18n/                       # react-i18next setup + EN/FR locale files
 │   ├── ui/                         # shadcn/ui base components
 │   ├── components/                 # Shared presentational React components
 │   ├── editor/                     # Monaco integration: diff/merge + single-pane editors
-│   └── config/                     # Shared ESLint + Tailwind + tsconfig
+│   ├── theme/                      # Design tokens + APCA contrast gates
+│   ├── storybook-a11y/             # Shared Storybook accessibility setup
+│   └── config/                     # Shared Oxlint + Tailwind + tsconfig
 ├── tools/
 │   └── git-fixtures/               # Scripted fixture repos (dev tabs + e2e scenarios)
 ├── docs/
 │   ├── README.md                   # This file
-│   ├── ROADMAP.md                  # Development plan + status at a glance
+│   ├── ROADMAP.md                  # What shipped, what's open, + the historical milestones
 │   ├── screenshots/                # Auto-captured app screenshots (e2e @screenshots)
-│   ├── specs/                      # Detailed specifications per feature
-│   └── architecture/               # Architecture refactor plan + execution tracking
+│   ├── specs/archive/              # Original 2026-07-03 design docs — historical only
+│   └── architecture/               # Architecture refactor plans + execution tracking
 ├── CLAUDE.md                       # Architecture/IPC conventions — authoritative
 ├── package.json                    # Root package (global scripts)
 ├── pnpm-workspace.yaml
@@ -100,7 +106,8 @@ git-manager/
 - **pnpm** 9+
 - **Rust** 1.77+ (`rustup install stable`)
 - **Tauri CLI** v2 (`cargo install tauri-cli`)
-- **Ollama** — [ollama.ai](https://ollama.ai) installed and running
+- **An AI provider** _(optional, only for the AI features)_ — [Ollama](https://ollama.ai) running
+  locally is the default; see "AI provider configuration" below
 
 ---
 
@@ -108,7 +115,7 @@ git-manager/
 
 ```bash
 # Clone the repository
-git clone https://github.com/votre-org/git-manager.git
+git clone https://github.com/Tlahey/git-manager.git
 cd git-manager
 
 # Install dependencies
@@ -126,9 +133,14 @@ pnpm build
 
 ---
 
-## Ollama configuration
+## AI provider configuration
 
-The application connects to Ollama at `http://localhost:11434` by default.
+AI features (commit-message generation, file grouping) are optional. The default provider is a
+local Ollama at `http://localhost:11434`; LM Studio, MLX, OpenAI and Anthropic are also
+selectable — see `AI_PRESETS` in [`packages/ai`](../packages/ai/src/presets.ts). Provider, URL,
+model, API key and temperature are all configured in **Settings → LLM**.
+
+To use the local default:
 
 ```bash
 # Install and start Ollama
@@ -141,28 +153,22 @@ ollama pull llama3.2
 ollama pull qwen2.5-coder:7b
 ```
 
-The URL and model configuration is available in **Settings → LLM**.
-
 ---
 
 ## Documentation
 
-| Document                                               | Description                   |
-| ------------------------------------------------------ | ----------------------------- |
-| [ROADMAP](./ROADMAP.md)                                | Milestones and planning       |
-| [Architecture](./specs/00-architecture.md)             | Stack, patterns, Tauri IPC    |
-| [Dashboard](./specs/01-dashboard.md)                   | Multi-repo management         |
-| [Git Tree](./specs/02-git-tree.md)                     | Graph visualization           |
-| [Commit generation](./specs/03-commit-generation.md)   | AI via Ollama                 |
-| [Rollback](./specs/04-rollback.md)                     | Revert / Reset                |
-| [Fixup](./specs/05-fixup.md)                           | Fixup & autosquash            |
-| [Worktree](./specs/06-worktree.md)                     | Worktree management           |
-| [Interactive rebase](./specs/07-rebase-interactive.md) | Rebase UI                     |
-| [Stash](./specs/08-stash.md)                           | Stash management              |
-| [Branches](./specs/09-branch-management.md)            | Branch management             |
-| [Settings](./specs/10-settings.md)                     | Configuration                 |
-| [Pedagogy](./specs/11-pedagogy.md)                     | Contextual git education mode |
-| [Left Sidebar](./specs/12-left-sidebar.md)             | Resizable repository sidebar  |
+| Document                                           | Description                                                        |
+| -------------------------------------------------- | ------------------------------------------------------------------ |
+| [CLAUDE.md](../CLAUDE.md)                          | **Authoritative** architecture, IPC boundary and layering rules    |
+| [ROADMAP](./ROADMAP.md)                            | Feature status and remaining work                                  |
+| [Architecture refactors](./architecture/README.md) | Refactor plans 13–17 and their execution records — all complete    |
+| [Archived specs](./specs/archive/README.md)        | Original 2026-07-03 design docs — historical, do not trust as docs |
+
+> [!WARNING]
+> The per-feature specs that used to be listed here now live in
+> [`./specs/archive/`](./specs/archive/README.md). They were written before the features were
+> built and never updated, so they describe commands, DTOs and components that in many cases do
+> not exist. Read [CLAUDE.md](../CLAUDE.md) instead for how the app actually works.
 
 ---
 

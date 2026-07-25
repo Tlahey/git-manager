@@ -1,53 +1,101 @@
 # ROADMAP — git-manager
 
-> Iterative development plan. Each milestone delivers independent functional value.
+> **How to read this file.** The "Where things stand" section below is written against the
+> actual code and is the part to trust. The milestone tables at the bottom are the _original_
+> July 2026 plan, kept for the record — their checkmarks were never maintained and are wrong in
+> both directions. When you finish a feature, update "Where things stand", not the old tables.
+>
+> Authoritative technical documentation lives in [CLAUDE.md](../CLAUDE.md). The per-feature
+> design specs were archived to [`docs/specs/archive/`](./specs/archive/README.md) — they no
+> longer describe the code.
 
 ---
 
-## Statuses
+## Where things stand
 
-| Icon | Meaning             |
-| ---- | ------------------- |
-| ⬜   | Not started         |
-| 🔵   | In progress         |
-| ✅   | Done                |
-| 🚧   | Blocked / known bug |
+The backend registers **133 Tauri commands** across
+[`commands/`](../apps/desktop/src-tauri/src/commands/), backed by
+[`services/`](../apps/desktop/src-tauri/src/services/).
+
+### Shipped
+
+| Area           | Notes                                                                                                                                                                                                    |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Foundations    | pnpm + Turborepo monorepo, Tauri v2 + Vite + React, `packages/{ai,components,config,editor,git-types,i18n,mascot,storybook-a11y,theme,ui}`                                                               |
+| Git tree       | Virtualised commit graph, branch/tag sidebar, ref labels, filters, commit diff panel                                                                                                                     |
+| Working tree   | Stage/unstage, commit, amend, discard, fetch/pull/push with SSH + HTTPS auth                                                                                                                             |
+| Multi-repo     | Dashboard, scan, clone, init, Chrome-style tab bar with pinned Home / Pull Requests tabs                                                                                                                 |
+| AI             | Streaming commit-message generation and AI file grouping via `packages/ai`; multi-provider transport (`ai_openai_compatible.rs`, `ai_anthropic.rs`) — no longer Ollama-only                              |
+| Rollback       | `revert`, `reset` soft/mixed/hard with `RESET` confirmation, protected-branch enforcement                                                                                                                |
+| Fixup          | `commit --fixup`, pending-fixups banner, autosquash preview and execution                                                                                                                                |
+| Rebase         | State detection (`get_rebase_state`), `rebase_onto_commit`, continue / skip / abort, and interactive rebase via `list_rebase_commits` + `run_interactive_rebase` with the `components/rebase-editor/` UI |
+| Stash          | push / pop / apply / drop / store, plus the stash-on-blocked-checkout prompt                                                                                                                             |
+| Branches       | create / delete / checkout / merge                                                                                                                                                                       |
+| Worktrees      | `list_worktrees`, `add_worktree`, `remove_worktree`, `prune_worktrees`, `gone_upstream_branches`, default-files setting                                                                                  |
+| Conflicts      | Conflict detection plus the Monaco three-pane merge resolver in `packages/editor`                                                                                                                        |
+| Cherry-pick    | `commands/cherry_pick.rs` + `services/git_cherry_pick.rs`                                                                                                                                                |
+| Bisect         | `commands/bisect.rs` + `services/git_bisect.rs`, with a setup banner and stash dialog                                                                                                                    |
+| Blame          | `commands/blame.rs` + `services/git_blame.rs`                                                                                                                                                            |
+| Patches        | `commands/patch.rs`, `services/git_patch.rs`, `services/dependency_patch.rs`                                                                                                                             |
+| GitHub         | OAuth device flow, cross-repo pull-request view, PR templates                                                                                                                                            |
+| Terminal       | Integrated PTY (`commands/terminal.rs`, `services/terminal_pty.rs`)                                                                                                                                      |
+| Agents & tasks | `commands/agent.rs`, `commands/tasks.rs`, `services/agent_session.rs`, activity log                                                                                                                      |
+| Submodules     | `list_submodules` + sidebar section                                                                                                                                                                      |
+| Polish         | Global keyboard shortcuts, themes, undo/redo history, auto-update (`api/updater.api.ts`), i18n EN/FR                                                                                                     |
+
+### Not wired up (dead frontend wrapper, no backend command)
+
+Typed `invoke()` wrappers sit in [`lib/tauri.ts`](../apps/desktop/src/lib/tauri.ts) with no
+matching `#[tauri::command]`. Either implement the backend or delete the wrapper:
+
+- [ ] **Branch rename** — `renameBranch` → `rename_branch`. No UI trigger either (no rename entry
+      in the branch context menu).
+- [ ] **Settings backend sync** — `getSettings` / `updateSettings` → `get_settings` /
+      `update_settings`, plus an `AppSettings` DTO. `stores/settings.store.ts` persists entirely
+      client-side (Zustand `persist` → localStorage) and never calls these. Only useful if
+      settings ever need to be readable from outside the app.
+
+### Not started
+
+- [ ] **Compare branches** — visual diff between two arbitrary branches. Only
+      `compare_commit_to_workdir` exists today (a commit against the working tree).
+- [ ] **Pedagogy / learning mode** — the whole M8 block below: git console panel, action
+      tooltips with risk levels, inline glossary, session journal with LLM explanation,
+      learning-mode guard on destructive actions. Nothing of it exists yet; the original design
+      is in [`specs/archive/11-pedagogy.md`](./specs/archive/11-pedagogy.md).
+- [ ] **View-specific tabs** — git graph / terminal / settings / kanban as tabs within a repo.
+
+### Ideas
+
+- GitLab integration alongside GitHub
+- Visual git hooks
+- Activity report export
+- VSCode extension (embedded panel)
 
 ---
 
-## Status at a glance
+## Historical milestone plan (July 2026)
 
-| Milestone                | Status         | Description                                                                                                                                                                                                    |
-| ------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0 — Foundations         | ✅ Done        | Monorepo setup, Tauri scaffold, packages                                                                                                                                                                       |
-| M1 — Git Tree            | ✅ Done        | Virtualised commit graph, branch sidebar, commit diff panel                                                                                                                                                    |
-| M2 — Working Tree        | ✅ Done        | Stage/unstage, commit, fetch/pull/push                                                                                                                                                                         |
-| M3 — Commit AI           | ✅ Done        | Ollama streaming, settings UI, message history, WIP batch commit                                                                                                                                               |
-| M4 — Rollback & Fixup    | ✅ Done        | git revert, reset (soft/mixed/hard), fixup + autosquash                                                                                                                                                        |
-| M5 — Interactive Rebase  | ⬜ Planned     | Read-only rebase-state detection done (`get_rebase_state` — idle/in-progress/conflict/edit-pause, for the toolbar's REBASING badge); drag-and-drop rebase UI and the start/abort/continue controls not started |
-| M6 — Worktree & Branches | 🔵 In progress | Branch create/delete/checkout done; branch rename and worktree management not started                                                                                                                          |
-| M7 — Stash & Polish      | 🔵 In progress | Stash push/pop/apply/drop and keyboard shortcuts done; auto-update not started                                                                                                                                 |
+> [!NOTE]
+> Kept for the record only. These tables were written at the start of the project and their
+> statuses were never maintained — several milestones marked ⬜ have since shipped in full
+> (interactive rebase, worktrees, stash, cherry-pick, blame), and the file previously contained
+> two conflicting copies of the same plan. Use "Where things stand" above instead.
 
-### Not yet wired up (frontend scaffolding exists, backend command doesn't)
+| Icon | Meaning        |
+| ---- | -------------- |
+| ⬜   | Not started    |
+| 🔵   | Partially done |
+| ✅   | Done           |
+| ➖   | Dropped / moot |
 
-These have a typed `invoke()` wrapper already sitting in [`lib/tauri.ts`](../apps/desktop/src/lib/tauri.ts) (and, for rebase, a real UI consumer) but no corresponding `#[tauri::command]` — found via a cross-check of every `invoke()` call against `lib.rs`'s registered handler list. Listed here so implementing them is "wire up the two ends," not "start from scratch":
-
-- [ ] **Branch rename** — `renameBranch(path, oldName, newName)` → `rename_branch`. No UI trigger yet either (no rename option in the branch context menu). Spec: [09-branch-management](./specs/09-branch-management.md); tracked as task 6.3.
-- [ ] **Worktree management** — `listWorktrees`/`addWorktree`/`removeWorktree` → `list_worktrees`/`add_worktree`/`remove_worktree`. `GitWorktree` DTO already defined ([`models.rs`](../apps/desktop/src-tauri/src/models.rs), [`git-types`](../packages/git-types/src/index.ts)). No UI consumer yet. Spec: [06-worktree](./specs/06-worktree.md); tasks 6.1/6.2.
-- [ ] **Interactive rebase controls** — `startInteractiveRebase`/`abortRebase`/`continueRebase` → `start_interactive_rebase`/`abort_rebase`/`continue_rebase`. `RebaseStep` DTO already defined for the todo-list shape. The read side (`get_rebase_state`, `RebaseState`) is implemented and live in the toolbar; these three are the write side needed for the drag-and-drop UI. Spec: [07-rebase-interactive](./specs/07-rebase-interactive.md); tasks 5.1–5.5.
-- [ ] **Settings backend sync** — `getSettings`/`updateSettings` → `get_settings`/`update_settings`, plus an `AppSettings` DTO. Currently unused: `stores/settings.store.ts` persists settings entirely client-side (Zustand `persist` → localStorage) and never calls these. Only relevant if/when settings need to sync across machines or be readable from outside the app — not blocking anything today.
-
----
-
-## M0 — Foundations (Phase 0 + 1)
-
-> **Goal**: Working monorepo, a Tauri application that launches, display of a minimal Git repo.
+### M0 — Foundations
 
 | #   | Task                                                              | Status |
 | --- | ----------------------------------------------------------------- | ------ |
-| 0.1 | Documentation (README, ROADMAP, 11 specs)                         | ✅     |
+| 0.1 | Documentation (README, ROADMAP, specs)                            | ✅     |
 | 0.2 | pnpm + Turborepo monorepo                                         | ✅     |
-| 0.3 | `packages/config` — shared ESLint + Tailwind + tsconfig           | ✅     |
+| 0.3 | `packages/config` — shared lint + Tailwind + tsconfig             | ✅     |
 | 0.4 | `packages/git-types` — TypeScript interfaces                      | ✅     |
 | 0.5 | `packages/i18n` — react-i18next FR/EN                             | ✅     |
 | 0.6 | `packages/ui` — shadcn/ui base components                         | ✅     |
@@ -55,15 +103,7 @@ These have a typed `invoke()` wrapper already sitting in [`lib/tauri.ts`](../app
 | 0.8 | Basic Tauri commands: `open_repo`, `get_status`, `scan_repos`     | ✅     |
 | 0.9 | `pnpm dev` scripts (full Tauri) / `pnpm dev:frontend` (Vite only) | ✅     |
 
-**Validation criterion**: `pnpm dev` compiles and launches the desktop app. ✅ (Rust build OK, Vite build OK)
-
-> **⚠️ Known bug**: Opening a repo/folder via the file picker doesn't work. To be fixed in M0-fix before validating M1.
-
----
-
-## M1 — Git Tree / MVP
-
-> **Goal**: Complete visualization of Git history with branches, tags, and commit detail.
+### M1 — Git Tree / MVP
 
 | #    | Task                                                         | Status |
 | ---- | ------------------------------------------------------------ | ------ |
@@ -79,13 +119,7 @@ These have a typed `invoke()` wrapper already sitting in [`lib/tauri.ts`](../app
 | 1.10 | Fix graph width — per-row SVG (no more cropping on messages) | ✅     |
 | 1.11 | Resizable commit panel (drag handle, min 250 / max 700 px)   | ✅     |
 
-**Validation criterion**: complete git graph of a repo, click on a commit → diff visible. 🔵 (depends on the repo-opening fix)
-
----
-
-## M2 — Basic operations
-
-> **Goal**: Stage/unstage, manual commit, push/pull/fetch.
+### M2 — Basic operations
 
 | #   | Task                                                         | Status |
 | --- | ------------------------------------------------------------ | ------ |
@@ -96,34 +130,22 @@ These have a typed `invoke()` wrapper already sitting in [`lib/tauri.ts`](../app
 | 2.5 | Fetch / Pull (fast-forward) / Push with SSH auth             | ✅     |
 | 2.6 | Branches sidebar with ahead/behind + Fetch/Pull/Push buttons | ✅     |
 | 2.7 | Working tree status polling (3s)                             | ✅     |
-| 2.8 | Merge conflict handling (visualization)                      | ⬜     |
+| 2.8 | Merge conflict handling (visualization)                      | ✅     |
 
-**Validation criterion**: complete commit from A to Z from within the application. ✅
-
----
-
-## M3 — AI commit generation + Settings
-
-> **Goal**: Commit message generation via Ollama + configuration interface.
+### M3 — AI commit generation + Settings
 
 | #   | Task                                                                   | Status |
 | --- | ---------------------------------------------------------------------- | ------ |
 | 3.1 | Ollama Rust client — streaming `/api/generate`                         | ✅     |
-| 3.2 | `useOllamaGeneration` hook — token accumulation + cancellation         | ✅     |
+| 3.2 | Generation hook — token accumulation + cancellation                    | ✅     |
 | 3.3 | `CommitMessageBox` — Generate button + streaming display               | ✅     |
-| 3.4 | `useCommitMessageHistory` — last 10 messages (session)                 | ✅     |
+| 3.4 | Commit message history — last 10 messages (session)                    | ✅     |
 | 3.5 | History dropdown in `CommitMessageBox`                                 | ✅     |
 | 3.6 | `SettingsPage` — LLM / Git / Appearance / Language / Advanced sections | ✅     |
-| 3.7 | Ollama connection test from Settings                                   | ✅     |
+| 3.7 | AI provider connection test from Settings                              | ✅     |
 | 3.8 | Settings auto-save via Zustand                                         | ✅     |
 
-**Validation criterion**: streaming generation < 10s, settings persisted. ✅
-
----
-
-## M4 — Rollback & Fixup
-
-> **Goal**: Safe undo operations with preview and protection.
+### M4 — Rollback & Fixup
 
 | #    | Task                                                                | Status |
 | ---- | ------------------------------------------------------------------- | ------ |
@@ -140,75 +162,42 @@ These have a typed `invoke()` wrapper already sitting in [`lib/tauri.ts`](../app
 | 4.11 | `PendingFixupsBanner` — banner at the top of the graph              | ✅     |
 | 4.12 | Main branch protection (configurable in Settings)                   | ✅     |
 
-**Validation criterion**: rollback + fixup + autosquash from the UI. ✅
+### M5 — Interactive rebase
 
----
+| #   | Task                                                    | Status |
+| --- | ------------------------------------------------------- | ------ |
+| 5.1 | Parsing the rebase todo                                 | ✅     |
+| 5.2 | Rebase plan UI (pick/squash/reword/drop/edit/fixup)     | ✅     |
+| 5.3 | Running the rebase with pause handling (conflict, edit) | ✅     |
+| 5.4 | Preview of the result before execution                  | ✅     |
+| 5.5 | Abort / Continue / Skip                                 | ✅     |
 
-## M0-fix — Priority fixes 🚧
+### M5-UI — Left Sidebar (RepositorySidebar)
 
-> Blocking bugs to fix before validating M1 in production.
+| #     | Task                                                                                     | Status |
+| ----- | ---------------------------------------------------------------------------------------- | ------ |
+| 12.1  | Types `GitSubmodule`, `PullRequest`, `PrState`, `PrCiStatus`                             | ✅     |
+| 12.2  | Rust command `list_submodules` (git2)                                                    | ✅     |
+| 12.3  | Tauri registration + `listSubmodules` wrapper                                            | ✅     |
+| 12.4  | `useSidebarResize` hook (drag, collapse, localStorage)                                   | ✅     |
+| 12.5  | `useGroupedBranches` hook (prefixes, threshold ≥2)                                       | ✅     |
+| 12.6  | `usePullRequests` hook (GitHub REST API, SSH/HTTPS URL parsing)                          | ✅     |
+| 12.7  | Atomic components (`SectionHeader`, `BranchItem`, `BranchFolder`, `PullRequestItem`)     | ✅     |
+| 12.8  | `LocalBranchesSection` section (branches grouped by prefix)                              | ✅     |
+| 12.9  | `RemotesSection` section (grouped by remote)                                             | ✅     |
+| 12.10 | `PullRequestsSection` section (My PRs / All PRs + non-GitHub fallback)                   | ✅     |
+| 12.11 | `TagsSection` section                                                                    | ✅     |
+| 12.12 | Submodules section                                                                       | ✅     |
+| 12.13 | `SidebarResizeHandle` + `RepositorySidebar` (main container)                             | ✅     |
+| 12.14 | Integration into `RepoView.tsx`                                                          | ✅     |
+| 12.15 | Hover-expand effect on long branch/tag/PR names                                          | ✅     |
+| 12.16 | Collapse/expand button with CSS transition                                               | ✅     |
+| 12.19 | Branch context menu — checkout/delete/merge shipped, rename still missing                | 🔵     |
+| 12.20 | "Create branch" dialog (`BranchButton`, `CreateBranchHereDialog`)                        | ✅     |
+| 12.21 | GitHub auth in Settings (`GithubSection`, OAuth device flow rather than a raw token)     | ✅     |
+| 12.22 | Tauri capability for `https://api.github.com` — not needed, GitHub calls go through Rust | ➖     |
 
-| #   | Task                                                                                              | Status |
-| --- | ------------------------------------------------------------------------------------------------- | ------ |
-| F.1 | **Opening a repo/folder via the file picker** — Tauri dialog doesn't trigger the opening          | 🚧     |
-| F.2 | **GitHub authentication via OAuth provider** — replace name/email with GitHub OAuth login (token) | ⬜     |
-
-> **Note F.2**: Remote authentication must use an OAuth provider (GitHub App or Personal Access Token via secure Tauri storage), not a plaintext name/email. To be implemented in `commands/remote.rs` with `tauri-plugin-store` for the token, and a login flow via `open()` to `github.com/login/oauth`.
-
----
-
-## M5 — Interactive rebase
-
-> **Goal**: Interactive rebase with a drag & drop interface.
-
-| #   | Task                                                     | Status |
-| --- | -------------------------------------------------------- | ------ |
-| 5.1 | Parsing the `git-rebase-todo`                            | ⬜     |
-| 5.2 | Drag & drop list UI (pick/squash/reword/drop/edit/fixup) | ⬜     |
-| 5.3 | Running the rebase with pause handling (conflict, edit)  | ⬜     |
-| 5.4 | Preview of the result before execution                   | ⬜     |
-| 5.5 | Abort / Continue / Skip                                  | ⬜     |
-
-**Validation criterion**: complete interactive rebase from the UI without going through the terminal.
-
----
-
-## M5-UI — Complete Left Sidebar (RepositorySidebar)
-
-> **Goal**: Rich, resizable left sidebar, inspired by GitKraken. See full spec: `docs/specs/12-left-sidebar.md`.
-
-| #     | Task                                                                                 | Status |
-| ----- | ------------------------------------------------------------------------------------ | ------ |
-| 12.1  | Types `GitSubmodule`, `PullRequest`, `PrState`, `PrCiStatus`                         | ✅     |
-| 12.2  | Rust command `list_submodules` (git2)                                                | ✅     |
-| 12.3  | Tauri registration + `listSubmodules` wrapper                                        | ✅     |
-| 12.4  | `useSidebarResize` hook (drag, collapse, localStorage)                               | ✅     |
-| 12.5  | `useGroupedBranches` hook (prefixes, threshold ≥2)                                   | ✅     |
-| 12.6  | `usePullRequests` hook (GitHub REST API, SSH/HTTPS URL parsing)                      | ✅     |
-| 12.7  | Atomic components (`SectionHeader`, `BranchItem`, `BranchFolder`, `PullRequestItem`) | ✅     |
-| 12.8  | `LocalBranchesSection` section (branches grouped by prefix)                          | ✅     |
-| 12.9  | `RemotesSection` section (grouped by remote)                                         | ✅     |
-| 12.10 | `PullRequestsSection` section (My PRs / All PRs + non-GitHub fallback)               | ✅     |
-| 12.11 | `TagsSection` section                                                                | ✅     |
-| 12.12 | `SubmodulesSection` section                                                          | ✅     |
-| 12.13 | `SidebarResizeHandle` + `RepositorySidebar` (main container)                         | ✅     |
-| 12.14 | Integration into `RepoView.tsx`                                                      | ✅     |
-| 12.15 | Hover-expand effect on long branch/tag/PR names                                      | ✅     |
-| 12.16 | Collapse/expand button with CSS transition                                           | ✅     |
-| 12.17 | `pnpm typecheck` verification                                                        | ⬜     |
-| 12.18 | `cargo build` verification                                                           | ⬜     |
-| 12.19 | Branch context menu (checkout/delete/rename/merge)                                   | ⬜     |
-| 12.20 | "Create branch" modal from the + button                                              | ⬜     |
-| 12.21 | GitHub token in Settings for private repos                                           | ⬜     |
-| 12.22 | Tauri capability for `https://api.github.com`                                        | ⬜     |
-
-**Validation criterion**: sidebar displayed with resize/collapse, grouped branches, GitHub PRs visible.
-
----
-
-## M5-UI-B — Global Top TabBar
-
-> **Goal**: Global Chrome-style tab bar, persistent above all views.
+### M5-UI-B — Global Top TabBar
 
 | #     | Task                                                                                                 | Status |
 | ----- | ---------------------------------------------------------------------------------------------------- | ------ |
@@ -221,47 +210,36 @@ These have a typed `invoke()` wrapper already sitting in [`lib/tauri.ts`](../app
 | 13.7  | Rust command `init_repo` (git2) + wrapper                                                            | ✅     |
 | 13.8  | `CloneRepoDialog` (URL + parent folder)                                                              | ✅     |
 | 13.9  | Settings gear icon at the far right                                                                  | ✅     |
-| 13.10 | `App.tsx` refactor (routing by `activeTab`) + removal of `RepoView`'s internal bar                   | ✅     |
-| 13.11 | `PullRequestsPage` (cross-repo view, initial content)                                                | ✅     |
+| 13.10 | `App.tsx` refactor (routing by `activeTab`)                                                          | ✅     |
+| 13.11 | `PullRequestsPage` (cross-repo view)                                                                 | ✅     |
 | 13.12 | View-specific tabs (git graph, terminal, settings, kanban)                                           | ⬜     |
 
-**Validation criterion**: persistent TabBar, pinned Home/PR tabs, openable/closable repos, working `+` button (open/clone/create).
+### M6 — Worktree & Branch management
 
----
+| #   | Task                                                                     | Status |
+| --- | ------------------------------------------------------------------------ | ------ |
+| 6.1 | List of worktrees with status                                            | ✅     |
+| 6.2 | Create / delete / switch a worktree                                      | ✅     |
+| 6.3 | Create / delete / rename a branch                                        | 🔵     |
+| 6.4 | Merge (fast-forward / no-ff) with preview                                | ✅     |
+| 6.5 | Compare branches — visual diff (only `compare_commit_to_workdir` exists) | 🔵     |
 
-## M6 — Worktree & Branch management
-
-> **Goal**: Visual management of worktrees and branches.
-
-| #   | Task                                      | Status |
-| --- | ----------------------------------------- | ------ |
-| 6.1 | List of worktrees with status             | ⬜     |
-| 6.2 | Create / delete / switch a worktree       | ⬜     |
-| 6.3 | Create / delete / rename a branch         | ⬜     |
-| 6.4 | Merge (fast-forward / no-ff) with preview | ⬜     |
-| 6.5 | Compare branches — visual diff            | ⬜     |
-
----
-
-## M7 — Stash & Polishing
-
-> **Goal**: Stash management + UX polish.
+### M7 — Stash & Polishing
 
 | #   | Task                              | Status |
 | --- | --------------------------------- | ------ |
-| 7.1 | Stash push with message           | ⬜     |
-| 7.2 | List of stashes with diff preview | ⬜     |
-| 7.3 | Stash pop / apply / drop          | ⬜     |
-| 7.4 | Global keyboard shortcuts         | ⬜     |
-| 7.5 | System notifications (Tauri)      | ⬜     |
-| 7.6 | Dark / light mode toggle          | ⬜     |
-| 7.7 | Auto-update (Tauri updater)       | ⬜     |
+| 7.1 | Stash push with message           | ✅     |
+| 7.2 | List of stashes with diff preview | ✅     |
+| 7.3 | Stash pop / apply / drop          | ✅     |
+| 7.4 | Global keyboard shortcuts         | ✅     |
+| 7.5 | System notifications (Tauri)      | ✅     |
+| 7.6 | Dark / light mode toggle          | ✅     |
+| 7.7 | Auto-update (Tauri updater)       | ✅     |
 
----
+### M8 — Pedagogy & Learning mode
 
-## M8 — Pedagogy & Learning mode
-
-> **Goal**: Make git-manager an application that educates the user. Every action can be accompanied by equivalent git commands, contextual explanations, and a local LLM to decode everything.
+> Nothing in this milestone has been started. Original design:
+> [`specs/archive/11-pedagogy.md`](./specs/archive/11-pedagogy.md).
 
 | #    | Task                                                            | Status |
 | ---- | --------------------------------------------------------------- | ------ |
@@ -278,220 +256,5 @@ These have a typed `invoke()` wrapper already sitting in [`lib/tauri.ts`](../app
 | 8.11 | `actionExplainMap.ts` — FR/EN educational content per action    | ⬜     |
 | 8.12 | `useActionJournalStore` Zustand (session)                       | ⬜     |
 | 8.13 | `<ActionJournalPanel>` — session history + markdown rendering   | ⬜     |
-| 8.14 | LLM explanation in the Journal via `useOllamaGeneration`        | ⬜     |
+| 8.14 | LLM explanation in the Journal                                  | ⬜     |
 | 8.15 | `LearningSettings.tsx` — new section in SettingsPage            | ⬜     |
-
-**Validation criterion**: git console visible, journal with working Ollama explanation, beginner learning mode active on reset --hard.
-
----
-
-## Backlog (post-M8)
-
-- GitHub / GitLab integration (PRs, Issues as overlay)
-- Interactive cherry-pick
-- Blame / Annotate
-- Visual Git hooks
-- Activity report export
-- OpenAI / Anthropic support in addition to Ollama
-- VSCode extension (embedded panel)
-
----
-
-## Dependencies between milestones
-
-```
-M0 → M0-fix → M1 → M2 → M3
-                         ↘ M4 → M5
-                         ↘ M6
-                         ↘ M7
-                         ↘ M8  (depends on M3 for the LLM Journal)
-```
-
-M3, M4, M5, M6, M7, M8 can be developed in parallel after M2. M8 only requires M3 for the Journal + LLM feature.
-
----
-
-## M0 — Foundations (Phase 0 + 1)
-
-> **Goal**: Working monorepo, a Tauri application that launches, display of a minimal Git repo.
-
-| #   | Task                                            | Status |
-| --- | ----------------------------------------------- | ------ |
-| 0.1 | Documentation (README, ROADMAP, specs)          | 🔵     |
-| 0.2 | pnpm + Turborepo monorepo                       | ⬜     |
-| 0.3 | `packages/config` — shared ESLint + Tailwind    | ⬜     |
-| 0.4 | `packages/git-types` — TypeScript interfaces    | ⬜     |
-| 0.5 | `packages/i18n` — react-i18next FR/EN           | ⬜     |
-| 0.6 | `packages/ui` — shadcn/ui base                  | ⬜     |
-| 0.7 | `apps/desktop` — Tauri v2 + Vite + React        | ⬜     |
-| 0.8 | Basic Tauri commands: `open_repo`, `get_status` | ⬜     |
-
-**Validation criterion**: `pnpm dev` launches the app, we can open a Git folder and see its status.
-
----
-
-## M1 — Git Tree / MVP (Phase 2 + 3)
-
-> **Goal**: Complete visualization of Git history with branches, tags, and commit detail.
-
-| #    | Task                                            | Status |
-| ---- | ----------------------------------------------- | ------ |
-| 1.1  | Tauri command `get_log` — paginated history     | ⬜     |
-| 1.2  | Tauri command `get_branches` + `get_tags`       | ⬜     |
-| 1.3  | Tauri command `get_remotes`                     | ⬜     |
-| 1.4  | Tauri command `get_diff` — diff of a commit     | ⬜     |
-| 1.5  | Multi-repo dashboard (list + manual add + scan) | ⬜     |
-| 1.6  | Repo view — branches/tags sidebar + tabs        | ⬜     |
-| 1.7  | Git Graph — tree visualization (react-gitgraph) | ⬜     |
-| 1.8  | Commit detail panel — diff, author, message     | ⬜     |
-| 1.9  | Filters: branch, author, date, message          | ⬜     |
-| 1.10 | SSH + HTTPS support for `fetch` / remote status | ⬜     |
-
-**Validation criterion**: we see the complete git graph of a repo, we can click on a commit and see its diff.
-
----
-
-## M2 — Basic operations (Phase 4a)
-
-> **Goal**: Stage/unstage, manual commit, push/pull/fetch.
-
-| #   | Task                                                    | Status |
-| --- | ------------------------------------------------------- | ------ |
-| 2.1 | "Working Tree" view — modified, staged, untracked files | ⬜     |
-| 2.2 | Stage / Unstage of files and hunks                      | ⬜     |
-| 2.3 | Manual commit (message + options)                       | ⬜     |
-| 2.4 | Push / Pull / Fetch with conflict handling              | ⬜     |
-| 2.5 | Merge conflict handling (visualization)                 | ⬜     |
-
-**Validation criterion**: we can make a complete commit from A to Z from within the application.
-
----
-
-## M3 — AI commit generation (Phase 4b)
-
-> **Goal**: Commit message generation from the diff via Ollama.
-
-| #   | Task                                                | Status |
-| --- | --------------------------------------------------- | ------ |
-| 3.1 | Ollama client (Rust) — HTTP call to `/api/generate` | ⬜     |
-| 3.2 | Prompt engineering diff → conventional commit       | ⬜     |
-| 3.3 | UI: "Generate" button, editable result              | ⬜     |
-| 3.4 | Streaming support (token-by-token response)         | ⬜     |
-| 3.5 | Model configuration in Settings                     | ⬜     |
-| 3.6 | History of generated messages (session)             | ⬜     |
-
-**Validation criterion**: selected diff → click "Generate" → conventional commit message displayed in < 10s with local Ollama.
-
----
-
-## M4 — Rollback & Fixup (Phase 4c)
-
-> **Goal**: Safe undo operations with preview and protection.
-
-| #   | Task                                         | Status |
-| --- | -------------------------------------------- | ------ |
-| 4.1 | Rollback — `git revert` with preview         | ⬜     |
-| 4.2 | Reset soft / mixed / hard with confirmation  | ⬜     |
-| 4.3 | Fixup — `git commit --fixup` target selector | ⬜     |
-| 4.4 | Autosquash — `git rebase --autosquash`       | ⬜     |
-| 4.5 | Main branch protection (configurable)        | ⬜     |
-
-**Validation criterion**: rollback + fixup of a commit with confirmation and visual feedback in the graph.
-
----
-
-## M5 — Interactive rebase (Phase 4d)
-
-> **Goal**: Interactive rebase with a drag & drop interface.
-
-| #   | Task                                                     | Status |
-| --- | -------------------------------------------------------- | ------ |
-| 5.1 | Parsing the `git-rebase-todo`                            | ⬜     |
-| 5.2 | Drag & drop list UI (pick/squash/reword/drop/edit/fixup) | ⬜     |
-| 5.3 | Running the rebase with pause handling (conflict, edit)  | ⬜     |
-| 5.4 | Preview of the result before execution                   | ⬜     |
-| 5.5 | Abort / Continue / Skip                                  | ⬜     |
-
-**Validation criterion**: complete interactive rebase from the UI without going through the terminal.
-
----
-
-## M6 — Worktree & Branch management (Phase 4e)
-
-> **Goal**: Visual management of worktrees and branches.
-
-| #   | Task                                      | Status |
-| --- | ----------------------------------------- | ------ |
-| 6.1 | List of worktrees with status             | ⬜     |
-| 6.2 | Create / delete / switch a worktree       | ⬜     |
-| 6.3 | Create / delete / rename a branch         | ⬜     |
-| 6.4 | Merge (fast-forward / no-ff) with preview | ⬜     |
-| 6.5 | Compare branches — visual diff            | ⬜     |
-
----
-
-## M7 — Stash & Polishing (Phase 4f)
-
-> **Goal**: Stash management + UX polish.
-
-| #   | Task                              | Status |
-| --- | --------------------------------- | ------ |
-| 7.1 | Stash push with message           | ⬜     |
-| 7.2 | List of stashes with diff preview | ⬜     |
-| 7.3 | Stash pop / apply / drop          | ⬜     |
-| 7.4 | Global keyboard shortcuts         | ⬜     |
-| 7.5 | System notifications (Tauri)      | ⬜     |
-| 7.6 | Dark / light mode toggle          | ⬜     |
-| 7.7 | Auto-update (Tauri updater)       | ⬜     |
-
----
-
-## M8 — Pedagogy & Learning mode (Phase 5)
-
-> **Goal**: Make git-manager an application that educates the user. Real-time git console, contextual explanations, session journal with LLM explanation.
-
-| #    | Task                                                            | Status |
-| ---- | --------------------------------------------------------------- | ------ |
-| 8.1  | `GitCommandEvent` Rust — struct + emission in each command      | ⬜     |
-| 8.2  | `useConsoleStore` Zustand (session) + `useGitConsole` hook      | ⬜     |
-| 8.3  | `<GitConsolePanel>` — collapsible panel, terminal style         | ⬜     |
-| 8.4  | `<ActionTooltip>` — enriched tooltip with risk + command        | ⬜     |
-| 8.5  | `action-tooltips.json` FR/EN — ~20 actions covered              | ⬜     |
-| 8.6  | `<CommandPreview>` — injection into existing destructive modals | ⬜     |
-| 8.7  | `<GitTerm>` — inline glossary component                         | ⬜     |
-| 8.8  | `git-glossary.json` FR/EN — ~35 terms                           | ⬜     |
-| 8.9  | `<PostActionToast>` — enriched toast with collapsed commands    | ⬜     |
-| 8.10 | `useActionGuard` hook + `<ActionGuardPanel>` — learning mode    | ⬜     |
-| 8.11 | `actionExplainMap.ts` — FR/EN educational content per action    | ⬜     |
-| 8.12 | `useActionJournalStore` Zustand (session)                       | ⬜     |
-| 8.13 | `<ActionJournalPanel>` — session history + markdown rendering   | ⬜     |
-| 8.14 | LLM explanation in the Journal via `useOllamaGeneration`        | ⬜     |
-| 8.15 | `LearningSettings.tsx` — new section in SettingsPage            | ⬜     |
-
-**Validation criterion**: git console visible, journal with working Ollama explanation, beginner learning mode active on reset --hard.
-
----
-
-## Backlog (post-M8)
-
-- GitHub / GitLab integration (PRs, Issues as overlay)
-- Interactive cherry-pick
-- Blame / Annotate
-- Visual Git hooks
-- Activity report export
-- OpenAI / Anthropic support in addition to Ollama
-- VSCode extension (embedded panel)
-
----
-
-## Dependencies between milestones
-
-```
-M0 → M1 → M2 → M3
-               ↘ M4 → M5
-               ↘ M6
-               ↘ M7
-               ↘ M8  (depends on M3 for the LLM Journal)
-```
-
-M3, M4, M5, M6, M7, M8 can be developed in parallel after M2. M8 only requires M3 for the Journal + LLM feature.

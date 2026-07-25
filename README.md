@@ -262,9 +262,10 @@ The model is configurable per-project. Temperature and timeout are also adjustab
 
 Everything project-state and design related lives in [docs/](docs/):
 
-- **[docs/ROADMAP.md](docs/ROADMAP.md)** — milestone plan (M0–M7) with a status-at-a-glance summary, detailed tasks, and the "not yet wired up" backlog of commands whose frontend scaffolding already exists
-- **[docs/README.md](docs/README.md)** — documentation index, including the full table of feature specs (`docs/specs/00`–`12`)
-- **[docs/architecture/](docs/architecture/)** — architecture refactor plan (13) and its living execution tracking (14)
+- **[docs/ROADMAP.md](docs/ROADMAP.md)** — what has shipped, what is still open, and the "not wired up" list of frontend wrappers with no backend command; the original M0–M8 milestone tables are kept below it as history
+- **[docs/README.md](docs/README.md)** — documentation index
+- **[docs/specs/archive/](docs/specs/archive/)** — the original 2026-07-03 feature design docs, kept for the record only; they were never updated and no longer describe the code
+- **[docs/architecture/](docs/architecture/README.md)** — the five architecture refactors (13–17), their execution records and what each one decided
 - **[CLAUDE.md](CLAUDE.md)** — the authoritative IPC/layering conventions, kept in sync with the code (also used by AI coding agents)
 
 ---

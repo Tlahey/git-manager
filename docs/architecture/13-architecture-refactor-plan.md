@@ -17,9 +17,9 @@ It starts from a factual audit of the code (July 2026, see § Current state) and
 [14-architecture-refactor-tracking.md](14-architecture-refactor-tracking.md) — that's the file
 to consult/update to know where things concretely stand.
 
-`docs/specs/00-architecture.md` remains the overview of the stack. This document complements it:
-where `00-architecture.md` describes a `git/` layer that was never implemented (noted as
-"aspirational" in `CLAUDE.md`), this plan **replaces** that ambition with something closer to
+[`docs/specs/archive/00-architecture.md`](../specs/archive/00-architecture.md) was the original
+overview of the stack, and is now archived as a historical document. Where it describes a `git/`
+layer that was never implemented, this plan **replaces** that ambition with something closer to
 the real code: a `services/` layer on the Rust side and a strengthening of the `api/*.api.ts`
 layer on the frontend side, rather than a complete rewrite.
 
@@ -34,9 +34,10 @@ layer on the frontend side, rather than a complete rewrite.
 - The `api/*.api.ts` layer already exists and covers ~95% of the commands used by the frontend
   (`git.api.ts`, `github.api.ts`, `nativeMenu.api.ts`, `repo.api.ts`, `shell.api.ts`, `ssh.api.ts`,
   `theme.api.ts`, `ollama.api.ts`).
-- An Observer already exists: [`lib/gameObserver.ts`](../../apps/desktop/src/lib/gameObserver.ts), a
-  small pub/sub used by `game.store.ts` and `api/git.api.ts` to notify achievements on
-  stage/unstage/commit. This is the base to generalize (see § Observer).
+- An Observer already exists: `lib/gameObserver.ts`, a small pub/sub used by `game.store.ts` and
+  `api/git.api.ts` to notify achievements on stage/unstage/commit. This is the base to generalize
+  (see § Observer). _It has since been renamed to_
+  [`lib/appEventBus.ts`](../../apps/desktop/src/lib/appEventBus.ts) _by this very plan._
 - Tauri events (`app_handle.emit` / `listen`) are already used for Ollama streaming —
   this is a second Observer channel, this time on the Rust→Frontend side.
 
