@@ -186,14 +186,6 @@ pub struct WorktreeAgentActivity {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct RebaseStep {
-    pub action: String, // pick | reword | edit | squash | fixup | drop
-    pub oid: String,
-    pub message: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
 pub struct RebaseState {
     pub kind: String, // idle | in_progress | conflict | edit_pause
     pub current_step: Option<usize>,

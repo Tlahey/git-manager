@@ -136,7 +136,8 @@ tracked twice under two different plans.
 While reviewing the PR for actions 1-7, a follow-up sweep of the app for other instances of the
 same class of problem (a generic interaction primitive already exists, and a component doesn't use
 it — the same shape as Scope B2's dialog finding) turned up
-[`components/action-toolbar/useAnchoredMenu.ts`](../../apps/desktop/src/hooks/useAnchoredMenu.ts):
+`components/action-toolbar/useAnchoredMenu.ts` (since removed — the hook was superseded by the
+Radix-based [`DropdownMenu`](../../packages/ui/src/components/dropdown-menu.tsx) in `packages/ui`):
 a hook that manages a portal-rendered dropdown's fixed-position placement under its trigger button,
 plus outside-click/Escape-to-close, already shared by 5 consumers inside `action-toolbar/`
 (`RepoSelector`, `FetchButton`, `UserProfile`, `BranchButton`, `BranchContext`). Two components
