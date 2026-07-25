@@ -114,6 +114,28 @@ export interface GitBranch {
 
 export type MergeStrategy = 'merge' | 'fast-forward' | 'squash'
 
+/**
+ * How the checked-out branch relates to its merge target — the branch the work is meant to land on
+ * (`origin/main` by default, configurable per repo via `RepoScopedSettings.targetBranches`).
+ * Mirrors the Rust `MergeTargetStatus`; the merge is only simulated in memory, nothing is written.
+ */
+export interface MergeTargetStatus {
+  /** The resolved target ref (e.g. `origin/main`), or `null` when no candidate exists in the repo. */
+  target: string | null
+  /** Short name of the checked-out branch, or `null` on a detached HEAD. */
+  currentBranch: string | null
+  /** `true` when HEAD is the target itself (same ref, or tracking it) — nothing to merge. */
+  onTarget: boolean
+  /** `true` when merging HEAD into `target` would conflict. */
+  hasConflicts: boolean
+  /** Paths that would conflict, sorted. Empty unless `hasConflicts`. */
+  conflictedFiles: string[]
+  /** Commits on HEAD the target doesn't have. */
+  ahead: number
+  /** Commits on the target HEAD doesn't have. */
+  behind: number
+}
+
 // ─── Status ───────────────────────────────────────────────────────────────────
 
 export type FileStatusKind = 'added' | 'modified' | 'deleted' | 'renamed' | 'copied' | 'typechange'
@@ -472,6 +494,10 @@ export interface RepoScopedSettings {
   protectedBranches?: string[]
   /** Branch name used when initializing a new repository. Per-repo only; absent = `main`. */
   defaultBranchName?: string
+  /** Candidate merge targets for this repo, most specific first — the branch the current work is
+   * meant to be merged into (`origin/main` by default). The first entry that exists in the repo
+   * wins; see `MergeTargetStatus`. Per-repo only, falling back to `DEFAULT_TARGET_BRANCHES`. */
+  targetBranches?: string[]
   /** Overrides `git.commitInstructions` for this repo. */
   commitInstructions?: string
   /** Overrides `git.commitPattern` for this repo. */

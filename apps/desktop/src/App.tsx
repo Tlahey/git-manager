@@ -13,7 +13,7 @@ import { NewTabPage } from './app/new-tab/NewTabPage'
 import { RewardsTab } from './app/pull-requests/components/RewardsTab'
 import { RepoView } from './app/repo/RepoView'
 import { PullRequestsPage } from './app/pull-requests/PullRequestsPage'
-import { SettingsPage, type Section } from './app/settings/SettingsPage'
+import { SettingsPage, type Section, type Scope as SettingsScope } from './app/settings/SettingsPage'
 import { ActivityLogsPage } from './app/activity-logs/ActivityLogsPage'
 import { TabBar } from './components/tab-bar'
 import { useTheme } from './hooks/useTheme'
@@ -40,6 +40,7 @@ export default function App() {
   const activeTab = useRepoUIStore((s) => s.activeTab)
   const [showSettings, setShowSettings] = useState(false)
   const [settingsSection, setSettingsSection] = useState<Section>('general')
+  const [settingsScope, setSettingsScope] = useState<SettingsScope>('general')
   const [showActivityLogs, setShowActivityLogs] = useState(false)
 
   useTheme()
@@ -135,8 +136,11 @@ export default function App() {
     }
   }, [])
 
-  function handleOpenSettings(section?: Section) {
+  /** `scope` opens the Repository (per-repo) side of Settings — callers pointing at a per-repo
+   * setting, like the toolbar's merge-target popover, pass `'local'`. */
+  function handleOpenSettings(section?: Section, scope: SettingsScope = 'general') {
     setSettingsSection(section || 'general')
+    setSettingsScope(scope)
     setShowSettings(true)
   }
 
@@ -145,8 +149,9 @@ export default function App() {
       <div className="animate-fadeIn flex h-screen flex-col bg-background text-foreground">
         {showSettings ? (
           <SettingsPage
-            key={settingsSection}
+            key={`${settingsScope}:${settingsSection}`}
             initialSection={settingsSection}
+            initialScope={settingsScope}
             onClose={() => setShowSettings(false)}
           />
         ) : showActivityLogs ? (
@@ -165,7 +170,7 @@ export default function App() {
               ) : isNewTab(activeTab) ? (
                 <NewTabPage />
               ) : (
-                <RepoView />
+                <RepoView onOpenSettings={handleOpenSettings} />
               )}
             </div>
             <Footer

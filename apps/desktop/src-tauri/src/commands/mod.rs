@@ -11,6 +11,7 @@ pub mod fixup;
 pub mod github;
 pub mod interactive_rebase;
 pub mod log;
+pub mod merge_target;
 pub mod patch;
 pub mod rebase;
 pub mod remote;

@@ -6,6 +6,9 @@ import { useCanonicalRepoPath } from './useCanonicalRepoPath'
  * is no global setting for these). Keeps every repo protected out of the box. */
 export const DEFAULT_PROTECTED_BRANCHES = ['main', 'master', 'develop']
 export const DEFAULT_BRANCH_NAME = 'main'
+/** Candidate merge targets tried in order until one exists in the repo — `origin/main` for most
+ * repos, with `origin/master` covering the older naming. */
+export const DEFAULT_TARGET_BRANCHES = ['origin/main', 'origin/master']
 
 /**
  * The overridable settings resolved for a specific repository. Each field is the repo's local
@@ -18,6 +21,9 @@ export interface EffectiveRepoSettings {
   /** Default branch name for this repo. Per-repo only — resolves to `DEFAULT_BRANCH_NAME` (`main`)
    * when the repo has no override. */
   defaultBranchName: string
+  /** Candidate merge-target branches for this repo, most specific first. Per-repo only — resolves
+   * to `DEFAULT_TARGET_BRANCHES` when the repo has no override. */
+  targetBranches: string[]
   commitInstructions: string | undefined
   commitPattern: string | undefined
   theme: string
@@ -40,9 +46,9 @@ export interface EffectiveRepoSettings {
 /**
  * Resolves the per-repository-overridable settings for `repoPath`. `theme` and the commit-style
  * fields fall back to their global setting; the GitFlow fields (`protectedBranches`,
- * `defaultBranchName`) have no global setting and fall back to built-in defaults instead
- * (`DEFAULT_PROTECTED_BRANCHES` / `DEFAULT_BRANCH_NAME`). Pass `null` (e.g. no repo open) to get the
- * plain global/default values.
+ * `defaultBranchName`, `targetBranches`) have no global setting and fall back to built-in defaults
+ * instead (`DEFAULT_PROTECTED_BRANCHES` / `DEFAULT_BRANCH_NAME` / `DEFAULT_TARGET_BRANCHES`). Pass
+ * `null` (e.g. no repo open) to get the plain global/default values.
  *
  * `repoPath` may be a linked worktree; overrides are always looked up by the owning repo's main
  * worktree (see `useCanonicalRepoPath`) so every worktree shares the repo's configuration.
@@ -66,6 +72,7 @@ export function useEffectiveRepoSettings(repoPath: string | null): EffectiveRepo
   return {
     protectedBranches: override?.protectedBranches ?? DEFAULT_PROTECTED_BRANCHES,
     defaultBranchName: override?.defaultBranchName ?? DEFAULT_BRANCH_NAME,
+    targetBranches: override?.targetBranches ?? DEFAULT_TARGET_BRANCHES,
     commitInstructions: override?.commitInstructions ?? globalCommitInstructions,
     commitPattern: override?.commitPattern ?? globalCommitPattern,
     theme: override?.theme ?? globalTheme,

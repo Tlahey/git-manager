@@ -39,6 +39,7 @@ use commands::interactive_rebase::{list_rebase_commits, run_interactive_rebase};
 use commands::log::{
     compare_commit_to_workdir, get_commit_diff, get_commit_file, get_commits_merged_diff, get_log,
 };
+use commands::merge_target::get_merge_target_status;
 use commands::patch::{
     apply_patch, commit_dependency_patch, create_commits_patch, create_patch, create_working_patch,
     list_patchable_dependencies, prepare_dependency_patch, preview_working_patch, read_patch_file,
@@ -199,6 +200,7 @@ pub fn run() {
             is_commit_on_current_branch,
             merge_branch,
             fast_forward_branch,
+            get_merge_target_status,
             // Rebase
             get_rebase_state,
             rebase_onto_commit,

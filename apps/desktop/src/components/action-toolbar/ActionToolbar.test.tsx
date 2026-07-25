@@ -2,12 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 vi.mock('./RepoSelector', () => ({ RepoSelector: () => <div data-testid="repo-selector" /> }))
 vi.mock('./BranchContext', () => ({ BranchContext: () => <div data-testid="branch-context" /> }))
 vi.mock('./StateTags', () => ({ StateTags: () => <div data-testid="state-tags" /> }))
-vi.mock('./FetchButton', () => ({ FetchButton: () => <button>remote.fetch</button> }))
-vi.mock('./BranchButton', () => ({ BranchButton: () => <button>toolbar.branch</button> }))
+// The merge-target indicator runs its own react-query/SWR fetches and has its own test; stub it
+// so this composition test stays free of a QueryClientProvider.
+vi.mock('./MergeTargetIndicator', () => ({
+  MergeTargetIndicator: ({ repoPath }: { repoPath: string | null }) => (
+    <div data-testid="merge-target-indicator-stub" data-repo-path={repoPath ?? ''} />
+  ),
+}))
+vi.mock('./FetchButton', () => ({ FetchButton: () => <button>Fetch</button> }))
+vi.mock('./BranchButton', () => ({ BranchButton: () => <button>Branch</button> }))
 vi.mock('./ToolsMenu', () => ({ ToolsMenu: () => <div data-testid="tools-menu" /> }))
 // TerminalButton is a self-contained split button (integrated panel + external menu) with its own
 // test — stub it here so the toolbar composition test doesn't depend on its internals.
@@ -75,35 +81,50 @@ describe('ActionToolbar — composition', () => {
     expect(screen.getByTestId('state-tags')).toBeInTheDocument()
   })
 
+  it('points the merge-target indicator at the repo, or at the viewed workspace when there is one', () => {
+    const { rerender } = render(<ActionToolbar />)
+    expect(screen.getByTestId('merge-target-indicator-stub')).toHaveAttribute(
+      'data-repo-path',
+      '/repo'
+    )
+
+    useRepoUIStore.setState({ activeWorkspacePath: '/repo/../wt' })
+    rerender(<ActionToolbar />)
+    expect(screen.getByTestId('merge-target-indicator-stub')).toHaveAttribute(
+      'data-repo-path',
+      '/repo/../wt'
+    )
+  })
+
   it('disables undo/redo/pull/push/stash/pop/editor when there is no active repo', () => {
     useActionToolbarMock.mockReturnValue(hookState({ activeRepo: null }))
     render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: 'toolbar.undo' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'toolbar.redo' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'remote.pull' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'remote.push' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'toolbar.stash' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'toolbar.pop' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'toolbar.editor' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Redo' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Pull' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Push' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Stash' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Pop' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Editor' })).toBeDisabled()
   })
 
   it('enables undo/redo only when canUndo/canRedo are true', () => {
     useActionToolbarMock.mockReturnValue(hookState({ canUndo: true, canRedo: false }))
     render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: 'toolbar.undo' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'toolbar.redo' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Redo' })).toBeDisabled()
   })
 
   it('enables stash only when hasChanges is true', () => {
     useActionToolbarMock.mockReturnValue(hookState({ hasChanges: true }))
     render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: 'toolbar.stash' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Stash' })).toBeEnabled()
   })
 
   it('enables pop only when hasStashes is true', () => {
     useActionToolbarMock.mockReturnValue(hookState({ hasStashes: true }))
     render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: 'toolbar.pop' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Pop' })).toBeEnabled()
   })
 
   it('wires the undo/pull/push/pop/editor buttons to their handlers', async () => {
@@ -112,23 +133,23 @@ describe('ActionToolbar — composition', () => {
     useActionToolbarMock.mockReturnValue(state)
     render(<ActionToolbar />)
 
-    await user.click(screen.getByRole('button', { name: 'toolbar.undo' }))
+    await user.click(screen.getByRole('button', { name: 'Undo' }))
     expect(state.handleUndo).toHaveBeenCalledOnce()
-    await user.click(screen.getByRole('button', { name: 'remote.pull' }))
+    await user.click(screen.getByRole('button', { name: 'Pull' }))
     expect(state.handlePull).toHaveBeenCalledOnce()
-    await user.click(screen.getByRole('button', { name: 'remote.push' }))
+    await user.click(screen.getByRole('button', { name: 'Push' }))
     expect(state.handlePush).toHaveBeenCalledOnce()
-    await user.click(screen.getByRole('button', { name: 'toolbar.pop' }))
+    await user.click(screen.getByRole('button', { name: 'Pop' }))
     expect(state.handlePop).toHaveBeenCalledOnce()
-    await user.click(screen.getByRole('button', { name: 'toolbar.editor' }))
+    await user.click(screen.getByRole('button', { name: 'Editor' }))
     expect(state.handleOpenEditor).toHaveBeenCalledOnce()
   })
 
   it('shows ahead/behind badges on the push/pull buttons when the branch has unpushed/unpulled commits', () => {
     useActionToolbarMock.mockReturnValue(hookState({ aheadCount: 3, behindCount: 2 }))
     render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: /remote\.push/ })).toHaveTextContent('3')
-    expect(screen.getByRole('button', { name: /remote\.pull/ })).toHaveTextContent('2')
+    expect(screen.getByRole('button', { name: /Push/ })).toHaveTextContent('3')
+    expect(screen.getByRole('button', { name: /Pull/ })).toHaveTextContent('2')
     expect(screen.getAllByTestId('toolbar-button-badge')).toHaveLength(2)
   })
 
@@ -146,7 +167,7 @@ describe('ActionToolbar — composition', () => {
   it('hides the editor button entirely when no editor app is configured', () => {
     useActionToolbarMock.mockReturnValue(hookState({ hasEditor: false }))
     render(<ActionToolbar />)
-    expect(screen.queryByRole('button', { name: 'toolbar.editor' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Editor' })).not.toBeInTheDocument()
     expect(screen.getByTestId('terminal-button')).toBeInTheDocument()
   })
 
@@ -155,44 +176,44 @@ describe('ActionToolbar — composition', () => {
       hookState({ hasChanges: true, loading: { ...hookState().loading, stash: true } })
     )
     render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: 'toolbar.stash' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Stash' })).toBeDisabled()
   })
 
   it('disables the search button when there is no active repo', () => {
     useActionToolbarMock.mockReturnValue(hookState({ activeRepo: null }))
     render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: 'toolbar.searchLabel' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Search' })).toBeDisabled()
   })
 
   it('disables the search button outside the commits view (e.g. a PR is open)', () => {
     useRepoUIStore.setState({ activePrNumber: 42 })
     render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: 'toolbar.searchLabel' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Search' })).toBeDisabled()
   })
 
   it('re-enables the search button once back on the commits view', () => {
     useRepoUIStore.setState({ activePrNumber: null })
     render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: 'toolbar.searchLabel' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Search' })).toBeEnabled()
   })
 
   it('never disables the actions button, even with no active repo', () => {
     useActionToolbarMock.mockReturnValue(hookState({ activeRepo: null }))
     render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: 'toolbar.actions' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Actions' })).toBeEnabled()
   })
 
   it('toggles the command palette when the actions button is clicked', async () => {
     const user = userEvent.setup()
     render(<ActionToolbar />)
-    await user.click(screen.getByRole('button', { name: 'toolbar.actions' }))
+    await user.click(screen.getByRole('button', { name: 'Actions' }))
     expect(useCommandPaletteStore.getState().open).toBe(true)
   })
 
   it('toggles the commit search panel when the search button is clicked', async () => {
     const user = userEvent.setup()
     render(<ActionToolbar />)
-    await user.click(screen.getByRole('button', { name: 'toolbar.searchLabel' }))
+    await user.click(screen.getByRole('button', { name: 'Search' }))
     expect(useCommitSearchStore.getState().open).toBe(true)
   })
 })

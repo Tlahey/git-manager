@@ -55,7 +55,7 @@ export type Section =
   | 'support'
 
 /** Top-level split: global settings (all repos) vs. settings local to the current workspace/repo. */
-type Scope = 'general' | 'local'
+export type Scope = 'general' | 'local'
 
 /** The Repository scope's own side-menu pages. `gitflow`, `worktree` and `run` are repo-only (no
  * global counterpart); `appearance` and `ai_commit` mirror the matching global sections. */
@@ -64,6 +64,9 @@ type LocalSection = 'gitflow' | 'appearance' | 'ai_commit' | 'worktree' | 'run'
 interface SettingsPageProps {
   onClose: () => void
   initialSection?: Section
+  /** Opens straight on the Repository (local) scope instead of the global one — used by callers
+   * pointing at a per-repo setting, e.g. the toolbar's merge-target popover. */
+  initialScope?: Scope
 }
 
 const isMac = typeof window !== 'undefined' && navigator.userAgent.includes('Mac')
@@ -122,9 +125,9 @@ function NavItem({
   )
 }
 
-export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
+export function SettingsPage({ onClose, initialSection, initialScope }: SettingsPageProps) {
   const { t } = useTranslation('settings')
-  const [scope, setScope] = useState<Scope>('general')
+  const [scope, setScope] = useState<Scope>(initialScope ?? 'general')
   const [activeSection, setActiveSection] = useState<Section>(initialSection || 'general')
   const [activeLocal, setActiveLocal] = useState<LocalSection>('gitflow')
   const [query, setQuery] = useState('')
@@ -155,6 +158,7 @@ export function SettingsPage({ onClose, initialSection }: SettingsPageProps) {
     } else {
       resetRepoSetting(activeRepo, 'protectedBranches')
       resetRepoSetting(activeRepo, 'defaultBranchName')
+      resetRepoSetting(activeRepo, 'targetBranches')
     }
   }
 

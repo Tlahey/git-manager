@@ -1,6 +1,7 @@
 export { ActionToolbar } from './ActionToolbar'
 export { RepoSelector } from './RepoSelector'
 export { BranchContext } from './BranchContext'
+export { MergeTargetIndicator } from './MergeTargetIndicator'
 export { StateTags } from './StateTags'
 export { FetchButton } from './FetchButton'
 export { BranchButton } from './BranchButton'

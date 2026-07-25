@@ -110,6 +110,8 @@
   "settings.ssh.generating": "Generating...",
   "settings.ssh.generateButton": "Generate the key pair",
   "settings.git.protectedBranches": "Protected branches",
+  "settings.git.targetBranches": "Merge target branches",
+  "settings.git.targetBranchesHelper": "The branch this repo's work is merged into. The first one that exists in the repo is used.",
   "settings.git.commitStyle": "Commit style",
   "settings.git.commitInstructions": "Commit instructions",
   "settings.git.commitInstructionsPlaceholder": "e.g. Prefix with the ticket id; keep the subject under 60 chars; write in English…",

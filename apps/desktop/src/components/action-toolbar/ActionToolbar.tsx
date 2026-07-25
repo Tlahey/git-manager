@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { useActionToolbar } from '../../hooks/useActionToolbar'
+import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useTimelineNavStore } from '../../stores/timelineNav.store'
 import { useUndoHistoryStore } from '../../stores/undoHistory.store'
 import { useIsCommitsView } from '../../hooks/useIsCommitsView'
@@ -23,6 +24,7 @@ import { useCommitSearchStore } from '../../stores/commitSearch.store'
 import { useFileExplorerStore } from '../../stores/fileExplorer.store'
 import { RepoSelector } from './RepoSelector'
 import { BranchContext } from './BranchContext'
+import { MergeTargetIndicator } from './MergeTargetIndicator'
 import { StateTags } from './StateTags'
 import { FetchButton } from './FetchButton'
 import { BranchButton } from './BranchButton'
@@ -30,9 +32,16 @@ import { RunButton } from './RunButton'
 import { TerminalButton } from './TerminalButton'
 import { ToolsMenu } from './ToolsMenu'
 import { ToolbarButton } from '@git-manager/components'
+import type { Section, Scope } from '../../app/settings/SettingsPage'
 
-/** Barre d'actions principale (Partie 2) située sous les onglets. */
-export function ActionToolbar() {
+interface ActionToolbarProps {
+  /** Opens Settings on a given page/scope. Used by the merge-target indicator to link to this
+   * repo's GitFlow settings; omitted (e.g. in tests) hides that shortcut. */
+  onOpenSettings?: (section?: Section, scope?: Scope) => void
+}
+
+/** Main action bar, sitting under the tabs. */
+export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
   const { t } = useTranslation('git')
 
   const {
@@ -60,6 +69,11 @@ export function ActionToolbar() {
     handleCreateBranch,
   } = useActionToolbar(t)
 
+  // A viewed workspace (linked worktree) has its own HEAD, so branch-scoped indicators read from
+  // its path rather than the repo tab's — same rule as the rest of the workspace-aware views.
+  const activeWorkspacePath = useRepoUIStore((s) => s.activeWorkspacePath)
+  const effectiveRepoPath = activeWorkspacePath ?? activeRepo
+
   const isCommitsView = useIsCommitsView()
   const { tasks, defaultTask, hasTasks, runTask } = useRunTasks()
   const disabled = !activeRepo
@@ -75,19 +89,27 @@ export function ActionToolbar() {
 
   return (
     <div className="chrome-surface flex h-[52px] shrink-0 items-center gap-1 overflow-hidden border-b border-border bg-sidebar px-2">
-      {/* ── Section gauche : contexte ─────────────────────────── */}
+      {/* ── Left section: context ─────────────────────────────── */}
       <div className="flex min-w-0 shrink items-center gap-1">
         <RepoSelector />
         <ChevronRight className="h-4 w-4 shrink-0 self-end pb-0.5 text-muted-foreground/40" />
         <BranchContext />
         <div className="ml-1 flex items-center gap-1 self-end pb-0.5">
+          {/* Merge-target state of the current branch, then the linked PR — both read-only tags on
+              the branch shown to their left. */}
+          <MergeTargetIndicator
+            repoPath={effectiveRepoPath}
+            onOpenSettings={
+              onOpenSettings ? () => onOpenSettings('general', 'local') : undefined
+            }
+          />
           <StateTags />
         </div>
       </div>
 
       <div className="mx-1 hidden h-6 w-px shrink-0 bg-border sm:block" />
 
-      {/* ── Section centrale : actions rapides ────────────────── */}
+      {/* ── Middle section: quick actions ─────────────────────── */}
       {/* `py-1.5` gives the buttons' overflowing count badges vertical headroom: `overflow-x-auto`
           also clips the y-axis, so without padding a badge poking above its icon gets cropped. */}
       <div className="flex min-w-0 shrink items-center gap-0.5 overflow-x-auto py-1.5">
@@ -191,7 +213,7 @@ export function ActionToolbar() {
           <ToolbarButton
             icon={<CodeIcon className="h-4 w-4 text-sky-400" />}
             label={t('toolbar.editor')}
-            title="Ouvrir l'éditeur de code dans ce dépôt"
+            title={t('toolbar.editorTitle')}
             disabled={!activeRepo}
             onClick={handleOpenEditor}
             data-testid="toolbar-editor-button"
@@ -199,12 +221,12 @@ export function ActionToolbar() {
         )}
       </div>
 
-      {/* ── Section droite : actions & recherche ──────────────── */}
+      {/* ── Right section: actions & search ───────────────────── */}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         <ToolbarButton
           icon={<FolderOpen className={`h-4 w-4 ${isFileExplorerOpen ? 'text-primary' : 'text-muted-foreground'}`} />}
-          label={isFileExplorerOpen ? 'Fermer fichiers' : 'Fichiers'}
-          title="Afficher les fichiers du dépôt"
+          label={isFileExplorerOpen ? t('toolbar.filesClose') : t('toolbar.files')}
+          title={t('toolbar.filesTitle')}
           disabled={disabled}
           onClick={() => toggleFileExplorer()}
           data-testid="toolbar-files-button"
