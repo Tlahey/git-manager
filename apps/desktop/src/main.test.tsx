@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 
 const initI18nMock = vi.fn(() => Promise.resolve())
@@ -44,11 +44,42 @@ function setSearch(search: string) {
   window.history.pushState({}, '', `/${search}`)
 }
 
+// main.tsx drops the splash on the first frame for a dedicated window
+// (`requestAnimationFrame(hideAppSplash)`), and `hideAppSplash` resolves `#app-splash` by id at
+// call time. jsdom paints frames on a ~16ms timer while these tests resolve on microtasks, so a
+// real frame scheduled by one test could still be pending when the next test rebuilds
+// `document.body` — and then hide the *next* test's freshly created splash. Owning the frame queue
+// here makes that leak structurally impossible: nothing runs until `flushFrames()` asks for it, and
+// `afterEach` drops whatever is left over. (`hideAppSplash`'s own `setTimeout(remove, 300)` closes
+// over the element it found, so it can only ever remove that test's now-detached node — it cannot
+// reach a later test's splash.)
+const pendingFrames = new Map<number, FrameRequestCallback>()
+let nextFrameHandle = 0
+
+/** Runs every frame scheduled since the last flush, like a single jsdom paint. */
+function flushFrames() {
+  const callbacks = [...pendingFrames.values()]
+  pendingFrames.clear()
+  for (const callback of callbacks) callback(performance.now())
+}
+
 describe('main entry', () => {
   beforeEach(() => {
     vi.resetModules()
     initI18nMock.mockClear()
     document.body.innerHTML = '<div id="root"></div>'
+    pendingFrames.clear()
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      const handle = ++nextFrameHandle
+      pendingFrames.set(handle, callback)
+      return handle
+    })
+    vi.stubGlobal('cancelAnimationFrame', (handle: number) => pendingFrames.delete(handle))
+  })
+
+  afterEach(() => {
+    pendingFrames.clear()
+    vi.unstubAllGlobals()
   })
 
   it('initializes i18n in french and renders App when no window params are set', async () => {
@@ -116,7 +147,8 @@ describe('main entry', () => {
     setSearch('?window=merge&repoPath=%2Ftmp%2Frepo&filePath=src%2Ffoo.ts')
     await import('./main')
     await waitFor(() => expect(screen.getByTestId('fake-merge-window')).toBeInTheDocument())
-    await waitFor(() => expect(document.getElementById('app-splash')).toHaveClass('is-hidden'))
+    flushFrames()
+    expect(document.getElementById('app-splash')).toHaveClass('is-hidden')
   })
 
   it('leaves the splash for the App window to hide itself once it is ready', async () => {
@@ -126,6 +158,8 @@ describe('main entry', () => {
     setSearch('')
     await import('./main')
     await waitFor(() => expect(screen.getByTestId('fake-app')).toBeInTheDocument())
+    // Flushing here is the assertion's teeth: main.tsx must not have scheduled a frame at all.
+    flushFrames()
     expect(document.getElementById('app-splash')).not.toHaveClass('is-hidden')
   })
 
