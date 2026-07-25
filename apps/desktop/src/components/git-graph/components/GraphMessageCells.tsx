@@ -1,4 +1,4 @@
-import { FolderGit2, GitBranch, AlertTriangle, GitMerge } from 'lucide-react'
+import { FolderGit2, GitBranch, AlertTriangle, GitMerge, Eye } from 'lucide-react'
 import type { WorktreeAgentActivity } from '@git-manager/git-types'
 import { useTranslation } from '@git-manager/i18n'
 import { useRepoDataStore } from '../../../stores/repoData.store'
@@ -203,15 +203,38 @@ export function WorktreeWipRow({
   )
 }
 
-/** Message-column content for the synthetic "CONFLICT" row (paused rebase). */
-export function ConflictRowMessage({ count, branchName }: { count: number; branchName?: string }) {
+/**
+ * Message-column content for the synthetic "CONFLICT" row (paused rebase) — the banner the graph
+ * keeps while the rebase progress view is hidden. It carries the step counter and says so:
+ * clicking the row brings that view back (see `GitGraph`'s `showRebaseView`).
+ */
+export function ConflictRowMessage({
+  count,
+  branchName,
+  currentStep,
+  totalSteps,
+}: {
+  count: number
+  branchName?: string
+  currentStep?: number
+  totalSteps?: number
+}) {
   const { t } = useTranslation('git')
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2 pr-4">
+    <div data-testid="conflict-row-banner" className="flex min-w-0 flex-1 items-center gap-2 pr-4">
       <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-white" />
       <GitMerge className="h-3.5 w-3.5 shrink-0 text-white" />
       <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-white">
         {t('gitTree.contextMenu.conflictBannerMessage', { count, branch: branchName ?? '' })}
+      </span>
+      {currentStep != null && totalSteps != null && (
+        <span className="shrink-0 rounded bg-white/20 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-white">
+          {t('conflictEditor.stepProgress', { current: currentStep, total: totalSteps })}
+        </span>
+      )}
+      <span className="flex shrink-0 items-center gap-1 text-[10px] font-semibold text-white/85">
+        <Eye className="h-3 w-3" />
+        {t('rebaseProgress.show')}
       </span>
     </div>
   )

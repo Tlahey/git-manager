@@ -2,16 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { X, AlertTriangle, Check } from 'lucide-react'
 import { ScrollArea, Button, Spinner, Textarea, cn } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { mutate } from 'swr'
+import { useQuery } from '@tanstack/react-query'
 import { useConflictedFiles } from '../../hooks/useConflictedFiles'
 import { useGitStatus } from '../../hooks/useGitStatus'
-import {
-  apiRebaseAbort,
-  apiRebaseContinue,
-  apiRebaseSkip,
-  apiGetRebaseState,
-} from '../../api/git.api'
+import { useRebaseControls } from '../../hooks/useRebaseControls'
+import { apiGetRebaseState } from '../../api/git.api'
 import { CommitFileList, type ProcessedFileItem } from './components/CommitFileList'
 
 interface ConflictResolutionPanelProps {
@@ -33,7 +28,6 @@ export function ConflictResolutionPanel({
   onClose,
 }: ConflictResolutionPanelProps) {
   const { t } = useTranslation('git')
-  const queryClient = useQueryClient()
 
   const { data: conflictedFiles = [] } = useConflictedFiles(repoPath)
   const { data: gitStatus } = useGitStatus(repoPath)
@@ -64,8 +58,10 @@ export function ConflictResolutionPanel({
 
   const [amend, setAmend] = useState(false)
   const [message, setMessage] = useState('')
-  const [isLoading, setIsLoading] = useState<'continue' | 'abort' | 'skip' | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // Continue/abort end this step, so the panel — which is bound to it — closes with them.
+  const { pending, error, continueRebase, skipStep, abortRebase } = useRebaseControls(repoPath, {
+    onStepFinished: onClose,
+  })
 
   // Reset the editable message whenever the step being replayed changes. Deliberately keyed
   // only on currentOid — currentMessage must NOT be a dep, or the operator's in-progress edits
@@ -76,54 +72,6 @@ export function ConflictResolutionPanel({
     setAmend(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rebaseState?.currentOid])
-
-  function refresh() {
-    queryClient.invalidateQueries({ queryKey: ['rebase-state', repoPath] })
-    queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
-    queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
-    mutate(['conflicted-files', repoPath])
-  }
-
-  async function handleAbort() {
-    setIsLoading('abort')
-    setError(null)
-    try {
-      await apiRebaseAbort(repoPath)
-      onClose()
-      refresh()
-    } catch (err) {
-      setError(String(err))
-    } finally {
-      setIsLoading(null)
-    }
-  }
-
-  async function handleSkip() {
-    setIsLoading('skip')
-    setError(null)
-    try {
-      await apiRebaseSkip(repoPath)
-      refresh()
-    } catch (err) {
-      setError(String(err))
-    } finally {
-      setIsLoading(null)
-    }
-  }
-
-  async function handleContinue() {
-    setIsLoading('continue')
-    setError(null)
-    try {
-      await apiRebaseContinue(repoPath, amend ? message : undefined)
-      onClose()
-      refresh()
-    } catch (err) {
-      setError(String(err))
-    } finally {
-      setIsLoading(null)
-    }
-  }
 
   const allResolved = conflictedFiles.length === 0
   const noneResolved = resolvedFiles.length === 0 && conflictedFiles.length > 0
@@ -243,11 +191,11 @@ export function ConflictResolutionPanel({
             <Button
               variant="success"
               size="sm"
-              onClick={handleSkip}
-              disabled={!!isLoading}
+              onClick={skipStep}
+              disabled={!!pending}
               data-testid="conflict-panel-skip-button"
             >
-              {isLoading === 'skip' && <Spinner className="mr-1 h-3 w-3" />}
+              {pending === 'skip' && <Spinner className="mr-1 h-3 w-3" />}
               {t('conflictEditor.skipCommit')}
             </Button>
           )}
@@ -255,11 +203,11 @@ export function ConflictResolutionPanel({
             <Button
               variant="success"
               size="sm"
-              onClick={handleContinue}
-              disabled={!!isLoading}
+              onClick={() => continueRebase(amend ? message : undefined)}
+              disabled={!!pending}
               data-testid="conflict-panel-continue-button"
             >
-              {isLoading === 'continue' && <Spinner className="mr-1 h-3 w-3" />}
+              {pending === 'continue' && <Spinner className="mr-1 h-3 w-3" />}
               {t('conflictEditor.continueRebase')}
             </Button>
           )}
@@ -267,11 +215,11 @@ export function ConflictResolutionPanel({
         <Button
           variant="destructive"
           size="sm"
-          onClick={handleAbort}
-          disabled={!!isLoading}
+          onClick={abortRebase}
+          disabled={!!pending}
           data-testid="conflict-panel-abort-button"
         >
-          {isLoading === 'abort' && <Spinner className="mr-1 h-3 w-3" />}
+          {pending === 'abort' && <Spinner className="mr-1 h-3 w-3" />}
           {t('conflictEditor.abortRebase')}
         </Button>
       </div>

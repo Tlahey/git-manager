@@ -18,6 +18,7 @@ import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useCommitSelection } from '../../hooks/useCommitSelection'
 import { useHorizontalResize } from '@git-manager/components'
 import { useGitGraphNodes, type ConflictRowInfo } from '../../hooks/useGitGraphNodes'
+import type { RebaseProgressStep } from '@git-manager/git-types'
 import { useGitGraphActions } from '../../hooks/useGitGraphActions'
 import { useTagContextMenu } from '../../hooks/useTagContextMenu'
 import { apiGetRebaseState } from '../../api/git.api'
@@ -48,6 +49,8 @@ import { buildBisectStatusMap } from './bisectStatus'
 import { useTimelineNavStore } from '../../stores/timelineNav.store'
 import { GitGraphOverlayManager } from './components/GitGraphOverlayManager'
 import { ConflictResolutionPanel } from './ConflictResolutionPanel'
+import { RebaseProgressCenter } from '../rebase-progress/RebaseProgressCenter'
+import { useRebaseViewStore } from '../../stores/rebaseView.store'
 import { Waterline } from './Waterline'
 import { COLUMN_DEFS, COLUMN_ORDER, type ResolvedColumn } from './columns.config'
 import { getGraphColumnLayout, getGraphMaxWidth } from './graphColumnSizing'
@@ -202,8 +205,36 @@ export function GitGraph({
   })
   const isRebasePaused = rebaseState?.kind === 'conflict' || rebaseState?.kind === 'edit_pause'
   const conflictInfo: ConflictRowInfo | null = isRebasePaused
-    ? { count: rebaseState?.conflictedFiles?.length ?? 0, branchName: rebaseState?.branchName }
+    ? {
+        count: rebaseState?.conflictedFiles?.length ?? 0,
+        branchName: rebaseState?.branchName,
+        currentStep: rebaseState?.currentStep,
+        totalSteps: rebaseState?.totalSteps,
+      }
     : null
+
+  // ── Rebase progress view (center panel) ────────────────────────────────────
+  // Any running rebase — not just a paused one — takes the center over with its step rail, so the
+  // user can see where they are in the plan. Dismissing it hands the center back to the graph,
+  // where the CONFLICT row banners the rebase and clicking it comes back here. `isRebasing` is
+  // listed positively rather than as `!== 'idle'`: `kind` crosses IPC as a string, and an
+  // unrecognized value must not hand the center panel to a view with nothing to show.
+  const isRebasing = isRebasePaused || rebaseState?.kind === 'in_progress'
+  const rebaseProgressHidden = useRebaseViewStore((s) => s.views[repoPath]?.progressHidden ?? false)
+  const rebaseFilesHidden = useRebaseViewStore((s) => s.views[repoPath]?.filesHidden ?? false)
+  const resetRebaseView = useRebaseViewStore((s) => s.reset)
+  const showRebaseProgress = useRebaseViewStore((s) => s.showProgress)
+  const showRebaseFiles = useRebaseViewStore((s) => s.showFiles)
+  const hideRebaseFiles = useRebaseViewStore((s) => s.hideFiles)
+  const toggleRebaseFiles = useRebaseViewStore((s) => s.toggleFiles)
+  const rebaseViewOpen = isRebasing && !rebaseProgressHidden
+  // A dismissal only applies to the rebase that was on screen: once the repo stops rebasing,
+  // forget it so the next one surfaces the view again. Gated on the state having actually loaded —
+  // while the query is still in flight there's no rebase *yet*, and clearing on that would
+  // resurrect the view on every remount (tab switch, worktree switch…).
+  useEffect(() => {
+    if (rebaseState && !isRebasing) resetRebaseView(repoPath)
+  }, [rebaseState, isRebasing, repoPath, resetRebaseView])
 
   // ── Status detection & WIP Node ──────────────────────────────────────────
   const { data: status } = useGitStatus(repoPath)
@@ -665,11 +696,46 @@ export function GitGraph({
     return set
   }, [timelinePreviewOpen, timelinePreviewOid, renderNodes])
 
-  const isConflictPanelOpen = primaryNode?.commit.oid === 'CONFLICT'
+  // The conflicted-files panel needs the CONFLICT row selected *and* not dismissed. The dismissal
+  // is explicit state rather than "the row got deselected", so the header's toggle (and the graph
+  // banner) can put it back — see rebaseView.store.
+  const isConflictPanelOpen = primaryNode?.commit.oid === 'CONFLICT' && !rebaseFilesHidden
 
   function closeConflictPanel() {
-    clearSelection()
+    hideRebaseFiles(repoPath)
     setConflictFilePath(null)
+  }
+
+  /** Header toggle for the files panel: showing it again also has to re-select the row it hangs
+   * off, since the user may have navigated to another commit in the meantime. */
+  function handleToggleConflictFiles() {
+    if (rebaseFilesHidden || primaryNode?.commit.oid !== 'CONFLICT') {
+      showRebaseFiles(repoPath)
+      selectSingle('CONFLICT')
+    } else {
+      toggleRebaseFiles(repoPath)
+    }
+  }
+
+  /**
+   * Clicking a row of the rebase progress rail. The step git stopped on is the one with work to
+   * do, so it opens the conflicted-files panel rather than the commit's details — that panel is
+   * what actually lets the user resolve the files and continue. Every other step just points at a
+   * commit to inspect, which only makes sense once the graph has it loaded.
+   */
+  function handleSelectRebaseStep(step: RebaseProgressStep) {
+    if (step.status === 'current') {
+      showRebaseFiles(repoPath)
+      selectSingle('CONFLICT')
+      return
+    }
+    if (step.oid && isRebaseStepLoaded(step)) selectSingle(step.oid)
+  }
+
+  /** A step's commit is only openable while it's in the loaded window of the graph — the details
+   * panel is built from a graph node, so selecting anything else would render nothing. */
+  function isRebaseStepLoaded(step: RebaseProgressStep) {
+    return !!step.oid && nodes.some((n) => n.commit.oid === step.oid)
   }
 
   const isSelectedCommitHead = useMemo(() => {
@@ -726,6 +792,16 @@ export function GitGraph({
               queryClient.invalidateQueries({ queryKey: ['git-status', repoPath] })
               queryClient.invalidateQueries({ queryKey: ['git-log', repoPath] })
             }}
+          />
+        ) : rebaseViewOpen && rebaseState ? (
+          <RebaseProgressCenter
+            repoPath={repoPath}
+            rebaseState={rebaseState}
+            onSelectStep={handleSelectRebaseStep}
+            isStepSelectable={isRebaseStepLoaded}
+            selectedOid={primaryOid}
+            filesPanelOpen={isConflictPanelOpen}
+            onToggleFilesPanel={handleToggleConflictFiles}
           />
         ) : (
           <>
@@ -787,7 +863,11 @@ export function GitGraph({
               <>
                 <GraphHeader columns={visibleColumns} authorOptions={authorOptions} />
 
-                <div ref={parentRef} className="flex-1 overflow-y-auto overflow-x-hidden">
+                <div
+                  ref={parentRef}
+                  data-testid="commit-graph"
+                  className="flex-1 overflow-y-auto overflow-x-hidden"
+                >
                   <div
                     style={{
                       height: virtualizer.getTotalSize(),
@@ -854,6 +934,17 @@ export function GitGraph({
                                 e.preventDefault()
                                 e.stopPropagation()
                                 handleBisectPick(oid)
+                                return
+                              }
+                              // The CONFLICT row is the paused rebase's banner: clicking it
+                              // brings both rebase panels back. It must *set* them visible, never
+                              // toggle — `handleRowSelect` clears the selection when the row is
+                              // already the primary one (which it normally is during a pause), and
+                              // that closed the files panel the user had just asked to see.
+                              if (oid === 'CONFLICT') {
+                                showRebaseProgress(repoPath)
+                                showRebaseFiles(repoPath)
+                                selectSingle('CONFLICT')
                                 return
                               }
                               handleRowSelect(e, virtualItem.index)

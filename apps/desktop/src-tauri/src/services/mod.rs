@@ -22,6 +22,7 @@ pub mod git_interactive_rebase;
 pub mod git_merge_diff;
 pub mod git_patch;
 pub mod git_rebase;
+pub mod git_rebase_plan;
 pub mod git_remote;
 pub mod git_repo;
 pub mod git_rollback;

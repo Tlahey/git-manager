@@ -17,7 +17,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (18 feature files / ~170 steps, 7 visual snapshots)
+## Covered today (19 feature files / ~200 steps, 8 visual snapshots)
 
 | Feature                                                            | Area       | Setup                    | Snapshot                          | Status                                                      |
 | ------------------------------------------------------------------ | ---------- | ------------------------ | --------------------------------- | ----------------------------------------------------------- |
@@ -26,6 +26,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | Tauri command mock: success / reject / restore, **GitHub poll-token contract (pending/success/expired)** | IPC | mock | — | ✅ |
 | Fixup autosquash grouping + **create fixup commit (via ⌘K palette)** | fixup      | fixture:fixup-chain      | 📷 ✅ (preview groups)            | ✅                                                          |
 | Rebase conflict panel auto-opens + **snapshot** + continue/skip/abort | rebase     | fixture:rebase-conflict  | 📷 ✅ (panel layout)              | ✅ (panel shown + snapshotted; continue/skip/abort ✅; merge-editor block resolution now driven separately) |
+| **Rebase progress view** (center step rail) + **snapshot** + hide/banner/files toggle | rebase | fixture:rebase-multi-step | 📷 ✅ (full step rail) | ✅ (see "Rebase progress view" below) |
 | **Merge editor** opens for a conflicted file + **snapshot** + **block resolution** | merge      | fixture:rebase-conflict  | 📷 ✅ (full Monaco editor)        | ✅ (opens + snapshotted; **wand + per-block accept + Apply ✅**, real second window, result asserted via git/file content) |
 | **Working-tree staging panel** + **file diff** + **snapshots**     | commits    | fixture:stash-stack      | 📷 ✅ (staging panel + diff view) | ✅                                                          |
 | **Commit staged changes** (write message → Commit → HEAD advances) | commits    | fixture:stash-stack      | —                                 | ✅                                                          |
@@ -36,6 +37,35 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | Settings screen opens + **snapshot**                               | settings   | keyboard (Mod+,)         | 📷 ✅ (general + notifications)   | 🟡 (general & notifications snapshotted; row-height persistence ✅; **ssh key generation ✅ · AI provider test-connection ✅ · rewards toggle ✅ · AI preset dropdown ✅ · GitHub OAuth device code ✅**; appearance snapshot skipped on purpose, see below) |
 | **AI commit-message generation**: streaming + prompt-wiring + cancel | AI         | fake HTTP server         | —                                 | ✅ (see "6. AI commit-message generation" below)            |
 | **Worktree** list / add / remove (incl. dirty-remove force gate)  | worktree   | fixture:worktree-repo    | —                                 | ✅ (see "Worktree management" below)                        |
+
+---
+
+## Rebase progress view ✅ 📷
+
+The center step rail (`components/rebase-progress/RebaseProgressCenter.tsx`) that takes the content
+view over for as long as a rebase runs: the whole todo list, oldest first, each command marked
+replayed / stopped-here / not-yet, with the base commit anchoring the top.
+
+- Setup: **`fixture:rebase-multi-step`** — a 6-step plan that pauses **twice** (step 2 on
+  `settings.conf`, then step 4 on `CHANGELOG.md`), with a `squash` and a `drop` still ahead. The
+  older `rebase-conflict` fixture only ever has one step, so it can't exercise a rail at all.
+- Covered: the view claiming the center (and the graph being gone); the counter and
+  `branch → onto` readout; per-step `data-progress` marking; the paused step's caption; hide →
+  graph returns still bannered by the CONFLICT row → clicking that banner brings the view back;
+  the files-panel toggle; continue **advancing the rail** from step 2 to step 4; abort restoring
+  the graph (asserted against `git log` on disk); and a full-rail visual snapshot.
+- **Regression guarded**: clicking the banner used to run through the graph's row-select handler,
+  which *toggles* a synthetic row — so clicking it while the CONFLICT row was already selected (the
+  normal state during a pause) cleared the selection and closed the conflicted-files panel the click
+  was meant to open. Both panels now have explicit per-repo visibility state
+  (`stores/rebaseView.store.ts`) and the banner *sets* them visible.
+- **Two harness gotchas** (both cost a debugging round, see rebase.steps.ts):
+  1. the whole-app loading scrim (`loading-overlay`, `fixed inset-0 z-9998`) is up while the graph
+     reloads its history — i.e. exactly when the banner step runs. WebKit's driver clicks the scrim
+     instead of reporting an intercepted click, so the click silently does nothing.
+  2. clicking a row *wrapper* (`graph-row-<oid>`) doesn't reach the row's React `onClick` here; the
+     inner cell has to be the target (`conflict-row-banner`), same as bisect.steps.ts does for
+     picking commits.
 
 ---
 

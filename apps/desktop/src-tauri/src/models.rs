@@ -184,6 +184,27 @@ pub struct WorktreeAgentActivity {
 
 // ─── Rebase ───────────────────────────────────────────────────────────────────
 
+/// One command of a *running* rebase's todo list, as reconstructed by
+/// `services/git_rebase_plan.rs` — what the rebase progress view draws its rail from. Unlike
+/// `RebaseTodoStep` (`services/git_interactive_rebase.rs`), which is a plan the UI submits, this
+/// describes work git is already executing.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RebaseProgressStep {
+    /// 1-based position in the plan, in execution order (oldest first).
+    pub index: usize,
+    /// Todo command, always in long form: `pick` | `reword` | `edit` | `squash` | `fixup` |
+    /// `drop` | `exec` | `break` | `label` | `reset` | `merge` | `update-ref`.
+    pub action: String,
+    /// Commit being replayed. `None` for commands that don't take one (`exec`, `break`…).
+    pub oid: Option<String>,
+    pub short_oid: Option<String>,
+    /// Commit subject, or the command's argument text for non-commit commands.
+    pub subject: Option<String>,
+    /// `done` | `current` | `pending` — `current` is the step the rebase is paused on.
+    pub status: String,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RebaseState {
@@ -196,6 +217,15 @@ pub struct RebaseState {
     /// Original message of the commit currently being replayed (looked up via `current_oid`),
     /// used to prefill the conflict-resolution panel's commit message box.
     pub current_message: Option<String>,
+    /// The whole todo list in execution order — empty when idle, or for the am backend, which
+    /// keeps no todo file. Drives the rebase progress view's "where am I" rail.
+    pub steps: Vec<RebaseProgressStep>,
+    /// Commit the branch is being replayed onto (`.git/rebase-merge/onto`), with its subject
+    /// and the name of a ref pointing at it (e.g. `main`) when there is one.
+    pub onto_oid: Option<String>,
+    pub onto_short_oid: Option<String>,
+    pub onto_subject: Option<String>,
+    pub onto_label: Option<String>,
 }
 
 /// State of a `git bisect` session, mirrored by `BisectState` in packages/git-types.

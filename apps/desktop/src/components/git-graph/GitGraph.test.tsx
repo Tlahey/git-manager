@@ -109,6 +109,15 @@ vi.mock('./ConflictResolutionPanel', () => ({
     return <div data-testid="conflict-resolution-panel" />
   },
 }))
+const { lastRebaseProgressProps } = vi.hoisted(() => ({
+  lastRebaseProgressProps: { current: null as Record<string, unknown> | null },
+}))
+vi.mock('../rebase-progress/RebaseProgressCenter', () => ({
+  RebaseProgressCenter: (props: Record<string, unknown>) => {
+    lastRebaseProgressProps.current = props
+    return <div data-testid="rebase-progress-center" />
+  },
+}))
 vi.mock('./Waterline', () => ({
   Waterline: (props: { label: string }) => {
     lastWaterlineLabels.current.push(props.label)
@@ -131,6 +140,7 @@ import { useSettingsStore } from '../../stores/settings.store'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useGitGraphColumnsStore } from '../../stores/gitGraphColumns.store'
+import { useRebaseViewStore } from '../../stores/rebaseView.store'
 
 const INITIAL_SETTINGS = useSettingsStore.getState()
 const INITIAL_REPO_DATA = useRepoDataStore.getState()
@@ -216,13 +226,15 @@ beforeEach(() => {
   lastConflictPanelProps.current = null
   lastWaterlineLabels.current = []
   lastCommitSearchPanelProps.current = null
+  lastRebaseProgressProps.current = null
 
   useSettingsStore.setState(INITIAL_SETTINGS, true)
   useRepoDataStore.setState(INITIAL_REPO_DATA, true)
   useRepoUIStore.setState(INITIAL_REPO_UI, true)
   useGitGraphColumnsStore.setState(INITIAL_COLUMNS, true)
+  useRebaseViewStore.setState({ views: {} })
 
-  apiGetRebaseState.mockResolvedValue({ kind: 'none' })
+  apiGetRebaseState.mockResolvedValue({ kind: 'idle', steps: [] })
   useGitStatus.mockReturnValue({ data: undefined })
   useGitLog.mockReturnValue({ data: [], isLoading: false, isError: false })
   useCommitSelection.mockReturnValue(selectionState())
@@ -640,7 +652,11 @@ describe('GitGraph — side panel routing', () => {
     expect(screen.queryByTestId('commit-details-panel')).not.toBeInTheDocument()
   })
 
-  it('closing the conflict panel clears the selection and the conflict file path', async () => {
+  // Closing marks the panel dismissed and drops any pending merge-window file. It deliberately
+  // leaves the graph selection alone: clearing it used to be *how* the panel closed, which meant
+  // any click that toggled the CONFLICT row off closed the panel as a side effect (see
+  // "conflicted files panel visibility" below).
+  it('closing the conflict panel dismisses it and clears the conflict file path', async () => {
     const conflict = commitNode('CONFLICT')
     useGitGraphNodes.mockReturnValue(graphNodesState([], { conflictNode: conflict }))
     const clearSelection = vi.fn()
@@ -648,7 +664,8 @@ describe('GitGraph — side panel routing', () => {
     useRepoUIStore.setState({ conflictFilePath: 'a.ts' })
     renderGraph()
     ;(lastConflictPanelProps.current!.onClose as () => void)()
-    expect(clearSelection).toHaveBeenCalledOnce()
+    expect(useRebaseViewStore.getState().views['/repo']?.filesHidden).toBe(true)
+    expect(clearSelection).not.toHaveBeenCalled()
     expect(useRepoUIStore.getState().conflictFilePath).toBeNull()
   })
 })
@@ -747,6 +764,7 @@ describe('GitGraph — auto-select on branch/repo change', () => {
       kind: 'conflict',
       conflictedFiles: ['src/config.ts'],
       branchName: 'main',
+      steps: [],
     })
     useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
     useGitGraphNodes.mockReturnValue(
@@ -755,6 +773,294 @@ describe('GitGraph — auto-select on branch/repo change', () => {
     useCommitSelection.mockReturnValue(selectionState({ selectSingle }))
     renderGraph({ branch: 'main' })
     await waitFor(() => expect(selectSingle).toHaveBeenCalledWith('CONFLICT'))
+  })
+})
+
+describe('GitGraph — rebase progress view', () => {
+  const PAUSED = {
+    kind: 'conflict',
+    conflictedFiles: ['src/config.ts'],
+    branchName: 'feature/login',
+    currentStep: 2,
+    totalSteps: 4,
+    steps: [],
+  }
+
+  /** A repo mid-rebase, with the synthetic CONFLICT row prepended as the real hook would. */
+  function renderRebasing(state: Record<string, unknown> = PAUSED) {
+    const conflictNode = commitNode('CONFLICT')
+    const nodes = [commitNode('a')]
+    apiGetRebaseState.mockResolvedValue(state)
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState([conflictNode, ...nodes], { conflictNode }))
+    return renderGraph()
+  }
+
+  /** Props of the CONFLICT row's most recent render — the log keeps every past one too, and the
+   * first pass happens before the rebase-state query has resolved. */
+  function conflictRowProps() {
+    return lastGraphRowCalls.current
+      .filter((props) => (props.node as GitGraphNode).commit.oid === 'CONFLICT')
+      .at(-1)
+  }
+
+  it('takes the center panel over while a rebase is paused, instead of the commit table', async () => {
+    renderRebasing()
+    expect(await screen.findByTestId('rebase-progress-center')).toBeInTheDocument()
+    expect(screen.queryByTestId('graph-header')).not.toBeInTheDocument()
+    expect(lastRebaseProgressProps.current?.repoPath).toBe('/repo')
+  })
+
+  it('also takes it over while the rebase is mid-apply, not only when paused', async () => {
+    renderRebasing({ kind: 'in_progress', steps: [] })
+    expect(await screen.findByTestId('rebase-progress-center')).toBeInTheDocument()
+  })
+
+  // An unrecognized kind must not hand the center to a view with nothing to show.
+  it('leaves the graph alone for an idle or unknown rebase state', async () => {
+    renderRebasing({ kind: 'idle', steps: [] })
+    expect(await screen.findByTestId('graph-header')).toBeInTheDocument()
+    expect(screen.queryByTestId('rebase-progress-center')).not.toBeInTheDocument()
+  })
+
+  it('gives the center back to the graph once the user hides the view', async () => {
+    renderRebasing()
+    await screen.findByTestId('rebase-progress-center')
+    act(() => useRebaseViewStore.getState().hideProgress('/repo'))
+    expect(screen.queryByTestId('rebase-progress-center')).not.toBeInTheDocument()
+    expect(screen.getByTestId('graph-header')).toBeInTheDocument()
+  })
+
+  it('re-opens the view when the CONFLICT banner row is clicked', async () => {
+    useRebaseViewStore.setState({ views: { '/repo': { progressHidden: true } } })
+    renderRebasing()
+    await screen.findByTestId('graph-header')
+
+    act(() => {
+      ;(conflictRowProps()!.onSelect as (e: unknown) => void)({
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      })
+    })
+    expect(useRebaseViewStore.getState().views['/repo']?.progressHidden).toBe(false)
+    expect(await screen.findByTestId('rebase-progress-center')).toBeInTheDocument()
+  })
+
+  it('banners the hidden rebase on the CONFLICT row, step counter included', async () => {
+    useRebaseViewStore.setState({ views: { '/repo': { progressHidden: true } } })
+    renderRebasing()
+    await screen.findByTestId('graph-header')
+    await waitFor(() =>
+      expect(conflictRowProps()?.conflictInfo).toMatchObject({
+        count: 1,
+        branchName: 'feature/login',
+        currentStep: 2,
+        totalSteps: 4,
+      })
+    )
+  })
+
+  // A dismissal applies to the rebase that was on screen, not to every future one.
+  it('forgets the dismissal once the repo stops rebasing', async () => {
+    useRebaseViewStore.setState({ views: { '/repo': { progressHidden: true } } })
+    renderRebasing({ kind: 'idle', steps: [] })
+    await waitFor(() => expect(useRebaseViewStore.getState().views).toEqual({}))
+  })
+})
+
+describe('GitGraph — rebase step routing', () => {
+  const PAUSED = {
+    kind: 'conflict',
+    conflictedFiles: ['settings.conf'],
+    branchName: 'feature/tuning',
+    steps: [],
+  }
+
+  function renderWithSteps(selectSingle = vi.fn(), loadedOids: string[] = ['oid-done']) {
+    const conflictNode = commitNode('CONFLICT')
+    const nodes = loadedOids.map((oid) => commitNode(oid))
+    apiGetRebaseState.mockResolvedValue(PAUSED)
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState([conflictNode, ...nodes], { conflictNode }))
+    useCommitSelection.mockReturnValue(selectionState({ primaryOid: 'CONFLICT', selectSingle }))
+    renderGraph()
+    return { selectSingle }
+  }
+
+  function selectStep(step: Record<string, unknown>) {
+    act(() => {
+      ;(lastRebaseProgressProps.current!.onSelectStep as (s: unknown) => void)(step)
+    })
+  }
+
+  // The reported bug: clicking the step being resolved showed that commit's (empty-looking)
+  // details instead of the panel that actually lets the user resolve the files.
+  it('opens the conflicted files panel when the paused step is clicked', async () => {
+    const { selectSingle } = renderWithSteps()
+    await screen.findByTestId('rebase-progress-center')
+    act(() => useRebaseViewStore.getState().hideFiles('/repo'))
+
+    selectStep({ index: 2, action: 'pick', status: 'current', oid: 'oid-current' })
+
+    expect(selectSingle).toHaveBeenCalledWith('CONFLICT')
+    expect(selectSingle).not.toHaveBeenCalledWith('oid-current')
+    expect(useRebaseViewStore.getState().views['/repo']?.filesHidden).toBe(false)
+    expect(screen.getByTestId('conflict-resolution-panel')).toBeInTheDocument()
+  })
+
+  it('selects the commit of a replayed step that the graph has loaded', async () => {
+    const { selectSingle } = renderWithSteps(vi.fn(), ['oid-done'])
+    await screen.findByTestId('rebase-progress-center')
+
+    selectStep({ index: 1, action: 'pick', status: 'done', oid: 'oid-done' })
+    expect(selectSingle).toHaveBeenCalledWith('oid-done')
+  })
+
+  // Selecting a commit the graph never loaded leaves `primaryNode` null, which is what made the
+  // details panel look empty.
+  it('ignores a step whose commit is not in the loaded graph', async () => {
+    const { selectSingle } = renderWithSteps(vi.fn(), ['oid-done'])
+    await screen.findByTestId('rebase-progress-center')
+
+    selectStep({ index: 3, action: 'pick', status: 'pending', oid: 'oid-not-loaded' })
+    expect(selectSingle).not.toHaveBeenCalledWith('oid-not-loaded')
+  })
+
+  it('reports selectability to the view so unopenable rows are not clickable', async () => {
+    renderWithSteps(vi.fn(), ['oid-done'])
+    await screen.findByTestId('rebase-progress-center')
+    const isSelectable = lastRebaseProgressProps.current!.isStepSelectable as (
+      s: unknown
+    ) => boolean
+
+    expect(isSelectable({ index: 1, action: 'pick', status: 'done', oid: 'oid-done' })).toBe(true)
+    expect(isSelectable({ index: 2, action: 'pick', status: 'done', oid: 'nope' })).toBe(false)
+    expect(isSelectable({ index: 3, action: 'exec', status: 'pending' })).toBe(false)
+  })
+})
+
+describe('GitGraph — conflicted files panel visibility', () => {
+  const PAUSED = {
+    kind: 'conflict',
+    conflictedFiles: ['src/config.ts'],
+    branchName: 'feature/login',
+    steps: [],
+  }
+
+  /** A paused rebase whose CONFLICT row is the graph's current selection — the normal state, since
+   * GitGraph auto-selects it on pause. */
+  function renderWithConflictSelected(selectSingle = vi.fn()) {
+    const conflictNode = commitNode('CONFLICT')
+    const nodes = [commitNode('a')]
+    apiGetRebaseState.mockResolvedValue(PAUSED)
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState([conflictNode, ...nodes], { conflictNode }))
+    useCommitSelection.mockReturnValue(
+      selectionState({ primaryOid: 'CONFLICT', selectSingle, selected: new Set(['CONFLICT']) })
+    )
+    const utils = renderGraph()
+    return { ...utils, selectSingle }
+  }
+
+  function clickConflictRow() {
+    const props = lastGraphRowCalls.current
+      .filter((p) => (p.node as GitGraphNode).commit.oid === 'CONFLICT')
+      .at(-1)!
+    act(() => {
+      ;(props.onSelect as (e: unknown) => void)({
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      })
+    })
+  }
+
+  it('shows the files panel while the rebase is paused and the row is selected', async () => {
+    renderWithConflictSelected()
+    expect(await screen.findByTestId('conflict-resolution-panel')).toBeInTheDocument()
+  })
+
+  // The bug this guards: handleRowSelect *toggles* a synthetic row, so clicking the banner while
+  // the row was already selected cleared the selection and closed the files panel the user had
+  // just asked to see. The banner must set both panels visible, never toggle.
+  it('keeps the files panel open when the banner is clicked with the row already selected', async () => {
+    const { selectSingle } = renderWithConflictSelected()
+    await screen.findByTestId('conflict-resolution-panel')
+
+    clickConflictRow()
+
+    expect(selectSingle).toHaveBeenCalledWith('CONFLICT')
+    expect(useRebaseViewStore.getState().views['/repo']?.filesHidden).toBe(false)
+    expect(screen.getByTestId('conflict-resolution-panel')).toBeInTheDocument()
+  })
+
+  it('never routes the banner click through the toggling row-select handler', async () => {
+    const handleRowSelect = vi.fn()
+    const conflictNode = commitNode('CONFLICT')
+    apiGetRebaseState.mockResolvedValue(PAUSED)
+    useGitLog.mockReturnValue({ data: [commitNode('a')], isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(
+      graphNodesState([conflictNode, commitNode('a')], { conflictNode })
+    )
+    useCommitSelection.mockReturnValue(selectionState({ primaryOid: 'CONFLICT', handleRowSelect }))
+    renderGraph()
+    await screen.findByTestId('conflict-resolution-panel')
+
+    clickConflictRow()
+    expect(handleRowSelect).not.toHaveBeenCalled()
+  })
+
+  it('hides the files panel when it is dismissed, without touching the graph selection', async () => {
+    const clearSelection = vi.fn()
+    const conflictNode = commitNode('CONFLICT')
+    apiGetRebaseState.mockResolvedValue(PAUSED)
+    useGitLog.mockReturnValue({ data: [commitNode('a')], isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState([conflictNode], { conflictNode }))
+    useCommitSelection.mockReturnValue(selectionState({ primaryOid: 'CONFLICT', clearSelection }))
+    renderGraph()
+    await screen.findByTestId('conflict-resolution-panel')
+
+    act(() => (lastConflictPanelProps.current!.onClose as () => void)())
+
+    expect(useRebaseViewStore.getState().views['/repo']?.filesHidden).toBe(true)
+    expect(clearSelection).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('conflict-resolution-panel')).not.toBeInTheDocument()
+  })
+
+  it("reports the panel's state to the progress view and flips it from there", async () => {
+    const { selectSingle } = renderWithConflictSelected()
+    await screen.findByTestId('rebase-progress-center')
+    expect(lastRebaseProgressProps.current?.filesPanelOpen).toBe(true)
+
+    // Hide from the header toggle…
+    act(() => (lastRebaseProgressProps.current!.onToggleFilesPanel as () => void)())
+    expect(useRebaseViewStore.getState().views['/repo']?.filesHidden).toBe(true)
+    expect(screen.queryByTestId('conflict-resolution-panel')).not.toBeInTheDocument()
+
+    // …and back, which also re-selects the row the panel hangs off.
+    act(() => (lastRebaseProgressProps.current!.onToggleFilesPanel as () => void)())
+    expect(useRebaseViewStore.getState().views['/repo']?.filesHidden).toBe(false)
+    expect(selectSingle).toHaveBeenCalledWith('CONFLICT')
+    expect(screen.getByTestId('conflict-resolution-panel')).toBeInTheDocument()
+  })
+
+  // Inspecting another commit swaps the right panel for its details; the toggle has to bring the
+  // conflicted files back rather than just flipping a flag nothing reads.
+  it('re-selects the conflict row when toggled on from another commit', async () => {
+    const selectSingle = vi.fn()
+    const conflictNode = commitNode('CONFLICT')
+    apiGetRebaseState.mockResolvedValue(PAUSED)
+    useGitLog.mockReturnValue({ data: [commitNode('a')], isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(
+      graphNodesState([conflictNode, commitNode('a')], { conflictNode })
+    )
+    useCommitSelection.mockReturnValue(selectionState({ primaryOid: 'a', selectSingle }))
+    renderGraph()
+    await screen.findByTestId('rebase-progress-center')
+    expect(lastRebaseProgressProps.current?.filesPanelOpen).toBe(false)
+
+    act(() => (lastRebaseProgressProps.current!.onToggleFilesPanel as () => void)())
+    expect(selectSingle).toHaveBeenCalledWith('CONFLICT')
+    expect(useRebaseViewStore.getState().views['/repo']?.filesHidden).toBe(false)
   })
 })
 

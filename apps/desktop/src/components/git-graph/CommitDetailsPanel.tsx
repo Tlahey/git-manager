@@ -128,7 +128,10 @@ export function CommitDetailsPanel({
   const wipFileCount = isWip ? processedFiles.length + unmergedFiles.length : undefined
 
   return (
-    <div className="flex h-full w-full min-w-0 flex-col border-l border-border bg-card shadow-2xl">
+    <div
+      data-testid="commit-details-panel"
+      className="flex h-full w-full min-w-0 flex-col border-l border-border bg-card shadow-2xl"
+    >
       {/* ── HEADER ── */}
       <CommitHeaderInfo
         isWip={isWip}

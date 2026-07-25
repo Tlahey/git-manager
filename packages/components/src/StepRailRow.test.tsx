@@ -116,4 +116,53 @@ describe('StepRailRow', () => {
     render(<StepRailRow {...baseProps()} />)
     expect(screen.getByTestId('row')).toHaveStyle({ height: `${STEP_RAIL_ROW_HEIGHT}px` })
   })
+
+  describe('read-only progress mode', () => {
+    it('drops the grip and every drag handler when not draggable', () => {
+      const onDragStart = vi.fn()
+      const onDrop = vi.fn()
+      const { container } = render(
+        <StepRailRow {...baseProps({ draggable: false, onDragStart, onDrop })} />
+      )
+      // Only the rail <svg> is left: no grip icon in front of it.
+      expect(container.querySelectorAll('svg')).toHaveLength(1)
+      expect(screen.getByTestId('row')).not.toHaveAttribute('draggable', 'true')
+
+      fireEvent.dragStart(screen.getByTestId('row'))
+      fireEvent.drop(screen.getByTestId('row'))
+      expect(onDragStart).not.toHaveBeenCalled()
+      expect(onDrop).not.toHaveBeenCalled()
+    })
+
+    it('rings the current step, dashes its connector, and highlights the row', () => {
+      const { container } = render(
+        <StepRailRow {...baseProps({ progress: 'current', draggable: false })} />
+      )
+      const rail = container.querySelector('svg')!
+      // Halo ring + the dot itself.
+      expect(rail.querySelectorAll('circle')).toHaveLength(2)
+      expect(rail.querySelector('circle')!.getAttribute('class')).toContain('stroke-primary')
+      const bottomLine = rail.querySelectorAll('line')[1]
+      expect(bottomLine).toHaveAttribute('stroke-dasharray', '3 3')
+      expect(screen.getByTestId('row').className).toContain('bg-primary/10')
+    })
+
+    it('hollows the dot for a pending step and fills it for a done one', () => {
+      const { container: pending } = render(
+        <StepRailRow {...baseProps({ progress: 'pending', draggable: false })} />
+      )
+      expect(pending.querySelector('circle')!.getAttribute('class')).toContain('fill-transparent')
+
+      const { container: done } = render(
+        <StepRailRow {...baseProps({ progress: 'done', draggable: false })} />
+      )
+      expect(done.querySelector('circle')!.getAttribute('class')).toContain('fill-primary')
+      expect(done.querySelector('svg.lucide-check')).not.toBeNull()
+    })
+
+    it('exposes the progress state as a data attribute for the caller to assert on', () => {
+      render(<StepRailRow {...baseProps({ progress: 'done', draggable: false })} />)
+      expect(screen.getByTestId('row')).toHaveAttribute('data-progress', 'done')
+    })
+  })
 })

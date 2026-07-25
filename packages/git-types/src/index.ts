@@ -285,6 +285,30 @@ export interface WorktreeAgentActivity {
 
 export type RebaseStateKind = 'idle' | 'in_progress' | 'conflict' | 'edit_pause'
 
+/** Where a step of a running rebase stands — `current` is the one it's paused on. */
+export type RebaseProgressStatus = 'done' | 'current' | 'pending'
+
+/**
+ * One command of a *running* rebase's todo list. Mirrors `RebaseProgressStep` in
+ * `apps/desktop/src-tauri/src/models.rs` — unlike {@link RebaseTodoStep} (a plan the UI
+ * submits), this describes work git is executing.
+ */
+export interface RebaseProgressStep {
+  /** 1-based position in the plan, in execution order (oldest first). */
+  index: number
+  /**
+   * Todo command in long form: `pick` | `reword` | `edit` | `squash` | `fixup` | `drop` |
+   * `exec` | `break` | `label` | `reset` | `merge` | `update-ref`.
+   */
+  action: string
+  /** Commit being replayed — absent for commands that take none (`exec`, `break`…). */
+  oid?: string
+  shortOid?: string
+  /** Commit subject, or the command's argument text for non-commit commands. */
+  subject?: string
+  status: RebaseProgressStatus
+}
+
 export interface RebaseState {
   kind: RebaseStateKind
   currentStep?: number
@@ -293,6 +317,13 @@ export interface RebaseState {
   conflictedFiles?: string[]
   branchName?: string
   currentMessage?: string
+  /** The whole todo list in execution order — empty when idle (or on git's am backend). */
+  steps: RebaseProgressStep[]
+  /** Commit the branch is being replayed onto, with a ref name pointing at it if there is one. */
+  ontoOid?: string
+  ontoShortOid?: string
+  ontoSubject?: string
+  ontoLabel?: string
 }
 
 // ─── Bisect ──────────────────────────────────────────────────────────────────

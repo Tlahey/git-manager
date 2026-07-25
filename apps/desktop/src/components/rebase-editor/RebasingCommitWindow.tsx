@@ -9,13 +9,12 @@ import {
   Spinner,
   Textarea,
   cn,
-  type BadgeProps,
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@git-manager/ui'
-import { useHorizontalResize, StepRailRow, type StepRailVariant } from '@git-manager/components'
+import { useHorizontalResize, StepRailRow } from '@git-manager/components'
 import { apiListRebaseCommits, apiRunInteractiveRebase } from '../../api/git.api'
 import { useTheme } from '../../hooks/useTheme'
 import { useMonacoTheme } from '../../hooks/useMonacoTheme'
@@ -31,22 +30,7 @@ import {
   toTodoSteps,
 } from './rebasePlan'
 import { RebaseCommitDetails } from './components/RebaseCommitDetails'
-
-/** Badge color per rebase action — git-rebase-specific vocabulary, so it stays
- * app-side rather than living in the generic `StepRailRow` package component. */
-const ACTION_BADGE_VARIANTS: Record<RebasePlanStep['action'], BadgeProps['variant']> = {
-  pick: 'secondary',
-  reword: 'warning',
-  squash: 'success',
-  fixup: 'success',
-  drop: 'destructive',
-}
-
-function railVariantForAction(action: RebasePlanStep['action']): StepRailVariant {
-  if (action === 'drop') return 'dropped'
-  if (action === 'squash' || action === 'fixup') return 'combined'
-  return 'normal'
-}
+import { badgeVariantForAction, railVariantForAction } from '../../lib/rebaseActionStyles'
 
 interface RebasingCommitWindowProps {
   repoPath: string
@@ -239,7 +223,7 @@ function RebasingCommitWindowContent({ repoPath, baseOid }: RebasingCommitWindow
                   }
                   subtitle={`${step.commit.author.name} · ${new Date(step.commit.author.timestamp * 1000).toLocaleDateString()}`}
                   badgeLabel={step.action}
-                  badgeVariant={ACTION_BADGE_VARIANTS[step.action]}
+                  badgeVariant={badgeVariantForAction(step.action)}
                   trailingCaption={step.commit.shortOid}
                   testId={`rebase-step-${step.commit.shortOid}`}
                   onRowClick={handleRowClick}

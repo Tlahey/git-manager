@@ -202,6 +202,8 @@ function CellContent({
           <ConflictRowMessage
             count={conflictInfo?.count ?? 0}
             branchName={conflictInfo?.branchName}
+            currentStep={conflictInfo?.currentStep}
+            totalSteps={conflictInfo?.totalSteps}
           />
         )
       }
