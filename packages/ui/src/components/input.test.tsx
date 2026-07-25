@@ -85,6 +85,41 @@ describe('Input', () => {
     expect(el.className).toContain('pr-8')
   })
 
+  it('colours the icon slots with the same graded pair as the field they sit in', () => {
+    // Left to the cascade an icon picks up the surrounding panel's colour, which has no reason to
+    // clear contrast against the field's own fill — on `chrome` it visibly mismatched the
+    // placeholder right next to it.
+    render(
+      <Input
+        variant="chrome"
+        startIcon={<span data-testid="start-icon" />}
+        endIcon={<span data-testid="end-icon" />}
+      />
+    )
+
+    expect(screen.getByTestId('start-icon').parentElement?.className).toContain(
+      'text-sidebar-accent-foreground'
+    )
+    expect(screen.getByTestId('end-icon').parentElement?.className).toContain(
+      'text-sidebar-accent-foreground'
+    )
+  })
+
+  it('colours icon slots against the content surface for the default variant', () => {
+    render(<Input startIcon={<span data-testid="start-icon" />} />)
+
+    expect(screen.getByTestId('start-icon').parentElement?.className).toContain(
+      'text-muted-foreground'
+    )
+  })
+
+  it('lets a caller override the slot colour from the icon itself', () => {
+    render(<Input variant="chrome" startIcon={<span data-testid="start-icon" className="text-primary" />} />)
+
+    // The icon carries its own colour; the slot's default only applies through inheritance.
+    expect(screen.getByTestId('start-icon').className).toContain('text-primary')
+  })
+
   it('disables autoCapitalize, autoCorrect, and spellCheck by default', () => {
     render(<Input data-testid="input" />)
     const el = screen.getByTestId('input')

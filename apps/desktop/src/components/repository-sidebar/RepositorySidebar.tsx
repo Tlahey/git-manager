@@ -304,9 +304,10 @@ export function RepositorySidebar({
             soloActive ? 'ring-1 ring-primary focus-visible:ring-primary' : ''
           }`}
           startIcon={
-            <Search
-              className={`h-3.5 w-3.5 ${soloActive ? 'text-primary' : 'text-sidebar-muted-foreground'}`}
-            />
+            // No colour outside solo mode: the field's own graded pair applies (see `Input`'s
+            // ICON_CLASSES). `sidebar-muted-foreground` is graded against the sidebar background,
+            // not against the `sidebar-accent` fill this icon actually sits on.
+            <Search className={`h-3.5 w-3.5 ${soloActive ? 'text-primary' : ''}`} />
           }
           endIcon={
             branchQuery ? (

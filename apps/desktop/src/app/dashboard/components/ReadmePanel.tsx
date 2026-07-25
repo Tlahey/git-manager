@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { BookOpen, X, RefreshCw, FileText, Github, Gitlab, Code, Eye } from 'lucide-react'
-import { Button } from '@git-manager/ui'
+import { Button, Tooltip } from '@git-manager/ui'
 import { Markdown } from '../../../components/Markdown'
 import { useRepoReadme } from '../../../hooks/useRepoReadme'
 import { useRepoDataStore } from '../../../stores/repoData.store'
@@ -44,17 +44,27 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
           <span className="truncate text-xs font-semibold text-foreground">{name}</span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex h-7 items-center gap-1 px-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            onClick={() => setShowRaw(!showRaw)}
-            title={showRaw ? 'Mode Aperçu' : 'Mode Code Source'}
-            data-testid="readme-toggle-mode"
+          <Tooltip
+            content={
+              showRaw ? t('dashboard:readme.toggleRendered') : t('dashboard:readme.toggleSource')
+            }
           >
-            {showRaw ? <Eye className="h-3.5 w-3.5" /> : <Code className="h-3.5 w-3.5" />}
-            <span className="hidden sm:inline">{showRaw ? 'Aperçu' : 'Code'}</span>
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex h-7 items-center gap-1 px-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              onClick={() => setShowRaw(!showRaw)}
+              aria-label={
+                showRaw ? t('dashboard:readme.toggleRendered') : t('dashboard:readme.toggleSource')
+              }
+              data-testid="readme-toggle-mode"
+            >
+              {showRaw ? <Eye className="h-3.5 w-3.5" /> : <Code className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">
+                {showRaw ? t('dashboard:readme.viewRendered') : t('dashboard:readme.viewSource')}
+              </span>
+            </Button>
+          </Tooltip>
           {remoteUrl && (
             <Button
               variant="ghost"

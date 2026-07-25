@@ -6,16 +6,19 @@ export interface ToolbarButtonProps {
   loading?: boolean
   disabled?: boolean
   title?: string
-  /** Masque le label sous le seuil `lg` pour gagner de la place. */
+  /** Hides the label below the `lg` breakpoint to save room. */
   hideLabelOnNarrow?: boolean
-  /** Pastille numérotée en surimpression sur l'icône (ex. commits à pousser/récupérer). Masquée si ≤ 0. */
+  /** Numbered pill overlaid on the icon (e.g. commits to push/pull). Hidden when ≤ 0. */
   badge?: number
   onClick?: () => void
 }
 
 /**
- * Bouton d'action de la toolbar : icône au-dessus, label en dessous.
- * Le label se replie automatiquement sur les écrans étroits.
+ * Action button for the main toolbar: icon on top, label underneath, the label folding away on
+ * narrow screens.
+ *
+ * The fold is keyed on the viewport here, unlike the diff toolbar's (see `diffToolbar.css`): this
+ * bar spans the whole window, so the window's width *is* the space it has.
  */
 export function ToolbarButton({
   icon,

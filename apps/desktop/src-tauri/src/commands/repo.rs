@@ -3,23 +3,61 @@ use crate::models::*;
 use crate::services::git_repo::build_git_repo;
 use crate::state::AppState;
 use git2::Repository;
-use tauri::State;
+use std::path::PathBuf;
+use tauri::{AppHandle, Manager, State};
 
-/// Ouvre un dépôt Git et retourne ses informations de base
+/// Grants the `asset:` protocol read access to a repository's directory.
+///
+/// The protocol's configured scope is empty (`tauri.conf.json`), so the webview can't read a single
+/// file until a repository is actually opened — the markdown renderer resolves a README's relative
+/// images through `convertFileSrc`, and this is what makes those, and only those, load. Widening
+/// the scope to `**` instead would hand every file on the machine to whatever markdown the user
+/// happens to be looking at (a cloned README, a PR description written by a stranger).
+///
+/// Failing to register the directory only costs images in that repository, so it's logged and
+/// swallowed rather than failing the command that opens the repo.
+fn allow_repo_assets(app: &AppHandle, path: &str) {
+    let scope = app.asset_protocol_scope();
+
+    // The scope canonicalizes the *requested* path before matching it, but stores the allowed
+    // patterns verbatim: registering only the path as it was typed would reject every image in a
+    // repository reached through a symlink (`/tmp` resolves to `/private/tmp` on macOS, and a
+    // symlinked projects directory is common enough). Both spellings go in.
+    let mut paths = vec![PathBuf::from(path)];
+    match std::fs::canonicalize(path) {
+        Ok(canonical) if canonical != paths[0] => paths.push(canonical),
+        _ => {}
+    }
+
+    for path in paths {
+        if let Err(err) = scope.allow_directory(&path, true) {
+            eprintln!("Failed to grant asset access to {}: {err}", path.display());
+        }
+    }
+}
+
+/// Opens a Git repository and returns its basic information.
 #[tauri::command]
-pub async fn open_repo(path: String, state: State<'_, AppState>) -> Result<GitRepo, String> {
+pub async fn open_repo(
+    app: AppHandle,
+    path: String,
+    state: State<'_, AppState>,
+) -> Result<GitRepo, String> {
     let repo = Repository::open(&path).map_err(|_| AppError::RepoNotFound(path.clone()))?;
     let git_repo = build_git_repo(&repo, path.clone());
 
-    // Enregistrer le repo dans l'état
+    allow_repo_assets(&app, &path);
+
+    // Register the repository in the app state
     state.open_repos.lock().unwrap().insert(path.clone(), path);
 
     Ok(git_repo)
 }
 
-/// Clone un dépôt distant vers un chemin local
+/// Clones a remote repository to a local path.
 #[tauri::command]
 pub async fn clone_repo(
+    app: AppHandle,
     url: String,
     dest_path: String,
     shallow: Option<bool>,
@@ -61,6 +99,8 @@ pub async fn clone_repo(
         .map_err(|e| format!("Failed to open cloned repository: {}", e))?;
     let git_repo = build_git_repo(&repo, dest_path.clone());
 
+    allow_repo_assets(&app, &dest_path);
+
     state
         .open_repos
         .lock()
@@ -70,7 +110,7 @@ pub async fn clone_repo(
     Ok(git_repo)
 }
 
-/// Initialise un nouveau dépôt Git dans le dossier indiqué
+/// Initializes a new Git repository in the given directory.
 #[tauri::command]
 pub async fn init_repo(path: String, state: State<'_, AppState>) -> Result<GitRepo, String> {
     let repo = Repository::init(&path).map_err(AppError::Git)?;
@@ -159,7 +199,7 @@ pub async fn get_repo_status(path: String) -> Result<GitStatus, String> {
     })
 }
 
-/// Scanne un répertoire racine à la recherche de dépôts Git
+/// Scans a root directory for Git repositories.
 #[tauri::command]
 pub async fn scan_repos(root_path: String, max_depth: usize) -> Result<Vec<String>, String> {
     let mut found = Vec::new();
@@ -175,7 +215,7 @@ fn scan_dir(path: &str, depth: usize, max_depth: usize, found: &mut Vec<String>)
     let git_path = format!("{}/.git", path);
     if std::path::Path::new(&git_path).exists() {
         found.push(path.to_string());
-        return; // Ne pas scanner l'intérieur d'un repo
+        return; // Don't scan inside a repository
     }
 
     if let Ok(entries) = std::fs::read_dir(path) {
@@ -184,7 +224,7 @@ fn scan_dir(path: &str, depth: usize, max_depth: usize, found: &mut Vec<String>)
             if entry_path.is_dir() {
                 let name = entry.file_name();
                 let name_str = name.to_string_lossy();
-                // Exclure les dossiers courants connus comme non-repos
+                // Skip the usual directories known never to be repositories
                 if !matches!(
                     name_str.as_ref(),
                     "node_modules" | ".pnpm-store" | "dist" | "build" | "target" | ".git"
@@ -201,7 +241,7 @@ fn scan_dir(path: &str, depth: usize, max_depth: usize, found: &mut Vec<String>)
     }
 }
 
-/// Obtient un résumé rapide (branche, modifications, commits ahead/behind) d'un dépôt Git
+/// Gets a quick summary of a repository (branch, changes, ahead/behind commit counts).
 #[tauri::command]
 pub async fn get_repo_summary(path: String) -> Result<GitRepoSummary, String> {
     let repo = Repository::open(&path).map_err(|e| e.to_string())?;
@@ -293,8 +333,8 @@ pub async fn get_repo_summary(path: String) -> Result<GitRepoSummary, String> {
     })
 }
 
-/// Ouvre un dépôt Git dans l'application d'édition choisie par l'utilisateur
-/// (chemin absolu vers un .app ou un exécutable, sélectionné via le picker natif)
+/// Opens a Git repository in the editor the user picked (an absolute path to a `.app` bundle or
+/// an executable, selected through the native picker).
 #[tauri::command]
 pub async fn open_in_editor(path: String, command: String) -> Result<(), String> {
     if command.is_empty() {
@@ -325,13 +365,17 @@ pub async fn open_in_editor(path: String, command: String) -> Result<(), String>
         .map_err(|e| format!("Failed to open editor: {}", e))
 }
 
-/// Lit le contenu du fichier README du dépôt s'il existe
+/// Reads the repository's README file if there is one.
 #[tauri::command]
-pub async fn get_repo_readme(path: String) -> Result<String, String> {
+pub async fn get_repo_readme(app: AppHandle, path: String) -> Result<String, String> {
     let dir = std::path::Path::new(&path);
     if !dir.exists() {
         return Err("Repository path does not exist".to_string());
     }
+
+    // The dashboard renders a README's images without necessarily having opened the repository in a
+    // tab, so grant the asset scope here too rather than relying on `open_repo` having run.
+    allow_repo_assets(&app, &path);
 
     let candidates = [
         "README.md",
@@ -399,7 +443,7 @@ pub async fn open_in_terminal(path: String, command: String) -> Result<(), Strin
         .map_err(|e| format!("Failed to open terminal: {e}"))
 }
 
-/// Lit l'historique zsh/bash du système et extrait les commandes commençant par git
+/// Reads the system's zsh/bash history and extracts the commands starting with `git`.
 #[tauri::command]
 pub async fn get_terminal_commands() -> Result<Vec<String>, String> {
     use std::fs::File;
@@ -446,10 +490,10 @@ pub async fn get_terminal_commands() -> Result<Vec<String>, String> {
     read_history(home_path.join(".zsh_history"));
     read_history(home_path.join(".bash_history"));
 
-    // Élimine les répétitions consécutives identiques
+    // Drop consecutive duplicates
     commands.dedup();
 
-    // Garde les 100 dernières commandes pour éviter de saturer la mémoire
+    // Keep only the last 100 commands so the list can't grow unbounded
     if commands.len() > 100 {
         commands = commands.split_off(commands.len() - 100);
     }
@@ -465,32 +509,10 @@ pub async fn list_tracked_files(path: String) -> Result<Vec<String>, String> {
     crate::services::git_files::list_tracked_files(&repo).map_err(Into::into)
 }
 
+/// Returns every file in the working tree, tracked or not, minus what `.gitignore` excludes.
+/// Powers the project files explorer.
 #[tauri::command]
 pub async fn get_repo_files(path: String) -> Result<Vec<String>, String> {
-    use std::process::Command;
-
-    #[cfg(target_os = "windows")]
-    let mut cmd = Command::new("cmd");
-    #[cfg(target_os = "windows")]
-    cmd.args(&["/C", "git", "ls-files", "-co", "--exclude-standard"]).current_dir(&path);
-
-    #[cfg(not(target_os = "windows"))]
-    let mut cmd = Command::new("git");
-    #[cfg(not(target_os = "windows"))]
-    cmd.args(&["ls-files", "-co", "--exclude-standard"]).current_dir(&path);
-
-    let output = cmd.output().map_err(|e| format!("Failed to run git ls-files: {}", e))?;
-
-    if !output.status.success() {
-        let err_msg = String::from_utf8_lossy(&output.stderr).into_owned();
-        return Err(format!("git ls-files failed: {}", err_msg));
-    }
-
-    let files = String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .map(|s| s.to_string())
-        .filter(|s| !s.is_empty())
-        .collect();
-
-    Ok(files)
+    let repo = Repository::open(&path).map_err(|_| AppError::RepoNotFound(path))?;
+    crate::services::git_files::list_working_tree_files(&repo).map_err(Into::into)
 }

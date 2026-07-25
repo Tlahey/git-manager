@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
 import { Check, Copy } from 'lucide-react'
+import { useTranslation } from '@git-manager/i18n'
+import { Tooltip } from '@git-manager/ui'
 import { MermaidBlock } from './MermaidBlock'
 
 interface CodeBlockProps {
@@ -9,6 +11,7 @@ interface CodeBlockProps {
 }
 
 export function CodeBlock({ inline, className, children, ...props }: CodeBlockProps) {
+  const { t } = useTranslation('common')
   const match = /language-(\w+)/.exec(className || '')
   const language = match ? match[1] : ''
   const codeString = String(children || '').replace(/\n$/, '')
@@ -51,24 +54,26 @@ export function CodeBlock({ inline, className, children, ...props }: CodeBlockPr
       {/* Code Header Bar */}
       <div className="flex items-center justify-between border-b border-border/40 bg-muted/60 px-3 py-1.5 text-[10px] font-semibold text-muted-foreground select-none">
         <span className="uppercase tracking-wider font-sans">{(language || 'text').toUpperCase()}</span>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          title="Copier le code"
-          data-testid="code-block-copy-button"
-        >
-          {copied ? (
-            <>
-              <Check className="h-3 w-3 text-green-500" />
-              <span className="text-green-500">Copié</span>
-            </>
-          ) : (
-            <>
-              <Copy className="h-3 w-3" />
-              <span>Copier</span>
-            </>
-          )}
-        </button>
+        <Tooltip content={t('markdown.code.copyTooltip')}>
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label={t('markdown.code.copyTooltip')}
+            data-testid="code-block-copy-button"
+          >
+            {copied ? (
+              <>
+                <Check className="h-3 w-3 text-tone-success" />
+                <span className="text-tone-success">{t('markdown.code.copied')}</span>
+              </>
+            ) : (
+              <>
+                <Copy className="h-3 w-3" />
+                <span>{t('markdown.code.copy')}</span>
+              </>
+            )}
+          </button>
+        </Tooltip>
       </div>
 
       {/* Code Content */}

@@ -1,25 +1,26 @@
-import React, { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { FileIcon, FolderIcon, ChevronRightIcon, PanelRightOpen, X } from 'lucide-react'
+import { useTranslation } from '@git-manager/i18n'
+import { Button, Tooltip, cn } from '@git-manager/ui'
 import { useFileExplorerStore } from '../../stores/fileExplorer.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useRepoFiles } from '../../hooks/useRepoFiles'
 import { useGitStatus } from '../../hooks/useGitStatus'
-import { buildFileTree } from './utils'
+import { buildFileTree, findDirectoryNodes } from './utils'
 import { DiffViewCenter } from '../git-graph/DiffViewCenter'
+import { isPreviewableImage } from '../git-graph/previewableFile'
 import { TerminalPanel } from '../terminal/TerminalPanel'
 import { TerminalStatusBar } from '../terminal/TerminalStatusBar'
 import { useTerminalStore } from '../../stores/terminal.store'
 
-const isImageFile = (path: string | null) => 
-  Boolean(path && /\.(png|jpe?g|gif|webp|svg|ico)$/i.test(path))
-
 export function ProjectFilesView() {
+  const { t } = useTranslation('git')
   const { activeRepo, activeWorkspacePath } = useRepoUIStore()
   const effectiveRepoPath = activeWorkspacePath ?? activeRepo
-  
+
   const { data: files } = useRepoFiles(effectiveRepoPath)
-  const { data: gitStatus } = useGitStatus(effectiveRepoPath!)
-  
+  const { data: gitStatus } = useGitStatus(effectiveRepoPath ?? '')
+
   const selectedFilePath = useFileExplorerStore((s) => s.selectedFilePath)
   const currentDirPath = useFileExplorerStore((s) => s.currentDirPath)
   const setCurrentDirPath = useFileExplorerStore((s) => s.actions.setCurrentDirPath)
@@ -30,166 +31,170 @@ export function ProjectFilesView() {
   const setActiveDiffFile = useRepoUIStore((s) => s.setActiveDiffFile)
   const terminalOpen = useTerminalStore((s) => s.open)
 
-  React.useEffect(() => {
-    // If no file is selected in the explorer, ensure global state is cleared
+  useEffect(() => {
+    // `DiffViewCenter` publishes the file it shows into the global store (that's how the Blame and
+    // History panels know what they're looking at). With no file selected there's nothing to
+    // publish, and on unmount the graph must not inherit ours.
     if (!selectedFilePath) {
       setActiveDiffFile(null)
     }
-    
-    // Clear the active file globally when closing the file explorer
-    // so it doesn't leak into the GitGraph view.
     return () => {
       setActiveDiffFile(null)
     }
   }, [selectedFilePath, setActiveDiffFile])
 
-  const isStagedOnly = useMemo(() => {
-    if (!selectedFilePath || !gitStatus) return false
+  const fileState = useMemo(() => {
+    if (!selectedFilePath || !gitStatus) return { staged: false, unmodified: false }
     const isStaged = gitStatus.staged.some((f) => f.path === selectedFilePath)
     const isUnstaged = gitStatus.unstaged.some((f) => f.path === selectedFilePath)
-    return isStaged && !isUnstaged
+    // A file staged *and* modified again shows its working-tree changes; `unmodified` drives the
+    // viewer's fallback to the file's last committed version.
+    return { staged: isStaged && !isUnstaged, unmodified: !isStaged && !isUnstaged }
   }, [selectedFilePath, gitStatus])
 
-  const isUnmodified = useMemo(() => {
-    if (!selectedFilePath || !gitStatus) return false
-    const isStaged = gitStatus.staged.some((f) => f.path === selectedFilePath)
-    const isUnstaged = gitStatus.unstaged.some((f) => f.path === selectedFilePath)
-    return !isStaged && !isUnstaged
-  }, [selectedFilePath, gitStatus])
-
-  const tree = useMemo(() => buildFileTree(files || []), [files])
-
-  // Get nodes in current directory
-  const currentNodes = useMemo(() => {
-    if (!currentDirPath) return tree
-    
-    const parts = currentDirPath.split('/')
-    let current = tree
-    
-    for (const part of parts) {
-      const node = current.find(n => n.name === part && n.isDir)
-      if (node && node.children) {
-        current = node.children
-      } else {
-        return []
-      }
-    }
-    return current
-  }, [tree, currentDirPath])
-
-  const handleBreadcrumbClick = (index: number) => {
-    if (index === -1) {
-      setCurrentDirPath('')
-    } else {
-      const parts = currentDirPath.split('/')
-      setCurrentDirPath(parts.slice(0, index + 1).join('/'))
-    }
-  }
+  const tree = useMemo(() => buildFileTree(files ?? []), [files])
+  const currentNodes = useMemo(
+    () => findDirectoryNodes(tree, currentDirPath),
+    [tree, currentDirPath]
+  )
 
   const breadcrumbs = currentDirPath ? currentDirPath.split('/') : []
+  const repoName = effectiveRepoPath?.split('/').pop() ?? ''
 
   return (
-    <div className="flex h-full flex-1 flex-col overflow-hidden bg-white dark:bg-neutral-900" data-testid="project-files-view">
-      {/* Breadcrumb Header */}
-      <div className="flex h-12 shrink-0 items-center border-b border-neutral-200 px-4 text-sm dark:border-neutral-800">
-        <span 
-          className="cursor-pointer font-medium text-blue-600 hover:underline dark:text-blue-400"
-          onClick={() => handleBreadcrumbClick(-1)}
+    <div
+      className="flex h-full flex-1 flex-col overflow-hidden bg-background"
+      data-testid="project-files-view"
+    >
+      <div className="flex h-12 shrink-0 items-center gap-0.5 border-b border-border px-4 text-sm">
+        <Button
+          variant="link"
+          className="h-auto p-0 text-sm font-medium"
+          onClick={() => setCurrentDirPath('')}
+          data-testid="file-breadcrumb-root"
         >
-          {effectiveRepoPath?.split('/').pop()}
-        </span>
-        
-        {breadcrumbs.map((part: string, i: number) => (
-          <React.Fragment key={i}>
-            <ChevronRightIcon size={16} className="mx-1 text-neutral-400" />
-            <span 
-              className={`cursor-pointer hover:underline ${i === breadcrumbs.length - 1 && !selectedFilePath ? 'font-semibold text-neutral-900 dark:text-neutral-100' : 'text-blue-600 dark:text-blue-400'}`}
-              onClick={() => handleBreadcrumbClick(i)}
-            >
-              {part}
+          {repoName}
+        </Button>
+
+        {breadcrumbs.map((part, i) => {
+          const isLast = i === breadcrumbs.length - 1 && !selectedFilePath
+          return (
+            <span key={`${part}-${i}`} className="flex items-center">
+              <ChevronRightIcon size={16} className="mx-1 text-muted-foreground" />
+              <Button
+                variant="link"
+                className={cn(
+                  'h-auto p-0 text-sm',
+                  isLast && 'font-semibold text-foreground no-underline hover:no-underline'
+                )}
+                aria-current={isLast ? 'page' : undefined}
+                onClick={() => setCurrentDirPath(breadcrumbs.slice(0, i + 1).join('/'))}
+                data-testid={`file-breadcrumb-${i}`}
+              >
+                {part}
+              </Button>
             </span>
-          </React.Fragment>
-        ))}
+          )
+        })}
 
         {selectedFilePath && (
-          <>
-            <ChevronRightIcon size={16} className="mx-1 text-neutral-400" />
-            <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+          <span className="flex items-center">
+            <ChevronRightIcon size={16} className="mx-1 text-muted-foreground" />
+            <span className="font-semibold text-foreground" aria-current="page">
               {selectedFilePath.split('/').pop()}
             </span>
-          </>
+          </span>
         )}
-        
-        <div className="ml-auto flex items-center gap-2">
-          <button 
-            onClick={toggleOpen}
-            className="rounded p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
-            title="Fermer l'explorateur"
-          >
-            <X size={16} />
-          </button>
-          {!isSidebarOpen && (
-            <button 
-              onClick={toggleSidebar}
-              className="rounded p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
-              title="Afficher le panneau latéral"
+
+        <div className="ml-auto flex items-center gap-1">
+          <Tooltip content={t('fileExplorer.close')}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground"
+              onClick={toggleOpen}
+              aria-label={t('fileExplorer.close')}
+              data-testid="file-explorer-close"
             >
-              <PanelRightOpen size={16} />
-            </button>
+              <X size={16} />
+            </Button>
+          </Tooltip>
+          {!isSidebarOpen && (
+            <Tooltip content={t('fileExplorer.showSidebar')}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground"
+                onClick={toggleSidebar}
+                aria-label={t('fileExplorer.showSidebar')}
+                data-testid="file-explorer-show-sidebar"
+              >
+                <PanelRightOpen size={16} />
+              </Button>
+            </Tooltip>
           )}
         </div>
       </div>
 
       <div className="flex-1 overflow-hidden">
-        {selectedFilePath ? (
+        {selectedFilePath && effectiveRepoPath ? (
           <DiffViewCenter
-            repoPath={effectiveRepoPath!}
-            file={{ 
-              path: selectedFilePath, 
-              staged: isStagedOnly, 
-              initialTab: isImageFile(selectedFilePath) ? 'preview' : 'file',
-              unmodified: isUnmodified
+            repoPath={effectiveRepoPath}
+            file={{
+              path: selectedFilePath,
+              staged: fileState.staged,
+              // An image has no readable diff or blame, so it opens straight on its preview;
+              // everything else opens on the file's contents.
+              initialTab: isPreviewableImage(selectedFilePath) ? 'preview' : 'file',
+              unmodified: fileState.unmodified,
             }}
             onClose={() => setSelectedFilePath(null)}
           />
         ) : (
           <div className="h-full overflow-y-auto">
-            <table className="w-full text-left text-sm text-neutral-700 dark:text-neutral-300">
-              <thead className="sticky top-0 bg-neutral-50 dark:bg-neutral-800/50">
+            <table className="w-full text-left text-sm text-foreground">
+              <thead className="sticky top-0 bg-muted/40">
                 <tr>
-                  <th className="px-4 py-2 font-medium">Name</th>
+                  <th className="px-4 py-2 font-medium text-muted-foreground">
+                    {t('fileExplorer.columnName')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {currentNodes.map((node) => (
-                  <tr 
+                  <tr
                     key={node.path}
-                    className="cursor-pointer border-b border-neutral-100 hover:bg-neutral-50 dark:border-neutral-800/50 dark:hover:bg-neutral-800/50"
-                    onClick={() => {
-                      if (node.isDir) {
-                        setCurrentDirPath(node.path)
-                      } else {
-                        setSelectedFilePath(node.path)
-                      }
-                    }}
+                    className="border-b border-border/50 transition-colors hover:bg-accent/50"
                   >
-                    <td className="px-4 py-2">
-                      <div className="flex items-center gap-2">
+                    <td className="p-0">
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-4 py-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        onClick={() =>
+                          node.isDir ? setCurrentDirPath(node.path) : setSelectedFilePath(node.path)
+                        }
+                        data-testid={`file-row-${node.path}`}
+                      >
                         {node.isDir ? (
-                          <FolderIcon size={16} className="text-blue-400" />
+                          <FolderIcon size={16} className="shrink-0 text-primary" />
                         ) : (
-                          <FileIcon size={16} className="text-neutral-400" />
+                          <FileIcon size={16} className="shrink-0 text-muted-foreground" />
                         )}
-                        <span className={node.isDir ? 'font-medium text-blue-600 dark:text-blue-400' : ''}>
+                        <span className={node.isDir ? 'font-medium text-primary' : ''}>
                           {node.name}
                         </span>
-                      </div>
+                      </button>
                     </td>
                   </tr>
                 ))}
                 {currentNodes.length === 0 && (
                   <tr>
-                    <td className="px-4 py-8 text-center text-neutral-500">This directory is empty.</td>
+                    <td
+                      className="px-4 py-8 text-center text-muted-foreground"
+                      data-testid="file-explorer-empty-dir"
+                    >
+                      {t('fileExplorer.emptyDirectory')}
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -198,13 +203,12 @@ export function ProjectFilesView() {
         )}
       </div>
 
-      {effectiveRepoPath && (
-        terminalOpen ? (
+      {effectiveRepoPath &&
+        (terminalOpen ? (
           <TerminalPanel path={effectiveRepoPath} />
         ) : (
           <TerminalStatusBar path={effectiveRepoPath} />
-        )
-      )}
+        ))}
     </div>
   )
 }
