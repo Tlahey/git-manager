@@ -1,5 +1,16 @@
 # Spec 00 — Architecture
 
+> [!WARNING]
+> **Historical design document — not a description of the current implementation.**
+>
+> Written on 2026-07-03, before the feature was built, and never updated since (the only
+> later commit touching it was a repo-wide Prettier run). Command names, DTOs, component
+> paths, i18n keys and UI mockups below are frequently wrong or describe things that were
+> never built. It is kept only as a record of the original intent.
+>
+> For how the app actually works today, read [CLAUDE.md](../../../CLAUDE.md) and
+> [docs/architecture/14-architecture-refactor-tracking.md](../../architecture/14-architecture-refactor-tracking.md).
+
 ## Goal
 
 Define the overall technical structure of the application: stack, code organization, communication patterns between the React frontend and the Rust backend (Tauri IPC), and development conventions.

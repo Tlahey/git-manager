@@ -1,5 +1,16 @@
 # Spec 06 — Worktree management
 
+> [!WARNING]
+> **Historical design document — not a description of the current implementation.**
+>
+> Written on 2026-07-03, before the feature was built, and never updated since (the only
+> later commit touching it was a repo-wide Prettier run). Command names, DTOs, component
+> paths, i18n keys and UI mockups below are frequently wrong or describe things that were
+> never built. It is kept only as a record of the original intent.
+>
+> For how the app actually works today, read [CLAUDE.md](../../../CLAUDE.md) and
+> [docs/architecture/14-architecture-refactor-tracking.md](../../architecture/14-architecture-refactor-tracking.md).
+
 ## Goal
 
 Allow creating, listing, switching, and removing Git worktrees from a visual interface. A worktree allows having multiple branches checked out simultaneously in separate folders.

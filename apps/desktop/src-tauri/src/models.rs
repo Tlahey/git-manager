@@ -184,17 +184,10 @@ pub struct WorktreeAgentActivity {
 
 // ─── Rebase ───────────────────────────────────────────────────────────────────
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct RebaseStep {
-    pub action: String, // pick | reword | edit | squash | fixup | drop
-    pub oid: String,
-    pub message: String,
-}
-
 /// One command of a *running* rebase's todo list, as reconstructed by
-/// `services/git_rebase_plan.rs` — what the rebase progress view draws its rail from.
-/// Unlike `RebaseStep` above (a plan the UI submits), this describes work git is executing.
+/// `services/git_rebase_plan.rs` — what the rebase progress view draws its rail from. Unlike
+/// `RebaseTodoStep` (`services/git_interactive_rebase.rs`), which is a plan the UI submits, this
+/// describes work git is already executing.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RebaseProgressStep {

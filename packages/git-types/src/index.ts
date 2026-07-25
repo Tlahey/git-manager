@@ -283,14 +283,6 @@ export interface WorktreeAgentActivity {
 
 // ─── Rebase ───────────────────────────────────────────────────────────────────
 
-export type RebaseAction = 'pick' | 'reword' | 'edit' | 'squash' | 'fixup' | 'drop'
-
-export interface RebaseStep {
-  action: RebaseAction
-  oid: string
-  message: string
-}
-
 export type RebaseStateKind = 'idle' | 'in_progress' | 'conflict' | 'edit_pause'
 
 /** Where a step of a running rebase stands — `current` is the one it's paused on. */
