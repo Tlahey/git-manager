@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
-
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
+import type { ComponentProps } from 'react'
 
 const { useFileDiff, useFileRawContents } = vi.hoisted(() => ({
   useFileDiff: vi.fn(),
@@ -48,18 +47,14 @@ vi.mock('./components/DiffToolbar', () => ({
 
 import { apiDiscardFileChanges, apiStageFile, apiUnstageFile } from '../../api/git.api'
 import { DiffViewCenter } from './DiffViewCenter'
+// Type-only: the module itself is mocked above, but the real props keep this harness honest.
+import type { DiffToolbar as DiffToolbarComponent } from './components/DiffToolbar'
 
 const mockedDiscard = apiDiscardFileChanges as unknown as ReturnType<typeof vi.fn>
 const mockedStage = apiStageFile as unknown as ReturnType<typeof vi.fn>
 const mockedUnstage = apiUnstageFile as unknown as ReturnType<typeof vi.fn>
 
-type ToolbarProps = {
-  onCopyPath: () => void
-  onClose: () => void
-  onToggleStage: () => void
-  onRollback: () => void
-  onChangeActiveTab: (tab: 'diff' | 'file') => void
-}
+type ToolbarProps = ComponentProps<typeof DiffToolbarComponent>
 
 function toolbarProps() {
   return lastToolbarProps.current as ToolbarProps
@@ -161,9 +156,9 @@ describe('DiffViewCenter — diff/file wiring', () => {
 
   it('passes hasPreview=true to DiffToolbar and renders preview area when "preview" tab is selected', () => {
     renderCenter({ path: 'README.md' })
-    expect((lastToolbarProps.current as any).hasPreview).toBe(true)
+    expect(toolbarProps().hasPreview).toBe(true)
 
-    act(() => (lastToolbarProps.current as any).onChangeActiveTab('preview'))
+    act(() => toolbarProps().onChangeActiveTab('preview'))
     expect(screen.getByTestId('file-preview-area')).toBeInTheDocument()
     expect(screen.queryByTestId('three-way-merge-editor')).not.toBeInTheDocument()
     expect(screen.queryByTestId('blame-file-viewer')).not.toBeInTheDocument()
@@ -228,7 +223,9 @@ describe('DiffViewCenter — rollback', () => {
     await act(async () => {
       await toolbarProps().onRollback()
     })
-    expect(window.confirm).toHaveBeenCalledWith('commitDetails.discardPrompt')
+    expect(window.confirm).toHaveBeenCalledWith(
+      'Are you sure you want to discard all local changes to this file? This action is irreversible.'
+    )
     expect(mockedDiscard).toHaveBeenCalledWith('/repo', 'src/a.ts')
     expect(onClose).toHaveBeenCalledOnce()
     expect(onRefresh).toHaveBeenCalledOnce()

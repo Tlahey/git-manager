@@ -174,7 +174,7 @@ export function useGlobalCommands({
     commands.push({
       id: 'repo-files',
       group: 'repo',
-      title: t('commandPalette.repo.files', { defaultValue: 'Open file view' }),
+      title: t('commandPalette.repo.files'),
       keywords: ['files', 'tree', 'explorer'],
       icon: createElement(FolderOpen),
       run: () => {

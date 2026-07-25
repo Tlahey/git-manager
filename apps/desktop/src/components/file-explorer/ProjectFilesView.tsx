@@ -20,15 +20,15 @@ export function ProjectFilesView() {
   const { data: files } = useRepoFiles(effectiveRepoPath)
   const { data: gitStatus } = useGitStatus(effectiveRepoPath!)
   
-  const selectedFilePath = useFileExplorerStore((s: any) => s.selectedFilePath)
-  const currentDirPath = useFileExplorerStore((s: any) => s.currentDirPath)
-  const setCurrentDirPath = useFileExplorerStore((s: any) => s.actions.setCurrentDirPath)
-  const setSelectedFilePath = useFileExplorerStore((s: any) => s.actions.setSelectedFilePath)
-  const toggleOpen = useFileExplorerStore((s: any) => s.actions.toggleOpen)
-  const isSidebarOpen = useFileExplorerStore((s: any) => s.isSidebarOpen)
-  const toggleSidebar = useFileExplorerStore((s: any) => s.actions.toggleSidebar)
-  const setActiveDiffFile = useRepoUIStore((s: any) => s.setActiveDiffFile)
-  const terminalOpen = useTerminalStore((s: any) => s.open)
+  const selectedFilePath = useFileExplorerStore((s) => s.selectedFilePath)
+  const currentDirPath = useFileExplorerStore((s) => s.currentDirPath)
+  const setCurrentDirPath = useFileExplorerStore((s) => s.actions.setCurrentDirPath)
+  const setSelectedFilePath = useFileExplorerStore((s) => s.actions.setSelectedFilePath)
+  const toggleOpen = useFileExplorerStore((s) => s.actions.toggleOpen)
+  const isSidebarOpen = useFileExplorerStore((s) => s.isSidebarOpen)
+  const toggleSidebar = useFileExplorerStore((s) => s.actions.toggleSidebar)
+  const setActiveDiffFile = useRepoUIStore((s) => s.setActiveDiffFile)
+  const terminalOpen = useTerminalStore((s) => s.open)
 
   React.useEffect(() => {
     // If no file is selected in the explorer, ensure global state is cleared

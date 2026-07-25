@@ -81,11 +81,11 @@ export function FileTreeSidebar() {
   const effectiveRepoPath = activeWorkspacePath ?? activeRepo
   const { data: files } = useRepoFiles(effectiveRepoPath)
   
-  const toggleSidebar = useFileExplorerStore((s: any) => s.actions.toggleSidebar)
-  const selectedFilePath = useFileExplorerStore((s: any) => s.selectedFilePath)
-  const treeSearchQuery = useFileExplorerStore((s: any) => s.treeSearchQuery)
-  const setSelectedFilePath = useFileExplorerStore((s: any) => s.actions.setSelectedFilePath)
-  const setTreeSearchQuery = useFileExplorerStore((s: any) => s.actions.setTreeSearchQuery)
+  const toggleSidebar = useFileExplorerStore((s) => s.actions.toggleSidebar)
+  const selectedFilePath = useFileExplorerStore((s) => s.selectedFilePath)
+  const treeSearchQuery = useFileExplorerStore((s) => s.treeSearchQuery)
+  const setSelectedFilePath = useFileExplorerStore((s) => s.actions.setSelectedFilePath)
+  const setTreeSearchQuery = useFileExplorerStore((s) => s.actions.setTreeSearchQuery)
 
   const filteredTree = useMemo(() => {
     if (!files) return []
