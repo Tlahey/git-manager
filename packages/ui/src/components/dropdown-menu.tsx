@@ -8,11 +8,11 @@ const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
 const DropdownMenuSub = DropdownMenuPrimitive.Sub
 
 /**
- * Content est positionné par le Popper de Radix : il mesure la taille réelle du menu
- * une fois monté et bascule/décale automatiquement (côté + alignement) pour rester
- * dans le viewport, avec `collisionPadding` comme marge de sécurité — remplace les
- * heuristiques maison (`useAnchoredMenu`, `ContextMenuSurface`) qui ne clampent qu'un
- * axe et se basent sur une largeur/seuil codés en dur plutôt que la taille réelle.
+ * Content is positioned by Radix's Popper: it measures the menu's real size once mounted and
+ * automatically flips/shifts it (side + alignment) to stay inside the viewport, with
+ * `collisionPadding` as a safety margin — this replaces the hand-rolled heuristics
+ * (`useAnchoredMenu`, `ContextMenuSurface`) which only clamped one axis and relied on a
+ * hardcoded width/threshold rather than the real size.
  */
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
