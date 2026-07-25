@@ -14,7 +14,6 @@ import {
   apiStageAll,
   apiUnstageAll,
   apiCopyCommitSha,
-  apiCheckoutBranch,
   apiCherryPickCommit,
   apiRebaseOntoCommit,
   apiGetCommitWebUrl,
@@ -38,6 +37,7 @@ import {
 import { useRepoUIStore, type GraphCommitAction } from '../stores/repoUI.store'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
 import { useSoloModeStore } from '../stores/soloMode.store'
+import { useBranchCheckout } from './useBranchCheckout'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
@@ -82,6 +82,7 @@ export function useGitGraphActions({
   const openPrCreateWith = useRepoUIStore((s) => s.openPrCreateWith)
   const setPin = usePinnedBranchesStore((s) => s.setPin)
   const enableSolo = useSoloModeStore((s) => s.enable)
+  const { checkoutBranchWithStashPrompt } = useBranchCheckout()
 
   const [pendingAction, setPendingAction] = useState<PendingAction>(null)
   // Inline tag creation: the commit awaiting a tag name (via the row's refs-column input, or the
@@ -127,13 +128,10 @@ export function useGitGraphActions({
     }
   }
 
+  /** Detaches HEAD onto `oid`. The hook refreshes the graph queries itself on success, and falls
+   * back to the stash prompt when uncommitted changes block the checkout. */
   async function handleCheckoutDetached(oid: string) {
-    try {
-      await apiCheckoutBranch(repoPath, oid)
-      refreshLogAndStatus()
-    } catch (err) {
-      toast.error(String(err))
-    }
+    await checkoutBranchWithStashPrompt(repoPath, oid)
   }
 
   async function handleCreateWorktree(oid: string) {
@@ -410,10 +408,10 @@ export function useGitGraphActions({
           t('gitTree.branchMenu.rebased', relParams(ref))
         ),
       // A remote ref checks out its commit (detached) — exactly what `git checkout origin/x` does.
-      onCheckoutBranch: (ref) =>
-        void run(() =>
-          apiCheckoutBranch(repoPath, ref.type === 'branch' ? ref.shortName : ref.commitOid)
-        ),
+      onCheckoutBranch: (ref) => {
+        const target = ref.type === 'branch' ? ref.shortName : ref.commitOid
+        void checkoutBranchWithStashPrompt(repoPath, target)
+      },
       onOpenWorktreeFrom: (ref) => void handleCreateWorktree(ref.commitOid),
       // PR-create flow prefilled with head = current branch, base = the remote branch (sans
       // remote prefix) — the flow itself handles pushing.

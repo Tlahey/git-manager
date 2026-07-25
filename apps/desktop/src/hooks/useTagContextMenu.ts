@@ -6,7 +6,6 @@ import type { GitRef } from '@git-manager/git-types'
 import { showNativeMenu } from '../api/nativeMenu.api'
 import { buildTagMenuSpec } from '../lib/graphContextMenus'
 import {
-  apiCheckoutBranch,
   apiCherryPickCommit,
   apiMergeBranch,
   apiRebaseOntoCommit,
@@ -14,6 +13,7 @@ import {
   apiGetTagWebUrl,
 } from '../api/git.api'
 import { apiAddWorktree } from '../api/worktree.api'
+import { useBranchCheckout } from './useBranchCheckout'
 import { openRebaseWindow } from '../lib/graphWindows'
 import type { GraphCommitAction } from '../stores/repoUI.store'
 
@@ -53,6 +53,7 @@ export function useTagContextMenu({
   t,
 }: UseTagContextMenuParams) {
   const queryClient = useQueryClient()
+  const { checkoutBranchWithStashPrompt } = useBranchCheckout()
   const [pendingTagAction, setPendingTagAction] = useState<PendingTagAction>(null)
 
   // Stable identity: this handler is published through TagMenuContext to every memoized GraphRow, so
@@ -133,7 +134,9 @@ export function useTagContextMenu({
               ),
             onInteractiveRebase: () =>
               void openRebaseWindow(repoPath, gitRef.commitOid).catch(console.error),
-            onCheckout: () => void run(() => apiCheckoutBranch(repoPath, gitRef.commitOid)),
+            // Detaches HEAD onto the tag's commit — same stash-prompt path as the graph/branch
+            // menus, so a dirty worktree offers to stash instead of failing with a raw error.
+            onCheckout: () => void checkoutBranchWithStashPrompt(repoPath, gitRef.commitOid),
             onCreateWorktree: () => void handleCreateWorktree(gitRef.commitOid),
             onCreateBranch: () => setPendingCommitAction({ kind: 'branch' }),
             onCherryPick: () =>
@@ -169,7 +172,16 @@ export function useTagContextMenu({
         )
       )
     },
-    [repoPath, currentBranch, isDetached, selectCommit, setPendingCommitAction, t, queryClient]
+    [
+      repoPath,
+      currentBranch,
+      isDetached,
+      selectCommit,
+      setPendingCommitAction,
+      t,
+      queryClient,
+      checkoutBranchWithStashPrompt,
+    ]
   )
 
   return { openTagMenu, pendingTagAction, setPendingTagAction }

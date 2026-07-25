@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Check, ChevronDown, GitBranch, Layers, Search, X } from 'lucide-react'
 import { Spinner, Popover, PopoverTrigger, PopoverContent, Input } from '@git-manager/ui'
 import { TruncatedLabel } from '@git-manager/components'
@@ -9,8 +8,7 @@ import type { GitWorktree } from '@git-manager/git-types'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useBranches } from '../../hooks/useBranches'
-import { apiCheckoutBranch } from '../../api/git.api'
-import { apiOpenRepo } from '../../api/repo.api'
+import { useBranchCheckout } from '../../hooks/useBranchCheckout'
 import { apiListWorktrees } from '../../api/worktree.api'
 
 type ContextEntry =
@@ -23,20 +21,13 @@ type ContextEntry =
  * `activeWorkspacePath`). The list is ordered current → workspaces → branches, each icon-tagged. */
 export function BranchContext() {
   const { t } = useTranslation('git')
-  const queryClient = useQueryClient()
   const { activeRepo, activeWorkspacePath } = useRepoUIStore()
   const setActiveWorkspacePath = useRepoUIStore((s) => s.setActiveWorkspacePath)
-  const { repoCache, setRepoCache } = useRepoDataStore()
+  const repoCache = useRepoDataStore((s) => s.repoCache)
+  const { checkoutBranchWithStashPrompt } = useBranchCheckout()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!error) return
-    const id = setTimeout(() => setError(null), 3000)
-    return () => clearTimeout(id)
-  }, [error])
 
   const repo = activeRepo ? repoCache[activeRepo] : undefined
   const { data: branches = [] } = useBranches(activeRepo ?? '')
@@ -101,22 +92,16 @@ export function BranchContext() {
     try {
       const fromDetached = repo?.isDetached ?? false
       const fromRef = fromDetached ? repo!.head : (headBranch?.shortName ?? repo?.head)
-      await apiCheckoutBranch(activeRepo, name, fromRef ? { fromRef, fromDetached } : undefined)
-      // Rafraîchit le cache repo (head/isDetached/isDirty) + les vues dépendantes.
-      try {
-        const fresh = await apiOpenRepo(activeRepo)
-        setRepoCache(activeRepo, fresh)
-      } catch {
-        /* ignore */
+      const ok = await checkoutBranchWithStashPrompt(
+        activeRepo,
+        name,
+        fromRef ? { fromRef, fromDetached } : undefined
+      )
+      if (ok) {
+        setActiveWorkspacePath(null)
+        setOpen(false)
+        setQuery('')
       }
-      queryClient.invalidateQueries({ queryKey: ['branches', activeRepo] })
-      queryClient.invalidateQueries({ queryKey: ['git-log', activeRepo] })
-      queryClient.invalidateQueries({ queryKey: ['git-status', activeRepo] })
-      setActiveWorkspacePath(null)
-      setOpen(false)
-      setQuery('')
-    } catch (err) {
-      setError(String(err))
     } finally {
       setBusy(null)
     }
@@ -223,14 +208,6 @@ export function BranchContext() {
           </PopoverContent>
         </Popover>
       </div>
-
-      {error &&
-        createPortal(
-          <div className="pointer-events-none fixed bottom-4 right-4 z-overlay max-w-sm rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive shadow-lg">
-            {error}
-          </div>,
-          document.body
-        )}
     </div>
   )
 }

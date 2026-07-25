@@ -14,6 +14,7 @@ vi.mock('../../hooks/useGitStatus', () => ({
 
 import { ToolsMenu } from './ToolsMenu'
 import { useBisectUIStore } from '../../stores/bisectUI.store'
+import { useStashDialogStore } from '../../stores/stashDialog.store'
 
 const cleanStatus: GitStatus = { staged: [], unstaged: [], untracked: [], conflicted: [] }
 const dirtyStatus: GitStatus = {
@@ -43,8 +44,8 @@ describe('ToolsMenu', () => {
       activeSlot: 'bad',
       pendingBadOid: null,
       pendingGoodOid: null,
-      stashDialogOpen: false,
     })
+    useStashDialogStore.getState().closeDialog()
   })
 
   it('renders the Tools trigger', () => {
@@ -67,7 +68,7 @@ describe('ToolsMenu', () => {
     await user.click(screen.getByTestId('tools-menu-bisect'))
     expect(useBisectUIStore.getState().setupActive).toBe(true)
     expect(useBisectUIStore.getState().activeSlot).toBe('bad')
-    expect(useBisectUIStore.getState().stashDialogOpen).toBe(false)
+    expect(useStashDialogStore.getState().isOpen).toBe(false)
   })
 
   it('opens the stash dialog first when the worktree is dirty', async () => {
@@ -77,7 +78,8 @@ describe('ToolsMenu', () => {
     await user.click(screen.getByTestId('toolbar-tools-button'))
     await user.click(screen.getByTestId('tools-menu-bisect'))
     // Setup does not begin until the changes are stashed via the dialog.
-    expect(useBisectUIStore.getState().stashDialogOpen).toBe(true)
+    expect(useStashDialogStore.getState().isOpen).toBe(true)
+    expect(useStashDialogStore.getState().reason).toBe('bisect')
     expect(useBisectUIStore.getState().setupActive).toBe(false)
   })
 

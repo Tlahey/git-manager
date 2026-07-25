@@ -9,17 +9,17 @@ vi.mock('../../hooks/useBisectActions', () => ({
 
 import { BisectStashDialog } from './BisectStashDialog'
 import { useBisectUIStore } from '../../stores/bisectUI.store'
+import { useStashDialogStore } from '../../stores/stashDialog.store'
 
-function resetStore(overrides: Partial<ReturnType<typeof useBisectUIStore.getState>> = {}) {
+function resetStore() {
   useBisectUIStore.setState({
     setupActive: false,
     activeSlot: 'bad',
     pendingBadOid: null,
     pendingGoodOid: null,
     autoStashed: false,
-    stashDialogOpen: false,
-    ...overrides,
   })
+  useStashDialogStore.getState().closeDialog()
 }
 
 describe('BisectStashDialog', () => {
@@ -34,7 +34,7 @@ describe('BisectStashDialog', () => {
   })
 
   it('stashes then begins the commit selection on confirm', async () => {
-    resetStore({ stashDialogOpen: true })
+    useStashDialogStore.getState().openBisectDialog('/repo')
     const user = userEvent.setup()
     render(<BisectStashDialog repoPath="/repo" />)
     expect(screen.getByTestId('bisect-stash-dialog')).toBeInTheDocument()
@@ -42,26 +42,26 @@ describe('BisectStashDialog', () => {
     expect(stashForBisect).toHaveBeenCalled()
     // The setup (commit picking) only starts once the stash succeeded, and the dialog closes.
     await waitFor(() => expect(useBisectUIStore.getState().setupActive).toBe(true))
-    expect(useBisectUIStore.getState().stashDialogOpen).toBe(false)
+    expect(useStashDialogStore.getState().isOpen).toBe(false)
   })
 
   it('starts no bisect on refuse', async () => {
-    resetStore({ stashDialogOpen: true })
+    useStashDialogStore.getState().openBisectDialog('/repo')
     const user = userEvent.setup()
     render(<BisectStashDialog repoPath="/repo" />)
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(stashForBisect).not.toHaveBeenCalled()
     expect(useBisectUIStore.getState().setupActive).toBe(false)
-    expect(useBisectUIStore.getState().stashDialogOpen).toBe(false)
+    expect(useStashDialogStore.getState().isOpen).toBe(false)
   })
 
   it('keeps the dialog open and does not begin setup if the stash fails', async () => {
     stashForBisect.mockResolvedValue(false)
-    resetStore({ stashDialogOpen: true })
+    useStashDialogStore.getState().openBisectDialog('/repo')
     const user = userEvent.setup()
     render(<BisectStashDialog repoPath="/repo" />)
     await user.click(screen.getByTestId('bisect-stash-confirm'))
     expect(useBisectUIStore.getState().setupActive).toBe(false)
-    expect(useBisectUIStore.getState().stashDialogOpen).toBe(true)
+    expect(useStashDialogStore.getState().isOpen).toBe(true)
   })
 })

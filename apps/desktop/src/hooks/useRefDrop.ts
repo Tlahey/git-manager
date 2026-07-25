@@ -5,7 +5,6 @@ import type { GitRef } from '@git-manager/git-types'
 import { showNativeMenu } from '../api/nativeMenu.api'
 import { buildRefDropMenuSpec } from '../lib/graphContextMenus'
 import {
-  apiCheckoutBranch,
   apiMergeBranch,
   apiFastForwardBranch,
   apiPushBranchTo,
@@ -15,6 +14,11 @@ import {
 import { useRepoDataStore } from '../stores/repoData.store'
 import { useRepoUIStore } from '../stores/repoUI.store'
 import { openRebaseWindow } from '../lib/graphWindows'
+import { useBranchCheckout } from './useBranchCheckout'
+
+/** Raised when the checkout a rewriting op needs was deferred (stash dialog opened, or the failure
+ * was already toasted): the user has been told once, so {@link run} bails out silently. */
+class CheckoutDeferredError extends Error {}
 
 /** Human-readable name for a ref — strips the remote prefix (`origin/main` → `main`). */
 function displayName(ref: GitRef): string {
@@ -45,6 +49,7 @@ export function useRefDrop(repoPath: string) {
   const { t } = useTranslation('git')
   const queryClient = useQueryClient()
   const repo = useRepoDataStore((s) => s.repoCache[repoPath])
+  const { checkoutBranchWithStashPrompt } = useBranchCheckout()
   const openPrCreateWith = useRepoUIStore((s) => s.openPrCreateWith)
 
   const currentBranch = repo?.head ?? null
@@ -56,13 +61,16 @@ export function useRefDrop(repoPath: string) {
     queryClient.invalidateQueries({ queryKey: ['branches', repoPath] })
   }
 
-  /** Checks out `branch` unless it's already HEAD — a rewriting op (rebase/reset) acts on HEAD. */
+  /** Checks out `branch` unless it's already HEAD — a rewriting op (rebase/reset) acts on HEAD.
+   * A refused checkout aborts the whole drop: the stash dialog it opened only resumes the switch,
+   * not the rebase/reset that followed, so the user re-runs the drop once the tree is clean. */
   async function ensureCheckedOut(branch: string) {
     if (currentBranch === branch) return
-    await apiCheckoutBranch(repoPath, branch, {
+    const ok = await checkoutBranchWithStashPrompt(repoPath, branch, {
       fromRef: currentBranch ?? branch,
       fromDetached: isDetached,
     })
+    if (!ok) throw new CheckoutDeferredError(branch)
   }
 
   /** Runs a git action, refreshing the graph on success and surfacing failures as a toast. */
@@ -72,6 +80,7 @@ export function useRefDrop(repoPath: string) {
       refresh()
       if (successMsg) toast.success(successMsg)
     } catch (err) {
+      if (err instanceof CheckoutDeferredError) return
       toast.error(String(err))
     }
   }

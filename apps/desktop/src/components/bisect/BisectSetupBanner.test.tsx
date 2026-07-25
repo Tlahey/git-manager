@@ -29,7 +29,6 @@ function setup(overrides: Partial<ReturnType<typeof useBisectUIStore.getState>> 
     activeSlot: 'bad',
     pendingBadOid: null,
     pendingGoodOid: null,
-    stashDialogOpen: false,
     ...overrides,
   })
 }
@@ -45,7 +44,6 @@ describe('BisectSetupBanner', () => {
       pendingBadOid: null,
       pendingGoodOid: null,
       autoStashed: false,
-      stashDialogOpen: false,
     })
   })
 

@@ -590,11 +590,15 @@ export async function apiStashList(path: string) {
 
 // ─── Checkout ──────────────────────────────────────────────────────────────
 
-export async function apiCheckoutBranch(
-  path: string,
-  toRef: string,
-  opts?: { fromRef: string; fromDetached: boolean; force?: boolean }
-) {
+/** Where the checkout comes from — needed to record an undoable action (and to pin the commit
+ * left behind when leaving a detached HEAD). Omitted for a checkout that shouldn't be undoable. */
+export interface CheckoutOpts {
+  fromRef: string
+  fromDetached: boolean
+  force?: boolean
+}
+
+export async function apiCheckoutBranch(path: string, toRef: string, opts?: CheckoutOpts) {
   return runActivity('git.checkout', async () => {
     const force = opts?.force ?? false
     const id = generateId()

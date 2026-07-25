@@ -5,8 +5,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import type { GitBranch, GitRepo, GitWorktree } from '@git-manager/git-types'
 
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
-
 const useBranchesMock = vi.fn()
 vi.mock('../../hooks/useBranches', () => ({ useBranches: () => useBranchesMock() }))
 
@@ -20,6 +18,7 @@ import { apiListWorktrees } from '../../api/worktree.api'
 import { BranchContext } from './BranchContext'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
+import { useStashDialogStore } from '../../stores/stashDialog.store'
 
 const mockedCheckout = apiCheckoutBranch as unknown as ReturnType<typeof vi.fn>
 const mockedOpenRepo = apiOpenRepo as unknown as ReturnType<typeof vi.fn>
@@ -139,7 +138,7 @@ describe('BranchContext — branch list & filtering', () => {
     // Both the trigger label and the "main" list row match this text before filtering.
     expect(screen.getAllByText('main')).toHaveLength(2)
 
-    await user.type(screen.getByPlaceholderText('branch.checkout'), 'feat')
+    await user.type(screen.getByPlaceholderText('Checkout'), 'feat')
     expect(screen.getByText('feature-x')).toBeInTheDocument()
     // Only the trigger's own label remains — the "main" list row was filtered out.
     expect(screen.getAllByText('main')).toHaveLength(1)
@@ -150,6 +149,7 @@ describe('BranchContext — checkout', () => {
   beforeEach(() => {
     useRepoUIStore.setState({ activeRepo: '/repo' })
     useRepoDataStore.setState({ repoCache: { '/repo': repo({ head: 'main' }) } })
+    useStashDialogStore.getState().closeDialog()
     useBranchesMock.mockReturnValue({
       data: [branch('main', { isHead: true }), branch('feature-x')],
     })
@@ -177,34 +177,34 @@ describe('BranchContext — checkout', () => {
     render(<BranchContext />, { wrapper })
     await user.click(screen.getByTestId('branch-context-trigger'))
     await user.click(screen.getByText('feature-x'))
-    await waitFor(() =>
-      expect(screen.queryByPlaceholderText('branch.checkout')).not.toBeInTheDocument()
-    )
+    await waitFor(() => expect(screen.queryByPlaceholderText('Checkout')).not.toBeInTheDocument())
   })
 
-  it('shows an error banner when checkout fails, without closing the popover', async () => {
-    mockedCheckout.mockRejectedValue(new Error('checkout conflict'))
+  it('opens the stash dialog when uncommitted changes block the checkout', async () => {
+    mockedCheckout.mockRejectedValue(new Error('Git error: 1 conflict prevents checkout'))
     const user = userEvent.setup()
     render(<BranchContext />, { wrapper })
     await user.click(screen.getByTestId('branch-context-trigger'))
     await user.click(screen.getByText('feature-x'))
 
-    expect(await screen.findByText(/checkout conflict/)).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('branch.checkout')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(useStashDialogStore.getState().isOpen).toBe(true)
+      expect(useStashDialogStore.getState().reason).toBe('checkout')
+      expect(useStashDialogStore.getState().targetRef).toBe('feature-x')
+    })
+    // The popover stays open: nothing was switched yet.
+    expect(screen.getByPlaceholderText('Checkout')).toBeInTheDocument()
   })
 
-  it('auto-dismisses the error banner after 3 seconds', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    mockedCheckout.mockRejectedValue(new Error('checkout conflict'))
-    const user = userEvent.setup({ delay: null })
+  it('leaves the stash dialog closed when the checkout fails for another reason', async () => {
+    mockedCheckout.mockRejectedValue(new Error('Branch not found: feature-x'))
+    const user = userEvent.setup()
     render(<BranchContext />, { wrapper })
     await user.click(screen.getByTestId('branch-context-trigger'))
     await user.click(screen.getByText('feature-x'))
-    await vi.waitFor(() => expect(screen.getByText(/checkout conflict/)).toBeInTheDocument())
 
-    vi.advanceTimersByTime(3000)
-    await vi.waitFor(() => expect(screen.queryByText(/checkout conflict/)).not.toBeInTheDocument())
-    vi.useRealTimers()
+    await waitFor(() => expect(mockedCheckout).toHaveBeenCalled())
+    expect(useStashDialogStore.getState().isOpen).toBe(false)
   })
 })
 
@@ -271,7 +271,7 @@ describe('BranchContext — merged worktree/branch list', () => {
     await user.click(screen.getByTestId('branch-context-trigger'))
     await screen.findByTestId('workspace-option-/wt/other')
 
-    await user.type(screen.getByPlaceholderText('branch.checkout'), 'feature-y')
+    await user.type(screen.getByPlaceholderText('Checkout'), 'feature-y')
     expect(screen.getByTestId('workspace-option-/wt/other')).toBeInTheDocument()
     expect(screen.queryByTestId('branch-option-feature-x')).not.toBeInTheDocument()
   })
@@ -303,21 +303,19 @@ describe('BranchContext — entering a workspace', () => {
     await user.click(screen.getByTestId('branch-context-trigger'))
     await user.click(await screen.findByTestId('workspace-option-/wt/other'))
 
-    await waitFor(() =>
-      expect(screen.queryByPlaceholderText('branch.checkout')).not.toBeInTheDocument()
-    )
+    await waitFor(() => expect(screen.queryByPlaceholderText('Checkout')).not.toBeInTheDocument())
   })
 
   it('shows "workspace" as the caption label and the X button once a workspace is active', async () => {
     useRepoUIStore.setState({ activeWorkspacePath: '/wt/other' })
     render(<BranchContext />, { wrapper })
-    expect(screen.getByText('toolbar.workspaceLabel')).toBeInTheDocument()
+    expect(screen.getByText('workspace')).toBeInTheDocument()
     expect(screen.getByTestId('workspace-exit-button')).toBeInTheDocument()
   })
 
   it('shows "branch" as the caption label and no X button when not in a workspace', () => {
     render(<BranchContext />, { wrapper })
-    expect(screen.getByText('toolbar.branchLabel')).toBeInTheDocument()
+    expect(screen.getByText('branch')).toBeInTheDocument()
     expect(screen.queryByTestId('workspace-exit-button')).not.toBeInTheDocument()
   })
 })
@@ -338,7 +336,7 @@ describe('BranchContext — exiting a workspace', () => {
     await user.click(screen.getByTestId('workspace-exit-button'))
 
     expect(useRepoUIStore.getState().activeWorkspacePath).toBeNull()
-    expect(screen.queryByPlaceholderText('branch.checkout')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Checkout')).not.toBeInTheDocument()
   })
 
   it('picking a branch from the list also exits workspace mode', async () => {

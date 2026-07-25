@@ -12,7 +12,6 @@ import {
   apiFastForwardBranch,
   apiMergeBranch,
   apiRebaseOntoCommit,
-  apiCheckoutBranch,
   apiDeleteBranch,
   apiCopyCommitSha,
   apiGetCommitWebUrl,
@@ -23,6 +22,7 @@ import { apiAddWorktree } from '../api/worktree.api'
 import { useRepoDataStore } from '../stores/repoData.store'
 import { useRepoUIStore } from '../stores/repoUI.store'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
+import { useBranchCheckout } from './useBranchCheckout'
 import { useSoloModeStore } from '../stores/soloMode.store'
 
 /** A `GitBranch` rendered as the `GitRef` the shared menu builder expects (pointing at its tip). */
@@ -48,6 +48,7 @@ export function useSidebarBranchMenu(repoPath: string) {
   const openPrCreateWith = useRepoUIStore((s) => s.openPrCreateWith)
   const setPin = usePinnedBranchesStore((s) => s.setPin)
   const enableSolo = useSoloModeStore((s) => s.enable)
+  const { checkoutBranchWithStashPrompt } = useBranchCheckout()
   // The branch whose rename dialog is open, or null. The caller renders `<RenameBranchDialog>`.
   const [renameTarget, setRenameTarget] = useState<string | null>(null)
 
@@ -136,10 +137,10 @@ export function useSidebarBranchMenu(repoPath: string) {
         ),
       onRebaseOntoBranch: (r) =>
         void run(() => apiRebaseOntoCommit(repoPath, r.commitOid), t('gitTree.branchMenu.rebased', rel(r))),
-      onCheckoutBranch: (r) =>
-        void run(() =>
-          apiCheckoutBranch(repoPath, r.type === 'branch' ? r.shortName : r.commitOid)
-        ),
+      onCheckoutBranch: (r) => {
+        const target = r.type === 'branch' ? r.shortName : r.commitOid
+        void checkoutBranchWithStashPrompt(repoPath, target)
+      },
       onOpenWorktreeFrom: (r) => void createWorktreeFrom(r.commitOid),
       onStartPr: (r) => {
         const base = r.type === 'remote' ? r.shortName.split('/').slice(1).join('/') : r.shortName

@@ -20,6 +20,7 @@ import { BisectBanner } from '../../components/bisect/BisectBanner'
 import { BisectResultBanner } from '../../components/bisect/BisectResultBanner'
 import { BisectSetupBanner } from '../../components/bisect/BisectSetupBanner'
 import { BisectStashDialog } from '../../components/bisect/BisectStashDialog'
+import { CheckoutStashConfirm } from '../../components/checkout/CheckoutStashConfirm'
 import { setTerminalTheme } from '../../lib/terminalRegistry'
 import { useEffectiveRepoSettings } from '../../hooks/useEffectiveRepoSettings'
 
@@ -128,6 +129,7 @@ export function RepoView() {
 
       <BisectResultBanner repoPath={repoPath} />
       <BisectStashDialog repoPath={repoPath} />
+      <CheckoutStashConfirm />
 
       {renameTarget && (
         <RenameBranchDialog

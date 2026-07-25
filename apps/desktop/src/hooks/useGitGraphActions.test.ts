@@ -479,7 +479,7 @@ describe('useGitGraphActions — openMenuAt: regular commit rows', () => {
     const { result } = renderHook(() => useGitGraphActions(baseParams()))
     await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
     await act(async () => getItem('gitTree.contextMenu.checkout').action!())
-    expect(mocked.apiCheckoutBranch).toHaveBeenCalledWith(REPO, 'a')
+    expect(mocked.apiCheckoutBranch).toHaveBeenCalledWith(REPO, 'a', undefined)
   })
 
   it('onCherryPick delegates to the cherry-pick handler', async () => {

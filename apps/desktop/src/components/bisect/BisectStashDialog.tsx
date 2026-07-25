@@ -1,16 +1,8 @@
 import { useTranslation } from '@git-manager/i18n'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  Button,
-} from '@git-manager/ui'
-import { Archive } from 'lucide-react'
 import { useBisectUIStore } from '../../stores/bisectUI.store'
+import { useStashDialogStore } from '../../stores/stashDialog.store'
 import { useBisectActions } from '../../hooks/useBisectActions'
+import { StashConfirmDialog } from '../shared/StashConfirmDialog'
 
 interface BisectStashDialogProps {
   repoPath: string
@@ -25,41 +17,32 @@ interface BisectStashDialogProps {
  */
 export function BisectStashDialog({ repoPath }: BisectStashDialogProps) {
   const { t } = useTranslation('git')
-  const open = useBisectUIStore((s) => s.stashDialogOpen)
-  const closeStashDialog = useBisectUIStore((s) => s.closeStashDialog)
+  const isOpen = useStashDialogStore((s) => s.isOpen && s.reason === 'bisect')
+  const closeDialog = useStashDialogStore((s) => s.closeDialog)
   const beginSetup = useBisectUIStore((s) => s.beginSetup)
   const { stashForBisect, pending } = useBisectActions(repoPath)
 
   async function handleConfirm() {
     const ok = await stashForBisect()
     if (ok) {
-      closeStashDialog()
+      closeDialog()
       beginSetup()
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && closeStashDialog()}>
-      <DialogContent className="max-w-md" data-testid="bisect-stash-dialog">
-        <DialogHeader>
-          <DialogTitle>{t('bisect.stash.title')}</DialogTitle>
-          <DialogDescription>{t('bisect.stash.description')}</DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" onClick={closeStashDialog} disabled={pending}>
-            {t('bisect.stash.cancel')}
-          </Button>
-          <Button
-            onClick={handleConfirm}
-            disabled={pending}
-            className="gap-1.5"
-            data-testid="bisect-stash-confirm"
-          >
-            <Archive className="h-4 w-4" />
-            {t('bisect.stash.confirm')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <StashConfirmDialog
+      open={isOpen}
+      onOpenChange={(next) => !next && closeDialog()}
+      title={t('bisect.stash.title')}
+      description={t('bisect.stash.description')}
+      cancelLabel={t('bisect.stash.cancel')}
+      confirmLabel={t('bisect.stash.confirm')}
+      onCancel={closeDialog}
+      onConfirm={handleConfirm}
+      pending={pending}
+      testId="bisect-stash-dialog"
+      confirmTestId="bisect-stash-confirm"
+    />
   )
 }
