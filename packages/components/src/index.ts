@@ -9,7 +9,7 @@ export { SplitButton } from './SplitButton'
 export type { SplitButtonAction } from './SplitButton'
 
 export { StepRailRow, STEP_RAIL_ROW_HEIGHT } from './StepRailRow'
-export type { StepRailVariant } from './StepRailRow'
+export type { StepRailVariant, StepRailProgress } from './StepRailRow'
 
 export { KpiCard } from './KpiCard'
 export type { KpiCardProps } from './KpiCard'

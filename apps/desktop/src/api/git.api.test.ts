@@ -86,7 +86,7 @@ function stash(overrides: Partial<GitStash> = {}): GitStash {
 }
 
 function rebaseState(kind: RebaseState['kind']): RebaseState {
-  return { kind }
+  return { kind, steps: [] }
 }
 
 let pathCounter = 0

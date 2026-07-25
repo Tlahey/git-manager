@@ -13,6 +13,10 @@ interface WaterlineMark {
 export interface ConflictRowInfo {
   count: number
   branchName?: string
+  /** Position in the rebase plan, echoed on the row so the graph alone tells the user where
+   * they are once the rebase progress view is hidden. */
+  currentStep?: number
+  totalSteps?: number
 }
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
