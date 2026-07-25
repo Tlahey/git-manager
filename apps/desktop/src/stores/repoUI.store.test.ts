@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useRepoUIStore, DASHBOARD_TAB } from './repoUI.store'
+import { useRepoUIStore, isNewTab, DASHBOARD_TAB } from './repoUI.store'
 
 const INITIAL = {
   openTabs: [] as string[],
@@ -18,9 +18,7 @@ const INITIAL = {
   pendingGraphSelection: null as string | null,
   selectedCommitOid: null as string | null,
   selectedStashIndex: null as number | null,
-  pendingGraphAction: null as ReturnType<
-    typeof useRepoUIStore.getState
-  >['pendingGraphAction'],
+  pendingGraphAction: null as ReturnType<typeof useRepoUIStore.getState>['pendingGraphAction'],
 }
 
 beforeEach(() => {
@@ -453,5 +451,85 @@ describe('useRepoUIStore — clearTabStateForRemovedRepo', () => {
     const state = useRepoUIStore.getState()
     expect(state.activeRepo).toBe('/repo/b')
     expect(state.activeTab).toBe('/repo/b')
+  })
+})
+
+describe('useRepoUIStore — empty "New Tab" placeholders', () => {
+  it('openNewTab appends a placeholder, focuses it and leaves no active repo', () => {
+    useRepoUIStore.getState().openTab('/repo/a')
+    useRepoUIStore.getState().openNewTab()
+    const state = useRepoUIStore.getState()
+    expect(state.openTabs).toHaveLength(2)
+    expect(isNewTab(state.openTabs[1])).toBe(true)
+    expect(state.activeTab).toBe(state.openTabs[1])
+    expect(state.activeRepo).toBeNull()
+  })
+
+  it('gives each placeholder a distinct id so two can coexist', () => {
+    useRepoUIStore.getState().openNewTab()
+    useRepoUIStore.getState().openNewTab()
+    const { openTabs } = useRepoUIStore.getState()
+    expect(openTabs).toHaveLength(2)
+    expect(openTabs[0]).not.toBe(openTabs[1])
+  })
+
+  it('opening an unopened repo from a focused placeholder replaces it in place', () => {
+    useRepoUIStore.getState().openTab('/repo/a')
+    useRepoUIStore.getState().openNewTab()
+    useRepoUIStore.getState().openTab('/repo/b')
+    const state = useRepoUIStore.getState()
+    expect(state.openTabs).toEqual(['/repo/a', '/repo/b'])
+    expect(state.activeTab).toBe('/repo/b')
+    expect(state.activeRepo).toBe('/repo/b')
+  })
+
+  it('opening an already-open repo from a focused placeholder closes the placeholder', () => {
+    useRepoUIStore.getState().openTab('/repo/a')
+    useRepoUIStore.getState().openTab('/repo/b')
+    useRepoUIStore.getState().openNewTab()
+    useRepoUIStore.getState().openTab('/repo/a')
+    const state = useRepoUIStore.getState()
+    expect(state.openTabs).toEqual(['/repo/a', '/repo/b'])
+    expect(state.activeTab).toBe('/repo/a')
+    expect(state.activeRepo).toBe('/repo/a')
+  })
+
+  it('leaves placeholders alone when a repo is opened while one is not focused', () => {
+    useRepoUIStore.getState().openNewTab()
+    const placeholder = useRepoUIStore.getState().openTabs[0]
+    useRepoUIStore.getState().setActiveTab(DASHBOARD_TAB)
+    useRepoUIStore.getState().openTab('/repo/a')
+    expect(useRepoUIStore.getState().openTabs).toEqual([placeholder, '/repo/a'])
+  })
+
+  it('setActiveTab on a placeholder never makes it the active repo', () => {
+    useRepoUIStore.getState().openTab('/repo/a')
+    useRepoUIStore.getState().openNewTab()
+    const placeholder = useRepoUIStore.getState().activeTab
+    useRepoUIStore.getState().setActiveTab('/repo/a')
+    useRepoUIStore.getState().setActiveTab(placeholder)
+    const state = useRepoUIStore.getState()
+    expect(state.activeTab).toBe(placeholder)
+    expect(state.activeRepo).toBeNull()
+  })
+
+  it('closeTab removes a placeholder and does not fall back to it as the active repo', () => {
+    useRepoUIStore.getState().openTab('/repo/a')
+    useRepoUIStore.getState().openNewTab()
+    const placeholder = useRepoUIStore.getState().activeTab
+    useRepoUIStore.getState().setActiveTab('/repo/a')
+    useRepoUIStore.getState().closeTab('/repo/a')
+    const state = useRepoUIStore.getState()
+    expect(state.openTabs).toEqual([placeholder])
+    expect(state.activeTab).toBe(placeholder)
+    expect(state.activeRepo).toBeNull()
+  })
+
+  it('is not persisted: placeholders are stripped and a focused one falls back to the dashboard', () => {
+    useRepoUIStore.getState().openTab('/repo/a')
+    useRepoUIStore.getState().openNewTab()
+    const persisted = JSON.parse(localStorage.getItem('git-manager-repos-ui')!)
+    expect(persisted.state.openTabs).toEqual(['/repo/a'])
+    expect(persisted.state.activeTab).toBe(DASHBOARD_TAB)
   })
 })

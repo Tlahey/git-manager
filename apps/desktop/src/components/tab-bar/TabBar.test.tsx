@@ -182,3 +182,34 @@ describe('TabBar — settings/profile', () => {
     expect(screen.getByTestId('user-profile')).toBeInTheDocument()
   })
 })
+
+describe('TabBar — empty "New Tab" placeholders', () => {
+  it('labels a placeholder "New Tab" instead of deriving a repo name from its id', () => {
+    useRepoUIStore.getState().openNewTab()
+    render(<TabBar onOpenSettings={vi.fn()} />)
+    expect(screen.getByText('New Tab')).toBeInTheDocument()
+  })
+
+  it('activates a placeholder when clicked', async () => {
+    const user = userEvent.setup()
+    useRepoUIStore.getState().openTab('/repo/a')
+    useRepoUIStore.getState().openNewTab()
+    const placeholder = useRepoUIStore.getState().activeTab
+    useRepoUIStore.getState().setActiveTab('/repo/a')
+
+    render(<TabBar onOpenSettings={vi.fn()} />)
+    await user.click(screen.getByText('New Tab'))
+    expect(useRepoUIStore.getState().activeTab).toBe(placeholder)
+  })
+
+  it('closes a placeholder via its close control', async () => {
+    const user = userEvent.setup()
+    useRepoUIStore.getState().openNewTab()
+    const placeholder = useRepoUIStore.getState().activeTab
+
+    render(<TabBar onOpenSettings={vi.fn()} />)
+    const tab = screen.getByTestId(`tab-empty-${placeholder}`)
+    await user.click(tab.querySelector('[tabindex="-1"]')!)
+    expect(useRepoUIStore.getState().openTabs).toEqual([])
+  })
+})

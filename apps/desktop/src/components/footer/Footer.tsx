@@ -103,6 +103,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
         { keys: ['⌘', 'K'], desc: 'Ouvrir la palette de commandes' },
         { keys: ['⌘', 'P'], desc: 'Rechercher un fichier dans le dépôt' },
         { keys: ['⌘', ','], desc: 'Ouvrir les Paramètres' },
+        { keys: ['⌘', 'T'], desc: 'Ouvrir un nouvel onglet (Dépôts)' },
         { keys: ['Alt', 'W'], desc: "Fermer l'onglet du dépôt actif" },
         { keys: ['Esc'], desc: 'Fermer les boîtes de dialogue / volets' },
       ],

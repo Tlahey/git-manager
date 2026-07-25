@@ -184,5 +184,13 @@
   "commandPalette.settings.ui_customization": "Réglages : Apparence",
   "commandPalette.settings.rewards": "Réglages : Récompenses",
   "activityLogs.detail.error": "Erreur",
-  "activityLogs.detail.copyError": "Copier l'erreur"
+  "activityLogs.detail.copyError": "Copier l'erreur",
+  "newTab.title": "Dépôts",
+  "newTab.tabLabel": "Nouvel onglet",
+  "newTab.open": "Ouvrir",
+  "newTab.clone": "Cloner",
+  "newTab.create": "Créer",
+  "newTab.recent": "Dépôts récents",
+  "newTab.noRecent": "Aucun dépôt ouvert pour l'instant.",
+  "newTab.alreadyOpen": "Ouvert"
 }

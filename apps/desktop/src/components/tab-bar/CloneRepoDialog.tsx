@@ -16,7 +16,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { open } from '@tauri-apps/plugin-dialog'
 import { apiCloneRepo } from '../../api/repo.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
-import { useRepoUIStore } from '../../stores/repoUI.store'
+import { useOpenRepoTab } from '../../hooks/useOpenRepoTab'
 
 interface CloneRepoDialogProps {
   open: boolean
@@ -36,7 +36,7 @@ function deriveFolderName(url: string): string {
 export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogProps) {
   const { t } = useTranslation('git')
   const { addRepo } = useRepoDataStore()
-  const { openTab } = useRepoUIStore()
+  const openRepoTab = useOpenRepoTab()
   const [url, setUrl] = useState('')
   const [parentDir, setParentDir] = useState('')
   const [loading, setLoading] = useState(false)
@@ -73,7 +73,7 @@ export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogP
       const destPath = `${parentDir}/${folderName}`
       const repo = await apiCloneRepo(url.trim(), destPath, shallow, sparse)
       addRepo(repo)
-      openTab(repo.path)
+      openRepoTab(repo.path)
       handleClose(false)
     } catch (err) {
       setError(String(err))

@@ -1,10 +1,27 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-/** Identifiants des onglets spéciaux (toujours présents, non fermables). */
+/** Ids of the pinned special tabs (always present, not closeable). */
 export const DASHBOARD_TAB = 'dashboard'
 export const REWARDS_TAB = 'rewards'
 export const PULL_REQUESTS_TAB = 'pull-requests'
+
+/**
+ * Prefix of the ids given to empty "New Tab" placeholders (⌘T / Ctrl+T). They live inside
+ * `openTabs` alongside repo paths so they reorder, close and Alt+n-navigate like any other tab —
+ * a real filesystem path can never collide with this prefix. Everything reading `openTabs` as a
+ * list of repos must filter them out with `isNewTab`, and they're stripped on persist (an empty
+ * tab is session-scoped; restoring one on relaunch would be noise).
+ */
+const NEW_TAB_PREFIX = 'new-tab:'
+
+/** Whether a tab id is an empty "New Tab" placeholder rather than a repo path or a special tab. */
+export function isNewTab(id: string): boolean {
+  return id.startsWith(NEW_TAB_PREFIX)
+}
+
+/** Monotonic counter making each new tab's id unique (never persisted — see `NEW_TAB_PREFIX`). */
+let newTabSequence = 0
 
 /**
  * Commit-scoped action the graph can perform on the currently selected commit, dispatched from
@@ -57,9 +74,10 @@ export interface ActiveDiffFile {
 }
 
 interface RepoUIState {
-  openTabs: string[] // paths des repos ouverts en onglet
+  /** Repo paths open as tabs, plus any empty "New Tab" placeholders (see `isNewTab`). */
+  openTabs: string[]
   activeRepo: string | null
-  activeTab: string // 'dashboard' | 'pull-requests' | <repoPath>
+  activeTab: string // 'dashboard' | 'pull-requests' | 'new-tab:<n>' | <repoPath>
   /**
    * Path of the linked worktree currently being viewed "in place" of the active repo tab — the
    * graph/sidebar/status all switch to this path's data while it's set (see `RepoView.tsx`'s
@@ -165,6 +183,8 @@ interface RepoUIState {
   setActiveRepo: (path: string | null) => void
   setActiveTab: (id: string) => void
   openTab: (path: string) => void
+  /** Appends an empty "New Tab" placeholder and focuses it (⌘T / Ctrl+T). */
+  openNewTab: () => void
   closeTab: (path: string) => void
   reorderTabs: (from: number, to: number) => void
   /** Clears tab/selection state referencing a repo that's being fully removed. Called from
@@ -299,7 +319,8 @@ export const useRepoUIStore = create<RepoUIState>()(
       setActiveTab: (id) =>
         set((state) => ({
           activeTab: id,
-          activeRepo: state.openTabs.includes(id) ? id : null,
+          // An empty "New Tab" is in `openTabs` but is not a repo — it must not become `activeRepo`.
+          activeRepo: state.openTabs.includes(id) && !isNewTab(id) ? id : null,
           activeWorkspacePath: null,
           activeDiffFile: null,
           activePrNumber: null,
@@ -315,12 +336,49 @@ export const useRepoUIStore = create<RepoUIState>()(
         })),
 
       openTab: (path) =>
-        set((state) => ({
-          openTabs: state.openTabs.includes(path) ? state.openTabs : [...state.openTabs, path],
-          activeRepo: path,
-          activeTab: path,
-          activeWorkspacePath: null,
-        })),
+        set((state) => {
+          // Opening a repo while an empty "New Tab" is focused consumes that placeholder: it takes
+          // the repo's place in the strip, or simply closes if the repo already has a tab (we just
+          // switch to it). Same intent either way — the empty tab never lingers next to the repo it
+          // was used to open.
+          const consumesNewTab = isNewTab(state.activeTab)
+          let openTabs: string[]
+          if (state.openTabs.includes(path)) {
+            openTabs = consumesNewTab
+              ? state.openTabs.filter((p) => p !== state.activeTab)
+              : state.openTabs
+          } else if (consumesNewTab) {
+            openTabs = state.openTabs.map((p) => (p === state.activeTab ? path : p))
+          } else {
+            openTabs = [...state.openTabs, path]
+          }
+          return {
+            openTabs,
+            activeRepo: path,
+            activeTab: path,
+            activeWorkspacePath: null,
+          }
+        }),
+
+      openNewTab: () =>
+        set((state) => {
+          const id = `${NEW_TAB_PREFIX}${++newTabSequence}`
+          return {
+            openTabs: [...state.openTabs, id],
+            activeTab: id,
+            activeRepo: null,
+            activeWorkspacePath: null,
+            activeDiffFile: null,
+            activePrNumber: null,
+            activePrFile: null,
+            prComposer: null,
+            prCreateOpen: false,
+            conflictFilePath: null,
+            selectedCommitOid: null,
+            selectedStashIndex: null,
+            pendingGraphAction: null,
+          }
+        }),
 
       closeTab: (path) =>
         set((state) => {
@@ -330,7 +388,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           return {
             openTabs: newTabs,
             activeRepo: wasActive
-              ? newTabs.includes(fallback)
+              ? newTabs.includes(fallback) && !isNewTab(fallback)
                 ? fallback
                 : null
               : state.activeRepo,
@@ -366,10 +424,12 @@ export const useRepoUIStore = create<RepoUIState>()(
     }),
     {
       name: 'git-manager-repos-ui',
+      // Empty "New Tab" placeholders are session-scoped: restoring one on relaunch would just be
+      // noise, so they're stripped here (and the active tab falls back to the dashboard if it was one).
       partialize: (state) => ({
-        openTabs: state.openTabs,
+        openTabs: state.openTabs.filter((path) => !isNewTab(path)),
         activeRepo: state.activeRepo,
-        activeTab: state.activeTab,
+        activeTab: isNewTab(state.activeTab) ? DASHBOARD_TAB : state.activeTab,
       }),
     }
   )

@@ -184,5 +184,13 @@
   "commandPalette.settings.ui_customization": "Settings: Appearance",
   "commandPalette.settings.rewards": "Settings: Rewards",
   "activityLogs.detail.error": "Error",
-  "activityLogs.detail.copyError": "Copy error"
+  "activityLogs.detail.copyError": "Copy error",
+  "newTab.title": "Repositories",
+  "newTab.tabLabel": "New Tab",
+  "newTab.open": "Open",
+  "newTab.clone": "Clone",
+  "newTab.create": "Create",
+  "newTab.recent": "Recent repositories",
+  "newTab.noRecent": "No repository opened yet.",
+  "newTab.alreadyOpen": "Open"
 }

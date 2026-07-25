@@ -4,7 +4,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { open } from '@tauri-apps/plugin-dialog'
 import { apiOpenRepo, apiInitRepo } from '../../api/repo.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
-import { useRepoUIStore } from '../../stores/repoUI.store'
+import { useOpenRepoTab } from '../../hooks/useOpenRepoTab'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -37,7 +37,7 @@ function MenuItem({ icon, label, description, onSelect }: MenuItemProps) {
 export function NewTabMenu() {
   const { t } = useTranslation('common')
   const { addRepo } = useRepoDataStore()
-  const { openTab } = useRepoUIStore()
+  const openRepoTab = useOpenRepoTab()
   const [cloneOpen, setCloneOpen] = useState(false)
 
   async function handleOpenFolder() {
@@ -46,9 +46,9 @@ export function NewTabMenu() {
     try {
       const repo = await apiOpenRepo(selected)
       addRepo(repo)
-      openTab(repo.path)
+      openRepoTab(repo.path)
     } catch {
-      // dossier non-git : ignoré silencieusement ici
+      // non-git folder: silently ignored here
     }
   }
 
@@ -58,9 +58,9 @@ export function NewTabMenu() {
     try {
       const repo = await apiInitRepo(selected)
       addRepo(repo)
-      openTab(repo.path)
+      openRepoTab(repo.path)
     } catch {
-      // erreur d'init : ignorée silencieusement ici
+      // init error: silently ignored here
     }
   }
 

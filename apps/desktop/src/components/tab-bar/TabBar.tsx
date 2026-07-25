@@ -2,12 +2,23 @@ import { useState } from 'react'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import {
   useRepoUIStore,
+  isNewTab,
   DASHBOARD_TAB,
   REWARDS_TAB,
   PULL_REQUESTS_TAB,
 } from '../../stores/repoUI.store'
 import { useDevFixtureReposStore } from '../../stores/devFixtureRepos.store'
-import { LayoutDashboard, Trophy, Rocket, Settings, X, GitBranch, FlaskConical } from 'lucide-react'
+import { useTranslation } from '@git-manager/i18n'
+import {
+  LayoutDashboard,
+  Trophy,
+  Rocket,
+  Settings,
+  X,
+  GitBranch,
+  FlaskConical,
+  Plus,
+} from 'lucide-react'
 import { useGameStore } from '../../stores/game.store'
 import { NewTabMenu } from './NewTabMenu'
 import { UserProfile } from '../action-toolbar/UserProfile'
@@ -52,6 +63,7 @@ function PinnedTab({ icon, label, active, onClick, hideLabel }: PinnedTabProps) 
 const isMac = typeof window !== 'undefined' && navigator.userAgent.includes('Mac')
 
 export function TabBar({ onOpenSettings }: TabBarProps) {
+  const { t } = useTranslation('common')
   const { openTabs, activeTab, setActiveTab, setActiveRepo, closeTab, reorderTabs } =
     useRepoUIStore()
   const { repoCache } = useRepoDataStore()
@@ -118,12 +130,18 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
           className="tab-strip-scroll flex min-w-0 flex-1 items-end gap-0.5 overflow-x-auto overflow-y-hidden"
         >
           {openTabs.map((path, index) => {
-            const name = repoCache[path]?.name ?? path.split('/').pop() ?? path
+            // An empty "New Tab" placeholder shares the strip with repo tabs (drag, close, Alt+n)
+            // but has no repo behind it, so it gets its own label and icon.
+            const isEmptyTab = isNewTab(path)
+            const name = isEmptyTab
+              ? t('newTab.tabLabel')
+              : (repoCache[path]?.name ?? path.split('/').pop() ?? path)
             const isActive = path === activeTab
             const isDragOver = overIndex === index && dragIndex !== null && dragIndex !== index
             return (
               <button
                 key={path}
+                data-testid={isEmptyTab ? `tab-empty-${path}` : `tab-repo-${path}`}
                 draggable
                 onDragStart={() => setDragIndex(index)}
                 onDragOver={(e) => {
@@ -146,7 +164,11 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
                     : ''
                 }`}
               >
-                <GitBranch className="h-3.5 w-3.5 shrink-0" />
+                {isEmptyTab ? (
+                  <Plus className="h-3.5 w-3.5 shrink-0" />
+                ) : (
+                  <GitBranch className="h-3.5 w-3.5 shrink-0" />
+                )}
                 <span className="flex-1 truncate text-left font-medium">{name}</span>
                 <span
                   role="button"

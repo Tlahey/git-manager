@@ -20,6 +20,7 @@ beforeEach(() => {
     savedRepos: [],
     repoCache: {},
     discoveredRepos: [],
+    recentRepoPaths: [],
     wipMessages: {},
     hiddenStashes: {},
   })
@@ -117,5 +118,42 @@ describe('useRepoDataStore — removeRepo cross-store interoperability', () => {
     expect(uiState.openTabs).toEqual(['/repo/b'])
     expect(uiState.activeTab).toBe('/repo/b')
     expect(uiState.activeRepo).toBe('/repo/b')
+  })
+})
+
+describe('useRepoDataStore — recentRepoPaths', () => {
+  beforeEach(() => {
+    useRepoDataStore.getState().addRepo(repo({ path: '/repo/a', name: 'a' }))
+    useRepoDataStore.getState().addRepo(repo({ path: '/repo/b', name: 'b' }))
+  })
+
+  it('markRepoOpened puts the repo at the front', () => {
+    useRepoDataStore.getState().markRepoOpened('/repo/a')
+    useRepoDataStore.getState().markRepoOpened('/repo/b')
+    expect(useRepoDataStore.getState().recentRepoPaths).toEqual(['/repo/b', '/repo/a'])
+  })
+
+  it('markRepoOpened moves an existing entry instead of duplicating it', () => {
+    useRepoDataStore.getState().markRepoOpened('/repo/a')
+    useRepoDataStore.getState().markRepoOpened('/repo/b')
+    useRepoDataStore.getState().markRepoOpened('/repo/a')
+    expect(useRepoDataStore.getState().recentRepoPaths).toEqual(['/repo/a', '/repo/b'])
+  })
+
+  it('ignores a path that is not a saved repo (a workspace / linked worktree)', () => {
+    useRepoDataStore.getState().markRepoOpened('/repo/a/.worktrees/feature')
+    expect(useRepoDataStore.getState().recentRepoPaths).toEqual([])
+  })
+
+  it('removeRepo also forgets the repo from the recent list', () => {
+    useRepoDataStore.getState().markRepoOpened('/repo/a')
+    useRepoDataStore.getState().removeRepo('/repo/a')
+    expect(useRepoDataStore.getState().recentRepoPaths).toEqual([])
+  })
+
+  it('is persisted so the New Tab page survives a restart', () => {
+    useRepoDataStore.getState().markRepoOpened('/repo/a')
+    const persisted = JSON.parse(localStorage.getItem('git-manager-repos')!)
+    expect(persisted.state.recentRepoPaths).toEqual(['/repo/a'])
   })
 })

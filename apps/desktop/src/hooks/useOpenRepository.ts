@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { open } from '@tauri-apps/plugin-dialog'
 import { apiOpenRepo } from '../api/repo.api'
 import { useRepoDataStore } from '../stores/repoData.store'
-import { useRepoUIStore } from '../stores/repoUI.store'
+import { useOpenRepoTab } from './useOpenRepoTab'
 
 /**
  * Opens the native folder picker, opens the chosen repo through the backend and adds it as a tab.
@@ -12,14 +12,14 @@ import { useRepoUIStore } from '../stores/repoUI.store'
  */
 export function useOpenRepository() {
   const addRepo = useRepoDataStore((s) => s.addRepo)
-  const openTab = useRepoUIStore((s) => s.openTab)
+  const openRepoTab = useOpenRepoTab()
 
   return useCallback(async (): Promise<boolean> => {
     const selected = await open({ directory: true, multiple: false })
     if (!selected || typeof selected !== 'string') return false
     const repo = await apiOpenRepo(selected)
     addRepo(repo)
-    openTab(repo.path)
+    openRepoTab(repo.path)
     return true
-  }, [addRepo, openTab])
+  }, [addRepo, openRepoTab])
 }

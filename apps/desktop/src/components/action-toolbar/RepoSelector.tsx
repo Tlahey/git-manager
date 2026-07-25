@@ -3,13 +3,15 @@ import { ChevronDown, GitBranch, Search } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
+import { useOpenRepoTab } from '../../hooks/useOpenRepoTab'
 import { Popover, PopoverTrigger, PopoverContent, Input } from '@git-manager/ui'
 
-/** Dropdown de sélection / recherche du dépôt courant. */
+/** Dropdown for selecting / searching the current repo. */
 export function RepoSelector() {
   const { t } = useTranslation('git')
   const { savedRepos, repoCache } = useRepoDataStore()
-  const { openTabs, activeRepo, openTab } = useRepoUIStore()
+  const { openTabs, activeRepo } = useRepoUIStore()
+  const openRepoTab = useOpenRepoTab()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
 
@@ -28,7 +30,7 @@ export function RepoSelector() {
   const openSet = useMemo(() => new Set(openTabs), [openTabs])
 
   function handleSelect(path: string) {
-    openTab(path)
+    openRepoTab(path)
     setOpen(false)
     setQuery('')
   }
