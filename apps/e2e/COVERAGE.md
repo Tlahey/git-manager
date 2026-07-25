@@ -17,11 +17,18 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 
 ---
 
-## Covered today (19 feature files / ~200 steps, 8 visual snapshots)
+## Covered today (23 feature files / ~490 steps, 8 visual snapshots)
+
+> **This matrix is only as honest as the last full run — and nothing enforces that.** There is no
+> CI, so a ✅ here means "passed when someone last ran it", not "passes today". Five feature files
+> (`command-palette`, `fixup-autosquash`, `undo-redo`, `merge-editor`, `worktree`) sat at ✅ while
+> failing outright on `main`, in every case because the app changed underneath a step and no run
+> caught it. Re-run the suite before trusting a row, and see
+> [Known blockers / gotchas](#known-blockers--gotchas) for the harness traps those five uncovered.
 
 | Feature                                                            | Area       | Setup                    | Snapshot                          | Status                                                      |
 | ------------------------------------------------------------------ | ---------- | ------------------------ | --------------------------------- | ----------------------------------------------------------- |
-| **Command palette (⌘K)**: 11 scenarios across settings/commit/stash | palette    | rollback-history · feature-branches · stash-stack | — | ✅ (settings section; reset soft/mixed/hard incl. RESET-confirm gate/revert/create-branch/create-tag (lightweight + annotated)/cherry-pick on a commit; stash drop/apply/pop — each asserted via git on disk) |
+| **Command palette (⌘K)**: 12 scenarios across settings/commit/stash | palette    | rollback-history · feature-branches · stash-stack | — | ✅ (settings section; reset soft/mixed/hard incl. RESET-confirm gate/revert/create-branch/create-tag (lightweight + annotated)/cherry-pick on a commit; stash drop/apply/pop — each asserted via git on disk) |
 | App launches, React mounts                                         | app shell  | —                        | —                                 | ✅                                                          |
 | Tauri command mock: success / reject / restore, **GitHub poll-token contract (pending/success/expired)** | IPC | mock | — | ✅ |
 | Fixup autosquash grouping + **create fixup commit (via ⌘K palette)** | fixup      | fixture:fixup-chain      | 📷 ✅ (preview groups)            | ✅                                                          |
@@ -79,8 +86,9 @@ rather than driving the native second window, that scenario navigates the curren
 to the merge route (`/?window=merge&repoPath=…&filePath=…`) — main.tsx renders
 `ConflictMergeWindow` from those URL params, independent of the store — waits for
 `merge-auto-merge-button` (appears once `get_merge_view` resolves), and **snapshots the whole
-Monaco editor** (`merge-editor-window`). Verified stable across multiple runs with a 1.5s Monaco
-settle + `stabiliseForSnapshot`.
+Monaco editor** (`merge-editor-window`) after a 1.5s Monaco settle + `stabiliseForSnapshot`. See
+the visual-baseline caveat under [Known blockers / gotchas](#known-blockers--gotchas) before
+reading much into a green snapshot assertion.
 
 - Setup: `fixture:rebase-conflict` — the conflicted `dependency-manifest.txt` "covers every
   merge-editor block kind twice", ideal for a layout snapshot.
@@ -390,6 +398,91 @@ DOM value:
 
 ## Known blockers / gotchas
 
+- **A step can "find" a control that changed shape under it.** Three of the five silently-broken
+  feature files broke this way, all invisible to a testid-existence check:
+  - **⌘P is not ⌘K.** `useKeyboardShortcuts` opens the *same* palette dialog in two modes — ⌘K
+    (`toggle('all')`, the actions palette) and ⌘P (`toggle('files')`, file search). In `files` mode
+    `CommandPalette` renders only the lookup/files groups, so no `command-item-*` for
+    commit/stash/settings actions and no `[cmdk-group-heading]` exists at all. `command-palette-input`
+    appears in **both** modes, which is why an "I open the command palette" step switched to ⌘P still
+    looked like it worked and only failed 11 steps later, across three feature files
+    (`command-palette`, `fixup-autosquash`, `undo-redo`).
+  - **Tag creation is no longer a dialog.** `TagDialog.tsx` was deleted in favour of
+    `TagCreationInput` — a bare input rendered inside the drafted commit row's refs cell
+    (`tag-creation-inline-input`; the `bar` variant only appears when the refs column is hidden).
+    There's no name-then-confirm dialog and no confirm button: Enter submits, and annotated tags go
+    through the same input with an empty message.
+  - **The worktree branch picker is no longer a `<select>`.** `BranchCombobox` kept the
+    `worktree-add-branch-select` testid on its *trigger button*, so `selectByAttribute('value', …)`
+    kept finding the control and failing only on the option. Click the trigger, then the
+    `worktree-add-branch-option-<branch>` item.
+- **Radix dropdown triggers open on `pointerdown`, not `click`.** The worktree row's remove action
+  moved behind a per-row "⋮" menu (`worktree-actions-button-<path>` → `worktree-remove-<path>`).
+  A synthetic `el.click()` — which is what the `clickViaJs` helper does, and what the hover-revealed
+  `opacity-0` workaround below forces you into — dispatches only a click event, so the menu never
+  opens and the item never renders. Dispatch a real `pointerdown`/`pointerup`/`click` sequence with
+  `button: 0` instead (`worktree.steps.ts`'s `openMenuViaJs`).
+- **Navigate with `browser.url()`, never by assigning `window.location.href` inside `execute`.**
+  The assignment tears the document down while the driver is still completing that same call, so the
+  navigation can simply be lost (see `repo.steps.ts`). It's worse than a lost navigation, though:
+  the tauri service runs a window-state script in a `beforeCommand` hook — *before every single
+  command* — so anything issued between the assignment and the new document committing runs that
+  script against a tearing-down document, which reliably takes the **whole app process** down. That
+  surfaces as ECONNREFUSED in some later scenario, nowhere near the cause, and (once the process
+  comes back) as an app rehydrated from whatever repo an earlier run last flushed to `localStorage`.
+  Even a `getUrl` poll in a `waitUntil` was enough to trigger it. `browser.url()` avoids the whole
+  class: the driver owns the navigation and waits for it, so there is no window to send commands
+  into. Every in-place navigation in this suite now goes through it (`repo.steps.ts`'s fixture open,
+  `merge.steps.ts`'s merge-route step and its `@merge` After hook).
+- **`repo-view` being displayed does not mean you're on the repo you just seeded.** The
+  fixture-open step seeds `localStorage` and reloads, but `[data-testid="repo-view"]` is equally
+  displayed by the document being navigated *away* from, so the wait can be satisfied before the
+  reload lands. A scenario that opens a second fixture on top of the Background's one (the palette
+  feature's cherry-pick and stash scenarios) could therefore keep running against the first — and
+  since the assertion steps read the repo path back *out of the app*, they'd faithfully shell out to
+  `git -C <the-wrong-fixture>` and fail with a baffling "unknown revision". Two fixes, both worth
+  keeping: the step now verifies the live store landed on the requested repo (repairing it in place
+  via `openTab`/`setActiveRepo` rather than reloading again, which would just re-enter the race), and
+  git assertions take their path from `support/activeRepo.ts` — recorded on the Node side when the
+  fixture is built — instead of asking the app. **Steps that still read `git-manager-repos-ui` out of
+  the app carry the same latent bug**: `rewards`, `tag-menu`, `rebase`, `bisect`, `working-tree`,
+  `commit`, `blame-history`.
+- **In a real second window, re-assert the window before *every* interaction.** The same
+  `beforeCommand` focus hook follows the OS's active window, so once focus returns to the main app
+  window — which it does on its own, e.g. after the merge editor's auto-merge IPC round trip — the
+  driver silently switches with it and every later query runs against the main window's document.
+  The symptom is not "wrong window" but "the merge editor's buttons vanished": `$$` comes back empty
+  with *no* `merge-*` testid in the document. `merge.steps.ts`'s `ensureMergeWindow()` switches
+  unconditionally before each interaction (checking the current handle first is itself a command, so
+  "already on it" is never a safe conclusion), and the accept-right loop does its find-and-click
+  inside a **single** injected script — split across round-trips, the element gets found in one
+  window and read in another (`getElementAttribute` receiving an undefined elementId).
+- **Visual snapshots are self-baselining and only meaningful on a re-run.** `apps/e2e/__visual__/`
+  is gitignored and `autoSaveBaseline` is on (it's `!process.env.CI`, and there is no CI), so the
+  **first** run on any machine writes the baselines and every 📷 assertion passes vacuously; only a
+  second run compares anything. That made a whole class of bug self-perpetuating: a snapshot taken
+  while a full-viewport cover was up got *saved as the baseline*, and every later run then mismatched
+  against it forever (merge-editor at 6%, autosquash-preview at 14%, theme-card-dark at 98%). Two
+  covers do this — `#app-splash`, the static startup splash `index.html` paints before React boots,
+  which every in-place navigation puts back up, and `LoadingOverlay`'s global scrim — and
+  `stabiliseForSnapshot()` now waits both out before capturing. If snapshots start failing
+  wholesale, suspect a poisoned baseline first: delete `__visual__/` and re-run twice.
+- **On a small element, the 1% snapshot threshold is one border.** `theme-card-dark` is a 330×186
+  card; its "this theme is active" ring is ~3% of the capture, and a focus ring is the same order.
+  So a small-element snapshot has effectively no tolerance for state that varies between runs, which
+  makes two things mandatory rather than nice-to-have: `stabiliseForSnapshot()` **blurs** the active
+  element (a step that clicks the element it then photographs leaves it focused, and whether
+  `:focus-visible` paints depends on how the driver's click was classified) — blurring, not a
+  blanket `box-shadow: none` on `:focus`, because Tailwind's `ring-*` compiles to `box-shadow` and
+  that's also how the card draws its *selected* state, so suppressing it in CSS erased real chrome
+  and made this flakier rather than less. And a scenario must
+  **set the state it snapshots** instead of inheriting it. The theme-card scenario used to rely on
+  the *previous* scenario leaving `dark` selected — order-dependent, and racy anyway against the
+  persisted settings rehydrating after its own reload; it now selects the theme itself first.
+- **The first load of an app session is several times slower than the rest.** A `@merge` run that
+  takes 14s warm took 45s cold, and 15s waits that never came close warm timed out cold. Waits
+  around the merge route (splash, connector overlay) are set to 30s for that reason — they only cost
+  time when something is genuinely stuck.
 - **Dead toolbar testids** — `ActionToolbar` passes `data-testid` to `ToolbarButton`, which
   doesn't forward it, so `toolbar-undo-button` / `toolbar-redo-button` / `toolbar-stash-button` /
   `toolbar-terminal-button` never reach the DOM. Use keyboard shortcuts or other selectors until
@@ -401,8 +494,8 @@ DOM value:
   (`showStashNativeContextMenu`) are real OS menus WebDriver can't open. **The ⌘K command palette
   (`components/command-palette/`) is now the canonical non-native entry point** for both: dialog
   actions (reset/revert/create-branch/create-tag) dispatch through the store's `pendingGraphAction`
-  bridge into the same web dialogs (`reset-dialog`, `revert-dialog`, `tag-dialog`,
-  `create-branch-dialog`); no-dialog actions (cherry-pick, copy-sha, stash apply/pop/drop) call the
+  bridge into the same web dialogs (`reset-dialog`, `revert-dialog`, `create-branch-dialog`, and the inline
+  `tag-creation-inline-input`); no-dialog actions (cherry-pick, copy-sha, stash apply/pop/drop) call the
   API layer directly from `useCommitCommands.ts`/`useStashCommands.ts`, mirroring
   `useGitGraphActions.ts`'s native-menu handlers exactly (same calls, same `mutate`/
   `invalidateQueries` follow-up). All are now e2e-drivable (see command-palette.feature). A third

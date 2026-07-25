@@ -33,6 +33,23 @@ async function clickViaJs(testid: string) {
   }, testid)
 }
 
+// Radix's DropdownMenuTrigger opens on `pointerdown`, not `click` — a synthetic `el.click()` fires
+// only a click event, so clickViaJs leaves the menu shut and the items never render. Dispatch a real
+// primary-button pointer sequence instead (Radix ignores anything with `button !== 0` or ctrlKey).
+async function openMenuViaJs(testid: string) {
+  const el = $(`[data-testid="${testid}"]`)
+  await el.waitForExist({ timeout: 10000 })
+  await browser.execute((id: string) => {
+    const target = document.querySelector(`[data-testid="${id}"]`) as HTMLElement | null
+    if (!target) throw new Error(`openMenuViaJs: no element with data-testid="${id}"`)
+    for (const type of ['pointerdown', 'pointerup', 'click']) {
+      target.dispatchEvent(
+        new PointerEvent(type, { bubbles: true, cancelable: true, button: 0, ctrlKey: false })
+      )
+    }
+  }, testid)
+}
+
 async function worktreeRowHasBranch(branchName: string): Promise<boolean> {
   const rows = await $$('[data-testid^="worktree-item-"]')
   for (const row of rows) {
@@ -46,6 +63,14 @@ async function worktreeRowHasBranch(branchName: string): Promise<boolean> {
 // `/tmp` is itself a symlink to `/private/tmp`, and git canonicalizes worktree paths), so matching
 // on branch text is the robust option; matching on the exact `worktree-item-<path>` testid isn't.
 async function findWorktreeRowByBranch(branchName: string) {
+  // Waits rather than querying once: the rows come from the `list_worktrees` query, so right after
+  // an app reload (the dirty-worktree scenario) the section can be expanded and still empty for a
+  // moment — a one-shot query there fails with a "no such worktree" error that looks like a
+  // missing worktree rather than a race.
+  await browser.waitUntil(() => worktreeRowHasBranch(branchName), {
+    timeout: 10000,
+    timeoutMsg: `No worktree row found for branch "${branchName}"`,
+  })
   const rows = await $$('[data-testid^="worktree-item-"]')
   for (const row of rows) {
     if ((await row.getText()).includes(branchName)) return row
@@ -72,10 +97,18 @@ When(/^I click the add-worktree button$/, async () => {
   await $('[data-testid="worktree-add-dialog"]').waitForDisplayed({ timeout: 10000 })
 })
 
+// The branch picker is no longer a native `<select>` (so no `selectByAttribute`): the "searchable
+// base-branch picker" change replaced it with `BranchCombobox` — a button that toggles an inline
+// cmdk list. The testid stayed on the trigger, which is why this kept "finding" the control and
+// only failed on the option lookup.
 When(/^I set the worktree branch to "([^"]*)"$/, async (branchName: string) => {
-  const select = $('[data-testid="worktree-add-branch-select"]')
-  await select.waitForDisplayed({ timeout: 10000 })
-  await select.selectByAttribute('value', branchName)
+  const trigger = $('[data-testid="worktree-add-branch-select"]')
+  await trigger.waitForDisplayed({ timeout: 10000 })
+  await trigger.click()
+  const option = $(`[data-testid="worktree-add-branch-option-${branchName}"]`)
+  await option.waitForDisplayed({ timeout: 10000 })
+  await option.click()
+  await expect(trigger).toHaveText(branchName, { containing: true })
 })
 
 When(/^I set the worktree path to a fresh temporary directory$/, async () => {
@@ -99,18 +132,29 @@ Then(/^the fixture repo has a worktree at that path on disk$/, () => {
   expect(list).toContain(addedWorktreePath)
 })
 
+// Removal moved behind a per-row "⋮" dropdown when the workspace view / bulk-cleanup work landed —
+// there's no inline `worktree-remove-button-<path>` any more. The "⋮" trigger is the hover-revealed
+// element now, so it needs the injected-event treatment (and specifically `openMenuViaJs`, since a
+// plain synthetic click won't open a Radix menu); the item inside the open menu is fully visible and
+// takes an ordinary click.
 When(/^I click the remove button for the linked worktree$/, async () => {
   const row = await findWorktreeRowByBranch('feature/login')
-  const button = row.$('[data-testid^="worktree-remove-button-"]')
-  await button.waitForExist({ timeout: 10000 })
+  const trigger = row.$('[data-testid^="worktree-actions-button-"]')
+  await trigger.waitForExist({ timeout: 10000 })
   // Read the exact testid off the DOM (sidesteps the path-canonicalization mismatch
   // findWorktreeRowByBranch also avoids) rather than passing the element itself into
   // browser.execute: an un-awaited ChainablePromiseElement doesn't serialize into a real element
   // reference on the remote end (`el.click is not a function` — el arrives undefined/non-element),
   // unlike a plain string, which clickViaJs re-queries via document.querySelector in-page instead.
-  const testid = await button.getAttribute('data-testid')
-  if (!testid) throw new Error('Remove-worktree button has no data-testid attribute')
-  await clickViaJs(testid)
+  const testid = await trigger.getAttribute('data-testid')
+  if (!testid) throw new Error('Worktree actions button has no data-testid attribute')
+  await openMenuViaJs(testid)
+
+  const removeItem = $(
+    `[data-testid="${testid.replace('worktree-actions-button-', 'worktree-remove-')}"]`
+  )
+  await removeItem.waitForDisplayed({ timeout: 10000 })
+  await removeItem.click()
   await $('[data-testid="worktree-remove-dialog"]').waitForDisplayed({ timeout: 10000 })
 })
 

@@ -67,7 +67,7 @@ Feature: Command palette (⌘K)
     And I open the command palette
     Then the command palette shows commit actions for "HEAD~1"
     When I run the command palette action "commit-tag"
-    Then the create tag dialog is shown
+    Then the tag name input is shown
     When I enter the tag name "v-from-palette"
     And I confirm the tag creation
     Then the tag "v-from-palette" points at the commit "chore: bump counter to 3"
@@ -78,7 +78,7 @@ Feature: Command palette (⌘K)
     And I open the command palette
     Then the command palette shows commit actions for "HEAD~1"
     When I run the command palette action "commit-tag-annotated"
-    Then the create tag dialog is shown
+    Then the tag name input is shown
     When I enter the tag name "v-annotated-from-palette"
     And I confirm the tag creation
     Then the tag "v-annotated-from-palette" points at the commit "chore: bump counter to 3"
