@@ -4,10 +4,12 @@ import { queryClient } from './lib/queryClient'
 import { DashboardPage } from './app/dashboard/DashboardPage'
 import {
   useRepoUIStore,
+  isNewTab,
   DASHBOARD_TAB,
   REWARDS_TAB,
   PULL_REQUESTS_TAB,
 } from './stores/repoUI.store'
+import { NewTabPage } from './app/new-tab/NewTabPage'
 import { RewardsTab } from './app/pull-requests/components/RewardsTab'
 import { RepoView } from './app/repo/RepoView'
 import { PullRequestsPage } from './app/pull-requests/PullRequestsPage'
@@ -160,6 +162,8 @@ export default function App() {
                 <PullRequestsPage />
               ) : activeTab === REWARDS_TAB ? (
                 <RewardsTab />
+              ) : isNewTab(activeTab) ? (
+                <NewTabPage />
               ) : (
                 <RepoView />
               )}

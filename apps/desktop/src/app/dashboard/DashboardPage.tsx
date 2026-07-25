@@ -19,7 +19,12 @@ import { OctopusMascot } from '@git-manager/mascot'
 import { CloneRepoDialog } from '../../components/tab-bar/CloneRepoDialog'
 import { apiScanRepos } from '../../api/repo.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
-import { useRepoUIStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../../stores/repoUI.store'
+import {
+  useRepoUIStore,
+  isNewTab,
+  DASHBOARD_TAB,
+  PULL_REQUESTS_TAB,
+} from '../../stores/repoUI.store'
 import { useOpenRepository } from '../../hooks/useOpenRepository'
 import { useMorningSummaries } from '../../hooks/useMorningSummaries'
 import { useSettingsStore } from '../../stores/settings.store'
@@ -103,10 +108,11 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
     [filterText]
   )
 
-  // 1. Repos currently open in tabs (excluding special dashboard & PRs tabs)
+  // 1. Repos currently open in tabs (excluding the special dashboard & PRs tabs and any empty
+  // "New Tab" placeholder, none of which point at a repo)
   const activeTabs = useMemo(() => {
     return openTabs
-      .filter((path) => path !== DASHBOARD_TAB && path !== PULL_REQUESTS_TAB)
+      .filter((path) => path !== DASHBOARD_TAB && path !== PULL_REQUESTS_TAB && !isNewTab(path))
       .map((path) => {
         const saved = savedRepos.find((r) => r.path === path)
         const name = saved ? saved.name : path.split('/').pop() || path

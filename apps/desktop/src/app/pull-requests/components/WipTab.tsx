@@ -6,12 +6,12 @@ import { Toolbar } from './Toolbar'
 import { useSetFilter } from './ListHelpers'
 import { PRRowSkeleton } from './RowSkeletons'
 import { useLocalWipRepos, type LocalWipEntry } from '../../../hooks/useLocalWipRepos'
-import { useRepoUIStore } from '../../../stores/repoUI.store'
+import { useOpenRepoTab } from '../../../hooks/useOpenRepoTab'
 import type { SortKey, SortDir } from '../types'
 
 function WipEntryRow({ entry }: { entry: LocalWipEntry }) {
   const { t } = useTranslation('launchpad')
-  const openTab = useRepoUIStore((s) => s.openTab)
+  const openTab = useOpenRepoTab()
   // "WIP on <repository>" for the primary worktree, "WIP on <branch>" for a linked branch worktree.
   const label = entry.isMainWorktree ? entry.repoName : entry.branch
 

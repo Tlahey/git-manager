@@ -17,6 +17,7 @@ import { useRepoUIStore } from '../../../stores/repoUI.store'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { useDailySummaryStore } from '../../../stores/dailySummary.store'
 import { useRepoSummary } from '../../../hooks/useRepoSummary'
+import { useOpenRepoTab } from '../../../hooks/useOpenRepoTab'
 import { isSummaryStale } from '../../../lib/dailySummaryWindow'
 import { apiOpenInEditor } from '../../../api/repo.api'
 
@@ -45,7 +46,8 @@ export function RepoRow({
 }: RepoRowProps) {
   const { t } = useTranslation('dashboard')
   const { togglePin } = useRepoDataStore()
-  const { openTab, openTabs, closeTab } = useRepoUIStore()
+  const { openTabs, closeTab } = useRepoUIStore()
+  const openRepoTab = useOpenRepoTab()
   const { settings } = useSettingsStore()
 
   const { data: summary, isLoading, error } = useRepoSummary(path)
@@ -65,7 +67,7 @@ export function RepoRow({
 
   function handleOpenTab(e: React.MouseEvent) {
     e.stopPropagation()
-    openTab(path)
+    openRepoTab(path)
   }
 
   function handleCloseTab(e: React.MouseEvent) {
@@ -87,7 +89,7 @@ export function RepoRow({
   return (
     <div
       data-testid="dashboard-repo-row"
-      onClick={() => openTab(path)}
+      onClick={() => openRepoTab(path)}
       className="group/row flex cursor-pointer select-none items-center justify-between border-b border-border/10 bg-transparent px-4 py-3 transition-all duration-150 first:rounded-t-lg last:rounded-b-lg last:border-0 hover:bg-accent/40"
     >
       {/* Repo title & path */}

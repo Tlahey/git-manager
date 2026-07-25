@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { toast } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { useSettingsStore } from '../stores/settings.store'
-import { useRepoUIStore } from '../stores/repoUI.store'
+import { useOpenRepoTab } from './useOpenRepoTab'
 import { apiCreateBranch, apiCheckoutBranch } from '../api/git.api'
 import { setIssueState } from '../api/github.api'
 import { openUrl, issueBranchName } from '../app/pull-requests/utils'
@@ -34,7 +34,7 @@ export interface IssueActions {
 export function useIssueActions(issue: MockIssue, onChanged?: () => void): IssueActions {
   const { t } = useTranslation('launchpad')
   const githubSettings = useSettingsStore((s) => s.settings.github)
-  const openTab = useRepoUIStore((s) => s.openTab)
+  const openRepoTab = useOpenRepoTab()
   const { repoPath, branch, refreshBranch } = useIssueRepoLink(issue)
 
   const token =
@@ -48,7 +48,7 @@ export function useIssueActions(issue: MockIssue, onChanged?: () => void): Issue
   const [closing, setClosing] = useState(false)
 
   const viewRepo = () => {
-    if (repoPath) openTab(repoPath)
+    if (repoPath) openRepoTab(repoPath)
     else return openUrl(issue.fullName ? `https://github.com/${issue.fullName}` : issue.url)
   }
 

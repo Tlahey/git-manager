@@ -18,7 +18,7 @@ export function useKeyboardShortcuts({
   onCloseSettings,
   showSettings,
 }: UseKeyboardShortcutsProps) {
-  const { openTabs, activeTab, activeRepo, setActiveTab, closeTab } = useRepoUIStore()
+  const { openTabs, activeTab, activeRepo, setActiveTab, closeTab, openNewTab } = useRepoUIStore()
   const isCommitsView = useIsCommitsView()
 
   useEffect(() => {
@@ -36,6 +36,17 @@ export function useKeyboardShortcuts({
       if (isModK && !e.altKey && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         useCommandPaletteStore.getState().toggle('all')
+        return
+      }
+
+      // New (empty) tab: ⌘T / Ctrl+T — handled before the input guard like ⌘K/⌘P so it works
+      // wherever focus is. Ctrl is accepted on macOS too (that's the shortcut users asked for),
+      // on top of the platform-standard ⌘.
+      const isModT = navigator.userAgent.includes('Mac') ? e.metaKey || e.ctrlKey : e.ctrlKey
+      if (isModT && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 't') {
+        e.preventDefault()
+        if (showSettings) onCloseSettings()
+        openNewTab()
         return
       }
 
@@ -165,6 +176,7 @@ export function useKeyboardShortcuts({
     showSettings,
     setActiveTab,
     closeTab,
+    openNewTab,
     onOpenSettings,
     onCloseSettings,
   ])

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
-import { useRepoUIStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../stores/repoUI.store'
+import { useRepoUIStore, isNewTab, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../stores/repoUI.store'
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
 import { useCommandPaletteStore } from '../stores/commandPalette.store'
 import { useCommitSearchStore } from '../stores/commitSearch.store'
@@ -527,5 +527,55 @@ describe('useKeyboardShortcuts — cleanup', () => {
     unmount()
     dispatchFrom(plainEl, { key: ',', ctrlKey: true })
     expect(onOpenSettings).not.toHaveBeenCalled()
+  })
+})
+
+describe('useKeyboardShortcuts — new tab (Ctrl/⌘ + T)', () => {
+  function renderShortcuts(showSettings = false, onCloseSettings = vi.fn()) {
+    renderHook(() =>
+      useKeyboardShortcuts({ onOpenSettings: vi.fn(), onCloseSettings, showSettings })
+    )
+  }
+
+  it('opens an empty tab and focuses it', () => {
+    renderShortcuts()
+    dispatchFrom(plainEl, { key: 't', ctrlKey: true })
+    const state = useRepoUIStore.getState()
+    expect(state.openTabs).toHaveLength(1)
+    expect(isNewTab(state.activeTab)).toBe(true)
+  })
+
+  it('works while typing in an input (handled before the input guard)', () => {
+    renderShortcuts()
+    dispatchFrom(inputEl, { key: 't', ctrlKey: true })
+    expect(useRepoUIStore.getState().openTabs).toHaveLength(1)
+  })
+
+  it('accepts ⌘T on macOS', () => {
+    setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
+    renderShortcuts()
+    dispatchFrom(plainEl, { key: 't', metaKey: true })
+    expect(useRepoUIStore.getState().openTabs).toHaveLength(1)
+  })
+
+  it('accepts Ctrl+T on macOS too', () => {
+    setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
+    renderShortcuts()
+    dispatchFrom(plainEl, { key: 't', ctrlKey: true })
+    expect(useRepoUIStore.getState().openTabs).toHaveLength(1)
+  })
+
+  it('ignores a bare T with no modifier', () => {
+    renderShortcuts()
+    dispatchFrom(plainEl, { key: 't' })
+    expect(useRepoUIStore.getState().openTabs).toEqual([])
+  })
+
+  it('closes the settings screen so the new tab is actually visible', () => {
+    const onCloseSettings = vi.fn()
+    renderShortcuts(true, onCloseSettings)
+    dispatchFrom(plainEl, { key: 't', ctrlKey: true })
+    expect(onCloseSettings).toHaveBeenCalled()
+    expect(useRepoUIStore.getState().openTabs).toHaveLength(1)
   })
 })

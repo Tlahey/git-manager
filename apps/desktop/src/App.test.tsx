@@ -35,6 +35,9 @@ vi.mock('./app/pull-requests/components/RewardsTab', () => ({
   RewardsTab: () => <div data-testid="fake-rewards-tab" />,
 }))
 vi.mock('./app/repo/RepoView', () => ({ RepoView: () => <div data-testid="fake-repo-view" /> }))
+vi.mock('./app/new-tab/NewTabPage', () => ({
+  NewTabPage: () => <div data-testid="fake-new-tab-page" />,
+}))
 vi.mock('./app/pull-requests/PullRequestsPage', () => ({
   PullRequestsPage: () => <div data-testid="fake-pr-page" />,
 }))
@@ -121,6 +124,13 @@ describe('App — tab-based page switching', () => {
     useRepoUIStore.setState({ activeTab: '/some/repo/path' })
     render(<App />)
     expect(screen.getByTestId('fake-repo-view')).toBeInTheDocument()
+  })
+
+  it('renders the NewTabPage on an empty "New Tab" placeholder', () => {
+    useRepoUIStore.getState().openNewTab()
+    render(<App />)
+    expect(screen.getByTestId('fake-new-tab-page')).toBeInTheDocument()
+    expect(screen.queryByTestId('fake-repo-view')).not.toBeInTheDocument()
   })
 })
 

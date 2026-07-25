@@ -14,16 +14,27 @@ interface DiscoveredRepo {
   name: string
 }
 
+/** How many entries the most-recently-opened list keeps before dropping the oldest. */
+const MAX_RECENT_REPOS = 20
+
 interface RepoDataState {
   savedRepos: SavedRepo[]
   repoCache: Record<string, GitRepo>
   discoveredRepos: DiscoveredRepo[]
+  /**
+   * Repo paths ordered most-recently-opened first, capped at `MAX_RECENT_REPOS`. Fed by
+   * `markRepoOpened` (see the `useOpenRepoTab` hook, which every "open this repo in a tab" entry
+   * point goes through) and read by the New Tab page's recent list.
+   */
+  recentRepoPaths: string[]
   wipMessages: Record<string, string>
   setWipMessage: (path: string, message: string) => void
   hiddenStashes: Record<string, string[]>
   toggleStashVisibility: (repoPath: string, oid: string) => void
 
   addRepo: (repo: GitRepo) => void
+  /** Moves `path` to the front of `recentRepoPaths` (called whenever a repo is opened in a tab). */
+  markRepoOpened: (path: string) => void
   removeRepo: (path: string) => void
   setRepoCache: (path: string, repo: GitRepo) => void
   togglePin: (path: string) => void
@@ -37,6 +48,7 @@ export const useRepoDataStore = create<RepoDataState>()(
       savedRepos: [],
       repoCache: {},
       discoveredRepos: [],
+      recentRepoPaths: [],
       wipMessages: {},
       hiddenStashes: {},
 
@@ -64,11 +76,26 @@ export const useRepoDataStore = create<RepoDataState>()(
           }
         }),
 
+      markRepoOpened: (path) =>
+        set((state) => {
+          // Only saved repositories are tracked. Linked worktrees ("workspaces") are opened as tabs
+          // straight from the WIP tab without ever being saved, and they'd otherwise crowd real
+          // repos out of the capped list.
+          if (!state.savedRepos.some((r) => r.path === path)) return state
+          return {
+            recentRepoPaths: [
+              path,
+              ...(state.recentRepoPaths || []).filter((p) => p !== path),
+            ].slice(0, MAX_RECENT_REPOS),
+          }
+        }),
+
       removeRepo: (path) => {
         // Cross-store side effect: clear any tab/selection UI state pointing at this repo.
         useRepoUIStore.getState().clearTabStateForRemovedRepo(path)
         set((state) => ({
           savedRepos: state.savedRepos.filter((r) => r.path !== path),
+          recentRepoPaths: (state.recentRepoPaths || []).filter((p) => p !== path),
         }))
       },
 
@@ -104,10 +131,11 @@ export const useRepoDataStore = create<RepoDataState>()(
     }),
     {
       name: 'git-manager-repos',
-      // Ne pas persister le cache des repos (données volatiles)
+      // Don't persist the repo cache (volatile data)
       partialize: (state) => ({
         savedRepos: state.savedRepos,
         discoveredRepos: state.discoveredRepos || [],
+        recentRepoPaths: state.recentRepoPaths || [],
         wipMessages: state.wipMessages || {},
         hiddenStashes: state.hiddenStashes || {},
       }),
