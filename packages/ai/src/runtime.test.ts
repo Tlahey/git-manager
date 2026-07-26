@@ -7,6 +7,9 @@ import {
   createStatusService,
   createStreamingService,
   resolveGenerateConfig,
+  MODEL_PROBE_INSTRUCTION,
+  MODEL_PROBE_MAX_TIMEOUT_SECONDS,
+  MODEL_PROBE_PROMPT,
   type AiTransport,
 } from './runtime'
 
@@ -48,10 +51,10 @@ describe('resolveGenerateConfig', () => {
     })
   })
 
-  it('resolves a non-openai preset protocol', () => {
-    expect(resolveGenerateConfig({ ...connection, preset: 'anthropic' }, 0.3).protocol).toBe(
-      'anthropic-messages'
-    )
+  it('resolves the generic preset too, carrying its API key through', () => {
+    expect(
+      resolveGenerateConfig({ ...connection, preset: 'openai-compatible', apiKey: 'sk-test' }, 0.3)
+    ).toMatchObject({ protocol: 'openai-compatible', apiKey: 'sk-test', temperature: 0.3 })
   })
 })
 
@@ -99,14 +102,80 @@ describe('createCompletionService', () => {
   })
 })
 
+describe('createStatusService.probe', () => {
+  it('sends the feature-free probe prompt to the selected model at temperature 0', async () => {
+    const transport = mockTransport()
+    transport.runComplete = vi.fn().mockResolvedValue('OK')
+    const result = await createStatusService(transport).probe(connection)
+
+    expect(transport.runComplete).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'llama3.2', temperature: 0 }),
+      MODEL_PROBE_INSTRUCTION,
+      MODEL_PROBE_PROMPT
+    )
+    expect(result).toMatchObject({ ok: true, reply: 'OK' })
+    expect(result.durationMs).toBeTypeOf('number')
+  })
+
+  it('caps the probe timeout so a long generation budget cannot hang the button', async () => {
+    const transport = mockTransport()
+    await createStatusService(transport).probe({ ...connection, timeoutSeconds: 300 })
+
+    expect(transport.runComplete).toHaveBeenCalledWith(
+      expect.objectContaining({ timeoutSeconds: MODEL_PROBE_MAX_TIMEOUT_SECONDS }),
+      expect.any(String),
+      expect.any(String)
+    )
+  })
+
+  it('keeps a shorter configured timeout as-is', async () => {
+    const transport = mockTransport()
+    await createStatusService(transport).probe({ ...connection, timeoutSeconds: 5 })
+
+    expect(transport.runComplete).toHaveBeenCalledWith(
+      expect.objectContaining({ timeoutSeconds: 5 }),
+      expect.any(String),
+      expect.any(String)
+    )
+  })
+
+  it('sends no JSON schema — a schema would fail for reasons unrelated to connectivity', async () => {
+    const transport = mockTransport()
+    await createStatusService(transport).probe(connection)
+    expect((transport.runComplete as ReturnType<typeof vi.fn>).mock.calls[0]).toHaveLength(3)
+  })
+
+  it('treats an empty body as a failure, not a green light', async () => {
+    const transport = mockTransport()
+    transport.runComplete = vi.fn().mockResolvedValue('   ')
+
+    expect(await createStatusService(transport).probe(connection)).toMatchObject({
+      ok: false,
+      reply: '',
+      error: 'AI_EMPTY_RESPONSE',
+    })
+  })
+
+  it('returns the transport failure instead of throwing, so the UI can render it', async () => {
+    const transport = mockTransport()
+    transport.runComplete = vi.fn().mockRejectedValue(new Error('{"code":"AI_PROVIDER_ERROR"}'))
+
+    expect(await createStatusService(transport).probe(connection)).toMatchObject({
+      ok: false,
+      reply: '',
+      error: '{"code":"AI_PROVIDER_ERROR"}',
+    })
+  })
+})
+
 describe('createStatusService', () => {
   it('sends only protocol/url/apiKey', async () => {
     const transport = mockTransport()
     const service = createStatusService(transport)
-    await service.check({ ...connection, preset: 'anthropic', apiKey: 'sk-test' })
+    await service.check({ ...connection, preset: 'openai-compatible', apiKey: 'sk-test' })
 
     expect(transport.checkStatus).toHaveBeenCalledWith({
-      protocol: 'anthropic-messages',
+      protocol: 'openai-compatible',
       url: 'http://localhost:11434',
       apiKey: 'sk-test',
     })

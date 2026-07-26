@@ -310,6 +310,10 @@ pub struct AiProviderStatus {
     pub connected: bool,
     pub models: Vec<String>,
     pub version: Option<String>,
+    /// Why a check failed, as a short technical diagnostic (the exact URL that was probed plus the
+    /// HTTP status or transport error). Settings shows it verbatim: "not connected" alone leaves
+    /// the user guessing between a wrong port, a missing `/v1` and an unparseable response.
+    pub detail: Option<String>,
 }
 
 // ─── Diff ─────────────────────────────────────────────────────────────────────

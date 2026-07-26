@@ -36,7 +36,7 @@
 | Backend              | Rust + `git2` crate (libgit2)             |
 | State management     | Zustand                                   |
 | Internationalization | react-i18next (FR / EN)                   |
-| LLM (AI commit)      | Ollama, LM Studio, MLX, OpenAI, Anthropic |
+| LLM (AI commit)      | Ollama, or any OpenAI-compatible server   |
 | Remote auth          | SSH + HTTPS (token)                       |
 | Monorepo             | pnpm workspaces + Turborepo               |
 
@@ -136,9 +136,15 @@ pnpm build
 ## AI provider configuration
 
 AI features (commit-message generation, file grouping) are optional. The default provider is a
-local Ollama at `http://localhost:11434`; LM Studio, MLX, OpenAI and Anthropic are also
-selectable — see `AI_PRESETS` in [`packages/ai`](../packages/ai/src/presets.ts). Provider, URL,
-model, API key and temperature are all configured in **Settings → LLM**.
+local Ollama at `http://localhost:11434`. The only other entry is a generic **OpenAI-compatible**
+preset you point at any server speaking the OpenAI API (LM Studio, vLLM, MLX, OpenAI itself…) —
+see `AI_PRESETS` in [`packages/ai`](../packages/ai/src/presets.ts). Provider, URL, API key, model
+and timeout are configured in **Settings → AI**; the model list is read from the provider's
+`/v1/models` endpoint when the URL is validated. Temperature and prompts are not configurable —
+they are owned per feature inside `packages/ai`.
+
+The app checks the provider at startup. If AI is enabled but nothing answers, a warning banner
+appears under the tab bar (and a status pill in the footer); clicking either opens **Settings → AI**.
 
 To use the local default:
 

@@ -21,7 +21,6 @@ interface ProviderComboboxProps {
   onChange: (id: AiPresetId) => void
   searchPlaceholder: string
   emptyLabel: string
-  comingSoonLabel: string
 }
 
 /** Searchable provider picker (Popover + cmdk list) — presentational, no store/IPC of its own. */
@@ -31,7 +30,6 @@ export function ProviderCombobox({
   onChange,
   searchPlaceholder,
   emptyLabel,
-  comingSoonLabel,
 }: ProviderComboboxProps) {
   const [open, setOpen] = useState(false)
   const selected = presets.find((preset) => preset.id === value)
@@ -64,7 +62,6 @@ export function ProviderCombobox({
                 <CommandItem
                   key={preset.id}
                   value={preset.label}
-                  disabled={!preset.implemented}
                   data-testid={`ai-provider-option-${preset.id}`}
                   onSelect={() => {
                     onChange(preset.id)
@@ -78,11 +75,6 @@ export function ProviderCombobox({
                     )}
                   />
                   {preset.label}
-                  {!preset.implemented && (
-                    <span className="ml-auto text-[11px] text-muted-foreground">
-                      {comingSoonLabel}
-                    </span>
-                  )}
                 </CommandItem>
               ))}
             </CommandGroup>

@@ -9,5 +9,6 @@
   "errors.PROTECTED_BRANCH": "This branch is protected.",
   "errors.AI_PROVIDER_NOT_RUNNING": "The AI provider is not running.",
   "errors.AI_MODEL_NOT_FOUND": "AI model not found.",
-  "errors.UNKNOWN": "Unknown error."
+  "errors.UNKNOWN": "Unknown error.",
+  "errors.AI_EMPTY_RESPONSE": "The model answered with an empty response."
 }

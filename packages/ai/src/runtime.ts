@@ -134,10 +134,41 @@ export function createCompletionService<Input, Output>(
   }
 }
 
-/** Connection health check — the one AI operation that isn't a feature (no instruction/prompt),
- * used by Settings to validate a provider and list its models. */
+/** The probe's system message. Deliberately trivial and deterministic: the point is to prove the
+ * round-trip, not to evaluate the model, so the cheapest possible completion is the right one. */
+export const MODEL_PROBE_INSTRUCTION =
+  'You are a connectivity probe. Reply with the single word OK. Do not explain, do not add punctuation.'
+
+/** The probe's user turn. */
+export const MODEL_PROBE_PROMPT = 'ping'
+
+/** Upper bound (seconds) on how long a probe waits, regardless of the configured request timeout.
+ * A "test this model" button that can hang for the user's 300s generation budget is not a test. */
+export const MODEL_PROBE_MAX_TIMEOUT_SECONDS = 30
+
+/** Outcome of a {@link AiStatusService.probe} round-trip. */
+export interface AiModelProbeResult {
+  /** True when the model returned any non-empty text — that alone proves the whole path works. */
+  ok: boolean
+  /** The model's raw reply, trimmed. Empty when the probe failed. */
+  reply: string
+  /** Raw failure message from the transport (an app error payload the host can decode), unset on
+   * success. Left undecoded here: this package has no host/IPC knowledge. */
+  error?: string
+  /** Round-trip duration in ms — also tells the user whether the model was cold. */
+  durationMs: number
+}
+
+/** Connection checks — the AI operations that aren't features (no repo input, no prompt-building
+ * over an `AiContext`), used by Settings to validate a provider before anything relies on it.
+ *
+ * Two levels, because they fail for different reasons and the distinction is what makes the page
+ * diagnosable: `check` only asks the server which models it lists (`/v1/models`), while `probe`
+ * actually sends the *selected* model a completion — the only way to catch a model that isn't
+ * pulled, isn't served, or is rejected by an auth layer that let the model listing through. */
 export interface AiStatusService {
   check(connection: AiConnectionConfig): Promise<AiProviderStatus>
+  probe(connection: AiConnectionConfig): Promise<AiModelProbeResult>
 }
 
 export function createStatusService(transport: AiTransport): AiStatusService {
@@ -145,6 +176,32 @@ export function createStatusService(transport: AiTransport): AiStatusService {
     check(connection) {
       const { protocol } = getAiPreset(connection.preset)
       return transport.checkStatus({ protocol, url: connection.url, apiKey: connection.apiKey })
+    },
+
+    async probe(connection) {
+      const config = resolveGenerateConfig(connection, 0)
+      config.timeoutSeconds = Math.min(config.timeoutSeconds, MODEL_PROBE_MAX_TIMEOUT_SECONDS)
+
+      const startedAt = Date.now()
+      try {
+        const raw = await transport.runComplete(config, MODEL_PROBE_INSTRUCTION, MODEL_PROBE_PROMPT)
+        const reply = raw.trim()
+        return {
+          // An empty body is a failure even on HTTP 200: some gateways answer the shape without
+          // ever reaching a model, which would otherwise read as a green "it works".
+          ok: reply.length > 0,
+          reply,
+          error: reply.length > 0 ? undefined : 'AI_EMPTY_RESPONSE',
+          durationMs: Date.now() - startedAt,
+        }
+      } catch (error) {
+        return {
+          ok: false,
+          reply: '',
+          error: error instanceof Error ? error.message : String(error),
+          durationMs: Date.now() - startedAt,
+        }
+      }
     },
   }
 }

@@ -80,6 +80,34 @@ struct ModelEntry {
     id: String,
 }
 
+/// Resolves the API base that `/models` and `/chat/completions` hang off.
+///
+/// A configured URL that already carries a path is taken at face value — `http://localhost:8000/v1`
+/// is exactly the "base URL" an OpenAI SDK would be handed, and versioned prefixes vary between
+/// servers (`/v1`, `/openai/v1`, `/v1beta/openai`), so guessing is worse than obeying. A bare origin
+/// (`http://localhost:11434`) gets the conventional `/v1` appended, which keeps Ollama's zero-config
+/// default working without the user having to know the convention.
+fn api_base(url: &str) -> String {
+    let trimmed = url.trim().trim_end_matches('/');
+    let after_scheme = trimmed
+        .split_once("://")
+        .map(|(_, rest)| rest)
+        .unwrap_or(trimmed);
+    if after_scheme.contains('/') {
+        trimmed.to_string()
+    } else {
+        format!("{trimmed}/v1")
+    }
+}
+
+fn models_url(config: &GenerateConfig) -> String {
+    format!("{}/models", api_base(&config.url))
+}
+
+fn completions_url(config: &GenerateConfig) -> String {
+    format!("{}/chat/completions", api_base(&config.url))
+}
+
 fn client_for(config: &GenerateConfig) -> Result<Client, AppError> {
     Client::builder()
         .timeout(std::time::Duration::from_secs(config.timeout_seconds))
@@ -134,23 +162,36 @@ impl AiProvider for OpenAiCompatibleProvider {
             .build()
             .map_err(AppError::Http)?;
 
-        let models_url = format!("{}/v1/models", config.url.trim_end_matches('/'));
-        let request = with_auth(client.get(&models_url), config);
+        let url = models_url(config);
+        let request = with_auth(client.get(&url), config);
+
+        // Every failure resolves to a `connected: false` status carrying *why*, rather than an Err:
+        // an unreachable provider is an expected condition here, and the reason is the whole point
+        // of the check. The detail always names the exact URL that was probed, which is what tells
+        // a user their base URL is missing (or duplicating) the `/v1` segment.
+        let failed = |detail: String| AiProviderStatus {
+            connected: false,
+            models: vec![],
+            version: None,
+            detail: Some(detail),
+        };
 
         match request.send().await {
-            Ok(resp) if resp.status().is_success() => {
-                let data: ModelsResponse = resp.json().await.map_err(AppError::Http)?;
-                Ok(AiProviderStatus {
+            Ok(resp) if resp.status().is_success() => match resp.json::<ModelsResponse>().await {
+                Ok(data) => Ok(AiProviderStatus {
                     connected: true,
                     models: data.data.into_iter().map(|m| m.id).collect(),
                     version: None,
-                })
-            }
-            _ => Ok(AiProviderStatus {
-                connected: false,
-                models: vec![],
-                version: None,
-            }),
+                    detail: None,
+                }),
+                Err(e) => Ok(failed(format!(
+                    "GET {url} → 200, but the body is not an OpenAI model list ({e})"
+                ))),
+            },
+            Ok(resp) => Ok(failed(format!("GET {url} → HTTP {}", resp.status()))),
+            Err(e) if e.is_connect() => Ok(failed(format!("GET {url} → no server answered"))),
+            Err(e) if e.is_timeout() => Ok(failed(format!("GET {url} → timed out after 5s"))),
+            Err(e) => Ok(failed(format!("GET {url} → {e}"))),
         }
     }
 
@@ -172,7 +213,7 @@ impl AiProvider for OpenAiCompatibleProvider {
             response_format: None,
         };
 
-        let completions_url = format!("{}/v1/chat/completions", config.url.trim_end_matches('/'));
+        let completions_url = completions_url(config);
 
         let resp = with_auth(client.post(&completions_url), config)
             .json(&request)
@@ -249,7 +290,7 @@ impl AiProvider for OpenAiCompatibleProvider {
             }),
         };
 
-        let completions_url = format!("{}/v1/chat/completions", config.url.trim_end_matches('/'));
+        let completions_url = completions_url(config);
 
         let resp = with_auth(client.post(&completions_url), config)
             .json(&request)
@@ -268,5 +309,51 @@ impl AiProvider for OpenAiCompatibleProvider {
             .next()
             .and_then(|c| c.message.content)
             .unwrap_or_default())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::api_base;
+
+    #[test]
+    fn appends_v1_to_a_bare_origin() {
+        assert_eq!(
+            api_base("http://localhost:11434"),
+            "http://localhost:11434/v1"
+        );
+        assert_eq!(
+            api_base("http://localhost:8000/"),
+            "http://localhost:8000/v1"
+        );
+        assert_eq!(
+            api_base("  https://api.openai.com  "),
+            "https://api.openai.com/v1"
+        );
+    }
+
+    #[test]
+    fn honours_a_base_url_that_already_carries_a_path() {
+        // The case that sent users in circles: typing the base URL an OpenAI SDK expects must not
+        // produce /v1/v1/models.
+        assert_eq!(
+            api_base("http://localhost:8000/v1"),
+            "http://localhost:8000/v1"
+        );
+        assert_eq!(
+            api_base("http://localhost:8000/v1/"),
+            "http://localhost:8000/v1"
+        );
+        assert_eq!(api_base("https://host/openai/v1"), "https://host/openai/v1");
+        assert_eq!(
+            api_base("https://host/v1beta/openai"),
+            "https://host/v1beta/openai"
+        );
+    }
+
+    #[test]
+    fn tolerates_a_missing_scheme() {
+        assert_eq!(api_base("localhost:8000"), "localhost:8000/v1");
+        assert_eq!(api_base("localhost:8000/v1"), "localhost:8000/v1");
     }
 }

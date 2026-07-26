@@ -37,6 +37,7 @@ import {
   Tooltip,
 } from '@git-manager/ui'
 import type { Section } from '../../app/settings/SettingsPage'
+import { AiStatusIndicator } from './AiStatusIndicator'
 
 interface FooterProps {
   onOpenSettings: (section?: Section) => void
@@ -64,7 +65,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
       })
   }, [])
 
-  // Calcule le nombre total de dépôts uniques connus
+  // Total number of distinct known repositories
   const totalRepos = useMemo(() => {
     const uniquePaths = new Set([
       ...savedRepos.map((r) => r.path),
@@ -73,16 +74,16 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
     return uniquePaths.size
   }, [savedRepos, discoveredRepos])
 
-  // Dépôt actuel si on est sur un onglet de dépôt
+  // Current repository, when the active tab is a repo tab
   const isRepoTab =
     activeTab !== DASHBOARD_TAB && activeTab !== PULL_REQUESTS_TAB && activeTab !== REWARDS_TAB
   const currentRepo = isRepoTab ? repoCache[activeTab] : null
 
-  // Compte GitHub connecté
+  // Connected GitHub account
   const github = settings.github || { accounts: [], activeAccountId: null }
   const activeAccount = github.accounts.find((a) => a.id === github.activeAccountId) || null
 
-  // Copie le chemin du dépôt dans le presse-papier
+  // Copies the repository path to the clipboard
   const handleCopyPath = async () => {
     if (!activeTab || !isRepoTab) return
     try {
@@ -94,8 +95,8 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
     }
   }
 
-  // Raccourcis clavier pour l'affichage — doit rester en phase avec useKeyboardShortcuts.ts
-  // et les raccourcis locaux au panneau de recherche de commits (CommitSearchPanel.tsx).
+  // Keyboard shortcuts, for display only — must stay in sync with useKeyboardShortcuts.ts and
+  // with the shortcuts local to the commit search panel (CommitSearchPanel.tsx).
   const shortcuts = [
     {
       category: 'Général',
@@ -150,7 +151,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
 
   return (
     <footer className="chrome-surface flex h-8 w-full shrink-0 select-none items-center justify-between border-t border-border bg-sidebar px-4 text-[11px] text-muted-foreground">
-      {/* SECTION GAUCHE : État contextuel */}
+      {/* LEFT SECTION: contextual state */}
       <div className="flex items-center gap-3 overflow-hidden">
         {activeTab === DASHBOARD_TAB && (
           <div className="flex items-center gap-1.5 font-medium text-foreground/80">
@@ -180,7 +181,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
 
         {isRepoTab && (
           <div className="flex items-center gap-3 overflow-hidden text-ellipsis whitespace-nowrap">
-            {/* Nom & chemin du Repo */}
+            {/* Repository name & path */}
             <button
               onClick={handleCopyPath}
               className="group flex shrink-0 cursor-pointer items-center gap-1.5 font-medium text-foreground/90 transition-colors hover:text-primary"
@@ -200,7 +201,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
 
             <span className="text-border">|</span>
 
-            {/* Branche Git Actuelle */}
+            {/* Current git branch */}
             <div className="flex items-center gap-1 font-mono text-foreground/75">
               <GitBranch className="h-3.5 w-3.5 text-emerald-500/80" />
               <span className="font-semibold">{currentRepo?.head || '...'}</span>
@@ -222,7 +223,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
         )}
       </div>
 
-      {/* SECTION CENTRALE : Activity Logs + Raccourcis Clavier (icônes seules, tooltip au hover) */}
+      {/* CENTER SECTION: activity logs + keyboard shortcuts (icon-only, tooltip on hover) */}
       <div className="flex items-center gap-1">
         <Tooltip content={t('footer.activityLogs')}>
           <button
@@ -317,7 +318,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
         </Dialog>
       </div>
 
-      {/* SECTION DROITE : Connexion GitHub & Version */}
+      {/* RIGHT SECTION: AI status, GitHub account & version */}
       <div className="flex shrink-0 items-center gap-3">
         {/* Game/Rewards Status Link */}
         {rewardsEnabled && (
@@ -341,6 +342,9 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
             <span className="text-border">|</span>
           </>
         )}
+
+        {/* AI provider status — hidden entirely when AI features are off */}
+        <AiStatusIndicator onOpenSettings={() => onOpenSettings('local_ai')} />
 
         {/* GitHub Account Link */}
         <button
@@ -374,7 +378,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
 
         <span className="text-border">|</span>
 
-        {/* Version App — click opens the in-app changelog */}
+        {/* App version — click opens the in-app changelog */}
         {appVersion && (
           <button
             onClick={() => onOpenSettings('changelog')}

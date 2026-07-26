@@ -72,6 +72,13 @@ vi.mock('./components/command-palette/CommandPalette', () => ({
 vi.mock('./components/layout/OperationProgressBar', () => ({
   OperationProgressBar: () => <div data-testid="fake-operation-progress-bar" />,
 }))
+vi.mock('./components/layout/AiStatusBanner', () => ({
+  AiStatusBanner: (props: { onOpenSettings: () => void }) => (
+    <div data-testid="fake-ai-status-banner">
+      <button onClick={props.onOpenSettings}>ai-banner-open-settings</button>
+    </div>
+  ),
+}))
 
 const { useKeyboardShortcuts } = vi.hoisted(() => ({ useKeyboardShortcuts: vi.fn() }))
 vi.mock('./hooks/useKeyboardShortcuts', () => ({ useKeyboardShortcuts }))
@@ -79,6 +86,7 @@ vi.mock('./hooks/useTheme', () => ({ useTheme: vi.fn() }))
 vi.mock('./hooks/useMonacoTheme', () => ({ useMonacoTheme: vi.fn() }))
 vi.mock('./hooks/useNotificationWatcher', () => ({ useNotificationWatcher: vi.fn() }))
 vi.mock('./hooks/useDevFixtureImport', () => ({ useDevFixtureImport: vi.fn() }))
+vi.mock('./hooks/useAiStatusCheck', () => ({ useAiStatusCheck: vi.fn() }))
 
 import App from './App'
 import {
@@ -164,6 +172,13 @@ describe('App — settings overlay', () => {
     expect(screen.getByTestId('settings-section')).toHaveTextContent('local_ai')
   })
 
+  it('opens settings with the "local_ai" section from the AI status banner', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByText('ai-banner-open-settings'))
+    expect(screen.getByTestId('settings-section')).toHaveTextContent('local_ai')
+  })
+
   it('closes settings and shows the normal layout again', async () => {
     const user = userEvent.setup()
     render(<App />)
@@ -179,6 +194,7 @@ describe('App — settings overlay', () => {
     await user.click(screen.getByText('tabbar-open-settings'))
     expect(screen.queryByTestId('fake-tab-bar')).not.toBeInTheDocument()
     expect(screen.queryByTestId('fake-operation-progress-bar')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('fake-ai-status-banner')).not.toBeInTheDocument()
     expect(screen.queryByTestId('fake-footer')).not.toBeInTheDocument()
     expect(screen.getByTestId('fake-trophy-toast')).toBeInTheDocument()
     expect(screen.getByTestId('fake-toaster')).toBeInTheDocument()

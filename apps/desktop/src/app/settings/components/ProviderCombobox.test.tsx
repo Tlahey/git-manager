@@ -1,23 +1,36 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { AiPresetDefinition } from '@git-manager/ai'
 import { ProviderCombobox } from './ProviderCombobox'
 
-const PRESETS = [
-  { id: 'ollama', label: 'Ollama', protocol: 'openai-compatible', defaultUrl: 'http://localhost:11434', requiresApiKey: false, implemented: true },
-  { id: 'lmstudio', label: 'LM Studio', protocol: 'openai-compatible', defaultUrl: 'http://localhost:1234', requiresApiKey: false, implemented: false },
-  { id: 'anthropic', label: 'Anthropic', protocol: 'anthropic-messages', defaultUrl: 'https://api.anthropic.com', requiresApiKey: true, implemented: false },
-] as const
+const PRESETS: AiPresetDefinition[] = [
+  {
+    id: 'ollama',
+    label: 'Ollama',
+    protocol: 'openai-compatible',
+    defaultUrl: 'http://localhost:11434',
+    supportsApiKey: false,
+    descriptionKey: 'settings.ai.presetHint.ollama',
+  },
+  {
+    id: 'openai-compatible',
+    label: 'OpenAI-compatible',
+    protocol: 'openai-compatible',
+    defaultUrl: 'http://localhost:1234',
+    supportsApiKey: true,
+    descriptionKey: 'settings.ai.presetHint.openaiCompatible',
+  },
+]
 
 function renderCombobox(onChange = vi.fn()) {
   render(
     <ProviderCombobox
-      presets={[...PRESETS]}
+      presets={PRESETS}
       value="ollama"
       onChange={onChange}
       searchPlaceholder="Search providers…"
       emptyLabel="No provider found."
-      comingSoonLabel="(coming soon)"
     />
   )
   return onChange
@@ -29,40 +42,35 @@ describe('ProviderCombobox', () => {
     expect(screen.getByTestId('ai-provider-select')).toHaveTextContent('Ollama')
   })
 
-  it('lists every preset once opened, marking non-implemented ones as disabled', async () => {
+  it('lists every preset once opened, all of them selectable', async () => {
     const user = userEvent.setup()
     renderCombobox()
     await user.click(screen.getByTestId('ai-provider-select'))
 
     expect(screen.getByTestId('ai-provider-option-ollama')).toHaveAttribute('aria-disabled', 'false')
-    expect(screen.getByTestId('ai-provider-option-lmstudio')).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByTestId('ai-provider-option-anthropic')).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getAllByText('(coming soon)')).toHaveLength(2)
+    expect(screen.getByTestId('ai-provider-option-openai-compatible')).toHaveAttribute(
+      'aria-disabled',
+      'false'
+    )
   })
 
   it('filters the list via the search bar', async () => {
     const user = userEvent.setup()
     renderCombobox()
     await user.click(screen.getByTestId('ai-provider-select'))
-    await user.type(screen.getByTestId('ai-provider-search'), 'anthro')
+    await user.type(screen.getByTestId('ai-provider-search'), 'openai')
 
-    expect(screen.getByTestId('ai-provider-option-anthropic')).toBeInTheDocument()
+    expect(screen.getByTestId('ai-provider-option-openai-compatible')).toBeInTheDocument()
     expect(screen.queryByTestId('ai-provider-option-ollama')).not.toBeInTheDocument()
   })
 
-  it('selecting an implemented preset calls onChange and closes the popover', async () => {
+  it('selecting a preset calls onChange and closes the popover', async () => {
     const user = userEvent.setup()
     const onChange = renderCombobox()
     await user.click(screen.getByTestId('ai-provider-select'))
-    await user.click(screen.getByTestId('ai-provider-option-lmstudio'))
+    await user.click(screen.getByTestId('ai-provider-option-openai-compatible'))
 
-    // cmdk blocks selection of disabled items — lmstudio isn't implemented, so onChange never fires
-    // and the popover (and its search input) stays open.
-    expect(onChange).not.toHaveBeenCalled()
-    expect(screen.getByTestId('ai-provider-search')).toBeInTheDocument()
-
-    await user.click(screen.getByTestId('ai-provider-option-ollama'))
-    expect(onChange).toHaveBeenCalledWith('ollama')
+    expect(onChange).toHaveBeenCalledWith('openai-compatible')
     expect(screen.queryByTestId('ai-provider-search')).not.toBeInTheDocument()
   })
 
