@@ -1,3 +1,4 @@
+import type { PullStrategy } from '../lib/tauri'
 import {
   stageFile,
   unstageFile,
@@ -998,8 +999,8 @@ export async function apiFetchRemote(path: string, remote?: string, prune?: bool
   return runActivity('git.fetch', () => fetchRemote(path, remote, prune))
 }
 
-export async function apiPullBranch(path: string, remote?: string, rebase?: boolean) {
-  return runActivity('git.pull', () => pullBranch(path, remote, rebase))
+export async function apiPullBranch(path: string, remote?: string, strategy?: PullStrategy) {
+  return runActivity('git.pull', () => pullBranch(path, remote, strategy))
 }
 
 export async function apiPushBranch(path: string, remote?: string, force?: boolean) {

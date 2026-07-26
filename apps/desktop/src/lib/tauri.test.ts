@@ -444,9 +444,9 @@ const cases: {
   },
   {
     name: 'pullBranch',
-    call: () => tauri.pullBranch('/repo', 'origin', true),
+    call: () => tauri.pullBranch('/repo', 'origin', 'rebase'),
     command: 'pull_branch',
-    args: { path: '/repo', remote: 'origin', rebase: true },
+    args: { path: '/repo', remote: 'origin', strategy: 'rebase' },
   },
   {
     name: 'pushBranch',

@@ -5,12 +5,16 @@ import { cn } from '../lib/utils'
 // A themed, accessible checkbox built on a native `<input type="checkbox">` — the
 // a11y gold standard (real form semantics, keyboard, focus, indeterminate). The
 // visible box + markers are sibling elements painted from theme tokens; the input
-// itself is `sr-only` (kept in the DOM and focusable, never `display:none`, so it
-// stays operable by keyboard and assistive tech). Everything reacts through
-// Tailwind `peer-*` variants, so the box, checkmark and dash are all DIRECT siblings
-// of the input — the general-sibling combinator behind `peer-checked:` cannot reach
-// a descendant of a sibling. Replaces the ad-hoc `h-4 w-4 rounded border-border`
-// inputs scattered across the settings sections.
+// is transparent but stretched over the whole control, so the box the user sees IS
+// the hit area. It must never go back to `sr-only`: that clips the input to 1px, and
+// since the painted layers are `pointer-events-none`, a bare `<Checkbox>` outside a
+// `<label>` then has nothing to click at all — clicks land on the wrapper and are
+// swallowed. Every call site used to wrap it in a `<label>`, which hid the problem
+// until one didn't. Everything reacts through Tailwind `peer-*` variants, so the box,
+// checkmark and dash are all DIRECT siblings of the input — the general-sibling
+// combinator behind `peer-checked:` cannot reach a descendant of a sibling. Replaces
+// the ad-hoc `h-4 w-4 rounded border-border` inputs scattered across the settings
+// sections.
 export interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
   /** Render the mixed/tri-state visual and set `aria-checked="mixed"`. */
   indeterminate?: boolean
@@ -36,7 +40,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
           checked={checked}
           disabled={disabled}
           aria-checked={indeterminate ? 'mixed' : undefined}
-          className="peer sr-only"
+          className="peer absolute inset-0 m-0 h-full w-full cursor-pointer appearance-none opacity-0 disabled:cursor-not-allowed"
           {...props}
         />
         {/* Box. The checked/indeterminate fill rides the `badge` component-token pair,

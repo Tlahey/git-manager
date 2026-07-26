@@ -1,10 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
-}))
+import { renderWithLanguage } from '../../../test/i18n'
 
 const { useDailySummary } = vi.hoisted(() => ({ useDailySummary: vi.fn() }))
 vi.mock('../../../hooks/useDailySummary', () => ({ useDailySummary }))
@@ -36,7 +33,7 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('DailySummaryPanel', () => {
+describe('DailySummaryPanel — content', () => {
   it('renders the headline and both bullet lists when a summary exists', () => {
     useDailySummary.mockReturnValue(
       buildState({
@@ -55,20 +52,51 @@ describe('DailySummaryPanel', () => {
     expect(screen.getByTestId('daily-summary-content')).toBeInTheDocument()
   })
 
+  it('titles the panel and names the project', () => {
+    useDailySummary.mockReturnValue(buildState())
+    render(<DailySummaryPanel path="/Users/me/projects/repo-a" onClose={vi.fn()} />)
+    expect(screen.getByText('Daily briefing')).toBeInTheDocument()
+    expect(screen.getByText('repo-a')).toBeInTheDocument()
+  })
+
+  it('heads each list and shows a per-list empty message', () => {
+    useDailySummary.mockReturnValue(
+      buildState({ summary: { headline: 'h', yesterday: [], today: [] } })
+    )
+    render(<DailySummaryPanel path="/repo/a" onClose={vi.fn()} />)
+    expect(screen.getByText('Yesterday')).toBeInTheDocument()
+    expect(screen.getByText('Today')).toBeInTheDocument()
+    expect(screen.getByText('No recent activity.')).toBeInTheDocument()
+    expect(screen.getByText('Nothing suggested.')).toBeInTheDocument()
+  })
+
+  it('interpolates the generation time into the timestamp line', () => {
+    useDailySummary.mockReturnValue(
+      buildState({
+        summary: { headline: 'h', yesterday: [], today: [] },
+        generatedAt: Date.UTC(2026, 6, 25, 12, 0),
+      })
+    )
+    render(<DailySummaryPanel path="/repo/a" onClose={vi.fn()} />)
+    expect(screen.getByText(/^Generated .+/)).toBeInTheDocument()
+  })
+
   it('shows a generate call-to-action when there is no summary yet', async () => {
     const generate = vi.fn()
     useDailySummary.mockReturnValue(buildState({ generate }))
     const user = userEvent.setup()
     render(<DailySummaryPanel path="/repo/a" onClose={vi.fn()} />)
-    expect(screen.getByText('dashboard.summary.empty')).toBeInTheDocument()
-    await user.click(screen.getByText('dashboard.summary.generate'))
+    expect(
+      screen.getByText('Generate a briefing to see what was done and what could be planned.')
+    ).toBeInTheDocument()
+    await user.click(screen.getByText('Generate'))
     expect(generate).toHaveBeenCalledOnce()
   })
 
   it('shows a spinner while generating with no prior summary', () => {
     useDailySummary.mockReturnValue(buildState({ isGenerating: true }))
     render(<DailySummaryPanel path="/repo/a" onClose={vi.fn()} />)
-    expect(screen.getByText('dashboard.summary.generating')).toBeInTheDocument()
+    expect(screen.getByText('Generating briefing…')).toBeInTheDocument()
   })
 
   it('surfaces the error with a retry that regenerates', async () => {
@@ -76,11 +104,20 @@ describe('DailySummaryPanel', () => {
     useDailySummary.mockReturnValue(buildState({ error: 'provider unreachable', generate }))
     const user = userEvent.setup()
     render(<DailySummaryPanel path="/repo/a" onClose={vi.fn()} />)
+    expect(screen.getByText("Couldn't generate the briefing")).toBeInTheDocument()
     expect(screen.getByText('provider unreachable')).toBeInTheDocument()
-    await user.click(screen.getByText('dashboard.summary.retry'))
+    await user.click(screen.getByText('Retry'))
     expect(generate).toHaveBeenCalledOnce()
   })
 
+  it('renders the French copy when the app is in French', () => {
+    useDailySummary.mockReturnValue(buildState({ isGenerating: true }))
+    renderWithLanguage(<DailySummaryPanel path="/repo/a" onClose={vi.fn()} />, 'fr')
+    expect(screen.getByText('Génération du briefing…')).toBeInTheDocument()
+  })
+})
+
+describe('DailySummaryPanel — header controls', () => {
   it('calls onClose from the close button', async () => {
     const onClose = vi.fn()
     useDailySummary.mockReturnValue(buildState())
@@ -99,5 +136,33 @@ describe('DailySummaryPanel', () => {
     render(<DailySummaryPanel path="/repo/a" onClose={vi.fn()} />)
     await user.click(screen.getByTestId('daily-summary-refresh-button'))
     expect(generate).toHaveBeenCalledOnce()
+  })
+
+  it('gives the icon-only close button an accessible name', () => {
+    useDailySummary.mockReturnValue(buildState())
+    render(<DailySummaryPanel path="/repo/a" onClose={vi.fn()} />)
+    expect(screen.getByTestId('daily-summary-close-button')).toHaveAccessibleName('Close')
+  })
+
+  it('names the refresh button even when its label is hidden at narrow widths', () => {
+    useDailySummary.mockReturnValue(buildState())
+    render(<DailySummaryPanel path="/repo/a" onClose={vi.fn()} />)
+    expect(screen.getByTestId('daily-summary-refresh-button')).toHaveAccessibleName('Regenerate')
+  })
+
+  it('exposes the close label through a real tooltip rather than a title attribute', async () => {
+    useDailySummary.mockReturnValue(buildState())
+    const user = userEvent.setup()
+    render(<DailySummaryPanel path="/repo/a" onClose={vi.fn()} />)
+    const close = screen.getByTestId('daily-summary-close-button')
+    expect(close).not.toHaveAttribute('title')
+    await user.hover(close)
+    await waitFor(() => expect(screen.getByRole('tooltip')).toHaveTextContent('Close'))
+  })
+
+  it('disables the refresh button while a generation is in flight', () => {
+    useDailySummary.mockReturnValue(buildState({ isGenerating: true }))
+    render(<DailySummaryPanel path="/repo/a" onClose={vi.fn()} />)
+    expect(screen.getByTestId('daily-summary-refresh-button')).toBeDisabled()
   })
 })
