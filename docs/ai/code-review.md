@@ -88,6 +88,11 @@ diff, and not one line of the feature under review.**
 The budget is therefore spent per file, by
 [`budgetDiff`](../../packages/ai/src/features/diffBudget.ts), on three rules:
 
+> This section describes machinery the review introduced but no longer owns. The sizing, the omitted
+> list and the coverage report live in
+> [`diffCoverage.ts`](../../packages/ai/src/features/diffCoverage.ts) and are shared with the
+> [commit explanation](./commit-explanation.md#reading-a-big-commit); the review is one caller.
+
 | Rule | Why |
 | ---- | --- |
 | **Tiers.** Source, then tests, then docs/config, then generated files | A lockfile can consume an entire budget on its own, and nobody has an opinion about its diff. A lower tier is served only from genuine surplus — if source was cut, nothing flows down |
@@ -142,9 +147,9 @@ where the system instruction lives. The symptom is a review that quietly stops o
 rules, with nothing anywhere saying why.
 
 Nothing in the app reads or negotiates a context window (no `num_ctx`, no `max_tokens`, anywhere), so
-[`assessPromptSize`](../../packages/ai/src/promptSize.ts) does not pretend to know one. It estimates
-the prompt's tokens and judges them against the window the app *ships against* — Ollama's 4096
-default, which is what a user gets unless they configured their Modelfile or `OLLAMA_CONTEXT_LENGTH`.
+[`promptSize.ts`](../../packages/ai/src/promptSize.ts) does not pretend to know one. It sizes the
+prompt against the window the user *declared*, defaulting to the one the app ships against — Ollama's
+4096, which is what a user gets unless they configured their Modelfile or `OLLAMA_CONTEXT_LENGTH`.
 
 That was first surfaced as an overflow *warning*. It is no longer, and the reason is worth recording:
 **once the budget followed the window, the prompt stopped overflowing.** It reads fewer files instead.
@@ -241,6 +246,8 @@ Beyond the [shared ones](./README.md#known-limitations):
 | ---- | ------ |
 | [`codeReview.test.ts`](../../packages/ai/src/features/codeReview.test.ts) | both prompt shapes, commit list, file statuses, budgeting, language, and the instruction's guarantees |
 | [`diffBudget.test.ts`](../../packages/ai/src/features/diffBudget.test.ts) | path classification, the backend's origin-prefixed headers, tier priority, whole-file preference, and the never-return-an-empty-diff floor |
+| [`diffCoverage.test.ts`](../../packages/ai/src/features/diffCoverage.test.ts) | the shared sizing: budget vs window, budget vs instruction length, the capped `NOT INCLUDED` list, and that the suggested window really reads everything |
+| [`CoverageNotice.test.tsx`](../../apps/desktop/src/components/git-graph/components/CoverageNotice.test.tsx) | the shared notice: silent when complete, informational styling, the window-too-small warning |
 | [`useCodeReview.test.ts`](../../apps/desktop/src/hooks/useCodeReview.test.ts) | scope routing, both refusals, streaming, branch memory, and that the working scope persists nothing |
 | [`CodeReviewPanel.test.tsx`](../../apps/desktop/src/components/git-graph/CodeReviewPanel.test.tsx) | both targets' headers, auto-start, stale-base warning, error decoding, and the three prompt-size states |
 | [`promptSize.test.ts`](../../packages/ai/src/promptSize.test.ts) | the estimate, the three risk bands, and that the assumed window is reported rather than left implicit |

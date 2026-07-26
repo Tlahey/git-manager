@@ -1,5 +1,6 @@
 import { useTranslation } from '@git-manager/i18n'
 import { useCodeReview, type CodeReviewTarget } from '../../hooks/useCodeReview'
+import { CoverageNotice } from './components/CoverageNotice'
 import { ExplanationPanelShell } from './components/ExplanationPanelShell'
 
 interface CodeReviewPanelProps {
@@ -45,38 +46,6 @@ export function CodeReviewPanel({ repoPath, target, baseRef, onClose }: CodeRevi
   const staleComparison =
     isBranch && comparedTo !== null && comparedTo !== baseRef && !isGenerating ? comparedTo : null
 
-  /**
-   * What the run read, and what it would take to read it all — informational, not a warning.
-   *
-   * It replaced an overflow warning, and the reason is that the warning stopped being true. While
-   * the diff budget was a constant, an oversized change produced an oversized prompt and the panel
-   * had to say so. Now the budget follows the model's window, so the prompt never overflows: it
-   * reads fewer files. That is not a failure to alarm someone about, it is a fact with an action
-   * attached — raise the window, read the rest — so it is phrased and coloured as such.
-   *
-   * Silent when everything was read, which is the common case on a normal change.
-   */
-  const coverageNotice =
-    coverage && !coverage.complete ? (
-      <p data-testid="code-review-coverage" className="text-[10px] text-muted-foreground">
-        {t('gitTree.codeReview.coverage', {
-          read: coverage.filesRead,
-          total: coverage.filesTotal,
-          window: Math.round(coverage.requiredContextTokens / 1024),
-        })}
-      </p>
-    ) : null
-
-  /**
-   * The one genuinely broken state left: a declared window too small to hold even the instruction.
-   * No amount of trimming the diff fixes it, so it stays a warning rather than information.
-   */
-  const unusableWindowNotice = coverage?.windowTooSmall ? (
-    <p data-testid="code-review-window-too-small" className="text-[10px] text-tone-danger">
-      {t('gitTree.codeReview.windowTooSmall')}
-    </p>
-  ) : null
-
   return (
     <ExplanationPanelShell
       testId="code-review-panel"
@@ -111,14 +80,7 @@ export function CodeReviewPanel({ repoPath, target, baseRef, onClose }: CodeRevi
       error={error}
       generatedAt={generatedAt}
       staleComparison={staleComparison}
-      notice={
-        unusableWindowNotice || coverageNotice ? (
-          <>
-            {unusableWindowNotice}
-            {coverageNotice}
-          </>
-        ) : null
-      }
+      notice={<CoverageNotice coverage={coverage} testIdPrefix="code-review" />}
       onGenerate={() => void review(baseRef)}
       onCancel={() => void cancel()}
       onForget={clear}

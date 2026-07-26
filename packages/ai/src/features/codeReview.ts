@@ -1,13 +1,16 @@
 import type { AiContext } from '../config'
 import type { StreamingFeature } from '../runtime'
-import { budgetDiff, splitDiffByFile } from './diffBudget'
-import { languageName } from './language'
+import { budgetDiff } from './diffBudget'
 import {
-  contextTokensFor,
-  DEFAULT_CONTEXT_TOKENS,
-  estimateTokens,
-  variableCharBudget,
-} from '../promptSize'
+  assessDiffCoverage,
+  cappedList,
+  diffCharBudget,
+  notIncludedSection,
+  OMITTED_RESERVE_TOKENS,
+  type DiffCoverage,
+} from './diffCoverage'
+import { languageName } from './language'
+import { DEFAULT_CONTEXT_TOKENS, estimateTokens } from '../promptSize'
 
 /**
  * The instruction (system prompt) for reviewing a diff.
@@ -63,22 +66,14 @@ Output rules (STRICT):
 
 /**
  * How much diff this feature may carry, derived from the model's own context window rather than
- * guessed.
- *
- * A fixed constant here was always two guesses pretending to be one: how much diff is useful, and
- * how much the model can actually hold. They are the same question. A user on a stock Ollama (4096
- * tokens) and a user who configured 32k should not get the same prompt — the first was silently
- * overflowing at the old 16000 characters, the second was being starved for no reason.
- *
- * So the budget is whatever is left of the window once the instruction, the prompt's envelope and
- * room for the answer are accounted for. The instruction is measured, not hardcoded, so editing it
- * cannot silently eat into the diff's share.
+ * guessed. See {@link diffCharBudget} for why a fixed character constant was two guesses pretending
+ * to be one; this is only the review's instruction plugged into it.
  */
 export function reviewDiffBudget(
   contextTokens: number = DEFAULT_CONTEXT_TOKENS,
   envelopeTokens: number = DEFAULT_ENVELOPE_TOKENS
 ): number {
-  return variableCharBudget(contextTokens, estimateTokens(CODE_REVIEW_INSTRUCTION) + envelopeTokens)
+  return diffCharBudget({ instruction: CODE_REVIEW_INSTRUCTION, contextTokens, envelopeTokens })
 }
 
 /**
@@ -93,25 +88,14 @@ export function reviewDiffBudget(
 const DEFAULT_ENVELOPE_TOKENS = 250
 
 /**
- * Caps on the two path lists in the prompt.
+ * Cap on the changed-file list in the prompt.
  *
- * Both are enumerations, and their value is not linear: knowing thirty of the files tells a reviewer
- * what kind of change this is, and the next twenty tell them nothing they will act on. Leaving them
- * unbounded spent a fifth of a small window on filenames.
- *
- * The omitted list needed a cap for a second, worse reason: it *grows as the diff budget shrinks*.
- * Uncapped, trimming the diff to fit made the envelope bigger, which shrank the diff further — a
- * feedback loop that pushed the total the wrong way exactly when room was tightest.
+ * It is an enumeration, and its value is not linear: knowing thirty of the files tells a reviewer
+ * what kind of change this is, and the next twenty tell them nothing they will act on. Leaving it
+ * unbounded spent a fifth of a small window on filenames. (The omitted list has its own cap, for a
+ * worse reason — see {@link MAX_LISTED_OMITTED_FILES}.)
  */
 const MAX_LISTED_CHANGED_FILES = 30
-const MAX_LISTED_OMITTED_FILES = 12
-
-/** Renders a capped path list, naming the count it did not print rather than dropping it silently. */
-function cappedList(paths: string[], max: number): string {
-  const shown = paths.slice(0, max).map((p) => `- ${p}`)
-  const rest = paths.length - shown.length
-  return rest > 0 ? `${shown.join('\n')}\n- …and ${rest} more` : shown.join('\n')
-}
 
 /**
  * What is being reviewed. The two scopes answer the same question at the two moments it is actually
@@ -134,10 +118,6 @@ export interface CodeReviewInput {
    * {@link reviewDiffBudget}. Absent falls back to the pessimistic default. */
   contextTokens?: number
 }
-
-/** Reserve for the omitted-file list, which is not yet known when the diff budget is computed. It is
- * *bounded* (see {@link MAX_LISTED_OMITTED_FILES}), so a flat reserve covers it without circularity. */
-const OMITTED_RESERVE_TOKENS = 250
 
 /** Everything in the prompt that precedes the omitted list and the diff — the part whose size is
  * known before any budgeting happens. Shared so {@link buildCodeReviewPrompt} and
@@ -191,15 +171,9 @@ export function buildCodeReviewPrompt(input: CodeReviewInput): string {
   // spend the whole allowance on documentation and tests and never reach the code. See diffBudget.
   const budgeted = budgetDiff(context.diff, reviewDiffBudget(input.contextTokens, envelopeTokens))
 
-  // Stated once, in the header, and deliberately *before* the diff. The model needs this to scope
-  // its closing coverage line — and stating it up front is what stops it from rediscovering the
-  // truncation mid-diff and turning it into the headline.
-  if (budgeted.omitted.length > 0) {
-    prompt += `\nNOT INCLUDED below (budget exhausted) — you have not read these, do not review them:\n${cappedList(
-      budgeted.omitted,
-      MAX_LISTED_OMITTED_FILES
-    )}\n`
-  }
+  // Stated once, in the header, and deliberately *before* the diff — the model needs this to scope
+  // its closing coverage line.
+  prompt += notIncludedSection(budgeted.omitted, 'review')
 
   const diffLabel = isBranch ? 'DIFF (base..branch)' : 'DIFF (working tree vs HEAD)'
   prompt += `\n--- ${diffLabel} ---\n${budgeted.text}\n--- END DIFF ---
@@ -209,66 +183,17 @@ Review these changes.`
   return prompt
 }
 
-/** What a review actually managed to read, and what it would take to read all of it. */
-export interface CodeReviewCoverage {
-  /**
-   * Files whose diff reached the prompt **in full**.
-   *
-   * Truncated files are deliberately excluded rather than counted as read: counting them produced
-   * the self-contradicting "50 of 50 files read — reading all of it needs a bigger window", and a
-   * file the model saw half of is one it can draw a wrong conclusion from. Only whole files are
-   * honestly "read".
-   */
-  filesRead: number
-  /** Files in the changeset. */
-  filesTotal: number
-  /** True when everything was read — nothing omitted, nothing cut short. */
-  complete: boolean
-  /** Smallest common context window that would carry the whole diff, in tokens. */
-  requiredContextTokens: number
-  /**
-   * The declared window leaves no room for any diff at all — everything it can hold is instruction
-   * and reserve. The one state trimming cannot fix, and the only one still worth a warning rather
-   * than information: every other shortfall just means fewer files were read.
-   */
-  windowTooSmall: boolean
-}
+/** What a review actually managed to read, and what it would take to read all of it. Shared with
+ * every other diff-carrying feature — the question is the same one, so is the answer. */
+export type CodeReviewCoverage = DiffCoverage
 
-/** Window sizes people actually configure. Reporting "you need 21 473 tokens" is true and useless;
- * reporting the next real rung tells the reader what to go and set. */
-const COMMON_WINDOWS = [4096, 8192, 16384, 32768, 65536, 131072, 262144]
-
-function nextCommonWindow(tokens: number): number {
-  return COMMON_WINDOWS.find((w) => w >= tokens) ?? tokens
-}
-
-/**
- * What this review will and will not have read, computed without sending anything.
- *
- * This exists because the *useful* thing to tell a user changed. While the diff budget was a fixed
- * constant, the question was "will this overflow?" — a failure. Now that the budget follows the
- * window, the prompt never overflows: it shrinks. So the question became "what is my window costing
- * me?", which is information, not a warning, and which the user can act on by raising it.
- */
+/** What this review will and will not have read, computed without sending anything. */
 export function assessCodeReviewCoverage(input: CodeReviewInput): CodeReviewCoverage {
-  const envelopeTokens = estimateTokens(buildPromptHeader(input)) + OMITTED_RESERVE_TOKENS
-  const budgeted = budgetDiff(input.context.diff, reviewDiffBudget(input.contextTokens, envelopeTokens))
-
-  const filesTotal = splitDiffByFile(input.context.diff).length
-  const filesRead = filesTotal - budgeted.omitted.length - budgeted.truncated.length
-
-  return {
-    filesRead,
-    filesTotal,
-    complete: budgeted.omitted.length === 0 && budgeted.truncated.length === 0,
-    windowTooSmall: reviewDiffBudget(input.contextTokens, envelopeTokens) === 0,
-    requiredContextTokens: nextCommonWindow(
-      contextTokensFor(
-        input.context.diff.length,
-        estimateTokens(CODE_REVIEW_INSTRUCTION) + envelopeTokens
-      )
-    ),
-  }
+  return assessDiffCoverage(input.context.diff, {
+    instruction: CODE_REVIEW_INSTRUCTION,
+    envelopeTokens: estimateTokens(buildPromptHeader(input)) + OMITTED_RESERVE_TOKENS,
+    contextTokens: input.contextTokens,
+  })
 }
 
 /**

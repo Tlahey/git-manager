@@ -1,3 +1,4 @@
+import type { DiffCoverage } from '@git-manager/ai'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
@@ -23,6 +24,18 @@ export interface StoredExplanation {
   comparedTo: string
   /** Epoch milliseconds when it was generated, so the panel can say how old it is. */
   generatedAt: number
+  /**
+   * How much of the change the run behind {@link text} actually read.
+   *
+   * Kept *with* the text, not alongside it in a hook's state, because it is a property of this
+   * answer rather than of the session. Left out at first on the reasoning that coverage "describes
+   * the run" — which had it backwards: a remembered answer kept its confident prose and its age line
+   * but silently dropped the caveat, so a stale explanation read as *more* trustworthy than a fresh
+   * one. "Read 6 of 26 files" has to survive as long as the sentences it qualifies.
+   *
+   * Optional: entries written before this existed have none, and a caller may not measure it.
+   */
+  coverage?: DiffCoverage
 }
 
 interface AiExplanationState {
@@ -34,7 +47,8 @@ interface AiExplanationState {
     kind: ExplanationKind,
     ref: string,
     comparedTo: string,
-    text: string
+    text: string,
+    coverage?: DiffCoverage
   ) => void
   clear: (repoPath: string, kind: ExplanationKind, ref: string) => void
   /** Drops every stored explanation — exposed for Settings/debug rather than used by the panels. */
@@ -71,11 +85,16 @@ export const useAiExplanationStore = create<AiExplanationState>()(
 
       get: (repoPath, kind, ref) => get().explanations[explanationKey(repoPath, kind, ref)],
 
-      set: (repoPath, kind, ref, comparedTo, text) =>
+      set: (repoPath, kind, ref, comparedTo, text, coverage) =>
         set((state) => ({
           explanations: {
             ...state.explanations,
-            [explanationKey(repoPath, kind, ref)]: { text, comparedTo, generatedAt: Date.now() },
+            [explanationKey(repoPath, kind, ref)]: {
+              text,
+              comparedTo,
+              generatedAt: Date.now(),
+              coverage,
+            },
           },
         })),
 
