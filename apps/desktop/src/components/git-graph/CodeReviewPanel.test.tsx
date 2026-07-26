@@ -158,10 +158,11 @@ describe('CodeReviewPanel — shared chrome', () => {
   })
 })
 
+// What the notice *says* is covered once, in components/CoverageNotice.test.tsx — it is shared with
+// the commit explanation. What matters here is only that this panel hands its own coverage over,
+// under its own testid prefix.
 describe('CodeReviewPanel — coverage', () => {
   it('says nothing when the whole change was read', () => {
-    // The common case on a normal change. A line every run would be noise on a panel that already
-    // carries an age line, a comparison and a stale-base warning.
     codeReview.coverage = {
       filesRead: 8,
       filesTotal: 8,
@@ -187,22 +188,7 @@ describe('CodeReviewPanel — coverage', () => {
     expect(notice).toHaveTextContent('about a 32k-token context window')
   })
 
-  it('is informational, not an alarm', () => {
-    // Deliberate: the prompt no longer overflows, it reads less. That is a fact with an action
-    // attached, not a failure — so it must not be styled like the danger it used to be.
-    codeReview.coverage = {
-      filesRead: 2,
-      filesTotal: 40,
-      complete: false,
-      requiredContextTokens: 65536,
-      windowTooSmall: false,
-    }
-    renderWorking()
-    expect(screen.getByTestId('code-review-coverage').className).toContain('text-muted-foreground')
-  })
-
   it('warns when the window leaves no room for any diff', () => {
-    // The one state trimming cannot fix, and so the only one still styled as a warning.
     codeReview.coverage = {
       filesRead: 0,
       filesTotal: 12,
@@ -214,17 +200,5 @@ describe('CodeReviewPanel — coverage', () => {
     expect(screen.getByTestId('code-review-window-too-small')).toHaveTextContent(
       'leaves no room for the diff'
     )
-  })
-
-  it('stays quiet about the window when it is usable', () => {
-    codeReview.coverage = {
-      filesRead: 5,
-      filesTotal: 5,
-      complete: true,
-      requiredContextTokens: 8192,
-      windowTooSmall: false,
-    }
-    renderWorking()
-    expect(screen.queryByTestId('code-review-window-too-small')).not.toBeInTheDocument()
   })
 })

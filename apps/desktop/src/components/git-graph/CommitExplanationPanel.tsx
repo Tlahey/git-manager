@@ -3,6 +3,7 @@ import {
   useCommitExplanation,
   type CommitExplanationSubject,
 } from '../../hooks/useCommitExplanation'
+import { CoverageNotice } from './components/CoverageNotice'
 import { ExplanationPanelShell } from './components/ExplanationPanelShell'
 
 interface CommitExplanationPanelProps {
@@ -23,14 +24,20 @@ interface CommitExplanationPanelProps {
  * commit whose "fix stuff" tells you nothing. The prompt is explicitly told not to paraphrase the
  * message back.
  */
-export function CommitExplanationPanel({
-  repoPath,
-  commit,
-  onClose,
-}: CommitExplanationPanelProps) {
+export function CommitExplanationPanel({ repoPath, commit, onClose }: CommitExplanationPanelProps) {
   const { t } = useTranslation('git')
-  const { explain, cancel, clear, status, isGenerating, error, text, generatedAt, comparedTo } =
-    useCommitExplanation(repoPath, commit)
+  const {
+    explain,
+    cancel,
+    clear,
+    status,
+    isGenerating,
+    error,
+    text,
+    generatedAt,
+    comparedTo,
+    coverage,
+  } = useCommitExplanation(repoPath, commit)
 
   const currentComparison = commit.parentCount === 0 ? 'root' : `${commit.shortOid}^`
   // A commit is immutable, so a remembered explanation can only mismatch if the app's own
@@ -69,6 +76,9 @@ export function CommitExplanationPanel({
       error={error}
       generatedAt={generatedAt}
       staleComparison={staleComparison ? comparedTo : null}
+      // A big squashed merge no longer fits whole in a small window, so the panel says what it read
+      // — an explanation reads as confident whether it saw six files or forty.
+      notice={<CoverageNotice coverage={coverage} testIdPrefix="commit-explanation" />}
       onGenerate={() => void explain()}
       onCancel={() => void cancel()}
       onForget={clear}

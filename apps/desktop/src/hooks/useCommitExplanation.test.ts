@@ -137,6 +137,54 @@ describe('useCommitExplanation', () => {
     expect(result.current.error).toBe('AI_NO_COMMIT_CHANGES')
   })
 
+  it('sends the complete file inventory alongside the patch', async () => {
+    const { result } = renderHook(() => useCommitExplanation('/repo/demo', subject()))
+    await act(async () => {
+      await result.current.explain()
+    })
+    expect(mockedRun.mock.calls[0][1].files).toEqual([
+      { path: 'src/a.ts', status: 'modified', insertions: 2, deletions: 1 },
+    ])
+  })
+
+  it("uses the path the patch's own header carries, so dropped files can be marked", async () => {
+    // A deletion has no new path; `formatUnifiedPatch` writes the old one into `diff --git`, and the
+    // list has to agree with it or a file left out of the budget cannot be marked as such.
+    mockedDiff.mockResolvedValue({
+      ...diff,
+      files: [{ ...diff.files[0], oldPath: 'src/gone.ts', newPath: '', status: 'deleted' }],
+    })
+    const { result } = renderHook(() => useCommitExplanation('/repo/demo', subject()))
+    await act(async () => {
+      await result.current.explain()
+    })
+    const { files, patch } = mockedRun.mock.calls[0][1]
+    expect(files[0].path).toBe('src/gone.ts')
+    expect(patch).toContain('diff --git a/src/gone.ts b/src/gone.ts')
+  })
+
+  it("sizes the patch against the model's declared context window", async () => {
+    useSettingsStore.setState((s) => ({
+      settings: { ...s.settings, ai: { ...s.settings.ai, contextTokens: 32768 } },
+    }))
+    const { result } = renderHook(() => useCommitExplanation('/repo/demo', subject()))
+    await act(async () => {
+      await result.current.explain()
+    })
+    // Passed through rather than left to the pessimistic default: the flat 8000-character cut it
+    // replaces overflowed a small window and starved a large one.
+    expect(mockedRun.mock.calls[0][1].contextTokens).toBe(32768)
+  })
+
+  it('reports what the run read, so a partially-read commit says so', async () => {
+    const { result } = renderHook(() => useCommitExplanation('/repo/demo', subject()))
+    expect(result.current.coverage).toBeNull()
+    await act(async () => {
+      await result.current.explain()
+    })
+    expect(result.current.coverage).toMatchObject({ filesTotal: 1, filesRead: 1, complete: true })
+  })
+
   it('surfaces a failure from the diff fetch', async () => {
     mockedDiff.mockRejectedValue(new Error('boom'))
     const { result } = renderHook(() => useCommitExplanation('/repo/demo', subject()))
@@ -153,9 +201,9 @@ describe('useCommitExplanation — memory', () => {
     const { result } = renderHook(() => useCommitExplanation('/repo/demo', subject()))
     await generate(() => result.current.explain())
 
-    expect(useAiExplanationStore.getState().get('/repo/demo', 'commit', 'abc1234def')).toMatchObject(
-      { text: 'Adds a constant', comparedTo: 'abc1234^' }
-    )
+    expect(
+      useAiExplanationStore.getState().get('/repo/demo', 'commit', 'abc1234def')
+    ).toMatchObject({ text: 'Adds a constant', comparedTo: 'abc1234^' })
   })
 
   it('records a root commit as compared to nothing', async () => {
@@ -181,9 +229,29 @@ describe('useCommitExplanation — memory', () => {
   })
 
   it('does not collide with a branch explanation of the same name', async () => {
-    useAiExplanationStore.getState().set('/repo/demo', 'branch', 'abc1234def', 'main', 'branch text')
+    useAiExplanationStore
+      .getState()
+      .set('/repo/demo', 'branch', 'abc1234def', 'main', 'branch text')
     const { result } = renderHook(() => useCommitExplanation('/repo/demo', subject()))
     expect(result.current.hasStored).toBe(false)
+  })
+
+  it('remembers what the run read, so a stored answer keeps its caveat', async () => {
+    // Without this the text and its age survived a reload while "read 6 of 26 files" did not, which
+    // made an old answer look more authoritative than a fresh one.
+    const first = renderHook(() => useCommitExplanation('/repo/demo', subject()))
+    await generate(() => first.result.current.explain())
+    first.unmount()
+
+    const { result } = renderHook(() => useCommitExplanation('/repo/demo', subject()))
+    expect(result.current.coverage).toMatchObject({ filesTotal: 1, complete: true })
+  })
+
+  it('drops the remembered coverage along with the text', async () => {
+    const { result } = renderHook(() => useCommitExplanation('/repo/demo', subject()))
+    await generate(() => result.current.explain())
+    act(() => result.current.clear())
+    expect(result.current.coverage).toBeNull()
   })
 
   it('clear forgets it', async () => {

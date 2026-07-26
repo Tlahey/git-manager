@@ -43,8 +43,13 @@ export {
   commitExplanationFeature,
   COMMIT_EXPLANATION_INSTRUCTION,
   buildCommitExplanationPrompt,
+  assessCommitExplanationCoverage,
 } from './commitExplanation'
-export type { CommitExplanationInput, CommitExplanationCommit } from './commitExplanation'
+export type {
+  CommitExplanationInput,
+  CommitExplanationCommit,
+  CommitExplanationFile,
+} from './commitExplanation'
 export {
   workingExplanationFeature,
   WORKING_EXPLANATION_INSTRUCTION,
@@ -62,6 +67,15 @@ export type { CodeReviewInput, CodeReviewScope, CodeReviewCoverage } from './cod
 export { languageName } from './language'
 export { budgetDiff, splitDiffByFile, classifyDiffPath } from './diffBudget'
 export type { BudgetedDiff, DiffFileSection, DiffFileTier } from './diffBudget'
+export {
+  assessDiffCoverage,
+  cappedList,
+  diffCharBudget,
+  notIncludedSection,
+  MAX_LISTED_OMITTED_FILES,
+  OMITTED_RESERVE_TOKENS,
+} from './diffCoverage'
+export type { DiffCoverage, DiffPromptSizing } from './diffCoverage'
 export {
   DEFAULT_COMMIT_TYPES,
   parseCommitlintRules,
