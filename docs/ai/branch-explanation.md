@@ -11,7 +11,7 @@ Answers "what is this branch even about?" — for a branch you didn't write, wit
 | **Kind** | streaming markdown |
 | **Temperature** | 0.2 |
 | **Context scope** | `range` — `merge-base(base, branch)..branch` |
-| **Diff budget** | 8000 chars |
+| **Diff budget** | derived from the model's context window, spent per file — see [Known limitations](./README.md#known-limitations) #3 and the shared [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts) |
 | **UI** | [`BranchExplanationPanel`](../../apps/desktop/src/components/git-graph/BranchExplanationPanel.tsx) — right panel — via [`useBranchExplanation`](../../apps/desktop/src/hooks/useBranchExplanation.ts) |
 | **Memory** | [`aiExplanation.store`](../../apps/desktop/src/stores/aiExplanation.store.ts), persisted per repo + branch |
 
@@ -135,7 +135,7 @@ Beyond the [shared ones](./README.md#known-limitations):
 | Limitation | Note |
 | ---------- | ---- |
 | **The base is a guess** | A branch cut from `develop` in a repo configured for `origin/main` is explained against the wrong base. There's no base picker in the panel — the PR composer has one, this doesn't. A stored summary at least reports which base it used |
-| **8000-char diff budget** | A long-lived branch is explained from its first files. The instruction tells the model to say what it couldn't see, but that only mitigates it |
+| **A long branch is still read partially** | The budget follows the window and spends itself on source before tests before docs, and the commit + file lists keep the *scope* right whatever fits — but a branch range is the largest diff the app sends, so on a stock 4096-token window the explanation is written from a handful of files plus two lists. The panel's coverage line says so; the text is forbidden to. Raising the window is the only thing that deepens it |
 | **Merge commits are excluded from the subject list** | Correct for "what did this branch author", but a branch that mainly merges others reads as emptier than it is |
 | **No incremental view** | Always the whole branch; there's no "what changed since I last looked", even though the store knows when the last summary was written |
 | **Memory never expires** | Stored summaries are kept until explicitly deleted, so a stale one can outlive the branch it describes. The age and base are shown; judging them is the user's job |
@@ -144,7 +144,7 @@ Beyond the [shared ones](./README.md#known-limitations):
 
 | Test | Covers |
 | ---- | ------ |
-| [`branchExplanation.test.ts`](../../packages/ai/src/features/branchExplanation.test.ts) | prompt shape, no-commits wording, missing base ref, truncation, language |
+| [`branchExplanation.test.ts`](../../packages/ai/src/features/branchExplanation.test.ts) | prompt shape, no-commits wording, missing base ref, language, window-sized budget (fits every window, long commit list paid out of the diff, code before noise, omitted files named before the diff), coverage, and the instruction's reversal — the old "say what you could not see" rule is now asserted *absent* |
 | [`branchExplanationBase.test.ts`](../../apps/desktop/src/lib/branchExplanationBase.test.ts) | target-branch precedence, fallbacks, self-exclusion, no-base |
 | [`useBranchExplanation.test.ts`](../../apps/desktop/src/hooks/useBranchExplanation.test.ts) | explicit head ref, language, empty-range refusal, what is and isn't remembered |
 | [`BranchExplanationPanel.test.tsx`](../../apps/desktop/src/components/git-graph/BranchExplanationPanel.test.tsx) | auto-start on open, no regeneration over a remembered summary, stale-base warning, stop/forget, error decoding |

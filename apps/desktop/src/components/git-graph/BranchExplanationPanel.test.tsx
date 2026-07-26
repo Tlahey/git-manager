@@ -13,6 +13,13 @@ const explanation = vi.hoisted(() => ({
   generatedAt: null as number | null,
   comparedTo: null as string | null,
   hasStored: false,
+  coverage: null as {
+    filesRead: number
+    filesTotal: number
+    complete: boolean
+    requiredContextTokens: number
+    windowTooSmall: boolean
+  } | null,
 }))
 
 vi.mock('../../hooks/useBranchExplanation', () => ({
@@ -48,6 +55,7 @@ beforeEach(() => {
     generatedAt: null,
     comparedTo: null,
     hasStored: false,
+    coverage: null,
   })
 })
 
@@ -146,5 +154,36 @@ describe('BranchExplanationPanel', () => {
     const { onClose } = renderPanel()
     await user.click(screen.getByTestId('explanation-close'))
     expect(onClose).toHaveBeenCalled()
+  })
+})
+
+// What the notice *says* is covered once, in components/CoverageNotice.test.tsx. What matters here
+// is that a branch explanation carries one at all — a branch range is the largest diff the app
+// sends, and the instruction now forbids the text itself from mentioning what it could not read.
+describe('BranchExplanationPanel — coverage', () => {
+  it('says how much of a large branch was actually read', () => {
+    explanation.coverage = {
+      filesRead: 9,
+      filesTotal: 63,
+      complete: false,
+      requiredContextTokens: 65536,
+      windowTooSmall: false,
+    }
+    renderPanel()
+    expect(screen.getByTestId('branch-explanation-coverage')).toHaveTextContent(
+      'Read 9 of 63 changed files in full'
+    )
+  })
+
+  it('stays silent on a branch that fit whole', () => {
+    explanation.coverage = {
+      filesRead: 4,
+      filesTotal: 4,
+      complete: true,
+      requiredContextTokens: 8192,
+      windowTooSmall: false,
+    }
+    renderPanel()
+    expect(screen.queryByTestId('branch-explanation-coverage')).not.toBeInTheDocument()
   })
 })

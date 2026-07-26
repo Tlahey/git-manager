@@ -1,4 +1,5 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
+import { assessWorkingExplanationCoverage, type DiffCoverage } from '@git-manager/ai'
 import { apiGetAiContext, workingExplanationService } from '../api/ai.api'
 import { useSettingsStore } from '../stores/settings.store'
 import { useAiStream, type AiStreamStatus } from './useAiStream'
@@ -22,17 +23,36 @@ export function useWorkingExplanation(repoPath: string) {
   const { run, cancel, reset, status, error, text } = useAiStream(workingExplanationService.cancel)
   const aiConnection = useSettingsStore((s) => s.settings.ai)
   const language = useSettingsStore((s) => s.settings.language)
+  // The model's declared context window sizes how much of the working diff is sent.
+  const contextTokens = aiConnection.contextTokens
+
+  /**
+   * How much of the tree the last run actually read.
+   *
+   * Needed here for a sharper reason than on the other panels: this summary's job is to say how many
+   * *separate* things are in progress, and a model shown a third of the files will confidently name
+   * a third of the work. Nothing is persisted, so no mirror ref is needed — there is no completion
+   * callback storing this alongside the text.
+   */
+  const [coverage, setCoverage] = useState<DiffCoverage | null>(null)
 
   const explain = useCallback(
     () =>
-      run(async () => {
+      run(async (requestId) => {
         const context = await apiGetAiContext(repoPath, 'working')
         // A clean tree has nothing to summarize; asking anyway would invent work that isn't there.
         if (!context.diff.trim()) return 'AI_NO_WORKING_CHANGES'
-        await workingExplanationService.run(aiConnection, { context, language })
+        const input = { context, language, contextTokens }
+        setCoverage(assessWorkingExplanationCoverage(input))
+        await workingExplanationService.run(aiConnection, input, requestId)
       }),
-    [run, repoPath, aiConnection, language]
+    [run, repoPath, aiConnection, language, contextTokens]
   )
+
+  const clear = useCallback(() => {
+    setCoverage(null)
+    reset()
+  }, [reset])
 
   const isGenerating = status === 'connecting' || status === 'streaming'
 
@@ -40,7 +60,7 @@ export function useWorkingExplanation(repoPath: string) {
     explain,
     cancel,
     /** Drops the current summary. Nothing is persisted, so this is just a reset. */
-    clear: reset,
+    clear,
     status,
     isGenerating,
     error,
@@ -48,5 +68,7 @@ export function useWorkingExplanation(repoPath: string) {
     generatedAt: null,
     comparedTo: null,
     hasStored: false,
+    /** What the shown summary read, and the window needed to read it all. */
+    coverage,
   }
 }

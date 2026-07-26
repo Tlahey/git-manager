@@ -12,7 +12,7 @@ and what each commit should say — on a review screen where you accept, edit or
 | **Kind** | completion + JSON schema → `ProposedCommit[]` |
 | **Temperature** | 0.2 — a partitioning task, not a writing one |
 | **Context scope** | `working` (worktree vs HEAD, untracked included) |
-| **Diff budget** | 8000 chars |
+| **Diff budget** | derived from the model's context window, spent per file — see [Known limitations](./README.md#known-limitations) #3 and the shared [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts) |
 | **UI** | [`CommitBatchReviewDialog`](../../apps/desktop/src/components/git-graph/components/CommitBatchReviewDialog.tsx) via [`useCommitBatchReview`](../../apps/desktop/src/hooks/useCommitBatchReview.ts) |
 
 ---
@@ -128,13 +128,13 @@ Beyond the [shared ones](./README.md#known-limitations):
 | ---------- | ---- |
 | **Whole files only** | The unit is a file, so two unrelated changes *inside one file* cannot be split. That would need hunk-level staging, which the feature doesn't attempt |
 | **Applying is not atomic** | Commits are created in a loop; a failure midway leaves the earlier commits in place. Recoverable (they're ordinary commits) but not transactional |
-| **8000-char diff budget** | Exactly the case most likely to overflow it — a big messy working tree is when you reach for this feature. Beyond the budget the model partitions on the file list and a partial diff |
+| **A big tree is grouped from a partial diff** | Exactly the case most likely to hit the budget. The file list is never budgeted away — it is the set being partitioned, so cutting it would not shorten the answer but corrupt it — and the instruction requires every unread file to still be placed, from its path. So what a small window costs is *grouping quality* (a test placed beside its module by name rather than by content), not coverage; the leftovers pass in `useCommitBatchReview` catches anything the model still drops |
 | **No dependency checking** | "Ordering" is a prompt rule, not a verified property; nothing checks that commit *n* actually builds without commit *n+1* |
 
 ## Tests
 
 | Test | Covers |
 | ---- | ------ |
-| [`fileGrouping.test.ts`](../../packages/ai/src/features/fileGrouping.test.ts) | prompt shape, schema, and every tolerated parse variant |
+| [`fileGrouping.test.ts`](../../packages/ai/src/features/fileGrouping.test.ts) | prompt shape, schema, every tolerated parse variant, window-sized budget (fits every window, the complete file list survives the smallest one, code before noise), coverage, and the instruction's rule that an unread file must still be placed |
 | [`useCommitBatchReview.test.ts`](../../apps/desktop/src/hooks/useCommitBatchReview.test.ts) | path reconciliation, leftovers, accept/reject, sequential apply |
 | [`ai.api.test.ts`](../../apps/desktop/src/api/ai.api.test.ts) | schema reaches the transport; the response parses into typed commits |

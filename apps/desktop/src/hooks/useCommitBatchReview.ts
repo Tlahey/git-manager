@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import type { CommitConvention, CommitValidation } from '@git-manager/ai'
-import { validateCommitSubject } from '@git-manager/ai'
+import type { CommitConvention, CommitValidation, DiffCoverage } from '@git-manager/ai'
+import { assessFileGroupingCoverage, validateCommitSubject } from '@git-manager/ai'
 import { apiCreateCommit, apiStageFile, apiUnstageAll } from '../api/git.api'
 import { apiGetAiContext, fileGroupingService } from '../api/ai.api'
 import { useSettingsStore } from '../stores/settings.store'
@@ -40,6 +40,15 @@ export function useCommitBatchReview(
   const [error, setError] = useState<string | null>(null)
   const [proposals, setProposals] = useState<EditableProposal[]>([])
   const [convention, setConvention] = useState<CommitConvention | null>(null)
+  /**
+   * How much of the working diff the plan was reasoned from.
+   *
+   * The plan still covers every file whatever this says — the list the model partitions is sent
+   * whole, and the leftovers pass catches anything it drops. What a low number means here is that
+   * files were grouped by *path* rather than by content, which is worth knowing before accepting a
+   * plan that creates real commits.
+   */
+  const [coverage, setCoverage] = useState<DiffCoverage | null>(null)
   const [recentCommits, setRecentCommits] = useState<string[]>([])
 
   /** Opens the review screen and immediately asks the AI to propose the commit plan. */
@@ -64,7 +73,12 @@ export function useCommitBatchReview(
       // package injects them into the grouping prompt.
       context.commitInstructions = commitInstructions
       context.commitPattern = commitPattern
-      const commits = await fileGroupingService.run(aiConnection, context)
+      // The declared window sizes how much of the working diff the plan is reasoned from. The file
+      // list it partitions is sent whole regardless, so a small window costs grouping quality, not
+      // coverage — see the leftovers pass below, which catches whatever the model still drops.
+      const groupingInput = { context, contextTokens: aiConnection.contextTokens }
+      setCoverage(assessFileGroupingCoverage(groupingInput))
+      const commits = await fileGroupingService.run(aiConnection, groupingInput)
 
       const byPath = new Map(allWipChanges.map((f) => [f.path, f]))
       const assigned = new Set<string>()
@@ -166,6 +180,7 @@ export function useCommitBatchReview(
     canApply,
     acceptedCount: acceptedProposals.length,
     validations,
+    coverage,
   }
 }
 

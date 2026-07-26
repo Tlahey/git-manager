@@ -1,21 +1,35 @@
-import { listen } from '@tauri-apps/api/event'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
+import { assessPrDescriptionCoverage, type DiffCoverage } from '@git-manager/ai'
 import { apiGetAiContext, prDescriptionService } from '../api/ai.api'
 import { useSettingsStore } from '../stores/settings.store'
+import { useAiStream, type AiStreamStatus } from './useAiStream'
 
-export type PrDescriptionStatus = 'idle' | 'connecting' | 'streaming' | 'done' | 'error' | 'cancelled'
+/** Unchanged as a name and as a set of values — it was always the same union {@link useAiStream}
+ * exposes, declared twice because this hook predated the shared one. */
+export type PrDescriptionStatus = AiStreamStatus
 
 /**
- * Streams an AI-written PR description into the composer. Fetches `range`-scope git context
- * (`baseRef..HEAD` — the whole branch, not one commit) and hands it plus the repo's PR template to
- * {@link prDescriptionService}. Tokens arrive via `ai:*` Tauri events, exactly like
- * {@link useAiGeneration} for commit messages.
+ * Streams an AI-written PR description into the composer.
+ *
+ * Fetches `range`-scope git context (`baseRef..HEAD` — the whole branch, not one commit) and hands
+ * it plus the repo's PR template to {@link prDescriptionService}. The `ai:*` plumbing lives in
+ * {@link useAiStream}; like {@link useAiGeneration}, this hook carried its own copy until the shared
+ * one learned to forward tokens to a caller-owned surface, because the description streams into a
+ * textarea the composer controls.
  */
 export function usePrDescriptionGeneration(repoPath: string) {
-  const [status, setStatus] = useState<PrDescriptionStatus>('idle')
-  const [error, setError] = useState<string | null>(null)
-  const unlistenRef = useRef<(() => void) | null>(null)
+  const { run, cancel, status, error } = useAiStream(prDescriptionService.cancel)
   const settings = useSettingsStore((s) => s.settings)
+
+  /**
+   * How much of the branch the draft was written from.
+   *
+   * The only feature whose *output leaves the app*, which is exactly why this is worth surfacing:
+   * the description is forbidden from mentioning its own coverage — a caveat about truncation would
+   * be published on the pull request over the author's name — so this is the one place the author
+   * can learn, before they hit create, that the draft describes a third of the branch.
+   */
+  const [coverage, setCoverage] = useState<DiffCoverage | null>(null)
 
   const generate = useCallback(
     async (
@@ -24,71 +38,31 @@ export function usePrDescriptionGeneration(repoPath: string) {
       onToken: (token: string) => void,
       onDone: (full: string) => void
     ) => {
-      setStatus('connecting')
-      setError(null)
+      await run(
+        async (requestId) => {
+          // Range context spans the whole branch vs its base; git2 stays in Rust.
+          const context = await apiGetAiContext(repoPath, 'range', baseRef)
+          if (!context.diff.trim()) return 'No changes to describe'
 
-      if (unlistenRef.current) {
-        unlistenRef.current()
-        unlistenRef.current = null
-      }
-
-      let accumulated = ''
-
-      const unlistenToken = await listen<string>('ai:token', (e) => {
-        accumulated += e.payload
-        onToken(e.payload)
-        setStatus('streaming')
-      })
-
-      const unlistenDone = await listen<void>('ai:done', () => {
-        setStatus('done')
-        onDone(accumulated)
-        cleanup()
-      })
-
-      const unlistenError = await listen<string>('ai:error', (e) => {
-        setStatus('error')
-        setError(e.payload)
-        cleanup()
-      })
-
-      const unlistenCancelled = await listen<void>('ai:cancelled', () => {
-        setStatus('cancelled')
-        cleanup()
-      })
-
-      function cleanup() {
-        unlistenToken()
-        unlistenDone()
-        unlistenError()
-        unlistenCancelled()
-        unlistenRef.current = null
-      }
-
-      unlistenRef.current = cleanup
-
-      try {
-        // Range context spans the whole branch vs its base; git2 stays in Rust.
-        const context = await apiGetAiContext(repoPath, 'range', baseRef)
-        if (!context.diff.trim()) {
-          setStatus('error')
-          setError('No changes to describe')
-          cleanup()
-          return
+          const input = {
+            context,
+            templateContent,
+            contextTokens: settings.ai.contextTokens,
+          }
+          setCoverage(assessPrDescriptionCoverage(input))
+          await prDescriptionService.run(settings.ai, input, requestId)
+        },
+        {
+          onToken,
+          onComplete: onDone,
+          // The composer owns the textarea it streams into; tracking the text here too would
+          // re-render it once more per token for state nothing reads.
+          trackText: false,
         }
-        await prDescriptionService.run(settings.ai, { context, templateContent })
-      } catch (err) {
-        setStatus('error')
-        setError(String(err))
-        cleanup()
-      }
+      )
     },
-    [repoPath, settings.ai]
+    [run, repoPath, settings.ai]
   )
 
-  const cancel = useCallback(async () => {
-    await prDescriptionService.cancel()
-  }, [])
-
-  return { generate, cancel, status, error }
+  return { generate, cancel, status, error, coverage }
 }

@@ -1,12 +1,10 @@
-use super::ai_provider::{AiProvider, GenerateConfig};
+use super::ai_provider::{AiProvider, GenerateConfig, StreamHandle};
 use crate::error::AppError;
 use crate::models::AiProviderStatus;
 use async_trait::async_trait;
 use futures_util::StreamExt;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
-use tauri::{AppHandle, Emitter};
 
 /// One implementation covers every preset whose backend speaks the OpenAI Chat Completions API
 /// (`/v1/chat/completions` + `/v1/models`) — Ollama has supported this surface since v0.1.14
@@ -227,8 +225,7 @@ impl AiProvider for OpenAiCompatibleProvider {
         config: &GenerateConfig,
         system_prompt: &str,
         user_prompt: &str,
-        app: &AppHandle,
-        cancel: &Mutex<bool>,
+        stream_handle: &StreamHandle,
     ) -> Result<(), AppError> {
         let client = streaming_client_for(config)?;
 
@@ -256,8 +253,8 @@ impl AiProvider for OpenAiCompatibleProvider {
         let mut buffered_line = String::new();
 
         while let Some(chunk) = stream.next().await {
-            if *cancel.lock().unwrap() {
-                let _ = app.emit("ai:cancelled", ());
+            if stream_handle.is_cancelled() {
+                stream_handle.cancelled();
                 return Ok(());
             }
 
@@ -279,21 +276,21 @@ impl AiProvider for OpenAiCompatibleProvider {
                 let payload = payload.trim();
 
                 if payload == "[DONE]" {
-                    let _ = app.emit("ai:done", ());
+                    stream_handle.done();
                     return Ok(());
                 }
 
                 if let Ok(parsed) = serde_json::from_str::<ChatCompletionsChunk>(payload) {
                     if let Some(choice) = parsed.choices.first() {
                         if let Some(content) = &choice.delta.content {
-                            let _ = app.emit("ai:token", content);
+                            stream_handle.token(content);
                         }
                     }
                 }
             }
         }
 
-        let _ = app.emit("ai:done", ());
+        stream_handle.done();
         Ok(())
     }
 

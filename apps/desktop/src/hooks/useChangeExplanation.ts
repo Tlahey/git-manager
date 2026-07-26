@@ -1,5 +1,9 @@
-import { useCallback } from 'react'
-import type { ChangeExplanationFile } from '@git-manager/ai'
+import { useCallback, useState } from 'react'
+import {
+  assessChangeExplanationCoverage,
+  type ChangeExplanationFile,
+  type DiffCoverage,
+} from '@git-manager/ai'
 import { changeExplanationService } from '../api/ai.api'
 import { useSettingsStore } from '../stores/settings.store'
 import { useAiStream, type AiStreamStatus } from './useAiStream'
@@ -25,17 +29,33 @@ export function useChangeExplanation() {
   const { run, cancel, reset, status, error, text } = useAiStream(changeExplanationService.cancel)
   const aiConnection = useSettingsStore((s) => s.settings.ai)
   const language = useSettingsStore((s) => s.settings.language)
+  // The declared window is split between the patch and the file's content — see the feature.
+  const contextTokens = aiConnection.contextTokens
+
+  /**
+   * How much of the change the last run read. Reported per file like everywhere else, which on a
+   * one-file prompt makes the useful number `requiredContextTokens`: the window that would have
+   * carried both the whole patch *and* the file content it is supposed to be read against.
+   */
+  const [coverage, setCoverage] = useState<DiffCoverage | null>(null)
 
   const explain = useCallback(
     (request: ChangeExplanationRequest) =>
-      run(async () => {
+      run(async (requestId) => {
         if (!request.file.patch.trim()) return 'No changes to explain'
         // Language is a frontend/Settings concern (not from Rust) — inject it so the explanation is
         // written in the user's UI language.
-        await changeExplanationService.run(aiConnection, { ...request, language })
+        const input = { ...request, language, contextTokens }
+        setCoverage(assessChangeExplanationCoverage(input))
+        await changeExplanationService.run(aiConnection, input, requestId)
       }),
-    [run, aiConnection, language]
+    [run, aiConnection, language, contextTokens]
   )
 
-  return { explain, cancel, reset, status, error, text }
+  const clear = useCallback(() => {
+    setCoverage(null)
+    reset()
+  }, [reset])
+
+  return { explain, cancel, reset: clear, status, error, text, coverage }
 }

@@ -62,28 +62,29 @@ describe('ai.api pass-throughs', () => {
     expect(mocked.getAiContext).toHaveBeenCalledWith('/repo', 'range', 'main', undefined)
   })
 
-  it('apiCancelGeneration delegates to cancelGeneration', async () => {
+  it('apiCancelGeneration cancels the named generation, not every one', async () => {
     mocked.cancelGeneration.mockResolvedValue(undefined)
-    await api.apiCancelGeneration()
-    expect(mocked.cancelGeneration).toHaveBeenCalledOnce()
+    await api.apiCancelGeneration('req-1')
+    expect(mocked.cancelGeneration).toHaveBeenCalledWith('req-1')
   })
 })
 
 describe('feature services', () => {
   it('commitMessageService resolves preset→protocol + feature instruction, streams the prompt', async () => {
     mocked.aiGenerateStream.mockResolvedValue(undefined)
-    await api.commitMessageService.run(connection, context)
+    await api.commitMessageService.run(connection, { context }, 'req-1')
 
     expect(mocked.aiGenerateStream).toHaveBeenCalledWith(
       expect.objectContaining({ protocol: 'openai-compatible', temperature: 0.3 }),
       COMMIT_MESSAGE_INSTRUCTION,
-      expect.stringContaining('--- DIFF ---')
+      expect.stringContaining('--- DIFF ---'),
+      'req-1'
     )
   })
 
   it('fileGroupingService completes with the JSON schema then parses into typed commits', async () => {
     mocked.aiComplete.mockResolvedValue('{"commits":[{"commitMessage":"feat: a","files":["src/a.ts"]}]}')
-    const commits = await api.fileGroupingService.run(connection, context)
+    const commits = await api.fileGroupingService.run(connection, { context })
 
     expect(mocked.aiComplete).toHaveBeenCalledWith(
       expect.objectContaining({ temperature: 0.2 }),
@@ -106,12 +107,13 @@ describe('feature services', () => {
         deletions: 1,
       },
       fileContent: 'const b = 1',
-    })
+    }, 'req-1')
 
     expect(mocked.aiGenerateStream).toHaveBeenCalledWith(
       expect.objectContaining({ protocol: 'openai-compatible', temperature: 0.2 }),
       CHANGE_EXPLANATION_INSTRUCTION,
-      expect.stringContaining('--- PATCH ---')
+      expect.stringContaining('--- PATCH ---'),
+      'req-1'
     )
   })
 
@@ -120,12 +122,13 @@ describe('feature services', () => {
     await api.branchExplanationService.run(connection, {
       context: { ...context, baseRef: 'origin/main', rangeCommits: ['feat: a'] },
       language: 'fr',
-    })
+    }, 'req-1')
 
     expect(mocked.aiGenerateStream).toHaveBeenCalledWith(
       expect.objectContaining({ protocol: 'openai-compatible', temperature: 0.2 }),
       BRANCH_EXPLANATION_INSTRUCTION,
-      expect.stringContaining('--- DIFF (base..branch) ---')
+      expect.stringContaining('--- DIFF (base..branch) ---'),
+      'req-1'
     )
   })
 
@@ -135,7 +138,7 @@ describe('feature services', () => {
       runsDuring = useAiActivityStore.getState().runs
     })
 
-    await api.prDescriptionService.run(connection, { context, templateContent: null })
+    await api.prDescriptionService.run(connection, { context, templateContent: null }, 'req-1')
 
     expect(runsDuring).toHaveLength(1)
     expect(runsDuring[0].featureId).toBe('pr-description')
@@ -144,7 +147,7 @@ describe('feature services', () => {
 
   it('clears the run when a completion feature fails', async () => {
     mocked.aiComplete.mockRejectedValue(new Error('AI_PROVIDER_NOT_RUNNING'))
-    await expect(api.fileGroupingService.run(connection, context)).rejects.toThrow()
+    await expect(api.fileGroupingService.run(connection, { context })).rejects.toThrow()
     expect(useAiActivityStore.getState().runs).toEqual([])
   })
 

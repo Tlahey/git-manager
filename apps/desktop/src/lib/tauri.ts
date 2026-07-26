@@ -389,11 +389,15 @@ export const getAiContext = (
 export const getAiActivity = (path: string, sinceHours: number) =>
   invoke<AiActivity>('get_ai_activity', { path, sinceHours })
 
+/** `requestId` tags every `ai:*` event this generation emits, and is what {@link cancelGeneration}
+ * targets. The events are window-wide broadcasts, so without it a second generation started while
+ * the first streams receives the first's tokens. */
 export const aiGenerateStream = (
   config: AiGenerateConfig,
   systemPrompt: string,
-  userPrompt: string
-) => invoke<void>('ai_generate_stream', { config, systemPrompt, userPrompt })
+  userPrompt: string,
+  requestId: string
+) => invoke<void>('ai_generate_stream', { config, systemPrompt, userPrompt, requestId })
 
 export const aiComplete = (
   config: AiGenerateConfig,
@@ -402,7 +406,10 @@ export const aiComplete = (
   schema?: JsonSchema
 ) => invoke<string>('ai_complete', { config, systemPrompt, userPrompt, schema })
 
-export const cancelGeneration = () => invoke<void>('cancel_generation')
+/** Cancels one generation by the id its caller minted. An id that has already finished is a no-op
+ * on the Rust side — hitting stop as the last token lands is a normal race. */
+export const cancelGeneration = (requestId: string) =>
+  invoke<void>('cancel_generation', { requestId })
 
 // ─── Themes ───────────────────────────────────────────────────────────────────
 

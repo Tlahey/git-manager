@@ -65,8 +65,9 @@ export async function apiGetModelContextLimits(
   return getModelContextLimits(url, model)
 }
 
-export async function apiCancelGeneration() {
-  return cancelGeneration()
+/** Cancels one streaming generation by the id it was started with — see {@link tauriAiTransport}. */
+export async function apiCancelGeneration(requestId: string) {
+  return cancelGeneration(requestId)
 }
 
 /** Tauri-backed transport for `@git-manager/ai`'s runtime — the invoke wrappers are the only place
@@ -74,8 +75,12 @@ export async function apiCancelGeneration() {
  * whose tokens arrive via `ai:token`/`ai:done` events (see `useAiGeneration`); `runComplete`
  * resolves with the full response for structured features. */
 const tauriAiTransport: AiTransport = {
-  runStream: (config: AiGenerateConfig, systemPrompt: string, userPrompt: string) =>
-    aiGenerateStream(config, systemPrompt, userPrompt),
+  runStream: (
+    config: AiGenerateConfig,
+    systemPrompt: string,
+    userPrompt: string,
+    requestId: string
+  ) => aiGenerateStream(config, systemPrompt, userPrompt, requestId),
   runComplete: (
     config: AiGenerateConfig,
     systemPrompt: string,
@@ -99,8 +104,10 @@ const tauriAiTransport: AiTransport = {
 function trackedTransport(featureId: string): AiTransport {
   return {
     ...tauriAiTransport,
-    runStream: (config, systemPrompt, userPrompt) =>
-      withAiActivity(featureId, () => tauriAiTransport.runStream(config, systemPrompt, userPrompt)),
+    runStream: (config, systemPrompt, userPrompt, requestId) =>
+      withAiActivity(featureId, () =>
+        tauriAiTransport.runStream(config, systemPrompt, userPrompt, requestId)
+      ),
     runComplete: (config, systemPrompt, userPrompt, schema) =>
       withAiActivity(featureId, () =>
         tauriAiTransport.runComplete(config, systemPrompt, userPrompt, schema)

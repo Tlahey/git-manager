@@ -13,8 +13,15 @@ const { listeners, listen } = vi.hoisted(() => {
 })
 vi.mock('@tauri-apps/api/event', () => ({ listen }))
 
-function emit(event: string, payload?: unknown) {
-  listeners.get(event)?.forEach((h) => h({ payload }))
+/** The request id the hook minted for the generation in flight, read back off the mocked service.
+ * Every `ai:*` event now carries one and every listener filters on it, so an event emitted without
+ * the right id is ignored — see the cross-talk tests below. */
+function currentRequestId(): string {
+  return (mockedRun.mock.calls.at(-1)?.[2] as string) ?? 'no-run-started'
+}
+
+function emit(event: string, token?: string, requestId: string = currentRequestId()) {
+  listeners.get(event)?.forEach((h) => h({ payload: { requestId, token } }))
 }
 
 vi.mock('../api/ai.api', () => ({
@@ -76,7 +83,8 @@ describe('useBranchExplanation', () => {
     expect(mockedRun).toHaveBeenCalledWith(expect.anything(), {
       context: rangeContext,
       language: 'fr',
-    })
+      contextTokens: 4096,
+    }, expect.any(String))
   })
 
   it('accumulates streamed tokens', async () => {

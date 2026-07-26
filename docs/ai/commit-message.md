@@ -11,7 +11,7 @@ Writes the commit message for the currently **staged** changes, streaming it int
 | **Kind** | streaming |
 | **Temperature** | 0.3 — the lowest of the prose features; a commit subject is a near-mechanical summary |
 | **Context scope** | `staged` (index vs HEAD) |
-| **Diff budget** | 4000 chars |
+| **Diff budget** | derived from the model's context window, spent per file — see [Known limitations](./README.md#known-limitations) #3 and the shared [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts) |
 | **UI** | ✨ in [`WipStagingPanel`](../../apps/desktop/src/components/git-graph/components/WipStagingPanel.tsx) via [`useWipCommitPanel`](../../apps/desktop/src/hooks/useWipCommitPanel.ts) → [`useAiGeneration`](../../apps/desktop/src/hooks/useAiGeneration.ts) |
 
 ---
@@ -106,15 +106,15 @@ Beyond the [shared ones](./README.md#known-limitations):
 
 | Limitation | Note |
 | ---------- | ---- |
-| 4000-char diff budget, the smallest of any feature | A large staged changeset is summarized from its first hunks. Reasonable for a commit (which should be small) — but it is why the "stage everything then generate" habit gives worse messages than staging deliberately |
-| `useAiGeneration` predates `useAiStream` | Carries the two bugs that extraction fixed — listeners leaking past unmount, stacking across runs |
+| A large staged changeset is still read partially | The budget follows the window now rather than a flat 4000 characters, and spends itself on source before lockfiles — but a huge staged change still exceeds a small window. The omitted paths are named in the prompt and the instruction forbids scoping the subject to only what was read, which keeps `fix(ui)` off a change that also rewrote the backend. It remains true that staging deliberately gives better messages than "stage everything then generate" |
+| ~~`useAiGeneration` predates `useAiStream`~~ | **Fixed.** It now runs on the shared hook, which grew an `onToken` option for callers that stream into their own input. Both bugs the fork carried — listeners leaking past unmount, stacking across runs — are gone |
 | Only the **staged** diff is seen | By design: it describes what you are about to commit. Unstaged work is invisible, which is correct but occasionally surprising |
 
 ## Tests
 
 | Test | Covers |
 | ---- | ------ |
-| [`commitMessage.test.ts`](../../packages/ai/src/features/commitMessage.test.ts) | prompt assembly, scope detection, truncation |
+| [`commitMessage.test.ts`](../../packages/ai/src/features/commitMessage.test.ts) | prompt assembly, scope detection, window-sized budget (fits every window, a long commit convention paid out of the diff, code before noise, omitted paths named before the diff), coverage, and the instruction's committed-output rules |
 | [`commitConvention.test.ts`](../../packages/ai/src/features/commitConvention.test.ts) | commitlint parsing, conventional-history inference, validation |
-| [`useAiGeneration.test.ts`](../../apps/desktop/src/hooks/useAiGeneration.test.ts) | streaming, empty-staged refusal, validation wiring |
+| [`useAiGeneration.test.ts`](../../apps/desktop/src/hooks/useAiGeneration.test.ts) | streaming, empty-staged refusal, validation wiring, per-request cancel, and what it inherits from `useAiStream` (unmount cleanup, no listener stacking, another generation's events ignored, no write-back of an empty or cancelled answer) |
 | [`ai.api.test.ts`](../../apps/desktop/src/api/ai.api.test.ts) | the right instruction and temperature reach the transport |

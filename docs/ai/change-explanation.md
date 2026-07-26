@@ -11,7 +11,7 @@ Explains one file's pending diff — read **against the file it changes**, not j
 | **Kind** | streaming markdown |
 | **Temperature** | 0.2 — describing code that already exists wants reproducibility, not latitude |
 | **Input** | one file's patch + its current content (no `get_ai_context` call) |
-| **Budgets** | 8000 chars for the patch, 8000 for the file content, truncated independently |
+| **Budgets** | one window-derived pool, split between the patch and the file content — the patch is served first and floors at two thirds |
 | **UI** | [`ChangeExplanationPanel`](../../apps/desktop/src/components/git-graph/components/ChangeExplanationPanel.tsx) above the diff editor, via [`useChangeExplanation`](../../apps/desktop/src/hooks/useChangeExplanation.ts) |
 
 ---
@@ -82,14 +82,14 @@ Beyond the [shared ones](./README.md#known-limitations):
 | ---------- | ---- |
 | **One file at a time** | Deliberate, but it means a change spanning five files needs five runs and no answer covers the whole. The WIP row's "explain working changes" item — still disabled — is the missing counterpart |
 | **Working copy only** | The same panel would work verbatim on a commit's file diff; it's one condition in `DiffViewCenter` if that's wanted |
-| **The file's content is truncated head-first** | For a very long file, the model sees imports and top-level declarations but may miss the region the change is actually in |
+| **The file's content is cut head-first** | For a very long file the model sees imports and top-level declarations and may miss the region the change is actually in. This is why the instruction's absence-of-evidence rule is sharper here than anywhere else: the prompt has just promised the model the surrounding file, so "this function is never called" is a conclusion it will otherwise draw from a window that simply ended early |
 | **No cross-file awareness** | The model is told not to speculate about callers elsewhere, so a signature change is described locally — accurate, but narrower than a review |
 
 ## Tests
 
 | Test | Covers |
 | ---- | ------ |
-| [`changeExplanation.test.ts`](../../packages/ai/src/features/changeExplanation.test.ts) | prompt shape, missing-content wording, independent truncation, language |
+| [`changeExplanation.test.ts`](../../packages/ai/src/features/changeExplanation.test.ts) | prompt shape, missing-content wording, language, the shared two-part budget (fits every window, patch served before content, surplus handed to the content when the patch is small, no-content note when the window leaves no room), and coverage — which is computed per *file* here rather than by re-parsing headers, and counts a trimmed file content as a partial reading |
 | [`formatUnifiedPatch.test.ts`](../../apps/desktop/src/lib/formatUnifiedPatch.test.ts) | header forms, added/deleted/renamed, no-newline marker, round trip |
 | [`useChangeExplanation.test.ts`](../../apps/desktop/src/hooks/useChangeExplanation.test.ts) | input assembly, streaming, empty-patch refusal |
 | [`ChangeExplanationPanel.test.tsx`](../../apps/desktop/src/components/git-graph/components/ChangeExplanationPanel.test.tsx) | collapsed/streaming/done/error states, stale-file reset |

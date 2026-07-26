@@ -2,17 +2,20 @@ export {
   commitMessageFeature,
   COMMIT_MESSAGE_INSTRUCTION,
   buildCommitUserPrompt,
+  assessCommitMessageCoverage,
   detectScope,
   truncateDiff,
 } from './commitMessage'
+export type { CommitMessageInput } from './commitMessage'
 export {
   fileGroupingFeature,
   FILE_GROUPING_INSTRUCTION,
   FILE_GROUPING_SCHEMA,
   buildGroupingUserPrompt,
+  assessFileGroupingCoverage,
   parseCommitPlan,
 } from './fileGrouping'
-export type { ProposedCommit } from './fileGrouping'
+export type { ProposedCommit, FileGroupingInput } from './fileGrouping'
 export {
   dailySummaryFeature,
   DAILY_SUMMARY_INSTRUCTION,
@@ -25,18 +28,21 @@ export {
   prDescriptionFeature,
   PR_DESCRIPTION_INSTRUCTION,
   buildPrDescriptionUserPrompt,
+  assessPrDescriptionCoverage,
 } from './prDescription'
 export type { PrDescriptionInput } from './prDescription'
 export {
   changeExplanationFeature,
   CHANGE_EXPLANATION_INSTRUCTION,
   buildChangeExplanationPrompt,
+  assessChangeExplanationCoverage,
 } from './changeExplanation'
 export type { ChangeExplanationInput, ChangeExplanationFile } from './changeExplanation'
 export {
   branchExplanationFeature,
   BRANCH_EXPLANATION_INSTRUCTION,
   buildBranchExplanationPrompt,
+  assessBranchExplanationCoverage,
 } from './branchExplanation'
 export type { BranchExplanationInput } from './branchExplanation'
 export {
@@ -54,6 +60,7 @@ export {
   workingExplanationFeature,
   WORKING_EXPLANATION_INSTRUCTION,
   buildWorkingExplanationPrompt,
+  assessWorkingExplanationCoverage,
 } from './workingExplanation'
 export type { WorkingExplanationInput } from './workingExplanation'
 export {
@@ -72,6 +79,7 @@ export {
   cappedList,
   diffCharBudget,
   notIncludedSection,
+  nextCommonWindow,
   MAX_LISTED_OMITTED_FILES,
   OMITTED_RESERVE_TOKENS,
 } from './diffCoverage'
