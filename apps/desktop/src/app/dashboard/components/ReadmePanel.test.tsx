@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithLanguage } from '../../../test/i18n'
 
 const { useRepoReadme } = vi.hoisted(() => ({ useRepoReadme: vi.fn() }))
 vi.mock('../../../hooks/useRepoReadme', () => ({ useRepoReadme }))
@@ -35,6 +36,40 @@ describe('ReadmePanel — header', () => {
     await user.click(screen.getByTestId('readme-panel-close-button'))
     expect(onClose).toHaveBeenCalledOnce()
   })
+
+  it('gives the icon-only close button an accessible name, not a title attribute', async () => {
+    const user = userEvent.setup()
+    render(<ReadmePanel path="/repo" onClose={vi.fn()} />)
+    const close = screen.getByTestId('readme-panel-close-button')
+    expect(close).toHaveAccessibleName('Close')
+    expect(close).not.toHaveAttribute('title')
+    await user.hover(close)
+    await waitFor(() => expect(screen.getByRole('tooltip')).toHaveTextContent('Close'))
+  })
+
+  it('toggles between the rendered and the raw view', async () => {
+    useRepoReadme.mockReturnValue({ data: '# Hello', isLoading: false, error: undefined })
+    const user = userEvent.setup()
+    render(<ReadmePanel path="/repo" onClose={vi.fn()} />)
+    expect(screen.getByTestId('markdown')).toBeInTheDocument()
+
+    await user.click(screen.getByTestId('readme-toggle-mode'))
+    expect(screen.getByTestId('readme-raw-content')).toHaveTextContent('# Hello')
+    expect(screen.queryByTestId('markdown')).not.toBeInTheDocument()
+  })
+
+  it('names the view toggle for whichever mode it will switch to', async () => {
+    useRepoReadme.mockReturnValue({ data: '# Hello', isLoading: false, error: undefined })
+    const user = userEvent.setup()
+    render(<ReadmePanel path="/repo" onClose={vi.fn()} />)
+    const toggle = screen.getByTestId('readme-toggle-mode')
+    expect(toggle).toHaveAccessibleName('Show the raw markdown')
+
+    await user.click(toggle)
+    expect(screen.getByTestId('readme-toggle-mode')).toHaveAccessibleName(
+      'Show the rendered README'
+    )
+  })
 })
 
 describe('ReadmePanel — remote link', () => {
@@ -63,6 +98,25 @@ describe('ReadmePanel — remote link', () => {
     expect(mockedOpenUrl).toHaveBeenCalledWith('https://github.com/owner/repo')
   })
 
+  it('names the remote button from the git namespace, not a title attribute', () => {
+    useRepoDataStore.setState({
+      repoCache: {
+        '/repo': {
+          path: '/repo',
+          name: 'repo',
+          head: 'main',
+          isDetached: false,
+          isDirty: false,
+          remotes: ['git@github.com:owner/repo.git'],
+        },
+      },
+    })
+    render(<ReadmePanel path="/repo" onClose={vi.fn()} />)
+    const button = screen.getByTestId('github-repo-button')
+    expect(button).toHaveAccessibleName('Open in GitHub/GitLab')
+    expect(button).not.toHaveAttribute('title')
+  })
+
   it('shows a GitLab button for a gitlab remote', () => {
     useRepoDataStore.setState({
       repoCache: {
@@ -85,13 +139,19 @@ describe('ReadmePanel — content states', () => {
   it('shows a loading indicator while fetching', () => {
     useRepoReadme.mockReturnValue({ data: undefined, isLoading: true, error: undefined })
     render(<ReadmePanel path="/repo" onClose={vi.fn()} />)
-    expect(screen.getByText('Chargement du README...')).toBeInTheDocument()
+    expect(screen.getByText('Loading README…')).toBeInTheDocument()
   })
 
   it('treats undefined content (without an explicit error) as still loading', () => {
     useRepoReadme.mockReturnValue({ data: undefined, isLoading: false, error: undefined })
     render(<ReadmePanel path="/repo" onClose={vi.fn()} />)
-    expect(screen.getByText('Chargement du README...')).toBeInTheDocument()
+    expect(screen.getByText('Loading README…')).toBeInTheDocument()
+  })
+
+  it('translates the loading message', () => {
+    useRepoReadme.mockReturnValue({ data: undefined, isLoading: true, error: undefined })
+    renderWithLanguage(<ReadmePanel path="/repo" onClose={vi.fn()} />, 'fr')
+    expect(screen.getByText('Chargement du README…')).toBeInTheDocument()
   })
 
   it('shows a "no readme" message on error', () => {

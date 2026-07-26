@@ -66,35 +66,38 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
             </Button>
           </Tooltip>
           {remoteUrl && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex h-7 items-center gap-1.5 px-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              onClick={() => apiOpenUrl(remoteUrl)}
-              title={
-                t('commitDetails.openRemote', { ns: 'git' }) ||
-                (remoteUrl.includes('gitlab.com') ? 'Open GitLab' : 'Open GitHub')
-              }
-              data-testid="github-repo-button"
-            >
-              {remoteUrl.includes('gitlab.com') ? (
-                <Gitlab className="h-3.5 w-3.5 text-muted-foreground" />
-              ) : (
-                <Github className="h-3.5 w-3.5 text-muted-foreground" />
-              )}
-              <span className="hidden text-[11px] font-medium sm:inline">
-                {remoteUrl.includes('gitlab.com') ? 'GitLab' : 'GitHub'}
-              </span>
-            </Button>
+            <Tooltip content={t('commitDetails.openRemote', { ns: 'git' })}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex h-7 items-center gap-1.5 px-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                onClick={() => apiOpenUrl(remoteUrl)}
+                aria-label={t('commitDetails.openRemote', { ns: 'git' })}
+                data-testid="github-repo-button"
+              >
+                {remoteUrl.includes('gitlab.com') ? (
+                  <Gitlab className="h-3.5 w-3.5 text-muted-foreground" />
+                ) : (
+                  <Github className="h-3.5 w-3.5 text-muted-foreground" />
+                )}
+                {/* Proper nouns, intentionally untranslated. */}
+                <span className="hidden text-[11px] font-medium sm:inline">
+                  {remoteUrl.includes('gitlab.com') ? 'GitLab' : 'GitHub'}
+                </span>
+              </Button>
+            </Tooltip>
           )}
-          <button
-            onClick={onClose}
-            className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title={t('git:actions.close')}
-            data-testid="readme-panel-close-button"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
+          <Tooltip content={t('git:actions.close')}>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              aria-label={t('git:actions.close')}
+              data-testid="readme-panel-close-button"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </Tooltip>
         </div>
       </div>
 
@@ -103,14 +106,12 @@ export function ReadmePanel({ path, onClose }: ReadmePanelProps) {
         {loading ? (
           <div className="flex h-full flex-col items-center justify-center space-y-2 py-8">
             <RefreshCw className="h-6 w-6 animate-spin text-primary" />
-            <p className="text-xs text-muted-foreground">Chargement du README...</p>
+            <p className="text-xs text-muted-foreground">{t('dashboard.loadingReadme')}</p>
           </div>
         ) : error || content === undefined ? (
           <div className="flex h-full flex-col items-center justify-center p-4 text-center text-muted-foreground/60">
             <FileText className="mb-2 h-10 w-10 text-muted-foreground opacity-20" />
-            <p className="font-sans text-xs">
-              {t('dashboard.noReadme') || 'Aucun fichier README trouvé.'}
-            </p>
+            <p className="font-sans text-xs">{t('dashboard.noReadme')}</p>
           </div>
         ) : showRaw ? (
           <pre

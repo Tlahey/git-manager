@@ -21,6 +21,7 @@ beforeEach(() => {
     repoCache: {},
     discoveredRepos: [],
     recentRepoPaths: [],
+    linkedWorktreePaths: [],
     wipMessages: {},
     hiddenStashes: {},
   })
@@ -155,5 +156,100 @@ describe('useRepoDataStore — recentRepoPaths', () => {
     useRepoDataStore.getState().markRepoOpened('/repo/a')
     const persisted = JSON.parse(localStorage.getItem('git-manager-repos')!)
     expect(persisted.state.recentRepoPaths).toEqual(['/repo/a'])
+  })
+
+  it('forgetRecentRepo drops one entry but keeps the repo saved', () => {
+    useRepoDataStore.getState().markRepoOpened('/repo/a')
+    useRepoDataStore.getState().markRepoOpened('/repo/b')
+    useRepoDataStore.getState().forgetRecentRepo('/repo/a')
+    expect(useRepoDataStore.getState().recentRepoPaths).toEqual(['/repo/b'])
+    expect(useRepoDataStore.getState().savedRepos.map((r) => r.path)).toContain('/repo/a')
+  })
+
+  it('forgetRecentRepo can empty the list one entry at a time, keeping repos saved', () => {
+    useRepoDataStore.getState().markRepoOpened('/repo/a')
+    useRepoDataStore.getState().markRepoOpened('/repo/b')
+    for (const path of ['/repo/a', '/repo/b']) {
+      useRepoDataStore.getState().forgetRecentRepo(path)
+    }
+    expect(useRepoDataStore.getState().recentRepoPaths).toEqual([])
+    expect(useRepoDataStore.getState().savedRepos).toHaveLength(2)
+  })
+})
+
+describe('useRepoDataStore — linkedWorktreePaths', () => {
+  const WORKTREE = '/repo/a/.worktrees/feature'
+
+  function worktree() {
+    return repo({ path: WORKTREE, name: 'feature', mainWorktreePath: '/repo/a' })
+  }
+
+  it('records a worktree the user browsed to and saved', () => {
+    useRepoDataStore.getState().addRepo(worktree())
+    expect(useRepoDataStore.getState().linkedWorktreePaths).toEqual([WORKTREE])
+  })
+
+  it('records a worktree the moment its tab caches the repo shape', () => {
+    useRepoDataStore.getState().setRepoCache(WORKTREE, worktree())
+    expect(useRepoDataStore.getState().linkedWorktreePaths).toEqual([WORKTREE])
+  })
+
+  it('does not record a normal repo, whose owner is itself', () => {
+    useRepoDataStore.getState().setRepoCache('/repo/a', repo({ mainWorktreePath: '/repo/a' }))
+    expect(useRepoDataStore.getState().linkedWorktreePaths).toEqual([])
+  })
+
+  it('does not record a snapshot that predates mainWorktreePath', () => {
+    useRepoDataStore.getState().setRepoCache('/repo/a', repo())
+    expect(useRepoDataStore.getState().linkedWorktreePaths).toEqual([])
+  })
+
+  it('does not duplicate a path already recorded', () => {
+    useRepoDataStore.getState().setRepoCache(WORKTREE, worktree())
+    useRepoDataStore.getState().addRepo(worktree())
+    expect(useRepoDataStore.getState().linkedWorktreePaths).toEqual([WORKTREE])
+  })
+
+  it('is persisted, so a worktree tab stays identified across a restart', () => {
+    // repoCache itself is NOT persisted, which is exactly why this list has to be.
+    useRepoDataStore.getState().setRepoCache(WORKTREE, worktree())
+    const persisted = JSON.parse(localStorage.getItem('git-manager-repos')!)
+    expect(persisted.state.linkedWorktreePaths).toEqual([WORKTREE])
+    expect(persisted.state.repoCache).toBeUndefined()
+  })
+})
+
+describe('useRepoDataStore — setPinned', () => {
+  beforeEach(() => {
+    useRepoDataStore.getState().addRepo(repo({ path: '/repo/a', name: 'a' }))
+    useRepoDataStore.getState().addRepo(repo({ path: '/repo/b', name: 'b' }))
+  })
+
+  it('pins a repo without flipping the others', () => {
+    useRepoDataStore.getState().setPinned('/repo/a', true)
+    const byPath = new Map(useRepoDataStore.getState().savedRepos.map((r) => [r.path, r.pinned]))
+    expect(byPath.get('/repo/a')).toBe(true)
+    expect(byPath.get('/repo/b')).toBe(false)
+  })
+
+  it('is idempotent, unlike togglePin', () => {
+    useRepoDataStore.getState().setPinned('/repo/a', true)
+    useRepoDataStore.getState().setPinned('/repo/a', true)
+    expect(useRepoDataStore.getState().savedRepos.find((r) => r.path === '/repo/a')?.pinned).toBe(
+      true
+    )
+  })
+
+  it('unpins a pinned repo', () => {
+    useRepoDataStore.getState().setPinned('/repo/a', true)
+    useRepoDataStore.getState().setPinned('/repo/a', false)
+    expect(useRepoDataStore.getState().savedRepos.find((r) => r.path === '/repo/a')?.pinned).toBe(
+      false
+    )
+  })
+
+  it('ignores an unknown path', () => {
+    useRepoDataStore.getState().setPinned('/repo/missing', true)
+    expect(useRepoDataStore.getState().savedRepos.every((r) => !r.pinned)).toBe(true)
   })
 })
