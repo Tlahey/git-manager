@@ -6,6 +6,7 @@ import { useBranches } from '../../../hooks/useBranches'
 import { usePrTemplate } from '../../../hooks/usePrTemplate'
 import { usePrDescriptionGeneration } from '../../../hooks/usePrDescriptionGeneration'
 import { useAiEnabled } from '../../../hooks/useAiEnabled'
+import { aiErrorMessage } from '../../../lib/aiErrorMessage'
 import type { CreatePrArgs } from '../../../hooks/usePrCreateFlow'
 
 interface PrCreateFormProps {
@@ -34,10 +35,13 @@ export function PrCreateForm({
   onCancel,
 }: PrCreateFormProps) {
   const { t } = useTranslation('git')
+  const { t: tErrors } = useTranslation('errors')
   const aiEnabled = useAiEnabled()
   const { data: branches = [] } = useBranches(repoPath)
   const { template } = usePrTemplate(repoPath)
-  const { generate, status } = usePrDescriptionGeneration(repoPath)
+  // `aiError` is distinct from the `error` prop: that one is the create-PR failure, this one is the
+  // generation failing. Left unread, a stopped provider just cleared the body and said nothing.
+  const { generate, status, error: aiError } = usePrDescriptionGeneration(repoPath)
 
   const localBranches = useMemo(() => branches.filter((b) => !b.isRemote), [branches])
 
@@ -196,6 +200,11 @@ export function PrCreateForm({
           className="text-xs"
           data-testid="pr-create-body"
         />
+        {status === 'error' && aiError && (
+          <p data-testid="pr-create-ai-error" className="text-[11px] text-destructive">
+            {aiErrorMessage(aiError, tErrors)}
+          </p>
+        )}
       </div>
 
       <label className="flex items-center gap-2 text-xs text-foreground">

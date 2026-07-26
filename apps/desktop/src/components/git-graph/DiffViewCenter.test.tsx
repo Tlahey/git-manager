@@ -129,7 +129,15 @@ describe('DiffViewCenter — loading/empty states', () => {
 describe('DiffViewCenter — diff/file wiring', () => {
   beforeEach(() => {
     useFileDiff.mockReturnValue({
-      data: { status: 'modified', oldPath: 'a.ts', newPath: 'a.ts', isBinary: false },
+      data: {
+        status: 'modified',
+        oldPath: 'a.ts',
+        newPath: 'a.ts',
+        isBinary: false,
+        additions: 1,
+        deletions: 0,
+        hunks: [],
+      },
       isLoading: false,
       refetch: vi.fn(),
     })
@@ -149,6 +157,22 @@ describe('DiffViewCenter — diff/file wiring', () => {
       isTwoWay: true,
     })
     expect(screen.queryByTestId('blame-file-viewer')).not.toBeInTheDocument()
+  })
+
+  it('offers the AI explanation above a working-copy diff', () => {
+    renderCenter()
+    expect(screen.getByTestId('change-explanation-panel')).toBeInTheDocument()
+  })
+
+  it('does not offer it for a committed version, which already has a message', () => {
+    renderCenter({ oid: 'abc1234' })
+    expect(screen.queryByTestId('change-explanation-panel')).not.toBeInTheDocument()
+  })
+
+  it('does not offer it outside the diff tab', () => {
+    renderCenter()
+    act(() => toolbarProps().onChangeActiveTab('file'))
+    expect(screen.queryByTestId('change-explanation-panel')).not.toBeInTheDocument()
   })
 
   it('switches to the blame File viewer when the "file" tab is selected', () => {

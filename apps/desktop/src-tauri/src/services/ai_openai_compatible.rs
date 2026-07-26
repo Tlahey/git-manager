@@ -108,9 +108,36 @@ fn completions_url(config: &GenerateConfig) -> String {
     format!("{}/chat/completions", api_base(&config.url))
 }
 
+/// Client for a ONE-SHOT completion: the configured timeout bounds the whole request, which is
+/// exactly right when the answer arrives in a single body.
 fn client_for(config: &GenerateConfig) -> Result<Client, AppError> {
     Client::builder()
         .timeout(std::time::Duration::from_secs(config.timeout_seconds))
+        .build()
+        .map_err(AppError::Http)
+}
+
+/// Longest wait for the connection itself. Separate from the generation budget: an unreachable
+/// provider should fail in seconds, however long the user is willing to wait for tokens.
+const CONNECT_TIMEOUT_SECONDS: u64 = 10;
+
+/// Client for a STREAMING generation.
+///
+/// The configured timeout is applied **per read**, not to the request as a whole. `Client::timeout`
+/// covers reading the entire body, so on a streamed response it caps the whole generation — with
+/// the 30s default that aborts any answer taking longer than half a minute, and reqwest surfaces it
+/// mid-stream as the decidedly unhelpful "error decoding response body". A branch summary over a
+/// real diff blows through that routinely.
+///
+/// A read timeout keeps the protection that mattered — a provider that accepts the request and then
+/// goes silent still fails rather than hanging forever — while letting a slow model take as long as
+/// it needs, which is the normal case for a local one. The same budget now means "longest silence
+/// tolerated" rather than "longest generation allowed"; raise it in Settings if a cold model takes
+/// more than that to produce its first token.
+fn streaming_client_for(config: &GenerateConfig) -> Result<Client, AppError> {
+    Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(CONNECT_TIMEOUT_SECONDS))
+        .read_timeout(std::time::Duration::from_secs(config.timeout_seconds))
         .build()
         .map_err(AppError::Http)
 }
@@ -203,7 +230,7 @@ impl AiProvider for OpenAiCompatibleProvider {
         app: &AppHandle,
         cancel: &Mutex<bool>,
     ) -> Result<(), AppError> {
-        let client = client_for(config)?;
+        let client = streaming_client_for(config)?;
 
         let request = ChatCompletionsRequest {
             model: config.model.clone(),

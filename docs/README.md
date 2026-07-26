@@ -89,6 +89,7 @@ git-manager/
 │   ├── README.md                   # This file
 │   ├── ROADMAP.md                  # What shipped, what's open, + the historical milestones
 │   ├── screenshots/                # Auto-captured app screenshots (e2e @screenshots)
+│   ├── ai/                         # The AI system: one page per feature + a shared overview
 │   ├── specs/archive/              # Original 2026-07-03 design docs — historical only
 │   └── architecture/               # Architecture refactor plans + execution tracking
 ├── CLAUDE.md                       # Architecture/IPC conventions — authoritative
@@ -135,7 +136,7 @@ pnpm build
 
 ## AI provider configuration
 
-AI features (commit-message generation, file grouping) are optional. The default provider is a
+AI features (commit message, file grouping, PR description, branch/change explanation, daily summary — see [the AI docs](./ai/README.md)) are optional. The default provider is a
 local Ollama at `http://localhost:11434`. The only other entry is a generic **OpenAI-compatible**
 preset you point at any server speaking the OpenAI API (LM Studio, vLLM, MLX, OpenAI itself…) —
 see `AI_PRESETS` in [`packages/ai`](../packages/ai/src/presets.ts). Provider, URL, API key, model
@@ -167,6 +168,7 @@ ollama pull qwen2.5-coder:7b
 | -------------------------------------------------- | ------------------------------------------------------------------ |
 | [CLAUDE.md](../CLAUDE.md)                          | **Authoritative** architecture, IPC boundary and layering rules    |
 | [ROADMAP](./ROADMAP.md)                            | Feature status and remaining work                                  |
+| [AI system](./ai/README.md)                        | How every AI feature works — shared runtime + one page per feature |
 | [Architecture refactors](./architecture/README.md) | Refactor plans 13–17 and their execution records — all complete    |
 | [Archived specs](./specs/archive/README.md)        | Original 2026-07-03 design docs — historical, do not trust as docs |
 

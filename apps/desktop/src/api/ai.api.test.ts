@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
+  BRANCH_EXPLANATION_INSTRUCTION,
+  CHANGE_EXPLANATION_INSTRUCTION,
   COMMIT_MESSAGE_INSTRUCTION,
   FILE_GROUPING_SCHEMA,
   type AiCheckConfig,
@@ -17,6 +19,7 @@ vi.mock('../lib/tauri', () => ({
 
 import * as tauri from '../lib/tauri'
 import * as api from './ai.api'
+import { useAiActivityStore } from '../stores/aiActivity.store'
 
 const mocked = tauri as unknown as Record<string, ReturnType<typeof vi.fn>>
 
@@ -36,6 +39,7 @@ const context: AiContext = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  useAiActivityStore.setState({ runs: [] })
 })
 
 describe('ai.api pass-throughs', () => {
@@ -49,13 +53,13 @@ describe('ai.api pass-throughs', () => {
   it('apiGetAiContext delegates to getAiContext with path + scope', async () => {
     mocked.getAiContext.mockResolvedValue(context)
     expect(await api.apiGetAiContext('/repo', 'working')).toEqual(context)
-    expect(mocked.getAiContext).toHaveBeenCalledWith('/repo', 'working', undefined)
+    expect(mocked.getAiContext).toHaveBeenCalledWith('/repo', 'working', undefined, undefined)
   })
 
   it('apiGetAiContext forwards a base ref for range scope', async () => {
     mocked.getAiContext.mockResolvedValue(context)
     await api.apiGetAiContext('/repo', 'range', 'main')
-    expect(mocked.getAiContext).toHaveBeenCalledWith('/repo', 'range', 'main')
+    expect(mocked.getAiContext).toHaveBeenCalledWith('/repo', 'range', 'main', undefined)
   })
 
   it('apiCancelGeneration delegates to cancelGeneration', async () => {
@@ -88,6 +92,68 @@ describe('feature services', () => {
       FILE_GROUPING_SCHEMA
     )
     expect(commits).toEqual([{ commitMessage: 'feat: a', files: ['src/a.ts'] }])
+  })
+
+  it('changeExplanationService streams the file-explanation prompt with its own instruction', async () => {
+    mocked.aiGenerateStream.mockResolvedValue(undefined)
+    await api.changeExplanationService.run(connection, {
+      repoName: 'demo',
+      file: {
+        path: 'src/a.ts',
+        status: 'modified',
+        patch: '@@ -1 +1 @@\n-a\n+b',
+        additions: 1,
+        deletions: 1,
+      },
+      fileContent: 'const b = 1',
+    })
+
+    expect(mocked.aiGenerateStream).toHaveBeenCalledWith(
+      expect.objectContaining({ protocol: 'openai-compatible', temperature: 0.2 }),
+      CHANGE_EXPLANATION_INSTRUCTION,
+      expect.stringContaining('--- PATCH ---')
+    )
+  })
+
+  it('branchExplanationService streams the branch-explanation prompt with its own instruction', async () => {
+    mocked.aiGenerateStream.mockResolvedValue(undefined)
+    await api.branchExplanationService.run(connection, {
+      context: { ...context, baseRef: 'origin/main', rangeCommits: ['feat: a'] },
+      language: 'fr',
+    })
+
+    expect(mocked.aiGenerateStream).toHaveBeenCalledWith(
+      expect.objectContaining({ protocol: 'openai-compatible', temperature: 0.2 }),
+      BRANCH_EXPLANATION_INSTRUCTION,
+      expect.stringContaining('--- DIFF (base..branch) ---')
+    )
+  })
+
+  it('reports the run to aiActivity while it streams, and clears it after', async () => {
+    let runsDuring: { featureId: string }[] = []
+    mocked.aiGenerateStream.mockImplementation(async () => {
+      runsDuring = useAiActivityStore.getState().runs
+    })
+
+    await api.prDescriptionService.run(connection, { context, templateContent: null })
+
+    expect(runsDuring).toHaveLength(1)
+    expect(runsDuring[0].featureId).toBe('pr-description')
+    expect(useAiActivityStore.getState().runs).toEqual([])
+  })
+
+  it('clears the run when a completion feature fails', async () => {
+    mocked.aiComplete.mockRejectedValue(new Error('AI_PROVIDER_NOT_RUNNING'))
+    await expect(api.fileGroupingService.run(connection, context)).rejects.toThrow()
+    expect(useAiActivityStore.getState().runs).toEqual([])
+  })
+
+  it('does not report the Settings connection probe as feature work', async () => {
+    mocked.aiComplete.mockImplementation(async () => {
+      expect(useAiActivityStore.getState().runs).toEqual([])
+      return 'OK'
+    })
+    await api.aiStatusService.probe(connection)
   })
 
   it('aiStatusService.check sends only protocol/url/apiKey', async () => {

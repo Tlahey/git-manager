@@ -6,6 +6,20 @@ import { normalizeMenuSpec, type MenuSpecNode } from '../lib/nativeMenuSpec'
 const invalidateQueries = vi.fn()
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries }) }))
 
+// The branch list only feeds the AI explanation's base resolution here; mocked at the hook rather
+// than widening the react-query mock, which this file deliberately keeps to `useQueryClient`.
+// Shaped like the real `get_branches`: `name` keeps the remote prefix, `shortName` strips it.
+// The base resolution reads `name`, so a mock with `shortName` alone would silently pass while the
+// app reported "no base branch found".
+const branchList = vi.hoisted(() => ({
+  data: [
+    { name: 'main', shortName: 'main', isRemote: false },
+    { name: 'origin/main', shortName: 'main', isRemote: true },
+    { name: 'feat', shortName: 'feat', isRemote: false },
+  ] as { name: string; shortName: string; isRemote: boolean }[],
+}))
+vi.mock('./useBranches', () => ({ useBranches: () => branchList }))
+
 const swrMutate = vi.fn()
 vi.mock('swr', () => ({ mutate: (...a: unknown[]) => swrMutate(...a) }))
 
@@ -166,7 +180,7 @@ function clickEvent() {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useRepoUIStore.setState({ editingOid: null })
+  useRepoUIStore.setState({ editingOid: null, explanationTarget: null })
   usePinnedBranchesStore.setState({ overrides: {} })
   Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
   // clearAllMocks() also wipes .mockResolvedValue()-configured implementations, so these need
@@ -629,6 +643,40 @@ describe('useGitGraphActions — per-branch submenus', () => {
     expect(lastSpec().some((n) => n.kind === 'submenu' && n.text === 'feat')).toBe(false)
     act(() => getItem('gitTree.branchMenu.rename').action!())
     expect(result.current.pendingAction).toEqual({ kind: 'renameBranch', branch: 'feat' })
+  })
+
+  it('"explain branch changes" resolves the base branch and opens the right panel', async () => {
+    useRepoUIStore.setState({ explanationTarget: null })
+    const oneBranch = commitNode('a', {
+      refs: [{ name: 'refs/heads/feat', shortName: 'feat', type: 'branch', commitOid: 'a' }],
+    })
+    const { result } = renderHook(() => useGitGraphActions(baseParams({ nodes: [oneBranch] })))
+    await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
+    act(() => getItem('gitTree.branchMenu.explainChanges').action!())
+    // A panel, not one of the overlay manager's dialogs — so it lands in shared UI state.
+    expect(useRepoUIStore.getState().explanationTarget).toEqual({
+      kind: 'branch',
+      branch: 'feat',
+      baseRef: 'origin/main',
+    })
+    expect(result.current.pendingAction).toBeNull()
+  })
+
+  it('refuses to explain a branch with no base to compare against', async () => {
+    branchList.data = [{ name: 'feat', shortName: 'feat', isRemote: false }]
+    const oneBranch = commitNode('a', {
+      refs: [{ name: 'refs/heads/feat', shortName: 'feat', type: 'branch', commitOid: 'a' }],
+    })
+    const { result } = renderHook(() => useGitGraphActions(baseParams({ nodes: [oneBranch] })))
+    await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
+    act(() => getItem('gitTree.branchMenu.explainChanges').action!())
+    expect(useRepoUIStore.getState().explanationTarget).toBeNull()
+    expect(toastError).toHaveBeenCalled()
+    branchList.data = [
+      { name: 'main', shortName: 'main', isRemote: false },
+      { name: 'origin/main', shortName: 'main', isRemote: true },
+      { name: 'feat', shortName: 'feat', isRemote: false },
+    ]
   })
 
   it('builds no branch submenu for a multi-selection', async () => {

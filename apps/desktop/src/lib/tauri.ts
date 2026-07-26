@@ -358,8 +358,20 @@ export const resolveConflictBinary = (path: string, filePath: string, side: 'our
 export const checkAiStatus = (config: AiCheckConfig) =>
   invoke<AiProviderStatus>('check_ai_status', { config })
 
-export const getAiContext = (path: string, scope: AiContextScope, baseRef?: string) =>
-  invoke<AiContext>('get_ai_context', { path, scope, baseRef: baseRef ?? null })
+export const getAiContext = (
+  path: string,
+  scope: AiContextScope,
+  baseRef?: string,
+  // `range` scope only: the branch/ref the range ends at. Defaults to HEAD on the backend, so
+  // explaining a branch that isn't checked out is the only caller that passes it.
+  headRef?: string
+) =>
+  invoke<AiContext>('get_ai_context', {
+    path,
+    scope,
+    baseRef: baseRef ?? null,
+    headRef: headRef ?? null,
+  })
 
 export const getAiActivity = (path: string, sinceHours: number) =>
   invoke<AiActivity>('get_ai_activity', { path, sinceHours })

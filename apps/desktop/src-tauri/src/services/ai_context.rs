@@ -17,8 +17,9 @@ pub enum AiContextScope {
     Staged,
     /// Worktree vs HEAD (staged + unstaged + untracked) — everything uncommitted, for grouping.
     Working,
-    /// `merge_base(base, HEAD)..HEAD` — the whole branch's changes vs its base, for a PR description.
-    /// Requires a `base_ref` (see `build_ai_context`).
+    /// `merge_base(base, head)..head` — a whole branch's changes vs its base, for a PR description
+    /// or a branch explanation. Requires a `base_ref`; `head_ref` defaults to `HEAD` (see
+    /// `build_ai_context`).
     Range,
 }
 
@@ -145,11 +146,14 @@ fn status_word(delta: Delta) -> &'static str {
 /// Opens the repo once and gathers everything a feature's prompt might need: the diff for the
 /// requested `scope` as plain patch text, the repo's directory name, the current branch's short
 /// name, and the changed files with their statuses. For `Range` scope, `base_ref` (a branch/ref the
-/// PR would target, e.g. `main` or `origin/main`) is required and the diff spans `base..HEAD`.
+/// PR would target, e.g. `main` or `origin/main`) is required and the diff spans `base..head_ref`;
+/// `head_ref` defaults to `HEAD`, and naming another branch is what lets a feature explain a branch
+/// that isn't the checked-out one.
 pub fn build_ai_context(
     repo_path: &str,
     scope: AiContextScope,
     base_ref: Option<&str>,
+    head_ref: Option<&str>,
 ) -> Result<AiContext, AppError> {
     let repo =
         Repository::open(repo_path).map_err(|_| AppError::RepoNotFound(repo_path.to_string()))?;
@@ -186,10 +190,22 @@ pub fn build_ai_context(
                 .map_err(|_| {
                     AppError::InvalidInput(format!("Base ref '{base}' could not be resolved"))
                 })?;
-            let head_commit = repo
-                .head()
-                .and_then(|h| h.peel_to_commit())
-                .map_err(AppError::Git)?;
+            // Default to HEAD, but honour an explicit ref so a branch other than the checked-out
+            // one can be explained without checking it out first.
+            let head_commit = match head_ref {
+                Some(reference) => repo
+                    .revparse_single(reference)
+                    .and_then(|obj| obj.peel_to_commit())
+                    .map_err(|_| {
+                        AppError::InvalidInput(format!(
+                            "Head ref '{reference}' could not be resolved"
+                        ))
+                    })?,
+                None => repo
+                    .head()
+                    .and_then(|h| h.peel_to_commit())
+                    .map_err(AppError::Git)?,
+            };
             let merge_base = repo
                 .merge_base(base_commit.id(), head_commit.id())
                 .map_err(AppError::Git)?;
@@ -235,10 +251,16 @@ pub fn build_ai_context(
     })
     .map_err(AppError::Git)?;
 
-    let branch = repo
-        .head()
-        .ok()
-        .and_then(|h| h.shorthand().map(|s| s.to_string()))
+    // The branch the context is *about*: an explicit range head names it directly, otherwise it's
+    // whatever is checked out. Reporting HEAD's name for a range taken over another branch would
+    // put the wrong branch in every prompt built from it.
+    let branch = head_ref
+        .map(|reference| reference.to_string())
+        .or_else(|| {
+            repo.head()
+                .ok()
+                .and_then(|h| h.shorthand().map(|s| s.to_string()))
+        })
         .unwrap_or_else(|| "HEAD".to_string());
 
     let repo_name = Path::new(repo_path)
@@ -348,8 +370,13 @@ mod tests {
     #[test]
     fn range_scope_diffs_the_branch_against_its_base() {
         let (dir, base) = repo_with_feature_branch("range-diff");
-        let ctx =
-            build_ai_context(dir.to_str().unwrap(), AiContextScope::Range, Some(&base)).unwrap();
+        let ctx = build_ai_context(
+            dir.to_str().unwrap(),
+            AiContextScope::Range,
+            Some(&base),
+            None,
+        )
+        .unwrap();
         assert!(
             ctx.diff.contains("b.txt"),
             "diff should mention the added file"
@@ -367,10 +394,53 @@ mod tests {
         std::fs::remove_dir_all(&dir).ok();
     }
 
+    /// The branch-explanation path: HEAD is checked out on `feature`, but the range is taken over
+    /// the base branch itself, so it must come back empty and report that branch — not HEAD's.
+    #[test]
+    fn range_scope_honours_an_explicit_head_ref() {
+        let (dir, base) = repo_with_feature_branch("range-head-ref");
+        let ctx = build_ai_context(
+            dir.to_str().unwrap(),
+            AiContextScope::Range,
+            Some(&base),
+            Some("feature"),
+        )
+        .unwrap();
+        assert_eq!(ctx.branch, "feature");
+        assert!(ctx.diff.contains("b.txt"));
+
+        let self_range = build_ai_context(
+            dir.to_str().unwrap(),
+            AiContextScope::Range,
+            Some(&base),
+            Some(&base),
+        )
+        .unwrap();
+        assert_eq!(self_range.branch, base);
+        assert!(self_range.diff.is_empty(), "a branch has no diff vs itself");
+        assert_eq!(self_range.range_commits, Some(vec![]));
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn range_scope_errors_on_an_unresolvable_head_ref() {
+        let (dir, base) = repo_with_feature_branch("range-badhead");
+        let err = build_ai_context(
+            dir.to_str().unwrap(),
+            AiContextScope::Range,
+            Some(&base),
+            Some("no-such-branch"),
+        )
+        .unwrap_err();
+        assert!(matches!(err, AppError::InvalidInput(_)));
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
     #[test]
     fn range_scope_requires_a_base_ref() {
         let (dir, _) = repo_with_feature_branch("range-nobase");
-        let err = build_ai_context(dir.to_str().unwrap(), AiContextScope::Range, None).unwrap_err();
+        let err =
+            build_ai_context(dir.to_str().unwrap(), AiContextScope::Range, None, None).unwrap_err();
         assert!(matches!(err, AppError::InvalidInput(_)));
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -382,6 +452,7 @@ mod tests {
             dir.to_str().unwrap(),
             AiContextScope::Range,
             Some("does-not-exist"),
+            None,
         )
         .unwrap_err();
         assert!(matches!(err, AppError::InvalidInput(_)));
@@ -391,7 +462,8 @@ mod tests {
     #[test]
     fn staged_scope_leaves_range_fields_empty() {
         let (dir, _) = repo_with_feature_branch("range-staged");
-        let ctx = build_ai_context(dir.to_str().unwrap(), AiContextScope::Staged, None).unwrap();
+        let ctx =
+            build_ai_context(dir.to_str().unwrap(), AiContextScope::Staged, None, None).unwrap();
         assert!(ctx.base_ref.is_none());
         assert!(ctx.range_commits.is_none());
         std::fs::remove_dir_all(&dir).ok();

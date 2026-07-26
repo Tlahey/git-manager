@@ -54,9 +54,11 @@ export type AiFeature<Input, Output = string> =
  * implementation (from `api/ai.api.ts`), keeping this package free of any `@tauri-apps/api`
  * dependency and respecting the repo invariant that `invoke()` only lives in the api layer.
  *
- * `runStream` kicks off a streaming generation and resolves once the request is *accepted* — the
- * tokens themselves are delivered out-of-band via Tauri events the caller listens to. `runComplete`
- * resolves with the full response text. Neither knows anything about *which* feature it serves. */
+ * `runStream` starts a streaming generation whose tokens are delivered out-of-band, via events the
+ * caller listens to; the promise itself resolves when the generation *finishes* (or rejects if it
+ * fails), not when the request is accepted — so awaiting it is a valid way to know the model is
+ * done, which is what the app's footer activity indicator relies on. `runComplete` resolves with the
+ * full response text. Neither knows anything about *which* feature it serves. */
 export interface AiTransport {
   runStream(config: AiGenerateConfig, systemPrompt: string, userPrompt: string): Promise<void>
   runComplete(

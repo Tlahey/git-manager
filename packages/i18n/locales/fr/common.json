@@ -201,5 +201,15 @@
   "aiStatus.connected": "Connecté",
   "aiStatus.disconnected": "Hors ligne",
   "aiStatus.tooltipConnected": "{{provider}} connecté — modèle {{model}}. Cliquez pour ouvrir les réglages IA.",
-  "aiStatus.tooltipOther": "{{provider}} — {{state}}. Cliquez pour ouvrir les réglages IA."
+  "aiStatus.tooltipOther": "{{provider}} — {{state}}. Cliquez pour ouvrir les réglages IA.",
+  "aiStatus.working": "En cours…",
+  "aiStatus.tooltipWorking": "{{provider}} travaille — {{task}} ({{model}}).",
+  "aiStatus.work.commitMessage": "Rédaction du message de commit…",
+  "aiStatus.work.prDescription": "Rédaction de la description de PR…",
+  "aiStatus.work.changeExplanation": "Explication de la modification…",
+  "aiStatus.work.branchExplanation": "Explication de la branche…",
+  "aiStatus.work.commitExplanation": "Explication du commit…",
+  "aiStatus.work.workingExplanation": "Lecture de la copie de travail…",
+  "aiStatus.work.fileGrouping": "Regroupement des changements…",
+  "aiStatus.work.dailySummary": "Rédaction du briefing…"
 }
