@@ -116,67 +116,53 @@ describe('useCodeReview — working scope', () => {
   })
 })
 
-describe('useCodeReview — prompt size', () => {
+describe('useCodeReview — coverage', () => {
   it('is unknown until a run has fetched the diff', () => {
     const { result } = renderHook(() => useCodeReview('/repo', { scope: 'working' }))
-    expect(result.current.promptSize).toBeNull()
+    expect(result.current.coverage).toBeNull()
   })
 
-  it('measures the real prompt, and grows with the diff', async () => {
+  it('reports a small change as fully read', async () => {
     const { result } = renderHook(() => useCodeReview('/repo', { scope: 'working' }))
     await act(async () => {
       await result.current.review()
     })
-    const small = result.current.promptSize!
-    // The instruction alone is over a thousand tokens, so any real prompt clears that.
-    expect(small.tokens).toBeGreaterThan(100)
-    expect(small.risk).toBe('ok')
-
-    mockedGetContext.mockResolvedValue({ ...workingContext, diff: 'x'.repeat(60_000) })
-    await act(async () => {
-      await result.current.review()
-    })
-    expect(result.current.promptSize!.tokens).toBeGreaterThan(small.tokens)
+    expect(result.current.coverage!.complete).toBe(true)
+    expect(result.current.coverage!.windowTooSmall).toBe(false)
   })
 
-  it('shrinks the diff to fit rather than overflowing the window', async () => {
-    // The point of deriving the budget from the window: a huge diff no longer produces an oversized
-    // prompt, it produces a smaller diff. The warning became a safety net, not the usual outcome.
-    mockedGetContext.mockResolvedValue({ ...workingContext, diff: 'x'.repeat(60_000) })
+  it('reads more of a big diff when a larger window is declared', async () => {
+    const many = Array.from(
+      { length: 12 },
+      (_, i) => `diff --git a/src/f${i}.ts b/src/f${i}.ts\n@@ -1 +1 @@\n+${'x'.repeat(5000)}\n`
+    ).join('')
+    mockedGetContext.mockResolvedValue({ ...workingContext, diff: many })
+
     const { result } = renderHook(() => useCodeReview('/repo', { scope: 'working' }))
     await act(async () => {
       await result.current.review()
     })
-    expect(result.current.promptSize!.risk).toBe('ok')
-  })
+    const onDefault = result.current.coverage!.filesRead
 
-  it('still flags a window too small to hold the instruction itself', async () => {
-    // Nothing can be budgeted away here — the instruction is fixed. This is the case the warning
-    // exists for, and no amount of trimming the diff fixes it.
-    useSettingsStore.setState((s) => ({ settings: { ...s.settings, ai: { ...s.settings.ai, contextTokens: 800 } } }))
-    const { result } = renderHook(() => useCodeReview('/repo', { scope: 'working' }))
-    await act(async () => {
-      await result.current.review()
-    })
-    expect(result.current.promptSize!.risk).toBe('over')
-    expect(result.current.promptSize!.contextTokens).toBe(800)
-  })
-
-  it('sends more diff when a larger window is declared', async () => {
-    const big = 'x'.repeat(60_000)
-    mockedGetContext.mockResolvedValue({ ...workingContext, diff: big })
-    const { result } = renderHook(() => useCodeReview('/repo', { scope: 'working' }))
-    await act(async () => {
-      await result.current.review()
-    })
-    const onDefault = result.current.promptSize!.tokens
-
-    useSettingsStore.setState((s) => ({ settings: { ...s.settings, ai: { ...s.settings.ai, contextTokens: 32768 } } }))
+    useSettingsStore.setState((s) => ({
+      settings: { ...s.settings, ai: { ...s.settings.ai, contextTokens: 65536 } },
+    }))
     const { result: wide } = renderHook(() => useCodeReview('/repo', { scope: 'working' }))
     await act(async () => {
       await wide.current.review()
     })
-    expect(wide.current.promptSize!.tokens).toBeGreaterThan(onDefault * 2)
+    expect(wide.current.coverage!.filesRead).toBeGreaterThan(onDefault)
+  })
+
+  it('flags a window with no room for any diff', async () => {
+    useSettingsStore.setState((s) => ({
+      settings: { ...s.settings, ai: { ...s.settings.ai, contextTokens: 800 } },
+    }))
+    const { result } = renderHook(() => useCodeReview('/repo', { scope: 'working' }))
+    await act(async () => {
+      await result.current.review()
+    })
+    expect(result.current.coverage!.windowTooSmall).toBe(true)
   })
 
   it('is recorded even when the run then fails — it may be the reason', async () => {
@@ -186,14 +172,14 @@ describe('useCodeReview — prompt size', () => {
       await result.current.review()
     })
     expect(result.current.status).toBe('error')
-    expect(result.current.promptSize).not.toBeNull()
+    expect(result.current.coverage).not.toBeNull()
   })
 
   it('is dropped by clear, along with the text', async () => {
     const { result } = renderHook(() => useCodeReview('/repo', { scope: 'working' }))
     await generate(() => result.current.review(), 'a review')
     act(() => result.current.clear())
-    expect(result.current.promptSize).toBeNull()
+    expect(result.current.coverage).toBeNull()
   })
 })
 

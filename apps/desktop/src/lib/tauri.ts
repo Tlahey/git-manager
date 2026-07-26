@@ -358,6 +358,19 @@ export const resolveConflictBinary = (path: string, filePath: string, side: 'our
 export const checkAiStatus = (config: AiCheckConfig) =>
   invoke<AiProviderStatus>('check_ai_status', { config })
 
+/** Asks the provider what a model's context window really is. Ollama-only; every field comes back
+ * unset when the provider has nothing to say, which is a normal answer rather than a failure. */
+/** Mirrors the Rust `ModelContextLimits` serde struct. */
+export interface ModelContextLimits {
+  /** The model architecture's own maximum, in tokens — a hard ceiling. */
+  architectureMax: number | null
+  /** `num_ctx` pinned in the model's Modelfile, when it pins one. */
+  modelfileNumCtx: number | null
+}
+
+export const getModelContextLimits = (url: string, model: string) =>
+  invoke<ModelContextLimits>('get_model_context_limits', { url, model })
+
 export const getAiContext = (
   path: string,
   scope: AiContextScope,

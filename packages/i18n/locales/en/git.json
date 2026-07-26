@@ -173,7 +173,7 @@
   "gitTree.codeReview.comparedToHead": "reviewed against the last commit",
   "gitTree.codeReview.empty": "No review yet. Generate one to have the model read these changes and flag what deserves a second look — it only sees the diff, so treat its findings as a prompt to check, not a verdict.",
   "gitTree.codeReview.coverage": "Read {{read}} of {{total}} changed files in full — the rest were shortened or left out. Reading everything needs about a {{window}}k-token context window.",
-  "gitTree.codeReview.windowTooSmall": "The configured context window ({{context}} tokens) is too small to hold the review instructions. Raise it in Settings → AI, or the model will not receive them.",
+  "gitTree.codeReview.windowTooSmall": "The configured context window leaves no room for the diff — everything it can hold is the review instructions. Raise it in Settings → AI.",
   "gitTree.branchExplanation.noBase": "No base branch found to compare {{branch}} against.",
   "gitTree.branchMenu.startPr": "Push {{current}} and start a pull request to {{branch}}",
   "gitTree.branchMenu.rename": "Rename {{branch}}",

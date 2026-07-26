@@ -13,12 +13,12 @@ const codeReview = vi.hoisted(() => ({
   generatedAt: null as number | null,
   comparedTo: null as string | null,
   hasStored: false,
-  promptSize: null as { tokens: number; risk: string; contextTokens: number } | null,
   coverage: null as {
     filesRead: number
     filesTotal: number
     complete: boolean
     requiredContextTokens: number
+    windowTooSmall: boolean
   } | null,
 }))
 
@@ -68,7 +68,6 @@ beforeEach(() => {
     generatedAt: null,
     comparedTo: null,
     hasStored: false,
-    promptSize: null,
     coverage: null,
   })
 })
@@ -168,6 +167,7 @@ describe('CodeReviewPanel — coverage', () => {
       filesTotal: 8,
       complete: true,
       requiredContextTokens: 8192,
+      windowTooSmall: false,
     }
     renderWorking()
     expect(screen.queryByTestId('code-review-coverage')).not.toBeInTheDocument()
@@ -179,6 +179,7 @@ describe('CodeReviewPanel — coverage', () => {
       filesTotal: 50,
       complete: false,
       requiredContextTokens: 32768,
+      windowTooSmall: false,
     }
     renderWorking()
     const notice = screen.getByTestId('code-review-coverage')
@@ -194,22 +195,36 @@ describe('CodeReviewPanel — coverage', () => {
       filesTotal: 40,
       complete: false,
       requiredContextTokens: 65536,
+      windowTooSmall: false,
     }
     renderWorking()
     expect(screen.getByTestId('code-review-coverage').className).toContain('text-muted-foreground')
   })
 
-  it('speaks up only for a window too small to hold the instructions', () => {
-    codeReview.promptSize = { tokens: 1400, risk: 'over', contextTokens: 800 }
+  it('warns when the window leaves no room for any diff', () => {
+    // The one state trimming cannot fix, and so the only one still styled as a warning.
+    codeReview.coverage = {
+      filesRead: 0,
+      filesTotal: 12,
+      complete: false,
+      requiredContextTokens: 32768,
+      windowTooSmall: true,
+    }
     renderWorking()
-    expect(screen.getByTestId('code-review-prompt-size')).toHaveTextContent(
-      /context window \(800 tokens\) is too small/
+    expect(screen.getByTestId('code-review-window-too-small')).toHaveTextContent(
+      'leaves no room for the diff'
     )
   })
 
-  it('stays quiet about size when the window is usable', () => {
-    codeReview.promptSize = { tokens: 3000, risk: 'ok', contextTokens: 24576 }
+  it('stays quiet about the window when it is usable', () => {
+    codeReview.coverage = {
+      filesRead: 5,
+      filesTotal: 5,
+      complete: true,
+      requiredContextTokens: 8192,
+      windowTooSmall: false,
+    }
     renderWorking()
-    expect(screen.queryByTestId('code-review-prompt-size')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('code-review-window-too-small')).not.toBeInTheDocument()
   })
 })

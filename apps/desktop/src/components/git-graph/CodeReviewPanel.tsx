@@ -35,7 +35,6 @@ export function CodeReviewPanel({ repoPath, target, baseRef, onClose }: CodeRevi
     text,
     generatedAt,
     comparedTo,
-    promptSize,
     coverage,
   } = useCodeReview(repoPath, target)
 
@@ -72,12 +71,11 @@ export function CodeReviewPanel({ repoPath, target, baseRef, onClose }: CodeRevi
    * The one genuinely broken state left: a declared window too small to hold even the instruction.
    * No amount of trimming the diff fixes it, so it stays a warning rather than information.
    */
-  const unusableWindowNotice =
-    promptSize?.risk === 'over' ? (
-      <p data-testid="code-review-prompt-size" className="text-[10px] text-tone-danger">
-        {t('gitTree.codeReview.windowTooSmall', { context: promptSize.contextTokens })}
-      </p>
-    ) : null
+  const unusableWindowNotice = coverage?.windowTooSmall ? (
+    <p data-testid="code-review-window-too-small" className="text-[10px] text-tone-danger">
+      {t('gitTree.codeReview.windowTooSmall')}
+    </p>
+  ) : null
 
   return (
     <ExplanationPanelShell

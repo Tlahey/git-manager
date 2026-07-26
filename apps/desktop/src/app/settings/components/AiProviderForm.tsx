@@ -11,6 +11,7 @@ import { useSettingsStore } from '../../../stores/settings.store'
 import { useAiStatusStore } from '../../../stores/aiStatus.store'
 import { ProviderCombobox } from './ProviderCombobox'
 import { AiModelProbe } from './AiModelProbe'
+import { AiContextWindowCheck } from './AiContextWindowCheck'
 
 /**
  * Connection settings for the AI provider: which preset, where it lives, an optional API key, the
@@ -223,6 +224,7 @@ export function AiProviderForm() {
           className="h-8 w-32 text-xs"
           data-testid="ai-context-tokens-input"
         />
+        <AiContextWindowCheck />
         <p className="text-[10px] text-muted-foreground">{t('settings.ai.contextTokensHint')}</p>
       </div>
     </div>

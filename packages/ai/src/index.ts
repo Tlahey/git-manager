@@ -19,10 +19,8 @@ export type {
 } from './config'
 
 // Prompt sizing — surfaces context overflow, which every provider fails at silently.
-export type { PromptSizeAssessment, PromptSizeRisk } from './promptSize'
 export {
   estimateTokens,
-  assessPromptSize,
   variableCharBudget,
   contextTokensFor,
   DEFAULT_CONTEXT_TOKENS,
@@ -44,7 +42,6 @@ export {
   createStreamingService,
   createCompletionService,
   createStatusService,
-  estimateFeaturePrompt,
   MODEL_PROBE_INSTRUCTION,
   MODEL_PROBE_PROMPT,
   MODEL_PROBE_MAX_TIMEOUT_SECONDS,

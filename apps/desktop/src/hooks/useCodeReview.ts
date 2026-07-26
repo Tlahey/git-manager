@@ -1,11 +1,5 @@
 import { useCallback, useState } from 'react'
-import {
-  assessCodeReviewCoverage,
-  codeReviewFeature,
-  estimateFeaturePrompt,
-  type CodeReviewCoverage,
-  type PromptSizeAssessment,
-} from '@git-manager/ai'
+import { assessCodeReviewCoverage, type CodeReviewCoverage } from '@git-manager/ai'
 import { apiGetAiContext, codeReviewService } from '../api/ai.api'
 import {
   explanationKey,
@@ -55,16 +49,6 @@ export function useCodeReview(repoPath: string, target: CodeReviewTarget) {
   const forget = useAiExplanationStore((s) => s.clear)
 
   /**
-   * Size of the prompt the last run actually sent, or `null` before the first one.
-   *
-   * Only knowable once the git context has been fetched — the diff *is* the prompt's bulk — so it is
-   * state rather than something derivable at render. It is recorded even when the run then fails,
-   * because an oversized prompt is a plausible cause of that failure and hiding the number would
-   * remove the only clue.
-   */
-  const [promptSize, setPromptSize] = useState<PromptSizeAssessment | null>(null)
-
-  /**
    * What the last run actually read, and the window it would take to read everything.
    *
    * This is the number that matters now. While the diff budget was a constant the question was
@@ -86,7 +70,6 @@ export function useCodeReview(repoPath: string, target: CodeReviewTarget) {
             // empty diff will find something to say about it anyway.
             if (!context.diff.trim()) return 'AI_NO_BRANCH_CHANGES'
             const input = { context, scope: 'branch' as const, language, contextTokens }
-            setPromptSize(estimateFeaturePrompt(codeReviewFeature, input, contextTokens))
             setCoverage(assessCodeReviewCoverage(input))
             await codeReviewService.run(aiConnection, input)
             return
@@ -94,7 +77,6 @@ export function useCodeReview(repoPath: string, target: CodeReviewTarget) {
           const context = await apiGetAiContext(repoPath, 'working')
           if (!context.diff.trim()) return 'AI_NO_WORKING_CHANGES'
           const input = { context, scope: 'working' as const, language, contextTokens }
-          setPromptSize(estimateFeaturePrompt(codeReviewFeature, input, contextTokens))
           setCoverage(assessCodeReviewCoverage(input))
           await codeReviewService.run(aiConnection, input)
         },
@@ -108,7 +90,6 @@ export function useCodeReview(repoPath: string, target: CodeReviewTarget) {
   /** Drops the remembered review (branch scope) and the live text — the panel's "forget" action. */
   const clear = useCallback(() => {
     if (isBranch) forget(repoPath, 'branch-review', ref)
-    setPromptSize(null)
     setCoverage(null)
     reset()
   }, [forget, repoPath, isBranch, ref, reset])
@@ -129,8 +110,6 @@ export function useCodeReview(repoPath: string, target: CodeReviewTarget) {
     /** The base the remembered review used — may differ from the current one. */
     comparedTo: stored?.comparedTo ?? null,
     hasStored: stored !== undefined,
-    /** Estimated size of the prompt the last run sent, or `null` before the first one. */
-    promptSize,
     /** What the last run read, and the window needed to read it all. `null` before the first run. */
     coverage,
   }

@@ -4,6 +4,7 @@ pub mod ai_activity;
 pub mod ai_anthropic;
 pub mod ai_context;
 pub mod ai_convention;
+pub mod ai_model_info;
 pub mod ai_openai_compatible;
 pub mod ai_provider;
 pub mod ai_registry;

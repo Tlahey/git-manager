@@ -1,15 +1,18 @@
 /**
- * Telling the user how big a prompt is, before a provider silently mangles it.
+ * Sizing a prompt against a model's context window, before a provider silently mangles it.
  *
  * Context overflow is the worst-behaved failure in the whole AI stack: it does not raise, it does not
  * warn, and it does not truncate the *end*. A provider handed more tokens than its window drops them
- * from the **start** — which is exactly where the system instruction lives. The symptom is a review
- * that quietly stops obeying its own output rules, or invents a format nobody asked for, with nothing
- * anywhere saying why.
+ * from the **start** — which is exactly where the system instruction lives. The symptom is a feature
+ * that quietly stops obeying its own output rules, with nothing anywhere saying why.
  *
- * Nothing in the app negotiates or even reads a context window today, so this module does not pretend
- * to know one. It states the size, names the assumption it is judging against, and lets the reader
- * draw the conclusion — which is the honest thing to do with a number we cannot verify.
+ * The answer is to never build such a prompt: {@link variableCharBudget} tells a feature how much
+ * variable content it may carry, so the prompt shrinks to fit rather than overflowing, and
+ * {@link contextTokensFor} inverts that to say what window would have carried it whole.
+ *
+ * An earlier version instead *measured* finished prompts and graded them (ok / tight / over). That
+ * was the right tool for a fixed budget and became dead weight once the budget followed the window:
+ * a prompt built this way cannot be "over". Only the sizing survives.
  */
 
 /**
@@ -40,23 +43,6 @@ export const DEFAULT_CONTEXT_TOKENS = 4096
  */
 const RESERVED_OUTPUT_TOKENS = 600
 
-/** How a prompt's size reads against the model's context window. */
-export type PromptSizeRisk =
-  /** Comfortably inside the assumed window. */
-  | 'ok'
-  /** Inside the window, but not once the answer is written — the tail of the exchange is at risk. */
-  | 'tight'
-  /** Past the window: the provider is already dropping the instruction. */
-  | 'over'
-
-export interface PromptSizeAssessment {
-  /** Estimated prompt tokens, system and user turns together. Rounded up. */
-  tokens: number
-  risk: PromptSizeRisk
-  /** The window this was judged against, so a caller can name it rather than leave it implicit. */
-  contextTokens: number
-}
-
 /**
  * Rough token count for a string. An estimate, not a tokenizer: a real one is model-specific and
  * would mean shipping vocabulary files for a number whose only job is to decide whether to show a
@@ -64,22 +50,6 @@ export interface PromptSizeAssessment {
  */
 export function estimateTokens(text: string): number {
   return Math.ceil(text.length / CHARS_PER_TOKEN)
-}
-
-/** Sizes a system/user pair and says how it reads against `contextTokens`. */
-export function assessPromptSize(
-  systemPrompt: string,
-  userPrompt: string,
-  contextTokens: number = DEFAULT_CONTEXT_TOKENS
-): PromptSizeAssessment {
-  const tokens = estimateTokens(systemPrompt) + estimateTokens(userPrompt)
-  const risk: PromptSizeRisk =
-    tokens > contextTokens
-      ? 'over'
-      : tokens > contextTokens - RESERVED_OUTPUT_TOKENS
-        ? 'tight'
-        : 'ok'
-  return { tokens, risk, contextTokens }
 }
 
 /**

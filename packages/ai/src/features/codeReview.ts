@@ -226,6 +226,12 @@ export interface CodeReviewCoverage {
   complete: boolean
   /** Smallest common context window that would carry the whole diff, in tokens. */
   requiredContextTokens: number
+  /**
+   * The declared window leaves no room for any diff at all — everything it can hold is instruction
+   * and reserve. The one state trimming cannot fix, and the only one still worth a warning rather
+   * than information: every other shortfall just means fewer files were read.
+   */
+  windowTooSmall: boolean
 }
 
 /** Window sizes people actually configure. Reporting "you need 21 473 tokens" is true and useless;
@@ -255,6 +261,7 @@ export function assessCodeReviewCoverage(input: CodeReviewInput): CodeReviewCove
     filesRead,
     filesTotal,
     complete: budgeted.omitted.length === 0 && budgeted.truncated.length === 0,
+    windowTooSmall: reviewDiffBudget(input.contextTokens, envelopeTokens) === 0,
     requiredContextTokens: nextCommonWindow(
       contextTokensFor(
         input.context.diff.length,

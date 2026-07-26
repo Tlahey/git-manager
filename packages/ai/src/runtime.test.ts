@@ -1,14 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AiConnectionConfig, AiContext } from './config'
-import { DEFAULT_CONTEXT_TOKENS } from './promptSize'
-import type { StreamingFeature } from './runtime'
 import { commitMessageFeature } from './features/commitMessage'
 import { fileGroupingFeature } from './features/fileGrouping'
 import {
   createCompletionService,
   createStatusService,
   createStreamingService,
-  estimateFeaturePrompt,
   resolveGenerateConfig,
   MODEL_PROBE_INSTRUCTION,
   MODEL_PROBE_MAX_TIMEOUT_SECONDS,
@@ -182,29 +179,5 @@ describe('createStatusService', () => {
       url: 'http://localhost:11434',
       apiKey: 'sk-test',
     })
-  })
-})
-
-describe('estimateFeaturePrompt', () => {
-  const feature: StreamingFeature<{ body: string }> = {
-    id: 'sizing',
-    kind: 'streaming',
-    instruction: 'i'.repeat(350),
-    temperature: 0.1,
-    buildPrompt: (input) => input.body,
-  }
-
-  it('sizes the instruction and the built prompt together, without sending anything', () => {
-    const { tokens } = estimateFeaturePrompt(feature, { body: 'b'.repeat(350) })
-    // 700 chars at ~3.5 chars/token.
-    expect(tokens).toBe(200)
-  })
-
-  it('flags an input that overflows the assumed window', () => {
-    const big = estimateFeaturePrompt(feature, { body: 'b'.repeat(DEFAULT_CONTEXT_TOKENS * 4) })
-    expect(big.risk).toBe('over')
-
-    const small = estimateFeaturePrompt(feature, { body: 'b' })
-    expect(small.risk).toBe('ok')
   })
 })

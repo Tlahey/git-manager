@@ -28,6 +28,8 @@ import {
   checkAiStatus,
   getAiActivity,
   getAiContext,
+  getModelContextLimits,
+  type ModelContextLimits,
 } from '../lib/tauri'
 import { withAiActivity } from '../stores/aiActivity.store'
 
@@ -52,6 +54,15 @@ export async function apiGetAiContext(
  * daily-summary feature's prompt. */
 export async function apiGetAiActivity(path: string, sinceHours: number): Promise<AiActivity> {
   return getAiActivity(path, sinceHours)
+}
+
+/** Sanity-checks the context window declared in Settings against what the provider reports. See
+ * `services/ai_model_info.rs` for what this can and cannot prove. */
+export async function apiGetModelContextLimits(
+  url: string,
+  model: string
+): Promise<ModelContextLimits> {
+  return getModelContextLimits(url, model)
 }
 
 export async function apiCancelGeneration() {

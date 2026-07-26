@@ -173,7 +173,7 @@
   "gitTree.codeReview.comparedToHead": "relu par rapport au dernier commit",
   "gitTree.codeReview.empty": "Aucune relecture pour l'instant. Générez-en une pour que le modèle lise ces modifications et signale ce qui mérite un second regard — il ne voit que le diff, considérez donc ses remarques comme des pistes à vérifier, pas comme un verdict.",
   "gitTree.codeReview.coverage": "{{read}} des {{total}} fichiers modifiés ont été lus en entier — les autres ont été raccourcis ou écartés. Tout lire demande une fenêtre de contexte d'environ {{window}}k tokens.",
-  "gitTree.codeReview.windowTooSmall": "La fenêtre de contexte configurée ({{context}} tokens) est trop petite pour contenir les instructions de relecture. Augmentez-la dans Réglages → IA, sinon le modèle ne les recevra pas.",
+  "gitTree.codeReview.windowTooSmall": "La fenêtre de contexte configurée ne laisse aucune place au diff — tout ce qu'elle peut contenir, ce sont les instructions de relecture. Augmentez-la dans Réglages → IA.",
   "gitTree.branchExplanation.noBase": "Aucune branche de base trouvée pour comparer {{branch}}.",
   "gitTree.branchMenu.startPr": "Push {{current}} et ouvrir une pull request vers {{branch}}",
   "gitTree.branchMenu.rename": "Renommer {{branch}}",

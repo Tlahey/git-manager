@@ -110,7 +110,7 @@ Create tag / Create annotated tag
 | **Rename `<branch>`** | Local branches only. |
 | **Delete `<branch>`** | Hidden on the **current** branch; **disabled** on **remote** branches (no confirm flow yet); enabled on other local branches. |
 | **Copy link to branch** | Shown for a **remote** branch, or for the local **`main`/`master`** (→ `origin/<name>`). Not shown for other local branches. |
-| **Solo** | Always **disabled** (placeholder — no branch-filter integration). |
+| **Solo** | Always enabled. Isolates the branch in the graph via `useSoloModeStore` (`onSolo` → `enable([shortName])`), from both this menu and the sidebar's. |
 
 The **`main`/`master`** branch is the only local branch that gets **Copy link to branch**
 (`isMainBranchName`). Deletion of the current branch is never offered.
@@ -156,8 +156,7 @@ Ranked roughly by user impact.
 1. **Set upstream** — needs a backend command to set a branch's upstream.
 2. ~~**Explain branch changes** / **Explain working changes**~~ — **shipped**, along with their
    *Review* counterparts. See [docs/ai](../../../../docs/ai/README.md).
-3. **Solo** — needs to drive a graph branch-filter (isolate one branch's commits).
-4. **Delete a remote branch** — disabled; needs the confirm flow + `push :refs/heads/<name>` backend
+3. **Delete a remote branch** — disabled; needs the confirm flow + `push :refs/heads/<name>` backend
    (mirror of the remote-tag deletion already shipped).
 
 ### Real functional gaps

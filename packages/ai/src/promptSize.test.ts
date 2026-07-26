@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_CONTEXT_TOKENS, assessPromptSize, estimateTokens } from './promptSize'
-
-/** A string estimating to roughly `tokens` tokens. */
-function ofTokens(tokens: number): string {
-  return 'x'.repeat(Math.round(tokens * 3.5))
-}
+import { contextTokensFor, estimateTokens, variableCharBudget } from './promptSize'
 
 describe('estimateTokens', () => {
   it('scales with length and rounds up', () => {
@@ -20,32 +15,31 @@ describe('estimateTokens', () => {
   })
 })
 
-describe('assessPromptSize', () => {
-  it('counts both turns', () => {
-    const { tokens } = assessPromptSize(ofTokens(100), ofTokens(200))
-    expect(tokens).toBeGreaterThanOrEqual(299)
-    expect(tokens).toBeLessThanOrEqual(301)
+describe('variableCharBudget', () => {
+  it('grows with the window and shrinks with the overhead', () => {
+    expect(variableCharBudget(32768, 1000)).toBeGreaterThan(variableCharBudget(8192, 1000))
+    expect(variableCharBudget(8192, 4000)).toBeLessThan(variableCharBudget(8192, 1000))
   })
 
-  it('reads a small prompt as fine', () => {
-    const { risk } = assessPromptSize(ofTokens(200), ofTokens(500))
-    expect(risk).toBe('ok')
+  it('never goes negative when the overhead already fills the window', () => {
+    expect(variableCharBudget(1000, 5000)).toBe(0)
   })
 
-  it('flags a prompt that leaves no room for the answer', () => {
-    // Inside the window, but not once a 300-word review is written into it.
-    const { risk } = assessPromptSize('', ofTokens(DEFAULT_CONTEXT_TOKENS - 200))
-    expect(risk).toBe('tight')
+  it('leaves room for the answer, not just the prompt', () => {
+    // A window entirely spent on input would leave the model nothing to reply into.
+    expect(variableCharBudget(4096, 0)).toBeLessThan(4096 * 3.5)
+  })
+})
+
+describe('contextTokensFor', () => {
+  it('inverts variableCharBudget: its answer really does carry the content', () => {
+    for (const chars of [1000, 50_000, 250_000]) {
+      const window = contextTokensFor(chars, 1200)
+      expect(variableCharBudget(window, 1200)).toBeGreaterThanOrEqual(chars)
+    }
   })
 
-  it('flags a prompt past the assumed window', () => {
-    const { risk, tokens } = assessPromptSize('', ofTokens(DEFAULT_CONTEXT_TOKENS + 1000))
-    expect(risk).toBe('over')
-    expect(tokens).toBeGreaterThan(DEFAULT_CONTEXT_TOKENS)
-  })
-
-  it('reports the window it judged against, rather than leaving it implicit', () => {
-    // The caller has to be able to name the assumption — the app never reads a real context window.
-    expect(assessPromptSize('a', 'b').contextTokens).toBe(DEFAULT_CONTEXT_TOKENS)
+  it('asks for more window as the content grows', () => {
+    expect(contextTokensFor(100_000, 1200)).toBeGreaterThan(contextTokensFor(10_000, 1200))
   })
 })

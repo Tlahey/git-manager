@@ -1,6 +1,7 @@
 use crate::models::AiProviderStatus;
 use crate::services::ai_activity::{build_ai_activity, AiActivity};
 use crate::services::ai_context::{build_ai_context, AiContext, AiContextScope};
+use crate::services::ai_model_info::{fetch_model_context_limits, ModelContextLimits};
 use crate::services::ai_provider::GenerateConfig;
 use crate::services::ai_registry::provider_for;
 use crate::state::AppState;
@@ -58,6 +59,20 @@ pub async fn check_ai_status(config: AiCheckConfig) -> Result<AiProviderStatus, 
     };
     provider
         .check_status(&generate_config)
+        .await
+        .map_err(Into::into)
+}
+
+/// Asks the provider what `model`'s context window really is, so the value declared in Settings can
+/// be sanity-checked instead of trusted blindly. Ollama-only — see `ai_model_info`. Returns empty
+/// fields rather than an error when the provider has nothing to say, because "unknown" is a normal
+/// answer here and must not be shown as a connection failure.
+#[tauri::command]
+pub async fn get_model_context_limits(
+    url: String,
+    model: String,
+) -> Result<ModelContextLimits, String> {
+    fetch_model_context_limits(&url, &model)
         .await
         .map_err(Into::into)
 }
