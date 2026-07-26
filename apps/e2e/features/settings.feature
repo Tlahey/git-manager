@@ -40,12 +40,19 @@ Feature: Settings
     And I click the AI provider test connection button
     Then the AI provider connection status is reported
 
-  Scenario: The AI provider dropdown lists Ollama as enabled and others as coming soon
+  Scenario: The AI provider dropdown offers Ollama and the generic OpenAI-compatible entry
     Given the git-manager application is running
     When I open the settings
     And I open the "local_ai" settings tab
     Then the "ollama" AI provider option is enabled
-    And the "anthropic" AI provider option is disabled
+    And the "openai-compatible" AI provider option is enabled
+
+  Scenario: Turning AI off hides the whole provider configuration
+    Given the git-manager application is running
+    When I open the settings
+    And I open the "local_ai" settings tab
+    And I toggle the AI setting off
+    Then the AI provider configuration is hidden
 
   Scenario: Toggling the rewards setting persists across a reload
     Given the git-manager application is running

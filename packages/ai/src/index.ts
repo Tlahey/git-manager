@@ -1,6 +1,6 @@
 // Provider presets (the user-facing choice + its wire protocol)
 export type { AiProtocol, AiPresetId, AiPresetDefinition } from './presets'
-export { AI_PRESETS, getAiPreset } from './presets'
+export { AI_PRESETS, getAiPreset, migrateAiPresetId } from './presets'
 
 // Config / wire types
 export type {
@@ -27,12 +27,16 @@ export type {
   StreamingFeatureService,
   CompletionFeatureService,
   AiStatusService,
+  AiModelProbeResult,
 } from './runtime'
 export {
   resolveGenerateConfig,
   createStreamingService,
   createCompletionService,
   createStatusService,
+  MODEL_PROBE_INSTRUCTION,
+  MODEL_PROBE_PROMPT,
+  MODEL_PROBE_MAX_TIMEOUT_SECONDS,
 } from './runtime'
 
 // Shipped features (one "service per feature" is assembled from these in the app's api layer).

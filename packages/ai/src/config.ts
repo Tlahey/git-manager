@@ -21,6 +21,10 @@ export interface AiProviderStatus {
   connected: boolean
   models: string[]
   version?: string | null
+  /** Short technical diagnostic when `connected` is false — the exact URL that was probed plus the
+   * HTTP status or transport error. Settings surfaces it verbatim, because "not connected" alone
+   * can't distinguish a wrong port from a base URL missing (or duplicating) its `/v1` segment. */
+  detail?: string | null
 }
 
 /** Wire shape for the `check_ai_status` Tauri command — just enough to open a connection. */

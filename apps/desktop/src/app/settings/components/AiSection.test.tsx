@@ -1,164 +1,74 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) =>
-      opts ? `${key}:${JSON.stringify(opts)}` : key,
-  }),
+vi.mock('../../../api/ai.api', () => ({
+  aiStatusService: { check: vi.fn(), probe: vi.fn() },
 }))
-vi.mock('../../../api/ai.api', () => ({ aiStatusService: { check: vi.fn() } }))
 
 import { aiStatusService } from '../../../api/ai.api'
 import { AiSection } from './AiSection'
 import { useSettingsStore } from '../../../stores/settings.store'
+import { useAiStatusStore } from '../../../stores/aiStatus.store'
 
 const mockedCheck = aiStatusService.check as unknown as ReturnType<typeof vi.fn>
 const INITIAL_SETTINGS = useSettingsStore.getState()
+const INITIAL_STATUS = useAiStatusStore.getState()
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockedCheck.mockResolvedValue({ connected: false, models: [] })
   useSettingsStore.setState(INITIAL_SETTINGS, true)
+  useAiStatusStore.setState(INITIAL_STATUS, true)
 })
 
-describe('AiSection — provider preset', () => {
-  it('lists every preset once opened, disabling the ones not implemented yet', async () => {
+describe('AiSection — master switch', () => {
+  it('is on by default and shows the provider configuration', async () => {
+    render(<AiSection />)
+    expect(screen.getByTestId('ai-enabled-toggle')).toBeChecked()
+    expect(await screen.findByTestId('ai-provider-select')).toBeInTheDocument()
+    expect(screen.getByText('Server URL')).toBeInTheDocument()
+  })
+
+  it('hides every AI setting — provider and features alike — once turned off', async () => {
     const user = userEvent.setup()
     render(<AiSection />)
-    await user.click(screen.getByTestId('ai-provider-select'))
-    expect(screen.getByTestId('ai-provider-option-ollama')).toHaveAttribute('aria-disabled', 'false')
-    expect(screen.getByTestId('ai-provider-option-anthropic')).toHaveAttribute(
-      'aria-disabled',
-      'true'
+    await user.click(screen.getByTestId('ai-enabled-toggle'))
+
+    expect(useSettingsStore.getState().settings.ai.enabled).toBe(false)
+    expect(screen.queryByTestId('ai-provider-select')).not.toBeInTheDocument()
+    expect(screen.queryByText('Server URL')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('daily-summary-enabled-toggle')).not.toBeInTheDocument()
+    expect(screen.getByTestId('ai-disabled-hint')).toHaveTextContent(
+      'Turn AI features on to configure a provider.'
     )
   })
 
-  it('filters the provider list via the search bar', async () => {
+  it('brings the configuration back when turned on again', async () => {
     const user = userEvent.setup()
     render(<AiSection />)
-    await user.click(screen.getByTestId('ai-provider-select'))
-    await user.type(screen.getByTestId('ai-provider-search'), 'anthro')
-    expect(screen.getByTestId('ai-provider-option-anthropic')).toBeInTheDocument()
-    expect(screen.queryByTestId('ai-provider-option-ollama')).not.toBeInTheDocument()
-  })
+    const toggle = screen.getByTestId('ai-enabled-toggle')
+    await user.click(toggle)
+    await user.click(toggle)
 
-  it('selecting a preset resets the URL to its default and clears the connection status', async () => {
-    mockedCheck.mockResolvedValue({ connected: true, models: [] })
-    const user = userEvent.setup()
-    render(<AiSection />)
-    await user.click(screen.getByText('settings.ai.test'))
-    await screen.findByTestId('ai-connection-status')
-
-    // Move the URL away from Ollama's default first, so re-selecting "ollama" — the only
-    // implemented preset today, since the searchable list (unlike the old native <select>) can't
-    // reach a disabled option through real UI interaction — is observably a reset, not a no-op.
-    fireEvent.change(screen.getByDisplayValue('http://localhost:11434'), {
-      target: { value: 'http://localhost:9999' },
-    })
-
-    await user.click(screen.getByTestId('ai-provider-select'))
-    await user.click(screen.getByTestId('ai-provider-option-ollama'))
-
-    expect(useSettingsStore.getState().settings.ai.url).toBe('http://localhost:11434')
-    expect(screen.queryByTestId('ai-connection-status')).not.toBeInTheDocument()
+    expect(useSettingsStore.getState().settings.ai.enabled).toBe(true)
+    expect(await screen.findByTestId('ai-provider-select')).toBeInTheDocument()
   })
 })
 
-describe('AiSection — connection test', () => {
-  it('tests the connection and shows a connected message with the model count', async () => {
-    mockedCheck.mockResolvedValue({ connected: true, models: ['llama3.2', 'mistral'] })
-    const user = userEvent.setup()
+describe('AiSection — feature toggles', () => {
+  it('exposes the daily-summary toggles under the provider configuration', () => {
     render(<AiSection />)
-    await user.click(screen.getByText('settings.ai.test'))
-    // The status service (mocked here) resolves preset→protocol internally; the component just
-    // hands it the current connection settings.
-    expect(mockedCheck).toHaveBeenCalledWith(useSettingsStore.getState().settings.ai)
-    expect(await screen.findByText('settings.ai.connected:{"count":2}')).toBeInTheDocument()
-  })
-
-  it('shows a disconnected message when not connected', async () => {
-    mockedCheck.mockResolvedValue({ connected: false, models: [] })
-    const user = userEvent.setup()
-    render(<AiSection />)
-    await user.click(screen.getByText('settings.ai.test'))
-    expect(await screen.findByText('settings.ai.disconnected')).toBeInTheDocument()
-  })
-
-  it('treats a thrown error as disconnected', async () => {
-    mockedCheck.mockRejectedValue(new Error('network error'))
-    const user = userEvent.setup()
-    render(<AiSection />)
-    await user.click(screen.getByText('settings.ai.test'))
-    expect(await screen.findByText('settings.ai.disconnected')).toBeInTheDocument()
-  })
-
-  it('switches to a model dropdown listing the detected models once connected', async () => {
-    mockedCheck.mockResolvedValue({ connected: true, models: ['llama3.2', 'mistral'] })
-    const user = userEvent.setup()
-    render(<AiSection />)
-    await user.click(screen.getByText('settings.ai.test'))
-    await screen.findByText('settings.ai.connected:{"count":2}')
-    const select = screen.getByTestId('ai-model-select')
-    expect(select).toBeInTheDocument()
-    await user.selectOptions(select, 'mistral')
-    expect(useSettingsStore.getState().settings.ai.model).toBe('mistral')
-  })
-})
-
-describe('AiSection — fields', () => {
-  it('binds the request timeout', async () => {
-    const user = userEvent.setup()
-    render(<AiSection />)
-    const timeoutInput = screen.getByDisplayValue('30')
-    await user.clear(timeoutInput)
-    await user.type(timeoutInput, '60')
-    expect(useSettingsStore.getState().settings.ai.timeoutSeconds).toBe(60)
+    expect(screen.getByTestId('daily-summary-enabled-toggle')).toBeChecked()
+    expect(screen.getByTestId('daily-summary-auto-toggle')).toBeInTheDocument()
   })
 
   it('does not expose feature tuning (temperature / system prompt / auto-scope)', () => {
     render(<AiSection />)
     // Instruction/temperature/scope are owned per-feature inside @git-manager/ai and must never
-    // surface in Settings. (The daily-summary enable/auto toggles below are feature *enablement*,
-    // not prompt tuning, so they are allowed.)
-    expect(screen.queryByText('settings.ai.temperature')).not.toBeInTheDocument()
-    expect(screen.queryByText('settings.llm.systemPrompt')).not.toBeInTheDocument()
-    expect(screen.queryByText('settings.llm.autoScope')).not.toBeInTheDocument()
-  })
-
-  it('exposes the daily-summary enable toggle and its auto-generate sub-toggle', async () => {
-    const user = userEvent.setup()
-    render(<AiSection />)
-    const enable = screen.getByTestId('daily-summary-enabled-toggle')
-    expect(enable).toBeChecked()
-    expect(screen.getByTestId('daily-summary-auto-toggle')).toBeInTheDocument()
-
-    // Turning the feature off hides the auto-generate sub-toggle.
-    await user.click(enable)
-    expect(useSettingsStore.getState().settings.dailySummary?.enabled).toBe(false)
-    expect(screen.queryByTestId('daily-summary-auto-toggle')).not.toBeInTheDocument()
-  })
-
-  it('shows an API key field only for presets that require one', async () => {
-    render(<AiSection />)
-    expect(screen.queryByTestId('ai-api-key-input')).not.toBeInTheDocument()
-    // "openai" isn't selectable via the UI yet (disabled, see the preset-listing test above) —
-    // AiSection subscribes to the whole settings store, so setting it directly exercises the
-    // field's conditional rendering, same reasoning as the preset-switch test above.
-    useSettingsStore.setState((state) => ({
-      settings: { ...state.settings, ai: { ...state.settings.ai, preset: 'openai' } },
-    }))
-    expect(await screen.findByTestId('ai-api-key-input')).toBeInTheDocument()
-  })
-})
-
-describe('AiSection — enable toggle', () => {
-  it('is on by default and persists the enabled flag when toggled off', async () => {
-    const user = userEvent.setup()
-    render(<AiSection />)
-    const toggle = screen.getByTestId('ai-enabled-toggle')
-    expect(toggle).toBeChecked()
-    await user.click(toggle)
-    expect(useSettingsStore.getState().settings.ai.enabled).toBe(false)
+    // surface in Settings. (The daily-summary enable/auto toggles are feature *enablement*, not
+    // prompt tuning, so they are allowed.)
+    expect(screen.queryByText('Temperature')).not.toBeInTheDocument()
+    expect(screen.queryByText(/system prompt/i)).not.toBeInTheDocument()
   })
 })

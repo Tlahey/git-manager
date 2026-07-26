@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { migrateAiPresetId } from '@git-manager/ai'
 import type { AppSettings, RepoScopedSettings } from '@git-manager/git-types'
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -126,6 +127,13 @@ export function mergeSettingsWithDefaults(persisted: Partial<AppSettings> | unde
   // a persisted selection so existing users don't silently fall back to the default.
   if (merged.appearance?.theme === 'obsidian') {
     merged.appearance = { ...merged.appearance, theme: 'twilight' }
+  }
+  // Legacy AI-preset migration: the per-vendor presets (LM Studio, MLX, OpenAI, Anthropic) were
+  // folded into the single generic `openai-compatible` entry. Remapping here — rather than letting
+  // `getAiPreset` throw on the stale id — keeps the user's stored URL/model/key working untouched.
+  const migratedPreset = migrateAiPresetId(merged.ai.preset)
+  if (migratedPreset !== merged.ai.preset) {
+    merged.ai = { ...merged.ai, preset: migratedPreset }
   }
   return merged
 }

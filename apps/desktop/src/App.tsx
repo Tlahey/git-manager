@@ -21,7 +21,9 @@ import { useMonacoTheme } from './hooks/useMonacoTheme'
 import { useNotificationWatcher } from './hooks/useNotificationWatcher'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useDevFixtureImport } from './hooks/useDevFixtureImport'
+import { useAiStatusCheck } from './hooks/useAiStatusCheck'
 import { Footer } from './components/footer/Footer'
+import { AiStatusBanner } from './components/layout/AiStatusBanner'
 
 import { Toaster } from '@git-manager/ui'
 import { CommandPalette } from './components/command-palette/CommandPalette'
@@ -48,6 +50,7 @@ export default function App() {
   useNotificationWatcher()
   useDevFixtureImport()
   useAppReadySplash()
+  useAiStatusCheck()
 
   useKeyboardShortcuts({
     onOpenSettings: () => handleOpenSettings('general'),
@@ -159,6 +162,7 @@ export default function App() {
         ) : (
           <>
             <TabBar onOpenSettings={handleOpenSettings} />
+            <AiStatusBanner onOpenSettings={() => handleOpenSettings('local_ai')} />
             <OperationProgressBar />
             <div className="flex-1 overflow-hidden">
               {activeTab === DASHBOARD_TAB ? (

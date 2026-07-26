@@ -110,13 +110,32 @@ Then(/^the AI provider connection status is reported$/, async () => {
   await status.waitForDisplayed({ timeout: 15000 })
   const className = (await status.getAttribute('class')) ?? ''
   const reportsAKnownState =
-    className.includes('text-destructive') || className.includes('text-green-500')
+    className.includes('text-tone-danger') || className.includes('text-tone-success')
   expect(reportsAKnownState).toBe(true)
+})
+
+When(/^I toggle the AI setting (on|off)$/, async (state: string) => {
+  const toggle = $('[data-testid="ai-enabled-toggle"]')
+  await toggle.waitForDisplayed({ timeout: 10000 })
+  const isOn = await toggle.isSelected()
+  if (isOn !== (state === 'on')) {
+    await toggle.click()
+  }
+})
+
+// The master switch gates every AI setting: with it off, the provider block and the per-feature
+// toggles are unmounted, leaving only the switch itself and an explanatory line.
+Then(/^the AI provider configuration is hidden$/, async () => {
+  await $('[data-testid="ai-disabled-hint"]').waitForDisplayed({ timeout: 10000 })
+  expect(await $('[data-testid="ai-provider-select"]').isExisting()).toBe(false)
+  expect(await $('[data-testid="ai-url-input"]').isExisting()).toBe(false)
+  expect(await $('[data-testid="daily-summary-enabled-toggle"]').isExisting()).toBe(false)
 })
 
 // The provider picker is a searchable popover (Popover + cmdk), not a native <select> — its options
 // only exist in the DOM while open, so open it first unless a prior step in the same scenario
-// already left it open (re-clicking the trigger would just close it again).
+// already left it open (re-clicking the trigger would just close it again). Every shipped preset is
+// selectable today; the `disabled` half of this step is kept for a future "coming soon" entry.
 Then(
   /^the "([^"]*)" AI provider option is (enabled|disabled)$/,
   async (presetId: string, state: string) => {
