@@ -3,7 +3,7 @@ use crate::services::git_remote;
 use crate::utils::{github_branch_url, github_tag_url, github_web_url};
 use git2::Repository;
 
-pub use crate::services::git_remote::{FetchResult, PullResult, RemoteInfo};
+pub use crate::services::git_remote::{FetchResult, PullResult, PullStrategy, RemoteInfo};
 
 // ─── fetch_remote ─────────────────────────────────────────────────────────────
 
@@ -21,15 +21,17 @@ pub async fn fetch_remote(
 
 // ─── pull_branch ──────────────────────────────────────────────────────────────
 
-/// Pull (fetch + fast-forward merge or rebase)
+/// Pull: fetch, then integrate the remote branch with the chosen strategy (defaults to
+/// fast-forward-if-possible, like `git pull`). See `git_remote::pull` for what each strategy does
+/// on conflict — notably that none of them leave the repo in a paused, conflicted state.
 #[tauri::command]
 pub async fn pull_branch(
     path: String,
     remote: Option<String>,
-    rebase: Option<bool>,
+    strategy: Option<PullStrategy>,
 ) -> Result<PullResult, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_remote::pull(&repo, remote, rebase.unwrap_or(false)).map_err(Into::into)
+    git_remote::pull(&repo, remote, strategy.unwrap_or_default()).map_err(Into::into)
 }
 
 // ─── push_branch ──────────────────────────────────────────────────────────────

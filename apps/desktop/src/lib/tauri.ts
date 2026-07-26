@@ -457,12 +457,25 @@ export const isCommitOnCurrentBranch = (path: string, oid: string) =>
 export const fetchRemote = (path: string, remote?: string, prune?: boolean) =>
   invoke<{ remote: string; updatedRefs: string[] }>('fetch_remote', { path, remote, prune })
 
-export const pullBranch = (path: string, remote?: string, rebase?: boolean) =>
-  invoke<{ fastForwarded: boolean; commitsMerged: number; conflicts: string[] }>('pull_branch', {
-    path,
-    remote,
-    rebase,
-  })
+/**
+ * How a pull integrates the fetched commits once the branch has diverged. Mirrors the Rust
+ * `PullStrategy` (serialized kebab-case). None of them ever leave the repo paused on a conflict:
+ * `fast-forward-only` refuses up front, the other two undo their work and report the paths.
+ */
+export type PullStrategy = 'fast-forward-if-possible' | 'fast-forward-only' | 'rebase'
+
+export interface PullResult {
+  fastForwarded: boolean
+  commitsMerged: number
+  conflicts: string[]
+  /** A merge commit was created because the branches had diverged. */
+  merged: boolean
+  /** The local-only commits were replayed on top of the fetched tip. */
+  rebased: boolean
+}
+
+export const pullBranch = (path: string, remote?: string, strategy?: PullStrategy) =>
+  invoke<PullResult>('pull_branch', { path, remote, strategy })
 
 export const pushBranch = (path: string, remote?: string, force?: boolean) =>
   invoke<void>('push_branch', { path, remote, force })
