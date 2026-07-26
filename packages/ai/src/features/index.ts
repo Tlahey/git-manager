@@ -28,6 +28,30 @@ export {
 } from './prDescription'
 export type { PrDescriptionInput } from './prDescription'
 export {
+  changeExplanationFeature,
+  CHANGE_EXPLANATION_INSTRUCTION,
+  buildChangeExplanationPrompt,
+} from './changeExplanation'
+export type { ChangeExplanationInput, ChangeExplanationFile } from './changeExplanation'
+export {
+  branchExplanationFeature,
+  BRANCH_EXPLANATION_INSTRUCTION,
+  buildBranchExplanationPrompt,
+} from './branchExplanation'
+export type { BranchExplanationInput } from './branchExplanation'
+export {
+  commitExplanationFeature,
+  COMMIT_EXPLANATION_INSTRUCTION,
+  buildCommitExplanationPrompt,
+} from './commitExplanation'
+export type { CommitExplanationInput, CommitExplanationCommit } from './commitExplanation'
+export {
+  workingExplanationFeature,
+  WORKING_EXPLANATION_INSTRUCTION,
+  buildWorkingExplanationPrompt,
+} from './workingExplanation'
+export type { WorkingExplanationInput } from './workingExplanation'
+export {
   DEFAULT_COMMIT_TYPES,
   parseCommitlintRules,
   isConventionalHistory,

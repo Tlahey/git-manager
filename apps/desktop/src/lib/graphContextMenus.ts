@@ -42,6 +42,12 @@ export interface GraphCommitMenuContext {
    * instead of the bare no-branch menu.
    */
   currentBranchRef: GitRef | null
+  /**
+   * Whether AI features are on (the Settings master switch). Only gates the "explain branch
+   * changes" item — it is disabled rather than hidden, so the capability stays discoverable for
+   * someone who has never opened the AI settings.
+   */
+  aiEnabled: boolean
 }
 
 // ── Actions ──────────────────────────────────────────────────────────────────
@@ -62,6 +68,8 @@ export interface CommitMenuActions extends CommitCopyActions {
   onRevert: () => void
   onCreateTag: () => void
   onCreateAnnotatedTag: () => void
+  /** Opens the AI explanation of the clicked commit's own diff (vs its first parent). */
+  onExplainCommit: () => void
   // ── Multi-selection only ──
   /** Cherry-pick every selected commit (oldest→newest). */
   onCherryPickSelection: () => void
@@ -84,6 +92,8 @@ export interface BranchMenuActions {
   onOpenWorktreeFrom: (ref: GitRef) => void
   /** Opens the PR-create flow with the current branch as head and this ref as base. */
   onStartPr: (ref: GitRef) => void
+  /** Opens the AI explanation of everything this branch changes vs its merge target. */
+  onExplainBranch: (ref: GitRef) => void
   onRenameBranch: (ref: GitRef) => void
   onDeleteBranch: (ref: GitRef) => void
   onCopyBranchName: (ref: GitRef) => void
@@ -116,6 +126,16 @@ interface BranchItemContext {
    */
   remoteBranchLinkName: string | null
   params: { branch: string; current: string }
+  /** Mirrors `GraphCommitMenuContext.aiEnabled`, carried per branch so the sections stay pure. */
+  aiEnabled: boolean
+  /**
+   * Whether this branch actually sits on the clicked commit, as opposed to being the current-branch
+   * fallback the flat menu uses for a commit with no label of its own. Branch *operations* are still
+   * meaningful in that fallback (pull/push/merge are relative to HEAD by nature), but explaining "the
+   * branch" is not: the user clicked a commit, and the branch they'd be told about is whichever one
+   * happens to be checked out.
+   */
+  isOnClickedCommit: boolean
 }
 
 function branchItemContext(ref: GitRef, ctx: GraphCommitMenuContext): BranchItemContext {
@@ -134,6 +154,8 @@ function branchItemContext(ref: GitRef, ctx: GraphCommitMenuContext): BranchItem
     hasCurrent: !!ctx.currentBranch && !ctx.isDetached,
     remoteBranchLinkName,
     params: { branch: ref.shortName, current: ctx.currentBranch ?? '' },
+    aiEnabled: ctx.aiEnabled,
+    isOnClickedCommit: ctx.refs.some((r) => r.name === ref.name),
   }
 }
 
@@ -182,7 +204,7 @@ function relationshipSection(
   ]
 }
 
-/** "Push current & start a PR here" (remote only) + the not-yet-implemented AI explanation. */
+/** "Push current & start a PR here" (remote only) + the AI branch explanation. */
 function prAndExplainSection(
   b: BranchItemContext,
   actions: BranchMenuActions,
@@ -195,7 +217,12 @@ function prAndExplainSection(
         text: t('gitTree.branchMenu.startPr', b.params),
         action: () => actions.onStartPr(b.ref),
       }),
-    menuItem({ text: t('gitTree.branchMenu.explainChanges'), enabled: false }),
+    b.isOnClickedCommit &&
+      menuItem({
+        text: t('gitTree.branchMenu.explainChanges'),
+        enabled: b.aiEnabled,
+        action: () => actions.onExplainBranch(b.ref),
+      }),
   ]
 }
 
@@ -388,19 +415,23 @@ export interface WipMenuContext {
   hasStaged: boolean
   /** Something is unstaged or untracked (enables "Stage all"). */
   hasUnstaged: boolean
+  /** Whether AI features are on — gates the explanation item, as elsewhere. */
+  aiEnabled: boolean
 }
 
 export interface WipMenuActions {
   onStash: (includeUntracked: boolean) => void
   onStageAll: () => void
   onUnstageAll: () => void
+  /** Opens the AI summary of everything currently uncommitted. */
+  onExplainChanges: () => void
 }
 
 /**
  * Right-click menu of the **local** WIP row (the current branch's uncommitted changes): stash the
- * work in progress, stage/unstage everything, and the not-yet-implemented "Explain working changes"
- * AI item. Committing stays on the row's inline input; "Discard all changes" lives on the side
- * panel, not here. Other synthetic rows (`WIP:<path>`, CONFLICT) have no menu.
+ * work in progress, stage/unstage everything, and the AI summary of the work in progress.
+ * Committing stays on the row's inline input; "Discard all changes" lives on the side panel, not
+ * here. Other synthetic rows (`WIP:<path>`, CONFLICT) have no menu.
  */
 export function buildWipMenuSpec(
   ctx: WipMenuContext,
@@ -425,8 +456,12 @@ export function buildWipMenuSpec(
       action: actions.onUnstageAll,
     }),
     menuSeparator(),
-    // Placeholder — the AI "explain working changes" feature isn't built yet.
-    menuItem({ text: t('gitTree.wipMenu.explainChanges'), enabled: false }),
+    menuItem({
+      text: t('gitTree.wipMenu.explainChanges'),
+      // There is nothing to summarize on a clean tree, and nothing to ask when AI is off.
+      enabled: ctx.aiEnabled && (ctx.hasStaged || ctx.hasUnstaged),
+      action: actions.onExplainChanges,
+    }),
   ]
 }
 
@@ -619,6 +654,28 @@ function commitCoreSection(
   ]
 }
 
+/**
+ * The AI explanation of the clicked commit. Its own section so it can sit directly beside the branch
+ * explanation (`prAndExplainSection`) with no separator between them: the two answer neighbouring
+ * questions — "what does this commit do" and "what does its branch do" — and belong side by side.
+ *
+ * Stays at the TOP level rather than joining that section, because it is commit-scoped: nested in a
+ * per-branch submenu it would appear once per branch, all of them meaning the same thing.
+ */
+function commitExplanationSection(
+  ctx: GraphCommitMenuContext,
+  actions: CommitMenuActions,
+  t: TranslateFn
+): MenuSpecEntry[] {
+  return [
+    menuItem({
+      text: t('gitTree.contextMenu.explainCommit'),
+      enabled: ctx.isSingle && ctx.aiEnabled,
+      action: actions.onExplainCommit,
+    }),
+  ]
+}
+
 function tagCreationSection(
   ctx: GraphCommitMenuContext,
   actions: CommitMenuActions,
@@ -671,6 +728,8 @@ function buildFlatSingleBranchMenuSpec(
     menuSeparator(),
     ...commitCoreSection(ctx, actions, t),
     menuSeparator(),
+    // The two AI explanations, adjacent and unseparated.
+    ...commitExplanationSection(ctx, actions, t),
     ...prAndExplainSection(b, branchActions, t),
     menuSeparator(),
     ...destructiveSection(b, branchActions, t),
@@ -721,6 +780,8 @@ export function buildCommitMenuSpec(
     menuItem({ text: t('gitTree.contextMenu.createWorktree'), action: actions.onCreateWorktree }),
     menuSeparator(),
     ...commitCoreSection(ctx, actions, t),
+    menuSeparator(),
+    ...commitExplanationSection(ctx, actions, t),
     menuSeparator(),
     ...(branchSubmenus.length > 0
       ? branchSubmenus

@@ -17,6 +17,18 @@ describe('Spinner', () => {
     expect(svg.getAttribute('class')).toContain('h-4')
   })
 
+  it('forwards arbitrary svg props, so callers can label or target it', () => {
+    const { container } = render(
+      <Spinner data-testid="busy" role="status" aria-label="Loading the thing" />
+    )
+    const svg = container.querySelector('svg')!
+    expect(svg).toHaveAttribute('data-testid', 'busy')
+    expect(svg).toHaveAttribute('role', 'status')
+    expect(svg).toHaveAccessibleName('Loading the thing')
+    // Forwarding must not cost the animation class.
+    expect(svg.getAttribute('class')).toContain('animate-spin')
+  })
+
   it('renders the track circle and the spinning arc path', () => {
     const { container } = render(<Spinner />)
     expect(container.querySelector('circle')).toBeInTheDocument()

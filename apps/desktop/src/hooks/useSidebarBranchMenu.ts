@@ -19,10 +19,14 @@ import {
   apiCreatePatch,
 } from '../api/git.api'
 import { apiAddWorktree } from '../api/worktree.api'
+import { resolveExplanationBase } from '../lib/branchExplanationBase'
 import { useRepoDataStore } from '../stores/repoData.store'
 import { useRepoUIStore } from '../stores/repoUI.store'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
+import { useAiEnabled } from './useAiEnabled'
+import { useBranches } from './useBranches'
 import { useBranchCheckout } from './useBranchCheckout'
+import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
 import { useSoloModeStore } from '../stores/soloMode.store'
 
 /** A `GitBranch` rendered as the `GitRef` the shared menu builder expects (pointing at its tip). */
@@ -51,6 +55,12 @@ export function useSidebarBranchMenu(repoPath: string) {
   const { checkoutBranchWithStashPrompt } = useBranchCheckout()
   // The branch whose rename dialog is open, or null. The caller renders `<RenameBranchDialog>`.
   const [renameTarget, setRenameTarget] = useState<string | null>(null)
+  // The AI branch explanation opens a right panel driven by shared UI state, so — unlike the
+  // rename dialog above — there is nothing for the caller to render: the graph already shows it.
+  const setExplanationTarget = useRepoUIStore((s) => s.setExplanationTarget)
+  const aiEnabled = useAiEnabled()
+  const { targetBranches } = useEffectiveRepoSettings(repoPath)
+  const { data: branches } = useBranches(repoPath)
 
   const currentBranch = repo?.head ?? null
   const isDetached = repo?.isDetached ?? false
@@ -146,6 +156,20 @@ export function useSidebarBranchMenu(repoPath: string) {
         const base = r.type === 'remote' ? r.shortName.split('/').slice(1).join('/') : r.shortName
         openPrCreateWith(currentBranch ?? '', base)
       },
+      onExplainBranch: (r) => {
+        const baseRef = resolveExplanationBase(
+          r.shortName,
+          targetBranches,
+          // `name`, not `shortName`: the latter strips the remote prefix, so `origin/main` would
+          // arrive as `main` and never match a configured `origin/*` merge target.
+          (branches ?? []).map((b) => b.name)
+        )
+        if (!baseRef) {
+          toast.error(t('gitTree.branchExplanation.noBase', { branch: r.shortName }))
+          return
+        }
+        setExplanationTarget({ kind: 'branch', branch: r.shortName, baseRef })
+      },
       onRenameBranch: (r) => setRenameTarget(r.shortName),
       onDeleteBranch: (r) =>
         void run(
@@ -176,7 +200,16 @@ export function useSidebarBranchMenu(repoPath: string) {
     void showNativeMenu(
       buildBranchMenuSpec(
         ref,
-        { isSingle: true, targetCount: 1, isMergeCommit: false, refs: [ref], currentBranch, isDetached, currentBranchRef: null },
+        {
+          isSingle: true,
+          targetCount: 1,
+          isMergeCommit: false,
+          refs: [ref],
+          currentBranch,
+          isDetached,
+          currentBranchRef: null,
+          aiEnabled,
+        },
         branchActions,
         copyActions,
         t

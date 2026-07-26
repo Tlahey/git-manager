@@ -2,17 +2,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}))
-
-const { usePrTemplateMock, generateMock } = vi.hoisted(() => ({
+const { usePrTemplateMock, generateMock, aiState } = vi.hoisted(() => ({
   usePrTemplateMock: vi.fn(),
   generateMock: vi.fn(),
+  aiState: { status: 'idle' as string, error: null as string | null },
 }))
 vi.mock('../../../hooks/usePrTemplate', () => ({ usePrTemplate: usePrTemplateMock }))
 vi.mock('../../../hooks/usePrDescriptionGeneration', () => ({
-  usePrDescriptionGeneration: () => ({ generate: generateMock, status: 'idle', cancel: vi.fn(), error: null }),
+  usePrDescriptionGeneration: () => ({
+    generate: generateMock,
+    cancel: vi.fn(),
+    status: aiState.status,
+    error: aiState.error,
+  }),
 }))
 vi.mock('./PrBaseBranchDialog', () => ({ PrBaseBranchDialog: () => <div data-testid="stub-base-dialog" /> }))
 
@@ -39,6 +41,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   useSettingsStore.setState(INITIAL_SETTINGS, true)
   usePrTemplateMock.mockReturnValue({ template: { kind: 'none' }, isLoading: false })
+  aiState.status = 'idle'
+  aiState.error = null
 })
 
 describe('PrComposerExpander', () => {
@@ -89,6 +93,23 @@ describe('PrComposerExpander', () => {
     renderComposer()
     await user.click(screen.getByTestId('pr-composer-ai-fill'))
     expect(generateMock).toHaveBeenCalledWith('main', null, expect.any(Function), expect.any(Function))
+  })
+
+  it('reports a failed generation instead of just clearing the body', () => {
+    aiState.status = 'error'
+    aiState.error = 'AI_PROVIDER_NOT_RUNNING'
+    renderComposer()
+    expect(screen.getByTestId('pr-composer-ai-error')).toHaveTextContent(
+      'The AI provider is not running.'
+    )
+  })
+
+  it('keeps the generation error separate from the publish error', () => {
+    aiState.status = 'error'
+    aiState.error = 'AI_PROVIDER_NOT_RUNNING'
+    renderComposer({ error: 'GitHub API 422' })
+    expect(screen.getByTestId('pr-composer-ai-error')).toBeInTheDocument()
+    expect(screen.getByTestId('pr-composer-error')).toHaveTextContent('GitHub API 422')
   })
 
   it('surfaces a publish error inline', () => {

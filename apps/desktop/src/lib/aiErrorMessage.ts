@@ -17,6 +17,13 @@ const KNOWN_AI_CODES = [
   'AI_PROVIDER_NOT_RUNNING',
   'AI_MODEL_NOT_FOUND',
   'AI_EMPTY_RESPONSE',
+  // Raised frontend-side, before any request: the branch is level with its base, so there is
+  // nothing to explain and asking the model anyway would only invite invention.
+  'AI_NO_BRANCH_CHANGES',
+  // Same idea for a commit that touches no text (an empty commit, or metadata only).
+  'AI_NO_COMMIT_CHANGES',
+  // …and for a clean working tree, where there is no work in progress to summarize.
+  'AI_NO_WORKING_CHANGES',
 ] as const
 
 interface ErrorPayload {

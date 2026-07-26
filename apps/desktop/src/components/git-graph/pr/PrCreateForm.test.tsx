@@ -3,22 +3,19 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitBranch } from '@git-manager/git-types'
 
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}))
-
-const { usePrTemplateMock, generateMock, useBranchesMock } = vi.hoisted(() => ({
+const { usePrTemplateMock, generateMock, useBranchesMock, aiState } = vi.hoisted(() => ({
   usePrTemplateMock: vi.fn(),
   generateMock: vi.fn(),
   useBranchesMock: vi.fn(),
+  aiState: { status: 'idle' as string, error: null as string | null },
 }))
 vi.mock('../../../hooks/usePrTemplate', () => ({ usePrTemplate: usePrTemplateMock }))
 vi.mock('../../../hooks/usePrDescriptionGeneration', () => ({
   usePrDescriptionGeneration: () => ({
     generate: generateMock,
-    status: 'idle',
     cancel: vi.fn(),
-    error: null,
+    status: aiState.status,
+    error: aiState.error,
   }),
 }))
 vi.mock('../../../hooks/useBranches', () => ({ useBranches: useBranchesMock }))
@@ -68,6 +65,8 @@ beforeEach(() => {
       branch({ name: 'refs/remotes/origin/main', shortName: 'origin/main', isRemote: true }),
     ],
   })
+  aiState.status = 'idle'
+  aiState.error = null
 })
 
 describe('PrCreateForm', () => {
@@ -144,6 +143,15 @@ describe('PrCreateForm', () => {
     })
     renderForm()
     await waitFor(() => expect(screen.getByTestId('pr-create-body')).toHaveValue('## Checklist'))
+  })
+
+  it('reports a failed generation instead of just clearing the body', () => {
+    aiState.status = 'error'
+    aiState.error = 'AI_PROVIDER_NOT_RUNNING'
+    renderForm()
+    expect(screen.getByTestId('pr-create-ai-error')).toHaveTextContent(
+      'The AI provider is not running.'
+    )
   })
 
   it('surfaces a create error inline', () => {

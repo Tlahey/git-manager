@@ -47,6 +47,7 @@ function ctx(overrides: Partial<GraphCommitMenuContext> = {}): GraphCommitMenuCo
     currentBranch: 'main',
     isDetached: false,
     currentBranchRef: null,
+    aiEnabled: true,
     ...overrides,
   }
 }
@@ -60,6 +61,7 @@ const branchActions = (): BranchMenuActions => ({
   onCheckoutBranch: vi.fn(),
   onOpenWorktreeFrom: vi.fn(),
   onStartPr: vi.fn(),
+  onExplainBranch: vi.fn(),
   onRenameBranch: vi.fn(),
   onDeleteBranch: vi.fn(),
   onCopyBranchName: vi.fn(),
@@ -80,14 +82,20 @@ const commitActions = (): CommitMenuActions => ({
   onCreatePatch: vi.fn(),
   onCreateTag: vi.fn(),
   onCreateAnnotatedTag: vi.fn(),
+  onExplainCommit: vi.fn(),
   onCherryPickSelection: vi.fn(),
   onRebaseOntoCommit: vi.fn(),
   onCreatePatchSelection: vi.fn(),
   onCompareToWorkdir: vi.fn(),
 })
 
+/** A branch submenu is only ever built for a ref that sits on the clicked commit (see
+ * `buildBranchSubmenus`), so the harness puts it in `ctx.refs` unless a test says otherwise —
+ * matching reality, which some rules now depend on. */
 function submenuFor(refArg: GitRef, context: GraphCommitMenuContext, actions = branchActions()) {
-  const node = buildBranchSubmenu(refArg, context, actions, commitActions(), t) as SubmenuNode
+  const ctxWithRef =
+    context.refs.length > 0 ? context : { ...context, refs: [refArg] }
+  const node = buildBranchSubmenu(refArg, ctxWithRef, actions, commitActions(), t) as SubmenuNode
   return { node, items: normalizeMenuSpec(node.items), actions }
 }
 
@@ -113,9 +121,53 @@ describe('buildBranchSubmenu — current local branch', () => {
     expect(labels.some((l) => l.startsWith('Checkout '))).toBe(false)
     expect(labels.some((l) => l.startsWith('Delete '))).toBe(false)
     expect(labels).toContain('Open worktree from main')
-    expect(item(nodes, 'Explain branch changes (Preview)')?.enabled).toBe(false)
+    expect(item(nodes, 'Explain branch changes (LLM)')?.enabled).toBe(true)
     expect(labels).toContain('Pin to left')
     expect(item(nodes, 'Solo')?.enabled).not.toBe(false)
+  })
+})
+
+describe('buildBranchSubmenu — explain branch changes', () => {
+  it('calls onExplainBranch with the branch it belongs to', () => {
+    const branchRef = ref({ shortName: 'feat' })
+    const { items: nodes, actions } = submenuFor(branchRef, ctx({ currentBranch: 'main' }))
+    item(nodes, 'Explain branch changes (LLM)')?.action?.()
+    expect(actions.onExplainBranch).toHaveBeenCalledWith(branchRef)
+  })
+
+  it('is disabled — but still listed — when AI is switched off', () => {
+    const { items: nodes } = submenuFor(ref({ shortName: 'feat' }), ctx({ aiEnabled: false }))
+    expect(item(nodes, 'Explain branch changes (LLM)')?.enabled).toBe(false)
+  })
+})
+
+describe('buildCommitMenuSpec — explain this commit', () => {
+  it('is offered on a single commit and calls the commit-scoped action', () => {
+    const actions = commitActions()
+    const spec = normalizeMenuSpec(
+      buildCommitMenuSpec(ctx({ currentBranch: 'main' }), actions, branchActions(), t)
+    )
+    item(spec, 'Explain this commit (LLM)')?.action?.()
+    expect(actions.onExplainCommit).toHaveBeenCalled()
+  })
+
+  it('is disabled when AI is switched off', () => {
+    const spec = normalizeMenuSpec(
+      buildCommitMenuSpec(ctx({ aiEnabled: false }), commitActions(), branchActions(), t)
+    )
+    expect(item(spec, 'Explain this commit (LLM)')?.enabled).toBe(false)
+  })
+
+  it('is absent from the multi-selection layout, where "this commit" is ambiguous', () => {
+    const spec = normalizeMenuSpec(
+      buildCommitMenuSpec(
+        ctx({ isSingle: false, targetCount: 3 }),
+        commitActions(),
+        branchActions(),
+        t
+      )
+    )
+    expect(texts(spec)).not.toContain('Explain this commit (LLM)')
   })
 })
 
@@ -228,31 +280,55 @@ describe('buildWipMenuSpec', () => {
     onStash: vi.fn(),
     onStageAll: vi.fn(),
     onUnstageAll: vi.fn(),
+    onExplainChanges: vi.fn(),
+  })
+
+  const wipCtx = (overrides: Partial<Parameters<typeof buildWipMenuSpec>[0]> = {}) => ({
+    hasStaged: true,
+    hasUnstaged: true,
+    aiEnabled: true,
+    ...overrides,
   })
 
   it('lists the stash and stage/unstage actions', () => {
     const spec = normalizeMenuSpec(
-      buildWipMenuSpec({ hasStaged: true, hasUnstaged: true }, wipActions(), t)
+      buildWipMenuSpec(wipCtx(), wipActions(), t)
     )
     expect(texts(spec)).toEqual([
       'Stash changes',
       'Stash changes (include untracked)',
       'Stage all changes',
       'Unstage all changes',
-      'Explain working changes (Preview)',
+      'Explain working changes (LLM)',
     ])
   })
 
-  it('ships the "Explain working changes" item disabled (placeholder)', () => {
+  it('wires the working-changes explanation', () => {
+    const actions = wipActions()
+    const spec = normalizeMenuSpec(buildWipMenuSpec(wipCtx(), actions, t))
+    const explain = item(spec, 'Explain working changes (LLM)')
+    expect(explain?.enabled).toBe(true)
+    explain?.action?.()
+    expect(actions.onExplainChanges).toHaveBeenCalled()
+  })
+
+  it('disables the explanation on a clean tree — nothing to summarize', () => {
     const spec = normalizeMenuSpec(
-      buildWipMenuSpec({ hasStaged: true, hasUnstaged: true }, wipActions(), t)
+      buildWipMenuSpec(wipCtx({ hasStaged: false, hasUnstaged: false }), wipActions(), t)
     )
-    expect(item(spec, 'Explain working changes (Preview)')?.enabled).toBe(false)
+    expect(item(spec, 'Explain working changes (LLM)')?.enabled).toBe(false)
+  })
+
+  it('disables the explanation when AI is switched off', () => {
+    const spec = normalizeMenuSpec(
+      buildWipMenuSpec(wipCtx({ aiEnabled: false }), wipActions(), t)
+    )
+    expect(item(spec, 'Explain working changes (LLM)')?.enabled).toBe(false)
   })
 
   it('enables stage/unstage from the working state', () => {
     const spec = normalizeMenuSpec(
-      buildWipMenuSpec({ hasStaged: false, hasUnstaged: true }, wipActions(), t)
+      buildWipMenuSpec(wipCtx({ hasStaged: false }), wipActions(), t)
     )
     expect(item(spec, 'Stage all changes')?.enabled).toBe(true)
     expect(item(spec, 'Unstage all changes')?.enabled).toBe(false)
@@ -261,7 +337,7 @@ describe('buildWipMenuSpec', () => {
   it('wires the stash items with and without untracked files', () => {
     const actions = wipActions()
     const spec = normalizeMenuSpec(
-      buildWipMenuSpec({ hasStaged: true, hasUnstaged: true }, actions, t)
+      buildWipMenuSpec(wipCtx(), actions, t)
     )
     item(spec, 'Stash changes')?.action?.()
     expect(actions.onStash).toHaveBeenLastCalledWith(false)
@@ -404,6 +480,8 @@ describe('buildCommitMenuSpec', () => {
       '▸ Reset main to this commit',
       'Revert this commit',
       '— separator',
+      'Explain this commit (LLM)',
+      '— separator',
       '▸ feat',
       '▸ dev',
       '— separator',
@@ -433,7 +511,8 @@ describe('buildCommitMenuSpec', () => {
       '▸ Reset main to this commit',
       'Revert this commit',
       '— separator',
-      'Explain branch changes (Preview)',
+      'Explain this commit (LLM)',
+      'Explain branch changes (LLM)',
       '— separator',
       'Rename feat',
       'Delete feat',
@@ -575,6 +654,18 @@ describe('buildCommitMenuSpec', () => {
     // Commit-scoped items stay too.
     expect(labels).toContain('Cherry-pick this commit')
     expect(labels).toContain('Create tag here')
+    // …but NOT the branch explanation: the clicked commit carries no branch, so "explain the
+    // branch" would silently describe whichever one happens to be checked out. Explaining the
+    // commit itself is exactly the question that was asked, and stays.
+    expect(labels).not.toContain('Explain branch changes (LLM)')
+    expect(labels).toContain('Explain this commit (LLM)')
+  })
+
+  it('keeps the branch explanation when the commit really carries that branch', () => {
+    const onIt = ref({ shortName: 'feat' })
+    const labels = texts(build(ctx({ refs: [onIt], currentBranch: 'main' })))
+    expect(labels).toContain('Explain branch changes (LLM)')
+    expect(labels).toContain('Explain this commit (LLM)')
   })
 
   it('nests the copy/patch actions inside each branch submenu when several branches exist', () => {

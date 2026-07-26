@@ -5,6 +5,7 @@ import { Sparkles, GitBranch as GitBranchIcon } from 'lucide-react'
 import { usePrTemplate } from '../../../hooks/usePrTemplate'
 import { usePrDescriptionGeneration } from '../../../hooks/usePrDescriptionGeneration'
 import { useAiEnabled } from '../../../hooks/useAiEnabled'
+import { aiErrorMessage } from '../../../lib/aiErrorMessage'
 import { PrBaseBranchDialog } from './PrBaseBranchDialog'
 
 interface PrComposerExpanderProps {
@@ -31,9 +32,12 @@ export function PrComposerExpander({
   onCancel,
 }: PrComposerExpanderProps) {
   const { t } = useTranslation('git')
+  const { t: tErrors } = useTranslation('errors')
   const aiEnabled = useAiEnabled()
   const { template } = usePrTemplate(repoPath)
-  const { generate, status } = usePrDescriptionGeneration(repoPath)
+  // `aiError` is distinct from the `error` prop: that one is the publish failure, this one is the
+  // generation failing. Left unread, a stopped provider just cleared the body and said nothing.
+  const { generate, status, error: aiError } = usePrDescriptionGeneration(repoPath)
 
   const [title, setTitle] = useState(defaultTitle)
   const [body, setBody] = useState('')
@@ -155,6 +159,11 @@ export function PrComposerExpander({
           className="text-xs"
           data-testid="pr-composer-body"
         />
+        {status === 'error' && aiError && (
+          <p data-testid="pr-composer-ai-error" className="text-[11px] text-destructive">
+            {aiErrorMessage(aiError, tErrors)}
+          </p>
+        )}
       </div>
 
       {error && (

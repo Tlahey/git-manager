@@ -297,7 +297,7 @@ const cases: {
     name: 'getAiContext',
     call: () => tauri.getAiContext('/repo', 'staged'),
     command: 'get_ai_context',
-    args: { path: '/repo', scope: 'staged', baseRef: null },
+    args: { path: '/repo', scope: 'staged', baseRef: null, headRef: null },
   },
   {
     name: 'aiGenerateStream',

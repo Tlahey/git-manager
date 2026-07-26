@@ -201,5 +201,15 @@
   "aiStatus.connected": "Connected",
   "aiStatus.disconnected": "Offline",
   "aiStatus.tooltipConnected": "{{provider}} connected — model {{model}}. Click to open the AI settings.",
-  "aiStatus.tooltipOther": "{{provider}} — {{state}}. Click to open the AI settings."
+  "aiStatus.tooltipOther": "{{provider}} — {{state}}. Click to open the AI settings.",
+  "aiStatus.working": "Working…",
+  "aiStatus.tooltipWorking": "{{provider}} is working — {{task}} ({{model}}).",
+  "aiStatus.work.commitMessage": "Writing the commit message…",
+  "aiStatus.work.prDescription": "Writing the PR description…",
+  "aiStatus.work.changeExplanation": "Explaining the change…",
+  "aiStatus.work.branchExplanation": "Explaining the branch…",
+  "aiStatus.work.commitExplanation": "Explaining the commit…",
+  "aiStatus.work.workingExplanation": "Reading the working tree…",
+  "aiStatus.work.fileGrouping": "Grouping the changes…",
+  "aiStatus.work.dailySummary": "Writing the briefing…"
 }

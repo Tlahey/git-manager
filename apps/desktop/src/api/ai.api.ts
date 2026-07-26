@@ -8,6 +8,9 @@ import type {
   JsonSchema,
 } from '@git-manager/ai'
 import {
+  branchExplanationFeature,
+  changeExplanationFeature,
+  commitExplanationFeature,
   commitMessageFeature,
   createCompletionService,
   createStatusService,
@@ -15,6 +18,7 @@ import {
   dailySummaryFeature,
   fileGroupingFeature,
   prDescriptionFeature,
+  workingExplanationFeature,
 } from '@git-manager/ai'
 import {
   aiComplete,
@@ -24,19 +28,23 @@ import {
   getAiActivity,
   getAiContext,
 } from '../lib/tauri'
+import { withAiActivity } from '../stores/aiActivity.store'
 
 export async function apiCheckAiStatus(config: AiCheckConfig) {
   return checkAiStatus(config)
 }
 
 /** Snapshots repo changes so a feature can build its prompt. `range` scope requires `baseRef` and
- * diffs `baseRef..HEAD` (the whole branch, for a PR description). */
+ * diffs `merge-base(baseRef, headRef)..headRef` — the whole branch, for a PR description or a
+ * branch explanation. `headRef` defaults to HEAD; pass it to scope the range to a branch that is
+ * not checked out. */
 export async function apiGetAiContext(
   path: string,
   scope: AiContextScope,
-  baseRef?: string
+  baseRef?: string,
+  headRef?: string
 ): Promise<AiContext> {
-  return getAiContext(path, scope, baseRef)
+  return getAiContext(path, scope, baseRef, headRef)
 }
 
 /** Gathers the repo's recent commit activity (last `sinceHours`) + uncommitted work for the
@@ -66,13 +74,66 @@ const tauriAiTransport: AiTransport = {
   cancel: apiCancelGeneration,
 }
 
+/**
+ * The same transport, reporting the generation to `aiActivity.store` for the whole time it runs —
+ * which is what lets the footer show that the model is busy.
+ *
+ * This is the right place to bracket it precisely because every feature funnels through here: one
+ * wrapper covers all six, and the next one is instrumented for free. Both Tauri commands resolve
+ * when the generation *finishes* (`ai_generate_stream` awaits the provider's whole SSE loop rather
+ * than detaching it), so the promise's lifetime is the generation's lifetime — tokens arriving
+ * out-of-band as events does not change that.
+ */
+function trackedTransport(featureId: string): AiTransport {
+  return {
+    ...tauriAiTransport,
+    runStream: (config, systemPrompt, userPrompt) =>
+      withAiActivity(featureId, () => tauriAiTransport.runStream(config, systemPrompt, userPrompt)),
+    runComplete: (config, systemPrompt, userPrompt, schema) =>
+      withAiActivity(featureId, () =>
+        tauriAiTransport.runComplete(config, systemPrompt, userPrompt, schema)
+      ),
+  }
+}
+
 /** One service per AI feature, each assembled from its package-owned descriptor (instruction +
  * temperature + prompt) and the shared transport. Adding a future feature (report generation, git
  * command explanation, …) is: define it in `@git-manager/ai`, then add one line here. */
-export const commitMessageService = createStreamingService(commitMessageFeature, tauriAiTransport)
-export const fileGroupingService = createCompletionService(fileGroupingFeature, tauriAiTransport)
-export const dailySummaryService = createCompletionService(dailySummaryFeature, tauriAiTransport)
-export const prDescriptionService = createStreamingService(prDescriptionFeature, tauriAiTransport)
+export const commitMessageService = createStreamingService(
+  commitMessageFeature,
+  trackedTransport(commitMessageFeature.id)
+)
+export const fileGroupingService = createCompletionService(
+  fileGroupingFeature,
+  trackedTransport(fileGroupingFeature.id)
+)
+export const dailySummaryService = createCompletionService(
+  dailySummaryFeature,
+  trackedTransport(dailySummaryFeature.id)
+)
+export const prDescriptionService = createStreamingService(
+  prDescriptionFeature,
+  trackedTransport(prDescriptionFeature.id)
+)
+export const changeExplanationService = createStreamingService(
+  changeExplanationFeature,
+  trackedTransport(changeExplanationFeature.id)
+)
+export const branchExplanationService = createStreamingService(
+  branchExplanationFeature,
+  trackedTransport(branchExplanationFeature.id)
+)
+export const commitExplanationService = createStreamingService(
+  commitExplanationFeature,
+  trackedTransport(commitExplanationFeature.id)
+)
+export const workingExplanationService = createStreamingService(
+  workingExplanationFeature,
+  trackedTransport(workingExplanationFeature.id)
+)
 
-/** Connection health check for Settings (validates a provider and lists its models). */
+/** Connection health check for Settings (validates a provider and lists its models). Deliberately
+ * on the *untracked* transport: its model probe is a one-word round-trip the Settings page already
+ * reports inline, and spinning the footer for it would report "the model is working" for something
+ * the user is watching a button for. */
 export const aiStatusService = createStatusService(tauriAiTransport)

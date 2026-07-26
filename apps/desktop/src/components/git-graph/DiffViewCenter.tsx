@@ -21,6 +21,8 @@ import { BlameFileViewer } from './BlameFileViewer'
 import { Markdown } from '../Markdown'
 import { useRepoUIStore, type ActiveDiffFile } from '../../stores/repoUI.store'
 import { DiffToolbar } from './components/DiffToolbar'
+import { ChangeExplanationPanel } from './components/ChangeExplanationPanel'
+import { useAiEnabled } from '../../hooks/useAiEnabled'
 import { hasPreviewTab, isPreviewableImage, isPreviewableMarkdown } from './previewableFile'
 
 interface DiffViewCenterProps {
@@ -115,6 +117,7 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
 
   const isLoading = isLoadingMeta || isLoadingRaw
   const isWip = !effectiveOid
+  const aiEnabled = useAiEnabled()
 
   // Image previews are read off disk through the asset protocol: a file that was deleted, renamed,
   // or lives outside the granted scope resolves to a broken `<img>` unless the failure is caught.
@@ -366,6 +369,16 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
                       </Button>
                     )}
                   </div>
+                )}
+                {/* AI reading of the pending change, above the diff itself. Scoped to the working
+                    copy: "explain the changes in progress" is a question about work the user is
+                    still shaping, not about a commit that already has a message. */}
+                {aiEnabled && isWip && activeTab === 'diff' && diffData && (
+                  <ChangeExplanationPanel
+                    repoPath={repoPath}
+                    diffData={diffData}
+                    fileContent={rawContents?.modified}
+                  />
                 )}
                 {activeTab === 'preview' ? (
                   <div

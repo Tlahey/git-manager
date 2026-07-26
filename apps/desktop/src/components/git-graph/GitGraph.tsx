@@ -43,6 +43,9 @@ import { PatchWorkspaceCenter } from '../patch/PatchWorkspaceCenter'
 import { PatchWorkspacePanel } from '../patch/PatchWorkspacePanel'
 import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
 import { BisectPanel } from '../bisect/BisectPanel'
+import { BranchExplanationPanel } from './BranchExplanationPanel'
+import { CommitExplanationPanel } from './CommitExplanationPanel'
+import { WorkingExplanationPanel } from './WorkingExplanationPanel'
 import { useBisectState } from '../../hooks/useBisectState'
 import { useBisectUIStore } from '../../stores/bisectUI.store'
 import { buildBisectStatusMap } from './bisectStatus'
@@ -119,6 +122,8 @@ export function GitGraph({
   const prCreateOpen = useRepoUIStore((s) => s.prCreateOpen)
   const conflictFilePath = useRepoUIStore((s) => s.conflictFilePath)
   const setConflictFilePath = useRepoUIStore((s) => s.setConflictFilePath)
+  const explanationTarget = useRepoUIStore((s) => s.explanationTarget)
+  const setExplanationTarget = useRepoUIStore((s) => s.setExplanationTarget)
 
   // Patch workspace (create / apply / dependency) claims both the center and the
   // right panel, taking precedence over the commit/diff/PR views below.
@@ -1017,7 +1022,8 @@ export function GitGraph({
         )}
       </div>
 
-      {/* Side panel: bisect (top priority), patch workspace, PR files, conflict resolution, or commit details */}
+      {/* Side panel: bisect (top priority), branch explanation, patch workspace, PR files, conflict
+          resolution, or commit details */}
       {bisectActive ? (
         <>
           <div
@@ -1031,6 +1037,43 @@ export function GitGraph({
             style={{ width: panelWidthState }}
           >
             <BisectPanel repoPath={repoPath} />
+          </div>
+        </>
+      ) : explanationTarget ? (
+        <>
+          <div
+            {...resizeProps}
+            className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
+          >
+            <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
+          </div>
+          <div
+            className="h-full min-w-[350px] shrink-0 overflow-hidden"
+            style={{ width: panelWidthState }}
+          >
+            {/* Keyed on the subject so switching remounts with that subject's remembered
+                explanation instead of the previous one's. */}
+            {explanationTarget.kind === 'working' ? (
+              <WorkingExplanationPanel
+                repoPath={repoPath}
+                onClose={() => setExplanationTarget(null)}
+              />
+            ) : explanationTarget.kind === 'branch' ? (
+              <BranchExplanationPanel
+                key={`branch:${explanationTarget.branch}`}
+                repoPath={repoPath}
+                branch={explanationTarget.branch}
+                baseRef={explanationTarget.baseRef}
+                onClose={() => setExplanationTarget(null)}
+              />
+            ) : (
+              <CommitExplanationPanel
+                key={`commit:${explanationTarget.oid}`}
+                repoPath={repoPath}
+                commit={explanationTarget}
+                onClose={() => setExplanationTarget(null)}
+              />
+            )}
           </div>
         </>
       ) : patchMode ? (

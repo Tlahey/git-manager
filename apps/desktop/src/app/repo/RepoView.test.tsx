@@ -32,6 +32,10 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   return { ...actual, useQueryClient: () => ({ invalidateQueries }) }
 })
 
+// Pulled in by the sidebar branch menu (AI explanation base resolution). Stubbed rather than
+// wrapped in a QueryClientProvider — this file renders RepoView without one on purpose.
+vi.mock('../../hooks/useBranches', () => ({ useBranches: () => ({ data: [] }) }))
+
 vi.mock('../../components/git-graph/GitGraph', () => ({
   GitGraph: (props: { repoPath: string; branch?: string; searchQuery: string }) => (
     <div data-testid="fake-git-graph">

@@ -34,10 +34,14 @@ import {
   buildStashMenuSpec,
   type BranchMenuActions,
 } from '../lib/graphContextMenus'
+import { resolveExplanationBase } from '../lib/branchExplanationBase'
 import { useRepoUIStore, type GraphCommitAction } from '../stores/repoUI.store'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
 import { useSoloModeStore } from '../stores/soloMode.store'
+import { useAiEnabled } from './useAiEnabled'
+import { useBranches } from './useBranches'
 import { useBranchCheckout } from './useBranchCheckout'
+import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
@@ -80,9 +84,15 @@ export function useGitGraphActions({
   const queryClient = useQueryClient()
   const setEditingOid = useRepoUIStore((s) => s.setEditingOid)
   const openPrCreateWith = useRepoUIStore((s) => s.openPrCreateWith)
+  const setExplanationTarget = useRepoUIStore((s) => s.setExplanationTarget)
   const setPin = usePinnedBranchesStore((s) => s.setPin)
   const enableSolo = useSoloModeStore((s) => s.enable)
   const { checkoutBranchWithStashPrompt } = useBranchCheckout()
+  // Branch-explanation inputs: the master AI switch gates the menu item, and the repo's merge
+  // targets + known refs decide which branch the explanation is diffed against.
+  const aiEnabled = useAiEnabled()
+  const { targetBranches } = useEffectiveRepoSettings(repoPath)
+  const { data: branches } = useBranches(repoPath)
 
   const [pendingAction, setPendingAction] = useState<PendingAction>(null)
   // Inline tag creation: the commit awaiting a tag name (via the row's refs-column input, or the
@@ -241,6 +251,7 @@ export function useGitGraphActions({
             hasStaged: (status?.staged.length ?? 0) > 0,
             hasUnstaged:
               (status?.unstaged.length ?? 0) + (status?.untracked.length ?? 0) > 0,
+            aiEnabled,
           },
           {
             onStash: (includeUntracked) =>
@@ -250,6 +261,7 @@ export function useGitGraphActions({
               ),
             onStageAll: () => void runWip(() => apiStageAll(repoPath)),
             onUnstageAll: () => void runWip(() => apiUnstageAll(repoPath)),
+            onExplainChanges: () => setExplanationTarget({ kind: 'working' }),
           },
           t
         )
@@ -420,6 +432,24 @@ export function useGitGraphActions({
           ref.type === 'remote' ? ref.shortName.split('/').slice(1).join('/') : ref.shortName
         openPrCreateWith(currentBranch ?? '', base)
       },
+      // Explains the branch against the repo's merge target, resolved from local refs only — the
+      // panel must open on a repo with no remote and no GitHub token.
+      onExplainBranch: (ref) => {
+        const baseRef = resolveExplanationBase(
+          ref.shortName,
+          targetBranches,
+          // `name`, not `shortName`: the latter strips the remote prefix, so `origin/main` would
+          // arrive as `main` and never match a configured `origin/*` merge target.
+          (branches ?? []).map((b) => b.name)
+        )
+        if (!baseRef) {
+          toast.error(t('gitTree.branchExplanation.noBase', { branch: ref.shortName }))
+          return
+        }
+        // Straight to the shared UI state rather than through `pendingAction`: this opens a right
+        // panel, not one of the overlay manager's dialogs, and the sidebar menu opens the same one.
+        setExplanationTarget({ kind: 'branch', branch: ref.shortName, baseRef })
+      },
       onRenameBranch: (ref) => setPendingAction({ kind: 'renameBranch', branch: ref.shortName }),
       onDeleteBranch: (ref) =>
         void run(
@@ -461,6 +491,7 @@ export function useGitGraphActions({
           currentBranch,
           isDetached,
           currentBranchRef,
+          aiEnabled,
         },
         {
           onCheckout: () => handleCheckoutDetached(oid),
@@ -478,6 +509,21 @@ export function useGitGraphActions({
           onRebaseOntoCommit: () => void handleRebaseOntoCommit(),
           onCreatePatchSelection: () => void handleCreatePatchSelection(),
           onCompareToWorkdir: () => setPendingAction({ kind: 'compare' }),
+          // Explains the clicked commit itself — the metadata travels with the target so the panel
+          // can show a header before the diff has even been fetched.
+          onExplainCommit: () => {
+            if (!clickedNode) return
+            const { commit } = clickedNode
+            setExplanationTarget({
+              kind: 'commit',
+              oid: commit.oid,
+              shortOid: commit.shortOid,
+              subject: commit.subject,
+              body: commit.body ?? '',
+              author: commit.author?.name ?? '',
+              parentCount: commit.parentOids.length,
+            })
+          },
         },
         branchActions,
         t
