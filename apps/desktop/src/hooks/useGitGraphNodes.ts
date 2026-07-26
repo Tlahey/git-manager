@@ -24,6 +24,12 @@ type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 /** Stable empty default so an omitted author filter doesn't create a fresh Set every render. */
 const EMPTY_AUTHOR_SET: Set<string> = new Set()
 
+/** True for every row this hook splices into the graph itself (primary WIP, paused rebase, and the
+ * per-worktree `WIP:<path>` rows) — i.e. rows that carry no real commit. */
+function isSyntheticRow(oid: string): boolean {
+  return oid === 'WIP' || oid === 'CONFLICT' || oid.startsWith('WIP:')
+}
+
 /** Fixed color for every "// WIP" synthetic row (own repo and other worktrees alike) — always
  * this violet, never the target branch's own color, so a WIP row reads as "not a real commit"
  * at a glance regardless of which branch it's attached to. */
@@ -187,7 +193,8 @@ function buildWorktreeWipNode(anchor: GitGraphNode, wip: WorktreeWipStatus, colu
 
 function assignColumnsToSyntheticNodes(
   anchor: GitGraphNode,
-  synthSpecs: Array<{ type: 'primary' | 'conflict' | 'worktree'; wip?: WorktreeWipStatus }>
+  synthSpecs: Array<{ type: 'primary' | 'conflict' | 'worktree'; wip?: WorktreeWipStatus }>,
+  anchorIsTopmost: boolean
 ): Map<unknown, number> {
   const columnMap = new Map<unknown, number>()
   // Lanes crossing the anchor row's TOP edge — the same set `laneContinuations` carries up through
@@ -201,9 +208,23 @@ function assignColumnsToSyntheticNodes(
   for (const c of anchor.connections) {
     const isDownwardDeparture =
       c.fromColumn === anchor.column && (c.startsAtNode === true || c.toColumn !== anchor.column)
-    if (isDownwardDeparture) continue
+    if (isDownwardDeparture) {
+      // A diagonal departure (a merge's leg down to its second parent) owns the lane it lands on
+      // from this row's mid-height down. A WIP connector arriving there rises straight out of that
+      // diagonal's corner and reads as a dotted "start" of it, so that lane is off limits too.
+      if (c.toColumn !== anchor.column) crossing.add(c.toColumn)
+      continue
+    }
     crossing.add(c.fromColumn)
   }
+  // …except on the graph's topmost row, where NOTHING is displayed above: the incoming edge the
+  // backend leaves on that row's own lane is a reservation (lane 0 is seeded from main's tip, see
+  // `build_graph_nodes`), not a line coming from somewhere. Treating it as occupied pushed the WIP
+  // row one lane to the right — straight onto the lane a "Merge pull request" tip departs into for
+  // its second parent — so its dashed connector rose out of that diagonal's corner and read as a
+  // dotted "start" grafted onto the merge → next-commit link. The lane above the top row is free by
+  // construction, so the WIP belongs on it.
+  if (anchorIsTopmost) crossing.delete(anchor.column)
 
   const used = new Set<number>()
   for (const spec of synthSpecs) {
@@ -290,8 +311,14 @@ export function useGitGraphNodes(
       primarySpecs.push({ type: 'worktree', wip: primaryWips[i] })
     }
 
+    const topmostOid = nodes[0].commit.oid
+
     if (primarySpecs.length > 0) {
-      const primaryCols = assignColumnsToSyntheticNodes(primaryAnchor, primarySpecs)
+      const primaryCols = assignColumnsToSyntheticNodes(
+        primaryAnchor,
+        primarySpecs,
+        primaryAnchor.commit.oid === topmostOid
+      )
       for (const [key, col] of primaryCols.entries()) {
         columnMap.set(key, col)
       }
@@ -304,7 +331,11 @@ export function useGitGraphNodes(
       for (let i = entry.wips.length - 1; i >= 0; i--) {
         specs.push({ type: 'worktree', wip: entry.wips[i] })
       }
-      const cols = assignColumnsToSyntheticNodes(entry.anchor, specs)
+      const cols = assignColumnsToSyntheticNodes(
+        entry.anchor,
+        specs,
+        entry.anchor.commit.oid === topmostOid
+      )
       for (const [key, col] of cols.entries()) {
         columnMap.set(key, col)
       }
@@ -472,14 +503,12 @@ export function useGitGraphNodes(
       (filteredNodes[0].commit.oid === 'WIP' || filteredNodes[0].commit.oid === 'CONFLICT')
     const wipColumn = hasPrimarySpecial ? filteredNodes[0].column : 0
     const primaryAnchorIndex = hasPrimarySpecial
-      ? filteredNodes.findIndex(
-          (n) =>
-            n.commit.oid !== 'WIP' &&
-            n.commit.oid !== 'CONFLICT' &&
-            !n.commit.oid.startsWith('WIP:') &&
-            n.column === wipColumn
-        )
+      ? filteredNodes.findIndex((n) => !isSyntheticRow(n.commit.oid) && n.column === wipColumn)
       : -1
+
+    // Topmost REAL commit: the one row whose incoming edges can only be reserved lanes, since every
+    // row above it is synthetic (a WIP / paused-rebase row this hook spliced in itself).
+    const firstRealIndex = filteredNodes.findIndex((n) => !isSyntheticRow(n.commit.oid))
 
     if (primaryAnchorIndex !== -1) {
       continuityPatches.push({
@@ -539,6 +568,21 @@ export function useGitGraphNodes(
 
       const matchingPatches = continuityPatches.filter((p) => p.index === index && patched.column === p.toColumn)
       for (const patch of matchingPatches) {
+        // On the graph's topmost real row, the edge arriving on its own lane is the backend's
+        // reserved lane, not history (nothing is displayed above it) — see the matching note in
+        // `assignColumnsToSyntheticNodes`. Once a WIP row sits on that lane, that reservation IS
+        // the connector, so it renders dashed and in the WIP violet instead of as a solid stub of
+        // branch line rising out of the commit dot.
+        if (index === firstRealIndex && patch.fromColumn === patch.toColumn) {
+          patched = {
+            ...patched,
+            connections: patched.connections.map((c) =>
+              c.fromColumn === patch.fromColumn && c.toColumn === patch.toColumn && !c.startsAtNode
+                ? { ...c, dashed: true, color: patch.color }
+                : c
+            ),
+          }
+        }
         // Only an edge that reaches UP into this node (arriving from the top of the row) already
         // wires it to the WIP row above. A `startsAtNode`-only edge is a *departure* going down to
         // a parent — e.g. a merge commit's straight line to its first parent — and does NOT reach
