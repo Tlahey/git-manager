@@ -180,7 +180,7 @@ function clickEvent() {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useRepoUIStore.setState({ editingOid: null, explanationTarget: null })
+  useRepoUIStore.setState({ editingOid: null, aiPanelTarget: null })
   usePinnedBranchesStore.setState({ overrides: {} })
   Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
   // clearAllMocks() also wipes .mockResolvedValue()-configured implementations, so these need
@@ -646,7 +646,7 @@ describe('useGitGraphActions — per-branch submenus', () => {
   })
 
   it('"explain branch changes" resolves the base branch and opens the right panel', async () => {
-    useRepoUIStore.setState({ explanationTarget: null })
+    useRepoUIStore.setState({ aiPanelTarget: null })
     const oneBranch = commitNode('a', {
       refs: [{ name: 'refs/heads/feat', shortName: 'feat', type: 'branch', commitOid: 'a' }],
     })
@@ -654,7 +654,7 @@ describe('useGitGraphActions — per-branch submenus', () => {
     await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
     act(() => getItem('gitTree.branchMenu.explainChanges').action!())
     // A panel, not one of the overlay manager's dialogs — so it lands in shared UI state.
-    expect(useRepoUIStore.getState().explanationTarget).toEqual({
+    expect(useRepoUIStore.getState().aiPanelTarget).toEqual({
       kind: 'branch',
       branch: 'feat',
       baseRef: 'origin/main',
@@ -670,7 +670,7 @@ describe('useGitGraphActions — per-branch submenus', () => {
     const { result } = renderHook(() => useGitGraphActions(baseParams({ nodes: [oneBranch] })))
     await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
     act(() => getItem('gitTree.branchMenu.explainChanges').action!())
-    expect(useRepoUIStore.getState().explanationTarget).toBeNull()
+    expect(useRepoUIStore.getState().aiPanelTarget).toBeNull()
     expect(toastError).toHaveBeenCalled()
     branchList.data = [
       { name: 'main', shortName: 'main', isRemote: false },

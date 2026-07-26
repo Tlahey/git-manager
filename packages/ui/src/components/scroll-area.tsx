@@ -11,7 +11,28 @@ const ScrollArea = React.forwardRef<
     className={cn('relative overflow-hidden', className)}
     {...props}
   >
-    <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit]">
+    {/*
+      `[&>div]:!block` overrides a Radix internal, and removing it brings back a real bug.
+
+      `ScrollArea.Viewport` wraps its children in a div it styles `{ minWidth: "100%", display:
+      "table" }`. A table box is shrink-to-fit: it sizes to its *min-content* width and is free to
+      exceed the space it was given. So one unbreakable token — a file path in inline code, a long
+      URL — makes that wrapper wider than the panel, and nothing wraps, because at min-content width
+      there is no line to break.
+
+      `overflow-wrap: break-word` does not save you here: per CSS Text, it breaks a word during line
+      layout but is explicitly ignored when computing min-content, which is what the table asks for.
+
+      The overflow isn't even scrollable: this component only ever renders a vertical ScrollBar, so
+      Radix sets `overflowX: hidden` on the viewport and the excess is simply clipped — text that
+      runs off the right edge with no way to reach it. Forcing the wrapper back to `block` pins it to
+      the viewport width, which is what makes `break-word` (and `overflow-x-auto` on a code block or
+      a wide table) behave.
+
+      If a horizontal ScrollBar is ever added here, this override has to become conditional: `table`
+      is what would let content exceed 100% and actually scroll sideways.
+    */}
+    <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit] [&>div]:!block">
       {children}
     </ScrollAreaPrimitive.Viewport>
     <ScrollBar />

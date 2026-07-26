@@ -60,19 +60,20 @@ resolved, the panel says so rather than passing it off as current.
 
 ---
 
-## The same input as the PR description
+## The same input as the PR description — and as the branch review
 
-This feature and [PR description](./pr-description.md) consume the **identical** range context. The
-difference between them is a string constant, a temperature and a prompt builder — which is the
-clearest demonstration of why the feature-descriptor shape is worth having.
+This feature, [PR description](./pr-description.md) and the branch half of
+[code review](./code-review.md) consume the **identical** range context. What separates all three is
+a string constant, a temperature and a prompt builder — which is the clearest demonstration of why
+the feature-descriptor shape is worth having.
 
-| | PR description | Branch explanation |
-| --- | --- | --- |
-| Written **for** | reviewers, in the author's voice | the reader in front of the graph |
-| Written **by** | you, effectively — you edit and publish it | nobody; it's disposable |
-| Tone | proposes | describes (*"Describe, do not review"* is in the instruction) |
-| Temperature | 0.4 | 0.2 |
-| Consumes | diff + commit subjects + PR template | diff + commit subjects + **file list** |
+| | PR description | Branch explanation | Branch review |
+| --- | --- | --- | --- |
+| Written **for** | reviewers, in the author's voice | the reader in front of the graph | you, before you ship it |
+| Written **by** | you, effectively — you edit and publish it | nobody; it's disposable | nobody; it's disposable |
+| Tone | proposes | describes (*"Describe, do not review"* is in the instruction) | reviews — the one feature allowed to |
+| Temperature | 0.4 | 0.2 | 0.1 |
+| Consumes | diff + commit subjects + PR template | diff + commit subjects + **file list** | diff + commit subjects + file list |
 
 The file list is the one input this feature uses and the PR description doesn't: grouping changes by
 area is exactly the "what changed" structure the reader wants, and the paths are what makes the

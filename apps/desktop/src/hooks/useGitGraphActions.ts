@@ -84,7 +84,7 @@ export function useGitGraphActions({
   const queryClient = useQueryClient()
   const setEditingOid = useRepoUIStore((s) => s.setEditingOid)
   const openPrCreateWith = useRepoUIStore((s) => s.openPrCreateWith)
-  const setExplanationTarget = useRepoUIStore((s) => s.setExplanationTarget)
+  const setAiPanelTarget = useRepoUIStore((s) => s.setAiPanelTarget)
   const setPin = usePinnedBranchesStore((s) => s.setPin)
   const enableSolo = useSoloModeStore((s) => s.enable)
   const { checkoutBranchWithStashPrompt } = useBranchCheckout()
@@ -261,7 +261,8 @@ export function useGitGraphActions({
               ),
             onStageAll: () => void runWip(() => apiStageAll(repoPath)),
             onUnstageAll: () => void runWip(() => apiUnstageAll(repoPath)),
-            onExplainChanges: () => setExplanationTarget({ kind: 'working' }),
+            onExplainChanges: () => setAiPanelTarget({ kind: 'working' }),
+            onReviewChanges: () => setAiPanelTarget({ kind: 'reviewWorking' }),
           },
           t
         )
@@ -398,6 +399,32 @@ export function useGitGraphActions({
       }
     }
 
+    /**
+     * Opens one of the two branch-scoped AI right panels on `ref`, resolving the base it should be
+     * read against first.
+     *
+     * Shared by the explanation and the review because the base resolution is the whole subtlety and
+     * must not drift between them: it looks only at local refs (the panel has to work on a repo with
+     * no remote and no GitHub token), and a branch with no resolvable merge target opens nothing
+     * rather than silently comparing against something arbitrary.
+     */
+    function openBranchAiPanel(ref: GitRef, kind: 'branch' | 'reviewBranch') {
+      const baseRef = resolveExplanationBase(
+        ref.shortName,
+        targetBranches,
+        // `name`, not `shortName`: the latter strips the remote prefix, so `origin/main` would
+        // arrive as `main` and never match a configured `origin/*` merge target.
+        (branches ?? []).map((b) => b.name)
+      )
+      if (!baseRef) {
+        toast.error(t('gitTree.branchExplanation.noBase', { branch: ref.shortName }))
+        return
+      }
+      // Straight to the shared UI state rather than through `pendingAction`: this opens a right
+      // panel, not one of the overlay manager's dialogs, and the sidebar menu opens the same one.
+      setAiPanelTarget({ kind, branch: ref.shortName, baseRef })
+    }
+
     const relParams = (ref: GitRef) => ({ branch: ref.shortName, current: currentBranch ?? '' })
     const branchActions: BranchMenuActions = {
       onPull: (ref) =>
@@ -432,24 +459,10 @@ export function useGitGraphActions({
           ref.type === 'remote' ? ref.shortName.split('/').slice(1).join('/') : ref.shortName
         openPrCreateWith(currentBranch ?? '', base)
       },
-      // Explains the branch against the repo's merge target, resolved from local refs only — the
-      // panel must open on a repo with no remote and no GitHub token.
-      onExplainBranch: (ref) => {
-        const baseRef = resolveExplanationBase(
-          ref.shortName,
-          targetBranches,
-          // `name`, not `shortName`: the latter strips the remote prefix, so `origin/main` would
-          // arrive as `main` and never match a configured `origin/*` merge target.
-          (branches ?? []).map((b) => b.name)
-        )
-        if (!baseRef) {
-          toast.error(t('gitTree.branchExplanation.noBase', { branch: ref.shortName }))
-          return
-        }
-        // Straight to the shared UI state rather than through `pendingAction`: this opens a right
-        // panel, not one of the overlay manager's dialogs, and the sidebar menu opens the same one.
-        setExplanationTarget({ kind: 'branch', branch: ref.shortName, baseRef })
-      },
+      // Both branch-scoped AI panels read the branch against the repo's merge target, resolved from
+      // local refs only — they must open on a repo with no remote and no GitHub token.
+      onExplainBranch: (ref) => openBranchAiPanel(ref, 'branch'),
+      onReviewBranch: (ref) => openBranchAiPanel(ref, 'reviewBranch'),
       onRenameBranch: (ref) => setPendingAction({ kind: 'renameBranch', branch: ref.shortName }),
       onDeleteBranch: (ref) =>
         void run(
@@ -514,7 +527,7 @@ export function useGitGraphActions({
           onExplainCommit: () => {
             if (!clickedNode) return
             const { commit } = clickedNode
-            setExplanationTarget({
+            setAiPanelTarget({
               kind: 'commit',
               oid: commit.oid,
               shortOid: commit.shortOid,

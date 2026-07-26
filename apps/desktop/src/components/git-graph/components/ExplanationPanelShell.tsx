@@ -24,6 +24,12 @@ export interface ExplanationPanelShellProps {
   generatedAt: number | null
   /** Set when the remembered explanation used a different comparison than the current one. */
   staleComparison: string | null
+  /**
+   * Optional line under the header, for something the reader needs to know about *this run* rather
+   * than about its subject — the code review uses it to report prompt size. Left as a node, not a
+   * string, so a panel can style its own severity without this shell learning what the notice means.
+   */
+  notice?: React.ReactNode
   onGenerate: () => void
   onCancel: () => void
   onForget: () => void
@@ -52,6 +58,7 @@ export function ExplanationPanelShell({
   error,
   generatedAt,
   staleComparison,
+  notice,
   onGenerate,
   onCancel,
   onForget,
@@ -188,12 +195,17 @@ export function ExplanationPanelShell({
             {t('gitTree.explanation.staleComparison', { comparison: staleComparison })}
           </p>
         )}
+
+        {notice}
       </div>
 
       <ScrollArea className="w-full min-w-0 flex-1">
         <div className="w-full min-w-0 px-4 py-4">
           {status === 'error' ? (
-            <p data-testid="explanation-error" className="text-xs text-tone-danger">
+            // `break-words`: an undecoded error is a raw provider payload — a JSON blob or a URL
+            // with no space in it, which would otherwise run off the panel's right edge. The
+            // markdown body below sets this for itself; this paragraph is outside it.
+            <p data-testid="explanation-error" className="break-words text-xs text-tone-danger">
               {aiErrorMessage(error ?? '', tErrors)}
             </p>
           ) : text ? (

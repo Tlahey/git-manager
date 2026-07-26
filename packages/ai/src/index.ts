@@ -18,6 +18,14 @@ export type {
   JsonSchema,
 } from './config'
 
+// Prompt sizing — surfaces context overflow, which every provider fails at silently.
+export {
+  estimateTokens,
+  variableCharBudget,
+  contextTokensFor,
+  DEFAULT_CONTEXT_TOKENS,
+} from './promptSize'
+
 // The extensibility runtime: describe a feature once, wrap it into a typed service.
 export type {
   AiFeature,
@@ -71,6 +79,15 @@ export {
   workingExplanationFeature,
   WORKING_EXPLANATION_INSTRUCTION,
   buildWorkingExplanationPrompt,
+  codeReviewFeature,
+  CODE_REVIEW_INSTRUCTION,
+  buildCodeReviewPrompt,
+  reviewDiffBudget,
+  assessCodeReviewCoverage,
+  languageName,
+  budgetDiff,
+  splitDiffByFile,
+  classifyDiffPath,
   DEFAULT_COMMIT_TYPES,
   parseCommitlintRules,
   isConventionalHistory,
@@ -91,6 +108,12 @@ export type {
   CommitExplanationInput,
   CommitExplanationCommit,
   WorkingExplanationInput,
+  CodeReviewInput,
+  CodeReviewScope,
+  CodeReviewCoverage,
+  BudgetedDiff,
+  DiffFileSection,
+  DiffFileTier,
   CommitlintRules,
   CommitStyleContext,
   CommitValidation,

@@ -44,6 +44,7 @@ import { PatchWorkspacePanel } from '../patch/PatchWorkspacePanel'
 import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
 import { BisectPanel } from '../bisect/BisectPanel'
 import { BranchExplanationPanel } from './BranchExplanationPanel'
+import { CodeReviewPanel } from './CodeReviewPanel'
 import { CommitExplanationPanel } from './CommitExplanationPanel'
 import { WorkingExplanationPanel } from './WorkingExplanationPanel'
 import { useBisectState } from '../../hooks/useBisectState'
@@ -122,8 +123,8 @@ export function GitGraph({
   const prCreateOpen = useRepoUIStore((s) => s.prCreateOpen)
   const conflictFilePath = useRepoUIStore((s) => s.conflictFilePath)
   const setConflictFilePath = useRepoUIStore((s) => s.setConflictFilePath)
-  const explanationTarget = useRepoUIStore((s) => s.explanationTarget)
-  const setExplanationTarget = useRepoUIStore((s) => s.setExplanationTarget)
+  const aiPanelTarget = useRepoUIStore((s) => s.aiPanelTarget)
+  const setAiPanelTarget = useRepoUIStore((s) => s.setAiPanelTarget)
 
   // Patch workspace (create / apply / dependency) claims both the center and the
   // right panel, taking precedence over the commit/diff/PR views below.
@@ -1039,7 +1040,7 @@ export function GitGraph({
             <BisectPanel repoPath={repoPath} />
           </div>
         </>
-      ) : explanationTarget ? (
+      ) : aiPanelTarget ? (
         <>
           <div
             {...resizeProps}
@@ -1053,25 +1054,39 @@ export function GitGraph({
           >
             {/* Keyed on the subject so switching remounts with that subject's remembered
                 explanation instead of the previous one's. */}
-            {explanationTarget.kind === 'working' ? (
+            {aiPanelTarget.kind === 'working' ? (
               <WorkingExplanationPanel
                 repoPath={repoPath}
-                onClose={() => setExplanationTarget(null)}
+                onClose={() => setAiPanelTarget(null)}
               />
-            ) : explanationTarget.kind === 'branch' ? (
+            ) : aiPanelTarget.kind === 'branch' ? (
               <BranchExplanationPanel
-                key={`branch:${explanationTarget.branch}`}
+                key={`branch:${aiPanelTarget.branch}`}
                 repoPath={repoPath}
-                branch={explanationTarget.branch}
-                baseRef={explanationTarget.baseRef}
-                onClose={() => setExplanationTarget(null)}
+                branch={aiPanelTarget.branch}
+                baseRef={aiPanelTarget.baseRef}
+                onClose={() => setAiPanelTarget(null)}
+              />
+            ) : aiPanelTarget.kind === 'reviewWorking' ? (
+              <CodeReviewPanel
+                repoPath={repoPath}
+                target={{ scope: 'working' }}
+                onClose={() => setAiPanelTarget(null)}
+              />
+            ) : aiPanelTarget.kind === 'reviewBranch' ? (
+              <CodeReviewPanel
+                key={`review:${aiPanelTarget.branch}`}
+                repoPath={repoPath}
+                target={{ scope: 'branch', branch: aiPanelTarget.branch }}
+                baseRef={aiPanelTarget.baseRef}
+                onClose={() => setAiPanelTarget(null)}
               />
             ) : (
               <CommitExplanationPanel
-                key={`commit:${explanationTarget.oid}`}
+                key={`commit:${aiPanelTarget.oid}`}
                 repoPath={repoPath}
-                commit={explanationTarget}
-                onClose={() => setExplanationTarget(null)}
+                commit={aiPanelTarget}
+                onClose={() => setAiPanelTarget(null)}
               />
             )}
           </div>

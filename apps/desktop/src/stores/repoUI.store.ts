@@ -39,12 +39,17 @@ export type GraphCommitAction =
   | { kind: 'fixup' }
 
 /**
- * What the right panel's AI explanation is about. A branch carries the base it is compared against;
- * a commit carries the metadata the panel shows in its header (the diff itself is fetched by the
- * hook). Two shapes rather than one loose record, so a branch target can never be rendered as a
+ * What the right panel's AI output is about. A branch carries the base it is compared against; a
+ * commit carries the metadata the panel shows in its header (the diff itself is fetched by the
+ * hook). Distinct shapes rather than one loose record, so a branch target can never be rendered as a
  * commit one.
+ *
+ * The `review*` kinds are the AI code review, which asks the opposite question of the explanations
+ * ("is this alright?" rather than "what is this?"). They live in the same union because they render
+ * into the same single right-panel slot: making them one state is what guarantees a review and an
+ * explanation can never both claim it.
  */
-export type ExplanationTarget =
+export type AiPanelTarget =
   | { kind: 'branch'; branch: string; baseRef: string }
   | { kind: 'working' }
   | {
@@ -56,6 +61,8 @@ export type ExplanationTarget =
       author: string
       parentCount: number
     }
+  | { kind: 'reviewWorking' }
+  | { kind: 'reviewBranch'; branch: string; baseRef: string }
 
 /**
  * Handoff for the PR-creation composer, set once "ship from here" has made the local commit (and, on
@@ -168,13 +175,13 @@ interface RepoUIState {
   conflictFilePath: string | null
   setConflictFilePath: (path: string | null) => void
   /**
-   * What the right panel's AI explanation is showing, or `null`. Lives here rather than in
+   * What the right panel's AI explanation or review is showing, or `null`. Lives here rather than in
    * `GitGraph` because the graph's commit menu and the sidebar's branch menu both open it, and they
-   * sit in different branches of the tree. Session-scoped, not persisted — unlike the explanation
+   * sit in different branches of the tree. Session-scoped, not persisted — unlike the generated
    * *text*, which `aiExplanation.store` keeps across restarts.
    */
-  explanationTarget: ExplanationTarget | null
-  setExplanationTarget: (target: ExplanationTarget | null) => void
+  aiPanelTarget: AiPanelTarget | null
+  setAiPanelTarget: (target: AiPanelTarget | null) => void
   /**
    * Bridge for triggering graph-row selection (e.g. the synthetic "CONFLICT" row) from outside
    * `GitGraph.tsx` — the toolbar lives in a separate branch of the component tree and has no
@@ -237,7 +244,7 @@ export const useRepoUIStore = create<RepoUIState>()(
       selectedHistoryOid: null,
       editingOid: null,
       conflictFilePath: null,
-      explanationTarget: null,
+      aiPanelTarget: null,
       pendingGraphSelection: null,
       selectedCommitOid: null,
       selectedStashIndex: null,
@@ -316,7 +323,7 @@ export const useRepoUIStore = create<RepoUIState>()(
 
       setConflictFilePath: (path) => set({ conflictFilePath: path }),
 
-      setExplanationTarget: (target) => set({ explanationTarget: target }),
+      setAiPanelTarget: (target) => set({ aiPanelTarget: target }),
 
       setPendingGraphSelection: (oid) => set({ pendingGraphSelection: oid }),
 
@@ -341,7 +348,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           activeLeftPanel: 'sidebar',
           selectedHistoryOid: null,
           conflictFilePath: null,
-          explanationTarget: null,
+          aiPanelTarget: null,
           selectedCommitOid: null,
           selectedStashIndex: null,
           pendingGraphAction: null,
@@ -361,7 +368,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           activeLeftPanel: 'sidebar',
           selectedHistoryOid: null,
           conflictFilePath: null,
-          explanationTarget: null,
+          aiPanelTarget: null,
           selectedCommitOid: null,
           selectedStashIndex: null,
           pendingGraphAction: null,

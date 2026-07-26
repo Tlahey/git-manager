@@ -64,7 +64,8 @@ The single branch's actions are **flattened** into the commit menu (no submenu),
                Open worktree from <b> / Checkout this commit
                Create worktree from this commit
 [core]         Create branch here / Cherry-pick / Reset <current> to this commit ▸ / Revert
-[pr/explain]   Push <current> and start a pull request to <b> (remote only) / Explain branch changes
+[pr/explain]   Push <current> and start a pull request to <b> (remote only) /
+               Explain branch changes (LLM) / Review branch changes (LLM)
 [destructive]  Rename <b> (local only) / Delete <b>
 [copy]         Copy branch name / Copy commit sha / Copy link to branch (remote or main) /
                Copy link to this commit / Create patch
@@ -105,11 +106,11 @@ Create tag / Create annotated tag
 | **Checkout `<branch>`** | Graph submenu/flat: **remote** branches only (checks out its commit → detached); local branches offer only "Checkout this commit". Sidebar menu: shown for **both** (a local branch switches HEAD by name). |
 | **Open worktree from `<branch>`** | Always shown (opens from the branch tip). |
 | **Push … start a pull request** | Shown only for a **remote** branch with a current branch. |
-| **Explain branch changes** | Always **disabled** (placeholder — no AI feature yet). |
+| **Explain branch changes (LLM)** / **Review branch changes (LLM)** | Shown only when the clicked commit **actually carries that branch** (`isOnClickedCommit`) — on the current-branch fallback below, "the branch" would be whichever one is checked out, not what was pointed at. Disabled when the AI master switch is off, never hidden, so the capability stays discoverable. |
 | **Rename `<branch>`** | Local branches only. |
 | **Delete `<branch>`** | Hidden on the **current** branch; **disabled** on **remote** branches (no confirm flow yet); enabled on other local branches. |
 | **Copy link to branch** | Shown for a **remote** branch, or for the local **`main`/`master`** (→ `origin/<name>`). Not shown for other local branches. |
-| **Solo** | Always **disabled** (placeholder — no branch-filter integration). |
+| **Solo** | Always enabled. Isolates the branch in the graph via `useSoloModeStore` (`onSolo` → `enable([shortName])`), from both this menu and the sidebar's. |
 
 The **`main`/`master`** branch is the only local branch that gets **Copy link to branch**
 (`isMainBranchName`). Deletion of the current branch is never offered.
@@ -117,11 +118,13 @@ The **`main`/`master`** branch is the only local branch that gets **Copy link to
 ## WIP row menu (local uncommitted changes)
 ```
 Stash changes / Stash changes (include untracked) | Stage all changes / Unstage all changes |
-Explain working changes (Preview)
+Explain working changes (LLM) / Review changes (LLM)
 ```
 Only the **local** WIP row has a menu. Stage/unstage are enabled from the working-tree state
-(`hasUnstaged` / `hasStaged`); "Explain working changes" is a **disabled placeholder** (no AI
-feature yet). Committing is **not** in the menu — it stays on the row's inline input, and **"Discard
+(`hasUnstaged` / `hasStaged`). The two AI items sit together with no separator — they answer the two
+halves of one moment ("what am I in the middle of?" then "is it alright to commit?") — and both
+disable for the same two reasons: a **clean tree** (nothing to read) or the **AI master switch off**.
+Committing is **not** in the menu — it stays on the row's inline input, and **"Discard
 all changes" lives on the side panel, not here**. Other synthetic rows (`WIP:<path>` for another
 worktree, and the CONFLICT row) have **no** menu.
 
@@ -151,10 +154,9 @@ Ranked roughly by user impact.
 
 ### Known-disabled placeholders (backend/feature missing)
 1. **Set upstream** — needs a backend command to set a branch's upstream.
-2. **Explain branch changes** / **Explain working changes** — need AI features in `packages/ai`
-   (branch-diff and working-diff → summary).
-3. **Solo** — needs to drive a graph branch-filter (isolate one branch's commits).
-4. **Delete a remote branch** — disabled; needs the confirm flow + `push :refs/heads/<name>` backend
+2. ~~**Explain branch changes** / **Explain working changes**~~ — **shipped**, along with their
+   *Review* counterparts. See [docs/ai](../../../../docs/ai/README.md).
+3. **Delete a remote branch** — disabled; needs the confirm flow + `push :refs/heads/<name>` backend
    (mirror of the remote-tag deletion already shipped).
 
 ### Real functional gaps

@@ -1,6 +1,7 @@
 import type { AiContext } from '../config'
 import type { StreamingFeature } from '../runtime'
 import { truncateDiff } from './commitMessage'
+import { languageName } from './language'
 
 /** The instruction (system prompt) for explaining the whole working tree.
  *
@@ -30,16 +31,6 @@ export interface WorkingExplanationInput {
   context: AiContext
   /** BCP-47-ish language tag (`'fr'` / `'en'`) the summary should be written in. */
   language?: string
-}
-
-/** Human-readable language name for the prompt. */
-function languageName(tag: string | undefined): string {
-  switch (tag) {
-    case 'fr':
-      return 'French'
-    default:
-      return 'English'
-  }
 }
 
 /** Builds the user-turn prompt: the changed files with their statuses, then the working diff. */

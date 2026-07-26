@@ -94,6 +94,8 @@ export interface BranchMenuActions {
   onStartPr: (ref: GitRef) => void
   /** Opens the AI explanation of everything this branch changes vs its merge target. */
   onExplainBranch: (ref: GitRef) => void
+  /** Opens the AI review of everything this branch changes vs its merge target. */
+  onReviewBranch: (ref: GitRef) => void
   onRenameBranch: (ref: GitRef) => void
   onDeleteBranch: (ref: GitRef) => void
   onCopyBranchName: (ref: GitRef) => void
@@ -222,6 +224,15 @@ function prAndExplainSection(
         text: t('gitTree.branchMenu.explainChanges'),
         enabled: b.aiEnabled,
         action: () => actions.onExplainBranch(b.ref),
+      }),
+    // Gated on the same condition as the explanation, for the same reason: reviewing "the branch"
+    // when the user clicked an ordinary commit would review whichever branch happens to be checked
+    // out, which is not what they pointed at.
+    b.isOnClickedCommit &&
+      menuItem({
+        text: t('gitTree.branchMenu.reviewChanges'),
+        enabled: b.aiEnabled,
+        action: () => actions.onReviewBranch(b.ref),
       }),
   ]
 }
@@ -425,6 +436,8 @@ export interface WipMenuActions {
   onUnstageAll: () => void
   /** Opens the AI summary of everything currently uncommitted. */
   onExplainChanges: () => void
+  /** Opens the AI review of everything currently uncommitted. */
+  onReviewChanges: () => void
 }
 
 /**
@@ -461,6 +474,13 @@ export function buildWipMenuSpec(
       // There is nothing to summarize on a clean tree, and nothing to ask when AI is off.
       enabled: ctx.aiEnabled && (ctx.hasStaged || ctx.hasUnstaged),
       action: actions.onExplainChanges,
+    }),
+    // Sits directly under the summary, no separator: the two read the same diff and answer the two
+    // halves of the same moment — "what am I in the middle of?" then "is it alright to commit?".
+    menuItem({
+      text: t('gitTree.wipMenu.reviewChanges'),
+      enabled: ctx.aiEnabled && (ctx.hasStaged || ctx.hasUnstaged),
+      action: actions.onReviewChanges,
     }),
   ]
 }
