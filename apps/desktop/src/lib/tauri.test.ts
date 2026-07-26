@@ -311,7 +311,8 @@ const cases: {
           timeoutSeconds: 30,
         },
         'system',
-        'user'
+        'user',
+        'req-1'
       ),
     command: 'ai_generate_stream',
     args: {
@@ -324,6 +325,7 @@ const cases: {
       },
       systemPrompt: 'system',
       userPrompt: 'user',
+      requestId: 'req-1',
     },
   },
   {
@@ -353,7 +355,12 @@ const cases: {
       userPrompt: 'user',
     },
   },
-  { name: 'cancelGeneration', call: () => tauri.cancelGeneration(), command: 'cancel_generation' },
+  {
+    name: 'cancelGeneration',
+    call: () => tauri.cancelGeneration('req-1'),
+    command: 'cancel_generation',
+    args: { requestId: 'req-1' },
+  },
 
   { name: 'getUserThemes', call: () => tauri.getUserThemes(), command: 'get_user_themes' },
 

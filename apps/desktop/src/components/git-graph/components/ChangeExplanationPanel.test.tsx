@@ -10,6 +10,13 @@ const explanation = vi.hoisted(() => ({
   status: 'idle' as string,
   error: null as string | null,
   text: '',
+  coverage: null as {
+    filesRead: number
+    filesTotal: number
+    complete: boolean
+    requiredContextTokens: number
+    windowTooSmall: boolean
+  } | null,
 }))
 
 vi.mock('../../../hooks/useChangeExplanation', () => ({
@@ -59,6 +66,7 @@ beforeEach(() => {
   explanation.status = 'idle'
   explanation.error = null
   explanation.text = ''
+  explanation.coverage = null
 })
 
 describe('ChangeExplanationPanel', () => {
@@ -134,5 +142,35 @@ describe('ChangeExplanationPanel', () => {
       />
     )
     expect(explanation.reset).toHaveBeenCalled()
+  })
+})
+
+// This panel's coverage is unusual: the prompt carries two variable parts, and the one most often
+// cut is the *file content* the explanation is supposed to be read against — not the patch.
+describe('ChangeExplanationPanel — coverage', () => {
+  it('reports the window a big file would have needed, under the answer', () => {
+    explanation.text = 'It renames the handler.'
+    explanation.coverage = {
+      filesRead: 0,
+      filesTotal: 1,
+      complete: false,
+      requiredContextTokens: 32768,
+      windowTooSmall: false,
+    }
+    renderPanel()
+    expect(screen.getByTestId('change-explanation-coverage')).toBeInTheDocument()
+  })
+
+  it('stays silent when the patch and the file both fit', () => {
+    explanation.text = 'It renames the handler.'
+    explanation.coverage = {
+      filesRead: 1,
+      filesTotal: 1,
+      complete: true,
+      requiredContextTokens: 8192,
+      windowTooSmall: false,
+    }
+    renderPanel()
+    expect(screen.queryByTestId('change-explanation-coverage')).not.toBeInTheDocument()
   })
 })

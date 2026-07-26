@@ -1,8 +1,10 @@
 use crate::error::AppError;
 use crate::models::AiProviderStatus;
 use async_trait::async_trait;
-use std::sync::Mutex;
-use tauri::AppHandle;
+use serde::Serialize;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use tauri::{AppHandle, Emitter};
 
 /// Per-call connection + sampling configuration, built fresh from the frontend's request on every
 /// call rather than synced into `AppState` ahead of time, so there's no stale-global-state class of
@@ -23,6 +25,77 @@ pub struct GenerateConfig {
     pub timeout_seconds: u64,
 }
 
+/// Payload of every `ai:*` streaming event.
+///
+/// The `request_id` is the point. Without it these events are broadcasts: `ai:token` reached every
+/// listener in the window, so two generations running at once fed each other's text into each
+/// other's panel, and a `ai:done` from either one ended both. Every listener now filters on the id
+/// it minted, which turns a shared channel into per-request ones without a channel per request.
+///
+/// `token` is unset on the lifecycle events (`ai:done`, `ai:cancelled`) — they carry only identity.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiStreamEvent {
+    pub request_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token: Option<String>,
+}
+
+/// One generation's channel back to the frontend: emits its events already tagged with the request
+/// id, and answers whether that generation has been cancelled.
+///
+/// It exists so a provider *cannot* emit an untagged event — the previous shape handed providers a
+/// bare `AppHandle` and a bare cancel flag and trusted each implementation to pair them correctly.
+/// Bundling them means a new provider gets the protocol right by construction, which matters
+/// because the failure mode is not a compile error but two features quietly crosstalking.
+pub struct StreamHandle {
+    app: AppHandle,
+    request_id: String,
+    cancel: Arc<AtomicBool>,
+}
+
+impl StreamHandle {
+    pub fn new(app: AppHandle, request_id: String, cancel: Arc<AtomicBool>) -> Self {
+        Self {
+            app,
+            request_id,
+            cancel,
+        }
+    }
+
+    /// True once `cancel_generation` has been called for *this* request id. Polled between chunks.
+    pub fn is_cancelled(&self) -> bool {
+        self.cancel.load(Ordering::SeqCst)
+    }
+
+    /// One token of the model's answer.
+    pub fn token(&self, token: &str) {
+        self.emit("ai:token", Some(token.to_string()));
+    }
+
+    /// The stream finished on its own.
+    pub fn done(&self) {
+        self.emit("ai:done", None);
+    }
+
+    /// The stream stopped because this generation was cancelled.
+    pub fn cancelled(&self) {
+        self.emit("ai:cancelled", None);
+    }
+
+    /// Emission is best-effort: a closed window is a normal way for this to fail, and there is
+    /// nothing useful to do about it from inside a provider's read loop.
+    fn emit(&self, event: &str, token: Option<String>) {
+        let _ = self.app.emit(
+            event,
+            AiStreamEvent {
+                request_id: self.request_id.clone(),
+                token,
+            },
+        );
+    }
+}
+
 /// One implementation per wire protocol (not per user-facing preset — see `AiPresetId` in
 /// `@git-manager/ai`, where e.g. Ollama/LM Studio/OpenAI all resolve to the same
 /// `openai-compatible` protocol and therefore the same provider implementation). Adding a new
@@ -33,16 +106,22 @@ pub struct GenerateConfig {
 pub trait AiProvider: Send + Sync {
     async fn check_status(&self, config: &GenerateConfig) -> Result<AiProviderStatus, AppError>;
 
-    /// Streams tokens via `app.emit("ai:token", ...)`, finishing with `app.emit("ai:done", ())`,
-    /// or `app.emit("ai:cancelled", ())` if `cancel` flips true mid-stream. Returning `Err` lets
-    /// the caller also emit `ai:error` with the message.
+    /// Streams tokens through `stream.token(...)`, finishing with `stream.done()` — or
+    /// `stream.cancelled()` if `stream.is_cancelled()` flips true mid-read. Every event it emits is
+    /// tagged with the caller's request id by {@link StreamHandle}, so a provider never handles the
+    /// id itself.
+    ///
+    /// **Failures are reported by returning `Err`, not by an event.** The `invoke` promise behind
+    /// this command is already per-request and already rejects with the message, so an `ai:error`
+    /// event would be a second channel for one condition — and the two would race. An earlier
+    /// version of this contract promised such an event; nothing ever emitted it, and three
+    /// frontend listeners waited on it for months.
     async fn generate(
         &self,
         config: &GenerateConfig,
         system_prompt: &str,
         user_prompt: &str,
-        app: &AppHandle,
-        cancel: &Mutex<bool>,
+        stream: &StreamHandle,
     ) -> Result<(), AppError>;
 
     /// Non-streaming counterpart: returns the model's full response as a single string. Used by

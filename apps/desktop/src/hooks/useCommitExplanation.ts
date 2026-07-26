@@ -72,7 +72,7 @@ export function useCommitExplanation(repoPath: string, commit: CommitExplanation
   const explain = useCallback(
     () =>
       run(
-        async () => {
+        async (requestId) => {
           const diff = await apiGetCommitDiff(repoPath, commit.oid)
           const patch = diff.files.map(formatUnifiedPatch).join('\n')
           // An empty-tree commit or a pure metadata change has nothing to read.
@@ -107,17 +107,19 @@ export function useCommitExplanation(repoPath: string, commit: CommitExplanation
           const assessed = assessCommitExplanationCoverage(input)
           lastCoverage.current = assessed
           setCoverage(assessed)
-          await commitExplanationService.run(aiConnection, input)
+          await commitExplanationService.run(aiConnection, input, requestId)
         },
-        (full) =>
-          remember(
-            repoPath,
-            'commit',
-            commit.oid,
-            comparedTo,
-            full,
-            lastCoverage.current ?? undefined
-          )
+        {
+          onComplete: (full) =>
+            remember(
+              repoPath,
+              'commit',
+              commit.oid,
+              comparedTo,
+              full,
+              lastCoverage.current ?? undefined
+            ),
+        }
       ),
     [
       run,

@@ -1,9 +1,7 @@
-use super::ai_provider::{AiProvider, GenerateConfig};
+use super::ai_provider::{AiProvider, GenerateConfig, StreamHandle};
 use crate::error::AppError;
 use crate::models::AiProviderStatus;
 use async_trait::async_trait;
-use std::sync::Mutex;
-use tauri::AppHandle;
 
 /// Anthropic's Messages API (`/v1/messages`) has a genuinely different request/response shape
 /// from the OpenAI Chat Completions surface (different auth header, different streaming event
@@ -28,8 +26,7 @@ impl AiProvider for AnthropicProvider {
         _config: &GenerateConfig,
         _system_prompt: &str,
         _user_prompt: &str,
-        _app: &AppHandle,
-        _cancel: &Mutex<bool>,
+        _stream: &StreamHandle,
     ) -> Result<(), AppError> {
         Err(not_implemented())
     }

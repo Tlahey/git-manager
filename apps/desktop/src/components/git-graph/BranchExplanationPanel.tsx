@@ -1,5 +1,6 @@
 import { useTranslation } from '@git-manager/i18n'
 import { useBranchExplanation } from '../../hooks/useBranchExplanation'
+import { CoverageNotice } from './components/CoverageNotice'
 import { ExplanationPanelShell } from './components/ExplanationPanelShell'
 
 interface BranchExplanationPanelProps {
@@ -30,8 +31,18 @@ export function BranchExplanationPanel({
   onClose,
 }: BranchExplanationPanelProps) {
   const { t } = useTranslation('git')
-  const { explain, cancel, clear, status, isGenerating, error, text, generatedAt, comparedTo } =
-    useBranchExplanation(repoPath, branch)
+  const {
+    explain,
+    cancel,
+    clear,
+    status,
+    isGenerating,
+    error,
+    text,
+    generatedAt,
+    comparedTo,
+    coverage,
+  } = useBranchExplanation(repoPath, branch)
 
   // The remembered explanation was diffed against another branch — worth saying, because it silently
   // changes what "what this branch changes" even means.
@@ -58,6 +69,9 @@ export function BranchExplanationPanel({
       error={error}
       generatedAt={generatedAt}
       staleComparison={staleComparison ? comparedTo : null}
+      // A branch range is the largest diff the app sends, so this is where a small window bites
+      // hardest — and the text itself is forbidden from saying so.
+      notice={<CoverageNotice coverage={coverage} testIdPrefix="branch-explanation" />}
       onGenerate={() => void explain(baseRef)}
       onCancel={() => void cancel()}
       onForget={clear}

@@ -7,6 +7,7 @@ import { useChangeExplanation } from '../../../hooks/useChangeExplanation'
 import { formatUnifiedPatch } from '../../../lib/formatUnifiedPatch'
 import { aiErrorMessage } from '../../../lib/aiErrorMessage'
 import { Markdown } from '../../Markdown'
+import { CoverageNotice } from './CoverageNotice'
 
 interface ChangeExplanationPanelProps {
   repoPath: string
@@ -39,7 +40,7 @@ export function ChangeExplanationPanel({
 }: ChangeExplanationPanelProps) {
   const { t } = useTranslation('git')
   const { t: tErrors } = useTranslation('errors')
-  const { explain, cancel, reset, status, error, text } = useChangeExplanation()
+  const { explain, cancel, reset, status, error, text, coverage } = useChangeExplanation()
   const [copied, setCopied] = useState(false)
 
   const patch = useMemo(() => formatUnifiedPatch(diffData), [diffData])
@@ -156,7 +157,13 @@ export function ChangeExplanationPanel({
               {aiErrorMessage(error ?? '', tErrors)}
             </p>
           ) : text ? (
-            <Markdown content={text} repoPath={repoPath} className="text-xs" />
+            <>
+              <Markdown content={text} repoPath={repoPath} className="text-xs" />
+              {/* Below the answer, not above it: on this panel the explanation is the point and the
+                  coverage is a footnote — and unlike the other features, a shortened *file content*
+                  is what most often costs the reading, not a shortened patch. */}
+              <CoverageNotice coverage={coverage} testIdPrefix="change-explanation" />
+            </>
           ) : (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Spinner className="h-3.5 w-3.5" />

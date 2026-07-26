@@ -13,8 +13,15 @@ const { listeners, listen } = vi.hoisted(() => {
 })
 vi.mock('@tauri-apps/api/event', () => ({ listen }))
 
-function emit(event: string, payload?: unknown) {
-  listeners.get(event)?.forEach((h) => h({ payload }))
+/** The request id the hook minted for the generation in flight, read back off the mocked service.
+ * Every `ai:*` event now carries one and every listener filters on it, so an event emitted without
+ * the right id is ignored — see the cross-talk tests below. */
+function currentRequestId(): string {
+  return (mockedRun.mock.calls.at(-1)?.[2] as string) ?? 'no-run-started'
+}
+
+function emit(event: string, token?: string, requestId: string = currentRequestId()) {
+  listeners.get(event)?.forEach((h) => h({ payload: { requestId, token } }))
 }
 
 vi.mock('../api/ai.api', () => ({
@@ -56,7 +63,8 @@ describe('useChangeExplanation', () => {
       file,
       fileContent: 'const a = 1',
       language: 'fr',
-    })
+      contextTokens: 4096,
+    }, expect.any(String))
   })
 
   it('accumulates streamed tokens into the explanation text', async () => {
@@ -79,16 +87,16 @@ describe('useChangeExplanation', () => {
     expect(result.current.text).toBe('Renames `a`')
   })
 
-  it('surfaces a streaming error', async () => {
+  it('surfaces a provider failure from the rejected request, not from an event', async () => {
+    // The `ai:error` listener this used to exercise was dead: nothing in Rust ever emitted it. The
+    // real channel is the rejected `invoke` promise, which is already per-request.
+    mockedRun.mockRejectedValueOnce(new Error('AI_PROVIDER_NOT_RUNNING'))
     const { result } = renderHook(() => useChangeExplanation())
     await act(async () => {
       await result.current.explain({ repoName: 'demo', file })
     })
-    await act(async () => {
-      emit('ai:error', 'AI_PROVIDER_NOT_RUNNING')
-    })
     expect(result.current.status).toBe('error')
-    expect(result.current.error).toBe('AI_PROVIDER_NOT_RUNNING')
+    expect(result.current.error).toContain('AI_PROVIDER_NOT_RUNNING')
   })
 
   it('reports a cancellation', async () => {

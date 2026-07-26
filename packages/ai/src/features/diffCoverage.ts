@@ -43,6 +43,18 @@ export interface DiffPromptSizing {
   envelopeTokens: number
   /** The model's declared context window. Absent falls back to the pessimistic default. */
   contextTokens?: number
+  /**
+   * Characters of *other* variable content sharing the diff's pool, already allocated.
+   *
+   * Only one feature has a second variable part — the change explanation sends the file's current
+   * content alongside its patch — but it cannot express that through {@link envelopeTokens}. The
+   * envelope is fixed cost, converted to characters through a safety factor and a chars-per-token
+   * estimate; routing an already-budgeted *character* count through that conversion and back would
+   * not return the number that went in, and the few characters lost to the rounding are enough to
+   * flip a borderline file between "read whole" and "shortened". Subtracted here instead, so the
+   * feature's prompt and its coverage report are computed from the identical budget.
+   */
+  siblingChars?: number
 }
 
 /**
@@ -53,10 +65,11 @@ export interface DiffPromptSizing {
  * {@link DiffCoverage.windowTooSmall}.
  */
 export function diffCharBudget(sizing: DiffPromptSizing): number {
-  return variableCharBudget(
+  const pool = variableCharBudget(
     sizing.contextTokens ?? DEFAULT_CONTEXT_TOKENS,
     estimateTokens(sizing.instruction) + sizing.envelopeTokens
   )
+  return Math.max(0, pool - (sizing.siblingChars ?? 0))
 }
 
 /**
@@ -129,7 +142,10 @@ export interface DiffCoverage {
  * reporting the next real rung tells the reader what to go and set. */
 const COMMON_WINDOWS = [4096, 8192, 16384, 32768, 65536, 131072, 262144]
 
-function nextCommonWindow(tokens: number): number {
+/** Rounds a raw token requirement up to the next window a user could actually set. Exported for the
+ * one feature that has to compute its own requirement — see `changeExplanation`, whose second
+ * variable part means the shared calculation cannot see everything it would need to read. */
+export function nextCommonWindow(tokens: number): number {
   return COMMON_WINDOWS.find((w) => w >= tokens) ?? tokens
 }
 
@@ -153,8 +169,14 @@ export function assessDiffCoverage(diff: string, sizing: DiffPromptSizing): Diff
     filesTotal,
     complete: budgeted.omitted.length === 0 && budgeted.truncated.length === 0,
     windowTooSmall: budget === 0,
+    // The sibling's characters are part of what a window would have to carry to read everything —
+    // reporting a window that fits the diff but not the file content beside it would name a size
+    // that still does not answer the question.
     requiredContextTokens: nextCommonWindow(
-      contextTokensFor(diff.length, estimateTokens(sizing.instruction) + sizing.envelopeTokens)
+      contextTokensFor(
+        diff.length + (sizing.siblingChars ?? 0),
+        estimateTokens(sizing.instruction) + sizing.envelopeTokens
+      )
     ),
   }
 }

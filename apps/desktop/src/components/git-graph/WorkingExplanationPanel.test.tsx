@@ -10,6 +10,13 @@ const explanation = vi.hoisted(() => ({
   isGenerating: false,
   error: null as string | null,
   text: '',
+  coverage: null as {
+    filesRead: number
+    filesTotal: number
+    complete: boolean
+    requiredContextTokens: number
+    windowTooSmall: boolean
+  } | null,
 }))
 
 vi.mock('../../hooks/useWorkingExplanation', () => ({
@@ -29,7 +36,13 @@ function renderPanel() {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  Object.assign(explanation, { status: 'idle', isGenerating: false, error: null, text: '' })
+  Object.assign(explanation, {
+    status: 'idle',
+    isGenerating: false,
+    error: null,
+    text: '',
+    coverage: null,
+  })
 })
 
 describe('WorkingExplanationPanel', () => {
@@ -80,5 +93,35 @@ describe('WorkingExplanationPanel', () => {
     const { onClose } = renderPanel()
     await user.click(screen.getByTestId('explanation-close'))
     expect(onClose).toHaveBeenCalled()
+  })
+})
+
+// The stake specific to this panel: the summary's job is to say how many separate things are in
+// progress, and that count comes from files the model may not have read the diff of.
+describe('WorkingExplanationPanel — coverage', () => {
+  it('says how much of the working tree was actually read', () => {
+    explanation.coverage = {
+      filesRead: 5,
+      filesTotal: 31,
+      complete: false,
+      requiredContextTokens: 32768,
+      windowTooSmall: false,
+    }
+    renderPanel()
+    expect(screen.getByTestId('working-explanation-coverage')).toHaveTextContent(
+      'Read 5 of 31 changed files in full'
+    )
+  })
+
+  it('stays silent on a tree that fit whole', () => {
+    explanation.coverage = {
+      filesRead: 2,
+      filesTotal: 2,
+      complete: true,
+      requiredContextTokens: 4096,
+      windowTooSmall: false,
+    }
+    renderPanel()
+    expect(screen.queryByTestId('working-explanation-coverage')).not.toBeInTheDocument()
   })
 })

@@ -60,7 +60,12 @@ export type AiFeature<Input, Output = string> =
  * done, which is what the app's footer activity indicator relies on. `runComplete` resolves with the
  * full response text. Neither knows anything about *which* feature it serves. */
 export interface AiTransport {
-  runStream(config: AiGenerateConfig, systemPrompt: string, userPrompt: string): Promise<void>
+  runStream(
+    config: AiGenerateConfig,
+    systemPrompt: string,
+    userPrompt: string,
+    requestId: string
+  ): Promise<void>
   runComplete(
     config: AiGenerateConfig,
     systemPrompt: string,
@@ -68,7 +73,8 @@ export interface AiTransport {
     schema?: JsonSchema
   ): Promise<string>
   checkStatus(config: AiCheckConfig): Promise<AiProviderStatus>
-  cancel(): Promise<void>
+  /** Cancels one streaming generation by the id it was started with. */
+  cancel(requestId: string): Promise<void>
 }
 
 /** Resolves a persisted, connection-only {@link AiConnectionConfig} plus a feature's chosen
@@ -93,8 +99,14 @@ export function resolveGenerateConfig(
  * built request to the transport. Tokens are delivered via Tauri events the caller subscribes to
  * separately (see `useAiGeneration`). */
 export interface StreamingFeatureService<Input> {
-  run(connection: AiConnectionConfig, input: Input): Promise<void>
-  cancel(): Promise<void>
+  /**
+   * `requestId` is minted by whatever is listening for this generation's events — the host's
+   * streaming hook — and threaded down rather than generated here, because the listener has to know
+   * the id *before* the request starts. Generating it in this layer would leave the subscriber
+   * unable to tell its own tokens from another feature's.
+   */
+  run(connection: AiConnectionConfig, input: Input, requestId: string): Promise<void>
+  cancel(requestId: string): Promise<void>
 }
 
 /** A completion feature exposed as a service. `run` resolves the request, awaits the full response,
@@ -108,12 +120,12 @@ export function createStreamingService<Input>(
   transport: AiTransport
 ): StreamingFeatureService<Input> {
   return {
-    run(connection, input) {
+    run(connection, input, requestId) {
       const config = resolveGenerateConfig(connection, feature.temperature)
-      return transport.runStream(config, feature.instruction, feature.buildPrompt(input))
+      return transport.runStream(config, feature.instruction, feature.buildPrompt(input), requestId)
     },
-    cancel() {
-      return transport.cancel()
+    cancel(requestId) {
+      return transport.cancel(requestId)
     },
   }
 }

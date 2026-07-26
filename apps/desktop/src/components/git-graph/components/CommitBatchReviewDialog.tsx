@@ -15,6 +15,7 @@ import {
 } from '@git-manager/ui'
 import { AlertTriangle, Check, RefreshCw, Sparkles } from 'lucide-react'
 import type { CommitBatchReview } from '../../../hooks/useCommitBatchReview'
+import { CoverageNotice } from './CoverageNotice'
 
 const statusLetters: Record<string, string> = {
   added: 'A',
@@ -51,6 +52,7 @@ export function CommitBatchReviewDialog({ review }: { review: CommitBatchReview 
     canApply,
     acceptedCount,
     validations,
+    coverage,
   } = review
 
   return (
@@ -89,6 +91,9 @@ export function CommitBatchReviewDialog({ review }: { review: CommitBatchReview 
         ) : (
           <ScrollArea className="-mr-3 max-h-[52vh] pr-3">
             <div className="space-y-3">
+              {/* Above the plan: a plan grouped from a fraction of the diff is one to read more
+                  carefully, and it is about to create real commits. */}
+              <CoverageNotice coverage={coverage} testIdPrefix="ai-batch" />
               {proposals.map((proposal, index) => (
                 <div
                   key={index}

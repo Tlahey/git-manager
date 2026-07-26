@@ -148,7 +148,7 @@ sequenceDiagram
     participant P as provider
     participant L as your provider
 
-    H->>H: listen ai:token / ai:done / ai:cancelled
+    H->>H: listen ai:token / ai:done / ai:cancelled (filtered on requestId)
     H->>A: service.run(connection, input)
     A->>A: resolve config + build prompt
     A->>C: invoke ai_generate_stream
@@ -165,17 +165,33 @@ sequenceDiagram
 
 ### Event contract
 
+Every event carries the same payload, the Rust `AiStreamEvent`:
+
+```jsonc
+{ "requestId": "ai-9f3c…", "token": "…" } // `token` only on ai:token
+```
+
 | Event | Emitted by | Meaning |
 | ----- | ---------- | ------- |
 | `ai:token` | provider, per delta | one chunk of text |
 | `ai:done` | provider, on `[DONE]`/EOF | generation complete |
-| `ai:cancelled` | provider, when the cancel flag flips | stopped on request |
-| `ai:error` | **nothing** | see below |
+| `ai:cancelled` | provider, when this request's cancel flag flips | stopped on request |
 
-> ⚠️ **`ai:error` is never emitted.** A provider failure makes the command return `Err`, which
-> rejects the `invoke` promise, so errors surface through the caller's `catch`. The listeners exist
-> because the event is part of the documented `AiProvider` contract — don't treat it as the error
-> path when debugging.
+> ⚠️ **These events are a broadcast, not a channel.** One Rust backend emits them to every listener
+> in every window, so `requestId` is what separates one generation from another — **a listener must
+> ignore any event whose id is not its own**. Before it existed, a commit message being written while
+> an explanation panel streamed interleaved both answers into both surfaces, and whichever finished
+> first ended the other. The id is minted frontend-side
+> ([`aiRequestId.ts`](../../apps/desktop/src/lib/aiRequestId.ts)) because the *listener* has to know
+> it before the request starts; it is passed to `ai_generate_stream`, and providers emit through
+> [`StreamHandle`](../../apps/desktop/src-tauri/src/services/ai_provider.rs) so they cannot forget to
+> attach it.
+
+> ⚠️ **There is no `ai:error` event.** A provider failure makes the command return `Err`, which
+> rejects the `invoke` promise — already a per-request channel that already carries the message — so
+> errors surface through the caller's `catch`. An earlier contract promised such an event, nothing
+> ever emitted it, and three hooks listened for it for months; the listeners have been removed rather
+> than given a second source of truth to race with.
 
 ### Timeouts
 
@@ -197,10 +213,16 @@ first wait is a silence like any other.
 
 ### Cancellation
 
-`cancel_generation` flips a `Mutex<bool>` in `AppState`; the provider checks it **between chunks**,
-emits `ai:cancelled` and returns. Cancellation is therefore cooperative: it lands within one chunk,
-it does not abort the HTTP request, and a model that has gone quiet won't notice until it emits
-again or the request times out.
+`cancel_generation(requestId)` flips that request's flag in `AppState`'s
+[`GenerationRegistry`](../../apps/desktop/src-tauri/src/state.rs); the provider checks it **between
+chunks** through `StreamHandle::is_cancelled`, emits `ai:cancelled` and returns. Cancellation is
+therefore cooperative: it lands within one chunk, it does not abort the HTTP request, and a model
+that has gone quiet won't notice until it emits again or the request times out.
+
+One flag **per request id**, not one for the app: the flag used to be a single `Mutex<bool>`, so a
+stop button anywhere stopped every stream. An id that has already finished is a no-op rather than an
+error — hitting stop as the last token lands is a normal race — and the command clears its entry on
+every exit path, so a re-run cannot inherit a stale cancellation.
 
 ### "The model is working"
 
@@ -258,11 +280,11 @@ Shared by every feature; the per-feature pages list their own on top of these.
 
 | # | Limitation | Impact | Fix sketch |
 | - | ---------- | ------ | ---------- |
-| 1 | **One global generation slot.** `ai:token` carries no request id and `cancel_generation` flips one shared flag. Two features running at once would receive each other's tokens, and cancelling either stops both. | Rare but real; nothing in the UI prevents it | Give `ai_generate_stream` a request id, echo it in the event payload, key listeners and the cancel flag on it |
-| 2 | **`ai:error` is dead.** No Rust path emits it. | None today — the reject path covers it — but it misleads readers | Emit it from the `Err` arm, or drop the listeners and document the reject path |
-| 3 | **Truncation is blind — except for the code review and the commit explanation.** The remaining features cut their diff mid-file at a fixed character budget (8000, or 4000 for the commit message), so lockfile noise can eat the whole allowance. [`budgetDiff`](../../packages/ai/src/features/diffBudget.ts) + [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts) fix that (per-file shares, source before tests before docs, omitted paths named, coverage reported), and are written to be shared. | Large changesets get shallower output in the remaining features | Point them at `diffCoverage` too — see [code review](./code-review.md#reading-the-right-7) for what it changed there, and [commit explanation](./commit-explanation.md#reading-a-big-commit) for what adopting it costs (one envelope measurement, three instruction lines) |
-| 4 | **Two hooks still duplicate the streaming plumbing.** `useAiGeneration` and `usePrDescriptionGeneration` predate `useAiStream` and carry its two bugs (listeners leaking past unmount, stacking across runs). | Maintenance | Migrate them with a callback-forwarding option |
-| 5 | **The context window is declared, not negotiated.** Nothing sends `num_ctx`/`max_tokens`. `AiConnectionConfig.contextTokens` (Settings → AI) can be sanity-checked against Ollama's `/api/show` ([ai_model_info.rs](../../apps/desktop/src-tauri/src/services/ai_model_info.rs)), which catches a value above the model's ceiling but cannot see a server-side `OLLAMA_CONTEXT_LENGTH`. Only the code review and the commit explanation consume the setting — the rest still ship a hardcoded budget. | A plausible-but-wrong setting still re-arms silent truncation; the remaining features stay blind to the window entirely | Send a context length where the protocol allows it, and size the remaining features' budgets from `diffCharBudget` too |
+| 1 | ~~**One global generation slot.**~~ **Resolved.** Every generation is minted a request id ([`aiRequestId.ts`](../../apps/desktop/src/lib/aiRequestId.ts)) that tags each `ai:*` event (Rust `AiStreamEvent`, emitted through [`StreamHandle`](../../apps/desktop/src-tauri/src/services/ai_provider.rs) so a provider cannot forget it) and keys the per-request cancel flags in [`GenerationRegistry`](../../apps/desktop/src-tauri/src/state.rs). Listeners ignore events that are not theirs; `cancel_generation` names one id. | — | — |
+| 2 | ~~**`ai:error` is dead.**~~ **Resolved by removal.** Nothing ever emitted it and three hooks listened for it. The `invoke` promise is already this request's own error channel and already carries the message, so a parallel event would be a second source of truth for one condition — and the two would race. The listeners are gone and the reject path is documented on `AiProvider::generate` and `useAiStream`. | — | — |
+| 3 | ~~**Truncation is blind.**~~ **Resolved.** Every diff-carrying feature now budgets per file through [`budgetDiff`](../../packages/ai/src/features/diffBudget.ts) + [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts): source before tests before docs, a share per file, omitted paths named in the prompt, coverage reported to the UI. What remains is a *judgement* rather than a bug — the tier order and `MIN_FILE_CHARS` are heuristics, and a generated file that genuinely matters (a checked-in schema, a reviewed lockfile bump) still sorts last. | A deliberately deprioritised file can be the one that mattered | Let a feature pass a tier override, or infer the tier from the changeset's own shape |
+| 4 | ~~**Two hooks still duplicate the streaming plumbing.**~~ **Resolved.** `useAiGeneration` and `usePrDescriptionGeneration` now run on [`useAiStream`](../../apps/desktop/src/hooks/useAiStream.ts), which grew the `onToken` / `trackText` options they were missing — they stream into an input the caller owns, which is why they had forked in the first place. Both inherit the two fixes their copies never got: listeners are dropped on unmount, and a second run no longer stacks a listener set on the previous one. | — | — |
+| 5 | **The context window is declared, not negotiated.** Nothing sends `num_ctx`/`max_tokens`. `AiConnectionConfig.contextTokens` (Settings → AI) can be sanity-checked against Ollama's `/api/show` ([ai_model_info.rs](../../apps/desktop/src-tauri/src/services/ai_model_info.rs)), which catches a value above the model's ceiling but cannot see a server-side `OLLAMA_CONTEXT_LENGTH`. Every feature now sizes its prompt from the setting, so a wrong value is wrong everywhere at once — too high still re-arms silent truncation, too low quietly costs coverage the model could have had. | A plausible-but-wrong setting mis-sizes all eight features uniformly | Send a context length where the protocol allows it; failing that, infer a floor from what the provider accepted without dropping the instruction |
 | 6 | **No end-to-end test against a real model.** | "The right bytes reached the transport" is covered; "the model wrote something good" is not | Inherent — a provider is the one dependency CI cannot assume |
 
 ---
@@ -286,8 +308,13 @@ Shared by every feature; the per-feature pages list their own on top of these.
 | Connection + context types | [packages/ai/src/config.ts](../../packages/ai/src/config.ts) |
 | Service assembly, transport, activity tracking | [apps/desktop/src/api/ai.api.ts](../../apps/desktop/src/api/ai.api.ts) |
 | Shared streaming hook | [apps/desktop/src/hooks/useAiStream.ts](../../apps/desktop/src/hooks/useAiStream.ts) |
+| Request id minting (one per generation) | [apps/desktop/src/lib/aiRequestId.ts](../../apps/desktop/src/lib/aiRequestId.ts) |
+| Per-request cancel flags | [src-tauri/src/state.rs](../../apps/desktop/src-tauri/src/state.rs) (`GenerationRegistry`) |
 | Error decoding | [apps/desktop/src/lib/aiErrorMessage.ts](../../apps/desktop/src/lib/aiErrorMessage.ts) |
 | Prompt sizing (budget from the context window) | [packages/ai/src/promptSize.ts](../../packages/ai/src/promptSize.ts) |
+| Per-file diff budgeting (tiers, shares, omitted list) | [packages/ai/src/features/diffBudget.ts](../../packages/ai/src/features/diffBudget.ts) |
+| Diff budget + coverage report, shared by every feature | [packages/ai/src/features/diffCoverage.ts](../../packages/ai/src/features/diffCoverage.ts) |
+| Coverage line in the UI | [apps/desktop/src/components/git-graph/components/CoverageNotice.tsx](../../apps/desktop/src/components/git-graph/components/CoverageNotice.tsx) |
 | Model context-window lookup (Ollama) | [src-tauri/src/services/ai_model_info.rs](../../apps/desktop/src-tauri/src/services/ai_model_info.rs) |
 | Footer activity state | [apps/desktop/src/stores/aiActivity.store.ts](../../apps/desktop/src/stores/aiActivity.store.ts) |
 | Remembered explanations | [apps/desktop/src/stores/aiExplanation.store.ts](../../apps/desktop/src/stores/aiExplanation.store.ts) |

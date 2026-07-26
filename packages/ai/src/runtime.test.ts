@@ -66,19 +66,33 @@ describe('createStreamingService', () => {
 
   it('runs the feature instruction + built prompt at the feature temperature', async () => {
     const service = createStreamingService(commitMessageFeature, transport)
-    await service.run(connection, context)
+    await service.run(connection, { context }, 'req-1')
 
     expect(transport.runStream).toHaveBeenCalledWith(
       expect.objectContaining({ protocol: 'openai-compatible', temperature: 0.3 }),
       commitMessageFeature.instruction,
-      commitMessageFeature.buildPrompt(context)
+      commitMessageFeature.buildPrompt({ context }),
+      'req-1'
     )
   })
 
-  it('delegates cancel to the transport', async () => {
+  it('forwards the request id the caller minted rather than making one up', async () => {
+    // The id has to come from whatever is listening: this layer cannot mint it, because the
+    // subscriber must already know it before the request starts.
     const service = createStreamingService(commitMessageFeature, transport)
-    await service.cancel()
-    expect(transport.cancel).toHaveBeenCalledOnce()
+    await service.run(connection, { context }, 'req-from-the-hook')
+    expect(transport.runStream).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(String),
+      expect.any(String),
+      'req-from-the-hook'
+    )
+  })
+
+  it('cancels one generation by id, not every generation', async () => {
+    const service = createStreamingService(commitMessageFeature, transport)
+    await service.cancel('req-1')
+    expect(transport.cancel).toHaveBeenCalledWith('req-1')
   })
 })
 
@@ -90,12 +104,12 @@ describe('createCompletionService', () => {
 
   it('runs the feature (forwarding its JSON schema) then parses into typed output', async () => {
     const service = createCompletionService(fileGroupingFeature, transport)
-    const commits = await service.run(connection, context)
+    const commits = await service.run(connection, { context })
 
     expect(transport.runComplete).toHaveBeenCalledWith(
       expect.objectContaining({ temperature: 0.2 }),
       fileGroupingFeature.instruction,
-      fileGroupingFeature.buildPrompt(context),
+      fileGroupingFeature.buildPrompt({ context }),
       fileGroupingFeature.schema
     )
     expect(commits).toEqual([{ commitMessage: 'feat: x', files: ['src/a.ts'] }])

@@ -5,6 +5,7 @@ import { Sparkles, ArrowRight } from 'lucide-react'
 import { useBranches } from '../../../hooks/useBranches'
 import { usePrTemplate } from '../../../hooks/usePrTemplate'
 import { usePrDescriptionGeneration } from '../../../hooks/usePrDescriptionGeneration'
+import { CoverageNotice } from '../components/CoverageNotice'
 import { useAiEnabled } from '../../../hooks/useAiEnabled'
 import { aiErrorMessage } from '../../../lib/aiErrorMessage'
 import type { CreatePrArgs } from '../../../hooks/usePrCreateFlow'
@@ -41,7 +42,7 @@ export function PrCreateForm({
   const { template } = usePrTemplate(repoPath)
   // `aiError` is distinct from the `error` prop: that one is the create-PR failure, this one is the
   // generation failing. Left unread, a stopped provider just cleared the body and said nothing.
-  const { generate, status, error: aiError } = usePrDescriptionGeneration(repoPath)
+  const { generate, status, error: aiError, coverage } = usePrDescriptionGeneration(repoPath)
 
   const localBranches = useMemo(() => branches.filter((b) => !b.isRemote), [branches])
 
@@ -205,6 +206,10 @@ export function PrCreateForm({
             {aiErrorMessage(aiError, tErrors)}
           </p>
         )}
+        {/* The description is forbidden from mentioning its own coverage — it gets published on the
+            pull request — so this is the only place the author can see it was drafted from part of
+            the branch, while the body is still editable. */}
+        <CoverageNotice coverage={coverage} testIdPrefix="pr-create-ai" />
       </div>
 
       <label className="flex items-center gap-2 text-xs text-foreground">

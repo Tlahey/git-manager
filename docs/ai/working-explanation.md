@@ -11,7 +11,7 @@ Summarizes everything currently uncommitted — "what am I in the middle of?".
 | **Kind** | streaming markdown |
 | **Temperature** | 0.2 |
 | **Context scope** | `working` — worktree vs HEAD, untracked included |
-| **Diff budget** | 8000 chars |
+| **Diff budget** | derived from the model's context window, spent per file — see [Known limitations](./README.md#known-limitations) #3 and the shared [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts) |
 | **UI** | [`WorkingExplanationPanel`](../../apps/desktop/src/components/git-graph/WorkingExplanationPanel.tsx) — right panel — via [`useWorkingExplanation`](../../apps/desktop/src/hooks/useWorkingExplanation.ts) |
 | **Memory** | **none** — see below |
 
@@ -89,16 +89,16 @@ Beyond the [shared ones](./README.md#known-limitations):
 
 | Limitation | Note |
 | ---------- | ---- |
-| **8000-char diff budget** | The case most likely to overflow it: a big messy tree is exactly when you reach for this. Beyond the budget the summary leans on the file list and a partial diff |
+| **A big tree is still read partially** | The case most likely to hit the budget: a big messy tree is exactly when you reach for this. The file list is sent whole and declared as the authority on *how many separate pieces of work* there are — which is the number this feature exists to get right — so what a small window costs is depth per piece, not the count |
 | **Staged and unstaged are merged** | The `working` scope is one diff against HEAD, so the summary can't tell you what is ready to commit versus what is still being written |
 | **No memory, by design** | Every open costs a fresh generation. Deliberate (above), but it does mean reopening the panel is never instant |
-| **Untracked files are included whole** | A large new file consumes the budget as fast as it can be read |
+| **Untracked files are included whole** | A large new file competes for the same pool as everything else. It is classified by path like any other file, so a new lockfile or generated artifact sorts last rather than eating the allowance |
 
 ## Tests
 
 | Test | Covers |
 | ---- | ------ |
-| [`workingExplanation.test.ts`](../../packages/ai/src/features/workingExplanation.test.ts) | prompt shape, file statuses, truncation, language |
+| [`workingExplanation.test.ts`](../../packages/ai/src/features/workingExplanation.test.ts) | prompt shape, file statuses, language, window-sized budget (fits every window, the file list survives the smallest window because the count comes from it, code before noise), coverage, and the instruction's coverage ban |
 | [`useWorkingExplanation.test.ts`](../../apps/desktop/src/hooks/useWorkingExplanation.test.ts) | working scope, streaming, clean-tree refusal, and that nothing is persisted |
 | [`WorkingExplanationPanel.test.tsx`](../../apps/desktop/src/components/git-graph/WorkingExplanationPanel.test.tsx) | auto-start, no age line, error decoding |
 | [`graphContextMenus.test.ts`](../../apps/desktop/src/lib/graphContextMenus.test.ts) | the WIP menu item's action, and both reasons it disables |

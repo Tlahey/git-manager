@@ -2,7 +2,7 @@ use crate::models::AiProviderStatus;
 use crate::services::ai_activity::{build_ai_activity, AiActivity};
 use crate::services::ai_context::{build_ai_context, AiContext, AiContextScope};
 use crate::services::ai_model_info::{fetch_model_context_limits, ModelContextLimits};
-use crate::services::ai_provider::GenerateConfig;
+use crate::services::ai_provider::{GenerateConfig, StreamHandle};
 use crate::services::ai_registry::provider_for;
 use crate::state::AppState;
 use serde::Deserialize;
@@ -108,29 +108,38 @@ pub async fn get_ai_activity(path: String, since_hours: i64) -> Result<AiActivit
 /// Generic streaming generation: relays a fully built system/user prompt to the selected provider
 /// and streams tokens back via `ai:token`/`ai:done` events. Feature-agnostic — every streaming AI
 /// feature (commit message, future report generation, …) goes through this one command.
+///
+/// `request_id` is minted by the frontend, tags every event this generation emits, and is what
+/// `cancel_generation` targets. It exists because these events are window-wide broadcasts: before
+/// it, a second generation started while the first was streaming received the first's tokens, and
+/// cancelling either one stopped both.
+///
+/// Errors are reported by returning `Err` — the `invoke` promise is already this request's own
+/// channel. See {@link AiProvider::generate}.
 #[tauri::command]
 pub async fn ai_generate_stream(
     config: AiGenerateConfig,
     system_prompt: String,
     user_prompt: String,
+    request_id: String,
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<(), String> {
-    *state.generation_cancel.lock().unwrap() = false;
+    let cancel = state.generations.register(&request_id);
+    let stream = StreamHandle::new(app, request_id.clone(), cancel);
 
     let provider = provider_for(&config.protocol);
     let generate_config: GenerateConfig = config.into();
 
-    provider
-        .generate(
-            &generate_config,
-            &system_prompt,
-            &user_prompt,
-            &app,
-            &state.generation_cancel,
-        )
-        .await
-        .map_err(Into::into)
+    let result = provider
+        .generate(&generate_config, &system_prompt, &user_prompt, &stream)
+        .await;
+
+    // On every exit path, including the error one: an entry left behind would keep this id's flag
+    // alive, and a re-run reusing it would inherit a stale cancellation.
+    state.generations.finish(&request_id);
+
+    result.map_err(Into::into)
 }
 
 /// Generic non-streaming completion: relays a fully built system/user prompt and returns the full
@@ -157,9 +166,15 @@ pub async fn ai_complete(
         .map_err(Into::into)
 }
 
-/// Cancels the streaming generation in progress
+/// Cancels one streaming generation, named by the `request_id` its caller minted.
+///
+/// An unknown id is a no-op rather than an error: hitting stop as the last token lands is a normal
+/// race, and there is nothing for the user to do about it.
 #[tauri::command]
-pub async fn cancel_generation(state: State<'_, AppState>) -> Result<(), String> {
-    *state.generation_cancel.lock().unwrap() = true;
+pub async fn cancel_generation(
+    request_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    state.generations.cancel(&request_id);
     Ok(())
 }

@@ -62,7 +62,7 @@ export function useCodeReview(repoPath: string, target: CodeReviewTarget) {
   const review = useCallback(
     (baseRef?: string) =>
       run(
-        async () => {
+        async (requestId) => {
           if (isBranch) {
             if (!baseRef) return 'AI_NO_BRANCH_CHANGES'
             const context = await apiGetAiContext(repoPath, 'range', baseRef, ref)
@@ -71,17 +71,19 @@ export function useCodeReview(repoPath: string, target: CodeReviewTarget) {
             if (!context.diff.trim()) return 'AI_NO_BRANCH_CHANGES'
             const input = { context, scope: 'branch' as const, language, contextTokens }
             setCoverage(assessCodeReviewCoverage(input))
-            await codeReviewService.run(aiConnection, input)
+            await codeReviewService.run(aiConnection, input, requestId)
             return
           }
           const context = await apiGetAiContext(repoPath, 'working')
           if (!context.diff.trim()) return 'AI_NO_WORKING_CHANGES'
           const input = { context, scope: 'working' as const, language, contextTokens }
           setCoverage(assessCodeReviewCoverage(input))
-          await codeReviewService.run(aiConnection, input)
+          await codeReviewService.run(aiConnection, input, requestId)
         },
-        (full) => {
-          if (isBranch && baseRef) remember(repoPath, 'branch-review', ref, baseRef, full)
+        {
+          onComplete: (full) => {
+            if (isBranch && baseRef) remember(repoPath, 'branch-review', ref, baseRef, full)
+          },
         }
       ),
     [run, repoPath, isBranch, ref, aiConnection, language, contextTokens, remember]

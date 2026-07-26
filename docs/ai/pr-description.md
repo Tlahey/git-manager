@@ -12,7 +12,7 @@ when it has one.
 | **Kind** | streaming markdown |
 | **Temperature** | 0.4 — the highest of any feature; see below |
 | **Context scope** | `range` — `merge-base(base, HEAD)..HEAD` |
-| **Diff budget** | 8000 chars |
+| **Diff budget** | derived from the model's context window, spent per file — see [Known limitations](./README.md#known-limitations) #3 and the shared [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts) |
 | **UI** | [`PrComposerExpander`](../../apps/desktop/src/components/git-graph/pr/PrComposerExpander.tsx) and [`PrCreateForm`](../../apps/desktop/src/components/git-graph/pr/PrCreateForm.tsx), via [`usePrDescriptionGeneration`](../../apps/desktop/src/hooks/usePrDescriptionGeneration.ts) |
 
 ---
@@ -130,17 +130,17 @@ Beyond the [shared ones](./README.md#known-limitations):
 | Limitation | Note |
 | ---------- | ---- |
 | **The base branch comes from GitHub** | The composer pre-fills its base from `fetchRepoDefaultBranch`, which needs a token and a GitHub remote. On a non-GitHub or unauthenticated repo you must pick one manually. [Branch explanation](./branch-explanation.md) resolves its base from local refs instead — that helper would drop straight in |
-| **8000-char diff budget** | A large PR is described from its first files; a lockfile can eat the whole budget |
+| **A large PR is still described partially** | The budget follows the window and reads source before lockfiles, and the commit + file lists keep the description's scope right whatever fits. The description itself may never mention this — it gets published on the pull request over the author's name — so the composer shows the coverage line instead, while the body is still editable |
 | **HEAD only** | Unlike the branch explanation, this always describes the checked-out branch — the `headRef` parameter exists, this flow doesn't use it |
-| **`usePrDescriptionGeneration` predates `useAiStream`** | Carries the two bugs that extraction fixed |
+| ~~**`usePrDescriptionGeneration` predates `useAiStream`**~~ | **Fixed.** It now runs on the shared hook, which grew an `onToken` option for callers streaming into their own textarea. Both bugs the fork carried — listeners leaking past unmount, stacking across runs — are gone |
 | **Nothing verifies the template was respected** | If the model drops a heading, only the user notices |
 
 ## Tests
 
 | Test | Covers |
 | ---- | ------ |
-| [`prDescription.test.ts`](../../packages/ai/src/features/prDescription.test.ts) | header, commit list, template vs default, whitespace template, truncation, temperature |
-| [`usePrDescriptionGeneration.test.ts`](../../apps/desktop/src/hooks/usePrDescriptionGeneration.test.ts) | range fetch, token streaming, empty-diff refusal |
+| [`prDescription.test.ts`](../../packages/ai/src/features/prDescription.test.ts) | header, commit list, template vs default, whitespace template, temperature, window-sized budget (fits every window, a long template paid out of the diff yet reproduced intact, code before noise), coverage, and the published-output coverage ban |
+| [`usePrDescriptionGeneration.test.ts`](../../apps/desktop/src/hooks/usePrDescriptionGeneration.test.ts) | range fetch, token streaming, empty-diff refusal, and what it inherits from `useAiStream` (unmount cleanup, no listener stacking, another generation's events ignored, no write-back of an empty or cancelled draft) |
 | [`PrComposerExpander.test.tsx`](../../apps/desktop/src/components/git-graph/pr/PrComposerExpander.test.tsx) · [`PrCreateForm.test.tsx`](../../apps/desktop/src/components/git-graph/pr/PrCreateForm.test.tsx) | AI fill wiring, generation error kept distinct from publish error |
 | [`ai.api.test.ts`](../../apps/desktop/src/api/ai.api.test.ts) | instruction and temperature reach the transport; the run is tracked for the footer |
 | `ai_context.rs` (`#[cfg(test)]`) | merge-base semantics, missing/unresolvable base |
