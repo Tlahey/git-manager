@@ -1,8 +1,15 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-/** What an explanation is about: a whole branch, or a single commit. */
-export type ExplanationKind = 'branch' | 'commit'
+/**
+ * What a remembered answer is about: a whole branch, a single commit, or the AI review of a branch.
+ *
+ * `branch` and `branch-review` share a ref but are different documents about it — the explanation
+ * says what the branch does, the review says what is wrong with it — so they must not collide on the
+ * same key. Reviews of the *working tree* are deliberately absent: like the working explanation, they
+ * describe something that moves under them (see `useCodeReview`).
+ */
+export type ExplanationKind = 'branch' | 'commit' | 'branch-review'
 
 /** One generated explanation, kept so reopening the panel is instant. */
 export interface StoredExplanation {

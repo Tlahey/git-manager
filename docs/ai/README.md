@@ -22,6 +22,7 @@ specific to it — its prompt, its inputs, its UI, its limits.
 | [Commit explanation](./commit-explanation.md) | Explains what one commit actually does, beyond its message | streaming | right-click a commit → *Explain this commit (LLM)* |
 | [Change explanation](./change-explanation.md) | Explains one file's pending diff, read against the file itself | streaming | *Explain* above the diff, on a working-copy file |
 | [Working explanation](./working-explanation.md) | Summarizes everything uncommitted — what you are in the middle of | streaming | right-click the WIP row → *Explain working changes (LLM)* |
+| [Code review](./code-review.md) | Reviews a diff and flags what deserves a second look — the one feature allowed an opinion | streaming | right-click the WIP row → *Review changes (LLM)*, or a commit/branch → *Review branch changes (LLM)* |
 | [Daily summary](./daily-summary.md) | A "yesterday / today" briefing per repository | completion + JSON schema | ✨ on a dashboard project, and automatically each morning |
 
 Not built yet: "recompose a commit with AI" (its i18n keys exist, nothing behind them). See the
@@ -64,6 +65,10 @@ flowchart LR
     style F fill:#2d4a3e,stroke:#4ade80,color:#e8f5e9
 ```
 
+The [code review](./code-review.md) is the most recent addition, and was built entirely within that
+shape: one descriptor, one line in the api layer, a hook and a panel. **No Rust change, no new
+command, no new setting** — which is the claim the section below makes, tested once more.
+
 The invariants that shape hold, and why they are worth protecting:
 
 | Invariant | Why |
@@ -80,7 +85,7 @@ The invariants that shape hold, and why they are worth protecting:
 `AiConnectionConfig` ([config.ts](../../packages/ai/src/config.ts)) is all that is persisted:
 
 ```ts
-{ preset, url, model, apiKey?, timeoutSeconds, enabled? }
+{ preset, url, model, apiKey?, timeoutSeconds, contextTokens?, enabled? }
 ```
 
 Two presets ship, both speaking the `openai-compatible` protocol: **Ollama** (default,
@@ -108,8 +113,8 @@ command, three scopes:
 | Scope | Diff | Used by |
 | ----- | ---- | ------- |
 | `staged` | index vs HEAD — what a plain commit would capture | commit message |
-| `working` | worktree vs HEAD, untracked included | file grouping |
-| `range` | `merge-base(base, head)..head` | PR description, branch explanation |
+| `working` | worktree vs HEAD, untracked included | file grouping, working explanation, working review |
+| `range` | `merge-base(base, head)..head` | PR description, branch explanation, branch review |
 
 `range` takes the **merge base**, not the base tip — diffing `main..feat` naively reports main's own
 commits as deletions the branch never made. `head` defaults to `HEAD`; passing it explicitly is what
@@ -255,9 +260,10 @@ Shared by every feature; the per-feature pages list their own on top of these.
 | - | ---------- | ------ | ---------- |
 | 1 | **One global generation slot.** `ai:token` carries no request id and `cancel_generation` flips one shared flag. Two features running at once would receive each other's tokens, and cancelling either stops both. | Rare but real; nothing in the UI prevents it | Give `ai_generate_stream` a request id, echo it in the event payload, key listeners and the cancel flag on it |
 | 2 | **`ai:error` is dead.** No Rust path emits it. | None today — the reject path covers it — but it misleads readers | Emit it from the `Err` arm, or drop the listeners and document the reject path |
-| 3 | **Truncation is blind.** Diffs are cut mid-file at a fixed character budget; lockfile noise can eat the whole allowance. | Large changesets get shallower output | Budget per file, or drop generated/lock files before truncating |
+| 3 | **Truncation is blind — except for the code review.** Every feature but one cuts its diff mid-file at a fixed character budget, so lockfile noise can eat the whole allowance. [`budgetDiff`](../../packages/ai/src/features/diffBudget.ts) fixes that (per-file shares, source before tests before docs, omitted paths named), but only the review uses it. | Large changesets get shallower output everywhere else | Point the remaining features at `budgetDiff` — see [code review](./code-review.md#reading-the-right-7) for what it changed there |
 | 4 | **Two hooks still duplicate the streaming plumbing.** `useAiGeneration` and `usePrDescriptionGeneration` predate `useAiStream` and carry its two bugs (listeners leaking past unmount, stacking across runs). | Maintenance | Migrate them with a callback-forwarding option |
-| 5 | **No end-to-end test against a real model.** | "The right bytes reached the transport" is covered; "the model wrote something good" is not | Inherent — a provider is the one dependency CI cannot assume |
+| 5 | **The context window is declared, not negotiated.** Nothing sends `num_ctx`/`max_tokens` or reads the model's real window, so `AiConnectionConfig.contextTokens` (Settings → AI) is trusted on faith. Only the code review uses it — to size its diff and to warn ([promptSize.ts](../../packages/ai/src/promptSize.ts)); every other feature still ships a hardcoded budget. | A wrong setting re-arms silent truncation; the other features stay blind to the window entirely | Send a context length where the protocol allows it, and size the remaining features' budgets from `variableCharBudget` too |
+| 6 | **No end-to-end test against a real model.** | "The right bytes reached the transport" is covered; "the model wrote something good" is not | Inherent — a provider is the one dependency CI cannot assume |
 
 ---
 
@@ -281,6 +287,7 @@ Shared by every feature; the per-feature pages list their own on top of these.
 | Service assembly, transport, activity tracking | [apps/desktop/src/api/ai.api.ts](../../apps/desktop/src/api/ai.api.ts) |
 | Shared streaming hook | [apps/desktop/src/hooks/useAiStream.ts](../../apps/desktop/src/hooks/useAiStream.ts) |
 | Error decoding | [apps/desktop/src/lib/aiErrorMessage.ts](../../apps/desktop/src/lib/aiErrorMessage.ts) |
+| Prompt sizing / context-overflow warning | [packages/ai/src/promptSize.ts](../../packages/ai/src/promptSize.ts) |
 | Footer activity state | [apps/desktop/src/stores/aiActivity.store.ts](../../apps/desktop/src/stores/aiActivity.store.ts) |
 | Remembered explanations | [apps/desktop/src/stores/aiExplanation.store.ts](../../apps/desktop/src/stores/aiExplanation.store.ts) |
 | Commands | [src-tauri/src/commands/ai.rs](../../apps/desktop/src-tauri/src/commands/ai.rs) |

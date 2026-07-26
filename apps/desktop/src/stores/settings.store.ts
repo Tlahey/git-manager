@@ -9,6 +9,9 @@ const DEFAULT_SETTINGS: AppSettings = {
     url: 'http://localhost:11434',
     model: 'llama3.2',
     timeoutSeconds: 30,
+    // Ollama's own default. Pessimistic on purpose: a user who has configured a larger window can
+    // say so, but one who has not must not have the app assume otherwise on their behalf.
+    contextTokens: 4096,
     enabled: true,
   },
   git: {

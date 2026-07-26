@@ -10,6 +10,7 @@ import type {
 import {
   branchExplanationFeature,
   changeExplanationFeature,
+  codeReviewFeature,
   commitExplanationFeature,
   commitMessageFeature,
   createCompletionService,
@@ -79,7 +80,7 @@ const tauriAiTransport: AiTransport = {
  * which is what lets the footer show that the model is busy.
  *
  * This is the right place to bracket it precisely because every feature funnels through here: one
- * wrapper covers all six, and the next one is instrumented for free. Both Tauri commands resolve
+ * wrapper covers them all, and the next one is instrumented for free. Both Tauri commands resolve
  * when the generation *finishes* (`ai_generate_stream` awaits the provider's whole SSE loop rather
  * than detaching it), so the promise's lifetime is the generation's lifetime — tokens arriving
  * out-of-band as events does not change that.
@@ -130,6 +131,12 @@ export const commitExplanationService = createStreamingService(
 export const workingExplanationService = createStreamingService(
   workingExplanationFeature,
   trackedTransport(workingExplanationFeature.id)
+)
+/** One service for both review scopes: the feature discriminates on its input's `scope`, so the
+ * working-tree and branch reviews share an instruction, a temperature and this line. */
+export const codeReviewService = createStreamingService(
+  codeReviewFeature,
+  trackedTransport(codeReviewFeature.id)
 )
 
 /** Connection health check for Settings (validates a provider and lists its models). Deliberately

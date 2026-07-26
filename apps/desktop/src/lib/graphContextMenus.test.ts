@@ -62,6 +62,7 @@ const branchActions = (): BranchMenuActions => ({
   onOpenWorktreeFrom: vi.fn(),
   onStartPr: vi.fn(),
   onExplainBranch: vi.fn(),
+  onReviewBranch: vi.fn(),
   onRenameBranch: vi.fn(),
   onDeleteBranch: vi.fn(),
   onCopyBranchName: vi.fn(),
@@ -138,6 +139,28 @@ describe('buildBranchSubmenu — explain branch changes', () => {
   it('is disabled — but still listed — when AI is switched off', () => {
     const { items: nodes } = submenuFor(ref({ shortName: 'feat' }), ctx({ aiEnabled: false }))
     expect(item(nodes, 'Explain branch changes (LLM)')?.enabled).toBe(false)
+  })
+})
+
+describe('buildBranchSubmenu — review branch changes', () => {
+  it('calls onReviewBranch with the branch it belongs to', () => {
+    const branchRef = ref({ shortName: 'feat' })
+    const { items: nodes, actions } = submenuFor(branchRef, ctx({ currentBranch: 'main' }))
+    item(nodes, 'Review branch changes (LLM)')?.action?.()
+    expect(actions.onReviewBranch).toHaveBeenCalledWith(branchRef)
+  })
+
+  it('is disabled — but still listed — when AI is switched off', () => {
+    const { items: nodes } = submenuFor(ref({ shortName: 'feat' }), ctx({ aiEnabled: false }))
+    expect(item(nodes, 'Review branch changes (LLM)')?.enabled).toBe(false)
+  })
+
+  it('sits right after the explanation, so the two read as one pair', () => {
+    const { items: nodes } = submenuFor(ref({ shortName: 'feat' }), ctx({ currentBranch: 'main' }))
+    const labels = texts(nodes)
+    expect(labels.indexOf('Review branch changes (LLM)')).toBe(
+      labels.indexOf('Explain branch changes (LLM)') + 1
+    )
   })
 })
 
@@ -281,6 +304,7 @@ describe('buildWipMenuSpec', () => {
     onStageAll: vi.fn(),
     onUnstageAll: vi.fn(),
     onExplainChanges: vi.fn(),
+    onReviewChanges: vi.fn(),
   })
 
   const wipCtx = (overrides: Partial<Parameters<typeof buildWipMenuSpec>[0]> = {}) => ({
@@ -300,6 +324,7 @@ describe('buildWipMenuSpec', () => {
       'Stage all changes',
       'Unstage all changes',
       'Explain working changes (LLM)',
+      'Review changes (LLM)',
     ])
   })
 
@@ -312,18 +337,29 @@ describe('buildWipMenuSpec', () => {
     expect(actions.onExplainChanges).toHaveBeenCalled()
   })
 
-  it('disables the explanation on a clean tree — nothing to summarize', () => {
+  it('wires the working-changes review', () => {
+    const actions = wipActions()
+    const spec = normalizeMenuSpec(buildWipMenuSpec(wipCtx(), actions, t))
+    const review = item(spec, 'Review changes (LLM)')
+    expect(review?.enabled).toBe(true)
+    review?.action?.()
+    expect(actions.onReviewChanges).toHaveBeenCalled()
+  })
+
+  it('disables both AI items on a clean tree — nothing to summarize or review', () => {
     const spec = normalizeMenuSpec(
       buildWipMenuSpec(wipCtx({ hasStaged: false, hasUnstaged: false }), wipActions(), t)
     )
     expect(item(spec, 'Explain working changes (LLM)')?.enabled).toBe(false)
+    expect(item(spec, 'Review changes (LLM)')?.enabled).toBe(false)
   })
 
-  it('disables the explanation when AI is switched off', () => {
+  it('disables both AI items when AI is switched off', () => {
     const spec = normalizeMenuSpec(
       buildWipMenuSpec(wipCtx({ aiEnabled: false }), wipActions(), t)
     )
     expect(item(spec, 'Explain working changes (LLM)')?.enabled).toBe(false)
+    expect(item(spec, 'Review changes (LLM)')?.enabled).toBe(false)
   })
 
   it('enables stage/unstage from the working state', () => {
@@ -513,6 +549,7 @@ describe('buildCommitMenuSpec', () => {
       '— separator',
       'Explain this commit (LLM)',
       'Explain branch changes (LLM)',
+      'Review branch changes (LLM)',
       '— separator',
       'Rename feat',
       'Delete feat',
@@ -658,13 +695,16 @@ describe('buildCommitMenuSpec', () => {
     // branch" would silently describe whichever one happens to be checked out. Explaining the
     // commit itself is exactly the question that was asked, and stays.
     expect(labels).not.toContain('Explain branch changes (LLM)')
+    // The branch review is dropped for the same reason.
+    expect(labels).not.toContain('Review branch changes (LLM)')
     expect(labels).toContain('Explain this commit (LLM)')
   })
 
-  it('keeps the branch explanation when the commit really carries that branch', () => {
+  it('keeps the branch explanation and review when the commit really carries that branch', () => {
     const onIt = ref({ shortName: 'feat' })
     const labels = texts(build(ctx({ refs: [onIt], currentBranch: 'main' })))
     expect(labels).toContain('Explain branch changes (LLM)')
+    expect(labels).toContain('Review branch changes (LLM)')
     expect(labels).toContain('Explain this commit (LLM)')
   })
 

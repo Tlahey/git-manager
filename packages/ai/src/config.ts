@@ -11,6 +11,16 @@ export interface AiConnectionConfig {
   model: string
   apiKey?: string
   timeoutSeconds: number
+  /**
+   * The model's context window, in tokens. A property of the model you are reaching — like the
+   * timeout — not a tuning knob for any feature, which is why it belongs here.
+   *
+   * The app cannot read it: no provider protocol it speaks reports one reliably, and Ollama applies
+   * its own `num_ctx` regardless. So it is declared, not detected. Features use it to size their
+   * prompts and to warn before a provider silently drops the *start* of an oversized one — see
+   * `promptSize.ts`. `undefined` falls back to {@link DEFAULT_CONTEXT_TOKENS}.
+   */
+  contextTokens?: number
   /** Whether the user has turned AI features on. UI/feature gate (e.g. the AI-commit settings
    * section), not part of the transport — `undefined` is treated as enabled for back-compat. */
   enabled?: boolean

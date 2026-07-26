@@ -210,6 +210,7 @@
   "aiStatus.work.branchExplanation": "Explaining the branch…",
   "aiStatus.work.commitExplanation": "Explaining the commit…",
   "aiStatus.work.workingExplanation": "Reading the working tree…",
+  "aiStatus.work.codeReview": "Reviewing the changes…",
   "aiStatus.work.fileGrouping": "Grouping the changes…",
   "aiStatus.work.dailySummary": "Writing the briefing…"
 }

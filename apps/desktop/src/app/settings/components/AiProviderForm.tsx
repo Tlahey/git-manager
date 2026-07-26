@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Input, NativeSelect } from '@git-manager/ui'
-import { AI_PRESETS, getAiPreset, type AiPresetId } from '@git-manager/ai'
+import {
+  AI_PRESETS,
+  DEFAULT_CONTEXT_TOKENS,
+  getAiPreset,
+  type AiPresetId,
+} from '@git-manager/ai'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { useAiStatusStore } from '../../../stores/aiStatus.store'
 import { ProviderCombobox } from './ProviderCombobox'
@@ -26,6 +31,9 @@ export function AiProviderForm() {
   const detail = useAiStatusStore((s) => s.detail)
   const check = useAiStatusStore((s) => s.check)
   const [timeoutText, setTimeoutText] = useState(String(ai.timeoutSeconds))
+  const [contextText, setContextText] = useState(
+    String(ai.contextTokens ?? DEFAULT_CONTEXT_TOKENS)
+  )
 
   const activePreset = getAiPreset(ai.preset)
   const isChecking = state === 'checking'
@@ -39,6 +47,10 @@ export function AiProviderForm() {
   // Re-sync the buffered timeout when the setting changes from outside the field — the page's
   // "reset to default" button would otherwise leave a stale number on screen.
   useEffect(() => setTimeoutText(String(ai.timeoutSeconds)), [ai.timeoutSeconds])
+  useEffect(
+    () => setContextText(String(ai.contextTokens ?? DEFAULT_CONTEXT_TOKENS)),
+    [ai.contextTokens]
+  )
 
   function updateAi(partial: Partial<typeof ai>) {
     updateSettings({ ai: { ...ai, ...partial } })
@@ -189,6 +201,29 @@ export function AiProviderForm() {
           className="h-8 w-24 text-xs"
           data-testid="ai-timeout-input"
         />
+      </div>
+
+      {/* Context window — declared, not detected: no protocol the app speaks reports one reliably,
+          and Ollama applies its own `num_ctx` regardless. Buffered as text like the timeout, for the
+          same reason (an empty box mid-edit must not persist a NaN). */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-foreground">{t('settings.ai.contextTokens')}</label>
+        <Input
+          type="number"
+          min={1024}
+          max={1000000}
+          step={1024}
+          value={contextText}
+          onChange={(e) => {
+            setContextText(e.target.value)
+            const parsed = parseInt(e.target.value, 10)
+            if (!Number.isNaN(parsed) && parsed > 0) updateAi({ contextTokens: parsed })
+          }}
+          onBlur={() => setContextText(String(ai.contextTokens ?? DEFAULT_CONTEXT_TOKENS))}
+          className="h-8 w-32 text-xs"
+          data-testid="ai-context-tokens-input"
+        />
+        <p className="text-[10px] text-muted-foreground">{t('settings.ai.contextTokensHint')}</p>
       </div>
     </div>
   )

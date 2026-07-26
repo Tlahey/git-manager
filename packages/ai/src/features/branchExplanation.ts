@@ -1,6 +1,7 @@
 import type { AiContext } from '../config'
 import type { StreamingFeature } from '../runtime'
 import { truncateDiff } from './commitMessage'
+import { languageName } from './language'
 
 /** The instruction (system prompt) for explaining a whole branch. Streaming markdown, and a close
  * sibling of {@link prDescriptionFeature} — same `range`-scope input, opposite audience. A PR
@@ -31,17 +32,6 @@ export interface BranchExplanationInput {
   /** BCP-47-ish language tag (`'fr'` / `'en'`) the explanation should be written in. Populated from
    * app Settings so the prose matches the UI language. */
   language?: string
-}
-
-/** Human-readable language name for the prompt, so the model writes the explanation in the UI
- * language rather than defaulting to English. */
-function languageName(tag: string | undefined): string {
-  switch (tag) {
-    case 'fr':
-      return 'French'
-    default:
-      return 'English'
-  }
 }
 
 /** Builds the user-turn prompt: branch/base header, the branch's commit subjects, the changed-file

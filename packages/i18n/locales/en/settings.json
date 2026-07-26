@@ -50,6 +50,8 @@
   "settings.ai.model": "Model",
   "settings.ai.temperature": "Temperature",
   "settings.ai.timeout": "Timeout (seconds)",
+  "settings.ai.contextTokens": "Context window (tokens)",
+  "settings.ai.contextTokensHint": "Your model's context size. The app cannot detect it, and a provider that receives more than this drops the START of the prompt — the instructions — without reporting it. Ollama defaults to 4096 regardless of the model, unless you raised it (Modelfile, or OLLAMA_CONTEXT_LENGTH). Features size their prompts from this value.",
   "settings.github.title": "GitHub Accounts",
   "settings.github.connectedAs": "Connected as {{name}} ({{login}})",
   "settings.github.reposTitle": "Active Account Repositories",

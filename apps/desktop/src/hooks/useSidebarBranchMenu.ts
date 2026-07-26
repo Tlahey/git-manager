@@ -57,7 +57,7 @@ export function useSidebarBranchMenu(repoPath: string) {
   const [renameTarget, setRenameTarget] = useState<string | null>(null)
   // The AI branch explanation opens a right panel driven by shared UI state, so — unlike the
   // rename dialog above — there is nothing for the caller to render: the graph already shows it.
-  const setExplanationTarget = useRepoUIStore((s) => s.setExplanationTarget)
+  const setAiPanelTarget = useRepoUIStore((s) => s.setAiPanelTarget)
   const aiEnabled = useAiEnabled()
   const { targetBranches } = useEffectiveRepoSettings(repoPath)
   const { data: branches } = useBranches(repoPath)
@@ -127,6 +127,27 @@ export function useSidebarBranchMenu(repoPath: string) {
     }
   }
 
+  /**
+   * Opens one of the two branch-scoped AI right panels, resolving the base to read the branch
+   * against. Mirrors the graph menu's helper of the same name — both entry points must resolve the
+   * base identically, or the same branch would be explained against one base and reviewed against
+   * another.
+   */
+  function openBranchAiPanel(r: GitRef, kind: 'branch' | 'reviewBranch') {
+    const baseRef = resolveExplanationBase(
+      r.shortName,
+      targetBranches,
+      // `name`, not `shortName`: the latter strips the remote prefix, so `origin/main` would
+      // arrive as `main` and never match a configured `origin/*` merge target.
+      (branches ?? []).map((b) => b.name)
+    )
+    if (!baseRef) {
+      toast.error(t('gitTree.branchExplanation.noBase', { branch: r.shortName }))
+      return
+    }
+    setAiPanelTarget({ kind, branch: r.shortName, baseRef })
+  }
+
   function openBranchMenu(e: React.MouseEvent, branch: GitBranch) {
     e.preventDefault()
     const ref = branchToRef(branch)
@@ -156,20 +177,8 @@ export function useSidebarBranchMenu(repoPath: string) {
         const base = r.type === 'remote' ? r.shortName.split('/').slice(1).join('/') : r.shortName
         openPrCreateWith(currentBranch ?? '', base)
       },
-      onExplainBranch: (r) => {
-        const baseRef = resolveExplanationBase(
-          r.shortName,
-          targetBranches,
-          // `name`, not `shortName`: the latter strips the remote prefix, so `origin/main` would
-          // arrive as `main` and never match a configured `origin/*` merge target.
-          (branches ?? []).map((b) => b.name)
-        )
-        if (!baseRef) {
-          toast.error(t('gitTree.branchExplanation.noBase', { branch: r.shortName }))
-          return
-        }
-        setExplanationTarget({ kind: 'branch', branch: r.shortName, baseRef })
-      },
+      onExplainBranch: (r) => openBranchAiPanel(r, 'branch'),
+      onReviewBranch: (r) => openBranchAiPanel(r, 'reviewBranch'),
       onRenameBranch: (r) => setRenameTarget(r.shortName),
       onDeleteBranch: (r) =>
         void run(

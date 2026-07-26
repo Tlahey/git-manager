@@ -1,4 +1,5 @@
 import type { StreamingFeature } from '../runtime'
+import { languageName } from './language'
 
 /** The instruction (system prompt) for explaining one file's pending changes. Streaming markdown,
  * like {@link prDescriptionFeature}: the output is prose the user reads, not data the app parses,
@@ -51,17 +52,6 @@ export interface ChangeExplanationInput {
   /** BCP-47-ish language tag (`'fr'` / `'en'`) the explanation should be written in. Populated from
    * app Settings so the prose matches the UI language. */
   language?: string
-}
-
-/** Human-readable language name for the prompt, so the model writes the explanation in the UI
- * language rather than defaulting to English. */
-function languageName(tag: string | undefined): string {
-  switch (tag) {
-    case 'fr':
-      return 'French'
-    default:
-      return 'English'
-  }
 }
 
 /** Truncates supporting context to a budget, appending a marker so the model knows it saw only a

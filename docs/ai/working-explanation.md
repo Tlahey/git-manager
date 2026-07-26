@@ -47,13 +47,19 @@ stray file — i.e. *"don't commit this as-is"*, not a code review.
 
 ## Related, but different
 
-Three features can read uncommitted work; they answer different questions:
+Four features can read uncommitted work; they answer different questions:
 
 | Feature | Question | Scope |
 | ------- | -------- | ----- |
 | **Working explanation** (this one) | what am I in the middle of? | every uncommitted file |
 | [Change explanation](./change-explanation.md) | what does this change do to *this file*? | one file, read against its content |
+| [Code review](./code-review.md) | is any of this a problem? | every uncommitted file |
 | [File grouping](./file-grouping.md) | how do I split this into commits? | every uncommitted file, as data |
+
+The code review is the closest neighbour and the sharpest contrast: it consumes the *same* `working`
+context as this feature, and its instruction asks for precisely what this one forbids. The `⚠️` line
+here is scoped to "don't commit this as-is" (debug output, a stray secret) — noticing, not judging.
+Anything beyond that is the review's job.
 
 Working explanation and file grouping consume the *same* `working` context; one produces prose to
 read, the other a commit plan to act on.

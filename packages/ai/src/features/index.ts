@@ -52,6 +52,17 @@ export {
 } from './workingExplanation'
 export type { WorkingExplanationInput } from './workingExplanation'
 export {
+  codeReviewFeature,
+  CODE_REVIEW_INSTRUCTION,
+  buildCodeReviewPrompt,
+  reviewDiffBudget,
+  assessCodeReviewCoverage,
+} from './codeReview'
+export type { CodeReviewInput, CodeReviewScope, CodeReviewCoverage } from './codeReview'
+export { languageName } from './language'
+export { budgetDiff, splitDiffByFile, classifyDiffPath } from './diffBudget'
+export type { BudgetedDiff, DiffFileSection, DiffFileTier } from './diffBudget'
+export {
   DEFAULT_COMMIT_TYPES,
   parseCommitlintRules,
   isConventionalHistory,

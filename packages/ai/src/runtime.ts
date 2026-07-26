@@ -6,6 +6,7 @@ import type {
   JsonSchema,
 } from './config'
 import { getAiPreset } from './presets'
+import { assessPromptSize, type PromptSizeAssessment } from './promptSize'
 
 /**
  * The extensibility seam of the whole package. An `AiFeature` is a self-contained description of
@@ -86,6 +87,23 @@ export function resolveGenerateConfig(
     temperature,
     timeoutSeconds: connection.timeoutSeconds,
   }
+}
+
+/**
+ * Sizes the prompt a feature *would* send for this input, without sending it.
+ *
+ * Generic on purpose, and separate from `run`: the caller wants the number **before** deciding to
+ * spend a minute of local model time on a request that may already be over the window. Building the
+ * prompt twice is the cost, and it is nothing — `buildPrompt` is a pure string operation, while the
+ * alternatives (returning metadata from `run`, threading a callback) would change a signature every
+ * feature shares for the benefit of one.
+ */
+export function estimateFeaturePrompt<Input>(
+  feature: AiFeature<Input, unknown>,
+  input: Input,
+  contextTokens?: number
+): PromptSizeAssessment {
+  return assessPromptSize(feature.instruction, feature.buildPrompt(input), contextTokens)
 }
 
 /** A streaming feature exposed as a service. `run` accepts the connection settings and the feature

@@ -1,5 +1,6 @@
 import type { StreamingFeature } from '../runtime'
 import { truncateDiff } from './commitMessage'
+import { languageName } from './language'
 
 /** The instruction (system prompt) for explaining a single commit.
  *
@@ -49,16 +50,6 @@ export interface CommitExplanationInput {
   patch: string
   /** BCP-47-ish language tag (`'fr'` / `'en'`) the explanation should be written in. */
   language?: string
-}
-
-/** Human-readable language name for the prompt. */
-function languageName(tag: string | undefined): string {
-  switch (tag) {
-    case 'fr':
-      return 'French'
-    default:
-      return 'English'
-  }
 }
 
 /** Builds the user-turn prompt: the commit's identity and message, then its patch. */

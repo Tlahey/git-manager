@@ -33,8 +33,12 @@ Both now sit in the commit menu, scoped differently:
 | --------- | ----- | ---------- |
 | *Explain this commit (LLM)* | the clicked commit vs its parent | any single commit |
 | *Explain branch changes (LLM)* | the whole branch vs its base | the commit carries a branch (or from the sidebar) |
+| *Review branch changes (LLM)* | the whole branch vs its base | same as above — see [code review](./code-review.md) |
 
-The commit item is absent from the multi-selection layout, where "this commit" is ambiguous.
+The commit item is absent from the multi-selection layout, where "this commit" is ambiguous. There is
+deliberately **no per-commit review**: a commit that is already in history is not a change you are
+about to ship, and the actionable moment — before committing, before opening the PR — is what the two
+review scopes cover.
 
 ---
 

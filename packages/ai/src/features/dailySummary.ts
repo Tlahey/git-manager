@@ -1,5 +1,6 @@
 import type { AiActivity, JsonSchema } from '../config'
 import type { CompletionFeature } from '../runtime'
+import { languageName } from './language'
 
 /** The typed result of the daily-summary feature: a one-line headline plus two bullet lists — what
  * was accomplished in the recent window ("yesterday") and a short, actionable plan for the day
@@ -54,19 +55,6 @@ export const DAILY_SUMMARY_SCHEMA: JsonSchema = {
     additionalProperties: false,
   },
   strict: true,
-}
-
-/** Human-readable language name for the prompt, so the model writes the briefing in the UI language
- * rather than defaulting to English. */
-function languageName(tag: string | undefined): string {
-  switch (tag) {
-    case 'fr':
-      return 'French'
-    case 'en':
-      return 'English'
-    default:
-      return 'English'
-  }
 }
 
 /** Renders one commit as a compact prompt line: subject, change volume, and body when present. */
