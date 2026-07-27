@@ -190,10 +190,14 @@ describe('feature services', () => {
       runsDuring = useAiActivityStore.getState().runs
     })
 
-    await api.prDescriptionService.run(connection, { context, templateContent: null }, 'req-1')
+    await api.summaryPrDescriptionService.run(
+      connection,
+      { repoName: 'demo', branch: 'main', summaries: [], templateContent: null },
+      'req-1'
+    )
 
     expect(runsDuring).toHaveLength(1)
-    expect(runsDuring[0].featureId).toBe('pr-description')
+    expect(runsDuring[0].featureId).toBe('summary-pr-description')
     expect(useAiActivityStore.getState().runs).toEqual([])
   })
 

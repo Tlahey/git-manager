@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react'
-import { assessPrDescriptionCoverage, type DiffCoverage } from '@git-manager/ai'
-import { apiGetAiContext, prDescriptionService } from '../api/ai.api'
+import { useCallback, useRef, useState } from 'react'
+import { summarizeFiles, type SummaryProgress } from '@git-manager/ai'
+import { apiGetAiContext, fileSummaryService, summaryPrDescriptionService } from '../api/ai.api'
 import { useSettingsStore } from '../stores/settings.store'
 import { useAiStream, type AiStreamStatus } from './useAiStream'
 
@@ -18,18 +18,20 @@ export type PrDescriptionStatus = AiStreamStatus
  * textarea the composer controls.
  */
 export function usePrDescriptionGeneration(repoPath: string) {
-  const { run, cancel, status, error } = useAiStream(prDescriptionService.cancel)
+  const { run, cancel, status, error } = useAiStream(summaryPrDescriptionService.cancel)
   const settings = useSettingsStore((s) => s.settings)
 
   /**
-   * How much of the branch the draft was written from.
+   * Progress of the map phase, shown while every file is read one at a time.
    *
-   * The only feature whose *output leaves the app*, which is exactly why this is worth surfacing:
-   * the description is forbidden from mentioning its own coverage — a caveat about truncation would
-   * be published on the pull request over the author's name — so this is the one place the author
-   * can learn, before they hit create, that the draft describes a third of the branch.
+   * It replaces a coverage line that existed for the sharpest reason of any: this is the only
+   * feature whose output *leaves the app*, and the description is forbidden from admitting its own
+   * truncation — a caveat would be published on the pull request over the author's name. So the
+   * author had to be told separately. Now there is nothing to admit: every file is read whole.
    */
-  const [coverage, setCoverage] = useState<DiffCoverage | null>(null)
+  const [progress, setProgress] = useState<SummaryProgress | null>(null)
+  /** Set by `cancel`, polled by the map loop between calls. */
+  const cancelledRef = useRef(false)
 
   const generate = useCallback(
     async (
@@ -44,13 +46,32 @@ export function usePrDescriptionGeneration(repoPath: string) {
           const context = await apiGetAiContext(repoPath, 'range', baseRef)
           if (!context.diff.trim()) return 'No changes to describe'
 
-          const input = {
+          // Read every file on its own before writing a word. This description gets published, so
+          // one written from whichever files fitted a single prompt is the most expensive of the
+          // truncation failures — and the template it must reproduce competed with the diff for the
+          // same window.
+          cancelledRef.current = false
+          const summaries = await summarizeFiles(
             context,
-            templateContent,
-            contextTokens: settings.ai.contextTokens,
-          }
-          setCoverage(assessPrDescriptionCoverage(input))
-          await prDescriptionService.run(settings.ai, input, requestId)
+            (summaryInput) => fileSummaryService.run(settings.ai, summaryInput),
+            settings.ai.contextTokens,
+            { onProgress: setProgress, shouldCancel: () => cancelledRef.current }
+          )
+          setProgress(null)
+
+          await summaryPrDescriptionService.run(
+            settings.ai,
+            {
+              repoName: context.repoName,
+              branch: context.branch,
+              baseRef: context.baseRef,
+              branchCommits: context.rangeCommits,
+              summaries,
+              templateContent,
+              contextTokens: settings.ai.contextTokens,
+            },
+            requestId
+          )
         },
         {
           onToken,
@@ -64,5 +85,12 @@ export function usePrDescriptionGeneration(repoPath: string) {
     [run, repoPath, settings.ai]
   )
 
-  return { generate, cancel, status, error, coverage }
+  /** Stops the map phase at its next call boundary, then the stream. */
+  const cancelRun = useCallback(async () => {
+    cancelledRef.current = true
+    setProgress(null)
+    await cancel()
+  }, [cancel])
+
+  return { generate, cancel: cancelRun, status, error, progress }
 }

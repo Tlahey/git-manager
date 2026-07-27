@@ -25,15 +25,17 @@ function emit(event: string, token?: string, requestId: string = currentRequestI
 }
 
 vi.mock('../api/ai.api', () => ({
+  fileSummaryService: { run: vi.fn() },
   apiGetAiContext: vi.fn(),
-  prDescriptionService: { run: vi.fn(), cancel: vi.fn() },
+  summaryPrDescriptionService: { run: vi.fn(), cancel: vi.fn() },
 }))
 
-import { apiGetAiContext, prDescriptionService } from '../api/ai.api'
+import { apiGetAiContext, fileSummaryService, summaryPrDescriptionService } from '../api/ai.api'
 import { usePrDescriptionGeneration } from './usePrDescriptionGeneration'
 
 const mockedGetContext = apiGetAiContext as unknown as ReturnType<typeof vi.fn>
-const mockedRun = prDescriptionService.run as unknown as ReturnType<typeof vi.fn>
+const mockedRun = summaryPrDescriptionService.run as unknown as ReturnType<typeof vi.fn>
+const mockedSummarize = fileSummaryService.run as unknown as ReturnType<typeof vi.fn>
 
 const rangeContext: AiContext = {
   diff: 'branch diff',
@@ -46,6 +48,7 @@ const rangeContext: AiContext = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockedSummarize.mockResolvedValue({ intent: 'does a thing', area: 'demo area' })
   listeners.clear()
   mockedGetContext.mockResolvedValue(rangeContext)
   mockedRun.mockResolvedValue(undefined)
@@ -62,11 +65,23 @@ describe('usePrDescriptionGeneration', () => {
     })
 
     expect(mockedGetContext).toHaveBeenCalledWith('/repo', 'range', 'main')
-    expect(mockedRun).toHaveBeenCalledWith(expect.anything(), {
-      context: rangeContext,
-      templateContent: '## Template',
-      contextTokens: 4096,
-    }, expect.any(String))
+    // Every file is read on its own before a word of the published description is written.
+    expect(mockedSummarize).toHaveBeenCalledTimes(rangeContext.files.length)
+    expect(mockedRun).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        branch: rangeContext.branch,
+        templateContent: '## Template',
+        summaries: rangeContext.files.map((f) => ({
+          path: f.path,
+          status: f.status,
+          intent: 'does a thing',
+          area: 'demo area',
+        })),
+        contextTokens: 4096,
+      }),
+      expect.any(String)
+    )
 
     await act(async () => {
       emit('ai:token', 'Hello ')

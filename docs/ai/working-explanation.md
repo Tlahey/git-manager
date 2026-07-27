@@ -7,11 +7,11 @@ Summarizes everything currently uncommitted — "what am I in the middle of?".
 
 | | |
 | --- | --- |
-| **Descriptor** | [`workingExplanationFeature`](../../packages/ai/src/features/workingExplanation.ts) |
+| **Descriptor** | [`summaryExplanationFeature`](../../packages/ai/src/features/summaryExplanation.ts) (`scope: 'working'`), fed by [`summarizeFiles`](../../packages/ai/src/features/summarizeFiles.ts) |
 | **Kind** | streaming markdown |
 | **Temperature** | 0.2 |
 | **Context scope** | `working` — worktree vs HEAD, untracked included |
-| **Diff budget** | derived from the model's context window, spent per file — see [Known limitations](./README.md#known-limitations) #3 and the shared [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts) |
+| **Diff budget** | none at this level: every file is read whole, in its own prompt, by the map phase |
 | **UI** | [`WorkingExplanationPanel`](../../apps/desktop/src/components/git-graph/WorkingExplanationPanel.tsx) — right panel — via [`useWorkingExplanation`](../../apps/desktop/src/hooks/useWorkingExplanation.ts) |
 | **Memory** | **none** — see below |
 
@@ -102,3 +102,18 @@ Beyond the [shared ones](./README.md#known-limitations):
 | [`useWorkingExplanation.test.ts`](../../apps/desktop/src/hooks/useWorkingExplanation.test.ts) | working scope, streaming, clean-tree refusal, and that nothing is persisted |
 | [`WorkingExplanationPanel.test.tsx`](../../apps/desktop/src/components/git-graph/WorkingExplanationPanel.test.tsx) | auto-start, no age line, error decoding |
 | [`graphContextMenus.test.ts`](../../apps/desktop/src/lib/graphContextMenus.test.ts) | the WIP menu item's action, and both reasons it disables |
+
+---
+
+## Read file by file
+
+The summary is written from **per-file summaries**, never from a budgeted diff — the same shape as
+every other feature that reads a changeset, and the only shape there is.
+
+It matters more here than almost anywhere. This summary's job is to say how many *separate* things
+are in progress, and a model shown a third of the files will confidently name a third of the work —
+producing an answer that is not vaguer but wrong, in the one dimension the feature exists for.
+
+The panel shows the per-file count while the map phase runs, in place of the coverage line: there is
+no budgeted prompt left to caveat, and what the reader needs is a reason for the wait before the
+first token. Cancelling stops the map at its next call boundary.

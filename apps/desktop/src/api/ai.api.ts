@@ -16,11 +16,10 @@ import {
   createStreamingService,
   dailySummaryFeature,
   fileSummaryFeature,
-  prDescriptionFeature,
+  summaryPrDescriptionFeature,
   summaryCommitMessageFeature,
   summaryExplanationFeature,
   summaryGroupingFeature,
-  workingExplanationFeature,
 } from '@git-manager/ai'
 import {
   aiComplete,
@@ -202,9 +201,11 @@ export const dailySummaryService = createCompletionService(
   dailySummaryFeature,
   trackedTransport(dailySummaryFeature.id)
 )
-export const prDescriptionService = createStreamingService(
-  prDescriptionFeature,
-  trackedTransport(prDescriptionFeature.id)
+/** Kept apart from the explanation service rather than folded in as a fourth scope: a PR body has a
+ * different reader, a template whose headings must survive verbatim, and it gets published. */
+export const summaryPrDescriptionService = createStreamingService(
+  summaryPrDescriptionFeature,
+  trackedTransport(summaryPrDescriptionFeature.id)
 )
 export const changeExplanationService = createStreamingService(
   changeExplanationFeature,
@@ -216,10 +217,6 @@ export const changeExplanationService = createStreamingService(
 export const summaryExplanationService = createStreamingService(
   summaryExplanationFeature,
   trackedTransport(summaryExplanationFeature.id)
-)
-export const workingExplanationService = createStreamingService(
-  workingExplanationFeature,
-  trackedTransport(workingExplanationFeature.id)
 )
 /** One service for both review scopes: the feature discriminates on its input's `scope`, so the
  * working-tree and branch reviews share an instruction, a temperature and this line. */

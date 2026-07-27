@@ -55,12 +55,11 @@ export {
 } from './dailySummary'
 export type { DailySummary } from './dailySummary'
 export {
-  prDescriptionFeature,
-  PR_DESCRIPTION_INSTRUCTION,
-  buildPrDescriptionUserPrompt,
-  assessPrDescriptionCoverage,
-} from './prDescription'
-export type { PrDescriptionInput } from './prDescription'
+  summaryPrDescriptionFeature,
+  SUMMARY_PR_DESCRIPTION_INSTRUCTION,
+  buildSummaryPrDescriptionPrompt,
+} from './summaryPrDescription'
+export type { SummaryPrDescriptionInput } from './summaryPrDescription'
 export {
   changeExplanationFeature,
   CHANGE_EXPLANATION_INSTRUCTION,
@@ -78,13 +77,6 @@ export type {
   SummaryExplanationScope,
   SummaryExplanationCommit,
 } from './summaryExplanation'
-export {
-  workingExplanationFeature,
-  WORKING_EXPLANATION_INSTRUCTION,
-  buildWorkingExplanationPrompt,
-  assessWorkingExplanationCoverage,
-} from './workingExplanation'
-export type { WorkingExplanationInput } from './workingExplanation'
 export {
   codeReviewFeature,
   CODE_REVIEW_INSTRUCTION,

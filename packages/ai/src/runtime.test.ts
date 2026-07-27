@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AiConnectionConfig, AiContext } from './config'
-import { workingExplanationFeature } from './features/workingExplanation'
+import type { AiConnectionConfig } from './config'
+import { summaryExplanationFeature } from './features/summaryExplanation'
 import { summaryGroupingFeature } from './features/summaryGrouping'
 import {
   createCompletionService,
@@ -24,12 +24,6 @@ const connection: AiConnectionConfig = {
   timeoutSeconds: 30,
 }
 
-const context: AiContext = {
-  diff: 'diff --git a/a.ts b/a.ts',
-  repoName: 'demo',
-  branch: 'main',
-  files: [{ path: 'src/a.ts', status: 'modified' }],
-}
 
 function mockTransport(): AiTransport {
   return {
@@ -73,22 +67,27 @@ describe('resolveGenerateConfig', () => {
 })
 
 describe('createStreamingService', () => {
+  const explanationInput = {
+    scope: 'working' as const,
+    repoName: 'demo',
+    summaries: [{ path: 'src/a.ts', status: 'modified', intent: 'adds a', area: 'demo' }],
+  }
   let transport: AiTransport
   beforeEach(() => {
     transport = mockTransport()
   })
 
   it('runs the feature instruction + built prompt at the feature temperature', async () => {
-    const service = createStreamingService(workingExplanationFeature, transport)
-    await service.run(connection, { context }, 'req-1')
+    const service = createStreamingService(summaryExplanationFeature, transport)
+    await service.run(connection, explanationInput, 'req-1')
 
     expect(transport.runStream).toHaveBeenCalledWith(
       expect.objectContaining({
         protocol: 'openai-compatible',
-        temperature: workingExplanationFeature.temperature,
+        temperature: summaryExplanationFeature.temperature,
       }),
-      workingExplanationFeature.instruction,
-      workingExplanationFeature.buildPrompt({ context }),
+      summaryExplanationFeature.instruction,
+      summaryExplanationFeature.buildPrompt(explanationInput),
       'req-1'
     )
   })
@@ -96,8 +95,8 @@ describe('createStreamingService', () => {
   it('forwards the request id the caller minted rather than making one up', async () => {
     // The id has to come from whatever is listening: this layer cannot mint it, because the
     // subscriber must already know it before the request starts.
-    const service = createStreamingService(workingExplanationFeature, transport)
-    await service.run(connection, { context }, 'req-from-the-hook')
+    const service = createStreamingService(summaryExplanationFeature, transport)
+    await service.run(connection, explanationInput, 'req-from-the-hook')
     expect(transport.runStream).toHaveBeenCalledWith(
       expect.anything(),
       expect.any(String),
@@ -107,14 +106,14 @@ describe('createStreamingService', () => {
   })
 
   it('cancels one generation by id, not every generation', async () => {
-    const service = createStreamingService(workingExplanationFeature, transport)
+    const service = createStreamingService(summaryExplanationFeature, transport)
     await service.cancel('req-1')
     expect(transport.cancel).toHaveBeenCalledWith('req-1')
   })
 
   it('sends the default answer cap for a prose feature that declares none', async () => {
-    const service = createStreamingService(workingExplanationFeature, transport)
-    await service.run(connection, { context }, 'req-1')
+    const service = createStreamingService(summaryExplanationFeature, transport)
+    await service.run(connection, explanationInput, 'req-1')
     expect(transport.runStream).toHaveBeenCalledWith(
       expect.objectContaining({ maxTokens: RESERVED_OUTPUT_TOKENS }),
       expect.any(String),

@@ -25,17 +25,19 @@ function emit(event: string, token?: string, requestId: string = currentRequestI
 }
 
 vi.mock('../api/ai.api', () => ({
+  fileSummaryService: { run: vi.fn() },
   apiGetAiContext: vi.fn(),
-  workingExplanationService: { run: vi.fn(), cancel: vi.fn() },
+  summaryExplanationService: { run: vi.fn(), cancel: vi.fn() },
 }))
 
-import { apiGetAiContext, workingExplanationService } from '../api/ai.api'
+import { apiGetAiContext, fileSummaryService, summaryExplanationService } from '../api/ai.api'
 import { useWorkingExplanation } from './useWorkingExplanation'
 import { useAiExplanationStore } from '../stores/aiExplanation.store'
 import { useSettingsStore } from '../stores/settings.store'
 
 const mockedGetContext = apiGetAiContext as unknown as ReturnType<typeof vi.fn>
-const mockedRun = workingExplanationService.run as unknown as ReturnType<typeof vi.fn>
+const mockedRun = summaryExplanationService.run as unknown as ReturnType<typeof vi.fn>
+const mockedSummarize = fileSummaryService.run as unknown as ReturnType<typeof vi.fn>
 
 const workingContext: AiContext = {
   diff: 'working diff',
@@ -46,6 +48,7 @@ const workingContext: AiContext = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockedSummarize.mockResolvedValue({ intent: 'does a thing', area: 'demo area' })
   listeners.clear()
   useAiExplanationStore.setState({ explanations: {} })
   mockedGetContext.mockResolvedValue(workingContext)
@@ -61,19 +64,28 @@ describe('useWorkingExplanation', () => {
     expect(mockedGetContext).toHaveBeenCalledWith('/repo', 'working')
   })
 
-  it('passes the context and the UI language to the feature', async () => {
+  it('summarizes every changed file, then streams the summary from the summaries', async () => {
     useSettingsStore.setState((s) => ({ settings: { ...s.settings, language: 'fr' } }))
     const { result } = renderHook(() => useWorkingExplanation('/repo'))
     await act(async () => {
       await result.current.explain()
     })
-    expect(mockedRun).toHaveBeenCalledWith(expect.anything(), {
-      context: workingContext,
-      language: 'fr',
-      // The declared window travels with the input: it is what sizes the diff the summary is
-      // written from, so a hook that dropped it would silently fall back to the pessimistic default.
-      contextTokens: 4096,
-    }, expect.any(String))
+
+    expect(mockedSummarize).toHaveBeenCalledTimes(workingContext.files.length)
+    expect(mockedRun).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        scope: 'working',
+        summaries: workingContext.files.map((f) => ({
+          path: f.path,
+          status: f.status,
+          intent: 'does a thing',
+          area: 'demo area',
+        })),
+        language: 'fr',
+      }),
+      expect.any(String)
+    )
   })
 
   it('accumulates streamed tokens', async () => {

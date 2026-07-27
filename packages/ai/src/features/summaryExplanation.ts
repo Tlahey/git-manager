@@ -5,10 +5,10 @@ import { languageName } from './language'
 import { renderSummaryList } from './summaryGrouping'
 import { estimateTokens } from '../promptSize'
 
-/** Which of the two things is being explained. Both read the same way — a list of described files —
+/** Which of the three things is being explained. All read the same way — a list of described files —
  * so they share one feature, discriminated here, exactly as the code review shares one across its
- * working-tree and branch scopes. */
-export type SummaryExplanationScope = 'branch' | 'commit'
+ * own scopes. */
+export type SummaryExplanationScope = 'branch' | 'commit' | 'working'
 
 /** The commit being explained, for `commit` scope. */
 export interface SummaryExplanationCommit {
@@ -57,6 +57,7 @@ Output rules (STRICT):
 - Then a "## Worth knowing" section: 1 to 3 bullets for what a reader should be aware of — a breaking change, a migration, a dependency added, a behavior change that is not obvious from the file names. Write "- Nothing out of the ordinary." when there is no such surprise; never pad this section.
 - When explaining a BRANCH, scope the opening sentence by its commit subjects as well as its files, and do not restate the commit list.
 - When explaining a COMMIT, do not paraphrase its own message back: the reader has it. Say what the change does that the subject line does not already say.
+- When explaining UNCOMMITTED work, the opening sentence must say plainly when it is several unrelated things rather than pretending it is one, and group trivial churn (formatting, imports, generated files, lockfiles) into a single bullet instead of listing it. End with a "⚠️" line ONLY when something should not be committed as-is — leftover debug output, a commented-out block, a hardcoded secret, a stray TODO, an unintended file. Omit it entirely otherwise; never invent a concern to fill it.
 - A file whose summary is empty could not be read. Account for it from its path if you can, or leave it out of the bullets rather than inventing what it does.
 - Base every statement ONLY on what you are given. Do not invent tickets, tests, or intentions that are not evidenced.
 - NEVER state that something is missing, absent, or not done merely because you cannot see it — a guard, a test, a call site may exist in a file whose summary did not mention it. Absence of evidence is not evidence of absence.
@@ -66,6 +67,10 @@ Output rules (STRICT):
 
 /** The header identifying what is being explained — the only part that differs between scopes. */
 function buildHeader(input: SummaryExplanationInput): string {
+  if (input.scope === 'working') {
+    return `Repository: ${input.repoName}\nUncommitted changes in the working tree.\n`
+  }
+
   if (input.scope === 'commit') {
     const c = input.commit
     let header = `Repository: ${input.repoName}\nCommit ${c?.shortOid ?? ''}: ${c?.subject ?? ''}\n`
@@ -91,7 +96,11 @@ export function buildSummaryExplanationPrompt(input: SummaryExplanationInput): s
   })
 
   const subject =
-    input.scope === 'commit' ? 'this commit' : `branch \`${input.branch ?? ''}\``
+    input.scope === 'commit'
+      ? 'this commit'
+      : input.scope === 'working'
+        ? 'this uncommitted work'
+        : `branch \`${input.branch ?? ''}\``
 
   return `${header}
 All ${input.summaries.length} changed files:

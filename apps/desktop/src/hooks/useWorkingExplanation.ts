@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react'
-import { assessWorkingExplanationCoverage, type DiffCoverage } from '@git-manager/ai'
-import { apiGetAiContext, workingExplanationService } from '../api/ai.api'
+import { useCallback, useRef, useState } from 'react'
+import { summarizeFiles, type SummaryProgress } from '@git-manager/ai'
+import { apiGetAiContext, fileSummaryService, summaryExplanationService } from '../api/ai.api'
 import { useSettingsStore } from '../stores/settings.store'
 import { useAiStream, type AiStreamStatus } from './useAiStream'
 
@@ -20,21 +20,23 @@ export type WorkingExplanationStatus = AiStreamStatus
  * time".
  */
 export function useWorkingExplanation(repoPath: string) {
-  const { run, cancel, reset, status, error, text } = useAiStream(workingExplanationService.cancel)
+  const { run, cancel, reset, status, error, text } = useAiStream(summaryExplanationService.cancel)
   const aiConnection = useSettingsStore((s) => s.settings.ai)
   const language = useSettingsStore((s) => s.settings.language)
   // The model's declared context window sizes how much of the working diff is sent.
   const contextTokens = aiConnection.contextTokens
 
   /**
-   * How much of the tree the last run actually read.
+   * Progress of the map phase: one call per changed file before the summary starts streaming.
    *
-   * Needed here for a sharper reason than on the other panels: this summary's job is to say how many
-   * *separate* things are in progress, and a model shown a third of the files will confidently name
-   * a third of the work. Nothing is persisted, so no mirror ref is needed — there is no completion
-   * callback storing this alongside the text.
+   * It matters more here than on the other panels for the reason the coverage line used to: this
+   * summary's job is to say how many *separate* things are in progress, so the reader needs to know
+   * the reading is still going rather than that it found one thing.
    */
-  const [coverage, setCoverage] = useState<DiffCoverage | null>(null)
+  const [progress, setProgress] = useState<SummaryProgress | null>(null)
+  /** Set by `cancel`, polled by the map loop between calls — a ref, since that loop closed over the
+   * render that started it. */
+  const cancelledRef = useRef(false)
 
   const explain = useCallback(
     () =>
@@ -42,23 +44,43 @@ export function useWorkingExplanation(repoPath: string) {
         const context = await apiGetAiContext(repoPath, 'working')
         // A clean tree has nothing to summarize; asking anyway would invent work that isn't there.
         if (!context.diff.trim()) return 'AI_NO_WORKING_CHANGES'
-        const input = { context, language, contextTokens }
-        setCoverage(assessWorkingExplanationCoverage(input))
-        await workingExplanationService.run(aiConnection, input, requestId)
+        // Read every changed file on its own before summarizing anything.
+        cancelledRef.current = false
+        const summaries = await summarizeFiles(
+          context,
+          (summaryInput) => fileSummaryService.run(aiConnection, summaryInput),
+          contextTokens,
+          { onProgress: setProgress, shouldCancel: () => cancelledRef.current }
+        )
+        setProgress(null)
+
+        await summaryExplanationService.run(
+          aiConnection,
+          { scope: 'working', repoName: context.repoName, summaries, language, contextTokens },
+          requestId
+        )
       }),
     [run, repoPath, aiConnection, language, contextTokens]
   )
 
   const clear = useCallback(() => {
-    setCoverage(null)
+    setProgress(null)
     reset()
   }, [reset])
+
+  /** Stops the map phase at its next call boundary, then the stream. */
+  const cancelRun = useCallback(async () => {
+    cancelledRef.current = true
+    setProgress(null)
+    await cancel()
+  }, [cancel])
 
   const isGenerating = status === 'connecting' || status === 'streaming'
 
   return {
     explain,
-    cancel,
+    cancel: cancelRun,
+    progress,
     /** Drops the current summary. Nothing is persisted, so this is just a reset. */
     clear,
     status,
@@ -68,7 +90,5 @@ export function useWorkingExplanation(repoPath: string) {
     generatedAt: null,
     comparedTo: null,
     hasStored: false,
-    /** What the shown summary read, and the window needed to read it all. */
-    coverage,
   }
 }
