@@ -14,6 +14,24 @@ const input = {
   diff: 'diff --git a/x b/x\n+const a = 1',
 }
 
+describe('buildFileSummaryPrompt — language', () => {
+  /** Commit messages follow the repo's convention (usually English); only prose consumers ask. */
+  it('says nothing about language by default', () => {
+    const prompt = buildFileSummaryPrompt({ path: 'a.ts', status: 'modified', diff: '' })
+    expect(prompt).not.toMatch(/Write both fields in/)
+  })
+
+  it('requests the caller’s language when one is given', () => {
+    const prompt = buildFileSummaryPrompt({
+      path: 'a.ts',
+      status: 'modified',
+      diff: '',
+      language: 'fr',
+    })
+    expect(prompt).toContain('Write both fields in French.')
+  })
+})
+
 describe('buildFileSummaryPrompt', () => {
   it('names the file with its status and carries its diff', () => {
     const prompt = buildFileSummaryPrompt(input)

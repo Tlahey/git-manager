@@ -53,7 +53,22 @@ export {
   buildDailySummaryPrompt,
   parseDailySummary,
 } from './dailySummary'
-export type { DailySummary } from './dailySummary'
+export type { DailySummary, DailySummaryInput } from './dailySummary'
+export { composeDailySummaryFromSummaries } from './composeDailySummary'
+export type { DailySummaryRunners, DailySummaryRunInput } from './composeDailySummary'
+export {
+  summarySearchFeature,
+  SUMMARY_SEARCH_INSTRUCTION,
+  SUMMARY_SEARCH_SCHEMA,
+  buildSummarySearchPrompt,
+  parseSummarySearch,
+} from './summarySearch'
+export type {
+  SummarySearchInput,
+  SummarySearchAnswer,
+  SummarySearchCandidate,
+  SummarySearchMatch,
+} from './summarySearch'
 export {
   summaryPrDescriptionFeature,
   SUMMARY_PR_DESCRIPTION_INSTRUCTION,

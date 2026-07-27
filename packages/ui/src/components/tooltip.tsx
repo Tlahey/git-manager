@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect, useId } from 'react'
+import React, { useState, useCallback, useRef, useEffect, useLayoutEffect, useId } from 'react'
 import { createPortal } from 'react-dom'
 
 // Accessible, portal-rendered tooltip. Unlike a bare `title=` attribute it renders
@@ -121,7 +121,11 @@ function TooltipBubble({
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ top: number; left: number; actual: Placement } | null>(null)
 
-  useEffect(() => {
+  // `useLayoutEffect`, not `useEffect`: measuring and placing has to happen *before* the browser
+  // paints. With `useEffect` the bubble was painted once at its previous coordinates and only then
+  // corrected, which reads as the tooltip appearing up-and-left of the trigger and snapping onto it
+  // a frame later — the effect is most visible on small triggers like a toolbar icon.
+  useLayoutEffect(() => {
     if (!ref.current) return
     const rect = ref.current.getBoundingClientRect()
     setPos(computePosition(triggerRect, { width: rect.width, height: rect.height }, placement))

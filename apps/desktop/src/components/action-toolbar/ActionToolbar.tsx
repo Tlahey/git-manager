@@ -22,6 +22,7 @@ import { useRunTasks } from '../../hooks/useRunTasks'
 import { useCommandPaletteStore } from '../../stores/commandPalette.store'
 import { useCommitSearchStore } from '../../stores/commitSearch.store'
 import { useFileExplorerStore } from '../../stores/fileExplorer.store'
+import { useAiEnabled } from '../../hooks/useAiEnabled'
 import { RepoSelector } from './RepoSelector'
 import { BranchContext } from './BranchContext'
 import { MergeTargetIndicator } from './MergeTargetIndicator'
@@ -31,6 +32,7 @@ import { BranchButton } from './BranchButton'
 import { RunButton } from './RunButton'
 import { TerminalButton } from './TerminalButton'
 import { ToolsMenu } from './ToolsMenu'
+import { AiMenu } from './AiMenu'
 import { ToolbarButton } from '@git-manager/components'
 import type { Section, Scope } from '../../app/settings/SettingsPage'
 
@@ -74,6 +76,7 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
   const activeWorkspacePath = useRepoUIStore((s) => s.activeWorkspacePath)
   const effectiveRepoPath = activeWorkspacePath ?? activeRepo
 
+  const aiEnabled = useAiEnabled()
   const isCommitsView = useIsCommitsView()
   const { tasks, defaultTask, hasTasks, runTask } = useRunTasks()
   const disabled = !activeRepo
@@ -197,6 +200,16 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />
 
         <ToolsMenu repoPath={activeRepo} />
+
+        {/* The model's own zone, kept apart from Tools: bisect and patches are deterministic, these
+            spend a model run. `AiMenu` renders nothing when the provider is off, and the divider
+            goes with it rather than leaving a stray separator behind. */}
+        {aiEnabled && (
+          <>
+            <div className="mx-1 h-6 w-px shrink-0 bg-border" />
+            <AiMenu repoPath={activeRepo} />
+          </>
+        )}
 
         {hasTasks && (
           <>

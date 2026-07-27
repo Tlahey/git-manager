@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Checkbox, Tooltip } from '@git-manager/ui'
 import { Star } from 'lucide-react'
@@ -56,8 +57,12 @@ export function RepoRow({
   const loading = isLoading || (!summary && !error)
   const { remote, url: remoteUrl } = useRepoOwner(error ? null : path)
 
-  const storedSummary = useDailySummaryStore((s) => s.summaries[path])
-  const hasFreshSummary = storedSummary != null && !isSummaryStale(storedSummary.generatedAt)
+  // "Fresh" now means the previous working day is archived — the day a briefing is *about* — rather
+  // than "something was generated today". Subscribing to the repo's own slice keeps the reference
+  // stable; deriving the day list inside the selector would hand zustand a new array every call and
+  // loop the component forever.
+  const byDate = useDailySummaryStore((s) => s.entries[path])
+  const hasFreshSummary = useMemo(() => !isSummaryStale(Object.keys(byDate ?? {})), [byDate])
 
   const isOpenInTab = openTabs.includes(path)
 

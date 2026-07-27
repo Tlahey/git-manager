@@ -29,6 +29,7 @@ import type {
   FileHistoryEntry,
   PrTemplateDetection,
   ProjectCommand,
+  StoredSummaryFile,
 } from '@git-manager/git-types'
 import type {
   AiProviderStatus,
@@ -401,8 +402,32 @@ export const getAiContext = (
     headRef: headRef ?? null,
   })
 
-export const getAiActivity = (path: string, sinceHours: number) =>
-  invoke<AiActivity>('get_ai_activity', { path, sinceHours })
+/** `sinceEpoch`/`untilEpoch` bound one local calendar day in epoch seconds; `candidates` is the
+ * ordered main-branch list (`origin/main`, `origin/master`, …), so the window is taken over that
+ * branch and not over whatever is checked out. */
+export const getAiActivity = (
+  path: string,
+  sinceEpoch: number,
+  untilEpoch: number,
+  candidates: string[]
+) => invoke<AiActivity>('get_ai_activity', { path, sinceEpoch, untilEpoch, candidates })
+
+/** Writes one morning's briefing to the markdown archive, returning the path written. */
+export const saveDailySummary = (
+  repoPath: string,
+  date: string,
+  markdown: string,
+  alsoInRepo: boolean
+) => invoke<string>('save_daily_summary', { repoPath, date, markdown, alsoInRepo })
+
+/** Reads the whole archive — every repository, every retained day — newest first. */
+export const listDailySummaries = () => invoke<StoredSummaryFile[]>('list_daily_summaries')
+
+export const deleteDailySummary = (filePath: string) =>
+  invoke<void>('delete_daily_summary', { filePath })
+
+/** Reveals the archive directory (`~/.git-manager/summaries/`) in the Finder. */
+export const openDailySummariesDir = () => invoke<void>('open_daily_summaries_dir')
 
 /** `requestId` tags every `ai:*` event this generation emits, and is what {@link cancelGeneration}
  * targets. The events are window-wide broadcasts, so without it a second generation started while

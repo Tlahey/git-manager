@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, ScrollArea, Spinner, Tooltip } from '@git-manager/ui'
-import { X, Sparkles, RefreshCw, Square, Copy, Check as CheckIcon, Trash2 } from 'lucide-react'
+import { Button, ScrollArea, Spinner, Tooltip, LlmIcon } from '@git-manager/ui'
+import { X, RefreshCw, Square, Copy, Check as CheckIcon, Trash2 } from 'lucide-react'
 import { aiErrorMessage } from '../../../lib/aiErrorMessage'
 import { formatRelativeTime } from '../../../lib/relativeDate'
 import { Markdown } from '../../Markdown'
@@ -103,7 +103,7 @@ export function ExplanationPanelShell({
       <div className="flex flex-col gap-2.5 border-b border-border bg-muted/20 px-4 py-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className="flex min-w-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
+            <LlmIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
             <span className="truncate">{title}</span>
           </h3>
           <button
@@ -151,7 +151,7 @@ export function ExplanationPanelShell({
               className="h-6 gap-1 px-2 text-[10px] font-bold"
               onClick={onGenerate}
             >
-              {text ? <RefreshCw className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}
+              {text ? <RefreshCw className="h-3 w-3" /> : <LlmIcon className="h-3 w-3" />}
               {text ? t('gitTree.explanation.regenerate') : t('gitTree.explanation.generate')}
             </Button>
           )}

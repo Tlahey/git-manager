@@ -1,6 +1,6 @@
 import { useState, type ComponentType } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, ScrollArea } from '@git-manager/ui'
+import { Button, ScrollArea, LlmIcon } from '@git-manager/ui'
 import {
   ArrowLeft,
   Bell,
@@ -15,7 +15,6 @@ import {
   ScrollText,
   Search,
   Settings2,
-  Sparkles,
   Trophy,
   Wrench,
   type LucideIcon,
@@ -201,7 +200,7 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
     },
     {
       id: 'local_ai',
-      icon: Sparkles,
+      icon: LlmIcon,
       label: t('settings.sections.local_ai'),
       render: () => scrolled(withReset(<AiSection />, () => resetSettingsGroups(['ai']))),
     },

@@ -462,6 +462,30 @@ export interface DailySummarySettings {
   /** When true, a stale per-project summary is regenerated automatically the first time the
    * launchpad is opened each morning; when false the user triggers it manually. */
   autoGenerate: boolean
+  /** When true, each briefing is *also* written inside the repository under
+   * `.git-manager/summaries/`, so the archive travels with the project. Off by default: untracked
+   * files in the user's own repos are a visible cost, and the archive under `~/.git-manager/` is
+   * already on disk. Enabling it registers `.git-manager/` in `.git/info/exclude` (local-only) so
+   * the copies never show up as pending changes. */
+  saveToRepo?: boolean
+}
+
+/**
+ * One archived daily briefing as it exists on disk. Mirrors the Rust `StoredSummaryFile` serde
+ * struct — the markdown file is the source of truth, and the frontend re-parses it rather than
+ * trusting a cached object.
+ */
+export interface StoredSummaryFile {
+  /** Absolute path of the repository the briefing is about, read back from the front matter. */
+  repoPath: string
+  /** The repository's display name, read back from the front matter. */
+  repoName: string
+  /** The day the briefing covers, `YYYY-MM-DD`. */
+  date: string
+  /** Absolute path of the markdown file — what "open in editor" and "delete" act on. */
+  filePath: string
+  /** The whole file, front matter included. */
+  markdown: string
 }
 
 /**

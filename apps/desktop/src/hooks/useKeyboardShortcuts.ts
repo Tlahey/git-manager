@@ -1,5 +1,10 @@
 import { useEffect } from 'react'
-import { useRepoUIStore, DASHBOARD_TAB, PULL_REQUESTS_TAB } from '../stores/repoUI.store'
+import {
+  useRepoUIStore,
+  isSpecialTab,
+  DASHBOARD_TAB,
+  PULL_REQUESTS_TAB,
+} from '../stores/repoUI.store'
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
 import { useCommandPaletteStore } from '../stores/commandPalette.store'
 import { useCommitSearchStore } from '../stores/commitSearch.store'
@@ -155,7 +160,7 @@ export function useKeyboardShortcuts({
         // 4. Close Active Tab shortcut: Alt + W
         if (e.key.toLowerCase() === 'w') {
           // Only close if we are on a repo tab and settings are not open
-          if (!showSettings && activeTab !== DASHBOARD_TAB && activeTab !== PULL_REQUESTS_TAB) {
+          if (!showSettings && !isSpecialTab(activeTab)) {
             e.preventDefault()
             closeTab(activeTab)
             return

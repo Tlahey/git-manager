@@ -6,6 +6,7 @@
 //! answers a question GitHub's `mergeStateStatus` only answers once a pull request exists: "would
 //! merging my branch into its target conflict, right now?".
 use crate::error::AppError;
+use crate::services::git_ref_resolve::resolve_first_ref;
 use git2::{BranchType, Repository};
 use serde::{Deserialize, Serialize};
 
@@ -30,42 +31,6 @@ pub struct MergeTargetStatus {
     pub ahead: usize,
     /// Commits on the target that HEAD doesn't have.
     pub behind: usize,
-}
-
-/// Resolves the first candidate in `candidates` that exists in `repo` and returns its commit.
-///
-/// Candidates are tried in order and each is looked up as a remote branch first (`origin/main`),
-/// then as a local branch (`main`), then as a raw revision — so a list can mix `origin/main`,
-/// `develop` and a tag without the caller caring which is which. Returns `None` when nothing
-/// resolves, which is the normal state of a repo with no remote yet.
-fn resolve_target<'repo>(
-    repo: &'repo Repository,
-    candidates: &[String],
-) -> Option<(String, git2::Commit<'repo>)> {
-    for candidate in candidates {
-        let trimmed = candidate.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-        let commit = repo
-            .find_branch(trimmed, BranchType::Remote)
-            .ok()
-            .and_then(|b| b.get().peel_to_commit().ok())
-            .or_else(|| {
-                repo.find_branch(trimmed, BranchType::Local)
-                    .ok()
-                    .and_then(|b| b.get().peel_to_commit().ok())
-            })
-            .or_else(|| {
-                repo.revparse_single(trimmed)
-                    .ok()
-                    .and_then(|obj| obj.peel_to_commit().ok())
-            });
-        if let Some(commit) = commit {
-            return Some((trimmed.to_string(), commit));
-        }
-    }
-    None
 }
 
 /// Short name of the checked-out branch (`feat/x`), or `None` when HEAD is detached or unborn.
@@ -105,7 +70,7 @@ pub fn get_merge_target_status(
     candidates: &[String],
 ) -> Result<MergeTargetStatus, AppError> {
     let current_branch = head_branch_name(repo);
-    let Some((target, target_commit)) = resolve_target(repo, candidates) else {
+    let Some((target, target_commit)) = resolve_first_ref(repo, candidates) else {
         return Ok(MergeTargetStatus {
             current_branch,
             ..Default::default()

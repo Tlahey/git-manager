@@ -78,6 +78,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   dailySummary: {
     enabled: true,
     autoGenerate: true,
+    // Off by default: the archive under `~/.git-manager/summaries/` already exists on disk, and
+    // adding untracked files to the user's own repositories is not something to opt them into.
+    saveToRepo: false,
   },
   repoOverrides: {},
 }

@@ -45,6 +45,7 @@ import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
 import { BisectPanel } from '../bisect/BisectPanel'
 import { BranchExplanationPanel } from './BranchExplanationPanel'
 import { CodeReviewPanel } from './CodeReviewPanel'
+import { DailySummariesPanel } from './DailySummariesPanel'
 import { CommitExplanationPanel } from './CommitExplanationPanel'
 import { WorkingExplanationPanel } from './WorkingExplanationPanel'
 import { useBisectState } from '../../hooks/useBisectState'
@@ -1065,6 +1066,11 @@ export function GitGraph({
                 repoPath={repoPath}
                 branch={aiPanelTarget.branch}
                 baseRef={aiPanelTarget.baseRef}
+                onClose={() => setAiPanelTarget(null)}
+              />
+            ) : aiPanelTarget.kind === 'summaries' ? (
+              <DailySummariesPanel
+                repoPath={repoPath}
                 onClose={() => setAiPanelTarget(null)}
               />
             ) : aiPanelTarget.kind === 'reviewWorking' ? (

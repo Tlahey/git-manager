@@ -1,24 +1,103 @@
-import type { AiConnectionConfig, DailySummary } from '@git-manager/ai'
-import { apiGetAiActivity, dailySummaryService } from '../api/ai.api'
+import type { AiConnectionConfig, DailySummary, SummarizeOptions } from '@git-manager/ai'
+import { composeDailySummaryFromSummaries } from '@git-manager/ai'
+import { apiGetAiActivity, apiGetAiContext, dailySummaryService, fileSummaryService } from '../api/ai.api'
+import { apiSaveDailySummary } from '../api/dailySummary.api'
 import { useDailySummaryStore } from '../stores/dailySummary.store'
-import { hoursForSummaryWindow } from './dailySummaryWindow'
+import { dayBounds } from './dailySummaryWindow'
+import { renderDailySummaryMarkdown } from './dailySummaryMarkdown'
+
+export interface GenerateDailySummaryOptions extends SummarizeOptions {
+  /**
+   * The local calendar day to summarize, `YYYY-MM-DD`. Required, and the only thing that decides
+   * the window: a briefing is about the work done *that day*, and is archived under it.
+   */
+  date: string
+  /** The repo's ordered main-branch candidates — the window follows the first that resolves. */
+  targetBranches: string[]
+  /** When true the briefing is also written inside the repository (see the `saveToRepo` setting). */
+  saveToRepo: boolean
+  language: string
+}
 
 /**
- * Generates one project's daily briefing end-to-end: gather the repo's recent git activity, run
- * `@git-manager/ai`'s daily-summary feature, and persist the result in the launchpad store. Shared
- * by the on-demand hook (`useDailySummary`) and the morning auto-run (`useMorningSummaries`) so both
- * paths produce and store summaries identically.
+ * The default branch, tried in order, for a summary run.
+ *
+ * The repo's configured merge targets first (`origin/main`, `origin/master`, or a per-repo
+ * override), then their **local** equivalents. The backend has no HEAD fallback any more — a
+ * briefing reports what was merged into the default branch, and summarizing the checked-out feature
+ * branch instead would answer a different question silently. Adding the local names is what keeps
+ * that strictness from turning into "nothing to summarize" on a repository with no remote, or one
+ * that has simply never fetched.
+ */
+function summaryBranchCandidates(targetBranches: string[]): string[] {
+  return Array.from(new Set([...targetBranches, 'main', 'master']))
+}
+
+/**
+ * Generates one project's briefing for **one calendar day**, or decides there is nothing to
+ * generate.
+ *
+ * Returns `null` — **without calling the model** — when nothing landed on the main branch that day.
+ * That is the whole difference from asking the model to write "nothing happened": a quiet day costs
+ * no tokens, produces no file, and leaves no entry to scroll past two months later. With a dozen
+ * projects auto-running every morning, most of them are quiet on any given day.
+ *
+ * When there *is* work, it runs the same two-phase shape as the commit-message path — a call per
+ * changed file, then one composing call — and writes the result to the markdown archive, which is
+ * the store's source of truth.
  */
 export async function generateDailySummary(
   path: string,
   aiConnection: AiConnectionConfig,
-  language: string
-): Promise<DailySummary> {
-  const activity = await apiGetAiActivity(path, hoursForSummaryWindow())
-  // Language is a frontend/Settings concern (not from Rust) — inject it so the briefing is written
-  // in the user's UI language.
+  options: GenerateDailySummaryOptions
+): Promise<DailySummary | null> {
+  const { date, targetBranches, saveToRepo, language, ...summarizeOptions } = options
+
+  const { sinceEpoch, untilEpoch } = dayBounds(date)
+  const activity = await apiGetAiActivity(
+    path,
+    sinceEpoch,
+    untilEpoch,
+    summaryBranchCandidates(targetBranches)
+  )
+  if (activity.commits.length === 0 || !activity.baseOid || !activity.headOid) {
+    return null
+  }
   activity.language = language
-  const summary = await dailySummaryService.run(aiConnection, activity)
-  useDailySummaryStore.getState().setSummary(path, summary)
+
+  // The window's diff, through the existing `range` scope: `baseOid` is an ancestor of `headOid`,
+  // so the merge base collapses to it and the diff is exactly the day's commits.
+  const context = await apiGetAiContext(path, 'range', activity.baseOid, activity.headOid)
+  if (context.files.length === 0) {
+    return null
+  }
+
+  const summary = await composeDailySummaryFromSummaries(
+    { activity, context, date, contextTokens: aiConnection.contextTokens },
+    {
+      summarize: (input) => fileSummaryService.run(aiConnection, input),
+      compose: (input) => dailySummaryService.run(aiConnection, input),
+    },
+    summarizeOptions
+  )
+
+  const entry = {
+    repoPath: path,
+    repoName: activity.repoName,
+    date,
+    branch: activity.branch,
+    generatedAt: Date.now(),
+    commitCount: activity.commits.length,
+    fileCount: context.files.length,
+    summary,
+  }
+  const filePath = await apiSaveDailySummary(
+    path,
+    date,
+    renderDailySummaryMarkdown(entry),
+    saveToRepo
+  )
+  useDailySummaryStore.getState().setSummary({ ...entry, filePath })
+
   return summary
 }

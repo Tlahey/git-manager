@@ -147,6 +147,8 @@ export interface AiActivityPending {
  * light snapshot of the still-uncommitted work. Mirrors the Rust `AiActivity` serde struct. */
 export interface AiActivity {
   repoName: string
+  /** The branch the window was taken over: the resolved main-branch candidate (`origin/main`), or
+   * the checked-out branch when none of the candidates exists. */
   branch: string
   /** Non-merge commits authored within the requested window, newest first. */
   commits: AiActivityCommit[]
@@ -154,6 +156,11 @@ export interface AiActivity {
   pending: AiActivityPending[]
   /** True when the window held more commits than the backend cap, so the summary is a sample. */
   truncated: boolean
+  /** The commit the window starts from — pair with {@link headOid} to fetch the window's diff at
+   * `range` scope. `null` when the window held no commits. */
+  baseOid: string | null
+  /** The newest commit in the window. `null` when the window held no commits. */
+  headOid: string | null
   /** BCP-47-ish language tag (`'fr'` / `'en'`) the summary should be written in. Frontend-populated
    * from app Settings (not from Rust) so the briefing matches the user's UI language. */
   language?: string

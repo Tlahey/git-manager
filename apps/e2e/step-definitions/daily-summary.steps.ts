@@ -7,15 +7,19 @@ import { Given, When, Then, After } from '@wdio/cucumber-framework'
 const FIXTURE_ROOT = '/tmp/git-manager-fixtures'
 
 // This suite shares ONE app window across all specs, and this feature is the first to write the
-// launchpad's persisted `savedRepos` + the daily-summary cache + the `dailySummary` settings. Without
-// cleanup those keys would leak into every later spec (a phantom saved repo on their dashboard, a
-// stored briefing, auto-generation left on), causing unrelated failures downstream. Reset them after
-// each of this feature's scenarios so the shared window returns to the suite's baseline. Tagged
-// `@daily-summary` (not the broad `@ai`) so it doesn't touch the commit-generation scenarios.
+// launchpad's persisted `savedRepos` + the `dailySummary` settings. Without cleanup those keys would
+// leak into every later spec (a phantom saved repo on their dashboard, auto-generation left on),
+// causing unrelated failures downstream. Reset them after each of this feature's scenarios so the
+// shared window returns to the suite's baseline. Tagged `@daily-summary` (not the broad `@ai`) so it
+// doesn't touch the commit-generation scenarios.
+//
+// The archived briefings are NOT in localStorage — they are markdown files under
+// `~/.git-manager/summaries/`, which survive a reload and a whole run. A stale file from a previous
+// run would make the "shows its empty state" scenario see a briefing, so the fixture repos' archives
+// are deleted through the app's own command.
 After({ tags: '@daily-summary' }, async () => {
   await browser.execute(() => {
     localStorage.removeItem('git-manager-repos')
-    localStorage.removeItem('git-manager-daily-summaries')
     const raw = localStorage.getItem('git-manager-settings')
     if (raw) {
       const parsed = JSON.parse(raw)
@@ -25,6 +29,17 @@ After({ tags: '@daily-summary' }, async () => {
       }
     }
   })
+
+  await browser.tauri.execute(async ({ core }, root: string) => {
+    try {
+      const files = (await core.invoke('list_daily_summaries')) as { repoPath: string; filePath: string }[]
+      for (const file of files) {
+        if (file.repoPath.startsWith(root)) await core.invoke('delete_daily_summary', { filePath: file.filePath })
+      }
+    } catch {
+      // A run that never archived anything has no directory to read — nothing to clean.
+    }
+  }, FIXTURE_ROOT)
 })
 
 // The fake-server Given ("the AI provider is pointed at a fake server") and the prompt-assertion

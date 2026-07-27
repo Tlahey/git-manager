@@ -1,33 +1,67 @@
-import type { AiActivity, JsonSchema } from '../config'
+import type { AiActivityCommit, JsonSchema } from '../config'
 import type { CompletionFeature } from '../runtime'
 import { languageName } from './language'
+import type { FileSummary } from './fileSummary'
+import { renderSummaryList } from './summaryGrouping'
+import { diffCharBudget } from './diffCoverage'
+import { estimateTokens, RESERVED_OUTPUT_TOKENS } from '../promptSize'
 
-/** The typed result of the daily-summary feature: a one-line headline plus two bullet lists — what
- * was accomplished in the recent window ("yesterday") and a short, actionable plan for the day
- * ("today"). This is exactly the JSON shape the schema below constrains the model to. */
+/**
+ * The typed result of the daily-summary feature: a one-line headline plus the bullets describing
+ * what landed **that day**.
+ *
+ * It used to carry a third field, `today`, holding suggested next steps inferred from the current
+ * uncommitted work. That was a stand-up briefing, not a record of a day: asking for Monday's summary
+ * produced a section about what is uncommitted *now*, which is neither Monday nor a fact about it.
+ * Once the archive became browsable by date, a briefing describing two different moments could not
+ * be read back honestly — so the day is all there is.
+ */
 export interface DailySummary {
-  /** A single-sentence recap of the period (e.g. "Shipped the daily-summary feature and fixed two
-   * flaky tests"). */
+  /** A single-sentence recap of the day (e.g. "Shipped the daily-summary archive"). */
   headline: string
-  /** Bullet points describing the work done in the window, grounded in the actual commits. */
-  yesterday: string[]
-  /** Bullet points proposing what to work on next, inferred from in-flight/uncommitted work and the
-   * trajectory of recent commits. */
-  today: string[]
+  /** Bullet points describing what was accomplished that day, grounded in the actual commits. */
+  highlights: string[]
 }
 
-export const DAILY_SUMMARY_INSTRUCTION = `You are a focused engineering assistant writing a short daily stand-up briefing for ONE git repository.
+export const DAILY_SUMMARY_INSTRUCTION = `You are a focused engineering assistant writing a short record of ONE day's work on ONE git repository.
 
-You are given the commits authored in a recent window (the "yesterday" work) and a snapshot of the currently uncommitted changes (work in flight). From these, produce:
-- headline: a single, plain sentence recapping the period. No trailing period is required.
-- yesterday: 2-6 bullet points summarizing what was actually accomplished. Group related commits into one outcome-focused bullet rather than restating every commit verbatim. Describe impact ("added X", "fixed Y"), not commit hashes.
-- today: 2-5 bullet points proposing concrete next steps. Ground them in the uncommitted/in-flight work and the trajectory of the recent commits (e.g. "finish and commit the in-progress changes to <area>", "add tests for <feature> shipped yesterday"). If there is nothing to infer, suggest a sensible small next step; never invent work that has no basis in the data.
+You are given the commits that landed on the project's main branch that day, and a summary of EVERY file those commits touched (read from the code, not from the commit messages). From these, produce:
+- headline: a single, plain sentence recapping the day. No trailing period is required.
+- highlights: 2-6 bullet points summarizing what was actually accomplished. Group the files by the area they serve into one outcome-focused bullet per theme, rather than restating every commit or every file. Describe impact ("added X", "fixed Y"), not commit hashes or paths.
 
 Rules (STRICT):
-- Base every statement ONLY on the provided commits and pending changes. Do not fabricate features, tickets, or file names that are not present.
-- Keep each bullet to one short line — an imperative or past-tense phrase, no sub-lists, no markdown formatting inside a bullet.
-- If there are no commits in the window, say so plainly in the headline and leave "yesterday" empty; still propose "today" steps from any pending changes.
+- Describe ONLY that day. Do not speculate about what comes next, do not propose follow-up work, and do not mention anything that is not in the commits you were given.
+- Base every statement ONLY on the provided commits and file summaries. Do not fabricate features, tickets, or file names that are not present.
+- Prefer the file summaries over the commit subjects when the two disagree: the summaries were read from the actual change, the subjects are the author's claim about it.
+- Keep each bullet to one short line — a past-tense phrase, no sub-lists, no markdown formatting inside a bullet.
+- Never mention that you were given summaries, or how you were asked to work. This is a record, not a report about writing one.
 - Write ALL text in the language requested by the user prompt.`
+
+/**
+ * What the reduce call is given: the day's commits as the narrative spine, and a summary of every
+ * file those commits touched as the evidence.
+ *
+ * The file summaries are what make this worth more than reading `git log`. A commit subject is the
+ * author's own claim about their change; it is often accurate, sometimes stale, and — on a day of
+ * `wip` and `fix review comments` commits — says nothing at all. The per-file summaries are read
+ * from the code itself, so the record describes what actually landed.
+ */
+export interface DailySummaryInput {
+  repoName: string
+  /** The branch the day was read from — the main branch, not whatever is checked out. */
+  branch: string
+  /** The day being summarized, `YYYY-MM-DD`. */
+  date: string
+  /** Non-merge commits that landed that day, newest first. */
+  commits: AiActivityCommit[]
+  /** One entry per file those commits touched. A file whose summary call failed has empty
+   * `intent`/`area`. */
+  summaries: FileSummary[]
+  language: string
+  /** True when the day held more commits than the backend's cap, so the model can hedge. */
+  truncated?: boolean
+  contextTokens?: number
+}
 
 /** JSON Schema constraining the structured output to {@link DailySummary}. Root is an object (many
  * providers reject a bare-array root under strict mode). */
@@ -38,62 +72,67 @@ export const DAILY_SUMMARY_SCHEMA: JsonSchema = {
     properties: {
       headline: {
         type: 'string',
-        description: 'One-sentence recap of the period.',
+        description: 'One-sentence recap of the day.',
       },
-      yesterday: {
+      highlights: {
         type: 'array',
-        description: 'What was accomplished in the window, one short bullet each.',
-        items: { type: 'string' },
-      },
-      today: {
-        type: 'array',
-        description: 'Concrete next steps proposed for today, one short bullet each.',
+        description: 'What was accomplished that day, one short bullet each.',
         items: { type: 'string' },
       },
     },
-    required: ['headline', 'yesterday', 'today'],
+    required: ['headline', 'highlights'],
     additionalProperties: false,
   },
   strict: true,
 }
 
 /** Renders one commit as a compact prompt line: subject, change volume, and body when present. */
-function formatCommit(commit: AiActivity['commits'][number]): string {
+function formatCommit(commit: AiActivityCommit): string {
   const stats = `(${commit.filesChanged} files, +${commit.insertions}/-${commit.deletions})`
   const base = `- ${commit.subject} ${stats}`
   const body = commit.body.trim()
   return body ? `${base}\n    ${body.replace(/\n/g, '\n    ')}` : base
 }
 
-/** Builds the user-turn prompt: the recent commits (the "done" evidence) and the uncommitted work
- * (the "in flight" evidence), plus the target language. */
-export function buildDailySummaryPrompt(activity: AiActivity): string {
-  const language = languageName(activity.language)
-
-  const commitsSection =
-    activity.commits.length > 0
-      ? activity.commits.map(formatCommit).join('\n')
-      : '(no commits in this window)'
-
-  const pendingSection =
-    activity.pending.length > 0
-      ? activity.pending.map((p) => `- ${p.path} (${p.status})`).join('\n')
-      : '(working tree is clean)'
-
-  const truncatedNote = activity.truncated
-    ? '\n\nNote: only the most recent commits are shown; there were more in the window.'
+/**
+ * Everything the prompt carries besides the file-summary list.
+ *
+ * Note what is absent: the working tree. The uncommitted changes describe *now*, and this is a
+ * record of a past day — feeding them in is what used to put today's work in yesterday's briefing.
+ */
+function buildHeader(input: DailySummaryInput): string {
+  const language = languageName(input.language)
+  const commitsSection = input.commits.map(formatCommit).join('\n')
+  const truncatedNote = input.truncated
+    ? '\n\nNote: only the most recent commits are shown; there were more that day.'
     : ''
 
-  return `Repository: ${activity.repoName} (branch: ${activity.branch})
-Write the entire briefing in ${language}.
+  return `Repository: ${input.repoName} (branch: ${input.branch})
+Day being summarized: ${input.date}
+Write the entire record in ${language}.
 
-Commits authored in the window (newest first):
-${commitsSection}${truncatedNote}
+Commits that landed that day (newest first):
+${commitsSection}${truncatedNote}`
+}
 
-Uncommitted / in-flight changes:
-${pendingSection}
+/** Builds the user-turn prompt: the day's commits as the header, then a summary of every file they
+ * touched — trimmed to fit the model's window by `renderSummaryList`, which drops detail before it
+ * drops files. */
+export function buildDailySummaryPrompt(input: DailySummaryInput): string {
+  const header = buildHeader(input)
+  const budget = diffCharBudget({
+    instruction: DAILY_SUMMARY_INSTRUCTION,
+    envelopeTokens: estimateTokens(header),
+    contextTokens: input.contextTokens,
+    reservedOutputTokens: RESERVED_OUTPUT_TOKENS,
+  })
 
-Produce the daily briefing as JSON: a headline, what was done ("yesterday"), and what to plan ("today").`
+  return `${header}
+
+All ${input.summaries.length} files changed that day:
+${renderSummaryList(input.summaries, budget)}
+
+Produce the record of ${input.date} as JSON: a headline and the day's highlights.`
 }
 
 /** Coerces an unknown value into a clean string bullet list: keeps non-empty trimmed strings. */
@@ -127,18 +166,26 @@ export function parseDailySummary(raw: string): DailySummary {
 
   const record = parsed as Record<string, unknown>
   const headline = typeof record.headline === 'string' ? record.headline.trim() : ''
-  const yesterday = toStringList(record.yesterday)
-  const today = toStringList(record.today)
+  // `yesterday` is what the schema used to call this list; a model prompted from a cached or stale
+  // instruction can still answer with it, and dropping the day's content over a key name would be a
+  // poor trade.
+  const highlights = toStringList(record.highlights ?? record.yesterday)
 
-  if (!headline && yesterday.length === 0 && today.length === 0) {
+  if (!headline && highlights.length === 0) {
     throw new Error('AI summary response was empty')
   }
-  return { headline, yesterday, today }
+  return { headline, highlights }
 }
 
-/** Completion feature: turn a repo's recent git activity into a short "yesterday / today" briefing,
- * using structured JSON output. */
-export const dailySummaryFeature: CompletionFeature<AiActivity, DailySummary> = {
+/**
+ * Completion feature: turn one day's landed work into a short record, using structured JSON output.
+ *
+ * The **reduce** half of the daily summary — see `composeDailySummary.ts` for the map phase that
+ * feeds it. Structured output rather than a stream for the same reason the commit message uses one:
+ * this text is stored and re-read weeks later, so a reasoning model's deliberation leaking into it
+ * is a permanent defect, not a transient one.
+ */
+export const dailySummaryFeature: CompletionFeature<DailySummaryInput, DailySummary> = {
   id: 'daily-summary',
   kind: 'completion',
   instruction: DAILY_SUMMARY_INSTRUCTION,

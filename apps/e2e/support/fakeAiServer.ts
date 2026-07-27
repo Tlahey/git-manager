@@ -19,7 +19,7 @@ export interface FakeAiServerOptions {
   /** Structured response returned for the daily-summary completion path (matched by its
    * `json_schema.name === 'daily_summary'`). Defaults to a deterministic briefing so scenarios can
    * assert on exact headline/bullets. */
-  dailySummary?: { headline: string; yesterday: string[]; today: string[] }
+  dailySummary?: { headline: string; highlights: string[] }
   /** Accepts the request and records its body, but never sends a real token or `[DONE]` — instead
    * writes a periodic SSE comment line (`: keep-alive`) so the connection keeps producing bytes
    * without ever completing. Real backends do something similar, and it matters here because the
@@ -73,15 +73,32 @@ export async function startFakeAiServer(
         if (parsed?.stream === false) {
           const schemaName = parsed.response_format?.json_schema?.name
 
-          // Daily-summary feature: return the `{ headline, yesterday, today }` shape.
+          // Daily-summary feature: return the `{ headline, highlights }` shape.
           if (schemaName === 'daily_summary') {
             const summary = options.dailySummary ?? {
               headline: 'Shipped the fake feature',
-              yesterday: ['did the fake work'],
-              today: ['plan the next thing'],
+              highlights: ['did the fake work'],
             }
             res.writeHead(200, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(summary) } }] }))
+            return
+          }
+
+          // File-summary feature (the map phase every two-phase feature runs first): two short
+          // fields. Deterministic, since the scenarios assert on the composing call's output.
+          if (schemaName === 'file_summary') {
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(
+              JSON.stringify({
+                choices: [
+                  {
+                    message: {
+                      content: JSON.stringify({ intent: 'change the file', area: 'fake area' }),
+                    },
+                  },
+                ],
+              })
+            )
             return
           }
 

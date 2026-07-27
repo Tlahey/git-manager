@@ -55,6 +55,9 @@ export { RadioGroup, RadioGroupItem } from './components/radio-group'
 export type { RadioGroupProps, RadioGroupItemProps } from './components/radio-group'
 
 export { Spinner } from './components/spinner'
+/** The one mark for an action that calls the language model — see `llm-icon.tsx` for why it is not
+ * lucide's `Sparkles`. */
+export { LlmIcon } from './components/llm-icon'
 
 export { toast, Toaster } from './components/toast'
 export type { ToastVariant, ToastOptions } from './components/toast'

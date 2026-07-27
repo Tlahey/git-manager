@@ -10,8 +10,9 @@ import {
   Spinner,
   Textarea,
   cn,
+  LlmIcon,
 } from '@git-manager/ui'
-import { AlertTriangle, Check, RefreshCw, Sparkles } from 'lucide-react'
+import { AlertTriangle, Check, RefreshCw } from 'lucide-react'
 import type { CommitBatchReview } from '../../../hooks/useCommitBatchReview'
 
 const statusLetters: Record<string, string> = {
@@ -77,7 +78,7 @@ export function CommitBatchReviewPanel({ review }: { review: CommitBatchReview }
       <div className="flex h-full min-h-0 flex-col" data-testid="ai-batch-dialog">
         <div className="shrink-0 space-y-1 border-b border-border/60 px-5 py-4 pr-10">
           <DialogTitle className="flex items-center gap-2 text-sm">
-            <Sparkles className="h-4 w-4 text-primary" />
+            <LlmIcon className="h-4 w-4 text-primary" />
             {t('commitDetails.aiBatch.title')}
           </DialogTitle>
           <DialogDescription className="text-xs">

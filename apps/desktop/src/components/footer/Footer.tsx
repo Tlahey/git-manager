@@ -4,6 +4,7 @@ import { apiGetAppVersion } from '../../api/updater.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import {
   useRepoUIStore,
+  isSpecialTab,
   DASHBOARD_TAB,
   REWARDS_TAB,
   PULL_REQUESTS_TAB,
@@ -75,8 +76,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
   }, [savedRepos, discoveredRepos])
 
   // Current repository, when the active tab is a repo tab
-  const isRepoTab =
-    activeTab !== DASHBOARD_TAB && activeTab !== PULL_REQUESTS_TAB && activeTab !== REWARDS_TAB
+  const isRepoTab = !isSpecialTab(activeTab)
   const currentRepo = isRepoTab ? repoCache[activeTab] : null
 
   // Connected GitHub account

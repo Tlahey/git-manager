@@ -105,12 +105,20 @@ pub async fn get_ai_context(
     .map_err(Into::into)
 }
 
-/// Gathers the recent-activity context (commits authored in the last `since_hours` hours + current
-/// uncommitted work) for the daily-summary feature. `since_hours` is computed by the frontend, which
-/// knows the local clock and weekend boundaries; the backend stays a pure git query.
+/// Gathers the activity context (commits authored on the main branch within
+/// `[since_epoch, until_epoch]` + current uncommitted work) for the daily-summary feature.
+///
+/// The bounds are absolute epoch seconds delimiting one **local calendar day**, computed by the
+/// frontend because only it knows the user's clock and time zone; `candidates` is the same ordered
+/// main-branch list the merge-target indicator uses. The backend stays a pure git query.
 #[tauri::command]
-pub async fn get_ai_activity(path: String, since_hours: i64) -> Result<AiActivity, String> {
-    build_ai_activity(&path, since_hours).map_err(Into::into)
+pub async fn get_ai_activity(
+    path: String,
+    since_epoch: i64,
+    until_epoch: i64,
+    candidates: Vec<String>,
+) -> Result<AiActivity, String> {
+    build_ai_activity(&path, since_epoch, until_epoch, &candidates).map_err(Into::into)
 }
 
 /// Generic streaming generation: relays a fully built system/user prompt to the selected provider

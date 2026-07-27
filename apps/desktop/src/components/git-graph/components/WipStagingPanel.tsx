@@ -1,11 +1,19 @@
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Textarea, Badge, Progress, Spinner, cn, Checkbox, Tooltip } from '@git-manager/ui'
+import {
+  Button,
+  Textarea,
+  Badge,
+  Progress,
+  Spinner,
+  cn,
+  Checkbox,
+  Tooltip,
+  LlmIcon,
+} from '@git-manager/ui'
 import {
   Layers,
-  Sparkles,
   Check,
   Square,
-  Wand2,
   AlertTriangle,
   GitCommitHorizontal,
   Archive,
@@ -127,7 +135,7 @@ export function WipStagingPanel({
                   {isGeneratingAllBatches ? (
                     <Spinner className="h-2.5 w-2.5" />
                   ) : (
-                    <Sparkles className="h-3 w-3 text-primary" />
+                    <LlmIcon className="h-3 w-3 text-primary" />
                   )}
                   <span>{t('commitDetails.batchCommit.generateAll')}</span>
                 </Button>
@@ -247,7 +255,7 @@ export function WipStagingPanel({
                         {isGen ? (
                           <Spinner className="h-2.5 w-2.5" />
                         ) : (
-                          <Sparkles className="h-3 w-3 text-primary" />
+                          <LlmIcon className="h-3 w-3 text-primary" />
                         )}
                         <span>
                           {isGen ? t('commitDetails.batchCommit.generating') : t('commit.generate')}
@@ -403,7 +411,7 @@ export function WipStagingPanel({
                       </>
                     ) : (
                       <>
-                        <Sparkles className="h-3 w-3 text-primary" />
+                        <LlmIcon className="h-3 w-3 text-primary" />
                         {t('commit.generate')}
                       </>
                     )}
@@ -447,7 +455,7 @@ export function WipStagingPanel({
                   onClick={batchReview.openAndGenerate}
                   disabled={allWipChanges.length === 0 || batchReview.isGenerating}
                 >
-                  <Wand2 className="h-3.5 w-3.5 text-primary" />
+                  <LlmIcon className="h-3.5 w-3.5 text-primary" />
                   {t('commitDetails.aiBatch.trigger')}
                 </Button>
               )}

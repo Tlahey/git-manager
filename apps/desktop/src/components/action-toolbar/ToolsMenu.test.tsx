@@ -15,6 +15,7 @@ vi.mock('../../hooks/useGitStatus', () => ({
 import { ToolsMenu } from './ToolsMenu'
 import { useBisectUIStore } from '../../stores/bisectUI.store'
 import { useStashDialogStore } from '../../stores/stashDialog.store'
+import { useRepoUIStore } from '../../stores/repoUI.store'
 
 const cleanStatus: GitStatus = { staged: [], unstaged: [], untracked: [], conflicted: [] }
 const dirtyStatus: GitStatus = {
@@ -46,6 +47,7 @@ describe('ToolsMenu', () => {
       pendingGoodOid: null,
     })
     useStashDialogStore.getState().closeDialog()
+    useRepoUIStore.setState({ aiPanelTarget: null, activeDiffFile: null, activePrNumber: null })
   })
 
   it('renders the Tools trigger', () => {
@@ -89,5 +91,13 @@ describe('ToolsMenu', () => {
     render(<ToolsMenu repoPath="/repo" />)
     await user.click(screen.getByTestId('toolbar-tools-button'))
     expect(screen.getByTestId('tools-menu-bisect')).toHaveTextContent('Bisect already running')
+  })
+
+  /** Tools is for deterministic operations; anything that spends a model run lives in `AiMenu`. */
+  it('carries no LLM entry', async () => {
+    const user = userEvent.setup()
+    render(<ToolsMenu repoPath="/repo" />)
+    await user.click(screen.getByTestId('toolbar-tools-button'))
+    expect(screen.queryByTestId('tools-menu-summaries')).not.toBeInTheDocument()
   })
 })

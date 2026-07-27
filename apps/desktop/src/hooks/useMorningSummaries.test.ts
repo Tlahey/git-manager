@@ -1,27 +1,53 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 
-const { generateDailySummary } = vi.hoisted(() => ({ generateDailySummary: vi.fn() }))
+const { generateDailySummary, apiListDailySummaries, apiDeleteDailySummary } = vi.hoisted(() => ({
+  generateDailySummary: vi.fn(),
+  apiListDailySummaries: vi.fn(),
+  apiDeleteDailySummary: vi.fn(),
+}))
 vi.mock('../lib/generateDailySummary', () => ({ generateDailySummary }))
+vi.mock('../api/dailySummary.api', () => ({ apiListDailySummaries, apiDeleteDailySummary }))
 
 import { useMorningSummaries } from './useMorningSummaries'
-import { useDailySummaryStore } from '../stores/dailySummary.store'
+import { useDailySummaryStore, type StoredDailySummary } from '../stores/dailySummary.store'
 import { useSettingsStore } from '../stores/settings.store'
+import { DEFAULT_TARGET_BRANCHES } from './useEffectiveRepoSettings'
+import { previousWorkingDayKey } from '../lib/dailySummaryWindow'
 import type { DailySummary } from '@git-manager/ai'
 
 const INITIAL_SETTINGS = useSettingsStore.getState()
-const summary: DailySummary = { headline: 'H', yesterday: [], today: [] }
+const summary: DailySummary = { headline: 'H', highlights: [] }
 
 function setDailySummarySettings(enabled: boolean, autoGenerate: boolean) {
   useSettingsStore.setState({
-    settings: { ...INITIAL_SETTINGS.settings, dailySummary: { enabled, autoGenerate } },
+    settings: {
+      ...INITIAL_SETTINGS.settings,
+      dailySummary: { enabled, autoGenerate, saveToRepo: false },
+    },
   })
+}
+
+/** A briefing already archived for the day the morning run targets, so the path looks fresh. */
+function freshToday(repoPath: string): StoredDailySummary {
+  return {
+    repoPath,
+    repoName: repoPath.split('/').pop() ?? repoPath,
+    date: previousWorkingDayKey(),
+    branch: 'origin/main',
+    generatedAt: Date.now(),
+    commitCount: 1,
+    fileCount: 1,
+    filePath: `/archive/${repoPath}.md`,
+    summary,
+  }
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
   generateDailySummary.mockResolvedValue(summary)
-  useDailySummaryStore.setState({ summaries: {} })
+  apiListDailySummaries.mockResolvedValue([])
+  useDailySummaryStore.setState({ entries: {}, hydrated: true })
   useSettingsStore.setState(INITIAL_SETTINGS, true)
 })
 
@@ -34,13 +60,56 @@ describe('useMorningSummaries', () => {
     setDailySummarySettings(true, true)
     renderHook(() => useMorningSummaries(['/repo/a', '/repo/b']))
     await waitFor(() => expect(generateDailySummary).toHaveBeenCalledTimes(2))
-    const paths = generateDailySummary.mock.calls.map((c) => c[0])
-    expect(paths).toEqual(['/repo/a', '/repo/b'])
+    expect(generateDailySummary.mock.calls.map((c) => c[0])).toEqual(['/repo/a', '/repo/b'])
   })
 
-  it('skips paths whose summary was already generated today', async () => {
+  it('passes the repo main-branch candidates and the in-repo preference', async () => {
     setDailySummarySettings(true, true)
-    useDailySummaryStore.getState().setSummary('/repo/a', summary) // fresh today
+    renderHook(() => useMorningSummaries(['/repo/a']))
+    await waitFor(() => expect(generateDailySummary).toHaveBeenCalledTimes(1))
+    expect(generateDailySummary.mock.calls[0][2]).toMatchObject({
+      // The run is about a day, and that day is the previous working one.
+      date: previousWorkingDayKey(),
+      targetBranches: DEFAULT_TARGET_BRANCHES,
+      saveToRepo: false,
+    })
+  })
+
+  it('honours a per-repo target-branch override', async () => {
+    useSettingsStore.setState({
+      settings: {
+        ...INITIAL_SETTINGS.settings,
+        dailySummary: { enabled: true, autoGenerate: true, saveToRepo: false },
+        repoOverrides: { '/repo/a': { targetBranches: ['origin/develop'] } },
+      },
+    })
+    renderHook(() => useMorningSummaries(['/repo/a']))
+    await waitFor(() => expect(generateDailySummary).toHaveBeenCalledTimes(1))
+    expect(generateDailySummary.mock.calls[0][2].targetBranches).toEqual(['origin/develop'])
+  })
+
+  it('skips paths whose briefing was already archived today', async () => {
+    setDailySummarySettings(true, true)
+    useDailySummaryStore.getState().setSummary(freshToday('/repo/a'))
+    renderHook(() => useMorningSummaries(['/repo/a', '/repo/b']))
+    await waitFor(() => expect(generateDailySummary).toHaveBeenCalledTimes(1))
+    expect(generateDailySummary.mock.calls[0][0]).toBe('/repo/b')
+  })
+
+  /** After a restart the store is empty but the archive isn't, so it has to be read first. */
+  it('reads the archive before deciding what is stale', async () => {
+    setDailySummarySettings(true, true)
+    useDailySummaryStore.setState({ entries: {}, hydrated: false })
+    apiListDailySummaries.mockResolvedValue([
+      {
+        repoPath: '/repo/a',
+        repoName: 'a',
+        date: previousWorkingDayKey(),
+        filePath: '/archive/a.md',
+        markdown: `---\nrepo: a\nrepoPath: /repo/a\ndate: ${previousWorkingDayKey()}\ngeneratedAt: ${new Date().toISOString()}\n---\n\n# t\n\nH\n`,
+      },
+    ])
+
     renderHook(() => useMorningSummaries(['/repo/a', '/repo/b']))
     await waitFor(() => expect(generateDailySummary).toHaveBeenCalledTimes(1))
     expect(generateDailySummary.mock.calls[0][0]).toBe('/repo/b')
@@ -69,5 +138,25 @@ describe('useMorningSummaries', () => {
     rerender({ paths: ['/repo/a'] })
     await new Promise((r) => setTimeout(r, 20))
     expect(generateDailySummary).toHaveBeenCalledTimes(1)
+  })
+
+  /** A skipped (quiet) repo must not be retried all session either. */
+  it('does not retry a path that produced no briefing', async () => {
+    setDailySummarySettings(true, true)
+    generateDailySummary.mockResolvedValue(null)
+    const { rerender } = renderHook(({ paths }) => useMorningSummaries(paths), {
+      initialProps: { paths: ['/repo/a'] },
+    })
+    await waitFor(() => expect(generateDailySummary).toHaveBeenCalledTimes(1))
+    rerender({ paths: ['/repo/a'] })
+    await new Promise((r) => setTimeout(r, 20))
+    expect(generateDailySummary).toHaveBeenCalledTimes(1)
+  })
+
+  it('carries on with the other projects when one fails', async () => {
+    setDailySummarySettings(true, true)
+    generateDailySummary.mockRejectedValueOnce(new Error('provider down'))
+    renderHook(() => useMorningSummaries(['/repo/a', '/repo/b']))
+    await waitFor(() => expect(generateDailySummary).toHaveBeenCalledTimes(2))
   })
 })
