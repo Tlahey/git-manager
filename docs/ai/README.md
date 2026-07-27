@@ -15,7 +15,7 @@ specific to it — its prompt, its inputs, its UI, its limits.
 
 | Feature | What it does | Kind | Where you trigger it |
 | ------- | ------------ | ---- | -------------------- |
-| [Commit message](./commit-message.md) | Writes the message for the staged changes | streaming | ✨ in the WIP staging panel |
+| [Commit message](./commit-message.md) | Writes the message for the staged changes | completion + schema | ✨ in the WIP staging panel |
 | [File grouping](./file-grouping.md) | Splits all working changes into a plan of atomic commits | completion + JSON schema | "AI commits" in the WIP panel |
 | [PR description](./pr-description.md) | Writes the body of a pull request from a branch's range diff | streaming | ✨ in the PR composer / create form |
 | [Branch explanation](./branch-explanation.md) | Explains what a whole branch changes, in a right panel, remembered per branch | streaming | right-click a commit or a branch → *Explain branch changes (LLM)* |
@@ -114,20 +114,31 @@ from it, so declaring more than the provider serves rebuilds the silent truncati
 to prevent, and worse than before, because the app then builds an oversized prompt *deliberately*.
 
 The **Check against the model** button ([ai_model_info.rs](../../apps/desktop/src-tauri/src/services/ai_model_info.rs))
-asks Ollama two of its native endpoints. Ollama-only, on purpose: no OpenAI-compatible endpoint
-reports a context length at all.
+asks the provider what it can. Two of the three sources are Ollama's native endpoints; the third is
+not, and it is the only thing a non-Ollama provider gives us.
 
 | Source | Reports | Authority |
 | ------ | ------- | --------- |
 | `/api/show` → `<arch>.context_length` | The model's architectural ceiling | Can only prove a value **wrong**. A server can serve far less than the model supports |
 | `/api/show` → `parameters` `num_ctx` | What the Modelfile pins | Reported, never a verdict — the running server overrides it routinely |
 | `/api/ps` → `context_length` | The window the server **actually allocated** | Decides, in both directions — but only exists while the model is loaded |
+| `GET /v1/models` → `max_model_len` | What an OpenAI-compatible server says it serves | Same authority as the architectural ceiling — declared, not allocated. Non-standard, so usually absent; **omlx reports it**, and it is the only window signal outside Ollama |
 
 `/api/ps` is what closes the old gap. A server-side `OLLAMA_CONTEXT_LENGTH` used to be invisible from
 here, so the best the check could say was "plausible"; now, with the model loaded, a declared value
 can be genuinely verified — or caught being above what the server will serve, which is the failure
 that matters and was previously undetectable. Below it is reported too, without alarm: that one only
 costs coverage the model would have given for free.
+
+`max_model_len` closes a second, quieter gap — the one nobody reports as a bug because nothing breaks.
+The default `contextTokens` is 4096; a user on omlx serving 128000 has every feature reading a
+fraction of every diff, forever, with only the coverage notice hinting at it. When the check finds a
+better number than the one declared it offers a one-click **Use N tokens** button
+(`suggestedContextWindow`), preferring what the server *allocated* over what it says it *could*
+serve. It offers rather than applies: silently rewriting a value the user typed is not advice.
+
+Reading `/v1/models` needs the configured **API key** — omlx rejects it unauthenticated — which is why
+the check forwards one.
 
 > ⚠️ **`context_length` on `/api/ps` is undocumented.** Ollama's published `/api/ps` example omits
 > it; a live 0.32.3 returns it. It is parsed defensively — absent, renamed or retyped degrades to

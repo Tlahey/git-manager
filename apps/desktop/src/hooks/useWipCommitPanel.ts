@@ -8,10 +8,6 @@ import type { ProcessedFileItem } from '../components/git-graph/components/Commi
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
-/** `useAiGeneration.generate` requires a completion callback; both call sites here accumulate their
- * text from the token stream instead, so there is nothing left to do when it ends. */
-const noop = () => {}
-
 /**
  * Logic for the WIP commit panel: classic mode (a single message), stash mode, and "batch commit"
  * mode (grouping by top-level directory, with AI generation and a commit per group, restoring the
@@ -50,7 +46,7 @@ export function useWipCommitPanel(
     coverage: commitCoverage,
   } = useAiGeneration(repoPath)
 
-  const isGenerating = llmStatus === 'connecting' || llmStatus === 'streaming'
+  const isGenerating = llmStatus === 'generating'
 
   function handleToggleAmend(checked: boolean) {
     setIsAmend(checked)
@@ -112,15 +108,8 @@ export function useWipCommitPanel(
       }
 
       // 4. Call the configured AI provider
-      let accumulated = ''
-      await new Promise<void>((resolve, reject) => {
-        runLlmGenerate(
-          (token: string) => {
-            accumulated += token
-            setBatchMessages((prev) => ({ ...prev, [groupName]: accumulated }))
-          },
-          () => resolve()
-        ).catch(reject)
+      await runLlmGenerate((message: string) => {
+        setBatchMessages((prev) => ({ ...prev, [groupName]: message }))
       })
 
       // 5. Restore original staging state
@@ -244,14 +233,9 @@ export function useWipCommitPanel(
       return
     }
 
-    let accumulated = ''
     setCommitMessage('')
-    // Nothing to do on completion: the message box already holds every token as it arrived, and
-    // validation is reported by the hook itself.
-    runLlmGenerate((token: string) => {
-      accumulated += token
-      setCommitMessage(accumulated)
-    }, noop)
+    // The message arrives whole rather than token by token; validation is reported by the hook.
+    runLlmGenerate((message: string) => setCommitMessage(message))
   }
 
   async function handleCommitWip() {

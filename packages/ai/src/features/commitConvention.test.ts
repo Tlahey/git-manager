@@ -5,6 +5,8 @@ import {
   buildRecentCommitsSection,
   buildUserInstructionsSection,
   compilePattern,
+  DEFAULT_HEADER_MAX_LENGTH,
+  inferHeaderMaxLength,
   isConventionalHistory,
   parseCommitlintRules,
   validateCommitSubject,
@@ -182,5 +184,93 @@ describe('validateCommitSubject — adaptive', () => {
     expect(
       validateCommitSubject('fix: patch\n\nA long body line that exceeds limits...', ctx).valid
     ).toBe(true)
+  })
+})
+
+
+describe('inferHeaderMaxLength', () => {
+  /** `count` conventional subjects, the first `long` of them over the 72-char default. */
+  function history(count: number, long: number, longLength = 95): string[] {
+    return Array.from({ length: count }, (_, i) =>
+      i < long ? `feat(ai): ${'x'.repeat(longLength - 10)}` : `feat(ai): short one ${i}`
+    )
+  }
+
+  it('falls back to the conventional default without enough history to judge', () => {
+    expect(inferHeaderMaxLength()).toBe(DEFAULT_HEADER_MAX_LENGTH)
+    expect(inferHeaderMaxLength([])).toBe(DEFAULT_HEADER_MAX_LENGTH)
+    expect(inferHeaderMaxLength(history(4, 4))).toBe(DEFAULT_HEADER_MAX_LENGTH)
+  })
+
+  it('holds a project that keeps its subjects short to the default', () => {
+    expect(inferHeaderMaxLength(history(10, 0))).toBe(DEFAULT_HEADER_MAX_LENGTH)
+  })
+
+  it('treats one long subject as an outlier, not as permission', () => {
+    expect(inferHeaderMaxLength(history(10, 1))).toBe(DEFAULT_HEADER_MAX_LENGTH)
+  })
+
+  it('reads a habit of long subjects as the project\'s real bar', () => {
+    // git-manager's own case: no commitlint config, unmistakably conventional subjects, and a third
+    // of them past 72. Holding the model to 72 there flags every message of ordinary length.
+    expect(inferHeaderMaxLength(history(10, 3))).toBe(95)
+  })
+
+  it('never tightens below the default, however short the history runs', () => {
+    expect(inferHeaderMaxLength(Array(10).fill('fix: tiny'))).toBe(DEFAULT_HEADER_MAX_LENGTH)
+  })
+})
+
+describe('validateCommitSubject — length follows the project', () => {
+  const longHistory = [
+    'feat(ai): verify the served context window, enforce the output reserve, rewrite commit messages',
+    'feat(ai): rework provider settings around Ollama + a generic OpenAI-compatible entry',
+    'fix(graph): stop a WIP connector from grafting a dotted start onto a merge link',
+    'refactor(ai): size the commit explanation against the model, not a constant',
+    'fix(ai): size every prompt to the window, and isolate concurrent runs',
+    'feat(ai): review a diff with an LLM, before committing or opening a PR',
+  ]
+
+  it('accepts a 78-char subject in a project whose own subjects run that long', () => {
+    // The reported bug: this exact warning fired on a message the project's own history would have
+    // passed without comment.
+    const subject = `refactor(ai): ${'x'.repeat(64)}`
+    expect(subject).toHaveLength(78)
+    expect(validateCommitSubject(subject, { recentCommits: longHistory }).valid).toBe(true)
+  })
+
+  it('still enforces the default on a project that keeps its subjects short', () => {
+    const shortHistory = ['feat: one', 'fix: two', 'chore: three', 'refactor: four', 'docs: five']
+    const subject = `refactor(ai): ${'x'.repeat(64)}`
+    const problems = validateCommitSubject(subject, { recentCommits: shortHistory }).problems
+    expect(problems.map((p) => p.code)).toContain('length')
+  })
+
+  it('lets an explicit commitlint limit override what the history does', () => {
+    const convention: CommitConvention = {
+      source: '.commitlintrc.json',
+      content: JSON.stringify({ rules: { 'header-max-length': [2, 'always', 50] } }),
+    }
+    const subject = `refactor(ai): ${'x'.repeat(64)}`
+    const problems = validateCommitSubject(subject, {
+      convention,
+      recentCommits: longHistory,
+    }).problems
+    expect(problems.map((p) => p.code)).toContain('length')
+  })
+})
+
+describe('buildRecentCommitsSection — states the ceiling', () => {
+  it('tells the model the same number the validator will judge it by', () => {
+    const longHistory = Array.from({ length: 10 }, (_, i) =>
+      i < 3 ? `feat(ai): ${'x'.repeat(85)}` : `feat(ai): short ${i}`
+    )
+    const section = buildRecentCommitsSection(longHistory)
+    expect(section).toContain(`MUST NOT exceed ${inferHeaderMaxLength(longHistory)} characters`)
+  })
+
+  it('states the conventional default for a project with short subjects', () => {
+    const section = buildRecentCommitsSection(['feat: a', 'fix: b', 'chore: c', 'docs: d', 'test: e'])
+    expect(section).toContain(`MUST NOT exceed ${DEFAULT_HEADER_MAX_LENGTH} characters`)
   })
 })

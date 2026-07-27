@@ -181,21 +181,19 @@ describe('useWipCommitPanel — classic commit', () => {
     expect(result.current.isCommitting).toBe(false)
   })
 
-  it('handleGenerateCommitMessage streams tokens into commitMessage', () => {
-    runLlmGenerate.mockImplementation(
-      async (onToken: (t: string) => void, onDone: (full: string) => void) => {
-        onToken('Hello ')
-        onToken('world')
-        onDone('Hello world')
-      }
-    )
+  it('handleGenerateCommitMessage writes the finished message into commitMessage', () => {
+    // One callback, one whole message: the feature answers with grammar-constrained JSON now, so
+    // there is no token stream to accumulate (see COMMIT_MESSAGE_SCHEMA).
+    runLlmGenerate.mockImplementation(async (onMessage: (m: string) => void) => {
+      onMessage('Hello world')
+    })
     const { result } = renderHook(() => useWipCommitPanel('/repo', status(), [], t))
     act(() => result.current.handleGenerateCommitMessage())
     expect(result.current.commitMessage).toBe('Hello world')
   })
 
   it('handleGenerateCommitMessage cancels an in-flight generation instead of starting a new one', () => {
-    llmStatus.current = 'streaming'
+    llmStatus.current = 'generating'
     const { result } = renderHook(() => useWipCommitPanel('/repo', status(), [], t))
     act(() => result.current.handleGenerateCommitMessage())
     expect(cancelLlmGenerate).toHaveBeenCalledOnce()
@@ -229,14 +227,9 @@ describe('useWipCommitPanel — batch mode: generateMessageForBatch', () => {
     mocked.apiUnstageAll.mockResolvedValue(undefined)
     mocked.apiStageFile.mockResolvedValue(undefined)
     mocked.apiUnstageFile.mockResolvedValue(undefined)
-    runLlmGenerate.mockImplementation(
-      async (onToken: (t: string) => void, onDone: (full: string) => void) => {
-        // batchMessages is driven exclusively by the running onToken accumulation; onDone only
-        // signals completion. The two agree here to reflect realistic streaming.
-        onToken('generated message')
-        onDone('generated message')
-      }
-    )
+    runLlmGenerate.mockImplementation(async (onMessage: (m: string) => void) => {
+      onMessage('generated message')
+    })
     fetchQuery.mockResolvedValue(status({ unstaged: [], untracked: [] }))
 
     const files = [
@@ -258,9 +251,7 @@ describe('useWipCommitPanel — batch mode: generateMessageForBatch', () => {
   it('restores originally-staged files still present after generation', async () => {
     mocked.apiUnstageAll.mockResolvedValue(undefined)
     mocked.apiStageFile.mockResolvedValue(undefined)
-    runLlmGenerate.mockImplementation(async (_onToken: unknown, onDone: (full: string) => void) =>
-      onDone('msg')
-    )
+    runLlmGenerate.mockImplementation(async (onMessage: (m: string) => void) => onMessage('msg'))
     fetchQuery.mockResolvedValue(
       status({ unstaged: [{ path: 'other.ts', status: 'modified' } as never], untracked: [] })
     )
@@ -341,18 +332,12 @@ describe('useWipCommitPanel — batch mode: commitBatch', () => {
 describe('useWipCommitPanel — batch "all" sequences', () => {
   const twoGroups = [file('src/a.ts'), file('lib/b.ts')]
 
-  /**
-   * Drives `runLlmGenerate` the way a real generation does: the message box is filled from the
-   * *token* callback, and `onDone` only signals completion. A mock that called `onDone` alone would
-   * leave every group showing its "generating" placeholder.
-   */
+  /** Drives `runLlmGenerate` the way a real generation does: one callback, carrying the whole
+   * message, which is what replaces the group's "generating" placeholder. */
   function generatesMessage(text = 'feat: generated') {
-    runLlmGenerate.mockImplementation(
-      async (onToken: (t: string) => void, onDone: (full: string) => void) => {
-        onToken(text)
-        onDone(text)
-      }
-    )
+    runLlmGenerate.mockImplementation(async (onMessage: (m: string) => void) => {
+      onMessage(text)
+    })
   }
 
   it('generates a message for every group, one after another', async () => {
@@ -375,16 +360,13 @@ describe('useWipCommitPanel — batch "all" sequences', () => {
     // only its own group, so an overlapping run would be reading the other's staging.
     let inFlight = 0
     let overlapped = false
-    runLlmGenerate.mockImplementation(
-      async (onToken: (t: string) => void, onDone: (full: string) => void) => {
-        inFlight += 1
-        if (inFlight > 1) overlapped = true
-        await Promise.resolve()
-        inFlight -= 1
-        onToken('feat: x')
-        onDone('feat: x')
-      }
-    )
+    runLlmGenerate.mockImplementation(async (onMessage: (m: string) => void) => {
+      inFlight += 1
+      if (inFlight > 1) overlapped = true
+      await Promise.resolve()
+      inFlight -= 1
+      onMessage('feat: x')
+    })
     const { result } = renderHook(() => useWipCommitPanel('/repo', status(), twoGroups, t))
 
     await act(async () => {
@@ -398,14 +380,11 @@ describe('useWipCommitPanel — batch "all" sequences', () => {
     // A run can take a minute; discarding the messages already produced because the last group
     // failed would be the wrong trade.
     let call = 0
-    runLlmGenerate.mockImplementation(
-      async (onToken: (t: string) => void, onDone: (full: string) => void) => {
-        call += 1
-        if (call === 1) throw new Error('provider down')
-        onToken('feat: second')
-        onDone('feat: second')
-      }
-    )
+    runLlmGenerate.mockImplementation(async (onMessage: (m: string) => void) => {
+      call += 1
+      if (call === 1) throw new Error('provider down')
+      onMessage('feat: second')
+    })
     const { result } = renderHook(() => useWipCommitPanel('/repo', status(), twoGroups, t))
 
     await act(async () => {

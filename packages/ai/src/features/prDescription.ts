@@ -11,9 +11,14 @@ import {
 } from './diffCoverage'
 import { estimateTokens } from '../promptSize'
 
-/** The instruction (system prompt) for PR-description generation. Streaming, freeform markdown —
- * like {@link commitMessageFeature} rather than a structured/JSON feature, because a PR body is one
- * prose blob the user then edits, not multi-field data worth constraining with a schema.
+/** The instruction (system prompt) for PR-description generation. Streaming, freeform markdown,
+ * rather than a structured/JSON feature: a PR body is one prose blob the user then edits, not
+ * multi-field data worth constraining with a schema.
+ *
+ * The commit message went the other way — see `COMMIT_MESSAGE_SCHEMA` — because a schema is the only
+ * reliable way to stop a reasoning model deliberating into a one-line answer. The trade is different
+ * here: this answer is long enough that watching it arrive is the point, and long enough that the
+ * output cap it is sized against is a real constraint rather than one nothing approaches.
  *
  * The rule against remarking on coverage is stricter here than anywhere else, and for a reason no
  * other feature has: **this output gets published**. Every explanation feature writes into a panel

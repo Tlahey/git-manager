@@ -1,5 +1,5 @@
-import type { AiContext, AiContextFile } from '../config'
-import type { StreamingFeature } from '../runtime'
+import type { AiContext, AiContextFile, JsonSchema } from '../config'
+import type { CompletionFeature } from '../runtime'
 import { budgetDiff } from './diffBudget'
 import {
   assessDiffCoverage,
@@ -26,18 +26,77 @@ import { estimateTokens } from '../promptSize'
  * cover them. */
 export const COMMIT_MESSAGE_INSTRUCTION = `You are an expert software engineer writing a single Git commit message for a set of STAGED changes, following the Conventional Commits specification.
 
-Output rules (STRICT):
-- Return ONLY the commit message — no preamble, no explanation, no code fences, no surrounding quotes.
-- Subject line: <type>(<scope>): <description>
+Answer with a JSON object carrying two fields, "subject" and "body".
+
+Rules (STRICT):
+- "subject" is the subject line, normally <type>(<scope>): <description>
   - <type> is chosen by intent: feat (new capability), fix (bug fix), refactor (behavior-preserving restructure), perf, docs, style, test, build, ci, chore.
   - <scope> is optional, lower-case, derived from the touched area (a module or directory); omit it when the change spans unrelated areas.
-  - <description> is in the imperative mood ("add", "fix", "remove" — never "added"/"adds"), starts lower-case, has no trailing period, and is at most 72 characters.
-- Add a body ONLY when the change needs rationale the subject cannot convey. Separate it with a blank line, wrap around 72 columns, and explain the "why", not the "what".
+  - <description> is in the imperative mood ("add", "fix", "remove" — never "added"/"adds"), starts lower-case, has no trailing period, and AIMS FOR 50 characters. Count the characters before answering and shorten the wording rather than run past the ceiling — 72 unless the prompt states a different one for this project.
+  - When the prompt shows recent subjects that do NOT follow this format, match those instead — the project's own convention wins.
+- "body" carries rationale the subject cannot convey, wrapped around 72 columns, explaining the "why" and not the "what". Use an EMPTY STRING when the change needs none; most changes do not. When you do write one, keep it under three sentences and explain WHY the change was made — never restate what the diff already shows.
+- Put NOTHING but the message in those two fields — no preamble, no commentary about the diff, no code fences, no surrounding quotes, and no reasoning about how you chose them.
 - The prompt may list files under "NOT INCLUDED" whose diff you were not shown. They are part of this commit: let their paths inform the type and scope, and never pick a scope that describes only the files you could read.
 - This message will be COMMITTED to the repository's history. NEVER mention truncation, budgets, or what you could not read — not in the subject, not in the body, not in a parenthesis.
 - A diff shows only a few lines around each change. NEVER state that something is missing, absent, or not done merely because you cannot see it — a guard, a call site, or a test may sit just outside what you were shown. Absence of evidence is not evidence of absence.
 
 Types: feat, fix, refactor, perf, docs, style, test, build, ci, chore.`
+
+/**
+ * JSON Schema constraining the answer to a `{ subject, body }` object.
+ *
+ * The schema is not here for the typing — a commit message is one string, and this feature streamed
+ * it as prose for most of its life. It is here because **grammar-constrained decoding is the only
+ * reliable way to stop a reasoning model from thinking into the answer**.
+ *
+ * The failure it fixes, measured against a local Qwen 35B-A3B on omlx: asked in prose, the model
+ * spent 2255 tokens deliberating before writing anything. The `max_tokens` cap
+ * ({@link RESERVED_OUTPUT_TOKENS}, 600) cut that off mid-thought, so the server never saw the end of
+ * the reasoning block, gave up separating it, and flushed 2222 characters of "Thinking Process: 1.
+ * **Analyze the Request**…" into `content` — straight into the user's commit box. Under this schema
+ * the same request answers in 37-52 tokens with no reasoning phase at all, because the grammar
+ * obliges the very first token to be `{`.
+ *
+ * That also makes the output budget a non-issue rather than a number to tune: an answer that never
+ * approaches the cap cannot be truncated by it. Asking the provider not to think is not an
+ * alternative — `enable_thinking: false` is ignored by some servers (LM Studio #1990) and Qwen 3.5+
+ * dropped the `/no_think` switch, so suppression cannot be relied on across the presets we ship.
+ *
+ * `body` is a plain string rather than a nullable one: `type: ["string", "null"]` is refused by
+ * several strict-mode implementations, and "" already means "no body".
+ *
+ * **`subject` deliberately carries no `maxLength`, and this is not an oversight.** The 72-character
+ * limit is real and the validator reports it, so constraining it here looks obvious. It was measured
+ * instead: omlx *does* enforce `maxLength: 72`, by forbidding any token that would cross the
+ * boundary — which means the model does not shorten its wording, it simply gets cut off. Six samples
+ * produced `…to grammar-constrained JS`, `…with JSON schema, d`, `…completion, not a`. A subject
+ * mangled mid-word is committed to history exactly as permanently as an over-long one, and unlike an
+ * over-long one it is unreadable. The limit is therefore steered from the instruction (which asks
+ * for ~50 characters, so the natural overshoot still lands under the ceiling) and reported by
+ * {@link validateCommitSubject} when the model misses — a warning the user can act on beats a
+ * guarantee that damages the answer.
+ */
+export const COMMIT_MESSAGE_SCHEMA: JsonSchema = {
+  name: 'commit_message',
+  schema: {
+    type: 'object',
+    properties: {
+      subject: {
+        type: 'string',
+        description:
+          'The commit subject line. Aim for 50 characters and never exceed 72. No trailing newline or period.',
+      },
+      body: {
+        type: 'string',
+        description:
+          'Rationale explaining WHY the change was made, under three sentences. Empty string when the subject says enough.',
+      },
+    },
+    required: ['subject', 'body'],
+    additionalProperties: false,
+  },
+  strict: true,
+}
 
 /**
  * Default character budget, kept for {@link truncateDiff}'s own callers.
@@ -139,11 +198,73 @@ export function assessCommitMessageCoverage(input: CommitMessageInput): DiffCove
   })
 }
 
-/** Streaming feature: turn the staged diff into a Conventional Commits message, token by token. */
-export const commitMessageFeature: StreamingFeature<CommitMessageInput> = {
+/** The model's answer, before it is flattened into the one string git wants. */
+export interface CommitMessageDraft {
+  /** The subject line, always non-empty (a draft without one is rejected by {@link parseCommitMessage}). */
+  subject: string
+  /** Rationale, or `''` when the subject says enough. */
+  body: string
+}
+
+/** Collapses a draft into the `subject\n\nbody` form git expects, dropping the separator when there
+ * is no body. The commit box receives this string, so it must be exactly what gets committed. */
+export function formatCommitMessage(draft: CommitMessageDraft): string {
+  const subject = draft.subject.trim()
+  const body = draft.body.trim()
+  return body ? `${subject}\n\n${body}` : subject
+}
+
+/**
+ * Parses the model's response into a {@link CommitMessageDraft}.
+ *
+ * Tolerates prose or a ```json fence around the object, like the other structured features: the
+ * schema is a request, not a guarantee, and a provider that ignores `response_format` still usually
+ * returns the object somewhere in its text.
+ *
+ * The fallback matters more here than elsewhere. When there is no JSON at all, an older provider
+ * answering this feature's prompt in prose returned a perfectly good commit message — so rather than
+ * fail, the raw text is taken as the subject, which is what this feature did for its whole streaming
+ * life. What is *not* tolerated is an empty answer: silently committing `''` is worse than an error.
+ */
+export function parseCommitMessage(raw: string): CommitMessageDraft {
+  const start = raw.indexOf('{')
+  const end = raw.lastIndexOf('}')
+
+  if (start !== -1 && end > start) {
+    try {
+      const parsed: unknown = JSON.parse(raw.slice(start, end + 1))
+      if (typeof parsed === 'object' && parsed !== null) {
+        const record = parsed as Record<string, unknown>
+        const subject = typeof record.subject === 'string' ? record.subject.trim() : ''
+        const body = typeof record.body === 'string' ? record.body.trim() : ''
+        if (subject) return { subject, body }
+      }
+    } catch {
+      // Falls through to the prose reading below — a malformed object is not worse than no object.
+    }
+  }
+
+  const prose = raw.trim()
+  if (!prose) throw new Error('AI commit message response was empty')
+
+  const [subject, ...rest] = prose.split('\n')
+  return { subject: subject.trim(), body: rest.join('\n').trim() }
+}
+
+/**
+ * Completion feature: turn the staged diff into a Conventional Commits message as structured JSON.
+ *
+ * It was a streaming feature until a reasoning model made the streaming untenable — see
+ * {@link COMMIT_MESSAGE_SCHEMA} for the measurements. Losing the token-by-token fill of the commit
+ * box costs little in practice, because the same request that took 26 s of visible deliberation
+ * returns in one or two: there is no longer a wait long enough to need filling.
+ */
+export const commitMessageFeature: CompletionFeature<CommitMessageInput, CommitMessageDraft> = {
   id: 'commit-message',
-  kind: 'streaming',
+  kind: 'completion',
   instruction: COMMIT_MESSAGE_INSTRUCTION,
   temperature: 0.3,
+  schema: COMMIT_MESSAGE_SCHEMA,
   buildPrompt: buildCommitUserPrompt,
+  parse: parseCommitMessage,
 }

@@ -61,9 +61,10 @@ export async function apiGetAiActivity(path: string, sinceHours: number): Promis
  * `services/ai_model_info.rs` for what this can and cannot prove. */
 export async function apiGetModelContextLimits(
   url: string,
-  model: string
+  model: string,
+  apiKey?: string
 ): Promise<ModelContextLimits> {
-  return getModelContextLimits(url, model)
+  return getModelContextLimits(url, model, apiKey)
 }
 
 /** Cancels one streaming generation by the id it was started with — see {@link tauriAiTransport}. */
@@ -119,7 +120,9 @@ function trackedTransport(featureId: string): AiTransport {
 /** One service per AI feature, each assembled from its package-owned descriptor (instruction +
  * temperature + prompt) and the shared transport. Adding a future feature (report generation, git
  * command explanation, …) is: define it in `@git-manager/ai`, then add one line here. */
-export const commitMessageService = createStreamingService(
+/** A completion rather than a stream, because the answer is grammar-constrained JSON — which is
+ * what keeps a reasoning model's deliberation out of the commit box. See `COMMIT_MESSAGE_SCHEMA`. */
+export const commitMessageService = createCompletionService(
   commitMessageFeature,
   trackedTransport(commitMessageFeature.id)
 )

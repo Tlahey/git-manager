@@ -15,11 +15,13 @@ function reportsLimits(limits: {
   architectureMax?: number | null
   modelfileNumCtx?: number | null
   allocatedContext?: number | null
+  servedMaxModelLen?: number | null
 }) {
   mockedLimits.mockResolvedValue({
     architectureMax: null,
     modelfileNumCtx: null,
     allocatedContext: null,
+    servedMaxModelLen: null,
     ...limits,
   })
 }
@@ -44,7 +46,7 @@ describe('AiContextWindowCheck', () => {
     reportsLimits({ architectureMax: 32768 })
     render(<AiContextWindowCheck />)
     await clickCheck()
-    expect(mockedLimits).toHaveBeenCalledWith(expect.any(String), 'llama3.2')
+    expect(mockedLimits).toHaveBeenCalledWith(expect.any(String), 'llama3.2', undefined)
   })
 
   it("reports the model's ceiling, and calls an unloaded model's value plausible — not verified", async () => {
@@ -151,5 +153,53 @@ describe('AiContextWindowCheck', () => {
     }))
     render(<AiContextWindowCheck />)
     expect(screen.getByTestId('ai-context-check-button')).toBeDisabled()
+  })
+
+  it('sends the API key, without which a server like omlx reports no window at all', async () => {
+    useSettingsStore.setState((st) => ({
+      settings: { ...st.settings, ai: { ...st.settings.ai, apiKey: 'sk-local' } },
+    }))
+    reportsLimits({ servedMaxModelLen: 128000 })
+    render(<AiContextWindowCheck />)
+    await clickCheck()
+    expect(mockedLimits).toHaveBeenCalledWith(expect.any(String), 'llama3.2', 'sk-local')
+  })
+
+  it('reports a window an OpenAI-compatible provider declares, where Ollama tells us nothing', async () => {
+    reportsLimits({ servedMaxModelLen: 128000 })
+    render(<AiContextWindowCheck />)
+    await clickCheck()
+    const result = await screen.findByTestId('ai-context-check-result')
+    expect(result).toHaveTextContent('serves up to 128000 tokens')
+    // The default 4096 in front of a 128k model: nothing is broken, which is why nothing complained.
+    expect(result).toHaveTextContent('far below')
+  })
+
+  it('offers to apply the reported window in one click', async () => {
+    reportsLimits({ servedMaxModelLen: 128000 })
+    render(<AiContextWindowCheck />)
+    await clickCheck()
+
+    const apply = await screen.findByTestId('ai-context-apply-button')
+    expect(apply).toHaveTextContent('Use 128000 tokens')
+    await userEvent.setup().click(apply)
+
+    expect(useSettingsStore.getState().settings.ai.contextTokens).toBe(128000)
+  })
+
+  it('offers nothing to apply when the declared window is already right', async () => {
+    setContextTokens(128000)
+    reportsLimits({ servedMaxModelLen: 128000 })
+    render(<AiContextWindowCheck />)
+    await clickCheck()
+    await screen.findByTestId('ai-context-check-result')
+    expect(screen.queryByTestId('ai-context-apply-button')).not.toBeInTheDocument()
+  })
+
+  it('prefers the allocated window over the declared ceiling when offering one', async () => {
+    reportsLimits({ servedMaxModelLen: 128000, allocatedContext: 40960 })
+    render(<AiContextWindowCheck />)
+    await clickCheck()
+    expect(await screen.findByTestId('ai-context-apply-button')).toHaveTextContent('Use 40960')
   })
 })

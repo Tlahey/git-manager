@@ -3,6 +3,7 @@ import {
   BRANCH_EXPLANATION_INSTRUCTION,
   CHANGE_EXPLANATION_INSTRUCTION,
   COMMIT_MESSAGE_INSTRUCTION,
+  COMMIT_MESSAGE_SCHEMA,
   FILE_GROUPING_SCHEMA,
   type AiCheckConfig,
   type AiConnectionConfig,
@@ -70,16 +71,19 @@ describe('ai.api pass-throughs', () => {
 })
 
 describe('feature services', () => {
-  it('commitMessageService resolves preset→protocol + feature instruction, streams the prompt', async () => {
-    mocked.aiGenerateStream.mockResolvedValue(undefined)
-    await api.commitMessageService.run(connection, { context }, 'req-1')
+  it('commitMessageService resolves preset→protocol + feature instruction, completes under the schema', async () => {
+    // A completion rather than a stream: the JSON grammar is what stops a reasoning model from
+    // deliberating into the commit box (see COMMIT_MESSAGE_SCHEMA).
+    mocked.aiComplete.mockResolvedValue('{"subject":"feat: a","body":""}')
+    const draft = await api.commitMessageService.run(connection, { context })
 
-    expect(mocked.aiGenerateStream).toHaveBeenCalledWith(
+    expect(mocked.aiComplete).toHaveBeenCalledWith(
       expect.objectContaining({ protocol: 'openai-compatible', temperature: 0.3 }),
       COMMIT_MESSAGE_INSTRUCTION,
       expect.stringContaining('--- DIFF ---'),
-      'req-1'
+      COMMIT_MESSAGE_SCHEMA
     )
+    expect(draft).toEqual({ subject: 'feat: a', body: '' })
   })
 
   it('fileGroupingService completes with the JSON schema then parses into typed commits', async () => {

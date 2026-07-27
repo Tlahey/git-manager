@@ -14,6 +14,11 @@ import type { ModelContextLimits } from '../../../lib/tauri'
  *   wrong, never right: a server can serve far less than the model supports.
  * - `modelfileNumCtx` (`/api/show`) is reported but never a verdict — the running server overrides
  *   it routinely, which is exactly what `allocatedContext` now shows.
+ * - `servedMaxModelLen` (`GET /v1/models`) is what an OpenAI-compatible server says it serves for
+ *   the model. Same authority as `architectureMax` — a declared ceiling, not proof of allocation —
+ *   but it is the only signal available on a non-Ollama provider, and it is the one that catches the
+ *   case this whole check exists for in reverse: a **default 4096 against a server offering 128000**,
+ *   where nothing is broken and most of the diff is silently going unread.
  */
 export type ContextWindowVerdict =
   /** Declared above the model's architectural ceiling — cannot be right under any server config. */
@@ -24,6 +29,9 @@ export type ContextWindowVerdict =
   | 'below-allocated'
   /** Declared exactly what the server allocated. The only state that is genuinely verified. */
   | 'matches-allocated'
+  /** Declared well below what the server reports it serves: nothing breaks, but most of a large diff
+   * goes unread for no reason. The default 4096 on a 128k server lands here. */
+  | 'below-served'
   /** Nothing contradicts it, but nothing confirms it either — the model was not loaded. */
   | 'plausible'
 
@@ -39,10 +47,37 @@ export function contextWindowVerdict(
   limits: ModelContextLimits
 ): ContextWindowVerdict {
   if (limits.architectureMax !== null && declared > limits.architectureMax) return 'above-ceiling'
-  if (limits.allocatedContext === null) return 'plausible'
-  if (declared > limits.allocatedContext) return 'above-allocated'
-  if (declared < limits.allocatedContext) return 'below-allocated'
-  return 'matches-allocated'
+  if (limits.servedMaxModelLen !== null && declared > limits.servedMaxModelLen) {
+    return 'above-ceiling'
+  }
+  if (limits.allocatedContext !== null) {
+    if (declared > limits.allocatedContext) return 'above-allocated'
+    if (declared < limits.allocatedContext) return 'below-allocated'
+    return 'matches-allocated'
+  }
+  // Only reached on a provider with no `/api/ps` — i.e. not Ollama — which is exactly where
+  // `servedMaxModelLen` is the only thing we know.
+  if (limits.servedMaxModelLen !== null && declared < limits.servedMaxModelLen) {
+    return 'below-served'
+  }
+  return 'plausible'
+}
+
+/**
+ * The window the check would set if the user accepted its advice, or `null` when it has no better
+ * value to offer than the one already declared.
+ *
+ * Allocation beats a declared ceiling: `allocatedContext` is what the prompt is really measured
+ * against, while `servedMaxModelLen` is the most the server would serve. Offering the latter is
+ * still right on a provider that reports nothing else — it is the number the user would have had to
+ * look up by hand, which is how a default 4096 survives in front of a 128k model.
+ */
+export function suggestedContextWindow(
+  declared: number,
+  limits: ModelContextLimits
+): number | null {
+  const best = limits.allocatedContext ?? limits.servedMaxModelLen
+  return best !== null && best !== declared ? best : null
 }
 
 /** The verdicts that mean the setting is actively harmful, rather than merely unconfirmed. */

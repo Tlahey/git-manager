@@ -78,8 +78,9 @@ pub async fn check_ai_status(config: AiCheckConfig) -> Result<AiProviderStatus, 
 pub async fn get_model_context_limits(
     url: String,
     model: String,
+    api_key: Option<String>,
 ) -> Result<ModelContextLimits, String> {
-    fetch_model_context_limits(&url, &model)
+    fetch_model_context_limits(&url, &model, api_key.as_deref())
         .await
         .map_err(Into::into)
 }

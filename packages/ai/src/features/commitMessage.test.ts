@@ -4,8 +4,11 @@ import {
   assessCommitMessageCoverage,
   buildCommitUserPrompt,
   COMMIT_MESSAGE_INSTRUCTION,
+  COMMIT_MESSAGE_SCHEMA,
   commitMessageFeature,
   detectScope,
+  formatCommitMessage,
+  parseCommitMessage,
   truncateDiff,
 } from './commitMessage'
 import { estimateTokens } from '../promptSize'
@@ -225,5 +228,63 @@ describe('commitMessageFeature', () => {
     expect(commitMessageFeature.instruction).toContain(
       'Absence of evidence is not evidence of absence'
     )
+  })
+
+  it('constrains the answer to JSON, which is what keeps a reasoning model out of the commit box', () => {
+    // Not a typing preference. A prose answer lets a reasoning model deliberate first; the
+    // `max_tokens` cap cut that deliberation off mid-thought, and the provider — never having seen
+    // the end of the reasoning block — flushed the partial thinking into `content`, which streamed
+    // into the user's message input. A grammar forces the first token to be `{`.
+    expect(commitMessageFeature.kind).toBe('completion')
+    expect(commitMessageFeature.schema).toBe(COMMIT_MESSAGE_SCHEMA)
+  })
+})
+
+describe('parseCommitMessage', () => {
+  it('reads the subject and body out of the structured answer', () => {
+    expect(parseCommitMessage('{"subject":"feat: add x","body":"Because y."}')).toEqual({
+      subject: 'feat: add x',
+      body: 'Because y.',
+    })
+  })
+
+  it('treats an empty body as no body', () => {
+    expect(parseCommitMessage('{"subject":"fix: y","body":""}').body).toBe('')
+  })
+
+  it('digs the object out of a ```json fence a provider wrapped it in', () => {
+    const raw = '```json\n{"subject":"docs: update readme","body":""}\n```'
+    expect(parseCommitMessage(raw).subject).toBe('docs: update readme')
+  })
+
+  it('falls back to prose when the provider ignored response_format', () => {
+    // This feature answered in prose for its whole streaming life; a provider that does not honour
+    // the schema still returns a perfectly usable message.
+    expect(parseCommitMessage('chore: bump deps')).toEqual({
+      subject: 'chore: bump deps',
+      body: '',
+    })
+  })
+
+  it('splits a prose answer into subject and body at the first line', () => {
+    expect(parseCommitMessage('feat: add x\n\nBecause y.')).toEqual({
+      subject: 'feat: add x',
+      body: 'Because y.',
+    })
+  })
+
+  it('rejects an empty answer rather than committing nothing', () => {
+    expect(() => parseCommitMessage('   ')).toThrow()
+  })
+})
+
+describe('formatCommitMessage', () => {
+  it('separates a body from the subject with a blank line', () => {
+    expect(formatCommitMessage({ subject: 'feat: a', body: 'Why.' })).toBe('feat: a\n\nWhy.')
+  })
+
+  it('emits the subject alone when there is no body', () => {
+    expect(formatCommitMessage({ subject: 'feat: a', body: '' })).toBe('feat: a')
+    expect(formatCommitMessage({ subject: 'feat: a', body: '   ' })).toBe('feat: a')
   })
 })
