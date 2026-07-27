@@ -15,31 +15,61 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const RETENTION_DAYS: i64 = 7;
-const DIR_NAME: &str = "activity-logs";
-const FILE_PREFIX: &str = "activity-";
 const FILE_SUFFIX: &str = ".jsonl";
 
-fn logs_dir() -> Option<PathBuf> {
+/// Which rotating log a batch belongs to.
+///
+/// Two directories rather than one file, because the two logs differ in every dimension that
+/// matters: an activity entry is a few hundred bytes of already-truncated IPC arguments and there
+/// are thousands a day, while an AI transcript is kilobytes of prompt and answer and there are
+/// dozens. Merging them would bury the signal in whichever one you came looking for, and put the
+/// user's source code into the log they routinely export for unrelated debugging.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LogKind {
+    /// Every IPC round-trip, redacted and truncated frontend-side.
+    Activity,
+    /// One AI call: its prompts and the model's answer, in full.
+    AiTranscript,
+}
+
+impl LogKind {
+    fn dir_name(self) -> &'static str {
+        match self {
+            LogKind::Activity => "activity-logs",
+            LogKind::AiTranscript => "ai-logs",
+        }
+    }
+
+    fn file_prefix(self) -> &'static str {
+        match self {
+            LogKind::Activity => "activity-",
+            LogKind::AiTranscript => "ai-",
+        }
+    }
+}
+
+fn logs_dir(kind: LogKind) -> Option<PathBuf> {
     let home = std::env::var("HOME").ok().map(PathBuf::from).or_else(|| {
         #[allow(deprecated)]
         std::env::home_dir()
     })?;
-    Some(home.join(".git-manager").join(DIR_NAME))
+    Some(home.join(".git-manager").join(kind.dir_name()))
 }
 
 /// Appends a batch of activity entries to today's log file, then prunes files past the retention
 /// window. Returns `Ok(())` for an empty batch without touching the disk.
-pub fn append(entries: &[serde_json::Value]) -> Result<(), AppError> {
+pub fn append(kind: LogKind, entries: &[serde_json::Value]) -> Result<(), AppError> {
     if entries.is_empty() {
         return Ok(());
     }
 
-    let dir =
-        logs_dir().ok_or_else(|| AppError::Unknown("could not resolve home directory".into()))?;
+    let dir = logs_dir(kind)
+        .ok_or_else(|| AppError::Unknown("could not resolve home directory".into()))?;
     fs::create_dir_all(&dir)?;
 
     let today = Local::now().date_naive();
-    let path = dir.join(format!("{FILE_PREFIX}{today}{FILE_SUFFIX}"));
+    let prefix = kind.file_prefix();
+    let path = dir.join(format!("{prefix}{today}{FILE_SUFFIX}"));
 
     let mut file = OpenOptions::new().create(true).append(true).open(&path)?;
     let mut buf = String::new();
@@ -50,15 +80,15 @@ pub fn append(entries: &[serde_json::Value]) -> Result<(), AppError> {
     }
     file.write_all(buf.as_bytes())?;
 
-    prune_old(&dir, today);
+    prune_old(&dir, today, kind.file_prefix());
     Ok(())
 }
 
 /// Reveals the activity-logs directory in the macOS Finder, creating it first if needed so the
 /// reveal always lands somewhere real (a brand-new install may not have written a log yet).
-pub fn open_dir() -> Result<(), AppError> {
-    let dir =
-        logs_dir().ok_or_else(|| AppError::Unknown("could not resolve home directory".into()))?;
+pub fn open_dir(kind: LogKind) -> Result<(), AppError> {
+    let dir = logs_dir(kind)
+        .ok_or_else(|| AppError::Unknown("could not resolve home directory".into()))?;
     fs::create_dir_all(&dir)?;
     Command::new("open").arg(&dir).spawn()?;
     Ok(())
@@ -66,13 +96,13 @@ pub fn open_dir() -> Result<(), AppError> {
 
 /// Removes any `activity-YYYY-MM-DD.jsonl` file whose date is older than the retention window.
 /// Best-effort: unreadable directory entries and failed deletes are ignored.
-fn prune_old(dir: &Path, today: NaiveDate) {
+fn prune_old(dir: &Path, today: NaiveDate, prefix: &str) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };
     for entry in entries.flatten() {
         let path = entry.path();
-        let Some(date) = file_date(&path) else {
+        let Some(date) = file_date(&path, prefix) else {
             continue;
         };
         if is_expired(date, today, RETENTION_DAYS) {
@@ -82,9 +112,9 @@ fn prune_old(dir: &Path, today: NaiveDate) {
 }
 
 /// Parses the calendar date out of an `activity-YYYY-MM-DD.jsonl` path, or `None` for anything else.
-fn file_date(path: &Path) -> Option<NaiveDate> {
+fn file_date(path: &Path, prefix: &str) -> Option<NaiveDate> {
     let name = path.file_name().and_then(|n| n.to_str())?;
-    let date_str = name.strip_prefix(FILE_PREFIX)?.strip_suffix(FILE_SUFFIX)?;
+    let date_str = name.strip_prefix(prefix)?.strip_suffix(FILE_SUFFIX)?;
     NaiveDate::parse_from_str(date_str, "%Y-%m-%d").ok()
 }
 
@@ -118,10 +148,10 @@ mod tests {
     #[test]
     fn parses_only_well_formed_log_filenames() {
         assert_eq!(
-            file_date(Path::new("/x/activity-2026-07-22.jsonl")),
+            file_date(Path::new("/x/activity-2026-07-22.jsonl"), "activity-"),
             NaiveDate::from_ymd_opt(2026, 7, 22)
         );
-        assert!(file_date(Path::new("/x/activity-nope.jsonl")).is_none());
-        assert!(file_date(Path::new("/x/other-2026-07-22.jsonl")).is_none());
+        assert!(file_date(Path::new("/x/activity-nope.jsonl"), "activity-").is_none());
+        assert!(file_date(Path::new("/x/other-2026-07-22.jsonl"), "activity-").is_none());
     }
 }
