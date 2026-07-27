@@ -8,7 +8,7 @@ grammar-constrained JSON.
 
 | | |
 | --- | --- |
-| **Descriptor** | [`commitMessageFeature`](../../packages/ai/src/features/commitMessage.ts) |
+| **Descriptor** | [`commitMessageFeature`](../../packages/ai/src/features/commitMessage.ts), or [`summaryCommitMessageFeature`](../../packages/ai/src/features/summaryCommitMessage.ts) above 12 staged files |
 | **Kind** | completion + JSON schema (`COMMIT_MESSAGE_SCHEMA` → `{ subject, body }`) |
 | **Temperature** | 0.3 — the lowest of the prose features; a commit subject is a near-mechanical summary |
 | **Context scope** | `staged` (index vs HEAD) |
@@ -185,6 +185,38 @@ ceiling. An explicit commitlint `header-max-length` still wins over both. Crucia
 number goes into the prompt** (`buildRecentCommitsSection` states it outright), so the model is no
 longer told one limit and judged by another. On git-manager that moved the observed warning rate
 from 7-in-12 to **0-in-8**.
+
+---
+
+## Two-phase, past 12 staged files
+
+Above `SUMMARY_FILE_THRESHOLD` the message is written from **per-file summaries** rather than from a
+budgeted diff — [`composeCommitMessageFromSummaries`](../../packages/ai/src/features/composeCommitMessage.ts)
+drives [`fileSummaryFeature`](../../packages/ai/src/features/fileSummary.ts) once per staged file,
+then [`summaryCommitMessageFeature`](../../packages/ai/src/features/summaryCommitMessage.ts) once
+over the results.
+
+This feature's version of the truncation problem is the one that lasts. Given a staged change too
+large for the window, the single prompt read whichever files sorted first and wrote a subject about
+*those* — so a change that also rewrote the backend got committed as `fix(ui): …`, permanently, in
+the repository's history, under the user's name, looking deliberate. The instruction told it to
+scope the subject over what it had not read, which is asking a model to describe something it was
+never shown.
+
+The map phase is shared with the commit planner ([`summarizeFiles`](../../packages/ai/src/features/summarizeFiles.ts)),
+including its progress and cancellation contract; the panel shows a per-file count under the message
+box, because one call per file runs for a while and the Stop button alone does not say what it is
+waiting on. Closing or stopping cancels at the next call boundary — the in-flight call still
+completes, since the completion transport takes no request id.
+
+Unlike the commit *plan*, the answer's length is not a property of the question: one message is one
+message whether it covers 12 files or 200, so the reduce call keeps the ordinary prose reserve and
+is cheap whatever the changeset size. All the cost is in the map phase, which is why the threshold
+matters — this is the app's most-used AI button, and turning a two-second action into a two-minute
+one for a change that already fitted would be a regression, not an improvement.
+
+Diff coverage is not reported on this path: it measures how much of the diff the *single* prompt
+could carry, and here every file is read whole in its own prompt.
 
 ---
 

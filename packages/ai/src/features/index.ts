@@ -38,12 +38,22 @@ export {
 } from './summaryGrouping'
 export type { SummaryGroupingInput } from './summaryGrouping'
 export {
-  planCommitsFromSummaries,
-  shouldPlanFromSummaries,
-  CommitPlanCancelled,
-  SUMMARY_PLANNING_FILE_THRESHOLD,
-} from './planCommits'
-export type { CommitPlanProgress, CommitPlanRunners, CommitPlanOptions } from './planCommits'
+  summarizeFiles,
+  shouldSummarizePerFile,
+  SummaryRunCancelled,
+  SUMMARY_FILE_THRESHOLD,
+} from './summarizeFiles'
+export type { SummaryProgress, SummarizeOptions } from './summarizeFiles'
+export { planCommitsFromSummaries } from './planCommits'
+export type { CommitPlanRunners } from './planCommits'
+export {
+  summaryCommitMessageFeature,
+  SUMMARY_COMMIT_MESSAGE_INSTRUCTION,
+  buildSummaryCommitMessagePrompt,
+} from './summaryCommitMessage'
+export type { SummaryCommitMessageInput } from './summaryCommitMessage'
+export { composeCommitMessageFromSummaries } from './composeCommitMessage'
+export type { CommitMessageRunners } from './composeCommitMessage'
 export {
   commitRecomposeFeature,
   COMMIT_RECOMPOSE_INSTRUCTION,

@@ -21,6 +21,7 @@ import {
   fileGroupingFeature,
   fileSummaryFeature,
   prDescriptionFeature,
+  summaryCommitMessageFeature,
   summaryGroupingFeature,
   workingExplanationFeature,
 } from '@git-manager/ai'
@@ -190,6 +191,12 @@ export const fileSummaryService = createCompletionService(
 export const summaryGroupingService = createCompletionService(
   summaryGroupingFeature,
   trackedTransport(summaryGroupingFeature.id)
+)
+/** The reduce half of the two-phase commit message: writes it from the per-file summaries rather
+ * than from a budgeted staged diff. Shares the schema and parser with `commitMessageService`. */
+export const summaryCommitMessageService = createCompletionService(
+  summaryCommitMessageFeature,
+  trackedTransport(summaryCommitMessageFeature.id)
 )
 /** Rewrites one existing commit's message. A completion, run once per commit the user picked — the
  * review dialog is the interaction, not a stream. */

@@ -107,7 +107,7 @@ export function CommitBatchReviewPanel({ review }: { review: CommitBatchReview }
                 </p>
                 <Progress
                   value={
-                    progress.phase === 'grouping'
+                    progress.phase === 'composing'
                       ? 100
                       : Math.round((progress.completed / Math.max(1, progress.total)) * 100)
                   }

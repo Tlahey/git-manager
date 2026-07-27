@@ -1,15 +1,15 @@
 import { useRef, useState } from 'react'
 import type {
   CommitConvention,
-  CommitPlanProgress,
+  SummaryProgress,
   CommitValidation,
   DiffCoverage,
 } from '@git-manager/ai'
 import {
   assessFileGroupingCoverage,
-  CommitPlanCancelled,
+  SummaryRunCancelled,
   planCommitsFromSummaries,
-  shouldPlanFromSummaries,
+  shouldSummarizePerFile,
   validateCommitSubject,
 } from '@git-manager/ai'
 import {
@@ -102,7 +102,7 @@ export function useCommitBatchReview(
   const [reconciliation, setReconciliation] = useState<PlanReconciliation | null>(null)
   /** Progress of a two-phase run, or `null` on the single-shot path (which has nothing to report:
    * it is one call, and the spinner already says so). */
-  const [progress, setProgress] = useState<CommitPlanProgress | null>(null)
+  const [progress, setProgress] = useState<SummaryProgress | null>(null)
   /**
    * Set when the user closes the panel mid-run, and polled between calls by the planner.
    *
@@ -152,7 +152,7 @@ export function useCommitBatchReview(
       // would reach the model as a bare path. The two-phase planner describes each file on its own
       // and groups the descriptions — N+1 calls, which is why it is not the default for a changeset
       // that already fits.
-      const twoPhase = shouldPlanFromSummaries(context)
+      const twoPhase = shouldSummarizePerFile(context)
 
       // Coverage measures one thing: how much of the diff the *single-shot* prompt could carry. The
       // two-phase path has no such budget — every file gets its own prompt and is read whole — so
@@ -228,7 +228,7 @@ export function useCommitBatchReview(
     } catch (err) {
       // The user closed the panel mid-run: there is nobody to show an error to, and a stale error
       // would be waiting for them the next time they open it.
-      if (!(err instanceof CommitPlanCancelled)) setError(String(err))
+      if (!(err instanceof SummaryRunCancelled)) setError(String(err))
     } finally {
       setIsGenerating(false)
       setProgress(null)

@@ -52,6 +52,7 @@ export function useWipCommitPanel(
     status: llmStatus,
     validation: commitValidation,
     coverage: commitCoverage,
+    progress: commitProgress,
   } = useAiGeneration(repoPath)
 
   const isGenerating = llmStatus === 'generating'
@@ -336,5 +337,6 @@ export function useWipCommitPanel(
     isGenerating,
     commitValidation,
     commitCoverage,
+    commitProgress,
   }
 }

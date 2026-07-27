@@ -252,6 +252,8 @@
   "gitTree.waterline.thisYear": "Cette année",
   "gitTree.waterline.older": "Plus ancien",
   "commit.generate": "Générer le message (LLM)",
+  "commit.summarizing": "Lecture de vos fichiers indexés un par un — {{done}} sur {{total}}…",
+  "commit.composing": "Rédaction du message…",
   "commit.regenerate": "Régénérer",
   "commit.stop": "Arrêter",
   "commit.commit": "Commit",

@@ -83,7 +83,7 @@ describe('CommitBatchReviewPanel', () => {
         review={review({
           isGenerating: true,
           proposals: [],
-          progress: { phase: 'grouping', completed: 0, total: 1 },
+          progress: { phase: 'composing', completed: 0, total: 1 },
         })}
       />
     )

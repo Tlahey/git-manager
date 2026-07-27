@@ -1,12 +1,13 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { AiContext } from '../config'
+import { planCommitsFromSummaries } from './planCommits'
+import type { CommitPlanRunners } from './planCommits'
 import {
-  CommitPlanCancelled,
-  planCommitsFromSummaries,
-  shouldPlanFromSummaries,
-  SUMMARY_PLANNING_FILE_THRESHOLD,
-} from './planCommits'
-import type { CommitPlanProgress, CommitPlanRunners } from './planCommits'
+  shouldSummarizePerFile,
+  SummaryRunCancelled,
+  SUMMARY_FILE_THRESHOLD,
+} from './summarizeFiles'
+import type { SummaryProgress } from './summarizeFiles'
 import type { SummaryGroupingInput } from './summaryGrouping'
 
 function context(paths: string[], diff = ''): AiContext {
@@ -26,21 +27,21 @@ function runners(overrides: Partial<CommitPlanRunners> = {}): CommitPlanRunners 
   }
 }
 
-describe('shouldPlanFromSummaries', () => {
+describe('shouldSummarizePerFile', () => {
   it('leaves a small changeset to the single-shot planner', () => {
     // One call beats N+1 when the whole diff already fits, and it reads the real code rather than a
     // description of it.
-    expect(shouldPlanFromSummaries(context(['a.ts']))).toBe(false)
+    expect(shouldSummarizePerFile(context(['a.ts']))).toBe(false)
     expect(
-      shouldPlanFromSummaries(
-        context(Array.from({ length: SUMMARY_PLANNING_FILE_THRESHOLD }, (_, i) => `f${i}.ts`))
+      shouldSummarizePerFile(
+        context(Array.from({ length: SUMMARY_FILE_THRESHOLD }, (_, i) => `f${i}.ts`))
       )
     ).toBe(false)
   })
 
   it('takes over past the threshold', () => {
-    const paths = Array.from({ length: SUMMARY_PLANNING_FILE_THRESHOLD + 1 }, (_, i) => `f${i}.ts`)
-    expect(shouldPlanFromSummaries(context(paths))).toBe(true)
+    const paths = Array.from({ length: SUMMARY_FILE_THRESHOLD + 1 }, (_, i) => `f${i}.ts`)
+    expect(shouldSummarizePerFile(context(paths))).toBe(true)
   })
 })
 
@@ -105,7 +106,7 @@ describe('planCommitsFromSummaries', () => {
   })
 
   it('reports progress per file, then for the grouping call', async () => {
-    const progress: CommitPlanProgress[] = []
+    const progress: SummaryProgress[] = []
     await planCommitsFromSummaries({ context: context(['a.ts', 'b.ts']) }, runners(), {
       onProgress: (p) => progress.push(p),
     })
@@ -114,8 +115,8 @@ describe('planCommitsFromSummaries', () => {
       { phase: 'summarizing', completed: 0, total: 2 },
       { phase: 'summarizing', completed: 1, total: 2 },
       { phase: 'summarizing', completed: 2, total: 2 },
-      { phase: 'grouping', completed: 0, total: 1 },
-      { phase: 'grouping', completed: 1, total: 1 },
+      { phase: 'composing', completed: 0, total: 1 },
+      { phase: 'composing', completed: 1, total: 1 },
     ])
   })
 
@@ -128,7 +129,7 @@ describe('planCommitsFromSummaries', () => {
       { shouldCancel: () => calls++ >= 2 }
     )
 
-    await expect(promise).rejects.toBeInstanceOf(CommitPlanCancelled)
+    await expect(promise).rejects.toBeInstanceOf(SummaryRunCancelled)
     expect(r.group).not.toHaveBeenCalled()
   })
 

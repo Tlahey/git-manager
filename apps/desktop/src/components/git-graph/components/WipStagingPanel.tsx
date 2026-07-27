@@ -1,5 +1,5 @@
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Textarea, Badge, Spinner, cn, Checkbox, Tooltip } from '@git-manager/ui'
+import { Button, Textarea, Badge, Progress, Spinner, cn, Checkbox, Tooltip } from '@git-manager/ui'
 import {
   Layers,
   Sparkles,
@@ -66,6 +66,7 @@ export function WipStagingPanel({
     isGenerating,
     commitValidation,
     commitCoverage,
+    commitProgress,
   } = useWipCommitPanel(repoPath, gitStatus, allWipChanges, t, onRefresh)
 
   // Case 2: AI splits all working changes into a plan of atomic commits, reviewed in a dialog.
@@ -331,6 +332,29 @@ export function WipStagingPanel({
                   className="resize-none font-mono text-xs"
                   disabled={isGenerating}
                 />
+                {/* One call per staged file, so on a large change this runs for a while. The Stop
+                    button alone does not say what it is waiting on — the count does. */}
+                {commitProgress && (
+                  <div className="space-y-1" data-testid="commit-message-progress">
+                    <p className="text-[10px] text-muted-foreground">
+                      {commitProgress.phase === 'summarizing'
+                        ? t('commit.summarizing', {
+                            done: commitProgress.completed,
+                            total: commitProgress.total,
+                          })
+                        : t('commit.composing')}
+                    </p>
+                    <Progress
+                      value={
+                        commitProgress.phase === 'composing'
+                          ? 100
+                          : Math.round(
+                              (commitProgress.completed / Math.max(1, commitProgress.total)) * 100
+                            )
+                      }
+                    />
+                  </div>
+                )}
                 {/* What the message was written from. Gated on there being a message, so the line
                     describes the text actually in the box — a batch-mode generation leaves this box
                     untouched, and a coverage line under an empty field would describe nothing. */}

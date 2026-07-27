@@ -1,11 +1,24 @@
 import { useCallback, useRef, useState } from 'react'
-import type { CommitConvention, CommitValidation, DiffCoverage } from '@git-manager/ai'
+import type {
+  CommitConvention,
+  CommitValidation,
+  DiffCoverage,
+  SummaryProgress,
+} from '@git-manager/ai'
 import {
   assessCommitMessageCoverage,
+  composeCommitMessageFromSummaries,
   formatCommitMessage,
+  shouldSummarizePerFile,
+  SummaryRunCancelled,
   validateCommitSubject,
 } from '@git-manager/ai'
-import { apiGetAiContext, commitMessageService } from '../api/ai.api'
+import {
+  apiGetAiContext,
+  commitMessageService,
+  fileSummaryService,
+  summaryCommitMessageService,
+} from '../api/ai.api'
 import { useSettingsStore } from '../stores/settings.store'
 import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
 
@@ -49,6 +62,11 @@ export function useAiGeneration(repoPath: string) {
    * thing is still to say that it did not read them.
    */
   const [coverage, setCoverage] = useState<DiffCoverage | null>(null)
+  /**
+   * Progress of a two-phase run, or `null` on the single-shot path — which has nothing to report:
+   * it is one call, and it answers in a second or two.
+   */
+  const [progress, setProgress] = useState<SummaryProgress | null>(null)
   const aiConnection = useSettingsStore((s) => s.settings.ai)
   const { commitInstructions, commitPattern } = useEffectiveRepoSettings(repoPath)
 
@@ -88,11 +106,28 @@ export function useAiGeneration(repoPath: string) {
         // The declared window sizes how much of the staged diff the message is written from — a
         // connection property, so it is passed beside the context rather than merged into it.
         const input = { context, contextTokens: aiConnection.contextTokens }
-        // Assessed from the same input the prompt is built from, and before the request rather than
-        // after it, so the notice is on screen with the message rather than behind it.
-        setCoverage(assessCommitMessageCoverage(input))
 
-        const draft = await commitMessageService.run(aiConnection, input)
+        // Past a dozen staged files the single prompt can no longer carry every diff, so the subject
+        // would be written from whichever files sorted first — and that subject goes into the
+        // repository's history looking deliberate. Reading them one at a time costs N+1 calls, which
+        // is why it is not the default for a change that already fits.
+        const twoPhase = shouldSummarizePerFile(context)
+        // Coverage measures how much of the staged diff the *single* prompt could carry. The
+        // two-phase path has no such budget — every file is read whole, in its own prompt — so
+        // reporting it there would name a shortfall that did not happen.
+        setCoverage(twoPhase ? null : assessCommitMessageCoverage(input))
+
+        const draft = twoPhase
+          ? await composeCommitMessageFromSummaries(
+              input,
+              {
+                summarize: (summaryInput) => fileSummaryService.run(aiConnection, summaryInput),
+                compose: (reduceInput) =>
+                  summaryCommitMessageService.run(aiConnection, reduceInput),
+              },
+              { onProgress: setProgress, shouldCancel: () => cancelledRef.current }
+            )
+          : await commitMessageService.run(aiConnection, input)
         if (cancelledRef.current) return
 
         const message = formatCommitMessage(draft)
@@ -107,9 +142,12 @@ export function useAiGeneration(repoPath: string) {
           })
         )
       } catch (err) {
-        if (cancelledRef.current) return
+        // Cancelling is not a failure: the user asked for the box to be left alone.
+        if (cancelledRef.current || err instanceof SummaryRunCancelled) return
         setStatus('error')
         setError(String(err))
+      } finally {
+        setProgress(null)
       }
     },
     [repoPath, aiConnection, commitInstructions, commitPattern]
@@ -120,5 +158,5 @@ export function useAiGeneration(repoPath: string) {
     setStatus('cancelled')
   }, [])
 
-  return { generate, cancel, status, error, validation, coverage }
+  return { generate, cancel, status, error, validation, coverage, progress }
 }
