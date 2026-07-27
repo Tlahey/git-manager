@@ -70,6 +70,7 @@ export {
   DialogTitle,
   DialogDescription,
 } from './components/dialog'
+export type { DialogContentProps, DialogContentPosition } from './components/dialog'
 
 export {
   DropdownMenu,
