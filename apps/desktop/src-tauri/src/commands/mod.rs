@@ -24,4 +24,5 @@ pub mod tasks;
 pub mod terminal;
 pub mod themes;
 pub mod undo;
+pub mod window;
 pub mod worktree;

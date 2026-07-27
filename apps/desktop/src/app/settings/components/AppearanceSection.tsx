@@ -1,11 +1,11 @@
 import { useTranslation } from '@git-manager/i18n'
-import { Checkbox, NativeSelect } from '@git-manager/ui'
+import { Checkbox, NativeSelect, Slider } from '@git-manager/ui'
 import { Monitor, Check } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { OverriddenBadge } from './OverriddenBadge'
 import { FilterableSetting, Highlight } from './settingsSearch'
 import { useUserThemes } from '../../../hooks/useUserThemes'
-import { BUILTIN_THEMES } from '../../../lib/themes'
+import { BUILTIN_THEMES, vibrancyForTheme, DEFAULT_GLASS_TRANSPARENCY } from '../../../lib/themes'
 import { useGameStore } from '../../../stores/game.store'
 import { isEffectUnlocked } from '../../../lib/rewards/effects'
 
@@ -107,6 +107,9 @@ export function AppearanceSection() {
   ]
 
   const fontSizes = [12, 13, 14, 16]
+  // Only meaningful for a theme that carries a native window material; on an opaque
+  // theme the setting has nothing to act on, so it is hidden rather than shown inert.
+  const showGlassTransparency = vibrancyForTheme(appearance.theme) !== 'none'
 
   return (
     <div className="space-y-6">
@@ -154,6 +157,44 @@ export function AppearanceSection() {
           </code>
         </p>
       </FilterableSetting>
+
+      {/* Glass transparency — only for translucent themes */}
+      {showGlassTransparency && (
+        <FilterableSetting
+          className="space-y-1.5"
+          testId="setting-glass-transparency"
+          match={`${t('settings.appearance.glassTransparency')} glass transparency transparence flou blur verre`}
+        >
+          <label className="text-xs font-medium text-foreground">
+            <Highlight text={t('settings.appearance.glassTransparency')} />
+          </label>
+          <div className="flex items-center gap-3">
+            <span className="shrink-0 text-[10px] text-muted-foreground">
+              {t('settings.appearance.glassTransparency.opaque')}
+            </span>
+            <Slider
+              data-testid="glass-transparency-slider"
+              aria-label={t('settings.appearance.glassTransparency')}
+              min={0}
+              max={100}
+              step={1}
+              value={appearance.glassTransparency ?? DEFAULT_GLASS_TRANSPARENCY}
+              onValueChange={(glassTransparency) => updateAppearance({ glassTransparency })}
+            />
+            <span className="shrink-0 text-[10px] text-muted-foreground">
+              {t('settings.appearance.glassTransparency.clear')}
+            </span>
+            <span className="w-9 shrink-0 text-right font-mono text-[11px] tabular-nums text-foreground">
+              {appearance.glassTransparency ?? DEFAULT_GLASS_TRANSPARENCY}%
+            </span>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {t('settings.appearance.glassTransparency.hint')}
+          </p>
+
+
+        </FilterableSetting>
+      )}
 
       {/* Integrated terminal colours */}
       <FilterableSetting

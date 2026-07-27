@@ -629,6 +629,12 @@ export interface AppearanceSettings {
   terminalBackground: string
   /** Integrated terminal text/foreground colour (hex). Per-repo overridable. */
   terminalForeground: string
+  /** How translucent a glass-family theme renders, 0 (opaque) to 100 (most
+   * see-through). Ignored by every opaque theme. Exists because the right value is
+   * not knowable from here: it depends on the user's wallpaper and on how much the
+   * native material already lightens it, so a fixed default is either invisible on
+   * one desktop or unreadable on another. */
+  glassTransparency?: number
 }
 
 export interface UserTheme {

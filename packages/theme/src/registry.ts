@@ -7,6 +7,13 @@
 // when editing the CSS — registry.test.ts fails if a swatch drifts more than a
 // few units per channel from its token.
 
+/**
+ * The native window material a theme asks for behind the webview (macOS only).
+ * Only a theme that leaves regions of the page unpainted wants one — with an
+ * effect installed, anything without an opaque background becomes see-through.
+ */
+export type ThemeVibrancy = 'sidebar' | 'hud' | 'under-window'
+
 export interface ThemeDefinition {
   id: string
   /** i18n key: settings.appearance.theme.<id> */
@@ -14,6 +21,8 @@ export interface ThemeDefinition {
   /** Swatch preview colors (hex).  `null` for the "system" pseudo-theme. */
   colors: { bg: string; fg: string; primary: string; accent: string } | null
   isDark: boolean
+  /** Native window material; absent means an ordinary opaque window. */
+  vibrancy?: ThemeVibrancy
 }
 
 export const BUILTIN_THEMES: ThemeDefinition[] = [
@@ -101,8 +110,49 @@ export const BUILTIN_THEMES: ThemeDefinition[] = [
     colors: { bg: '#14161a', fg: '#f9fafa', primary: '#80ffff', accent: '#ff80ff' },
     isDark: true,
   },
+  {
+    // Translucent-material theme; the swatch shows its composited (opaque
+    // equivalent) tokens, which is also what the contrast graders score.
+    id: 'glass',
+    labelKey: 'settings.appearance.theme.glass',
+    colors: { bg: '#f8f9fb', fg: '#0f1729', primary: '#3b93f7', accent: '#ebeff4' },
+    isDark: false,
+    // UnderWindowBackground because it is the material AppKit provides for a whole
+    // translucent window. Note: on macOS 26 in light appearance, `sidebar` and
+    // `under-window` build a byte-identical layer tree (measured), so the choice is
+    // cosmetic there — which is why this is not exposed as a user setting. It may
+    // still differ on other OS versions or in dark appearance.
+    vibrancy: 'under-window',
+  },
 ]
 
 export function getBuiltinTheme(id: string): ThemeDefinition | undefined {
   return BUILTIN_THEMES.find((t) => t.id === id)
+}
+
+/**
+ * The window material to install for a theme id — `'none'` for every theme that
+ * doesn't ask for one, including unknown/user themes. Callers pass the result
+ * straight to the native side, so the fallback has to be explicit rather than
+ * undefined: switching *away* from a glass theme must actively clear the effect,
+ * otherwise the window stays transparent under an opaque theme.
+ */
+export function vibrancyForTheme(id: string): ThemeVibrancy | 'none' {
+  return getBuiltinTheme(id)?.vibrancy ?? 'none'
+}
+
+/**
+ * The native window appearance to pin for a theme id.
+ *
+ * Only a theme carrying a window material needs one: AppKit's semantic materials
+ * render against the window's appearance, so a *light* glass theme on a Mac in
+ * dark mode would get a dark material under light tokens. Every other theme
+ * returns `'system'`, handing the appearance back to the OS — pinning it would
+ * otherwise leak: the setting is app-wide on macOS and would survive the switch
+ * to a theme that never asked for it.
+ */
+export function windowAppearanceForTheme(id: string): 'light' | 'dark' | 'system' {
+  const theme = getBuiltinTheme(id)
+  if (!theme?.vibrancy) return 'system'
+  return theme.isDark ? 'dark' : 'light'
 }

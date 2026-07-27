@@ -45,6 +45,9 @@ export type { CheckboxProps } from './components/checkbox'
 export { Switch } from './components/switch'
 export type { SwitchProps } from './components/switch'
 
+export { Slider } from './components/slider'
+export type { SliderProps } from './components/slider'
+
 export { Label } from './components/label'
 export type { LabelProps } from './components/label'
 

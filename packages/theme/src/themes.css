@@ -23,6 +23,7 @@
 @import "./themes/forest.css";
 @import "./themes/cyberpunk.css";
 @import "./themes/platinum.css";
+@import "./themes/glass.css";
 
 /* ── Tier 3: component tokens (per-component override surface) ──────────────────
    Theme-agnostic defaults that point at the semantic layer, so a per-element
@@ -59,6 +60,9 @@
     --tone-danger-foreground: var(--destructive);
     --tone-info-foreground: 221 83% 53%;
     --link: var(--primary);
+    /* Not a colour: the pill radius of buttons + the selection capsule. The default
+       reproduces the `rounded-md` these controls carried before the token existed. */
+    --control-radius: calc(var(--radius) - 2px);
   }
 }
 

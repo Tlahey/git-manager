@@ -1,0 +1,320 @@
+/* ─── Glass — Apple-style translucent material ───────────────────────────────
+ *
+ * The first theme whose surfaces are a *material* rather than a flat fill: nav
+ * chrome, panels and popovers are a translucent white tint over the blurred,
+ * saturated desktop, the way a light macOS window reads.
+ *
+ * How it stays inside the a11y contract
+ * ------------------------------------
+ * A translucent surface has no contrast ratio of its own — what a reader sees is
+ * the material composited over what is behind it. So the semantic tokens below
+ * declare the *opaque equivalent* of that composed result, and those are what the
+ * token graders in themeTokens.test.ts score. The material tokens change how a
+ * surface is painted; they must not change what it effectively looks like. If you
+ * retune --glass-alpha / --glass-tint, re-derive --card / --popover /
+ * --sidebar-background to match, or the grade stops describing the real thing.
+ *
+ * Scope of the effect (why not every surface)
+ * -------------------------------------------
+ * Each backdrop-filter is a GPU pass over its area, so the material is applied to
+ * the persistent chrome, panels and overlays only — never to list rows, which are
+ * virtualised and scrolled (the commit graph would drop frames). Row-level
+ * surfaces (--muted, --secondary) get a cheap alpha tint with no blur instead.
+ *
+ * Light polarity, and why the window appearance is pinned
+ * ------------------------------------------------------
+ * This is a light theme, so it requests the `sidebar` vibrancy (registry.ts) —
+ * the light, wallpaper-tinted material Finder's rail uses. AppKit's semantic
+ * materials render against the *window's* effectiveAppearance, so on a Mac in dark
+ * mode that material would come out dark under light tokens, and the graded
+ * contrast would describe nothing. set_window_vibrancy therefore pins the window
+ * appearance to this theme's polarity (see windowAppearanceForTheme). Changing
+ * `vibrancy` or `isDark` for this theme is an accessibility decision, not a
+ * cosmetic one.
+ *
+ * The one honest caveat that remains: behind the chrome the backdrop is the user's
+ * wallpaper, whose colour we cannot know, so "the composited result" is only
+ * well-defined to the extent the native material dominates it.
+ *
+ * This follows the precedent set by platinum.css: a theme may add theme-scoped
+ * rules on top of its token block. Those rules use descendant selectors, which
+ * parseThemeTokens deliberately ignores, so they never enter the token set.
+ */
+@layer base {
+  html[data-theme="glass"] {
+    /* ── Semantic tokens: the composited, opaque-equivalent colours ─────────── */
+    --background: 220 30% 98%;
+    --foreground: 222 47% 11%;
+    --card: 210 30% 99%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    /* Light blue with dark ink, the light-content pattern the other light themes
+       use: white on a mid-blue fill doesn't clear AA at any usable lightness. */
+    --primary: 212 92% 60%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 215 30% 95%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 215 30% 95%;
+    --muted-foreground: 215 16% 42%;
+    --accent: 215 30% 94%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84.2% 48.2%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 142 76% 29.3%;
+    --success-foreground: 210 40% 98%;
+    --border: 215 25% 89%;
+    --input: 215 25% 89%;
+    --ring: 212 92% 60%;
+    /* Glass wants a rounder corner than the 0.5rem house default — the material
+       reads as a slab at small radii. */
+    --radius: 0.875rem;
+
+    /* ── Component tokens (APCA Bronze, light-content polarity) ─────────────── */
+    /* Light content inverts the dark themes' fix: instead of lightening the fill and
+       keeping dark ink, the fill is deepened and the label goes light. 44% rather
+       than the 47.5% the other light themes use: this theme's cooler hue (212 vs
+       217) is slightly lighter at equal L and landed at 4.38 against the near-white
+       label — just under the 4.5 bar. */
+    --badge-bg: 212 92% 44%;
+    --badge-foreground: 212 30% 98%;
+    --badge-destructive-bg: 0 84.2% 42%;
+    --badge-destructive-foreground: 210 40% 98%;
+    --button-bg: 212 92% 44%;
+    --button-foreground: 210 40% 98%;
+    --button-destructive-bg: 0 84.2% 43.5%;
+    --button-destructive-foreground: 210 40% 98%;
+    --button-success-bg: 142 76% 27.5%;
+    --button-success-foreground: 210 40% 98%;
+    --link: 221 80% 35%;
+    /* Liquid Glass geometry: controls are capsules, not rounded rectangles. This is
+       the one shape change that has to reach into a component, so it rides a token
+       the Button primitive consumes rather than a selector override. */
+    --control-radius: 9999px;
+    /* Tone chips, light polarity (dark ink on the pale /15 tints). Declared here
+       rather than joining the shared light-content group in themes.css, because
+       that group block comes after this file in source order and would override
+       anything set here. */
+    --tone-success-foreground: 152 78% 16%;
+    --tone-warning-foreground: 26 86% 26%;
+    --tone-danger-foreground: 0 74% 23%;
+    --tone-info-foreground: 221 80% 32%;
+
+    /* ── Nav chrome ─────────────────────────────────────────────────────────── */
+    /* A touch greyer than --card so the rail and tab bar sit *behind* the content
+       panels in the depth order, the way Apple stacks sidebar under content. */
+    --sidebar-background: 215 28% 96%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-border: 215 25% 89%;
+    --sidebar-muted-foreground: 215 16% 42%;
+    /* The composited value of the selection capsule (accent-tinted fill + its
+       lighting gradient over the chrome) — derived, not picked, so the graded
+       sidebar-accent pair scores the pixels the capsule actually renders. Re-derive
+       it if the capsule's fill or gradient changes. */
+    --sidebar-accent: 212 75% 89%;
+    --sidebar-accent-foreground: 222 47% 11%;
+
+    /* ── Tier: material (non-colour — see NON_COLOR_TOKENS in themeTokens.ts) ── */
+    /* White, because that is what a light Apple window's material is: the colour
+       comes from the wallpaper bleeding through, not from the tint. */
+    --glass-tint: 0 0% 100%;
+    --glass-alpha: 0.4;
+    /* These two are the translucency dials, and they are LOW on purpose.
+       The `sidebar` material is a pale frost: in light appearance it already
+       lightens the wallpaper a great deal. Stacking much white on top of it leaves
+       nothing to see through. This is the failure mode that made the glass look
+       like it had vanished: light material + light desktop + a white tint is three
+       whites stacked, and the eye has nothing left to read the translucency from.
+       Dark themes get away with far higher numbers because their material contrasts
+       with the desktop; a light one does not. Raise these and the glass goes away
+       again — that is the whole trade. */
+    --glass-chrome-alpha: 0.04;
+    /* Legibility dial for the content region — see the .bg-background rule below. */
+    --glass-content-alpha: 0.26;
+    /* How far a floating panel is inset from the window edge, so it reads as a slab
+       resting above the material rather than as a region cut out of it. */
+    --glass-float-gap: 8px;
+    --glass-blur: 22px;
+    /* >100% saturation is what separates Apple's material from a plain blur: the
+       backdrop's colour bleeds through instead of washing out to grey. */
+    --glass-saturate: 180%;
+    /* On a light material the specular top edge is near-white and the rim is a pale
+       hairline; the depth comes from the shadow instead, which stays soft — a hard
+       dark shadow on white reads as a drop-shadowed box, not as glass. */
+    --glass-highlight-alpha: 0.75;
+    --glass-edge-alpha: 0.6;
+  }
+
+  /* ── Letting the native material through ───────────────────────────────────
+     The window runs an NSVisualEffectView (see commands/window.rs), so anything
+     the page leaves unpainted shows the *blurred desktop*. That is the whole
+     point: CSS backdrop-filter can only sample pixels inside the webview, so on
+     its own it blurs a copy of the app's own background — which is why a purely
+     CSS version reads as a flat tint no matter how the blur is tuned.
+
+     So html and body paint nothing at all, and each layer below opts back in to
+     as much opacity as it actually needs to stay readable. */
+  html[data-theme="glass"],
+  html[data-theme="glass"] body {
+    background-color: transparent;
+    background-image: none;
+  }
+
+  /* The content region stays translucent too, so the desktop reads through the
+     whole window rather than only around the chrome. --glass-content-alpha is the
+     legibility dial: the commit graph and diffs are dense small text over an
+     arbitrary wallpaper. 0.5 over the `sidebar` material's pale frost keeps dark
+     ink comfortable on the wallpapers we can reason about, but this is the honest
+     limit — over a light, high-contrast photo the graph will get busier than any
+     opaque theme. Raise it if that bothers you more than losing the glass does. */
+  html[data-theme="glass"] .bg-background {
+    background-color: hsl(var(--background) / var(--glass-content-alpha));
+  }
+
+  /* ── The material ──────────────────────────────────────────────────────────
+     Panels and overlays *inside* the content region. These sit over app content,
+     so they keep their CSS blur — here there really is detail behind them. The
+     alpha variants are listed explicitly rather than matched with
+     [class*="bg-card"], which would also capture hover:/focus: states and paint
+     them permanently. */
+  html[data-theme="glass"] .bg-card,
+  html[data-theme="glass"] .bg-card\/95,
+  html[data-theme="glass"] .bg-card\/85,
+  html[data-theme="glass"] .bg-card\/60,
+  html[data-theme="glass"] .bg-card\/50,
+  html[data-theme="glass"] .bg-card\/45,
+  html[data-theme="glass"] .bg-card\/40,
+  html[data-theme="glass"] .bg-popover,
+  html[data-theme="glass"] .bg-popover\/95,
+  html[data-theme="glass"] .bg-background\/95,
+  html[data-theme="glass"] .bg-sidebar,
+  html[data-theme="glass"] .chrome-surface {
+    background-color: hsl(var(--glass-tint) / var(--glass-alpha));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    /* Edge treatment. A blurred panel with a flat 1px border reads as frosted
+       plastic; what makes it read as glass is the light caught along the top edge
+       and lost along the bottom. This is the cheap stand-in for Apple's real
+       edge refraction, which has no CSS primitive (see the theme docs). */
+    border-color: hsl(0 0% 100% / var(--glass-edge-alpha));
+    /* Rounded on all four corners, including the ones a full-bleed header would
+       normally square off — a panel that meets the window edge reads as part of the
+       frame, not as a slab floating on it. */
+    border-radius: var(--radius);
+    box-shadow:
+      inset 0 1px 0 0 hsl(0 0% 100% / var(--glass-highlight-alpha)),
+      inset 0 -1px 0 0 hsl(215 30% 40% / 0.12),
+      0 16px 36px -20px hsl(215 40% 25% / 0.35);
+  }
+
+  /* ── The chrome: the real Apple sidebar ────────────────────────────────────
+     The rail, tab bar, toolbar and footer sit over the *window edge*, not over
+     app content — so they carry almost no tint and no CSS blur at all, and what
+     shows through them is the native material: the wallpaper, blurred and
+     tinted by AppKit. This is the layer that has to be nearly transparent for the
+     effect to read as macOS rather than as a white panel with a blur filter.
+
+     backdrop-filter is deliberately reduced to saturation only (the block above
+     sets the blur for .chrome-surface): a CSS blur over a region whose backing is
+     the native effect adds a second, redundant pass and visibly greys it. */
+  html[data-theme="glass"] .bg-sidebar,
+  html[data-theme="glass"] .chrome-surface {
+    background-color: hsl(var(--glass-tint) / var(--glass-chrome-alpha));
+    backdrop-filter: saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: saturate(var(--glass-saturate));
+  }
+
+  /* ── Glass-on-glass ────────────────────────────────────────────────────────
+     Row-level and control surfaces sitting *inside* a panel. On a light material
+     these have to go *darker* than their surface, not lighter — white on white is
+     invisible. Alpha only, no backdrop-filter: stacking a second blur pass per row
+     is what makes a translucent UI stutter while scrolling the commit graph. */
+  html[data-theme="glass"] .bg-muted,
+  html[data-theme="glass"] .bg-secondary,
+  html[data-theme="glass"] .bg-accent {
+    background-color: hsl(215 35% 45% / 0.1);
+  }
+
+  /* Inputs read as a recess in the glass rather than a raised slab, and follow the
+     capsule geometry of the controls next to them. */
+  html[data-theme="glass"] input,
+  html[data-theme="glass"] textarea {
+    background-color: hsl(0 0% 100% / 0.7);
+    box-shadow: inset 0 1px 2px 0 hsl(215 40% 30% / 0.18);
+  }
+  html[data-theme="glass"] input {
+    border-radius: var(--control-radius);
+  }
+
+  /* ── Floating panels ───────────────────────────────────────────────────────
+     Liquid Glass panels are slabs resting *above* the material, not regions cut
+     out of it — which means being detached on every side: inset from the window
+     edge, rounded on all four corners, and carrying a real drop shadow.
+
+     Scoped to the repository sidebar by its data-testid, NOT to .bg-sidebar. That
+     class is the shared chrome fill: the action toolbar, footer, tab bar and
+     progress bar all carry it, and giving them a full-height box turns the toolbar
+     into a full-height column and pushes the content out of the window. The rail
+     is the only .bg-sidebar element that is a *panel*; the rest are strips.
+
+     The inset comes out of the sidebar's own box rather than from a margin,
+     because it is sized by an inline width and `h-full` — a margin would overflow.
+     Its right border goes too: an edge-to-edge divider is exactly the "cut out of
+     the window" reading the float is meant to break. */
+  html[data-theme="glass"] [data-testid="repository-sidebar"] {
+    height: calc(100% - (2 * var(--glass-float-gap)));
+    margin: var(--glass-float-gap);
+    border-right: 0;
+    border-radius: var(--radius);
+    box-shadow:
+      inset 0 1px 0 0 hsl(0 0% 100% / var(--glass-highlight-alpha)),
+      0 18px 40px -18px hsl(215 40% 25% / 0.4);
+  }
+
+  /* ── Selection capsule ─────────────────────────────────────────────────────
+     The macOS sidebar selection is an inset pill, not a full-bleed bar: it floats
+     inside the rail with air on both sides. The rows are `w-full` buttons, so the
+     capsule is carved out of that width rather than added to it — a margin alone
+     would push each selected row 12px wider than its neighbours.
+
+     Only rows that actually carry a sidebar-accent background are touched, so the
+     idle rows stay flush and only the selected/hovered one becomes a capsule —
+     which is precisely the macOS behaviour. The hover variants are enumerated
+     because Tailwind emits each alpha step as its own escaped class.
+
+     Scoped INSIDE the sidebar for the same reason the float is: bg-sidebar-accent
+     is the shared chrome highlight, worn by the active tab in the horizontal tab
+     bar and by the square icon buttons in the toolbar. A percentage width meant
+     for a full-width vertical row distorts every one of them. */
+  html[data-theme="glass"] [data-testid="repository-sidebar"] .bg-sidebar-accent,
+  html[data-theme="glass"] [data-testid="repository-sidebar"] .hover\:bg-sidebar-accent\/30:hover,
+  html[data-theme="glass"] [data-testid="repository-sidebar"] .hover\:bg-sidebar-accent\/40:hover,
+  html[data-theme="glass"] [data-testid="repository-sidebar"] .hover\:bg-sidebar-accent\/60:hover,
+  html[data-theme="glass"] [data-testid="repository-sidebar"] .hover\:bg-sidebar-accent\/80:hover,
+  html[data-theme="glass"] [data-testid="repository-sidebar"] .hover\:bg-sidebar-accent:hover {
+    box-sizing: border-box;
+    width: calc(100% - 12px);
+    margin-inline: 6px;
+    border-radius: var(--control-radius);
+  }
+
+  /* The selected row specifically. A capsule that only differs from the rail by a
+     couple of percent of lightness reads as an outline, not as a selection — it has
+     to be a lit object. Three things do that: an accent-tinted fill so "selected"
+     is a colour and not just a shade, a top-to-bottom gradient plus a bright top
+     rim so the light has a direction, and a drop shadow so the capsule sits *above*
+     the rail rather than in it.
+
+     --sidebar-accent is kept in sync with what this composites to over the chrome
+     (see the token block) so the graded contrast still describes the real pixels.
+     Only the resting selection is treated: the hover capsules above stay a plain
+     translucent wash, so hovering never looks like selecting. */
+  html[data-theme="glass"] [data-testid="repository-sidebar"] .bg-sidebar-accent {
+    background-color: hsl(var(--primary) / 0.22);
+    background-image: linear-gradient(hsl(0 0% 100% / 0.5), hsl(0 0% 100% / 0.05));
+    box-shadow:
+      inset 0 1px 0 0 hsl(0 0% 100% / 0.9),
+      inset 0 0 0 1px hsl(212 60% 45% / 0.18),
+      0 4px 10px -4px hsl(215 45% 30% / 0.35);
+  }
+}

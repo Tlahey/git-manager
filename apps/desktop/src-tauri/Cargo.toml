@@ -18,7 +18,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["image-png", "tray-icon", "protocol-asset"] }
+tauri = { version = "2", features = ["macos-private-api", "image-png", "tray-icon", "protocol-asset"] }
 tauri-plugin-store = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-shell = "2"
@@ -42,6 +42,27 @@ portable-pty = "0.8"
 # embeds a WebDriver server in the binary, so it must never be compiled into a real build).
 tauri-plugin-wdio = { version = "1", optional = true }
 tauri-plugin-wdio-webdriver = { version = "1", optional = true }
+
+# NSVisualEffectView behind the webview, so a translucent theme's chrome shows the
+# blurred desktop rather than a blurred copy of the app's own background. CSS
+# backdrop-filter can only sample what is inside the webview, so this is the only
+# way to get the real macOS sidebar material. Enabled at runtime only by the theme
+# that asks for it (see set_window_vibrancy in commands/window.rs).
+[target."cfg(target_os = \"macos\")".dependencies]
+window-vibrancy = "0.5"
+# Read-only introspection of the native window (opacity, background, view stack) so a
+# translucent theme that renders opaque can be diagnosed from the log instead of guessed
+# at. Same versions window-vibrancy already pulls in, so this adds no new compilation.
+objc2 = "0.5.2"
+objc2-app-kit = { version = "0.2.2", default-features = false, features = [
+  "std",
+  "NSResponder",
+  "NSWindow",
+  "NSView",
+  "NSColor",
+  "NSGraphics",
+  "NSVisualEffectView",
+] }
 
 [features]
 e2e = ["dep:tauri-plugin-wdio", "dep:tauri-plugin-wdio-webdriver"]

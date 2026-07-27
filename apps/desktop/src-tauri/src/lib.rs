@@ -69,6 +69,7 @@ use commands::undo::{
     objects_exist, pin_object, recreate_branch_ref, restore_file_blob, restore_worktree_snapshot,
     snapshot_file, snapshot_worktree, snapshot_worktree_always, unpin_object,
 };
+use commands::window::set_window_vibrancy;
 use commands::worktree::{
     add_worktree, count_default_file_matches, gone_upstream_branches, list_worktrees,
     prune_worktrees, remove_worktree,
@@ -260,6 +261,7 @@ pub fn run() {
             run_autosquash,
             // Themes
             get_user_themes,
+            set_window_vibrancy,
             // Submodules
             list_submodules,
             // GitHub OAuth

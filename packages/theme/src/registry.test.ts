@@ -3,7 +3,11 @@ import { resolve } from 'node:path'
 import { describe, it, expect } from 'vitest'
 import { parseThemeTokens, resolveTokenValue } from './themeTokens'
 import { parseHslTriplet, hslToRgb } from './colorContrast'
-import { BUILTIN_THEMES } from './registry'
+import {
+  BUILTIN_THEMES,
+  vibrancyForTheme,
+  windowAppearanceForTheme,
+} from './registry'
 
 // vitest runs with cwd = packages/theme; tokens live one file per theme under
 // src/themes/. Concatenate them all before parsing.
@@ -27,6 +31,58 @@ describe('theme registration parity', () => {
     const registeredIds = new Set(registered.map((t) => t.id))
     const orphan = [...cssThemes.keys()].filter((id) => !registeredIds.has(id))
     expect(orphan, `CSS block with no registry entry: ${orphan.join(', ')}`).toEqual([])
+  })
+})
+
+// ── Native window material ──────────────────────────────────────────────────
+//
+// The result is handed straight to the native side, which installs or clears an
+// NSVisualEffectView. The failure that matters is the *clearing* one: if an opaque
+// theme resolved to anything but 'none', switching away from a glass theme would
+// leave the window transparent and the whole app see-through.
+describe('vibrancyForTheme', () => {
+  it('returns the material a translucent theme declares', () => {
+    expect(vibrancyForTheme('glass')).toBe('under-window')
+  })
+
+  it('returns "none" for opaque themes, so switching away clears the effect', () => {
+    expect(vibrancyForTheme('dark')).toBe('none')
+    expect(vibrancyForTheme('light')).toBe('none')
+  })
+
+  it('returns "none" for an unknown id (user themes, "system")', () => {
+    expect(vibrancyForTheme('system')).toBe('none')
+    expect(vibrancyForTheme('a-user-theme-from-disk')).toBe('none')
+  })
+
+  it('only lets a theme declaring vibrancy resolve to a material', () => {
+    for (const theme of BUILTIN_THEMES) {
+      const expected = theme.vibrancy ?? 'none'
+      expect(vibrancyForTheme(theme.id), `vibrancy for "${theme.id}"`).toBe(expected)
+    }
+  })
+})
+
+// AppKit's semantic materials render against the window appearance, so a light
+// glass theme on a Mac in dark mode would get a dark material under light tokens.
+describe('windowAppearanceForTheme', () => {
+  it('pins the appearance to the polarity of a theme that carries a material', () => {
+    expect(windowAppearanceForTheme('glass')).toBe('light')
+  })
+
+  it('returns "system" for themes with no material, so the pin never leaks', () => {
+    // macOS applies the appearance app-wide: leaving it pinned after switching to an
+    // opaque theme would force that theme's polarity on the whole app.
+    expect(windowAppearanceForTheme('dark')).toBe('system')
+    expect(windowAppearanceForTheme('light')).toBe('system')
+    expect(windowAppearanceForTheme('system')).toBe('system')
+    expect(windowAppearanceForTheme('a-user-theme-from-disk')).toBe('system')
+  })
+
+  it('agrees with isDark for every theme that declares a material', () => {
+    for (const theme of BUILTIN_THEMES.filter((t) => t.vibrancy)) {
+      expect(windowAppearanceForTheme(theme.id), theme.id).toBe(theme.isDark ? 'dark' : 'light')
+    }
   })
 })
 
