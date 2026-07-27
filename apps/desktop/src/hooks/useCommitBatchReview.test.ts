@@ -9,15 +9,13 @@ vi.mock('../api/git.api', () => ({
   apiGetPendingOperation: vi.fn(),
 }))
 
-const { apiGetAiContext, fileGroupingRun, fileSummaryRun, summaryGroupingRun } = vi.hoisted(() => ({
+const { apiGetAiContext, fileSummaryRun, summaryGroupingRun } = vi.hoisted(() => ({
   apiGetAiContext: vi.fn(),
-  fileGroupingRun: vi.fn(),
   fileSummaryRun: vi.fn(),
   summaryGroupingRun: vi.fn(),
 }))
 vi.mock('../api/ai.api', () => ({
   apiGetAiContext,
-  fileGroupingService: { run: fileGroupingRun },
   fileSummaryService: { run: fileSummaryRun },
   summaryGroupingService: { run: summaryGroupingRun },
 }))
@@ -67,6 +65,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   apiGetAiContext.mockResolvedValue(aiContext)
   mocked.apiGetPendingOperation.mockResolvedValue(null)
+  fileSummaryRun.mockResolvedValue({ intent: 'changes it', area: 'demo area' })
   setCommitPattern('')
 })
 
@@ -74,7 +73,7 @@ describe('useCommitBatchReview', () => {
   const files = [file('src/a.ts'), file('src/a.test.ts'), file('docs/x.md')]
 
   it('opens, generates a plan, and maps proposals (all accepted by default)', async () => {
-    fileGroupingRun.mockResolvedValue([
+    summaryGroupingRun.mockResolvedValue([
       { commitMessage: 'feat(a): add a', files: ['src/a.ts', 'src/a.test.ts'] },
       { commitMessage: 'docs: update x', files: ['docs/x.md'] },
     ])
@@ -94,7 +93,7 @@ describe('useCommitBatchReview', () => {
   })
 
   it('adds omitted files as a rejected-by-default trailing group', async () => {
-    fileGroupingRun.mockResolvedValue([{ commitMessage: 'feat(a): add a', files: ['src/a.ts'] }])
+    summaryGroupingRun.mockResolvedValue([{ commitMessage: 'feat(a): add a', files: ['src/a.ts'] }])
     const { result } = renderHook(() => useCommitBatchReview('/repo', files, t))
 
     await act(async () => result.current.openAndGenerate())
@@ -109,7 +108,7 @@ describe('useCommitBatchReview', () => {
   })
 
   it('applies only accepted proposals: unstage-all, stage each group, commit in order', async () => {
-    fileGroupingRun.mockResolvedValue([
+    summaryGroupingRun.mockResolvedValue([
       { commitMessage: 'feat(a): add a', files: ['src/a.ts', 'src/a.test.ts'] },
       { commitMessage: 'docs: update x', files: ['docs/x.md'] },
     ])
@@ -132,7 +131,7 @@ describe('useCommitBatchReview', () => {
   })
 
   it('an edited message is used verbatim (trimmed) at commit time', async () => {
-    fileGroupingRun.mockResolvedValue([{ commitMessage: 'feat: a', files: ['src/a.ts'] }])
+    summaryGroupingRun.mockResolvedValue([{ commitMessage: 'feat: a', files: ['src/a.ts'] }])
     const { result } = renderHook(() => useCommitBatchReview('/repo', files, t))
     await act(async () => result.current.openAndGenerate())
 
@@ -143,7 +142,7 @@ describe('useCommitBatchReview', () => {
   })
 
   it('surfaces an error when the grouping service fails and keeps the dialog open', async () => {
-    fileGroupingRun.mockRejectedValue(new Error('ai provider down'))
+    summaryGroupingRun.mockRejectedValue(new Error('ai provider down'))
     const { result } = renderHook(() => useCommitBatchReview('/repo', files, t))
 
     await act(async () => result.current.openAndGenerate())
@@ -154,7 +153,7 @@ describe('useCommitBatchReview', () => {
   })
 
   it('validates each proposal against the convention (default types when none configured)', async () => {
-    fileGroupingRun.mockResolvedValue([
+    summaryGroupingRun.mockResolvedValue([
       { commitMessage: 'feat: valid one', files: ['src/a.ts'] },
       { commitMessage: 'not conventional', files: ['docs/x.md'] },
     ])
@@ -167,7 +166,7 @@ describe('useCommitBatchReview', () => {
 
   it("flags proposals that violate the user's configured commit pattern from Settings", async () => {
     setCommitPattern('^[A-Z]+-\\d+: .+')
-    fileGroupingRun.mockResolvedValue([
+    summaryGroupingRun.mockResolvedValue([
       { commitMessage: 'ABC-12: do the thing', files: ['src/a.ts'] },
       { commitMessage: 'feat: no ticket id', files: ['docs/x.md'] },
     ])
@@ -189,7 +188,7 @@ describe('useCommitBatchReview', () => {
   })
 
   it('reports nothing when the plan maps cleanly onto the working tree', async () => {
-    fileGroupingRun.mockResolvedValue([
+    summaryGroupingRun.mockResolvedValue([
       { commitMessage: 'feat(a): add a', files: ['src/a.ts', 'src/a.test.ts'] },
       { commitMessage: 'docs: update x', files: ['docs/x.md'] },
     ])
@@ -205,7 +204,7 @@ describe('useCommitBatchReview', () => {
    * still rescued by the leftovers pass — what was missing was any sign it had happened.
    */
   it('counts the proposals it had to discard whole, instead of dropping them silently', async () => {
-    fileGroupingRun.mockResolvedValue([
+    summaryGroupingRun.mockResolvedValue([
       { commitMessage: 'feat(a): add a', files: ['src/a.ts'] },
       // Invented path — nothing in the working tree matches.
       { commitMessage: 'feat(b): add b', files: ['src/ghost.ts'] },
@@ -229,7 +228,7 @@ describe('useCommitBatchReview', () => {
   })
 
   it('reports a partial loss even when the proposal itself survives', async () => {
-    fileGroupingRun.mockResolvedValue([
+    summaryGroupingRun.mockResolvedValue([
       { commitMessage: 'feat(a): add a', files: ['src/a.ts', 'src/ghost.ts'] },
       { commitMessage: 'docs: update x', files: ['docs/x.md'] },
     ])
@@ -245,14 +244,14 @@ describe('useCommitBatchReview', () => {
   })
 
   it('clears the previous run reconciliation when regenerating', async () => {
-    fileGroupingRun.mockResolvedValueOnce([
+    summaryGroupingRun.mockResolvedValueOnce([
       { commitMessage: 'feat(a): add a', files: ['src/ghost.ts', 'src/a.ts'] },
     ])
     const { result } = renderHook(() => useCommitBatchReview('/repo', files, t))
     await act(async () => result.current.openAndGenerate())
     expect(result.current.reconciliation).not.toBeNull()
 
-    fileGroupingRun.mockResolvedValueOnce([
+    summaryGroupingRun.mockResolvedValueOnce([
       { commitMessage: 'feat(a): add a', files: ['src/a.ts', 'src/a.test.ts', 'docs/x.md'] },
     ])
     await act(async () => result.current.regenerate())
@@ -268,11 +267,11 @@ describe('useCommitBatchReview', () => {
 
     expect(result.current.error).toBe('commitDetails.pendingOperation')
     expect(apiGetAiContext).not.toHaveBeenCalled()
-    expect(fileGroupingRun).not.toHaveBeenCalled()
+    expect(summaryGroupingRun).not.toHaveBeenCalled()
   })
 
   it('refuses to apply when the repo entered a merge after the plan was generated', async () => {
-    fileGroupingRun.mockResolvedValue([{ commitMessage: 'feat: a', files: ['src/a.ts'] }])
+    summaryGroupingRun.mockResolvedValue([{ commitMessage: 'feat: a', files: ['src/a.ts'] }])
     const { result } = renderHook(() => useCommitBatchReview('/repo', files, t))
     await act(async () => result.current.openAndGenerate())
 
@@ -288,7 +287,7 @@ describe('useCommitBatchReview', () => {
   })
 
   it('drops the commits that landed after a partial failure, so a retry does not duplicate them', async () => {
-    fileGroupingRun.mockResolvedValue([
+    summaryGroupingRun.mockResolvedValue([
       { commitMessage: 'feat(a): add a', files: ['src/a.ts'] },
       { commitMessage: 'test(a): cover a', files: ['src/a.test.ts'] },
       { commitMessage: 'docs: update x', files: ['docs/x.md'] },
@@ -322,7 +321,7 @@ describe('useCommitBatchReview', () => {
   })
 
   it('skips an accepted group with no message rather than committing it subjectless', async () => {
-    fileGroupingRun.mockResolvedValue([{ commitMessage: 'feat(a): add a', files: ['src/a.ts'] }])
+    summaryGroupingRun.mockResolvedValue([{ commitMessage: 'feat(a): add a', files: ['src/a.ts'] }])
     const { result } = renderHook(() => useCommitBatchReview('/repo', files, t))
     await act(async () => result.current.openAndGenerate())
 
@@ -337,66 +336,37 @@ describe('useCommitBatchReview', () => {
     expect(mocked.apiCreateCommit).toHaveBeenCalledWith('/repo', 'feat(a): add a')
   })
 
-  describe('large changesets: the two-phase planner', () => {
-    /** Above `SUMMARY_PLANNING_FILE_THRESHOLD` (12). */
+  describe('the two-phase planner', () => {
     const manyPaths = Array.from({ length: 14 }, (_, i) => `src/f${i}.ts`)
     const manyFiles = manyPaths.map((p) => file(p))
-    const manyContext = {
-      ...aiContext,
-      files: manyPaths.map((path) => ({ path, status: 'modified' })),
-    }
 
     beforeEach(() => {
-      apiGetAiContext.mockResolvedValue(manyContext)
-      fileSummaryRun.mockResolvedValue({ intent: 'changes it', area: 'demo' })
+      apiGetAiContext.mockResolvedValue({
+        ...aiContext,
+        files: manyPaths.map((path) => ({ path, status: 'modified' })),
+      })
       summaryGroupingRun.mockResolvedValue([
         { commitMessage: 'feat: everything', files: manyPaths },
       ])
     })
 
-    it('summarizes each file then groups, instead of the single-shot call', async () => {
+    it('summarizes every file, whatever the size of the changeset', async () => {
       const { result } = renderHook(() => useCommitBatchReview('/repo', manyFiles, t))
 
       await act(async () => result.current.openAndGenerate())
 
       expect(fileSummaryRun).toHaveBeenCalledTimes(14)
       expect(summaryGroupingRun).toHaveBeenCalledTimes(1)
-      expect(fileGroupingRun).not.toHaveBeenCalled()
-      expect(result.current.proposals[0].files).toHaveLength(14)
     })
 
-    it('keeps the single-shot call for a changeset that already fits', async () => {
+    it('summarizes even a three-file changeset — there is no threshold', async () => {
       apiGetAiContext.mockResolvedValue(aiContext)
-      fileGroupingRun.mockResolvedValue([{ commitMessage: 'feat: a', files: ['src/a.ts'] }])
+      summaryGroupingRun.mockResolvedValue([{ commitMessage: 'feat: a', files: ['src/a.ts'] }])
       const { result } = renderHook(() => useCommitBatchReview('/repo', files, t))
 
       await act(async () => result.current.openAndGenerate())
 
-      expect(fileGroupingRun).toHaveBeenCalledTimes(1)
-      expect(fileSummaryRun).not.toHaveBeenCalled()
-    })
-
-    /**
-     * Coverage describes the single-shot prompt's diff budget. On this path every file gets its own
-     * prompt and is read whole, so reporting it said "5 of 28 files read — raise your window to 64k"
-     * about a prompt that was never sent, on the one path where the window is no longer the limit.
-     */
-    it('reports no diff coverage, because every file was read in its own prompt', async () => {
-      const { result } = renderHook(() => useCommitBatchReview('/repo', manyFiles, t))
-
-      await act(async () => result.current.openAndGenerate())
-
-      expect(result.current.coverage).toBeNull()
-    })
-
-    it('still reports coverage on the single-shot path, where the budget is real', async () => {
-      apiGetAiContext.mockResolvedValue(aiContext)
-      fileGroupingRun.mockResolvedValue([{ commitMessage: 'feat: a', files: ['src/a.ts'] }])
-      const { result } = renderHook(() => useCommitBatchReview('/repo', files, t))
-
-      await act(async () => result.current.openAndGenerate())
-
-      expect(result.current.coverage).not.toBeNull()
+      expect(fileSummaryRun).toHaveBeenCalledTimes(3)
     })
 
     it('clears progress once the run finishes', async () => {
@@ -456,6 +426,6 @@ describe('useCommitBatchReview', () => {
     await act(async () => result.current.openAndGenerate())
 
     expect(result.current.error).toBe('commitDetails.aiBatch.noChanges')
-    expect(fileGroupingRun).not.toHaveBeenCalled()
+    expect(summaryGroupingRun).not.toHaveBeenCalled()
   })
 })

@@ -1,24 +1,12 @@
 import { useCallback, useRef, useState } from 'react'
-import type {
-  CommitConvention,
-  CommitValidation,
-  DiffCoverage,
-  SummaryProgress,
-} from '@git-manager/ai'
+import type { CommitConvention, CommitValidation, SummaryProgress } from '@git-manager/ai'
 import {
-  assessCommitMessageCoverage,
   composeCommitMessageFromSummaries,
   formatCommitMessage,
-  shouldSummarizePerFile,
   SummaryRunCancelled,
   validateCommitSubject,
 } from '@git-manager/ai'
-import {
-  apiGetAiContext,
-  commitMessageService,
-  fileSummaryService,
-  summaryCommitMessageService,
-} from '../api/ai.api'
+import { apiGetAiContext, fileSummaryService, summaryCommitMessageService } from '../api/ai.api'
 import { useSettingsStore } from '../stores/settings.store'
 import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
 
@@ -52,17 +40,6 @@ export function useAiGeneration(repoPath: string) {
   // until a generation completes; non-blocking (the primary guarantee is instructing the model).
   const [validation, setValidation] = useState<CommitValidation | null>(null)
   /**
-   * How much of the staged change the message was written from.
-   *
-   * The one feature where this is worth saying *before* the answer is used rather than after. Every
-   * other coverage line sits beside prose the user is reading and can discount; this one sits beside
-   * a subject line that is about to be written into the repository's history under their name, where
-   * "fix(ui): …" for a change that also rewrote the backend is permanent and looks deliberate. The
-   * feature is instructed to scope the subject over the files it could not read, but the honest
-   * thing is still to say that it did not read them.
-   */
-  const [coverage, setCoverage] = useState<DiffCoverage | null>(null)
-  /**
    * Progress of a two-phase run, or `null` on the single-shot path — which has nothing to report:
    * it is one call, and it answers in a second or two.
    */
@@ -83,7 +60,6 @@ export function useAiGeneration(repoPath: string) {
   const generate = useCallback(
     async (onMessage: (message: string) => void) => {
       setValidation(null)
-      setCoverage(null)
       setError(null)
       setStatus('generating')
       cancelledRef.current = false
@@ -107,27 +83,17 @@ export function useAiGeneration(repoPath: string) {
         // connection property, so it is passed beside the context rather than merged into it.
         const input = { context, contextTokens: aiConnection.contextTokens }
 
-        // Past a dozen staged files the single prompt can no longer carry every diff, so the subject
-        // would be written from whichever files sorted first — and that subject goes into the
-        // repository's history looking deliberate. Reading them one at a time costs N+1 calls, which
-        // is why it is not the default for a change that already fits.
-        const twoPhase = shouldSummarizePerFile(context)
-        // Coverage measures how much of the staged diff the *single* prompt could carry. The
-        // two-phase path has no such budget — every file is read whole, in its own prompt — so
-        // reporting it there would name a shortfall that did not happen.
-        setCoverage(twoPhase ? null : assessCommitMessageCoverage(input))
-
-        const draft = twoPhase
-          ? await composeCommitMessageFromSummaries(
-              input,
-              {
-                summarize: (summaryInput) => fileSummaryService.run(aiConnection, summaryInput),
-                compose: (reduceInput) =>
-                  summaryCommitMessageService.run(aiConnection, reduceInput),
-              },
-              { onProgress: setProgress, shouldCancel: () => cancelledRef.current }
-            )
-          : await commitMessageService.run(aiConnection, input)
+        // Always read file by file, whatever the size of the change. The single prompt this replaced
+        // wrote the subject from whichever files sorted first once the staged diff outgrew the
+        // window — and that subject goes into the repository's history looking deliberate.
+        const draft = await composeCommitMessageFromSummaries(
+          input,
+          {
+            summarize: (summaryInput) => fileSummaryService.run(aiConnection, summaryInput),
+            compose: (reduceInput) => summaryCommitMessageService.run(aiConnection, reduceInput),
+          },
+          { onProgress: setProgress, shouldCancel: () => cancelledRef.current }
+        )
         if (cancelledRef.current) return
 
         const message = formatCommitMessage(draft)
@@ -158,5 +124,5 @@ export function useAiGeneration(repoPath: string) {
     setStatus('cancelled')
   }, [])
 
-  return { generate, cancel, status, error, validation, coverage, progress }
+  return { generate, cancel, status, error, validation, progress }
 }

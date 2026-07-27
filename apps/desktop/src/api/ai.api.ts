@@ -12,13 +12,11 @@ import {
   changeExplanationFeature,
   codeReviewFeature,
   commitExplanationFeature,
-  commitMessageFeature,
   commitRecomposeFeature,
   createCompletionService,
   createStatusService,
   createStreamingService,
   dailySummaryFeature,
-  fileGroupingFeature,
   fileSummaryFeature,
   prDescriptionFeature,
   summaryCommitMessageFeature,
@@ -171,19 +169,15 @@ function trackedTransport(featureId: string): AiTransport {
 /** One service per AI feature, each assembled from its package-owned descriptor (instruction +
  * temperature + prompt) and the shared transport. Adding a future feature (report generation, git
  * command explanation, …) is: define it in `@git-manager/ai`, then add one line here. */
-/** A completion rather than a stream, because the answer is grammar-constrained JSON — which is
- * what keeps a reasoning model's deliberation out of the commit box. See `COMMIT_MESSAGE_SCHEMA`. */
-export const commitMessageService = createCompletionService(
-  commitMessageFeature,
-  trackedTransport(commitMessageFeature.id)
-)
-export const fileGroupingService = createCompletionService(
-  fileGroupingFeature,
-  trackedTransport(fileGroupingFeature.id)
-)
-/** The two halves of the large-changeset planner: one small call per file, then one call that groups
- * the results. Driven by `planCommitsFromSummaries`, which owns the sequencing — these are just the
- * two runners it needs. See `docs/ai/file-grouping.md`. */
+/**
+ * The map half every two-phase feature shares: one small call describing one file, sequenced by
+ * `summarizeFiles`.
+ *
+ * There is no single-prompt alternative beside it any more. Two features used to keep one and pick
+ * between them on a file-count threshold, which meant the same button did two different things
+ * depending on a number nobody could see — so a bad answer could not be reasoned about without first
+ * working out which path produced it. See `docs/ai/file-grouping.md`.
+ */
 export const fileSummaryService = createCompletionService(
   fileSummaryFeature,
   trackedTransport(fileSummaryFeature.id)
@@ -192,8 +186,9 @@ export const summaryGroupingService = createCompletionService(
   summaryGroupingFeature,
   trackedTransport(summaryGroupingFeature.id)
 )
-/** The reduce half of the two-phase commit message: writes it from the per-file summaries rather
- * than from a budgeted staged diff. Shares the schema and parser with `commitMessageService`. */
+/** The reduce half of the commit message: writes it from the per-file summaries. Keeps
+ * `COMMIT_MESSAGE_SCHEMA` and its parser, which is what stops a reasoning model's deliberation
+ * reaching the commit box. */
 export const summaryCommitMessageService = createCompletionService(
   summaryCommitMessageFeature,
   trackedTransport(summaryCommitMessageFeature.id)

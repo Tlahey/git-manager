@@ -51,7 +51,6 @@ export function useWipCommitPanel(
     cancel: cancelLlmGenerate,
     status: llmStatus,
     validation: commitValidation,
-    coverage: commitCoverage,
     progress: commitProgress,
   } = useAiGeneration(repoPath)
 
@@ -336,7 +335,6 @@ export function useWipCommitPanel(
     handleGenerateCommitMessage,
     isGenerating,
     commitValidation,
-    commitCoverage,
     commitProgress,
   }
 }

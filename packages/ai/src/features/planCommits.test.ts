@@ -2,11 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import type { AiContext } from '../config'
 import { planCommitsFromSummaries } from './planCommits'
 import type { CommitPlanRunners } from './planCommits'
-import {
-  shouldSummarizePerFile,
-  SummaryRunCancelled,
-  SUMMARY_FILE_THRESHOLD,
-} from './summarizeFiles'
+import { SummaryRunCancelled } from './summarizeFiles'
 import type { SummaryProgress } from './summarizeFiles'
 import type { SummaryGroupingInput } from './summaryGrouping'
 
@@ -26,24 +22,6 @@ function runners(overrides: Partial<CommitPlanRunners> = {}): CommitPlanRunners 
     ...overrides,
   }
 }
-
-describe('shouldSummarizePerFile', () => {
-  it('leaves a small changeset to the single-shot planner', () => {
-    // One call beats N+1 when the whole diff already fits, and it reads the real code rather than a
-    // description of it.
-    expect(shouldSummarizePerFile(context(['a.ts']))).toBe(false)
-    expect(
-      shouldSummarizePerFile(
-        context(Array.from({ length: SUMMARY_FILE_THRESHOLD }, (_, i) => `f${i}.ts`))
-      )
-    ).toBe(false)
-  })
-
-  it('takes over past the threshold', () => {
-    const paths = Array.from({ length: SUMMARY_FILE_THRESHOLD + 1 }, (_, i) => `f${i}.ts`)
-    expect(shouldSummarizePerFile(context(paths))).toBe(true)
-  })
-})
 
 describe('planCommitsFromSummaries', () => {
   it('summarizes every file, then groups the summaries', async () => {

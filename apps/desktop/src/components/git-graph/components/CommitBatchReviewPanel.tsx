@@ -13,7 +13,6 @@ import {
 } from '@git-manager/ui'
 import { AlertTriangle, Check, RefreshCw, Sparkles } from 'lucide-react'
 import type { CommitBatchReview } from '../../../hooks/useCommitBatchReview'
-import { CoverageNotice } from './CoverageNotice'
 
 const statusLetters: Record<string, string> = {
   added: 'A',
@@ -63,7 +62,6 @@ export function CommitBatchReviewPanel({ review }: { review: CommitBatchReview }
     canApply,
     acceptedCount,
     validations,
-    coverage,
     reconciliation,
     progress,
     hasStagedChanges,
@@ -133,9 +131,6 @@ export function CommitBatchReviewPanel({ review }: { review: CommitBatchReview }
         ) : (
           <ScrollArea className="min-h-0 flex-1" data-testid="ai-batch-scroll">
             <div className="space-y-3 px-5 py-4">
-              {/* Above the plan: a plan grouped from a fraction of the diff is one to read more
-                  carefully, and it is about to create real commits. */}
-              <CoverageNotice coverage={coverage} testIdPrefix="ai-batch" />
               {/* Applying is not a commit on top of what the user staged — it resets the index and
                   rebuilds it per proposal, so a hand-picked selection does not survive. Said before
                   the button rather than discovered after it, but only when there is a selection to

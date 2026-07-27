@@ -1,15 +1,8 @@
 import { useRef, useState } from 'react'
-import type {
-  CommitConvention,
-  SummaryProgress,
-  CommitValidation,
-  DiffCoverage,
-} from '@git-manager/ai'
+import type { CommitConvention, CommitValidation, SummaryProgress } from '@git-manager/ai'
 import {
-  assessFileGroupingCoverage,
   SummaryRunCancelled,
   planCommitsFromSummaries,
-  shouldSummarizePerFile,
   validateCommitSubject,
 } from '@git-manager/ai'
 import {
@@ -18,12 +11,7 @@ import {
   apiStageFile,
   apiUnstageAll,
 } from '../api/git.api'
-import {
-  apiGetAiContext,
-  fileGroupingService,
-  fileSummaryService,
-  summaryGroupingService,
-} from '../api/ai.api'
+import { apiGetAiContext, fileSummaryService, summaryGroupingService } from '../api/ai.api'
 import { useSettingsStore } from '../stores/settings.store'
 import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
 import type { ProcessedFileItem } from '../components/git-graph/components/CommitFileList'
@@ -88,15 +76,6 @@ export function useCommitBatchReview(
   const [error, setError] = useState<string | null>(null)
   const [proposals, setProposals] = useState<EditableProposal[]>([])
   const [convention, setConvention] = useState<CommitConvention | null>(null)
-  /**
-   * How much of the working diff the plan was reasoned from.
-   *
-   * The plan still covers every file whatever this says — the list the model partitions is sent
-   * whole, and the leftovers pass catches anything it drops. What a low number means here is that
-   * files were grouped by *path* rather than by content, which is worth knowing before accepting a
-   * plan that creates real commits.
-   */
-  const [coverage, setCoverage] = useState<DiffCoverage | null>(null)
   const [recentCommits, setRecentCommits] = useState<string[]>([])
   /** What the last run's plan lost to reconciliation, or `null` when it mapped cleanly. */
   const [reconciliation, setReconciliation] = useState<PlanReconciliation | null>(null)
@@ -148,32 +127,17 @@ export function useCommitBatchReview(
       // list it partitions is sent whole regardless, so a small window costs grouping quality, not
       // coverage — see the leftovers pass below, which catches whatever the model still drops.
       const groupingInput = { context, contextTokens: aiConnection.contextTokens }
-      // Past a dozen files the single-shot prompt can no longer carry every diff, so most files
-      // would reach the model as a bare path. The two-phase planner describes each file on its own
-      // and groups the descriptions — N+1 calls, which is why it is not the default for a changeset
-      // that already fits.
-      const twoPhase = shouldSummarizePerFile(context)
-
-      // Coverage measures one thing: how much of the diff the *single-shot* prompt could carry. The
-      // two-phase path has no such budget — every file gets its own prompt and is read whole — so
-      // reporting it there is not merely irrelevant, it is wrong in the expensive direction: it told
-      // the user "5 of 28 files read, raise your window to 64k" about a prompt never sent, on the
-      // one path where the window has stopped being the limit.
-      setCoverage(twoPhase ? null : assessFileGroupingCoverage(groupingInput))
-
-      const commits = twoPhase
-        ? await planCommitsFromSummaries(
-            groupingInput,
-            {
-              summarize: (summaryInput) => fileSummaryService.run(aiConnection, summaryInput),
-              group: (reduceInput) => summaryGroupingService.run(aiConnection, reduceInput),
-            },
-            {
-              onProgress: setProgress,
-              shouldCancel: () => cancelledRef.current,
-            }
-          )
-        : await fileGroupingService.run(aiConnection, groupingInput)
+      // Always read file by file, whatever the size of the changeset — one way, no threshold. The
+      // single prompt this replaced reached the model with most files as a bare path once the diff
+      // outgrew the window, and a path is not something you can group by meaning.
+      const commits = await planCommitsFromSummaries(
+        groupingInput,
+        {
+          summarize: (summaryInput) => fileSummaryService.run(aiConnection, summaryInput),
+          group: (reduceInput) => summaryGroupingService.run(aiConnection, reduceInput),
+        },
+        { onProgress: setProgress, shouldCancel: () => cancelledRef.current }
+      )
 
       const byPath = new Map(allWipChanges.map((f) => [f.path, f]))
       const assigned = new Set<string>()
@@ -358,7 +322,6 @@ export function useCommitBatchReview(
     canApply,
     acceptedCount: acceptedEntries.length,
     validations,
-    coverage,
     reconciliation,
     progress,
     hasStagedChanges,

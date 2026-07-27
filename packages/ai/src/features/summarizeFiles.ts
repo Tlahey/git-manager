@@ -35,28 +35,19 @@ export class SummaryRunCancelled extends Error {
 }
 
 /**
- * Above this many changed files, a feature reads them one at a time instead of budgeting one prompt
- * across all of them.
- *
- * Below it the single prompt is simply better: one call instead of N+1, its whole diff fits, and it
- * reads the real code rather than a lossy description of it. The threshold is about *latency* more
- * than quality — summarizing eight files serially to save a prompt that already fitted is a worse
- * experience, not a better answer.
- */
-export const SUMMARY_FILE_THRESHOLD = 12
-
-/** Whether a changeset is large enough to be worth reading file by file. */
-export function shouldSummarizePerFile(context: AiContext): boolean {
-  return context.files.length > SUMMARY_FILE_THRESHOLD
-}
-
-/**
  * Describes every file in `context`, one model call each.
  *
- * The **map** half shared by every two-phase feature. It exists because a single prompt has to fit
- * every file's diff in one window, so past a few dozen files most of them reach the model as a bare
- * path — and a path is not something you can reason about. Here each file gets its own prompt, so
- * the window stops being the limit.
+ * The **map** half shared by every two-phase feature, and the only way those features read a
+ * changeset. It exists because a single prompt has to fit every file's diff in one window, so past a
+ * few dozen files most of them reach the model as a bare path — and a path is not something you can
+ * reason about. Here each file gets its own prompt, so the window stops being the limit.
+ *
+ * It runs **whatever the changeset size**. There was briefly a threshold below which the old
+ * single-prompt path was kept, on the grounds that one call beats N+1 when the whole diff already
+ * fits. That was a saving bought with a hidden branch: the same button did two different things
+ * depending on a number nobody could see, so a bad answer could not be reasoned about without first
+ * working out which path had produced it. One way, always — the cost is latency on small changes,
+ * and the answer to that is caching summaries by content, not a second code path.
  *
  * **Sequential on purpose.** The provider is normally a local model with one copy resident; issuing
  * N requests at once queues them behind the same weights while splitting its context allocation, so

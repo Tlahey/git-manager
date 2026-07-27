@@ -15,7 +15,6 @@ import { useWipCommitPanel } from '../../../hooks/useWipCommitPanel'
 import { useCommitBatchReview } from '../../../hooks/useCommitBatchReview'
 import { useAiEnabled } from '../../../hooks/useAiEnabled'
 import { CommitBatchReviewPanel } from './CommitBatchReviewPanel'
-import { CoverageNotice } from './CoverageNotice'
 import { PrPublishButton } from '../pr/PrPublishButton'
 import type { ProcessedFileItem } from './CommitFileList'
 
@@ -65,7 +64,6 @@ export function WipStagingPanel({
     handleGenerateCommitMessage,
     isGenerating,
     commitValidation,
-    commitCoverage,
     commitProgress,
   } = useWipCommitPanel(repoPath, gitStatus, allWipChanges, t, onRefresh)
 
@@ -354,12 +352,6 @@ export function WipStagingPanel({
                       }
                     />
                   </div>
-                )}
-                {/* What the message was written from. Gated on there being a message, so the line
-                    describes the text actually in the box — a batch-mode generation leaves this box
-                    untouched, and a coverage line under an empty field would describe nothing. */}
-                {commitMessage.trim().length > 0 && (
-                  <CoverageNotice coverage={commitCoverage} testIdPrefix="commit-message" />
                 )}
                 {commitValidation && !commitValidation.valid && (
                   <div

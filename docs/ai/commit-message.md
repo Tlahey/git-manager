@@ -8,7 +8,7 @@ grammar-constrained JSON.
 
 | | |
 | --- | --- |
-| **Descriptor** | [`commitMessageFeature`](../../packages/ai/src/features/commitMessage.ts), or [`summaryCommitMessageFeature`](../../packages/ai/src/features/summaryCommitMessage.ts) above 12 staged files |
+| **Descriptor** | [`summaryCommitMessageFeature`](../../packages/ai/src/features/summaryCommitMessage.ts), driven by [`composeCommitMessageFromSummaries`](../../packages/ai/src/features/composeCommitMessage.ts) |
 | **Kind** | completion + JSON schema (`COMMIT_MESSAGE_SCHEMA` → `{ subject, body }`) |
 | **Temperature** | 0.3 — the lowest of the prose features; a commit subject is a near-mechanical summary |
 | **Context scope** | `staged` (index vs HEAD) |
@@ -188,10 +188,9 @@ from 7-in-12 to **0-in-8**.
 
 ---
 
-## Two-phase, past 12 staged files
+## Two-phase, always
 
-Above `SUMMARY_FILE_THRESHOLD` the message is written from **per-file summaries** rather than from a
-budgeted diff — [`composeCommitMessageFromSummaries`](../../packages/ai/src/features/composeCommitMessage.ts)
+The message is written from **per-file summaries** rather than from a budgeted diff — [`composeCommitMessageFromSummaries`](../../packages/ai/src/features/composeCommitMessage.ts)
 drives [`fileSummaryFeature`](../../packages/ai/src/features/fileSummary.ts) once per staged file,
 then [`summaryCommitMessageFeature`](../../packages/ai/src/features/summaryCommitMessage.ts) once
 over the results.
@@ -211,9 +210,11 @@ completes, since the completion transport takes no request id.
 
 Unlike the commit *plan*, the answer's length is not a property of the question: one message is one
 message whether it covers 12 files or 200, so the reduce call keeps the ordinary prose reserve and
-is cheap whatever the changeset size. All the cost is in the map phase, which is why the threshold
-matters — this is the app's most-used AI button, and turning a two-second action into a two-minute
-one for a change that already fitted would be a regression, not an improvement.
+is cheap whatever the changeset size. All the cost is in the map phase, and it is paid on every change: three
+calls where there used to be one on a two-file commit. A threshold that kept the single prompt below
+a file count was tried and removed — the same button doing two different things depending on an
+invisible number is not something a user (or a bug report) can reason about. The way to buy the
+latency back is caching summaries by `(path, content hash)`, which is not built yet.
 
 Diff coverage is not reported on this path: it measures how much of the diff the *single* prompt
 could carry, and here every file is read whole in its own prompt.

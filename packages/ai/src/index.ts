@@ -51,20 +51,13 @@ export {
 
 // Shipped features (one "service per feature" is assembled from these in the app's api layer).
 export {
-  commitMessageFeature,
   COMMIT_MESSAGE_INSTRUCTION,
   COMMIT_MESSAGE_SCHEMA,
-  buildCommitUserPrompt,
-  assessCommitMessageCoverage,
   detectScope,
   truncateDiff,
   parseCommitMessage,
   formatCommitMessage,
-  fileGroupingFeature,
-  FILE_GROUPING_INSTRUCTION,
   FILE_GROUPING_SCHEMA,
-  buildGroupingUserPrompt,
-  assessFileGroupingCoverage,
   groupingOutputTokens,
   fileSummaryFeature,
   FILE_SUMMARY_INSTRUCTION,
@@ -78,9 +71,7 @@ export {
   summaryGroupingOutputTokens,
   renderSummaryList,
   summarizeFiles,
-  shouldSummarizePerFile,
   SummaryRunCancelled,
-  SUMMARY_FILE_THRESHOLD,
   planCommitsFromSummaries,
   summaryCommitMessageFeature,
   SUMMARY_COMMIT_MESSAGE_INSTRUCTION,
@@ -144,7 +135,6 @@ export {
 } from './features'
 export type {
   ProposedCommit,
-  FileGroupingInput,
   FileSummary,
   FileSummaryInput,
   FileSummaryResult,
@@ -154,7 +144,6 @@ export type {
   CommitPlanRunners,
   SummaryCommitMessageInput,
   CommitMessageRunners,
-  CommitMessageInput,
   CommitMessageDraft,
   DailySummary,
   PrDescriptionInput,

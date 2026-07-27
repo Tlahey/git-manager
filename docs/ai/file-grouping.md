@@ -8,12 +8,12 @@ and what each commit should say — on a review screen where you accept, edit or
 
 | | |
 | --- | --- |
-| **Descriptor** | [`fileGroupingFeature`](../../packages/ai/src/features/fileGrouping.ts) |
+| **Descriptor** | [`summaryGroupingFeature`](../../packages/ai/src/features/summaryGrouping.ts), driven by [`planCommitsFromSummaries`](../../packages/ai/src/features/planCommits.ts) |
 | **Kind** | completion + JSON schema → `ProposedCommit[]` |
 | **Temperature** | 0.2 — a partitioning task, not a writing one |
 | **Context scope** | `working` (worktree vs HEAD, untracked included) |
-| **Diff budget** | derived from the model's context window, spent per file — see [Known limitations](./README.md#known-limitations) #3 and the shared [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts) |
-| **Output reserve** | `max(600, files × 24)` — the only feature whose answer length scales with its input; see [The output reserve](./README.md#the-output-reserve) |
+| **Diff budget** | none at this level: every file is read whole, in its own prompt, by the map phase |
+| **Output reserve** | `groupingOutputTokens(paths)`, measured from the real paths — the only feature whose answer length scales with its input; see [The output reserve](./README.md#the-output-reserve) |
 | **UI** | [`CommitBatchReviewPanel`](../../apps/desktop/src/components/git-graph/components/CommitBatchReviewPanel.tsx) via [`useCommitBatchReview`](../../apps/desktop/src/hooks/useCommitBatchReview.ts) |
 
 ---
@@ -62,34 +62,29 @@ something you can count on across Ollama, LM Studio, vLLM and OpenAI:
 
 ## The prompt
 
-**System** — `FILE_GROUPING_INSTRUCTION`, built around four named rules the model is asked to respect:
-**atomicity** (one logical change per commit), **ordering** (the sequence must stay coherent when
-applied), **coverage** (every file in exactly one commit, paths verbatim), **minimality** (fewest
-commits that stay atomic — one commit when it really is one change).
+`SUMMARY_GROUPING_INSTRUCTION` is deliberately shorter than the single-shot instruction it replaced.
+That one spent four paragraphs managing a truncated diff — declaring the file list authoritative over
+the diff, then telling the model that a file it could not read must still be placed. None of it
+applies here: every file arrives with a summary, so the evidence is complete by construction.
 
-**User** — the file list first, then the style section (shared with
-[commit message](./commit-message.md)), then the diff:
+The removed tension is the point. The old prompt said "you have not read these, do not reason about
+the contents of them" a few lines after "every file MUST appear in exactly one commit", and a model
+resolving that contradiction by dropping the unread files produces a plan with holes in it.
 
 ```
 Repository: git-manager (branch: main)
 
-Changed files:
-- src/auth/login.ts (modified)
-- src/auth/login.test.ts (added)
-…
-
 <style section>
 
-Split these files into atomic commits. Diff for context:
-
---- DIFF ---
+All 46 changed files:
+- src/auth/login.ts (modified) — [authentication] add the login form
+- src/auth/login.test.ts (added) — [authentication] cover the empty password case
 …
---- END DIFF ---
+
+Split these 46 files into atomic commits. Every path above must appear exactly once in your plan.
 ```
 
-The **file list comes before the diff** on purpose: those are the exact paths the model must
-partition, and the diff is explicitly framed as context for the reasoning. A path invented or
-mangled by the model is a file that silently wouldn't get committed.
+The count is stated on both sides of the list so the model can check itself against it.
 
 ---
 
@@ -198,11 +193,11 @@ short plan, so it is the one failure that was never silent. `groupingOutputToken
 actual paths rather than assuming a per-file constant, which is what makes the cap right on a repo
 with nested paths — the flat 24 tokens/file it replaced was about the cost of one deep path alone.
 
-Past **12 files** the planner stops trying to do it in one call — see below.
+The planner never tries to do it in one call — see below.
 
 ---
 
-## Two-phase planning, past 12 files
+## Two-phase planning, always
 
 ```mermaid
 flowchart LR
@@ -221,8 +216,14 @@ flowchart LR
 | **Orchestration** | [`planCommitsFromSummaries`](../../packages/ai/src/features/planCommits.ts) — sequencing, progress, cancellation |
 | **Threshold** | `SUMMARY_PLANNING_FILE_THRESHOLD` = 12 |
 
-**Why it helps.** The single-shot prompt has to fit every file's diff in one window, so past a few
-dozen files most of them reach the model as a bare path — and a path is not something you can group
+**One path, no threshold.** There was briefly a file count below which the old single-prompt planner
+was kept, on the grounds that one call beats N+1 when the whole diff already fits. That saving was
+bought with a hidden branch: the same button did two different things depending on a number nobody
+could see, so a bad plan could not be reasoned about without first working out which path produced
+it. The single-prompt planner and its coverage assessment are deleted, not dormant.
+
+**Why it helps.** The single-shot prompt had to fit every file's diff in one window, so past a few
+dozen files most of them reached the model as a bare path — and a path is not something you can group
 by meaning. Here each file gets its own prompt, so the window stops being the limit and the reduce
 call reasons over N short descriptions instead of a truncated diff. It also removes the prompt
 contradiction described above: every file arrives described, so there is no "you have not read
@@ -242,7 +243,7 @@ and the tests assert the backstop still fires.
 | | |
 | --- | --- |
 | **N+1 calls** | Sequential, not concurrent: the provider is normally one local model, so parallel requests queue behind the same weights while splitting its context allocation. It also keeps progress honest — `completed` counts files described, not requests sent |
-| **Latency** | Minutes on a large changeset, hence the per-file progress and the threshold |
+| **Latency** | Three calls where there was one on a small change, minutes on a large one — hence the per-file progress. The answer to this is caching summaries by `(path, content hash)`, not a second code path; not built yet |
 | **Cancellation is between calls** | The completion transport takes no request id, so an in-flight call runs to completion and its result is dropped. Tolerable only because each summary call is small |
 | **Lossy** | Grouping quality now depends on the summaries. `area` is asked for as a *concept*, never a directory, since it is the key the reduce step groups on |
 | **A failed summary keeps its file** | Recorded with empty fields; the reduce instruction has a rule for placing it from its path. Losing a file here would be the exact failure the whole path exists to avoid |
@@ -272,7 +273,7 @@ Beyond the [shared ones](./README.md#known-limitations):
 | [`SidePanelOverlay.test.tsx`](../../packages/components/src/SidePanelOverlay.test.tsx) | open/closed, children + resize handle, dialog role with an accessible name that takes focus, Escape, viewport-fraction width |
 | [`fileSummary.test.ts`](../../packages/ai/src/features/fileSummary.test.ts) | prompt shape, that one file always fits a 4k window, the schema having no path field, every tolerated parse variant, and a flat answer reserve |
 | [`summaryGrouping.test.ts`](../../packages/ai/src/features/summaryGrouping.test.ts) | prompt shape and file count stated twice, the absence of a not-included block, and the degrade order (intents before areas, paths never) |
-| [`planCommits.test.ts`](../../packages/ai/src/features/planCommits.test.ts) | the threshold, per-file diff slicing, a failed summary keeping its file, the progress sequence, cancellation between calls, and style context passed through |
+| [`planCommits.test.ts`](../../packages/ai/src/features/planCommits.test.ts) | per-file diff slicing, a failed summary keeping its file, the progress sequence, cancellation between calls, and style context passed through |
 | [`git_repo.rs`](../../apps/desktop/src-tauri/src/services/git_repo.rs) | `get_pending_operation` on a clean repo and on an interrupted merge |
 | [`git_commit.rs`](../../apps/desktop/src-tauri/src/services/git_commit.rs) | `create_commit` keeping one parent normally, taking `MERGE_HEAD` as a second parent and clearing the merge state, leaving another operation's state files alone, and tolerating a malformed `MERGE_HEAD` |
 | [`useWipCommitPanel.test.ts`](../../apps/desktop/src/hooks/useWipCommitPanel.test.ts) | the same refusal on the non-AI batch mode (per group and once for the whole run), and the ordinary Commit button still committing during a merge |

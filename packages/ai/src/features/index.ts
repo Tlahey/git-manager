@@ -1,25 +1,14 @@
 export {
-  commitMessageFeature,
   COMMIT_MESSAGE_INSTRUCTION,
   COMMIT_MESSAGE_SCHEMA,
-  buildCommitUserPrompt,
-  assessCommitMessageCoverage,
   detectScope,
   truncateDiff,
   parseCommitMessage,
   formatCommitMessage,
 } from './commitMessage'
-export type { CommitMessageInput, CommitMessageDraft } from './commitMessage'
-export {
-  fileGroupingFeature,
-  FILE_GROUPING_INSTRUCTION,
-  FILE_GROUPING_SCHEMA,
-  buildGroupingUserPrompt,
-  assessFileGroupingCoverage,
-  groupingOutputTokens,
-  parseCommitPlan,
-} from './fileGrouping'
-export type { ProposedCommit, FileGroupingInput } from './fileGrouping'
+export type { CommitMessageDraft } from './commitMessage'
+export { FILE_GROUPING_SCHEMA, groupingOutputTokens, parseCommitPlan } from './fileGrouping'
+export type { ProposedCommit } from './fileGrouping'
 export {
   fileSummaryFeature,
   FILE_SUMMARY_INSTRUCTION,
@@ -37,12 +26,7 @@ export {
   renderSummaryList,
 } from './summaryGrouping'
 export type { SummaryGroupingInput } from './summaryGrouping'
-export {
-  summarizeFiles,
-  shouldSummarizePerFile,
-  SummaryRunCancelled,
-  SUMMARY_FILE_THRESHOLD,
-} from './summarizeFiles'
+export { summarizeFiles, SummaryRunCancelled } from './summarizeFiles'
 export type { SummaryProgress, SummarizeOptions } from './summarizeFiles'
 export { planCommitsFromSummaries } from './planCommits'
 export type { CommitPlanRunners } from './planCommits'

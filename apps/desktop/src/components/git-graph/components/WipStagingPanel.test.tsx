@@ -317,64 +317,6 @@ describe('WipStagingPanel — batch mode', () => {
   })
 })
 
-describe('WipStagingPanel — commit message coverage', () => {
-  const partial = {
-    filesRead: 6,
-    filesTotal: 40,
-    complete: false,
-    requiredContextTokens: 32768,
-    windowTooSmall: false,
-  }
-
-  it('says what the message was written from, before it gets committed', () => {
-    // The reason this one is worth showing at all: unlike every other coverage line, the text beside
-    // it is about to be written into history under the user's name.
-    useWipCommitPanel.mockReturnValue(
-      panelState({ commitMessage: 'feat(ui): add a thing', commitCoverage: partial })
-    )
-    renderPanel()
-    expect(screen.getByTestId('commit-message-coverage')).toHaveTextContent(
-      'Read 6 of 40 changed files in full'
-    )
-  })
-
-  it('stays silent when the whole staged change was read', () => {
-    useWipCommitPanel.mockReturnValue(
-      panelState({
-        commitMessage: 'feat(ui): add a thing',
-        commitCoverage: { ...partial, filesRead: 40, complete: true },
-      })
-    )
-    renderPanel()
-    expect(screen.queryByTestId('commit-message-coverage')).not.toBeInTheDocument()
-  })
-
-  it('warns separately when the window has no room for a diff at all', () => {
-    useWipCommitPanel.mockReturnValue(
-      panelState({
-        commitMessage: 'feat(ui): add a thing',
-        commitCoverage: { ...partial, filesRead: 0, windowTooSmall: true },
-      })
-    )
-    renderPanel()
-    expect(screen.getByTestId('commit-message-window-too-small')).toBeInTheDocument()
-  })
-
-  it('describes nothing when the message box is empty', () => {
-    // Batch-mode generation leaves this box untouched, so its coverage must not caption it.
-    useWipCommitPanel.mockReturnValue(panelState({ commitMessage: '', commitCoverage: partial }))
-    renderPanel()
-    expect(screen.queryByTestId('commit-message-coverage')).not.toBeInTheDocument()
-  })
-
-  it('shows nothing before anything has been generated', () => {
-    useWipCommitPanel.mockReturnValue(
-      panelState({ commitMessage: 'hand-written message', commitCoverage: null })
-    )
-    renderPanel()
-    expect(screen.queryByTestId('commit-message-coverage')).not.toBeInTheDocument()
-  })
-})
 
 describe('WipStagingPanel — batch "all" actions', () => {
   const twoGroups = {

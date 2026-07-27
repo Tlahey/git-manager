@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   BRANCH_EXPLANATION_INSTRUCTION,
   CHANGE_EXPLANATION_INSTRUCTION,
-  COMMIT_MESSAGE_INSTRUCTION,
   COMMIT_MESSAGE_SCHEMA,
   FILE_GROUPING_SCHEMA,
   type AiCheckConfig,
@@ -71,32 +70,52 @@ describe('ai.api pass-throughs', () => {
 })
 
 describe('feature services', () => {
-  it('commitMessageService resolves preset→protocol + feature instruction, completes under the schema', async () => {
+  const summaries = [{ path: 'src/a.ts', status: 'modified', intent: 'adds a', area: 'demo' }]
+
+  it('summaryCommitMessageService completes under the message schema', async () => {
     // A completion rather than a stream: the JSON grammar is what stops a reasoning model from
     // deliberating into the commit box (see COMMIT_MESSAGE_SCHEMA).
     mocked.aiComplete.mockResolvedValue('{"subject":"feat: a","body":""}')
-    const draft = await api.commitMessageService.run(connection, { context })
+    const draft = await api.summaryCommitMessageService.run(connection, {
+      repoName: 'demo',
+      branch: 'main',
+      summaries,
+    })
 
     expect(mocked.aiComplete).toHaveBeenCalledWith(
       expect.objectContaining({ protocol: 'openai-compatible', temperature: 0.3 }),
-      COMMIT_MESSAGE_INSTRUCTION,
-      expect.stringContaining('--- DIFF ---'),
+      expect.any(String),
+      expect.stringContaining('All 1 staged files'),
       COMMIT_MESSAGE_SCHEMA
     )
     expect(draft).toEqual({ subject: 'feat: a', body: '' })
   })
 
-  it('fileGroupingService completes with the JSON schema then parses into typed commits', async () => {
+  it('summaryGroupingService completes with the JSON schema then parses into typed commits', async () => {
     mocked.aiComplete.mockResolvedValue('{"commits":[{"commitMessage":"feat: a","files":["src/a.ts"]}]}')
-    const commits = await api.fileGroupingService.run(connection, { context })
+    const commits = await api.summaryGroupingService.run(connection, {
+      repoName: 'demo',
+      branch: 'main',
+      summaries,
+    })
 
     expect(mocked.aiComplete).toHaveBeenCalledWith(
       expect.objectContaining({ temperature: 0.2 }),
       expect.any(String),
-      expect.stringContaining('Changed files:'),
+      expect.stringContaining('All 1 changed files'),
       FILE_GROUPING_SCHEMA
     )
     expect(commits).toEqual([{ commitMessage: 'feat: a', files: ['src/a.ts'] }])
+  })
+
+  it('fileSummaryService describes one file, asking for no path back', async () => {
+    mocked.aiComplete.mockResolvedValue('{"intent":"adds a guard","area":"batching"}')
+    const result = await api.fileSummaryService.run(connection, {
+      path: 'src/a.ts',
+      status: 'modified',
+      diff: 'diff --git a/src/a.ts b/src/a.ts',
+    })
+    expect(result).toEqual({ intent: 'adds a guard', area: 'batching' })
   })
 
   it('changeExplanationService streams the file-explanation prompt with its own instruction', async () => {
@@ -151,7 +170,9 @@ describe('feature services', () => {
 
   it('clears the run when a completion feature fails', async () => {
     mocked.aiComplete.mockRejectedValue(new Error('AI_PROVIDER_NOT_RUNNING'))
-    await expect(api.fileGroupingService.run(connection, { context })).rejects.toThrow()
+    await expect(
+      api.summaryGroupingService.run(connection, { repoName: 'demo', branch: 'main', summaries: [] })
+    ).rejects.toThrow()
     expect(useAiActivityStore.getState().runs).toEqual([])
   })
 
