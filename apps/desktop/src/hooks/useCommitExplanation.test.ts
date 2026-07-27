@@ -25,18 +25,20 @@ function emit(event: string, token?: string, requestId: string = currentRequestI
 }
 
 vi.mock('../api/ai.api', () => ({
-  commitExplanationService: { run: vi.fn(), cancel: vi.fn() },
+  fileSummaryService: { run: vi.fn() },
+  summaryExplanationService: { run: vi.fn(), cancel: vi.fn() },
 }))
 vi.mock('../api/git.api', () => ({ apiGetCommitDiff: vi.fn() }))
 
-import { commitExplanationService } from '../api/ai.api'
+import { fileSummaryService, summaryExplanationService } from '../api/ai.api'
 import { apiGetCommitDiff } from '../api/git.api'
 import { useCommitExplanation, type CommitExplanationSubject } from './useCommitExplanation'
 import { useAiExplanationStore } from '../stores/aiExplanation.store'
 import { useSettingsStore } from '../stores/settings.store'
 
 const mockedDiff = apiGetCommitDiff as unknown as ReturnType<typeof vi.fn>
-const mockedRun = commitExplanationService.run as unknown as ReturnType<typeof vi.fn>
+const mockedRun = summaryExplanationService.run as unknown as ReturnType<typeof vi.fn>
+const mockedSummarize = fileSummaryService.run as unknown as ReturnType<typeof vi.fn>
 
 const diff: GitDiff = {
   files: [
@@ -83,6 +85,7 @@ async function generate(explain: () => Promise<void>, text = 'Adds a constant') 
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockedSummarize.mockResolvedValue({ intent: 'does a thing', area: 'demo area' })
   listeners.clear()
   useAiExplanationStore.setState({ explanations: {} })
   mockedDiff.mockResolvedValue(diff)
@@ -90,49 +93,39 @@ beforeEach(() => {
 })
 
 describe('useCommitExplanation', () => {
-  it('fetches the commit diff and sends it as a unified patch', async () => {
+  it('summarizes each touched file, then streams the explanation from the summaries', async () => {
     const { result } = renderHook(() => useCommitExplanation('/repo/demo', subject()))
-    await act(async () => {
-      await result.current.explain()
-    })
 
-    expect(mockedDiff).toHaveBeenCalledWith('/repo/demo', 'abc1234def')
-    const input = mockedRun.mock.calls[0][1]
-    expect(input.patch).toContain('@@ -1,2 +1,3 @@')
-    expect(input.patch).toContain('+const b = 2')
-    expect(input.repoName).toBe('demo')
-  })
+    await act(async () => result.current.explain())
 
-  it('passes the commit metadata and the stats from the diff', async () => {
-    useSettingsStore.setState((s) => ({ settings: { ...s.settings, language: 'fr' } }))
-    const { result } = renderHook(() => useCommitExplanation('/repo/demo', subject()))
-    await act(async () => {
-      await result.current.explain()
-    })
-
-    const input = mockedRun.mock.calls[0][1]
-    expect(input.commit).toMatchObject({
-      shortOid: 'abc1234',
-      subject: 'feat: add login',
-      body: 'Closes #12.',
-      author: 'Ada',
-      filesChanged: 1,
-      insertions: 2,
-      deletions: 1,
-      isMerge: false,
-    })
-    expect(input.language).toBe('fr')
-  })
-
-  it('flags a merge commit so the model knows the diff is first-parent only', async () => {
-    const { result } = renderHook(() =>
-      useCommitExplanation('/repo/demo', subject({ parentCount: 2 }))
+    expect(mockedDiff).toHaveBeenCalledWith('/repo/demo', subject().oid)
+    // One call per file the commit touches, before a word of the explanation is written.
+    expect(mockedSummarize).toHaveBeenCalledTimes(diff.files.length)
+    expect(mockedRun).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        scope: 'commit',
+        repoName: 'demo',
+        commit: expect.objectContaining({ shortOid: subject().shortOid, subject: subject().subject }),
+        summaries: expect.arrayContaining([
+          expect.objectContaining({ path: 'src/a.ts', intent: 'does a thing' }),
+        ]),
+      }),
+      expect.any(String)
     )
-    await act(async () => {
-      await result.current.explain()
-    })
-    expect(mockedRun.mock.calls[0][1].commit.isMerge).toBe(true)
   })
+
+  it('summarizes from the path the patch header carries, so the slices line up', async () => {
+    const { result } = renderHook(() => useCommitExplanation('/repo/demo', subject()))
+
+    await act(async () => result.current.explain())
+
+    const paths = mockedSummarize.mock.calls.map((c) => c[1].path)
+    expect(paths).toEqual(diff.files.map((f) => f.newPath || f.oldPath))
+  })
+
+
+
 
   it('refuses a commit with no textual diff, without calling the model', async () => {
     mockedDiff.mockResolvedValue({ files: [], totalAdditions: 0, totalDeletions: 0 })
@@ -144,15 +137,6 @@ describe('useCommitExplanation', () => {
     expect(result.current.error).toBe('AI_NO_COMMIT_CHANGES')
   })
 
-  it('sends the complete file inventory alongside the patch', async () => {
-    const { result } = renderHook(() => useCommitExplanation('/repo/demo', subject()))
-    await act(async () => {
-      await result.current.explain()
-    })
-    expect(mockedRun.mock.calls[0][1].files).toEqual([
-      { path: 'src/a.ts', status: 'modified', insertions: 2, deletions: 1 },
-    ])
-  })
 
   it("uses the path the patch's own header carries, so dropped files can be marked", async () => {
     // A deletion has no new path; `formatUnifiedPatch` writes the old one into `diff --git`, and the
@@ -165,9 +149,10 @@ describe('useCommitExplanation', () => {
     await act(async () => {
       await result.current.explain()
     })
-    const { files, patch } = mockedRun.mock.calls[0][1]
-    expect(files[0].path).toBe('src/gone.ts')
-    expect(patch).toContain('diff --git a/src/gone.ts b/src/gone.ts')
+    // The path handed to the map phase has to be the one `formatUnifiedPatch` wrote into the
+    // `diff --git` header, or `splitDiffByFile` cannot find that file's slice.
+    expect(mockedSummarize.mock.calls[0][1].path).toBe('src/gone.ts')
+    expect(mockedSummarize.mock.calls[0][1].diff).toContain('diff --git a/src/gone.ts b/src/gone.ts')
   })
 
   it("sizes the patch against the model's declared context window", async () => {
@@ -181,15 +166,6 @@ describe('useCommitExplanation', () => {
     // Passed through rather than left to the pessimistic default: the flat 8000-character cut it
     // replaces overflowed a small window and starved a large one.
     expect(mockedRun.mock.calls[0][1].contextTokens).toBe(32768)
-  })
-
-  it('reports what the run read, so a partially-read commit says so', async () => {
-    const { result } = renderHook(() => useCommitExplanation('/repo/demo', subject()))
-    expect(result.current.coverage).toBeNull()
-    await act(async () => {
-      await result.current.explain()
-    })
-    expect(result.current.coverage).toMatchObject({ filesTotal: 1, filesRead: 1, complete: true })
   })
 
   it('surfaces a failure from the diff fetch', async () => {
@@ -241,24 +217,6 @@ describe('useCommitExplanation — memory', () => {
       .set('/repo/demo', 'branch', 'abc1234def', 'main', 'branch text')
     const { result } = renderHook(() => useCommitExplanation('/repo/demo', subject()))
     expect(result.current.hasStored).toBe(false)
-  })
-
-  it('remembers what the run read, so a stored answer keeps its caveat', async () => {
-    // Without this the text and its age survived a reload while "read 6 of 26 files" did not, which
-    // made an old answer look more authoritative than a fresh one.
-    const first = renderHook(() => useCommitExplanation('/repo/demo', subject()))
-    await generate(() => first.result.current.explain())
-    first.unmount()
-
-    const { result } = renderHook(() => useCommitExplanation('/repo/demo', subject()))
-    expect(result.current.coverage).toMatchObject({ filesTotal: 1, complete: true })
-  })
-
-  it('drops the remembered coverage along with the text', async () => {
-    const { result } = renderHook(() => useCommitExplanation('/repo/demo', subject()))
-    await generate(() => result.current.explain())
-    act(() => result.current.clear())
-    expect(result.current.coverage).toBeNull()
   })
 
   it('clear forgets it', async () => {

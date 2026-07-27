@@ -1,10 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
-import {
-  assessCommitExplanationCoverage,
-  type CommitExplanationCommit,
-  type DiffCoverage,
-} from '@git-manager/ai'
-import { commitExplanationService } from '../api/ai.api'
+import { summarizeFiles, type SummaryProgress } from '@git-manager/ai'
+import { fileSummaryService, summaryExplanationService } from '../api/ai.api'
 import { apiGetCommitDiff } from '../api/git.api'
 import { formatUnifiedPatch } from '../lib/formatUnifiedPatch'
 import {
@@ -42,7 +38,7 @@ export interface CommitExplanationSubject {
  * a poor one worth redoing.
  */
 export function useCommitExplanation(repoPath: string, commit: CommitExplanationSubject) {
-  const { run, cancel, reset, status, error, text } = useAiStream(commitExplanationService.cancel)
+  const { run, cancel, reset, status, error, text } = useAiStream(summaryExplanationService.cancel)
   const aiConnection = useSettingsStore((s) => s.settings.ai)
   const language = useSettingsStore((s) => s.settings.language)
   // The model's declared context window sizes how much of the commit's patch is sent.
@@ -56,18 +52,11 @@ export function useCommitExplanation(repoPath: string, commit: CommitExplanation
   // What the diff is taken against, for the panel's subtitle and the stored entry.
   const comparedTo = commit.parentCount === 0 ? 'root' : `${commit.shortOid}^`
 
-  /**
-   * How much of the commit the last run actually read, and the window it would take to read all of
-   * it. Same machinery as the code review, and needed here for the same reason: the patch is
-   * budgeted against the model's window, so on a large commit the answer describes a part of it —
-   * and an explanation reads as confident whatever it saw.
-   *
-   * Stored with the answer, and the mirror ref exists because of *when* it is stored: the completion
-   * callback below is created during the same render as this state, so it would close over the
-   * previous value and remember the coverage of the run before this one.
-   */
-  const [coverage, setCoverage] = useState<DiffCoverage | null>(null)
-  const lastCoverage = useRef<DiffCoverage | null>(null)
+  /** Progress of the map phase: one call per file the commit touches, before the stream starts. */
+  const [progress, setProgress] = useState<SummaryProgress | null>(null)
+  /** Set by `cancel`, polled by the map loop between calls — a ref, since the loop closed over the
+   * render that started it. */
+  const cancelledRef = useRef(false)
 
   const explain = useCallback(
     () =>
@@ -78,36 +67,43 @@ export function useCommitExplanation(repoPath: string, commit: CommitExplanation
           // An empty-tree commit or a pure metadata change has nothing to read.
           if (!patch.trim()) return 'AI_NO_COMMIT_CHANGES'
 
-          const payload: CommitExplanationCommit = {
-            shortOid: commit.shortOid,
-            subject: commit.subject,
-            body: commit.body,
-            author: commit.author,
-            filesChanged: diff.files.length,
-            insertions: diff.totalAdditions,
-            deletions: diff.totalDeletions,
-            isMerge: commit.parentCount > 1,
-          }
-          const input = {
-            repoName: repoPath.split('/').filter(Boolean).pop() ?? repoPath,
-            commit: payload,
-            patch,
-            // The complete inventory, sent whether or not each file's diff survives the budget. The
-            // path must be the one `formatUnifiedPatch` writes into the `diff --git` header, or the
-            // prompt cannot mark the entries whose diff was dropped.
-            files: diff.files.map((f) => ({
-              path: f.newPath || f.oldPath,
-              status: f.status,
-              insertions: f.additions,
-              deletions: f.deletions,
-            })),
-            language,
+          // Read each touched file on its own before explaining the commit. The single budgeted
+          // patch this replaced meant a large commit was explained from whichever files fitted.
+          cancelledRef.current = false
+          const files = diff.files.map((f) => ({
+            path: f.newPath || f.oldPath,
+            status: f.status,
+          }))
+          const summaries = await summarizeFiles(
+            {
+              diff: patch,
+              files,
+              repoName: repoPath.split('/').filter(Boolean).pop() ?? repoPath,
+              branch: '',
+            },
+            (summaryInput) => fileSummaryService.run(aiConnection, summaryInput),
             contextTokens,
-          }
-          const assessed = assessCommitExplanationCoverage(input)
-          lastCoverage.current = assessed
-          setCoverage(assessed)
-          await commitExplanationService.run(aiConnection, input, requestId)
+            { onProgress: setProgress, shouldCancel: () => cancelledRef.current }
+          )
+          setProgress(null)
+
+          await summaryExplanationService.run(
+            aiConnection,
+            {
+              scope: 'commit',
+              repoName: repoPath.split('/').filter(Boolean).pop() ?? repoPath,
+              commit: {
+                shortOid: commit.shortOid,
+                subject: commit.subject,
+                body: commit.body,
+                author: commit.author,
+              },
+              summaries,
+              language,
+              contextTokens,
+            },
+            requestId
+          )
         },
         {
           onComplete: (full) =>
@@ -116,8 +112,7 @@ export function useCommitExplanation(repoPath: string, commit: CommitExplanation
               'commit',
               commit.oid,
               comparedTo,
-              full,
-              lastCoverage.current ?? undefined
+              full
             ),
         }
       ),
@@ -140,16 +135,23 @@ export function useCommitExplanation(repoPath: string, commit: CommitExplanation
 
   const clear = useCallback(() => {
     forget(repoPath, 'commit', commit.oid)
-    lastCoverage.current = null
-    setCoverage(null)
+    setProgress(null)
     reset()
   }, [forget, repoPath, commit.oid, reset])
+
+  /** Stops the map phase at its next call boundary, then the stream. */
+  const cancelRun = useCallback(async () => {
+    cancelledRef.current = true
+    setProgress(null)
+    await cancel()
+  }, [cancel])
 
   const isGenerating = status === 'connecting' || status === 'streaming'
 
   return {
     explain,
-    cancel,
+    cancel: cancelRun,
+    progress,
     clear,
     status,
     isGenerating,
@@ -158,14 +160,5 @@ export function useCommitExplanation(repoPath: string, commit: CommitExplanation
     generatedAt: stored?.generatedAt ?? null,
     comparedTo: stored?.comparedTo ?? null,
     hasStored: stored !== undefined,
-    /**
-     * What the shown answer read, and the window needed to read it all.
-     *
-     * Falls back to the remembered coverage so a stored explanation keeps its caveat: without this
-     * the text and its age survived a reload while "read 6 of 26 files" did not, which made an old
-     * answer look *more* authoritative than a fresh one. `null` only before any run, or for an entry
-     * written before coverage was stored.
-     */
-    coverage: coverage ?? stored?.coverage ?? null,
   }
 }

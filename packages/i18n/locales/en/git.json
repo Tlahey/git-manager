@@ -156,6 +156,7 @@
   "gitTree.explanation.forget": "Delete this summary",
   "gitTree.explanation.staleComparison": "This summary was generated against {{comparison}}. Regenerate it to use the current comparison.",
   "gitTree.explanation.coverage": "Read {{read}} of {{total}} changed files in full — the rest were shortened or left out. Reading everything needs about a {{window}}k-token context window.",
+  "gitTree.explanation.summarizing": "Reading the files one by one — {{done}} of {{total}}…",
   "gitTree.explanation.windowTooSmall": "The configured context window leaves no room for the diff — everything it can hold is the instructions. Raise it in Settings → AI.",
   "gitTree.branchExplanation.panelTitle": "Branch summary",
   "gitTree.branchExplanation.comparedTo": "compared to {{base}}",

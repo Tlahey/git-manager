@@ -69,23 +69,15 @@ export {
 } from './changeExplanation'
 export type { ChangeExplanationInput, ChangeExplanationFile } from './changeExplanation'
 export {
-  branchExplanationFeature,
-  BRANCH_EXPLANATION_INSTRUCTION,
-  buildBranchExplanationPrompt,
-  assessBranchExplanationCoverage,
-} from './branchExplanation'
-export type { BranchExplanationInput } from './branchExplanation'
-export {
-  commitExplanationFeature,
-  COMMIT_EXPLANATION_INSTRUCTION,
-  buildCommitExplanationPrompt,
-  assessCommitExplanationCoverage,
-} from './commitExplanation'
+  summaryExplanationFeature,
+  SUMMARY_EXPLANATION_INSTRUCTION,
+  buildSummaryExplanationPrompt,
+} from './summaryExplanation'
 export type {
-  CommitExplanationInput,
-  CommitExplanationCommit,
-  CommitExplanationFile,
-} from './commitExplanation'
+  SummaryExplanationInput,
+  SummaryExplanationScope,
+  SummaryExplanationCommit,
+} from './summaryExplanation'
 export {
   workingExplanationFeature,
   WORKING_EXPLANATION_INSTRUCTION,

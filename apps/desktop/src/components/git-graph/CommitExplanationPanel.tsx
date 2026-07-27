@@ -3,7 +3,7 @@ import {
   useCommitExplanation,
   type CommitExplanationSubject,
 } from '../../hooks/useCommitExplanation'
-import { CoverageNotice } from './components/CoverageNotice'
+import { SummaryProgressNotice } from './components/SummaryProgressNotice'
 import { ExplanationPanelShell } from './components/ExplanationPanelShell'
 
 interface CommitExplanationPanelProps {
@@ -36,7 +36,7 @@ export function CommitExplanationPanel({ repoPath, commit, onClose }: CommitExpl
     text,
     generatedAt,
     comparedTo,
-    coverage,
+    progress,
   } = useCommitExplanation(repoPath, commit)
 
   const currentComparison = commit.parentCount === 0 ? 'root' : `${commit.shortOid}^`
@@ -76,9 +76,8 @@ export function CommitExplanationPanel({ repoPath, commit, onClose }: CommitExpl
       error={error}
       generatedAt={generatedAt}
       staleComparison={staleComparison ? comparedTo : null}
-      // A big squashed merge no longer fits whole in a small window, so the panel says what it read
-      // — an explanation reads as confident whether it saw six files or forty.
-      notice={<CoverageNotice coverage={coverage} testIdPrefix="commit-explanation" />}
+      // The map phase runs before the stream starts; without this the panel looks hung.
+      notice={<SummaryProgressNotice progress={progress} testIdPrefix="commit-explanation" />}
       onGenerate={() => void explain()}
       onCancel={() => void cancel()}
       onForget={clear}

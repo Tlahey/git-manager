@@ -8,10 +8,8 @@ import type {
   JsonSchema,
 } from '@git-manager/ai'
 import {
-  branchExplanationFeature,
   changeExplanationFeature,
   codeReviewFeature,
-  commitExplanationFeature,
   commitRecomposeFeature,
   createCompletionService,
   createStatusService,
@@ -20,6 +18,7 @@ import {
   fileSummaryFeature,
   prDescriptionFeature,
   summaryCommitMessageFeature,
+  summaryExplanationFeature,
   summaryGroupingFeature,
   workingExplanationFeature,
 } from '@git-manager/ai'
@@ -211,13 +210,12 @@ export const changeExplanationService = createStreamingService(
   changeExplanationFeature,
   trackedTransport(changeExplanationFeature.id)
 )
-export const branchExplanationService = createStreamingService(
-  branchExplanationFeature,
-  trackedTransport(branchExplanationFeature.id)
-)
-export const commitExplanationService = createStreamingService(
-  commitExplanationFeature,
-  trackedTransport(commitExplanationFeature.id)
+/** One service for both explanation scopes: the feature discriminates on its input's `scope`, so a
+ * branch and a commit share an instruction, a temperature and this line — the same arrangement the
+ * code review uses across its own two scopes. Both are fed by `summarizeFiles` first. */
+export const summaryExplanationService = createStreamingService(
+  summaryExplanationFeature,
+  trackedTransport(summaryExplanationFeature.id)
 )
 export const workingExplanationService = createStreamingService(
   workingExplanationFeature,

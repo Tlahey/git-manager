@@ -7,11 +7,11 @@ Answers "what is this branch even about?" — for a branch you didn't write, wit
 
 | | |
 | --- | --- |
-| **Descriptor** | [`branchExplanationFeature`](../../packages/ai/src/features/branchExplanation.ts) |
+| **Descriptor** | [`summaryExplanationFeature`](../../packages/ai/src/features/summaryExplanation.ts) (`scope: 'branch'`), fed by [`summarizeFiles`](../../packages/ai/src/features/summarizeFiles.ts) |
 | **Kind** | streaming markdown |
 | **Temperature** | 0.2 |
 | **Context scope** | `range` — `merge-base(base, branch)..branch` |
-| **Diff budget** | derived from the model's context window, spent per file — see [Known limitations](./README.md#known-limitations) #3 and the shared [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts) |
+| **Diff budget** | none at this level: every file is read whole, in its own prompt, by the map phase |
 | **UI** | [`BranchExplanationPanel`](../../apps/desktop/src/components/git-graph/BranchExplanationPanel.tsx) — right panel — via [`useBranchExplanation`](../../apps/desktop/src/hooks/useBranchExplanation.ts) |
 | **Memory** | [`aiExplanation.store`](../../apps/desktop/src/stores/aiExplanation.store.ts), persisted per repo + branch |
 
@@ -151,3 +151,25 @@ Beyond the [shared ones](./README.md#known-limitations):
 | [`aiExplanation.store.test.ts`](../../apps/desktop/src/stores/aiExplanation.store.test.ts) | keying, overwrite, per-branch isolation, clear |
 | [`graphContextMenus.test.ts`](../../apps/desktop/src/lib/graphContextMenus.test.ts) | the menu item's action, its AI-disabled state, and that it is hidden on a commit with no branch |
 | `ai_context.rs` (`#[cfg(test)]`) | explicit head ref, self-range, unresolvable head |
+
+---
+
+## Read file by file
+
+The explanation is written from **per-file summaries**, never from a budgeted diff. One small call
+describes each changed file from its own patch, then a single streaming call writes the prose from
+the descriptions.
+
+This is the same shape as the commit planner and the commit message, and it is the only shape — there
+is no file-count threshold and no single-prompt alternative. A button that did two different things
+depending on an invisible number is not something a user or a bug report can reason about.
+
+The instruction is shorter for it. Both instructions this replaced carried a paragraph forbidding the
+model from mentioning what it could not read — a rule that only existed because it *was* being shown
+a fraction and would otherwise open with an apology. With complete evidence there is nothing to hide.
+
+The panel shows the per-file count while the map phase runs
+([`SummaryProgressNotice`](../../apps/desktop/src/components/git-graph/components/SummaryProgressNotice.tsx)),
+which replaces the coverage line. Coverage answered "how little did it read?"; there is no budgeted
+prompt to answer that about any more, and what the reader needs is a reason for the wait before the
+first token. Cancelling stops the map at its next call boundary.

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
-  BRANCH_EXPLANATION_INSTRUCTION,
   CHANGE_EXPLANATION_INSTRUCTION,
   COMMIT_MESSAGE_SCHEMA,
   FILE_GROUPING_SCHEMA,
@@ -140,18 +139,48 @@ describe('feature services', () => {
     )
   })
 
-  it('branchExplanationService streams the branch-explanation prompt with its own instruction', async () => {
+  it('summaryExplanationService streams a branch explanation from its summaries', async () => {
     mocked.aiGenerateStream.mockResolvedValue(undefined)
-    await api.branchExplanationService.run(connection, {
-      context: { ...context, baseRef: 'origin/main', rangeCommits: ['feat: a'] },
-      language: 'fr',
-    }, 'req-1')
+    await api.summaryExplanationService.run(
+      connection,
+      {
+        scope: 'branch',
+        repoName: 'demo',
+        branch: 'feature/x',
+        branchCommits: ['feat: a'],
+        summaries: [{ path: 'src/a.ts', status: 'modified', intent: 'adds a', area: 'demo' }],
+        language: 'fr',
+      },
+      'req-1'
+    )
 
     expect(mocked.aiGenerateStream).toHaveBeenCalledWith(
       expect.objectContaining({ protocol: 'openai-compatible', temperature: 0.2 }),
-      BRANCH_EXPLANATION_INSTRUCTION,
-      expect.stringContaining('--- DIFF (base..branch) ---'),
+      expect.any(String),
+      expect.stringContaining('Branch: feature/x'),
       'req-1'
+    )
+  })
+
+  it('summaryExplanationService streams a commit explanation from the same feature', async () => {
+    // One feature, two scopes — the header is the only part that differs.
+    mocked.aiGenerateStream.mockResolvedValue(undefined)
+    await api.summaryExplanationService.run(
+      connection,
+      {
+        scope: 'commit',
+        repoName: 'demo',
+        commit: { shortOid: 'abc1234', subject: 'feat: a' },
+        summaries: [{ path: 'src/a.ts', status: 'modified', intent: 'adds a', area: 'demo' }],
+      },
+      'req-2'
+    )
+
+    expect(mocked.aiGenerateStream).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(String),
+      expect.stringContaining('Commit abc1234: feat: a'),
+      'req-2'
     )
   })
 

@@ -26,16 +26,17 @@ function emit(event: string, token?: string, requestId: string = currentRequestI
 
 vi.mock('../api/ai.api', () => ({
   apiGetAiContext: vi.fn(),
-  branchExplanationService: { run: vi.fn(), cancel: vi.fn() },
+  fileSummaryService: { run: vi.fn() },
+  summaryExplanationService: { run: vi.fn(), cancel: vi.fn() },
 }))
 
-import { apiGetAiContext, branchExplanationService } from '../api/ai.api'
+import { apiGetAiContext, fileSummaryService, summaryExplanationService } from '../api/ai.api'
 import { useBranchExplanation } from './useBranchExplanation'
 import { useAiExplanationStore } from '../stores/aiExplanation.store'
-import { useSettingsStore } from '../stores/settings.store'
 
 const mockedGetContext = apiGetAiContext as unknown as ReturnType<typeof vi.fn>
-const mockedRun = branchExplanationService.run as unknown as ReturnType<typeof vi.fn>
+const mockedRun = summaryExplanationService.run as unknown as ReturnType<typeof vi.fn>
+const mockedSummarize = fileSummaryService.run as unknown as ReturnType<typeof vi.fn>
 
 const rangeContext: AiContext = {
   diff: 'branch diff',
@@ -59,6 +60,7 @@ async function generate(explain: () => Promise<void>, text = 'Adds login') {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockedSummarize.mockResolvedValue({ intent: 'does a thing', area: 'demo area' })
   listeners.clear()
   useAiExplanationStore.setState({ explanations: {} })
   mockedGetContext.mockResolvedValue(rangeContext)
@@ -74,17 +76,28 @@ describe('useBranchExplanation', () => {
     expect(mockedGetContext).toHaveBeenCalledWith('/repo', 'range', 'origin/main', 'feat/login')
   })
 
-  it('passes the context and the UI language to the feature', async () => {
-    useSettingsStore.setState((s) => ({ settings: { ...s.settings, language: 'fr' } }))
-    const { result } = renderHook(() => useBranchExplanation('/repo', 'feat/login'))
-    await act(async () => {
-      await result.current.explain('origin/main')
-    })
-    expect(mockedRun).toHaveBeenCalledWith(expect.anything(), {
-      context: rangeContext,
-      language: 'fr',
-      contextTokens: 4096,
-    }, expect.any(String))
+  it('summarizes every file, then streams the explanation from the summaries', async () => {
+    const { result } = renderHook(() => useBranchExplanation('/repo', 'feature/x'))
+
+    await act(async () => result.current.explain('origin/main'))
+
+    // One call per changed file before a word of the explanation is written.
+    expect(mockedSummarize).toHaveBeenCalledTimes(rangeContext.files.length)
+    expect(mockedRun).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        scope: 'branch',
+        branch: 'feature/x',
+        summaries: rangeContext.files.map((f) => ({
+          path: f.path,
+          status: f.status,
+          intent: 'does a thing',
+          area: 'demo area',
+        })),
+        language: 'fr',
+      }),
+      expect.any(String)
+    )
   })
 
   it('accumulates streamed tokens', async () => {

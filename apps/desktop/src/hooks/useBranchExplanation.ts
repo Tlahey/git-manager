@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
-import { assessBranchExplanationCoverage, type DiffCoverage } from '@git-manager/ai'
-import { apiGetAiContext, branchExplanationService } from '../api/ai.api'
+import { summarizeFiles, type SummaryProgress } from '@git-manager/ai'
+import { apiGetAiContext, fileSummaryService, summaryExplanationService } from '../api/ai.api'
 import {
   explanationKey,
   useAiExplanationStore,
@@ -24,7 +24,7 @@ export type BranchExplanationStatus = AiStreamStatus
  * answer immediately. Nothing regenerates on its own — {@link explain} is only called from a button.
  */
 export function useBranchExplanation(repoPath: string, branch: string) {
-  const { run, cancel, reset, status, error, text } = useAiStream(branchExplanationService.cancel)
+  const { run, cancel, reset, status, error, text } = useAiStream(summaryExplanationService.cancel)
   const aiConnection = useSettingsStore((s) => s.settings.ai)
   const language = useSettingsStore((s) => s.settings.language)
   // The model's declared context window sizes how much of the range diff is sent.
@@ -37,16 +37,14 @@ export function useBranchExplanation(repoPath: string, branch: string) {
   const forget = useAiExplanationStore((s) => s.clear)
 
   /**
-   * How much of the branch the last run actually read, and the window it would take to read all of
-   * it. A branch range is the largest diff the app builds a prompt from, so this is the feature
-   * where the answer is most often a summary of a fraction — and its instruction now forbids the
-   * text from admitting it, precisely so this line can say it once, accurately.
-   *
-   * The mirror ref exists because of *when* it is stored: the completion callback below is created
-   * during the same render as this state, so it would close over the previous value.
+   * Progress of the map phase: one call per changed file before a word of the explanation is
+   * written. On a branch — the largest changeset the app explains — that runs for a while, and a
+   * stream that has not started yet looks identical to one that has hung.
    */
-  const [coverage, setCoverage] = useState<DiffCoverage | null>(null)
-  const lastCoverage = useRef<DiffCoverage | null>(null)
+  const [progress, setProgress] = useState<SummaryProgress | null>(null)
+  /** Set by `cancel`, polled by the map loop between calls. A ref because that loop closed over the
+   * render it started in. */
+  const cancelledRef = useRef(false)
 
   const explain = useCallback(
     (baseRef: string) =>
@@ -56,15 +54,36 @@ export function useBranchExplanation(repoPath: string, branch: string) {
           // A branch level with its base is the one case worth naming: the model would otherwise be
           // asked to explain an empty diff and would happily invent something.
           if (!context.diff.trim()) return 'AI_NO_BRANCH_CHANGES'
-          const input = { context, language, contextTokens }
-          const assessed = assessBranchExplanationCoverage(input)
-          lastCoverage.current = assessed
-          setCoverage(assessed)
-          await branchExplanationService.run(aiConnection, input, requestId)
+
+          // Read every file on its own before explaining anything. The single budgeted range diff
+          // this replaced was the app's largest, so it was also the one most often truncated — and
+          // an explanation written from a third of a branch reads exactly like one written from all
+          // of it.
+          cancelledRef.current = false
+          const summaries = await summarizeFiles(
+            context,
+            (summaryInput) => fileSummaryService.run(aiConnection, summaryInput),
+            contextTokens,
+            { onProgress: setProgress, shouldCancel: () => cancelledRef.current }
+          )
+          setProgress(null)
+
+          await summaryExplanationService.run(
+            aiConnection,
+            {
+              scope: 'branch',
+              repoName: context.repoName,
+              branch,
+              branchCommits: context.rangeCommits,
+              summaries,
+              language,
+              contextTokens,
+            },
+            requestId
+          )
         },
         {
-          onComplete: (full) =>
-            remember(repoPath, 'branch', branch, baseRef, full, lastCoverage.current ?? undefined),
+          onComplete: (full) => remember(repoPath, 'branch', branch, baseRef, full),
         }
       ),
     [run, repoPath, branch, aiConnection, language, contextTokens, remember]
@@ -73,16 +92,23 @@ export function useBranchExplanation(repoPath: string, branch: string) {
   /** Drops the remembered explanation and the live text — the panel's "forget this" affordance. */
   const clear = useCallback(() => {
     forget(repoPath, 'branch', branch)
-    lastCoverage.current = null
-    setCoverage(null)
+    setProgress(null)
     reset()
   }, [forget, repoPath, branch, reset])
+
+  /** Stops the map phase at its next call boundary, then the stream. */
+  const cancelRun = useCallback(async () => {
+    cancelledRef.current = true
+    setProgress(null)
+    await cancel()
+  }, [cancel])
 
   const isGenerating = status === 'connecting' || status === 'streaming'
 
   return {
     explain,
-    cancel,
+    cancel: cancelRun,
+    progress,
     clear,
     status,
     isGenerating,
@@ -94,13 +120,5 @@ export function useBranchExplanation(repoPath: string, branch: string) {
     /** The base the remembered explanation was diffed against — may differ from the current one. */
     comparedTo: stored?.comparedTo ?? null,
     hasStored: stored !== undefined,
-    /**
-     * What the shown answer read, and the window needed to read it all.
-     *
-     * Falls back to the remembered coverage so a stored explanation keeps its caveat — without it a
-     * reloaded answer would look *more* authoritative than a fresh one, having lost the only line
-     * saying it was written from part of the branch.
-     */
-    coverage: coverage ?? stored?.coverage ?? null,
   }
 }

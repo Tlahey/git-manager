@@ -156,6 +156,7 @@
   "gitTree.explanation.forget": "Supprimer ce résumé",
   "gitTree.explanation.staleComparison": "Ce résumé a été généré par rapport à {{comparison}}. Régénérez-le pour utiliser la comparaison actuelle.",
   "gitTree.explanation.coverage": "{{read}} des {{total}} fichiers modifiés ont été lus en entier — les autres ont été raccourcis ou écartés. Tout lire demande une fenêtre de contexte d'environ {{window}}k tokens.",
+  "gitTree.explanation.summarizing": "Lecture des fichiers un par un — {{done}} sur {{total}}…",
   "gitTree.explanation.windowTooSmall": "La fenêtre de contexte configurée ne laisse aucune place au diff — tout ce qu'elle peut contenir, ce sont les instructions. Augmentez-la dans Réglages → IA.",
   "gitTree.branchExplanation.panelTitle": "Résumé de branche",
   "gitTree.branchExplanation.comparedTo": "par rapport à {{base}}",
