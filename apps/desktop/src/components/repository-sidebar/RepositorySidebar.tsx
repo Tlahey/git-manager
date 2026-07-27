@@ -212,6 +212,7 @@ export function RepositorySidebar({
   if (isBlameOrHistoryActive) {
     return (
       <div
+        data-testid="repository-sidebar"
         className="relative flex h-full shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar"
         style={{ width: isCollapsed ? 350 : width }}
       >
@@ -220,16 +221,17 @@ export function RepositorySidebar({
           repoPath={repoPath}
           onClose={() => setActiveLeftPanel('sidebar')}
         />
-        {/* Handle de resize */}
+        {/* Resize handle */}
         <SidebarResizeHandle {...resizeHandleProps} />
       </div>
     )
   }
 
-  // ── Mode rail (collapsed) : icônes uniquement ──────────────────────
+  // ── Rail mode (collapsed): icons only ──────────────────────────────
   if (isCollapsed) {
     return (
       <div
+        data-testid="repository-sidebar"
         className="relative flex h-full shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar"
         style={{ width: RAIL_WIDTH }}
       >
@@ -244,13 +246,14 @@ export function RepositorySidebar({
     )
   }
 
-  // ── Mode déplié : sidebar complète ─────────────────────────────────
+  // ── Expanded mode: full sidebar ────────────────────────────────────
   return (
     <div
+      data-testid="repository-sidebar"
       className="relative flex h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar"
       style={{ width }}
     >
-      {/* En-tête sidebar avec bouton collapse */}
+      {/* Sidebar header with the collapse button */}
       <div className="flex h-9 shrink-0 items-center justify-between border-b border-sidebar-border px-2">
         <span className="select-none text-[10px] font-bold uppercase tracking-widest text-sidebar-muted-foreground/60">
           Repository

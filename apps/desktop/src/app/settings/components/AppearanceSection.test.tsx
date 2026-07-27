@@ -188,3 +188,48 @@ describe('AppearanceSection — in-page search filtering', () => {
     expect(screen.getByTestId('setting-font-size')).toBeInTheDocument()
   })
 })
+
+// The setting only acts on a theme that carries a native window material; showing it
+// on an opaque theme would offer a control that visibly does nothing.
+describe('AppearanceSection — window transparency', () => {
+  function setTheme(theme: string) {
+    const settings = useSettingsStore.getState().settings
+    useSettingsStore.setState({
+      settings: { ...settings, appearance: { ...settings.appearance, theme } },
+    })
+  }
+
+  it('is hidden for an opaque theme', () => {
+    setTheme('dark')
+    render(<AppearanceSection />)
+    expect(screen.queryByTestId('setting-glass-transparency')).not.toBeInTheDocument()
+  })
+
+  it('is shown for a translucent theme, as a slider spanning the full range', () => {
+    setTheme('glass')
+    render(<AppearanceSection />)
+    expect(screen.getByTestId('setting-glass-transparency')).toBeInTheDocument()
+    expect(screen.getByText('Window transparency')).toBeInTheDocument()
+    const slider = screen.getByTestId('glass-transparency-slider')
+    // The ends have to be the real extremes: a slider that stops short of transparent
+    // is what made this setting look like it did nothing.
+    expect(slider).toHaveAttribute('min', '0')
+    expect(slider).toHaveAttribute('max', '100')
+    expect(screen.getByText('Opaque')).toBeInTheDocument()
+    expect(screen.getByText('Clear')).toBeInTheDocument()
+  })
+
+  it('persists the chosen level to the settings store', () => {
+    setTheme('glass')
+    render(<AppearanceSection />)
+    fireEvent.change(screen.getByTestId('glass-transparency-slider'), { target: { value: '37' } })
+    expect(useSettingsStore.getState().settings.appearance.glassTransparency).toBe(37)
+  })
+
+  it('shows the current level as a readable percentage', () => {
+    setTheme('glass')
+    render(<AppearanceSection />)
+    fireEvent.change(screen.getByTestId('glass-transparency-slider'), { target: { value: '42' } })
+    expect(screen.getByText('42%')).toBeInTheDocument()
+  })
+})

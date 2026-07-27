@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { migrateAiPresetId } from '@git-manager/ai'
+import { DEFAULT_GLASS_TRANSPARENCY } from '@git-manager/theme'
 import type { AppSettings, RepoScopedSettings } from '@git-manager/git-types'
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -37,6 +38,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     stickyScroll: false,
     terminalBackground: '#000000',
     terminalForeground: '#e4e4e7',
+    glassTransparency: DEFAULT_GLASS_TRANSPARENCY,
   },
   language: 'fr',
   advanced: {

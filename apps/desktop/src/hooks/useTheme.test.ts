@@ -1,16 +1,26 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 
-vi.mock('../api/theme.api', () => ({ apiGetUserThemes: vi.fn() }))
-vi.mock('../lib/themes', () => ({ resolveSystemTheme: vi.fn() }))
+vi.mock('../api/theme.api', () => ({
+  apiGetUserThemes: vi.fn(),
+  apiSetWindowVibrancy: vi.fn(),
+}))
+// Only resolveSystemTheme is stubbed (it reads matchMedia); vibrancyForTheme is a
+// pure lookup over the real registry, so the vibrancy tests below assert the
+// materials the shipped themes actually declare rather than a fixture.
+vi.mock('../lib/themes', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/themes')>()),
+  resolveSystemTheme: vi.fn(),
+}))
 
-import { apiGetUserThemes } from '../api/theme.api'
+import { apiGetUserThemes, apiSetWindowVibrancy } from '../api/theme.api'
 import { resolveSystemTheme } from '../lib/themes'
 import { useSettingsStore } from '../stores/settings.store'
 import { useRepoUIStore } from '../stores/repoUI.store'
 import { useTheme } from './useTheme'
 
 const mockedGetUserThemes = apiGetUserThemes as unknown as ReturnType<typeof vi.fn>
+const mockedSetVibrancy = apiSetWindowVibrancy as unknown as ReturnType<typeof vi.fn>
 const mockedResolveSystemTheme = resolveSystemTheme as unknown as ReturnType<typeof vi.fn>
 const DEFAULT_SETTINGS = useSettingsStore.getState().settings
 
@@ -25,6 +35,7 @@ beforeEach(() => {
   useSettingsStore.setState({ settings: DEFAULT_SETTINGS })
   useRepoUIStore.setState({ activeRepo: null })
   mockedGetUserThemes.mockResolvedValue([])
+  mockedSetVibrancy.mockResolvedValue(undefined)
   mockedResolveSystemTheme.mockReturnValue('dark')
   document.documentElement.removeAttribute('data-theme')
   document.head.querySelectorAll('[id^="user-theme-"]').forEach((el) => el.remove())
@@ -95,6 +106,48 @@ describe('useTheme — applying the theme attribute', () => {
 
     expect(mq.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function))
     vi.unstubAllGlobals()
+  })
+})
+
+// The native window material has to track the theme in BOTH directions. Only ever
+// applying it would leave the window transparent under an opaque theme — the whole
+// app see-through — so switching away must actively clear it.
+describe('useTheme — native window material', () => {
+  it('requests the material a translucent theme declares', () => {
+    setThemeSetting('glass')
+    renderHook(() => useTheme())
+    expect(mockedSetVibrancy).toHaveBeenCalledWith('under-window', 'light')
+  })
+
+  it('clears the material for an opaque theme', () => {
+    setThemeSetting('dracula')
+    renderHook(() => useTheme())
+    expect(mockedSetVibrancy).toHaveBeenCalledWith('none', 'system')
+  })
+
+  it('clears the material when switching from a translucent theme to an opaque one', () => {
+    setThemeSetting('glass')
+    const { rerender } = renderHook(() => useTheme())
+    expect(mockedSetVibrancy).toHaveBeenLastCalledWith('under-window', 'light')
+
+    setThemeSetting('light')
+    rerender()
+    expect(mockedSetVibrancy).toHaveBeenLastCalledWith('none', 'system')
+  })
+
+  it('resolves "system" before deciding the material', () => {
+    setThemeSetting('system')
+    mockedResolveSystemTheme.mockReturnValue('light')
+    renderHook(() => useTheme())
+    // 'system' itself declares no material; what matters is the theme it resolves to.
+    expect(mockedSetVibrancy).toHaveBeenCalledWith('none', 'system')
+  })
+
+  it('still applies the theme attribute when the native call rejects', () => {
+    mockedSetVibrancy.mockRejectedValue(new Error('no such window'))
+    setThemeSetting('glass')
+    renderHook(() => useTheme())
+    expect(document.documentElement.dataset.theme).toBe('glass')
   })
 })
 

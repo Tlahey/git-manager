@@ -430,6 +430,10 @@ export const cancelGeneration = (requestId: string) =>
 
 export const getUserThemes = () => invoke<UserTheme[]>('get_user_themes')
 
+/** Native window material behind the webview (macOS); `'none'` clears it. */
+export const setWindowVibrancy = (material: string, appearance: string) =>
+  invoke<void>('set_window_vibrancy', { material, appearance })
+
 // ─── Working Tree ─────────────────────────────────────────────────────────────
 
 export const stageFile = (path: string, filePath: string) =>

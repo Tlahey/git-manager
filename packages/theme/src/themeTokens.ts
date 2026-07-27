@@ -137,6 +137,13 @@ export const COMPONENT_TOKEN_DEFAULTS: Record<string, string> = {
   // The link button / inline links (text-primary was too light as *text* on light
   // content). Defaults to --primary; a light-content theme darkens it.
   '--link': 'var(--primary)',
+  // Not a colour: the corner radius of pill-shaped controls (buttons, and the
+  // sidebar's selection capsule). Lives in this tier because it is a *component*
+  // property a theme overrides, not a page-wide one — --radius still governs
+  // panels and cards. The default reproduces the `rounded-md` every theme had
+  // before the token existed, so no existing theme moves; `glass` re-points it to
+  // a full capsule for the Liquid Glass geometry.
+  '--control-radius': 'calc(var(--radius) - 2px)',
 }
 
 /**
@@ -355,8 +362,39 @@ export function evaluateGraphicalContrast(themeTokens: ThemeTokens): ContrastRes
   return GRAPHICAL_CONTRAST_PAIRS.map((pair) => gradePair(merged, pair))
 }
 
-/** The one token that holds a CSS length rather than an HSL color triplet. */
-export const NON_COLOR_TOKENS: ReadonlySet<string> = new Set(['--radius'])
+// ─── Tier: material (non-color tokens) ───────────────────────────────────────
+//
+// Everything above models *color*. A theme may also carry non-color material
+// properties — a corner radius, and (for a translucent theme like `glass`) the
+// alpha/blur/saturation of the surface material itself. They are exempt from the
+// HSL-triplet requirement because they are lengths, percentages or unitless
+// alphas, not colors.
+//
+// IMPORTANT — the a11y contract: a translucent surface has no contrast ratio of
+// its own; what a reader actually sees is the material COMPOSITED over whatever
+// is behind it. So a theme that uses these tokens must still declare its semantic
+// color tokens (--card, --popover, …) as the *opaque equivalent* of the composed
+// result, which is what the graders below score. The material tokens change how
+// the surface is painted; they must not change what it effectively looks like.
+
+/** Tokens that hold a CSS length/alpha rather than an HSL color triplet. */
+export const NON_COLOR_TOKENS: ReadonlySet<string> = new Set([
+  '--radius',
+  // Glass material: opacity of the tint, blur radius and backdrop saturation, plus
+  // the alphas of the specular top edge and the hairline border that keep a glass
+  // panel from reading as a flat blur.
+  '--glass-alpha',
+  '--glass-chrome-alpha',
+  '--glass-content-alpha',
+  '--glass-float-gap',
+  '--glass-blur',
+  '--glass-saturate',
+  '--glass-highlight-alpha',
+  '--glass-edge-alpha',
+  // Component tier, but a length: the pill radius of buttons and the selection
+  // capsule (see COMPONENT_TOKEN_DEFAULTS).
+  '--control-radius',
+])
 
 export interface ThemeValidation {
   /** Canonical tokens absent from the theme. */

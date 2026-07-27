@@ -7,8 +7,23 @@
 // every theme's completeness, HSL correctness, and WCAG contrast.
 
 // Registry (picker metadata)
-export type { ThemeDefinition } from './registry'
-export { BUILTIN_THEMES, getBuiltinTheme } from './registry'
+export type { ThemeDefinition, ThemeVibrancy } from './registry'
+export {
+  BUILTIN_THEMES,
+  getBuiltinTheme,
+  vibrancyForTheme,
+  windowAppearanceForTheme,
+} from './registry'
+
+// Glass material: how see-through a translucent theme renders (user setting)
+export type { GlassAlphas } from './glassTransparency'
+export {
+  DEFAULT_GLASS_TRANSPARENCY,
+  GLASS_TRANSPARENCY_VARS,
+  clampGlassTransparency,
+  glassAlphasForLevel,
+  glassTransparencyVars,
+} from './glassTransparency'
 
 // Validation engine (accessibility / token consistency)
 export {
