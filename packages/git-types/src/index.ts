@@ -635,13 +635,6 @@ export interface AppearanceSettings {
    * native material already lightens it, so a fixed default is either invisible on
    * one desktop or unreadable on another. */
   glassTransparency?: number
-  /** How a glass-family theme produces its blur. `'native'` installs an AppKit
-   * NSVisualEffectView behind the webview; `'css'` leaves the window plainly
-   * transparent and relies on the page's own `backdrop-filter`. The second is an
-   * experiment: CSS backdrop-filter samples the *document's* backdrop, so it is not
-   * expected to reach the desktop — this setting exists to settle that empirically
-   * rather than by argument. Absent means `'native'`. */
-  glassBlurMode?: 'native' | 'css'
 }
 
 export interface UserTheme {

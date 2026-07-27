@@ -7,14 +7,12 @@
 // every theme's completeness, HSL correctness, and WCAG contrast.
 
 // Registry (picker metadata)
-export type { ThemeDefinition, ThemeVibrancy, GlassBlurMode } from './registry'
+export type { ThemeDefinition, ThemeVibrancy } from './registry'
 export {
   BUILTIN_THEMES,
   getBuiltinTheme,
   vibrancyForTheme,
-  windowMaterialForTheme,
   windowAppearanceForTheme,
-  DEFAULT_GLASS_BLUR_MODE,
 } from './registry'
 
 // Glass material: how see-through a translucent theme renders (user setting)

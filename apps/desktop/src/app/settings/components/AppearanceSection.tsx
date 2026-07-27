@@ -5,12 +5,7 @@ import { useSettingsStore } from '../../../stores/settings.store'
 import { OverriddenBadge } from './OverriddenBadge'
 import { FilterableSetting, Highlight } from './settingsSearch'
 import { useUserThemes } from '../../../hooks/useUserThemes'
-import {
-  BUILTIN_THEMES,
-  vibrancyForTheme,
-  DEFAULT_GLASS_TRANSPARENCY,
-  DEFAULT_GLASS_BLUR_MODE,
-} from '../../../lib/themes'
+import { BUILTIN_THEMES, vibrancyForTheme, DEFAULT_GLASS_TRANSPARENCY } from '../../../lib/themes'
 import { useGameStore } from '../../../stores/game.store'
 import { isEffectUnlocked } from '../../../lib/rewards/effects'
 
@@ -197,25 +192,7 @@ export function AppearanceSection() {
             {t('settings.appearance.glassTransparency.hint')}
           </p>
 
-          {/* Experimental: see AppearanceSettings.glassBlurMode. Exposed so the two
-              approaches can be compared side by side on a real desktop. */}
-          <div className="flex items-center gap-2 pt-1">
-            <label className="text-[11px] text-muted-foreground" htmlFor="glass-blur-mode">
-              {t('settings.appearance.glassBlurMode')}
-            </label>
-            <NativeSelect
-              id="glass-blur-mode"
-              data-testid="glass-blur-mode-select"
-              value={appearance.glassBlurMode ?? DEFAULT_GLASS_BLUR_MODE}
-              onChange={(e) =>
-                updateAppearance({ glassBlurMode: e.target.value as 'native' | 'css' })
-              }
-              className="h-7 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              <option value="native">{t('settings.appearance.glassBlurMode.native')}</option>
-              <option value="css">{t('settings.appearance.glassBlurMode.css')}</option>
-            </NativeSelect>
-          </div>
+
         </FilterableSetting>
       )}
 

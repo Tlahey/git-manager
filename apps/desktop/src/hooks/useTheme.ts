@@ -1,9 +1,8 @@
 import { useEffect, useRef } from 'react'
 import {
   resolveSystemTheme,
-  windowMaterialForTheme,
+  vibrancyForTheme,
   windowAppearanceForTheme,
-  DEFAULT_GLASS_BLUR_MODE,
   glassTransparencyVars,
   GLASS_TRANSPARENCY_VARS,
   DEFAULT_GLASS_TRANSPARENCY,
@@ -51,9 +50,6 @@ export function useTheme(repoPathOverride?: string) {
   const glassTransparency = useSettingsStore(
     (s) => s.settings.appearance.glassTransparency ?? DEFAULT_GLASS_TRANSPARENCY,
   )
-  const glassBlurMode = useSettingsStore(
-    (s) => s.settings.appearance.glassBlurMode ?? DEFAULT_GLASS_BLUR_MODE,
-  )
   const mediaQueryRef = useRef<MediaQueryList | null>(null)
 
   // ── Apply theme on change ───────────────────────────────────────────────────
@@ -65,22 +61,14 @@ export function useTheme(repoPathOverride?: string) {
       // backdrop-filter can only sample the page itself, so without this the glass
       // blurs a copy of the app's own background. Always called, including with
       // 'none', so switching back to an opaque theme clears the effect.
-      const material = windowMaterialForTheme(resolved, glassBlurMode)
+      const material = vibrancyForTheme(resolved)
       void apiSetWindowVibrancy(material, windowAppearanceForTheme(resolved))
 
       // The user's transparency level, as inline custom properties so they win over
       // the theme's own declarations. Cleared for an opaque theme rather than left
       // behind: they are inert there today, but a future translucent theme would
       // silently inherit the level set for this one.
-      // Drives the theme's CSS-blur variant. Set only for a translucent theme, so an
-      // opaque one never carries a stale attribute.
       const root = document.documentElement
-      if (material === 'none') {
-        delete root.dataset.glassBlur
-      } else {
-        root.dataset.glassBlur = glassBlurMode
-      }
-
       if (material === 'none') {
         for (const name of GLASS_TRANSPARENCY_VARS) root.style.removeProperty(name)
       } else {
@@ -101,7 +89,7 @@ export function useTheme(repoPathOverride?: string) {
     } else {
       mediaQueryRef.current = null
     }
-  }, [theme, glassTransparency, glassBlurMode])
+  }, [theme, glassTransparency])
 
   // ── Load user themes once on mount ─────────────────────────────────────────
   useEffect(() => {
