@@ -1,6 +1,5 @@
-import { Sparkles } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
-import { Spinner, Tooltip } from '@git-manager/ui'
+import { Spinner, Tooltip, LlmIcon } from '@git-manager/ui'
 import { getAiPreset } from '@git-manager/ai'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useAiStatusStore, type AiConnectionState } from '../../stores/aiStatus.store'
@@ -105,7 +104,7 @@ export function AiStatusIndicator({ onOpenSettings }: AiStatusIndicatorProps) {
       }
       state={state}
       onOpenSettings={onOpenSettings}
-      icon={<Sparkles className={`h-3.5 w-3.5 ${STATE_CLASSES[state]}`} />}
+      icon={<LlmIcon className={`h-3.5 w-3.5 ${STATE_CLASSES[state]}`} />}
       label={state === 'connected' ? model : t(STATE_LABEL_KEYS[state])}
       labelClassName={STATE_CLASSES[state]}
     />

@@ -944,6 +944,7 @@
   "patch.dependency.confirm": "Create patch",
   "patch.dependency.created": "Dependency patched — patch file and pnpm config updated",
   "patch.dependency.error": "Could not create the dependency patch",
+  "ai.menu": "AI",
   "tools.menu": "Tools",
   "bisect.start.menuItem": "Start bisect…",
   "bisect.start.alreadyRunning": "Bisect already running",

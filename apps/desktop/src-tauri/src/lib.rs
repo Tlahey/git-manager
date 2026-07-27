@@ -30,6 +30,9 @@ use commands::conflict::{
     auto_merge_conflict_view, get_merge_view, list_conflicted_files, resolve_conflict,
     resolve_conflict_binary,
 };
+use commands::daily_summary::{
+    delete_daily_summary, list_daily_summaries, open_daily_summaries_dir, save_daily_summary,
+};
 use commands::fixup::{
     autosquash_preview, check_fixup_target, create_fixup_commit, get_pending_fixups, run_autosquash,
 };
@@ -162,6 +165,11 @@ pub fn run() {
             append_ai_log,
             open_activity_logs_dir,
             open_ai_logs_dir,
+            // Daily summary archive
+            save_daily_summary,
+            list_daily_summaries,
+            delete_daily_summary,
+            open_daily_summaries_dir,
             // Repo
             open_repo,
             get_repo_status,

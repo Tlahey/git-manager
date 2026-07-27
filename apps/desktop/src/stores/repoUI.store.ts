@@ -7,6 +7,23 @@ export const REWARDS_TAB = 'rewards'
 export const PULL_REQUESTS_TAB = 'pull-requests'
 
 /**
+ * Every pinned special tab. Callers that need "is this tab backed by a repository?" must ask
+ * {@link isSpecialTab} rather than listing the ids themselves: the enumerations scattered across the
+ * footer, the shortcuts and the dashboard had drifted apart, so a tab was treated as a repo path by
+ * whichever one was missed.
+ */
+const SPECIAL_TABS: ReadonlySet<string> = new Set([
+  DASHBOARD_TAB,
+  REWARDS_TAB,
+  PULL_REQUESTS_TAB,
+])
+
+/** Whether a tab id is one of the pinned special tabs rather than a repo path or a "New Tab". */
+export function isSpecialTab(id: string): boolean {
+  return SPECIAL_TABS.has(id)
+}
+
+/**
  * Prefix of the ids given to empty "New Tab" placeholders (⌘T / Ctrl+T). They live inside
  * `openTabs` alongside repo paths so they reorder, close and Alt+n-navigate like any other tab —
  * a real filesystem path can never collide with this prefix. Everything reading `openTabs` as a
@@ -72,6 +89,10 @@ export type AiPanelTarget =
     }
   | { kind: 'reviewWorking' }
   | { kind: 'reviewBranch'; branch: string; baseRef: string }
+  // The archived daily briefings for *this* repository. Not an explanation of a diff like its
+  // siblings, but it asks for the same thing from the layout — the right-hand slot, exclusively —
+  // and putting it in the same union is what stops it and an explanation both claiming it.
+  | { kind: 'summaries' }
 
 /**
  * Handoff for the PR-creation composer, set once "ship from here" has made the local commit (and, on

@@ -20,6 +20,7 @@ import {
   summaryCommitMessageFeature,
   summaryExplanationFeature,
   summaryGroupingFeature,
+  summarySearchFeature,
 } from '@git-manager/ai'
 import {
   aiComplete,
@@ -51,10 +52,17 @@ export async function apiGetAiContext(
   return getAiContext(path, scope, baseRef, headRef)
 }
 
-/** Gathers the repo's recent commit activity (last `sinceHours`) + uncommitted work for the
- * daily-summary feature's prompt. */
-export async function apiGetAiActivity(path: string, sinceHours: number): Promise<AiActivity> {
-  return getAiActivity(path, sinceHours)
+/** Gathers the repo's commit activity for one local calendar day (`sinceEpoch`…`untilEpoch`, in
+ * seconds) + the current uncommitted work, for the daily-summary feature's prompt. The window
+ * follows the first resolvable entry of `candidates` (the repo's main branch), not HEAD — see
+ * `services/ai_activity.rs`. */
+export async function apiGetAiActivity(
+  path: string,
+  sinceEpoch: number,
+  untilEpoch: number,
+  candidates: string[]
+): Promise<AiActivity> {
+  return getAiActivity(path, sinceEpoch, untilEpoch, candidates)
 }
 
 /** Sanity-checks the context window declared in Settings against what the provider reports. See
@@ -197,9 +205,17 @@ export const commitRecomposeService = createCompletionService(
   commitRecomposeFeature,
   trackedTransport(commitRecomposeFeature.id)
 )
+/** The reduce half of the daily briefing: writes it from the per-file summaries of everything that
+ * landed on the main branch in the window. */
 export const dailySummaryService = createCompletionService(
   dailySummaryFeature,
   trackedTransport(dailySummaryFeature.id)
+)
+/** Answers a question about the archived briefings, over the shortlist the local scorer produced.
+ * One bounded call, not a retrieval system — see `summarySearch.ts` for why. */
+export const summarySearchService = createCompletionService(
+  summarySearchFeature,
+  trackedTransport(summarySearchFeature.id)
 )
 /** Kept apart from the explanation service rather than folded in as a fourth scope: a PR body has a
  * different reader, a template whose headings must survive verbatim, and it gets published. */

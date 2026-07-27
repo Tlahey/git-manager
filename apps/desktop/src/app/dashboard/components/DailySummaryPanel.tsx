@@ -1,6 +1,6 @@
 import { useTranslation } from '@git-manager/i18n'
-import { Sparkles, X, RefreshCw, CalendarClock, CheckCircle2, ListTodo, AlertTriangle } from 'lucide-react'
-import { Button, Alert, Tooltip } from '@git-manager/ui'
+import { X, RefreshCw, CalendarClock, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Button, Alert, Tooltip, LlmIcon } from '@git-manager/ui'
 import { useDailySummary } from '../../../hooks/useDailySummary'
 
 interface DailySummaryPanelProps {
@@ -9,11 +9,12 @@ interface DailySummaryPanelProps {
 }
 
 /** Right-hand launchpad pane showing the AI "daily briefing" for one project: a headline, what was
- * done ("yesterday"), and what to plan ("today"). Reads/generates via {@link useDailySummary}; the
+ * landed on the main branch that day. Reads/generates via {@link useDailySummary}; the
  * generated result is persisted per-project so it survives reloads. */
 export function DailySummaryPanel({ path, onClose }: DailySummaryPanelProps) {
   const { t, i18n } = useTranslation('dashboard')
-  const { summary, generatedAt, isGenerating, error, generate } = useDailySummary(path)
+  const { summary, generatedAt, isGenerating, progress, skipped, error, generate } =
+    useDailySummary(path)
 
   const name = path.split('/').pop() || path
 
@@ -30,7 +31,7 @@ export function DailySummaryPanel({ path, onClose }: DailySummaryPanelProps) {
       {/* Pane Header */}
       <div className="flex shrink-0 items-center justify-between border-b border-border bg-muted/10 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
-          <Sparkles className="h-4 w-4 shrink-0 text-primary" />
+          <LlmIcon className="h-4 w-4 shrink-0 text-primary" />
           <div className="flex min-w-0 flex-col">
             <span className="truncate text-xs font-semibold text-foreground">
               {t('dashboard.summary.title')}
@@ -44,7 +45,7 @@ export function DailySummaryPanel({ path, onClose }: DailySummaryPanelProps) {
               variant="ghost"
               size="sm"
               className="flex h-7 items-center gap-1.5 px-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              onClick={generate}
+              onClick={() => void generate()}
               disabled={isGenerating}
               aria-label={t('dashboard.summary.regenerate')}
               data-testid="daily-summary-refresh-button"
@@ -72,10 +73,19 @@ export function DailySummaryPanel({ path, onClose }: DailySummaryPanelProps) {
 
       {/* Pane content */}
       <div className="flex-1 select-text overflow-y-auto bg-card/10 p-5">
-        {isGenerating && !summary ? (
+        {isGenerating ? (
           <div className="flex h-full flex-col items-center justify-center space-y-2 py-8">
             <RefreshCw className="h-6 w-6 animate-spin text-primary" />
-            <p className="text-xs text-muted-foreground">{t('dashboard.summary.generating')}</p>
+            <p className="text-xs text-muted-foreground" data-testid="daily-summary-progress">
+              {progress?.phase === 'summarizing'
+                ? t('dashboard.summary.summarizingFiles', {
+                    completed: progress.completed,
+                    total: progress.total,
+                  })
+                : progress?.phase === 'composing'
+                  ? t('dashboard.summary.composing')
+                  : t('dashboard.summary.generating')}
+            </p>
           </div>
         ) : error ? (
           <Alert variant="destructive" className="flex-col items-start gap-2 rounded-lg">
@@ -84,10 +94,22 @@ export function DailySummaryPanel({ path, onClose }: DailySummaryPanelProps) {
               {t('dashboard.summary.error')}
             </div>
             <p className="break-words font-mono text-[11px] opacity-80">{error}</p>
-            <Button variant="outline" size="sm" className="mt-1 h-7 text-xs" onClick={generate}>
+            <Button variant="outline" size="sm" className="mt-1 h-7 text-xs" onClick={() => void generate()}>
               {t('dashboard.summary.retry')}
             </Button>
           </Alert>
+        ) : skipped && !summary ? (
+          /* Nothing landed on the main branch in the window — reported as its own state, because a
+             quiet repository and a broken provider must not look the same. */
+          <div
+            className="flex h-full flex-col items-center justify-center gap-3 p-4 text-center text-muted-foreground/70"
+            data-testid="daily-summary-skipped"
+          >
+            <CalendarClock className="h-10 w-10 text-muted-foreground opacity-20" />
+            <p className="max-w-[240px] text-xs leading-relaxed">
+              {t('dashboard.summary.noChanges')}
+            </p>
+          </div>
         ) : summary ? (
           <div className="space-y-5" data-testid="daily-summary-content">
             {/* Headline */}
@@ -104,27 +126,17 @@ export function DailySummaryPanel({ path, onClose }: DailySummaryPanelProps) {
               </p>
             )}
 
-            {/* Yesterday */}
             <SummarySection
-              testid="daily-summary-yesterday"
+              testid="daily-summary-highlights"
               icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
-              title={t('dashboard.summary.yesterday')}
-              items={summary.yesterday}
-              emptyLabel={t('dashboard.summary.noYesterday')}
-            />
-
-            {/* Today */}
-            <SummarySection
-              testid="daily-summary-today"
-              icon={<ListTodo className="h-3.5 w-3.5 text-primary" />}
-              title={t('dashboard.summary.today')}
-              items={summary.today}
-              emptyLabel={t('dashboard.summary.noToday')}
+              title={t('dashboard.summary.highlights')}
+              items={summary.highlights}
+              emptyLabel={t('dashboard.summary.noHighlights')}
             />
           </div>
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-3 p-4 text-center text-muted-foreground/70">
-            <Sparkles className="h-10 w-10 text-muted-foreground opacity-20" />
+            <LlmIcon className="h-10 w-10 text-muted-foreground opacity-20" />
             <p className="max-w-[240px] text-xs leading-relaxed">
               {t('dashboard.summary.empty')}
             </p>
@@ -132,10 +144,10 @@ export function DailySummaryPanel({ path, onClose }: DailySummaryPanelProps) {
               variant="outline"
               size="sm"
               className="h-7 text-xs"
-              onClick={generate}
+              onClick={() => void generate()}
               data-testid="daily-summary-generate-button"
             >
-              <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+              <LlmIcon className="mr-1.5 h-3.5 w-3.5" />
               {t('dashboard.summary.generate')}
             </Button>
           </div>

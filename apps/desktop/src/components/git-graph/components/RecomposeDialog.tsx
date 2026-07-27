@@ -10,8 +10,9 @@ import {
   DialogTitle,
   Spinner,
   Textarea,
+  LlmIcon,
 } from '@git-manager/ui'
-import { AlertTriangle, Sparkles } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import type { GitGraphNode } from '@git-manager/git-types'
 import { useCommitRecompose } from '../../../hooks/useCommitRecompose'
 
@@ -207,7 +208,7 @@ export function RecomposeDialog({
             onClick={() => void generate(selected)}
             disabled={isGenerating || isApplying || selected.length === 0}
           >
-            <Sparkles className="mr-1 h-3 w-3 text-primary" />
+            <LlmIcon className="mr-1 h-3 w-3 text-primary" />
             {t('recompose.regenerate')}
           </Button>
           <Button

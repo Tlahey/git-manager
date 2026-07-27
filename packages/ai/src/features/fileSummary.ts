@@ -3,6 +3,7 @@ import type { CompletionFeature } from '../runtime'
 import { budgetDiff } from './diffBudget'
 import { diffCharBudget } from './diffCoverage'
 import { estimateTokens } from '../promptSize'
+import { languageName } from './language'
 
 /**
  * What one file's change is, as the model sees it. The **grouping key** the reduce step leans on.
@@ -32,6 +33,17 @@ export interface FileSummaryInput {
   /** This file's own section of the working diff — see `splitDiffByFile`. */
   diff: string
   contextTokens?: number
+  /**
+   * Language the two fields should be written in, when the consumer's output is prose the user
+   * reads (the daily briefing). Left undefined by the commit-writing paths on purpose: a commit
+   * message follows the repository's convention, which is usually English, and translating the
+   * evidence that feeds it would be a change nobody asked for.
+   *
+   * It matters because these summaries are the *only* thing the composing call sees. Asking that
+   * call for French while handing it English clauses gets French sentences with English fragments
+   * surviving verbatim — the area labels especially.
+   */
+  language?: string
 }
 
 /**
@@ -66,7 +78,10 @@ export const FILE_SUMMARY_SCHEMA: JsonSchema = {
 }
 
 export function buildFileSummaryPrompt(input: FileSummaryInput): string {
-  const header = `File: ${input.path} (${input.status})`
+  const language = input.language
+    ? `\nWrite both fields in ${languageName(input.language)}.`
+    : ''
+  const header = `File: ${input.path} (${input.status})${language}`
   const budgeted = budgetDiff(
     input.diff,
     diffCharBudget({

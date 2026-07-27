@@ -82,9 +82,9 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
 
   return (
     <>
-      {/* Zone de drag supplémentaire pour faciliter le déplacement de la fenêtre (hauteur: --tab-bar-drag-spacer-height).
-          bg-sidebar la fond dans la couleur du chrome comme la barre d'onglets sous elle — sans quoi elle laisse
-          transparaître le --background clair (blanc sur Twilight) au-dessus des onglets sombres. */}
+      {/* Extra drag area making the window easier to move (height: --tab-bar-drag-spacer-height).
+          bg-sidebar blends it into the chrome colour like the tab strip below it — without which it
+          lets the light --background (white on Twilight) show through above the dark tabs. */}
       <div
         data-tauri-drag-region
         className="shrink-0 bg-sidebar"
@@ -96,7 +96,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
           isMac ? 'pl-[72px]' : 'pl-1'
         }`}
       >
-        {/* Onglet Dashboard (épinglé) */}
+        {/* Dashboard tab (pinned) */}
         <PinnedTab
           icon={<LayoutDashboard className="h-3.5 w-3.5" />}
           label="Accueil"
@@ -105,7 +105,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
           hideLabel={true}
         />
 
-        {/* Onglet Rewards (épinglé) */}
+        {/* Rewards tab (pinned) */}
         {rewardsEnabled && (
           <PinnedTab
             icon={<Trophy className="h-3.5 w-3.5 text-amber-500" />}
@@ -116,7 +116,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
           />
         )}
 
-        {/* Onglet Launchpad (épinglé) */}
+        {/* Launchpad tab (pinned) */}
         <PinnedTab
           icon={<Rocket className="h-3.5 w-3.5" />}
           label="Launchpad"
@@ -124,7 +124,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
           onClick={() => setActiveTab(PULL_REQUESTS_TAB)}
         />
 
-        {/* Onglets repos (fermables, réordonnables, style Chrome) */}
+        {/* Repo tabs (closeable, reorderable, Chrome-style) */}
         <div
           data-tauri-drag-region
           className="tab-strip-scroll flex min-w-0 flex-1 items-end gap-0.5 overflow-x-auto overflow-y-hidden"
@@ -187,7 +187,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
             )
           })}
 
-          {/* Onglets de fixtures dev (pnpm dev:import-repo) — jamais persistés, cf. devFixtureRepos.store.ts */}
+          {/* Dev fixture tabs (pnpm dev:import-repo) — never persisted, see devFixtureRepos.store.ts */}
           {fixtures.map((fixture) => {
             const isActive = fixture.path === activeTab
             return (
@@ -222,13 +222,13 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
           })}
         </div>
 
-        {/* Bouton + (nouveau) — hors de la zone scrollable pour rester toujours visible à droite
-            des onglets, même quand la bande d'onglets déborde. */}
+        {/* "+" (new tab) button — outside the scrollable area so it stays visible to the right of
+            the tabs even when the strip overflows. */}
         <div className="flex shrink-0 items-center px-1">
           <NewTabMenu />
         </div>
 
-        {/* Réglages & Profil (extrême droite) */}
+        {/* Settings & profile (far right) */}
         <div className="flex shrink-0 items-center gap-2 border-l border-sidebar-border px-3">
           <NotificationDropdown />
           <button

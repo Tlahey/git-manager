@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Spinner, Tooltip } from '@git-manager/ui'
-import { Sparkles, Square, RefreshCw, Copy, Check as CheckIcon, X } from 'lucide-react'
+import { Button, Spinner, Tooltip, LlmIcon } from '@git-manager/ui'
+import { Square, RefreshCw, Copy, Check as CheckIcon, X } from 'lucide-react'
 import type { GitDiffFile } from '@git-manager/git-types'
 import { useChangeExplanation } from '../../../hooks/useChangeExplanation'
 import { formatUnifiedPatch } from '../../../lib/formatUnifiedPatch'
@@ -83,7 +83,7 @@ export function ChangeExplanationPanel({
     >
       <div className="flex items-center justify-between gap-2 px-3 py-1.5">
         <div className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-          <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
+          <LlmIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
           <span className="truncate">{t('diffView.explain.title')}</span>
         </div>
 
@@ -107,7 +107,7 @@ export function ChangeExplanationPanel({
               className="h-6 gap-1 px-2 text-[10px] font-bold"
               onClick={handleExplain}
             >
-              {text ? <RefreshCw className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}
+              {text ? <RefreshCw className="h-3 w-3" /> : <LlmIcon className="h-3 w-3" />}
               {text ? t('diffView.explain.regenerate') : t('diffView.explain.action')}
             </Button>
           )}

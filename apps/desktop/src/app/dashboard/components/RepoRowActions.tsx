@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Tooltip } from '@git-manager/ui'
-import { Code, BookOpen, Plus, X, Sparkles } from 'lucide-react'
+import { Tooltip, LlmIcon } from '@git-manager/ui'
+import { Code, BookOpen, Plus, X } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { apiOpenInEditor } from '../../../api/repo.api'
 
@@ -92,7 +92,7 @@ export function RepoRowActions({
             onClick={stopAnd(onToggleSummary)}
             className={`relative ${BUTTON_BASE} ${isSummaryActive ? BUTTON_ACTIVE : BUTTON_IDLE}`}
           >
-            <Sparkles className="h-3.5 w-3.5" />
+            <LlmIcon className="h-3.5 w-3.5" />
             {hasFreshSummary && !isSummaryActive && (
               <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-1 ring-card" />
             )}

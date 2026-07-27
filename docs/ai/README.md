@@ -23,7 +23,8 @@ specific to it — its prompt, its inputs, its UI, its limits.
 | [Change explanation](./change-explanation.md) | Explains one file's pending diff, read against the file itself | streaming | *Explain* above the diff, on a working-copy file |
 | [Working explanation](./working-explanation.md) | Summarizes everything uncommitted — what you are in the middle of | streaming | right-click the WIP row → *Explain working changes (LLM)* |
 | [Code review](./code-review.md) | Reviews a diff and flags what deserves a second look — the one feature allowed an opinion | streaming | right-click the WIP row → *Review changes (LLM)*, or a commit/branch → *Review branch changes (LLM)* |
-| [Daily summary](./daily-summary.md) | A "yesterday / today" briefing per repository | completion + JSON schema | ✨ on a dashboard project, and automatically each morning |
+| [Daily summary](./daily-summary.md) | A "yesterday / today" briefing per repository, read file by file off the main branch and archived as markdown | completion + JSON schema | ✨ on a dashboard project, and automatically each morning |
+| [Summary search](./summary-search.md) | Answers a question about the archived briefings, citing the days it rests on | completion + JSON schema | the question box on the Summaries tab |
 | [Recompose a commit](./commit-recompose.md) | Rewrites the message of a commit that already exists, reviewed before it is applied | completion | right-click a commit → *Rewrite this commit's message (LLM)* |
 
 Every feature listed here is built. See the roadmap section at the bottom for what is not.

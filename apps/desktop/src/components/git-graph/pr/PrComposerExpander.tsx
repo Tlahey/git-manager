@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Input, Spinner, Textarea, NativeSelect } from '@git-manager/ui'
-import { Sparkles, GitBranch as GitBranchIcon } from 'lucide-react'
+import { Button, Input, Spinner, Textarea, NativeSelect, LlmIcon } from '@git-manager/ui'
+import { GitBranch as GitBranchIcon } from 'lucide-react'
 import { usePrTemplate } from '../../../hooks/usePrTemplate'
 import { usePrDescriptionGeneration } from '../../../hooks/usePrDescriptionGeneration'
 import { useAiEnabled } from '../../../hooks/useAiEnabled'
@@ -143,7 +143,7 @@ export function PrComposerExpander({
               className="flex items-center gap-1 rounded px-1.5 py-0.5 text-primary hover:bg-accent disabled:opacity-50"
               data-testid="pr-composer-ai-fill"
             >
-              {isGenerating ? <Spinner className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}
+              {isGenerating ? <Spinner className="h-3 w-3" /> : <LlmIcon className="h-3 w-3" />}
               {isGenerating ? t('pr.publish.aiFilling') : t('pr.publish.aiFill')}
             </button>
           )}
