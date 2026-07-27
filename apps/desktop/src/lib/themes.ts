@@ -2,12 +2,14 @@
 // of truth, shared with the CSS token blocks and the Storybook). This module
 // re-exports them for app-local imports and adds the one DOM-bound helper that
 // doesn't belong in a framework-free package.
-export type { ThemeDefinition, ThemeVibrancy } from '@git-manager/theme'
+export type { ThemeDefinition, ThemeVibrancy, GlassBlurMode } from '@git-manager/theme'
 export {
   BUILTIN_THEMES,
   getBuiltinTheme,
   vibrancyForTheme,
+  windowMaterialForTheme,
   windowAppearanceForTheme,
+  DEFAULT_GLASS_BLUR_MODE,
   glassTransparencyVars,
   glassAlphasForLevel,
   clampGlassTransparency,

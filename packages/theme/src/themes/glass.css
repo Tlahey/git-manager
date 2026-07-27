@@ -317,4 +317,26 @@
       inset 0 0 0 1px hsl(212 60% 45% / 0.18),
       0 4px 10px -4px hsl(215 45% 30% / 0.35);
   }
+
+  /* ── Experiment: CSS-only blur (glassBlurMode = 'css') ─────────────────────
+     With this mode the window carries NO native material — it is plainly
+     transparent — and the page is the only thing that could blur anything.
+
+     The expectation, from the CSS spec, is that this DOES NOT work: a
+     backdrop-filter samples the *document's* backdrop, and content outside the
+     webview is not part of it. If so the desktop shows through sharp and this rule
+     only lays a flat white veil over it. The mode exists to check that empirically
+     rather than settle it by argument; if it turns out WebKit does reach past the
+     webview, this becomes the better implementation by far — it would drop the
+     private-API dependency, the objc2 layer surgery and the whole class of AppKit
+     fragility, and it would work off macOS too.
+
+     The veil rides the same --glass-content-alpha as the native path, so the
+     transparency slider drives both modes identically and they are comparable at
+     equal settings. */
+  html[data-theme="glass"][data-glass-blur="css"] .bg-background {
+    background-color: hsl(0 0% 100% / var(--glass-content-alpha));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  }
 }

@@ -45,11 +45,15 @@ use tauri::{Theme, WebviewWindow};
 /// window generally wants), `"sidebar"` for the pale material used by Finder's
 /// rail, `"hud"` for the dark, heavy one.
 ///
+/// `"clear"` removes the effect but leaves the webview backdrop transparent, so the
+/// window shows whatever is behind it with no native material at all. This exists for
+/// the CSS-blur experiment (see `glassBlurMode`): the open question it answers is
+/// whether WebKit's `backdrop-filter` can reach past the webview to the desktop. If it
+/// cannot — which the CSS spec implies, since the backdrop root is the document — the
+/// desktop comes through sharp and only the native path produces real glass.
+///
 /// `"none"` removes the effect and restores the webview backdrop, which is what an
-/// ordinary opaque theme needs. There is deliberately no "blur off but still
-/// translucent" value: the NSVisualEffectView *is* the blur, so dropping it drops the
-/// glass. How see-through the window looks is tuned by the material's own tint and by
-/// the page's alpha, not by removing the effect.
+/// ordinary opaque theme needs.
 ///
 /// A no-op on non-macOS targets: the effect has no equivalent there, and an error
 /// would force every caller to branch on the platform.
@@ -119,6 +123,10 @@ pub fn set_window_vibrancy(
                         schedule_material_recheck(&window);
                     })
             }
+            "clear" => clear_vibrancy(&window)
+                .map(|_| ())
+                .map_err(|e| e.to_string())
+                .inspect(|_| clear_webview_backdrop(&window)),
             _ => clear_vibrancy(&window)
                 .map(|_| ())
                 .map_err(|e| e.to_string()),

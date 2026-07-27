@@ -141,6 +141,33 @@ export function vibrancyForTheme(id: string): ThemeVibrancy | 'none' {
   return getBuiltinTheme(id)?.vibrancy ?? 'none'
 }
 
+/** How a glass theme produces its blur — see `AppearanceSettings.glassBlurMode`. */
+export type GlassBlurMode = 'native' | 'css'
+
+export const DEFAULT_GLASS_BLUR_MODE: GlassBlurMode = 'native'
+
+/**
+ * The window material to install for a theme, given the user's blur mode.
+ *
+ * `'css'` resolves to `'clear'`: the effect is removed and the window left plainly
+ * transparent, so the page's own `backdrop-filter` is the only thing that could blur
+ * anything. That is the experiment — CSS backdrop-filter is specified to sample the
+ * *document's* backdrop, so it should not reach the desktop, and the window should
+ * come out sharp. Keeping both modes selectable is what makes that checkable side by
+ * side instead of arguable.
+ *
+ * An opaque theme stays `'none'` regardless: it has no material to remove, and
+ * `'clear'` would leave its unpainted regions see-through.
+ */
+export function windowMaterialForTheme(
+  id: string,
+  blurMode: GlassBlurMode = DEFAULT_GLASS_BLUR_MODE,
+): ThemeVibrancy | 'clear' | 'none' {
+  const material = vibrancyForTheme(id)
+  if (material === 'none') return 'none'
+  return blurMode === 'css' ? 'clear' : material
+}
+
 /**
  * The native window appearance to pin for a theme id.
  *

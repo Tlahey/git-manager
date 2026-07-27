@@ -119,6 +119,27 @@ describe('useTheme — native window material', () => {
     expect(mockedSetVibrancy).toHaveBeenCalledWith('under-window', 'light')
   })
 
+  // The experiment: with the CSS blur mode the native material is dropped entirely, so
+  // the page's own backdrop-filter is the only thing that could blur the desktop.
+  it("drops the native material in CSS blur mode, and marks it on the root", () => {
+    const base = useSettingsStore.getState().settings
+    useSettingsStore.setState({
+      settings: {
+        ...base,
+        appearance: { ...base.appearance, theme: 'glass', glassBlurMode: 'css' },
+      },
+    })
+    renderHook(() => useTheme())
+    expect(mockedSetVibrancy).toHaveBeenLastCalledWith('clear', 'light')
+    expect(document.documentElement.dataset.glassBlur).toBe('css')
+  })
+
+  it('leaves no blur-mode marker on an opaque theme', () => {
+    setThemeSetting('dracula')
+    renderHook(() => useTheme())
+    expect(document.documentElement.dataset.glassBlur).toBeUndefined()
+  })
+
   it('clears the material for an opaque theme', () => {
     setThemeSetting('dracula')
     renderHook(() => useTheme())

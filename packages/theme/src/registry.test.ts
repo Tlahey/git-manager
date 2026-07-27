@@ -6,6 +6,7 @@ import { parseHslTriplet, hslToRgb } from './colorContrast'
 import {
   BUILTIN_THEMES,
   vibrancyForTheme,
+  windowMaterialForTheme,
   windowAppearanceForTheme,
 } from './registry'
 
@@ -60,6 +61,27 @@ describe('vibrancyForTheme', () => {
       const expected = theme.vibrancy ?? 'none'
       expect(vibrancyForTheme(theme.id), `vibrancy for "${theme.id}"`).toBe(expected)
     }
+  })
+})
+
+// The CSS-blur experiment: 'css' removes the native material so the page's own
+// backdrop-filter is the only candidate for producing the blur.
+describe('windowMaterialForTheme', () => {
+  it("defaults to the theme's native material", () => {
+    expect(windowMaterialForTheme('glass')).toBe('under-window')
+    expect(windowMaterialForTheme('glass', 'native')).toBe('under-window')
+  })
+
+  it("resolves the CSS mode to 'clear', leaving the window plainly transparent", () => {
+    expect(windowMaterialForTheme('glass', 'css')).toBe('clear')
+  })
+
+  // 'clear' would leave an opaque theme's unpainted regions see-through, so the mode
+  // must not leak past the themes that asked for glass.
+  it('stays "none" for an opaque theme in either mode', () => {
+    expect(windowMaterialForTheme('dark', 'css')).toBe('none')
+    expect(windowMaterialForTheme('light', 'native')).toBe('none')
+    expect(windowMaterialForTheme('a-user-theme', 'css')).toBe('none')
   })
 })
 

@@ -226,6 +226,15 @@ describe('AppearanceSection — window transparency', () => {
     expect(useSettingsStore.getState().settings.appearance.glassTransparency).toBe(37)
   })
 
+  it('offers the experimental CSS blur source, and persists the choice', () => {
+    setTheme('glass')
+    render(<AppearanceSection />)
+    const select = screen.getByTestId('glass-blur-mode-select')
+    expect(select).toHaveValue('native')
+    fireEvent.change(select, { target: { value: 'css' } })
+    expect(useSettingsStore.getState().settings.appearance.glassBlurMode).toBe('css')
+  })
+
   it('shows the current level as a readable percentage', () => {
     setTheme('glass')
     render(<AppearanceSection />)
