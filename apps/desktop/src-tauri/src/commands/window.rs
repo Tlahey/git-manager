@@ -112,8 +112,10 @@ pub fn set_window_vibrancy(
                     .map_err(|e| e.to_string())
                     .inspect(|_| {
                         clear_webview_backdrop(&window);
-                        let muted = strip_material_tint(&window);
-                        eprintln!("[vibrancy] stripped material tint ({muted} layer(s) muted)");
+                        // The synchronous strip usually mutes nothing: the material's
+                        // layers are built lazily on first display. The recheck below is
+                        // what actually does the work, and it is the one that reports.
+                        strip_material_tint(&window);
                         schedule_material_recheck(&window);
                     })
             }
@@ -126,9 +128,11 @@ pub fn set_window_vibrancy(
         // absent off macOS), which otherwise makes a silent failure indistinguishable
         // from a mis-tuned theme: the window simply stays opaque and the glass reads
         // as a flat tint. Report it here so it is visible in the dev log at least.
-        match &result {
-            Ok(()) => eprintln!("[vibrancy] applied '{material}' (appearance '{appearance}')"),
-            Err(e) => eprintln!("[vibrancy] failed to apply '{material}': {e}"),
+        // Only failures are reported. This used to log the success path too, which
+        // meant several lines on every theme change — noise that buries the one case
+        // worth seeing. A silent success here is the expected state.
+        if let Err(e) = &result {
+            eprintln!("[vibrancy] failed to apply '{material}': {e}");
         }
         result
     }
@@ -309,8 +313,10 @@ unsafe fn mute_tint_siblings(layer: &objc2::runtime::AnyObject) -> usize {
 ///   appearance, which this command changes), and AppKit rebuilding the
 ///   material's tint layers on a redisplay. Neither was observed once the strip
 ///   landed, but both were plausible enough to burn debugging time on — so
-///   instead of trusting, this re-applies both fixes and prints what it found.
-///   `re_muted=0` in the log means the strip held.
+///   instead of trusting, this re-applies both fixes every time. It stays silent
+///   when it finds nothing wrong, and logs only the two actionable anomalies: a
+///   tint that came back after the early pass, or an effect-view count other
+///   than one.
 #[cfg(target_os = "macos")]
 fn schedule_material_recheck(window: &WebviewWindow) {
     let win = window.clone();
@@ -324,11 +330,19 @@ fn schedule_material_recheck(window: &WebviewWindow) {
                 clear_webview_backdrop(&handle);
                 let re_muted = strip_material_tint(&handle);
                 let effect_views = count_effect_views(&handle);
-                eprintln!(
-                    "[vibrancy] t+{elapsed}ms recheck: effect_views={effect_views} \
-                     re_muted={re_muted} (re_muted>0 means the tint appeared after the \
-                     previous pass)"
-                );
+                // Silent when healthy. The pass still *runs* every time — it re-applies
+                // both fixes — it just doesn't announce that nothing was wrong. Only the
+                // two anomalies are worth a line, and each is actionable:
+                //   re_muted > 0 on the late pass = AppKit rebuilt the tint after the
+                //     early strip, so the frost can come back and the delays need work.
+                //   effect_views != 1 = applies are stacking (or the effect vanished).
+                let late_tint = elapsed > 1000 && re_muted > 0;
+                if late_tint || effect_views != 1 {
+                    eprintln!(
+                        "[vibrancy] t+{elapsed}ms recheck: effect_views={effect_views} \
+                         re_muted={re_muted} (expected 1 and 0)"
+                    );
+                }
             });
         }
     });
