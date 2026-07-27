@@ -157,26 +157,46 @@ describe('fileGroupingFeature', () => {
     // max_tokens and the reserve subtracted from the diff budget are one number, declared twice.
     const files = Array.from({ length: 17 }, (_, i) => ({ path: `src/f${i}.ts`, status: 'modified' }))
     const context: AiContext = { diff: '', repoName: 'demo', branch: 'main', files }
-    expect(fileGroupingFeature.reservedOutputTokens?.({ context })).toBe(groupingOutputTokens(17))
+    expect(fileGroupingFeature.reservedOutputTokens?.({ context })).toBe(
+      groupingOutputTokens(files.map((f) => f.path))
+    )
   })
 })
 
 describe('groupingOutputTokens', () => {
+  const deep = (n: number) =>
+    Array.from(
+      { length: n },
+      (_, i) => `apps/desktop/src/components/git-graph/components/Panel${i}.tsx`
+    )
+  const flat = (n: number) => Array.from({ length: n }, (_, i) => `f${i}.ts`)
+
   it('grows with the changeset, because the plan must name every file', () => {
     // A flat cap truncates a large plan mid-array — and since the output is parsed, that is a hard
     // failure ("not valid JSON"), not a shorter answer.
-    expect(groupingOutputTokens(40)).toBeGreaterThan(groupingOutputTokens(10))
+    expect(groupingOutputTokens(deep(40))).toBeGreaterThan(groupingOutputTokens(deep(10)))
   })
 
   it('never drops below the ordinary prose reserve on a small changeset', () => {
     // Two files still need room for their commit messages and the JSON around them.
-    expect(groupingOutputTokens(1)).toBe(RESERVED_OUTPUT_TOKENS)
-    expect(groupingOutputTokens(0)).toBe(RESERVED_OUTPUT_TOKENS)
+    expect(groupingOutputTokens(flat(1))).toBe(RESERVED_OUTPUT_TOKENS)
+    expect(groupingOutputTokens([])).toBe(RESERVED_OUTPUT_TOKENS)
   })
 
-  it('leaves room for a long path per file, quoting and separators included', () => {
-    // 40 nested TypeScript paths is an ordinary refactor here, not a pathological case.
-    expect(groupingOutputTokens(40)).toBeGreaterThanOrEqual(40 * 20)
+  /**
+   * The reason it measures paths instead of counting files. The flat 24-tokens-per-file it replaced
+   * was roughly what one deep path costs on its own, leaving nothing for the commit messages or the
+   * JSON around them — so a nested repo truncated its plan while a flat one over-reserved.
+   */
+  it('reserves more for deep paths than for flat ones at the same file count', () => {
+    expect(groupingOutputTokens(deep(60))).toBeGreaterThan(groupingOutputTokens(flat(60)))
+  })
+
+  it('covers the paths themselves plus a message per commit', () => {
+    const paths = deep(60)
+    // Everything the answer must restate verbatim, before any commit scaffolding.
+    const pathCost = estimateTokens(paths.map((p) => `"${p}",`).join(''))
+    expect(groupingOutputTokens(paths)).toBeGreaterThan(pathCost)
   })
 })
 

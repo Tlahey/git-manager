@@ -102,25 +102,48 @@ export interface FileGroupingInput {
   contextTokens?: number
 }
 
+/** Files per commit assumed when reserving room for the plan's own scaffolding. Deliberately low:
+ * the instruction asks for minimality, so real plans group more than this, and over-counting commits
+ * reserves a little too much rather than truncating the answer. */
+const FILES_PER_COMMIT_ESTIMATE = 4
+
+/** `{"commitMessage":"<up to 72 chars>","files":[]},` — the keys, the punctuation and a subject. */
+const PER_COMMIT_TOKENS = 40
+
+/** Applied to the measured total, covering the estimate in {@link estimateTokens} itself. */
+const OUTPUT_SLACK = 1.1
+
 /**
- * Room this feature's answer needs, in tokens, for a plan over `fileCount` files.
+ * Room this feature's answer needs, in tokens, for a plan over `paths`.
  *
  * The only feature whose answer length is a property of its *question*. The coverage rule says every
  * changed file must appear in the plan, verbatim — so the JSON necessarily restates the whole input
  * file list, plus a message per commit and the structural punctuation around both. A flat reserve
  * cannot serve that: sized for a five-file change it truncates a forty-file plan mid-array, and
  * because the output is parsed rather than read, that is not a vaguer answer but
- * `parseCommitPlan` throwing "not valid JSON". Sized for the worst case it would spend a quarter of
- * a stock 4k window on room a typical run never touches.
+ * `parseCommitPlan` throwing "not valid JSON".
  *
- * The per-file figure is deliberately generous. A repo path tokenizes badly — slashes, extensions
- * and camelCase all split — and the same path also costs the JSON quoting and separator around it;
- * 24 tokens covers a long nested path with room to spare. The floor keeps small changesets at the
- * ordinary prose reserve, which already fits a handful of commit messages.
+ * It takes the **paths**, not their count, because the count cannot answer the question. This
+ * replaces a flat 24 tokens per file, which was calibrated on nothing in particular and turned out to
+ * be roughly the cost of a deep path *alone*: `apps/desktop/src/components/git-graph/components/
+ * CommitBatchReviewPanel.tsx` is ~21 tokens before its quotes, leaving nothing for the commit
+ * messages or the JSON around them — so on a repo with nested paths the plan truncated, while on a
+ * flat one the same 24 reserved several times what the answer used. The paths are in hand when the
+ * prompt is built, so measuring them is both cheaper and more accurate than any per-file constant.
+ *
+ * The floor keeps small changesets at the ordinary prose reserve.
  */
-export function groupingOutputTokens(fileCount: number): number {
-  const PER_FILE_TOKENS = 24
-  return Math.max(RESERVED_OUTPUT_TOKENS, fileCount * PER_FILE_TOKENS)
+export function groupingOutputTokens(paths: string[]): number {
+  // What the paths cost inside the JSON: the path itself, its quotes and its separator.
+  const pathTokens = estimateTokens(paths.map((p) => `"${p}",`).join(''))
+  const commits = Math.max(1, Math.ceil(paths.length / FILES_PER_COMMIT_ESTIMATE))
+  const measured = Math.ceil((pathTokens + commits * PER_COMMIT_TOKENS) * OUTPUT_SLACK)
+  return Math.max(RESERVED_OUTPUT_TOKENS, measured)
+}
+
+/** The paths a grouping run must partition — what {@link groupingOutputTokens} measures. */
+function contextPaths(context: AiContext): string[] {
+  return context.files.map((f) => f.path)
 }
 
 /** Everything the prompt carries before the omitted list and the diff — the complete file list and
@@ -153,7 +176,7 @@ export function buildGroupingUserPrompt(input: FileGroupingInput): string {
       instruction: FILE_GROUPING_INSTRUCTION,
       envelopeTokens: estimateTokens(header) + OMITTED_RESERVE_TOKENS,
       contextTokens: input.contextTokens,
-      reservedOutputTokens: groupingOutputTokens(context.files.length),
+      reservedOutputTokens: groupingOutputTokens(contextPaths(context)),
     })
   )
 
@@ -183,7 +206,7 @@ export function assessFileGroupingCoverage(input: FileGroupingInput): DiffCovera
     instruction: FILE_GROUPING_INSTRUCTION,
     envelopeTokens: estimateTokens(buildPromptHeader(input.context)) + OMITTED_RESERVE_TOKENS,
     contextTokens: input.contextTokens,
-    reservedOutputTokens: groupingOutputTokens(input.context.files.length),
+    reservedOutputTokens: groupingOutputTokens(contextPaths(input.context)),
   })
 }
 
@@ -252,5 +275,5 @@ export const fileGroupingFeature: CompletionFeature<FileGroupingInput, ProposedC
   parse: parseCommitPlan,
   // Must stay the same expression the two functions above pass as `reservedOutputTokens`: this is
   // the cap the model is held to, those are the room the prompt left it.
-  reservedOutputTokens: (input) => groupingOutputTokens(input.context.files.length),
+  reservedOutputTokens: (input) => groupingOutputTokens(contextPaths(input.context)),
 }

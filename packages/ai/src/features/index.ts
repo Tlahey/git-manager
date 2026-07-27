@@ -21,6 +21,30 @@ export {
 } from './fileGrouping'
 export type { ProposedCommit, FileGroupingInput } from './fileGrouping'
 export {
+  fileSummaryFeature,
+  FILE_SUMMARY_INSTRUCTION,
+  FILE_SUMMARY_SCHEMA,
+  FILE_SUMMARY_OUTPUT_TOKENS,
+  buildFileSummaryPrompt,
+  parseFileSummary,
+} from './fileSummary'
+export type { FileSummary, FileSummaryInput, FileSummaryResult } from './fileSummary'
+export {
+  summaryGroupingFeature,
+  SUMMARY_GROUPING_INSTRUCTION,
+  buildSummaryGroupingPrompt,
+  summaryGroupingOutputTokens,
+  renderSummaryList,
+} from './summaryGrouping'
+export type { SummaryGroupingInput } from './summaryGrouping'
+export {
+  planCommitsFromSummaries,
+  shouldPlanFromSummaries,
+  CommitPlanCancelled,
+  SUMMARY_PLANNING_FILE_THRESHOLD,
+} from './planCommits'
+export type { CommitPlanProgress, CommitPlanRunners, CommitPlanOptions } from './planCommits'
+export {
   commitRecomposeFeature,
   COMMIT_RECOMPOSE_INSTRUCTION,
   buildCommitRecomposePrompt,

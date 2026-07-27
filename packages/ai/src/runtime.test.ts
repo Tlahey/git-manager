@@ -157,8 +157,8 @@ describe('createCompletionService', () => {
     await service.run(connection, { context: many })
 
     const [small, large] = (transport.runComplete as ReturnType<typeof vi.fn>).mock.calls
-    expect(small[0].maxTokens).toBe(groupingOutputTokens(1))
-    expect(large[0].maxTokens).toBe(groupingOutputTokens(40))
+    expect(small[0].maxTokens).toBe(groupingOutputTokens(context.files.map((f) => f.path)))
+    expect(large[0].maxTokens).toBe(groupingOutputTokens(many.files.map((f) => f.path)))
     expect(large[0].maxTokens).toBeGreaterThan(small[0].maxTokens)
   })
 })
