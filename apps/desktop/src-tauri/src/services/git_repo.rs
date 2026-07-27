@@ -1,5 +1,32 @@
 use crate::models::GitRepo;
-use git2::Repository;
+use git2::{Repository, RepositoryState};
+
+/// The multi-step git operation the repository is in the middle of, or `None` when there is none.
+///
+/// Committing during one of these is not the same act as an ordinary commit, which is why callers
+/// need to be able to ask. A `Merge`/`Revert`/`CherryPick` state holds the operation's second parent
+/// in `MERGE_HEAD`, and [`crate::services::git_commit::create_commit`] never reads it — so a commit
+/// made in that state silently flattens the merge into a single-parent commit and leaves the state
+/// file stranded. A paused rebase is worse still: the index belongs to the step being replayed, and
+/// resetting it (as any stage-from-scratch flow does) throws away the user's conflict resolution.
+///
+/// Returned as a stable snake_case token rather than a bool so the frontend can name the operation
+/// it is refusing to write into.
+pub fn get_pending_operation(repo: &Repository) -> Option<&'static str> {
+    match repo.state() {
+        RepositoryState::Clean => None,
+        RepositoryState::Merge => Some("merge"),
+        RepositoryState::Revert | RepositoryState::RevertSequence => Some("revert"),
+        RepositoryState::CherryPick | RepositoryState::CherryPickSequence => Some("cherry_pick"),
+        RepositoryState::Bisect => Some("bisect"),
+        RepositoryState::Rebase
+        | RepositoryState::RebaseInteractive
+        | RepositoryState::RebaseMerge => Some("rebase"),
+        RepositoryState::ApplyMailbox | RepositoryState::ApplyMailboxOrRebase => {
+            Some("apply_mailbox")
+        }
+    }
+}
 
 /// Builds a `GitRepo` snapshot (name, HEAD, dirty/detached state, remotes) from an open
 /// `git2::Repository`. Single source of truth — used by `open_repo`, `clone_repo` and
@@ -79,6 +106,45 @@ mod tests {
     use crate::services::git_worktree::add_worktree;
     use crate::utils::get_git_signature;
     use std::path::Path;
+
+    /// Nothing in progress: an ordinary repository reports no pending operation.
+    #[test]
+    fn get_pending_operation_is_none_on_a_clean_repo() {
+        let dir = std::env::temp_dir().join(format!("gm-test-repo-clean-{}", std::process::id()));
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = Repository::init(&dir).unwrap();
+
+        assert_eq!(get_pending_operation(&repo), None);
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// An interrupted merge is named, not just flagged — this is the state where committing would
+    /// drop the second parent, so the frontend needs to say which operation it is refusing.
+    #[test]
+    fn get_pending_operation_reports_an_interrupted_merge() {
+        let dir = std::env::temp_dir().join(format!("gm-test-repo-merge-{}", std::process::id()));
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = Repository::init(&dir).unwrap();
+
+        let sig = get_git_signature(&repo).unwrap();
+        let tree_oid = repo.index().unwrap().write_tree().unwrap();
+        let tree = repo.find_tree(tree_oid).unwrap();
+        let commit_oid = repo
+            .commit(Some("HEAD"), &sig, &sig, "init", &tree, &[])
+            .unwrap();
+
+        // `MERGE_HEAD`'s presence is exactly what libgit2 (and `git` itself) reads to know a merge
+        // is under way, so writing it reproduces the state without needing two divergent branches.
+        std::fs::write(repo.path().join("MERGE_HEAD"), format!("{commit_oid}\n")).unwrap();
+
+        let reopened = Repository::open(&dir).unwrap();
+        assert_eq!(get_pending_operation(&reopened), Some("merge"));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
 
     /// A main repo owns itself: `main_worktree_path` equals its own path.
     #[test]
