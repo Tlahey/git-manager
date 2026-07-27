@@ -66,60 +66,6 @@ pub fn build_graph_nodes(
         false
     };
 
-    let local_main_oid = if is_main_or_master {
-        repo.find_reference("refs/heads/main")
-            .or_else(|_| repo.find_reference("refs/heads/master"))
-            .ok()
-            .and_then(|r| r.target())
-    } else {
-        None
-    };
-
-    let origin_main_oid = if is_main_or_master {
-        repo.find_reference("refs/remotes/origin/main")
-            .or_else(|_| repo.find_reference("refs/remotes/origin/master"))
-            .ok()
-            .and_then(|r| r.target())
-    } else {
-        None
-    };
-
-    // Columns are assigned top-to-bottom: the first displayed element owns column 0, and so on.
-    // A lane is therefore never seeded "blindly" from a ref — that used to leave a phantom
-    // column-0 lane hanging "cut" above the checked-out tip's row whenever that tip was
-    // merged/behind (nothing above it connects to the lane, and the first row hides its own top
-    // segment — see `isFirst` in GraphSvg). The ONE legitimate seed is a synthetic row the
-    // frontend will render ABOVE the first commit: the WIP / paused-rebase row anchored on HEAD
-    // (`head_has_wip`, driven by the same status that decides whether that row is shown at all).
-    // When it exists, that row IS the graph's first element: it sits at the top of column 0 and
-    // the seeded lane is simply its connector running down to HEAD's tip — the "reservation"
-    // exists exactly because a first row exists to anchor it. Skipped for the single-branch view
-    // (`branch` is Some), where the walked branch already owns column 0, and for main/master,
-    // which keep their dedicated local/origin seeding below.
-    let head_tip_oid = if branch.is_none() && !is_main_or_master && head_has_wip {
-        repo.head().ok().and_then(|h| {
-            h.target()
-                .or_else(|| h.peel_to_commit().ok().map(|c| c.id()))
-        })
-    } else {
-        None
-    };
-
-    if let Some(oid) = local_main_oid {
-        active_lanes.push(Some(oid.to_string()));
-        lane_colors.push("#2563eb".to_string()); // Blue for local main
-    } else if let Some(oid) = origin_main_oid {
-        active_lanes.push(Some(oid.to_string()));
-        lane_colors.push("#7c3aed".to_string()); // Purple for origin/main
-    } else if let Some(oid) = head_tip_oid {
-        // Blue, like local main: the current branch reads as the repo's primary line. Seeding
-        // `color_map` here fixes the tip's color (propagated down its first-parent chain) so the
-        // reserved lane's pass-through segments above the tip match.
-        active_lanes.push(Some(oid.to_string()));
-        lane_colors.push("#2563eb".to_string());
-        color_map.insert(oid.to_string(), "#2563eb".to_string());
-    }
-
     if is_main_or_master {
         // Pre-populate color map for main/master branches to differentiate local and remote
         let local_main_colors = [
@@ -177,6 +123,41 @@ pub fn build_graph_nodes(
                     }
                 }
             }
+        }
+    }
+
+    // ── Column assignment reads STRICTLY top-to-bottom ─────────────────────────
+    // The first displayed element owns column 0; every other lane is placed relative to it, in the
+    // order lanes appear going down. A lane is NEVER reserved from a ref (not from the checked-out
+    // branch, not from main/master, not from origin/main): a reservation whose commit sits far
+    // below leaves a phantom, commit-less lane pinned to the left of every row above it, pushes the
+    // real topmost commit off column 0, and makes the whole graph read as if it were laid out
+    // bottom-up. See docs/specs/graph-column-layout.md.
+    //
+    // The ONE legitimate seed is a synthetic row the frontend renders ABOVE the first commit: the
+    // WIP / paused-rebase row anchored on HEAD (`head_has_wip`, driven by the same status that
+    // decides whether that row is shown at all). When it exists, THAT row is the graph's first
+    // element: it sits at the top of column 0 and the seeded lane is simply its connector running
+    // down to HEAD's tip — the reservation is legitimate exactly because a first row exists to
+    // anchor it. Skipped for the single-branch view (`branch` is Some), where the walked branch's
+    // tip is the first commit and already owns column 0 on its own.
+    if branch.is_none() && head_has_wip {
+        let head_tip_oid = repo.head().ok().and_then(|h| {
+            h.target()
+                .or_else(|| h.peel_to_commit().ok().map(|c| c.id()))
+        });
+        if let Some(oid) = head_tip_oid {
+            let oid_str = oid.to_string();
+            // Fixing the tip's color here (it propagates down its first-parent chain) keeps the
+            // reserved lane's pass-through segments above the tip the same color as the branch
+            // below it. On main/master the prepopulation above already picked one; anywhere else
+            // the checked-out branch reads as the repo's primary line, hence the same blue.
+            let color = color_map
+                .entry(oid_str.clone())
+                .or_insert_with(|| "#2563eb".to_string())
+                .clone();
+            active_lanes.push(Some(oid_str));
+            lane_colors.push(color);
         }
     }
 
@@ -485,48 +466,13 @@ pub fn build_graph_nodes(
         }
     }
 
-    // Add dashed line for origin/main up to the top of the graph
-    if let Some(origin_oid) = origin_main_oid {
-        let origin_oid_str = origin_oid.to_string();
-        if let Some(origin_node_idx) = nodes.iter().position(|n| n.commit.oid == origin_oid_str) {
-            for i in 0..origin_node_idx {
-                let has_col_0_connection = nodes[i]
-                    .connections
-                    .iter()
-                    .any(|c| c.from_column == 0 || c.to_column == 0);
-                if !has_col_0_connection {
-                    nodes[i].connections.push(GitGraphEdge {
-                        from_column: 0,
-                        to_column: 0,
-                        color: "#7c3aed".to_string(), // Purple
-                        dashed: Some(true),
-                        starts_at_node: None,
-                        ends_at_node: None,
-                    });
-                }
-            }
-        } else {
-            // If origin/main is not in the current page, but we have local commits in this page,
-            // draw the dashed line on column 0 through the entire page.
-            for node in &mut nodes {
-                let has_col_0_connection = node
-                    .connections
-                    .iter()
-                    .any(|c| c.from_column == 0 || c.to_column == 0);
-                if !has_col_0_connection {
-                    node.connections.push(GitGraphEdge {
-                        from_column: 0,
-                        to_column: 0,
-                        color: "#7c3aed".to_string(), // Purple
-                        dashed: Some(true),
-                        starts_at_node: None,
-                        ends_at_node: None,
-                    });
-                }
-            }
-        }
-    }
-
+    // NOTE: the "not yet pushed" dashing above origin/main is deliberately NOT done here. It used
+    // to be — by injecting a dashed pass-through on column 0 into every row above origin/main's —
+    // which baked in the assumption that column 0 is always the mainline. Under strict
+    // top-to-bottom column assignment that is simply false (column 0 belongs to whichever lane the
+    // topmost row starts), and the block was dead anyway: those rows always carry a real column-0
+    // edge. The dashing lives in the frontend (`useGitGraphNodes`), which dashes the lane that
+    // actually runs down into the origin/main node.
     Ok(nodes)
 }
 
@@ -805,6 +751,93 @@ mod tests {
             merge.connections.iter().all(|e| e.dashed.is_none()),
             "Rust must leave every merge-row edge solid: {:?}",
             merge.connections
+        );
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Checked out on `main`, full graph, while a feature branch carries commits NEWER than main's
+    /// tip (the reported bug: the topmost rows sat in a lane to the right while a commit-less blue
+    /// lane ran down the left edge until main's tip, several rows below). Being on main/master must
+    /// not reserve a column: the topmost displayed commit owns column 0 and main's tip inherits it
+    /// down the chain.
+    #[test]
+    fn main_checkout_does_not_reserve_column_zero_for_its_tip() {
+        let dir = std::env::temp_dir().join(format!("gm-test-graph-main-{}", std::process::id()));
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = Repository::init(&dir).unwrap();
+
+        let r = commit_file(&repo, "file.txt", "r\n", "r");
+        let base = commit_file(&repo, "file.txt", "base\n", "base");
+
+        // Rename the initial branch to `main` and check it out (libgit2's default is "master").
+        repo.branch("main", &repo.find_commit(base).unwrap(), true)
+            .unwrap();
+        repo.set_head("refs/heads/main").unwrap();
+        let sig = get_git_signature(&repo).unwrap();
+
+        // A feature branch off `base`, with commits NEWER than main's tip. HEAD stays on main.
+        let (f1, f2) = {
+            let base_commit = repo.find_commit(base).unwrap();
+            let tree = base_commit.tree().unwrap();
+            let f1 = repo
+                .commit(None, &sig, &sig, "f1", &tree, &[&base_commit])
+                .unwrap();
+            let f1_commit = repo.find_commit(f1).unwrap();
+            let f2 = repo
+                .commit(None, &sig, &sig, "f2", &tree, &[&f1_commit])
+                .unwrap();
+            (f1, f2)
+        };
+        repo.branch("feature", &repo.find_commit(f2).unwrap(), false)
+            .unwrap();
+        // origin/main sits at main's tip — the seeding this test guards against also triggered off
+        // the remote ref, so keep it in the fixture.
+        repo.reference("refs/remotes/origin/main", base, true, "origin/main")
+            .unwrap();
+
+        let refs_map: HashMap<String, Vec<LogRef>> = HashMap::new();
+        // Display order, newest first: the feature branch's commits are above main's tip.
+        let oids = vec![f2, f1, base, r];
+
+        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, false).unwrap();
+
+        assert_eq!(
+            node(&nodes, f2).column,
+            0,
+            "topmost displayed commit must own column 0, whatever branch is checked out"
+        );
+        assert_eq!(node(&nodes, f1).column, 0, "its chain keeps column 0");
+        assert_eq!(
+            node(&nodes, base).column,
+            0,
+            "main's tip inherits column 0 from the chain above it, it doesn't reserve one"
+        );
+        // No commit-less lane hanging above the top row: its only column-0 edge is its own
+        // departure to its parent.
+        let top = node(&nodes, f2);
+        assert!(
+            top.connections
+                .iter()
+                .filter(|e| e.from_column == 0 && e.to_column == 0)
+                .all(|e| e.starts_at_node == Some(true) || e.ends_at_node == Some(true)),
+            "top row must carry no bare column-0 pass-through: {:?}",
+            top.connections
+        );
+
+        // Dirty working tree: the WIP row above the graph is then the first element, so it — and
+        // the lane running down to main's tip — legitimately owns column 0.
+        let nodes = build_graph_nodes(&repo, &oids, &[], &refs_map, None, true).unwrap();
+        assert_eq!(
+            node(&nodes, base).column,
+            0,
+            "dirty tree: HEAD's tip holds column 0 under its WIP row"
+        );
+        assert_ne!(
+            node(&nodes, f2).column,
+            0,
+            "dirty tree: the newer feature commits move off column 0"
         );
 
         std::fs::remove_dir_all(&dir).ok();

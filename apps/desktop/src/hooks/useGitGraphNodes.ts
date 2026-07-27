@@ -155,7 +155,11 @@ function laneContinuations(anchor: GitGraphNode, excludeColumn: number): GitGrap
  * can tell them apart from the primary `'WIP'` row (which stays editable/committable) and from
  * each other.
  */
-function buildWorktreeWipNode(anchor: GitGraphNode, wip: WorktreeWipStatus, column: number): GitGraphNode {
+function buildWorktreeWipNode(
+  anchor: GitGraphNode,
+  wip: WorktreeWipStatus,
+  column: number
+): GitGraphNode {
   const passThroughs = laneContinuations(anchor, column)
   return {
     commit: {
@@ -218,12 +222,14 @@ function assignColumnsToSyntheticNodes(
     crossing.add(c.fromColumn)
   }
   // …except on the graph's topmost row, where NOTHING is displayed above: the incoming edge the
-  // backend leaves on that row's own lane is a reservation (lane 0 is seeded from main's tip, see
-  // `build_graph_nodes`), not a line coming from somewhere. Treating it as occupied pushed the WIP
-  // row one lane to the right — straight onto the lane a "Merge pull request" tip departs into for
-  // its second parent — so its dashed connector rose out of that diagonal's corner and read as a
-  // dotted "start" grafted onto the merge → next-commit link. The lane above the top row is free by
-  // construction, so the WIP belongs on it.
+  // backend leaves on that row's own lane is a reservation, not a line coming from somewhere. The
+  // backend seeds exactly one lane, and only when a WIP / paused-rebase row is about to be spliced
+  // in above the graph (`head_has_wip`, see `build_graph_nodes`) — so this row's own lane is that
+  // reservation. Treating it as occupied pushed the WIP row one lane to the right — straight onto
+  // the lane a "Merge pull request" tip departs into for its second parent — so its dashed
+  // connector rose out of that diagonal's corner and read as a dotted "start" grafted onto the
+  // merge → next-commit link. The lane above the top row is free by construction, so the WIP
+  // belongs on it.
   if (anchorIsTopmost) crossing.delete(anchor.column)
 
   const used = new Set<number>()
@@ -301,7 +307,10 @@ export function useGitGraphNodes(
 
     // Process primaryAnchor
     const primaryWips = worktreeWipsByAnchor.get(primaryAnchor.commit.oid)?.wips ?? []
-    const primarySpecs: Array<{ type: 'primary' | 'conflict' | 'worktree'; wip?: WorktreeWipStatus }> = []
+    const primarySpecs: Array<{
+      type: 'primary' | 'conflict' | 'worktree'
+      wip?: WorktreeWipStatus
+    }> = []
     if (hasConflict) {
       primarySpecs.push({ type: 'conflict' })
     } else if (hasPrimaryWip) {
@@ -327,7 +336,8 @@ export function useGitGraphNodes(
     // Process other anchors
     for (const [oid, entry] of worktreeWipsByAnchor.entries()) {
       if (oid === primaryAnchor.commit.oid) continue
-      const specs: Array<{ type: 'primary' | 'conflict' | 'worktree'; wip?: WorktreeWipStatus }> = []
+      const specs: Array<{ type: 'primary' | 'conflict' | 'worktree'; wip?: WorktreeWipStatus }> =
+        []
       for (let i = entry.wips.length - 1; i >= 0; i--) {
         specs.push({ type: 'worktree', wip: entry.wips[i] })
       }
@@ -467,14 +477,20 @@ export function useGitGraphNodes(
     return out
   }, [filteredNodes, t])
 
-  // Index (dans filteredNodes) du commit origin/main ou origin/master, utilisé
-  // pour pointiller les connexions verticales au-dessus de la frontière distante.
+  // Index (in `filteredNodes`) of the origin/main or origin/master commit, used to dash the
+  // vertical connections above the remote boundary.
   const originMainIndex = useMemo(
     () =>
       filteredNodes.findIndex((n) =>
         n.refs.some((r) => r.shortName === 'origin/main' || r.shortName === 'origin/master')
       ),
     [filteredNodes]
+  )
+
+  /** The column origin/main sits on — the lane whose segments above it are the unpushed ones. */
+  const originMainColumn = useMemo(
+    () => (originMainIndex === -1 ? 0 : filteredNodes[originMainIndex].column),
+    [filteredNodes, originMainIndex]
   )
 
   // Nodes ready for rendering: same as filteredNodes, but with the WIP(s)→anchor-commit
@@ -488,8 +504,12 @@ export function useGitGraphNodes(
     // the anchor (fromColumn = the WIP row's offset column, toColumn = the anchor's own column) —
     // see `buildWorktreeWipNode`'s comment for why it's this way round (starts at the commit,
     // rises into the WIP row) rather than the other.
-    const continuityPatches: { index: number; fromColumn: number; toColumn: number; color: string }[] =
-      []
+    const continuityPatches: {
+      index: number
+      fromColumn: number
+      toColumn: number
+      color: string
+    }[] = []
 
     // The primary WIP/CONFLICT row's dashed connector runs down its own lane until it actually
     // TOUCHES a node: the first real (non-synthetic) commit rendered ON that column — NOT merely
@@ -566,7 +586,9 @@ export function useGitGraphNodes(
         }
       }
 
-      const matchingPatches = continuityPatches.filter((p) => p.index === index && patched.column === p.toColumn)
+      const matchingPatches = continuityPatches.filter(
+        (p) => p.index === index && patched.column === p.toColumn
+      )
       for (const patch of matchingPatches) {
         // On the graph's topmost real row, the edge arriving on its own lane is the backend's
         // reserved lane, not history (nothing is displayed above it) — see the matching note in
@@ -620,7 +642,11 @@ export function useGitGraphNodes(
       // is real history below the node and stays solid. When the anchor commit is below the loaded
       // page (`primaryAnchorIndex === -1` with the WIP row present), the whole visible stretch of
       // the lane is above it, so dash it all.
-      if (hasPrimarySpecial && index >= 1 && (primaryAnchorIndex === -1 || index <= primaryAnchorIndex)) {
+      if (
+        hasPrimarySpecial &&
+        index >= 1 &&
+        (primaryAnchorIndex === -1 || index <= primaryAnchorIndex)
+      ) {
         patched = {
           ...patched,
           connections: patched.connections.map((conn) => {
@@ -633,19 +659,25 @@ export function useGitGraphNodes(
       }
 
       if (originMainIndex !== -1 && index <= originMainIndex) {
-        // Everything on column 0 above origin/main is unpushed, so the *whole* mainline vertical
-        // there must be dashed — including a merge commit's straight-down departure to its first
-        // parent. A mainline built of "Merge pull request" commits is the common case: keeping each
-        // merge's downward leg solid (as an earlier version did) shattered the dashed line into
-        // mostly-solid segments that visibly stopped short of the origin/main node instead of
-        // reaching it. The one column-0 departure that stays solid is the origin/main commit's OWN
-        // (`index === originMainIndex`): it leads into already-pushed history below the boundary, so
-        // the dashed→solid transition lands exactly on that node. (A merge's diagonal leg to its
-        // second parent is left untouched here — it isn't a column-0→column-0 edge.)
+        // Everything above origin/main on the lane that runs down INTO it is unpushed, so that
+        // whole vertical must be dashed — including a merge commit's straight-down departure to its
+        // first parent. A mainline built of "Merge pull request" commits is the common case:
+        // keeping each merge's downward leg solid (as an earlier version did) shattered the dashed
+        // line into mostly-solid segments that visibly stopped short of the origin/main node
+        // instead of reaching it. The one departure that stays solid is the origin/main commit's
+        // OWN (`index === originMainIndex`): it leads into already-pushed history below the
+        // boundary, so the dashed→solid transition lands exactly on that node. (A merge's diagonal
+        // leg to its second parent is left untouched here — it isn't a straight vertical.)
+        //
+        // The lane is origin/main's OWN column, read off the node — not a hardcoded 0. Columns are
+        // assigned strictly top-to-bottom (see `build_graph_nodes` and
+        // docs/specs/graph-column-layout.md), so column 0 belongs to whichever lane the topmost row
+        // starts, which is the mainline only by coincidence.
         patched = {
           ...patched,
           connections: patched.connections.map((conn) => {
-            if (conn.fromColumn !== 0 || conn.toColumn !== 0) return conn
+            if (conn.fromColumn !== originMainColumn || conn.toColumn !== originMainColumn)
+              return conn
             if (conn.startsAtNode && index === originMainIndex) return conn
             return { ...conn, dashed: true }
           }),
@@ -654,7 +686,7 @@ export function useGitGraphNodes(
 
       return patched
     })
-  }, [filteredNodes, originMainIndex, worktreeWipNodes])
+  }, [filteredNodes, originMainIndex, originMainColumn, worktreeWipNodes])
 
   return {
     wipNode,

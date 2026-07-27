@@ -90,6 +90,7 @@ git-manager/
 │   ├── ROADMAP.md                  # What shipped, what's open, + the historical milestones
 │   ├── screenshots/                # Auto-captured app screenshots (e2e @screenshots)
 │   ├── ai/                         # The AI system: one page per feature + a shared overview
+│   ├── specs/                      # Living specs for invariant-shaped behaviour
 │   ├── specs/archive/              # Original 2026-07-03 design docs — historical only
 │   └── architecture/               # Architecture refactor plans + execution tracking
 ├── CLAUDE.md                       # Architecture/IPC conventions — authoritative
@@ -170,6 +171,7 @@ ollama pull qwen2.5-coder:7b
 | [ROADMAP](./ROADMAP.md)                            | Feature status and remaining work                                  |
 | [AI system](./ai/README.md)                        | How every AI feature works — shared runtime + one page per feature |
 | [Architecture refactors](./architecture/README.md) | Refactor plans 13–17 and their execution records — all complete    |
+| [Specs](./specs/README.md)                         | Living specs for invariant-shaped behaviour (graph layout, fetch)  |
 | [Archived specs](./specs/archive/README.md)        | Original 2026-07-03 design docs — historical, do not trust as docs |
 
 > [!WARNING]
