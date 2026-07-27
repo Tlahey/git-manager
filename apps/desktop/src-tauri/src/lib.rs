@@ -11,7 +11,7 @@ use commands::activity_log::{
 use commands::agent::get_worktree_agent_activity;
 use commands::ai::{
     ai_complete, ai_generate_stream, cancel_generation, check_ai_status, get_ai_activity,
-    get_ai_context, get_model_context_limits,
+    get_ai_commit_scan, get_ai_context, get_model_context_limits,
 };
 use commands::bisect::{
     bisect_check_range, bisect_mark, bisect_reset, bisect_start, get_bisect_state,
@@ -234,6 +234,7 @@ pub fn run() {
             get_ai_context,
             get_model_context_limits,
             get_ai_activity,
+            get_ai_commit_scan,
             ai_generate_stream,
             ai_complete,
             cancel_generation,

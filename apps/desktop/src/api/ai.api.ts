@@ -1,6 +1,7 @@
 import type {
   AiActivity,
   AiCheckConfig,
+  AiCommitScan,
   AiContext,
   AiContextScope,
   AiGenerateConfig,
@@ -11,6 +12,8 @@ import {
   changeExplanationFeature,
   codeReviewFeature,
   commitRecomposeFeature,
+  commitRelevanceFeature,
+  commitSearchAnswerFeature,
   createCompletionService,
   createStatusService,
   createStreamingService,
@@ -28,6 +31,7 @@ import {
   cancelGeneration,
   checkAiStatus,
   getAiActivity,
+  getAiCommitScan,
   getAiContext,
   getModelContextLimits,
   type ModelContextLimits,
@@ -63,6 +67,17 @@ export async function apiGetAiActivity(
   candidates: string[]
 ): Promise<AiActivity> {
   return getAiActivity(path, sinceEpoch, untilEpoch, candidates)
+}
+
+/** Lists the commits an AI search will read (last `sinceHours`, newest first, at most `maxCommits`),
+ * each with its full oid and touched paths. The diffs are *not* here: the search fetches each
+ * commit's patch as it reaches it, so a month of history never sits in memory at once. */
+export async function apiGetAiCommitScan(
+  path: string,
+  sinceHours: number,
+  maxCommits?: number
+): Promise<AiCommitScan> {
+  return getAiCommitScan(path, sinceHours, maxCommits)
 }
 
 /** Sanity-checks the context window declared in Settings against what the provider reports. See
@@ -233,6 +248,18 @@ export const changeExplanationService = createStreamingService(
 export const summaryExplanationService = createStreamingService(
   summaryExplanationFeature,
   trackedTransport(summaryExplanationFeature.id)
+)
+/** The map half of the AI commit search: one small verdict per commit, sequenced by `scanCommits`.
+ * A completion with a schema for the same reason the file summary is one — the caller needs a field
+ * it can branch on, not prose it has to interpret. */
+export const commitRelevanceService = createCompletionService(
+  commitRelevanceFeature,
+  trackedTransport(commitRelevanceFeature.id)
+)
+/** The reduce half: the answer itself, streamed, written from every commit's verdict. */
+export const commitSearchAnswerService = createStreamingService(
+  commitSearchAnswerFeature,
+  trackedTransport(commitSearchAnswerFeature.id)
 )
 /** One service for both review scopes: the feature discriminates on its input's `scope`, so the
  * working-tree and branch reviews share an instruction, a temperature and this line. */

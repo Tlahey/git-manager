@@ -165,3 +165,45 @@ export interface AiActivity {
    * from app Settings (not from Rust) so the briefing matches the user's UI language. */
   language?: string
 }
+
+/** One path a scanned commit touched. Mirrors the Rust `ScanCommitFile` serde struct. */
+export interface ScanCommitFile {
+  path: string
+  status: string
+}
+
+/**
+ * One commit an AI search will read. Mirrors the Rust `ScanCommit` serde struct.
+ *
+ * Carries the **full** `oid`, unlike {@link AiActivityCommit}: the search fetches each commit's own
+ * patch before asking about it, and a seven-character prefix is not what `get_commit_diff` takes.
+ */
+export interface ScanCommit {
+  oid: string
+  shortOid: string
+  subject: string
+  /** Commit body (message minus the subject line), trimmed; empty when subject-only. */
+  body: string
+  author: string
+  /** Author timestamp, seconds since the epoch. */
+  timestamp: number
+  files: ScanCommitFile[]
+  /** True when the commit touched more paths than `files` lists. */
+  filesTruncated: boolean
+  insertions: number
+  deletions: number
+  parentCount: number
+}
+
+/** The commit window an AI search reads — produced by the `get_ai_commit_scan` Tauri command (git2
+ * logic stays in Rust). Mirrors the Rust `AiCommitScan` serde struct. */
+export interface AiCommitScan {
+  repoName: string
+  branch: string
+  /** Non-merge commits authored within the window, newest first. */
+  commits: ScanCommit[]
+  /** True when the window held more commits than were returned (newest kept). */
+  truncated: boolean
+  /** Start of the window, seconds since the epoch. */
+  sinceEpoch: number
+}

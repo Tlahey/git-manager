@@ -38,6 +38,7 @@ import type {
   AiContext,
   AiContextScope,
   AiActivity,
+  AiCommitScan,
   JsonSchema,
 } from '@git-manager/ai'
 
@@ -428,6 +429,11 @@ export const deleteDailySummary = (filePath: string) =>
 
 /** Reveals the archive directory (`~/.git-manager/summaries/`) in the Finder. */
 export const openDailySummariesDir = () => invoke<void>('open_daily_summaries_dir')
+
+/** The commits an AI search will read, newest first, each with its full oid and touched paths.
+ * `maxCommits` bounds the scan — every commit returned costs one model call. */
+export const getAiCommitScan = (path: string, sinceHours: number, maxCommits?: number) =>
+  invoke<AiCommitScan>('get_ai_commit_scan', { path, sinceHours, maxCommits: maxCommits ?? null })
 
 /** `requestId` tags every `ai:*` event this generation emits, and is what {@link cancelGeneration}
  * targets. The events are window-wide broadcasts, so without it a second generation started while

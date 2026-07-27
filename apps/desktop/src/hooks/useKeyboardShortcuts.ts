@@ -9,6 +9,7 @@ import { useUndoHistoryStore } from '../stores/undoHistory.store'
 import { useCommandPaletteStore } from '../stores/commandPalette.store'
 import { useCommitSearchStore } from '../stores/commitSearch.store'
 import { useSidebarSearchStore } from '../stores/sidebarSearch.store'
+import { useAiEnabled } from './useAiEnabled'
 import { useIsCommitsView } from './useIsCommitsView'
 import { queryClient } from '../lib/queryClient'
 
@@ -25,6 +26,7 @@ export function useKeyboardShortcuts({
 }: UseKeyboardShortcutsProps) {
   const { openTabs, activeTab, activeRepo, setActiveTab, closeTab, openNewTab } = useRepoUIStore()
   const isCommitsView = useIsCommitsView()
+  const aiEnabled = useAiEnabled()
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -60,8 +62,38 @@ export function useKeyboardShortcuts({
       // Monaco's own in-file find widget when focused inside a diff/merge editor, and only
       // applies while the plain commit graph is on screen (the panel only exists there — see
       // `useIsCommitsView`, not while viewing a PR/diff/composer or with no repo open).
+      // AI commit search: ⇧⌘F / Ctrl+Shift+F — opens the right panel that reads history commit by
+      // commit, the same entry the toolbar's AI menu carries. Checked before plain ⌘F, which would
+      // otherwise also fire on this chord.
+      const isModShiftF = navigator.userAgent.includes('Mac') ? e.metaKey : e.ctrlKey
+      if (
+        isModShiftF &&
+        e.shiftKey &&
+        !e.altKey &&
+        e.key.toLowerCase() === 'f' &&
+        activeRepo &&
+        isCommitsView &&
+        aiEnabled
+      ) {
+        e.preventDefault()
+        // Clearing the centre slot's other claimants first, exactly as `AiMenu` does: without it
+        // the panel opens behind a diff the user then has to close by hand.
+        const ui = useRepoUIStore.getState()
+        ui.setActiveDiffFile(null)
+        ui.setActivePrNumber(null)
+        ui.setAiPanelTarget({ kind: 'search' })
+        return
+      }
+
       const isModF = navigator.userAgent.includes('Mac') ? e.metaKey : e.ctrlKey
-      if (isModF && !e.altKey && e.key.toLowerCase() === 'f' && activeRepo && isCommitsView) {
+      if (
+        isModF &&
+        !e.altKey &&
+        !e.shiftKey &&
+        e.key.toLowerCase() === 'f' &&
+        activeRepo &&
+        isCommitsView
+      ) {
         const targetEl = e.target as HTMLElement
         if (!targetEl.closest('.monaco-editor')) {
           e.preventDefault()
@@ -178,6 +210,7 @@ export function useKeyboardShortcuts({
     activeTab,
     activeRepo,
     isCommitsView,
+    aiEnabled,
     showSettings,
     setActiveTab,
     closeTab,

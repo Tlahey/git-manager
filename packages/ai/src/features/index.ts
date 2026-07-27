@@ -93,6 +93,29 @@ export type {
   SummaryExplanationCommit,
 } from './summaryExplanation'
 export {
+  commitRelevanceFeature,
+  COMMIT_RELEVANCE_INSTRUCTION,
+  COMMIT_RELEVANCE_SCHEMA,
+  COMMIT_RELEVANCE_OUTPUT_TOKENS,
+  buildCommitRelevancePrompt,
+  parseCommitRelevance,
+} from './commitRelevance'
+export type { CommitRelevanceInput, CommitRelevanceResult } from './commitRelevance'
+export {
+  commitSearchAnswerFeature,
+  COMMIT_SEARCH_ANSWER_INSTRUCTION,
+  buildCommitSearchAnswerPrompt,
+  renderFindings,
+} from './commitSearchAnswer'
+export type { CommitSearchAnswerInput, CommitSearchFinding } from './commitSearchAnswer'
+export { scanCommits } from './scanCommits'
+export type {
+  CommitScanProgress,
+  ScanCommitsOptions,
+  ScanCommitsParams,
+  ScannedCommit,
+} from './scanCommits'
+export {
   codeReviewFeature,
   CODE_REVIEW_INSTRUCTION,
   buildCodeReviewPrompt,

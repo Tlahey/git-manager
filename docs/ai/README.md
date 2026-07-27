@@ -25,6 +25,7 @@ specific to it — its prompt, its inputs, its UI, its limits.
 | [Code review](./code-review.md) | Reviews a diff and flags what deserves a second look — the one feature allowed an opinion | streaming | right-click the WIP row → *Review changes (LLM)*, or a commit/branch → *Review branch changes (LLM)* |
 | [Daily summary](./daily-summary.md) | A "yesterday / today" briefing per repository, read file by file off the main branch and archived as markdown | completion + JSON schema | ✨ on a dashboard project, and automatically each morning |
 | [Summary search](./summary-search.md) | Answers a question about the archived briefings, citing the days it rests on | completion + JSON schema | the question box on the Summaries tab |
+| [Commit search](./commit-search.md) | Answers a question about recent history by reading every commit in a window, one at a time | completion + JSON schema per commit, then streaming | the AI menu → *Search history*, or ⇧⌘F |
 | [Recompose a commit](./commit-recompose.md) | Rewrites the message of a commit that already exists, reviewed before it is applied | completion | right-click a commit → *Rewrite this commit's message (LLM)* |
 
 Every feature listed here is built. See the roadmap section at the bottom for what is not.
@@ -175,6 +176,13 @@ Conventional Commits. See [commit message](./commit-message.md) for how that is 
 
 The daily summary uses a different command, `get_ai_activity`, which looks *backwards* over a time
 window instead of at a diff.
+
+The [commit search](./commit-search.md) uses a third, `get_ai_commit_scan`
+([ai_commit_scan.rs](../../apps/desktop/src-tauri/src/services/ai_commit_scan.rs)) — the one feature
+so far that needed a new command. It also looks backwards, but over a much longer window, and returns
+each commit's **full** oid and touched paths rather than its volume: the frontend then fetches one
+commit's patch at a time through the existing `get_commit_diff`, so a month of history never sits in
+memory or in a prompt at once.
 
 ---
 
@@ -426,7 +434,8 @@ Shared by every feature; the per-feature pages list their own on top of these.
 | Footer activity state | [apps/desktop/src/stores/aiActivity.store.ts](../../apps/desktop/src/stores/aiActivity.store.ts) |
 | Remembered explanations | [apps/desktop/src/stores/aiExplanation.store.ts](../../apps/desktop/src/stores/aiExplanation.store.ts) |
 | Commands | [src-tauri/src/commands/ai.rs](../../apps/desktop/src-tauri/src/commands/ai.rs) |
-| Git context (git2) | [src-tauri/src/services/ai_context.rs](../../apps/desktop/src-tauri/src/services/ai_context.rs) · [ai_activity.rs](../../apps/desktop/src-tauri/src/services/ai_activity.rs) · [ai_convention.rs](../../apps/desktop/src-tauri/src/services/ai_convention.rs) |
+| Remembered commit searches (answer + matches) | [apps/desktop/src/stores/aiCommitSearch.store.ts](../../apps/desktop/src/stores/aiCommitSearch.store.ts) |
+| Git context (git2) | [src-tauri/src/services/ai_context.rs](../../apps/desktop/src-tauri/src/services/ai_context.rs) · [ai_activity.rs](../../apps/desktop/src-tauri/src/services/ai_activity.rs) · [ai_commit_scan.rs](../../apps/desktop/src-tauri/src/services/ai_commit_scan.rs) · [ai_convention.rs](../../apps/desktop/src-tauri/src/services/ai_convention.rs) |
 | Providers | [ai_provider.rs](../../apps/desktop/src-tauri/src/services/ai_provider.rs) · [ai_openai_compatible.rs](../../apps/desktop/src-tauri/src/services/ai_openai_compatible.rs) · [ai_anthropic.rs](../../apps/desktop/src-tauri/src/services/ai_anthropic.rs) · [ai_registry.rs](../../apps/desktop/src-tauri/src/services/ai_registry.rs) |
 
 For the architecture rules all of this is built on, read [CLAUDE.md](../../CLAUDE.md) — it is

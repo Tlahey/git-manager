@@ -1,5 +1,6 @@
 use crate::models::AiProviderStatus;
 use crate::services::ai_activity::{build_ai_activity, AiActivity};
+use crate::services::ai_commit_scan::{build_ai_commit_scan, AiCommitScan};
 use crate::services::ai_context::{build_ai_context, AiContext, AiContextScope};
 use crate::services::ai_model_info::{fetch_model_context_limits, ModelContextLimits};
 use crate::services::ai_provider::{GenerateConfig, StreamHandle};
@@ -119,6 +120,19 @@ pub async fn get_ai_activity(
     candidates: Vec<String>,
 ) -> Result<AiActivity, String> {
     build_ai_activity(&path, since_epoch, until_epoch, &candidates).map_err(Into::into)
+}
+
+/// Lists the commits an AI *search* will read: non-merge commits authored in the last `since_hours`
+/// hours, newest first, each with its full oid and touched paths. `max_commits` bounds the scan —
+/// every returned commit costs one model call, so the caller (which knows what the user asked for)
+/// sets it, and the service clamps it to a sane range.
+#[tauri::command]
+pub async fn get_ai_commit_scan(
+    path: String,
+    since_hours: i64,
+    max_commits: Option<usize>,
+) -> Result<AiCommitScan, String> {
+    build_ai_commit_scan(&path, since_hours, max_commits).map_err(Into::into)
 }
 
 /// Generic streaming generation: relays a fully built system/user prompt to the selected provider

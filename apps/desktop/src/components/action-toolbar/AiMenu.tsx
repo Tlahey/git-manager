@@ -1,4 +1,4 @@
-import { ChevronDown, CalendarClock } from 'lucide-react'
+import { ChevronDown, CalendarClock, Search } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -24,11 +24,11 @@ interface AiMenuProps {
  * that carries it. Listing them here would mean a menu that is mostly greyed out, which teaches the
  * user to stop opening it.
  *
- * That leaves the daily briefings, which need only the repository. If a second such action appears,
- * this is where it goes.
+ * That leaves the daily briefings and the history search: both take a repository and a question, and
+ * neither cares what is selected. This is where such an action goes.
  *
- * The entry opens into the graph's single right-hand slot through `aiPanelTarget`, which is what
- * guarantees it and an AI explanation can never claim that slot at once.
+ * The entries open into the graph's single right-hand slot through `aiPanelTarget`, which is what
+ * guarantees they and an AI explanation can never claim that slot at once.
  */
 export function AiMenu({ repoPath }: AiMenuProps) {
   const { t } = useTranslation('git')
@@ -46,8 +46,9 @@ export function AiMenu({ repoPath }: AiMenuProps) {
   }
 
   // Hidden rather than disabled when there would be nothing in it: an empty or fully greyed-out menu
-  // is worse than no menu, and Settings already explains that AI is switched off.
-  if (!aiEnabled || !summariesEnabled) return null
+  // is worse than no menu, and Settings already explains that AI is switched off. Turning the daily
+  // briefings off no longer empties the menu, though — the history search does not depend on them.
+  if (!aiEnabled) return null
 
   return (
     <DropdownMenu>
@@ -69,13 +70,23 @@ export function AiMenu({ repoPath }: AiMenuProps) {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">
+        {summariesEnabled && (
+          <DropdownMenuItem
+            onSelect={() => openPanel({ kind: 'summaries' })}
+            className="gap-2 text-xs"
+            data-testid="ai-menu-summaries"
+          >
+            <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
+            {t('dashboard:summaries.menuItem')}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem
-          onSelect={() => openPanel({ kind: 'summaries' })}
+          onSelect={() => openPanel({ kind: 'search' })}
           className="gap-2 text-xs"
-          data-testid="ai-menu-summaries"
+          data-testid="ai-menu-commit-search"
         >
-          <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
-          {t('dashboard:summaries.menuItem')}
+          <Search className="h-3.5 w-3.5 text-muted-foreground" />
+          {t('gitTree.commitSearch.menuItem')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
