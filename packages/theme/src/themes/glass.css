@@ -357,11 +357,19 @@
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    background-color: hsl(0 0% 100% / var(--glass-content-alpha));
+    /* The alpha floor is load-bearing, not a rounding nicety. At transparency 100 the
+       level resolves to exactly 0, leaving an element with nothing to paint but a
+       filter — and WebKit drops the backing layer of a backdrop-filter it considers
+       visually inert, then rebuilds it, which is the flicker at that end of the
+       slider specifically. 2% white is below the perceptual threshold but keeps the
+       layer permanently valid. */
+    background-color: hsl(0 0% 100% / max(0.02, var(--glass-content-alpha)));
     backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
     /* Pins the element to its own compositing layer up front, so the first paint
-       doesn't promote it mid-flight — the other half of the flicker. */
+       doesn't promote it mid-flight — the other half of the flicker. translateZ
+       forces the promotion even where will-change alone is treated as a hint. */
     will-change: backdrop-filter;
+    transform: translateZ(0);
   }
 }
