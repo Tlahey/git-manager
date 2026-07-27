@@ -13,6 +13,7 @@ import {
   codeReviewFeature,
   commitExplanationFeature,
   commitMessageFeature,
+  commitRecomposeFeature,
   createCompletionService,
   createStatusService,
   createStreamingService,
@@ -125,6 +126,12 @@ export const commitMessageService = createStreamingService(
 export const fileGroupingService = createCompletionService(
   fileGroupingFeature,
   trackedTransport(fileGroupingFeature.id)
+)
+/** Rewrites one existing commit's message. A completion, run once per commit the user picked — the
+ * review dialog is the interaction, not a stream. */
+export const commitRecomposeService = createCompletionService(
+  commitRecomposeFeature,
+  trackedTransport(commitRecomposeFeature.id)
 )
 export const dailySummaryService = createCompletionService(
   dailySummaryFeature,

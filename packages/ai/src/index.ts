@@ -24,6 +24,7 @@ export {
   variableCharBudget,
   contextTokensFor,
   DEFAULT_CONTEXT_TOKENS,
+  RESERVED_OUTPUT_TOKENS,
 } from './promptSize'
 
 // The extensibility runtime: describe a feature once, wrap it into a typed service.
@@ -45,6 +46,7 @@ export {
   MODEL_PROBE_INSTRUCTION,
   MODEL_PROBE_PROMPT,
   MODEL_PROBE_MAX_TIMEOUT_SECONDS,
+  MODEL_PROBE_MAX_OUTPUT_TOKENS,
 } from './runtime'
 
 // Shipped features (one "service per feature" is assembled from these in the app's api layer).
@@ -60,6 +62,12 @@ export {
   FILE_GROUPING_SCHEMA,
   buildGroupingUserPrompt,
   assessFileGroupingCoverage,
+  groupingOutputTokens,
+  commitRecomposeFeature,
+  COMMIT_RECOMPOSE_INSTRUCTION,
+  buildCommitRecomposePrompt,
+  assessCommitRecomposeCoverage,
+  parseRecomposedMessage,
   parseCommitPlan,
   dailySummaryFeature,
   DAILY_SUMMARY_INSTRUCTION,
@@ -128,6 +136,9 @@ export type {
   BudgetedDiff,
   DiffFileSection,
   DiffFileTier,
+  DiffTierOverrides,
+  CommitRecomposeInput,
+  CommitRecomposeSubject,
   DiffCoverage,
   DiffPromptSizing,
   CommitlintRules,

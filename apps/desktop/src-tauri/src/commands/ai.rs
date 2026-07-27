@@ -29,6 +29,10 @@ pub struct AiGenerateConfig {
     pub api_key: Option<String>,
     pub temperature: f32,
     pub timeout_seconds: u64,
+    /// Cap on the model's answer, in tokens. Chosen by `@git-manager/ai` from the same reserve its
+    /// prompt budgets subtract, so the answer cannot overflow the window the prompt was sized for.
+    /// Optional on the wire only for tolerance of an older caller — absent means "do not send one".
+    pub max_tokens: Option<u32>,
 }
 
 impl From<AiGenerateConfig> for GenerateConfig {
@@ -39,6 +43,7 @@ impl From<AiGenerateConfig> for GenerateConfig {
             api_key: c.api_key,
             temperature: c.temperature,
             timeout_seconds: c.timeout_seconds,
+            max_tokens: c.max_tokens,
         }
     }
 }
@@ -56,6 +61,7 @@ pub async fn check_ai_status(config: AiCheckConfig) -> Result<AiProviderStatus, 
         api_key: config.api_key,
         temperature: 0.0,
         timeout_seconds: 5,
+        max_tokens: None,
     };
     provider
         .check_status(&generate_config)
@@ -64,9 +70,10 @@ pub async fn check_ai_status(config: AiCheckConfig) -> Result<AiProviderStatus, 
 }
 
 /// Asks the provider what `model`'s context window really is, so the value declared in Settings can
-/// be sanity-checked instead of trusted blindly. Ollama-only — see `ai_model_info`. Returns empty
-/// fields rather than an error when the provider has nothing to say, because "unknown" is a normal
-/// answer here and must not be shown as a connection failure.
+/// be sanity-checked instead of trusted blindly. Ollama-only — see `ai_model_info`, which is also
+/// where the difference between the model's *ceiling* and the window the server actually
+/// *allocated* is explained. Returns empty fields rather than an error when the provider has nothing
+/// to say, because "unknown" is a normal answer here and must not be shown as a connection failure.
 #[tauri::command]
 pub async fn get_model_context_limits(
     url: String,

@@ -1,6 +1,6 @@
 import type { AiContext } from '../config'
 import type { StreamingFeature } from '../runtime'
-import { budgetDiff } from './diffBudget'
+import { budgetDiff, type DiffTierOverrides } from './diffBudget'
 import {
   assessDiffCoverage,
   cappedList,
@@ -117,6 +117,16 @@ export interface CodeReviewInput {
   /** The model's context window, from the connection settings. Sizes how much diff is sent — see
    * {@link reviewDiffBudget}. Absent falls back to the pessimistic default. */
   contextTokens?: number
+  /**
+   * Per-path corrections to the reading order — see {@link DiffTierOverrides}.
+   *
+   * The review is the feature that most needs the escape hatch, because its tier order is an opinion
+   * about what deserves attention and the heuristic forms that opinion from filenames alone. A
+   * checked-in JSON schema, a hand-written `.min.js`, a dependency bump the author is asking about
+   * on purpose: all sort last and are read last, and the model then reviews everything except the
+   * thing it was called for. The caller — which is looking at the same file list — can say so.
+   */
+  tierOverrides?: DiffTierOverrides
 }
 
 /** Everything in the prompt that precedes the omitted list and the diff — the part whose size is
@@ -169,7 +179,11 @@ export function buildCodeReviewPrompt(input: CodeReviewInput): string {
 
   // Budgeted per file rather than cut at a fixed offset: on a large changeset a blind head-cut can
   // spend the whole allowance on documentation and tests and never reach the code. See diffBudget.
-  const budgeted = budgetDiff(context.diff, reviewDiffBudget(input.contextTokens, envelopeTokens))
+  const budgeted = budgetDiff(
+    context.diff,
+    reviewDiffBudget(input.contextTokens, envelopeTokens),
+    input.tierOverrides
+  )
 
   // Stated once, in the header, and deliberately *before* the diff — the model needs this to scope
   // its closing coverage line.
@@ -193,6 +207,7 @@ export function assessCodeReviewCoverage(input: CodeReviewInput): CodeReviewCove
     instruction: CODE_REVIEW_INSTRUCTION,
     envelopeTokens: estimateTokens(buildPromptHeader(input)) + OMITTED_RESERVE_TOKENS,
     contextTokens: input.contextTokens,
+    tierOverrides: input.tierOverrides,
   })
 }
 

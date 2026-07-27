@@ -48,6 +48,9 @@ function ctx(overrides: Partial<GraphCommitMenuContext> = {}): GraphCommitMenuCo
     isDetached: false,
     currentBranchRef: null,
     aiEnabled: true,
+    primaryShortOid: 'abc1234',
+    descendantCount: 0,
+    isOnProtectedBranch: false,
     ...overrides,
   }
 }
@@ -75,6 +78,7 @@ const commitActions = (): CommitMenuActions => ({
   onCheckout: vi.fn(),
   onCreateWorktree: vi.fn(),
   onCreateBranch: vi.fn(),
+  onRecomposeCommit: vi.fn(),
   onCherryPick: vi.fn(),
   onReset: vi.fn(),
   onRevert: vi.fn(),
@@ -518,6 +522,8 @@ describe('buildCommitMenuSpec', () => {
       '— separator',
       'Explain this commit (LLM)',
       '— separator',
+      "Rewrite this commit's message (LLM)",
+      '— separator',
       '▸ feat',
       '▸ dev',
       '— separator',
@@ -550,6 +556,8 @@ describe('buildCommitMenuSpec', () => {
       'Explain this commit (LLM)',
       'Explain branch changes (LLM)',
       'Review branch changes (LLM)',
+      '— separator',
+      "Rewrite this commit's message (LLM)",
       '— separator',
       'Rename feat',
       'Delete feat',
@@ -752,5 +760,56 @@ describe('buildCommitMenuSpec', () => {
     expect(actions.onCreatePatchSelection).toHaveBeenCalledOnce()
     item(spec, 'Compare commit against working directory')?.action?.()
     expect(actions.onCompareToWorkdir).toHaveBeenCalledOnce()
+  })
+})
+
+describe('buildCommitMenuSpec — recompose', () => {
+  // Reuses the file's shared helpers rather than re-deriving them: `normalizeMenuSpec` resolves the
+  // conditional entries, and `texts`/`item` already know the node shape.
+  const build = (context: GraphCommitMenuContext) =>
+    normalizeMenuSpec(buildCommitMenuSpec(context, commitActions(), branchActions(), t))
+
+  const single = "Rewrite this commit's message (LLM)"
+
+  it('offers to rewrite the clicked commit', () => {
+    expect(texts(build(ctx()))).toContain(single)
+  })
+
+  it('names how many descendants would be rewritten alongside it', () => {
+    const spec = build(ctx({ descendantCount: 4, primaryShortOid: 'abc1234' }))
+    expect(texts(spec)).toContain('Rewrite abc1234 and its 4 descendants (LLM)')
+  })
+
+  it('hides the descendants entry on a tip commit rather than offering to rewrite nothing', () => {
+    expect(texts(build(ctx({ descendantCount: 0 }))).some((l) => l.includes('descendants'))).toBe(
+      false
+    )
+  })
+
+  it('refuses on a protected branch, before the dialog has to', () => {
+    expect(item(build(ctx({ isOnProtectedBranch: true })), single)?.enabled).toBe(false)
+  })
+
+  it('refuses on a detached HEAD — there is no branch to move', () => {
+    expect(item(build(ctx({ isDetached: true })), single)?.enabled).toBe(false)
+  })
+
+  it('is disabled when AI is off, like every other model-driven entry', () => {
+    expect(item(build(ctx({ aiEnabled: false })), single)?.enabled).toBe(false)
+  })
+
+  it('is absent from the multi-selection menu, which has its own commit-scoped items', () => {
+    expect(texts(build(ctx({ isSingle: false, targetCount: 3 })))).not.toContain(single)
+  })
+
+  it('passes the descendants flag through to the action', () => {
+    const actions = commitActions()
+    const spec = normalizeMenuSpec(
+      buildCommitMenuSpec(ctx({ descendantCount: 2 }), actions, branchActions(), t)
+    )
+    item(spec, single)?.action?.()
+    expect(actions.onRecomposeCommit).toHaveBeenCalledWith(false)
+    item(spec, 'Rewrite abc1234 and its 2 descendants (LLM)')?.action?.()
+    expect(actions.onRecomposeCommit).toHaveBeenCalledWith(true)
   })
 })

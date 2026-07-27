@@ -89,7 +89,7 @@ describe('DailySummaryPanel — content', () => {
     expect(
       screen.getByText('Generate a briefing to see what was done and what could be planned.')
     ).toBeInTheDocument()
-    await user.click(screen.getByText('Generate'))
+    await user.click(screen.getByText('Generate (LLM)'))
     expect(generate).toHaveBeenCalledOnce()
   })
 

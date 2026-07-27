@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
-import type { CommitConvention, CommitValidation } from '@git-manager/ai'
-import { validateCommitSubject } from '@git-manager/ai'
+import type { CommitConvention, CommitValidation, DiffCoverage } from '@git-manager/ai'
+import { assessCommitMessageCoverage, validateCommitSubject } from '@git-manager/ai'
 import { apiGetAiContext, commitMessageService } from '../api/ai.api'
 import { useSettingsStore } from '../stores/settings.store'
 import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
@@ -28,12 +28,24 @@ export function useAiGeneration(repoPath: string) {
   // Best-effort structural check of the generated message against the project's convention. Null
   // until a generation completes; non-blocking (the primary guarantee is instructing the model).
   const [validation, setValidation] = useState<CommitValidation | null>(null)
+  /**
+   * How much of the staged change the message was written from.
+   *
+   * The one feature where this is worth saying *before* the answer is used rather than after. Every
+   * other coverage line sits beside prose the user is reading and can discount; this one sits beside
+   * a subject line that is about to be written into the repository's history under their name, where
+   * "fix(ui): …" for a change that also rewrote the backend is permanent and looks deliberate. The
+   * feature is instructed to scope the subject over the files it could not read, but the honest
+   * thing is still to say that it did not read them.
+   */
+  const [coverage, setCoverage] = useState<DiffCoverage | null>(null)
   const aiConnection = useSettingsStore((s) => s.settings.ai)
   const { commitInstructions, commitPattern } = useEffectiveRepoSettings(repoPath)
 
   const generate = useCallback(
     async (onToken: (token: string) => void, onDone: (full: string) => void) => {
       setValidation(null)
+      setCoverage(null)
 
       // Captured by the starter below, read by `onComplete` — the convention only becomes known
       // once the context has been fetched, and validating needs it.
@@ -56,11 +68,12 @@ export function useAiGeneration(repoPath: string) {
           context.commitPattern = commitPattern
           // The declared window sizes how much of the staged diff the message is written from — a
           // connection property, so it is passed beside the context rather than merged into it.
-          await commitMessageService.run(
-            aiConnection,
-            { context, contextTokens: aiConnection.contextTokens },
-            requestId
-          )
+          const input = { context, contextTokens: aiConnection.contextTokens }
+          // Assessed from the same input the prompt is built from, and before the request rather
+          // than after it: the answer arrives token by token, so waiting would put the notice on
+          // screen only once the user has already read the subject.
+          setCoverage(assessCommitMessageCoverage(input))
+          await commitMessageService.run(aiConnection, input, requestId)
         },
         {
           onToken,
@@ -84,5 +97,5 @@ export function useAiGeneration(repoPath: string) {
     [run, repoPath, aiConnection, commitInstructions, commitPattern]
   )
 
-  return { generate, cancel, status, error, validation }
+  return { generate, cancel, status, error, validation, coverage }
 }

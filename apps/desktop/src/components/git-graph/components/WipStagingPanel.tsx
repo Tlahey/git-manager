@@ -1,11 +1,9 @@
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Textarea, Badge, Spinner, cn, Checkbox, Tooltip } from '@git-manager/ui'
 import {
-  ChevronDown,
   Layers,
   Sparkles,
   Check,
-  History,
   Square,
   Wand2,
   AlertTriangle,
@@ -17,6 +15,7 @@ import { useWipCommitPanel } from '../../../hooks/useWipCommitPanel'
 import { useCommitBatchReview } from '../../../hooks/useCommitBatchReview'
 import { useAiEnabled } from '../../../hooks/useAiEnabled'
 import { CommitBatchReviewDialog } from './CommitBatchReviewDialog'
+import { CoverageNotice } from './CoverageNotice'
 import { PrPublishButton } from '../pr/PrPublishButton'
 import type { ProcessedFileItem } from './CommitFileList'
 
@@ -55,6 +54,10 @@ export function WipStagingPanel({
     batchGenerating,
     generateMessageForBatch,
     commitBatch,
+    generateAllBatchMessages,
+    commitAllBatches,
+    isGeneratingAllBatches,
+    isCommittingAllBatches,
     commitMessage,
     setCommitMessage,
     isCommitting,
@@ -62,9 +65,7 @@ export function WipStagingPanel({
     handleGenerateCommitMessage,
     isGenerating,
     commitValidation,
-    history,
-    historyOpen,
-    setHistoryOpen,
+    commitCoverage,
   } = useWipCommitPanel(repoPath, gitStatus, allWipChanges, t, onRefresh)
 
   // Case 2: AI splits all working changes into a plan of atomic commits, reviewed in a dialog.
@@ -99,7 +100,7 @@ export function WipStagingPanel({
         >
           <Layers className="h-3.5 w-3.5 text-primary" />
           <span>
-            {batchMode ? '← Retour au commit global' : t('commitDetails.batchCommit.title')}
+            {batchMode ? t('commitDetails.batchCommit.back') : t('commitDetails.batchCommit.title')}
           </span>
         </button>
       </div>
@@ -111,10 +112,59 @@ export function WipStagingPanel({
             {t('commitDetails.batchCommit.subtitle')}
           </p>
 
+          {/* Run the whole plan in one go. Both are sequential — each group re-stages the index to
+              isolate itself, so they cannot overlap. Hidden when there is nothing to group. */}
+          {Object.keys(wipBatches).length > 0 && (
+            <div className="flex items-center gap-2">
+              {aiEnabled && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-testid="batch-generate-all"
+                  className="h-7 flex-1 gap-1 text-[10px] font-semibold"
+                  onClick={generateAllBatchMessages}
+                  disabled={isGeneratingAllBatches || isCommittingAllBatches}
+                >
+                  {isGeneratingAllBatches ? (
+                    <Spinner className="h-2.5 w-2.5" />
+                  ) : (
+                    <Sparkles className="h-3 w-3 text-primary" />
+                  )}
+                  <span>{t('commitDetails.batchCommit.generateAll')}</span>
+                </Button>
+              )}
+
+              <Button
+                size="sm"
+                data-testid="batch-commit-all"
+                className="h-7 flex-1 gap-1 text-[10px] font-semibold"
+                onClick={commitAllBatches}
+                disabled={
+                  isGeneratingAllBatches ||
+                  isCommittingAllBatches ||
+                  // Nothing to do until at least one group carries a message.
+                  !Object.keys(wipBatches).some((name) => batchMessages[name]?.trim())
+                }
+              >
+                {isCommittingAllBatches ? (
+                  <Spinner className="h-2.5 w-2.5" />
+                ) : (
+                  <Check className="h-3 w-3 text-white" />
+                )}
+                <span>{t('commitDetails.batchCommit.commitAll')}</span>
+              </Button>
+            </div>
+          )}
+
           {Object.keys(wipBatches).map((groupName) => {
             const files = wipBatches[groupName]
             const msg = batchMessages[groupName] ?? ''
+            // `isGen` is this group's own turn — it drives the spinner and the textarea, so it must
+            // stay false for the groups an "all" run has not reached yet. `batchBusy` is the
+            // sequence itself: it only disables the actions, because a per-group action started
+            // mid-run would stage against the other's index.
             const isGen = batchGenerating[groupName]
+            const batchBusy = isGeneratingAllBatches || isCommittingAllBatches
 
             return (
               <div
@@ -128,7 +178,7 @@ export function WipStagingPanel({
                     /{groupName}
                   </span>
                   <Badge variant="secondary" className="text-[9px] font-bold">
-                    {files.length} file(s)
+                    {t('commitDetails.batchCommit.fileCount', { count: files.length })}
                   </Badge>
                 </div>
 
@@ -193,7 +243,7 @@ export function WipStagingPanel({
                         size="sm"
                         className="h-7 flex-1 gap-1 text-[10px] font-semibold"
                         onClick={() => generateMessageForBatch(groupName, files)}
-                        disabled={isGen}
+                        disabled={isGen || batchBusy}
                       >
                         {isGen ? (
                           <Spinner className="h-2.5 w-2.5" />
@@ -211,7 +261,7 @@ export function WipStagingPanel({
                       data-testid={`batch-commit-${groupName}`}
                       className="h-7 flex-1 gap-1 text-[10px] font-semibold"
                       onClick={() => commitBatch(groupName, files)}
-                      disabled={isGen || !msg.trim()}
+                      disabled={isGen || batchBusy || !msg.trim()}
                     >
                       <Check className="h-3 w-3 text-white" />
                       <span>{t('commitDetails.batchCommit.commitBatch')}</span>
@@ -281,6 +331,12 @@ export function WipStagingPanel({
                   className="resize-none font-mono text-xs"
                   disabled={isGenerating}
                 />
+                {/* What the message was written from. Gated on there being a message, so the line
+                    describes the text actually in the box — a batch-mode generation leaves this box
+                    untouched, and a coverage line under an empty field would describe nothing. */}
+                {commitMessage.trim().length > 0 && (
+                  <CoverageNotice coverage={commitCoverage} testIdPrefix="commit-message" />
+                )}
                 {commitValidation && !commitValidation.valid && (
                   <div
                     data-testid="commit-validation-warning"
@@ -315,79 +371,28 @@ export function WipStagingPanel({
               </label>
 
               <div className="flex gap-2">
-                <div className="relative flex flex-1">
-                  {aiEnabled && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      data-testid="commit-generate-button"
-                      className="h-8 flex-1 gap-1 rounded-r-none border-r-0 text-xs"
-                      onClick={handleGenerateCommitMessage}
-                      disabled={gitStatus?.staged?.length === 0 && !isGenerating}
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Square className="h-3 w-3 animate-pulse text-destructive" />
-                          {t('commit.stop')}
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-3 w-3 text-primary" />
-                          {t('commit.generate')}
-                        </>
-                      )}
-                    </Button>
-                  )}
-                  {/* History dropdown */}
+                {aiEnabled && (
                   <Button
                     variant="outline"
                     size="sm"
-                    data-testid="commit-history-button"
-                    className={
-                      aiEnabled
-                        ? 'h-8 w-7 rounded-l-none px-0 text-xs'
-                        : 'h-8 flex-1 gap-1.5 text-xs'
-                    }
-                    onClick={() => setHistoryOpen((v) => !v)}
-                    disabled={isGenerating}
-                    title={t('commit.history')}
+                    data-testid="commit-generate-button"
+                    className="h-8 flex-1 gap-1 text-xs"
+                    onClick={handleGenerateCommitMessage}
+                    disabled={gitStatus?.staged?.length === 0 && !isGenerating}
                   >
-                    {!aiEnabled && <History className="h-3 w-3" />}
-                    {!aiEnabled && <span>{t('commit.history')}</span>}
-                    <ChevronDown className="h-3 w-3" />
+                    {isGenerating ? (
+                      <>
+                        <Square className="h-3 w-3 animate-pulse text-destructive" />
+                        {t('commit.stop')}
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-3 w-3 text-primary" />
+                        {t('commit.generate')}
+                      </>
+                    )}
                   </Button>
-
-                  {historyOpen && (
-                    <div className="animate-in fade-in absolute bottom-full left-0 z-popover mb-1.5 w-full min-w-[220px] rounded-lg border border-border bg-background p-1 shadow-xl duration-100">
-                      <div className="flex items-center gap-1.5 border-b border-border/40 px-2 py-1.5">
-                        <History className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs font-semibold text-muted-foreground">
-                          {t('commit.history')}
-                        </span>
-                      </div>
-                      <div className="max-h-40 overflow-y-auto">
-                        {history.length === 0 ? (
-                          <p className="px-3 py-2 text-xs italic text-muted-foreground/70">
-                            {t('commit.historyEmpty')}
-                          </p>
-                        ) : (
-                          history.map((msg, i) => (
-                            <button
-                              key={i}
-                              onClick={() => {
-                                setCommitMessage(msg)
-                                setHistoryOpen(false)
-                              }}
-                              className="w-full truncate px-3 py-1.5 text-left font-mono text-xs text-foreground transition-colors hover:bg-accent"
-                            >
-                              {msg}
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                )}
 
                 <Button
                   size="sm"

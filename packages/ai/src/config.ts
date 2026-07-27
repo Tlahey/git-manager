@@ -15,10 +15,14 @@ export interface AiConnectionConfig {
    * The model's context window, in tokens. A property of the model you are reaching — like the
    * timeout — not a tuning knob for any feature, which is why it belongs here.
    *
-   * The app cannot read it: no provider protocol it speaks reports one reliably, and Ollama applies
-   * its own `num_ctx` regardless. So it is declared, not detected. Features use it to size their
-   * prompts and to warn before a provider silently drops the *start* of an oversized one — see
-   * `promptSize.ts`. `undefined` falls back to {@link DEFAULT_CONTEXT_TOKENS}.
+   * Declared, not negotiated: no *generation* protocol the app speaks carries a context length —
+   * Ollama's OpenAI-compatible endpoint has no `num_ctx` and no `options` at all. It can however be
+   * *verified* out of band, against Ollama's native `/api/show` and `/api/ps` (see the check button
+   * in Settings → AI, and `services/ai_model_info.rs`), which is what turns a guess into a value the
+   * user has been told is right or wrong.
+   *
+   * Features use it to size their prompts, so a provider never silently drops the *start* of an
+   * oversized one — see `promptSize.ts`. `undefined` falls back to {@link DEFAULT_CONTEXT_TOKENS}.
    */
   contextTokens?: number
   /** Whether the user has turned AI features on. UI/feature gate (e.g. the AI-commit settings
@@ -54,6 +58,16 @@ export interface AiGenerateConfig {
   apiKey?: string
   temperature: number
   timeoutSeconds: number
+  /**
+   * Hard cap on the model's own answer, in tokens, sent as `max_tokens`.
+   *
+   * The other half of prompt sizing, and the half that was missing: every feature subtracts
+   * {@link RESERVED_OUTPUT_TOKENS} from its prompt budget so the answer has somewhere to go, but
+   * nothing obliged the model to stay inside that room. An answer that ran past it overflowed the
+   * window the prompt had been carefully sized against — and an overflow drops the *start*, which is
+   * the instruction. Resolved from the same constant, never chosen per call site.
+   */
+  maxTokens: number
 }
 
 /** A JSON Schema object (draft-07-ish) describing the shape a structured-output feature expects

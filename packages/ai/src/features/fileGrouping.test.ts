@@ -5,9 +5,10 @@ import {
   buildGroupingUserPrompt,
   fileGroupingFeature,
   FILE_GROUPING_INSTRUCTION,
+  groupingOutputTokens,
   parseCommitPlan,
 } from './fileGrouping'
-import { estimateTokens } from '../promptSize'
+import { estimateTokens, RESERVED_OUTPUT_TOKENS } from '../promptSize'
 
 describe('buildGroupingUserPrompt', () => {
   it('lists every changed file with its status and includes the diff', () => {
@@ -149,6 +150,33 @@ describe('fileGroupingFeature', () => {
 
   it('keeps truncation out of the messages, which get committed', () => {
     expect(fileGroupingFeature.instruction).toContain('Never mention truncation')
+  })
+
+  it('asks for the same answer room its prompt held back', () => {
+    // The one invariant that cannot be checked by reading either side alone: the cap sent as
+    // max_tokens and the reserve subtracted from the diff budget are one number, declared twice.
+    const files = Array.from({ length: 17 }, (_, i) => ({ path: `src/f${i}.ts`, status: 'modified' }))
+    const context: AiContext = { diff: '', repoName: 'demo', branch: 'main', files }
+    expect(fileGroupingFeature.reservedOutputTokens?.({ context })).toBe(groupingOutputTokens(17))
+  })
+})
+
+describe('groupingOutputTokens', () => {
+  it('grows with the changeset, because the plan must name every file', () => {
+    // A flat cap truncates a large plan mid-array — and since the output is parsed, that is a hard
+    // failure ("not valid JSON"), not a shorter answer.
+    expect(groupingOutputTokens(40)).toBeGreaterThan(groupingOutputTokens(10))
+  })
+
+  it('never drops below the ordinary prose reserve on a small changeset', () => {
+    // Two files still need room for their commit messages and the JSON around them.
+    expect(groupingOutputTokens(1)).toBe(RESERVED_OUTPUT_TOKENS)
+    expect(groupingOutputTokens(0)).toBe(RESERVED_OUTPUT_TOKENS)
+  })
+
+  it('leaves room for a long path per file, quoting and separators included', () => {
+    // 40 nested TypeScript paths is an ordinary refactor here, not a pathological case.
+    expect(groupingOutputTokens(40)).toBeGreaterThanOrEqual(40 * 20)
   })
 })
 

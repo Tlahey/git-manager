@@ -29,19 +29,38 @@ const CHARS_PER_TOKEN = 3.5
 /**
  * Context window used when the connection declares none, in tokens.
  *
- * Ollama's default for most models unless the Modelfile (or a newer `OLLAMA_CONTEXT_LENGTH`) says
- * otherwise. Deliberately pessimistic: a user running a 128k model still gets this from Ollama
- * unless they configured it, so defaulting to anything larger would make the warning useless
- * precisely for the people who need it — while a user who *has* configured their window can say so
- * in Settings (`AiConnectionConfig.contextTokens`).
+ * A pessimistic floor rather than "the provider's default", which is not a single number: Ollama
+ * sizes its own default from available memory (roughly 4k below 24 GiB of VRAM, 32k up to 48 GiB,
+ * 256k above), and a Modelfile or `OLLAMA_CONTEXT_LENGTH` overrides that again. 4096 is what the
+ * majority of machines get, and being wrong low costs coverage while being wrong high costs the
+ * instruction — so the floor is the safe end. A user who knows their window says so in Settings
+ * (`AiConnectionConfig.contextTokens`), where the check button can now verify it against what the
+ * server actually allocated.
  */
 export const DEFAULT_CONTEXT_TOKENS = 4096
 
 /**
- * Tokens to leave for the model's own answer. A review is capped at 300 words — call it 500 tokens,
- * rounded up, because a window has to hold the question *and* the answer.
+ * Default tokens to leave for the model's own answer. A review is capped at 300 words — call it 500
+ * tokens, rounded up, because a window has to hold the question *and* the answer.
+ *
+ * The reserve is not only subtracted from the prompt's budget: it is also *sent*, as `max_tokens`
+ * (see `resolveGenerateConfig`), so the model is actually held to it. Subtracting alone reserved the
+ * room without obliging anyone to stay inside it, and an answer that runs past the reserve overflows
+ * the very window the prompt was sized against — dropping tokens from the *start*, where the
+ * instruction lives.
+ *
+ * **The two uses must stay one number**, per feature. A cap larger than the reserve overflows the
+ * window; a smaller one truncates answers to buy room nobody spends. Which is why the reserve is a
+ * *parameter* of the two functions below rather than a constant they close over: most features
+ * answer in prose and 600 is generous, but one answers with a JSON document whose length is a
+ * function of its input (see `fileGrouping`), and it needs the same larger number on both sides or
+ * the pairing breaks.
+ *
+ * `max_tokens` is supported by the OpenAI-compatible chat-completions surface every shipped preset
+ * speaks — the *context window* is not, which is why `contextTokens` is still declared in Settings
+ * rather than negotiated.
  */
-const RESERVED_OUTPUT_TOKENS = 600
+export const RESERVED_OUTPUT_TOKENS = 600
 
 /**
  * Rough token count for a string. An estimate, not a tokenizer: a real one is model-specific and
@@ -61,8 +80,12 @@ export function estimateTokens(text: string): number {
  * being 15 % wrong in the safe direction costs a little coverage, while being wrong the other way
  * costs the instruction — silently.
  */
-export function variableCharBudget(contextTokens: number, fixedOverheadTokens: number): number {
-  const usable = contextTokens - fixedOverheadTokens - RESERVED_OUTPUT_TOKENS
+export function variableCharBudget(
+  contextTokens: number,
+  fixedOverheadTokens: number,
+  reservedOutputTokens: number = RESERVED_OUTPUT_TOKENS
+): number {
+  const usable = contextTokens - fixedOverheadTokens - reservedOutputTokens
   return Math.max(0, Math.floor(usable * SAFETY_FACTOR * CHARS_PER_TOKEN))
 }
 
@@ -77,8 +100,12 @@ const SAFETY_FACTOR = 0.85
  * token, the output reserve, the safety factor) stay in one file. A caller re-deriving them would
  * drift the moment one is tuned.
  */
-export function contextTokensFor(chars: number, fixedOverheadTokens: number): number {
+export function contextTokensFor(
+  chars: number,
+  fixedOverheadTokens: number,
+  reservedOutputTokens: number = RESERVED_OUTPUT_TOKENS
+): number {
   return Math.ceil(
-    chars / (SAFETY_FACTOR * CHARS_PER_TOKEN) + fixedOverheadTokens + RESERVED_OUTPUT_TOKENS
+    chars / (SAFETY_FACTOR * CHARS_PER_TOKEN) + fixedOverheadTokens + reservedOutputTokens
   )
 }

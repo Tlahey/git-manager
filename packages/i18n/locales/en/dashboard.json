@@ -54,7 +54,7 @@
   "dashboard.summary.noYesterday": "No recent activity.",
   "dashboard.summary.noToday": "Nothing suggested.",
   "dashboard.summary.empty": "Generate a briefing to see what was done and what could be planned.",
-  "dashboard.summary.generate": "Generate",
+  "dashboard.summary.generate": "Generate (LLM)",
   "dashboard.row.addToFavorites": "Add to favorites",
   "dashboard.row.removeFromFavorites": "Remove from favorites",
   "dashboard.row.select": "Select {{name}}",

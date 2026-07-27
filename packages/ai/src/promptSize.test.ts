@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { contextTokensFor, estimateTokens, variableCharBudget } from './promptSize'
+import {
+  contextTokensFor,
+  estimateTokens,
+  RESERVED_OUTPUT_TOKENS,
+  variableCharBudget,
+} from './promptSize'
 
 describe('estimateTokens', () => {
   it('scales with length and rounds up', () => {
@@ -29,6 +34,15 @@ describe('variableCharBudget', () => {
     // A window entirely spent on input would leave the model nothing to reply into.
     expect(variableCharBudget(4096, 0)).toBeLessThan(4096 * 3.5)
   })
+
+  it('gives back less when a feature reserves more room for its answer', () => {
+    // The file-grouping case: its JSON restates every changed path, so it holds back far more than
+    // a prose feature — and the prompt has to shrink by exactly that much.
+    expect(variableCharBudget(32768, 1000, 4000)).toBeLessThan(variableCharBudget(32768, 1000))
+    expect(variableCharBudget(32768, 1000, RESERVED_OUTPUT_TOKENS)).toBe(
+      variableCharBudget(32768, 1000)
+    )
+  })
 })
 
 describe('contextTokensFor', () => {
@@ -41,5 +55,15 @@ describe('contextTokensFor', () => {
 
   it('asks for more window as the content grows', () => {
     expect(contextTokensFor(100_000, 1200)).toBeGreaterThan(contextTokensFor(10_000, 1200))
+  })
+
+  it('stays the exact inverse when the answer reserve is raised', () => {
+    // The two must move together or a feature's reported "you need an N-token window" would name a
+    // size that still cannot hold its own answer.
+    for (const chars of [1000, 50_000]) {
+      const window = contextTokensFor(chars, 1200, 4000)
+      expect(variableCharBudget(window, 1200, 4000)).toBeGreaterThanOrEqual(chars)
+      expect(window).toBeGreaterThan(contextTokensFor(chars, 1200))
+    }
   })
 })

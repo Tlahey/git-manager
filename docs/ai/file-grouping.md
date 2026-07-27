@@ -13,6 +13,7 @@ and what each commit should say — on a review screen where you accept, edit or
 | **Temperature** | 0.2 — a partitioning task, not a writing one |
 | **Context scope** | `working` (worktree vs HEAD, untracked included) |
 | **Diff budget** | derived from the model's context window, spent per file — see [Known limitations](./README.md#known-limitations) #3 and the shared [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts) |
+| **Output reserve** | `max(600, files × 24)` — the only feature whose answer length scales with its input; see [The output reserve](./README.md#the-output-reserve) |
 | **UI** | [`CommitBatchReviewDialog`](../../apps/desktop/src/components/git-graph/components/CommitBatchReviewDialog.tsx) via [`useCommitBatchReview`](../../apps/desktop/src/hooks/useCommitBatchReview.ts) |
 
 ---
@@ -130,11 +131,12 @@ Beyond the [shared ones](./README.md#known-limitations):
 | **Applying is not atomic** | Commits are created in a loop; a failure midway leaves the earlier commits in place. Recoverable (they're ordinary commits) but not transactional |
 | **A big tree is grouped from a partial diff** | Exactly the case most likely to hit the budget. The file list is never budgeted away — it is the set being partitioned, so cutting it would not shorten the answer but corrupt it — and the instruction requires every unread file to still be placed, from its path. So what a small window costs is *grouping quality* (a test placed beside its module by name rather than by content), not coverage; the leftovers pass in `useCommitBatchReview` catches anything the model still drops |
 | **No dependency checking** | "Ordering" is a prompt rule, not a verified property; nothing checks that commit *n* actually builds without commit *n+1* |
+| **The answer cap is an estimate too** | `groupingOutputTokens` allows 24 tokens per changed file, which covers a long nested path with its JSON quoting and separator. It is generous rather than exact — a real tokenizer is model-specific — and the error is asymmetric on purpose: too high spends window on room nobody uses, too low truncates the JSON mid-array and `parseCommitPlan` throws |
 
 ## Tests
 
 | Test | Covers |
 | ---- | ------ |
-| [`fileGrouping.test.ts`](../../packages/ai/src/features/fileGrouping.test.ts) | prompt shape, schema, every tolerated parse variant, window-sized budget (fits every window, the complete file list survives the smallest one, code before noise), coverage, and the instruction's rule that an unread file must still be placed |
+| [`fileGrouping.test.ts`](../../packages/ai/src/features/fileGrouping.test.ts) | prompt shape, schema, every tolerated parse variant, window-sized budget (fits every window, the complete file list survives the smallest one, code before noise), coverage, the answer reserve growing with the changeset and matching what the prompt held back, and the instruction's rule that an unread file must still be placed |
 | [`useCommitBatchReview.test.ts`](../../apps/desktop/src/hooks/useCommitBatchReview.test.ts) | path reconciliation, leftovers, accept/reject, sequential apply |
 | [`ai.api.test.ts`](../../apps/desktop/src/api/ai.api.test.ts) | schema reaches the transport; the response parses into typed commits |

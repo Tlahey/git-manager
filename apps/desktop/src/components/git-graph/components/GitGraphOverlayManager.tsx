@@ -4,6 +4,7 @@ import { RenameBranchDialog } from '../RenameBranchDialog'
 import { ResetDialog } from '../../rollback/ResetDialog'
 import { RevertDialog } from '../../rollback/RevertDialog'
 import { CompareToWorkdirDialog } from '../CompareToWorkdirDialog'
+import { RecomposeDialog } from './RecomposeDialog'
 import type { GitGraphNode } from '@git-manager/git-types'
 import type { PendingAction } from '../../../hooks/useGitGraphActions'
 
@@ -57,6 +58,18 @@ export function GitGraphOverlayManager({
           onSuccess={closeDialog}
           protectedBranches={protectedBranches}
           initialMode={activeDialog.mode}
+        />
+      )
+    case 'recompose':
+      return (
+        <RecomposeDialog
+          repoPath={repoPath}
+          nodes={nodes}
+          targetOid={activeNode.commit.oid}
+          includeChildren={activeDialog.includeChildren}
+          open
+          onClose={closeDialog}
+          onSuccess={closeDialog}
         />
       )
     case 'revert':

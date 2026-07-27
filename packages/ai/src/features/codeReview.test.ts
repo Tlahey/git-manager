@@ -323,3 +323,52 @@ describe('codeReviewFeature', () => {
     expect(codeReviewFeature.instruction).toContain('Absence of evidence is not evidence of absence')
   })
 })
+
+describe('buildCodeReviewPrompt — tier overrides', () => {
+  /** One file's section of a git patch, `size` chars of body. */
+  const section = (path: string, size: number) =>
+    `diff --git a/${path} b/${path}\nindex 1111111..2222222 100644\n--- a/${path}\n+++ b/${path}\n@@ -1,1 +1,1 @@\n+${'x'.repeat(size)}\n`
+
+  // A dependency bump the author is explicitly asking about, behind enough source to crowd it out.
+  const diff = section('src/a.ts', 12_000) + section('pnpm-lock.yaml', 900)
+  const context = (): AiContext => ({
+    diff,
+    repoName: 'demo',
+    branch: 'chore/bump',
+    files: [
+      { path: 'src/a.ts', status: 'modified' },
+      { path: 'pnpm-lock.yaml', status: 'modified' },
+    ],
+  })
+
+  const input = (tierOverrides?: CodeReviewInput['tierOverrides']): CodeReviewInput => ({
+    context: context(),
+    scope: 'working',
+    contextTokens: 4096,
+    tierOverrides,
+  })
+
+  it('leaves the lockfile unread by default — it is noise far more often than not', () => {
+    const prompt = buildCodeReviewPrompt(input())
+    expect(prompt).toContain('NOT INCLUDED')
+    expect(prompt.slice(prompt.indexOf('NOT INCLUDED'))).toContain('pnpm-lock.yaml')
+  })
+
+  it('reads it when the caller says this bump is the change', () => {
+    const prompt = buildCodeReviewPrompt(input({ 'pnpm-lock.yaml': 'source' }))
+    expect(prompt).toContain(`+${'x'.repeat(900)}`)
+  })
+
+  it('reports coverage under the same order it sent, not the heuristic one', () => {
+    // The trap this closes: overriding the prompt but assessing without would name a different set
+    // of files as read than the ones the model actually received.
+    const overrides = { 'pnpm-lock.yaml': 'source' } as const
+    const withOverride = assessCodeReviewCoverage(input(overrides))
+    const prompt = buildCodeReviewPrompt(input(overrides))
+
+    expect(withOverride.filesTotal).toBe(2)
+    // Whatever the split, the coverage count and the prompt agree on the lockfile being read.
+    expect(prompt).toContain(`+${'x'.repeat(900)}`)
+    expect(withOverride.filesRead).toBeGreaterThanOrEqual(1)
+  })
+})

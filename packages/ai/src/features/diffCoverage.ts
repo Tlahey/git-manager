@@ -22,7 +22,7 @@
  * the envelope it wraps around the diff — and letting the diff have what is left.
  */
 
-import { budgetDiff, splitDiffByFile } from './diffBudget'
+import { budgetDiff, splitDiffByFile, type DiffTierOverrides } from './diffBudget'
 import {
   contextTokensFor,
   DEFAULT_CONTEXT_TOKENS,
@@ -55,6 +55,23 @@ export interface DiffPromptSizing {
    * feature's prompt and its coverage report are computed from the identical budget.
    */
   siblingChars?: number
+  /**
+   * Room to hold back for the model's own answer, in tokens. Defaults to
+   * {@link RESERVED_OUTPUT_TOKENS}.
+   *
+   * A feature only sets this when its answer is not prose. It must then pass the *same* number to
+   * its service as `max_tokens`, because the two are one arithmetic: this side keeps the room free,
+   * that side is what obliges the model to fit in it.
+   */
+  reservedOutputTokens?: number
+  /**
+   * Per-path corrections to the reading order — see {@link DiffTierOverrides}.
+   *
+   * Carried on the sizing rather than passed to {@link budgetDiff} alone so a feature cannot apply
+   * them to its prompt and forget them here: coverage computed under a different order would report
+   * a different set of files as read than the ones actually sent.
+   */
+  tierOverrides?: DiffTierOverrides
 }
 
 /**
@@ -67,7 +84,8 @@ export interface DiffPromptSizing {
 export function diffCharBudget(sizing: DiffPromptSizing): number {
   const pool = variableCharBudget(
     sizing.contextTokens ?? DEFAULT_CONTEXT_TOKENS,
-    estimateTokens(sizing.instruction) + sizing.envelopeTokens
+    estimateTokens(sizing.instruction) + sizing.envelopeTokens,
+    sizing.reservedOutputTokens
   )
   return Math.max(0, pool - (sizing.siblingChars ?? 0))
 }
@@ -159,7 +177,7 @@ export function nextCommonWindow(tokens: number): number {
  */
 export function assessDiffCoverage(diff: string, sizing: DiffPromptSizing): DiffCoverage {
   const budget = diffCharBudget(sizing)
-  const budgeted = budgetDiff(diff, budget)
+  const budgeted = budgetDiff(diff, budget, sizing.tierOverrides)
 
   const filesTotal = splitDiffByFile(diff).length
   const filesRead = filesTotal - budgeted.omitted.length - budgeted.truncated.length
@@ -175,7 +193,8 @@ export function assessDiffCoverage(diff: string, sizing: DiffPromptSizing): Diff
     requiredContextTokens: nextCommonWindow(
       contextTokensFor(
         diff.length + (sizing.siblingChars ?? 0),
-        estimateTokens(sizing.instruction) + sizing.envelopeTokens
+        estimateTokens(sizing.instruction) + sizing.envelopeTokens,
+        sizing.reservedOutputTokens
       )
     ),
   }

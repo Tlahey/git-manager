@@ -6,6 +6,7 @@ import type {
   JsonSchema,
 } from './config'
 import { getAiPreset } from './presets'
+import { RESERVED_OUTPUT_TOKENS } from './promptSize'
 
 /**
  * The extensibility seam of the whole package. An `AiFeature` is a self-contained description of
@@ -30,6 +31,21 @@ interface BaseFeature<Input> {
   temperature: number
   /** Renders the user-turn prompt from typed input (e.g. an {@link AiContext}). */
   buildPrompt(input: Input): string
+  /**
+   * How much room this feature's answer needs, in tokens. Sent as `max_tokens`; omit to accept
+   * {@link RESERVED_OUTPUT_TOKENS}, which is what every prose feature does.
+   *
+   * It takes the input because for one feature the answer's length is a property of the *question*:
+   * a commit plan has to name every changed file verbatim, so a forty-file changeset needs several
+   * times the room a five-file one does. A fixed cap would either truncate the JSON mid-array on the
+   * large case — a hard parse failure, not a degraded answer — or reserve for the worst case on
+   * every call and spend the window on room nobody uses.
+   *
+   * Whatever this returns must also be what the feature's prompt held back (its sizing's
+   * `reservedOutputTokens`). The two numbers are one arithmetic and they are declared apart, which
+   * is the one thing to check when adding a feature that sets this.
+   */
+  reservedOutputTokens?(input: Input): number
 }
 
 export interface StreamingFeature<Input> extends BaseFeature<Input> {
@@ -77,11 +93,21 @@ export interface AiTransport {
   cancel(requestId: string): Promise<void>
 }
 
-/** Resolves a persisted, connection-only {@link AiConnectionConfig} plus a feature's chosen
- * `temperature` into the wire {@link AiGenerateConfig} the backend dispatches on. */
+/**
+ * Resolves a persisted, connection-only {@link AiConnectionConfig} plus a feature's chosen
+ * `temperature` into the wire {@link AiGenerateConfig} the backend dispatches on.
+ *
+ * `maxTokens` is the other half of prompt sizing: every feature's prompt budget holds that many
+ * tokens back for the answer, and sending the cap is what obliges the model to fit in the room it
+ * was given. Before it, the reserve was a hope — a long answer ran past it and overflowed the window
+ * the prompt had been sized against, losing the instruction at the *start*. It defaults to
+ * {@link RESERVED_OUTPUT_TOKENS}, the same constant the budgets subtract, so the pairing is right
+ * unless a feature deliberately says otherwise.
+ */
 export function resolveGenerateConfig(
   connection: AiConnectionConfig,
-  temperature: number
+  temperature: number,
+  maxTokens: number = RESERVED_OUTPUT_TOKENS
 ): AiGenerateConfig {
   const { protocol } = getAiPreset(connection.preset)
   return {
@@ -91,6 +117,7 @@ export function resolveGenerateConfig(
     apiKey: connection.apiKey,
     temperature,
     timeoutSeconds: connection.timeoutSeconds,
+    maxTokens,
   }
 }
 
@@ -121,7 +148,11 @@ export function createStreamingService<Input>(
 ): StreamingFeatureService<Input> {
   return {
     run(connection, input, requestId) {
-      const config = resolveGenerateConfig(connection, feature.temperature)
+      const config = resolveGenerateConfig(
+        connection,
+        feature.temperature,
+        feature.reservedOutputTokens?.(input)
+      )
       return transport.runStream(config, feature.instruction, feature.buildPrompt(input), requestId)
     },
     cancel(requestId) {
@@ -136,7 +167,11 @@ export function createCompletionService<Input, Output>(
 ): CompletionFeatureService<Input, Output> {
   return {
     async run(connection, input) {
-      const config = resolveGenerateConfig(connection, feature.temperature)
+      const config = resolveGenerateConfig(
+        connection,
+        feature.temperature,
+        feature.reservedOutputTokens?.(input)
+      )
       const raw = await transport.runComplete(
         config,
         feature.instruction,
@@ -159,6 +194,17 @@ export const MODEL_PROBE_PROMPT = 'ping'
 /** Upper bound (seconds) on how long a probe waits, regardless of the configured request timeout.
  * A "test this model" button that can hang for the user's 300s generation budget is not a test. */
 export const MODEL_PROBE_MAX_TIMEOUT_SECONDS = 30
+
+/**
+ * Output cap for the probe, far below a feature's — the expected answer is the word "OK".
+ *
+ * Not premature tuning: the probe's failure mode is a *reasoning* model, which answers `ping` with
+ * several hundred tokens of deliberation before the one word, on a button the user is watching. A
+ * generation's 600-token cap would let that run to completion. Sixteen tokens is enough for any
+ * honest answer to this prompt and turns a minute of thinking into a fast, still-correct pass —
+ * `ok` only asks that the reply be non-empty, not that it be exactly "OK".
+ */
+export const MODEL_PROBE_MAX_OUTPUT_TOKENS = 16
 
 /** Outcome of a {@link AiStatusService.probe} round-trip. */
 export interface AiModelProbeResult {
@@ -193,7 +239,8 @@ export function createStatusService(transport: AiTransport): AiStatusService {
     },
 
     async probe(connection) {
-      const config = resolveGenerateConfig(connection, 0)
+      // A probe is not a generation: it neither needs nor should be given a feature's answer budget.
+      const config = resolveGenerateConfig(connection, 0, MODEL_PROBE_MAX_OUTPUT_TOKENS)
       config.timeoutSeconds = Math.min(config.timeoutSeconds, MODEL_PROBE_MAX_TIMEOUT_SECONDS)
 
       const startedAt = Date.now()

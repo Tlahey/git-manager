@@ -333,3 +333,73 @@ describe('useAiGeneration — inherited from useAiStream', () => {
     expect(result.current.validation).toBeNull()
   })
 })
+
+describe('useAiGeneration — coverage', () => {
+  /** A staged change far too large for the pessimistic default window. */
+  function hugeContext(fileCount: number): AiContext {
+    const paths = Array.from({ length: fileCount }, (_, i) => `src/f${i}.ts`)
+    return {
+      ...context,
+      diff: paths
+        .map(
+          (p) =>
+            `diff --git a/${p} b/${p}\n--- a/${p}\n+++ b/${p}\n@@ -1 +1 @@\n+${'x'.repeat(6000)}\n`
+        )
+        .join(''),
+      files: paths.map((path) => ({ path, status: 'modified' })),
+    }
+  }
+
+  it('reports nothing before a generation has been asked for', () => {
+    const { result } = renderHook(() => useAiGeneration('/repo'))
+    expect(result.current.coverage).toBeNull()
+  })
+
+  it('says how much of the staged change the message was written from', async () => {
+    mockedGetContext.mockResolvedValue(hugeContext(20))
+    const { result } = renderHook(() => useAiGeneration('/repo'))
+    await act(async () => {
+      await result.current.generate(vi.fn(), vi.fn())
+    })
+
+    expect(result.current.coverage).toMatchObject({ filesTotal: 20, complete: false })
+    expect(result.current.coverage!.filesRead).toBeLessThan(20)
+    expect(result.current.coverage!.requiredContextTokens).toBeGreaterThan(4096)
+  })
+
+  it('is available as the tokens arrive, not only once the message is finished', async () => {
+    // A caption that appears after the user has read the subject is a caption they did not get.
+    mockedGetContext.mockResolvedValue(hugeContext(20))
+    const { result } = renderHook(() => useAiGeneration('/repo'))
+    await act(async () => {
+      await result.current.generate(vi.fn(), vi.fn())
+    })
+    expect(result.current.coverage).not.toBeNull()
+    expect(result.current.status).not.toBe('done')
+  })
+
+  it('reports a small staged change as fully read', async () => {
+    const { result } = renderHook(() => useAiGeneration('/repo'))
+    await act(async () => {
+      await result.current.generate(vi.fn(), vi.fn())
+    })
+    expect(result.current.coverage).toMatchObject({ complete: true })
+  })
+
+  it('clears the previous coverage when a new generation starts', async () => {
+    mockedGetContext.mockResolvedValue(hugeContext(20))
+    const { result } = renderHook(() => useAiGeneration('/repo'))
+    await act(async () => {
+      await result.current.generate(vi.fn(), vi.fn())
+    })
+    expect(result.current.coverage).not.toBeNull()
+
+    // A staged change that no longer produces a context is the case that would otherwise leave a
+    // stale line captioning a message it never described.
+    mockedGetContext.mockResolvedValue({ ...context, diff: '   ' })
+    await act(async () => {
+      await result.current.generate(vi.fn(), vi.fn())
+    })
+    expect(result.current.coverage).toBeNull()
+  })
+})

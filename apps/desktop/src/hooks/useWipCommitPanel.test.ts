@@ -19,11 +19,10 @@ vi.mock('../api/git.api', () => ({
   apiStashPush: vi.fn(),
 }))
 
-const { runLlmGenerate, cancelLlmGenerate, llmStatus, addMessage } = vi.hoisted(() => ({
+const { runLlmGenerate, cancelLlmGenerate, llmStatus } = vi.hoisted(() => ({
   runLlmGenerate: vi.fn(),
   cancelLlmGenerate: vi.fn(),
   llmStatus: { current: 'idle' as string },
-  addMessage: vi.fn(),
 }))
 vi.mock('./useAiGeneration', () => ({
   useAiGeneration: () => ({
@@ -31,9 +30,6 @@ vi.mock('./useAiGeneration', () => ({
     cancel: cancelLlmGenerate,
     status: llmStatus.current,
   }),
-}))
-vi.mock('./useCommitMessageHistory', () => ({
-  useCommitMessageHistory: () => ({ history: ['past message'], addMessage }),
 }))
 
 import { apiUnstageAll, apiStageFile, apiUnstageFile, apiCreateCommit, apiStashPush } from '../api/git.api'
@@ -185,7 +181,7 @@ describe('useWipCommitPanel — classic commit', () => {
     expect(result.current.isCommitting).toBe(false)
   })
 
-  it('handleGenerateCommitMessage streams tokens into commitMessage and records history on completion', () => {
+  it('handleGenerateCommitMessage streams tokens into commitMessage', () => {
     runLlmGenerate.mockImplementation(
       async (onToken: (t: string) => void, onDone: (full: string) => void) => {
         onToken('Hello ')
@@ -196,7 +192,6 @@ describe('useWipCommitPanel — classic commit', () => {
     const { result } = renderHook(() => useWipCommitPanel('/repo', status(), [], t))
     act(() => result.current.handleGenerateCommitMessage())
     expect(result.current.commitMessage).toBe('Hello world')
-    expect(addMessage).toHaveBeenCalledWith('Hello world')
   })
 
   it('handleGenerateCommitMessage cancels an in-flight generation instead of starting a new one', () => {
@@ -205,11 +200,6 @@ describe('useWipCommitPanel — classic commit', () => {
     act(() => result.current.handleGenerateCommitMessage())
     expect(cancelLlmGenerate).toHaveBeenCalledOnce()
     expect(runLlmGenerate).not.toHaveBeenCalled()
-  })
-
-  it('exposes commit message history from useCommitMessageHistory', () => {
-    const { result } = renderHook(() => useWipCommitPanel('/repo', status(), [], t))
-    expect(result.current.history).toEqual(['past message'])
   })
 })
 
@@ -241,9 +231,8 @@ describe('useWipCommitPanel — batch mode: generateMessageForBatch', () => {
     mocked.apiUnstageFile.mockResolvedValue(undefined)
     runLlmGenerate.mockImplementation(
       async (onToken: (t: string) => void, onDone: (full: string) => void) => {
-        // onDone's `full` param is only used for the history entry (addMessage) — batchMessages is
-        // driven exclusively by the running onToken accumulation, so the two must agree here to
-        // reflect realistic streaming (where "full" is just the sum of the tokens already emitted).
+        // batchMessages is driven exclusively by the running onToken accumulation; onDone only
+        // signals completion. The two agree here to reflect realistic streaming.
         onToken('generated message')
         onDone('generated message')
       }
@@ -264,7 +253,6 @@ describe('useWipCommitPanel — batch mode: generateMessageForBatch', () => {
     expect(mocked.apiUnstageFile).toHaveBeenCalledWith('/repo', 'src/b.ts')
     expect(result.current.batchMessages.src).toBe('generated message')
     expect(result.current.batchGenerating.src).toBe(false)
-    expect(addMessage).toHaveBeenCalledWith('generated message')
   })
 
   it('restores originally-staged files still present after generation', async () => {
@@ -347,5 +335,124 @@ describe('useWipCommitPanel — batch mode: commitBatch', () => {
     await act(async () => result.current.commitBatch('src', files))
 
     expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('commit failed'))
+  })
+})
+
+describe('useWipCommitPanel — batch "all" sequences', () => {
+  const twoGroups = [file('src/a.ts'), file('lib/b.ts')]
+
+  /**
+   * Drives `runLlmGenerate` the way a real generation does: the message box is filled from the
+   * *token* callback, and `onDone` only signals completion. A mock that called `onDone` alone would
+   * leave every group showing its "generating" placeholder.
+   */
+  function generatesMessage(text = 'feat: generated') {
+    runLlmGenerate.mockImplementation(
+      async (onToken: (t: string) => void, onDone: (full: string) => void) => {
+        onToken(text)
+        onDone(text)
+      }
+    )
+  }
+
+  it('generates a message for every group, one after another', async () => {
+    generatesMessage()
+    const { result } = renderHook(() => useWipCommitPanel('/repo', status(), twoGroups, t))
+
+    await act(async () => {
+      await result.current.generateAllBatchMessages()
+    })
+
+    expect(runLlmGenerate).toHaveBeenCalledTimes(2)
+    expect(result.current.batchMessages).toMatchObject({
+      src: 'feat: generated',
+      lib: 'feat: generated',
+    })
+  })
+
+  it('never runs two generations at once — each one re-stages the index', async () => {
+    // The invariant behind the sequencing: `generateMessageForBatch` unstages everything and stages
+    // only its own group, so an overlapping run would be reading the other's staging.
+    let inFlight = 0
+    let overlapped = false
+    runLlmGenerate.mockImplementation(
+      async (onToken: (t: string) => void, onDone: (full: string) => void) => {
+        inFlight += 1
+        if (inFlight > 1) overlapped = true
+        await Promise.resolve()
+        inFlight -= 1
+        onToken('feat: x')
+        onDone('feat: x')
+      }
+    )
+    const { result } = renderHook(() => useWipCommitPanel('/repo', status(), twoGroups, t))
+
+    await act(async () => {
+      await result.current.generateAllBatchMessages()
+    })
+
+    expect(overlapped).toBe(false)
+  })
+
+  it('keeps the groups that succeeded when one fails', async () => {
+    // A run can take a minute; discarding the messages already produced because the last group
+    // failed would be the wrong trade.
+    let call = 0
+    runLlmGenerate.mockImplementation(
+      async (onToken: (t: string) => void, onDone: (full: string) => void) => {
+        call += 1
+        if (call === 1) throw new Error('provider down')
+        onToken('feat: second')
+        onDone('feat: second')
+      }
+    )
+    const { result } = renderHook(() => useWipCommitPanel('/repo', status(), twoGroups, t))
+
+    await act(async () => {
+      await result.current.generateAllBatchMessages()
+    })
+
+    expect(runLlmGenerate).toHaveBeenCalledTimes(2)
+    expect(result.current.batchMessages.lib).toBe('feat: second')
+    expect(result.current.batchMessages.src).toContain('Error')
+    expect(result.current.isGeneratingAllBatches).toBe(false)
+  })
+
+  it('commits only the groups that carry a message', async () => {
+    const { result } = renderHook(() => useWipCommitPanel('/repo', status(), twoGroups, t))
+    act(() => {
+      result.current.setBatchMessages({ src: 'feat: only this one', lib: '   ' })
+    })
+
+    await act(async () => {
+      await result.current.commitAllBatches()
+    })
+
+    expect(mocked.apiCreateCommit).toHaveBeenCalledTimes(1)
+    expect(mocked.apiCreateCommit).toHaveBeenCalledWith('/repo', 'feat: only this one')
+  })
+
+  it('does nothing when no group has a message', async () => {
+    const { result } = renderHook(() => useWipCommitPanel('/repo', status(), twoGroups, t))
+    await act(async () => {
+      await result.current.commitAllBatches()
+    })
+    expect(mocked.apiCreateCommit).not.toHaveBeenCalled()
+    expect(mocked.apiUnstageAll).not.toHaveBeenCalled()
+  })
+
+  it('clears its busy flag even when a commit throws', async () => {
+    mocked.apiCreateCommit.mockRejectedValue(new Error('index locked'))
+    vi.spyOn(window, 'alert').mockImplementation(() => {})
+    const { result } = renderHook(() => useWipCommitPanel('/repo', status(), twoGroups, t))
+    act(() => {
+      result.current.setBatchMessages({ src: 'feat: a' })
+    })
+
+    await act(async () => {
+      await result.current.commitAllBatches()
+    })
+
+    expect(result.current.isCommittingAllBatches).toBe(false)
   })
 })

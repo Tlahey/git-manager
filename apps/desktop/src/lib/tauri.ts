@@ -366,6 +366,10 @@ export interface ModelContextLimits {
   architectureMax: number | null
   /** `num_ctx` pinned in the model's Modelfile, when it pins one. */
   modelfileNumCtx: number | null
+  /** The window the server actually allocated for this model, in tokens — only reported while the
+   * model is loaded, and the only one of the three that reflects a server-side
+   * `OLLAMA_CONTEXT_LENGTH`. */
+  allocatedContext: number | null
 }
 
 export const getModelContextLimits = (url: string, model: string) =>

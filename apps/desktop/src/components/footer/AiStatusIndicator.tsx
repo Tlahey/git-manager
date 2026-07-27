@@ -42,6 +42,7 @@ const FEATURE_LABEL_KEYS: Record<string, string> = {
   'change-explanation': 'aiStatus.work.changeExplanation',
   'branch-explanation': 'aiStatus.work.branchExplanation',
   'commit-explanation': 'aiStatus.work.commitExplanation',
+  'commit-recompose': 'aiStatus.work.commitRecompose',
   'working-explanation': 'aiStatus.work.workingExplanation',
   'code-review': 'aiStatus.work.codeReview',
   'file-grouping': 'aiStatus.work.fileGrouping',

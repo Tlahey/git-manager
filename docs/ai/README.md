@@ -24,9 +24,9 @@ specific to it — its prompt, its inputs, its UI, its limits.
 | [Working explanation](./working-explanation.md) | Summarizes everything uncommitted — what you are in the middle of | streaming | right-click the WIP row → *Explain working changes (LLM)* |
 | [Code review](./code-review.md) | Reviews a diff and flags what deserves a second look — the one feature allowed an opinion | streaming | right-click the WIP row → *Review changes (LLM)*, or a commit/branch → *Review branch changes (LLM)* |
 | [Daily summary](./daily-summary.md) | A "yesterday / today" briefing per repository | completion + JSON schema | ✨ on a dashboard project, and automatically each morning |
+| [Recompose a commit](./commit-recompose.md) | Rewrites the message of a commit that already exists, reviewed before it is applied | completion | right-click a commit → *Rewrite this commit's message (LLM)* |
 
-Not built yet: "recompose a commit with AI" (its i18n keys exist, nothing behind them). See the
-roadmap section at the bottom.
+Every feature listed here is built. See the roadmap section at the bottom for what is not.
 
 ---
 
@@ -65,9 +65,14 @@ flowchart LR
     style F fill:#2d4a3e,stroke:#4ade80,color:#e8f5e9
 ```
 
-The [code review](./code-review.md) is the most recent addition, and was built entirely within that
-shape: one descriptor, one line in the api layer, a hook and a panel. **No Rust change, no new
-command, no new setting** — which is the claim the section below makes, tested once more.
+The [code review](./code-review.md) was built entirely within that shape: one descriptor, one line in
+the api layer, a hook and a panel. **No Rust change, no new command, no new setting.**
+
+[Recompose a commit](./commit-recompose.md) tested the claim harder and it still held — a feature
+that **rewrites git history** needed no backend change either, because the reword path already
+existed (`run_interactive_rebase`) and `apiGetCommitDiff` already yields a commit's patch. The
+investigation that established this is the work; a parallel git2 rewrite engine was drafted and
+deleted rather than shipped beside a tested one.
 
 The invariants that shape hold, and why they are worth protecting:
 
@@ -101,6 +106,37 @@ pill, no automatic daily summary. Users who don't want AI never see AI chrome.
 **Base URL handling** deserves a note, because it caused real support churn: a bare origin
 (`http://localhost:11434`) gets `/v1` appended, but a URL that already carries a path is obeyed
 verbatim, so typing the base URL an OpenAI SDK expects doesn't produce `/v1/v1/models`.
+
+### Checking the context window
+
+`contextTokens` is the one setting the whole AI stack takes on faith — every feature sizes its prompt
+from it, so declaring more than the provider serves rebuilds the silent truncation the setting exists
+to prevent, and worse than before, because the app then builds an oversized prompt *deliberately*.
+
+The **Check against the model** button ([ai_model_info.rs](../../apps/desktop/src-tauri/src/services/ai_model_info.rs))
+asks Ollama two of its native endpoints. Ollama-only, on purpose: no OpenAI-compatible endpoint
+reports a context length at all.
+
+| Source | Reports | Authority |
+| ------ | ------- | --------- |
+| `/api/show` → `<arch>.context_length` | The model's architectural ceiling | Can only prove a value **wrong**. A server can serve far less than the model supports |
+| `/api/show` → `parameters` `num_ctx` | What the Modelfile pins | Reported, never a verdict — the running server overrides it routinely |
+| `/api/ps` → `context_length` | The window the server **actually allocated** | Decides, in both directions — but only exists while the model is loaded |
+
+`/api/ps` is what closes the old gap. A server-side `OLLAMA_CONTEXT_LENGTH` used to be invisible from
+here, so the best the check could say was "plausible"; now, with the model loaded, a declared value
+can be genuinely verified — or caught being above what the server will serve, which is the failure
+that matters and was previously undetectable. Below it is reported too, without alarm: that one only
+costs coverage the model would have given for free.
+
+> ⚠️ **`context_length` on `/api/ps` is undocumented.** Ollama's published `/api/ps` example omits
+> it; a live 0.32.3 returns it. It is parsed defensively — absent, renamed or retyped degrades to
+> "unknown", never to an error. "We could not find out" has always been an allowed answer here.
+
+Ollama's own default is **not** a flat 4096 either: it sizes from available memory (~4k below 24 GiB,
+32k up to 48 GiB, 256k above). `DEFAULT_CONTEXT_TOKENS = 4096` remains the right pessimistic floor
+for a user who has declared nothing — being wrong low costs coverage, being wrong high costs the
+instruction.
 
 ---
 
@@ -211,6 +247,32 @@ but a slow local model can take as long as it needs.
 If a cold model takes more than `timeoutSeconds` to emit its *first* token, raise the setting — that
 first wait is a silence like any other.
 
+### The output reserve
+
+Every prompt is sized to leave room for the answer: `variableCharBudget` subtracts
+`RESERVED_OUTPUT_TOKENS` (600) before handing what's left to the diff. That reserve used to be a
+*hope* — nothing obliged the model to stay inside it, and an answer that ran past it overflowed the
+very window the prompt had been sized against, dropping tokens from the **start**, where the
+instruction lives.
+
+`resolveGenerateConfig` now sends the same number as `max_tokens`, threaded through
+`AiGenerateConfig` → `commands/ai.rs` → `ChatCompletionsRequest`. **The reserve and the cap are one
+arithmetic**: the prompt is built assuming the answer fits in N tokens, and sending the cap is what
+makes the assumption true. A larger cap overflows; a smaller one truncates answers to buy room
+nobody spends.
+
+Two callers deliberately use a different N:
+
+| Caller | Cap | Why |
+| ------ | --- | --- |
+| Every prose feature | 600 | A review is capped at 300 words; prose answers don't scale with the input |
+| [File grouping](./file-grouping.md) | `max(600, files × 24)` | Its JSON must name **every** changed file verbatim, so the answer's length is a property of the question. A flat cap truncates a 40-file plan mid-array — and because the output is *parsed*, that is `parseCommitPlan` throwing, not a shorter answer |
+| The model probe | 16 | The expected answer is the word "OK". A reasoning model handed 600 tokens spends them deliberating about `ping` while the user watches a button |
+
+A feature declares a non-default reserve twice — once as `AiFeature.reservedOutputTokens(input)` (the
+cap) and once as its sizing's `reservedOutputTokens` (the room). They must be the same expression;
+that pairing is the one thing to check when adding such a feature.
+
 ### Cancellation
 
 `cancel_generation(requestId)` flips that request's flag in `AppState`'s
@@ -258,7 +320,9 @@ to a generic "an error occurred", which would throw away the only clue there is.
 
 1. One file in `packages/ai/src/features/` exporting an `AiFeature` — instruction, temperature,
    `buildPrompt`, plus a `schema` + `parse` if it needs structured output. Export it from
-   `features/index.ts` and `src/index.ts`.
+   `features/index.ts` and `src/index.ts`. If its answer is not prose — structured output whose
+   length scales with the input — declare `reservedOutputTokens(input)` and pass the *same*
+   expression as the sizing's `reservedOutputTokens`; see [The output reserve](#the-output-reserve).
 2. One line in `api/ai.api.ts`: `createStreamingService(feature, trackedTransport(feature.id))`.
 3. A hook (streaming features can build on
    [`useAiStream`](../../apps/desktop/src/hooks/useAiStream.ts)) and a component.
@@ -282,9 +346,9 @@ Shared by every feature; the per-feature pages list their own on top of these.
 | - | ---------- | ------ | ---------- |
 | 1 | ~~**One global generation slot.**~~ **Resolved.** Every generation is minted a request id ([`aiRequestId.ts`](../../apps/desktop/src/lib/aiRequestId.ts)) that tags each `ai:*` event (Rust `AiStreamEvent`, emitted through [`StreamHandle`](../../apps/desktop/src-tauri/src/services/ai_provider.rs) so a provider cannot forget it) and keys the per-request cancel flags in [`GenerationRegistry`](../../apps/desktop/src-tauri/src/state.rs). Listeners ignore events that are not theirs; `cancel_generation` names one id. | — | — |
 | 2 | ~~**`ai:error` is dead.**~~ **Resolved by removal.** Nothing ever emitted it and three hooks listened for it. The `invoke` promise is already this request's own error channel and already carries the message, so a parallel event would be a second source of truth for one condition — and the two would race. The listeners are gone and the reject path is documented on `AiProvider::generate` and `useAiStream`. | — | — |
-| 3 | ~~**Truncation is blind.**~~ **Resolved.** Every diff-carrying feature now budgets per file through [`budgetDiff`](../../packages/ai/src/features/diffBudget.ts) + [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts): source before tests before docs, a share per file, omitted paths named in the prompt, coverage reported to the UI. What remains is a *judgement* rather than a bug — the tier order and `MIN_FILE_CHARS` are heuristics, and a generated file that genuinely matters (a checked-in schema, a reviewed lockfile bump) still sorts last. | A deliberately deprioritised file can be the one that mattered | Let a feature pass a tier override, or infer the tier from the changeset's own shape |
+| 3 | ~~**Truncation is blind.**~~ **Resolved.** Every diff-carrying feature budgets per file through [`budgetDiff`](../../packages/ai/src/features/diffBudget.ts) + [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts): source before tests before docs, a share per file, omitted paths named in the prompt, coverage reported to the UI. The remaining judgement call — a generated file that genuinely matters — now has an escape hatch: `classifyDiffPath`/`budgetDiff` take a `DiffTierOverrides` map, carried on `DiffPromptSizing` so a feature's prompt and its coverage report cannot disagree about the order. The code review exposes it as `CodeReviewInput.tierOverrides`. | — | — |
 | 4 | ~~**Two hooks still duplicate the streaming plumbing.**~~ **Resolved.** `useAiGeneration` and `usePrDescriptionGeneration` now run on [`useAiStream`](../../apps/desktop/src/hooks/useAiStream.ts), which grew the `onToken` / `trackText` options they were missing — they stream into an input the caller owns, which is why they had forked in the first place. Both inherit the two fixes their copies never got: listeners are dropped on unmount, and a second run no longer stacks a listener set on the previous one. | — | — |
-| 5 | **The context window is declared, not negotiated.** Nothing sends `num_ctx`/`max_tokens`. `AiConnectionConfig.contextTokens` (Settings → AI) can be sanity-checked against Ollama's `/api/show` ([ai_model_info.rs](../../apps/desktop/src-tauri/src/services/ai_model_info.rs)), which catches a value above the model's ceiling but cannot see a server-side `OLLAMA_CONTEXT_LENGTH`. Every feature now sizes its prompt from the setting, so a wrong value is wrong everywhere at once — too high still re-arms silent truncation, too low quietly costs coverage the model could have had. | A plausible-but-wrong setting mis-sizes all eight features uniformly | Send a context length where the protocol allows it; failing that, infer a floor from what the provider accepted without dropping the instruction |
+| 5 | **The context window cannot be negotiated — only declared and verified.** `max_tokens` *is* sent now, so the output reserve is enforced rather than hoped for (see [The output reserve](#the-output-reserve)). The context length still cannot be: Ollama's OpenAI-compatible endpoint has no `num_ctx` and no `options`, and [its own docs say so](https://github.com/ollama/ollama/blob/main/docs/api/openai-compatibility.mdx) — the documented workarounds are a `Modelfile` or `OLLAMA_CONTEXT_LENGTH`, both out-of-band. So `contextTokens` stays declared. What changed is that it can now be *checked* against what the server actually allocated, not just against the model's ceiling. | A window declared higher than the server serves still truncates — but the check button now says so | Detection, not negotiation. Sending `num_ctx` would mean a native `/api/chat` path, i.e. a provider per vendor rather than per protocol — a trade this architecture deliberately refuses |
 | 6 | **No end-to-end test against a real model.** | "The right bytes reached the transport" is covered; "the model wrote something good" is not | Inherent — a provider is the one dependency CI cannot assume |
 
 ---
@@ -293,7 +357,7 @@ Shared by every feature; the per-feature pages list their own on top of these.
 
 | Item | State |
 | ---- | ----- |
-| **Recompose a commit with AI** (single, or N children of a commit) | i18n keys `gitTree.contextMenu.recomposeOne` / `recomposeMany` exist, referenced nowhere. Generating the text is easy; applying it means reword-via-interactive-rebase, i.e. history rewriting |
+| ~~**Recompose a commit with AI**~~ | **Built** — see [commit recompose](./commit-recompose.md). Applying reuses the existing `run_interactive_rebase` (its todo renderer already implements `reword`), so it needed no Rust change; the risk is handled by a review dialog, a protected-branch gate and an explicit history-rewrite warning |
 | **LLM explanation in the session journal** | ROADMAP 8.14 — blocked on the whole unstarted M8 pedagogy block |
 
 ---
@@ -303,6 +367,7 @@ Shared by every feature; the per-feature pages list their own on top of these.
 | Concern | File |
 | ------- | ---- |
 | Feature descriptors | [packages/ai/src/features/](../../packages/ai/src/features/) |
+| History rewriting (reword todo + runner) | [git_interactive_rebase.rs](../../apps/desktop/src-tauri/src/services/git_interactive_rebase.rs) · [commands/interactive_rebase.rs](../../apps/desktop/src-tauri/src/commands/interactive_rebase.rs) |
 | Runtime (descriptor → service) | [packages/ai/src/runtime.ts](../../packages/ai/src/runtime.ts) |
 | Presets, protocols | [packages/ai/src/presets.ts](../../packages/ai/src/presets.ts) |
 | Connection + context types | [packages/ai/src/config.ts](../../packages/ai/src/config.ts) |
@@ -315,7 +380,8 @@ Shared by every feature; the per-feature pages list their own on top of these.
 | Per-file diff budgeting (tiers, shares, omitted list) | [packages/ai/src/features/diffBudget.ts](../../packages/ai/src/features/diffBudget.ts) |
 | Diff budget + coverage report, shared by every feature | [packages/ai/src/features/diffCoverage.ts](../../packages/ai/src/features/diffCoverage.ts) |
 | Coverage line in the UI | [apps/desktop/src/components/git-graph/components/CoverageNotice.tsx](../../apps/desktop/src/components/git-graph/components/CoverageNotice.tsx) |
-| Model context-window lookup (Ollama) | [src-tauri/src/services/ai_model_info.rs](../../apps/desktop/src-tauri/src/services/ai_model_info.rs) |
+| Model context-window lookup (Ollama `/api/show` + `/api/ps`) | [src-tauri/src/services/ai_model_info.rs](../../apps/desktop/src-tauri/src/services/ai_model_info.rs) |
+| Verdict on the declared window (which of the three numbers decides) | [apps/desktop/src/app/settings/components/aiContextWindowVerdict.ts](../../apps/desktop/src/app/settings/components/aiContextWindowVerdict.ts) |
 | Footer activity state | [apps/desktop/src/stores/aiActivity.store.ts](../../apps/desktop/src/stores/aiActivity.store.ts) |
 | Remembered explanations | [apps/desktop/src/stores/aiExplanation.store.ts](../../apps/desktop/src/stores/aiExplanation.store.ts) |
 | Commands | [src-tauri/src/commands/ai.rs](../../apps/desktop/src-tauri/src/commands/ai.rs) |
