@@ -32,6 +32,7 @@ import {
   snapshotWorktree,
   snapshotWorktreeAlways,
   type WorktreeSnapshot,
+  getPendingOperation,
   getRepoStatus,
   listTrackedFiles,
   getLog,
@@ -722,6 +723,18 @@ export async function apiRemoveRemote(path: string, name: string) {
 
 export async function apiGetRepoStatus(path: string) {
   return getRepoStatus(path)
+}
+
+/**
+ * The multi-step git operation the repo is in the middle of, or `null` when there is none.
+ *
+ * Ask this before a flow that writes several commits in a row: `apiCreateCommit` builds a
+ * single-parent commit, so committing during a merge/cherry-pick/revert flattens it, and resetting
+ * the index during a paused rebase discards conflict resolution. `apiGetRebaseState` answers a
+ * narrower question and says nothing about a merge.
+ */
+export async function apiGetPendingOperation(path: string) {
+  return getPendingOperation(path)
 }
 
 export async function apiGetLog(

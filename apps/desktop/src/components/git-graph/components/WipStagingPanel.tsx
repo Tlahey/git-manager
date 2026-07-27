@@ -1,5 +1,5 @@
 import { useTranslation } from '@git-manager/i18n'
-import { Button, Textarea, Badge, Spinner, cn, Checkbox, Tooltip } from '@git-manager/ui'
+import { Button, Textarea, Badge, Progress, Spinner, cn, Checkbox, Tooltip } from '@git-manager/ui'
 import {
   Layers,
   Sparkles,
@@ -14,8 +14,7 @@ import type { GitStatus } from '@git-manager/git-types'
 import { useWipCommitPanel } from '../../../hooks/useWipCommitPanel'
 import { useCommitBatchReview } from '../../../hooks/useCommitBatchReview'
 import { useAiEnabled } from '../../../hooks/useAiEnabled'
-import { CommitBatchReviewDialog } from './CommitBatchReviewDialog'
-import { CoverageNotice } from './CoverageNotice'
+import { CommitBatchReviewPanel } from './CommitBatchReviewPanel'
 import { PrPublishButton } from '../pr/PrPublishButton'
 import type { ProcessedFileItem } from './CommitFileList'
 
@@ -65,7 +64,7 @@ export function WipStagingPanel({
     handleGenerateCommitMessage,
     isGenerating,
     commitValidation,
-    commitCoverage,
+    commitProgress,
   } = useWipCommitPanel(repoPath, gitStatus, allWipChanges, t, onRefresh)
 
   // Case 2: AI splits all working changes into a plan of atomic commits, reviewed in a dialog.
@@ -331,11 +330,28 @@ export function WipStagingPanel({
                   className="resize-none font-mono text-xs"
                   disabled={isGenerating}
                 />
-                {/* What the message was written from. Gated on there being a message, so the line
-                    describes the text actually in the box — a batch-mode generation leaves this box
-                    untouched, and a coverage line under an empty field would describe nothing. */}
-                {commitMessage.trim().length > 0 && (
-                  <CoverageNotice coverage={commitCoverage} testIdPrefix="commit-message" />
+                {/* One call per staged file, so on a large change this runs for a while. The Stop
+                    button alone does not say what it is waiting on — the count does. */}
+                {commitProgress && (
+                  <div className="space-y-1" data-testid="commit-message-progress">
+                    <p className="text-[10px] text-muted-foreground">
+                      {commitProgress.phase === 'summarizing'
+                        ? t('commit.summarizing', {
+                            done: commitProgress.completed,
+                            total: commitProgress.total,
+                          })
+                        : t('commit.composing')}
+                    </p>
+                    <Progress
+                      value={
+                        commitProgress.phase === 'composing'
+                          ? 100
+                          : Math.round(
+                              (commitProgress.completed / Math.max(1, commitProgress.total)) * 100
+                            )
+                      }
+                    />
+                  </div>
                 )}
                 {commitValidation && !commitValidation.valid && (
                   <div
@@ -492,7 +508,7 @@ export function WipStagingPanel({
         </div>
       )}
 
-      <CommitBatchReviewDialog review={batchReview} />
+      <CommitBatchReviewPanel review={batchReview} />
     </div>
   )
 }

@@ -5,7 +5,9 @@ mod services;
 mod state;
 mod utils;
 
-use commands::activity_log::{append_activity_log, open_activity_logs_dir};
+use commands::activity_log::{
+    append_activity_log, append_ai_log, open_activity_logs_dir, open_ai_logs_dir,
+};
 use commands::agent::get_worktree_agent_activity;
 use commands::ai::{
     ai_complete, ai_generate_stream, cancel_generation, check_ai_status, get_ai_activity,
@@ -52,9 +54,9 @@ use commands::remote::{
     get_remotes, get_tag_web_url, pull_branch, push_branch, push_branch_to, remove_remote,
 };
 use commands::repo::{
-    clone_repo, get_repo_files, get_repo_readme, get_repo_status, get_repo_summary,
-    get_terminal_commands, init_repo, list_tracked_files, open_in_editor, open_in_terminal,
-    open_repo, scan_repos,
+    clone_repo, get_pending_operation, get_repo_files, get_repo_readme, get_repo_status,
+    get_repo_summary, get_terminal_commands, init_repo, list_tracked_files, open_in_editor,
+    open_in_terminal, open_repo, scan_repos,
 };
 use commands::rollback::{get_commits_between, reset_to_commit, revert_commit};
 use commands::ssh::{generate_ssh_key, read_ssh_public_key};
@@ -157,10 +159,13 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // Activity log
             append_activity_log,
+            append_ai_log,
             open_activity_logs_dir,
+            open_ai_logs_dir,
             // Repo
             open_repo,
             get_repo_status,
+            get_pending_operation,
             get_repo_files,
             list_tracked_files,
             scan_repos,

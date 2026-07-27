@@ -31,3 +31,6 @@ export type { TimelineScrubberProps } from './TimelineScrubber'
 
 export { TruncatedLabel } from './TruncatedLabel'
 export type { TruncatedLabelProps } from './TruncatedLabel'
+
+export { SidePanelOverlay } from './SidePanelOverlay'
+export type { SidePanelOverlayProps } from './SidePanelOverlay'

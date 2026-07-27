@@ -137,30 +137,3 @@ describe('CommitExplanationPanel', () => {
 // What the notice *says* is covered once, in components/CoverageNotice.test.tsx — it is shared with
 // the code review. What matters here is that a commit's explanation carries one at all: it reads as
 // confident whether the model saw six files of a squashed merge or all forty.
-describe('CommitExplanationPanel — coverage', () => {
-  it('says how much of a large commit was actually read', () => {
-    explanation.coverage = {
-      filesRead: 6,
-      filesTotal: 40,
-      complete: false,
-      requiredContextTokens: 32768,
-      windowTooSmall: false,
-    }
-    renderPanel()
-    expect(screen.getByTestId('commit-explanation-coverage')).toHaveTextContent(
-      'Read 6 of 40 changed files in full'
-    )
-  })
-
-  it('stays silent on a commit that fit whole', () => {
-    explanation.coverage = {
-      filesRead: 3,
-      filesTotal: 3,
-      complete: true,
-      requiredContextTokens: 8192,
-      windowTooSmall: false,
-    }
-    renderPanel()
-    expect(screen.queryByTestId('commit-explanation-coverage')).not.toBeInTheDocument()
-  })
-})

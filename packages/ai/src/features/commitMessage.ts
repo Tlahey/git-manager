@@ -1,15 +1,4 @@
-import type { AiContext, AiContextFile, JsonSchema } from '../config'
-import type { CompletionFeature } from '../runtime'
-import { budgetDiff } from './diffBudget'
-import {
-  assessDiffCoverage,
-  diffCharBudget,
-  notIncludedSection,
-  OMITTED_RESERVE_TOKENS,
-  type DiffCoverage,
-} from './diffCoverage'
-import { buildCommitStyleSection } from './commitConvention'
-import { estimateTokens } from '../promptSize'
+import type { AiContextFile, JsonSchema } from '../config'
 
 /** The instruction (system prompt) for commit-message generation. Lives here in `@git-manager/ai`
  * — the single home for the app's AI logic — rather than in the Rust provider (a dumb transport)
@@ -114,20 +103,6 @@ export function truncateDiff(diff: string, maxChars = MAX_DIFF_CHARS): string {
   return `${diff.slice(0, maxChars)}\n\n[diff truncated, showing first ${maxChars} chars]`
 }
 
-export interface CommitMessageInput {
-  /** `staged`-scope git context: index vs HEAD, what a plain commit would capture. */
-  context: AiContext
-  /**
-   * The model's context window, from the connection settings. Sizes how much of the staged diff is
-   * sent.
-   *
-   * Replaces a flat 4000-character cut — the tightest of the six, and the only one that was not an
-   * overflow risk on a stock window. Its bug was the other one: on a configured 32k window this
-   * feature read 4000 characters of a 60 000-character staged change and wrote a subject line about
-   * whichever files sorted first. Absent falls back to the pessimistic default.
-   */
-  contextTokens?: number
-}
 
 /** "Group by first path segment" heuristic: if every changed file shares the same top-level
  * directory that's a reasonable scope hint; if they span multiple, leave it to the model rather
@@ -137,65 +112,6 @@ export function detectScope(files: AiContextFile[]): string | undefined {
   if (segments.length === 0) return undefined
   const [first] = segments
   return segments.every((s) => s === first) ? first : undefined
-}
-
-/** Everything the prompt carries before the omitted list and the diff — the part whose size is known
- * before any budgeting happens. Shared so {@link buildCommitUserPrompt} and
- * {@link assessCommitMessageCoverage} can never disagree about what the envelope costs. */
-function buildPromptHeader(context: AiContext): string {
-  let header = `Repository: ${context.repoName} (branch: ${context.branch})\n`
-
-  const scope = detectScope(context.files)
-  if (scope) header += `Suggested scope: ${scope}\n`
-
-  // Not decoration, and not small: the style section carries the repo's raw commitlint config plus a
-  // sample of recent subjects, which on a project with a verbose convention runs to several hundred
-  // tokens. Before this it was added on top of a fixed diff cut instead of competing with it.
-  header += buildCommitStyleSection({
-    convention: context.commitConvention,
-    recentCommits: context.recentCommits,
-    userInstructions: context.commitInstructions,
-    pattern: context.commitPattern,
-  })
-
-  return header
-}
-
-/** Builds the user-turn prompt: repo/branch context line, a detected-scope hint when the changes
- * are cohesive, the project's commit style, then the budgeted staged diff. */
-export function buildCommitUserPrompt(input: CommitMessageInput): string {
-  const { context } = input
-  const header = buildPromptHeader(context)
-
-  const budgeted = budgetDiff(
-    context.diff,
-    diffCharBudget({
-      instruction: COMMIT_MESSAGE_INSTRUCTION,
-      envelopeTokens: estimateTokens(header) + OMITTED_RESERVE_TOKENS,
-      contextTokens: input.contextTokens,
-    })
-  )
-
-  // Named before the diff, and load-bearing rather than polite: these paths are the only thing
-  // stopping the model from scoping the subject to the files that happened to fit.
-  const notIncluded = notIncludedSection(budgeted.omitted, 'describe')
-
-  return `${header}${notIncluded}\nAnalyze the following Git diff and generate a commit message:\n\n--- DIFF ---\n${budgeted.text}\n--- END DIFF ---`
-}
-
-/**
- * What this message will and will not have been written from, computed without sending anything.
- *
- * Exported for symmetry with the other features, and useful for a different reason: there is no
- * panel here to show a coverage line next to, so the number's job is to let the commit box tell the
- * user *before* they commit that the subject was written from part of the change.
- */
-export function assessCommitMessageCoverage(input: CommitMessageInput): DiffCoverage {
-  return assessDiffCoverage(input.context.diff, {
-    instruction: COMMIT_MESSAGE_INSTRUCTION,
-    envelopeTokens: estimateTokens(buildPromptHeader(input.context)) + OMITTED_RESERVE_TOKENS,
-    contextTokens: input.contextTokens,
-  })
 }
 
 /** The model's answer, before it is flattened into the one string git wants. */
@@ -249,22 +165,4 @@ export function parseCommitMessage(raw: string): CommitMessageDraft {
 
   const [subject, ...rest] = prose.split('\n')
   return { subject: subject.trim(), body: rest.join('\n').trim() }
-}
-
-/**
- * Completion feature: turn the staged diff into a Conventional Commits message as structured JSON.
- *
- * It was a streaming feature until a reasoning model made the streaming untenable — see
- * {@link COMMIT_MESSAGE_SCHEMA} for the measurements. Losing the token-by-token fill of the commit
- * box costs little in practice, because the same request that took 26 s of visible deliberation
- * returns in one or two: there is no longer a wait long enough to need filling.
- */
-export const commitMessageFeature: CompletionFeature<CommitMessageInput, CommitMessageDraft> = {
-  id: 'commit-message',
-  kind: 'completion',
-  instruction: COMMIT_MESSAGE_INSTRUCTION,
-  temperature: 0.3,
-  schema: COMMIT_MESSAGE_SCHEMA,
-  buildPrompt: buildCommitUserPrompt,
-  parse: parseCommitMessage,
 }

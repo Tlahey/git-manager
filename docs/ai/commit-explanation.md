@@ -7,11 +7,11 @@ Explains what a single commit actually does — beyond what its message claims.
 
 | | |
 | --- | --- |
-| **Descriptor** | [`commitExplanationFeature`](../../packages/ai/src/features/commitExplanation.ts) |
+| **Descriptor** | [`summaryExplanationFeature`](../../packages/ai/src/features/summaryExplanation.ts) (`scope: 'commit'`), fed by [`summarizeFiles`](../../packages/ai/src/features/summarizeFiles.ts) |
 | **Kind** | streaming markdown |
 | **Temperature** | 0.2 |
 | **Input** | `get_commit_diff` (the commit vs its first parent) + the commit's own message + the complete changed-file list |
-| **Diff budget** | derived from the model's context window, spent per file — see [below](#reading-a-big-commit) |
+| **Diff budget** | none at this level: every file is read whole, in its own prompt, by the map phase |
 | **UI** | [`CommitExplanationPanel`](../../apps/desktop/src/components/git-graph/CommitExplanationPanel.tsx) — right panel — via [`useCommitExplanation`](../../apps/desktop/src/hooks/useCommitExplanation.ts) |
 | **Memory** | [`aiExplanation.store`](../../apps/desktop/src/stores/aiExplanation.store.ts), persisted per repo + commit, coverage included |
 
@@ -300,3 +300,25 @@ button beside it says how far the model can go.
 | [`CoverageNotice.test.tsx`](../../apps/desktop/src/components/git-graph/components/CoverageNotice.test.tsx) | the shared notice: silent when complete, informational styling, the window-too-small warning |
 | [`graphContextMenus.test.ts`](../../apps/desktop/src/lib/graphContextMenus.test.ts) | the menu item's action, AI-disabled state, absence in multi-selection, adjacency to the branch item |
 | [`aiExplanation.store.test.ts`](../../apps/desktop/src/stores/aiExplanation.store.test.ts) | keying by kind, isolation, clear |
+
+---
+
+## Read file by file
+
+The explanation is written from **per-file summaries**, never from a budgeted diff. One small call
+describes each changed file from its own patch, then a single streaming call writes the prose from
+the descriptions.
+
+This is the same shape as the commit planner and the commit message, and it is the only shape — there
+is no file-count threshold and no single-prompt alternative. A button that did two different things
+depending on an invisible number is not something a user or a bug report can reason about.
+
+The instruction is shorter for it. Both instructions this replaced carried a paragraph forbidding the
+model from mentioning what it could not read — a rule that only existed because it *was* being shown
+a fraction and would otherwise open with an apology. With complete evidence there is nothing to hide.
+
+The panel shows the per-file count while the map phase runs
+([`SummaryProgressNotice`](../../apps/desktop/src/components/git-graph/components/SummaryProgressNotice.tsx)),
+which replaces the coverage line. Coverage answered "how little did it read?"; there is no budgeted
+prompt to answer that about any more, and what the reader needs is a reason for the wait before the
+first token. Cancelling stops the map at its next call boundary.

@@ -102,6 +102,7 @@
   "activityLogs.copyLine": "Copy this line",
   "activityLogs.copied": "Copied",
   "activityLogs.openFolder": "Open logs folder",
+  "activityLogs.openAiFolder": "AI transcripts",
   "activityLogs.filterPlaceholder": "Filter logs",
   "activityLogs.col.time": "Time",
   "activityLogs.col.message": "Message",

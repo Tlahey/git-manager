@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AiConnectionConfig, AiContext } from './config'
-import { workingExplanationFeature } from './features/workingExplanation'
-import { fileGroupingFeature } from './features/fileGrouping'
+import type { AiConnectionConfig } from './config'
+import { summaryExplanationFeature } from './features/summaryExplanation'
+import { summaryGroupingFeature } from './features/summaryGrouping'
 import {
   createCompletionService,
   createStatusService,
@@ -24,12 +24,6 @@ const connection: AiConnectionConfig = {
   timeoutSeconds: 30,
 }
 
-const context: AiContext = {
-  diff: 'diff --git a/a.ts b/a.ts',
-  repoName: 'demo',
-  branch: 'main',
-  files: [{ path: 'src/a.ts', status: 'modified' }],
-}
 
 function mockTransport(): AiTransport {
   return {
@@ -73,22 +67,27 @@ describe('resolveGenerateConfig', () => {
 })
 
 describe('createStreamingService', () => {
+  const explanationInput = {
+    scope: 'working' as const,
+    repoName: 'demo',
+    summaries: [{ path: 'src/a.ts', status: 'modified', intent: 'adds a', area: 'demo' }],
+  }
   let transport: AiTransport
   beforeEach(() => {
     transport = mockTransport()
   })
 
   it('runs the feature instruction + built prompt at the feature temperature', async () => {
-    const service = createStreamingService(workingExplanationFeature, transport)
-    await service.run(connection, { context }, 'req-1')
+    const service = createStreamingService(summaryExplanationFeature, transport)
+    await service.run(connection, explanationInput, 'req-1')
 
     expect(transport.runStream).toHaveBeenCalledWith(
       expect.objectContaining({
         protocol: 'openai-compatible',
-        temperature: workingExplanationFeature.temperature,
+        temperature: summaryExplanationFeature.temperature,
       }),
-      workingExplanationFeature.instruction,
-      workingExplanationFeature.buildPrompt({ context }),
+      summaryExplanationFeature.instruction,
+      summaryExplanationFeature.buildPrompt(explanationInput),
       'req-1'
     )
   })
@@ -96,8 +95,8 @@ describe('createStreamingService', () => {
   it('forwards the request id the caller minted rather than making one up', async () => {
     // The id has to come from whatever is listening: this layer cannot mint it, because the
     // subscriber must already know it before the request starts.
-    const service = createStreamingService(workingExplanationFeature, transport)
-    await service.run(connection, { context }, 'req-from-the-hook')
+    const service = createStreamingService(summaryExplanationFeature, transport)
+    await service.run(connection, explanationInput, 'req-from-the-hook')
     expect(transport.runStream).toHaveBeenCalledWith(
       expect.anything(),
       expect.any(String),
@@ -107,14 +106,14 @@ describe('createStreamingService', () => {
   })
 
   it('cancels one generation by id, not every generation', async () => {
-    const service = createStreamingService(workingExplanationFeature, transport)
+    const service = createStreamingService(summaryExplanationFeature, transport)
     await service.cancel('req-1')
     expect(transport.cancel).toHaveBeenCalledWith('req-1')
   })
 
   it('sends the default answer cap for a prose feature that declares none', async () => {
-    const service = createStreamingService(workingExplanationFeature, transport)
-    await service.run(connection, { context }, 'req-1')
+    const service = createStreamingService(summaryExplanationFeature, transport)
+    await service.run(connection, explanationInput, 'req-1')
     expect(transport.runStream).toHaveBeenCalledWith(
       expect.objectContaining({ maxTokens: RESERVED_OUTPUT_TOKENS }),
       expect.any(String),
@@ -130,35 +129,40 @@ describe('createCompletionService', () => {
     transport = mockTransport()
   })
 
+  const groupingInput = (paths: string[]) => ({
+    repoName: 'demo',
+    branch: 'main',
+    summaries: paths.map((path) => ({ path, status: 'modified', intent: 'does a thing', area: 'a' })),
+  })
+
   it('runs the feature (forwarding its JSON schema) then parses into typed output', async () => {
-    const service = createCompletionService(fileGroupingFeature, transport)
-    const commits = await service.run(connection, { context })
+    const service = createCompletionService(summaryGroupingFeature, transport)
+    const input = groupingInput(['src/a.ts'])
+    const commits = await service.run(connection, input)
 
     expect(transport.runComplete).toHaveBeenCalledWith(
       expect.objectContaining({ temperature: 0.2 }),
-      fileGroupingFeature.instruction,
-      fileGroupingFeature.buildPrompt({ context }),
-      fileGroupingFeature.schema
+      summaryGroupingFeature.instruction,
+      summaryGroupingFeature.buildPrompt(input),
+      summaryGroupingFeature.schema
     )
     expect(commits).toEqual([{ commitMessage: 'feat: x', files: ['src/a.ts'] }])
   })
 
   it("sizes the answer cap from the feature's own input, not from a constant", async () => {
-    // File grouping must restate every changed path in its JSON, so a forty-file plan needs several
-    // times the room a one-file plan does — and a cap that is too small breaks the parse outright
-    // rather than shortening the answer.
-    const many: AiContext = {
-      ...context,
-      files: Array.from({ length: 40 }, (_, i) => ({ path: `src/m${i}.ts`, status: 'modified' })),
-    }
-    const service = createCompletionService(fileGroupingFeature, transport)
+    // The plan must restate every path in its JSON, so a forty-file plan needs several times the
+    // room a one-file plan does — and a cap that is too small breaks the parse outright rather than
+    // shortening the answer.
+    const smallInput = groupingInput(['src/a.ts'])
+    const manyPaths = Array.from({ length: 40 }, (_, i) => `src/m${i}.ts`)
+    const service = createCompletionService(summaryGroupingFeature, transport)
 
-    await service.run(connection, { context })
-    await service.run(connection, { context: many })
+    await service.run(connection, smallInput)
+    await service.run(connection, groupingInput(manyPaths))
 
     const [small, large] = (transport.runComplete as ReturnType<typeof vi.fn>).mock.calls
-    expect(small[0].maxTokens).toBe(groupingOutputTokens(1))
-    expect(large[0].maxTokens).toBe(groupingOutputTokens(40))
+    expect(small[0].maxTokens).toBe(groupingOutputTokens(['src/a.ts']))
+    expect(large[0].maxTokens).toBe(groupingOutputTokens(manyPaths))
     expect(large[0].maxTokens).toBeGreaterThan(small[0].maxTokens)
   })
 })

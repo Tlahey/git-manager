@@ -1,6 +1,6 @@
 use crate::error::AppError;
 use crate::utils::{get_git_signature, short_oid};
-use git2::Repository;
+use git2::{Repository, RepositoryState};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -199,8 +199,32 @@ pub fn unstage_all(repo: &Repository) -> Result<(), AppError> {
     }
 }
 
+/// The extra parents an interrupted merge contributes to the next commit, read from `MERGE_HEAD`.
+///
+/// `git merge` writes the OID(s) it is merging in, then hands control back to the user to resolve;
+/// the commit that finishes the merge is the one listing them alongside HEAD. libgit2 offers no API
+/// for this — `Repository::commit` takes whatever parents it is handed — so a client that does not
+/// read the file produces an ordinary single-parent commit and silently loses the merge: the branch
+/// looks merged, `git log --graph` shows no merge, and the second side's history is unreachable.
+///
+/// One OID per line; several lines for an octopus merge. Unparseable lines are skipped rather than
+/// failing the commit — a malformed `MERGE_HEAD` should not make the repo uncommittable.
+fn read_merge_parents(repo: &Repository) -> Vec<git2::Oid> {
+    let Ok(contents) = std::fs::read_to_string(repo.path().join("MERGE_HEAD")) else {
+        return Vec::new();
+    };
+    contents
+        .lines()
+        .filter_map(|line| git2::Oid::from_str(line.trim()).ok())
+        .collect()
+}
+
 /// Crée un commit avec les fichiers staged (ou amend un commit existant). Retourne l'OID
 /// complet et le short OID.
+///
+/// A plain (non-amend) commit finishes an interrupted merge when there is one: it takes `MERGE_HEAD`
+/// as additional parents and then clears the merge state, which is what `git commit` itself does.
+/// See [`read_merge_parents`] for what skipping that would cost.
 pub fn create_commit(
     repo: &Repository,
     message: &str,
@@ -243,7 +267,7 @@ pub fn create_commit(
             )
             .map_err(AppError::Git)?
     } else {
-        let parents: Vec<git2::Commit> = match repo.head() {
+        let mut parents: Vec<git2::Commit> = match repo.head() {
             Ok(head_ref) => {
                 let parent_oid = head_ref
                     .target()
@@ -253,10 +277,29 @@ pub fn create_commit(
             Err(_) => vec![], // Commit initial
         };
 
+        // A merge left mid-flight: its other side(s) belong on this commit, or the merge is lost.
+        // Unresolved conflicts never get this far — `index.write_tree()` above refuses an unmerged
+        // index — so reaching here means the user resolved everything and this is the merge commit.
+        let merge_parents = read_merge_parents(repo);
+        for merge_oid in &merge_parents {
+            parents.push(repo.find_commit(*merge_oid).map_err(AppError::Git)?);
+        }
+
         let parent_refs: Vec<&git2::Commit> = parents.iter().collect();
 
-        repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &parent_refs)
-            .map_err(AppError::Git)?
+        let new_oid = repo
+            .commit(Some("HEAD"), &sig, &sig, message, &tree, &parent_refs)
+            .map_err(AppError::Git)?;
+
+        // Clear the merge state now that the merge commit exists — otherwise `MERGE_HEAD` survives
+        // and every later commit claims the same second parent. Deliberately scoped to the `Merge`
+        // state: `cleanup_state` also removes `BISECT_LOG` and the cherry-pick/revert sequencer, so
+        // running it during one of those would abort an operation this commit is only a step of.
+        if !merge_parents.is_empty() && repo.state() == RepositoryState::Merge {
+            repo.cleanup_state().map_err(AppError::Git)?;
+        }
+
+        new_oid
     };
 
     let full_sha = oid.to_string();
@@ -264,4 +307,117 @@ pub fn create_commit(
         short_oid: short_oid(&full_sha),
         oid: full_sha,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_repo(name: &str) -> (std::path::PathBuf, Repository) {
+        let dir = std::env::temp_dir().join(format!("gm-commit-{name}-{}", std::process::id()));
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = Repository::init(&dir).unwrap();
+        (dir, repo)
+    }
+
+    /// Commits the current index with `message`, through the function under test.
+    fn commit(repo: &Repository, message: &str) -> git2::Oid {
+        let result = create_commit(repo, message, false, None).unwrap();
+        git2::Oid::from_str(&result.oid).unwrap()
+    }
+
+    /// Writes `name` into the worktree and stages it.
+    fn write_and_stage(repo: &Repository, dir: &Path, name: &str, contents: &str) {
+        std::fs::write(dir.join(name), contents).unwrap();
+        let mut index = repo.index().unwrap();
+        index.add_path(Path::new(name)).unwrap();
+        index.write().unwrap();
+    }
+
+    /// The ordinary case stays exactly as it was: one parent, HEAD advanced.
+    #[test]
+    fn create_commit_gives_an_ordinary_commit_a_single_parent() {
+        let (dir, repo) = temp_repo("plain");
+        write_and_stage(&repo, &dir, "a.txt", "one");
+        let first = commit(&repo, "first");
+        write_and_stage(&repo, &dir, "a.txt", "two");
+        let second = commit(&repo, "second");
+
+        let commit_obj = repo.find_commit(second).unwrap();
+        assert_eq!(commit_obj.parent_count(), 1);
+        assert_eq!(commit_obj.parent_id(0).unwrap(), first);
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// The regression this exists for: with a merge under way, the commit that finishes it must
+    /// list `MERGE_HEAD` as a second parent, and the merge state must be gone afterwards — or the
+    /// merge is silently flattened and every later commit inherits the same stale second parent.
+    #[test]
+    fn create_commit_finishes_an_interrupted_merge_and_clears_its_state() {
+        let (dir, repo) = temp_repo("merge");
+        write_and_stage(&repo, &dir, "a.txt", "base");
+        let base = commit(&repo, "base");
+
+        // A second line of history to merge in, built directly so no checkout is needed.
+        let side = {
+            let base_commit = repo.find_commit(base).unwrap();
+            let mut index = repo.index().unwrap();
+            index.add_path(Path::new("a.txt")).unwrap();
+            let tree = repo.find_tree(index.write_tree().unwrap()).unwrap();
+            let sig = get_git_signature(&repo).unwrap();
+            repo.commit(None, &sig, &sig, "side", &tree, &[&base_commit])
+                .unwrap()
+        };
+        std::fs::write(repo.path().join("MERGE_HEAD"), format!("{side}\n")).unwrap();
+        assert_eq!(repo.state(), RepositoryState::Merge);
+
+        write_and_stage(&repo, &dir, "a.txt", "resolved");
+        let merge_oid = commit(&repo, "merge side");
+
+        let merge_commit = repo.find_commit(merge_oid).unwrap();
+        assert_eq!(merge_commit.parent_count(), 2);
+        assert_eq!(merge_commit.parent_id(0).unwrap(), base);
+        assert_eq!(merge_commit.parent_id(1).unwrap(), side);
+        assert!(!repo.path().join("MERGE_HEAD").exists());
+
+        // The next commit is an ordinary one again — the stale second parent is really gone.
+        write_and_stage(&repo, &dir, "a.txt", "after");
+        let after = repo.find_commit(commit(&repo, "after")).unwrap();
+        assert_eq!(after.parent_count(), 1);
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Cleanup is scoped to a merge: an ordinary commit must not clear state belonging to another
+    /// operation, since `cleanup_state` would also drop a bisect log or a cherry-pick sequencer.
+    #[test]
+    fn create_commit_leaves_other_operations_state_alone() {
+        let (dir, repo) = temp_repo("bisect");
+        write_and_stage(&repo, &dir, "a.txt", "one");
+        commit(&repo, "first");
+
+        let bisect_log = repo.path().join("BISECT_LOG");
+        std::fs::write(&bisect_log, "git bisect start\n").unwrap();
+
+        write_and_stage(&repo, &dir, "a.txt", "two");
+        commit(&repo, "second");
+
+        assert!(bisect_log.exists());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// A malformed `MERGE_HEAD` yields no parents rather than an error: it must not make the
+    /// repository uncommittable.
+    #[test]
+    fn read_merge_parents_skips_unparseable_lines() {
+        let (dir, repo) = temp_repo("bad-merge-head");
+        std::fs::write(repo.path().join("MERGE_HEAD"), "not-an-oid\n").unwrap();
+
+        assert!(read_merge_parents(&repo).is_empty());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
 }

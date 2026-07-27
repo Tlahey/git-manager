@@ -8,11 +8,11 @@ when it has one.
 
 | | |
 | --- | --- |
-| **Descriptor** | [`prDescriptionFeature`](../../packages/ai/src/features/prDescription.ts) |
+| **Descriptor** | [`summaryPrDescriptionFeature`](../../packages/ai/src/features/summaryPrDescription.ts), fed by [`summarizeFiles`](../../packages/ai/src/features/summarizeFiles.ts) |
 | **Kind** | streaming markdown |
 | **Temperature** | 0.4 — the highest of any feature; see below |
 | **Context scope** | `range` — `merge-base(base, HEAD)..HEAD` |
-| **Diff budget** | derived from the model's context window, spent per file — see [Known limitations](./README.md#known-limitations) #3 and the shared [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts) |
+| **Diff budget** | none at this level: every file is read whole, in its own prompt, by the map phase |
 | **UI** | [`PrComposerExpander`](../../apps/desktop/src/components/git-graph/pr/PrComposerExpander.tsx) and [`PrCreateForm`](../../apps/desktop/src/components/git-graph/pr/PrCreateForm.tsx), via [`usePrDescriptionGeneration`](../../apps/desktop/src/hooks/usePrDescriptionGeneration.ts) |
 
 ---
@@ -145,3 +145,24 @@ Beyond the [shared ones](./README.md#known-limitations):
 | [`ai.api.test.ts`](../../apps/desktop/src/api/ai.api.test.ts) | instruction and temperature reach the transport; the run is tracked for the footer |
 | `ai_context.rs` (`#[cfg(test)]`) | merge-base semantics, missing/unresolvable base |
 | `pr_template.rs` (`#[cfg(test)]`) | template resolution rules |
+
+---
+
+## Read file by file, and kept apart from the explanations
+
+The description is written from **per-file summaries**, never from a budgeted range diff.
+
+This was the sharpest case of the truncation problem in the app, for two reasons. The output *leaves
+the app*: a description written from a third of a branch gets published on a pull request over the
+author's name, and the instruction forbids it from admitting so — which is why the coverage line
+existed at all, to tell the author what the text could not. There is nothing to tell now.
+
+And the prompt carries a **template** the model must reproduce verbatim. It was budgeted out of the
+same pool as the diff, so on a small window the feature's most visible rule could be the thing that
+fell out of the prompt's start. Nothing competes with the template now but a list of one-line
+summaries, and a test asserts it survives beside 200 files on a 4k window.
+
+It is a **separate feature** from `summaryExplanationFeature` rather than a fourth scope of it: a
+different reader, a template contract, and a published output whose rules about what not to say are
+stronger than an explanation needs. Sharing would mean one instruction carrying both sets of rules
+and a scope check on half of them.

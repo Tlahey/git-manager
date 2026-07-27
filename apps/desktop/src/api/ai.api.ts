@@ -8,19 +8,18 @@ import type {
   JsonSchema,
 } from '@git-manager/ai'
 import {
-  branchExplanationFeature,
   changeExplanationFeature,
   codeReviewFeature,
-  commitExplanationFeature,
-  commitMessageFeature,
   commitRecomposeFeature,
   createCompletionService,
   createStatusService,
   createStreamingService,
   dailySummaryFeature,
-  fileGroupingFeature,
-  prDescriptionFeature,
-  workingExplanationFeature,
+  fileSummaryFeature,
+  summaryPrDescriptionFeature,
+  summaryCommitMessageFeature,
+  summaryExplanationFeature,
+  summaryGroupingFeature,
 } from '@git-manager/ai'
 import {
   aiComplete,
@@ -33,6 +32,7 @@ import {
   type ModelContextLimits,
 } from '../lib/tauri'
 import { withAiActivity } from '../stores/aiActivity.store'
+import { recordAiTranscript } from '../lib/aiTranscriptLog'
 
 export async function apiCheckAiStatus(config: AiCheckConfig) {
   return checkAiStatus(config)
@@ -104,15 +104,62 @@ const tauriAiTransport: AiTransport = {
  * out-of-band as events does not change that.
  */
 function trackedTransport(featureId: string): AiTransport {
+  /**
+   * Runs one call, reporting it to the footer for its whole duration and writing its transcript to
+   * disk when it ends — either way.
+   *
+   * This is also the only layer that *can* record the answer: the `invoke` wrapper's activity log
+   * sees arguments, truncated, and never a return value. `read` pulls the response text out of
+   * whatever the call resolved with, which is the full answer for a completion and nothing for a
+   * stream, whose tokens arrive as events instead.
+   */
+  async function run<T>(
+    config: AiGenerateConfig,
+    systemPrompt: string,
+    userPrompt: string,
+    call: () => Promise<T>,
+    read: (result: T) => string | undefined
+  ): Promise<T> {
+    const start = performance.now()
+    const base = { featureId, config, systemPrompt, userPrompt }
+    try {
+      const result = await withAiActivity(featureId, call)
+      recordAiTranscript({
+        ...base,
+        durationMs: Math.round(performance.now() - start),
+        status: 'ok',
+        response: read(result),
+      })
+      return result
+    } catch (err) {
+      // A failed call is the one most worth having on disk, so it is recorded before rethrowing.
+      recordAiTranscript({
+        ...base,
+        durationMs: Math.round(performance.now() - start),
+        status: 'error',
+        error: String(err),
+      })
+      throw err
+    }
+  }
+
   return {
     ...tauriAiTransport,
     runStream: (config, systemPrompt, userPrompt, requestId) =>
-      withAiActivity(featureId, () =>
-        tauriAiTransport.runStream(config, systemPrompt, userPrompt, requestId)
+      run(
+        config,
+        systemPrompt,
+        userPrompt,
+        () => tauriAiTransport.runStream(config, systemPrompt, userPrompt, requestId),
+        () => undefined
       ),
     runComplete: (config, systemPrompt, userPrompt, schema) =>
-      withAiActivity(featureId, () =>
-        tauriAiTransport.runComplete(config, systemPrompt, userPrompt, schema)
+      run(
+        config,
+        systemPrompt,
+        userPrompt,
+        () => tauriAiTransport.runComplete(config, systemPrompt, userPrompt, schema),
+        (raw) => raw
       ),
   }
 }
@@ -120,15 +167,29 @@ function trackedTransport(featureId: string): AiTransport {
 /** One service per AI feature, each assembled from its package-owned descriptor (instruction +
  * temperature + prompt) and the shared transport. Adding a future feature (report generation, git
  * command explanation, …) is: define it in `@git-manager/ai`, then add one line here. */
-/** A completion rather than a stream, because the answer is grammar-constrained JSON — which is
- * what keeps a reasoning model's deliberation out of the commit box. See `COMMIT_MESSAGE_SCHEMA`. */
-export const commitMessageService = createCompletionService(
-  commitMessageFeature,
-  trackedTransport(commitMessageFeature.id)
+/**
+ * The map half every two-phase feature shares: one small call describing one file, sequenced by
+ * `summarizeFiles`.
+ *
+ * There is no single-prompt alternative beside it any more. Two features used to keep one and pick
+ * between them on a file-count threshold, which meant the same button did two different things
+ * depending on a number nobody could see — so a bad answer could not be reasoned about without first
+ * working out which path produced it. See `docs/ai/file-grouping.md`.
+ */
+export const fileSummaryService = createCompletionService(
+  fileSummaryFeature,
+  trackedTransport(fileSummaryFeature.id)
 )
-export const fileGroupingService = createCompletionService(
-  fileGroupingFeature,
-  trackedTransport(fileGroupingFeature.id)
+export const summaryGroupingService = createCompletionService(
+  summaryGroupingFeature,
+  trackedTransport(summaryGroupingFeature.id)
+)
+/** The reduce half of the commit message: writes it from the per-file summaries. Keeps
+ * `COMMIT_MESSAGE_SCHEMA` and its parser, which is what stops a reasoning model's deliberation
+ * reaching the commit box. */
+export const summaryCommitMessageService = createCompletionService(
+  summaryCommitMessageFeature,
+  trackedTransport(summaryCommitMessageFeature.id)
 )
 /** Rewrites one existing commit's message. A completion, run once per commit the user picked — the
  * review dialog is the interaction, not a stream. */
@@ -140,25 +201,22 @@ export const dailySummaryService = createCompletionService(
   dailySummaryFeature,
   trackedTransport(dailySummaryFeature.id)
 )
-export const prDescriptionService = createStreamingService(
-  prDescriptionFeature,
-  trackedTransport(prDescriptionFeature.id)
+/** Kept apart from the explanation service rather than folded in as a fourth scope: a PR body has a
+ * different reader, a template whose headings must survive verbatim, and it gets published. */
+export const summaryPrDescriptionService = createStreamingService(
+  summaryPrDescriptionFeature,
+  trackedTransport(summaryPrDescriptionFeature.id)
 )
 export const changeExplanationService = createStreamingService(
   changeExplanationFeature,
   trackedTransport(changeExplanationFeature.id)
 )
-export const branchExplanationService = createStreamingService(
-  branchExplanationFeature,
-  trackedTransport(branchExplanationFeature.id)
-)
-export const commitExplanationService = createStreamingService(
-  commitExplanationFeature,
-  trackedTransport(commitExplanationFeature.id)
-)
-export const workingExplanationService = createStreamingService(
-  workingExplanationFeature,
-  trackedTransport(workingExplanationFeature.id)
+/** One service for both explanation scopes: the feature discriminates on its input's `scope`, so a
+ * branch and a commit share an instruction, a temperature and this line — the same arrangement the
+ * code review uses across its own two scopes. Both are fed by `summarizeFiles` first. */
+export const summaryExplanationService = createStreamingService(
+  summaryExplanationFeature,
+  trackedTransport(summaryExplanationFeature.id)
 )
 /** One service for both review scopes: the feature discriminates on its input's `scope`, so the
  * working-tree and branch reviews share an instruction, a temperature and this line. */

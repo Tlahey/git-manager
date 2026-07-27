@@ -327,6 +327,35 @@ to a generic "an error occurred", which would throw away the only clue there is.
 
 ---
 
+## Debugging: the transcript log
+
+Every AI call writes its **full prompts and the model's answer** to
+`~/.git-manager/ai-logs/ai-YYYY-MM-DD.jsonl` — one JSON object per line, a file per day, pruned after
+a week. The "AI transcripts" button in the Activity Logs view reveals the folder.
+
+This is deliberately *not* the activity log. That one records IPC arguments truncated to 200
+characters and never sees a return value, so for an AI call it can tell you one happened and how long
+it took, and nothing about the two things a bug turns on: the prompt that came out wrong, and the
+answer that dropped half the files.
+
+Written from `trackedTransport` in [`ai.api.ts`](../../apps/desktop/src/api/ai.api.ts), the single
+funnel every feature passes through — so a new feature is instrumented for free.
+
+| Field | Note |
+| ----- | ---- |
+| `systemPrompt`, `userPrompt` | Verbatim, untruncated |
+| `response` | The full answer for a **completion** feature. Absent for a **streaming** one by nature: its tokens arrive as Tauri events and the transport call resolves with nothing |
+| `model`, `temperature`, `maxTokens` | What sizing bugs turn on — `maxTokens` is the answer reserve the prompt held back |
+| `status`, `error`, `durationMs` | A failed call is recorded before the error is rethrown |
+
+**No `apiKey` and no provider URL.** The entry is built field by field from the config rather than
+spread, so a field added to `AiGenerateConfig` later cannot ride along onto disk.
+
+Writes are best-effort and never batched: one file per call as it completes, because an AI call is
+the thing most likely to precede a hang, and a queue would be lost with it.
+
+---
+
 ## Adding a feature
 
 1. One file in `packages/ai/src/features/` exporting an `AiFeature` — instruction, temperature,

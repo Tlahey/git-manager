@@ -1,6 +1,6 @@
 import { useTranslation } from '@git-manager/i18n'
 import { useWorkingExplanation } from '../../hooks/useWorkingExplanation'
-import { CoverageNotice } from './components/CoverageNotice'
+import { SummaryProgressNotice } from './components/SummaryProgressNotice'
 import { ExplanationPanelShell } from './components/ExplanationPanelShell'
 
 interface WorkingExplanationPanelProps {
@@ -20,7 +20,7 @@ interface WorkingExplanationPanelProps {
  */
 export function WorkingExplanationPanel({ repoPath, onClose }: WorkingExplanationPanelProps) {
   const { t } = useTranslation('git')
-  const { explain, cancel, clear, status, isGenerating, error, text, coverage } =
+  const { explain, cancel, clear, status, isGenerating, error, text, progress } =
     useWorkingExplanation(repoPath)
 
   return (
@@ -46,7 +46,7 @@ export function WorkingExplanationPanel({ repoPath, onClose }: WorkingExplanatio
       staleComparison={null}
       // This summary's job is to say how many separate things are in progress — a count a partial
       // diff gets wrong quietly, so the panel says how much of the tree it read.
-      notice={<CoverageNotice coverage={coverage} testIdPrefix="working-explanation" />}
+      notice={<SummaryProgressNotice progress={progress} testIdPrefix="working-explanation" />}
       onGenerate={() => void explain()}
       onCancel={() => void cancel()}
       onForget={clear}

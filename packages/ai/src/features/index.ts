@@ -1,25 +1,43 @@
 export {
-  commitMessageFeature,
   COMMIT_MESSAGE_INSTRUCTION,
   COMMIT_MESSAGE_SCHEMA,
-  buildCommitUserPrompt,
-  assessCommitMessageCoverage,
   detectScope,
   truncateDiff,
   parseCommitMessage,
   formatCommitMessage,
 } from './commitMessage'
-export type { CommitMessageInput, CommitMessageDraft } from './commitMessage'
+export type { CommitMessageDraft } from './commitMessage'
+export { FILE_GROUPING_SCHEMA, groupingOutputTokens, parseCommitPlan } from './fileGrouping'
+export type { ProposedCommit } from './fileGrouping'
 export {
-  fileGroupingFeature,
-  FILE_GROUPING_INSTRUCTION,
-  FILE_GROUPING_SCHEMA,
-  buildGroupingUserPrompt,
-  assessFileGroupingCoverage,
-  groupingOutputTokens,
-  parseCommitPlan,
-} from './fileGrouping'
-export type { ProposedCommit, FileGroupingInput } from './fileGrouping'
+  fileSummaryFeature,
+  FILE_SUMMARY_INSTRUCTION,
+  FILE_SUMMARY_SCHEMA,
+  FILE_SUMMARY_OUTPUT_TOKENS,
+  buildFileSummaryPrompt,
+  parseFileSummary,
+} from './fileSummary'
+export type { FileSummary, FileSummaryInput, FileSummaryResult } from './fileSummary'
+export {
+  summaryGroupingFeature,
+  SUMMARY_GROUPING_INSTRUCTION,
+  buildSummaryGroupingPrompt,
+  summaryGroupingOutputTokens,
+  renderSummaryList,
+} from './summaryGrouping'
+export type { SummaryGroupingInput } from './summaryGrouping'
+export { summarizeFiles, SummaryRunCancelled } from './summarizeFiles'
+export type { SummaryProgress, SummarizeOptions } from './summarizeFiles'
+export { planCommitsFromSummaries } from './planCommits'
+export type { CommitPlanRunners } from './planCommits'
+export {
+  summaryCommitMessageFeature,
+  SUMMARY_COMMIT_MESSAGE_INSTRUCTION,
+  buildSummaryCommitMessagePrompt,
+} from './summaryCommitMessage'
+export type { SummaryCommitMessageInput } from './summaryCommitMessage'
+export { composeCommitMessageFromSummaries } from './composeCommitMessage'
+export type { CommitMessageRunners } from './composeCommitMessage'
 export {
   commitRecomposeFeature,
   COMMIT_RECOMPOSE_INSTRUCTION,
@@ -37,12 +55,11 @@ export {
 } from './dailySummary'
 export type { DailySummary } from './dailySummary'
 export {
-  prDescriptionFeature,
-  PR_DESCRIPTION_INSTRUCTION,
-  buildPrDescriptionUserPrompt,
-  assessPrDescriptionCoverage,
-} from './prDescription'
-export type { PrDescriptionInput } from './prDescription'
+  summaryPrDescriptionFeature,
+  SUMMARY_PR_DESCRIPTION_INSTRUCTION,
+  buildSummaryPrDescriptionPrompt,
+} from './summaryPrDescription'
+export type { SummaryPrDescriptionInput } from './summaryPrDescription'
 export {
   changeExplanationFeature,
   CHANGE_EXPLANATION_INSTRUCTION,
@@ -51,30 +68,15 @@ export {
 } from './changeExplanation'
 export type { ChangeExplanationInput, ChangeExplanationFile } from './changeExplanation'
 export {
-  branchExplanationFeature,
-  BRANCH_EXPLANATION_INSTRUCTION,
-  buildBranchExplanationPrompt,
-  assessBranchExplanationCoverage,
-} from './branchExplanation'
-export type { BranchExplanationInput } from './branchExplanation'
-export {
-  commitExplanationFeature,
-  COMMIT_EXPLANATION_INSTRUCTION,
-  buildCommitExplanationPrompt,
-  assessCommitExplanationCoverage,
-} from './commitExplanation'
+  summaryExplanationFeature,
+  SUMMARY_EXPLANATION_INSTRUCTION,
+  buildSummaryExplanationPrompt,
+} from './summaryExplanation'
 export type {
-  CommitExplanationInput,
-  CommitExplanationCommit,
-  CommitExplanationFile,
-} from './commitExplanation'
-export {
-  workingExplanationFeature,
-  WORKING_EXPLANATION_INSTRUCTION,
-  buildWorkingExplanationPrompt,
-  assessWorkingExplanationCoverage,
-} from './workingExplanation'
-export type { WorkingExplanationInput } from './workingExplanation'
+  SummaryExplanationInput,
+  SummaryExplanationScope,
+  SummaryExplanationCommit,
+} from './summaryExplanation'
 export {
   codeReviewFeature,
   CODE_REVIEW_INSTRUCTION,

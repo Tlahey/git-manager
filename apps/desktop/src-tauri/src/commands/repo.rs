@@ -199,6 +199,19 @@ pub async fn get_repo_status(path: String) -> Result<GitStatus, String> {
     })
 }
 
+/// Reports the multi-step git operation the repo is in the middle of (`merge`, `rebase`,
+/// `cherry_pick`, `revert`, `bisect`, `apply_mailbox`), or `null` when there is none.
+///
+/// Exists so a flow that writes *several* commits in a row can refuse up front rather than corrupt
+/// the operation halfway through — see `services::git_repo::get_pending_operation` for what each
+/// state makes unsafe. `get_rebase_state` answers a narrower question (how far along a rebase is)
+/// and says nothing about a merge.
+#[tauri::command]
+pub async fn get_pending_operation(path: String) -> Result<Option<String>, String> {
+    let repo = Repository::open(&path).map_err(|_| AppError::RepoNotFound(path))?;
+    Ok(crate::services::git_repo::get_pending_operation(&repo).map(str::to_string))
+}
+
 /// Scans a root directory for Git repositories.
 #[tauri::command]
 pub async fn scan_repos(root_path: String, max_depth: usize) -> Result<Vec<String>, String> {

@@ -4,7 +4,7 @@ import { ArrowLeft, FolderOpen, GitBranch, Search, X } from 'lucide-react'
 import { Button, Input, NativeSelect, ScrollArea, Separator } from '@git-manager/ui'
 import { useActivityLogStore, type ActivityLogEntry } from '../../stores/activityLog.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
-import { apiOpenActivityLogsDir } from '../../api/activityLog.api'
+import { apiOpenActivityLogsDir, apiOpenAiLogsDir } from '../../api/activityLog.api'
 import { groupActivityLog, type ActivityScope } from '../../lib/groupActivityLog'
 import { ActivityLogRow } from './components/ActivityLogRow'
 import { ActivityLogDetail } from './components/ActivityLogDetail'
@@ -172,6 +172,19 @@ export function ActivityLogsPage({ onClose }: { onClose: () => void }) {
         >
           <FolderOpen className="h-3.5 w-3.5" />
           {t('activityLogs.openFolder')}
+        </Button>
+        {/* A second directory, not a filter of this one: these entries never appear in the list
+            above. This view shows IPC arguments truncated to 200 characters and no return values,
+            so an AI call is visible here but what was asked and answered is not. */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 gap-1 px-2.5 text-[11px]"
+          onClick={() => void apiOpenAiLogsDir()}
+          data-testid="activity-open-ai-folder"
+        >
+          <FolderOpen className="h-3.5 w-3.5" />
+          {t('activityLogs.openAiFolder')}
         </Button>
         <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">
           {visibleCount > 1
