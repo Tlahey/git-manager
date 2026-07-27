@@ -1,12 +1,15 @@
 export {
   commitMessageFeature,
   COMMIT_MESSAGE_INSTRUCTION,
+  COMMIT_MESSAGE_SCHEMA,
   buildCommitUserPrompt,
   assessCommitMessageCoverage,
   detectScope,
   truncateDiff,
+  parseCommitMessage,
+  formatCommitMessage,
 } from './commitMessage'
-export type { CommitMessageInput } from './commitMessage'
+export type { CommitMessageInput, CommitMessageDraft } from './commitMessage'
 export {
   fileGroupingFeature,
   FILE_GROUPING_INSTRUCTION,
@@ -103,6 +106,8 @@ export {
   buildUserInstructionsSection,
   buildCommitStyleSection,
   validateCommitSubject,
+  inferHeaderMaxLength,
+  DEFAULT_HEADER_MAX_LENGTH,
 } from './commitConvention'
 export type {
   CommitlintRules,

@@ -14,7 +14,38 @@ export const DEFAULT_COMMIT_TYPES = [
   'chore',
 ]
 
-const DEFAULT_HEADER_MAX_LENGTH = 72
+export const DEFAULT_HEADER_MAX_LENGTH = 72
+
+/** Share of recent subjects that must run long before we read it as house style rather than as a
+ * couple of outliers. */
+const LONG_SUBJECT_HABIT = 0.2
+
+/** Minimum sample before the history is allowed to relax the default at all. */
+const MIN_LENGTH_SAMPLE = 5
+
+/**
+ * The subject-length ceiling this project actually observes.
+ *
+ * 72 is the conventional default, and hardcoding it made the validator stricter than the project it
+ * was validating. git-manager's own history is the example: no commitlint config, subjects that are
+ * unmistakably Conventional Commits, and 16 of the last 50 over 72 characters (the longest, 95). So
+ * every generated message of ordinary length drew a warning — while the prompt was, in the same
+ * breath, telling the model to "match their style, casing, prefixes, tense and **length**". The
+ * model was obeying the instruction and being flagged for it.
+ *
+ * This is the same adaptation {@link isConventionalHistory} already does for the *format*: read what
+ * the project does instead of imposing a default on it. A single long subject is an outlier and
+ * changes nothing; a fifth of them is a habit, and then the longest recent subject becomes the bar.
+ * The default is a floor, never a ceiling — a project whose subjects are all short is not held to
+ * *its* shortest.
+ */
+export function inferHeaderMaxLength(recentCommits?: string[]): number {
+  if (!recentCommits || recentCommits.length < MIN_LENGTH_SAMPLE) return DEFAULT_HEADER_MAX_LENGTH
+  const lengths = recentCommits.map((s) => s.trim().length)
+  const long = lengths.filter((l) => l > DEFAULT_HEADER_MAX_LENGTH).length
+  if (long / lengths.length < LONG_SUBJECT_HABIT) return DEFAULT_HEADER_MAX_LENGTH
+  return Math.max(DEFAULT_HEADER_MAX_LENGTH, ...lengths)
+}
 
 /** Rules we can enforce locally without running commitlint. Extracted best-effort from a JSON-ish
  * config; `undefined` fields mean "the config didn't specify". */
@@ -102,7 +133,17 @@ export function buildConventionSection(convention?: CommitConvention | null): st
 export function buildRecentCommitsSection(recentCommits?: string[]): string {
   if (!recentCommits || recentCommits.length === 0) return ''
   const list = recentCommits.map((s) => `- ${s}`).join('\n')
-  return `\nThis project's recent commit subjects are below. Match their style, casing, prefixes, tense and length — they reflect the project's ACTUAL convention and take precedence over the default format above (the project may intentionally not use Conventional Commits):\n${list}\n`
+  // The last sentence is load-bearing, and was learned the hard way: handed "test commit PR" and
+  // "Initial commit" as the history of a scratch repo, a model asked to "match their style" answered
+  // with the string `test commit PR`. Style means the shape — casing, prefixes, tense, length — not
+  // the words, and a subject copied from an unrelated commit is worse than a plain one because it
+  // describes work this commit did not do.
+  // The ceiling is stated as a number because "match their length" alone is what produced subjects
+  // the validator then rejected: the examples run long, the instruction's default was 72, and the
+  // model had no way to know which of the two it would be judged against. Both sides now read the
+  // same value from `inferHeaderMaxLength`.
+  const limit = inferHeaderMaxLength(recentCommits)
+  return `\nThis project's recent commit subjects are below. Match their style, casing, prefixes, tense and length — they reflect the project's ACTUAL convention and take precedence over the default format above (the project may intentionally not use Conventional Commits). They are examples of FORM ONLY: never reuse one verbatim, and never borrow wording from them that does not describe the diff you were given. Your subject MUST NOT exceed ${limit} characters:\n${list}\n`
 }
 
 /** Builds the prompt fragment for the user's own Settings guidance/pattern — the most authoritative
@@ -195,8 +236,11 @@ export function validateCommitSubject(
   // default when we inferred a conventional project (and the user didn't override format via regex).
   const conventionalForLength =
     !userPattern && (rules.types !== undefined || isConventionalHistory(ctx.recentCommits))
+  // An explicit commitlint limit is the project speaking for itself and always wins; otherwise the
+  // bar is read off the history rather than assumed — see `inferHeaderMaxLength`.
   const maxLength =
-    rules.headerMaxLength ?? (conventionalForLength ? DEFAULT_HEADER_MAX_LENGTH : undefined)
+    rules.headerMaxLength ??
+    (conventionalForLength ? inferHeaderMaxLength(ctx.recentCommits) : undefined)
   if (maxLength !== undefined && subject.length > maxLength) {
     problems.push({
       code: 'length',

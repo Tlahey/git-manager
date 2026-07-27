@@ -6,8 +6,8 @@
 //! provider serves re-arms the exact silent truncation the setting exists to avoid, only worse,
 //! because the app then builds an oversized prompt deliberately.
 //!
-//! This module removes some of that faith. It is Ollama-only on purpose: `/api/show` and `/api/ps`
-//! are Ollama's native API, and no OpenAI-compatible endpoint reports a context length at all.
+//! This module removes some of that faith. Most of it is Ollama-only: `/api/show` and `/api/ps` are
+//! Ollama's native API. One source is not — see `served_max_model_len` below.
 //!
 //! **What it can and cannot tell you** matters more than the number, and the caller must not
 //! overstate it:
@@ -21,9 +21,17 @@
 //!   `OLLAMA_CONTEXT_LENGTH`, and it is the number a prompt is really measured against — but it only
 //!   exists while the model is loaded, and it is undocumented (see [`loaded_context_length`]).
 //!
+//! - `served_max_model_len` (`GET /v1/models`) is the window the *OpenAI-compatible* server reports
+//!   for the model, and it is the only source here that is not Ollama-specific. Nothing in the
+//!   OpenAI spec defines it, so most servers omit it — but omlx returns `max_model_len` per entry
+//!   (`Qwen-AgentWorld-35B-A3B-MXFP8` → 128000), and reading it is what lets a user on such a server
+//!   stop guessing. Treated like `architecture_max`: a ceiling the server declares, not proof of
+//!   what it allocated.
+//!
 //! So: with `allocated_context` present, a declared window can be checked against what the server
 //! will serve. Without it, a value passing the `/api/show` checks is *plausible*, not *verified*.
 
+use super::ai_openai_compatible::api_base;
 use crate::error::AppError;
 use reqwest::Client;
 use serde::Serialize;
@@ -42,6 +50,9 @@ pub struct ModelContextLimits {
     /// The window the server allocated for this model, in tokens — present only while it is loaded.
     /// The one number that reflects a server-side `OLLAMA_CONTEXT_LENGTH`.
     pub allocated_context: Option<u32>,
+    /// `max_model_len` as reported by the OpenAI-compatible `/v1/models` entry for this model.
+    /// Non-standard and usually absent; omlx is the server that provides it.
+    pub served_max_model_len: Option<u32>,
 }
 
 /// Strips the OpenAI-compatibility path off a configured URL to get Ollama's own origin.
@@ -165,12 +176,52 @@ async fn fetch_allocated_context(client: &Client, origin: &str, model: &str) -> 
     loaded_context_length(&body, model)
 }
 
-/// Asks Ollama about `model`. Returns an empty result rather than an error when the provider simply
-/// has nothing to say — only a transport failure on `/api/show` is worth surfacing, since "we could
-/// not find out" is a normal answer here and must not read as "your provider is down".
+/// Reads `max_model_len` off the `/v1/models` entry whose `id` is `model`.
+///
+/// Defensive for the same reason as [`loaded_context_length`]: the field is not part of the OpenAI
+/// schema, so most servers will not send it and an absent value is the normal case, not a fault.
+fn served_model_len(body: &serde_json::Value, model: &str) -> Option<u32> {
+    let wanted = model.trim();
+    body.get("data")?
+        .as_array()?
+        .iter()
+        .find(|entry| entry.get("id").and_then(|v| v.as_str()) == Some(wanted))
+        .and_then(|entry| entry.get("max_model_len"))
+        .and_then(|v| v.as_u64())
+        .and_then(|v| u32::try_from(v).ok())
+}
+
+/// Asks the OpenAI-compatible `/v1/models` what window it serves for `model`.
+///
+/// Every failure resolves to `None`: this endpoint is the one the completions provider already uses,
+/// so a server that answers it without the field is simply a server that does not report a window.
+async fn fetch_served_model_len(
+    client: &Client,
+    url: &str,
+    model: &str,
+    api_key: Option<&str>,
+) -> Option<u32> {
+    // The same base resolution the completions provider does, so a URL that already carries `/v1`
+    // is not given a second one.
+    let mut request = client.get(format!("{}/models", api_base(url)));
+    if let Some(key) = api_key.filter(|k| !k.is_empty()) {
+        request = request.bearer_auth(key);
+    }
+    let response = request.send().await.ok()?;
+    if !response.status().is_success() {
+        return None;
+    }
+    let body: serde_json::Value = response.json().await.ok()?;
+    served_model_len(&body, model)
+}
+
+/// Asks the provider about `model`. Returns an empty result rather than an error when it simply has
+/// nothing to say — only a transport failure on `/api/show` is worth surfacing, since "we could not
+/// find out" is a normal answer here and must not read as "your provider is down".
 pub async fn fetch_model_context_limits(
     url: &str,
     model: &str,
+    api_key: Option<&str>,
 ) -> Result<ModelContextLimits, AppError> {
     let client = probe_client()?;
     let origin = ollama_origin(url);
@@ -181,6 +232,7 @@ pub async fn fetch_model_context_limits(
         architecture_max,
         modelfile_num_ctx,
         allocated_context: fetch_allocated_context(&client, &origin, model).await,
+        served_max_model_len: fetch_served_model_len(&client, url, model, api_key).await,
     })
 }
 
@@ -188,6 +240,38 @@ pub async fn fetch_model_context_limits(
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn reads_max_model_len_off_the_openai_model_list() {
+        // omlx's actual /v1/models shape. Nothing in the OpenAI spec defines `max_model_len`, so
+        // this is the one server-declared window a non-Ollama provider gives us.
+        let body = json!({
+            "object": "list",
+            "data": [
+                { "id": "Qwen3.6-27B-MXFP8-MTP", "object": "model", "max_model_len": 256000 },
+                { "id": "Qwen-AgentWorld-35B-A3B-MXFP8", "object": "model", "max_model_len": 128000 },
+            ]
+        });
+        assert_eq!(
+            served_model_len(&body, "Qwen-AgentWorld-35B-A3B-MXFP8"),
+            Some(128000)
+        );
+        assert_eq!(
+            served_model_len(&body, "  Qwen3.6-27B-MXFP8-MTP  "),
+            Some(256000)
+        );
+    }
+
+    #[test]
+    fn reports_no_served_window_rather_than_guessing() {
+        // The common case by far: a server that answers /v1/models without the field. "Unknown" has
+        // to stay a normal answer here, never an error.
+        let plain = json!({ "data": [{ "id": "llama3.2", "object": "model" }] });
+        assert_eq!(served_model_len(&plain, "llama3.2"), None);
+        assert_eq!(served_model_len(&plain, "not-listed"), None);
+        assert_eq!(served_model_len(&json!({}), "llama3.2"), None);
+        assert_eq!(served_model_len(&json!({ "data": "nonsense" }), "x"), None);
+    }
 
     #[test]
     fn strips_the_openai_compatibility_path() {

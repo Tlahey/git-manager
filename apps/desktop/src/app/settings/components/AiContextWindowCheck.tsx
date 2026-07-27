@@ -8,6 +8,7 @@ import { useSettingsStore } from '../../../stores/settings.store'
 import {
   contextWindowVerdict,
   isHarmfulVerdict,
+  suggestedContextWindow,
   type ContextWindowVerdict,
 } from './aiContextWindowVerdict'
 
@@ -26,6 +27,7 @@ const VERDICT_KEYS: Record<ContextWindowVerdict, string> = {
   'above-allocated': 'settings.ai.contextCheckAboveAllocated',
   'below-allocated': 'settings.ai.contextCheckBelowAllocated',
   'matches-allocated': 'settings.ai.contextCheckMatchesAllocated',
+  'below-served': 'settings.ai.contextCheckBelowServed',
   plausible: 'settings.ai.contextCheckPlausible',
 }
 
@@ -51,6 +53,7 @@ const VERDICT_KEYS: Record<ContextWindowVerdict, string> = {
 export function AiContextWindowCheck() {
   const { t } = useTranslation('settings')
   const ai = useSettingsStore((s) => s.settings.ai)
+  const updateSettings = useSettingsStore((s) => s.updateSettings)
   const [state, setState] = useState<CheckState>({ kind: 'idle' })
 
   const declared = ai.contextTokens ?? DEFAULT_CONTEXT_TOKENS
@@ -58,11 +61,15 @@ export function AiContextWindowCheck() {
   async function check() {
     setState({ kind: 'checking' })
     try {
-      const limits = await apiGetModelContextLimits(ai.url, ai.model)
+      // The key is needed because `/v1/models` is the source of `servedMaxModelLen`, and a server
+      // like omlx rejects it unauthenticated — without it the one signal a non-Ollama provider
+      // offers would always come back null.
+      const limits = await apiGetModelContextLimits(ai.url, ai.model, ai.apiKey)
       const answered =
         limits.architectureMax !== null ||
         limits.modelfileNumCtx !== null ||
-        limits.allocatedContext !== null
+        limits.allocatedContext !== null ||
+        limits.servedMaxModelLen !== null
       setState(answered ? { kind: 'answered', limits } : { kind: 'unknown' })
     } catch (err) {
       setState({ kind: 'failed', message: String(err) })
@@ -70,6 +77,9 @@ export function AiContextWindowCheck() {
   }
 
   const verdict = state.kind === 'answered' ? contextWindowVerdict(declared, state.limits) : null
+  // Offered rather than applied: the check is advice, and silently rewriting a setting the user
+  // typed is not advice.
+  const suggested = state.kind === 'answered' ? suggestedContextWindow(declared, state.limits) : null
 
   return (
     <div className="space-y-1">
@@ -115,14 +125,29 @@ export function AiContextWindowCheck() {
               t('settings.ai.contextCheckModelfile', { numCtx: state.limits.modelfileNumCtx }),
             state.limits.allocatedContext !== null &&
               t('settings.ai.contextCheckAllocated', { allocated: state.limits.allocatedContext }),
+            state.limits.servedMaxModelLen !== null &&
+              t('settings.ai.contextCheckServed', { served: state.limits.servedMaxModelLen }),
             t(VERDICT_KEYS[verdict], {
               declared,
               allocated: state.limits.allocatedContext ?? 0,
+              served: state.limits.servedMaxModelLen ?? 0,
             }),
           ]
             .filter((sentence): sentence is string => typeof sentence === 'string')
             .join(' ')}
         </p>
+      )}
+
+      {suggested !== null && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 text-[11px]"
+          onClick={() => updateSettings({ ai: { ...ai, contextTokens: suggested } })}
+          data-testid="ai-context-apply-button"
+        >
+          {t('settings.ai.contextCheckApply', { suggested })}
+        </Button>
       )}
     </div>
   )

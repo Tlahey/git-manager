@@ -370,10 +370,13 @@ export interface ModelContextLimits {
    * model is loaded, and the only one of the three that reflects a server-side
    * `OLLAMA_CONTEXT_LENGTH`. */
   allocatedContext: number | null
+  /** `max_model_len` from the OpenAI-compatible `/v1/models` entry. Non-standard, so usually null;
+   * omlx reports it, which is what lets a user there stop guessing at the window. */
+  servedMaxModelLen: number | null
 }
 
-export const getModelContextLimits = (url: string, model: string) =>
-  invoke<ModelContextLimits>('get_model_context_limits', { url, model })
+export const getModelContextLimits = (url: string, model: string, apiKey?: string) =>
+  invoke<ModelContextLimits>('get_model_context_limits', { url, model, apiKey })
 
 export const getAiContext = (
   path: string,

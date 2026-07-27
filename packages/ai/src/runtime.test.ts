@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AiConnectionConfig, AiContext } from './config'
-import { commitMessageFeature } from './features/commitMessage'
+import { workingExplanationFeature } from './features/workingExplanation'
 import { fileGroupingFeature } from './features/fileGrouping'
 import {
   createCompletionService,
@@ -79,13 +79,16 @@ describe('createStreamingService', () => {
   })
 
   it('runs the feature instruction + built prompt at the feature temperature', async () => {
-    const service = createStreamingService(commitMessageFeature, transport)
+    const service = createStreamingService(workingExplanationFeature, transport)
     await service.run(connection, { context }, 'req-1')
 
     expect(transport.runStream).toHaveBeenCalledWith(
-      expect.objectContaining({ protocol: 'openai-compatible', temperature: 0.3 }),
-      commitMessageFeature.instruction,
-      commitMessageFeature.buildPrompt({ context }),
+      expect.objectContaining({
+        protocol: 'openai-compatible',
+        temperature: workingExplanationFeature.temperature,
+      }),
+      workingExplanationFeature.instruction,
+      workingExplanationFeature.buildPrompt({ context }),
       'req-1'
     )
   })
@@ -93,7 +96,7 @@ describe('createStreamingService', () => {
   it('forwards the request id the caller minted rather than making one up', async () => {
     // The id has to come from whatever is listening: this layer cannot mint it, because the
     // subscriber must already know it before the request starts.
-    const service = createStreamingService(commitMessageFeature, transport)
+    const service = createStreamingService(workingExplanationFeature, transport)
     await service.run(connection, { context }, 'req-from-the-hook')
     expect(transport.runStream).toHaveBeenCalledWith(
       expect.anything(),
@@ -104,13 +107,13 @@ describe('createStreamingService', () => {
   })
 
   it('cancels one generation by id, not every generation', async () => {
-    const service = createStreamingService(commitMessageFeature, transport)
+    const service = createStreamingService(workingExplanationFeature, transport)
     await service.cancel('req-1')
     expect(transport.cancel).toHaveBeenCalledWith('req-1')
   })
 
   it('sends the default answer cap for a prose feature that declares none', async () => {
-    const service = createStreamingService(commitMessageFeature, transport)
+    const service = createStreamingService(workingExplanationFeature, transport)
     await service.run(connection, { context }, 'req-1')
     expect(transport.runStream).toHaveBeenCalledWith(
       expect.objectContaining({ maxTokens: RESERVED_OUTPUT_TOKENS }),

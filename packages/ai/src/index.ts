@@ -53,10 +53,13 @@ export {
 export {
   commitMessageFeature,
   COMMIT_MESSAGE_INSTRUCTION,
+  COMMIT_MESSAGE_SCHEMA,
   buildCommitUserPrompt,
   assessCommitMessageCoverage,
   detectScope,
   truncateDiff,
+  parseCommitMessage,
+  formatCommitMessage,
   fileGroupingFeature,
   FILE_GROUPING_INSTRUCTION,
   FILE_GROUPING_SCHEMA,
@@ -116,11 +119,14 @@ export {
   buildUserInstructionsSection,
   buildCommitStyleSection,
   validateCommitSubject,
+  inferHeaderMaxLength,
+  DEFAULT_HEADER_MAX_LENGTH,
 } from './features'
 export type {
   ProposedCommit,
   FileGroupingInput,
   CommitMessageInput,
+  CommitMessageDraft,
   DailySummary,
   PrDescriptionInput,
   ChangeExplanationInput,

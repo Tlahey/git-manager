@@ -94,7 +94,7 @@ struct ModelEntry {
 /// servers (`/v1`, `/openai/v1`, `/v1beta/openai`), so guessing is worse than obeying. A bare origin
 /// (`http://localhost:11434`) gets the conventional `/v1` appended, which keeps Ollama's zero-config
 /// default working without the user having to know the convention.
-fn api_base(url: &str) -> String {
+pub(crate) fn api_base(url: &str) -> String {
     let trimmed = url.trim().trim_end_matches('/');
     let after_scheme = trimmed
         .split_once("://")

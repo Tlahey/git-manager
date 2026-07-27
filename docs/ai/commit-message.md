@@ -1,6 +1,7 @@
 # Commit message
 
-Writes the commit message for the currently **staged** changes, streaming it into the message field.
+Writes the commit message for the currently **staged** changes into the message field, as
+grammar-constrained JSON.
 
 > Shared plumbing — transport, events, cancellation, errors, settings — lives in the
 > [AI system overview](./README.md). This page covers only what is specific to this feature.
@@ -8,7 +9,7 @@ Writes the commit message for the currently **staged** changes, streaming it int
 | | |
 | --- | --- |
 | **Descriptor** | [`commitMessageFeature`](../../packages/ai/src/features/commitMessage.ts) |
-| **Kind** | streaming |
+| **Kind** | completion + JSON schema (`COMMIT_MESSAGE_SCHEMA` → `{ subject, body }`) |
 | **Temperature** | 0.3 — the lowest of the prose features; a commit subject is a near-mechanical summary |
 | **Context scope** | `staged` (index vs HEAD) |
 | **Diff budget** | derived from the model's context window, spent per file — see [Known limitations](./README.md#known-limitations) #3 and the shared [`diffCoverage`](../../packages/ai/src/features/diffCoverage.ts) |
@@ -18,22 +19,26 @@ Writes the commit message for the currently **staged** changes, streaming it int
 
 ## What the user sees
 
-Stage some files, click ✨ next to the commit message box, and the message types itself in. It stays
+Stage some files, click ✨ next to the commit message box, and the message appears. It stays
 editable — the model writes a draft, you commit it. If nothing is staged the feature refuses up
 front with "No staged changes" rather than asking the model to describe an empty diff.
 
-After the stream ends, the result is checked against the project's convention and any problems are
-shown as a **non-blocking warning**. You can always commit anyway: the primary guarantee is
-instructing the model well, not policing its output.
+The message arrives whole rather than token by token — see [Why this is not a
+stream](#why-this-is-not-a-stream). In exchange it arrives in a second or two, so there is no longer
+a wait long enough to need filling.
+
+Once it lands, the result is checked against the project's convention and any problems are shown as
+a **non-blocking warning**. You can always commit anyway: the primary guarantee is instructing the
+model well, not policing its output.
 
 Above that warning sits the shared
 [`CoverageNotice`](../../apps/desktop/src/components/git-graph/components/CoverageNotice.tsx), saying
 how much of the staged change the message was actually written from — silent on the common case where
 everything was read. It is worth showing *here* for a reason none of the other panels have: this text
 is about to be written into the repository's history under your name, permanently, and a subject
-scoped to the six files that fitted looks exactly like a subject someone chose. It appears as the
-tokens arrive rather than at the end, because a caption that shows up after you have read the subject
-is a caption you did not get.
+scoped to the six files that fitted looks exactly like a subject someone chose. It is computed from
+the same input the prompt is built from and shown *before* the request, because a caption that shows
+up after you have read the subject is a caption you did not get.
 
 Batch mode leaves the classic message box untouched, so the notice is gated on that box having text —
 it never captions a message it did not describe.
@@ -71,11 +76,67 @@ The same section feeds [file grouping](./file-grouping.md) — one project style
 
 ---
 
+## Why this is not a stream
+
+This feature streamed its answer for most of its life, and that is what once put
+
+```
+Thinking Process:
+
+1.  **Analyze the Request:**
+    *   Role: Expert software engineer writing a single Git commit message…
+```
+
+into a user's commit box, 2222 characters of it.
+
+The chain, measured against a local Qwen 35B-A3B served by omlx:
+
+1. Asked for **prose**, a reasoning model deliberates first — 2255 tokens before writing anything.
+2. `max_tokens` is [`RESERVED_OUTPUT_TOKENS`](../../packages/ai/src/promptSize.ts) (600), the room the
+   prompt held back for the answer. That constant only ever reasoned about how long an *answer* is;
+   nobody had considered a model that generates thousands of tokens before starting one.
+3. So the cap truncates the model **mid-reasoning**. The provider never sees the end of the reasoning
+   block, gives up separating it into `reasoning_content`, and flushes the partial thinking into
+   `content` as well.
+4. `content` is exactly what [`ai_openai_compatible.rs`](../../apps/desktop/src-tauri/src/services/ai_openai_compatible.rs)
+   forwards as `ai:token`, so it streamed straight into the message input.
+
+The same defect shows a second face on Ollama: `qwen3:8b` and `gemma4:12b-mlx` keep the separation but
+hit `finish_reason: length` with **empty** `content` — the ✨ button silently produces nothing.
+
+**Suppressing the thinking is not a reliable fix.** `chat_template_kwargs: {enable_thinking: false}`
+is ignored by some servers ([LM Studio #1990](https://github.com/lmstudio-ai/lmstudio-bug-tracker/issues/1990))
+and Qwen 3.5+ dropped the `/no_think` soft switch, so it cannot be relied on across the presets we ship.
+
+**Constraining the answer is.** Under `COMMIT_MESSAGE_SCHEMA` the grammar obliges the first token to be
+`{`, so there is no reasoning phase to leak:
+
+| request | completion tokens | `finish_reason` | what reaches the box |
+| --- | --- | --- | --- |
+| prose, 600 cap | 600 (exhausted) | `length` | 2222 chars of deliberation |
+| prose, 4000 cap | 2255 | `stop` | the message (26 s later) |
+| **schema, 600 cap** | **13–101** | `stop` | **the message (~1 s)** |
+
+That also retires the output budget as something to tune: an answer that never approaches the cap
+cannot be truncated by it. The cost is the token-by-token fill of the message box, which is worth
+little when the whole answer takes about a second.
+
+The other streaming features (explanations, PR description, code review) keep streaming — their
+answers are prose by nature, and they are long enough that watching them arrive is the point.
+
+---
+
 ## The prompt
 
-**System** — `COMMIT_MESSAGE_INSTRUCTION`: Conventional Commits, `<type>(<scope>): <description>`,
-imperative mood, lower-case, no trailing period, ≤72 chars, and a body **only** when the change needs
-rationale the subject cannot carry.
+**System** — `COMMIT_MESSAGE_INSTRUCTION`: answer as `{ subject, body }`; Conventional Commits,
+`<type>(<scope>): <description>`, imperative mood, lower-case, no trailing period, ≤72 chars, and a
+body **only** when the change needs rationale the subject cannot carry (`""` otherwise).
+
+`parseCommitMessage` reads the object back and `formatCommitMessage` flattens it to the
+`subject\n\nbody` form git wants. The parser tolerates a ```json fence, and falls back to reading the
+raw text as the message when a provider ignores `response_format` — which is what this feature did
+for its whole streaming life. An **empty** answer is the one thing it refuses, rather than quietly
+committing `''`.
 
 **User** — repo/branch header, a scope hint, the style section, then the diff:
 
@@ -101,7 +162,7 @@ the hint is omitted entirely rather than forcing a misleading one.
 ## Validation
 
 `validateCommitSubject(message, ctx)` ([commitConvention.ts](../../packages/ai/src/features/commitConvention.ts))
-runs after the stream and returns a list of problems, never a hard failure. Its logic mirrors the
+runs on the finished message and returns a list of problems, never a hard failure. Its logic mirrors the
 prompt's authority order:
 
 - A **user regex** is an explicit format definition — it replaces conventional inference entirely.
@@ -109,6 +170,21 @@ prompt's authority order:
   history looks conventional (`isConventionalHistory`). Only then is `<type>(<scope>): …` enforced,
   against commitlint's own type list when it has one.
 - A repo with no convention and free-form history gets no format complaints at all.
+
+**The length bar adapts too** (`inferHeaderMaxLength`), and for the same reason. 72 is the
+conventional default, but hardcoding it made the validator stricter than the project it was
+validating — git-manager's own history has no commitlint config, unmistakably conventional subjects,
+and 16 of the last 50 over 72 characters (longest: 95). Every generated message of ordinary length
+drew a warning, while the prompt was in the same breath telling the model to "match their style,
+casing, prefixes, tense and **length**". The model was obeying the instruction and being flagged for
+it.
+
+So the ceiling is read off the history: one long subject is an outlier and changes nothing, a fifth
+of them is a habit and the longest recent subject becomes the bar. The default is a floor, never a
+ceiling. An explicit commitlint `header-max-length` still wins over both. Crucially the **same
+number goes into the prompt** (`buildRecentCommitsSection` states it outright), so the model is no
+longer told one limit and judged by another. On git-manager that moved the observed warning rate
+from 7-in-12 to **0-in-8**.
 
 ---
 
@@ -119,7 +195,10 @@ Beyond the [shared ones](./README.md#known-limitations):
 | Limitation | Note |
 | ---------- | ---- |
 | A large staged changeset is still read partially | The budget follows the window now rather than a flat 4000 characters, and spends itself on source before lockfiles — but a huge staged change still exceeds a small window. The omitted paths are named in the prompt and the instruction forbids scoping the subject to only what was read, which keeps `fix(ui)` off a change that also rewrote the backend. It remains true that staging deliberately gives better messages than "stage everything then generate" |
-| ~~`useAiGeneration` predates `useAiStream`~~ | **Fixed.** It now runs on the shared hook, which grew an `onToken` option for callers that stream into their own input. Both bugs the fork carried — listeners leaking past unmount, stacking across runs — are gone |
+| ~~A reasoning model wrote its deliberation into the commit box~~ | **Fixed.** The answer is grammar-constrained JSON, so there is no reasoning phase to leak — see [Why this is not a stream](#why-this-is-not-a-stream) |
+| "Stop" abandons the answer rather than cancelling the request | `ai_complete` is a single awaited request with no cancellation channel, unlike `ai_generate_stream`. Clicking stop leaves the message box alone, which is what the user is asking for, but the provider still finishes the generation. The window in which this matters is now a second or two |
+| The subject length cannot be *guaranteed* | Only steered. A JSON-schema `maxLength` was measured and rejected: omlx enforces it by forbidding the next token, so the model does not shorten its wording, it gets cut off mid-word (`…to grammar-constrained JS`, `…with JSON schema, d`). A mangled subject is committed as permanently as a long one and is worse to read. Prompt wording alone barely moved the rate (7/12 → 7/12 over 72 across 12 samples); what fixed it was making the bar match the project (see [Validation](#validation)) |
+| A model can copy a recent subject verbatim | The style section says "examples of FORM ONLY, never reuse one verbatim", and on a repo with real history the model obeys. On a scratch repo whose entire history is `test commit PR` / `Initial commit`, a small model still sometimes echoes one back — there is little else to imitate |
 | Only the **staged** diff is seen | By design: it describes what you are about to commit. Unstaged work is invisible, which is correct but occasionally surprising |
 | ~~Coverage was computed but never shown~~ | **Fixed.** `assessCommitMessageCoverage` was exported and unused; `useAiGeneration` now exposes it and the WIP panel renders it under the message box, before you commit |
 
@@ -127,8 +206,8 @@ Beyond the [shared ones](./README.md#known-limitations):
 
 | Test | Covers |
 | ---- | ------ |
-| [`commitMessage.test.ts`](../../packages/ai/src/features/commitMessage.test.ts) | prompt assembly, scope detection, window-sized budget (fits every window, a long commit convention paid out of the diff, code before noise, omitted paths named before the diff), coverage, and the instruction's committed-output rules |
-| [`commitConvention.test.ts`](../../packages/ai/src/features/commitConvention.test.ts) | commitlint parsing, conventional-history inference, validation |
-| [`useAiGeneration.test.ts`](../../apps/desktop/src/hooks/useAiGeneration.test.ts) | streaming, empty-staged refusal, validation wiring, coverage (reported as tokens arrive, cleared on a new run), per-request cancel, and what it inherits from `useAiStream` (unmount cleanup, no listener stacking, another generation's events ignored, no write-back of an empty or cancelled answer) |
+| [`commitMessage.test.ts`](../../packages/ai/src/features/commitMessage.test.ts) | prompt assembly, scope detection, window-sized budget (fits every window, a long commit convention paid out of the diff, code before noise, omitted paths named before the diff), coverage, the instruction's committed-output rules, and `parseCommitMessage`/`formatCommitMessage` (JSON, fenced JSON, prose fallback, empty rejected) |
+| [`commitConvention.test.ts`](../../packages/ai/src/features/commitConvention.test.ts) | commitlint parsing, conventional-history inference, validation, and the adaptive length bar (`inferHeaderMaxLength`: outlier vs habit, never tightening below the default, commitlint overriding it, and the prompt stating the same number) |
+| [`useAiGeneration.test.ts`](../../apps/desktop/src/hooks/useAiGeneration.test.ts) | the finished message handed back whole, subject+body joined by a blank line, empty-staged refusal, validation wiring, coverage (assessed before the request, cleared on a new run), and cancelling (no write-back, no error reported for a request that failed after being abandoned) |
 | [`WipStagingPanel.test.tsx`](../../apps/desktop/src/components/git-graph/components/WipStagingPanel.test.tsx) | the coverage line under the message box: shown when files were left out, silent when everything was read, absent when the box is empty |
-| [`ai.api.test.ts`](../../apps/desktop/src/api/ai.api.test.ts) | the right instruction and temperature reach the transport |
+| [`ai.api.test.ts`](../../apps/desktop/src/api/ai.api.test.ts) | the right instruction, temperature and **schema** reach the transport, and the parsed draft comes back |

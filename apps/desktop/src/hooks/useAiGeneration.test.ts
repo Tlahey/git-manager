@@ -1,35 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import type { AiContext } from '@git-manager/ai'
-
-const { listeners, listen } = vi.hoisted(() => {
-  const listeners = new Map<string, Set<(e: { payload: unknown }) => void>>()
-  const listen = vi.fn(async (event: string, handler: (e: { payload: unknown }) => void) => {
-    if (!listeners.has(event)) listeners.set(event, new Set())
-    listeners.get(event)!.add(handler)
-    return () => listeners.get(event)?.delete(handler)
-  })
-  return { listeners, listen }
-})
-vi.mock('@tauri-apps/api/event', () => ({ listen }))
-
-/** The request id the hook minted for the generation in flight, read back off the mocked service.
- * Every `ai:*` event now carries one and every listener filters on it, so an event emitted without
- * the right id is ignored — see the cross-talk tests below. */
-function currentRequestId(): string {
-  return (mockedRun.mock.calls.at(-1)?.[2] as string) ?? 'no-run-started'
-}
-
-function emit(event: string, token?: string, requestId: string = currentRequestId()) {
-  listeners.get(event)?.forEach((h) => h({ payload: { requestId, token } }))
-}
+import type { AiContext, CommitMessageDraft } from '@git-manager/ai'
 
 vi.mock('../api/ai.api', () => ({
   apiGetAiContext: vi.fn(),
-  commitMessageService: {
-    run: vi.fn(),
-    cancel: vi.fn(),
-  },
+  commitMessageService: { run: vi.fn() },
 }))
 
 import { apiGetAiContext, commitMessageService } from '../api/ai.api'
@@ -37,7 +12,6 @@ import { useAiGeneration } from './useAiGeneration'
 
 const mockedGetContext = apiGetAiContext as unknown as ReturnType<typeof vi.fn>
 const mockedRun = commitMessageService.run as unknown as ReturnType<typeof vi.fn>
-const mockedCancel = commitMessageService.cancel as unknown as ReturnType<typeof vi.fn>
 
 const context: AiContext = {
   diff: 'diff body',
@@ -48,11 +22,12 @@ const context: AiContext = {
   recentCommits: ['feat: one', 'fix: two', 'chore: three', 'refactor: four'],
 }
 
+const draft = (subject: string, body = ''): CommitMessageDraft => ({ subject, body })
+
 beforeEach(() => {
   vi.clearAllMocks()
-  listeners.clear()
   mockedGetContext.mockResolvedValue(context)
-  mockedRun.mockResolvedValue(undefined)
+  mockedRun.mockResolvedValue(draft('feat: add a proper subject'))
 })
 
 describe('useAiGeneration', () => {
@@ -61,92 +36,28 @@ describe('useAiGeneration', () => {
     expect(result.current.status).toBe('idle')
   })
 
-  it('moves to "connecting" immediately, then "streaming" as tokens arrive', async () => {
-    const onToken = vi.fn()
-    const onDone = vi.fn()
+  it('hands the finished message back in one piece', async () => {
+    const onMessage = vi.fn()
     const { result } = renderHook(() => useAiGeneration('/repo'))
 
-    let generatePromise: Promise<void>
-    act(() => {
-      generatePromise = result.current.generate(onToken, onDone)
-    })
-    // Listeners are registered asynchronously (await listen(...)) before generation kicks off —
-    // flush microtasks so the event handlers are wired before we emit.
     await act(async () => {
-      await Promise.resolve()
-      await Promise.resolve()
+      await result.current.generate(onMessage)
     })
 
-    act(() => emit('ai:token', 'Hello'))
-    expect(onToken).toHaveBeenCalledWith('Hello')
-    expect(result.current.status).toBe('streaming')
-
-    await act(async () => {
-      emit('ai:done')
-      await generatePromise
-    })
-    expect(onDone).toHaveBeenCalledWith('Hello')
+    expect(onMessage).toHaveBeenCalledExactlyOnceWith('feat: add a proper subject')
     expect(result.current.status).toBe('done')
   })
 
-  it('accumulates multiple tokens before "done"', async () => {
-    const onDone = vi.fn()
-    const { result } = renderHook(() => useAiGeneration('/repo'))
-
-    let generatePromise: Promise<void>
-    act(() => {
-      generatePromise = result.current.generate(vi.fn(), onDone)
-    })
-    await act(async () => {
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-
-    act(() => {
-      emit('ai:token', 'foo ')
-      emit('ai:token', 'bar')
-    })
-    await act(async () => {
-      emit('ai:done')
-      await generatePromise
-    })
-
-    expect(onDone).toHaveBeenCalledWith('foo bar')
-  })
-
-  it('surfaces a provider failure from the rejected request, not from an event', async () => {
-    // There is no `ai:error` event and there never was one — a provider failure rejects the
-    // `invoke` promise, which is already this request's own channel. This hook listened for the
-    // event for months regardless; the listener is gone and this is the path that actually fires.
-    mockedRun.mockRejectedValueOnce(new Error('model not found'))
+  it('joins a body to the subject with a blank line, as git expects', async () => {
+    mockedRun.mockResolvedValue(draft('feat: add a thing', 'Because the old one broke.'))
+    const onMessage = vi.fn()
     const { result } = renderHook(() => useAiGeneration('/repo'))
 
     await act(async () => {
-      await result.current.generate(vi.fn(), vi.fn())
+      await result.current.generate(onMessage)
     })
 
-    expect(result.current.status).toBe('error')
-    expect(result.current.error).toContain('model not found')
-  })
-
-  it('sets status "cancelled" on an ai:cancelled event', async () => {
-    const { result } = renderHook(() => useAiGeneration('/repo'))
-
-    let generatePromise: Promise<void>
-    act(() => {
-      generatePromise = result.current.generate(vi.fn(), vi.fn())
-    })
-    await act(async () => {
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-
-    await act(async () => {
-      emit('ai:cancelled')
-      await generatePromise
-    })
-
-    expect(result.current.status).toBe('cancelled')
+    expect(onMessage).toHaveBeenCalledWith('feat: add a thing\n\nBecause the old one broke.')
   })
 
   it('errors without calling the service when there are no staged changes', async () => {
@@ -154,7 +65,7 @@ describe('useAiGeneration', () => {
     const { result } = renderHook(() => useAiGeneration('/repo'))
 
     await act(async () => {
-      await result.current.generate(vi.fn(), vi.fn())
+      await result.current.generate(vi.fn())
     })
 
     expect(result.current.status).toBe('error')
@@ -162,175 +73,110 @@ describe('useAiGeneration', () => {
     expect(mockedRun).not.toHaveBeenCalled()
   })
 
-  it('sets status "error" when the commit-message service itself rejects', async () => {
-    mockedRun.mockRejectedValue(new Error('backend unreachable'))
+  it('surfaces a provider failure from the rejected request', async () => {
+    mockedRun.mockRejectedValue(new Error('model not found'))
     const { result } = renderHook(() => useAiGeneration('/repo'))
 
     await act(async () => {
-      await result.current.generate(vi.fn(), vi.fn())
+      await result.current.generate(vi.fn())
     })
 
     expect(result.current.status).toBe('error')
-    expect(result.current.error).toContain('backend unreachable')
+    expect(result.current.error).toContain('model not found')
   })
 
-  it('cleans up prior listeners from an earlier generate() call before starting a new one', async () => {
+  it('validates the generated message against the project convention', async () => {
     const { result } = renderHook(() => useAiGeneration('/repo'))
-
     await act(async () => {
-      result.current.generate(vi.fn(), vi.fn())
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-    expect(listeners.get('ai:done')?.size ?? 0).toBe(1)
-
-    await act(async () => {
-      result.current.generate(vi.fn(), vi.fn())
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-    // Still exactly one listener registered for ai:done — the first generate's was torn down.
-    expect(listeners.get('ai:done')?.size).toBe(1)
-  })
-
-  it('validates the generated message against the project convention on done', async () => {
-    const { result } = renderHook(() => useAiGeneration('/repo'))
-    let generatePromise: Promise<void>
-    act(() => {
-      generatePromise = result.current.generate(vi.fn(), vi.fn())
-    })
-    await act(async () => {
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-    await act(async () => {
-      emit('ai:token', 'feat: add a proper subject')
-      emit('ai:done')
-      await generatePromise
+      await result.current.generate(vi.fn())
     })
     expect(result.current.validation?.valid).toBe(true)
   })
 
   it('flags a non-conventional generated message via validation', async () => {
+    mockedRun.mockResolvedValue(draft('just some text'))
     const { result } = renderHook(() => useAiGeneration('/repo'))
-    let generatePromise: Promise<void>
-    act(() => {
-      generatePromise = result.current.generate(vi.fn(), vi.fn())
-    })
     await act(async () => {
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-    await act(async () => {
-      emit('ai:token', 'just some text')
-      emit('ai:done')
-      await generatePromise
+      await result.current.generate(vi.fn())
     })
     expect(result.current.validation?.valid).toBe(false)
   })
 
-  it('cancel() names the generation in flight rather than stopping every one', async () => {
-    mockedCancel.mockResolvedValue(undefined)
+  it('clears the previous validation when a new generation starts', async () => {
+    mockedRun.mockResolvedValue(draft('just some text'))
     const { result } = renderHook(() => useAiGeneration('/repo'))
     await act(async () => {
-      await result.current.generate(vi.fn(), vi.fn())
+      await result.current.generate(vi.fn())
     })
+    expect(result.current.validation?.valid).toBe(false)
 
-    await act(async () => result.current.cancel())
-
-    expect(mockedCancel).toHaveBeenCalledWith(currentRequestId())
-  })
-
-  it('cancel() does nothing before anything has been generated', async () => {
-    // An untargeted cancel is precisely what used to stop an unrelated feature's stream.
-    mockedCancel.mockResolvedValue(undefined)
-    const { result } = renderHook(() => useAiGeneration('/repo'))
-    await act(async () => result.current.cancel())
-    expect(mockedCancel).not.toHaveBeenCalled()
+    // Never settles, so the run is still in flight when we assert — which is where a stale
+    // validation would still be on screen.
+    mockedRun.mockReturnValue(new Promise(() => {}))
+    act(() => {
+      void result.current.generate(vi.fn())
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(result.current.validation).toBeNull()
   })
 })
 
-// This hook carried its own copy of the `ai:*` plumbing until `useAiStream` learned to forward
-// tokens to a caller-owned surface (the commit box). The copy had two bugs; these are them.
-describe('useAiGeneration — inherited from useAiStream', () => {
-  it('drops its listeners when the panel unmounts mid-stream', async () => {
-    const { result, unmount } = renderHook(() => useAiGeneration('/repo'))
-    await act(async () => {
-      await result.current.generate(vi.fn(), vi.fn())
-    })
-    expect(listeners.get('ai:token')?.size).toBe(1)
-
-    unmount()
-
-    expect(listeners.get('ai:token')?.size ?? 0).toBe(0)
-    expect(listeners.get('ai:done')?.size ?? 0).toBe(0)
-  })
-
-  it('ignores a generation that is not its own', async () => {
-    // The commit box is reachable while an explanation panel streams beside it.
-    const onToken = vi.fn()
-    const onDone = vi.fn()
+describe('useAiGeneration — cancelling', () => {
+  it('does not write back a cancelled generation', async () => {
+    // `ai_complete` has no cancellation channel: "stop" abandons the answer rather than stopping
+    // the request. What the user asked for is that the box be left alone, and it is.
+    let settle: (d: CommitMessageDraft) => void = () => {}
+    mockedRun.mockReturnValue(
+      new Promise<CommitMessageDraft>((resolve) => {
+        settle = resolve
+      })
+    )
+    const onMessage = vi.fn()
     const { result } = renderHook(() => useAiGeneration('/repo'))
+
+    act(() => {
+      void result.current.generate(onMessage)
+    })
     await act(async () => {
-      await result.current.generate(onToken, onDone)
+      await Promise.resolve()
     })
 
+    await act(async () => result.current.cancel())
     await act(async () => {
-      emit('ai:token', 'someone else', 'another-generation')
-      emit('ai:done', undefined, 'another-generation')
+      settle(draft('feat: too late'))
+      await Promise.resolve()
     })
 
-    expect(onToken).not.toHaveBeenCalled()
-    expect(onDone).not.toHaveBeenCalled()
-    expect(result.current.status).toBe('connecting')
-  })
-
-  it('does not blank the message box with an empty answer', async () => {
-    const onDone = vi.fn()
-    const { result } = renderHook(() => useAiGeneration('/repo'))
-    await act(async () => {
-      await result.current.generate(vi.fn(), onDone)
-    })
-
-    await act(async () => emit('ai:done'))
-
-    expect(onDone).not.toHaveBeenCalled()
-    // Nothing was written, so there is nothing to validate either.
-    expect(result.current.validation).toBeNull()
-  })
-
-  it('does not validate or write back a cancelled generation', async () => {
-    const onDone = vi.fn()
-    const { result } = renderHook(() => useAiGeneration('/repo'))
-    await act(async () => {
-      await result.current.generate(vi.fn(), onDone)
-    })
-
-    await act(async () => {
-      emit('ai:token', 'feat: half a subj')
-      emit('ai:cancelled')
-    })
-
-    expect(onDone).not.toHaveBeenCalled()
+    expect(onMessage).not.toHaveBeenCalled()
     expect(result.current.validation).toBeNull()
     expect(result.current.status).toBe('cancelled')
   })
 
-  it('clears the previous validation when a new generation starts', async () => {
+  it('does not report an error for a request that failed after being cancelled', async () => {
+    let fail: (e: Error) => void = () => {}
+    mockedRun.mockReturnValue(
+      new Promise<CommitMessageDraft>((_, reject) => {
+        fail = reject
+      })
+    )
     const { result } = renderHook(() => useAiGeneration('/repo'))
-    await act(async () => {
-      await result.current.generate(vi.fn(), vi.fn())
-    })
-    await act(async () => {
-      emit('ai:token', 'just some text')
-      emit('ai:done')
-    })
-    expect(result.current.validation?.valid).toBe(false)
 
-    await act(async () => {
-      await result.current.generate(vi.fn(), vi.fn())
+    act(() => {
+      void result.current.generate(vi.fn())
     })
-    expect(result.current.validation).toBeNull()
+    await act(async () => {
+      await Promise.resolve()
+    })
+    await act(async () => result.current.cancel())
+    await act(async () => {
+      fail(new Error('aborted'))
+      await Promise.resolve()
+    })
+
+    expect(result.current.status).toBe('cancelled')
+    expect(result.current.error).toBeNull()
   })
 })
 
@@ -359,7 +205,7 @@ describe('useAiGeneration — coverage', () => {
     mockedGetContext.mockResolvedValue(hugeContext(20))
     const { result } = renderHook(() => useAiGeneration('/repo'))
     await act(async () => {
-      await result.current.generate(vi.fn(), vi.fn())
+      await result.current.generate(vi.fn())
     })
 
     expect(result.current.coverage).toMatchObject({ filesTotal: 20, complete: false })
@@ -367,13 +213,20 @@ describe('useAiGeneration — coverage', () => {
     expect(result.current.coverage!.requiredContextTokens).toBeGreaterThan(4096)
   })
 
-  it('is available as the tokens arrive, not only once the message is finished', async () => {
+  it('is assessed before the request, not once the answer is back', async () => {
     // A caption that appears after the user has read the subject is a caption they did not get.
     mockedGetContext.mockResolvedValue(hugeContext(20))
+    mockedRun.mockReturnValue(new Promise(() => {}))
     const { result } = renderHook(() => useAiGeneration('/repo'))
-    await act(async () => {
-      await result.current.generate(vi.fn(), vi.fn())
+
+    act(() => {
+      void result.current.generate(vi.fn())
     })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
     expect(result.current.coverage).not.toBeNull()
     expect(result.current.status).not.toBe('done')
   })
@@ -381,7 +234,7 @@ describe('useAiGeneration — coverage', () => {
   it('reports a small staged change as fully read', async () => {
     const { result } = renderHook(() => useAiGeneration('/repo'))
     await act(async () => {
-      await result.current.generate(vi.fn(), vi.fn())
+      await result.current.generate(vi.fn())
     })
     expect(result.current.coverage).toMatchObject({ complete: true })
   })
@@ -390,7 +243,7 @@ describe('useAiGeneration — coverage', () => {
     mockedGetContext.mockResolvedValue(hugeContext(20))
     const { result } = renderHook(() => useAiGeneration('/repo'))
     await act(async () => {
-      await result.current.generate(vi.fn(), vi.fn())
+      await result.current.generate(vi.fn())
     })
     expect(result.current.coverage).not.toBeNull()
 
@@ -398,7 +251,7 @@ describe('useAiGeneration — coverage', () => {
     // stale line captioning a message it never described.
     mockedGetContext.mockResolvedValue({ ...context, diff: '   ' })
     await act(async () => {
-      await result.current.generate(vi.fn(), vi.fn())
+      await result.current.generate(vi.fn())
     })
     expect(result.current.coverage).toBeNull()
   })
