@@ -19,7 +19,9 @@ import {
   createStreamingService,
   dailySummaryFeature,
   fileGroupingFeature,
+  fileSummaryFeature,
   prDescriptionFeature,
+  summaryGroupingFeature,
   workingExplanationFeature,
 } from '@git-manager/ai'
 import {
@@ -33,6 +35,7 @@ import {
   type ModelContextLimits,
 } from '../lib/tauri'
 import { withAiActivity } from '../stores/aiActivity.store'
+import { recordAiTranscript } from '../lib/aiTranscriptLog'
 
 export async function apiCheckAiStatus(config: AiCheckConfig) {
   return checkAiStatus(config)
@@ -104,15 +107,62 @@ const tauriAiTransport: AiTransport = {
  * out-of-band as events does not change that.
  */
 function trackedTransport(featureId: string): AiTransport {
+  /**
+   * Runs one call, reporting it to the footer for its whole duration and writing its transcript to
+   * disk when it ends — either way.
+   *
+   * This is also the only layer that *can* record the answer: the `invoke` wrapper's activity log
+   * sees arguments, truncated, and never a return value. `read` pulls the response text out of
+   * whatever the call resolved with, which is the full answer for a completion and nothing for a
+   * stream, whose tokens arrive as events instead.
+   */
+  async function run<T>(
+    config: AiGenerateConfig,
+    systemPrompt: string,
+    userPrompt: string,
+    call: () => Promise<T>,
+    read: (result: T) => string | undefined
+  ): Promise<T> {
+    const start = performance.now()
+    const base = { featureId, config, systemPrompt, userPrompt }
+    try {
+      const result = await withAiActivity(featureId, call)
+      recordAiTranscript({
+        ...base,
+        durationMs: Math.round(performance.now() - start),
+        status: 'ok',
+        response: read(result),
+      })
+      return result
+    } catch (err) {
+      // A failed call is the one most worth having on disk, so it is recorded before rethrowing.
+      recordAiTranscript({
+        ...base,
+        durationMs: Math.round(performance.now() - start),
+        status: 'error',
+        error: String(err),
+      })
+      throw err
+    }
+  }
+
   return {
     ...tauriAiTransport,
     runStream: (config, systemPrompt, userPrompt, requestId) =>
-      withAiActivity(featureId, () =>
-        tauriAiTransport.runStream(config, systemPrompt, userPrompt, requestId)
+      run(
+        config,
+        systemPrompt,
+        userPrompt,
+        () => tauriAiTransport.runStream(config, systemPrompt, userPrompt, requestId),
+        () => undefined
       ),
     runComplete: (config, systemPrompt, userPrompt, schema) =>
-      withAiActivity(featureId, () =>
-        tauriAiTransport.runComplete(config, systemPrompt, userPrompt, schema)
+      run(
+        config,
+        systemPrompt,
+        userPrompt,
+        () => tauriAiTransport.runComplete(config, systemPrompt, userPrompt, schema),
+        (raw) => raw
       ),
   }
 }
@@ -129,6 +179,17 @@ export const commitMessageService = createCompletionService(
 export const fileGroupingService = createCompletionService(
   fileGroupingFeature,
   trackedTransport(fileGroupingFeature.id)
+)
+/** The two halves of the large-changeset planner: one small call per file, then one call that groups
+ * the results. Driven by `planCommitsFromSummaries`, which owns the sequencing — these are just the
+ * two runners it needs. See `docs/ai/file-grouping.md`. */
+export const fileSummaryService = createCompletionService(
+  fileSummaryFeature,
+  trackedTransport(fileSummaryFeature.id)
+)
+export const summaryGroupingService = createCompletionService(
+  summaryGroupingFeature,
+  trackedTransport(summaryGroupingFeature.id)
 )
 /** Rewrites one existing commit's message. A completion, run once per commit the user picked — the
  * review dialog is the interaction, not a stream. */

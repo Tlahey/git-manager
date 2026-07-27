@@ -102,6 +102,7 @@
   "activityLogs.copyLine": "Copier cette ligne",
   "activityLogs.copied": "Copié",
   "activityLogs.openFolder": "Ouvrir le dossier des logs",
+  "activityLogs.openAiFolder": "Transcriptions IA",
   "activityLogs.filterPlaceholder": "Filtrer les journaux",
   "activityLogs.col.time": "Horodatage",
   "activityLogs.col.message": "Message",

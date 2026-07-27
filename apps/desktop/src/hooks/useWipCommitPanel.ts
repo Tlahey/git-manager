@@ -2,7 +2,15 @@ import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { mutate } from 'swr'
 import type { GitStatus, GitStatusEntry, GitGraphNode } from '@git-manager/git-types'
-import { apiUnstageAll, apiStageFile, apiUnstageFile, apiCreateCommit, apiStashPush } from '../api/git.api'
+import { toast } from '@git-manager/ui'
+import {
+  apiUnstageAll,
+  apiStageFile,
+  apiUnstageFile,
+  apiCreateCommit,
+  apiGetPendingOperation,
+  apiStashPush,
+} from '../api/git.api'
 import { useAiGeneration } from './useAiGeneration'
 import type { ProcessedFileItem } from '../components/git-graph/components/CommitFileList'
 
@@ -167,6 +175,14 @@ export function useWipCommitPanel(
     const ready = Object.entries(wipBatches).filter(([name]) => batchMessages[name]?.trim())
     if (ready.length === 0) return
 
+    // `commitBatch` checks this too — it is also reachable one group at a time — but the loop is
+    // stopped here so a pending operation costs one warning rather than one per group.
+    const pending = await apiGetPendingOperation(repoPath)
+    if (pending) {
+      toast.warning(t('commitDetails.pendingOperation', { operation: pending }))
+      return
+    }
+
     setIsCommittingAllBatches(true)
     try {
       for (const [groupName, files] of ready) {
@@ -177,15 +193,28 @@ export function useWipCommitPanel(
     }
   }
 
-  // Stages batch files, commits them, then restores remaining originally staged
+  /**
+   * Stages a group's files, commits them, then restores the remaining originally staged ones.
+   *
+   * Refuses outright while another git operation is under way, and that refusal belongs to the
+   * *batch* flows rather than to committing in general: `apiUnstageAll` below would throw away a
+   * conflict resolution in progress during a paused rebase, and splitting a merge across several
+   * commits is not a thing a merge can be. Finishing a merge with the ordinary Commit button is
+   * legitimate, and `create_commit` handles it — see `handleCommitWip`.
+   */
   async function commitBatch(groupName: string, files: typeof allWipChanges) {
     const msg = batchMessages[groupName]?.trim()
     if (!msg) {
-      alert(t('commit.emptyMessage'))
+      toast.error(t('commit.emptyMessage'))
       return
     }
 
     try {
+      const pending = await apiGetPendingOperation(repoPath)
+      if (pending) {
+        toast.warning(t('commitDetails.pendingOperation', { operation: pending }))
+        return
+      }
       const originallyStaged = (gitStatus?.staged ?? []).map((x: GitStatusEntry) => x.path)
       const batchFileSet = new Set(files.map((x) => x.path))
 
@@ -222,7 +251,7 @@ export function useWipCommitPanel(
       }
       onRefresh?.()
     } catch (err) {
-      alert(String(err))
+      toast.error(String(err))
     }
   }
 
@@ -238,6 +267,12 @@ export function useWipCommitPanel(
     runLlmGenerate((message: string) => setCommitMessage(message))
   }
 
+  /**
+   * The ordinary Commit button. Deliberately *not* guarded against a pending operation, unlike the
+   * batch flows: committing is how you finish a merge or a resolved rebase step, so refusing here
+   * would break the normal workflow. `create_commit` reads `MERGE_HEAD` and produces a real merge
+   * commit, and an unresolved index still fails on its own (`index.write_tree()` refuses it).
+   */
   async function handleCommitWip() {
     if (!commitMessage.trim()) return
     setIsCommitting(true)
@@ -247,7 +282,7 @@ export function useWipCommitPanel(
       setIsAmend(false)
       onRefresh?.()
     } catch (err) {
-      alert(String(err))
+      toast.error(String(err))
     } finally {
       setIsCommitting(false)
     }
@@ -263,7 +298,7 @@ export function useWipCommitPanel(
       mutate(['git-stashes', repoPath])
       onRefresh?.()
     } catch (err) {
-      alert(String(err))
+      toast.error(String(err))
     } finally {
       setIsStashing(false)
     }

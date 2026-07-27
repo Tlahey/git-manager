@@ -126,11 +126,19 @@ function repoPathOf(args: Record<string, unknown> | undefined): string | undefin
 /** Reveals the on-disk activity-logs directory in the Finder (creating it if needed). */
 export const openActivityLogsDir = () => invoke<void>('open_activity_logs_dir')
 
+/** Reveals the AI transcript directory (`~/.git-manager/ai-logs/`) in the Finder. */
+export const openAiLogsDir = () => invoke<void>('open_ai_logs_dir')
+
 // ─── Repository ───────────────────────────────────────────────────────────────
 
 export const openRepo = (path: string) => invoke<GitRepo>('open_repo', { path })
 
 export const getRepoStatus = (path: string) => invoke<GitStatus>('get_repo_status', { path })
+
+/** The multi-step git operation in progress (`merge`, `rebase`, `cherry_pick`, `revert`, `bisect`,
+ * `apply_mailbox`), or `null` when there is none. */
+export const getPendingOperation = (path: string) =>
+  invoke<string | null>('get_pending_operation', { path })
 
 export const scanRepos = (rootPath: string, maxDepth: number) =>
   invoke<string[]>('scan_repos', { rootPath, maxDepth })

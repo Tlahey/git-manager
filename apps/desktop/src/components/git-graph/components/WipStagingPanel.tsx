@@ -14,7 +14,7 @@ import type { GitStatus } from '@git-manager/git-types'
 import { useWipCommitPanel } from '../../../hooks/useWipCommitPanel'
 import { useCommitBatchReview } from '../../../hooks/useCommitBatchReview'
 import { useAiEnabled } from '../../../hooks/useAiEnabled'
-import { CommitBatchReviewDialog } from './CommitBatchReviewDialog'
+import { CommitBatchReviewPanel } from './CommitBatchReviewPanel'
 import { CoverageNotice } from './CoverageNotice'
 import { PrPublishButton } from '../pr/PrPublishButton'
 import type { ProcessedFileItem } from './CommitFileList'
@@ -492,7 +492,7 @@ export function WipStagingPanel({
         </div>
       )}
 
-      <CommitBatchReviewDialog review={batchReview} />
+      <CommitBatchReviewPanel review={batchReview} />
     </div>
   )
 }

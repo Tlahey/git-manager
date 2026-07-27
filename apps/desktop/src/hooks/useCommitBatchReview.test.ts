@@ -6,18 +6,28 @@ vi.mock('../api/git.api', () => ({
   apiUnstageAll: vi.fn(),
   apiStageFile: vi.fn(),
   apiCreateCommit: vi.fn(),
+  apiGetPendingOperation: vi.fn(),
 }))
 
-const { apiGetAiContext, fileGroupingRun } = vi.hoisted(() => ({
+const { apiGetAiContext, fileGroupingRun, fileSummaryRun, summaryGroupingRun } = vi.hoisted(() => ({
   apiGetAiContext: vi.fn(),
   fileGroupingRun: vi.fn(),
+  fileSummaryRun: vi.fn(),
+  summaryGroupingRun: vi.fn(),
 }))
 vi.mock('../api/ai.api', () => ({
   apiGetAiContext,
   fileGroupingService: { run: fileGroupingRun },
+  fileSummaryService: { run: fileSummaryRun },
+  summaryGroupingService: { run: summaryGroupingRun },
 }))
 
-import { apiUnstageAll, apiStageFile, apiCreateCommit } from '../api/git.api'
+import {
+  apiUnstageAll,
+  apiStageFile,
+  apiCreateCommit,
+  apiGetPendingOperation,
+} from '../api/git.api'
 import { useCommitBatchReview } from './useCommitBatchReview'
 import { useSettingsStore } from '../stores/settings.store'
 
@@ -31,6 +41,7 @@ const mocked = {
   apiUnstageAll: apiUnstageAll as unknown as ReturnType<typeof vi.fn>,
   apiStageFile: apiStageFile as unknown as ReturnType<typeof vi.fn>,
   apiCreateCommit: apiCreateCommit as unknown as ReturnType<typeof vi.fn>,
+  apiGetPendingOperation: apiGetPendingOperation as unknown as ReturnType<typeof vi.fn>,
 }
 
 const t = (key: string) => key
@@ -55,6 +66,7 @@ const aiContext = {
 beforeEach(() => {
   vi.clearAllMocks()
   apiGetAiContext.mockResolvedValue(aiContext)
+  mocked.apiGetPendingOperation.mockResolvedValue(null)
   setCommitPattern('')
 })
 
@@ -90,6 +102,10 @@ describe('useCommitBatchReview', () => {
     const leftover = result.current.proposals[result.current.proposals.length - 1]
     expect(leftover.accepted).toBe(false)
     expect(leftover.files.map((f) => f.path).sort()).toEqual(['docs/x.md', 'src/a.test.ts'])
+    // Tagged rather than left for the view to guess from its position and empty message — that
+    // guess breaks as soon as the user clears a real proposal's message.
+    expect(leftover.kind).toBe('unplaced')
+    expect(result.current.proposals[0].kind).toBe('proposed')
   })
 
   it('applies only accepted proposals: unstage-all, stage each group, commit in order', async () => {
@@ -161,6 +177,276 @@ describe('useCommitBatchReview', () => {
     expect(result.current.validations[0].valid).toBe(true)
     expect(result.current.validations[1].valid).toBe(false)
     expect(result.current.validations[1].problems[0].code).toBe('pattern')
+  })
+
+  it('flags a staged selection only when there is one to lose', () => {
+    const { result: none } = renderHook(() => useCommitBatchReview('/repo', files, t))
+    expect(none.current.hasStagedChanges).toBe(false)
+
+    const staged = [{ ...file('src/a.ts'), staged: true }, file('docs/x.md')]
+    const { result } = renderHook(() => useCommitBatchReview('/repo', staged, t))
+    expect(result.current.hasStagedChanges).toBe(true)
+  })
+
+  it('reports nothing when the plan maps cleanly onto the working tree', async () => {
+    fileGroupingRun.mockResolvedValue([
+      { commitMessage: 'feat(a): add a', files: ['src/a.ts', 'src/a.test.ts'] },
+      { commitMessage: 'docs: update x', files: ['docs/x.md'] },
+    ])
+    const { result } = renderHook(() => useCommitBatchReview('/repo', files, t))
+    await act(async () => result.current.openAndGenerate())
+
+    expect(result.current.reconciliation).toBeNull()
+  })
+
+  /**
+   * The silent-loss bug: a proposal whose every path was invented or already taken used to vanish
+   * with its message, leaving a plan that no longer said what the model proposed. The files are
+   * still rescued by the leftovers pass — what was missing was any sign it had happened.
+   */
+  it('counts the proposals it had to discard whole, instead of dropping them silently', async () => {
+    fileGroupingRun.mockResolvedValue([
+      { commitMessage: 'feat(a): add a', files: ['src/a.ts'] },
+      // Invented path — nothing in the working tree matches.
+      { commitMessage: 'feat(b): add b', files: ['src/ghost.ts'] },
+      // Every path already claimed by the first proposal.
+      { commitMessage: 'refactor(a): tidy a', files: ['src/a.ts'] },
+    ])
+    const { result } = renderHook(() => useCommitBatchReview('/repo', files, t))
+    await act(async () => result.current.openAndGenerate())
+
+    expect(result.current.reconciliation).toEqual({
+      discardedProposals: 2,
+      unknownPaths: ['src/ghost.ts'],
+      duplicatePaths: ['src/a.ts'],
+    })
+    // Only the surviving proposal, plus the leftovers group holding what nobody placed.
+    expect(result.current.proposals.map((p) => p.commitMessage)).toEqual(['feat(a): add a', ''])
+    expect(result.current.proposals[1].files.map((f) => f.path).sort()).toEqual([
+      'docs/x.md',
+      'src/a.test.ts',
+    ])
+  })
+
+  it('reports a partial loss even when the proposal itself survives', async () => {
+    fileGroupingRun.mockResolvedValue([
+      { commitMessage: 'feat(a): add a', files: ['src/a.ts', 'src/ghost.ts'] },
+      { commitMessage: 'docs: update x', files: ['docs/x.md'] },
+    ])
+    const { result } = renderHook(() => useCommitBatchReview('/repo', files, t))
+    await act(async () => result.current.openAndGenerate())
+
+    expect(result.current.reconciliation).toEqual({
+      discardedProposals: 0,
+      unknownPaths: ['src/ghost.ts'],
+      duplicatePaths: [],
+    })
+    expect(result.current.proposals[0].files.map((f) => f.path)).toEqual(['src/a.ts'])
+  })
+
+  it('clears the previous run reconciliation when regenerating', async () => {
+    fileGroupingRun.mockResolvedValueOnce([
+      { commitMessage: 'feat(a): add a', files: ['src/ghost.ts', 'src/a.ts'] },
+    ])
+    const { result } = renderHook(() => useCommitBatchReview('/repo', files, t))
+    await act(async () => result.current.openAndGenerate())
+    expect(result.current.reconciliation).not.toBeNull()
+
+    fileGroupingRun.mockResolvedValueOnce([
+      { commitMessage: 'feat(a): add a', files: ['src/a.ts', 'src/a.test.ts', 'docs/x.md'] },
+    ])
+    await act(async () => result.current.regenerate())
+
+    expect(result.current.reconciliation).toBeNull()
+  })
+
+  it('refuses to generate while a merge is in progress, before spending a generation', async () => {
+    mocked.apiGetPendingOperation.mockResolvedValue('merge')
+    const { result } = renderHook(() => useCommitBatchReview('/repo', files, t))
+
+    await act(async () => result.current.openAndGenerate())
+
+    expect(result.current.error).toBe('commitDetails.pendingOperation')
+    expect(apiGetAiContext).not.toHaveBeenCalled()
+    expect(fileGroupingRun).not.toHaveBeenCalled()
+  })
+
+  it('refuses to apply when the repo entered a merge after the plan was generated', async () => {
+    fileGroupingRun.mockResolvedValue([{ commitMessage: 'feat: a', files: ['src/a.ts'] }])
+    const { result } = renderHook(() => useCommitBatchReview('/repo', files, t))
+    await act(async () => result.current.openAndGenerate())
+
+    mocked.apiGetPendingOperation.mockResolvedValue('rebase')
+    await act(async () => result.current.applyAccepted())
+
+    expect(result.current.error).toBe('commitDetails.pendingOperation')
+    // Nothing was written — in particular the index was left alone, since unstaging during a
+    // paused rebase throws away the user's conflict resolution.
+    expect(mocked.apiUnstageAll).not.toHaveBeenCalled()
+    expect(mocked.apiCreateCommit).not.toHaveBeenCalled()
+    expect(result.current.isOpen).toBe(true)
+  })
+
+  it('drops the commits that landed after a partial failure, so a retry does not duplicate them', async () => {
+    fileGroupingRun.mockResolvedValue([
+      { commitMessage: 'feat(a): add a', files: ['src/a.ts'] },
+      { commitMessage: 'test(a): cover a', files: ['src/a.test.ts'] },
+      { commitMessage: 'docs: update x', files: ['docs/x.md'] },
+    ])
+    const onRefresh = vi.fn()
+    const { result } = renderHook(() => useCommitBatchReview('/repo', files, t, onRefresh))
+    await act(async () => result.current.openAndGenerate())
+
+    // The second commit fails; the first one is already in the repo.
+    mocked.apiCreateCommit
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('hook rejected the commit'))
+    await act(async () => result.current.applyAccepted())
+
+    expect(result.current.error).toContain('commitDetails.aiBatch.partialFailure')
+    expect(result.current.isOpen).toBe(true)
+    // The applied proposal is gone; the two that never ran are still on screen.
+    expect(result.current.proposals.map((p) => p.commitMessage)).toEqual([
+      'test(a): cover a',
+      'docs: update x',
+    ])
+    // The new commit exists, so the graph and the WIP list have to be re-read.
+    expect(onRefresh).toHaveBeenCalledOnce()
+
+    // Retrying replays only what is left — no empty duplicate of 'feat(a): add a'.
+    mocked.apiCreateCommit.mockReset().mockResolvedValue(undefined)
+    await act(async () => result.current.applyAccepted())
+
+    expect(mocked.apiCreateCommit).toHaveBeenCalledTimes(2)
+    expect(mocked.apiCreateCommit).not.toHaveBeenCalledWith('/repo', 'feat(a): add a')
+  })
+
+  it('skips an accepted group with no message rather than committing it subjectless', async () => {
+    fileGroupingRun.mockResolvedValue([{ commitMessage: 'feat(a): add a', files: ['src/a.ts'] }])
+    const { result } = renderHook(() => useCommitBatchReview('/repo', files, t))
+    await act(async () => result.current.openAndGenerate())
+
+    // Accept the leftovers group, which the model left without a message.
+    expect(result.current.proposals[1].commitMessage).toBe('')
+    act(() => result.current.toggleAccepted(1))
+
+    expect(result.current.acceptedCount).toBe(1)
+    await act(async () => result.current.applyAccepted())
+
+    expect(mocked.apiCreateCommit).toHaveBeenCalledTimes(1)
+    expect(mocked.apiCreateCommit).toHaveBeenCalledWith('/repo', 'feat(a): add a')
+  })
+
+  describe('large changesets: the two-phase planner', () => {
+    /** Above `SUMMARY_PLANNING_FILE_THRESHOLD` (12). */
+    const manyPaths = Array.from({ length: 14 }, (_, i) => `src/f${i}.ts`)
+    const manyFiles = manyPaths.map((p) => file(p))
+    const manyContext = {
+      ...aiContext,
+      files: manyPaths.map((path) => ({ path, status: 'modified' })),
+    }
+
+    beforeEach(() => {
+      apiGetAiContext.mockResolvedValue(manyContext)
+      fileSummaryRun.mockResolvedValue({ intent: 'changes it', area: 'demo' })
+      summaryGroupingRun.mockResolvedValue([
+        { commitMessage: 'feat: everything', files: manyPaths },
+      ])
+    })
+
+    it('summarizes each file then groups, instead of the single-shot call', async () => {
+      const { result } = renderHook(() => useCommitBatchReview('/repo', manyFiles, t))
+
+      await act(async () => result.current.openAndGenerate())
+
+      expect(fileSummaryRun).toHaveBeenCalledTimes(14)
+      expect(summaryGroupingRun).toHaveBeenCalledTimes(1)
+      expect(fileGroupingRun).not.toHaveBeenCalled()
+      expect(result.current.proposals[0].files).toHaveLength(14)
+    })
+
+    it('keeps the single-shot call for a changeset that already fits', async () => {
+      apiGetAiContext.mockResolvedValue(aiContext)
+      fileGroupingRun.mockResolvedValue([{ commitMessage: 'feat: a', files: ['src/a.ts'] }])
+      const { result } = renderHook(() => useCommitBatchReview('/repo', files, t))
+
+      await act(async () => result.current.openAndGenerate())
+
+      expect(fileGroupingRun).toHaveBeenCalledTimes(1)
+      expect(fileSummaryRun).not.toHaveBeenCalled()
+    })
+
+    /**
+     * Coverage describes the single-shot prompt's diff budget. On this path every file gets its own
+     * prompt and is read whole, so reporting it said "5 of 28 files read — raise your window to 64k"
+     * about a prompt that was never sent, on the one path where the window is no longer the limit.
+     */
+    it('reports no diff coverage, because every file was read in its own prompt', async () => {
+      const { result } = renderHook(() => useCommitBatchReview('/repo', manyFiles, t))
+
+      await act(async () => result.current.openAndGenerate())
+
+      expect(result.current.coverage).toBeNull()
+    })
+
+    it('still reports coverage on the single-shot path, where the budget is real', async () => {
+      apiGetAiContext.mockResolvedValue(aiContext)
+      fileGroupingRun.mockResolvedValue([{ commitMessage: 'feat: a', files: ['src/a.ts'] }])
+      const { result } = renderHook(() => useCommitBatchReview('/repo', files, t))
+
+      await act(async () => result.current.openAndGenerate())
+
+      expect(result.current.coverage).not.toBeNull()
+    })
+
+    it('clears progress once the run finishes', async () => {
+      const { result } = renderHook(() => useCommitBatchReview('/repo', manyFiles, t))
+
+      await act(async () => result.current.openAndGenerate())
+
+      expect(result.current.progress).toBeNull()
+      expect(result.current.isGenerating).toBe(false)
+    })
+
+    /**
+     * Closing the panel sets a ref the planner polls between calls. It has to be a ref: the planner
+     * loop closed over the render that started it, so a state value would read `false` forever.
+     */
+    it('stops summarizing mid-run when the user closes the panel, and reports no error', async () => {
+      let started = 0
+      const { result } = renderHook(() => useCommitBatchReview('/repo', manyFiles, t))
+      // Close the panel from inside the fourth call, so cancellation is observed *during* the map
+      // phase rather than before it starts.
+      fileSummaryRun.mockImplementation(async () => {
+        started += 1
+        if (started === 4) result.current.close()
+        return { intent: 'changes it', area: 'demo' }
+      })
+
+      await act(async () => result.current.openAndGenerate())
+
+      // The in-flight call finished (nothing can abort it), then the loop stopped at the boundary.
+      expect(started).toBe(4)
+      expect(summaryGroupingRun).not.toHaveBeenCalled()
+      // A cancellation is not a failure — an error here would be waiting on the next open.
+      expect(result.current.error).toBeNull()
+      expect(result.current.isGenerating).toBe(false)
+      expect(result.current.progress).toBeNull()
+    })
+
+    it('still surfaces the unplaced group when the grouping call drops files', async () => {
+      summaryGroupingRun.mockResolvedValue([
+        { commitMessage: 'feat: most of it', files: manyPaths.slice(0, 12) },
+      ])
+      const { result } = renderHook(() => useCommitBatchReview('/repo', manyFiles, t))
+
+      await act(async () => result.current.openAndGenerate())
+
+      // The backstop stays necessary: nothing about summaries forces the reduce call to be complete.
+      const last = result.current.proposals[result.current.proposals.length - 1]
+      expect(last.kind).toBe('unplaced')
+      expect(last.files.map((f) => f.path)).toEqual(['src/f12.ts', 'src/f13.ts'])
+    })
   })
 
   it('reports no-changes when the working tree is empty', async () => {

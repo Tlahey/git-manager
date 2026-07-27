@@ -16,7 +16,17 @@ vi.mock('../api/git.api', () => ({
   apiStageFile: vi.fn(),
   apiUnstageFile: vi.fn(),
   apiCreateCommit: vi.fn(),
+  apiGetPendingOperation: vi.fn(),
   apiStashPush: vi.fn(),
+}))
+
+// The hook reports failures through the shared toaster; only `toast` is imported from the package.
+const { toastError, toastWarning } = vi.hoisted(() => ({
+  toastError: vi.fn(),
+  toastWarning: vi.fn(),
+}))
+vi.mock('@git-manager/ui', () => ({
+  toast: { error: toastError, warning: toastWarning, success: vi.fn() },
 }))
 
 const { runLlmGenerate, cancelLlmGenerate, llmStatus } = vi.hoisted(() => ({
@@ -32,7 +42,14 @@ vi.mock('./useAiGeneration', () => ({
   }),
 }))
 
-import { apiUnstageAll, apiStageFile, apiUnstageFile, apiCreateCommit, apiStashPush } from '../api/git.api'
+import {
+  apiUnstageAll,
+  apiStageFile,
+  apiUnstageFile,
+  apiCreateCommit,
+  apiGetPendingOperation,
+  apiStashPush,
+} from '../api/git.api'
 import { useWipCommitPanel } from './useWipCommitPanel'
 
 const mocked = {
@@ -40,6 +57,7 @@ const mocked = {
   apiStageFile: apiStageFile as unknown as ReturnType<typeof vi.fn>,
   apiUnstageFile: apiUnstageFile as unknown as ReturnType<typeof vi.fn>,
   apiCreateCommit: apiCreateCommit as unknown as ReturnType<typeof vi.fn>,
+  apiGetPendingOperation: apiGetPendingOperation as unknown as ReturnType<typeof vi.fn>,
   apiStashPush: apiStashPush as unknown as ReturnType<typeof vi.fn>,
 }
 
@@ -63,6 +81,7 @@ beforeEach(() => {
   llmStatus.current = 'idle'
   fetchQuery.mockResolvedValue(status())
   getQueryData.mockReturnValue(undefined)
+  mocked.apiGetPendingOperation.mockResolvedValue(null)
 })
 
 afterEach(() => {
@@ -169,16 +188,28 @@ describe('useWipCommitPanel — classic commit', () => {
     expect(onRefresh).toHaveBeenCalledOnce()
   })
 
-  it('alerts on failure without clearing the message', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+  it('reports a failure without clearing the message', async () => {
     mocked.apiCreateCommit.mockRejectedValue(new Error('commit failed'))
     const { result } = renderHook(() => useWipCommitPanel('/repo', status(), [], t))
     act(() => result.current.setCommitMessage('Add feature'))
     await act(async () => result.current.handleCommitWip())
 
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('commit failed'))
+    expect(toastError).toHaveBeenCalledWith(expect.stringContaining('commit failed'))
     expect(result.current.commitMessage).toBe('Add feature')
     expect(result.current.isCommitting).toBe(false)
+  })
+
+  it('still commits during a merge — that is how a merge is finished', async () => {
+    mocked.apiGetPendingOperation.mockResolvedValue('merge')
+    mocked.apiCreateCommit.mockResolvedValue({ oid: 'new' })
+    const { result } = renderHook(() => useWipCommitPanel('/repo', status(), [], t))
+    act(() => result.current.setCommitMessage('merge branch feature'))
+    await act(async () => result.current.handleCommitWip())
+
+    // Unlike the batch flows, the ordinary button does not refuse: `create_commit` reads MERGE_HEAD
+    // and produces a real merge commit, so blocking here would break the normal workflow.
+    expect(mocked.apiCreateCommit).toHaveBeenCalledWith('/repo', 'merge branch feature', false)
+    expect(toastWarning).not.toHaveBeenCalled()
   })
 
   it('handleGenerateCommitMessage writes the finished message into commitMessage', () => {
@@ -280,12 +311,24 @@ describe('useWipCommitPanel — batch mode: generateMessageForBatch', () => {
 })
 
 describe('useWipCommitPanel — batch mode: commitBatch', () => {
-  it('alerts and does nothing when the batch message is empty', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+  it('reports and does nothing when the batch message is empty', async () => {
     const files = [file('src/a.ts')]
     const { result } = renderHook(() => useWipCommitPanel('/repo', status(), files, t))
     await act(async () => result.current.commitBatch('src', files))
-    expect(alertSpy).toHaveBeenCalledWith('commit.emptyMessage')
+    expect(toastError).toHaveBeenCalledWith('commit.emptyMessage')
+    expect(mocked.apiCreateCommit).not.toHaveBeenCalled()
+  })
+
+  it('refuses to commit a group while another git operation is under way', async () => {
+    mocked.apiGetPendingOperation.mockResolvedValue('rebase')
+    const files = [file('src/a.ts')]
+    const { result } = renderHook(() => useWipCommitPanel('/repo', status(), files, t))
+    act(() => result.current.setBatchMessages({ src: 'feat: a' }))
+    await act(async () => result.current.commitBatch('src', files))
+
+    expect(toastWarning).toHaveBeenCalledWith('commitDetails.pendingOperation')
+    // The index is left untouched: unstaging during a paused rebase discards the resolution.
+    expect(mocked.apiUnstageAll).not.toHaveBeenCalled()
     expect(mocked.apiCreateCommit).not.toHaveBeenCalled()
   })
 
@@ -314,8 +357,7 @@ describe('useWipCommitPanel — batch mode: commitBatch', () => {
     expect(onRefresh).toHaveBeenCalledOnce()
   })
 
-  it('alerts on failure', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+  it('reports a failure', async () => {
     mocked.apiUnstageAll.mockResolvedValue(undefined)
     mocked.apiStageFile.mockResolvedValue(undefined)
     mocked.apiCreateCommit.mockRejectedValue(new Error('commit failed'))
@@ -325,7 +367,7 @@ describe('useWipCommitPanel — batch mode: commitBatch', () => {
     act(() => result.current.setBatchMessages({ src: 'Batch commit message' }))
     await act(async () => result.current.commitBatch('src', files))
 
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('commit failed'))
+    expect(toastError).toHaveBeenCalledWith(expect.stringContaining('commit failed'))
   })
 })
 
@@ -420,9 +462,25 @@ describe('useWipCommitPanel — batch "all" sequences', () => {
     expect(mocked.apiUnstageAll).not.toHaveBeenCalled()
   })
 
+  it('stops before the loop on a pending operation, warning once rather than per group', async () => {
+    mocked.apiGetPendingOperation.mockResolvedValue('merge')
+    const { result } = renderHook(() => useWipCommitPanel('/repo', status(), twoGroups, t))
+    act(() => {
+      result.current.setBatchMessages({ src: 'feat: a', lib: 'feat: b' })
+    })
+
+    await act(async () => {
+      await result.current.commitAllBatches()
+    })
+
+    expect(toastWarning).toHaveBeenCalledTimes(1)
+    expect(toastWarning).toHaveBeenCalledWith('commitDetails.pendingOperation')
+    expect(mocked.apiCreateCommit).not.toHaveBeenCalled()
+    expect(mocked.apiUnstageAll).not.toHaveBeenCalled()
+  })
+
   it('clears its busy flag even when a commit throws', async () => {
     mocked.apiCreateCommit.mockRejectedValue(new Error('index locked'))
-    vi.spyOn(window, 'alert').mockImplementation(() => {})
     const { result } = renderHook(() => useWipCommitPanel('/repo', status(), twoGroups, t))
     act(() => {
       result.current.setBatchMessages({ src: 'feat: a' })
