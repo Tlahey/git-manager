@@ -8,10 +8,13 @@ import {
   createStreamingService,
   resolveGenerateConfig,
   MODEL_PROBE_INSTRUCTION,
+  MODEL_PROBE_MAX_OUTPUT_TOKENS,
   MODEL_PROBE_MAX_TIMEOUT_SECONDS,
   MODEL_PROBE_PROMPT,
   type AiTransport,
 } from './runtime'
+import { groupingOutputTokens } from './features/fileGrouping'
+import { RESERVED_OUTPUT_TOKENS } from './promptSize'
 
 const connection: AiConnectionConfig = {
   preset: 'ollama', // resolves to the 'openai-compatible' protocol
@@ -48,6 +51,7 @@ describe('resolveGenerateConfig', () => {
       apiKey: undefined,
       temperature: 0.7,
       timeoutSeconds: 30,
+      maxTokens: RESERVED_OUTPUT_TOKENS,
     })
   })
 
@@ -55,6 +59,16 @@ describe('resolveGenerateConfig', () => {
     expect(
       resolveGenerateConfig({ ...connection, preset: 'openai-compatible', apiKey: 'sk-test' }, 0.3)
     ).toMatchObject({ protocol: 'openai-compatible', apiKey: 'sk-test', temperature: 0.3 })
+  })
+
+  it('caps the answer at the same reserve the prompt budgets subtract', () => {
+    // The pairing is the point: the prompt is built assuming the answer fits in this many tokens,
+    // and sending the cap is the only thing that makes the assumption true.
+    expect(resolveGenerateConfig(connection, 0.7).maxTokens).toBe(RESERVED_OUTPUT_TOKENS)
+  })
+
+  it('lets a caller override the cap for a feature whose answer is not prose', () => {
+    expect(resolveGenerateConfig(connection, 0.2, 4200).maxTokens).toBe(4200)
   })
 })
 
@@ -94,6 +108,17 @@ describe('createStreamingService', () => {
     await service.cancel('req-1')
     expect(transport.cancel).toHaveBeenCalledWith('req-1')
   })
+
+  it('sends the default answer cap for a prose feature that declares none', async () => {
+    const service = createStreamingService(commitMessageFeature, transport)
+    await service.run(connection, { context }, 'req-1')
+    expect(transport.runStream).toHaveBeenCalledWith(
+      expect.objectContaining({ maxTokens: RESERVED_OUTPUT_TOKENS }),
+      expect.any(String),
+      expect.any(String),
+      expect.any(String)
+    )
+  })
 })
 
 describe('createCompletionService', () => {
@@ -113,6 +138,25 @@ describe('createCompletionService', () => {
       fileGroupingFeature.schema
     )
     expect(commits).toEqual([{ commitMessage: 'feat: x', files: ['src/a.ts'] }])
+  })
+
+  it("sizes the answer cap from the feature's own input, not from a constant", async () => {
+    // File grouping must restate every changed path in its JSON, so a forty-file plan needs several
+    // times the room a one-file plan does — and a cap that is too small breaks the parse outright
+    // rather than shortening the answer.
+    const many: AiContext = {
+      ...context,
+      files: Array.from({ length: 40 }, (_, i) => ({ path: `src/m${i}.ts`, status: 'modified' })),
+    }
+    const service = createCompletionService(fileGroupingFeature, transport)
+
+    await service.run(connection, { context })
+    await service.run(connection, { context: many })
+
+    const [small, large] = (transport.runComplete as ReturnType<typeof vi.fn>).mock.calls
+    expect(small[0].maxTokens).toBe(groupingOutputTokens(1))
+    expect(large[0].maxTokens).toBe(groupingOutputTokens(40))
+    expect(large[0].maxTokens).toBeGreaterThan(small[0].maxTokens)
   })
 })
 
@@ -151,6 +195,20 @@ describe('createStatusService.probe', () => {
       expect.any(String),
       expect.any(String)
     )
+  })
+
+  it("caps the probe's answer far below a feature's, so a reasoning model can't stall it", async () => {
+    // The probe's expected answer is one word. A reasoning model handed a 600-token budget spends
+    // it deliberating about `ping` while the user watches a button.
+    const transport = mockTransport()
+    await createStatusService(transport).probe(connection)
+
+    expect(transport.runComplete).toHaveBeenCalledWith(
+      expect.objectContaining({ maxTokens: MODEL_PROBE_MAX_OUTPUT_TOKENS }),
+      expect.any(String),
+      expect.any(String)
+    )
+    expect(MODEL_PROBE_MAX_OUTPUT_TOKENS).toBeLessThan(RESERVED_OUTPUT_TOKENS)
   })
 
   it('sends no JSON schema — a schema would fail for reasons unrelated to connectivity', async () => {

@@ -14,7 +14,8 @@ import { truncateDiff } from './commitMessage'
  *
  * 1. **Priority.** Source code is read before tests, tests before documentation and config, and
  *    generated files last — they are diff noise a reviewer has no opinion about, and a lockfile can
- *    eat an entire budget on its own.
+ *    eat an entire budget on its own. That order is a heuristic over *file names*, so a caller who
+ *    knows better can correct it per path — see {@link DiffTierOverrides}.
  * 2. **A share per file.** Within the budget every retained file gets its own allocation, so no file
  *    is silently invisible. Files that do not fit at all are *named* rather than dropped in silence:
  *    a reviewer who knows what they did not read is far more useful than one who does not.
@@ -70,10 +71,32 @@ function isDoc(path: string): boolean {
 }
 
 /**
+ * Per-path tier overrides: paths a caller has decided the heuristic gets wrong.
+ *
+ * A map rather than a predicate because the caller almost always knows the exact paths — it is
+ * looking at the same changed-file list the diff came from — and a map cannot accidentally match
+ * something it was not shown.
+ */
+export type DiffTierOverrides = Readonly<Record<string, DiffFileTier>>
+
+/**
  * Which tier a path belongs to. Order matters: a generated file can be a `.json` or a `.snap` that
  * would otherwise read as documentation or a test, so it is checked first.
+ *
+ * `overrides` is how a caller corrects the heuristic, which is all this is — pattern-matching on
+ * names, with no idea what a file means to the project. The cases it gets wrong are real and go both
+ * ways: a checked-in JSON schema or a hand-maintained `.min.js` is `generated` and read last though
+ * it is the change; a `docs/` page nobody is asking about outranks nothing but still competes. The
+ * heuristic cannot be taught to tell those apart from a path, so the decision belongs to whoever
+ * knows — a feature that has more context, or a user who says "review this file".
+ *
+ * Deliberately *not* clamped or validated. An override that promotes a lockfile to `source` is a
+ * caller saying they mean it, and the budget's job is to obey; the tiers are a priority order, not a
+ * safety property.
  */
-export function classifyDiffPath(path: string): DiffFileTier {
+export function classifyDiffPath(path: string, overrides?: DiffTierOverrides): DiffFileTier {
+  const override = overrides?.[path]
+  if (override) return override
   if (isGenerated(path)) return 'generated'
   if (isTest(path)) return 'test'
   if (isDoc(path)) return 'doc'
@@ -95,7 +118,7 @@ const FILE_HEADER = /^[ +-]?diff --git a\/(.+?) b\/(.+?)[ \t]*$/gm
  * Splits a unified diff into one section per file. Returns `[]` when the text carries no file
  * header at all, which is the caller's signal to fall back rather than invent structure.
  */
-export function splitDiffByFile(diff: string): DiffFileSection[] {
+export function splitDiffByFile(diff: string, overrides?: DiffTierOverrides): DiffFileSection[] {
   const starts: { index: number; path: string }[] = []
   FILE_HEADER.lastIndex = 0
   let match: RegExpExecArray | null
@@ -109,7 +132,7 @@ export function splitDiffByFile(diff: string): DiffFileSection[] {
 
   return starts.map(({ index, path }, i) => ({
     path,
-    tier: classifyDiffPath(path),
+    tier: classifyDiffPath(path, overrides),
     text: diff.slice(index, starts[i + 1]?.index ?? diff.length),
   }))
 }
@@ -126,8 +149,12 @@ export function splitDiffByFile(diff: string): DiffFileSection[] {
  * Output keeps the diff's **original file order**, not the allocation order: the caller is building
  * a prompt for a human-shaped reader, and a diff reordered by size is harder to follow.
  */
-export function budgetDiff(diff: string, maxChars: number): BudgetedDiff {
-  const sections = splitDiffByFile(diff)
+export function budgetDiff(
+  diff: string,
+  maxChars: number,
+  overrides?: DiffTierOverrides
+): BudgetedDiff {
+  const sections = splitDiffByFile(diff, overrides)
   // No parseable structure (an empty diff, or a format this doesn't know): the old blind cut is
   // still better than dropping the content entirely.
   if (sections.length === 0) {

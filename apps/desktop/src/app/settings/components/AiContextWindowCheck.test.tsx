@@ -10,6 +10,20 @@ import { useSettingsStore } from '../../../stores/settings.store'
 
 const mockedLimits = apiGetModelContextLimits as unknown as ReturnType<typeof vi.fn>
 
+/** Every field explicit, so a test that cares about one number still says what the other two were. */
+function reportsLimits(limits: {
+  architectureMax?: number | null
+  modelfileNumCtx?: number | null
+  allocatedContext?: number | null
+}) {
+  mockedLimits.mockResolvedValue({
+    architectureMax: null,
+    modelfileNumCtx: null,
+    allocatedContext: null,
+    ...limits,
+  })
+}
+
 function setContextTokens(contextTokens: number) {
   useSettingsStore.setState((s) => ({
     settings: { ...s.settings, ai: { ...s.settings.ai, contextTokens, model: 'llama3.2' } },
@@ -27,27 +41,27 @@ beforeEach(() => {
 
 describe('AiContextWindowCheck', () => {
   it('asks the provider about the configured model', async () => {
-    mockedLimits.mockResolvedValue({ architectureMax: 32768, modelfileNumCtx: null })
+    reportsLimits({ architectureMax: 32768 })
     render(<AiContextWindowCheck />)
     await clickCheck()
     expect(mockedLimits).toHaveBeenCalledWith(expect.any(String), 'llama3.2')
   })
 
-  it("reports the model's ceiling, and calls a plausible value plausible — not verified", async () => {
-    // The honesty that matters: a server-side OLLAMA_CONTEXT_LENGTH is invisible from here, so
-    // passing this check is not proof and the copy must not pretend otherwise.
-    mockedLimits.mockResolvedValue({ architectureMax: 32768, modelfileNumCtx: null })
+  it("reports the model's ceiling, and calls an unloaded model's value plausible — not verified", async () => {
+    // The honesty that matters: without the model loaded, the window the server would allocate is
+    // invisible, so /api/show passing is not proof and the copy must not pretend otherwise.
+    reportsLimits({ architectureMax: 32768 })
     render(<AiContextWindowCheck />)
     await clickCheck()
 
     const result = await screen.findByTestId('ai-context-check-result')
     expect(result).toHaveTextContent('The model supports up to 32768 tokens.')
-    expect(result).toHaveTextContent('not proof')
+    expect(result).toHaveTextContent('plausible, but unconfirmed')
   })
 
   it('calls out a declared window above what the model supports', async () => {
     setContextTokens(131072)
-    mockedLimits.mockResolvedValue({ architectureMax: 8192, modelfileNumCtx: null })
+    reportsLimits({ architectureMax: 8192 })
     render(<AiContextWindowCheck />)
     await clickCheck()
 
@@ -59,7 +73,7 @@ describe('AiContextWindowCheck', () => {
   it("mentions a Modelfile's pinned num_ctx without treating it as the verdict", async () => {
     // The running server may override it, so it is reported, not enforced.
     setContextTokens(8192)
-    mockedLimits.mockResolvedValue({ architectureMax: 32768, modelfileNumCtx: 4096 })
+    reportsLimits({ architectureMax: 32768, modelfileNumCtx: 4096 })
     render(<AiContextWindowCheck />)
     await clickCheck()
 
@@ -68,8 +82,53 @@ describe('AiContextWindowCheck', () => {
     expect(result.className).not.toContain('text-tone-danger')
   })
 
+  it('flags a declared window the loaded model is not actually being served', async () => {
+    // The failure the setting exists to prevent, and the one nothing could detect before /api/ps:
+    // the model supports 128k, the user declared 32k, the server allocated 4k.
+    setContextTokens(32768)
+    reportsLimits({ architectureMax: 131072, allocatedContext: 4096 })
+    render(<AiContextWindowCheck />)
+    await clickCheck()
+
+    const result = await screen.findByTestId('ai-context-check-result')
+    expect(result).toHaveTextContent('The server currently serves it with a 4096-token window.')
+    expect(result).toHaveTextContent('Lower it to 4096')
+    expect(result.className).toContain('text-tone-danger')
+  })
+
+  it('points out a window the server would serve more of, without alarming', async () => {
+    setContextTokens(4096)
+    reportsLimits({ architectureMax: 131072, allocatedContext: 40960 })
+    render(<AiContextWindowCheck />)
+    await clickCheck()
+
+    const result = await screen.findByTestId('ai-context-check-result')
+    expect(result).toHaveTextContent('Raise it to 40960')
+    expect(result.className).not.toContain('text-tone-danger')
+  })
+
+  it('calls a matching value verified rather than merely plausible', async () => {
+    setContextTokens(40960)
+    reportsLimits({ architectureMax: 131072, allocatedContext: 40960 })
+    render(<AiContextWindowCheck />)
+    await clickCheck()
+
+    const result = await screen.findByTestId('ai-context-check-result')
+    expect(result).toHaveTextContent('verified against what the server actually allocates')
+  })
+
+  it('answers from /api/ps alone when /api/show reported nothing', async () => {
+    setContextTokens(40960)
+    reportsLimits({ allocatedContext: 40960 })
+    render(<AiContextWindowCheck />)
+    await clickCheck()
+    expect(await screen.findByTestId('ai-context-check-result')).toHaveTextContent(
+      'verified against what the server actually allocates'
+    )
+  })
+
   it('says so plainly when the provider reports nothing', async () => {
-    mockedLimits.mockResolvedValue({ architectureMax: null, modelfileNumCtx: null })
+    reportsLimits({})
     render(<AiContextWindowCheck />)
     await clickCheck()
     expect(await screen.findByTestId('ai-context-check-result')).toHaveTextContent(

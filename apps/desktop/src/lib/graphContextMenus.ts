@@ -48,6 +48,13 @@ export interface GraphCommitMenuContext {
    * someone who has never opened the AI settings.
    */
   aiEnabled: boolean
+  /** Short SHA of the right-clicked commit — named in the "recompose children" entry. */
+  primaryShortOid: string
+  /** How many commits descend from the clicked one on the current branch. Zero on a tip commit,
+   * which is what hides the "children" entry rather than offering to rewrite nothing. */
+  descendantCount: number
+  /** True when HEAD's branch is in the repo's protected list — history rewriting is refused. */
+  isOnProtectedBranch: boolean
 }
 
 // ── Actions ──────────────────────────────────────────────────────────────────
@@ -70,6 +77,10 @@ export interface CommitMenuActions extends CommitCopyActions {
   onCreateAnnotatedTag: () => void
   /** Opens the AI explanation of the clicked commit's own diff (vs its first parent). */
   onExplainCommit: () => void
+  /** Rewrites the clicked commit's message with the model; `includeChildren` extends that to every
+   * commit descending from it on the current branch. Both open the same review dialog — nothing is
+   * written until the user confirms. */
+  onRecomposeCommit: (includeChildren: boolean) => void
   // ── Multi-selection only ──
   /** Cherry-pick every selected commit (oldest→newest). */
   onCherryPickSelection: () => void
@@ -696,6 +707,49 @@ function commitExplanationSection(
   ]
 }
 
+/**
+ * Rewriting commit messages with the model. Sits apart from {@link commitExplanationSection} despite
+ * being commit-scoped and AI-driven, because it answers a different kind of question: the
+ * explanations are read-only, and this one **rewrites history**.
+ *
+ * The "children" entry names its own count, which is what stops it reading as a vaguer version of
+ * the single one — `descendantCount` is how many commits would be rewritten beyond the clicked one.
+ * It is hidden rather than disabled when there are none: an entry offering to rewrite zero commits
+ * is noise on every tip commit in the graph.
+ *
+ * Both are disabled on a detached HEAD (there is no branch to move) and on a protected branch, so
+ * the menu says no before the dialog has to.
+ */
+function commitRecomposeSection(
+  ctx: GraphCommitMenuContext,
+  actions: CommitMenuActions,
+  t: TranslateFn
+): MenuSpecEntry[] {
+  const allowed = ctx.isSingle && ctx.aiEnabled && !ctx.isDetached && !ctx.isOnProtectedBranch
+  const entries: MenuSpecEntry[] = [
+    menuItem({
+      text: t('gitTree.contextMenu.recomposeOne'),
+      enabled: allowed,
+      action: () => actions.onRecomposeCommit(false),
+    }),
+  ]
+
+  if (ctx.descendantCount > 0) {
+    entries.push(
+      menuItem({
+        text: t('gitTree.contextMenu.recomposeMany', {
+          count: ctx.descendantCount,
+          sha: ctx.primaryShortOid,
+        }),
+        enabled: allowed,
+        action: () => actions.onRecomposeCommit(true),
+      })
+    )
+  }
+
+  return entries
+}
+
 function tagCreationSection(
   ctx: GraphCommitMenuContext,
   actions: CommitMenuActions,
@@ -752,6 +806,9 @@ function buildFlatSingleBranchMenuSpec(
     ...commitExplanationSection(ctx, actions, t),
     ...prAndExplainSection(b, branchActions, t),
     menuSeparator(),
+    // Separated from the explanations above: same model, but this one rewrites history.
+    ...commitRecomposeSection(ctx, actions, t),
+    menuSeparator(),
     ...destructiveSection(b, branchActions, t),
     menuSeparator(),
     ...copySection(b, branchActions, actions, t),
@@ -802,6 +859,8 @@ export function buildCommitMenuSpec(
     ...commitCoreSection(ctx, actions, t),
     menuSeparator(),
     ...commitExplanationSection(ctx, actions, t),
+    menuSeparator(),
+    ...commitRecomposeSection(ctx, actions, t),
     menuSeparator(),
     ...(branchSubmenus.length > 0
       ? branchSubmenus

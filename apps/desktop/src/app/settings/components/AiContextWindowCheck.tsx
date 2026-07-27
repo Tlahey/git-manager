@@ -3,15 +3,31 @@ import { useTranslation } from '@git-manager/i18n'
 import { DEFAULT_CONTEXT_TOKENS } from '@git-manager/ai'
 import { Button } from '@git-manager/ui'
 import { apiGetModelContextLimits } from '../../../api/ai.api'
+import type { ModelContextLimits } from '../../../lib/tauri'
 import { useSettingsStore } from '../../../stores/settings.store'
+import {
+  contextWindowVerdict,
+  isHarmfulVerdict,
+  type ContextWindowVerdict,
+} from './aiContextWindowVerdict'
 
 type CheckState =
   | { kind: 'idle' }
   | { kind: 'checking' }
   /** The provider had nothing to say — not an error, just no answer (see `ai_model_info.rs`). */
   | { kind: 'unknown' }
-  | { kind: 'answered'; architectureMax: number | null; modelfileNumCtx: number | null }
+  | { kind: 'answered'; limits: ModelContextLimits }
   | { kind: 'failed'; message: string }
+
+/** The sentence that states the verdict. Split out so the component renders a lookup rather than a
+ * chain of ternaries, and so adding a verdict cannot silently render nothing. */
+const VERDICT_KEYS: Record<ContextWindowVerdict, string> = {
+  'above-ceiling': 'settings.ai.contextCheckTooHigh',
+  'above-allocated': 'settings.ai.contextCheckAboveAllocated',
+  'below-allocated': 'settings.ai.contextCheckBelowAllocated',
+  'matches-allocated': 'settings.ai.contextCheckMatchesAllocated',
+  plausible: 'settings.ai.contextCheckPlausible',
+}
 
 /**
  * Checks the declared context window against what the provider actually reports.
@@ -25,10 +41,12 @@ type CheckState =
  * that may not be running, on a page the user opens for many other reasons, and a Settings field
  * that fires HTTP on every keystroke is its own bug.
  *
- * The copy never claims more than it knows. `/api/show` reports the model's architectural ceiling
- * and any `num_ctx` its Modelfile pins; it cannot see a window set through `OLLAMA_CONTEXT_LENGTH`,
- * which is server-side. So a value that passes is *plausible*, never *verified* — and only a value
- * above the architectural ceiling is called out as wrong, because that one cannot be right.
+ * The copy never claims more than it knows, and what it can know changed. `/api/show` reports the
+ * model's architectural ceiling and any `num_ctx` its Modelfile pins — neither of which sees a
+ * server-side `OLLAMA_CONTEXT_LENGTH`. `/api/ps` does: while a model is loaded it reports the window
+ * the server *allocated* for it, which is the number prompts are really measured against. So a
+ * declared value can now be genuinely verified — but only while the model is loaded, and everything
+ * else is still called plausible rather than proven. See {@link contextWindowVerdict}.
  */
 export function AiContextWindowCheck() {
   const { t } = useTranslation('settings')
@@ -41,22 +59,17 @@ export function AiContextWindowCheck() {
     setState({ kind: 'checking' })
     try {
       const limits = await apiGetModelContextLimits(ai.url, ai.model)
-      setState(
-        limits.architectureMax === null && limits.modelfileNumCtx === null
-          ? { kind: 'unknown' }
-          : { kind: 'answered', ...limits }
-      )
+      const answered =
+        limits.architectureMax !== null ||
+        limits.modelfileNumCtx !== null ||
+        limits.allocatedContext !== null
+      setState(answered ? { kind: 'answered', limits } : { kind: 'unknown' })
     } catch (err) {
       setState({ kind: 'failed', message: String(err) })
     }
   }
 
-  // Only the architectural ceiling can prove the setting wrong. A Modelfile `num_ctx` below it is
-  // reported but not treated as a verdict: the running server may well override it.
-  const exceedsCeiling =
-    state.kind === 'answered' &&
-    state.architectureMax !== null &&
-    declared > state.architectureMax
+  const verdict = state.kind === 'answered' ? contextWindowVerdict(declared, state.limits) : null
 
   return (
     <div className="space-y-1">
@@ -85,18 +98,30 @@ export function AiContextWindowCheck() {
         </p>
       )}
 
-      {state.kind === 'answered' && (
+      {state.kind === 'answered' && verdict !== null && (
         <p
-          className={`text-[10px] ${exceedsCeiling ? 'text-tone-danger' : 'text-muted-foreground'}`}
+          className={`text-[10px] ${
+            isHarmfulVerdict(verdict) ? 'text-tone-danger' : 'text-muted-foreground'
+          }`}
           data-testid="ai-context-check-result"
         >
-          {state.architectureMax !== null &&
-            t('settings.ai.contextCheckMax', { max: state.architectureMax })}{' '}
-          {state.modelfileNumCtx !== null &&
-            t('settings.ai.contextCheckModelfile', { numCtx: state.modelfileNumCtx })}{' '}
-          {exceedsCeiling
-            ? t('settings.ai.contextCheckTooHigh', { declared })
-            : t('settings.ai.contextCheckPlausible')}
+          {/* The facts that were reported, then the verdict. Assembled and joined rather than
+              interleaved with {' '}, because three optional sentences that way leave a stray space
+              for every one the provider did not answer. */}
+          {[
+            state.limits.architectureMax !== null &&
+              t('settings.ai.contextCheckMax', { max: state.limits.architectureMax }),
+            state.limits.modelfileNumCtx !== null &&
+              t('settings.ai.contextCheckModelfile', { numCtx: state.limits.modelfileNumCtx }),
+            state.limits.allocatedContext !== null &&
+              t('settings.ai.contextCheckAllocated', { allocated: state.limits.allocatedContext }),
+            t(VERDICT_KEYS[verdict], {
+              declared,
+              allocated: state.limits.allocatedContext ?? 0,
+            }),
+          ]
+            .filter((sentence): sentence is string => typeof sentence === 'string')
+            .join(' ')}
         </p>
       )}
     </div>

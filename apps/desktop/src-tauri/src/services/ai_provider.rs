@@ -13,9 +13,9 @@ use tauri::{AppHandle, Emitter};
 ///
 /// Note what's *not* here: no system prompt, no prompt-building toggles. The provider is a dumb
 /// transport — it receives a fully built `system_prompt`/`user_prompt` pair from the caller (the
-/// TS `@git-manager/ai` package owns instructions and prompt construction). `temperature` is the
-/// only "what to ask" knob it sees, and even that is chosen per-feature by the package, not by the
-/// app's Settings.
+/// TS `@git-manager/ai` package owns instructions and prompt construction). `temperature` and
+/// `max_tokens` are the only "what to ask" knobs it sees, and both are chosen by the package, not by
+/// the app's Settings.
 #[derive(Debug, Clone)]
 pub struct GenerateConfig {
     pub url: String,
@@ -23,6 +23,14 @@ pub struct GenerateConfig {
     pub api_key: Option<String>,
     pub temperature: f32,
     pub timeout_seconds: u64,
+    /// Cap on the model's answer, in tokens — `None` sends none and lets the provider decide.
+    ///
+    /// This is the transport's half of context sizing, and the only half the wire protocol supports.
+    /// A context *window* cannot be sent at all over the OpenAI-compatible surface every preset
+    /// speaks (no `num_ctx`, no `options`), so the app declares it in Settings; what it *can* send is
+    /// the output cap, which is what keeps a long answer from overflowing the window the caller
+    /// already sized its prompt against.
+    pub max_tokens: Option<u32>,
 }
 
 /// Payload of every `ai:*` streaming event.

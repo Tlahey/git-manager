@@ -37,6 +37,15 @@ export type GraphCommitAction =
   | { kind: 'tag'; annotated: boolean }
   | { kind: 'compare' }
   | { kind: 'fixup' }
+  /**
+   * Rewrite commit messages with the model, reviewed before anything is applied.
+   *
+   * `includeChildren` is the difference between the two menu entries: `false` rewords the clicked
+   * commit alone, `true` also rewords every commit that descends from it on the current branch. It
+   * is part of the action rather than a dialog toggle because the two are separate menu entries with
+   * separate counts, and a user who picked one should not have to re-pick it inside the dialog.
+   */
+  | { kind: 'recompose'; includeChildren: boolean }
 
 /**
  * What the right panel's AI output is about. A branch carries the base it is compared against; a

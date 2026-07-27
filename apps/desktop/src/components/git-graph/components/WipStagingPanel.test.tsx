@@ -4,8 +4,6 @@ import userEvent from '@testing-library/user-event'
 import type { GitStatus } from '@git-manager/git-types'
 import type { ProcessedFileItem } from './CommitFileList'
 
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
-
 const { useWipCommitPanel } = vi.hoisted(() => ({ useWipCommitPanel: vi.fn() }))
 vi.mock('../../../hooks/useWipCommitPanel', () => ({ useWipCommitPanel }))
 
@@ -45,6 +43,10 @@ function panelState(overrides: Partial<ReturnType<typeof useWipCommitPanel>> = {
     batchGenerating: {},
     generateMessageForBatch: vi.fn(),
     commitBatch: vi.fn(),
+    generateAllBatchMessages: vi.fn(),
+    commitAllBatches: vi.fn(),
+    isGeneratingAllBatches: false,
+    isCommittingAllBatches: false,
     commitMessage: '',
     setCommitMessage: vi.fn(),
     isCommitting: false,
@@ -52,9 +54,7 @@ function panelState(overrides: Partial<ReturnType<typeof useWipCommitPanel>> = {
     handleGenerateCommitMessage: vi.fn(),
     isGenerating: false,
     commitValidation: null,
-    history: [],
-    historyOpen: false,
-    setHistoryOpen: vi.fn(),
+    commitCoverage: null,
     ...overrides,
   }
 }
@@ -82,11 +82,11 @@ function renderPanel(props: Partial<React.ComponentProps<typeof WipStagingPanel>
 describe('WipStagingPanel — mode toggle', () => {
   it('shows the batch-commit label and switches to the "back" label in batch mode', () => {
     const { rerender } = renderPanel()
-    expect(screen.getByText('commitDetails.batchCommit.title')).toBeInTheDocument()
+    expect(screen.getByText('Smart Batch Commits')).toBeInTheDocument()
 
     useWipCommitPanel.mockReturnValue(panelState({ batchMode: true }))
     rerender(<WipStagingPanel repoPath="/repo" gitStatus={gitStatus()} allWipChanges={[]} />)
-    expect(screen.getByText('← Retour au commit global')).toBeInTheDocument()
+    expect(screen.getByText('← Back to a single commit')).toBeInTheDocument()
   })
 
   it('toggles batch mode when clicked', async () => {
@@ -94,7 +94,7 @@ describe('WipStagingPanel — mode toggle', () => {
     useWipCommitPanel.mockReturnValue(panelState({ setBatchMode }))
     const user = userEvent.setup()
     renderPanel()
-    await user.click(screen.getByText('commitDetails.batchCommit.title'))
+    await user.click(screen.getByText('Smart Batch Commits'))
     expect(setBatchMode).toHaveBeenCalledOnce()
   })
 })
@@ -138,18 +138,18 @@ describe('WipStagingPanel — classic commit form', () => {
       panelState({ commitMessage: 'my message', isGenerating: true })
     )
     renderPanel()
-    expect(screen.getByPlaceholderText('commit.placeholder')).toHaveValue('my message')
-    expect(screen.getByPlaceholderText('commit.placeholder')).toBeDisabled()
+    expect(screen.getByPlaceholderText('Commit message...')).toHaveValue('my message')
+    expect(screen.getByPlaceholderText('Commit message...')).toBeDisabled()
   })
 
   it('disables the generate button when there are no staged files and it is not already generating', () => {
     renderPanel({ gitStatus: gitStatus({ staged: [] }) })
-    expect(screen.getByText('commit.generate').closest('button')).toBeDisabled()
+    expect(screen.getByText('Generate message (LLM)').closest('button')).toBeDisabled()
   })
 
   it('enables the generate button once files are staged', () => {
     renderPanel({ gitStatus: gitStatus({ staged: [{ path: 'a', status: 'modified' }] }) })
-    expect(screen.getByText('commit.generate').closest('button')).toBeEnabled()
+    expect(screen.getByText('Generate message (LLM)').closest('button')).toBeEnabled()
   })
 
   it('shows a stop control while generating, and calls the handler either way', async () => {
@@ -159,47 +159,17 @@ describe('WipStagingPanel — classic commit form', () => {
     )
     const user = userEvent.setup()
     renderPanel()
-    expect(screen.getByText('commit.stop')).toBeInTheDocument()
-    await user.click(screen.getByText('commit.stop'))
+    expect(screen.getByText('Stop')).toBeInTheDocument()
+    await user.click(screen.getByText('Stop'))
     expect(handleGenerateCommitMessage).toHaveBeenCalledOnce()
   })
 
-  it('toggles the history dropdown', async () => {
-    const setHistoryOpen = vi.fn()
-    useWipCommitPanel.mockReturnValue(panelState({ setHistoryOpen }))
-    const user = userEvent.setup()
-    renderPanel()
-    await user.click(screen.getByTitle('commit.history'))
-    expect(setHistoryOpen).toHaveBeenCalledOnce()
-  })
 
-  it('shows an empty message when history is open with no entries', () => {
-    useWipCommitPanel.mockReturnValue(panelState({ historyOpen: true, history: [] }))
-    renderPanel()
-    expect(screen.getByText('commit.historyEmpty')).toBeInTheDocument()
-  })
 
-  it('lists history entries and selects one into the commit message', async () => {
-    const setCommitMessage = vi.fn()
-    const setHistoryOpen = vi.fn()
-    useWipCommitPanel.mockReturnValue(
-      panelState({
-        historyOpen: true,
-        history: ['fix: old bug', 'feat: thing'],
-        setCommitMessage,
-        setHistoryOpen,
-      })
-    )
-    const user = userEvent.setup()
-    renderPanel()
-    await user.click(screen.getByText('fix: old bug'))
-    expect(setCommitMessage).toHaveBeenCalledWith('fix: old bug')
-    expect(setHistoryOpen).toHaveBeenCalledWith(false)
-  })
 
   it('disables commit when nothing is staged, the message is blank, or a commit is in progress', () => {
     const { rerender } = renderPanel({ gitStatus: gitStatus({ staged: [] }) })
-    expect(screen.getByText('commit.commit').closest('button')).toBeDisabled()
+    expect(screen.getByTestId('commit-button')).toBeDisabled()
 
     useWipCommitPanel.mockReturnValue(panelState({ commitMessage: '   ' }))
     rerender(
@@ -209,7 +179,7 @@ describe('WipStagingPanel — classic commit form', () => {
         allWipChanges={[]}
       />
     )
-    expect(screen.getByText('commit.commit').closest('button')).toBeDisabled()
+    expect(screen.getByTestId('commit-button')).toBeDisabled()
 
     useWipCommitPanel.mockReturnValue(panelState({ commitMessage: 'ok', isCommitting: true }))
     rerender(
@@ -219,7 +189,7 @@ describe('WipStagingPanel — classic commit form', () => {
         allWipChanges={[]}
       />
     )
-    expect(screen.getByText('commit.commit').closest('button')).toBeDisabled()
+    expect(screen.getByTestId('commit-button')).toBeDisabled()
   })
 
   it('commits when enabled', async () => {
@@ -227,7 +197,7 @@ describe('WipStagingPanel — classic commit form', () => {
     useWipCommitPanel.mockReturnValue(panelState({ commitMessage: 'ok', handleCommitWip }))
     const user = userEvent.setup()
     renderPanel({ gitStatus: gitStatus({ staged: [{ path: 'a', status: 'modified' }] }) })
-    await user.click(screen.getByText('commit.commit'))
+    await user.click(screen.getByTestId('commit-button'))
     expect(handleCommitWip).toHaveBeenCalledOnce()
   })
 })
@@ -244,9 +214,8 @@ describe('WipStagingPanel — AI gating', () => {
     renderPanel()
     expect(screen.queryByTestId('commit-generate-button')).not.toBeInTheDocument()
     expect(screen.queryByTestId('ai-batch-generate-button')).not.toBeInTheDocument()
-    // Non-AI controls remain.
+    // The commit button remains, and now takes the full width on its own.
     expect(screen.getByTestId('commit-button')).toBeInTheDocument()
-    expect(screen.getByTestId('commit-history-button')).toBeInTheDocument()
   })
 })
 
@@ -265,7 +234,7 @@ describe('WipStagingPanel — batch mode', () => {
   it('renders a group with its file count and file rows (with directory split)', () => {
     renderPanel()
     expect(screen.getByText('/auth')).toBeInTheDocument()
-    expect(screen.getByText('2 file(s)')).toBeInTheDocument()
+    expect(screen.getByText('2 files')).toBeInTheDocument()
     expect(screen.getByText('src/auth/')).toBeInTheDocument()
     expect(screen.getByText('login.ts')).toBeInTheDocument()
     expect(screen.getByText('readme.md')).toBeInTheDocument()
@@ -273,7 +242,7 @@ describe('WipStagingPanel — batch mode', () => {
 
   it('binds the per-group message textarea', () => {
     renderPanel()
-    expect(screen.getByPlaceholderText('commitDetails.batchCommit.placeholder')).toHaveValue(
+    expect(screen.getByPlaceholderText('Message for this batch...')).toHaveValue(
       'auth message'
     )
   })
@@ -290,7 +259,7 @@ describe('WipStagingPanel — batch mode', () => {
     )
     const user = userEvent.setup()
     renderPanel()
-    await user.click(screen.getByText('commit.generate'))
+    await user.click(screen.getByText('Generate message (LLM)'))
     expect(generateMessageForBatch).toHaveBeenCalledWith('auth', [file()])
   })
 
@@ -304,8 +273,8 @@ describe('WipStagingPanel — batch mode', () => {
       })
     )
     renderPanel()
-    expect(screen.getByText('commitDetails.batchCommit.generating')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('commitDetails.batchCommit.placeholder')).toBeDisabled()
+    expect(screen.getByText('Generating...')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Message for this batch...')).toBeDisabled()
   })
 
   it('disables the commit-batch button until a message is entered', () => {
@@ -314,7 +283,7 @@ describe('WipStagingPanel — batch mode', () => {
     )
     const { rerender } = renderPanel()
     expect(
-      screen.getByText('commitDetails.batchCommit.commitBatch').closest('button')
+      screen.getByText('Commit this batch').closest('button')
     ).toBeDisabled()
 
     useWipCommitPanel.mockReturnValue(
@@ -326,7 +295,7 @@ describe('WipStagingPanel — batch mode', () => {
     )
     rerender(<WipStagingPanel repoPath="/repo" gitStatus={gitStatus()} allWipChanges={[]} />)
     expect(
-      screen.getByText('commitDetails.batchCommit.commitBatch').closest('button')
+      screen.getByText('Commit this batch').closest('button')
     ).toBeEnabled()
   })
 
@@ -343,7 +312,154 @@ describe('WipStagingPanel — batch mode', () => {
     )
     const user = userEvent.setup()
     renderPanel()
-    await user.click(screen.getByText('commitDetails.batchCommit.commitBatch'))
+    await user.click(screen.getByText('Commit this batch'))
     expect(commitBatch).toHaveBeenCalledWith('auth', files)
+  })
+})
+
+describe('WipStagingPanel — commit message coverage', () => {
+  const partial = {
+    filesRead: 6,
+    filesTotal: 40,
+    complete: false,
+    requiredContextTokens: 32768,
+    windowTooSmall: false,
+  }
+
+  it('says what the message was written from, before it gets committed', () => {
+    // The reason this one is worth showing at all: unlike every other coverage line, the text beside
+    // it is about to be written into history under the user's name.
+    useWipCommitPanel.mockReturnValue(
+      panelState({ commitMessage: 'feat(ui): add a thing', commitCoverage: partial })
+    )
+    renderPanel()
+    expect(screen.getByTestId('commit-message-coverage')).toHaveTextContent(
+      'Read 6 of 40 changed files in full'
+    )
+  })
+
+  it('stays silent when the whole staged change was read', () => {
+    useWipCommitPanel.mockReturnValue(
+      panelState({
+        commitMessage: 'feat(ui): add a thing',
+        commitCoverage: { ...partial, filesRead: 40, complete: true },
+      })
+    )
+    renderPanel()
+    expect(screen.queryByTestId('commit-message-coverage')).not.toBeInTheDocument()
+  })
+
+  it('warns separately when the window has no room for a diff at all', () => {
+    useWipCommitPanel.mockReturnValue(
+      panelState({
+        commitMessage: 'feat(ui): add a thing',
+        commitCoverage: { ...partial, filesRead: 0, windowTooSmall: true },
+      })
+    )
+    renderPanel()
+    expect(screen.getByTestId('commit-message-window-too-small')).toBeInTheDocument()
+  })
+
+  it('describes nothing when the message box is empty', () => {
+    // Batch-mode generation leaves this box untouched, so its coverage must not caption it.
+    useWipCommitPanel.mockReturnValue(panelState({ commitMessage: '', commitCoverage: partial }))
+    renderPanel()
+    expect(screen.queryByTestId('commit-message-coverage')).not.toBeInTheDocument()
+  })
+
+  it('shows nothing before anything has been generated', () => {
+    useWipCommitPanel.mockReturnValue(
+      panelState({ commitMessage: 'hand-written message', commitCoverage: null })
+    )
+    renderPanel()
+    expect(screen.queryByTestId('commit-message-coverage')).not.toBeInTheDocument()
+  })
+})
+
+describe('WipStagingPanel — batch "all" actions', () => {
+  const twoGroups = {
+    batchMode: true,
+    wipBatches: { auth: [file({ path: 'src/auth/a.ts' })], ui: [file({ path: 'src/ui/b.ts' })] },
+  }
+
+  it('generates every group in one click', async () => {
+    const generateAllBatchMessages = vi.fn()
+    useWipCommitPanel.mockReturnValue(panelState({ ...twoGroups, generateAllBatchMessages }))
+    renderPanel()
+    await userEvent.setup().click(screen.getByTestId('batch-generate-all'))
+    expect(generateAllBatchMessages).toHaveBeenCalledOnce()
+  })
+
+  it('commits every group that has a message', async () => {
+    const commitAllBatches = vi.fn()
+    useWipCommitPanel.mockReturnValue(
+      panelState({ ...twoGroups, batchMessages: { auth: 'feat: a' }, commitAllBatches })
+    )
+    renderPanel()
+    await userEvent.setup().click(screen.getByTestId('batch-commit-all'))
+    expect(commitAllBatches).toHaveBeenCalledOnce()
+  })
+
+  it('cannot commit all while no group carries a message', () => {
+    useWipCommitPanel.mockReturnValue(panelState({ ...twoGroups, batchMessages: { auth: '  ' } }))
+    renderPanel()
+    expect(screen.getByTestId('batch-commit-all')).toBeDisabled()
+  })
+
+  it('locks every per-group action while a sequence is running', () => {
+    // Each group re-stages the index to isolate itself, so a per-group click mid-run would stage
+    // against the sequence's state.
+    useWipCommitPanel.mockReturnValue(
+      panelState({ ...twoGroups, batchMessages: { auth: 'feat: a' }, isGeneratingAllBatches: true })
+    )
+    renderPanel()
+    expect(screen.getByTestId('batch-commit-auth')).toBeDisabled()
+    expect(screen.getByTestId('batch-generate-all')).toBeDisabled()
+    expect(screen.getByTestId('batch-commit-all')).toBeDisabled()
+  })
+
+  it('does not put every group in a generating state during a sequence', () => {
+    // Only the group whose turn it is shows a spinner; the others stay editable-looking.
+    useWipCommitPanel.mockReturnValue(
+      panelState({ ...twoGroups, isGeneratingAllBatches: true, batchGenerating: { auth: true } })
+    )
+    renderPanel()
+    expect(screen.getAllByText('Generating...')).toHaveLength(1)
+  })
+
+  it('offers no "all" actions when there is nothing to group', () => {
+    useWipCommitPanel.mockReturnValue(panelState({ batchMode: true, wipBatches: {} }))
+    renderPanel()
+    expect(screen.queryByTestId('batch-generate-all')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('batch-commit-all')).not.toBeInTheDocument()
+  })
+
+  it('hides the AI-only "generate all" when AI is off, keeping "commit all"', () => {
+    setAiEnabled(false)
+    useWipCommitPanel.mockReturnValue(
+      panelState({ ...twoGroups, batchMessages: { auth: 'feat: a' } })
+    )
+    renderPanel()
+    expect(screen.queryByTestId('batch-generate-all')).not.toBeInTheDocument()
+    expect(screen.getByTestId('batch-commit-all')).toBeInTheDocument()
+  })
+})
+
+describe('WipStagingPanel — no message history dropdown', () => {
+  // Removed deliberately. It held only messages generated in the current session (a plain
+  // `useState`, never persisted), so it was empty at every app start. The reason it existed —
+  // giving the model examples of the project's style — is served by the prompt instead: the backend
+  // samples the repo's last 10 real commit subjects into every commit-message generation.
+  it('offers no history control beside the generate button', () => {
+    renderPanel()
+    expect(screen.queryByTestId('commit-history-button')).not.toBeInTheDocument()
+    expect(screen.queryByText('Recent messages')).not.toBeInTheDocument()
+  })
+
+  it('leaves the generate button whole rather than half of a split control', () => {
+    renderPanel()
+    const generate = screen.getByTestId('commit-generate-button')
+    expect(generate.className).not.toContain('rounded-r-none')
+    expect(generate.className).not.toContain('border-r-0')
   })
 })

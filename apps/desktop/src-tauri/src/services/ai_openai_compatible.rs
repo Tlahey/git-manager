@@ -24,6 +24,15 @@ struct ChatCompletionsRequest {
     messages: Vec<ChatMessage>,
     temperature: f32,
     stream: bool,
+    /// Cap on the answer. Omitted entirely when unset, rather than sent as null: a server that
+    /// rejects unknown nulls is a worse failure than letting it apply its own default.
+    ///
+    /// Note what its presence does *not* imply — this endpoint has no way to send a context
+    /// *length*. Ollama's own compatibility docs state it outright, and its supported-field list
+    /// carries neither `num_ctx` nor an `options` object. So the window stays declared in Settings,
+    /// and `max_tokens` is the one piece of that arithmetic the protocol will actually accept.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    max_tokens: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     response_format: Option<ResponseFormat>,
 }
@@ -234,6 +243,7 @@ impl AiProvider for OpenAiCompatibleProvider {
             messages: messages(system_prompt, user_prompt),
             temperature: config.temperature,
             stream: true,
+            max_tokens: config.max_tokens,
             response_format: None,
         };
 
@@ -308,6 +318,7 @@ impl AiProvider for OpenAiCompatibleProvider {
             messages: messages(system_prompt, user_prompt),
             temperature: config.temperature,
             stream: false,
+            max_tokens: config.max_tokens,
             response_format: schema.map(|s| ResponseFormat {
                 format_type: "json_schema",
                 json_schema: s.clone(),

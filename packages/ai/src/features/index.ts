@@ -13,9 +13,18 @@ export {
   FILE_GROUPING_SCHEMA,
   buildGroupingUserPrompt,
   assessFileGroupingCoverage,
+  groupingOutputTokens,
   parseCommitPlan,
 } from './fileGrouping'
 export type { ProposedCommit, FileGroupingInput } from './fileGrouping'
+export {
+  commitRecomposeFeature,
+  COMMIT_RECOMPOSE_INSTRUCTION,
+  buildCommitRecomposePrompt,
+  assessCommitRecomposeCoverage,
+  parseRecomposedMessage,
+} from './commitRecompose'
+export type { CommitRecomposeInput, CommitRecomposeSubject } from './commitRecompose'
 export {
   dailySummaryFeature,
   DAILY_SUMMARY_INSTRUCTION,
@@ -73,7 +82,7 @@ export {
 export type { CodeReviewInput, CodeReviewScope, CodeReviewCoverage } from './codeReview'
 export { languageName } from './language'
 export { budgetDiff, splitDiffByFile, classifyDiffPath } from './diffBudget'
-export type { BudgetedDiff, DiffFileSection, DiffFileTier } from './diffBudget'
+export type { BudgetedDiff, DiffFileSection, DiffFileTier, DiffTierOverrides } from './diffBudget'
 export {
   assessDiffCoverage,
   cappedList,

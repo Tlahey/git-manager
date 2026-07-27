@@ -218,6 +218,11 @@ export function useSidebarBranchMenu(repoPath: string) {
           isDetached,
           currentBranchRef: null,
           aiEnabled,
+          // The sidebar menu is branch-scoped and never renders the commit-recompose section, so
+          // these carry the inert values that disable it rather than a computed descendant count.
+          primaryShortOid: '',
+          descendantCount: 0,
+          isOnProtectedBranch: false,
         },
         branchActions,
         copyActions,

@@ -4,16 +4,18 @@ import { mutate } from 'swr'
 import type { GitStatus, GitStatusEntry, GitGraphNode } from '@git-manager/git-types'
 import { apiUnstageAll, apiStageFile, apiUnstageFile, apiCreateCommit, apiStashPush } from '../api/git.api'
 import { useAiGeneration } from './useAiGeneration'
-import { useCommitMessageHistory } from './useCommitMessageHistory'
 import type { ProcessedFileItem } from '../components/git-graph/components/CommitFileList'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
 
+/** `useAiGeneration.generate` requires a completion callback; both call sites here accumulate their
+ * text from the token stream instead, so there is nothing left to do when it ends. */
+const noop = () => {}
+
 /**
- * Logique du panneau de commit WIP : mode classique (message unique), mode stash
- * et mode "batch commit" (regroupement par dossier racine, génération IA et commit
- * par groupe, avec restauration de l'état de staging original entre chaque
- * étape).
+ * Logic for the WIP commit panel: classic mode (a single message), stash mode, and "batch commit"
+ * mode (grouping by top-level directory, with AI generation and a commit per group, restoring the
+ * original staging state between each step).
  */
 export function useWipCommitPanel(
   repoPath: string,
@@ -32,18 +34,21 @@ export function useWipCommitPanel(
   const [includeUntracked, setIncludeUntracked] = useState(true)
   const [isStashing, setIsStashing] = useState(false)
 
-  const [historyOpen, setHistoryOpen] = useState(false)
   const [batchMode, setBatchMode] = useState(false)
   const [batchMessages, setBatchMessages] = useState<Record<string, string>>({})
   const [batchGenerating, setBatchGenerating] = useState<Record<string, boolean>>({})
+  // Separate from `batchGenerating`, which is per group: these drive the two "all" buttons, whose
+  // job is to stay disabled for the whole sequential run rather than for one group's turn.
+  const [isGeneratingAllBatches, setIsGeneratingAllBatches] = useState(false)
+  const [isCommittingAllBatches, setIsCommittingAllBatches] = useState(false)
 
   const {
     generate: runLlmGenerate,
     cancel: cancelLlmGenerate,
     status: llmStatus,
     validation: commitValidation,
+    coverage: commitCoverage,
   } = useAiGeneration(repoPath)
-  const { history, addMessage } = useCommitMessageHistory()
 
   const isGenerating = llmStatus === 'connecting' || llmStatus === 'streaming'
 
@@ -114,10 +119,7 @@ export function useWipCommitPanel(
             accumulated += token
             setBatchMessages((prev) => ({ ...prev, [groupName]: accumulated }))
           },
-          (full: string) => {
-            addMessage(full)
-            resolve()
-          }
+          () => resolve()
         ).catch(reject)
       })
 
@@ -140,6 +142,49 @@ export function useWipCommitPanel(
       setBatchMessages((prev) => ({ ...prev, [groupName]: `Error: ${String(err)}` }))
     } finally {
       setBatchGenerating((prev) => ({ ...prev, [groupName]: false }))
+    }
+  }
+
+  /**
+   * Generates a message for every group, one after another.
+   *
+   * Strictly sequential, and not for simplicity: each generation *re-stages the index* to isolate
+   * its group (see `generateMessageForBatch`), so two running at once would each be looking at the
+   * other's staging. It is also why a failure does not abort the rest — `generateMessageForBatch`
+   * swallows its own error into that group's message box, so one bad group leaves the others' work
+   * intact rather than discarding a run that may already have taken a minute.
+   */
+  async function generateAllBatchMessages() {
+    if (isGeneratingAllBatches) return
+    setIsGeneratingAllBatches(true)
+    try {
+      for (const [groupName, files] of Object.entries(wipBatches)) {
+        await generateMessageForBatch(groupName, files)
+      }
+    } finally {
+      setIsGeneratingAllBatches(false)
+    }
+  }
+
+  /**
+   * Commits every group that has a message, in order.
+   *
+   * Groups without one are skipped rather than blocking the run: a user who generated four messages
+   * and deleted one meant to leave that group uncommitted. Stops at the first *failure*, though —
+   * an error here means the index is in a state the next commit would build on wrongly.
+   */
+  async function commitAllBatches() {
+    if (isCommittingAllBatches) return
+    const ready = Object.entries(wipBatches).filter(([name]) => batchMessages[name]?.trim())
+    if (ready.length === 0) return
+
+    setIsCommittingAllBatches(true)
+    try {
+      for (const [groupName, files] of ready) {
+        await commitBatch(groupName, files)
+      }
+    } finally {
+      setIsCommittingAllBatches(false)
     }
   }
 
@@ -201,15 +246,12 @@ export function useWipCommitPanel(
 
     let accumulated = ''
     setCommitMessage('')
-    runLlmGenerate(
-      (token: string) => {
-        accumulated += token
-        setCommitMessage(accumulated)
-      },
-      (full: string) => {
-        addMessage(full)
-      }
-    )
+    // Nothing to do on completion: the message box already holds every token as it arrived, and
+    // validation is reported by the hook itself.
+    runLlmGenerate((token: string) => {
+      accumulated += token
+      setCommitMessage(accumulated)
+    }, noop)
   }
 
   async function handleCommitWip() {
@@ -263,6 +305,10 @@ export function useWipCommitPanel(
     batchGenerating,
     generateMessageForBatch,
     commitBatch,
+    generateAllBatchMessages,
+    commitAllBatches,
+    isGeneratingAllBatches,
+    isCommittingAllBatches,
     commitMessage,
     setCommitMessage,
     isCommitting,
@@ -270,8 +316,6 @@ export function useWipCommitPanel(
     handleGenerateCommitMessage,
     isGenerating,
     commitValidation,
-    history,
-    historyOpen,
-    setHistoryOpen,
+    commitCoverage,
   }
 }

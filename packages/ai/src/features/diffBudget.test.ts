@@ -37,6 +37,22 @@ describe('classifyDiffPath', () => {
     expect(classifyDiffPath('src/__tests__/__snapshots__/a.test.ts.snap')).toBe('generated')
     expect(classifyDiffPath('dist/bundle.js')).toBe('generated')
   })
+
+  it('lets a caller correct it for a path it gets wrong', () => {
+    // Both directions the heuristic cannot see from a name: a checked-in schema is the change, and
+    // a deliberately reviewed lockfile bump is not noise this time.
+    expect(classifyDiffPath('schema/user.json', { 'schema/user.json': 'source' })).toBe('source')
+    expect(classifyDiffPath('pnpm-lock.yaml', { 'pnpm-lock.yaml': 'source' })).toBe('source')
+    // And downwards, for a generated file the heuristic reads as ordinary code.
+    expect(classifyDiffPath('src/api.gen.ts', { 'src/api.gen.ts': 'generated' })).toBe('generated')
+  })
+
+  it('leaves every path the override does not name alone', () => {
+    const overrides = { 'pnpm-lock.yaml': 'source' } as const
+    expect(classifyDiffPath('src/a.ts', overrides)).toBe('source')
+    expect(classifyDiffPath('Cargo.lock', overrides)).toBe('generated')
+    expect(classifyDiffPath('docs/a.md', overrides)).toBe('doc')
+  })
 })
 
 describe('splitDiffByFile', () => {
@@ -198,5 +214,39 @@ describe('budgetDiff — fallback', () => {
 
   it('leaves an empty diff alone', () => {
     expect(budgetDiff('', 1000)).toEqual({ text: '', omitted: [], truncated: [] })
+  })
+})
+
+describe('budgetDiff — tier overrides', () => {
+  // The scenario limitation #3 named: a lockfile bump the user is deliberately reviewing, sitting
+  // behind a big source file on a budget that cannot serve both whole.
+  const diff = section('src/a.ts', 4000) + section('pnpm-lock.yaml', 500)
+
+  it('omits the lockfile under the heuristic, however deliberate the bump was', () => {
+    // The source file takes the budget, and what is left is too little to be worth spending — so
+    // the one file the user actually wanted read is the one named as unread.
+    expect(budgetDiff(diff, 4300).omitted).toEqual(['pnpm-lock.yaml'])
+  })
+
+  it('reads a promoted lockfile, cutting the source file instead', () => {
+    const promoted = budgetDiff(diff, 4300, { 'pnpm-lock.yaml': 'source' })
+    expect(promoted.omitted).toEqual([])
+    // Promoted into the same tier, smallest-first serves it whole and the large file absorbs the
+    // shortfall — which is exactly the trade the caller asked for.
+    expect(promoted.text).toContain('pnpm-lock.yaml')
+    expect(promoted.truncated).toEqual(['src/a.ts'])
+  })
+
+  it('can also push a file down, for generated code that reads as source', () => {
+    const generated = section('src/api.gen.ts', 3000) + section('src/real.ts', 3000)
+    const result = budgetDiff(generated, 3400, { 'src/api.gen.ts': 'generated' })
+    expect(result.omitted).toEqual(['src/api.gen.ts'])
+  })
+
+  it('changes only priority, never what a retained file contains', () => {
+    // The override reorders reading; it must not rewrite or re-cut the diff text itself.
+    const whole = budgetDiff(diff, 100_000)
+    const overridden = budgetDiff(diff, 100_000, { 'pnpm-lock.yaml': 'source' })
+    expect(overridden).toEqual(whole)
   })
 })
