@@ -143,8 +143,12 @@ describe('useGitGraphNodes — authorMatchingOids', () => {
 
   it('returns the OIDs whose author email is selected (case-insensitive)', () => {
     const nodes = [
-      node('a', { commit: { ...node('a').commit, author: { name: 'A', email: 'A@x.com', timestamp: NOW } } }),
-      node('b', { commit: { ...node('b').commit, author: { name: 'B', email: 'b@x.com', timestamp: NOW } } }),
+      node('a', {
+        commit: { ...node('a').commit, author: { name: 'A', email: 'A@x.com', timestamp: NOW } },
+      }),
+      node('b', {
+        commit: { ...node('b').commit, author: { name: 'B', email: 'b@x.com', timestamp: NOW } },
+      }),
     ]
     const { result } = renderHook(() =>
       useGitGraphNodes(nodes, undefined, 0, t, null, [], new Set(['a@x.com']))
@@ -251,7 +255,14 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     ]
     const { result } = renderHook(() =>
       useGitGraphNodes(nodes, undefined, 0, t, null, [
-        { path: '/wt/feature-x', branch: 'feature-x', totalChanges: 2, added: 0, modified: 0, deleted: 0 },
+        {
+          path: '/wt/feature-x',
+          branch: 'feature-x',
+          totalChanges: 2,
+          added: 0,
+          modified: 0,
+          deleted: 0,
+        },
       ])
     )
     const oids = result.current.filteredNodes.map((n) => n.commit.oid)
@@ -302,7 +313,12 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     expect(wtNode.column).toBe(2) // offset off the occupied anchor lane (1)
     expect(wtNode.connections).toContainEqual({ fromColumn: 0, toColumn: 0, color: '#2563eb' })
     expect(wtNode.connections).toContainEqual({ fromColumn: 1, toColumn: 1, color: '#222' })
-    expect(wtNode.connections).toContainEqual({ fromColumn: 2, toColumn: 2, color: '#7c3aed', dashed: true })
+    expect(wtNode.connections).toContainEqual({
+      fromColumn: 2,
+      toColumn: 2,
+      color: '#7c3aed',
+      dashed: true,
+    })
     expect(wtNode.connections).toHaveLength(3)
   })
 
@@ -343,7 +359,12 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     // the WIP offsets to column 1, and column 0 flows through as a plain mainline pass-through.
     expect(wtNode.column).toBe(1)
     expect(wtNode.connections).toContainEqual({ fromColumn: 0, toColumn: 0, color: '#16a34a' })
-    expect(wtNode.connections).toContainEqual({ fromColumn: 1, toColumn: 1, color: '#7c3aed', dashed: true })
+    expect(wtNode.connections).toContainEqual({
+      fromColumn: 1,
+      toColumn: 1,
+      color: '#7c3aed',
+      dashed: true,
+    })
     const col0 = wtNode.connections.filter((c) => c.fromColumn === 0 && c.toColumn === 0)
     expect(col0).toHaveLength(1)
   })
@@ -383,9 +404,9 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     })
     // The anchor's rising diagonal targets the same free lane.
     const anchor = result.current.renderNodes[2]
-    expect(
-      anchor.connections.some((c) => c.fromColumn === 3 && c.toColumn === 1 && c.dashed)
-    ).toBe(true)
+    expect(anchor.connections.some((c) => c.fromColumn === 3 && c.toColumn === 1 && c.dashed)).toBe(
+      true
+    )
   })
 
   it('supports several simultaneous worktree WIP rows on different branches, plus the primary WIP', () => {
@@ -408,7 +429,14 @@ describe('useGitGraphNodes — worktreeWipNodes (multiple simultaneous WIP rows)
     const nodes = [node('a')]
     const { result } = renderHook(() =>
       useGitGraphNodes(nodes, undefined, 0, t, null, [
-        { path: '/wt/gone', branch: 'deleted-branch', totalChanges: 3, added: 0, modified: 0, deleted: 0 },
+        {
+          path: '/wt/gone',
+          branch: 'deleted-branch',
+          totalChanges: 3,
+          added: 0,
+          modified: 0,
+          deleted: 0,
+        },
       ])
     )
     expect(result.current.filteredNodes.map((n) => n.commit.oid)).toEqual(['a'])
@@ -594,7 +622,7 @@ describe('useGitGraphNodes — several worktree WIP rows stacked on one shared a
   })
 })
 
-describe('useGitGraphNodes — worktree WIP on the graph\'s topmost commit (seeded lane)', () => {
+describe("useGitGraphNodes — worktree WIP on the graph's topmost commit (seeded lane)", () => {
   const WIP = '#7c3aed'
   const branchRef = (s: string, oid: string) => ({
     name: `refs/heads/${s}`,
@@ -669,7 +697,7 @@ describe('useGitGraphNodes — worktree WIP on the graph\'s topmost commit (seed
     expect(diagonal[0].dashed).toBeFalsy()
   })
 
-  it('turns the topmost row\'s reserved incoming lane into the dashed WIP connector', () => {
+  it("turns the topmost row's reserved incoming lane into the dashed WIP connector", () => {
     const { result } = renderScenario()
     const mainTip = result.current.renderNodes[1]
     const incoming = mainTip.connections.filter(
@@ -685,7 +713,7 @@ describe('useGitGraphNodes — worktree WIP on the graph\'s topmost commit (seed
     expect(departure?.color).toBe('#2563eb')
   })
 
-  it('stacks a second dirty worktree past the merge\'s second-parent lane', () => {
+  it("stacks a second dirty worktree past the merge's second-parent lane", () => {
     // Two branches on main's tip, both with a dirty worktree: the first WIP takes the tip's lane,
     // and the second must clear column 1 — the lane the merge departs into for its second parent —
     // or its connector rises out of that diagonal's corner, the very artifact this suite guards.
@@ -862,6 +890,63 @@ describe('useGitGraphNodes — renderNodes patching', () => {
     // …and history below the node is untouched.
     const belowCol0 = rn[4].connections.find((c) => c.fromColumn === 0 && c.toColumn === 0)
     expect(belowCol0?.dashed).toBeFalsy()
+  })
+
+  // Columns are assigned strictly top-to-bottom (see `build_graph_nodes` and
+  // docs/specs/graph-column-layout.md), so the mainline is NOT necessarily column 0: here the
+  // topmost row is a feature commit on column 0 and origin/main sits on column 1. The unpushed
+  // dashing must follow origin/main's own lane — dashing column 0 instead would dot an unrelated
+  // feature branch and leave the actual unpushed mainline solid.
+  it("dashes origin/main's own lane, not column 0, when the mainline isn't leftmost", () => {
+    const nodes = [
+      node('feature', {
+        column: 0,
+        connections: [
+          { fromColumn: 0, toColumn: 0, color: '#16a34a', startsAtNode: true },
+          { fromColumn: 1, toColumn: 1, color: '#2563eb' }, // unpushed mainline passing through
+        ],
+      }),
+      node('localMain', {
+        column: 1,
+        connections: [
+          { fromColumn: 0, toColumn: 0, color: '#16a34a' },
+          { fromColumn: 1, toColumn: 1, color: '#2563eb', endsAtNode: true },
+          { fromColumn: 1, toColumn: 1, color: '#2563eb', startsAtNode: true },
+        ],
+      }),
+      node('originMain', {
+        column: 1,
+        refs: [
+          {
+            name: 'refs/remotes/origin/main',
+            shortName: 'origin/main',
+            type: 'remote',
+            commitOid: 'originMain',
+          },
+        ],
+        connections: [
+          { fromColumn: 0, toColumn: 0, color: '#16a34a' },
+          { fromColumn: 1, toColumn: 1, color: '#2563eb', endsAtNode: true },
+          { fromColumn: 1, toColumn: 1, color: '#2563eb', startsAtNode: true },
+        ],
+      }),
+    ]
+    const { result } = renderHook(() => useGitGraphNodes(nodes, undefined, 0, t, null))
+    const rn = result.current.renderNodes
+
+    // The unpushed mainline (column 1) is dashed on every row above origin/main, and on the
+    // segment arriving at origin/main itself.
+    expect(rn[0].connections.find((c) => c.fromColumn === 1)?.dashed).toBe(true)
+    expect(rn[1].connections.find((c) => c.fromColumn === 1 && c.endsAtNode)?.dashed).toBe(true)
+    expect(rn[2].connections.find((c) => c.fromColumn === 1 && c.endsAtNode)?.dashed).toBe(true)
+    // origin/main's own departure leads into pushed history — solid.
+    expect(rn[2].connections.find((c) => c.fromColumn === 1 && c.startsAtNode)?.dashed).toBeFalsy()
+    // The feature lane on column 0 is left alone.
+    for (const n of rn) {
+      for (const c of n.connections.filter((c) => c.fromColumn === 0 && c.toColumn === 0)) {
+        expect(c.dashed).toBeFalsy()
+      }
+    }
   })
 
   it('marks connections up to and including originMainIndex as dashed', () => {
