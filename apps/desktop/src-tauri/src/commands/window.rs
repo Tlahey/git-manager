@@ -126,7 +126,21 @@ pub fn set_window_vibrancy(
             "clear" => clear_vibrancy(&window)
                 .map(|_| ())
                 .map_err(|e| e.to_string())
-                .inspect(|_| clear_webview_backdrop(&window)),
+                .inspect(|_| {
+                    clear_webview_backdrop(&window);
+                    // Assert the material really is gone. Without this, "the CSS mode
+                    // looks identical to the native one" has a trivial explanation —
+                    // the NSVisualEffectView never left — that is indistinguishable
+                    // from the interesting one, which is that WebKit's
+                    // backdrop-filter genuinely reaches past the webview.
+                    let remaining = count_effect_views(&window);
+                    if remaining != 0 {
+                        eprintln!(
+                            "[vibrancy] CSS mode: {remaining} effect view(s) still present \
+                             — the native material was NOT removed"
+                        );
+                    }
+                }),
             _ => clear_vibrancy(&window)
                 .map(|_| ())
                 .map_err(|e| e.to_string()),
