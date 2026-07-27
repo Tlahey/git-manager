@@ -171,7 +171,7 @@ ollama pull qwen2.5-coder:7b
 | [ROADMAP](./ROADMAP.md)                            | Feature status and remaining work                                  |
 | [AI system](./ai/README.md)                        | How every AI feature works — shared runtime + one page per feature |
 | [Architecture refactors](./architecture/README.md) | Refactor plans 13–17 and their execution records — all complete    |
-| [Specs](./specs/README.md)                         | Living specs for invariant-shaped behaviour (graph column layout)  |
+| [Specs](./specs/README.md)                         | Living specs for invariant-shaped behaviour (graph layout, fetch)  |
 | [Archived specs](./specs/archive/README.md)        | Original 2026-07-03 design docs — historical, do not trust as docs |
 
 > [!WARNING]

@@ -22,6 +22,7 @@ import { useNotificationWatcher } from './hooks/useNotificationWatcher'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useDevFixtureImport } from './hooks/useDevFixtureImport'
 import { useAiStatusCheck } from './hooks/useAiStatusCheck'
+import { useAutoFetch } from './hooks/useAutoFetch'
 import { Footer } from './components/footer/Footer'
 import { AiStatusBanner } from './components/layout/AiStatusBanner'
 
@@ -51,6 +52,7 @@ export default function App() {
   useDevFixtureImport()
   useAppReadySplash()
   useAiStatusCheck()
+  useAutoFetch()
 
   useKeyboardShortcuts({
     onOpenSettings: () => handleOpenSettings('general'),
