@@ -9,10 +9,19 @@ const DEFAULT_SETTINGS: AppSettings = {
     preset: 'ollama',
     url: 'http://localhost:11434',
     model: 'llama3.2',
-    timeoutSeconds: 30,
+    // Two minutes, not the 30s this used to be. For a streaming feature the budget is the longest
+    // *silence* tolerated, where 30s was ample; for a completion it caps the entire generation, and
+    // a local model reading a whole diff routinely needs more — a ten-commit history search lost six
+    // commits to exactly this, every one of them at the 30s mark. Raising it costs nothing when the
+    // provider is simply off: the connect timeout is separate and short.
+    timeoutSeconds: 120,
     // Ollama's own default. Pessimistic on purpose: a user who has configured a larger window can
     // say so, but one who has not must not have the app assume otherwise on their behalf.
     contextTokens: 4096,
+    // One call at a time, matching the default provider: Ollama serves one generation per model
+    // unless `OLLAMA_NUM_PARALLEL` says otherwise, so anything higher would only queue at the socket
+    // and cost cancellation latency. Users on a batching server raise it themselves.
+    concurrency: 1,
     enabled: true,
   },
   git: {

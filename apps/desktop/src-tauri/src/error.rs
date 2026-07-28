@@ -25,6 +25,14 @@ pub enum AppError {
     UnparseableConflict(String),
     #[error("AI provider error: {0}")]
     AiProvider(String),
+    /// The provider accepted the request and then took longer than the configured budget.
+    ///
+    /// Its own variant because it is the one provider failure the user can act on, and because
+    /// reqwest reports it as the thoroughly unhelpful "error decoding response body" when a *read*
+    /// timeout fires mid-body — indistinguishable, as a string, from a malformed response. Carries
+    /// the budget so the message can name the number to raise.
+    #[error("AI request timed out after {0}s")]
+    AiTimeout(u64),
     #[error("Invalid input: {0}")]
     InvalidInput(String),
     #[error("HTTP error: {0}")]
@@ -54,6 +62,7 @@ impl From<AppError> for String {
             AppError::ConflictNotFound(_) => ("CONFLICT_NOT_FOUND", e.to_string()),
             AppError::UnparseableConflict(_) => ("UNPARSEABLE_CONFLICT", e.to_string()),
             AppError::AiProvider(_) => ("AI_PROVIDER_ERROR", e.to_string()),
+            AppError::AiTimeout(_) => ("AI_TIMEOUT", e.to_string()),
             AppError::InvalidInput(_) => ("INVALID_INPUT", e.to_string()),
             AppError::Http(_) => ("HTTP_ERROR", e.to_string()),
             AppError::Unknown(_) => ("UNKNOWN", e.to_string()),

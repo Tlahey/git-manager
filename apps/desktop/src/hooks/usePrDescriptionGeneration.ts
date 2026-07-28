@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
-import { summarizeFiles, type SummaryProgress } from '@git-manager/ai'
+import { fileSummaryFeature, summarizeFiles, type SummaryProgress } from '@git-manager/ai'
 import { apiGetAiContext, fileSummaryService, summaryPrDescriptionService } from '../api/ai.api'
+import { trackAiProgress } from '../stores/aiActivity.store'
 import { useSettingsStore } from '../stores/settings.store'
 import { useAiStream, type AiStreamStatus } from './useAiStream'
 
@@ -55,7 +56,11 @@ export function usePrDescriptionGeneration(repoPath: string) {
             context,
             (summaryInput) => fileSummaryService.run(settings.ai, summaryInput),
             settings.ai.contextTokens,
-            { onProgress: setProgress, shouldCancel: () => cancelledRef.current }
+            {
+              onProgress: trackAiProgress(fileSummaryFeature.id, setProgress),
+              shouldCancel: () => cancelledRef.current,
+              concurrency: settings.ai.concurrency,
+            }
           )
           setProgress(null)
 

@@ -25,6 +25,53 @@ export interface AiConnectionConfig {
    * oversized one — see `promptSize.ts`. `undefined` falls back to {@link DEFAULT_CONTEXT_TOKENS}.
    */
   contextTokens?: number
+  /**
+   * Optional second model, used only by the features that declare `tier: 'fast'`.
+   *
+   * Exactly one kind of call qualifies today: the per-file summary, which seven features run once
+   * per changed file. It is the app's highest-volume call and its least demanding — describe one
+   * file in two short clauses — so on a thirty-file changeset this moves thirty of the thirty-one
+   * calls off the main model.
+   *
+   * What it deliberately is **not** is a "light model for repetitive work" knob. The commit search's
+   * per-commit verdict is also a per-item loop, and it is the one call where a weaker model produces
+   * confident wrong answers about your own history. Which calls may use this is a property of the
+   * feature, declared next to its instruction and temperature, never assigned by the user.
+   *
+   * Same URL, same API key: this only swaps the model name, so the fast model has to be served by
+   * the same provider. Unset (the default) means every feature uses {@link model}.
+   */
+  fastModel?: string
+  /**
+   * How many model calls the map phases may have in flight at once.
+   *
+   * A property of the server you are reaching — like the timeout and the context window — and not of
+   * any feature, which is what puts it here. Whether it helps is decided entirely by the provider's
+   * scheduler: one that serialises (Ollama's default, one generation per model unless
+   * `OLLAMA_NUM_PARALLEL` says otherwise) gains nothing, while one doing continuous batching folds
+   * several requests into the same forward pass and gets measurably faster.
+   *
+   * `undefined` means {@link DEFAULT_AI_CONCURRENCY} — one, the behaviour before the setting existed.
+   * Raising it is a bet on the user's own server, which is why Settings tells them to measure rather
+   * than guessing on their behalf. See `features/mapConcurrently.ts` for the trade it buys.
+   */
+  concurrency?: number
+  /**
+   * Extra top-level fields merged into every request body, as the user typed them.
+   *
+   * The escape hatch for what the OpenAI-compatible surface does not standardise — above all
+   * switching a reasoning model's deliberation off, which has at least four spellings and no
+   * agreement between servers: `reasoning_effort` is in the spec, `chat_template_kwargs` is what
+   * vLLM/SGLang take and what Qwen's own model card documents, `think` is Ollama's native API. The
+   * app cannot send all of them (an unknown field is a 400 on a strict server) and cannot pick one,
+   * so the user names whichever their server understands.
+   *
+   * A property of the provider being reached, like the timeout and the window — never a way to tune
+   * a feature. The app's own fields are merged *over* these, so `model`, `messages`, `stream`,
+   * `max_tokens` and `response_format` cannot be replaced from here: a feature's JSON schema or a
+   * stream's framing silently swapped out would break it with no error anyone could trace back.
+   */
+  extraBody?: Record<string, unknown>
   /** Whether the user has turned AI features on. UI/feature gate (e.g. the AI-commit settings
    * section), not part of the transport — `undefined` is treated as enabled for back-compat. */
   enabled?: boolean
@@ -68,6 +115,8 @@ export interface AiGenerateConfig {
    * the instruction. Resolved from the same constant, never chosen per call site.
    */
   maxTokens: number
+  /** The user's own extra request fields, passed through verbatim; see `AiConnectionConfig`. */
+  extraBody?: Record<string, unknown>
 }
 
 /** A JSON Schema object (draft-07-ish) describing the shape a structured-output feature expects
@@ -164,4 +213,49 @@ export interface AiActivity {
   /** BCP-47-ish language tag (`'fr'` / `'en'`) the summary should be written in. Frontend-populated
    * from app Settings (not from Rust) so the briefing matches the user's UI language. */
   language?: string
+}
+
+/** One path a scanned commit touched. Mirrors the Rust `ScanCommitFile` serde struct. */
+export interface ScanCommitFile {
+  path: string
+  status: string
+}
+
+/**
+ * One commit an AI search will read. Mirrors the Rust `ScanCommit` serde struct.
+ *
+ * Carries the **full** `oid`, unlike {@link AiActivityCommit}: the search fetches each commit's own
+ * patch before asking about it, and a seven-character prefix is not what `get_commit_diff` takes.
+ */
+export interface ScanCommit {
+  oid: string
+  shortOid: string
+  subject: string
+  /** Commit body (message minus the subject line), trimmed; empty when subject-only. */
+  body: string
+  author: string
+  /** Author timestamp, seconds since the epoch. */
+  timestamp: number
+  files: ScanCommitFile[]
+  /** True when the commit touched more paths than `files` lists. */
+  filesTruncated: boolean
+  insertions: number
+  deletions: number
+  parentCount: number
+}
+
+/** The commit window an AI search reads — produced by the `get_ai_commit_scan` Tauri command (git2
+ * logic stays in Rust). Mirrors the Rust `AiCommitScan` serde struct. */
+export interface AiCommitScan {
+  repoName: string
+  branch: string
+  /** Non-merge commits authored within the window, newest first. */
+  commits: ScanCommit[]
+  /** True when history holds commits older than the ones returned — i.e. the cap stopped the walk
+   * rather than the repository running out. What makes "not found" mean "not in what was read". */
+  truncated: boolean
+  /** Author timestamp of the oldest commit returned, seconds since the epoch; absent when none. */
+  oldestEpoch?: number
+  /** Author timestamp of the newest commit returned, seconds since the epoch; absent when none. */
+  newestEpoch?: number
 }

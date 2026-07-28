@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import type { CommitConvention, CommitValidation, SummaryProgress } from '@git-manager/ai'
 import {
   SummaryRunCancelled,
+  fileSummaryFeature,
   planCommitsFromSummaries,
   validateCommitSubject,
 } from '@git-manager/ai'
@@ -12,6 +13,7 @@ import {
   apiUnstageAll,
 } from '../api/git.api'
 import { apiGetAiContext, fileSummaryService, summaryGroupingService } from '../api/ai.api'
+import { trackAiProgress } from '../stores/aiActivity.store'
 import { useSettingsStore } from '../stores/settings.store'
 import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
 import type { ProcessedFileItem } from '../components/git-graph/components/CommitFileList'
@@ -136,7 +138,11 @@ export function useCommitBatchReview(
           summarize: (summaryInput) => fileSummaryService.run(aiConnection, summaryInput),
           group: (reduceInput) => summaryGroupingService.run(aiConnection, reduceInput),
         },
-        { onProgress: setProgress, shouldCancel: () => cancelledRef.current }
+        {
+          onProgress: trackAiProgress(fileSummaryFeature.id, setProgress),
+          shouldCancel: () => cancelledRef.current,
+          concurrency: aiConnection.concurrency,
+        }
       )
 
       const byPath = new Map(allWipChanges.map((f) => [f.path, f]))

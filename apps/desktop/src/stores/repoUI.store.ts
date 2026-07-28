@@ -93,6 +93,11 @@ export type AiPanelTarget =
   // siblings, but it asks for the same thing from the layout — the right-hand slot, exclusively —
   // and putting it in the same union is what stops it and an explanation both claiming it.
   | { kind: 'summaries' }
+  /**
+   * The AI commit search. Like `summaries`, it names no subject — the subject is the question the
+   * user is about to type, and the panel owns it, which is also why nothing here needs keying.
+   */
+  | { kind: 'search' }
 
 /**
  * Handoff for the PR-creation composer, set once "ship from here" has made the local commit (and, on

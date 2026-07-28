@@ -7,6 +7,7 @@ import {
   FolderTree,
   GitBranch,
   GitCommitHorizontal,
+  Sparkles,
   Heart,
   KeyRound,
   Palette,
@@ -21,7 +22,7 @@ import {
 } from 'lucide-react'
 import { GeneralSection } from './components/GeneralSection'
 import { RepositorySection } from './components/RepositorySection'
-import { AiCommitSection } from './components/AiCommitSection'
+import { AiFeaturesSection } from './components/AiFeaturesSection'
 import { SshSection } from './components/SshSection'
 import { IntegrationSection } from './components/IntegrationSection'
 import { AiSection } from './components/AiSection'
@@ -45,7 +46,7 @@ export type Section =
   | 'ssh'
   | 'integrations'
   | 'local_ai'
-  | 'ai_commit'
+  | 'ai_features'
   | 'external_tools'
   | 'notifications'
   | 'ui_customization'
@@ -207,14 +208,16 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
     ...(aiEnabled
       ? [
           {
-            id: 'ai_commit' as const,
-            icon: GitCommitHorizontal,
-            label: t('settings.sections.ai_commit'),
+            id: 'ai_features' as const,
+            icon: Sparkles,
+            label: t('settings.sections.ai_features'),
             render: () =>
               scrolled(
-                withReset(<AiCommitSection />, () =>
+                withReset(<AiFeaturesSection />, () => {
+                  // Both halves of the page: the commit guidance and the briefing toggles.
                   resetSettingsFields('git', ['commitInstructions', 'commitPattern'])
-                )
+                  resetSettingsGroups(['dailySummary'])
+                })
               ),
           },
         ]

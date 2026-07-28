@@ -115,38 +115,101 @@ fn completions_url(config: &GenerateConfig) -> String {
     format!("{}/chat/completions", api_base(&config.url))
 }
 
+/// The generation budget, or `None` when the user set it to zero — meaning **no budget**: wait for
+/// the model however long it takes.
+///
+/// Zero is offered because the alternative is guessing. The one wait this bounds — a local model
+/// reading a whole diff — varies by more than an order of magnitude with the model, the size of the
+/// diff and how many calls are in flight, and a budget guessed too low does not degrade the answer,
+/// it *deletes* the commit from it: eight of ten commits in one real search, each at exactly the
+/// configured mark. For a user who would rather wait than lose commits, a clock is the wrong tool.
+///
+/// It is narrower than it sounds. Runaway generation stays bounded by `max_tokens`, an unreachable
+/// provider by [`CONNECT_TIMEOUT_SECONDS`], and a dead stream by [`STREAM_IDLE_TIMEOUT_SECONDS`] —
+/// none of which this switch touches. All it removes is the clock on a model that is *working*.
+fn generation_budget(timeout_seconds: u64) -> Option<std::time::Duration> {
+    (timeout_seconds > 0).then(|| std::time::Duration::from_secs(timeout_seconds))
+}
+
 /// Client for a ONE-SHOT completion: the configured timeout bounds the whole request, which is
-/// exactly right when the answer arrives in a single body.
+/// exactly right when the answer arrives in a single body — it is the model's whole thinking and
+/// writing time, not a silence budget like the streaming client's.
+///
+/// The connect timeout is separate and short, for the same reason it is on the streaming client: an
+/// unreachable provider must fail in seconds however long the user is willing to wait for tokens.
+/// Without it, raising the generation budget to something a local model can actually use would also
+/// mean waiting that long to be told the server is off — and with the budget removed entirely, it is
+/// the only thing left that fails fast.
 fn client_for(config: &GenerateConfig) -> Result<Client, AppError> {
-    Client::builder()
-        .timeout(std::time::Duration::from_secs(config.timeout_seconds))
-        .build()
-        .map_err(AppError::Http)
+    let builder =
+        Client::builder().connect_timeout(std::time::Duration::from_secs(CONNECT_TIMEOUT_SECONDS));
+    match generation_budget(config.timeout_seconds) {
+        Some(budget) => builder.timeout(budget),
+        None => builder,
+    }
+    .build()
+    .map_err(AppError::Http)
 }
 
 /// Longest wait for the connection itself. Separate from the generation budget: an unreachable
 /// provider should fail in seconds, however long the user is willing to wait for tokens.
 const CONNECT_TIMEOUT_SECONDS: u64 = 10;
 
+/// Longest silence tolerated *between* tokens, once the model has started answering.
+///
+/// Deliberately short and not configurable, because it measures something with a narrow natural
+/// range: inter-token gaps on a generating model are milliseconds, so anything approaching this is
+/// a stalled stream rather than a slow one. The long wait — prompt processing before the first
+/// token — is bounded separately by the user's own budget, which is what that budget is *for*.
+///
+/// One value for both was the previous design, and it forced the worst of each: the number had to
+/// be big enough for a cold model's first token, which then meant a stream that died mid-answer took
+/// just as long to notice.
+const STREAM_IDLE_TIMEOUT_SECONDS: u64 = 30;
+
+/// How long an unbounded first-token wait sleeps before re-checking whether the user pressed Stop.
+/// Not a timeout — nothing fails when it elapses; it only exists so "no budget" cannot also mean
+/// "not cancellable".
+const CANCEL_POLL_SECONDS: u64 = 1;
+
 /// Client for a STREAMING generation.
 ///
-/// The configured timeout is applied **per read**, not to the request as a whole. `Client::timeout`
-/// covers reading the entire body, so on a streamed response it caps the whole generation — with
-/// the 30s default that aborts any answer taking longer than half a minute, and reqwest surfaces it
-/// mid-stream as the decidedly unhelpful "error decoding response body". A branch summary over a
-/// real diff blows through that routinely.
+/// No client-level read timeout: the two waits a stream contains are bounded explicitly in the loop
+/// below (`config.timeout_seconds` until the first token, [`STREAM_IDLE_TIMEOUT_SECONDS`] between
+/// the rest), because reqwest offers a single per-read value and these two want very different ones.
 ///
-/// A read timeout keeps the protection that mattered — a provider that accepts the request and then
-/// goes silent still fails rather than hanging forever — while letting a slow model take as long as
-/// it needs, which is the normal case for a local one. The same budget now means "longest silence
-/// tolerated" rather than "longest generation allowed"; raise it in Settings if a cold model takes
-/// more than that to produce its first token.
-fn streaming_client_for(config: &GenerateConfig) -> Result<Client, AppError> {
+/// What must NOT come back is `Client::timeout`, which covers reading the entire body and so caps
+/// the whole generation — it surfaces mid-stream as the decidedly unhelpful "error decoding response
+/// body", and any answer of real length blows through it. Runaway generation is bounded by
+/// `max_tokens`, sent on every request; that is the right tool for it, not a clock.
+fn streaming_client_for() -> Result<Client, AppError> {
     Client::builder()
         .connect_timeout(std::time::Duration::from_secs(CONNECT_TIMEOUT_SECONDS))
-        .read_timeout(std::time::Duration::from_secs(config.timeout_seconds))
         .build()
         .map_err(AppError::Http)
+}
+
+/// Serializes the request, merging the user's extra fields **under** it.
+///
+/// Under, not over: `model`, `messages`, `stream`, `max_tokens` and `response_format` are the
+/// app's, and a settings field able to replace a feature's JSON schema or a stream's framing would
+/// break that feature with no error anyone could trace back here. What is left is exactly the space
+/// the OpenAI-compatible surface does not standardise — `reasoning_effort`, `chat_template_kwargs`,
+/// `think`, whatever a given server invented — which is what the field exists for.
+fn request_body(
+    request: &ChatCompletionsRequest,
+    config: &GenerateConfig,
+) -> Result<serde_json::Value, AppError> {
+    let own = serde_json::to_value(request).map_err(|e| AppError::AiProvider(e.to_string()))?;
+    let Some(extra) = &config.extra_body else {
+        return Ok(own);
+    };
+
+    let mut merged = extra.clone();
+    if let serde_json::Value::Object(fields) = own {
+        merged.extend(fields);
+    }
+    Ok(serde_json::Value::Object(merged))
 }
 
 fn with_auth(builder: reqwest::RequestBuilder, config: &GenerateConfig) -> reqwest::RequestBuilder {
@@ -170,8 +233,23 @@ fn messages(system_prompt: &str, user_prompt: &str) -> Vec<ChatMessage> {
 }
 
 /// Maps a transport-level `reqwest` error to a stable `AppError` the frontend can localize —
-/// connection refused becomes `AI_PROVIDER_NOT_RUNNING`, everything else surfaces its message.
-fn send_error(e: reqwest::Error) -> AppError {
+/// connection refused becomes `AI_PROVIDER_NOT_RUNNING`, a timeout becomes `AI_TIMEOUT` carrying the
+/// budget it blew, everything else surfaces its message.
+///
+/// The timeout arm matters more than it looks. A read timeout that fires while the body is arriving
+/// is reported by reqwest as "error decoding response body" — a string indistinguishable from a
+/// malformed payload, which sent a user reading their history search's "unread commits" hunting for
+/// a format problem when in fact their model simply needed longer than 30 seconds per commit.
+fn send_error(e: reqwest::Error, timeout_seconds: u64) -> AppError {
+    if e.is_timeout() {
+        // With no generation budget the only clock reqwest can still trip is the connect one, so
+        // that is the number to report — "timed out after 0s" would name a budget nothing set.
+        return AppError::AiTimeout(if timeout_seconds > 0 {
+            timeout_seconds
+        } else {
+            CONNECT_TIMEOUT_SECONDS
+        });
+    }
     AppError::AiProvider(if e.is_connect() {
         "AI_PROVIDER_NOT_RUNNING".to_string()
     } else {
@@ -236,7 +314,7 @@ impl AiProvider for OpenAiCompatibleProvider {
         user_prompt: &str,
         stream_handle: &StreamHandle,
     ) -> Result<(), AppError> {
-        let client = streaming_client_for(config)?;
+        let client = streaming_client_for()?;
 
         let request = ChatCompletionsRequest {
             model: config.model.clone(),
@@ -250,10 +328,10 @@ impl AiProvider for OpenAiCompatibleProvider {
         let completions_url = completions_url(config);
 
         let resp = with_auth(client.post(&completions_url), config)
-            .json(&request)
+            .json(&request_body(&request, config)?)
             .send()
             .await
-            .map_err(send_error)?;
+            .map_err(|e| send_error(e, config.timeout_seconds))?;
 
         if !resp.status().is_success() {
             return Err(status_error(resp.status()));
@@ -261,14 +339,48 @@ impl AiProvider for OpenAiCompatibleProvider {
 
         let mut stream = resp.bytes_stream();
         let mut buffered_line = String::new();
+        // The first chunk is the one worth waiting for: everything before it is prompt processing,
+        // which on a local model reading a whole diff is the bulk of the wall clock. Once tokens
+        // flow, a long gap means the stream died, not that the model is thinking.
+        let mut first_chunk = true;
 
-        while let Some(chunk) = stream.next().await {
+        loop {
             if stream_handle.is_cancelled() {
                 stream_handle.cancelled();
                 return Ok(());
             }
 
-            let bytes = chunk.map_err(AppError::Http)?;
+            // A first-token budget of zero waits as long as the model needs — but the wait still has
+            // to be interruptible, since the cancellation check above only runs between chunks. So
+            // an unbounded wait is served in short slices that come back around to it, rather than
+            // one long await during which "Stop" would do nothing. The between-token budget is never
+            // unbounded: its whole point is that a silence there means a dead stream, not a slow one.
+            let (budget, unbounded) = match (first_chunk, generation_budget(config.timeout_seconds))
+            {
+                (true, Some(budget)) => (budget, false),
+                (true, None) => (std::time::Duration::from_secs(CANCEL_POLL_SECONDS), true),
+                (false, _) => (
+                    std::time::Duration::from_secs(STREAM_IDLE_TIMEOUT_SECONDS),
+                    false,
+                ),
+            };
+
+            let next = match tokio::time::timeout(budget, stream.next()).await {
+                Ok(next) => next,
+                // Nothing yet, and nothing bounding the wait: back around, re-checking cancellation.
+                Err(_) if unbounded => continue,
+                Err(_) => {
+                    return Err(AppError::AiTimeout(if first_chunk {
+                        config.timeout_seconds
+                    } else {
+                        STREAM_IDLE_TIMEOUT_SECONDS
+                    }))
+                }
+            };
+            let Some(chunk) = next else { break };
+            first_chunk = false;
+
+            let bytes = chunk.map_err(|e| send_error(e, config.timeout_seconds))?;
             let Ok(text) = std::str::from_utf8(&bytes) else {
                 continue;
             };
@@ -328,16 +440,19 @@ impl AiProvider for OpenAiCompatibleProvider {
         let completions_url = completions_url(config);
 
         let resp = with_auth(client.post(&completions_url), config)
-            .json(&request)
+            .json(&request_body(&request, config)?)
             .send()
             .await
-            .map_err(send_error)?;
+            .map_err(|e| send_error(e, config.timeout_seconds))?;
 
         if !resp.status().is_success() {
             return Err(status_error(resp.status()));
         }
 
-        let parsed: ChatCompletionsResponse = resp.json().await.map_err(AppError::Http)?;
+        let parsed: ChatCompletionsResponse = resp
+            .json()
+            .await
+            .map_err(|e| send_error(e, config.timeout_seconds))?;
         Ok(parsed
             .choices
             .into_iter()

@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AiConnectionConfig } from './config'
+import { codeReviewFeature } from './features/codeReview'
+import { commitRelevanceFeature } from './features/commitRelevance'
+import { commitSearchAnswerFeature } from './features/commitSearchAnswer'
+import { dailySummaryFeature } from './features/dailySummary'
+import { fileSummaryFeature } from './features/fileSummary'
+import { summaryCommitMessageFeature } from './features/summaryCommitMessage'
 import { summaryExplanationFeature } from './features/summaryExplanation'
 import { summaryGroupingFeature } from './features/summaryGrouping'
 import {
@@ -9,6 +15,7 @@ import {
   resolveGenerateConfig,
   MODEL_PROBE_INSTRUCTION,
   MODEL_PROBE_MAX_OUTPUT_TOKENS,
+  MODEL_PROBE_SCHEMA,
   MODEL_PROBE_MAX_TIMEOUT_SECONDS,
   MODEL_PROBE_PROMPT,
   type AiTransport,
@@ -63,6 +70,56 @@ describe('resolveGenerateConfig', () => {
 
   it('lets a caller override the cap for a feature whose answer is not prose', () => {
     expect(resolveGenerateConfig(connection, 0.2, 4200).maxTokens).toBe(4200)
+  })
+
+  it('sends a fast-tier feature to the second model, keeping the same endpoint', () => {
+    const config = resolveGenerateConfig(
+      { ...connection, fastModel: 'tiny', apiKey: 'sk-test' },
+      0.1,
+      160,
+      'fast'
+    )
+    expect(config).toMatchObject({
+      model: 'tiny',
+      // A model swap and nothing else: a second provider would be a different feature entirely.
+      url: connection.url,
+      apiKey: 'sk-test',
+    })
+  })
+
+  it('leaves every other feature on the main model even when a fast one is configured', () => {
+    expect(
+      resolveGenerateConfig({ ...connection, fastModel: 'tiny' }, 0.2).model
+    ).toBe('llama3.2')
+  })
+
+  it('ignores an unset or blank fast model, which is the default setup', () => {
+    expect(resolveGenerateConfig(connection, 0.1, 160, 'fast').model).toBe('llama3.2')
+    expect(
+      resolveGenerateConfig({ ...connection, fastModel: '  ' }, 0.1, 160, 'fast').model
+    ).toBe('llama3.2')
+  })
+})
+
+describe('the fast tier', () => {
+  /**
+   * The guard on the whole idea. `fast` means "many calls, little judgement" — not "repetitive".
+   * The commit-search verdict is the same shape of loop and is exactly where a weaker model invents
+   * matches about the user's own history, so it must never acquire this tier by analogy.
+   */
+  it('is claimed by the per-file summary and by nothing else', () => {
+    expect(fileSummaryFeature.tier).toBe('fast')
+    for (const feature of [
+      commitRelevanceFeature,
+      commitSearchAnswerFeature,
+      summaryGroupingFeature,
+      summaryCommitMessageFeature,
+      summaryExplanationFeature,
+      codeReviewFeature,
+      dailySummaryFeature,
+    ]) {
+      expect(feature.tier).toBeUndefined()
+    }
   })
 })
 
@@ -170,15 +227,16 @@ describe('createCompletionService', () => {
 describe('createStatusService.probe', () => {
   it('sends the feature-free probe prompt to the selected model at temperature 0', async () => {
     const transport = mockTransport()
-    transport.runComplete = vi.fn().mockResolvedValue('OK')
+    transport.runComplete = vi.fn().mockResolvedValue('{"ok": true}')
     const result = await createStatusService(transport).probe(connection)
 
     expect(transport.runComplete).toHaveBeenCalledWith(
       expect.objectContaining({ model: 'llama3.2', temperature: 0 }),
       MODEL_PROBE_INSTRUCTION,
-      MODEL_PROBE_PROMPT
+      MODEL_PROBE_PROMPT,
+      MODEL_PROBE_SCHEMA
     )
-    expect(result).toMatchObject({ ok: true, reply: 'OK' })
+    expect(result).toMatchObject({ ok: true, reply: '{"ok": true}', structured: true })
     expect(result.durationMs).toBeTypeOf('number')
   })
 
@@ -189,7 +247,8 @@ describe('createStatusService.probe', () => {
     expect(transport.runComplete).toHaveBeenCalledWith(
       expect.objectContaining({ timeoutSeconds: MODEL_PROBE_MAX_TIMEOUT_SECONDS }),
       expect.any(String),
-      expect.any(String)
+      expect.any(String),
+      MODEL_PROBE_SCHEMA
     )
   })
 
@@ -200,7 +259,8 @@ describe('createStatusService.probe', () => {
     expect(transport.runComplete).toHaveBeenCalledWith(
       expect.objectContaining({ timeoutSeconds: 5 }),
       expect.any(String),
-      expect.any(String)
+      expect.any(String),
+      MODEL_PROBE_SCHEMA
     )
   })
 
@@ -213,15 +273,48 @@ describe('createStatusService.probe', () => {
     expect(transport.runComplete).toHaveBeenCalledWith(
       expect.objectContaining({ maxTokens: MODEL_PROBE_MAX_OUTPUT_TOKENS }),
       expect.any(String),
-      expect.any(String)
+      expect.any(String),
+      MODEL_PROBE_SCHEMA
     )
     expect(MODEL_PROBE_MAX_OUTPUT_TOKENS).toBeLessThan(RESERVED_OUTPUT_TOKENS)
   })
 
-  it('sends no JSON schema — a schema would fail for reasons unrelated to connectivity', async () => {
+  /**
+   * The probe now carries a schema, reversing an earlier decision that it should not — but the
+   * reason behind that decision is preserved rather than dropped. It was that a schema failure
+   * would be reported as a connectivity failure; here the two answers are separate fields, so a
+   * model that ignores the format still proves the round-trip.
+   */
+  it('does not let a schema-ignoring model read as a broken connection', async () => {
     const transport = mockTransport()
-    await createStatusService(transport).probe(connection)
-    expect((transport.runComplete as ReturnType<typeof vi.fn>).mock.calls[0]).toHaveLength(3)
+    transport.runComplete = vi.fn().mockResolvedValue('Sure! OK.')
+
+    expect(await createStatusService(transport).probe(connection)).toMatchObject({
+      ok: true,
+      structured: false,
+    })
+  })
+
+  it('tests a model the connection does not name, which is how the fast slot is validated', async () => {
+    const transport = mockTransport()
+    await createStatusService(transport).probe(connection, 'tiny-model')
+
+    expect(transport.runComplete).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'tiny-model' }),
+      expect.any(String),
+      expect.any(String),
+      MODEL_PROBE_SCHEMA
+    )
+  })
+
+  it('reads a fenced object as structured — the question is the shape, not the punctuation', async () => {
+    const transport = mockTransport()
+    transport.runComplete = vi.fn().mockResolvedValue('```json\n{"ok": true}\n```')
+
+    expect(await createStatusService(transport).probe(connection)).toMatchObject({
+      ok: true,
+      structured: true,
+    })
   })
 
   it('treats an empty body as a failure, not a green light', async () => {

@@ -17,12 +17,12 @@ import { useActionToolbar } from '../../hooks/useActionToolbar'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useTimelineNavStore } from '../../stores/timelineNav.store'
 import { useUndoHistoryStore } from '../../stores/undoHistory.store'
+import { useAiEnabled } from '../../hooks/useAiEnabled'
 import { useIsCommitsView } from '../../hooks/useIsCommitsView'
 import { useRunTasks } from '../../hooks/useRunTasks'
 import { useCommandPaletteStore } from '../../stores/commandPalette.store'
 import { useCommitSearchStore } from '../../stores/commitSearch.store'
 import { useFileExplorerStore } from '../../stores/fileExplorer.store'
-import { useAiEnabled } from '../../hooks/useAiEnabled'
 import { RepoSelector } from './RepoSelector'
 import { BranchContext } from './BranchContext'
 import { MergeTargetIndicator } from './MergeTargetIndicator'
@@ -259,6 +259,9 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
           onClick={() => useCommitSearchStore.getState().toggle()}
           data-testid="toolbar-search-button"
         />
+        {/* The AI history search deliberately does NOT sit here beside ⌘F: the two look alike and
+            behave nothing alike (milliseconds over subjects vs minutes over every commit's diff).
+            It lives in the AI menu, with the other actions that spend a model run. */}
       </div>
     </div>
   )

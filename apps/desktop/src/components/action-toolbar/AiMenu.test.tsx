@@ -36,9 +36,12 @@ describe('AiMenu', () => {
    * Explaining a commit or reviewing a branch needs a selection and stays on the row that carries
    * it — listing them here would mean a menu that is mostly greyed out.
    */
-  it('offers the daily summaries, and nothing that needs a selection', async () => {
+  it('offers the repo-scoped actions, and nothing that needs a selection', async () => {
     await openMenu()
     expect(screen.getByTestId('ai-menu-summaries')).toHaveTextContent('Daily summaries (LLM)')
+    expect(screen.getByTestId('ai-menu-commit-search')).toHaveTextContent(
+      'Search history with a question'
+    )
     expect(screen.queryByTestId('ai-menu-explain-working')).not.toBeInTheDocument()
     expect(screen.queryByTestId('ai-menu-review-working')).not.toBeInTheDocument()
   })
@@ -67,15 +70,31 @@ describe('AiMenu', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('renders nothing when the summaries feature alone is off', () => {
+  /** The history search does not depend on the briefings, so turning them off no longer empties
+   * the menu — it only drops that one entry. */
+  it('drops the summaries entry alone when that feature is off', async () => {
     useSettingsStore.setState({
       settings: {
         ...INITIAL_SETTINGS.settings,
         dailySummary: { enabled: false, autoGenerate: false },
       },
     })
-    const { container } = render(<AiMenu repoPath="/repo" />)
-    expect(container).toBeEmptyDOMElement()
+    await openMenu()
+    expect(screen.queryByTestId('ai-menu-summaries')).not.toBeInTheDocument()
+    expect(screen.getByTestId('ai-menu-commit-search')).toBeInTheDocument()
+  })
+
+  it('opens the history search into the same right-hand slot', async () => {
+    useRepoUIStore.setState({
+      activeDiffFile: { path: 'src/a.ts', staged: false },
+      activePrNumber: 12,
+    })
+    const user = await openMenu()
+    await user.click(screen.getByTestId('ai-menu-commit-search'))
+
+    expect(useRepoUIStore.getState().aiPanelTarget).toEqual({ kind: 'search' })
+    expect(useRepoUIStore.getState().activeDiffFile).toBeNull()
+    expect(useRepoUIStore.getState().activePrNumber).toBeNull()
   })
 
   it('disables the trigger with no repository open', () => {

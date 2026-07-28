@@ -25,6 +25,7 @@ specific to it — its prompt, its inputs, its UI, its limits.
 | [Code review](./code-review.md) | Reviews a diff and flags what deserves a second look — the one feature allowed an opinion | streaming | right-click the WIP row → *Review changes (LLM)*, or a commit/branch → *Review branch changes (LLM)* |
 | [Daily summary](./daily-summary.md) | A "yesterday / today" briefing per repository, read file by file off the main branch and archived as markdown | completion + JSON schema | ✨ on a dashboard project, and automatically each morning |
 | [Summary search](./summary-search.md) | Answers a question about the archived briefings, citing the days it rests on | completion + JSON schema | the question box on the Summaries tab |
+| [Commit search](./commit-search.md) | Answers a question about recent history by reading every commit in a window, one at a time | completion + JSON schema per commit, then streaming | the AI menu → *Search history*, or ⇧⌘F |
 | [Recompose a commit](./commit-recompose.md) | Rewrites the message of a commit that already exists, reviewed before it is applied | completion | right-click a commit → *Rewrite this commit's message (LLM)* |
 
 Every feature listed here is built. See the roadmap section at the bottom for what is not.
@@ -91,7 +92,7 @@ The invariants that shape hold, and why they are worth protecting:
 `AiConnectionConfig` ([config.ts](../../packages/ai/src/config.ts)) is all that is persisted:
 
 ```ts
-{ preset, url, model, apiKey?, timeoutSeconds, contextTokens?, enabled? }
+{ preset, url, model, apiKey?, timeoutSeconds, contextTokens?, concurrency?, fastModel?, extraBody?, enabled? }
 ```
 
 Two presets ship, both speaking the `openai-compatible` protocol: **Ollama** (default,
@@ -107,6 +108,193 @@ pill, no automatic daily summary. Users who don't want AI never see AI chrome.
 **Base URL handling** deserves a note, because it caused real support churn: a bare origin
 (`http://localhost:11434`) gets `/v1` appended, but a URL that already carries a path is obeyed
 verbatim, so typing the base URL an OpenAI SDK expects doesn't produce `/v1/v1/models`.
+
+### The four clocks
+
+A generation has four different waits, and one number cannot bound them all — trying to was the bug
+behind a history search that lost six of ten commits.
+
+| Wait | Bounded by | Why it is separate |
+| ---- | ---------- | ------------------ |
+| Reaching the server | `CONNECT_TIMEOUT_SECONDS` (10 s, fixed) | An unreachable provider must fail in seconds however long the user will wait for tokens — on both the streaming and the one-shot client |
+| Prompt processing, up to the **first** token | `timeoutSeconds` (the user's setting) | The long part on a local model reading a whole diff. This is what the setting is *for* |
+| Silence **between** tokens | `STREAM_IDLE_TIMEOUT_SECONDS` (30 s, fixed) | Inter-token gaps are milliseconds, so a long one means a dead stream, not a slow model. Not configurable: its natural range is narrow |
+| Generation length | `max_tokens`, sent on every request | A clock is the wrong tool for a runaway model. Every feature declares its own room (`reservedOutputTokens`) and the cap is what makes the prompt's reserve true |
+
+A **one-shot** completion has no first-token wait — the body arrives whole — so there `timeoutSeconds`
+caps the entire generation. That is why its default is 120 s rather than the 30 s that was fine back
+when the budget only ever measured a stream's silence.
+
+**`timeoutSeconds: 0` removes that clock entirely**, and only that one. The other three stay: an
+unreachable provider still fails in ten seconds, a dead stream is still cut after thirty, and output
+is still capped by `max_tokens`. What is gone is the clock on a model that is *working* — which is
+the one that cannot be set correctly in advance, because the wait it bounds varies by more than an
+order of magnitude with the model, the diff and how many calls are in flight. And it fails in the
+worst possible direction: a budget guessed low does not degrade an answer, it **deletes commits from
+it**. One real search lost eight of ten that way, each at exactly the configured mark.
+
+Removing a clock cannot be allowed to remove cancellation with it, so an unbounded first-token wait
+is served in one-second slices (`CANCEL_POLL_SECONDS`) that come back around to the cancellation
+check, rather than one long await during which Stop would do nothing.
+
+### Reading several at once
+
+Every map phase — `summarizeFiles` over a changeset's files, `scanCommits` over history's commits —
+runs one call at a time by default, and the *Calls in flight* setting (`concurrency`) widens it. Both
+share one bounded pool, [`mapConcurrently`](../../packages/ai/src/features/mapConcurrently.ts).
+
+The default is **1**, and it is not a placeholder. Whether concurrency helps at all is decided by the
+provider's scheduler, not by this code:
+
+| Server | What N concurrent requests do |
+| ------ | ----------------------------- |
+| Ollama, out of the box | Queue. It serves one generation per model unless `OLLAMA_NUM_PARALLEL` says otherwise, so the surplus waits at the socket |
+| A server doing **continuous batching** (vLLM, some MLX servers) | Enter the same forward pass. Real throughput gain |
+
+The code used to assert the first case for everyone — *"the provider is normally a local model with
+one copy resident, so concurrent requests queue behind the same weights"*. Measured against an MLX
+server with 8-way admission, 8 requests carrying one commit's diff each:
+
+| In flight | Total | Per request | Slowest |
+| --------- | ----- | ----------- | ------- |
+| 1 | 15.8 s | 2.0 s | 2.5 s |
+| 2 | 14.2 s | 3.5 s | 4.1 s |
+| 4 | 8.9 s | 4.4 s | 6.2 s |
+| 8 | 7.8 s | 7.6 s | 7.8 s |
+
+So the assertion was wrong for that server and right for the default one, which is exactly why this
+is a setting rather than a change.
+
+**The shape of that table is the thing to understand before raising it: the total falls because each
+request gets slower, not faster.** Batching trades latency for throughput. A 3x tail on a scan whose
+calls already take twenty seconds is the difference between a budget that fits and a wall of
+timeouts — which is why this setting and `timeoutSeconds` have to move together. Returns also flatten
+early: 4 in flight bought 88% of what 8 did.
+
+Two things get worse, and neither is fixable here:
+
+- **Cancellation gets coarser.** `shouldCancel` is polled before *dispatching*, never during a call,
+  because the completion transport takes no request id. At 1 in flight, stopping wastes one call. At
+  8 it wastes 8.
+- **The KV cache is shared.** Concurrent requests compete for it, and a server that shrinks the
+  effective window under pressure can undo the gain without reporting anything.
+
+Progress stays honest either way: `completed` counts items actually decided, not requests dispatched.
+Above 1 in flight the scan stops naming the commit it is on, because there is no longer one to name.
+Results are returned and published **in input order**, never completion order — `onSettled` carries
+the index for exactly that reason, so a changeset's files and a repository's history keep their
+meaning while the run fills in.
+
+### Reasoning models, and getting them to stop
+
+A reasoning model narrates before it answers. Where that narration *goes* is the provider's business,
+and it has exactly one good outcome and two bad ones:
+
+| | What the user sees |
+| --- | --- |
+| The provider separates it into `reasoning_content` | Nothing. The app reads `delta.content` only, which is why most features never had this problem |
+| The provider gives up separating it | "Thinking Process: 1. Analyze the request…" above the answer |
+| It is asked not to think at all | Nothing, and faster |
+
+The middle row is the one that bites, and its usual cause is not the model — it is **truncation**. A
+provider only separates deliberation from answer once the generation *completes*; cut it off
+mid-thought with `max_tokens` and the server folds the partial reasoning into the content it streams.
+So a token budget too small does not merely shorten an answer, it is what puts the narration on
+screen. That is why the answer features reserve generously, and it is the first thing to check.
+
+The app defends on both sides:
+
+- **`stripReasoning`** ([reasoning.ts](../../packages/ai/src/features/reasoning.ts)) removes tagged
+  blocks and a leading narration marker from streamed answers. It is a backstop, not a solution, and
+  it is fragile by nature — it matched only markers on their own line until a real answer leaked past
+  it with `Thinking Process: 1. …` all on one.
+- **`extraBody`** in Settings sends whatever switch the user's server understands, because there is
+  no standard one:
+
+| Spelling | Where it works |
+| --- | --- |
+| `{"reasoning_effort": "none"}` | In the OpenAI spec; Ollama maps it onto its own `think` |
+| `{"chat_template_kwargs": {"enable_thinking": false}}` | vLLM, SGLang — what Qwen's model card documents |
+| `{"think": false}` | Ollama's **native** API, not its `/v1` surface |
+
+The app cannot send all of them: an unknown field is an HTTP 400 on a strict server, and that would
+break working setups. It cannot pick one either. So the user names theirs, and the field is empty by
+default.
+
+**Some servers accept none of them.** oMLX, for one, exposes the toggle in its own UI and ignores
+`chat_template_kwargs` on the API entirely ([oMLX #1378](https://github.com/jundot/omlx/issues/1378),
+closed without a fix). There the answer is to turn thinking off **in the server**, or run a model
+that does not reason — which is a fact about the setup, not something the app can route around.
+
+### Which models actually work
+
+The app is provider-agnostic and model-agnostic by design, but that is not the same as every model
+being usable. **The dividing line is not size — it is whether the model honors structured output.**
+
+Half the features ask for a JSON object constrained by a schema (`response_format: json_schema`): the
+commit message, the commit plan, the daily summary, every per-file summary, every per-commit verdict.
+A model that ignores the schema and answers in prose does not produce worse results — it produces
+*none*, and every one of those calls is recorded as a failure. Measured on this repository:
+
+| Model | Provider | Structured output | Commit search on the button question | Verdict |
+| ----- | -------- | ----------------- | ------------------------------------ | ------- |
+| `Qwen3.6-27B-MXFP8-MTP` | omlx (OpenAI-compatible) | honored | 3/3 on the labelled spot check — finds the real hit, rejects both decoys | **recommended** |
+| `Qwen3.6-35B-A3B-MLX-8bit` | omlx (OpenAI-compatible) | honored | 3/3 on the same spot check | **recommended** |
+| `gemma4:12b-mlx` | Ollama | **ignored** — answers in prose | over 25 commits: 1 hit, 0 false positives, 6 unreadable | usable, degraded |
+| `gemma4:26b-mlx-bf16` | Ollama | **ignored** — answers in prose | 2/3 — rejects both decoys but **misses the real hit** (unreadable) | not recommended |
+
+Note the last two rows: the **bigger** model of the same family does *worse*. It rejects the decoys
+and then fails to produce a readable verdict on the one commit that mattered — a miss that would
+have read as a confident "no, the button never changed". Twice the parameters buy nothing here
+because the constraint is the output contract, not the reasoning.
+
+The prose fallback in
+[`parseCommitRelevance`](../../packages/ai/src/features/commitRelevance.ts) is what makes the second
+row "degraded" instead of "unusable": before it, that model failed **25 of 25** commits. It is a
+salvage path, not a substitute — a model that honors the schema is worth more than any prompt work.
+
+If a run reports a wall of unread commits, or the commit box fills with reasoning, the model is the
+thing to change first. That is also why the relevance verdict's field order matters: see
+[commit search](./commit-search.md#the-order-is-the-feature) for the failure a weaker model exhibits
+even when its output *is* well-formed.
+
+> These numbers come from one repository, one question and four models. Treat the table as a starting
+> point rather than a compatibility matrix, and add rows as models are actually tried.
+
+### The probe answers this at configuration time
+
+**Test the model** in Settings → AI no longer sends the word `ping`: it sends a tiny
+schema-constrained request and reports **two independent things**.
+
+| Field | Means | When it is false |
+| ----- | ----- | ---------------- |
+| `ok` | anything non-empty came back — the whole path works | wrong URL, model not pulled, auth, provider down |
+| `structured` | the reply was the JSON object the schema asked for | the model ignores `response_format` |
+
+`ok: true, structured: false` is the state the probe exists for: everything *looks* configured, the
+page is green, and every schema-driven feature will fail on every call. Nothing else in the app says
+so until a feature runs — and for the commit search, that is half an hour of scanning that comes back
+unreadable.
+
+An earlier version deliberately sent **no** schema, on the grounds that a schema failure would be
+reported as a connection failure. That reasoning is kept: the two are separate fields, so a model
+that ignores the format still proves the round-trip and still reads as reachable.
+
+### A second, faster model
+
+`fastModel` is optional and empty by default. When set, it is used **only** by features that declare
+`tier: 'fast'` — today exactly one: `fileSummaryFeature`.
+
+That call is the app's highest-volume one (seven features run it once per changed file) and its least
+demanding (describe one file in two clauses), so on a thirty-file changeset it moves thirty of the
+thirty-one calls off the main model.
+
+The tier is declared by the **feature**, next to its instruction and temperature, and never assigned
+by the user — for the same reason those are not settings. "Repetitive" is not the criterion: the
+commit search's per-commit verdict is the same shape of loop and is precisely where a weaker model
+invents matches about your own history, so it stays on the main model. `resolveGenerateConfig` swaps
+the model name and nothing else, so the fast model must be served by the same provider — and Settings
+probes it with the same button, because a second slot is a second way to be misconfigured.
 
 ### Checking the context window
 
@@ -175,6 +363,13 @@ Conventional Commits. See [commit message](./commit-message.md) for how that is 
 
 The daily summary uses a different command, `get_ai_activity`, which looks *backwards* over a time
 window instead of at a diff.
+
+The [commit search](./commit-search.md) uses a third, `get_ai_commit_scan`
+([ai_commit_scan.rs](../../apps/desktop/src-tauri/src/services/ai_commit_scan.rs)) — the one feature
+so far that needed a new command. It also looks backwards, but over a much longer window, and returns
+each commit's **full** oid and touched paths rather than its volume: the frontend then fetches one
+commit's patch at a time through the existing `get_commit_diff`, so a month of history never sits in
+memory or in a prompt at once.
 
 ---
 
@@ -308,6 +503,21 @@ transport rather than each hook means a new feature is covered for free, and the
 impossible to forget — a rejected call that left the footer spinning forever would be worse than no
 spinner.
 
+The pill says **what state the provider is in and what it is doing** — never which model is
+configured. It used to print the model name, and that stopped working the day a setup could name
+two: neither the main model nor the fast one alone answers "what is configured", the pair does not
+fit a footer, and the pill's actual job — is it up, is it busy — never needed the name. Both now
+live in the tooltip, which is where a question you ask occasionally belongs.
+
+**The step count is the exception**, because it is not a label but evidence. A map phase is one call
+per file or per commit, so `7/42` is what separates "working through it" from "stuck on the first
+one" — and it survives the label folding away on a narrow footer, since a spinner alone says only
+that something is happening. It comes from `trackAiProgress(featureId, setProgress)`, which mirrors
+the panel's own progress into the activity store. The count is **tagged with the feature it belongs
+to** and rendered only while that feature is the one running: a map phase publishes its count
+*between* calls, when nothing is in flight, so it cannot be attached to a run — and an untagged
+leftover would show a finished scan's `42/42` against the next, unrelated generation.
+
 ### Errors
 
 Rust serializes `AppError` to `{ code, message, detail }` JSON, which arrives as the rejection's
@@ -418,6 +628,7 @@ Shared by every feature; the per-feature pages list their own on top of these.
 | Per-request cancel flags | [src-tauri/src/state.rs](../../apps/desktop/src-tauri/src/state.rs) (`GenerationRegistry`) |
 | Error decoding | [apps/desktop/src/lib/aiErrorMessage.ts](../../apps/desktop/src/lib/aiErrorMessage.ts) |
 | Prompt sizing (budget from the context window) | [packages/ai/src/promptSize.ts](../../packages/ai/src/promptSize.ts) |
+| Bounded pool shared by both map phases | [packages/ai/src/features/mapConcurrently.ts](../../packages/ai/src/features/mapConcurrently.ts) |
 | Per-file diff budgeting (tiers, shares, omitted list) | [packages/ai/src/features/diffBudget.ts](../../packages/ai/src/features/diffBudget.ts) |
 | Diff budget + coverage report, shared by every feature | [packages/ai/src/features/diffCoverage.ts](../../packages/ai/src/features/diffCoverage.ts) |
 | Coverage line in the UI | [apps/desktop/src/components/git-graph/components/CoverageNotice.tsx](../../apps/desktop/src/components/git-graph/components/CoverageNotice.tsx) |
@@ -426,7 +637,8 @@ Shared by every feature; the per-feature pages list their own on top of these.
 | Footer activity state | [apps/desktop/src/stores/aiActivity.store.ts](../../apps/desktop/src/stores/aiActivity.store.ts) |
 | Remembered explanations | [apps/desktop/src/stores/aiExplanation.store.ts](../../apps/desktop/src/stores/aiExplanation.store.ts) |
 | Commands | [src-tauri/src/commands/ai.rs](../../apps/desktop/src-tauri/src/commands/ai.rs) |
-| Git context (git2) | [src-tauri/src/services/ai_context.rs](../../apps/desktop/src-tauri/src/services/ai_context.rs) · [ai_activity.rs](../../apps/desktop/src-tauri/src/services/ai_activity.rs) · [ai_convention.rs](../../apps/desktop/src-tauri/src/services/ai_convention.rs) |
+| Remembered commit searches (answer + matches) | [apps/desktop/src/stores/aiCommitSearch.store.ts](../../apps/desktop/src/stores/aiCommitSearch.store.ts) |
+| Git context (git2) | [src-tauri/src/services/ai_context.rs](../../apps/desktop/src-tauri/src/services/ai_context.rs) · [ai_activity.rs](../../apps/desktop/src-tauri/src/services/ai_activity.rs) · [ai_commit_scan.rs](../../apps/desktop/src-tauri/src/services/ai_commit_scan.rs) · [ai_convention.rs](../../apps/desktop/src-tauri/src/services/ai_convention.rs) |
 | Providers | [ai_provider.rs](../../apps/desktop/src-tauri/src/services/ai_provider.rs) · [ai_openai_compatible.rs](../../apps/desktop/src-tauri/src/services/ai_openai_compatible.rs) · [ai_anthropic.rs](../../apps/desktop/src-tauri/src/services/ai_anthropic.rs) · [ai_registry.rs](../../apps/desktop/src-tauri/src/services/ai_registry.rs) |
 
 For the architecture rules all of this is built on, read [CLAUDE.md](../../CLAUDE.md) — it is

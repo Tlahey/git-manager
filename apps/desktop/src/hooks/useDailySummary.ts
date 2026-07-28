@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { SummaryProgress } from '@git-manager/ai'
+import { fileSummaryFeature, type SummaryProgress } from '@git-manager/ai'
 import { useDailySummaryStore, selectLatestSummary } from '../stores/dailySummary.store'
+import { trackAiProgress } from '../stores/aiActivity.store'
 import { useSettingsStore } from '../stores/settings.store'
 import { isSummaryStale, previousWorkingDayKey } from '../lib/dailySummaryWindow'
 import { generateDailySummary } from '../lib/generateDailySummary'
@@ -57,7 +58,7 @@ export function useDailySummary(path: string) {
           targetBranches,
           saveToRepo,
           language,
-          onProgress: setProgress,
+          onProgress: trackAiProgress(fileSummaryFeature.id, setProgress),
         })
         if (summary === null) setSkipped(true)
       } catch (err) {

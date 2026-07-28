@@ -242,7 +242,7 @@ and the tests assert the backstop still fires.
 
 | | |
 | --- | --- |
-| **N+1 calls** | Sequential, not concurrent: the provider is normally one local model, so parallel requests queue behind the same weights while splitting its context allocation. It also keeps progress honest — `completed` counts files described, not requests sent |
+| **N+1 calls** | Sequential unless the *Calls in flight* setting says otherwise — whether concurrency helps is the provider's decision, not ours ([why](./README.md#reading-several-at-once)). Progress stays honest either way: `completed` counts files described, not requests sent |
 | **Latency** | Three calls where there was one on a small change, minutes on a large one — hence the per-file progress. The answer to this is caching summaries by `(path, content hash)`, not a second code path; not built yet |
 | **Cancellation is between calls** | The completion transport takes no request id, so an in-flight call runs to completion and its result is dropped. Tolerable only because each summary call is small |
 | **Lossy** | Grouping quality now depends on the summaries. `area` is asked for as a *concept*, never a directory, since it is the key the reduce step groups on |

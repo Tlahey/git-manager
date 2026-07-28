@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tauri dev",
+    "dev": "node scripts/free-dev-port.mjs && tauri dev",
     "dev:frontend": "vite",
     "build": "tauri build",
     "build:frontend": "vite build",

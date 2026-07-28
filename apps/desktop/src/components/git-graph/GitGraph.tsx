@@ -44,6 +44,7 @@ import { PatchWorkspacePanel } from '../patch/PatchWorkspacePanel'
 import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
 import { BisectPanel } from '../bisect/BisectPanel'
 import { BranchExplanationPanel } from './BranchExplanationPanel'
+import { AiCommitSearchPanel } from './AiCommitSearchPanel'
 import { CodeReviewPanel } from './CodeReviewPanel'
 import { DailySummariesPanel } from './DailySummariesPanel'
 import { CommitExplanationPanel } from './CommitExplanationPanel'
@@ -1055,7 +1056,12 @@ export function GitGraph({
           >
             {/* Keyed on the subject so switching remounts with that subject's remembered
                 explanation instead of the previous one's. */}
-            {aiPanelTarget.kind === 'working' ? (
+            {aiPanelTarget.kind === 'search' ? (
+              <AiCommitSearchPanel
+                repoPath={repoPath}
+                onClose={() => setAiPanelTarget(null)}
+              />
+            ) : aiPanelTarget.kind === 'working' ? (
               <WorkingExplanationPanel
                 repoPath={repoPath}
                 onClose={() => setAiPanelTarget(null)}

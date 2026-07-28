@@ -2,11 +2,13 @@ import { useCallback, useRef, useState } from 'react'
 import type { CommitConvention, CommitValidation, SummaryProgress } from '@git-manager/ai'
 import {
   composeCommitMessageFromSummaries,
+  fileSummaryFeature,
   formatCommitMessage,
   SummaryRunCancelled,
   validateCommitSubject,
 } from '@git-manager/ai'
 import { apiGetAiContext, fileSummaryService, summaryCommitMessageService } from '../api/ai.api'
+import { trackAiProgress } from '../stores/aiActivity.store'
 import { useSettingsStore } from '../stores/settings.store'
 import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
 
@@ -92,7 +94,11 @@ export function useAiGeneration(repoPath: string) {
             summarize: (summaryInput) => fileSummaryService.run(aiConnection, summaryInput),
             compose: (reduceInput) => summaryCommitMessageService.run(aiConnection, reduceInput),
           },
-          { onProgress: setProgress, shouldCancel: () => cancelledRef.current }
+          {
+            onProgress: trackAiProgress(fileSummaryFeature.id, setProgress),
+            shouldCancel: () => cancelledRef.current,
+            concurrency: aiConnection.concurrency,
+          }
         )
         if (cancelledRef.current) return
 

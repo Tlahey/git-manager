@@ -31,6 +31,20 @@ pub struct GenerateConfig {
     /// the output cap, which is what keeps a long answer from overflowing the window the caller
     /// already sized its prompt against.
     pub max_tokens: Option<u32>,
+    /// Extra top-level fields to merge into the request body, verbatim, from the user's settings.
+    ///
+    /// The escape hatch for everything the OpenAI-compatible surface does not standardise — chiefly
+    /// turning a reasoning model's deliberation off, which has at least four spellings and no
+    /// agreement between servers: `reasoning_effort` (in the spec), `chat_template_kwargs`
+    /// (vLLM/SGLang, and what Qwen's own model card documents), `think` (Ollama's native API). The
+    /// app cannot send all of them — an unknown field is a 400 on a strict server — and cannot pick
+    /// one, so it sends whichever the user's server understands.
+    ///
+    /// **The app's own fields win.** These are merged *under* the request, so `model`, `messages`,
+    /// `stream`, `max_tokens` and `response_format` cannot be overridden from settings: a feature's
+    /// schema or a stream's framing being silently replaced would break it in a way no error
+    /// message would explain.
+    pub extra_body: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
 /// Payload of every `ai:*` streaming event.
