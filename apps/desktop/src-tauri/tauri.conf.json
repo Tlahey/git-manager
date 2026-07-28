@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "identifier": "com.git-manager.app",
   "build": {
-    "beforeDevCommand": "pnpm --filter @git-manager/desktop run dev:frontend",
+    "beforeDevCommand": "node node_modules/vite/bin/vite.js",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "pnpm build:frontend",
     "frontendDist": "../dist"
