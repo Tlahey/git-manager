@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
-import { summarizeFiles, type SummaryProgress } from '@git-manager/ai'
+import { fileSummaryFeature, summarizeFiles, type SummaryProgress } from '@git-manager/ai'
 import { apiGetAiContext, fileSummaryService, summaryExplanationService } from '../api/ai.api'
+import { trackAiProgress } from '../stores/aiActivity.store'
 import { useSettingsStore } from '../stores/settings.store'
 import { useAiStream, type AiStreamStatus } from './useAiStream'
 
@@ -50,7 +51,11 @@ export function useWorkingExplanation(repoPath: string) {
           context,
           (summaryInput) => fileSummaryService.run(aiConnection, summaryInput),
           contextTokens,
-          { onProgress: setProgress, shouldCancel: () => cancelledRef.current }
+          {
+            onProgress: trackAiProgress(fileSummaryFeature.id, setProgress),
+            shouldCancel: () => cancelledRef.current,
+            concurrency: aiConnection.concurrency,
+          }
         )
         setProgress(null)
 

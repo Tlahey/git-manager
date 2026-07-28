@@ -55,7 +55,24 @@ Output rules (STRICT):
 - If the search was truncated, state in the answer that only the most recent commits of the window were read, so "not found" means "not in what was read".
 - Base every statement ONLY on the notes given. Never invent a commit, a file, or a change. Never claim something did NOT happen outside the window you were given.
 - Keep the whole answer under 300 words.
+- Do NOT show your reasoning. No "Thinking", no "Analysis", no narration of how you weighed the commits — the first thing you write is the bold answer sentence.
 - Write the entire answer in the language requested below.`
+
+/**
+ * Room the answer needs.
+ *
+ * Well above the prose default, for two reasons that compound. This answer is the end of a long wait,
+ * so being cut off mid-word is the one outcome that wastes it entirely — a user watched "Non, aucun
+ * changement sur le composant bouton n'a été" stop there. And a reasoning model spends part of any
+ * budget narrating before it starts, which the instruction forbids and `stripReasoning` cleans up
+ * after, but neither can *prevent*.
+ *
+ * The second one is worse than it looks, and is why this was raised again. A provider only separates
+ * deliberation from answer once the generation **completes**; truncate it mid-thought and the server
+ * gives up, folding the partial reasoning into the content it streams. So a budget too small does not
+ * merely shorten the answer — it is what puts the deliberation on screen in the first place.
+ */
+export const COMMIT_SEARCH_ANSWER_OUTPUT_TOKENS = 1600
 
 /** Renders one finding, at decreasing detail so the list can be made to fit. */
 function findingLine(f: CommitSearchFinding, detail: 'full' | 'short'): string {
@@ -125,4 +142,5 @@ export const commitSearchAnswerFeature: StreamingFeature<CommitSearchAnswerInput
   instruction: COMMIT_SEARCH_ANSWER_INSTRUCTION,
   temperature: 0.2,
   buildPrompt: buildCommitSearchAnswerPrompt,
+  reservedOutputTokens: () => COMMIT_SEARCH_ANSWER_OUTPUT_TOKENS,
 }

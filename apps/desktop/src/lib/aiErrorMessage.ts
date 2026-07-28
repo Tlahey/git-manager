@@ -49,6 +49,18 @@ function parsePayload(raw: string): ErrorPayload | null {
  * so it can be unit-tested without an i18n provider). It is only consulted for a recognized
  * sentinel; otherwise the provider's own message is more informative than any generic copy.
  */
+/**
+ * Whether a rejection is the provider running past the configured budget.
+ *
+ * Worth telling apart from every other transport failure because it is the only one with an obvious
+ * user-side fix, and because it hides well: a read timeout that fires while the body arrives is
+ * reported by the HTTP layer as "error decoding response body", which reads like a broken provider.
+ * A history search over ten commits made six of these look like unreadable answers.
+ */
+export function isAiTimeout(raw: string): boolean {
+  return raw.includes('AI_TIMEOUT')
+}
+
 export function aiErrorMessage(raw: string, translate: (key: string) => string): string {
   const sentinel = KNOWN_AI_CODES.find((code) => raw.includes(code))
   if (sentinel) return translate(`errors.${sentinel}`)

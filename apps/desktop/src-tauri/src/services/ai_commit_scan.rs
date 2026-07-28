@@ -71,10 +71,15 @@ pub struct AiCommitScan {
     /// True when the window held more commits than were returned, i.e. the answer will be based on
     /// the most recent slice rather than the whole window.
     pub truncated: bool,
-    /// Start of the window, seconds since the epoch — echoed back so the panel and the saved run
-    /// record what was actually searched rather than re-deriving it from a duration and a clock that
-    /// has since moved.
-    pub since_epoch: i64,
+    /// Author timestamp of the oldest commit actually returned, or `None` when none were.
+    ///
+    /// The span *read*, not the span *asked for*. Those used to differ silently: the caller asked
+    /// for a month, the cap stopped the walk after ten commits, and the prompt still said "since
+    /// <a month ago>" — telling the model that ten commits covered thirty days when they covered
+    /// three.
+    pub oldest_epoch: Option<i64>,
+    /// Author timestamp of the newest commit returned, or `None` when none were.
+    pub newest_epoch: Option<i64>,
 }
 
 fn status_word(delta: Delta) -> &'static str {
@@ -137,7 +142,7 @@ fn commit_files(
 /// commits already carry, which in a search would mean reporting the same change twice.
 fn collect_commits(
     repo: &Repository,
-    since_epoch: i64,
+    since_epoch: Option<i64>,
     max_commits: usize,
 ) -> Result<(Vec<ScanCommit>, bool), AppError> {
     let mut revwalk = repo.revwalk().map_err(AppError::Git)?;
@@ -157,7 +162,7 @@ fn collect_commits(
             continue;
         };
         // Author time is when the work was done; a rebase rewrites committer time long after.
-        if commit.author().when().seconds() < since_epoch {
+        if since_epoch.is_some_and(|since| commit.author().when().seconds() < since) {
             break;
         }
         if commit.parent_count() > 1 {
@@ -196,21 +201,30 @@ fn collect_commits(
     Ok((commits, truncated))
 }
 
-/// Gathers the commits an AI search will read: every non-merge commit authored in the last
-/// `since_hours` hours, newest first, capped at `max_commits` (defaulted and ceilinged here).
+/// Gathers the commits an AI search will read: the `max_commits` most recent non-merge commits,
+/// optionally stopping at `since_hours` hours ago.
+///
+/// The time bound is optional because it is nearly always redundant. The walk stops at whichever
+/// limit it meets first, so exactly one of the two ever binds — and since every returned commit
+/// costs the caller a model call, the count is the one that *must*. A window can therefore only ever
+/// make the result smaller than the count asked for, which is a rarely wanted effect and was the
+/// source of a "the period held more commits than were read" warning that fired precisely when the
+/// window had done nothing. `None` means "just give me the newest N".
 pub fn build_ai_commit_scan(
     repo_path: &str,
-    since_hours: i64,
+    since_hours: Option<i64>,
     max_commits: Option<usize>,
 ) -> Result<AiCommitScan, AppError> {
     let repo =
         Repository::open(repo_path).map_err(|_| AppError::RepoNotFound(repo_path.to_string()))?;
 
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0);
-    let since_epoch = now - since_hours.max(0) * 3600;
+    let since_epoch = since_hours.map(|hours| {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0);
+        now - hours.max(0) * 3600
+    });
 
     let cap = max_commits
         .unwrap_or(DEFAULT_MAX_COMMITS)
@@ -228,11 +242,15 @@ pub fn build_ai_commit_scan(
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_else(|| repo_path.to_string());
 
+    let newest_epoch = commits.first().map(|c| c.timestamp);
+    let oldest_epoch = commits.last().map(|c| c.timestamp);
+
     Ok(AiCommitScan {
         repo_name,
         branch,
         commits,
         truncated,
-        since_epoch,
+        oldest_epoch,
+        newest_epoch,
     })
 }

@@ -78,7 +78,7 @@ export async function generateDailySummary(
       summarize: (input) => fileSummaryService.run(aiConnection, input),
       compose: (input) => dailySummaryService.run(aiConnection, input),
     },
-    summarizeOptions
+    { concurrency: aiConnection.concurrency, ...summarizeOptions }
   )
 
   const entry = {

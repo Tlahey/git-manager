@@ -138,6 +138,11 @@ export function parseFileSummary(raw: string): FileSummaryResult {
 export const fileSummaryFeature: CompletionFeature<FileSummaryInput, FileSummaryResult> = {
   id: 'file-summary',
   kind: 'completion',
+  // The one call in the app that earns a second, faster model: seven features run it once per
+  // changed file, and its job — two short clauses about one file — is the least demanding thing
+  // any of them ask for. Nothing else is marked `fast`, least of all the commit-search verdict,
+  // which is the same shape of loop and the opposite kind of work. See `AiFeatureTier`.
+  tier: 'fast',
   instruction: FILE_SUMMARY_INSTRUCTION,
   // Lower than the planner's 0.2: this is description, not judgement, and two files that deserve the
   // same `area` need the model to answer the same way twice.

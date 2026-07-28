@@ -57,10 +57,15 @@ describe('AiSection — master switch', () => {
 })
 
 describe('AiSection — feature toggles', () => {
-  it('exposes the daily-summary toggles under the provider configuration', () => {
+  /**
+   * The page answers "which model, where, within what limits" and nothing else. The briefing
+   * toggles used to sit at the bottom of the connection form, which left neither page with a
+   * subject; they now have their own nav entry (see `AiFeaturesSection`).
+   */
+  it('holds no feature toggles — those live on the AI features page', () => {
     render(<AiSection />)
-    expect(screen.getByTestId('daily-summary-enabled-toggle')).toBeChecked()
-    expect(screen.getByTestId('daily-summary-auto-toggle')).toBeInTheDocument()
+    expect(screen.queryByTestId('daily-summary-enabled-toggle')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('daily-summary-auto-toggle')).not.toBeInTheDocument()
   })
 
   it('does not expose feature tuning (temperature / system prompt / auto-scope)', () => {

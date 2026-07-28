@@ -4,9 +4,12 @@ import { OverriddenBadge } from './OverriddenBadge'
 import { useSettingsStore } from '../../../stores/settings.store'
 
 /**
- * AI-commit settings: the commit-style guidance and subject pattern the AI commit features follow
- * (on top of any commitlint config and the repo's own history). Split out of the General section
- * into its own AI-scoped page, shown only when AI is enabled.
+ * The commit-style guidance and subject pattern the AI commit features follow (on top of any
+ * commitlint config and the repo's own history).
+ *
+ * Headless on purpose: it is rendered inside a titled group on the AI features page, and again as
+ * the repository scope's per-repo override page. Carrying its own heading would have duplicated the
+ * group's in the first case and orphaned one in the second.
  */
 export function AiCommitSection() {
   const { t } = useTranslation('settings')
@@ -19,8 +22,6 @@ export function AiCommitSection() {
 
   return (
     <div className="space-y-4">
-      <h4 className="text-xs font-semibold text-foreground">{t('settings.git.commitStyle')}</h4>
-
       <div className="space-y-1.5">
         <div className="flex items-center gap-2">
           <label className="text-xs font-medium text-foreground">

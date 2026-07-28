@@ -12,6 +12,8 @@ import {
   changeExplanationFeature,
   codeReviewFeature,
   commitRecomposeFeature,
+  commitFileScanFeature,
+  commitQuickScanFeature,
   commitRelevanceFeature,
   commitSearchAnswerFeature,
   createCompletionService,
@@ -36,7 +38,8 @@ import {
   getModelContextLimits,
   type ModelContextLimits,
 } from '../lib/tauri'
-import { withAiActivity } from '../stores/aiActivity.store'
+import { withAiActivity, type AiRunOrigin } from '../stores/aiActivity.store'
+import { useRepoUIStore } from '../stores/repoUI.store'
 import { recordAiTranscript } from '../lib/aiTranscriptLog'
 
 export async function apiCheckAiStatus(config: AiCheckConfig) {
@@ -74,10 +77,9 @@ export async function apiGetAiActivity(
  * commit's patch as it reaches it, so a month of history never sits in memory at once. */
 export async function apiGetAiCommitScan(
   path: string,
-  sinceHours: number,
   maxCommits?: number
 ): Promise<AiCommitScan> {
-  return getAiCommitScan(path, sinceHours, maxCommits)
+  return getAiCommitScan(path, maxCommits)
 }
 
 /** Sanity-checks the context window declared in Settings against what the provider reports. See
@@ -126,6 +128,22 @@ const tauriAiTransport: AiTransport = {
  * than detaching it), so the promise's lifetime is the generation's lifetime — tokens arriving
  * out-of-band as events does not change that.
  */
+/**
+ * Where the generation about to start is being watched from, if anywhere.
+ *
+ * Read here rather than declared by each feature because this is the one place every generation
+ * passes through, and because the answer is already on screen: at the instant a run begins, the
+ * panel the user just clicked in is the open one. A run started with no repository (the morning
+ * summary, which runs before any tab is chosen) gets no origin, and the footer keeps its old
+ * behaviour of opening Settings.
+ */
+function currentAiOrigin(): AiRunOrigin | undefined {
+  const { activeRepo, activeWorkspacePath, aiPanelTarget } = useRepoUIStore.getState()
+  const repoPath = activeWorkspacePath ?? activeRepo
+  if (!repoPath) return undefined
+  return { repoPath: activeRepo ?? repoPath, panel: aiPanelTarget ?? undefined }
+}
+
 function trackedTransport(featureId: string): AiTransport {
   /**
    * Runs one call, reporting it to the footer for its whole duration and writing its transcript to
@@ -146,7 +164,7 @@ function trackedTransport(featureId: string): AiTransport {
     const start = performance.now()
     const base = { featureId, config, systemPrompt, userPrompt }
     try {
-      const result = await withAiActivity(featureId, call)
+      const result = await withAiActivity(featureId, call, currentAiOrigin())
       recordAiTranscript({
         ...base,
         durationMs: Math.round(performance.now() - start),
@@ -255,6 +273,16 @@ export const summaryExplanationService = createStreamingService(
 export const commitRelevanceService = createCompletionService(
   commitRelevanceFeature,
   trackedTransport(commitRelevanceFeature.id)
+)
+/** The quick search's first narrowing: one call over every commit's message, no diffs, no loop. */
+export const commitQuickScanService = createCompletionService(
+  commitQuickScanFeature,
+  trackedTransport(commitQuickScanFeature.id)
+)
+/** Its second: one call over a shortlisted commit's paths, deciding which of them to open. */
+export const commitFileScanService = createCompletionService(
+  commitFileScanFeature,
+  trackedTransport(commitFileScanFeature.id)
 )
 /** The reduce half: the answer itself, streamed, written from every commit's verdict. */
 export const commitSearchAnswerService = createStreamingService(

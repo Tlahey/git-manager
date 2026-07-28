@@ -4,7 +4,7 @@ import { Progress, ScrollArea, Spinner } from '@git-manager/ui'
 import { Search, X } from 'lucide-react'
 import {
   DEFAULT_MAX_SCANNED_COMMITS,
-  DEFAULT_SEARCH_WINDOW_HOURS,
+  dominantFailure,
   useAiCommitSearch,
 } from '../../hooks/useAiCommitSearch'
 import type { StoredSearchMatch, StoredSearchRun } from '../../stores/aiCommitSearch.store'
@@ -14,6 +14,13 @@ import { Markdown } from '../Markdown'
 import { CommitSearchForm } from './components/CommitSearchForm'
 import { CommitSearchHistoryList } from './components/CommitSearchHistoryList'
 import { CommitSearchMatchList } from './components/CommitSearchMatchList'
+import { CommitSearchUnreadList } from './components/CommitSearchUnreadList'
+
+/** The oldest date a run reached, or an em dash for a run saved before the span was recorded. */
+function formatReadDate(epochSeconds: number | undefined): string {
+  if (epochSeconds === undefined) return '—'
+  return new Date(epochSeconds * 1000).toLocaleDateString()
+}
 
 interface AiCommitSearchPanelProps {
   repoPath: string
@@ -38,8 +45,14 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
   const search = useAiCommitSearch(repoPath)
 
   const [question, setQuestion] = useState('')
-  const [sinceHours, setSinceHours] = useState<number>(DEFAULT_SEARCH_WINDOW_HOURS)
   const [maxCommits, setMaxCommits] = useState(DEFAULT_MAX_SCANNED_COMMITS)
+  /**
+   * Read the messages only, in one call, instead of every commit's diff.
+   *
+   * Off by default: the deep read is what makes this feature different from `git log --grep`, and a
+   * user who has never chosen should get the answer that is right rather than the one that is fast.
+   */
+  const [quick, setQuick] = useState(false)
   /** A saved run the user reopened, shown instead of the live one until they search again. */
   const [viewedRun, setViewedRun] = useState<StoredSearchRun | null>(null)
 
@@ -50,8 +63,8 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
 
   const runSearch = useCallback(() => {
     setViewedRun(null)
-    void search.search(question, { sinceHours, maxCommits })
-  }, [search, question, sinceHours, maxCommits])
+    void search.search(question, { maxCommits, mode: quick ? 'quick' : 'deep' })
+  }, [search, question, maxCommits, quick])
 
   const liveMatches: StoredSearchMatch[] = search.matches.map((m) => ({
     oid: m.commit.oid,
@@ -69,20 +82,36 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
         answer: viewedRun.answer,
         matches: viewedRun.matches,
         scanned: viewedRun.scanned,
+        oldestRead: formatReadDate(viewedRun.oldestEpoch),
+        // A saved run kept the count and the reason, not the commits: which ones failed is only
+        // actionable while they are still on screen (see `aiCommitSearch.store`).
+        unread: [],
         failed: viewedRun.failed,
+        failureReason: viewedRun.failureReason,
         truncated: viewedRun.truncated,
+        mode: viewedRun.mode ?? 'deep',
+        filesRead: viewedRun.filesRead ?? 0,
       }
     : {
         question: search.askedQuestion,
         answer: search.answer,
         matches: liveMatches,
-        scanned: search.results.length,
-        failed: search.failedCount,
+        // Commits actually read, matching the denominator the answer was given: a commit that went
+        // unread said nothing, so counting it here would overstate what "none found" rests on.
+        scanned: search.results.length - search.unread.length,
+        oldestRead: formatReadDate(search.oldestEpoch),
+        unread: search.unread,
+        failed: search.unread.length,
+        failureReason: dominantFailure(search.unread),
         truncated: search.truncated,
+        mode: quick ? ('quick' as const) : ('deep' as const),
+        filesRead: search.results.reduce((total, r) => total + (r.filesRead ?? 0), 0),
       }
 
   const progress = search.progress
   const hasAnswer = shown.answer.trim().length > 0
+  /** A live run still reading commits — a saved run is never one, however it is displayed. */
+  const isReading = !viewedRun && search.isRunning
 
   return (
     <div
@@ -108,10 +137,10 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
         <CommitSearchForm
           question={question}
           onQuestionChange={setQuestion}
-          sinceHours={sinceHours}
-          onSinceHoursChange={setSinceHours}
           maxCommits={maxCommits}
           onMaxCommitsChange={setMaxCommits}
+          quick={quick}
+          onQuickChange={setQuick}
           isRunning={search.isRunning}
           onSubmit={runSearch}
           onCancel={() => void search.cancel()}
@@ -124,11 +153,34 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
                 done: progress.completed,
                 total: progress.total,
               })}
+              {/* The commit count is what was asked for; the file count is what the wait is made of,
+                  since every file is its own model call. Without it a bar that has barely moved
+                  after two minutes looks stuck rather than busy. */}
+              {progress.filesRead !== undefined && progress.filesRead > 0 && (
+                <span data-testid="commit-search-files-read">
+                  {' · '}
+                  {t('gitTree.commitSearch.filesRead', { count: progress.filesRead })}
+                </span>
+              )}
             </p>
+            {/* The narrowing is one call per commit, during which both counters above are frozen —
+                the same stall the file counter was added to fix, one level up. */}
+            {progress.narrowing && (
+              <p className="text-[10px] text-muted-foreground" data-testid="commit-search-narrowing">
+                {t('gitTree.commitSearch.narrowing')}
+              </p>
+            )}
             <Progress
               value={Math.round((progress.completed / Math.max(1, progress.total)) * 100)}
             />
           </div>
+        )}
+        {/* Its own line rather than the scanning one, which counted "0 of 1" and read as a search
+            over a single commit — the triage is one pass over every message, not a commit at all. */}
+        {progress?.phase === 'triaging' && (
+          <p className="text-[10px] text-muted-foreground" data-testid="commit-search-triaging">
+            {t('gitTree.commitSearch.triaging')}
+          </p>
         )}
         {progress?.phase === 'composing' && (
           <p className="text-[10px] text-muted-foreground" data-testid="commit-search-composing">
@@ -175,14 +227,48 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
 
           {/* Both notices qualify a "no": a commit that could not be read said nothing, and a
               truncated window is not an exhausted one. */}
-          {shown.failed > 0 && (
-            <p className="text-[10px] text-tone-warning" data-testid="commit-search-failed">
-              {t('gitTree.commitSearch.failedNotice', { count: shown.failed })}
+          {shown.unread.length > 0 ? (
+            <CommitSearchUnreadList unread={shown.unread} onOpenCommit={openCommit} />
+          ) : (
+            shown.failed > 0 && (
+              // A reopened run: the commits are gone, but the count and the cause survived.
+              <p className="text-[10px] text-tone-warning" data-testid="commit-search-failed">
+                {t('gitTree.commitSearch.unread.title', { count: shown.failed })}{' '}
+                {shown.failureReason && t(`gitTree.commitSearch.unread.${shown.failureReason}`)}
+              </p>
+            )
+          )}
+          {/* Only once the reading is over. The flag is known the instant the commit list comes
+              back — before a single one has been read — so showing it live announced "these 0
+              commits are the most recent ones" for the whole run, which is both alarming and
+              false. It qualifies an answer, so it waits for one. */}
+          {shown.truncated && !isReading && (
+            <p className="text-[10px] text-tone-warning" data-testid="commit-search-truncated">
+              {t('gitTree.commitSearch.truncatedNotice', {
+                scanned: shown.scanned,
+                date: shown.oldestRead,
+              })}
             </p>
           )}
-          {shown.truncated && (
-            <p className="text-[10px] text-tone-warning" data-testid="commit-search-truncated">
-              {t('gitTree.commitSearch.truncatedNotice')}
+
+          {/* The one thing that changes how much an answer is worth: a "no" from the messages is a
+              far weaker claim than a "no" from the diffs, and nothing else on screen distinguishes
+              them. Shown for quick runs only — the deep read is what the panel is otherwise about. */}
+          {shown.mode === 'quick' && !isReading && hasAnswer && (
+            <p className="text-[10px] text-tone-warning" data-testid="commit-search-quick-badge">
+              {t('gitTree.commitSearch.quickBadge')}
+            </p>
+          )}
+
+          {/* Not a warning — nothing went wrong. Every commit is read file by file, one model call
+              each, and this is what a run's duration is actually made of: ten commits over twenty
+              files each is two hundred calls, not ten. */}
+          {shown.filesRead > 0 && !isReading && (
+            <p className="text-[10px] text-muted-foreground" data-testid="commit-search-files">
+              {t('gitTree.commitSearch.filesReadTotal', {
+                count: shown.filesRead,
+                commits: shown.scanned,
+              })}
             </p>
           )}
 

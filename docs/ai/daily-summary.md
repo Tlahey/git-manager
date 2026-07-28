@@ -107,7 +107,9 @@ deliberate:
 
 - **Reads the archive first**, so a briefing written this morning by a previous session isn't
   regenerated after a restart.
-- **Sequential, not parallel** — a local LLM shouldn't take a burst of simultaneous requests.
+- **One repository at a time** — each briefing is already N+1 calls, so overlapping two of them would
+  multiply the load by a factor nobody chose. Concurrency *inside* a briefing is the *Calls in
+  flight* setting's business ([why it lives there](./README.md#reading-several-at-once)).
 - **Once per path per session** — success, *skip* or failure — no retry loops against a
   misconfigured provider.
 - **A failing project doesn't block the others**; you can retry it by hand from the panel.

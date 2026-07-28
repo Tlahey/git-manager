@@ -125,21 +125,26 @@ describe('SettingsPage — grouped side panel', () => {
   })
 })
 
-describe('SettingsPage — AI-commit section gating', () => {
-  it('shows the AI-commit nav entry when AI is enabled (default)', () => {
+describe('SettingsPage — AI section gating', () => {
+  it('shows the AI features nav entry when AI is enabled (default)', () => {
     render(<SettingsPage onClose={vi.fn()} />)
-    expect(screen.getByTestId('settings-tab-ai_commit')).toBeInTheDocument()
+    expect(screen.getByTestId('settings-tab-ai_features')).toBeInTheDocument()
   })
 
-  it('hides the AI-commit nav entry when AI is disabled', () => {
+  /** Nothing on that page means anything with the model switched off, and a greyed-out entry
+   * teaches the user to stop looking. The provider page stays, since it holds the switch. */
+  it('hides the AI features nav entry when AI is disabled, keeping the provider page', () => {
     useSettingsStore.setState((s) => ({
       settings: { ...s.settings, ai: { ...s.settings.ai, enabled: false } },
     }))
     render(<SettingsPage onClose={vi.fn()} />)
-    expect(screen.queryByTestId('settings-tab-ai_commit')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('settings-tab-ai_features')).not.toBeInTheDocument()
+    expect(screen.getByTestId('settings-tab-local_ai')).toBeInTheDocument()
   })
 
-  it('also exposes an AI-commit page in the Repository group when AI is enabled', () => {
+  /** The repository scope keeps its own, narrower page: only the commit style is overridable per
+   * repo — the briefing settings are global. */
+  it('also exposes the per-repo commit-style page in the Repository group', () => {
     render(<SettingsPage onClose={vi.fn()} />)
     expect(screen.getByTestId('settings-local-tab-ai_commit')).toBeInTheDocument()
   })

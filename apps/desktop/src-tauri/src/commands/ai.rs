@@ -34,6 +34,9 @@ pub struct AiGenerateConfig {
     /// prompt budgets subtract, so the answer cannot overflow the window the prompt was sized for.
     /// Optional on the wire only for tolerance of an older caller — absent means "do not send one".
     pub max_tokens: Option<u32>,
+    /// The user's own extra request fields, from Settings. Merged under the app's — see
+    /// `GenerateConfig::extra_body` for why the app's win.
+    pub extra_body: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
 impl From<AiGenerateConfig> for GenerateConfig {
@@ -45,6 +48,7 @@ impl From<AiGenerateConfig> for GenerateConfig {
             temperature: c.temperature,
             timeout_seconds: c.timeout_seconds,
             max_tokens: c.max_tokens,
+            extra_body: c.extra_body,
         }
     }
 }
@@ -63,6 +67,7 @@ pub async fn check_ai_status(config: AiCheckConfig) -> Result<AiProviderStatus, 
         temperature: 0.0,
         timeout_seconds: 5,
         max_tokens: None,
+        extra_body: None,
     };
     provider
         .check_status(&generate_config)
@@ -122,14 +127,14 @@ pub async fn get_ai_activity(
     build_ai_activity(&path, since_epoch, until_epoch, &candidates).map_err(Into::into)
 }
 
-/// Lists the commits an AI *search* will read: non-merge commits authored in the last `since_hours`
-/// hours, newest first, each with its full oid and touched paths. `max_commits` bounds the scan —
-/// every returned commit costs one model call, so the caller (which knows what the user asked for)
-/// sets it, and the service clamps it to a sane range.
+/// Lists the commits an AI *search* will read: the most recent non-merge commits, newest first, each
+/// with its full oid and touched paths. `max_commits` bounds the scan — every returned commit costs
+/// one model call, so the caller sets it and the service clamps it to a sane range. `since_hours` is
+/// an optional extra bound; omitting it (the normal case) means "just the newest N".
 #[tauri::command]
 pub async fn get_ai_commit_scan(
     path: String,
-    since_hours: i64,
+    since_hours: Option<i64>,
     max_commits: Option<usize>,
 ) -> Result<AiCommitScan, String> {
     build_ai_commit_scan(&path, since_hours, max_commits).map_err(Into::into)

@@ -5,6 +5,7 @@ import {
   COMMIT_RELEVANCE_INSTRUCTION,
   COMMIT_RELEVANCE_OUTPUT_TOKENS,
   COMMIT_RELEVANCE_SCHEMA,
+  CommitVerdictUnreadable,
   parseCommitRelevance,
   type CommitRelevanceInput,
 } from './commitRelevance'
@@ -58,9 +59,24 @@ describe('buildCommitRelevancePrompt', () => {
 })
 
 describe('COMMIT_RELEVANCE_SCHEMA', () => {
-  it('constrains the verdict to the three fields it is read for', () => {
-    const schema = COMMIT_RELEVANCE_SCHEMA.schema as { properties: Record<string, unknown> }
-    expect(Object.keys(schema.properties).sort()).toEqual(['files', 'finding', 'relevant'])
+  /**
+   * The order is load-bearing, not cosmetic: a model fills the fields as it writes them, so the
+   * decision has to come after the evidence for it. With `relevant` first, the observed failure was
+   * a summary of the commit with `relevant: true` attached.
+   */
+  it('asks for the evidence before the verdict', () => {
+    const schema = COMMIT_RELEVANCE_SCHEMA.schema as {
+      properties: Record<string, unknown>
+      required: string[]
+    }
+    expect(Object.keys(schema.properties)).toEqual([
+      'subject',
+      'evidence',
+      'relevant',
+      'finding',
+      'files',
+    ])
+    expect(schema.required).toEqual(['subject', 'evidence', 'relevant', 'finding', 'files'])
     expect(COMMIT_RELEVANCE_SCHEMA.strict).toBe(true)
   })
 })
@@ -73,15 +89,32 @@ describe('COMMIT_RELEVANCE_INSTRUCTION', () => {
   it('scopes the model to this one commit rather than the whole question', () => {
     expect(COMMIT_RELEVANCE_INSTRUCTION).toMatch(/do not answer the question overall/i)
   })
+
+  it('states that false is the default answer', () => {
+    expect(COMMIT_RELEVANCE_INSTRUCTION).toMatch(/the default answer is false/i)
+  })
+
+  /** The exact false positive users hit: a menu entry matched a question about a button. */
+  it('rules out "same area, similar word" matches by example', () => {
+    expect(COMMIT_RELEVANCE_INSTRUCTION).toMatch(/menu entry, an icon, a panel or a dialog/i)
+  })
+
+  it('forbids describing the commit instead of answering', () => {
+    expect(COMMIT_RELEVANCE_INSTRUCTION).toMatch(/do not describe the commit/i)
+  })
 })
 
 describe('parseCommitRelevance', () => {
+  const positive = JSON.stringify({
+    subject: 'composant bouton',
+    evidence: 'packages/ui/src/Button.tsx: added a `loading` prop',
+    relevant: true,
+    finding: 'adds a loading state',
+    files: ['packages/ui/src/Button.tsx'],
+  })
+
   it('reads a positive verdict', () => {
-    expect(
-      parseCommitRelevance(
-        '{"relevant":true,"finding":"adds a loading state","files":["packages/ui/src/Button.tsx"]}'
-      )
-    ).toEqual({
+    expect(parseCommitRelevance(positive)).toEqual({
       relevant: true,
       finding: 'adds a loading state',
       files: ['packages/ui/src/Button.tsx'],
@@ -89,39 +122,94 @@ describe('parseCommitRelevance', () => {
   })
 
   it('tolerates prose and fences around the object', () => {
-    const raw = 'Here:\n```json\n{"relevant":false,"finding":"","files":[]}\n```'
-    expect(parseCommitRelevance(raw)).toEqual({ relevant: false, finding: '', files: [] })
+    const raw = `Here:\n\`\`\`json\n${positive}\n\`\`\`\nHope that helps.`
+    expect(parseCommitRelevance(raw).relevant).toBe(true)
   })
 
   it('accepts the string "true" some providers emit under a loose schema', () => {
-    expect(parseCommitRelevance('{"relevant":"true","finding":"touches it","files":[]}')).toEqual({
+    const raw = positive.replace('"relevant":true', '"relevant":"true"')
+    expect(parseCommitRelevance(raw).relevant).toBe(true)
+  })
+
+  /**
+   * The gate that removes the observed failure: a commit was matched for being vaguely in the same
+   * area, with a summary of it pasted into `finding`. No element of *this* diff, no match.
+   */
+  it('rejects a match backed by no evidence from the diff', () => {
+    const raw = JSON.stringify({
+      subject: 'composant bouton',
+      evidence: '',
       relevant: true,
-      finding: 'touches it',
-      files: [],
+      finding: 'Ce commit introduit une approche en deux phases pour planifier les commits.',
+      files: ['packages/ai/src/features/planCommits.ts'],
     })
+    expect(parseCommitRelevance(raw)).toEqual({ relevant: false, finding: '', files: [] })
+  })
+
+  it('treats "none" and its friends as no evidence at all', () => {
+    // How a model writes an empty field when the schema forbids omitting it.
+    for (const evidence of ['none', 'N/A', 'aucune', '-', 'null']) {
+      const raw = positive.replace('packages/ui/src/Button.tsx: added a `loading` prop', evidence)
+      expect(parseCommitRelevance(raw).relevant).toBe(false)
+    }
   })
 
   it('drops a "relevant" verdict the model could not describe', () => {
     // Otherwise the answer names a commit with nothing to say about it, which reads as an
     // unexplained accusation against the user's own history.
-    expect(parseCommitRelevance('{"relevant":true,"finding":"  ","files":["a"]}')).toEqual({
-      relevant: false,
-      finding: '',
-      files: [],
-    })
+    const raw = positive.replace('"finding":"adds a loading state"', '"finding":"  "')
+    expect(parseCommitRelevance(raw)).toEqual({ relevant: false, finding: '', files: [] })
   })
 
   it('clears the finding and files of a negative verdict', () => {
-    expect(
-      parseCommitRelevance('{"relevant":false,"finding":"nothing here","files":["a"]}')
-    ).toEqual({ relevant: false, finding: '', files: [] })
+    const raw = JSON.stringify({
+      subject: 'composant bouton',
+      evidence: '',
+      relevant: false,
+      finding: 'nothing here',
+      files: ['a'],
+    })
+    expect(parseCommitRelevance(raw)).toEqual({ relevant: false, finding: '', files: [] })
   })
 
-  it('throws on an unusable response, so the caller records the commit as unread', () => {
+  /**
+   * Ollama's OpenAI-compatible endpoint drops `response_format` for some models and answers in
+   * labelled prose. Without this, that provider does not degrade the search — it makes EVERY commit
+   * unreadable.
+   */
+  it('reads a verdict a provider wrote as labelled prose', () => {
+    const raw = [
+      'subject: composant bouton',
+      'evidence: packages/ui/src/components/button.tsx now reads --control-radius',
+      'relevant: true',
+      'finding: Le bouton utilise désormais une variable CSS pour son rayon.',
+      'files:',
+      '- packages/ui/src/components/button.tsx',
+    ].join('\n')
+
+    expect(parseCommitRelevance(raw)).toEqual({
+      relevant: true,
+      finding: 'Le bouton utilise désormais une variable CSS pour son rayon.',
+      files: ['packages/ui/src/components/button.tsx'],
+    })
+  })
+
+  it('reads a prose negative, markdown emphasis and all', () => {
+    const raw = '- **subject**: bouton\n- **evidence**:\n- **relevant**: false\n- **finding**:'
+    expect(parseCommitRelevance(raw)).toEqual({ relevant: false, finding: '', files: [] })
+  })
+
+  it('holds prose to the same evidence rule as JSON', () => {
+    const raw = 'subject: bouton\nevidence:\nrelevant: true\nfinding: Ce commit fait autre chose.'
+    expect(parseCommitRelevance(raw).relevant).toBe(false)
+  })
+
+  it('throws a typed error on an unusable response, so the caller can say why', () => {
     // A failed call must not become a clean "no": that turns a provider hiccup into a confident
     // negative in the final answer.
-    expect(() => parseCommitRelevance('the model was busy')).toThrow()
-    expect(() => parseCommitRelevance('{oops')).toThrow()
+    expect(() => parseCommitRelevance('')).toThrow(CommitVerdictUnreadable)
+    expect(() => parseCommitRelevance('   ')).toThrow(CommitVerdictUnreadable)
+    expect(() => parseCommitRelevance('the model was busy')).toThrow(CommitVerdictUnreadable)
   })
 })
 

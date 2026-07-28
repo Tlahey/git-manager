@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { summarizeFiles, type SummaryProgress } from '@git-manager/ai'
+import { fileSummaryFeature, summarizeFiles, type SummaryProgress } from '@git-manager/ai'
 import { fileSummaryService, summaryExplanationService } from '../api/ai.api'
 import { apiGetCommitDiff } from '../api/git.api'
 import { formatUnifiedPatch } from '../lib/formatUnifiedPatch'
@@ -8,6 +8,7 @@ import {
   useAiExplanationStore,
   type StoredExplanation,
 } from '../stores/aiExplanation.store'
+import { trackAiProgress } from '../stores/aiActivity.store'
 import { useSettingsStore } from '../stores/settings.store'
 import { useAiStream, type AiStreamStatus } from './useAiStream'
 
@@ -83,7 +84,11 @@ export function useCommitExplanation(repoPath: string, commit: CommitExplanation
             },
             (summaryInput) => fileSummaryService.run(aiConnection, summaryInput),
             contextTokens,
-            { onProgress: setProgress, shouldCancel: () => cancelledRef.current }
+            {
+              onProgress: trackAiProgress(fileSummaryFeature.id, setProgress),
+              shouldCancel: () => cancelledRef.current,
+              concurrency: aiConnection.concurrency,
+            }
           )
           setProgress(null)
 

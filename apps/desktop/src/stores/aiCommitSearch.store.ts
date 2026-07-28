@@ -1,3 +1,4 @@
+import type { ScanFailure } from '@git-manager/ai'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
@@ -37,12 +38,41 @@ export interface StoredSearchRun {
   scanned: number
   /** How many could not be read (diff or model call failed) — kept, because it qualifies a "no". */
   failed: number
-  /** True when the window held more commits than were read. */
+  /**
+   * Why most of them went unread, when any did.
+   *
+   * The reason is kept and the per-commit list is not: which commits failed is only actionable while
+   * the run is on screen, but *why* is what makes a remembered run readable months later — "the
+   * model was answering in the wrong shape" and "the provider was down" leave the same count behind
+   * and mean entirely different things about the answer above them.
+   */
+  failureReason?: ScanFailure
+  /** True when history holds commits older than the ones read. */
   truncated: boolean
-  /** Length of the searched window in hours, as asked for. */
-  sinceHours: number
-  /** Start of the searched window, seconds since the epoch — what the backend actually used. */
-  sinceEpoch: number
+  /**
+   * Which kind of search produced this answer.
+   *
+   * The single most important thing to know about an old run, because the two modes answer different
+   * questions: `deep` read what the commits *did*, `quick` read what their authors *said* they did. A
+   * "no" from a quick search is a much weaker claim than a "no" from a deep one, and months later
+   * nothing else on the entry would tell them apart. Optional: runs saved before the quick mode
+   * existed were all deep.
+   */
+  mode?: 'deep' | 'quick'
+  /**
+   * How many files were read across the run — its real cost, and usually its duration.
+   *
+   * Kept because the commit count alone is misleading months later: every commit is read one call
+   * per file, so ten commits can mean two hundred requests. Optional: runs saved before commits were
+   * read file by file have none.
+   */
+  filesRead?: number
+  /**
+   * The span actually covered, in epoch seconds. Optional: runs saved before the search dropped its
+   * time window carry a length-of-window instead, and an old entry must not break the history list.
+   */
+  oldestEpoch?: number
+  newestEpoch?: number
   /** Epoch milliseconds when the run finished. */
   ranAt: number
   /** The model that answered. A run reads very differently once you know which model produced it. */

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ScanFailure, ScannedCommit } from '@git-manager/ai'
 import type { StoredSearchRun } from '../../stores/aiCommitSearch.store'
 
 const searchState = vi.hoisted(() => ({
@@ -12,10 +13,18 @@ const searchState = vi.hoisted(() => ({
   error: null as string | null,
   answer: '',
   askedQuestion: '',
-  progress: null as { phase: string; completed: number; total: number } | null,
+  progress: null as
+    | {
+        phase: string
+        completed: number
+        total: number
+        filesRead?: number
+        narrowing?: boolean
+      }
+    | null,
   results: [] as unknown[],
   matches: [] as unknown[],
-  failedCount: 0,
+  unread: [] as ScannedCommit[],
   truncated: false,
   history: [] as StoredSearchRun[],
   removeRun: vi.fn(),
@@ -54,11 +63,35 @@ function storedRun(overrides: Partial<StoredSearchRun> = {}): StoredSearchRun {
     scanned: 42,
     failed: 0,
     truncated: false,
-    sinceHours: 720,
-    sinceEpoch: 1_781_395_200,
+    oldestEpoch: 1_781_395_200,
+    newestEpoch: 1_783_987_200,
     ranAt: Date.now(),
     model: 'qwen3',
     ...overrides,
+  }
+}
+
+function unreadCommit(shortOid: string, failure: ScanFailure): ScannedCommit {
+  return {
+    commit: {
+      oid: shortOid.padEnd(40, '0'),
+      shortOid,
+      subject: 'feat: something the model choked on',
+      body: '',
+      author: 'Ada',
+      timestamp: 1_783_987_200,
+      files: [],
+      filesTruncated: false,
+      insertions: 1,
+      deletions: 0,
+      parentCount: 1,
+    },
+    relevant: false,
+    finding: '',
+    files: [],
+    failed: true,
+    failure,
+    filesRead: 0,
   }
 }
 
@@ -79,7 +112,7 @@ beforeEach(() => {
     progress: null,
     results: [],
     matches: [],
-    failedCount: 0,
+    unread: [],
     truncated: false,
     history: [],
   })
@@ -90,11 +123,16 @@ describe('AiCommitSearchPanel', () => {
   it('explains what it does before anything has been asked', () => {
     renderPanel()
     expect(screen.getByTestId('commit-search-empty')).toHaveTextContent(
-      /every commit in the window is read on its own/i
+      /every commit is read file by file/i
     )
   })
 
-  it('asks the question over the chosen window and commit budget', async () => {
+  /**
+   * The commit count is the only *bound* — the time window that used to sit beside it was redundant
+   * (see `CommitSearchForm`). The mode is not a bound: it decides what reading a commit means, and
+   * it defaults to the deep read.
+   */
+  it('asks the question with the commit budget as its only bound, read deeply', async () => {
     const user = userEvent.setup()
     renderPanel()
 
@@ -102,8 +140,23 @@ describe('AiCommitSearchPanel', () => {
     await user.click(screen.getByTestId('commit-search-submit'))
 
     expect(searchState.search).toHaveBeenCalledWith('Did the Button change?', {
-      sinceHours: 24 * 30,
       maxCommits: 60,
+      mode: 'deep',
+    })
+    expect(screen.queryByTestId('commit-search-window')).not.toBeInTheDocument()
+  })
+
+  it('asks for the quick mode once the box is ticked', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    await user.type(screen.getByTestId('commit-search-question'), 'Did the Button change?')
+    await user.click(screen.getByTestId('commit-search-quick'))
+    await user.click(screen.getByTestId('commit-search-submit'))
+
+    expect(searchState.search).toHaveBeenCalledWith('Did the Button change?', {
+      maxCommits: 60,
+      mode: 'quick',
     })
   })
 
@@ -178,15 +231,144 @@ describe('AiCommitSearchPanel', () => {
     // Both notices exist so a provider hiccup or a commit cap cannot read as "it never happened".
     searchState.phase = 'done'
     searchState.answer = 'No.'
-    searchState.failedCount = 3
+    searchState.unread = [unreadCommit('bad1234', 'unreadable')]
     searchState.truncated = true
     searchState.results = [{}, {}, {}]
     renderPanel()
 
-    expect(screen.getByTestId('commit-search-failed')).toHaveTextContent('3 commit(s)')
+    expect(screen.getByTestId('commit-search-unread')).toHaveTextContent('1 commit(s) left unread')
+    // The cap is the user's own, so the notice names it rather than implying something failed:
+    // 3 results minus the 1 unread commit is what "read" means here.
     expect(screen.getByTestId('commit-search-truncated')).toHaveTextContent(
-      /only the most recent ones/i
+      /these 2 commits are the most recent ones.*the number you asked for/i
     )
+  })
+
+  /**
+   * The truncation flag is known the instant the commit list comes back — before a single commit has
+   * been read — so showing it live announced "these 0 commits are the most recent ones" for the
+   * whole run. It qualifies an answer, so it waits for one.
+   */
+  it('holds the truncation caveat back until the reading is over', () => {
+    searchState.isRunning = true
+    searchState.phase = 'scanning'
+    searchState.truncated = true
+    searchState.results = []
+    renderPanel()
+
+    expect(screen.queryByTestId('commit-search-truncated')).not.toBeInTheDocument()
+  })
+
+  /**
+   * The old line said "N commits could not be read" and stopped there — true, alarming and
+   * unactionable. The cause is what tells the user whether to change model or start their provider.
+   */
+  it('names the cause and the commits rather than a bare count', () => {
+    searchState.phase = 'done'
+    searchState.answer = 'No.'
+    searchState.unread = [unreadCommit('bad1234', 'unreadable')]
+    renderPanel()
+
+    expect(screen.getByTestId('commit-search-unread')).toHaveTextContent(
+      /ignores the JSON format the app asks for/i
+    )
+    expect(screen.getByTestId('commit-search-unread-bad1234')).toBeInTheDocument()
+  })
+
+  it('still explains a reopened run, whose unread commits are no longer kept', async () => {
+    const user = userEvent.setup()
+    searchState.history = [storedRun({ failed: 4, failureReason: 'call' })]
+    renderPanel()
+
+    await user.click(screen.getByText('Did the Button change?'))
+
+    // The commits themselves were not stored — the count and the cause were, and they are what
+    // makes the caveat readable months later.
+    const notice = screen.getByTestId('commit-search-failed')
+    expect(notice).toHaveTextContent('4 commit(s) left unread')
+    expect(notice).toHaveTextContent(/did not answer/i)
+  })
+
+  /**
+   * The commit count is what was asked for; the file count is what the run actually cost, since
+   * every commit is read one model call per file.
+   */
+  it('reports how many files were read, not just how many commits', () => {
+    searchState.phase = 'done'
+    searchState.answer = 'Yes.'
+    searchState.results = [{ filesRead: 12 }, { filesRead: 7 }, { filesRead: 3 }]
+    renderPanel()
+
+    const notice = screen.getByTestId('commit-search-files')
+    expect(notice).toHaveTextContent('22 files read across 3 commit(s)')
+    // Not a caveat: reading every file is what keeps a verdict from resting on part of a commit.
+    expect(notice).toHaveTextContent(/every commit is read file by file/i)
+  })
+
+  /** One model call per commit, during which both counters above it are frozen. */
+  it('says when it is choosing which files to open, since both counters stall then', () => {
+    searchState.isRunning = true
+    searchState.phase = 'scanning'
+    searchState.progress = { phase: 'scanning', completed: 1, total: 5, filesRead: 4, narrowing: true }
+    renderPanel()
+
+    expect(screen.getByTestId('commit-search-narrowing')).toHaveTextContent(
+      /choosing which files .* to open/i
+    )
+  })
+
+  it('counts the files during the run too, so a slow bar reads as busy', () => {
+    searchState.isRunning = true
+    searchState.phase = 'scanning'
+    searchState.progress = { phase: 'scanning', completed: 2, total: 42, filesRead: 31 }
+    renderPanel()
+
+    expect(screen.getByTestId('commit-search-files-read')).toHaveTextContent('31 files read')
+  })
+
+  /**
+   * The triage is one pass over every message, so counting it as "0 of 1" read as a search over a
+   * single commit — which is what a user reported seeing.
+   */
+  it('names the shortlisting pass instead of counting it as one commit', () => {
+    searchState.isRunning = true
+    searchState.phase = 'scanning'
+    searchState.progress = { phase: 'triaging', completed: 0, total: 1 }
+    renderPanel()
+
+    expect(screen.getByTestId('commit-search-triaging')).toHaveTextContent(
+      /reading every commit message to shortlist/i
+    )
+    expect(screen.queryByTestId('commit-search-progress')).not.toBeInTheDocument()
+  })
+
+  /**
+   * What a quick run skipped is real and has to be said — but what it *found* was read in the code
+   * like any other, and the badge must not imply otherwise.
+   */
+  it('marks a quick answer by what it skipped, not by what it read', async () => {
+    const user = userEvent.setup()
+    searchState.history = [storedRun({ mode: 'quick' })]
+    renderPanel()
+
+    await user.click(screen.getByText('Did the Button change?'))
+
+    const badge = screen.getByTestId('commit-search-quick-badge')
+    expect(badge).toHaveTextContent(/shortlisted from their messages/i)
+    expect(badge).toHaveTextContent(/read in the code like a full search/i)
+    // Both narrowings are named, because both are coverage the user gave up.
+    expect(badge).toHaveTextContent(/message did not mention the subject/i)
+    expect(badge).toHaveTextContent(/every file whose path did not/i)
+  })
+
+  it('marks nothing on a deep answer, which is what the panel is otherwise about', async () => {
+    const user = userEvent.setup()
+    searchState.history = [storedRun({ mode: 'deep' })]
+    renderPanel()
+
+    await user.click(screen.getByText('Did the Button change?'))
+
+    expect(screen.queryByTestId('commit-search-quick-badge')).not.toBeInTheDocument()
   })
 
   it('surfaces a failure instead of an empty answer', () => {

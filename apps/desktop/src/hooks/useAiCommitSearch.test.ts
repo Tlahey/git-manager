@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
-import type { AiCommitScan, ScanCommit } from '@git-manager/ai'
+import { CommitVerdictUnreadable, type AiCommitScan, type ScanCommit } from '@git-manager/ai'
 import type { GitDiff } from '@git-manager/git-types'
 
 const { listeners, listen } = vi.hoisted(() => {
@@ -16,6 +16,8 @@ vi.mock('@tauri-apps/api/event', () => ({ listen }))
 
 vi.mock('../api/ai.api', () => ({
   apiGetAiCommitScan: vi.fn(),
+  commitFileScanService: { run: vi.fn() },
+  commitQuickScanService: { run: vi.fn() },
   commitRelevanceService: { run: vi.fn() },
   commitSearchAnswerService: { run: vi.fn(), cancel: vi.fn() },
 }))
@@ -23,6 +25,8 @@ vi.mock('../api/git.api', () => ({ apiGetCommitDiff: vi.fn() }))
 
 import {
   apiGetAiCommitScan,
+  commitFileScanService,
+  commitQuickScanService,
   commitRelevanceService,
   commitSearchAnswerService,
 } from '../api/ai.api'
@@ -34,6 +38,8 @@ const mockedScan = apiGetAiCommitScan as unknown as ReturnType<typeof vi.fn>
 const mockedJudge = commitRelevanceService.run as unknown as ReturnType<typeof vi.fn>
 const mockedAnswer = commitSearchAnswerService.run as unknown as ReturnType<typeof vi.fn>
 const mockedDiff = apiGetCommitDiff as unknown as ReturnType<typeof vi.fn>
+const mockedQuick = commitQuickScanService.run as unknown as ReturnType<typeof vi.fn>
+const mockedFileScan = commitFileScanService.run as unknown as ReturnType<typeof vi.fn>
 
 /** The request id the hook minted for the answer in flight, read back off the mocked service. */
 function currentRequestId(): string {
@@ -67,7 +73,8 @@ function scan(commits: ScanCommit[], overrides: Partial<AiCommitScan> = {}): AiC
     branch: 'main',
     commits,
     truncated: false,
-    sinceEpoch: 1_781_395_200,
+    oldestEpoch: 1_781_395_200,
+    newestEpoch: 1_783_987_200,
     ...overrides,
   }
 }
@@ -93,7 +100,7 @@ const diff: GitDiff = {
   totalDeletions: 1,
 }
 
-const options = { sinceHours: 720, maxCommits: 60 }
+const options = { maxCommits: 60, mode: 'deep' as const }
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -107,6 +114,12 @@ beforeEach(() => {
     files: ['packages/ui/src/Button.tsx'],
   })
   mockedAnswer.mockResolvedValue(undefined)
+  mockedQuick.mockResolvedValue([])
+  // By default the file narrowing keeps everything, so tests that do not care about it see the
+  // whole commit read — the deep mode's behaviour.
+  mockedFileScan.mockImplementation((_c, input: { files: { path: string }[] }) =>
+    Promise.resolve(input.files.map((f) => f.path))
+  )
 })
 
 describe('useAiCommitSearch', () => {
@@ -120,7 +133,7 @@ describe('useAiCommitSearch', () => {
       await result.current.search('Did the Button change?', options)
     })
 
-    expect(mockedScan).toHaveBeenCalledWith('/repo/demo', 720, 60)
+    expect(mockedScan).toHaveBeenCalledWith('/repo/demo', 60)
     expect(mockedJudge).toHaveBeenCalledTimes(2)
     expect(mockedDiff).toHaveBeenCalledTimes(2)
   })
@@ -172,7 +185,27 @@ describe('useAiCommitSearch', () => {
     })
 
     expect(mockedAnswer.mock.calls[0][1].scanned).toBe(1)
-    expect(result.current.failedCount).toBe(1)
+    expect(result.current.unread).toHaveLength(1)
+    expect(result.current.unread[0].commit.shortOid).toBe('bad')
+  })
+
+  /** The panel can only name the cause if the run keeps it; a count alone was unactionable. */
+  it('records why a run went unread, on the saved run too', async () => {
+    mockedScan.mockResolvedValue(scan([commit()]))
+    mockedJudge.mockRejectedValue(new CommitVerdictUnreadable('answered in prose'))
+
+    const { result } = renderHook(() => useAiCommitSearch('/repo/demo'))
+    await act(async () => {
+      await result.current.search('Did the Button change?', options)
+    })
+    await act(async () => {
+      emit('ai:token', 'No.')
+      emit('ai:done')
+    })
+
+    expect(result.current.unread[0].failure).toBe('unreadable')
+    const [stored] = useAiCommitSearchStore.getState().runs['/repo/demo']
+    expect(stored).toMatchObject({ failed: 1, failureReason: 'unreadable' })
   })
 
   it('carries the truncation flag through to the answer, so "not found" stays qualified', async () => {
@@ -203,11 +236,12 @@ describe('useAiCommitSearch', () => {
       scanned: 1,
       failed: 0,
       truncated: false,
-      sinceHours: 720,
     })
     expect(stored.matches[0]).toMatchObject({
       shortOid: 'aaaaaaa',
-      finding: 'adds a loading state',
+      // Terminated: a commit's finding is its files' findings run together, so each has to read as
+      // a sentence rather than joining into one.
+      finding: 'adds a loading state.',
       files: ['packages/ui/src/Button.tsx'],
     })
   })
@@ -223,6 +257,201 @@ describe('useAiCommitSearch', () => {
 
     await waitFor(() => expect(result.current.results).toHaveLength(2))
     expect(result.current.matches).toHaveLength(2)
+  })
+
+  /**
+   * The alternative mode: a shortlist drawn from the messages in one call, then the *same*
+   * file-by-file read over only the commits it picked. So it differs in coverage, not in the
+   * evidence behind the answers that come back.
+   */
+  describe('quick mode', () => {
+    const quick = { maxCommits: 60, mode: 'quick' as const }
+
+    /**
+     * The narrowing that decides the wait. Shortlisting commits alone left a measured run at
+     * ninety-four file reads, because a feature commit here touches thirty files.
+     */
+    it('narrows a shortlisted commit’s files before opening any of them', async () => {
+      mockedScan.mockResolvedValue(scan([commit({ shortOid: 'c1' })]))
+      mockedQuick.mockResolvedValue([{ shortOid: 'c1', reason: 'mentions the button' }])
+      mockedFileScan.mockResolvedValue(['packages/ui/src/Button.tsx'])
+      mockedDiff.mockResolvedValue({
+        ...diff,
+        files: [
+          diff.files[0]!,
+          { ...diff.files[0]!, oldPath: 'pnpm-lock.yaml', newPath: 'pnpm-lock.yaml' },
+        ],
+      })
+
+      const { result } = renderHook(() => useAiCommitSearch('/repo/demo'))
+      await act(async () => {
+        await result.current.search('Did the Button change?', quick)
+      })
+
+      // One call over the paths, with the commit's message so a path is legible…
+      expect(mockedFileScan).toHaveBeenCalledTimes(1)
+      const narrowing = mockedFileScan.mock.calls[0][1]
+      expect(narrowing.commit.subject).toBe('feat(ui): loading state on Button')
+      expect(narrowing.files.map((f: { path: string }) => f.path)).toEqual([
+        'packages/ui/src/Button.tsx',
+        'pnpm-lock.yaml',
+      ])
+      // …and only the path it kept was opened.
+      expect(mockedJudge).toHaveBeenCalledTimes(1)
+      expect(mockedJudge.mock.calls[0][1].files).toEqual([
+        { path: 'packages/ui/src/Button.tsx', status: 'modified' },
+      ])
+    })
+
+    /** The deep mode reads everything; the narrowing belongs to the quick one alone. */
+    it('does not narrow files in the deep mode', async () => {
+      mockedScan.mockResolvedValue(scan([commit()]))
+      const { result } = renderHook(() => useAiCommitSearch('/repo/demo'))
+      await act(async () => {
+        await result.current.search('Did the Button change?', options)
+      })
+
+      expect(mockedFileScan).not.toHaveBeenCalled()
+    })
+
+    it('shortlists from the messages, then opens only what it picked', async () => {
+      mockedScan.mockResolvedValue(
+        scan([
+          commit({ shortOid: 'c1' }),
+          commit({ shortOid: 'c2', oid: 'b'.repeat(40) }),
+          commit({ shortOid: 'c3', oid: 'c'.repeat(40) }),
+        ])
+      )
+      mockedQuick.mockResolvedValue([{ shortOid: 'c2', reason: 'mentions the button' }])
+
+      const { result } = renderHook(() => useAiCommitSearch('/repo/demo'))
+      await act(async () => {
+        await result.current.search('Did the Button change?', quick)
+      })
+
+      // Every message was offered to the triage…
+      const triaged = mockedQuick.mock.calls[0][1]
+      expect(triaged.commits.map((c: { shortOid: string }) => c.shortOid)).toEqual([
+        'c1',
+        'c2',
+        'c3',
+      ])
+      expect(triaged.commits[0]).not.toHaveProperty('diff')
+      // …and only the one it picked cost a diff and a verdict.
+      expect(mockedDiff).toHaveBeenCalledTimes(1)
+      expect(mockedJudge).toHaveBeenCalledTimes(1)
+      expect(mockedJudge.mock.calls[0][1].commit.shortOid).toBe('c2')
+    })
+
+    /** The shortlist is a claim about a message; the answer must rest on what the code showed. */
+    it('lets the deep read overrule the shortlist', async () => {
+      mockedScan.mockResolvedValue(scan([commit({ shortOid: 'candidate' })]))
+      mockedQuick.mockResolvedValue([{ shortOid: 'candidate', reason: 'the subject says button' }])
+      mockedJudge.mockResolvedValue({ relevant: false, finding: '', files: [] })
+
+      const { result } = renderHook(() => useAiCommitSearch('/repo/demo'))
+      await act(async () => {
+        await result.current.search('Did the Button change?', quick)
+      })
+
+      expect(result.current.matches).toHaveLength(0)
+      expect(mockedAnswer.mock.calls[0][1].findings).toHaveLength(0)
+    })
+
+    it('keeps the verdict the code produced, file paths included', async () => {
+      mockedScan.mockResolvedValue(
+        scan([commit({ shortOid: 'hit' }), commit({ shortOid: 'miss', oid: 'b'.repeat(40) })])
+      )
+      mockedQuick.mockResolvedValue([{ shortOid: 'hit', reason: 'the subject says button' }])
+
+      const { result } = renderHook(() => useAiCommitSearch('/repo/demo'))
+      await act(async () => {
+        await result.current.search('Did the Button change?', quick)
+      })
+
+      expect(result.current.matches).toHaveLength(1)
+      expect(result.current.matches[0].commit.shortOid).toBe('hit')
+      // From the diff, not from the message: the finding and the paths are the deep read's.
+      expect(result.current.matches[0].finding).toBe('adds a loading state.')
+      expect(result.current.matches[0].files).toEqual(['packages/ui/src/Button.tsx'])
+      // Both commits count as read: the skipped one was seen by the triage and dismissed.
+      expect(mockedAnswer.mock.calls[0][1].scanned).toBe(2)
+    })
+
+    /** A sha nothing matches would send a full file-by-file read after a commit that does not exist. */
+    it('ignores a sha the model invented', async () => {
+      mockedScan.mockResolvedValue(scan([commit({ shortOid: 'real' })]))
+      mockedQuick.mockResolvedValue([
+        { shortOid: 'real', reason: 'yes' },
+        { shortOid: 'imagined', reason: 'also yes' },
+      ])
+
+      const { result } = renderHook(() => useAiCommitSearch('/repo/demo'))
+      await act(async () => {
+        await result.current.search('Did the Button change?', quick)
+      })
+
+      expect(mockedJudge).toHaveBeenCalledTimes(1)
+      expect(result.current.results).toHaveLength(1)
+    })
+
+    it('spends nothing further when the shortlist is empty', async () => {
+      mockedScan.mockResolvedValue(scan([commit({ shortOid: 'c1' })]))
+      mockedQuick.mockResolvedValue([])
+
+      const { result } = renderHook(() => useAiCommitSearch('/repo/demo'))
+      await act(async () => {
+        await result.current.search('Did the Button change?', quick)
+      })
+
+      expect(mockedDiff).not.toHaveBeenCalled()
+      expect(mockedJudge).not.toHaveBeenCalled()
+      expect(result.current.results).toHaveLength(1)
+      expect(result.current.matches).toHaveLength(0)
+      expect(mockedAnswer.mock.calls[0][1].scanned).toBe(1)
+    })
+
+    /**
+     * The single most important thing about an old run: a "no" from the messages is a much weaker
+     * claim than a "no" from the diffs, and nothing else on the entry would tell them apart.
+     */
+    it('records which mode answered, on the saved run', async () => {
+      const { result } = renderHook(() => useAiCommitSearch('/repo/demo'))
+      await act(async () => {
+        await result.current.search('Did the Button change?', quick)
+      })
+      await act(async () => {
+        emit('ai:token', 'No.')
+        emit('ai:done')
+      })
+
+      const [stored] = useAiCommitSearchStore.getState().runs['/repo/demo']
+      expect(stored).toMatchObject({ mode: 'quick' })
+    })
+
+    it('reports a failed call rather than answering from nothing', async () => {
+      mockedQuick.mockRejectedValue(new Error('provider down'))
+      const { result } = renderHook(() => useAiCommitSearch('/repo/demo'))
+      await act(async () => {
+        await result.current.search('Did the Button change?', quick)
+      })
+
+      expect(result.current.phase).toBe('error')
+      expect(mockedAnswer).not.toHaveBeenCalled()
+    })
+  })
+
+  it('records that a deep run read the diffs, so an old answer says what it rests on', async () => {
+    const { result } = renderHook(() => useAiCommitSearch('/repo/demo'))
+    await act(async () => {
+      await result.current.search('Did the Button change?', options)
+    })
+    await act(async () => {
+      emit('ai:token', 'Yes.')
+      emit('ai:done')
+    })
+
+    expect(useAiCommitSearchStore.getState().runs['/repo/demo'][0]).toMatchObject({ mode: 'deep' })
   })
 
   it('does nothing on a blank question', async () => {

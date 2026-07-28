@@ -3,6 +3,7 @@ import {
   buildCommitSearchAnswerPrompt,
   commitSearchAnswerFeature,
   COMMIT_SEARCH_ANSWER_INSTRUCTION,
+  COMMIT_SEARCH_ANSWER_OUTPUT_TOKENS,
   renderFindings,
   type CommitSearchAnswerInput,
   type CommitSearchFinding,
@@ -84,7 +85,22 @@ describe('COMMIT_SEARCH_ANSWER_INSTRUCTION', () => {
   })
 })
 
+describe('COMMIT_SEARCH_ANSWER_INSTRUCTION — narration', () => {
+  /** A user watched the answer stop at "Non, aucun changement sur le composant bouton n'a été",
+   * the model having spent the budget narrating first. */
+  it('forbids a visible reasoning section', () => {
+    expect(COMMIT_SEARCH_ANSWER_INSTRUCTION).toMatch(/do not show your reasoning/i)
+  })
+})
+
 describe('commitSearchAnswerFeature', () => {
+  it('asks for more room than a default prose answer, being the end of a long wait', () => {
+    expect(commitSearchAnswerFeature.reservedOutputTokens?.(input)).toBe(
+      COMMIT_SEARCH_ANSWER_OUTPUT_TOKENS
+    )
+    expect(COMMIT_SEARCH_ANSWER_OUTPUT_TOKENS).toBeGreaterThan(600)
+  })
+
   it('streams, because the user has already waited through the whole scan', () => {
     expect(commitSearchAnswerFeature.kind).toBe('streaming')
   })

@@ -1,6 +1,7 @@
-import type { AiContext } from '../config'
+import type { AiContext, AiContextFile } from '../config'
 import { splitDiffByFile } from './diffBudget'
 import type { FileSummary, FileSummaryInput, FileSummaryResult } from './fileSummary'
+import { DEFAULT_AI_CONCURRENCY, mapConcurrently } from './mapConcurrently'
 
 /**
  * Progress of a run that reads files one at a time.
@@ -17,12 +18,19 @@ export interface SummaryProgress {
 export interface SummarizeOptions {
   onProgress?(progress: SummaryProgress): void
   /**
-   * Polled before each call. Cancellation is therefore **between** calls, not within one: the
-   * completion transport takes no request id, so a call already in flight runs to completion and its
-   * result is discarded. Acceptable only because each summary call is small — it is the reason this
-   * phase is one call per file rather than one per batch of files.
+   * Polled before each call is dispatched. Cancellation is therefore **between** calls, not within
+   * one: the completion transport takes no request id, so a call already in flight runs to completion
+   * and its result is discarded. Acceptable only because each summary call is small — it is the
+   * reason this phase is one call per file rather than one per batch of files.
    */
   shouldCancel?(): boolean
+  /**
+   * How many files may be summarized at once. Defaults to {@link DEFAULT_AI_CONCURRENCY} (one).
+   *
+   * Worth raising only against a provider that batches; see {@link mapConcurrently} for the measured
+   * shape of the trade and why the default cannot be anything but 1.
+   */
+  concurrency?: number
 }
 
 /** Thrown when {@link SummarizeOptions.shouldCancel} asked to stop. Distinguishable from a real
@@ -49,10 +57,11 @@ export class SummaryRunCancelled extends Error {
  * working out which path had produced it. One way, always — the cost is latency on small changes,
  * and the answer to that is caching summaries by content, not a second code path.
  *
- * **Sequential on purpose.** The provider is normally a local model with one copy resident; issuing
- * N requests at once queues them behind the same weights while splitting its context allocation, so
- * concurrency buys latency on paper and loses it in practice. It also keeps `onProgress` honest —
- * `completed` counts files actually described, not requests dispatched.
+ * **Sequential by default**, widened only by an explicit `concurrency`. It used to be sequential
+ * unconditionally, on the reasoning that a local provider holds one copy of the weights so parallel
+ * requests would queue behind them anyway — true of some servers, false of any that batches. See
+ * {@link mapConcurrently} for what was measured and what it costs. Either way `onProgress` stays
+ * honest: `completed` counts files actually described, not requests dispatched.
  *
  * A file whose call fails is kept with empty fields rather than dropped. Every consumer's
  * instruction has a rule for handling one, and losing a file here would be the exact failure the
@@ -70,12 +79,10 @@ export async function summarizeFiles(
   // in which case every file is summarized from its path alone.
   const sections = new Map(splitDiffByFile(context.diff).map((s) => [s.path, s.text]))
 
-  const summaries: FileSummary[] = []
+  let completed = 0
   onProgress?.({ phase: 'summarizing', completed: 0, total: context.files.length })
 
-  for (const file of context.files) {
-    if (shouldCancel?.()) throw new SummaryRunCancelled()
-
+  const describeOne = async (file: AiContextFile): Promise<FileSummary> => {
     let result: FileSummaryResult = { intent: '', area: '' }
     try {
       result = await summarize({
@@ -87,10 +94,22 @@ export async function summarizeFiles(
     } catch {
       // Kept with empty fields — see the note above on why this file must not disappear.
     }
-    summaries.push({ path: file.path, status: file.status, ...result })
-    onProgress?.({ phase: 'summarizing', completed: summaries.length, total: context.files.length })
+    return { path: file.path, status: file.status, ...result }
   }
 
-  if (shouldCancel?.()) throw new SummaryRunCancelled()
-  return summaries
+  const { results, stopped } = await mapConcurrently(
+    context.files,
+    options.concurrency ?? DEFAULT_AI_CONCURRENCY,
+    describeOne,
+    {
+      onSettled: () => {
+        completed++
+        onProgress?.({ phase: 'summarizing', completed, total: context.files.length })
+      },
+      shouldStop: () => shouldCancel?.() ?? false,
+    }
+  )
+
+  if (stopped || shouldCancel?.()) throw new SummaryRunCancelled()
+  return results
 }

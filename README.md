@@ -248,13 +248,36 @@ brew install ollama
 # Start the server
 ollama serve
 
-# Pull a model (choose one)
-ollama pull llama3.2               # ~2GB — good general model
-ollama pull qwen2.5-coder:7b       # ~4.7GB — better for code diffs
-ollama pull phi3.5                 # ~2.2GB — fast and lightweight
+# Pull a model
+ollama pull qwen2.5-coder:7b       # ~4.7GB — a reasonable starting point for code diffs
 ```
 
-The model is configurable per-project. Temperature and timeout are also adjustable in Settings.
+The model is configurable per-project; the request timeout and the declared context window are also
+adjustable in Settings. (Temperature is not: each feature owns the one it needs — see
+[docs/ai/README.md](docs/ai/README.md).)
+
+### Choosing a model — this matters more than it looks
+
+**Pick a model that honors structured output** (`response_format: json_schema`). Half the AI features
+ask for a JSON object constrained by a schema: the commit message, the commit plan, the daily
+briefing, every per-file summary, every per-commit verdict in the history search. A model that
+ignores the schema and replies in prose doesn't give worse answers — it gives none, and the app
+reports the work as unread.
+
+Size is not the criterion; obedience is — measured on this repository, the *bigger* `gemma4:26b`
+does worse than `gemma4:12b`, because neither honors the schema and the larger one fails on the one
+commit that mattered. `Qwen3.6-27B` and `Qwen3.6-35B-A3B` (via an OpenAI-compatible server) honor it
+and answer the history search correctly. The tested models, with numbers, are listed in
+[docs/ai/README.md § Which models actually work](docs/ai/README.md#which-models-actually-work).
+
+You don't have to find this out the hard way: **Settings → AI → Test the model** sends a tiny
+schema-constrained request and warns when the model answers but ignores the format. Symptoms if you
+skip it: a wall of "commits left unread" in the history search, model deliberation appearing in the
+commit message box, or an empty answer where one was expected.
+
+An optional **fast model** can be set beside the main one. It is used only for the per-file summaries
+— the highest-volume, least demanding call, run once per changed file — while everything involving
+judgement stays on the main model. Same provider, same key; it only swaps the model name.
 
 ---
 

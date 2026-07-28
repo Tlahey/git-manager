@@ -9,6 +9,20 @@ import { getAiPreset } from './presets'
 import { RESERVED_OUTPUT_TOKENS } from './promptSize'
 
 /**
+ * Which of the configured models a feature's calls should go to.
+ *
+ * `'fast'` is for calls that are **many and undemanding** — today only the per-file summary, whose
+ * job is to describe one file in two clauses and which runs once per changed file. It is not a
+ * label for "repetitive": the commit search's per-commit verdict is just as repetitive and is
+ * exactly where a weaker model invents matches, so it stays on the main model.
+ *
+ * Declared by the feature, beside its instruction and temperature, for the same reason those are:
+ * the user configures a *connection*, not which model does which job — that is a property of the
+ * work, and getting it wrong degrades output nobody can debug.
+ */
+export type AiFeatureTier = 'main' | 'fast'
+
+/**
  * The extensibility seam of the whole package. An `AiFeature` is a self-contained description of
  * one AI capability: its instruction (system prompt), the temperature it wants, and how it turns
  * some typed `Input` into the user-turn prompt. Adding a new AI feature to the app (report
@@ -25,6 +39,8 @@ import { RESERVED_OUTPUT_TOKENS } from './promptSize'
 interface BaseFeature<Input> {
   /** Stable identifier, handy for logging/telemetry-free debugging. */
   id: string
+  /** Which configured model this feature's calls go to. Defaults to `'main'`. */
+  tier?: AiFeatureTier
   /** The instruction sent as the system message. Owned here — never surfaced in app Settings. */
   instruction: string
   /** Sampling temperature this feature wants. Owned here — never surfaced in app Settings. */
@@ -107,17 +123,25 @@ export interface AiTransport {
 export function resolveGenerateConfig(
   connection: AiConnectionConfig,
   temperature: number,
-  maxTokens: number = RESERVED_OUTPUT_TOKENS
+  maxTokens: number = RESERVED_OUTPUT_TOKENS,
+  tier: AiFeatureTier = 'main'
 ): AiGenerateConfig {
   const { protocol } = getAiPreset(connection.preset)
   return {
     protocol,
     url: connection.url,
-    model: connection.model,
+    // The fast lane is a model swap and nothing else — same URL, same key — so an unset or blank
+    // second model silently means "everything on the main one", which is the default setup.
+    model: tier === 'fast' && connection.fastModel?.trim() ? connection.fastModel : connection.model,
     apiKey: connection.apiKey,
     temperature,
     timeoutSeconds: connection.timeoutSeconds,
     maxTokens,
+    // Passed through untouched, and only when there is something to pass: an empty object on every
+    // request would be a change to the wire format for no reason.
+    ...(connection.extraBody && Object.keys(connection.extraBody).length > 0
+      ? { extraBody: connection.extraBody }
+      : {}),
   }
 }
 
@@ -151,7 +175,8 @@ export function createStreamingService<Input>(
       const config = resolveGenerateConfig(
         connection,
         feature.temperature,
-        feature.reservedOutputTokens?.(input)
+        feature.reservedOutputTokens?.(input),
+        feature.tier
       )
       return transport.runStream(config, feature.instruction, feature.buildPrompt(input), requestId)
     },
@@ -170,7 +195,8 @@ export function createCompletionService<Input, Output>(
       const config = resolveGenerateConfig(
         connection,
         feature.temperature,
-        feature.reservedOutputTokens?.(input)
+        feature.reservedOutputTokens?.(input),
+        feature.tier
       )
       const raw = await transport.runComplete(
         config,
@@ -183,33 +209,66 @@ export function createCompletionService<Input, Output>(
   }
 }
 
-/** The probe's system message. Deliberately trivial and deterministic: the point is to prove the
- * round-trip, not to evaluate the model, so the cheapest possible completion is the right one. */
+/**
+ * The probe's system message. Deliberately trivial and deterministic: the point is to prove the
+ * round-trip, not to evaluate the model, so the cheapest possible completion is the right one.
+ *
+ * It asks for **JSON** rather than the word "OK" because the round-trip is only half of what a user
+ * needs to know before relying on this model. Half the features constrain their answer with a JSON
+ * schema, and a model that ignores that constraint does not degrade them — it fails every one of
+ * their calls. That is invisible until a feature runs, which for the commit search means half an
+ * hour of scanning that returns nothing readable. One probe now answers both questions.
+ */
 export const MODEL_PROBE_INSTRUCTION =
-  'You are a connectivity probe. Reply with the single word OK. Do not explain, do not add punctuation.'
+  'You are a connectivity probe. Reply with exactly this JSON object and nothing else: {"ok": true}. No prose, no explanation, no code fences.'
 
 /** The probe's user turn. */
 export const MODEL_PROBE_PROMPT = 'ping'
+
+/** The shape the probe asks for, so the reply proves the provider honors `response_format`. */
+export const MODEL_PROBE_SCHEMA: JsonSchema = {
+  name: 'model_probe',
+  schema: {
+    type: 'object',
+    properties: { ok: { type: 'boolean', description: 'Always true.' } },
+    required: ['ok'],
+    additionalProperties: false,
+  },
+  strict: true,
+}
 
 /** Upper bound (seconds) on how long a probe waits, regardless of the configured request timeout.
  * A "test this model" button that can hang for the user's 300s generation budget is not a test. */
 export const MODEL_PROBE_MAX_TIMEOUT_SECONDS = 30
 
 /**
- * Output cap for the probe, far below a feature's — the expected answer is the word "OK".
+ * Output cap for the probe, far below a feature's — the expected answer is `{"ok": true}`.
  *
  * Not premature tuning: the probe's failure mode is a *reasoning* model, which answers `ping` with
- * several hundred tokens of deliberation before the one word, on a button the user is watching. A
- * generation's 600-token cap would let that run to completion. Sixteen tokens is enough for any
- * honest answer to this prompt and turns a minute of thinking into a fast, still-correct pass —
- * `ok` only asks that the reply be non-empty, not that it be exactly "OK".
+ * several hundred tokens of deliberation before the object, on a button the user is watching. A
+ * generation's 600-token cap would let that run to completion. This turns a minute of thinking into
+ * a fast, still-correct pass — `ok` only asks that the reply be non-empty.
+ *
+ * Thirty-two rather than the original sixteen: the answer went from one word to a small object, and
+ * a provider that prefixes a fence or a newline needs the room. Still far too little for a model to
+ * think out loud in.
  */
-export const MODEL_PROBE_MAX_OUTPUT_TOKENS = 16
+export const MODEL_PROBE_MAX_OUTPUT_TOKENS = 32
 
 /** Outcome of a {@link AiStatusService.probe} round-trip. */
 export interface AiModelProbeResult {
   /** True when the model returned any non-empty text — that alone proves the whole path works. */
   ok: boolean
+  /**
+   * True when the reply came back as the JSON object the probe's schema asked for.
+   *
+   * Separate from {@link ok} because they fail independently and mean different things: a model can
+   * be perfectly reachable and still ignore `response_format`, in which case every schema-driven
+   * feature (commit message, commit plan, per-file summaries, the history search's per-commit
+   * verdicts) fails on every call. `false` with `ok: true` is the state worth warning about — the
+   * setup looks healthy and half the app does not work.
+   */
+  structured: boolean
   /** The model's raw reply, trimmed. Empty when the probe failed. */
   reply: string
   /** Raw failure message from the transport (an app error payload the host can decode), unset on
@@ -228,7 +287,29 @@ export interface AiModelProbeResult {
  * pulled, isn't served, or is rejected by an auth layer that let the model listing through. */
 export interface AiStatusService {
   check(connection: AiConnectionConfig): Promise<AiProviderStatus>
-  probe(connection: AiConnectionConfig): Promise<AiModelProbeResult>
+  /**
+   * Sends one tiny schema-constrained completion to a model.
+   *
+   * `model` overrides the connection's own — that is what lets Settings test the **fast** model
+   * (see {@link AiConnectionConfig.fastModel}) through the same path, rather than leaving the second
+   * slot as the one field nobody can validate.
+   */
+  probe(connection: AiConnectionConfig, model?: string): Promise<AiModelProbeResult>
+}
+
+/** Whether a probe reply is the object the schema asked for. Tolerates a fence or surrounding prose
+ * the same way every feature's parser does — the question is "did a JSON object come back", not
+ * "was the provider byte-perfect". */
+export function isStructuredProbeReply(reply: string): boolean {
+  const start = reply.indexOf('{')
+  const end = reply.lastIndexOf('}')
+  if (start === -1 || end <= start) return false
+  try {
+    const parsed: unknown = JSON.parse(reply.slice(start, end + 1))
+    return typeof parsed === 'object' && parsed !== null && 'ok' in parsed
+  } catch {
+    return false
+  }
 }
 
 export function createStatusService(transport: AiTransport): AiStatusService {
@@ -238,19 +319,28 @@ export function createStatusService(transport: AiTransport): AiStatusService {
       return transport.checkStatus({ protocol, url: connection.url, apiKey: connection.apiKey })
     },
 
-    async probe(connection) {
+    async probe(connection, model) {
       // A probe is not a generation: it neither needs nor should be given a feature's answer budget.
       const config = resolveGenerateConfig(connection, 0, MODEL_PROBE_MAX_OUTPUT_TOKENS)
       config.timeoutSeconds = Math.min(config.timeoutSeconds, MODEL_PROBE_MAX_TIMEOUT_SECONDS)
+      if (model) config.model = model
 
       const startedAt = Date.now()
       try {
-        const raw = await transport.runComplete(config, MODEL_PROBE_INSTRUCTION, MODEL_PROBE_PROMPT)
+        const raw = await transport.runComplete(
+          config,
+          MODEL_PROBE_INSTRUCTION,
+          MODEL_PROBE_PROMPT,
+          MODEL_PROBE_SCHEMA
+        )
         const reply = raw.trim()
         return {
           // An empty body is a failure even on HTTP 200: some gateways answer the shape without
           // ever reaching a model, which would otherwise read as a green "it works".
           ok: reply.length > 0,
+          // Asked for in the same round trip rather than a second one: the two questions share a
+          // prompt, and a probe the user is watching should not cost two model loads.
+          structured: isStructuredProbeReply(reply),
           reply,
           error: reply.length > 0 ? undefined : 'AI_EMPTY_RESPONSE',
           durationMs: Date.now() - startedAt,
@@ -258,6 +348,7 @@ export function createStatusService(transport: AiTransport): AiStatusService {
       } catch (error) {
         return {
           ok: false,
+          structured: false,
           reply: '',
           error: error instanceof Error ? error.message : String(error),
           durationMs: Date.now() - startedAt,

@@ -44,6 +44,78 @@ describe('AiModelProbe', () => {
     expect(mockedProbe).toHaveBeenCalledWith(expect.objectContaining({ model: 'mistral' }))
   })
 
+  /**
+   * The state the probe exists to catch now: the round-trip works, so the page looks green, and
+   * every schema-driven feature will still fail on every call. Nothing else in the app says this
+   * until a feature runs — for the history search, half an hour later.
+   */
+  it('warns when the model answered but ignored the JSON format', async () => {
+    mockedProbe.mockResolvedValue({ ok: true, structured: false, reply: 'Sure! OK.', durationMs: 90 })
+    const user = userEvent.setup()
+    render(<AiModelProbe />)
+
+    await user.click(screen.getByTestId('ai-probe-model-button'))
+
+    expect(await screen.findByTestId('ai-probe-status')).toHaveTextContent('answered')
+    expect(screen.getByTestId('ai-probe-unstructured')).toHaveTextContent(
+      /ignored the requested JSON format/i
+    )
+  })
+
+  it('says nothing extra when the model honored the format', async () => {
+    mockedProbe.mockResolvedValue({
+      ok: true,
+      structured: true,
+      reply: '{"ok": true}',
+      durationMs: 90,
+    })
+    const user = userEvent.setup()
+    render(<AiModelProbe />)
+
+    await user.click(screen.getByTestId('ai-probe-model-button'))
+
+    expect(await screen.findByTestId('ai-probe-status')).toBeInTheDocument()
+    expect(screen.queryByTestId('ai-probe-unstructured')).not.toBeInTheDocument()
+  })
+
+  /**
+   * One button covers both slots: a setup is only valid when every model it names answers, and
+   * asking the user to remember to click twice is how the second one goes untested.
+   */
+  it('tests the fast model in the same run, and reports each separately', async () => {
+    mockedProbe
+      .mockResolvedValueOnce({ ok: true, structured: true, reply: '{"ok":true}', durationMs: 40 })
+      .mockResolvedValueOnce({ ok: true, structured: false, reply: 'Sure!', durationMs: 12 })
+    const user = userEvent.setup()
+    render(<AiModelProbe fastModel="tiny-model" />)
+
+    await user.click(screen.getByTestId('ai-probe-model-button'))
+
+    expect(mockedProbe).toHaveBeenNthCalledWith(1, expect.anything())
+    expect(mockedProbe).toHaveBeenNthCalledWith(2, expect.anything(), 'tiny-model')
+    expect(await screen.findByTestId('ai-probe-status')).toHaveTextContent('llama3.2')
+    expect(screen.getByTestId('ai-probe-fast-status')).toHaveTextContent('tiny-model')
+    // The warning is per model: the fast one ignored the format, the main one did not.
+    expect(screen.getByTestId('ai-probe-fast-unstructured')).toBeInTheDocument()
+    expect(screen.queryByTestId('ai-probe-unstructured')).not.toBeInTheDocument()
+  })
+
+  it('does not spend a second model load when both slots name the same model', async () => {
+    mockedProbe.mockResolvedValue({ ok: true, structured: true, reply: '{"ok":true}', durationMs: 8 })
+    const user = userEvent.setup()
+    render(<AiModelProbe fastModel="llama3.2" />)
+
+    await user.click(screen.getByTestId('ai-probe-model-button'))
+
+    expect(mockedProbe).toHaveBeenCalledTimes(1)
+    expect(screen.queryByTestId('ai-probe-fast-status')).not.toBeInTheDocument()
+  })
+
+  it('names both models on the button when two will be tested', () => {
+    render(<AiModelProbe fastModel="tiny-model" />)
+    expect(screen.getByTestId('ai-probe-model-button')).toHaveTextContent('Test the models')
+  })
+
   it('decodes a backend error payload into readable copy', async () => {
     mockedProbe.mockResolvedValue({
       ok: false,

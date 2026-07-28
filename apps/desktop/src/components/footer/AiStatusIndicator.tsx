@@ -3,7 +3,8 @@ import { Spinner, Tooltip, LlmIcon } from '@git-manager/ui'
 import { getAiPreset } from '@git-manager/ai'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useAiStatusStore, type AiConnectionState } from '../../stores/aiStatus.store'
-import { useAiActivityStore } from '../../stores/aiActivity.store'
+import { useAiActivityStore, type AiRunOrigin } from '../../stores/aiActivity.store'
+import { useRepoUIStore } from '../../stores/repoUI.store'
 
 interface AiStatusIndicatorProps {
   /** Opens Settings › AI, so a failing provider is one click from being fixed. */
@@ -36,16 +37,39 @@ const STATE_LABEL_KEYS: Record<AiConnectionState, string> = {
  * whole job is to prove the app hasn't frozen.
  */
 const FEATURE_LABEL_KEYS: Record<string, string> = {
-  'commit-message': 'aiStatus.work.commitMessage',
-  'pr-description': 'aiStatus.work.prDescription',
+  'summary-commit-message': 'aiStatus.work.commitMessage',
+  'summary-pr-description': 'aiStatus.work.prDescription',
   'change-explanation': 'aiStatus.work.changeExplanation',
-  'branch-explanation': 'aiStatus.work.branchExplanation',
-  'commit-explanation': 'aiStatus.work.commitExplanation',
+  // One feature covers the branch, commit and working-tree explanations (it discriminates on its
+  // input's scope), so they share one label rather than three that cannot be told apart here.
+  'summary-explanation': 'aiStatus.work.summaryExplanation',
   'commit-recompose': 'aiStatus.work.commitRecompose',
-  'working-explanation': 'aiStatus.work.workingExplanation',
   'code-review': 'aiStatus.work.codeReview',
-  'file-grouping': 'aiStatus.work.fileGrouping',
+  'summary-grouping': 'aiStatus.work.fileGrouping',
   'daily-summary': 'aiStatus.work.dailySummary',
+  'summary-search': 'aiStatus.work.summarySearch',
+  // The map phases, which is where the minutes go: naming them is what makes a long wait legible
+  // rather than alarming.
+  'file-summary': 'aiStatus.work.fileSummary',
+  'commit-relevance': 'aiStatus.work.commitRelevance',
+  'commit-search-answer': 'aiStatus.work.commitSearchAnswer',
+}
+
+/**
+ * Takes the user to the generation that is running: its repository tab, then the panel it came from.
+ *
+ * The panel is restored *and* the centre slot's other claimants are cleared, the same handoff the AI
+ * menu performs — otherwise the panel reopens behind whatever diff the user has since opened, which
+ * would make the pill look broken precisely when it is doing its job.
+ */
+function goToRun(origin: AiRunOrigin) {
+  const ui = useRepoUIStore.getState()
+  if (ui.activeTab !== origin.repoPath) ui.setActiveTab(origin.repoPath)
+  if (origin.panel) {
+    ui.setActiveDiffFile(null)
+    ui.setActivePrNumber(null)
+    ui.setAiPanelTarget(origin.panel)
+  }
 }
 
 /**
@@ -66,8 +90,10 @@ export function AiStatusIndicator({ onOpenSettings }: AiStatusIndicatorProps) {
   const aiEnabled = useSettingsStore((s) => s.settings.ai.enabled !== false)
   const preset = useSettingsStore((s) => s.settings.ai.preset)
   const model = useSettingsStore((s) => s.settings.ai.model)
+  const fastModel = useSettingsStore((s) => s.settings.ai.fastModel)
   const state = useAiStatusStore((s) => s.state)
   const runs = useAiActivityStore((s) => s.runs)
+  const progress = useAiActivityStore((s) => s.progress)
 
   if (!aiEnabled) return null
 
@@ -76,18 +102,41 @@ export function AiStatusIndicator({ onOpenSettings }: AiStatusIndicatorProps) {
   const activeRun = runs.length > 0 ? runs[runs.length - 1] : null
   const providerLabel = getAiPreset(preset).label
 
+  // Both slots in one clause, on hover only. The pill used to print the model name, which stopped
+  // working the day a setup could name two: neither one alone is the answer to "what is configured",
+  // and the pair does not fit a footer. What the pill is *for* — is it up, is it busy — never needed
+  // the name anyway.
+  const models = fastModel
+    ? t('aiStatus.modelPair', { model, fastModel })
+    : t('aiStatus.modelSingle', { model })
+
   if (activeRun) {
     const labelKey = FEATURE_LABEL_KEYS[activeRun.featureId]
     const label = labelKey ? t(labelKey) : t('aiStatus.working')
+    const origin = activeRun.origin
+    // Only the feature the count belongs to, and only when there is more than one step: a streaming
+    // feature has no steps to report, and "1/1" is noise.
+    const steps =
+      progress && progress.featureId === activeRun.featureId && progress.total > 1
+        ? `${progress.completed}/${progress.total}`
+        : null
 
     return (
       <Pill
-        tooltip={t('aiStatus.tooltipWorking', { provider: providerLabel, model, task: label })}
+        // A busy pill promises a different thing from an idle one, so it must say so: clicking takes
+        // you to the work, not to Settings. Only when the run has nowhere to return to does it keep
+        // the old promise.
+        tooltip={
+          origin
+            ? t('aiStatus.tooltipGoToWork', { provider: providerLabel, models, task: label })
+            : t('aiStatus.tooltipWorking', { provider: providerLabel, models, task: label })
+        }
         state="working"
-        onOpenSettings={onOpenSettings}
+        onClick={origin ? () => goToRun(origin) : onOpenSettings}
         icon={<Spinner className="h-3.5 w-3.5 text-primary" data-testid="footer-ai-spinner" />}
         label={label}
         labelClassName="text-primary"
+        steps={steps}
       />
     )
   }
@@ -96,16 +145,16 @@ export function AiStatusIndicator({ onOpenSettings }: AiStatusIndicatorProps) {
     <Pill
       tooltip={
         state === 'connected'
-          ? t('aiStatus.tooltipConnected', { provider: providerLabel, model })
+          ? t('aiStatus.tooltipConnected', { provider: providerLabel, models })
           : t('aiStatus.tooltipOther', {
               provider: providerLabel,
               state: t(STATE_LABEL_KEYS[state]),
             })
       }
       state={state}
-      onOpenSettings={onOpenSettings}
+      onClick={onOpenSettings}
       icon={<LlmIcon className={`h-3.5 w-3.5 ${STATE_CLASSES[state]}`} />}
-      label={state === 'connected' ? model : t(STATE_LABEL_KEYS[state])}
+      label={t(STATE_LABEL_KEYS[state])}
       labelClassName={STATE_CLASSES[state]}
     />
   )
@@ -117,22 +166,25 @@ export function AiStatusIndicator({ onOpenSettings }: AiStatusIndicatorProps) {
 function Pill({
   tooltip,
   state,
-  onOpenSettings,
+  onClick,
   icon,
   label,
   labelClassName,
+  steps,
 }: {
   tooltip: string
   state: AiConnectionState | 'working'
-  onOpenSettings: () => void
+  onClick: () => void
   icon: React.ReactNode
   label: string
   labelClassName: string
+  /** `7/42` while a map phase runs, else null. */
+  steps?: string | null
 }) {
   return (
     <Tooltip content={tooltip}>
       <button
-        onClick={onOpenSettings}
+        onClick={onClick}
         aria-label={tooltip}
         data-testid="footer-ai-status"
         data-state={state}
@@ -140,6 +192,13 @@ function Pill({
       >
         {icon}
         <span className={`hidden sm:inline ${labelClassName}`}>{label}</span>
+        {/* Kept when the label folds away, unlike the label itself: on a narrow footer a spinner
+            alone says "something is happening", while "7/42" says it is getting somewhere. */}
+        {steps && (
+          <span className="font-mono tabular-nums text-primary" data-testid="footer-ai-steps">
+            {steps}
+          </span>
+        )}
       </button>
     </Tooltip>
   )

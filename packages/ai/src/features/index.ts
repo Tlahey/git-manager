@@ -28,6 +28,8 @@ export {
 export type { SummaryGroupingInput } from './summaryGrouping'
 export { summarizeFiles, SummaryRunCancelled } from './summarizeFiles'
 export type { SummaryProgress, SummarizeOptions } from './summarizeFiles'
+export { mapConcurrently, DEFAULT_AI_CONCURRENCY, MAX_AI_CONCURRENCY } from './mapConcurrently'
+export type { MapConcurrentlyOptions, MapConcurrentlyOutcome } from './mapConcurrently'
 export { planCommitsFromSummaries } from './planCommits'
 export type { CommitPlanRunners } from './planCommits'
 export {
@@ -93,7 +95,26 @@ export type {
   SummaryExplanationCommit,
 } from './summaryExplanation'
 export {
+  commitFileScanFeature,
+  COMMIT_FILE_SCAN_INSTRUCTION,
+  COMMIT_FILE_SCAN_SCHEMA,
+  COMMIT_FILE_SCAN_OUTPUT_TOKENS,
+  buildCommitFileScanPrompt,
+  parseCommitFileScan,
+} from './commitFileScan'
+export type { CommitFileScanInput } from './commitFileScan'
+export {
+  commitQuickScanFeature,
+  COMMIT_QUICK_SCAN_INSTRUCTION,
+  COMMIT_QUICK_SCAN_SCHEMA,
+  COMMIT_QUICK_SCAN_OUTPUT_TOKENS,
+  buildCommitQuickScanPrompt,
+  parseCommitQuickScan,
+} from './commitQuickScan'
+export type { CommitQuickScanInput, QuickScanCommit, QuickScanMatch } from './commitQuickScan'
+export {
   commitRelevanceFeature,
+  CommitVerdictUnreadable,
   COMMIT_RELEVANCE_INSTRUCTION,
   COMMIT_RELEVANCE_SCHEMA,
   COMMIT_RELEVANCE_OUTPUT_TOKENS,
@@ -101,18 +122,22 @@ export {
   parseCommitRelevance,
 } from './commitRelevance'
 export type { CommitRelevanceInput, CommitRelevanceResult } from './commitRelevance'
+export { stripReasoning } from './reasoning'
 export {
   commitSearchAnswerFeature,
   COMMIT_SEARCH_ANSWER_INSTRUCTION,
+  COMMIT_SEARCH_ANSWER_OUTPUT_TOKENS,
   buildCommitSearchAnswerPrompt,
   renderFindings,
 } from './commitSearchAnswer'
 export type { CommitSearchAnswerInput, CommitSearchFinding } from './commitSearchAnswer'
+export { AiCallTimedOut } from './aiCallTimedOut'
 export { scanCommits } from './scanCommits'
 export type {
   CommitScanProgress,
   ScanCommitsOptions,
   ScanCommitsParams,
+  ScanFailure,
   ScannedCommit,
 } from './scanCommits'
 export {
