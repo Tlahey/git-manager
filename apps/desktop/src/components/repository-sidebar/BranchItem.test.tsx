@@ -118,6 +118,61 @@ describe('BranchItem — interaction', () => {
     expect(onSelect).toHaveBeenCalledWith('feature-x')
   })
 
+  // One click moves the view, a double click switches branch — switching is the one destructive-ish
+  // thing the row can do, so it takes the deliberate gesture.
+  it('focuses the branch tip on a single click, without checking it out', () => {
+    const onFocus = vi.fn()
+    const onCheckout = vi.fn()
+    render(
+      <BranchItem
+        branch={branch({ shortName: 'feature-x', commitOid: 'abc123' })}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onFocus={onFocus}
+        onCheckout={onCheckout}
+      />
+    )
+    fireEvent.click(screen.getByText('feature-x').closest('[role="button"]')!)
+    expect(onFocus).toHaveBeenCalledWith(expect.objectContaining({ shortName: 'feature-x' }))
+    expect(onCheckout).not.toHaveBeenCalled()
+  })
+
+  it('checks the branch out on a double click', () => {
+    const onCheckout = vi.fn()
+    render(
+      <BranchItem
+        branch={branch({ shortName: 'feature-x' })}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onCheckout={onCheckout}
+      />
+    )
+    fireEvent.doubleClick(screen.getByText('feature-x').closest('[role="button"]')!)
+    expect(onCheckout).toHaveBeenCalledWith(expect.objectContaining({ shortName: 'feature-x' }))
+  })
+
+  // The actions button sits inside the row; without the guard, opening the menu would also move
+  // the graph, and a quick second click on it would switch branch.
+  it('ignores both gestures when they land on the actions button', () => {
+    const onFocus = vi.fn()
+    const onCheckout = vi.fn()
+    render(
+      <BranchItem
+        branch={branch({ shortName: 'feature-x' })}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onFocus={onFocus}
+        onCheckout={onCheckout}
+        onContextMenu={vi.fn()}
+      />
+    )
+    const actions = screen.getByTestId('branch-actions-feature-x')
+    fireEvent.click(actions)
+    fireEvent.doubleClick(actions)
+    expect(onFocus).not.toHaveBeenCalled()
+    expect(onCheckout).not.toHaveBeenCalled()
+  })
+
   it('opens the context menu via right-click', () => {
     const onContextMenu = vi.fn()
     render(

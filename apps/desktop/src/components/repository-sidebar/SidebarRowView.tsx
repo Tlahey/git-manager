@@ -40,6 +40,10 @@ interface SidebarRowViewProps {
   repoPath?: string
   onToggleOpen: (id: string) => void
   onSelectBranch: (name: string) => void
+  /** Single click on a branch row, alongside `onSelectBranch` — brings its tip commit into view. */
+  onFocusBranch?: (branch: GitBranch) => void
+  /** Double click on a branch row — switches to it. */
+  onCheckoutBranch?: (branch: GitBranch) => void
   /** Clicking a tag scrolls to / selects its commit in the graph instead of re-filtering the whole
    * log to that tag. Falls back to `onSelectBranch(tag.name)` when not provided. */
   onSelectTag?: (commitOid: string) => void
@@ -94,6 +98,8 @@ export function SidebarRowView({
   repoPath,
   onToggleOpen,
   onSelectBranch,
+  onFocusBranch,
+  onCheckoutBranch,
   onSelectTag,
   onTogglePin,
   onContextMenu,
@@ -131,6 +137,8 @@ export function SidebarRowView({
           depth={row.depth}
           isPinned={row.isPinned}
           onSelect={onSelectBranch}
+          onFocus={onFocusBranch}
+          onCheckout={onCheckoutBranch}
           onTogglePin={onTogglePin}
           onContextMenu={onContextMenu}
           filterQuery={filterQuery}
@@ -224,6 +232,12 @@ export function SidebarRowView({
           onClick={(e) => {
             if ((e.target as HTMLElement).closest('[data-toggle]')) return
             onSelectBranch(row.branch.name)
+            onFocusBranch?.(row.branch)
+          }}
+          // Same gesture split as a local row: a click moves the view, a double click switches.
+          onDoubleClick={(e) => {
+            if ((e.target as HTMLElement).closest('[data-toggle]')) return
+            onCheckoutBranch?.(row.branch)
           }}
           onContextMenu={(e) => {
             e.preventDefault()
@@ -236,6 +250,7 @@ export function SidebarRowView({
             if (e.key !== 'Enter') return
             if ((e.target as HTMLElement).closest('[data-toggle]')) return
             onSelectBranch(row.branch.name)
+            onFocusBranch?.(row.branch)
           }}
         >
           {/* Solo mode owns the left edge while it is on — the two eyes would sit on top of each

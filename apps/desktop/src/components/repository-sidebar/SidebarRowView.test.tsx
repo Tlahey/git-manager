@@ -447,6 +447,21 @@ describe('SidebarRowView — remote-branch', () => {
     expect(container.querySelector('[role="button"]')?.className).toContain('opacity-50')
   })
 
+  // Same gesture split as a local row.
+  it('focuses the branch tip on a single click and checks it out on a double click', () => {
+    const onFocusBranch = vi.fn()
+    const onCheckoutBranch = vi.fn()
+    renderRow(remoteBranch(), { onFocusBranch, onCheckoutBranch })
+    const row = screen.getByText('main').closest('[role="button"]')!
+
+    fireEvent.click(row)
+    expect(onFocusBranch).toHaveBeenCalledWith(expect.objectContaining({ name: 'origin/main' }))
+    expect(onCheckoutBranch).not.toHaveBeenCalled()
+
+    fireEvent.doubleClick(row)
+    expect(onCheckoutBranch).toHaveBeenCalledWith(expect.objectContaining({ name: 'origin/main' }))
+  })
+
   it('opens the branch menu from the actions button and from a right-click, not on a plain click', () => {
     const onRemoteBranchContextMenu = vi.fn()
     const { h } = renderRow(remoteBranch(), { onRemoteBranchContextMenu })

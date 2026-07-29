@@ -14,7 +14,12 @@ interface BranchItemProps {
   depth?: number
   isPinned?: boolean
   canPin?: boolean
+  /** Single click: highlights the branch and brings it into view in the graph. */
   onSelect: (name: string) => void
+  /** Single click, alongside `onSelect` — focuses the branch's tip commit in the content view. */
+  onFocus?: (branch: GitBranch) => void
+  /** Double click: switches to the branch. */
+  onCheckout?: (branch: GitBranch) => void
   onTogglePin?: (shortName: string) => void
   onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
   /** Active sidebar search query — matched substrings are highlighted in the branch name. */
@@ -35,6 +40,8 @@ export function BranchItem({
   isPinned = false,
   canPin = true,
   onSelect,
+  onFocus,
+  onCheckout,
   onTogglePin,
   onContextMenu,
   filterQuery = '',
@@ -54,11 +61,25 @@ export function BranchItem({
           ? 'bg-sidebar-accent text-sidebar-foreground'
           : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
       } ${dimmed ? 'opacity-50' : ''}`}
-      onClick={() => onSelect(branch.shortName)}
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('[data-toggle]')) return
+        onSelect(branch.shortName)
+        onFocus?.(branch)
+      }}
+      // Switching branches is the one destructive-ish thing a row can do, so it takes the
+      // deliberate gesture; a single click only moves the view.
+      onDoubleClick={(e) => {
+        if ((e.target as HTMLElement).closest('[data-toggle]')) return
+        onCheckout?.(branch)
+      }}
       onContextMenu={onContextMenu ? (e) => onContextMenu(e, branch) : undefined}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && onSelect(branch.shortName)}
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter') return
+        onSelect(branch.shortName)
+        onFocus?.(branch)
+      }}
     >
       {soloActive && onToggleSolo && (
         <SoloToggle isSoloed={isSoloed} onToggle={() => onToggleSolo(branch.shortName)} />

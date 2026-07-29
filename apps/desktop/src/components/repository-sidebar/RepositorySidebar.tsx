@@ -8,6 +8,7 @@ import { useTranslation } from '@git-manager/i18n'
 import { usePinnedBranchesStore } from '../../stores/pinned-branches.store'
 import { useSidebarSearchStore } from '../../stores/sidebarSearch.store'
 import { useSoloModeStore } from '../../stores/soloMode.store'
+import { useBranchCheckout } from '../../hooks/useBranchCheckout'
 import { SidebarResizeHandle } from './SidebarResizeHandle'
 import { SidebarRail } from './SidebarRail'
 import { SidebarRowView } from './SidebarRowView'
@@ -125,6 +126,25 @@ export function RepositorySidebar({
     kind: 'issues' | 'prs'
     filter: SavedFilter | null
   } | null>(null)
+
+  // A branch row's two gestures: one click brings its tip into view in the graph, a double click
+  // switches to it. A remote branch has no local ref to check out, so it lands on its tip commit
+  // (detached), which is what the menu's own Checkout does.
+  const setPendingGraphSelection = useRepoUIStore((s) => s.setPendingGraphSelection)
+  const { checkoutBranchWithStashPrompt } = useBranchCheckout()
+  const focusBranch = useCallback(
+    (branch: GitBranch) => setPendingGraphSelection(branch.commitOid),
+    [setPendingGraphSelection]
+  )
+  const checkoutBranch = useCallback(
+    (branch: GitBranch) => {
+      void checkoutBranchWithStashPrompt(
+        repoPath,
+        branch.isRemote ? branch.commitOid : branch.shortName
+      )
+    },
+    [checkoutBranchWithStashPrompt, repoPath]
+  )
 
   const setActiveIssue = useRepoUIStore((s) => s.setActiveIssue)
   const openIssueMenu = useSidebarIssueMenu(repoPath)
@@ -491,6 +511,8 @@ export function RepositorySidebar({
                     onToggleSolo={toggleSolo}
                     onToggleOpen={(id) => toggleOpen(id, openById.get(id) ?? false)}
                     onSelectBranch={onSelectBranch}
+                    onFocusBranch={focusBranch}
+                    onCheckoutBranch={checkoutBranch}
                     onSelectTag={onSelectTag}
                     onTogglePin={onTogglePin}
                     onContextMenu={onContextMenu}
