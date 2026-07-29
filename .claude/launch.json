@@ -8,6 +8,12 @@
       "port": 5199
     },
     {
+      "name": "docs",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@git-manager/docs", "dev", "--port", "5200", "--strictPort"],
+      "port": 5200
+    },
+    {
       "name": "mascot-storybook",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@git-manager/mascot", "storybook", "--no-open"],

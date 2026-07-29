@@ -53,19 +53,38 @@
   --dur-slow: 700ms;
 }
 
-/* ── Reset & Base ── */
-*, *::before, *::after {
+/* ── Reset & Base ──
+   These are the only rules in this file that reach outside the landing page's
+   own markup, so they are the only ones gated on `html.landing`. Everything
+   below is class-based (`.nav`, `.hero`, `.feature-card`…) and simply matches
+   nothing when this stylesheet is loaded on a page that isn't the landing page.
+
+   The gate exists because this stylesheet is now shared: the documentation site
+   renders the landing page as its home (apps/docs), and an ungated
+   `body { background: var(--clr-ocean-deep) }` would repaint every doc page.
+   `initLanding()` adds and removes the class; the standalone page carries it in
+   its markup.
+
+   `:where()` on the reset, and only on the reset, because it contributes **zero**
+   specificity. A plain `html.landing *` scores (0,1,1) — higher than every
+   single-class rule in this file, so the reset's `margin: 0; padding: 0` would
+   beat `.btn { padding }` and `.section-inner { margin: 0 auto }` and flatten
+   the entire layout. Wrapping the gate keeps the selector at the (0,0,0) the
+   bare `*` had, which is what all 1000 lines below were written against. */
+:where(html.landing) *,
+:where(html.landing) *::before,
+:where(html.landing) *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html {
+html.landing {
   scroll-behavior: smooth;
   scroll-padding-top: 72px;
 }
 
-body {
+html.landing body {
   font-family: var(--font-base);
   background-color: var(--clr-ocean-deep);
   color: var(--clr-text-primary);
@@ -75,17 +94,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Selection ── */
-::selection {
+/* ── Selection ── (`:where()` for the same reason as the reset above) */
+:where(html.landing) ::selection {
   background: var(--clr-teal-glow-strong);
   color: var(--clr-teal-bright);
 }
 
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--clr-ocean-deep); }
-::-webkit-scrollbar-thumb { background: var(--clr-teal-dark); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--clr-teal); }
+/* ── Scrollbar ── (gated too: the docs have their own scrollbar styling) */
+:where(html.landing) ::-webkit-scrollbar { width: 6px; }
+:where(html.landing) ::-webkit-scrollbar-track { background: var(--clr-ocean-deep); }
+:where(html.landing) ::-webkit-scrollbar-thumb { background: var(--clr-teal-dark); border-radius: 3px; }
+:where(html.landing) ::-webkit-scrollbar-thumb:hover { background: var(--clr-teal); }
 
 /* ══════════════════════════════════════════════════════════
    NAVIGATION
@@ -1051,7 +1070,9 @@ body {
   .nav {
     padding: 0 var(--space-sm);
   }
-  .nav__links li:not(:last-child) { display: none; }
+  /* Keep the GitHub CTA (last) and anything marked persistent; the rest are
+     in-page anchors the reader reaches by scrolling anyway. */
+  .nav__links li:not(:last-child):not(.nav__item--persist) { display: none; }
 
   .hero__content {
     flex-direction: column;

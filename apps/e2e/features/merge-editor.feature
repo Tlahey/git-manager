@@ -4,8 +4,36 @@ Feature: Three-way merge editor
   I want the three-way merge editor to open for a conflicted file
   So that I can resolve it block by block
 
+  When a merge, a pull or a rebase cannot reconcile two versions of a file on
+  its own, Git Manager opens that file in a three-way editor instead of leaving
+  conflict markers in your working copy for you to untangle by hand. The two
+  versions sit on either side, the result you are building is in the middle,
+  and each side is labelled with where it comes from — worth reading, because
+  which one counts as "yours" flips between a merge and a rebase.
+
   Background:
     Given the "rebase-conflict" fixture is built
+
+  @doc @screenshots
+  Scenario: Resolve a conflicted file block by block
+    Clicking a conflicted file in the graph's conflict panel opens it here, in
+    its own window. A conflicted file is rarely conflicted everywhere — most of
+    it is changes only one side made, which have exactly one sensible outcome,
+    and "Apply non-conflicting changes" takes all of those in one click. What
+    is left is the blocks where both sides really did edit the same lines: for
+    each of those you pick a side from the gap between the panes, or type the
+    answer yourself in the middle pane when neither version is quite right. The
+    apply button stays disabled until every block has an outcome, so you cannot
+    accidentally write a half-resolved file; applying it writes the merged
+    result to disk and stages it, which is what tells Git the conflict is
+    settled.
+    Given the app language is English
+    And AI features are turned off
+    When I open the merge editor for "dependency-manifest.txt"
+    And the interface has settled
+    Then the merge editor is shown
+    And the merge editor offers to auto-merge the non-conflicting blocks
+    And a full-window screenshot is saved as "doc-merge-editor"
 
   Scenario: The merge editor opens for a conflicted file
     When I open the merge editor for "dependency-manifest.txt"

@@ -4,8 +4,46 @@ Feature: Working tree staging
   I want to select the working-tree node and see my changes staged for commit
   So that I can craft a commit
 
+  Your uncommitted work is not hidden away in a separate screen: it is the top
+  row of the commit graph, sitting exactly where the commit you are about to
+  write will land. Selecting it swaps the commit details panel for the staging
+  panel, which is where you decide what goes into the next commit and what
+  waits for the one after.
+
   Background:
     Given the "stash-stack" fixture repository is opened
+
+  @doc @screenshots
+  Scenario: Decide what goes into the next commit
+    The staging panel splits your changes in two: staged files, which are what
+    the next commit will contain, and unstaged files, which are everything else
+    you have touched. Each file can be moved across on its own, or you can move
+    the whole group at once when the change really is one unit of work. Nothing
+    is committed until you write a message and confirm, so staging is a
+    reversible sorting step — unstage a file and it simply drops back into the
+    lower group, with your edits untouched on disk.
+    Given the app language is English
+    And AI features are turned off
+    And the "stash-stack" fixture repository is opened
+    When I select the working-tree changes in the graph
+    And the interface has settled
+    Then the staging panel is shown
+    And a full-window screenshot is saved as "doc-staging-panel"
+
+  @doc @screenshots
+  Scenario: Read a file's diff before you stage it
+    Clicking a file in either group opens its diff, so you can check what you
+    are about to commit line by line rather than trusting the filename. This is
+    where stray debug statements and half-finished edits get caught: review the
+    file, then stage it if it belongs in this commit, or leave it unstaged and
+    keep working.
+    Given the app language is English
+    And AI features are turned off
+    And the "stash-stack" fixture repository is opened
+    When I select the working-tree changes in the graph
+    And I open the diff for "config.yml"
+    And the interface has settled
+    Then a full-window screenshot is saved as "doc-staging-file-diff"
 
   Scenario: Selecting the working-tree node shows the staging panel
     When I select the working-tree changes in the graph

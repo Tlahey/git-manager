@@ -9,19 +9,36 @@ import { stabiliseForSnapshot } from '../support/visual.js'
 // to be committed and embedded (README, landing page), not pixel-compared.
 const SHOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../docs/screenshots')
 
-// Marketing captures ship in the (English) README, but the app defaults to
-// 'fr'. A partial settings seed is safe: the store's rehydration merge
-// (mergeSettingsWithDefaults in settings.store.ts) fills every missing group
-// with defaults. The repo-open step reloads right after, applying it.
-Given(/^the app language is English$/, async () => {
-  await browser.execute(() => {
+/**
+ * Merges `patch` into the persisted settings. A partial seed is safe: the
+ * store's rehydration merge (mergeSettingsWithDefaults in settings.store.ts)
+ * fills every missing group with defaults. Takes effect on the next load — the
+ * repo-open step reloads right after, which is why these Givens come first.
+ */
+async function seedSettings(patch: Record<string, unknown>): Promise<void> {
+  await browser.execute((raw: string) => {
     const key = 'git-manager-settings'
-    const raw = window.localStorage.getItem(key)
-    const data = raw ? JSON.parse(raw) : { state: {}, version: 0 }
+    const stored = window.localStorage.getItem(key)
+    const data = stored ? JSON.parse(stored) : { state: {}, version: 0 }
     data.state = data.state ?? {}
-    data.state.settings = { ...(data.state.settings ?? {}), language: 'en' }
+    data.state.settings = { ...(data.state.settings ?? {}), ...JSON.parse(raw) }
     window.localStorage.setItem(key, JSON.stringify(data))
-  })
+  }, JSON.stringify(patch))
+}
+
+// Captures ship in the (English) README and documentation site, but the app
+// defaults to 'fr'.
+Given(/^the app language is English$/, async () => {
+  await seedSettings({ language: 'en' })
+})
+
+// AI is on by default and points at a local Ollama that isn't running here, so
+// the app raises a persistent "Ollama is unreachable" banner across the top of
+// every screen — a detail of this machine, not of the feature being pictured.
+// Turning the feature off removes the banner rather than hiding it, so the
+// capture shows a state a user could actually be in.
+Given(/^AI features are turned off$/, async () => {
+  await seedSettings({ ai: { enabled: false } })
 })
 
 When(/^the interface has settled$/, async () => {
