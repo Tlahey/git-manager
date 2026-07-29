@@ -3,7 +3,6 @@ import {
   ChevronRight,
   FolderGit2,
   Globe,
-  GitBranch as BranchIcon,
   Tag as TagIcon,
   Archive as ArchiveIcon,
   GitFork,
@@ -17,22 +16,13 @@ import type { WorktreeWipStatus } from '../../hooks/useWorktreeWipStatuses'
 import type { MockIssue } from '../../app/pull-requests/types'
 import type { IssueFilterMenuTarget, SidebarRow } from './types'
 import { BranchItem } from './BranchItem'
-import { SoloToggle } from './SoloToggle'
 import { VisibilityToggle } from './VisibilityToggle'
+import { RemoteBranchItem } from './RemoteBranchItem'
+import { rowIndent } from './rowIndent'
 import { PullRequestItem } from './PullRequestItem'
 import { IssueItem } from './IssueItem'
 import { WorktreeItem } from './WorktreeItem'
 import { HoverExpandLabel } from './HoverExpandLabel'
-
-/**
- * Left padding of a branch or folder row, by depth. Folders go as deep as the branch names do, so
- * the indent is computed rather than picked from a fixed set of Tailwind classes — which is what
- * capped the nesting at one level. `1.5rem` is the `pl-6` of a top-level row, `1rem` the step the
- * rest of the panel uses. A remote's own node sits at depth 0, its branches at 1 and up.
- */
-function rowIndent(depth: number): string {
-  return `${1.5 + depth}rem`
-}
 
 interface SidebarRowViewProps {
   row: SidebarRow
@@ -210,92 +200,25 @@ export function SidebarRowView({
       )
     }
 
-    case 'remote-branch': {
-      // Remote-qualified (`origin/build/ci`) throughout: that is how the graph names a remote ref,
-      // so the hidden list, the solo set and the menu all have to agree on it. `shortName` has the
-      // remote stripped by the backend and would name a different branch on another remote.
-      const qualifiedName = row.branch.name
-      const isSoloed = soloed?.has(qualifiedName) ?? false
-      const dimmed = soloActive && !isSoloed
-      const isHidden = hiddenRemoteBranches.includes(qualifiedName)
-      const visibilityLabel = isHidden
-        ? t('sidebar.remote.showInGraph')
-        : t('sidebar.remote.hideInGraph')
+    case 'remote-branch':
       return (
-        <div
-          style={{ paddingLeft: rowIndent(row.depth) }}
-          className={`group/rbranch relative flex items-center gap-1.5 py-[3px] pr-2 text-xs transition-colors ${
-            row.isSelected
-              ? 'bg-sidebar-accent text-sidebar-foreground'
-              : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
-          } ${dimmed || isHidden ? 'opacity-50' : ''}`}
-          onClick={(e) => {
-            if ((e.target as HTMLElement).closest('[data-toggle]')) return
-            onSelectBranch(row.branch.name)
-            onFocusBranch?.(row.branch)
-          }}
-          // Same gesture split as a local row: a click moves the view, a double click switches.
-          onDoubleClick={(e) => {
-            if ((e.target as HTMLElement).closest('[data-toggle]')) return
-            onCheckoutBranch?.(row.branch)
-          }}
-          onContextMenu={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            onRemoteBranchContextMenu?.(e, row.branch)
-          }}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key !== 'Enter') return
-            if ((e.target as HTMLElement).closest('[data-toggle]')) return
-            onSelectBranch(row.branch.name)
-            onFocusBranch?.(row.branch)
-          }}
-        >
-          {/* Solo mode owns the left edge while it is on — the two eyes would sit on top of each
-              other, and solo is the stronger, temporary statement about what the graph shows. */}
-          {soloActive && onToggleSolo ? (
-            <SoloToggle isSoloed={isSoloed} onToggle={() => onToggleSolo(qualifiedName)} />
-          ) : (
-            <VisibilityToggle
-              isHidden={isHidden}
-              onToggle={() => onToggleRemoteBranchesVisibility?.([qualifiedName], !isHidden)}
-              label={visibilityLabel}
-              dataToggle="remote-visibility"
-              hoverClass="group-hover/rbranch:opacity-100"
-            />
-          )}
-          <BranchIcon className="h-3 w-3 shrink-0 opacity-30" />
-          <HoverExpandLabel>{highlightMatch(row.displayName, filterQuery)}</HoverExpandLabel>
-          {(row.branch.aheadCount > 0 || row.branch.behindCount > 0) && (
-            <span className="shrink-0 text-[10px] tabular-nums">
-              {row.branch.aheadCount > 0 && (
-                <span className="text-blue-400">↑{row.branch.aheadCount}</span>
-              )}
-              {row.branch.behindCount > 0 && (
-                <span className="ml-0.5 text-orange-400">↓{row.branch.behindCount}</span>
-              )}
-            </span>
-          )}
-          {/* Same actions as the row's right-click, reachable by pointing — it opens the very same
-              menu spec rather than a second, forkable definition of it. */}
-          <button
-            data-toggle="remote-branch-actions"
-            onClick={(e) => {
-              e.stopPropagation()
-              onRemoteBranchContextMenu?.(e, row.branch)
-            }}
-            className="shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/rbranch:opacity-100"
-            aria-label={t('sidebar.branchActions')}
-            title={t('sidebar.branchActions')}
-            data-testid={`remote-branch-actions-${qualifiedName}`}
-          >
-            <MoreVertical className="h-3.5 w-3.5" />
-          </button>
-        </div>
+        <RemoteBranchItem
+          branch={row.branch}
+          displayName={row.displayName}
+          depth={row.depth}
+          isSelected={row.isSelected}
+          onSelect={onSelectBranch}
+          onFocus={onFocusBranch}
+          onCheckout={onCheckoutBranch}
+          onContextMenu={onRemoteBranchContextMenu}
+          isHidden={hiddenRemoteBranches.includes(row.branch.name)}
+          onToggleVisibility={onToggleRemoteBranchesVisibility}
+          filterQuery={filterQuery}
+          soloActive={soloActive}
+          isSoloed={soloed?.has(row.branch.name) ?? false}
+          onToggleSolo={onToggleSolo}
+        />
       )
-    }
 
     case 'subgroup': {
       // A saved issue filter carries its own actions button; the PR sub-groups are fixed and get

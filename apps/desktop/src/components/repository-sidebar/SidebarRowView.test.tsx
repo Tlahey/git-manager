@@ -12,6 +12,7 @@ import type {
 import type { SidebarRow } from './types'
 import { renderWithLanguage } from '../../test/i18n'
 import { SidebarRowView } from './SidebarRowView'
+import { DOUBLE_CLICK_DELAY } from '../../hooks/useSingleOrDoubleClick'
 
 // Partial-mock so the real Radix components still render; only `toast` is spied on.
 vi.mock('@git-manager/ui', async (importOriginal) => {
@@ -394,12 +395,13 @@ describe('SidebarRowView — remote-branch', () => {
   })
 
   // The remote-qualified name, not the display name: `main` alone would select the local branch.
-  it('shows the display name and selects using the remote-qualified name on click', () => {
+  it('shows the display name and selects using the remote-qualified name on click', async () => {
     const { h } = renderRow(remoteBranch())
     expect(screen.getByText('main')).toBeInTheDocument()
     const row = screen.getByText('main').closest('[role="button"]')!
     fireEvent.click(row)
-    expect(h.onSelectBranch).toHaveBeenCalledWith('origin/main')
+    // The click is held for a beat in case it turns out to be a double one.
+    await waitFor(() => expect(h.onSelectBranch).toHaveBeenCalledWith('origin/main'))
   })
 
   it('indents a branch nested under a folder past one that is not', () => {
@@ -448,18 +450,36 @@ describe('SidebarRowView — remote-branch', () => {
   })
 
   // Same gesture split as a local row.
-  it('focuses the branch tip on a single click and checks it out on a double click', () => {
+  it('focuses the branch tip on a single click and checks it out on a double click', async () => {
     const onFocusBranch = vi.fn()
     const onCheckoutBranch = vi.fn()
     renderRow(remoteBranch(), { onFocusBranch, onCheckoutBranch })
     const row = screen.getByText('main').closest('[role="button"]')!
 
     fireEvent.click(row)
-    expect(onFocusBranch).toHaveBeenCalledWith(expect.objectContaining({ name: 'origin/main' }))
+    await waitFor(() =>
+      expect(onFocusBranch).toHaveBeenCalledWith(expect.objectContaining({ name: 'origin/main' }))
+    )
     expect(onCheckoutBranch).not.toHaveBeenCalled()
 
     fireEvent.doubleClick(row)
     expect(onCheckoutBranch).toHaveBeenCalledWith(expect.objectContaining({ name: 'origin/main' }))
+  })
+
+  // Same delay as a local row: the click on the way to a checkout must not move the view first.
+  it('drops the pending single-click action when the second click lands', async () => {
+    const onFocusBranch = vi.fn()
+    const onCheckoutBranch = vi.fn()
+    const { h } = renderRow(remoteBranch(), { onFocusBranch, onCheckoutBranch })
+    const row = screen.getByText('main').closest('[role="button"]')!
+
+    fireEvent.click(row)
+    fireEvent.doubleClick(row)
+
+    await waitFor(() => expect(onCheckoutBranch).toHaveBeenCalled())
+    await new Promise((resolve) => setTimeout(resolve, DOUBLE_CLICK_DELAY + 50))
+    expect(onFocusBranch).not.toHaveBeenCalled()
+    expect(h.onSelectBranch).not.toHaveBeenCalled()
   })
 
   it('opens the branch menu from the actions button and from a right-click, not on a plain click', () => {

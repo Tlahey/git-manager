@@ -1,8 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitBranch } from '@git-manager/git-types'
 import { BranchItem } from './BranchItem'
+import { DOUBLE_CLICK_DELAY } from '../../hooks/useSingleOrDoubleClick'
 
 vi.mock('./HoverExpandLabel', () => ({
   HoverExpandLabel: ({
@@ -64,7 +65,8 @@ describe('BranchItem — rendering', () => {
     expect(screen.queryByText('feat/ma_branche')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('ma_branche'))
-    expect(onSelect).toHaveBeenCalledWith('feat/ma_branche')
+    // The click is held for a beat in case it turns out to be a double one.
+    await waitFor(() => expect(onSelect).toHaveBeenCalledWith('feat/ma_branche'))
 
     await user.click(screen.getByLabelText('Pin feat/ma_branche to the top'))
     expect(onTogglePin).toHaveBeenCalledWith('feat/ma_branche')
@@ -99,7 +101,7 @@ describe('BranchItem — rendering', () => {
 })
 
 describe('BranchItem — interaction', () => {
-  it('selects the branch on click and Enter', () => {
+  it('selects the branch on click and Enter', async () => {
     const onSelect = vi.fn()
     render(
       <BranchItem
@@ -111,8 +113,9 @@ describe('BranchItem — interaction', () => {
     const row = screen.getByText('feature-x').closest('[role="button"]')!
 
     fireEvent.click(row)
-    expect(onSelect).toHaveBeenCalledWith('feature-x')
+    await waitFor(() => expect(onSelect).toHaveBeenCalledWith('feature-x'))
 
+    // Enter fires straight away: there is no double-tap to wait out on a keyboard.
     onSelect.mockClear()
     fireEvent.keyDown(row, { key: 'Enter' })
     expect(onSelect).toHaveBeenCalledWith('feature-x')
@@ -120,7 +123,7 @@ describe('BranchItem — interaction', () => {
 
   // One click moves the view, a double click switches branch — switching is the one destructive-ish
   // thing the row can do, so it takes the deliberate gesture.
-  it('focuses the branch tip on a single click, without checking it out', () => {
+  it('focuses the branch tip on a single click, without checking it out', async () => {
     const onFocus = vi.fn()
     const onCheckout = vi.fn()
     render(
@@ -133,8 +136,37 @@ describe('BranchItem — interaction', () => {
       />
     )
     fireEvent.click(screen.getByText('feature-x').closest('[role="button"]')!)
-    expect(onFocus).toHaveBeenCalledWith(expect.objectContaining({ shortName: 'feature-x' }))
+    await waitFor(() =>
+      expect(onFocus).toHaveBeenCalledWith(expect.objectContaining({ shortName: 'feature-x' }))
+    )
     expect(onCheckout).not.toHaveBeenCalled()
+  })
+
+  // The whole point of the delay: the DOM fires `click` on the way to a double click, so without
+  // it a checkout would always be preceded by the view jumping to the branch.
+  it('drops the pending single-click action when the second click lands', async () => {
+    const onSelect = vi.fn()
+    const onFocus = vi.fn()
+    const onCheckout = vi.fn()
+    render(
+      <BranchItem
+        branch={branch({ shortName: 'feature-x' })}
+        isSelected={false}
+        onSelect={onSelect}
+        onFocus={onFocus}
+        onCheckout={onCheckout}
+      />
+    )
+    const row = screen.getByText('feature-x').closest('[role="button"]')!
+
+    fireEvent.click(row)
+    fireEvent.doubleClick(row)
+
+    await waitFor(() => expect(onCheckout).toHaveBeenCalled())
+    // Well past the delay the held action is still gone, not merely late.
+    await new Promise((resolve) => setTimeout(resolve, DOUBLE_CLICK_DELAY + 50))
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(onFocus).not.toHaveBeenCalled()
   })
 
   it('checks the branch out on a double click', () => {

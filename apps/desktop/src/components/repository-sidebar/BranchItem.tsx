@@ -1,6 +1,7 @@
 import { GitBranch as BranchIcon, MoreVertical, Pin } from 'lucide-react'
 import { highlightMatch } from '@git-manager/components'
 import { useTranslation } from '@git-manager/i18n'
+import { useSingleOrDoubleClick } from '../../hooks/useSingleOrDoubleClick'
 import type { GitBranch } from '@git-manager/git-types'
 import { HoverExpandLabel } from './HoverExpandLabel'
 import { SoloToggle } from './SoloToggle'
@@ -52,6 +53,15 @@ export function BranchItem({
   const { t } = useTranslation('git')
   // In solo mode a hidden (non-soloed) branch is dimmed so the visible set stands out.
   const dimmed = soloActive && !isSoloed
+  // Held until the double click has had its chance: the DOM fires `click` on the first half of one,
+  // so moving the view straight away would happen on the way to every checkout.
+  const { handleClick, handleDoubleClick } = useSingleOrDoubleClick(
+    () => {
+      onSelect(branch.shortName)
+      onFocus?.(branch)
+    },
+    () => onCheckout?.(branch)
+  )
 
   return (
     <div
@@ -63,14 +73,13 @@ export function BranchItem({
       } ${dimmed ? 'opacity-50' : ''}`}
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('[data-toggle]')) return
-        onSelect(branch.shortName)
-        onFocus?.(branch)
+        handleClick()
       }}
       // Switching branches is the one destructive-ish thing a row can do, so it takes the
       // deliberate gesture; a single click only moves the view.
       onDoubleClick={(e) => {
         if ((e.target as HTMLElement).closest('[data-toggle]')) return
-        onCheckout?.(branch)
+        handleDoubleClick()
       }}
       onContextMenu={onContextMenu ? (e) => onContextMenu(e, branch) : undefined}
       role="button"
