@@ -107,7 +107,14 @@ export function PackageHealthCenter({ repoPath }: { repoPath: string }) {
               <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px]">{String(error)}</pre>
             </Alert>
           ) : report == null ? null : selection.kind === 'updates' ? (
-            <PackageUpdatesPage repoPath={repoPath} packageManager={report.packageManager} />
+            // Keyed on the repo so a switch remounts rather than carrying this
+            // page's own state across: the changelog it has open belongs to a
+            // package in the repo it was opened from.
+            <PackageUpdatesPage
+              key={repoPath}
+              repoPath={repoPath}
+              packageManager={report.packageManager}
+            />
           ) : selectedCheck != null ? (
             <HealthCheckReport check={selectedCheck} />
           ) : (
