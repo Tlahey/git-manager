@@ -83,7 +83,7 @@ export function NotificationDropdown() {
           <NumberBadge
             count={unreadCount}
             data-testid="notification-unread-badge"
-            className="absolute -right-1 -top-1 animate-pulse ring-2 ring-sidebar"
+            className="absolute -right-1 -top-1 ring-2 ring-sidebar"
           />
         </button>
       </PopoverTrigger>
