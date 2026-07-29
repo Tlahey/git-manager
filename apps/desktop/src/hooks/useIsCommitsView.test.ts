@@ -21,6 +21,29 @@ describe('useIsCommitsView', () => {
     expect(result.current).toBe(false)
   })
 
+  it('is false when an issue is open in the center panel', () => {
+    useRepoUIStore.setState({
+      activeIssue: {
+        id: 'gh-issue-12',
+        number: 12,
+        title: 'Issue 12',
+        repo: 'repo',
+        url: '',
+        status: 'open',
+        author: 'marie',
+        authorAvatar: '',
+        assignees: [],
+        labels: [],
+        createdAt: new Date(0),
+        updatedAt: new Date(0),
+        comments: 0,
+        thumbsUp: 0,
+      },
+    })
+    const { result } = renderHook(() => useIsCommitsView())
+    expect(result.current).toBe(false)
+  })
+
   it('is false when a file diff is active', () => {
     useRepoUIStore.setState({ activeDiffFile: { path: 'a.ts', staged: false } })
     const { result } = renderHook(() => useIsCommitsView())

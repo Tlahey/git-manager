@@ -6,33 +6,53 @@ import type {
   PullRequest,
   GitStash,
 } from '@git-manager/git-types'
+import type { MockIssue } from '../../app/pull-requests/types'
+import type { IssueFilter } from '../../stores/issueFilters.store'
 
-/** Identifiants stables des sections (état d'ouverture + scroll). */
+/** Stable section identifiers (open state + scroll). */
 export type SectionKey =
   | 'local'
   | 'remotes'
   | 'prs'
+  | 'issues'
   | 'tags'
   | 'submodules'
   | 'stashes'
   | 'worktrees'
 
 /**
- * Ligne unitaire du corps d'une section de la sidebar (branches, dossiers,
- * tags, etc.) — n'inclut pas l'en-tête de section, rendu séparément par
- * `SidebarSectionHeader` et propriétaire de son propre état d'ouverture.
+ * The buckets pull requests are split into inside the "Pull Requests" section. Every open PR of the
+ * repo appears under `all`; the first three are additional, overlapping views of that same list
+ * (a PR you opened *and* were assigned shows up under both), so the counts deliberately don't sum
+ * to `all`.
+ */
+export type PrGroupKey = 'mine' | 'assigned' | 'awaitingReview' | 'all'
+
+export const PR_GROUP_ORDER: PrGroupKey[] = ['mine', 'assigned', 'awaitingReview', 'all']
+
+/** i18n key (in the `git` namespace) for each PR sub-group's header label. */
+export const PR_GROUP_LABEL_KEY: Record<PrGroupKey, string> = {
+  mine: 'sidebar.prGroups.mine',
+  assigned: 'sidebar.prGroups.assigned',
+  awaitingReview: 'sidebar.prGroups.awaitingReview',
+  all: 'sidebar.prGroups.all',
+}
+
+/**
+ * One row in the body of a sidebar section (branches, folders, tags, …) — not the section header
+ * itself, which `SidebarSectionHeader` renders separately and which owns its own open state.
  */
 export type SidebarRow =
   | {
       kind: 'branch'
       id: string
       branch: GitBranch
-      /** Nom affiché — préfixe de dossier (ex: "feat/") retiré quand la branche est dans un groupe. */
+      /** Displayed name — the folder prefix (e.g. "feat/") is stripped when the branch is grouped. */
       displayName: string
       depth: 0 | 1
       isSelected: boolean
       isPinned: boolean
-      /** PR liée à cette branche (headRef == shortName), si le dépôt est sur GitHub. */
+      /** PR whose head is this branch (headRef == shortName), when the repo is on GitHub. */
       pr?: PullRequest
     }
   | {
@@ -63,8 +83,25 @@ export type SidebarRow =
       label: string
       count: number
       isOpen: boolean
+      /**
+       * The saved issue filter this sub-group renders, when it is one. Its presence is what gives
+       * the header its own actions button (edit / delete / move) — the PR sub-groups are fixed and
+       * carry none.
+       */
+      filter?: IssueFilter
+      /** False on the first / last filter, which greys out the corresponding move entry. */
+      canMoveUp?: boolean
+      canMoveDown?: boolean
     }
-  | { kind: 'pr'; id: string; pr: PullRequest; isSelected: boolean }
+  | {
+      kind: 'pr'
+      id: string
+      pr: PullRequest
+      isSelected: boolean
+      /** 1 when nested under a PR sub-group header, so the row indents past it. */
+      depth?: 0 | 1
+    }
+  | { kind: 'issue'; id: string; issue: MockIssue }
   | { kind: 'tag'; id: string; tag: GitRef; isSelected: boolean }
   | { kind: 'stash'; id: string; stash: GitStash; isSelected: boolean }
   | { kind: 'submodule'; id: string; sm: GitSubmodule }
@@ -72,7 +109,14 @@ export type SidebarRow =
   | { kind: 'message'; id: string; text: string; loading?: boolean }
   | { kind: 'divider'; id: string }
 
-/** Une section de la sidebar (en-tête + corps repliable). */
+/** What a saved issue filter's sub-group header hands to its actions menu. */
+export interface IssueFilterMenuTarget {
+  filter: IssueFilter
+  canMoveUp?: boolean
+  canMoveDown?: boolean
+}
+
+/** One sidebar section (header + collapsible body). */
 export interface SidebarSection {
   key: SectionKey
   title: string
@@ -82,47 +126,46 @@ export interface SidebarSection {
 }
 
 /**
- * Hauteur approximative (px) de l'en-tête d'une section (icône + titre + compteur, `py-1.5` dans
- * `SectionHeader`). Utilisée uniquement pour composer le plancher total du conteneur de section
- * (`MIN_SECTION_HEIGHT` ci-dessous) — une valeur approchée suffit, ce n'est qu'un plancher.
+ * Approximate height (px) of a section header (icon + title + count, `py-1.5` in `SectionHeader`).
+ * Only used to compose the section container's total floor (`MIN_SECTION_HEIGHT` below) — an
+ * approximation is enough, since it is only a floor.
  */
 export const SECTION_HEADER_HEIGHT = 28
 
 /**
- * Hauteur minimale (px) du corps d'une section dépliée.
+ * Minimum height (px) of an expanded section's body.
  */
 export const MIN_SECTION_BODY_HEIGHT = 120
 
 /**
- * Hauteur minimale (px) du conteneur d'une section dépliée dans son ensemble (en-tête + corps).
- * Chaque section ouverte est un enfant `flex-1` (poids égal, base 0%) de la liste : les sections
- * ouvertes se partagent toujours la hauteur disponible à parts strictement égales, même une
- * section clairsemée (ex: un seul worktree) — c'est voulu, pour que toutes les sections ouvertes
- * s'alignent sur la même hauteur.
+ * Minimum height (px) of an expanded section's container as a whole (header + body).
+ * Every open section is a `flex-1` child of the list (equal weight, 0% basis): open sections always
+ * share the available height in strictly equal parts, even a sparse one (e.g. a single worktree) —
+ * that is deliberate, so every open section lines up at the same height.
  *
- * Ce plancher est appliqué directement (valeur numérique explicite) sur le conteneur de section
- * lui-même, plutôt que de compter sur la taille minimale automatique que le moteur de mise en
- * page dériverait de son contenu — un conteneur flex dont l'`overflow` est `visible` (le cas de
- * ce conteneur, contrairement à son corps en `overflow-y-auto`) peut sinon refuser de rétrécir en
- * dessous de la hauteur totale de son contenu non tronqué, ce qui a déjà produit deux bugs
- * distincts (agrandissement non borné, puis chevauchement des sections suivantes) avant qu'on ne
- * fixe le plancher explicitement ici. Avec un plancher explicite, le calcul de `flex-shrink` est
- * sans ambiguïté : si la somme des planchers des sections ouvertes dépasse la hauteur du panel,
- * c'est la liste de sections entière qui devient scrollable (un seul scrollbar global) plutôt que
- * de continuer à réduire une section illisible ou de laisser les sections se chevaucher.
+ * This floor is applied directly (an explicit numeric value) on the section container itself rather
+ * than relying on the automatic minimum size the layout engine would derive from its content — a
+ * flex container whose `overflow` is `visible` (the case here, unlike its `overflow-y-auto` body)
+ * can otherwise refuse to shrink below the full height of its untruncated content, which produced
+ * two distinct bugs (unbounded growth, then the following sections overlapping) before the floor was
+ * pinned down here. With an explicit floor, the `flex-shrink` computation is unambiguous: if the sum
+ * of the open sections' floors exceeds the panel height, the whole section list becomes scrollable
+ * (a single global scrollbar) instead of shrinking a section past legibility or letting sections
+ * overlap.
  */
 export const MIN_SECTION_HEIGHT = SECTION_HEADER_HEIGHT + MIN_SECTION_BODY_HEIGHT
 
-/** Valeurs d'ouverture par défaut des sections — toutes repliées. */
+/** Default open state of the sections — all collapsed. */
 export const DEFAULT_SECTION_OPEN: Record<SectionKey, boolean> = {
   local: false,
   remotes: false,
   prs: false,
+  issues: false,
   tags: false,
   submodules: false,
   stashes: false,
   worktrees: false,
 }
 
-/** Branches épinglées par défaut (toujours en haut, sauf override utilisateur). */
+/** Branches pinned by default (always on top, unless the user overrides it). */
 export const DEFAULT_PINNED = ['main', 'master']

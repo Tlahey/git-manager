@@ -1,5 +1,5 @@
 import type { MockPR, MockIssue, DayCommit, PRStatus } from '../app/pull-requests/types'
-import type { PullRequest } from '@git-manager/git-types'
+import type { PrParticipant, PullRequest } from '@git-manager/git-types'
 
 export interface GhUser {
   login: string
@@ -197,6 +197,10 @@ function toPrState(raw: Pick<GhRawPR, 'state' | 'draft' | 'merged_at'>): PullReq
   return 'open'
 }
 
+function toParticipants(users: GhUser[] | undefined): PrParticipant[] {
+  return (users ?? []).map((u) => ({ login: u.login, avatarUrl: u.avatar_url }))
+}
+
 /**
  * Map a raw GitHub PR list item to the IPC-shaped `PullRequest` DTO. `ciStatus` is left null — the
  * list endpoint doesn't carry it.
@@ -216,6 +220,9 @@ export function rawToPullRequest(raw: GhRawPR): PullRequest {
     createdAt: raw.created_at,
     updatedAt: raw.updated_at,
     isDraft: raw.draft,
+    assignees: toParticipants(raw.assignees),
+    requestedReviewers: toParticipants(raw.requested_reviewers),
+    labels: (raw.labels ?? []).map((l) => l.name),
   }
 }
 
@@ -291,6 +298,9 @@ export function rawToMockIssue(raw: GhRawIssue): MockIssue {
     id: `gh-issue-${raw.number}-${raw.repository_url?.split('/repos/')[1] ?? ''}`,
     number: raw.number,
     title: raw.title,
+    // Normalized to `undefined`: GitHub sends `null` for a body-less issue, and the preview treats
+    // "no description" as one case rather than two.
+    body: raw.body ?? undefined,
     repo: raw.repository_url?.split('/').slice(-1)[0] ?? 'unknown',
     fullName: raw.repository_url?.split('/repos/')[1],
     url: raw.html_url,
@@ -349,6 +359,175 @@ export async function fetchGitHubRepoIssues(
     'application/vnd.github.squirrel-girl-preview+json'
   )
   return (data.items ?? []).map(rawToMockIssue)
+}
+
+/**
+ * Open issues of a single repository, newest first. Unlike {@link fetchGitHubRepoIssues} (which
+ * searches across every repo added to the app) this hits the repo's own issues resource, so it
+ * needs no search quota and works for a repo the user hasn't added to the Launchpad. `pulls=false`
+ * isn't a real GitHub parameter — the endpoint returns PRs too, so they're filtered out here.
+ */
+export async function fetchRepoIssues(
+  owner: string,
+  repo: string,
+  token?: string
+): Promise<MockIssue[]> {
+  const raw = await ghFetch<Array<GhRawIssue & { pull_request?: unknown }>>(
+    `https://api.github.com/repos/${owner}/${repo}/issues?state=open&sort=updated&direction=desc&per_page=100`,
+    token,
+    'application/vnd.github.squirrel-girl-preview+json'
+  )
+  return raw
+    .filter((item) => !item.pull_request)
+    .map((item) => ({
+      ...rawToMockIssue(item),
+      // The repo issues endpoint has no `repository_url`, so `rawToMockIssue` can't derive these.
+      repo,
+      fullName: `${owner}/${repo}`,
+    }))
+}
+
+/**
+ * Issues of one repository matching a **raw GitHub issue-search query** — the sidebar's saved issue
+ * filters (see `stores/issueFilters.store.ts`).
+ *
+ * The query is whatever the user typed in their filter (`is:open assignee:@me`, `label:bug`, …) and
+ * is passed to GitHub untouched, so every qualifier GitHub's own search box accepts works here,
+ * including ones this app knows nothing about. Only `repo:` and `is:issue` are prepended: the filter
+ * is always scoped to the open repository, and pull requests (which GitHub models as issues) never
+ * belong in the Issues section.
+ *
+ * Unlike {@link fetchRepoIssues} this has to go through the search API — the repo's own issues
+ * resource takes a fixed set of parameters and can't evaluate search syntax. That costs search
+ * quota (30 requests/minute authenticated), which is why one filter is one request and the caller
+ * fetches a whole filter list in a single batch rather than per row.
+ */
+export async function fetchIssuesByQuery(
+  owner: string,
+  repo: string,
+  query: string,
+  token?: string
+): Promise<MockIssue[]> {
+  const q = `repo:${owner}/${repo} is:issue ${query}`.trim()
+  const data = await ghFetch<GhSearchResult<GhRawIssue>>(
+    `https://api.github.com/search/issues?q=${encodeURIComponent(q)}&per_page=100&sort=updated&order=desc`,
+    token,
+    'application/vnd.github.squirrel-girl-preview+json'
+  )
+  return (data.items ?? []).map((item) => ({
+    ...rawToMockIssue(item),
+    // Search results do carry `repository_url`, but spelling these out keeps a filter's issues
+    // identical in shape to `fetchRepoIssues`' — both feed the same rows and hover cards.
+    repo,
+    fullName: `${owner}/${repo}`,
+  }))
+}
+
+/** Open a new issue on a repository. Requires the token's `repo` scope. */
+export async function createIssue(
+  owner: string,
+  repo: string,
+  input: { title: string; body?: string },
+  token: string
+): Promise<GhRawIssue> {
+  return ghRequest(`https://api.github.com/repos/${owner}/${repo}/issues`, {
+    method: 'POST',
+    body: { title: input.title, body: input.body ?? '' },
+    token,
+  })
+}
+
+/** One reviewer's standing on a PR — either a review they left, or a pending request. */
+export interface PrReviewer {
+  login: string
+  avatarUrl: string
+  state: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'PENDING'
+}
+
+/** Review + checks rollup for one PR, sized for the sidebar's hover card. */
+export interface PrReviewSummary {
+  reviewDecision: PrReviewDecision
+  reviewers: PrReviewer[]
+  /** GitHub's single-enum rollup over all checks, or null when the head commit has no checks. */
+  checksState: 'SUCCESS' | 'FAILURE' | 'PENDING' | 'ERROR' | 'EXPECTED' | null
+}
+
+/**
+ * The reviewer/approval/checks state of one pull request, in a single GraphQL round-trip.
+ *
+ * Deliberately lighter than {@link fetchPrMergeability}: this backs a hover card, so it asks for
+ * the rollup's single `state` enum rather than the up-to-100 individual check contexts the merge
+ * box needs. `latestOpinionatedReviews` is GitHub's own "one row per reviewer, latest verdict
+ * wins" list — the same reduction the PR page's reviewer sidebar shows.
+ */
+export async function fetchPrReviewSummary(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  token: string
+): Promise<PrReviewSummary> {
+  const query = `query($owner:String!,$repo:String!,$number:Int!){
+    repository(owner:$owner,name:$repo){
+      pullRequest(number:$number){
+        reviewDecision
+        latestOpinionatedReviews(first:20){nodes{state author{login avatarUrl}}}
+        reviewRequests(first:20){nodes{requestedReviewer{
+          ... on User{login avatarUrl}
+          ... on Team{login:name avatarUrl}
+        }}}
+        commits(last:1){nodes{commit{statusCheckRollup{state}}}}
+      }
+    }
+  }`
+
+  interface RawActor {
+    login?: string
+    avatarUrl?: string
+  }
+  const data = await ghGraphQL<{
+    repository?: {
+      pullRequest?: {
+        reviewDecision?: PrReviewDecision
+        latestOpinionatedReviews?: {
+          nodes?: Array<{ state?: string; author?: RawActor | null } | null>
+        }
+        reviewRequests?: { nodes?: Array<{ requestedReviewer?: RawActor | null } | null> }
+        commits?: {
+          nodes?: Array<{
+            commit?: { statusCheckRollup?: { state?: PrReviewSummary['checksState'] } | null }
+          }>
+        }
+      }
+    }
+  }>(query, { owner, repo, number: prNumber }, token)
+
+  const prNode = data.repository?.pullRequest
+  const reviewers: PrReviewer[] = []
+  for (const node of prNode?.latestOpinionatedReviews?.nodes ?? []) {
+    if (!node?.author?.login) continue
+    const state = node.state
+    reviewers.push({
+      login: node.author.login,
+      avatarUrl: node.author.avatarUrl ?? '',
+      state:
+        state === 'APPROVED' || state === 'CHANGES_REQUESTED' || state === 'COMMENTED'
+          ? state
+          : 'PENDING',
+    })
+  }
+  // A still-requested reviewer has no review yet, so they never appear above — append them as
+  // pending, skipping anyone who already reviewed (GitHub can re-request a review after one lands).
+  for (const node of prNode?.reviewRequests?.nodes ?? []) {
+    const login = node?.requestedReviewer?.login
+    if (!login || reviewers.some((r) => r.login === login)) continue
+    reviewers.push({ login, avatarUrl: node?.requestedReviewer?.avatarUrl ?? '', state: 'PENDING' })
+  }
+
+  return {
+    reviewDecision: prNode?.reviewDecision ?? null,
+    reviewers,
+    checksState: prNode?.commits?.nodes?.[0]?.commit?.statusCheckRollup?.state ?? null,
+  }
 }
 
 /** Full details of one issue (adds the markdown `body` the search list omits). */

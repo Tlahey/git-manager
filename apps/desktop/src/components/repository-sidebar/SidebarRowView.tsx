@@ -8,39 +8,27 @@ import {
   Archive as ArchiveIcon,
   Eye,
   EyeOff,
-  Layers,
-  Lock,
-  Trash2,
   GitFork,
   MoreVertical,
-  Copy,
-  Hash,
-  FilePlus,
-  FilePen,
-  FileMinus,
 } from 'lucide-react'
-import {
-  Spinner,
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  Tooltip,
-} from '@git-manager/ui'
+import { Spinner } from '@git-manager/ui'
 import { highlightMatch } from '@git-manager/components'
-import { copyWithToast } from '../../lib/clipboard'
-import type { GitBranch, GitWorktree, PullRequest, GitStash } from '@git-manager/git-types'
+import { useTranslation } from '@git-manager/i18n'
+import type { GitBranch, GitRef, GitWorktree, PullRequest, GitStash } from '@git-manager/git-types'
 import type { WorktreeWipStatus } from '../../hooks/useWorktreeWipStatuses'
-import type { SidebarRow } from './types'
+import type { MockIssue } from '../../app/pull-requests/types'
+import type { IssueFilterMenuTarget, SidebarRow } from './types'
 import { BranchItem } from './BranchItem'
 import { SoloToggle } from './SoloToggle'
 import { PullRequestItem } from './PullRequestItem'
-import { PrStatusTag } from './PrStatusTag'
+import { IssueItem } from './IssueItem'
+import { WorktreeItem } from './WorktreeItem'
 import { HoverExpandLabel } from './HoverExpandLabel'
-import { useTranslation } from '@git-manager/i18n'
 
 interface SidebarRowViewProps {
   row: SidebarRow
+  /** Repo the rows belong to — a PR row needs it to resolve `owner/repo` for its hover card. */
+  repoPath?: string
   onToggleOpen: (id: string) => void
   onSelectBranch: (name: string) => void
   /** Clicking a tag scrolls to / selects its commit in the graph instead of re-filtering the whole
@@ -49,10 +37,23 @@ interface SidebarRowViewProps {
   onTogglePin: (shortName: string) => void
   onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
   onOpenPr?: (pr: PullRequest) => void
+  /** Opens an issue's action menu (right-click on the row, or its "…" button). */
+  onIssueContextMenu?: (e: React.MouseEvent, issue: MockIssue) => void
+  /** Opens an issue in the app's own issue view. */
+  onOpenIssue?: (issue: MockIssue) => void
+  /** Opens a saved issue filter's own menu (edit / delete / move) from its sub-group header. */
+  onIssueFilterMenu?: (e: React.MouseEvent, group: IssueFilterMenuTarget) => void
   onStashContextMenu?: (e: React.MouseEvent, stash: GitStash) => void
   hiddenStashes?: string[]
   onToggleStashVisibility?: (oid: string) => void
+  /** Opens the tag's action menu — same one the graph's tag badge uses. */
+  onTagContextMenu?: (e: React.MouseEvent, tag: GitRef) => void
+  /** Tag short names whose badge is kept out of the graph. */
+  hiddenTags?: string[]
+  onToggleTagVisibility?: (tagName: string) => void
   onRemoveWorktree?: (wt: GitWorktree) => void
+  /** Remove a worktree *and* delete the branch it had checked out. */
+  onRemoveWorktreeAndBranch?: (wt: GitWorktree) => void
   onOpenWorktree?: (wt: GitWorktree) => void
   /** Pending-changes info for linked worktrees with uncommitted changes — drives the bubble/hover
    * breakdown on a worktree row. Absent or no match for a given row = no bubble. */
@@ -69,16 +70,24 @@ interface SidebarRowViewProps {
 
 export function SidebarRowView({
   row,
+  repoPath,
   onToggleOpen,
   onSelectBranch,
   onSelectTag,
   onTogglePin,
   onContextMenu,
   onOpenPr,
+  onIssueContextMenu,
+  onOpenIssue,
+  onIssueFilterMenu,
   onStashContextMenu,
   hiddenStashes = [],
   onToggleStashVisibility,
+  onTagContextMenu,
+  hiddenTags = [],
+  onToggleTagVisibility,
   onRemoveWorktree,
+  onRemoveWorktreeAndBranch,
   onOpenWorktree,
   worktreeWipStatuses = [],
   filterQuery = '',
@@ -191,65 +200,155 @@ export function SidebarRowView({
       )
     }
 
-    case 'subgroup':
+    case 'subgroup': {
+      // A saved issue filter carries its own actions button; the PR sub-groups are fixed and get
+      // none. The toggle stays a real <button>, with the actions one as its sibling rather than a
+      // child — nesting buttons is invalid markup and breaks keyboard activation.
+      const filter = row.filter
       return (
-        <button
-          onClick={() => onToggleOpen(row.id)}
-          className="flex w-full items-center gap-1 px-4 py-[3px] text-left text-[10px] font-semibold uppercase tracking-widest text-sidebar-muted-foreground/60 transition-colors hover:bg-sidebar-accent/30 hover:text-sidebar-muted-foreground"
-        >
-          <span className="shrink-0">
-            {row.isOpen ? (
-              <ChevronDown className="h-2.5 w-2.5" />
-            ) : (
-              <ChevronRight className="h-2.5 w-2.5" />
-            )}
-          </span>
-          <span className="flex-1">{row.label}</span>
-          <span className="tabular-nums">{row.count}</span>
-        </button>
+        <div className="group/subgroup flex w-full items-center text-[10px] font-semibold uppercase tracking-widest text-sidebar-muted-foreground/60 transition-colors hover:bg-sidebar-accent/30">
+          <button
+            onClick={() => onToggleOpen(row.id)}
+            className="flex min-w-0 flex-1 items-center gap-1 py-[3px] pl-4 pr-1 text-left transition-colors hover:text-sidebar-muted-foreground"
+          >
+            <span className="shrink-0">
+              {row.isOpen ? (
+                <ChevronDown className="h-2.5 w-2.5" />
+              ) : (
+                <ChevronRight className="h-2.5 w-2.5" />
+              )}
+            </span>
+            <span className="flex-1 truncate">{row.label}</span>
+            <span className="tabular-nums">{row.count}</span>
+          </button>
+          {filter && onIssueFilterMenu ? (
+            <button
+              onClick={(e) =>
+                onIssueFilterMenu(e, {
+                  filter,
+                  canMoveUp: row.canMoveUp,
+                  canMoveDown: row.canMoveDown,
+                })
+              }
+              className="mr-1 shrink-0 rounded p-0.5 opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/subgroup:opacity-100"
+              aria-label={t('sidebar.issueFilters.actions')}
+              title={t('sidebar.issueFilters.actions')}
+              data-testid={`issue-filter-actions-${filter.id}`}
+            >
+              <MoreVertical className="h-3 w-3" />
+            </button>
+          ) : (
+            <span className="w-3 shrink-0" />
+          )}
+        </div>
       )
+    }
 
     case 'pr':
       return (
         <PullRequestItem
           pr={row.pr}
+          repoPath={repoPath}
           onOpen={onOpenPr}
           isSelected={row.isSelected}
           filterQuery={filterQuery}
+          depth={row.depth}
         />
       )
 
-    case 'tag':
+    case 'issue':
+      return (
+        <IssueItem
+          issue={row.issue}
+          filterQuery={filterQuery}
+          onContextMenu={onIssueContextMenu}
+          onOpen={onOpenIssue}
+        />
+      )
+
+    case 'tag': {
+      const isHidden = hiddenTags.includes(row.tag.shortName)
+      const visibilityLabel = isHidden
+        ? t('sidebar.tag.showInGraph')
+        : t('sidebar.tag.hideInGraph')
+      const select = () =>
+        onSelectTag ? onSelectTag(row.tag.commitOid) : onSelectBranch(row.tag.name)
       return (
         <div
-          className={`group/tag relative flex items-center gap-1.5 py-[3px] pl-6 pr-2 text-xs transition-colors ${
+          className={`group/tag relative flex items-center gap-1.5 py-[3px] pl-6 pr-6 text-xs transition-colors ${
             row.isSelected
               ? 'bg-sidebar-accent font-medium text-sidebar-foreground'
               : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
-          }`}
-          onClick={() =>
-            onSelectTag ? onSelectTag(row.tag.commitOid) : onSelectBranch(row.tag.name)
-          }
+          } ${isHidden ? 'opacity-50' : ''}`}
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest('[data-toggle]')) return
+            select()
+          }}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onTagContextMenu?.(e, row.tag)
+          }}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) =>
-            e.key === 'Enter' &&
-            (onSelectTag ? onSelectTag(row.tag.commitOid) : onSelectBranch(row.tag.name))
-          }
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return
+            if ((e.target as HTMLElement).closest('[data-toggle]')) return
+            select()
+          }}
+          data-testid={`tag-item-${row.tag.shortName}`}
         >
+          <span
+            data-toggle="tag-visibility"
+            onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              onToggleTagVisibility?.(row.tag.shortName)
+            }}
+            // Like the stash toggle: an affordance on hover while the tag shows, but pinned on
+            // screen once it is hidden, since the icon is the only thing saying so.
+            className={`absolute left-1 z-content shrink-0 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground ${
+              isHidden ? 'opacity-100' : 'opacity-0 group-hover/tag:opacity-100'
+            }`}
+            title={visibilityLabel}
+            aria-label={visibilityLabel}
+          >
+            {isHidden ? (
+              <EyeOff className="h-3.5 w-3.5 text-sidebar-muted-foreground/60" />
+            ) : (
+              <Eye className="h-3.5 w-3.5 text-violet-400" />
+            )}
+          </span>
           <TagIcon className="h-3 w-3 shrink-0 opacity-30" />
           <HoverExpandLabel>{highlightMatch(row.tag.shortName, filterQuery)}</HoverExpandLabel>
           <span className="shrink-0 font-mono text-[10px] font-normal tabular-nums text-sidebar-muted-foreground/40">
             {row.tag.commitOid.slice(0, 7)}
           </span>
+          <button
+            data-toggle="tag-actions"
+            onClick={(e) => {
+              e.stopPropagation()
+              onTagContextMenu?.(e, row.tag)
+            }}
+            className="absolute right-1 top-1/2 -translate-y-1/2 shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/tag:opacity-100"
+            aria-label={t('sidebar.tagActions')}
+            title={t('sidebar.tagActions')}
+            data-testid={`tag-actions-button-${row.tag.shortName}`}
+          >
+            <MoreVertical className="h-3.5 w-3.5" />
+          </button>
         </div>
       )
+    }
 
     case 'stash': {
       const isHidden = hiddenStashes.includes(row.stash.commitOid)
+      const visibilityLabel = isHidden
+        ? t('sidebar.stash.showInGraph')
+        : t('sidebar.stash.hideInGraph')
       return (
         <div
-          className={`group/stash relative flex cursor-pointer items-center gap-1.5 py-[3px] pl-6 pr-2 text-xs transition-colors ${
+          className={`group/stash relative flex cursor-pointer items-center gap-1.5 py-[3px] pl-6 pr-6 text-xs transition-colors ${
             row.isSelected
               ? 'bg-sidebar-accent font-medium text-sidebar-foreground'
               : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
@@ -292,13 +391,14 @@ export function SidebarRowView({
               e.stopPropagation()
               e.preventDefault()
             }}
-            className="absolute left-1 z-content shrink-0 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/stash:opacity-100"
-            title={
-              isHidden ? 'Afficher le stash dans le graphe' : 'Masquer le stash dans le graphe'
-            }
-            aria-label={
-              isHidden ? 'Afficher le stash dans le graphe' : 'Masquer le stash dans le graphe'
-            }
+            // A hidden stash keeps its toggle on screen at all times: the icon is the only thing
+            // saying the stash is being kept out of the graph, and an affordance that only appears
+            // under the pointer would leave that state invisible at rest.
+            className={`absolute left-1 z-content shrink-0 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground ${
+              isHidden ? 'opacity-100' : 'opacity-0 group-hover/stash:opacity-100'
+            }`}
+            title={visibilityLabel}
+            aria-label={visibilityLabel}
           >
             {isHidden ? (
               <EyeOff className="h-3.5 w-3.5 text-sidebar-muted-foreground/60" />
@@ -313,6 +413,24 @@ export function SidebarRowView({
           <span className="shrink-0 font-mono text-[10px] font-normal tabular-nums text-sidebar-muted-foreground/40">
             {row.stash.commitOid.slice(0, 7)}
           </span>
+          {/* Same actions as the row's right-click, reachable by pointing — the context menu was
+              the only way in, which is not something a hover-only affordance advertises. It opens
+              the very same native menu spec rather than a second, forkable definition of it. */}
+          <button
+            // Marked like the visibility toggle so the row's own click/Enter handlers skip it —
+            // otherwise activating it with the keyboard would also select the stash.
+            data-toggle="stash-actions"
+            onClick={(e) => {
+              e.stopPropagation()
+              onStashContextMenu?.(e, row.stash)
+            }}
+            className="absolute right-1 top-1/2 -translate-y-1/2 shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/stash:opacity-100"
+            aria-label={t('sidebar.stashActions')}
+            title={t('sidebar.stashActions')}
+            data-testid={`stash-actions-button-${row.stash.index}`}
+          >
+            <MoreVertical className="h-3.5 w-3.5" />
+          </button>
         </div>
       )
     }
@@ -340,91 +458,17 @@ export function SidebarRowView({
         </div>
       )
 
-    case 'worktree': {
-      const wipStatus = worktreeWipStatuses.find((s) => s.path === row.wt.path)
+    case 'worktree':
       return (
-        <div
-          data-testid={`worktree-item-${row.wt.path}`}
-          onDoubleClick={() => onOpenWorktree?.(row.wt)}
-          className="group/wt relative flex cursor-pointer items-center gap-1.5 py-[3px] pl-6 pr-7 text-xs text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-        >
-          <Layers className="h-3 w-3 shrink-0 opacity-30" />
-          <HoverExpandLabel className="min-w-0 flex-1 truncate font-medium">
-            {row.wt.isLocked && <Lock className="mr-1 inline h-2.5 w-2.5 text-amber-400" />}
-            {highlightMatch(row.wt.branch, filterQuery)}
-          </HoverExpandLabel>
-          {row.pr && <PrStatusTag pr={row.pr} onOpen={onOpenPr} />}
-          {wipStatus && (
-            <Tooltip
-              delay={0}
-              placement="top"
-              content={
-                <span className="flex items-center gap-2 font-mono tabular-nums">
-                  <span className="flex items-center gap-0.5 text-emerald-400">
-                    <FilePlus className="h-3 w-3" />
-                    {wipStatus.added}
-                  </span>
-                  <span className="flex items-center gap-0.5 text-amber-400">
-                    <FilePen className="h-3 w-3" />
-                    {wipStatus.modified}
-                  </span>
-                  <span className="flex items-center gap-0.5 text-rose-400">
-                    <FileMinus className="h-3 w-3" />
-                    {wipStatus.deleted}
-                  </span>
-                </span>
-              }
-            >
-              <span
-                className="mr-1 h-1.5 w-1.5 shrink-0 cursor-default rounded-full bg-amber-400"
-                data-testid={`worktree-changes-bubble-${row.wt.path}`}
-              />
-            </Tooltip>
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                onClick={(e) => e.stopPropagation()}
-                className="absolute right-1 top-1/2 -translate-y-1/2 shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/wt:opacity-100 data-[state=open]:opacity-100"
-                aria-label={t('sidebar.worktreeActions')}
-                title={t('sidebar.worktreeActions')}
-                data-testid={`worktree-actions-button-${row.wt.path}`}
-              >
-                <MoreVertical className="h-3.5 w-3.5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onSelect={() => copyWithToast(row.wt.path, 'Path')}
-                className="gap-2 text-xs"
-                data-testid={`worktree-copy-path-${row.wt.path}`}
-              >
-                <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                Copy path
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() => copyWithToast(row.wt.commitOid, 'SHA')}
-                className="gap-2 text-xs"
-                data-testid={`worktree-copy-sha-${row.wt.path}`}
-              >
-                <Hash className="h-3.5 w-3.5 text-muted-foreground" />
-                Copy SHA
-              </DropdownMenuItem>
-              {onRemoveWorktree && (
-                <DropdownMenuItem
-                  onSelect={() => onRemoveWorktree(row.wt)}
-                  className="gap-2 text-xs text-destructive focus:text-destructive"
-                  data-testid={`worktree-remove-${row.wt.path}`}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Delete
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <WorktreeItem
+          wt={row.wt}
+          wipStatus={worktreeWipStatuses.find((s) => s.path === row.wt.path)}
+          filterQuery={filterQuery}
+          onOpenWorktree={onOpenWorktree}
+          onRemoveWorktree={onRemoveWorktree}
+          onRemoveWorktreeAndBranch={onRemoveWorktreeAndBranch}
+        />
       )
-    }
 
     case 'message':
       return (

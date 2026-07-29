@@ -37,6 +37,10 @@ import {
   submitPrReview,
   mergePullRequest,
   fetchPrMergeability,
+  fetchPrReviewSummary,
+  fetchRepoIssues,
+  fetchIssuesByQuery,
+  createIssue,
   fetchRepoDefaultBranch,
   apiGithubDeviceCode,
   apiGithubPollToken,
@@ -713,6 +717,312 @@ describe('fetchPrMergeability', () => {
     const result = await fetchPrMergeability('org', 'repo', 42, 'tok')
 
     expect(result.viewerCanMergeAsAdmin).toBe(false)
+  })
+})
+
+describe('rawToPullRequest — participants', () => {
+  it('maps assignees, requested reviewers and labels', () => {
+    const pr = rawToPullRequest(
+      rawPR({
+        assignees: [{ login: 'marie', avatar_url: 'm.png' }],
+        requested_reviewers: [{ login: 'bob', avatar_url: 'b.png' }],
+        labels: [{ name: 'bug' }, { name: 'ui' }],
+      })
+    )
+    expect(pr.assignees).toEqual([{ login: 'marie', avatarUrl: 'm.png' }])
+    expect(pr.requestedReviewers).toEqual([{ login: 'bob', avatarUrl: 'b.png' }])
+    expect(pr.labels).toEqual(['bug', 'ui'])
+  })
+
+  // The sidebar's grouping reads these unconditionally, so they must never come back undefined.
+  it('defaults each participant list to an empty array when GitHub omits it', () => {
+    const pr = rawToPullRequest(rawPR())
+    expect(pr.assignees).toEqual([])
+    expect(pr.requestedReviewers).toEqual([])
+    expect(pr.labels).toEqual([])
+  })
+})
+
+describe('fetchRepoIssues', () => {
+  it('queries the repo\'s own open issues and maps them', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse([
+        {
+          number: 12,
+          title: 'Scroll lost',
+          html_url: 'https://github.com/org/repo/issues/12',
+          state: 'open',
+          user: { login: 'marie', avatar_url: 'm.png' },
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-02T00:00:00Z',
+        },
+      ])
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const issues = await fetchRepoIssues('org', 'repo', 'tok')
+
+    expect(fetchMock.mock.calls[0][0]).toContain('/repos/org/repo/issues?state=open')
+    expect(issues).toHaveLength(1)
+    expect(issues[0]).toMatchObject({ number: 12, title: 'Scroll lost', author: 'marie' })
+  })
+
+  // GitHub models pull requests as issues, so the endpoint returns them too.
+  it('drops entries that are really pull requests', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse([
+          {
+            number: 1,
+            title: 'A PR',
+            html_url: '',
+            state: 'open',
+            created_at: '',
+            updated_at: '',
+            pull_request: { url: 'x' },
+          },
+          { number: 2, title: 'An issue', html_url: '', state: 'open', created_at: '', updated_at: '' },
+        ])
+      )
+    )
+
+    const issues = await fetchRepoIssues('org', 'repo', 'tok')
+
+    expect(issues.map((i) => i.number)).toEqual([2])
+  })
+
+  // The repo endpoint has no `repository_url`, so these can only come from the arguments.
+  it('fills the repo name and full name from the requested owner/repo', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse([
+          { number: 3, title: 'x', html_url: '', state: 'open', created_at: '', updated_at: '' },
+        ])
+      )
+    )
+
+    const issues = await fetchRepoIssues('org', 'repo', 'tok')
+
+    expect(issues[0]).toMatchObject({ repo: 'repo', fullName: 'org/repo' })
+  })
+})
+
+describe('fetchIssuesByQuery', () => {
+  function searchResponse(items: unknown[]) {
+    return vi.fn().mockResolvedValue(jsonResponse({ items }))
+  }
+
+  it('scopes the saved filter to the repo and to issues, and passes the rest through', async () => {
+    const fetchMock = searchResponse([])
+    vi.stubGlobal('fetch', fetchMock)
+
+    await fetchIssuesByQuery('org', 'repo', 'is:open assignee:@me', 'tok')
+
+    const url = new URL(fetchMock.mock.calls[0][0])
+    expect(url.pathname).toBe('/search/issues')
+    expect(url.searchParams.get('q')).toBe('repo:org/repo is:issue is:open assignee:@me')
+  })
+
+  // A query can carry anything the user typed, including characters that would break the URL.
+  it('encodes the query rather than splicing it into the URL raw', async () => {
+    const fetchMock = searchResponse([])
+    vi.stubGlobal('fetch', fetchMock)
+
+    await fetchIssuesByQuery('org', 'repo', 'label:"needs triage" -label:wontfix', 'tok')
+
+    const url = new URL(fetchMock.mock.calls[0][0])
+    expect(url.searchParams.get('q')).toBe(
+      'repo:org/repo is:issue label:"needs triage" -label:wontfix'
+    )
+  })
+
+  it('still scopes correctly for an empty query', async () => {
+    const fetchMock = searchResponse([])
+    vi.stubGlobal('fetch', fetchMock)
+
+    await fetchIssuesByQuery('org', 'repo', '', 'tok')
+
+    expect(new URL(fetchMock.mock.calls[0][0]).searchParams.get('q')).toBe(
+      'repo:org/repo is:issue'
+    )
+  })
+
+  it('maps the search results and stamps them with the requested repo', async () => {
+    vi.stubGlobal(
+      'fetch',
+      searchResponse([
+        {
+          number: 12,
+          title: 'Scroll lost',
+          html_url: 'https://github.com/org/repo/issues/12',
+          state: 'open',
+          user: { login: 'marie', avatar_url: 'm.png' },
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-02T00:00:00Z',
+        },
+      ])
+    )
+
+    const issues = await fetchIssuesByQuery('org', 'repo', 'is:open')
+
+    expect(issues).toHaveLength(1)
+    expect(issues[0]).toMatchObject({
+      number: 12,
+      title: 'Scroll lost',
+      author: 'marie',
+      repo: 'repo',
+      fullName: 'org/repo',
+    })
+  })
+
+  // The sidebar's hover card previews the description, so the body has to survive the mapping.
+  it('carries the issue body through, normalizing a null one to undefined', async () => {
+    vi.stubGlobal(
+      'fetch',
+      searchResponse([
+        {
+          number: 1,
+          title: 'With body',
+          body: 'Repro steps here',
+          html_url: '',
+          state: 'open',
+          created_at: '',
+          updated_at: '',
+        },
+        {
+          number: 2,
+          title: 'No body',
+          body: null,
+          html_url: '',
+          state: 'open',
+          created_at: '',
+          updated_at: '',
+        },
+      ])
+    )
+
+    const issues = await fetchIssuesByQuery('org', 'repo', 'is:open')
+
+    expect(issues[0].body).toBe('Repro steps here')
+    expect(issues[1].body).toBeUndefined()
+  })
+
+  it('returns an empty list when the search matches nothing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({})))
+    await expect(fetchIssuesByQuery('org', 'repo', 'is:open')).resolves.toEqual([])
+  })
+
+  // A rejected query has to surface — the sidebar shows GitHub's own message on that filter.
+  it('throws with GitHub\'s message when the query is invalid', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse({ message: 'Validation Failed' }, false, 422))
+    )
+    await expect(fetchIssuesByQuery('org', 'repo', 'is:nonsense')).rejects.toThrow()
+  })
+})
+
+describe('createIssue', () => {
+  it('POSTs the title and body to the repo issues endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ number: 99 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await createIssue('org', 'repo', { title: 'Broken', body: 'Steps' }, 'tok')
+
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('https://api.github.com/repos/org/repo/issues')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({ title: 'Broken', body: 'Steps' })
+  })
+
+  it('sends an empty body when none is given', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ number: 99 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await createIssue('org', 'repo', { title: 'Broken' }, 'tok')
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ title: 'Broken', body: '' })
+  })
+})
+
+describe('fetchPrReviewSummary', () => {
+  function graphqlResponse(pullRequest: unknown) {
+    return jsonResponse({ data: { repository: { pullRequest } } })
+  }
+
+  it('maps the review decision, reviewers and checks rollup', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        graphqlResponse({
+          reviewDecision: 'APPROVED',
+          latestOpinionatedReviews: {
+            nodes: [{ state: 'APPROVED', author: { login: 'marie', avatarUrl: 'm.png' } }],
+          },
+          reviewRequests: { nodes: [] },
+          commits: { nodes: [{ commit: { statusCheckRollup: { state: 'SUCCESS' } } }] },
+        })
+      )
+    )
+
+    const summary = await fetchPrReviewSummary('org', 'repo', 42, 'tok')
+
+    expect(summary.reviewDecision).toBe('APPROVED')
+    expect(summary.checksState).toBe('SUCCESS')
+    expect(summary.reviewers).toEqual([{ login: 'marie', avatarUrl: 'm.png', state: 'APPROVED' }])
+  })
+
+  // A requested reviewer has left no review yet, so they only appear via reviewRequests.
+  it('appends still-requested reviewers as pending', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        graphqlResponse({
+          reviewDecision: 'REVIEW_REQUIRED',
+          latestOpinionatedReviews: { nodes: [] },
+          reviewRequests: {
+            nodes: [{ requestedReviewer: { login: 'bob', avatarUrl: 'b.png' } }],
+          },
+          commits: { nodes: [] },
+        })
+      )
+    )
+
+    const summary = await fetchPrReviewSummary('org', 'repo', 42, 'tok')
+
+    expect(summary.reviewers).toEqual([{ login: 'bob', avatarUrl: 'b.png', state: 'PENDING' }])
+  })
+
+  // GitHub can re-request a review after one landed; the reviewer must not be listed twice.
+  it('does not duplicate a reviewer who both reviewed and is re-requested', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        graphqlResponse({
+          reviewDecision: 'REVIEW_REQUIRED',
+          latestOpinionatedReviews: {
+            nodes: [{ state: 'CHANGES_REQUESTED', author: { login: 'marie', avatarUrl: '' } }],
+          },
+          reviewRequests: { nodes: [{ requestedReviewer: { login: 'marie', avatarUrl: '' } }] },
+          commits: { nodes: [] },
+        })
+      )
+    )
+
+    const summary = await fetchPrReviewSummary('org', 'repo', 42, 'tok')
+
+    expect(summary.reviewers).toHaveLength(1)
+    expect(summary.reviewers[0].state).toBe('CHANGES_REQUESTED')
+  })
+
+  it('falls back to an empty summary when the PR is missing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(graphqlResponse(null)))
+
+    const summary = await fetchPrReviewSummary('org', 'repo', 42, 'tok')
+
+    expect(summary).toEqual({ reviewDecision: null, reviewers: [], checksState: null })
   })
 })
 

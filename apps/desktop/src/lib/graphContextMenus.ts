@@ -594,16 +594,23 @@ export function buildRefDropMenuSpec(
 export interface TagMenuContext {
   /** Label params: the `tag`, current `branch`, and `remote`. */
   params: { tag: string; branch: string; remote: string }
-  /** The relationship actions (merge/rebase) act on the current branch — off when detached. */
+  /** The relationship actions (fast-forward/merge/rebase/reset) act on the current branch — off
+   * when detached. */
   relationEnabled: boolean
+  /** Whether the tag's badge is currently kept out of the graph — picks Hide vs Show. */
+  isHidden: boolean
 }
 
 export interface TagMenuActions {
+  /** Publish the tag to the remote — `git push origin <tag>`. */
+  onPush: () => void
+  /** Re-point the tag at the current branch's tip (delete + re-create; local only). */
+  onFastForward: () => void
   onMerge: () => void
   onRebase: () => void
-  onInteractiveRebase: () => void
   onCheckout: () => void
-  onCreateWorktree: () => void
+  /** AI explanation of the changes the tag's commit brings. */
+  onExplain: () => void
   onCreateBranch: () => void
   onCherryPick: () => void
   onReset: (mode: 'soft' | 'mixed' | 'hard') => void
@@ -612,10 +619,22 @@ export interface TagMenuActions {
   onDeleteRemote: () => void
   onCopyName: () => void
   onCopyLink: () => void
+  /** Keep the tag's badge out of the graph (or bring it back). */
+  onToggleHidden: () => void
+  /** Isolate the graph on the branch carrying the tag's commit. */
+  onSolo: () => void
   onAnnotate: () => void
 }
 
-/** Right-click menu of a tag badge in the commit graph. */
+/**
+ * The tag's action menu — used both by the graph's tag badge and by the sidebar's tag rows, so the
+ * two can never drift into different menus.
+ *
+ * Ordering is deliberate and reads top-down as "publish it, move it, use it, understand it, branch
+ * off it, delete it, copy it, hide it, describe it". The relationship actions (fast-forward, merge,
+ * rebase, reset) are disabled while HEAD is detached, since they are all phrased against the
+ * current branch.
+ */
 export function buildTagMenuSpec(
   ctx: TagMenuContext,
   actions: TagMenuActions,
@@ -624,13 +643,15 @@ export function buildTagMenuSpec(
   const p = ctx.params
   const rel = ctx.relationEnabled
   return [
+    menuItem({ text: t('gitTree.tagMenu.push', p), action: actions.onPush }),
+    menuSeparator(),
+    menuItem({ text: t('gitTree.tagMenu.fastForward', p), enabled: rel, action: actions.onFastForward }),
     menuItem({ text: t('gitTree.tagMenu.merge', p), enabled: rel, action: actions.onMerge }),
     menuItem({ text: t('gitTree.tagMenu.rebase', p), enabled: rel, action: actions.onRebase }),
-    menuItem({ text: t('gitTree.tagMenu.interactiveRebase', p), enabled: rel, action: actions.onInteractiveRebase }),
     menuSeparator(),
-    menuItem({ text: t('gitTree.tagMenu.checkout'), action: actions.onCheckout }),
+    menuItem({ text: t('gitTree.tagMenu.checkout', p), action: actions.onCheckout }),
     menuSeparator(),
-    menuItem({ text: t('gitTree.tagMenu.createWorktree'), action: actions.onCreateWorktree }),
+    menuItem({ text: t('gitTree.tagMenu.explain'), action: actions.onExplain }),
     menuSeparator(),
     menuItem({ text: t('gitTree.contextMenu.createBranch'), icon: 'branch', action: actions.onCreateBranch }),
     menuItem({ text: t('gitTree.contextMenu.cherryPick'), action: actions.onCherryPick }),
@@ -649,7 +670,14 @@ export function buildTagMenuSpec(
     menuItem({ text: t('gitTree.tagMenu.deleteRemote', p), action: actions.onDeleteRemote }),
     menuSeparator(),
     menuItem({ text: t('gitTree.tagMenu.copyName'), action: actions.onCopyName }),
-    menuItem({ text: t('gitTree.tagMenu.copyLink'), action: actions.onCopyLink }),
+    menuSeparator(),
+    menuItem({ text: t('gitTree.tagMenu.copyLink', p), action: actions.onCopyLink }),
+    menuSeparator(),
+    menuItem({
+      text: t(ctx.isHidden ? 'gitTree.tagMenu.show' : 'gitTree.tagMenu.hide'),
+      action: actions.onToggleHidden,
+    }),
+    menuItem({ text: t('gitTree.tagMenu.solo'), action: actions.onSolo }),
     menuSeparator(),
     menuItem({ text: t('gitTree.tagMenu.annotate', p), icon: 'tag', action: actions.onAnnotate }),
   ]

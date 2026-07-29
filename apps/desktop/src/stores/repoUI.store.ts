@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { MockIssue } from '../app/pull-requests/types'
 
 /** Ids of the pinned special tabs (always present, not closeable). */
 export const DASHBOARD_TAB = 'dashboard'
@@ -160,6 +161,15 @@ interface RepoUIState {
   activePrNumber: number | null
   setActivePrNumber: (n: number | null) => void
   /**
+   * When set, the repo view swaps its center panel for the in-app issue view — the sidebar's Issues
+   * section opening one, the issue-side twin of `activePrNumber`. The whole issue is held, not just
+   * its number: `IssueDetailCenter` needs the list item itself (for the local-branch section), and
+   * the center panel has no issue list of its own to look one up in. Mutually exclusive with the
+   * other center-panel claimants. Not persisted (session-scoped).
+   */
+  activeIssue: MockIssue | null
+  setActiveIssue: (issue: MockIssue | null) => void
+  /**
    * Filename of the PR file whose diff is shown in the center panel (only meaningful while
    * `activePrNumber` is set). `null` = show the PR detail view. Reset whenever the active PR changes
    * or closes. Session-scoped, not persisted.
@@ -249,6 +259,18 @@ interface RepoUIState {
   pendingGraphAction: GraphCommitAction | null
   setPendingGraphAction: (action: GraphCommitAction | null) => void
 
+  /**
+   * A commit whose full context menu some out-of-tree UI wants opened — set by the sidebar's tag
+   * rows, consumed and cleared by the graph.
+   *
+   * The commit menu is built from the graph's loaded page (branch submenus, solo distance, the
+   * selection), so it can't be lifted out; routing the *request* in instead keeps one definition of
+   * the menu rather than a second, drifting copy. It follows that nothing happens while the graph
+   * is unmounted — the file explorer being open, notably.
+   */
+  pendingCommitMenuOid: string | null
+  setPendingCommitMenuOid: (oid: string | null) => void
+
   setActiveRepo: (path: string | null) => void
   setActiveTab: (id: string) => void
   openTab: (path: string) => void
@@ -270,6 +292,7 @@ export const useRepoUIStore = create<RepoUIState>()(
       activeWorkspacePath: null,
       activeDiffFile: null,
       activePrNumber: null,
+      activeIssue: null,
       activePrFile: null,
       prFilesVisible: true,
       prComposer: null,
@@ -284,6 +307,7 @@ export const useRepoUIStore = create<RepoUIState>()(
       selectedCommitOid: null,
       selectedStashIndex: null,
       pendingGraphAction: null,
+      pendingCommitMenuOid: null,
 
       setActiveDiffFile: (file) =>
         set((state) => {
@@ -295,6 +319,7 @@ export const useRepoUIStore = create<RepoUIState>()(
             activeLeftPanel: nextPanel,
             selectedHistoryOid: null,
             activePrNumber: file ? null : state.activePrNumber,
+            activeIssue: file ? null : state.activeIssue,
             activePrFile: file ? null : state.activePrFile,
             prComposer: file ? null : state.prComposer,
             prCreateOpen: file ? false : state.prCreateOpen,
@@ -309,8 +334,20 @@ export const useRepoUIStore = create<RepoUIState>()(
           activePrNumber: n,
           activePrFile: null,
           activeDiffFile: n != null ? null : state.activeDiffFile,
+          activeIssue: n != null ? null : state.activeIssue,
           prComposer: n != null ? null : state.prComposer,
           prCreateOpen: n != null ? false : state.prCreateOpen,
+        })),
+
+      // Opening an issue claims the center panel, like the PR view it mirrors.
+      setActiveIssue: (issue) =>
+        set((state) => ({
+          activeIssue: issue,
+          activeDiffFile: issue ? null : state.activeDiffFile,
+          activePrNumber: issue ? null : state.activePrNumber,
+          activePrFile: issue ? null : state.activePrFile,
+          prComposer: issue ? null : state.prComposer,
+          prCreateOpen: issue ? false : state.prCreateOpen,
         })),
 
       setActivePrFile: (filename) => set({ activePrFile: filename }),
@@ -324,6 +361,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           prComposer: composer,
           activeDiffFile: composer ? null : state.activeDiffFile,
           activePrNumber: composer ? null : state.activePrNumber,
+          activeIssue: composer ? null : state.activeIssue,
           activePrFile: composer ? null : state.activePrFile,
           prCreateOpen: composer ? false : state.prCreateOpen,
         })),
@@ -336,6 +374,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           prCreatePrefill: null,
           activeDiffFile: open ? null : state.activeDiffFile,
           activePrNumber: open ? null : state.activePrNumber,
+          activeIssue: open ? null : state.activeIssue,
           activePrFile: open ? null : state.activePrFile,
           prComposer: open ? null : state.prComposer,
         })),
@@ -346,6 +385,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           prCreatePrefill: { head, base },
           activeDiffFile: null,
           activePrNumber: null,
+          activeIssue: null,
           activePrFile: null,
           prComposer: null,
         }),
@@ -367,6 +407,7 @@ export const useRepoUIStore = create<RepoUIState>()(
       setSelectedStashIndex: (index) => set({ selectedStashIndex: index }),
 
       setPendingGraphAction: (action) => set({ pendingGraphAction: action }),
+      setPendingCommitMenuOid: (oid) => set({ pendingCommitMenuOid: oid }),
 
       setActiveWorkspacePath: (path) => set({ activeWorkspacePath: path }),
 
@@ -377,6 +418,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           activeWorkspacePath: null,
           activeDiffFile: null,
           activePrNumber: null,
+          activeIssue: null,
           activePrFile: null,
           prComposer: null,
           prCreateOpen: false,
@@ -387,6 +429,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           selectedCommitOid: null,
           selectedStashIndex: null,
           pendingGraphAction: null,
+          pendingCommitMenuOid: null,
         }),
 
       setActiveTab: (id) =>
@@ -397,6 +440,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           activeWorkspacePath: null,
           activeDiffFile: null,
           activePrNumber: null,
+          activeIssue: null,
           activePrFile: null,
           prComposer: null,
           prCreateOpen: false,
@@ -407,6 +451,7 @@ export const useRepoUIStore = create<RepoUIState>()(
           selectedCommitOid: null,
           selectedStashIndex: null,
           pendingGraphAction: null,
+          pendingCommitMenuOid: null,
         })),
 
       openTab: (path) =>
@@ -444,6 +489,7 @@ export const useRepoUIStore = create<RepoUIState>()(
             activeWorkspacePath: null,
             activeDiffFile: null,
             activePrNumber: null,
+            activeIssue: null,
             activePrFile: null,
             prComposer: null,
             prCreateOpen: false,
@@ -451,6 +497,7 @@ export const useRepoUIStore = create<RepoUIState>()(
             selectedCommitOid: null,
             selectedStashIndex: null,
             pendingGraphAction: null,
+            pendingCommitMenuOid: null,
           }
         }),
 
@@ -490,6 +537,7 @@ export const useRepoUIStore = create<RepoUIState>()(
             activeTab: wasActive ? DASHBOARD_TAB : state.activeTab,
             activeWorkspacePath: wasActive ? null : state.activeWorkspacePath,
             activePrNumber: wasActive ? null : state.activePrNumber,
+            activeIssue: wasActive ? null : state.activeIssue,
             activePrFile: wasActive ? null : state.activePrFile,
             prComposer: wasActive ? null : state.prComposer,
             prCreateOpen: wasActive ? false : state.prCreateOpen,

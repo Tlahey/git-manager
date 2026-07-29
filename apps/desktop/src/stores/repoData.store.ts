@@ -48,6 +48,16 @@ interface RepoDataState {
   setWipMessage: (path: string, message: string) => void
   hiddenStashes: Record<string, string[]>
   toggleStashVisibility: (repoPath: string, oid: string) => void
+  /**
+   * Tags whose badge is kept out of the graph, per repo, by tag short name.
+   *
+   * Keyed by name rather than by commit oid — unlike a stash, several tags can point at the same
+   * commit, and hiding one must not take its neighbours with it. Hiding a tag only suppresses its
+   * label: the commit itself stays in the log (that is the difference with `hiddenStashes`, which
+   * removes a whole commit and is therefore applied by the backend when building the log).
+   */
+  hiddenTags: Record<string, string[]>
+  toggleTagVisibility: (repoPath: string, tagName: string) => void
 
   addRepo: (repo: GitRepo) => void
   /** Moves `path` to the front of `recentRepoPaths` (called whenever a repo is opened in a tab). */
@@ -74,6 +84,7 @@ export const useRepoDataStore = create<RepoDataState>()(
       linkedWorktreePaths: [],
       wipMessages: {},
       hiddenStashes: {},
+      hiddenTags: {},
 
       toggleStashVisibility: (repoPath, oid) =>
         set((state) => {
@@ -81,6 +92,17 @@ export const useRepoDataStore = create<RepoDataState>()(
           const next = current.includes(oid) ? current.filter((x) => x !== oid) : [...current, oid]
           return {
             hiddenStashes: { ...state.hiddenStashes, [repoPath]: next },
+          }
+        }),
+
+      toggleTagVisibility: (repoPath, tagName) =>
+        set((state) => {
+          const current = state.hiddenTags[repoPath] || []
+          const next = current.includes(tagName)
+            ? current.filter((x) => x !== tagName)
+            : [...current, tagName]
+          return {
+            hiddenTags: { ...state.hiddenTags, [repoPath]: next },
           }
         }),
 
@@ -179,6 +201,7 @@ export const useRepoDataStore = create<RepoDataState>()(
         linkedWorktreePaths: state.linkedWorktreePaths || [],
         wipMessages: state.wipMessages || {},
         hiddenStashes: state.hiddenStashes || {},
+        hiddenTags: state.hiddenTags || {},
       }),
     }
   )

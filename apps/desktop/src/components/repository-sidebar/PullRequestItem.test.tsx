@@ -29,6 +29,9 @@ function pr(overrides: Partial<PullRequest> = {}): PullRequest {
     createdAt: '',
     updatedAt: '',
     isDraft: false,
+    assignees: [],
+    requestedReviewers: [],
+    labels: [],
     ...overrides,
   }
 }
@@ -52,15 +55,33 @@ describe('PullRequestItem — content', () => {
     expect(screen.getByText(label)).toBeInTheDocument()
   })
 
-  it('shows a merge icon for a merged PR, a filled circle for open, and a plain circle otherwise', () => {
-    const { container, rerender } = render(<PullRequestItem pr={pr({ state: 'merged' })} />)
-    expect(container.querySelector('.lucide-git-merge')).toBeTruthy()
+  // The leading glyph distinguishes every status, not just merged-vs-not: a draft, a PR whose
+  // checks are failing and a plain open one have to be tellable apart at a glance in the list.
+  it.each([
+    ['merged', '.lucide-git-merge'],
+    ['closed', '.lucide-git-pull-request-closed'],
+    ['draft', '.lucide-git-pull-request-draft'],
+  ] as const)('shows the %s glyph in front of the row', (state, selector) => {
+    const { container } = render(<PullRequestItem pr={pr({ state })} />)
+    expect(container.querySelector(selector)).toBeTruthy()
+  })
 
-    rerender(<PullRequestItem pr={pr({ state: 'open' })} />)
-    expect(container.querySelector('.fill-green-400')).toBeTruthy()
+  it('distinguishes an open PR by its CI status: failing and running get their own glyph', () => {
+    const { container, rerender } = render(
+      <PullRequestItem pr={pr({ state: 'open', ciStatus: null })} />
+    )
+    expect(container.querySelector('.lucide-git-pull-request')).toBeTruthy()
 
-    rerender(<PullRequestItem pr={pr({ state: 'closed' })} />)
-    expect(container.querySelector('.fill-green-400')).toBeFalsy()
+    rerender(<PullRequestItem pr={pr({ state: 'open', ciStatus: 'failure' })} />)
+    expect(container.querySelector('.lucide-circle-x')).toBeTruthy()
+
+    rerender(<PullRequestItem pr={pr({ state: 'open', ciStatus: 'pending' })} />)
+    expect(container.querySelector('.lucide-clock')).toBeTruthy()
+  })
+
+  it('indents a row nested under a PR sub-group header', () => {
+    const { container } = render(<PullRequestItem pr={pr()} depth={1} />)
+    expect(container.firstElementChild).toHaveClass('pl-10')
   })
 
   it('applies the selected styling when isSelected', () => {

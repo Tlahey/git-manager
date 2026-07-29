@@ -8,9 +8,11 @@ const useBranchesMock = vi.fn()
 const useGitStashesMock = vi.fn()
 const usePullRequestsMock = vi.fn()
 const useMergedPrsByBranchMock = vi.fn()
+const useRepoIssuesMock = vi.fn()
 vi.mock('./useBranches', () => ({ useBranches: () => useBranchesMock() }))
 vi.mock('./useGitStashes', () => ({ useGitStashes: () => useGitStashesMock() }))
 vi.mock('./usePullRequests', () => ({ usePullRequests: () => usePullRequestsMock() }))
+vi.mock('./useRepoIssues', () => ({ useRepoIssues: () => useRepoIssuesMock() }))
 vi.mock('./useMergedPrsByBranch', () => ({
   useMergedPrsByBranch: () => useMergedPrsByBranchMock(),
 }))
@@ -100,6 +102,55 @@ function allRows(sections: SidebarSection[]): SidebarRow[] {
 }
 
 const DEFAULT_PR_DATA = { allPrs: [], isGithub: false, isLoading: false }
+const DEFAULT_ISSUE_DATA = {
+  groups: [],
+  allIssues: [],
+  isGithub: false,
+  isLoading: false,
+  refresh: () => {},
+}
+
+const FILTER_A = { id: 'f1', name: 'All open', query: 'is:open' }
+const FILTER_B = { id: 'f2', name: 'Mine', query: 'is:open author:@me' }
+
+function issue(number: number, overrides: Record<string, unknown> = {}) {
+  return {
+    id: `gh-issue-${number}`,
+    number,
+    title: `Issue ${number}`,
+    repo: 'repo',
+    url: '',
+    status: 'open',
+    author: 'marie',
+    authorAvatar: '',
+    assignees: [],
+    labels: [],
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+    comments: 0,
+    thumbsUp: 0,
+    ...overrides,
+  }
+}
+
+type TestIssue = ReturnType<typeof issue>
+
+/** Builds the grouped shape `useRepoIssues` returns, with the de-duplicated union it also exposes. */
+function issueData(
+  groups: Array<{ filter: typeof FILTER_A; issues: TestIssue[]; error?: string | null }>,
+  extra: Record<string, unknown> = {}
+) {
+  const allIssues = [
+    ...new Map(groups.flatMap((g) => g.issues).map((i) => [i.id, i])).values(),
+  ]
+  return {
+    ...DEFAULT_ISSUE_DATA,
+    isGithub: true,
+    groups: groups.map((g) => ({ error: null, ...g })),
+    allIssues,
+    ...extra,
+  }
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -108,6 +159,7 @@ beforeEach(() => {
   useBranchesMock.mockReturnValue({ data: [] })
   useGitStashesMock.mockReturnValue({ data: [] })
   usePullRequestsMock.mockReturnValue(DEFAULT_PR_DATA)
+  useRepoIssuesMock.mockReturnValue(DEFAULT_ISSUE_DATA)
   useMergedPrsByBranchMock.mockReturnValue(new Map())
   mockedGetTags.mockResolvedValue([])
   mockedListSubmodules.mockResolvedValue([])
@@ -302,8 +354,8 @@ describe('useSidebarRows — pull requests section', () => {
   it('renders one row per PR, marking the row matching selectedBranch as selected', async () => {
     usePullRequestsMock.mockReturnValue({
       allPrs: [
-        { number: 1, headRef: 'feature-x' },
-        { number: 2, headRef: 'feature-y' },
+        { number: 1, headRef: 'feature-x', assignees: [], requestedReviewers: [] },
+        { number: 2, headRef: 'feature-y', assignees: [], requestedReviewers: [] },
       ],
       isGithub: true,
       isLoading: false,
@@ -312,9 +364,314 @@ describe('useSidebarRows — pull requests section', () => {
       selectedBranch: 'feature-y',
       openState: { 'section:prs': true },
     })
-    await waitFor(() => expect(findRow(result.current.sections, 'pr:2')).toBeDefined())
-    expect(findRow(result.current.sections, 'pr:1')).toMatchObject({ isSelected: false })
-    expect(findRow(result.current.sections, 'pr:2')).toMatchObject({ isSelected: true })
+    await waitFor(() => expect(findRow(result.current.sections, 'pr:all:2')).toBeDefined())
+    expect(findRow(result.current.sections, 'pr:all:1')).toMatchObject({ isSelected: false })
+    expect(findRow(result.current.sections, 'pr:all:2')).toMatchObject({ isSelected: true })
+  })
+})
+
+describe('useSidebarRows — pull request sub-groups', () => {
+  const PRS = [
+    // Opened by the signed-in user, and assigned to them.
+    {
+      number: 1,
+      headRef: 'mine',
+      author: 'antoine',
+      assignees: [{ login: 'antoine', avatarUrl: '' }],
+      requestedReviewers: [],
+    },
+    // Somebody else's, waiting on the signed-in user's review.
+    {
+      number: 2,
+      headRef: 'review-me',
+      author: 'marie',
+      assignees: [],
+      requestedReviewers: [{ login: 'antoine', avatarUrl: '' }],
+    },
+    // Unrelated to the signed-in user — only ever under "all".
+    { number: 3, headRef: 'other', author: 'bob', assignees: [], requestedReviewers: [] },
+  ]
+
+  function renderGroups(currentUser?: string) {
+    usePullRequestsMock.mockReturnValue({ allPrs: PRS, isGithub: true, isLoading: false })
+    return renderRows({
+      currentUser,
+      openState: {
+        'section:prs': true,
+        'pr-group:mine': true,
+        'pr-group:assigned': true,
+        'pr-group:awaitingReview': true,
+        'pr-group:all': true,
+      },
+    })
+  }
+
+  it('splits PRs under the four sub-group headers', async () => {
+    const { result } = renderGroups('antoine')
+    await waitFor(() => expect(findRow(result.current.sections, 'pr-group:all')).toBeDefined())
+
+    const headers = allRows(result.current.sections).filter((r) => r.kind === 'subgroup')
+    expect(headers.map((h) => (h as { label: string }).label)).toEqual([
+      'My pull requests',
+      'Assigned to me',
+      'Awaiting my review',
+      'All pull requests',
+    ])
+  })
+
+  // One PR can qualify for several groups, so the row id has to carry the group to stay unique.
+  it('gives the same PR a distinct row id under each group it appears in', async () => {
+    const { result } = renderGroups('antoine')
+    await waitFor(() => expect(findRow(result.current.sections, 'pr:mine:1')).toBeDefined())
+    expect(findRow(result.current.sections, 'pr:assigned:1')).toBeDefined()
+    expect(findRow(result.current.sections, 'pr:all:1')).toBeDefined()
+
+    const ids = allRows(result.current.sections).map((r) => r.id)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it('indents PR rows nested under a sub-group header', async () => {
+    const { result } = renderGroups('antoine')
+    await waitFor(() => expect(findRow(result.current.sections, 'pr:all:3')).toBeDefined())
+    expect(findRow(result.current.sections, 'pr:all:3')).toMatchObject({ depth: 1 })
+  })
+
+  it('routes a review request to "awaitingReview" and an unrelated PR to "all" only', async () => {
+    const { result } = renderGroups('antoine')
+    await waitFor(() => expect(findRow(result.current.sections, 'pr:all:2')).toBeDefined())
+    expect(findRow(result.current.sections, 'pr:awaitingReview:2')).toBeDefined()
+    expect(findRow(result.current.sections, 'pr:mine:3')).toBeUndefined()
+    expect(findRow(result.current.sections, 'pr:assigned:3')).toBeUndefined()
+    expect(findRow(result.current.sections, 'pr:awaitingReview:3')).toBeUndefined()
+  })
+
+  // With nobody signed in the three personal groups can't be resolved, so only "all" is offered
+  // rather than three empty headers.
+  it('shows only the "all" group when no user is signed in', async () => {
+    const { result } = renderGroups(undefined)
+    await waitFor(() => expect(findRow(result.current.sections, 'pr-group:all')).toBeDefined())
+
+    const headers = allRows(result.current.sections).filter((r) => r.kind === 'subgroup')
+    expect(headers).toHaveLength(1)
+    expect(headers[0].id).toBe('pr-group:all')
+  })
+
+  it('hides a collapsed group\'s rows while keeping its header and count', async () => {
+    usePullRequestsMock.mockReturnValue({ allPrs: PRS, isGithub: true, isLoading: false })
+    const { result } = renderRows({
+      currentUser: 'antoine',
+      openState: { 'section:prs': true, 'pr-group:all': false },
+    })
+    await waitFor(() => expect(findRow(result.current.sections, 'pr-group:all')).toBeDefined())
+    expect(findRow(result.current.sections, 'pr-group:all')).toMatchObject({
+      count: 3,
+      isOpen: false,
+    })
+    expect(findRow(result.current.sections, 'pr:all:1')).toBeUndefined()
+  })
+})
+
+describe('useSidebarRows — issues section', () => {
+  it('is collapsed by default, with the issue count still shown on the header', async () => {
+    useRepoIssuesMock.mockReturnValue(
+      issueData([{ filter: FILTER_A, issues: [issue(1), issue(2)] }])
+    )
+    const { result } = renderRows()
+    await waitFor(() => expect(findSection(result.current.sections, 'issues')).toBeDefined())
+    expect(findSection(result.current.sections, 'issues')).toMatchObject({
+      count: 2,
+      isOpen: false,
+      rows: [],
+    })
+  })
+
+  // The filters overlap by design (an issue can be "open" *and* "mine"), so the header count is the
+  // de-duplicated union rather than the sum of the groups.
+  it('counts each issue once on the header even when several filters match it', async () => {
+    useRepoIssuesMock.mockReturnValue(
+      issueData([
+        { filter: FILTER_A, issues: [issue(1), issue(2)] },
+        { filter: FILTER_B, issues: [issue(1)] },
+      ])
+    )
+    const { result } = renderRows()
+    await waitFor(() => expect(findSection(result.current.sections, 'issues')).toBeDefined())
+    expect(findSection(result.current.sections, 'issues')).toMatchObject({ count: 2 })
+  })
+
+  it('renders one sub-group per saved filter, expanding only the first', async () => {
+    useRepoIssuesMock.mockReturnValue(
+      issueData([
+        { filter: FILTER_A, issues: [issue(1)] },
+        { filter: FILTER_B, issues: [issue(2)] },
+      ])
+    )
+    const { result } = renderRows({ openState: { 'section:issues': true } })
+    await waitFor(() =>
+      expect(findRow(result.current.sections, 'issue-filter:f1')).toBeDefined()
+    )
+    expect(findRow(result.current.sections, 'issue-filter:f1')).toMatchObject({
+      kind: 'subgroup',
+      label: 'All open',
+      count: 1,
+      isOpen: true,
+      filter: FILTER_A,
+      canMoveUp: false,
+      canMoveDown: true,
+    })
+    expect(findRow(result.current.sections, 'issue-filter:f2')).toMatchObject({
+      isOpen: false,
+      canMoveUp: true,
+      canMoveDown: false,
+    })
+    // Only the expanded group's rows are built.
+    expect(findRow(result.current.sections, 'issue:f1:gh-issue-1')).toMatchObject({ kind: 'issue' })
+    expect(findRow(result.current.sections, 'issue:f2:gh-issue-2')).toBeUndefined()
+  })
+
+  it('renders a collapsed filter\'s issues once it is explicitly opened', async () => {
+    useRepoIssuesMock.mockReturnValue(
+      issueData([
+        { filter: FILTER_A, issues: [issue(1)] },
+        { filter: FILTER_B, issues: [issue(2)] },
+      ])
+    )
+    const { result } = renderRows({
+      openState: { 'section:issues': true, 'issue-filter:f2': true },
+    })
+    await waitFor(() =>
+      expect(findRow(result.current.sections, 'issue:f2:gh-issue-2')).toBeDefined()
+    )
+  })
+
+  // The same issue matching two filters would otherwise collide on its React key.
+  it('keys an issue row by its filter, so an issue in two groups stays unique', async () => {
+    useRepoIssuesMock.mockReturnValue(
+      issueData([
+        { filter: FILTER_A, issues: [issue(1)] },
+        { filter: FILTER_B, issues: [issue(1)] },
+      ])
+    )
+    const { result } = renderRows({
+      openState: { 'section:issues': true, 'issue-filter:f2': true },
+    })
+    await waitFor(() =>
+      expect(findRow(result.current.sections, 'issue:f2:gh-issue-1')).toBeDefined()
+    )
+    const ids = allRows(result.current.sections)
+      .filter((r) => r.kind === 'issue')
+      .map((r) => r.id)
+    expect(ids).toEqual(['issue:f1:gh-issue-1', 'issue:f2:gh-issue-1'])
+  })
+
+  it('shows a loading message while issues are loading', async () => {
+    useRepoIssuesMock.mockReturnValue({ ...DEFAULT_ISSUE_DATA, isGithub: true, isLoading: true })
+    const { result } = renderRows({ openState: { 'section:issues': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'issue:loading')).toBeDefined())
+  })
+
+  it('shows a "connect GitHub" message when the repo has no GitHub remote', async () => {
+    useRepoIssuesMock.mockReturnValue({ ...DEFAULT_ISSUE_DATA, isGithub: false })
+    const { result } = renderRows({ openState: { 'section:issues': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'issue:nogithub')).toBeDefined())
+  })
+
+  it('tells the user to add a filter when they have deleted every one', async () => {
+    useRepoIssuesMock.mockReturnValue(issueData([]))
+    const { result } = renderRows({ openState: { 'section:issues': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'issue:nofilters')).toBeDefined())
+  })
+
+  // A saved view that disappeared when it matched nothing would read as a bug, and its header is
+  // the only way back to editing or deleting it.
+  it('keeps an empty filter visible, with an empty message under it', async () => {
+    useRepoIssuesMock.mockReturnValue(issueData([{ filter: FILTER_A, issues: [] }]))
+    const { result } = renderRows({ openState: { 'section:issues': true } })
+    await waitFor(() =>
+      expect(findRow(result.current.sections, 'issue-filter:f1')).toBeDefined()
+    )
+    expect(findRow(result.current.sections, 'issue-filter:f1:empty')).toBeDefined()
+    expect(findSection(result.current.sections, 'issues')).toBeDefined()
+  })
+
+  it('surfaces a query GitHub rejected on that filter alone', async () => {
+    useRepoIssuesMock.mockReturnValue(
+      issueData([
+        { filter: FILTER_A, issues: [], error: 'GitHub API 422: Validation Failed' },
+        { filter: FILTER_B, issues: [issue(2)] },
+      ])
+    )
+    const { result } = renderRows({
+      openState: { 'section:issues': true, 'issue-filter:f2': true },
+    })
+    await waitFor(() =>
+      expect(findRow(result.current.sections, 'issue-filter:f1:error')).toBeDefined()
+    )
+    expect(findRow(result.current.sections, 'issue-filter:f1:error')).toMatchObject({
+      text: expect.stringContaining('Validation Failed'),
+    })
+    // The healthy filter still lists its issues.
+    expect(findRow(result.current.sections, 'issue:f2:gh-issue-2')).toBeDefined()
+  })
+
+  it('filters issues by title, author, number and label', async () => {
+    useRepoIssuesMock.mockReturnValue(
+      issueData([
+        {
+          filter: FILTER_A,
+          issues: [
+            issue(1, { title: 'Scroll position lost' }),
+            issue(2, { title: 'Other', author: 'bob' }),
+            issue(3, { title: 'Other', labels: ['regression'] }),
+          ],
+        },
+      ])
+    )
+    const byTitle = renderRows({ filter: 'scroll', openState: { 'section:issues': true } })
+    await waitFor(() =>
+      expect(findRow(byTitle.result.current.sections, 'issue:f1:gh-issue-1')).toBeDefined()
+    )
+    expect(findRow(byTitle.result.current.sections, 'issue:f1:gh-issue-2')).toBeUndefined()
+
+    const byAuthor = renderRows({ filter: 'bob', openState: { 'section:issues': true } })
+    await waitFor(() =>
+      expect(findRow(byAuthor.result.current.sections, 'issue:f1:gh-issue-2')).toBeDefined()
+    )
+
+    const byLabel = renderRows({ filter: 'regression', openState: { 'section:issues': true } })
+    await waitFor(() =>
+      expect(findRow(byLabel.result.current.sections, 'issue:f1:gh-issue-3')).toBeDefined()
+    )
+  })
+
+  it('hides the section entirely when a filter matches no issue', async () => {
+    // A matching branch keeps the local section around, so there is a stable anchor to wait on —
+    // otherwise a filter that matches nothing leaves the whole sidebar empty and the wait is racy.
+    useBranchesMock.mockReturnValue({ data: [branch('zzz-branch')] })
+    useRepoIssuesMock.mockReturnValue(
+      issueData([{ filter: FILTER_A, issues: [issue(1, { title: 'Scroll position lost' })] }])
+    )
+    const { result } = renderRows({ filter: 'zzz', openState: { 'section:issues': true } })
+    await waitFor(() => expect(findSection(result.current.sections, 'local')).toBeDefined())
+    expect(findSection(result.current.sections, 'issues')).toBeUndefined()
+  })
+
+  it('counts issues in the filter stats', async () => {
+    useRepoIssuesMock.mockReturnValue(
+      issueData([{ filter: FILTER_A, issues: [issue(1), issue(2)] }])
+    )
+    const { result } = renderRows()
+    await waitFor(() => expect(result.current.filterStats.total).toBeGreaterThan(0))
+    expect(result.current.filterStats).toMatchObject({ matched: 2, total: 2 })
+  })
+
+  it('exposes the issue-list refresh so a newly created issue can be picked up', async () => {
+    const refresh = vi.fn()
+    useRepoIssuesMock.mockReturnValue(issueData([{ filter: FILTER_A, issues: [] }], { refresh }))
+    const { result } = renderRows()
+    await waitFor(() => expect(findSection(result.current.sections, 'issues')).toBeDefined())
+    result.current.refreshIssues()
+    expect(refresh).toHaveBeenCalled()
   })
 })
 
@@ -456,7 +813,7 @@ describe('useSidebarRows — tags/stashes/submodules', () => {
     )
     expect(allRows(result.current.sections).filter((r) => r.kind === 'tag')).toHaveLength(100)
     expect(findRow(result.current.sections, 'tag:more')).toMatchObject({
-      text: '+ 5 autres tags',
+      text: '+ 5 more tags',
     })
   })
 

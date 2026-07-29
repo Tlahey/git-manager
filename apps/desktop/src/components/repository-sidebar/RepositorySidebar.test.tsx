@@ -22,7 +22,10 @@ vi.mock('../../api/git.api', () => ({
   apiStashPop: vi.fn(),
   apiStashDrop: vi.fn(),
 }))
-vi.mock('swr', () => ({ mutate: swrMutate }))
+// The default export is needed too: the sidebar mounts CreateIssueDialog, whose useRepoGitHub
+// resolves `owner/repo` through useSWR. Returning an empty result keeps it in its "no GitHub
+// remote" state, which is all these tests care about.
+vi.mock('swr', () => ({ default: () => ({ data: undefined }), mutate: swrMutate }))
 
 const { lastRowViewCalls } = vi.hoisted(() => ({
   lastRowViewCalls: { current: [] as Record<string, unknown>[] },
@@ -70,8 +73,12 @@ vi.mock('./AddWorktreeDialog', () => ({
   ),
 }))
 vi.mock('./RemoveWorktreeDialog', () => ({
-  RemoveWorktreeDialog: (props: { worktree: { path: string } | null }) => (
-    <div data-testid="remove-worktree-dialog" data-worktree={props.worktree?.path ?? ''} />
+  RemoveWorktreeDialog: (props: { worktree: { path: string } | null; deleteBranch?: boolean }) => (
+    <div
+      data-testid="remove-worktree-dialog"
+      data-worktree={props.worktree?.path ?? ''}
+      data-delete-branch={String(!!props.deleteBranch)}
+    />
   ),
 }))
 vi.mock('./PruneWorktreesDialog', () => ({
@@ -303,7 +310,7 @@ describe('RepositorySidebar — search filter', () => {
     expect(screen.queryByTestId('sidebar-filter-stats')).not.toBeInTheDocument()
 
     await user.type(screen.getByLabelText("Filter branches"), 'feat')
-    expect(screen.getByTestId('sidebar-filter-stats')).toHaveTextContent('3 / 139 résultats')
+    expect(screen.getByTestId('sidebar-filter-stats')).toHaveTextContent('3 / 139 results')
   })
 })
 
@@ -649,6 +656,42 @@ describe('RepositorySidebar — sections', () => {
     expect(screen.getByTestId('remove-worktree-dialog')).toHaveAttribute(
       'data-worktree',
       '/tmp/repo-linked'
+    )
+    expect(screen.getByTestId('remove-worktree-dialog')).toHaveAttribute(
+      'data-delete-branch',
+      'false'
+    )
+  })
+
+  // Both worktree menu entries open the same dialog; only this flag tells them apart.
+  it('opens the same dialog in delete-branch mode via onRemoveWorktreeAndBranch', () => {
+    useSidebarRows.mockReturnValue({ sections: [section({ rows: [row({ id: 'r1' })] })] })
+    renderSidebar()
+    act(() =>
+      (
+        lastRowViewCalls.current[0].onRemoveWorktreeAndBranch as (wt: { path: string }) => void
+      )({ path: '/tmp/repo-linked' })
+    )
+    const dialog = screen.getByTestId('remove-worktree-dialog')
+    expect(dialog).toHaveAttribute('data-worktree', '/tmp/repo-linked')
+    expect(dialog).toHaveAttribute('data-delete-branch', 'true')
+  })
+
+  it('resets to the plain removal mode when the other entry is used next', () => {
+    useSidebarRows.mockReturnValue({ sections: [section({ rows: [row({ id: 'r1' })] })] })
+    renderSidebar()
+    const calls = lastRowViewCalls.current[0]
+    act(() =>
+      (calls.onRemoveWorktreeAndBranch as (wt: { path: string }) => void)({
+        path: '/tmp/repo-linked',
+      })
+    )
+    act(() =>
+      (calls.onRemoveWorktree as (wt: { path: string }) => void)({ path: '/tmp/repo-linked' })
+    )
+    expect(screen.getByTestId('remove-worktree-dialog')).toHaveAttribute(
+      'data-delete-branch',
+      'false'
     )
   })
 

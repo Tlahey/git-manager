@@ -264,6 +264,88 @@ describe('SidebarSectionHeader', () => {
     expect(screen.queryByTestId('pr-create-button')).not.toBeInTheDocument()
   })
 
+  it('fires onCreateIssue from the issues section header', async () => {
+    const user = userEvent.setup()
+    const onCreateIssue = vi.fn()
+    render(
+      <SidebarSectionHeader
+        sectionKey="issues"
+        title="Issues"
+        isOpen={true}
+        onToggle={vi.fn()}
+        onCreateIssue={onCreateIssue}
+      />
+    )
+    await user.click(screen.getByTestId('issue-create-button'))
+    expect(onCreateIssue).toHaveBeenCalledOnce()
+  })
+
+  it('hides the create-issue action when onCreateIssue is not provided', () => {
+    render(
+      <SidebarSectionHeader sectionKey="issues" title="Issues" isOpen={true} onToggle={vi.fn()} />
+    )
+    expect(screen.queryByTestId('issue-create-button')).not.toBeInTheDocument()
+  })
+
+  it('fires onAddIssueFilter from the issues section header', async () => {
+    const user = userEvent.setup()
+    const onAddIssueFilter = vi.fn()
+    render(
+      <SidebarSectionHeader
+        sectionKey="issues"
+        title="Issues"
+        isOpen={true}
+        onToggle={vi.fn()}
+        onAddIssueFilter={onAddIssueFilter}
+      />
+    )
+    await user.click(screen.getByLabelText('Add an issue filter'))
+    expect(onAddIssueFilter).toHaveBeenCalledOnce()
+  })
+
+  // Adding a filter and filing an issue are separate actions and both belong on the header.
+  it('shows the add-filter and create-issue actions side by side', () => {
+    render(
+      <SidebarSectionHeader
+        sectionKey="issues"
+        title="Issues"
+        isOpen={true}
+        onToggle={vi.fn()}
+        onCreateIssue={vi.fn()}
+        onAddIssueFilter={vi.fn()}
+      />
+    )
+    expect(screen.getByTestId('issue-filter-add-button')).toBeInTheDocument()
+    expect(screen.getByTestId('issue-create-button')).toBeInTheDocument()
+  })
+
+  it('hides the add-filter action when onAddIssueFilter is not provided', () => {
+    render(
+      <SidebarSectionHeader
+        sectionKey="issues"
+        title="Issues"
+        isOpen={true}
+        onToggle={vi.fn()}
+        onCreateIssue={vi.fn()}
+      />
+    )
+    expect(screen.queryByTestId('issue-filter-add-button')).not.toBeInTheDocument()
+  })
+
+  // The "+" belongs to whichever section owns the action — it must not leak across sections.
+  it('does not put the create-issue action on the prs header', () => {
+    render(
+      <SidebarSectionHeader
+        sectionKey="prs"
+        title="Pull Requests"
+        isOpen={true}
+        onToggle={vi.fn()}
+        onCreateIssue={vi.fn()}
+      />
+    )
+    expect(screen.queryByTestId('issue-create-button')).not.toBeInTheDocument()
+  })
+
   it('forwards isFiltered to the underlying SectionHeader as a filter icon', () => {
     const { container, rerender } = render(
       <SidebarSectionHeader

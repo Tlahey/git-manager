@@ -458,11 +458,12 @@ describe('buildRefDropMenuSpec', () => {
 
 describe('buildTagMenuSpec', () => {
   const tagActions = () => ({
+    onPush: vi.fn(),
+    onFastForward: vi.fn(),
     onMerge: vi.fn(),
     onRebase: vi.fn(),
-    onInteractiveRebase: vi.fn(),
     onCheckout: vi.fn(),
-    onCreateWorktree: vi.fn(),
+    onExplain: vi.fn(),
     onCreateBranch: vi.fn(),
     onCherryPick: vi.fn(),
     onReset: vi.fn(),
@@ -471,11 +472,81 @@ describe('buildTagMenuSpec', () => {
     onDeleteRemote: vi.fn(),
     onCopyName: vi.fn(),
     onCopyLink: vi.fn(),
+    onToggleHidden: vi.fn(),
+    onSolo: vi.fn(),
     onAnnotate: vi.fn(),
   })
-  const tagCtx = (relationEnabled: boolean) => ({
+  const tagCtx = (relationEnabled: boolean, isHidden = false) => ({
     params: { tag: 'v1.0', branch: 'main', remote: 'origin' },
     relationEnabled,
+    isHidden,
+  })
+
+  // The order is the specification, not an accident: locking it here means a reordering shows up
+  // as a failing test rather than as a silently rearranged menu.
+  it('lays the menu out in the agreed order, separators included', () => {
+    const spec = normalizeMenuSpec(buildTagMenuSpec(tagCtx(true), tagActions(), t))
+    expect(spec.map((n) => (n.kind === 'item' || n.kind === 'submenu' ? n.text : '---'))).toEqual([
+      'Push v1.0 to origin',
+      '---',
+      'Fast-forward v1.0 to main',
+      'Merge v1.0 into main',
+      'Rebase main onto v1.0',
+      '---',
+      'Checkout this commit',
+      '---',
+      'Explain Branch Changes (LLM)',
+      '---',
+      'Create branch here',
+      'Cherry-pick this commit',
+      'Reset main to this commit',
+      'Revert this commit',
+      '---',
+      'Delete v1.0 locally',
+      'Delete v1.0 from origin',
+      '---',
+      'Copy tag name',
+      '---',
+      'Copy link to this tag on remote: origin',
+      '---',
+      'Hide',
+      'Solo',
+      '---',
+      'Annotate v1.0',
+    ])
+  })
+
+  it('offers Show instead of Hide once the tag is hidden', () => {
+    const shown = normalizeMenuSpec(buildTagMenuSpec(tagCtx(true, false), tagActions(), t))
+    expect(texts(shown)).toContain('Hide')
+    expect(texts(shown)).not.toContain('Show')
+
+    const hidden = normalizeMenuSpec(buildTagMenuSpec(tagCtx(true, true), tagActions(), t))
+    expect(texts(hidden)).toContain('Show')
+    expect(texts(hidden)).not.toContain('Hide')
+  })
+
+  it('wires push, fast-forward, explain, hide and solo', () => {
+    const actions = tagActions()
+    const spec = normalizeMenuSpec(buildTagMenuSpec(tagCtx(true), actions, t))
+    item(spec, 'Push v1.0 to origin')?.action?.()
+    item(spec, 'Fast-forward v1.0 to main')?.action?.()
+    item(spec, 'Explain Branch Changes (LLM)')?.action?.()
+    item(spec, 'Hide')?.action?.()
+    item(spec, 'Solo')?.action?.()
+    expect(actions.onPush).toHaveBeenCalled()
+    expect(actions.onFastForward).toHaveBeenCalled()
+    expect(actions.onExplain).toHaveBeenCalled()
+    expect(actions.onToggleHidden).toHaveBeenCalled()
+    expect(actions.onSolo).toHaveBeenCalled()
+  })
+
+  // Publishing a tag never depends on where HEAD is; moving/merging/rebasing/resetting does.
+  it('keeps push and the tag-only actions enabled while detached', () => {
+    const spec = normalizeMenuSpec(buildTagMenuSpec(tagCtx(false), tagActions(), t))
+    expect(item(spec, 'Push v1.0 to origin')?.enabled).not.toBe(false)
+    expect(item(spec, 'Fast-forward v1.0 to main')?.enabled).toBe(false)
+    expect(item(spec, 'Annotate v1.0')?.enabled).not.toBe(false)
   })
 
   it('disables the relationship actions when detached (relationEnabled false)', () => {

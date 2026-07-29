@@ -2,6 +2,7 @@ import {
   HardDrive,
   Globe,
   GitPullRequest,
+  CircleDot,
   Tag as TagIcon,
   GitFork,
   Archive as ArchiveIcon,
@@ -11,6 +12,7 @@ import {
   MoreVertical,
   GitMerge,
   UserCheck,
+  ListFilter,
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
@@ -21,6 +23,7 @@ const SECTION_ICONS: Record<SectionKey, React.ReactNode> = {
   local: <HardDrive className="h-3 w-3" />,
   remotes: <Globe className="h-3 w-3" />,
   prs: <GitPullRequest className="h-3 w-3" />,
+  issues: <CircleDot className="h-3 w-3" />,
   tags: <TagIcon className="h-3 w-3" />,
   submodules: <GitFork className="h-3 w-3" />,
   stashes: <ArchiveIcon className="h-3 w-3" />,
@@ -42,6 +45,9 @@ interface SidebarSectionHeaderProps {
   onRemoveMergedWorktrees?: () => void
   onRemoveMyMergedWorktrees?: () => void
   onCreatePr?: () => void
+  onCreateIssue?: () => void
+  /** Opens the "new saved issue filter" dialog — one more sub-group in the Issues section. */
+  onAddIssueFilter?: () => void
   /** When true, `count` reflects an active search filter rather than the section's full contents. */
   isFiltered?: boolean
 }
@@ -61,6 +67,8 @@ export function SidebarSectionHeader({
   onRemoveMergedWorktrees,
   onRemoveMyMergedWorktrees,
   onCreatePr,
+  onCreateIssue,
+  onAddIssueFilter,
   isFiltered = false,
 }: SidebarSectionHeaderProps) {
   const { t } = useTranslation('git')
@@ -211,6 +219,31 @@ export function SidebarSectionHeader({
           >
             <Plus className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
           </button>
+        ) : sectionKey === 'issues' && (onCreateIssue || onAddIssueFilter) ? (
+          <>
+            {onAddIssueFilter && (
+              <button
+                onClick={onAddIssueFilter}
+                className="mr-0.5 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
+                aria-label={t('sidebar.issueFilters.add')}
+                title={t('sidebar.issueFilters.add')}
+                data-testid="issue-filter-add-button"
+              >
+                <ListFilter className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
+              </button>
+            )}
+            {onCreateIssue && (
+              <button
+                onClick={onCreateIssue}
+                className="mr-1 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
+                aria-label={t('sidebar.createIssue.action')}
+                title={t('sidebar.createIssue.action')}
+                data-testid="issue-create-button"
+              >
+                <Plus className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
+              </button>
+            )}
+          </>
         ) : undefined
       }
     />

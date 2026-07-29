@@ -8,8 +8,11 @@ import { useRepoUIStore } from '../stores/repoUI.store'
  */
 export function useIsCommitsView(): boolean {
   const activePrNumber = useRepoUIStore((s) => s.activePrNumber)
+  const activeIssue = useRepoUIStore((s) => s.activeIssue)
   const activeDiffFile = useRepoUIStore((s) => s.activeDiffFile)
   const prComposer = useRepoUIStore((s) => s.prComposer)
   const prCreateOpen = useRepoUIStore((s) => s.prCreateOpen)
-  return activePrNumber == null && !activeDiffFile && !prComposer && !prCreateOpen
+  return (
+    activePrNumber == null && !activeIssue && !activeDiffFile && !prComposer && !prCreateOpen
+  )
 }

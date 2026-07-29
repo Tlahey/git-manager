@@ -10,6 +10,7 @@ import type {
   GitWorktree,
 } from '@git-manager/git-types'
 import type { SidebarRow } from './types'
+import { renderWithLanguage } from '../../test/i18n'
 import { SidebarRowView } from './SidebarRowView'
 
 // Partial-mock so the real Radix components still render; only `toast` is spied on.
@@ -58,14 +59,36 @@ vi.mock('./PullRequestItem', () => ({
     pr: PullRequest
     isSelected?: boolean
     onOpen?: (pr: PullRequest) => void
+    repoPath?: string
+    depth?: 0 | 1
   }) => (
     <button
       data-testid="pr-item"
       data-selected={String(props.isSelected)}
+      data-repo-path={props.repoPath}
+      data-depth={String(props.depth)}
       onClick={() => props.onOpen?.(props.pr)}
     >
       {props.pr.title}
     </button>
+  ),
+}))
+vi.mock('./IssueItem', () => ({
+  IssueItem: (props: {
+    issue: { number: number; title: string }
+    filterQuery?: string
+    onContextMenu?: (e: unknown, issue: unknown) => void
+    onOpen?: (issue: unknown) => void
+  }) => (
+    <div
+      data-testid="issue-item"
+      data-filter={props.filterQuery}
+      data-has-menu={String(!!props.onContextMenu)}
+      onContextMenu={(e) => props.onContextMenu?.(e, props.issue)}
+      onClick={() => props.onOpen?.(props.issue)}
+    >
+      {props.issue.title}
+    </div>
   ),
 }))
 
@@ -98,6 +121,9 @@ function pr(overrides: Partial<PullRequest> = {}): PullRequest {
     createdAt: '',
     updatedAt: '',
     isDraft: false,
+    assignees: [],
+    requestedReviewers: [],
+    labels: [],
     ...overrides,
   }
 }
@@ -158,7 +184,14 @@ function baseHandlers() {
   }
 }
 
-function renderRow(row: SidebarRow, handlers: Partial<ReturnType<typeof baseHandlers>> = {}) {
+// Accepts any of the component's props, not just the shared handlers, so a test can wire one of the
+// row-specific callbacks (issue menu, filter menu…) without them leaking into every other test.
+// Generic so the returned handlers keep their precise types: the shared ones stay `Mock` (tests
+// call `.mockClear()` on them) while an override contributes its own type.
+function renderRow<T extends Partial<React.ComponentProps<typeof SidebarRowView>>>(
+  row: SidebarRow,
+  handlers: T = {} as T
+) {
   const h = { ...baseHandlers(), ...handlers }
   const utils = render(<SidebarRowView row={row} {...h} />)
   return { ...utils, h }
@@ -269,6 +302,62 @@ describe('SidebarRowView — subgroup', () => {
     await user.click(screen.getByText('OTHERS'))
     expect(h.onToggleOpen).toHaveBeenCalledWith('sg-1')
   })
+
+  // The PR sub-groups are fixed; only a saved issue filter is editable, so only it gets a button.
+  it('carries no actions button when the sub-group is not a saved filter', () => {
+    renderRow(
+      { kind: 'subgroup', id: 'sg-1', label: 'OTHERS', count: 5, isOpen: false },
+      { onIssueFilterMenu: vi.fn() }
+    )
+    expect(screen.queryByLabelText('Filter actions')).not.toBeInTheDocument()
+  })
+
+  it('opens the filter menu from the sub-group button, with its move limits', async () => {
+    const user = userEvent.setup()
+    const onIssueFilterMenu = vi.fn()
+    const filter = { id: 'f1', name: 'Bugs', query: 'label:bug' }
+    renderRow(
+      {
+        kind: 'subgroup',
+        id: 'issue-filter:f1',
+        label: 'Bugs',
+        count: 2,
+        isOpen: true,
+        filter,
+        canMoveUp: false,
+        canMoveDown: true,
+      },
+      { onIssueFilterMenu }
+    )
+
+    await user.click(screen.getByTestId('issue-filter-actions-f1'))
+
+    expect(onIssueFilterMenu).toHaveBeenCalledWith(expect.anything(), {
+      filter,
+      canMoveUp: false,
+      canMoveDown: true,
+    })
+  })
+
+  // Clicking the actions button must not also collapse the group under it.
+  it('does not toggle the sub-group when its actions button is clicked', async () => {
+    const user = userEvent.setup()
+    const { h } = renderRow(
+      {
+        kind: 'subgroup',
+        id: 'issue-filter:f1',
+        label: 'Bugs',
+        count: 2,
+        isOpen: true,
+        filter: { id: 'f1', name: 'Bugs', query: 'label:bug' },
+      },
+      { onIssueFilterMenu: vi.fn() }
+    )
+
+    await user.click(screen.getByTestId('issue-filter-actions-f1'))
+
+    expect(h.onToggleOpen).not.toHaveBeenCalled()
+  })
 })
 
 describe('SidebarRowView — pr', () => {
@@ -279,6 +368,72 @@ describe('SidebarRowView — pr', () => {
     expect(screen.getByTestId('pr-item')).toHaveAttribute('data-selected', 'true')
     await user.click(screen.getByText('Fix the thing'))
     expect(h.onOpenPr).toHaveBeenCalledWith(item)
+  })
+
+  // The PR row resolves its own `owner/repo` for the hover card's review lookup.
+  it('forwards repoPath and the sub-group depth to PullRequestItem', () => {
+    render(
+      <SidebarRowView
+        row={{ kind: 'pr', id: 'pr-1', pr: pr(), isSelected: false, depth: 1 }}
+        repoPath="/repo"
+        {...baseHandlers()}
+      />
+    )
+    expect(screen.getByTestId('pr-item')).toHaveAttribute('data-repo-path', '/repo')
+    expect(screen.getByTestId('pr-item')).toHaveAttribute('data-depth', '1')
+  })
+})
+
+describe('SidebarRowView — issue', () => {
+  const issue = {
+    id: 'gh-issue-12',
+    number: 12,
+    title: 'Scroll position lost',
+    repo: 'repo',
+    url: '',
+    status: 'open' as const,
+    author: 'marie',
+    authorAvatar: '',
+    assignees: [],
+    labels: [],
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+    comments: 0,
+    thumbsUp: 0,
+  }
+
+  it('renders an IssueItem for an issue row', () => {
+    renderRow({ kind: 'issue', id: 'issue-12', issue })
+    expect(screen.getByTestId('issue-item')).toHaveTextContent('Scroll position lost')
+  })
+
+  it('forwards the active filter query so the title can highlight the match', () => {
+    render(
+      <SidebarRowView
+        row={{ kind: 'issue', id: 'issue-12', issue }}
+        filterQuery="scroll"
+        {...baseHandlers()}
+      />
+    )
+    expect(screen.getByTestId('issue-item')).toHaveAttribute('data-filter', 'scroll')
+  })
+
+  it('forwards the in-app open handler to the row', () => {
+    const onOpenIssue = vi.fn()
+    renderRow({ kind: 'issue', id: 'issue-12', issue }, { onOpenIssue })
+
+    fireEvent.click(screen.getByTestId('issue-item'))
+
+    expect(onOpenIssue).toHaveBeenCalledWith(issue)
+  })
+
+  it('forwards the issue action menu to the row', () => {
+    const onIssueContextMenu = vi.fn()
+    renderRow({ kind: 'issue', id: 'issue-12', issue }, { onIssueContextMenu })
+
+    fireEvent.contextMenu(screen.getByTestId('issue-item'))
+
+    expect(onIssueContextMenu).toHaveBeenCalledWith(expect.anything(), issue)
   })
 })
 
@@ -334,6 +489,88 @@ describe('SidebarRowView — tag', () => {
   })
 })
 
+describe('SidebarRowView — tag visibility and actions', () => {
+  // Not annotated as `SidebarRow`: the union would hide `.tag` from the assertions below.
+  const tagRow = () => ({ kind: 'tag' as const, id: 't-1', tag: tag(), isSelected: false })
+
+  it('hides the visibility toggle at rest but reveals it on hover', () => {
+    renderRow(tagRow())
+    const toggle = screen.getByLabelText('Hide this tag from the graph')
+    expect(toggle.className).toContain('opacity-0')
+    expect(toggle.className).toContain('group-hover/tag:opacity-100')
+  })
+
+  // Same reasoning as the stash: once hidden, the icon is the only thing saying so.
+  it('pins the toggle on screen and dims the row once the tag is hidden', () => {
+    const { container } = render(
+      <SidebarRowView row={tagRow()} {...baseHandlers()} hiddenTags={['v1']} />
+    )
+    const toggle = screen.getByLabelText('Show this tag in the graph')
+    expect(toggle.className).toContain('opacity-100')
+    expect(toggle.className).not.toContain('opacity-0')
+    expect(container.querySelector('.lucide-eye-off')).toBeTruthy()
+    expect(container.querySelector('.opacity-50')).toBeTruthy()
+  })
+
+  it('toggles visibility by tag name, without selecting the tag', () => {
+    const onToggleTagVisibility = vi.fn()
+    const onSelectTag = vi.fn()
+    render(
+      <SidebarRowView
+        row={tagRow()}
+        {...baseHandlers()}
+        onSelectTag={onSelectTag}
+        onToggleTagVisibility={onToggleTagVisibility}
+      />
+    )
+
+    fireEvent.click(screen.getByLabelText('Hide this tag from the graph'))
+
+    expect(onToggleTagVisibility).toHaveBeenCalledWith('v1')
+    expect(onSelectTag).not.toHaveBeenCalled()
+  })
+
+  it('opens the tag menu from the hover "…" button and from right-click alike', async () => {
+    const user = userEvent.setup()
+    const onTagContextMenu = vi.fn()
+    const row = tagRow()
+    render(<SidebarRowView row={row} {...baseHandlers()} onTagContextMenu={onTagContextMenu} />)
+
+    const button = screen.getByTestId('tag-actions-button-v1')
+    expect(button.className).toContain('opacity-0')
+    expect(button.className).toContain('group-hover/tag:opacity-100')
+
+    await user.click(button)
+    expect(onTagContextMenu).toHaveBeenCalledWith(expect.anything(), row.tag)
+
+    onTagContextMenu.mockClear()
+    fireEvent.contextMenu(screen.getByTestId('tag-item-v1'))
+    expect(onTagContextMenu).toHaveBeenCalledWith(expect.anything(), row.tag)
+  })
+
+  it('neither affordance selects the tag', async () => {
+    const user = userEvent.setup()
+    const onSelectTag = vi.fn()
+    render(
+      <SidebarRowView
+        row={tagRow()}
+        {...baseHandlers()}
+        onSelectTag={onSelectTag}
+        onTagContextMenu={vi.fn()}
+        onToggleTagVisibility={vi.fn()}
+      />
+    )
+
+    await user.click(screen.getByTestId('tag-actions-button-v1'))
+    await user.click(screen.getByLabelText('Hide this tag from the graph'))
+    expect(onSelectTag).not.toHaveBeenCalled()
+
+    // The row itself still selects, so the guards above are scoped and not a blanket block.
+    await user.click(screen.getByText('v1'))
+    expect(onSelectTag).toHaveBeenCalledWith('abcdef1234567890')
+  })
+})
+
 describe('SidebarRowView — stash', () => {
   it('shows the message and short oid, selects by commitOid on click', () => {
     const { h } = renderRow({
@@ -380,6 +617,36 @@ describe('SidebarRowView — stash', () => {
     expect(h.onSelectBranch).not.toHaveBeenCalled()
   })
 
+  // Right-click was the only way into the stash actions, which a hover-only affordance can't
+  // advertise. The button opens the very same menu rather than a second definition of it.
+  it('offers the same actions from a hover "…" button', async () => {
+    const user = userEvent.setup()
+    const item = stash()
+    const { h } = renderRow({ kind: 'stash', id: 's-1', stash: item, isSelected: false })
+
+    const button = screen.getByTestId('stash-actions-button-0')
+    expect(button.className).toContain('opacity-0')
+    expect(button.className).toContain('group-hover/stash:opacity-100')
+
+    await user.click(button)
+    expect(h.onStashContextMenu).toHaveBeenCalledWith(expect.anything(), item)
+  })
+
+  it('the "…" button does not select the stash, by click or by keyboard', async () => {
+    const user = userEvent.setup()
+    const { h } = renderRow({ kind: 'stash', id: 's-1', stash: stash(), isSelected: false })
+    const button = screen.getByTestId('stash-actions-button-0')
+
+    await user.click(button)
+    expect(h.onSelectBranch).not.toHaveBeenCalled()
+
+    h.onStashContextMenu.mockClear()
+    button.focus()
+    await user.keyboard('{Enter}')
+    expect(h.onStashContextMenu).toHaveBeenCalled()
+    expect(h.onSelectBranch).not.toHaveBeenCalled()
+  })
+
   it('toggles visibility via the hover button without selecting the stash', () => {
     const { h } = renderRow({
       kind: 'stash',
@@ -387,9 +654,48 @@ describe('SidebarRowView — stash', () => {
       stash: stash({ commitOid: 'stashoid1234567' }),
       isSelected: false,
     })
-    fireEvent.click(screen.getByLabelText('Masquer le stash dans le graphe'))
+    fireEvent.click(screen.getByLabelText('Hide this stash from the graph'))
     expect(h.onToggleStashVisibility).toHaveBeenCalledWith('stashoid1234567')
     expect(h.onSelectBranch).not.toHaveBeenCalled()
+  })
+
+  // The toggle is icon-only, so its label is the only thing naming the action — and it used to be
+  // hardcoded French, which read as French even with the app in English.
+  it('labels the visibility toggle in the active language, flipping with the state', () => {
+    const visibleRow = {
+      kind: 'stash' as const,
+      id: 's-1',
+      stash: stash({ commitOid: 'stashoid1234567' }),
+      isSelected: false,
+    }
+    renderRow(visibleRow)
+    const toggle = screen.getByLabelText('Hide this stash from the graph')
+    expect(toggle).toHaveAttribute('title', 'Hide this stash from the graph')
+
+    render(
+      <SidebarRowView
+        row={visibleRow}
+        {...baseHandlers()}
+        hiddenStashes={['stashoid1234567']}
+      />
+    )
+    expect(screen.getByLabelText('Show this stash in the graph')).toBeInTheDocument()
+  })
+
+  it('translates the visibility toggle when the language is French', () => {
+    renderWithLanguage(
+      <SidebarRowView
+        row={{
+          kind: 'stash',
+          id: 's-1',
+          stash: stash({ commitOid: 'stashoid1234567' }),
+          isSelected: false,
+        }}
+        {...baseHandlers()}
+      />,
+      'fr'
+    )
+    expect(screen.getByLabelText('Masquer ce stash du graphe')).toBeInTheDocument()
   })
 
   it('shows the hidden (EyeOff) state and dims the row when hiddenStashes includes it', () => {
@@ -418,6 +724,29 @@ describe('SidebarRowView — stash', () => {
     )
     expect(hiddenContainer.querySelector('.lucide-eye-off')).toBeTruthy()
     expect(hiddenContainer.querySelector('.opacity-50')).toBeTruthy()
+  })
+
+  // The toggle is a hover affordance on a visible stash, but on a hidden one it is the only thing
+  // saying so — leaving it to appear under the pointer would make that state invisible at rest.
+  it('keeps the visibility toggle on screen at rest once the stash is hidden', () => {
+    const row = {
+      kind: 'stash' as const,
+      id: 's-1',
+      stash: stash({ commitOid: 'stashoid1234567' }),
+      isSelected: false,
+    }
+
+    renderRow(row)
+    const shownToggle = screen.getByLabelText('Hide this stash from the graph')
+    expect(shownToggle.className).toContain('opacity-0')
+    expect(shownToggle.className).toContain('group-hover/stash:opacity-100')
+
+    render(
+      <SidebarRowView row={row} {...baseHandlers()} hiddenStashes={['stashoid1234567']} />
+    )
+    const hiddenToggle = screen.getByLabelText('Show this stash in the graph')
+    expect(hiddenToggle.className).toContain('opacity-100')
+    expect(hiddenToggle.className).not.toContain('opacity-0')
   })
 })
 

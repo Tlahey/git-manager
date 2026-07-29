@@ -69,6 +69,8 @@ interface GraphRowProps {
   graphMaxColumn?: number
   /** True while this row is awaiting an inline tag name — its refs cell shows the name input
    * instead of the ref badges. Only ever set on a single row at a time. */
+  /** Tag short names the user keeps off the graph — their badge is dropped, the commit stays. */
+  hiddenTags?: string[]
   isTagDraft?: boolean
   /** Confirm the inline tag name (only wired on the `isTagDraft` row). */
   onSubmitTag?: (name: string) => void
@@ -92,6 +94,7 @@ function CellContent({
   isActive,
   laneRef,
   agentActivity,
+  hiddenTags = [],
   isTagDraft,
   onSubmitTag,
   onCancelTag,
@@ -112,6 +115,8 @@ function CellContent({
   laneRef?: GitRef
   /** AI agent working in this row's worktree (already resolved for WIP / WIP:<path> rows). */
   agentActivity?: WorktreeAgentActivity
+  /** Tag short names the user keeps off the graph — their badge is dropped, the commit stays. */
+  hiddenTags?: string[]
   isTagDraft?: boolean
   onSubmitTag?: (name: string) => void
   onCancelTag?: () => void
@@ -132,7 +137,11 @@ function CellContent({
         )
       }
       if (isStashCommit) return null
-      const filteredRefs = node.refs
+      // A hidden tag loses its badge only — the commit keeps its row and its other refs, which is
+      // what separates this from a hidden stash (dropped from the log by the backend).
+      const filteredRefs = hiddenTags.length
+        ? node.refs.filter((r) => !(r.type === 'tag' && hiddenTags.includes(r.shortName)))
+        : node.refs
       if (filteredRefs.length === 0) {
         // No ref badge of its own: on hover, faintly hint the branch owning this commit's lane.
         // Never on the synthetic WIP / conflict rows.
@@ -335,6 +344,7 @@ export const GraphRow = memo(function GraphRow({
   wipRef,
   laneRef,
   graphMaxColumn = 0,
+  hiddenTags,
   isTagDraft,
   onSubmitTag,
   onCancelTag,
@@ -510,6 +520,7 @@ export const GraphRow = memo(function GraphRow({
               isActive={isActiveRow}
               laneRef={laneRef}
               agentActivity={rowAgent}
+              hiddenTags={hiddenTags}
               isTagDraft={isTagDraft}
               onSubmitTag={onSubmitTag}
               onCancelTag={onCancelTag}

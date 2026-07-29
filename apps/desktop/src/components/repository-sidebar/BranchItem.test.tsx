@@ -308,6 +308,9 @@ describe('BranchItem — linked PR tag', () => {
       createdAt: '',
       updatedAt: '',
       isDraft: false,
+      assignees: [],
+      requestedReviewers: [],
+      labels: [],
       ...overrides,
     }
   }
