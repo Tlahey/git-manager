@@ -34,12 +34,11 @@ export default defineConfig({
   lang: 'en-US',
   base: SITE_BASE,
   cleanUrls: true,
-  // Dark only, and no toggle. `'dark'` (dark by default, switchable) was the
-  // obvious setting, but it leaves a light theme nobody designed: the landing
-  // page this site opens on has no light mode at all, so a reader who flipped
-  // the switch got a half-light product. It also persists in localStorage, so
-  // one accidental click follows them across every visit.
-  appearance: 'force-dark',
+  // Dark on a first visit whatever the OS prefers, but the reader keeps the
+  // switch (and their choice, in localStorage). Note the home page stays dark
+  // either way: it is the marketing landing page, which has no light design —
+  // see the `html.landing` gate in apps/landing-page/style.css.
+  appearance: 'dark',
   // The package README documents the pipeline for contributors; it is not a page
   // of the site VitePress would otherwise publish it as.
   srcExclude: ['README.md'],
