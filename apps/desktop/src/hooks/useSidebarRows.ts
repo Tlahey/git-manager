@@ -4,8 +4,7 @@ import { useTranslation } from '@git-manager/i18n'
 import type { GitBranch, GitRef, GitSubmodule, GitWorktree } from '@git-manager/git-types'
 import { useBranches } from './useBranches'
 import { useGitStashes } from './useGitStashes'
-import { useGroupedBranches } from './useGroupedBranches'
-import { buildRemoteBranchTree, type RemoteTreeNode } from '../lib/remoteBranchTree'
+import { buildBranchTree, type BranchTreeFolder, type BranchTreeNode } from '../lib/branchTree'
 import { usePullRequests } from './usePullRequests'
 import { useRepoIssues } from './useRepoIssues'
 import { useRepoPrFilters } from './useRepoPrFilters'
@@ -65,6 +64,54 @@ const TAGS_LIMIT = 100
 function remoteOf(branch: GitBranch): string {
   const slash = branch.name.indexOf('/')
   return slash > 0 ? branch.name.slice(0, slash) : 'origin'
+}
+
+interface PushBranchTreeParams {
+  /** Row list being built, appended to in place. */
+  rows: SidebarRow[]
+  nodes: BranchTreeNode[]
+  /** Row id every folder id below is built from, keeping the two sections' ids apart. */
+  parentId: string
+  /** Depth the level starts at — 0 in the local section, 1 under a remote node. */
+  depth: number
+  subOpen: (id: string, def?: boolean) => boolean
+  branchRow: (branch: GitBranch, displayName: string, depth: number) => SidebarRow
+  folderRow: (node: BranchTreeFolder, id: string, depth: number) => SidebarRow
+}
+
+/**
+ * Flattens a branch tree into rows, walking it rather than iterating a flat list: folders nest, and
+ * a closed one has to take its whole subtree off screen, not just its own leaves. Shared by the
+ * local and remote sections, which differ only in the rows they build.
+ */
+function pushBranchTree({
+  rows,
+  nodes,
+  parentId,
+  depth,
+  subOpen,
+  branchRow,
+  folderRow,
+}: PushBranchTreeParams): void {
+  for (const node of nodes) {
+    if (node.kind === 'branch') {
+      rows.push(branchRow(node.branch, node.displayName, depth))
+      continue
+    }
+    const id = `${parentId}${parentId.endsWith(':') ? '' : '/'}${node.name}`
+    rows.push(folderRow(node, id, depth))
+    if (subOpen(id, true)) {
+      pushBranchTree({
+        rows,
+        nodes: node.children,
+        parentId: id,
+        depth: depth + 1,
+        subOpen,
+        branchRow,
+        folderRow,
+      })
+    }
+  }
 }
 
 export function useSidebarRows({
@@ -271,7 +318,6 @@ export function useSidebarRows({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [localBranches, overrides]
   )
-  const { groups, ungrouped } = useGroupedBranches(remainingBranches)
 
   // ── Remote branches (filtered + grouped by remote) ─────────────────
   const remoteGroups = useMemo(() => {
@@ -314,47 +360,35 @@ export function useSidebarRows({
           pr: prByBranch.get(b.shortName),
         })
       }
-      if (pinnedBranches.length > 0 && (ungrouped.length > 0 || groups.length > 0)) {
+      if (pinnedBranches.length > 0 && remainingBranches.length > 0) {
         localRows.push({ kind: 'divider', id: 'div:pinned' })
       }
-      for (const b of ungrouped) {
-        localRows.push({
+      pushBranchTree({
+        rows: localRows,
+        nodes: buildBranchTree(remainingBranches, (b) => b.shortName),
+        parentId: 'folder:',
+        depth: 0,
+        subOpen,
+        branchRow: (branch, displayName, depth) => ({
           kind: 'branch',
-          id: `local:${b.name}`,
-          branch: b,
-          displayName: b.shortName,
-          depth: 0,
-          isSelected: isSelected(b),
+          id: `local:${branch.name}`,
+          branch,
+          displayName,
+          depth,
+          isSelected: isSelected(branch),
           isPinned: false,
-          pr: prByBranch.get(b.shortName),
-        })
-      }
-      for (const { prefix, branches } of groups) {
-        const fid = `folder:${prefix}`
-        const open = subOpen(fid, true)
-        localRows.push({
+          pr: prByBranch.get(branch.shortName),
+        }),
+        folderRow: (node, id, depth) => ({
           kind: 'folder',
-          id: fid,
-          prefix,
-          count: branches.length,
-          isOpen: open,
-          hasHead: branches.some((b) => b.isHead),
-        })
-        if (open) {
-          for (const b of branches) {
-            localRows.push({
-              kind: 'branch',
-              id: `local:${b.name}`,
-              branch: b,
-              displayName: b.shortName.slice(prefix.length),
-              depth: 1,
-              isSelected: isSelected(b),
-              isPinned: false,
-              pr: prByBranch.get(b.shortName),
-            })
-          }
-        }
-      }
+          id,
+          name: node.name,
+          count: node.branches.length,
+          isOpen: subOpen(id, true),
+          depth,
+          hasHead: node.branches.some((b) => b.isHead),
+        }),
+      })
     }
     // Hidden entirely when actively filtering down to zero matches — a non-empty repo always has
     // a local section otherwise, so this only ever fires while `q` is set.
@@ -385,44 +419,34 @@ export function useSidebarRows({
             branchNames: branches.map((b) => b.name),
           })
           if (gopen) {
-            // Walked rather than flattened: a remote's folders nest (`build/ci/lint`), and a
-            // closed folder has to take everything below it off screen, not just its own leaves.
-            const pushTree = (nodes: RemoteTreeNode[], parentId: string, depth: number) => {
-              for (const node of nodes) {
-                if (node.kind === 'branch') {
-                  remoteRows.push({
-                    kind: 'remote-branch',
-                    id: `remote-branch:${node.branch.name}`,
-                    branch: node.branch,
-                    remoteName,
-                    displayName: node.displayName,
-                    depth,
-                    isSelected: isSelected(node.branch),
-                  })
-                  continue
-                }
-                const fid = `${parentId}/${node.name}`
-                const fopen = subOpen(fid, true)
-                remoteRows.push({
-                  kind: 'remote-folder',
-                  id: fid,
-                  remoteName,
-                  name: node.name,
-                  count: node.branchNames.length,
-                  isOpen: fopen,
-                  depth,
-                  branchNames: node.branchNames,
-                })
-                if (fopen) pushTree(node.children, fid, depth + 1)
-              }
-            }
-            // `shortName` already reads relative to the remote (the backend strips it), so it is
-            // exactly the name the folders below the remote node are cut from.
-            pushTree(
-              buildRemoteBranchTree(branches, (b) => b.shortName),
-              `remote-folder:${remoteName}`,
-              0
-            )
+            pushBranchTree({
+              rows: remoteRows,
+              // `shortName` already reads relative to the remote (the backend strips it), so it is
+              // exactly the name the folders below the remote node are cut from.
+              nodes: buildBranchTree(branches, (b) => b.shortName),
+              parentId: `remote-folder:${remoteName}`,
+              // The remote node itself occupies depth 0, so its own children start one in.
+              depth: 1,
+              subOpen,
+              branchRow: (branch, displayName, depth) => ({
+                kind: 'remote-branch',
+                id: `remote-branch:${branch.name}`,
+                branch,
+                remoteName,
+                displayName,
+                depth,
+                isSelected: isSelected(branch),
+              }),
+              folderRow: (node, id, depth) => ({
+                kind: 'folder',
+                id,
+                name: node.name,
+                count: node.branches.length,
+                isOpen: subOpen(id, true),
+                depth,
+                branchNames: node.branches.map((b) => b.name),
+              }),
+            })
           }
         }
       }
@@ -701,8 +725,7 @@ export function useSidebarRows({
     selectedCommitOid,
     localBranches.length,
     pinnedBranches,
-    ungrouped,
-    groups,
+    remainingBranches,
     remoteGroups,
     remoteCount,
     filteredPrGroups,

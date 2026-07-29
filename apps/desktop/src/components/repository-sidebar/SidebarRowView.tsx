@@ -25,12 +25,13 @@ import { WorktreeItem } from './WorktreeItem'
 import { HoverExpandLabel } from './HoverExpandLabel'
 
 /**
- * Left padding of a row nested inside a remote node. A remote's folders go as deep as the branch
- * names do, so the indent is computed rather than picked from a fixed set of Tailwind classes —
- * `2.5rem` is the `pl-10` of a direct child, `1rem` the step the rest of the panel uses.
+ * Left padding of a branch or folder row, by depth. Folders go as deep as the branch names do, so
+ * the indent is computed rather than picked from a fixed set of Tailwind classes — which is what
+ * capped the nesting at one level. `1.5rem` is the `pl-6` of a top-level row, `1rem` the step the
+ * rest of the panel uses. A remote's own node sits at depth 0, its branches at 1 and up.
  */
-function remoteIndent(depth: number): string {
-  return `${2.5 + depth}rem`
+function rowIndent(depth: number): string {
+  return `${1.5 + depth}rem`
 }
 
 interface SidebarRowViewProps {
@@ -142,62 +143,40 @@ export function SidebarRowView({
       )
 
     case 'folder':
-      return (
-        <button
-          onClick={() => onToggleOpen(row.id)}
-          className="flex w-full items-center gap-1.5 py-[3px] pl-4 pr-2 text-left text-xs text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
-        >
-          <span className="shrink-0">
-            {row.isOpen ? (
-              <ChevronDown className="h-3 w-3" />
-            ) : (
-              <ChevronRight className="h-3 w-3" />
-            )}
-          </span>
-          <FolderGit2 className="h-3 w-3 shrink-0 opacity-50" />
-          <span className="flex-1 truncate font-medium">
-            {row.hasHead && <span className="mr-1 text-[9px] text-emerald-400">●</span>}
-            {row.prefix.replace(/\/$/, '')}
-          </span>
-          <span className="shrink-0 text-[10px] tabular-nums text-sidebar-muted-foreground/40">
-            {row.count}
-          </span>
-        </button>
-      )
-
-    case 'remote-group':
-    case 'remote-folder': {
-      // Both are group headers over a set of remote branches, and hide them as one: toggling each
-      // branch in turn would make the group's own state depend on the order the toggles ran in.
-      const hiddenBelow = row.branchNames.filter((n) => hiddenRemoteBranches.includes(n)).length
-      const allHidden = row.branchNames.length > 0 && hiddenBelow === row.branchNames.length
+    case 'remote-group': {
+      // One code path for every group header over a set of branches — a remote node and a folder
+      // in either section. They differ only by icon, by the HEAD dot, and by whether the branches
+      // below them have a graph badge to hide.
+      const isRemoteNode = row.kind === 'remote-group'
+      const branchNames = row.branchNames
+      const hiddenBelow = branchNames?.filter((n) => hiddenRemoteBranches.includes(n)).length ?? 0
+      const allHidden = !!branchNames?.length && hiddenBelow === branchNames.length
       const label = allHidden
         ? t('sidebar.remote.showAllInGraph')
         : t('sidebar.remote.hideAllInGraph')
-      const isFolder = row.kind === 'remote-folder'
       return (
         <div
-          className={`relative flex w-full items-center text-xs transition-colors hover:bg-sidebar-accent/40 ${
-            isFolder ? 'group/rfolder' : 'group/remote'
-          } ${allHidden ? 'opacity-50' : ''}`}
+          className={`group/folder relative flex w-full items-center text-xs transition-colors hover:bg-sidebar-accent/40 ${
+            allHidden ? 'opacity-50' : ''
+          }`}
           data-testid={`sidebar-row-${row.id}`}
         >
-          <VisibilityToggle
-            isHidden={allHidden}
-            partial={hiddenBelow > 0 && !allHidden}
-            onToggle={() => onToggleRemoteBranchesVisibility?.(row.branchNames, !allHidden)}
-            label={label}
-            dataToggle="remote-visibility"
-            hoverClass={isFolder ? 'group-hover/rfolder:opacity-100' : 'group-hover/remote:opacity-100'}
-          />
+          {/* Hiding is a remote-branch affordance: a local branch has no badge of its own to drop
+              from the graph, so a local folder gets no toggle. */}
+          {branchNames && (
+            <VisibilityToggle
+              isHidden={allHidden}
+              partial={hiddenBelow > 0 && !allHidden}
+              onToggle={() => onToggleRemoteBranchesVisibility?.(branchNames, !allHidden)}
+              label={label}
+              dataToggle="remote-visibility"
+              hoverClass="group-hover/folder:opacity-100"
+            />
+          )}
           <button
             onClick={() => onToggleOpen(row.id)}
-            style={
-              row.kind === 'remote-folder' ? { paddingLeft: remoteIndent(row.depth) } : undefined
-            }
-            className={`flex min-w-0 flex-1 items-center gap-1.5 py-[3px] pr-2 text-left text-sidebar-muted-foreground transition-colors hover:text-sidebar-foreground ${
-              isFolder ? '' : 'pl-6'
-            }`}
+            style={{ paddingLeft: rowIndent(isRemoteNode ? 0 : row.depth) }}
+            className="flex min-w-0 flex-1 items-center gap-1.5 py-[3px] pr-2 text-left text-sidebar-muted-foreground transition-colors hover:text-sidebar-foreground"
           >
             <span className="shrink-0">
               {row.isOpen ? (
@@ -206,13 +185,16 @@ export function SidebarRowView({
                 <ChevronRight className="h-3 w-3" />
               )}
             </span>
-            {isFolder ? (
-              <FolderGit2 className="h-3 w-3 shrink-0 opacity-50" />
-            ) : (
+            {isRemoteNode ? (
               <Globe className="h-3 w-3 shrink-0 opacity-50" />
+            ) : (
+              <FolderGit2 className="h-3 w-3 shrink-0 opacity-50" />
             )}
             <span className="flex-1 truncate font-medium">
-              {row.kind === 'remote-folder' ? row.name : row.remoteName}
+              {row.kind === 'folder' && row.hasHead && (
+                <span className="mr-1 text-[9px] text-emerald-400">●</span>
+              )}
+              {row.kind === 'remote-group' ? row.remoteName : row.name}
             </span>
             <span className="shrink-0 text-[10px] tabular-nums text-sidebar-muted-foreground/40">
               {row.count}
@@ -235,7 +217,7 @@ export function SidebarRowView({
         : t('sidebar.remote.hideInGraph')
       return (
         <div
-          style={{ paddingLeft: remoteIndent(row.depth) }}
+          style={{ paddingLeft: rowIndent(row.depth) }}
           className={`group/rbranch relative flex items-center gap-1.5 py-[3px] pr-2 text-xs transition-colors ${
             row.isSelected
               ? 'bg-sidebar-accent text-sidebar-foreground'

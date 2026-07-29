@@ -483,10 +483,11 @@ describe('RepositorySidebar — sections', () => {
           rows: [
             {
               kind: 'folder',
-              id: 'folder:feat/',
-              prefix: 'feat/',
+              id: 'folder:feat',
+              name: 'feat',
               count: 2,
               isOpen: true,
+              depth: 0,
               hasHead: false,
             },
           ],
@@ -494,9 +495,9 @@ describe('RepositorySidebar — sections', () => {
       ],
     })
     renderSidebar()
-    act(() => (lastRowViewCalls.current[0].onToggleOpen as (id: string) => void)('folder:feat/'))
+    act(() => (lastRowViewCalls.current[0].onToggleOpen as (id: string) => void)('folder:feat'))
     expect(useSidebarRows).toHaveBeenLastCalledWith(
-      expect.objectContaining({ openState: { 'folder:feat/': false } })
+      expect.objectContaining({ openState: { 'folder:feat': false } })
     )
   })
 
@@ -509,13 +510,12 @@ describe('RepositorySidebar — sections', () => {
           key: 'remotes',
           rows: [
             {
-              kind: 'remote-folder',
+              kind: 'folder',
               id: 'remote-folder:origin/build',
-              remoteName: 'origin',
               name: 'build',
               count: 2,
               isOpen: true,
-              depth: 0,
+              depth: 1,
               branchNames: ['origin/build/ci'],
             },
           ],

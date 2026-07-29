@@ -244,14 +244,37 @@ describe('useSidebarRows — local section', () => {
     expect(result.current.isPinned('main')).toBe(false)
   })
 
-  it('groups remaining branches into folders by prefix (via useGroupedBranches)', async () => {
-    useBranchesMock.mockReturnValue({ data: [branch('feat/a'), branch('feat/b')] })
+  // Same tree as the remote section, minus its remote node: one folder per path segment, formed
+  // even for a single branch, and no `origin` above them.
+  it('nests local branches one folder per path segment', async () => {
+    useBranchesMock.mockReturnValue({ data: [branch('feat/ci/lint'), branch('feat/b')] })
     const { result } = renderRows({ openState: { 'section:local': true } })
-    await waitFor(() => expect(findRow(result.current.sections, 'folder:feat/')).toBeDefined())
-    expect(findRow(result.current.sections, 'folder:feat/')).toMatchObject({
+    await waitFor(() => expect(findRow(result.current.sections, 'folder:feat')).toBeDefined())
+
+    expect(findRow(result.current.sections, 'folder:feat')).toMatchObject({
+      name: 'feat',
       count: 2,
+      depth: 0,
       isOpen: true,
     })
+    expect(findRow(result.current.sections, 'folder:feat/ci')).toMatchObject({
+      name: 'ci',
+      count: 1,
+      depth: 1,
+    })
+    expect(
+      allRows(result.current.sections).find(
+        (r) => r.kind === 'branch' && r.branch.shortName === 'feat/ci/lint'
+      )
+    ).toMatchObject({ displayName: 'lint', depth: 2 })
+  })
+
+  it('marks the folder holding HEAD, at any depth', async () => {
+    useBranchesMock.mockReturnValue({ data: [branch('feat/ci/lint', { isHead: true })] })
+    const { result } = renderRows({ openState: { 'section:local': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'folder:feat')).toBeDefined())
+    expect(findRow(result.current.sections, 'folder:feat')).toMatchObject({ hasHead: true })
+    expect(findRow(result.current.sections, 'folder:feat/ci')).toMatchObject({ hasHead: true })
   })
 
   it('strips the folder prefix from a grouped branch displayName, keeping the full shortName', async () => {
@@ -283,16 +306,17 @@ describe('useSidebarRows — local section', () => {
     expect(featureX).toMatchObject({ displayName: 'feature-x' })
   })
 
-  it('respects an explicit closed override for a folder', async () => {
-    useBranchesMock.mockReturnValue({ data: [branch('feat/a'), branch('feat/b')] })
+  it('respects an explicit closed override for a folder, hiding its whole subtree', async () => {
+    useBranchesMock.mockReturnValue({ data: [branch('feat/ci/lint'), branch('feat/b')] })
     const { result } = renderRows({
-      openState: { 'section:local': true, 'folder:feat/': false },
+      openState: { 'section:local': true, 'folder:feat': false },
     })
-    await waitFor(() => expect(findRow(result.current.sections, 'folder:feat/')).toBeDefined())
-    expect(findRow(result.current.sections, 'folder:feat/')).toMatchObject({ isOpen: false })
+    await waitFor(() => expect(findRow(result.current.sections, 'folder:feat')).toBeDefined())
+    expect(findRow(result.current.sections, 'folder:feat')).toMatchObject({ isOpen: false })
+    expect(findRow(result.current.sections, 'folder:feat/ci')).toBeUndefined()
     expect(
       allRows(result.current.sections).find(
-        (r) => r.kind === 'branch' && r.id === 'local:refs/heads/feat/a'
+        (r) => r.kind === 'branch' && r.id === 'local:refs/heads/feat/b'
       )
     ).toBeUndefined()
   })
@@ -381,21 +405,22 @@ describe('useSidebarRows — remotes section', () => {
     const { result } = renderRows({ openState: { 'section:remotes': true } })
     await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
 
+    // The remote node itself occupies depth 0, so its own children start one level in.
     expect(findRow(result.current.sections, 'remote-folder:origin/build')).toMatchObject({
       name: 'build',
-      depth: 0,
+      depth: 1,
       count: 1,
     })
     expect(findRow(result.current.sections, 'remote-folder:origin/build/ci')).toMatchObject({
       name: 'ci',
-      depth: 1,
+      depth: 2,
     })
     expect(
       findRow(result.current.sections, 'remote-branch:origin/build/ci/lint')
-    ).toMatchObject({ displayName: 'lint', depth: 2 })
+    ).toMatchObject({ displayName: 'lint', depth: 3 })
     // No folder in its name: it stays a direct child of the remote.
     expect(findRow(result.current.sections, 'remote-branch:origin/main')).toMatchObject(
-      { displayName: 'main', depth: 0 }
+      { displayName: 'main', depth: 1 }
     )
   })
 

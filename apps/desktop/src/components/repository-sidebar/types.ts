@@ -29,9 +29,10 @@ export type SidebarRow =
       kind: 'branch'
       id: string
       branch: GitBranch
-      /** Displayed name — the folder prefix (e.g. "feat/") is stripped when the branch is grouped. */
+      /** Displayed name — every folder above the branch is stripped (`feat/login` → `login`). */
       displayName: string
-      depth: 0 | 1
+      /** Folders above it inside its section — 0 for a top-level branch. */
+      depth: number
       isSelected: boolean
       isPinned: boolean
       /** PR whose head is this branch (headRef == shortName), when the repo is on GitHub. */
@@ -40,10 +41,20 @@ export type SidebarRow =
   | {
       kind: 'folder'
       id: string
-      prefix: string
+      /** The path segment itself, e.g. `feat` for `feat/login` — folders nest to any depth. */
+      name: string
       count: number
       isOpen: boolean
-      hasHead: boolean
+      /** Folders above it inside its section — 0 for a top-level one. */
+      depth: number
+      /** True when HEAD sits on a branch below, which the local section marks with a dot. */
+      hasHead?: boolean
+      /**
+       * Remote-qualified names of every branch below, at any depth. Only a remote folder carries
+       * them — they are what its visibility toggle acts on, and a local branch has no badge to
+       * hide.
+       */
+      branchNames?: string[]
     }
   | {
       kind: 'remote-group'
@@ -51,20 +62,7 @@ export type SidebarRow =
       remoteName: string
       count: number
       isOpen: boolean
-      /** Short names of every branch under this remote — what its visibility toggle acts on. */
-      branchNames: string[]
-    }
-  | {
-      kind: 'remote-folder'
-      id: string
-      remoteName: string
-      /** The path segment itself, e.g. `build` for `origin/build/ci` — folders nest to any depth. */
-      name: string
-      count: number
-      isOpen: boolean
-      /** Folders above it inside the remote node — 0 for a direct child of the remote. */
-      depth: number
-      /** Short names of every branch below this folder, at any depth. */
+      /** Remote-qualified names of every branch under it — what its visibility toggle acts on. */
       branchNames: string[]
     }
   | {
@@ -74,7 +72,7 @@ export type SidebarRow =
       remoteName: string
       /** Name shown on the row: the remote and every folder above it are stripped. */
       displayName: string
-      /** Folders above it inside the remote node — 0 for a direct child of the remote. */
+      /** Folders above it inside the remote node — 1 for a direct child of the remote. */
       depth: number
       isSelected: boolean
     }

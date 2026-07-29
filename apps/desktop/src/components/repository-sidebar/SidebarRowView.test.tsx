@@ -215,17 +215,21 @@ describe('SidebarRowView — branch', () => {
   })
 })
 
-describe('SidebarRowView — folder', () => {
-  it('shows the prefix, count, HEAD dot, and toggles on click', async () => {
+describe('SidebarRowView — folder (local)', () => {
+  const localFolder = (over: Record<string, unknown> = {}) => ({
+    kind: 'folder' as const,
+    id: 'f-feature',
+    name: 'feature',
+    count: 4,
+    isOpen: false,
+    depth: 0,
+    hasHead: true,
+    ...over,
+  })
+
+  it('shows the segment name, count, HEAD dot, and toggles on click', async () => {
     const user = userEvent.setup()
-    const { h } = renderRow({
-      kind: 'folder',
-      id: 'f-feature',
-      prefix: 'feature/',
-      count: 4,
-      isOpen: false,
-      hasHead: true,
-    })
+    const { h } = renderRow(localFolder())
     expect(screen.getByText('feature')).toBeInTheDocument()
     expect(screen.getByText('4')).toBeInTheDocument()
     expect(screen.getByText('●')).toBeInTheDocument()
@@ -234,15 +238,25 @@ describe('SidebarRowView — folder', () => {
   })
 
   it('hides the HEAD dot when hasHead is false', () => {
-    renderRow({
-      kind: 'folder',
-      id: 'f-feature',
-      prefix: 'feature/',
-      count: 1,
-      isOpen: false,
-      hasHead: false,
-    })
+    renderRow(localFolder({ hasHead: false }))
     expect(screen.queryByText('●')).not.toBeInTheDocument()
+  })
+
+  // A local branch has no badge of its own in the graph, so there is nothing for a local folder to
+  // hide — the toggle belongs to the remote side only.
+  it('carries no visibility toggle, unlike a remote folder', () => {
+    renderRow(localFolder())
+    expect(
+      screen.queryByLabelText('Hide these remote branches from the graph')
+    ).not.toBeInTheDocument()
+  })
+
+  it('starts at the same indent as a top-level branch and steps in with depth', () => {
+    render(<SidebarRowView row={localFolder()} {...baseHandlers()} />)
+    expect(screen.getByText('feature').closest('button')?.style.paddingLeft).toBe('1.5rem')
+
+    render(<SidebarRowView row={localFolder({ depth: 2, name: 'ci' })} {...baseHandlers()} />)
+    expect(screen.getByText('ci').closest('button')?.style.paddingLeft).toBe('3.5rem')
   })
 })
 
@@ -319,15 +333,14 @@ describe('SidebarRowView — remote-group', () => {
   })
 })
 
-describe('SidebarRowView — remote-folder', () => {
+describe('SidebarRowView — folder (remote)', () => {
   const remoteFolder = (over: Record<string, unknown> = {}) => ({
-    kind: 'remote-folder' as const,
+    kind: 'folder' as const,
     id: 'rf-origin-feat',
-    remoteName: 'origin',
     name: 'feat',
     count: 2,
     isOpen: false,
-    depth: 0,
+    depth: 1,
     branchNames: ['origin/feat/a', 'origin/feat/b'],
     ...over,
   })
@@ -346,7 +359,7 @@ describe('SidebarRowView — remote-folder', () => {
     render(<SidebarRowView row={remoteFolder()} {...baseHandlers()} />)
     expect(screen.getByText('feat').closest('button')?.style.paddingLeft).toBe('2.5rem')
 
-    render(<SidebarRowView row={remoteFolder({ depth: 2, name: 'ci' })} {...baseHandlers()} />)
+    render(<SidebarRowView row={remoteFolder({ depth: 3, name: 'ci' })} {...baseHandlers()} />)
     expect(screen.getByText('ci').closest('button')?.style.paddingLeft).toBe('4.5rem')
   })
 
@@ -375,7 +388,7 @@ describe('SidebarRowView — remote-branch', () => {
     branch: branch({ name: 'origin/main', shortName: 'main' }),
     remoteName: 'origin',
     displayName: 'main',
-    depth: 0 as const,
+    depth: 1,
     isSelected: false,
     ...over,
   })
@@ -396,7 +409,7 @@ describe('SidebarRowView — remote-branch', () => {
     )
 
     const nested = render(
-      <SidebarRowView row={remoteBranch({ depth: 2, displayName: 'a' })} {...baseHandlers()} />
+      <SidebarRowView row={remoteBranch({ depth: 3, displayName: 'a' })} {...baseHandlers()} />
     )
     expect(nested.container.querySelector<HTMLElement>('[role="button"]')?.style.paddingLeft).toBe(
       '4.5rem'

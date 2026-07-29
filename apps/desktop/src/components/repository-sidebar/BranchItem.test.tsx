@@ -66,7 +66,7 @@ describe('BranchItem — rendering', () => {
     fireEvent.click(screen.getByText('ma_branche'))
     expect(onSelect).toHaveBeenCalledWith('feat/ma_branche')
 
-    await user.click(screen.getByLabelText('Épingler feat/ma_branche'))
+    await user.click(screen.getByLabelText('Pin feat/ma_branche to the top'))
     expect(onTogglePin).toHaveBeenCalledWith('feat/ma_branche')
   })
 
@@ -160,7 +160,7 @@ describe('BranchItem — interaction', () => {
         onContextMenu={onContextMenu}
       />
     )
-    await user.click(screen.getByLabelText('Actions pour feature-x'))
+    await user.click(screen.getByTestId('branch-actions-feature-x'))
     expect(onContextMenu).toHaveBeenCalled()
     expect(onSelect).not.toHaveBeenCalled()
   })
@@ -169,7 +169,7 @@ describe('BranchItem — interaction', () => {
 describe('BranchItem — pin button', () => {
   it('is hidden when onTogglePin is not given', () => {
     render(<BranchItem branch={branch()} isSelected={false} onSelect={vi.fn()} />)
-    expect(screen.queryByLabelText(/pingler/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/^Pin /)).not.toBeInTheDocument()
   })
 
   it('is hidden when canPin is false, even with onTogglePin', () => {
@@ -182,7 +182,7 @@ describe('BranchItem — pin button', () => {
         canPin={false}
       />
     )
-    expect(screen.queryByLabelText(/pingler/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/^Pin /)).not.toBeInTheDocument()
   })
 
   it('toggles pin without selecting the branch', async () => {
@@ -198,12 +198,12 @@ describe('BranchItem — pin button', () => {
         isPinned
       />
     )
-    await user.click(screen.getByLabelText('Désépingler feature-x'))
+    await user.click(screen.getByLabelText('Unpin feature-x'))
     expect(onTogglePin).toHaveBeenCalledWith('feature-x')
     expect(onSelect).not.toHaveBeenCalled()
   })
 
-  it('shows the "épingler" label when not pinned', () => {
+  it('names the action in the active language when the branch is not pinned', () => {
     render(
       <BranchItem
         branch={branch({ shortName: 'feature-x' })}
@@ -213,7 +213,7 @@ describe('BranchItem — pin button', () => {
         isPinned={false}
       />
     )
-    expect(screen.getByLabelText('Épingler feature-x')).toBeInTheDocument()
+    expect(screen.getByLabelText('Pin feature-x to the top')).toBeInTheDocument()
   })
 })
 

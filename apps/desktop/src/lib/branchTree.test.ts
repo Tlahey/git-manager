@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { GitBranch } from '@git-manager/git-types'
-import { buildRemoteBranchTree, type RemoteTreeNode } from './remoteBranchTree'
+import { buildBranchTree, type BranchTreeNode } from './branchTree'
 
 /** Shaped like the backend reports it: `name` carries the remote, `shortName` does not. */
 function branch(qualifiedName: string): GitBranch {
@@ -18,16 +18,16 @@ function branch(qualifiedName: string): GitBranch {
 }
 
 /** `shortName` already reads relative to the remote — that is the name folders are cut from. */
-const tree = (names: string[]) => buildRemoteBranchTree(names.map(branch), (b) => b.shortName)
+const tree = (names: string[]) => buildBranchTree(names.map(branch), (b) => b.shortName)
 
 /** Compact shape of a tree: `folder > [children]` / plain branch display names. */
-function shape(nodes: RemoteTreeNode[]): unknown[] {
+function shape(nodes: BranchTreeNode[]): unknown[] {
   return nodes.map((n) =>
     n.kind === 'branch' ? n.displayName : { [n.name]: shape(n.children) }
   )
 }
 
-describe('buildRemoteBranchTree', () => {
+describe('buildBranchTree', () => {
   it('leaves a branch with no folder in its name at the top level', () => {
     expect(shape(tree(['origin/main', 'origin/dev']))).toEqual(['dev', 'main'])
   })
@@ -70,7 +70,7 @@ describe('buildRemoteBranchTree', () => {
     expect(buildFolder).toMatchObject({
       kind: 'folder',
       name: 'build',
-      branchNames: ['origin/build/ci/lint', 'origin/build/release'],
+      branches: [{ name: 'origin/build/ci/lint' }, { name: 'origin/build/release' }],
     })
   })
 
