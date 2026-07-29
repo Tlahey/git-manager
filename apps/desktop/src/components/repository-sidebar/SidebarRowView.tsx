@@ -24,6 +24,15 @@ import { IssueItem } from './IssueItem'
 import { WorktreeItem } from './WorktreeItem'
 import { HoverExpandLabel } from './HoverExpandLabel'
 
+/**
+ * Left padding of a row nested inside a remote node. A remote's folders go as deep as the branch
+ * names do, so the indent is computed rather than picked from a fixed set of Tailwind classes —
+ * `2.5rem` is the `pl-10` of a direct child, `1rem` the step the rest of the panel uses.
+ */
+function remoteIndent(depth: number): string {
+  return `${2.5 + depth}rem`
+}
+
 interface SidebarRowViewProps {
   row: SidebarRow
   /** Repo the rows belong to — a PR row needs it to resolve `owner/repo` for its hover card. */
@@ -176,8 +185,11 @@ export function SidebarRowView({
           />
           <button
             onClick={() => onToggleOpen(row.id)}
+            style={
+              row.kind === 'remote-folder' ? { paddingLeft: remoteIndent(row.depth) } : undefined
+            }
             className={`flex min-w-0 flex-1 items-center gap-1.5 py-[3px] pr-2 text-left text-sidebar-muted-foreground transition-colors hover:text-sidebar-foreground ${
-              isFolder ? 'pl-10' : 'pl-6'
+              isFolder ? '' : 'pl-6'
             }`}
           >
             <span className="shrink-0">
@@ -193,7 +205,7 @@ export function SidebarRowView({
               <Globe className="h-3 w-3 shrink-0 opacity-50" />
             )}
             <span className="flex-1 truncate font-medium">
-              {row.kind === 'remote-folder' ? row.prefix.replace(/\/$/, '') : row.remoteName}
+              {row.kind === 'remote-folder' ? row.name : row.remoteName}
             </span>
             <span className="shrink-0 text-[10px] tabular-nums text-sidebar-muted-foreground/40">
               {row.count}
@@ -212,9 +224,8 @@ export function SidebarRowView({
         : t('sidebar.remote.hideInGraph')
       return (
         <div
+          style={{ paddingLeft: remoteIndent(row.depth) }}
           className={`group/rbranch relative flex items-center gap-1.5 py-[3px] pr-2 text-xs transition-colors ${
-            row.depth === 1 ? 'pl-14' : 'pl-10'
-          } ${
             row.isSelected
               ? 'bg-sidebar-accent text-sidebar-foreground'
               : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'

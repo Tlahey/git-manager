@@ -350,58 +350,69 @@ describe('useSidebarRows — remotes section', () => {
   })
 
   // Everything sits under the remote node, and folders inside it are cut on the name *relative to
-  // the remote* — grouping on the raw short name would fold the whole remote into one `origin/`.
-  it('folders branches under the remote by their shared prefix', async () => {
+  // the remote* — splitting the raw short name would fold the whole remote into one `origin/`.
+  it('nests a remote branch one folder per path segment, under its remote', async () => {
     useBranchesMock.mockReturnValue({
-      data: [
-        remoteBranch('origin/feat/a'),
-        remoteBranch('origin/feat/b'),
-        remoteBranch('origin/main'),
-      ],
+      data: [remoteBranch('origin/build/ci/lint'), remoteBranch('origin/main')],
     })
     const { result } = renderRows({ openState: { 'section:remotes': true } })
     await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
 
-    expect(findRow(result.current.sections, 'remote-folder:origin/feat/')).toMatchObject({
-      prefix: 'feat/',
-      count: 2,
-      branchNames: ['origin/feat/a', 'origin/feat/b'],
-    })
-    expect(findRow(result.current.sections, 'remote-branch:refs/remotes/origin/feat/a')).toMatchObject(
-      { displayName: 'a', depth: 1 }
-    )
-    // Nothing to group with: an ungrouped branch stays directly under the remote.
-    expect(findRow(result.current.sections, 'remote-branch:refs/remotes/origin/main')).toMatchObject({
-      displayName: 'main',
+    expect(findRow(result.current.sections, 'remote-folder:origin/build')).toMatchObject({
+      name: 'build',
       depth: 0,
+      count: 1,
     })
+    expect(findRow(result.current.sections, 'remote-folder:origin/build/ci')).toMatchObject({
+      name: 'ci',
+      depth: 1,
+    })
+    expect(
+      findRow(result.current.sections, 'remote-branch:refs/remotes/origin/build/ci/lint')
+    ).toMatchObject({ displayName: 'lint', depth: 2 })
+    // No folder in its name: it stays a direct child of the remote.
+    expect(findRow(result.current.sections, 'remote-branch:refs/remotes/origin/main')).toMatchObject(
+      { displayName: 'main', depth: 0 }
+    )
   })
 
   it('carries every branch name on the remote node, for its visibility toggle', async () => {
     useBranchesMock.mockReturnValue({
-      data: [remoteBranch('origin/feat/a'), remoteBranch('origin/feat/b'), remoteBranch('origin/main')],
+      data: [remoteBranch('origin/build/ci/lint'), remoteBranch('origin/main')],
     })
     const { result } = renderRows({ openState: { 'section:remotes': true } })
     await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
     expect(findRow(result.current.sections, 'remote:origin')).toMatchObject({
-      branchNames: ['origin/feat/a', 'origin/feat/b', 'origin/main'],
+      branchNames: ['origin/build/ci/lint', 'origin/main'],
     })
   })
 
-  it('collapses a remote folder on its own, leaving the rest of the remote alone', async () => {
+  // A closed folder takes everything below it off screen, not just its own leaves.
+  it('collapses a remote folder with its whole subtree, leaving the rest of the remote alone', async () => {
     useBranchesMock.mockReturnValue({
-      data: [remoteBranch('origin/feat/a'), remoteBranch('origin/feat/b'), remoteBranch('origin/main')],
+      data: [remoteBranch('origin/build/ci/lint'), remoteBranch('origin/main')],
     })
     const { result } = renderRows({
-      openState: { 'section:remotes': true, 'remote-folder:origin/feat/': false },
+      openState: { 'section:remotes': true, 'remote-folder:origin/build': false },
     })
     await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
+    expect(findRow(result.current.sections, 'remote-folder:origin/build/ci')).toBeUndefined()
     expect(
-      findRow(result.current.sections, 'remote-branch:refs/remotes/origin/feat/a')
+      findRow(result.current.sections, 'remote-branch:refs/remotes/origin/build/ci/lint')
     ).toBeUndefined()
-    expect(
-      findRow(result.current.sections, 'remote-branch:refs/remotes/origin/main')
-    ).toBeDefined()
+    expect(findRow(result.current.sections, 'remote-branch:refs/remotes/origin/main')).toBeDefined()
+  })
+
+  // Under a remote a folder is a namespace, so it exists whether one branch sits in it or ten —
+  // unlike the local list, which only folds a prefix shared by at least two branches.
+  it('folders a lone remote branch that the local list would leave flat', async () => {
+    useBranchesMock.mockReturnValue({ data: [remoteBranch('origin/build/xxxx')] })
+    const { result } = renderRows({ openState: { 'section:remotes': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
+    expect(findRow(result.current.sections, 'remote-folder:origin/build')).toMatchObject({
+      name: 'build',
+      count: 1,
+    })
   })
 })
 

@@ -58,11 +58,13 @@ export type SidebarRow =
       kind: 'remote-folder'
       id: string
       remoteName: string
-      /** Prefix relative to the remote, e.g. `feat/` for `origin/feat/a`. */
-      prefix: string
+      /** The path segment itself, e.g. `build` for `origin/build/ci` — folders nest to any depth. */
+      name: string
       count: number
       isOpen: boolean
-      /** Short names of the branches in this folder — what its visibility toggle acts on. */
+      /** Folders above it inside the remote node — 0 for a direct child of the remote. */
+      depth: number
+      /** Short names of every branch below this folder, at any depth. */
       branchNames: string[]
     }
   | {
@@ -70,10 +72,10 @@ export type SidebarRow =
       id: string
       branch: GitBranch
       remoteName: string
-      /** Name shown on the row: the remote prefix, and the folder's when nested, are stripped. */
+      /** Name shown on the row: the remote and every folder above it are stripped. */
       displayName: string
-      /** 1 when nested under a remote folder, so the row indents past it. */
-      depth: 0 | 1
+      /** Folders above it inside the remote node — 0 for a direct child of the remote. */
+      depth: number
       isSelected: boolean
     }
   | {

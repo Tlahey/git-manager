@@ -4,7 +4,8 @@ import { useTranslation } from '@git-manager/i18n'
 import type { GitBranch, GitRef, GitSubmodule, GitWorktree } from '@git-manager/git-types'
 import { useBranches } from './useBranches'
 import { useGitStashes } from './useGitStashes'
-import { groupBranchesByPrefix, useGroupedBranches } from './useGroupedBranches'
+import { useGroupedBranches } from './useGroupedBranches'
+import { buildRemoteBranchTree, type RemoteTreeNode } from '../lib/remoteBranchTree'
 import { usePullRequests } from './usePullRequests'
 import { useRepoIssues } from './useRepoIssues'
 import { useRepoPrFilters } from './useRepoPrFilters'
@@ -383,47 +384,38 @@ export function useSidebarRows({
             branchNames: branches.map((b) => b.shortName),
           })
           if (gopen) {
-            const { groups: remoteFolders, ungrouped: looseBranches } = groupBranchesByPrefix(
-              branches,
-              relativeName
-            )
-            for (const b of looseBranches) {
-              remoteRows.push({
-                kind: 'remote-branch',
-                id: `remote-branch:${b.name}`,
-                branch: b,
-                remoteName,
-                displayName: relativeName(b),
-                depth: 0,
-                isSelected: isSelected(b),
-              })
-            }
-            for (const { prefix, branches: folderBranches } of remoteFolders) {
-              const fid = `remote-folder:${remoteName}/${prefix}`
-              const fopen = subOpen(fid, true)
-              remoteRows.push({
-                kind: 'remote-folder',
-                id: fid,
-                remoteName,
-                prefix,
-                count: folderBranches.length,
-                isOpen: fopen,
-                branchNames: folderBranches.map((b) => b.shortName),
-              })
-              if (fopen) {
-                for (const b of folderBranches) {
+            // Walked rather than flattened: a remote's folders nest (`build/ci/lint`), and a
+            // closed folder has to take everything below it off screen, not just its own leaves.
+            const pushTree = (nodes: RemoteTreeNode[], parentId: string, depth: number) => {
+              for (const node of nodes) {
+                if (node.kind === 'branch') {
                   remoteRows.push({
                     kind: 'remote-branch',
-                    id: `remote-branch:${b.name}`,
-                    branch: b,
+                    id: `remote-branch:${node.branch.name}`,
+                    branch: node.branch,
                     remoteName,
-                    displayName: relativeName(b).slice(prefix.length),
-                    depth: 1,
-                    isSelected: isSelected(b),
+                    displayName: node.displayName,
+                    depth,
+                    isSelected: isSelected(node.branch),
                   })
+                  continue
                 }
+                const fid = `${parentId}/${node.name}`
+                const fopen = subOpen(fid, true)
+                remoteRows.push({
+                  kind: 'remote-folder',
+                  id: fid,
+                  remoteName,
+                  name: node.name,
+                  count: node.branchNames.length,
+                  isOpen: fopen,
+                  depth,
+                  branchNames: node.branchNames,
+                })
+                if (fopen) pushTree(node.children, fid, depth + 1)
               }
             }
+            pushTree(buildRemoteBranchTree(branches, relativeName), `remote-folder:${remoteName}`, 0)
           }
         }
       }

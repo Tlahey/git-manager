@@ -320,23 +320,34 @@ describe('SidebarRowView — remote-group', () => {
 })
 
 describe('SidebarRowView — remote-folder', () => {
-  const remoteFolder = () => ({
+  const remoteFolder = (over: Record<string, unknown> = {}) => ({
     kind: 'remote-folder' as const,
     id: 'rf-origin-feat',
     remoteName: 'origin',
-    prefix: 'feat/',
+    name: 'feat',
     count: 2,
     isOpen: false,
+    depth: 0,
     branchNames: ['origin/feat/a', 'origin/feat/b'],
+    ...over,
   })
 
-  it('shows the prefix without its trailing slash, with its count, and toggles on click', async () => {
+  it('shows the segment name with its count, and toggles on click', async () => {
     const user = userEvent.setup()
     const { h } = renderRow(remoteFolder())
     expect(screen.getByText('feat')).toBeInTheDocument()
     expect(screen.getByText('2')).toBeInTheDocument()
     await user.click(screen.getByText('feat'))
     expect(h.onToggleOpen).toHaveBeenCalledWith('rf-origin-feat')
+  })
+
+  // Folders nest as deep as the branch names do, so the indent is computed, not a fixed class.
+  it('indents a nested folder past its parent', () => {
+    render(<SidebarRowView row={remoteFolder()} {...baseHandlers()} />)
+    expect(screen.getByText('feat').closest('button')?.style.paddingLeft).toBe('2.5rem')
+
+    render(<SidebarRowView row={remoteFolder({ depth: 2, name: 'ci' })} {...baseHandlers()} />)
+    expect(screen.getByText('ci').closest('button')?.style.paddingLeft).toBe('4.5rem')
   })
 
   it('hides only the branches in the folder', () => {
@@ -378,15 +389,16 @@ describe('SidebarRowView — remote-branch', () => {
 
   it('indents a branch nested under a folder past one that is not', () => {
     const { container } = render(<SidebarRowView row={remoteBranch()} {...baseHandlers()} />)
-    expect(container.querySelector('[role="button"]')?.className).toContain('pl-10')
+    expect(container.querySelector<HTMLElement>('[role="button"]')?.style.paddingLeft).toBe(
+      '2.5rem'
+    )
 
     const nested = render(
-      <SidebarRowView
-        row={remoteBranch({ depth: 1, displayName: 'a' })}
-        {...baseHandlers()}
-      />
+      <SidebarRowView row={remoteBranch({ depth: 2, displayName: 'a' })} {...baseHandlers()} />
     )
-    expect(nested.container.querySelector('[role="button"]')?.className).toContain('pl-14')
+    expect(nested.container.querySelector<HTMLElement>('[role="button"]')?.style.paddingLeft).toBe(
+      '4.5rem'
+    )
   })
 
   it('shows ahead/behind counters', () => {
