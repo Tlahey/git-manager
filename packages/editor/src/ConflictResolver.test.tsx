@@ -1,4 +1,4 @@
-import { createRef, type Ref } from 'react'
+import { StrictMode, createRef, type Ref } from 'react'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -576,9 +576,11 @@ describe('ConflictResolver — undo/redo history bookkeeping', () => {
 })
 
 describe('ConflictResolver — collapse-unchanged toggle', () => {
-  it('hides a long unchanged block’s middle lines and shows a collapsed-region banner, then expands it back on click', async () => {
+  // One long unchanged run followed by a real conflict — enough context for the collapse to have
+  // something to hide (lines 4-7 of the 10 unchanged ones, keeping a few on each side).
+  function collapsibleBlocks(): MergeBlock[] {
     const unchangedLines = Array.from({ length: 10 }, (_, i) => `line ${i + 1}`)
-    const blocks: MergeBlock[] = [
+    return [
       {
         blockId: 1,
         kind: 'unchanged',
@@ -600,14 +602,14 @@ describe('ConflictResolver — collapse-unchanged toggle', () => {
         theirsLines: ['theirs conflict'],
       },
     ]
-    const user = userEvent.setup()
-    renderMerge(blocks)
+  }
+
+  it('hides a long unchanged block’s middle lines out of the box, and expands it back when its banner is clicked', async () => {
+    renderMerge(collapsibleBlocks())
 
     await waitFor(() => expect(fakeEditors.get(theirsPath)).toBeDefined())
-    expect(fakeEditors.get(theirsPath)!.hiddenAreas).toEqual([])
 
-    await user.click(screen.getByTestId('merge-collapse-unchanged-btn'))
-
+    // Collapsed with no host opt-in: `defaultCollapseUnchanged` is on unless a host passes false.
     await waitFor(() => {
       const ranges = fakeEditors.get(theirsPath)!.hiddenAreas
       expect(ranges).toHaveLength(1)
@@ -623,6 +625,22 @@ describe('ConflictResolver — collapse-unchanged toggle', () => {
 
     await waitFor(() => {
       expect(fakeEditors.get(theirsPath)!.hiddenAreas).toEqual([])
+    })
+  })
+
+  it('starts expanded when the host opts out, and the header toggle collapses it', async () => {
+    const user = userEvent.setup()
+    renderMerge(collapsibleBlocks(), { defaultCollapseUnchanged: false })
+
+    await waitFor(() => expect(fakeEditors.get(theirsPath)).toBeDefined())
+    expect(fakeEditors.get(theirsPath)!.hiddenAreas).toEqual([])
+
+    await user.click(screen.getByTestId('merge-collapse-unchanged-btn'))
+
+    await waitFor(() => {
+      const ranges = fakeEditors.get(theirsPath)!.hiddenAreas
+      expect(ranges).toHaveLength(1)
+      expect(ranges[0]).toMatchObject({ startLineNumber: 4, endLineNumber: 7 })
     })
   })
 })
@@ -932,5 +950,54 @@ describe('ConflictResolver — panel resizing', () => {
 
     expect(screen.getByTestId('merge-resize-handle-left')).toBeInTheDocument()
     expect(screen.queryByTestId('merge-resize-handle-right')).not.toBeInTheDocument()
+  })
+})
+
+describe('theme-derived chrome', () => {
+  it("publishes the theirs pane's real Monaco background as --merge-editor-background and keeps it synced", async () => {
+    const { container } = renderMerge(conflictBlocks())
+    const root = container.firstElementChild as HTMLElement
+    const theirsDomNode = fakeEditors.get(theirsPath)!.getDomNode()
+
+    // Whatever Monaco actually paints — never a hardcoded dark hex. The inter-pane gaps and the
+    // collapsed-region label read this property, so they stay seamless with the panes in every
+    // theme (see handlePaneMount / styles.css).
+    expect(root.style.getPropertyValue('--merge-editor-background')).toBe('rgba(0, 0, 0, 0)')
+
+    // A theme switch mutates the editor's own style/class; the MutationObserver re-reads it.
+    theirsDomNode.style.backgroundColor = 'rgb(17, 9, 34)'
+
+    await waitFor(() =>
+      expect(root.style.getPropertyValue('--merge-editor-background')).toBe('rgb(17, 9, 34)')
+    )
+    expect(screen.getByTestId('merge-pane-theirs-wrapper').style.backgroundColor).toBe(
+      'rgb(17, 9, 34)'
+    )
+  })
+})
+
+describe('ConflictResolver — StrictMode double-mount', () => {
+  // The desktop app renders under `<React.StrictMode>`, which double-invokes effects on mount
+  // (mount → cleanup → mount). Nothing else in this suite — nor Storybook, nor the Playwright
+  // visual baselines — mounts that way, which is exactly how a latched `scheduleRecompute` guard
+  // shipped: the connector `<svg>` was rendered with no `<path>` inside it in the real app while
+  // every other environment kept drawing ribbons. See useMergeConnectors' cleanup.
+  it('still computes connector ribbons when effects are double-invoked', async () => {
+    render(
+      <StrictMode>
+        <ConflictResolver
+          panels={[{ content: 'line1\noriginal line\nline3' }, { content: 'line1\nmodified line\nline3' }]}
+          modelPathPrefix={DIFF_PREFIX}
+          editor={{ component: FakeMonacoEditor }}
+        />
+      </StrictMode>
+    )
+
+    await waitFor(() => expect(fakeEditors.get(modifiedPath)).toBeDefined())
+    await waitFor(() => {
+      expect(screen.getByTestId('merge-connector-ribbon-left-1')).toHaveClass(
+        'merge-connector-modification'
+      )
+    })
   })
 })

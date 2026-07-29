@@ -412,8 +412,10 @@
    "Monaco's current background" here). Instead, `ConflictResolver.tsx`'s `handlePaneMount` reads
    this pane's *actual* computed background at mount and keeps it synced (via a `MutationObserver`
    on the editor's class/style, since `monaco.editor` exposes no theme-change event either) onto
-   this wrapper as an inline style — works for every theme, built-in or host-generated, with
-   nothing hardcoded here. */
+   this wrapper as an inline style, and onto the resolver root as `--merge-editor-background` for
+   everything else that has to match it — works for every theme, built-in or host-generated, with
+   nothing hardcoded here. Rules below fall back to the app's own `--background`/`--foreground`
+   tokens rather than a fixed dark hex, so the chrome is theme-colored before the first sync. */
 .merge-pane-numbers-right {
   padding-left: 8px;
 }
@@ -480,7 +482,7 @@
   content: "" !important;
   position: absolute !important;
   inset: 0 !important;
-  background-color: var(--vscode-descriptionForeground, #9ca3af) !important;
+  background-color: var(--vscode-descriptionForeground, hsl(var(--muted-foreground))) !important;
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M0,10 Q5,5 10,10 T20,10' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M0,10 Q5,5 10,10 T20,10' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
   -webkit-mask-repeat: repeat-x !important;
@@ -497,7 +499,7 @@
    once, in every pane and gap it spans. */
 .monaco-collapsed-zone-banner:hover::before,
 .monaco-collapsed-zone-banner.is-hovered::before {
-  background-color: var(--vscode-foreground, #e5e7eb) !important;
+  background-color: var(--vscode-foreground, hsl(var(--foreground))) !important;
 }
 
 /* Line-count label — hidden until hover, sitting above the (now-highlighted) wave via z-index.
@@ -513,14 +515,14 @@
   position: relative !important;
   z-index: 1 !important;
   opacity: 0 !important;
-  background-color: var(--vscode-editor-background, #1e1e1e) !important;
-  color: var(--vscode-foreground, #e5e7eb) !important;
+  background-color: var(--merge-editor-background, hsl(var(--background))) !important;
+  color: var(--vscode-foreground, hsl(var(--foreground))) !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
   font-size: 11px !important;
   font-weight: 500 !important;
   padding: 2px 8px !important;
   border-radius: 4px !important;
-  border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.15)) !important;
+  border: 1px solid var(--vscode-widget-border, hsl(var(--border))) !important;
   pointer-events: none !important;
   transition: opacity 0.15s ease !important;
 }
@@ -547,7 +549,7 @@
    line threading through the gap rather than two different decorations. */
 .merge-connector-collapsed-wave {
   fill: none !important;
-  stroke: var(--vscode-descriptionForeground, #9ca3af) !important;
+  stroke: var(--vscode-descriptionForeground, hsl(var(--muted-foreground))) !important;
   stroke-width: 2px !important;
   stroke-linecap: round !important;
   stroke-linejoin: round !important;
@@ -557,7 +559,7 @@
 
 .merge-connector-collapsed-wave.is-hovered,
 g.is-hovered .merge-connector-collapsed-wave {
-  stroke: var(--vscode-foreground, #e5e7eb) !important;
+  stroke: var(--vscode-foreground, hsl(var(--foreground))) !important;
 }
 
 .merge-connector-overlay {

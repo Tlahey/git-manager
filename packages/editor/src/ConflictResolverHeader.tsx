@@ -136,18 +136,18 @@ export function ConflictResolverHeader({
   const showStats = actions.stats !== false
 
   return (
-    <div className="flex w-full select-none flex-col border-b border-[#2d2d2d] bg-[#1b1b1b] font-sans text-foreground">
-      {/* 1. TOOLBAR SUPÉRIEUR */}
-      <div className="flex h-9 min-w-0 items-center justify-between border-b border-[#2a2a2a] px-3">
+    <div className="flex w-full select-none flex-col border-b border-border bg-card font-sans text-foreground">
+      {/* 1. TOP TOOLBAR */}
+      <div className="flex h-9 min-w-0 items-center justify-between border-b border-border/60 px-3">
         {/* Left container: Delta navigation and Apply changes module */}
         <div className="flex min-w-0 shrink-0 items-center gap-1.5">
-          {/* A. À gauche : Navigation dans les deltas & fusion globale */}
+          {/* A. Left: delta navigation & global merge */}
           {showNavigation && (
             <div className="flex shrink-0 items-center gap-0.5">
               <button
                 onClick={() => onNavigate('prev')}
                 disabled={!canNavigatePrev}
-                className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-[#2e2e2e] hover:text-foreground active:bg-[#3e3e3e] disabled:text-muted-foreground/45 disabled:opacity-30 disabled:hover:bg-transparent"
+                className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70 disabled:text-muted-foreground/45 disabled:opacity-30 disabled:hover:bg-transparent"
                 title={navPrevTitle}
                 data-testid="merge-nav-prev"
               >
@@ -156,7 +156,7 @@ export function ConflictResolverHeader({
               <button
                 onClick={() => onNavigate('next')}
                 disabled={!canNavigateNext}
-                className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-[#2e2e2e] hover:text-foreground active:bg-[#3e3e3e] disabled:text-muted-foreground/45 disabled:opacity-30 disabled:hover:bg-transparent"
+                className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70 disabled:text-muted-foreground/45 disabled:opacity-30 disabled:hover:bg-transparent"
                 title={navNextTitle}
                 data-testid="merge-nav-next"
               >
@@ -165,11 +165,11 @@ export function ConflictResolverHeader({
 
               {showApply && (
                 <>
-                  <div className="mx-1.5 h-4 w-px bg-[#2d2d2d]" />
+                  <div className="mx-1.5 h-4 w-px bg-border" />
 
                   <button
                     onClick={onApplyAll}
-                    className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-[#2e2e2e] hover:text-foreground active:bg-[#3e3e3e]"
+                    className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
                     title={applyAllIconTitle}
                     data-testid="merge-apply-all-icon"
                   >
@@ -180,7 +180,7 @@ export function ConflictResolverHeader({
             </div>
           )}
 
-          {/* B. Au centre : Module "Apply non-conflicting changes" */}
+          {/* B. Center: "Apply non-conflicting changes" module */}
           {showApply && (
             <div className="flex min-w-0 items-center gap-1.5">
               <span className="mr-1 truncate text-[11px] text-muted-foreground/70">
@@ -188,21 +188,21 @@ export function ConflictResolverHeader({
               </span>
               <button
                 onClick={onApplyLeft}
-                className="whitespace-nowrap rounded border border-[#3e3e3e] bg-[#242424] px-2 py-0.5 text-[11px] font-medium text-foreground/90 shadow-sm transition-colors hover:bg-[#2e2e2e] active:bg-[#363636]"
+                className="whitespace-nowrap rounded border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
                 data-testid="merge-apply-left-btn"
               >
                 {applyLeftLabel}
               </button>
               <button
                 onClick={onApplyAll}
-                className="whitespace-nowrap rounded border border-[#3e3e3e] bg-[#242424] px-2 py-0.5 text-[11px] font-medium text-foreground/90 shadow-sm transition-colors hover:bg-[#2e2e2e] active:bg-[#363636]"
+                className="whitespace-nowrap rounded border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
                 data-testid="merge-apply-all-btn"
               >
                 {applyAllLabel}
               </button>
               <button
                 onClick={onApplyRight}
-                className="whitespace-nowrap rounded border border-[#3e3e3e] bg-[#242424] px-2 py-0.5 text-[11px] font-medium text-foreground/90 shadow-sm transition-colors hover:bg-[#2e2e2e] active:bg-[#363636]"
+                className="whitespace-nowrap rounded border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
                 data-testid="merge-apply-right-btn"
               >
                 {applyRightLabel}
@@ -210,7 +210,7 @@ export function ConflictResolverHeader({
               {showAutoMerge && (
                 <button
                   onClick={onApplyAuto}
-                  className="ml-0.5 flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-[#2e2e2e] hover:text-foreground active:bg-[#3e3e3e]"
+                  className="ml-0.5 flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
                   title={autoMergeTitle}
                   data-testid="merge-wand-btn"
                 >
@@ -218,12 +218,12 @@ export function ConflictResolverHeader({
                 </button>
               )}
 
-              <div className="mx-1.5 h-4 w-px shrink-0 bg-[#2d2d2d]" />
+              <div className="mx-1.5 h-4 w-px shrink-0 bg-border" />
             </div>
           )}
         </div>
 
-        {/* D. Au centre : État des conflits */}
+        {/* D. Center: conflict state */}
         {showStats && (
           <div
             className="hidden select-none whitespace-nowrap px-4 text-[11px] font-medium text-muted-foreground/85 md:block"
@@ -233,7 +233,7 @@ export function ConflictResolverHeader({
           </div>
         )}
 
-        {/* C. Au centre-droit : Filtres et confort */}
+        {/* C. Center-right: filters and comfort toggles */}
         <div className="flex shrink-0 items-center gap-1.5">
           {/* Whitespace Dropdown */}
           {showWhitespace && (
@@ -265,8 +265,8 @@ export function ConflictResolverHeader({
               onClick={() => setCollapseUnchanged(!collapseUnchanged)}
               className={`flex h-6 w-6 items-center justify-center rounded border transition-colors ${
                 collapseUnchanged
-                  ? 'border-[#4b9dfa] bg-[#1e293b] text-[#4b9dfa]'
-                  : 'border-[#3c3c3c] bg-[#202020] text-muted-foreground/80 hover:bg-[#262626] hover:text-foreground active:bg-[#2c2c2c]'
+                  ? 'border-primary bg-primary/15 text-primary'
+                  : 'border-border bg-secondary text-muted-foreground/80 hover:bg-accent hover:text-accent-foreground active:bg-accent/70'
               }`}
               title={collapseUnchangedTitle}
               data-testid="merge-collapse-unchanged-btn"
@@ -279,7 +279,7 @@ export function ConflictResolverHeader({
           {showReset && (
             <button
               onClick={onReset}
-              className="ml-0.5 flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-[#2e2e2e] hover:text-foreground active:bg-[#3e3e3e]"
+              className="ml-0.5 flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
               title={resetTitle}
               data-testid="merge-reset-btn"
             >
@@ -291,7 +291,7 @@ export function ConflictResolverHeader({
           {showRecalculate && (
             <button
               onClick={onRecalculate}
-              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-[#2e2e2e] hover:text-foreground active:bg-[#3e3e3e]"
+              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/80 transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/70"
               title={recalculateTitle}
               data-testid="merge-recalc-btn"
             >
@@ -301,13 +301,13 @@ export function ConflictResolverHeader({
         </div>
       </div>
 
-      {/* 2. LE STATUS & CONTEXT BAR — only when the host actually supplied at least one status;
+      {/* 2. STATUS & CONTEXT BAR — only when the host actually supplied at least one status;
           otherwise this is a blank strip of border+background contributing nothing (this is the
           case for `ThreeWayMergeEditor`'s 2-way callers that pass no `originalLabel`/
           `modifiedLabel`, e.g. `DiffViewCenter`'s plain file-diff view). */}
       {statuses.some(Boolean) && (
-        <div className="flex h-7 w-full select-none items-center border-b border-[#232323] bg-[#151515] px-0 py-0.5 text-[11px] text-muted-foreground/80">
-          {/* A. Au-dessus de l'éditeur GAUCHE */}
+        <div className="flex h-7 w-full select-none items-center border-b border-border/60 bg-muted/40 px-0 py-0.5 text-[11px] text-muted-foreground/80">
+          {/* A. Above the LEFT editor */}
           <div
             style={{ flex: `${panelWidths[0]} 1 0%` }}
             className="flex min-w-0 items-center px-3"
@@ -319,7 +319,7 @@ export function ConflictResolverHeader({
           {/* Left Gap Filler */}
           <div style={{ width: gapWidth }} className="shrink-0" />
 
-          {/* B. Au-dessus de l'éditeur CENTRAL */}
+          {/* B. Above the CENTER editor */}
           <div
             style={{ flex: `${panelWidths[1]} 1 0%` }}
             className="flex min-w-0 items-center px-3"
@@ -334,7 +334,7 @@ export function ConflictResolverHeader({
               {/* Right Gap Filler */}
               <div style={{ width: gapWidth }} className="shrink-0" />
 
-              {/* C. Au-dessus de l'éditeur DROIT */}
+              {/* C. Above the RIGHT editor */}
               <div
                 style={{ flex: `${panelWidths[2]} 1 0%` }}
                 className="flex min-w-0 items-center px-3"
