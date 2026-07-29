@@ -16,6 +16,7 @@ import { useEffectiveRepoSettings } from '../../hooks/useEffectiveRepoSettings'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useCommitSelection } from '../../hooks/useCommitSelection'
+import { useGraphColumnScroll } from '../../hooks/useGraphColumnScroll'
 import { useHorizontalResize } from '@git-manager/components'
 import { useGitGraphNodes, type ConflictRowInfo } from '../../hooks/useGitGraphNodes'
 import type { RebaseProgressStep } from '@git-manager/git-types'
@@ -391,17 +392,42 @@ export function GitGraph({
     )
   }, [columnState, graphMaxColumn, avatarSize])
 
-  // Graph column overflow zone: a single continuous overlay spanning the whole list height (one
-  // segment per row left a one-pixel shadowless seam between rows).
-  const graphOverflowZone = useMemo(() => {
+  // The commit list's scroll container — shared by the virtualizer (vertical) and the graph
+  // column's own horizontal panning.
+  const parentRef = useRef<HTMLDivElement | null>(null)
+
+  // Where the graph column sits in a row — its x-offset is the width of everything to its left,
+  // i.e. the refs column's width when visible and 0 when hidden. Same convention as GraphRow
+  // (band/markers) to stay pixel-aligned. A hidden graph column reports a width of 0.
+  const { refsWidth, graphWidth } = useMemo(() => {
     const graphCol = visibleColumns.find((c) => c.key === 'graph')
-    if (!graphCol) return null
-    const layout = getGraphColumnLayout(graphCol.width, graphMaxColumn, avatarSize)
-    if (layout.overlayOpacity <= 0) return null
     const refsCol = visibleColumns.find((c) => c.key === 'refs')
-    // Graph-column x-offset = width of everything to its left, i.e. the refs column's width when
-    // visible and 0 when hidden. Same convention as GraphRow (band/markers) to stay pixel-aligned.
-    const refsWidth = refsCol ? refsCol.width : 0
+    return { refsWidth: refsCol ? refsCol.width : 0, graphWidth: graphCol ? graphCol.width : 0 }
+  }, [visibleColumns])
+
+  // Footprint of the graph column inside the list (its `mx-2` margins included) and how far its
+  // lanes can be panned sideways — the two things the wheel gesture is bounded by.
+  const graphColumnBounds = useMemo(
+    () => ({
+      left: refsWidth,
+      width: graphWidth === 0 ? 0 : graphWidth + 16,
+      maxScrollX:
+        graphWidth === 0
+          ? 0
+          : getGraphColumnLayout(graphWidth, graphMaxColumn, avatarSize).maxScrollX,
+    }),
+    [refsWidth, graphWidth, graphMaxColumn, avatarSize]
+  )
+
+  const graphScrollX = useGraphColumnScroll(parentRef, graphColumnBounds)
+
+  // Graph column overflow zone: a single continuous overlay spanning the whole list height (one
+  // segment per row left a one-pixel shadowless seam between rows). Its left counterpart renders
+  // nothing — no shadow — so the pinning/clipping geometry alone stands for it.
+  const graphOverflowZone = useMemo(() => {
+    if (graphWidth === 0) return null
+    const layout = getGraphColumnLayout(graphWidth, graphMaxColumn, avatarSize, graphScrollX)
+    if (layout.overlayOpacity <= 0) return null
     return {
       left: refsWidth + 8 + layout.overlayStart,
       // The zone grows with the width deficit (overlayStart recedes progressively) and stops
@@ -410,7 +436,7 @@ export function GitGraph({
       // Shadow fade while the zone grows and over the compact range.
       opacity: layout.overlayOpacity,
     }
-  }, [visibleColumns, graphMaxColumn, avatarSize])
+  }, [refsWidth, graphWidth, graphMaxColumn, avatarSize, graphScrollX])
 
   // Set for O(1) row-level "does this commit match the active search" lookups (see `dimmed`
   // below) — `null` mirrors `matchingOids`'s "no active search" meaning (nothing dimmed).
@@ -563,7 +589,7 @@ export function GitGraph({
   ])
 
   // ── Virtualisation ─────────────────────────────────────────────────────────
-  const parentRef = useRef<HTMLDivElement>(null)
+  // (the scroll container's ref is declared with the graph column's scroll geometry above)
   const lastScrolledRef = useRef<{ branch: string | undefined; repoPath: string }>({
     branch: undefined,
     repoPath: '',
@@ -971,6 +997,7 @@ export function GitGraph({
                             wipRef={wipRef}
                             laneRef={laneRefByOid.get(oid)}
                             graphMaxColumn={graphMaxColumn}
+                            graphScrollX={graphScrollX}
                             isTagDraft={isTagDraftRow}
                             onSubmitTag={isTagDraftRow ? submitTagDraft : undefined}
                             onCancelTag={isTagDraftRow ? cancelTagDraft : undefined}
