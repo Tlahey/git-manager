@@ -7,20 +7,20 @@ import { useGitStashes } from './useGitStashes'
 import { useGroupedBranches } from './useGroupedBranches'
 import { usePullRequests } from './usePullRequests'
 import { useRepoIssues } from './useRepoIssues'
+import { useRepoPrFilters } from './useRepoPrFilters'
 import { useMergedPrsByBranch } from './useMergedPrsByBranch'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
 import { useRepoUIStore } from '../stores/repoUI.store'
 import { issueFilterLabel, useIssueFiltersStore } from '../stores/issueFilters.store'
+import { prFilterLabel, usePrFiltersStore } from '../stores/prFilters.store'
 import { apiGetTags, apiListSubmodules } from '../api/git.api'
 import { apiListWorktrees } from '../api/worktree.api'
-import { groupPullRequests } from '../components/repository-sidebar/prGroups'
 import {
   type SidebarRow,
   type SidebarSection,
   type SectionKey,
   DEFAULT_SECTION_OPEN,
   DEFAULT_PINNED,
-  PR_GROUP_LABEL_KEY,
 } from '../components/repository-sidebar/types'
 
 interface UseSidebarRowsParams {
@@ -79,6 +79,14 @@ export function useSidebarRows({
     currentUser,
     githubToken,
   })
+
+  // The user's saved pull request views — one sub-group each, in this order.
+  const prFilters = usePrFiltersStore((s) => s.filters)
+
+  const {
+    groups: prGroups,
+    isLoading: prFiltersLoading,
+  } = useRepoPrFilters({ remoteUrls, githubToken, filters: prFilters, knownPrs: allPrs })
 
   // The user's saved issue views — one sub-group each, in this order.
   const issueFilters = useIssueFiltersStore((s) => s.filters)
@@ -145,17 +153,25 @@ export function useSidebarRows({
 
   // ── Filtering the non-branch sections — the left panel's search box has to reach all of its
   // content, not just the local/remote branches.
-  const filteredPrs = useMemo(
-    () =>
-      allPrs.filter(
-        (pr) =>
-          includesQuery(pr.title) ||
-          includesQuery(pr.headRef) ||
-          includesQuery(pr.author) ||
-          includesQuery(String(pr.number))
-      ),
+  const matchesPrQuery = (pr: (typeof allPrs)[number]) =>
+    includesQuery(pr.title) ||
+    includesQuery(pr.headRef) ||
+    includesQuery(pr.author) ||
+    includesQuery(String(pr.number))
+
+  // The search box narrows *within* each saved filter rather than across a flat list: a filter is a
+  // saved view, and a search that emptied one would otherwise look like the filter itself broke.
+  const filteredPrGroups = useMemo(
+    () => prGroups.map((group) => ({ ...group, prs: group.prs.filter(matchesPrQuery) })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allPrs, q]
+    [prGroups, q]
+  )
+
+  // De-duplicated across groups — the filters overlap by design, so summing them would over-count
+  // the section header and the search stats.
+  const filteredPrCount = useMemo(
+    () => new Set(filteredPrGroups.flatMap((g) => g.prs.map((p) => p.number))).size,
+    [filteredPrGroups]
   )
 
   // The search box narrows *within* each saved filter rather than across a flat list: a filter is a
@@ -383,7 +399,7 @@ export function useSidebarRows({
       const open = sectionOpen('prs')
       const prRows: SidebarRow[] = []
       if (open) {
-        if (prsLoading) {
+        if (prsLoading || prFiltersLoading) {
           prRows.push({
             kind: 'message',
             id: 'pr:loading',
@@ -396,44 +412,62 @@ export function useSidebarRows({
             id: 'pr:nogithub',
             text: t('sidebar.prs.noGithub'),
           })
-        } else if (filteredPrs.length === 0) {
-          prRows.push({ kind: 'message', id: 'pr:empty', text: t('sidebar.prs.empty') })
+        } else if (filteredPrGroups.length === 0) {
+          prRows.push({ kind: 'message', id: 'pr:nofilters', text: t('sidebar.prFilters.none') })
         } else {
-          // Four overlapping views of the same PR list (see `groupPullRequests`). A personal group
-          // with nothing in it is dropped rather than shown empty — with no signed-in user that
-          // leaves just "All Pull Requests", which is the whole truth we have in that case.
-          for (const group of groupPullRequests(filteredPrs, currentUser)) {
-            if (group.prs.length === 0) continue
-            const gid = `pr-group:${group.key}`
-            const gopen = subOpen(gid, group.key === 'all')
+          // The user's saved filters, every one of them rendered — empty included: a saved view that
+          // vanished when it matched nothing would read as a bug, and its header is the only way
+          // back to editing or deleting it.
+          filteredPrGroups.forEach((group, index) => {
+            const gid = `pr-filter:${group.filter.id}`
+            // Only the first saved view is expanded by default: the others are one click away and
+            // each costs a screenful in a section that shares the panel's height with the rest.
+            const gopen = subOpen(gid, index === 0)
             prRows.push({
               kind: 'subgroup',
               id: gid,
-              label: t(PR_GROUP_LABEL_KEY[group.key]),
+              label: prFilterLabel(group.filter, t),
               count: group.prs.length,
               isOpen: gopen,
+              filter: group.filter,
+              canMoveUp: index > 0,
+              canMoveDown: index < filteredPrGroups.length - 1,
             })
-            if (!gopen) continue
+            if (!gopen) return
+            if (group.error) {
+              // GitHub rejected this one query (a typo'd qualifier, a rate limit) — say so on the
+              // group itself rather than leaving it silently empty next to working ones.
+              prRows.push({
+                kind: 'message',
+                id: `${gid}:error`,
+                text: t('sidebar.prFilters.queryError', { error: group.error }),
+              })
+              return
+            }
+            if (group.prs.length === 0) {
+              prRows.push({ kind: 'message', id: `${gid}:empty`, text: t('sidebar.prs.empty') })
+              return
+            }
             for (const pr of group.prs) {
               prRows.push({
-                // The same PR can appear under several groups, so the row id has to carry the
-                // group — ids are React keys and must stay unique across the section.
+                // The same PR can appear under several filters, so the row id has to carry the
+                // filter — ids are React keys and must stay unique across the section.
                 kind: 'pr',
-                id: `pr:${group.key}:${pr.number}`,
+                id: `pr:${group.filter.id}:${pr.number}`,
                 pr,
-                isSelected: selectedBranch === pr.headRef,
+                isSelected: !!pr.headRef && selectedBranch === pr.headRef,
                 depth: 1,
               })
             }
-          }
+          })
         }
       }
-      const hideForFilter = q && isGithub && !prsLoading && filteredPrs.length === 0
+      const hideForFilter = q && isGithub && !prsLoading && !prFiltersLoading && filteredPrCount === 0
       if (!hideForFilter) {
         list.push({
           key: 'prs',
           title: 'Pull Requests',
-          count: filteredPrs.length || undefined,
+          count: filteredPrCount || undefined,
           isOpen: open,
           rows: prRows,
         })
@@ -622,17 +656,18 @@ export function useSidebarRows({
     openState,
     selectedBranch,
     selectedCommitOid,
-    currentUser,
     localBranches.length,
     pinnedBranches,
     ungrouped,
     groups,
     remoteGroups,
     remoteCount,
-    filteredPrs,
+    filteredPrGroups,
+    filteredPrCount,
     prByBranch,
     isGithub,
     prsLoading,
+    prFiltersLoading,
     filteredIssueGroups,
     filteredIssueCount,
     issuesIsGithub,
@@ -648,7 +683,7 @@ export function useSidebarRows({
       matched:
         localBranches.length +
         remoteCount +
-        filteredPrs.length +
+        filteredPrCount +
         filteredIssueCount +
         filteredTags.length +
         filteredStashes.length +
@@ -666,7 +701,7 @@ export function useSidebarRows({
     [
       localBranches.length,
       remoteCount,
-      filteredPrs,
+      filteredPrCount,
       filteredIssueCount,
       filteredTags,
       filteredStashes,

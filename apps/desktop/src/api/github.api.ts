@@ -423,6 +423,29 @@ export async function fetchIssuesByQuery(
   }))
 }
 
+/**
+ * Pull requests of one repository matching a **raw GitHub search query** — the sidebar's saved PR
+ * filters (see `stores/prFilters.store.ts`). The issue-side twin of {@link fetchIssuesByQuery};
+ * only `repo:` and `is:pr` are prepended.
+ *
+ * Search returns the *issue* representation of a pull request, which carries no `head`/`base`, so
+ * `headRef`/`baseRef` come back empty here. That is why this backs the grouping only: the branch
+ * tags on branch/worktree rows keep reading {@link fetchRepoPRs}, whose full PR objects have them.
+ */
+export async function fetchPullRequestsByQuery(
+  owner: string,
+  repo: string,
+  query: string,
+  token?: string
+): Promise<PullRequest[]> {
+  const q = `repo:${owner}/${repo} is:pr ${query}`.trim()
+  const data = await ghFetch<GhSearchResult<GhRawPR>>(
+    `https://api.github.com/search/issues?q=${encodeURIComponent(q)}&per_page=100&sort=updated&order=desc`,
+    token
+  )
+  return (data.items ?? []).map(rawToPullRequest)
+}
+
 /** Open a new issue on a repository. Requires the token's `repo` scope. */
 export async function createIssue(
   owner: string,

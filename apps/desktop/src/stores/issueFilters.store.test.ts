@@ -4,6 +4,7 @@ import {
   issueFilterLabel,
   useIssueFiltersStore,
 } from './issueFilters.store'
+import { DEFAULT_PR_FILTERS, usePrFiltersStore } from './prFilters.store'
 
 function reset() {
   useIssueFiltersStore.setState({ filters: DEFAULT_ISSUE_FILTERS })
@@ -77,6 +78,50 @@ describe('issueFilters.store', () => {
     const before = useIssueFiltersStore.getState().filters
     useIssueFiltersStore.getState().moveFilter('nope', 'up')
     expect(useIssueFiltersStore.getState().filters).toBe(before)
+  })
+})
+
+describe('prFilters.store', () => {
+  beforeEach(() => {
+    usePrFiltersStore.setState({ filters: DEFAULT_PR_FILTERS })
+  })
+
+  // These four replace the fixed groups the PR section used to hardcode, and reuse their label keys
+  // so the copy is unchanged for anyone who never opens the filter editor.
+  it('ships the four built-in views, in the order the section used to hardcode', () => {
+    expect(usePrFiltersStore.getState().filters.map((f) => f.labelKey)).toEqual([
+      'sidebar.prGroups.mine',
+      'sidebar.prGroups.assigned',
+      'sidebar.prGroups.awaitingReview',
+      'sidebar.prGroups.all',
+    ])
+  })
+
+  it('queries each built-in view the way GitHub search spells it', () => {
+    expect(usePrFiltersStore.getState().filters.map((f) => f.query)).toEqual([
+      'is:open author:@me',
+      'is:open assignee:@me',
+      'is:open review-requested:@me',
+      'is:open',
+    ])
+  })
+
+  // Same factory as the issue store, so only the wiring needs checking here.
+  it('edits and reorders like the issue list does', () => {
+    const id = usePrFiltersStore.getState().addFilter({ name: 'Drafts', query: 'is:draft' })
+    expect(usePrFiltersStore.getState().filters.at(-1)).toMatchObject({ name: 'Drafts' })
+
+    usePrFiltersStore.getState().moveFilter(id, 'up')
+    expect(usePrFiltersStore.getState().filters.at(-2)!.id).toBe(id)
+
+    usePrFiltersStore.getState().removeFilter(id)
+    expect(usePrFiltersStore.getState().filters.map((f) => f.id)).not.toContain(id)
+  })
+
+  // Two stores, two persist keys — one list must never overwrite the other.
+  it('persists under its own key, separate from the issue filters', () => {
+    usePrFiltersStore.getState().addFilter({ name: 'Drafts', query: 'is:draft' })
+    expect(useIssueFiltersStore.getState().filters).toEqual(DEFAULT_ISSUE_FILTERS)
   })
 })
 

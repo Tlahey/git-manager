@@ -48,6 +48,8 @@ interface SidebarSectionHeaderProps {
   onCreateIssue?: () => void
   /** Opens the "new saved issue filter" dialog — one more sub-group in the Issues section. */
   onAddIssueFilter?: () => void
+  /** Same, for the Pull Requests section. */
+  onAddPrFilter?: () => void
   /** When true, `count` reflects an active search filter rather than the section's full contents. */
   isFiltered?: boolean
 }
@@ -69,6 +71,7 @@ export function SidebarSectionHeader({
   onCreatePr,
   onCreateIssue,
   onAddIssueFilter,
+  onAddPrFilter,
   isFiltered = false,
 }: SidebarSectionHeaderProps) {
   const { t } = useTranslation('git')
@@ -209,16 +212,31 @@ export function SidebarSectionHeader({
               </button>
             )}
           </>
-        ) : sectionKey === 'prs' && onCreatePr ? (
-          <button
-            onClick={onCreatePr}
-            className="mr-1 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
-            aria-label={t('sidebar.createPullRequest')}
-            title={t('sidebar.createPullRequest')}
-            data-testid="pr-create-button"
-          >
-            <Plus className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
-          </button>
+        ) : sectionKey === 'prs' && (onCreatePr || onAddPrFilter) ? (
+          <>
+            {onAddPrFilter && (
+              <button
+                onClick={onAddPrFilter}
+                className="mr-0.5 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
+                aria-label={t('sidebar.prFilters.add')}
+                title={t('sidebar.prFilters.add')}
+                data-testid="pr-filter-add-button"
+              >
+                <ListFilter className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
+              </button>
+            )}
+            {onCreatePr && (
+              <button
+                onClick={onCreatePr}
+                className="mr-1 rounded p-0.5 transition-colors hover:bg-sidebar-accent"
+                aria-label={t('sidebar.createPullRequest')}
+                title={t('sidebar.createPullRequest')}
+                data-testid="pr-create-button"
+              >
+                <Plus className="h-3.5 w-3.5 text-sidebar-muted-foreground" />
+              </button>
+            )}
+          </>
         ) : sectionKey === 'issues' && (onCreateIssue || onAddIssueFilter) ? (
           <>
             {onAddIssueFilter && (

@@ -7,7 +7,7 @@ vi.mock('../api/nativeMenu.api', () => ({
   showNativeMenu: (...a: unknown[]) => showNativeMenu(...a),
 }))
 
-import { useSidebarIssueFilterMenu } from './useSidebarIssueFilterMenu'
+import { useSavedFilterMenu } from './useSavedFilterMenu'
 import { DEFAULT_ISSUE_FILTERS, useIssueFiltersStore } from '../stores/issueFilters.store'
 
 type ItemNode = Extract<MenuSpecNode, { kind: 'item' }>
@@ -23,7 +23,7 @@ function openMenu(
   onEdit = vi.fn(),
   target = { filter: DEFAULT_ISSUE_FILTERS[1], canMoveUp: true, canMoveDown: false }
 ) {
-  const { result } = renderHook(() => useSidebarIssueFilterMenu(onEdit))
+  const { result } = renderHook(() => useSavedFilterMenu(useIssueFiltersStore, onEdit))
   act(() => result.current(event(), target))
   return { spec: normalizeMenuSpec(showNativeMenu.mock.calls.at(-1)![0]), onEdit }
 }
@@ -34,7 +34,7 @@ beforeEach(() => {
   useIssueFiltersStore.setState({ filters: DEFAULT_ISSUE_FILTERS })
 })
 
-describe('useSidebarIssueFilterMenu', () => {
+describe('useSavedFilterMenu', () => {
   it('reflects the filter’s position in the list on the move entries', () => {
     const { spec } = openMenu()
     expect(item(spec, 'Move up')!.enabled).toBe(true)
@@ -61,7 +61,7 @@ describe('useSidebarIssueFilterMenu', () => {
 
   it('suppresses the browser menu so only the native one shows', () => {
     const e = event()
-    const { result } = renderHook(() => useSidebarIssueFilterMenu(vi.fn()))
+    const { result } = renderHook(() => useSavedFilterMenu(useIssueFiltersStore, vi.fn()))
     act(() =>
       result.current(e, { filter: DEFAULT_ISSUE_FILTERS[0], canMoveUp: false, canMoveDown: true })
     )

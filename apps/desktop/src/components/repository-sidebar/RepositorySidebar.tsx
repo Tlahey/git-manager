@@ -31,11 +31,13 @@ import { RemoveMergedBranchesDialog } from './RemoveMergedBranchesDialog'
 import { PruneBranchesDialog } from './PruneBranchesDialog'
 import { CreateBranchHereDialog } from '../git-graph/CreateBranchHereDialog'
 import { CreateIssueDialog } from './CreateIssueDialog'
-import { IssueFilterDialog } from './IssueFilterDialog'
+import { SavedFilterDialog } from './SavedFilterDialog'
 import { useSidebarIssueMenu } from '../../hooks/useSidebarIssueMenu'
 import { useSidebarPrMenu } from '../../hooks/useSidebarPrMenu'
-import { useSidebarIssueFilterMenu } from '../../hooks/useSidebarIssueFilterMenu'
-import type { IssueFilter } from '../../stores/issueFilters.store'
+import { useSavedFilterMenu } from '../../hooks/useSavedFilterMenu'
+import { useIssueFiltersStore } from '../../stores/issueFilters.store'
+import { usePrFiltersStore } from '../../stores/prFilters.store'
+import type { SavedFilter } from '../../stores/savedFilters'
 
 interface RepositorySidebarProps {
   repoPath: string
@@ -111,9 +113,12 @@ export function RepositorySidebar({
   const [pruneBranchesOpen, setPruneBranchesOpen] = useState(false)
   const [createBranchOpen, setCreateBranchOpen] = useState(false)
   const [createIssueOpen, setCreateIssueOpen] = useState(false)
-  // null = closed. `{ filter: null }` opens the dialog on a new filter, a filter opens it on that
-  // one — a plain boolean couldn't tell "add" from "edit the first filter".
-  const [filterDialog, setFilterDialog] = useState<{ filter: IssueFilter | null } | null>(null)
+  // null = closed. `filter: null` opens the dialog on a new one; `kind` names the list it belongs
+  // to. A plain boolean couldn't tell "add" from "edit the first filter", nor issues from PRs.
+  const [filterDialog, setFilterDialog] = useState<{
+    kind: 'issues' | 'prs'
+    filter: SavedFilter | null
+  } | null>(null)
 
   const setActiveIssue = useRepoUIStore((s) => s.setActiveIssue)
   const openIssueMenu = useSidebarIssueMenu(repoPath)
@@ -125,8 +130,13 @@ export function RepositorySidebar({
       setAddWorktreeOpen(true)
     }, []),
   })
-  const openIssueFilterMenu = useSidebarIssueFilterMenu(
-    useCallback((filter: IssueFilter) => setFilterDialog({ filter }), [])
+  const openIssueFilterMenu = useSavedFilterMenu(
+    useIssueFiltersStore,
+    useCallback((filter: SavedFilter) => setFilterDialog({ kind: 'issues', filter }), [])
+  )
+  const openPrFilterMenu = useSavedFilterMenu(
+    usePrFiltersStore,
+    useCallback((filter: SavedFilter) => setFilterDialog({ kind: 'prs', filter }), [])
   )
 
   const handleStashContextMenu = (_e: React.MouseEvent, stash: GitStash) => {
@@ -446,7 +456,14 @@ export function RepositorySidebar({
                 section.key === 'issues' ? () => setCreateIssueOpen(true) : undefined
               }
               onAddIssueFilter={
-                section.key === 'issues' ? () => setFilterDialog({ filter: null }) : undefined
+                section.key === 'issues'
+                  ? () => setFilterDialog({ kind: 'issues', filter: null })
+                  : undefined
+              }
+              onAddPrFilter={
+                section.key === 'prs'
+                  ? () => setFilterDialog({ kind: 'prs', filter: null })
+                  : undefined
               }
               isFiltered={isFilterActive}
             />
@@ -473,7 +490,9 @@ export function RepositorySidebar({
                     onPrContextMenu={openPrMenu}
                     onIssueContextMenu={openIssueMenu}
                     onOpenIssue={setActiveIssue}
-                    onIssueFilterMenu={openIssueFilterMenu}
+                    onIssueFilterMenu={
+                      section.key === 'prs' ? openPrFilterMenu : openIssueFilterMenu
+                    }
                     onStashContextMenu={handleStashContextMenu}
                     hiddenStashes={hiddenStashes}
                     onToggleStashVisibility={(oid) => toggleStashVisibility(repoPath, oid)}
@@ -560,9 +579,11 @@ export function RepositorySidebar({
         onClose={() => setCreateIssueOpen(false)}
         onCreated={refreshIssues}
       />
-      <IssueFilterDialog
+      <SavedFilterDialog
         open={filterDialog !== null}
+        kind={filterDialog?.kind ?? 'issues'}
         filter={filterDialog?.filter ?? null}
+        useStore={filterDialog?.kind === 'prs' ? usePrFiltersStore : useIssueFiltersStore}
         onClose={() => setFilterDialog(null)}
       />
     </div>

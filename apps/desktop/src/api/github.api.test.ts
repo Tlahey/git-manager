@@ -40,6 +40,7 @@ import {
   fetchPrReviewSummary,
   fetchRepoIssues,
   fetchIssuesByQuery,
+  fetchPullRequestsByQuery,
   createIssue,
   fetchRepoDefaultBranch,
   apiGithubDeviceCode,
@@ -921,6 +922,89 @@ describe('fetchIssuesByQuery', () => {
       vi.fn().mockResolvedValue(jsonResponse({ message: 'Validation Failed' }, false, 422))
     )
     await expect(fetchIssuesByQuery('org', 'repo', 'is:nonsense')).rejects.toThrow()
+  })
+})
+
+describe('fetchPullRequestsByQuery', () => {
+  it('scopes the saved filter to the repo and to PRs, and passes the rest through', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ items: [] }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await fetchPullRequestsByQuery('org', 'repo', 'is:open review-requested:@me', 'tok')
+
+    const url = new URL(fetchMock.mock.calls[0][0])
+    expect(url.pathname).toBe('/search/issues')
+    expect(url.searchParams.get('q')).toBe('repo:org/repo is:pr is:open review-requested:@me')
+  })
+
+  it('maps the search results into pull requests', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          items: [
+            {
+              number: 42,
+              title: 'Add feature',
+              html_url: 'https://github.com/org/repo/pull/42',
+              state: 'open',
+              draft: false,
+              merged_at: null,
+              user: { login: 'antoine', avatar_url: 'a.png' },
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-02T00:00:00Z',
+            },
+          ],
+        })
+      )
+    )
+
+    const prs = await fetchPullRequestsByQuery('org', 'repo', 'is:open')
+
+    expect(prs).toHaveLength(1)
+    expect(prs[0]).toMatchObject({ number: 42, title: 'Add feature', author: 'antoine' })
+  })
+
+  // Search returns the *issue* view of a PR, which carries no head/base — the caller swaps in the
+  // full object from the repo's own PR list, so these coming back empty is expected, not a bug.
+  it('leaves head and base empty, since search does not carry them', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          items: [
+            {
+              number: 42,
+              title: 'x',
+              html_url: '',
+              state: 'open',
+              draft: false,
+              merged_at: null,
+              created_at: '',
+              updated_at: '',
+            },
+          ],
+        })
+      )
+    )
+
+    const prs = await fetchPullRequestsByQuery('org', 'repo', 'is:open')
+
+    expect(prs[0].headRef).toBe('')
+    expect(prs[0].baseRef).toBe('')
+  })
+
+  it('returns an empty list when the search matches nothing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({})))
+    await expect(fetchPullRequestsByQuery('org', 'repo', 'is:open')).resolves.toEqual([])
+  })
+
+  it('throws when GitHub rejects the query', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse({ message: 'Validation Failed' }, false, 422))
+    )
+    await expect(fetchPullRequestsByQuery('org', 'repo', 'is:nonsense')).rejects.toThrow()
   })
 })
 

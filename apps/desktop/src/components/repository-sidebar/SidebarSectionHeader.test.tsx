@@ -287,6 +287,51 @@ describe('SidebarSectionHeader', () => {
     expect(screen.queryByTestId('issue-create-button')).not.toBeInTheDocument()
   })
 
+  it('fires onAddPrFilter from the pull requests section header', async () => {
+    const user = userEvent.setup()
+    const onAddPrFilter = vi.fn()
+    render(
+      <SidebarSectionHeader
+        sectionKey="prs"
+        title="Pull Requests"
+        isOpen={true}
+        onToggle={vi.fn()}
+        onAddPrFilter={onAddPrFilter}
+      />
+    )
+    await user.click(screen.getByLabelText('Add a pull request filter'))
+    expect(onAddPrFilter).toHaveBeenCalledOnce()
+  })
+
+  it('shows the add-filter and create-PR actions side by side', () => {
+    render(
+      <SidebarSectionHeader
+        sectionKey="prs"
+        title="Pull Requests"
+        isOpen={true}
+        onToggle={vi.fn()}
+        onCreatePr={vi.fn()}
+        onAddPrFilter={vi.fn()}
+      />
+    )
+    expect(screen.getByTestId('pr-filter-add-button')).toBeInTheDocument()
+    expect(screen.getByTestId('pr-create-button')).toBeInTheDocument()
+  })
+
+  // Each section owns its own add-filter button; they must not leak across.
+  it('does not put the PR add-filter action on the issues header', () => {
+    render(
+      <SidebarSectionHeader
+        sectionKey="issues"
+        title="Issues"
+        isOpen={true}
+        onToggle={vi.fn()}
+        onAddPrFilter={vi.fn()}
+      />
+    )
+    expect(screen.queryByTestId('pr-filter-add-button')).not.toBeInTheDocument()
+  })
+
   it('fires onAddIssueFilter from the issues section header', async () => {
     const user = userEvent.setup()
     const onAddIssueFilter = vi.fn()

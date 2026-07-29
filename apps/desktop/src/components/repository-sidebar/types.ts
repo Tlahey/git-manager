@@ -7,7 +7,7 @@ import type {
   GitStash,
 } from '@git-manager/git-types'
 import type { MockIssue } from '../../app/pull-requests/types'
-import type { IssueFilter } from '../../stores/issueFilters.store'
+import type { SavedFilter } from '../../stores/savedFilters'
 
 /** Stable section identifiers (open state + scroll). */
 export type SectionKey =
@@ -19,24 +19,6 @@ export type SectionKey =
   | 'submodules'
   | 'stashes'
   | 'worktrees'
-
-/**
- * The buckets pull requests are split into inside the "Pull Requests" section. Every open PR of the
- * repo appears under `all`; the first three are additional, overlapping views of that same list
- * (a PR you opened *and* were assigned shows up under both), so the counts deliberately don't sum
- * to `all`.
- */
-export type PrGroupKey = 'mine' | 'assigned' | 'awaitingReview' | 'all'
-
-export const PR_GROUP_ORDER: PrGroupKey[] = ['mine', 'assigned', 'awaitingReview', 'all']
-
-/** i18n key (in the `git` namespace) for each PR sub-group's header label. */
-export const PR_GROUP_LABEL_KEY: Record<PrGroupKey, string> = {
-  mine: 'sidebar.prGroups.mine',
-  assigned: 'sidebar.prGroups.assigned',
-  awaitingReview: 'sidebar.prGroups.awaitingReview',
-  all: 'sidebar.prGroups.all',
-}
 
 /**
  * One row in the body of a sidebar section (branches, folders, tags, …) — not the section header
@@ -84,11 +66,10 @@ export type SidebarRow =
       count: number
       isOpen: boolean
       /**
-       * The saved issue filter this sub-group renders, when it is one. Its presence is what gives
-       * the header its own actions button (edit / delete / move) — the PR sub-groups are fixed and
-       * carry none.
+       * The saved filter this sub-group renders — issues and pull requests alike. Its presence is
+       * what gives the header its own actions button (edit / delete / move).
        */
-      filter?: IssueFilter
+      filter?: SavedFilter
       /** False on the first / last filter, which greys out the corresponding move entry. */
       canMoveUp?: boolean
       canMoveDown?: boolean
@@ -109,9 +90,9 @@ export type SidebarRow =
   | { kind: 'message'; id: string; text: string; loading?: boolean }
   | { kind: 'divider'; id: string }
 
-/** What a saved issue filter's sub-group header hands to its actions menu. */
+/** What a saved filter's sub-group header hands to its actions menu. */
 export interface IssueFilterMenuTarget {
-  filter: IssueFilter
+  filter: SavedFilter
   canMoveUp?: boolean
   canMoveDown?: boolean
 }
