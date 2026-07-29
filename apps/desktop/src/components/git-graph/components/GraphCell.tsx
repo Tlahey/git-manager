@@ -106,9 +106,14 @@ export function GraphCell({
             <div
               // Pulse the whole ring while the agent is actively producing output — a passive
               // "something is happening here" cue that complements the working/idle status tag.
+              //
+              // The pulse states its own `animate-duration-1000`, because the `duration-150` next
+              // to `transition-all` above also sets `animation-duration` (tailwindcss-animate
+              // teaches `duration-*` both) and would otherwise cut the pulse down to 150ms, which
+              // reads as a flicker rather than a breath.
               className={cn(
                 'flex select-none items-center justify-center rounded-full border border-dashed shadow-sm transition-all duration-150',
-                agent?.state === 'working' && 'animate-pulse'
+                agent?.state === 'working' && 'animate-pulse animate-duration-1000'
               )}
               style={{
                 width: avatarSize,

@@ -126,6 +126,29 @@ describe('Tooltip — show/hide timing', () => {
     expect(screen.getByRole('tooltip').className).not.toContain('animate-in')
   })
 
+  // Regression: the bubble carried a bare `duration-150`, which emits `transition-duration` —
+  // leaving `transition-property` at its initial value, `all`. Since the bubble is mounted at
+  // -9999px to be measured and only then moved onto the trigger, that move became a 150ms
+  // animation: the tooltip appeared far above the trigger and slid down into place.
+  //
+  // jsdom runs no transitions, so what is asserted is the guard — the bubble opts out of
+  // transitions outright, and carries no class that could turn one back on. `animate-duration-*`
+  // is deliberately still allowed: it times the keyframe animation and never a transition.
+  it('never transitions the position it is moved to after being measured', () => {
+    render(
+      <Tooltip content="Hello" className="max-w-xs">
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    fireEvent.mouseEnter(screen.getByText('Trigger'))
+    act(() => vi.advanceTimersByTime(150))
+
+    const bubble = screen.getByRole('tooltip')
+    expect(bubble.style.transition).toBe('none')
+    expect(bubble.className).not.toMatch(/(?<!animate-)\bduration-/)
+    expect(bubble.className).not.toMatch(/\btransition\b|\btransition-/)
+  })
+
   it('never shows when disabled', () => {
     render(
       <Tooltip content="Hello" disabled>

@@ -114,7 +114,7 @@ export function WipStagingPanel({
 
       {batchMode ? (
         /* Smart Batch Mode */
-        <div className="animate-in fade-in slide-in-from-top-1 space-y-4 pt-1 duration-150">
+        <div className="animate-in fade-in slide-in-from-top-1 space-y-4 pt-1 animate-duration-150">
           <p className="border-b border-border/20 pb-1 text-[10px] font-medium leading-relaxed text-muted-foreground">
             {t('commitDetails.batchCommit.subtitle')}
           </p>
