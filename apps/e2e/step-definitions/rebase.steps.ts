@@ -189,6 +189,10 @@ Then(/^the commit details panel is not shown$/, async () => {
   await $('[data-testid="commit-details-panel"]').waitForExist({ reverse: true, timeout: 10000 })
 })
 
+Then(/^the commit details panel is shown$/, async () => {
+  await $('[data-testid="commit-details-panel"]').waitForDisplayed({ timeout: 10000 })
+})
+
 When(/^I toggle the conflicted files panel$/, async () => {
   await waitForAppIdle()
   const button = $('[data-testid="rebase-progress-toggle-files"]')

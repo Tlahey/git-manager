@@ -1,5 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<!-- `landing` gates the few global rules in style.css (reset, body background,
+     scrollbars) so the stylesheet can also be loaded by the documentation site,
+     which renders this page as its home. `initLanding()` adds the class too, but
+     from markup it is there on the first paint instead of after hydration. -->
+<html lang="en" class="landing">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -17,8 +21,12 @@
     <meta property="og:url" content="https://tlahey.github.io/git-manager/" />
     <meta property="og:image" content="https://tlahey.github.io/git-manager/og-image.png" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
-    <link rel="icon" type="image/png" sizes="128x128" href="app-icon-128.png" />
+    <!-- The bare mascot rather than the badged app icon: at 32px the badge's
+         rounded square eats the space and the octopus inside it turns to mush.
+         Apple touch icons stay on the app icon — iOS composites them onto an
+         opaque tile, which a transparent PNG makes a mess of. -->
+    <link rel="icon" type="image/png" sizes="32x32" href="mascot-icon-32.png" />
+    <link rel="icon" type="image/png" sizes="128x128" href="mascot-icon-128.png" />
     <link rel="apple-touch-icon" href="app-icon-256.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -42,6 +50,15 @@
           <li><a href="#features" class="nav__link">Features</a></li>
           <li><a href="#privacy" class="nav__link">Privacy</a></li>
           <li><a href="#open-source" class="nav__link">Open Source</a></li>
+          <!-- The documentation site is a separate build published into /docs/
+               of this same GitHub Pages artifact — see deploy-landing.yml.
+               `nav__item--persist` keeps it on screen at mobile widths, where the
+               other links (anchors into this page, reachable by scrolling) are
+               hidden: the docs are somewhere else entirely, so dropping the link
+               would leave no way to them at all. -->
+          <li class="nav__item--persist">
+            <a href="docs/" class="nav__link" data-testid="nav-docs">Docs</a>
+          </li>
           <li>
             <a
               href="https://github.com/Tlahey/git-manager"

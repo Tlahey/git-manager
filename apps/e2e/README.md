@@ -66,6 +66,24 @@ pnpm --filter @git-manager/e2e exec wdio run ./wdio.conf.ts --cucumberOpts.tags=
 pnpm --filter @git-manager/e2e exec wdio run ./wdio.conf.ts --cucumberOpts.tags='not @visual'
 ```
 
+One tag is not just a filter: **`@doc` publishes the scenario**. A `@doc` scenario becomes a page
+of the documentation site (`apps/docs`, shipped at `/git-manager/docs/`), rendered from its own
+free-text description block and illustrated with the screenshot it exports. That makes three
+things load-bearing in a way they aren't elsewhere in this suite:
+
+- the scenario **must** carry a description under its `Scenario:` line — the generator refuses a
+  documented scenario with no prose, and that prose is what a human reviews;
+- its steps are read as instructions, so keep phrasing user actions as `I …` (`Given` steps and
+  `the interface has settled` are dropped as test scaffolding);
+- it should seed English (`Given the app language is English`) before opening its fixture — the
+  app defaults to French and the docs are English-only.
+
+```bash
+pnpm --filter @git-manager/e2e docs:screenshots   # runs '@doc', refreshing docs/screenshots/
+```
+
+See [apps/docs/README.md](../docs/README.md) for the full pipeline.
+
 Use `exec wdio run …` (not `test:e2e -- …`) — the `--` arg doesn't survive the pnpm-script
 indirection, but the flag reaches `wdio` intact this way (verified). You can also just set
 `tags` in `wdio.conf.ts`'s `cucumberOpts`. WDIO still spins up one worker per `.feature` file;

@@ -1,0 +1,83 @@
+/* ══════════════════════════════════════════════════════════
+   Git Manager Docs — deep-ocean skin over the VitePress default theme.
+   The palette is the landing page's (apps/landing-page/style.css), so the
+   two halves of the GitHub Pages site read as one product.
+══════════════════════════════════════════════════════════ */
+
+/* No light-mode palette here on purpose: the site is `appearance: 'force-dark'`
+   (see .vitepress/config.ts), so `.dark` is always on and any `:root` colour
+   would be dead code. Only the things that hold in every theme live here. */
+:root {
+  --vp-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.dark {
+  --vp-c-bg: #050d1a;
+  --vp-c-bg-alt: #020810;
+  --vp-c-bg-elv: #0a1628;
+  --vp-c-bg-soft: #080f1f;
+
+  --vp-c-divider: rgba(0, 229, 204, 0.12);
+  --vp-c-border: rgba(0, 229, 204, 0.18);
+  --vp-c-gutter: #020810;
+
+  --vp-c-text-1: #e8f4f8;
+  --vp-c-text-2: #8ba8c0;
+  --vp-c-text-3: #4a6a80;
+
+  --vp-c-brand-1: #00e5cc;
+  --vp-c-brand-2: #00f5e0;
+  --vp-c-brand-3: #00c9b8;
+  --vp-c-brand-soft: rgba(0, 229, 204, 0.15);
+
+  /* Filled brand surfaces (the home hero button) put text *on* the brand
+     colour, so they need a dark foreground against this bright teal. */
+  --vp-button-brand-bg: #00c9b8;
+  --vp-button-brand-hover-bg: #00e5cc;
+  --vp-button-brand-active-bg: #00a0b0;
+  --vp-button-brand-text: #020810;
+  --vp-button-brand-hover-text: #020810;
+  --vp-button-brand-border: transparent;
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #00f5e0, #00a0b0);
+  --vp-home-hero-image-background-image: linear-gradient(
+    -45deg,
+    rgba(0, 229, 204, 0.35),
+    rgba(0, 122, 140, 0.25)
+  );
+  --vp-home-hero-image-filter: blur(56px);
+}
+
+/* ── Screenshots ──
+   These are full-window captures of a desktop app: framing them as a window
+   keeps them from reading like a flat diagram, and the border stops a dark
+   screenshot from bleeding into the dark page background. */
+.vp-doc img[src*='/screenshots/'],
+.vp-doc img[src*='screenshots-'] {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 12px;
+  box-shadow: 0 18px 48px rgba(2, 8, 16, 0.55);
+}
+
+.vp-doc .doc-shot-note {
+  margin-top: 0.6rem;
+  font-size: 0.8rem;
+  color: var(--vp-c-text-3);
+}
+
+.vp-doc .doc-source {
+  margin-top: 2rem;
+  font-size: 0.85rem;
+  color: var(--vp-c-text-3);
+}
+
+/* The "Do this" / "You should see" lists come straight out of the scenario's
+   steps; a tighter rhythm keeps them looking like a checklist rather than
+   another paragraph of prose. */
+.vp-doc ol li + li,
+.vp-doc ul li + li {
+  margin-top: 0.35rem;
+}

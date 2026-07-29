@@ -1,0 +1,15 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".vitepress/dist/**"],
+      // Uncached, unlike every other package's build: this one reads the .feature files in
+      // apps/e2e and the PNGs in docs/screenshots/, both outside this package, and turbo only
+      // hashes a task's own package. A cache hit would happily republish the previous run's pages
+      // after someone edited a scenario. Regenerating costs about a second.
+      "cache": false
+    }
+  }
+}

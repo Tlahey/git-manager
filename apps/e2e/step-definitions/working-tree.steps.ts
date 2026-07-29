@@ -58,18 +58,68 @@ Then(/^the staging panel matches the visual snapshot "([^"]*)"$/, async (tag: st
 
 // Clicking a file row (file-tree-file-<path>) sets activeDiffFile, which renders the diff view
 // (DiffViewCenter → diff-content-area) in the centre column.
+//
+// Exactly one click, then a generous wait. Do NOT turn this into a retry loop that re-clicks
+// until the diff shows up: selecting a file row toggles it, so a second click on a diff that is
+// merely still rendering closes it again — a loop like that can run its whole budget flipping the
+// view open and shut and then report that the click "never worked".
+//
+// The wait is 30s rather than the 10s this used to allow because the first diff of an app session
+// pays for the `get_file_diff` round trip *and* a cold Monaco mount. It comfortably fitted 10s
+// whenever this feature opened the app itself, and blew straight past it whenever another feature
+// had driven the shared instance first — which tag-filtered runs (`docs:screenshots`) do and the
+// full alphabetical run doesn't, so the old timeout looked reliable right up until it wasn't.
+// Readiness is measured with a bounding box read in the page rather than `isDisplayed()`: after
+// another feature has driven this shared app instance, the driver reports the diff container as
+// not displayed while `getBoundingClientRect()` says 600x579 at a sane offset and the diff's own
+// text is on screen. The DOM is the thing being asserted here, so ask the DOM.
+async function diffIsOnScreen(): Promise<boolean> {
+  return browser.execute(() => {
+    const el = document.querySelector('[data-testid="diff-content-area"]')
+    if (!el) return false
+    const { width, height } = el.getBoundingClientRect()
+    return width > 0 && height > 0
+  })
+}
+
 When(/^I open the diff for "([^"]*)"$/, async (filePath: string) => {
   const fileRow = $(`[data-testid="file-tree-file-${filePath}"]`)
   await fileRow.waitForDisplayed({ timeout: 10000 })
   await fileRow.click()
-  await $('[data-testid="diff-content-area"]').waitForDisplayed({ timeout: 10000 })
+
+  // A single click is not reliable — right after a fixture reload the row can be painted before
+  // its onClick is live, and the selection is silently dropped (the same no-op the WIP graph row
+  // is retried for above). Re-click, but only on a long interval: selecting a file row *toggles*
+  // its diff, so a tight retry loop closes a diff that was merely still rendering and can spend
+  // its whole budget flipping the view open and shut. Three seconds comfortably covers the
+  // `get_file_diff` round trip plus a cold Monaco mount, which is what makes the first diff of an
+  // app session slow.
+  await browser.waitUntil(
+    async () => {
+      if (await diffIsOnScreen()) return true
+      await $(`[data-testid="file-tree-file-${filePath}"]`)
+        .click()
+        .catch(() => {})
+      return false
+    },
+    {
+      timeout: 30000,
+      interval: 3000,
+      timeoutMsg: `Clicking the file row for "${filePath}" never opened its diff`,
+    }
+  )
 })
 
 // The diff content is the file's fixture-stable before/after — no shas/dates. Give the Monaco
 // diff a beat to lay out before capturing.
 Then(/^the file diff matches the visual snapshot "([^"]*)"$/, async (tag: string) => {
+  // Same driver quirk as diffIsOnScreen guards against: `waitForDisplayed` can time out on a diff
+  // that is laid out and on screen, so gate on the DOM's own geometry instead.
+  await browser.waitUntil(diffIsOnScreen, {
+    timeout: 30000,
+    timeoutMsg: 'The diff content area never took up any space on screen',
+  })
   const diff = $('[data-testid="diff-content-area"]')
-  await diff.waitForDisplayed({ timeout: 10000 })
   await browser.pause(1000)
   await stabiliseForSnapshot()
   await expect(diff).toMatchElementSnapshot(tag, 1)

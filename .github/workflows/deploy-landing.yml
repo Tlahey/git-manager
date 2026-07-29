@@ -5,10 +5,15 @@ on:
     branches:
       - main
     paths:
-      # Only deploy when the landing page itself (or this workflow) changes.
+      # Only deploy when the published site itself (or this workflow) changes.
       # The page also depends on packages/mascot — after a mascot-only change,
       # trigger a manual redeploy from the Actions tab (workflow_dispatch).
       - 'apps/landing-page/**'
+      - 'apps/docs/**'
+      # The docs are generated from the end-to-end scenarios and the screenshots
+      # those scenarios export, so both are sources of the published site.
+      - 'apps/e2e/features/**'
+      - 'docs/screenshots/**'
       - '.github/workflows/deploy-landing.yml'
   workflow_dispatch:
 
@@ -27,7 +32,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build landing page
+    name: Build landing page and docs
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -50,13 +55,22 @@ jobs:
         with:
           enablement: true
 
-      - name: Build landing page
-        run: pnpm --filter @git-manager/landing-page build
+      # --strict fails the deploy when a documented scenario has no screenshot
+      # committed under docs/screenshots/, rather than silently publishing a
+      # page with a hole where the picture should be.
+      - name: Generate documentation pages
+        run: pnpm --filter @git-manager/docs exec node scripts/generate.ts --strict
+
+      # One VitePress app builds the whole site: the landing page at the root
+      # (apps/docs/index.md renders apps/landing-page's own markup, styles and
+      # behaviour) and the documentation under /docs/.
+      - name: Build the site
+        run: pnpm --filter @git-manager/docs exec vitepress build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: apps/landing-page/dist
+          path: apps/docs/.vitepress/dist
 
   deploy:
     name: Deploy to GitHub Pages
