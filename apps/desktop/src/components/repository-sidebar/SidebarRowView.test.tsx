@@ -432,6 +432,20 @@ describe('SidebarRowView — remote-branch', () => {
     expect(container.querySelector('[role="button"]')?.className).toContain('opacity-50')
   })
 
+  it('opens the branch menu from the actions button and from a right-click, not on a plain click', () => {
+    const onRemoteBranchContextMenu = vi.fn()
+    const { h } = renderRow(remoteBranch(), { onRemoteBranchContextMenu })
+
+    fireEvent.click(screen.getByTestId('remote-branch-actions-origin/main'))
+    expect(onRemoteBranchContextMenu).toHaveBeenCalledTimes(1)
+    expect(onRemoteBranchContextMenu.mock.calls[0][1]).toMatchObject({ shortName: 'origin/main' })
+    // The row's own click must not fire with it, or opening the menu would also select the branch.
+    expect(h.onSelectBranch).not.toHaveBeenCalled()
+
+    fireEvent.contextMenu(screen.getByText('main').closest('[role="button"]')!)
+    expect(onRemoteBranchContextMenu).toHaveBeenCalledTimes(2)
+  })
+
   // Solo mode is the stronger, temporary statement about what the graph shows, and both controls
   // live on the row's left edge — they would otherwise sit on top of each other.
   it('gives the left edge to the solo toggle while solo mode is on', () => {

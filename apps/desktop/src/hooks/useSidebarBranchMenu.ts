@@ -5,13 +5,20 @@ import { toast } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import type { GitBranch, GitRef } from '@git-manager/git-types'
 import { showNativeMenu } from '../api/nativeMenu.api'
-import { buildBranchMenuSpec, type BranchMenuActions } from '../lib/graphContextMenus'
+import {
+  buildBranchMenuSpec,
+  buildRemoteBranchMenuSpec,
+  type BranchMenuActions,
+  type BranchTipCommitActions,
+  type CommitCopyActions,
+} from '../lib/graphContextMenus'
 import {
   apiPullBranch,
   apiPushBranch,
   apiFastForwardBranch,
   apiMergeBranch,
   apiRebaseOntoCommit,
+  apiCherryPickCommit,
   apiDeleteBranch,
   apiCopyCommitSha,
   apiGetCommitWebUrl,
@@ -29,6 +36,9 @@ import { useBranchCheckout } from './useBranchCheckout'
 import { useEffectiveRepoSettings } from './useEffectiveRepoSettings'
 import { useSoloModeStore } from '../stores/soloMode.store'
 
+/** Stable empty list, so an unfiltered store read doesn't hand back a new array every render. */
+const EMPTY: string[] = []
+
 /** A `GitBranch` rendered as the `GitRef` the shared menu builder expects (pointing at its tip). */
 function branchToRef(branch: GitBranch): GitRef {
   return {
@@ -40,10 +50,14 @@ function branchToRef(branch: GitBranch): GitRef {
 }
 
 /**
- * The repository sidebar's branch context menu. Reuses the SAME configuration as the commit
- * graph's per-branch menu (`buildBranchMenuSpec`) so the two stay in sync — the only sidebar
- * specifics are that it always offers "Checkout" (a sidebar branch isn't tied to a clicked commit)
- * and that Rename opens its own dialog (rendered by the caller from `renameTarget`).
+ * The repository sidebar's branch context menus — one for a local branch row, one for a remote
+ * branch row (which also carries the commit-scoped actions on the branch tip, and its own Hide
+ * toggle).
+ *
+ * Both reuse the SAME configuration as the commit graph's per-branch menu so the three stay in
+ * sync — the only sidebar specifics are that they always offer "Checkout" (a sidebar branch isn't
+ * tied to a clicked commit) and that Rename opens its own dialog (rendered by the caller from
+ * `renameTarget`).
  */
 export function useSidebarBranchMenu(repoPath: string) {
   const { t } = useTranslation('git')
@@ -58,6 +72,13 @@ export function useSidebarBranchMenu(repoPath: string) {
   // The AI branch explanation opens a right panel driven by shared UI state, so — unlike the
   // rename dialog above — there is nothing for the caller to render: the graph already shows it.
   const setAiPanelTarget = useRepoUIStore((s) => s.setAiPanelTarget)
+  // The commit-scoped items of the remote menu reuse the graph's own dialogs through the shared
+  // "pending graph action" bridge — the same route the sidebar's tag menu and the command palette
+  // take to act on a commit from outside the graph.
+  const setPendingGraphSelection = useRepoUIStore((s) => s.setPendingGraphSelection)
+  const setPendingGraphAction = useRepoUIStore((s) => s.setPendingGraphAction)
+  const hiddenRemoteBranches = useRepoDataStore((s) => s.hiddenRemoteBranches[repoPath]) ?? EMPTY
+  const toggleRemoteBranchVisibility = useRepoDataStore((s) => s.toggleRemoteBranchVisibility)
   const aiEnabled = useAiEnabled()
   const { targetBranches } = useEffectiveRepoSettings(repoPath)
   const { data: branches } = useBranches(repoPath)
@@ -148,12 +169,11 @@ export function useSidebarBranchMenu(repoPath: string) {
     setAiPanelTarget({ kind, branch: r.shortName, baseRef })
   }
 
-  function openBranchMenu(e: React.MouseEvent, branch: GitBranch) {
-    e.preventDefault()
+  /** The branch-scoped callbacks both menus share, bound to one row's branch. */
+  function branchActionsFor(branch: GitBranch): BranchMenuActions {
     const ref = branchToRef(branch)
     const rel = (r: GitRef) => ({ branch: r.shortName, current: currentBranch ?? '' })
-
-    const branchActions: BranchMenuActions = {
+    return {
       onPull: () => void run(() => apiPullBranch(repoPath), t('gitTree.branchMenu.pulled', rel(ref))),
       onPush: () => void run(() => apiPushBranch(repoPath), t('gitTree.branchMenu.pushed', rel(ref))),
       onFastForward: (r) =>
@@ -196,8 +216,11 @@ export function useSidebarBranchMenu(repoPath: string) {
       },
       onSolo: (r) => enableSolo([r.shortName]),
     }
+  }
 
-    const copyActions = {
+  /** Copy/patch callbacks acting on the branch's tip commit. */
+  function copyActionsFor(branch: GitBranch): CommitCopyActions {
+    return {
       onCopySha: () =>
         void apiCopyCommitSha(branch.commitOid).then(() =>
           toast.success(t('gitTree.contextMenu.shaCopied'))
@@ -205,31 +228,79 @@ export function useSidebarBranchMenu(repoPath: string) {
       onCopyLink: () => void copyCommitLink(branch.commitOid),
       onCreatePatch: () => void createPatch(branch.commitOid),
     }
+  }
 
+  /** The menu context both rows share. `refs` holds the row's own ref and nothing else. */
+  function menuContext(ref: GitRef) {
+    return {
+      isSingle: true,
+      targetCount: 1,
+      isMergeCommit: false,
+      refs: [ref],
+      currentBranch,
+      isDetached,
+      currentBranchRef: null,
+      aiEnabled,
+      // Neither sidebar menu renders the commit-recompose section, so these carry the inert values
+      // that disable it rather than a computed descendant count.
+      primaryShortOid: '',
+      descendantCount: 0,
+      isOnProtectedBranch: false,
+    }
+  }
+
+  function openBranchMenu(e: React.MouseEvent, branch: GitBranch) {
+    e.preventDefault()
+    const ref = branchToRef(branch)
     void showNativeMenu(
       buildBranchMenuSpec(
         ref,
-        {
-          isSingle: true,
-          targetCount: 1,
-          isMergeCommit: false,
-          refs: [ref],
-          currentBranch,
-          isDetached,
-          currentBranchRef: null,
-          aiEnabled,
-          // The sidebar menu is branch-scoped and never renders the commit-recompose section, so
-          // these carry the inert values that disable it rather than a computed descendant count.
-          primaryShortOid: '',
-          descendantCount: 0,
-          isOnProtectedBranch: false,
-        },
-        branchActions,
-        copyActions,
+        menuContext(ref),
+        branchActionsFor(branch),
+        copyActionsFor(branch),
         t
       )
     ).catch(console.error)
   }
 
-  return { openBranchMenu, renameTarget, setRenameTarget }
+  function openRemoteBranchMenu(e: React.MouseEvent, branch: GitBranch) {
+    e.preventDefault()
+    const ref = branchToRef(branch)
+
+    // Select the branch tip up front, exactly as the tag menu does: the commit-scoped dialogs
+    // (create branch / reset / revert / compare / tag) act on the graph's selected commit, so the
+    // selection has to be in place well before one of those items is picked. It follows that they
+    // do nothing while the graph is unmounted — with the file explorer open, notably.
+    setPendingGraphSelection(branch.commitOid)
+
+    const commitActions: BranchTipCommitActions = {
+      ...copyActionsFor(branch),
+      onCreateBranch: () => setPendingGraphAction({ kind: 'branch' }),
+      onCherryPick: () =>
+        void run(
+          () => apiCherryPickCommit(repoPath, branch.commitOid),
+          t('gitTree.contextMenu.cherryPicked')
+        ),
+      onReset: (mode) => setPendingGraphAction({ kind: 'reset', mode }),
+      onRevert: () => setPendingGraphAction({ kind: 'revert' }),
+      onCompareToWorkdir: () => setPendingGraphAction({ kind: 'compare' }),
+      onCreateTag: () => setPendingGraphAction({ kind: 'tag', annotated: false }),
+      onCreateAnnotatedTag: () => setPendingGraphAction({ kind: 'tag', annotated: true }),
+    }
+
+    void showNativeMenu(
+      buildRemoteBranchMenuSpec(
+        ref,
+        { ...menuContext(ref), isHidden: hiddenRemoteBranches.includes(branch.shortName) },
+        {
+          ...branchActionsFor(branch),
+          onToggleVisibility: (r) => toggleRemoteBranchVisibility(repoPath, r.shortName),
+        },
+        commitActions,
+        t
+      )
+    ).catch(console.error)
+  }
+
+  return { openBranchMenu, openRemoteBranchMenu, renameTarget, setRenameTarget }
 }

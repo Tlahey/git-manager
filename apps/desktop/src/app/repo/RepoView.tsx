@@ -88,7 +88,8 @@ export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
   const activeAccount = github?.accounts?.find((a) => a.id === github.activeAccountId) || null
 
   const branchMenuPath = effectiveRepoPath ?? activeRepo ?? ''
-  const { openBranchMenu, renameTarget, setRenameTarget } = useSidebarBranchMenu(branchMenuPath)
+  const { openBranchMenu, openRemoteBranchMenu, renameTarget, setRenameTarget } =
+    useSidebarBranchMenu(branchMenuPath)
   // The sidebar's tag rows open the tag menu, mounted here rather than in the graph: the graph is
   // unmounted while the file explorer is open, and a tag row has to stay actionable there.
   const { openTagMenu, pendingTagAction, setPendingTagAction } = useSidebarTagMenu(branchMenuPath)
@@ -124,6 +125,7 @@ export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
           currentUser={activeAccount?.user?.login}
           githubToken={activeAccount?.token ?? undefined}
           onContextMenu={openBranchMenu}
+          onRemoteBranchContextMenu={openRemoteBranchMenu}
           onTagContextMenu={openTagMenu}
         />
 

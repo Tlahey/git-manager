@@ -50,6 +50,8 @@ interface RepositorySidebarProps {
   githubToken?: string
   onCreateBranch?: () => void
   onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
+  /** Opens a remote branch row's own (wider) action menu. */
+  onRemoteBranchContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
   /** Opens a tag's action menu — the same one the graph's tag badge uses. */
   onTagContextMenu?: (e: React.MouseEvent, tag: GitRef) => void
   onOpenPr?: (pr: PullRequest) => void
@@ -67,6 +69,7 @@ export function RepositorySidebar({
   githubToken,
   onCreateBranch,
   onContextMenu,
+  onRemoteBranchContextMenu,
   onTagContextMenu,
   onOpenPr,
 }: RepositorySidebarProps) {
@@ -489,6 +492,7 @@ export function RepositorySidebar({
                     onSelectTag={onSelectTag}
                     onTogglePin={onTogglePin}
                     onContextMenu={onContextMenu}
+                    onRemoteBranchContextMenu={onRemoteBranchContextMenu}
                     onOpenPr={onOpenPr}
                     onPrContextMenu={openPrMenu}
                     onIssueContextMenu={openIssueMenu}

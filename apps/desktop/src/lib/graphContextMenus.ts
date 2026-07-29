@@ -66,15 +66,24 @@ export interface CommitCopyActions {
   onCreatePatch: () => void
 }
 
-export interface CommitMenuActions extends CommitCopyActions {
-  onCheckout: () => void
-  onCreateWorktree: () => void
+/**
+ * The commit-scoped actions a *branch* menu can offer on the branch's own tip — everything that
+ * still makes sense when the user pointed at a branch rather than at a row in the graph.
+ */
+export interface BranchTipCommitActions extends CommitCopyActions {
   onCreateBranch: () => void
   onCherryPick: () => void
   onReset: (mode: 'soft' | 'mixed' | 'hard') => void
   onRevert: () => void
   onCreateTag: () => void
   onCreateAnnotatedTag: () => void
+  /** Compare the commit against the working directory. */
+  onCompareToWorkdir: () => void
+}
+
+export interface CommitMenuActions extends BranchTipCommitActions {
+  onCheckout: () => void
+  onCreateWorktree: () => void
   /** Opens the AI explanation of the clicked commit's own diff (vs its first parent). */
   onExplainCommit: () => void
   /** Rewrites the clicked commit's message with the model; `includeChildren` extends that to every
@@ -88,8 +97,6 @@ export interface CommitMenuActions extends CommitCopyActions {
   onRebaseOntoCommit: () => void
   /** Write a single patch spanning all selected commits. */
   onCreatePatchSelection: () => void
-  /** Compare the primary commit against the working directory. */
-  onCompareToWorkdir: () => void
 }
 
 /** Per-branch actions; each receives the branch ref the item belongs to. */
@@ -412,6 +419,70 @@ export function buildBranchMenuSpec(
   ]
 }
 
+/** A remote branch row's extra context: whether its badge is currently kept out of the graph. */
+export interface RemoteBranchMenuContext extends GraphCommitMenuContext {
+  isHidden: boolean
+}
+
+export interface RemoteBranchMenuActions extends BranchMenuActions {
+  /** Keeps this branch's badge out of the graph — the sidebar's eye toggle, as a menu entry. */
+  onToggleVisibility: (ref: GitRef) => void
+}
+
+/**
+ * The sidebar's **remote branch** menu: the branch sections above, plus the commit-scoped ones
+ * acting on the branch tip (create branch / cherry-pick / reset ▸ / revert, compare, tags) and the
+ * row's own Hide toggle.
+ *
+ * Wider than {@link buildBranchMenuSpec} because a remote branch row is the one place those commit
+ * actions have an unambiguous target: the branch tip is a single commit the user can point at
+ * without opening the graph. It reuses the same section builders, so an item added to the graph's
+ * branch menu still lands here.
+ */
+export function buildRemoteBranchMenuSpec(
+  ref: GitRef,
+  ctx: RemoteBranchMenuContext,
+  actions: RemoteBranchMenuActions,
+  commitActions: BranchTipCommitActions,
+  t: TranslateFn
+): MenuSpecEntry[] {
+  const b = branchItemContext(ref, ctx)
+  return [
+    ...relationshipSection(b, actions, t),
+    menuSeparator(),
+    menuItem({
+      text: t('gitTree.branchMenu.checkout', b.params),
+      action: () => actions.onCheckoutBranch(b.ref),
+    }),
+    menuSeparator(),
+    menuItem({
+      text: t('gitTree.branchMenu.openWorktree', b.params),
+      action: () => actions.onOpenWorktreeFrom(b.ref),
+    }),
+    menuSeparator(),
+    ...commitCoreSection(ctx, commitActions, t),
+    menuSeparator(),
+    ...prAndExplainSection(b, actions, t),
+    menuSeparator(),
+    ...destructiveSection(b, actions, t),
+    menuSeparator(),
+    ...copySection(b, actions, commitActions, t),
+    menuSeparator(),
+    menuItem({
+      text: t(ctx.isHidden ? 'gitTree.branchMenu.show' : 'gitTree.branchMenu.hide'),
+      action: () => actions.onToggleVisibility(b.ref),
+    }),
+    ...tailSection(b, actions, t),
+    menuSeparator(),
+    menuItem({
+      text: t('gitTree.contextMenu.compareToWorkdir'),
+      action: commitActions.onCompareToWorkdir,
+    }),
+    menuSeparator(),
+    ...tagCreationSection(ctx, commitActions, t),
+  ]
+}
+
 /** A branch ref's short name without the remote prefix (`origin/x` → `x`). */
 const logicalBranchName = (ref: GitRef): string =>
   ref.type === 'remote' ? ref.shortName.split('/').slice(1).join('/') : ref.shortName
@@ -688,7 +759,7 @@ export function buildTagMenuSpec(
 /** The commit-scoped core shared by every layout: create branch / cherry-pick / reset ▸ / revert. */
 function commitCoreSection(
   ctx: GraphCommitMenuContext,
-  actions: CommitMenuActions,
+  actions: BranchTipCommitActions,
   t: TranslateFn
 ): MenuSpecEntry[] {
   const { isSingle } = ctx
@@ -780,7 +851,7 @@ function commitRecomposeSection(
 
 function tagCreationSection(
   ctx: GraphCommitMenuContext,
-  actions: CommitMenuActions,
+  actions: BranchTipCommitActions,
   t: TranslateFn
 ): MenuSpecEntry[] {
   return [

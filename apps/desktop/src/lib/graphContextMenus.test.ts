@@ -10,10 +10,12 @@ import {
   buildStashMenuSpec,
   buildRefDropMenuSpec,
   buildTagMenuSpec,
+  buildRemoteBranchMenuSpec,
   isMainBranchName,
   type BranchMenuActions,
   type CommitMenuActions,
   type GraphCommitMenuContext,
+  type RemoteBranchMenuContext,
   type WipMenuActions,
 } from './graphContextMenus'
 import { normalizeMenuSpec, type MenuSpecNode } from './nativeMenuSpec'
@@ -268,6 +270,104 @@ describe('buildBranchSubmenu — remote branch', () => {
   it('omits the PR entry when HEAD is detached', () => {
     const { items: nodes } = submenuFor(origin(), ctx({ currentBranch: null, isDetached: true }))
     expect(texts(nodes).some((l) => l.includes('pull request'))).toBe(false)
+  })
+})
+
+describe('buildRemoteBranchMenuSpec', () => {
+  const origin = () =>
+    ref({ shortName: 'origin/main', type: 'remote', name: 'refs/remotes/origin/main' })
+
+  function menu(overrides: Partial<RemoteBranchMenuContext> = {}) {
+    const actions = { ...branchActions(), onToggleVisibility: vi.fn() }
+    const commits = commitActions()
+    const context = { ...ctx({ currentBranch: 'feat' }), isHidden: false, ...overrides }
+    const nodes = normalizeMenuSpec(
+      buildRemoteBranchMenuSpec(origin(), { ...context, refs: [origin()] }, actions, commits, t)
+    )
+    return { nodes, actions, commits }
+  }
+
+  // The sidebar row is the one place the commit-scoped actions have an unambiguous target, so the
+  // whole ordered list is asserted rather than a handful of entries.
+  it('lists the branch, commit and row actions in order', () => {
+    expect(texts(menu().nodes)).toEqual([
+      'Fast-forward feat to origin/main',
+      'Merge origin/main into feat',
+      'Rebase feat onto origin/main',
+      'Checkout origin/main',
+      'Open worktree from origin/main',
+      'Create branch here',
+      'Cherry-pick this commit',
+      'Revert this commit',
+      'Push feat and start a pull request to origin/main',
+      'Explain branch changes (LLM)',
+      'Review branch changes (LLM)',
+      'Delete origin/main',
+      'Copy branch name',
+      'Copy commit sha',
+      'Copy link to branch: origin/main',
+      'Copy link to this commit on remote: origin',
+      'Create patch from commit…',
+      'Hide the branch',
+      'Pin to left',
+      'Solo',
+      'Compare commit against working directory',
+      'Create tag here',
+      'Create annotated tag here…',
+    ])
+  })
+
+  it('offers the three reset modes under one submenu, named after the current branch', () => {
+    const { nodes, commits } = menu()
+    const reset = nodes.find(
+      (n): n is SubmenuNode => n.kind === 'submenu' && n.text === 'Reset feat to this commit'
+    )!
+    const modes = normalizeMenuSpec(reset.items)
+    expect(texts(modes)).toHaveLength(3)
+    items(modes)[2].action?.()
+    expect(commits.onReset).toHaveBeenCalledWith('hard')
+  })
+
+  it('flips the Hide entry once the branch is hidden', () => {
+    const { nodes, actions } = menu({ isHidden: true })
+    expect(texts(nodes)).toContain('Show the branch')
+    expect(texts(nodes)).not.toContain('Hide the branch')
+    item(nodes, 'Show the branch')?.action?.()
+    expect(actions.onToggleVisibility).toHaveBeenCalledWith(
+      expect.objectContaining({ shortName: 'origin/main' })
+    )
+  })
+
+  // Same rules as everywhere else: they are the shared sections, not a second copy of them.
+  it('keeps the shared gates — no sync section, Delete disabled, no PR on a detached HEAD', () => {
+    const { nodes } = menu()
+    expect(texts(nodes)).not.toContain('Push')
+    expect(item(nodes, 'Delete origin/main')?.enabled).toBe(false)
+
+    const detached = menu({ currentBranch: null, isDetached: true })
+    expect(texts(detached.nodes).some((l) => l.includes('pull request'))).toBe(false)
+    // Nothing to fast-forward/merge/rebase against either.
+    expect(texts(detached.nodes).some((l) => l.startsWith('Fast-forward'))).toBe(false)
+  })
+
+  it('disables the AI entries when AI is off, leaving them discoverable', () => {
+    const { nodes } = menu({ aiEnabled: false })
+    expect(item(nodes, 'Explain branch changes (LLM)')?.enabled).toBe(false)
+    expect(item(nodes, 'Review branch changes (LLM)')?.enabled).toBe(false)
+  })
+
+  it('routes the commit-scoped entries to the branch tip actions', () => {
+    const { nodes, commits } = menu()
+    item(nodes, 'Create branch here')?.action?.()
+    item(nodes, 'Cherry-pick this commit')?.action?.()
+    item(nodes, 'Revert this commit')?.action?.()
+    item(nodes, 'Compare commit against working directory')?.action?.()
+    item(nodes, 'Create tag here')?.action?.()
+    expect(commits.onCreateBranch).toHaveBeenCalled()
+    expect(commits.onCherryPick).toHaveBeenCalled()
+    expect(commits.onRevert).toHaveBeenCalled()
+    expect(commits.onCompareToWorkdir).toHaveBeenCalled()
+    expect(commits.onCreateTag).toHaveBeenCalled()
   })
 })
 

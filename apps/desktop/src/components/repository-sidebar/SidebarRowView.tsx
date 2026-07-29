@@ -44,6 +44,12 @@ interface SidebarRowViewProps {
   onSelectTag?: (commitOid: string) => void
   onTogglePin: (shortName: string) => void
   onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
+  /**
+   * Opens a remote branch's action menu (right-click on the row, or its "…" button). Separate from
+   * `onContextMenu` above: a remote row's menu is the wider one, carrying the commit-scoped actions
+   * on the branch tip and the row's own Hide toggle.
+   */
+  onRemoteBranchContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
   onOpenPr?: (pr: PullRequest) => void
   /** Opens a pull request's action menu (right-click on the row, or its "…" button). */
   onPrContextMenu?: (e: React.MouseEvent, pr: PullRequest) => void
@@ -90,6 +96,7 @@ export function SidebarRowView({
   onSelectTag,
   onTogglePin,
   onContextMenu,
+  onRemoteBranchContextMenu,
   onOpenPr,
   onPrContextMenu,
   onIssueContextMenu,
@@ -234,6 +241,11 @@ export function SidebarRowView({
             if ((e.target as HTMLElement).closest('[data-toggle]')) return
             onSelectBranch(row.branch.name)
           }}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onRemoteBranchContextMenu?.(e, row.branch)
+          }}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => {
@@ -267,6 +279,21 @@ export function SidebarRowView({
               )}
             </span>
           )}
+          {/* Same actions as the row's right-click, reachable by pointing — it opens the very same
+              menu spec rather than a second, forkable definition of it. */}
+          <button
+            data-toggle="remote-branch-actions"
+            onClick={(e) => {
+              e.stopPropagation()
+              onRemoteBranchContextMenu?.(e, row.branch)
+            }}
+            className="shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/rbranch:opacity-100"
+            aria-label={t('sidebar.branchActions')}
+            title={t('sidebar.branchActions')}
+            data-testid={`remote-branch-actions-${row.branch.shortName}`}
+          >
+            <MoreVertical className="h-3.5 w-3.5" />
+          </button>
         </div>
       )
     }

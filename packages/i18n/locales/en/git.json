@@ -226,6 +226,8 @@
   "gitTree.branchMenu.copyBranchLink": "Copy link to branch: {{branch}}",
   "gitTree.branchMenu.pinToLeft": "Pin to left",
   "gitTree.branchMenu.solo": "Solo",
+  "gitTree.branchMenu.hide": "Hide the branch",
+  "gitTree.branchMenu.show": "Show the branch",
   "gitTree.branchMenu.pinned": "{{branch}} pinned in the left panel",
   "gitTree.wipMenu.stash": "Stash changes",
   "gitTree.wipMenu.stashIncludeUntracked": "Stash changes (include untracked)",
