@@ -38,6 +38,17 @@ export interface GhRawPR {
   repository_url?: string
   mergeable?: boolean | null
   mergeable_state?: string
+  /**
+   * Only present on `search/issues` items, which are *issue*-shaped: they carry no top-level
+   * `merged_at`, and nest the PR-specific fields here instead. Without reading it, every merged PR
+   * coming out of a search reads as a plain `state: 'closed'` — i.e. "closed without merging".
+   */
+  pull_request?: { merged_at?: string | null }
+  /**
+   * Set once "auto-merge" (a.k.a. "merge when ready" / entering the repo's merge queue) is enabled
+   * on the PR, null otherwise. Only the PR *details* endpoint returns it — never a search item.
+   */
+  auto_merge?: { enabled_by?: GhUser; merge_method?: string } | null
 }
 
 export interface GhRawIssue {
@@ -173,12 +184,26 @@ async function ghGraphQL<T>(
   return json.data as T
 }
 
+/**
+ * A merged PR reports GitHub `state: 'closed'` and marks the merge only through `merged_at`, so
+ * "merged" has to be read from that timestamp — which lives in a different place depending on the
+ * endpoint: top-level on a real PR payload, under `pull_request` on a `search/issues` item.
+ * Reading both is what keeps a merged PR from being reported as closed-without-merging.
+ */
+export function isMergedRawPr(pr: {
+  merged_at?: string | null
+  pull_request?: { merged_at?: string | null }
+}): boolean {
+  return !!(pr.merged_at || pr.pull_request?.merged_at)
+}
+
 export function parsePRStatus(pr: {
   state: string
-  draft: boolean
-  merged_at: string | null
+  draft?: boolean
+  merged_at?: string | null
+  pull_request?: { merged_at?: string | null }
 }): PRStatus {
-  if (pr.merged_at) return 'merged'
+  if (isMergedRawPr(pr)) return 'merged'
   if (pr.draft) return 'draft'
   if (pr.state === 'closed') return 'closed'
   return 'open'
@@ -190,8 +215,10 @@ export function parsePRStatus(pr: {
  * verbatim. (Distinct from `parsePRStatus`, whose wider `PRStatus` carries review states the DTO
  * doesn't model.)
  */
-function toPrState(raw: Pick<GhRawPR, 'state' | 'draft' | 'merged_at'>): PullRequest['state'] {
-  if (raw.merged_at) return 'merged'
+function toPrState(
+  raw: Pick<GhRawPR, 'state' | 'draft' | 'merged_at' | 'pull_request'>
+): PullRequest['state'] {
+  if (isMergedRawPr(raw)) return 'merged'
   if (raw.draft) return 'draft'
   if (raw.state === 'closed') return 'closed'
   return 'open'
@@ -269,8 +296,9 @@ export function rawToMockPR(raw: GhRawPR, currentUser: string): MockPR {
     repoUrl,
     fullName,
     url: raw.html_url,
-    status: parsePRStatus({ state: raw.state, draft: raw.draft, merged_at: raw.merged_at }),
+    status: parsePRStatus(raw),
     ciStatus: null,
+    autoMerge: !!raw.auto_merge,
     author: raw.user?.login ?? '—',
     authorAvatar: raw.user?.avatar_url ?? '',
     collaborators: (raw.requested_reviewers ?? []).map((r) => ({

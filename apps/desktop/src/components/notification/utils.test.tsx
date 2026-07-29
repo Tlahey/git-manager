@@ -94,6 +94,17 @@ describe('getNotificationIcon', () => {
     expect(ciFailed.querySelector('.bg-rose-500\\/10')).toBeTruthy()
   })
 
+  it('gives merged, closed and queued three visually distinct colors', () => {
+    // The whole point of the lifecycle palette: a merge must never render in the closed color.
+    const { container: merged } = render(<>{getNotificationIcon('pr_merged')}</>)
+    const { container: closed } = render(<>{getNotificationIcon('pr_closed')}</>)
+    const { container: queued } = render(<>{getNotificationIcon('pr_queued')}</>)
+    expect(merged.querySelector('.bg-purple-500\\/10')).toBeTruthy()
+    expect(closed.querySelector('.bg-red-500\\/10')).toBeTruthy()
+    expect(queued.querySelector('.bg-indigo-500\\/10')).toBeTruthy()
+    expect(merged.querySelector('.bg-red-500\\/10')).toBeNull()
+  })
+
   it('falls back to the default icon for an unregistered type', () => {
     const { container } = render(
       <>{getNotificationIcon('unknown_type' as AppNotification['type'])}</>

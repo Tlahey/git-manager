@@ -6,6 +6,7 @@ import {
   PrRedIcon,
   PrMergedIcon,
   PrClosedIcon,
+  PrQueuedIcon,
   NewPrIcon,
   DefaultIcon,
 } from './NotificationIcons'
@@ -19,6 +20,7 @@ describe.each([
   ['PrRedIcon', PrRedIcon],
   ['PrMergedIcon', PrMergedIcon],
   ['PrClosedIcon', PrClosedIcon],
+  ['PrQueuedIcon', PrQueuedIcon],
   ['NewPrIcon', NewPrIcon],
   ['DefaultIcon', DefaultIcon],
 ] as const)('%s', (_name, Icon) => {

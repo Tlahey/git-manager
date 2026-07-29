@@ -1,12 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import type { MockPR } from '../app/pull-requests/types'
-import type { TFunction } from '@git-manager/i18n'
+import { i18next, type TFunction } from '@git-manager/i18n'
 
 const useGitHubData = vi.fn()
 vi.mock('./useGitHubData', () => ({ useGitHubData: () => useGitHubData() }))
-
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 
 const { isPermissionGranted, requestPermission, sendNotification, onAction, unregister } =
   vi.hoisted(() => ({
@@ -207,10 +205,54 @@ describe('useNotificationWatcher — PR change detection', () => {
       expect(useNotificationStore.getState().previousPRs['pr-1'].status).toBe('merged')
     )
   })
+
+  it('advances the baseline even when nothing was notified, so a change is not replayed later', async () => {
+    useSettingsStore.setState({
+      settings: {
+        ...DEFAULT_SETTINGS,
+        notifications: { ...DEFAULT_SETTINGS.notifications!, enabled: false },
+      },
+    })
+    mockGitHubData([pr({ status: 'open' })])
+    const { rerender } = renderHook(() => useNotificationWatcher())
+    await waitFor(() => expect(useNotificationStore.getState().hasSessionInitialized).toBe(true))
+
+    mockGitHubData([pr({ status: 'merged' })])
+    rerender()
+
+    await waitFor(() =>
+      expect(useNotificationStore.getState().previousPRs['pr-1'].status).toBe('merged')
+    )
+    expect(useNotificationStore.getState().notifications).toEqual([])
+  })
+
+  it('reports a merge as merged only, without the CI change that landed with it', async () => {
+    mockGitHubData([pr({ status: 'open', ciStatus: 'running' })])
+    const { rerender } = renderHook(() => useNotificationWatcher())
+    await waitFor(() => expect(useNotificationStore.getState().hasSessionInitialized).toBe(true))
+
+    mockGitHubData([pr({ status: 'merged', ciStatus: 'failure' })])
+    rerender()
+
+    await waitFor(() => expect(useNotificationStore.getState().notifications).toHaveLength(1))
+    expect(useNotificationStore.getState().notifications[0].type).toBe('pr_merged')
+  })
+
+  it('notifies when a PR is queued to merge', async () => {
+    mockGitHubData([pr({ autoMerge: false })])
+    const { rerender } = renderHook(() => useNotificationWatcher())
+    await waitFor(() => expect(useNotificationStore.getState().hasSessionInitialized).toBe(true))
+
+    mockGitHubData([pr({ autoMerge: true })])
+    rerender()
+
+    await waitFor(() => expect(useNotificationStore.getState().notifications).toHaveLength(1))
+    expect(useNotificationStore.getState().notifications[0].type).toBe('pr_queued')
+  })
 })
 
 describe('showNativeNotification', () => {
-  const t = ((key: string) => key) as unknown as TFunction
+  const t = i18next.getFixedT('en', 'common') as unknown as TFunction
 
   it('requests permission when not already granted, then sends if granted', async () => {
     isPermissionGranted.mockResolvedValue(false)

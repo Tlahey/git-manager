@@ -95,6 +95,20 @@ describe('parsePRStatus', () => {
   it('defaults to open', () => {
     expect(parsePRStatus({ state: 'open', draft: false, merged_at: null })).toBe('open')
   })
+
+  it('reads the merge off a search item, whose merged_at is nested under pull_request', () => {
+    // `search/issues` items are issue-shaped: no top-level merged_at at all. Missing this is what
+    // made every merged PR report as "closed without merging".
+    expect(
+      parsePRStatus({ state: 'closed', draft: false, pull_request: { merged_at: '2024-01-01' } })
+    ).toBe('merged')
+  })
+
+  it('still reports a search item closed when its pull_request block has no merged_at', () => {
+    expect(parsePRStatus({ state: 'closed', draft: false, pull_request: { merged_at: null } })).toBe(
+      'closed'
+    )
+  })
 })
 
 describe('rawToPullRequest', () => {

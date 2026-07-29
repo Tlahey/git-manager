@@ -9,8 +9,8 @@ import {
   getNotificationTypeDef,
   isNotificationTypeEnabled,
   resolveTargetTab,
-  type PreviousPRSnapshot,
 } from '../lib/notifications/notificationRegistry'
+import { buildPRSnapshotMap, snapshotMapsEqual } from '../lib/notifications/prSnapshots'
 import { useRepoUIStore, PULL_REQUESTS_TAB } from '../stores/repoUI.store'
 import { useLaunchpadStore } from '../stores/launchpad.store'
 import {
@@ -118,16 +118,7 @@ export function useNotificationWatcher() {
     if (loading || prs.length === 0) return
 
     // Build map of current PR states
-    const currentPRsMap: Record<string, PreviousPRSnapshot> = {}
-    for (const pr of prs) {
-      currentPRsMap[pr.id] = {
-        status: pr.status,
-        reviewStatus: pr.reviewStatus,
-        needsMyReview: !!pr.needsMyReview,
-        ciStatus: pr.ciStatus,
-        updatedAt: pr.updatedAt ? new Date(pr.updatedAt).toISOString() : '',
-      }
-    }
+    const currentPRsMap = buildPRSnapshotMap(prs)
 
     if (!hasSessionInitialized) {
       // Establish session baseline on first successful load, without notifying
@@ -136,12 +127,9 @@ export function useNotificationWatcher() {
       return
     }
 
-    let hasUpdates = false
-
     // Compare new states with the previous baseline against every registered notification type
     for (const pr of prs) {
       const prev = previousPRs[pr.id]
-      let shouldNotifyThisPR = false
 
       for (const def of NOTIFICATION_TYPES) {
         if (!notificationsEnabled) break
@@ -160,17 +148,13 @@ export function useNotificationWatcher() {
           ...(def.reviewStatus ? { reviewStatus: def.reviewStatus(pr) } : {}),
         })
         showNativeNotification(newNotif, t)
-        shouldNotifyThisPR = true
-      }
-
-      if (shouldNotifyThisPR) {
-        hasUpdates = true
       }
     }
 
-    // Update baseline if changes happened or item counts differ
-    const keysCountMatch = Object.keys(previousPRs).length === prs.length
-    if (hasUpdates || !keysCountMatch) {
+    // Always move the baseline forward once a poll has been diffed — including for changes that
+    // raised nothing (a disabled type, a suppressed one). Leaving it behind is what would replay
+    // them later. Gated on a real difference so this write doesn't re-trigger its own effect.
+    if (!snapshotMapsEqual(previousPRs, currentPRsMap)) {
       setPreviousPRs(currentPRsMap)
     }
   }, [
