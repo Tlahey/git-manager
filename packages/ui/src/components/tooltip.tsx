@@ -32,6 +32,20 @@ export interface TooltipProps {
 
 const GAP = 6 // px between trigger and tooltip
 
+const EDGE = 4 // px kept clear of the viewport edges
+
+/**
+ * Where to put the bubble, given the trigger's viewport rect and the bubble's own size.
+ *
+ * Coordinates are viewport-relative, matching the `position: fixed` the bubble is rendered with —
+ * no scroll offset is added, since a fixed element does not move with the document.
+ *
+ * A placement is only rejected on the axis it is actually responsible for: `top`/`bottom` own the
+ * vertical direction, `left`/`right` the horizontal one. Overflow on the *other* axis is what the
+ * clamp exists for, and letting it veto a placement is what used to send a wide bubble on a narrow
+ * trigger — the sidebar's is the usual case — skidding off to a completely different side of the
+ * trigger than the one that was asked for.
+ */
 function computePosition(
   triggerRect: DOMRect,
   tooltipRect: { width: number; height: number },
@@ -39,65 +53,56 @@ function computePosition(
 ): { top: number; left: number; actual: Placement } {
   const vw = window.innerWidth
   const vh = window.innerHeight
-  const scrollX = window.scrollX
-  const scrollY = window.scrollY
 
-  // Try the preferred placement, then flip if it doesn't fit
-  const placements: Placement[] = [
-    preferred,
-    preferred === 'top'
-      ? 'bottom'
-      : preferred === 'bottom'
-        ? 'top'
-        : preferred === 'left'
-          ? 'right'
-          : 'left',
-    'top',
-    'bottom',
-    'left',
-    'right',
-  ]
+  const opposite: Record<Placement, Placement> = {
+    top: 'bottom',
+    bottom: 'top',
+    left: 'right',
+    right: 'left',
+  }
+  // Preferred first, then its opposite (the flip), then the rest as a last resort.
+  const placements: Placement[] = [preferred, opposite[preferred], 'bottom', 'top', 'right', 'left']
 
-  for (const p of placements) {
+  for (let i = 0; i < placements.length; i++) {
+    const p = placements[i]
     let top = 0
     let left = 0
 
     switch (p) {
       case 'top':
-        top = triggerRect.top + scrollY - tooltipRect.height - GAP
-        left = triggerRect.left + scrollX + triggerRect.width / 2 - tooltipRect.width / 2
+        top = triggerRect.top - tooltipRect.height - GAP
+        left = triggerRect.left + triggerRect.width / 2 - tooltipRect.width / 2
         break
       case 'bottom':
-        top = triggerRect.bottom + scrollY + GAP
-        left = triggerRect.left + scrollX + triggerRect.width / 2 - tooltipRect.width / 2
+        top = triggerRect.bottom + GAP
+        left = triggerRect.left + triggerRect.width / 2 - tooltipRect.width / 2
         break
       case 'left':
-        top = triggerRect.top + scrollY + triggerRect.height / 2 - tooltipRect.height / 2
-        left = triggerRect.left + scrollX - tooltipRect.width - GAP
+        top = triggerRect.top + triggerRect.height / 2 - tooltipRect.height / 2
+        left = triggerRect.left - tooltipRect.width - GAP
         break
       case 'right':
-        top = triggerRect.top + scrollY + triggerRect.height / 2 - tooltipRect.height / 2
-        left = triggerRect.right + scrollX + GAP
+        top = triggerRect.top + triggerRect.height / 2 - tooltipRect.height / 2
+        left = triggerRect.right + GAP
         break
     }
 
-    // Clamp to viewport
-    const clampedLeft = Math.max(4, Math.min(left, vw + scrollX - tooltipRect.width - 4))
-    const clampedTop = Math.max(4, Math.min(top, vh + scrollY - tooltipRect.height - 4))
-
-    // Check if this placement fits without clamping (i.e. the unclamped position is in-bounds)
+    // Only the axis this placement controls decides whether it fits; the other one gets clamped.
     const fits =
-      left >= 4 &&
-      left + tooltipRect.width <= vw + scrollX - 4 &&
-      top >= 4 &&
-      top + tooltipRect.height <= vh + scrollY - 4
+      p === 'top' || p === 'bottom'
+        ? top >= EDGE && top + tooltipRect.height <= vh - EDGE
+        : left >= EDGE && left + tooltipRect.width <= vw - EDGE
 
-    if (fits || p === placements[placements.length - 1]) {
-      return { top: clampedTop, left: clampedLeft, actual: p }
+    if (fits || i === placements.length - 1) {
+      return {
+        top: Math.max(EDGE, Math.min(top, vh - tooltipRect.height - EDGE)),
+        left: Math.max(EDGE, Math.min(left, vw - tooltipRect.width - EDGE)),
+        actual: p,
+      }
     }
   }
 
-  // fallback (should never reach)
+  // Unreachable: the loop always returns on its last iteration.
   return { top: 0, left: 0, actual: preferred }
 }
 
@@ -125,10 +130,17 @@ function TooltipBubble({
   // paints. With `useEffect` the bubble was painted once at its previous coordinates and only then
   // corrected, which reads as the tooltip appearing up-and-left of the trigger and snapping onto it
   // a frame later — the effect is most visible on small triggers like a toolbar icon.
+  //
+  // `offsetWidth`/`offsetHeight`, not `getBoundingClientRect()`: the entry animation (`zoom-in-95`)
+  // is already running at this point, and a bounding rect reports the element's *transformed* box —
+  // so the bubble measured ~5% small, got placed from those wrong dimensions, and then visibly
+  // drifted as the scale animation settled to 1. The offset sizes are the untransformed layout box.
   useLayoutEffect(() => {
-    if (!ref.current) return
-    const rect = ref.current.getBoundingClientRect()
-    setPos(computePosition(triggerRect, { width: rect.width, height: rect.height }, placement))
+    const el = ref.current
+    if (!el) return
+    setPos(
+      computePosition(triggerRect, { width: el.offsetWidth, height: el.offsetHeight }, placement)
+    )
   }, [triggerRect, placement])
 
   return createPortal(
@@ -189,6 +201,16 @@ export function Tooltip({
     if (timerRef.current) clearTimeout(timerRef.current)
     setShow(false)
   }, [])
+
+  // Becoming disabled retracts an already-visible bubble, it doesn't merely block the next one.
+  // Callers disable a tooltip precisely when it has stopped being the relevant thing to show (the
+  // pointer moved onto a child with its own tooltip, the trigger's action became unavailable…), and
+  // leaving a stale bubble on screen until the pointer happens to exit is the wrong reading of it.
+  useEffect(() => {
+    if (!disabled) return
+    if (timerRef.current) clearTimeout(timerRef.current)
+    setShow(false)
+  }, [disabled])
 
   // Clean up timer on unmount
   useEffect(() => {

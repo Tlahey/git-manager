@@ -18,6 +18,22 @@ export function derivePrTagStatus(pr: PullRequest): PrTagStatus {
   return 'open'
 }
 
+/**
+ * i18n key for the status shown as a standalone label — a row's pill, the hover card's header.
+ *
+ * Separate from {@link PR_TAG_STATUS_LABEL_KEY} purely for capitalisation: those values are
+ * interpolated mid-sentence ("Pull request #12 — checks failing") and so are lower-case, which
+ * reads wrong on its own in a pill.
+ */
+export const PR_STATE_LABEL_KEY: Record<PrTagStatus, string> = {
+  open: 'sidebar.prState.open',
+  merged: 'sidebar.prState.merged',
+  failed: 'sidebar.prState.failed',
+  pending: 'sidebar.prState.pending',
+  draft: 'sidebar.prState.draft',
+  closed: 'sidebar.prState.closed',
+}
+
 /** i18n key (in the `git` namespace) for a status' short human label, used in the tag's aria-label. */
 export const PR_TAG_STATUS_LABEL_KEY: Record<PrTagStatus, string> = {
   open: 'sidebar.prTag.status.open',

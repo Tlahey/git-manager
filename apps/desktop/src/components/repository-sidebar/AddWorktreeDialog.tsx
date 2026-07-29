@@ -28,6 +28,11 @@ interface AddWorktreeDialogProps {
   repoPath: string
   open: boolean
   onClose: () => void
+  /**
+   * Branch to preselect instead of the current one — set when the dialog is opened from a pull
+   * request, whose head branch is the whole point of the worktree being created.
+   */
+  initialBranch?: string
 }
 
 /** Creates a new linked worktree. The base branch is picked from a searchable dropdown (defaulting
@@ -37,7 +42,12 @@ interface AddWorktreeDialogProps {
  * creation. A right-hand panel lists the "default files" (gitignored locals like `.env`) copied into
  * the new worktree; it's seeded from the repo's saved defaults but edits there are transient unless
  * explicitly saved back. */
-export function AddWorktreeDialog({ repoPath, open, onClose }: AddWorktreeDialogProps) {
+export function AddWorktreeDialog({
+  repoPath,
+  open,
+  onClose,
+  initialBranch,
+}: AddWorktreeDialogProps) {
   const { t } = useTranslation('git')
   const queryClient = useQueryClient()
   const { data: allBranches = [] } = useBranches(repoPath)
@@ -86,20 +96,30 @@ export function AddWorktreeDialog({ repoPath, open, onClose }: AddWorktreeDialog
     if (open) {
       setDefaultFiles(effective.worktreeDefaultFiles)
       setResult(null)
+      // Clear the selection so the defaulting effect below re-runs: without this, a dialog opened
+      // from one pull request and then from another would keep the first one's branch, since the
+      // held value is still a valid local branch.
+      setBranch('')
+      setPathEdited(false)
     }
     // Depend only on `open`: re-seeding on every `effective` change would clobber in-progress edits.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
-  // Default the selection to the current branch (falling back to the first local branch). Re-runs
-  // whenever the branch list changes — the branches query commonly resolves after the first render —
-  // so the default lands once the real list arrives, but leaves an explicit user choice alone.
+  // Default the selection to `initialBranch` when the caller named one (opened from a pull request),
+  // else the current branch, falling back to the first local branch. Re-runs whenever the branch
+  // list changes — the branches query commonly resolves after the first render — so the default
+  // lands once the real list arrives, but leaves an explicit user choice alone.
   useEffect(() => {
     if (!open || localBranches.length === 0) return
     if (branch && localBranches.some((b) => b.shortName === branch)) return
+    if (initialBranch && localBranches.some((b) => b.shortName === initialBranch)) {
+      setBranch(initialBranch)
+      return
+    }
     const head = localBranches.find((b) => b.isHead)
     setBranch(head?.shortName ?? localBranches[0].shortName)
-  }, [open, localBranches, branch])
+  }, [open, localBranches, branch, initialBranch])
 
   // Keep the destination in sync with the selected branch until the user takes it over.
   useEffect(() => {

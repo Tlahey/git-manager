@@ -34,6 +34,7 @@ import { CommitDetailsPanel } from './CommitDetailsPanel'
 import { MultiCommitDetailsPanel } from './MultiCommitDetailsPanel'
 import { DiffViewCenter } from './DiffViewCenter'
 import { PrDetailCenter } from './pr/PrDetailCenter'
+import { IssueDetailCenter } from './issue/IssueDetailCenter'
 import { PrComposerCenter } from './pr/PrComposerCenter'
 import { PrCreateCenter } from './pr/PrCreateCenter'
 import { PrFileDiffCenter } from './pr/PrFileDiffCenter'
@@ -118,6 +119,8 @@ export function GitGraph({
   const setActiveDiffFile = useRepoUIStore((s) => s.setActiveDiffFile)
   const activePrNumber = useRepoUIStore((s) => s.activePrNumber)
   const setActivePrNumber = useRepoUIStore((s) => s.setActivePrNumber)
+  const activeIssue = useRepoUIStore((s) => s.activeIssue)
+  const setActiveIssue = useRepoUIStore((s) => s.setActiveIssue)
   const activePrFile = useRepoUIStore((s) => s.activePrFile)
   const setActivePrFile = useRepoUIStore((s) => s.setActivePrFile)
   const prFilesVisible = useRepoUIStore((s) => s.prFilesVisible)
@@ -201,7 +204,15 @@ export function GitGraph({
   const setSelectedStashIndex = useRepoUIStore((s) => s.setSelectedStashIndex)
   const pendingGraphAction = useRepoUIStore((s) => s.pendingGraphAction)
   const setPendingGraphAction = useRepoUIStore((s) => s.setPendingGraphAction)
+  const pendingCommitMenuOid = useRepoUIStore((s) => s.pendingCommitMenuOid)
+  const setPendingCommitMenuOid = useRepoUIStore((s) => s.setPendingCommitMenuOid)
   const hiddenStashes = useRepoDataStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
+  // Tags the user chose to keep off the graph. Unlike hidden stashes — which the backend drops
+  // from the log entirely — this only suppresses the badge, so it is filtered here at render time.
+  const hiddenTags = useRepoDataStore((s) => s.hiddenTags[repoPath]) || EMPTY_ARRAY
+  // Same deal for branches hidden from the sidebar, local and remote alike.
+  const hiddenBranches =
+    useRepoDataStore((s) => s.hiddenBranches[repoPath]) || EMPTY_ARRAY
   const toggleStashVisibility = useRepoDataStore((s) => s.toggleStashVisibility)
 
   // ── Rebase state (for the synthetic conflict row in the graph) ─────────────
@@ -562,6 +573,17 @@ export function GitGraph({
     openFixupWindow,
   ])
 
+  // The sidebar's tag rows ask for a commit's full menu through the store rather than rebuilding
+  // it: the menu is assembled from this graph's loaded page, so the request comes here instead of
+  // the menu going there. The commit is selected first, so the dialogs its items raise (reset,
+  // revert, create branch) act on the tag's commit and not on whatever was selected before.
+  useEffect(() => {
+    if (!pendingCommitMenuOid) return
+    selectSingle(pendingCommitMenuOid)
+    void openMenuAt(undefined, pendingCommitMenuOid)
+    setPendingCommitMenuOid(null)
+  }, [pendingCommitMenuOid, selectSingle, openMenuAt, setPendingCommitMenuOid])
+
   // ── Virtualisation ─────────────────────────────────────────────────────────
   const parentRef = useRef<HTMLDivElement>(null)
   const lastScrolledRef = useRef<{ branch: string | undefined; repoPath: string }>({
@@ -787,6 +809,15 @@ export function GitGraph({
               onClose={() => setActivePrNumber(null)}
             />
           )
+        ) : activeIssue != null ? (
+          // The repo's own path, not the `owner/repo` the Launchpad passes: `useRepoGitHub` resolves
+          // GitHub from the repo's remotes, which is exactly what the sidebar's issues came from.
+          <IssueDetailCenter
+            repoPath={repoPath}
+            issueNumber={activeIssue.number}
+            issue={activeIssue}
+            onClose={() => setActiveIssue(null)}
+          />
         ) : prCreateOpen ? (
           <PrCreateCenter repoPath={repoPath} />
         ) : prComposer != null ? (
@@ -971,6 +1002,8 @@ export function GitGraph({
                             wipRef={wipRef}
                             laneRef={laneRefByOid.get(oid)}
                             graphMaxColumn={graphMaxColumn}
+                            hiddenTags={hiddenTags}
+                            hiddenBranches={hiddenBranches}
                             isTagDraft={isTagDraftRow}
                             onSubmitTag={isTagDraftRow ? submitTagDraft : undefined}
                             onCancelTag={isTagDraftRow ? cancelTagDraft : undefined}

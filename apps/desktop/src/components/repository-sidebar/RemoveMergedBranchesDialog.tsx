@@ -214,7 +214,7 @@ export function RemoveMergedBranchesDialog({
                       </p>
                       <button
                         type="button"
-                        onClick={() => copyWithToast(b.commitOid, 'SHA')}
+                        onClick={() => copyWithToast(b.commitOid, 'sha')}
                         className="mt-1 flex items-center gap-1 rounded border border-border/40 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                         title={b.commitOid}
                         aria-label={t('sidebar.copySha')}

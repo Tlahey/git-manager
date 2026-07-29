@@ -8,9 +8,13 @@ const useBranchesMock = vi.fn()
 const useGitStashesMock = vi.fn()
 const usePullRequestsMock = vi.fn()
 const useMergedPrsByBranchMock = vi.fn()
+const useRepoIssuesMock = vi.fn()
+const useRepoPrFiltersMock = vi.fn()
 vi.mock('./useBranches', () => ({ useBranches: () => useBranchesMock() }))
 vi.mock('./useGitStashes', () => ({ useGitStashes: () => useGitStashesMock() }))
 vi.mock('./usePullRequests', () => ({ usePullRequests: () => usePullRequestsMock() }))
+vi.mock('./useRepoIssues', () => ({ useRepoIssues: () => useRepoIssuesMock() }))
+vi.mock('./useRepoPrFilters', () => ({ useRepoPrFilters: () => useRepoPrFiltersMock() }))
 vi.mock('./useMergedPrsByBranch', () => ({
   useMergedPrsByBranch: () => useMergedPrsByBranchMock(),
 }))
@@ -49,8 +53,14 @@ function branch(shortName: string, overrides: Partial<GitBranch> = {}): GitBranc
   }
 }
 
-function remoteBranch(shortName: string, overrides: Partial<GitBranch> = {}): GitBranch {
-  return branch(shortName, { isRemote: true, name: `refs/remotes/${shortName}`, ...overrides })
+/**
+ * Built the way the backend really reports a remote branch: `name` carries the remote
+ * (`origin/build/ci`), `shortName` has it stripped (`build/ci`). Getting this wrong is what once
+ * put a branch's first folder beside `origin` instead of inside it.
+ */
+function remoteBranch(qualifiedName: string, overrides: Partial<GitBranch> = {}): GitBranch {
+  const shortName = qualifiedName.split('/').slice(1).join('/')
+  return branch(shortName, { isRemote: true, name: qualifiedName, ...overrides })
 }
 
 function tag(name: string): GitRef {
@@ -100,6 +110,77 @@ function allRows(sections: SidebarSection[]): SidebarRow[] {
 }
 
 const DEFAULT_PR_DATA = { allPrs: [], isGithub: false, isLoading: false }
+const DEFAULT_ISSUE_DATA = {
+  groups: [],
+  allIssues: [],
+  isGithub: false,
+  isLoading: false,
+  refresh: () => {},
+}
+
+const FILTER_A = { id: 'f1', name: 'All open', query: 'is:open' }
+const FILTER_B = { id: 'f2', name: 'Mine', query: 'is:open author:@me' }
+
+const PR_FILTER_A = { id: 'pf1', name: 'All open PRs', query: 'is:open' }
+const PR_FILTER_B = { id: 'pf2', name: 'Mine', query: 'is:open author:@me' }
+
+const DEFAULT_PR_FILTER_DATA = { groups: [], allMatched: [], isGithub: false, isLoading: false }
+
+/** Builds the grouped shape `useRepoPrFilters` returns, with the de-duplicated union it exposes. */
+function prFilterData(
+  groups: Array<{ filter: typeof PR_FILTER_A; prs: Record<string, unknown>[]; error?: string | null }>,
+  extra: Record<string, unknown> = {}
+) {
+  const allMatched = [
+    ...new Map(groups.flatMap((g) => g.prs).map((p) => [p.number as number, p])).values(),
+  ]
+  return {
+    ...DEFAULT_PR_FILTER_DATA,
+    isGithub: true,
+    groups: groups.map((g) => ({ error: null, ...g })),
+    allMatched,
+    ...extra,
+  }
+}
+
+function issue(number: number, overrides: Record<string, unknown> = {}) {
+  return {
+    id: `gh-issue-${number}`,
+    number,
+    title: `Issue ${number}`,
+    repo: 'repo',
+    url: '',
+    status: 'open',
+    author: 'marie',
+    authorAvatar: '',
+    assignees: [],
+    labels: [],
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+    comments: 0,
+    thumbsUp: 0,
+    ...overrides,
+  }
+}
+
+type TestIssue = ReturnType<typeof issue>
+
+/** Builds the grouped shape `useRepoIssues` returns, with the de-duplicated union it also exposes. */
+function issueData(
+  groups: Array<{ filter: typeof FILTER_A; issues: TestIssue[]; error?: string | null }>,
+  extra: Record<string, unknown> = {}
+) {
+  const allIssues = [
+    ...new Map(groups.flatMap((g) => g.issues).map((i) => [i.id, i])).values(),
+  ]
+  return {
+    ...DEFAULT_ISSUE_DATA,
+    isGithub: true,
+    groups: groups.map((g) => ({ error: null, ...g })),
+    allIssues,
+    ...extra,
+  }
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -108,6 +189,8 @@ beforeEach(() => {
   useBranchesMock.mockReturnValue({ data: [] })
   useGitStashesMock.mockReturnValue({ data: [] })
   usePullRequestsMock.mockReturnValue(DEFAULT_PR_DATA)
+  useRepoIssuesMock.mockReturnValue(DEFAULT_ISSUE_DATA)
+  useRepoPrFiltersMock.mockReturnValue(DEFAULT_PR_FILTER_DATA)
   useMergedPrsByBranchMock.mockReturnValue(new Map())
   mockedGetTags.mockResolvedValue([])
   mockedListSubmodules.mockResolvedValue([])
@@ -161,14 +244,37 @@ describe('useSidebarRows — local section', () => {
     expect(result.current.isPinned('main')).toBe(false)
   })
 
-  it('groups remaining branches into folders by prefix (via useGroupedBranches)', async () => {
-    useBranchesMock.mockReturnValue({ data: [branch('feat/a'), branch('feat/b')] })
+  // Same tree as the remote section, minus its remote node: one folder per path segment, formed
+  // even for a single branch, and no `origin` above them.
+  it('nests local branches one folder per path segment', async () => {
+    useBranchesMock.mockReturnValue({ data: [branch('feat/ci/lint'), branch('feat/b')] })
     const { result } = renderRows({ openState: { 'section:local': true } })
-    await waitFor(() => expect(findRow(result.current.sections, 'folder:feat/')).toBeDefined())
-    expect(findRow(result.current.sections, 'folder:feat/')).toMatchObject({
+    await waitFor(() => expect(findRow(result.current.sections, 'folder:feat')).toBeDefined())
+
+    expect(findRow(result.current.sections, 'folder:feat')).toMatchObject({
+      name: 'feat',
       count: 2,
+      depth: 0,
       isOpen: true,
     })
+    expect(findRow(result.current.sections, 'folder:feat/ci')).toMatchObject({
+      name: 'ci',
+      count: 1,
+      depth: 1,
+    })
+    expect(
+      allRows(result.current.sections).find(
+        (r) => r.kind === 'branch' && r.branch.shortName === 'feat/ci/lint'
+      )
+    ).toMatchObject({ displayName: 'lint', depth: 2 })
+  })
+
+  it('marks the folder holding HEAD, at any depth', async () => {
+    useBranchesMock.mockReturnValue({ data: [branch('feat/ci/lint', { isHead: true })] })
+    const { result } = renderRows({ openState: { 'section:local': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'folder:feat')).toBeDefined())
+    expect(findRow(result.current.sections, 'folder:feat')).toMatchObject({ hasHead: true })
+    expect(findRow(result.current.sections, 'folder:feat/ci')).toMatchObject({ hasHead: true })
   })
 
   it('strips the folder prefix from a grouped branch displayName, keeping the full shortName', async () => {
@@ -200,16 +306,17 @@ describe('useSidebarRows — local section', () => {
     expect(featureX).toMatchObject({ displayName: 'feature-x' })
   })
 
-  it('respects an explicit closed override for a folder', async () => {
-    useBranchesMock.mockReturnValue({ data: [branch('feat/a'), branch('feat/b')] })
+  it('respects an explicit closed override for a folder, hiding its whole subtree', async () => {
+    useBranchesMock.mockReturnValue({ data: [branch('feat/ci/lint'), branch('feat/b')] })
     const { result } = renderRows({
-      openState: { 'section:local': true, 'folder:feat/': false },
+      openState: { 'section:local': true, 'folder:feat': false },
     })
-    await waitFor(() => expect(findRow(result.current.sections, 'folder:feat/')).toBeDefined())
-    expect(findRow(result.current.sections, 'folder:feat/')).toMatchObject({ isOpen: false })
+    await waitFor(() => expect(findRow(result.current.sections, 'folder:feat')).toBeDefined())
+    expect(findRow(result.current.sections, 'folder:feat')).toMatchObject({ isOpen: false })
+    expect(findRow(result.current.sections, 'folder:feat/ci')).toBeUndefined()
     expect(
       allRows(result.current.sections).find(
-        (r) => r.kind === 'branch' && r.id === 'local:refs/heads/feat/a'
+        (r) => r.kind === 'branch' && r.id === 'local:refs/heads/feat/b'
       )
     ).toBeUndefined()
   })
@@ -266,23 +373,136 @@ describe('useSidebarRows — remotes section', () => {
     expect(findSection(result.current.sections, 'remotes')).toMatchObject({ count: 3 })
   })
 
+  // The remote is the first segment of `name`, never of `shortName` — which the backend has
+  // already stripped it from. Reading it off `shortName` named the remote after the branch's first
+  // folder, putting `build` beside `origin` instead of inside it.
+  it('keeps a foldered branch under its remote instead of making its folder a remote', async () => {
+    useBranchesMock.mockReturnValue({
+      data: [remoteBranch('origin/build/ci'), remoteBranch('upstream/build/ci')],
+    })
+    const { result } = renderRows({ openState: { 'section:remotes': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
+
+    expect(findRow(result.current.sections, 'remote:build')).toBeUndefined()
+    expect(findRow(result.current.sections, 'remote:upstream')).toBeDefined()
+    expect(
+      allRows(result.current.sections).filter((r) => r.kind === 'remote-group')
+    ).toHaveLength(2)
+  })
+
   it('defaults a slash-less remote branch name to the "origin" group', async () => {
     useBranchesMock.mockReturnValue({ data: [remoteBranch('HEAD', { shortName: 'HEAD' })] })
     const { result } = renderRows({ openState: { 'section:remotes': true } })
     await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
   })
+
+  // Everything sits under the remote node, and folders inside it are cut on the name *relative to
+  // the remote* — splitting the raw short name would fold the whole remote into one `origin/`.
+  it('nests a remote branch one folder per path segment, under its remote', async () => {
+    useBranchesMock.mockReturnValue({
+      data: [remoteBranch('origin/build/ci/lint'), remoteBranch('origin/main')],
+    })
+    const { result } = renderRows({ openState: { 'section:remotes': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
+
+    // The remote node itself occupies depth 0, so its own children start one level in.
+    expect(findRow(result.current.sections, 'remote-folder:origin/build')).toMatchObject({
+      name: 'build',
+      depth: 1,
+      count: 1,
+    })
+    expect(findRow(result.current.sections, 'remote-folder:origin/build/ci')).toMatchObject({
+      name: 'ci',
+      depth: 2,
+    })
+    expect(
+      findRow(result.current.sections, 'remote-branch:origin/build/ci/lint')
+    ).toMatchObject({ displayName: 'lint', depth: 3 })
+    // No folder in its name: it stays a direct child of the remote.
+    expect(findRow(result.current.sections, 'remote-branch:origin/main')).toMatchObject(
+      { displayName: 'main', depth: 1 }
+    )
+  })
+
+  it('carries every branch name on the remote node, for its visibility toggle', async () => {
+    useBranchesMock.mockReturnValue({
+      data: [remoteBranch('origin/build/ci/lint'), remoteBranch('origin/main')],
+    })
+    const { result } = renderRows({ openState: { 'section:remotes': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
+    expect(findRow(result.current.sections, 'remote:origin')).toMatchObject({
+      branchNames: ['origin/build/ci/lint', 'origin/main'],
+    })
+  })
+
+  // A closed folder takes everything below it off screen, not just its own leaves.
+  it('collapses a remote folder with its whole subtree, leaving the rest of the remote alone', async () => {
+    useBranchesMock.mockReturnValue({
+      data: [remoteBranch('origin/build/ci/lint'), remoteBranch('origin/main')],
+    })
+    const { result } = renderRows({
+      openState: { 'section:remotes': true, 'remote-folder:origin/build': false },
+    })
+    await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
+    expect(findRow(result.current.sections, 'remote-folder:origin/build/ci')).toBeUndefined()
+    expect(
+      findRow(result.current.sections, 'remote-branch:origin/build/ci/lint')
+    ).toBeUndefined()
+    expect(findRow(result.current.sections, 'remote-branch:origin/main')).toBeDefined()
+  })
+
+  // Under a remote a folder is a namespace, so it exists whether one branch sits in it or ten —
+  // unlike the local list, which only folds a prefix shared by at least two branches.
+  it('folders a lone remote branch that the local list would leave flat', async () => {
+    useBranchesMock.mockReturnValue({ data: [remoteBranch('origin/build/xxxx')] })
+    const { result } = renderRows({ openState: { 'section:remotes': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
+    expect(findRow(result.current.sections, 'remote-folder:origin/build')).toMatchObject({
+      name: 'build',
+      count: 1,
+    })
+  })
 })
 
 describe('useSidebarRows — pull requests section', () => {
-  it('is collapsed by default', async () => {
+  it('is collapsed by default, with the PR count still shown on the header', async () => {
     usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
+    useRepoPrFiltersMock.mockReturnValue(
+      prFilterData([{ filter: PR_FILTER_A, prs: [{ number: 1 }, { number: 2 }] }])
+    )
     const { result } = renderRows()
     await waitFor(() => expect(findSection(result.current.sections, 'prs')).toBeDefined())
-    expect(findSection(result.current.sections, 'prs')).toMatchObject({ isOpen: false, rows: [] })
+    expect(findSection(result.current.sections, 'prs')).toMatchObject({
+      count: 2,
+      isOpen: false,
+      rows: [],
+    })
   })
 
-  it('shows a loading message while PRs are loading', async () => {
+  // The filters overlap by design, so the header count is the de-duplicated union, not the sum.
+  it('counts each PR once on the header even when several filters match it', async () => {
+    usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
+    useRepoPrFiltersMock.mockReturnValue(
+      prFilterData([
+        { filter: PR_FILTER_A, prs: [{ number: 1 }, { number: 2 }] },
+        { filter: PR_FILTER_B, prs: [{ number: 1 }] },
+      ])
+    )
+    const { result } = renderRows()
+    await waitFor(() => expect(findSection(result.current.sections, 'prs')).toBeDefined())
+    expect(findSection(result.current.sections, 'prs')).toMatchObject({ count: 2 })
+  })
+
+  it('shows a loading message while the repo PR list is loading', async () => {
     usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: true })
+    const { result } = renderRows({ openState: { 'section:prs': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'pr:loading')).toBeDefined())
+  })
+
+  // The filter searches are a second request; the section is not ready until they land either.
+  it('shows a loading message while the filter searches are in flight', async () => {
+    usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
+    useRepoPrFiltersMock.mockReturnValue({ ...DEFAULT_PR_FILTER_DATA, isGithub: true, isLoading: true })
     const { result } = renderRows({ openState: { 'section:prs': true } })
     await waitFor(() => expect(findRow(result.current.sections, 'pr:loading')).toBeDefined())
   })
@@ -293,34 +513,344 @@ describe('useSidebarRows — pull requests section', () => {
     await waitFor(() => expect(findRow(result.current.sections, 'pr:nogithub')).toBeDefined())
   })
 
-  it('shows an empty message when there are no open PRs', async () => {
+  it('tells the user to add a filter when they have deleted every one', async () => {
     usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
+    useRepoPrFiltersMock.mockReturnValue(prFilterData([]))
     const { result } = renderRows({ openState: { 'section:prs': true } })
-    await waitFor(() => expect(findRow(result.current.sections, 'pr:empty')).toBeDefined())
+    await waitFor(() => expect(findRow(result.current.sections, 'pr:nofilters')).toBeDefined())
+  })
+})
+
+describe('useSidebarRows — pull request sub-groups', () => {
+  function renderGroups(
+    groups: Array<{ filter: typeof PR_FILTER_A; prs: Record<string, unknown>[]; error?: string | null }>,
+    openState: Record<string, boolean> = {}
+  ) {
+    usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
+    useRepoPrFiltersMock.mockReturnValue(prFilterData(groups))
+    return renderRows({ openState: { 'section:prs': true, ...openState } })
+  }
+
+  it('renders one sub-group per saved filter, expanding only the first', async () => {
+    const { result } = renderGroups([
+      { filter: PR_FILTER_A, prs: [{ number: 1, headRef: 'a' }] },
+      { filter: PR_FILTER_B, prs: [{ number: 2, headRef: 'b' }] },
+    ])
+    await waitFor(() => expect(findRow(result.current.sections, 'pr-filter:pf1')).toBeDefined())
+
+    expect(findRow(result.current.sections, 'pr-filter:pf1')).toMatchObject({
+      kind: 'subgroup',
+      label: 'All open PRs',
+      count: 1,
+      isOpen: true,
+      filter: PR_FILTER_A,
+      canMoveUp: false,
+      canMoveDown: true,
+    })
+    expect(findRow(result.current.sections, 'pr-filter:pf2')).toMatchObject({
+      isOpen: false,
+      canMoveUp: true,
+      canMoveDown: false,
+    })
+    expect(findRow(result.current.sections, 'pr:pf1:1')).toMatchObject({ kind: 'pr', depth: 1 })
+    expect(findRow(result.current.sections, 'pr:pf2:2')).toBeUndefined()
   })
 
-  it('renders one row per PR, marking the row matching selectedBranch as selected', async () => {
-    usePullRequestsMock.mockReturnValue({
-      allPrs: [
-        { number: 1, headRef: 'feature-x' },
-        { number: 2, headRef: 'feature-y' },
+  // The same PR matching two filters would otherwise collide on its React key.
+  it('keys a PR row by its filter, so a PR in two groups stays unique', async () => {
+    const { result } = renderGroups(
+      [
+        { filter: PR_FILTER_A, prs: [{ number: 1, headRef: 'a' }] },
+        { filter: PR_FILTER_B, prs: [{ number: 1, headRef: 'a' }] },
       ],
-      isGithub: true,
-      isLoading: false,
-    })
+      { 'pr-filter:pf2': true }
+    )
+    await waitFor(() => expect(findRow(result.current.sections, 'pr:pf2:1')).toBeDefined())
+
+    const ids = allRows(result.current.sections).map((r) => r.id)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it('marks the row whose head branch is the selected one', async () => {
+    usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
+    useRepoPrFiltersMock.mockReturnValue(
+      prFilterData([
+        {
+          filter: PR_FILTER_A,
+          prs: [
+            { number: 1, headRef: 'feature-x' },
+            { number: 2, headRef: 'feature-y' },
+          ],
+        },
+      ])
+    )
     const { result } = renderRows({
       selectedBranch: 'feature-y',
       openState: { 'section:prs': true },
     })
-    await waitFor(() => expect(findRow(result.current.sections, 'pr:2')).toBeDefined())
-    expect(findRow(result.current.sections, 'pr:1')).toMatchObject({ isSelected: false })
-    expect(findRow(result.current.sections, 'pr:2')).toMatchObject({ isSelected: true })
+    await waitFor(() => expect(findRow(result.current.sections, 'pr:pf1:2')).toBeDefined())
+    expect(findRow(result.current.sections, 'pr:pf1:1')).toMatchObject({ isSelected: false })
+    expect(findRow(result.current.sections, 'pr:pf1:2')).toMatchObject({ isSelected: true })
+  })
+
+  // Search returns the issue view of a PR, which has no head branch — an empty one must not match
+  // an equally empty `selectedBranch`.
+  it('never marks a PR with no known head branch as selected', async () => {
+    usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
+    useRepoPrFiltersMock.mockReturnValue(
+      prFilterData([{ filter: PR_FILTER_A, prs: [{ number: 1, headRef: '' }] }])
+    )
+    const { result } = renderRows({ selectedBranch: '', openState: { 'section:prs': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'pr:pf1:1')).toBeDefined())
+    expect(findRow(result.current.sections, 'pr:pf1:1')).toMatchObject({ isSelected: false })
+  })
+
+  // A saved view that vanished when it matched nothing would read as a bug, and its header is the
+  // only way back to editing or deleting it.
+  it('keeps an empty filter visible, with an empty message under it', async () => {
+    const { result } = renderGroups([{ filter: PR_FILTER_A, prs: [] }])
+    await waitFor(() => expect(findRow(result.current.sections, 'pr-filter:pf1')).toBeDefined())
+    expect(findRow(result.current.sections, 'pr-filter:pf1:empty')).toBeDefined()
+  })
+
+  it('surfaces a query GitHub rejected on that filter alone', async () => {
+    const { result } = renderGroups(
+      [
+        { filter: PR_FILTER_A, prs: [], error: 'GitHub API 422: Validation Failed' },
+        { filter: PR_FILTER_B, prs: [{ number: 2, headRef: 'b' }] },
+      ],
+      { 'pr-filter:pf2': true }
+    )
+    await waitFor(() => expect(findRow(result.current.sections, 'pr-filter:pf1:error')).toBeDefined())
+    expect(findRow(result.current.sections, 'pr-filter:pf1:error')).toMatchObject({
+      text: expect.stringContaining('Validation Failed'),
+    })
+    expect(findRow(result.current.sections, 'pr:pf2:2')).toBeDefined()
+  })
+
+  it("hides a collapsed group's rows while keeping its header and count", async () => {
+    const { result } = renderGroups(
+      [{ filter: PR_FILTER_A, prs: [{ number: 1, headRef: 'a' }, { number: 2, headRef: 'b' }] }],
+      { 'pr-filter:pf1': false }
+    )
+    await waitFor(() => expect(findRow(result.current.sections, 'pr-filter:pf1')).toBeDefined())
+    expect(findRow(result.current.sections, 'pr-filter:pf1')).toMatchObject({
+      count: 2,
+      isOpen: false,
+    })
+    expect(findRow(result.current.sections, 'pr:pf1:1')).toBeUndefined()
   })
 })
 
-describe('useSidebarRows — PR linked to branch/worktree rows', () => {
-  it('attaches the PR whose headRef matches a branch shortName to that branch row', async () => {
-    useBranchesMock.mockReturnValue({ data: [branch('feature-x'), branch('feature-y')] })
+describe('useSidebarRows — issues section', () => {
+  it('is collapsed by default, with the issue count still shown on the header', async () => {
+    useRepoIssuesMock.mockReturnValue(
+      issueData([{ filter: FILTER_A, issues: [issue(1), issue(2)] }])
+    )
+    const { result } = renderRows()
+    await waitFor(() => expect(findSection(result.current.sections, 'issues')).toBeDefined())
+    expect(findSection(result.current.sections, 'issues')).toMatchObject({
+      count: 2,
+      isOpen: false,
+      rows: [],
+    })
+  })
+
+  // The filters overlap by design (an issue can be "open" *and* "mine"), so the header count is the
+  // de-duplicated union rather than the sum of the groups.
+  it('counts each issue once on the header even when several filters match it', async () => {
+    useRepoIssuesMock.mockReturnValue(
+      issueData([
+        { filter: FILTER_A, issues: [issue(1), issue(2)] },
+        { filter: FILTER_B, issues: [issue(1)] },
+      ])
+    )
+    const { result } = renderRows()
+    await waitFor(() => expect(findSection(result.current.sections, 'issues')).toBeDefined())
+    expect(findSection(result.current.sections, 'issues')).toMatchObject({ count: 2 })
+  })
+
+  it('renders one sub-group per saved filter, expanding only the first', async () => {
+    useRepoIssuesMock.mockReturnValue(
+      issueData([
+        { filter: FILTER_A, issues: [issue(1)] },
+        { filter: FILTER_B, issues: [issue(2)] },
+      ])
+    )
+    const { result } = renderRows({ openState: { 'section:issues': true } })
+    await waitFor(() =>
+      expect(findRow(result.current.sections, 'issue-filter:f1')).toBeDefined()
+    )
+    expect(findRow(result.current.sections, 'issue-filter:f1')).toMatchObject({
+      kind: 'subgroup',
+      label: 'All open',
+      count: 1,
+      isOpen: true,
+      filter: FILTER_A,
+      canMoveUp: false,
+      canMoveDown: true,
+    })
+    expect(findRow(result.current.sections, 'issue-filter:f2')).toMatchObject({
+      isOpen: false,
+      canMoveUp: true,
+      canMoveDown: false,
+    })
+    // Only the expanded group's rows are built.
+    expect(findRow(result.current.sections, 'issue:f1:gh-issue-1')).toMatchObject({ kind: 'issue' })
+    expect(findRow(result.current.sections, 'issue:f2:gh-issue-2')).toBeUndefined()
+  })
+
+  it('renders a collapsed filter\'s issues once it is explicitly opened', async () => {
+    useRepoIssuesMock.mockReturnValue(
+      issueData([
+        { filter: FILTER_A, issues: [issue(1)] },
+        { filter: FILTER_B, issues: [issue(2)] },
+      ])
+    )
+    const { result } = renderRows({
+      openState: { 'section:issues': true, 'issue-filter:f2': true },
+    })
+    await waitFor(() =>
+      expect(findRow(result.current.sections, 'issue:f2:gh-issue-2')).toBeDefined()
+    )
+  })
+
+  // The same issue matching two filters would otherwise collide on its React key.
+  it('keys an issue row by its filter, so an issue in two groups stays unique', async () => {
+    useRepoIssuesMock.mockReturnValue(
+      issueData([
+        { filter: FILTER_A, issues: [issue(1)] },
+        { filter: FILTER_B, issues: [issue(1)] },
+      ])
+    )
+    const { result } = renderRows({
+      openState: { 'section:issues': true, 'issue-filter:f2': true },
+    })
+    await waitFor(() =>
+      expect(findRow(result.current.sections, 'issue:f2:gh-issue-1')).toBeDefined()
+    )
+    const ids = allRows(result.current.sections)
+      .filter((r) => r.kind === 'issue')
+      .map((r) => r.id)
+    expect(ids).toEqual(['issue:f1:gh-issue-1', 'issue:f2:gh-issue-1'])
+  })
+
+  it('shows a loading message while issues are loading', async () => {
+    useRepoIssuesMock.mockReturnValue({ ...DEFAULT_ISSUE_DATA, isGithub: true, isLoading: true })
+    const { result } = renderRows({ openState: { 'section:issues': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'issue:loading')).toBeDefined())
+  })
+
+  it('shows a "connect GitHub" message when the repo has no GitHub remote', async () => {
+    useRepoIssuesMock.mockReturnValue({ ...DEFAULT_ISSUE_DATA, isGithub: false })
+    const { result } = renderRows({ openState: { 'section:issues': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'issue:nogithub')).toBeDefined())
+  })
+
+  it('tells the user to add a filter when they have deleted every one', async () => {
+    useRepoIssuesMock.mockReturnValue(issueData([]))
+    const { result } = renderRows({ openState: { 'section:issues': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'issue:nofilters')).toBeDefined())
+  })
+
+  // A saved view that disappeared when it matched nothing would read as a bug, and its header is
+  // the only way back to editing or deleting it.
+  it('keeps an empty filter visible, with an empty message under it', async () => {
+    useRepoIssuesMock.mockReturnValue(issueData([{ filter: FILTER_A, issues: [] }]))
+    const { result } = renderRows({ openState: { 'section:issues': true } })
+    await waitFor(() =>
+      expect(findRow(result.current.sections, 'issue-filter:f1')).toBeDefined()
+    )
+    expect(findRow(result.current.sections, 'issue-filter:f1:empty')).toBeDefined()
+    expect(findSection(result.current.sections, 'issues')).toBeDefined()
+  })
+
+  it('surfaces a query GitHub rejected on that filter alone', async () => {
+    useRepoIssuesMock.mockReturnValue(
+      issueData([
+        { filter: FILTER_A, issues: [], error: 'GitHub API 422: Validation Failed' },
+        { filter: FILTER_B, issues: [issue(2)] },
+      ])
+    )
+    const { result } = renderRows({
+      openState: { 'section:issues': true, 'issue-filter:f2': true },
+    })
+    await waitFor(() =>
+      expect(findRow(result.current.sections, 'issue-filter:f1:error')).toBeDefined()
+    )
+    expect(findRow(result.current.sections, 'issue-filter:f1:error')).toMatchObject({
+      text: expect.stringContaining('Validation Failed'),
+    })
+    // The healthy filter still lists its issues.
+    expect(findRow(result.current.sections, 'issue:f2:gh-issue-2')).toBeDefined()
+  })
+
+  it('filters issues by title, author, number and label', async () => {
+    useRepoIssuesMock.mockReturnValue(
+      issueData([
+        {
+          filter: FILTER_A,
+          issues: [
+            issue(1, { title: 'Scroll position lost' }),
+            issue(2, { title: 'Other', author: 'bob' }),
+            issue(3, { title: 'Other', labels: ['regression'] }),
+          ],
+        },
+      ])
+    )
+    const byTitle = renderRows({ filter: 'scroll', openState: { 'section:issues': true } })
+    await waitFor(() =>
+      expect(findRow(byTitle.result.current.sections, 'issue:f1:gh-issue-1')).toBeDefined()
+    )
+    expect(findRow(byTitle.result.current.sections, 'issue:f1:gh-issue-2')).toBeUndefined()
+
+    const byAuthor = renderRows({ filter: 'bob', openState: { 'section:issues': true } })
+    await waitFor(() =>
+      expect(findRow(byAuthor.result.current.sections, 'issue:f1:gh-issue-2')).toBeDefined()
+    )
+
+    const byLabel = renderRows({ filter: 'regression', openState: { 'section:issues': true } })
+    await waitFor(() =>
+      expect(findRow(byLabel.result.current.sections, 'issue:f1:gh-issue-3')).toBeDefined()
+    )
+  })
+
+  it('hides the section entirely when a filter matches no issue', async () => {
+    // A matching branch keeps the local section around, so there is a stable anchor to wait on —
+    // otherwise a filter that matches nothing leaves the whole sidebar empty and the wait is racy.
+    useBranchesMock.mockReturnValue({ data: [branch('zzz-branch')] })
+    useRepoIssuesMock.mockReturnValue(
+      issueData([{ filter: FILTER_A, issues: [issue(1, { title: 'Scroll position lost' })] }])
+    )
+    const { result } = renderRows({ filter: 'zzz', openState: { 'section:issues': true } })
+    await waitFor(() => expect(findSection(result.current.sections, 'local')).toBeDefined())
+    expect(findSection(result.current.sections, 'issues')).toBeUndefined()
+  })
+
+  it('counts issues in the filter stats', async () => {
+    useRepoIssuesMock.mockReturnValue(
+      issueData([{ filter: FILTER_A, issues: [issue(1), issue(2)] }])
+    )
+    const { result } = renderRows()
+    await waitFor(() => expect(result.current.filterStats.total).toBeGreaterThan(0))
+    expect(result.current.filterStats).toMatchObject({ matched: 2, total: 2 })
+  })
+
+  it('exposes the issue-list refresh so a newly created issue can be picked up', async () => {
+    const refresh = vi.fn()
+    useRepoIssuesMock.mockReturnValue(issueData([{ filter: FILTER_A, issues: [] }], { refresh }))
+    const { result } = renderRows()
+    await waitFor(() => expect(findSection(result.current.sections, 'issues')).toBeDefined())
+    result.current.refreshIssues()
+    expect(refresh).toHaveBeenCalled()
+  })
+})
+
+// The branch and worktree rows carry no pull request of their own any more: the tag they fed was
+// removed from the row, and nothing else read it. The toolbar keeps its own (`useActiveBranchPr`).
+describe('useSidebarRows — no pull request on branch/worktree rows', () => {
+  it('leaves a branch row bare even when a PR heads it', async () => {
+    useBranchesMock.mockReturnValue({ data: [branch('feature-x')] })
     usePullRequestsMock.mockReturnValue({
       allPrs: [{ number: 9, headRef: 'feature-x', state: 'open' }],
       isGithub: true,
@@ -330,83 +860,21 @@ describe('useSidebarRows — PR linked to branch/worktree rows', () => {
     await waitFor(() =>
       expect(findRow(result.current.sections, 'local:refs/heads/feature-x')).toBeDefined()
     )
-    expect(findRow(result.current.sections, 'local:refs/heads/feature-x')).toMatchObject({
-      pr: { number: 9 },
-    })
-    expect(findRow(result.current.sections, 'local:refs/heads/feature-y')).toMatchObject({
-      pr: undefined,
-    })
+    expect(findRow(result.current.sections, 'local:refs/heads/feature-x')).not.toHaveProperty('pr')
   })
 
-  it('prefers an open PR over a merged one sharing the same headRef', async () => {
-    useBranchesMock.mockReturnValue({ data: [branch('feature-x')] })
-    usePullRequestsMock.mockReturnValue({
-      allPrs: [
-        { number: 1, headRef: 'feature-x', state: 'merged' },
-        { number: 2, headRef: 'feature-x', state: 'open' },
-      ],
-      isGithub: true,
-      isLoading: false,
-    })
-    const { result } = renderRows({ openState: { 'section:local': true } })
-    await waitFor(() =>
-      expect(findRow(result.current.sections, 'local:refs/heads/feature-x')).toBeDefined()
-    )
-    expect(findRow(result.current.sections, 'local:refs/heads/feature-x')).toMatchObject({
-      pr: { number: 2 },
-    })
-  })
-
-  it('attaches the PR whose headRef matches a worktree branch to that worktree row', async () => {
-    mockedListWorktrees.mockResolvedValue([worktree('/tmp/repo-linked', { branch: 'feature/login' })])
+  it('leaves a worktree row bare too', async () => {
+    mockedListWorktrees.mockResolvedValue([
+      worktree('/tmp/repo-linked', { branch: 'feature/login' }),
+    ])
     usePullRequestsMock.mockReturnValue({
       allPrs: [{ number: 11, headRef: 'feature/login', state: 'open' }],
       isGithub: true,
       isLoading: false,
     })
     const { result } = renderRows({ openState: { 'section:worktrees': true } })
-    await waitFor(() =>
-      expect(findRow(result.current.sections, 'wt:/tmp/repo-linked')).toBeDefined()
-    )
-    expect(findRow(result.current.sections, 'wt:/tmp/repo-linked')).toMatchObject({
-      pr: { number: 11 },
-    })
-  })
-
-  it('attaches a merged PR (present only in the merged-by-branch map) to a worktree row', async () => {
-    mockedListWorktrees.mockResolvedValue([
-      worktree('/tmp/repo-merged', { branch: 'claude/graph-vertical-line-cutoff' }),
-    ])
-    usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
-    useMergedPrsByBranchMock.mockReturnValue(
-      new Map([['claude/graph-vertical-line-cutoff', { number: 42, state: 'merged' }]])
-    )
-    const { result } = renderRows({ openState: { 'section:worktrees': true } })
-    await waitFor(() =>
-      expect(findRow(result.current.sections, 'wt:/tmp/repo-merged')).toBeDefined()
-    )
-    expect(findRow(result.current.sections, 'wt:/tmp/repo-merged')).toMatchObject({
-      pr: { number: 42, state: 'merged' },
-    })
-  })
-
-  it('lets an open PR win over a merged one on the same branch', async () => {
-    useBranchesMock.mockReturnValue({ data: [branch('feature-x')] })
-    usePullRequestsMock.mockReturnValue({
-      allPrs: [{ number: 8, headRef: 'feature-x', state: 'open' }],
-      isGithub: true,
-      isLoading: false,
-    })
-    useMergedPrsByBranchMock.mockReturnValue(
-      new Map([['feature-x', { number: 3, state: 'merged' }]])
-    )
-    const { result } = renderRows({ openState: { 'section:local': true } })
-    await waitFor(() =>
-      expect(findRow(result.current.sections, 'local:refs/heads/feature-x')).toBeDefined()
-    )
-    expect(findRow(result.current.sections, 'local:refs/heads/feature-x')).toMatchObject({
-      pr: { number: 8, state: 'open' },
-    })
+    await waitFor(() => expect(findRow(result.current.sections, 'wt:/tmp/repo-linked')).toBeDefined())
+    expect(findRow(result.current.sections, 'wt:/tmp/repo-linked')).not.toHaveProperty('pr')
   })
 })
 
@@ -456,7 +924,7 @@ describe('useSidebarRows — tags/stashes/submodules', () => {
     )
     expect(allRows(result.current.sections).filter((r) => r.kind === 'tag')).toHaveLength(100)
     expect(findRow(result.current.sections, 'tag:more')).toMatchObject({
-      text: '+ 5 autres tags',
+      text: '+ 5 more tags',
     })
   })
 
@@ -526,14 +994,18 @@ describe('useSidebarRows — worktrees section', () => {
 
 describe('useSidebarRows — filter reaches every section, not just branches', () => {
   it('filters pull requests by title, headRef, author, or number', async () => {
-    usePullRequestsMock.mockReturnValue({
-      allPrs: [
-        { number: 1, title: 'Fix login bug', headRef: 'fix-login', author: 'alice' },
-        { number: 2, title: 'Add dark mode', headRef: 'dark-mode', author: 'bob' },
-      ],
-      isGithub: true,
-      isLoading: false,
-    })
+    usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
+    useRepoPrFiltersMock.mockReturnValue(
+      prFilterData([
+        {
+          filter: PR_FILTER_A,
+          prs: [
+            { number: 1, title: 'Fix login bug', headRef: 'fix-login', author: 'alice' },
+            { number: 2, title: 'Add dark mode', headRef: 'dark-mode', author: 'bob' },
+          ],
+        },
+      ])
+    )
     const { result } = renderRows({ filter: 'login', openState: { 'section:prs': true } })
     await waitFor(() =>
       expect(findSection(result.current.sections, 'prs')).toMatchObject({ count: 1 })

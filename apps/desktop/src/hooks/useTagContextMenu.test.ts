@@ -4,10 +4,13 @@ import type { GitRef } from '@git-manager/git-types'
 import { normalizeMenuSpec, type MenuSpecNode } from '../lib/nativeMenuSpec'
 
 const invalidateQueries = vi.fn()
-vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries }) }))
+// `useQuery` too: the hook now reads the branch list (to resolve the fast-forward target and the
+// branch a Solo isolates). An empty result keeps those two items inert without affecting the rest.
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({ invalidateQueries }),
+  useQuery: () => ({ data: [] }),
+}))
 
-const dialogOpen = vi.fn()
-vi.mock('@tauri-apps/plugin-dialog', () => ({ open: (...a: unknown[]) => dialogOpen(...a) }))
 
 const toastSuccess = vi.fn()
 const toastError = vi.fn()

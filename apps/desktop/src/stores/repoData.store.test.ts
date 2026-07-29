@@ -24,6 +24,7 @@ beforeEach(() => {
     linkedWorktreePaths: [],
     wipMessages: {},
     hiddenStashes: {},
+    hiddenBranches: {},
   })
   useRepoUIStore.setState({ openTabs: [], activeRepo: null, activeTab: DASHBOARD_TAB })
   localStorage.clear()
@@ -251,5 +252,46 @@ describe('useRepoDataStore — setPinned', () => {
   it('ignores an unknown path', () => {
     useRepoDataStore.getState().setPinned('/repo/missing', true)
     expect(useRepoDataStore.getState().savedRepos.every((r) => !r.pinned)).toBe(true)
+  })
+})
+
+describe('useRepoDataStore — hidden branches', () => {
+  const hidden = (path = '/repo/a') => useRepoDataStore.getState().hiddenBranches[path]
+
+  it('toggles a single branch in and back out of the hidden list', () => {
+    useRepoDataStore.getState().toggleBranchVisibility('/repo/a', 'origin/main')
+    expect(hidden()).toEqual(['origin/main'])
+    useRepoDataStore.getState().toggleBranchVisibility('/repo/a', 'origin/main')
+    expect(hidden()).toEqual([])
+  })
+
+  // Remote-qualified names: hiding origin/main must leave upstream/main showing.
+  // The name is the graph's own: bare for a local branch, qualified for a remote one — which is
+  // what keeps `main`, `origin/main` and `upstream/main` three separate entries.
+  it('tells apart the local branch and each remote carrying the same name', () => {
+    useRepoDataStore.getState().toggleBranchVisibility('/repo/a', 'main')
+    useRepoDataStore.getState().toggleBranchVisibility('/repo/a', 'origin/main')
+    useRepoDataStore.getState().toggleBranchVisibility('/repo/a', 'upstream/main')
+    useRepoDataStore.getState().toggleBranchVisibility('/repo/a', 'origin/main')
+    expect(hidden()).toEqual(['main', 'upstream/main'])
+  })
+
+  it('is scoped per repository', () => {
+    useRepoDataStore.getState().toggleBranchVisibility('/repo/a', 'origin/main')
+    expect(hidden('/repo/b')).toBeUndefined()
+  })
+
+  it('hides a whole set at once, without duplicating what was already hidden', () => {
+    useRepoDataStore.getState().toggleBranchVisibility('/repo/a', 'origin/main')
+    useRepoDataStore.getState().setBranchesHidden('/repo/a', ['origin/main', 'origin/dev'], true)
+    expect(hidden()).toEqual(['origin/main', 'origin/dev'])
+  })
+
+  it('shows a whole set again, leaving the branches outside it hidden', () => {
+    useRepoDataStore
+      .getState()
+      .setBranchesHidden('/repo/a', ['origin/main', 'origin/dev', 'origin/x'], true)
+    useRepoDataStore.getState().setBranchesHidden('/repo/a', ['origin/main', 'origin/dev'], false)
+    expect(hidden()).toEqual(['origin/x'])
   })
 })

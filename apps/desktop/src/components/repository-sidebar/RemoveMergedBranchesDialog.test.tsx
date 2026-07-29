@@ -139,7 +139,7 @@ describe('RemoveMergedBranchesDialog — body states', () => {
     const user = userEvent.setup()
     renderDialog()
     await user.click(screen.getByTestId('branch-remove-merged-copy-sha-feature/done'))
-    expect(mockedCopy).toHaveBeenCalledWith('abcdef1234567890', 'SHA')
+    expect(mockedCopy).toHaveBeenCalledWith('abcdef1234567890', 'sha')
     expect(mockedDeleteBranch).not.toHaveBeenCalled()
   })
 })

@@ -4,14 +4,13 @@ import userEvent from '@testing-library/user-event'
 import type { PullRequest } from '@git-manager/git-types'
 import { PullRequestItem } from './PullRequestItem'
 
+const { hoverExpandLabel } = vi.hoisted(() => ({ hoverExpandLabel: vi.fn() }))
+// Spied on, not stubbed out, so the row's title can be asserted to no longer go through it.
 vi.mock('./HoverExpandLabel', () => ({
-  HoverExpandLabel: ({
-    children,
-    className,
-  }: {
-    children: React.ReactNode
-    className?: string
-  }) => <span className={className}>{children}</span>,
+  HoverExpandLabel: (props: { children: React.ReactNode; className?: string }) => {
+    hoverExpandLabel(props)
+    return <span className={props.className}>{props.children}</span>
+  },
 }))
 
 function pr(overrides: Partial<PullRequest> = {}): PullRequest {
@@ -29,9 +28,25 @@ function pr(overrides: Partial<PullRequest> = {}): PullRequest {
     createdAt: '',
     updatedAt: '',
     isDraft: false,
+    assignees: [],
+    requestedReviewers: [],
+    labels: [],
     ...overrides,
   }
 }
+
+describe('PullRequestItem — title', () => {
+  // The hover card already shows the full title, so the expand-on-hover overlay would only cover
+  // the row it is explaining. Asserted against the component rather than the overlay it renders:
+  // jsdom reports every element as 0x0, so `HoverExpandLabel`'s `scrollWidth > clientWidth` test
+  // never fires there and its absence would prove nothing.
+  it('truncates plainly, without the expand-on-hover overlay', () => {
+    render(<PullRequestItem pr={pr()} />)
+
+    expect(hoverExpandLabel).not.toHaveBeenCalled()
+    expect(screen.getByTestId('pr-item-42').querySelector('.truncate')).toBeTruthy()
+  })
+})
 
 describe('PullRequestItem — content', () => {
   it('shows the PR number, title, author, and state label', () => {
@@ -52,15 +67,33 @@ describe('PullRequestItem — content', () => {
     expect(screen.getByText(label)).toBeInTheDocument()
   })
 
-  it('shows a merge icon for a merged PR, a filled circle for open, and a plain circle otherwise', () => {
-    const { container, rerender } = render(<PullRequestItem pr={pr({ state: 'merged' })} />)
-    expect(container.querySelector('.lucide-git-merge')).toBeTruthy()
+  // The leading glyph distinguishes every status, not just merged-vs-not: a draft, a PR whose
+  // checks are failing and a plain open one have to be tellable apart at a glance in the list.
+  it.each([
+    ['merged', '.lucide-git-merge'],
+    ['closed', '.lucide-git-pull-request-closed'],
+    ['draft', '.lucide-git-pull-request-draft'],
+  ] as const)('shows the %s glyph in front of the row', (state, selector) => {
+    const { container } = render(<PullRequestItem pr={pr({ state })} />)
+    expect(container.querySelector(selector)).toBeTruthy()
+  })
 
-    rerender(<PullRequestItem pr={pr({ state: 'open' })} />)
-    expect(container.querySelector('.fill-green-400')).toBeTruthy()
+  it('distinguishes an open PR by its CI status: failing and running get their own glyph', () => {
+    const { container, rerender } = render(
+      <PullRequestItem pr={pr({ state: 'open', ciStatus: null })} />
+    )
+    expect(container.querySelector('.lucide-git-pull-request')).toBeTruthy()
 
-    rerender(<PullRequestItem pr={pr({ state: 'closed' })} />)
-    expect(container.querySelector('.fill-green-400')).toBeFalsy()
+    rerender(<PullRequestItem pr={pr({ state: 'open', ciStatus: 'failure' })} />)
+    expect(container.querySelector('.lucide-circle-x')).toBeTruthy()
+
+    rerender(<PullRequestItem pr={pr({ state: 'open', ciStatus: 'pending' })} />)
+    expect(container.querySelector('.lucide-clock')).toBeTruthy()
+  })
+
+  it('indents a row nested under a PR sub-group header', () => {
+    const { container } = render(<PullRequestItem pr={pr()} depth={1} />)
+    expect(container.firstElementChild).toHaveClass('pl-10')
   })
 
   it('applies the selected styling when isSelected', () => {
@@ -119,16 +152,41 @@ describe('PullRequestItem — interaction', () => {
     expect(onOpen).toHaveBeenCalledWith(item)
   })
 
-  it('the external-link opens the PR URL without triggering onOpen', async () => {
-    const onOpen = vi.fn()
+  it('opens the actions menu from the "…" button', async () => {
     const user = userEvent.setup()
-    render(
-      <PullRequestItem pr={pr({ url: 'https://github.com/owner/repo/pull/42' })} onOpen={onOpen} />
+    const onContextMenu = vi.fn()
+    render(<PullRequestItem pr={pr()} onContextMenu={onContextMenu} />)
+
+    await user.click(screen.getByTestId('pr-actions-button-42'))
+
+    expect(onContextMenu).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ number: 42 })
     )
-    const link = screen.getByLabelText("Open in GitHub")
-    expect(link).toHaveAttribute('href', 'https://github.com/owner/repo/pull/42')
-    expect(link).toHaveAttribute('target', '_blank')
-    await user.click(link)
+  })
+
+  it('hands a right-click to the same menu, without the OS one', () => {
+    const onContextMenu = vi.fn()
+    render(<PullRequestItem pr={pr()} onContextMenu={onContextMenu} />)
+
+    const e = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    fireEvent(screen.getByTestId('pr-item-42'), e)
+
+    expect(onContextMenu).toHaveBeenCalledOnce()
+    expect(e.defaultPrevented).toBe(true)
+  })
+
+  it('the "…" button does not also open the PR, by click or by keyboard', async () => {
+    const user = userEvent.setup()
+    const onOpen = vi.fn()
+    render(<PullRequestItem pr={pr()} onOpen={onOpen} onContextMenu={vi.fn()} />)
+    const button = screen.getByTestId('pr-actions-button-42')
+
+    await user.click(button)
+    expect(onOpen).not.toHaveBeenCalled()
+
+    button.focus()
+    await user.keyboard('{Enter}')
     expect(onOpen).not.toHaveBeenCalled()
   })
 })
