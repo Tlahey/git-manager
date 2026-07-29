@@ -105,7 +105,10 @@ export interface ConflictResolverProps {
   /** Draw the JetBrains-style hermetic 2px top/bottom edges around each block (and the matching
    * closing edges on the hatched filler zones). Off by default — the colored fills alone. */
   showBlockBorders?: boolean
-  /** Initial collapse-unchanged state — the header's own toggle button controls it from there. */
+  /** Initial collapse-unchanged state — the header's own toggle button controls it from there.
+   * On by default: what a reader opens a diff for is what changed, and the untouched stretches
+   * around it are noise to scroll past (this is also how JetBrains' and GitHub's diffs open).
+   * Pass `false` for a view whose point is the surrounding file, not the change. */
   defaultCollapseUnchanged?: boolean
 }
 
@@ -149,7 +152,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
       onRecalculate,
       onPendingCountChange,
       showBlockBorders = false,
-      defaultCollapseUnchanged = false,
+      defaultCollapseUnchanged = true,
     },
     ref
   ) => {
@@ -181,6 +184,11 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
     const viewToUse = isTwoWay ? (dynamicView ?? dummyView) : staticView
 
     const containerRef = useRef<HTMLDivElement | null>(null)
+    // The resolver's own root. Carries `--merge-editor-background` — Monaco's actual resolved
+    // editor background, republished as a CSS custom property so the parts of the resolver that
+    // must be seamless with the panes (the inter-pane connector gaps) can reference it from CSS.
+    // Kept in sync by the same `handlePaneMount` observer that syncs the left pane's padding.
+    const rootRef = useRef<HTMLDivElement | null>(null)
     // The leftmost pane's wrapper gets padding-left (see styles.css's `.merge-pane-numbers-right`
     // rule) so its code isn't flush against the window/panel edge. That padding strip needs the
     // SAME background Monaco itself is painting, or it reads as a dead gap instead of inset
@@ -490,16 +498,21 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
 
           // Standalone monaco-editor (unlike a real VS Code webview) never exposes its resolved
           // theme colors as CSS custom properties, and `monaco.editor` has no theme-change event
-          // to hook — so the only reliable way to keep the padding wrapper's background matching
+          // to hook — so the only reliable way to keep the chrome around the panes matching
           // whatever theme is active (built-in or a host's dynamically-generated one) is to read
           // Monaco's own computed background directly and re-read it whenever the editor's
-          // class/style attributes change (which is exactly what `setTheme` mutates).
+          // class/style attributes change (which is exactly what `setTheme` mutates). The value
+          // goes onto the left pane's padding wrapper AND onto the root as
+          // `--merge-editor-background`, which the inter-pane gaps paint themselves with.
           if (pane === 'theirs') {
             const domNode = editorInstance.getDomNode()
-            const wrapper = leftPaneWrapperRef.current
-            if (domNode && wrapper) {
+            if (domNode) {
               const syncBackground = () => {
-                wrapper.style.backgroundColor = getComputedStyle(domNode).backgroundColor
+                const background = getComputedStyle(domNode).backgroundColor
+                if (leftPaneWrapperRef.current) {
+                  leftPaneWrapperRef.current.style.backgroundColor = background
+                }
+                rootRef.current?.style.setProperty('--merge-editor-background', background)
               }
               syncBackground()
               const observer = new MutationObserver(syncBackground)
@@ -508,7 +521,13 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
             }
           }
 
-          const paneIndex = pane === 'ours' ? 0 : pane === 'center' ? 1 : 2
+          // `PaneIndex` is theirs=0 / center=1 / ours=2 — the order `useMergeScrollSync`'s own
+          // `getPaneLineRange`/`paneIndexToSide` decode, NOT the visual left-to-right order (which
+          // happens to be the same). Registering a pane under the wrong index hands the sync the
+          // *other* side's line ranges for it: in 2-panel mode the original pane was being scrolled
+          // to the modified pane's block positions, so the two panes drifted apart past the first
+          // hunk (invisible while a file is short enough to need no scrolling at all).
+          const paneIndex = pane === 'theirs' ? 0 : pane === 'center' ? 1 : 2
           attachScrollSync(editorInstance, paneIndex)
           editorInstance.onDidScrollChange(() => {
             applyScrollOffset()
@@ -656,7 +675,7 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
         : DEFAULT_LINE_HEIGHT
 
     return (
-      <div className="flex h-full w-full flex-col overflow-hidden bg-[#1a1a1a]">
+      <div ref={rootRef} className="flex h-full w-full flex-col overflow-hidden bg-background">
         {header !== false && (
           <ConflictResolverHeader
             actions={headerActions}
@@ -714,7 +733,10 @@ export const ConflictResolver = forwardRef<ConflictResolverRef, ConflictResolver
                   style={{
                     width: GAP_WIDTH,
                     cursor: isTwoWay ? 'default' : 'col-resize',
-                    backgroundColor: 'var(--vscode-editor-background, #1e1e1e)',
+                    // Monaco's own resolved background, published as `--merge-editor-background`
+                    // by handlePaneMount — the gap has to be seamless with the panes it sits
+                    // between. Falls back to the app's own surface token until that first sync.
+                    backgroundColor: 'var(--merge-editor-background, hsl(var(--background)))',
                   }}
                   onMouseDown={
                     isTwoWay ? undefined : index === 0 ? handleLeftMouseDown : handleRightMouseDown

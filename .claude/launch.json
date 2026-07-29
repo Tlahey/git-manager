@@ -32,9 +32,9 @@
       "port": 6009
     },
     {
-      "name": "code-view-storybook",
+      "name": "editor-storybook",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@git-manager/code-view", "storybook", "--no-open"],
+      "runtimeArgs": ["--filter", "@git-manager/editor", "storybook", "--no-open"],
       "port": 6006
     },
     {

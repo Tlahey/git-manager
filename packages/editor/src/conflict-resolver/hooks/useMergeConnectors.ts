@@ -205,9 +205,25 @@ export function useMergeConnectors({
   }, [recomputeConnectors])
 
   // Cancel a still-pending recompute frame on unmount so it can't run after teardown.
+  //
+  // Clearing the ref is NOT redundant with the cancel: `scheduleRecompute` treats a non-null ref
+  // as "a frame is already queued" and returns early, and only the frame's own callback nulls it
+  // back out. Cancelling without clearing therefore latches that guard permanently — every later
+  // `scheduleRecompute()` becomes a no-op and the connector segments stay at their initial `[]`,
+  // so the gap renders its `<svg>` with no `<path>` in it at all.
+  //
+  // That is not a teardown-only concern: React StrictMode double-invokes effects on mount in dev
+  // (mount → cleanup → mount), so this cleanup runs while the component is very much alive, right
+  // after the mount-time ResizeObserver has queued the first frame. The desktop app renders under
+  // `<React.StrictMode>` and lost its connector ribbons entirely because of it; Storybook and
+  // React Testing Library's plain `render()` don't wrap anything in StrictMode, which is why the
+  // stories, the visual baselines and the unit tests all kept passing.
   useEffect(
     () => () => {
-      if (connectorRafRef.current !== null) cancelAnimationFrame(connectorRafRef.current)
+      if (connectorRafRef.current !== null) {
+        cancelAnimationFrame(connectorRafRef.current)
+        connectorRafRef.current = null
+      }
     },
     [connectorRafRef]
   )
