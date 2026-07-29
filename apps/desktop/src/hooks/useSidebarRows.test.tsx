@@ -53,8 +53,14 @@ function branch(shortName: string, overrides: Partial<GitBranch> = {}): GitBranc
   }
 }
 
-function remoteBranch(shortName: string, overrides: Partial<GitBranch> = {}): GitBranch {
-  return branch(shortName, { isRemote: true, name: `refs/remotes/${shortName}`, ...overrides })
+/**
+ * Built the way the backend really reports a remote branch: `name` carries the remote
+ * (`origin/build/ci`), `shortName` has it stripped (`build/ci`). Getting this wrong is what once
+ * put a branch's first folder beside `origin` instead of inside it.
+ */
+function remoteBranch(qualifiedName: string, overrides: Partial<GitBranch> = {}): GitBranch {
+  const shortName = qualifiedName.split('/').slice(1).join('/')
+  return branch(shortName, { isRemote: true, name: qualifiedName, ...overrides })
 }
 
 function tag(name: string): GitRef {
@@ -343,6 +349,23 @@ describe('useSidebarRows — remotes section', () => {
     expect(findSection(result.current.sections, 'remotes')).toMatchObject({ count: 3 })
   })
 
+  // The remote is the first segment of `name`, never of `shortName` — which the backend has
+  // already stripped it from. Reading it off `shortName` named the remote after the branch's first
+  // folder, putting `build` beside `origin` instead of inside it.
+  it('keeps a foldered branch under its remote instead of making its folder a remote', async () => {
+    useBranchesMock.mockReturnValue({
+      data: [remoteBranch('origin/build/ci'), remoteBranch('upstream/build/ci')],
+    })
+    const { result } = renderRows({ openState: { 'section:remotes': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
+
+    expect(findRow(result.current.sections, 'remote:build')).toBeUndefined()
+    expect(findRow(result.current.sections, 'remote:upstream')).toBeDefined()
+    expect(
+      allRows(result.current.sections).filter((r) => r.kind === 'remote-group')
+    ).toHaveLength(2)
+  })
+
   it('defaults a slash-less remote branch name to the "origin" group', async () => {
     useBranchesMock.mockReturnValue({ data: [remoteBranch('HEAD', { shortName: 'HEAD' })] })
     const { result } = renderRows({ openState: { 'section:remotes': true } })
@@ -368,10 +391,10 @@ describe('useSidebarRows — remotes section', () => {
       depth: 1,
     })
     expect(
-      findRow(result.current.sections, 'remote-branch:refs/remotes/origin/build/ci/lint')
+      findRow(result.current.sections, 'remote-branch:origin/build/ci/lint')
     ).toMatchObject({ displayName: 'lint', depth: 2 })
     // No folder in its name: it stays a direct child of the remote.
-    expect(findRow(result.current.sections, 'remote-branch:refs/remotes/origin/main')).toMatchObject(
+    expect(findRow(result.current.sections, 'remote-branch:origin/main')).toMatchObject(
       { displayName: 'main', depth: 0 }
     )
   })
@@ -398,9 +421,9 @@ describe('useSidebarRows — remotes section', () => {
     await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
     expect(findRow(result.current.sections, 'remote-folder:origin/build/ci')).toBeUndefined()
     expect(
-      findRow(result.current.sections, 'remote-branch:refs/remotes/origin/build/ci/lint')
+      findRow(result.current.sections, 'remote-branch:origin/build/ci/lint')
     ).toBeUndefined()
-    expect(findRow(result.current.sections, 'remote-branch:refs/remotes/origin/main')).toBeDefined()
+    expect(findRow(result.current.sections, 'remote-branch:origin/main')).toBeDefined()
   })
 
   // Under a remote a folder is a namespace, so it exists whether one branch sits in it or ten —

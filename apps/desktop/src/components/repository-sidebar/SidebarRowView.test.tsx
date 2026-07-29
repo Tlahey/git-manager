@@ -371,7 +371,8 @@ describe('SidebarRowView — remote-branch', () => {
   const remoteBranch = (over: Record<string, unknown> = {}) => ({
     kind: 'remote-branch' as const,
     id: 'rb-1',
-    branch: branch({ name: 'refs/remotes/origin/main', shortName: 'origin/main' }),
+    // Backend shape: `name` carries the remote, `shortName` has it stripped.
+    branch: branch({ name: 'origin/main', shortName: 'main' }),
     remoteName: 'origin',
     displayName: 'main',
     depth: 0 as const,
@@ -379,12 +380,13 @@ describe('SidebarRowView — remote-branch', () => {
     ...over,
   })
 
-  it('shows the display name and selects using the full branch name on click', () => {
+  // The remote-qualified name, not the display name: `main` alone would select the local branch.
+  it('shows the display name and selects using the remote-qualified name on click', () => {
     const { h } = renderRow(remoteBranch())
     expect(screen.getByText('main')).toBeInTheDocument()
     const row = screen.getByText('main').closest('[role="button"]')!
     fireEvent.click(row)
-    expect(h.onSelectBranch).toHaveBeenCalledWith('refs/remotes/origin/main')
+    expect(h.onSelectBranch).toHaveBeenCalledWith('origin/main')
   })
 
   it('indents a branch nested under a folder past one that is not', () => {
@@ -404,7 +406,7 @@ describe('SidebarRowView — remote-branch', () => {
   it('shows ahead/behind counters', () => {
     renderRow(
       remoteBranch({
-        branch: branch({ shortName: 'origin/main', aheadCount: 2, behindCount: 1 }),
+        branch: branch({ name: 'origin/main', shortName: 'main', aheadCount: 2, behindCount: 1 }),
       })
     )
     expect(screen.getByText('↑2')).toBeInTheDocument()
@@ -438,7 +440,7 @@ describe('SidebarRowView — remote-branch', () => {
 
     fireEvent.click(screen.getByTestId('remote-branch-actions-origin/main'))
     expect(onRemoteBranchContextMenu).toHaveBeenCalledTimes(1)
-    expect(onRemoteBranchContextMenu.mock.calls[0][1]).toMatchObject({ shortName: 'origin/main' })
+    expect(onRemoteBranchContextMenu.mock.calls[0][1]).toMatchObject({ name: 'origin/main' })
     // The row's own click must not fire with it, or opening the menu would also select the branch.
     expect(h.onSelectBranch).not.toHaveBeenCalled()
 

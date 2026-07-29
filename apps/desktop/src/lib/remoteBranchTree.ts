@@ -5,7 +5,11 @@ export interface RemoteTreeFolder {
   kind: 'folder'
   /** The segment itself, e.g. `build` — what the row displays. */
   name: string
-  /** Every branch below this folder, at any depth — what its visibility toggle acts on. */
+  /**
+   * Every branch below this folder, at any depth, by remote-qualified name (`origin/build/ci`) —
+   * what its visibility toggle acts on. Qualified because that is how the graph names a remote
+   * ref, and because two remotes can carry the same branch.
+   */
   branchNames: string[]
   children: RemoteTreeNode[]
 }
@@ -47,7 +51,7 @@ function build(entries: Entry[]): RemoteTreeNode[] {
     .map(([name, below]) => ({
       kind: 'folder',
       name,
-      branchNames: below.map((e) => e.branch.shortName),
+      branchNames: below.map((e) => e.branch.name),
       children: build(below),
     }))
 

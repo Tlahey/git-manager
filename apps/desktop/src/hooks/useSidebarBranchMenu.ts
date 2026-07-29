@@ -39,11 +39,18 @@ import { useSoloModeStore } from '../stores/soloMode.store'
 /** Stable empty list, so an unfiltered store read doesn't hand back a new array every render. */
 const EMPTY: string[] = []
 
-/** A `GitBranch` rendered as the `GitRef` the shared menu builder expects (pointing at its tip). */
+/**
+ * A `GitBranch` rendered as the `GitRef` the shared menu builders expect (pointing at its tip).
+ *
+ * A remote branch is named the way the graph names it — remote-qualified (`origin/main`), which
+ * `GitBranch` carries in `name`, not in `shortName` (the backend strips the remote from that one).
+ * The distinction is not cosmetic: the builders label, hide and *operate* on `shortName`, so a
+ * stripped `main` would have "Merge origin/main into feat" merge the local `main` instead.
+ */
 function branchToRef(branch: GitBranch): GitRef {
   return {
-    name: branch.name,
-    shortName: branch.shortName,
+    name: branch.isRemote ? `refs/remotes/${branch.name}` : branch.name,
+    shortName: branch.isRemote ? branch.name : branch.shortName,
     type: branch.isRemote ? 'remote' : 'branch',
     commitOid: branch.commitOid,
   }
@@ -291,7 +298,7 @@ export function useSidebarBranchMenu(repoPath: string) {
     void showNativeMenu(
       buildRemoteBranchMenuSpec(
         ref,
-        { ...menuContext(ref), isHidden: hiddenRemoteBranches.includes(branch.shortName) },
+        { ...menuContext(ref), isHidden: hiddenRemoteBranches.includes(branch.name) },
         {
           ...branchActionsFor(branch),
           onToggleVisibility: (r) => toggleRemoteBranchVisibility(repoPath, r.shortName),

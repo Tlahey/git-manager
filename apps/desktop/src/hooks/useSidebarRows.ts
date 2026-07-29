@@ -55,12 +55,16 @@ interface UseSidebarRowsResult {
 const TAGS_LIMIT = 100
 
 /**
- * A remote branch's name as it reads *under its own remote node* (`origin/feat/a` → `feat/a`).
- * `remoteName` is derived from that very first segment, so this only ever strips a prefix the
- * branch actually carries.
+ * The remote a branch belongs to.
+ *
+ * Read from `name`, never from `shortName`: the backend already strips the remote from the latter
+ * (`origin/build/ci` arrives as `name: 'origin/build/ci'`, `shortName: 'build/ci'`), so splitting
+ * the short name would name the remote after the branch's first *folder* — which is what put
+ * `build` and `feat` beside `origin` instead of inside it.
  */
-function stripRemotePrefix(shortName: string, remoteName: string): string {
-  return shortName.startsWith(`${remoteName}/`) ? shortName.slice(remoteName.length + 1) : shortName
+function remoteOf(branch: GitBranch): string {
+  const slash = branch.name.indexOf('/')
+  return slash > 0 ? branch.name.slice(0, slash) : 'origin'
 }
 
 export function useSidebarRows({
@@ -274,8 +278,7 @@ export function useSidebarRows({
     const map = new Map<string, GitBranch[]>()
     for (const b of allBranches) {
       if (!b.isRemote || !matchesFilter(b)) continue
-      const slash = b.shortName.indexOf('/')
-      const remoteName = slash > 0 ? b.shortName.slice(0, slash) : 'origin'
+      const remoteName = remoteOf(b)
       const arr = map.get(remoteName) ?? []
       arr.push(b)
       map.set(remoteName, arr)
@@ -373,15 +376,13 @@ export function useSidebarRows({
         for (const [remoteName, branches] of remoteGroups) {
           const gid = `remote:${remoteName}`
           const gopen = subOpen(gid, true)
-          // Name relative to the remote — `origin/feat/a` folders under `feat/`, not `origin/`.
-          const relativeName = (b: GitBranch) => stripRemotePrefix(b.shortName, remoteName)
           remoteRows.push({
             kind: 'remote-group',
             id: gid,
             remoteName,
             count: branches.length,
             isOpen: gopen,
-            branchNames: branches.map((b) => b.shortName),
+            branchNames: branches.map((b) => b.name),
           })
           if (gopen) {
             // Walked rather than flattened: a remote's folders nest (`build/ci/lint`), and a
@@ -415,7 +416,13 @@ export function useSidebarRows({
                 if (fopen) pushTree(node.children, fid, depth + 1)
               }
             }
-            pushTree(buildRemoteBranchTree(branches, relativeName), `remote-folder:${remoteName}`, 0)
+            // `shortName` already reads relative to the remote (the backend strips it), so it is
+            // exactly the name the folders below the remote node are cut from.
+            pushTree(
+              buildRemoteBranchTree(branches, (b) => b.shortName),
+              `remote-folder:${remoteName}`,
+              0
+            )
           }
         }
       }

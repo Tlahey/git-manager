@@ -2,10 +2,11 @@ import { describe, it, expect } from 'vitest'
 import type { GitBranch } from '@git-manager/git-types'
 import { buildRemoteBranchTree, type RemoteTreeNode } from './remoteBranchTree'
 
-function branch(shortName: string): GitBranch {
+/** Shaped like the backend reports it: `name` carries the remote, `shortName` does not. */
+function branch(qualifiedName: string): GitBranch {
   return {
-    name: `refs/remotes/${shortName}`,
-    shortName,
+    name: qualifiedName,
+    shortName: qualifiedName.split('/').slice(1).join('/'),
     isHead: false,
     isRemote: true,
     commitOid: 'abc1234',
@@ -16,10 +17,8 @@ function branch(shortName: string): GitBranch {
   }
 }
 
-/** `origin/build/ci` reads as `build/ci` under the `origin` node. */
-const underOrigin = (b: GitBranch) => b.shortName.replace(/^origin\//, '')
-
-const tree = (names: string[]) => buildRemoteBranchTree(names.map(branch), underOrigin)
+/** `shortName` already reads relative to the remote — that is the name folders are cut from. */
+const tree = (names: string[]) => buildRemoteBranchTree(names.map(branch), (b) => b.shortName)
 
 /** Compact shape of a tree: `folder > [children]` / plain branch display names. */
 function shape(nodes: RemoteTreeNode[]): unknown[] {
@@ -76,7 +75,7 @@ describe('buildRemoteBranchTree', () => {
     expect(leaf).toMatchObject({
       kind: 'branch',
       displayName: 'xxxx',
-      branch: { name: 'refs/remotes/origin/build/xxxx', shortName: 'origin/build/xxxx' },
+      branch: { name: 'origin/build/xxxx', shortName: 'build/xxxx' },
     })
   })
 

@@ -67,10 +67,10 @@ interface SidebarRowViewProps {
   /** Tag short names whose badge is kept out of the graph. */
   hiddenTags?: string[]
   onToggleTagVisibility?: (tagName: string) => void
-  /** Remote branch short names (`origin/main`) whose badge is kept out of the graph. */
+  /** Remote-qualified branch names (`origin/build/ci`) whose badge is kept out of the graph. */
   hiddenRemoteBranches?: string[]
   /** Hides or shows a set of remote branches at once — a single row passes one name. */
-  onToggleRemoteBranchesVisibility?: (shortNames: string[], hidden: boolean) => void
+  onToggleRemoteBranchesVisibility?: (branchNames: string[], hidden: boolean) => void
   onRemoveWorktree?: (wt: GitWorktree) => void
   /** Remove a worktree *and* delete the branch it had checked out. */
   onRemoveWorktreeAndBranch?: (wt: GitWorktree) => void
@@ -223,9 +223,13 @@ export function SidebarRowView({
     }
 
     case 'remote-branch': {
-      const isSoloed = soloed?.has(row.branch.shortName) ?? false
+      // Remote-qualified (`origin/build/ci`) throughout: that is how the graph names a remote ref,
+      // so the hidden list, the solo set and the menu all have to agree on it. `shortName` has the
+      // remote stripped by the backend and would name a different branch on another remote.
+      const qualifiedName = row.branch.name
+      const isSoloed = soloed?.has(qualifiedName) ?? false
       const dimmed = soloActive && !isSoloed
-      const isHidden = hiddenRemoteBranches.includes(row.branch.shortName)
+      const isHidden = hiddenRemoteBranches.includes(qualifiedName)
       const visibilityLabel = isHidden
         ? t('sidebar.remote.showInGraph')
         : t('sidebar.remote.hideInGraph')
@@ -257,11 +261,11 @@ export function SidebarRowView({
           {/* Solo mode owns the left edge while it is on — the two eyes would sit on top of each
               other, and solo is the stronger, temporary statement about what the graph shows. */}
           {soloActive && onToggleSolo ? (
-            <SoloToggle isSoloed={isSoloed} onToggle={() => onToggleSolo(row.branch.shortName)} />
+            <SoloToggle isSoloed={isSoloed} onToggle={() => onToggleSolo(qualifiedName)} />
           ) : (
             <VisibilityToggle
               isHidden={isHidden}
-              onToggle={() => onToggleRemoteBranchesVisibility?.([row.branch.shortName], !isHidden)}
+              onToggle={() => onToggleRemoteBranchesVisibility?.([qualifiedName], !isHidden)}
               label={visibilityLabel}
               dataToggle="remote-visibility"
               hoverClass="group-hover/rbranch:opacity-100"
@@ -290,7 +294,7 @@ export function SidebarRowView({
             className="shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/rbranch:opacity-100"
             aria-label={t('sidebar.branchActions')}
             title={t('sidebar.branchActions')}
-            data-testid={`remote-branch-actions-${row.branch.shortName}`}
+            data-testid={`remote-branch-actions-${qualifiedName}`}
           >
             <MoreVertical className="h-3.5 w-3.5" />
           </button>
