@@ -282,36 +282,36 @@ describe('SidebarRowView — remote-group', () => {
   // One call over the whole set, not one per branch: a per-branch toggle would leave the group's
   // own state depending on the order the toggles ran in.
   it('hides every branch under the remote in a single call', () => {
-    const onToggleRemoteBranchesVisibility = vi.fn()
+    const onToggleBranchesVisibility = vi.fn()
     render(
       <SidebarRowView
         row={remoteGroup()}
         {...baseHandlers()}
-        onToggleRemoteBranchesVisibility={onToggleRemoteBranchesVisibility}
+        onToggleBranchesVisibility={onToggleBranchesVisibility}
       />
     )
     fireEvent.click(screen.getByLabelText('Hide these remote branches from the graph'))
-    expect(onToggleRemoteBranchesVisibility).toHaveBeenCalledWith(
+    expect(onToggleBranchesVisibility).toHaveBeenCalledWith(
       ['origin/main', 'origin/dev'],
       true
     )
   })
 
   it('offers to show them again, and dims the row, once all of them are hidden', () => {
-    const onToggleRemoteBranchesVisibility = vi.fn()
+    const onToggleBranchesVisibility = vi.fn()
     const { container } = render(
       <SidebarRowView
         row={remoteGroup()}
         {...baseHandlers()}
-        hiddenRemoteBranches={['origin/main', 'origin/dev']}
-        onToggleRemoteBranchesVisibility={onToggleRemoteBranchesVisibility}
+        hiddenBranches={['origin/main', 'origin/dev']}
+        onToggleBranchesVisibility={onToggleBranchesVisibility}
       />
     )
     expect(container.querySelector('.lucide-eye-off')).toBeTruthy()
     expect(container.querySelector('.opacity-50')).toBeTruthy()
 
     fireEvent.click(screen.getByLabelText('Show these remote branches in the graph'))
-    expect(onToggleRemoteBranchesVisibility).toHaveBeenCalledWith(
+    expect(onToggleBranchesVisibility).toHaveBeenCalledWith(
       ['origin/main', 'origin/dev'],
       false
     )
@@ -324,7 +324,7 @@ describe('SidebarRowView — remote-group', () => {
       <SidebarRowView
         row={remoteGroup()}
         {...baseHandlers()}
-        hiddenRemoteBranches={['origin/main']}
+        hiddenBranches={['origin/main']}
       />
     )
     const toggle = screen.getByLabelText('Hide these remote branches from the graph')
@@ -365,16 +365,16 @@ describe('SidebarRowView — folder (remote)', () => {
   })
 
   it('hides only the branches in the folder', () => {
-    const onToggleRemoteBranchesVisibility = vi.fn()
+    const onToggleBranchesVisibility = vi.fn()
     render(
       <SidebarRowView
         row={remoteFolder()}
         {...baseHandlers()}
-        onToggleRemoteBranchesVisibility={onToggleRemoteBranchesVisibility}
+        onToggleBranchesVisibility={onToggleBranchesVisibility}
       />
     )
     fireEvent.click(screen.getByLabelText('Hide these remote branches from the graph'))
-    expect(onToggleRemoteBranchesVisibility).toHaveBeenCalledWith(
+    expect(onToggleBranchesVisibility).toHaveBeenCalledWith(
       ['origin/feat/a', 'origin/feat/b'],
       true
     )
@@ -429,10 +429,10 @@ describe('SidebarRowView — remote-branch', () => {
   })
 
   it('hides the branch by its remote-qualified name, without selecting it', () => {
-    const onToggleRemoteBranchesVisibility = vi.fn()
-    const { h } = renderRow(remoteBranch(), { onToggleRemoteBranchesVisibility })
+    const onToggleBranchesVisibility = vi.fn()
+    const { h } = renderRow(remoteBranch(), { onToggleBranchesVisibility })
     fireEvent.click(screen.getByLabelText('Hide this remote branch from the graph'))
-    expect(onToggleRemoteBranchesVisibility).toHaveBeenCalledWith(['origin/main'], true)
+    expect(onToggleBranchesVisibility).toHaveBeenCalledWith(['origin/main'], true)
     expect(h.onSelectBranch).not.toHaveBeenCalled()
   })
 
@@ -441,7 +441,7 @@ describe('SidebarRowView — remote-branch', () => {
       <SidebarRowView
         row={remoteBranch()}
         {...baseHandlers()}
-        hiddenRemoteBranches={['origin/main']}
+        hiddenBranches={['origin/main']}
       />
     )
     expect(screen.getByLabelText('Show this remote branch in the graph')).toBeInTheDocument()

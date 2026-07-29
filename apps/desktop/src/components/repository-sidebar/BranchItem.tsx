@@ -29,6 +29,8 @@ interface BranchItemProps {
   soloActive?: boolean
   /** Whether this branch is soloed (visible in the graph). */
   isSoloed?: boolean
+  /** Whether the branch's badge is kept out of the graph (its menu's Hide entry) — dims the row. */
+  isHidden?: boolean
   /** Toggle this branch's solo status by shortName. */
   onToggleSolo?: (shortName: string) => void
 }
@@ -48,6 +50,7 @@ export function BranchItem({
   filterQuery = '',
   soloActive = false,
   isSoloed = false,
+  isHidden = false,
   onToggleSolo,
 }: BranchItemProps) {
   const { t } = useTranslation('git')
@@ -70,7 +73,7 @@ export function BranchItem({
         isSelected
           ? 'bg-sidebar-accent text-sidebar-foreground'
           : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
-      } ${dimmed ? 'opacity-50' : ''}`}
+      } ${dimmed || isHidden ? 'opacity-50' : ''}`}
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('[data-toggle]')) return
         handleClick()

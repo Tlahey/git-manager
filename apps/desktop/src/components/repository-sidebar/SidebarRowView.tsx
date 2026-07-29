@@ -63,9 +63,9 @@ interface SidebarRowViewProps {
   hiddenTags?: string[]
   onToggleTagVisibility?: (tagName: string) => void
   /** Remote-qualified branch names (`origin/build/ci`) whose badge is kept out of the graph. */
-  hiddenRemoteBranches?: string[]
+  hiddenBranches?: string[]
   /** Hides or shows a set of remote branches at once — a single row passes one name. */
-  onToggleRemoteBranchesVisibility?: (branchNames: string[], hidden: boolean) => void
+  onToggleBranchesVisibility?: (branchNames: string[], hidden: boolean) => void
   onRemoveWorktree?: (wt: GitWorktree) => void
   /** Remove a worktree *and* delete the branch it had checked out. */
   onRemoveWorktreeAndBranch?: (wt: GitWorktree) => void
@@ -105,8 +105,8 @@ export function SidebarRowView({
   onTagContextMenu,
   hiddenTags = [],
   onToggleTagVisibility,
-  hiddenRemoteBranches = [],
-  onToggleRemoteBranchesVisibility,
+  hiddenBranches = [],
+  onToggleBranchesVisibility,
   onRemoveWorktree,
   onRemoveWorktreeAndBranch,
   onOpenWorktree,
@@ -134,6 +134,7 @@ export function SidebarRowView({
           filterQuery={filterQuery}
           soloActive={soloActive}
           isSoloed={soloed?.has(row.branch.shortName) ?? false}
+          isHidden={hiddenBranches.includes(row.branch.shortName)}
           onToggleSolo={onToggleSolo}
         />
       )
@@ -145,7 +146,7 @@ export function SidebarRowView({
       // below them have a graph badge to hide.
       const isRemoteNode = row.kind === 'remote-group'
       const branchNames = row.branchNames
-      const hiddenBelow = branchNames?.filter((n) => hiddenRemoteBranches.includes(n)).length ?? 0
+      const hiddenBelow = branchNames?.filter((n) => hiddenBranches.includes(n)).length ?? 0
       const allHidden = !!branchNames?.length && hiddenBelow === branchNames.length
       const label = allHidden
         ? t('sidebar.remote.showAllInGraph')
@@ -163,7 +164,7 @@ export function SidebarRowView({
             <VisibilityToggle
               isHidden={allHidden}
               partial={hiddenBelow > 0 && !allHidden}
-              onToggle={() => onToggleRemoteBranchesVisibility?.(branchNames, !allHidden)}
+              onToggle={() => onToggleBranchesVisibility?.(branchNames, !allHidden)}
               label={label}
               dataToggle="remote-visibility"
               hoverClass="group-hover/folder:opacity-100"
@@ -211,8 +212,8 @@ export function SidebarRowView({
           onFocus={onFocusBranch}
           onCheckout={onCheckoutBranch}
           onContextMenu={onRemoteBranchContextMenu}
-          isHidden={hiddenRemoteBranches.includes(row.branch.name)}
-          onToggleVisibility={onToggleRemoteBranchesVisibility}
+          isHidden={hiddenBranches.includes(row.branch.name)}
+          onToggleVisibility={onToggleBranchesVisibility}
           filterQuery={filterQuery}
           soloActive={soloActive}
           isSoloed={soloed?.has(row.branch.name) ?? false}

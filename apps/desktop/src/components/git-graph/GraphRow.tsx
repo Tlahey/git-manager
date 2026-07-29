@@ -71,8 +71,8 @@ interface GraphRowProps {
    * instead of the ref badges. Only ever set on a single row at a time. */
   /** Tag short names the user keeps off the graph — their badge is dropped, the commit stays. */
   hiddenTags?: string[]
-  /** Remote branch short names (`origin/main`) kept off the graph, on the same terms as the tags. */
-  hiddenRemoteBranches?: string[]
+  /** Branches kept off the graph, on the same terms as the tags — `main` / `origin/main`. */
+  hiddenBranches?: string[]
   isTagDraft?: boolean
   /** Confirm the inline tag name (only wired on the `isTagDraft` row). */
   onSubmitTag?: (name: string) => void
@@ -97,7 +97,7 @@ function CellContent({
   laneRef,
   agentActivity,
   hiddenTags = [],
-  hiddenRemoteBranches = [],
+  hiddenBranches = [],
   isTagDraft,
   onSubmitTag,
   onCancelTag,
@@ -120,8 +120,8 @@ function CellContent({
   agentActivity?: WorktreeAgentActivity
   /** Tag short names the user keeps off the graph — their badge is dropped, the commit stays. */
   hiddenTags?: string[]
-  /** Remote branch short names (`origin/main`) kept off the graph, on the same terms as the tags. */
-  hiddenRemoteBranches?: string[]
+  /** Branches kept off the graph, on the same terms as the tags — `main` / `origin/main`. */
+  hiddenBranches?: string[]
   isTagDraft?: boolean
   onSubmitTag?: (name: string) => void
   onCancelTag?: () => void
@@ -142,15 +142,19 @@ function CellContent({
         )
       }
       if (isStashCommit) return null
-      // A hidden tag or remote branch loses its badge only — the commit keeps its row and its other
-      // refs, which is what separates this from a hidden stash (dropped from the log by the
-      // backend).
+      // A hidden tag or branch loses its badge only — the commit keeps its row and its other refs,
+      // which is what separates this from a hidden stash (dropped from the log by the backend).
+      // `shortName` tells local from remote on its own (`main` vs `origin/main`), which is exactly
+      // how the hidden list names them.
       const filteredRefs =
-        hiddenTags.length || hiddenRemoteBranches.length
+        hiddenTags.length || hiddenBranches.length
           ? node.refs.filter(
               (r) =>
                 !(r.type === 'tag' && hiddenTags.includes(r.shortName)) &&
-                !(r.type === 'remote' && hiddenRemoteBranches.includes(r.shortName))
+                !(
+                  (r.type === 'remote' || r.type === 'branch') &&
+                  hiddenBranches.includes(r.shortName)
+                )
             )
           : node.refs
       if (filteredRefs.length === 0) {
@@ -356,7 +360,7 @@ export const GraphRow = memo(function GraphRow({
   laneRef,
   graphMaxColumn = 0,
   hiddenTags,
-  hiddenRemoteBranches,
+  hiddenBranches,
   isTagDraft,
   onSubmitTag,
   onCancelTag,
@@ -533,7 +537,7 @@ export const GraphRow = memo(function GraphRow({
               laneRef={laneRef}
               agentActivity={rowAgent}
               hiddenTags={hiddenTags}
-              hiddenRemoteBranches={hiddenRemoteBranches}
+              hiddenBranches={hiddenBranches}
               isTagDraft={isTagDraft}
               onSubmitTag={onSubmitTag}
               onCancelTag={onCancelTag}

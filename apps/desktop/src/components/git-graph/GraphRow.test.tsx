@@ -219,7 +219,7 @@ describe('GraphRow — refs column', () => {
   })
 })
 
-describe('GraphRow — hidden tags', () => {
+describe('GraphRow — hidden tags and branches', () => {
   const tagRef = (shortName: string) => ({
     name: `refs/tags/${shortName}`,
     shortName,
@@ -290,7 +290,7 @@ describe('GraphRow — hidden tags', () => {
     renderRow({
       columns: [col('refs')],
       node: node({ refs: [branchRef, remoteRef('origin/main')] }),
-      hiddenRemoteBranches: ['origin/main'],
+      hiddenBranches: ['origin/main'],
     })
     expect(lastRefLabelGroupProps.current).toMatchObject({ refs: [branchRef] })
   })
@@ -300,17 +300,27 @@ describe('GraphRow — hidden tags', () => {
     renderRow({
       columns: [col('refs')],
       node: node({ refs: [remoteRef('origin/main'), remoteRef('upstream/main')] }),
-      hiddenRemoteBranches: ['origin/main'],
+      hiddenBranches: ['origin/main'],
     })
     expect(lastRefLabelGroupProps.current).toMatchObject({ refs: [remoteRef('upstream/main')] })
   })
 
-  // The local branch is what stays checked out — hiding `origin/main` must not take it down.
-  it('never hides the local branch behind a hidden remote branch', () => {
+  // Local and remote are told apart by the name alone (`main` vs `origin/main`), which is exactly
+  // how the hidden list spells them — so hiding one never takes the other down.
+  it('hides a local branch by its bare name, leaving its remote counterpart alone', () => {
     renderRow({
       columns: [col('refs')],
-      node: node({ refs: [branchRef] }),
-      hiddenRemoteBranches: ['main'],
+      node: node({ refs: [branchRef, remoteRef('origin/main')] }),
+      hiddenBranches: ['main'],
+    })
+    expect(lastRefLabelGroupProps.current).toMatchObject({ refs: [remoteRef('origin/main')] })
+  })
+
+  it('leaves the local branch alone when only its remote counterpart is hidden', () => {
+    renderRow({
+      columns: [col('refs')],
+      node: node({ refs: [branchRef, remoteRef('origin/main')] }),
+      hiddenBranches: ['origin/main'],
     })
     expect(lastRefLabelGroupProps.current).toMatchObject({ refs: [branchRef] })
   })

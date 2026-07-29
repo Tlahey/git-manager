@@ -224,14 +224,16 @@ function relationshipSection(
   ]
 }
 
-/** "Push current & start a PR here" (remote only) + the AI branch explanation. */
+/** "Push current & start a PR here" + the AI branch explanation/review. */
 function prAndExplainSection(
   b: BranchItemContext,
   actions: BranchMenuActions,
   t: TranslateFn
 ): MenuSpecEntry[] {
   return [
-    b.isRemote &&
+    // Any branch can be a PR's base, local ones included — what makes no sense is a pull request
+    // from the current branch to itself.
+    !b.isCurrent &&
       b.hasCurrent &&
       menuItem({
         text: t('gitTree.branchMenu.startPr', b.params),
@@ -379,70 +381,31 @@ export function buildBranchSubmenus(
 const branchRefs = (ctx: GraphCommitMenuContext): GitRef[] =>
   ctx.refs.filter((r) => r.type === 'branch' || r.type === 'remote')
 
-/**
- * A standalone branch menu (no commit-scoped items) for right-clicking a branch **outside** the
- * graph — e.g. the repository sidebar. Reuses the exact same sections as the graph's per-branch
- * submenu, so the sidebar and the graph stay in sync. Unlike the graph submenu, it always offers
- * "Checkout `<branch>`" (switch to it — a local branch by name, a remote one detached), since a
- * sidebar branch isn't tied to a clicked commit. Copy/patch act on the branch tip.
- */
-export function buildBranchMenuSpec(
-  ref: GitRef,
-  ctx: GraphCommitMenuContext,
-  actions: BranchMenuActions,
-  copyActions: CommitCopyActions,
-  t: TranslateFn
-): MenuSpecEntry[] {
-  const b = branchItemContext(ref, ctx)
-  return [
-    ...syncSection(b, actions, t),
-    menuSeparator(),
-    ...relationshipSection(b, actions, t),
-    menuSeparator(),
-    !b.isCurrent &&
-      menuItem({
-        text: t('gitTree.branchMenu.checkout', b.params),
-        action: () => actions.onCheckoutBranch(b.ref),
-      }),
-    menuItem({
-      text: t('gitTree.branchMenu.openWorktree', b.params),
-      action: () => actions.onOpenWorktreeFrom(b.ref),
-    }),
-    menuSeparator(),
-    ...prAndExplainSection(b, actions, t),
-    menuSeparator(),
-    ...destructiveSection(b, actions, t),
-    menuSeparator(),
-    ...copySection(b, actions, copyActions, t),
-    menuSeparator(),
-    ...tailSection(b, actions, t),
-  ]
-}
-
-/** A remote branch row's extra context: whether its badge is currently kept out of the graph. */
-export interface RemoteBranchMenuContext extends GraphCommitMenuContext {
+/** A sidebar branch row's extra context: whether its badge is currently kept out of the graph. */
+export interface SidebarBranchMenuContext extends GraphCommitMenuContext {
   isHidden: boolean
 }
 
-export interface RemoteBranchMenuActions extends BranchMenuActions {
+export interface SidebarBranchMenuActions extends BranchMenuActions {
   /** Keeps this branch's badge out of the graph — the sidebar's eye toggle, as a menu entry. */
   onToggleVisibility: (ref: GitRef) => void
 }
 
 /**
- * The sidebar's **remote branch** menu: the branch sections above, plus the commit-scoped ones
- * acting on the branch tip (create branch / cherry-pick / reset ▸ / revert, compare, tags) and the
- * row's own Hide toggle.
+ * The sidebar's **branch row** menu, local and remote alike: the branch sections above, plus the
+ * commit-scoped ones acting on the branch tip (create branch / cherry-pick / reset ▸ / revert,
+ * compare, tags) and the row's own Hide toggle.
  *
- * Wider than {@link buildBranchMenuSpec} because a remote branch row is the one place those commit
- * actions have an unambiguous target: the branch tip is a single commit the user can point at
- * without opening the graph. It reuses the same section builders, so an item added to the graph's
- * branch menu still lands here.
+ * It carries the commit-scoped actions because a branch row is the one place they have an
+ * unambiguous target: the branch tip is a single commit the user can point at without opening the
+ * graph. It reuses the graph's own section builders, so an item added to the graph's branch
+ * menu still lands here — and so the two rows differ only where the ref's own type says they should
+ * (no pull/push on a remote, no rename, a disabled Delete).
  */
-export function buildRemoteBranchMenuSpec(
+export function buildSidebarBranchMenuSpec(
   ref: GitRef,
-  ctx: RemoteBranchMenuContext,
-  actions: RemoteBranchMenuActions,
+  ctx: SidebarBranchMenuContext,
+  actions: SidebarBranchMenuActions,
   commitActions: BranchTipCommitActions,
   t: TranslateFn
 ): MenuSpecEntry[] {
@@ -450,10 +413,11 @@ export function buildRemoteBranchMenuSpec(
   return [
     ...relationshipSection(b, actions, t),
     menuSeparator(),
-    menuItem({
-      text: t('gitTree.branchMenu.checkout', b.params),
-      action: () => actions.onCheckoutBranch(b.ref),
-    }),
+    !b.isCurrent &&
+      menuItem({
+        text: t('gitTree.branchMenu.checkout', b.params),
+        action: () => actions.onCheckoutBranch(b.ref),
+      }),
     menuSeparator(),
     menuItem({
       text: t('gitTree.branchMenu.openWorktree', b.params),

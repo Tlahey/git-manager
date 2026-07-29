@@ -59,20 +59,21 @@ interface RepoDataState {
   hiddenTags: Record<string, string[]>
   toggleTagVisibility: (repoPath: string, tagName: string) => void
   /**
-   * Remote branches whose badge is kept out of the graph, per repo, by branch short name
-   * (`origin/main`) — the same "label only" hiding as `hiddenTags`: the commit keeps its row.
+   * Branches whose badge is kept out of the graph, per repo — the same "label only" hiding as
+   * `hiddenTags`: the commit keeps its row.
    *
-   * Remote-qualified rather than bare, since two remotes can carry the same branch name and hiding
-   * `origin/main` must leave `upstream/main` alone.
+   * Named the way the graph names the ref: bare for a local branch (`main`), remote-qualified for
+   * a remote one (`origin/main`). The two never collide, and the qualification is what keeps
+   * `origin/main` and `upstream/main` apart — and both apart from the local `main`.
    */
-  hiddenRemoteBranches: Record<string, string[]>
-  toggleRemoteBranchVisibility: (repoPath: string, shortName: string) => void
+  hiddenBranches: Record<string, string[]>
+  toggleBranchVisibility: (repoPath: string, branchName: string) => void
   /**
-   * Hides or shows a whole set of remote branches at once — what a remote node or one of its
-   * folders needs, since toggling them one by one would make the group row's own state depend on
-   * the order the toggles ran in.
+   * Hides or shows a whole set of branches at once — what a remote node or one of its folders
+   * needs, since toggling them one by one would make the group row's own state depend on the order
+   * the toggles ran in.
    */
-  setRemoteBranchesHidden: (repoPath: string, shortNames: string[], hidden: boolean) => void
+  setBranchesHidden: (repoPath: string, branchNames: string[], hidden: boolean) => void
 
   addRepo: (repo: GitRepo) => void
   /** Moves `path` to the front of `recentRepoPaths` (called whenever a repo is opened in a tab). */
@@ -100,7 +101,7 @@ export const useRepoDataStore = create<RepoDataState>()(
       wipMessages: {},
       hiddenStashes: {},
       hiddenTags: {},
-      hiddenRemoteBranches: {},
+      hiddenBranches: {},
 
       toggleStashVisibility: (repoPath, oid) =>
         set((state) => {
@@ -122,26 +123,26 @@ export const useRepoDataStore = create<RepoDataState>()(
           }
         }),
 
-      toggleRemoteBranchVisibility: (repoPath, shortName) =>
+      toggleBranchVisibility: (repoPath, branchName) =>
         set((state) => {
-          const current = state.hiddenRemoteBranches[repoPath] || []
-          const next = current.includes(shortName)
-            ? current.filter((x) => x !== shortName)
-            : [...current, shortName]
+          const current = state.hiddenBranches[repoPath] || []
+          const next = current.includes(branchName)
+            ? current.filter((x) => x !== branchName)
+            : [...current, branchName]
           return {
-            hiddenRemoteBranches: { ...state.hiddenRemoteBranches, [repoPath]: next },
+            hiddenBranches: { ...state.hiddenBranches, [repoPath]: next },
           }
         }),
 
-      setRemoteBranchesHidden: (repoPath, shortNames, hidden) =>
+      setBranchesHidden: (repoPath, branchNames, hidden) =>
         set((state) => {
-          const current = state.hiddenRemoteBranches[repoPath] || []
-          const touched = new Set(shortNames)
+          const current = state.hiddenBranches[repoPath] || []
+          const touched = new Set(branchNames)
           const next = hidden
-            ? [...current.filter((x) => !touched.has(x)), ...shortNames]
+            ? [...current.filter((x) => !touched.has(x)), ...branchNames]
             : current.filter((x) => !touched.has(x))
           return {
-            hiddenRemoteBranches: { ...state.hiddenRemoteBranches, [repoPath]: next },
+            hiddenBranches: { ...state.hiddenBranches, [repoPath]: next },
           }
         }),
 
@@ -241,7 +242,7 @@ export const useRepoDataStore = create<RepoDataState>()(
         wipMessages: state.wipMessages || {},
         hiddenStashes: state.hiddenStashes || {},
         hiddenTags: state.hiddenTags || {},
-        hiddenRemoteBranches: state.hiddenRemoteBranches || {},
+        hiddenBranches: state.hiddenBranches || {},
       }),
     }
   )

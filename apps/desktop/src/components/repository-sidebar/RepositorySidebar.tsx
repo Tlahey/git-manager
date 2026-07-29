@@ -91,9 +91,9 @@ export function RepositorySidebar({
   const toggleStashVisibility = useRepoDataStore((s) => s.toggleStashVisibility)
   const hiddenTags = useRepoDataStore((s) => s.hiddenTags[repoPath]) || EMPTY_ARRAY
   const toggleTagVisibility = useRepoDataStore((s) => s.toggleTagVisibility)
-  const hiddenRemoteBranches =
-    useRepoDataStore((s) => s.hiddenRemoteBranches[repoPath]) || EMPTY_ARRAY
-  const setRemoteBranchesHidden = useRepoDataStore((s) => s.setRemoteBranchesHidden)
+  const hiddenBranches =
+    useRepoDataStore((s) => s.hiddenBranches[repoPath]) || EMPTY_ARRAY
+  const setBranchesHidden = useRepoDataStore((s) => s.setBranchesHidden)
   // The repo tab's own path (stable, unlike `repoPath` which may already be a workspace) — used to
   // key the pending-changes bubble so a worktree's own row still shows it while that worktree is
   // the active workspace, and to drive entering a workspace (a view switch, not a new tab).
@@ -530,9 +530,9 @@ export function RepositorySidebar({
                     onTagContextMenu={onTagContextMenu}
                     hiddenTags={hiddenTags}
                     onToggleTagVisibility={(name) => toggleTagVisibility(repoPath, name)}
-                    hiddenRemoteBranches={hiddenRemoteBranches}
-                    onToggleRemoteBranchesVisibility={(names, hidden) =>
-                      setRemoteBranchesHidden(repoPath, names, hidden)
+                    hiddenBranches={hiddenBranches}
+                    onToggleBranchesVisibility={(names, hidden) =>
+                      setBranchesHidden(repoPath, names, hidden)
                     }
                     onRemoveWorktree={(wt) => {
                       setRemoveWithBranch(false)

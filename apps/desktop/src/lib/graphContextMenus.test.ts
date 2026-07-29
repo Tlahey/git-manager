@@ -10,12 +10,12 @@ import {
   buildStashMenuSpec,
   buildRefDropMenuSpec,
   buildTagMenuSpec,
-  buildRemoteBranchMenuSpec,
+  buildSidebarBranchMenuSpec,
   isMainBranchName,
   type BranchMenuActions,
   type CommitMenuActions,
   type GraphCommitMenuContext,
-  type RemoteBranchMenuContext,
+  type SidebarBranchMenuContext,
   type WipMenuActions,
 } from './graphContextMenus'
 import { normalizeMenuSpec, type MenuSpecNode } from './nativeMenuSpec'
@@ -273,16 +273,16 @@ describe('buildBranchSubmenu — remote branch', () => {
   })
 })
 
-describe('buildRemoteBranchMenuSpec', () => {
+describe('buildSidebarBranchMenuSpec — remote branch', () => {
   const origin = () =>
     ref({ shortName: 'origin/main', type: 'remote', name: 'refs/remotes/origin/main' })
 
-  function menu(overrides: Partial<RemoteBranchMenuContext> = {}) {
+  function menu(overrides: Partial<SidebarBranchMenuContext> = {}) {
     const actions = { ...branchActions(), onToggleVisibility: vi.fn() }
     const commits = commitActions()
     const context = { ...ctx({ currentBranch: 'feat' }), isHidden: false, ...overrides }
     const nodes = normalizeMenuSpec(
-      buildRemoteBranchMenuSpec(origin(), { ...context, refs: [origin()] }, actions, commits, t)
+      buildSidebarBranchMenuSpec(origin(), { ...context, refs: [origin()] }, actions, commits, t)
     )
     return { nodes, actions, commits }
   }
@@ -368,6 +368,91 @@ describe('buildRemoteBranchMenuSpec', () => {
     expect(commits.onRevert).toHaveBeenCalled()
     expect(commits.onCompareToWorkdir).toHaveBeenCalled()
     expect(commits.onCreateTag).toHaveBeenCalled()
+  })
+})
+
+describe('buildSidebarBranchMenuSpec — local branch', () => {
+  const feat = () => ref({ shortName: 'feat/login', name: 'refs/heads/feat/login' })
+
+  function menu(overrides: Partial<SidebarBranchMenuContext> = {}) {
+    const actions = { ...branchActions(), onToggleVisibility: vi.fn() }
+    const commits = commitActions()
+    const context = { ...ctx({ currentBranch: 'main' }), isHidden: false, ...overrides }
+    const nodes = normalizeMenuSpec(
+      buildSidebarBranchMenuSpec(feat(), { ...context, refs: [feat()] }, actions, commits, t)
+    )
+    return { nodes, actions, commits }
+  }
+
+  // The same menu as a remote row's, told apart only by what the ref's own type allows.
+  it('lists the branch, commit and row actions in order', () => {
+    expect(texts(menu().nodes)).toEqual([
+      'Fast-forward main to feat/login',
+      'Merge feat/login into main',
+      'Rebase main onto feat/login',
+      'Checkout feat/login',
+      'Open worktree from feat/login',
+      'Create branch here',
+      'Cherry-pick this commit',
+      'Revert this commit',
+      'Push main and start a pull request to feat/login',
+      'Explain branch changes (LLM)',
+      'Review branch changes (LLM)',
+      'Rename feat/login',
+      'Delete feat/login',
+      'Copy branch name',
+      'Copy commit sha',
+      'Copy link to this commit on remote: origin',
+      'Create patch from commit…',
+      'Hide the branch',
+      'Pin to left',
+      'Solo',
+      'Compare commit against working directory',
+      'Create tag here',
+      'Create annotated tag here…',
+    ])
+  })
+
+  // Pull and Push act on HEAD, not on the row: they belong to the toolbar, not to a branch's menu.
+  it('drops the sync section the graph shows for a local branch', () => {
+    const labels = texts(menu().nodes)
+    expect(labels).not.toContain('Pull (fast-forward if possible)')
+    expect(labels).not.toContain('Push')
+    expect(labels).not.toContain('Set upstream')
+  })
+
+  it('really deletes a local branch, unlike the disabled remote entry', () => {
+    const { nodes, actions } = menu()
+    expect(item(nodes, 'Delete feat/login')?.enabled).not.toBe(false)
+    item(nodes, 'Delete feat/login')?.action?.()
+    expect(actions.onDeleteBranch).toHaveBeenCalled()
+  })
+
+  // Nothing to switch to, nothing to merge into itself, no pull request to open against itself.
+  it('drops checkout, the relationship actions and the PR entry on the current branch', () => {
+    const current = normalizeMenuSpec(
+      buildSidebarBranchMenuSpec(
+        ref({ shortName: 'main' }),
+        { ...ctx({ currentBranch: 'main', refs: [ref({ shortName: 'main' })] }), isHidden: false },
+        { ...branchActions(), onToggleVisibility: vi.fn() },
+        commitActions(),
+        t
+      )
+    )
+    const labels = texts(current)
+    expect(labels.some((l) => l.startsWith('Checkout '))).toBe(false)
+    expect(labels.some((l) => l.startsWith('Fast-forward '))).toBe(false)
+    expect(labels.some((l) => l.includes('pull request'))).toBe(false)
+    expect(labels.some((l) => l.startsWith('Delete '))).toBe(false)
+  })
+
+  it('flips the Hide entry once the branch is hidden', () => {
+    const { nodes, actions } = menu({ isHidden: true })
+    expect(texts(nodes)).toContain('Show the branch')
+    item(nodes, 'Show the branch')?.action?.()
+    expect(actions.onToggleVisibility).toHaveBeenCalledWith(
+      expect.objectContaining({ shortName: 'feat/login' })
+    )
   })
 })
 
@@ -703,6 +788,8 @@ describe('buildCommitMenuSpec', () => {
     ])
   })
 
+  // A local branch is a valid PR base too, so the entry now shows here as well — what it never
+  // offers is a pull request from the current branch to itself.
   it('flattens a single branch inline into the commit menu (no submenu)', () => {
     const spec = build(ctx({ refs: [ref({ shortName: 'feat' })], currentBranch: 'main' }))
     expect(layoutOf(spec)).toEqual([
@@ -725,6 +812,7 @@ describe('buildCommitMenuSpec', () => {
       'Revert this commit',
       '— separator',
       'Explain this commit (LLM)',
+      'Push main and start a pull request to feat',
       'Explain branch changes (LLM)',
       'Review branch changes (LLM)',
       '— separator',

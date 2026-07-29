@@ -6,8 +6,7 @@ import { useTranslation } from '@git-manager/i18n'
 import type { GitBranch, GitRef } from '@git-manager/git-types'
 import { showNativeMenu } from '../api/nativeMenu.api'
 import {
-  buildBranchMenuSpec,
-  buildRemoteBranchMenuSpec,
+  buildSidebarBranchMenuSpec,
   type BranchMenuActions,
   type BranchTipCommitActions,
   type CommitCopyActions,
@@ -84,8 +83,8 @@ export function useSidebarBranchMenu(repoPath: string) {
   // take to act on a commit from outside the graph.
   const setPendingGraphSelection = useRepoUIStore((s) => s.setPendingGraphSelection)
   const setPendingGraphAction = useRepoUIStore((s) => s.setPendingGraphAction)
-  const hiddenRemoteBranches = useRepoDataStore((s) => s.hiddenRemoteBranches[repoPath]) ?? EMPTY
-  const toggleRemoteBranchVisibility = useRepoDataStore((s) => s.toggleRemoteBranchVisibility)
+  const hiddenBranches = useRepoDataStore((s) => s.hiddenBranches[repoPath]) ?? EMPTY
+  const toggleBranchVisibility = useRepoDataStore((s) => s.toggleBranchVisibility)
   const aiEnabled = useAiEnabled()
   const { targetBranches } = useEffectiveRepoSettings(repoPath)
   const { data: branches } = useBranches(repoPath)
@@ -256,21 +255,12 @@ export function useSidebarBranchMenu(repoPath: string) {
     }
   }
 
+  /**
+   * Both rows open the same menu: the branch sections, the commit-scoped ones on the branch tip,
+   * and the row's Hide toggle. What differs between a local and a remote branch is decided by the
+   * ref's own type inside the builder, not here.
+   */
   function openBranchMenu(e: React.MouseEvent, branch: GitBranch) {
-    e.preventDefault()
-    const ref = branchToRef(branch)
-    void showNativeMenu(
-      buildBranchMenuSpec(
-        ref,
-        menuContext(ref),
-        branchActionsFor(branch),
-        copyActionsFor(branch),
-        t
-      )
-    ).catch(console.error)
-  }
-
-  function openRemoteBranchMenu(e: React.MouseEvent, branch: GitBranch) {
     e.preventDefault()
     const ref = branchToRef(branch)
 
@@ -296,12 +286,12 @@ export function useSidebarBranchMenu(repoPath: string) {
     }
 
     void showNativeMenu(
-      buildRemoteBranchMenuSpec(
+      buildSidebarBranchMenuSpec(
         ref,
-        { ...menuContext(ref), isHidden: hiddenRemoteBranches.includes(branch.name) },
+        { ...menuContext(ref), isHidden: hiddenBranches.includes(ref.shortName) },
         {
           ...branchActionsFor(branch),
-          onToggleVisibility: (r) => toggleRemoteBranchVisibility(repoPath, r.shortName),
+          onToggleVisibility: (r) => toggleBranchVisibility(repoPath, r.shortName),
         },
         commitActions,
         t
@@ -309,5 +299,5 @@ export function useSidebarBranchMenu(repoPath: string) {
     ).catch(console.error)
   }
 
-  return { openBranchMenu, openRemoteBranchMenu, renameTarget, setRenameTarget }
+  return { openBranchMenu, renameTarget, setRenameTarget }
 }

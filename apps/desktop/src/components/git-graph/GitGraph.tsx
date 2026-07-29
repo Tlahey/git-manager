@@ -210,9 +210,9 @@ export function GitGraph({
   // Tags the user chose to keep off the graph. Unlike hidden stashes — which the backend drops
   // from the log entirely — this only suppresses the badge, so it is filtered here at render time.
   const hiddenTags = useRepoDataStore((s) => s.hiddenTags[repoPath]) || EMPTY_ARRAY
-  // Same deal for remote branches hidden from the sidebar's Remotes section.
-  const hiddenRemoteBranches =
-    useRepoDataStore((s) => s.hiddenRemoteBranches[repoPath]) || EMPTY_ARRAY
+  // Same deal for branches hidden from the sidebar, local and remote alike.
+  const hiddenBranches =
+    useRepoDataStore((s) => s.hiddenBranches[repoPath]) || EMPTY_ARRAY
   const toggleStashVisibility = useRepoDataStore((s) => s.toggleStashVisibility)
 
   // ── Rebase state (for the synthetic conflict row in the graph) ─────────────
@@ -1003,7 +1003,7 @@ export function GitGraph({
                             laneRef={laneRefByOid.get(oid)}
                             graphMaxColumn={graphMaxColumn}
                             hiddenTags={hiddenTags}
-                            hiddenRemoteBranches={hiddenRemoteBranches}
+                            hiddenBranches={hiddenBranches}
                             isTagDraft={isTagDraftRow}
                             onSubmitTag={isTagDraftRow ? submitTagDraft : undefined}
                             onCancelTag={isTagDraftRow ? cancelTagDraft : undefined}
