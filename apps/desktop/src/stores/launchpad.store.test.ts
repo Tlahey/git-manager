@@ -4,7 +4,12 @@ import { useLaunchpadStore } from './launchpad.store'
 const INITIAL_FILTERS = useLaunchpadStore.getState().savedFilters
 
 beforeEach(() => {
-  useLaunchpadStore.setState({ savedFilters: INITIAL_FILTERS, activeTab: 'prs', snoozed: {} })
+  useLaunchpadStore.setState({
+    savedFilters: INITIAL_FILTERS,
+    activeTab: 'prs',
+    snoozed: {},
+    pendingOpenPrId: null,
+  })
   localStorage.clear()
 })
 
@@ -70,5 +75,19 @@ describe('useLaunchpadStore', () => {
     useLaunchpadStore.getState().snoozePr('pr-2', null)
     useLaunchpadStore.getState().unsnoozePr('pr-1')
     expect(useLaunchpadStore.getState().snoozed).toEqual({ 'pr-2': null })
+  })
+
+  it('requestOpenPr records the PR a notification click asked for, clearPendingOpenPr drops it', () => {
+    useLaunchpadStore.getState().requestOpenPr('pr-42')
+    expect(useLaunchpadStore.getState().pendingOpenPrId).toBe('pr-42')
+    useLaunchpadStore.getState().clearPendingOpenPr()
+    expect(useLaunchpadStore.getState().pendingOpenPrId).toBeNull()
+  })
+
+  // A pending open is a one-shot request from a click that already happened; restoring it would
+  // pop a PR panel open on the next launch.
+  it('does not persist a pending open request', () => {
+    useLaunchpadStore.getState().requestOpenPr('pr-42')
+    expect(localStorage.getItem('git-manager-launchpad')).not.toContain('pendingOpenPrId')
   })
 })

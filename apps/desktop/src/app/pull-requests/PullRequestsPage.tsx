@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { usePullRequestsPage } from '../../hooks/usePullRequestsPage'
+import { usePendingPrOpen } from '../../hooks/usePendingPrOpen'
 import { timeAgo } from './utils'
 import { Spinner } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
@@ -49,6 +50,7 @@ export function PullRequestsPage() {
   const {
     activeTab,
     setActiveTab,
+    prs,
     visiblePRs,
     snoozedPRs,
     issues,
@@ -80,6 +82,10 @@ export function PullRequestsPage() {
   // holds the startup splash until the Launchpad is ready when it's the active tab (see
   // useAppReadySplash) — no token means an instant mock load, so nothing blocks in that case.
   useGlobalLoadingWhile(loading, t('page.fetching'))
+
+  // A notification click for a PR whose repo isn't cloned locally lands here instead of on a repo
+  // tab's PR page (see `lib/notifications/notificationRouting.ts`); open its panel now.
+  usePendingPrOpen({ prs, loading, onOpen: setOpenedPr })
 
   const PR_TABS: TabDef<InnerTabType>[] = defineTabs([
     {

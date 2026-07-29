@@ -11,43 +11,34 @@ import {
   resolveTargetTab,
 } from '../lib/notifications/notificationRegistry'
 import { buildPRSnapshotMap, snapshotMapsEqual } from '../lib/notifications/prSnapshots'
-import { useRepoUIStore, PULL_REQUESTS_TAB } from '../stores/repoUI.store'
-import { useLaunchpadStore } from '../stores/launchpad.store'
-import {
-  isPermissionGranted,
-  requestPermission,
-  sendNotification,
-  onAction,
-  type Options as NotificationActionEvent,
-} from '@tauri-apps/plugin-notification'
-import type { PluginListener } from '@tauri-apps/api/core'
+import { buildNotificationRoute } from '../lib/notifications/notificationRoute'
+import { routeNotification } from '../lib/notifications/notificationRouting'
+import { apiSendNativeNotification, apiOnNotificationActivated } from '../api/notification.api'
+import type { UnlistenFn } from '@tauri-apps/api/event'
 import type { TFunction } from '@git-manager/i18n'
 
+/**
+ * Shows a bell notification as an OS banner, carrying the route that clicking it should follow.
+ *
+ * Delivery goes through our own `send_native_notification` command rather than
+ * `@tauri-apps/plugin-notification`: the plugin can only *show* a notification on desktop, its
+ * `onAction` listener being wired to an event only its mobile backend emits (see
+ * `src-tauri/src/services/native_notification.rs`). Permission is not requested here either —
+ * on desktop the plugin always reports it granted, so the check was pure ceremony.
+ */
 export async function showNativeNotification(notif: AppNotification, t: TFunction) {
-  try {
-    let permissionGranted = await isPermissionGranted()
-    if (!permissionGranted) {
-      const permission = await requestPermission()
-      permissionGranted = permission === 'granted'
-    }
+  const { title, message } = getNotificationText(notif, t)
+  const settings = useSettingsStore.getState().settings
+  const soundEnabled = settings.notifications?.enableSound ?? false
+  const soundName = settings.notifications?.soundName ?? 'default'
+  const prefix = getNotificationTypeDef(notif.type)?.nativePrefix ?? 'ℹ️ '
 
-    if (permissionGranted) {
-      const { title, message } = getNotificationText(notif, t)
-      const settings = useSettingsStore.getState().settings
-      const soundEnabled = settings.notifications?.enableSound ?? false
-      const soundName = settings.notifications?.soundName ?? 'default'
-      const prefix = getNotificationTypeDef(notif.type)?.nativePrefix ?? 'ℹ️ '
-
-      sendNotification({
-        id: notif.id,
-        title: `${prefix}${title}`,
-        body: message,
-        ...(soundEnabled ? { sound: soundName } : {}),
-      })
-    }
-  } catch (e) {
-    console.warn('Failed to display native notification:', e)
-  }
+  await apiSendNativeNotification({
+    title: `${prefix}${title}`,
+    body: message,
+    ...(soundEnabled ? { sound: soundName } : {}),
+    route: buildNotificationRoute(notif),
+  })
 }
 
 export function useNotificationWatcher() {
@@ -66,52 +57,26 @@ export function useNotificationWatcher() {
     addNotification,
   } = useNotificationStore()
 
-  // Setup click action listener and bring window to focus, and request permission on mount
+  // Follow OS-banner clicks wherever they point. Bound unconditionally, not gated on
+  // `notificationsEnabled`: a banner can still be sitting in Notification Centre from before the
+  // setting was turned off, and a click on it must not be dropped on the floor. Bound once for the
+  // app's lifetime (the hook is mounted by `App.tsx`), so nothing here re-subscribes.
   useEffect(() => {
-    let unsub: PluginListener | undefined
+    let unlisten: UnlistenFn | undefined
+    let cancelled = false
 
-    async function init() {
-      // 1. Request permission if enabled
-      if (notificationsEnabled) {
-        try {
-          const granted = await isPermissionGranted()
-          if (!granted) {
-            await requestPermission()
-          }
-        } catch (e) {
-          console.warn('Failed to request notification permission:', e)
-        }
-      }
-
-      // 2. Listen to actions/clicks
-      try {
-        unsub = await onAction((event: NotificationActionEvent) => {
-          window.focus()
-          const notifId = event?.id
-          if (notifId) {
-            const notif = useNotificationStore
-              .getState()
-              .notifications.find((n) => n.id === notifId)
-            if (notif) {
-              useRepoUIStore.getState().setActiveTab(PULL_REQUESTS_TAB)
-              useLaunchpadStore.getState().setActiveTab(notif.targetTab)
-              useNotificationStore.getState().markAsRead(notif.id)
-            }
-          }
-        })
-      } catch (e) {
-        console.warn('Failed to bind notification action click listener:', e)
-      }
-    }
-
-    init()
+    apiOnNotificationActivated((route) => void routeNotification(route))
+      .then((fn) => {
+        if (cancelled) fn()
+        else unlisten = fn
+      })
+      .catch((e) => console.warn('Failed to bind notification click listener:', e))
 
     return () => {
-      if (unsub) {
-        unsub.unregister()
-      }
+      cancelled = true
+      unlisten?.()
     }
-  }, [notificationsEnabled])
+  }, [])
 
   useEffect(() => {
     // Only monitor changes when data is loaded, and there is no pending load or we have items
@@ -139,6 +104,8 @@ export function useNotificationWatcher() {
         const newNotif = addNotification({
           type: def.type,
           repo: pr.repo,
+          // Carried so a click can find the repo's local clone by its remote rather than by name.
+          ...(pr.fullName ? { fullName: pr.fullName } : {}),
           prNumber: pr.number,
           prTitle: pr.title,
           prId: pr.id,

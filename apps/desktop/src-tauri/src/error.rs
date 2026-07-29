@@ -37,6 +37,8 @@ pub enum AppError {
     InvalidInput(String),
     #[error("HTTP error: {0}")]
     Http(#[from] reqwest::Error),
+    #[error("Notification error: {0}")]
+    NotificationFailed(String),
     #[error("Unknown error: {0}")]
     Unknown(String),
 }
@@ -65,6 +67,7 @@ impl From<AppError> for String {
             AppError::AiTimeout(_) => ("AI_TIMEOUT", e.to_string()),
             AppError::InvalidInput(_) => ("INVALID_INPUT", e.to_string()),
             AppError::Http(_) => ("HTTP_ERROR", e.to_string()),
+            AppError::NotificationFailed(_) => ("NOTIFICATION_FAILED", e.to_string()),
             AppError::Unknown(_) => ("UNKNOWN", e.to_string()),
         };
         serde_json::to_string(&ErrorPayload {

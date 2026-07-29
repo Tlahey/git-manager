@@ -6,24 +6,24 @@ import { i18next, type TFunction } from '@git-manager/i18n'
 const useGitHubData = vi.fn()
 vi.mock('./useGitHubData', () => ({ useGitHubData: () => useGitHubData() }))
 
-const { isPermissionGranted, requestPermission, sendNotification, onAction, unregister } =
-  vi.hoisted(() => ({
-    isPermissionGranted: vi.fn(),
-    requestPermission: vi.fn(),
-    sendNotification: vi.fn(),
-    onAction: vi.fn(),
-    unregister: vi.fn(),
-  }))
-vi.mock('@tauri-apps/plugin-notification', () => ({
-  isPermissionGranted: (...a: unknown[]) => isPermissionGranted(...a),
-  requestPermission: (...a: unknown[]) => requestPermission(...a),
-  sendNotification: (...a: unknown[]) => sendNotification(...a),
-  onAction: (...a: unknown[]) => onAction(...a),
+const { sendNativeNotification, onNotificationActivated, unlisten } = vi.hoisted(() => ({
+  sendNativeNotification: vi.fn(),
+  onNotificationActivated: vi.fn(),
+  unlisten: vi.fn(),
+}))
+vi.mock('../api/notification.api', () => ({
+  apiSendNativeNotification: (...a: unknown[]) => sendNativeNotification(...a),
+  apiOnNotificationActivated: (...a: unknown[]) => onNotificationActivated(...a),
+}))
+
+const routeNotification = vi.hoisted(() => vi.fn())
+vi.mock('../lib/notifications/notificationRouting', () => ({
+  routeNotification: (...a: unknown[]) => routeNotification(...a),
 }))
 
 import { useNotificationStore } from '../stores/notification.store'
 import { useSettingsStore } from '../stores/settings.store'
-import { useRepoUIStore, PULL_REQUESTS_TAB, DASHBOARD_TAB } from '../stores/repoUI.store'
+import { useRepoUIStore, DASHBOARD_TAB } from '../stores/repoUI.store'
 import { useLaunchpadStore } from '../stores/launchpad.store'
 import { useNotificationWatcher, showNativeNotification } from './useNotificationWatcher'
 
@@ -70,71 +70,52 @@ beforeEach(() => {
   useSettingsStore.setState({ settings: DEFAULT_SETTINGS })
   useRepoUIStore.setState({ activeTab: DASHBOARD_TAB })
   useLaunchpadStore.setState({ activeTab: 'prs' })
-  isPermissionGranted.mockResolvedValue(true)
-  requestPermission.mockResolvedValue('granted')
-  onAction.mockResolvedValue({ unregister })
+  sendNativeNotification.mockResolvedValue(undefined)
+  onNotificationActivated.mockResolvedValue(unlisten)
   mockGitHubData([])
-  // The action handler calls window.focus() unconditionally (even for an unmatched id), and
-  // jsdom doesn't implement it — stub it globally to avoid noisy "not implemented" console spam.
-  vi.spyOn(window, 'focus').mockImplementation(() => {})
 })
 
 afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('useNotificationWatcher — permission + action listener setup', () => {
-  it('requests permission on mount when notifications are enabled and not yet granted', async () => {
-    isPermissionGranted.mockResolvedValue(false)
-    renderHook(() => useNotificationWatcher())
-    await waitFor(() => expect(requestPermission).toHaveBeenCalled())
-  })
-
-  it('does not request permission when already granted', async () => {
-    isPermissionGranted.mockResolvedValue(true)
-    renderHook(() => useNotificationWatcher())
-    await waitFor(() => expect(isPermissionGranted).toHaveBeenCalled())
-    expect(requestPermission).not.toHaveBeenCalled()
-  })
-
-  it('registers an action listener and unregisters it on unmount', async () => {
+describe('useNotificationWatcher — click listener setup', () => {
+  it('subscribes to notification clicks and unsubscribes on unmount', async () => {
     const { unmount } = renderHook(() => useNotificationWatcher())
-    await waitFor(() => expect(onAction).toHaveBeenCalled())
+    await waitFor(() => expect(onNotificationActivated).toHaveBeenCalled())
     unmount()
-    expect(unregister).toHaveBeenCalledOnce()
+    expect(unlisten).toHaveBeenCalledOnce()
   })
 
-  it('clicking a notification action focuses the window and routes to the PR tab, marking it read', async () => {
-    const windowFocus = vi.spyOn(window, 'focus').mockImplementation(() => {})
-    const notif = useNotificationStore.getState().addNotification({
-      type: 'new_pr',
-      repo: 'org/repo',
-      prNumber: 1,
-      prTitle: 'Add feature',
-      prId: 'pr-1',
-      author: 'octocat',
-      targetTab: 'waiting',
+  it('hands a clicked notification straight to the router', async () => {
+    renderHook(() => useNotificationWatcher())
+    await waitFor(() => expect(onNotificationActivated).toHaveBeenCalled())
+    const handler = onNotificationActivated.mock.calls[0][0]
+
+    const route = { kind: 'pull-request', prNumber: 1, prId: 'pr-1', repo: 'repo', targetTab: 'waiting' }
+    act(() => handler(route))
+
+    expect(routeNotification).toHaveBeenCalledWith(route)
+  })
+
+  // Bound unconditionally: a banner raised before the setting was switched off can still be
+  // sitting in Notification Centre, and clicking it must not be a no-op.
+  it('still subscribes when notifications are disabled', async () => {
+    useSettingsStore.setState({
+      settings: {
+        ...DEFAULT_SETTINGS,
+        notifications: { ...DEFAULT_SETTINGS.notifications!, enabled: false },
+      },
     })
-
     renderHook(() => useNotificationWatcher())
-    await waitFor(() => expect(onAction).toHaveBeenCalled())
-    const actionHandler = onAction.mock.calls[0][0]
-
-    act(() => actionHandler({ id: notif.id }))
-
-    expect(windowFocus).toHaveBeenCalledOnce()
-    expect(useRepoUIStore.getState().activeTab).toBe(PULL_REQUESTS_TAB)
-    expect(useLaunchpadStore.getState().activeTab).toBe('waiting')
-    expect(useNotificationStore.getState().notifications.find((n) => n.id === notif.id)?.read).toBe(
-      true
-    )
+    await waitFor(() => expect(onNotificationActivated).toHaveBeenCalled())
   })
 
-  it('ignores an action event for an unknown notification id', async () => {
+  it('does not throw when the listener cannot be bound', async () => {
+    onNotificationActivated.mockRejectedValue(new Error('no tauri host'))
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     renderHook(() => useNotificationWatcher())
-    await waitFor(() => expect(onAction).toHaveBeenCalled())
-    const actionHandler = onAction.mock.calls[0][0]
-    expect(() => act(() => actionHandler({ id: 999999 }))).not.toThrow()
+    await waitFor(() => expect(warnSpy).toHaveBeenCalled())
     expect(useRepoUIStore.getState().activeTab).toBe(DASHBOARD_TAB)
   })
 })
@@ -254,12 +235,11 @@ describe('useNotificationWatcher — PR change detection', () => {
 describe('showNativeNotification', () => {
   const t = i18next.getFixedT('en', 'common') as unknown as TFunction
 
-  it('requests permission when not already granted, then sends if granted', async () => {
-    isPermissionGranted.mockResolvedValue(false)
-    requestPermission.mockResolvedValue('granted')
+  it('sends the notification with the prefix for its type and the route back to its PR', async () => {
     const notif = useNotificationStore.getState().addNotification({
       type: 'new_pr',
       repo: 'org/repo',
+      fullName: 'org/repo',
       prNumber: 1,
       prTitle: 'Add feature',
       prId: 'pr-1',
@@ -269,15 +249,23 @@ describe('showNativeNotification', () => {
 
     await showNativeNotification(notif, t)
 
-    expect(requestPermission).toHaveBeenCalledOnce()
-    expect(sendNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ id: notif.id, title: expect.stringContaining('🆕') })
+    expect(sendNativeNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: expect.stringContaining('🆕'),
+        route: {
+          kind: 'pull-request',
+          notificationId: notif.id,
+          prNumber: 1,
+          prId: 'pr-1',
+          repo: 'org/repo',
+          fullName: 'org/repo',
+          targetTab: 'prs',
+        },
+      })
     )
   })
 
-  it('does not send when permission is denied', async () => {
-    isPermissionGranted.mockResolvedValue(false)
-    requestPermission.mockResolvedValue('denied')
+  it('omits the sound when sound is disabled in settings', async () => {
     const notif = useNotificationStore.getState().addNotification({
       type: 'new_pr',
       repo: 'org/repo',
@@ -289,7 +277,7 @@ describe('showNativeNotification', () => {
     })
 
     await showNativeNotification(notif, t)
-    expect(sendNotification).not.toHaveBeenCalled()
+    expect(sendNativeNotification.mock.calls[0][0]).not.toHaveProperty('sound')
   })
 
   it('includes the sound name only when sound is enabled in settings', async () => {
@@ -310,22 +298,6 @@ describe('showNativeNotification', () => {
     })
 
     await showNativeNotification(notif, t)
-    expect(sendNotification).toHaveBeenCalledWith(expect.objectContaining({ sound: 'ding' }))
-  })
-
-  it('does not throw when the notification plugin errors out', async () => {
-    isPermissionGranted.mockRejectedValue(new Error('unavailable'))
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const notif = useNotificationStore.getState().addNotification({
-      type: 'new_pr',
-      repo: 'org/repo',
-      prNumber: 1,
-      prTitle: 'Add feature',
-      prId: 'pr-1',
-      author: 'octocat',
-      targetTab: 'prs',
-    })
-    await expect(showNativeNotification(notif, t)).resolves.toBeUndefined()
-    expect(warnSpy).toHaveBeenCalled()
+    expect(sendNativeNotification).toHaveBeenCalledWith(expect.objectContaining({ sound: 'ding' }))
   })
 })
