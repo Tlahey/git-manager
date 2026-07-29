@@ -31,6 +31,31 @@ export interface MergeIntraLineHighlights {
   theirs: InlineDecorationSpec[]
 }
 
+/** Glue together changed spans that are only separated by unchanged whitespace, so a run of
+ * consecutive rewritten words highlights as one continuous band instead of a striped
+ * word/gap/word/gap sequence.
+ *
+ * `diffWordsWithSpace` keeps whitespace as its own token, so the space between two rewritten
+ * words comes back as *common* — technically true (a space is still a space) but visually
+ * misleading: it punches an unhighlighted hole into the middle of what the reader perceives as
+ * one edited phrase. A gap made of anything else (a word that really did survive the edit) still
+ * breaks the highlight, since that word genuinely didn't change. */
+function mergeSpansAcrossWhitespace(ranges: CharRange[], text: string): CharRange[] {
+  if (ranges.length < 2) return ranges
+
+  const merged: CharRange[] = [{ ...ranges[0] }]
+  for (let i = 1; i < ranges.length; i++) {
+    const previous = merged[merged.length - 1]
+    const current = ranges[i]
+    if (/\S/.test(text.slice(previous.end, current.start))) {
+      merged.push({ ...current })
+    } else {
+      previous.end = current.end
+    }
+  }
+  return merged
+}
+
 /** Character-precise intra-line diff of two versions of "the same" line: which spans of `a` and
  * `b` actually changed. Delegates the actual word-tokenization/diffing to `jsdiff`'s
  * `diffWordsWithSpace` rather than a hand-rolled LCS: its word-character set covers Latin
@@ -43,6 +68,9 @@ export interface MergeIntraLineHighlights {
  * absorbed into a "common" token. jsdiff's Myers-diff core is O((N+M)D) in the edit distance
  * rather than the O(N·M) DP table this used to build, so there's no separate long-line fallback
  * needed either.
+ *
+ * The raw token runs are then passed through `mergeSpansAcrossWhitespace`, so consecutive
+ * rewritten words read as one highlighted phrase rather than as separate islands.
  *
  * Returns `undefined` when the two lines share no meaningful (non-whitespace) token — they're
  * not really "the same line edited", so an intra highlight would just repaint almost everything
@@ -82,7 +110,10 @@ export function changedCharRanges(
     }
   }
 
-  return { a: rangesA, b: rangesB }
+  return {
+    a: mergeSpansAcrossWhitespace(rangesA, a),
+    b: mergeSpansAcrossWhitespace(rangesB, b),
+  }
 }
 
 /** Second pass of the two-pass diff: within each (already line-classified) block, pinpoint the
