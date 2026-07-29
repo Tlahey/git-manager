@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { MockIssue } from '../app/pull-requests/types'
+import { closeRepoScopedPanels } from './repoScopedPanels'
 
 /** Ids of the pinned special tabs (always present, not closeable). */
 export const DASHBOARD_TAB = 'dashboard'
@@ -13,11 +14,7 @@ export const PULL_REQUESTS_TAB = 'pull-requests'
  * footer, the shortcuts and the dashboard had drifted apart, so a tab was treated as a repo path by
  * whichever one was missed.
  */
-const SPECIAL_TABS: ReadonlySet<string> = new Set([
-  DASHBOARD_TAB,
-  REWARDS_TAB,
-  PULL_REQUESTS_TAB,
-])
+const SPECIAL_TABS: ReadonlySet<string> = new Set([DASHBOARD_TAB, REWARDS_TAB, PULL_REQUESTS_TAB])
 
 /** Whether a tab id is one of the pinned special tabs rather than a repo path or a "New Tab". */
 export function isSpecialTab(id: string): boolean {
@@ -285,7 +282,7 @@ interface RepoUIState {
 
 export const useRepoUIStore = create<RepoUIState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       openTabs: [],
       activeRepo: null,
       activeTab: DASHBOARD_TAB,
@@ -411,7 +408,8 @@ export const useRepoUIStore = create<RepoUIState>()(
 
       setActiveWorkspacePath: (path) => set({ activeWorkspacePath: path }),
 
-      setActiveRepo: (path) =>
+      setActiveRepo: (path) => {
+        closeRepoScopedPanels()
         set({
           activeRepo: path,
           activeTab: path ?? DASHBOARD_TAB,
@@ -430,9 +428,11 @@ export const useRepoUIStore = create<RepoUIState>()(
           selectedStashIndex: null,
           pendingGraphAction: null,
           pendingCommitMenuOid: null,
-        }),
+        })
+      },
 
-      setActiveTab: (id) =>
+      setActiveTab: (id) => {
+        closeRepoScopedPanels()
         set((state) => ({
           activeTab: id,
           // An empty "New Tab" is in `openTabs` but is not a repo — it must not become `activeRepo`.
@@ -452,9 +452,11 @@ export const useRepoUIStore = create<RepoUIState>()(
           selectedStashIndex: null,
           pendingGraphAction: null,
           pendingCommitMenuOid: null,
-        })),
+        }))
+      },
 
-      openTab: (path) =>
+      openTab: (path) => {
+        closeRepoScopedPanels()
         set((state) => {
           // Opening a repo while an empty "New Tab" is focused consumes that placeholder: it takes
           // the repo's place in the strip, or simply closes if the repo already has a tab (we just
@@ -477,9 +479,11 @@ export const useRepoUIStore = create<RepoUIState>()(
             activeTab: path,
             activeWorkspacePath: null,
           }
-        }),
+        })
+      },
 
-      openNewTab: () =>
+      openNewTab: () => {
+        closeRepoScopedPanels()
         set((state) => {
           const id = `${NEW_TAB_PREFIX}${++newTabSequence}`
           return {
@@ -499,9 +503,13 @@ export const useRepoUIStore = create<RepoUIState>()(
             pendingGraphAction: null,
             pendingCommitMenuOid: null,
           }
-        }),
+        })
+      },
 
-      closeTab: (path) =>
+      closeTab: (path) => {
+        // Only a close that moves the user elsewhere is a tab change; closing a
+        // background tab must leave the panels of the one they are looking at alone.
+        if (get().activeTab === path) closeRepoScopedPanels()
         set((state) => {
           const newTabs = state.openTabs.filter((p) => p !== path)
           const wasActive = state.activeTab === path
@@ -516,7 +524,8 @@ export const useRepoUIStore = create<RepoUIState>()(
             activeTab: wasActive ? fallback : state.activeTab,
             activeWorkspacePath: wasActive ? null : state.activeWorkspacePath,
           }
-        }),
+        })
+      },
 
       reorderTabs: (from, to) =>
         set((state) => {
@@ -528,7 +537,8 @@ export const useRepoUIStore = create<RepoUIState>()(
           return { openTabs: tabs }
         }),
 
-      clearTabStateForRemovedRepo: (path) =>
+      clearTabStateForRemovedRepo: (path) => {
+        if (get().activeTab === path) closeRepoScopedPanels()
         set((state) => {
           const wasActive = state.activeTab === path
           return {
@@ -542,7 +552,8 @@ export const useRepoUIStore = create<RepoUIState>()(
             prComposer: wasActive ? null : state.prComposer,
             prCreateOpen: wasActive ? false : state.prCreateOpen,
           }
-        }),
+        })
+      },
     }),
     {
       name: 'git-manager-repos-ui',
