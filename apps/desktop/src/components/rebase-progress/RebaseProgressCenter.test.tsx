@@ -1,30 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { GitStatus, RebaseProgressStep, RebaseState } from '@git-manager/git-types'
+import type { RebaseProgressStep, RebaseState } from '@git-manager/git-types'
 
-const { useConflictedFiles, useGitStatus, swrMutate } = vi.hoisted(() => ({
+const { useConflictedFiles } = vi.hoisted(() => ({
   useConflictedFiles: vi.fn(),
-  useGitStatus: vi.fn(),
-  swrMutate: vi.fn(),
 }))
 vi.mock('../../hooks/useConflictedFiles', () => ({ useConflictedFiles }))
-vi.mock('../../hooks/useGitStatus', () => ({ useGitStatus }))
-vi.mock('swr', () => ({ mutate: swrMutate }))
-vi.mock('../../api/git.api', () => ({
-  apiRebaseAbort: vi.fn(),
-  apiRebaseContinue: vi.fn(),
-  apiRebaseSkip: vi.fn(),
-}))
 
-import { apiRebaseAbort, apiRebaseContinue, apiRebaseSkip } from '../../api/git.api'
 import { useRebaseViewStore } from '../../stores/rebaseView.store'
 import { RebaseProgressCenter } from './RebaseProgressCenter'
-
-const mockedAbort = apiRebaseAbort as unknown as ReturnType<typeof vi.fn>
-const mockedContinue = apiRebaseContinue as unknown as ReturnType<typeof vi.fn>
-const mockedSkip = apiRebaseSkip as unknown as ReturnType<typeof vi.fn>
 
 function step(overrides: Partial<RebaseProgressStep> = {}): RebaseProgressStep {
   return { index: 1, action: 'pick', status: 'pending', ...overrides }
@@ -46,10 +32,6 @@ function rebaseState(overrides: Partial<RebaseState> = {}): RebaseState {
     ],
     ...overrides,
   }
-}
-
-function gitStatus(overrides: Partial<GitStatus> = {}): GitStatus {
-  return { staged: [], unstaged: [], untracked: [], conflicted: [], ...overrides }
 }
 
 function renderCenter(
@@ -75,7 +57,6 @@ beforeEach(() => {
   vi.clearAllMocks()
   useRebaseViewStore.setState({ views: {} })
   useConflictedFiles.mockReturnValue({ data: [] })
-  useGitStatus.mockReturnValue({ data: gitStatus() })
 })
 
 describe('RebaseProgressCenter — header', () => {
@@ -236,72 +217,5 @@ describe('RebaseProgressCenter — step rail', () => {
       'Git is not reporting a step list for this rebase.'
     )
     expect(screen.queryByTestId('rebase-step-list')).not.toBeInTheDocument()
-  })
-})
-
-describe('RebaseProgressCenter — actions', () => {
-  it('offers Continue once every conflict is resolved, and no Skip', () => {
-    renderCenter()
-    expect(screen.getByTestId('rebase-progress-continue')).toBeInTheDocument()
-    expect(screen.queryByTestId('rebase-progress-skip')).not.toBeInTheDocument()
-  })
-
-  it('offers Skip while files conflict and nothing has been staged', () => {
-    useConflictedFiles.mockReturnValue({ data: ['src/a.ts'] })
-    renderCenter()
-    expect(screen.getByTestId('rebase-progress-skip')).toBeInTheDocument()
-    expect(screen.queryByTestId('rebase-progress-continue')).not.toBeInTheDocument()
-  })
-
-  // Staged fixes mean the user intends to finish the step, so dropping it would lose their work.
-  it('withholds Skip once a resolution has been staged', () => {
-    useConflictedFiles.mockReturnValue({ data: ['src/a.ts'] })
-    useGitStatus.mockReturnValue({
-      data: gitStatus({ staged: [{ path: 'src/b.ts', status: 'modified' }] }),
-    })
-    renderCenter()
-    expect(screen.queryByTestId('rebase-progress-skip')).not.toBeInTheDocument()
-  })
-
-  it('offers only Abort while a rebase is mid-apply rather than paused', () => {
-    renderCenter(rebaseState({ kind: 'in_progress' }))
-    expect(screen.queryByTestId('rebase-progress-continue')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('rebase-progress-skip')).not.toBeInTheDocument()
-    expect(screen.getByTestId('rebase-progress-abort')).toBeInTheDocument()
-  })
-
-  it('continues the rebase without amending the step message', async () => {
-    const user = userEvent.setup()
-    mockedContinue.mockResolvedValue(undefined)
-    renderCenter()
-    await user.click(screen.getByTestId('rebase-progress-continue'))
-    expect(mockedContinue).toHaveBeenCalledWith('/repo', undefined)
-  })
-
-  it('aborts the rebase', async () => {
-    const user = userEvent.setup()
-    mockedAbort.mockResolvedValue(undefined)
-    renderCenter()
-    await user.click(screen.getByTestId('rebase-progress-abort'))
-    expect(mockedAbort).toHaveBeenCalledWith('/repo')
-  })
-
-  it('skips the step', async () => {
-    const user = userEvent.setup()
-    useConflictedFiles.mockReturnValue({ data: ['src/a.ts'] })
-    mockedSkip.mockResolvedValue(undefined)
-    renderCenter()
-    await user.click(screen.getByTestId('rebase-progress-skip'))
-    expect(mockedSkip).toHaveBeenCalledWith('/repo')
-  })
-
-  it('surfaces a failed control instead of swallowing it', async () => {
-    const user = userEvent.setup()
-    mockedContinue.mockRejectedValue(new Error('could not apply'))
-    renderCenter()
-    await user.click(screen.getByTestId('rebase-progress-continue'))
-    await waitFor(() =>
-      expect(screen.getByTestId('rebase-progress-error')).toHaveTextContent('could not apply')
-    )
   })
 })

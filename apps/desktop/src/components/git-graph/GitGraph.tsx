@@ -760,6 +760,10 @@ export function GitGraph({
   // is explicit state rather than "the row got deselected", so the header's toggle (and the graph
   // banner) can put it back — see rebaseView.store.
   const isConflictPanelOpen = primaryNode?.commit.oid === 'CONFLICT' && !rebaseFilesHidden
+  // Dismissing the conflict panel leaves the CONFLICT row selected (see above), which would
+  // otherwise fall through to CommitDetailsPanel and render a bogus "commit" for it — so the
+  // whole right-hand panel has to stay closed for that row until it's re-shown or reselected.
+  const isDismissedConflictRow = primaryNode?.commit.oid === 'CONFLICT' && rebaseFilesHidden
 
   function closeConflictPanel() {
     hideRebaseFiles(repoPath)
@@ -1216,7 +1220,7 @@ export function GitGraph({
             </div>
           </>
         ) : null
-      ) : !timelinePreviewOpen && primaryNode ? (
+      ) : !timelinePreviewOpen && primaryNode && !isDismissedConflictRow ? (
         <>
           {/* Handle de redimensionnement */}
           <div
