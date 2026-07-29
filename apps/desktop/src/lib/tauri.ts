@@ -712,6 +712,50 @@ export const commitDependencyPatch = (path: string, editDir: string) =>
     editDir,
   })
 
+// ─── Package health check ─────────────────────────────────────────────────────
+
+export const hasPackageManifest = (path: string) => invoke<boolean>('has_package_manifest', { path })
+
+export const runPackageHealthCheck = (path: string) =>
+  invoke<import('@git-manager/git-types').PackageHealthReport>('run_package_health_check', { path })
+
+export const checkOutdatedPackages = (path: string, packageManager: string) =>
+  invoke<import('@git-manager/git-types').OutdatedReport>('check_outdated_packages', {
+    path,
+    packageManager,
+  })
+
+export const getPackageChangelog = (
+  path: string,
+  name: string,
+  from: string,
+  to: string,
+  token?: string
+) =>
+  invoke<import('@git-manager/git-types').PackageChangelog>('get_package_changelog', {
+    path,
+    name,
+    from,
+    to,
+    token,
+  })
+
+export const scanPackageUsage = (path: string, name: string) =>
+  invoke<import('@git-manager/git-types').PackageUsage>('scan_package_usage', { path, name })
+
+export const updatePackages = (
+  path: string,
+  packageManager: string,
+  names: string[],
+  toLatest: boolean
+) =>
+  invoke<import('@git-manager/git-types').UpdateOutcome>('update_packages', {
+    path,
+    packageManager,
+    names,
+    toLatest,
+  })
+
 // ─── Fixup ────────────────────────────────────────────────────────────────────
 
 export interface FixupInfo {

@@ -213,6 +213,129 @@ export interface CommittedDependencyPatch {
   key: string
 }
 
+// ─── Package health check ─────────────────────────────────────────────────────
+
+/** `skipped` means the check's prerequisite is missing (e.g. no `node_modules`). */
+export type HealthSeverity = 'ok' | 'skipped' | 'warning' | 'error'
+
+/** Ids the backend emits; each maps to a translated title/description. */
+export type HealthCheckId =
+  | 'versionAlignment'
+  | 'catalogDrift'
+  | 'workspaceProtocol'
+  | 'duplicateDependency'
+  | 'missingInstall'
+  | 'rangeMismatch'
+  | 'packageManagerField'
+
+/** One place a dependency is declared. */
+export interface DependencyRef {
+  package: string
+  path: string
+  field: string
+  range: string
+}
+
+export interface HealthFinding {
+  severity: HealthSeverity
+  /** Null for repo-level findings (e.g. the `packageManager` field). */
+  dependency: string | null
+  refs: DependencyRef[]
+  actual: string | null
+  expected: string | null
+}
+
+export interface HealthCheck {
+  id: HealthCheckId
+  severity: HealthSeverity
+  findings: HealthFinding[]
+}
+
+export interface HealthWorkspacePackage {
+  name: string
+  path: string
+  version: string | null
+  private: boolean
+  dependencyCount: number
+}
+
+export interface PackageHealthReport {
+  packageManager: string
+  hasCatalog: boolean
+  packages: HealthWorkspacePackage[]
+  /** Distinct third-party dependency names across the workspace. */
+  dependencyCount: number
+  checks: HealthCheck[]
+}
+
+/** `toolMissing`: the package manager isn't on PATH. `unsupported`: it has no machine-readable `outdated`. */
+export type OutdatedStatus = 'ok' | 'toolMissing' | 'unsupported'
+
+export interface OutdatedPackage {
+  name: string
+  current: string
+  /** Newest version the declared range allows. */
+  wanted: string
+  /** Newest version published — may be a major bump. */
+  latest: string
+  majorUpdate: boolean
+  deprecated: boolean
+}
+
+export interface OutdatedReport {
+  packageManager: string
+  status: OutdatedStatus
+  packages: OutdatedPackage[]
+}
+
+export interface ChangelogRelease {
+  tag: string
+  /** Often empty; fall back to the tag. */
+  name: string
+  publishedAt: string
+  /** Markdown body of the release notes. */
+  body: string
+  url: string
+}
+
+export interface PackageChangelog {
+  /** `owner/repo`, or null when the package declares no GitHub repository. */
+  repository: string | null
+  releasesUrl: string | null
+  releases: ChangelogRelease[]
+  /**
+   * True when release tags matched the version range. False with a non-empty
+   * `releases` means these are the most recent ones, not the ones being installed.
+   */
+  matched: boolean
+}
+
+export interface UpdateOutcome {
+  updated: string[]
+  /** The package manager's own report, shown verbatim. */
+  output: string
+}
+
+export interface PackageUsageSample {
+  path: string
+  line: number
+  text: string
+}
+
+/** What the repo imports from a dependency — the surface an upgrade could break. */
+export interface PackageUsage {
+  name: string
+  /** Importing files, before the list below is capped. */
+  fileCount: number
+  files: string[]
+  symbols: string[]
+  /** Subpath entry points in use (`react-dom/client`). */
+  subpaths: string[]
+  defaultImport: boolean
+  namespaceImport: boolean
+  samples: PackageUsageSample[]
+}
+
 // ─── Submodules ───────────────────────────────────────────────────────────────
 
 export interface GitSubmodule {

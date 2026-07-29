@@ -1,4 +1,13 @@
-import { ChevronDown, FileDiff, FileDown, FileUp, Package, Bug, Wrench } from 'lucide-react'
+import {
+  ChevronDown,
+  FileDiff,
+  FileDown,
+  FileUp,
+  HeartPulse,
+  Package,
+  Bug,
+  Wrench,
+} from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -12,10 +21,12 @@ import {
 import { useTranslation } from '@git-manager/i18n'
 import { usePatchWorkspaceStore, type PatchMode } from '../../stores/patchWorkspace.store'
 import { useBisectUIStore } from '../../stores/bisectUI.store'
+import { usePackageHealthStore } from '../../stores/packageHealth.store'
 import { useStashDialogStore } from '../../stores/stashDialog.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { useBisectState } from '../../hooks/useBisectState'
 import { useGitStatus } from '../../hooks/useGitStatus'
+import { useHasPackageManifest } from '../../hooks/usePackageHealth'
 
 interface ToolsMenuProps {
   repoPath: string | null
@@ -29,6 +40,8 @@ interface ToolsMenuProps {
 export function ToolsMenu({ repoPath }: ToolsMenuProps) {
   const { t } = useTranslation('git')
   const openPatch = usePatchWorkspaceStore((s) => s.open)
+  const openHealth = usePackageHealthStore((s) => s.openTool)
+  const { data: hasManifest } = useHasPackageManifest(repoPath)
   const beginBisectSetup = useBisectUIStore((s) => s.beginSetup)
   const openStashDialog = useStashDialogStore((s) => s.openBisectDialog)
   const bisectSettingUp = useBisectUIStore((s) => s.setupActive)
@@ -53,13 +66,23 @@ export function ToolsMenu({ repoPath }: ToolsMenuProps) {
     else beginBisectSetup()
   }
 
-  function openPatchMode(mode: PatchMode) {
-    // Hand the center/right slots to the patch workspace by clearing the other
-    // views that claim them (diff / PR), then activating the mode.
+  /** Clears every other view that claims the center/right slots, so a tool can take them. */
+  function releaseWorkspaceSlots() {
     const ui = useRepoUIStore.getState()
     ui.setActiveDiffFile(null)
     ui.setActivePrNumber(null)
+  }
+
+  function openPatchMode(mode: PatchMode) {
+    releaseWorkspaceSlots()
+    usePackageHealthStore.getState().close()
     openPatch(mode)
+  }
+
+  function openHealthCheck() {
+    releaseWorkspaceSlots()
+    usePatchWorkspaceStore.getState().close()
+    openHealth()
   }
 
   return (
@@ -116,6 +139,20 @@ export function ToolsMenu({ repoPath }: ToolsMenuProps) {
             </DropdownMenuItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
+
+        <DropdownMenuSeparator />
+
+        {/* Only meaningful in a JavaScript repo, so it stays disabled elsewhere
+            rather than opening onto an empty report. */}
+        <DropdownMenuItem
+          onSelect={() => openHealthCheck()}
+          disabled={disabled || hasManifest !== true}
+          className="gap-2 text-xs"
+          data-testid="tools-menu-health"
+        >
+          <HeartPulse className="h-3.5 w-3.5 text-muted-foreground" />
+          {t('health.menuItem')}
+        </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 

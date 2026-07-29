@@ -16,6 +16,7 @@ import {
   commitQuickScanFeature,
   commitRelevanceFeature,
   commitSearchAnswerFeature,
+  upgradeRiskFeature,
   createCompletionService,
   createStatusService,
   createStreamingService,
@@ -75,10 +76,7 @@ export async function apiGetAiActivity(
 /** Lists the commits an AI search will read (last `sinceHours`, newest first, at most `maxCommits`),
  * each with its full oid and touched paths. The diffs are *not* here: the search fetches each
  * commit's patch as it reaches it, so a month of history never sits in memory at once. */
-export async function apiGetAiCommitScan(
-  path: string,
-  maxCommits?: number
-): Promise<AiCommitScan> {
+export async function apiGetAiCommitScan(path: string, maxCommits?: number): Promise<AiCommitScan> {
   return getAiCommitScan(path, maxCommits)
 }
 
@@ -273,6 +271,13 @@ export const summaryExplanationService = createStreamingService(
 export const commitRelevanceService = createCompletionService(
   commitRelevanceFeature,
   trackedTransport(commitRelevanceFeature.id)
+)
+/** Judges what a dependency upgrade would break *in this repo*, from the release notes
+ * crossed with the repo's own import sites. Advisory only — the updates page keeps its
+ * confirmation on a major whatever this returns. */
+export const upgradeRiskService = createCompletionService(
+  upgradeRiskFeature,
+  trackedTransport(upgradeRiskFeature.id)
 )
 /** The quick search's first narrowing: one call over every commit's message, no diffs, no loop. */
 export const commitQuickScanService = createCompletionService(

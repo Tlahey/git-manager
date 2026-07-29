@@ -43,6 +43,9 @@ import { PrFilesPanel } from './pr/PrFilesPanel'
 import { EmptyRepoPanel } from './EmptyRepoPanel'
 import { PatchWorkspaceCenter } from '../patch/PatchWorkspaceCenter'
 import { PatchWorkspacePanel } from '../patch/PatchWorkspacePanel'
+import { PackageHealthPanel } from '../package-health/PackageHealthPanel'
+import { PackageHealthCenter } from '../package-health/PackageHealthCenter'
+import { usePackageHealthStore } from '../../stores/packageHealth.store'
 import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
 import { BisectPanel } from '../bisect/BisectPanel'
 import { BranchExplanationPanel } from './BranchExplanationPanel'
@@ -135,6 +138,7 @@ export function GitGraph({
   // Patch workspace (create / apply / dependency) claims both the center and the
   // right panel, taking precedence over the commit/diff/PR views below.
   const patchMode = usePatchWorkspaceStore((s) => s.mode)
+  const healthOpen = usePackageHealthStore((s) => s.open)
   const closePatch = usePatchWorkspaceStore((s) => s.close)
   // Switching repo/tab abandons any in-progress patch workspace.
   useEffect(() => {
@@ -820,6 +824,8 @@ export function GitGraph({
       <div className="relative flex min-w-[280px] flex-1 flex-col overflow-hidden">
         {patchMode ? (
           <PatchWorkspaceCenter repoPath={repoPath} />
+        ) : healthOpen ? (
+          <PackageHealthCenter repoPath={repoPath} />
         ) : activePrNumber != null ? (
           activePrFile != null ? (
             <PrFileDiffCenter
@@ -1176,6 +1182,21 @@ export function GitGraph({
             style={{ width: panelWidthState }}
           >
             <PatchWorkspacePanel repoPath={repoPath} />
+          </div>
+        </>
+      ) : healthOpen ? (
+        <>
+          <div
+            {...resizeProps}
+            className="group relative w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-primary/40"
+          >
+            <div className="absolute inset-y-0 left-0.5 w-px bg-border transition-colors group-hover:bg-primary/60" />
+          </div>
+          <div
+            className="h-full min-w-[350px] shrink-0 overflow-hidden"
+            style={{ width: panelWidthState }}
+          >
+            <PackageHealthPanel repoPath={repoPath} />
           </div>
         </>
       ) : activePrNumber != null ? (
