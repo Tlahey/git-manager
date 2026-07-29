@@ -2,15 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
 import type { Achievement } from '../../stores/game.store'
 
-const { isPermissionGranted, requestPermission, sendNotification } = vi.hoisted(() => ({
-  isPermissionGranted: vi.fn().mockResolvedValue(true),
-  requestPermission: vi.fn().mockResolvedValue('granted'),
-  sendNotification: vi.fn(),
-}))
-vi.mock('@tauri-apps/plugin-notification', () => ({
-  isPermissionGranted,
-  requestPermission,
-  sendNotification,
+const sendNativeNotification = vi.hoisted(() => vi.fn())
+vi.mock('../../api/notification.api', () => ({
+  apiSendNativeNotification: (...a: unknown[]) => sendNativeNotification(...a),
 }))
 
 import { TrophyToast } from './TrophyToast'
@@ -34,10 +28,9 @@ function achievement(overrides: Partial<Achievement> = {}): Achievement {
   }
 }
 
-// The component's effect chains a dynamic import() + several unguarded .then()s to fire a
-// native notification. That chain isn't cancelled on unmount, so if a test doesn't flush it
-// fully before finishing, it settles later and races the *next* test's vi.clearAllMocks() —
-// producing "Cannot read properties of undefined" unhandled rejections. Every test that sets
+// The component's effect fires a native notification without awaiting it. That promise isn't
+// cancelled on unmount, so if a test doesn't flush it before finishing, it settles later and races
+// the *next* test's vi.clearAllMocks() — producing unhandled rejections. Every test that sets
 // recentUnlock must flush via this helper, even ones that don't assert on notifications.
 async function unlock(overrides: Partial<Achievement> = {}) {
   await act(async () => {
@@ -48,8 +41,7 @@ async function unlock(overrides: Partial<Achievement> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  isPermissionGranted.mockResolvedValue(true)
-  requestPermission.mockResolvedValue('granted')
+  sendNativeNotification.mockResolvedValue(undefined)
   useGameStore.setState({ ...INITIAL, recentUnlock: null })
   vi.useFakeTimers()
 })
@@ -78,47 +70,37 @@ describe('TrophyToast — visibility', () => {
 
   it.each([
     ['bronze', 'Bronze'],
-    ['silver', 'Argent'],
-    ['gold', 'Or'],
-    ['platinum', 'Platine'],
+    ['silver', 'Silver'],
+    ['gold', 'Gold'],
+    ['platinum', 'Platinum'],
   ] as const)('labels the %s tier badge as "%s"', async (type, label) => {
     render(<TrophyToast />)
     await unlock({ type })
-    expect(screen.getByText(new RegExp(`Trophée ${label}`))).toBeInTheDocument()
+    expect(screen.getByText(new RegExp(`${label} trophy`, 'i'))).toBeInTheDocument()
   })
 })
 
 describe('TrophyToast — native notification', () => {
-  it('sends a native notification immediately when permission is already granted', async () => {
+  it('sends a native notification naming the tier and the achievement', async () => {
     render(<TrophyToast />)
     await unlock()
 
-    expect(sendNotification).toHaveBeenCalledWith(
+    expect(sendNativeNotification).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: expect.stringContaining('BRONZE'),
+        title: expect.stringContaining('Bronze'),
         body: expect.stringContaining('Premier Pas'),
       })
     )
-    expect(requestPermission).not.toHaveBeenCalled()
   })
 
-  it('requests permission first when not yet granted, then sends if granted', async () => {
-    isPermissionGranted.mockResolvedValue(false)
-    requestPermission.mockResolvedValue('granted')
+  // Every notification kind deep-links somewhere; a trophy's destination is the Rewards tab.
+  it('routes the notification to the Rewards tab when clicked', async () => {
     render(<TrophyToast />)
     await unlock()
 
-    expect(requestPermission).toHaveBeenCalledOnce()
-    expect(sendNotification).toHaveBeenCalled()
-  })
-
-  it('does not send a notification when permission is denied', async () => {
-    isPermissionGranted.mockResolvedValue(false)
-    requestPermission.mockResolvedValue('denied')
-    render(<TrophyToast />)
-    await unlock()
-
-    expect(sendNotification).not.toHaveBeenCalled()
+    expect(sendNativeNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ route: { kind: 'rewards' } })
+    )
   })
 })
 

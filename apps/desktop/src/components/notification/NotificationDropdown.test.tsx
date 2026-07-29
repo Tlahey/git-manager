@@ -34,7 +34,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   useNotificationStore.setState({ ...INITIAL_NOTIF, notifications: [], mockPRs: [] })
   useRepoUIStore.setState({ activeTab: 'dashboard' })
-  useLaunchpadStore.setState({ activeTab: 'prs' })
+  useLaunchpadStore.setState({ activeTab: 'prs', pendingOpenPrId: null })
   useSettingsStore.setState(INITIAL_SETTINGS)
   vi.stubEnv('DEV', false)
 })
@@ -76,6 +76,8 @@ describe('NotificationDropdown — list', () => {
     expect(screen.getAllByText(/PR #\d+ Merged/)).toHaveLength(5)
   })
 
+  // No local clone of the repo here (no added repos), so the click takes the Launchpad fallback —
+  // the same route an OS banner for this notification would follow.
   it('marks a notification read, routes to the launchpad tab, and closes the popover on click', async () => {
     useNotificationStore.setState({ notifications: [notification({ targetTab: 'waiting' })] })
     const user = userEvent.setup()
@@ -86,6 +88,7 @@ describe('NotificationDropdown — list', () => {
     expect(useNotificationStore.getState().notifications[0].read).toBe(true)
     expect(useRepoUIStore.getState().activeTab).toBe(PULL_REQUESTS_TAB)
     expect(useLaunchpadStore.getState().activeTab).toBe('waiting')
+    expect(useLaunchpadStore.getState().pendingOpenPrId).toBe('pr-42')
     expect(screen.queryByText("No notifications yet")).not.toBeInTheDocument()
     expect(screen.queryByText(/PR #\d+ Merged/)).not.toBeInTheDocument()
   })

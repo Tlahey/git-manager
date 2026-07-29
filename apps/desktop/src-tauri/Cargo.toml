@@ -50,6 +50,11 @@ tauri-plugin-wdio-webdriver = { version = "1", optional = true }
 # that asks for it (see set_window_vibrancy in commands/window.rs).
 [target."cfg(target_os = \"macos\")".dependencies]
 window-vibrancy = "0.5"
+# Clickable notifications. tauri-plugin-notification can only *show* one on desktop (its
+# `onAction` listener is mobile-only), and this is the crate its own macOS backend already
+# uses underneath — so it is already compiled, and it does expose the click.
+# See services/native_notification.rs.
+mac-notification-sys = "0.6"
 # Read-only introspection of the native window (opacity, background, view stack) so a
 # translucent theme that renders opaque can be diagnosed from the log instead of guessed
 # at. Same versions window-vibrancy already pulls in, so this adds no new compilation.

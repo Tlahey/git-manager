@@ -30,6 +30,17 @@ interface LaunchpadState {
   /** Snoozed PRs keyed by `pr.id`. Value is the wake timestamp (ms), or `null` for indefinite. An
    * entry with a past timestamp is considered woken and ignored (see `isSnoozed` in the page utils). */
   snoozed: Record<string, number | null>
+  /**
+   * `MockPR.id` of a pull request the Launchpad should open in its side panel as soon as it can
+   * find it, or `null`. Set by a notification click that couldn't reach the PR through a local
+   * clone (see `notificationRouting.ts`), consumed and cleared by `PullRequestsPage` once the PR
+   * list has loaded — a request rather than a direct call, because the panel is local state in a
+   * page that isn't even mounted at the moment the click happens. Session-scoped, not persisted:
+   * a pending open that outlived a restart would ambush the user on next launch.
+   */
+  pendingOpenPrId: string | null
+  requestOpenPr: (prId: string) => void
+  clearPendingOpenPr: () => void
   setActiveTab: (tab: InnerTab) => void
   addFilter: (filter: Omit<SavedFilter, 'id' | 'createdAt'>) => void
   updateFilter: (id: string, patch: Partial<Omit<SavedFilter, 'id' | 'createdAt'>>) => void
@@ -64,7 +75,12 @@ export const useLaunchpadStore = create<LaunchpadState>()(
       ],
       activeTab: 'prs',
       snoozed: {},
+      pendingOpenPrId: null,
       setActiveTab: (activeTab) => set({ activeTab }),
+
+      requestOpenPr: (prId) => set({ pendingOpenPrId: prId }),
+
+      clearPendingOpenPr: () => set({ pendingOpenPrId: null }),
 
       snoozePr: (id, until) =>
         set((state) => ({ snoozed: { ...state.snoozed, [id]: until } })),
@@ -102,6 +118,15 @@ export const useLaunchpadStore = create<LaunchpadState>()(
           return { savedFilters: arr }
         }),
     }),
-    { name: 'git-manager-launchpad' }
+    {
+      name: 'git-manager-launchpad',
+      // Everything except `pendingOpenPrId`, which is a one-shot request from a click that has
+      // already happened — restoring it would pop a PR panel open on the next launch.
+      partialize: (state) => ({
+        savedFilters: state.savedFilters,
+        activeTab: state.activeTab,
+        snoozed: state.snoozed,
+      }),
+    }
   )
 )

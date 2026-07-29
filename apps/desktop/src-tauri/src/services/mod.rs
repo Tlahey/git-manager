@@ -33,6 +33,7 @@ pub mod git_repo;
 pub mod git_rollback;
 pub mod git_stash;
 pub mod git_worktree;
+pub mod native_notification;
 pub mod package_changelog;
 pub mod package_health;
 pub mod package_outdated;

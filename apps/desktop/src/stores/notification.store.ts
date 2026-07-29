@@ -17,6 +17,13 @@ export interface AppNotification {
     | 'ci_success'
     | 'ci_failed'
   repo: string
+  /**
+   * `owner/repo` for the PR's repository. What ties the notification back to a local clone when it
+   * is clicked (see `notificationRouting.ts`) — the bare `repo` name above can't, two owners can
+   * both have a `docs`. Optional because GitHub only reports it on some payloads, and because
+   * notifications persisted before this field existed are still in `localStorage`.
+   */
+  fullName?: string
   prNumber: number
   prTitle: string
   prId: string

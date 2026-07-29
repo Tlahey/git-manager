@@ -4,13 +4,13 @@ import {
   type AppNotification,
   type SimulatedChange,
 } from '../../stores/notification.store'
-import { useRepoUIStore, PULL_REQUESTS_TAB } from '../../stores/repoUI.store'
-import { useLaunchpadStore } from '../../stores/launchpad.store'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useTranslation } from '@git-manager/i18n'
 import { Bell, CheckCheck, Trash2, Play, Sparkles } from 'lucide-react'
 import { getNotificationIcon, getNotificationText } from './utils'
 import { showNativeNotification } from '../../hooks/useNotificationWatcher'
+import { buildNotificationRoute } from '../../lib/notifications/notificationRoute'
+import { routeNotification } from '../../lib/notifications/notificationRouting'
 import { Popover, PopoverTrigger, PopoverContent, Badge, NumberBadge, NativeSelect } from '@git-manager/ui'
 import type { TFunction } from '@git-manager/i18n'
 
@@ -31,11 +31,9 @@ function formatRelativeTime(timestamp: number, t: TFunction): string {
 
 export function NotificationDropdown() {
   const { t } = useTranslation('common')
-  const { notifications, markAsRead, markAllAsRead, clearNotifications, mockPRs, simulateChange } =
+  const { notifications, markAllAsRead, clearNotifications, mockPRs, simulateChange } =
     useNotificationStore()
 
-  const { setActiveTab: setMainActiveTab } = useRepoUIStore()
-  const { setActiveTab: setLaunchpadActiveTab } = useLaunchpadStore()
   const githubSettings = useSettingsStore((s) => s.settings.github)
 
   const activeAccount =
@@ -58,11 +56,11 @@ export function NotificationDropdown() {
   const unreadCount = notifications.filter((n) => !n.read).length
   const recentNotifications = notifications.slice(0, 5)
 
+  // Same destination as clicking the OS banner for this notification — one router, so the two
+  // surfaces can't drift (marking it read is part of the route, not repeated here).
   function handleNotificationClick(notif: AppNotification) {
-    markAsRead(notif.id)
-    setMainActiveTab(PULL_REQUESTS_TAB)
-    setLaunchpadActiveTab(notif.targetTab)
     setMenuOpen(false)
+    void routeNotification(buildNotificationRoute(notif))
   }
 
   function runSimulation() {

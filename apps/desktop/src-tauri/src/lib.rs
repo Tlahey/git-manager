@@ -45,6 +45,7 @@ use commands::log::{
     compare_commit_to_workdir, get_commit_diff, get_commit_file, get_commits_merged_diff, get_log,
 };
 use commands::merge_target::get_merge_target_status;
+use commands::notification::send_native_notification;
 use commands::package_health::{
     check_outdated_packages, get_package_changelog, has_package_manifest, run_package_health_check,
     scan_package_usage, update_packages,
@@ -282,6 +283,8 @@ pub fn run() {
             // Themes
             get_user_themes,
             set_window_vibrancy,
+            // Native notifications (clickable — see commands/notification.rs)
+            send_native_notification,
             // Submodules
             list_submodules,
             // GitHub OAuth

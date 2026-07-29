@@ -476,6 +476,24 @@ export const getUserThemes = () => invoke<UserTheme[]>('get_user_themes')
 export const setWindowVibrancy = (material: string, appearance: string) =>
   invoke<void>('set_window_vibrancy', { material, appearance })
 
+// ─── Native notifications ─────────────────────────────────────────────────────
+
+/**
+ * One OS notification. `route` is opaque to Rust: it is handed back verbatim on the
+ * `notification://activated` event when the user clicks the banner (see
+ * `commands/notification.rs` and `api/notification.api.ts`).
+ */
+export interface NativeNotificationRequest {
+  title: string
+  body: string
+  /** macOS system sound name; omit for a silent notification. */
+  sound?: string
+  route: unknown
+}
+
+export const sendNativeNotification = (request: NativeNotificationRequest) =>
+  invoke<void>('send_native_notification', { request })
+
 // ─── Working Tree ─────────────────────────────────────────────────────────────
 
 export const stageFile = (path: string, filePath: string) =>
