@@ -189,7 +189,7 @@ export function ConflictResolutionPanel({
         <div className="flex items-center gap-2">
           {noneResolved && (
             <Button
-              variant="success"
+              variant="secondary"
               size="sm"
               onClick={skipStep}
               disabled={!!pending}
