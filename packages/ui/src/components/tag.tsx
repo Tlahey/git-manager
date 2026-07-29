@@ -21,9 +21,12 @@ export interface TagProps extends React.HTMLAttributes<HTMLSpanElement> {
   tone?: TagTone
 }
 
-function Tag({ tone = 'neutral', className, ...props }: TagProps) {
-  return (
+// Forwards its ref so a Tag can act as the trigger of a Tooltip/Popover, which position themselves
+// against the trigger's measured rect and silently render nothing when the ref stays null.
+const Tag = React.forwardRef<HTMLSpanElement, TagProps>(
+  ({ tone = 'neutral', className, ...props }, ref) => (
     <span
+      ref={ref}
       className={cn(
         'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none',
         TONE_CLASSES[tone],
@@ -32,6 +35,7 @@ function Tag({ tone = 'neutral', className, ...props }: TagProps) {
       {...props}
     />
   )
-}
+)
+Tag.displayName = 'Tag'
 
 export { Tag }

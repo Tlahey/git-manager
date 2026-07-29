@@ -66,15 +66,24 @@ export interface CommitCopyActions {
   onCreatePatch: () => void
 }
 
-export interface CommitMenuActions extends CommitCopyActions {
-  onCheckout: () => void
-  onCreateWorktree: () => void
+/**
+ * The commit-scoped actions a *branch* menu can offer on the branch's own tip — everything that
+ * still makes sense when the user pointed at a branch rather than at a row in the graph.
+ */
+export interface BranchTipCommitActions extends CommitCopyActions {
   onCreateBranch: () => void
   onCherryPick: () => void
   onReset: (mode: 'soft' | 'mixed' | 'hard') => void
   onRevert: () => void
   onCreateTag: () => void
   onCreateAnnotatedTag: () => void
+  /** Compare the commit against the working directory. */
+  onCompareToWorkdir: () => void
+}
+
+export interface CommitMenuActions extends BranchTipCommitActions {
+  onCheckout: () => void
+  onCreateWorktree: () => void
   /** Opens the AI explanation of the clicked commit's own diff (vs its first parent). */
   onExplainCommit: () => void
   /** Rewrites the clicked commit's message with the model; `includeChildren` extends that to every
@@ -88,8 +97,6 @@ export interface CommitMenuActions extends CommitCopyActions {
   onRebaseOntoCommit: () => void
   /** Write a single patch spanning all selected commits. */
   onCreatePatchSelection: () => void
-  /** Compare the primary commit against the working directory. */
-  onCompareToWorkdir: () => void
 }
 
 /** Per-branch actions; each receives the branch ref the item belongs to. */
@@ -372,23 +379,40 @@ export function buildBranchSubmenus(
 const branchRefs = (ctx: GraphCommitMenuContext): GitRef[] =>
   ctx.refs.filter((r) => r.type === 'branch' || r.type === 'remote')
 
+/** A sidebar branch row's extra context: whether its badge is currently kept out of the graph. */
+export interface SidebarBranchMenuContext extends GraphCommitMenuContext {
+  isHidden: boolean
+}
+
+export interface SidebarBranchMenuActions extends BranchMenuActions {
+  /** Keeps this branch's badge out of the graph — the sidebar's eye toggle, as a menu entry. */
+  onToggleVisibility: (ref: GitRef) => void
+}
+
 /**
- * A standalone branch menu (no commit-scoped items) for right-clicking a branch **outside** the
- * graph — e.g. the repository sidebar. Reuses the exact same sections as the graph's per-branch
- * submenu, so the sidebar and the graph stay in sync. Unlike the graph submenu, it always offers
- * "Checkout `<branch>`" (switch to it — a local branch by name, a remote one detached), since a
- * sidebar branch isn't tied to a clicked commit. Copy/patch act on the branch tip.
+ * The sidebar's **branch row** menu, local and remote alike: the branch sections above, plus the
+ * commit-scoped ones acting on the branch tip (create branch / cherry-pick / reset ▸ / revert,
+ * compare, tags) and the row's own Hide toggle.
+ *
+ * It carries the commit-scoped actions because a branch row is the one place they have an
+ * unambiguous target: the branch tip is a single commit the user can point at without opening the
+ * graph. It reuses the graph's own section builders, so an item added to the graph's branch
+ * menu still lands here — and so the two rows differ only where the ref's own type says they should
+ * (no pull/push on a remote, no rename, a disabled Delete).
  */
-export function buildBranchMenuSpec(
+export function buildSidebarBranchMenuSpec(
   ref: GitRef,
-  ctx: GraphCommitMenuContext,
-  actions: BranchMenuActions,
-  copyActions: CommitCopyActions,
+  ctx: SidebarBranchMenuContext,
+  actions: SidebarBranchMenuActions,
+  commitActions: BranchTipCommitActions,
   t: TranslateFn
 ): MenuSpecEntry[] {
   const b = branchItemContext(ref, ctx)
+  const isTrunk = !b.isRemote && isMainBranchName(ref.shortName)
   return [
-    ...syncSection(b, actions, t),
+    // Pull / push / set upstream act on HEAD rather than on the row that was right-clicked, so they
+    // are offered on the trunk — where they are what one actually runs — and nowhere else.
+    ...(isTrunk ? syncSection(b, actions, t) : []),
     menuSeparator(),
     ...relationshipSection(b, actions, t),
     menuSeparator(),
@@ -397,18 +421,64 @@ export function buildBranchMenuSpec(
         text: t('gitTree.branchMenu.checkout', b.params),
         action: () => actions.onCheckoutBranch(b.ref),
       }),
+    menuSeparator(),
     menuItem({
       text: t('gitTree.branchMenu.openWorktree', b.params),
       action: () => actions.onOpenWorktreeFrom(b.ref),
     }),
     menuSeparator(),
-    ...prAndExplainSection(b, actions, t),
+    ...commitCoreSection(ctx, commitActions, t),
+    menuSeparator(),
+    // The trunk is what a pull request targets, never what it is opened from — and a branch cannot
+    // be a PR's base against itself either.
+    !isTrunk &&
+      !b.isCurrent &&
+      b.hasCurrent &&
+      menuItem({
+        text: t('gitTree.branchMenu.startPr', b.params),
+        action: () => actions.onStartPr(b.ref),
+      }),
+    menuItem({
+      text: t('gitTree.branchMenu.explainChanges'),
+      enabled: b.aiEnabled,
+      action: () => actions.onExplainBranch(b.ref),
+    }),
     menuSeparator(),
     ...destructiveSection(b, actions, t),
     menuSeparator(),
-    ...copySection(b, actions, copyActions, t),
+    // Spelled out rather than reusing the graph's copy section: a row's menu carries the four
+    // copies and not the patch, which belongs to a commit the user pointed at in the graph.
+    menuItem({
+      text: t('gitTree.branchMenu.copyName'),
+      action: () => actions.onCopyBranchName(b.ref),
+    }),
+    menuItem({
+      text: t('gitTree.branchMenu.copyCommitSha'),
+      icon: 'copy_sha',
+      action: commitActions.onCopySha,
+    }),
+    !!b.remoteBranchLinkName &&
+      menuItem({
+        text: t('gitTree.branchMenu.copyBranchLink', { branch: b.remoteBranchLinkName }),
+        action: () => actions.onCopyBranchLink(b.ref),
+      }),
+    menuItem({ text: t('gitTree.contextMenu.copyLink'), action: commitActions.onCopyLink }),
     menuSeparator(),
+    menuItem({
+      text: t(ctx.isHidden ? 'gitTree.branchMenu.show' : 'gitTree.branchMenu.hide'),
+      action: () => actions.onToggleVisibility(b.ref),
+    }),
     ...tailSection(b, actions, t),
+    menuSeparator(),
+    // Against the working directory — the question a remote tip raises ("what is on the server
+    // that I do not have?") and a local one does not, since it can simply be checked out.
+    b.isRemote &&
+      menuItem({
+        text: t('gitTree.contextMenu.compareToWorkdir'),
+        action: commitActions.onCompareToWorkdir,
+      }),
+    menuSeparator(),
+    ...tagCreationSection(ctx, commitActions, t),
   ]
 }
 
@@ -594,16 +664,23 @@ export function buildRefDropMenuSpec(
 export interface TagMenuContext {
   /** Label params: the `tag`, current `branch`, and `remote`. */
   params: { tag: string; branch: string; remote: string }
-  /** The relationship actions (merge/rebase) act on the current branch — off when detached. */
+  /** The relationship actions (fast-forward/merge/rebase/reset) act on the current branch — off
+   * when detached. */
   relationEnabled: boolean
+  /** Whether the tag's badge is currently kept out of the graph — picks Hide vs Show. */
+  isHidden: boolean
 }
 
 export interface TagMenuActions {
+  /** Publish the tag to the remote — `git push origin <tag>`. */
+  onPush: () => void
+  /** Re-point the tag at the current branch's tip (delete + re-create; local only). */
+  onFastForward: () => void
   onMerge: () => void
   onRebase: () => void
-  onInteractiveRebase: () => void
   onCheckout: () => void
-  onCreateWorktree: () => void
+  /** AI explanation of the changes the tag's commit brings. */
+  onExplain: () => void
   onCreateBranch: () => void
   onCherryPick: () => void
   onReset: (mode: 'soft' | 'mixed' | 'hard') => void
@@ -612,10 +689,22 @@ export interface TagMenuActions {
   onDeleteRemote: () => void
   onCopyName: () => void
   onCopyLink: () => void
+  /** Keep the tag's badge out of the graph (or bring it back). */
+  onToggleHidden: () => void
+  /** Isolate the graph on the branch carrying the tag's commit. */
+  onSolo: () => void
   onAnnotate: () => void
 }
 
-/** Right-click menu of a tag badge in the commit graph. */
+/**
+ * The tag's action menu — used both by the graph's tag badge and by the sidebar's tag rows, so the
+ * two can never drift into different menus.
+ *
+ * Ordering is deliberate and reads top-down as "publish it, move it, use it, understand it, branch
+ * off it, delete it, copy it, hide it, describe it". The relationship actions (fast-forward, merge,
+ * rebase, reset) are disabled while HEAD is detached, since they are all phrased against the
+ * current branch.
+ */
 export function buildTagMenuSpec(
   ctx: TagMenuContext,
   actions: TagMenuActions,
@@ -624,13 +713,15 @@ export function buildTagMenuSpec(
   const p = ctx.params
   const rel = ctx.relationEnabled
   return [
+    menuItem({ text: t('gitTree.tagMenu.push', p), action: actions.onPush }),
+    menuSeparator(),
+    menuItem({ text: t('gitTree.tagMenu.fastForward', p), enabled: rel, action: actions.onFastForward }),
     menuItem({ text: t('gitTree.tagMenu.merge', p), enabled: rel, action: actions.onMerge }),
     menuItem({ text: t('gitTree.tagMenu.rebase', p), enabled: rel, action: actions.onRebase }),
-    menuItem({ text: t('gitTree.tagMenu.interactiveRebase', p), enabled: rel, action: actions.onInteractiveRebase }),
     menuSeparator(),
-    menuItem({ text: t('gitTree.tagMenu.checkout'), action: actions.onCheckout }),
+    menuItem({ text: t('gitTree.tagMenu.checkout', p), action: actions.onCheckout }),
     menuSeparator(),
-    menuItem({ text: t('gitTree.tagMenu.createWorktree'), action: actions.onCreateWorktree }),
+    menuItem({ text: t('gitTree.tagMenu.explain'), action: actions.onExplain }),
     menuSeparator(),
     menuItem({ text: t('gitTree.contextMenu.createBranch'), icon: 'branch', action: actions.onCreateBranch }),
     menuItem({ text: t('gitTree.contextMenu.cherryPick'), action: actions.onCherryPick }),
@@ -649,7 +740,14 @@ export function buildTagMenuSpec(
     menuItem({ text: t('gitTree.tagMenu.deleteRemote', p), action: actions.onDeleteRemote }),
     menuSeparator(),
     menuItem({ text: t('gitTree.tagMenu.copyName'), action: actions.onCopyName }),
-    menuItem({ text: t('gitTree.tagMenu.copyLink'), action: actions.onCopyLink }),
+    menuSeparator(),
+    menuItem({ text: t('gitTree.tagMenu.copyLink', p), action: actions.onCopyLink }),
+    menuSeparator(),
+    menuItem({
+      text: t(ctx.isHidden ? 'gitTree.tagMenu.show' : 'gitTree.tagMenu.hide'),
+      action: actions.onToggleHidden,
+    }),
+    menuItem({ text: t('gitTree.tagMenu.solo'), action: actions.onSolo }),
     menuSeparator(),
     menuItem({ text: t('gitTree.tagMenu.annotate', p), icon: 'tag', action: actions.onAnnotate }),
   ]
@@ -660,7 +758,7 @@ export function buildTagMenuSpec(
 /** The commit-scoped core shared by every layout: create branch / cherry-pick / reset ▸ / revert. */
 function commitCoreSection(
   ctx: GraphCommitMenuContext,
-  actions: CommitMenuActions,
+  actions: BranchTipCommitActions,
   t: TranslateFn
 ): MenuSpecEntry[] {
   const { isSingle } = ctx
@@ -752,7 +850,7 @@ function commitRecomposeSection(
 
 function tagCreationSection(
   ctx: GraphCommitMenuContext,
-  actions: CommitMenuActions,
+  actions: BranchTipCommitActions,
   t: TranslateFn
 ): MenuSpecEntry[] {
   return [

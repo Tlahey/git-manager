@@ -139,6 +139,19 @@ pub async fn get_branch_web_url(
     Ok(remote_info.and_then(|r| github_branch_url(&r.url, &branch_name)))
 }
 
+// ─── push_tag ─────────────────────────────────────────────────────────────────
+
+/// Publishes tag `tag_name` to `remote` (defaults to "origin") — `git push origin <name>`.
+#[tauri::command]
+pub async fn push_tag(
+    path: String,
+    tag_name: String,
+    remote: Option<String>,
+) -> Result<(), String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    git_remote::push_tag(&repo, remote, &tag_name).map_err(Into::into)
+}
+
 // ─── delete_remote_tag ─────────────────────────────────────────────────────────
 
 /// Deletes tag `tag_name` on `remote` (defaults to "origin") by pushing an empty-source

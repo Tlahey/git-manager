@@ -4,18 +4,15 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { GitWorktree } from '@git-manager/git-types'
 
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) =>
-      opts ? `${key}:${JSON.stringify(opts)}` : key,
-  }),
-}))
 vi.mock('../../api/worktree.api', () => ({ apiRemoveWorktree: vi.fn() }))
+vi.mock('../../api/git.api', () => ({ apiDeleteBranch: vi.fn() }))
 
 import { apiRemoveWorktree } from '../../api/worktree.api'
+import { apiDeleteBranch } from '../../api/git.api'
 import { RemoveWorktreeDialog } from './RemoveWorktreeDialog'
 
 const mockedRemoveWorktree = apiRemoveWorktree as unknown as ReturnType<typeof vi.fn>
+const mockedDeleteBranch = apiDeleteBranch as unknown as ReturnType<typeof vi.fn>
 
 function worktree(overrides: Partial<GitWorktree> = {}): GitWorktree {
   return {
@@ -126,8 +123,83 @@ describe('RemoveWorktreeDialog — removing', () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
     renderDialog({ onClose })
-    await user.click(screen.getByText('gitTree.contextMenu.cancel'))
+    await user.click(screen.getByText('Cancel'))
     expect(onClose).toHaveBeenCalledOnce()
     expect(mockedRemoveWorktree).not.toHaveBeenCalled()
+  })
+})
+
+describe('RemoveWorktreeDialog — also deleting the branch', () => {
+  it('does not touch the branch in the default mode', async () => {
+    mockedRemoveWorktree.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    renderDialog()
+    await user.click(screen.getByTestId('worktree-remove-confirm-button'))
+
+    expect(mockedDeleteBranch).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('worktree-remove-branch-warning')).not.toBeInTheDocument()
+  })
+
+  it('warns which branch will go, naming it', () => {
+    renderDialog({ deleteBranch: true })
+    expect(screen.getByTestId('worktree-remove-branch-warning')).toHaveTextContent('feature/login')
+    expect(screen.getByText('Remove worktree and delete branch')).toBeInTheDocument()
+  })
+
+  // Order matters: git refuses to delete a branch that is still checked out somewhere, and this
+  // worktree is what was holding it.
+  it('deletes the branch only after the worktree is gone', async () => {
+    const order: string[] = []
+    mockedRemoveWorktree.mockImplementation(async () => void order.push('remove-worktree'))
+    mockedDeleteBranch.mockImplementation(async () => void order.push('delete-branch'))
+    const user = userEvent.setup()
+    renderDialog({ deleteBranch: true })
+
+    await user.click(screen.getByTestId('worktree-remove-confirm-button'))
+
+    await waitFor(() => expect(order).toEqual(['remove-worktree', 'delete-branch']))
+  })
+
+  it('forces the branch delete and pins its tip for undo', async () => {
+    mockedRemoveWorktree.mockResolvedValue(undefined)
+    mockedDeleteBranch.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    renderDialog({ deleteBranch: true })
+
+    await user.click(screen.getByTestId('worktree-remove-confirm-button'))
+
+    await waitFor(() =>
+      expect(mockedDeleteBranch).toHaveBeenCalledWith('/repo', 'feature/login', {
+        targetOid: 'abcdef1',
+        force: true,
+      })
+    )
+  })
+
+  it('refreshes the branch list as well as the worktree list', async () => {
+    mockedRemoveWorktree.mockResolvedValue(undefined)
+    mockedDeleteBranch.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    const { invalidateSpy } = renderDialog({ deleteBranch: true })
+
+    await user.click(screen.getByTestId('worktree-remove-confirm-button'))
+
+    await waitFor(() =>
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['branches', '/repo'] })
+    )
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['worktrees', '/repo'] })
+  })
+
+  it('surfaces a branch-delete failure and stays open', async () => {
+    mockedRemoveWorktree.mockResolvedValue(undefined)
+    mockedDeleteBranch.mockRejectedValue(new Error('branch is not fully merged'))
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    renderDialog({ deleteBranch: true, onClose })
+
+    await user.click(screen.getByTestId('worktree-remove-confirm-button'))
+
+    expect(await screen.findByText(/branch is not fully merged/)).toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
   })
 })

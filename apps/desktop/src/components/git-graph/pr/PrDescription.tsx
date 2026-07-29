@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Spinner, Textarea } from '@git-manager/ui'
 import { Pencil } from 'lucide-react'
 import { Markdown } from '../../Markdown'
 import { usePrActions } from '../../../hooks/usePrActions'
+import { useMarkdownTaskToggle } from '../../../hooks/useMarkdownTaskToggle'
 
 interface PrDescriptionProps {
   repoPath: string
@@ -12,17 +13,26 @@ interface PrDescriptionProps {
 }
 
 /** The PR description: a caption label with an edit button, rendering the body as markdown and, on
- * edit, an inline textarea saved via `PATCH /pulls/{n}`. */
+ * edit, an inline textarea saved via `PATCH /pulls/{n}`. Its task-list checkboxes stay clickable
+ * while reading — ticking one saves the rewritten body through the same `PATCH`. */
 export function PrDescription({ repoPath, prNumber, body }: PrDescriptionProps) {
   const { t } = useTranslation('git')
   const { updatePr, pending } = usePrActions(repoPath, prNumber)
   const trimmed = body?.trim() ?? ''
   const [editing, setEditing] = useState(false)
+
+  const saveBody = useCallback((next: string) => updatePr({ body: next }), [updatePr])
+  const {
+    content: shownBody,
+    onTaskToggle,
+    pending: togglePending,
+  } = useMarkdownTaskToggle(trimmed, saveBody)
+
   const [draft, setDraft] = useState(trimmed)
 
   useEffect(() => {
-    if (!editing) setDraft(trimmed)
-  }, [trimmed, editing])
+    if (!editing) setDraft(shownBody)
+  }, [shownBody, editing])
 
   async function save() {
     try {
@@ -70,7 +80,7 @@ export function PrDescription({ repoPath, prNumber, body }: PrDescriptionProps) 
               disabled={pending}
               onClick={() => {
                 setEditing(false)
-                setDraft(trimmed)
+                setDraft(shownBody)
               }}
             >
               {t('pr.title.cancel')}
@@ -87,8 +97,12 @@ export function PrDescription({ repoPath, prNumber, body }: PrDescriptionProps) 
             </Button>
           </div>
         </div>
-      ) : trimmed ? (
-        <Markdown content={trimmed} />
+      ) : shownBody ? (
+        <Markdown
+          content={shownBody}
+          onTaskToggle={onTaskToggle}
+          taskTogglePending={togglePending}
+        />
       ) : (
         <p className="text-xs italic text-muted-foreground">{t('pr.view.noDescription')}</p>
       )}

@@ -1,4 +1,4 @@
-import type { ComponentPropsWithoutRef, CSSProperties } from 'react'
+import { useCallback, useMemo, type ComponentPropsWithoutRef, type CSSProperties } from 'react'
 import ReactMarkdown, { type ExtraProps } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
@@ -11,12 +11,26 @@ import { MarkdownLink } from './components/MarkdownLink'
 import { MarkdownTable, MarkdownTableCell, MarkdownTableHead } from './components/MarkdownTable'
 import { MarkdownTaskListInput } from './components/MarkdownTaskList'
 import { MarkdownImage } from './components/MarkdownImage'
+import {
+  MarkdownTaskItemLineContext,
+  MarkdownTaskListContext,
+  type MarkdownTaskListContextValue,
+} from './taskListContext'
+import { toggleTaskListItem } from './toggleTaskListItem'
 import './markdown.css'
 
 export interface MarkdownRendererProps {
   content: string
   className?: string
   repoPath?: string
+  /**
+   * Makes the task-list checkboxes clickable: called with the whole document rewritten around the
+   * ticked item, for the caller to save. Omit it (the default) and they stay read-only, which is
+   * what every document the user doesn't own — a README, a review comment — wants.
+   */
+  onTaskToggle?: (nextContent: string) => void
+  /** Freezes the checkboxes while a toggle is on its way to the server. */
+  taskTogglePending?: boolean
 }
 
 /** remark-gfm encodes a table column's alignment as an inline `text-align` style, whose CSS type is
@@ -31,10 +45,29 @@ function cellAlign(textAlign: CSSProperties['textAlign']): 'left' | 'center' | '
  * from raw HTML in the markdown (READMEs use `<div align="center">` for banners). */
 type MarkdownDivProps = ComponentPropsWithoutRef<'div'> & ExtraProps & { align?: string }
 
-export function MarkdownRenderer({ content, className = '', repoPath }: MarkdownRendererProps) {
+export function MarkdownRenderer({
+  content,
+  className = '',
+  repoPath,
+  onTaskToggle,
+  taskTogglePending,
+}: MarkdownRendererProps) {
+  const handleTaskToggle = useCallback(
+    (line: number, checked: boolean) => {
+      const next = toggleTaskListItem(content, line, checked)
+      if (next !== null) onTaskToggle?.(next)
+    },
+    [content, onTaskToggle]
+  )
+
+  const taskContext = useMemo<MarkdownTaskListContextValue>(
+    () => (onTaskToggle ? { onToggle: handleTaskToggle, pending: !!taskTogglePending } : {}),
+    [onTaskToggle, handleTaskToggle, taskTogglePending]
+  )
+
   if (!content) return null
 
-  return (
+  const rendered = (
     <div
       className={`markdown-body space-y-3 font-sans text-xs text-foreground ${className}`}
       data-testid="markdown-renderer"
@@ -111,6 +144,14 @@ export function MarkdownRenderer({ content, className = '', repoPath }: Markdown
               {children}
             </ol>
           ),
+          // The list item is the only node that still knows where the task marker was written: the
+          // `input` remark-gfm inserts for a checkbox is synthesised and carries no position of its
+          // own. Publishing the line here lets a checkbox find its own source line.
+          li: ({ node, children, ...props }) => (
+            <MarkdownTaskItemLineContext.Provider value={node?.position?.start.line ?? null}>
+              <li {...props}>{children}</li>
+            </MarkdownTaskItemLineContext.Provider>
+          ),
           blockquote: ({ children }) => (
             <blockquote className="my-2.5 rounded-r border-l-2 border-primary/60 bg-muted/20 py-1.5 pl-3.5 italic text-muted-foreground">
               {children}
@@ -153,5 +194,9 @@ export function MarkdownRenderer({ content, className = '', repoPath }: Markdown
         {content}
       </ReactMarkdown>
     </div>
+  )
+
+  return (
+    <MarkdownTaskListContext.Provider value={taskContext}>{rendered}</MarkdownTaskListContext.Provider>
   )
 }

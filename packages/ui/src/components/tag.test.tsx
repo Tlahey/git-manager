@@ -1,3 +1,4 @@
+import { createRef } from 'react'
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { Tag } from './tag'
@@ -46,5 +47,17 @@ describe('Tag', () => {
       </Tag>
     )
     expect(screen.getByTestId('t').className).toContain('px-1')
+  })
+
+  // Tooltip/Popover measure their trigger through a ref and render nothing at all when it stays
+  // null — without this a Tag used as a trigger silently never opens.
+  it('forwards its ref so it can be a Tooltip/Popover trigger', () => {
+    const ref = createRef<HTMLSpanElement>()
+    render(
+      <Tag ref={ref} data-testid="t">
+        3
+      </Tag>
+    )
+    expect(ref.current).toBe(screen.getByTestId('t'))
   })
 })

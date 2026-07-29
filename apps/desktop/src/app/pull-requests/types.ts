@@ -47,6 +47,8 @@ export interface MockIssue {
   id: string
   number: number
   title: string
+  /** Raw markdown body. Absent when GitHub omits it (an issue opened with no description). */
+  body?: string
   repo: string
   /** `owner/repo` for the issue's repository, parsed from the API `repository_url`. Drives the
    * in-app issue panel and the local-repo lookup (View repo / Create a branch). */

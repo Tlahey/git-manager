@@ -259,9 +259,12 @@ export function useGitGraphActions({
     setTagDraft(null)
   }
 
-  async function openMenuAt(e: React.MouseEvent, oid: string) {
-    e.preventDefault()
-    e.stopPropagation()
+  // `e` is optional: the menu is also opened without a click, from the sidebar's tag rows through
+  // the `pendingCommitMenuOid` bridge. The native menu pops at the cursor either way, so the event
+  // is only ever needed to stop the originating click from also selecting the row.
+  async function openMenuAt(e: React.MouseEvent | undefined, oid: string) {
+    e?.preventDefault()
+    e?.stopPropagation()
 
     // The local WIP row gets its own menu (stash / stage / unstage the work in progress). The
     // other synthetic rows (a worktree's `WIP:<path>`, the CONFLICT row) are not commit-action

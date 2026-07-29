@@ -8,6 +8,7 @@ const INITIAL = {
   activeWorkspacePath: null as string | null,
   activeDiffFile: null as { path: string; staged: boolean; oid?: string } | null,
   activePrNumber: null as number | null,
+  activeIssue: null as ReturnType<typeof useRepoUIStore.getState>['activeIssue'],
   activePrFile: null as string | null,
   prFilesVisible: true,
   prComposer: null as ReturnType<typeof useRepoUIStore.getState>['prComposer'],
@@ -183,6 +184,87 @@ describe('useRepoUIStore — activePrNumber', () => {
     useRepoUIStore.getState().setActivePrNumber(11)
     useRepoUIStore.getState().clearTabStateForRemovedRepo('/repo/a')
     expect(useRepoUIStore.getState().activePrNumber).toBeNull()
+  })
+})
+
+function issue(number: number) {
+  return {
+    id: `gh-issue-${number}`,
+    number,
+    title: `Issue ${number}`,
+    repo: 'repo',
+    url: '',
+    status: 'open' as const,
+    author: 'marie',
+    authorAvatar: '',
+    assignees: [],
+    labels: [],
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+    comments: 0,
+    thumbsUp: 0,
+  }
+}
+
+describe('useRepoUIStore — activeIssue', () => {
+  it('sets and clears the issue shown in the center panel', () => {
+    useRepoUIStore.getState().setActiveIssue(issue(12))
+    expect(useRepoUIStore.getState().activeIssue).toMatchObject({ number: 12 })
+    useRepoUIStore.getState().setActiveIssue(null)
+    expect(useRepoUIStore.getState().activeIssue).toBeNull()
+  })
+
+  it('opening an issue clears the PR view and any open file diff', () => {
+    useRepoUIStore.getState().setActivePrNumber(7)
+    useRepoUIStore.getState().setActiveIssue(issue(12))
+    expect(useRepoUIStore.getState().activePrNumber).toBeNull()
+
+    useRepoUIStore.getState().setActiveDiffFile({ path: 'a.ts', staged: false })
+    useRepoUIStore.getState().setActiveIssue(issue(13))
+    expect(useRepoUIStore.getState().activeDiffFile).toBeNull()
+    expect(useRepoUIStore.getState().activeIssue).toMatchObject({ number: 13 })
+  })
+
+  it('is cleared by every other center-panel source', () => {
+    const takeOver = [
+      () => useRepoUIStore.getState().setActivePrNumber(7),
+      () => useRepoUIStore.getState().setActiveDiffFile({ path: 'a.ts', staged: false }),
+      () => useRepoUIStore.getState().setPrCreateOpen(true),
+      () => useRepoUIStore.getState().openPrCreateWith('feat', 'main'),
+      () =>
+        useRepoUIStore
+          .getState()
+          .setPrComposer({ head: 'feat', baseRef: 'main', title: 'x' }),
+    ]
+    for (const take of takeOver) {
+      useRepoUIStore.getState().setActiveIssue(issue(12))
+      take()
+      expect(useRepoUIStore.getState().activeIssue).toBeNull()
+    }
+  })
+
+  it('is reset by setActiveRepo and setActiveTab', () => {
+    useRepoUIStore.getState().setActiveIssue(issue(12))
+    useRepoUIStore.getState().setActiveRepo('/repo/a')
+    expect(useRepoUIStore.getState().activeIssue).toBeNull()
+
+    useRepoUIStore.getState().setActiveIssue(issue(12))
+    useRepoUIStore.getState().setActiveTab('pull-requests')
+    expect(useRepoUIStore.getState().activeIssue).toBeNull()
+  })
+
+  it('is cleared when the active repo tab is removed', () => {
+    useRepoUIStore.getState().openTab('/repo/a')
+    useRepoUIStore.getState().setActiveIssue(issue(12))
+    useRepoUIStore.getState().clearTabStateForRemovedRepo('/repo/a')
+    expect(useRepoUIStore.getState().activeIssue).toBeNull()
+  })
+
+  // Session-scoped, like every other center-panel state.
+  it('is not persisted', () => {
+    useRepoUIStore.getState().openTab('/repo/a')
+    useRepoUIStore.getState().setActiveIssue(issue(12))
+    expect(localStorage.getItem('git-manager-repos-ui')).not.toContain('activeIssue')
   })
 })
 

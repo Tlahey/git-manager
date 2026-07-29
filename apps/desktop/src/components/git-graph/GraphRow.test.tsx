@@ -219,6 +219,113 @@ describe('GraphRow — refs column', () => {
   })
 })
 
+describe('GraphRow — hidden tags and branches', () => {
+  const tagRef = (shortName: string) => ({
+    name: `refs/tags/${shortName}`,
+    shortName,
+    type: 'tag' as const,
+    commitOid: 'abc1234567890',
+  })
+  const branchRef = {
+    name: 'refs/heads/main',
+    shortName: 'main',
+    type: 'branch' as const,
+    commitOid: 'abc1234567890',
+  }
+
+  it('drops a hidden tag badge while keeping the commit and its other refs', () => {
+    renderRow({
+      columns: [col('refs')],
+      node: node({ refs: [branchRef, tagRef('v1.0.0')] }),
+      hiddenTags: ['v1.0.0'],
+    })
+    expect(lastRefLabelGroupProps.current).toMatchObject({ refs: [branchRef] })
+  })
+
+  // Hiding is per tag name: several tags can sit on one commit and must not go down together.
+  it('leaves the other tags of the same commit alone', () => {
+    renderRow({
+      columns: [col('refs')],
+      node: node({ refs: [tagRef('v1.0.0'), tagRef('v1.0.1')] }),
+      hiddenTags: ['v1.0.0'],
+    })
+    expect(lastRefLabelGroupProps.current).toMatchObject({ refs: [tagRef('v1.0.1')] })
+  })
+
+  it('never hides a branch that happens to share a hidden tag name', () => {
+    renderRow({
+      columns: [col('refs')],
+      node: node({ refs: [{ ...branchRef, shortName: 'v1.0.0' }] }),
+      hiddenTags: ['v1.0.0'],
+    })
+    expect(lastRefLabelGroupProps.current).toMatchObject({
+      refs: [{ ...branchRef, shortName: 'v1.0.0' }],
+    })
+  })
+
+  // With every badge hidden the row falls back to the same "no refs" rendering as a bare commit.
+  it('renders no group at all once the commit only had hidden tags', () => {
+    renderRow({
+      columns: [col('refs')],
+      node: node({ refs: [tagRef('v1.0.0')] }),
+      hiddenTags: ['v1.0.0'],
+    })
+    expect(screen.queryByTestId('ref-label-group')).not.toBeInTheDocument()
+  })
+
+  it('shows every badge when nothing is hidden', () => {
+    const refs = [branchRef, tagRef('v1.0.0')]
+    renderRow({ columns: [col('refs')], node: node({ refs }), hiddenTags: [] })
+    expect(lastRefLabelGroupProps.current).toMatchObject({ refs })
+  })
+
+  const remoteRef = (shortName: string) => ({
+    name: `refs/remotes/${shortName}`,
+    shortName,
+    type: 'remote' as const,
+    commitOid: 'abc1234567890',
+  })
+
+  it('drops a hidden remote branch badge while keeping the commit and its other refs', () => {
+    renderRow({
+      columns: [col('refs')],
+      node: node({ refs: [branchRef, remoteRef('origin/main')] }),
+      hiddenBranches: ['origin/main'],
+    })
+    expect(lastRefLabelGroupProps.current).toMatchObject({ refs: [branchRef] })
+  })
+
+  // Hiding is remote-qualified: two remotes can carry the same branch name.
+  it('leaves another remote carrying the same branch name alone', () => {
+    renderRow({
+      columns: [col('refs')],
+      node: node({ refs: [remoteRef('origin/main'), remoteRef('upstream/main')] }),
+      hiddenBranches: ['origin/main'],
+    })
+    expect(lastRefLabelGroupProps.current).toMatchObject({ refs: [remoteRef('upstream/main')] })
+  })
+
+  // Local and remote are told apart by the name alone (`main` vs `origin/main`), which is exactly
+  // how the hidden list spells them — so hiding one never takes the other down.
+  it('hides a local branch by its bare name, leaving its remote counterpart alone', () => {
+    renderRow({
+      columns: [col('refs')],
+      node: node({ refs: [branchRef, remoteRef('origin/main')] }),
+      hiddenBranches: ['main'],
+    })
+    expect(lastRefLabelGroupProps.current).toMatchObject({ refs: [remoteRef('origin/main')] })
+  })
+
+  it('leaves the local branch alone when only its remote counterpart is hidden', () => {
+    renderRow({
+      columns: [col('refs')],
+      node: node({ refs: [branchRef, remoteRef('origin/main')] }),
+      hiddenBranches: ['origin/main'],
+    })
+    expect(lastRefLabelGroupProps.current).toMatchObject({ refs: [branchRef] })
+  })
+})
+
 describe('GraphRow — lane branch hint', () => {
   const laneRef = {
     name: 'refs/heads/feature',

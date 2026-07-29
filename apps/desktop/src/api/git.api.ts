@@ -54,6 +54,7 @@ import {
   createTag,
   deleteTag,
   deleteRemoteTag,
+  pushTag,
   getTagWebUrl,
   getBranchWebUrl,
   fetchRemote,
@@ -994,6 +995,24 @@ export async function apiAnnotateTag(path: string, name: string, oid: string, me
 /** Deletes a tag on the remote (default "origin"). A network op, so it pushes no undo entry. */
 export async function apiDeleteRemoteTag(path: string, tagName: string, remote?: string) {
   return deleteRemoteTag(path, tagName, remote)
+}
+
+/** Publishes a tag to the remote (default "origin"). A network op, so it pushes no undo entry. */
+export async function apiPushTag(path: string, tagName: string, remote?: string) {
+  return pushTag(path, tagName, remote)
+}
+
+/**
+ * Re-points an existing tag at `oid`, keeping its name — the tag equivalent of a fast-forward.
+ *
+ * git has no "move a tag" primitive: it is a delete followed by a re-create, which is exactly what
+ * {@link apiAnnotateTag} already does to attach a message. Only the local tag moves; the remote
+ * still holds the old target until the tag is force-pushed, which this deliberately does not do.
+ */
+export async function apiMoveTag(path: string, tagName: string, oid: string) {
+  await deleteTag(path, tagName)
+  await createTag(path, tagName, oid)
+  clearRedo(path)
 }
 
 /** The tag's GitHub release page URL on the remote (default "origin"), or null if unavailable. */

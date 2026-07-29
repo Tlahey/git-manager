@@ -244,6 +244,10 @@ export const deleteTag = (path: string, name: string) => invoke<void>('delete_ta
 export const deleteRemoteTag = (path: string, tagName: string, remote?: string) =>
   invoke<void>('delete_remote_tag', { path, tagName, remote })
 
+/** Publishes a tag to `remote` (default "origin") — `git push origin <name>`. */
+export const pushTag = (path: string, tagName: string, remote?: string) =>
+  invoke<void>('push_tag', { path, tagName, remote })
+
 /** Tag's GitHub release page URL on `remote` (default "origin"), or null if not a GitHub remote. */
 export const getTagWebUrl = (path: string, tagName: string, remote?: string) =>
   invoke<string | null>('get_tag_web_url', { path, tagName, remote })

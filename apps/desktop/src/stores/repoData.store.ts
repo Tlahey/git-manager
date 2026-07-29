@@ -48,6 +48,32 @@ interface RepoDataState {
   setWipMessage: (path: string, message: string) => void
   hiddenStashes: Record<string, string[]>
   toggleStashVisibility: (repoPath: string, oid: string) => void
+  /**
+   * Tags whose badge is kept out of the graph, per repo, by tag short name.
+   *
+   * Keyed by name rather than by commit oid — unlike a stash, several tags can point at the same
+   * commit, and hiding one must not take its neighbours with it. Hiding a tag only suppresses its
+   * label: the commit itself stays in the log (that is the difference with `hiddenStashes`, which
+   * removes a whole commit and is therefore applied by the backend when building the log).
+   */
+  hiddenTags: Record<string, string[]>
+  toggleTagVisibility: (repoPath: string, tagName: string) => void
+  /**
+   * Branches whose badge is kept out of the graph, per repo — the same "label only" hiding as
+   * `hiddenTags`: the commit keeps its row.
+   *
+   * Named the way the graph names the ref: bare for a local branch (`main`), remote-qualified for
+   * a remote one (`origin/main`). The two never collide, and the qualification is what keeps
+   * `origin/main` and `upstream/main` apart — and both apart from the local `main`.
+   */
+  hiddenBranches: Record<string, string[]>
+  toggleBranchVisibility: (repoPath: string, branchName: string) => void
+  /**
+   * Hides or shows a whole set of branches at once — what a remote node or one of its folders
+   * needs, since toggling them one by one would make the group row's own state depend on the order
+   * the toggles ran in.
+   */
+  setBranchesHidden: (repoPath: string, branchNames: string[], hidden: boolean) => void
 
   addRepo: (repo: GitRepo) => void
   /** Moves `path` to the front of `recentRepoPaths` (called whenever a repo is opened in a tab). */
@@ -74,6 +100,8 @@ export const useRepoDataStore = create<RepoDataState>()(
       linkedWorktreePaths: [],
       wipMessages: {},
       hiddenStashes: {},
+      hiddenTags: {},
+      hiddenBranches: {},
 
       toggleStashVisibility: (repoPath, oid) =>
         set((state) => {
@@ -81,6 +109,40 @@ export const useRepoDataStore = create<RepoDataState>()(
           const next = current.includes(oid) ? current.filter((x) => x !== oid) : [...current, oid]
           return {
             hiddenStashes: { ...state.hiddenStashes, [repoPath]: next },
+          }
+        }),
+
+      toggleTagVisibility: (repoPath, tagName) =>
+        set((state) => {
+          const current = state.hiddenTags[repoPath] || []
+          const next = current.includes(tagName)
+            ? current.filter((x) => x !== tagName)
+            : [...current, tagName]
+          return {
+            hiddenTags: { ...state.hiddenTags, [repoPath]: next },
+          }
+        }),
+
+      toggleBranchVisibility: (repoPath, branchName) =>
+        set((state) => {
+          const current = state.hiddenBranches[repoPath] || []
+          const next = current.includes(branchName)
+            ? current.filter((x) => x !== branchName)
+            : [...current, branchName]
+          return {
+            hiddenBranches: { ...state.hiddenBranches, [repoPath]: next },
+          }
+        }),
+
+      setBranchesHidden: (repoPath, branchNames, hidden) =>
+        set((state) => {
+          const current = state.hiddenBranches[repoPath] || []
+          const touched = new Set(branchNames)
+          const next = hidden
+            ? [...current.filter((x) => !touched.has(x)), ...branchNames]
+            : current.filter((x) => !touched.has(x))
+          return {
+            hiddenBranches: { ...state.hiddenBranches, [repoPath]: next },
           }
         }),
 
@@ -179,6 +241,8 @@ export const useRepoDataStore = create<RepoDataState>()(
         linkedWorktreePaths: state.linkedWorktreePaths || [],
         wipMessages: state.wipMessages || {},
         hiddenStashes: state.hiddenStashes || {},
+        hiddenTags: state.hiddenTags || {},
+        hiddenBranches: state.hiddenBranches || {},
       }),
     }
   )

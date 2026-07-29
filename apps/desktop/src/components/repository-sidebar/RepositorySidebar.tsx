@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Focus, PanelLeftClose, Search, X } from 'lucide-react'
 import { Input } from '@git-manager/ui'
-import type { GitBranch, GitWorktree, PullRequest } from '@git-manager/git-types'
+import type { GitBranch, GitRef, GitWorktree, PullRequest } from '@git-manager/git-types'
 import { useSidebarResize, RAIL_WIDTH } from '../../hooks/useSidebarResize'
 import { useSidebarRows } from '../../hooks/useSidebarRows'
 import { useTranslation } from '@git-manager/i18n'
 import { usePinnedBranchesStore } from '../../stores/pinned-branches.store'
 import { useSidebarSearchStore } from '../../stores/sidebarSearch.store'
 import { useSoloModeStore } from '../../stores/soloMode.store'
+import { useBranchCheckout } from '../../hooks/useBranchCheckout'
 import { SidebarResizeHandle } from './SidebarResizeHandle'
 import { SidebarRail } from './SidebarRail'
 import { SidebarRowView } from './SidebarRowView'
@@ -30,6 +31,14 @@ import { RemoveMergedWorktreesDialog } from './RemoveMergedWorktreesDialog'
 import { RemoveMergedBranchesDialog } from './RemoveMergedBranchesDialog'
 import { PruneBranchesDialog } from './PruneBranchesDialog'
 import { CreateBranchHereDialog } from '../git-graph/CreateBranchHereDialog'
+import { CreateIssueDialog } from './CreateIssueDialog'
+import { SavedFilterDialog } from './SavedFilterDialog'
+import { useSidebarIssueMenu } from '../../hooks/useSidebarIssueMenu'
+import { useSidebarPrMenu } from '../../hooks/useSidebarPrMenu'
+import { useSavedFilterMenu } from '../../hooks/useSavedFilterMenu'
+import { useIssueFiltersStore } from '../../stores/issueFilters.store'
+import { usePrFiltersStore } from '../../stores/prFilters.store'
+import type { SavedFilter } from '../../stores/savedFilters'
 
 interface RepositorySidebarProps {
   repoPath: string
@@ -42,6 +51,10 @@ interface RepositorySidebarProps {
   githubToken?: string
   onCreateBranch?: () => void
   onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
+  /** Opens a remote branch row's own (wider) action menu. */
+  onRemoteBranchContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
+  /** Opens a tag's action menu — the same one the graph's tag badge uses. */
+  onTagContextMenu?: (e: React.MouseEvent, tag: GitRef) => void
   onOpenPr?: (pr: PullRequest) => void
 }
 
@@ -57,6 +70,8 @@ export function RepositorySidebar({
   githubToken,
   onCreateBranch,
   onContextMenu,
+  onRemoteBranchContextMenu,
+  onTagContextMenu,
   onOpenPr,
 }: RepositorySidebarProps) {
   const { t } = useTranslation('git')
@@ -74,6 +89,11 @@ export function RepositorySidebar({
 
   const hiddenStashes = useRepoDataStore((s) => s.hiddenStashes[repoPath]) || EMPTY_ARRAY
   const toggleStashVisibility = useRepoDataStore((s) => s.toggleStashVisibility)
+  const hiddenTags = useRepoDataStore((s) => s.hiddenTags[repoPath]) || EMPTY_ARRAY
+  const toggleTagVisibility = useRepoDataStore((s) => s.toggleTagVisibility)
+  const hiddenBranches =
+    useRepoDataStore((s) => s.hiddenBranches[repoPath]) || EMPTY_ARRAY
+  const setBranchesHidden = useRepoDataStore((s) => s.setBranchesHidden)
   // The repo tab's own path (stable, unlike `repoPath` which may already be a workspace) — used to
   // key the pending-changes bubble so a worktree's own row still shows it while that worktree is
   // the active workspace, and to drive entering a workspace (a view switch, not a new tab).
@@ -86,13 +106,64 @@ export function RepositorySidebar({
   }
 
   const [addWorktreeOpen, setAddWorktreeOpen] = useState(false)
+  // Branch the worktree dialog opens on when it was raised from a pull request; null for the
+  // section header's "+", which falls back to the current branch.
+  const [worktreeBranch, setWorktreeBranch] = useState<string | null>(null)
   const [worktreeToRemove, setWorktreeToRemove] = useState<GitWorktree | null>(null)
+  // Whether the pending removal should also delete the worktree's branch — the two menu entries
+  // share one dialog, which only differs by this flag.
+  const [removeWithBranch, setRemoveWithBranch] = useState(false)
   const [pruneWorktreesOpen, setPruneWorktreesOpen] = useState(false)
   // null = closed; 'all' / 'mine' = open, filtered to the current user's merged PRs when 'mine'.
   const [removeMergedWorktrees, setRemoveMergedWorktrees] = useState<null | 'all' | 'mine'>(null)
   const [removeMergedBranches, setRemoveMergedBranches] = useState<null | 'all' | 'mine'>(null)
   const [pruneBranchesOpen, setPruneBranchesOpen] = useState(false)
   const [createBranchOpen, setCreateBranchOpen] = useState(false)
+  const [createIssueOpen, setCreateIssueOpen] = useState(false)
+  // null = closed. `filter: null` opens the dialog on a new one; `kind` names the list it belongs
+  // to. A plain boolean couldn't tell "add" from "edit the first filter", nor issues from PRs.
+  const [filterDialog, setFilterDialog] = useState<{
+    kind: 'issues' | 'prs'
+    filter: SavedFilter | null
+  } | null>(null)
+
+  // A branch row's two gestures: one click brings its tip into view in the graph, a double click
+  // switches to it. A remote branch has no local ref to check out, so it lands on its tip commit
+  // (detached), which is what the menu's own Checkout does.
+  const setPendingGraphSelection = useRepoUIStore((s) => s.setPendingGraphSelection)
+  const { checkoutBranchWithStashPrompt } = useBranchCheckout()
+  const focusBranch = useCallback(
+    (branch: GitBranch) => setPendingGraphSelection(branch.commitOid),
+    [setPendingGraphSelection]
+  )
+  const checkoutBranch = useCallback(
+    (branch: GitBranch) => {
+      void checkoutBranchWithStashPrompt(
+        repoPath,
+        branch.isRemote ? branch.commitOid : branch.shortName
+      )
+    },
+    [checkoutBranchWithStashPrompt, repoPath]
+  )
+
+  const setActiveIssue = useRepoUIStore((s) => s.setActiveIssue)
+  const openIssueMenu = useSidebarIssueMenu(repoPath)
+  const openPrMenu = useSidebarPrMenu({
+    repoPath,
+    onSelectBranch,
+    onCreateWorktree: useCallback((branch: string) => {
+      setWorktreeBranch(branch)
+      setAddWorktreeOpen(true)
+    }, []),
+  })
+  const openIssueFilterMenu = useSavedFilterMenu(
+    useIssueFiltersStore,
+    useCallback((filter: SavedFilter) => setFilterDialog({ kind: 'issues', filter }), [])
+  )
+  const openPrFilterMenu = useSavedFilterMenu(
+    usePrFiltersStore,
+    useCallback((filter: SavedFilter) => setFilterDialog({ kind: 'prs', filter }), [])
+  )
 
   const handleStashContextMenu = (_e: React.MouseEvent, stash: GitStash) => {
     const runStash = async (fn: () => Promise<unknown>) => {
@@ -132,6 +203,7 @@ export function RepositorySidebar({
     prunableWorktrees = [],
     worktrees = [],
     allLocalBranches = [],
+    refreshIssues,
   } = useSidebarRows({
     repoPath,
     remoteUrls,
@@ -172,16 +244,18 @@ export function RepositorySidebar({
     else enableSolo([headBranch?.shortName ?? selectedBranch])
   }
 
-  // Map id -> isOpen pour résoudre l'état courant lors du toggle (sections + sous-groupes
-  // repliables imbriqués dans leur corps : dossiers de branches locales, groupes de remotes).
+  // Map id -> isOpen, to resolve the current state when toggling (sections plus the collapsible
+  // sub-groups nested in their body: local branch folders, remote groups, issue filters).
   const openById = useMemo(() => {
     const m = new Map<string, boolean>()
     for (const s of sections) {
       m.set(`section:${s.key}`, s.isOpen)
+      // Every collapsible row, whatever its kind: `onToggleOpen` flips the state it reads back
+      // from here, so a kind missing from this map can only ever be opened — it would report
+      // itself closed, and toggling it would set it open again. Keyed on the shape rather than on
+      // a list of kinds, which is exactly how the remote folders were left out.
       for (const r of s.rows) {
-        if (r.kind === 'folder' || r.kind === 'remote-group' || r.kind === 'subgroup') {
-          m.set(r.id, r.isOpen)
-        }
+        if ('isOpen' in r) m.set(r.id, r.isOpen)
       }
     }
     return m
@@ -284,7 +358,7 @@ export function RepositorySidebar({
         </div>
       </div>
 
-      {/* Barre de recherche dans les branches — l'anneau primaire signale le mode solo actif */}
+      {/* Branch search box — the primary ring signals that solo mode is active */}
       <div className="shrink-0 border-b border-sidebar-border px-2 py-1.5">
         {isFilterActive && (
           <div
@@ -292,7 +366,7 @@ export function RepositorySidebar({
             data-testid="sidebar-filter-stats"
           >
             <span className="font-semibold text-primary">{filterStats.matched}</span>
-            {` / ${filterStats.total} résultats`}
+            {` / ${t('sidebar.filterResults', { count: filterStats.total })}`}
           </div>
         )}
         <Input
@@ -387,7 +461,12 @@ export function RepositorySidebar({
                 section.key === 'local' ? () => setRemoveMergedBranches('mine') : undefined
               }
               onAddWorktree={
-                section.key === 'worktrees' ? () => setAddWorktreeOpen(true) : undefined
+                section.key === 'worktrees'
+                  ? () => {
+                      setWorktreeBranch(null)
+                      setAddWorktreeOpen(true)
+                    }
+                  : undefined
               }
               onPruneWorktrees={
                 section.key === 'worktrees' ? () => setPruneWorktreesOpen(true) : undefined
@@ -401,6 +480,19 @@ export function RepositorySidebar({
               onCreatePr={
                 section.key === 'prs' && githubToken ? () => setPrCreateOpen(true) : undefined
               }
+              onCreateIssue={
+                section.key === 'issues' ? () => setCreateIssueOpen(true) : undefined
+              }
+              onAddIssueFilter={
+                section.key === 'issues'
+                  ? () => setFilterDialog({ kind: 'issues', filter: null })
+                  : undefined
+              }
+              onAddPrFilter={
+                section.key === 'prs'
+                  ? () => setFilterDialog({ kind: 'prs', filter: null })
+                  : undefined
+              }
               isFiltered={isFilterActive}
             />
             {section.isOpen && (
@@ -412,20 +504,44 @@ export function RepositorySidebar({
                   <SidebarRowView
                     key={row.id}
                     row={row}
+                    repoPath={repoPath}
                     filterQuery={branchQuery}
                     soloActive={soloActive}
                     soloed={soloed}
                     onToggleSolo={toggleSolo}
                     onToggleOpen={(id) => toggleOpen(id, openById.get(id) ?? false)}
                     onSelectBranch={onSelectBranch}
+                    onFocusBranch={focusBranch}
+                    onCheckoutBranch={checkoutBranch}
                     onSelectTag={onSelectTag}
                     onTogglePin={onTogglePin}
                     onContextMenu={onContextMenu}
+                    onRemoteBranchContextMenu={onRemoteBranchContextMenu}
                     onOpenPr={onOpenPr}
+                    onPrContextMenu={openPrMenu}
+                    onIssueContextMenu={openIssueMenu}
+                    onOpenIssue={setActiveIssue}
+                    onIssueFilterMenu={
+                      section.key === 'prs' ? openPrFilterMenu : openIssueFilterMenu
+                    }
                     onStashContextMenu={handleStashContextMenu}
                     hiddenStashes={hiddenStashes}
                     onToggleStashVisibility={(oid) => toggleStashVisibility(repoPath, oid)}
-                    onRemoveWorktree={(wt) => setWorktreeToRemove(wt)}
+                    onTagContextMenu={onTagContextMenu}
+                    hiddenTags={hiddenTags}
+                    onToggleTagVisibility={(name) => toggleTagVisibility(repoPath, name)}
+                    hiddenBranches={hiddenBranches}
+                    onToggleBranchesVisibility={(names, hidden) =>
+                      setBranchesHidden(repoPath, names, hidden)
+                    }
+                    onRemoveWorktree={(wt) => {
+                      setRemoveWithBranch(false)
+                      setWorktreeToRemove(wt)
+                    }}
+                    onRemoveWorktreeAndBranch={(wt) => {
+                      setRemoveWithBranch(true)
+                      setWorktreeToRemove(wt)
+                    }}
                     onOpenWorktree={handleOpenWorktree}
                     worktreeWipStatuses={worktreeWipStatuses}
                   />
@@ -436,17 +552,19 @@ export function RepositorySidebar({
         ))}
       </div>
 
-      {/* Handle de resize */}
+      {/* Resize handle */}
       <SidebarResizeHandle {...resizeHandleProps} />
 
       <AddWorktreeDialog
         repoPath={repoPath}
         open={addWorktreeOpen}
+        initialBranch={worktreeBranch ?? undefined}
         onClose={() => setAddWorktreeOpen(false)}
       />
       <RemoveWorktreeDialog
         repoPath={repoPath}
         worktree={worktreeToRemove}
+        deleteBranch={removeWithBranch}
         onClose={() => setWorktreeToRemove(null)}
       />
       <PruneWorktreesDialog
@@ -489,6 +607,19 @@ export function RepositorySidebar({
         shortOid={createBranchShortOid}
         open={createBranchOpen}
         onClose={() => setCreateBranchOpen(false)}
+      />
+      <CreateIssueDialog
+        repoPath={repoPath}
+        open={createIssueOpen}
+        onClose={() => setCreateIssueOpen(false)}
+        onCreated={refreshIssues}
+      />
+      <SavedFilterDialog
+        open={filterDialog !== null}
+        kind={filterDialog?.kind ?? 'issues'}
+        filter={filterDialog?.filter ?? null}
+        useStore={filterDialog?.kind === 'prs' ? usePrFiltersStore : useIssueFiltersStore}
+        onClose={() => setFilterDialog(null)}
       />
     </div>
   )

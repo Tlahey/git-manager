@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { open } from '@tauri-apps/plugin-dialog'
 import { toast } from '@git-manager/ui'
 import type { GitRef } from '@git-manager/git-types'
 import { showNativeMenu } from '../api/nativeMenu.api'
@@ -11,10 +10,14 @@ import {
   apiRebaseOntoCommit,
   apiDeleteTag,
   apiGetTagWebUrl,
+  apiPushTag,
+  apiMoveTag,
 } from '../api/git.api'
-import { apiAddWorktree } from '../api/worktree.api'
 import { useBranchCheckout } from './useBranchCheckout'
-import { openRebaseWindow } from '../lib/graphWindows'
+import { useRepoDataStore } from '../stores/repoData.store'
+import { useRepoUIStore } from '../stores/repoUI.store'
+import { useSoloModeStore } from '../stores/soloMode.store'
+import { useBranches } from './useBranches'
 import type { GraphCommitAction } from '../stores/repoUI.store'
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
@@ -54,6 +57,11 @@ export function useTagContextMenu({
 }: UseTagContextMenuParams) {
   const queryClient = useQueryClient()
   const { checkoutBranchWithStashPrompt } = useBranchCheckout()
+  const hiddenTags = useRepoDataStore((s) => s.hiddenTags[repoPath])
+  const toggleTagVisibility = useRepoDataStore((s) => s.toggleTagVisibility)
+  const setAiPanelTarget = useRepoUIStore((s) => s.setAiPanelTarget)
+  const enableSolo = useSoloModeStore((s) => s.enable)
+  const { data: branches } = useBranches(repoPath)
   const [pendingTagAction, setPendingTagAction] = useState<PendingTagAction>(null)
 
   // Stable identity: this handler is published through TagMenuContext to every memoized GraphRow, so
@@ -76,17 +84,6 @@ export function useTagContextMenu({
           await fn()
           refresh()
           if (successMsg) toast.success(successMsg)
-        } catch (err) {
-          toast.error(String(err))
-        }
-      }
-
-      async function handleCreateWorktree(oid: string) {
-        try {
-          const destPath = await open({ directory: true, multiple: false })
-          if (!destPath || typeof destPath !== 'string') return
-          await apiAddWorktree(repoPath, oid, destPath)
-          toast.success(t('gitTree.contextMenu.worktreeCreated'))
         } catch (err) {
           toast.error(String(err))
         }
@@ -117,11 +114,31 @@ export function useTagContextMenu({
 
       const relationEnabled = !!currentBranch && !isDetached
       const params = { tag: gitRef.shortName, branch: currentBranch ?? '', remote: 'origin' }
+      const isHidden = (hiddenTags ?? []).includes(gitRef.shortName)
 
       void showNativeMenu(
         buildTagMenuSpec(
-          { params, relationEnabled },
+          { params, relationEnabled, isHidden },
           {
+            onPush: () =>
+              void run(() => apiPushTag(repoPath, gitRef.shortName), t('gitTree.tagMenu.pushed', params)),
+            // Moving a tag is a local delete + re-create onto the branch tip; the remote copy is
+            // deliberately left alone, since re-pointing a published tag breaks everyone who has it.
+            onFastForward: () => {
+              const tip = branches?.find((b) => b.shortName === currentBranch)?.commitOid
+              if (!tip) return
+              void run(
+                () => apiMoveTag(repoPath, gitRef.shortName, tip),
+                t('gitTree.tagMenu.fastForwarded', params)
+              )
+            },
+            onExplain: () => setAiPanelTarget({ kind: 'commit', oid: gitRef.commitOid, shortOid: gitRef.commitOid.slice(0, 7), subject: gitRef.shortName, body: '', author: '', parentCount: 1 }),
+            onToggleHidden: () => toggleTagVisibility(repoPath, gitRef.shortName),
+            // Solo works on branch names, so a tag solos the branch its commit sits on.
+            onSolo: () => {
+              const owner = branches?.find((b) => b.commitOid === gitRef.commitOid && !b.isRemote)
+              enableSolo([owner?.shortName ?? currentBranch])
+            },
             onMerge: () =>
               void run(
                 () => apiMergeBranch(repoPath, gitRef.shortName, currentBranch as string),
@@ -132,12 +149,9 @@ export function useTagContextMenu({
                 () => apiRebaseOntoCommit(repoPath, gitRef.commitOid),
                 t('gitTree.tagMenu.rebased', params)
               ),
-            onInteractiveRebase: () =>
-              void openRebaseWindow(repoPath, gitRef.commitOid).catch(console.error),
             // Detaches HEAD onto the tag's commit — same stash-prompt path as the graph/branch
             // menus, so a dirty worktree offers to stash instead of failing with a raw error.
             onCheckout: () => void checkoutBranchWithStashPrompt(repoPath, gitRef.commitOid),
-            onCreateWorktree: () => void handleCreateWorktree(gitRef.commitOid),
             onCreateBranch: () => setPendingCommitAction({ kind: 'branch' }),
             onCherryPick: () =>
               void run(
@@ -181,6 +195,11 @@ export function useTagContextMenu({
       t,
       queryClient,
       checkoutBranchWithStashPrompt,
+      hiddenTags,
+      toggleTagVisibility,
+      setAiPanelTarget,
+      enableSolo,
+      branches,
     ]
   )
 

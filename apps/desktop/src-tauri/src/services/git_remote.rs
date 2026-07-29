@@ -470,6 +470,31 @@ pub fn delete_remote_tag(
     Ok(())
 }
 
+/// Publishes tag `tag_name` to `remote` (defaults to "origin") with the refspec
+/// `refs/tags/<name>:refs/tags/<name>`, the porcelain equivalent of `git push origin <name>`.
+///
+/// Deliberately not routed through `push_to`, which hardcodes a `refs/heads/` refspec on both
+/// sides and would therefore create a *branch* named after the tag on the remote. Never forced:
+/// re-pointing a tag that others have already fetched is the one thing tags are supposed not to
+/// do, so a rejected push should surface rather than be overwritten.
+pub fn push_tag(repo: &Repository, remote: Option<String>, tag_name: &str) -> Result<(), AppError> {
+    let remote_name = resolve_remote_name(repo, remote);
+
+    let refspec = format!("refs/tags/{tag_name}:refs/tags/{tag_name}");
+
+    let mut remote_obj = repo.find_remote(&remote_name).map_err(AppError::Git)?;
+
+    let callbacks = make_auth_callbacks();
+    let mut push_opts = PushOptions::new();
+    push_opts.remote_callbacks(callbacks);
+
+    remote_obj
+        .push(&[refspec.as_str()], Some(&mut push_opts))
+        .map_err(AppError::Git)?;
+
+    Ok(())
+}
+
 // ─── remotes CRUD ─────────────────────────────────────────────────────────────
 
 /// Lists the remotes with their name (GitRepo.remotes only exposes the URLs)

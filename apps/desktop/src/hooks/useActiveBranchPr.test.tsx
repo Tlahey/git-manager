@@ -44,6 +44,9 @@ function pr(overrides: Partial<PullRequest> = {}): PullRequest {
     createdAt: '',
     updatedAt: '',
     isDraft: false,
+    assignees: [],
+    requestedReviewers: [],
+    labels: [],
     ...overrides,
   }
 }

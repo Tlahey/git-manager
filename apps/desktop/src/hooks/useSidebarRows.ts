@@ -1,13 +1,17 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from '@git-manager/i18n'
 import type { GitBranch, GitRef, GitSubmodule, GitWorktree } from '@git-manager/git-types'
 import { useBranches } from './useBranches'
 import { useGitStashes } from './useGitStashes'
-import { useGroupedBranches } from './useGroupedBranches'
+import { buildBranchTree, type BranchTreeFolder, type BranchTreeNode } from '../lib/branchTree'
 import { usePullRequests } from './usePullRequests'
-import { useMergedPrsByBranch } from './useMergedPrsByBranch'
+import { useRepoIssues } from './useRepoIssues'
+import { useRepoPrFilters } from './useRepoPrFilters'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
 import { useRepoUIStore } from '../stores/repoUI.store'
+import { issueFilterLabel, useIssueFiltersStore } from '../stores/issueFilters.store'
+import { prFilterLabel, usePrFiltersStore } from '../stores/prFilters.store'
 import { apiGetTags, apiListSubmodules } from '../api/git.api'
 import { apiListWorktrees } from '../api/worktree.api'
 import {
@@ -25,16 +29,16 @@ interface UseSidebarRowsParams {
   githubToken?: string
   selectedBranch: string | null
   filter: string
-  /** Overrides explicites d'ouverture (id -> open). */
+  /** Explicit open-state overrides (id -> open). */
   openState: Record<string, boolean>
 }
 
 interface UseSidebarRowsResult {
   sections: SidebarSection[]
-  /** État épinglé effectif d'une branche locale. */
+  /** Effective pinned state of a local branch. */
   isPinned: (shortName: string) => boolean
-  /** Nombre d'éléments correspondant au filtre actif vs. total du panel, tous types confondus —
-   * affiché au-dessus de la barre de recherche pour donner une vue d'ensemble du résultat. */
+  /** How many entries match the active filter vs. the panel's total, all kinds combined — shown
+   * above the search box to give an overview of the result. */
   filterStats: { matched: number; total: number }
   /** Worktrees flagged prunable by git (folder gone from disk), unfiltered by search query. */
   prunableWorktrees: GitWorktree[]
@@ -42,9 +46,72 @@ interface UseSidebarRowsResult {
   worktrees: GitWorktree[]
   /** Every local branch, unfiltered by search query — the bulk merged-branch-prune candidate set. */
   allLocalBranches: GitBranch[]
+  /** Revalidate the repo's issue list — called after creating one from the sidebar. */
+  refreshIssues: () => void
 }
 
 const TAGS_LIMIT = 100
+
+/**
+ * The remote a branch belongs to.
+ *
+ * Read from `name`, never from `shortName`: the backend already strips the remote from the latter
+ * (`origin/build/ci` arrives as `name: 'origin/build/ci'`, `shortName: 'build/ci'`), so splitting
+ * the short name would name the remote after the branch's first *folder* — which is what put
+ * `build` and `feat` beside `origin` instead of inside it.
+ */
+function remoteOf(branch: GitBranch): string {
+  const slash = branch.name.indexOf('/')
+  return slash > 0 ? branch.name.slice(0, slash) : 'origin'
+}
+
+interface PushBranchTreeParams {
+  /** Row list being built, appended to in place. */
+  rows: SidebarRow[]
+  nodes: BranchTreeNode[]
+  /** Row id every folder id below is built from, keeping the two sections' ids apart. */
+  parentId: string
+  /** Depth the level starts at — 0 in the local section, 1 under a remote node. */
+  depth: number
+  subOpen: (id: string, def?: boolean) => boolean
+  branchRow: (branch: GitBranch, displayName: string, depth: number) => SidebarRow
+  folderRow: (node: BranchTreeFolder, id: string, depth: number) => SidebarRow
+}
+
+/**
+ * Flattens a branch tree into rows, walking it rather than iterating a flat list: folders nest, and
+ * a closed one has to take its whole subtree off screen, not just its own leaves. Shared by the
+ * local and remote sections, which differ only in the rows they build.
+ */
+function pushBranchTree({
+  rows,
+  nodes,
+  parentId,
+  depth,
+  subOpen,
+  branchRow,
+  folderRow,
+}: PushBranchTreeParams): void {
+  for (const node of nodes) {
+    if (node.kind === 'branch') {
+      rows.push(branchRow(node.branch, node.displayName, depth))
+      continue
+    }
+    const id = `${parentId}${parentId.endsWith(':') ? '' : '/'}${node.name}`
+    rows.push(folderRow(node, id, depth))
+    if (subOpen(id, true)) {
+      pushBranchTree({
+        rows,
+        nodes: node.children,
+        parentId: id,
+        depth: depth + 1,
+        subOpen,
+        branchRow,
+        folderRow,
+      })
+    }
+  }
+}
 
 export function useSidebarRows({
   repoPath,
@@ -55,6 +122,7 @@ export function useSidebarRows({
   filter,
   openState,
 }: UseSidebarRowsParams): UseSidebarRowsResult {
+  const { t } = useTranslation('git')
   const { data: allBranches = [] } = useBranches(repoPath)
   const { data: stashes = [] } = useGitStashes(repoPath)
   const overrides = usePinnedBranchesStore((s) => s.overrides[repoPath])
@@ -71,6 +139,27 @@ export function useSidebarRows({
     currentUser,
     githubToken,
   })
+
+  // The user's saved pull request views — one sub-group each, in this order.
+  const prFilters = usePrFiltersStore((s) => s.filters)
+
+  const {
+    groups: prGroups,
+    isLoading: prFiltersLoading,
+  } = useRepoPrFilters({ remoteUrls, githubToken, filters: prFilters, knownPrs: allPrs })
+
+  // The user's saved issue views — one sub-group each, in this order.
+  const issueFilters = useIssueFiltersStore((s) => s.filters)
+
+  const {
+    groups: issueGroups,
+    allIssues: issues,
+    // Its own GitHub-reachability flag, not the pull request hook's: the two resolve the same
+    // remote today, but the Issues section must not be at the mercy of whether the PR fetch works.
+    isGithub: issuesIsGithub,
+    isLoading: issuesLoading,
+    refresh: refreshIssues,
+  } = useRepoIssues({ remoteUrls, githubToken, filters: issueFilters })
 
   const { data: tags = [] } = useQuery<GitRef[]>({
     queryKey: ['tags', repoPath],
@@ -102,43 +191,60 @@ export function useSidebarRows({
   // depend on whether the sidebar search box happens to currently hide the stale entry.
   const prunableWorktrees = useMemo(() => worktrees.filter((wt) => wt.isPrunable), [worktrees])
 
-  // Merged PRs by head branch — `usePullRequests` only fetches open PRs, so a branch/worktree that's
-  // already merged has no open PR to match; this fills that gap from the closed-PR list.
-  const mergedPrByBranch = useMergedPrsByBranch({ remoteUrls, githubToken })
-
-  // Index PRs by their head branch (unfiltered by the search box — a branch/worktree row shows its
-  // PR tag regardless of what's typed). Start from merged PRs, then let open PRs win over a stale
-  // merged one sharing a headRef (a reused branch name), so an active PR is never masked.
-  const prByBranch = useMemo(() => {
-    const map = new Map<string, (typeof allPrs)[number]>(mergedPrByBranch)
-    for (const pr of allPrs) {
-      if (pr.state === 'open') map.set(pr.headRef, pr)
-      else if (!map.has(pr.headRef)) map.set(pr.headRef, pr)
-    }
-    return map
-  }, [allPrs, mergedPrByBranch])
-
   const q = filter.trim().toLowerCase()
   const includesQuery = (text: string) => !q || text.toLowerCase().includes(q)
   const matchesFilter = (b: GitBranch) => includesQuery(b.shortName)
 
-  // ── Filtrage des sections non-branches — la barre de recherche du panel gauche doit
-  // porter sur l'ensemble de son contenu, pas seulement les branches locales/remotes.
-  const filteredPrs = useMemo(
-    () =>
-      allPrs.filter(
-        (pr) =>
-          includesQuery(pr.title) ||
-          includesQuery(pr.headRef) ||
-          includesQuery(pr.author) ||
-          includesQuery(String(pr.number))
-      ),
+  // ── Filtering the non-branch sections — the left panel's search box has to reach all of its
+  // content, not just the local/remote branches.
+  const matchesPrQuery = (pr: (typeof allPrs)[number]) =>
+    includesQuery(pr.title) ||
+    includesQuery(pr.headRef) ||
+    includesQuery(pr.author) ||
+    includesQuery(String(pr.number))
+
+  // The search box narrows *within* each saved filter rather than across a flat list: a filter is a
+  // saved view, and a search that emptied one would otherwise look like the filter itself broke.
+  const filteredPrGroups = useMemo(
+    () => prGroups.map((group) => ({ ...group, prs: group.prs.filter(matchesPrQuery) })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allPrs, q]
+    [prGroups, q]
+  )
+
+  // De-duplicated across groups — the filters overlap by design, so summing them would over-count
+  // the section header and the search stats.
+  const filteredPrCount = useMemo(
+    () => new Set(filteredPrGroups.flatMap((g) => g.prs.map((p) => p.number))).size,
+    [filteredPrGroups]
+  )
+
+  // The search box narrows *within* each saved filter rather than across a flat list: a filter is a
+  // saved view, and a search that emptied one would otherwise look like the filter itself broke.
+  const filteredIssueGroups = useMemo(
+    () =>
+      issueGroups.map((group) => ({
+        ...group,
+        issues: group.issues.filter(
+          (issue) =>
+            includesQuery(issue.title) ||
+            includesQuery(issue.author) ||
+            includesQuery(String(issue.number)) ||
+            issue.labels.some((l) => includesQuery(l))
+        ),
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [issueGroups, q]
+  )
+
+  // De-duplicated across groups — the filters overlap by design, so summing them would over-count
+  // the section header and the search stats.
+  const filteredIssueCount = useMemo(
+    () => new Set(filteredIssueGroups.flatMap((g) => g.issues.map((i) => i.id))).size,
+    [filteredIssueGroups]
   )
 
   const filteredTags = useMemo(
-    () => tags.filter((t) => includesQuery(t.shortName)),
+    () => tags.filter((tag) => includesQuery(tag.shortName)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [tags, q]
   )
@@ -164,14 +270,14 @@ export function useSidebarRows({
   const isPinned = (shortName: string): boolean =>
     overrides?.[shortName] ?? DEFAULT_PINNED.includes(shortName)
 
-  // ── Branches locales (filtrées) ────────────────────────────────────
+  // ── Local branches (filtered) ──────────────────────────────────────
   const localBranches = useMemo(
     () => allBranches.filter((b) => !b.isRemote && matchesFilter(b)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [allBranches, q]
   )
 
-  // Toutes les branches locales, non filtrées par la recherche — jeu de candidats du prune.
+  // Every local branch, unfiltered by the search box — the prune candidate set.
   const allLocalBranches = useMemo(() => allBranches.filter((b) => !b.isRemote), [allBranches])
 
   const pinnedBranches = useMemo(
@@ -195,15 +301,13 @@ export function useSidebarRows({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [localBranches, overrides]
   )
-  const { groups, ungrouped } = useGroupedBranches(remainingBranches)
 
-  // ── Branches remotes (filtrées + groupées par remote) ──────────────
+  // ── Remote branches (filtered + grouped by remote) ─────────────────
   const remoteGroups = useMemo(() => {
     const map = new Map<string, GitBranch[]>()
     for (const b of allBranches) {
       if (!b.isRemote || !matchesFilter(b)) continue
-      const slash = b.shortName.indexOf('/')
-      const remoteName = slash > 0 ? b.shortName.slice(0, slash) : 'origin'
+      const remoteName = remoteOf(b)
       const arr = map.get(remoteName) ?? []
       arr.push(b)
       map.set(remoteName, arr)
@@ -213,7 +317,7 @@ export function useSidebarRows({
   }, [allBranches, q])
   const remoteCount = remoteGroups.reduce((n, [, bs]) => n + bs.length, 0)
 
-  // ── Construction par section ────────────────────────────────────────
+  // ── Building each section ───────────────────────────────────────────
   const sections = useMemo(() => {
     const list: SidebarSection[] = []
 
@@ -236,50 +340,36 @@ export function useSidebarRows({
           depth: 0,
           isSelected: isSelected(b),
           isPinned: true,
-          pr: prByBranch.get(b.shortName),
         })
       }
-      if (pinnedBranches.length > 0 && (ungrouped.length > 0 || groups.length > 0)) {
+      if (pinnedBranches.length > 0 && remainingBranches.length > 0) {
         localRows.push({ kind: 'divider', id: 'div:pinned' })
       }
-      for (const b of ungrouped) {
-        localRows.push({
+      pushBranchTree({
+        rows: localRows,
+        nodes: buildBranchTree(remainingBranches, (b) => b.shortName),
+        parentId: 'folder:',
+        depth: 0,
+        subOpen,
+        branchRow: (branch, displayName, depth) => ({
           kind: 'branch',
-          id: `local:${b.name}`,
-          branch: b,
-          displayName: b.shortName,
-          depth: 0,
-          isSelected: isSelected(b),
+          id: `local:${branch.name}`,
+          branch,
+          displayName,
+          depth,
+          isSelected: isSelected(branch),
           isPinned: false,
-          pr: prByBranch.get(b.shortName),
-        })
-      }
-      for (const { prefix, branches } of groups) {
-        const fid = `folder:${prefix}`
-        const open = subOpen(fid, true)
-        localRows.push({
+        }),
+        folderRow: (node, id, depth) => ({
           kind: 'folder',
-          id: fid,
-          prefix,
-          count: branches.length,
-          isOpen: open,
-          hasHead: branches.some((b) => b.isHead),
-        })
-        if (open) {
-          for (const b of branches) {
-            localRows.push({
-              kind: 'branch',
-              id: `local:${b.name}`,
-              branch: b,
-              displayName: b.shortName.slice(prefix.length),
-              depth: 1,
-              isSelected: isSelected(b),
-              isPinned: false,
-              pr: prByBranch.get(b.shortName),
-            })
-          }
-        }
-      }
+          id,
+          name: node.name,
+          count: node.branches.length,
+          isOpen: subOpen(id, true),
+          depth,
+          hasHead: node.branches.some((b) => b.isHead),
+        }),
+      })
     }
     // Hidden entirely when actively filtering down to zero matches — a non-empty repo always has
     // a local section otherwise, so this only ever fires while `q` is set.
@@ -307,17 +397,37 @@ export function useSidebarRows({
             remoteName,
             count: branches.length,
             isOpen: gopen,
+            branchNames: branches.map((b) => b.name),
           })
           if (gopen) {
-            for (const b of branches) {
-              remoteRows.push({
+            pushBranchTree({
+              rows: remoteRows,
+              // `shortName` already reads relative to the remote (the backend strips it), so it is
+              // exactly the name the folders below the remote node are cut from.
+              nodes: buildBranchTree(branches, (b) => b.shortName),
+              parentId: `remote-folder:${remoteName}`,
+              // The remote node itself occupies depth 0, so its own children start one in.
+              depth: 1,
+              subOpen,
+              branchRow: (branch, displayName, depth) => ({
                 kind: 'remote-branch',
-                id: `remote-branch:${b.name}`,
-                branch: b,
+                id: `remote-branch:${branch.name}`,
+                branch,
                 remoteName,
-                isSelected: isSelected(b),
-              })
-            }
+                displayName,
+                depth,
+                isSelected: isSelected(branch),
+              }),
+              folderRow: (node, id, depth) => ({
+                kind: 'folder',
+                id,
+                name: node.name,
+                count: node.branches.length,
+                isOpen: subOpen(id, true),
+                depth,
+                branchNames: node.branches.map((b) => b.name),
+              }),
+            })
           }
         }
       }
@@ -337,42 +447,156 @@ export function useSidebarRows({
       const open = sectionOpen('prs')
       const prRows: SidebarRow[] = []
       if (open) {
-        if (prsLoading) {
+        if (prsLoading || prFiltersLoading) {
           prRows.push({
             kind: 'message',
             id: 'pr:loading',
-            text: 'Chargement des PRs…',
+            text: t('sidebar.prs.loading'),
             loading: true,
           })
         } else if (!isGithub) {
           prRows.push({
             kind: 'message',
             id: 'pr:nogithub',
-            text: 'Connectez un dépôt GitHub pour voir les PRs.',
+            text: t('sidebar.prs.noGithub'),
           })
+        } else if (filteredPrGroups.length === 0) {
+          prRows.push({ kind: 'message', id: 'pr:nofilters', text: t('sidebar.prFilters.none') })
         } else {
-          if (filteredPrs.length === 0) {
-            prRows.push({ kind: 'message', id: 'pr:empty', text: 'Aucune PR ouverte.' })
-          } else {
-            for (const pr of filteredPrs) {
+          // The user's saved filters, every one of them rendered — empty included: a saved view that
+          // vanished when it matched nothing would read as a bug, and its header is the only way
+          // back to editing or deleting it.
+          filteredPrGroups.forEach((group, index) => {
+            const gid = `pr-filter:${group.filter.id}`
+            // Only the first saved view is expanded by default: the others are one click away and
+            // each costs a screenful in a section that shares the panel's height with the rest.
+            const gopen = subOpen(gid, index === 0)
+            prRows.push({
+              kind: 'subgroup',
+              id: gid,
+              label: prFilterLabel(group.filter, t),
+              count: group.prs.length,
+              isOpen: gopen,
+              filter: group.filter,
+              canMoveUp: index > 0,
+              canMoveDown: index < filteredPrGroups.length - 1,
+            })
+            if (!gopen) return
+            if (group.error) {
+              // GitHub rejected this one query (a typo'd qualifier, a rate limit) — say so on the
+              // group itself rather than leaving it silently empty next to working ones.
               prRows.push({
+                kind: 'message',
+                id: `${gid}:error`,
+                text: t('sidebar.prFilters.queryError', { error: group.error }),
+              })
+              return
+            }
+            if (group.prs.length === 0) {
+              prRows.push({ kind: 'message', id: `${gid}:empty`, text: t('sidebar.prs.empty') })
+              return
+            }
+            for (const pr of group.prs) {
+              prRows.push({
+                // The same PR can appear under several filters, so the row id has to carry the
+                // filter — ids are React keys and must stay unique across the section.
                 kind: 'pr',
-                id: `pr:${pr.number}`,
+                id: `pr:${group.filter.id}:${pr.number}`,
                 pr,
-                isSelected: selectedBranch === pr.headRef,
+                isSelected: !!pr.headRef && selectedBranch === pr.headRef,
+                depth: 1,
               })
             }
-          }
+          })
         }
       }
-      const hideForFilter = q && isGithub && !prsLoading && filteredPrs.length === 0
+      const hideForFilter = q && isGithub && !prsLoading && !prFiltersLoading && filteredPrCount === 0
       if (!hideForFilter) {
         list.push({
           key: 'prs',
           title: 'Pull Requests',
-          count: filteredPrs.length || undefined,
+          count: filteredPrCount || undefined,
           isOpen: open,
           rows: prRows,
+        })
+      }
+    }
+
+    // ----- Issues -----
+    // Mirrors the PR section: the loading / "connect GitHub" states ignore the filter (they aren't
+    // about matching), and the section only disappears when a filter matches nothing. It stays
+    // visible when the repo simply has no issues, because its header carries the "new issue" action.
+    //
+    // Unlike the PR section, whose four groups are fixed, the sub-groups here are the user's saved
+    // filters (see `stores/issueFilters.store.ts`) — so every one of them is rendered, empty
+    // included: a saved view that vanished when it matched nothing would read as a bug, and its
+    // header is the only way back to editing or deleting it.
+    {
+      const open = sectionOpen('issues')
+      const issueRows: SidebarRow[] = []
+      if (open) {
+        if (issuesLoading) {
+          issueRows.push({
+            kind: 'message',
+            id: 'issue:loading',
+            text: t('sidebar.issues.loading'),
+            loading: true,
+          })
+        } else if (!issuesIsGithub) {
+          issueRows.push({ kind: 'message', id: 'issue:nogithub', text: t('sidebar.issues.noGithub') })
+        } else if (filteredIssueGroups.length === 0) {
+          issueRows.push({
+            kind: 'message',
+            id: 'issue:nofilters',
+            text: t('sidebar.issueFilters.none'),
+          })
+        } else {
+          filteredIssueGroups.forEach((group, index) => {
+            const gid = `issue-filter:${group.filter.id}`
+            // Only the first saved view is expanded by default: the others are one click away and
+            // each costs a screenful in a section that shares the panel's height with the rest.
+            const gopen = subOpen(gid, index === 0)
+            issueRows.push({
+              kind: 'subgroup',
+              id: gid,
+              label: issueFilterLabel(group.filter, t),
+              count: group.issues.length,
+              isOpen: gopen,
+              filter: group.filter,
+              canMoveUp: index > 0,
+              canMoveDown: index < filteredIssueGroups.length - 1,
+            })
+            if (!gopen) return
+            if (group.error) {
+              // GitHub rejected this one query (a typo'd qualifier, a rate limit) — say so on the
+              // group itself rather than leaving it silently empty next to working ones.
+              issueRows.push({
+                kind: 'message',
+                id: `${gid}:error`,
+                text: t('sidebar.issueFilters.queryError', { error: group.error }),
+              })
+              return
+            }
+            if (group.issues.length === 0) {
+              issueRows.push({ kind: 'message', id: `${gid}:empty`, text: t('sidebar.issues.empty') })
+              return
+            }
+            for (const issue of group.issues) {
+              // The same issue can match several filters, so the row id has to carry the filter —
+              // ids are React keys and must stay unique across the section.
+              issueRows.push({ kind: 'issue', id: `issue:${group.filter.id}:${issue.id}`, issue })
+            }
+          })
+        }
+      }
+      const hideForFilter = q && issuesIsGithub && !issuesLoading && filteredIssueCount === 0
+      if (!hideForFilter) {
+        list.push({
+          key: 'issues',
+          title: 'Issues',
+          count: filteredIssueCount || undefined,
+          isOpen: open,
+          rows: issueRows,
         })
       }
     }
@@ -394,7 +618,7 @@ export function useSidebarRows({
           tagRows.push({
             kind: 'message',
             id: 'tag:more',
-            text: `+ ${filteredTags.length - TAGS_LIMIT} autres tags`,
+            text: t('sidebar.tags.more', { count: filteredTags.length - TAGS_LIMIT }),
           })
         }
       }
@@ -457,10 +681,10 @@ export function useSidebarRows({
       const wtRows: SidebarRow[] = []
       if (open) {
         if (filteredWorktrees.length === 0) {
-          wtRows.push({ kind: 'message', id: 'wt:empty', text: 'No linked worktrees.' })
+          wtRows.push({ kind: 'message', id: 'wt:empty', text: t('sidebar.worktrees.empty') })
         } else {
           for (const wt of filteredWorktrees) {
-            wtRows.push({ kind: 'worktree', id: `wt:${wt.path}`, wt, pr: prByBranch.get(wt.branch) })
+            wtRows.push({ kind: 'worktree', id: `wt:${wt.path}`, wt })
           }
         }
       }
@@ -476,19 +700,24 @@ export function useSidebarRows({
     return list
   }, [
     q,
+    t,
     openState,
     selectedBranch,
     selectedCommitOid,
     localBranches.length,
     pinnedBranches,
-    ungrouped,
-    groups,
+    remainingBranches,
     remoteGroups,
     remoteCount,
-    filteredPrs,
-    prByBranch,
+    filteredPrGroups,
+    filteredPrCount,
     isGithub,
     prsLoading,
+    prFiltersLoading,
+    filteredIssueGroups,
+    filteredIssueCount,
+    issuesIsGithub,
+    issuesLoading,
     filteredTags,
     filteredStashes,
     filteredSubmodules,
@@ -500,7 +729,8 @@ export function useSidebarRows({
       matched:
         localBranches.length +
         remoteCount +
-        filteredPrs.length +
+        filteredPrCount +
+        filteredIssueCount +
         filteredTags.length +
         filteredStashes.length +
         filteredSubmodules.length +
@@ -508,6 +738,7 @@ export function useSidebarRows({
       total:
         allBranches.length +
         allPrs.length +
+        issues.length +
         tags.length +
         stashes.length +
         submodules.length +
@@ -516,13 +747,15 @@ export function useSidebarRows({
     [
       localBranches.length,
       remoteCount,
-      filteredPrs,
+      filteredPrCount,
+      filteredIssueCount,
       filteredTags,
       filteredStashes,
       filteredSubmodules,
       filteredWorktrees,
       allBranches.length,
       allPrs.length,
+      issues.length,
       tags.length,
       stashes.length,
       submodules.length,
@@ -530,5 +763,13 @@ export function useSidebarRows({
     ]
   )
 
-  return { sections, isPinned, filterStats, prunableWorktrees, worktrees, allLocalBranches }
+  return {
+    sections,
+    isPinned,
+    filterStats,
+    prunableWorktrees,
+    worktrees,
+    allLocalBranches,
+    refreshIssues,
+  }
 }

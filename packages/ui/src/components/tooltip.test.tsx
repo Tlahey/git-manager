@@ -137,6 +137,45 @@ describe('Tooltip — show/hide timing', () => {
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
 
+  // Callers flip `disabled` when the tooltip has stopped being the relevant thing to show — e.g.
+  // the pointer moved onto a child that owns a more specific tooltip. Leaving the stale bubble up
+  // until the pointer exits the trigger would stack the two on top of each other.
+  it('retracts an already-visible tooltip when it becomes disabled', () => {
+    const { rerender } = render(
+      <Tooltip content="Hello">
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    fireEvent.mouseEnter(screen.getByText('Trigger'))
+    act(() => vi.advanceTimersByTime(1000))
+    expect(screen.getByRole('tooltip')).toBeInTheDocument()
+
+    rerender(
+      <Tooltip content="Hello" disabled>
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('cancels a tooltip still waiting out its delay when it becomes disabled', () => {
+    const { rerender } = render(
+      <Tooltip content="Hello" delay={500}>
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    fireEvent.mouseEnter(screen.getByText('Trigger'))
+    act(() => vi.advanceTimersByTime(200))
+
+    rerender(
+      <Tooltip content="Hello" delay={500} disabled>
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    act(() => vi.advanceTimersByTime(1000))
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
   it('still invokes the child element own mouse/focus handlers', () => {
     const onMouseEnter = vi.fn()
     const onBlur = vi.fn()
@@ -277,6 +316,142 @@ describe('Tooltip — positioning', () => {
 
     const bubble = container.ownerDocument.querySelector('[role="tooltip"]') as HTMLElement
     expect(Number(bubble.style.left.replace('px', ''))).toBeLessThanOrEqual(window.innerWidth - 4)
+  })
+})
+
+/**
+ * jsdom performs no layout, so a bubble measures 0×0 and every placement trivially fits. These
+ * cases stub the bubble's own size to actually exercise the fit/flip decision.
+ */
+describe('Tooltip — placement is honoured for a bubble wider than its trigger', () => {
+  /**
+   * Give the bubble a real size through *both* measurement APIs. Stubbing only the offset
+   * properties would let these cases pass against an implementation that measures with a bounding
+   * rect, since jsdom reports 0×0 there and every placement then trivially fits.
+   */
+  function stubBubbleSize(width: number, height: number) {
+    const isBubble = (el: Element) => el.getAttribute('role') === 'tooltip'
+    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+      configurable: true,
+      get(this: HTMLElement) {
+        return isBubble(this) ? width : 0
+      },
+    })
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+      configurable: true,
+      get(this: HTMLElement) {
+        return isBubble(this) ? height : 0
+      },
+    })
+    const nativeRect = HTMLElement.prototype.getBoundingClientRect
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement
+    ) {
+      if (!isBubble(this)) return nativeRect.call(this)
+      return { width, height, top: 0, left: 0, bottom: height, right: width } as DOMRect
+    })
+  }
+
+  function showAt(placement: 'top' | 'bottom' | 'left' | 'right', rect: Partial<DOMRect>) {
+    render(
+      <Tooltip content="Hello" placement={placement}>
+        <button>Trigger</button>
+      </Tooltip>
+    )
+    const trigger = screen.getByText('Trigger')
+    stubRect(trigger, rect)
+    fireEvent.mouseEnter(trigger)
+    act(() => vi.advanceTimersByTime(150))
+    return document.querySelector('[role="tooltip"]') as HTMLElement
+  }
+
+  afterEach(() => {
+    // @ts-expect-error — restore jsdom's own zero-size getters.
+    delete HTMLElement.prototype.offsetWidth
+    // @ts-expect-error — same.
+    delete HTMLElement.prototype.offsetHeight
+  })
+
+  // Regression: a 288px card on a narrow sidebar row overflowed horizontally, which disqualified
+  // *every* vertical placement and dumped the bubble beside the trigger instead of under it.
+  // Horizontal overflow is the clamp's job, not grounds for changing side.
+  it('still opens below when the bubble overflows the trigger horizontally', () => {
+    stubBubbleSize(288, 60)
+    const bubble = showAt('bottom', {
+      top: 200,
+      bottom: 220,
+      left: 20,
+      right: 120,
+      width: 100,
+      height: 20,
+    })
+    expect(bubble.style.top).toBe('226px') // trigger.bottom(220) + GAP(6)
+  })
+
+  it('flips above when there is genuinely no room below', () => {
+    stubBubbleSize(288, 60)
+    const bubble = showAt('bottom', {
+      top: window.innerHeight - 30,
+      bottom: window.innerHeight - 10,
+      left: 20,
+      right: 120,
+      width: 100,
+      height: 20,
+    })
+    // Above the trigger: trigger.top - bubble height(60) - GAP(6).
+    expect(bubble.style.top).toBe(`${window.innerHeight - 30 - 66}px`)
+  })
+
+  it('clamps a too-wide bubble to the viewport rather than letting it overflow', () => {
+    stubBubbleSize(288, 60)
+    const bubble = showAt('bottom', {
+      top: 200,
+      bottom: 220,
+      left: 20,
+      right: 120,
+      width: 100,
+      height: 20,
+    })
+    expect(Number(bubble.style.left.replace('px', ''))).toBeGreaterThanOrEqual(4)
+  })
+
+  // The horizontal placements keep deciding on the horizontal axis.
+  it('flips a right placement to the left when the right edge is out of room', () => {
+    stubBubbleSize(288, 60)
+    const bubble = showAt('right', {
+      top: 200,
+      bottom: 220,
+      left: window.innerWidth - 120,
+      right: window.innerWidth - 20,
+      width: 100,
+      height: 20,
+    })
+    // To the left of the trigger: trigger.left - bubble width(288) - GAP(6).
+    expect(bubble.style.left).toBe(`${window.innerWidth - 120 - 294}px`)
+  })
+
+  // Regression: the bubble used to be measured with getBoundingClientRect() while `zoom-in-95` was
+  // mid-flight. That API reports the *transformed* box, so the bubble read ~5% small, was placed
+  // from those wrong dimensions, and visibly drifted as the scale settled to 1.
+  //
+  // jsdom runs no animations, so the drift itself can't be reproduced here — what is asserted is
+  // the guard against it: the bubble is sized through the transform-independent offset properties
+  // and never through a bounding rect.
+  it('measures itself with the untransformed layout box', () => {
+    stubBubbleSize(288, 60)
+    const rectSpy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+    const bubble = showAt('bottom', {
+      top: 200,
+      bottom: 220,
+      left: 300,
+      right: 400,
+      width: 100,
+      height: 20,
+    })
+
+    expect(rectSpy.mock.instances).not.toContain(bubble)
+    // Centred on the trigger using the bubble's full 288px width.
+    expect(bubble.style.left).toBe(`${300 + 50 - 144}px`)
   })
 })
 

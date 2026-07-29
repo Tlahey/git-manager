@@ -346,7 +346,14 @@ mod tests {
     fn window_excludes_commits_older_than_the_cutoff() {
         let dir = temp_dir("window");
         let repo = Repository::init(&dir).unwrap();
-        let old = commit_at(&repo, "refs/heads/main", "old work", &[("a.txt", "a")], 100, &[]);
+        let old = commit_at(
+            &repo,
+            "refs/heads/main",
+            "old work",
+            &[("a.txt", "a")],
+            100,
+            &[],
+        );
         commit_at(
             &repo,
             "refs/heads/main",
@@ -357,7 +364,8 @@ mod tests {
         );
 
         let (since, until) = last_hours(24);
-        let activity = build_ai_activity(dir.to_str().unwrap(), since, until, &["main".into()]).unwrap();
+        let activity =
+            build_ai_activity(dir.to_str().unwrap(), since, until, &["main".into()]).unwrap();
         assert_eq!(
             activity
                 .commits
@@ -376,10 +384,18 @@ mod tests {
     fn an_empty_window_reports_no_commits_and_no_range() {
         let dir = temp_dir("empty");
         let repo = Repository::init(&dir).unwrap();
-        commit_at(&repo, "refs/heads/main", "old work", &[("a.txt", "a")], 100, &[]);
+        commit_at(
+            &repo,
+            "refs/heads/main",
+            "old work",
+            &[("a.txt", "a")],
+            100,
+            &[],
+        );
 
         let (since, until) = last_hours(24);
-        let activity = build_ai_activity(dir.to_str().unwrap(), since, until, &["main".into()]).unwrap();
+        let activity =
+            build_ai_activity(dir.to_str().unwrap(), since, until, &["main".into()]).unwrap();
         assert!(activity.commits.is_empty());
         assert!(activity.base_oid.is_none());
         assert!(activity.head_oid.is_none());
@@ -391,7 +407,14 @@ mod tests {
     fn root_only_window(name: &str) -> (std::path::PathBuf, Oid) {
         let dir = temp_dir(name);
         let repo = Repository::init(&dir).unwrap();
-        let root = commit_at(&repo, "refs/heads/main", "first ever", &[("a.txt", "a")], 2, &[]);
+        let root = commit_at(
+            &repo,
+            "refs/heads/main",
+            "first ever",
+            &[("a.txt", "a")],
+            2,
+            &[],
+        );
         (dir, root)
     }
 
@@ -399,7 +422,8 @@ mod tests {
     fn a_root_commit_is_its_own_range_base() {
         let (dir, root) = root_only_window("root");
         let (since, until) = last_hours(24);
-        let activity = build_ai_activity(dir.to_str().unwrap(), since, until, &["main".into()]).unwrap();
+        let activity =
+            build_ai_activity(dir.to_str().unwrap(), since, until, &["main".into()]).unwrap();
         assert_eq!(activity.base_oid, Some(root.to_string()));
         assert_eq!(activity.head_oid, Some(root.to_string()));
         std::fs::remove_dir_all(&dir).ok();
@@ -504,7 +528,11 @@ mod tests {
         let activity =
             build_ai_activity(dir.to_str().unwrap(), since, until, &["main".into()]).unwrap();
 
-        let subjects: Vec<&str> = activity.commits.iter().map(|c| c.subject.as_str()).collect();
+        let subjects: Vec<&str> = activity
+            .commits
+            .iter()
+            .map(|c| c.subject.as_str())
+            .collect();
         assert!(subjects.contains(&"landed on main"));
         assert!(!subjects.contains(&"never merged"));
         std::fs::remove_dir_all(&dir).ok();
@@ -516,7 +544,14 @@ mod tests {
     fn window_excludes_commits_newer_than_the_upper_bound() {
         let dir = temp_dir("upper-bound");
         let repo = Repository::init(&dir).unwrap();
-        let old = commit_at(&repo, "refs/heads/main", "day before", &[("a.txt", "a")], 72, &[]);
+        let old = commit_at(
+            &repo,
+            "refs/heads/main",
+            "day before",
+            &[("a.txt", "a")],
+            72,
+            &[],
+        );
         let target = commit_at(
             &repo,
             "refs/heads/main",
@@ -525,18 +560,24 @@ mod tests {
             48,
             &[old],
         );
-        commit_at(&repo, "refs/heads/main", "today", &[("a.txt", "aaa")], 1, &[target]);
+        commit_at(
+            &repo,
+            "refs/heads/main",
+            "today",
+            &[("a.txt", "aaa")],
+            1,
+            &[target],
+        );
 
         // A window covering only the 48h-old commit: 60h ago → 36h ago.
         let now = now_epoch();
-        let activity =
-            build_ai_activity(
-                dir.to_str().unwrap(),
-                now - 60 * 3600,
-                now - 36 * 3600,
-                &["main".into()],
-            )
-            .unwrap();
+        let activity = build_ai_activity(
+            dir.to_str().unwrap(),
+            now - 60 * 3600,
+            now - 36 * 3600,
+            &["main".into()],
+        )
+        .unwrap();
 
         assert_eq!(
             activity
@@ -559,14 +600,13 @@ mod tests {
         commit_at(&repo, "refs/heads/main", "today", &[("a.txt", "a")], 1, &[]);
 
         let now = now_epoch();
-        let activity =
-            build_ai_activity(
-                dir.to_str().unwrap(),
-                now - 60 * 3600,
-                now - 36 * 3600,
-                &["main".into()],
-            )
-            .unwrap();
+        let activity = build_ai_activity(
+            dir.to_str().unwrap(),
+            now - 60 * 3600,
+            now - 36 * 3600,
+            &["main".into()],
+        )
+        .unwrap();
 
         assert!(activity.commits.is_empty());
         assert!(activity.base_oid.is_none());

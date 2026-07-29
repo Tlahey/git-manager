@@ -36,7 +36,7 @@ interface GraphRowProps {
   columns: ResolvedColumn[]
   isSelected: boolean
   isPrimary: boolean
-  /** Left click (handles plain / Cmd+click / Shift+click via the event). */
+  /** Left click (handles plain / Cmd+click / Shift+click through the event). */
   onSelect: (e: React.MouseEvent) => void
   /** Right click: opens the actions context menu. */
   onContextMenu: (e: React.MouseEvent) => void
@@ -64,12 +64,16 @@ interface GraphRowProps {
   /** Branch owning this row's colored lane. Shown faintly, on hover only, in the refs column of a
    * commit that carries no ref badge of its own — hints which branch the commit sits on. */
   laneRef?: GitRef
-  /** Largest column (lane) used by the whole graph — determines the graph column's display mode
+  /** Largest column (lane) used by the whole graph — decides the graph column's display mode
    * (full / overflow / compact), shared by every row. */
   graphMaxColumn?: number
   /** Horizontal scroll offset of the graph column, shared by every row so the lanes stay aligned
    * (see `useGraphColumnScroll`). */
   graphScrollX?: number
+  /** Tag short names the user keeps off the graph — their badge is dropped, the commit stays. */
+  hiddenTags?: string[]
+  /** Branches kept off the graph, on the same terms as the tags — `main` / `origin/main`. */
+  hiddenBranches?: string[]
   /** True while this row is awaiting an inline tag name — its refs cell shows the name input
    * instead of the ref badges. Only ever set on a single row at a time. */
   isTagDraft?: boolean
@@ -95,6 +99,8 @@ function CellContent({
   isActive,
   laneRef,
   agentActivity,
+  hiddenTags = [],
+  hiddenBranches = [],
   isTagDraft,
   onSubmitTag,
   onCancelTag,
@@ -115,6 +121,10 @@ function CellContent({
   laneRef?: GitRef
   /** AI agent working in this row's worktree (already resolved for WIP / WIP:<path> rows). */
   agentActivity?: WorktreeAgentActivity
+  /** Tag short names the user keeps off the graph — their badge is dropped, the commit stays. */
+  hiddenTags?: string[]
+  /** Branches kept off the graph, on the same terms as the tags — `main` / `origin/main`. */
+  hiddenBranches?: string[]
   isTagDraft?: boolean
   onSubmitTag?: (name: string) => void
   onCancelTag?: () => void
@@ -135,7 +145,21 @@ function CellContent({
         )
       }
       if (isStashCommit) return null
-      const filteredRefs = node.refs
+      // A hidden tag or branch loses its badge only — the commit keeps its row and its other refs,
+      // which is what separates this from a hidden stash (dropped from the log by the backend).
+      // `shortName` tells local from remote on its own (`main` vs `origin/main`), which is exactly
+      // how the hidden list names them.
+      const filteredRefs =
+        hiddenTags.length || hiddenBranches.length
+          ? node.refs.filter(
+              (r) =>
+                !(r.type === 'tag' && hiddenTags.includes(r.shortName)) &&
+                !(
+                  (r.type === 'remote' || r.type === 'branch') &&
+                  hiddenBranches.includes(r.shortName)
+                )
+            )
+          : node.refs
       if (filteredRefs.length === 0) {
         // No ref badge of its own: on hover, faintly hint the branch owning this commit's lane.
         // Never on the synthetic WIP / conflict rows.
@@ -339,6 +363,8 @@ export const GraphRow = memo(function GraphRow({
   laneRef,
   graphMaxColumn = 0,
   graphScrollX = 0,
+  hiddenTags,
+  hiddenBranches,
   isTagDraft,
   onSubmitTag,
   onCancelTag,
@@ -517,6 +543,8 @@ export const GraphRow = memo(function GraphRow({
               isActive={isActiveRow}
               laneRef={laneRef}
               agentActivity={rowAgent}
+              hiddenTags={hiddenTags}
+              hiddenBranches={hiddenBranches}
               isTagDraft={isTagDraft}
               onSubmitTag={onSubmitTag}
               onCancelTag={onCancelTag}

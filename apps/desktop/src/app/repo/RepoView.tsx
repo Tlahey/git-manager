@@ -11,6 +11,8 @@ import { ActionToolbar } from '../../components/action-toolbar'
 import type { Section, Scope } from '../settings/SettingsPage'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useSidebarBranchMenu } from '../../hooks/useSidebarBranchMenu'
+import { useSidebarTagMenu } from '../../hooks/useSidebarTagMenu'
+import { TagDialogsManager } from '../../components/git-graph/components/TagDialogsManager'
 import { useFileExplorerStore } from '../../stores/fileExplorer.store'
 import { apiOpenRepo } from '../../api/repo.api'
 import { ProjectFilesView } from '../../components/file-explorer/ProjectFilesView'
@@ -87,6 +89,9 @@ export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
 
   const branchMenuPath = effectiveRepoPath ?? activeRepo ?? ''
   const { openBranchMenu, renameTarget, setRenameTarget } = useSidebarBranchMenu(branchMenuPath)
+  // The sidebar's tag rows open the tag menu, mounted here rather than in the graph: the graph is
+  // unmounted while the file explorer is open, and a tag row has to stay actionable there.
+  const { openTagMenu, pendingTagAction, setPendingTagAction } = useSidebarTagMenu(branchMenuPath)
 
   if (!activeRepo) return null
 
@@ -119,6 +124,8 @@ export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
           currentUser={activeAccount?.user?.login}
           githubToken={activeAccount?.token ?? undefined}
           onContextMenu={openBranchMenu}
+          onRemoteBranchContextMenu={openBranchMenu}
+          onTagContextMenu={openTagMenu}
         />
 
         {/* Central area — full-width history, or the file explorer */}
@@ -146,6 +153,12 @@ export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
       <BisectStashDialog repoPath={repoPath} />
       <CheckoutStashConfirm />
 
+      <TagDialogsManager
+        repoPath={branchMenuPath}
+        pendingTagAction={pendingTagAction}
+        onClearPendingTagAction={() => setPendingTagAction(null)}
+      />
+
       {renameTarget && (
         <RenameBranchDialog
           key={renameTarget}
@@ -155,6 +168,7 @@ export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
           onClose={() => setRenameTarget(null)}
         />
       )}
+
     </div>
   )
 }

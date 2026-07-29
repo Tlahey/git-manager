@@ -226,6 +226,12 @@ export interface GitSubmodule {
 export type PrState = 'open' | 'closed' | 'merged' | 'draft'
 export type PrCiStatus = 'success' | 'failure' | 'pending' | null
 
+/** A GitHub account attached to a pull request (author, assignee or requested reviewer). */
+export interface PrParticipant {
+  login: string
+  avatarUrl: string
+}
+
 export interface PullRequest {
   number: number
   title: string
@@ -240,6 +246,12 @@ export interface PullRequest {
   createdAt: string
   updatedAt: string
   isDraft: boolean
+  /** Accounts assigned to the PR. Drives the sidebar's "Assigned to me" grouping. */
+  assignees: PrParticipant[]
+  /** Accounts whose review is still requested (GitHub drops one once its review lands). Drives the
+   * sidebar's "Awaiting My Review" grouping. */
+  requestedReviewers: PrParticipant[]
+  labels: string[]
 }
 
 /** One template inside a `PULL_REQUEST_TEMPLATE/` directory. `name` is the file name (GitHub's

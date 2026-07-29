@@ -1,8 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { GitBranch, PullRequest } from '@git-manager/git-types'
+import type { GitBranch } from '@git-manager/git-types'
 import { BranchItem } from './BranchItem'
+import { DOUBLE_CLICK_DELAY } from '../../hooks/useSingleOrDoubleClick'
 
 vi.mock('./HoverExpandLabel', () => ({
   HoverExpandLabel: ({
@@ -64,9 +65,10 @@ describe('BranchItem — rendering', () => {
     expect(screen.queryByText('feat/ma_branche')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('ma_branche'))
-    expect(onSelect).toHaveBeenCalledWith('feat/ma_branche')
+    // The click is held for a beat in case it turns out to be a double one.
+    await waitFor(() => expect(onSelect).toHaveBeenCalledWith('feat/ma_branche'))
 
-    await user.click(screen.getByLabelText('Épingler feat/ma_branche'))
+    await user.click(screen.getByLabelText('Pin feat/ma_branche to the top'))
     expect(onTogglePin).toHaveBeenCalledWith('feat/ma_branche')
   })
 
@@ -96,26 +98,10 @@ describe('BranchItem — rendering', () => {
     expect(container.querySelector('mark')).toBeFalsy()
   })
 
-  it('shows ahead/behind counts only when non-zero', () => {
-    const { rerender } = render(
-      <BranchItem branch={branch()} isSelected={false} onSelect={vi.fn()} />
-    )
-    expect(screen.queryByText(/↑/)).not.toBeInTheDocument()
-
-    rerender(
-      <BranchItem
-        branch={branch({ aheadCount: 2, behindCount: 3 })}
-        isSelected={false}
-        onSelect={vi.fn()}
-      />
-    )
-    expect(screen.getByText('↑2')).toBeInTheDocument()
-    expect(screen.getByText('↓3')).toBeInTheDocument()
-  })
 })
 
 describe('BranchItem — interaction', () => {
-  it('selects the branch on click and Enter', () => {
+  it('selects the branch on click and Enter', async () => {
     const onSelect = vi.fn()
     render(
       <BranchItem
@@ -127,11 +113,96 @@ describe('BranchItem — interaction', () => {
     const row = screen.getByText('feature-x').closest('[role="button"]')!
 
     fireEvent.click(row)
-    expect(onSelect).toHaveBeenCalledWith('feature-x')
+    await waitFor(() => expect(onSelect).toHaveBeenCalledWith('feature-x'))
 
+    // Enter fires straight away: there is no double-tap to wait out on a keyboard.
     onSelect.mockClear()
     fireEvent.keyDown(row, { key: 'Enter' })
     expect(onSelect).toHaveBeenCalledWith('feature-x')
+  })
+
+  // One click moves the view, a double click switches branch — switching is the one destructive-ish
+  // thing the row can do, so it takes the deliberate gesture.
+  it('focuses the branch tip on a single click, without checking it out', async () => {
+    const onFocus = vi.fn()
+    const onCheckout = vi.fn()
+    render(
+      <BranchItem
+        branch={branch({ shortName: 'feature-x', commitOid: 'abc123' })}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onFocus={onFocus}
+        onCheckout={onCheckout}
+      />
+    )
+    fireEvent.click(screen.getByText('feature-x').closest('[role="button"]')!)
+    await waitFor(() =>
+      expect(onFocus).toHaveBeenCalledWith(expect.objectContaining({ shortName: 'feature-x' }))
+    )
+    expect(onCheckout).not.toHaveBeenCalled()
+  })
+
+  // The whole point of the delay: the DOM fires `click` on the way to a double click, so without
+  // it a checkout would always be preceded by the view jumping to the branch.
+  it('drops the pending single-click action when the second click lands', async () => {
+    const onSelect = vi.fn()
+    const onFocus = vi.fn()
+    const onCheckout = vi.fn()
+    render(
+      <BranchItem
+        branch={branch({ shortName: 'feature-x' })}
+        isSelected={false}
+        onSelect={onSelect}
+        onFocus={onFocus}
+        onCheckout={onCheckout}
+      />
+    )
+    const row = screen.getByText('feature-x').closest('[role="button"]')!
+
+    fireEvent.click(row)
+    fireEvent.doubleClick(row)
+
+    await waitFor(() => expect(onCheckout).toHaveBeenCalled())
+    // Well past the delay the held action is still gone, not merely late.
+    await new Promise((resolve) => setTimeout(resolve, DOUBLE_CLICK_DELAY + 50))
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(onFocus).not.toHaveBeenCalled()
+  })
+
+  it('checks the branch out on a double click', () => {
+    const onCheckout = vi.fn()
+    render(
+      <BranchItem
+        branch={branch({ shortName: 'feature-x' })}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onCheckout={onCheckout}
+      />
+    )
+    fireEvent.doubleClick(screen.getByText('feature-x').closest('[role="button"]')!)
+    expect(onCheckout).toHaveBeenCalledWith(expect.objectContaining({ shortName: 'feature-x' }))
+  })
+
+  // The actions button sits inside the row; without the guard, opening the menu would also move
+  // the graph, and a quick second click on it would switch branch.
+  it('ignores both gestures when they land on the actions button', () => {
+    const onFocus = vi.fn()
+    const onCheckout = vi.fn()
+    render(
+      <BranchItem
+        branch={branch({ shortName: 'feature-x' })}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onFocus={onFocus}
+        onCheckout={onCheckout}
+        onContextMenu={vi.fn()}
+      />
+    )
+    const actions = screen.getByTestId('branch-actions-feature-x')
+    fireEvent.click(actions)
+    fireEvent.doubleClick(actions)
+    expect(onFocus).not.toHaveBeenCalled()
+    expect(onCheckout).not.toHaveBeenCalled()
   })
 
   it('opens the context menu via right-click', () => {
@@ -160,7 +231,7 @@ describe('BranchItem — interaction', () => {
         onContextMenu={onContextMenu}
       />
     )
-    await user.click(screen.getByLabelText('Actions pour feature-x'))
+    await user.click(screen.getByTestId('branch-actions-feature-x'))
     expect(onContextMenu).toHaveBeenCalled()
     expect(onSelect).not.toHaveBeenCalled()
   })
@@ -169,7 +240,7 @@ describe('BranchItem — interaction', () => {
 describe('BranchItem — pin button', () => {
   it('is hidden when onTogglePin is not given', () => {
     render(<BranchItem branch={branch()} isSelected={false} onSelect={vi.fn()} />)
-    expect(screen.queryByLabelText(/pingler/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/^Pin /)).not.toBeInTheDocument()
   })
 
   it('is hidden when canPin is false, even with onTogglePin', () => {
@@ -182,7 +253,7 @@ describe('BranchItem — pin button', () => {
         canPin={false}
       />
     )
-    expect(screen.queryByLabelText(/pingler/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/^Pin /)).not.toBeInTheDocument()
   })
 
   it('toggles pin without selecting the branch', async () => {
@@ -198,12 +269,12 @@ describe('BranchItem — pin button', () => {
         isPinned
       />
     )
-    await user.click(screen.getByLabelText('Désépingler feature-x'))
+    await user.click(screen.getByLabelText('Unpin feature-x'))
     expect(onTogglePin).toHaveBeenCalledWith('feature-x')
     expect(onSelect).not.toHaveBeenCalled()
   })
 
-  it('shows the "épingler" label when not pinned', () => {
+  it('names the action in the active language when the branch is not pinned', () => {
     render(
       <BranchItem
         branch={branch({ shortName: 'feature-x' })}
@@ -213,7 +284,7 @@ describe('BranchItem — pin button', () => {
         isPinned={false}
       />
     )
-    expect(screen.getByLabelText('Épingler feature-x')).toBeInTheDocument()
+    expect(screen.getByLabelText('Pin feature-x to the top')).toBeInTheDocument()
   })
 })
 
@@ -292,48 +363,98 @@ describe('BranchItem — solo toggle', () => {
   })
 })
 
-describe('BranchItem — linked PR tag', () => {
-  function pr(overrides: Partial<PullRequest> = {}): PullRequest {
-    return {
-      number: 321,
-      title: 'PR',
-      body: '',
-      state: 'open',
-      author: 'a',
-      authorAvatar: '',
-      headRef: 'feature-x',
-      baseRef: 'main',
-      url: '',
-      ciStatus: null,
-      createdAt: '',
-      updatedAt: '',
-      isDraft: false,
-      ...overrides,
-    }
-  }
-
-  it('renders no PR tag when the branch has no linked PR', () => {
+// The row carries neither the linked PR's tag nor the ahead/behind counters: it is a name and its
+// actions, and both of those live where they can be read in full (the toolbar, the graph).
+describe('BranchItem — what the row deliberately leaves out', () => {
+  it('shows no PR tag', () => {
     render(<BranchItem branch={branch()} isSelected={false} onSelect={vi.fn()} />)
-    expect(screen.queryByTestId('pr-status-tag-321')).not.toBeInTheDocument()
+    expect(screen.queryByTestId(/^pr-status-tag-/)).not.toBeInTheDocument()
   })
 
-  it('shows the PR tag and opens the PR without selecting the branch', () => {
-    const onSelect = vi.fn()
-    const onOpenPr = vi.fn()
-    const linked = pr()
+  it('shows no ahead/behind counters', () => {
+    render(
+      <BranchItem
+        branch={branch({ aheadCount: 2, behindCount: 1 })}
+        isSelected={false}
+        onSelect={vi.fn()}
+      />
+    )
+    expect(screen.queryByText(/↑2/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/↓1/)).not.toBeInTheDocument()
+  })
+})
+
+describe('BranchItem — solo toggle', () => {
+  it('does not render the solo toggle when solo mode is off', () => {
     render(
       <BranchItem
         branch={branch()}
         isSelected={false}
-        onSelect={onSelect}
-        pr={linked}
-        onOpenPr={onOpenPr}
+        onSelect={vi.fn()}
+        onToggleSolo={vi.fn()}
       />
     )
-    const tag = screen.getByTestId('pr-status-tag-321')
-    expect(tag).toHaveTextContent('#321')
-    fireEvent.click(tag)
-    expect(onOpenPr).toHaveBeenCalledWith(linked)
+    expect(screen.queryByTestId('branch-solo-toggle')).not.toBeInTheDocument()
+  })
+
+  it('renders a "Show this branch" toggle for a hidden branch in solo mode', () => {
+    render(
+      <BranchItem
+        branch={branch()}
+        isSelected={false}
+        onSelect={vi.fn()}
+        soloActive
+        isSoloed={false}
+        onToggleSolo={vi.fn()}
+      />
+    )
+    expect(screen.getByLabelText('Show this branch')).toBeInTheDocument()
+  })
+
+  it('renders a "Hide this branch" toggle for a soloed branch in solo mode', () => {
+    render(
+      <BranchItem
+        branch={branch()}
+        isSelected={false}
+        onSelect={vi.fn()}
+        soloActive
+        isSoloed
+        onToggleSolo={vi.fn()}
+      />
+    )
+    expect(screen.getByLabelText('Hide this branch')).toBeInTheDocument()
+  })
+
+  it('dims a hidden branch row in solo mode', () => {
+    const { container } = render(
+      <BranchItem
+        branch={branch()}
+        isSelected={false}
+        onSelect={vi.fn()}
+        soloActive
+        isSoloed={false}
+        onToggleSolo={vi.fn()}
+      />
+    )
+    expect(container.firstElementChild).toHaveClass('opacity-50')
+  })
+
+  it('toggles solo by shortName without selecting the branch', async () => {
+    const onSelect = vi.fn()
+    const onToggleSolo = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <BranchItem
+        branch={branch({ shortName: 'feature-x' })}
+        isSelected={false}
+        onSelect={onSelect}
+        soloActive
+        isSoloed={false}
+        onToggleSolo={onToggleSolo}
+      />
+    )
+    await user.click(screen.getByTestId('branch-solo-toggle'))
+    expect(onToggleSolo).toHaveBeenCalledWith('feature-x')
     expect(onSelect).not.toHaveBeenCalled()
   })
 })

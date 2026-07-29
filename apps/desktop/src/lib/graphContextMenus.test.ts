@@ -10,10 +10,12 @@ import {
   buildStashMenuSpec,
   buildRefDropMenuSpec,
   buildTagMenuSpec,
+  buildSidebarBranchMenuSpec,
   isMainBranchName,
   type BranchMenuActions,
   type CommitMenuActions,
   type GraphCommitMenuContext,
+  type SidebarBranchMenuContext,
   type WipMenuActions,
 } from './graphContextMenus'
 import { normalizeMenuSpec, type MenuSpecNode } from './nativeMenuSpec'
@@ -271,6 +273,258 @@ describe('buildBranchSubmenu — remote branch', () => {
   })
 })
 
+describe('buildSidebarBranchMenuSpec — remote branch', () => {
+  const origin = () =>
+    ref({ shortName: 'origin/main', type: 'remote', name: 'refs/remotes/origin/main' })
+
+  function menu(overrides: Partial<SidebarBranchMenuContext> = {}) {
+    const actions = { ...branchActions(), onToggleVisibility: vi.fn() }
+    const commits = commitActions()
+    const context = { ...ctx({ currentBranch: 'feat' }), isHidden: false, ...overrides }
+    const nodes = normalizeMenuSpec(
+      buildSidebarBranchMenuSpec(origin(), { ...context, refs: [origin()] }, actions, commits, t)
+    )
+    return { nodes, actions, commits }
+  }
+
+  // The sidebar row is the one place the commit-scoped actions have an unambiguous target, so the
+  // whole ordered list is asserted rather than a handful of entries.
+  it('lists the branch, commit and row actions in order', () => {
+    expect(texts(menu().nodes)).toEqual([
+      'Fast-forward feat to origin/main',
+      'Merge origin/main into feat',
+      'Rebase feat onto origin/main',
+      'Checkout origin/main',
+      'Open worktree from origin/main',
+      'Create branch here',
+      'Cherry-pick this commit',
+      'Revert this commit',
+      'Push feat and start a pull request to origin/main',
+      'Explain branch changes (LLM)',
+      'Delete origin/main',
+      'Copy branch name',
+      'Copy commit sha',
+      'Copy link to branch: origin/main',
+      'Copy link to this commit on remote: origin',
+      'Hide the branch',
+      'Pin to left',
+      'Solo',
+      'Compare commit against working directory',
+      'Create tag here',
+      'Create annotated tag here…',
+    ])
+  })
+
+  it('offers the three reset modes under one submenu, named after the current branch', () => {
+    const { nodes, commits } = menu()
+    const reset = nodes.find(
+      (n): n is SubmenuNode => n.kind === 'submenu' && n.text === 'Reset feat to this commit'
+    )!
+    const modes = normalizeMenuSpec(reset.items)
+    expect(texts(modes)).toHaveLength(3)
+    items(modes)[2].action?.()
+    expect(commits.onReset).toHaveBeenCalledWith('hard')
+  })
+
+  it('flips the Hide entry once the branch is hidden', () => {
+    const { nodes, actions } = menu({ isHidden: true })
+    expect(texts(nodes)).toContain('Show the branch')
+    expect(texts(nodes)).not.toContain('Hide the branch')
+    item(nodes, 'Show the branch')?.action?.()
+    expect(actions.onToggleVisibility).toHaveBeenCalledWith(
+      expect.objectContaining({ shortName: 'origin/main' })
+    )
+  })
+
+  // Same rules as everywhere else: they are the shared sections, not a second copy of them.
+  it('keeps the shared gates — no sync section, Delete disabled, no PR on a detached HEAD', () => {
+    const { nodes } = menu()
+    expect(texts(nodes)).not.toContain('Push')
+    expect(item(nodes, 'Delete origin/main')?.enabled).toBe(false)
+
+    const detached = menu({ currentBranch: null, isDetached: true })
+    expect(texts(detached.nodes).some((l) => l.includes('pull request'))).toBe(false)
+    // Nothing to fast-forward/merge/rebase against either.
+    expect(texts(detached.nodes).some((l) => l.startsWith('Fast-forward'))).toBe(false)
+  })
+
+  it('disables the explanation when AI is off, leaving it discoverable', () => {
+    const { nodes } = menu({ aiEnabled: false })
+    expect(item(nodes, 'Explain branch changes (LLM)')?.enabled).toBe(false)
+  })
+
+  it('routes the commit-scoped entries to the branch tip actions', () => {
+    const { nodes, commits } = menu()
+    item(nodes, 'Create branch here')?.action?.()
+    item(nodes, 'Cherry-pick this commit')?.action?.()
+    item(nodes, 'Revert this commit')?.action?.()
+    item(nodes, 'Compare commit against working directory')?.action?.()
+    item(nodes, 'Create tag here')?.action?.()
+    expect(commits.onCreateBranch).toHaveBeenCalled()
+    expect(commits.onCherryPick).toHaveBeenCalled()
+    expect(commits.onRevert).toHaveBeenCalled()
+    expect(commits.onCompareToWorkdir).toHaveBeenCalled()
+    expect(commits.onCreateTag).toHaveBeenCalled()
+  })
+})
+
+describe('buildSidebarBranchMenuSpec — local branch', () => {
+  const feat = () => ref({ shortName: 'feat/login', name: 'refs/heads/feat/login' })
+
+  function menu(overrides: Partial<SidebarBranchMenuContext> = {}) {
+    const actions = { ...branchActions(), onToggleVisibility: vi.fn() }
+    const commits = commitActions()
+    const context = { ...ctx({ currentBranch: 'main' }), isHidden: false, ...overrides }
+    const nodes = normalizeMenuSpec(
+      buildSidebarBranchMenuSpec(feat(), { ...context, refs: [feat()] }, actions, commits, t)
+    )
+    return { nodes, actions, commits }
+  }
+
+  // The same menu as a remote row's, told apart only by what the ref's own type allows.
+  it('lists the branch, commit and row actions in order', () => {
+    expect(texts(menu().nodes)).toEqual([
+      'Fast-forward main to feat/login',
+      'Merge feat/login into main',
+      'Rebase main onto feat/login',
+      'Checkout feat/login',
+      'Open worktree from feat/login',
+      'Create branch here',
+      'Cherry-pick this commit',
+      'Revert this commit',
+      'Push main and start a pull request to feat/login',
+      'Explain branch changes (LLM)',
+      'Rename feat/login',
+      'Delete feat/login',
+      'Copy branch name',
+      'Copy commit sha',
+      'Copy link to this commit on remote: origin',
+      'Hide the branch',
+      'Pin to left',
+      'Solo',
+      'Create tag here',
+      'Create annotated tag here…',
+    ])
+  })
+
+  // Pull and Push act on HEAD, not on the row: they belong to the toolbar, not to a branch's menu.
+  it('drops the sync section the graph shows for a local branch', () => {
+    const labels = texts(menu().nodes)
+    expect(labels).not.toContain('Pull (fast-forward if possible)')
+    expect(labels).not.toContain('Push')
+    expect(labels).not.toContain('Set upstream')
+  })
+
+  it('really deletes a local branch, unlike the disabled remote entry', () => {
+    const { nodes, actions } = menu()
+    expect(item(nodes, 'Delete feat/login')?.enabled).not.toBe(false)
+    item(nodes, 'Delete feat/login')?.action?.()
+    expect(actions.onDeleteBranch).toHaveBeenCalled()
+  })
+
+  // Nothing to switch to, nothing to merge into itself, no pull request to open against itself.
+  it('drops checkout, the relationship actions and the PR entry on the current branch', () => {
+    const current = normalizeMenuSpec(
+      buildSidebarBranchMenuSpec(
+        ref({ shortName: 'main' }),
+        { ...ctx({ currentBranch: 'main', refs: [ref({ shortName: 'main' })] }), isHidden: false },
+        { ...branchActions(), onToggleVisibility: vi.fn() },
+        commitActions(),
+        t
+      )
+    )
+    const labels = texts(current)
+    expect(labels.some((l) => l.startsWith('Checkout '))).toBe(false)
+    expect(labels.some((l) => l.startsWith('Fast-forward '))).toBe(false)
+    expect(labels.some((l) => l.includes('pull request'))).toBe(false)
+    expect(labels.some((l) => l.startsWith('Delete '))).toBe(false)
+  })
+
+  it('flips the Hide entry once the branch is hidden', () => {
+    const { nodes, actions } = menu({ isHidden: true })
+    expect(texts(nodes)).toContain('Show the branch')
+    item(nodes, 'Show the branch')?.action?.()
+    expect(actions.onToggleVisibility).toHaveBeenCalledWith(
+      expect.objectContaining({ shortName: 'feat/login' })
+    )
+  })
+})
+
+describe('buildSidebarBranchMenuSpec — the trunk', () => {
+  function trunkMenu(shortName = 'main', overrides: Partial<SidebarBranchMenuContext> = {}) {
+    const branchRef = ref({ shortName, name: `refs/heads/${shortName}` })
+    const context = { ...ctx({ currentBranch: 'feat' }), isHidden: false, ...overrides }
+    return normalizeMenuSpec(
+      buildSidebarBranchMenuSpec(
+        branchRef,
+        { ...context, refs: [branchRef] },
+        { ...branchActions(), onToggleVisibility: vi.fn() },
+        commitActions(),
+        t
+      )
+    )
+  }
+
+  it('lists the branch, commit and row actions in order', () => {
+    expect(texts(trunkMenu())).toEqual([
+      'Pull (fast-forward if possible)',
+      'Push',
+      'Set upstream',
+      'Fast-forward feat to main',
+      'Merge main into feat',
+      'Rebase feat onto main',
+      'Checkout main',
+      'Open worktree from main',
+      'Create branch here',
+      'Cherry-pick this commit',
+      'Revert this commit',
+      'Explain branch changes (LLM)',
+      'Rename main',
+      'Delete main',
+      'Copy branch name',
+      'Copy commit sha',
+      'Copy link to branch: origin/main',
+      'Copy link to this commit on remote: origin',
+      'Hide the branch',
+      'Pin to left',
+      'Solo',
+      'Create tag here',
+      'Create annotated tag here…',
+    ])
+  })
+
+  // Pull and push act on HEAD, so they read as the trunk's own actions and stay off every other
+  // row; `master` is the trunk under its other name.
+  it('offers the sync section on master too, and on no other local branch', () => {
+    expect(texts(trunkMenu('master'))).toContain('Pull (fast-forward if possible)')
+    expect(texts(trunkMenu('feat/login'))).not.toContain('Pull (fast-forward if possible)')
+  })
+
+  // A pull request targets the trunk, it is not opened from it.
+  it('offers no pull request entry on the trunk, unlike any other branch', () => {
+    expect(texts(trunkMenu()).some((l) => l.includes('pull request'))).toBe(false)
+    expect(texts(trunkMenu('feat/login')).some((l) => l.includes('pull request'))).toBe(true)
+  })
+
+  it('keeps the sync section off a remote trunk, which HEAD cannot pull or push', () => {
+    const originMain = ref({
+      shortName: 'origin/main',
+      type: 'remote',
+      name: 'refs/remotes/origin/main',
+    })
+    const nodes = normalizeMenuSpec(
+      buildSidebarBranchMenuSpec(
+        originMain,
+        { ...ctx({ currentBranch: 'feat', refs: [originMain] }), isHidden: false },
+        { ...branchActions(), onToggleVisibility: vi.fn() },
+        commitActions(),
+        t
+      )
+    )
+    expect(texts(nodes)).not.toContain('Pull (fast-forward if possible)')
+  })
+})
+
 describe('buildBranchSubmenus', () => {
   it('creates a submenu per branch/remote ref and skips tags, stashes and HEAD', () => {
     const spec = buildBranchSubmenus(
@@ -458,11 +712,12 @@ describe('buildRefDropMenuSpec', () => {
 
 describe('buildTagMenuSpec', () => {
   const tagActions = () => ({
+    onPush: vi.fn(),
+    onFastForward: vi.fn(),
     onMerge: vi.fn(),
     onRebase: vi.fn(),
-    onInteractiveRebase: vi.fn(),
     onCheckout: vi.fn(),
-    onCreateWorktree: vi.fn(),
+    onExplain: vi.fn(),
     onCreateBranch: vi.fn(),
     onCherryPick: vi.fn(),
     onReset: vi.fn(),
@@ -471,11 +726,81 @@ describe('buildTagMenuSpec', () => {
     onDeleteRemote: vi.fn(),
     onCopyName: vi.fn(),
     onCopyLink: vi.fn(),
+    onToggleHidden: vi.fn(),
+    onSolo: vi.fn(),
     onAnnotate: vi.fn(),
   })
-  const tagCtx = (relationEnabled: boolean) => ({
+  const tagCtx = (relationEnabled: boolean, isHidden = false) => ({
     params: { tag: 'v1.0', branch: 'main', remote: 'origin' },
     relationEnabled,
+    isHidden,
+  })
+
+  // The order is the specification, not an accident: locking it here means a reordering shows up
+  // as a failing test rather than as a silently rearranged menu.
+  it('lays the menu out in the agreed order, separators included', () => {
+    const spec = normalizeMenuSpec(buildTagMenuSpec(tagCtx(true), tagActions(), t))
+    expect(spec.map((n) => (n.kind === 'item' || n.kind === 'submenu' ? n.text : '---'))).toEqual([
+      'Push v1.0 to origin',
+      '---',
+      'Fast-forward v1.0 to main',
+      'Merge v1.0 into main',
+      'Rebase main onto v1.0',
+      '---',
+      'Checkout this commit',
+      '---',
+      'Explain Branch Changes (LLM)',
+      '---',
+      'Create branch here',
+      'Cherry-pick this commit',
+      'Reset main to this commit',
+      'Revert this commit',
+      '---',
+      'Delete v1.0 locally',
+      'Delete v1.0 from origin',
+      '---',
+      'Copy tag name',
+      '---',
+      'Copy link to this tag on remote: origin',
+      '---',
+      'Hide',
+      'Solo',
+      '---',
+      'Annotate v1.0',
+    ])
+  })
+
+  it('offers Show instead of Hide once the tag is hidden', () => {
+    const shown = normalizeMenuSpec(buildTagMenuSpec(tagCtx(true, false), tagActions(), t))
+    expect(texts(shown)).toContain('Hide')
+    expect(texts(shown)).not.toContain('Show')
+
+    const hidden = normalizeMenuSpec(buildTagMenuSpec(tagCtx(true, true), tagActions(), t))
+    expect(texts(hidden)).toContain('Show')
+    expect(texts(hidden)).not.toContain('Hide')
+  })
+
+  it('wires push, fast-forward, explain, hide and solo', () => {
+    const actions = tagActions()
+    const spec = normalizeMenuSpec(buildTagMenuSpec(tagCtx(true), actions, t))
+    item(spec, 'Push v1.0 to origin')?.action?.()
+    item(spec, 'Fast-forward v1.0 to main')?.action?.()
+    item(spec, 'Explain Branch Changes (LLM)')?.action?.()
+    item(spec, 'Hide')?.action?.()
+    item(spec, 'Solo')?.action?.()
+    expect(actions.onPush).toHaveBeenCalled()
+    expect(actions.onFastForward).toHaveBeenCalled()
+    expect(actions.onExplain).toHaveBeenCalled()
+    expect(actions.onToggleHidden).toHaveBeenCalled()
+    expect(actions.onSolo).toHaveBeenCalled()
+  })
+
+  // Publishing a tag never depends on where HEAD is; moving/merging/rebasing/resetting does.
+  it('keeps push and the tag-only actions enabled while detached', () => {
+    const spec = normalizeMenuSpec(buildTagMenuSpec(tagCtx(false), tagActions(), t))
+    expect(item(spec, 'Push v1.0 to origin')?.enabled).not.toBe(false)
+    expect(item(spec, 'Fast-forward v1.0 to main')?.enabled).toBe(false)
+    expect(item(spec, 'Annotate v1.0')?.enabled).not.toBe(false)
   })
 
   it('disables the relationship actions when detached (relationEnabled false)', () => {

@@ -7,6 +7,8 @@ interface PrSidebarSectionProps {
   onEdit?: () => void
   editTitle?: string
   testId?: string
+  /** Extra classes on the section — e.g. `border-b-0` on the last block of a panel that ends there. */
+  className?: string
   children: ReactNode
 }
 
@@ -17,10 +19,11 @@ export function PrSidebarSection({
   onEdit,
   editTitle,
   testId,
+  className = '',
   children,
 }: PrSidebarSectionProps) {
   return (
-    <section data-testid={testId} className="border-b border-border px-3 py-2.5">
+    <section data-testid={testId} className={`border-b border-border px-3 py-2.5 ${className}`}>
       <div className="mb-1.5 flex items-center justify-between">
         <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           {title}
