@@ -116,6 +116,45 @@ describe('PrHoverCard — timeline', () => {
     expect(screen.queryByTestId('pr-hover-card-opened')).not.toBeInTheDocument()
     expect(screen.queryByTestId('pr-hover-card-updated')).not.toBeInTheDocument()
   })
+
+  // The block carries a top border, so an empty one is a rule across the card separating nothing
+  // from nothing. One border survives here: the review block, which has a summary to show.
+  it('drops the whole block, divider included, when neither date is usable', () => {
+    const withDates = renderTimeline()
+    expect(withDates.container.querySelectorAll('.border-t')).toHaveLength(2)
+    withDates.unmount()
+
+    const { container } = renderTimeline({ createdAt: '', updatedAt: '' })
+    expect(container.querySelectorAll('.border-t')).toHaveLength(1)
+  })
+
+  it('keeps the block when only one of the two dates is usable', () => {
+    renderTimeline({ createdAt: CREATED, updatedAt: '' })
+    expect(screen.getByTestId('pr-hover-card-opened')).toBeInTheDocument()
+    expect(screen.queryByTestId('pr-hover-card-updated')).not.toBeInTheDocument()
+  })
+})
+
+describe('PrHoverCard — empty review block', () => {
+  // Routine, not an edge case: the lookup is off whenever there is no repo path, no GitHub token,
+  // or the request failed — and an empty bordered block is a divider at the bottom of the card.
+  it('draws no review block at all when the lookup produced nothing', () => {
+    const { container } = render(
+      <PrHoverCard pr={pr({ createdAt: '', updatedAt: '' })} summary={undefined} isLoading={false} />
+    )
+    expect(container.querySelectorAll('.border-t')).toHaveLength(0)
+    expect(screen.queryByText('Loading review status…')).not.toBeInTheDocument()
+  })
+
+  it('still draws it while the lookup is in flight', () => {
+    render(<PrHoverCard pr={pr()} summary={undefined} isLoading />)
+    expect(screen.getByText('Loading review status…')).toBeInTheDocument()
+  })
+
+  it('still draws it once a summary arrives, even an empty one', () => {
+    render(<PrHoverCard pr={pr()} summary={summary()} isLoading={false} />)
+    expect(screen.getByText('No reviewer requested')).toBeInTheDocument()
+  })
 })
 
 describe('PrHoverCard — review data', () => {

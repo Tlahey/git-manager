@@ -103,9 +103,13 @@ export function IssueHoverCard({ issue }: IssueHoverCardProps) {
           />
         </PrSidebarSection>
 
-        {/* Last section: no bottom divider needed, but `PrSidebarSection` draws one for every
-            block — the column ends on it, which reads as the card's own edge. */}
-        <PrSidebarSection title={t('pr.side.labels')} testId="issue-hover-labels">
+        {/* `PrSidebarSection` draws a bottom divider on every block, which suits the tall panel it
+            was built for but leaves a rule across the bottom of a card that ends here. */}
+        <PrSidebarSection
+          title={t('pr.side.labels')}
+          testId="issue-hover-labels"
+          className="border-b-0"
+        >
           {issue.labels.length > 0 ? (
             <ul className="flex flex-wrap gap-1">
               {issue.labels.slice(0, MAX_LABELS).map((label) => (

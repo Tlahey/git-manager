@@ -83,16 +83,15 @@ function epochSeconds(iso: string | undefined): number | null {
 /** One "<label>  <absolute date> (<relative>)" line of the card's timeline. */
 function TimelineRow({
   label,
-  iso,
+  seconds,
   locale,
   testId,
 }: {
   label: string
-  iso: string | undefined
+  seconds: number | null
   locale: string
   testId: string
 }) {
-  const seconds = epochSeconds(iso)
   if (seconds === null) return null
 
   return (
@@ -125,6 +124,15 @@ export function PrHoverCard({ pr, summary, isLoading }: PrHoverCardProps) {
   const status = derivePrTagStatus(pr)
   const checks = summary?.checksState ? CHECKS_STYLES[summary.checksState] : undefined
 
+  // Both trailing blocks carry a top border, so each has to know whether it has anything to show
+  // before it renders: an empty one is a rule across the bottom of the card separating nothing from
+  // nothing. The review block empties out whenever its lookup is off — no repo path, no token, or a
+  // failed request — which is a routine state, not an edge case.
+  const openedAt = epochSeconds(pr.createdAt)
+  const updatedAt = epochSeconds(pr.updatedAt)
+  const hasTimeline = openedAt !== null || updatedAt !== null
+  const hasReview = isLoading || !!summary
+
   return (
     <div className="w-72 whitespace-normal" data-testid={`pr-hover-card-${pr.number}`}>
       <div className="text-xs font-semibold leading-snug text-foreground">
@@ -151,82 +159,86 @@ export function PrHoverCard({ pr, summary, isLoading }: PrHoverCardProps) {
       {/* When it was opened, and when it last moved — both as an absolute date with the elapsed
           time beside it, since "is this stale?" and "which one was this again?" are different
           questions and the answer to each is useless in the other's form. */}
-      <div className="mt-2 space-y-0.5 border-t border-border pt-2">
-        <TimelineRow
-          label={t('sidebar.prCard.opened')}
-          iso={pr.createdAt}
-          locale={locale}
-          testId="pr-hover-card-opened"
-        />
-        <TimelineRow
-          label={t('sidebar.prCard.updated')}
-          iso={pr.updatedAt}
-          locale={locale}
-          testId="pr-hover-card-updated"
-        />
-      </div>
+      {hasTimeline && (
+        <div className="mt-2 space-y-0.5 border-t border-border pt-2">
+          <TimelineRow
+            label={t('sidebar.prCard.opened')}
+            seconds={openedAt}
+            locale={locale}
+            testId="pr-hover-card-opened"
+          />
+          <TimelineRow
+            label={t('sidebar.prCard.updated')}
+            seconds={updatedAt}
+            locale={locale}
+            testId="pr-hover-card-updated"
+          />
+        </div>
+      )}
 
-      <div className="mt-2 space-y-1.5 border-t border-border pt-2">
-        {isLoading && !summary ? (
-          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <Spinner className="h-3 w-3" />
-            {t('sidebar.prCard.loading')}
-          </div>
-        ) : (
-          <>
-            {summary?.reviewDecision && (
-              <div className="flex items-center gap-1.5 text-[10px]">
-                <CircleDot className="h-3 w-3 shrink-0 text-muted-foreground" />
-                <span className="text-muted-foreground">{t('sidebar.prCard.decisionLabel')}</span>
-                <span className="font-medium text-foreground">
-                  {t(REVIEW_DECISION_LABEL_KEY[summary.reviewDecision] ?? summary.reviewDecision)}
-                </span>
-              </div>
-            )}
-
-            {checks && (
-              <div className="flex items-center gap-1.5 text-[10px]">
-                <checks.Icon className={`h-3 w-3 shrink-0 ${checks.className}`} />
-                <span className="text-muted-foreground">{t('sidebar.prCard.checksLabel')}</span>
-                <span className={`font-medium ${checks.className}`}>{t(checks.labelKey)}</span>
-              </div>
-            )}
-
-            {summary && summary.reviewers.length > 0 ? (
-              <div className="space-y-1">
-                <div className="text-[10px] text-muted-foreground">
-                  {t('sidebar.prCard.reviewers')}
+      {hasReview && (
+        <div className="mt-2 space-y-1.5 border-t border-border pt-2">
+          {isLoading && !summary ? (
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <Spinner className="h-3 w-3" />
+              {t('sidebar.prCard.loading')}
+            </div>
+          ) : (
+            <>
+              {summary?.reviewDecision && (
+                <div className="flex items-center gap-1.5 text-[10px]">
+                  <CircleDot className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span className="text-muted-foreground">{t('sidebar.prCard.decisionLabel')}</span>
+                  <span className="font-medium text-foreground">
+                    {t(REVIEW_DECISION_LABEL_KEY[summary.reviewDecision] ?? summary.reviewDecision)}
+                  </span>
                 </div>
-                {summary.reviewers.map((reviewer) => {
-                  const style = REVIEWER_STATE_STYLES[reviewer.state]
-                  return (
-                    <div key={reviewer.login} className="flex items-center gap-1.5 text-[10px]">
-                      <Avatar
-                        src={reviewer.avatarUrl}
-                        alt={reviewer.login}
-                        size={14}
-                        fallback={reviewer.login.charAt(0).toUpperCase()}
-                        className="bg-muted text-muted-foreground"
-                      />
-                      <span className="min-w-0 flex-1 truncate text-foreground">
-                        {reviewer.login}
-                      </span>
-                      <style.Icon className={`h-3 w-3 shrink-0 ${style.className}`} />
-                      <span className={style.className}>{t(style.labelKey)}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              summary && (
-                <div className="text-[10px] text-muted-foreground">
-                  {t('sidebar.prCard.noReviewers')}
+              )}
+
+              {checks && (
+                <div className="flex items-center gap-1.5 text-[10px]">
+                  <checks.Icon className={`h-3 w-3 shrink-0 ${checks.className}`} />
+                  <span className="text-muted-foreground">{t('sidebar.prCard.checksLabel')}</span>
+                  <span className={`font-medium ${checks.className}`}>{t(checks.labelKey)}</span>
                 </div>
-              )
-            )}
-          </>
-        )}
-      </div>
+              )}
+
+              {summary && summary.reviewers.length > 0 ? (
+                <div className="space-y-1">
+                  <div className="text-[10px] text-muted-foreground">
+                    {t('sidebar.prCard.reviewers')}
+                  </div>
+                  {summary.reviewers.map((reviewer) => {
+                    const style = REVIEWER_STATE_STYLES[reviewer.state]
+                    return (
+                      <div key={reviewer.login} className="flex items-center gap-1.5 text-[10px]">
+                        <Avatar
+                          src={reviewer.avatarUrl}
+                          alt={reviewer.login}
+                          size={14}
+                          fallback={reviewer.login.charAt(0).toUpperCase()}
+                          className="bg-muted text-muted-foreground"
+                        />
+                        <span className="min-w-0 flex-1 truncate text-foreground">
+                          {reviewer.login}
+                        </span>
+                        <style.Icon className={`h-3 w-3 shrink-0 ${style.className}`} />
+                        <span className={style.className}>{t(style.labelKey)}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                summary && (
+                  <div className="text-[10px] text-muted-foreground">
+                    {t('sidebar.prCard.noReviewers')}
+                  </div>
+                )
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }

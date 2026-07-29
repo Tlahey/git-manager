@@ -86,6 +86,19 @@ describe('IssueHoverCard — metadata column', () => {
     expect(screen.getByTestId('issue-hover-labels')).toBeInTheDocument()
   })
 
+  // PrSidebarSection draws a bottom divider on every block, which suits the tall panel it was built
+  // for but leaves a rule across the bottom of a card that ends there.
+  it('strips the last section\'s divider so the column does not end on one', () => {
+    render(<IssueHoverCard issue={issue()} />)
+    const sections = screen.getByTestId('issue-hover-card-meta').querySelectorAll('section')
+
+    // Asserted on the class, not the computed style: Tailwind is not compiled under jsdom, so
+    // every border reads as an empty string there.
+    expect(sections.length).toBeGreaterThan(1)
+    expect(sections[0]).not.toHaveClass('border-b-0')
+    expect(sections[sections.length - 1]).toHaveClass('border-b-0')
+  })
+
   // Read-only: the real sidebar's edit buttons fetch and mutate, which a hover must not do.
   it('offers no edit affordance on any section', () => {
     render(<IssueHoverCard issue={issue({ labels: ['bug'] })} />)
