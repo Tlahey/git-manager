@@ -616,10 +616,15 @@ export interface NotificationSettings {
   notifyOnPush: boolean
   enableSound: boolean
   soundName?: string
+  /** Gates both terminal PR states: merged and closed-without-merging. */
   notifyOnPrMerged?: boolean
+  /** Auto-merge armed on a PR ("merge when ready" / merge queue). */
+  notifyOnPrQueued?: boolean
   notifyOnReviewRequested?: boolean
   notifyOnReviewStatusChanged?: boolean
   notifyOnNewPr?: boolean
+  /** Gates both CI outcomes: checks going green and checks failing. */
+  notifyOnCi?: boolean
 }
 
 export interface GitSettings {

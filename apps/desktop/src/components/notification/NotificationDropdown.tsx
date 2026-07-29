@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useNotificationStore, type AppNotification } from '../../stores/notification.store'
+import {
+  useNotificationStore,
+  type AppNotification,
+  type SimulatedChange,
+} from '../../stores/notification.store'
 import { useRepoUIStore, PULL_REQUESTS_TAB } from '../../stores/repoUI.store'
 import { useLaunchpadStore } from '../../stores/launchpad.store'
 import { useSettingsStore } from '../../stores/settings.store'
@@ -40,9 +44,7 @@ export function NotificationDropdown() {
 
   // Simulator states
   const [simPrId, setSimPrId] = useState('')
-  const [simAction, setSimAction] = useState<
-    'merge' | 'close' | 'request_review' | 'approve' | 'new_pr' | 'ci_success' | 'ci_failed'
-  >('merge')
+  const [simAction, setSimAction] = useState<SimulatedChange>('merge')
 
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -283,9 +285,7 @@ export function NotificationDropdown() {
 
                     <NativeSelect
                       value={simAction}
-                      onChange={(e) =>
-                        setSimAction(e.target.value as Parameters<typeof simulateChange>[1])
-                      }
+                      onChange={(e) => setSimAction(e.target.value as SimulatedChange)}
                       className="h-6 rounded border border-border bg-background px-1.5 text-[9px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                     >
                       <option value="merge">{t('notifications.sim.prMerged')}</option>
@@ -297,6 +297,7 @@ export function NotificationDropdown() {
                       <option value="new_pr">{t('notifications.sim.newPR')}</option>
                       <option value="ci_success">{t('notifications.sim.ciSuccess')}</option>
                       <option value="ci_failed">{t('notifications.sim.ciFailed')}</option>
+                      <option value="queue">{t('notifications.sim.prQueued')}</option>
                     </NativeSelect>
                   </div>
                   <button

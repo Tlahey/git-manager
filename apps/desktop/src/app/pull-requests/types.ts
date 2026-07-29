@@ -41,6 +41,11 @@ export interface MockPR {
   comments: number
   ciDetails?: CiDetail[]
   needsRebase?: boolean
+  /**
+   * Auto-merge is armed on the PR ("merge when ready" — how a PR enters the repo's merge queue).
+   * Only the PR details endpoint reports it, so it stays false until enrichment runs.
+   */
+  autoMerge?: boolean
 }
 
 export interface MockIssue {

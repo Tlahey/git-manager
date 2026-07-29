@@ -10,6 +10,7 @@ export interface AppNotification {
   type:
     | 'pr_merged'
     | 'pr_closed'
+    | 'pr_queued'
     | 'review_requested'
     | 'review_status_changed'
     | 'new_pr'
@@ -27,18 +28,24 @@ export interface AppNotification {
   targetTab: 'prs' | 'waiting' | 'issues'
 }
 
+/**
+ * The per-PR state the watcher diffs one poll against the next — one field per lifecycle step a
+ * notification can be raised on. Lives here (next to the notifications it feeds) so the store and
+ * `lib/notifications/notificationRegistry.ts` share one shape instead of restating it.
+ */
+export interface PreviousPRSnapshot {
+  status: PRStatus
+  reviewStatus: ReviewStatus
+  needsMyReview: boolean
+  ciStatus?: CiStatus
+  /** Auto-merge armed — the "queued to merge" step between a green PR and a merged one. */
+  autoMerge?: boolean
+  updatedAt: string
+}
+
 interface NotificationState {
   notifications: AppNotification[]
-  previousPRs: Record<
-    string,
-    {
-      status: PRStatus
-      reviewStatus: ReviewStatus
-      needsMyReview: boolean
-      ciStatus?: CiStatus
-      updatedAt: string
-    }
-  >
+  previousPRs: Record<string, PreviousPRSnapshot>
   hasSessionInitialized: boolean
   mockPRs: MockPR[] // For simulation when offline/no GitHub token
 
@@ -51,33 +58,22 @@ interface NotificationState {
   clearNotifications: () => void
 
   // Watcher Actions
-  setPreviousPRs: (
-    prs: Record<
-      string,
-      {
-        status: PRStatus
-        reviewStatus: ReviewStatus
-        needsMyReview: boolean
-        ciStatus?: CiStatus
-        updatedAt: string
-      }
-    >
-  ) => void
+  setPreviousPRs: (prs: Record<string, PreviousPRSnapshot>) => void
   setSessionInitialized: (val: boolean) => void
 
   // Simulation Actions
-  simulateChange: (
-    prId: string,
-    actionType:
-      | 'merge'
-      | 'close'
-      | 'request_review'
-      | 'approve'
-      | 'new_pr'
-      | 'ci_success'
-      | 'ci_failed'
-  ) => void
+  simulateChange: (prId: string, actionType: SimulatedChange) => void
 }
+
+export type SimulatedChange =
+  | 'merge'
+  | 'close'
+  | 'queue'
+  | 'request_review'
+  | 'approve'
+  | 'new_pr'
+  | 'ci_success'
+  | 'ci_failed'
 
 export const useNotificationStore = create<NotificationState>()(
   persist(
@@ -160,6 +156,8 @@ export const useNotificationStore = create<NotificationState>()(
               updated.status = 'merged'
             } else if (actionType === 'close') {
               updated.status = 'closed'
+            } else if (actionType === 'queue') {
+              updated.autoMerge = true
             } else if (actionType === 'request_review') {
               updated.needsMyReview = true
             } else if (actionType === 'approve') {

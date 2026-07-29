@@ -3,7 +3,10 @@ import { renderHook, waitFor, act } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import type { ReactNode } from 'react'
 
-vi.mock('../api/github.api', () => ({
+vi.mock('../api/github.api', async () => ({
+  // `parsePRStatus` is pure and is what enrichment re-derives a PR's lifecycle state with — keep
+  // the real one, or every enrichment would throw and silently skip the CI resolution below it.
+  ...(await vi.importActual<typeof import('../api/github.api')>('../api/github.api')),
   fetchGitHubPRs: vi.fn(),
   fetchGitHubReviewRequestedPRs: vi.fn(),
   fetchGitHubPRDetails: vi.fn(),
@@ -162,6 +165,55 @@ describe('useGitHubData — with a token', () => {
     expect(enriched.deletions).toBe(3)
     expect(enriched.filesChanged).toBe(4)
     expect(enriched.needsRebase).toBe(true)
+  })
+
+  it('re-derives a merged status from the details payload, not the stale search item', async () => {
+    withToken()
+    // What `search/issues` returns for a PR merged since the last poll: closed, and no top-level
+    // `merged_at` — the shape that used to make a merge read as "closed without merging".
+    mocked.fetchGitHubPRs.mockResolvedValue([pr({ id: 'pr-1', status: 'closed' })])
+    mocked.fetchGitHubPRDetails.mockResolvedValue({
+      state: 'closed',
+      draft: false,
+      merged_at: '2026-07-29T10:00:00Z',
+    })
+
+    const { result } = renderHook(() => useGitHubData(), { wrapper })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(result.current.prs[0].status).toBe('merged')
+  })
+
+  it('keeps a genuinely closed PR closed', async () => {
+    withToken()
+    mocked.fetchGitHubPRs.mockResolvedValue([pr({ id: 'pr-1' })])
+    mocked.fetchGitHubPRDetails.mockResolvedValue({
+      state: 'closed',
+      draft: false,
+      merged_at: null,
+    })
+
+    const { result } = renderHook(() => useGitHubData(), { wrapper })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(result.current.prs[0].status).toBe('closed')
+  })
+
+  it('flags a PR with auto-merge armed as queued', async () => {
+    withToken()
+    mocked.fetchGitHubPRs.mockResolvedValue([pr({ id: 'pr-1' })])
+    mocked.fetchGitHubPRDetails.mockResolvedValue({
+      state: 'open',
+      draft: false,
+      merged_at: null,
+      auto_merge: { merge_method: 'squash' },
+    })
+
+    const { result } = renderHook(() => useGitHubData(), { wrapper })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(result.current.prs[0].autoMerge).toBe(true)
+    expect(result.current.prs[0].status).toBe('open')
   })
 
   it('does not fail the whole batch when enrichment fails for one PR', async () => {

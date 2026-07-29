@@ -1,4 +1,5 @@
 import { Bell, BellOff, Volume2, VolumeX } from 'lucide-react'
+import type { NotificationSettings } from '@git-manager/git-types'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { Separator, Switch, Checkbox, NativeSelect } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
@@ -6,21 +7,82 @@ import { useNotificationStore } from '../../../stores/notification.store'
 import { showNativeNotification } from '../../../hooks/useNotificationWatcher'
 import { FilterableSetting, Highlight } from './settingsSearch'
 
+/**
+ * The per-event toggles, in the order a pull request goes through them (local git ops first, then
+ * the PR lifecycle: opened → review → CI → queued → merged/closed). Module-level, so these hold
+ * i18n *keys* rather than copy — resolved through `t()` at render.
+ */
+const EVENT_TOGGLES: Array<{
+  key: keyof NotificationSettings
+  titleKey: string
+  descKey: string
+}> = [
+  {
+    key: 'notifyOnFetch',
+    titleKey: 'notifications.settings.fetchTitle',
+    descKey: 'notifications.settings.fetchDesc',
+  },
+  {
+    key: 'notifyOnPull',
+    titleKey: 'notifications.settings.pullTitle',
+    descKey: 'notifications.settings.pullDesc',
+  },
+  {
+    key: 'notifyOnPush',
+    titleKey: 'notifications.settings.pushTitle',
+    descKey: 'notifications.settings.pushDesc',
+  },
+  {
+    key: 'notifyOnNewPr',
+    titleKey: 'notifications.settings.newPrTitle',
+    descKey: 'notifications.settings.newPrDesc',
+  },
+  {
+    key: 'notifyOnReviewRequested',
+    titleKey: 'notifications.settings.reviewRequestedTitle',
+    descKey: 'notifications.settings.reviewRequestedDesc',
+  },
+  {
+    key: 'notifyOnReviewStatusChanged',
+    titleKey: 'notifications.settings.reviewStatusTitle',
+    descKey: 'notifications.settings.reviewStatusDesc',
+  },
+  {
+    key: 'notifyOnCi',
+    titleKey: 'notifications.settings.ciTitle',
+    descKey: 'notifications.settings.ciDesc',
+  },
+  {
+    key: 'notifyOnPrQueued',
+    titleKey: 'notifications.settings.prQueuedTitle',
+    descKey: 'notifications.settings.prQueuedDesc',
+  },
+  {
+    key: 'notifyOnPrMerged',
+    titleKey: 'notifications.settings.prMergedTitle',
+    descKey: 'notifications.settings.prMergedDesc',
+  },
+]
+
+const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+  enabled: true,
+  notifyOnFetch: true,
+  notifyOnPull: true,
+  notifyOnPush: true,
+  enableSound: false,
+  notifyOnPrMerged: true,
+  notifyOnPrQueued: true,
+  notifyOnReviewRequested: true,
+  notifyOnReviewStatusChanged: true,
+  notifyOnNewPr: true,
+  notifyOnCi: true,
+}
+
 export function NotificationSection() {
   const { t } = useTranslation('common')
   const { settings, updateSettings } = useSettingsStore()
 
-  const notifications = settings.notifications || {
-    enabled: true,
-    notifyOnFetch: true,
-    notifyOnPull: true,
-    notifyOnPush: true,
-    enableSound: false,
-    notifyOnPrMerged: true,
-    notifyOnReviewRequested: true,
-    notifyOnReviewStatusChanged: true,
-    notifyOnNewPr: true,
-  }
+  const notifications = settings.notifications || DEFAULT_NOTIFICATION_SETTINGS
 
   function updateNotifications(partial: Partial<typeof notifications>) {
     updateSettings({ notifications: { ...notifications, ...partial } })
@@ -63,7 +125,7 @@ export function NotificationSection() {
           <FilterableSetting
             className="space-y-3"
             testId="setting-notif-events"
-            match={`${t('notifications.settings.eventsTitle')} ${t('notifications.settings.fetchTitle')} ${t('notifications.settings.pullTitle')} ${t('notifications.settings.pushTitle')} ${t('notifications.settings.newPrTitle')} ${t('notifications.settings.prMergedTitle')} ${t('notifications.settings.reviewRequestedTitle')} ${t('notifications.settings.reviewStatusTitle')} events événements push pull fetch pr review revue`}
+            match={`${t('notifications.settings.eventsTitle')} ${EVENT_TOGGLES.map((e) => t(e.titleKey)).join(' ')} events événements push pull fetch pr review revue ci merge queue`}
           >
             <Separator className="mb-3" />
             <h4 className="text-xs font-semibold text-foreground">
@@ -71,114 +133,25 @@ export function NotificationSection() {
             </h4>
 
             <div className="space-y-3 pl-1">
-              <label className="flex cursor-pointer items-center justify-between">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-foreground">
-                    {t('notifications.settings.fetchTitle')}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {t('notifications.settings.fetchDesc')}
-                  </span>
-                </div>
-                <Checkbox
-                  checked={notifications.notifyOnFetch}
-                  onChange={(e) => updateNotifications({ notifyOnFetch: e.target.checked })}
-                />
-              </label>
-
-              <label className="flex cursor-pointer items-center justify-between">
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-sans text-xs text-foreground">
-                    {t('notifications.settings.pullTitle')}
-                  </span>
-                  <span className="font-sans text-[10px] text-muted-foreground">
-                    {t('notifications.settings.pullDesc')}
-                  </span>
-                </div>
-                <Checkbox
-                  checked={notifications.notifyOnPull}
-                  onChange={(e) => updateNotifications({ notifyOnPull: e.target.checked })}
-                />
-              </label>
-
-              <label className="flex cursor-pointer items-center justify-between">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-foreground">
-                    {t('notifications.settings.pushTitle')}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {t('notifications.settings.pushDesc')}
-                  </span>
-                </div>
-                <Checkbox
-                  checked={notifications.notifyOnPush}
-                  onChange={(e) => updateNotifications({ notifyOnPush: e.target.checked })}
-                />
-              </label>
-
-              <label className="flex cursor-pointer items-center justify-between">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-foreground">
-                    {t('notifications.settings.newPrTitle')}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {t('notifications.settings.newPrDesc')}
-                  </span>
-                </div>
-                <Checkbox
-                  checked={notifications.notifyOnNewPr ?? true}
-                  onChange={(e) => updateNotifications({ notifyOnNewPr: e.target.checked })}
-                />
-              </label>
-
-              <label className="flex cursor-pointer items-center justify-between">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-foreground">
-                    {t('notifications.settings.prMergedTitle')}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {t('notifications.settings.prMergedDesc')}
-                  </span>
-                </div>
-                <Checkbox
-                  checked={notifications.notifyOnPrMerged ?? true}
-                  onChange={(e) => updateNotifications({ notifyOnPrMerged: e.target.checked })}
-                />
-              </label>
-
-              <label className="flex cursor-pointer items-center justify-between">
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-sans text-xs text-foreground">
-                    {t('notifications.settings.reviewRequestedTitle')}
-                  </span>
-                  <span className="font-sans text-[10px] text-muted-foreground">
-                    {t('notifications.settings.reviewRequestedDesc')}
-                  </span>
-                </div>
-                <Checkbox
-                  checked={notifications.notifyOnReviewRequested ?? true}
-                  onChange={(e) =>
-                    updateNotifications({ notifyOnReviewRequested: e.target.checked })
-                  }
-                />
-              </label>
-
-              <label className="flex cursor-pointer items-center justify-between">
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-sans text-xs text-foreground">
-                    {t('notifications.settings.reviewStatusTitle')}
-                  </span>
-                  <span className="font-sans text-[10px] text-muted-foreground">
-                    {t('notifications.settings.reviewStatusDesc')}
-                  </span>
-                </div>
-                <Checkbox
-                  checked={notifications.notifyOnReviewStatusChanged ?? true}
-                  onChange={(e) =>
-                    updateNotifications({ notifyOnReviewStatusChanged: e.target.checked })
-                  }
-                />
-              </label>
+              {EVENT_TOGGLES.map(({ key, titleKey, descKey }) => (
+                <label
+                  key={key}
+                  className="flex cursor-pointer items-center justify-between"
+                  data-testid={`setting-${key}`}
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-sans text-xs text-foreground">{t(titleKey)}</span>
+                    <span className="font-sans text-[10px] text-muted-foreground">
+                      {t(descKey)}
+                    </span>
+                  </div>
+                  <Checkbox
+                    checked={(notifications[key] as boolean | undefined) ?? true}
+                    onChange={(e) => updateNotifications({ [key]: e.target.checked })}
+                    aria-label={t(titleKey)}
+                  />
+                </label>
+              ))}
             </div>
           </FilterableSetting>
 
@@ -263,7 +236,7 @@ export function NotificationSection() {
                   type: 'review_requested',
                   repo: 'git-manager',
                   prNumber: 247,
-                  prTitle: 'Test de notification macOS',
+                  prTitle: t('notifications.settings.testPrTitle'),
                   prId: 'test-pr-settings',
                   author: 'antoine',
                   url: 'https://github.com/Tlahey/git-manager/pull/247',

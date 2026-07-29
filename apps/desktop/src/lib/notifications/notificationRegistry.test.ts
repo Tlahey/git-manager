@@ -42,6 +42,7 @@ function snapshot(overrides: Partial<PreviousPRSnapshot> = {}): PreviousPRSnapsh
     reviewStatus: 'pending',
     needsMyReview: false,
     ciStatus: null,
+    autoMerge: false,
     updatedAt: new Date().toISOString(),
     ...overrides,
   }
@@ -84,14 +85,34 @@ describe('isNotificationTypeEnabled', () => {
     enableSound: false,
     soundName: 'default',
     notifyOnPrMerged: false,
+    notifyOnPrQueued: true,
     notifyOnReviewRequested: true,
     notifyOnReviewStatusChanged: true,
     notifyOnNewPr: true,
+    notifyOnCi: false,
   }
 
-  it('is always enabled when settingsKey is null (e.g. ci_success)', () => {
-    const def = getNotificationTypeDef('ci_success')!
-    expect(isNotificationTypeEnabled(def, { ...notifications, notifyOnPrMerged: false })).toBe(true)
+  it('gates both CI outcomes behind the single notifyOnCi toggle', () => {
+    expect(isNotificationTypeEnabled(getNotificationTypeDef('ci_success')!, notifications)).toBe(
+      false
+    )
+    expect(isNotificationTypeEnabled(getNotificationTypeDef('ci_failed')!, notifications)).toBe(
+      false
+    )
+    expect(
+      isNotificationTypeEnabled(getNotificationTypeDef('ci_failed')!, {
+        ...notifications,
+        notifyOnCi: true,
+      })
+    ).toBe(true)
+  })
+
+  it('gates the queued step behind its own toggle', () => {
+    const def = getNotificationTypeDef('pr_queued')!
+    expect(isNotificationTypeEnabled(def, notifications)).toBe(true)
+    expect(isNotificationTypeEnabled(def, { ...notifications, notifyOnPrQueued: false })).toBe(
+      false
+    )
   })
 
   it('reflects the matching settings key when false', () => {
@@ -119,6 +140,50 @@ describe('detect — new_pr', () => {
 
   it('does not fire once a previous snapshot exists', () => {
     expect(detect(pr(), snapshot())).toBe(false)
+  })
+
+  it('does not announce a PR first seen already merged or closed as new', () => {
+    expect(detect(pr({ status: 'merged' }), undefined)).toBe(false)
+    expect(detect(pr({ status: 'closed' }), undefined)).toBe(false)
+  })
+})
+
+describe('detect — pr_queued', () => {
+  const detect = getNotificationTypeDef('pr_queued')!.detect
+
+  it('fires when auto-merge is armed', () => {
+    expect(detect(pr({ autoMerge: true }), snapshot({ autoMerge: false }))).toBe(true)
+  })
+
+  it('does not fire while auto-merge stays armed', () => {
+    expect(detect(pr({ autoMerge: true }), snapshot({ autoMerge: true }))).toBe(false)
+  })
+
+  it('does not fire without a previous snapshot', () => {
+    expect(detect(pr({ autoMerge: true }), undefined)).toBe(false)
+  })
+})
+
+describe('terminal PR states suppress every mid-flight step', () => {
+  // A poll that catches a merge often catches whatever else moved with it (checks finishing, the
+  // review request dropping). None of that is worth an alert once the PR is gone.
+  const terminalCases = [
+    ['ci_success', pr({ ciStatus: 'success' }), snapshot({ ciStatus: 'running' })],
+    ['ci_failed', pr({ ciStatus: 'failure' }), snapshot({ ciStatus: 'running' })],
+    ['review_requested', pr({ needsMyReview: true }), snapshot({ needsMyReview: false })],
+    [
+      'review_status_changed',
+      pr({ reviewStatus: 'approved' }),
+      snapshot({ reviewStatus: 'pending' }),
+    ],
+    ['pr_queued', pr({ autoMerge: true }), snapshot({ autoMerge: false })],
+  ] as const
+
+  it.each(terminalCases)('%s stays silent on a merged PR', (type, changed, prev) => {
+    const detect = getNotificationTypeDef(type)!.detect
+    expect(detect(changed, prev)).toBe(true)
+    expect(detect({ ...changed, status: 'merged' }, prev)).toBe(false)
+    expect(detect({ ...changed, status: 'closed' }, prev)).toBe(false)
   })
 })
 

@@ -105,14 +105,18 @@ export function PrMergedIcon() {
   )
 }
 
+/**
+ * Closed *without* merging. Red, like GitHub's own closed-PR glyph and the launchpad row's
+ * `XCircle` — deliberately never purple, which is reserved for `PrMergedIcon`.
+ */
 export function PrClosedIcon() {
   return (
-    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-500/10 shadow-[0_0_8px_rgba(113,113,122,0.15)] ring-1 ring-zinc-500/20">
+    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/10 shadow-[0_0_8px_rgba(239,68,68,0.15)] ring-1 ring-red-500/20">
       <svg
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        className="h-5 w-5 text-zinc-400"
+        className="h-5 w-5 text-red-400"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -121,6 +125,32 @@ export function PrClosedIcon() {
         <circle cx="12" cy="12" r="5" fill="currentColor" fillOpacity="0.1" />
         <path d="M4 12h16M12 4v16" strokeDasharray="3 3" />
         <path d="m7.5 7.5 9 9" />
+      </svg>
+    </div>
+  )
+}
+
+/**
+ * Queued to merge (auto-merge armed / merge queue). Indigo — the waiting room between the green of
+ * a passing CI and the purple of a merge.
+ */
+export function PrQueuedIcon() {
+  return (
+    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10 shadow-[0_0_8px_rgba(99,102,241,0.15)] ring-1 ring-indigo-500/20">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        className="h-5 w-5 text-indigo-400"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {/* Fantasy design: An hourglass of stardust waiting its turn in orbit */}
+        <path d="M7 3h10M7 21h10" />
+        <path d="M8 3v3a4 4 0 0 0 4 4 4 4 0 0 0 4-4V3" fill="currentColor" fillOpacity="0.15" />
+        <path d="M8 21v-3a4 4 0 0 1 4-4 4 4 0 0 1 4 4v3" />
+        <circle cx="12" cy="12" r="1" className="fill-indigo-300" />
       </svg>
     </div>
   )

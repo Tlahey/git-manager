@@ -34,7 +34,7 @@ describe('NotificationSection — global toggle', () => {
     })
     render(<NotificationSection />)
     expect(document.querySelector('.lucide-bell-off')).toBeTruthy()
-    expect(screen.queryByText('Événements de notification')).not.toBeInTheDocument()
+    expect(screen.queryByText('Notification events')).not.toBeInTheDocument()
   })
 
   it('toggles the global switch', async () => {
@@ -51,14 +51,26 @@ describe('NotificationSection — event toggles', () => {
   it('toggles each event notification independently', async () => {
     const user = userEvent.setup()
     render(<NotificationSection />)
-    // The global enable + sound controls are Switches (role="switch"); the 7 event
-    // controls are the only checkboxes, in declaration order.
-    const checkboxes = screen.getAllByRole('checkbox')
-    await user.click(checkboxes[0]) // notifyOnFetch
+
+    await user.click(screen.getByRole('checkbox', { name: 'Automatic fetch' }))
     expect(useSettingsStore.getState().settings.notifications!.notifyOnFetch).toBe(false)
 
-    await user.click(checkboxes[3]) // notifyOnNewPr
+    await user.click(screen.getByRole('checkbox', { name: 'New pull requests' }))
     expect(useSettingsStore.getState().settings.notifications!.notifyOnNewPr).toBe(false)
+  })
+
+  it('offers one toggle per step of a PR lifecycle, CI and the merge queue included', async () => {
+    const user = userEvent.setup()
+    render(<NotificationSection />)
+
+    await user.click(screen.getByRole('checkbox', { name: 'CI results' }))
+    expect(useSettingsStore.getState().settings.notifications!.notifyOnCi).toBe(false)
+
+    await user.click(screen.getByRole('checkbox', { name: 'PRs queued to merge' }))
+    expect(useSettingsStore.getState().settings.notifications!.notifyOnPrQueued).toBe(false)
+
+    await user.click(screen.getByRole('checkbox', { name: 'Merged or closed PRs' }))
+    expect(useSettingsStore.getState().settings.notifications!.notifyOnPrMerged).toBe(false)
   })
 })
 
@@ -66,7 +78,7 @@ describe('NotificationSection — sounds', () => {
   it('shows the sound-name picker only once sound is enabled', async () => {
     const user = userEvent.setup()
     render(<NotificationSection />)
-    expect(screen.queryByText('Type de son macOS')).not.toBeInTheDocument()
+    expect(screen.queryByText('macOS sound type')).not.toBeInTheDocument()
 
     // The sound control is a Switch (role="switch"), rendered after the global one.
     const soundToggle = screen.getAllByRole('switch').at(-1)!

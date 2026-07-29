@@ -10,6 +10,7 @@ import {
   fetchGitHubPRDetails,
   fetchGitHubCommitCiStatus,
   fetchGitHubContributions,
+  parsePRStatus,
 } from '../api/github.api'
 import { resolveCiStatus } from '../lib/ciStatus'
 
@@ -81,6 +82,13 @@ export function useGitHubData(): GitHubData {
           pr.filesChanged = full.changed_files ?? pr.filesChanged
           pr.needsRebase = full.mergeable === false || full.mergeable_state === 'behind'
           pr.headRef = full.head?.ref ?? pr.headRef
+          // The lists come from `search/issues`, whose items are issue-shaped and lag behind the
+          // real PR by up to a minute. This payload is the authoritative one — re-derive every
+          // lifecycle field from it, or a PR merged since the last poll stays labelled as merely
+          // closed (red "closed without merging" instead of the purple merge).
+          pr.status = parsePRStatus(full)
+          pr.isDraft = full.draft ?? pr.isDraft
+          pr.autoMerge = !!full.auto_merge
 
           const sha = full.head?.sha
           const parts = ownerRepo.split('/')
