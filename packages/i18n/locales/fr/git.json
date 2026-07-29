@@ -626,6 +626,8 @@
   "sidebar.prGroups.awaitingReview": "En attente de ma revue",
   "sidebar.prGroups.all": "Toutes les pull requests",
   "sidebar.prCard.loading": "Chargement de l'état des revues…",
+  "sidebar.prCard.opened": "Ouverte le",
+  "sidebar.prCard.updated": "Mise à jour le",
   "sidebar.prCard.decisionLabel": "Revue",
   "sidebar.prCard.decision.approved": "Approuvée",
   "sidebar.prCard.decision.changesRequested": "Modifications demandées",

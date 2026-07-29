@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { PullRequest } from '@git-manager/git-types'
 import type { PrReviewSummary } from '../../api/github.api'
+import { renderWithLanguage } from '../../test/i18n'
 import { PrHoverCard } from './PrHoverCard'
 
 function pr(overrides: Partial<PullRequest> = {}): PullRequest {
@@ -51,6 +52,69 @@ describe('PrHoverCard — always-available content', () => {
     expect(screen.getByText(/Add the sidebar hover card/)).toBeInTheDocument()
     expect(screen.getByText('feat/hover-card')).toBeInTheDocument()
     expect(screen.getByText('Loading review status…')).toBeInTheDocument()
+  })
+})
+
+describe('PrHoverCard — timeline', () => {
+  // Frozen so the relative wording is deterministic: 18 minutes before "now" for the opening,
+  // 2 hours for the last update.
+  const NOW = new Date('2026-07-29T12:00:00Z')
+  const CREATED = '2026-07-29T11:42:00Z'
+  const UPDATED = '2026-07-29T10:00:00Z'
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  function renderTimeline(overrides: Partial<PullRequest> = {}) {
+    return render(
+      <PrHoverCard
+        pr={pr({ createdAt: CREATED, updatedAt: UPDATED, ...overrides })}
+        summary={summary()}
+        isLoading={false}
+      />
+    )
+  }
+
+  it('dates the opening, with the elapsed time beside it', () => {
+    renderTimeline()
+    const row = screen.getByTestId('pr-hover-card-opened')
+    expect(row).toHaveTextContent('Opened')
+    expect(row).toHaveTextContent(new Date(CREATED).toLocaleString('en'))
+    expect(row).toHaveTextContent('(18 minutes ago)')
+  })
+
+  it('dates the last update the same way, below it', () => {
+    renderTimeline()
+    const row = screen.getByTestId('pr-hover-card-updated')
+    expect(row).toHaveTextContent('Updated')
+    expect(row).toHaveTextContent(new Date(UPDATED).toLocaleString('en'))
+    expect(row).toHaveTextContent('(2 hours ago)')
+  })
+
+  it('translates both the label and the elapsed time', () => {
+    renderWithLanguage(
+      <PrHoverCard
+        pr={pr({ createdAt: CREATED, updatedAt: UPDATED })}
+        summary={summary()}
+        isLoading={false}
+      />,
+      'fr'
+    )
+    const row = screen.getByTestId('pr-hover-card-opened')
+    expect(row).toHaveTextContent('Ouverte le')
+    expect(row).toHaveTextContent('(il y a 18 minutes)')
+  })
+
+  // GitHub sending nothing usable must not render "Invalid Date".
+  it('drops a line whose timestamp is missing or unparseable', () => {
+    renderTimeline({ createdAt: '', updatedAt: 'not-a-date' })
+    expect(screen.queryByTestId('pr-hover-card-opened')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('pr-hover-card-updated')).not.toBeInTheDocument()
   })
 })
 

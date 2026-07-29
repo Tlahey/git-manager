@@ -13,6 +13,7 @@ import { Avatar, Spinner } from '@git-manager/ui'
 import type { PullRequest } from '@git-manager/git-types'
 import { useTranslation } from '@git-manager/i18n'
 import type { PrReviewSummary, PrReviewer } from '../../api/github.api'
+import { formatExactDate, formatRelativeTime } from '../../lib/relativeDate'
 import { derivePrTagStatus, PR_STATE_LABEL_KEY } from './prTagStatus'
 
 interface PrHoverCardProps {
@@ -67,6 +68,42 @@ const CHECKS_STYLES: Record<string, { Icon: typeof Check; className: string; lab
   },
 }
 
+/**
+ * Epoch seconds for an ISO timestamp, or `null` when GitHub sent nothing usable.
+ *
+ * The date helpers below take epoch seconds and would happily format `NaN` into a nonsense date, so
+ * an unparseable value drops its whole line rather than showing "Invalid Date".
+ */
+function epochSeconds(iso: string | undefined): number | null {
+  if (!iso) return null
+  const ms = new Date(iso).getTime()
+  return Number.isNaN(ms) ? null : ms / 1000
+}
+
+/** One "<label>  <absolute date> (<relative>)" line of the card's timeline. */
+function TimelineRow({
+  label,
+  iso,
+  locale,
+  testId,
+}: {
+  label: string
+  iso: string | undefined
+  locale: string
+  testId: string
+}) {
+  const seconds = epochSeconds(iso)
+  if (seconds === null) return null
+
+  return (
+    <div className="flex items-baseline gap-1.5 text-[10px]" data-testid={testId}>
+      <span className="shrink-0 text-muted-foreground">{label}</span>
+      <span className="text-foreground">{formatExactDate(seconds, locale)}</span>
+      <span className="text-muted-foreground">({formatRelativeTime(seconds, locale)})</span>
+    </div>
+  )
+}
+
 const REVIEW_DECISION_LABEL_KEY: Record<string, string> = {
   APPROVED: 'sidebar.prCard.decision.approved',
   CHANGES_REQUESTED: 'sidebar.prCard.decision.changesRequested',
@@ -83,7 +120,8 @@ const REVIEW_DECISION_LABEL_KEY: Record<string, string> = {
  * shows the parts it already has (title, branches, author) while the rest is still in flight.
  */
 export function PrHoverCard({ pr, summary, isLoading }: PrHoverCardProps) {
-  const { t } = useTranslation('git')
+  const { t, i18n } = useTranslation('git')
+  const locale = i18n.language
   const status = derivePrTagStatus(pr)
   const checks = summary?.checksState ? CHECKS_STYLES[summary.checksState] : undefined
 
@@ -108,6 +146,24 @@ export function PrHoverCard({ pr, summary, isLoading }: PrHoverCardProps) {
         <span className="max-w-[45%] truncate rounded bg-muted px-1 py-px text-foreground">
           {pr.baseRef}
         </span>
+      </div>
+
+      {/* When it was opened, and when it last moved — both as an absolute date with the elapsed
+          time beside it, since "is this stale?" and "which one was this again?" are different
+          questions and the answer to each is useless in the other's form. */}
+      <div className="mt-2 space-y-0.5 border-t border-border pt-2">
+        <TimelineRow
+          label={t('sidebar.prCard.opened')}
+          iso={pr.createdAt}
+          locale={locale}
+          testId="pr-hover-card-opened"
+        />
+        <TimelineRow
+          label={t('sidebar.prCard.updated')}
+          iso={pr.updatedAt}
+          locale={locale}
+          testId="pr-hover-card-updated"
+        />
       </div>
 
       <div className="mt-2 space-y-1.5 border-t border-border pt-2">

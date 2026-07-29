@@ -16,7 +16,6 @@ import { highlightMatch } from '@git-manager/components'
 import type { PullRequest } from '@git-manager/git-types'
 import { useTranslation } from '@git-manager/i18n'
 import { usePrReviewSummary } from '../../hooks/usePrReviewSummary'
-import { HoverExpandLabel } from './HoverExpandLabel'
 import { PrHoverCard } from './PrHoverCard'
 import { derivePrTagStatus, PR_STATE_LABEL_KEY, type PrTagStatus } from './prTagStatus'
 
@@ -107,11 +106,13 @@ export function PullRequestItem({
         <Icon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${className}`} aria-hidden />
 
         <div className="min-w-0 flex-1">
-          <HoverExpandLabel
-            className={`text-xs ${isSelected ? 'font-medium text-sidebar-foreground' : 'text-sidebar-foreground'}`}
+          {/* Plainly truncated, unlike the branch/tag rows: the hover card already shows the full
+              title, so the expand-on-hover overlay would only cover the row it explains. */}
+          <div
+            className={`truncate text-xs ${isSelected ? 'font-medium text-sidebar-foreground' : 'text-sidebar-foreground'}`}
           >
             #{pr.number} {highlightMatch(pr.title, filterQuery)}
-          </HoverExpandLabel>
+          </div>
 
           <div className="mt-0.5 flex items-center gap-1.5">
             <span

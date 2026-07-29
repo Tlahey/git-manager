@@ -4,14 +4,13 @@ import userEvent from '@testing-library/user-event'
 import type { PullRequest } from '@git-manager/git-types'
 import { PullRequestItem } from './PullRequestItem'
 
+const { hoverExpandLabel } = vi.hoisted(() => ({ hoverExpandLabel: vi.fn() }))
+// Spied on, not stubbed out, so the row's title can be asserted to no longer go through it.
 vi.mock('./HoverExpandLabel', () => ({
-  HoverExpandLabel: ({
-    children,
-    className,
-  }: {
-    children: React.ReactNode
-    className?: string
-  }) => <span className={className}>{children}</span>,
+  HoverExpandLabel: (props: { children: React.ReactNode; className?: string }) => {
+    hoverExpandLabel(props)
+    return <span className={props.className}>{props.children}</span>
+  },
 }))
 
 function pr(overrides: Partial<PullRequest> = {}): PullRequest {
@@ -35,6 +34,19 @@ function pr(overrides: Partial<PullRequest> = {}): PullRequest {
     ...overrides,
   }
 }
+
+describe('PullRequestItem — title', () => {
+  // The hover card already shows the full title, so the expand-on-hover overlay would only cover
+  // the row it is explaining. Asserted against the component rather than the overlay it renders:
+  // jsdom reports every element as 0x0, so `HoverExpandLabel`'s `scrollWidth > clientWidth` test
+  // never fires there and its absence would prove nothing.
+  it('truncates plainly, without the expand-on-hover overlay', () => {
+    render(<PullRequestItem pr={pr()} />)
+
+    expect(hoverExpandLabel).not.toHaveBeenCalled()
+    expect(screen.getByTestId('pr-item-42').querySelector('.truncate')).toBeTruthy()
+  })
+})
 
 describe('PullRequestItem — content', () => {
   it('shows the PR number, title, author, and state label', () => {
