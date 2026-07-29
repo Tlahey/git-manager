@@ -46,18 +46,21 @@ function build(entries: Entry[]): RemoteTreeNode[] {
     ])
   }
 
-  const folderNodes: RemoteTreeFolder[] = Array.from(folders.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([name, below]) => ({
-      kind: 'folder',
-      name,
-      branchNames: below.map((e) => e.branch.name),
-      children: build(below),
-    }))
+  const folderNodes: RemoteTreeFolder[] = Array.from(folders.entries()).map(([name, below]) => ({
+    kind: 'folder',
+    name,
+    branchNames: below.map((e) => e.branch.name),
+    children: build(below),
+  }))
 
-  // Loose branches first, then folders — the order the local section already uses.
-  return [...loose, ...folderNodes]
+  // One alphabetical list, folders and branches alike: under a remote the folders are namespaces
+  // the user reads by name, so `build/` sorting away from `bugfix` would be the surprise.
+  return [...loose, ...folderNodes].sort((a, b) => labelOf(a).localeCompare(labelOf(b)))
 }
+
+/** What a node shows on its row — the name the list is ordered by. */
+const labelOf = (node: RemoteTreeNode): string =>
+  node.kind === 'branch' ? node.displayName : node.name
 
 /**
  * Builds the folder tree under one remote node: every `/` in a branch's name is a level, so
@@ -69,6 +72,8 @@ function build(entries: Entry[]): RemoteTreeNode[] {
  *
  * `nameOf` gives the name to split on — the name *relative to the remote*, so the remote's own
  * segment doesn't become a folder inside its own node.
+ *
+ * Every level is one alphabetical list by row label, folders and branches together.
  */
 export function buildRemoteBranchTree(
   branches: GitBranch[],

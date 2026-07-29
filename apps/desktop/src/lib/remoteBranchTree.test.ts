@@ -29,7 +29,7 @@ function shape(nodes: RemoteTreeNode[]): unknown[] {
 
 describe('buildRemoteBranchTree', () => {
   it('leaves a branch with no folder in its name at the top level', () => {
-    expect(shape(tree(['origin/main', 'origin/dev']))).toEqual(['main', 'dev'])
+    expect(shape(tree(['origin/main', 'origin/dev']))).toEqual(['dev', 'main'])
   })
 
   // The whole point: a namespace is a folder whether one branch or ten happen to sit in it.
@@ -47,16 +47,21 @@ describe('buildRemoteBranchTree', () => {
 
   it('splits branches whose paths diverge below a shared folder', () => {
     expect(shape(tree(['origin/build/ci/lint', 'origin/build/release']))).toEqual([
-      { build: ['release', { ci: ['lint'] }] },
+      { build: [{ ci: ['lint'] }, 'release'] },
     ])
   })
 
-  it('lists loose branches before folders, folders alphabetically', () => {
-    expect(shape(tree(['origin/zeta/a', 'origin/build/b', 'origin/main']))).toEqual([
-      'main',
-      { build: ['b'] },
-      { zeta: ['a'] },
-    ])
+  // One list, ordered by what each row shows: a folder does not sort ahead of a branch.
+  it('interleaves folders and branches alphabetically', () => {
+    expect(shape(tree(['origin/zeta', 'origin/build/b', 'origin/main', 'origin/alpha/a']))).toEqual(
+      [{ alpha: ['a'] }, { build: ['b'] }, 'main', 'zeta']
+    )
+  })
+
+  it('orders every level, not just the top one', () => {
+    expect(shape(tree(['origin/build/zeta', 'origin/build/ci/lint', 'origin/build/alpha']))).toEqual(
+      [{ build: ['alpha', { ci: ['lint'] }, 'zeta'] }]
+    )
   })
 
   // A closed folder has to take everything below it off screen, so it owns the deep branches too.
