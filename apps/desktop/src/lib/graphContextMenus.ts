@@ -224,16 +224,14 @@ function relationshipSection(
   ]
 }
 
-/** "Push current & start a PR here" + the AI branch explanation/review. */
+/** "Push current & start a PR here" (remote only) + the AI branch explanation. */
 function prAndExplainSection(
   b: BranchItemContext,
   actions: BranchMenuActions,
   t: TranslateFn
 ): MenuSpecEntry[] {
   return [
-    // Any branch can be a PR's base, local ones included — what makes no sense is a pull request
-    // from the current branch to itself.
-    !b.isCurrent &&
+    b.isRemote &&
       b.hasCurrent &&
       menuItem({
         text: t('gitTree.branchMenu.startPr', b.params),
@@ -410,7 +408,12 @@ export function buildSidebarBranchMenuSpec(
   t: TranslateFn
 ): MenuSpecEntry[] {
   const b = branchItemContext(ref, ctx)
+  const isTrunk = !b.isRemote && isMainBranchName(ref.shortName)
   return [
+    // Pull / push / set upstream act on HEAD rather than on the row that was right-clicked, so they
+    // are offered on the trunk — where they are what one actually runs — and nowhere else.
+    ...(isTrunk ? syncSection(b, actions, t) : []),
+    menuSeparator(),
     ...relationshipSection(b, actions, t),
     menuSeparator(),
     !b.isCurrent &&
@@ -426,11 +429,40 @@ export function buildSidebarBranchMenuSpec(
     menuSeparator(),
     ...commitCoreSection(ctx, commitActions, t),
     menuSeparator(),
-    ...prAndExplainSection(b, actions, t),
+    // The trunk is what a pull request targets, never what it is opened from — and a branch cannot
+    // be a PR's base against itself either.
+    !isTrunk &&
+      !b.isCurrent &&
+      b.hasCurrent &&
+      menuItem({
+        text: t('gitTree.branchMenu.startPr', b.params),
+        action: () => actions.onStartPr(b.ref),
+      }),
+    menuItem({
+      text: t('gitTree.branchMenu.explainChanges'),
+      enabled: b.aiEnabled,
+      action: () => actions.onExplainBranch(b.ref),
+    }),
     menuSeparator(),
     ...destructiveSection(b, actions, t),
     menuSeparator(),
-    ...copySection(b, actions, commitActions, t),
+    // Spelled out rather than reusing the graph's copy section: a row's menu carries the four
+    // copies and not the patch, which belongs to a commit the user pointed at in the graph.
+    menuItem({
+      text: t('gitTree.branchMenu.copyName'),
+      action: () => actions.onCopyBranchName(b.ref),
+    }),
+    menuItem({
+      text: t('gitTree.branchMenu.copyCommitSha'),
+      icon: 'copy_sha',
+      action: commitActions.onCopySha,
+    }),
+    !!b.remoteBranchLinkName &&
+      menuItem({
+        text: t('gitTree.branchMenu.copyBranchLink', { branch: b.remoteBranchLinkName }),
+        action: () => actions.onCopyBranchLink(b.ref),
+      }),
+    menuItem({ text: t('gitTree.contextMenu.copyLink'), action: commitActions.onCopyLink }),
     menuSeparator(),
     menuItem({
       text: t(ctx.isHidden ? 'gitTree.branchMenu.show' : 'gitTree.branchMenu.hide'),
@@ -438,10 +470,13 @@ export function buildSidebarBranchMenuSpec(
     }),
     ...tailSection(b, actions, t),
     menuSeparator(),
-    menuItem({
-      text: t('gitTree.contextMenu.compareToWorkdir'),
-      action: commitActions.onCompareToWorkdir,
-    }),
+    // Against the working directory — the question a remote tip raises ("what is on the server
+    // that I do not have?") and a local one does not, since it can simply be checked out.
+    b.isRemote &&
+      menuItem({
+        text: t('gitTree.contextMenu.compareToWorkdir'),
+        action: commitActions.onCompareToWorkdir,
+      }),
     menuSeparator(),
     ...tagCreationSection(ctx, commitActions, t),
   ]

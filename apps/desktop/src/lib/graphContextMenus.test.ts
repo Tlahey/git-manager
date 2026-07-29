@@ -301,13 +301,11 @@ describe('buildSidebarBranchMenuSpec — remote branch', () => {
       'Revert this commit',
       'Push feat and start a pull request to origin/main',
       'Explain branch changes (LLM)',
-      'Review branch changes (LLM)',
       'Delete origin/main',
       'Copy branch name',
       'Copy commit sha',
       'Copy link to branch: origin/main',
       'Copy link to this commit on remote: origin',
-      'Create patch from commit…',
       'Hide the branch',
       'Pin to left',
       'Solo',
@@ -350,10 +348,9 @@ describe('buildSidebarBranchMenuSpec — remote branch', () => {
     expect(texts(detached.nodes).some((l) => l.startsWith('Fast-forward'))).toBe(false)
   })
 
-  it('disables the AI entries when AI is off, leaving them discoverable', () => {
+  it('disables the explanation when AI is off, leaving it discoverable', () => {
     const { nodes } = menu({ aiEnabled: false })
     expect(item(nodes, 'Explain branch changes (LLM)')?.enabled).toBe(false)
-    expect(item(nodes, 'Review branch changes (LLM)')?.enabled).toBe(false)
   })
 
   it('routes the commit-scoped entries to the branch tip actions', () => {
@@ -397,17 +394,14 @@ describe('buildSidebarBranchMenuSpec — local branch', () => {
       'Revert this commit',
       'Push main and start a pull request to feat/login',
       'Explain branch changes (LLM)',
-      'Review branch changes (LLM)',
       'Rename feat/login',
       'Delete feat/login',
       'Copy branch name',
       'Copy commit sha',
       'Copy link to this commit on remote: origin',
-      'Create patch from commit…',
       'Hide the branch',
       'Pin to left',
       'Solo',
-      'Compare commit against working directory',
       'Create tag here',
       'Create annotated tag here…',
     ])
@@ -453,6 +447,81 @@ describe('buildSidebarBranchMenuSpec — local branch', () => {
     expect(actions.onToggleVisibility).toHaveBeenCalledWith(
       expect.objectContaining({ shortName: 'feat/login' })
     )
+  })
+})
+
+describe('buildSidebarBranchMenuSpec — the trunk', () => {
+  function trunkMenu(shortName = 'main', overrides: Partial<SidebarBranchMenuContext> = {}) {
+    const branchRef = ref({ shortName, name: `refs/heads/${shortName}` })
+    const context = { ...ctx({ currentBranch: 'feat' }), isHidden: false, ...overrides }
+    return normalizeMenuSpec(
+      buildSidebarBranchMenuSpec(
+        branchRef,
+        { ...context, refs: [branchRef] },
+        { ...branchActions(), onToggleVisibility: vi.fn() },
+        commitActions(),
+        t
+      )
+    )
+  }
+
+  it('lists the branch, commit and row actions in order', () => {
+    expect(texts(trunkMenu())).toEqual([
+      'Pull (fast-forward if possible)',
+      'Push',
+      'Set upstream',
+      'Fast-forward feat to main',
+      'Merge main into feat',
+      'Rebase feat onto main',
+      'Checkout main',
+      'Open worktree from main',
+      'Create branch here',
+      'Cherry-pick this commit',
+      'Revert this commit',
+      'Explain branch changes (LLM)',
+      'Rename main',
+      'Delete main',
+      'Copy branch name',
+      'Copy commit sha',
+      'Copy link to branch: origin/main',
+      'Copy link to this commit on remote: origin',
+      'Hide the branch',
+      'Pin to left',
+      'Solo',
+      'Create tag here',
+      'Create annotated tag here…',
+    ])
+  })
+
+  // Pull and push act on HEAD, so they read as the trunk's own actions and stay off every other
+  // row; `master` is the trunk under its other name.
+  it('offers the sync section on master too, and on no other local branch', () => {
+    expect(texts(trunkMenu('master'))).toContain('Pull (fast-forward if possible)')
+    expect(texts(trunkMenu('feat/login'))).not.toContain('Pull (fast-forward if possible)')
+  })
+
+  // A pull request targets the trunk, it is not opened from it.
+  it('offers no pull request entry on the trunk, unlike any other branch', () => {
+    expect(texts(trunkMenu()).some((l) => l.includes('pull request'))).toBe(false)
+    expect(texts(trunkMenu('feat/login')).some((l) => l.includes('pull request'))).toBe(true)
+  })
+
+  it('keeps the sync section off a remote trunk, which HEAD cannot pull or push', () => {
+    const originMain = ref({
+      shortName: 'origin/main',
+      type: 'remote',
+      name: 'refs/remotes/origin/main',
+    })
+    const nodes = normalizeMenuSpec(
+      buildSidebarBranchMenuSpec(
+        originMain,
+        { ...ctx({ currentBranch: 'feat', refs: [originMain] }), isHidden: false },
+        { ...branchActions(), onToggleVisibility: vi.fn() },
+        commitActions(),
+        t
+      )
+    )
+    expect(texts(nodes)).not.toContain('Pull (fast-forward if possible)')
   })
 })
 
@@ -788,8 +857,6 @@ describe('buildCommitMenuSpec', () => {
     ])
   })
 
-  // A local branch is a valid PR base too, so the entry now shows here as well — what it never
-  // offers is a pull request from the current branch to itself.
   it('flattens a single branch inline into the commit menu (no submenu)', () => {
     const spec = build(ctx({ refs: [ref({ shortName: 'feat' })], currentBranch: 'main' }))
     expect(layoutOf(spec)).toEqual([
@@ -812,7 +879,6 @@ describe('buildCommitMenuSpec', () => {
       'Revert this commit',
       '— separator',
       'Explain this commit (LLM)',
-      'Push main and start a pull request to feat',
       'Explain branch changes (LLM)',
       'Review branch changes (LLM)',
       '— separator',
