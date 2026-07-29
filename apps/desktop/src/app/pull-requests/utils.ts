@@ -29,14 +29,9 @@ export function branchMatchesIssue(branchName: string, issueNumber: number): boo
   return new RegExp(`(^|[^0-9])${issueNumber}([^0-9]|$)`).test(branchName)
 }
 
-export async function openUrl(url: string) {
-  try {
-    const { open } = await import('@tauri-apps/plugin-shell')
-    await open(url)
-  } catch {
-    window.open(url, '_blank')
-  }
-}
+// Lives in `lib/` now that features outside this page open external links too;
+// re-exported here so the existing call sites keep their import.
+export { openUrl } from '../../lib/openUrl'
 
 /**
  * The best CI "action" URL to open for a PR's status — the link that lets you jump
