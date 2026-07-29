@@ -289,14 +289,14 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
 
       {/* RIGHT CONTAINER: README or Daily-summary panel (mutually exclusive) */}
       {selectedSummaryPath ? (
-        <div className="animate-in slide-in-from-right flex h-full w-[450px] shrink-0 flex-col overflow-hidden border-l border-border bg-card/45 shadow-2xl backdrop-blur duration-200">
+        <div className="animate-in slide-in-from-right flex h-full w-[450px] shrink-0 flex-col overflow-hidden border-l border-border bg-card/45 shadow-2xl backdrop-blur animate-duration-200">
           <DailySummaryPanel
             path={selectedSummaryPath}
             onClose={() => setSelectedSummaryPath(null)}
           />
         </div>
       ) : selectedReadmePath ? (
-        <div className="animate-in slide-in-from-right flex h-full w-[450px] shrink-0 flex-col overflow-hidden border-l border-border bg-card/45 shadow-2xl backdrop-blur duration-200">
+        <div className="animate-in slide-in-from-right flex h-full w-[450px] shrink-0 flex-col overflow-hidden border-l border-border bg-card/45 shadow-2xl backdrop-blur animate-duration-200">
           <ReadmePanel path={selectedReadmePath} onClose={() => setSelectedReadmePath(null)} />
         </div>
       ) : null}

@@ -244,7 +244,7 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
   }
 
   return (
-    <div className="animate-in fade-in zoom-in-95 flex h-full w-full select-none flex-col overflow-hidden bg-background duration-100">
+    <div className="animate-in fade-in zoom-in-95 flex h-full w-full select-none flex-col overflow-hidden bg-background animate-duration-100">
       <DiffToolbar
         parsedPath={parsedPath}
         diffData={diffData}

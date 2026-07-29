@@ -1,5 +1,5 @@
-// Marqueur d'un commit dans la colonne graph (avatar / dot de merge / stash) + tooltip
-// nom/email au survol. Extrait de `GraphRow.tsx` pour être réutilisé par `GraphCell.tsx`.
+// A commit's marker in the graph column (avatar / merge dot / stash) plus its name/email
+// tooltip on hover. Extracted from `GraphRow.tsx` so `GraphCell.tsx` can reuse it.
 
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -131,13 +131,13 @@ export function GraphAvatarTooltip({ node, centerX, opacity }: GraphAvatarToolti
               left: pos.left,
               transform: 'translate(-50%, -100%)',
             }}
-            className="animate-in fade-in-0 zoom-in-95 pointer-events-none z-overlay flex flex-col gap-0.5 whitespace-nowrap rounded-md border border-border bg-popover/95 px-2.5 py-1.5 text-popover-foreground shadow-xl backdrop-blur-md duration-100"
+            className="animate-in fade-in-0 zoom-in-95 pointer-events-none z-overlay flex flex-col gap-0.5 whitespace-nowrap rounded-md border border-border bg-popover/95 px-2.5 py-1.5 text-popover-foreground shadow-xl backdrop-blur-md animate-duration-100"
           >
             <span className="text-[10px] font-semibold leading-none">{commit.author.name}</span>
             <span className="mt-0.5 text-[9px] leading-none text-muted-foreground/90">
               {commit.author.email}
             </span>
-            {/* Petit triangle en bas */}
+            {/* Small pointer triangle at the bottom */}
             <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-popover/95" />
           </div>,
           document.body

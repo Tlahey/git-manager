@@ -1,3 +1,6 @@
+import plugin from 'tailwindcss/plugin'
+import tailwindcssAnimate from 'tailwindcss-animate'
+
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: 'class',
@@ -126,5 +129,25 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    // Supplies `animate-in`/`animate-out` and their `fade-*`/`zoom-*`/`slide-*` modifiers, the
+    // vocabulary every shadcn/ui component in packages/ui is written against. Without it those
+    // classes emit nothing at all and the animations silently never play.
+    tailwindcssAnimate,
+    plugin(({ matchUtilities, theme }) => {
+      // `animate-duration-*` times a keyframe animation, and ONLY that.
+      //
+      // Reach for it instead of Tailwind's `duration-*` next to an `animate-in`/`animate-out`.
+      // Core's `duration-*` sets `transition-duration`, and tailwindcss-animate additionally
+      // teaches it `animation-duration` — so on an element with no `transition-*` class it also
+      // leaves `transition-property` at its CSS initial value, `all`, quietly turning every later
+      // property change into an animation. That is not theoretical: it is what made the shared
+      // Tooltip slide into place from off-screen, since the bubble is positioned from JS after
+      // being measured (see packages/ui/src/components/tooltip.tsx).
+      matchUtilities(
+        { 'animate-duration': (value) => ({ animationDuration: value }) },
+        { values: theme('transitionDuration') }
+      )
+    }),
+  ],
 }

@@ -78,15 +78,20 @@ const DialogContent = React.forwardRef<
       `translate` + `grid` + `max-w` + `rounded` + `p` + the entrance animation), and a caller
       unpicking them one Tailwind class at a time is how a panel ends up half-centered.
 
-      Note the `animate-in`/`slide-in-*`/`zoom-*` classes here are inert: `tailwindcss-animate` is
-      not installed and the preset defines no matching keyframes, so they emit nothing. They are
-      kept because they cost nothing and become correct the day the plugin is added — but do not
-      read them as a description of what the dialog currently does, which is appear instantly.
+      The entrance/exit is timed with `animate-duration-200`, not `duration-200`: the latter also
+      sets `transition-duration` on an element that declares no `transition-*`, which leaves
+      `transition-property` at its initial `all` and turns every later property change into a
+      200ms animation. See the plugin note in packages/config/tailwind.js.
+
+      It carries the same `data-[state=…]` variants as the animation it times, and not for
+      symmetry: `animate-in` itself sets `animation-duration`, and Tailwind emits variant rules
+      after plain ones, so an unprefixed duration here would be overwritten back to the plugin's
+      150ms default. Verified against the compiled CSS.
     */}
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'border-border bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed z-popover border shadow-lg duration-200',
+        'border-border bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed z-popover border shadow-lg data-[state=open]:animate-duration-200 data-[state=closed]:animate-duration-200',
         position === 'center'
           ? 'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] left-[50%] top-[50%] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg p-6'
           : 'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right inset-y-0 right-0 flex max-w-none flex-col border-y-0 border-r-0',
