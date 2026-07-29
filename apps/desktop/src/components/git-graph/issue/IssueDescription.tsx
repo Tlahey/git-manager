@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Spinner, Textarea } from '@git-manager/ui'
 import { Pencil } from 'lucide-react'
 import { Markdown } from '../../Markdown'
 import { useIssueEdit } from '../../../hooks/useIssueEdit'
+import { useMarkdownTaskToggle } from '../../../hooks/useMarkdownTaskToggle'
 
 interface IssueDescriptionProps {
   repoPath: string
@@ -18,11 +19,19 @@ export function IssueDescription({ repoPath, issueNumber, body }: IssueDescripti
   const { update, pending, canEdit } = useIssueEdit(repoPath, issueNumber)
   const trimmed = body?.trim() ?? ''
   const [editing, setEditing] = useState(false)
+
+  const saveBody = useCallback((next: string) => update({ body: next }), [update])
+  const {
+    content: shownBody,
+    onTaskToggle,
+    pending: togglePending,
+  } = useMarkdownTaskToggle(trimmed, canEdit ? saveBody : null)
+
   const [draft, setDraft] = useState(trimmed)
 
   useEffect(() => {
-    if (!editing) setDraft(trimmed)
-  }, [trimmed, editing])
+    if (!editing) setDraft(shownBody)
+  }, [shownBody, editing])
 
   async function save() {
     try {
@@ -70,7 +79,7 @@ export function IssueDescription({ repoPath, issueNumber, body }: IssueDescripti
               disabled={pending}
               onClick={() => {
                 setEditing(false)
-                setDraft(trimmed)
+                setDraft(shownBody)
               }}
             >
               {t('pr.title.cancel')}
@@ -87,8 +96,12 @@ export function IssueDescription({ repoPath, issueNumber, body }: IssueDescripti
             </Button>
           </div>
         </div>
-      ) : trimmed ? (
-        <Markdown content={trimmed} />
+      ) : shownBody ? (
+        <Markdown
+          content={shownBody}
+          onTaskToggle={onTaskToggle}
+          taskTogglePending={togglePending}
+        />
       ) : (
         <p className="text-xs italic text-muted-foreground">{t('issue.view.noDescription')}</p>
       )}

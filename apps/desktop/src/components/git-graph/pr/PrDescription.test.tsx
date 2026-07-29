@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-
-vi.mock('@git-manager/i18n', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}))
 
 const { updatePr } = vi.hoisted(() => ({ updatePr: vi.fn() }))
 vi.mock('../../../hooks/usePrActions', () => ({
@@ -31,7 +27,7 @@ describe('PrDescription', () => {
 
   it('shows an empty-state message when the body is blank', () => {
     renderDescription('   ')
-    expect(screen.getByText('pr.view.noDescription')).toBeInTheDocument()
+    expect(screen.getByText('No description provided.')).toBeInTheDocument()
   })
 
   it('edits and saves the description via the API', async () => {
@@ -43,5 +39,41 @@ describe('PrDescription', () => {
     await user.type(input, 'new body')
     await user.click(screen.getByTestId('pr-description-save'))
     expect(updatePr).toHaveBeenCalledWith({ body: 'new body' })
+  })
+
+  it('ticks a task-list item straight from the rendered description', async () => {
+    const user = userEvent.setup()
+    renderDescription('### Checklist\n\n- [ ] tests\n- [ ] docs')
+
+    await user.click(screen.getAllByRole('checkbox')[1])
+
+    expect(updatePr).toHaveBeenCalledWith({ body: '### Checklist\n\n- [ ] tests\n- [x] docs' })
+  })
+
+  it('holds the tick while the PATCH is in flight, rather than springing back', async () => {
+    const user = userEvent.setup()
+    let settle = () => {}
+    updatePr.mockImplementation(() => new Promise<void>((resolve) => (settle = resolve)))
+    renderDescription('- [ ] docs')
+
+    await user.click(screen.getByRole('checkbox'))
+
+    expect(screen.getByRole('checkbox')).toBeChecked()
+    expect(screen.getByRole('checkbox')).toBeDisabled()
+
+    settle()
+    // The body prop hasn't moved (no revalidation in this test), so the tick lets go with it.
+    await waitFor(() => expect(screen.getByRole('checkbox')).toBeEnabled())
+  })
+
+  it('does not leave the description stuck when GitHub refuses the write', async () => {
+    const user = userEvent.setup()
+    updatePr.mockRejectedValue(new Error('403'))
+    renderDescription('- [ ] docs')
+
+    await user.click(screen.getByRole('checkbox'))
+
+    await waitFor(() => expect(screen.getByRole('checkbox')).not.toBeChecked())
+    expect(screen.getByRole('checkbox')).toBeEnabled()
   })
 })

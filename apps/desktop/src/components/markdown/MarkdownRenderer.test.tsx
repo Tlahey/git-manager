@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { MermaidBlock } from './components/MermaidBlock'
 
@@ -188,6 +188,68 @@ describe('MarkdownRenderer — sanitization of untrusted HTML', () => {
     expect(boxes).toHaveLength(2)
     expect(boxes[0]).toBeChecked()
     expect(boxes[1]).not.toBeChecked()
+  })
+})
+
+/**
+ * Ticking a checkbox is a rewrite of the source line it was rendered from, so these pin down the
+ * one thing that can silently break: the line a checkbox reports. It travels from remark through
+ * `rehype-raw` and the sanitizer on the *list item* — the `input` itself is synthesised and has no
+ * position — and a wrong line would tick a different item, or overwrite a line of prose.
+ */
+describe('MarkdownRenderer — task list toggling', () => {
+  it('leaves the checkboxes read-only unless a toggle handler is given', () => {
+    render(<MarkdownRenderer content={'- [ ] todo'} />)
+
+    expect(screen.getByRole('checkbox')).toBeDisabled()
+  })
+
+  it('rewrites the ticked item, and only that one', () => {
+    const onTaskToggle = vi.fn()
+    const content = '## Plan\n\n- [ ] first\n- [ ] second\n- [x] third'
+    render(<MarkdownRenderer content={content} onTaskToggle={onTaskToggle} />)
+
+    fireEvent.click(screen.getAllByRole('checkbox')[1])
+
+    expect(onTaskToggle).toHaveBeenCalledWith('## Plan\n\n- [ ] first\n- [x] second\n- [x] third')
+  })
+
+  it('unticks an item that is checked in the source', () => {
+    const onTaskToggle = vi.fn()
+    render(<MarkdownRenderer content={'- [x] done'} onTaskToggle={onTaskToggle} />)
+
+    fireEvent.click(screen.getByRole('checkbox'))
+
+    expect(onTaskToggle).toHaveBeenCalledWith('- [ ] done')
+  })
+
+  it('toggles a nested item against its own line, not its parent list item', () => {
+    const onTaskToggle = vi.fn()
+    const content = '- [ ] parent\n  - [ ] child'
+    render(<MarkdownRenderer content={content} onTaskToggle={onTaskToggle} />)
+
+    fireEvent.click(screen.getAllByRole('checkbox')[1])
+
+    expect(onTaskToggle).toHaveBeenCalledWith('- [ ] parent\n  - [x] child')
+  })
+
+  it('toggles the right item when the list follows prose and loose items', () => {
+    const onTaskToggle = vi.fn()
+    const content = 'Intro paragraph\n\n- [ ] alpha\n\n- [ ] beta\n\nOutro'
+    render(<MarkdownRenderer content={content} onTaskToggle={onTaskToggle} />)
+
+    fireEvent.click(screen.getAllByRole('checkbox')[1])
+
+    expect(onTaskToggle).toHaveBeenCalledWith('Intro paragraph\n\n- [ ] alpha\n\n- [x] beta\n\nOutro')
+  })
+
+  it('freezes the checkboxes while a toggle is being saved', () => {
+    const onTaskToggle = vi.fn()
+    render(
+      <MarkdownRenderer content={'- [ ] todo'} onTaskToggle={onTaskToggle} taskTogglePending />
+    )
+
+    expect(screen.getByRole('checkbox')).toBeDisabled()
   })
 })
 
