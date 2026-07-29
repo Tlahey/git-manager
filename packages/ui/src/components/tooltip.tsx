@@ -131,10 +131,10 @@ function TooltipBubble({
   // corrected, which reads as the tooltip appearing up-and-left of the trigger and snapping onto it
   // a frame later — the effect is most visible on small triggers like a toolbar icon.
   //
-  // `offsetWidth`/`offsetHeight`, not `getBoundingClientRect()`: the entry animation (`zoom-in-95`)
-  // is already running at this point, and a bounding rect reports the element's *transformed* box —
-  // so the bubble measured ~5% small, got placed from those wrong dimensions, and then visibly
-  // drifted as the scale animation settled to 1. The offset sizes are the untransformed layout box.
+  // `offsetWidth`/`offsetHeight`, not `getBoundingClientRect()`: the entry animation is already
+  // running at this point, and a bounding rect reports the element's *transformed* box — so the
+  // bubble would measure ~4% small, get placed from those wrong dimensions, and then drift as the
+  // scale settles to 1. The offset sizes are the untransformed layout box.
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
@@ -153,15 +153,29 @@ function TooltipBubble({
         'border border-border bg-popover shadow-xl',
         'text-[11px] leading-snug text-foreground',
         'pointer-events-none whitespace-nowrap',
-        animate ? 'animate-in fade-in-0 zoom-in-95 duration-150' : '',
+        animate ? 'animate-in fade-in-0 zoom-in-95' : '',
         className,
       ]
         .filter(Boolean)
         .join(' ')}
+      // `transition: none` is load-bearing, not cosmetic. The bubble is mounted off-screen to be
+      // measured and only then moved onto the trigger, so *any* transition reaching `top`/`left`
+      // animates that move: the tooltip appears far above where it belongs and slides down into
+      // place. That is what a stray `duration-150` here used to do — `duration-*` sets
+      // `transition-duration`, leaving `transition-property` at its CSS initial value, `all`. The
+      // entry animation above is a keyframe animation, which `transition: none` does not touch;
+      // time it with `animate-duration-*`, never `duration-*`. Pinning it inline also immunises
+      // the bubble against a caller passing a transition class through `className`.
       style={
         pos
-          ? { top: pos.top, left: pos.left, position: 'fixed' }
-          : { visibility: 'hidden', position: 'fixed', top: -9999, left: -9999 }
+          ? { top: pos.top, left: pos.left, position: 'fixed', transition: 'none' }
+          : {
+              visibility: 'hidden',
+              position: 'fixed',
+              top: -9999,
+              left: -9999,
+              transition: 'none',
+            }
       }
     >
       {content}
