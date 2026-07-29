@@ -100,9 +100,18 @@ export function BlameFileViewer({
     }
   }, [blocks, ready, showBlame])
 
+  // Cancel a still-pending tick on unmount so it can't run after teardown. Clearing the ref is NOT
+  // redundant with the cancel: `scheduleTick` reads a non-null ref as "a frame is already queued"
+  // and bails, and only the frame's own callback nulls it back out — so cancelling without
+  // clearing latches that guard forever and the gutter silently stops tracking scroll/layout.
+  // React StrictMode double-invokes effects on mount (mount → cleanup → mount) and the app runs
+  // under it (main.tsx), so this cleanup fires while the component is still very much alive.
   useEffect(() => {
     return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
     }
   }, [])
 
