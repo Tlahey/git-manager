@@ -45,6 +45,29 @@ describe('changedCharRanges — token-level intra-line diff', () => {
     })
   })
 
+  // The space between two rewritten words is technically a "common" token, but leaving it
+  // unpainted punches a hole into the middle of one edited phrase and makes it harder to read.
+  it('paints the whitespace between two consecutive changed words as one continuous run', () => {
+    const ranges = changedCharRanges('dark only, no toggle', 'dark on a first visit')
+    expect(ranges).toEqual({
+      a: [{ start: 5, end: 20 }], // "only, no toggle" — spaces included
+      b: [{ start: 5, end: 21 }], // "on a first visit"
+    })
+  })
+
+  it('still breaks the highlight around a word that survived the edit', () => {
+    const ranges = changedCharRanges('foo bar baz qux', 'foo BAR baz QUX')
+    expect(ranges?.a).toEqual([
+      { start: 4, end: 7 },
+      { start: 12, end: 15 },
+    ])
+  })
+
+  it('spans a multi-space gap between two changed words (aligned columns)', () => {
+    const ranges = changedCharRanges('let aa   cc', 'let xx   yy')
+    expect(ranges?.b).toEqual([{ start: 4, end: 11 }]) // "xx   yy"
+  })
+
   it('gives up (undefined) when the lines share no meaningful token — block fill says it all', () => {
     expect(changedCharRanges('return userCount', 'const x = 12')).toBeUndefined()
   })
