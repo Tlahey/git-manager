@@ -33,6 +33,7 @@ import { CreateBranchHereDialog } from '../git-graph/CreateBranchHereDialog'
 import { CreateIssueDialog } from './CreateIssueDialog'
 import { IssueFilterDialog } from './IssueFilterDialog'
 import { useSidebarIssueMenu } from '../../hooks/useSidebarIssueMenu'
+import { useSidebarPrMenu } from '../../hooks/useSidebarPrMenu'
 import { useSidebarIssueFilterMenu } from '../../hooks/useSidebarIssueFilterMenu'
 import type { IssueFilter } from '../../stores/issueFilters.store'
 
@@ -96,6 +97,9 @@ export function RepositorySidebar({
   }
 
   const [addWorktreeOpen, setAddWorktreeOpen] = useState(false)
+  // Branch the worktree dialog opens on when it was raised from a pull request; null for the
+  // section header's "+", which falls back to the current branch.
+  const [worktreeBranch, setWorktreeBranch] = useState<string | null>(null)
   const [worktreeToRemove, setWorktreeToRemove] = useState<GitWorktree | null>(null)
   // Whether the pending removal should also delete the worktree's branch — the two menu entries
   // share one dialog, which only differs by this flag.
@@ -113,6 +117,14 @@ export function RepositorySidebar({
 
   const setActiveIssue = useRepoUIStore((s) => s.setActiveIssue)
   const openIssueMenu = useSidebarIssueMenu(repoPath)
+  const openPrMenu = useSidebarPrMenu({
+    repoPath,
+    onSelectBranch,
+    onCreateWorktree: useCallback((branch: string) => {
+      setWorktreeBranch(branch)
+      setAddWorktreeOpen(true)
+    }, []),
+  })
   const openIssueFilterMenu = useSidebarIssueFilterMenu(
     useCallback((filter: IssueFilter) => setFilterDialog({ filter }), [])
   )
@@ -411,7 +423,12 @@ export function RepositorySidebar({
                 section.key === 'local' ? () => setRemoveMergedBranches('mine') : undefined
               }
               onAddWorktree={
-                section.key === 'worktrees' ? () => setAddWorktreeOpen(true) : undefined
+                section.key === 'worktrees'
+                  ? () => {
+                      setWorktreeBranch(null)
+                      setAddWorktreeOpen(true)
+                    }
+                  : undefined
               }
               onPruneWorktrees={
                 section.key === 'worktrees' ? () => setPruneWorktreesOpen(true) : undefined
@@ -453,6 +470,7 @@ export function RepositorySidebar({
                     onTogglePin={onTogglePin}
                     onContextMenu={onContextMenu}
                     onOpenPr={onOpenPr}
+                    onPrContextMenu={openPrMenu}
                     onIssueContextMenu={openIssueMenu}
                     onOpenIssue={setActiveIssue}
                     onIssueFilterMenu={openIssueFilterMenu}
@@ -486,6 +504,7 @@ export function RepositorySidebar({
       <AddWorktreeDialog
         repoPath={repoPath}
         open={addWorktreeOpen}
+        initialBranch={worktreeBranch ?? undefined}
         onClose={() => setAddWorktreeOpen(false)}
       />
       <RemoveWorktreeDialog

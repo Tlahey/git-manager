@@ -9,7 +9,7 @@ import {
   Clock,
   XCircle,
   Loader2,
-  ExternalLink,
+  MoreVertical,
 } from 'lucide-react'
 import { Tooltip } from '@git-manager/ui'
 import { highlightMatch } from '@git-manager/components'
@@ -29,6 +29,8 @@ interface PullRequestItemProps {
   filterQuery?: string
   /** 1 when the row sits under a PR sub-group header, so it indents past it. */
   depth?: 0 | 1
+  /** Opens the PR's action menu — the row's "…" button and its right-click both lead here. */
+  onContextMenu?: (e: React.MouseEvent, pr: PullRequest) => void
 }
 
 /**
@@ -68,6 +70,7 @@ export function PullRequestItem({
   isSelected = false,
   filterQuery = '',
   depth = 0,
+  onContextMenu,
 }: PullRequestItemProps) {
   const { t } = useTranslation('git')
   // Gates the review lookup: the card's data is only fetched once this row is actually hovered,
@@ -96,10 +99,23 @@ export function PullRequestItem({
         }`}
         onMouseEnter={() => setHovered(true)}
         onFocus={() => setHovered(true)}
-        onClick={() => onOpen?.(pr)}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('[data-toggle]')) return
+          onOpen?.(pr)
+        }}
+        onContextMenu={(e) => {
+          if (!onContextMenu) return
+          e.preventDefault()
+          e.stopPropagation()
+          onContextMenu(e, pr)
+        }}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => e.key === 'Enter' && onOpen?.(pr)}
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter') return
+          if ((e.target as HTMLElement).closest('[data-toggle]')) return
+          onOpen?.(pr)
+        }}
         data-testid={`pr-item-${pr.number}`}
       >
         {/* State glyph */}
@@ -125,16 +141,20 @@ export function PullRequestItem({
           </div>
         </div>
 
-        <a
-          href={pr.url}
-          target="_blank"
-          rel="noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="mt-0.5 shrink-0 opacity-0 transition-opacity group-hover/pr:opacity-100"
-          aria-label={t('sidebar.openInGitHub')}
+        {/* Same menu as the row's right-click — marked so the row's own click/Enter skip it. */}
+        <button
+          data-toggle="pr-actions"
+          onClick={(e) => {
+            e.stopPropagation()
+            onContextMenu?.(e, pr)
+          }}
+          className="mt-0.5 shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/pr:opacity-100"
+          aria-label={t('sidebar.prActions')}
+          title={t('sidebar.prActions')}
+          data-testid={`pr-actions-button-${pr.number}`}
         >
-          <ExternalLink className="h-3 w-3 text-sidebar-muted-foreground hover:text-sidebar-foreground" />
-        </a>
+          <MoreVertical className="h-3.5 w-3.5" />
+        </button>
       </div>
     </Tooltip>
   )

@@ -61,6 +61,7 @@ vi.mock('./PullRequestItem', () => ({
     onOpen?: (pr: PullRequest) => void
     repoPath?: string
     depth?: 0 | 1
+    onContextMenu?: (e: unknown, pr: PullRequest) => void
   }) => (
     <button
       data-testid="pr-item"
@@ -68,6 +69,7 @@ vi.mock('./PullRequestItem', () => ({
       data-repo-path={props.repoPath}
       data-depth={String(props.depth)}
       onClick={() => props.onOpen?.(props.pr)}
+      onContextMenu={(e) => props.onContextMenu?.(e, props.pr)}
     >
       {props.pr.title}
     </button>
@@ -381,6 +383,18 @@ describe('SidebarRowView — pr', () => {
     )
     expect(screen.getByTestId('pr-item')).toHaveAttribute('data-repo-path', '/repo')
     expect(screen.getByTestId('pr-item')).toHaveAttribute('data-depth', '1')
+  })
+})
+
+describe('SidebarRowView — pr actions', () => {
+  it('forwards the pull request action menu to the row', () => {
+    const onPrContextMenu = vi.fn()
+    const item = pr()
+    renderRow({ kind: 'pr', id: 'pr-1', pr: item, isSelected: false }, { onPrContextMenu })
+
+    fireEvent.contextMenu(screen.getByTestId('pr-item'))
+
+    expect(onPrContextMenu).toHaveBeenCalledWith(expect.anything(), item)
   })
 })
 

@@ -152,16 +152,41 @@ describe('PullRequestItem — interaction', () => {
     expect(onOpen).toHaveBeenCalledWith(item)
   })
 
-  it('the external-link opens the PR URL without triggering onOpen', async () => {
-    const onOpen = vi.fn()
+  it('opens the actions menu from the "…" button', async () => {
     const user = userEvent.setup()
-    render(
-      <PullRequestItem pr={pr({ url: 'https://github.com/owner/repo/pull/42' })} onOpen={onOpen} />
+    const onContextMenu = vi.fn()
+    render(<PullRequestItem pr={pr()} onContextMenu={onContextMenu} />)
+
+    await user.click(screen.getByTestId('pr-actions-button-42'))
+
+    expect(onContextMenu).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ number: 42 })
     )
-    const link = screen.getByLabelText("Open in GitHub")
-    expect(link).toHaveAttribute('href', 'https://github.com/owner/repo/pull/42')
-    expect(link).toHaveAttribute('target', '_blank')
-    await user.click(link)
+  })
+
+  it('hands a right-click to the same menu, without the OS one', () => {
+    const onContextMenu = vi.fn()
+    render(<PullRequestItem pr={pr()} onContextMenu={onContextMenu} />)
+
+    const e = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    fireEvent(screen.getByTestId('pr-item-42'), e)
+
+    expect(onContextMenu).toHaveBeenCalledOnce()
+    expect(e.defaultPrevented).toBe(true)
+  })
+
+  it('the "…" button does not also open the PR, by click or by keyboard', async () => {
+    const user = userEvent.setup()
+    const onOpen = vi.fn()
+    render(<PullRequestItem pr={pr()} onOpen={onOpen} onContextMenu={vi.fn()} />)
+    const button = screen.getByTestId('pr-actions-button-42')
+
+    await user.click(button)
+    expect(onOpen).not.toHaveBeenCalled()
+
+    button.focus()
+    await user.keyboard('{Enter}')
     expect(onOpen).not.toHaveBeenCalled()
   })
 })

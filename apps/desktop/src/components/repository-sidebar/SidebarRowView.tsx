@@ -37,6 +37,8 @@ interface SidebarRowViewProps {
   onTogglePin: (shortName: string) => void
   onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
   onOpenPr?: (pr: PullRequest) => void
+  /** Opens a pull request's action menu (right-click on the row, or its "…" button). */
+  onPrContextMenu?: (e: React.MouseEvent, pr: PullRequest) => void
   /** Opens an issue's action menu (right-click on the row, or its "…" button). */
   onIssueContextMenu?: (e: React.MouseEvent, issue: MockIssue) => void
   /** Opens an issue in the app's own issue view. */
@@ -77,6 +79,7 @@ export function SidebarRowView({
   onTogglePin,
   onContextMenu,
   onOpenPr,
+  onPrContextMenu,
   onIssueContextMenu,
   onOpenIssue,
   onIssueFilterMenu,
@@ -253,6 +256,7 @@ export function SidebarRowView({
           isSelected={row.isSelected}
           filterQuery={filterQuery}
           depth={row.depth}
+          onContextMenu={onPrContextMenu}
         />
       )
 
