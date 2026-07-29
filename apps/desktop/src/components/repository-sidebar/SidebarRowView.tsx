@@ -6,8 +6,6 @@ import {
   GitBranch as BranchIcon,
   Tag as TagIcon,
   Archive as ArchiveIcon,
-  Eye,
-  EyeOff,
   GitFork,
   MoreVertical,
 } from 'lucide-react'
@@ -20,6 +18,7 @@ import type { MockIssue } from '../../app/pull-requests/types'
 import type { IssueFilterMenuTarget, SidebarRow } from './types'
 import { BranchItem } from './BranchItem'
 import { SoloToggle } from './SoloToggle'
+import { VisibilityToggle } from './VisibilityToggle'
 import { PullRequestItem } from './PullRequestItem'
 import { IssueItem } from './IssueItem'
 import { WorktreeItem } from './WorktreeItem'
@@ -53,6 +52,10 @@ interface SidebarRowViewProps {
   /** Tag short names whose badge is kept out of the graph. */
   hiddenTags?: string[]
   onToggleTagVisibility?: (tagName: string) => void
+  /** Remote branch short names (`origin/main`) whose badge is kept out of the graph. */
+  hiddenRemoteBranches?: string[]
+  /** Hides or shows a set of remote branches at once — a single row passes one name. */
+  onToggleRemoteBranchesVisibility?: (shortNames: string[], hidden: boolean) => void
   onRemoveWorktree?: (wt: GitWorktree) => void
   /** Remove a worktree *and* delete the branch it had checked out. */
   onRemoveWorktreeAndBranch?: (wt: GitWorktree) => void
@@ -89,6 +92,8 @@ export function SidebarRowView({
   onTagContextMenu,
   hiddenTags = [],
   onToggleTagVisibility,
+  hiddenRemoteBranches = [],
+  onToggleRemoteBranchesVisibility,
   onRemoveWorktree,
   onRemoveWorktreeAndBranch,
   onOpenWorktree,
@@ -145,50 +150,102 @@ export function SidebarRowView({
       )
 
     case 'remote-group':
-      return (
-        <button
-          onClick={() => onToggleOpen(row.id)}
-          className="flex w-full items-center gap-1.5 py-[3px] pl-4 pr-2 text-left text-xs text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
-        >
-          <span className="shrink-0">
-            {row.isOpen ? (
-              <ChevronDown className="h-3 w-3" />
-            ) : (
-              <ChevronRight className="h-3 w-3" />
-            )}
-          </span>
-          <Globe className="h-3 w-3 shrink-0 opacity-50" />
-          <span className="flex-1 truncate font-medium">{row.remoteName}</span>
-          <span className="shrink-0 text-[10px] tabular-nums text-sidebar-muted-foreground/40">
-            {row.count}
-          </span>
-        </button>
-      )
-
-    case 'remote-branch': {
-      const displayName = row.branch.shortName.replace(new RegExp(`^${row.remoteName}/`), '')
-      const isSoloed = soloed?.has(row.branch.shortName) ?? false
-      const dimmed = soloActive && !isSoloed
+    case 'remote-folder': {
+      // Both are group headers over a set of remote branches, and hide them as one: toggling each
+      // branch in turn would make the group's own state depend on the order the toggles ran in.
+      const hiddenBelow = row.branchNames.filter((n) => hiddenRemoteBranches.includes(n)).length
+      const allHidden = row.branchNames.length > 0 && hiddenBelow === row.branchNames.length
+      const label = allHidden
+        ? t('sidebar.remote.showAllInGraph')
+        : t('sidebar.remote.hideAllInGraph')
+      const isFolder = row.kind === 'remote-folder'
       return (
         <div
-          className={`group/rbranch relative flex items-center gap-1.5 py-[3px] pl-10 pr-2 text-xs transition-colors ${
+          className={`relative flex w-full items-center text-xs transition-colors hover:bg-sidebar-accent/40 ${
+            isFolder ? 'group/rfolder' : 'group/remote'
+          } ${allHidden ? 'opacity-50' : ''}`}
+          data-testid={`sidebar-row-${row.id}`}
+        >
+          <VisibilityToggle
+            isHidden={allHidden}
+            partial={hiddenBelow > 0 && !allHidden}
+            onToggle={() => onToggleRemoteBranchesVisibility?.(row.branchNames, !allHidden)}
+            label={label}
+            dataToggle="remote-visibility"
+            hoverClass={isFolder ? 'group-hover/rfolder:opacity-100' : 'group-hover/remote:opacity-100'}
+          />
+          <button
+            onClick={() => onToggleOpen(row.id)}
+            className={`flex min-w-0 flex-1 items-center gap-1.5 py-[3px] pr-2 text-left text-sidebar-muted-foreground transition-colors hover:text-sidebar-foreground ${
+              isFolder ? 'pl-10' : 'pl-6'
+            }`}
+          >
+            <span className="shrink-0">
+              {row.isOpen ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : (
+                <ChevronRight className="h-3 w-3" />
+              )}
+            </span>
+            {isFolder ? (
+              <FolderGit2 className="h-3 w-3 shrink-0 opacity-50" />
+            ) : (
+              <Globe className="h-3 w-3 shrink-0 opacity-50" />
+            )}
+            <span className="flex-1 truncate font-medium">
+              {row.kind === 'remote-folder' ? row.prefix.replace(/\/$/, '') : row.remoteName}
+            </span>
+            <span className="shrink-0 text-[10px] tabular-nums text-sidebar-muted-foreground/40">
+              {row.count}
+            </span>
+          </button>
+        </div>
+      )
+    }
+
+    case 'remote-branch': {
+      const isSoloed = soloed?.has(row.branch.shortName) ?? false
+      const dimmed = soloActive && !isSoloed
+      const isHidden = hiddenRemoteBranches.includes(row.branch.shortName)
+      const visibilityLabel = isHidden
+        ? t('sidebar.remote.showInGraph')
+        : t('sidebar.remote.hideInGraph')
+      return (
+        <div
+          className={`group/rbranch relative flex items-center gap-1.5 py-[3px] pr-2 text-xs transition-colors ${
+            row.depth === 1 ? 'pl-14' : 'pl-10'
+          } ${
             row.isSelected
               ? 'bg-sidebar-accent text-sidebar-foreground'
               : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
-          } ${dimmed ? 'opacity-50' : ''}`}
-          onClick={() => onSelectBranch(row.branch.name)}
+          } ${dimmed || isHidden ? 'opacity-50' : ''}`}
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest('[data-toggle]')) return
+            onSelectBranch(row.branch.name)
+          }}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && onSelectBranch(row.branch.name)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return
+            if ((e.target as HTMLElement).closest('[data-toggle]')) return
+            onSelectBranch(row.branch.name)
+          }}
         >
-          {soloActive && onToggleSolo && (
-            <SoloToggle
-              isSoloed={isSoloed}
-              onToggle={() => onToggleSolo(row.branch.shortName)}
+          {/* Solo mode owns the left edge while it is on — the two eyes would sit on top of each
+              other, and solo is the stronger, temporary statement about what the graph shows. */}
+          {soloActive && onToggleSolo ? (
+            <SoloToggle isSoloed={isSoloed} onToggle={() => onToggleSolo(row.branch.shortName)} />
+          ) : (
+            <VisibilityToggle
+              isHidden={isHidden}
+              onToggle={() => onToggleRemoteBranchesVisibility?.([row.branch.shortName], !isHidden)}
+              label={visibilityLabel}
+              dataToggle="remote-visibility"
+              hoverClass="group-hover/rbranch:opacity-100"
             />
           )}
           <BranchIcon className="h-3 w-3 shrink-0 opacity-30" />
-          <HoverExpandLabel>{highlightMatch(displayName, filterQuery)}</HoverExpandLabel>
+          <HoverExpandLabel>{highlightMatch(row.displayName, filterQuery)}</HoverExpandLabel>
           {(row.branch.aheadCount > 0 || row.branch.behindCount > 0) && (
             <span className="shrink-0 text-[10px] tabular-nums">
               {row.branch.aheadCount > 0 && (
@@ -302,27 +359,13 @@ export function SidebarRowView({
           }}
           data-testid={`tag-item-${row.tag.shortName}`}
         >
-          <span
-            data-toggle="tag-visibility"
-            onClick={(e) => {
-              e.stopPropagation()
-              e.preventDefault()
-              onToggleTagVisibility?.(row.tag.shortName)
-            }}
-            // Like the stash toggle: an affordance on hover while the tag shows, but pinned on
-            // screen once it is hidden, since the icon is the only thing saying so.
-            className={`absolute left-1 z-content shrink-0 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground ${
-              isHidden ? 'opacity-100' : 'opacity-0 group-hover/tag:opacity-100'
-            }`}
-            title={visibilityLabel}
-            aria-label={visibilityLabel}
-          >
-            {isHidden ? (
-              <EyeOff className="h-3.5 w-3.5 text-sidebar-muted-foreground/60" />
-            ) : (
-              <Eye className="h-3.5 w-3.5 text-violet-400" />
-            )}
-          </span>
+          <VisibilityToggle
+            isHidden={isHidden}
+            onToggle={() => onToggleTagVisibility?.(row.tag.shortName)}
+            label={visibilityLabel}
+            dataToggle="tag-visibility"
+            hoverClass="group-hover/tag:opacity-100"
+          />
           <TagIcon className="h-3 w-3 shrink-0 opacity-30" />
           <HoverExpandLabel>{highlightMatch(row.tag.shortName, filterQuery)}</HoverExpandLabel>
           <span className="shrink-0 font-mono text-[10px] font-normal tabular-nums text-sidebar-muted-foreground/40">
@@ -380,36 +423,13 @@ export function SidebarRowView({
           }}
           data-testid={`stash-item-${row.stash.index}`}
         >
-          <span
-            data-toggle="stash-visibility"
-            onClick={(e) => {
-              e.stopPropagation()
-              e.preventDefault()
-              onToggleStashVisibility?.(row.stash.commitOid)
-            }}
-            onMouseDown={(e) => {
-              e.stopPropagation()
-              e.preventDefault()
-            }}
-            onMouseUp={(e) => {
-              e.stopPropagation()
-              e.preventDefault()
-            }}
-            // A hidden stash keeps its toggle on screen at all times: the icon is the only thing
-            // saying the stash is being kept out of the graph, and an affordance that only appears
-            // under the pointer would leave that state invisible at rest.
-            className={`absolute left-1 z-content shrink-0 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground ${
-              isHidden ? 'opacity-100' : 'opacity-0 group-hover/stash:opacity-100'
-            }`}
-            title={visibilityLabel}
-            aria-label={visibilityLabel}
-          >
-            {isHidden ? (
-              <EyeOff className="h-3.5 w-3.5 text-sidebar-muted-foreground/60" />
-            ) : (
-              <Eye className="h-3.5 w-3.5 text-violet-400" />
-            )}
-          </span>
+          <VisibilityToggle
+            isHidden={isHidden}
+            onToggle={() => onToggleStashVisibility?.(row.stash.commitOid)}
+            label={visibilityLabel}
+            dataToggle="stash-visibility"
+            hoverClass="group-hover/stash:opacity-100"
+          />
           <ArchiveIcon className="h-3 w-3 shrink-0 text-violet-400 opacity-40" />
           <HoverExpandLabel className="min-w-0 flex-1 truncate">
             {highlightMatch(row.stash.message || `stash@{${row.stash.index}}`, filterQuery)}

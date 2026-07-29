@@ -348,6 +348,61 @@ describe('useSidebarRows — remotes section', () => {
     const { result } = renderRows({ openState: { 'section:remotes': true } })
     await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
   })
+
+  // Everything sits under the remote node, and folders inside it are cut on the name *relative to
+  // the remote* — grouping on the raw short name would fold the whole remote into one `origin/`.
+  it('folders branches under the remote by their shared prefix', async () => {
+    useBranchesMock.mockReturnValue({
+      data: [
+        remoteBranch('origin/feat/a'),
+        remoteBranch('origin/feat/b'),
+        remoteBranch('origin/main'),
+      ],
+    })
+    const { result } = renderRows({ openState: { 'section:remotes': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
+
+    expect(findRow(result.current.sections, 'remote-folder:origin/feat/')).toMatchObject({
+      prefix: 'feat/',
+      count: 2,
+      branchNames: ['origin/feat/a', 'origin/feat/b'],
+    })
+    expect(findRow(result.current.sections, 'remote-branch:refs/remotes/origin/feat/a')).toMatchObject(
+      { displayName: 'a', depth: 1 }
+    )
+    // Nothing to group with: an ungrouped branch stays directly under the remote.
+    expect(findRow(result.current.sections, 'remote-branch:refs/remotes/origin/main')).toMatchObject({
+      displayName: 'main',
+      depth: 0,
+    })
+  })
+
+  it('carries every branch name on the remote node, for its visibility toggle', async () => {
+    useBranchesMock.mockReturnValue({
+      data: [remoteBranch('origin/feat/a'), remoteBranch('origin/feat/b'), remoteBranch('origin/main')],
+    })
+    const { result } = renderRows({ openState: { 'section:remotes': true } })
+    await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
+    expect(findRow(result.current.sections, 'remote:origin')).toMatchObject({
+      branchNames: ['origin/feat/a', 'origin/feat/b', 'origin/main'],
+    })
+  })
+
+  it('collapses a remote folder on its own, leaving the rest of the remote alone', async () => {
+    useBranchesMock.mockReturnValue({
+      data: [remoteBranch('origin/feat/a'), remoteBranch('origin/feat/b'), remoteBranch('origin/main')],
+    })
+    const { result } = renderRows({
+      openState: { 'section:remotes': true, 'remote-folder:origin/feat/': false },
+    })
+    await waitFor(() => expect(findRow(result.current.sections, 'remote:origin')).toBeDefined())
+    expect(
+      findRow(result.current.sections, 'remote-branch:refs/remotes/origin/feat/a')
+    ).toBeUndefined()
+    expect(
+      findRow(result.current.sections, 'remote-branch:refs/remotes/origin/main')
+    ).toBeDefined()
+  })
 })
 
 describe('useSidebarRows — pull requests section', () => {

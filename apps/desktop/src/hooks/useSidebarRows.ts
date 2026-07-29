@@ -4,7 +4,7 @@ import { useTranslation } from '@git-manager/i18n'
 import type { GitBranch, GitRef, GitSubmodule, GitWorktree } from '@git-manager/git-types'
 import { useBranches } from './useBranches'
 import { useGitStashes } from './useGitStashes'
-import { useGroupedBranches } from './useGroupedBranches'
+import { groupBranchesByPrefix, useGroupedBranches } from './useGroupedBranches'
 import { usePullRequests } from './usePullRequests'
 import { useRepoIssues } from './useRepoIssues'
 import { useRepoPrFilters } from './useRepoPrFilters'
@@ -52,6 +52,15 @@ interface UseSidebarRowsResult {
 }
 
 const TAGS_LIMIT = 100
+
+/**
+ * A remote branch's name as it reads *under its own remote node* (`origin/feat/a` → `feat/a`).
+ * `remoteName` is derived from that very first segment, so this only ever strips a prefix the
+ * branch actually carries.
+ */
+function stripRemotePrefix(shortName: string, remoteName: string): string {
+  return shortName.startsWith(`${remoteName}/`) ? shortName.slice(remoteName.length + 1) : shortName
+}
 
 export function useSidebarRows({
   repoPath,
@@ -363,22 +372,57 @@ export function useSidebarRows({
         for (const [remoteName, branches] of remoteGroups) {
           const gid = `remote:${remoteName}`
           const gopen = subOpen(gid, true)
+          // Name relative to the remote — `origin/feat/a` folders under `feat/`, not `origin/`.
+          const relativeName = (b: GitBranch) => stripRemotePrefix(b.shortName, remoteName)
           remoteRows.push({
             kind: 'remote-group',
             id: gid,
             remoteName,
             count: branches.length,
             isOpen: gopen,
+            branchNames: branches.map((b) => b.shortName),
           })
           if (gopen) {
-            for (const b of branches) {
+            const { groups: remoteFolders, ungrouped: looseBranches } = groupBranchesByPrefix(
+              branches,
+              relativeName
+            )
+            for (const b of looseBranches) {
               remoteRows.push({
                 kind: 'remote-branch',
                 id: `remote-branch:${b.name}`,
                 branch: b,
                 remoteName,
+                displayName: relativeName(b),
+                depth: 0,
                 isSelected: isSelected(b),
               })
+            }
+            for (const { prefix, branches: folderBranches } of remoteFolders) {
+              const fid = `remote-folder:${remoteName}/${prefix}`
+              const fopen = subOpen(fid, true)
+              remoteRows.push({
+                kind: 'remote-folder',
+                id: fid,
+                remoteName,
+                prefix,
+                count: folderBranches.length,
+                isOpen: fopen,
+                branchNames: folderBranches.map((b) => b.shortName),
+              })
+              if (fopen) {
+                for (const b of folderBranches) {
+                  remoteRows.push({
+                    kind: 'remote-branch',
+                    id: `remote-branch:${b.name}`,
+                    branch: b,
+                    remoteName,
+                    displayName: relativeName(b).slice(prefix.length),
+                    depth: 1,
+                    isSelected: isSelected(b),
+                  })
+                }
+              }
             }
           }
         }

@@ -51,12 +51,29 @@ export type SidebarRow =
       remoteName: string
       count: number
       isOpen: boolean
+      /** Short names of every branch under this remote — what its visibility toggle acts on. */
+      branchNames: string[]
+    }
+  | {
+      kind: 'remote-folder'
+      id: string
+      remoteName: string
+      /** Prefix relative to the remote, e.g. `feat/` for `origin/feat/a`. */
+      prefix: string
+      count: number
+      isOpen: boolean
+      /** Short names of the branches in this folder — what its visibility toggle acts on. */
+      branchNames: string[]
     }
   | {
       kind: 'remote-branch'
       id: string
       branch: GitBranch
       remoteName: string
+      /** Name shown on the row: the remote prefix, and the folder's when nested, are stripped. */
+      displayName: string
+      /** 1 when nested under a remote folder, so the row indents past it. */
+      depth: 0 | 1
       isSelected: boolean
     }
   | {

@@ -278,6 +278,42 @@ describe('GraphRow — hidden tags', () => {
     renderRow({ columns: [col('refs')], node: node({ refs }), hiddenTags: [] })
     expect(lastRefLabelGroupProps.current).toMatchObject({ refs })
   })
+
+  const remoteRef = (shortName: string) => ({
+    name: `refs/remotes/${shortName}`,
+    shortName,
+    type: 'remote' as const,
+    commitOid: 'abc1234567890',
+  })
+
+  it('drops a hidden remote branch badge while keeping the commit and its other refs', () => {
+    renderRow({
+      columns: [col('refs')],
+      node: node({ refs: [branchRef, remoteRef('origin/main')] }),
+      hiddenRemoteBranches: ['origin/main'],
+    })
+    expect(lastRefLabelGroupProps.current).toMatchObject({ refs: [branchRef] })
+  })
+
+  // Hiding is remote-qualified: two remotes can carry the same branch name.
+  it('leaves another remote carrying the same branch name alone', () => {
+    renderRow({
+      columns: [col('refs')],
+      node: node({ refs: [remoteRef('origin/main'), remoteRef('upstream/main')] }),
+      hiddenRemoteBranches: ['origin/main'],
+    })
+    expect(lastRefLabelGroupProps.current).toMatchObject({ refs: [remoteRef('upstream/main')] })
+  })
+
+  // The local branch is what stays checked out — hiding `origin/main` must not take it down.
+  it('never hides the local branch behind a hidden remote branch', () => {
+    renderRow({
+      columns: [col('refs')],
+      node: node({ refs: [branchRef] }),
+      hiddenRemoteBranches: ['main'],
+    })
+    expect(lastRefLabelGroupProps.current).toMatchObject({ refs: [branchRef] })
+  })
 })
 
 describe('GraphRow — lane branch hint', () => {

@@ -24,6 +24,7 @@ beforeEach(() => {
     linkedWorktreePaths: [],
     wipMessages: {},
     hiddenStashes: {},
+    hiddenRemoteBranches: {},
   })
   useRepoUIStore.setState({ openTabs: [], activeRepo: null, activeTab: DASHBOARD_TAB })
   localStorage.clear()
@@ -251,5 +252,43 @@ describe('useRepoDataStore — setPinned', () => {
   it('ignores an unknown path', () => {
     useRepoDataStore.getState().setPinned('/repo/missing', true)
     expect(useRepoDataStore.getState().savedRepos.every((r) => !r.pinned)).toBe(true)
+  })
+})
+
+describe('useRepoDataStore — hidden remote branches', () => {
+  const hidden = (path = '/repo/a') => useRepoDataStore.getState().hiddenRemoteBranches[path]
+
+  it('toggles a single branch in and back out of the hidden list', () => {
+    useRepoDataStore.getState().toggleRemoteBranchVisibility('/repo/a', 'origin/main')
+    expect(hidden()).toEqual(['origin/main'])
+    useRepoDataStore.getState().toggleRemoteBranchVisibility('/repo/a', 'origin/main')
+    expect(hidden()).toEqual([])
+  })
+
+  // Remote-qualified names: hiding origin/main must leave upstream/main showing.
+  it('tells apart two remotes carrying the same branch name', () => {
+    useRepoDataStore.getState().toggleRemoteBranchVisibility('/repo/a', 'origin/main')
+    useRepoDataStore.getState().toggleRemoteBranchVisibility('/repo/a', 'upstream/main')
+    useRepoDataStore.getState().toggleRemoteBranchVisibility('/repo/a', 'origin/main')
+    expect(hidden()).toEqual(['upstream/main'])
+  })
+
+  it('is scoped per repository', () => {
+    useRepoDataStore.getState().toggleRemoteBranchVisibility('/repo/a', 'origin/main')
+    expect(hidden('/repo/b')).toBeUndefined()
+  })
+
+  it('hides a whole set at once, without duplicating what was already hidden', () => {
+    useRepoDataStore.getState().toggleRemoteBranchVisibility('/repo/a', 'origin/main')
+    useRepoDataStore.getState().setRemoteBranchesHidden('/repo/a', ['origin/main', 'origin/dev'], true)
+    expect(hidden()).toEqual(['origin/main', 'origin/dev'])
+  })
+
+  it('shows a whole set again, leaving the branches outside it hidden', () => {
+    useRepoDataStore
+      .getState()
+      .setRemoteBranchesHidden('/repo/a', ['origin/main', 'origin/dev', 'origin/x'], true)
+    useRepoDataStore.getState().setRemoteBranchesHidden('/repo/a', ['origin/main', 'origin/dev'], false)
+    expect(hidden()).toEqual(['origin/x'])
   })
 })

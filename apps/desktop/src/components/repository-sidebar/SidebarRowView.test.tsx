@@ -247,46 +247,195 @@ describe('SidebarRowView — folder', () => {
 })
 
 describe('SidebarRowView — remote-group', () => {
+  const remoteGroup = () => ({
+    kind: 'remote-group' as const,
+    id: 'rg-origin',
+    remoteName: 'origin',
+    count: 2,
+    isOpen: true,
+    branchNames: ['origin/main', 'origin/dev'],
+  })
+
   it('shows the remote name/count and toggles on click', async () => {
     const user = userEvent.setup()
-    const { h } = renderRow({
-      kind: 'remote-group',
-      id: 'rg-origin',
-      remoteName: 'origin',
-      count: 2,
-      isOpen: true,
-    })
+    const { h } = renderRow(remoteGroup())
     expect(screen.getByText('origin')).toBeInTheDocument()
     await user.click(screen.getByText('origin'))
     expect(h.onToggleOpen).toHaveBeenCalledWith('rg-origin')
   })
+
+  // One call over the whole set, not one per branch: a per-branch toggle would leave the group's
+  // own state depending on the order the toggles ran in.
+  it('hides every branch under the remote in a single call', () => {
+    const onToggleRemoteBranchesVisibility = vi.fn()
+    render(
+      <SidebarRowView
+        row={remoteGroup()}
+        {...baseHandlers()}
+        onToggleRemoteBranchesVisibility={onToggleRemoteBranchesVisibility}
+      />
+    )
+    fireEvent.click(screen.getByLabelText('Hide these remote branches from the graph'))
+    expect(onToggleRemoteBranchesVisibility).toHaveBeenCalledWith(
+      ['origin/main', 'origin/dev'],
+      true
+    )
+  })
+
+  it('offers to show them again, and dims the row, once all of them are hidden', () => {
+    const onToggleRemoteBranchesVisibility = vi.fn()
+    const { container } = render(
+      <SidebarRowView
+        row={remoteGroup()}
+        {...baseHandlers()}
+        hiddenRemoteBranches={['origin/main', 'origin/dev']}
+        onToggleRemoteBranchesVisibility={onToggleRemoteBranchesVisibility}
+      />
+    )
+    expect(container.querySelector('.lucide-eye-off')).toBeTruthy()
+    expect(container.querySelector('.opacity-50')).toBeTruthy()
+
+    fireEvent.click(screen.getByLabelText('Show these remote branches in the graph'))
+    expect(onToggleRemoteBranchesVisibility).toHaveBeenCalledWith(
+      ['origin/main', 'origin/dev'],
+      false
+    )
+  })
+
+  // Partly hidden is still "showing", so the action stays "hide" — but the toggle has to be
+  // visible at rest, since a hover-only icon would say nothing about the branches already gone.
+  it('keeps the toggle on screen, dimmed, when only some branches below are hidden', () => {
+    render(
+      <SidebarRowView
+        row={remoteGroup()}
+        {...baseHandlers()}
+        hiddenRemoteBranches={['origin/main']}
+      />
+    )
+    const toggle = screen.getByLabelText('Hide these remote branches from the graph')
+    expect(toggle.className).toContain('opacity-100')
+    expect(toggle.className).not.toContain('opacity-0')
+    expect(toggle.querySelector('.text-violet-400\\/40')).toBeTruthy()
+  })
+})
+
+describe('SidebarRowView — remote-folder', () => {
+  const remoteFolder = () => ({
+    kind: 'remote-folder' as const,
+    id: 'rf-origin-feat',
+    remoteName: 'origin',
+    prefix: 'feat/',
+    count: 2,
+    isOpen: false,
+    branchNames: ['origin/feat/a', 'origin/feat/b'],
+  })
+
+  it('shows the prefix without its trailing slash, with its count, and toggles on click', async () => {
+    const user = userEvent.setup()
+    const { h } = renderRow(remoteFolder())
+    expect(screen.getByText('feat')).toBeInTheDocument()
+    expect(screen.getByText('2')).toBeInTheDocument()
+    await user.click(screen.getByText('feat'))
+    expect(h.onToggleOpen).toHaveBeenCalledWith('rf-origin-feat')
+  })
+
+  it('hides only the branches in the folder', () => {
+    const onToggleRemoteBranchesVisibility = vi.fn()
+    render(
+      <SidebarRowView
+        row={remoteFolder()}
+        {...baseHandlers()}
+        onToggleRemoteBranchesVisibility={onToggleRemoteBranchesVisibility}
+      />
+    )
+    fireEvent.click(screen.getByLabelText('Hide these remote branches from the graph'))
+    expect(onToggleRemoteBranchesVisibility).toHaveBeenCalledWith(
+      ['origin/feat/a', 'origin/feat/b'],
+      true
+    )
+  })
 })
 
 describe('SidebarRowView — remote-branch', () => {
-  it('strips the remote prefix and selects using the full branch name on click/Enter', () => {
-    const { h } = renderRow({
-      kind: 'remote-branch',
-      id: 'rb-1',
-      branch: branch({ name: 'refs/remotes/origin/main', shortName: 'origin/main' }),
-      remoteName: 'origin',
-      isSelected: false,
-    })
+  const remoteBranch = (over: Record<string, unknown> = {}) => ({
+    kind: 'remote-branch' as const,
+    id: 'rb-1',
+    branch: branch({ name: 'refs/remotes/origin/main', shortName: 'origin/main' }),
+    remoteName: 'origin',
+    displayName: 'main',
+    depth: 0 as const,
+    isSelected: false,
+    ...over,
+  })
+
+  it('shows the display name and selects using the full branch name on click', () => {
+    const { h } = renderRow(remoteBranch())
     expect(screen.getByText('main')).toBeInTheDocument()
     const row = screen.getByText('main').closest('[role="button"]')!
     fireEvent.click(row)
     expect(h.onSelectBranch).toHaveBeenCalledWith('refs/remotes/origin/main')
   })
 
+  it('indents a branch nested under a folder past one that is not', () => {
+    const { container } = render(<SidebarRowView row={remoteBranch()} {...baseHandlers()} />)
+    expect(container.querySelector('[role="button"]')?.className).toContain('pl-10')
+
+    const nested = render(
+      <SidebarRowView
+        row={remoteBranch({ depth: 1, displayName: 'a' })}
+        {...baseHandlers()}
+      />
+    )
+    expect(nested.container.querySelector('[role="button"]')?.className).toContain('pl-14')
+  })
+
   it('shows ahead/behind counters', () => {
-    renderRow({
-      kind: 'remote-branch',
-      id: 'rb-1',
-      branch: branch({ shortName: 'origin/main', aheadCount: 2, behindCount: 1 }),
-      remoteName: 'origin',
-      isSelected: false,
-    })
+    renderRow(
+      remoteBranch({
+        branch: branch({ shortName: 'origin/main', aheadCount: 2, behindCount: 1 }),
+      })
+    )
     expect(screen.getByText('↑2')).toBeInTheDocument()
     expect(screen.getByText('↓1')).toBeInTheDocument()
+  })
+
+  it('hides the branch by its remote-qualified name, without selecting it', () => {
+    const onToggleRemoteBranchesVisibility = vi.fn()
+    const { h } = renderRow(remoteBranch(), { onToggleRemoteBranchesVisibility })
+    fireEvent.click(screen.getByLabelText('Hide this remote branch from the graph'))
+    expect(onToggleRemoteBranchesVisibility).toHaveBeenCalledWith(['origin/main'], true)
+    expect(h.onSelectBranch).not.toHaveBeenCalled()
+  })
+
+  it('dims a hidden branch and offers to bring it back', () => {
+    const { container } = render(
+      <SidebarRowView
+        row={remoteBranch()}
+        {...baseHandlers()}
+        hiddenRemoteBranches={['origin/main']}
+      />
+    )
+    expect(screen.getByLabelText('Show this remote branch in the graph')).toBeInTheDocument()
+    expect(container.querySelector('.lucide-eye-off')).toBeTruthy()
+    expect(container.querySelector('[role="button"]')?.className).toContain('opacity-50')
+  })
+
+  // Solo mode is the stronger, temporary statement about what the graph shows, and both controls
+  // live on the row's left edge — they would otherwise sit on top of each other.
+  it('gives the left edge to the solo toggle while solo mode is on', () => {
+    render(
+      <SidebarRowView
+        row={remoteBranch()}
+        {...baseHandlers()}
+        soloActive
+        soloed={new Set(['origin/main'])}
+        onToggleSolo={vi.fn()}
+      />
+    )
+    expect(screen.getByTestId('branch-solo-toggle')).toBeInTheDocument()
+    expect(
+      screen.queryByLabelText('Hide this remote branch from the graph')
+    ).not.toBeInTheDocument()
   })
 })
 

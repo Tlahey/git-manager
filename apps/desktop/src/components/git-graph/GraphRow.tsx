@@ -36,9 +36,9 @@ interface GraphRowProps {
   columns: ResolvedColumn[]
   isSelected: boolean
   isPrimary: boolean
-  /** Clic gauche (gère simple / Cmd+clic / Shift+clic via l'event). */
+  /** Left click (handles plain / Cmd+click / Shift+click through the event). */
   onSelect: (e: React.MouseEvent) => void
-  /** Clic droit : ouvre le menu contextuel d'actions. */
+  /** Right click: opens the actions context menu. */
   onContextMenu: (e: React.MouseEvent) => void
   wipStats?: { added: number; modified: number; deleted: number }
   onCommitWip?: (message: string) => void
@@ -64,13 +64,15 @@ interface GraphRowProps {
   /** Branch owning this row's colored lane. Shown faintly, on hover only, in the refs column of a
    * commit that carries no ref badge of its own — hints which branch the commit sits on. */
   laneRef?: GitRef
-  /** Plus grande colonne (lane) utilisée par le graphe entier — détermine le mode d'affichage
-   * de la colonne graph (full / overflow / compact) partagé par toutes les lignes. */
+  /** Largest column (lane) used by the whole graph — decides the graph column's display mode
+   * (full / overflow / compact), shared by every row. */
   graphMaxColumn?: number
   /** True while this row is awaiting an inline tag name — its refs cell shows the name input
    * instead of the ref badges. Only ever set on a single row at a time. */
   /** Tag short names the user keeps off the graph — their badge is dropped, the commit stays. */
   hiddenTags?: string[]
+  /** Remote branch short names (`origin/main`) kept off the graph, on the same terms as the tags. */
+  hiddenRemoteBranches?: string[]
   isTagDraft?: boolean
   /** Confirm the inline tag name (only wired on the `isTagDraft` row). */
   onSubmitTag?: (name: string) => void
@@ -78,7 +80,7 @@ interface GraphRowProps {
   onCancelTag?: () => void
 }
 
-// ── Cellules ──────────────────────────────────────────────────────────────────
+// ── Cells ─────────────────────────────────────────────────────────────────────
 
 function CellContent({
   col,
@@ -95,6 +97,7 @@ function CellContent({
   laneRef,
   agentActivity,
   hiddenTags = [],
+  hiddenRemoteBranches = [],
   isTagDraft,
   onSubmitTag,
   onCancelTag,
@@ -117,6 +120,8 @@ function CellContent({
   agentActivity?: WorktreeAgentActivity
   /** Tag short names the user keeps off the graph — their badge is dropped, the commit stays. */
   hiddenTags?: string[]
+  /** Remote branch short names (`origin/main`) kept off the graph, on the same terms as the tags. */
+  hiddenRemoteBranches?: string[]
   isTagDraft?: boolean
   onSubmitTag?: (name: string) => void
   onCancelTag?: () => void
@@ -137,11 +142,17 @@ function CellContent({
         )
       }
       if (isStashCommit) return null
-      // A hidden tag loses its badge only — the commit keeps its row and its other refs, which is
-      // what separates this from a hidden stash (dropped from the log by the backend).
-      const filteredRefs = hiddenTags.length
-        ? node.refs.filter((r) => !(r.type === 'tag' && hiddenTags.includes(r.shortName)))
-        : node.refs
+      // A hidden tag or remote branch loses its badge only — the commit keeps its row and its other
+      // refs, which is what separates this from a hidden stash (dropped from the log by the
+      // backend).
+      const filteredRefs =
+        hiddenTags.length || hiddenRemoteBranches.length
+          ? node.refs.filter(
+              (r) =>
+                !(r.type === 'tag' && hiddenTags.includes(r.shortName)) &&
+                !(r.type === 'remote' && hiddenRemoteBranches.includes(r.shortName))
+            )
+          : node.refs
       if (filteredRefs.length === 0) {
         // No ref badge of its own: on hover, faintly hint the branch owning this commit's lane.
         // Never on the synthetic WIP / conflict rows.
@@ -345,6 +356,7 @@ export const GraphRow = memo(function GraphRow({
   laneRef,
   graphMaxColumn = 0,
   hiddenTags,
+  hiddenRemoteBranches,
   isTagDraft,
   onSubmitTag,
   onCancelTag,
@@ -521,6 +533,7 @@ export const GraphRow = memo(function GraphRow({
               laneRef={laneRef}
               agentActivity={rowAgent}
               hiddenTags={hiddenTags}
+              hiddenRemoteBranches={hiddenRemoteBranches}
               isTagDraft={isTagDraft}
               onSubmitTag={onSubmitTag}
               onCancelTag={onCancelTag}
