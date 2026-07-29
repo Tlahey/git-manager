@@ -62,10 +62,15 @@ Four things make that work, and they are the parts to be careful with:
 why its screenshots can be trusted — so a reader arrives somewhere that explains
 itself rather than in the middle of one feature.
 
-The site is `appearance: 'force-dark'`: dark only, no toggle. The landing page it
-opens on has no light mode, so offering one for half the site would only produce
-a half-light product — and the choice persists in `localStorage`, so one stray
-click would follow the reader across every visit.
+The site is `appearance: 'dark'`: dark on a first visit whatever the reader's OS
+prefers, with the theme switch kept. The home page stays dark either way — it is
+the marketing landing page, whose stylesheet is gated on `html.landing` rather
+than on `.dark`, and which has no light design.
+
+Both themes are checked against WCAG AA. Watch `--vp-c-text-3` in particular: it
+is VitePress's *placeholder* grey and lands at 3.1:1 on the light background, so
+anything meant to be read (the screenshot captions, the source footnote) uses
+`--vp-c-text-2`.
 
 ## Commands
 
