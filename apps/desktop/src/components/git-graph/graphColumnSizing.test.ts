@@ -99,6 +99,91 @@ describe('getGraphColumnLayout — mode selection', () => {
   })
 })
 
+describe('getGraphColumnLayout — horizontal scrolling', () => {
+  it('does not scroll a column that already shows every lane', () => {
+    const layout = getGraphColumnLayout(getGraphMaxWidth(6, AVATAR), 6, AVATAR, 200)
+    expect(layout.mode).toBe('full')
+    expect(layout.maxScrollX).toBe(0)
+    expect(layout.scrollX).toBe(0)
+    expect(layout.leftOverlayEnd).toBe(0)
+  })
+
+  it('scrolls by exactly the width missing to show every lane', () => {
+    // getGraphMaxWidth(6, 32) = 175 → at width 120 the column is 55px short.
+    const layout = getGraphColumnLayout(120, 6, AVATAR, 1000)
+    expect(layout.maxScrollX).toBe(55)
+    expect(layout.scrollX).toBe(55)
+    expect(getGraphColumnLayout(120, 6, AVATAR, -10).scrollX).toBe(0)
+  })
+
+  it('grows the left zone in with the scroll, and hides it again at rest', () => {
+    expect(getGraphColumnLayout(120, 6, AVATAR).leftOverlayEnd).toBe(0)
+    // Half the 24px fade range scrolled → half of the 40px zone.
+    expect(getGraphColumnLayout(120, 6, AVATAR, 12).leftOverlayEnd).toBe(20)
+    expect(getGraphColumnLayout(120, 6, AVATAR, 40).leftOverlayEnd).toBe(40)
+  })
+
+  it('recedes the right zone as the scroll consumes the hidden width', () => {
+    const rest = getGraphColumnLayout(120, 6, AVATAR)
+    expect(rest.overlayOpacity).toBe(1)
+    // 55px missing, 43 scrolled → 12 left of the 24px range.
+    expect(getGraphColumnLayout(120, 6, AVATAR, 43).overlayOpacity).toBe(0.5)
+    // Scrolled all the way: nothing is hidden on the right anymore, so the zone is gone.
+    const scrolled = getGraphColumnLayout(120, 6, AVATAR, 55)
+    expect(scrolled.overlayOpacity).toBe(0)
+    expect(scrolled.overlayStart).toBe(scrolled.innerWidth)
+  })
+
+  it('pins a marker at lane 0 rather than at the pin gap, so nothing moves at rest', () => {
+    expect(getGraphColumnLayout(120, 6, AVATAR).leftPinX).toBe(laneCenterX(0))
+  })
+})
+
+describe('getMarkerPlacement — horizontal scrolling', () => {
+  it('moves every lane left by the scroll offset', () => {
+    const layout = getGraphColumnLayout(120, 6, AVATAR, 22)
+    // laneCenterX(3)=77 → 55, still left of the (now receded) zone.
+    expect(getMarkerPlacement(3, layout, AVATAR)).toEqual({ x: 55, overflowed: false, opacity: 1 })
+  })
+
+  it('brings the last lane fully into view at maximum scroll', () => {
+    const layout = getGraphColumnLayout(120, 6, AVATAR, 55)
+    // laneCenterX(6)=143 - 55 = 88, i.e. the 8px right padding before innerWidth 112 minus the
+    // avatar radius — visible, unpinned and undimmed now that the zone is gone.
+    expect(getMarkerPlacement(6, layout, AVATAR)).toEqual({ x: 88, overflowed: false, opacity: 1 })
+  })
+
+  it('pins a marker scrolled off the left edge, fully dimmed', () => {
+    const layout = getGraphColumnLayout(120, 6, AVATAR, 55)
+    // laneCenterX(0)=11 - 55 = -44, i.e. more than an avatar past the pin. Not flagged as
+    // overflowed: its band runs away from the left zone and keeps its tint.
+    expect(getMarkerPlacement(0, layout, AVATAR)).toEqual({
+      x: laneCenterX(0),
+      overflowed: false,
+      opacity: 0.45,
+    })
+  })
+
+  it('dims a left-pinned marker progressively with how far it was held back', () => {
+    // lane 1 (33) scrolled by 38 → -5, i.e. 16px (half an avatar) short of the pin.
+    const layout = getGraphColumnLayout(120, 6, AVATAR, 38)
+    expect(getMarkerPlacement(1, layout, AVATAR)).toEqual({
+      x: laneCenterX(0),
+      overflowed: false,
+      opacity: 0.73,
+    })
+  })
+
+  it('leaves lane 0 alone while the column is not scrolled', () => {
+    const layout = getGraphColumnLayout(120, 6, AVATAR)
+    expect(getMarkerPlacement(0, layout, AVATAR)).toEqual({
+      x: laneCenterX(0),
+      overflowed: false,
+      opacity: 1,
+    })
+  })
+})
+
 describe('isGraphCompact', () => {
   it('matches the layout mode boundary', () => {
     expect(isGraphCompact(69, AVATAR)).toBe(true)

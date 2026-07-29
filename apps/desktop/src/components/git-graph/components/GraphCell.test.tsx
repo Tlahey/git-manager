@@ -42,9 +42,10 @@ function renderCell(
   n: GitGraphNode,
   graphWidth: number,
   maxColumn: number,
-  agentActivity?: WorktreeAgentActivity
+  agentActivity?: WorktreeAgentActivity,
+  scrollX = 0
 ) {
-  const layout = getGraphColumnLayout(graphWidth, maxColumn, AVATAR)
+  const layout = getGraphColumnLayout(graphWidth, maxColumn, AVATAR, scrollX)
   const marker = getMarkerPlacement(n.column, layout, AVATAR)
   const utils = render(
     <GraphCell
@@ -214,6 +215,41 @@ describe('GraphCell — overflow mode', () => {
     const avatarWrapper = container.querySelector('.pointer-events-auto')!
       .parentElement as HTMLElement
     expect(avatarWrapper.style.left).toBe('-5px') // laneCenterX(0)=11 - 16
+    expect(avatarWrapper.style.opacity).toBe('')
+  })
+})
+
+describe('GraphCell — horizontally scrolled', () => {
+  it('extends the lines clip under the refs column while the column is not scrolled', () => {
+    const { container } = renderCell(node({ column: 1 }), 120, 6)
+    const clip = container.querySelector('.overflow-hidden') as HTMLElement
+    expect(clip.style.left).toBe('-160px')
+    expect((clip.firstElementChild as HTMLElement).style.left).toBe('160px')
+  })
+
+  it('clips the lines at the left zone and shifts them with the scroll', () => {
+    const { container, layout } = renderCell(node({ column: 1 }), 120, 6, undefined, 12)
+    expect(layout.leftOverlayEnd).toBe(20)
+    const clip = container.querySelector('.overflow-hidden') as HTMLElement
+    expect(clip.style.left).toBe('20px')
+    // The lanes travel left by the scroll offset, on top of the clip's own offset.
+    expect((clip.firstElementChild as HTMLElement).style.left).toBe('-32px')
+  })
+
+  it('holds an avatar scrolled off the left edge at lane 0, dimmed', () => {
+    const { container } = renderCell(node({ column: 0 }), 120, 6, undefined, 55)
+    const avatarWrapper = container.querySelector('.pointer-events-auto')!
+      .parentElement as HTMLElement
+    expect(avatarWrapper.style.left).toBe('-5px') // laneCenterX(0)=11 - 16, unmoved
+    expect(avatarWrapper.style.opacity).toBe('0.45')
+  })
+
+  it('brings the last lane into view, undimmed, once scrolled all the way', () => {
+    const { container, marker } = renderCell(node({ column: 6 }), 120, 6, undefined, 55)
+    expect(marker.overflowed).toBe(false)
+    const avatarWrapper = container.querySelector('.pointer-events-auto')!
+      .parentElement as HTMLElement
+    expect(avatarWrapper.style.left).toBe('72px') // 143 - 55 scrolled - 16 avatar radius
     expect(avatarWrapper.style.opacity).toBe('')
   })
 })

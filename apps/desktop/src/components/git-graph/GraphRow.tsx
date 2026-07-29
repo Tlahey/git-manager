@@ -67,12 +67,15 @@ interface GraphRowProps {
   /** Largest column (lane) used by the whole graph — decides the graph column's display mode
    * (full / overflow / compact), shared by every row. */
   graphMaxColumn?: number
-  /** True while this row is awaiting an inline tag name — its refs cell shows the name input
-   * instead of the ref badges. Only ever set on a single row at a time. */
+  /** Horizontal scroll offset of the graph column, shared by every row so the lanes stay aligned
+   * (see `useGraphColumnScroll`). */
+  graphScrollX?: number
   /** Tag short names the user keeps off the graph — their badge is dropped, the commit stays. */
   hiddenTags?: string[]
   /** Branches kept off the graph, on the same terms as the tags — `main` / `origin/main`. */
   hiddenBranches?: string[]
+  /** True while this row is awaiting an inline tag name — its refs cell shows the name input
+   * instead of the ref badges. Only ever set on a single row at a time. */
   isTagDraft?: boolean
   /** Confirm the inline tag name (only wired on the `isTagDraft` row). */
   onSubmitTag?: (name: string) => void
@@ -359,6 +362,7 @@ export const GraphRow = memo(function GraphRow({
   wipRef,
   laneRef,
   graphMaxColumn = 0,
+  graphScrollX = 0,
   hiddenTags,
   hiddenBranches,
   isTagDraft,
@@ -377,7 +381,7 @@ export const GraphRow = memo(function GraphRow({
   const refsWidth = refsColumn ? refsColumn.width : 0
   const graphColumn = columns.find((c) => c.key === 'graph')
   const graphWidth = graphColumn ? graphColumn.width : 120
-  const layout = getGraphColumnLayout(graphWidth, graphMaxColumn, avatarSize)
+  const layout = getGraphColumnLayout(graphWidth, graphMaxColumn, avatarSize, graphScrollX)
   const marker = getMarkerPlacement(node.column, layout, avatarSize)
   const isActiveRow = isSelected || isPrimary
   // Agent working in this row's worktree: the primary WIP row uses the active repo's activity;
@@ -391,7 +395,10 @@ export const GraphRow = memo(function GraphRow({
         : undefined
   // Start the band at the row marker's vertical line (the avatar/point center), so the left half
   // of the marker stays clear. Marker center in row coords = refsWidth + 8px cell margin + x.
-  const startX = refsWidth + 8 + marker.x
+  // Once the column is scrolled, a band belonging to a marker pinned on the left keeps its tint —
+  // it runs rightward, away from the zone — but is cut at the left zone's edge, so that zone reads
+  // as its own gutter rather than as a lane's band.
+  const startX = refsWidth + 8 + Math.max(marker.x, layout.leftOverlayEnd)
   const endX = refsWidth + graphWidth
 
   // A right-click that lands on a tag badge opens the tag menu instead of the commit menu. Detection

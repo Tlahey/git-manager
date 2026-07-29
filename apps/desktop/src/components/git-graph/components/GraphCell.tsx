@@ -1,10 +1,13 @@
-// Contenu de la colonne `graph` d'une ligne : lignes de connexion (GraphSvg) + marqueur du
-// commit (avatar / dot / anneau WIP). Extrait de `GraphRow.tsx` pour porter les trois modes de
-// largeur de `graphColumnSizing.ts` :
-// - `full`     : rendu historique, rien n'est masqué.
-// - `overflow` : les lignes sont coupées au bord de la zone de débordement et les marqueurs qui
-//                tomberaient dessous y sont recentrés en semi-transparence.
-// - `compact`  : aucune ligne, uniquement le marqueur centré dans la colonne.
+// Content of a row's `graph` column: connection lines (GraphSvg) + the commit's marker (avatar /
+// dot / WIP ring). Extracted from `GraphRow.tsx` to carry the three width modes of
+// `graphColumnSizing.ts`:
+// - `full`     : historical rendering, nothing is hidden.
+// - `overflow` : lines are clipped at the overflow zone's edge and the markers that would fall
+//                under it are pinned there in semi-transparency.
+// - `compact`  : no lines at all, only the marker centered in the column.
+// On top of that the column can be scrolled sideways (`layout.scrollX`): the lines shift with the
+// lanes, and get clipped a second time on the left, where the mirror zone holds the markers that
+// scrolled past the edge.
 
 import type { GitGraphNode, WorktreeAgentActivity } from '@git-manager/git-types'
 import { cn } from '@git-manager/ui'
@@ -21,9 +24,9 @@ export function isWipRow(oid: string): boolean {
 
 interface GraphCellProps {
   node: GitGraphNode
-  /** Largeur de la colonne `refs` (le clip des lignes s'étend dessous). */
+  /** Width of the `refs` column (the lines' clip extends underneath it). */
   refsWidth: number
-  /** Largeur totale (content box) de la colonne graph. */
+  /** Total width (content box) of the graph column. */
   graphWidth: number
   layout: GraphColumnLayout
   marker: MarkerPlacement
@@ -50,15 +53,20 @@ export function GraphCell({
   // Narrowed to a nullable value (not a boolean) so property access below type-checks.
   const agent = agentActivity && node.commit.oid !== 'CONFLICT' ? agentActivity : null
 
+  // Left edge of the lines' clip. At rest it extends under the `refs` column (harmless: nothing is
+  // drawn there, and it keeps the historical geometry); as soon as the column is scrolled it moves
+  // to the left zone's edge so the lines stop where the pinned markers begin.
+  const clipLeft = layout.scrollX > 0 ? layout.leftOverlayEnd : -refsWidth
+
   return (
     <div className="relative flex h-full w-full items-center overflow-visible">
-      {/* Conteneur de découpe (clip) élargi pour le graph uniquement — en mode overflow le bord
-       * droit du clip s'arrête au début de la zone de débordement pour couper les liens. */}
+      {/* Clip container, widened for the graph only — in overflow mode the clip's right edge stops
+       * at the start of the overflow zone to cut the links. */}
       {layout.mode !== 'compact' && (
         <div
           className="pointer-events-none absolute overflow-hidden"
           style={{
-            left: -refsWidth,
+            left: clipLeft,
             right: layout.mode === 'overflow' ? graphWidth - layout.overlayStart : 0,
             top: -4,
             bottom: -5,
@@ -67,10 +75,11 @@ export function GraphCell({
             opacity: layout.linesOpacity,
           }}
         >
-          {/* Conteneur interne réaligné sur la colonne graph */}
+          {/* Inner container realigned on the graph column — offset by the scroll so the lanes
+           * travel with their markers. */}
           <div
             className="pointer-events-none absolute"
-            style={{ left: refsWidth, right: 0, top: 0, bottom: 0 }}
+            style={{ left: -clipLeft - layout.scrollX, right: 0, top: 0, bottom: 0 }}
           >
             <GraphSvg
               column={node.column}
@@ -83,7 +92,7 @@ export function GraphCell({
         </div>
       )}
 
-      {/* Conteneur de découpe simple et direct pour les avatars */}
+      {/* Plain, direct clip container for the avatars */}
       <div className="pointer-events-none absolute inset-y-0 left-0 right-0 overflow-hidden">
         {isWipLike ? (
           <div

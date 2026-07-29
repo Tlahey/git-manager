@@ -403,6 +403,49 @@ describe('GitGraph — graph overflow zone', () => {
     expect(screen.getByTestId('graph-overflow-zone')).toHaveStyle({ left: '80px' })
   })
 
+  it('pans the lanes on a horizontal wheel over the graph column, and shrinks the zone', () => {
+    const nodes = [commitNode('a', { column: 6 })]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
+    useGitGraphColumnsStore.setState((s) => ({
+      columns: { ...s.columns, graph: { visible: true, width: 120 } },
+    }))
+    renderGraph()
+    expect(lastGraphRowCalls.current.at(-1)).toMatchObject({ graphScrollX: 0 })
+
+    // The graph column spans x=160 (refs width) to x=296 (120 + its 2×8px margins).
+    act(() => {
+      screen.getByTestId('commit-graph').dispatchEvent(
+        new WheelEvent('wheel', { clientX: 200, deltaX: 43, bubbles: true, cancelable: true })
+      )
+    })
+    expect(lastGraphRowCalls.current.at(-1)).toMatchObject({ graphScrollX: 43 })
+    // 43 of the 55px hidden width consumed → 12 left of the 24px range, so the zone is half
+    // withdrawn: refs 160 + 8px margin + overlayStart 92 (inner 112 - 40 × 0.5).
+    expect(screen.getByTestId('graph-overflow-zone')).toHaveStyle({ left: '260px' })
+  })
+
+  it('leaves a wheel outside the graph column to the commit list', () => {
+    const nodes = [commitNode('a', { column: 6 })]
+    useGitLog.mockReturnValue({ data: nodes, isLoading: false, isError: false })
+    useGitGraphNodes.mockReturnValue(graphNodesState(nodes))
+    useGitGraphColumnsStore.setState((s) => ({
+      columns: { ...s.columns, graph: { visible: true, width: 120 } },
+    }))
+    renderGraph()
+    const event = new WheelEvent('wheel', {
+      clientX: 400,
+      deltaX: 30,
+      bubbles: true,
+      cancelable: true,
+    })
+    act(() => {
+      screen.getByTestId('commit-graph').dispatchEvent(event)
+    })
+    expect(event.defaultPrevented).toBe(false)
+    expect(lastGraphRowCalls.current.at(-1)).toMatchObject({ graphScrollX: 0 })
+  })
+
   it('passes the shared graphMaxColumn down to every row', () => {
     const nodes = [
       commitNode('a', {

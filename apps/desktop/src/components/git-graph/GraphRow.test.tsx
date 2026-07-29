@@ -832,6 +832,36 @@ describe('GraphRow — graph column width modes', () => {
     })
     expect(overflowedSelected).toBe(selected)
   })
+
+  it('shifts the lanes and the band with the shared horizontal scroll offset', () => {
+    const bandLeft = (graphScrollX: number) => {
+      const { container, unmount } = renderRow({
+        columns: [col('graph', { width: 120 })],
+        node: node({ column: 3 }),
+        graphMaxColumn: 6,
+        graphScrollX,
+      })
+      const left = (container.querySelector('[class*="border-r-"]') as HTMLElement).style.left
+      unmount()
+      return left
+    }
+    // The band starts at the marker, so it travels left with the lane it belongs to.
+    expect(bandLeft(0)).toBe('85px') // 8px cell margin + laneCenterX(3) = 77
+    expect(bandLeft(22)).toBe('63px')
+  })
+
+  it('keeps the band tinted but out of the left zone for a lane scrolled off the left edge', () => {
+    const { container } = renderRow({
+      columns: [col('graph', { width: 120 })],
+      node: node({ column: 0, color: '#2563eb' }),
+      graphMaxColumn: 6,
+      graphScrollX: 55,
+    })
+    const band = container.querySelector('[class*="border-r-"]') as HTMLElement
+    // Its marker is pinned at lane 0, but the band only starts where the left zone ends.
+    expect(band.style.left).toBe('48px') // 8px cell margin + leftOverlayEnd 40
+    expect(band.style.backgroundColor).not.toBe('transparent')
+  })
 })
 
 describe('GraphRow — author avatar image fallback', () => {
