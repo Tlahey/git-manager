@@ -13,6 +13,7 @@
 //! (`pnpm patch --edit-dir`), copy the live (edited) package over it, show the
 //! diff, then `patch-commit` on confirm.
 
+use crate::services::pnpm_workspace;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -269,44 +270,10 @@ fn patched_map(repo_path: &str) -> std::collections::BTreeMap<String, String> {
         }
     }
 
-    map.extend(parse_workspace_patched(repo_path));
-    map
-}
-
-/// Minimal reader for the top-level `patchedDependencies:` block of
-/// `pnpm-workspace.yaml` (avoids pulling in a YAML dependency for one flat map).
-fn parse_workspace_patched(repo_path: &str) -> std::collections::BTreeMap<String, String> {
-    let mut map = std::collections::BTreeMap::new();
-    let text = match std::fs::read_to_string(Path::new(repo_path).join("pnpm-workspace.yaml")) {
-        Ok(t) => t,
-        Err(_) => return map,
-    };
-
-    let mut in_block = false;
-    for line in text.lines() {
-        let trimmed = line.trim();
-        if trimmed.starts_with('#') || trimmed.is_empty() {
-            continue;
-        }
-        if !in_block {
-            // Top-level (unindented) `patchedDependencies:` opens the block.
-            if line.starts_with("patchedDependencies:") {
-                in_block = true;
-            }
-            continue;
-        }
-        // A dedented (unindented) line ends the block.
-        if !line.starts_with([' ', '\t']) {
-            break;
-        }
-        if let Some((k, v)) = trimmed.split_once(':') {
-            let key = k.trim().trim_matches(['"', '\'']).to_string();
-            let val = v.trim().trim_matches(['"', '\'']).to_string();
-            if !key.is_empty() {
-                map.insert(key, val);
-            }
-        }
-    }
+    map.extend(pnpm_workspace::block_map(
+        Path::new(repo_path),
+        "patchedDependencies",
+    ));
     map
 }
 

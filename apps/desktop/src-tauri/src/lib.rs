@@ -45,6 +45,10 @@ use commands::log::{
     compare_commit_to_workdir, get_commit_diff, get_commit_file, get_commits_merged_diff, get_log,
 };
 use commands::merge_target::get_merge_target_status;
+use commands::package_health::{
+    check_outdated_packages, get_package_changelog, has_package_manifest, run_package_health_check,
+    scan_package_usage, update_packages,
+};
 use commands::patch::{
     apply_patch, commit_dependency_patch, create_commits_patch, create_patch, create_working_patch,
     list_patchable_dependencies, prepare_dependency_patch, preview_working_patch, read_patch_file,
@@ -327,6 +331,13 @@ pub fn run() {
             list_patchable_dependencies,
             prepare_dependency_patch,
             commit_dependency_patch,
+            // Package health check
+            has_package_manifest,
+            run_package_health_check,
+            check_outdated_packages,
+            get_package_changelog,
+            scan_package_usage,
+            update_packages,
             // Conflict resolution
             list_conflicted_files,
             get_merge_view,
