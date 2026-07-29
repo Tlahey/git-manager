@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { GitBranch, PullRequest } from '@git-manager/git-types'
+import type { GitBranch } from '@git-manager/git-types'
 import { BranchItem } from './BranchItem'
 
 vi.mock('./HoverExpandLabel', () => ({
@@ -96,22 +96,6 @@ describe('BranchItem — rendering', () => {
     expect(container.querySelector('mark')).toBeFalsy()
   })
 
-  it('shows ahead/behind counts only when non-zero', () => {
-    const { rerender } = render(
-      <BranchItem branch={branch()} isSelected={false} onSelect={vi.fn()} />
-    )
-    expect(screen.queryByText(/↑/)).not.toBeInTheDocument()
-
-    rerender(
-      <BranchItem
-        branch={branch({ aheadCount: 2, behindCount: 3 })}
-        isSelected={false}
-        onSelect={vi.fn()}
-      />
-    )
-    expect(screen.getByText('↑2')).toBeInTheDocument()
-    expect(screen.getByText('↓3')).toBeInTheDocument()
-  })
 })
 
 describe('BranchItem — interaction', () => {
@@ -292,51 +276,98 @@ describe('BranchItem — solo toggle', () => {
   })
 })
 
-describe('BranchItem — linked PR tag', () => {
-  function pr(overrides: Partial<PullRequest> = {}): PullRequest {
-    return {
-      number: 321,
-      title: 'PR',
-      body: '',
-      state: 'open',
-      author: 'a',
-      authorAvatar: '',
-      headRef: 'feature-x',
-      baseRef: 'main',
-      url: '',
-      ciStatus: null,
-      createdAt: '',
-      updatedAt: '',
-      isDraft: false,
-      assignees: [],
-      requestedReviewers: [],
-      labels: [],
-      ...overrides,
-    }
-  }
-
-  it('renders no PR tag when the branch has no linked PR', () => {
+// The row carries neither the linked PR's tag nor the ahead/behind counters: it is a name and its
+// actions, and both of those live where they can be read in full (the toolbar, the graph).
+describe('BranchItem — what the row deliberately leaves out', () => {
+  it('shows no PR tag', () => {
     render(<BranchItem branch={branch()} isSelected={false} onSelect={vi.fn()} />)
-    expect(screen.queryByTestId('pr-status-tag-321')).not.toBeInTheDocument()
+    expect(screen.queryByTestId(/^pr-status-tag-/)).not.toBeInTheDocument()
   })
 
-  it('shows the PR tag and opens the PR without selecting the branch', () => {
-    const onSelect = vi.fn()
-    const onOpenPr = vi.fn()
-    const linked = pr()
+  it('shows no ahead/behind counters', () => {
+    render(
+      <BranchItem
+        branch={branch({ aheadCount: 2, behindCount: 1 })}
+        isSelected={false}
+        onSelect={vi.fn()}
+      />
+    )
+    expect(screen.queryByText(/↑2/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/↓1/)).not.toBeInTheDocument()
+  })
+})
+
+describe('BranchItem — solo toggle', () => {
+  it('does not render the solo toggle when solo mode is off', () => {
     render(
       <BranchItem
         branch={branch()}
         isSelected={false}
-        onSelect={onSelect}
-        pr={linked}
-        onOpenPr={onOpenPr}
+        onSelect={vi.fn()}
+        onToggleSolo={vi.fn()}
       />
     )
-    const tag = screen.getByTestId('pr-status-tag-321')
-    expect(tag).toHaveTextContent('#321')
-    fireEvent.click(tag)
-    expect(onOpenPr).toHaveBeenCalledWith(linked)
+    expect(screen.queryByTestId('branch-solo-toggle')).not.toBeInTheDocument()
+  })
+
+  it('renders a "Show this branch" toggle for a hidden branch in solo mode', () => {
+    render(
+      <BranchItem
+        branch={branch()}
+        isSelected={false}
+        onSelect={vi.fn()}
+        soloActive
+        isSoloed={false}
+        onToggleSolo={vi.fn()}
+      />
+    )
+    expect(screen.getByLabelText('Show this branch')).toBeInTheDocument()
+  })
+
+  it('renders a "Hide this branch" toggle for a soloed branch in solo mode', () => {
+    render(
+      <BranchItem
+        branch={branch()}
+        isSelected={false}
+        onSelect={vi.fn()}
+        soloActive
+        isSoloed
+        onToggleSolo={vi.fn()}
+      />
+    )
+    expect(screen.getByLabelText('Hide this branch')).toBeInTheDocument()
+  })
+
+  it('dims a hidden branch row in solo mode', () => {
+    const { container } = render(
+      <BranchItem
+        branch={branch()}
+        isSelected={false}
+        onSelect={vi.fn()}
+        soloActive
+        isSoloed={false}
+        onToggleSolo={vi.fn()}
+      />
+    )
+    expect(container.firstElementChild).toHaveClass('opacity-50')
+  })
+
+  it('toggles solo by shortName without selecting the branch', async () => {
+    const onSelect = vi.fn()
+    const onToggleSolo = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <BranchItem
+        branch={branch({ shortName: 'feature-x' })}
+        isSelected={false}
+        onSelect={onSelect}
+        soloActive
+        isSoloed={false}
+        onToggleSolo={onToggleSolo}
+      />
+    )
+    await user.click(screen.getByTestId('branch-solo-toggle'))
+    expect(onToggleSolo).toHaveBeenCalledWith('feature-x')
     expect(onSelect).not.toHaveBeenCalled()
   })
 })

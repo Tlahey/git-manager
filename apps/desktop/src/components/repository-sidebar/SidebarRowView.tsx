@@ -133,8 +133,6 @@ export function SidebarRowView({
           onSelect={onSelectBranch}
           onTogglePin={onTogglePin}
           onContextMenu={onContextMenu}
-          pr={row.pr}
-          onOpenPr={onOpenPr}
           filterQuery={filterQuery}
           soloActive={soloActive}
           isSoloed={soloed?.has(row.branch.shortName) ?? false}

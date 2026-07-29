@@ -1,10 +1,9 @@
 import { GitBranch as BranchIcon, MoreVertical, Pin } from 'lucide-react'
 import { highlightMatch } from '@git-manager/components'
 import { useTranslation } from '@git-manager/i18n'
-import type { GitBranch, PullRequest } from '@git-manager/git-types'
+import type { GitBranch } from '@git-manager/git-types'
 import { HoverExpandLabel } from './HoverExpandLabel'
 import { SoloToggle } from './SoloToggle'
-import { PrStatusTag } from './PrStatusTag'
 
 interface BranchItemProps {
   branch: GitBranch
@@ -18,10 +17,6 @@ interface BranchItemProps {
   onSelect: (name: string) => void
   onTogglePin?: (shortName: string) => void
   onContextMenu?: (e: React.MouseEvent, branch: GitBranch) => void
-  /** PR linked to this branch (headRef == shortName), if any — shown as a status tag on the right. */
-  pr?: PullRequest
-  /** Opens the linked PR when its tag is clicked. */
-  onOpenPr?: (pr: PullRequest) => void
   /** Active sidebar search query — matched substrings are highlighted in the branch name. */
   filterQuery?: string
   /** Solo mode on: show the eye/eye-off toggle and dim the row when this branch is hidden. */
@@ -42,8 +37,6 @@ export function BranchItem({
   onSelect,
   onTogglePin,
   onContextMenu,
-  pr,
-  onOpenPr,
   filterQuery = '',
   soloActive = false,
   isSoloed = false,
@@ -80,18 +73,6 @@ export function BranchItem({
         {highlightMatch(displayName, filterQuery)}
       </HoverExpandLabel>
 
-      {/* Ahead / behind — always shown (push/pull) */}
-      {(branch.aheadCount > 0 || branch.behindCount > 0) && (
-        <span className="shrink-0 text-[10px] tabular-nums">
-          {branch.aheadCount > 0 && <span className="text-blue-400">↑{branch.aheadCount}</span>}
-          {branch.behindCount > 0 && (
-            <span className="ml-0.5 text-orange-400">↓{branch.behindCount}</span>
-          )}
-        </span>
-      )}
-
-      {/* PR tag — always visible when the branch is linked to a pull request */}
-      {pr && <PrStatusTag pr={pr} onOpen={onOpenPr} />}
 
       {/* Pin / unpin — always visible once pinned, on hover otherwise */}
       {canPin && onTogglePin && (

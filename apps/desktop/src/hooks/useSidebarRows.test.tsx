@@ -846,9 +846,11 @@ describe('useSidebarRows — issues section', () => {
   })
 })
 
-describe('useSidebarRows — PR linked to branch/worktree rows', () => {
-  it('attaches the PR whose headRef matches a branch shortName to that branch row', async () => {
-    useBranchesMock.mockReturnValue({ data: [branch('feature-x'), branch('feature-y')] })
+// The branch and worktree rows carry no pull request of their own any more: the tag they fed was
+// removed from the row, and nothing else read it. The toolbar keeps its own (`useActiveBranchPr`).
+describe('useSidebarRows — no pull request on branch/worktree rows', () => {
+  it('leaves a branch row bare even when a PR heads it', async () => {
+    useBranchesMock.mockReturnValue({ data: [branch('feature-x')] })
     usePullRequestsMock.mockReturnValue({
       allPrs: [{ number: 9, headRef: 'feature-x', state: 'open' }],
       isGithub: true,
@@ -858,83 +860,21 @@ describe('useSidebarRows — PR linked to branch/worktree rows', () => {
     await waitFor(() =>
       expect(findRow(result.current.sections, 'local:refs/heads/feature-x')).toBeDefined()
     )
-    expect(findRow(result.current.sections, 'local:refs/heads/feature-x')).toMatchObject({
-      pr: { number: 9 },
-    })
-    expect(findRow(result.current.sections, 'local:refs/heads/feature-y')).toMatchObject({
-      pr: undefined,
-    })
+    expect(findRow(result.current.sections, 'local:refs/heads/feature-x')).not.toHaveProperty('pr')
   })
 
-  it('prefers an open PR over a merged one sharing the same headRef', async () => {
-    useBranchesMock.mockReturnValue({ data: [branch('feature-x')] })
-    usePullRequestsMock.mockReturnValue({
-      allPrs: [
-        { number: 1, headRef: 'feature-x', state: 'merged' },
-        { number: 2, headRef: 'feature-x', state: 'open' },
-      ],
-      isGithub: true,
-      isLoading: false,
-    })
-    const { result } = renderRows({ openState: { 'section:local': true } })
-    await waitFor(() =>
-      expect(findRow(result.current.sections, 'local:refs/heads/feature-x')).toBeDefined()
-    )
-    expect(findRow(result.current.sections, 'local:refs/heads/feature-x')).toMatchObject({
-      pr: { number: 2 },
-    })
-  })
-
-  it('attaches the PR whose headRef matches a worktree branch to that worktree row', async () => {
-    mockedListWorktrees.mockResolvedValue([worktree('/tmp/repo-linked', { branch: 'feature/login' })])
+  it('leaves a worktree row bare too', async () => {
+    mockedListWorktrees.mockResolvedValue([
+      worktree('/tmp/repo-linked', { branch: 'feature/login' }),
+    ])
     usePullRequestsMock.mockReturnValue({
       allPrs: [{ number: 11, headRef: 'feature/login', state: 'open' }],
       isGithub: true,
       isLoading: false,
     })
     const { result } = renderRows({ openState: { 'section:worktrees': true } })
-    await waitFor(() =>
-      expect(findRow(result.current.sections, 'wt:/tmp/repo-linked')).toBeDefined()
-    )
-    expect(findRow(result.current.sections, 'wt:/tmp/repo-linked')).toMatchObject({
-      pr: { number: 11 },
-    })
-  })
-
-  it('attaches a merged PR (present only in the merged-by-branch map) to a worktree row', async () => {
-    mockedListWorktrees.mockResolvedValue([
-      worktree('/tmp/repo-merged', { branch: 'claude/graph-vertical-line-cutoff' }),
-    ])
-    usePullRequestsMock.mockReturnValue({ allPrs: [], isGithub: true, isLoading: false })
-    useMergedPrsByBranchMock.mockReturnValue(
-      new Map([['claude/graph-vertical-line-cutoff', { number: 42, state: 'merged' }]])
-    )
-    const { result } = renderRows({ openState: { 'section:worktrees': true } })
-    await waitFor(() =>
-      expect(findRow(result.current.sections, 'wt:/tmp/repo-merged')).toBeDefined()
-    )
-    expect(findRow(result.current.sections, 'wt:/tmp/repo-merged')).toMatchObject({
-      pr: { number: 42, state: 'merged' },
-    })
-  })
-
-  it('lets an open PR win over a merged one on the same branch', async () => {
-    useBranchesMock.mockReturnValue({ data: [branch('feature-x')] })
-    usePullRequestsMock.mockReturnValue({
-      allPrs: [{ number: 8, headRef: 'feature-x', state: 'open' }],
-      isGithub: true,
-      isLoading: false,
-    })
-    useMergedPrsByBranchMock.mockReturnValue(
-      new Map([['feature-x', { number: 3, state: 'merged' }]])
-    )
-    const { result } = renderRows({ openState: { 'section:local': true } })
-    await waitFor(() =>
-      expect(findRow(result.current.sections, 'local:refs/heads/feature-x')).toBeDefined()
-    )
-    expect(findRow(result.current.sections, 'local:refs/heads/feature-x')).toMatchObject({
-      pr: { number: 8, state: 'open' },
-    })
+    await waitFor(() => expect(findRow(result.current.sections, 'wt:/tmp/repo-linked')).toBeDefined())
+    expect(findRow(result.current.sections, 'wt:/tmp/repo-linked')).not.toHaveProperty('pr')
   })
 })
 
