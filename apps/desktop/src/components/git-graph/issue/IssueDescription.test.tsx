@@ -49,4 +49,27 @@ describe('IssueDescription', () => {
     render(<IssueDescription repoPath="org/repo" issueNumber={7} body="old" />)
     expect(screen.queryByTestId('issue-description-edit')).not.toBeInTheDocument()
   })
+
+  it('ticks a task-list item straight from the rendered body', async () => {
+    const user = userEvent.setup()
+    render(
+      <IssueDescription repoPath="org/repo" issueNumber={7} body={'- [ ] one\n- [x] two'} />
+    )
+
+    await user.click(screen.getAllByRole('checkbox')[0])
+
+    expect(update).toHaveBeenCalledWith({ body: '- [x] one\n- [x] two' })
+  })
+
+  it('leaves the checkboxes read-only when editing is not allowed', async () => {
+    const user = userEvent.setup()
+    mockEdit(false)
+    render(<IssueDescription repoPath="org/repo" issueNumber={7} body="- [ ] one" />)
+
+    const box = screen.getByRole('checkbox')
+    expect(box).toBeDisabled()
+    await user.click(box)
+
+    expect(update).not.toHaveBeenCalled()
+  })
 })
