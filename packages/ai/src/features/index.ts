@@ -122,6 +122,21 @@ export {
   parseCommitRelevance,
 } from './commitRelevance'
 export type { CommitRelevanceInput, CommitRelevanceResult } from './commitRelevance'
+export {
+  upgradeRiskFeature,
+  UPGRADE_RISK_INSTRUCTION,
+  UPGRADE_RISK_SCHEMA,
+  UPGRADE_RISK_OUTPUT_TOKENS,
+  buildUpgradeRiskPrompt,
+  parseUpgradeRisk,
+  verifyUpgradeRiskPaths,
+} from './upgradeRisk'
+export type {
+  UpgradeRiskInput,
+  UpgradeRiskResult,
+  UpgradeRiskChange,
+  UpgradeRiskUsage,
+} from './upgradeRisk'
 export { stripReasoning } from './reasoning'
 export {
   commitSearchAnswerFeature,

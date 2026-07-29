@@ -31,7 +31,6 @@ const connection: AiConnectionConfig = {
   timeoutSeconds: 30,
 }
 
-
 function mockTransport(): AiTransport {
   return {
     runStream: vi.fn().mockResolvedValue(undefined),
@@ -72,6 +71,19 @@ describe('resolveGenerateConfig', () => {
     expect(resolveGenerateConfig(connection, 0.2, 4200).maxTokens).toBe(4200)
   })
 
+  it('takes the connection timeout when the feature declares none', () => {
+    expect(resolveGenerateConfig(connection, 0.7).timeoutSeconds).toBe(30)
+  })
+
+  /**
+   * A long-running feature overrides the interactive budget, and `0` means
+   * unbounded — so it must survive as 0 rather than falling back to the connection.
+   */
+  it('lets a feature override the timeout, including with an unbounded 0', () => {
+    expect(resolveGenerateConfig(connection, 0.7, undefined, 'main', 600).timeoutSeconds).toBe(600)
+    expect(resolveGenerateConfig(connection, 0.7, undefined, 'main', 0).timeoutSeconds).toBe(0)
+  })
+
   it('sends a fast-tier feature to the second model, keeping the same endpoint', () => {
     const config = resolveGenerateConfig(
       { ...connection, fastModel: 'tiny', apiKey: 'sk-test' },
@@ -88,16 +100,14 @@ describe('resolveGenerateConfig', () => {
   })
 
   it('leaves every other feature on the main model even when a fast one is configured', () => {
-    expect(
-      resolveGenerateConfig({ ...connection, fastModel: 'tiny' }, 0.2).model
-    ).toBe('llama3.2')
+    expect(resolveGenerateConfig({ ...connection, fastModel: 'tiny' }, 0.2).model).toBe('llama3.2')
   })
 
   it('ignores an unset or blank fast model, which is the default setup', () => {
     expect(resolveGenerateConfig(connection, 0.1, 160, 'fast').model).toBe('llama3.2')
-    expect(
-      resolveGenerateConfig({ ...connection, fastModel: '  ' }, 0.1, 160, 'fast').model
-    ).toBe('llama3.2')
+    expect(resolveGenerateConfig({ ...connection, fastModel: '  ' }, 0.1, 160, 'fast').model).toBe(
+      'llama3.2'
+    )
   })
 })
 
@@ -189,7 +199,12 @@ describe('createCompletionService', () => {
   const groupingInput = (paths: string[]) => ({
     repoName: 'demo',
     branch: 'main',
-    summaries: paths.map((path) => ({ path, status: 'modified', intent: 'does a thing', area: 'a' })),
+    summaries: paths.map((path) => ({
+      path,
+      status: 'modified',
+      intent: 'does a thing',
+      area: 'a',
+    })),
   })
 
   it('runs the feature (forwarding its JSON schema) then parses into typed output', async () => {

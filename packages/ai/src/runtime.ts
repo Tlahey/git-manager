@@ -41,6 +41,18 @@ interface BaseFeature<Input> {
   id: string
   /** Which configured model this feature's calls go to. Defaults to `'main'`. */
   tier?: AiFeatureTier
+  /**
+   * Overrides the connection's timeout for this feature's calls. `0` means no
+   * timeout at all (the backend treats a zero budget as unbounded).
+   *
+   * The connection's setting is tuned for the interactive features — a commit
+   * message that has not started in 60s is a broken provider. A feature that reads
+   * a large document and returns one structured verdict is a different shape of
+   * work: it can legitimately think for minutes on a local model, and killing it at
+   * the interactive budget turns a slow answer into no answer. Set this only when
+   * the feature is genuinely long-running, and say why at the call site.
+   */
+  timeoutSeconds?: number
   /** The instruction sent as the system message. Owned here — never surfaced in app Settings. */
   instruction: string
   /** Sampling temperature this feature wants. Owned here — never surfaced in app Settings. */
@@ -124,7 +136,9 @@ export function resolveGenerateConfig(
   connection: AiConnectionConfig,
   temperature: number,
   maxTokens: number = RESERVED_OUTPUT_TOKENS,
-  tier: AiFeatureTier = 'main'
+  tier: AiFeatureTier = 'main',
+  /** A feature's own budget, when it declares one. See `BaseFeature.timeoutSeconds`. */
+  timeoutSeconds?: number
 ): AiGenerateConfig {
   const { protocol } = getAiPreset(connection.preset)
   return {
@@ -132,10 +146,12 @@ export function resolveGenerateConfig(
     url: connection.url,
     // The fast lane is a model swap and nothing else — same URL, same key — so an unset or blank
     // second model silently means "everything on the main one", which is the default setup.
-    model: tier === 'fast' && connection.fastModel?.trim() ? connection.fastModel : connection.model,
+    model:
+      tier === 'fast' && connection.fastModel?.trim() ? connection.fastModel : connection.model,
     apiKey: connection.apiKey,
     temperature,
-    timeoutSeconds: connection.timeoutSeconds,
+    // `?? ` not `||`: a feature's 0 means "no timeout" and must not fall back.
+    timeoutSeconds: timeoutSeconds ?? connection.timeoutSeconds,
     maxTokens,
     // Passed through untouched, and only when there is something to pass: an empty object on every
     // request would be a change to the wire format for no reason.
@@ -176,7 +192,8 @@ export function createStreamingService<Input>(
         connection,
         feature.temperature,
         feature.reservedOutputTokens?.(input),
-        feature.tier
+        feature.tier,
+        feature.timeoutSeconds
       )
       return transport.runStream(config, feature.instruction, feature.buildPrompt(input), requestId)
     },
@@ -196,7 +213,8 @@ export function createCompletionService<Input, Output>(
         connection,
         feature.temperature,
         feature.reservedOutputTokens?.(input),
-        feature.tier
+        feature.tier,
+        feature.timeoutSeconds
       )
       const raw = await transport.runComplete(
         config,
