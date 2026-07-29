@@ -500,6 +500,39 @@ describe('RepositorySidebar — sections', () => {
     )
   })
 
+  // A row kind left out of the open-state map reports itself closed, so toggling it re-opens it
+  // and it can never be collapsed — which is what happened to the remote folders.
+  it('closes a remote folder that is open, like any other collapsible row', () => {
+    useSidebarRows.mockReturnValue({
+      sections: [
+        section({
+          key: 'remotes',
+          rows: [
+            {
+              kind: 'remote-folder',
+              id: 'remote-folder:origin/build',
+              remoteName: 'origin',
+              name: 'build',
+              count: 2,
+              isOpen: true,
+              depth: 0,
+              branchNames: ['origin/build/ci'],
+            },
+          ],
+        }),
+      ],
+    })
+    renderSidebar()
+    act(() =>
+      (lastRowViewCalls.current[0].onToggleOpen as (id: string) => void)(
+        'remote-folder:origin/build'
+      )
+    )
+    expect(useSidebarRows).toHaveBeenLastCalledWith(
+      expect.objectContaining({ openState: { 'remote-folder:origin/build': false } })
+    )
+  })
+
   it('forwards branch selection to onSelectBranch and pin toggling through the pinned-branches store', () => {
     useSidebarRows.mockReturnValue({ sections: [section({ rows: [row({ id: 'r1' })] })] })
     const { onSelectBranch } = renderSidebar()

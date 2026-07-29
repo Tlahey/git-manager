@@ -230,10 +230,12 @@ export function RepositorySidebar({
     const m = new Map<string, boolean>()
     for (const s of sections) {
       m.set(`section:${s.key}`, s.isOpen)
+      // Every collapsible row, whatever its kind: `onToggleOpen` flips the state it reads back
+      // from here, so a kind missing from this map can only ever be opened — it would report
+      // itself closed, and toggling it would set it open again. Keyed on the shape rather than on
+      // a list of kinds, which is exactly how the remote folders were left out.
       for (const r of s.rows) {
-        if (r.kind === 'folder' || r.kind === 'remote-group' || r.kind === 'subgroup') {
-          m.set(r.id, r.isOpen)
-        }
+        if ('isOpen' in r) m.set(r.id, r.isOpen)
       }
     }
     return m
