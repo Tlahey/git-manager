@@ -28,6 +28,13 @@ export interface AppNotification {
   prTitle: string
   prId: string
   author: string
+  /**
+   * The author's avatar URL, carried so the tray popover can show a face rather than initials.
+   * Optional on the same grounds as `fullName`: GitHub doesn't always report one, and
+   * notifications persisted before this field existed are still in `localStorage` — every
+   * consumer must have an initials fallback (`Avatar`'s `fallback` prop).
+   */
+  authorAvatar?: string
   reviewStatus?: ReviewStatus
   url?: string
   createdAt: number

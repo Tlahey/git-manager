@@ -15,6 +15,21 @@
       background: hsl(222.2 84% 4.9%);
     }
 
+    /* The notification popover is a small, transparent, borderless window — the app-startup
+       splash (a full-screen, opaque, branded loading screen) and the opaque html/body backdrop
+       above are both specifically for the main app window's cold start and would otherwise flash
+       across this tiny window before React even mounts. Suppressed via a `<html>` attribute set
+       by an inline script at the very top of <body> (see below), synchronously, before either the
+       splash div or any content is painted. */
+    html[data-transparent-window],
+    html[data-transparent-window] body {
+      background: transparent;
+    }
+
+    html[data-transparent-window] #app-splash {
+      display: none;
+    }
+
     #app-splash {
       position: fixed;
       inset: 0;
@@ -112,6 +127,22 @@
 </head>
 
 <body>
+  <script>
+    // Synchronous and first in <body>, so it runs (and the `html[data-transparent-window]` CSS
+    // rules above take effect) before the splash div below is ever painted — not just hidden a
+    // moment later. Extend the `window` value list here if another small/transparent window kind
+    // needs the same treatment.
+    if (new URLSearchParams(location.search).get('window') === 'notification-popover') {
+      document.documentElement.setAttribute('data-transparent-window', '')
+      // Every semantic token (--primary, --border, --button-*) is declared under an
+      // `html[data-theme="<id>"]` block in @git-manager/theme, so a window that never runs
+      // `useTheme()` has none of them and every shared @git-manager/ui component renders
+      // unstyled. This window deliberately doesn't follow the user's theme (the popover is
+      // always dark, so it reads as an extension of the menu bar) — pinning `dark` here is what
+      // lets it still consume Button/Badge/Avatar instead of hand-rolling them in raw Tailwind.
+      document.documentElement.setAttribute('data-theme', 'dark')
+    }
+  </script>
   <div id="root"></div>
   <div id="app-splash" role="presentation" aria-hidden="true">
     <div class="app-splash-bubbles">

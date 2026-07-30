@@ -1,6 +1,30 @@
 /** Human-friendly date helpers for commit timestamps (Unix epoch seconds).
  * Extracted from `GraphRow` so the blame gutter / history panel format dates the same way. */
 
+import type { TFunction } from '@git-manager/i18n'
+
+/**
+ * Coarse relative time from a **millisecond** epoch, worded through the `time.*` locale keys.
+ *
+ * Distinct from `formatRelativeTime` below on both counts: this one is for the app's *own* event
+ * timestamps (`Date.now()`, e.g. `AppNotification.createdAt`) and its copy lives in our locale
+ * files, where `formatRelativeTime` formats a *second*-based git timestamp through `Intl`.
+ * Shared by the bell dropdown and the tray popover so the same notification can't read
+ * "Just now" in one and something else in the other.
+ */
+export function formatRelativeTimestamp(timestampMs: number, t: TFunction): string {
+  const seconds = Math.floor((Date.now() - timestampMs) / 1000)
+  if (seconds < 60) return t('time.justNow')
+
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return t('time.minutesAgo', { count: minutes })
+
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return t('time.hoursAgo', { count: hours })
+
+  return t('time.daysAgo', { count: Math.floor(hours / 24) })
+}
+
 /** Coarse relative time, e.g. `just now`, `5m ago`, `3d ago`, `2y ago`. */
 export function formatRelativeDate(timestamp: number): string {
   const now = Date.now() / 1000

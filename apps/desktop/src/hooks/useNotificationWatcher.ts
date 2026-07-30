@@ -12,8 +12,10 @@ import {
 } from '../lib/notifications/notificationRegistry'
 import { buildPRSnapshotMap, snapshotMapsEqual } from '../lib/notifications/prSnapshots'
 import { buildNotificationRoute } from '../lib/notifications/notificationRoute'
+import { resolveDisplayStyle } from '../lib/notifications/notificationDisplay'
 import { routeNotification } from '../lib/notifications/notificationRouting'
 import { apiSendNativeNotification, apiOnNotificationActivated } from '../api/notification.api'
+import { openNotificationPopoverWindow } from '../lib/notificationPopoverWindow'
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import type { TFunction } from '@git-manager/i18n'
 
@@ -39,6 +41,27 @@ export async function showNativeNotification(notif: AppNotification, t: TFunctio
     ...(soundEnabled ? { sound: soundName } : {}),
     route: buildNotificationRoute(notif),
   })
+}
+
+/**
+ * Shows a notification on whichever surface the user picked in Settings.
+ *
+ * The `popover` style additionally falls back to the native banner on its own whenever the card
+ * can't be shown — no tray rect available (e.g. Linux), or the secondary-window creation itself
+ * throws. That fallback is automatic and distinct from the setting: `native` means "I want the OS
+ * banner", the fallback means "the card was unavailable". Both decisions live here alone, so the
+ * real watcher loop, the dev-mode simulator buttons and the Settings test button share them.
+ */
+export async function notifyUser(notif: AppNotification, t: TFunction) {
+  const settings = useSettingsStore.getState().settings
+  if (resolveDisplayStyle(settings.notifications) === 'popover') {
+    try {
+      if (await openNotificationPopoverWindow(notif)) return
+    } catch (e) {
+      console.warn('Notification popover failed, falling back to native notification:', e)
+    }
+  }
+  await showNativeNotification(notif, t)
 }
 
 export function useNotificationWatcher() {
@@ -110,11 +133,12 @@ export function useNotificationWatcher() {
           prTitle: pr.title,
           prId: pr.id,
           author: pr.author,
+          ...(pr.authorAvatar ? { authorAvatar: pr.authorAvatar } : {}),
           url: pr.url,
           targetTab: resolveTargetTab(def, pr),
           ...(def.reviewStatus ? { reviewStatus: def.reviewStatus(pr) } : {}),
         })
-        showNativeNotification(newNotif, t)
+        notifyUser(newNotif, t)
       }
     }
 

@@ -45,7 +45,7 @@ use commands::log::{
     compare_commit_to_workdir, get_commit_diff, get_commit_file, get_commits_merged_diff, get_log,
 };
 use commands::merge_target::get_merge_target_status;
-use commands::notification::send_native_notification;
+use commands::notification::{get_tray_icon_rect, play_system_sound, send_native_notification};
 use commands::package_health::{
     check_outdated_packages, get_package_changelog, has_package_manifest, run_package_health_check,
     scan_package_usage, update_packages,
@@ -80,7 +80,7 @@ use commands::undo::{
     objects_exist, pin_object, recreate_branch_ref, restore_file_blob, restore_worktree_snapshot,
     snapshot_file, snapshot_worktree, snapshot_worktree_always, unpin_object,
 };
-use commands::window::set_window_vibrancy;
+use commands::window::{clear_window_backdrop, raise_above_menu_bar, set_window_vibrancy};
 use commands::worktree::{
     add_worktree, count_default_file_matches, gone_upstream_branches, list_worktrees,
     prune_worktrees, remove_worktree,
@@ -99,7 +99,7 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
 
-    TrayIconBuilder::new()
+    TrayIconBuilder::with_id("main-tray")
         .icon(app.default_window_icon().cloned().unwrap())
         .menu(&menu)
         .show_menu_on_left_click(false)
@@ -284,8 +284,12 @@ pub fn run() {
             // Themes
             get_user_themes,
             set_window_vibrancy,
+            raise_above_menu_bar,
+            clear_window_backdrop,
             // Native notifications (clickable — see commands/notification.rs)
             send_native_notification,
+            get_tray_icon_rect,
+            play_system_sound,
             // Submodules
             list_submodules,
             // GitHub OAuth

@@ -507,6 +507,12 @@ export const getUserThemes = () => invoke<UserTheme[]>('get_user_themes')
 export const setWindowVibrancy = (material: string, appearance: string) =>
   invoke<void>('set_window_vibrancy', { material, appearance })
 
+/** Raises this window's native level above the macOS menu bar (notification popover, macOS only). */
+export const raiseAboveMenuBar = () => invoke<void>('raise_above_menu_bar')
+
+/** Clears the WKWebView's opaque backdrop so a `transparent` window really is (macOS only). */
+export const clearWindowBackdrop = () => invoke<void>('clear_window_backdrop')
+
 // ─── Native notifications ─────────────────────────────────────────────────────
 
 /**
@@ -524,6 +530,20 @@ export interface NativeNotificationRequest {
 
 export const sendNativeNotification = (request: NativeNotificationRequest) =>
   invoke<void>('send_native_notification', { request })
+
+/** The tray icon's on-screen rect, in logical pixels — used to anchor the notification popover. */
+export interface TrayIconRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** `null` when the tray icon's rect isn't available (e.g. Linux) — callers fall back to native. */
+export const getTrayIconRect = () => invoke<TrayIconRect | null>('get_tray_icon_rect')
+
+/** Plays a named macOS system sound (e.g. `'Pop'`) standalone, with no notification banner. */
+export const playSystemSound = (name: string) => invoke<void>('play_system_sound', { name })
 
 // ─── Working Tree ─────────────────────────────────────────────────────────────
 
