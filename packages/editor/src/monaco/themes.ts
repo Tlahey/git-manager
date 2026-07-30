@@ -541,6 +541,25 @@ function isBackgroundDark(): boolean {
   return true // fallback to dark
 }
 
+// `defineTheme` with `inherit: true` makes Monaco recompute its TokenTheme from the *shared,
+// module-level* built-in rule table (`vs`/`vs-dark` in monaco-editor's own
+// standaloneThemeService.js) — and that recompute path mutates the shared table in place (appends
+// an `{ token: '' }` default-color rule to it) rather than copying it first. Every call to
+// `defineTheme` therefore leaks one more entry into a table that lives for the process's lifetime,
+// regardless of theme name — a session with many editor mounts (every diff/merge pane calls this
+// on mount) grows it unbounded, which is a real cost once the theme's CSS actually applies (it
+// used to be silently dropped by a CSP gap; see tauri.conf.json's style-src). We can't fix
+// monaco-editor's internals, so avoid re-triggering them: skip `defineTheme` (and the fresh
+// `StandaloneTheme` — and fresh shared-table mutation — that recomputing its `.tokenTheme` getter
+// causes) unless the resolved colors actually changed since the last call. `setTheme` alone is
+// cheap and reuses the previously-defined (already-tokenized) theme instance.
+let lastAppliedThemeSignature: string | null = null
+
+/** Test-only: clears the memo so a fresh assertion can observe the next `defineTheme` call. */
+export function resetDynamicThemeMemo(): void {
+  lastAppliedThemeSignature = null
+}
+
 export function registerAndApplyDynamicTheme(monacoInstance: typeof monaco | null | undefined) {
   if (!monacoInstance) return
 
@@ -553,15 +572,19 @@ export function registerAndApplyDynamicTheme(monacoInstance: typeof monaco | nul
     colors[binding.key] =
       binding.constant ?? getMonacoColorFromCssVar(binding.cssVar as string, binding.alpha)
   }
-  const themeConfig = {
-    base: (isDark ? 'vs-dark' : 'vs') as 'vs-dark' | 'vs',
-    inherit: true,
-    rules: [],
-    colors,
-  }
+  const base = (isDark ? 'vs-dark' : 'vs') as 'vs-dark' | 'vs'
+  const signature = `${base}|${JSON.stringify(colors)}`
 
   try {
-    monacoInstance.editor.defineTheme('git-manager-dynamic', themeConfig)
+    if (signature !== lastAppliedThemeSignature) {
+      monacoInstance.editor.defineTheme('git-manager-dynamic', {
+        base,
+        inherit: true,
+        rules: [],
+        colors,
+      })
+      lastAppliedThemeSignature = signature
+    }
     monacoInstance.editor.setTheme('git-manager-dynamic')
   } catch (error) {
     console.error('Failed to define or apply dynamic Monaco theme', error)

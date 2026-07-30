@@ -10,12 +10,18 @@ vi.mock('monaco-editor', () => ({
 }))
 
 import * as monaco from 'monaco-editor'
-import { monacoThemes, registerMonacoThemes, registerAndApplyDynamicTheme } from './themes'
+import {
+  monacoThemes,
+  registerMonacoThemes,
+  registerAndApplyDynamicTheme,
+  resetDynamicThemeMemo,
+} from './themes'
 
 beforeEach(() => {
   defineTheme.mockReset()
   setTheme.mockReset()
   document.documentElement.removeAttribute('style')
+  resetDynamicThemeMemo()
 })
 
 afterEach(() => {
@@ -117,5 +123,21 @@ describe('registerAndApplyDynamicTheme', () => {
     )
     expect(setTheme).not.toHaveBeenCalled()
     errorSpy.mockRestore()
+  })
+
+  it('skips redefining the theme on a repeat call with unchanged colors, but still re-applies it', () => {
+    document.documentElement.style.setProperty('--background', '0 0% 100%')
+    registerAndApplyDynamicTheme(monaco)
+    registerAndApplyDynamicTheme(monaco)
+    expect(defineTheme).toHaveBeenCalledTimes(1)
+    expect(setTheme).toHaveBeenCalledTimes(2)
+  })
+
+  it('redefines the theme when the resolved colors actually change', () => {
+    document.documentElement.style.setProperty('--background', '0 0% 100%')
+    registerAndApplyDynamicTheme(monaco)
+    document.documentElement.style.setProperty('--background', '222 84% 5%')
+    registerAndApplyDynamicTheme(monaco)
+    expect(defineTheme).toHaveBeenCalledTimes(2)
   })
 })
