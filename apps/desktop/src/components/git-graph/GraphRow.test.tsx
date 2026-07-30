@@ -846,8 +846,8 @@ describe('GraphRow — graph column width modes', () => {
       return left
     }
     // The band starts at the marker, so it travels left with the lane it belongs to.
-    expect(bandLeft(0)).toBe('85px') // 8px cell margin + laneCenterX(3) = 77
-    expect(bandLeft(22)).toBe('63px')
+    expect(bandLeft(0)).toBe('90px') // 8px cell margin + laneCenterX(3) = 82
+    expect(bandLeft(22)).toBe('68px')
   })
 
   it('keeps the band tinted but out of the left zone for a lane scrolled off the left edge', () => {

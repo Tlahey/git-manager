@@ -42,7 +42,15 @@ describe('languageForFilePath', () => {
     ['page.html', 'html'],
     ['README.md', 'markdown'],
     ['data.json', 'json'],
-    ['run.sh', 'shellscript'],
+    ['run.sh', 'shell'],
+    ['run.bash', 'shell'],
+    ['config.yaml', 'yaml'],
+    ['config.yml', 'yaml'],
+    ['pyproject.toml', 'ini'],
+    ['Dockerfile', 'dockerfile'],
+    ['app.dockerfile', 'dockerfile'],
+    ['main.go', 'go'],
+    ['Main.java', 'java'],
   ])('maps %s to %s', (path, expected) => {
     expect(languageForFilePath(path)).toBe(expected)
   })

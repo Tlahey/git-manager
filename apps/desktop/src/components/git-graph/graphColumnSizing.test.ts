@@ -3,6 +3,7 @@ import {
   getGraphColumnLayout,
   getGraphMaxWidth,
   getMarkerPlacement,
+  graphLeftInset,
   isGraphCompact,
   laneCenterX,
 } from './graphColumnSizing'
@@ -10,22 +11,29 @@ import { GRAPH_CELL_TRAILING_MARGIN } from './graphLayout'
 
 // Standard row height everywhere: avatar 32px, COL_WIDTH 22, overlay = 32 + 8 = 40.
 const AVATAR = 32
+// Lane 0's distance to the graph cell's own left edge (COL_WIDTH/2=11) is less than the 16px
+// avatar radius, so every lane shifts right by this amount (see graphColumnSizing.ts).
+const INSET = graphLeftInset(AVATAR)
 
 describe('laneCenterX', () => {
-  it('centers each lane on the COL_WIDTH grid', () => {
-    expect(laneCenterX(0)).toBe(11)
-    expect(laneCenterX(3)).toBe(3 * 22 + 11)
+  it('centers each lane on the COL_WIDTH grid, shifted right by the left inset', () => {
+    expect(laneCenterX(0, AVATAR)).toBe(11 + INSET)
+    expect(laneCenterX(3, AVATAR)).toBe(3 * 22 + 11 + INSET)
   })
 })
 
 describe('getGraphMaxWidth', () => {
   it('caps the column at the last lane center + half an avatar + paddings', () => {
-    // laneCenterX(3)=77, + 16 avatar radius + 8 right padding + 8 trailing margin = 109
-    expect(getGraphMaxWidth(3, AVATAR)).toBe(109)
+    // laneCenterX(3, AVATAR)=82, + 16 avatar radius + 8 right padding + 8 trailing margin = 114
+    expect(getGraphMaxWidth(3, AVATAR)).toBe(114)
   })
 
   it('grows with the avatar size (small vs standard row height)', () => {
-    expect(getGraphMaxWidth(3, 24)).toBe(getGraphMaxWidth(3, AVATAR) - 4)
+    // The smaller avatar (radius 12) needs only a 1px inset vs 5px at standard height, so the two
+    // maxes differ by more than just the 4px radius gap — compute each directly rather than by
+    // the difference.
+    expect(getGraphMaxWidth(3, 24)).toBe(106)
+    expect(getGraphMaxWidth(3, AVATAR)).toBe(114)
   })
 })
 
@@ -38,7 +46,7 @@ describe('getGraphColumnLayout — mode selection', () => {
   })
 
   it('is `full` for a single-lane repo at its small computed max width', () => {
-    // needed inner = laneCenterX(0)=11 + 16 avatar radius + 8 right padding = 35 ≤ innerWidth 52
+    // needed inner = laneCenterX(0, AVATAR)=16 + 16 avatar radius + 8 right padding = 40 ≤ innerWidth 52
     expect(getGraphColumnLayout(60, 0, AVATAR).mode).toBe('full')
   })
 
@@ -55,12 +63,12 @@ describe('getGraphColumnLayout — mode selection', () => {
   })
 
   it('grows the zone in progressively from the right over the first missing pixels', () => {
-    // getGraphMaxWidth(6, 32) = 175; 12px below → deficit 12 of the 24px growth range.
+    // getGraphMaxWidth(6, 32) = 180; 12px below → deficit 12 of the 24px growth range.
     const halfway = getGraphColumnLayout(getGraphMaxWidth(6, AVATAR) - 12, 6, AVATAR)
     expect(halfway.mode).toBe('overflow')
     expect(halfway.overlayOpacity).toBe(0.5)
-    // Zone half-grown: overlayStart = inner 155 - (40 overlay width × 0.5)
-    expect(halfway.overlayStart).toBe(135)
+    // Zone half-grown: overlayStart = inner 160 - (40 overlay width × 0.5)
+    expect(halfway.overlayStart).toBe(140)
     // Far below the max the zone is fully grown and its shadow fully opaque.
     const grown = getGraphColumnLayout(120, 6, AVATAR)
     expect(grown.overlayOpacity).toBe(1)
@@ -109,10 +117,10 @@ describe('getGraphColumnLayout — horizontal scrolling', () => {
   })
 
   it('scrolls by exactly the width missing to show every lane', () => {
-    // getGraphMaxWidth(6, 32) = 175 → at width 120 the column is 55px short.
+    // getGraphMaxWidth(6, 32) = 180 → at width 120 the column is 60px short.
     const layout = getGraphColumnLayout(120, 6, AVATAR, 1000)
-    expect(layout.maxScrollX).toBe(55)
-    expect(layout.scrollX).toBe(55)
+    expect(layout.maxScrollX).toBe(60)
+    expect(layout.scrollX).toBe(60)
     expect(getGraphColumnLayout(120, 6, AVATAR, -10).scrollX).toBe(0)
   })
 
@@ -126,39 +134,39 @@ describe('getGraphColumnLayout — horizontal scrolling', () => {
   it('recedes the right zone as the scroll consumes the hidden width', () => {
     const rest = getGraphColumnLayout(120, 6, AVATAR)
     expect(rest.overlayOpacity).toBe(1)
-    // 55px missing, 43 scrolled → 12 left of the 24px range.
-    expect(getGraphColumnLayout(120, 6, AVATAR, 43).overlayOpacity).toBe(0.5)
+    // 60px missing, 43 scrolled → 17 left of the 24px range.
+    expect(getGraphColumnLayout(120, 6, AVATAR, 43).overlayOpacity).toBe(0.7083333333333334)
     // Scrolled all the way: nothing is hidden on the right anymore, so the zone is gone.
-    const scrolled = getGraphColumnLayout(120, 6, AVATAR, 55)
+    const scrolled = getGraphColumnLayout(120, 6, AVATAR, 60)
     expect(scrolled.overlayOpacity).toBe(0)
     expect(scrolled.overlayStart).toBe(scrolled.innerWidth)
   })
 
   it('pins a marker at lane 0 rather than at the pin gap, so nothing moves at rest', () => {
-    expect(getGraphColumnLayout(120, 6, AVATAR).leftPinX).toBe(laneCenterX(0))
+    expect(getGraphColumnLayout(120, 6, AVATAR).leftPinX).toBe(laneCenterX(0, AVATAR))
   })
 })
 
 describe('getMarkerPlacement — horizontal scrolling', () => {
   it('moves every lane left by the scroll offset', () => {
     const layout = getGraphColumnLayout(120, 6, AVATAR, 22)
-    // laneCenterX(3)=77 → 55, still left of the (now receded) zone.
-    expect(getMarkerPlacement(3, layout, AVATAR)).toEqual({ x: 55, overflowed: false, opacity: 1 })
+    // laneCenterX(3, AVATAR)=82 → 60, now just inside the (still mostly grown) zone.
+    expect(getMarkerPlacement(3, layout, AVATAR)).toEqual({ x: 60, overflowed: true, opacity: 0.93 })
   })
 
   it('brings the last lane fully into view at maximum scroll', () => {
-    const layout = getGraphColumnLayout(120, 6, AVATAR, 55)
-    // laneCenterX(6)=143 - 55 = 88, i.e. the 8px right padding before innerWidth 112 minus the
-    // avatar radius — visible, unpinned and undimmed now that the zone is gone.
+    const layout = getGraphColumnLayout(120, 6, AVATAR, 60)
+    // laneCenterX(6, AVATAR)=148 - 60 = 88, i.e. the 8px right padding before innerWidth 112 minus
+    // the avatar radius — visible, unpinned and undimmed now that the zone is gone.
     expect(getMarkerPlacement(6, layout, AVATAR)).toEqual({ x: 88, overflowed: false, opacity: 1 })
   })
 
   it('pins a marker scrolled off the left edge, fully dimmed', () => {
-    const layout = getGraphColumnLayout(120, 6, AVATAR, 55)
-    // laneCenterX(0)=11 - 55 = -44, i.e. more than an avatar past the pin. Not flagged as
+    const layout = getGraphColumnLayout(120, 6, AVATAR, 60)
+    // laneCenterX(0, AVATAR)=16 - 60 = -44, i.e. more than an avatar past the pin. Not flagged as
     // overflowed: its band runs away from the left zone and keeps its tint.
     expect(getMarkerPlacement(0, layout, AVATAR)).toEqual({
-      x: laneCenterX(0),
+      x: laneCenterX(0, AVATAR),
       overflowed: false,
       opacity: 0.45,
     })
@@ -168,7 +176,7 @@ describe('getMarkerPlacement — horizontal scrolling', () => {
     // lane 1 (33) scrolled by 38 → -5, i.e. 16px (half an avatar) short of the pin.
     const layout = getGraphColumnLayout(120, 6, AVATAR, 38)
     expect(getMarkerPlacement(1, layout, AVATAR)).toEqual({
-      x: laneCenterX(0),
+      x: laneCenterX(0, AVATAR),
       overflowed: false,
       opacity: 0.73,
     })
@@ -177,7 +185,7 @@ describe('getMarkerPlacement — horizontal scrolling', () => {
   it('leaves lane 0 alone while the column is not scrolled', () => {
     const layout = getGraphColumnLayout(120, 6, AVATAR)
     expect(getMarkerPlacement(0, layout, AVATAR)).toEqual({
-      x: laneCenterX(0),
+      x: laneCenterX(0, AVATAR),
       overflowed: false,
       opacity: 1,
     })
@@ -201,7 +209,7 @@ describe('getMarkerPlacement', () => {
   it('keeps the natural lane position in `full` mode', () => {
     const layout = getGraphColumnLayout(getGraphMaxWidth(6, AVATAR), 6, AVATAR)
     expect(getMarkerPlacement(4, layout, AVATAR)).toEqual({
-      x: laneCenterX(4),
+      x: laneCenterX(4, AVATAR),
       overflowed: false,
       opacity: 1,
     })
@@ -209,15 +217,15 @@ describe('getMarkerPlacement', () => {
 
   it('keeps lanes that fit left of the fade zone at their natural position', () => {
     const layout = getGraphColumnLayout(120, 6, AVATAR)
-    // laneCenterX(2)=55, +16 = 71 ≤ overlayStart 72 → fits
-    expect(getMarkerPlacement(2, layout, AVATAR)).toEqual({ x: 55, overflowed: false, opacity: 1 })
+    // laneCenterX(2, AVATAR)=60, +16 = 76 > overlayStart 72 → already 4px into the zone
+    expect(getMarkerPlacement(2, layout, AVATAR)).toEqual({ x: 60, overflowed: true, opacity: 0.93 })
   })
 
   it('lets a marker travel inside the zone at its natural position, partially dimmed', () => {
     const layout = getGraphColumnLayout(120, 6, AVATAR)
-    // laneCenterX(3)=77 hasn't reached the pin (94) yet, but overlaps the zone by 21px:
-    // opacity = 1 - 0.55 * 21/32 ≈ 0.64
-    expect(getMarkerPlacement(3, layout, AVATAR)).toEqual({ x: 77, overflowed: true, opacity: 0.64 })
+    // laneCenterX(3, AVATAR)=82 hasn't reached the pin (90) yet, but overlaps the zone by 26px:
+    // opacity = 1 - 0.55 * 26/32 ≈ 0.55
+    expect(getMarkerPlacement(3, layout, AVATAR)).toEqual({ x: 82, overflowed: true, opacity: 0.55 })
   })
 
   it('pins markers past the zone end shy of the right edge, fully dimmed', () => {
@@ -241,11 +249,11 @@ describe('getMarkerPlacement', () => {
     expect(layout.mode).toBe('compact')
     expect(layout.compactBlend).toBeGreaterThan(0)
     expect(layout.compactBlend).toBeLessThan(1)
-    // lane 0: part-way between its natural x (11) and the center (23.5), partially re-brightened.
-    expect(getMarkerPlacement(0, layout, AVATAR)).toEqual({ x: 19.52, overflowed: true, opacity: 0.89 })
+    // lane 0: part-way between its natural x (16) and the center (23.5), partially re-brightened.
+    expect(getMarkerPlacement(0, layout, AVATAR)).toEqual({ x: 21.11, overflowed: true, opacity: 0.86 })
     // Right at the boundary (t = 0) the placement matches the overflow formula exactly.
     const atBoundary = getGraphColumnLayout(70, 6, AVATAR)
     expect(atBoundary.mode).toBe('overflow')
-    expect(getMarkerPlacement(0, atBoundary, AVATAR).x).toBe(laneCenterX(0))
+    expect(getMarkerPlacement(0, atBoundary, AVATAR).x).toBe(laneCenterX(0, AVATAR))
   })
 })

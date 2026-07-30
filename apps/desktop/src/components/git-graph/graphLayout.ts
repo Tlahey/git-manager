@@ -12,7 +12,8 @@
  * `GraphSvg.tsx` (line geometry) and `GraphRow`/`GraphCell` (node/avatar positions) so they stay
  * in lockstep — change lane spacing here only. Must stay ≥ the avatar diameter's half plus a
  * couple px so an avatar never covers a neighbouring lane's line (avatar radius is 16 at standard
- * row height). */
+ * row height). Lane 0 only gets half of that gap from the graph cell's own left edge — see
+ * `graphColumnSizing.ts`'s `graphLeftInset` for how it still gets full clearance. */
 export const COL_WIDTH = 22
 
 // ── Graph column sizing ─────────────────────────────────────────────────────────

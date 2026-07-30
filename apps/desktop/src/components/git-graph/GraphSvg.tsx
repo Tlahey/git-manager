@@ -1,6 +1,7 @@
 import type { GitGraphEdge } from '@git-manager/git-types'
 import { useSettingsStore } from '../../stores/settings.store'
 import { COL_WIDTH } from './graphLayout'
+import { laneCenterX } from './graphColumnSizing'
 
 interface GraphSvgProps {
   column: number
@@ -20,7 +21,7 @@ export function GraphSvg({ column, connections, isWip, isStash, isFirst }: Graph
   const avatarRadius = avatarSize / 2
 
   const maxCol = connections.reduce((m, c) => Math.max(m, c.fromColumn, c.toColumn), column)
-  const width = (maxCol + 1) * COL_WIDTH + 4
+  const width = laneCenterX(maxCol, avatarSize) + COL_WIDTH / 2 + 4
   const nodeY = rowHeight / 2
 
   return (
@@ -33,8 +34,8 @@ export function GraphSvg({ column, connections, isWip, isStash, isFirst }: Graph
     >
       {/* Lignes de connexion (full-row, avec angles droits arrondis et background coloré) */}
       {connections.map((edge, i) => {
-        const x1 = edge.fromColumn * COL_WIDTH + COL_WIDTH / 2
-        const x2 = edge.toColumn * COL_WIDTH + COL_WIDTH / 2
+        const x1 = laneCenterX(edge.fromColumn, avatarSize)
+        const x2 = laneCenterX(edge.toColumn, avatarSize)
 
         const yStart = -2
         const yEnd = rowHeight + 2

@@ -3,6 +3,7 @@ import { render } from '@testing-library/react'
 import type { GitGraphEdge } from '@git-manager/git-types'
 import { GraphSvg } from './GraphSvg'
 import { COL_WIDTH } from './graphLayout'
+import { graphLeftInset } from './graphColumnSizing'
 import { useSettingsStore } from '../../stores/settings.store'
 
 const INITIAL_SETTINGS = useSettingsStore.getState()
@@ -10,12 +11,16 @@ const INITIAL_SETTINGS = useSettingsStore.getState()
 // Expected path coordinates are derived from COL_WIDTH so these assertions survive any tweak to
 // the lane spacing. Y coordinates (row height / avatar radius) are independent of it and stay
 // literal. C0/C1/C2 = column centers, R = corner radius, AVATAR = standard avatar radius.
-const HALF = COL_WIDTH / 2
-const C0 = HALF
-const C1 = COL_WIDTH + HALF
-const C2 = 2 * COL_WIDTH + HALF
-const R = 8
 const AVATAR = 16
+// Lane 0 sits closer to the graph cell's own left edge than any other pair of lanes is to each
+// other (see graphColumnSizing.ts's `graphLeftInset`) — at the standard row height the avatar is
+// wider than that half-gap, so every lane shifts right by the same amount to give it room.
+const INSET = graphLeftInset(AVATAR * 2)
+const HALF = COL_WIDTH / 2
+const C0 = HALF + INSET
+const C1 = COL_WIDTH + HALF + INSET
+const C2 = 2 * COL_WIDTH + HALF + INSET
+const R = 8
 
 function edge(overrides: Partial<GitGraphEdge> = {}): GitGraphEdge {
   return { fromColumn: 0, toColumn: 0, color: '#ff0000', ...overrides }
@@ -35,9 +40,10 @@ function renderSvg(
 describe('GraphSvg — dimensions', () => {
   it('sizes the svg from the widest column at standard row height', () => {
     const svg = renderSvg({ connections: [edge({ fromColumn: 0, toColumn: 2 })] })
-    expect(svg.getAttribute('width')).toBe(String(3 * COL_WIDTH + 4)) // maxCol=2 => (2+1)*COL_WIDTH+4
+    // maxCol=2 => laneCenterX(2) + half a lane + the 4px svg margin
+    expect(svg.getAttribute('width')).toBe(String(C2 + HALF + 4))
     expect(svg.getAttribute('height')).toBe('40')
-    expect(svg.getAttribute('viewBox')).toBe(`0 0 ${3 * COL_WIDTH + 4} 40`)
+    expect(svg.getAttribute('viewBox')).toBe(`0 0 ${C2 + HALF + 4} 40`)
   })
 
   it('uses a smaller row height when the "small" row-height setting is active', () => {

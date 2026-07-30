@@ -82,11 +82,12 @@ describe('GraphAvatarTooltip', () => {
     expect(screen.getByText('AL')).toBeInTheDocument()
   })
 
-  it('positions itself on the natural lane center by default (column * 22 + 11)', () => {
+  it('positions itself on the natural lane center by default (column * 22 + 11 + left inset)', () => {
     const { container } = render(<GraphAvatarTooltip node={node({ column: 2 })} />)
     const wrapper = container.firstElementChild as HTMLElement
-    // center 55 - half of the 32px avatar = 39
-    expect(wrapper.style.left).toBe('39px')
+    // center 60 (2*22 + 11 + 5px inset, since the 32px avatar is wider than lane 0's natural
+    // clearance) - half of the 32px avatar = 44
+    expect(wrapper.style.left).toBe('44px')
     expect(wrapper.style.opacity).toBe('')
   })
 
@@ -144,8 +145,9 @@ describe('GraphAvatarTooltip', () => {
     }))
     const { container } = render(<GraphAvatarTooltip node={node()} />)
     const wrapper = container.firstElementChild as HTMLElement
-    // center 11 - half of the 24px avatar = -1
-    expect(wrapper.style.left).toBe('-1px')
+    // center 12 (11 + 1px inset, the 24px avatar barely exceeds lane 0's natural clearance) -
+    // half of the 24px avatar = 0
+    expect(wrapper.style.left).toBe('0px')
     expect(wrapper.style.width).toBe('24px')
   })
 })

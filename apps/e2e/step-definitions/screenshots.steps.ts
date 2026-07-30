@@ -4,27 +4,11 @@ import { fileURLToPath } from 'node:url'
 import { browser, $ } from '@wdio/globals'
 import { Given, When, Then } from '@wdio/cucumber-framework'
 import { stabiliseForSnapshot } from '../support/visual.js'
+import { seedSettings } from '../support/settings.js'
 
 // Marketing captures land in the repo docs, not in __visual__: they are meant
 // to be committed and embedded (README, landing page), not pixel-compared.
 const SHOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../docs/screenshots')
-
-/**
- * Merges `patch` into the persisted settings. A partial seed is safe: the
- * store's rehydration merge (mergeSettingsWithDefaults in settings.store.ts)
- * fills every missing group with defaults. Takes effect on the next load — the
- * repo-open step reloads right after, which is why these Givens come first.
- */
-async function seedSettings(patch: Record<string, unknown>): Promise<void> {
-  await browser.execute((raw: string) => {
-    const key = 'git-manager-settings'
-    const stored = window.localStorage.getItem(key)
-    const data = stored ? JSON.parse(stored) : { state: {}, version: 0 }
-    data.state = data.state ?? {}
-    data.state.settings = { ...(data.state.settings ?? {}), ...JSON.parse(raw) }
-    window.localStorage.setItem(key, JSON.stringify(data))
-  }, JSON.stringify(patch))
-}
 
 // Captures ship in the (English) README and documentation site, but the app
 // defaults to 'fr'.
