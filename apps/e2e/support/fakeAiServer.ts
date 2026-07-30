@@ -20,13 +20,16 @@ export interface FakeAiServerOptions {
    * `json_schema.name === 'daily_summary'`). Defaults to a deterministic briefing so scenarios can
    * assert on exact headline/bullets. */
   dailySummary?: { headline: string; highlights: string[] }
-  /** Accepts the request and records its body, but never sends a real token or `[DONE]` — instead
-   * writes a periodic SSE comment line (`: keep-alive`) so the connection keeps producing bytes
-   * without ever completing. Real backends do something similar, and it matters here because the
-   * Rust side's cancellation check only runs *between* stream chunks
+  /** Accepts any request — streaming or one-shot completion alike — and records its body, but never
+   * sends a real answer: instead writes a periodic SSE comment line (`: keep-alive`) so the
+   * connection keeps producing bytes without ever completing. Real backends do something similar,
+   * and it matters here because the Rust side's cancellation check only runs *between* stream chunks
    * (`ai_openai_compatible.rs`'s `while let Some(chunk) = stream.next().await`) — a connection
    * that truly never wrote anything would leave that await stuck forever with the cancel flag
-   * never observed, so clicking Stop wouldn't do anything, no matter how the frontend behaves. */
+   * never observed, so clicking Stop wouldn't do anything, no matter how the frontend behaves.
+   * Applies before the `stream: false` dispatch below on purpose: the two-phase features (commit
+   * message, commit plan, daily summary) never make a streaming call at all, so a stall limited to
+   * `stream !== false` could never make those flows visibly "stuck". */
   stall?: boolean
 }
 
@@ -68,8 +71,28 @@ export async function startFakeAiServer(
           state.lastRequestBody = body
         }
 
-        // Non-streaming completion (`stream: false` with a JSON schema). Two features use this path;
-        // they're told apart by their schema name so each gets a response its parser accepts.
+        // A stalled server accepts any request and records its body, but never answers — regardless
+        // of whether this particular call streams or not. This has to be checked before the
+        // `stream === false` dispatch below: every two-phase feature (commit message, commit plan,
+        // daily summary) composes from completion calls exclusively, so a stall that only worked for
+        // `stream !== false` could never make that flow visibly "stuck" for a Cancel button to
+        // interrupt — it would keep answering its one-shot completion calls instantly no matter how
+        // long the request stayed open for a streaming caller.
+        if (options.stall) {
+          res.writeHead(200, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            Connection: 'keep-alive',
+          })
+          const keepAlive = setInterval(() => {
+            res.write(': keep-alive\n\n')
+          }, 200)
+          res.on('close', () => clearInterval(keepAlive))
+          return
+        }
+
+        // Non-streaming completion (`stream: false` with a JSON schema). Three features use this
+        // path; they're told apart by their schema name so each gets a response its parser accepts.
         if (parsed?.stream === false) {
           const schemaName = parsed.response_format?.json_schema?.name
 
@@ -81,6 +104,24 @@ export async function startFakeAiServer(
             }
             res.writeHead(200, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(summary) } }] }))
+            return
+          }
+
+          // Commit-message feature (the compose phase of `composeCommitMessageFromSummaries`):
+          // the `{ subject, body }` shape `parseCommitMessage`/`formatCommitMessage` expect.
+          if (schemaName === 'commit_message') {
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(
+              JSON.stringify({
+                choices: [
+                  {
+                    message: {
+                      content: JSON.stringify({ subject: 'feat: add fake thing', body: '' }),
+                    },
+                  },
+                ],
+              })
+            )
             return
           }
 
@@ -119,14 +160,6 @@ export async function startFakeAiServer(
           'Cache-Control': 'no-cache',
           Connection: 'keep-alive',
         })
-
-        if (options.stall) {
-          const keepAlive = setInterval(() => {
-            res.write(': keep-alive\n\n')
-          }, 200)
-          res.on('close', () => clearInterval(keepAlive))
-          return
-        }
 
         for (const token of tokens) {
           res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: token } }] })}\n\n`)
