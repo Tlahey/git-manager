@@ -14,6 +14,8 @@ const featureSidebar: DefaultTheme.SidebarItem[] = JSON.parse(
 
 /** The hand-written introduction (docs/index.md) — where the documentation opens. */
 const DOCS_ENTRY = `${DOCS_ROUTE}/`
+/** The hand-written install guide (docs/download.md) — the other page not generated. */
+const DOCS_DOWNLOAD = `${DOCS_ROUTE}/download`
 
 /**
  * The landing page's stylesheet, published as a standalone hashed file by the
@@ -92,11 +94,18 @@ export default defineConfig({
       { text: 'Documentation', link: DOCS_ENTRY, activeMatch: DOCS_ROUTE },
       { text: 'Home', link: LANDING_PAGE_ROUTE },
     ],
-    // The introduction is hand-written (docs/index.md) and sits above the
-    // generated feature groups, so readers land on an explanation of what the
-    // documentation covers rather than in the middle of one feature.
+    // The introduction and the install guide are both hand-written and sit above
+    // the generated feature groups, so readers land on an explanation of what the
+    // documentation covers (and how to get the app) rather than in the middle of
+    // one feature.
     sidebar: [
-      { text: 'Start here', items: [{ text: 'Introduction', link: DOCS_ENTRY }] },
+      {
+        text: 'Start here',
+        items: [
+          { text: 'Introduction', link: DOCS_ENTRY },
+          { text: 'Download & Install', link: DOCS_DOWNLOAD },
+        ],
+      },
       ...featureSidebar,
     ],
     socialLinks: [{ icon: 'github', link: 'https://github.com/Tlahey/git-manager' }],

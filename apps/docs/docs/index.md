@@ -40,7 +40,12 @@ The sidebar follows what you are trying to do rather than the app's menus:
 Every page has the same shape: an explanation of the feature, a screenshot of it,
 the steps to perform it, and what you should see afterwards.
 
-::: tip Just installed the app?
+::: tip Don't have it yet?
+[Download & install Git Manager](/docs/download) first, then come back — every
+page below assumes the app is already open.
+:::
+
+::: tip Already installed?
 Start with [the commit graph](/docs/features/commit-graph). It is where every
 repository opens, and the entry point to everything else.
 :::

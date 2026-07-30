@@ -26,6 +26,7 @@
     "vue": "^3.5.13"
   },
   "dependencies": {
-    "@git-manager/mascot": "workspace:*"
+    "@git-manager/mascot": "workspace:*",
+    "medium-zoom": "^1.1.0"
   }
 }

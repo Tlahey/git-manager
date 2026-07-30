@@ -448,6 +448,7 @@ html.landing body {
   bottom: -2px;
   left: 0;
   right: 0;
+  z-index: 2;
   pointer-events: none;
 }
 .hero__wave svg { display: block; width: 100%; }
