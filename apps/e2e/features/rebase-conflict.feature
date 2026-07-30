@@ -4,12 +4,30 @@ Feature: Rebase conflict resolution
   I want the conflict resolution panel to surface automatically
   So that I can continue, skip or abort without hunting for it
 
+  When a rebase stops because two commits touch the same lines, Git Manager
+  doesn't leave you to notice the paused state on your own: opening (or
+  returning to) a repository with a paused rebase surfaces the conflict
+  resolution panel immediately, listing the files that still need attention
+  and a clear way out — skip the commit, abort the rebase, or continue once
+  everything is resolved.
+
   Background:
     Given the "rebase-conflict" fixture repository is opened
 
+  @doc @screenshots
   Scenario: A paused rebase auto-opens the conflict resolution panel
+    A rebase that stops on a conflict isn't a silent failure state you have
+    to go looking for: the conflict resolution panel is already open when
+    you get here, with the conflicting files listed and nowhere else to
+    check first. From it you can skip the conflicting commit, abort back to
+    where you started, or continue once every file is resolved.
+    Given the app language is English
+    And AI features are turned off
+    And the "rebase-conflict" fixture repository is opened
+    When the interface has settled
     Then the conflict resolution panel is shown
     And the conflict panel offers to skip or abort the rebase
+    And a full-window screenshot is saved as "doc-rebase-conflict-panel"
 
   @visual
   Scenario: The conflict resolution panel matches the reference snapshot

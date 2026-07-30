@@ -4,17 +4,34 @@ Feature: Fixup autosquash
   I want to group them through the autosquash preview
   So that I can clean up my history before pushing
 
+  A `fixup!` commit is Git's own convention for "this belongs squashed into
+  an earlier commit" without rewriting anything yet. Git Manager notices
+  them and banners the graph the moment any exist, groups each with the
+  target commit it belongs to, and rewrites history in one action once you
+  approve the plan — no manual interactive rebase required.
+
   Background:
     Given the "fixup-chain" fixture repository is opened
 
   Scenario: The pending fixups banner is shown
     Then the pending fixups banner reports 2 fixups
 
+  @doc @screenshots
   Scenario: The preview groups the two fixup!/target pairs
+    The pending-fixups banner appears as soon as any `fixup!` commit exists,
+    and opening the autosquash preview from it groups each one with the
+    target commit it belongs to — so you can check the pairing is right
+    before running it. Running it rewrites history in a single action,
+    exactly as if you'd run `git rebase --autosquash` by hand.
+    Given the app language is English
+    And AI features are turned off
+    And the "fixup-chain" fixture repository is opened
     When I open the autosquash preview
+    And the interface has settled
     Then the preview groups the commit "feat: add greeting module"
     And the preview groups the commit "feat: add farewell module"
     But the preview does not show the commit "feat: add config module"
+    And a full-window screenshot is saved as "doc-autosquash-preview"
 
   @visual
   Scenario: The preview matches the reference visual snapshot

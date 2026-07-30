@@ -4,16 +4,35 @@ Feature: Rebase progress view
   I want the content view to show where I am in that plan
   So that I can see what's been replayed, what stopped it, and what's still ahead
 
+  A rebase that replays several commits doesn't just show you the one that
+  stopped it: the whole plan takes over the content view as a step rail, so
+  you can see what's already landed, what's still ahead, and exactly where
+  you are between the two.
+
   # The multi-step fixture stops on step 2 of 6, so there's a replayed step above the pause and
   # four still ahead — the rebase-conflict fixture only ever has one step and can't show a rail.
   Background:
     Given the "rebase-multi-step" fixture repository is opened
 
+  @doc @screenshots
   Scenario: A paused rebase takes over the content view with its step rail
+    A multi-step rebase that pauses doesn't just show the one commit that
+    stopped it — the content view swaps to a step rail listing the whole
+    plan: which commits have already been replayed, which one stopped it,
+    and which are still ahead. Hiding the rail to look at something else
+    doesn't lose your place, either: the graph banners the paused rebase,
+    and clicking that banner brings the rail straight back. Continuing from
+    here advances to the next step, which may pause again further down the
+    plan or finish the rebase outright.
+    Given the app language is English
+    And AI features are turned off
+    And the "rebase-multi-step" fixture repository is opened
+    When the interface has settled
     Then the rebase progress view is shown
     And the rebase progress view reports "Step 2 of 6"
     And the rebase progress view is rebasing "feature/tuning" onto "main"
     And the commit graph is not shown
+    And a full-window screenshot is saved as "doc-rebase-progress"
 
   Scenario: The rail marks what has been replayed, what stopped, and what is still ahead
     Then the rebase progress view is shown

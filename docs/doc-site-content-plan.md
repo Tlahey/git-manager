@@ -100,26 +100,26 @@ Every row below follows this shape:
     conflicts; the apply button stays disabled until every block has an outcome.
   - e2e: `merge-editor.feature → "Resolve a conflicted file block by block"` — ✅ tagged
 
-### Page: Rebase conflicts (`rebase-conflict.feature`) — ✴️ tag it
+### Page: Rebase conflicts (`rebase-conflict.feature`) — ✅ done
 
 - **Sub-part — A paused rebase surfaces itself**
   - Must show: a paused rebase auto-opens the conflict resolution panel (you don't go hunting for
     it); the panel offers continue, skip, or abort.
-  - e2e: `rebase-conflict.feature → "A paused rebase auto-opens the conflict resolution panel"` — ✴️ tag it
+  - e2e: `rebase-conflict.feature → "A paused rebase auto-opens the conflict resolution panel"` — ✅ tagged
 
-### Page: Rebase progress (`rebase-progress.feature`) — ✴️ tag it
+### Page: Rebase progress (`rebase-progress.feature`) — ✅ done
 
 - **Sub-part — See where you are in a multi-step rebase**
   - Must show: the step rail (replayed / paused / still ahead); the graph banner that brings the
     progress view back after it's hidden; continuing advances to the next step.
-  - e2e: `rebase-progress.feature → "A paused rebase takes over the content view with its step rail"` — ✴️ tag it
+  - e2e: `rebase-progress.feature → "A paused rebase takes over the content view with its step rail"` — ✅ tagged
 
-### Page: Fixup & autosquash (`fixup-autosquash.feature`) — ✴️ tag it
+### Page: Fixup & autosquash (`fixup-autosquash.feature`) — ✅ done
 
 - **Sub-part — Clean up history before pushing**
   - Must show: the pending-fixups banner when `fixup!` commits exist; the autosquash preview
     grouping each fixup with its target; running it rewrites history in one action.
-  - e2e: `fixup-autosquash.feature → "The preview groups the two fixup!/target pairs"` — ✴️ tag it
+  - e2e: `fixup-autosquash.feature → "The preview groups the two fixup!/target pairs"` — ✅ tagged
 
 ---
 

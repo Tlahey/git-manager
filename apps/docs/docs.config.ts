@@ -46,7 +46,7 @@ export const DOC_SECTIONS: DocSection[] = [
   },
   {
     title: 'When Git gets in the way',
-    features: ['merge-editor'],
+    features: ['merge-editor', 'rebase-conflict', 'rebase-progress', 'fixup-autosquash'],
   },
 ]
 
