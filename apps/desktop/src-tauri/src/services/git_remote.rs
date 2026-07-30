@@ -414,7 +414,35 @@ pub fn push(repo: &Repository, remote: Option<String>, force: bool) -> Result<()
         .push(&[refspec.as_str()], Some(&mut push_opts))
         .map_err(AppError::Git)?;
 
+    set_upstream_if_unset(repo, &remote_name, &branch_name)?;
+
     Ok(())
+}
+
+/// Mirrors `git push -u` / `push.autoSetupRemote`: a branch that has just been published for the
+/// first time gets `branch.<name>.remote`/`branch.<name>.merge` configured so `Branch::upstream()`
+/// (read by `git_branch::list_branches` for the toolbar's ahead/behind badges) resolves right away
+/// instead of staying blank until the user runs a manual `git branch --set-upstream-to`.
+///
+/// Only runs when no upstream is configured yet — a branch pushed again already has one, and it
+/// may deliberately point at a different remote/branch than this push just targeted, which must
+/// not be silently overridden.
+fn set_upstream_if_unset(
+    repo: &Repository,
+    remote_name: &str,
+    branch_name: &str,
+) -> Result<(), AppError> {
+    let mut branch = repo
+        .find_branch(branch_name, git2::BranchType::Local)
+        .map_err(AppError::Git)?;
+
+    if branch.upstream().is_ok() {
+        return Ok(());
+    }
+
+    branch
+        .set_upstream(Some(&format!("{remote_name}/{branch_name}")))
+        .map_err(AppError::Git)
 }
 
 /// Pushes local branch `source` to remote branch `target` on `remote` (refspec `source:target`) —
@@ -789,5 +817,124 @@ mod tests {
             "\"rebase\""
         );
         assert_eq!(PullStrategy::default(), PullStrategy::FastForwardIfPossible);
+    }
+
+    /// A clone of a *bare* origin. Push tests can't reuse `fixture()`'s origin: libgit2's local
+    /// transport refuses to push into a non-bare repository ("local push doesn't (yet) support
+    /// pushing to non-bare repos"), matching real git's `receive.denyCurrentBranch` guard — see
+    /// `tools/git-fixtures/scenarios/remote-ahead.sh` for the same constraint on the shell side.
+    struct PushFixture {
+        origin_dir: PathBuf,
+        local_dir: PathBuf,
+        local: Repository,
+    }
+
+    impl Drop for PushFixture {
+        fn drop(&mut self) {
+            fs::remove_dir_all(&self.origin_dir).ok();
+            fs::remove_dir_all(&self.local_dir).ok();
+        }
+    }
+
+    fn push_ref(repo: &Repository, remote_name: &str, refspec: &str) {
+        let mut remote = repo.find_remote(remote_name).unwrap();
+        let callbacks = make_auth_callbacks();
+        let mut push_opts = PushOptions::new();
+        push_opts.remote_callbacks(callbacks);
+        remote.push(&[refspec], Some(&mut push_opts)).unwrap();
+    }
+
+    fn push_fixture(name: &str) -> PushFixture {
+        let origin_dir = temp_dir(&format!("{name}-origin"));
+        Repository::init_bare(&origin_dir).unwrap();
+
+        let scratch_dir = temp_dir(&format!("{name}-scratch"));
+        let scratch = Repository::init(&scratch_dir).unwrap();
+        commit(&scratch, &scratch_dir, "shared.txt", "base");
+        let branch_name = scratch.head().unwrap().shorthand().unwrap().to_string();
+
+        scratch
+            .remote("origin", &format!("file://{}", origin_dir.display()))
+            .unwrap();
+        push_ref(
+            &scratch,
+            "origin",
+            &format!("refs/heads/{branch_name}:refs/heads/{branch_name}"),
+        );
+        fs::remove_dir_all(&scratch_dir).ok();
+
+        let local_dir = temp_dir(&format!("{name}-local"));
+        let url = format!("file://{}", origin_dir.display());
+        let local = git2::build::RepoBuilder::new()
+            .clone(&url, &local_dir)
+            .unwrap();
+
+        PushFixture {
+            origin_dir,
+            local_dir,
+            local,
+        }
+    }
+
+    #[test]
+    fn push_sets_upstream_for_a_brand_new_branch() {
+        let f = push_fixture("push-new-branch");
+        let head_commit = f.local.head().unwrap().peel_to_commit().unwrap();
+        f.local.branch("feature", &head_commit, false).unwrap();
+        f.local.set_head("refs/heads/feature").unwrap();
+
+        push(&f.local, None, false).unwrap();
+
+        let local_reopened = fresh(&f.local_dir);
+        let branch = local_reopened
+            .find_branch("feature", git2::BranchType::Local)
+            .unwrap();
+        let upstream = branch.upstream().unwrap();
+        assert_eq!(upstream.name().unwrap().unwrap(), "origin/feature");
+        assert!(
+            fresh(&f.origin_dir)
+                .find_reference("refs/heads/feature")
+                .is_ok(),
+            "the branch should have been pushed to the remote too"
+        );
+    }
+
+    #[test]
+    fn push_does_not_touch_an_already_configured_upstream() {
+        let f = push_fixture("push-existing-upstream");
+        let initial_branch = f.local.head().unwrap().shorthand().unwrap().to_string();
+        let head_commit = f.local.head().unwrap().peel_to_commit().unwrap();
+
+        f.local.branch("feature", &head_commit, false).unwrap();
+        f.local.set_head("refs/heads/feature").unwrap();
+
+        // Deliberately pointed at a different remote-tracking ref than this push targets, as if
+        // the user had run `git branch --set-upstream-to` themselves.
+        let mut branch = f
+            .local
+            .find_branch("feature", git2::BranchType::Local)
+            .unwrap();
+        branch
+            .set_upstream(Some(&format!("origin/{initial_branch}")))
+            .unwrap();
+
+        push(&f.local, None, false).unwrap();
+
+        let local_reopened = fresh(&f.local_dir);
+        let branch = local_reopened
+            .find_branch("feature", git2::BranchType::Local)
+            .unwrap();
+        let upstream = branch.upstream().unwrap();
+        assert_eq!(
+            upstream.name().unwrap().unwrap(),
+            format!("origin/{initial_branch}"),
+            "an existing upstream must not be silently overridden"
+        );
+        assert!(
+            fresh(&f.origin_dir)
+                .find_reference("refs/heads/feature")
+                .is_ok(),
+            "the push itself must still have gone through"
+        );
     }
 }
