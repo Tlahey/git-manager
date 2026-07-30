@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { WorktreeSnapshot } from '../lib/tauri'
 import type { GitBranch, GitStash, RebaseState } from '@git-manager/git-types'
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
+import { getActiveSession, resetActivitySessions } from '../lib/activityCorrelation'
 
 vi.mock('../lib/tauri', async () => {
   const actual = await vi.importActual<typeof import('../lib/tauri')>('../lib/tauri')
@@ -21,6 +22,9 @@ vi.mock('../lib/tauri', async () => {
     abortRebase: vi.fn(),
     skipRebase: vi.fn(),
     getRebaseState: vi.fn(),
+    bisectStart: vi.fn(),
+    bisectMark: vi.fn(),
+    bisectReset: vi.fn(),
     stashPush: vi.fn(),
     stashPop: vi.fn(),
     stashApply: vi.fn(),
@@ -100,6 +104,10 @@ beforeEach(() => {
   useUndoHistoryStore.setState({ byRepo: {} })
   // pinObject calls are always chained with `.catch(() => {})` — needs a real promise by default.
   mocked.pinObject.mockResolvedValue(undefined)
+  // `settleRebase` asks git whether the rebase is over on every step; default to "it is", so a test
+  // that isn't about pausing needn't say so.
+  mocked.getRebaseState.mockResolvedValue(rebaseState('idle'))
+  resetActivitySessions()
 })
 
 function historyOf(path: string) {
@@ -204,7 +212,7 @@ describe('apiRunAutosquash', () => {
     await api.apiRunAutosquash(path)
 
     expect(historyOf(path)).toBeUndefined()
-    // getBranches was only queried once (for previousOid) — settleRebaseUndo bailed before
+    // getBranches was only queried once (for previousOid) — settleRebase bailed before
     // fetching the post-rebase HEAD because the rebase hasn't settled yet.
     expect(mocked.getBranches).toHaveBeenCalledTimes(1)
   })
@@ -634,5 +642,132 @@ describe('apiRemoveRemote', () => {
     await api.apiRemoveRemote(path, 'origin')
 
     expect(historyOf(path)).toBeUndefined()
+  })
+})
+
+/** Whether a multi-step-operation session is open for `path`, probed through a command that joins it. */
+function sessionFor(path: string, command: string) {
+  return getActiveSession(path, command)
+}
+
+describe('activity-log sessions for multi-step operations', () => {
+  it('opens a rebase session and closes it once the rebase lands', async () => {
+    const path = freshPath()
+    mocked.rebaseOntoCommit.mockResolvedValue(undefined)
+    mocked.getRebaseState.mockResolvedValue(rebaseState('idle'))
+
+    await api.apiRebaseOntoCommit(path, 'some-sha')
+
+    expect(sessionFor(path, 'continue_rebase')).toBeNull()
+  })
+
+  it('holds the session open while the rebase is paused, so the conflict work joins it', async () => {
+    // This is the whole point: the steps that settle a conflict happen minutes later, as separate
+    // user actions, and have to land in the same journal block.
+    const path = freshPath()
+    mocked.rebaseOntoCommit.mockResolvedValue(undefined)
+    mocked.getRebaseState.mockResolvedValue(rebaseState('conflict'))
+
+    await api.apiRebaseOntoCommit(path, 'some-sha')
+
+    const open = sessionFor(path, 'continue_rebase')
+    expect(open?.label).toBe('git.rebase')
+    // Resolving and staging join it; an unrelated push does not.
+    expect(sessionFor(path, 'resolve_conflict')?.id).toBe(open?.id)
+    expect(sessionFor(path, 'stage_file')?.id).toBe(open?.id)
+    expect(sessionFor(path, 'push_branch')).toBeNull()
+  })
+
+  it('closes the session on the continue that finally lands the rebase', async () => {
+    const path = freshPath()
+    mocked.rebaseOntoCommit.mockResolvedValue(undefined)
+    mocked.continueRebase.mockResolvedValue(undefined)
+    mocked.getRebaseState.mockResolvedValue(rebaseState('conflict'))
+    await api.apiRebaseOntoCommit(path, 'some-sha')
+
+    // Still paused after the first continue: the block stays open.
+    await api.apiRebaseContinue(path)
+    const stillOpen = sessionFor(path, 'continue_rebase')
+    expect(stillOpen).not.toBeNull()
+
+    mocked.getRebaseState.mockResolvedValue(rebaseState('idle'))
+    await api.apiRebaseContinue(path)
+
+    expect(sessionFor(path, 'continue_rebase')).toBeNull()
+  })
+
+  it('keeps one id across the whole rebase, pauses included', async () => {
+    const path = freshPath()
+    mocked.rebaseOntoCommit.mockResolvedValue(undefined)
+    mocked.continueRebase.mockResolvedValue(undefined)
+    mocked.getRebaseState.mockResolvedValue(rebaseState('conflict'))
+
+    await api.apiRebaseOntoCommit(path, 'some-sha')
+    const started = sessionFor(path, 'continue_rebase')?.id
+    await api.apiRebaseContinue(path)
+
+    expect(sessionFor(path, 'continue_rebase')?.id).toBe(started)
+  })
+
+  it('closes the session on abort, even when the abort itself fails', async () => {
+    // A session left open on a failed abort is the case that would swallow everything done next.
+    const path = freshPath()
+    mocked.rebaseOntoCommit.mockResolvedValue(undefined)
+    mocked.getRebaseState.mockResolvedValue(rebaseState('conflict'))
+    await api.apiRebaseOntoCommit(path, 'some-sha')
+    mocked.abortRebase.mockRejectedValue(new Error('cannot abort'))
+
+    await expect(api.apiRebaseAbort(path)).rejects.toThrow()
+
+    expect(sessionFor(path, 'continue_rebase')).toBeNull()
+  })
+
+  it('starts a session on a continue that has none to join', async () => {
+    // The app was restarted mid-rebase, or the rebase was started from a terminal.
+    const path = freshPath()
+    mocked.continueRebase.mockResolvedValue(undefined)
+    mocked.getRebaseState.mockResolvedValue(rebaseState('conflict'))
+
+    await api.apiRebaseContinue(path)
+
+    expect(sessionFor(path, 'continue_rebase')?.label).toBe('git.rebase')
+  })
+
+  it('scopes a session to its own repository', async () => {
+    const path = freshPath()
+    const other = freshPath()
+    mocked.rebaseOntoCommit.mockResolvedValue(undefined)
+    mocked.getRebaseState.mockResolvedValue(rebaseState('conflict'))
+
+    await api.apiRebaseOntoCommit(path, 'some-sha')
+
+    expect(sessionFor(other, 'continue_rebase')).toBeNull()
+  })
+
+  it('spans a bisect from start to reset', async () => {
+    const path = freshPath()
+    mocked.bisectStart.mockResolvedValue(undefined)
+    mocked.bisectMark.mockResolvedValue(undefined)
+    mocked.bisectReset.mockResolvedValue(undefined)
+
+    await api.apiBisectStart(path, 'HEAD', 'v1')
+    const started = sessionFor(path, 'bisect_mark')
+    expect(started?.label).toBe('git.bisect')
+
+    // git keeps a bisect alive even after the first bad commit is found, so marking never closes it.
+    await api.apiBisectMark(path, 'good')
+    expect(sessionFor(path, 'bisect_mark')?.id).toBe(started?.id)
+
+    await api.apiBisectReset(path)
+    expect(sessionFor(path, 'bisect_mark')).toBeNull()
+  })
+
+  it('does not pull staging into a bisect', async () => {
+    const path = freshPath()
+    mocked.bisectStart.mockResolvedValue(undefined)
+
+    await api.apiBisectStart(path, 'HEAD', 'v1')
+
+    expect(sessionFor(path, 'stage_file')).toBeNull()
   })
 })

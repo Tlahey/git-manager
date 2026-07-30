@@ -4,6 +4,7 @@ import App from './App'
 import { ConflictMergeWindow } from './components/merge-editor/ConflictMergeWindow'
 import { FixupCommitWindow } from './components/git-graph/fixup/FixupCommitWindow'
 import { RebasingCommitWindow } from './components/rebase-editor/RebasingCommitWindow'
+import { ActionJournalWindow } from './app/action-journal/ActionJournalWindow'
 import { initI18n } from '@git-manager/i18n'
 import { useSettingsStore } from './stores/settings.store'
 import { useRepoUIStore } from './stores/repoUI.store'
@@ -65,6 +66,9 @@ e2eSetup
           targetSubject={subject ?? ''}
         />
       )
+    } else if (windowKind === 'actions') {
+      // No parameter: the journal is app-wide, reading the activity log rather than a repository.
+      content = <ActionJournalWindow />
     } else {
       content = <App />
       isAppWindow = true

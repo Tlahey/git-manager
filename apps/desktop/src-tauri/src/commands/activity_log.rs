@@ -24,6 +24,23 @@ pub async fn append_ai_log(entries: Vec<serde_json::Value>) -> Result<(), String
     Ok(())
 }
 
+/// Reads the most recent activity-log entries back off disk, newest first.
+///
+/// Exists for the "Behind the scenes" window, which is its own `WebviewWindow` and therefore its own
+/// JS context: the in-memory buffer the main window captures is unreachable from there, so the
+/// rotating log is the shared surface. Entries come back as the opaque JSON they were written as —
+/// the frontend owns their shape, and validating it here would be a second definition of it.
+///
+/// `max_entries` is a cap on entries read, not on actions shown: the caller filters the stream down
+/// to the operations that changed something, so it asks for far more lines than it will display.
+#[tauri::command]
+pub async fn read_activity_log(max_entries: usize) -> Result<Vec<serde_json::Value>, String> {
+    Ok(services::activity_log::read_recent(
+        LogKind::Activity,
+        max_entries,
+    )?)
+}
+
 /// Reveals the on-disk activity-logs directory in the Finder (creating it first if needed).
 #[tauri::command]
 pub async fn open_activity_logs_dir() -> Result<(), String> {

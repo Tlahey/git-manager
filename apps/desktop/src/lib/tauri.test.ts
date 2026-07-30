@@ -5,10 +5,16 @@ vi.mock('@tauri-apps/api/core', () => ({ invoke: mockInvoke }))
 
 import * as tauri from './tauri'
 import { useActivityLogStore } from '../stores/activityLog.store'
+import {
+  openActivitySession,
+  resetActivitySessions,
+  runActivity,
+} from './activityCorrelation'
 
 beforeEach(() => {
   mockInvoke.mockClear()
   useActivityLogStore.setState({ entries: [] })
+  resetActivitySessions()
 })
 
 // Every export here is a thin `invoke<T>('command_name', {...})` pass-through with no branching
@@ -775,5 +781,62 @@ describe('lib/tauri — activity log capture', () => {
     mockInvoke.mockResolvedValue({})
     await tauri.githubGetUser('super-secret-token')
     expect(useActivityLogStore.getState().entries[0].args).toBe('[redacted]')
+  })
+})
+
+describe('lib/tauri — correlation stamping', () => {
+  it('tags a call with the per-action correlation it runs inside', async () => {
+    mockInvoke.mockResolvedValue({})
+    await runActivity('git.pull', () => tauri.pullBranch('/repo'))
+
+    expect(useActivityLogStore.getState().entries[0]).toMatchObject({
+      correlationLabel: 'git.pull',
+    })
+  })
+
+  it('tags a step of a running operation with that operation, from outside any action', async () => {
+    // `stage_file` is issued by its own api function with no `runActivity` around it; during a paused
+    // rebase it still has to land in the rebase's block.
+    mockInvoke.mockResolvedValue(undefined)
+    openActivitySession('/repo', 'rebase')
+
+    await tauri.stageFile('/repo', 'a.ts')
+
+    expect(useActivityLogStore.getState().entries[0]).toMatchObject({
+      correlationLabel: 'git.rebase',
+    })
+  })
+
+  it('lets the operation win over the action it is nested in', async () => {
+    // The rebase is the larger truth: the action that starts it and the `git add` that settles a
+    // conflict three minutes later are the same rebase.
+    mockInvoke.mockResolvedValue(undefined)
+    openActivitySession('/repo', 'rebase')
+
+    await runActivity('git.rebaseInteractive', () => tauri.continueRebase('/repo'))
+
+    expect(useActivityLogStore.getState().entries[0]).toMatchObject({
+      correlationLabel: 'git.rebase',
+    })
+  })
+
+  it('leaves an unrelated action during a paused operation with its own identity', async () => {
+    mockInvoke.mockResolvedValue(undefined)
+    openActivitySession('/repo', 'rebase')
+
+    await runActivity('git.push', () => tauri.pushBranch('/repo'))
+
+    expect(useActivityLogStore.getState().entries[0]).toMatchObject({
+      correlationLabel: 'git.push',
+    })
+  })
+
+  it('does not tag a call in another repository', async () => {
+    mockInvoke.mockResolvedValue(undefined)
+    openActivitySession('/repo', 'rebase')
+
+    await tauri.stageFile('/other-repo', 'a.ts')
+
+    expect(useActivityLogStore.getState().entries[0].correlationLabel).toBeUndefined()
   })
 })

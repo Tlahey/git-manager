@@ -43,6 +43,7 @@ const FEATURE_LABEL_KEYS: Record<string, string> = {
   // One feature covers the branch, commit and working-tree explanations (it discriminates on its
   // input's scope), so they share one label rather than three that cannot be told apart here.
   'summary-explanation': 'aiStatus.work.summaryExplanation',
+  'action-explanation': 'aiStatus.work.actionExplanation',
   'commit-recompose': 'aiStatus.work.commitRecompose',
   'code-review': 'aiStatus.work.codeReview',
   'summary-grouping': 'aiStatus.work.fileGrouping',

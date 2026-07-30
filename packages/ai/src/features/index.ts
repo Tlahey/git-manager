@@ -85,6 +85,13 @@ export {
 } from './changeExplanation'
 export type { ChangeExplanationInput, ChangeExplanationFile } from './changeExplanation'
 export {
+  actionExplanationFeature,
+  ACTION_EXPLANATION_INSTRUCTION,
+  MAX_LISTED_COMMANDS,
+  buildActionExplanationPrompt,
+} from './actionExplanation'
+export type { ActionExplanationInput, ActionExplanationCommand } from './actionExplanation'
+export {
   summaryExplanationFeature,
   SUMMARY_EXPLANATION_INSTRUCTION,
   buildSummaryExplanationPrompt,

@@ -27,6 +27,7 @@ specific to it — its prompt, its inputs, its UI, its limits.
 | [Summary search](./summary-search.md) | Answers a question about the archived briefings, citing the days it rests on | completion + JSON schema | the question box on the Summaries tab |
 | [Commit search](./commit-search.md) | Answers a question about recent history by reading every commit in a window, one at a time | completion + JSON schema per commit, then streaming | the AI menu → *Search history*, or ⇧⌘F |
 | [Recompose a commit](./commit-recompose.md) | Rewrites the message of a commit that already exists, reviewed before it is applied | completion | right-click a commit → *Rewrite this commit's message (LLM)* |
+| [Action explanation](./action-explanation.md) | Explains the git commands the app ran behind an action you performed — the one feature aimed at needing the app less | streaming | the 🎓 button in the footer → pick an action → *Explain* |
 
 Every feature listed here is built. See the roadmap section at the bottom for what is not.
 
@@ -581,9 +582,14 @@ the thing most likely to precede a hang, and a queue would be lost with it.
 5. If the result is expensive and worth keeping, a persisted store for it — see
    `aiExplanation.store` (per repo + kind + ref) and `dailySummary.store` (per repo).
 
-**No Rust change, no new command, no new Settings knob** — unless the feature needs git data the
-backend doesn't gather yet. That exception has been used once: the branch explanation needed a range
-ending somewhere other than `HEAD`, which added one optional parameter to `get_ai_context`.
+**No Rust change, no new command, no new Settings knob** — unless the feature needs data the backend
+doesn't hand over yet. That exception has been used three times, and only one of them was about git:
+
+| Feature | What it added | Why the shape didn't cover it |
+| ------- | ------------- | ----------------------------- |
+| [Branch explanation](./branch-explanation.md) | one optional parameter on `get_ai_context` | it needed a range ending somewhere other than `HEAD` |
+| [Commit search](./commit-search.md) | `get_ai_commit_scan` | a month of history's oids and paths, so the frontend can fetch one patch at a time |
+| [Action explanation](./action-explanation.md) | `read_activity_log` | not git data at all: its window is a separate `WebviewWindow`, so the in-memory activity buffer is in another JS context and disk is the only shared surface |
 
 Write the doc page alongside it, and add it to the table at the top.
 

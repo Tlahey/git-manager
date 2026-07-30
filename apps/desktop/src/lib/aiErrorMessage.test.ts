@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { aiErrorMessage } from './aiErrorMessage'
+import { aiErrorMessage, appErrorMessage } from './aiErrorMessage'
 
 /** Stands in for the caller's `t` bound to the `errors` namespace. */
 const translate = (key: string) => `translated:${key}`
@@ -41,5 +41,26 @@ describe('aiErrorMessage', () => {
     // No sentinel matched, and the payload carried no message — the raw string is all there is,
     // and it beats a generic "an error occurred" the user can do nothing with.
     expect(spy).not.toHaveBeenCalled()
+  })
+})
+
+describe('appErrorMessage', () => {
+  it('unwraps an AppError payload from any command, not just an AI one', () => {
+    // A git operation's failure arrives as the same JSON blob and needs the same unwrapping.
+    const raw = JSON.stringify({ code: 'GIT_ERROR', message: 'nothing to commit', detail: null })
+    expect(appErrorMessage(raw)).toBe('nothing to commit')
+  })
+
+  it('appends the detail when there is one', () => {
+    const raw = JSON.stringify({ code: 'GIT_ERROR', message: 'cannot lock ref', detail: 'index.lock' })
+    expect(appErrorMessage(raw)).toBe('cannot lock ref — index.lock')
+  })
+
+  it('passes a plain rejection straight through', () => {
+    expect(appErrorMessage('  boom  ')).toBe('boom')
+  })
+
+  it('does not translate the AI sentinels — that is what aiErrorMessage adds', () => {
+    expect(appErrorMessage('AI_MODEL_NOT_FOUND')).toBe('AI_MODEL_NOT_FOUND')
   })
 })
