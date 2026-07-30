@@ -6,7 +6,7 @@ mod state;
 mod utils;
 
 use commands::activity_log::{
-    append_activity_log, append_ai_log, open_activity_logs_dir, open_ai_logs_dir,
+    append_activity_log, append_ai_log, open_activity_logs_dir, open_ai_logs_dir, read_activity_log,
 };
 use commands::agent::get_worktree_agent_activity;
 use commands::ai::{
@@ -169,6 +169,7 @@ pub fn run() {
             // Activity log
             append_activity_log,
             append_ai_log,
+            read_activity_log,
             open_activity_logs_dir,
             open_ai_logs_dir,
             // Daily summary archive

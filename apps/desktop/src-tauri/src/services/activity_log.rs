@@ -84,6 +84,65 @@ pub fn append(kind: LogKind, entries: &[serde_json::Value]) -> Result<(), AppErr
     Ok(())
 }
 
+/// Reads back the most recent entries of a rotating log, newest first.
+///
+/// The mirror of [`append`], and the only way a **second window** can see the activity log at all:
+/// the in-memory buffer lives in the JS context that captured it, so the "Behind the scenes" window
+/// (its own `WebviewWindow`, hence its own context) has no access to the main window's store. Disk is
+/// the shared surface, and it is the durable one — a week of actions survives a restart.
+///
+/// Walks the day files newest-first and each file's lines bottom-up, stopping as soon as
+/// `max_entries` are in hand, so reading the last fifty actions never costs a week of parsing.
+/// Unparsable lines are skipped rather than failing the read: a log truncated mid-write by a crash is
+/// exactly when this view is worth having.
+pub fn read_recent(kind: LogKind, max_entries: usize) -> Result<Vec<serde_json::Value>, AppError> {
+    if max_entries == 0 {
+        return Ok(Vec::new());
+    }
+
+    let dir = logs_dir(kind)
+        .ok_or_else(|| AppError::Unknown("could not resolve home directory".into()))?;
+    // A brand-new install has written nothing yet — an empty log is not an error.
+    let Ok(dir_entries) = fs::read_dir(&dir) else {
+        return Ok(Vec::new());
+    };
+
+    let mut days: Vec<(NaiveDate, PathBuf)> = dir_entries
+        .flatten()
+        .filter_map(|entry| {
+            let path = entry.path();
+            file_date(&path, kind.file_prefix()).map(|date| (date, path))
+        })
+        .collect();
+    days.sort_by_key(|(date, _)| std::cmp::Reverse(*date));
+
+    let mut out: Vec<serde_json::Value> = Vec::new();
+    for (_, path) in days {
+        let Ok(contents) = fs::read_to_string(&path) else {
+            continue;
+        };
+        out.extend(tail_json_lines(&contents, max_entries - out.len()));
+        if out.len() >= max_entries {
+            break;
+        }
+    }
+    Ok(out)
+}
+
+/// The last `max` parsable JSON objects of a JSONL body, newest (last written) first.
+///
+/// Split out from [`read_recent`] because it is the part with the two off-by-one risks worth a test —
+/// the reversal and the cap — while the rest is directory IO.
+fn tail_json_lines(contents: &str, max: usize) -> Vec<serde_json::Value> {
+    contents
+        .lines()
+        .rev()
+        .filter(|line| !line.trim().is_empty())
+        .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+        .take(max)
+        .collect()
+}
+
 /// Reveals the activity-logs directory in the macOS Finder, creating it first if needed so the
 /// reveal always lands somewhere real (a brand-new install may not have written a log yet).
 pub fn open_dir(kind: LogKind) -> Result<(), AppError> {
@@ -143,6 +202,28 @@ mod tests {
             today,
             RETENTION_DAYS
         ));
+    }
+
+    #[test]
+    fn tails_json_lines_newest_first_and_capped() {
+        let body = "{\"id\":\"1\"}\n{\"id\":\"2\"}\n{\"id\":\"3\"}\n";
+        let tail = tail_json_lines(body, 2);
+        assert_eq!(tail.len(), 2);
+        assert_eq!(tail[0]["id"], "3");
+        assert_eq!(tail[1]["id"], "2");
+        // Asking for more than the file holds yields everything, not an error.
+        assert_eq!(tail_json_lines(body, 10).len(), 3);
+    }
+
+    #[test]
+    fn tailing_skips_blank_and_corrupted_lines() {
+        // A log truncated mid-write by a crash is exactly when this read matters, so a broken line
+        // must cost that line and nothing else.
+        let body = "{\"id\":\"1\"}\n\n{\"id\":\"tru\n{\"id\":\"2\"}\n";
+        let tail = tail_json_lines(body, 10);
+        assert_eq!(tail.len(), 2);
+        assert_eq!(tail[0]["id"], "2");
+        assert_eq!(tail[1]["id"], "1");
     }
 
     #[test]

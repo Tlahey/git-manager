@@ -1,6 +1,6 @@
 import { invoke as tauriInvoke } from '@tauri-apps/api/core'
 import { useActivityLogStore } from '../stores/activityLog.store'
-import { getActiveCorrelation } from './activityCorrelation'
+import { getActiveCorrelation, getActiveSession } from './activityCorrelation'
 import { persistActivityEntry } from './activityLogPersistence'
 import { redactArgs } from './debugLogRedact'
 import type {
@@ -74,14 +74,20 @@ function record(
   error?: string
 ) {
   const store = useActivityLogStore.getState()
-  const correlation = getActiveCorrelation()
+  const repoPath = repoPathOf(args)
+  // A multi-step operation running in this repository wins over the per-action correlation, because
+  // it is the larger truth: the `git.rebaseInteractive` action that *starts* a rebase, and the
+  // `git add` that settles a conflict three minutes later, are both the same rebase. See
+  // `activityCorrelation.ts` — only the operations on that module's allowlist are captured this way,
+  // so an unrelated push during a paused rebase keeps its own identity.
+  const correlation = getActiveSession(repoPath, command) ?? getActiveCorrelation()
   store.add({
     command,
     args: redactArgs(command, args),
     durationMs: Math.round(performance.now() - start),
     status,
     error,
-    repoPath: repoPathOf(args),
+    repoPath,
     correlationId: correlation?.id,
     correlationLabel: correlation?.label,
   })
@@ -130,6 +136,9 @@ export const openActivityLogsDir = () => invoke<void>('open_activity_logs_dir')
 
 /** Reveals the AI transcript directory (`~/.git-manager/ai-logs/`) in the Finder. */
 export const openAiLogsDir = () => invoke<void>('open_ai_logs_dir')
+
+// Reading the log back is deliberately NOT wrapped here — see `readPersistedActivityLog` in
+// `lib/activityLogPersistence.ts`, which owns both halves of the raw-invoke exception.
 
 // ─── Repository ───────────────────────────────────────────────────────────────
 

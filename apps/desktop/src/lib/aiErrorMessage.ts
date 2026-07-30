@@ -64,7 +64,18 @@ export function isAiTimeout(raw: string): boolean {
 export function aiErrorMessage(raw: string, translate: (key: string) => string): string {
   const sentinel = KNOWN_AI_CODES.find((code) => raw.includes(code))
   if (sentinel) return translate(`errors.${sentinel}`)
+  return appErrorMessage(raw)
+}
 
+/**
+ * The same decoding without the AI sentinels: any rejected Tauri command's raw string as prose.
+ *
+ * Split out for the callers whose errors are not AI ones — the action journal shows the failure of a
+ * *git* operation (`git commit` on a clean index), which arrives as the same `AppError` JSON blob and
+ * needs the same unwrapping, but has no sentinel to translate and would read oddly going through a
+ * function named for the AI layer.
+ */
+export function appErrorMessage(raw: string): string {
   const payload = parsePayload(raw)
   const message = payload?.message?.trim()
   if (message) {

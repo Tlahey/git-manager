@@ -23,6 +23,7 @@ import {
   Trophy,
   Search,
   Activity,
+  GraduationCap,
 } from 'lucide-react'
 import {
   Dialog,
@@ -39,6 +40,7 @@ import {
 } from '@git-manager/ui'
 import type { Section } from '../../app/settings/SettingsPage'
 import { AiStatusIndicator } from './AiStatusIndicator'
+import { openActionJournalWindow } from '../../lib/actionJournalWindow'
 
 interface FooterProps {
   onOpenSettings: (section?: Section) => void
@@ -223,8 +225,21 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
         )}
       </div>
 
-      {/* CENTER SECTION: activity logs + keyboard shortcuts (icon-only, tooltip on hover) */}
+      {/* CENTER SECTION: behind the scenes + activity logs + keyboard shortcuts (icon-only,
+          tooltip on hover) */}
       <div className="flex items-center gap-1">
+        {/* Next to the Activity Logs button, and deliberately not merged into it: that view is an IPC
+            trace for debugging, this one is a lesson about git. Same source, opposite audiences. */}
+        <Tooltip content={t('footer.actionJournal')}>
+          <button
+            onClick={() => void openActionJournalWindow()}
+            aria-label={t('footer.actionJournal')}
+            data-testid="footer-action-journal-button"
+            className="flex items-center justify-center rounded border border-transparent p-1 shadow-none transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground active:scale-95"
+          >
+            <GraduationCap className="h-3.5 w-3.5" />
+          </button>
+        </Tooltip>
         <Tooltip content={t('footer.activityLogs')}>
           <button
             onClick={onOpenActivityLogs}

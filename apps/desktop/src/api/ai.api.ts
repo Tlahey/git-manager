@@ -9,6 +9,7 @@ import type {
   JsonSchema,
 } from '@git-manager/ai'
 import {
+  actionExplanationFeature,
   changeExplanationFeature,
   codeReviewFeature,
   commitRecomposeFeature,
@@ -264,6 +265,13 @@ export const changeExplanationService = createStreamingService(
 export const summaryExplanationService = createStreamingService(
   summaryExplanationFeature,
   trackedTransport(summaryExplanationFeature.id)
+)
+/** Explains the git commands behind one action the user performed, for the "Behind the scenes"
+ * window. The only feature whose subject is the app's own behaviour rather than the repository's
+ * contents — it needs no git data at all, since the commands were already recorded as they ran. */
+export const actionExplanationService = createStreamingService(
+  actionExplanationFeature,
+  trackedTransport(actionExplanationFeature.id)
 )
 /** The map half of the AI commit search: one small verdict per commit, sequenced by `scanCommits`.
  * A completion with a schema for the same reason the file summary is one — the caller needs a field

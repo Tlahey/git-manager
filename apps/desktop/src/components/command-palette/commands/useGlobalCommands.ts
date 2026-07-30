@@ -13,6 +13,7 @@ import {
   TerminalSquare,
   Settings,
   Activity,
+  GraduationCap,
 } from 'lucide-react'
 import { createElement } from 'react'
 import { toast } from '@git-manager/ui'
@@ -25,6 +26,7 @@ import {
 import { useFileExplorerStore } from '../../../stores/fileExplorer.store'
 import { useActionToolbar } from '../../../hooks/useActionToolbar'
 import { useOpenRepository } from '../../../hooks/useOpenRepository'
+import { openActionJournalWindow } from '../../../lib/actionJournalWindow'
 import type { Section } from '../../../app/settings/SettingsPage'
 import type { PaletteCommand } from './types'
 
@@ -102,6 +104,14 @@ export function useGlobalCommands({
       keywords: ['logs', 'activity', 'debug', 'ipc'],
       icon: createElement(Activity),
       run: () => onOpenActivityLogs(),
+    },
+    {
+      id: 'nav-action-journal',
+      group: 'navigation',
+      title: t('actionJournal.commandPalette'),
+      keywords: ['git', 'learn', 'commands', 'explain', 'behind', 'teach'],
+      icon: createElement(GraduationCap),
+      run: () => void openActionJournalWindow(),
     },
   ]
 

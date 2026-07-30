@@ -86,7 +86,11 @@ import {
 } from '../lib/tauri'
 import type { RebaseTodoStep, BisectTerm } from '@git-manager/git-types'
 import { callCommand } from './service'
-import { runActivity } from '../lib/activityCorrelation'
+import {
+  closeActivitySession,
+  openActivitySession,
+  runActivity,
+} from '../lib/activityCorrelation'
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
 import type { UndoAction } from '../lib/undoActions'
 
@@ -108,20 +112,35 @@ function clearRedo(repoPath: string) {
 // survives a conflict/edit pause (both git2's rebase-related flows and the shelled-out
 // `git rebase -i --autosquash` land in the same .git/rebase-merge state) so
 // apiRebaseContinue/apiRebaseSkip can still record the undo entry once the rebase they finish
-// actually settles back to idle. Cleared by settleRebaseUndo or on abort.
+// actually settles back to idle. Cleared by settleRebase or on abort.
 type PendingRebaseKind = 'interactiveRebase' | 'autosquash'
 const pendingRebasePreviousOid = new Map<
   string,
   { previousOid: string | null; kind: PendingRebaseKind }
 >()
 
-async function settleRebaseUndo(path: string) {
-  const pending = pendingRebasePreviousOid.get(path)
-  if (!pending) return
-
+/**
+ * Called after every step of a rebase, to do the two things that can only be decided once git is
+ * asked whether the rebase is *over*: record the undo entry, and close the activity-log session.
+ *
+ * They are settled together because they turn on the same question and it costs one IPC call to
+ * answer. `kind !== 'idle'` means the rebase paused rather than landed — a conflict resolves without
+ * throwing (`err_unless_paused`), so the call returning successfully proves nothing on its own.
+ *
+ * Unlike before, the state is read even with no pending undo entry: a plain `rebase_onto_commit`
+ * registers none, and its session still has to be closed or every later action in that repository
+ * would be swallowed into the finished rebase's block.
+ */
+async function settleRebase(path: string) {
   const rebaseState = await getRebaseState(path).catch(() => null)
   const stillRebasing = rebaseState ? rebaseState.kind !== 'idle' : false
   if (stillRebasing) return
+
+  // Back to idle: the operation is over, so the journal's block for it ends here.
+  closeActivitySession(path)
+
+  const pending = pendingRebasePreviousOid.get(path)
+  if (!pending) return
 
   pendingRebasePreviousOid.delete(path)
   const { previousOid, kind } = pending
@@ -288,6 +307,7 @@ export async function apiAutosquashPreview(path: string) {
 }
 
 export async function apiRunAutosquash(path: string) {
+  openActivitySession(path, 'rebase')
   return runActivity('git.autosquash', async () => {
     let previousOid: string | null = null
     try {
@@ -301,10 +321,10 @@ export async function apiRunAutosquash(path: string) {
 
     // Same conflict-pause caveat as apiRunInteractiveRebase: `run_autosquash` shells out to
     // `git rebase -i --autosquash` and pauses gracefully (err_unless_paused) instead of erroring,
-    // so HEAD may not have moved yet. Stash previousOid either way and let settleRebaseUndo record
+    // so HEAD may not have moved yet. Stash previousOid either way and let settleRebase record
     // the undo entry now, or later via apiRebaseContinue/apiRebaseSkip once it reaches idle.
     pendingRebasePreviousOid.set(path, { previousOid, kind: 'autosquash' })
-    await settleRebaseUndo(path)
+    await settleRebase(path)
 
     return result
   })
@@ -426,14 +446,22 @@ export async function apiCherryPickCommit(path: string, oid: string) {
 // ─── Rebase ─────────────────────────────────────────────────────────────────
 
 export async function apiRebaseOntoCommit(path: string, targetOid: string) {
+  // Opens the journal's session for the whole rebase — this call, and every step that drives it
+  // forward once it pauses on a conflict. Closed by `settleRebase` when git is back to idle.
+  openActivitySession(path, 'rebase')
   const result = await rebaseOntoCommit(path, targetOid)
   clearRedo(path)
+  await settleRebase(path)
   return result
 }
 
 export async function apiRebaseContinue(path: string, message?: string) {
+  // Idempotent: normally this joins the session its rebase opened. It only *creates* one when there
+  // is none to join — the app was restarted mid-rebase, or the rebase was started from a terminal —
+  // in which case the block honestly starts here rather than not existing.
+  openActivitySession(path, 'rebase')
   const result = await continueRebase(path, message)
-  await settleRebaseUndo(path)
+  await settleRebase(path)
   return result
 }
 
@@ -441,12 +469,21 @@ export async function apiRebaseAbort(path: string) {
   // Abort restores HEAD to the pre-rebase tip itself, so there's nothing to record as an undo
   // entry — just forget the pending previousOid so it doesn't leak into a later rebase.
   pendingRebasePreviousOid.delete(path)
-  return abortRebase(path)
+  openActivitySession(path, 'rebase')
+  try {
+    return await abortRebase(path)
+  } finally {
+    // Unconditionally, and without asking git: an abort ends the rebase whether it succeeded or
+    // failed, and a session left open on a failed abort is the case that would swallow everything
+    // the user does next.
+    closeActivitySession(path)
+  }
 }
 
 export async function apiRebaseSkip(path: string) {
+  openActivitySession(path, 'rebase')
   const result = await skipRebase(path)
-  await settleRebaseUndo(path)
+  await settleRebase(path)
   return result
 }
 
@@ -842,15 +879,26 @@ export async function apiBisectCheckRange(path: string, badRev: string, goodRev:
 }
 
 export async function apiBisectStart(path: string, badRev: string, goodRev: string) {
+  // A bisect is the other operation git keeps on-disk state for, so the journal treats it the same
+  // way: one block from `start` through every `mark` to the `reset` that ends it.
+  openActivitySession(path, 'bisect')
   return bisectStart(path, badRev, goodRev)
 }
 
 export async function apiBisectMark(path: string, term: BisectTerm) {
+  openActivitySession(path, 'bisect')
   return bisectMark(path, term)
 }
 
 export async function apiBisectReset(path: string) {
-  return bisectReset(path)
+  openActivitySession(path, 'bisect')
+  try {
+    return await bisectReset(path)
+  } finally {
+    // `reset` is the only thing that ends a bisect — git keeps the session alive even after the first
+    // bad commit is found — so it is the one place this closes, and it closes either way.
+    closeActivitySession(path)
+  }
 }
 
 export async function apiListRebaseCommits(path: string, baseOid: string) {
@@ -862,6 +910,7 @@ export async function apiRunInteractiveRebase(
   baseOid: string,
   steps: RebaseTodoStep[]
 ) {
+  openActivitySession(path, 'rebase')
   return runActivity('git.rebaseInteractive', async () => {
     let previousOid: string | null = null
     try {
@@ -876,10 +925,10 @@ export async function apiRunInteractiveRebase(
     // A conflict/edit pause resolves without throwing (err_unless_paused treats it as expected —
     // the ConflictResolutionPanel takes over from here), so HEAD may have moved to an
     // intermediate replay step without the rebase actually being done. Stash previousOid either
-    // way: settleRebaseUndo records the undo entry now if it already settled, or later — via
+    // way: settleRebase records the undo entry now if it already settled, or later — via
     // apiRebaseContinue/apiRebaseSkip — once the paused rebase finally reaches idle.
     pendingRebasePreviousOid.set(path, { previousOid, kind: 'interactiveRebase' })
-    await settleRebaseUndo(path)
+    await settleRebase(path)
 
     return result
   })

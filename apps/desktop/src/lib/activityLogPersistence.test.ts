@@ -3,7 +3,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 const { mockInvoke } = vi.hoisted(() => ({ mockInvoke: vi.fn() }))
 vi.mock('@tauri-apps/api/core', () => ({ invoke: mockInvoke }))
 
-import { persistActivityEntry, flushActivityLog } from './activityLogPersistence'
+import {
+  persistActivityEntry,
+  flushActivityLog,
+  parseActivityLogEntries,
+  readPersistedActivityLog,
+} from './activityLogPersistence'
 import type { ActivityLogEntry } from '../stores/activityLog.store'
 
 function entry(command: string): ActivityLogEntry {
@@ -60,5 +65,72 @@ describe('activityLogPersistence', () => {
     mockInvoke.mockRejectedValue('disk full')
     persistActivityEntry(entry('fetch'))
     await expect(flushActivityLog()).resolves.toBeUndefined()
+  })
+})
+
+describe('readPersistedActivityLog', () => {
+  it('asks the backend for the requested number of lines and validates the answer', async () => {
+    enterTauri()
+    mockInvoke.mockResolvedValue([
+      { id: 'a', timestamp: 9, command: 'push_branch', durationMs: 80, status: 'ok' },
+      { id: 'b', command: 'broken' },
+    ])
+
+    const entries = await readPersistedActivityLog(1200)
+
+    expect(mockInvoke).toHaveBeenCalledWith('read_activity_log', { maxEntries: 1200 })
+    expect(entries.map((e) => e.command)).toEqual(['push_branch'])
+  })
+
+  it('reads through the RAW invoke, so looking at the log does not append to it', async () => {
+    // The journal window polls; going through the instrumented wrapper would add one entry per poll
+    // and eventually crowd the real actions out of the lines the pool reads.
+    enterTauri()
+    mockInvoke.mockResolvedValue([])
+    await readPersistedActivityLog(10)
+
+    expect(mockInvoke).toHaveBeenCalledTimes(1)
+    expect(mockInvoke.mock.calls[0][0]).toBe('read_activity_log')
+  })
+
+  it('has no log to read outside a Tauri window', async () => {
+    await expect(readPersistedActivityLog(10)).resolves.toEqual([])
+    expect(mockInvoke).not.toHaveBeenCalled()
+  })
+})
+
+describe('parseActivityLogEntries', () => {
+  it('keeps well-formed entries', () => {
+    const parsed = parseActivityLogEntries([
+      { id: 'a', timestamp: 10, command: 'stage_file', durationMs: 3, status: 'ok' },
+    ])
+    expect(parsed).toHaveLength(1)
+    expect(parsed[0]).toMatchObject({ id: 'a', command: 'stage_file', durationMs: 3 })
+  })
+
+  it('drops entries missing what makes them usable', () => {
+    // The log is a week deep, so it can hold lines written by an older version of the app.
+    expect(
+      parseActivityLogEntries([
+        { id: 'a', timestamp: 1, status: 'ok' }, // no command
+        { id: 'b', command: 'push_branch', status: 'ok' }, // no timestamp
+        { timestamp: 1, command: 'push_branch', status: 'ok' }, // no id
+        { id: 'c', timestamp: 1, command: 'push_branch', status: 'weird' }, // unknown status
+        null,
+        'nope',
+      ])
+    ).toEqual([])
+  })
+
+  it('defaults the one field callers do arithmetic on', () => {
+    const parsed = parseActivityLogEntries([
+      { id: 'a', timestamp: 1, command: 'stage_all', status: 'ok' },
+    ])
+    expect(parsed[0]?.durationMs).toBe(0)
+  })
+
+  it('returns nothing for a non-array payload', () => {
+    expect(parseActivityLogEntries(undefined)).toEqual([])
+    expect(parseActivityLogEntries({ entries: [] })).toEqual([])
   })
 })
