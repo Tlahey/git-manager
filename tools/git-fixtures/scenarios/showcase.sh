@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # A "pretty history" repo used by the @screenshots e2e scenarios (and handy in
-# dev): several authors, two merged feature branches, one open branch, two tags
+# dev): three authors on every commit (none of them the fixture's own git
+# identity), two merged feature branches, two still-open branches, two tags
 # and an uncommitted change — so the commit graph, ref pills, avatars and the
 # WIP row all show up in one marketing-quality screenshot.
 set -euo pipefail
@@ -11,10 +12,11 @@ fixture_init "showcase"
 
 alex()  { git -c user.name="Alex Smith"   -c user.email="alex@example.com"   "$@"; }
 marie() { git -c user.name="Marie Dubois" -c user.email="marie@example.com" "$@"; }
+sam()   { git -c user.name="Sam Wallace"  -c user.email="sam@example.com"   "$@"; }
 
 echo "# Showcase" > README.md
 git add README.md
-git commit -q -m "chore: scaffold application"
+sam commit -q -m "chore: scaffold application"
 
 cat > graph.ts <<'EOF'
 export interface GraphNode {
@@ -49,9 +51,9 @@ cat >> README.md <<'EOF'
 Window drag region fix.
 EOF
 git add README.md
-git commit -q -m "fix: window drag region on macOS"
+sam commit -q -m "fix: window drag region on macOS"
 
-git merge -q --no-ff feat/ai-commit -m "Merge branch 'feat/ai-commit'"
+sam merge -q --no-ff feat/ai-commit -m "Merge branch 'feat/ai-commit'"
 git tag v0.1.0
 git branch -q -d feat/ai-commit
 
@@ -79,11 +81,11 @@ EOF
 git add README.md
 alex commit -q -m "docs: add readme badges"
 
-git merge -q --no-ff feat/rollback -m "Merge branch 'feat/rollback'"
+alex merge -q --no-ff feat/rollback -m "Merge branch 'feat/rollback'"
 git tag v0.2.0
 git branch -q -d feat/rollback
 
-# ── open branch (colored side lane at the top of the graph) ──
+# ── open branches (two colored side lanes at the top of the graph) ──
 git checkout -q -b feat/stash-ui
 cat > stash.ts <<'EOF'
 export function stashLabel(index: number): string {
@@ -94,13 +96,32 @@ git add stash.ts
 marie commit -q -m "feat: stash list in sidebar"
 
 git checkout -q main
+git checkout -q -b feat/notifications
+cat > notifications.ts <<'EOF'
+export interface Notification {
+  id: string
+  read: boolean
+}
+EOF
+git add notifications.ts
+sam commit -q -m "feat: notification bell"
+cat >> notifications.ts <<'EOF'
+
+export function markAllRead(items: Notification[]): Notification[] {
+  return items.map((n) => ({ ...n, read: true }))
+}
+EOF
+git add notifications.ts
+sam commit -q -m "feat: mark all notifications read"
+
+git checkout -q main
 cat > undo.ts <<'EOF'
 export function pinRef(oid: string): string {
   return `refs/git-manager/undo/${oid}`
 }
 EOF
 git add undo.ts
-git commit -q -m "feat: undo history with pinned refs"
+sam commit -q -m "feat: undo history with pinned refs"
 alex commit -q --allow-empty -m "perf: virtualize graph rows"
 
 # Uncommitted change → the WIP row renders at the top of the graph
@@ -111,4 +132,4 @@ export function unpinRef(oid: string): string {
 }
 EOF
 
-register_fixture "showcase" "Pretty multi-author history with merges, tags, an open branch and a WIP change — used by the @screenshots e2e scenarios."
+register_fixture "showcase" "Pretty multi-author history with merges, tags, two open branches and a WIP change — used by the @screenshots e2e scenarios."
