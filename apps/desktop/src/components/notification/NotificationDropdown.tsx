@@ -179,7 +179,7 @@ export function NotificationDropdown() {
                 <Sparkles className="h-3 w-3" />
                 <span>{t('notifications.simulator')}</span>
               </div>
-              {import.meta.env.DEV && (
+              {import.meta.env.MODE === 'development' && (
                 <span className="py-0.2 rounded bg-primary/10 px-1 text-[8px] font-bold tracking-wide text-primary">
                   DEV MODE
                 </span>
@@ -188,7 +188,7 @@ export function NotificationDropdown() {
 
             <div className="flex flex-col gap-1.5">
               {/* Test triggers visible only in development mode */}
-              {import.meta.env.DEV && (
+              {import.meta.env.MODE === 'development' && (
                 <div className="mb-1 grid grid-cols-2 gap-1.5">
                   <button
                     onClick={() => {
