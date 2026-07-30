@@ -53,6 +53,10 @@ export const DOC_SECTIONS: DocSection[] = [
     features: ['stash-stack', 'worktree', 'submodule', 'detached-head', 'undo-redo'],
   },
   {
+    title: 'Syncing with remotes',
+    features: ['remote-fetch-pull', 'remote-push', 'branch-create'],
+  },
+  {
     title: 'AI features',
     features: ['ai-generation'],
   },

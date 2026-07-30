@@ -165,30 +165,54 @@ Every row below follows this shape:
 
 ## Section: Syncing with remotes
 
-Every page in this section is 🆕: **no e2e scenario exists yet** for push, pull, fetch, remote
-management, or branch/tag creation outside the command palette. Write the coverage before tagging
-anything.
+E2e coverage now exists for fetch/pull, push, and toolbar branch creation, backed by two new
+fixtures (`remote-behind`, `remote-ahead`) that clone a real bare "origin" repo — the first case
+of any fixture in this repo exercising a genuine local git remote. Building it required adding
+`data-testid`s to the toolbar's Fetch/Pull/Push/Branch buttons (none existed before) and fixing
+`ToolbarButton` (`packages/components`), which silently dropped a `data-testid` prop passed to it
+— dead on the 4 pre-existing call sites (Undo/Redo/Timeline/Stash) until this PR.
 
-### Page: Fetch & pull — 🆕 write it
+Three things surfaced while building this that are **out of scope to fix here** — each filed as
+its own issue and left undocumented rather than publishing broken/incomplete behavior:
+- [#194](https://github.com/Tlahey/git-manager/issues/194): a rejected push's toast shows raw
+  backend error JSON (`{"code":"GIT_ERROR",...}`) instead of a readable message — a systemic
+  pattern (~50 call sites), not push-specific.
+- [#195](https://github.com/Tlahey/git-manager/issues/195): pushing a brand-new local branch never
+  configures upstream tracking, so its ahead/behind indicator never lights up.
+- Branch **deletion** and **tag creation** have no toolbar entry point at all — both are
+  native-macOS-menu-only (see `tag-context-menu.feature`'s own note on that being unscriptable) or
+  command-palette-only (already covered). Not a bug, just outside what "the toolbar" can mean for
+  those two operations.
+
+### Page: Fetch & pull (`remote-fetch-pull.feature`) — ✅ done
 
 - **Sub-part — Bring your branch up to date**
   - Must show: fetch vs. pull from the toolbar, what changes in the graph/sidebar afterward.
-  - e2e: 🆕 write it (no feature file covers remote fetch/pull today)
+  - e2e: `remote-fetch-pull.feature → "Pulling brings your branch up to date"` — ✅ tagged
 
-### Page: Push — 🆕 write it
+### Page: Push (`remote-push.feature`) — 🟡 partial
 
 - **Sub-part — Publish your commits**
   - Must show: pushing from the toolbar, upstream tracking being set for a new branch, what a
     rejected (non-fast-forward) push looks like.
-  - e2e: 🆕 write it
+  - e2e: `remote-push.feature → "Pushing publishes your commits to the remote"` — ✅ tagged (the
+    clean fast-forward case)
+  - e2e: `remote-push.feature → "A rejected push reports the conflict instead of silently
+    failing"` — 🚧 written, passing, but **not tagged**: its only visible proof today is the raw
+    JSON toast from [#194](https://github.com/Tlahey/git-manager/issues/194). Tag once that's
+    fixed.
+  - Upstream tracking being set for a new branch: 🚧 not something the app does yet — see
+    [#195](https://github.com/Tlahey/git-manager/issues/195). Nothing to tag until it exists.
 
-### Page: Branches & tags — 🆕 write it
+### Page: Branches & tags (`branch-create.feature`) — 🟡 partial
 
-- **Sub-part — Create, checkout, delete**
-  - Must show: creating a branch (from the toolbar, not just the palette), checking one out,
-    deleting one, and the same for tags (lightweight vs. annotated).
-  - e2e: 🆕 write it (the palette-driven creation in `command-palette.feature` is a secondary
-    entry point, not this page's primary path)
+- **Sub-part — Create, checkout**
+  - Must show: creating a branch from the toolbar, checking it out.
+  - e2e: `branch-create.feature → "Creating a branch from the toolbar and checking it out"` — ✅
+    tagged
+- **Sub-part — Delete, and the same for tags** — 🚫 not achievable from the toolbar: branch
+  deletion and tag creation are native-macOS-menu-only or command-palette-only (already covered in
+  `command-palette.feature`). Nothing to write here.
 
 ---
 

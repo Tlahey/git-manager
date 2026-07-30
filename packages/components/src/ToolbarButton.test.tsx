@@ -73,4 +73,9 @@ describe('ToolbarButton', () => {
     render(<ToolbarButton icon={<svg />} label="Push" badge={4} loading />)
     expect(screen.queryByTestId('toolbar-button-badge')).not.toBeInTheDocument()
   })
+
+  it('forwards data-testid to the button element', () => {
+    render(<ToolbarButton icon={<svg />} label="Push" data-testid="toolbar-push-button" />)
+    expect(screen.getByTestId('toolbar-push-button')).toBe(screen.getByRole('button'))
+  })
 })

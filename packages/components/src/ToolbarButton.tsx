@@ -11,6 +11,7 @@ export interface ToolbarButtonProps {
   /** Numbered pill overlaid on the icon (e.g. commits to push/pull). Hidden when ≤ 0. */
   badge?: number
   onClick?: () => void
+  'data-testid'?: string
 }
 
 /**
@@ -29,6 +30,7 @@ export function ToolbarButton({
   hideLabelOnNarrow = true,
   badge,
   onClick,
+  'data-testid': dataTestId,
 }: ToolbarButtonProps) {
   const showBadge = !loading && typeof badge === 'number' && badge > 0
   return (
@@ -37,6 +39,7 @@ export function ToolbarButton({
       onClick={onClick}
       disabled={disabled || loading}
       title={title ?? label}
+      data-testid={dataTestId}
       className="group relative flex min-w-[40px] shrink-0 flex-col items-center justify-center gap-0.5 rounded px-2 py-1 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
     >
       <span className="relative flex h-4 w-4 items-center justify-center">
