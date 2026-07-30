@@ -82,8 +82,8 @@ describe('GraphCell — full mode', () => {
     expect(lastGraphSvgProps.current).toMatchObject({ column: 1, isWip: false, isStash: false })
     const avatarWrapper = container.querySelector('.pointer-events-auto')!
       .parentElement as HTMLElement
-    // laneCenterX(1) = 33, minus half the 32px avatar = 17
-    expect(avatarWrapper.style.left).toBe('17px')
+    // laneCenterX(1) = 38, minus half the 32px avatar = 22
+    expect(avatarWrapper.style.left).toBe('22px')
     expect(avatarWrapper.style.opacity).toBe('')
   })
 
@@ -194,11 +194,11 @@ describe('GraphCell — overflow mode', () => {
   it('lets an avatar travel inside the zone at its natural position, partially dimmed', () => {
     const { container, marker } = renderCell(node({ column: 3 }), 120, 6)
     expect(marker.overflowed).toBe(true)
-    expect(marker.x).toBe(77) // natural lane center, not yet pinned
+    expect(marker.x).toBe(82) // natural lane center, not yet pinned
     const avatarWrapper = container.querySelector('.pointer-events-auto')!
       .parentElement as HTMLElement
-    expect(avatarWrapper.style.left).toBe(`${77 - AVATAR / 2}px`)
-    expect(avatarWrapper.style.opacity).toBe('0.64')
+    expect(avatarWrapper.style.left).toBe(`${82 - AVATAR / 2}px`)
+    expect(avatarWrapper.style.opacity).toBe('0.55')
   })
 
   it('renders a translucent pinned ring for an overflowing WIP row', () => {
@@ -214,7 +214,7 @@ describe('GraphCell — overflow mode', () => {
     expect(marker.overflowed).toBe(false)
     const avatarWrapper = container.querySelector('.pointer-events-auto')!
       .parentElement as HTMLElement
-    expect(avatarWrapper.style.left).toBe('-5px') // laneCenterX(0)=11 - 16
+    expect(avatarWrapper.style.left).toBe('0px') // laneCenterX(0)=16 - 16
     expect(avatarWrapper.style.opacity).toBe('')
   })
 })
@@ -240,16 +240,17 @@ describe('GraphCell — horizontally scrolled', () => {
     const { container } = renderCell(node({ column: 0 }), 120, 6, undefined, 55)
     const avatarWrapper = container.querySelector('.pointer-events-auto')!
       .parentElement as HTMLElement
-    expect(avatarWrapper.style.left).toBe('-5px') // laneCenterX(0)=11 - 16, unmoved
+    expect(avatarWrapper.style.left).toBe('0px') // laneCenterX(0)=16 - 16, pinned
     expect(avatarWrapper.style.opacity).toBe('0.45')
   })
 
   it('brings the last lane into view, undimmed, once scrolled all the way', () => {
-    const { container, marker } = renderCell(node({ column: 6 }), 120, 6, undefined, 55)
+    // maxScrollX at this width/maxColumn is 60, not 55 — see graphColumnSizing.test.ts.
+    const { container, marker } = renderCell(node({ column: 6 }), 120, 6, undefined, 60)
     expect(marker.overflowed).toBe(false)
     const avatarWrapper = container.querySelector('.pointer-events-auto')!
       .parentElement as HTMLElement
-    expect(avatarWrapper.style.left).toBe('72px') // 143 - 55 scrolled - 16 avatar radius
+    expect(avatarWrapper.style.left).toBe('72px') // 148 - 60 scrolled - 16 avatar radius
     expect(avatarWrapper.style.opacity).toBe('')
   })
 })

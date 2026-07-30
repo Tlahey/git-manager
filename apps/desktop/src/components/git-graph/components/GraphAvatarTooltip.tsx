@@ -38,7 +38,7 @@ export function GraphAvatarTooltip({ node, centerX, opacity }: GraphAvatarToolti
   const rowHeightSetting = useSettingsStore((s) => s.settings.appearance.rowHeight || 'standard')
   const avatarSize = rowHeightSetting === 'small' ? 24 : 32
 
-  const nodeX = centerX ?? laneCenterX(node.column)
+  const nodeX = centerX ?? laneCenterX(node.column, avatarSize)
 
   function handleMouseEnter(e: React.MouseEvent) {
     const r = e.currentTarget.getBoundingClientRect()

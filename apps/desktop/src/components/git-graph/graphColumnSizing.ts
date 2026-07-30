@@ -68,14 +68,26 @@ export interface GraphColumnLayout {
   leftPinX: number
 }
 
+/** Extra left margin the whole graph needs when the avatar is wider than a lane: lane 0 sits at
+ * `COL_WIDTH / 2` from the cell's own left edge — half the gap every *other* pair of lanes gets,
+ * since there's no lane "-1" to share it with. At the standard row height (32px avatar, 16px
+ * radius) that's only 11px, so the avatar overhangs the cell by 5px and gets clipped by the
+ * neighboring column. Shifting every lane right by this amount keeps lane-to-lane spacing exactly
+ * `COL_WIDTH` (nothing about the small-row-height math below changes) while giving lane 0 the same
+ * clearance as everyone else. Zero once the avatar is small enough to fit unaided (small row
+ * height: 12px radius ≤ 11px is still marginally over, by 1px — imperceptible, left as is). */
+export function graphLeftInset(avatarSize: number): number {
+  return Math.max(0, avatarSize / 2 - COL_WIDTH / 2)
+}
+
 /** Natural center x of a lane's node inside the graph cell. */
-export function laneCenterX(column: number): number {
-  return column * COL_WIDTH + COL_WIDTH / 2
+export function laneCenterX(column: number, avatarSize: number): number {
+  return graphLeftInset(avatarSize) + column * COL_WIDTH + COL_WIDTH / 2
 }
 
 /** Inner (drawable) width needed so every lane up to `maxColumn` shows its marker in full. */
 function neededInnerWidth(maxColumn: number, avatarSize: number): number {
-  return laneCenterX(maxColumn) + avatarSize / 2 + FULL_RIGHT_PADDING
+  return laneCenterX(maxColumn, avatarSize) + avatarSize / 2 + FULL_RIGHT_PADDING
 }
 
 /** Column width beyond which widening the graph column gains nothing — used to cap resizing. */
@@ -102,7 +114,7 @@ export function getGraphColumnLayout(
   // Only the hidden width is scrollable, so `full` mode resolves to a non-scrollable column.
   const maxScrollX = Math.max(0, Math.round(deficit * 100) / 100)
   const scrollX = Math.min(Math.max(0, requestedScrollX), maxScrollX)
-  const leftPinX = Math.min(avatarSize / 2 + PIN_GAP, laneCenterX(0))
+  const leftPinX = Math.min(avatarSize / 2 + PIN_GAP, laneCenterX(0, avatarSize))
   // The left zone slides in with the scroll, the same ramp the right one uses to slide in with the
   // missing width — so neither appears in a single frame.
   const leftOverlayEnd =
@@ -180,7 +192,7 @@ export function getMarkerPlacement(
   avatarSize: number
 ): MarkerPlacement {
   // Scrolling right moves every lane left by the same offset (0 in `full` mode).
-  const naturalX = laneCenterX(nodeColumn) - layout.scrollX
+  const naturalX = laneCenterX(nodeColumn, avatarSize) - layout.scrollX
   if (layout.mode === 'full') return { x: naturalX, overflowed: false, opacity: 1 }
 
   // Overflow geometry: slide at the natural position, pinned shy of the right edge on one side and
