@@ -212,6 +212,22 @@ compiled code imports `installMockSyncOverride`, which only exists starting in
 `@wdio/native-utils` to `^2.5.0` in the root `package.json`. Safe to remove once upstream
 re-publishes `@wdio/tauri-service` with the correct dependency range.
 
+## One dispatched click, sometimes delivered twice
+
+Found while testing the sidebar's pin toggle (`sidebar-navigation.feature`): a single
+`element.click()` dispatched from `browser.execute` — needed there because the target is
+`display:none` outside a real hover, so WebDriver's own `.click()` refuses it as "not
+displayed" — occasionally reaches the click handler twice instead of once. Invisible on a
+non-toggling button (two clicks look the same as one), but a **toggle** flips forward and then
+immediately back, so the step silently ends in the state it started in roughly half the time.
+Confirmed by reading `localStorage` right after the dispatch across repeated runs: sometimes
+one write, sometimes two. Root cause not identified (a duplicate native event from this
+Tauri/WebKit driver combination is the leading suspect, but unconfirmed) — worked around by
+re-checking the toggle's own state after each click and re-clicking up to twice more until it
+actually lands where intended (`sidebar-navigation.steps.ts`'s `"I pin the ... branch"` step),
+rather than trusting a single dispatch. Apply the same pattern to any other toggle driven
+through this `browser.execute` escape hatch.
+
 ## Side effect to know about
 
 Running `build:e2e` regenerates `src-tauri/gen/schemas/*.json` to include the wdio

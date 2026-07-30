@@ -123,6 +123,7 @@ export function BranchItem({
               : t('sidebar.branch.pinBranch', { branch: branch.shortName })
           }
           title={isPinned ? t('sidebar.branch.unpin', { branch: branch.shortName }) : t('sidebar.branch.pin')}
+          data-testid={`branch-pin-${branch.shortName}`}
         >
           {isPinned ? <Pin className="h-3 w-3 fill-current" /> : <Pin className="h-3 w-3" />}
         </button>
