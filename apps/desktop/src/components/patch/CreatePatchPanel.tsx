@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { save } from '@tauri-apps/plugin-dialog'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, ScrollArea, Spinner, toast } from '@git-manager/ui'
 import type { GitStatusEntry } from '@git-manager/git-types'
 import { useGitStatus } from '../../hooks/useGitStatus'
 import { apiCreateWorkingPatch, apiStageAll, apiUnstageAll } from '../../api/git.api'
+import { pickSaveDestination } from '../../lib/pickSaveDestination'
 import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
 import { CommitFileList, type ProcessedFileItem } from '../git-graph/components/CommitFileList'
 
@@ -64,7 +64,7 @@ export function CreatePatchPanel({ repoPath }: { repoPath: string }) {
     if (paths.length === 0) return
     setSaving(true)
     try {
-      const destPath = await save({ defaultPath: 'changes.patch' })
+      const destPath = await pickSaveDestination('changes.patch')
       if (!destPath) return
       await apiCreateWorkingPatch(repoPath, paths, destPath)
       toast.success(t('patch.create.saved'))

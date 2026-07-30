@@ -5,7 +5,7 @@ vi.mock('@git-manager/i18n', () => ({
   useTranslation: () => ({ t: (k: string, o?: Record<string, unknown>) => (o ? `${k}:${o.count}` : k) }),
 }))
 vi.mock('../../api/git.api', () => ({ apiApplyPatch: vi.fn(), apiReadPatchFile: vi.fn() }))
-vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn() }))
+vi.mock('../../lib/pickFile', () => ({ pickFile: vi.fn() }))
 vi.mock('../git-graph/components/CommitFileList', () => ({
   CommitFileList: ({
     processedFiles,
@@ -25,13 +25,13 @@ vi.mock('../git-graph/components/CommitFileList', () => ({
 }))
 
 import { apiApplyPatch, apiReadPatchFile } from '../../api/git.api'
-import { open as openDialog } from '@tauri-apps/plugin-dialog'
+import { pickFile } from '../../lib/pickFile'
 import { ApplyPatchPanel } from './ApplyPatchPanel'
 import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
 
 const mockedApply = apiApplyPatch as unknown as ReturnType<typeof vi.fn>
 const mockedRead = apiReadPatchFile as unknown as ReturnType<typeof vi.fn>
-const mockedOpen = openDialog as unknown as ReturnType<typeof vi.fn>
+const mockedOpen = pickFile as unknown as ReturnType<typeof vi.fn>
 
 const PATCH = 'diff --git a/a.ts b/a.ts\n--- a/a.ts\n+++ b/a.ts\n@@ -1 +1 @@\n-old\n+new'
 

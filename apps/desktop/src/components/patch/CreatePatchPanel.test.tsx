@@ -13,7 +13,7 @@ vi.mock('../../api/git.api', () => ({
   apiUnstageAll: vi.fn(),
 }))
 vi.mock('../../hooks/useGitStatus', () => ({ useGitStatus: vi.fn() }))
-vi.mock('@tauri-apps/plugin-dialog', () => ({ save: vi.fn() }))
+vi.mock('../../lib/pickSaveDestination', () => ({ pickSaveDestination: vi.fn() }))
 vi.mock('../git-graph/components/CommitFileList', () => ({
   CommitFileList: ({
     title,
@@ -36,13 +36,13 @@ vi.mock('../git-graph/components/CommitFileList', () => ({
 
 import { apiCreateWorkingPatch } from '../../api/git.api'
 import { useGitStatus } from '../../hooks/useGitStatus'
-import { save } from '@tauri-apps/plugin-dialog'
+import { pickSaveDestination } from '../../lib/pickSaveDestination'
 import { CreatePatchPanel } from './CreatePatchPanel'
 import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
 
 const mockedCreate = apiCreateWorkingPatch as unknown as ReturnType<typeof vi.fn>
 const mockedStatus = useGitStatus as unknown as ReturnType<typeof vi.fn>
-const mockedSave = save as unknown as ReturnType<typeof vi.fn>
+const mockedSave = pickSaveDestination as unknown as ReturnType<typeof vi.fn>
 
 function renderPanel() {
   const client = new QueryClient()
