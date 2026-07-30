@@ -38,25 +38,37 @@ Every row below follows this shape:
         documented limit. Note *why*, and whether it's a permanent limit or an infra gap that would
         unblock it (see "Pull requests inside the graph" for the latter kind).
 
-This file was last swept end-to-end on 2026-07-30 against `apps/e2e/features/*.feature` (26 files)
-and `packages/ai`'s 13 shipped feature descriptors (`docs/ai/README.md`'s table). Every row marked
-🆕 below has no scenario yet — it is backlog, not a claim that the page exists.
+This file was last swept end-to-end on 2026-07-30 against `apps/e2e/features/*.feature` (27 files —
+26 at the initial sweep, plus `open-repo.feature`, the first backlog row picked up) and
+`packages/ai`'s 13 shipped feature descriptors (`docs/ai/README.md`'s table). Every row marked 🆕
+below has no scenario yet — it is backlog, not a claim that the page exists. A row can also turn
+out to be wrong once someone actually reads the code behind it (see "Opening a repository" below,
+whose "Three ways in" sub-part turned 🆕 → 🚫 once the native-dialog limitation was rediscovered) —
+update the row rather than leaving a stale plan next to a corrected one.
 
 ---
 
 ## Section: Getting started
 
-### Page: Opening a repository (`open-repo.feature`) — 🆕 write it
+### Page: Opening a repository (`open-repo.feature`) — ✅ done (recent-repos scope only)
 
-- **Sub-part — Three ways in**
-  - Must show: the New Tab page's three entry points (open an existing folder, clone a remote URL,
-    `git init` a new one), and that a repo already open in another tab is focused instead of
-    duplicated.
-  - e2e: `open-repo.feature → "Opening a folder that is already a git repository"` — 🆕 write it
+- **Sub-part — Three ways in** — 🚫 not achievable: `NewTabPage.tsx`'s Open and Create buttons both
+  call `@tauri-apps/plugin-dialog`'s `open({ directory: true })` directly, and `CloneRepoDialog.tsx`'s
+  destination field is `readOnly`, settable only via that same native picker — all three routes
+  depend on the OS folder picker, which WebDriver can't drive and which `apps/e2e/README.md`
+  ("Driving UI state without a real native dialog") already documents as out of reach. Nothing to
+  write here; this was 🆕 in an earlier pass of this plan before the code was actually read.
 - **Sub-part — Jump back into recent work**
-  - Must show: the recent-repos list on the New Tab page, and that picking one opens it straight into
-    its last state.
-  - e2e: `open-repo.feature → "Picking a recent repository reopens it"` — 🆕 write it
+  - Must show: the recent-repos list on the New Tab page (⌘T), picking one opens it straight into
+    its last state, and a repo already open in another tab is focused instead of duplicated
+    (`NewTabPage.tsx`'s own doc comment: "the blank placeholder is consumed by the repository it
+    was used to open").
+  - e2e: `open-repo.feature → "Picking a recent repository reopens it"` — ✅ tagged. Seeds
+    `repoData.store`'s persisted `savedRepos`/`recentRepoPaths` directly (the same native-dialog
+    workaround `repo.steps.ts` already uses for `openTabs`) rather than driving Open/Clone/Create.
+  - e2e (already-open case, plain regression): `open-repo.feature → "Opening an already-open recent
+    repository focuses its tab instead of duplicating it"` — ✅ tagged (not `@doc` — same visible
+    result, no separate screenshot needed)
 
 ---
 
