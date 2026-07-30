@@ -58,11 +58,11 @@ export const DOC_SECTIONS: DocSection[] = [
   },
   {
     title: 'AI features',
-    features: ['ai-generation'],
+    features: ['ai-generation', 'daily-summary'],
   },
   {
     title: 'Workflow tools',
-    features: ['command-palette', 'settings'],
+    features: ['command-palette', 'settings', 'notifications'],
   },
 ]
 

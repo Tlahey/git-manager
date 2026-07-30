@@ -163,22 +163,29 @@ Every row below follows this shape:
 
 ---
 
-## Section: Syncing with remotes
+## Section: Syncing with remotes — ✅ done
 
-E2e coverage now exists for fetch/pull, push, and toolbar branch creation, backed by two new
-fixtures (`remote-behind`, `remote-ahead`) that clone a real bare "origin" repo — the first case
-of any fixture in this repo exercising a genuine local git remote. Building it required adding
+E2e coverage exists for fetch/pull, push, and toolbar branch creation, backed by two new fixtures
+(`remote-behind`, `remote-ahead`) that clone a real bare "origin" repo — the first case of any
+fixture in this repo exercising a genuine local git remote. Building it required adding
 `data-testid`s to the toolbar's Fetch/Pull/Push/Branch buttons (none existed before) and fixing
 `ToolbarButton` (`packages/components`), which silently dropped a `data-testid` prop passed to it
 — dead on the 4 pre-existing call sites (Undo/Redo/Timeline/Stash) until this PR.
 
-Three things surfaced while building this that are **out of scope to fix here** — each filed as
-its own issue and left undocumented rather than publishing broken/incomplete behavior:
-- [#194](https://github.com/Tlahey/git-manager/issues/194): a rejected push's toast shows raw
-  backend error JSON (`{"code":"GIT_ERROR",...}`) instead of a readable message — a systemic
-  pattern (~50 call sites), not push-specific.
-- [#195](https://github.com/Tlahey/git-manager/issues/195): pushing a brand-new local branch never
-  configures upstream tracking, so its ahead/behind indicator never lights up.
+Three things surfaced while building this were out of scope to fix inline — filed as their own
+issues rather than worked around silently:
+- [#194](https://github.com/Tlahey/git-manager/issues/194) (fixed): a rejected push's toast showed
+  raw backend error JSON (`{"code":"GIT_ERROR",...}`) instead of a readable message — a systemic
+  pattern (~50 call sites), not push-specific. Fixed by unwrapping `AppError`'s JSON into a plain
+  message at the `invoke()` chokepoint (`lib/tauri.ts`); the toast is now a real English sentence,
+  though still relays some libgit2 wording (`class=Reference (4); code=NotFastForward (-11)`) — not
+  a further blocker for this page, just not maximally polished.
+- [#195](https://github.com/Tlahey/git-manager/issues/195) (fixed): pushing a brand-new local
+  branch never configured upstream tracking, so its ahead/behind indicator never lit up. Fixed in
+  `git_remote.rs`'s `push()`. Not screenshot-able either way — a freshly-pushed, up-to-date branch
+  shows the same empty ahead/behind badge whether or not an upstream is configured — so it's
+  covered by a plain (untagged) e2e scenario reading `branch.<name>.remote`/`.merge` from git config
+  directly, in `remote-push.feature`.
 - Branch **deletion** and **tag creation** have no toolbar entry point at all — both are
   native-macOS-menu-only (see `tag-context-menu.feature`'s own note on that being unscriptable) or
   command-palette-only (already covered). Not a bug, just outside what "the toolbar" can mean for
@@ -190,21 +197,19 @@ its own issue and left undocumented rather than publishing broken/incomplete beh
   - Must show: fetch vs. pull from the toolbar, what changes in the graph/sidebar afterward.
   - e2e: `remote-fetch-pull.feature → "Pulling brings your branch up to date"` — ✅ tagged
 
-### Page: Push (`remote-push.feature`) — 🟡 partial
+### Page: Push (`remote-push.feature`) — ✅ done
 
 - **Sub-part — Publish your commits**
-  - Must show: pushing from the toolbar, upstream tracking being set for a new branch, what a
-    rejected (non-fast-forward) push looks like.
+  - Must show: pushing from the toolbar, what a rejected (non-fast-forward) push looks like.
   - e2e: `remote-push.feature → "Pushing publishes your commits to the remote"` — ✅ tagged (the
     clean fast-forward case)
   - e2e: `remote-push.feature → "A rejected push reports the conflict instead of silently
-    failing"` — 🚧 written, passing, but **not tagged**: its only visible proof today is the raw
-    JSON toast from [#194](https://github.com/Tlahey/git-manager/issues/194). Tag once that's
-    fixed.
-  - Upstream tracking being set for a new branch: 🚧 not something the app does yet — see
-    [#195](https://github.com/Tlahey/git-manager/issues/195). Nothing to tag until it exists.
+    failing"` — ✅ tagged, now that [#194](https://github.com/Tlahey/git-manager/issues/194) is fixed
+  - Upstream tracking on a fresh push: not screenshot-able (see note above) — proven by the plain
+    e2e scenario `remote-push.feature → "Pushing a brand-new branch configures its upstream
+    tracking"` instead, now that [#195](https://github.com/Tlahey/git-manager/issues/195) is fixed.
 
-### Page: Branches & tags (`branch-create.feature`) — 🟡 partial
+### Page: Branches & tags (`branch-create.feature`) — ✅ done (toolbar scope only)
 
 - **Sub-part — Create, checkout**
   - Must show: creating a branch from the toolbar, checking it out.
@@ -216,34 +221,45 @@ its own issue and left undocumented rather than publishing broken/incomplete beh
 
 ---
 
-## Section: AI features
+## Section: AI features — ✅ done
 
-### Page: AI commit messages (`ai-generation.feature`) — 🟡 partial
+Both pages below were blocked on [#192](https://github.com/Tlahey/git-manager/issues/192) (the fake
+AI test server was missing a response case for the `commit_message` schema — fixed by adding it).
+Tagging `daily-summary.feature` also surfaced a second, separate issue: its only fixture
+(`stash-stack`) has a single commit dated at fixture-build time ("today"), while the feature's
+default window is the *previous working day* — so the fixture never had anything in the window
+regardless of the schema fix. A brand-new `daily-summary` fixture
+(`tools/git-fixtures/scenarios/daily-summary.sh`) computes that target day in bash (mirroring
+`previousWorkingDayKey()`'s Monday/Sunday special cases) and back-dates its commit to land inside
+it — with a second, much-older baseline commit first, since a lone root commit is its own diff
+range base (`base_oid == head_oid`) and would otherwise report an empty day despite having a real
+commit in the window.
+
+### Page: AI commit messages (`ai-generation.feature`) — ✅ done
 
 - **Sub-part — Draft a commit message from staged changes**
-  - Must show: generating a message streams in live; a generation can be cancelled cleanly.
-  - e2e: `ai-generation.feature → "Generating a commit message streams the response and sends the package instruction"` — 🚧 blocked: this
-    scenario (and "Cancelling a stuck generation stops it cleanly") currently fails even on `main`,
-    unrelated to this plan's tagging work — the fake AI test server is missing a response case for
-    the `commit_message` schema. See [#192](https://github.com/Tlahey/git-manager/issues/192). Tag
-    once fixed.
+  - Must show: generating a commit message summarizes every staged file before composing one from
+    all of them; the same button cancels a stuck generation.
+  - e2e: `ai-generation.feature → "Generating a commit message summarizes every staged file, then drafts one from all of them"` — ✅ tagged
+    (the prompt-content assertions that used to live on this scenario — and a stale one asserting a
+    removed "Suggested scope:" line from before the map/reduce refactor — now live on their own
+    plain scenario, `"Generating a commit message sends the map-then-compose prompt"`, keeping the
+    doc-tagged scenario's visible steps user-facing only)
 - **Sub-part — Split changes into a commit plan**
   - Must show: generating grouped commit batches proposes a reviewable plan; accepting it applies
     the commits as proposed.
   - e2e: `ai-generation.feature → "Generating commit batches proposes a reviewable plan and applies the accepted commits"` — ✅ tagged
 
-### Page: Daily summary (`daily-summary.feature`) — 🚧 blocked
+### Page: Daily summary (`daily-summary.feature`) — ✅ done
 
 - **Sub-part — A morning briefing per project**
   - Must show: opening the launchpad auto-generates a briefing for a project with none yet;
     with auto-generation off, it's produced on demand instead.
-  - e2e: `daily-summary.feature → "Opening the launchpad auto-generates the morning briefing for an open project"` — 🚧 blocked: fails even on
-    `main`, likely related to the same fake-AI-server gap — see
-    [#192](https://github.com/Tlahey/git-manager/issues/192). Tag once fixed.
+  - e2e: `daily-summary.feature → "Opening the launchpad auto-generates the morning briefing for an open project"` — ✅ tagged
 
 ---
 
-## Section: Workflow tools
+## Section: Workflow tools — ✅ done
 
 ### Page: Command palette (`command-palette.feature`) — ✅ done
 
@@ -259,14 +275,16 @@ its own issue and left undocumented rather than publishing broken/incomplete beh
     settings persist across a reload.
   - e2e: `settings.feature → "Selecting a built-in theme applies it and persists across a reload"` — ✅ tagged
 
-### Page: Notifications (`notifications.feature`) — 🚧 blocked
+### Page: Notifications (`notifications.feature`) — ✅ done
 
 - **Sub-part — Track PR activity from the bell**
   - Must show: the bell's unread count and notification list; marking all read; clearing them.
-  - e2e: `notifications.feature → "Opening the bell shows the seeded notifications and unread count"` — 🚧 blocked: the e2e/docs
-    build (`vite build --mode e2e`) leaves `import.meta.env.DEV` true, so the notification dropdown
-    renders its internal "DEV MODE" test-trigger buttons in the screenshot — not something a real
-    user ever sees. See [#193](https://github.com/Tlahey/git-manager/issues/193). Tag once fixed.
+  - e2e: `notifications.feature → "Opening the bell shows the seeded notifications and unread count"` — ✅ tagged, now
+    that [#193](https://github.com/Tlahey/git-manager/issues/193) is fixed (the dev-only "DEV MODE"
+    badge and test-trigger buttons no longer leak into the `vite build --mode e2e` binary). The
+    screenshot still shows the "Simulate Change" panel — that one is intentional, unrelated
+    production UI shown to any GitHub-disconnected user, not a leftover dev artifact; every fixture
+    in this suite is GitHub-disconnected since none of it drives real OAuth.
 
 ---
 

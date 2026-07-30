@@ -12,14 +12,29 @@ Feature: AI commit-message generation
   Background:
     Given the "stash-stack" fixture repository is opened
 
-  Scenario: Generating a commit message streams the response and sends the package instruction
+  @doc @screenshots
+  Scenario: Generating a commit message summarizes every staged file, then drafts one from all of them
+    Every staged file is summarized first, one call each, before a single composing
+    call writes the message — so a change spanning several files gets a subject
+    describing the whole thing rather than whichever file happened to be read
+    first. The same button doubles as Stop while a generation is running, so a
+    generation that seems stuck can be cancelled without waiting it out.
+    Given the app language is English
+    And the AI provider is pointed at a fake server
+    When I select the working-tree changes in the graph
+    And I click the commit-generate button
+    And the interface has settled
+    Then the commit message becomes "feat: add fake thing"
+    And a full-window screenshot is saved as "doc-ai-commit-message"
+
+  Scenario: Generating a commit message sends the map-then-compose prompt
     Given the AI provider is pointed at a fake server
     When I select the working-tree changes in the graph
     And I click the commit-generate button
     Then the commit message becomes "feat: add fake thing"
     And the sent prompt's system message contains "Conventional Commits"
     And the sent prompt's user message contains "Repository: stash-stack"
-    And the sent prompt's user message contains "Suggested scope:"
+    And the sent prompt's user message contains "All 1 staged files:"
 
   @doc @screenshots
   Scenario: Generating commit batches proposes a reviewable plan and applies the accepted commits
