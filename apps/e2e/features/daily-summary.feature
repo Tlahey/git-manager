@@ -5,18 +5,25 @@ Feature: AI daily summary (launchpad briefing)
   So that I can pick up where I left off without re-reading the git log
 
   Background:
-    Given the "stash-stack" fixture repository is opened
-    And the "stash-stack" project is listed in the launchpad with no briefing yet
+    Given the "daily-summary" fixture repository is opened
+    And the "daily-summary" project is listed in the launchpad with no briefing yet
 
+  @doc @screenshots
   Scenario: Opening the launchpad auto-generates the morning briefing for an open project
-    Given the AI provider is pointed at a fake server
+    A project with no briefing for the previous working day gets one generated
+    automatically the moment its launchpad card is opened — no button to find or
+    click. It reads only the commits that landed on the main branch that day, and
+    summarizes each file they touched before writing the headline and highlights,
+    so a quiet day costs nothing and a busy one gets a briefing grounded in the
+    actual diff rather than the commit messages alone.
+    Given the app language is English
+    And the AI provider is pointed at a fake server
     When I open the launchpad dashboard
     And I open the project's daily briefing
+    And the interface has settled
     Then the daily briefing headline becomes "Shipped the fake feature"
-    And the daily briefing "yesterday" list contains "did the fake work"
-    And the daily briefing "today" list contains "plan the next thing"
-    And the sent prompt's system message contains "daily stand-up briefing"
-    And the sent prompt's user message contains "Repository: stash-stack"
+    And the daily briefing "highlights" list contains "did the fake work"
+    And a full-window screenshot is saved as "doc-daily-summary"
 
   Scenario: With auto-generation off, the briefing is produced on demand
     Given the AI provider is pointed at a fake server
@@ -26,7 +33,9 @@ Feature: AI daily summary (launchpad briefing)
     Then the daily briefing shows its empty state
     When I generate the daily briefing
     Then the daily briefing headline becomes "Shipped the fake feature"
-    And the daily briefing "today" list contains "plan the next thing"
+    And the daily briefing "highlights" list contains "did the fake work"
+    And the sent prompt's system message contains "a short record of ONE day's work"
+    And the sent prompt's user message contains "Repository: daily-summary"
 
   Scenario: Disabling the feature hides the briefing from the launchpad
     Given the daily summary feature is disabled in settings

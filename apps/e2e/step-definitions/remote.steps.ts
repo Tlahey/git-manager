@@ -72,3 +72,32 @@ Then(/^a push-rejected error is shown$/, async () => {
   const toast = $('[role="status"]')
   await toast.waitForDisplayed({ timeout: 10000 })
 })
+
+// Reads the git config the push should have written directly, rather than the toolbar's
+// ahead/behind badge — a freshly-pushed, up-to-date branch shows the same (empty) badge whether or
+// not an upstream is configured, so the badge can't tell the two states apart. The config can.
+Then(
+  /^the branch "([^"]*)" has upstream tracking configured for "([^"]*)"$/,
+  async (branch: string, remote: string) => {
+    const repoPath = getActiveRepoPath()
+    // `git config` exits non-zero (throwing on execFileSync) when the key isn't set yet, which is
+    // simply "not there yet" while the push is still in flight — not a real error.
+    const configuredRemote = () => {
+      try {
+        return execFileSync('git', ['-C', repoPath, 'config', `branch.${branch}.remote`], {
+          encoding: 'utf8',
+        }).trim()
+      } catch {
+        return ''
+      }
+    }
+    await browser.waitUntil(() => configuredRemote() === remote, {
+      timeout: 10000,
+      timeoutMsg: `expected branch "${branch}" to track remote "${remote}"`,
+    })
+    const configuredMerge = execFileSync('git', ['-C', repoPath, 'config', `branch.${branch}.merge`], {
+      encoding: 'utf8',
+    }).trim()
+    expect(configuredMerge).toBe(`refs/heads/${branch}`)
+  }
+)
