@@ -3,8 +3,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitRepo } from '@git-manager/git-types'
 
-const { dialogOpen } = vi.hoisted(() => ({ dialogOpen: vi.fn() }))
-vi.mock('@tauri-apps/plugin-dialog', () => ({ open: dialogOpen }))
+const { pickFolderMock } = vi.hoisted(() => ({ pickFolderMock: vi.fn() }))
+vi.mock('../../lib/pickFolder', () => ({ pickFolder: pickFolderMock }))
 vi.mock('../../api/repo.api', () => ({ apiOpenRepo: vi.fn(), apiInitRepo: vi.fn() }))
 vi.mock('../../components/tab-bar/CloneRepoDialog', () => ({
   CloneRepoDialog: (props: { open: boolean }) =>
@@ -28,7 +28,7 @@ beforeEach(() => {
   useRepoUIStore.setState({ openTabs: [], activeTab: DASHBOARD_TAB, activeRepo: null })
   useRepoDataStore.setState({ savedRepos: [], recentRepoPaths: [] })
   localStorage.clear()
-  dialogOpen.mockReset()
+  pickFolderMock.mockReset()
   vi.mocked(apiOpenRepo).mockReset()
   vi.mocked(apiInitRepo).mockReset()
 })
@@ -97,7 +97,7 @@ describe('NewTabPage', () => {
 
   it('opens a folder through the picker and adds it as a tab', async () => {
     const user = userEvent.setup()
-    dialogOpen.mockResolvedValue('/repo/new')
+    pickFolderMock.mockResolvedValue('/repo/new')
     vi.mocked(apiOpenRepo).mockResolvedValue(repo('/repo/new', 'newbie'))
 
     render(<NewTabPage />)
@@ -110,7 +110,7 @@ describe('NewTabPage', () => {
 
   it('initialises a new repo in the picked folder', async () => {
     const user = userEvent.setup()
-    dialogOpen.mockResolvedValue('/repo/fresh')
+    pickFolderMock.mockResolvedValue('/repo/fresh')
     vi.mocked(apiInitRepo).mockResolvedValue(repo('/repo/fresh', 'fresh'))
 
     render(<NewTabPage />)
@@ -122,7 +122,7 @@ describe('NewTabPage', () => {
 
   it('surfaces a backend failure instead of failing silently', async () => {
     const user = userEvent.setup()
-    dialogOpen.mockResolvedValue('/repo/broken')
+    pickFolderMock.mockResolvedValue('/repo/broken')
     vi.mocked(apiOpenRepo).mockRejectedValue(new Error('not a git repository'))
 
     render(<NewTabPage />)

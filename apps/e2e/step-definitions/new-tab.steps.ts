@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process'
+import { mkdirSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { browser, expect, $, $$ } from '@wdio/globals'
@@ -39,19 +40,34 @@ function liveRepoUIState(): Promise<{ openTabs: string[]; activeTab: string; act
 // through the native OS folder picker, which WebDriver can't drive — see README.md "Driving UI
 // state without a real native dialog"; this is that same workaround applied to the recent list
 // instead of `openTabs`.
+//
+// Also resets `openTabs` to empty (Dashboard active, no repo tabs): this Background step is
+// every scenario's starting line, and the app is a long-lived process shared across the whole
+// suite (and across separate `wdio run` invocations — the webview's localStorage lives on disk,
+// not in memory) — without this, a tab another scenario opened and never closed (e.g. the
+// Open/Clone/Create regressions below) leaks into this scenario's tab strip, which the @doc
+// screenshot would otherwise capture.
 Given(/^the "([^"]*)" fixture repository is listed as recent$/, async (fixtureName: string) => {
   execFileSync('bash', [join(SCENARIOS_DIR, `${fixtureName}.sh`)], { stdio: 'inherit' })
   const repoPath = fixtureRepoPath(fixtureName)
   setActiveRepoPath(repoPath)
 
   await browser.execute(
-    (key: string, value: string) => localStorage.setItem(key, value),
+    (key: string, value: string, uiKey: string, uiValue: string) => {
+      localStorage.setItem(key, value)
+      localStorage.setItem(uiKey, uiValue)
+    },
     REPO_DATA_KEY,
     JSON.stringify({
       state: {
         savedRepos: [{ path: repoPath, name: fixtureName, pinned: false }],
         recentRepoPaths: [repoPath],
       },
+      version: 0,
+    }),
+    REPO_UI_KEY,
+    JSON.stringify({
+      state: { openTabs: [], activeTab: 'dashboard', activeRepo: null },
       version: 0,
     })
   )
@@ -109,4 +125,47 @@ Then(/^only one tab is open for it$/, async () => {
   expect(openTabs.filter((path) => !path.startsWith('new-tab:'))).toHaveLength(1)
   const rows = await $$('[data-testid^="tab-repo-"]')
   expect(rows).toHaveLength(1)
+})
+
+const NEW_TAB_BUTTON_TESTID: Record<string, string> = {
+  Open: 'new-tab-open-button',
+  Clone: 'new-tab-clone-button',
+  Create: 'new-tab-create-button',
+}
+
+When(/^I click the New Tab "(Open|Clone|Create)" button$/, async (label: string) => {
+  await $(`[data-testid="${NEW_TAB_BUTTON_TESTID[label]}"]`).click()
+})
+
+// Real Open/Clone/Create all end at the native OS folder picker, which WebDriver can't drive (see
+// README.md). `pickFolder.ts` swaps in `E2eFolderPickerDialog` — a plain in-webview dialog — for
+// any e2e build, so this drives that instead: never a real UI a user sees, never screenshotted.
+When(/^I choose "([^"]*)" in the folder picker$/, async (path: string) => {
+  const dialog = $('[data-testid="e2e-folder-picker-dialog"]')
+  await dialog.waitForDisplayed({ timeout: 10000 })
+  await $('[data-testid="e2e-folder-picker-input"]').setValue(path)
+  await $('[data-testid="e2e-folder-picker-confirm"]').click()
+})
+
+When(/^I enter "([^"]*)" as the clone URL$/, async (url: string) => {
+  await $('input[placeholder="git@github.com:owner/repo.git"]').setValue(url)
+})
+
+When(/^I click the clone dialog's Browse button$/, async () => {
+  await $('[data-testid="clone-dialog-browse-button"]').click()
+})
+
+When(/^I click the clone dialog's Clone button$/, async () => {
+  await $('[data-testid="clone-dialog-submit"]').click()
+})
+
+Given(/^"([^"]*)" is an empty directory on disk$/, (path: string) => {
+  rmSync(path, { recursive: true, force: true })
+  mkdirSync(path, { recursive: true })
+})
+
+Then(/^a repository is open at "([^"]*)"$/, async (path: string) => {
+  await $('[data-testid="repo-view"]').waitForDisplayed({ timeout: 15000 })
+  const { activeRepo } = await liveRepoUIState()
+  expect(activeRepo).toBe(path)
 })

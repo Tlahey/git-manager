@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus, FolderOpen, GitBranch, FolderPlus } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
-import { open } from '@tauri-apps/plugin-dialog'
+import { pickFolder } from '../../lib/pickFolder'
 import { apiOpenRepo, apiInitRepo } from '../../api/repo.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useOpenRepoTab } from '../../hooks/useOpenRepoTab'
@@ -41,8 +41,8 @@ export function NewTabMenu() {
   const [cloneOpen, setCloneOpen] = useState(false)
 
   async function handleOpenFolder() {
-    const selected = await open({ directory: true, multiple: false })
-    if (!selected || typeof selected !== 'string') return
+    const selected = await pickFolder()
+    if (!selected) return
     try {
       const repo = await apiOpenRepo(selected)
       addRepo(repo)
@@ -53,8 +53,8 @@ export function NewTabMenu() {
   }
 
   async function handleCreateRepo() {
-    const selected = await open({ directory: true, multiple: false })
-    if (!selected || typeof selected !== 'string') return
+    const selected = await pickFolder()
+    if (!selected) return
     try {
       const repo = await apiInitRepo(selected)
       addRepo(repo)

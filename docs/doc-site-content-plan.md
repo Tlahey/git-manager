@@ -42,22 +42,30 @@ This file was last swept end-to-end on 2026-07-30 against `apps/e2e/features/*.f
 26 at the initial sweep, plus `open-repo.feature`, the first backlog row picked up) and
 `packages/ai`'s 13 shipped feature descriptors (`docs/ai/README.md`'s table). Every row marked 🆕
 below has no scenario yet — it is backlog, not a claim that the page exists. A row can also turn
-out to be wrong once someone actually reads the code behind it (see "Opening a repository" below,
-whose "Three ways in" sub-part turned 🆕 → 🚫 once the native-dialog limitation was rediscovered) —
-update the row rather than leaving a stale plan next to a corrected one.
+out to be wrong once someone actually reads the code behind it, and can turn out to be wrong twice
+in either direction — see "Opening a repository" below, whose "Three ways in" sub-part went
+🆕 → 🚫 (native-dialog limitation rediscovered) → ✅ (a test-only debug dialog swapped in for the
+native one in e2e builds — `apps/desktop/src/lib/pickFolder.ts`). Update the row each time rather
+than leaving a stale plan next to a corrected one.
 
 ---
 
 ## Section: Getting started
 
-### Page: Opening a repository (`open-repo.feature`) — ✅ done (recent-repos scope only)
+### Page: Opening a repository (`open-repo.feature`) — ✅ done
 
-- **Sub-part — Three ways in** — 🚫 not achievable: `NewTabPage.tsx`'s Open and Create buttons both
-  call `@tauri-apps/plugin-dialog`'s `open({ directory: true })` directly, and `CloneRepoDialog.tsx`'s
-  destination field is `readOnly`, settable only via that same native picker — all three routes
-  depend on the OS folder picker, which WebDriver can't drive and which `apps/e2e/README.md`
-  ("Driving UI state without a real native dialog") already documents as out of reach. Nothing to
-  write here; this was 🆕 in an earlier pass of this plan before the code was actually read.
+`NewTabPage.tsx`'s Open/Create buttons and `CloneRepoDialog.tsx`'s destination field all used to
+end at `@tauri-apps/plugin-dialog`'s native OS folder picker, which WebDriver can't drive — the
+same limitation `apps/e2e/README.md` ("Driving UI state without a real native dialog") already
+documents for `openTabs`. Rather than leave that permanently out of reach, `pickFolder.ts`
+(`apps/desktop/src/lib/pickFolder.ts`) now stands between every folder-picker call site and
+`@tauri-apps/plugin-dialog`: in a real build it's a thin pass-through, but in an e2e build
+(`import.meta.env.VITE_E2E === 'true'`, the same flag `main.tsx` already gates its test hooks on)
+it swaps in `E2eFolderPickerDialog` — a plain in-webview dialog with a text input a test can type a
+path into. Never rendered, and never captured in a `@doc` screenshot, outside of an e2e build — the
+existing `doc-new-tab` screenshot on the sub-part below is still the page's only picture, and still
+shows the real three-button UI, not the debug stand-in.
+
 - **Sub-part — Jump back into recent work**
   - Must show: the recent-repos list on the New Tab page (⌘T), picking one opens it straight into
     its last state, and a repo already open in another tab is focused instead of duplicated
@@ -69,6 +77,15 @@ update the row rather than leaving a stale plan next to a corrected one.
   - e2e (already-open case, plain regression): `open-repo.feature → "Opening an already-open recent
     repository focuses its tab instead of duplicating it"` — ✅ tagged (not `@doc` — same visible
     result, no separate screenshot needed)
+- **Sub-part — Three ways in** (regression only, not `@doc`: nothing new to show visually beyond
+  the button row already screenshotted above)
+  - Must show (proven, not pictured): the Open button opens an existing folder as a repo; Create
+    runs `git init` in a fresh folder and opens it; Clone runs a real `git clone` (against a local
+    fixture path standing in for a remote URL — `git clone` doesn't care that it's local) and opens
+    the result.
+  - e2e: `open-repo.feature → "Opening a folder through the picker"` — ✅ tagged
+  - e2e: `open-repo.feature → "Creating a new repository through the picker"` — ✅ tagged
+  - e2e: `open-repo.feature → "Cloning a repository through the picker"` — ✅ tagged
 
 ---
 
