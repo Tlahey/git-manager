@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react'
+import { FolderTree, List as ListIcon } from 'lucide-react'
 import {
   Button,
   Input,
@@ -9,6 +10,7 @@ import {
   Badge,
   NumberBadge,
   Tag,
+  ToggleGroup,
   Separator,
   Spinner,
   Dialog,
@@ -174,6 +176,22 @@ function FormControlsDemo() {
   )
 }
 
+// Interactive so the checked option is real (exercised by addon-a11y), mirroring how
+// CommitFileList wires its tree/list view toggle.
+function ToggleGroupDemo() {
+  const [view, setView] = useState<'tree' | 'list'>('tree')
+  return (
+    <ToggleGroup
+      value={view}
+      onValueChange={setView}
+      options={[
+        { value: 'tree', icon: <FolderTree className="h-3.5 w-3.5" />, label: 'Tree structure' },
+        { value: 'list', icon: <ListIcon className="h-3.5 w-3.5" />, label: 'Flat list' },
+      ]}
+    />
+  )
+}
+
 export const Overview: Story = {
   render: () => (
     // <main> + heading so axe's page-structure rules pass — the demo inputs below
@@ -236,6 +254,10 @@ export const Overview: Story = {
 
       <Section title="Form controls — Checkbox / Switch / Radio / Label">
         <FormControlsDemo />
+      </Section>
+
+      <Section title="ToggleGroup — segmented icon control">
+        <ToggleGroupDemo />
       </Section>
 
       <Section title="NativeSelect">

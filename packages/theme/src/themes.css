@@ -23,6 +23,7 @@
 @import "./themes/forest.css";
 @import "./themes/cyberpunk.css";
 @import "./themes/platinum.css";
+@import "./themes/ocean.css";
 @import "./themes/glass.css";
 
 /* ── Tier 3: component tokens (per-component override surface) ──────────────────
@@ -102,7 +103,8 @@
   html[data-theme="dark"],
   html[data-theme="amethyst"],
   html[data-theme="forest"],
-  html[data-theme="cyberpunk"] {
+  html[data-theme="cyberpunk"],
+  html[data-theme="ocean"] {
     /* Brightened past the AA shades so the small (≤12px) chip text clears APCA Bronze
        (|Lc| ≥ 75) on the dark /15 tints, with margin on every surface (success/info
        were right at the bar on the popover/sidebar blends of dark & forest). */
