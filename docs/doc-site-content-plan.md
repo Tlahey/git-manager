@@ -81,12 +81,12 @@ Every row below follows this shape:
   - Must show: clicking a file in either group opens its diff; review before staging.
   - e2e: `working-tree.feature → "Read a file's diff before you stage it"` — ✅ tagged
 
-### Page: Committing (`commit.feature`) — ✴️ tag it
+### Page: Committing (`commit.feature`) — ✅ done
 
 - **Sub-part — Write the commit**
   - Must show: writing a message for the staged changes and confirming records a new HEAD commit
     the graph immediately reflects.
-  - e2e: `commit.feature → "Committing the staged changes records a new HEAD commit"` — ✴️ tag it
+  - e2e: `commit.feature → "Committing the staged changes records a new HEAD commit"` — ✅ tagged
 
 ---
 

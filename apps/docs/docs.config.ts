@@ -42,7 +42,7 @@ export const DOC_SECTIONS: DocSection[] = [
   },
   {
     title: 'Making changes',
-    features: ['working-tree'],
+    features: ['working-tree', 'commit'],
   },
   {
     title: 'When Git gets in the way',
