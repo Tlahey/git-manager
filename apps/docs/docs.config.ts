@@ -61,6 +61,10 @@ export const DOC_SECTIONS: DocSection[] = [
     features: ['remote-fetch-pull', 'remote-push', 'branch-create'],
   },
   {
+    title: 'Tools',
+    features: ['patch-workspace'],
+  },
+  {
     title: 'AI features',
     features: ['ai-generation', 'daily-summary'],
   },

@@ -31,7 +31,7 @@ import { CommandPalette } from './components/command-palette/CommandPalette'
 import { TrophyToast } from './components/trophy/TrophyToast'
 import { OperationProgressBar } from './components/layout/OperationProgressBar'
 import { LoadingOverlay } from './components/layout/LoadingOverlay'
-import { E2eFolderPickerDialog } from './components/E2eFolderPickerDialog'
+import { E2ePathPickerDialog } from './components/E2ePathPickerDialog'
 import { useAppReadySplash } from './hooks/useAppReadySplash'
 import { appEventBus } from './lib/appEventBus'
 import { useOperationProgressStore } from './stores/operationProgress.store'
@@ -194,7 +194,7 @@ export default function App() {
         <TrophyToast />
         <Toaster />
         <LoadingOverlay />
-        {import.meta.env.VITE_E2E === 'true' && <E2eFolderPickerDialog />}
+        {import.meta.env.VITE_E2E === 'true' && <E2ePathPickerDialog />}
       </div>
     </QueryClientProvider>
   )

@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
-import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { FileUp } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { Alert, Button, ScrollArea, Spinner, toast } from '@git-manager/ui'
 import type { GitDiffFile } from '@git-manager/git-types'
 import { apiApplyPatch, apiReadPatchFile } from '../../api/git.api'
+import { pickFile } from '../../lib/pickFile'
 import { usePatchWorkspaceStore } from '../../stores/patchWorkspace.store'
 import { parseUnifiedDiff, reconstructDiffSides } from '../../lib/parseUnifiedDiff'
 import { CommitFileList, type ProcessedFileItem } from '../git-graph/components/CommitFileList'
@@ -47,11 +47,8 @@ export function ApplyPatchPanel({ repoPath }: { repoPath: string }) {
   }
 
   async function handleChoose() {
-    const picked = await openDialog({
-      multiple: false,
-      filters: [{ name: 'Patch', extensions: ['patch', 'diff'] }],
-    })
-    if (typeof picked !== 'string') return
+    const picked = await pickFile({ filters: [{ name: 'Patch', extensions: ['patch', 'diff'] }] })
+    if (!picked) return
     setPatchPath(picked)
     setCheckError(null)
     setActiveFile(null)

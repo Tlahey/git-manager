@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-interface E2eFolderPickerState {
+interface E2ePathPickerState {
   open: boolean
   value: string
   resolve: ((path: string | null) => void) | null
@@ -12,11 +12,13 @@ interface E2eFolderPickerState {
 }
 
 /**
- * State for `E2eFolderPickerDialog` — an in-webview stand-in for the native OS folder picker,
- * which WebDriver can't drive (see apps/e2e/README.md). Not persisted: it only ever holds one
- * in-flight request, scoped to the current page.
+ * State for `E2ePathPickerDialog` — an in-webview stand-in for whichever native OS dialog
+ * (`open({directory: true})`, `open()`, `save()`) `pickFolder`/`pickFile`/`pickSaveDestination`
+ * would otherwise call, none of which WebDriver can drive (see apps/e2e/README.md). All three
+ * only ever need one thing back — a path the test already knows it wants — so one dialog serves
+ * all of them. Not persisted: it only ever holds one in-flight request, scoped to the current page.
  */
-export const useE2eFolderPickerStore = create<E2eFolderPickerState>((set, get) => ({
+export const useE2ePathPickerStore = create<E2ePathPickerState>((set, get) => ({
   open: false,
   value: '',
   resolve: null,

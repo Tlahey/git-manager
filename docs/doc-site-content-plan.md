@@ -37,6 +37,8 @@ Every row below follows this shape:
         bypassing Tauri's mockable `invoke()`, or a native-OS-only entry point) — not a TODO, a
         documented limit. Note *why*, and whether it's a permanent limit or an infra gap that would
         unblock it (see "Pull requests inside the graph" for the latter kind).
+  - A **page** (not a sub-part) can also be 🔄 partially done — some sub-parts ✅, at least one
+    still 🆕 — when the remaining piece is real backlog rather than blocked (see "Patch workflows").
 
 This file was last swept end-to-end on 2026-07-30 against `apps/e2e/features/*.feature` (27 files —
 26 at the initial sweep, plus `open-repo.feature`, the first backlog row picked up) and
@@ -303,20 +305,32 @@ Both pages live behind the toolbar's Tools (wrench) menu (`ToolsMenu.tsx`), alon
 entry already documented above — see "Scope notes" at the end of this file for why the menu itself
 doesn't get a page.
 
-### Page: Patch workflows (`patch-workspace.feature`) — 🆕 write it
+### Page: Patch workflows (`patch-workspace.feature`) — 🔄 partially done (2 of 3 sub-parts)
 
 - **Sub-part — Create a patch from your working tree**
   - Must show: opening Tools → Patch → Create, moving files into the patch's staged zone (reusing
     the same two-zone list as WIP staging), and saving the result as a `.patch` file.
-  - e2e: `patch-workspace.feature → "Creating a patch from the working tree"` — 🆕 write it
+  - e2e: `patch-workspace.feature → "Creating a patch from the working tree"` — ✅ tagged
 - **Sub-part — Apply an external patch**
   - Must show: opening Tools → Patch → Apply, picking a `.patch`/`.diff` file, previewing the files
     it touches and their diffs, and applying it to the working tree.
-  - e2e: `patch-workspace.feature → "Applying an external patch file"` — 🆕 write it
-- **Sub-part — Patch a single dependency**
+  - e2e: `patch-workspace.feature → "Applying an external patch file"` — ✅ tagged
+  - Note: both of the above needed two more escape hatches alongside `pickFolder.ts`
+    (Getting-started section) — `pickFile.ts` (a single-file open dialog, for choosing the
+    `.patch`) and `pickSaveDestination.ts` (a save-as dialog, for where Create writes the result).
+    All three now share one generic `pickPath.ts` + one debug dialog
+    (`E2ePathPickerDialog.tsx`, renamed from `E2eFolderPickerDialog.tsx`) rather than one dialog
+    per dialog kind — see that component's own doc comment.
+- **Sub-part — Patch a single dependency** — 🆕 write it, not attempted yet
   - Must show: opening Tools → Patch → Dependency, picking a package under `node_modules`, and
     committing a patch limited to that one dependency.
   - e2e: `patch-workspace.feature → "Patching a single node_modules dependency"` — 🆕 write it
+  - Why this one's harder: `dependency_patch.rs` shells out to the *real* `pnpm patch`/
+    `patch-commit` CLI workflow (materialising a pristine copy under `pnpm`'s own store, diffing
+    it against the live `node_modules/<pkg>`). Every other fixture in this suite is pure `git`
+    shell commands — this would be the first to also run a real `pnpm install`. A `file:./local-pkg`
+    dependency (pnpm supports installing those with no network access) is the likely shape of a
+    fixture that could work; not built here for lack of time, not because it's impossible.
 
 ### Page: Package health checks (`package-health.feature`) — 🆕 write it
 
