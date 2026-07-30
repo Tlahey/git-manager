@@ -194,22 +194,28 @@ anything.
 
 ## Section: AI features
 
-### Page: AI commit messages (`ai-generation.feature`) — ✴️ tag it
+### Page: AI commit messages (`ai-generation.feature`) — 🟡 partial
 
 - **Sub-part — Draft a commit message from staged changes**
   - Must show: generating a message streams in live; a generation can be cancelled cleanly.
-  - e2e: `ai-generation.feature → "Generating a commit message streams the response and sends the package instruction"` — ✴️ tag it
+  - e2e: `ai-generation.feature → "Generating a commit message streams the response and sends the package instruction"` — 🚧 blocked: this
+    scenario (and "Cancelling a stuck generation stops it cleanly") currently fails even on `main`,
+    unrelated to this plan's tagging work — the fake AI test server is missing a response case for
+    the `commit_message` schema. See [#192](https://github.com/Tlahey/git-manager/issues/192). Tag
+    once fixed.
 - **Sub-part — Split changes into a commit plan**
   - Must show: generating grouped commit batches proposes a reviewable plan; accepting it applies
     the commits as proposed.
-  - e2e: `ai-generation.feature → "Generating commit batches proposes a reviewable plan and applies the accepted commits"` — ✴️ tag it
+  - e2e: `ai-generation.feature → "Generating commit batches proposes a reviewable plan and applies the accepted commits"` — ✅ tagged
 
-### Page: Daily summary (`daily-summary.feature`) — ✴️ tag it
+### Page: Daily summary (`daily-summary.feature`) — 🚧 blocked
 
 - **Sub-part — A morning briefing per project**
   - Must show: opening the launchpad auto-generates a briefing for a project with none yet;
     with auto-generation off, it's produced on demand instead.
-  - e2e: `daily-summary.feature → "Opening the launchpad auto-generates the morning briefing for an open project"` — ✴️ tag it
+  - e2e: `daily-summary.feature → "Opening the launchpad auto-generates the morning briefing for an open project"` — 🚧 blocked: fails even on
+    `main`, likely related to the same fake-AI-server gap — see
+    [#192](https://github.com/Tlahey/git-manager/issues/192). Tag once fixed.
 
 ---
 

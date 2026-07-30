@@ -52,6 +52,10 @@ export const DOC_SECTIONS: DocSection[] = [
     title: 'Branches, stashes & worktrees',
     features: ['stash-stack', 'worktree', 'submodule', 'detached-head', 'undo-redo'],
   },
+  {
+    title: 'AI features',
+    features: ['ai-generation'],
+  },
 ]
 
 /** Where a `@doc` feature that no section claims ends up. */
