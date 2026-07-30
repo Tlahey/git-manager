@@ -38,7 +38,7 @@ export interface DocSection {
 export const DOC_SECTIONS: DocSection[] = [
   {
     title: 'Reading your repository',
-    features: ['commit-graph'],
+    features: ['commit-graph', 'blame-history', 'bisect'],
   },
   {
     title: 'Making changes',

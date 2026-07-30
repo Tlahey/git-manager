@@ -49,23 +49,23 @@ Every row below follows this shape:
     files); clicking a file shows that commit's diff; right-click opens commit actions.
   - e2e: `commit-graph.feature → "Inspect a single commit"` — ✅ tagged
 
-### Page: File blame and history (`blame-history.feature`) — ✴️ tag it
+### Page: File blame and history (`blame-history.feature`) — ✅ done
 
 - **Sub-part — See who changed what, line by line**
   - Must show: switching a file's diff to File view, enabling blame mode, the avatar + commit
     name annotation per line, and that it's read from real `git blame`, not a guess.
-  - e2e: `blame-history.feature → "The File view shows blame avatars in the gutter"` — ✴️ tag it
+  - e2e: `blame-history.feature → "The File view shows blame avatars in the gutter"` — ✅ tagged
 - **Sub-part — Browse a file's older versions**
   - Must show: opening file history from the diff view, the version list, selecting an older
     version to see its diff.
-  - e2e: `blame-history.feature → "Selecting a history version shows that version in the diff"` — ✴️ tag it
+  - e2e: `blame-history.feature → "Selecting a history version shows that version in the diff"` — ✅ tagged
 
-### Page: Git bisect (`bisect.feature`) — ✴️ tag it
+### Page: Git bisect (`bisect.feature`) — ✅ done
 
 - **Sub-part — Find the commit that broke something**
   - Must show: starting a bisect from the tools menu by picking a good/bad commit range in the
     graph, marking each step good/bad, and landing on the culprit commit without leaving the app.
-  - e2e: `bisect.feature → "Running a bisect converges on the first bad commit"` — ✴️ tag it
+  - e2e: `bisect.feature → "Running a bisect converges on the first bad commit"` — ✅ tagged
 
 ---
 
