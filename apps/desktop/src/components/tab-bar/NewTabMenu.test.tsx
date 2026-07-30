@@ -3,8 +3,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitRepo } from '@git-manager/git-types'
 
-const dialogOpen = vi.fn()
-vi.mock('@tauri-apps/plugin-dialog', () => ({ open: (...a: unknown[]) => dialogOpen(...a) }))
+const pickFolderMock = vi.fn()
+vi.mock('../../lib/pickFolder', () => ({ pickFolder: (...a: unknown[]) => pickFolderMock(...a) }))
 vi.mock('../../api/repo.api', () => ({ apiOpenRepo: vi.fn(), apiInitRepo: vi.fn() }))
 vi.mock('./CloneRepoDialog', () => ({
   CloneRepoDialog: ({ open }: { open: boolean }) =>
@@ -52,7 +52,7 @@ describe('NewTabMenu', () => {
   })
 
   it('opens a folder, adds and activates the repo', async () => {
-    dialogOpen.mockResolvedValue('/repo/a')
+    pickFolderMock.mockResolvedValue('/repo/a')
     mockedOpenRepo.mockResolvedValue(repo())
     const user = userEvent.setup()
     render(<NewTabMenu />)
@@ -65,7 +65,7 @@ describe('NewTabMenu', () => {
   })
 
   it('does nothing when the folder picker is cancelled', async () => {
-    dialogOpen.mockResolvedValue(null)
+    pickFolderMock.mockResolvedValue(null)
     const user = userEvent.setup()
     render(<NewTabMenu />)
     await user.click(screen.getByTitle("New"))
@@ -74,7 +74,7 @@ describe('NewTabMenu', () => {
   })
 
   it('silently ignores a non-git folder', async () => {
-    dialogOpen.mockResolvedValue('/not-a-repo')
+    pickFolderMock.mockResolvedValue('/not-a-repo')
     mockedOpenRepo.mockRejectedValue(new Error('not a git repo'))
     const user = userEvent.setup()
     render(<NewTabMenu />)
@@ -84,7 +84,7 @@ describe('NewTabMenu', () => {
   })
 
   it('creates a new repo and activates it', async () => {
-    dialogOpen.mockResolvedValue('/repo/new')
+    pickFolderMock.mockResolvedValue('/repo/new')
     mockedInitRepo.mockResolvedValue(repo({ path: '/repo/new', name: 'new' }))
     const user = userEvent.setup()
     render(<NewTabMenu />)

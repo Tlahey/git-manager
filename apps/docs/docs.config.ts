@@ -37,6 +37,10 @@ export interface DocSection {
 /** Feature pages grouped into sidebar sections, top to bottom. */
 export const DOC_SECTIONS: DocSection[] = [
   {
+    title: 'Getting started',
+    features: ['open-repo'],
+  },
+  {
     title: 'Reading your repository',
     features: ['commit-graph', 'blame-history', 'bisect'],
   },

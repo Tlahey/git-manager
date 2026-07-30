@@ -38,25 +38,54 @@ Every row below follows this shape:
         documented limit. Note *why*, and whether it's a permanent limit or an infra gap that would
         unblock it (see "Pull requests inside the graph" for the latter kind).
 
-This file was last swept end-to-end on 2026-07-30 against `apps/e2e/features/*.feature` (26 files)
-and `packages/ai`'s 13 shipped feature descriptors (`docs/ai/README.md`'s table). Every row marked
-🆕 below has no scenario yet — it is backlog, not a claim that the page exists.
+This file was last swept end-to-end on 2026-07-30 against `apps/e2e/features/*.feature` (27 files —
+26 at the initial sweep, plus `open-repo.feature`, the first backlog row picked up) and
+`packages/ai`'s 13 shipped feature descriptors (`docs/ai/README.md`'s table). Every row marked 🆕
+below has no scenario yet — it is backlog, not a claim that the page exists. A row can also turn
+out to be wrong once someone actually reads the code behind it, and can turn out to be wrong twice
+in either direction — see "Opening a repository" below, whose "Three ways in" sub-part went
+🆕 → 🚫 (native-dialog limitation rediscovered) → ✅ (a test-only debug dialog swapped in for the
+native one in e2e builds — `apps/desktop/src/lib/pickFolder.ts`). Update the row each time rather
+than leaving a stale plan next to a corrected one.
 
 ---
 
 ## Section: Getting started
 
-### Page: Opening a repository (`open-repo.feature`) — 🆕 write it
+### Page: Opening a repository (`open-repo.feature`) — ✅ done
 
-- **Sub-part — Three ways in**
-  - Must show: the New Tab page's three entry points (open an existing folder, clone a remote URL,
-    `git init` a new one), and that a repo already open in another tab is focused instead of
-    duplicated.
-  - e2e: `open-repo.feature → "Opening a folder that is already a git repository"` — 🆕 write it
+`NewTabPage.tsx`'s Open/Create buttons and `CloneRepoDialog.tsx`'s destination field all used to
+end at `@tauri-apps/plugin-dialog`'s native OS folder picker, which WebDriver can't drive — the
+same limitation `apps/e2e/README.md` ("Driving UI state without a real native dialog") already
+documents for `openTabs`. Rather than leave that permanently out of reach, `pickFolder.ts`
+(`apps/desktop/src/lib/pickFolder.ts`) now stands between every folder-picker call site and
+`@tauri-apps/plugin-dialog`: in a real build it's a thin pass-through, but in an e2e build
+(`import.meta.env.VITE_E2E === 'true'`, the same flag `main.tsx` already gates its test hooks on)
+it swaps in `E2eFolderPickerDialog` — a plain in-webview dialog with a text input a test can type a
+path into. Never rendered, and never captured in a `@doc` screenshot, outside of an e2e build — the
+existing `doc-new-tab` screenshot on the sub-part below is still the page's only picture, and still
+shows the real three-button UI, not the debug stand-in.
+
 - **Sub-part — Jump back into recent work**
-  - Must show: the recent-repos list on the New Tab page, and that picking one opens it straight into
-    its last state.
-  - e2e: `open-repo.feature → "Picking a recent repository reopens it"` — 🆕 write it
+  - Must show: the recent-repos list on the New Tab page (⌘T), picking one opens it straight into
+    its last state, and a repo already open in another tab is focused instead of duplicated
+    (`NewTabPage.tsx`'s own doc comment: "the blank placeholder is consumed by the repository it
+    was used to open").
+  - e2e: `open-repo.feature → "Picking a recent repository reopens it"` — ✅ tagged. Seeds
+    `repoData.store`'s persisted `savedRepos`/`recentRepoPaths` directly (the same native-dialog
+    workaround `repo.steps.ts` already uses for `openTabs`) rather than driving Open/Clone/Create.
+  - e2e (already-open case, plain regression): `open-repo.feature → "Opening an already-open recent
+    repository focuses its tab instead of duplicating it"` — ✅ tagged (not `@doc` — same visible
+    result, no separate screenshot needed)
+- **Sub-part — Three ways in** (regression only, not `@doc`: nothing new to show visually beyond
+  the button row already screenshotted above)
+  - Must show (proven, not pictured): the Open button opens an existing folder as a repo; Create
+    runs `git init` in a fresh folder and opens it; Clone runs a real `git clone` (against a local
+    fixture path standing in for a remote URL — `git clone` doesn't care that it's local) and opens
+    the result.
+  - e2e: `open-repo.feature → "Opening a folder through the picker"` — ✅ tagged
+  - e2e: `open-repo.feature → "Creating a new repository through the picker"` — ✅ tagged
+  - e2e: `open-repo.feature → "Cloning a repository through the picker"` — ✅ tagged
 
 ---
 

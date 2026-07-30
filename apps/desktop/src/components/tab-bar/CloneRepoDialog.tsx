@@ -13,7 +13,7 @@ import {
 } from '@git-manager/ui'
 import { FolderOpen } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
-import { open } from '@tauri-apps/plugin-dialog'
+import { pickFolder } from '../../lib/pickFolder'
 import { apiCloneRepo } from '../../api/repo.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useOpenRepoTab } from '../../hooks/useOpenRepoTab'
@@ -61,8 +61,8 @@ export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogP
   }
 
   async function pickParentDir() {
-    const selected = await open({ directory: true, multiple: false })
-    if (selected && typeof selected === 'string') setParentDir(selected)
+    const selected = await pickFolder()
+    if (selected) setParentDir(selected)
   }
 
   async function handleClone() {
@@ -114,7 +114,13 @@ export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogP
                 value={parentDir}
                 className="flex-1"
               />
-              <Button type="button" variant="outline" size="sm" onClick={pickParentDir}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-testid="clone-dialog-browse-button"
+                onClick={pickParentDir}
+              >
                 <FolderOpen className="h-4 w-4" />
               </Button>
             </div>
@@ -151,7 +157,11 @@ export function CloneRepoDialog({ open: isOpen, onOpenChange }: CloneRepoDialogP
           <Button variant="ghost" onClick={() => handleClose(false)} disabled={loading}>
             {t('cloneDialog.cancel')}
           </Button>
-          <Button onClick={handleClone} disabled={loading || !url.trim() || !parentDir}>
+          <Button
+            data-testid="clone-dialog-submit"
+            onClick={handleClone}
+            disabled={loading || !url.trim() || !parentDir}
+          >
             {loading && <Spinner className="mr-2 h-4 w-4" />}
             {t('cloneDialog.clone')}
           </Button>

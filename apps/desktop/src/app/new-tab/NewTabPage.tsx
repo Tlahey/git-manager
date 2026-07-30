@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Button, Card } from '@git-manager/ui'
 import { FolderOpen, Download, FolderPlus, GitMerge, AlertTriangle, Clock } from 'lucide-react'
-import { open } from '@tauri-apps/plugin-dialog'
+import { pickFolder } from '../../lib/pickFolder'
 import { CloneRepoDialog } from '../../components/tab-bar/CloneRepoDialog'
 import { apiInitRepo } from '../../api/repo.api'
 import { useRepoDataStore } from '../../stores/repoData.store'
@@ -40,8 +40,8 @@ export function NewTabPage() {
   async function handleCreate() {
     setError(null)
     try {
-      const selected = await open({ directory: true, multiple: false })
-      if (!selected || typeof selected !== 'string') return
+      const selected = await pickFolder()
+      if (!selected) return
       const repo = await apiInitRepo(selected)
       addRepo(repo)
       openRepoTab(repo.path)

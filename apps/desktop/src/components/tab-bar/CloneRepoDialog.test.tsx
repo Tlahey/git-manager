@@ -3,8 +3,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GitRepo } from '@git-manager/git-types'
 
-const dialogOpen = vi.fn()
-vi.mock('@tauri-apps/plugin-dialog', () => ({ open: (...a: unknown[]) => dialogOpen(...a) }))
+const pickFolderMock = vi.fn()
+vi.mock('../../lib/pickFolder', () => ({ pickFolder: (...a: unknown[]) => pickFolderMock(...a) }))
 vi.mock('../../api/repo.api', () => ({ apiCloneRepo: vi.fn() }))
 
 import { apiCloneRepo } from '../../api/repo.api'
@@ -32,7 +32,7 @@ async function fillAndPickDir(
   parentDir = '/dest'
 ) {
   await user.type(screen.getByPlaceholderText('git@github.com:owner/repo.git'), url)
-  dialogOpen.mockResolvedValue(parentDir)
+  pickFolderMock.mockResolvedValue(parentDir)
   await user.click(screen.getByRole('button', { name: '' })) // the folder-picker icon button
 }
 
