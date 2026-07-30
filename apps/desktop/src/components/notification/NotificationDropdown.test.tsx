@@ -138,8 +138,9 @@ describe('NotificationDropdown — simulator panel visibility', () => {
     expect(screen.queryByText("Simulate Change")).not.toBeInTheDocument()
   })
 
-  it('shows dev-mode test-trigger buttons only when DEV is true', async () => {
+  it('shows dev-mode test-trigger buttons only in a real `vite dev` build (MODE === "development")', async () => {
     vi.stubEnv('DEV', true)
+    vi.stubEnv('MODE', 'development')
     const user = userEvent.setup()
     render(<NotificationDropdown />)
     await user.click(screen.getByTitle("Notifications"))
@@ -153,11 +154,30 @@ describe('NotificationDropdown — simulator panel visibility', () => {
     await user.click(screen.getByTitle("Notifications"))
     expect(screen.queryByText('Test Review')).not.toBeInTheDocument()
   })
+
+  // Regression test for #193: `vite build --mode e2e` (the e2e/docs-screenshot binary) sets
+  // `import.meta.env.DEV` to `true` — Vite derives it from `PROD = mode === 'production'`, and
+  // `'e2e'` isn't `'production'` either — even though it is a real `tauri build`, not `tauri dev`.
+  // The dev-only badge/buttons must key off `MODE === 'development'` specifically, not bare `DEV`,
+  // or they leak into that build (and into any screenshot captured from it).
+  it('does not show dev-mode test-trigger buttons when DEV is true but MODE is not "development" (e.g. an e2e build)', async () => {
+    vi.stubEnv('DEV', true)
+    vi.stubEnv('MODE', 'e2e')
+    const user = userEvent.setup()
+    render(<NotificationDropdown />)
+    await user.click(screen.getByTitle("Notifications"))
+    expect(screen.queryByText('Test Review')).not.toBeInTheDocument()
+    expect(screen.queryByText('DEV MODE')).not.toBeInTheDocument()
+    // The outer "Simulate Change" panel (gated on `DEV || !hasToken`) must still show — this is a
+    // real, disconnected-from-GitHub user's panel, not something the dev-only fix should hide.
+    expect(screen.getByText('Simulate Change')).toBeInTheDocument()
+  })
 })
 
 describe('NotificationDropdown — dev test triggers', () => {
   it('adds a notification and fires a native notification when a test trigger is clicked', async () => {
     vi.stubEnv('DEV', true)
+    vi.stubEnv('MODE', 'development')
     const user = userEvent.setup()
     render(<NotificationDropdown />)
     await user.click(screen.getByTitle("Notifications"))
