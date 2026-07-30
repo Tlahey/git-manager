@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { Alert } from '@git-manager/ui'
-import { getAiPreset } from '@git-manager/ai'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useAiStatusStore } from '../../stores/aiStatus.store'
 
@@ -21,7 +20,6 @@ interface AiStatusBannerProps {
 export function AiStatusBanner({ onOpenSettings }: AiStatusBannerProps) {
   const { t } = useTranslation('common')
   const aiEnabled = useSettingsStore((s) => s.settings.ai.enabled !== false)
-  const preset = useSettingsStore((s) => s.settings.ai.preset)
   const url = useSettingsStore((s) => s.settings.ai.url)
   const state = useAiStatusStore((s) => s.state)
   const [dismissed, setDismissed] = useState(false)
@@ -49,9 +47,7 @@ export function AiStatusBanner({ onOpenSettings }: AiStatusBannerProps) {
           className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left underline-offset-2 hover:underline"
         >
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span className="font-medium">
-            {t('aiStatus.disconnectedTitle', { provider: getAiPreset(preset).label })}
-          </span>
+          <span className="font-medium">{t('aiStatus.disconnectedTitle')}</span>
           <span className="min-w-0 truncate opacity-80">{t('aiStatus.disconnectedHint', { url })}</span>
         </button>
         <button
