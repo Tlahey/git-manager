@@ -784,6 +784,46 @@ describe('lib/tauri — activity log capture', () => {
   })
 })
 
+describe('lib/tauri — AppError JSON unwrapping', () => {
+  it('unwraps an AppError-shaped rejection into an Error carrying just its message', async () => {
+    mockInvoke.mockRejectedValue(
+      '{"code":"GIT_ERROR","message":"Git error: cannot push non-fastforwardable reference","detail":null}'
+    )
+
+    await expect(tauri.openRepo('/repo')).rejects.toThrow(Error)
+    const err = await tauri.openRepo('/repo').catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(Error)
+    expect((err as Error).message).toBe('Git error: cannot push non-fastforwardable reference')
+  })
+
+  it('still logs the raw JSON blob to the activity log, unwrapping only the thrown error', async () => {
+    mockInvoke.mockRejectedValue('{"code":"GIT_ERROR","message":"cannot push","detail":null}')
+
+    const err = await tauri.openRepo('/repo').catch((e: unknown) => e)
+    expect((err as Error).message).toBe('cannot push')
+    expect(useActivityLogStore.getState().entries[0]).toMatchObject({
+      status: 'error',
+      error: '{"code":"GIT_ERROR","message":"cannot push","detail":null}',
+    })
+  })
+
+  it('passes a non-JSON rejection through unchanged', async () => {
+    mockInvoke.mockRejectedValue('backend blew up')
+    await expect(tauri.openRepo('/repo')).rejects.toBe('backend blew up')
+  })
+
+  it('passes a plain Error rejection through unchanged', async () => {
+    const original = new Error('network unreachable')
+    mockInvoke.mockRejectedValue(original)
+    await expect(tauri.openRepo('/repo')).rejects.toBe(original)
+  })
+
+  it('passes JSON without a string .message field through unchanged', async () => {
+    mockInvoke.mockRejectedValue('{"code":"GIT_ERROR"}')
+    await expect(tauri.openRepo('/repo')).rejects.toBe('{"code":"GIT_ERROR"}')
+  })
+})
+
 describe('lib/tauri — correlation stamping', () => {
   it('tags a call with the per-action correlation it runs inside', async () => {
     mockInvoke.mockResolvedValue({})

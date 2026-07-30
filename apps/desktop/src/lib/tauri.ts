@@ -61,9 +61,31 @@ async function invoke<T>(command: string, args?: Record<string, unknown>): Promi
     record(command, args, start, 'ok')
     return result
   } catch (err) {
-    record(command, args, start, 'error', String(err))
-    throw err
+    const rawMessage = String(err)
+    record(command, args, start, 'error', rawMessage)
+    throw toReadableError(err, rawMessage)
   }
+}
+
+/**
+ * Every Tauri command rejects with `AppError`'s JSON serialization (`{ code, message, detail }`,
+ * see `error.rs`), not a plain `Error` — so `String(err)` on it is the raw blob, e.g.
+ * `{"code":"GIT_ERROR","message":"...","detail":null}`. Unwrapped once here so every call site's
+ * `toast.error(String(err))` shows just the `message` field for free (`String()` on a real `Error`
+ * returns its `.message` via `Error.prototype.toString`). A rejection that isn't that JSON shape —
+ * e.g. a plain JS `Error` thrown before the IPC call ever reached the backend — passes through
+ * unchanged.
+ */
+function toReadableError(err: unknown, rawMessage: string): unknown {
+  try {
+    const parsed = JSON.parse(rawMessage)
+    if (parsed && typeof parsed.message === 'string') {
+      return new Error(parsed.message)
+    }
+  } catch {
+    // Not JSON: not an AppError payload, nothing to unwrap.
+  }
+  return err
 }
 
 function record(
