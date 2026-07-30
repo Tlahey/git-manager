@@ -111,6 +111,12 @@ export const BUILTIN_THEMES: ThemeDefinition[] = [
     isDark: true,
   },
   {
+    id: 'ocean',
+    labelKey: 'settings.appearance.theme.ocean',
+    colors: { bg: '#020810', fg: '#e8f4f8', primary: '#00e5cc', accent: '#0d1f3c' },
+    isDark: true,
+  },
+  {
     // Translucent-material theme; the swatch shows its composited (opaque
     // equivalent) tokens, which is also what the contrast graders score.
     id: 'glass',

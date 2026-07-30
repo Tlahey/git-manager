@@ -54,6 +54,9 @@ export type { LabelProps } from './components/label'
 export { RadioGroup, RadioGroupItem } from './components/radio-group'
 export type { RadioGroupProps, RadioGroupItemProps } from './components/radio-group'
 
+export { ToggleGroup } from './components/toggle-group'
+export type { ToggleGroupProps, ToggleGroupOption } from './components/toggle-group'
+
 export { Spinner } from './components/spinner'
 /** The one mark for an action that calls the language model — see `llm-icon.tsx` for why it is not
  * lucide's `Sparkles`. */

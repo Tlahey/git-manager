@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from '@git-manager/i18n'
-import { Input, Tag, cn } from '@git-manager/ui'
+import { Input, Tag, ToggleGroup, cn } from '@git-manager/ui'
 import {
   ChevronDown,
   ChevronRight,
@@ -576,35 +576,23 @@ export function CommitFileList({
           </div>
           {/* Always rendered (even collapsed) so the header row's height stays constant —
               `invisible` hides it without collapsing its box, avoiding layout shift on toggle. */}
-          <div
-            className={cn(
-              'flex items-center overflow-hidden rounded border border-border/55 bg-card',
-              !bodyVisible && 'invisible'
-            )}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setViewMode('tree')}
-              className={`p-1.5 transition-all ${
-                viewMode === 'tree'
-                  ? 'bg-primary text-white'
-                  : 'text-muted-foreground hover:bg-accent'
-              }`}
-              title={t('commitDetails.viewModeTree') || 'Tree structure'}
-            >
-              <FolderTree className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-1.5 transition-all ${
-                viewMode === 'list'
-                  ? 'bg-primary text-white'
-                  : 'text-muted-foreground hover:bg-accent'
-              }`}
-              title={t('commitDetails.viewModeList') || 'Flat list'}
-            >
-              <List className="h-3.5 w-3.5" />
-            </button>
+          <div className={cn(!bodyVisible && 'invisible')} onClick={(e) => e.stopPropagation()}>
+            <ToggleGroup
+              value={viewMode}
+              onValueChange={setViewMode}
+              options={[
+                {
+                  value: 'tree',
+                  icon: <FolderTree className="h-3.5 w-3.5" />,
+                  label: t('commitDetails.viewModeTree') || 'Tree structure',
+                },
+                {
+                  value: 'list',
+                  icon: <List className="h-3.5 w-3.5" />,
+                  label: t('commitDetails.viewModeList') || 'Flat list',
+                },
+              ]}
+            />
           </div>
         </div>
 

@@ -125,7 +125,7 @@ describe('CommitFileList — view mode toggle', () => {
   it('switches to list view, showing flat dir/name split rows', async () => {
     const user = userEvent.setup()
     renderList({ processedFiles: [file('src/components/Button.tsx')] })
-    await user.click(screen.getByTitle("Flat list"))
+    await user.click(screen.getByRole('radio', { name: 'Flat list' }))
     expect(screen.queryByText('src')).not.toBeInTheDocument()
     expect(screen.getByText('src/components/')).toBeInTheDocument()
     expect(screen.getByText('Button.tsx')).toBeInTheDocument()
@@ -144,7 +144,7 @@ describe('CommitFileList — viewed indicator', () => {
   it('shows the same indicator in list view', async () => {
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts', { viewed: true })] })
-    await user.click(screen.getByTitle("Flat list"))
+    await user.click(screen.getByRole('radio', { name: 'Flat list' }))
     expect(screen.getByTestId('file-list-viewed-a.ts')).toBeInTheDocument()
   })
 })
@@ -375,7 +375,7 @@ describe('CommitFileList — list view stage/discard wiring', () => {
     const onRefresh = vi.fn()
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts', { staged: false })], isWip: true, onRefresh })
-    await user.click(screen.getByTitle("Flat list"))
+    await user.click(screen.getByRole('radio', { name: 'Flat list' }))
     await user.click(screen.getByTitle("Stage"))
     expect(mockedStage).toHaveBeenCalledWith('/repo', 'a.ts')
   })
@@ -383,7 +383,7 @@ describe('CommitFileList — list view stage/discard wiring', () => {
   it('shows additions/deletions counters when present', async () => {
     const user = userEvent.setup()
     renderList({ processedFiles: [file('a.ts', { additions: 4, deletions: 2 })] })
-    await user.click(screen.getByTitle("Flat list"))
+    await user.click(screen.getByRole('radio', { name: 'Flat list' }))
     expect(screen.getByText('+4')).toBeInTheDocument()
     expect(screen.getByText('-2')).toBeInTheDocument()
   })
