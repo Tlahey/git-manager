@@ -1,6 +1,49 @@
 import { browser, $ } from '@wdio/globals'
 
 /**
+ * Monaco loads each language's grammar as a separate async chunk (`import('./yaml.js')` etc.) and
+ * re-tokenizes/re-lays-out the visible lines once it lands — a change that happens well after the
+ * editor's first paint and isn't covered by the splash/loading-overlay/font waits above. A
+ * screenshot taken mid-transition catches Monaco between two paints (glyphs overlapping from the
+ * width change between untokenized and tokenized text) or before the grammar has loaded at all
+ * (flat, uncoloured text) — both non-deterministic on machine load, and neither is what a user
+ * actually sees once the UI settles. Poll the rendered token classes (`mtk*`, one per resolved
+ * color) until two reads a frame apart agree, which is only true once tokenization has stopped
+ * producing new spans. No-ops when the page has no Monaco instance at all.
+ */
+async function waitForMonacoTokensToSettle(): Promise<void> {
+  const hasMonaco = await browser.execute(() => document.querySelector('.monaco-editor') !== null)
+  if (!hasMonaco) return
+
+  const snapshotTokenClasses = () =>
+    browser.execute(() =>
+      Array.from(document.querySelectorAll('[class*="mtk"]'))
+        .map((el) => el.className)
+        .join('|')
+    )
+
+  await browser.waitUntil(
+    async () => {
+      const before = await snapshotTokenClasses()
+      // Empty means tokenization hasn't produced anything yet — never treat that as "settled".
+      if (!before) return false
+      await browser.execute(
+        () =>
+          new Promise<void>((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+          })
+      )
+      return before === (await snapshotTokenClasses())
+    },
+    {
+      timeout: 5000,
+      interval: 50,
+      timeoutMsg: 'Monaco syntax highlighting never settled before the snapshot',
+    }
+  )
+}
+
+/**
  * Prepare the page for a deterministic visual snapshot: wait for webfonts to settle and
  * force-disable CSS transitions/animations, so two renders of the same state don't drift by a
  * fraction of a percent from font hinting / antialiasing jitter alone. Both steps are
@@ -51,6 +94,7 @@ export async function stabiliseForSnapshot(): Promise<void> {
   await browser.execute(async () => {
     await document.fonts.ready
   })
+  await waitForMonacoTokensToSettle()
   await browser.execute(() => {
     if (document.getElementById('wdio-vrt-stabilise')) return
     const style = document.createElement('style')
