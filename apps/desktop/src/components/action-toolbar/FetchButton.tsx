@@ -26,6 +26,7 @@ export function FetchButton({ loading, onFetch, onFetchAll, onFetchPrune }: Fetc
         onClick={onFetch}
         disabled={loading}
         title={t('remote.fetch')}
+        data-testid="toolbar-fetch-button"
         className="group flex min-w-[40px] flex-col items-center justify-center gap-0.5 rounded-l px-2 py-1 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
       >
         <span className="flex h-4 w-4 items-center justify-center">

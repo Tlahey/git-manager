@@ -36,12 +36,12 @@ describe('AiStatusBanner', () => {
     expect(screen.queryByTestId('ai-status-banner')).not.toBeInTheDocument()
   })
 
-  it('warns with the provider name and URL once the check fails', () => {
+  it('warns with a generic message and the failing URL once the check fails', () => {
     render(<AiStatusBanner onOpenSettings={vi.fn()} />)
     setStatus('disconnected')
 
     const banner = screen.getByTestId('ai-status-banner')
-    expect(banner).toHaveTextContent('Ollama is unreachable')
+    expect(banner).toHaveTextContent('AI provider is unreachable')
     expect(banner).toHaveTextContent('http://localhost:11434')
   })
 
@@ -79,6 +79,8 @@ describe('AiStatusBanner', () => {
   it('is translated', () => {
     useAiStatusStore.setState({ state: 'disconnected' })
     renderWithLanguage(<AiStatusBanner onOpenSettings={vi.fn()} />, 'fr')
-    expect(screen.getByTestId('ai-status-banner')).toHaveTextContent('Ollama est injoignable')
+    expect(screen.getByTestId('ai-status-banner')).toHaveTextContent(
+      'Le fournisseur IA est injoignable'
+    )
   })
 })

@@ -38,15 +38,31 @@ export interface DocSection {
 export const DOC_SECTIONS: DocSection[] = [
   {
     title: 'Reading your repository',
-    features: ['commit-graph'],
+    features: ['commit-graph', 'blame-history', 'bisect'],
   },
   {
     title: 'Making changes',
-    features: ['working-tree'],
+    features: ['working-tree', 'commit'],
   },
   {
     title: 'When Git gets in the way',
-    features: ['merge-editor'],
+    features: ['merge-editor', 'rebase-conflict', 'rebase-progress', 'fixup-autosquash'],
+  },
+  {
+    title: 'Branches, stashes & worktrees',
+    features: ['stash-stack', 'worktree', 'submodule', 'detached-head', 'undo-redo'],
+  },
+  {
+    title: 'Syncing with remotes',
+    features: ['remote-fetch-pull', 'remote-push', 'branch-create'],
+  },
+  {
+    title: 'AI features',
+    features: ['ai-generation'],
+  },
+  {
+    title: 'Workflow tools',
+    features: ['command-palette', 'settings'],
   },
 ]
 

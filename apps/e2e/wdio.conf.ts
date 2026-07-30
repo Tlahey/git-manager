@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Services } from '@wdio/types'
+import { startFakeAiServer, SUITE_WIDE_FAKE_AI_PORT, type FakeAiServerHandle } from './support/fakeAiServer.ts'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -46,8 +47,23 @@ const visualService: Services.ServiceEntry = [
   },
 ]
 
+// Started once for the whole run (this hook runs in the launcher process, not a per-spec-file
+// worker — see SUITE_WIDE_FAKE_AI_PORT's own doc comment for why a fixed port is what lets the
+// workers reach it). Every scenario's Before hook (hooks.steps.ts) points the default AI settings
+// here, so the real factory default (AI enabled, pointed at a local Ollama) doesn't raise an
+// "AI provider is unreachable" banner in a sandbox with no Ollama running — scenarios that need
+// their own scripted responses (ai-generation.feature, daily-summary.feature) still start their
+// own per-scenario fake server on an ephemeral port, same as before.
+let suiteWideAiServer: FakeAiServerHandle | undefined
+
 export const config: WebdriverIO.Config = {
   runner: 'local',
+  onPrepare: async function () {
+    suiteWideAiServer = await startFakeAiServer({ port: SUITE_WIDE_FAKE_AI_PORT })
+  },
+  onComplete: async function () {
+    await suiteWideAiServer?.stop()
+  },
   // Gherkin features; one worker per .feature file (like spec files were). Step definitions
   // live in ./step-definitions and are matched by text regardless of feature.
   specs: ['./features/**/*.feature'],

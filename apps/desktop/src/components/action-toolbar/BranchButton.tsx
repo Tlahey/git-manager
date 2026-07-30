@@ -36,6 +36,7 @@ export function BranchButton({ fromRef, onCreate }: BranchButtonProps) {
         <button
           type="button"
           title={t('toolbar.createBranch')}
+          data-testid="toolbar-branch-button"
           className="group flex min-w-[40px] shrink-0 flex-col items-center justify-center gap-0.5 rounded px-2 py-1 transition-colors hover:bg-accent"
         >
           <span className="flex h-4 w-4 items-center justify-center">
@@ -59,6 +60,7 @@ export function BranchButton({ fromRef, onCreate }: BranchButtonProps) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t('toolbar.branchNamePlaceholder')}
+            data-testid="toolbar-branch-name-input"
             className="mb-2 h-auto rounded px-2 py-1 text-xs shadow-none"
           />
           <div className="flex justify-end gap-1.5">
@@ -72,6 +74,7 @@ export function BranchButton({ fromRef, onCreate }: BranchButtonProps) {
             <button
               type="submit"
               disabled={!name.trim() || busy}
+              data-testid="toolbar-branch-create-button"
               className="flex items-center gap-1.5 rounded bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {busy && <Spinner className="h-3 w-3" />}

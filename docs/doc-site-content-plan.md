@@ -49,23 +49,23 @@ Every row below follows this shape:
     files); clicking a file shows that commit's diff; right-click opens commit actions.
   - e2e: `commit-graph.feature → "Inspect a single commit"` — ✅ tagged
 
-### Page: File blame and history (`blame-history.feature`) — ✴️ tag it
+### Page: File blame and history (`blame-history.feature`) — ✅ done
 
 - **Sub-part — See who changed what, line by line**
   - Must show: switching a file's diff to File view, enabling blame mode, the avatar + commit
     name annotation per line, and that it's read from real `git blame`, not a guess.
-  - e2e: `blame-history.feature → "The File view shows blame avatars in the gutter"` — ✴️ tag it
+  - e2e: `blame-history.feature → "The File view shows blame avatars in the gutter"` — ✅ tagged
 - **Sub-part — Browse a file's older versions**
   - Must show: opening file history from the diff view, the version list, selecting an older
     version to see its diff.
-  - e2e: `blame-history.feature → "Selecting a history version shows that version in the diff"` — ✴️ tag it
+  - e2e: `blame-history.feature → "Selecting a history version shows that version in the diff"` — ✅ tagged
 
-### Page: Git bisect (`bisect.feature`) — ✴️ tag it
+### Page: Git bisect (`bisect.feature`) — ✅ done
 
 - **Sub-part — Find the commit that broke something**
   - Must show: starting a bisect from the tools menu by picking a good/bad commit range in the
     graph, marking each step good/bad, and landing on the culprit commit without leaving the app.
-  - e2e: `bisect.feature → "Running a bisect converges on the first bad commit"` — ✴️ tag it
+  - e2e: `bisect.feature → "Running a bisect converges on the first bad commit"` — ✅ tagged
 
 ---
 
@@ -81,12 +81,12 @@ Every row below follows this shape:
   - Must show: clicking a file in either group opens its diff; review before staging.
   - e2e: `working-tree.feature → "Read a file's diff before you stage it"` — ✅ tagged
 
-### Page: Committing (`commit.feature`) — ✴️ tag it
+### Page: Committing (`commit.feature`) — ✅ done
 
 - **Sub-part — Write the commit**
   - Must show: writing a message for the staged changes and confirming records a new HEAD commit
     the graph immediately reflects.
-  - e2e: `commit.feature → "Committing the staged changes records a new HEAD commit"` — ✴️ tag it
+  - e2e: `commit.feature → "Committing the staged changes records a new HEAD commit"` — ✅ tagged
 
 ---
 
@@ -100,139 +100,173 @@ Every row below follows this shape:
     conflicts; the apply button stays disabled until every block has an outcome.
   - e2e: `merge-editor.feature → "Resolve a conflicted file block by block"` — ✅ tagged
 
-### Page: Rebase conflicts (`rebase-conflict.feature`) — ✴️ tag it
+### Page: Rebase conflicts (`rebase-conflict.feature`) — ✅ done
 
 - **Sub-part — A paused rebase surfaces itself**
   - Must show: a paused rebase auto-opens the conflict resolution panel (you don't go hunting for
     it); the panel offers continue, skip, or abort.
-  - e2e: `rebase-conflict.feature → "A paused rebase auto-opens the conflict resolution panel"` — ✴️ tag it
+  - e2e: `rebase-conflict.feature → "A paused rebase auto-opens the conflict resolution panel"` — ✅ tagged
 
-### Page: Rebase progress (`rebase-progress.feature`) — ✴️ tag it
+### Page: Rebase progress (`rebase-progress.feature`) — ✅ done
 
 - **Sub-part — See where you are in a multi-step rebase**
   - Must show: the step rail (replayed / paused / still ahead); the graph banner that brings the
     progress view back after it's hidden; continuing advances to the next step.
-  - e2e: `rebase-progress.feature → "A paused rebase takes over the content view with its step rail"` — ✴️ tag it
+  - e2e: `rebase-progress.feature → "A paused rebase takes over the content view with its step rail"` — ✅ tagged
 
-### Page: Fixup & autosquash (`fixup-autosquash.feature`) — ✴️ tag it
+### Page: Fixup & autosquash (`fixup-autosquash.feature`) — ✅ done
 
 - **Sub-part — Clean up history before pushing**
   - Must show: the pending-fixups banner when `fixup!` commits exist; the autosquash preview
     grouping each fixup with its target; running it rewrites history in one action.
-  - e2e: `fixup-autosquash.feature → "The preview groups the two fixup!/target pairs"` — ✴️ tag it
+  - e2e: `fixup-autosquash.feature → "The preview groups the two fixup!/target pairs"` — ✅ tagged
 
 ---
 
 ## Section: Branches, stashes & worktrees
 
-### Page: Stashing changes (`stash-stack.feature`) — ✴️ tag it
+### Page: Stashing changes (`stash-stack.feature`) — ✅ done
 
 - **Sub-part — Find and restore a stash**
   - Must show: stashes listed in the sidebar; applying/popping/dropping a stash from the command
     palette (there's no separate "stash panel").
-  - e2e: `stash-stack.feature → "The sidebar lists the stashed changes"` — ✴️ tag it
-  - e2e (apply/drop, already written, unused so far): `command-palette.feature → "Applying a stash via the palette keeps it but restores its changes"` — ✴️ tag it
+  - e2e: `stash-stack.feature → "The sidebar lists the stashed changes"` — ✅ tagged
+  - e2e (apply/drop): `command-palette.feature → "Applying a stash via the palette keeps it but restores its changes"` — ✅ tagged (renders on the
+    Command palette page, not this one — see "How a page maps to this plan" above)
 
-### Page: Worktrees (`worktree.feature`) — ✴️ tag it
+### Page: Worktrees (`worktree.feature`) — ✅ done
 
 - **Sub-part — Work across branches at once**
   - Must show: linked worktrees listed in the sidebar; adding one from a branch; removing one
     (and that a dirty worktree requires an explicit force).
-  - e2e: `worktree.feature → "Adding a new worktree"` — ✴️ tag it
+  - e2e: `worktree.feature → "Adding a new worktree"` — ✅ tagged
 
-### Page: Submodules (`submodule.feature`) — ✴️ tag it
+### Page: Submodules (`submodule.feature`) — ✅ done
 
 - **Sub-part — See a repo's submodules**
   - Must show: real git submodules listed in their own sidebar section.
-  - e2e: `submodule.feature → "The sidebar lists a real git submodule"` — ✴️ tag it
+  - e2e: `submodule.feature → "The sidebar lists a real git submodule"` — ✅ tagged
 
-### Page: Detached HEAD (`detached-head.feature`) — ✴️ tag it
+### Page: Detached HEAD (`detached-head.feature`) — ✅ done
 
 - **Sub-part — Know when you're not on a branch**
   - Must show: the toolbar reading "HEAD" instead of a branch name while detached; checking out a
     branch returns to the normal state.
-  - e2e: `detached-head.feature → "The toolbar shows HEAD instead of a branch name"` — ✴️ tag it
+  - e2e: `detached-head.feature → "The toolbar shows HEAD instead of a branch name"` — ✅ tagged
 
-### Page: Undo / redo (`undo-redo.feature`) — ✴️ tag it
+### Page: Undo / redo (`undo-redo.feature`) — ✅ done
 
 - **Sub-part — Move HEAD back and forth without fear**
   - Must show: ⌘Z undoes a branch checkout or reset, ⌘⇧Z redoes it; the branch indicator / HEAD
     commit reflects each step.
-  - e2e: `undo-redo.feature → "Undoing a checkout returns to the previous branch and redo re-applies it"` — ✴️ tag it
+  - e2e: `undo-redo.feature → "Undoing a checkout returns to the previous branch and redo re-applies it"` — ✅ tagged
 
 ---
 
 ## Section: Syncing with remotes
 
-Every page in this section is 🆕: **no e2e scenario exists yet** for push, pull, fetch, remote
-management, or branch/tag creation outside the command palette. Write the coverage before tagging
-anything.
+E2e coverage now exists for fetch/pull, push, and toolbar branch creation, backed by two new
+fixtures (`remote-behind`, `remote-ahead`) that clone a real bare "origin" repo — the first case
+of any fixture in this repo exercising a genuine local git remote. Building it required adding
+`data-testid`s to the toolbar's Fetch/Pull/Push/Branch buttons (none existed before) and fixing
+`ToolbarButton` (`packages/components`), which silently dropped a `data-testid` prop passed to it
+— dead on the 4 pre-existing call sites (Undo/Redo/Timeline/Stash) until this PR.
 
-### Page: Fetch & pull — 🆕 write it
+Three things surfaced while building this that are **out of scope to fix here** — each filed as
+its own issue and left undocumented rather than publishing broken/incomplete behavior:
+- [#194](https://github.com/Tlahey/git-manager/issues/194): a rejected push's toast shows raw
+  backend error JSON (`{"code":"GIT_ERROR",...}`) instead of a readable message — a systemic
+  pattern (~50 call sites), not push-specific.
+- [#195](https://github.com/Tlahey/git-manager/issues/195): pushing a brand-new local branch never
+  configures upstream tracking, so its ahead/behind indicator never lights up.
+- Branch **deletion** and **tag creation** have no toolbar entry point at all — both are
+  native-macOS-menu-only (see `tag-context-menu.feature`'s own note on that being unscriptable) or
+  command-palette-only (already covered). Not a bug, just outside what "the toolbar" can mean for
+  those two operations.
+
+### Page: Fetch & pull (`remote-fetch-pull.feature`) — ✅ done
 
 - **Sub-part — Bring your branch up to date**
   - Must show: fetch vs. pull from the toolbar, what changes in the graph/sidebar afterward.
-  - e2e: 🆕 write it (no feature file covers remote fetch/pull today)
+  - e2e: `remote-fetch-pull.feature → "Pulling brings your branch up to date"` — ✅ tagged
 
-### Page: Push — 🆕 write it
+### Page: Push (`remote-push.feature`) — 🟡 partial
 
 - **Sub-part — Publish your commits**
   - Must show: pushing from the toolbar, upstream tracking being set for a new branch, what a
     rejected (non-fast-forward) push looks like.
-  - e2e: 🆕 write it
+  - e2e: `remote-push.feature → "Pushing publishes your commits to the remote"` — ✅ tagged (the
+    clean fast-forward case)
+  - e2e: `remote-push.feature → "A rejected push reports the conflict instead of silently
+    failing"` — 🚧 written, passing, but **not tagged**: its only visible proof today is the raw
+    JSON toast from [#194](https://github.com/Tlahey/git-manager/issues/194). Tag once that's
+    fixed.
+  - Upstream tracking being set for a new branch: 🚧 not something the app does yet — see
+    [#195](https://github.com/Tlahey/git-manager/issues/195). Nothing to tag until it exists.
 
-### Page: Branches & tags — 🆕 write it
+### Page: Branches & tags (`branch-create.feature`) — 🟡 partial
 
-- **Sub-part — Create, checkout, delete**
-  - Must show: creating a branch (from the toolbar, not just the palette), checking one out,
-    deleting one, and the same for tags (lightweight vs. annotated).
-  - e2e: 🆕 write it (the palette-driven creation in `command-palette.feature` is a secondary
-    entry point, not this page's primary path)
+- **Sub-part — Create, checkout**
+  - Must show: creating a branch from the toolbar, checking it out.
+  - e2e: `branch-create.feature → "Creating a branch from the toolbar and checking it out"` — ✅
+    tagged
+- **Sub-part — Delete, and the same for tags** — 🚫 not achievable from the toolbar: branch
+  deletion and tag creation are native-macOS-menu-only or command-palette-only (already covered in
+  `command-palette.feature`). Nothing to write here.
 
 ---
 
 ## Section: AI features
 
-### Page: AI commit messages (`ai-generation.feature`) — ✴️ tag it
+### Page: AI commit messages (`ai-generation.feature`) — 🟡 partial
 
 - **Sub-part — Draft a commit message from staged changes**
   - Must show: generating a message streams in live; a generation can be cancelled cleanly.
-  - e2e: `ai-generation.feature → "Generating a commit message streams the response and sends the package instruction"` — ✴️ tag it
+  - e2e: `ai-generation.feature → "Generating a commit message streams the response and sends the package instruction"` — 🚧 blocked: this
+    scenario (and "Cancelling a stuck generation stops it cleanly") currently fails even on `main`,
+    unrelated to this plan's tagging work — the fake AI test server is missing a response case for
+    the `commit_message` schema. See [#192](https://github.com/Tlahey/git-manager/issues/192). Tag
+    once fixed.
 - **Sub-part — Split changes into a commit plan**
   - Must show: generating grouped commit batches proposes a reviewable plan; accepting it applies
     the commits as proposed.
-  - e2e: `ai-generation.feature → "Generating commit batches proposes a reviewable plan and applies the accepted commits"` — ✴️ tag it
+  - e2e: `ai-generation.feature → "Generating commit batches proposes a reviewable plan and applies the accepted commits"` — ✅ tagged
 
-### Page: Daily summary (`daily-summary.feature`) — ✴️ tag it
+### Page: Daily summary (`daily-summary.feature`) — 🚧 blocked
 
 - **Sub-part — A morning briefing per project**
   - Must show: opening the launchpad auto-generates a briefing for a project with none yet;
     with auto-generation off, it's produced on demand instead.
-  - e2e: `daily-summary.feature → "Opening the launchpad auto-generates the morning briefing for an open project"` — ✴️ tag it
+  - e2e: `daily-summary.feature → "Opening the launchpad auto-generates the morning briefing for an open project"` — 🚧 blocked: fails even on
+    `main`, likely related to the same fake-AI-server gap — see
+    [#192](https://github.com/Tlahey/git-manager/issues/192). Tag once fixed.
 
 ---
 
 ## Section: Workflow tools
 
-### Page: Command palette (`command-palette.feature`) — ✴️ tag it
+### Page: Command palette (`command-palette.feature`) — ✅ done
 
 - **Sub-part — Run any action without the menus**
   - Must show: ⌘K opens it; it offers global actions and commit-scoped actions (reset, revert,
     branch, tag, cherry-pick) for whatever commit is selected.
-  - e2e: `command-palette.feature → "Resetting to an earlier commit from the palette"` — ✴️ tag it
+  - e2e: `command-palette.feature → "Resetting to an earlier commit from the palette"` — ✅ tagged
 
-### Page: Settings (`settings.feature`) — ✴️ tag it
+### Page: Settings (`settings.feature`) — ✅ done
 
 - **Sub-part — Configure the app**
   - Must show: the sections available (general, AI, notifications, SSH, appearance/themes); that
     settings persist across a reload.
-  - e2e: `settings.feature → "Selecting a built-in theme applies it and persists across a reload"` — ✴️ tag it
+  - e2e: `settings.feature → "Selecting a built-in theme applies it and persists across a reload"` — ✅ tagged
 
-### Page: Notifications (`notifications.feature`) — ✴️ tag it
+### Page: Notifications (`notifications.feature`) — 🚧 blocked
 
 - **Sub-part — Track PR activity from the bell**
   - Must show: the bell's unread count and notification list; marking all read; clearing them.
-  - e2e: `notifications.feature → "Opening the bell shows the seeded notifications and unread count"` — ✴️ tag it
+  - e2e: `notifications.feature → "Opening the bell shows the seeded notifications and unread count"` — 🚧 blocked: the e2e/docs
+    build (`vite build --mode e2e`) leaves `import.meta.env.DEV` true, so the notification dropdown
+    renders its internal "DEV MODE" test-trigger buttons in the screenshot — not something a real
+    user ever sees. See [#193](https://github.com/Tlahey/git-manager/issues/193). Tag once fixed.
 
 ---
 

@@ -163,6 +163,7 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
           disabled={disabled}
           badge={behindCount}
           onClick={handlePull}
+          data-testid="toolbar-pull-button"
         />
         <ToolbarButton
           icon={<ArrowUpFromLine className="h-4 w-4 text-green-400" />}
@@ -176,6 +177,7 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
           disabled={disabled}
           badge={aheadCount}
           onClick={handlePush}
+          data-testid="toolbar-push-button"
         />
 
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />

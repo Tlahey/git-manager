@@ -16,11 +16,11 @@ Given(/^the app language is English$/, async () => {
   await seedSettings({ language: 'en' })
 })
 
-// AI is on by default and points at a local Ollama that isn't running here, so
-// the app raises a persistent "Ollama is unreachable" banner across the top of
-// every screen — a detail of this machine, not of the feature being pictured.
-// Turning the feature off removes the banner rather than hiding it, so the
-// capture shows a state a user could actually be in.
+// The suite-wide Before hook (hooks.steps.ts) already points the default AI settings at a fake
+// server that answers, so a capture doesn't need this step just to silence the
+// "AI provider is unreachable" banner — this is for captures that specifically want the AI
+// menu/buttons absent, showing the app as a user with the feature genuinely turned off would see
+// it.
 Given(/^AI features are turned off$/, async () => {
   await seedSettings({ ai: { enabled: false } })
 })

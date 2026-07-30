@@ -10,7 +10,25 @@ export interface FakeAiServerHandle {
   stop: () => Promise<void>
 }
 
+/**
+ * Fixed port for the suite-wide fake AI server started once in `wdio.conf.ts`'s `onPrepare` (see
+ * `SUITE_WIDE_FAKE_AI_URL` below) so the default AI settings seeded by every scenario's `Before`
+ * hook (`hooks.steps.ts`) point at something that actually answers `GET /v1/models` — otherwise
+ * every scenario would need its own "AI features are turned off" step just to silence the
+ * "AI provider is unreachable" banner the app's own real factory default (`ai.enabled: true`,
+ * pointed at a local Ollama) would otherwise raise in a sandbox with no Ollama running. Workers
+ * run in separate OS processes from the `onPrepare` hook that starts this, so they can't share a
+ * live handle — only a well-known port number, hence the fixed value rather than an OS-assigned
+ * one.
+ */
+export const SUITE_WIDE_FAKE_AI_PORT = 8934
+export const SUITE_WIDE_FAKE_AI_URL = `http://127.0.0.1:${SUITE_WIDE_FAKE_AI_PORT}`
+
 export interface FakeAiServerOptions {
+  /** Binds to this exact port instead of an OS-assigned one. Only the suite-wide server
+   * (`wdio.conf.ts`'s `onPrepare`) needs this — every per-scenario fake server still gets a fresh
+   * ephemeral port so scenarios never contend over one. */
+  port?: number
   /** Tokens streamed back as separate SSE chunks, in order. */
   tokens?: string[]
   /** Message used for the single group returned by the non-streaming (grouping) completion path.
@@ -174,7 +192,7 @@ export async function startFakeAiServer(
     res.end()
   })
 
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+  await new Promise<void>((resolve) => server.listen(options.port ?? 0, '127.0.0.1', resolve))
   const { port } = server.address() as AddressInfo
 
   return {

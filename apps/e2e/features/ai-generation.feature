@@ -4,6 +4,11 @@ Feature: AI commit-message generation
   I want an AI-drafted commit message
   So that I don't have to write it by hand
 
+  Every AI feature runs against the provider you've configured in Settings
+  — a local Ollama by default. Generating commit batches asks for a whole
+  reviewable plan, splitting your working tree into several commits at
+  once, each with its own editable message and file list.
+
   Background:
     Given the "stash-stack" fixture repository is opened
 
@@ -16,11 +21,21 @@ Feature: AI commit-message generation
     And the sent prompt's user message contains "Repository: stash-stack"
     And the sent prompt's user message contains "Suggested scope:"
 
+  @doc @screenshots
   Scenario: Generating commit batches proposes a reviewable plan and applies the accepted commits
-    Given the AI provider is pointed at a fake server
+    A working tree that mixes more than one logical change together
+    doesn't have to become one lumped commit: generating commit batches
+    asks the AI to split it into a reviewable plan instead of a single
+    message, with each proposed commit getting its own editable message
+    and file list so you can adjust anything before committing. Accepting
+    the plan applies every proposed commit in order, exactly as shown.
+    Given the app language is English
+    And the AI provider is pointed at a fake server
     When I select the working-tree changes in the graph
     And I click the generate-commit-batches button
+    And the interface has settled
     Then the AI batch dialog proposes a first commit "feat: grouped changes"
+    And a full-window screenshot is saved as "doc-ai-commit-batches"
     When I apply the AI commit batch
     Then the repository HEAD commit subject is "feat: grouped changes"
 

@@ -286,7 +286,7 @@
   "newTab.recent": "Dépôts récents",
   "newTab.noRecent": "Aucun dépôt ouvert pour l'instant.",
   "newTab.alreadyOpen": "Ouvert",
-  "aiStatus.disconnectedTitle": "{{provider}} est injoignable",
+  "aiStatus.disconnectedTitle": "Le fournisseur IA est injoignable",
   "aiStatus.disconnectedHint": "L'IA est activée mais rien ne répond sur {{url}} — cliquez pour vérifier vos réglages IA.",
   "aiStatus.dismiss": "Masquer cet avertissement",
   "aiStatus.unknown": "IA",

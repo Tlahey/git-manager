@@ -4,17 +4,33 @@ Feature: Undo and redo a branch checkout
   I want Cmd+Z / Cmd+Shift+Z to undo and redo the checkout
   So that I can move HEAD back and forth without fear
 
+  Checking out a branch or resetting HEAD isn't a one-way door: both go on
+  an undo stack you can step back and forward through with the same
+  shortcuts you'd use in any editor.
+
   Background:
     Given the "feature-branches" fixture repository is opened
 
+  @doc @screenshots
   Scenario: Undoing a checkout returns to the previous branch and redo re-applies it
+    Actions like checking out a branch or resetting HEAD go on the same
+    undo stack you'd expect from any editor: ⌘Z reverts the last one, and
+    ⌘⇧Z re-applies it if you change your mind — no separate "undo this
+    checkout" button to hunt for, and no limit to one step back. The branch
+    indicator (or the HEAD commit, for a reset) reflects every step
+    immediately.
+    Given the app language is English
+    And AI features are turned off
+    And the "feature-branches" fixture repository is opened
     Then the branch indicator reads "main"
     When I check out the "feature/login" branch
     Then the branch indicator reads "feature/login"
     When I undo the last action
     Then the branch indicator reads "main"
     When I redo the last undone action
+    And the interface has settled
     Then the branch indicator reads "feature/login"
+    And a full-window screenshot is saved as "doc-undo-redo"
 
   Scenario: Undoing a reset restores HEAD and redo re-applies it
     Given the "rollback-history" fixture repository is opened

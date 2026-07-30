@@ -4,6 +4,13 @@ Feature: Command palette (⌘K)
   I want a keyboard-driven command palette
   So that I can run global and commit-scoped actions without the native menus
 
+  ⌘K opens the command palette from anywhere in the app — a single,
+  keyboard-driven list of every action you could run: global commands like
+  jumping to a settings section, and, once a commit is selected in the
+  graph, that commit's own scoped actions (reset, revert, branch, tag,
+  cherry-pick, stash apply/pop/drop) filtered to just what makes sense for
+  it.
+
   Background:
     Given the "rollback-history" fixture repository is opened
 
@@ -12,10 +19,22 @@ Feature: Command palette (⌘K)
     And I run the command palette action "settings-ui_customization"
     Then the settings screen is shown
 
+  @doc @screenshots
   Scenario: Resetting to an earlier commit from the palette
+    Selecting a commit in the graph, then opening the palette, offers that
+    commit's own actions — reset, revert, branch, tag, cherry-pick — scoped
+    to exactly that commit rather than a generic list. Running reset from
+    here opens the same confirmation dialog the toolbar's Reset button
+    would, so picking the mixed, soft or hard mode isn't skipped just
+    because you got there by keyboard.
+    Given the app language is English
+    And AI features are turned off
+    And the "rollback-history" fixture repository is opened
     When I select the "HEAD~2" commit in the graph
     And I open the command palette
+    And the interface has settled
     Then the command palette shows commit actions for "HEAD~2"
+    And a full-window screenshot is saved as "doc-command-palette"
     When I run the command palette action "commit-reset-mixed"
     Then the reset dialog is shown
     When I confirm the reset
@@ -99,11 +118,23 @@ Feature: Command palette (⌘K)
     When I run the command palette action "stash-drop"
     Then the repository has 1 stash
 
+  @doc @screenshots
   Scenario: Applying a stash via the palette keeps it but restores its changes
-    Given the "stash-stack" fixture repository is opened
+    There's no separate "stash panel" — every stash action runs through the
+    command palette, on whichever stash you've selected in the graph.
+    Selecting a stash and opening the palette offers Apply, Pop and Drop
+    together: Apply restores its changes to your working tree without
+    removing the stash itself, so you can reuse it later; Pop does the same
+    but removes it once applied, and Drop discards it outright.
+    Given the app language is English
+    And AI features are turned off
+    And the "stash-stack" fixture repository is opened
     And the working tree starts clean
     When I select the "stash@{0}" commit in the graph
     And I open the command palette
+    And the interface has settled
+    Then the command palette is shown
+    And a full-window screenshot is saved as "doc-stash-palette"
     When I run the command palette action "stash-apply"
     Then the repository has 2 stashes
     And the file "notes.txt" exists in the working tree

@@ -3,6 +3,19 @@
     "beforeBuildCommand": "pnpm --filter @git-manager/desktop exec vite build --mode e2e"
   },
   "app": {
+    "windows": [
+      {
+        "title": "",
+        "width": 1600,
+        "height": 1000,
+        "minWidth": 900,
+        "minHeight": 600,
+        "decorations": true,
+        "transparent": true,
+        "titleBarStyle": "Overlay",
+        "dragDropEnabled": false
+      }
+    ],
     "security": {
       "capabilities": [
         "default",

@@ -286,7 +286,7 @@
   "newTab.recent": "Recent repositories",
   "newTab.noRecent": "No repository opened yet.",
   "newTab.alreadyOpen": "Open",
-  "aiStatus.disconnectedTitle": "{{provider}} is unreachable",
+  "aiStatus.disconnectedTitle": "AI provider is unreachable",
   "aiStatus.disconnectedHint": "AI features are enabled but nothing answered at {{url}} — click to review your AI settings.",
   "aiStatus.dismiss": "Dismiss this warning",
   "aiStatus.unknown": "AI",
