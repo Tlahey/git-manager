@@ -120,19 +120,28 @@ shows the real three-button UI, not the debug stand-in.
     graph, marking each step good/bad, and landing on the culprit commit without leaving the app.
   - e2e: `bisect.feature → "Running a bisect converges on the first bad commit"` — ✅ tagged
 
-### Page: The repository sidebar (`sidebar-navigation.feature`) — 🆕 write it
+### Page: The repository sidebar (`sidebar-navigation.feature`) — ✅ done
 
 - **Sub-part — Find a branch fast**
-  - Must show: the search box filters the branch/tag/stash/worktree tree live; "solo mode" (the
-    focus toggle) narrows the graph to just the searched branch; clearing the search restores the
-    full tree.
-  - e2e: `sidebar-navigation.feature → "Searching the sidebar filters and can solo a branch"` — 🆕
-    write it
+  - Must show: the search box filters the branch/tag/stash/worktree tree live with a running
+    matched/total count; solo mode (the focus toggle) is a second, independent way to narrow the
+    graph via a per-branch show/hide toggle; clearing the search restores the full tree.
+  - e2e: `sidebar-navigation.feature → "Searching the sidebar filters and can solo a branch"` — ✅
+    tagged
 - **Sub-part — Keep your important branches at the top**
-  - Must show: pinning/unpinning a branch from its row moves it into (or out of) the pinned group at
-    the top of the tree, and the pin survives a reload.
-  - e2e: `sidebar-navigation.feature → "Pinning a branch keeps it pinned across a reload"` — 🆕 write
-    it
+  - Must show: pinning a branch (hover reveals the pin icon; always visible once pinned) moves it
+    into its own group at the top of the Local section, and the pin survives a reload.
+  - e2e: `sidebar-navigation.feature → "Pinning a branch keeps it pinned across a reload"` — ✅
+    tagged. Every sidebar section (including Local) starts collapsed
+    (`DEFAULT_SECTION_OPEN` in `types.ts`) and that open state is plain component state, not
+    persisted — the scenario expands it explicitly, twice (once before pinning, once after the
+    reload), which is accurate to what a real user has to do too.
+  - Note: added a `data-testid` to the pin button (`BranchItem.tsx`) — none existed before. Also
+    surfaced and documented a WebDriver quirk unrelated to this app (`apps/e2e/README.md`, "One
+    dispatched click, sometimes delivered twice"): a single dispatched click on this toggle
+    occasionally lands twice, silently flipping pinned → unpinned → back off. Worked around in the
+    step itself (re-click until the toggle's own state confirms it landed), not by changing the
+    toggle's behavior.
 
 ---
 
