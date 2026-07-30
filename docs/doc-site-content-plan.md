@@ -125,40 +125,41 @@ Every row below follows this shape:
 
 ## Section: Branches, stashes & worktrees
 
-### Page: Stashing changes (`stash-stack.feature`) — ✴️ tag it
+### Page: Stashing changes (`stash-stack.feature`) — ✅ done
 
 - **Sub-part — Find and restore a stash**
   - Must show: stashes listed in the sidebar; applying/popping/dropping a stash from the command
     palette (there's no separate "stash panel").
-  - e2e: `stash-stack.feature → "The sidebar lists the stashed changes"` — ✴️ tag it
-  - e2e (apply/drop, already written, unused so far): `command-palette.feature → "Applying a stash via the palette keeps it but restores its changes"` — ✴️ tag it
+  - e2e: `stash-stack.feature → "The sidebar lists the stashed changes"` — ✅ tagged
+  - e2e (apply/drop): `command-palette.feature → "Applying a stash via the palette keeps it but restores its changes"` — ✅ tagged (renders on the
+    Command palette page, not this one — see "How a page maps to this plan" above)
 
-### Page: Worktrees (`worktree.feature`) — ✴️ tag it
+### Page: Worktrees (`worktree.feature`) — ✅ done
 
 - **Sub-part — Work across branches at once**
   - Must show: linked worktrees listed in the sidebar; adding one from a branch; removing one
     (and that a dirty worktree requires an explicit force).
-  - e2e: `worktree.feature → "Adding a new worktree"` — ✴️ tag it
+  - e2e: `worktree.feature → "Adding a new worktree"` — ✅ tagged
 
-### Page: Submodules (`submodule.feature`) — ✴️ tag it
+### Page: Submodules (`submodule.feature`) — ✅ done
 
 - **Sub-part — See a repo's submodules**
   - Must show: real git submodules listed in their own sidebar section.
-  - e2e: `submodule.feature → "The sidebar lists a real git submodule"` — ✴️ tag it
+  - e2e: `submodule.feature → "The sidebar lists a real git submodule"` — ✅ tagged
 
-### Page: Detached HEAD (`detached-head.feature`) — ✴️ tag it
+### Page: Detached HEAD (`detached-head.feature`) — ✅ done
 
 - **Sub-part — Know when you're not on a branch**
   - Must show: the toolbar reading "HEAD" instead of a branch name while detached; checking out a
     branch returns to the normal state.
-  - e2e: `detached-head.feature → "The toolbar shows HEAD instead of a branch name"` — ✴️ tag it
+  - e2e: `detached-head.feature → "The toolbar shows HEAD instead of a branch name"` — ✅ tagged
 
-### Page: Undo / redo (`undo-redo.feature`) — ✴️ tag it
+### Page: Undo / redo (`undo-redo.feature`) — ✅ done
 
 - **Sub-part — Move HEAD back and forth without fear**
   - Must show: ⌘Z undoes a branch checkout or reset, ⌘⇧Z redoes it; the branch indicator / HEAD
     commit reflects each step.
-  - e2e: `undo-redo.feature → "Undoing a checkout returns to the previous branch and redo re-applies it"` — ✴️ tag it
+  - e2e: `undo-redo.feature → "Undoing a checkout returns to the previous branch and redo re-applies it"` — ✅ tagged
 
 ---
 

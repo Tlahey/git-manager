@@ -99,11 +99,23 @@ Feature: Command palette (⌘K)
     When I run the command palette action "stash-drop"
     Then the repository has 1 stash
 
+  @doc @screenshots
   Scenario: Applying a stash via the palette keeps it but restores its changes
-    Given the "stash-stack" fixture repository is opened
+    There's no separate "stash panel" — every stash action runs through the
+    command palette, on whichever stash you've selected in the graph.
+    Selecting a stash and opening the palette offers Apply, Pop and Drop
+    together: Apply restores its changes to your working tree without
+    removing the stash itself, so you can reuse it later; Pop does the same
+    but removes it once applied, and Drop discards it outright.
+    Given the app language is English
+    And AI features are turned off
+    And the "stash-stack" fixture repository is opened
     And the working tree starts clean
     When I select the "stash@{0}" commit in the graph
     And I open the command palette
+    And the interface has settled
+    Then the command palette is shown
+    And a full-window screenshot is saved as "doc-stash-palette"
     When I run the command palette action "stash-apply"
     Then the repository has 2 stashes
     And the file "notes.txt" exists in the working tree

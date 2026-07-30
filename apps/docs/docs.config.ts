@@ -48,6 +48,10 @@ export const DOC_SECTIONS: DocSection[] = [
     title: 'When Git gets in the way',
     features: ['merge-editor', 'rebase-conflict', 'rebase-progress', 'fixup-autosquash'],
   },
+  {
+    title: 'Branches, stashes & worktrees',
+    features: ['stash-stack', 'worktree', 'submodule', 'detached-head', 'undo-redo'],
+  },
 ]
 
 /** Where a `@doc` feature that no section claims ends up. */
