@@ -2,8 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-const { showNativeNotification } = vi.hoisted(() => ({ showNativeNotification: vi.fn() }))
-vi.mock('../../hooks/useNotificationWatcher', () => ({ showNativeNotification }))
+// `notifyUser`, not `showNativeNotification`: the dev triggers go through the orchestrator that
+// tries the custom tray popover first and only falls back to the OS banner (there is no tray, and
+// no Tauri host at all, under jsdom).
+const { notifyUser } = vi.hoisted(() => ({ notifyUser: vi.fn() }))
+vi.mock('../../hooks/useNotificationWatcher', () => ({ notifyUser }))
 
 import { NotificationDropdown } from './NotificationDropdown'
 import { useNotificationStore, type AppNotification } from '../../stores/notification.store'
@@ -175,7 +178,7 @@ describe('NotificationDropdown — simulator panel visibility', () => {
 })
 
 describe('NotificationDropdown — dev test triggers', () => {
-  it('adds a notification and fires a native notification when a test trigger is clicked', async () => {
+  it('adds a notification and notifies the user when a test trigger is clicked', async () => {
     vi.stubEnv('DEV', true)
     vi.stubEnv('MODE', 'development')
     const user = userEvent.setup()
@@ -187,8 +190,9 @@ describe('NotificationDropdown — dev test triggers', () => {
     expect(useNotificationStore.getState().notifications[0]).toMatchObject({
       type: 'review_requested',
       prId: 'test-pr-review',
+      authorAvatar: 'https://avatars.githubusercontent.com/u/1?v=4',
     })
-    expect(showNativeNotification).toHaveBeenCalledOnce()
+    expect(notifyUser).toHaveBeenCalledOnce()
   })
 })
 

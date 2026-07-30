@@ -2,8 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-const { showNativeNotification } = vi.hoisted(() => ({ showNativeNotification: vi.fn() }))
-vi.mock('../../../hooks/useNotificationWatcher', () => ({ showNativeNotification }))
+// `notifyUser`, not `showNativeNotification`: the test button goes through the orchestrator that
+// picks a surface from the display-style setting, so that it tests what the user actually gets.
+const { notifyUser } = vi.hoisted(() => ({ notifyUser: vi.fn() }))
+vi.mock('../../../hooks/useNotificationWatcher', () => ({ notifyUser }))
 
 import { NotificationSection } from './NotificationSection'
 import { useSettingsStore } from '../../../stores/settings.store'
@@ -95,22 +97,53 @@ describe('NotificationSection — sounds', () => {
     })
     const user = userEvent.setup()
     render(<NotificationSection />)
-    await user.selectOptions(screen.getByRole('combobox'), 'Glass')
+    // Named, not `getByRole('combobox')`: the display block above renders two more selects.
+    await user.selectOptions(screen.getByRole('combobox', { name: 'macOS sound type' }), 'Glass')
     expect(useSettingsStore.getState().settings.notifications!.soundName).toBe('Glass')
   })
 })
 
-describe('NotificationSection — test notification', () => {
-  it('adds a test notification and fires a native notification', async () => {
+describe('NotificationSection — display', () => {
+  it('defaults to the app popover, visible for 5 seconds', () => {
+    render(<NotificationSection />)
+    expect(screen.getByRole('combobox', { name: 'Style' })).toHaveValue('popover')
+    expect(screen.getByRole('combobox', { name: 'Visible for' })).toHaveValue('5000')
+  })
+
+  it('binds the selected duration, including "until I close it"', async () => {
     const user = userEvent.setup()
     render(<NotificationSection />)
-    await user.click(screen.getByText("Test macOS notification"))
+    const duration = screen.getByRole('combobox', { name: 'Visible for' })
+
+    await user.selectOptions(duration, '12000')
+    expect(useSettingsStore.getState().settings.notifications!.displayDurationMs).toBe(12000)
+
+    await user.selectOptions(duration, '0')
+    expect(useSettingsStore.getState().settings.notifications!.displayDurationMs).toBe(0)
+  })
+
+  // The OS owns a banner's lifetime, so offering a duration next to it would be a dead control.
+  it('binds the selected style and drops the duration picker for the native banner', async () => {
+    const user = userEvent.setup()
+    render(<NotificationSection />)
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Style' }), 'native')
+
+    expect(useSettingsStore.getState().settings.notifications!.displayStyle).toBe('native')
+    expect(screen.queryByRole('combobox', { name: 'Visible for' })).not.toBeInTheDocument()
+  })
+})
+
+describe('NotificationSection — test notification', () => {
+  it('adds a test notification and shows it on the selected surface', async () => {
+    const user = userEvent.setup()
+    render(<NotificationSection />)
+    await user.click(screen.getByText('Send a test notification'))
 
     expect(useNotificationStore.getState().notifications).toHaveLength(1)
     expect(useNotificationStore.getState().notifications[0]).toMatchObject({
       type: 'review_requested',
       prId: 'test-pr-settings',
     })
-    expect(showNativeNotification).toHaveBeenCalledOnce()
+    expect(notifyUser).toHaveBeenCalledOnce()
   })
 })

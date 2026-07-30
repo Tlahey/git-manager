@@ -1,9 +1,20 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
-import { sendNativeNotification } from '../lib/tauri'
+import {
+  clearWindowBackdrop,
+  getTrayIconRect,
+  playSystemSound,
+  raiseAboveMenuBar,
+  sendNativeNotification,
+  type TrayIconRect,
+} from '../lib/tauri'
 import type { NotificationRoute } from '../lib/notifications/notificationRoute'
 
-/** Event the backend emits when the user clicks a notification. Mirrors `commands/notification.rs`. */
-const NOTIFICATION_ACTIVATED_EVENT = 'notification://activated'
+/**
+ * Event the backend emits when the user clicks a notification. Mirrors `commands/notification.rs`.
+ * Exported so the notification popover window (a separate webview) can `emit` this same event
+ * itself on click, reusing the main window's existing listener instead of a second pipeline.
+ */
+export const NOTIFICATION_ACTIVATED_EVENT = 'notification://activated'
 
 export interface NativeNotificationSpec {
   title: string
@@ -37,4 +48,47 @@ export async function apiOnNotificationActivated(
   handler: (route: NotificationRoute) => void
 ): Promise<UnlistenFn> {
   return listen<NotificationRoute>(NOTIFICATION_ACTIVATED_EVENT, (event) => handler(event.payload))
+}
+
+/**
+ * The tray icon's current on-screen rect, or `null` when it isn't available (e.g. Linux) — the
+ * caller's cue to fall back to {@link apiSendNativeNotification} instead of a popover it can't anchor.
+ */
+export async function apiGetTrayIconRect(): Promise<TrayIconRect | null> {
+  return getTrayIconRect()
+}
+
+/** Plays a named macOS system sound (e.g. `'Pop'`) standalone. Failures are swallowed — sound is decoration. */
+export async function apiPlaySystemSound(name: string): Promise<void> {
+  try {
+    await playSystemSound(name)
+  } catch (e) {
+    console.warn('Failed to play system sound:', e)
+  }
+}
+
+/**
+ * Raises the notification popover above the macOS menu bar. Failures are swallowed — the popover
+ * still works, just tucked under the menu bar like a normal window, which is an acceptable (if
+ * less flashy) fallback.
+ */
+export async function apiRaiseAboveMenuBar(): Promise<void> {
+  try {
+    await raiseAboveMenuBar()
+  } catch (e) {
+    console.warn('Failed to raise notification popover above the menu bar:', e)
+  }
+}
+
+/**
+ * Clears the popover window's WKWebView backdrop, so the transparent margin around its card is
+ * really transparent (and its rounded corners are really rounded) rather than an opaque
+ * rectangle. Failures are swallowed: the popover still shows, just as a hard-edged box.
+ */
+export async function apiClearWindowBackdrop(): Promise<void> {
+  try {
+    await clearWindowBackdrop()
+  } catch (e) {
+    console.warn('Failed to clear the notification popover backdrop:', e)
+  }
 }

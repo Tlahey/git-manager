@@ -77,6 +77,8 @@ const DEFAULT_SETTINGS: AppSettings = {
     notifyOnReviewRequested: true,
     notifyOnReviewStatusChanged: true,
     notifyOnNewPr: true,
+    displayStyle: 'popover',
+    displayDurationMs: 5000,
   },
   integrations: {
     gitlabAccounts: [],

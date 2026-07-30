@@ -748,7 +748,20 @@ export interface NotificationSettings {
   notifyOnNewPr?: boolean
   /** Gates both CI outcomes: checks going green and checks failing. */
   notifyOnCi?: boolean
+  /**
+   * How a notification is presented. `popover` is the app's own card, anchored under the menu
+   * bar; `native` is the standard OS banner. `popover` still falls back to `native` on its own
+   * whenever it can't be shown (no tray rect, window creation failure) — this setting is the
+   * user asking for the banner, not the automatic fallback.
+   */
+  displayStyle?: NotificationDisplayStyle
+  /** How long the `popover` style stays on screen before dismissing itself, in milliseconds.
+   * `0` means it stays until the user closes it (or clicks away). Does not apply to `native`,
+   * whose lifetime belongs to Notification Centre. */
+  displayDurationMs?: number
 }
+
+export type NotificationDisplayStyle = 'popover' | 'native'
 
 export interface GitSettings {
   defaultAuthorName: string

@@ -1,10 +1,16 @@
-import { Bell, BellOff, Volume2, VolumeX } from 'lucide-react'
-import type { NotificationSettings } from '@git-manager/git-types'
+import { Bell, BellOff, MonitorSmartphone, Volume2, VolumeX } from 'lucide-react'
+import type { NotificationDisplayStyle, NotificationSettings } from '@git-manager/git-types'
 import { useSettingsStore } from '../../../stores/settings.store'
 import { Separator, Switch, Checkbox, NativeSelect } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { useNotificationStore } from '../../../stores/notification.store'
-import { showNativeNotification } from '../../../hooks/useNotificationWatcher'
+import { notifyUser } from '../../../hooks/useNotificationWatcher'
+import {
+  DEFAULT_DISPLAY_DURATION_MS,
+  DEFAULT_DISPLAY_STYLE,
+  DISPLAY_DURATION_OPTIONS_MS,
+  DISPLAY_STYLE_OPTIONS,
+} from '../../../lib/notifications/notificationDisplay'
 import { FilterableSetting, Highlight } from './settingsSearch'
 
 /**
@@ -76,6 +82,8 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   notifyOnReviewStatusChanged: true,
   notifyOnNewPr: true,
   notifyOnCi: true,
+  displayStyle: DEFAULT_DISPLAY_STYLE,
+  displayDurationMs: DEFAULT_DISPLAY_DURATION_MS,
 }
 
 export function NotificationSection() {
@@ -121,6 +129,80 @@ export function NotificationSection() {
 
       {notifications.enabled && (
         <>
+          {/* Presentation: which surface, and for how long */}
+          <FilterableSetting
+            className="space-y-4"
+            testId="setting-notif-display"
+            match={`${t('notifications.settings.displayTitle')} ${t('notifications.settings.displayDuration')} display affichage popover banner bannière durée duration temps`}
+          >
+            <Separator className="mb-4" />
+            <div className="flex items-start gap-3">
+              <MonitorSmartphone className="mt-0.5 h-4 w-4 text-primary" />
+              <div className="flex flex-1 flex-col gap-3">
+                <div>
+                  <h4 className="text-xs font-semibold text-foreground">
+                    <Highlight text={t('notifications.settings.displayTitle')} />
+                  </h4>
+                  <p className="font-sans text-[10px] text-muted-foreground">
+                    {t('notifications.settings.displayDesc')}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-muted-foreground">
+                    {t('notifications.settings.displayStyle')}
+                  </span>
+                  <NativeSelect
+                    data-testid="setting-notif-display-style"
+                    value={notifications.displayStyle ?? DEFAULT_DISPLAY_STYLE}
+                    onChange={(e) =>
+                      updateNotifications({
+                        displayStyle: e.target.value as NotificationDisplayStyle,
+                      })
+                    }
+                    aria-label={t('notifications.settings.displayStyle')}
+                    className="h-7 min-w-[150px] rounded border border-border bg-background px-2 text-[10px] font-medium text-foreground outline-none transition-colors hover:border-accent-foreground/30 focus:border-primary"
+                  >
+                    {DISPLAY_STYLE_OPTIONS.map(({ value, labelKey }) => (
+                      <option key={value} value={value}>
+                        {t(labelKey)}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                </div>
+
+                {/* The banner's lifetime belongs to Notification Centre, not to us — offering a
+                    duration next to it would be a control that silently does nothing. */}
+                {(notifications.displayStyle ?? DEFAULT_DISPLAY_STYLE) === 'popover' && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground">
+                      {t('notifications.settings.displayDuration')}
+                    </span>
+                    <NativeSelect
+                      data-testid="setting-notif-display-duration"
+                      value={String(notifications.displayDurationMs ?? DEFAULT_DISPLAY_DURATION_MS)}
+                      onChange={(e) =>
+                        updateNotifications({ displayDurationMs: Number(e.target.value) })
+                      }
+                      aria-label={t('notifications.settings.displayDuration')}
+                      className="h-7 min-w-[150px] rounded border border-border bg-background px-2 text-[10px] font-medium text-foreground outline-none transition-colors hover:border-accent-foreground/30 focus:border-primary"
+                    >
+                      {DISPLAY_DURATION_OPTIONS_MS.map((ms) => (
+                        <option key={ms} value={ms}>
+                          {ms === 0
+                            ? t('notifications.settings.displayDurationNever')
+                            : t('notifications.settings.displayDurationSeconds', {
+                                count: ms / 1000,
+                              })}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </div>
+                )}
+              </div>
+            </div>
+          </FilterableSetting>
+
           {/* Events settings */}
           <FilterableSetting
             className="space-y-3"
@@ -192,6 +274,8 @@ export function NotificationSection() {
                     {t('notifications.settings.soundType')}
                   </span>
                   <NativeSelect
+                    data-testid="setting-notif-sound-name"
+                    aria-label={t('notifications.settings.soundType')}
                     value={notifications.soundName || 'default'}
                     onChange={(e) => updateNotifications({ soundName: e.target.value })}
                     className="h-7 min-w-[120px] rounded border border-border bg-background px-2 text-[10px] font-medium text-foreground outline-none transition-colors hover:border-accent-foreground/30 focus:border-primary"
@@ -240,9 +324,12 @@ export function NotificationSection() {
                   prId: 'test-pr-settings',
                   author: 'antoine',
                   url: 'https://github.com/Tlahey/git-manager/pull/247',
+                  authorAvatar: 'https://avatars.githubusercontent.com/u/1?v=4',
                   targetTab: 'waiting',
                 })
-                showNativeNotification(newNotif, t)
+                // `notifyUser`, so the test shows whichever surface is selected above — testing
+                // the OS banner while the popover is the active style would prove nothing.
+                void notifyUser(newNotif, t)
               }}
               className="mt-1 flex items-center gap-2 rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/95"
             >

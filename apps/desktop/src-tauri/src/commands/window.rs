@@ -196,6 +196,34 @@ fn clear_webview_backdrop(window: &WebviewWindow) {
     }
 }
 
+/// Makes a window genuinely transparent — no material, no backdrop — for a window that paints
+/// its own shape and wants real desktop showing through everywhere else.
+///
+/// `transparent: true` at creation is not enough on its own: WKWebView still paints
+/// `underPageBackgroundColor` under the page, so a page with rounded corners renders as a solid
+/// rectangle with the corners merely *drawn* on it (see `clear_webview_backdrop`). Clearing that
+/// is normally a side effect of applying a vibrancy material, which is why the notification
+/// popover used to ask for `hud` purely to get it — and inherited a frosted-glass rectangle
+/// filling the margin around its card. This is the same fix without the material.
+///
+/// Separate from `set_window_vibrancy`'s `"none"` branch on purpose: that branch is what an
+/// ordinary *opaque* theme takes on the main window, where the webview backdrop is exactly what
+/// should be restored, not cleared.
+///
+/// NOT `async` — same main-thread requirement as the two commands around it.
+#[tauri::command]
+pub fn clear_window_backdrop(window: WebviewWindow) {
+    // Pinned dark for the same reason `set_window_vibrancy` pins it: WebKit derives
+    // `underPageBackgroundColor` from the window appearance and repaints it on every change, so
+    // leaving it on "system" means a Mac in light mode repaints an opaque *white* backdrop
+    // straight back over the one just cleared below.
+    if let Err(e) = window.set_theme(Some(Theme::Dark)) {
+        eprintln!("[transparent-window] could not pin window appearance to dark: {e}");
+    }
+    #[cfg(target_os = "macos")]
+    clear_webview_backdrop(&window);
+}
+
 /// The tag `window-vibrancy` gives the `NSVisualEffectView` it installs
 /// (`NS_VIEW_TAG_BLUR_VIEW` in the crate), used to find it again.
 #[cfg(target_os = "macos")]
@@ -375,6 +403,49 @@ fn count_effect_views(window: &WebviewWindow) -> usize {
             }
         }
         count
+    }
+}
+
+/// Raises this window's native level above the system menu bar, so its content visually renders
+/// as if it originates from behind the bar — the same trick a real, shipped Tauri "notch box" app
+/// (github.com/lnB51/Noci) uses: `NSWindow.Level(rawValue: 40)`, above `NSMainMenuWindowLevel`
+/// (24) and `NSStatusWindowLevel` (25) but below the more exotic system levels, plus
+/// `canJoinAllSpaces` so the popover isn't tied to whichever Space was active when it was created
+/// — a notification arriving while the user is in a different Space (or a full-screen app) should
+/// still be able to show. A cross-platform Tauri window (even with `always_on_top`) never reaches
+/// this level on its own; it sits below the menu bar by default like any normal app window.
+///
+/// NOT `async`, for the same reason as `set_window_vibrancy`: AppKit refuses window mutations off
+/// the main thread, and an async command runs on a worker — that failure is invisible to the
+/// caller, so this must stay synchronous.
+#[tauri::command]
+pub fn raise_above_menu_bar(window: WebviewWindow) {
+    #[cfg(target_os = "macos")]
+    {
+        use objc2_app_kit::NSWindow;
+
+        const NOTCH_WINDOW_LEVEL: isize = 40;
+        // NSWindowCollectionBehavior.canJoinAllSpaces (1 << 0) | .stationary (1 << 4): visible
+        // regardless of which Space is active, and not swept along by Mission Control / Spaces
+        // transitions like a normal document window would be.
+        const CAN_JOIN_ALL_SPACES_STATIONARY: u64 = 1 | 16;
+
+        let Ok(ptr) = window.ns_window() else {
+            eprintln!("[notification-popover] no ns_window handle; level left as-is");
+            return;
+        };
+        // SAFETY: `ns_window()` hands back the live NSWindow for this webview window, and the
+        // command is synchronous, which is what puts us on the main thread.
+        unsafe {
+            let ns_window: &NSWindow = &*(ptr as *mut NSWindow);
+            let _: () = objc2::msg_send![ns_window, setLevel: NOTCH_WINDOW_LEVEL];
+            let _: () =
+                objc2::msg_send![ns_window, setCollectionBehavior: CAN_JOIN_ALL_SPACES_STATIONARY];
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = window;
     }
 }
 

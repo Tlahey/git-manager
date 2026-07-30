@@ -8,26 +8,11 @@ import { useSettingsStore } from '../../stores/settings.store'
 import { useTranslation } from '@git-manager/i18n'
 import { Bell, CheckCheck, Trash2, Play, Sparkles } from 'lucide-react'
 import { getNotificationIcon, getNotificationText } from './utils'
-import { showNativeNotification } from '../../hooks/useNotificationWatcher'
+import { notifyUser } from '../../hooks/useNotificationWatcher'
 import { buildNotificationRoute } from '../../lib/notifications/notificationRoute'
 import { routeNotification } from '../../lib/notifications/notificationRouting'
 import { Popover, PopoverTrigger, PopoverContent, Badge, NumberBadge, NativeSelect } from '@git-manager/ui'
-import type { TFunction } from '@git-manager/i18n'
-
-function formatRelativeTime(timestamp: number, t: TFunction): string {
-  const diff = Date.now() - timestamp
-  const seconds = Math.floor(diff / 1000)
-  if (seconds < 60) return t('time.justNow')
-
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return t('time.minutesAgo', { count: minutes })
-
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return t('time.hoursAgo', { count: hours })
-
-  const days = Math.floor(hours / 24)
-  return t('time.daysAgo', { count: days })
-}
+import { formatRelativeTimestamp } from '../../lib/relativeDate'
 
 export function NotificationDropdown() {
   const { t } = useTranslation('common')
@@ -154,7 +139,7 @@ export function NotificationDropdown() {
                           {title}
                         </span>
                         <span className="shrink-0 font-sans text-[9px] text-muted-foreground/60">
-                          {formatRelativeTime(notif.createdAt, t)}
+                          {formatRelativeTimestamp(notif.createdAt, t)}
                         </span>
                       </div>
                       <p className="mt-0.5 line-clamp-2 break-words font-sans text-[10px] leading-snug text-muted-foreground">
@@ -199,10 +184,11 @@ export function NotificationDropdown() {
                         prTitle: 'feat: Add support for dev-mode test notifications',
                         prId: 'test-pr-review',
                         author: 'antoine',
+                        authorAvatar: 'https://avatars.githubusercontent.com/u/1?v=4',
                         url: 'https://github.com/Tlahey/git-manager/pull/247',
                         targetTab: 'waiting',
                       })
-                      showNativeNotification(newNotif, t)
+                      notifyUser(newNotif, t)
                     }}
                     className="h-5.5 flex items-center justify-center rounded border border-amber-500/20 bg-amber-500/5 text-[8px] font-semibold text-amber-400 transition-colors hover:bg-amber-500/10"
                   >
@@ -217,15 +203,19 @@ export function NotificationDropdown() {
                         prTitle: 'fix: Memory leak in GraphRow',
                         prId: 'test-pr-merge',
                         author: 'marie',
+                        authorAvatar: 'https://avatars.githubusercontent.com/u/2?v=4',
                         url: 'https://github.com/Tlahey/git-manager/pull/244',
                         targetTab: 'prs',
                       })
-                      showNativeNotification(newNotif, t)
+                      notifyUser(newNotif, t)
                     }}
                     className="h-5.5 flex items-center justify-center rounded border border-purple-500/20 bg-purple-500/5 text-[8px] font-semibold text-purple-400 transition-colors hover:bg-purple-500/10"
                   >
                     Test Merge
                   </button>
+                  {/* The two CI triggers deliberately carry no `authorAvatar`: a bot author is the
+                      realistic case with no face to show, so these also exercise the popover's
+                      initials fallback next to the two avatar-bearing triggers above. */}
                   <button
                     onClick={() => {
                       const newNotif = useNotificationStore.getState().addNotification({
@@ -238,7 +228,7 @@ export function NotificationDropdown() {
                         url: 'https://github.com/Tlahey/git-manager/pull/250',
                         targetTab: 'prs',
                       })
-                      showNativeNotification(newNotif, t)
+                      notifyUser(newNotif, t)
                     }}
                     className="h-5.5 flex items-center justify-center rounded border border-emerald-500/20 bg-emerald-500/5 text-[8px] font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/10"
                   >
@@ -256,7 +246,7 @@ export function NotificationDropdown() {
                         url: 'https://github.com/Tlahey/git-manager/pull/251',
                         targetTab: 'prs',
                       })
-                      showNativeNotification(newNotif, t)
+                      notifyUser(newNotif, t)
                     }}
                     className="h-5.5 flex items-center justify-center rounded border border-rose-500/20 bg-rose-500/5 text-[8px] font-semibold text-rose-400 transition-colors hover:bg-rose-500/10"
                   >
