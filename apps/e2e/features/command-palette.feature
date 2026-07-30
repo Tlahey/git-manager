@@ -4,6 +4,13 @@ Feature: Command palette (⌘K)
   I want a keyboard-driven command palette
   So that I can run global and commit-scoped actions without the native menus
 
+  ⌘K opens the command palette from anywhere in the app — a single,
+  keyboard-driven list of every action you could run: global commands like
+  jumping to a settings section, and, once a commit is selected in the
+  graph, that commit's own scoped actions (reset, revert, branch, tag,
+  cherry-pick, stash apply/pop/drop) filtered to just what makes sense for
+  it.
+
   Background:
     Given the "rollback-history" fixture repository is opened
 
@@ -12,10 +19,22 @@ Feature: Command palette (⌘K)
     And I run the command palette action "settings-ui_customization"
     Then the settings screen is shown
 
+  @doc @screenshots
   Scenario: Resetting to an earlier commit from the palette
+    Selecting a commit in the graph, then opening the palette, offers that
+    commit's own actions — reset, revert, branch, tag, cherry-pick — scoped
+    to exactly that commit rather than a generic list. Running reset from
+    here opens the same confirmation dialog the toolbar's Reset button
+    would, so picking the mixed, soft or hard mode isn't skipped just
+    because you got there by keyboard.
+    Given the app language is English
+    And AI features are turned off
+    And the "rollback-history" fixture repository is opened
     When I select the "HEAD~2" commit in the graph
     And I open the command palette
+    And the interface has settled
     Then the command palette shows commit actions for "HEAD~2"
+    And a full-window screenshot is saved as "doc-command-palette"
     When I run the command palette action "commit-reset-mixed"
     Then the reset dialog is shown
     When I confirm the reset

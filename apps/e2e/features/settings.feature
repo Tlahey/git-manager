@@ -4,6 +4,12 @@ Feature: Settings
   I want to open the settings and have them laid out correctly
   So that I can configure the app
 
+  Settings opens as a full-screen overlay from anywhere in the app (⌘, on
+  macOS) rather than a separate window, with sections down the side:
+  general, AI, notifications, SSH, appearance and more. Whatever you
+  change there is saved immediately and survives a reload — there is no
+  explicit "save" button to remember.
+
   Scenario: The settings screen opens on the general section
     Given the git-manager application is running
     When I open the settings
@@ -74,8 +80,15 @@ Feature: Settings
     Then the generated SSH public key is shown
     And a real SSH key pair exists at the generated path
 
+  @doc @screenshots
   Scenario: Selecting a built-in theme applies it and persists across a reload
-    Given the git-manager application is running
+    Every built-in theme lives in the appearance tab as a card you can
+    preview and pick. Selecting one applies immediately — no confirm step —
+    and it is still the active theme the next time the app opens, reload
+    or restart included.
+    Given the app language is English
+    And AI features are turned off
+    And the git-manager application is running
     When I open the settings
     And I open the "ui_customization" settings tab
     And I select the "light" theme
@@ -85,7 +98,9 @@ Feature: Settings
     And I open the "ui_customization" settings tab
     Then the active theme is "light"
     When I select the "dark" theme
+    And the interface has settled
     Then the active theme is "dark"
+    And a full-window screenshot is saved as "doc-settings-theme"
 
   @visual
   Scenario: The dark theme card matches the reference snapshot

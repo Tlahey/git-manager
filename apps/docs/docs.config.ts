@@ -56,6 +56,10 @@ export const DOC_SECTIONS: DocSection[] = [
     title: 'AI features',
     features: ['ai-generation'],
   },
+  {
+    title: 'Workflow tools',
+    features: ['command-palette', 'settings'],
+  },
 ]
 
 /** Where a `@doc` feature that no section claims ends up. */

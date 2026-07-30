@@ -221,25 +221,28 @@ anything.
 
 ## Section: Workflow tools
 
-### Page: Command palette (`command-palette.feature`) — ✴️ tag it
+### Page: Command palette (`command-palette.feature`) — ✅ done
 
 - **Sub-part — Run any action without the menus**
   - Must show: ⌘K opens it; it offers global actions and commit-scoped actions (reset, revert,
     branch, tag, cherry-pick) for whatever commit is selected.
-  - e2e: `command-palette.feature → "Resetting to an earlier commit from the palette"` — ✴️ tag it
+  - e2e: `command-palette.feature → "Resetting to an earlier commit from the palette"` — ✅ tagged
 
-### Page: Settings (`settings.feature`) — ✴️ tag it
+### Page: Settings (`settings.feature`) — ✅ done
 
 - **Sub-part — Configure the app**
   - Must show: the sections available (general, AI, notifications, SSH, appearance/themes); that
     settings persist across a reload.
-  - e2e: `settings.feature → "Selecting a built-in theme applies it and persists across a reload"` — ✴️ tag it
+  - e2e: `settings.feature → "Selecting a built-in theme applies it and persists across a reload"` — ✅ tagged
 
-### Page: Notifications (`notifications.feature`) — ✴️ tag it
+### Page: Notifications (`notifications.feature`) — 🚧 blocked
 
 - **Sub-part — Track PR activity from the bell**
   - Must show: the bell's unread count and notification list; marking all read; clearing them.
-  - e2e: `notifications.feature → "Opening the bell shows the seeded notifications and unread count"` — ✴️ tag it
+  - e2e: `notifications.feature → "Opening the bell shows the seeded notifications and unread count"` — 🚧 blocked: the e2e/docs
+    build (`vite build --mode e2e`) leaves `import.meta.env.DEV` true, so the notification dropdown
+    renders its internal "DEV MODE" test-trigger buttons in the screenshot — not something a real
+    user ever sees. See [#193](https://github.com/Tlahey/git-manager/issues/193). Tag once fixed.
 
 ---
 
