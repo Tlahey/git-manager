@@ -18,16 +18,18 @@ docs/screenshots/*.png        (exported by the e2e suite from the real app)
 apps/docs/docs/features/*.md  +  .vitepress/sidebar.json
         │
         ▼  vitepress build   (+ index.md → the landing page,
-.vitepress/dist                  + docs/index.md → the introduction)
-        │
+.vitepress/dist                  + docs/index.md → the introduction,
+        │                         + docs/download.md → the install guide)
         ▼
 the pages artifact
 ```
 
-Two Markdown files are **not** generated and are edited by hand:
-[`index.md`](./index.md) (the landing page host) and
-[`docs/index.md`](./docs/index.md) (the documentation's introduction). Only
-`docs/features/` is wiped and rewritten on each run.
+Three Markdown files are **not** generated and are edited by hand:
+[`index.md`](./index.md) (the landing page host),
+[`docs/index.md`](./docs/index.md) (the documentation's introduction), and
+[`docs/download.md`](./docs/download.md) (how to get the app — the one page
+with nothing to generate it from, since there's no scenario for "download a
+release"). Only `docs/features/` is wiped and rewritten on each run.
 
 ## The home page is the landing page
 
@@ -71,6 +73,17 @@ Both themes are checked against WCAG AA. Watch `--vp-c-text-3` in particular: it
 is VitePress's *placeholder* grey and lands at 3.1:1 on the light background, so
 anything meant to be read (the screenshot captions, the source footnote) uses
 `--vp-c-text-2`.
+
+## Image zoom
+
+Every screenshot in a feature page click-to-zooms via `medium-zoom`, wired up in
+`.vitepress/theme/index.ts`'s `setup()` (scoped to `.vp-doc img`, VitePress's own
+markdown-content wrapper). That scope is deliberate: the landing page renders
+with `layout: false` and never gets wrapped in `.vp-doc`, so its own images
+(the mascot, the feature previews) are correctly left un-zoomable — they're
+decorative, not documentation to inspect closely. Re-initialized on every route
+change, since VitePress is an SPA and a `mounted` hook alone would only ever see
+the first page's images.
 
 ## Commands
 
