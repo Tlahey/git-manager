@@ -788,13 +788,12 @@ covered below).
     branch, tag, cherry-pick) for whatever commit is selected.
   - e2e: `command-palette.feature → "Resetting to an earlier commit from the palette"` — ✅ tagged
 
-### Page: Settings (`settings.feature`)
+### Page: Settings (`settings.feature`) — 🔄 partially done (3 of 6 sub-parts)
 
-`SettingsPage.tsx` has more surface than the one already-tagged sub-part below shows: a top-level
-**Global vs. Repository** split (`Scope = 'general' | 'local'`), eleven global sections, a settings
-search box, and two more scenarios already sitting untagged in the feature file. The Global/Repository
-override *mechanic* itself is meaty enough to get its own page — see "Repository-specific settings"
-below.
+`SettingsPage.tsx` has more surface than the sub-parts below might suggest: a top-level
+**Global vs. Repository** split (`Scope = 'general' | 'local'`), eleven global sections, and a
+settings search box. The Global/Repository override *mechanic* itself is meaty enough to get its
+own page — see "Repository-specific settings" below.
 
 - **Sub-part — Configure the app**
   - Must show: the sections available (general, AI, notifications, SSH, appearance/themes); that
@@ -805,14 +804,20 @@ below.
     activation link shown, and that it can be cancelled mid-flow — this is what makes the Launchpad
     section above meaningful with real data instead of the mock fallback.
   - e2e: `settings.feature → "Starting the GitHub OAuth device flow shows a real device code, and it
-    can be cancelled"` — ✴️ tag it (scenario exists, untagged; drivable today since
-    `github_device_code`/`github_poll_token` are real Tauri commands `command-mocking.feature`
-    already knows how to mock)
+    can be cancelled"` — ✅ tagged (drivable today since `github_device_code`/`github_poll_token`
+    are real Tauri commands hitting the real, unauthenticated `github.com/login/device/code`
+    endpoint — no mock needed). Tagging it surfaced two pre-existing hardcoded-French strings this
+    scenario's own screenshot would otherwise have shipped with — the settings header's "Retour"
+    back button (`SettingsPage.tsx`, now `t('settings.back')`) and the Integrations sidebar's
+    "Fournisseurs" label (`IntegrationSection.tsx`, now `t('settings.integrations.providers')`),
+    both fixed. The rest of `IntegrationSection.tsx` (its GitLab/Bitbucket sub-panels) is still
+    entirely hardcoded French, tracked separately — out of this scenario's own screenshot since it
+    only ever visits the GitHub sub-tab.
 - **Sub-part — Generate an SSH key pair**
   - Must show: Settings → SSH → the key generator, picking a path, and that it writes a real key
     pair to disk (not a placeholder).
-  - e2e: `settings.feature → "Generating a new SSH key pair writes real key files to disk"` — ✴️ tag
-    it (scenario exists, untagged)
+  - e2e: `settings.feature → "Generating a new SSH key pair writes real key files to disk"` — ✅
+    tagged
 - **Sub-part — Find a setting by name**
   - Must show: the search box in the settings side panel filtering both section labels and their
     localized keyword synonyms (e.g. typing "terminal" or "couleur" surfaces Appearance).
