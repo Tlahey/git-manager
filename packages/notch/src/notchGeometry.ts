@@ -95,13 +95,21 @@ export function statusOutputHeight(lineCount: number): number {
 /**
  * The card's rows, top to bottom, as heights. The single source both the layout and the window
  * sizing read — a new row shows up in the window's height for free.
+ *
+ * `bandHeight` defaults to {@link NOTCH_BAND_HEIGHT} — the figure every notched Mac happened to
+ * report as of writing — but takes the real, per-machine `NSScreen.safeAreaInsets.top` when the
+ * caller has one (see `get_notch_metrics` on the Rust side), so the reserved band matches the
+ * actual camera housing instead of a guess that is merely usually right.
  */
-export function notchRowHeights(model: NotchModel): number[] {
+export function notchRowHeights(
+  model: NotchModel,
+  bandHeight: number = NOTCH_BAND_HEIGHT
+): number[] {
   // Three hairlines: under the band, under the header, above the actions. Each is a `border-*` on
   // the row above it, which `withRule` is what makes an honest point of height rather than a
   // pixel quietly eaten out of a padding-driven row (which is how the shipped card's 178 was one
   // point short of what it actually rendered).
-  const rows: number[] = [NOTCH_ROW.band, NOTCH_ROW.rule, NOTCH_ROW.header, NOTCH_ROW.rule]
+  const rows: number[] = [bandHeight, NOTCH_ROW.rule, NOTCH_ROW.header, NOTCH_ROW.rule]
 
   if (model.kind === 'event') rows.push(NOTCH_ROW.eventBody)
   else if (model.kind === 'progress') rows.push(NOTCH_ROW.progressBody)
@@ -115,9 +123,10 @@ export function notchRowHeights(model: NotchModel): number[] {
   return rows
 }
 
-/** How tall the card is for this model, in points. */
-export function measureCardHeight(model: NotchModel): number {
-  return notchRowHeights(model).reduce((sum, h) => sum + h, 0)
+/** How tall the card is for this model, in points. Same `bandHeight` override as
+ *  {@link notchRowHeights}. */
+export function measureCardHeight(model: NotchModel, bandHeight?: number): number {
+  return notchRowHeights(model, bandHeight).reduce((sum, h) => sum + h, 0)
 }
 
 /**

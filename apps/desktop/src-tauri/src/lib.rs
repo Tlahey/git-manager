@@ -80,7 +80,9 @@ use commands::undo::{
     objects_exist, pin_object, recreate_branch_ref, restore_file_blob, restore_worktree_snapshot,
     snapshot_file, snapshot_worktree, snapshot_worktree_always, unpin_object,
 };
-use commands::window::{clear_window_backdrop, raise_above_menu_bar, set_window_vibrancy};
+use commands::window::{
+    clear_window_backdrop, get_notch_metrics, raise_above_menu_bar, set_window_vibrancy,
+};
 use commands::worktree::{
     add_worktree, count_default_file_matches, gone_upstream_branches, list_worktrees,
     prune_worktrees, remove_worktree,
@@ -301,6 +303,7 @@ pub fn run() {
             set_window_vibrancy,
             raise_above_menu_bar,
             clear_window_backdrop,
+            get_notch_metrics,
             // Native notifications (clickable — see commands/notification.rs)
             send_native_notification,
             get_tray_icon_rect,

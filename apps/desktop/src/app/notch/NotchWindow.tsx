@@ -37,6 +37,8 @@ export function NotchWindow({
   externalUrl,
   windowX,
   windowY,
+  bandHeight,
+  housingHalfWidth,
 }: NotchPayload) {
   const { t } = useTranslation('common')
 
@@ -104,9 +106,9 @@ export function NotchWindow({
   useEffect(() => {
     void resizeNotchWindow(
       NOTCH_CARD_WIDTH + HALO_MARGIN * 2,
-      measureCardHeight(model) + HALO_MARGIN * 2
+      measureCardHeight(model, bandHeight) + HALO_MARGIN * 2
     )
-  }, [model])
+  }, [model, bandHeight])
 
   /**
    * Brings the app forward, and — when the card knows where it belongs — navigates there.
@@ -159,6 +161,8 @@ export function NotchWindow({
         onDismiss={presenter.dismiss}
         onPointerEnter={presenter.pauseAutoDismiss}
         onPointerLeave={presenter.resumeAutoDismiss}
+        {...(bandHeight !== undefined ? { bandHeight } : {})}
+        {...(housingHalfWidth !== undefined ? { housingHalfWidth } : {})}
       />
     </div>
   )

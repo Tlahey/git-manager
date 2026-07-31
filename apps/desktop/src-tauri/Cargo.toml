@@ -67,6 +67,21 @@ objc2-app-kit = { version = "0.2.2", default-features = false, features = [
   "NSColor",
   "NSGraphics",
   "NSVisualEffectView",
+  # NSScreen.safeAreaInsets / auxiliaryTopLeft(Right)Area — the real per-machine notch/camera
+  # housing geometry, read once at startup instead of guessed at with a hard-coded 32pt/100pt.
+  # See get_notch_metrics in commands/window.rs.
+  "NSScreen",
+] }
+# NSRect/NSEdgeInsets, the return types of the NSScreen geometry methods above. Same version
+# NSScreen's own "NSScreen" feature already pulls in transitively; declared directly because the
+# types are named in commands/window.rs, not just used through it.
+objc2-foundation = { version = "0.2.2", default-features = false, features = [
+  "std",
+  "NSGeometry",
+  # `MainThreadMarker::new()` — satisfied today by another dependency's own feature request
+  # (Cargo unifies features across the build), but declared directly so this code's own
+  # requirement doesn't depend on staying true of some other crate.
+  "NSThread",
 ] }
 
 [features]

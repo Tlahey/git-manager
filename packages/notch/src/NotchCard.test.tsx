@@ -31,9 +31,42 @@ describe('NotchCard', () => {
     }
   })
 
+  it('takes a real per-machine housing half-width instead of the default guess', () => {
+    // What `get_notch_metrics` feeds in once it has actually asked `NSScreen`.
+    render(
+      <NotchCard
+        tone="info"
+        visible
+        housingHalfWidth={110}
+        bandStart={<span>left</span>}
+        bandEnd={<span>right</span>}
+      >
+        <div />
+      </NotchCard>
+    )
+    const band = screen.getByTestId('notch-band')
+    for (const slot of Array.from(band.children) as HTMLElement[]) {
+      expect(slot.style.maxWidth).not.toBe('100px')
+    }
+  })
+
+  it('takes a real per-machine band height instead of NOTCH_ROW.band', () => {
+    render(
+      <NotchCard tone="info" visible bandHeight={38}>
+        <div />
+      </NotchCard>
+    )
+    expect(screen.getByTestId('notch-band')).toHaveStyle({ height: `${withRule(38)}px` })
+  })
+
   it('renders whatever the band slivers were given', () => {
     render(
-      <NotchCard tone="info" visible bandStart={<span>Git Manager</span>} bandEnd={<button>×</button>}>
+      <NotchCard
+        tone="info"
+        visible
+        bandStart={<span>Git Manager</span>}
+        bandEnd={<button>×</button>}
+      >
         <div />
       </NotchCard>
     )
@@ -103,7 +136,12 @@ describe('NotchCard', () => {
     const onPointerEnter = vi.fn()
     const onPointerLeave = vi.fn()
     render(
-      <NotchCard tone="info" visible onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave}>
+      <NotchCard
+        tone="info"
+        visible
+        onPointerEnter={onPointerEnter}
+        onPointerLeave={onPointerLeave}
+      >
         <div>body</div>
       </NotchCard>
     )

@@ -86,20 +86,13 @@ import {
 } from '../lib/tauri'
 import type { RebaseTodoStep, BisectTerm } from '@git-manager/git-types'
 import { callCommand } from './service'
-import {
-  closeActivitySession,
-  openActivitySession,
-  runActivity,
-} from '../lib/activityCorrelation'
+import { closeActivitySession, openActivitySession, runActivity } from '../lib/activityCorrelation'
 import { i18next, type TFunction } from '@git-manager/i18n'
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
 import { useNotchQueueStore } from '../stores/notchQueue.store'
 import { hookFailureFrom, hookFailureNotchModel } from '../lib/notifications/hookNotch'
 import { repoNameOf } from '../lib/notifications/remoteNotch'
-import {
-  useRemoteProgressStore,
-  type RemoteOperationOutcome,
-} from '../stores/remoteProgress.store'
+import { useRemoteProgressStore, type RemoteOperationOutcome } from '../stores/remoteProgress.store'
 import type { UndoAction } from '../lib/undoActions'
 
 // ─── Undo/Redo helpers ──────────────────────────────────────────────────────
@@ -1131,6 +1124,16 @@ export async function apiGetBranchWebUrl(path: string, branchName: string, remot
  * Recording is best-effort by construction: it wraps the call rather than gating it, so a store
  * that misbehaves cannot stop a push.
  */
+/**
+ * What the failed transfer's card shows: a hook's own output when that is what failed it — "the
+ * pre-push hook stopped the operation" says nothing next to the three lines the hook printed —
+ * and the error's own text otherwise (git's rejection message, a network failure, ...).
+ */
+function transferErrorMessage(error: unknown): string {
+  const hookFailure = hookFailureFrom(error)
+  return hookFailure ? hookFailure.lines.join('\n') : String(error)
+}
+
 async function trackTransfer<T>(
   path: string,
   operation: RemoteOperation,
@@ -1148,7 +1151,7 @@ async function trackTransfer<T>(
   } catch (error) {
     useRemoteProgressStore
       .getState()
-      .finish(path, operation, { kind: 'error', message: String(error) })
+      .finish(path, operation, { kind: 'error', message: transferErrorMessage(error) })
     throw error
   }
 }
@@ -1180,8 +1183,15 @@ export async function apiPullBranch(path: string, remote?: string, strategy?: Pu
   )
 }
 
-export async function apiPushBranch(path: string, remote?: string, force?: boolean) {
+/** `skipHooks` is `git push --no-verify` — the escape hatch for a `pre-push` hook that hangs or
+ *  misfires. */
+export async function apiPushBranch(
+  path: string,
+  remote?: string,
+  force?: boolean,
+  skipHooks?: boolean
+) {
   return trackTransfer(path, 'push', () =>
-    runActivity('git.push', () => pushBranch(path, remote, force))
+    runActivity('git.push', () => pushBranch(path, remote, force, skipHooks))
   )
 }

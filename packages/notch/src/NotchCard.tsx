@@ -35,6 +35,10 @@ export interface NotchCardProps {
   haloMargin?: number
   cardWidth?: number
   housingHalfWidth?: number
+  /** Height of the reserved band, in points. Defaults to {@link NOTCH_ROW}'s `band` (the figure
+   *  every notched Mac happened to report as of writing) — pass the real per-machine
+   *  `NSScreen.safeAreaInsets.top` when the caller has one. */
+  bandHeight?: number
   'data-testid'?: string
 }
 
@@ -60,6 +64,7 @@ export function NotchCard({
   haloMargin = HALO_MARGIN,
   cardWidth = NOTCH_CARD_WIDTH,
   housingHalfWidth = NOTCH_HOUSING_HALF_WIDTH,
+  bandHeight = NOTCH_ROW.band,
   'data-testid': testId = 'notch-card',
 }: NotchCardProps) {
   const toneRgb = NOTCH_TONE_RGB[tone]
@@ -130,7 +135,7 @@ export function NotchCard({
             Only the two slivers either side of the camera housing hold anything. */}
         <div
           data-testid="notch-band"
-          style={{ height: withRule(NOTCH_ROW.band) }}
+          style={{ height: withRule(bandHeight) }}
           className="flex shrink-0 items-center justify-between border-b border-white/5 pl-3 pr-2"
         >
           <div style={slotStyle} className="min-w-0 truncate">

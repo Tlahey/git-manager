@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NotchNotification } from './NotchNotification'
+import { NOTCH_ROW, withRule } from './notchGeometry'
 import type { NotchEventModel, NotchModel } from './types'
 
 const model: NotchEventModel = {
@@ -116,5 +117,18 @@ describe('NotchNotification', () => {
   it('omits the product name slot when the consumer does not want one', () => {
     renderCard()
     expect(screen.queryByText('Git Manager')).not.toBeInTheDocument()
+  })
+
+  it('passes the real per-machine notch geometry down to the card', () => {
+    // What the app feeds in once it has actually asked `NSScreen` (`get_notch_metrics`).
+    renderCard({ bandHeight: 38, housingHalfWidth: 110 })
+    expect(screen.getByTestId('notch-band')).toHaveStyle({ height: `${withRule(38)}px` })
+  })
+
+  it('falls back to the package defaults when no override is given', () => {
+    renderCard()
+    expect(screen.getByTestId('notch-band')).toHaveStyle({
+      height: `${withRule(NOTCH_ROW.band)}px`,
+    })
   })
 })

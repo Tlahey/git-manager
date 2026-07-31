@@ -249,6 +249,21 @@ describe('NotchWindow', () => {
     )
   })
 
+  it('resizes with the real per-machine band height when the payload carries one', async () => {
+    // `get_notch_metrics`'s answer, carried in the URL by `openNotchWindow` — not re-read here.
+    await renderWindow({ bandHeight: 38 })
+
+    expect(resizeMock).toHaveBeenLastCalledWith(
+      expect.any(Number),
+      measureCardHeight(payload.model, 38) + HALO_MARGIN * 2
+    )
+  })
+
+  it('reserves the real per-machine band height on the rendered card', async () => {
+    await renderWindow({ bandHeight: 38 })
+    expect(screen.getByTestId('notch-band')).toHaveStyle({ height: '39px' })
+  })
+
   it('never times out a live progress card', async () => {
     // A clone at 40 % that vanishes after five seconds has told the user nothing and taken away
     // the only thing tracking the operation.

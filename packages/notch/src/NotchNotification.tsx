@@ -27,6 +27,10 @@ export interface NotchNotificationProps {
   onDismiss: () => void
   onPointerEnter?: () => void
   onPointerLeave?: () => void
+  /** The real, per-machine notch geometry (see `NotchCardProps`) — omit to fall back to the
+   *  package's own defaults. */
+  housingHalfWidth?: number
+  bandHeight?: number
 }
 
 /**
@@ -48,6 +52,8 @@ export function NotchNotification({
   onDismiss,
   onPointerEnter,
   onPointerLeave,
+  housingHalfWidth,
+  bandHeight,
 }: NotchNotificationProps) {
   return (
     <NotchCard
@@ -56,6 +62,8 @@ export function NotchNotification({
       {...(onActivate ? { onActivate } : {})}
       {...(onPointerEnter ? { onPointerEnter } : {})}
       {...(onPointerLeave ? { onPointerLeave } : {})}
+      {...(housingHalfWidth !== undefined ? { housingHalfWidth } : {})}
+      {...(bandHeight !== undefined ? { bandHeight } : {})}
       bandStart={
         productName !== undefined ? (
           <span className="block truncate text-[9px] font-semibold uppercase tracking-[0.18em] text-white/35">

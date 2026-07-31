@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::services::git_hooks;
 use crate::utils::{get_git_signature, short_oid};
 use git2::{Cred, FetchOptions, PushOptions, RemoteCallbacks, Repository};
 use serde::{Deserialize, Serialize};
@@ -552,6 +553,52 @@ fn rebase_onto_remote(
 
 // ─── push ─────────────────────────────────────────────────────────────────────
 
+/// The all-zero oid `pre-push` expects for a ref the remote does not have yet — a new branch's
+/// first push, in practice. Git's own hook contract uses this rather than omitting the ref.
+const PRE_PUSH_ZERO_OID: &str = "0000000000000000000000000000000000000000";
+
+/// Runs `pre-push`, mirroring what `git push` itself feeds the hook: one stdin line of the form
+/// `<local ref> SP <local oid> SP <remote ref> SP <remote oid>`, and the remote's name and URL as
+/// positional args. Non-zero stops the push before anything reaches the network.
+///
+/// Only the one ref this call is about to push — unlike the git CLI, which can push several refs
+/// in a single invocation and therefore writes one line per ref, this app always pushes exactly
+/// one branch per call.
+fn run_pre_push_hook(
+    repo: &Repository,
+    remote_name: &str,
+    branch_name: &str,
+    local_oid: git2::Oid,
+) -> Result<(), AppError> {
+    // The remote-tracking ref reflects what this repository last saw of the remote branch — which
+    // is what the hook contract asks for, not a fresh network round trip just to answer it.
+    let remote_oid = repo
+        .find_reference(&format!("refs/remotes/{remote_name}/{branch_name}"))
+        .ok()
+        .and_then(|r| r.target())
+        .map(|oid| oid.to_string())
+        .unwrap_or_else(|| PRE_PUSH_ZERO_OID.to_string());
+
+    let url = repo
+        .find_remote(remote_name)
+        .ok()
+        .and_then(|r| r.url().map(str::to_string))
+        .unwrap_or_default();
+
+    let local_ref = format!("refs/heads/{branch_name}");
+    let stdin = format!("{local_ref} {local_oid} {local_ref} {remote_oid}\n");
+
+    let outcome =
+        git_hooks::run_hook_with_stdin(repo, "pre-push", &[remote_name, &url], Some(&stdin))?;
+    if !outcome.success {
+        return Err(AppError::HookFailed {
+            name: outcome.name,
+            output: outcome.output,
+        });
+    }
+    Ok(())
+}
+
 /// Push to the remote, reporting transfer progress as it goes.
 ///
 /// Same contract as [`fetch`]: `on_progress` is rate-limited, and `|_| {}` is a valid caller.
@@ -559,6 +606,7 @@ pub fn push<F: FnMut(RemoteProgress)>(
     repo: &Repository,
     remote: Option<String>,
     force: bool,
+    skip_hooks: bool,
     mut on_progress: F,
 ) -> Result<(), AppError> {
     let remote_name = resolve_remote_name(repo, remote);
@@ -568,6 +616,15 @@ pub fn push<F: FnMut(RemoteProgress)>(
         .shorthand()
         .ok_or_else(|| AppError::Unknown("HEAD is not on a branch".to_string()))?
         .to_string();
+    let local_oid = head
+        .target()
+        .ok_or_else(|| AppError::Unknown("HEAD has no target commit".to_string()))?;
+
+    // Before anything reaches the network, mirroring `create_commit`'s `--no-verify` escape hatch:
+    // a hook that hangs or misfires must not be able to lock the user out of pushing at all.
+    if !skip_hooks {
+        run_pre_push_hook(repo, &remote_name, &branch_name, local_oid)?;
+    }
 
     let prefix = if force { "+" } else { "" };
     let refspec = format!("{prefix}refs/heads/{branch_name}:refs/heads/{branch_name}");
@@ -1142,7 +1199,7 @@ mod tests {
         f.local.branch("feature", &head_commit, false).unwrap();
         f.local.set_head("refs/heads/feature").unwrap();
 
-        push(&f.local, None, false, |_| {}).unwrap();
+        push(&f.local, None, false, true, |_| {}).unwrap();
 
         let local_reopened = fresh(&f.local_dir);
         let branch = local_reopened
@@ -1177,7 +1234,7 @@ mod tests {
             .set_upstream(Some(&format!("origin/{initial_branch}")))
             .unwrap();
 
-        push(&f.local, None, false, |_| {}).unwrap();
+        push(&f.local, None, false, true, |_| {}).unwrap();
 
         let local_reopened = fresh(&f.local_dir);
         let branch = local_reopened
@@ -1195,5 +1252,158 @@ mod tests {
                 .is_ok(),
             "the push itself must still have gone through"
         );
+    }
+
+    // ─── pre-push ─────────────────────────────────────────────────────────────
+    // Same behaviour libgit2 never gave any hook: `pre-push` was silently skipped for every push
+    // made from this app, while the same push from a terminal ran it.
+
+    /// Installs an executable `pre-push` hook running `script`.
+    fn write_hook(repo: &Repository, name: &str, script: &str) {
+        let dir = repo.path().join("hooks");
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join(name);
+        fs::write(&path, format!("#!/bin/sh\n{script}\n")).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+        }
+    }
+
+    fn remote_head(origin_dir: &Path, branch: &str) -> Option<git2::Oid> {
+        fresh(origin_dir)
+            .find_reference(&format!("refs/heads/{branch}"))
+            .ok()
+            .and_then(|r| r.target())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_failing_pre_push_hook_stops_the_push() {
+        let f = push_fixture("pre-push-fails");
+        let branch = f.local.head().unwrap().shorthand().unwrap().to_string();
+        commit(&f.local, &f.local_dir, "more.txt", "work");
+        let before = remote_head(&f.origin_dir, &branch);
+        write_hook(&f.local, "pre-push", "echo 'blocked by ci' >&2\nexit 1");
+
+        let err = push(&f.local, None, false, false, |_| {}).unwrap_err();
+
+        match err {
+            AppError::HookFailed { name, output } => {
+                assert_eq!(name, "pre-push");
+                assert!(output.iter().any(|l| l.contains("blocked by ci")));
+            }
+            other => panic!("expected a hook failure, got {other:?}"),
+        }
+        assert_eq!(
+            remote_head(&f.origin_dir, &branch),
+            before,
+            "nothing should have reached the remote"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_passing_pre_push_hook_lets_the_push_through() {
+        let f = push_fixture("pre-push-passes");
+        let branch = f.local.head().unwrap().shorthand().unwrap().to_string();
+        let new_oid = commit(&f.local, &f.local_dir, "more.txt", "work");
+        write_hook(&f.local, "pre-push", "exit 0");
+
+        push(&f.local, None, false, false, |_| {}).unwrap();
+
+        assert_eq!(remote_head(&f.origin_dir, &branch), Some(new_oid));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn skip_hooks_is_the_no_verify_escape_hatch_for_a_push() {
+        // A hook that hangs or misfires must not be able to lock the user out of pushing.
+        let f = push_fixture("pre-push-skipped");
+        let branch = f.local.head().unwrap().shorthand().unwrap().to_string();
+        let new_oid = commit(&f.local, &f.local_dir, "more.txt", "work");
+        write_hook(&f.local, "pre-push", "exit 1");
+
+        push(&f.local, None, false, true, |_| {}).unwrap();
+
+        assert_eq!(remote_head(&f.origin_dir, &branch), Some(new_oid));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn pre_push_receives_the_ref_update_line_git_itself_would_send() {
+        let f = push_fixture("pre-push-stdin");
+        let branch = f.local.head().unwrap().shorthand().unwrap().to_string();
+        let new_oid = commit(&f.local, &f.local_dir, "more.txt", "work");
+        let remote_oid = remote_head(&f.origin_dir, &branch).unwrap();
+        write_hook(
+            &f.local,
+            "pre-push",
+            "cat > \"$(dirname \"$0\")/received-stdin\"",
+        );
+
+        push(&f.local, None, false, false, |_| {}).unwrap();
+
+        let received = fs::read_to_string(f.local.path().join("hooks/received-stdin")).unwrap();
+        assert_eq!(
+            received,
+            format!("refs/heads/{branch} {new_oid} refs/heads/{branch} {remote_oid}\n")
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn pre_push_reports_the_zero_oid_for_a_branch_the_remote_has_never_seen() {
+        // Git's own contract for a first push: the remote side of the line is all zeros rather
+        // than omitted, since there is nothing yet to name.
+        let f = push_fixture("pre-push-new-branch");
+        let head_commit = f.local.head().unwrap().peel_to_commit().unwrap();
+        f.local.branch("feature", &head_commit, false).unwrap();
+        f.local.set_head("refs/heads/feature").unwrap();
+        write_hook(
+            &f.local,
+            "pre-push",
+            "cat > \"$(dirname \"$0\")/received-stdin\"",
+        );
+
+        push(&f.local, None, false, false, |_| {}).unwrap();
+
+        let received = fs::read_to_string(f.local.path().join("hooks/received-stdin")).unwrap();
+        assert!(
+            received.ends_with(&format!("{PRE_PUSH_ZERO_OID}\n")),
+            "got {received:?}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn pre_push_receives_the_remote_name_and_url() {
+        let f = push_fixture("pre-push-args");
+        commit(&f.local, &f.local_dir, "more.txt", "work");
+        write_hook(
+            &f.local,
+            "pre-push",
+            "echo \"$1 $2\" > \"$(dirname \"$0\")/received-args\"",
+        );
+
+        push(&f.local, None, false, false, |_| {}).unwrap();
+
+        let received = fs::read_to_string(f.local.path().join("hooks/received-args")).unwrap();
+        assert_eq!(
+            received,
+            format!("origin file://{}\n", f.origin_dir.display())
+        );
+    }
+
+    #[test]
+    fn a_repository_with_no_pre_push_hook_pushes_exactly_as_before() {
+        let f = push_fixture("pre-push-none");
+        let branch = f.local.head().unwrap().shorthand().unwrap().to_string();
+        let new_oid = commit(&f.local, &f.local_dir, "more.txt", "work");
+
+        push(&f.local, None, false, false, |_| {}).unwrap();
+
+        assert_eq!(remote_head(&f.origin_dir, &branch), Some(new_oid));
     }
 }

@@ -14,6 +14,7 @@
 
 import { computeNotchPlacement, measureCardHeight } from '@git-manager/notch'
 import { apiGetTrayIconRect } from '../../api/notification.api'
+import { resolveNotchMetrics } from './notchMetrics'
 import type { NotchRequest } from './notchDelivery'
 
 const WINDOW_LABEL = 'notch'
@@ -32,6 +33,14 @@ export interface NotchPayload extends Omit<NotchRequest, 'importance' | 'nativeF
   /** The OS window's own top-left, halo margin included — what the window animates itself to. */
   windowX: number
   windowY: number
+  /**
+   * The real per-machine notch geometry (`get_notch_metrics`), carried through the URL rather
+   * than re-read by the notch window itself — it is one native call per card either way, and this
+   * is the one place that already makes it, alongside the tray rect and the monitor size.
+   * Undefined falls back to the package's own defaults (see `NotchCardProps`).
+   */
+  bandHeight?: number
+  housingHalfWidth?: number
 }
 
 /**
@@ -78,14 +87,14 @@ export async function openNotchWindow(
   const existing = await WebviewWindow.getByLabel(WINDOW_LABEL)
   if (existing) await existing.close()
 
-  const monitor = await primaryMonitor()
+  const [monitor, metrics] = await Promise.all([primaryMonitor(), resolveNotchMetrics()])
   // A sane fallback screen width when no monitor info comes back, rather than guessing from the
   // tray rect (which sits near the right edge, not the screen's midpoint).
   const screenWidth = monitor ? monitor.size.toLogical(monitor.scaleFactor).width : 1440
 
   const { window: rectangle } = computeNotchPlacement({
     screenWidth,
-    cardHeight: measureCardHeight(payload.model),
+    cardHeight: measureCardHeight(payload.model, metrics?.safeAreaTop),
     // Flush with the tray icon's own top edge (minus a hair) — as high as the window can go
     // without drifting off the top of the screen. The card is taller than the menu bar itself, so
     // most of it still hangs below the bar; only `raise_above_menu_bar` is what lets this top
@@ -93,7 +102,15 @@ export async function openNotchWindow(
     topY: rect.y - 1,
   })
 
-  const full: NotchPayload = { ...payload, windowX: rectangle.x, windowY: rectangle.y }
+  const full: NotchPayload = {
+    ...payload,
+    windowX: rectangle.x,
+    windowY: rectangle.y,
+    ...(metrics?.safeAreaTop !== undefined ? { bandHeight: metrics.safeAreaTop } : {}),
+    ...(metrics?.housingHalfWidth !== undefined
+      ? { housingHalfWidth: metrics.housingHalfWidth }
+      : {}),
+  }
   const encoded = encodeURIComponent(JSON.stringify(full))
 
   const win = new WebviewWindow(WINDOW_LABEL, {

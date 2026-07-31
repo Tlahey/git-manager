@@ -137,6 +137,8 @@ pub async fn push_branch(
     path: String,
     remote: Option<String>,
     force: Option<bool>,
+    // `git push --no-verify` — the escape hatch for a `pre-push` hook that hangs or misfires.
+    skip_hooks: Option<bool>,
 ) -> Result<(), String> {
     let repo_path = path.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
@@ -145,6 +147,7 @@ pub async fn push_branch(
             &repo,
             remote,
             force.unwrap_or(false),
+            skip_hooks.unwrap_or(false),
             progress_emitter(app, repo_path, RemoteOperation::Push),
         )
     })

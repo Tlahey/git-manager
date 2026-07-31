@@ -100,6 +100,18 @@ describe('notchRowHeights', () => {
       expect(sum).toBe(measureCardHeight(model))
     }
   })
+
+  it('takes the real per-machine band height when given one, instead of the default guess', () => {
+    // `get_notch_metrics` reads this off `NSScreen.safeAreaInsets.top` for the actual machine.
+    expect(notchRowHeights(progress, 38).slice(0, 1)).toEqual([38])
+    expect(measureCardHeight(progress, 38)).toBe(
+      measureCardHeight(progress) + (38 - NOTCH_ROW.band)
+    )
+  })
+
+  it('falls back to NOTCH_BAND_HEIGHT when no override is given', () => {
+    expect(notchRowHeights(progress)[0]).toBe(NOTCH_ROW.band)
+  })
 })
 
 describe('withRule', () => {
@@ -134,7 +146,12 @@ describe('bandSlotMaxWidth', () => {
 describe('computeNotchPlacement', () => {
   it('centres the card on the display at the requested top edge', () => {
     const { card } = computeNotchPlacement({ screenWidth: 1512, cardHeight: 178, topY: 0 })
-    expect(card).toEqual({ x: (1512 - NOTCH_CARD_WIDTH) / 2, y: 0, width: NOTCH_CARD_WIDTH, height: 178 })
+    expect(card).toEqual({
+      x: (1512 - NOTCH_CARD_WIDTH) / 2,
+      y: 0,
+      width: NOTCH_CARD_WIDTH,
+      height: 178,
+    })
   })
 
   it('inflates the window by exactly one halo margin on every side', () => {

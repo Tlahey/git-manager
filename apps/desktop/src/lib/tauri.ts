@@ -193,8 +193,7 @@ export const scanRepos = (rootPath: string, maxDepth: number) =>
   invoke<string[]>('scan_repos', { rootPath, maxDepth })
 
 /** Tracked file paths of the repo (`git ls-files`), sorted and de-duplicated. */
-export const listTrackedFiles = (path: string) =>
-  invoke<string[]>('list_tracked_files', { path })
+export const listTrackedFiles = (path: string) => invoke<string[]>('list_tracked_files', { path })
 
 /** All repository files (tracked and untracked, excluding gitignored). */
 export const getRepoFiles = (path: string) => invoke<string[]>('get_repo_files', { path })
@@ -379,8 +378,7 @@ export const rebaseOntoCommit = (path: string, targetOid: string) =>
 
 // ─── Bisect ─────────────────────────────────────────────────────────────────
 
-export const getBisectState = (path: string) =>
-  invoke<BisectState>('get_bisect_state', { path })
+export const getBisectState = (path: string) => invoke<BisectState>('get_bisect_state', { path })
 
 /** Whether `goodRev` is an ancestor of `badRev` — the only valid bisect orientation. */
 export const bisectCheckRange = (path: string, badRev: string, goodRev: string) =>
@@ -528,6 +526,19 @@ export const raiseAboveMenuBar = () => invoke<void>('raise_above_menu_bar')
 
 /** Clears the WKWebView's opaque backdrop so a `transparent` window really is (macOS only). */
 export const clearWindowBackdrop = () => invoke<void>('clear_window_backdrop')
+
+/**
+ * The real per-machine notch/camera-housing geometry, read from `NSScreen` — `null` off macOS, or
+ * if AppKit unexpectedly reports no screens at all. Mirrors the Rust `NotchMetrics`.
+ */
+export interface NotchMetrics {
+  /** `NSScreen.safeAreaInsets.top`, in points. `0` on a display with no camera housing. */
+  safeAreaTop: number
+  /** Half the width of the reserved area the housing occupies. `0` when there is no housing. */
+  housingHalfWidth: number
+}
+
+export const getNotchMetrics = () => invoke<NotchMetrics | null>('get_notch_metrics')
 
 // ─── Native notifications ─────────────────────────────────────────────────────
 
@@ -699,8 +710,15 @@ export interface PullResult {
 export const pullBranch = (path: string, remote?: string, strategy?: PullStrategy) =>
   invoke<PullResult>('pull_branch', { path, remote, strategy })
 
-export const pushBranch = (path: string, remote?: string, force?: boolean) =>
-  invoke<void>('push_branch', { path, remote, force })
+/**
+ * `skipHooks` is `git push --no-verify`.
+ *
+ * `pre-push` runs by default, which is the fix rather than the feature: libgit2 runs no hook of
+ * any kind, so a repository's `pre-push` was silently skipped for every push made from this app
+ * while the same push from a terminal ran it.
+ */
+export const pushBranch = (path: string, remote?: string, force?: boolean, skipHooks?: boolean) =>
+  invoke<void>('push_branch', { path, remote, force, skipHooks })
 
 export const pushBranchTo = (
   path: string,
@@ -817,8 +835,7 @@ export const createWorkingPatch = (path: string, filePaths: string[], destPath: 
 export const previewWorkingPatch = (path: string, filePaths: string[]) =>
   invoke<string>('preview_working_patch', { path, filePaths })
 
-export const readPatchFile = (patchPath: string) =>
-  invoke<string>('read_patch_file', { patchPath })
+export const readPatchFile = (patchPath: string) => invoke<string>('read_patch_file', { patchPath })
 
 export const applyPatch = (path: string, patchPath: string, checkOnly: boolean) =>
   invoke<void>('apply_patch', { path, patchPath, checkOnly })
@@ -843,7 +860,8 @@ export const commitDependencyPatch = (path: string, editDir: string) =>
 
 // ─── Package health check ─────────────────────────────────────────────────────
 
-export const hasPackageManifest = (path: string) => invoke<boolean>('has_package_manifest', { path })
+export const hasPackageManifest = (path: string) =>
+  invoke<boolean>('has_package_manifest', { path })
 
 export const runPackageHealthCheck = (path: string) =>
   invoke<import('@git-manager/git-types').PackageHealthReport>('run_package_health_check', { path })
@@ -979,12 +997,8 @@ export const githubListRepos = (token: string) =>
   invoke<GitHubRepoInfo[]>('github_list_repos', { token })
 
 /** Resolves `sha → avatar URL` for the given commit SHAs; unresolved SHAs are simply absent. */
-export const githubCommitAvatars = (
-  token: string,
-  owner: string,
-  repo: string,
-  shas: string[]
-) => invoke<Record<string, string>>('github_commit_avatars', { token, owner, repo, shas })
+export const githubCommitAvatars = (token: string, owner: string, repo: string, shas: string[]) =>
+  invoke<Record<string, string>>('github_commit_avatars', { token, owner, repo, shas })
 
 /** Detects the repo's GitHub PR template(s) on disk (single file, multi-template dir, or none). */
 export const getPrTemplate = (path: string) =>

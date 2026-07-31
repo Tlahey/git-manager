@@ -1,16 +1,26 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { HALO_MARGIN, measureCardHeight, NOTCH_CARD_WIDTH, type NotchModel } from '@git-manager/notch'
+import {
+  HALO_MARGIN,
+  measureCardHeight,
+  NOTCH_CARD_WIDTH,
+  type NotchModel,
+} from '@git-manager/notch'
 import { openNotchWindow, type NotchPayload } from './notchWindow'
 import type { NotchRequest } from './notchDelivery'
 
-const { trayRect, ctor, getByLabel, closeExisting, listeners, monitor } = vi.hoisted(() => ({
-  trayRect: { current: null as { x: number; y: number } | null },
-  ctor: vi.fn(),
-  getByLabel: vi.fn(),
-  closeExisting: vi.fn(),
-  listeners: { current: new Map<string, (payload?: unknown) => void>() },
-  monitor: { current: null as unknown },
-}))
+const { trayRect, ctor, getByLabel, closeExisting, listeners, monitor, notchMetrics } = vi.hoisted(
+  () => ({
+    trayRect: { current: null as { x: number; y: number } | null },
+    ctor: vi.fn(),
+    getByLabel: vi.fn(),
+    closeExisting: vi.fn(),
+    listeners: { current: new Map<string, (payload?: unknown) => void>() },
+    monitor: { current: null as unknown },
+    notchMetrics: {
+      current: null as { safeAreaTop: number; housingHalfWidth: number } | null,
+    },
+  })
+)
 
 vi.mock('../../api/notification.api', () => ({
   apiGetTrayIconRect: () => Promise.resolve(trayRect.current),
@@ -18,6 +28,10 @@ vi.mock('../../api/notification.api', () => ({
 
 vi.mock('@tauri-apps/api/window', () => ({
   primaryMonitor: () => Promise.resolve(monitor.current),
+}))
+
+vi.mock('./notchMetrics', () => ({
+  resolveNotchMetrics: () => Promise.resolve(notchMetrics.current),
 }))
 
 vi.mock('@tauri-apps/api/webviewWindow', () => ({
@@ -60,6 +74,7 @@ function createdPayload(): NotchPayload {
 beforeEach(() => {
   trayRect.current = { x: 1300, y: 0 }
   monitor.current = { size: { toLogical: () => ({ width: 1512 }) }, scaleFactor: 2 }
+  notchMetrics.current = null
   getByLabel.mockResolvedValue(null)
   listeners.current.clear()
   ctor.mockClear()
@@ -87,6 +102,43 @@ describe('openNotchWindow', () => {
     const options = creationOptions()
     expect(options.height).toBe(measureCardHeight(model) + HALO_MARGIN * 2)
     expect(options.width).toBe(NOTCH_CARD_WIDTH + HALO_MARGIN * 2)
+  })
+
+  it('measures the card with the real per-machine band height when it has one', async () => {
+    notchMetrics.current = { safeAreaTop: 38, housingHalfWidth: 110 }
+
+    const promise = openNotchWindow(request)
+    await vi.waitFor(() => expect(ctor).toHaveBeenCalled())
+    listeners.current.get('tauri://created')?.()
+    await promise
+
+    expect(creationOptions().height).toBe(measureCardHeight(model, 38) + HALO_MARGIN * 2)
+  })
+
+  it('carries the real per-machine geometry to the window, so it need not ask again', async () => {
+    notchMetrics.current = { safeAreaTop: 38, housingHalfWidth: 110 }
+
+    const promise = openNotchWindow(request)
+    await vi.waitFor(() => expect(ctor).toHaveBeenCalled())
+    listeners.current.get('tauri://created')?.()
+    await promise
+
+    const decoded = createdPayload()
+    expect(decoded.bandHeight).toBe(38)
+    expect(decoded.housingHalfWidth).toBe(110)
+  })
+
+  it('omits the geometry fields entirely when there is nothing to go on, rather than sending null', async () => {
+    notchMetrics.current = null
+
+    const promise = openNotchWindow(request)
+    await vi.waitFor(() => expect(ctor).toHaveBeenCalled())
+    listeners.current.get('tauri://created')?.()
+    await promise
+
+    const decoded = createdPayload()
+    expect(decoded).not.toHaveProperty('bandHeight')
+    expect(decoded).not.toHaveProperty('housingHalfWidth')
   })
 
   it('centres the card on the display and hangs the window a halo margin outside it', async () => {

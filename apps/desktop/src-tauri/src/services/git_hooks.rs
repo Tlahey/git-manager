@@ -26,8 +26,9 @@
 use crate::error::AppError;
 use git2::Repository;
 use serde::{Deserialize, Serialize};
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 
 /// What a hook did.
@@ -182,6 +183,23 @@ pub fn output_lines(stdout: &[u8], stderr: &[u8]) -> Vec<String> {
 /// A hook that fails is **not** an `Err`: a non-zero exit is a hook doing its job, and the caller
 /// needs the output to show the user. `Err` is reserved for not being able to run it at all.
 pub fn run_hook(repo: &Repository, name: &str, args: &[&str]) -> Result<HookOutcome, AppError> {
+    run_hook_with_stdin(repo, name, args, None)
+}
+
+/// [`run_hook`], but feeding `stdin` to the child first when given.
+///
+/// `pre-push` is the one hook this module runs that takes input on stdin rather than only
+/// positional args: git writes one `<local ref> SP <local oid> SP <remote ref> SP <remote oid>`
+/// line per ref being pushed. Kept as a separate function from `run_hook` rather than an
+/// always-piped stdin on every call: a hook that never reads it (`pre-commit`, `commit-msg`,
+/// `post-commit`) has nothing to gain from the extra pipe, and every existing call site stays a
+/// one-line call with no `None` to pass.
+pub fn run_hook_with_stdin(
+    repo: &Repository,
+    name: &str,
+    args: &[&str],
+    stdin: Option<&str>,
+) -> Result<HookOutcome, AppError> {
     let Some(hook) = find_hook(repo, name) else {
         return Ok(HookOutcome::absent(name));
     };
@@ -194,9 +212,36 @@ pub fn run_hook(repo: &Repository, name: &str, args: &[&str]) -> Result<HookOutc
         command.env("PATH", path);
     }
 
-    let output = command
-        .output()
-        .map_err(|e| AppError::Unknown(format!("could not run the {name} hook: {e}")))?;
+    let output = match stdin {
+        None => command
+            .output()
+            .map_err(|e| AppError::Unknown(format!("could not run the {name} hook: {e}")))?,
+        Some(input) => {
+            command.stdin(Stdio::piped());
+            command.stdout(Stdio::piped());
+            command.stderr(Stdio::piped());
+            let mut child = command
+                .spawn()
+                .map_err(|e| AppError::Unknown(format!("could not run the {name} hook: {e}")))?;
+            // Written from its own thread rather than before `wait_with_output`: a hook that fills
+            // its stdout/stderr pipe before it has read all of stdin would otherwise deadlock this
+            // process against itself. The ref list here is tiny (one line per pushed ref), so this
+            // is not a real-world concern, but it costs nothing to not depend on that.
+            let mut stdin_pipe = child
+                .stdin
+                .take()
+                .expect("stdin was requested with Stdio::piped()");
+            let input = input.to_string();
+            let writer = std::thread::spawn(move || stdin_pipe.write_all(input.as_bytes()));
+            let output = child
+                .wait_with_output()
+                .map_err(|e| AppError::Unknown(format!("could not run the {name} hook: {e}")))?;
+            // Best-effort: a hook that exited without reading stdin makes the write fail with a
+            // broken pipe, which is the hook's business, not this call's.
+            let _ = writer.join();
+            output
+        }
+    };
 
     Ok(HookOutcome {
         name: name.to_string(),
@@ -210,6 +255,88 @@ pub fn run_hook(repo: &Repository, name: &str, args: &[&str]) -> Result<HookOutc
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn temp_repo(name: &str) -> (std::path::PathBuf, Repository) {
+        let dir = std::env::temp_dir().join(format!("gm-hooks-{name}-{}", std::process::id()));
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = Repository::init(&dir).unwrap();
+        (dir, repo)
+    }
+
+    /// Installs an executable hook script.
+    fn write_hook(repo: &Repository, name: &str, script: &str) {
+        let dir = repo.path().join("hooks");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join(name);
+        std::fs::write(&path, format!("#!/bin/sh\n{script}\n")).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+    }
+
+    // ─── run_hook_with_stdin ────────────────────────────────────────────────────
+    // What `pre-push` needs and `pre-commit`/`commit-msg`/`post-commit` do not: input on stdin
+    // rather than only positional args.
+
+    #[cfg(unix)]
+    #[test]
+    fn stdin_reaches_the_hook() {
+        let (_dir, repo) = temp_repo("stdin-reaches");
+        write_hook(&repo, "pre-push", "cat");
+
+        let outcome =
+            run_hook_with_stdin(&repo, "pre-push", &[], Some("refs/heads/main abc123\n")).unwrap();
+
+        assert!(outcome.success);
+        assert_eq!(outcome.output, vec!["refs/heads/main abc123"]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_hook_that_never_reads_stdin_does_not_hang() {
+        // The write happens on its own thread precisely so a hook like this one — which exits
+        // immediately without touching stdin — can't deadlock the call.
+        let (_dir, repo) = temp_repo("stdin-ignored");
+        write_hook(&repo, "pre-push", "exit 0");
+
+        let outcome =
+            run_hook_with_stdin(&repo, "pre-push", &[], Some("refs/heads/main abc123\n")).unwrap();
+
+        assert!(outcome.success);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn args_and_stdin_both_reach_the_hook() {
+        let (_dir, repo) = temp_repo("stdin-and-args");
+        write_hook(&repo, "pre-push", "echo \"$1 $2\"; cat");
+
+        let outcome = run_hook_with_stdin(
+            &repo,
+            "pre-push",
+            &["origin", "git@example.com:repo.git"],
+            Some("refs/heads/main abc123 refs/heads/main def456\n"),
+        )
+        .unwrap();
+
+        assert_eq!(
+            outcome.output,
+            vec![
+                "origin git@example.com:repo.git",
+                "refs/heads/main abc123 refs/heads/main def456",
+            ]
+        );
+    }
+
+    #[test]
+    fn an_absent_hook_never_touches_stdin() {
+        let (_dir, repo) = temp_repo("stdin-absent");
+        let outcome = run_hook_with_stdin(&repo, "pre-push", &[], Some("irrelevant")).unwrap();
+        assert!(!outcome.ran);
+    }
 
     #[test]
     fn login_path_is_the_last_line_that_looks_like_a_path() {

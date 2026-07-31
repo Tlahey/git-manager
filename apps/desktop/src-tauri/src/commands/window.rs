@@ -449,9 +449,132 @@ pub fn raise_above_menu_bar(window: WebviewWindow) {
     }
 }
 
+/// The real per-machine notch/camera-housing geometry, read from AppKit instead of guessed at.
+///
+/// The notch card's layout (`packages/notch`) used to carry these as hard-coded constants —
+/// `NOTCH_BAND_HEIGHT = 32`, `NOTCH_HOUSING_HALF_WIDTH = 100` — which are the values every
+/// currently-shipping notched Mac happens to report, not a fact about any particular one. This is
+/// what lets the card ask the actual machine instead, and still fall back to those same defaults
+/// (kept in the frontend) wherever this returns `None`.
+#[derive(Debug, Clone, Copy, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NotchMetrics {
+    /// `NSScreen.safeAreaInsets.top`, in points. `0` on a display with no camera housing.
+    pub safe_area_top: f64,
+    /// Half the width of the reserved area the housing occupies — the card is centred on the
+    /// housing, so this is as much of it as either side has to clear. `0` when there is no
+    /// housing at all.
+    pub housing_half_width: f64,
+}
+
+/// Reads [`NotchMetrics`] off the primary display: the one carrying the menu bar (and the tray
+/// icon the notch window is anchored to), which is index 0 of `NSScreen.screens()` — deliberately
+/// not `NSScreen.mainScreen()`, which follows whichever window currently has keyboard focus and
+/// is answering a different question.
+///
+/// `Ok(None)` rather than an error, off macOS or if AppKit unexpectedly reports no screens at all
+/// (headless CI, a display waking up) — the frontend already has its own defaults for exactly
+/// this "nothing to go on" case, and every caller of a Tauri command has to handle a rejection
+/// specially, while `None` is just its ordinary fallback path.
+///
+/// NOT `async`, for the same reason as `raise_above_menu_bar`: `NSScreen` is main-thread-only in
+/// AppKit's own terms, and an async command runs on a worker, where every call here would panic.
+#[tauri::command]
+pub fn get_notch_metrics() -> Result<Option<NotchMetrics>, String> {
+    #[cfg(target_os = "macos")]
+    {
+        Ok(notch_metrics_macos())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Ok(None)
+    }
+}
+
+/// Reads the geometry off `NSScreen.screens()[0]` — the primary display (menu bar, tray icon),
+/// not `NSScreen.mainScreen()`, which follows whichever window has keyboard focus and is a
+/// different question that only coincides with it while the app itself is focused.
+///
+/// Reached through `screens()` + `firstObject` rather than the typed `NSScreen::screens(mtm)`
+/// binding indexed with `.get(0)` — **measured, not assumed**: on this SDK, `NSScreen.screens`
+/// comes back backed by a Swift `ContiguousArrayStorage`, whose `count` reports a different type
+/// encoding than objc2's generated binding expects (`'q'` vs the `'Q'` it verifies against),
+/// which panics the whole process the moment anything asks the array its length — including
+/// `objc2`'s own typed `.get()`, which reads `count` first to bounds-check the index. `firstObject`
+/// never calls `count` at all, so it never hits it.
+#[cfg(target_os = "macos")]
+fn notch_metrics_macos() -> Option<NotchMetrics> {
+    use objc2::rc::Retained;
+    use objc2::runtime::AnyObject;
+    use objc2_foundation::{MainThreadMarker, NSEdgeInsets, NSRect};
+
+    let _mtm = MainThreadMarker::new()?;
+
+    // SAFETY: every send below is read-only, and confined to the main thread the
+    // `MainThreadMarker` above proves this call is on. AppKit is already linked into this binary
+    // by the rest of this file's typed `objc2_app_kit` usage, so resolving `NSScreen` by name
+    // (rather than importing the crate's own binding, which is exactly what this function exists
+    // to avoid indexing into) is safe.
+    unsafe {
+        let screens: Retained<AnyObject> = objc2::msg_send_id![objc2::class!(NSScreen), screens];
+        let screen: Option<Retained<AnyObject>> = objc2::msg_send_id![&*screens, firstObject];
+        let screen = screen?;
+
+        let insets: NSEdgeInsets = objc2::msg_send![&*screen, safeAreaInsets];
+        let left: NSRect = objc2::msg_send![&*screen, auxiliaryTopLeftArea];
+        let right: NSRect = objc2::msg_send![&*screen, auxiliaryTopRightArea];
+
+        Some(NotchMetrics {
+            safe_area_top: insets.top,
+            housing_half_width: housing_half_width(
+                left.origin.x,
+                left.size.width,
+                right.origin.x,
+                right.size.width,
+            ),
+        })
+    }
+}
+
+/// Half the gap between the two safe-area rects flanking the housing.
+///
+/// Takes plain coordinates rather than `NSRect` (both auxiliary areas' `origin.x`/`size.width`) so
+/// the arithmetic is testable on every platform, not only where AppKit exists — the same reason
+/// `git_hooks::resolve_hooks_path` is kept separate from the `Repository` it is usually read from.
+///
+/// `0` when either rect has no width, which is what a display with no camera housing at all
+/// reports for both (`NSZeroRect`) — the one case a caller must not read as "there is a gap of
+/// zero", but as "there is no housing to make room for".
+fn housing_half_width(left_x: f64, left_width: f64, right_x: f64, right_width: f64) -> f64 {
+    if left_width <= 0.0 || right_width <= 0.0 {
+        return 0.0;
+    }
+    ((right_x - (left_x + left_width)) / 2.0).max(0.0)
+}
+
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
-    use super::is_backdrop_layer_class;
+    use super::{housing_half_width, is_backdrop_layer_class};
+
+    #[test]
+    fn housing_half_width_is_the_gap_between_the_two_safe_areas() {
+        // A screen 1512pt wide, the left safe area from 0 to 656, the right from 856 to 1512 —
+        // a 200pt housing centred on the screen, so 100pt either side of its midpoint.
+        assert_eq!(housing_half_width(0.0, 656.0, 856.0, 656.0), 100.0);
+    }
+
+    #[test]
+    fn no_housing_reports_a_zero_half_width() {
+        // NSZeroRect on both sides is what a display with no camera housing reports.
+        assert_eq!(housing_half_width(0.0, 0.0, 0.0, 0.0), 0.0);
+    }
+
+    #[test]
+    fn a_zero_width_area_on_either_side_alone_reports_zero() {
+        // Half a housing measurement is not a measurement; treat it the same as none at all.
+        assert_eq!(housing_half_width(0.0, 656.0, 856.0, 0.0), 0.0);
+        assert_eq!(housing_half_width(0.0, 0.0, 856.0, 656.0), 0.0);
+    }
 
     #[test]
     fn backdrop_layer_is_recognised_and_kept() {

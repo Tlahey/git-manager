@@ -2,10 +2,12 @@ import { emit, listen, type UnlistenFn } from '@tauri-apps/api/event'
 import type { NotchModel } from '@git-manager/notch'
 import {
   clearWindowBackdrop,
+  getNotchMetrics,
   getTrayIconRect,
   playSystemSound,
   raiseAboveMenuBar,
   sendNativeNotification,
+  type NotchMetrics,
   type TrayIconRect,
 } from '../lib/tauri'
 import type { NotificationRoute } from '../lib/notifications/notificationRoute'
@@ -170,5 +172,19 @@ export async function apiClearWindowBackdrop(): Promise<void> {
     await clearWindowBackdrop()
   } catch (e) {
     console.warn('Failed to clear the notification popover backdrop:', e)
+  }
+}
+
+/**
+ * The real per-machine notch/camera-housing geometry, or `null` when there is nothing to go on —
+ * a failed call folds into the same answer as the backend's own "no screens" case, since every
+ * caller already treats `null` as "fall back to the package's defaults".
+ */
+export async function apiGetNotchMetrics(): Promise<NotchMetrics | null> {
+  try {
+    return await getNotchMetrics()
+  } catch (e) {
+    console.warn('Failed to read the notch geometry:', e)
+    return null
   }
 }
