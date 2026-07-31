@@ -569,17 +569,32 @@ one page because a reader who finds one "Explain (LLM)" entry point has effectiv
   - Descriptor: `summary-search.md`. Depends on the Dashboard section below for the Summaries tab
     it lives in.
 
-### Page: Behind the scenes — the Action Journal (`action-journal.feature`) — 🆕 write it
+### Page: Behind the scenes — the Action Journal (`action-journal.feature`) — ✅ done
 
 - **Sub-part — Learn what git-manager actually ran**
   - Must show: opening the journal (footer 🎓 button, or the command palette), picking a recent
     action (e.g. "Commit the staged changes"), and the plain-English explanation of the git
     command(s) it ran — the one AI feature about the app's own behaviour, not the repository's
     contents, so it needs no git data at all.
-  - e2e: `action-journal.feature → "Explaining the commands behind a recent action"` — 🆕 write it
+  - e2e: `action-journal.feature → "Explaining the commands behind a recent action"` — ✅ tagged.
+    Navigates the shared window to `?window=actions` in place (same choice `merge.steps.ts` makes
+    for its own read-only scenarios) rather than driving the real second-`WebviewWindow` flow the
+    footer button triggers — nothing here closes the window, so there's no need for the multi-window
+    handling `merge.steps.ts`'s conflict-resolving scenarios require.
   - Descriptor: `action-explanation.md`. Distinct from the Activity Log page (Workflow tools
     section below), which is the same underlying log read by a debugger instead of a learner — see
     the scope note at the end of this file.
+  - **Gotcha for whoever touches this next**: the frontend batches activity-log entries and flushes
+    them to disk on a 2s timer (`activityLogPersistence.ts`'s `FLUSH_DELAY_MS`), not on every
+    action. A real second window leaves the main window's JS context — and that pending timer —
+    alive in the background while the journal is read; navigating the *shared* window away in
+    place (as this scenario does) tears that context down instead, silently dropping whatever
+    hadn't flushed yet. The scenario waits out the flush delay before navigating
+    (`action-journal.steps.ts`). Found by a "0 actions" empty state that turned out not to be a
+    read-side bug at all. Also: the target action is found by filtering on a distinctive marker in
+    its own commit message (rendered verbatim into the shown command line), not by list position —
+    the on-disk log is process-wide and accumulates across every scenario/run that has ever
+    exercised this same e2e app bundle.
 
 ---
 
