@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-vi.mock('@git-manager/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 vi.mock('./components/GeneralSection', () => ({
   GeneralSection: () => <div data-testid="section-general" />,
 }))
@@ -59,7 +58,7 @@ describe('SettingsPage — navigation', () => {
   it('switches sections when a nav item is clicked, rendering only the active one', async () => {
     const user = userEvent.setup()
     render(<SettingsPage onClose={vi.fn()} />)
-    await user.click(screen.getByText('settings.sections.ssh'))
+    await user.click(screen.getByText('SSH'))
     expect(screen.getByTestId('section-ssh')).toBeInTheDocument()
     expect(screen.queryByTestId('section-general')).not.toBeInTheDocument()
   })
@@ -166,16 +165,13 @@ describe('SettingsPage — per-page reset', () => {
   it('does not show a reset button on non-settings pages (rewards)', async () => {
     const user = userEvent.setup()
     render(<SettingsPage onClose={vi.fn()} />)
-    await user.click(screen.getByText('settings.sections.rewards'))
+    await user.click(screen.getByText('Achievements & Rewards'))
     expect(screen.queryByTestId('reset-to-default')).not.toBeInTheDocument()
   })
 })
 
 describe('SettingsPage — search', () => {
-  // NOTE: this suite's i18n mock returns the key, so labels/keywords are the key strings; the search
-  // matches on substrings of those (e.g. "ssh" ⊂ "settings.sections.ssh"). Real synonym matching
-  // (e.g. "terminal" → Personnalisation) is exercised by the locale keyword keys + parity check.
-  it('filters the nav to the matching pages', async () => {
+  it('filters the nav to the matching pages by label', async () => {
     const user = userEvent.setup()
     render(<SettingsPage onClose={vi.fn()} />)
     await user.type(screen.getByTestId('settings-search'), 'ssh')
@@ -184,13 +180,25 @@ describe('SettingsPage — search', () => {
     expect(screen.queryByTestId('settings-tab-notifications')).not.toBeInTheDocument()
   })
 
+  // "terminal" appears only in UI Customization's keyword synonyms
+  // (settings.search.keywords.ui_customization), not in its "UI Customization" label — proves the
+  // hidden-keyword half of the match, not just the visible-label half the test above already covers.
+  it('filters the nav to the matching pages by hidden keyword synonym', async () => {
+    const user = userEvent.setup()
+    render(<SettingsPage onClose={vi.fn()} />)
+    await user.type(screen.getByTestId('settings-search'), 'terminal')
+    expect(screen.getByTestId('settings-tab-ui_customization')).toBeInTheDocument()
+    expect(screen.queryByTestId('settings-tab-general')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('settings-tab-ssh')).not.toBeInTheDocument()
+  })
+
   it('highlights the matched text within the visible options', async () => {
     const user = userEvent.setup()
     render(<SettingsPage onClose={vi.fn()} />)
     await user.type(screen.getByTestId('settings-search'), 'ssh')
     const mark = screen.getByTestId('settings-tab-ssh').querySelector('mark')
     expect(mark).not.toBeNull()
-    expect(mark).toHaveTextContent('ssh')
+    expect(mark).toHaveTextContent('SSH')
   })
 
   it('shows a no-results message when nothing matches', async () => {
@@ -214,7 +222,7 @@ describe('SettingsPage — close', () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
     render(<SettingsPage onClose={onClose} />)
-    await user.click(screen.getByText('settings.back'))
+    await user.click(screen.getByText('Back'))
     expect(onClose).toHaveBeenCalledOnce()
   })
 })
