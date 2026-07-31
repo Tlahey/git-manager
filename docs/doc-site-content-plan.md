@@ -490,18 +490,23 @@ one page because a reader who finds one "Explain (LLM)" entry point has effectiv
   — everything downstream (the panel, the real map-phase file summaries, the real streamed compose
   call) is exactly what a real click produces. No production code was changed.
 
-### Page: AI code review (`ai-code-review.feature`) — 🆕 write it
+### Page: AI code review (`ai-code-review.feature`) — ✅ done
 
 - **Sub-part — Get a second opinion on your working changes**
   - Must show: right-click the WIP row → *Review changes (LLM)*; the right panel's review flags
     what deserves a second look — this is the one AI feature the app explicitly lets have an
     opinion (every explanation feature above is told not to).
-  - e2e: `ai-code-review.feature → "Reviewing the working changes"` — 🆕 write it
+  - e2e: `ai-code-review.feature → "Reviewing the working changes"` — ✅ tagged
 - **Sub-part — Review a whole branch before opening a PR**
   - Must show: right-click a branch/commit → *Review branch changes (LLM)*, same panel, range-diff
     input instead of the working tree.
-  - e2e: `ai-code-review.feature → "Reviewing a branch's range diff"` — 🆕 write it
+  - e2e: `ai-code-review.feature → "Reviewing a branch's range diff"` — ✅ tagged
   - Descriptor: `code-review.md`
+  - Both reached the same way as "Explaining what changed" above: `CodeReviewPanel.tsx` reuses the
+    identical `ExplanationPanelShell` (even the same `explanation-copy` testid signals "finished"),
+    and both menu entries (`gitTree.wipMenu.reviewChanges`, `.branchMenu.reviewChanges`) dispatch
+    through the same `setAiPanelTarget({ kind: 'reviewWorking' | 'reviewBranch', ... })` store
+    bridge — so the e2e steps reuse that bridge too, no production code changed.
 
 ### Page: Drafting a PR description (`ai-pr-description.feature`) — 🆕 write it
 
