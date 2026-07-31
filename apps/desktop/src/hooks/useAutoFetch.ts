@@ -3,31 +3,35 @@ import { queryClient } from '../lib/queryClient'
 import { apiFetchRemote } from '../api/git.api'
 import { useRepoUIStore } from '../stores/repoUI.store'
 import { useSettingsStore } from '../stores/settings.store'
-import { useWindowFocus } from './useWindowFocus'
 
 /** Matches the store default and the Settings input's ceiling (`GeneralSection`). */
 const DEFAULT_INTERVAL_MINUTES = 1
 const MAX_INTERVAL_MINUTES = 60
 
 /**
- * Background `git fetch` of the ACTIVE repository, every
- * `settings.git.autoFetchIntervalMinutes` minutes (0 disables it), and **only while the app window
- * has focus** — an unattended window must not keep hitting the remote, and the point of the refresh
- * is that what the user is looking at is up to date.
+ * Background `git fetch` of the ACTIVE repository, every `settings.git.autoFetchIntervalMinutes`
+ * minutes (0 disables it) — including while the app window doesn't have focus.
  *
- * Deliberately silent: no toast on success, and errors (offline, missing credentials, a remote
- * that's gone) are swallowed. This runs on its own every minute; surfacing failures here would turn
- * a flaky network into a stream of notifications. The manual Fetch button
- * (`useActionToolbar.handleFetch`) is the one that reports.
+ * That is the point of running it at all: the notch is what makes an unattended repository worth
+ * keeping current, by surfacing what changed without anyone having to be looking. Pausing the
+ * moment the window lost focus (an earlier version of this hook did) would defeat that — the one
+ * time a background fetch is most useful is exactly when nobody is watching it happen.
+ *
+ * Deliberately silent about *how* it went: no toast on success, and a scheduled fetch's own
+ * *failure* (offline, missing credentials, a remote that's gone) is swallowed rather than raised on
+ * the notch — see `background` below and its gate in `NotchRemoteOperations.tsx`. A long-unattended
+ * window with a flaky connection must not turn into a stream of error cards for a transfer nobody
+ * asked for; the manual Fetch button is what reports its own failures. What a background fetch
+ * *found* (branches that moved) still reaches the notch — that is the whole reason for running it
+ * unattended in the first place.
  *
  * It also never touches the undo/redo stacks, unlike the manual fetch: a background refresh that
  * silently cleared the redo stack every minute would eat work the user could still redo.
  *
- * The schedule is timestamp-based rather than a plain `setInterval`, so alt-tabbing in and out
- * doesn't restart the countdown: the elapsed time since the last fetch is carried across focus
- * changes, and coming back to the app after a long absence fetches right away. That timestamp is
- * global, not per-repository — switching tabs therefore fetches the newly active repo on the next
- * tick (within one interval) instead of immediately, which is what keeps tab-hopping from firing a
+ * The schedule is timestamp-based rather than a plain `setInterval`, so a re-render that changes an
+ * unrelated dependency (switching the active repository, say) doesn't restart the countdown: the
+ * elapsed time since the last fetch carries over, and the newly active repo is picked up on the next
+ * tick (within one interval) instead of immediately — which is what keeps tab-hopping from firing a
  * burst of fetches.
  */
 export function useAutoFetch() {
@@ -36,7 +40,6 @@ export function useAutoFetch() {
     (s) => s.settings.git.autoFetchIntervalMinutes ?? DEFAULT_INTERVAL_MINUTES
   )
   const autoPrune = useSettingsStore((s) => s.settings.git.autoPrune ?? true)
-  const focused = useWindowFocus()
 
   const lastFetchAtRef = useRef(Date.now())
   const inFlightRef = useRef(false)
@@ -49,7 +52,7 @@ export function useAutoFetch() {
     if (inFlightRef.current) return
     inFlightRef.current = true
     try {
-      await apiFetchRemote(repo, undefined, prune)
+      await apiFetchRemote(repo, undefined, prune, { background: true })
       // A fetch only moves remote refs: the branches' ahead/behind counts and the graph's remote
       // labels. The working tree is untouched, so `git-status` is left alone.
       queryClient.invalidateQueries({ queryKey: ['branches', repo] })
@@ -63,7 +66,7 @@ export function useAutoFetch() {
   }, [])
 
   useEffect(() => {
-    if (!activeRepo || !focused) return
+    if (!activeRepo) return
     const minutes = Math.min(MAX_INTERVAL_MINUTES, Math.max(0, intervalMinutes))
     if (minutes <= 0) return
 
@@ -88,5 +91,5 @@ export function useAutoFetch() {
       cancelled = true
       if (timer !== undefined) clearTimeout(timer)
     }
-  }, [activeRepo, focused, intervalMinutes, autoPrune, runFetch])
+  }, [activeRepo, intervalMinutes, autoPrune, runFetch])
 }

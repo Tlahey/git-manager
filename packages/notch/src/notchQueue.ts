@@ -1,0 +1,129 @@
+/**
+ * Which card the notch is showing, and which ones are waiting.
+ *
+ * There is exactly one notch, and until now a second notification simply *destroyed* the first
+ * (the popover window has a fixed label, so creating it again replaced whatever was there). That
+ * was survivable while the only source was a GitHub poll every few minutes. It stops being
+ * survivable the moment a running hook, a fetch and a merged PR can land in the same second.
+ *
+ * A pure reducer rather than a store: the desktop app and Storybook drive it from different
+ * places, and the interesting behaviour — coalescing, preemption — is exactly the kind of thing
+ * that should be assertable without mounting anything.
+ */
+
+import { tonePriority } from './notchTones'
+import type { NotchModel } from './types'
+
+/**
+ * The minimum an entry has to be for the queue to order it: something carrying a model.
+ *
+ * Generic rather than `NotchModel` itself so a consumer can queue the whole delivery — its route,
+ * its icon key, how important it is — without restating the model's `id`/`tone`/`kind` alongside
+ * it and then having to keep the two copies in step.
+ */
+export interface NotchQueueEntry {
+  model: NotchModel
+}
+
+export interface NotchQueueState<T extends NotchQueueEntry = NotchQueueEntry> {
+  /** The card on screen, or `null` when the notch is idle. */
+  current: T | null
+  /** Waiting cards, highest priority first. */
+  pending: T[]
+}
+
+/** Typed as `never` so it is assignable to a queue of any entry type. */
+export const emptyNotchQueue: NotchQueueState<never> = { current: null, pending: [] }
+
+function priorityOf(entry: NotchQueueEntry): number {
+  return tonePriority(entry.model.tone, entry.model.kind)
+}
+
+/**
+ * Inserts into a priority-ordered list. `front` puts the entry ahead of its equals instead of
+ * behind them — what a card that was already on screen deserves when it gets bumped.
+ */
+function insertByPriority<T extends NotchQueueEntry>(list: T[], entry: T, front: boolean): T[] {
+  const priority = priorityOf(entry)
+  const index = list.findIndex((other) =>
+    front ? priorityOf(other) <= priority : priorityOf(other) < priority
+  )
+  if (index === -1) return [...list, entry]
+  return [...list.slice(0, index), entry, ...list.slice(index)]
+}
+
+function replaceById<T extends NotchQueueEntry>(list: T[], entry: T): T[] | null {
+  const index = list.findIndex((other) => other.model.id === entry.model.id)
+  if (index === -1) return null
+  return [...list.slice(0, index), entry, ...list.slice(index + 1)]
+}
+
+/**
+ * Whether an arriving card gets to interrupt the one the user is currently reading.
+ *
+ * Only an error does. Priority decides the *order of the waiting list* — that part is a scheduling
+ * question and a live progress card legitimately outranks a merged-PR notice. Taking over the
+ * screen is a different question with a different answer: yanking a card out from under someone
+ * mid-read is jarring, and almost nothing is urgent enough to justify it. A failed hook or a
+ * broken build is; a fetch that just started is not.
+ *
+ * An error does not preempt another error — the first one is still unread, and they would just
+ * trade places.
+ */
+function preemptsCurrent(incoming: NotchQueueEntry, current: NotchQueueEntry): boolean {
+  return incoming.model.tone === 'error' && current.model.tone !== 'error'
+}
+
+/**
+ * Adds a card, or replaces the one that already carries its id.
+ *
+ * Coalescing by id is what makes a live card possible: a progress tick re-enqueues the same id and
+ * lands as an in-place update, rather than as a 40th queued notification for an operation the user
+ * is already watching.
+ *
+ * A card that {@link preemptsCurrent} takes the notch immediately, and the one it displaced goes
+ * back to the head of its priority group rather than being dropped — an error interrupting a
+ * running clone must not lose the clone.
+ */
+export function enqueueNotch<T extends NotchQueueEntry>(
+  state: NotchQueueState<T>,
+  entry: T
+): NotchQueueState<T> {
+  if (state.current?.model.id === entry.model.id) return { ...state, current: entry }
+
+  const coalesced = replaceById(state.pending, entry)
+  if (coalesced) return { ...state, pending: coalesced }
+
+  if (!state.current) return { current: entry, pending: state.pending }
+
+  if (preemptsCurrent(entry, state.current)) {
+    return {
+      current: entry,
+      pending: insertByPriority(state.pending, state.current, true),
+    }
+  }
+
+  return { ...state, pending: insertByPriority(state.pending, entry, false) }
+}
+
+/** Retires the card on screen and promotes the next one. */
+export function dismissCurrentNotch<T extends NotchQueueEntry>(
+  state: NotchQueueState<T>
+): NotchQueueState<T> {
+  const [next, ...rest] = state.pending
+  return { current: next ?? null, pending: rest }
+}
+
+/** Removes a card wherever it is — on screen or still waiting. */
+export function removeNotch<T extends NotchQueueEntry>(
+  state: NotchQueueState<T>,
+  id: string
+): NotchQueueState<T> {
+  if (state.current?.model.id === id) return dismissCurrentNotch(state)
+  return { ...state, pending: state.pending.filter((entry) => entry.model.id !== id) }
+}
+
+/** Every card the queue is holding, on screen first. Handy for a "n more" indicator. */
+export function notchQueueSize(state: NotchQueueState<NotchQueueEntry>): number {
+  return (state.current ? 1 : 0) + state.pending.length
+}

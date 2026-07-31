@@ -3,8 +3,8 @@ import { Spinner, Tooltip, LlmIcon } from '@git-manager/ui'
 import { getAiPreset } from '@git-manager/ai'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useAiStatusStore, type AiConnectionState } from '../../stores/aiStatus.store'
-import { useAiActivityStore, type AiRunOrigin } from '../../stores/aiActivity.store'
-import { useRepoUIStore } from '../../stores/repoUI.store'
+import { useAiActivityStore } from '../../stores/aiActivity.store'
+import { aiFeatureLabel, goToAiRun } from '../../lib/aiRunPresentation'
 
 interface AiStatusIndicatorProps {
   /** Opens Settings › AI, so a failing provider is one click from being fixed. */
@@ -26,51 +26,6 @@ const STATE_LABEL_KEYS: Record<AiConnectionState, string> = {
   checking: 'aiStatus.checking',
   connected: 'aiStatus.connected',
   disconnected: 'aiStatus.disconnected',
-}
-
-/**
- * What each running feature is called, keyed by its `AiFeature.id` from `@git-manager/ai`. A module
- * map can't call `t()`, so it holds keys and the component resolves them.
- *
- * A feature missing from this map still spins the indicator — it just falls back to the generic
- * "Working…" label rather than going unreported, which is the right way round for something whose
- * whole job is to prove the app hasn't frozen.
- */
-const FEATURE_LABEL_KEYS: Record<string, string> = {
-  'summary-commit-message': 'aiStatus.work.commitMessage',
-  'summary-pr-description': 'aiStatus.work.prDescription',
-  'change-explanation': 'aiStatus.work.changeExplanation',
-  // One feature covers the branch, commit and working-tree explanations (it discriminates on its
-  // input's scope), so they share one label rather than three that cannot be told apart here.
-  'summary-explanation': 'aiStatus.work.summaryExplanation',
-  'action-explanation': 'aiStatus.work.actionExplanation',
-  'commit-recompose': 'aiStatus.work.commitRecompose',
-  'code-review': 'aiStatus.work.codeReview',
-  'summary-grouping': 'aiStatus.work.fileGrouping',
-  'daily-summary': 'aiStatus.work.dailySummary',
-  'summary-search': 'aiStatus.work.summarySearch',
-  // The map phases, which is where the minutes go: naming them is what makes a long wait legible
-  // rather than alarming.
-  'file-summary': 'aiStatus.work.fileSummary',
-  'commit-relevance': 'aiStatus.work.commitRelevance',
-  'commit-search-answer': 'aiStatus.work.commitSearchAnswer',
-}
-
-/**
- * Takes the user to the generation that is running: its repository tab, then the panel it came from.
- *
- * The panel is restored *and* the centre slot's other claimants are cleared, the same handoff the AI
- * menu performs — otherwise the panel reopens behind whatever diff the user has since opened, which
- * would make the pill look broken precisely when it is doing its job.
- */
-function goToRun(origin: AiRunOrigin) {
-  const ui = useRepoUIStore.getState()
-  if (ui.activeTab !== origin.repoPath) ui.setActiveTab(origin.repoPath)
-  if (origin.panel) {
-    ui.setActiveDiffFile(null)
-    ui.setActivePrNumber(null)
-    ui.setAiPanelTarget(origin.panel)
-  }
 }
 
 /**
@@ -112,8 +67,7 @@ export function AiStatusIndicator({ onOpenSettings }: AiStatusIndicatorProps) {
     : t('aiStatus.modelSingle', { model })
 
   if (activeRun) {
-    const labelKey = FEATURE_LABEL_KEYS[activeRun.featureId]
-    const label = labelKey ? t(labelKey) : t('aiStatus.working')
+    const label = aiFeatureLabel(activeRun.featureId, t)
     const origin = activeRun.origin
     // Only the feature the count belongs to, and only when there is more than one step: a streaming
     // feature has no steps to report, and "1/1" is noise.
@@ -133,7 +87,7 @@ export function AiStatusIndicator({ onOpenSettings }: AiStatusIndicatorProps) {
             : t('aiStatus.tooltipWorking', { provider: providerLabel, models, task: label })
         }
         state="working"
-        onClick={origin ? () => goToRun(origin) : onOpenSettings}
+        onClick={origin ? () => goToAiRun(origin) : onOpenSettings}
         icon={<Spinner className="h-3.5 w-3.5 text-primary" data-testid="footer-ai-spinner" />}
         label={label}
         labelClassName="text-primary"

@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { MockPR, PRStatus, ReviewStatus, CiStatus } from '../app/pull-requests/types'
-import { MOCK_PRS } from '../app/pull-requests/mockData'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -61,7 +60,14 @@ interface NotificationState {
   notifications: AppNotification[]
   previousPRs: Record<string, PreviousPRSnapshot>
   hasSessionInitialized: boolean
-  mockPRs: MockPR[] // For simulation when offline/no GitHub token
+  /**
+   * The invented pull requests the debug menu mutates, when a development build has loaded them.
+   *
+   * Always empty in a release build: the fixtures are behind a dynamic import that only a build
+   * which could use them carries at all (`lib/devFixtures.ts`), so nothing here names the fixture
+   * module and nothing pulls it into the bundle.
+   */
+  mockPRs: MockPR[]
 
   // Actions
   addNotification: (
@@ -76,6 +82,8 @@ interface NotificationState {
   setSessionInitialized: (val: boolean) => void
 
   // Simulation Actions
+  /** Seeds the fixtures once a development build has loaded them; see `devFixtures.store.ts`. */
+  setMockPRs: (prs: MockPR[]) => void
   simulateChange: (prId: string, actionType: SimulatedChange) => void
 }
 
@@ -95,13 +103,10 @@ export const useNotificationStore = create<NotificationState>()(
       notifications: [],
       previousPRs: {},
       hasSessionInitialized: false,
-      // A copy of the seed data, not the shared MOCK_PRS array itself — simulateChange() below
-      // mutates it. Cloned per-item with a spread rather than JSON.parse(JSON.stringify(...)):
-      // that round-trip serializes createdAt/updatedAt's Date objects into plain strings, which
-      // crashed every consumer of useGitHubData()'s no-token `prs` fallback that sorts by
-      // `pr.updatedAt.getTime()` (WaitingForReviewTab, IssuesTab, ListHelpers) the moment the
-      // Launchpad/Pull Requests tab rendered.
-      mockPRs: MOCK_PRS.map((pr) => ({ ...pr })),
+      // Empty until a development build loads the fixtures into it. `loadDevFixtures()` hands over
+      // per-item copies rather than the shared array, because `simulateChange` below mutates what
+      // it is given.
+      mockPRs: [],
 
       addNotification: (notification) => {
         const newNotif: AppNotification = {
@@ -137,33 +142,35 @@ export const useNotificationStore = create<NotificationState>()(
 
       setSessionInitialized: (hasSessionInitialized) => set({ hasSessionInitialized }),
 
+      setMockPRs: (mockPRs) => set({ mockPRs }),
+
       simulateChange: (prId, actionType) => {
         const { mockPRs } = get()
         let updatedPRs = [...mockPRs]
 
         if (actionType === 'new_pr') {
+          // Cloned from a fixture already in the list rather than written out here. A second
+          // hardcoded pull request in this file would be the one piece of invented data left in a
+          // release bundle, and it would have to be kept plausible by hand as `MockPR` grows.
+          // Nothing to clone means a build with no fixtures, where the debug menu that calls this
+          // does not exist either.
+          const template = updatedPRs[0]
+          if (!template) return
+
           const newNum = Math.floor(Math.random() * 500) + 300
           const newPr: MockPR = {
+            ...template,
             id: `pr-sim-${Date.now()}`,
             number: newNum,
             title: `feat: Simulating new feature implementation #${newNum}`,
-            repo: 'git-manager',
-            repoUrl: 'https://github.com/Tlahey/git-manager',
-            url: `https://github.com/Tlahey/git-manager/pull/${newNum}`,
+            url: `${template.repoUrl}/pull/${newNum}`,
             status: 'open',
             ciStatus: 'running',
-            author: 'jane_dev',
-            authorAvatar: 'https://avatars.githubusercontent.com/u/3?v=4',
-            collaborators: [],
-            filesChanged: 3,
-            additions: 124,
-            deletions: 12,
-            createdAt: new Date(),
-            updatedAt: new Date(),
             reviewStatus: 'pending',
             isDraft: false,
             needsMyReview: true,
-            labels: ['feature'],
+            createdAt: new Date(),
+            updatedAt: new Date(),
             comments: 0,
           }
           updatedPRs = [newPr, ...updatedPRs]

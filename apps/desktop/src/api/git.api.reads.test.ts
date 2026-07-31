@@ -46,6 +46,18 @@ vi.mock('../lib/tauri', async () => {
 import * as tauri from '../lib/tauri'
 import * as api from './git.api'
 import { appEventBus } from '../lib/appEventBus'
+import { remoteOperationKey, useRemoteProgressStore } from '../stores/remoteProgress.store'
+
+/** An `Error` shaped like `toReadableError` produces for an `AppError::HookFailed` payload. */
+function hookFailedError(detail: string): Error {
+  const error = new Error('The pre-push hook stopped the operation') as Error & {
+    code?: string
+    detail?: string
+  }
+  error.code = 'HOOK_FAILED'
+  error.detail = detail
+  return error
+}
 
 const mocked = tauri as unknown as Record<string, ReturnType<typeof vi.fn>>
 const PATH = '/repo/a'
@@ -141,7 +153,7 @@ describe('read-only pass-throughs', () => {
     ['apiListRebaseCommits', 'listRebaseCommits', [PATH, 'baseOid']],
     ['apiFetchRemote', 'fetchRemote', [PATH, 'origin', true]],
     ['apiPullBranch', 'pullBranch', [PATH, 'origin', true]],
-    ['apiPushBranch', 'pushBranch', [PATH, 'origin', false]],
+    ['apiPushBranch', 'pushBranch', [PATH, 'origin', false, true]],
   ] as const)(
     '%s delegates to tauri.%s with the same arguments and returns its result',
     async (apiName, tauriName, args) => {
@@ -167,5 +179,47 @@ describe('read-only pass-throughs', () => {
     mocked.editStashMessage.mockResolvedValue(undefined)
     await api.apiUpdateStashMessage(PATH, 2, 'renamed')
     expect(mocked.editStashMessage).toHaveBeenCalledWith(PATH, 2, 'renamed')
+  })
+})
+
+describe('apiPushBranch — transfer outcome', () => {
+  beforeEach(() => {
+    useRemoteProgressStore.setState({ operations: {} })
+  })
+
+  function pushOutcome() {
+    return useRemoteProgressStore.getState().operations[remoteOperationKey(PATH, 'push')]?.outcome
+  }
+
+  it('records a rejected pre-push hook’s own output, not the generic error text', async () => {
+    // "The pre-push hook stopped the operation" tells the user nothing actionable; the three
+    // lines the hook printed tell them exactly which check failed.
+    mocked.pushBranch.mockRejectedValue(
+      hookFailedError('husky - pre-push hook exited with code 1\nlint failed on src/index.ts')
+    )
+
+    await expect(api.apiPushBranch(PATH, 'origin', false)).rejects.toThrow(Error)
+
+    expect(pushOutcome()).toEqual({
+      kind: 'error',
+      message: 'husky - pre-push hook exited with code 1\nlint failed on src/index.ts',
+    })
+  })
+
+  it('falls back to the error’s own text for a failure that is not a hook', async () => {
+    mocked.pushBranch.mockRejectedValue(new Error('failed to push some refs (non-fast-forward)'))
+
+    await expect(api.apiPushBranch(PATH, 'origin', false)).rejects.toThrow(Error)
+
+    expect(pushOutcome()).toEqual({
+      kind: 'error',
+      message: 'Error: failed to push some refs (non-fast-forward)',
+    })
+  })
+
+  it('records a successful push', async () => {
+    mocked.pushBranch.mockResolvedValue(undefined)
+    await api.apiPushBranch(PATH, 'origin', false)
+    expect(pushOutcome()).toEqual({ kind: 'success' })
   })
 })

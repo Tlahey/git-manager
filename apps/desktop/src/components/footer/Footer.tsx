@@ -40,6 +40,7 @@ import {
 } from '@git-manager/ui'
 import type { Section } from '../../app/settings/SettingsPage'
 import { AiStatusIndicator } from './AiStatusIndicator'
+import { DebugMenu } from './DebugMenu'
 import { openActionJournalWindow } from '../../lib/actionJournalWindow'
 
 interface FooterProps {
@@ -228,6 +229,10 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
       {/* CENTER SECTION: behind the scenes + activity logs + keyboard shortcuts (icon-only,
           tooltip on hover) */}
       <div className="flex items-center gap-1">
+        {/* Every "make the app do X" trigger, in one menu. `import.meta.env.DEV` is a build-time
+            constant, so this branch — and the fixtures `DebugMenu` pulls in — is dead-code-
+            eliminated from a production bundle rather than merely hidden. */}
+        {import.meta.env.DEV && <DebugMenu />}
         {/* Next to the Activity Logs button, and deliberately not merged into it: that view is an IPC
             trace for debugging, this one is a lesson about git. Same source, opposite audiences. */}
         <Tooltip content={t('footer.actionJournal')}>

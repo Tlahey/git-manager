@@ -117,100 +117,31 @@ describe('NotificationDropdown — list', () => {
   })
 })
 
-describe('NotificationDropdown — simulator panel visibility', () => {
-  it('shows the simulator when there is no active GitHub token', async () => {
-    const user = userEvent.setup()
-    render(<NotificationDropdown />)
-    await user.click(screen.getByTitle("Notifications"))
-    expect(screen.getByText("Simulate Change")).toBeInTheDocument()
-  })
-
-  it('hides the PR mutator (but keeps the simulator panel) once a GitHub token is active in production', async () => {
-    useSettingsStore.setState({
-      settings: {
-        ...INITIAL_SETTINGS.settings,
-        github: {
-          accounts: [{ id: 'acc1', token: 'tok', login: 'me' } as never],
-          activeAccountId: 'acc1',
-        },
-      },
-    })
-    const user = userEvent.setup()
-    render(<NotificationDropdown />)
-    await user.click(screen.getByTitle("Notifications"))
-    expect(screen.queryByText("Simulate Change")).not.toBeInTheDocument()
-  })
-
-  it('shows dev-mode test-trigger buttons only in a real `vite dev` build (MODE === "development")', async () => {
+describe('NotificationDropdown — no test affordances', () => {
+  // The simulator panel and the four dev-only "Test …" buttons moved to the footer's debug menu.
+  // A trigger hidden inside the very surface it tests is only discoverable by whoever wrote it,
+  // and this component had grown to twice the size of the list it renders.
+  it('carries no simulator, even in a dev build', async () => {
     vi.stubEnv('DEV', true)
-    vi.stubEnv('MODE', 'development')
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle("Notifications"))
-    expect(screen.getByText('Test Review')).toBeInTheDocument()
-    expect(screen.getByText('DEV MODE')).toBeInTheDocument()
-  })
+    await user.click(screen.getByTitle('Notifications'))
 
-  it('does not show dev-mode test-trigger buttons when DEV is false', async () => {
-    const user = userEvent.setup()
-    render(<NotificationDropdown />)
-    await user.click(screen.getByTitle("Notifications"))
-    expect(screen.queryByText('Test Review')).not.toBeInTheDocument()
-  })
-
-  // Regression test for #193: `vite build --mode e2e` (the e2e/docs-screenshot binary) sets
-  // `import.meta.env.DEV` to `true` — Vite derives it from `PROD = mode === 'production'`, and
-  // `'e2e'` isn't `'production'` either — even though it is a real `tauri build`, not `tauri dev`.
-  // The dev-only badge/buttons must key off `MODE === 'development'` specifically, not bare `DEV`,
-  // or they leak into that build (and into any screenshot captured from it).
-  it('does not show dev-mode test-trigger buttons when DEV is true but MODE is not "development" (e.g. an e2e build)', async () => {
-    vi.stubEnv('DEV', true)
-    vi.stubEnv('MODE', 'e2e')
-    const user = userEvent.setup()
-    render(<NotificationDropdown />)
-    await user.click(screen.getByTitle("Notifications"))
+    expect(screen.queryByText('Simulate Change')).not.toBeInTheDocument()
     expect(screen.queryByText('Test Review')).not.toBeInTheDocument()
     expect(screen.queryByText('DEV MODE')).not.toBeInTheDocument()
-    // The outer "Simulate Change" panel (gated on `DEV || !hasToken`) must still show — this is a
-    // real, disconnected-from-GitHub user's panel, not something the dev-only fix should hide.
-    expect(screen.getByText('Simulate Change')).toBeInTheDocument()
   })
-})
 
-describe('NotificationDropdown — dev test triggers', () => {
-  it('adds a notification and notifies the user when a test trigger is clicked', async () => {
-    vi.stubEnv('DEV', true)
-    vi.stubEnv('MODE', 'development')
+  it('shows nothing extra to a user with no GitHub token either', async () => {
+    // The mock-PR mutator used to appear for anyone token-less, not just in development.
+    useSettingsStore.setState({
+      ...INITIAL_SETTINGS,
+      settings: { ...INITIAL_SETTINGS.settings, github: { accounts: [], activeAccountId: null } },
+    })
     const user = userEvent.setup()
     render(<NotificationDropdown />)
-    await user.click(screen.getByTitle("Notifications"))
-    await user.click(screen.getByText('Test Review'))
+    await user.click(screen.getByTitle('Notifications'))
 
-    expect(useNotificationStore.getState().notifications).toHaveLength(1)
-    expect(useNotificationStore.getState().notifications[0]).toMatchObject({
-      type: 'review_requested',
-      prId: 'test-pr-review',
-      authorAvatar: 'https://avatars.githubusercontent.com/u/1?v=4',
-    })
-    expect(notifyUser).toHaveBeenCalledOnce()
-  })
-})
-
-describe('NotificationDropdown — PR simulator', () => {
-  beforeEach(() => {
-    useNotificationStore.setState({
-      mockPRs: [{ id: 'pr-1', number: 10, repo: 'git-manager', status: 'open' } as never],
-    })
-  })
-
-  it('runs the simulation with the selected PR and (default "merge") action', async () => {
-    const user = userEvent.setup()
-    render(<NotificationDropdown />)
-    await user.click(screen.getByTitle("Notifications"))
-    await user.click(screen.getByText("Run Sim"))
-    expect(useNotificationStore.getState().mockPRs[0]).toMatchObject({
-      id: 'pr-1',
-      status: 'merged',
-    })
+    expect(screen.queryByText('Simulate Change')).not.toBeInTheDocument()
   })
 })

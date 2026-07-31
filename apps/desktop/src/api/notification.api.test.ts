@@ -1,14 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('../lib/tauri', () => ({ sendNativeNotification: vi.fn() }))
+vi.mock('../lib/tauri', () => ({ sendNativeNotification: vi.fn(), getNotchMetrics: vi.fn() }))
 
 const listen = vi.hoisted(() => vi.fn())
 vi.mock('@tauri-apps/api/event', () => ({ listen: (...a: unknown[]) => listen(...a) }))
 
 import * as tauri from '../lib/tauri'
-import { apiSendNativeNotification, apiOnNotificationActivated } from './notification.api'
+import {
+  apiSendNativeNotification,
+  apiOnNotificationActivated,
+  apiGetNotchMetrics,
+} from './notification.api'
 
 const sendNativeNotification = tauri.sendNativeNotification as unknown as ReturnType<typeof vi.fn>
+const getNotchMetrics = tauri.getNotchMetrics as unknown as ReturnType<typeof vi.fn>
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -50,5 +55,29 @@ describe('apiOnNotificationActivated', () => {
     const route = { kind: 'rewards' }
     listen.mock.calls[0][1]({ payload: route })
     expect(handler).toHaveBeenCalledWith(route)
+  })
+})
+
+describe('apiGetNotchMetrics', () => {
+  it('forwards the real per-machine geometry', async () => {
+    const metrics = { safeAreaTop: 38, housingHalfWidth: 110 }
+    getNotchMetrics.mockResolvedValue(metrics)
+
+    await expect(apiGetNotchMetrics()).resolves.toEqual(metrics)
+  })
+
+  it('reports null as-is — a display with no camera housing, not a failure', async () => {
+    getNotchMetrics.mockResolvedValue(null)
+    await expect(apiGetNotchMetrics()).resolves.toBeNull()
+  })
+
+  // A geometry read is decoration, not a gate: no Tauri host (tests, browser dev) or an OS
+  // refusal must not take down whatever asked for the notch's layout.
+  it('swallows a rejection and falls back to null', async () => {
+    getNotchMetrics.mockRejectedValue(new Error('no tauri host'))
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await expect(apiGetNotchMetrics()).resolves.toBeNull()
+    expect(warnSpy).toHaveBeenCalled()
   })
 })

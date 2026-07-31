@@ -38,6 +38,12 @@
       "port": 6006
     },
     {
+      "name": "notch-storybook",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@git-manager/notch", "storybook", "--no-open"],
+      "port": 6010
+    },
+    {
       "name": "desktop-frontend",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@git-manager/desktop", "run", "dev:frontend"],

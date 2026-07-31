@@ -29,7 +29,6 @@ beforeEach(() => {
   invalidateQueries.mockReset()
   useRepoUIStore.setState({ activeRepo: '/repo' })
   setGitSettings(1)
-  vi.spyOn(document, 'hasFocus').mockReturnValue(true)
 })
 
 afterEach(() => {
@@ -51,7 +50,9 @@ describe('useAutoFetch', () => {
 
     await advance(60_000)
     expect(apiFetchRemote).toHaveBeenCalledTimes(1)
-    expect(apiFetchRemote).toHaveBeenLastCalledWith('/repo', undefined, true)
+    expect(apiFetchRemote).toHaveBeenLastCalledWith('/repo', undefined, true, {
+      background: true,
+    })
 
     await advance(60_000)
     expect(apiFetchRemote).toHaveBeenCalledTimes(2)
@@ -62,7 +63,18 @@ describe('useAutoFetch', () => {
     renderHook(() => useAutoFetch())
 
     await advance(60_000)
-    expect(apiFetchRemote).toHaveBeenLastCalledWith('/repo', undefined, false)
+    expect(apiFetchRemote).toHaveBeenLastCalledWith('/repo', undefined, false, {
+      background: true,
+    })
+  })
+
+  it('marks the fetch as scheduled, so the notch keeps quiet about it', async () => {
+    // The hook is documented as silent, and the notch is part of that: a progress card here would
+    // fire every minute, focused or not, for a transfer nobody asked for.
+    renderHook(() => useAutoFetch())
+
+    await advance(60_000)
+    expect(apiFetchRemote.mock.lastCall?.[3]).toEqual({ background: true })
   })
 
   it('honours a custom interval', async () => {
@@ -92,33 +104,16 @@ describe('useAutoFetch', () => {
     expect(apiFetchRemote).not.toHaveBeenCalled()
   })
 
-  it('does not fetch while the window is unfocused', async () => {
+  it('keeps fetching while the window is unfocused', async () => {
+    // The point of running at all: the notch is what makes an unattended repository worth keeping
+    // current, and pausing the moment the window lost focus would defeat that.
     renderHook(() => useAutoFetch())
 
     act(() => {
       window.dispatchEvent(new Event('blur'))
     })
     await advance(60_000 * 3)
-    expect(apiFetchRemote).not.toHaveBeenCalled()
-  })
-
-  // The countdown is timestamp-based, so time spent unfocused still counts: coming back after more
-  // than one interval fetches straight away instead of restarting a fresh minute.
-  it('fetches on regaining focus when an interval already elapsed in the background', async () => {
-    renderHook(() => useAutoFetch())
-
-    act(() => {
-      window.dispatchEvent(new Event('blur'))
-    })
-    await advance(60_000 * 2)
-    expect(apiFetchRemote).not.toHaveBeenCalled()
-
-    act(() => {
-      window.dispatchEvent(new Event('focus'))
-    })
-    // The re-armed timer's delay is already 0 — no interval left to wait out.
-    await advance(0)
-    expect(apiFetchRemote).toHaveBeenCalledTimes(1)
+    expect(apiFetchRemote).toHaveBeenCalledTimes(3)
   })
 
   it('invalidates the branch and log queries of the fetched repo', async () => {

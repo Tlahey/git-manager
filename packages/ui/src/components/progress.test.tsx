@@ -49,6 +49,25 @@ describe('Progress', () => {
     expect(bar).toHaveAccessibleName('Sync')
   })
 
+  it('drops aria-valuenow when indeterminate, rather than announcing a made-up 0%', () => {
+    render(<Progress indeterminate />)
+    const bar = screen.getByRole('progressbar')
+    expect(bar).not.toHaveAttribute('aria-valuenow')
+    expect(bar).toHaveAttribute('aria-busy', 'true')
+  })
+
+  it('animates a travelling sliver instead of a width-driven fill when indeterminate', () => {
+    render(<Progress indeterminate data-testid="p" />)
+    const fill = screen.getByTestId('p').firstElementChild as HTMLElement
+    expect(fill.className).toContain('animate-progress-indeterminate')
+    expect(fill.style.width).toBe('')
+  })
+
+  it('is not busy when it has a real value', () => {
+    render(<Progress value={40} />)
+    expect(screen.getByRole('progressbar')).not.toHaveAttribute('aria-busy')
+  })
+
   it('applies a custom indicator class and forwards the ref', () => {
     const ref = createRef<HTMLDivElement>()
     render(<Progress ref={ref} value={50} indicatorClassName="bg-success" data-testid="p" />)

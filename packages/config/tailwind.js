@@ -127,6 +127,20 @@ export default {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      // Shared keyframes. Only for animations a *primitive* in packages/ui needs — a keyframe used
+      // by exactly one feature component belongs in a scoped <style> next to it (see the notch
+      // card's halo pulse), not here, where it costs every consumer a rule nothing references.
+      keyframes: {
+        // The sliver that travels across an indeterminate <Progress> track. Overshoots on both
+        // sides so the bar enters and leaves cleanly instead of appearing to bounce off the ends.
+        'progress-indeterminate': {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(400%)' },
+        },
+      },
+      animation: {
+        'progress-indeterminate': 'progress-indeterminate 1.4s ease-in-out infinite',
+      },
     },
   },
   plugins: [

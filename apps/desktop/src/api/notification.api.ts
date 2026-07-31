@@ -1,10 +1,13 @@
-import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { emit, listen, type UnlistenFn } from '@tauri-apps/api/event'
+import type { NotchModel } from '@git-manager/notch'
 import {
   clearWindowBackdrop,
+  getNotchMetrics,
   getTrayIconRect,
   playSystemSound,
   raiseAboveMenuBar,
   sendNativeNotification,
+  type NotchMetrics,
   type TrayIconRect,
 } from '../lib/tauri'
 import type { NotificationRoute } from '../lib/notifications/notificationRoute'
@@ -15,6 +18,85 @@ import type { NotificationRoute } from '../lib/notifications/notificationRoute'
  * itself on click, reusing the main window's existing listener instead of a second pipeline.
  */
 export const NOTIFICATION_ACTIVATED_EVENT = 'notification://activated'
+
+/**
+ * Emitted by the notch window for any action it can't perform itself.
+ *
+ * The window handles exactly two ids on its own — `activate` (follow the card's route) and
+ * `open-external` (open its URL) — because those are the only two that need nothing but the
+ * payload. Everything a future producer invents ("Show output" on a failed hook, "Restart" on a
+ * dead dev server) needs the stores and the router, which live in the main window; this is how it
+ * gets there without every new kind of card editing `NotchWindow.tsx`.
+ */
+export const NOTCH_ACTION_EVENT = 'notch://action'
+
+export interface NotchActionPayload {
+  actionId: string
+  /** The `model.id` of the card the action came from, so a late event can't be applied to the
+   *  card that replaced it. */
+  notchId: string
+}
+
+/**
+ * Emitted by the notch window as it closes itself — a timer running out, the ✕, a click away.
+ *
+ * The queue lives in the main window (the notch window is transient and dies with its card), so
+ * this is how it learns the slot is free and promotes whatever was waiting. Without it a queue
+ * would stall on its first card forever.
+ */
+export const NOTCH_DISMISSED_EVENT = 'notch://dismissed'
+
+export interface NotchDismissedPayload {
+  notchId: string
+}
+
+/**
+ * Sent to the notch window to replace the card it is showing, in place.
+ *
+ * The window's content is baked into its URL at creation, which is what avoids a race between the
+ * window mounting and its content arriving — but it also means an update has nowhere to go. This
+ * is that channel, and it is what makes the queue's coalescing real rather than nominal: a
+ * progress tick re-enqueues the same id, and the card on screen changes instead of being torn down
+ * and rebuilt (which would restart its entrance animation on every frame of progress).
+ */
+export const NOTCH_UPDATE_EVENT = 'notch://update'
+
+export interface NotchUpdatePayload {
+  model: NotchModel
+}
+
+/** Reports an action the notch window could not perform itself. Called from that window. */
+export async function apiEmitNotchAction(payload: NotchActionPayload): Promise<void> {
+  await emit(NOTCH_ACTION_EVENT, payload)
+}
+
+/** Reports that the card closed itself. Called from the notch window. */
+export async function apiEmitNotchDismissed(payload: NotchDismissedPayload): Promise<void> {
+  await emit(NOTCH_DISMISSED_EVENT, payload)
+}
+
+/** Pushes a new model into the open notch window. Called from the main window. */
+export async function apiEmitNotchUpdate(payload: NotchUpdatePayload): Promise<void> {
+  await emit(NOTCH_UPDATE_EVENT, payload)
+}
+
+export async function apiOnNotchAction(
+  handler: (payload: NotchActionPayload) => void
+): Promise<UnlistenFn> {
+  return listen<NotchActionPayload>(NOTCH_ACTION_EVENT, (event) => handler(event.payload))
+}
+
+export async function apiOnNotchDismissed(
+  handler: (payload: NotchDismissedPayload) => void
+): Promise<UnlistenFn> {
+  return listen<NotchDismissedPayload>(NOTCH_DISMISSED_EVENT, (event) => handler(event.payload))
+}
+
+export async function apiOnNotchUpdate(
+  handler: (payload: NotchUpdatePayload) => void
+): Promise<UnlistenFn> {
+  return listen<NotchUpdatePayload>(NOTCH_UPDATE_EVENT, (event) => handler(event.payload))
+}
 
 export interface NativeNotificationSpec {
   title: string
@@ -90,5 +172,19 @@ export async function apiClearWindowBackdrop(): Promise<void> {
     await clearWindowBackdrop()
   } catch (e) {
     console.warn('Failed to clear the notification popover backdrop:', e)
+  }
+}
+
+/**
+ * The real per-machine notch/camera-housing geometry, or `null` when there is nothing to go on —
+ * a failed call folds into the same answer as the backend's own "no screens" case, since every
+ * caller already treats `null` as "fall back to the package's defaults".
+ */
+export async function apiGetNotchMetrics(): Promise<NotchMetrics | null> {
+  try {
+    return await getNotchMetrics()
+  } catch (e) {
+    console.warn('Failed to read the notch geometry:', e)
+    return null
   }
 }

@@ -4,6 +4,7 @@ import {
   DEFAULT_DISPLAY_DURATION_MS,
   DISPLAY_DURATION_OPTIONS_MS,
   DISPLAY_STYLE_OPTIONS,
+  migrateDisplayStyle,
   resolveDisplayDurationMs,
   resolveDisplayStyle,
 } from './notificationDisplay'
@@ -19,14 +20,39 @@ function settings(overrides: Partial<NotificationSettings> = {}): NotificationSe
   }
 }
 
+describe('migrateDisplayStyle', () => {
+  it('maps the old "popover" spelling onto the notch', () => {
+    // settings.store deep-merges what it rehydrates, so this string keeps arriving from old
+    // localStorage snapshots long after the union stopped containing it.
+    expect(migrateDisplayStyle('popover')).toBe('notch')
+  })
+
+  it('passes current values through', () => {
+    expect(migrateDisplayStyle('notch')).toBe('notch')
+    expect(migrateDisplayStyle('native')).toBe('native')
+  })
+
+  it('rejects anything it does not recognise instead of guessing', () => {
+    expect(migrateDisplayStyle('banner')).toBeUndefined()
+    expect(migrateDisplayStyle(undefined)).toBeUndefined()
+  })
+})
+
 describe('resolveDisplayStyle', () => {
-  it('defaults to the app popover — for absent settings and for a pre-existing snapshot that predates the field', () => {
-    expect(resolveDisplayStyle(undefined)).toBe('popover')
-    expect(resolveDisplayStyle(settings())).toBe('popover')
+  it('defaults to the notch — for absent settings and for a snapshot that predates the field', () => {
+    expect(resolveDisplayStyle(undefined)).toBe('notch')
+    expect(resolveDisplayStyle(settings())).toBe('notch')
   })
 
   it('honours an explicit choice', () => {
     expect(resolveDisplayStyle(settings({ displayStyle: 'native' }))).toBe('native')
+  })
+
+  it('keeps a user who chose the popover on the notch, not on the banner', () => {
+    // The failure this guards: an unmapped legacy value falls through to the default *or* to
+    // `native`, silently turning the app's own surface off for every existing user.
+    const stored = { ...settings(), displayStyle: 'popover' } as unknown as NotificationSettings
+    expect(resolveDisplayStyle(stored)).toBe('notch')
   })
 })
 
@@ -57,6 +83,12 @@ describe('option lists', () => {
   })
 
   it('covers every display style exactly once', () => {
-    expect(DISPLAY_STYLE_OPTIONS.map((o) => o.value)).toEqual(['popover', 'native'])
+    expect(DISPLAY_STYLE_OPTIONS.map((o) => o.value)).toEqual(['notch', 'native'])
+  })
+
+  it('gives each style a description, since the choice changes what gets raised at all', () => {
+    for (const option of DISPLAY_STYLE_OPTIONS) {
+      expect(option.descKey).toBeTruthy()
+    }
   })
 })

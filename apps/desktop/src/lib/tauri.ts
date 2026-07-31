@@ -80,12 +80,28 @@ function toReadableError(err: unknown, rawMessage: string): unknown {
   try {
     const parsed = JSON.parse(rawMessage)
     if (parsed && typeof parsed.message === 'string') {
-      return new Error(parsed.message)
+      const error = new Error(parsed.message) as AppErrorLike
+      // `code` and `detail` used to be dropped here, which made them unreachable from any call
+      // site — the payload was flattened to its `message` and the rest thrown away. That was
+      // invisible until something needed the long version: a failed hook's own output, which *is*
+      // the error as far as the user is concerned ("pre-commit failed" says nothing; the three
+      // lines it printed say everything).
+      if (typeof parsed.code === 'string') error.code = parsed.code
+      if (typeof parsed.detail === 'string') error.detail = parsed.detail
+      return error
     }
   } catch {
     // Not JSON: not an AppError payload, nothing to unwrap.
   }
   return err
+}
+
+/** An `Error` carrying the rest of an `AppError` payload. See `toReadableError`. */
+export interface AppErrorLike extends Error {
+  /** The `AppError` variant's stable code, e.g. `HOOK_FAILED`. */
+  code?: string
+  /** The long form, when the variant has one. Newline-separated. */
+  detail?: string
 }
 
 function record(
@@ -177,8 +193,7 @@ export const scanRepos = (rootPath: string, maxDepth: number) =>
   invoke<string[]>('scan_repos', { rootPath, maxDepth })
 
 /** Tracked file paths of the repo (`git ls-files`), sorted and de-duplicated. */
-export const listTrackedFiles = (path: string) =>
-  invoke<string[]>('list_tracked_files', { path })
+export const listTrackedFiles = (path: string) => invoke<string[]>('list_tracked_files', { path })
 
 /** All repository files (tracked and untracked, excluding gitignored). */
 export const getRepoFiles = (path: string) => invoke<string[]>('get_repo_files', { path })
@@ -363,8 +378,7 @@ export const rebaseOntoCommit = (path: string, targetOid: string) =>
 
 // ─── Bisect ─────────────────────────────────────────────────────────────────
 
-export const getBisectState = (path: string) =>
-  invoke<BisectState>('get_bisect_state', { path })
+export const getBisectState = (path: string) => invoke<BisectState>('get_bisect_state', { path })
 
 /** Whether `goodRev` is an ancestor of `badRev` — the only valid bisect orientation. */
 export const bisectCheckRange = (path: string, badRev: string, goodRev: string) =>
@@ -513,6 +527,19 @@ export const raiseAboveMenuBar = () => invoke<void>('raise_above_menu_bar')
 /** Clears the WKWebView's opaque backdrop so a `transparent` window really is (macOS only). */
 export const clearWindowBackdrop = () => invoke<void>('clear_window_backdrop')
 
+/**
+ * The real per-machine notch/camera-housing geometry, read from `NSScreen` — `null` off macOS, or
+ * if AppKit unexpectedly reports no screens at all. Mirrors the Rust `NotchMetrics`.
+ */
+export interface NotchMetrics {
+  /** `NSScreen.safeAreaInsets.top`, in points. `0` on a display with no camera housing. */
+  safeAreaTop: number
+  /** Half the width of the reserved area the housing occupies. `0` when there is no housing. */
+  housingHalfWidth: number
+}
+
+export const getNotchMetrics = () => invoke<NotchMetrics | null>('get_notch_metrics')
+
 // ─── Native notifications ─────────────────────────────────────────────────────
 
 /**
@@ -571,8 +598,20 @@ export interface CommitResult {
   shortOid: string
 }
 
-export const createCommit = (path: string, message: string, amend = false, amendOid?: string) =>
-  invoke<CommitResult>('create_commit', { path, message, amend, amendOid })
+/**
+ * `skipHooks` is `git commit --no-verify`.
+ *
+ * Hooks run by default, which is the fix rather than the feature: libgit2 runs no hook of any
+ * kind, so a repository's `pre-commit` and `commit-msg` were silently skipped for every commit
+ * made from this app while the same commit from a terminal ran them.
+ */
+export const createCommit = (
+  path: string,
+  message: string,
+  amend = false,
+  amendOid?: string,
+  skipHooks?: boolean
+) => invoke<CommitResult>('create_commit', { path, message, amend, amendOid, skipHooks })
 
 export const getStagedDiff = (path: string) => invoke<GitDiff>('get_staged_diff', { path })
 
@@ -616,6 +655,38 @@ export const isCommitOnCurrentBranch = (path: string, oid: string) =>
 
 // ─── Remote ───────────────────────────────────────────────────────────────────
 
+/**
+ * What a transfer is doing. Mirrors the Rust `RemoteProgressPhase`.
+ *
+ * A fetch downloads objects and then resolves deltas locally; a push uploads. Three phases rather
+ * than one bar because a single percentage that resets partway through reads as a bug.
+ */
+export type RemoteProgressPhase = 'receiving' | 'resolving' | 'writing'
+
+/** Which operation a progress report belongs to. A pull's transfer *is* a fetch's, so the
+ *  operation is carried explicitly rather than inferred. */
+export type RemoteOperation = 'fetch' | 'pull' | 'push'
+
+/** Payload of {@link REMOTE_PROGRESS_EVENT}. Mirrors the Rust `RemoteProgressEvent`. */
+export interface RemoteProgressEvent {
+  repoPath: string
+  operation: RemoteOperation
+  phase: RemoteProgressPhase
+  completed: number
+  /** `0` while the server hasn't announced a count — render that indeterminate, not as 0 %. */
+  total: number
+  bytes: number
+}
+
+/**
+ * Pushed by `commands/remote.rs` while a transfer runs, rate-limited to a few times a second.
+ *
+ * Pushed rather than polled because a network transfer has no await point to interrogate, and the
+ * command's own promise only settles when the whole thing is over — which on the transfers worth
+ * reporting is minutes away.
+ */
+export const REMOTE_PROGRESS_EVENT = 'remote-progress'
+
 export const fetchRemote = (path: string, remote?: string, prune?: boolean) =>
   invoke<{ remote: string; updatedRefs: string[] }>('fetch_remote', { path, remote, prune })
 
@@ -639,8 +710,15 @@ export interface PullResult {
 export const pullBranch = (path: string, remote?: string, strategy?: PullStrategy) =>
   invoke<PullResult>('pull_branch', { path, remote, strategy })
 
-export const pushBranch = (path: string, remote?: string, force?: boolean) =>
-  invoke<void>('push_branch', { path, remote, force })
+/**
+ * `skipHooks` is `git push --no-verify`.
+ *
+ * `pre-push` runs by default, which is the fix rather than the feature: libgit2 runs no hook of
+ * any kind, so a repository's `pre-push` was silently skipped for every push made from this app
+ * while the same push from a terminal ran it.
+ */
+export const pushBranch = (path: string, remote?: string, force?: boolean, skipHooks?: boolean) =>
+  invoke<void>('push_branch', { path, remote, force, skipHooks })
 
 export const pushBranchTo = (
   path: string,
@@ -757,8 +835,7 @@ export const createWorkingPatch = (path: string, filePaths: string[], destPath: 
 export const previewWorkingPatch = (path: string, filePaths: string[]) =>
   invoke<string>('preview_working_patch', { path, filePaths })
 
-export const readPatchFile = (patchPath: string) =>
-  invoke<string>('read_patch_file', { patchPath })
+export const readPatchFile = (patchPath: string) => invoke<string>('read_patch_file', { patchPath })
 
 export const applyPatch = (path: string, patchPath: string, checkOnly: boolean) =>
   invoke<void>('apply_patch', { path, patchPath, checkOnly })
@@ -783,7 +860,8 @@ export const commitDependencyPatch = (path: string, editDir: string) =>
 
 // ─── Package health check ─────────────────────────────────────────────────────
 
-export const hasPackageManifest = (path: string) => invoke<boolean>('has_package_manifest', { path })
+export const hasPackageManifest = (path: string) =>
+  invoke<boolean>('has_package_manifest', { path })
 
 export const runPackageHealthCheck = (path: string) =>
   invoke<import('@git-manager/git-types').PackageHealthReport>('run_package_health_check', { path })
@@ -919,12 +997,8 @@ export const githubListRepos = (token: string) =>
   invoke<GitHubRepoInfo[]>('github_list_repos', { token })
 
 /** Resolves `sha → avatar URL` for the given commit SHAs; unresolved SHAs are simply absent. */
-export const githubCommitAvatars = (
-  token: string,
-  owner: string,
-  repo: string,
-  shas: string[]
-) => invoke<Record<string, string>>('github_commit_avatars', { token, owner, repo, shas })
+export const githubCommitAvatars = (token: string, owner: string, repo: string, shas: string[]) =>
+  invoke<Record<string, string>>('github_commit_avatars', { token, owner, repo, shas })
 
 /** Detects the repo's GitHub PR template(s) on disk (single file, multi-template dir, or none). */
 export const getPrTemplate = (path: string) =>

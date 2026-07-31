@@ -132,7 +132,7 @@
     // rules above take effect) before the splash div below is ever painted — not just hidden a
     // moment later. Extend the `window` value list here if another small/transparent window kind
     // needs the same treatment.
-    if (new URLSearchParams(location.search).get('window') === 'notification-popover') {
+    if (new URLSearchParams(location.search).get('window') === 'notch') {
       document.documentElement.setAttribute('data-transparent-window', '')
       // Every semantic token (--primary, --border, --button-*) is declared under an
       // `html[data-theme="<id>"]` block in @git-manager/theme, so a window that never runs

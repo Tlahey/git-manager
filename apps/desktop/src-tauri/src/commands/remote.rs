@@ -2,8 +2,63 @@ use crate::error::AppError;
 use crate::services::git_remote;
 use crate::utils::{github_branch_url, github_tag_url, github_web_url};
 use git2::Repository;
+use serde::Serialize;
+use tauri::Emitter;
 
-pub use crate::services::git_remote::{FetchResult, PullResult, PullStrategy, RemoteInfo};
+pub use crate::services::git_remote::{
+    FetchResult, PullResult, PullStrategy, RemoteInfo, RemoteProgress,
+};
+
+// ─── Transfer progress ────────────────────────────────────────────────────────
+
+/// Event carrying a transfer's progress to the frontend.
+///
+/// Pushed rather than polled, and rate-limited in the service: a network transfer has no `.await`
+/// point the frontend could interrogate, and the command's own promise only settles once the whole
+/// thing is over — which, on the operations worth reporting, is minutes away.
+pub const REMOTE_PROGRESS_EVENT: &str = "remote-progress";
+
+/// Which operation a report belongs to. Sent as a string rather than inferred from the payload,
+/// because a pull's progress is a fetch's progress and the frontend has to be able to tell the two
+/// apart to label the card.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum RemoteOperation {
+    Fetch,
+    Pull,
+    Push,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RemoteProgressEvent {
+    /// The repository the transfer belongs to — several can run at once.
+    repo_path: String,
+    operation: RemoteOperation,
+    #[serde(flatten)]
+    progress: RemoteProgress,
+}
+
+/// A progress sink that emits to the frontend, best-effort.
+///
+/// A failed emit is deliberately ignored: progress is decoration, and the one thing that must not
+/// happen is a fetch aborting because the window it was reporting to went away.
+fn progress_emitter(
+    app: tauri::AppHandle,
+    repo_path: String,
+    operation: RemoteOperation,
+) -> impl FnMut(RemoteProgress) {
+    move |progress| {
+        let _ = app.emit(
+            REMOTE_PROGRESS_EVENT,
+            RemoteProgressEvent {
+                repo_path: repo_path.clone(),
+                operation,
+                progress,
+            },
+        );
+    }
+}
 
 // ─── fetch_remote ─────────────────────────────────────────────────────────────
 
@@ -18,13 +73,20 @@ pub use crate::services::git_remote::{FetchResult, PullResult, PullStrategy, Rem
 /// bounds a stalled connection.
 #[tauri::command]
 pub async fn fetch_remote(
+    app: tauri::AppHandle,
     path: String,
     remote: Option<String>,
     prune: Option<bool>,
 ) -> Result<FetchResult, String> {
+    let repo_path = path.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
-        git_remote::fetch(&repo, remote, prune.unwrap_or(false))
+        git_remote::fetch(
+            &repo,
+            remote,
+            prune.unwrap_or(false),
+            progress_emitter(app, repo_path, RemoteOperation::Fetch),
+        )
     })
     .await
     .map_err(|e| format!("fetch task failed to complete: {e}"))?;
@@ -42,13 +104,20 @@ pub async fn fetch_remote(
 /// underlying network-fetch call with.
 #[tauri::command]
 pub async fn pull_branch(
+    app: tauri::AppHandle,
     path: String,
     remote: Option<String>,
     strategy: Option<PullStrategy>,
 ) -> Result<PullResult, String> {
+    let repo_path = path.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
-        git_remote::pull(&repo, remote, strategy.unwrap_or_default())
+        git_remote::pull(
+            &repo,
+            remote,
+            strategy.unwrap_or_default(),
+            progress_emitter(app, repo_path, RemoteOperation::Pull),
+        )
     })
     .await
     .map_err(|e| format!("pull task failed to complete: {e}"))?;
@@ -64,13 +133,23 @@ pub async fn pull_branch(
 /// un-awaited network transfer risk applies to a push.
 #[tauri::command]
 pub async fn push_branch(
+    app: tauri::AppHandle,
     path: String,
     remote: Option<String>,
     force: Option<bool>,
+    // `git push --no-verify` — the escape hatch for a `pre-push` hook that hangs or misfires.
+    skip_hooks: Option<bool>,
 ) -> Result<(), String> {
+    let repo_path = path.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
-        git_remote::push(&repo, remote, force.unwrap_or(false))
+        git_remote::push(
+            &repo,
+            remote,
+            force.unwrap_or(false),
+            skip_hooks.unwrap_or(false),
+            progress_emitter(app, repo_path, RemoteOperation::Push),
+        )
     })
     .await
     .map_err(|e| format!("push task failed to complete: {e}"))?;

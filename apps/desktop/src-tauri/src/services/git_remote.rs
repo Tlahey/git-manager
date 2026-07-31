@@ -1,9 +1,75 @@
 use crate::error::AppError;
+use crate::services::git_hooks;
 use crate::utils::{get_git_signature, short_oid};
 use git2::{Cred, FetchOptions, PushOptions, RemoteCallbacks, Repository};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+
+// ─── Transfer progress ────────────────────────────────────────────────────────
+
+/// What a transfer is doing right now.
+///
+/// Three phases rather than one bar, because they are genuinely different waits and a single
+/// percentage that resets partway through reads as a bug. A fetch downloads objects and then
+/// resolves deltas locally; a push compresses and uploads.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum RemoteProgressPhase {
+    /// Objects coming down the wire (fetch/pull).
+    Receiving,
+    /// Deltas being applied locally, after the download (fetch/pull).
+    Resolving,
+    /// Objects going up the wire (push).
+    Writing,
+}
+
+/// How far along a transfer is.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteProgress {
+    pub phase: RemoteProgressPhase,
+    pub completed: usize,
+    /// `0` while the server has not announced a count yet — the caller renders that as an
+    /// indeterminate bar rather than as 0 %.
+    pub total: usize,
+    /// Bytes over the wire so far. The honest measure of a wait on a slow link, where the object
+    /// count can sit still for a long time on one large blob.
+    pub bytes: usize,
+}
+
+/// One progress report every this often, at most.
+///
+/// git2's transfer callback fires per packet — hundreds of times a second on a fast link. Emitting
+/// an IPC event for each would cost more than the transfer itself and would flood the frontend
+/// with work it cannot use: nothing on screen can meaningfully change more than a few times a
+/// second.
+const PROGRESS_INTERVAL: Duration = Duration::from_millis(120);
+
+/// Rate limiter for the transfer callbacks. Kept separate (and taking `now`) so its behaviour is
+/// testable without waiting out real time.
+struct ProgressThrottle {
+    last: Option<Instant>,
+}
+
+impl ProgressThrottle {
+    fn new() -> Self {
+        Self { last: None }
+    }
+
+    /// Whether this report should go out. The first one always does — a transfer that says nothing
+    /// for its first tenth of a second looks like one that never started.
+    fn should_emit(&mut self, now: Instant) -> bool {
+        match self.last {
+            Some(previous) if now.duration_since(previous) < PROGRESS_INTERVAL => false,
+            _ => {
+                self.last = Some(now);
+                true
+            }
+        }
+    }
+}
 
 // ─── Result types ─────────────────────────────────────────────────────────────
 
@@ -76,11 +142,16 @@ fn resolve_remote_name(repo: &Repository, remote: Option<String>) -> String {
 
 // ─── fetch ────────────────────────────────────────────────────────────────────
 
-/// Fetch from a remote (defaults to "origin")
-pub fn fetch(
+/// Fetch from a remote (defaults to "origin"), reporting transfer progress as it goes.
+///
+/// `on_progress` is called at most every [`PROGRESS_INTERVAL`]; pass `|_| {}` when nothing is
+/// watching. It is a plain callback rather than an `AppHandle` on purpose — this layer does no
+/// Tauri, so the command above decides how (and whether) a report reaches the frontend.
+pub fn fetch<F: FnMut(RemoteProgress)>(
     repo: &Repository,
     remote: Option<String>,
     prune: bool,
+    mut on_progress: F,
 ) -> Result<FetchResult, AppError> {
     let remote_name = resolve_remote_name(repo, remote);
     let mut remote_obj = repo.find_remote(&remote_name).map_err(AppError::Git)?;
@@ -89,6 +160,34 @@ pub fn fetch(
     let updated_refs_clone = Arc::clone(&updated_refs);
 
     let mut callbacks = make_auth_callbacks();
+
+    let mut throttle = ProgressThrottle::new();
+    callbacks.transfer_progress(move |stats| {
+        if !throttle.should_emit(Instant::now()) {
+            return true;
+        }
+        // Two phases off one callback: git2 keeps reporting through the local delta resolution,
+        // where the received-object counter has already stopped moving. Reporting that as
+        // "receiving, stuck at 100 %" is exactly the stall a progress bar is supposed to explain.
+        let downloading = stats.received_objects() < stats.total_objects();
+        on_progress(if downloading {
+            RemoteProgress {
+                phase: RemoteProgressPhase::Receiving,
+                completed: stats.received_objects(),
+                total: stats.total_objects(),
+                bytes: stats.received_bytes(),
+            }
+        } else {
+            RemoteProgress {
+                phase: RemoteProgressPhase::Resolving,
+                completed: stats.indexed_deltas(),
+                total: stats.total_deltas(),
+                bytes: stats.received_bytes(),
+            }
+        });
+        true
+    });
+
     callbacks.update_tips(move |refname, old_oid, new_oid| {
         if old_oid != new_oid {
             let short_new = new_oid.to_string();
@@ -137,13 +236,16 @@ pub fn fetch(
 ///   `done` files that the **git CLI** writes, and libgit2's rebase writes neither (it leaves only
 ///   `cmt.N`/`current`/`msgnum`/`end`). A rebase paused here would therefore be reported as
 ///   `in_progress` with an empty plan, and the conflict panel could neither show nor continue it.
-pub fn pull(
+pub fn pull<F: FnMut(RemoteProgress)>(
     repo: &Repository,
     remote: Option<String>,
     strategy: PullStrategy,
+    on_progress: F,
 ) -> Result<PullResult, AppError> {
-    // 1. Fetch
-    fetch(repo, remote.clone(), false)?;
+    // 1. Fetch. The only networked step, so it is the only one that reports progress — the
+    //    integration that follows is local and, on any repository where it isn't instant, blocked
+    //    on a conflict rather than on work.
+    fetch(repo, remote.clone(), false, on_progress)?;
 
     let remote_name = resolve_remote_name(repo, remote);
 
@@ -451,8 +553,62 @@ fn rebase_onto_remote(
 
 // ─── push ─────────────────────────────────────────────────────────────────────
 
-/// Push to the remote
-pub fn push(repo: &Repository, remote: Option<String>, force: bool) -> Result<(), AppError> {
+/// The all-zero oid `pre-push` expects for a ref the remote does not have yet — a new branch's
+/// first push, in practice. Git's own hook contract uses this rather than omitting the ref.
+const PRE_PUSH_ZERO_OID: &str = "0000000000000000000000000000000000000000";
+
+/// Runs `pre-push`, mirroring what `git push` itself feeds the hook: one stdin line of the form
+/// `<local ref> SP <local oid> SP <remote ref> SP <remote oid>`, and the remote's name and URL as
+/// positional args. Non-zero stops the push before anything reaches the network.
+///
+/// Only the one ref this call is about to push — unlike the git CLI, which can push several refs
+/// in a single invocation and therefore writes one line per ref, this app always pushes exactly
+/// one branch per call.
+fn run_pre_push_hook(
+    repo: &Repository,
+    remote_name: &str,
+    branch_name: &str,
+    local_oid: git2::Oid,
+) -> Result<(), AppError> {
+    // The remote-tracking ref reflects what this repository last saw of the remote branch — which
+    // is what the hook contract asks for, not a fresh network round trip just to answer it.
+    let remote_oid = repo
+        .find_reference(&format!("refs/remotes/{remote_name}/{branch_name}"))
+        .ok()
+        .and_then(|r| r.target())
+        .map(|oid| oid.to_string())
+        .unwrap_or_else(|| PRE_PUSH_ZERO_OID.to_string());
+
+    let url = repo
+        .find_remote(remote_name)
+        .ok()
+        .and_then(|r| r.url().map(str::to_string))
+        .unwrap_or_default();
+
+    let local_ref = format!("refs/heads/{branch_name}");
+    let stdin = format!("{local_ref} {local_oid} {local_ref} {remote_oid}\n");
+
+    let outcome =
+        git_hooks::run_hook_with_stdin(repo, "pre-push", &[remote_name, &url], Some(&stdin))?;
+    if !outcome.success {
+        return Err(AppError::HookFailed {
+            name: outcome.name,
+            output: outcome.output,
+        });
+    }
+    Ok(())
+}
+
+/// Push to the remote, reporting transfer progress as it goes.
+///
+/// Same contract as [`fetch`]: `on_progress` is rate-limited, and `|_| {}` is a valid caller.
+pub fn push<F: FnMut(RemoteProgress)>(
+    repo: &Repository,
+    remote: Option<String>,
+    force: bool,
+    skip_hooks: bool,
+    mut on_progress: F,
+) -> Result<(), AppError> {
     let remote_name = resolve_remote_name(repo, remote);
 
     let head = repo.head().map_err(AppError::Git)?;
@@ -460,13 +616,37 @@ pub fn push(repo: &Repository, remote: Option<String>, force: bool) -> Result<()
         .shorthand()
         .ok_or_else(|| AppError::Unknown("HEAD is not on a branch".to_string()))?
         .to_string();
+    let local_oid = head
+        .target()
+        .ok_or_else(|| AppError::Unknown("HEAD has no target commit".to_string()))?;
+
+    // Before anything reaches the network, mirroring `create_commit`'s `--no-verify` escape hatch:
+    // a hook that hangs or misfires must not be able to lock the user out of pushing at all.
+    if !skip_hooks {
+        run_pre_push_hook(repo, &remote_name, &branch_name, local_oid)?;
+    }
 
     let prefix = if force { "+" } else { "" };
     let refspec = format!("{prefix}refs/heads/{branch_name}:refs/heads/{branch_name}");
 
     let mut remote_obj = repo.find_remote(&remote_name).map_err(AppError::Git)?;
 
-    let callbacks = make_auth_callbacks();
+    let mut callbacks = make_auth_callbacks();
+    let mut throttle = ProgressThrottle::new();
+    // A push has one phase: git2 reports objects going up, and there is no local resolution step
+    // on this side to distinguish.
+    callbacks.push_transfer_progress(move |current, total, bytes| {
+        if !throttle.should_emit(Instant::now()) {
+            return;
+        }
+        on_progress(RemoteProgress {
+            phase: RemoteProgressPhase::Writing,
+            completed: current,
+            total,
+            bytes,
+        });
+    });
+
     let mut push_opts = PushOptions::new();
     push_opts.remote_callbacks(callbacks);
 
@@ -618,6 +798,46 @@ mod tests {
     use std::fs;
     use std::path::{Path, PathBuf};
 
+    // ─── ProgressThrottle ─────────────────────────────────────────────────────
+
+    #[test]
+    fn first_report_always_goes_out() {
+        // A transfer that says nothing for its first tenth of a second looks like one that never
+        // started, which is the worst moment to be silent.
+        let mut throttle = ProgressThrottle::new();
+        assert!(throttle.should_emit(Instant::now()));
+    }
+
+    #[test]
+    fn reports_within_the_interval_are_dropped() {
+        // The callback fires per packet — hundreds of times a second on a fast link.
+        let start = Instant::now();
+        let mut throttle = ProgressThrottle::new();
+        assert!(throttle.should_emit(start));
+        assert!(!throttle.should_emit(start + Duration::from_millis(1)));
+        assert!(!throttle.should_emit(start + PROGRESS_INTERVAL - Duration::from_millis(1)));
+    }
+
+    #[test]
+    fn a_report_goes_out_once_the_interval_has_passed() {
+        let start = Instant::now();
+        let mut throttle = ProgressThrottle::new();
+        throttle.should_emit(start);
+        assert!(throttle.should_emit(start + PROGRESS_INTERVAL));
+    }
+
+    #[test]
+    fn the_window_restarts_from_the_report_that_went_out() {
+        // Not from the last *attempt*: measuring from every dropped call would let a busy transfer
+        // starve the frontend indefinitely.
+        let start = Instant::now();
+        let mut throttle = ProgressThrottle::new();
+        throttle.should_emit(start);
+        throttle.should_emit(start + Duration::from_millis(10));
+        throttle.should_emit(start + Duration::from_millis(20));
+        assert!(throttle.should_emit(start + PROGRESS_INTERVAL));
+    }
+
     fn temp_dir(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!(
             "gm-pull-{}-{}-{:?}",
@@ -731,7 +951,7 @@ mod tests {
         let f = fixture("ff");
         commit(&f.origin, &f.origin_dir, "shared.txt", "remote work");
 
-        let result = pull(&f.local, None, PullStrategy::FastForwardOnly).unwrap();
+        let result = pull(&f.local, None, PullStrategy::FastForwardOnly, |_| {}).unwrap();
 
         assert!(result.fast_forwarded);
         assert_eq!(result.commits_merged, 1);
@@ -753,7 +973,7 @@ mod tests {
         fs::write(f.local_dir.join("shared.txt"), "uncommitted local edit").unwrap();
         let before = head_oid(&f.local_dir);
 
-        let err = pull(&f.local, None, PullStrategy::FastForwardOnly).unwrap_err();
+        let err = pull(&f.local, None, PullStrategy::FastForwardOnly, |_| {}).unwrap_err();
 
         assert!(format!("{err:?}").contains("shared.txt"), "got {err:?}");
         assert_eq!(head_oid(&f.local_dir), before, "HEAD must not move");
@@ -771,7 +991,7 @@ mod tests {
         // Uncommitted edit to a file the incoming commit never touches — must not block the pull.
         fs::write(f.local_dir.join("untouched.txt"), "local scratch file").unwrap();
 
-        let result = pull(&f.local, None, PullStrategy::FastForwardOnly).unwrap();
+        let result = pull(&f.local, None, PullStrategy::FastForwardOnly, |_| {}).unwrap();
 
         assert!(result.fast_forwarded);
         assert_eq!(
@@ -783,7 +1003,7 @@ mod tests {
     #[test]
     fn reports_nothing_to_do_when_already_up_to_date() {
         let f = fixture("uptodate");
-        let result = pull(&f.local, None, PullStrategy::FastForwardIfPossible).unwrap();
+        let result = pull(&f.local, None, PullStrategy::FastForwardIfPossible, |_| {}).unwrap();
         assert!(!result.fast_forwarded);
         assert_eq!(result.commits_merged, 0);
         assert!(!result.merged && !result.rebased);
@@ -795,7 +1015,7 @@ mod tests {
         commit(&f.origin, &f.origin_dir, "remote.txt", "remote work");
         commit(&f.local, &f.local_dir, "local.txt", "local work");
 
-        let err = pull(&f.local, None, PullStrategy::FastForwardOnly).unwrap_err();
+        let err = pull(&f.local, None, PullStrategy::FastForwardOnly, |_| {}).unwrap_err();
 
         assert!(format!("{err:?}").contains("diverged"), "got {err:?}");
         assert_eq!(head_subject(&f.local_dir), "local work");
@@ -808,7 +1028,7 @@ mod tests {
         commit(&f.origin, &f.origin_dir, "remote.txt", "remote work");
         commit(&f.local, &f.local_dir, "local.txt", "local work");
 
-        let result = pull(&f.local, None, PullStrategy::FastForwardIfPossible).unwrap();
+        let result = pull(&f.local, None, PullStrategy::FastForwardIfPossible, |_| {}).unwrap();
 
         assert!(result.merged);
         assert!(!result.fast_forwarded && !result.rebased);
@@ -826,7 +1046,7 @@ mod tests {
         commit(&f.local, &f.local_dir, "shared.txt", "local edit");
         let before = head_oid(&f.local_dir);
 
-        let err = pull(&f.local, None, PullStrategy::FastForwardIfPossible).unwrap_err();
+        let err = pull(&f.local, None, PullStrategy::FastForwardIfPossible, |_| {}).unwrap_err();
 
         assert!(format!("{err:?}").contains("shared.txt"), "got {err:?}");
         assert_eq!(head_oid(&f.local_dir), before);
@@ -843,7 +1063,7 @@ mod tests {
         commit(&f.origin, &f.origin_dir, "remote.txt", "remote work");
         commit(&f.local, &f.local_dir, "local.txt", "local work");
 
-        let result = pull(&f.local, None, PullStrategy::Rebase).unwrap();
+        let result = pull(&f.local, None, PullStrategy::Rebase, |_| {}).unwrap();
 
         assert!(result.rebased);
         assert!(!result.merged && !result.fast_forwarded);
@@ -865,7 +1085,7 @@ mod tests {
         commit(&f.local, &f.local_dir, "shared.txt", "local edit");
         let before = head_oid(&f.local_dir);
 
-        let err = pull(&f.local, None, PullStrategy::Rebase).unwrap_err();
+        let err = pull(&f.local, None, PullStrategy::Rebase, |_| {}).unwrap_err();
 
         assert!(format!("{err:?}").contains("shared.txt"), "got {err:?}");
         assert_eq!(head_oid(&f.local_dir), before);
@@ -885,7 +1105,7 @@ mod tests {
         commit(&f.origin, &f.origin_dir, "shared.txt", "remote edit");
         commit(&f.local, &f.local_dir, "shared.txt", "local edit");
 
-        pull(&f.local, None, PullStrategy::Rebase).unwrap_err();
+        pull(&f.local, None, PullStrategy::Rebase, |_| {}).unwrap_err();
 
         assert_eq!(repo_state(&f.local_dir), git2::RepositoryState::Clean);
         assert!(!f.local.path().join("rebase-merge").exists());
@@ -979,7 +1199,7 @@ mod tests {
         f.local.branch("feature", &head_commit, false).unwrap();
         f.local.set_head("refs/heads/feature").unwrap();
 
-        push(&f.local, None, false).unwrap();
+        push(&f.local, None, false, true, |_| {}).unwrap();
 
         let local_reopened = fresh(&f.local_dir);
         let branch = local_reopened
@@ -1014,7 +1234,7 @@ mod tests {
             .set_upstream(Some(&format!("origin/{initial_branch}")))
             .unwrap();
 
-        push(&f.local, None, false).unwrap();
+        push(&f.local, None, false, true, |_| {}).unwrap();
 
         let local_reopened = fresh(&f.local_dir);
         let branch = local_reopened
@@ -1032,5 +1252,158 @@ mod tests {
                 .is_ok(),
             "the push itself must still have gone through"
         );
+    }
+
+    // ─── pre-push ─────────────────────────────────────────────────────────────
+    // Same behaviour libgit2 never gave any hook: `pre-push` was silently skipped for every push
+    // made from this app, while the same push from a terminal ran it.
+
+    /// Installs an executable `pre-push` hook running `script`.
+    fn write_hook(repo: &Repository, name: &str, script: &str) {
+        let dir = repo.path().join("hooks");
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join(name);
+        fs::write(&path, format!("#!/bin/sh\n{script}\n")).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+        }
+    }
+
+    fn remote_head(origin_dir: &Path, branch: &str) -> Option<git2::Oid> {
+        fresh(origin_dir)
+            .find_reference(&format!("refs/heads/{branch}"))
+            .ok()
+            .and_then(|r| r.target())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_failing_pre_push_hook_stops_the_push() {
+        let f = push_fixture("pre-push-fails");
+        let branch = f.local.head().unwrap().shorthand().unwrap().to_string();
+        commit(&f.local, &f.local_dir, "more.txt", "work");
+        let before = remote_head(&f.origin_dir, &branch);
+        write_hook(&f.local, "pre-push", "echo 'blocked by ci' >&2\nexit 1");
+
+        let err = push(&f.local, None, false, false, |_| {}).unwrap_err();
+
+        match err {
+            AppError::HookFailed { name, output } => {
+                assert_eq!(name, "pre-push");
+                assert!(output.iter().any(|l| l.contains("blocked by ci")));
+            }
+            other => panic!("expected a hook failure, got {other:?}"),
+        }
+        assert_eq!(
+            remote_head(&f.origin_dir, &branch),
+            before,
+            "nothing should have reached the remote"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_passing_pre_push_hook_lets_the_push_through() {
+        let f = push_fixture("pre-push-passes");
+        let branch = f.local.head().unwrap().shorthand().unwrap().to_string();
+        let new_oid = commit(&f.local, &f.local_dir, "more.txt", "work");
+        write_hook(&f.local, "pre-push", "exit 0");
+
+        push(&f.local, None, false, false, |_| {}).unwrap();
+
+        assert_eq!(remote_head(&f.origin_dir, &branch), Some(new_oid));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn skip_hooks_is_the_no_verify_escape_hatch_for_a_push() {
+        // A hook that hangs or misfires must not be able to lock the user out of pushing.
+        let f = push_fixture("pre-push-skipped");
+        let branch = f.local.head().unwrap().shorthand().unwrap().to_string();
+        let new_oid = commit(&f.local, &f.local_dir, "more.txt", "work");
+        write_hook(&f.local, "pre-push", "exit 1");
+
+        push(&f.local, None, false, true, |_| {}).unwrap();
+
+        assert_eq!(remote_head(&f.origin_dir, &branch), Some(new_oid));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn pre_push_receives_the_ref_update_line_git_itself_would_send() {
+        let f = push_fixture("pre-push-stdin");
+        let branch = f.local.head().unwrap().shorthand().unwrap().to_string();
+        let new_oid = commit(&f.local, &f.local_dir, "more.txt", "work");
+        let remote_oid = remote_head(&f.origin_dir, &branch).unwrap();
+        write_hook(
+            &f.local,
+            "pre-push",
+            "cat > \"$(dirname \"$0\")/received-stdin\"",
+        );
+
+        push(&f.local, None, false, false, |_| {}).unwrap();
+
+        let received = fs::read_to_string(f.local.path().join("hooks/received-stdin")).unwrap();
+        assert_eq!(
+            received,
+            format!("refs/heads/{branch} {new_oid} refs/heads/{branch} {remote_oid}\n")
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn pre_push_reports_the_zero_oid_for_a_branch_the_remote_has_never_seen() {
+        // Git's own contract for a first push: the remote side of the line is all zeros rather
+        // than omitted, since there is nothing yet to name.
+        let f = push_fixture("pre-push-new-branch");
+        let head_commit = f.local.head().unwrap().peel_to_commit().unwrap();
+        f.local.branch("feature", &head_commit, false).unwrap();
+        f.local.set_head("refs/heads/feature").unwrap();
+        write_hook(
+            &f.local,
+            "pre-push",
+            "cat > \"$(dirname \"$0\")/received-stdin\"",
+        );
+
+        push(&f.local, None, false, false, |_| {}).unwrap();
+
+        let received = fs::read_to_string(f.local.path().join("hooks/received-stdin")).unwrap();
+        assert!(
+            received.ends_with(&format!("{PRE_PUSH_ZERO_OID}\n")),
+            "got {received:?}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn pre_push_receives_the_remote_name_and_url() {
+        let f = push_fixture("pre-push-args");
+        commit(&f.local, &f.local_dir, "more.txt", "work");
+        write_hook(
+            &f.local,
+            "pre-push",
+            "echo \"$1 $2\" > \"$(dirname \"$0\")/received-args\"",
+        );
+
+        push(&f.local, None, false, false, |_| {}).unwrap();
+
+        let received = fs::read_to_string(f.local.path().join("hooks/received-args")).unwrap();
+        assert_eq!(
+            received,
+            format!("origin file://{}\n", f.origin_dir.display())
+        );
+    }
+
+    #[test]
+    fn a_repository_with_no_pre_push_hook_pushes_exactly_as_before() {
+        let f = push_fixture("pre-push-none");
+        let branch = f.local.head().unwrap().shorthand().unwrap().to_string();
+        let new_oid = commit(&f.local, &f.local_dir, "more.txt", "work");
+
+        push(&f.local, None, false, false, |_| {}).unwrap();
+
+        assert_eq!(remote_head(&f.origin_dir, &branch), Some(new_oid));
     }
 }

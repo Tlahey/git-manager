@@ -4,7 +4,7 @@ import { useRepoDataStore } from '../stores/repoData.store'
 import { apiGetRemotes } from '../api/git.api'
 import { fetchGitHubRepoIssues } from '../api/github.api'
 import { firstGitHubOwnerRepo } from '../lib/githubRemote'
-import { MOCK_ISSUES } from '../app/pull-requests/mockData'
+import { useDevFixtures } from './useDevFixtures'
 import type { MockIssue } from '../app/pull-requests/types'
 
 interface RepoIssuesData {
@@ -22,10 +22,17 @@ interface RepoIssuesData {
  * resolved from its GitHub remote (like the PR views do), then all of them are fetched in one search.
  *
  * Kept separate from {@link useGitHubData} (PRs/contributions) because it's keyed on the repo list,
- * not just the token — adding/removing a repo must refetch. Without a token it serves demo mock
- * issues so the empty-state UI still has something to show.
+ * not just the token — adding/removing a repo must refetch.
+ *
+ * Without a token the list is **empty**, unless a development build has the `mockGitHub` flag on.
+ * It used to serve the four fixture issues to anyone without a token, so a user who simply hadn't
+ * connected their GitHub account was shown invented issues — invented authors, invented titles,
+ * invented thumbs-up counts — rendered exactly like real ones. That is the same defect
+ * `useGitHubData` carried for pull requests, and it is fixed the same way: fiction presented as
+ * fact is a worse first impression than an empty list.
  */
 export function useGitHubRepoIssues(): RepoIssuesData {
+  const { issues: fixtureIssues } = useDevFixtures()
   const githubSettings = useSettingsStore((s) => s.settings.github)
   const activeAccount =
     githubSettings?.accounts?.find((a) => a.id === githubSettings.activeAccountId) ?? null
@@ -64,7 +71,14 @@ export function useGitHubRepoIssues(): RepoIssuesData {
   )
 
   if (!hasToken) {
-    return { issues: MOCK_ISSUES, loading: false, isValidating: false, error: null, refresh: () => {} }
+    // Empty unless a development build asked for the fixtures — `useDevFixtures` gates on the flag.
+    return {
+      issues: fixtureIssues,
+      loading: false,
+      isValidating: false,
+      error: null,
+      refresh: () => {},
+    }
   }
 
   return {

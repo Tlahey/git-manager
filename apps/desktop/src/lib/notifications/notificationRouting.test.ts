@@ -46,7 +46,14 @@ function notification(overrides: Partial<AppNotification> = {}): AppNotification
 beforeEach(() => {
   vi.clearAllMocks()
   findLocalRepoPath.mockResolvedValue(null)
-  useRepoUIStore.setState({ activeTab: DASHBOARD_TAB, activeRepo: null, openTabs: [], activePrNumber: null })
+  useRepoUIStore.setState({
+    activeTab: DASHBOARD_TAB,
+    activeRepo: null,
+    openTabs: [],
+    activePrNumber: null,
+    activeDiffFile: null,
+    aiPanelTarget: null,
+  })
   useLaunchpadStore.setState({ activeTab: 'prs', pendingOpenPrId: null })
   useNotificationStore.setState({ notifications: [notification()] })
   useRepoDataStore.setState({ savedRepos: [], recentRepoPaths: [] })
@@ -119,6 +126,61 @@ describe('routeNotification — rewards', () => {
 
   it('does not look for a repo', async () => {
     await routeNotification({ kind: 'rewards' })
+    expect(findLocalRepoPath).not.toHaveBeenCalled()
+  })
+})
+
+describe('routeNotification — ai-run', () => {
+  it('opens the repository and the panel the generation came from', async () => {
+    await routeNotification({
+      kind: 'ai-run',
+      repoPath: '/repo',
+      panel: { kind: 'working' },
+    })
+
+    const ui = useRepoUIStore.getState()
+    expect(ui.activeTab).toBe('/repo')
+    expect(ui.aiPanelTarget).toEqual({ kind: 'working' })
+  })
+
+  it('clears the centre slot’s other claimants, so the panel isn’t hidden behind a diff', async () => {
+    // The same handoff the AI menu performs — otherwise the panel reopens behind whatever the user
+    // has since opened, which makes the card look broken exactly when it is doing its job.
+    useRepoUIStore.setState({
+      activeDiffFile: { path: 'src/a.ts', staged: false },
+      activePrNumber: 42,
+    })
+
+    await routeNotification({ kind: 'ai-run', repoPath: '/repo', panel: { kind: 'working' } })
+
+    expect(useRepoUIStore.getState().activeDiffFile).toBeNull()
+    expect(useRepoUIStore.getState().activePrNumber).toBeNull()
+  })
+
+  it('just opens the repository when the run named no panel', async () => {
+    await routeNotification({ kind: 'ai-run', repoPath: '/repo' })
+
+    expect(useRepoUIStore.getState().activeTab).toBe('/repo')
+    expect(useRepoUIStore.getState().aiPanelTarget).toBeNull()
+  })
+
+  it('does not look for a repo — the run already knew its path', async () => {
+    await routeNotification({ kind: 'ai-run', repoPath: '/repo' })
+    expect(findLocalRepoPath).not.toHaveBeenCalled()
+  })
+})
+
+describe('routeNotification — app', () => {
+  // The route for a card about the app's own work: a finished search, a rejected push. The window
+  // has already been brought forward by the time this runs, and that was the entire intent.
+  it('navigates nowhere, leaving the user where they were', async () => {
+    useRepoUIStore.setState({ activeTab: DASHBOARD_TAB })
+    await routeNotification({ kind: 'app' })
+    expect(useRepoUIStore.getState().activeTab).toBe(DASHBOARD_TAB)
+  })
+
+  it('does not look for a repo either', async () => {
+    await routeNotification({ kind: 'app' })
     expect(findLocalRepoPath).not.toHaveBeenCalled()
   })
 })

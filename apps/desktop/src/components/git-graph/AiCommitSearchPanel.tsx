@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from '@git-manager/i18n'
 import { Progress, ScrollArea, Spinner } from '@git-manager/ui'
 import { Search, X } from 'lucide-react'
@@ -7,6 +7,12 @@ import {
   dominantFailure,
   useAiCommitSearch,
 } from '../../hooks/useAiCommitSearch'
+import { useNotchOperation } from '../../hooks/useNotchOperation'
+import { useWindowFocus } from '../../hooks/useWindowFocus'
+import {
+  commitSearchNotchId,
+  commitSearchNotchModel,
+} from '../../lib/notifications/commitSearchNotch'
 import type { StoredSearchMatch, StoredSearchRun } from '../../stores/aiCommitSearch.store'
 import { useRepoUIStore } from '../../stores/repoUI.store'
 import { aiErrorMessage } from '../../lib/aiErrorMessage'
@@ -55,6 +61,36 @@ export function AiCommitSearchPanel({ repoPath, onClose }: AiCommitSearchPanelPr
   const [quick, setQuick] = useState(false)
   /** A saved run the user reopened, shown instead of the live one until they search again. */
   const [viewedRun, setViewedRun] = useState<StoredSearchRun | null>(null)
+
+  // ── The run, on the notch ────────────────────────────────────────────────────────────────────
+  // A deep search is one model call per file of every commit it opens, so a sixty-commit run is
+  // minutes — and nobody watches a bar for minutes. They switch to their editor, and the run goes
+  // invisible. Only while the window is unfocused, though: this panel is a far better place to
+  // watch a search you are actually watching, and a card duplicating it would be pure noise.
+  const windowFocused = useWindowFocus()
+  const repoName = useMemo(
+    () => repoPath.split('/').filter(Boolean).pop() ?? repoPath,
+    [repoPath]
+  )
+  const notchModel = useMemo(
+    () =>
+      commitSearchNotchModel({
+        repoPath,
+        repoName,
+        question: search.askedQuestion,
+        phase: search.phase,
+        progress: search.progress,
+        matchCount: search.matches.length,
+        t,
+      }),
+    [repoPath, repoName, search.askedQuestion, search.phase, search.progress, search.matches.length, t]
+  )
+  useNotchOperation({
+    id: commitSearchNotchId(repoPath),
+    model: notchModel,
+    enabled: !windowFocused,
+    actions: { cancel: () => void search.cancel() },
+  })
 
   const openCommit = useCallback((oid: string) => {
     // The graph already knows how to select a commit and open its diff — this only points at one.
