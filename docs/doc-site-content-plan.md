@@ -535,17 +535,28 @@ one page because a reader who finds one "Explain (LLM)" entry point has effectiv
     `change` event by hand (`setNativeSelectValue` in `ai-pr-description.steps.ts`).
   - Descriptor: `pr-description.md`
 
-### Page: Semantic commit search (`ai-commit-search.feature`) — 🆕 write it
+### Page: Semantic commit search (`ai-commit-search.feature`) — ✅ done
 
 - **Sub-part — Ask a question, get an answer read from real commits**
   - Must show: opening the panel from the AI menu (or ⇧⌘F), asking something like "has the button
     component changed recently?", and an answer citing the specific commits it came from — the
     point being this finds commits by what they *did*, not what they were *named*.
-  - e2e: `ai-commit-search.feature → "Answering a question from the commit history"` — 🆕 write it
+  - e2e: `ai-commit-search.feature → "Answering a question from the commit history"` — ✅ tagged.
+    Entry point is a plain DOM dropdown item (`ai-menu-commit-search` in `AiMenu.tsx`) — no native
+    menu, no store bridge, just the same Radix pointerdown/pointerup dance every other toolbar
+    dropdown in this suite needs. Uses `feature-branches` with `feature/login` checked out first
+    (the scan reads from the checked-out HEAD, same gotcha `ai-pr-description.feature` found).
+  - Fake-server addition: a `commit_relevance` case (`scanCommits.ts`'s `judgeFileByFile` calls it
+    once per file of every scanned commit, all sharing this one schema) keyed on whether the file
+    being judged is `login.txt` — not answering `relevant: true` unconditionally, so the scenario
+    demonstrates real selectivity (1 of 2 commits cited) rather than every commit "matching", which
+    would have undersold the point of the page.
   - **Sub-note — the two scan modes**: quick mode narrows by commit message then by file before
-    reading any diff; full mode reads every file of every commit in the window. Worth a second,
-    untagged (non-`@doc`) regression scenario rather than a second doc subsection — the visible
-    result (a cited answer) looks the same either way.
+    reading any diff; full mode (the default, and the one this scenario exercises) reads every file
+    of every commit in the window. Worth a second, untagged (non-`@doc`) regression scenario rather
+    than a second doc subsection — the visible result (a cited answer) looks the same either way.
+    Not built here for lack of time; would need `commit_quick_scan`/`commit_file_scan` fake-server
+    cases too.
   - Descriptor: `commit-search.md`
 
 ### Page: Summary search (`ai-summary-search.feature`) — 🆕 write it
