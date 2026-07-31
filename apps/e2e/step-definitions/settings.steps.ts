@@ -155,9 +155,14 @@ Then(
   }
 )
 
+// The checkbox's real `<input>` is deliberately kept `opacity-0` rather than `sr-only` (see
+// checkbox.tsx's doc comment) so it stays the actual hit area under the painted box sibling —
+// but that same opacity is why WebKit's WebDriver reports it as not displayed even though it has
+// a real, clickable bounding box: `waitForDisplayed`/`isDisplayed` return false for it, while
+// `waitForExist` + `.click()` work exactly as they do for a sighted user.
 When(/^I toggle the rewards setting (on|off)$/, async (state: string) => {
   const checkbox = $('[data-testid="rewards-toggle"]')
-  await checkbox.waitForDisplayed({ timeout: 10000 })
+  await checkbox.waitForExist({ timeout: 10000 })
   const isChecked = await checkbox.isSelected()
   if (isChecked !== (state === 'on')) {
     await checkbox.click()
