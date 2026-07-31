@@ -16,7 +16,7 @@
 
 _100% local — no telemetry, no cloud, no data leaves your machine._
 
-**[✨ Visit the landing page](https://tlahey.github.io/git-manager/)** · **[💜 Sponsor this project](https://github.com/sponsors/Tlahey)**
+**[✨ Visit the landing page](https://tlahey.github.io/git-manager/)** · **[📖 Read the documentation](https://tlahey.github.io/git-manager/docs/)** · **[💜 Sponsor this project](https://github.com/sponsors/Tlahey)**
 
 <img src="docs/screenshots/app-commit-graph.png" alt="Git Manager — visual commit graph with branches, tags and a WIP row" width="900" />
 
@@ -30,20 +30,26 @@ _100% local — no telemetry, no cloud, no data leaves your machine._
 
 **git-manager** is a macOS desktop application that gives you a powerful, opinionated interface for everyday Git workflows. Instead of memorizing flags or juggling terminal windows, you get:
 
-- **Visual Git graph** — interactive commit history with branches, tags and diffs
-- **AI commit generation** — conventional commit messages from your diff via a local Ollama LLM, streamed live, with message history
-- **Working tree** — stage, unstage, commit (including a WIP batch-commit mode with per-group AI messages), push and pull
+- **Visual Git graph** — interactive commit history with branches, tags, filters and diffs, plus blame and file history
+- **Working tree** — stage, unstage, commit, amend, discard, push and pull (including a batch-commit mode that splits your changes into several reviewable commits)
+- **AI features** — a local Ollama model (or any OpenAI-compatible server you point it at) writes commit messages and PR descriptions, explains a diff/commit/branch, reviews changes, answers questions about your history, and summarises your day — see [docs/ai/](docs/ai/README.md)
 - **Rollback** — safe revert and reset (soft / mixed / hard) with preview and typed confirmation for hard reset
-- **Fixup & Autosquash** — guided `--fixup` + `rebase --autosquash` workflow
-- **Stash** — push, pop, apply, drop
-- **Branch management** — create, delete, checkout branches (rename not implemented yet)
+- **Rebase** — interactive rebase (reorder, `reword` / `squash` / `fixup` / `drop`), the guided `--fixup` + `--autosquash` workflow, and conflict resolution in a three-pane Monaco merge editor
+- **Cherry-pick, bisect, patches** — pick commits onto a branch, run a bisect session, create and apply patch files
+- **Branches, stashes, worktrees** — create / delete / checkout / merge branches, a full stash stack, and worktree add / remove / prune (branch *rename* is still not implemented)
 - **Undo/redo** — safe undo history across git-mutating actions, with pinned refs so undone objects aren't garbage-collected
-- **GitHub integration** — device-flow OAuth login, pull request views
+- **Launchpad** — cross-repo pull requests and issues from GitHub (device-flow OAuth), with saved views, snoozing and contribution stats
+- **Dashboard & tabs** — multi-repo dashboard, repository scan, clone/init, Chrome-style tab bar
+- **Tools** — integrated terminal (real PTY), command palette, package health check, native macOS notifications, activity log and an Action Journal that explains, in plain English, the git commands each action ran
 - **SSH key management** — generate and manage keys for remote auth
 - **Submodules** — list and inspect
+- **Achievements & rewards** — an optional gamified layer that tracks what you've done in the app
 - **i18n** — English and French interface
 
-> Interactive rebase (drag-and-drop) and worktree management are planned but not yet implemented — see the [roadmap status at a glance](docs/ROADMAP.md#status-at-a-glance).
+> Every feature has a user-facing page on the
+> [documentation site](https://tlahey.github.io/git-manager/docs/), generated from the e2e scenarios
+> that test it — which is what keeps that inventory from drifting away from the code. What is still
+> open lives in the [issue tracker](https://github.com/Tlahey/git-manager/issues).
 
 ---
 
@@ -72,12 +78,12 @@ pnpm --filter @git-manager/e2e screenshots     # re-capture docs/screenshots/*.p
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Desktop runtime      | [Tauri v2](https://tauri.app/)                                                                                                                                                                         |
 | Frontend             | React 18 + Vite + TypeScript (strict)                                                                                                                                                                  |
-| UI components        | shadcn/ui + Tailwind CSS (dark mode)                                                                                                                                                                   |
+| UI components        | shadcn/ui + Tailwind CSS + [Monaco](https://microsoft.github.io/monaco-editor/) (diff, merge and file viewers)                                                                                          |
 | Git backend          | Rust + [`git2`](https://crates.io/crates/git2) (libgit2 bindings)                                                                                                                                      |
 | State management     | [Zustand](https://zustand-demo.pmnd.rs/) (UI/app state) + [SWR](https://swr.vercel.app/) (new data-fetching hooks) + [TanStack Query](https://tanstack.com/query) (older hooks, being migrated to SWR) |
 | Internationalisation | [react-i18next](https://react.i18next.com/) (EN / FR)                                                                                                                                                  |
-| LLM (commit AI)      | [Ollama](https://ollama.ai) (local — no API key required)                                                                                                                                              |
-| Remote auth          | SSH (system agent) + HTTPS (token)                                                                                                                                                                     |
+| LLM                  | [Ollama](https://ollama.ai) by default, or any OpenAI-compatible server (your URL, your key)                                                                                                            |
+| Remote auth          | SSH via the system agent (fetch / pull / push)                                                                                                                                                          |
 | Monorepo             | pnpm workspaces + [Turborepo](https://turbo.build/)                                                                                                                                                    |
 
 ---
@@ -86,22 +92,26 @@ pnpm --filter @git-manager/e2e screenshots     # re-capture docs/screenshots/*.p
 
 The full annotated monorepo tree lives in [docs/README.md](docs/README.md#monorepo-structure).
 In short: `apps/desktop` (Tauri app: Rust backend in `src-tauri/`, React frontend in `src/`),
-`apps/landing-page`, `apps/e2e`, and shared `packages/` (`git-types`, `mascot`, `i18n`, `ui`,
-`components`, `editor`, `config`).
+`apps/landing-page`, `apps/docs` (the generated documentation site), `apps/e2e`, and shared
+`packages/` (`ai`, `git-types`, `mascot`, `i18n`, `ui`, `components`, `editor`, `theme`,
+`storybook-a11y`, `config`).
 
 ---
 
 ## Prerequisites
 
-| Requirement | Version       | Install                          |
-| ----------- | ------------- | -------------------------------- |
-| macOS       | 13+ (Ventura) | —                                |
-| Xcode CLT   | latest        | `xcode-select --install`         |
-| Node.js     | 20+           | [nodejs.org](https://nodejs.org) |
-| pnpm        | 9+            | `npm i -g pnpm`                  |
-| Rust        | 1.77+         | see below                        |
-| Tauri CLI   | v2            | `cargo install tauri-cli`        |
-| Ollama      | latest        | [ollama.ai](https://ollama.ai)   |
+| Requirement | Version         | Install                                     |
+| ----------- | --------------- | ------------------------------------------- |
+| macOS       | 13+ (Ventura)   | —                                           |
+| Xcode CLT   | latest          | `xcode-select --install`                    |
+| Node.js     | 24.18.0         | [nodejs.org](https://nodejs.org)            |
+| pnpm        | 11+             | `npm i -g pnpm@11`                          |
+| Rust        | 1.77+           | see below                                   |
+| Ollama      | optional        | [ollama.ai](https://ollama.ai) — AI features only |
+
+Node and pnpm versions are pinned in the root `package.json` (`engines` + `packageManager`); the
+Tauri CLI comes from `@tauri-apps/cli` in the workspace, so there is nothing to install globally.
+Ollama is only needed if you want the AI features — everything else works without it.
 
 ### 1. Xcode Command Line Tools
 
@@ -161,10 +171,10 @@ cd git-manager
 # 2. Install Node.js dependencies
 pnpm install
 
-# 3. Start Ollama (for AI commit generation)
+# 3. (Optional) Start Ollama, for the AI features
+#    Pick a model that honors structured output — see "Choosing a model" below
 ollama serve
-ollama pull llama3.2         # recommended general model
-# or: ollama pull qwen2.5-coder:7b  (smaller, faster for code diffs)
+ollama pull <model>
 
 # 4. Run in development mode (launches the Tauri desktop app)
 pnpm dev
@@ -182,26 +192,29 @@ pnpm build
 
 All scripts are run from the **repository root**.
 
-| Command          | Description                                            |
-| ---------------- | ------------------------------------------------------ |
-| `pnpm dev`       | Start Tauri dev server (hot reload React + Rust watch) |
-| `pnpm build`     | Build production app bundle                            |
-| `pnpm typecheck` | TypeScript check across all packages                   |
-| `pnpm lint`      | ESLint across all packages                             |
-| `pnpm test`      | Unit tests (Vitest) across all packages                |
-| `pnpm test:a11y` | Theme accessibility & consistency checks (see below)   |
-| `pnpm format`    | Prettier formatting                                    |
-| `pnpm clean`     | Remove all build artifacts                             |
+| Command                | Description                                                              |
+| ---------------------- | ------------------------------------------------------------------------ |
+| `pnpm dev`             | Start Tauri dev server (hot reload React + Rust watch)                   |
+| `pnpm build`           | Build production app bundle                                              |
+| `pnpm typecheck`       | TypeScript check across all packages                                     |
+| `pnpm lint`            | Oxlint across all packages + the EN/FR translation parity check          |
+| `pnpm test`            | Unit tests (Vitest) across all packages                                  |
+| `pnpm test:a11y`       | Theme accessibility & consistency checks (see below)                     |
+| `pnpm test:e2e`        | Build the e2e binary, then run the WebdriverIO + Cucumber suite          |
+| `pnpm dev:import-repo` | Rebuild the scripted fixture repos and launch the app with them as tabs  |
+| `pnpm format`          | Prettier formatting                                                      |
+| `pnpm clean`           | Remove all build artifacts                                               |
 
 ### Theme accessibility & consistency
 
-`pnpm test:a11y` runs a focused subset of the test suite that validates every built-in theme in `packages/ui/src/globals.css` (and, at runtime, user themes loaded from `~/.git-manager/themes/`):
+`pnpm test:a11y` runs a focused subset of the test suite that validates every built-in theme in `packages/theme/src/themes/*.css` (and, at runtime, user themes loaded from `~/.git-manager/themes/`):
 
-- **WCAG AA contrast** — every foreground/surface token pair (`primary`/`primary-foreground`, `destructive`, `success`, `muted-foreground`, …) meets the AA ratio, so no theme ships e.g. white text on a bright button. All 12 themes currently pass.
+- **WCAG AA contrast** — every foreground/surface token pair (`primary`/`primary-foreground`, `destructive`, `success`, `muted-foreground`, …) meets the AA ratio, so no theme ships e.g. white text on a bright button. All 15 themes currently pass.
+- **APCA contrast** — component labels are also graded with APCA (the WCAG 3 draft algorithm), which catches text that clears the AA ratio but still reads poorly, plus a graphical check so no badge fill blends into its surface.
 - **Token consistency** — each theme declares the same complete token set, as HSL triplets only (no stray hex that would bypass the color system).
 - **Picker parity** — the Settings theme picker's swatch previews match their real CSS tokens, and the picker list stays in sync with the CSS.
 
-The contrast and swatch checks use ratchet baselines that are currently empty: adding a theme, or editing a token without updating the picker/other themes, fails the check. Re-run after any change under `packages/ui/src/globals.css` or `apps/desktop/src/lib/themes.ts`.
+Every one of those checks is a ratchet against a baseline that is currently empty: adding a theme, or editing a token without updating the picker/other themes, fails the check. Re-run after any change under [`packages/theme/src/`](packages/theme/src/) (themes, tokens or the picker registry).
 
 ### Per-package
 
@@ -226,20 +239,26 @@ The frontend calls Rust commands via `invoke()`, layered through `lib/tauri.ts` 
 
 > For the full architecture — IPC boundary conventions, the frontend layering rules, and the R1/R2 rules enforced across the codebase — see [CLAUDE.md](CLAUDE.md). It's kept in sync with the actual code and is also the source of truth used by AI coding agents working in this repo.
 
-Long-running operations (currently: Ollama generation) stream progress via Tauri events:
+Long-running operations (currently: AI generation) stream progress via Tauri events. Every payload
+carries the `requestId` minted by the caller, so two generations running at once never feed each
+other's panel:
 
-| Event              | Payload  | Description          |
-| ------------------ | -------- | -------------------- |
-| `ollama:token`     | `string` | Next generated token |
-| `ollama:done`      | `void`   | Generation complete  |
-| `ollama:error`     | `string` | Error message        |
-| `ollama:cancelled` | `void`   | Cancelled by user    |
+| Event           | Payload                              | Description                   |
+| --------------- | ------------------------------------ | ----------------------------- |
+| `ai:token`      | `{ requestId: string, token: string }` | Next generated token          |
+| `ai:done`       | `{ requestId: string }`              | Generation complete           |
+| `ai:cancelled`  | `{ requestId: string }`              | Cancelled by user             |
+
+There is deliberately no `ai:error` event: a failure rejects the `invoke` promise of that request
+instead, so there is one channel per condition rather than two that race.
 
 ---
 
-## Ollama setup
+## AI provider setup
 
-The app connects to Ollama at `http://localhost:11434` (configurable in Settings → LLM).
+Settings ships exactly two presets: **Ollama** (`http://localhost:11434` by default) and a generic
+**OpenAI-compatible** entry whose URL and API key you own — LM Studio, MLX, vLLM or any server
+speaking that protocol. Both are configured in **Settings → AI provider**.
 
 ```bash
 # Install Ollama (macOS)
@@ -248,12 +267,12 @@ brew install ollama
 # Start the server
 ollama serve
 
-# Pull a model
-ollama pull qwen2.5-coder:7b       # ~4.7GB — a reasonable starting point for code diffs
+# Pull a model — see "Choosing a model" below before picking one
+ollama pull <model>
 ```
 
-The model is configurable per-project; the request timeout and the declared context window are also
-adjustable in Settings. (Temperature is not: each feature owns the one it needs — see
+The model, the request timeout and the declared context window are adjustable in Settings.
+(Temperature is not: each feature owns the one it needs — see
 [docs/ai/README.md](docs/ai/README.md).)
 
 ### Choosing a model — this matters more than it looks
@@ -270,7 +289,7 @@ commit that mattered. `Qwen3.6-27B` and `Qwen3.6-35B-A3B` (via an OpenAI-compati
 and answer the history search correctly. The tested models, with numbers, are listed in
 [docs/ai/README.md § Which models actually work](docs/ai/README.md#which-models-actually-work).
 
-You don't have to find this out the hard way: **Settings → AI → Test the model** sends a tiny
+You don't have to find this out the hard way: **Settings → AI provider → Test the model** sends a tiny
 schema-constrained request and warns when the model answers but ignores the format. Symptoms if you
 skip it: a wall of "commits left unread" in the history search, model deliberation appearing in the
 commit message box, or an empty answer where one was expected.
@@ -281,14 +300,15 @@ judgement stays on the main model. Same provider, same key; it only swaps the mo
 
 ---
 
-## Documentation & roadmap
+## Documentation
 
 Everything project-state and design related lives in [docs/](docs/):
 
-- **[docs/ROADMAP.md](docs/ROADMAP.md)** — what has shipped, what is still open, and the "not wired up" list of frontend wrappers with no backend command; the original M0–M8 milestone tables are kept below it as history
+- **[The documentation site](https://tlahey.github.io/git-manager/docs/)** — the user-facing manual, one page per feature, generated from the `@doc` e2e scenarios (source: [apps/docs](apps/docs/README.md))
 - **[docs/README.md](docs/README.md)** — documentation index
-- **[docs/specs/archive/](docs/specs/archive/)** — the original 2026-07-03 feature design docs, kept for the record only; they were never updated and no longer describe the code
-- **[docs/architecture/](docs/architecture/README.md)** — the five architecture refactors (13–17), their execution records and what each one decided
+- **[The issue tracker](https://github.com/Tlahey/git-manager/issues)** — the remaining work. There is deliberately no roadmap file: a hand-maintained inventory of what shipped drifts from the code within weeks, whereas the generated doc site cannot
+- **[docs/ai/](docs/ai/README.md)** — the AI system: the shared feature runtime, one page per feature, and the checklist for adding one
+- **[docs/architecture/](docs/architecture/README.md)** — the five architecture refactors of July 2026, their execution records and what each one decided
 - **[CLAUDE.md](CLAUDE.md)** — the authoritative IPC/layering conventions, kept in sync with the code (also used by AI coding agents)
 
 ---
@@ -297,21 +317,27 @@ Everything project-state and design related lives in [docs/](docs/):
 
 | Package              | Name                        | Description                                                                                     |
 | -------------------- | --------------------------- | ----------------------------------------------------------------------------------------------- |
-| `apps/desktop`       | `@git-manager/desktop`      | Main Tauri + React application                                                                  |
-| `apps/landing-page`  | `@git-manager/landing-page` | The [public landing page](https://tlahey.github.io/git-manager/), deployed to GitHub Pages      |
-| `apps/e2e`           | `@git-manager/e2e`          | WebdriverIO + Cucumber e2e suite driving the real Tauri app (incl. the `screenshots` capture)   |
-| `packages/git-types` | `@git-manager/git-types`    | Shared TypeScript DTOs (mirrors Rust models)                                                    |
-| `packages/mascot`    | `@git-manager/mascot`       | The octopus mascot as a shared `<git-mascot>` web component (landing page today, app tomorrow)  |
-| `packages/i18n`      | `@git-manager/i18n`         | i18next setup + EN/FR locale files                                                              |
-| `packages/ui`        | `@git-manager/ui`           | shadcn/ui base components                                                                       |
-| `packages/config`    | `@git-manager/config`       | Shared ESLint, Tailwind, tsconfig                                                               |
+| `apps/desktop`           | `@git-manager/desktop`       | Main Tauri + React application                                                                     |
+| `apps/landing-page`      | `@git-manager/landing-page`  | The [public landing page](https://tlahey.github.io/git-manager/), deployed to GitHub Pages         |
+| `apps/docs`              | `@git-manager/docs`          | The [documentation site](https://tlahey.github.io/git-manager/docs/) (VitePress), one page generated per `@doc` e2e scenario |
+| `apps/e2e`               | `@git-manager/e2e`           | WebdriverIO + Cucumber e2e suite driving the real Tauri app (incl. the `screenshots` capture)       |
+| `packages/git-types`     | `@git-manager/git-types`     | Shared TypeScript DTOs (mirrors Rust models)                                                       |
+| `packages/ai`            | `@git-manager/ai`            | The AI brain: provider presets and one descriptor per AI feature (instructions, temperature, prompts) |
+| `packages/mascot`        | `@git-manager/mascot`        | The octopus mascot as a shared `<git-mascot>` web component (landing page today, app tomorrow)     |
+| `packages/i18n`          | `@git-manager/i18n`          | i18next setup + EN/FR locale files                                                                 |
+| `packages/ui`            | `@git-manager/ui`            | shadcn/ui base components                                                                          |
+| `packages/components`    | `@git-manager/components`    | Composed, domain-agnostic presentational building blocks one level up from `ui`                    |
+| `packages/editor`        | `@git-manager/editor`        | All Monaco integration: diff, three-pane merge and single-pane editors                             |
+| `packages/theme`         | `@git-manager/theme`         | Design tokens, the theme CSS and the WCAG/APCA contrast gates                                      |
+| `packages/storybook-a11y`| `@git-manager/storybook-a11y`| Shared Storybook accessibility setup                                                               |
+| `packages/config`        | `@git-manager/config`        | Shared Oxlint, Tailwind, tsconfig                                                                  |
 
 ---
 
 ## Security
 
-- **No telemetry** — zero analytics, no network calls except Ollama (localhost)
-- **Credentials stay in Rust** — SSH keys and HTTPS tokens never reach the JavaScript layer
+- **No telemetry** — zero analytics. The only outbound traffic is what you ask for: your git remotes, the AI provider you configured (localhost by default), GitHub when you connect an account, and the update check against this repository's releases
+- **Git credentials stay in Rust** — fetch / pull / push authenticate through the system SSH agent inside the Rust layer; no key material is passed to JavaScript. (Provider *API* tokens — the GitHub OAuth token, GitLab/Bitbucket personal access tokens — are held in the frontend settings store, since they're only used for those providers' HTTP APIs.)
 - **Tauri ACL** — strict capability permissions via Tauri v2's permission system
 - **Protected branches** — configurable list of branches that block destructive operations
 - **Confirmation gates** — hard reset requires typing `RESET`, force-push requires explicit opt-in

@@ -670,9 +670,20 @@ export function useGitGraphNodes(
         // leg to its second parent is left untouched here — it isn't a straight vertical.)
         //
         // The lane is origin/main's OWN column, read off the node — not a hardcoded 0. Columns are
-        // assigned strictly top-to-bottom (see `build_graph_nodes` and
-        // docs/specs/graph-column-layout.md), so column 0 belongs to whichever lane the topmost row
-        // starts, which is the mainline only by coincidence.
+        // assigned strictly top-to-bottom (see the invariant comment in `build_graph_nodes`), so
+        // column 0 belongs to whichever lane the topmost row starts, which is the mainline only by
+        // coincidence. Rust used to inject this dashing itself, on column 0; that block encoded the
+        // same false assumption and was dead in practice, so it was removed rather than fixed.
+        //
+        // Three unrelated things render dashed, and each is owned by exactly ONE layer — do not
+        // move one across the boundary:
+        //   * the stash → base-commit bridge, owned by Rust (`build_graph_nodes`), because that
+        //     link is not real history;
+        //   * the WIP / paused-rebase connector, owned by this hook, because the row it descends
+        //     from is synthetic and spliced in here;
+        //   * this unpushed run above origin/main, owned by this hook, because only the frontend
+        //     knows which node is on screen to read the column off.
+        // `GraphSvg` draws the flags it is handed and infers none of this.
         patched = {
           ...patched,
           connections: patched.connections.map((conn) => {

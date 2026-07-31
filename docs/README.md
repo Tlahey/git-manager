@@ -71,6 +71,7 @@ git-manager/
 │   │       ├── lib/                # tauri.ts (typed invoke wrappers), appEventBus.ts
 │   │       └── stores/             # Zustand stores (repoUI, repoData, settings, undoHistory, game)
 │   ├── landing-page/               # Public landing page (Vite), deployed to GitHub Pages
+│   ├── docs/                       # Documentation site (VitePress), one page per @doc scenario
 │   └── e2e/                        # WebdriverIO + Cucumber e2e suite (drives the real app)
 ├── packages/
 │   ├── git-types/                  # Shared TypeScript interfaces (DTOs)
@@ -87,11 +88,8 @@ git-manager/
 │   └── git-fixtures/               # Scripted fixture repos (dev tabs + e2e scenarios)
 ├── docs/
 │   ├── README.md                   # This file
-│   ├── ROADMAP.md                  # What shipped, what's open, + the historical milestones
 │   ├── screenshots/                # Auto-captured app screenshots (e2e @screenshots)
 │   ├── ai/                         # The AI system: one page per feature + a shared overview
-│   ├── specs/                      # Living specs for invariant-shaped behaviour
-│   ├── specs/archive/              # Original 2026-07-03 design docs — historical only
 │   └── architecture/               # Architecture refactor plans + execution tracking
 ├── CLAUDE.md                       # Architecture/IPC conventions — authoritative
 ├── package.json                    # Root package (global scripts)
@@ -168,17 +166,37 @@ ollama pull qwen2.5-coder:7b
 | Document                                           | Description                                                        |
 | -------------------------------------------------- | ------------------------------------------------------------------ |
 | [CLAUDE.md](../CLAUDE.md)                          | **Authoritative** architecture, IPC boundary and layering rules    |
-| [ROADMAP](./ROADMAP.md)                            | Feature status and remaining work                                  |
+| [Documentation site](https://tlahey.github.io/git-manager/docs/) | The user-facing manual — one page per feature, generated from the `@doc` e2e scenarios |
+| [Issue tracker](https://github.com/Tlahey/git-manager/issues) | Remaining work. There is no roadmap file: see the note below       |
 | [AI system](./ai/README.md)                        | How every AI feature works — shared runtime + one page per feature |
-| [Architecture refactors](./architecture/README.md) | Refactor plans 13–17 and their execution records — all complete    |
-| [Specs](./specs/README.md)                         | Living specs for invariant-shaped behaviour (graph layout, fetch)  |
-| [Archived specs](./specs/archive/README.md)        | Original 2026-07-03 design docs — historical, do not trust as docs |
+| [Architecture refactors](./architecture/README.md) | Five refactor audits and their execution records (July 2026) — all complete |
 
-> [!WARNING]
-> The per-feature specs that used to be listed here now live in
-> [`./specs/archive/`](./specs/archive/README.md). They were written before the features were
-> built and never updated, so they describe commands, DTOs and components that in many cases do
-> not exist. Read [CLAUDE.md](../CLAUDE.md) instead for how the app actually works.
+### One rule behind this list
+
+**A document that nothing forces to change with the code stops being true.** Every entry above has
+a forcing function: the doc site is regenerated from the e2e scenarios, CLAUDE.md is what a PR is
+reviewed against, the refactor records describe work that is finished and cannot drift. Three
+things were removed on 2026-07-31 for failing that test:
+
+- **`ROADMAP.md`** — an inventory of what had shipped. Its last revision claimed 133 Tauri commands
+  when there were 157, credited fetch/pull/push with an HTTPS auth path that was never wired, and
+  listed as "not started" a feature that had partly shipped. Its open items became issues
+  [#234–#237](https://github.com/Tlahey/git-manager/issues).
+- **`specs/archive/`** — the original 2026-07-03 per-feature design docs, written before the
+  features existed and never updated. Six warnings scattered across the docs existed purely to tell
+  readers not to trust them.
+- **`specs/`** — two *accurate* specs describing invariants worth protecting. They went because
+  their content belonged one level down: the module doc comment is the copy you cannot refactor
+  past without reading. `auto-fetch.md` was already reproduced almost verbatim in
+  `useAutoFetch.ts`'s own header; what only `graph-column-layout.md` carried moved into
+  `build_graph_nodes` and `useGitGraphNodes`.
+
+> **Where invariant-shaped rationale goes now: the module doc comment**, beside the code it
+> protects — as `git_rebase.rs`, `ai_provider.rs` and `ai_commit_scan.rs` already do. If an
+> invariant spans layers, state it once where it is enforced and point at that from the other side.
+
+Everything removed stays in git history: `git show 9381c80:docs/ROADMAP.md`,
+`git show 9381c80:docs/specs/` to list the specs.
 
 ---
 

@@ -1,4 +1,4 @@
-# Spec 17 — Notification System: Extensibility Audit & Background Delivery
+# Notification system — extensibility audit & background delivery (July 2026)
 
 > **Status**: Both parts implemented (2026-07-03). Part A (registry) and Part B (tray +
 > hide-on-close) shipped together — see "Implementation status" at the bottom.
@@ -9,13 +9,13 @@ Two independent questions were raised about the notification system (the PR/CI w
 bell-dropdown + native OS notification stack):
 
 1. Is it built on a pattern that lets a new notification type be added without touching several
-   unrelated files (the same question docs [15](15-rewards-system-refactor-plan.md) and
-   [16](16-panels-interaction-refactor-plan.md) already asked of the rewards engine and the
-   panels/tabs system)?
+   unrelated files (the same question the [rewards audit](2026-07-rewards-system-refactor.md) and
+   the [panels audit](2026-07-panels-interaction-refactor.md) already asked of the rewards engine
+   and the panels/tabs system)?
 2. Is there a "worker" that can still deliver a notification when the user isn't actively looking
    at the app — i.e. does anything survive the app window being closed/hidden/unfocused?
 
-Same rules as docs 13/15/16: **R1** (one file, one role), **R2** (operations through a
+Same rules as the architecture, rewards and panels documents: **R1** (one file, one role), **R2** (operations through a
 service/API layer — not revisited here, no IPC surface changes), **R3** (introduce a pattern only
 where it closes a real, evidenced duplication — no speculative infrastructure).
 
@@ -48,7 +48,7 @@ Concrete cost of adding an 8th type: 4 files, 4 new branches, no compiler check 
 together (nothing stops a type being added to the union in `notification.store.ts` without a
 matching branch anywhere else — it would silently fall through to each `default:` case).
 
-This is the same OCP/DRY shape docs 15 (`ruleRegistry.ts`) and 16 (`tabRegistry.ts`) already
+This is the same OCP/DRY shape the rewards (`ruleRegistry.ts`) and panels (`tabRegistry.ts`) audits already
 closed elsewhere in this codebase — just not yet applied here.
 
 **Two sub-findings that make a straight 1:1 port of `ruleRegistry.ts` unnecessary in one place**:
@@ -136,7 +136,7 @@ file changes.
 data table is enough — these are inert descriptors, not behavior with internal state, unlike the
 rewards engine's `RewardRule` classes which needed real polymorphic `matches`/`track` methods).
 Building a `RewardRule`-style class-per-type here would be over-engineering for what is, on
-inspection, pure data (same R3 restraint as doc 16's rejected `DialogManager`).
+inspection, pure data (same R3 restraint as the panels audit's rejected `DialogManager`).
 
 ### Pattern 2 — Tray icon + hide-on-close
 

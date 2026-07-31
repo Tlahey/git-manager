@@ -6,9 +6,9 @@ description: Use before writing or right after writing code in git-manager that 
 # Architecture guardian
 
 This repo has a documented architecture plan at
-[docs/architecture/13-architecture-refactor-plan.md](../../../docs/architecture/13-architecture-refactor-plan.md)
+[docs/architecture/2026-07-architecture-refactor-plan.md](../../../docs/architecture/2026-07-architecture-refactor-plan.md)
 built from a real audit of the codebase, and a living execution log at
-[docs/architecture/14-architecture-refactor-tracking.md](../../../docs/architecture/14-architecture-refactor-tracking.md).
+[docs/architecture/2026-07-architecture-refactor-tracking.md](../../../docs/architecture/2026-07-architecture-refactor-tracking.md).
 As of that tracker, the plan (phases 1-6) is fully applied — R1 and R2 below are no longer
 aspirational, they're the current state of the code. Treat them as invariants to preserve, not
 goals to work toward: before adding new code in the areas below, apply these rules so we don't
@@ -89,8 +89,8 @@ reintroduce problems that were already found and fixed.
 ## What to do with this
 
 1. Before writing the code, check whether the file you're about to touch already grew past
-   ~300 lines or mixes rendering with logic. The plan's original audit table (doc 13) is
-   historical; the current state — including everything fixed in Phase 6 — is in doc 14's tables
+   ~300 lines or mixes rendering with logic. The plan's original audit table is historical; the
+   current state — including everything fixed in Phase 6 — is in the execution tracking's tables
    and Journal. If the file you're touching is already large, prefer extracting the piece you're
    adding into its own hook/service/component instead of adding more lines to it, and give that
    extraction its own test.
@@ -101,7 +101,7 @@ reintroduce problems that were already found and fixed.
    silently ignoring it — the plan doc is a living document, update it if a rule needs to change.
 4. If you find a _new_ violation (a file that grew, a new `lib/tauri.ts` bypass, duplicated
    logic), add a new numbered action to Phase 6 of
-   [docs/architecture/14-architecture-refactor-tracking.md](../../../docs/architecture/14-architecture-refactor-tracking.md)
+   [docs/architecture/2026-07-architecture-refactor-tracking.md](../../../docs/architecture/2026-07-architecture-refactor-tracking.md)
    rather than reopening a closed phase — that's the file's own stated convention. Mark actions ✅
    (or 🔄 if partially done), update the "Current step" line, and add a dated Journal entry once
    the change lands. That file is the single source of truth for where the refactor stands — keep

@@ -5,7 +5,7 @@ Evaluates which achievements unlock in response to app events. Extracted out of
 that can be reasoned about (and eventually unit-tested) independently of the store that wraps it.
 
 Full rationale, SOLID audit, and before/after examples:
-[docs/architecture/15-rewards-system-refactor-plan.md](../../../../../docs/architecture/15-rewards-system-refactor-plan.md).
+[docs/architecture/2026-07-rewards-system-refactor.md](../../../../../docs/architecture/2026-07-rewards-system-refactor.md).
 
 ## Data flow
 

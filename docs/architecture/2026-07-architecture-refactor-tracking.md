@@ -1,15 +1,27 @@
-# Spec 14 — Architecture Refactor Execution Tracking
+# Architecture refactor — execution record (July 2026)
 
-## Objective
+> **Finished, and not to be updated.** All 36 actions of the
+> [architecture refactor plan](2026-07-architecture-refactor-plan.md) were completed between
+> 2026-07-02 and 2026-07-11 (see the Journal at the bottom). This was the plan's live dashboard
+> while the work ran; it is
+> now the record of what was done and why, and nothing here should be checked off, re-ordered or
+> extended. A new refactor gets its own dated document.
 
-This file is the **living dashboard** for the plan described in
-[13-architecture-refactor-plan.md](13-architecture-refactor-plan.md). It breaks down each phase into
-atomic actions (one action = one reasonable PR), in the order in which they must be done
-(some depend on previous ones — do not skip the order without checking the "Depends on" column).
+## What it is worth reading for
 
-**Usage rule:** at every work session on the refactor, update this file —
-check off completed actions, add a line to the Journal at the bottom with the date. This file
-must always reflect the actual state of the code, not the intention.
+The action-by-action breakdown below (one action = one reasonable PR, with its dependencies) is
+mostly of archaeological interest now. Two things in it are not:
+
+- **The audit behind the R2 rule.** Action 6.5 found 27 places where a component called `invoke()`
+  or a raw `fetch()` directly instead of going through `api/*.api.ts`, several of them real silent
+  bugs — a `checkoutBranch()` that skipped `clearRedo()` among them. That audit is why
+  [CLAUDE.md](../../CLAUDE.md) states the API-layer rule as a hard invariant rather than a style
+  preference.
+- **The patterns deliberately _not_ built.** `GitGraphBuilder` and `DiffRenderStrategy` were both
+  planned, then dropped after re-reading the code (actions 5.1/5.2). The reasoning is the model for
+  the R3 restraint every later audit applies.
+
+## Status legend
 
 ## Status legend
 
@@ -146,7 +158,7 @@ applicable). Phase 5: 5.1/5.2 ⏭️ (not applicable, no Strategy to extract). P
 complete, 0 remaining files calling `lib/tauri.ts` directly outside of type imports), 6.6 ✅,
 6.7 ✅ (backend service-layer extraction, all 5 remaining `commands/*.rs` domains now delegate to
 a `services/git_*.rs` module — see also
-[16-panels-interaction-refactor-plan.md](16-panels-interaction-refactor-plan.md), whose frontend
+[2026-07-panels-interaction-refactor.md](2026-07-panels-interaction-refactor.md), whose frontend
 follow-up sweep prompted this backend pass in the same session), 6.8 ✅ (`ConflictResolver.tsx`
 2350 → 566 lines, behavior split into `packages/code-view/src/conflict-resolver/{,hooks/}`).
 

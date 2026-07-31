@@ -892,8 +892,8 @@ describe('useGitGraphNodes — renderNodes patching', () => {
     expect(belowCol0?.dashed).toBeFalsy()
   })
 
-  // Columns are assigned strictly top-to-bottom (see `build_graph_nodes` and
-  // docs/specs/graph-column-layout.md), so the mainline is NOT necessarily column 0: here the
+  // Columns are assigned strictly top-to-bottom (see the invariant comment in
+  // `build_graph_nodes`), so the mainline is NOT necessarily column 0: here the
   // topmost row is a feature commit on column 0 and origin/main sits on column 1. The unpushed
   // dashing must follow origin/main's own lane — dashing column 0 instead would dot an unrelated
   // feature branch and leave the actual unpushed mainline solid.
