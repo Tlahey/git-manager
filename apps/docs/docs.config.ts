@@ -62,7 +62,7 @@ export const DOC_SECTIONS: DocSection[] = [
   },
   {
     title: 'Tools',
-    features: ['patch-workspace'],
+    features: ['patch-workspace', 'package-health'],
   },
   {
     title: 'AI features',

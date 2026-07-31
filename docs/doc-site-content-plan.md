@@ -332,13 +332,18 @@ doesn't get a page.
     dependency (pnpm supports installing those with no network access) is the likely shape of a
     fixture that could work; not built here for lack of time, not because it's impossible.
 
-### Page: Package health checks (`package-health.feature`) — 🆕 write it
+### Page: Package health checks (`package-health.feature`) — 🔄 partially done (1 of 2 sub-parts)
 
 - **Sub-part — Run a health check on your dependencies**
   - Must show: Tools → Health Check (only enabled in a repo with a package manifest), the report's
     package/dependency counts and per-check pass/fail badges.
   - e2e: `package-health.feature → "Running a health check reports package and dependency counts"` —
-    🆕 write it
+    ✅ tagged. New fixture (`tools/git-fixtures/scenarios/package-health.sh`): a small pnpm
+    workspace with real, deliberate drift (a dependency pinned to two ranges, a literal range the
+    catalog already covers, a sibling package depended on by version) so the screenshot shows a mix
+    of warning/skipped/passed badges, not an all-green report. Works because
+    `run_package_health_check` is filesystem-only (see its own module doc comment) — no
+    `pnpm install` and no network needed to exercise it, unlike the sub-part below.
 - **Sub-part — Assess an upgrade before taking it**
   - Must show: opening the pending-updates list, expanding one to fetch its real changelog, and the
     AI-backed risk badge (low/medium/high) that cross-references the release notes against this
@@ -346,6 +351,17 @@ doesn't get a page.
   - e2e: `package-health.feature → "An outdated package's upgrade risk is shown with its changelog"`
     — 🆕 write it — see [docs/ai/README.md](../docs/ai/README.md) for why this one AI feature isn't
     listed under "AI features" below: it's package-health-specific, not general-purpose.
+  - Why this one's harder: unlike the offline checks above, `check_outdated_packages` shells out to
+    the repo's real `pnpm`/`npm outdated` against the live npm registry (`package_outdated.rs`'s own
+    doc comment: "the app makes no outbound calls of its own... `pnpm`/`npm` already know the
+    registry"), and `get_package_changelog` fetches real release notes — both real network calls
+    from a UI-driven click, not something `command-mocking.feature`'s mechanism can fake (that only
+    intercepts the test-bridge path, not the app's own real `invoke()` calls — see that feature
+    file's own note). Same category of harder-to-fixture as "Patch a single dependency" above: needs
+    a fixture whose "outdated" answer is deterministic without hitting a real registry (a local npm
+    proxy/registry mirror, or a fixture package pinned old enough that its "latest" is stable) plus
+    the fake AI test server already used by `ai-generation.feature` for the risk badge. Not attempted
+    here for lack of time, not because it's impossible.
 
 ---
 
