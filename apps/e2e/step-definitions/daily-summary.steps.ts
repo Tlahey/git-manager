@@ -7,7 +7,7 @@ import { Given, When, Then, After } from '@wdio/cucumber-framework'
 const FIXTURE_ROOT = '/tmp/git-manager-fixtures'
 
 // This suite shares ONE app window across all specs, and this feature is the first to write the
-// launchpad's persisted `savedRepos` + the `dailySummary` settings. Without cleanup those keys would
+// dashboard's persisted `savedRepos` + the `dailySummary` settings. Without cleanup those keys would
 // leak into every later spec (a phantom saved repo on their dashboard, auto-generation left on),
 // causing unrelated failures downstream. Reset them after each of this feature's scenarios so the
 // shared window returns to the suite's baseline. Tagged `@daily-summary` (not the broad `@ai`) so it
@@ -83,7 +83,7 @@ async function seedSettingsAndReload(patch: Record<string, unknown>) {
 }
 
 // Two setup concerns folded into one reload:
-//  1. The launchpad only renders its repo sections when it knows at least one *saved/discovered*
+//  1. The dashboard only renders its repo sections when it knows at least one *saved/discovered*
 //     repo (`totalKnownCount > 0`); the fixture-open step seeds only `openTabs`, so without this the
 //     dashboard shows its empty state and no RepoRow (hence no briefing button) ever mounts. Register
 //     the fixture into `git-manager-repos` (savedRepos) so the project actually appears. The path is
@@ -94,7 +94,7 @@ async function seedSettingsAndReload(patch: Record<string, unknown>) {
 //     scenario starts with no stored briefing — so the morning auto-run actually fires (a leftover
 //     fresh summary would make it skip, sending no request) and the "empty state" scenario is empty.
 Given(
-  /^the "([^"]*)" project is listed in the launchpad with no briefing yet$/,
+  /^the "([^"]*)" project is listed in the dashboard with no briefing yet$/,
   async (fixtureName: string) => {
     const repoPath = join(FIXTURE_ROOT, fixtureName)
     // The seed is written into whatever document is current — and the *previous* reload of this
@@ -102,7 +102,7 @@ Given(
     // asynchronous). That lingering page is a freshly mounted RepoView whose `apiOpenRepo(...)`
     // resolution calls `setRepoCache`, and any zustand set() makes zustand-persist rewrite the whole
     // partialized `git-manager-repos` snapshot from ITS in-memory state — where `savedRepos` is
-    // still `[]` — silently clobbering the seed we just wrote. The launchpad then renders its empty
+    // still `[]` — silently clobbering the seed we just wrote. The dashboard then renders its empty
     // state (`totalKnownCount === 0`): no RepoRow, no briefing button, for the whole scenario.
     // (Observed in scenario 1, which always performs the session's first — cold, slow — open of the
     // fixture, so the clobbering write reliably lands just after the seed.) So: stamp each
@@ -154,7 +154,7 @@ Given(/^the daily summary feature is disabled in settings$/, async () => {
   await seedSettingsAndReload({ dailySummary: { enabled: false, autoGenerate: false } })
 })
 
-When(/^I open the launchpad dashboard$/, async () => {
+When(/^I open the dashboard$/, async () => {
   // Switch to the pinned dashboard tab via the e2e-exposed store (the tab button carries no
   // testid). Right after a reload the hook may not be installed yet, and `store?.` would silently
   // no-op — poll until the store is actually there and the switch really happened.
@@ -175,18 +175,18 @@ When(/^I open the launchpad dashboard$/, async () => {
       timeoutMsg: '__e2eRepoUIStore never became available to switch to the dashboard tab',
     }
   )
-  // The Browse button lives in the dashboard header — a fixture-agnostic "launchpad is shown" signal.
+  // The Browse button lives in the dashboard header — a fixture-agnostic "dashboard is shown" signal.
   await $('[data-testid="open-repo-button"]').waitForDisplayed({ timeout: 15000 })
 })
 
 When(/^I open the project's daily briefing$/, async () => {
-  // The row proves the launchpad actually knows the seeded repo (vs rendering its empty state
+  // The row proves the dashboard actually knows the seeded repo (vs rendering its empty state
   // because the savedRepos seed was lost) — a much more precise failure signal than the briefing
   // button silently timing out.
   await $('[data-testid="dashboard-repo-row"]').waitForExist({
     timeout: 15000,
     timeoutMsg:
-      'No dashboard-repo-row — the launchpad is in its empty state, the savedRepos seed did not survive',
+      'No dashboard-repo-row — the dashboard is in its empty state, the savedRepos seed did not survive',
   })
   const button = $('[data-testid="repo-summary-button"]')
   await button.waitForDisplayed({ timeout: 15000 })
