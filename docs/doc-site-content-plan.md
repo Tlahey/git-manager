@@ -559,15 +559,27 @@ one page because a reader who finds one "Explain (LLM)" entry point has effectiv
     cases too.
   - Descriptor: `commit-search.md`
 
-### Page: Summary search (`ai-summary-search.feature`) — 🆕 write it
+### Page: Summary search (`ai-summary-search.feature`) — ✅ done
 
 - **Sub-part — Ask your own archive of daily briefings**
-  - Must show: the question box on the Dashboard's Summaries tab; an answer that cites which
-    archived days it rests on.
-  - e2e: `ai-summary-search.feature → "Answering a question from archived daily briefings"` — 🆕
-    write it
-  - Descriptor: `summary-search.md`. Depends on the Dashboard section below for the Summaries tab
-    it lives in.
+  - Must show: the question box on the Summaries panel; an answer that cites which archived days it
+    rests on.
+  - e2e: `ai-summary-search.feature → "Answering a question from archived daily briefings"` — ✅
+    tagged
+  - Descriptor: `summary-search.md`
+  - **Correction to this row's own past wording**: not literally "the Dashboard's Summaries tab" —
+    the archive-wide "Ask" box (`SummaryAskPanel`) lives only in the graph's own AI-menu-opened
+    "Daily summaries" panel (`DailySummariesPanel.tsx`, `ai-menu-summaries`), scoped to whichever
+    repo's tab is active. The Dashboard row's own briefing button opens a different, single-day
+    component (`DailySummaryPanel.tsx`) with no ask box at all — so the scenario generates the
+    archived day from the Dashboard first (reusing `daily-summary.feature`'s own steps) then
+    switches to the repo's real tab to reach the actual Ask panel. Same category of stale-wording
+    fix as the "launchpad" one on the Dashboard page above — caught by actually reading the
+    component tree rather than trusting the plan's own prior description of it.
+  - Fake-server addition: a `summary_search` case that echoes back the first real candidate's
+    repo/date parsed out of the prompt (`## <repo> — <date>` blocks) rather than a fixed fake pair,
+    so the screenshot's citation chip names the actually-archived day instead of one that could
+    never appear in a real shortlist.
 
 ### Page: Behind the scenes — the Action Journal (`action-journal.feature`) — ✅ done
 
