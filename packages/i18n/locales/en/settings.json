@@ -1,5 +1,6 @@
 {
   "settings.title": "Settings",
+  "settings.back": "Back",
   "settings.search.placeholder": "Search settings…",
   "settings.search.noResults": "No matching settings",
   "settings.search.keywords.general": "general author name email graph fetch prune scan",
@@ -85,6 +86,7 @@
   "settings.ai.contextCheckBelowServed": "Your value of {{declared}} is far below that, so features read only a fraction of your changes for no reason. Raise it to {{served}}.",
   "settings.ai.contextCheckApply": "Use {{suggested}} tokens",
   "settings.ai.contextCheckTooHigh": "Your value of {{declared}} is above what the model supports: prompts will be silently truncated. Lower it.",
+  "settings.integrations.providers": "Providers",
   "settings.github.title": "GitHub Accounts",
   "settings.github.connectedAs": "Connected as {{name}} ({{login}})",
   "settings.github.reposTitle": "Active Account Repositories",

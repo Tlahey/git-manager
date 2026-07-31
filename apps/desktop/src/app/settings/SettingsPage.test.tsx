@@ -214,7 +214,7 @@ describe('SettingsPage — close', () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
     render(<SettingsPage onClose={onClose} />)
-    await user.click(screen.getByText('Retour'))
+    await user.click(screen.getByText('settings.back'))
     expect(onClose).toHaveBeenCalledOnce()
   })
 })

@@ -329,7 +329,7 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
       >
         <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={onClose}>
           <ArrowLeft className="h-3.5 w-3.5" />
-          Retour
+          {t('settings.back')}
         </Button>
         <h1 className="text-sm font-semibold">{t('settings.title')}</h1>
       </header>

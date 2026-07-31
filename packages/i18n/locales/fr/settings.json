@@ -1,5 +1,6 @@
 {
   "settings.title": "Paramètres",
+  "settings.back": "Retour",
   "settings.search.placeholder": "Rechercher un paramètre…",
   "settings.search.noResults": "Aucun paramètre correspondant",
   "settings.search.keywords.general": "général auteur nom email graphe fetch élaguer scan",
@@ -85,6 +86,7 @@
   "settings.ai.contextCheckBelowServed": "Votre valeur de {{declared}} est très en dessous : les fonctionnalités ne lisent qu'une fraction de vos changements, sans raison. Montez-la à {{served}}.",
   "settings.ai.contextCheckApply": "Utiliser {{suggested}} tokens",
   "settings.ai.contextCheckTooHigh": "Votre valeur de {{declared}} dépasse ce que supporte le modèle : les prompts seront tronqués silencieusement. Abaissez-la.",
+  "settings.integrations.providers": "Fournisseurs",
   "settings.github.title": "Comptes GitHub",
   "settings.github.connectedAs": "Connecté en tant que {{name}} ({{login}})",
   "settings.github.reposTitle": "Dépôts du compte actif",
