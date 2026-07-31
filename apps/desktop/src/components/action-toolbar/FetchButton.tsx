@@ -15,7 +15,7 @@ interface FetchButtonProps {
   onFetchPrune: () => void
 }
 
-/** Bouton `Fetch` avec menu déroulant (Fetch all, Fetch & prune). */
+/** `Fetch` button with a dropdown menu (Fetch all, Fetch & prune). */
 export function FetchButton({ loading, onFetch, onFetchAll, onFetchPrune }: FetchButtonProps) {
   const { t } = useTranslation('git')
 

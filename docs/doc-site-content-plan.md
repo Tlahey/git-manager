@@ -869,14 +869,18 @@ rather than "Local". `gitflow`, `worktree` and `run` are repo-only; `appearance`
     production UI shown to any GitHub-disconnected user, not a leftover dev artifact; every fixture
     in this suite is GitHub-disconnected since none of it drives real OAuth.
 
-### Page: The Activity log (`activity-log.feature`) — 🆕 write it
+### Page: The Activity log (`activity-log.feature`) — ✅ done
 
 - **Sub-part — Trace what the app actually did**
   - Must show: opening the Activity Logs takeover, filtering by repo/scope/error-only, and a
     selected row's raw command + args/error detail — this is a debugging trace aimed at whoever is
     chasing a bug, distinct from the Action Journal (AI features section above), which reframes the
     same underlying log for a reader who wants to learn rather than debug.
-  - e2e: `activity-log.feature → "Filtering the activity log to errors only"` — 🆕 write it
+  - e2e: `activity-log.feature → "Filtering the activity log to errors only"` — ✅ done. Every
+    `invoke()` call is recorded automatically (`lib/tauri.ts`), success or failure — clicking
+    Fetch on the `stash-stack` fixture (which has no configured remote, see `stash-stack.sh`) is
+    a real, deterministic way to produce a genuine error entry (`fetch_remote` failing with git2's
+    own "remote 'origin' does not exist") rather than needing to mock or fake one.
 
 ---
 
