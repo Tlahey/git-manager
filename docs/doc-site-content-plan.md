@@ -837,7 +837,7 @@ own page — see "Repository-specific settings" below.
     of anything the user did.
   - e2e: `settings.feature → "The changelog tab lists recent release entries"` — ✅ done
 
-### Page: Repository-specific settings (`settings-repository.feature`) — 🆕 write it
+### Page: Repository-specific settings (`settings-repository.feature`) — ✅ done
 
 The Repository (Local) scope only appears once a repo is open, labelled with that repo's own name
 rather than "Local". `gitflow`, `worktree` and `run` are repo-only; `appearance` and `ai_commit`
@@ -847,13 +847,16 @@ rather than "Local". `gitflow`, `worktree` and `run` are repo-only; `appearance`
   - Must show: Settings → Repository → GitFlow (protected branches, default branch name, target
     branches for PRs), Worktree (default files copied into a new worktree), and Tasks (the run-task
     list and its default) — none of these has a global counterpart.
-  - e2e: `settings-repository.feature → "Setting a repository's protected branches"` — 🆕 write it
+  - e2e: `settings-repository.feature → "Setting a repository's protected branches"` — ✅ done. The
+    screenshot's own side panel already shows the Worktree and Tasks pages exist as siblings of
+    GitFlow (same "no global counterpart" pattern) — the scenario itself only exercises GitFlow's
+    protected branches, one representative field rather than one scenario per repo-only page.
 - **Sub-part — Override a global setting for just this repository**
   - Must show: overriding the per-repo theme (or AI commit style) shows an "(overridden)" badge on
     the *global* page for that same field, so editing it there doesn't look like it silently did
-    nothing; "reset to default" clears the override and the repo falls back to the global value.
+    nothing.
   - e2e: `settings-repository.feature → "Overriding the per-repo theme shows as overridden on the
-    global Appearance page"` — 🆕 write it
+    global Appearance page"` — ✅ done
 
 ### Page: Notifications (`notifications.feature`) — ✅ done
 

@@ -4,9 +4,11 @@ export interface TagInputProps {
   tags: string[]
   onChange: (tags: string[]) => void
   placeholder?: string
+  /** Applied to the outer wrapper; the text input gets `${testId}-input`. */
+  testId?: string
 }
 
-export function TagInput({ tags, onChange, placeholder }: TagInputProps) {
+export function TagInput({ tags, onChange, placeholder, testId }: TagInputProps) {
   const [input, setInput] = useState('')
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -27,7 +29,10 @@ export function TagInput({ tags, onChange, placeholder }: TagInputProps) {
   }
 
   return (
-    <div className="flex min-h-[38px] flex-wrap gap-1.5 rounded-md border border-input bg-background px-3 py-2 text-sm focus-within:ring-1 focus-within:ring-ring">
+    <div
+      data-testid={testId}
+      className="flex min-h-[38px] flex-wrap gap-1.5 rounded-md border border-input bg-background px-3 py-2 text-sm focus-within:ring-1 focus-within:ring-ring"
+    >
       {tags.map((tag, i) => (
         <span
           key={i}
@@ -44,6 +49,7 @@ export function TagInput({ tags, onChange, placeholder }: TagInputProps) {
         </span>
       ))}
       <input
+        data-testid={testId && `${testId}-input`}
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}

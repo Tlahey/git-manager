@@ -18,6 +18,12 @@ describe('TagInput — rendering', () => {
     rerender(<TagInput tags={['a']} onChange={vi.fn()} placeholder="Add a tag…" />)
     expect(screen.queryByPlaceholderText('Add a tag…')).not.toBeInTheDocument()
   })
+
+  it('applies testId to the wrapper and `${testId}-input` to the text input', () => {
+    render(<TagInput tags={[]} onChange={vi.fn()} testId="my-tags" />)
+    expect(screen.getByTestId('my-tags')).toBeInTheDocument()
+    expect(screen.getByTestId('my-tags-input')).toBe(screen.getByRole('textbox'))
+  })
 })
 
 describe('TagInput — adding tags', () => {
