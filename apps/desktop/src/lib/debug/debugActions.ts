@@ -403,7 +403,7 @@ export const DEBUG_ACTIONS: DebugAction[] = [
     kind: 'effect',
     group: 'Transfers',
     label: 'Scheduled fetch in flight',
-    hint: 'The auto-fetch. Should show NO progress card — it fires on every focus change.',
+    hint: 'The auto-fetch. Should show NO progress card — it runs every interval, focused or not.',
     run: () => {
       const store = useRemoteProgressStore.getState()
       store.start(DEMO_REPO, 'fetch', true)
@@ -414,6 +414,21 @@ export const DEBUG_ACTIONS: DebugAction[] = [
         completed: 320,
         total: 1000,
         bytes: 3 * 1024 * 1024,
+      })
+    },
+  },
+  {
+    id: 'transfer-fetch-background-failed',
+    kind: 'effect',
+    group: 'Transfers',
+    label: 'Scheduled fetch that failed',
+    hint: 'The auto-fetch offline. Should leave no card and no banner at all — same contract as a manual fetch’s own silent failure.',
+    run: () => {
+      const store = useRemoteProgressStore.getState()
+      store.start(DEMO_REPO, 'fetch', true)
+      store.finish(DEMO_REPO, 'fetch', {
+        kind: 'error',
+        message: 'unable to access the remote: Could not resolve host',
       })
     },
   },
@@ -464,21 +479,24 @@ export const DEBUG_ACTIONS: DebugAction[] = [
   // ── AI runs ─────────────────────────────────────────────────────────────────────────────────
   // These drive the real activity store the AI card reads, so they exercise the whole path —
   // including the grace period that carries the card across the gaps in a map phase — with no
-  // provider, no model and no repository. The card only shows while the window is **unfocused**, so
-  // click one, then click away from the app to watch it.
+  // provider, no model and no repository. Shows regardless of focus, so click one and watch the
+  // notch right here.
   {
     id: 'ai-file-analysis',
     kind: 'effect',
     group: 'AI runs',
     label: 'File analysis, file by file',
-    hint: 'Ticks 1→8 over 8 s, one begin/end per file. Click away from the app to see the card.',
+    hint: 'Ticks 1→8 over 8 s, one begin/end per file.',
     run: async () => {
       const store = useAiActivityStore.getState()
       const total = 8
       for (let done = 0; done < total; done++) {
         // One run per file, exactly as `summarizeFiles` produces them — the gaps between them are
         // the thing the card's grace period exists to survive.
-        const runId = store.begin('file-summary', { repoPath: DEMO_REPO, panel: { kind: 'working' } })
+        const runId = store.begin('file-summary', {
+          repoPath: DEMO_REPO,
+          panel: { kind: 'working' },
+        })
         store.setProgress({ featureId: 'file-summary', completed: done, total })
         await new Promise((resolve) => setTimeout(resolve, 900))
         store.end(runId)

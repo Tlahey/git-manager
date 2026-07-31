@@ -227,4 +227,13 @@ describe('transfer actions', () => {
     expect(entry?.outcome?.kind).toBe('error')
     expect(entry?.outcome?.message).toContain('non-fast-forward')
   })
+
+  it('fails a scheduled fetch without leaving any card behind', () => {
+    // The whole point of this button: proving the auto-fetch's own silent-failure contract holds
+    // once it runs unattended for as long as the app is open, not just once at start-up.
+    run('transfer-fetch-background-failed')
+    const entry = Object.values(useRemoteProgressStore.getState().operations)[0]
+    expect(entry?.background).toBe(true)
+    expect(entry?.outcome?.kind).toBe('error')
+  })
 })

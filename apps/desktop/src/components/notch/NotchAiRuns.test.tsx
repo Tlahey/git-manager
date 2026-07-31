@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { render, act } from '@testing-library/react'
 import { emptyNotchQueue } from '@git-manager/notch'
 import { NotchAiRuns } from './NotchAiRuns'
@@ -21,22 +21,10 @@ function begin(featureId: string, repoPath = '/Users/antoine/Workspace/git-manag
   return runId
 }
 
-/** The app in the background, which is the only state this card shows in. */
-function blur() {
-  act(() => {
-    window.dispatchEvent(new Event('blur'))
-  })
-}
-
 beforeEach(() => {
-  vi.spyOn(document, 'hasFocus').mockReturnValue(false)
   useAiActivityStore.setState({ runs: [], progress: null })
   useNotchQueueStore.setState({ queue: emptyNotchQueue })
   useSettingsStore.setState({ settings: INITIAL_SETTINGS })
-})
-
-afterEach(() => {
-  vi.restoreAllMocks()
 })
 
 describe('NotchAiRuns', () => {
@@ -45,9 +33,8 @@ describe('NotchAiRuns', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('puts the model’s work on the notch while the app is in the background', () => {
+  it('puts the model’s work on the notch', () => {
     render(<NotchAiRuns />)
-    blur()
     begin('file-summary')
 
     expect(current()?.model).toMatchObject({
@@ -57,26 +44,24 @@ describe('NotchAiRuns', () => {
     })
   })
 
-  it('says nothing while the user is looking straight at the app', () => {
-    // The footer's busy pill names the same feature and counts the same steps, without covering the
-    // menu bar. A card duplicating it would be pure noise.
-    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+  it('shows even while the user is looking straight at the app', () => {
+    // Deliberately duplicates the footer's busy pill: the pill is easy to miss if it isn't
+    // already what you're looking at, and the close button is right there for anyone who
+    // doesn't want the extra card.
     render(<NotchAiRuns />)
-    act(() => {
-      window.dispatchEvent(new Event('focus'))
-    })
     begin('code-review')
 
-    expect(current()).toBeNull()
+    expect(current()?.model).toMatchObject({ kind: 'progress', id: 'ai-run' })
   })
 
   it('counts the files as the map phase advances', () => {
     render(<NotchAiRuns />)
-    blur()
     begin('file-summary')
 
     act(() => {
-      useAiActivityStore.getState().setProgress({ featureId: 'file-summary', completed: 5, total: 20 })
+      useAiActivityStore
+        .getState()
+        .setProgress({ featureId: 'file-summary', completed: 5, total: 20 })
     })
 
     expect(current()?.model).toMatchObject({ ratio: 0.25, detail: '5 / 20 files' })
@@ -84,7 +69,6 @@ describe('NotchAiRuns', () => {
 
   it('carries a way back to the panel the run came from', () => {
     render(<NotchAiRuns />)
-    blur()
     begin('code-review', '/repo')
 
     expect(current()?.route).toEqual({
@@ -96,7 +80,6 @@ describe('NotchAiRuns', () => {
 
   it('names the repository, not its path', () => {
     render(<NotchAiRuns />)
-    blur()
     begin('file-summary', '/Users/antoine/Workspace/git-manager')
 
     expect(current()?.model.context).toBe('git-manager')
@@ -104,7 +87,6 @@ describe('NotchAiRuns', () => {
 
   it('is ambient — a run in flight is not worth a permanent entry in Notification Centre', () => {
     render(<NotchAiRuns />)
-    blur()
     begin('file-summary')
 
     expect(current()?.importance).toBe('ambient')
@@ -116,7 +98,6 @@ describe('NotchAiRuns', () => {
       settings: { ...INITIAL_SETTINGS, ai: { ...INITIAL_SETTINGS.ai, enabled: false } },
     })
     render(<NotchAiRuns />)
-    blur()
     begin('file-summary')
 
     expect(current()).toBeNull()
@@ -124,7 +105,6 @@ describe('NotchAiRuns', () => {
 
   it('stands aside for the commit search, which has its own card', () => {
     render(<NotchAiRuns />)
-    blur()
     begin('commit-relevance')
 
     expect(current()).toBeNull()
@@ -132,7 +112,6 @@ describe('NotchAiRuns', () => {
 
   it('takes the card down when it unmounts', () => {
     const { unmount } = render(<NotchAiRuns />)
-    blur()
     begin('file-summary')
     expect(current()).not.toBeNull()
 

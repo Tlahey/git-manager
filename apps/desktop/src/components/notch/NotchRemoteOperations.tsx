@@ -84,16 +84,24 @@ function RemoteOperationCard({
   useNotchOperation({
     id: remoteOperationKey(entry.repoPath, entry.operation),
     model: remoteProgressNotchModel({ entry, t }),
-    // A scheduled fetch gets no live card. It runs every minute and again on every focus change, so
-    // this is the difference between a notch that reports the user's transfers and one that blinks
-    // each time they alt-tab back into the app. Its outcome still goes through, below.
+    // A scheduled fetch gets no live card. It runs every minute, focused or not, so this is the
+    // difference between a notch that reports the user's transfers and one that is never quiet.
+    // Its outcome still goes through, below — filtered differently.
     enabled: enabled && !entry.background,
   })
 
   useEffect(() => {
     if (!entry.outcome) return
 
-    if (enabled) {
+    // A scheduled fetch's own *failure* is swallowed, the same contract `useAutoFetch` documents for
+    // itself: offline, a missing credential, a remote that's gone — none of it is worth a card for a
+    // transfer nobody asked for, and now that the schedule keeps running while the window is
+    // unfocused, an unattended evening offline would otherwise become a stream of them. A background
+    // *success* still gets through below — what it found is the one thing worth an unattended fetch
+    // existing at all.
+    const silentFailure = entry.background && entry.outcome.kind === 'error'
+
+    if (enabled && !silentFailure) {
       const model = remoteOutcomeNotchModel({ entry, t })
       // `null` is a real answer here: a fetch that moved no ref has nothing to say, and this app
       // fetches on a timer — announcing every no-op would teach the user to ignore the notch.

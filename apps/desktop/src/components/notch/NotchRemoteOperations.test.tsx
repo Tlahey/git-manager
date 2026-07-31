@@ -140,9 +140,8 @@ describe('NotchRemoteOperations', () => {
   })
 
   it('shows no live card for a scheduled fetch', () => {
-    // Regression: `useAutoFetch` fetches every minute and again the moment the window regains
-    // focus, so a progress card for it meant the notch lighting up each time the user alt-tabbed
-    // back into the app — for a transfer they never asked for.
+    // Regression: `useAutoFetch` fetches every minute, focused or not, so a progress card for it
+    // meant the notch lighting up on a timer for a transfer nobody asked for.
     useRemoteProgressStore.getState().start('/repo', 'fetch', true)
     render(<NotchRemoteOperations />)
     expect(queueIds()).toEqual([])
@@ -161,6 +160,36 @@ describe('NotchRemoteOperations', () => {
     })
 
     expect(queueIds()).toEqual(['remote:fetch:/repo:done'])
+  })
+
+  it('stays silent about a scheduled fetch that failed, and still cleans up', () => {
+    // `useAutoFetch` now keeps running unattended, including while the window is unfocused for
+    // hours — so a background failure (offline, a dead remote) must not become a stream of notch
+    // cards or Notification Centre banners for a transfer nobody asked for. That contract is
+    // `useAutoFetch`'s own: errors are swallowed there too.
+    useRemoteProgressStore.getState().start('/repo', 'fetch', true)
+    render(<NotchRemoteOperations />)
+
+    act(() => {
+      useRemoteProgressStore.getState().finish('/repo', 'fetch', { kind: 'error', message: 'boom' })
+    })
+
+    expect(queueIds()).toEqual([])
+    expect(useRemoteProgressStore.getState().operations).toEqual({})
+  })
+
+  it('still reports a failure for a transfer the user actually asked for', () => {
+    // The silence above is specific to `background` — a manual push that gets rejected must still
+    // be worth a card, which `marks a failure as worth a banner` above already covers for the
+    // default (non-background) case; this locks in that the two don't get conflated.
+    useRemoteProgressStore.getState().start('/repo', 'push', false)
+    render(<NotchRemoteOperations />)
+
+    act(() => {
+      useRemoteProgressStore.getState().finish('/repo', 'push', { kind: 'error', message: 'boom' })
+    })
+
+    expect(queueIds()).toEqual(['remote:push:/repo:done'])
   })
 
   it('takes the live card down when it unmounts', () => {

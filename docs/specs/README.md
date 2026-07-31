@@ -10,7 +10,7 @@ for [CLAUDE.md](../../CLAUDE.md), which remains the authoritative description of
 | Spec                                            | Covers                                                                   |
 | ----------------------------------------------- | ------------------------------------------------------------------------ |
 | [Graph column layout](./graph-column-layout.md) | Which lane each commit row is drawn on, and which segments render dashed |
-| [Background auto-fetch](./auto-fetch.md)        | The periodic, focus-gated `git fetch` of the active repository           |
+| [Background auto-fetch](./auto-fetch.md)        | The periodic, unattended `git fetch` of the active repository            |
 
 > [!WARNING]
 > [`archive/`](./archive/README.md) is a different thing entirely: the original 2026-07-03 design
