@@ -87,6 +87,10 @@ export const DOC_SECTIONS: DocSection[] = [
     features: ['rewards'],
   },
   {
+    title: 'Launchpad',
+    features: ['launchpad-prs'],
+  },
+  {
     title: 'Workflow tools',
     features: ['command-palette', 'settings', 'notifications'],
   },

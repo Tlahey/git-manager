@@ -649,17 +649,22 @@ setting draft status, creating/updating an issue) bypasses Tauri's `invoke()` en
 outside `command-mocking.feature`'s mocking mechanism too. Those actions are marked 🚫 below rather
 than 🆕 — viewing is in scope, mutating a real GitHub repo from a test is not.
 
-### Page: Your pull requests (`launchpad-prs.feature`) — 🆕 write it
+### Page: Your pull requests (`launchpad-prs.feature`) — 🔄 partially done (1 of 2 sub-parts)
 
 - **Sub-part — See what needs your attention**
-  - Must show: the KPI bar; the My PRs / WIP / Waiting-for-review tabs; that each is a live filter
-    over the same underlying PR list, not a separate fetch.
+  - Must show: the KPI bar; the My PRs / Waiting-for-review tabs; that each is a live filter over
+    the same underlying PR list, not a separate fetch.
   - e2e: `launchpad-prs.feature → "The tabs split PRs into mine, in progress, and waiting on me"` —
-    🆕 write it
+    ✅ done
 - **Sub-part — Open a PR without leaving the app**
-  - Must show: selecting a PR row opens its side panel (description, checks, review status);
-    reading it is fully covered by mock data.
-  - e2e: `launchpad-prs.feature → "Selecting a PR opens its detail panel"` — 🆕 write it
+  - Must show: selecting a PR row opens its side panel (description, checks, review status).
+  - e2e: `launchpad-prs.feature → "Selecting a PR opens its detail panel"` — 🚫 blocked: the panel
+    itself opens without a token, but `PrDetailCenter` reuses the same `usePrDetail` hook as
+    `pr-graph.feature` above, which only fires its fetch when a real token is present (no
+    `hasToken`-false fallback the way `useGitHubData` has one) — so the panel is left showing
+    "Loading pull request…" forever. Confirmed by driving it end to end, not assumed from reading
+    the hook; this corrects the original assumption above that reading the panel was fully covered
+    by mock data. Same underlying limitation and same follow-up as `pr-graph.feature`'s note.
   - 🚫 out of scope: merging, commenting, requesting review, or toggling draft status — these call
     `api.github.com` directly from the frontend, unreachable from Tauri's mock bridge.
 
