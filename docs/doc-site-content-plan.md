@@ -668,19 +668,26 @@ than 🆕 — viewing is in scope, mutating a real GitHub repo from a test is no
   - 🚫 out of scope: merging, commenting, requesting review, or toggling draft status — these call
     `api.github.com` directly from the frontend, unreachable from Tauri's mock bridge.
 
-### Page: Follow, snooze & save views (`launchpad-organize.feature`) — 🆕 write it
+### Page: Follow, snooze & save views (`launchpad-organize.feature`) — ✅ done
 
 - **Sub-part — Follow a PR you don't own**
   - Must show: the Follow dialog, and that a followed PR appears in its own tab afterward.
-  - e2e: `launchpad-organize.feature → "Following a PR adds it to the Followed tab"` — 🆕 write it
+  - e2e: `launchpad-organize.feature → "Following a PR you don't own adds it to the Followed tab"` —
+    ✅ done
 - **Sub-part — Snooze a PR until later**
   - Must show: snoozing a PR from its row moves it to the Snoozed tab until the snooze expires.
-  - e2e: `launchpad-organize.feature → "Snoozing a PR moves it to the Snoozed tab"` — 🆕 write it
+  - e2e: `launchpad-organize.feature → "Snoozing a PR moves it to the Snoozed tab until you're ready"`
+    — ✅ done
 - **Sub-part — Save a filtered view**
   - Must show: building a filter in the filter editor, saving it as a custom view, and that the
     view persists (reload keeps it).
   - e2e: `launchpad-organize.feature → "Saving a custom filtered view persists it across a reload"`
-    — 🆕 write it
+    — ✅ done. `savedFilters`/`snoozed`/`activeTab` are all persisted by `useLaunchpadStore`
+    (zustand `persist`, key `git-manager-launchpad`) — note for anyone touching this store next:
+    this suite doesn't reset it between separate `wdio run` invocations the way `hooks.steps.ts`
+    resets fixtures, so a real reload is needed to prove persistence rather than a fresh mount, and
+    the scenario resets it itself first (`the launchpad state is reset`) to stay independent of
+    whatever a previous local run left in `localStorage`.
 
 ### Page: Issue triage (`launchpad-issues.feature`) — 🆕 write it
 
