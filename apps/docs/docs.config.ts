@@ -66,7 +66,13 @@ export const DOC_SECTIONS: DocSection[] = [
   },
   {
     title: 'AI features',
-    features: ['ai-generation', 'daily-summary', 'ai-commit-recompose', 'ai-explanation'],
+    features: [
+      'ai-generation',
+      'daily-summary',
+      'ai-commit-recompose',
+      'ai-explanation',
+      'ai-code-review',
+    ],
   },
   {
     title: 'Workflow tools',
