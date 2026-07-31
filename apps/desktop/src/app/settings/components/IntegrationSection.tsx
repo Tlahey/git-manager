@@ -169,10 +169,11 @@ export function IntegrationSection() {
           <ScrollArea className="h-full">
             <div className="max-w-xl space-y-6 p-6">
               <div>
-                <h3 className="text-sm font-semibold text-foreground">Intégration GitLab</h3>
+                <h3 className="text-sm font-semibold text-foreground">
+                  {t('settings.integrations.title', { provider: 'GitLab' })}
+                </h3>
                 <p className="text-xs text-muted-foreground">
-                  Synchronisez vos dépôts GitLab en connectant vos comptes personnels ou
-                  auto-hébergés.
+                  {t('settings.integrations.gitlab.hint')}
                 </p>
               </div>
 
@@ -180,14 +181,14 @@ export function IntegrationSection() {
               <div className="space-y-4 rounded-lg border border-border bg-muted/5 p-4">
                 <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                   <Plus className="h-3.5 w-3.5" />
-                  Connecter un compte GitLab
+                  {t('settings.integrations.connectAccountTitle', { provider: 'GitLab' })}
                 </h4>
 
                 <div className="space-y-3">
                   <div className="space-y-1">
                     <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
                       <Globe className="h-3 w-3 text-muted-foreground" />
-                      URL de l&apos;instance GitLab
+                      {t('settings.integrations.instanceUrlLabel', { provider: 'GitLab' })}
                     </label>
                     <Input
                       value={glHost}
@@ -200,12 +201,12 @@ export function IntegrationSection() {
                   <div className="space-y-1">
                     <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
                       <User className="h-3 w-3 text-muted-foreground" />
-                      Nom d&apos;utilisateur
+                      {t('settings.integrations.usernameLabel')}
                     </label>
                     <Input
                       value={glUser}
                       onChange={(e) => setGlUser(e.target.value)}
-                      placeholder="Ex: adupont"
+                      placeholder={t('settings.integrations.usernamePlaceholder')}
                       className="h-8 text-xs"
                     />
                   </div>
@@ -213,7 +214,7 @@ export function IntegrationSection() {
                   <div className="space-y-1">
                     <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
                       <Key className="h-3 w-3 text-muted-foreground" />
-                      Personal Access Token (PAT)
+                      {t('settings.integrations.gitlab.tokenLabel')}
                     </label>
                     <Input
                       type="password"
@@ -233,10 +234,10 @@ export function IntegrationSection() {
                     {glConnecting ? (
                       <>
                         <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                        Connexion...
+                        {t('settings.integrations.connecting')}
                       </>
                     ) : (
-                      'Ajouter le compte GitLab'
+                      t('settings.integrations.addAccountButton', { provider: 'GitLab' })
                     )}
                   </Button>
                 </div>
@@ -244,7 +245,9 @@ export function IntegrationSection() {
 
               {/* Accounts list */}
               <div className="space-y-2">
-                <h4 className="text-xs font-semibold text-foreground">Comptes connectés</h4>
+                <h4 className="text-xs font-semibold text-foreground">
+                  {t('settings.integrations.connectedAccounts')}
+                </h4>
                 {integrations.gitlabAccounts.length > 0 ? (
                   <div className="divide-y divide-border overflow-hidden rounded-md border bg-muted/5">
                     {integrations.gitlabAccounts.map((account) => {
@@ -262,7 +265,7 @@ export function IntegrationSection() {
                           <div className="flex items-center gap-2">
                             {isActive ? (
                               <Tag tone="success" className="font-normal">
-                                <Check className="h-3 w-3" /> Actif
+                                <Check className="h-3 w-3" /> {t('settings.integrations.active')}
                               </Tag>
                             ) : (
                               <Button
@@ -273,7 +276,7 @@ export function IntegrationSection() {
                                   updateIntegrations({ gitlabActiveAccountId: account.id })
                                 }
                               >
-                                Activer
+                                {t('settings.integrations.setActive')}
                               </Button>
                             )}
                             <Button
@@ -291,7 +294,7 @@ export function IntegrationSection() {
                   </div>
                 ) : (
                   <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
-                    Aucun compte GitLab connecté
+                    {t('settings.integrations.noAccountConnected', { provider: 'GitLab' })}
                   </div>
                 )}
               </div>
@@ -303,9 +306,11 @@ export function IntegrationSection() {
           <ScrollArea className="h-full">
             <div className="max-w-xl space-y-6 p-6">
               <div>
-                <h3 className="text-sm font-semibold text-foreground">Intégration Bitbucket</h3>
+                <h3 className="text-sm font-semibold text-foreground">
+                  {t('settings.integrations.title', { provider: 'Bitbucket' })}
+                </h3>
                 <p className="text-xs text-muted-foreground">
-                  Synchronisez vos dépôts Bitbucket en connectant vos comptes personnels ou Cloud.
+                  {t('settings.integrations.bitbucket.hint')}
                 </p>
               </div>
 
@@ -313,14 +318,14 @@ export function IntegrationSection() {
               <div className="space-y-4 rounded-lg border border-border bg-muted/5 p-4">
                 <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                   <Plus className="h-3.5 w-3.5" />
-                  Connecter un compte Bitbucket
+                  {t('settings.integrations.connectAccountTitle', { provider: 'Bitbucket' })}
                 </h4>
 
                 <div className="space-y-3">
                   <div className="space-y-1">
                     <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
                       <Globe className="h-3 w-3 text-muted-foreground" />
-                      Instance Bitbucket URL
+                      {t('settings.integrations.instanceUrlLabel', { provider: 'Bitbucket' })}
                     </label>
                     <Input
                       value={bbHost}
@@ -333,12 +338,12 @@ export function IntegrationSection() {
                   <div className="space-y-1">
                     <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
                       <User className="h-3 w-3 text-muted-foreground" />
-                      Nom d&apos;utilisateur
+                      {t('settings.integrations.usernameLabel')}
                     </label>
                     <Input
                       value={bbUser}
                       onChange={(e) => setBbUser(e.target.value)}
-                      placeholder="Ex: antoine-d"
+                      placeholder={t('settings.integrations.usernamePlaceholder')}
                       className="h-8 text-xs"
                     />
                   </div>
@@ -346,13 +351,13 @@ export function IntegrationSection() {
                   <div className="space-y-1">
                     <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
                       <Key className="h-3 w-3 text-muted-foreground" />
-                      App Password / Token
+                      {t('settings.integrations.bitbucket.tokenLabel')}
                     </label>
                     <Input
                       type="password"
                       value={bbToken}
                       onChange={(e) => setBbToken(e.target.value)}
-                      placeholder="Saisissez votre mot de passe d'application"
+                      placeholder={t('settings.integrations.bitbucket.tokenPlaceholder')}
                       className="h-8 text-xs"
                     />
                   </div>
@@ -366,10 +371,10 @@ export function IntegrationSection() {
                     {bbConnecting ? (
                       <>
                         <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                        Connexion...
+                        {t('settings.integrations.connecting')}
                       </>
                     ) : (
-                      'Ajouter le compte Bitbucket'
+                      t('settings.integrations.addAccountButton', { provider: 'Bitbucket' })
                     )}
                   </Button>
                 </div>
@@ -377,7 +382,9 @@ export function IntegrationSection() {
 
               {/* Accounts list */}
               <div className="space-y-2">
-                <h4 className="text-xs font-semibold text-foreground">Comptes connectés</h4>
+                <h4 className="text-xs font-semibold text-foreground">
+                  {t('settings.integrations.connectedAccounts')}
+                </h4>
                 {integrations.bitbucketAccounts.length > 0 ? (
                   <div className="divide-y divide-border overflow-hidden rounded-md border bg-muted/5">
                     {integrations.bitbucketAccounts.map((account) => {
@@ -395,7 +402,7 @@ export function IntegrationSection() {
                           <div className="flex items-center gap-2">
                             {isActive ? (
                               <Tag tone="success" className="font-normal">
-                                <Check className="h-3 w-3" /> Actif
+                                <Check className="h-3 w-3" /> {t('settings.integrations.active')}
                               </Tag>
                             ) : (
                               <Button
@@ -406,7 +413,7 @@ export function IntegrationSection() {
                                   updateIntegrations({ bitbucketActiveAccountId: account.id })
                                 }
                               >
-                                Activer
+                                {t('settings.integrations.setActive')}
                               </Button>
                             )}
                             <Button
@@ -424,7 +431,7 @@ export function IntegrationSection() {
                   </div>
                 ) : (
                   <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
-                    Aucun compte Bitbucket connecté
+                    {t('settings.integrations.noAccountConnected', { provider: 'Bitbucket' })}
                   </div>
                 )}
               </div>
