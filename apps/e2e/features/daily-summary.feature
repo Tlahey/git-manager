@@ -1,24 +1,24 @@
 @ai @daily-summary
-Feature: AI daily summary (launchpad briefing)
+Feature: AI daily summary (dashboard briefing)
   As a developer opening the app in the morning
   I want a per-project briefing of what was done and what to plan
   So that I can pick up where I left off without re-reading the git log
 
   Background:
     Given the "daily-summary" fixture repository is opened
-    And the "daily-summary" project is listed in the launchpad with no briefing yet
+    And the "daily-summary" project is listed in the dashboard with no briefing yet
 
   @doc @screenshots
-  Scenario: Opening the launchpad auto-generates the morning briefing for an open project
+  Scenario: Opening the dashboard auto-generates the morning briefing for an open project
     A project with no briefing for the previous working day gets one generated
-    automatically the moment its launchpad card is opened — no button to find or
+    automatically the moment its dashboard card is opened — no button to find or
     click. It reads only the commits that landed on the main branch that day, and
     summarizes each file they touched before writing the headline and highlights,
     so a quiet day costs nothing and a busy one gets a briefing grounded in the
     actual diff rather than the commit messages alone.
     Given the app language is English
     And the AI provider is pointed at a fake server
-    When I open the launchpad dashboard
+    When I open the dashboard
     And I open the project's daily briefing
     And the interface has settled
     Then the daily briefing headline becomes "Shipped the fake feature"
@@ -28,7 +28,7 @@ Feature: AI daily summary (launchpad briefing)
   Scenario: With auto-generation off, the briefing is produced on demand
     Given the AI provider is pointed at a fake server
     And morning auto-generation of briefings is disabled
-    When I open the launchpad dashboard
+    When I open the dashboard
     And I open the project's daily briefing
     Then the daily briefing shows its empty state
     When I generate the daily briefing
@@ -37,7 +37,7 @@ Feature: AI daily summary (launchpad briefing)
     And the sent prompt's system message contains "a short record of ONE day's work"
     And the sent prompt's user message contains "Repository: daily-summary"
 
-  Scenario: Disabling the feature hides the briefing from the launchpad
+  Scenario: Disabling the feature hides the briefing from the dashboard
     Given the daily summary feature is disabled in settings
-    When I open the launchpad dashboard
+    When I open the dashboard
     Then the project's daily briefing button is not shown

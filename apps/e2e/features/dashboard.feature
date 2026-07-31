@@ -1,0 +1,27 @@
+@dashboard
+Feature: Your projects at a glance
+
+  As a user working across several repositories
+  I want one place that lists them all, with the ones I care about pinned to the top
+  So that I don't have to remember which folder each one lives in
+
+  Every repository you've opened or discovered shows up here, grouped into sections — open tabs,
+  favorites, recently used, everything else — each as a row with its branch and working-tree state
+  at a glance. A repo's own README lives in the same right-hand slot the AI daily briefing uses
+  (covered on its own page), so a card can be read without opening the repository itself.
+
+  @doc @screenshots
+  Scenario: Pinning a project keeps it at the top of the dashboard
+    Starring a repository's row adds it to its own Favorites section, ahead of Recent and All —
+    the fastest way back to the handful of repositories you actually work in day to day, out of
+    everything the dashboard otherwise lists. Its README opens in the same right-hand panel a
+    repository's AI daily briefing would use.
+    Given the app language is English
+    And the "showcase" and "feature-branches" fixture repositories are listed in the dashboard
+    When I open the dashboard
+    And I pin the "showcase" project
+    Then the "showcase" project is in the favorites section
+    When I open the "showcase" project's README
+    Then the README panel is shown
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-dashboard"

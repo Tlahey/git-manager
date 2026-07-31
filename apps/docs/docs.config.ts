@@ -78,6 +78,10 @@ export const DOC_SECTIONS: DocSection[] = [
     ],
   },
   {
+    title: 'Dashboard',
+    features: ['dashboard'],
+  },
+  {
     title: 'Workflow tools',
     features: ['command-palette', 'settings', 'notifications'],
   },

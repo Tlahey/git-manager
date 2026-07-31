@@ -59,7 +59,7 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
 
   const sections = useDashboardSections(filterText)
 
-  // The launchpad's right pane hosts either the README or the daily-summary briefing — opening one
+  // The dashboard's right pane hosts either the README or the daily-summary briefing — opening one
   // closes the other so they never fight over the slot.
   const toggleReadme = useCallback((path: string) => {
     setSelectedSummaryPath(null)

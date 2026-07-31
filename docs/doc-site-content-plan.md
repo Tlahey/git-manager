@@ -600,20 +600,27 @@ one page because a reader who finds one "Explain (LLM)" entry point has effectiv
 
 ## Section: The Dashboard
 
-### Page: Your projects at a glance (`dashboard.feature`) — 🆕 write it
+### Page: Your projects at a glance (`dashboard.feature`) — ✅ done
 
 - **Sub-part — Organize the repos you work in**
   - Must show: project sections/cards, pinning a project, and that opening a card's project focuses
     (or opens) its tab; the right pane per project toggles between its README and its AI daily
     briefing.
-  - e2e: `dashboard.feature → "Pinning a project keeps it at the top of the dashboard"` — 🆕 write it
+  - e2e: `dashboard.feature → "Pinning a project keeps it at the top of the dashboard"` — ✅ tagged.
+    Seeds two saved repos (`showcase`, `feature-branches`) in one write, pins one, and opens its
+    README in the right pane. "Opening a card focuses/opens its tab" is proven elsewhere rather than
+    re-screenshotted here: `open-repo.feature`'s "Opening an already-open recent repository focuses
+    its tab" already covers the same `openRepoTab` mechanism the dashboard's row-name click uses.
   - The AI briefing itself is already covered by `daily-summary.feature` above — this page is the
     dashboard shell around it (sections, cards, pinning, scanning), not the briefing's content.
-  - Naming note: this page and `daily-summary.feature`'s existing wording both call this screen "the
-    launchpad" (footer button: `footer.dashboard` labelled "Dashboard"). The **Launchpad** section
-    below is a different screen — the Pull Requests hub, labelled "Launchpad" in the same footer
-    (`footer.launchpad`). Resolve the naming collision (rename one of the two in code/i18n, or in
-    this plan) before both pages ship, rather than publishing two "Launchpad" pages.
+  - **Naming collision, resolved**: this page and `daily-summary.feature` both used to call this
+    screen "the launchpad" — wrong, and confusing next to the real **Launchpad** section below (a
+    different screen, the Pull Requests hub, `footer.launchpad`). The footer already has the correct,
+    distinct names (`footer.dashboard` → "Dashboard", `footer.launchpad` → "Launchpad"), so the fix
+    was renaming the *wording* to match reality, not renaming any screen: `daily-summary.feature`'s
+    scenario/step text and a couple of stray "launchpad" doc comments in `DashboardPage.tsx` and
+    `daily-summary.steps.ts` now say "dashboard" throughout. No behavior changed — `setActiveTab`
+    already used the id `'dashboard'` even while the prose called it something else.
 
 ---
 
