@@ -410,14 +410,34 @@ commit in the window.
     called "Launchpad" in the app's footer — see the Dashboard section below, and the scope note at
     the end of this file, before renaming either.
 
-### Page: Recomposing a commit message (`ai-commit-recompose.feature`) — 🆕 write it
+### Page: Recomposing a commit message (`ai-commit-recompose.feature`) — ✅ done
 
 - **Sub-part — Rewrite a past commit's message from what it actually changed**
   - Must show: right-click a commit → *Rewrite this commit's message (LLM)*; the generated message
     shown for review before it's applied; applying it rewrites history (same caveats as any other
     message-only rewrite — descendant SHAs change).
-  - e2e: `ai-commit-recompose.feature → "Recomposing a commit's message from its diff"` — 🆕 write it
+  - e2e: `ai-commit-recompose.feature → "Recomposing a commit's message from its diff"` — ✅ tagged
   - Descriptor: `commit-recompose.md`
+  - **Architectural finding, worth knowing before picking up the next two pages below**: every
+    commit-scoped AI action (this one, plus every sub-part of "Explaining what changed" and "AI code
+    review" below) is wired *only* through the graph row's right-click menu, and — confirmed via
+    `nativeMenuSpec.ts`/`nativeMenu.api.ts` and the same limitation `tag-context-menu.feature`
+    documents for the tag badge menu — that menu is a real native macOS context menu, which WebDriver
+    cannot open or click into. Unlike reset/revert/branch/tag (which also live there but have a
+    second, DOM-drivable path through the command palette, see `useCommitCommands.ts`), no palette
+    command exists for any AI action. **This did not block the page**, though: the native menu and a
+    command-palette entry would both ultimately just call
+    `setPendingGraphAction({ kind: 'recompose', ... })` on the `repoUI` store — `GitGraph.tsx`
+    forwards that into its own real `RecomposeDialog` regardless of who set it (the store's own doc
+    comment already says as much: "dispatched from outside GitGraph.tsx (e.g. the command
+    palette)"). So the e2e step dispatches through that same store bridge
+    (`window.__e2eRepoUIStore`, already exposed for e2e in `main.tsx`, the same bridge
+    `command-palette.feature` itself relies on for reset/revert/branch/tag) instead of a menu click —
+    everything downstream (the dialog, the real AI completion call against the fake test server, the
+    real interactive rebase on Apply) is exactly what a real click would have produced. **No
+    production code was changed** to make this work — the bridge already existed. The same approach
+    should unblock "Explaining what changed" (`setAiPanelTarget`, already bridged the same way) and
+    "AI code review" (same) below.
 
 ### Page: Explaining what changed (`ai-explanation.feature`) — 🆕 write it
 
