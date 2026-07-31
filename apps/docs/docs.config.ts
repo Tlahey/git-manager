@@ -73,6 +73,7 @@ export const DOC_SECTIONS: DocSection[] = [
       'ai-explanation',
       'ai-code-review',
       'ai-pr-description',
+      'ai-commit-search',
     ],
   },
   {

@@ -167,6 +167,36 @@ export async function startFakeAiServer(
             return
           }
 
+          // Commit-search relevance verdict: one call per file of every scanned commit
+          // (scanCommits.ts's judgeFileByFile), all sharing this one schema. Keyed on whether the
+          // file being judged is "login.txt" — the file `feature-branches.sh`'s "feat: add login
+          // screen" commit touches — rather than answering `relevant: true` unconditionally, so a
+          // scenario asking a login-shaped question gets a real, selective match instead of every
+          // commit in the window "matching".
+          if (schemaName === 'commit_relevance') {
+            const userMessage = parsed.messages?.find((m) => m.role === 'user')?.content ?? ''
+            const relevant = userMessage.includes('login.txt')
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(
+              JSON.stringify({
+                choices: [
+                  {
+                    message: {
+                      content: JSON.stringify({
+                        subject: 'login',
+                        evidence: relevant ? 'login.txt' : '',
+                        relevant,
+                        finding: relevant ? 'Added the login screen.' : '',
+                        files: relevant ? ['login.txt'] : [],
+                      }),
+                    },
+                  },
+                ],
+              })
+            )
+            return
+          }
+
           // Commit-recompose feature: the only completion feature with no `schema` (see the option's
           // own doc comment) — its answer is the raw replacement message text, not a JSON envelope,
           // so it is matched by the absence of a schema name rather than by one.
