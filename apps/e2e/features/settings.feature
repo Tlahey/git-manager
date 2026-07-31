@@ -139,3 +139,42 @@ Feature: Settings
     And a full-window screenshot is saved as "doc-settings-github-oauth"
     When I cancel the GitHub OAuth login
     Then the GitHub login options are shown again
+
+  @doc @screenshots
+  Scenario: Searching settings filters the side panel to matching sections
+    Every section is reachable by more than its label — the search box also matches each
+    section's localized keyword synonyms, so typing what you're trying to do ("terminal")
+    surfaces the section that handles it even when its own name doesn't say so.
+    Given the app language is English
+    And the git-manager application is running
+    When I open the settings
+    And I search settings for "terminal"
+    Then the "ui_customization" settings tab is shown
+    And the "notifications" settings tab is not shown
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-settings-search"
+    When I search settings for ""
+
+  @doc @screenshots
+  Scenario: The Support tab links to GitHub Sponsors
+    Settings has one, single ask: a Support tab with a button to back the project on GitHub
+    Sponsors, pinned at the bottom of the side panel below every configuration section.
+    Given the app language is English
+    And the git-manager application is running
+    When I open the settings
+    And I open the "support" settings tab
+    Then the sponsor button is shown
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-settings-support"
+
+  @doc @screenshots
+  Scenario: The changelog tab lists recent release entries
+    Settings → Changelog renders the project's own release notes — the same file published with
+    every release — so what changed and when is one click away, without leaving the app.
+    Given the app language is English
+    And the git-manager application is running
+    When I open the settings
+    And I open the "changelog" settings tab
+    Then the changelog shows at least one release entry
+    And the interface has settled
+    And a full-window screenshot is saved as "doc-settings-changelog"
