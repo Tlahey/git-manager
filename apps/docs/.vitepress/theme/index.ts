@@ -1,8 +1,9 @@
 import DefaultTheme from 'vitepress/theme'
 import type { Theme } from 'vitepress'
 import { useRoute } from 'vitepress'
-import { nextTick, onMounted, watch } from 'vue'
+import { h, nextTick, onMounted, watch } from 'vue'
 import mediumZoom from 'medium-zoom'
+import DocFeedback from './components/DocFeedback.vue'
 import LandingPage from './components/LandingPage.vue'
 import './custom.css'
 
@@ -26,14 +27,26 @@ function createZoomCloseButton(): HTMLButtonElement {
   return button
 }
 
-// The default theme, restyled through CSS variables only (see custom.css) — no
-// component overrides, so VitePress upgrades stay uneventful.
+// The default theme, restyled through CSS variables only (see custom.css) — two
+// component additions only, so VitePress upgrades stay uneventful.
 //
-// The one addition is <LandingPage />, used by `index.md` (which sets
-// `layout: false`, so the theme's own chrome stays out of its way). Registering
-// it globally is what lets a Markdown file mount it.
+// <LandingPage /> is used by `index.md` (which sets `layout: false`, so the
+// theme's own chrome stays out of its way). Registering it globally is what
+// lets a Markdown file mount it.
+//
+// <DocFeedback /> is injected into every *other* page via the `doc-after`
+// layout slot rather than written into a page — it must show up on the
+// hand-written `docs/index.md`/`docs/download.md` too, and survive
+// `docs/features/*.md` being wiped and regenerated on every `pnpm generate`.
+// `layout: false` pages (only the landing page) never render this Layout at
+// all, so they're correctly skipped.
 const theme: Theme = {
   extends: DefaultTheme,
+  Layout() {
+    return h(DefaultTheme.Layout, null, {
+      'doc-after': () => h(DocFeedback),
+    })
+  },
   enhanceApp({ app }) {
     app.component('LandingPage', LandingPage)
   },

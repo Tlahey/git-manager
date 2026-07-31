@@ -66,5 +66,5 @@ by a human, reviewed, and committed next to the scenario it describes. A model m
 draft it; what ships is what someone edited and approved. No model runs when the
 site is built.
 
-If a page ever contradicts the app, the page is the bug —
-[open an issue](https://github.com/Tlahey/git-manager/issues).
+If a page ever contradicts the app, the page is the bug — use the **Report a
+documentation issue** link at the bottom of any page to say where.

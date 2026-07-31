@@ -94,6 +94,32 @@
   color: var(--vp-c-text-2);
 }
 
+/* ── Per-page feedback link (DocFeedback.vue) ──
+   Injected via the `doc-after` layout slot, so it appears once, styled the
+   same everywhere, after the content and before the prev/next footer. */
+.doc-feedback {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+.doc-feedback-text {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  color: var(--vp-c-text-2);
+}
+
+.doc-feedback-link {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--vp-c-brand-1);
+}
+
+.doc-feedback-link:hover {
+  color: var(--vp-c-brand-2);
+  text-decoration: underline;
+}
+
 /* The "Do this" / "You should see" lists come straight out of the scenario's
    steps; a tighter rhythm keeps them looking like a checklist rather than
    another paragraph of prose. */
