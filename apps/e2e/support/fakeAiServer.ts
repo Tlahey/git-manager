@@ -131,6 +131,31 @@ export async function startFakeAiServer(
             return
           }
 
+          // Summary-search feature: echoes back the first real candidate's repo/date from the
+          // prompt (rendered as "## <repo> — <date>" blocks by `renderCandidates`) rather than a
+          // fixed fake pair, so the answer cites a real archived day instead of one that could
+          // never appear in the shortlist it was supposedly read from.
+          if (schemaName === 'summary_search') {
+            const userMessage = parsed.messages?.find((m) => m.role === 'user')?.content ?? ''
+            const candidate = /^## (\S+) — (\d{4}-\d{2}-\d{2})/m.exec(userMessage)
+            const matches = candidate
+              ? [{ repo: candidate[1], date: candidate[2], reason: 'Mentions the fake feature.' }]
+              : []
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(
+              JSON.stringify({
+                choices: [
+                  {
+                    message: {
+                      content: JSON.stringify({ answer: 'It shipped the fake feature.', matches }),
+                    },
+                  },
+                ],
+              })
+            )
+            return
+          }
+
           // Commit-message feature (the compose phase of `composeCommitMessageFromSummaries`):
           // the `{ subject, body }` shape `parseCommitMessage`/`formatCommitMessage` expect.
           if (schemaName === 'commit_message') {
