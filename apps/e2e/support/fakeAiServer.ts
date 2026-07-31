@@ -38,6 +38,12 @@ export interface FakeAiServerOptions {
    * `json_schema.name === 'daily_summary'`). Defaults to a deterministic briefing so scenarios can
    * assert on exact headline/bullets. */
   dailySummary?: { headline: string; highlights: string[] }
+  /** Plain-text message returned for the commit-recompose completion path. Unlike every other
+   * completion feature, `commitRecomposeFeature` (`packages/ai/src/features/commitRecompose.ts`)
+   * sets no `schema` — its answer is the raw replacement commit message, not a JSON envelope — so
+   * this is matched by the *absence* of a `response_format.json_schema.name` on a `stream: false`
+   * request, rather than by a schema name like the branches above. */
+  recomposedMessage?: string
   /** Accepts any request — streaming or one-shot completion alike — and records its body, but never
    * sends a real answer: instead writes a periodic SSE comment line (`: keep-alive`) so the
    * connection keeps producing bytes without ever completing. Real backends do something similar,
@@ -158,6 +164,16 @@ export async function startFakeAiServer(
                 ],
               })
             )
+            return
+          }
+
+          // Commit-recompose feature: the only completion feature with no `schema` (see the option's
+          // own doc comment) — its answer is the raw replacement message text, not a JSON envelope,
+          // so it is matched by the absence of a schema name rather than by one.
+          if (schemaName == null) {
+            const message = options.recomposedMessage ?? 'refactor: streamline the fake commit'
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ choices: [{ message: { content: message } }] }))
             return
           }
 
