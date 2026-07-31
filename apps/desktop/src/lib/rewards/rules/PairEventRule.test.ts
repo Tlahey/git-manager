@@ -5,12 +5,9 @@ import type { Achievement, RuleContext } from '../types'
 function achievement(overrides: Partial<Achievement> = {}): Achievement {
   return {
     id: 'stage_unstage',
-    title: 't',
-    description: 'd',
     points: 10,
     type: 'bronze',
     difficulty: 'beginner',
-    rewardDescription: 'r',
     kind: 'pair',
     unlocked: false,
     startEvent: 'stage',

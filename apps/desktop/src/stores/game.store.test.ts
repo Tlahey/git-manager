@@ -41,26 +41,29 @@ afterEach(() => {
 })
 
 describe('getLevelInfo', () => {
+  // Display text (Git Novice, Git Apprentice, ...) is resolved from `rankId` via t() at render
+  // time (RewardsTab.tsx) — see the RankId doc comment. This is the same split achievements.json
+  // uses: game.store.ts holds stable, locale-independent ids, never translated strings.
   it.each([
-    [0, 1, 'Git Novice'],
-    [49, 1, 'Git Novice'],
-    [50, 2, 'Git Apprenti'],
-    [119, 2, 'Git Apprenti'],
-    [120, 3, 'Git Praticien'],
-    [199, 3, 'Git Praticien'],
-    [200, 4, 'Git Spécialiste'],
-    [299, 4, 'Git Spécialiste'],
-    [300, 5, 'Git Grand Maître'],
-  ])('maps %i points to level %i (%s)', (points, level, name) => {
+    [0, 1, 'novice'],
+    [49, 1, 'novice'],
+    [50, 2, 'apprentice'],
+    [119, 2, 'apprentice'],
+    [120, 3, 'practitioner'],
+    [199, 3, 'practitioner'],
+    [200, 4, 'specialist'],
+    [299, 4, 'specialist'],
+    [300, 5, 'grandmaster'],
+  ])('maps %i points to level %i (%s)', (points, level, rankId) => {
     const info = getLevelInfo(points)
     expect(info.level).toBe(level)
-    expect(info.name).toBe(name)
+    expect(info.rankId).toBe(rankId)
   })
 
   it('overrides to the platinum level when the platinum trophy is unlocked, regardless of points', () => {
     const info = getLevelInfo(10, true)
     expect(info.level).toBe(5)
-    expect(info.name).toContain('Platine')
+    expect(info.rankId).toBe('grandmasterPlatinum')
   })
 })
 

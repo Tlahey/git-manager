@@ -52,56 +52,63 @@ const INITIAL_ACHIEVEMENTS: Achievement[] = (
 
 // ─── Level Math ───────────────────────────────────────────────────────────────
 
+/** Stable, locale-independent rank identifiers — resolved to display text via
+ *  `t(\`rewards.rank.${rankId}\`)` (packages/i18n/locales/{en,fr}/launchpad.json), not stored as
+ *  translated strings here (see AchievementDefinition's doc comment in lib/rewards/types.ts for
+ *  why the same pattern applies to achievement text). */
+export type RankId =
+  | 'novice'
+  | 'apprentice'
+  | 'practitioner'
+  | 'specialist'
+  | 'grandmaster'
+  | 'grandmasterPlatinum'
+
 export function getLevelInfo(points: number, isPlatinumUnlocked = false) {
   if (isPlatinumUnlocked) {
     return {
       level: 5,
-      name: 'Git Grand Maître (Platine)',
+      rankId: 'grandmasterPlatinum' as RankId,
       min: 300,
       max: 500,
-      badge: 'Grand Maître',
       frameClass: 'avatar-frame-platinum',
     }
   }
   if (points < 50) {
-    return { level: 1, name: 'Git Novice', min: 0, max: 50, badge: 'Novice', frameClass: '' }
+    return { level: 1, rankId: 'novice' as RankId, min: 0, max: 50, frameClass: '' }
   }
   if (points < 120) {
     return {
       level: 2,
-      name: 'Git Apprenti',
+      rankId: 'apprentice' as RankId,
       min: 50,
       max: 120,
-      badge: 'Apprenti',
       frameClass: 'avatar-frame-bronze',
     }
   }
   if (points < 200) {
     return {
       level: 3,
-      name: 'Git Praticien',
+      rankId: 'practitioner' as RankId,
       min: 120,
       max: 200,
-      badge: 'Praticien',
       frameClass: 'avatar-frame-silver',
     }
   }
   if (points < 300) {
     return {
       level: 4,
-      name: 'Git Spécialiste',
+      rankId: 'specialist' as RankId,
       min: 200,
       max: 300,
-      badge: 'Spécialiste',
       frameClass: 'avatar-frame-gold',
     }
   }
   return {
     level: 5,
-    name: 'Git Grand Maître',
+    rankId: 'grandmaster' as RankId,
     min: 300,
     max: 500,
-    badge: 'Grand Maître',
     frameClass: 'avatar-frame-neon',
   }
 }

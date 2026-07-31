@@ -12,15 +12,16 @@ import { useGameStore } from '../../stores/game.store'
 
 const INITIAL = useGameStore.getState()
 
+// 'commit_1' is a real achievement id (see achievements.json) — its title/description/reward
+// come from packages/i18n/locales/en/launchpad.json's rewards.achievements.commit_1.* keys
+// (this suite runs against real English copy, not a key-passthrough mock), rather than
+// arbitrary test strings, since display text is no longer a field on the Achievement type.
 function achievement(overrides: Partial<Achievement> = {}): Achievement {
   return {
     id: 'commit_1',
-    title: 'Premier Pas',
-    description: 'Faire votre premier commit',
     points: 10,
     type: 'bronze',
     difficulty: 'beginner',
-    rewardDescription: "Cadre d'avatar Bronze",
     kind: 'milestone',
     unlocked: true,
     unlockedAt: Date.now(),
@@ -62,10 +63,10 @@ describe('TrophyToast — visibility', () => {
     await unlock()
 
     expect(screen.getByTestId('trophy-toast')).toBeInTheDocument()
-    expect(screen.getByText('Premier Pas')).toBeInTheDocument()
-    expect(screen.getByText('Faire votre premier commit')).toBeInTheDocument()
+    expect(screen.getByText('First Steps')).toBeInTheDocument()
+    expect(screen.getByText('Make your first commit from the app.')).toBeInTheDocument()
     expect(screen.getByText('+10 XP')).toBeInTheDocument()
-    expect(screen.getByText(/Cadre d'avatar Bronze/)).toBeInTheDocument()
+    expect(screen.getByText(/Bronze avatar frame/)).toBeInTheDocument()
   })
 
   it.each([
@@ -88,7 +89,7 @@ describe('TrophyToast — native notification', () => {
     expect(sendNativeNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         title: expect.stringContaining('Bronze'),
-        body: expect.stringContaining('Premier Pas'),
+        body: expect.stringContaining('First Steps'),
       })
     )
   })

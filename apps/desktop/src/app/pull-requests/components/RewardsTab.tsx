@@ -3,6 +3,7 @@ import { Trophy, CheckCircle2, Lock } from 'lucide-react'
 import { Chip, Progress, Card } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
 import { useGameStore, getLevelInfo } from '../../../stores/game.store'
+import { achievementI18nKey } from '../../../lib/rewards/achievementI18n'
 
 type StatusFilter = 'all' | 'in_progress' | 'completed'
 
@@ -39,7 +40,8 @@ export function RewardsTab() {
   const totalCount = achievements.length
 
   const isPlatinumUnlocked = achievements.find((a) => a.id === 'platinum_trophy')?.unlocked || false
-  const { level, name, min, max, frameClass } = getLevelInfo(points, isPlatinumUnlocked)
+  const { level, rankId, min, max, frameClass } = getLevelInfo(points, isPlatinumUnlocked)
+  const name = t(`rewards.rank.${rankId}`)
 
   const progressPercent = Math.min(100, Math.max(0, ((points - min) / (max - min)) * 100))
 
@@ -240,21 +242,27 @@ export function RewardsTab() {
                     ? !achievements.find((a) => a.id === item.prerequisiteId)?.unlocked
                     : false
 
+                  const prereq = item.prerequisiteId
+                    ? achievements.find((a) => a.id === item.prerequisiteId)
+                    : undefined
+
                   // Conceal details if prerequisite is locked
-                  const displayTitle = isPrereqLocked ? '???' : item.title
+                  const displayTitle = isPrereqLocked
+                    ? '???'
+                    : t(achievementI18nKey(item.id, 'title'))
                   const displayDesc = isPrereqLocked
                     ? t('rewards.mysteryChallenge', {
-                        title:
-                          achievements.find((a) => a.id === item.prerequisiteId)?.title ||
-                          t('rewards.prerequisiteFallback'),
+                        title: prereq
+                          ? t(achievementI18nKey(prereq.id, 'title'))
+                          : t('rewards.prerequisiteFallback'),
                       })
-                    : item.description
+                    : t(achievementI18nKey(item.id, 'description'))
 
                   // Cosmetic rewards: hide reward name behind ??? until unlocked
-                  const hasCosmetic =
-                    item.rewardDescription && item.rewardDescription !== "Amélioration d'XP"
                   const displayReward =
-                    !item.unlocked && hasCosmetic ? '???' : item.rewardDescription
+                    !item.unlocked && item.rewardIsCosmetic
+                      ? '???'
+                      : t(achievementI18nKey(item.id, 'reward'))
 
                   const trophyColors = {
                     bronze: 'text-[#cd7f32] bg-[#cd7f32]/10 border-[#cd7f32]/20',

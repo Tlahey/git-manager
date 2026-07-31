@@ -32,15 +32,20 @@ export interface RewardEffect {
  * shape achievements.json already had rather than forcing a strict per-kind discriminated union,
  * since some fields (`milestoneType`/`milestoneValue`) are also read directly by `RewardsTab.tsx`
  * for progress bars, independently of which rule interprets them.
+ *
+ * `title`/`description`/`reward` are deliberately NOT fields here — `id` is a module-level label
+ * map key (CLAUDE.md's "module-level label maps can't call t()" pattern), resolved at render time
+ * via `t(\`rewards.achievements.${id}.title\`)` etc. in RewardsTab.tsx/TrophyToast.tsx, with both
+ * locales' `rewards.achievements.<id>.*` keys in packages/i18n/locales/{en,fr}/launchpad.json.
  */
 export interface AchievementDefinition {
   id: string
-  title: string
-  description: string
   points: number
   type: AchievementTier
   difficulty: AchievementDifficulty
-  rewardDescription: string
+  /** Whether the reward is a cosmetic unlock (theme, avatar frame) rather than a plain XP boost —
+   *  RewardsTab.tsx hides a cosmetic reward's name behind "???" until the achievement unlocks. */
+  rewardIsCosmetic?: boolean
   kind: RuleKind
   prerequisiteId?: string
   effects?: RewardEffect[]
