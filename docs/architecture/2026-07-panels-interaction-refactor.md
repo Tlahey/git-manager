@@ -1,4 +1,4 @@
-# Spec 16 — Panels & Interaction System: SOLID Audit & Target Architecture
+# Panels & interaction system — SOLID audit & target architecture (July 2026)
 
 > **Status**: All 14 actions implemented (2026-07-03) — the original 10 (Phases 1-7), one
 > deliberate scope refinement on action 3.1, plus 4 more (Phase 8) added after follow-up sweeps
@@ -8,11 +8,11 @@
 
 ## Objective
 
-[13-architecture-refactor-plan.md](13-architecture-refactor-plan.md) and its tracking doc
-([14](14-architecture-refactor-tracking.md)) closed the backend service-layer extraction, the
-frontend hook-extraction pass, the generalized event bus, and the R2 (`api/*.api.ts`) migration.
-[15-rewards-system-refactor-plan.md](15-rewards-system-refactor-plan.md) then audited one vertical
-slice (the rewards engine) end-to-end and introduced Strategy + Registry there.
+The [architecture refactor plan](2026-07-architecture-refactor-plan.md) and its
+[execution tracking](2026-07-architecture-refactor-tracking.md) closed the backend service-layer
+extraction, the frontend hook-extraction pass, the generalized event bus, and the R2
+(`api/*.api.ts`) migration. The [rewards audit](2026-07-rewards-system-refactor.md) then audited one
+vertical slice (the rewards engine) end-to-end and introduced Strategy + Registry there.
 
 This document does the same exercise for a slice those two plans only touched in passing: **how
 panels and page-level content talk to each other and get composed** — navigation/tab switching,
@@ -21,15 +21,15 @@ question asked: _is it currently easy to add a new tab, a new panel, or a new di
 touching 2-3 unrelated files and without an LLM/engineer having to read the whole page to find
 where to plug in?_
 
-Same rules as docs 13/15: **R1** (one file, one role), **R2** (all operations through a
-service/API layer — already enforced, not revisited here), **R3** (introduce a pattern only where
-it closes a real duplication/coupling found in the audit, not speculatively). Same format: audit →
-SOLID violations → target architecture → phased migration, mergeable into the doc 14 tracking
-process once approved.
+Same rules as the architecture and rewards documents: **R1** (one file, one role), **R2** (all
+operations through a service/API layer — already enforced, not revisited here), **R3** (introduce a
+pattern only where it closes a real duplication/coupling found in the audit, not speculatively).
+Same format: audit → SOLID violations → target architecture → phased migration, mergeable into the
+execution tracking process once approved.
 
 **Scope**: frontend only (`apps/desktop/src/{app,components,lib}`). No Rust/backend change.
 
-**Explicit non-goal**: this is not a re-audit of what docs 13/14/15 already fixed (services layer,
+**Explicit non-goal**: this is not a re-audit of what the architecture, tracking and rewards documents already fixed (services layer,
 `api/*.api.ts`, hook extraction for `GitGraph`/`ActionToolbar`/`WipStagingPanel`/
 `CommitHeaderInfo`, the rewards Strategy/Registry). Those are working well and are the model this
 plan reuses. Findings below are net-new, evidenced by reading the current code, not assumed.
@@ -60,7 +60,7 @@ already solved once for reward-rule kinds (`ruleRegistry.ts`).
 
 `CommitDetailsPanel`/`DiffViewCenter` do **not** have this problem — their "diff/file" and
 "blame/history" toggles are 2-way switches (a boolean/2-value enum), not an open-ended tab set, so
-a registry there would be over-engineering (same restraint doc 14 already applied to
+a registry there would be over-engineering (same restraint the execution tracking already applied to
 `DiffRenderStrategy`, action 5.1/5.2). Confirmed by reading both files — not extending this
 finding to them.
 
@@ -79,7 +79,7 @@ CloneRepoDialog.tsx`, `pull-requests/components/FollowPRDialog.tsx`) is a single
 `boolean`/`open` state per dialog it owns — a normal, idiomatic React controlled-component pattern
 that does **not** need a shared abstraction to stay readable at today's scale (adding a generic
 `DialogManager`/modal-stack service for 1-2 dialogs per parent would be the same over-engineering
-mistake doc 14 already reverted twice — see `ruleRegistry.ts`'s own comment on that). Only
+mistake the execution tracking already reverted twice — see `ruleRegistry.ts`'s own comment on that). Only
 `GitGraphOverlayManager` is the mutually-exclusive, native-menu-driven case that actually benefits
 from collapsing to one state slot.
 
@@ -95,7 +95,7 @@ pattern — it's a DRY/consistency gap: these two get no shared Escape-to-close,
 backdrop-click behavior that the six other dialogs get for free from the primitive, and any future
 a11y fix to `dialog.tsx` won't reach them.
 
-### Scope C — Central panel orchestrators: R1 debt in exactly the shape doc 14 already fixed elsewhere
+### Scope C — Central panel orchestrators: R1 debt in exactly the shape the execution tracking already fixed elsewhere
 
 Doc 14 (actions 6.1-6.4, 6.6) repeatedly found the same shape of bug — a component accumulates
 imperative actions/derived state alongside rendering, then gets a hook extracted
@@ -163,7 +163,7 @@ matches its actual (now cross-cutting) scope.
 | 2   | **OCP**                                   | `GitGraphOverlayManager` needs a new `useState` + a new JSX branch for every new native-menu-triggered dialog kind.                                                                                      | [GitGraphOverlayManager.tsx:25-27,40-76](../../apps/desktop/src/components/git-graph/components/GitGraphOverlayManager.tsx#L25-L76) | Currently 3 dialogs × 2 lines each; scales linearly and independently per kind with no shared lifecycle.                                                                |
 | 3   | **DRY / LSP-ish (inconsistent contract)** | Two dialogs (`FollowPRDialog`, `FilterEditorDialog`) don't implement the same modal contract (focus trap, Escape, backdrop click) as the other six, which all reuse `packages/ui`'s `Dialog`.            | `FollowPRDialog.tsx`, `FilterEditorDialog.tsx`                                                                                      | Inconsistent UX (Escape/backdrop-click may not close these two the same way as every other dialog in the app); any future fix to the shared primitive won't reach them. |
 | 4   | **SRP**                                   | Graph-layout derivation (connection patching) executed per-row inside the render loop instead of once in the dedicated derivation hook.                                                                  | [GitGraph.tsx:239-275](../../apps/desktop/src/components/git-graph/GitGraph.tsx#L239-L275)                                          | Same reasoning re-evaluated on every visible row, on every render; harder to unit-test in isolation from rendering.                                                     |
-| 5   | **SRP**                                   | `PullRequestsPage.tsx` mixes page-level state/derivation (pinned ids, followed PRs, tab counts) with header/KPI/tab-bar rendering.                                                                       | `PullRequestsPage.tsx` (whole file, 275 lines)                                                                                      | Same category doc 14 already fixed for `ActionToolbar`/`GitGraph`/`WipStagingPanel`/`CommitHeaderInfo` — just not yet applied here.                                     |
+| 5   | **SRP**                                   | `PullRequestsPage.tsx` mixes page-level state/derivation (pinned ids, followed PRs, tab counts) with header/KPI/tab-bar rendering.                                                                       | `PullRequestsPage.tsx` (whole file, 275 lines)                                                                                      | Same category the execution tracking already fixed for `ActionToolbar`/`GitGraph`/`WipStagingPanel`/`CommitHeaderInfo` — just not yet applied here.                                     |
 
 **Verdict on the question asked** ("can a new tab/panel/dialog be added without touching 2-3
 unrelated files, and can an LLM find where to plug in without reading the whole page?"): **no for
@@ -220,7 +220,7 @@ Paired with a presentational `<TabNav>` (renders the nav buttons from the array)
 
 **Deliberately not built**: no dynamic/runtime tab registration, no per-tab permission/feature-flag
 system, no code-splitting/lazy-loading layer. Nothing in the audit asked for those — adding them
-now would repeat the `GitGraphBuilder`/`DiffRenderStrategy` over-engineering mistake doc 14 already
+now would repeat the `GitGraphBuilder`/`DiffRenderStrategy` over-engineering mistake the execution tracking already
 reverted twice.
 
 ### Pattern 2 — Single discriminated-union state for `GitGraphOverlayManager`
@@ -267,7 +267,7 @@ R1 fix to a file that hasn't had it yet.
 `originMainIndex`) gains the connection-patching step, memoized once per `filteredNodes`/
 `totalChanges`/`originMainIndex` change, returning already-patched nodes. `GitGraph.tsx`'s
 `.map()` callback goes back to pure rendering, no conditional mutation. Same category of fix as
-the `originMainIndex` O(n²) perf bug doc 14's action 6.1 already found and fixed in this exact
+the `originMainIndex` O(n²) perf bug the execution tracking's action 6.1 already found and fixed in this exact
 hook — this is the one piece of that derivation that stayed behind.
 
 ### Pattern 5 — Reuse the shared `Dialog` primitive in `FollowPRDialog`/`FilterEditorDialog`
@@ -290,7 +290,7 @@ new pattern — the primitive already exists and is already the majority convent
   `onClose`, `setActiveDiffFile`) — readable, one level deep, no fan-out. Wrapping it in an
   event bus or mediator would hide control flow that's currently easy to trace with "go to
   definition," for no duplication it would remove.
-- **No rework of `AppEvent` payload typing in this plan** — already owned by doc 15's deferred
+- **No rework of `AppEvent` payload typing in this plan** — already owned by the rewards audit's deferred
   Phase 4; tracking it here too would create two sources of truth for the same TODO.
 - **No registry/strategy for `CommitDetailsPanel`'s diff/file or blame/history toggles** — these
   are 2-value switches, not open-ended sets; confirmed by reading both components, not carried
@@ -326,7 +326,7 @@ new pattern — the primitive already exists and is already the majority convent
 
 Phases are independent of each other (only the sub-steps within 1-3 and 8 depend on each other) —
 they can be done in any order, as separate PRs, per the project's existing "one action = one
-reasonable PR" convention from doc 14.
+reasonable PR" convention from the execution tracking.
 
 ### Manual test notes (Tauri-only, cannot be verified in a browser per `CLAUDE.md`)
 
@@ -335,7 +335,7 @@ reasonable PR" convention from doc 14.
 - 4.1: trigger the native context menu's Reset/Revert/"Branch here" actions on a commit and confirm
   each still opens the correct dialog with the correct commit pre-filled.
 - 5.1: check WIP connection lines and the dashed origin/main styling on a repo with uncommitted
-  changes and at least one commit above `origin/main` — this is the same rendering path doc 14's
+  changes and at least one commit above `origin/main` — this is the same rendering path the execution tracking's
   action 6.1 recommended a manual pass for.
 - 8.2/8.3: open the notification bell dropdown and the "new tab" (+) menu and confirm they still
   position correctly under their trigger button, and still close on outside click and Escape.
@@ -395,7 +395,7 @@ which they may not have done identically before).
 | 2026-07-03 | 2.1, 2.2             | Extracted `hooks/usePullRequestsPage.ts` (pinnedIds, followedPRs, togglePin/addFollowed/removeFollowed, all KPI/tabCounts derivation) out of `PullRequestsPage.tsx`. Migrated its 6 inner tabs to `PR_TABS: TabDef<InnerTabType>[]`; the `waiting` tab's extra `appEventBus.notify('view_waiting_reviews')` side effect moved into a small `selectTab()` wrapper rather than baked into the registry (kept the registry itself free of one-off side-effect fields). Verified: typecheck passes.                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | 2026-07-03 | 3.1                  | Rescoped in place — see "Implementation status." Deduplicated the `Section` type between `App.tsx` and `SettingsPage.tsx`; left the top-level `DASHBOARD_TAB`/`PULL_REQUESTS_TAB`/`REWARDS_TAB`/fallback ternary as-is (open-ended id space with a fallback, not a fixed set the registry fits). Verified: typecheck passes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | 2026-07-03 | 4.1                  | Collapsed `GitGraphOverlayManager`'s `resetOid`/`revertOid`/`branchOid` trio into one `activeDialog: PendingDialog` discriminated union + a `switch` (not a registry — 3 mutually-exclusive cases don't warrant one, per R3). Verified: typecheck passes. Native-menu-triggered dialogs (Reset/Revert/Create-branch-here) not re-tested visually this session — flagged in "Manual test notes."                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| 2026-07-03 | 5.1                  | Moved WIP-connector/origin-main dashed-line patching from `GitGraph.tsx`'s per-row `.map()` callback into a new `renderNodes` memo in `useGitGraphNodes` (derived once from `filteredNodes`/`totalChanges`/`originMainIndex`, same dependency shape as the sibling `originMainIndex` O(n²) fix doc 14 already made in this hook). `GitGraph.tsx`'s render loop is back to pure rendering. `originMainIndex` no longer destructured in `GitGraph.tsx` (only the hook needs it now). Verified: typecheck passes. Graph rendering not re-tested visually this session — flagged in "Manual test notes," same caution doc 14 already recommended for this hook.                                                                                                                                                                                                                                                          |
+| 2026-07-03 | 5.1                  | Moved WIP-connector/origin-main dashed-line patching from `GitGraph.tsx`'s per-row `.map()` callback into a new `renderNodes` memo in `useGitGraphNodes` (derived once from `filteredNodes`/`totalChanges`/`originMainIndex`, same dependency shape as the sibling `originMainIndex` O(n²) fix the execution tracking already made in this hook). `GitGraph.tsx`'s render loop is back to pure rendering. `originMainIndex` no longer destructured in `GitGraph.tsx` (only the hook needs it now). Verified: typecheck passes. Graph rendering not re-tested visually this session — flagged in "Manual test notes," same caution the execution tracking already recommended for this hook.                                                                                                                                                                                                                                                          |
 | 2026-07-03 | 6.1                  | Extracted `components/git-graph/components/DiffToolbar.tsx` (all header/toolbar JSX: file identity, diff/file tabs, blame/history toggle, diff nav, split/inline + whitespace toggles, WIP stage/discard, close) out of `DiffViewCenter.tsx`. Purely presentational move — all state/handlers stayed in `DiffViewCenter.tsx`, passed down as props/callbacks, no logic changed. `DiffViewCenter.tsx` 427→192 lines, `DiffToolbar.tsx` 315 lines. Verified: typecheck passes.                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | 2026-07-03 | 7.1, 7.2             | Rebuilt `FollowPRDialog.tsx` and `FilterEditorDialog.tsx` on `packages/ui`'s `Dialog`/`DialogContent`/`DialogHeader`/`DialogTitle`/`DialogFooter` (same convention as `CreateBranchHereDialog.tsx`), replacing the hand-rolled fixed-position backdrop + manual close button in both. External prop contracts (`onAdd`/`onSave`/`onClose`) unchanged, so both call sites (`FollowedPRsTab.tsx`, `CustomViewsTab.tsx`) needed no changes. Verified: typecheck passes. Not re-tested visually — both dialogs should now also close on Escape/backdrop-click, which is a behavior change worth confirming in `pnpm dev`.                                                                                                                                                                                                                                                                                                |
 | 2026-07-03 | —                    | Full monorepo `pnpm typecheck` also run: `@git-manager/ui`'s typecheck script fails, but confirmed via `git stash` that this failure pre-dates this session's changes (broken on `main` already, unrelated `tsc`/turbo config issue) — not caused by, or in scope of, this plan.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |

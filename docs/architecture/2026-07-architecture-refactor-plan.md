@@ -1,4 +1,4 @@
-# Spec 13 — Architecture refactor plan
+# Architecture refactor plan (July 2026)
 
 ## Objective
 
@@ -14,14 +14,14 @@ It starts from a factual audit of the code (July 2026, see § Current state) and
 4. the automated guardrails (Claude Code agent + skill) to avoid regressions.
 
 **Execution**: the action-by-action tracking of this plan (status, order, dependencies) is in
-[14-architecture-refactor-tracking.md](14-architecture-refactor-tracking.md) — that's the file
+[2026-07-architecture-refactor-tracking.md](2026-07-architecture-refactor-tracking.md) — that's the file
 to consult/update to know where things concretely stand.
 
-[`docs/specs/archive/00-architecture.md`](../specs/archive/00-architecture.md) was the original
-overview of the stack, and is now archived as a historical document. Where it describes a `git/`
-layer that was never implemented, this plan **replaces** that ambition with something closer to
-the real code: a `services/` layer on the Rust side and a strengthening of the `api/*.api.ts`
-layer on the frontend side, rather than a complete rewrite.
+The original overview of the stack (`docs/specs/archive/00-architecture.md`, deleted on 2026-07-31
+— `git show 9381c80:docs/specs/archive/00-architecture.md`) described a `git/` layer that was never
+implemented. This plan **replaces** that ambition with something closer to the real code: a
+`services/` layer on the Rust side and a strengthening of the `api/*.api.ts` layer on the frontend
+side, rather than a complete rewrite.
 
 ---
 
@@ -171,7 +171,7 @@ API function.
 > an unused event would have been indirection without benefit (cf. the project's
 > anti-premature-abstraction rule). The day one of them has a real event to notify,
 > `callCommand` is already ready to accommodate it — see
-> [14-architecture-refactor-tracking.md](14-architecture-refactor-tracking.md) action 4.4.
+> [2026-07-architecture-refactor-tracking.md](2026-07-architecture-refactor-tracking.md) action 4.4.
 
 ### Service layer (Rust) — extract `services/` between `commands/` and `git2`
 
@@ -239,7 +239,7 @@ pure rename), with stacked `if/else`s to be replaced by a `DiffRenderStrategy` i
 > internally. Introducing a `DiffRenderStrategy` interface for a 5-line ternary would be
 > over-engineering — the project's guiding principle is explicit about this ("three similar lines is better
 > than a premature abstraction"). No Strategy to extract here; see
-> [14-architecture-refactor-tracking.md](14-architecture-refactor-tracking.md) actions 5.1/5.2.
+> [2026-07-architecture-refactor-tracking.md](2026-07-architecture-refactor-tracking.md) actions 5.1/5.2.
 >
 > The actual size of `DiffViewCenter.tsx` (427 lines) comes from a rich header/toolbar (tabs,
 > blame/history toggles, navigation between changes, stage/discard actions), not from diff-type
@@ -262,7 +262,7 @@ sorting, folder stats computation, and filtering.
 > turned out not to be the case. Its `wipBatches` does a simple flat grouping by root folder for
 > "batch commit" mode (LLM per group), a different need from `CommitFileList`'s nested tree.
 > The hook was therefore only extracted from `CommitFileList.tsx`; see
-> [14-architecture-refactor-tracking.md](14-architecture-refactor-tracking.md) action 2.3.
+> [2026-07-architecture-refactor-tracking.md](2026-07-architecture-refactor-tracking.md) action 2.3.
 
 ---
 

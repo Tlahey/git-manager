@@ -1,4 +1,4 @@
-# Spec 15 — Rewards system: SOLID audit & target architecture
+# Rewards system — SOLID audit & target architecture (July 2026)
 
 > **Status**: Phases 1-3 implemented (this session). Phase 4 (tightening `AppEvent` payload
 > typing) deliberately deferred — see "Implementation status" at the bottom of this document for
@@ -6,8 +6,8 @@
 
 ## Objective
 
-[13-architecture-refactor-plan.md](13-architecture-refactor-plan.md) closed with "no refactor
-action planned" ([14-architecture-refactor-tracking.md:146](14-architecture-refactor-tracking.md#L146)).
+[2026-07-architecture-refactor-plan.md](2026-07-architecture-refactor-plan.md) closed with "no refactor
+action planned" ([2026-07-architecture-refactor-tracking.md:146](2026-07-architecture-refactor-tracking.md#L146)).
 It touched the reward system only tangentially (renamed `gameObserver` → `appEventBus`, created
 `callCommand`, fixed a direct `invoke()` call in `game.store.ts`) — it never audited the
 **rule-evaluation logic itself**: `stores/game.store.ts` + `stores/achievements.json` and their
@@ -15,9 +15,9 @@ consumers (`AppearanceSection.tsx`, `CommitDetailsAvatar.tsx`, `RewardsTab.tsx`)
 
 This document is that audit, scoped to one question the user asked explicitly: **is the current
 design easy to extend with new rewards / new trigger events, without modifying existing code?**
-It follows the same rules as doc 13 (R1 one file one role, R2 mandatory
+It follows the same rules as the architecture refactor plan (R1 one file one role, R2 mandatory
 service/engine layer, R3 no pattern for the pattern's sake) and the same format (audit → target →
-phased migration), so it can be merged into the same tracking process in doc 14 once approved.
+phased migration), so it can be merged into the same tracking process in the execution tracking once approved.
 
 **Scope**: frontend only (`apps/desktop/src/{stores,lib,app}`). No Rust/backend change needed —
 the rewards system is 100% client-side and has no IPC surface of its own.
@@ -47,7 +47,7 @@ api/git.api.ts (callCommand) ──notify──▶ lib/appEventBus.ts ──▶ 
 
 - **Observer already correct**: `lib/appEventBus.ts` decouples event producers
   (`api/git.api.ts` via `callCommand`) from the reward logic. This is the right pattern for this
-  problem and doc 13 already validated it — **do not replace it**.
+  problem and the architecture refactor plan already validated it — **do not replace it**.
 - **Declarative config**: achievement definitions (id, title, points, type, difficulty,
   trigger fields) live in `stores/achievements.json`, not scattered across components.
 - **Persistence merge is correct**: `game.store.ts:278-291` recombines persisted `unlocked`
@@ -110,7 +110,7 @@ export function processEvent(
 
 `game.store.ts` shrinks to: hold state, call `processEvent`, merge the result, schedule the
 `recentUnlock` toast, handle persistence. It stops _being_ the rule engine and starts _using_
-one — this is the same "one entry point, thin adapter" shape doc 13 already applies to Tauri
+one — this is the same "one entry point, thin adapter" shape the architecture refactor plan already applies to Tauri
 commands (R2), just on the frontend rules side. Prerequisite-checking becomes one function inside
 the engine, called from every rule kind that needs it — fixes #4 directly.
 
@@ -138,7 +138,7 @@ JSON entry, not a code change.
 #### Observer — kept as-is, typing tightened only
 
 **Problem solved**: #6, without solving a problem that doesn't exist. `appEventBus.ts` is not
-being replaced — doc 13 already justified it and it works. The only change: type `AppEvent` +
+being replaced — the architecture refactor plan already justified it and it works. The only change: type `AppEvent` +
 payload as a discriminated union (`{ type: 'stage'; filePath: string } | { type: 'commit' } |
 ...`) instead of `AppEvent` (string) + `payload?: any`, so a mismatched payload is a compile
 error at the `notify()` call site.
@@ -146,10 +146,10 @@ error at the `notify()` call site.
 ### Explicitly rejected: Builder
 
 The user's prompt suggested considering Builder. It doesn't fit here, and forcing it in would be
-the same mistake doc 14 already flagged twice for other areas (`GitGraphBuilder` and a
-`DiffRenderStrategy` were both proposed in doc 13 and then explicitly _not_ built after
-re-reading the code — see [14-...md:141](14-architecture-refactor-tracking.md#L141) and
-[:175](14-architecture-refactor-tracking.md#L175), "no Strategy to extract... over-engineering").
+the same mistake the execution tracking already flagged twice for other areas (`GitGraphBuilder` and a
+`DiffRenderStrategy` were both proposed in the architecture refactor plan and then explicitly _not_ built after
+re-reading the code — see [the execution tracking, §141](2026-07-architecture-refactor-tracking.md#L141) and
+[§175](2026-07-architecture-refactor-tracking.md#L175), "no Strategy to extract... over-engineering").
 Achievement definitions are static JSON assembled once at import time
 (`stores/achievements.json` → `INITIAL_ACHIEVEMENTS`) — there is no multi-step, conditional, or
 runtime construction to justify a fluent builder API. A plain object-literal `ruleRegistry: Record<RuleKind, RuleFactory>`
@@ -200,10 +200,10 @@ not a current requirement, so not built now.
    that the 4 themes still unlock/lock exactly as before.
 4. **Phase 4 (optional, do only if it earns its keep) — tighten `AppEvent` payload typing.**
    Lower priority than 1-3; can be dropped if it turns out to churn every `notify()`/listener call
-   site for marginal benefit — re-evaluate once phases 1-3 are done, same spirit as doc 13's
+   site for marginal benefit — re-evaluate once phases 1-3 are done, same spirit as the architecture refactor plan's
    self-corrections.
 
-Each phase should land as its own PR, consistent with how doc 14's phases were merged
+Each phase should land as its own PR, consistent with how the execution tracking's phases were merged
 individually (batches of 2-4 related actions per PR, not one giant rewrite).
 
 ---
@@ -226,14 +226,14 @@ already-crowded function, none of them purely additive.
 ```
 
 Zero edits to `actionRule.ts`, `milestoneRule.ts`, or any other existing rule file — genuinely
-additive, which is what OCP asks for and what doc 13's target principles (R3) require before a
+additive, which is what OCP asks for and what the architecture refactor plan's target principles (R3) require before a
 pattern earns its place.
 
 ---
 
 ## Non-goals
 
-- Don't replace `appEventBus` — already the correct pattern per doc 13, confirmed still correct
+- Don't replace `appEventBus` — already the correct pattern per the architecture refactor plan, confirmed still correct
   here.
 - Don't introduce a test framework as part of this plan — out of scope (per `CLAUDE.md`, none
   exists in this repo today). The point of extracting a pure `rewardEngine` is that it becomes
@@ -277,7 +277,7 @@ second instance of the AppearanceSection-style hardcoded-id pattern — nothing 
 what `getLevelInfo`/`getUnlockedEffects` already cover.
 
 Verified: `pnpm --filter @git-manager/desktop typecheck` passes with zero errors. `pnpm lint`
-fails for the same pre-existing, unrelated reason already documented in doc 14 (missing
+fails for the same pre-existing, unrelated reason already documented in the execution tracking (missing
 `eslint.config.js`). No manual pass in the running app was performed as part of this session
 (Tauri, not browser-testable per `CLAUDE.md`) — **recommended before merging**: stage then
 unstage the same file, make a commit, run `git status`/`git log` in the embedded terminal, and
