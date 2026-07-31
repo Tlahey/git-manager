@@ -34,7 +34,7 @@ export function CommitStatsTab({ commitDays, yearDays, loading }: CommitStatsTab
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden" data-testid="commit-stats-tab">
       <div className="flex-1 space-y-5 overflow-y-auto p-5">
         <div className="grid grid-cols-4 gap-3">
           <KpiCard

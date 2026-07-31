@@ -638,16 +638,20 @@ one page because a reader who finds one "Explain (LLM)" entry point has effectiv
 
 ## Section: The Launchpad — pull requests & issues
 
-The Launchpad (`PullRequestsPage.tsx`, footer "Launchpad" button) has zero e2e or doc coverage today
-despite being one of the largest pages in the app. The key fact that makes it tractable: `useGitHubData()`
-falls back to deterministic mock data (`apps/desktop/src/app/pull-requests/mockData.ts`) whenever no
-GitHub account is configured, so every *read* surface below (KPIs, tabs, heatmap, PR/issue lists and
-detail panels) is fully drivable with **no GitHub OAuth and no live token** — the same posture as
-every other fixture in this suite. What isn't drivable: anything that calls `api.github.com` directly
-from the frontend (`apps/desktop/src/api/github.api.ts` — merging a PR, posting a comment/review,
-setting draft status, creating/updating an issue) bypasses Tauri's `invoke()` entirely, so it's
-outside `command-mocking.feature`'s mocking mechanism too. Those actions are marked 🚫 below rather
-than 🆕 — viewing is in scope, mutating a real GitHub repo from a test is not.
+The Launchpad (`PullRequestsPage.tsx`, footer "Launchpad" button) had zero e2e or doc coverage before
+this section, despite being one of the largest pages in the app. The key fact that makes most of it
+tractable: `useGitHubData()` falls back to deterministic mock data
+(`apps/desktop/src/app/pull-requests/mockData.ts`) whenever no GitHub account is configured, so every
+*list* surface below (KPIs, tabs, heatmap, PR/issue rows) is fully drivable with **no GitHub OAuth and
+no live token** — the same posture as every other fixture in this suite. The one exception, confirmed
+empirically rather than assumed: the *detail panels* (a PR's or issue's own view, opened from a row)
+do **not** share that fallback — `usePrDetail`/`useIssueDetail` only fetch with a real token, so both
+are marked 🚫 blocked below rather than written as scenarios. What else isn't drivable: anything that
+calls `api.github.com` directly from the frontend (`apps/desktop/src/api/github.api.ts` — merging a
+PR, posting a comment/review, setting draft status, creating/updating an issue) bypasses Tauri's
+`invoke()` entirely, so it's outside `command-mocking.feature`'s mocking mechanism too. Those actions
+are marked 🚫 below rather than 🆕 — viewing is in scope, mutating a real GitHub repo from a test is
+not.
 
 ### Page: Your pull requests (`launchpad-prs.feature`) — 🔄 partially done (1 of 2 sub-parts)
 
@@ -689,21 +693,29 @@ than 🆕 — viewing is in scope, mutating a real GitHub repo from a test is no
     the scenario resets it itself first (`the launchpad state is reset`) to stay independent of
     whatever a previous local run left in `localStorage`.
 
-### Page: Issue triage (`launchpad-issues.feature`) — 🆕 write it
+### Page: Issue triage (`launchpad-issues.feature`) — 🔄 partially done (1 of 2 sub-parts)
 
-- **Sub-part — Browse and open issues from the Launchpad**
-  - Must show: the Issues tab's list, opening an issue's side panel.
-  - e2e: `launchpad-issues.feature → "Selecting an issue opens its detail panel"` — 🆕 write it
+- **Sub-part — Browse issues from the Launchpad**
+  - Must show: the Issues tab's list, defaulting to open issues across every added repo.
+  - e2e: `launchpad-issues.feature → "The Issues tab lists open issues from every repo you're
+    tracking"` — ✅ done
+- **Sub-part — Open an issue's detail panel**
+  - Must show: `IssueDetailCenter`'s description/labels/assignees/comments for a Launchpad issue.
+  - e2e: `launchpad-issues.feature → "Selecting an issue opens its detail panel"` — 🚫 blocked:
+    `useIssueDetail` is a direct copy of `usePrDetail` (its own doc comment says "Mirrors
+    usePrDetail") — only fetches with a real token, no `hasToken`-false fallback — so the panel is
+    stuck on "Loading issue…" forever without one. Same limitation as `launchpad-prs.feature`'s
+    blocked sub-part and `pr-graph.feature`.
   - 🚫 out of scope: changing issue state, editing, or creating an issue — same direct-`fetch()`
     limitation as PR mutations above.
 
-### Page: Your contribution activity (`launchpad-commit-stats.feature`) — 🆕 write it
+### Page: Your contribution activity (`launchpad-commit-stats.feature`) — ✅ done
 
 - **Sub-part — See your commit activity as a heatmap**
   - Must show: the Commit Stats tab's year heatmap and summary numbers, backed by mock contribution
     data when no token is configured.
-  - e2e: `launchpad-commit-stats.feature → "The commit stats tab shows a year of activity"` — 🆕
-    write it
+  - e2e: `launchpad-commit-stats.feature → "The commit stats tab shows a year of activity"` — ✅
+    done
 
 ### Page: Pull requests inside the graph (`pr-graph.feature`) — 🚫 blocked (see note)
 
