@@ -1,7 +1,7 @@
 import React from 'react'
 import { Skeleton } from '@git-manager/ui'
 
-export interface InnerTabProps {
+export interface InnerTabProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'> {
   active: boolean
   onClick: () => void
   children: React.ReactNode
@@ -9,7 +9,15 @@ export interface InnerTabProps {
   loading?: boolean
 }
 
-export function InnerTab({ active, onClick, children, count, loading }: InnerTabProps) {
+export function InnerTab({
+  active,
+  onClick,
+  children,
+  count,
+  loading,
+  className,
+  ...props
+}: InnerTabProps) {
   return (
     <button
       onClick={onClick}
@@ -17,7 +25,8 @@ export function InnerTab({ active, onClick, children, count, loading }: InnerTab
         active
           ? 'border-primary text-foreground'
           : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
-      }`}
+      } ${className ?? ''}`}
+      {...props}
     >
       {children}
       {count !== undefined &&

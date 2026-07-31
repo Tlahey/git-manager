@@ -306,6 +306,7 @@ export function PullRequestsPage() {
             return (
               <InnerTab
                 key={tab.id}
+                data-testid={`launchpad-tab-${tab.id}`}
                 active={activeTab === tab.id}
                 onClick={() => selectTab(tab.id)}
                 count={tabCounts[tab.id]}

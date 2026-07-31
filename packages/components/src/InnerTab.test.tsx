@@ -51,4 +51,13 @@ describe('InnerTab', () => {
     )
     expect(screen.queryByText('5')).not.toBeInTheDocument()
   })
+
+  it('passes through arbitrary button attributes, like data-testid', () => {
+    render(
+      <InnerTab active={false} onClick={vi.fn()} data-testid="my-tab">
+        Open
+      </InnerTab>
+    )
+    expect(screen.getByTestId('my-tab')).toBeInTheDocument()
+  })
 })
