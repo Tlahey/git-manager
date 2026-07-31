@@ -18,7 +18,7 @@ _100% local — no telemetry, no cloud, no data leaves your machine._
 
 **[✨ Visit the landing page](https://tlahey.github.io/git-manager/)** · **[📖 Read the documentation](https://tlahey.github.io/git-manager/docs/)** · **[💜 Sponsor this project](https://github.com/sponsors/Tlahey)**
 
-<img src="docs/screenshots/app-commit-graph.png" alt="Git Manager — visual commit graph with branches, tags and a WIP row" width="900" />
+<img src="docs/screenshots/doc-commit-graph.png" alt="Git Manager — visual commit graph with branch lanes, tags, authors and a WIP row" width="900" />
 
 <sub>Real screenshots, captured automatically from the app by the e2e harness — see <a href="#screenshots">Screenshots</a>.</sub>
 
@@ -55,15 +55,19 @@ _100% local — no telemetry, no cloud, no data leaves your machine._
 
 ## Screenshots
 
-| Commit graph | Commit details |
+| Working tree & file diff | Three-pane merge editor |
 | --- | --- |
-| ![Commit graph](docs/screenshots/app-commit-graph.png) | ![Commit details](docs/screenshots/app-commit-details.png) |
+| ![Staging area with a file diff open](docs/screenshots/doc-staging-file-diff.png) | ![Merge editor resolving a rebase conflict](docs/screenshots/doc-merge-editor.png) |
+| **Launchpad — pull requests across repos** | **Multi-repo dashboard** |
+| ![Launchpad grouping pull requests by what they need](docs/screenshots/doc-launchpad-prs.png) | ![Dashboard listing open, favourite and scanned repositories](docs/screenshots/doc-dashboard.png) |
 
-These images are **generated from the real app**, not mocked: the `@screenshots`-tagged
-e2e scenarios ([apps/e2e/features/marketing-screenshots.feature](apps/e2e/features/marketing-screenshots.feature))
-launch the compiled Tauri binary against the scripted `showcase` fixture repository
-([tools/git-fixtures/scenarios/showcase.sh](tools/git-fixtures/scenarios/showcase.sh)) and export
-PNGs into [docs/screenshots/](docs/screenshots/). Refresh them anytime with:
+These images are **generated from the real app**, not mocked — they are the very same PNGs the
+[documentation site](https://tlahey.github.io/git-manager/docs/) illustrates its feature pages with.
+Each one is exported by a `@doc @screenshots` scenario in
+[apps/e2e/features/](apps/e2e/features/) (the shots above come from `working-tree`,
+`merge-editor`, `launchpad-prs` and `dashboard`) that launches the compiled Tauri binary against a
+scripted fixture repository ([tools/git-fixtures/scenarios/](tools/git-fixtures/scenarios/)) and
+saves a full-window capture into [docs/screenshots/](docs/screenshots/). Refresh them anytime with:
 
 ```bash
 pnpm --filter @git-manager/desktop build:e2e   # build the e2e app binary once
