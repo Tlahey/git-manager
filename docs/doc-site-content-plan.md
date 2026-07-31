@@ -727,18 +727,31 @@ to real app events (`appEventBus` → `game.store.ts`) — nothing here needs Gi
 what the triggering action already needs (e.g. committing, for the first-commit achievement already
 covered below).
 
-### Page: Achievements (`rewards.feature`) — ✴️ tag it (existing scenario) + 🆕 (new sub-part)
+### Page: Achievements (`rewards.feature`) — ✅ done
 
 - **Sub-part — Unlock an achievement**
   - Must show: performing a tracked action (e.g. your first commit) pops a trophy toast naming the
     achievement.
   - e2e: `rewards.feature → "Making your first commit unlocks the \"Premier Pas\" achievement"` —
-    ✴️ tag it (scenario exists, untagged; needs `@doc` + description + screenshot step, and
-    `Given the app language is English` per the doc pipeline's convention)
+    ✅ tagged.
 - **Sub-part — Browse your trophy cabinet**
-  - Must show: the Launchpad's Rewards tab — level/rank, trophy counts by tier (bronze/silver/
-    gold/platinum), and the filterable achievement grid (locked vs. unlocked).
-  - e2e: `rewards.feature → "The Rewards tab shows unlocked and locked achievements"` — 🆕 write it
+  - Must show: the Rewards tab — level/rank, trophy counts by tier (bronze/silver/gold/platinum),
+    and the filterable achievement grid (locked vs. unlocked).
+  - e2e: `rewards.feature → "The Rewards tab shows unlocked and locked achievements"` — ✅ tagged.
+  - Naming correction: not "the Launchpad's Rewards tab" — it's its own pinned top-level tab
+    (`REWARDS_TAB` in `repoUI.store.ts`, the trophy icon between Dashboard and Launchpad in the tab
+    bar), rendered by `RewardsTab.tsx`. That component happens to live under
+    `app/pull-requests/components/` for code-organization reasons, which is presumably where the
+    old wording came from, but it is not part of the Launchpad screen itself. `TabBar.tsx`'s
+    `PinnedTab` carries no testid to click, so the step switches through the same
+    `window.__e2eRepoUIStore`'s `setActiveTab` bridge the dashboard tab already uses
+    (`daily-summary.feature`) rather than adding one for a single e2e click.
+  - **Found, not fixed (separate concern)**: `achievements.json`'s titles/descriptions/reward text
+    are hardcoded French regardless of app language — visible in both screenshots despite `Given
+    the app language is English`. A real i18n gap (this repo's own hard invariant is that every
+    user-facing string goes through `@git-manager/i18n`), but translating a ~28-entry achievement
+    catalog is unrelated in scope to writing e2e doc coverage for existing behavior, so it was
+    flagged as its own follow-up rather than fixed inline here.
 
 ---
 

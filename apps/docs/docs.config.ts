@@ -83,6 +83,10 @@ export const DOC_SECTIONS: DocSection[] = [
     features: ['dashboard'],
   },
   {
+    title: 'Rewards',
+    features: ['rewards'],
+  },
+  {
     title: 'Workflow tools',
     features: ['command-palette', 'settings', 'notifications'],
   },
