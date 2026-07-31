@@ -9,14 +9,27 @@ pub use crate::services::git_remote::{FetchResult, PullResult, PullStrategy, Rem
 
 /// Fetch from a remote (defaults to "origin"). `prune` removes tracking refs
 /// (`origin/*`) whose remote branch has vanished — `git fetch --prune`.
+///
+/// Runs on a blocking-pool thread: `git2`'s network transfer is synchronous C code with no
+/// `.await` point of its own, so running it directly on this command's async task would tie up
+/// one of the app's few Tokio worker threads for as long as the transfer takes — on a slow
+/// connection or a large repo, long enough to stall other IPC (status polling, etc.) and make the
+/// whole app look frozen. See `configure_libgit2_network_timeouts` (lib.rs) for the timeout that
+/// bounds a stalled connection.
 #[tauri::command]
 pub async fn fetch_remote(
     path: String,
     remote: Option<String>,
     prune: Option<bool>,
 ) -> Result<FetchResult, String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_remote::fetch(&repo, remote, prune.unwrap_or(false)).map_err(Into::into)
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_remote::fetch(&repo, remote, prune.unwrap_or(false))
+    })
+    .await
+    .map_err(|e| format!("fetch task failed to complete: {e}"))?;
+
+    result.map_err(Into::into)
 }
 
 // ─── pull_branch ──────────────────────────────────────────────────────────────
@@ -24,33 +37,53 @@ pub async fn fetch_remote(
 /// Pull: fetch, then integrate the remote branch with the chosen strategy (defaults to
 /// fast-forward-if-possible, like `git pull`). See `git_remote::pull` for what each strategy does
 /// on conflict — notably that none of them leave the repo in a paused, conflicted state.
+///
+/// Runs on a blocking-pool thread — see `fetch_remote`'s doc comment, which this shares the
+/// underlying network-fetch call with.
 #[tauri::command]
 pub async fn pull_branch(
     path: String,
     remote: Option<String>,
     strategy: Option<PullStrategy>,
 ) -> Result<PullResult, String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_remote::pull(&repo, remote, strategy.unwrap_or_default()).map_err(Into::into)
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_remote::pull(&repo, remote, strategy.unwrap_or_default())
+    })
+    .await
+    .map_err(|e| format!("pull task failed to complete: {e}"))?;
+
+    result.map_err(Into::into)
 }
 
 // ─── push_branch ──────────────────────────────────────────────────────────────
 
 /// Push to the remote
+///
+/// Runs on a blocking-pool thread — see `fetch_remote`'s doc comment; the same synchronous,
+/// un-awaited network transfer risk applies to a push.
 #[tauri::command]
 pub async fn push_branch(
     path: String,
     remote: Option<String>,
     force: Option<bool>,
 ) -> Result<(), String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_remote::push(&repo, remote, force.unwrap_or(false)).map_err(Into::into)
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_remote::push(&repo, remote, force.unwrap_or(false))
+    })
+    .await
+    .map_err(|e| format!("push task failed to complete: {e}"))?;
+
+    result.map_err(Into::into)
 }
 
 // ─── push_branch_to ───────────────────────────────────────────────────────────
 
 /// Pushes local branch `source` to remote branch `target` (refspec `source:target`) on `remote`
 /// (defaults to "origin") — drag-and-drop of one branch badge onto another.
+///
+/// Runs on a blocking-pool thread — see `fetch_remote`'s doc comment.
 #[tauri::command]
 pub async fn push_branch_to(
     path: String,
@@ -59,8 +92,14 @@ pub async fn push_branch_to(
     target: String,
     force: Option<bool>,
 ) -> Result<(), String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_remote::push_to(&repo, remote, &source, &target, force.unwrap_or(false)).map_err(Into::into)
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_remote::push_to(&repo, remote, &source, &target, force.unwrap_or(false))
+    })
+    .await
+    .map_err(|e| format!("push task failed to complete: {e}"))?;
+
+    result.map_err(Into::into)
 }
 
 // ─── get_remotes ──────────────────────────────────────────────────────────────
@@ -142,26 +181,43 @@ pub async fn get_branch_web_url(
 // ─── push_tag ─────────────────────────────────────────────────────────────────
 
 /// Publishes tag `tag_name` to `remote` (defaults to "origin") — `git push origin <name>`.
+///
+/// Runs on a blocking-pool thread — see `fetch_remote`'s doc comment; this is a push like any
+/// other, over the same unbounded network call.
 #[tauri::command]
 pub async fn push_tag(
     path: String,
     tag_name: String,
     remote: Option<String>,
 ) -> Result<(), String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_remote::push_tag(&repo, remote, &tag_name).map_err(Into::into)
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_remote::push_tag(&repo, remote, &tag_name)
+    })
+    .await
+    .map_err(|e| format!("push task failed to complete: {e}"))?;
+
+    result.map_err(Into::into)
 }
 
 // ─── delete_remote_tag ─────────────────────────────────────────────────────────
 
 /// Deletes tag `tag_name` on `remote` (defaults to "origin") by pushing an empty-source
 /// refspec — the equivalent of `git push origin :refs/tags/<name>`.
+///
+/// Runs on a blocking-pool thread — see `fetch_remote`'s doc comment.
 #[tauri::command]
 pub async fn delete_remote_tag(
     path: String,
     tag_name: String,
     remote: Option<String>,
 ) -> Result<(), String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_remote::delete_remote_tag(&repo, remote, &tag_name).map_err(Into::into)
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_remote::delete_remote_tag(&repo, remote, &tag_name)
+    })
+    .await
+    .map_err(|e| format!("push task failed to complete: {e}"))?;
+
+    result.map_err(Into::into)
 }

@@ -19,12 +19,19 @@ pub async fn run_package_health_check(path: String) -> Result<PackageHealthRepor
 
 /// Asks the repo's own package manager which dependencies have newer releases.
 /// Separate from the health check because it hits the network and can be slow.
+///
+/// Runs on a blocking-pool thread: it shells out to the package manager (npm/pnpm/yarn) and
+/// blocks on its `output()` for as long as that network call takes — same risk as `fetch_remote`.
 #[tauri::command]
 pub async fn check_outdated_packages(
     path: String,
     package_manager: String,
 ) -> Result<OutdatedReport, String> {
-    package_outdated::check_outdated(&path, &package_manager)
+    tauri::async_runtime::spawn_blocking(move || {
+        package_outdated::check_outdated(&path, &package_manager)
+    })
+    .await
+    .map_err(|e| format!("outdated-check task failed to complete: {e}"))?
 }
 
 /// Release notes between the installed version and the update target. Best-effort:
@@ -49,6 +56,9 @@ pub async fn scan_package_usage(path: String, name: String) -> Result<PackageUsa
 
 /// Runs the update. The one mutating command here — it rewrites manifests, the
 /// lockfile and `node_modules`, so it is only ever reached from an explicit click.
+///
+/// Runs on a blocking-pool thread — same reasoning as `check_outdated_packages`, plus this one
+/// also does real disk I/O across `node_modules`.
 #[tauri::command]
 pub async fn update_packages(
     path: String,
@@ -56,5 +66,9 @@ pub async fn update_packages(
     names: Vec<String>,
     to_latest: bool,
 ) -> Result<UpdateOutcome, String> {
-    package_update::update_packages(&path, &package_manager, names, to_latest)
+    tauri::async_runtime::spawn_blocking(move || {
+        package_update::update_packages(&path, &package_manager, names, to_latest)
+    })
+    .await
+    .map_err(|e| format!("package-update task failed to complete: {e}"))?
 }

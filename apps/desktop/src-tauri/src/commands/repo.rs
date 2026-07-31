@@ -55,6 +55,12 @@ pub async fn open_repo(
 }
 
 /// Clones a remote repository to a local path.
+///
+/// The `git clone` subprocess runs on a blocking-pool thread — like `fetch_remote`, it's a
+/// synchronous, unbounded network call, and `Command::output()` blocks the calling thread until
+/// the child exits. `state`/`app` aren't `'static` (their lifetime is this call's), so the app-state
+/// bookkeeping and asset-scope grant stay on the command's own async task, after the clone
+/// finishes — both are fast, in-memory operations, not part of what could hang.
 #[tauri::command]
 pub async fn clone_repo(
     app: AppHandle,
@@ -66,38 +72,43 @@ pub async fn clone_repo(
 ) -> Result<GitRepo, String> {
     use std::process::Command;
 
-    let mut args = vec!["clone".to_string()];
-    if shallow.unwrap_or(false) {
-        args.push("--depth".to_string());
-        args.push("1".to_string());
-    }
-    if sparse.unwrap_or(false) {
-        args.push("--sparse".to_string());
-    }
-    args.push(url.clone());
-    args.push(dest_path.clone());
+    let clone_dest = dest_path.clone();
+    let git_repo = tauri::async_runtime::spawn_blocking(move || -> Result<GitRepo, String> {
+        let mut args = vec!["clone".to_string()];
+        if shallow.unwrap_or(false) {
+            args.push("--depth".to_string());
+            args.push("1".to_string());
+        }
+        if sparse.unwrap_or(false) {
+            args.push("--sparse".to_string());
+        }
+        args.push(url);
+        args.push(clone_dest.clone());
 
-    #[cfg(target_os = "windows")]
-    let mut cmd = Command::new("cmd");
-    #[cfg(target_os = "windows")]
-    cmd.args(&["/C", "git"]);
+        #[cfg(target_os = "windows")]
+        let mut cmd = Command::new("cmd");
+        #[cfg(target_os = "windows")]
+        cmd.args(&["/C", "git"]);
 
-    #[cfg(not(target_os = "windows"))]
-    let mut cmd = Command::new("git");
+        #[cfg(not(target_os = "windows"))]
+        let mut cmd = Command::new("git");
 
-    let output = cmd
-        .args(&args)
-        .output()
-        .map_err(|e| format!("Failed to run git clone: {}", e))?;
+        let output = cmd
+            .args(&args)
+            .output()
+            .map_err(|e| format!("Failed to run git clone: {}", e))?;
 
-    if !output.status.success() {
-        let err_msg = String::from_utf8_lossy(&output.stderr).into_owned();
-        return Err(format!("Git clone failed: {}", err_msg));
-    }
+        if !output.status.success() {
+            let err_msg = String::from_utf8_lossy(&output.stderr).into_owned();
+            return Err(format!("Git clone failed: {}", err_msg));
+        }
 
-    let repo = Repository::open(&dest_path)
-        .map_err(|e| format!("Failed to open cloned repository: {}", e))?;
-    let git_repo = build_git_repo(&repo, dest_path.clone());
+        let repo = Repository::open(&clone_dest)
+            .map_err(|e| format!("Failed to open cloned repository: {}", e))?;
+        Ok(build_git_repo(&repo, clone_dest))
+    })
+    .await
+    .map_err(|e| format!("clone task failed to complete: {e}"))??;
 
     allow_repo_assets(&app, &dest_path);
 
@@ -121,8 +132,17 @@ pub async fn init_repo(path: String, state: State<'_, AppState>) -> Result<GitRe
     Ok(git_repo)
 }
 
+/// Runs on a blocking-pool thread: computing status walks the whole working tree, so its cost
+/// scales with repo size — see `fetch_remote`'s doc comment for why that shouldn't run directly
+/// on this command's async task, given this is polled frequently.
 #[tauri::command]
 pub async fn get_repo_status(path: String) -> Result<GitStatus, String> {
+    tauri::async_runtime::spawn_blocking(move || get_repo_status_blocking(path))
+        .await
+        .map_err(|e| format!("status task failed to complete: {e}"))?
+}
+
+fn get_repo_status_blocking(path: String) -> Result<GitStatus, String> {
     let repo = Repository::open(&path).map_err(|_| AppError::RepoNotFound(path))?;
 
     let mut opts = git2::StatusOptions::new();
@@ -213,11 +233,18 @@ pub async fn get_pending_operation(path: String) -> Result<Option<String>, Strin
 }
 
 /// Scans a root directory for Git repositories.
+///
+/// Runs on a blocking-pool thread: the recursive filesystem walk below can take real time on a
+/// large directory tree — see `fetch_remote`'s doc comment.
 #[tauri::command]
 pub async fn scan_repos(root_path: String, max_depth: usize) -> Result<Vec<String>, String> {
-    let mut found = Vec::new();
-    scan_dir(&root_path, 0, max_depth, &mut found);
-    Ok(found)
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut found = Vec::new();
+        scan_dir(&root_path, 0, max_depth, &mut found);
+        found
+    })
+    .await
+    .map_err(|e| format!("scan task failed to complete: {e}"))
 }
 
 fn scan_dir(path: &str, depth: usize, max_depth: usize, found: &mut Vec<String>) {
@@ -255,8 +282,17 @@ fn scan_dir(path: &str, depth: usize, max_depth: usize, found: &mut Vec<String>)
 }
 
 /// Gets a quick summary of a repository (branch, changes, ahead/behind commit counts).
+///
+/// Runs on a blocking-pool thread — see `get_repo_status`'s doc comment; this is the one shown
+/// per repo card on the dashboard, so it runs once per open tab.
 #[tauri::command]
 pub async fn get_repo_summary(path: String) -> Result<GitRepoSummary, String> {
+    tauri::async_runtime::spawn_blocking(move || get_repo_summary_blocking(path))
+        .await
+        .map_err(|e| format!("summary task failed to complete: {e}"))?
+}
+
+fn get_repo_summary_blocking(path: String) -> Result<GitRepoSummary, String> {
     let repo = Repository::open(&path).map_err(|e| e.to_string())?;
 
     let name = std::path::Path::new(&path)

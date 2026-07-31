@@ -127,8 +127,23 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     Ok(())
 }
 
+/// Bounds every libgit2 network operation (fetch/pull/push/clone) that would otherwise hang
+/// indefinitely on a stalled connection — a large or slow remote could leave the app spinning
+/// forever with no way to cancel. These are process-wide libgit2 options, not per-call ones, so
+/// they must be set once here, before any thread can call into libgit2 — never per-command.
+fn configure_libgit2_network_timeouts() {
+    // Safety: called as the first thing `run()` does, before Tauri spins up its runtime or any
+    // other thread that could race on this global.
+    unsafe {
+        let _ = git2::opts::set_server_connect_timeout_in_milliseconds(15_000);
+        let _ = git2::opts::set_server_timeout_in_milliseconds(30_000);
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    configure_libgit2_network_timeouts();
+
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
