@@ -132,7 +132,34 @@ pub fn build_graph_nodes(
     // branch, not from main/master, not from origin/main): a reservation whose commit sits far
     // below leaves a phantom, commit-less lane pinned to the left of every row above it, pushes the
     // real topmost commit off column 0, and makes the whole graph read as if it were laid out
-    // bottom-up. See docs/specs/graph-column-layout.md.
+    // bottom-up.
+    //
+    // This has been re-introduced three times, each time as a well-meaning "the mainline belongs on
+    // the left" tweak, and each time with a different symptom — which is why it keeps passing
+    // review:
+    //   * seeded from the checked-out branch's tip → a cut lane above the tip whenever that branch
+    //     was merged or behind;
+    //   * same, via a first-parent-only ancestry check → same bug, but missed whenever the tip was
+    //     a merge's SECOND parent;
+    //   * seeded from refs/heads/main (or refs/remotes/origin/main) → on `main`, any branch with
+    //     newer commits pushed the whole top of the graph one lane to the right.
+    // The intuition is not wrong as an aesthetic, it is wrong as a layout rule: a lane is the
+    // rendering of a line between two rows, and a line to a commit that is not displayed yet has
+    // nothing to connect to. If the mainline should be leftmost, that is a property of WHAT IS
+    // DISPLAYED — the top row *is* the mainline whenever the mainline holds the newest commit.
+    //
+    // The legitimate way to make the mainline read as the backbone is the COLOR, not the column:
+    // `color_map` below pre-walks main/master (blue) and origin/main (purple) precisely so the
+    // mainline stays recognisable whatever lane it lands on. Keep that fix on the color side.
+    //
+    // Before changing anything here, ask: does the change make a row's lane depend on something
+    // BELOW it? If yes, it is this bug. The only inputs to a row's column are the lanes left open
+    // by the rows above it. The invariant is locked by the unit tests at the bottom of this file
+    // (`main_checkout_does_not_reserve_column_zero_for_its_tip`,
+    // `merged_checked_out_tip_does_not_reserve_column_zero`,
+    // `second_parent_merged_tip_follows_top_down_order`,
+    // `checked_out_branch_tip_owns_column_zero_in_full_graph`) and, on the frontend, by
+    // `useGitGraphNodes.test.ts`.
     //
     // The ONE legitimate seed is a synthetic row the frontend renders ABOVE the first commit: the
     // WIP / paused-rebase row anchored on HEAD (`head_has_wip`, driven by the same status that
