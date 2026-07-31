@@ -34,6 +34,13 @@ if (import.meta.env.VITE_E2E === 'true') {
   // repoUI `selectedCommitOid` bridge stays untouched and can't be used as the signal).
   ;(window as unknown as { __e2eBisectUIStore: typeof useBisectUIStore }).__e2eBisectUIStore =
     useBisectUIStore
+  // Exposed so the suite's `Before` hook can force settings (theme, row height, ...) on the *live*
+  // store, not just in localStorage: the app window is shared across every feature in the run, and
+  // a scenario whose own Given steps never navigate (e.g. "the git-manager application is running",
+  // used by most Settings scenarios) never re-hydrates from localStorage — it would otherwise keep
+  // whatever a previous scenario last set live (e.g. the theme-picker scenario ending on "dark").
+  ;(window as unknown as { __e2eSettingsStore: typeof useSettingsStore }).__e2eSettingsStore =
+    useSettingsStore
 }
 
 // Initialize i18n before rendering, honoring the persisted language choice
