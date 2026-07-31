@@ -5,12 +5,9 @@ import type { Achievement } from './types'
 function achievement(overrides: Partial<Achievement> = {}): Achievement {
   return {
     id: 'a1',
-    title: 't',
-    description: 'd',
     points: 10,
     type: 'bronze',
     difficulty: 'beginner',
-    rewardDescription: 'r',
     kind: 'action',
     unlocked: false,
     ...overrides,

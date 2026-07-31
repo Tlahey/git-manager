@@ -246,7 +246,7 @@ export function SettingsPage({ onClose, initialSection, initialScope }: Settings
     {
       id: 'rewards',
       icon: Trophy,
-      label: t('settings.sections.rewards') || 'Succès & Récompenses',
+      label: t('settings.sections.rewards'),
       render: () => scrolled(<RewardsSection />),
     },
     {

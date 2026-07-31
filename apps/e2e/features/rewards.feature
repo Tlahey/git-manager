@@ -9,7 +9,7 @@ Feature: Rewards / gamification toast
     And the "stash-stack" fixture repository is opened
 
   @doc @screenshots
-  Scenario: Making your first commit unlocks the "Premier Pas" achievement
+  Scenario: Making your first commit unlocks the "First Steps" achievement
     Real actions unlock real achievements, tracked as you work rather than through a separate
     checklist — your very first commit through the app pops a trophy toast naming what you just
     unlocked, without you having to go looking for it.
@@ -17,7 +17,7 @@ Feature: Rewards / gamification toast
     When I select the working-tree changes in the graph
     And I enter the commit message "test: commit staged changes via e2e"
     And I commit the staged changes
-    Then the trophy toast shows the achievement "Premier Pas"
+    Then the trophy toast shows the achievement "First Steps"
     And a full-window screenshot is saved as "doc-rewards-toast"
 
   @doc @screenshots
@@ -30,7 +30,7 @@ Feature: Rewards / gamification toast
     When I select the working-tree changes in the graph
     And I enter the commit message "test: commit staged changes via e2e"
     And I commit the staged changes
-    Then the trophy toast shows the achievement "Premier Pas"
+    Then the trophy toast shows the achievement "First Steps"
     When I open the rewards tab
     Then the "commit_1" achievement is shown as unlocked
     And the interface has settled

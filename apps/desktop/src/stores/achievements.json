@@ -1,82 +1,63 @@
 [
   {
     "id": "open_launchpad",
-    "title": "Apprenti Observateur",
-    "description": "Ouvrir le Launchpad de l'application.",
     "points": 10,
     "type": "bronze",
     "difficulty": "beginner",
     "kind": "action",
-    "event": "open_app",
-    "rewardDescription": "Amélioration d'XP"
+    "event": "open_app"
   },
   {
     "id": "commit_1",
-    "title": "Premier Pas",
-    "description": "Faire votre premier commit depuis l'application.",
     "points": 10,
     "type": "bronze",
     "difficulty": "beginner",
     "kind": "milestone",
     "milestoneType": "commit",
     "milestoneValue": 1,
-    "rewardDescription": "Cadre d'avatar Bronze"
+    "rewardIsCosmetic": true
   },
   {
     "id": "commit_10",
-    "title": "Habitué du Commit",
-    "description": "Faire 10 commits dans vos dépôts Git.",
     "points": 20,
     "type": "bronze",
     "difficulty": "beginner",
     "prerequisiteId": "commit_1",
     "kind": "milestone",
     "milestoneType": "commit",
-    "milestoneValue": 10,
-    "rewardDescription": "Amélioration d'XP"
+    "milestoneValue": 10
   },
   {
     "id": "stage_unstage",
-    "title": "Indécis Indiscutable",
-    "description": "Faire un Stage puis un Unstage sur le même fichier.",
     "points": 15,
     "type": "bronze",
     "difficulty": "beginner",
     "kind": "pair",
     "startEvent": "stage",
-    "endEvent": "unstage",
-    "rewardDescription": "Amélioration d'XP"
+    "endEvent": "unstage"
   },
   {
     "id": "terminal_status",
-    "title": "Inspecteur d'État",
-    "description": "Exécuter 'git status' dans le terminal.",
     "points": 15,
     "type": "bronze",
     "difficulty": "beginner",
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git status",
-    "rewardDescription": "Amélioration d'XP"
+    "commandKeyword": "git status"
   },
   {
     "id": "terminal_log",
-    "title": "Historien Local",
-    "description": "Exécuter 'git log' dans le terminal.",
     "points": 15,
     "type": "bronze",
     "difficulty": "beginner",
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git log",
-    "rewardDescription": "Amélioration d'XP"
+    "commandKeyword": "git log"
   },
   {
     "id": "commit_50",
-    "title": "Artisan du Code",
-    "description": "Faire 50 commits dans vos dépôts Git.",
     "points": 40,
     "type": "silver",
     "difficulty": "intermediate",
@@ -84,24 +65,19 @@
     "kind": "milestone",
     "milestoneType": "commit",
     "milestoneValue": 50,
-    "rewardDescription": "Cadre d'avatar Argent"
+    "rewardIsCosmetic": true
   },
   {
     "id": "pr_1",
-    "title": "Esprit Collaboratif",
-    "description": "Avoir 1 Pull Request fusionnée ou fermée.",
     "points": 20,
     "type": "bronze",
     "difficulty": "intermediate",
     "kind": "milestone",
     "milestoneType": "pr_merged",
-    "milestoneValue": 1,
-    "rewardDescription": "Amélioration d'XP"
+    "milestoneValue": 1
   },
   {
     "id": "pr_10",
-    "title": "Gestionnaire Agile",
-    "description": "Avoir 10 Pull Requests fusionnées ou fermées.",
     "points": 40,
     "type": "silver",
     "difficulty": "intermediate",
@@ -110,73 +86,56 @@
     "milestoneType": "pr_merged",
     "milestoneValue": 10,
     "effects": [{ "type": "theme", "id": "forest" }],
-    "rewardDescription": "Thème Forêt Verte"
+    "rewardIsCosmetic": true
   },
   {
     "id": "discard",
-    "title": "Retour vers le Futur",
-    "description": "Annuler des modifications locales (Discard).",
     "points": 15,
     "type": "bronze",
     "difficulty": "intermediate",
     "kind": "action",
-    "event": "discard",
-    "rewardDescription": "Amélioration d'XP"
+    "event": "discard"
   },
   {
     "id": "fixup",
-    "title": "Chirurgien Discret",
-    "description": "Créer un commit de correctif (fixup).",
     "points": 20,
     "type": "bronze",
     "difficulty": "intermediate",
     "kind": "action",
-    "event": "fixup",
-    "rewardDescription": "Amélioration d'XP"
+    "event": "fixup"
   },
   {
     "id": "terminal_diff",
-    "title": "Observateur de Code",
-    "description": "Exécuter 'git diff' dans le terminal.",
     "points": 20,
     "type": "bronze",
     "difficulty": "intermediate",
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git diff",
-    "rewardDescription": "Amélioration d'XP"
+    "commandKeyword": "git diff"
   },
   {
     "id": "terminal_branch",
-    "title": "Explorateur de Branches",
-    "description": "Exécuter 'git branch --all' dans le terminal.",
     "points": 20,
     "type": "bronze",
     "difficulty": "intermediate",
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git branch --all",
-    "rewardDescription": "Amélioration d'XP"
+    "commandKeyword": "git branch --all"
   },
   {
     "id": "terminal_stash_list",
-    "title": "Inspecteur des Réserves",
-    "description": "Exécuter 'git stash list' dans le terminal.",
     "points": 20,
     "type": "bronze",
     "difficulty": "intermediate",
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git stash list",
-    "rewardDescription": "Amélioration d'XP"
+    "commandKeyword": "git stash list"
   },
   {
     "id": "commit_100",
-    "title": "Stakhanoviste du Commit",
-    "description": "Faire 100 commits dans vos dépôts Git.",
     "points": 80,
     "type": "gold",
     "difficulty": "expert",
@@ -185,12 +144,10 @@
     "milestoneType": "commit",
     "milestoneValue": 100,
     "effects": [{ "type": "theme", "id": "amethyst" }],
-    "rewardDescription": "Thème Améthyste"
+    "rewardIsCosmetic": true
   },
   {
     "id": "commit_500",
-    "title": "Légende du Git",
-    "description": "Faire 500 commits dans vos dépôts Git.",
     "points": 150,
     "type": "platinum",
     "difficulty": "expert",
@@ -198,12 +155,10 @@
     "kind": "milestone",
     "milestoneType": "commit",
     "milestoneValue": 500,
-    "rewardDescription": "Cadre d'avatar Néon"
+    "rewardIsCosmetic": true
   },
   {
     "id": "pr_50",
-    "title": "Maître de la Fusion",
-    "description": "Avoir 50 Pull Requests fusionnées ou fermées.",
     "points": 80,
     "type": "gold",
     "difficulty": "expert",
@@ -211,147 +166,116 @@
     "kind": "milestone",
     "milestoneType": "pr_merged",
     "milestoneValue": 50,
-    "rewardDescription": "Cadre d'avatar Or"
+    "rewardIsCosmetic": true
   },
   {
     "id": "autosquash",
-    "title": "Architecte de l'Histoire",
-    "description": "Lancer un rebase automatique via 'autosquash'.",
     "points": 30,
     "type": "silver",
     "difficulty": "expert",
     "kind": "action",
     "event": "autosquash",
     "effects": [{ "type": "theme", "id": "cyberpunk" }],
-    "rewardDescription": "Thème Cyberpunk"
+    "rewardIsCosmetic": true
   },
   {
     "id": "terminal_bisect",
-    "title": "Détective Dichotomique",
-    "description": "Exécuter 'git bisect' dans le terminal pour chasser un bug.",
     "points": 30,
     "type": "silver",
     "difficulty": "expert",
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git bisect",
-    "rewardDescription": "Amélioration d'XP"
+    "commandKeyword": "git bisect"
   },
   {
     "id": "terminal_cherry_pick",
-    "title": "Cueilleur Précis",
-    "description": "Exécuter 'git cherry-pick' dans le terminal.",
     "points": 30,
     "type": "silver",
     "difficulty": "expert",
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git cherry-pick",
-    "rewardDescription": "Amélioration d'XP"
+    "commandKeyword": "git cherry-pick"
   },
   {
     "id": "terminal_rebase_i",
-    "title": "Chirurgien Temporel",
-    "description": "Exécuter 'git rebase -i' dans le terminal.",
     "points": 35,
     "type": "silver",
     "difficulty": "expert",
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git rebase -i",
-    "rewardDescription": "Amélioration d'XP"
+    "commandKeyword": "git rebase -i"
   },
   {
     "id": "terminal_worktree",
-    "title": "Multitâche Avancé",
-    "description": "Exécuter 'git worktree' dans le terminal pour travailler en parallèle.",
     "points": 40,
     "type": "gold",
     "difficulty": "expert",
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git worktree",
-    "rewardDescription": "Amélioration d'XP"
+    "commandKeyword": "git worktree"
   },
   {
     "id": "terminal_submodule",
-    "title": "Inspecteur des Poupées Russes",
-    "description": "Exécuter 'git submodule' dans le terminal.",
     "points": 40,
     "type": "gold",
     "difficulty": "expert",
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git submodule",
-    "rewardDescription": "Amélioration d'XP"
+    "commandKeyword": "git submodule"
   },
   {
     "id": "terminal_filter_branch",
-    "title": "Réécrivain d'Histoire",
-    "description": "Exécuter 'git filter-branch' ou 'git filter-repo' pour nettoyer le dépôt.",
     "points": 50,
     "type": "gold",
     "difficulty": "expert",
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git filter",
-    "rewardDescription": "Amélioration d'XP"
+    "commandKeyword": "git filter"
   },
   {
     "id": "terminal_verify_pack",
-    "title": "Archiviste du Dépôt",
-    "description": "Exécuter 'git verify-pack' ou 'git count-objects' pour analyser l'espace.",
     "points": 50,
     "type": "gold",
     "difficulty": "expert",
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git verify-pack",
-    "rewardDescription": "Amélioration d'XP"
+    "commandKeyword": "git verify-pack"
   },
   {
     "id": "terminal_write_tree",
-    "title": "Plombier en Chef",
-    "description": "Exécuter la commande de plomberie 'git write-tree'.",
     "points": 60,
     "type": "gold",
     "difficulty": "expert",
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git write-tree",
-    "rewardDescription": "Amélioration d'XP"
+    "commandKeyword": "git write-tree"
   },
   {
     "id": "terminal_cat_file",
-    "title": "Inspecteur d'Objets Bruts",
-    "description": "Exécuter la commande de plomberie 'git cat-file' pour lire un objet.",
     "points": 60,
     "type": "gold",
     "difficulty": "expert",
     "kind": "terminal_keyword",
     "milestoneType": "terminal_command",
     "milestoneValue": 1,
-    "commandKeyword": "git cat-file",
-    "rewardDescription": "Amélioration d'XP"
+    "commandKeyword": "git cat-file"
   },
   {
     "id": "platinum_trophy",
-    "title": "Maître Absolu de Git",
-    "description": "Obtenir tous les autres succès de l'application.",
     "points": 150,
     "type": "platinum",
     "difficulty": "expert",
     "kind": "composite",
     "requiresAllExcept": ["platinum_trophy"],
     "effects": [{ "type": "theme", "id": "platinum" }],
-    "rewardDescription": "Thème Platine clignotant"
+    "rewardIsCosmetic": true
   }
 ]

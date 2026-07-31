@@ -3,6 +3,7 @@ import { Trophy, X } from 'lucide-react'
 import { useTranslation } from '@git-manager/i18n'
 import { useGameStore, type Achievement } from '../../stores/game.store'
 import { apiSendNativeNotification } from '../../api/notification.api'
+import { achievementI18nKey } from '../../lib/rewards/achievementI18n'
 
 export function TrophyToast() {
   const { t } = useTranslation('launchpad')
@@ -19,9 +20,9 @@ export function TrophyToast() {
       void apiSendNativeNotification({
         title: t('rewards.toast.nativeTitle', { tier: t(`rewards.${recentUnlock.type}`) }),
         body: t('rewards.toast.nativeBody', {
-          title: recentUnlock.title,
-          description: recentUnlock.description,
-          reward: recentUnlock.rewardDescription,
+          title: t(achievementI18nKey(recentUnlock.id, 'title')),
+          description: t(achievementI18nKey(recentUnlock.id, 'description')),
+          reward: t(achievementI18nKey(recentUnlock.id, 'reward')),
         }),
         route: { kind: 'rewards' },
       })
@@ -89,12 +90,14 @@ export function TrophyToast() {
             +{activeUnlock.points} XP
           </span>
         </div>
-        <h4 className="text-xs font-bold text-foreground">{activeUnlock.title}</h4>
+        <h4 className="text-xs font-bold text-foreground">
+          {t(achievementI18nKey(activeUnlock.id, 'title'))}
+        </h4>
         <p className="mt-0.5 text-[10px] leading-normal text-muted-foreground">
-          {activeUnlock.description}
+          {t(achievementI18nKey(activeUnlock.id, 'description'))}
         </p>
         <p className="mt-1 text-[9px] font-semibold text-green-400">
-          {t('rewards.gain')} {activeUnlock.rewardDescription}
+          {t('rewards.gain')} {t(achievementI18nKey(activeUnlock.id, 'reward'))}
         </p>
       </div>
 

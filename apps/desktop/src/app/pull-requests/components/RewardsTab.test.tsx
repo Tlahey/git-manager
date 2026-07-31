@@ -10,15 +10,18 @@ import { useGameStore } from '../../../stores/game.store'
 
 const INITIAL_STATE = useGameStore.getState()
 
+// Display text isn't a field on Achievement anymore — it's resolved via t() from a real
+// achievement id (see achievementI18nKey/RewardsTab.tsx). Tests that assert on rendered
+// title/description/reward text below use a real id from achievements.json so t() resolves to
+// real English copy (this suite runs against real translations, not a key-passthrough mock);
+// tests that only check counts/filters/dates keep this placeholder id, since a missing i18n key
+// just renders as the key string itself rather than throwing.
 function achievement(overrides: Partial<Achievement> = {}): Achievement {
   return {
     id: 'a-generic',
-    title: 'Generic achievement',
-    description: 'A generic description',
     points: 10,
     type: 'bronze',
     difficulty: 'beginner',
-    rewardDescription: "Amélioration d'XP",
     kind: 'action',
     unlocked: false,
     ...overrides,
@@ -41,7 +44,7 @@ describe('RewardsTab — rank card', () => {
   it('shows a higher rank name once points cross a threshold', () => {
     useGameStore.setState({ points: 250, achievements: [] })
     render(<RewardsTab />)
-    expect(screen.getByText('Git Spécialiste')).toBeInTheDocument()
+    expect(screen.getByText('Git Specialist')).toBeInTheDocument()
   })
 
   it('shows the platinum rank name when the platinum trophy is unlocked, regardless of points', () => {
@@ -57,7 +60,7 @@ describe('RewardsTab — rank card', () => {
       ],
     })
     render(<RewardsTab />)
-    expect(screen.getByText('Git Grand Maître (Platine)')).toBeInTheDocument()
+    expect(screen.getByText('Git Grandmaster (Platinum)')).toBeInTheDocument()
   })
 })
 
@@ -87,15 +90,15 @@ describe('RewardsTab — trophy cabinet', () => {
 })
 
 describe('RewardsTab — status filter', () => {
+  // Real ids so their titles resolve to real text: "First Steps" (commit_1) and "Status
+  // Inspector" (terminal_status) — both beginner-difficulty in the real catalog too.
   const unlockedAch = achievement({
-    id: 'done',
-    title: 'Done achievement',
+    id: 'commit_1',
     unlocked: true,
     difficulty: 'beginner',
   })
   const inProgressAch = achievement({
-    id: 'todo',
-    title: 'Todo achievement',
+    id: 'terminal_status',
     unlocked: false,
     difficulty: 'beginner',
   })
@@ -103,8 +106,8 @@ describe('RewardsTab — status filter', () => {
   it('shows all achievements by default', () => {
     useGameStore.setState({ achievements: [unlockedAch, inProgressAch] })
     render(<RewardsTab />)
-    expect(screen.getByText('Done achievement')).toBeInTheDocument()
-    expect(screen.getByText('Todo achievement')).toBeInTheDocument()
+    expect(screen.getByText('First Steps')).toBeInTheDocument()
+    expect(screen.getByText('Status Inspector')).toBeInTheDocument()
   })
 
   it('filters to only in-progress achievements', async () => {
@@ -112,8 +115,8 @@ describe('RewardsTab — status filter', () => {
     useGameStore.setState({ achievements: [unlockedAch, inProgressAch] })
     render(<RewardsTab />)
     await user.click(screen.getByText("In progress"))
-    expect(screen.queryByText('Done achievement')).not.toBeInTheDocument()
-    expect(screen.getByText('Todo achievement')).toBeInTheDocument()
+    expect(screen.queryByText('First Steps')).not.toBeInTheDocument()
+    expect(screen.getByText('Status Inspector')).toBeInTheDocument()
   })
 
   it('filters to only completed achievements', async () => {
@@ -121,8 +124,8 @@ describe('RewardsTab — status filter', () => {
     useGameStore.setState({ achievements: [unlockedAch, inProgressAch] })
     render(<RewardsTab />)
     await user.click(screen.getByTestId('rewards-filter-completed'))
-    expect(screen.getByText('Done achievement')).toBeInTheDocument()
-    expect(screen.queryByText('Todo achievement')).not.toBeInTheDocument()
+    expect(screen.getByText('First Steps')).toBeInTheDocument()
+    expect(screen.queryByText('Status Inspector')).not.toBeInTheDocument()
   })
 })
 
@@ -131,10 +134,9 @@ describe('RewardsTab — difficulty groups', () => {
     const user = userEvent.setup()
     useGameStore.setState({
       achievements: [
-        achievement({ id: 'b1', title: 'Beginner done', difficulty: 'beginner', unlocked: true }),
+        achievement({ id: 'b1', difficulty: 'beginner', unlocked: true }),
         achievement({
           id: 'i1',
-          title: 'Intermediate todo',
           difficulty: 'intermediate',
           unlocked: false,
         }),
@@ -166,18 +168,16 @@ describe('RewardsTab — achievement card content', () => {
     useGameStore.setState({
       achievements: [
         achievement({
-          id: 'a1',
-          title: 'Unlocked one',
-          description: 'You did it',
+          id: 'terminal_log',
           points: 25,
           unlocked: true,
         }),
       ],
     })
     render(<RewardsTab />)
-    const card = screen.getByTestId('achievement-card-a1')
-    expect(within(card).getByText('Unlocked one')).toBeInTheDocument()
-    expect(within(card).getByText('You did it')).toBeInTheDocument()
+    const card = screen.getByTestId('achievement-card-terminal_log')
+    expect(within(card).getByText('Local Historian')).toBeInTheDocument()
+    expect(within(card).getByText("Run 'git log' in the terminal.")).toBeInTheDocument()
     expect(within(card).getByText('+25 XP')).toBeInTheDocument()
   })
 
@@ -191,21 +191,21 @@ describe('RewardsTab — achievement card content', () => {
   })
 
   it('masks the title and description behind a locked prerequisite', () => {
+    // Real prerequisite pair from achievements.json: commit_10 requires commit_1.
     useGameStore.setState({
       achievements: [
-        achievement({ id: 'prereq', title: 'The prerequisite', unlocked: false }),
+        achievement({ id: 'commit_1', unlocked: false }),
         achievement({
-          id: 'locked',
-          title: 'Secret achievement',
-          prerequisiteId: 'prereq',
+          id: 'commit_10',
+          prerequisiteId: 'commit_1',
           unlocked: false,
         }),
       ],
     })
     render(<RewardsTab />)
-    const card = screen.getByTestId('achievement-card-locked')
+    const card = screen.getByTestId('achievement-card-commit_10')
     expect(within(card).getByText('???')).toBeInTheDocument()
-    expect(within(card).queryByText('Secret achievement')).not.toBeInTheDocument()
+    expect(within(card).queryByText('Commit Regular')).not.toBeInTheDocument()
     expect(
       within(card).getByText(/Mystery challenge/)
     ).toBeInTheDocument()
@@ -214,42 +214,41 @@ describe('RewardsTab — achievement card content', () => {
   it('reveals the title once the prerequisite is unlocked', () => {
     useGameStore.setState({
       achievements: [
-        achievement({ id: 'prereq', title: 'The prerequisite', unlocked: true }),
+        achievement({ id: 'commit_1', unlocked: true }),
         achievement({
-          id: 'unlocked-child',
-          title: 'Now visible',
-          prerequisiteId: 'prereq',
+          id: 'commit_10',
+          prerequisiteId: 'commit_1',
           unlocked: false,
         }),
       ],
     })
     render(<RewardsTab />)
-    const card = screen.getByTestId('achievement-card-unlocked-child')
-    expect(within(card).getByText('Now visible')).toBeInTheDocument()
+    const card = screen.getByTestId('achievement-card-commit_10')
+    expect(within(card).getByText('Commit Regular')).toBeInTheDocument()
   })
 
   it('hides a cosmetic reward name behind ??? until unlocked, but shows plain XP rewards', () => {
     useGameStore.setState({
       achievements: [
-        achievement({ id: 'cosmetic', rewardDescription: 'Thème Forêt', unlocked: false }),
-        achievement({ id: 'xp-only', rewardDescription: "Amélioration d'XP", unlocked: false }),
+        achievement({ id: 'commit_1', rewardIsCosmetic: true, unlocked: false }),
+        achievement({ id: 'terminal_status', unlocked: false }),
       ],
     })
     render(<RewardsTab />)
-    const cosmeticCard = screen.getByTestId('achievement-card-cosmetic')
+    const cosmeticCard = screen.getByTestId('achievement-card-commit_1')
     expect(within(cosmeticCard).getByText('Reward: ???')).toBeInTheDocument()
-    const xpCard = screen.getByTestId('achievement-card-xp-only')
-    expect(within(xpCard).getByText("Reward: Amélioration d'XP")).toBeInTheDocument()
+    const xpCard = screen.getByTestId('achievement-card-terminal_status')
+    expect(within(xpCard).getByText('Reward: XP boost')).toBeInTheDocument()
   })
 
   it('reveals the cosmetic reward name once unlocked', () => {
     useGameStore.setState({
       achievements: [
-        achievement({ id: 'cosmetic', rewardDescription: 'Thème Forêt', unlocked: true }),
+        achievement({ id: 'commit_1', rewardIsCosmetic: true, unlocked: true }),
       ],
     })
     render(<RewardsTab />)
-    expect(screen.getByText('Reward: Thème Forêt')).toBeInTheDocument()
+    expect(screen.getByText('Reward: Bronze avatar frame')).toBeInTheDocument()
   })
 })
 
