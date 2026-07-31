@@ -439,7 +439,7 @@ commit in the window.
     should unblock "Explaining what changed" (`setAiPanelTarget`, already bridged the same way) and
     "AI code review" (same) below.
 
-### Page: Explaining what changed (`ai-explanation.feature`) — 🆕 write it
+### Page: Explaining what changed (`ai-explanation.feature`) — ✅ done
 
 Three of the four sub-parts below share one instruction and one temperature, discriminated by scope
 (`packages/ai`'s `summaryExplanationFeature`, per [CLAUDE.md](../CLAUDE.md)); the fourth
@@ -449,23 +449,46 @@ one page because a reader who finds one "Explain (LLM)" entry point has effectiv
 - **Sub-part — Explain one commit, beyond its message**
   - Must show: right-click a commit → *Explain this commit (LLM)*; the right panel's streamed
     explanation, remembered so reopening the panel doesn't regenerate it.
-  - e2e: `ai-explanation.feature → "Explaining a single commit"` — 🆕 write it
+  - e2e: `ai-explanation.feature → "Explaining a single commit"` — ✅ tagged. Confirmed the "Must
+    show" claim (fine to read, not tested with a dedicated assertion): the panel's `text` reads from
+    an `aiExplanation.store` entry keyed per commit oid, and `ExplanationPanelShell`'s
+    auto-generate-on-mount effect only fires when that entry is empty — so reopening a already-
+    explained commit shows the stored text without a second request, but a new fake-server call
+    count assertion was not built to prove it end to end.
   - Descriptor: `commit-explanation.md`
 - **Sub-part — Explain a whole branch**
   - Must show: right-click a branch (or a commit) → *Explain branch changes (LLM)*; the explanation
     is remembered per branch.
-  - e2e: `ai-explanation.feature → "Explaining a branch's changes"` — 🆕 write it
+  - e2e: `ai-explanation.feature → "Explaining a branch's changes"` — ✅ tagged. Same store-bridge
+    approach as the commit sub-part (see the page-level note below); `baseRef` resolves against
+    local refs only (`resolveExplanationBase`), so this needs no remote and no GitHub token.
   - Descriptor: `branch-explanation.md`
 - **Sub-part — Explain everything you haven't committed yet**
   - Must show: right-click the WIP row → *Explain working changes (LLM)*; the summary covers every
     uncommitted file, not just the one you have open.
-  - e2e: `ai-explanation.feature → "Explaining all uncommitted changes"` — 🆕 write it
+  - e2e: `ai-explanation.feature → "Explaining all uncommitted changes"` — ✅ tagged. Unlike the
+    commit/branch panels this one keeps no memory (`WorkingExplanationPanel`'s own doc comment: "the
+    working tree moves under the summary constantly, so every open generates fresh") — every open
+    re-runs the map-then-compose call.
   - Descriptor: `working-explanation.md`
 - **Sub-part — Explain one file's pending diff**
   - Must show: the *Explain* button above the diff editor on a working-copy file; the explanation is
     read against the file's own content, not just the patch.
-  - e2e: `ai-explanation.feature → "Explaining one file's pending diff"` — 🆕 write it
+  - e2e: `ai-explanation.feature → "Explaining one file's pending diff"` — ✅ tagged. The one
+    sub-part with a plain DOM entry point (`change-explanation-run` in `ChangeExplanationPanel.tsx`,
+    shown above the diff editor when a working-copy file is open) — no native menu, no store bridge
+    needed.
   - Descriptor: `change-explanation.md`
+- **How the first three were reached**: like recompose above, all three panel sub-parts open only
+  from a real native context menu item (`gitTree.contextMenu.explainCommit`, `.branchMenu.
+  explainChanges`, `.wipMenu.explainChanges`) with no command-palette equivalent. All three,
+  though, ultimately just call `setAiPanelTarget({ kind, ... })` on the `repoUI` store —
+  `GitGraph.tsx` renders whichever panel `aiPanelTarget.kind` names, purely reactively, regardless
+  of who set it. So each e2e step dispatches through that same store bridge
+  (`window.__e2eRepoUIStore`) instead of a menu click, computing the real payload each panel needs
+  (a commit's oid/subject/body/author/parentCount via `git log`, or a branch's name + resolved base)
+  — everything downstream (the panel, the real map-phase file summaries, the real streamed compose
+  call) is exactly what a real click produces. No production code was changed.
 
 ### Page: AI code review (`ai-code-review.feature`) — 🆕 write it
 
