@@ -615,7 +615,7 @@ Shared by every feature; the per-feature pages list their own on top of these.
 | Item | State |
 | ---- | ----- |
 | ~~**Recompose a commit with AI**~~ | **Built** — see [commit recompose](./commit-recompose.md). Applying reuses the existing `run_interactive_rebase` (its todo renderer already implements `reword`), so it needed no Rust change; the risk is handled by a review dialog, a protected-branch gate and an explicit history-rewrite warning |
-| **LLM explanation in the session journal** | ROADMAP 8.14 — blocked on the whole unstarted M8 pedagogy block |
+| ~~**LLM explanation in the session journal**~~ | **Built** — see [action explanation](./action-explanation.md). It needed none of the pedagogy machinery it was once thought to be blocked on: the commands were already recorded as they ran, and `lib/gitCommandCatalog.ts` renders each backend operation back into the `git` line it stands for |
 
 ---
 
