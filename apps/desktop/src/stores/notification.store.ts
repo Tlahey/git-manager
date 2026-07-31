@@ -95,7 +95,13 @@ export const useNotificationStore = create<NotificationState>()(
       notifications: [],
       previousPRs: {},
       hasSessionInitialized: false,
-      mockPRs: JSON.parse(JSON.stringify(MOCK_PRS)), // Deep copy of seed data
+      // A copy of the seed data, not the shared MOCK_PRS array itself — simulateChange() below
+      // mutates it. Cloned per-item with a spread rather than JSON.parse(JSON.stringify(...)):
+      // that round-trip serializes createdAt/updatedAt's Date objects into plain strings, which
+      // crashed every consumer of useGitHubData()'s no-token `prs` fallback that sorts by
+      // `pr.updatedAt.getTime()` (WaitingForReviewTab, IssuesTab, ListHelpers) the moment the
+      // Launchpad/Pull Requests tab rendered.
+      mockPRs: MOCK_PRS.map((pr) => ({ ...pr })),
 
       addNotification: (notification) => {
         const newNotif: AppNotification = {

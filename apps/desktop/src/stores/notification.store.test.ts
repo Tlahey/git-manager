@@ -25,7 +25,10 @@ beforeEach(() => {
     notifications: [],
     previousPRs: {},
     hasSessionInitialized: false,
-    mockPRs: JSON.parse(JSON.stringify(INITIAL_MOCK_PRS)),
+    // Per-item spread, not JSON.parse(JSON.stringify(...)) — that round-trip turns
+    // createdAt/updatedAt's Date objects into plain strings, same bug the store's own
+    // initializer had (see notification.store.ts).
+    mockPRs: INITIAL_MOCK_PRS.map((pr) => ({ ...pr })),
   })
   localStorage.clear()
 })
@@ -95,6 +98,21 @@ describe('useNotificationStore — notifications', () => {
     const state = useNotificationStore.getState()
     expect(state.previousPRs['pr-1'].status).toBe('open')
     expect(state.hasSessionInitialized).toBe(true)
+  })
+})
+
+describe('useNotificationStore — mockPRs seed', () => {
+  // Regression: mockPRs used to be built with JSON.parse(JSON.stringify(MOCK_PRS)), which
+  // serializes createdAt/updatedAt into plain strings. useGitHubData falls back to mockPRs as
+  // `prs` for any no-token session, and several Launchpad tabs (WaitingForReviewTab, IssuesTab,
+  // ListHelpers) sort by `pr.updatedAt.getTime()` — a string has no such method, so every one of
+  // them crashed the moment the Pull Requests / Launchpad tab rendered.
+  it('keeps createdAt/updatedAt as real Date instances, not JSON-serialized strings', () => {
+    for (const pr of useNotificationStore.getState().mockPRs) {
+      expect(pr.createdAt).toBeInstanceOf(Date)
+      expect(pr.updatedAt).toBeInstanceOf(Date)
+      expect(() => pr.updatedAt.getTime()).not.toThrow()
+    }
   })
 })
 
