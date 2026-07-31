@@ -251,6 +251,7 @@ export function RepositorySection({ category }: RepositorySectionProps) {
               <Highlight text={t('settings.git.targetBranches')} />
             </label>
             <TagInput
+              testId="repo-target-branches-tags"
               tags={effective.targetBranches}
               onChange={(branches) => setRepoSetting(activeRepo, 'targetBranches', branches)}
               placeholder="origin/main, origin/develop…"
@@ -265,6 +266,7 @@ export function RepositorySection({ category }: RepositorySectionProps) {
               <Highlight text={t('settings.git.protectedBranches')} />
             </label>
             <TagInput
+              testId="repo-protected-branches-tags"
               tags={effective.protectedBranches}
               onChange={(branches) => setRepoSetting(activeRepo, 'protectedBranches', branches)}
               placeholder="main, master…"

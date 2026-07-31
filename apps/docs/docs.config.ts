@@ -97,7 +97,7 @@ export const DOC_SECTIONS: DocSection[] = [
   },
   {
     title: 'Workflow tools',
-    features: ['command-palette', 'settings', 'notifications'],
+    features: ['command-palette', 'settings', 'settings-repository', 'notifications'],
   },
 ]
 
