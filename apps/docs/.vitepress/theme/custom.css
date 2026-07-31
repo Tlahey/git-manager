@@ -96,22 +96,28 @@
 
 /* ── Per-page feedback link (DocFeedback.vue) ──
    Injected via the `doc-after` layout slot, so it appears once, styled the
-   same everywhere, after the content and before the prev/next footer. */
+   same everywhere, after the content and before the prev/next footer. A
+   filled card (not just a text line) so it reads as its own affordance
+   rather than another paragraph the reader skims past. `--vp-c-brand-soft`
+   and `--vp-c-border` are the same tokens the rest of the theme already uses
+   for tinted surfaces, so this stays "that teal" rather than a new color. */
 .doc-feedback {
-  margin-top: 1.5rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--vp-c-divider);
+  margin-top: 2.5rem;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 12px;
+  background: var(--vp-c-brand-soft);
 }
 
 .doc-feedback-text {
-  margin: 0 0 0.4rem;
+  margin: 0 0 0.5rem;
   font-size: 0.85rem;
   color: var(--vp-c-text-2);
 }
 
 .doc-feedback-link {
   font-size: 0.85rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--vp-c-brand-1);
 }
 
