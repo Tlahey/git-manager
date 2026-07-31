@@ -1,17 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import type { BisectState } from '@git-manager/git-types'
 
-const mark = vi.fn()
-const reset = vi.fn()
 let bisect: BisectState | undefined
 
 vi.mock('../../hooks/useBisectState', () => ({
   useBisectState: () => ({ data: bisect }),
-}))
-vi.mock('../../hooks/useBisectActions', () => ({
-  useBisectActions: () => ({ mark, reset, pending: false }),
 }))
 
 import { BisectPanel } from './BisectPanel'
@@ -35,8 +29,6 @@ function state(overrides: Partial<BisectState> = {}): BisectState {
 
 describe('BisectPanel', () => {
   beforeEach(() => {
-    mark.mockClear()
-    reset.mockClear()
     bisect = undefined
   })
 
@@ -46,7 +38,7 @@ describe('BisectPanel', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('shows the commit under test with its progress and recap', () => {
+  it('shows the commit under test with its progress and recap, but no action buttons', () => {
     bisect = state()
     render(<BisectPanel repoPath="/repo" />)
     expect(screen.getByTestId('bisect-panel')).toBeInTheDocument()
@@ -57,21 +49,15 @@ describe('BisectPanel', () => {
     // Recap chips for known good / bad commits.
     expect(screen.getByText('bad1111'.slice(0, 7))).toBeInTheDocument()
     expect(screen.getByText('good111')).toBeInTheDocument()
+    // The good/bad/skip/abort actions live only in the top banner now.
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('marks the commit and reset label reads Abort while running', async () => {
-    bisect = state()
-    const user = userEvent.setup()
-    render(<BisectPanel repoPath="/repo" />)
-    await user.click(screen.getByTestId('bisect-panel-bad'))
-    expect(mark).toHaveBeenCalledWith('bad')
-    expect(screen.getByTestId('bisect-panel-reset')).toHaveTextContent('Abort')
-  })
-
-  it('hides the test controls and shows Finish once resolved', () => {
+  it('hides the commit-under-test section once resolved, keeping the recap', () => {
     bisect = state({ firstBadOid: 'cur1111abc' })
     render(<BisectPanel repoPath="/repo" />)
-    expect(screen.queryByTestId('bisect-panel-good')).not.toBeInTheDocument()
-    expect(screen.getByTestId('bisect-panel-reset')).toHaveTextContent('Finish')
+    expect(screen.queryByText('Commit under test')).not.toBeInTheDocument()
+    expect(screen.getByText('bad1111'.slice(0, 7))).toBeInTheDocument()
+    expect(screen.getByText('good111')).toBeInTheDocument()
   })
 })

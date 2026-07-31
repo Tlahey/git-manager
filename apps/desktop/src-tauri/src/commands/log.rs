@@ -49,11 +49,43 @@ fn resolve_ref_target(repo: &Repository, name: &str) -> Option<Oid> {
 /// the graph, anchored on HEAD. It is an input of the column layout (see `build_graph_nodes`):
 /// when true, the lane running down to HEAD's tip is seeded at column 0 because that synthetic
 /// row is the graph's true first element; when false, columns follow pure top-to-bottom order.
+///
+/// Runs on a blocking-pool thread: the revwalk plus full-refs scan below scales with history
+/// length and branch/tag count, so on a large or long-lived repo it can take long enough to stall
+/// other IPC if left on this command's own async task (see `fetch_remote`'s doc comment for why
+/// that matters).
 #[tauri::command]
 // A Tauri command surface: each field is a distinct named `invoke` argument, so grouping them
 // into a struct would only obscure the wire contract.
 #[allow(clippy::too_many_arguments)]
 pub async fn get_log(
+    path: String,
+    limit: Option<usize>,
+    skip: Option<usize>,
+    branch: Option<String>,
+    solo_branches: Option<Vec<String>>,
+    show_stashes: Option<bool>,
+    hidden_stashes: Option<Vec<String>>,
+    head_has_wip: Option<bool>,
+) -> Result<Vec<LogGraphNode>, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<Vec<LogGraphNode>, String> {
+        get_log_blocking(
+            path,
+            limit,
+            skip,
+            branch,
+            solo_branches,
+            show_stashes,
+            hidden_stashes,
+            head_has_wip,
+        )
+    })
+    .await
+    .map_err(|e| format!("log task failed to complete: {e}"))?
+}
+
+#[allow(clippy::too_many_arguments)]
+fn get_log_blocking(
     path: String,
     limit: Option<usize>,
     skip: Option<usize>,
@@ -249,19 +281,34 @@ pub async fn get_log(
 /// just before the oldest selected commit (`base_oid`) up to the newest (`head_oid`). Used by the
 /// graph's right-hand panel when more than one commit is selected. See
 /// `git_diff::merged_commits_diff` for the exact `base_oid^..head_oid` semantics.
+///
+/// Runs on a blocking-pool thread — the diff scales with the size of the selected range.
 #[tauri::command]
 pub async fn get_commits_merged_diff(
     path: String,
     base_oid: String,
     head_oid: String,
 ) -> Result<GitDiff, String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_diff::merged_commits_diff(&repo, &base_oid, &head_oid).map_err(Into::into)
+    tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_diff::merged_commits_diff(&repo, &base_oid, &head_oid)
+    })
+    .await
+    .map_err(|e| format!("diff task failed to complete: {e}"))?
+    .map_err(Into::into)
 }
 
 /// Returns the full diff of a commit vs. its first parent
+///
+/// Runs on a blocking-pool thread — the diff scales with the size of the commit's change.
 #[tauri::command]
 pub async fn get_commit_diff(path: String, oid: String) -> Result<GitDiff, String> {
+    tauri::async_runtime::spawn_blocking(move || get_commit_diff_blocking(path, oid))
+        .await
+        .map_err(|e| format!("diff task failed to complete: {e}"))?
+}
+
+fn get_commit_diff_blocking(path: String, oid: String) -> Result<GitDiff, String> {
     let mut repo = Repository::open(&path).map_err(AppError::Git)?;
     let commit_oid = Oid::from_str(&oid).map_err(AppError::Git)?;
 
@@ -317,10 +364,17 @@ pub async fn get_commit_diff(path: String, oid: String) -> Result<GitDiff, Strin
 }
 
 /// Diffs a commit's tree against the current working directory (not the index).
+///
+/// Runs on a blocking-pool thread — scales with the size of the working tree's own changes.
 #[tauri::command]
 pub async fn compare_commit_to_workdir(path: String, oid: String) -> Result<GitDiff, String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_diff::diff_commit_to_workdir(&repo, &oid).map_err(Into::into)
+    tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_diff::diff_commit_to_workdir(&repo, &oid)
+    })
+    .await
+    .map_err(|e| format!("diff task failed to complete: {e}"))?
+    .map_err(Into::into)
 }
 
 /// Returns a file's raw content at a given commit

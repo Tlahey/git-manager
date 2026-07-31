@@ -8,21 +8,29 @@ use crate::services::git_patch;
 /// Writes a `git format-patch`-style patch file for a single commit to `dest_path`.
 /// Shells out directly (no git2 equivalent produces the same `git am`-compatible
 /// mbox format with commit metadata headers).
+///
+/// Runs on a blocking-pool thread: `Command::output()` blocks the calling thread until the
+/// subprocess exits — see `fetch_remote`'s doc comment for why that shouldn't run directly on
+/// this command's async task.
 #[tauri::command]
 pub async fn create_patch(path: String, oid: String, dest_path: String) -> Result<(), String> {
-    let output = std::process::Command::new("git")
-        .args(["-C", &path, "format-patch", "-1", &oid, "--stdout"])
-        .output()
-        .map_err(|e| format!("Failed to run git format-patch: {e}"))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let output = std::process::Command::new("git")
+            .args(["-C", &path, "format-patch", "-1", &oid, "--stdout"])
+            .output()
+            .map_err(|e| format!("Failed to run git format-patch: {e}"))?;
 
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
-    }
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        }
 
-    std::fs::write(&dest_path, &output.stdout)
-        .map_err(|e| format!("Failed to write patch file: {e}"))?;
+        std::fs::write(&dest_path, &output.stdout)
+            .map_err(|e| format!("Failed to write patch file: {e}"))?;
 
-    Ok(())
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("patch task failed to complete: {e}"))?
 }
 
 // ─── create_commits_patch ─────────────────────────────────────────────────────
@@ -30,28 +38,36 @@ pub async fn create_patch(path: String, oid: String, dest_path: String) -> Resul
 /// Writes a `git am`-compatible patch covering several commits (a multi-selection) to `dest_path`.
 /// `oids` must be ordered oldest→newest; each commit's `format-patch -1` mbox is concatenated, so
 /// non-contiguous selections work (unlike a single `<base>..<head>` range).
+///
+/// Runs on a blocking-pool thread — see `create_patch`'s doc comment; this one shells out once
+/// per commit, so the blocking time scales with the selection size.
 #[tauri::command]
 pub async fn create_commits_patch(
     path: String,
     oids: Vec<String>,
     dest_path: String,
 ) -> Result<(), String> {
-    let mut buffer: Vec<u8> = Vec::new();
-    for oid in &oids {
-        let output = std::process::Command::new("git")
-            .args(["-C", &path, "format-patch", "-1", oid, "--stdout"])
-            .output()
-            .map_err(|e| format!("Failed to run git format-patch: {e}"))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut buffer: Vec<u8> = Vec::new();
+        for oid in &oids {
+            let output = std::process::Command::new("git")
+                .args(["-C", &path, "format-patch", "-1", oid, "--stdout"])
+                .output()
+                .map_err(|e| format!("Failed to run git format-patch: {e}"))?;
 
-        if !output.status.success() {
-            return Err(String::from_utf8_lossy(&output.stderr).to_string());
+            if !output.status.success() {
+                return Err(String::from_utf8_lossy(&output.stderr).to_string());
+            }
+            buffer.extend_from_slice(&output.stdout);
         }
-        buffer.extend_from_slice(&output.stdout);
-    }
 
-    std::fs::write(&dest_path, &buffer).map_err(|e| format!("Failed to write patch file: {e}"))?;
+        std::fs::write(&dest_path, &buffer)
+            .map_err(|e| format!("Failed to write patch file: {e}"))?;
 
-    Ok(())
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("patch task failed to complete: {e}"))?
 }
 
 // ─── create_working_patch ─────────────────────────────────────────────────────
@@ -96,9 +112,15 @@ pub async fn read_patch_file(patch_path: String) -> Result<String, String> {
 
 /// Applies a patch file onto the working tree. When `check_only` is set, runs a
 /// dry run (`git apply --check`) that reports cleanliness without mutating files.
+///
+/// Runs on a blocking-pool thread — see `create_patch`'s doc comment.
 #[tauri::command]
 pub async fn apply_patch(path: String, patch_path: String, check_only: bool) -> Result<(), String> {
-    git_patch::apply_patch(&path, &patch_path, check_only)
+    tauri::async_runtime::spawn_blocking(move || {
+        git_patch::apply_patch(&path, &patch_path, check_only)
+    })
+    .await
+    .map_err(|e| format!("patch task failed to complete: {e}"))?
 }
 
 // ─── Dependency (node_modules) patching ───────────────────────────────────────

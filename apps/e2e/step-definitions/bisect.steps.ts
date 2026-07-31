@@ -146,28 +146,34 @@ Then(/^a bisect is in progress$/, async () => {
   await $('[data-testid="bisect-banner"]').waitForDisplayed({ timeout: 10000 })
 })
 
-// Drives a real bisect to completion: at each step, read the commit currently checked out and mark
-// it bad if it carries the seeded bug line, good otherwise — exactly what a developer would decide
-// by testing the build. Bounded loop so a stuck bisect fails here rather than hanging the suite.
+// Reads the commit currently checked out and marks it bad if it carries the seeded bug line, good
+// otherwise — exactly what a developer would decide by testing the build.
+async function testCurrentBisectCandidate(repo: string): Promise<void> {
+  const appContent = readFileSync(join(repo, 'app.txt'), 'utf8')
+  const testId = appContent.includes('BUG introduced here') ? 'bisect-bad-button' : 'bisect-good-button'
+
+  const headBefore = revParse(repo, 'HEAD')
+  const button = $(`[data-testid="${testId}"]`)
+  await button.waitForDisplayed({ timeout: 10000 })
+  await button.click()
+
+  await browser.waitUntil(
+    () => revParse(repo, 'HEAD') !== headBefore || bisectLog(repo).includes('first bad commit'),
+    { timeout: 10000, timeoutMsg: 'bisect did not advance after marking the current commit' }
+  )
+}
+
+When(/^I test the current bisect candidate for the bug$/, async () => {
+  await testCurrentBisectCandidate(await repoPath())
+})
+
+// Drives a real bisect to completion by repeating the single-step check above. Bounded loop so a
+// stuck bisect fails here rather than hanging the suite.
 When(/^I bisect by testing for the bug until the first bad commit is found$/, async () => {
   const repo = await repoPath()
   for (let step = 0; step < 8; step++) {
     if (bisectLog(repo).includes('first bad commit')) break
-
-    const appContent = readFileSync(join(repo, 'app.txt'), 'utf8')
-    const testId = appContent.includes('BUG introduced here')
-      ? 'bisect-bad-button'
-      : 'bisect-good-button'
-
-    const headBefore = revParse(repo, 'HEAD')
-    const button = $(`[data-testid="${testId}"]`)
-    await button.waitForDisplayed({ timeout: 10000 })
-    await button.click()
-
-    await browser.waitUntil(
-      () => revParse(repo, 'HEAD') !== headBefore || bisectLog(repo).includes('first bad commit'),
-      { timeout: 10000, timeoutMsg: 'bisect did not advance after marking the current commit' }
-    )
+    await testCurrentBisectCandidate(repo)
   }
   await $('[data-testid="bisect-result-banner"]').waitForDisplayed({ timeout: 10000 })
 })

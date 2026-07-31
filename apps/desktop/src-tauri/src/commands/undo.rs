@@ -20,12 +20,12 @@ fn pin_oid(repo: &Repository, ref_name: &str, oid: Oid) -> Result<(), git2::Erro
     Ok(())
 }
 
-// ─── Épinglage générique (utilisé pour protéger un objet déjà existant, ex. le
-// commit d'un stash avant pop/drop) ────────────────────────────────────────────
+// ─── Generic pinning (used to protect an object that already exists, e.g. the
+// commit behind a stash before pop/drop) ────────────────────────────────────
 
-/// Crée/écrase une ref cachée (`refs/git-manager/undo/<ref_name>`) pointant sur `oid`, pour
-/// empêcher le `git gc` de la nettoyer tant que l'entrée d'historique correspondante existe.
-/// Fonctionne pour un OID de blob, tree ou commit indifféremment.
+/// Creates/overwrites a hidden ref (`refs/git-manager/undo/<ref_name>`) pointing at `oid`, to
+/// keep `git gc` from collecting it while the matching history entry still exists. Works for a
+/// blob, tree, or commit OID indifferently.
 #[tauri::command]
 pub async fn pin_object(path: String, ref_name: String, oid: String) -> Result<(), String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
@@ -34,8 +34,8 @@ pub async fn pin_object(path: String, ref_name: String, oid: String) -> Result<(
     Ok(())
 }
 
-/// Supprime une ref cachée créée par `pin_object`/les commandes de snapshot. Idempotent —
-/// pas d'erreur si la ref n'existe déjà plus.
+/// Deletes a hidden ref created by `pin_object`/the snapshot commands. Idempotent —
+/// no error if the ref is already gone.
 #[tauri::command]
 pub async fn unpin_object(path: String, ref_name: String) -> Result<(), String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
@@ -45,9 +45,9 @@ pub async fn unpin_object(path: String, ref_name: String) -> Result<(), String> 
     Ok(())
 }
 
-/// Vérifie l'existence de chaque OID dans la base d'objets locale (sans charger leur contenu).
-/// Utilisé au démarrage pour invalider les entrées d'historique persistées dont l'objet a
-/// disparu (ex. `git gc` manuel exécuté en dehors de l'app).
+/// Checks whether each OID exists in the local object database (without loading its content).
+/// Used at startup to invalidate persisted history entries whose object has
+/// disappeared (e.g. a manual `git gc` run outside the app).
 #[tauri::command]
 pub async fn objects_exist(path: String, oids: Vec<String>) -> Result<Vec<bool>, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
@@ -63,7 +63,7 @@ pub async fn objects_exist(path: String, oids: Vec<String>) -> Result<Vec<bool>,
     Ok(results)
 }
 
-// ─── Fichier orphelin (utilisé avant discard_file_changes) ───────────────────
+// ─── Orphan file (used before discard_file_changes) ──────────────────────────
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -72,9 +72,9 @@ pub struct FileSnapshotResult {
     pub ref_name: String,
 }
 
-/// Écrit le contenu d'un fichier en blob Git et épingle immédiatement l'objet via une ref
-/// cachée (`refs/git-manager/undo/<entry_id>`) pour qu'il survive indéfiniment tant que
-/// l'entrée d'historique existe. Retourne `None` si le fichier n'existe pas (rien à sauvegarder).
+/// Writes a file's content as a Git blob and immediately pins the object via a hidden
+/// ref (`refs/git-manager/undo/<entry_id>`) so it survives indefinitely while the
+/// history entry exists. Returns `None` if the file doesn't exist (nothing to save).
 #[tauri::command]
 pub async fn snapshot_file(
     path: String,
@@ -98,7 +98,7 @@ pub async fn snapshot_file(
     }))
 }
 
-/// Réécrit un fichier sur disque depuis un blob orphelin capturé par `snapshot_file`.
+/// Rewrites a file to disk from an orphan blob captured by `snapshot_file`.
 #[tauri::command]
 pub async fn restore_file_blob(
     path: String,
@@ -118,7 +118,7 @@ pub async fn restore_file_blob(
     Ok(())
 }
 
-// ─── Snapshot complet du worktree (utilisé avant reset hard / checkout forcé / stash pop-apply) ─
+// ─── Full worktree snapshot (used before reset hard / forced checkout / stash pop-apply) ─────
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -157,83 +157,105 @@ fn build_worktree_snapshot(
     })
 }
 
-/// Capture l'état courant de l'index (staged) et du working directory (staged + unstaged +
-/// untracked) sous forme de deux trees Git, épinglés via des refs cachées. Retourne `None` si
-/// le repo est déjà propre (rien à protéger avant une action destructive comme reset --hard ou
-/// checkout forcé).
+/// Captures the current state of the index (staged) and the working directory (staged +
+/// unstaged + untracked) as two Git trees, pinned via hidden refs. Returns `None` if
+/// the repo is already clean (nothing to protect before a destructive action like
+/// reset --hard or a forced checkout).
+///
+/// Runs on a blocking-pool thread: `add_all`/`write_tree` walk the whole working tree, so the
+/// cost scales with its size — see `fetch_remote`'s doc comment for why that shouldn't run
+/// directly on this command's async task, given it fires before nearly every destructive action.
 #[tauri::command]
 pub async fn snapshot_worktree(
     path: String,
     entry_id: String,
 ) -> Result<Option<WorktreeSnapshot>, String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
 
-    let mut status_opts = git2::StatusOptions::new();
-    status_opts
-        .include_untracked(true)
-        .recurse_untracked_dirs(true);
-    let statuses = repo
-        .statuses(Some(&mut status_opts))
-        .map_err(AppError::Git)?;
-    if statuses.is_empty() {
-        return Ok(None);
-    }
+        let mut status_opts = git2::StatusOptions::new();
+        status_opts
+            .include_untracked(true)
+            .recurse_untracked_dirs(true);
+        let statuses = repo
+            .statuses(Some(&mut status_opts))
+            .map_err(AppError::Git)?;
+        if statuses.is_empty() {
+            return Ok(None);
+        }
 
-    build_worktree_snapshot(&repo, &entry_id)
-        .map(Some)
-        .map_err(AppError::Git)
-        .map_err(String::from)
+        build_worktree_snapshot(&repo, &entry_id)
+            .map(Some)
+            .map_err(AppError::Git)
+            .map_err(String::from)
+    })
+    .await
+    .map_err(|e| format!("snapshot task failed to complete: {e}"))?
 }
 
-/// Comme `snapshot_worktree`, mais capture toujours (même si le workdir est propre) — utilisé
-/// pour l'undo de stash apply/pop, où la baseline "propre" est elle-même l'état à restaurer.
+/// Like `snapshot_worktree`, but always captures (even if the workdir is clean) — used
+/// for the stash apply/pop undo, where the "clean" baseline is itself the state to restore.
+///
+/// Runs on a blocking-pool thread — see `snapshot_worktree`'s doc comment.
 #[tauri::command]
 pub async fn snapshot_worktree_always(
     path: String,
     entry_id: String,
 ) -> Result<WorktreeSnapshot, String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
-    build_worktree_snapshot(&repo, &entry_id)
-        .map_err(AppError::Git)
-        .map_err(String::from)
+    tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        build_worktree_snapshot(&repo, &entry_id)
+            .map_err(AppError::Git)
+            .map_err(String::from)
+    })
+    .await
+    .map_err(|e| format!("snapshot task failed to complete: {e}"))?
 }
 
-/// Restaure un snapshot capturé par `snapshot_worktree` : le working directory est remis
-/// dans l'état exact du tree "workdir" (untracked superflus supprimés), et l'index est remis
-/// dans l'état exact du tree "index" (préserve la distinction staged/unstaged d'origine).
+/// Restores a snapshot captured by `snapshot_worktree`: the working directory is put back
+/// into the exact state of the "workdir" tree (extra untracked files removed), and the index
+/// is put back into the exact state of the "index" tree (preserving the original staged/unstaged
+/// distinction).
+///
+/// Runs on a blocking-pool thread — `checkout_tree` walks and writes the whole working tree, so
+/// its cost scales with the size of what's being restored (see `fetch_remote`'s doc comment).
 #[tauri::command]
 pub async fn restore_worktree_snapshot(
     path: String,
     index_tree_oid: String,
     workdir_tree_oid: String,
 ) -> Result<(), String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
 
-    let workdir_oid =
-        Oid::from_str(&workdir_tree_oid).map_err(|_| "Invalid workdir tree OID".to_string())?;
-    let workdir_tree = repo.find_tree(workdir_oid).map_err(AppError::Git)?;
+        let workdir_oid =
+            Oid::from_str(&workdir_tree_oid).map_err(|_| "Invalid workdir tree OID".to_string())?;
+        let workdir_tree = repo.find_tree(workdir_oid).map_err(AppError::Git)?;
 
-    let mut checkout_opts = git2::build::CheckoutBuilder::new();
-    checkout_opts.force();
-    checkout_opts.remove_untracked(true);
-    repo.checkout_tree(workdir_tree.as_object(), Some(&mut checkout_opts))
-        .map_err(AppError::Git)?;
+        let mut checkout_opts = git2::build::CheckoutBuilder::new();
+        checkout_opts.force();
+        checkout_opts.remove_untracked(true);
+        repo.checkout_tree(workdir_tree.as_object(), Some(&mut checkout_opts))
+            .map_err(AppError::Git)?;
 
-    let index_oid =
-        Oid::from_str(&index_tree_oid).map_err(|_| "Invalid index tree OID".to_string())?;
-    let index_tree = repo.find_tree(index_oid).map_err(AppError::Git)?;
-    let mut index = repo.index().map_err(AppError::Git)?;
-    index.read_tree(&index_tree).map_err(AppError::Git)?;
-    index.write().map_err(AppError::Git)?;
+        let index_oid =
+            Oid::from_str(&index_tree_oid).map_err(|_| "Invalid index tree OID".to_string())?;
+        let index_tree = repo.find_tree(index_oid).map_err(AppError::Git)?;
+        let mut index = repo.index().map_err(AppError::Git)?;
+        index.read_tree(&index_tree).map_err(AppError::Git)?;
+        index.write().map_err(AppError::Git)?;
 
-    Ok(())
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("restore task failed to complete: {e}"))?
 }
 
-// ─── recreate_branch_ref (utilisé pour l'undo de delete_branch) ──────────────
+// ─── recreate_branch_ref (used for the delete_branch undo) ───────────────────
 
-/// Recrée une ref de branche locale pointant vers un OID donné, avec upstream optionnel.
-/// Utilitaire interne à l'undo de `delete_branch` — n'implémente pas la commande générique
-/// `create_branch` attendue ailleurs par l'UI (hors scope, cf. plan).
+/// Recreates a local branch ref pointing at a given OID, with an optional upstream.
+/// Internal utility for the `delete_branch` undo — does not implement the generic
+/// `create_branch` command expected elsewhere by the UI (out of scope, see the plan).
 #[tauri::command]
 pub async fn recreate_branch_ref(
     path: String,

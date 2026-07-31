@@ -70,6 +70,7 @@
 .vp-doc img[src*='screenshots-'] {
   display: block;
   width: 100%;
+  cursor: zoom-in;
   border: 1px solid var(--vp-c-border);
   border-radius: 12px;
   box-shadow: var(--doc-shot-shadow);
@@ -99,4 +100,50 @@
 .vp-doc ol li + li,
 .vp-doc ul li + li {
   margin-top: 0.35rem;
+}
+
+/* ── Image lightbox (medium-zoom) ──
+   VitePress's sticky nav/sidebar carry their own z-index and paint above
+   medium-zoom's overlay/zoomed-image nodes by default (neither sets a
+   z-index of its own, so they only rank by DOM order, which the theme's
+   chrome outranks). Pin both above everything the theme can render, and put
+   the close button (injected in theme/index.ts) one step higher still so
+   it's always clickable over the zoomed image. */
+.medium-zoom-overlay {
+  z-index: 2147483001;
+}
+
+.medium-zoom-image--opened {
+  z-index: 2147483002;
+}
+
+.doc-zoom-close {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 2147483003;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.3s,
+    background-color 0.15s;
+}
+
+.doc-zoom-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+body.medium-zoom--opened .doc-zoom-close {
+  opacity: 1;
+  pointer-events: auto;
 }

@@ -1,8 +1,7 @@
 import { useTranslation } from '@git-manager/i18n'
-import { Button, ScrollArea } from '@git-manager/ui'
-import { Bug, Check, X, SkipForward } from 'lucide-react'
+import { ScrollArea } from '@git-manager/ui'
+import { Bug } from 'lucide-react'
 import { useBisectState } from '../../hooks/useBisectState'
-import { useBisectActions } from '../../hooks/useBisectActions'
 
 interface BisectPanelProps {
   repoPath: string
@@ -20,13 +19,15 @@ function OidChip({ oid, dotClass }: { oid: string; dotClass: string }) {
 
 /**
  * Right-hand panel shown during a bisect: details of the commit currently under test, the search
- * progress, the good/bad/skip validation buttons (mirroring the top banner for ergonomics), and a
- * recap of the commits already marked. Rendered in the graph's right slot with top priority.
+ * progress, and a recap of the commits already marked. Read-only — the good/bad/skip/abort actions
+ * live only in the top banner ({@link BisectBanner} / {@link BisectResultBanner}); this panel used
+ * to carry its own copy of the same buttons "for ergonomics", but two places to run the same action
+ * read as two different actions, so the panel dropped them. Rendered in the graph's right slot with
+ * top priority.
  */
 export function BisectPanel({ repoPath }: BisectPanelProps) {
   const { t } = useTranslation('git')
   const { data: bisect } = useBisectState(repoPath)
-  const { mark, reset, pending } = useBisectActions(repoPath)
 
   if (!bisect?.active) return null
 
@@ -69,40 +70,6 @@ export function BisectPanel({ repoPath }: BisectPanelProps) {
                   <p className="mt-1 text-xs text-muted-foreground">{bisect.currentAuthor}</p>
                 )}
               </div>
-
-              <div className="grid grid-cols-3 gap-1.5">
-                <Button
-                  size="sm"
-                  className="gap-1 bg-green-600 text-xs text-white hover:bg-green-700"
-                  disabled={pending}
-                  onClick={() => mark('good')}
-                  data-testid="bisect-panel-good"
-                >
-                  <Check className="h-3.5 w-3.5" />
-                  {t('bisect.actions.good')}
-                </Button>
-                <Button
-                  size="sm"
-                  className="gap-1 bg-red-600 text-xs text-white hover:bg-red-700"
-                  disabled={pending}
-                  onClick={() => mark('bad')}
-                  data-testid="bisect-panel-bad"
-                >
-                  <X className="h-3.5 w-3.5" />
-                  {t('bisect.actions.bad')}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1 text-xs"
-                  disabled={pending}
-                  onClick={() => mark('skip')}
-                  data-testid="bisect-panel-skip"
-                >
-                  <SkipForward className="h-3.5 w-3.5" />
-                  {t('bisect.actions.skip')}
-                </Button>
-              </div>
             </div>
           )}
 
@@ -142,19 +109,6 @@ export function BisectPanel({ repoPath }: BisectPanelProps) {
           </div>
         </div>
       </ScrollArea>
-
-      <div className="border-t border-border p-2">
-        <Button
-          size="sm"
-          variant="outline"
-          className="w-full text-xs"
-          disabled={pending}
-          onClick={reset}
-          data-testid="bisect-panel-reset"
-        >
-          {finished ? t('bisect.result.finish') : t('bisect.actions.abort')}
-        </Button>
-      </div>
     </div>
   )
 }

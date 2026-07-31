@@ -5,9 +5,9 @@ use git2::Repository;
 
 pub use crate::services::git_branch::BranchRef;
 
-// ─── Commandes Tauri ──────────────────────────────────────────────────────────
+// ─── Tauri commands ───────────────────────────────────────────────────────────
 
-/// Retourne la liste des branches (locales et/ou distantes)
+/// Returns the list of branches (local and/or remote)
 #[tauri::command]
 pub async fn get_branches(
     path: String,
@@ -17,15 +17,15 @@ pub async fn get_branches(
     git_branch::list_branches(&repo, include_remote.unwrap_or(true)).map_err(Into::into)
 }
 
-/// Retourne la liste de tous les tags du dépôt
+/// Returns the list of every tag in the repository
 #[tauri::command]
 pub async fn get_tags(path: String) -> Result<Vec<BranchRef>, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
     git_branch::list_tags(&repo).map_err(Into::into)
 }
 
-/// Retourne le tag (nom court) le plus ancien dont l'historique contient `oid` — la première
-/// release dans laquelle le commit a été livré — ou `None` si aucun tag ne le contient.
+/// Returns the oldest tag (short name) whose history contains `oid` — the first
+/// release the commit shipped in — or `None` if no tag contains it.
 #[tauri::command]
 pub async fn get_tag_containing_commit(
     path: String,
@@ -35,22 +35,23 @@ pub async fn get_tag_containing_commit(
     git_branch::first_tag_containing_commit(&repo, &oid).map_err(Into::into)
 }
 
-/// Indique si `oid` appartient à l'historique de la branche courante (HEAD ou un
-/// de ses ancêtres) — utilisé pour n'activer le fixup que sur les commits rebasables.
+/// Reports whether `oid` belongs to the current branch's history (HEAD or one
+/// of its ancestors) — used to enable fixup only on rebasable commits.
 #[tauri::command]
 pub async fn is_commit_on_current_branch(path: String, oid: String) -> Result<bool, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
     git_branch::is_commit_on_current_branch(&repo, &oid).map_err(Into::into)
 }
 
-/// Crée une nouvelle branche locale pointant sur `from_ref` (nom de branche, "HEAD", ou OID), sans checkout.
+/// Creates a new local branch pointing at `from_ref` (a branch name, "HEAD", or an OID), without
+/// checking it out.
 #[tauri::command]
 pub async fn create_branch(path: String, name: String, from_ref: String) -> Result<(), String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
     git_branch::create_branch(&repo, &name, &from_ref).map_err(Into::into)
 }
 
-/// Crée un tag pointant sur `from_ref` — léger si `message` est absent, annoté sinon.
+/// Creates a tag pointing at `from_ref` — lightweight if `message` is absent, annotated otherwise.
 #[tauri::command]
 pub async fn create_tag(
     path: String,
@@ -66,23 +67,32 @@ pub async fn create_tag(
     .map_err(Into::into)
 }
 
-/// Supprime un tag (léger ou annoté) par son nom court.
+/// Deletes a tag (lightweight or annotated) by its short name.
 #[tauri::command]
 pub async fn delete_tag(path: String, name: String) -> Result<(), String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
     git_branch::delete_tag(&repo, &name).map_err(Into::into)
 }
 
-/// Checkout d'une branche locale par son nom, ou d'un commit brut par OID (HEAD détaché).
-/// Le fallback OID permet de restaurer un HEAD détaché lors d'un undo de checkout.
+/// Checks out a local branch by name, or a raw commit by OID (detached HEAD). The OID fallback
+/// lets a checkout undo restore a detached HEAD.
+///
+/// Runs on a blocking-pool thread: `checkout_tree` walks and writes the whole working tree, so its
+/// cost scales with the size of the diff between the two branches — see `fetch_remote`'s doc
+/// comment for why that shouldn't run directly on this command's async task.
 #[tauri::command]
 pub async fn checkout_branch(
     path: String,
     ref_name: String,
     force: Option<bool>,
 ) -> Result<(), String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_branch::checkout_branch(&repo, &ref_name, force.unwrap_or(false)).map_err(Into::into)
+    tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_branch::checkout_branch(&repo, &ref_name, force.unwrap_or(false))
+    })
+    .await
+    .map_err(|e| format!("checkout task failed to complete: {e}"))?
+    .map_err(Into::into)
 }
 
 /// Merges branch `source` into `target` (drag-and-drop of one ref badge onto another).
@@ -193,9 +203,9 @@ pub async fn fast_forward_branch(
     Ok(())
 }
 
-/// Supprime une branche locale (et sa branche de tracking distante si demandé).
-/// `force = false` refuse la suppression si la branche n'est pas fusionnée dans HEAD
-/// (équivalent `git branch -d`) ; `force = true` supprime sans vérification (`-D`).
+/// Deletes a local branch (and its remote-tracking branch, if requested).
+/// `force = false` refuses the deletion if the branch isn't merged into HEAD
+/// (equivalent to `git branch -d`); `force = true` deletes without checking (`-D`).
 #[tauri::command]
 pub async fn delete_branch(
     path: String,

@@ -2,6 +2,7 @@ use crate::error::AppError;
 use crate::utils::{get_git_signature, short_oid};
 use git2::{Cred, FetchOptions, PushOptions, RemoteCallbacks, Repository};
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 
 // ─── Result types ─────────────────────────────────────────────────────────────
@@ -176,6 +177,20 @@ pub fn pull(
         return Ok(up_to_date());
     }
 
+    // Refuse before touching anything if a local edit collides with an incoming change — the
+    // same check every strategy below would otherwise hit deep inside a `checkout_tree`/`merge`
+    // call, where libgit2 only reports it as a bare "N conflict(s) prevent checkout", naming
+    // neither the files nor the reason. See `dirty_paths_conflicting_with`'s doc comment.
+    let conflicting = dirty_paths_conflicting_with(repo, head_oid, remote_oid)?;
+    if !conflicting.is_empty() {
+        return Err(AppError::Unknown(format!(
+            "Your local changes to {} file(s) would be overwritten by pull: {}. Commit or stash \
+             them first.",
+            conflicting.len(),
+            conflicting.join(", ")
+        )));
+    }
+
     // 4. Check whether a fast-forward is possible
     let merge_base = repo
         .merge_base(head_oid, remote_oid)
@@ -234,6 +249,51 @@ fn up_to_date() -> PullResult {
         merged: false,
         rebased: false,
     }
+}
+
+/// Paths with uncommitted changes (staged or not, tracked or untracked) that the incoming commits
+/// (`head_oid..remote_oid`) also touch — the set `checkout_tree`/`merge` would refuse over, but
+/// computed ourselves because neither libgit2 error names the paths, only a bare conflict count.
+/// A dirty file the incoming commits never touch is not a conflict — matching `git pull`'s own
+/// behavior of only refusing over an actual collision, not any uncommitted change whatsoever.
+fn dirty_paths_conflicting_with(
+    repo: &Repository,
+    head_oid: git2::Oid,
+    remote_oid: git2::Oid,
+) -> Result<Vec<String>, AppError> {
+    let mut status_opts = git2::StatusOptions::new();
+    status_opts.include_untracked(true);
+    let statuses = repo
+        .statuses(Some(&mut status_opts))
+        .map_err(AppError::Git)?;
+    let dirty: HashSet<String> = statuses
+        .iter()
+        .filter_map(|entry| entry.path().map(|p| p.to_string()))
+        .collect();
+    if dirty.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let head_tree = repo
+        .find_commit(head_oid)
+        .and_then(|c| c.tree())
+        .map_err(AppError::Git)?;
+    let remote_tree = repo
+        .find_commit(remote_oid)
+        .and_then(|c| c.tree())
+        .map_err(AppError::Git)?;
+    let diff = repo
+        .diff_tree_to_tree(Some(&head_tree), Some(&remote_tree), None)
+        .map_err(AppError::Git)?;
+    let incoming: HashSet<String> = diff
+        .deltas()
+        .filter_map(|delta| delta.new_file().path().or_else(|| delta.old_file().path()))
+        .map(|p| p.to_string_lossy().to_string())
+        .collect();
+
+    let mut conflicting: Vec<String> = dirty.intersection(&incoming).cloned().collect();
+    conflicting.sort();
+    Ok(conflicting)
 }
 
 /// Counts commits reachable from `from` but not from `hide`.
@@ -681,6 +741,42 @@ mod tests {
         assert_eq!(
             fs::read_to_string(f.local_dir.join("shared.txt")).unwrap(),
             "remote work"
+        );
+    }
+
+    #[test]
+    fn refuses_to_pull_over_a_conflicting_uncommitted_change() {
+        let f = fixture("dirty-conflict");
+        commit(&f.origin, &f.origin_dir, "shared.txt", "remote work");
+        // Uncommitted local edit to the same file the incoming commit touches — never staged, so
+        // this also proves the check isn't limited to the index.
+        fs::write(f.local_dir.join("shared.txt"), "uncommitted local edit").unwrap();
+        let before = head_oid(&f.local_dir);
+
+        let err = pull(&f.local, None, PullStrategy::FastForwardOnly).unwrap_err();
+
+        assert!(format!("{err:?}").contains("shared.txt"), "got {err:?}");
+        assert_eq!(head_oid(&f.local_dir), before, "HEAD must not move");
+        assert_eq!(
+            fs::read_to_string(f.local_dir.join("shared.txt")).unwrap(),
+            "uncommitted local edit",
+            "the uncommitted edit must survive untouched"
+        );
+    }
+
+    #[test]
+    fn pulls_normally_when_the_uncommitted_change_is_unrelated() {
+        let f = fixture("dirty-unrelated");
+        commit(&f.origin, &f.origin_dir, "shared.txt", "remote work");
+        // Uncommitted edit to a file the incoming commit never touches — must not block the pull.
+        fs::write(f.local_dir.join("untouched.txt"), "local scratch file").unwrap();
+
+        let result = pull(&f.local, None, PullStrategy::FastForwardOnly).unwrap();
+
+        assert!(result.fast_forwarded);
+        assert_eq!(
+            fs::read_to_string(f.local_dir.join("untouched.txt")).unwrap(),
+            "local scratch file"
         );
     }
 

@@ -8,7 +8,7 @@ pub use crate::services::git_commit::{CommitResult, DiscardResult};
 
 // ─── stage_file ───────────────────────────────────────────────────────────────
 
-/// Stage un fichier (ajouter à l'index)
+/// Stages a file (adds it to the index)
 #[tauri::command]
 pub async fn stage_file(path: String, file_path: String) -> Result<(), String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
@@ -17,7 +17,7 @@ pub async fn stage_file(path: String, file_path: String) -> Result<(), String> {
 
 // ─── unstage_file ─────────────────────────────────────────────────────────────
 
-/// Unstage un fichier (retirer de l'index)
+/// Unstages a file (removes it from the index)
 #[tauri::command]
 pub async fn unstage_file(path: String, file_path: String) -> Result<(), String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
@@ -27,36 +27,59 @@ pub async fn unstage_file(path: String, file_path: String) -> Result<(), String>
 // ─── discard_file_changes ─────────────────────────────────────────────────────
 
 /// Discards all unstaged changes to a file in the working directory.
+///
+/// Runs on a blocking-pool thread — see `stage_all`'s doc comment.
 #[tauri::command]
 pub async fn discard_file_changes(
     path: String,
     file_path: String,
 ) -> Result<DiscardResult, String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_commit::discard_file_changes(&repo, &path, &file_path).map_err(Into::into)
+    tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_commit::discard_file_changes(&repo, &path, &file_path)
+    })
+    .await
+    .map_err(|e| format!("discard task failed to complete: {e}"))?
+    .map_err(Into::into)
 }
 
 // ─── stage_all ────────────────────────────────────────────────────────────────
 
-/// Stage tous les fichiers modifiés
+/// Stages every modified file
+///
+/// Runs on a blocking-pool thread: touches the whole index/working tree, so its cost scales with
+/// how much is currently changed — see `fetch_remote`'s doc comment for why that shouldn't run
+/// directly on this command's async task.
 #[tauri::command]
 pub async fn stage_all(path: String) -> Result<(), String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_commit::stage_all(&repo).map_err(Into::into)
+    tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_commit::stage_all(&repo)
+    })
+    .await
+    .map_err(|e| format!("stage task failed to complete: {e}"))?
+    .map_err(Into::into)
 }
 
 // ─── unstage_all ──────────────────────────────────────────────────────────────
 
-/// Unstage tous les fichiers
+/// Unstages every file
+///
+/// Runs on a blocking-pool thread — see `stage_all`'s doc comment.
 #[tauri::command]
 pub async fn unstage_all(path: String) -> Result<(), String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_commit::unstage_all(&repo).map_err(Into::into)
+    tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_commit::unstage_all(&repo)
+    })
+    .await
+    .map_err(|e| format!("unstage task failed to complete: {e}"))?
+    .map_err(Into::into)
 }
 
 // ─── create_commit ────────────────────────────────────────────────────────────
 
-/// Crée un commit avec les fichiers staged. Retourne l'OID complet et le short OID.
+/// Creates a commit from the staged files. Returns the full OID and the short OID.
 #[tauri::command]
 pub async fn create_commit(
     path: String,
@@ -77,16 +100,24 @@ pub async fn create_commit(
 // ─── get_staged_diff ──────────────────────────────────────────────────────────
 
 /// Returns the staged files' diff (structured, for the UI's diff view)
+///
+/// Runs on a blocking-pool thread — the diff scales with how much is currently staged.
 #[tauri::command]
 pub async fn get_staged_diff(path: String) -> Result<GitDiff, String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    tauri::async_runtime::spawn_blocking(move || get_staged_diff_blocking(&path))
+        .await
+        .map_err(|e| format!("diff task failed to complete: {e}"))?
+}
+
+fn get_staged_diff_blocking(path: &str) -> Result<GitDiff, String> {
+    let repo = Repository::open(path).map_err(AppError::Git)?;
 
     let head_tree = match repo.head() {
         Ok(head_ref) => {
             let head_commit = head_ref.peel_to_commit().map_err(AppError::Git)?;
             Some(head_commit.tree().map_err(AppError::Git)?)
         }
-        Err(_) => None, // Repo initial sans commits
+        Err(_) => None, // No commits yet on a brand new repo
     };
 
     let diff = repo
@@ -98,11 +129,14 @@ pub async fn get_staged_diff(path: String) -> Result<GitDiff, String> {
 
 // ─── get_file_diff ────────────────────────────────────────────────────────────
 
-/// Retourne le diff d'un fichier spécifique (staged, unstaged, ou d'un commit historique).
+/// Returns a specific file's diff (staged, unstaged, or from a historical commit).
 ///
 /// `base_oid`, when present, scopes the diff to a multi-commit range: the left side becomes the
 /// first-parent tree of `base_oid` (the oldest selected commit) instead of `oid`'s own first
 /// parent — matching the merged-range diff shown when several commits are selected together.
+///
+/// The `oid` branch's own diff work runs on a blocking-pool thread; the `staged`/working-tree
+/// branches delegate to `get_staged_diff`/`workdir_diff`, which already thread their own work.
 #[tauri::command]
 pub async fn get_file_diff(
     path: String,
@@ -112,38 +146,11 @@ pub async fn get_file_diff(
     base_oid: Option<String>,
 ) -> Result<GitDiffFile, String> {
     let full_diff = if let Some(oid_str) = oid {
-        let repo = Repository::open(&path).map_err(AppError::Git)?;
-        let commit_oid = Oid::from_str(&oid_str).map_err(AppError::Git)?;
-        let commit = repo.find_commit(commit_oid).map_err(AppError::Git)?;
-
-        let commit_tree = commit.tree().map_err(AppError::Git)?;
-        // The "before" side: for a merged range it's the oldest selected commit's first parent;
-        // otherwise it's this commit's own first parent.
-        let base_commit = match &base_oid {
-            Some(b) => repo
-                .find_commit(Oid::from_str(b).map_err(AppError::Git)?)
-                .map_err(AppError::Git)?,
-            None => commit.clone(),
-        };
-        let parent_tree = if base_commit.parent_count() > 0 {
-            let parent = base_commit.parent(0).map_err(AppError::Git)?;
-            Some(parent.tree().map_err(AppError::Git)?)
-        } else {
-            None
-        };
-
-        let mut diff_opts = DiffOptions::new();
-        diff_opts.context_lines(3).ignore_whitespace_change(false);
-
-        let diff = repo
-            .diff_tree_to_tree(
-                parent_tree.as_ref(),
-                Some(&commit_tree),
-                Some(&mut diff_opts),
-            )
-            .map_err(AppError::Git)?;
-
-        git_diff::build_diff(diff).map_err(AppError::Git)?
+        tauri::async_runtime::spawn_blocking(move || {
+            commit_diff_blocking(&path, &oid_str, base_oid.as_deref())
+        })
+        .await
+        .map_err(|e| format!("diff task failed to complete: {e}"))??
     } else if staged {
         get_staged_diff(path).await?
     } else {
@@ -161,18 +168,62 @@ pub async fn get_file_diff(
         })
 }
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
+fn commit_diff_blocking(
+    path: &str,
+    oid_str: &str,
+    base_oid: Option<&str>,
+) -> Result<GitDiff, String> {
+    let repo = Repository::open(path).map_err(AppError::Git)?;
+    let commit_oid = Oid::from_str(oid_str).map_err(AppError::Git)?;
+    let commit = repo.find_commit(commit_oid).map_err(AppError::Git)?;
 
-async fn workdir_diff(path: String) -> Result<GitDiff, String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
-    let mut opts = DiffOptions::new();
-    opts.include_untracked(false);
+    let commit_tree = commit.tree().map_err(AppError::Git)?;
+    // The "before" side: for a merged range it's the oldest selected commit's first parent;
+    // otherwise it's this commit's own first parent.
+    let base_commit = match base_oid {
+        Some(b) => repo
+            .find_commit(Oid::from_str(b).map_err(AppError::Git)?)
+            .map_err(AppError::Git)?,
+        None => commit.clone(),
+    };
+    let parent_tree = if base_commit.parent_count() > 0 {
+        let parent = base_commit.parent(0).map_err(AppError::Git)?;
+        Some(parent.tree().map_err(AppError::Git)?)
+    } else {
+        None
+    };
+
+    let mut diff_opts = DiffOptions::new();
+    diff_opts.context_lines(3).ignore_whitespace_change(false);
 
     let diff = repo
-        .diff_index_to_workdir(None, Some(&mut opts))
+        .diff_tree_to_tree(
+            parent_tree.as_ref(),
+            Some(&commit_tree),
+            Some(&mut diff_opts),
+        )
         .map_err(AppError::Git)?;
 
     git_diff::build_diff(diff).map_err(|e| AppError::Git(e).into())
+}
+
+// ─── helpers ──────────────────────────────────────────────────────────────────
+
+/// Runs on a blocking-pool thread — the diff scales with the size of the working tree's changes.
+async fn workdir_diff(path: String) -> Result<GitDiff, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        let mut opts = DiffOptions::new();
+        opts.include_untracked(false);
+
+        let diff = repo
+            .diff_index_to_workdir(None, Some(&mut opts))
+            .map_err(AppError::Git)?;
+
+        git_diff::build_diff(diff).map_err(|e| AppError::Git(e).into())
+    })
+    .await
+    .map_err(|e| format!("diff task failed to complete: {e}"))?
 }
 
 #[derive(Serialize)]
@@ -279,29 +330,35 @@ pub async fn get_file_raw_contents(
 /// working-tree version (right), for the fixup "Commit changes" diff. Unlike
 /// `get_file_raw_contents`, `original` is the file at `oid`'s own tree (not its
 /// parent), so the diff shows how the working copy differs from the fixup target.
+///
+/// Runs on a blocking-pool thread — bounded by the target file's size, but not otherwise.
 #[tauri::command]
 pub async fn get_commit_file_vs_workdir(
     path: String,
     oid: String,
     file_path: String,
 ) -> Result<RawFileDiffContents, String> {
-    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(|e| e.to_string())?;
 
-    let commit_oid = Oid::from_str(&oid).map_err(|e| e.to_string())?;
-    let commit = repo.find_commit(commit_oid).map_err(|e| e.to_string())?;
-    let tree = commit.tree().map_err(|e| e.to_string())?;
-    let original = get_file_content_from_tree(&repo, &tree, &file_path)?;
+        let commit_oid = Oid::from_str(&oid).map_err(|e| e.to_string())?;
+        let commit = repo.find_commit(commit_oid).map_err(|e| e.to_string())?;
+        let tree = commit.tree().map_err(|e| e.to_string())?;
+        let original = get_file_content_from_tree(&repo, &tree, &file_path)?;
 
-    let full_path = std::path::Path::new(&path).join(&file_path);
-    let modified = match std::fs::read(&full_path) {
-        Ok(bytes) => match std::str::from_utf8(&bytes) {
-            Ok(content) => content.to_string(),
-            Err(_) => String::from("[Binary Content]"),
-        },
-        Err(_) => String::new(),
-    };
+        let full_path = std::path::Path::new(&path).join(&file_path);
+        let modified = match std::fs::read(&full_path) {
+            Ok(bytes) => match std::str::from_utf8(&bytes) {
+                Ok(content) => content.to_string(),
+                Err(_) => String::from("[Binary Content]"),
+            },
+            Err(_) => String::new(),
+        };
 
-    Ok(RawFileDiffContents { original, modified })
+        Ok(RawFileDiffContents { original, modified })
+    })
+    .await
+    .map_err(|e| format!("diff task failed to complete: {e}"))?
 }
 
 fn get_file_content_from_tree(

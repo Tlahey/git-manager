@@ -4,32 +4,53 @@ use crate::services::git_stash;
 use git2::Repository;
 
 /// Creates a git stash
+///
+/// Runs on a blocking-pool thread: stashing snapshots the whole index/working tree, so its cost
+/// scales with how much is currently changed — see `fetch_remote`'s doc comment for why that
+/// shouldn't run directly on this command's async task.
 #[tauri::command]
 pub async fn stash_push(
     path: String,
     message: Option<String>,
     include_untracked: Option<bool>,
 ) -> Result<(), String> {
-    let mut repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_stash::stash_push(
-        &mut repo,
-        message.as_deref(),
-        include_untracked.unwrap_or(false),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_stash::stash_push(
+            &mut repo,
+            message.as_deref(),
+            include_untracked.unwrap_or(false),
+        )
+    })
+    .await
+    .map_err(|e| format!("stash task failed to complete: {e}"))?
 }
 
 /// Applies a stash and removes it from the list
+///
+/// Runs on a blocking-pool thread — see `stash_push`'s doc comment; applying a stash checks out
+/// the whole working tree just as pushing one does.
 #[tauri::command]
 pub async fn stash_pop(path: String, index: Option<usize>) -> Result<(), String> {
-    let mut repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_stash::stash_pop(&mut repo, index.unwrap_or(0))
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_stash::stash_pop(&mut repo, index.unwrap_or(0))
+    })
+    .await
+    .map_err(|e| format!("stash task failed to complete: {e}"))?
 }
 
 /// Applies a stash without removing it from the list
+///
+/// Runs on a blocking-pool thread — see `stash_push`'s doc comment.
 #[tauri::command]
 pub async fn stash_apply(path: String, index: Option<usize>) -> Result<(), String> {
-    let mut repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_stash::stash_apply(&mut repo, index.unwrap_or(0))
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_stash::stash_apply(&mut repo, index.unwrap_or(0))
+    })
+    .await
+    .map_err(|e| format!("stash task failed to complete: {e}"))?
 }
 
 /// Drops a stash from the list by index
