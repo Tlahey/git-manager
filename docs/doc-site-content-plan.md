@@ -508,16 +508,31 @@ one page because a reader who finds one "Explain (LLM)" entry point has effectiv
     through the same `setAiPanelTarget({ kind: 'reviewWorking' | 'reviewBranch', ... })` store
     bridge — so the e2e steps reuse that bridge too, no production code changed.
 
-### Page: Drafting a PR description (`ai-pr-description.feature`) — 🆕 write it
+### Page: Drafting a PR description (`ai-pr-description.feature`) — ✅ done
 
 - **Sub-part — Fill the PR body from your branch's commits**
   - Must show: opening the PR create form for a branch, generating fills the description from that
     branch's per-file summaries and commit list, and the field stays editable afterward — this is
     the one generation feature that fills a template meant to be published, unlike the explanations.
-  - e2e: `ai-pr-description.feature → "Generating a PR description from a branch's commits"` — 🆕
-    write it — only needs the form open and the Generate button clicked, not an actual PR
+  - e2e: `ai-pr-description.feature → "Generating a PR description from a branch's commits"` — ✅
+    tagged — only needs the form open and the Generate button clicked, not an actual PR
     submission; submitting is a GitHub mutation, out of scope the same way Launchpad's PR/issue
     mutations are (see that section).
+  - Reaching the form: the sidebar's "Pull Requests" section "+" button only gets a click handler
+    when a real GitHub token is configured (`RepositorySidebar.tsx`) — without one it renders but
+    does nothing. The form itself needs no token to open or to generate a description
+    (`usePrCreateFlow`'s `defaultBase` fetch and `usePrDescriptionGeneration` both read local git
+    data only; only actually publishing needs a token), so the step opens it through the same
+    `window.__e2eRepoUIStore`'s `setPrCreateOpen` bridge this section's other pages already use.
+  - Gotcha for whoever touches this next: `usePrDescriptionGeneration.generate(baseRef, ...)` reads
+    its range from the repo's **actual checked-out HEAD**, not the form's "From branch" dropdown —
+    those are decoupled (the dropdown only matters for the eventual checkout+push+create call). The
+    scenario checks out the head branch for real first (`When I check out the "..." branch`,
+    reused from `undo-redo.feature`) so the range is non-empty. Also: this WKWebView driver doesn't
+    reliably raise a `change` event from WDIO's own `selectByAttribute` on a native `<select>` —
+    same class of gap as the Radix dropdowns' pointerdown/pointerup workaround elsewhere in this
+    suite — so the step sets the value through the native property setter and dispatches a real
+    `change` event by hand (`setNativeSelectValue` in `ai-pr-description.steps.ts`).
   - Descriptor: `pr-description.md`
 
 ### Page: Semantic commit search (`ai-commit-search.feature`) — 🆕 write it
