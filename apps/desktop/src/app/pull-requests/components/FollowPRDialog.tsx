@@ -42,6 +42,7 @@ export function FollowPRDialog({ onAdd, onClose }: FollowPRDialogProps) {
           type="url"
           value={url}
           autoFocus
+          data-testid="follow-pr-url-input"
           onChange={(e) => setUrl(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
           placeholder="https://github.com/owner/repo/pull/123"
@@ -51,7 +52,7 @@ export function FollowPRDialog({ onAdd, onClose }: FollowPRDialogProps) {
           <Button variant="ghost" size="sm" onClick={onClose}>
             {t('followDialog.cancel')}
           </Button>
-          <Button size="sm" onClick={handleAdd} disabled={!isValid}>
+          <Button size="sm" data-testid="follow-pr-confirm-button" onClick={handleAdd} disabled={!isValid}>
             {t('followDialog.follow')}
           </Button>
         </DialogFooter>

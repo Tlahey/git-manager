@@ -309,6 +309,7 @@ export function CustomViewsTab({
               setEditingFilter(null)
               setShowEditor(true)
             }}
+            data-testid="launchpad-new-filter-button"
             className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
             title={t('views.newFilter')}
           >
@@ -333,6 +334,7 @@ export function CustomViewsTab({
             return (
               <div
                 key={f.id}
+                data-testid={`saved-filter-${f.name}`}
                 className={`group/filter relative flex cursor-pointer items-center gap-2 px-3 py-2 transition-colors ${
                   isActive
                     ? 'bg-primary/10 text-primary'

@@ -75,6 +75,7 @@ export function SnoozeControl({ prId }: SnoozeControlProps) {
               <button
                 type="button"
                 className={menuItem}
+                data-testid={`snooze-unsnooze-${prId}`}
                 onClick={() => {
                   unsnoozePr(prId)
                   setOpen(false)
@@ -90,6 +91,7 @@ export function SnoozeControl({ prId }: SnoozeControlProps) {
                 key={d}
                 type="button"
                 className={menuItem}
+                data-testid={`snooze-preset-${d}-${prId}`}
                 onClick={() => {
                   snoozePr(prId, snoozeUntil(d))
                   setOpen(false)

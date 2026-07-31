@@ -88,7 +88,7 @@ export const DOC_SECTIONS: DocSection[] = [
   },
   {
     title: 'Launchpad',
-    features: ['launchpad-prs'],
+    features: ['launchpad-prs', 'launchpad-organize'],
   },
   {
     title: 'Workflow tools',

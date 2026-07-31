@@ -127,6 +127,7 @@ export function FollowedPRsTab({
       >
         <Button
           size="sm"
+          data-testid="launchpad-follow-pr-button"
           onClick={() => setShowFollowDialog(true)}
           className="gap-1.5"
         >

@@ -113,6 +113,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
               <Input
                 type="text"
                 value={form.name}
+                data-testid="filter-editor-name-input"
                 onChange={(e) => set('name', e.target.value)}
                 placeholder={t('filterEditor.namePlaceholder')}
                 className="h-8 w-full rounded-md border border-border bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -272,14 +273,15 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                   <div className="flex gap-2">
                     {(
                       [
-                        [t('filterEditor.yes'), true],
-                        [t('filterEditor.no'), false],
-                        [t('filterEditor.any'), undefined],
-                      ] as [string, boolean | undefined][]
-                    ).map(([lbl, val]) => (
+                        [t('filterEditor.yes'), true, 'yes'],
+                        [t('filterEditor.no'), false, 'no'],
+                        [t('filterEditor.any'), undefined, 'any'],
+                      ] as [string, boolean | undefined, string][]
+                    ).map(([lbl, val, key]) => (
                       <button
                         key={lbl}
                         onClick={() => set('needsMyReview', val)}
+                        data-testid={`filter-editor-needs-review-${key}`}
                         className={`h-6 rounded border px-3 text-[10px] capitalize transition-colors ${
                           form.needsMyReview === val
                             ? 'border-primary/30 bg-primary/10 text-primary'
@@ -307,6 +309,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
           <button
             onClick={handleSave}
             disabled={!isValid}
+            data-testid="filter-editor-save-button"
             className="flex h-8 items-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
           >
             <Save className="h-3 w-3" />{' '}
