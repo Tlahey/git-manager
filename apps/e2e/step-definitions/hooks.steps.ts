@@ -1,5 +1,5 @@
 import { Before } from '@wdio/cucumber-framework'
-import { seedSettings } from '../support/settings.js'
+import { forceLiveSettings, seedSettings } from '../support/settings.js'
 import { seedGraphColumns } from '../support/gitGraphColumns.js'
 import { SUITE_WIDE_FAKE_AI_URL } from '../support/fakeAiServer.js'
 
@@ -12,21 +12,27 @@ import { SUITE_WIDE_FAKE_AI_URL } from '../support/fakeAiServer.js'
 // `small` (32px) rows fit more history in the same screenshot height than the app's own factory
 // `standard` (40px) default — purely a capture-density choice, not a claim about which one a real
 // user should pick.
-//
-// Runs before every scenario's own Given steps, so it lands in localStorage before that
-// scenario's first reload (fixture-open, fixture-build + window nav, etc.) — the same "seed
-// before reload" mechanism seedSettings' other callers already rely on.
 Before(async () => {
-  await seedSettings({
-    appearance: { theme: 'ocean', rowHeight: 'small' },
-    // Real factory default: AI enabled, pointed at "Ollama". Pointing it at the suite-wide fake
-    // server instead of leaving `url` at its real default (a local Ollama that isn't running in
-    // this sandbox) means the "AI provider is unreachable" banner never raises by default — a
-    // scenario that specifically wants AI *off*, or wants to drive real generation against its own
-    // scripted server, still overrides this with its own "AI features are turned off" /
-    // "the AI provider is pointed at a fake server" step, same as before.
-    ai: { enabled: true, url: SUITE_WIDE_FAKE_AI_URL, model: 'fake-model' },
-  })
+  const appearance = { theme: 'ocean', rowHeight: 'small' }
+  // Real factory default: AI enabled, pointed at "Ollama". Pointing it at the suite-wide fake
+  // server instead of leaving `url` at its real default (a local Ollama that isn't running in
+  // this sandbox) means the "AI provider is unreachable" banner never raises by default — a
+  // scenario that specifically wants AI *off*, or wants to drive real generation against its own
+  // scripted server, still overrides this with its own "AI features are turned off" /
+  // "the AI provider is pointed at a fake server" step, same as before.
+  const ai = { enabled: true, url: SUITE_WIDE_FAKE_AI_URL, model: 'fake-model' }
+
+  // Seeded into localStorage, so it lands before that scenario's first reload (fixture-open,
+  // fixture-build + window nav, etc.) if it has one — the same "seed before reload" mechanism
+  // seedSettings' other callers already rely on.
+  await seedSettings({ appearance, ai })
+  // AND forced onto the live store directly: the suite shares one app window across every
+  // feature, and a scenario whose own Given steps never navigate (e.g. "the git-manager
+  // application is running", used by most Settings scenarios) never rehydrates from localStorage
+  // — it would otherwise keep whatever a previous scenario last left live, which is exactly how a
+  // theme-switching scenario (settings.feature's "per-theme cards", ending on "dark") used to leak
+  // into unrelated screenshots taken right after it.
+  await forceLiveSettings({ appearance, ai })
 
   // Every column visible, and `graph` wide enough that no fixture's lane count ever pushes it
   // into its `overflow`/`compact` modes (see `graphColumnSizing.ts`) — a real per-repo maximum is

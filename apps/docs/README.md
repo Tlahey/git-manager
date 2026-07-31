@@ -85,6 +85,20 @@ decorative, not documentation to inspect closely. Re-initialized on every route
 change, since VitePress is an SPA and a `mounted` hook alone would only ever see
 the first page's images.
 
+## Per-page feedback link
+
+Every content page ends with a **Report a documentation issue** link
+(`DocFeedback.vue`), pointed at `.github/ISSUE_TEMPLATE/doc-feedback.yml`
+(labels: `documentation`, `feedback`) with the page's own URL pre-filled.
+
+It is injected once, in `.vitepress/theme/index.ts`, via the default theme's
+`doc-after` layout slot — not written into a page or into `renderDocPage.ts`.
+That is what makes it show up on the hand-written `docs/index.md` /
+`docs/download.md` *and* every generated feature page without a per-page
+change, and survive `docs/features/*.md` being wiped and rewritten on every
+`pnpm generate`. The landing page (`index.md`, `layout: false`) never renders
+this Layout, so it correctly has no feedback link.
+
 ## Commands
 
 ```bash
