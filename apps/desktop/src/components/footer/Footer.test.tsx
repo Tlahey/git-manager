@@ -104,7 +104,7 @@ describe('Footer — contextual left section', () => {
   it('shows the rewards state on the rewards tab', () => {
     useRepoUIStore.setState({ activeTab: REWARDS_TAB })
     render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
-    expect(screen.getByText('Succès & Récompenses')).toBeInTheDocument()
+    expect(screen.getByText('Achievements & Rewards')).toBeInTheDocument()
   })
 
   describe('on a repo tab', () => {
@@ -186,13 +186,13 @@ describe('Footer — keyboard shortcuts dialog', () => {
     const user = userEvent.setup()
     render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
     await user.click(screen.getByTestId('footer-shortcuts-button'))
-    expect(screen.getByText('Général')).toBeInTheDocument()
+    expect(screen.getByText('General')).toBeInTheDocument()
     expect(screen.getByText('Navigation')).toBeInTheDocument()
-    expect(screen.getByText('Recherche')).toBeInTheDocument()
-    expect(screen.getByText('Dépôt & Git')).toBeInTheDocument()
-    expect(screen.getByText(/Aller à l.accueil/)).toBeInTheDocument()
-    expect(screen.getByText('Ouvrir la palette de commandes')).toBeInTheDocument()
-    expect(screen.getByText('Rechercher un fichier dans le dépôt')).toBeInTheDocument()
+    expect(screen.getByText('Search')).toBeInTheDocument()
+    expect(screen.getByText('Repository & Git')).toBeInTheDocument()
+    expect(screen.getByText(/Go to Home/)).toBeInTheDocument()
+    expect(screen.getByText('Open the command palette')).toBeInTheDocument()
+    expect(screen.getByText('Search for a file in the repository')).toBeInTheDocument()
   })
 
   it('filters the list by description text as the user types', async () => {
@@ -200,9 +200,9 @@ describe('Footer — keyboard shortcuts dialog', () => {
     render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
     await user.click(screen.getByTestId('footer-shortcuts-button'))
     await user.type(screen.getByTestId('shortcuts-search-input'), 'palette')
-    expect(screen.getByText('Ouvrir la palette de commandes')).toBeInTheDocument()
+    expect(screen.getByText('Open the command palette')).toBeInTheDocument()
     expect(screen.queryByText('Navigation')).not.toBeInTheDocument()
-    expect(screen.queryByText(/Aller à l.accueil/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Go to Home/)).not.toBeInTheDocument()
   })
 
   it('filters the list by key text as the user types', async () => {
@@ -210,8 +210,8 @@ describe('Footer — keyboard shortcuts dialog', () => {
     render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
     await user.click(screen.getByTestId('footer-shortcuts-button'))
     await user.type(screen.getByTestId('shortcuts-search-input'), 'esc')
-    expect(screen.getByText('Fermer les boîtes de dialogue / volets')).toBeInTheDocument()
-    expect(screen.queryByText('Ouvrir la palette de commandes')).not.toBeInTheDocument()
+    expect(screen.getByText('Close dialogs / panels')).toBeInTheDocument()
+    expect(screen.queryByText('Open the command palette')).not.toBeInTheDocument()
   })
 
   it('shows an empty-state message when nothing matches the search', async () => {
@@ -219,7 +219,7 @@ describe('Footer — keyboard shortcuts dialog', () => {
     render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
     await user.click(screen.getByTestId('footer-shortcuts-button'))
     await user.type(screen.getByTestId('shortcuts-search-input'), 'zzzznomatch')
-    expect(screen.getByText('Aucun raccourci ne correspond à « zzzznomatch ».')).toBeInTheDocument()
+    expect(screen.getByText('No shortcut matches "zzzznomatch".')).toBeInTheDocument()
   })
 
   it('resets the search query after the dialog is closed and reopened', async () => {
@@ -238,16 +238,16 @@ describe('Footer — rewards link', () => {
   it('hides the rewards link when rewards are disabled', () => {
     useGameStore.setState({ rewardsEnabled: false })
     render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
-    expect(screen.queryByTitle('Consulter vos succès et récompenses Git')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('View your Git achievements and rewards')).not.toBeInTheDocument()
   })
 
   it('shows the current level and navigates to the rewards tab when clicked', async () => {
     useGameStore.setState({ points: 60 }) // level 2
     const user = userEvent.setup()
     render(<Footer onOpenSettings={vi.fn()} onOpenActivityLogs={vi.fn()} />)
-    expect(screen.getByText('Niv. 2')).toBeInTheDocument()
+    expect(screen.getByText('Lvl 2')).toBeInTheDocument()
 
-    await user.click(screen.getByTitle('Consulter vos succès et récompenses Git'))
+    await user.click(screen.getByTitle('View your Git achievements and rewards'))
     expect(useRepoUIStore.getState().activeTab).toBe(REWARDS_TAB)
   })
 })

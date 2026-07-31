@@ -101,38 +101,38 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
   // with the shortcuts local to the commit search panel (CommitSearchPanel.tsx).
   const shortcuts = [
     {
-      category: 'Général',
+      category: t('footer.shortcutsCategoryGeneral'),
       items: [
-        { keys: ['⌘', 'K'], desc: 'Ouvrir la palette de commandes' },
-        { keys: ['⌘', 'P'], desc: 'Rechercher un fichier dans le dépôt' },
-        { keys: ['⌘', ','], desc: 'Ouvrir les Paramètres' },
-        { keys: ['⌘', 'T'], desc: 'Ouvrir un nouvel onglet (Dépôts)' },
-        { keys: ['Alt', 'W'], desc: "Fermer l'onglet du dépôt actif" },
-        { keys: ['Esc'], desc: 'Fermer les boîtes de dialogue / volets' },
+        { keys: ['⌘', 'K'], desc: t('footer.shortcut.commandPalette') },
+        { keys: ['⌘', 'P'], desc: t('footer.shortcut.findFile') },
+        { keys: ['⌘', ','], desc: t('footer.shortcut.openSettings') },
+        { keys: ['⌘', 'T'], desc: t('footer.shortcut.newTab') },
+        { keys: ['Alt', 'W'], desc: t('footer.shortcut.closeTab') },
+        { keys: ['Esc'], desc: t('footer.shortcut.closeDialogs') },
       ],
     },
     {
-      category: 'Navigation',
+      category: t('footer.shortcutsCategoryNavigation'),
       items: [
-        { keys: ['Alt', '1'], desc: "Aller à l'accueil (Dashboard)" },
-        { keys: ['Alt', '2'], desc: 'Aller au Launchpad (Pull Requests)' },
-        { keys: ['Alt', '3-9'], desc: 'Basculer vers les dépôts ouverts (onglets 3 à 9)' },
+        { keys: ['Alt', '1'], desc: t('footer.shortcut.goHome') },
+        { keys: ['Alt', '2'], desc: t('footer.shortcut.goLaunchpad') },
+        { keys: ['Alt', '3-9'], desc: t('footer.shortcut.switchRepoTabs') },
       ],
     },
     {
-      category: 'Recherche',
+      category: t('footer.shortcutsCategorySearch'),
       items: [
-        { keys: ['⌘', 'F'], desc: 'Rechercher un commit dans le graphe' },
-        { keys: ['↵'], desc: 'Résultat suivant (recherche de commit)' },
-        { keys: ['⇧', '↵'], desc: 'Résultat précédent (recherche de commit)' },
-        { keys: ['Alt', '⌘', 'F'], desc: 'Filtrer les branches/tags du panneau latéral' },
+        { keys: ['⌘', 'F'], desc: t('footer.shortcut.findCommit') },
+        { keys: ['↵'], desc: t('footer.shortcut.nextResult') },
+        { keys: ['⇧', '↵'], desc: t('footer.shortcut.prevResult') },
+        { keys: ['Alt', '⌘', 'F'], desc: t('footer.shortcut.filterSidebar') },
       ],
     },
     {
-      category: 'Dépôt & Git',
+      category: t('footer.shortcutsCategoryRepoGit'),
       items: [
-        { keys: ['⌘', 'Z'], desc: 'Annuler la dernière action Git' },
-        { keys: ['⌘', '⇧', 'Z'], desc: 'Rétablir la dernière action Git' },
+        { keys: ['⌘', 'Z'], desc: t('footer.shortcut.undoGitAction') },
+        { keys: ['⌘', '⇧', 'Z'], desc: t('footer.shortcut.redoGitAction') },
       ],
     },
   ]
@@ -177,7 +177,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
         {activeTab === REWARDS_TAB && (
           <div className="flex items-center gap-1.5 font-medium text-foreground/80">
             <Trophy className="h-3.5 w-3.5 animate-pulse text-amber-500" />
-            <span>Succès & Récompenses</span>
+            <span>{t('settings:settings.sections.rewards')}</span>
           </div>
         )}
 
@@ -274,7 +274,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
                 {t('footer.keyboardShortcuts')}
               </DialogTitle>
               <DialogDescription className="mt-1 text-xs text-muted-foreground">
-                Raccourcis clavier globaux pour naviguer plus rapidement.
+                {t('footer.shortcutsDescription')}
               </DialogDescription>
             </DialogHeader>
 
@@ -283,7 +283,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
               <Input
                 value={shortcutQuery}
                 onChange={(e) => setShortcutQuery(e.target.value)}
-                placeholder="Rechercher un raccourci…"
+                placeholder={t('footer.searchShortcut')}
                 aria-label={t('footer.searchShortcut')}
                 data-testid="shortcuts-search-input"
                 className="h-8 pl-8 text-xs"
@@ -294,7 +294,7 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
               <div className="space-y-4 py-2">
                 {filteredShortcuts.length === 0 ? (
                   <p className="py-6 text-center text-xs text-muted-foreground">
-                    Aucun raccourci ne correspond à « {shortcutQuery} ».
+                    {t('footer.noShortcutsMatch', { query: shortcutQuery })}
                   </p>
                 ) : (
                   filteredShortcuts.map((cat, idx) => (
@@ -347,12 +347,12 @@ export function Footer({ onOpenSettings, onOpenActivityLogs }: FooterProps) {
                     'border-button bg-button font-bold text-button-foreground shadow-sm'
                   : 'border-transparent font-semibold text-amber-500 hover:border-border hover:bg-accent hover:text-amber-600'
               }`}
-              title="Consulter vos succès et récompenses Git"
+              title={t('footer.rewardsTooltip')}
             >
               <Trophy
                 className={`h-3.5 w-3.5 ${activeTab === REWARDS_TAB ? '' : 'animate-pulse'}`}
               />
-              <span>Niv. {level}</span>
+              <span>{t('footer.level', { level })}</span>
             </button>
             <span className="text-border">|</span>
           </>
