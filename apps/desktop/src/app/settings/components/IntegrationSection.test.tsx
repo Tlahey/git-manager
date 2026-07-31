@@ -23,12 +23,12 @@ describe('IntegrationSection — provider navigation', () => {
     const user = userEvent.setup()
     render(<IntegrationSection />)
     await user.click(screen.getByText('GitLab'))
-    expect(screen.getByText('Intégration GitLab')).toBeInTheDocument()
+    expect(screen.getByText('GitLab Integration')).toBeInTheDocument()
     expect(screen.queryByTestId('github-section')).not.toBeInTheDocument()
 
     await user.click(screen.getByText('Bitbucket'))
-    expect(screen.getByText('Intégration Bitbucket')).toBeInTheDocument()
-    expect(screen.queryByText('Intégration GitLab')).not.toBeInTheDocument()
+    expect(screen.getByText('Bitbucket Integration')).toBeInTheDocument()
+    expect(screen.queryByText('GitLab Integration')).not.toBeInTheDocument()
   })
 })
 
@@ -36,9 +36,9 @@ describe.each([
   {
     provider: 'gitlab' as const,
     navLabel: 'GitLab',
-    connectLabel: 'Ajouter le compte GitLab',
-    emptyLabel: 'Aucun compte GitLab connecté',
-    userPlaceholder: 'Ex: adupont',
+    connectLabel: 'Add GitLab account',
+    emptyLabel: 'No GitLab account connected',
+    userPlaceholder: 'Your username',
     tokenPlaceholder: 'glpat-...',
     accountsKey: 'gitlabAccounts' as const,
     activeKey: 'gitlabActiveAccountId' as const,
@@ -47,10 +47,10 @@ describe.each([
   {
     provider: 'bitbucket' as const,
     navLabel: 'Bitbucket',
-    connectLabel: 'Ajouter le compte Bitbucket',
-    emptyLabel: 'Aucun compte Bitbucket connecté',
-    userPlaceholder: 'Ex: antoine-d',
-    tokenPlaceholder: "Saisissez votre mot de passe d'application",
+    connectLabel: 'Add Bitbucket account',
+    emptyLabel: 'No Bitbucket account connected',
+    userPlaceholder: 'Your username',
+    tokenPlaceholder: 'Enter your app password',
     accountsKey: 'bitbucketAccounts' as const,
     activeKey: 'bitbucketActiveAccountId' as const,
     defaultHost: 'https://bitbucket.org',
@@ -101,7 +101,7 @@ describe.each([
       })
       fireEvent.click(screen.getByText(connectLabel).closest('button')!)
 
-      expect(screen.getByText('Connexion...')).toBeInTheDocument()
+      expect(screen.getByText('Connecting...')).toBeInTheDocument()
       await act(async () => vi.advanceTimersByTime(800))
 
       const accounts = useSettingsStore.getState().settings.integrations![accountsKey]
@@ -143,9 +143,9 @@ describe.each([
       })
       const user = await openProvider()
       expect(screen.getByText('someone')).toBeInTheDocument()
-      expect(screen.getByText('Actif')).toBeInTheDocument() // only the active one shows this badge
+      expect(screen.getByText('Active')).toBeInTheDocument() // only the active one shows this badge
 
-      await user.click(screen.getByText('Activer'))
+      await user.click(screen.getByText('Set Active'))
       expect(useSettingsStore.getState().settings.integrations![activeKey]).toBe(accountId)
 
       const removeButtons = screen
