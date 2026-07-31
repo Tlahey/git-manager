@@ -11,7 +11,8 @@ import { fetchGitHubRepoIssues } from '../api/github.api'
 import { useSettingsStore } from '../stores/settings.store'
 import { useRepoDataStore } from '../stores/repoData.store'
 import { useGitHubRepoIssues } from './useGitHubRepoIssues'
-import { MOCK_ISSUES } from '../app/pull-requests/mockData'
+import { useDevFixturesStore, resetDevFixturesLoad } from '../stores/devFixtures.store'
+import { useDevFlagsStore } from '../stores/devFlags.store'
 import type { MockIssue } from '../app/pull-requests/types'
 
 const mocked = {
@@ -67,6 +68,10 @@ function issue(overrides: Partial<MockIssue> = {}): MockIssue {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  resetDevFixturesLoad()
+  useDevFixturesStore.setState({ loaded: false, issues: [], contributions: [] })
+  // Off by default here: the interesting assertion is what a *user* without a token gets.
+  useDevFlagsStore.setState({ mockGitHub: false })
   useSettingsStore.setState({ settings: DEFAULT_SETTINGS })
   useRepoDataStore.setState({ savedRepos: [] })
   mocked.apiGetRemotes.mockResolvedValue([])
@@ -78,11 +83,26 @@ afterEach(() => {
 })
 
 describe('useGitHubRepoIssues — signed out', () => {
-  it('returns demo mock issues and never touches the network', () => {
+  it('returns an empty list and never touches the network', async () => {
+    // Behaviour change, and the point of it. This used to hand the four fixture issues to *anyone*
+    // without a token, so a user who simply had not connected their GitHub account was shown
+    // invented issues — invented authors, invented titles, invented thumbs-up counts — rendered
+    // exactly like real ones. Same defect `useGitHubData` carried for pull requests.
     const { result } = renderHook(() => useGitHubRepoIssues(), { wrapper })
-    expect(result.current.issues).toBe(MOCK_ISSUES)
+
+    expect(result.current.issues).toEqual([])
     expect(result.current.loading).toBe(false)
     expect(mocked.apiGetRemotes).not.toHaveBeenCalled()
+    expect(mocked.fetchGitHubRepoIssues).not.toHaveBeenCalled()
+    // And the fixtures are not merely hidden — nothing asked for them.
+    await waitFor(() => expect(useDevFixturesStore.getState().loaded).toBe(false))
+  })
+
+  it('serves the fixtures when a development build asks for them', async () => {
+    useDevFlagsStore.setState({ mockGitHub: true })
+    const { result } = renderHook(() => useGitHubRepoIssues(), { wrapper })
+
+    await waitFor(() => expect(result.current.issues.length).toBeGreaterThan(0))
     expect(mocked.fetchGitHubRepoIssues).not.toHaveBeenCalled()
   })
 })

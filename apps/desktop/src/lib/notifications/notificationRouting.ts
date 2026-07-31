@@ -3,6 +3,7 @@ import { useNotificationStore } from '../../stores/notification.store'
 import { useRepoDataStore } from '../../stores/repoData.store'
 import { useRepoUIStore, PULL_REQUESTS_TAB, REWARDS_TAB } from '../../stores/repoUI.store'
 import { findLocalRepoPath } from './findLocalRepo'
+import { goToAiRun } from '../aiRunPresentation'
 import type { NotificationRoute } from './notificationRoute'
 
 /**
@@ -14,8 +15,20 @@ import type { NotificationRoute } from './notificationRoute'
  * Tauri event listener, with no component in scope, and possibly while the app is hidden.
  */
 export async function routeNotification(route: NotificationRoute): Promise<void> {
+  // Deliberately does nothing: the app has already been brought forward by the time this runs, and
+  // that was the entire intent. Navigating anywhere would take the user away from whatever they
+  // were doing when the card appeared.
+  if (route.kind === 'app') return
+
   if (route.kind === 'rewards') {
     useRepoUIStore.getState().setActiveTab(REWARDS_TAB)
+    return
+  }
+
+  if (route.kind === 'ai-run') {
+    // The same handoff the footer's busy pill performs — one implementation, so a card and the pill
+    // can't land in different places for the same generation.
+    goToAiRun({ repoPath: route.repoPath, ...(route.panel ? { panel: route.panel } : {}) })
     return
   }
 

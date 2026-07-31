@@ -1,14 +1,24 @@
 import * as React from 'react'
 import { cn } from '../lib/utils'
 
-// A determinate progress bar (download %, contribution meters). Centralises the
-// track/fill tokens the ad-hoc `rounded-full bg-muted` + `bg-primary` bars repeated,
-// and — unlike those bare divs — exposes proper `role="progressbar"` + aria-value*
+// A progress bar (download %, contribution meters, a running background operation).
+// Centralises the track/fill tokens the ad-hoc `rounded-full bg-muted` + `bg-primary` bars
+// repeated, and — unlike those bare divs — exposes proper `role="progressbar"` + aria-value*
 // so assistive tech announces the amount. `value` is a 0–100 percentage.
 export interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
   value?: number
   /** Extra classes for the fill (e.g. a tone colour); defaults to bg-primary. */
   indicatorClassName?: string
+  /**
+   * No known total: renders a sliver travelling across the track instead of a fill, and drops
+   * `aria-valuenow` (ARIA's own way of saying "in progress, amount unknown") rather than
+   * announcing a made-up 0%.
+   *
+   * This is what an operation looks like before it can report a denominator — a clone before the
+   * server announces its object count, a hook that just started — and pretending otherwise means
+   * a bar that sits at 0 and looks stuck.
+   */
+  indeterminate?: boolean
 }
 
 const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
@@ -17,6 +27,7 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
       value = 0,
       className,
       indicatorClassName,
+      indeterminate = false,
       'aria-label': ariaLabel,
       'aria-labelledby': ariaLabelledby,
       'aria-hidden': ariaHidden,
@@ -33,9 +44,10 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
       <div
         ref={ref}
         role="progressbar"
-        aria-valuenow={Math.round(pct)}
+        aria-valuenow={indeterminate ? undefined : Math.round(pct)}
         aria-valuemin={0}
         aria-valuemax={100}
+        aria-busy={indeterminate || undefined}
         aria-label={name}
         aria-labelledby={ariaLabelledby}
         aria-hidden={ariaHidden}
@@ -43,8 +55,16 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         {...props}
       >
         <div
-          className={cn('h-full rounded-full bg-primary transition-all', indicatorClassName)}
-          style={{ width: `${pct}%` }}
+          className={cn(
+            'h-full rounded-full bg-primary',
+            indeterminate
+              ? 'w-1/4 animate-progress-indeterminate'
+              : // No transition on the indeterminate sliver: the keyframe owns its transform, and
+                // a transition on `width` would fight it every time React re-renders.
+                'transition-all',
+            indicatorClassName
+          )}
+          style={indeterminate ? undefined : { width: `${pct}%` }}
         />
       </div>
     )

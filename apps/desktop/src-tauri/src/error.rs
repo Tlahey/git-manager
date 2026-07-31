@@ -23,6 +23,14 @@ pub enum AppError {
     ConflictNotFound(String),
     #[error("Unparseable conflict: {0}")]
     UnparseableConflict(String),
+    /// A repository hook exited non-zero and stopped the operation it was gating.
+    ///
+    /// Its own variant, carrying the hook's own output, because that output *is* the error message
+    /// as far as the user is concerned — "pre-commit failed" tells them nothing, and the three
+    /// lines the hook printed tell them everything. Everything else here reports what went wrong
+    /// with git; this reports what the user's own tooling decided.
+    #[error("The {name} hook stopped the operation")]
+    HookFailed { name: String, output: Vec<String> },
     #[error("AI provider error: {0}")]
     AiProvider(String),
     /// The provider accepted the request and then took longer than the configured budget.
@@ -68,12 +76,20 @@ impl From<AppError> for String {
             AppError::InvalidInput(_) => ("INVALID_INPUT", e.to_string()),
             AppError::Http(_) => ("HTTP_ERROR", e.to_string()),
             AppError::NotificationFailed(_) => ("NOTIFICATION_FAILED", e.to_string()),
+            AppError::HookFailed { .. } => ("HOOK_FAILED", e.to_string()),
             AppError::Unknown(_) => ("UNKNOWN", e.to_string()),
+        };
+        // The hook's own output travels in `detail`, which is the field the frontend already
+        // reserves for "the long version". Joined with newlines rather than sent as an array
+        // because `detail` is a string on both sides, and the consumer splits it back.
+        let detail = match &e {
+            AppError::HookFailed { output, .. } if !output.is_empty() => Some(output.join("\n")),
+            _ => None,
         };
         serde_json::to_string(&ErrorPayload {
             code: code.to_string(),
             message,
-            detail: None,
+            detail,
         })
         .unwrap_or_else(|_| e.to_string())
     }

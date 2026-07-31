@@ -86,6 +86,7 @@ pub async fn create_commit(
     message: String,
     amend: Option<bool>,
     amend_oid: Option<String>,
+    skip_hooks: Option<bool>,
 ) -> Result<CommitResult, String> {
     let repo = Repository::open(&path).map_err(AppError::Git)?;
     git_commit::create_commit(
@@ -93,6 +94,10 @@ pub async fn create_commit(
         &message,
         amend.unwrap_or(false),
         amend_oid.as_deref(),
+        // `git commit --no-verify`. Defaults to running them, which is the fix: libgit2 runs no
+        // hook of any kind, so every repository's `pre-commit` and `commit-msg` were skipped for
+        // commits made from this app.
+        skip_hooks.unwrap_or(false),
     )
     .map_err(Into::into)
 }

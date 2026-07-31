@@ -3,13 +3,12 @@ import type { NotificationDisplayStyle, NotificationSettings } from '@git-manage
 import { useSettingsStore } from '../../../stores/settings.store'
 import { Separator, Switch, Checkbox, NativeSelect } from '@git-manager/ui'
 import { useTranslation } from '@git-manager/i18n'
-import { useNotificationStore } from '../../../stores/notification.store'
-import { notifyUser } from '../../../hooks/useNotificationWatcher'
 import {
   DEFAULT_DISPLAY_DURATION_MS,
   DEFAULT_DISPLAY_STYLE,
   DISPLAY_DURATION_OPTIONS_MS,
   DISPLAY_STYLE_OPTIONS,
+  resolveDisplayStyle,
 } from '../../../lib/notifications/notificationDisplay'
 import { FilterableSetting, Highlight } from './settingsSearch'
 
@@ -91,6 +90,10 @@ export function NotificationSection() {
   const { settings, updateSettings } = useSettingsStore()
 
   const notifications = settings.notifications || DEFAULT_NOTIFICATION_SETTINGS
+  const displayStyle = resolveDisplayStyle(notifications)
+  const selectedStyleOption =
+    DISPLAY_STYLE_OPTIONS.find((option) => option.value === displayStyle) ??
+    DISPLAY_STYLE_OPTIONS[0]!
 
   function updateNotifications(partial: Partial<typeof notifications>) {
     updateSettings({ notifications: { ...notifications, ...partial } })
@@ -148,32 +151,46 @@ export function NotificationSection() {
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-muted-foreground">
-                    {t('notifications.settings.displayStyle')}
-                  </span>
-                  <NativeSelect
-                    data-testid="setting-notif-display-style"
-                    value={notifications.displayStyle ?? DEFAULT_DISPLAY_STYLE}
-                    onChange={(e) =>
-                      updateNotifications({
-                        displayStyle: e.target.value as NotificationDisplayStyle,
-                      })
-                    }
-                    aria-label={t('notifications.settings.displayStyle')}
-                    className="h-7 min-w-[150px] rounded border border-border bg-background px-2 text-[10px] font-medium text-foreground outline-none transition-colors hover:border-accent-foreground/30 focus:border-primary"
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground">
+                      {t('notifications.settings.displayStyle')}
+                    </span>
+                    <NativeSelect
+                      data-testid="setting-notif-display-style"
+                      // Resolved rather than read raw, so a snapshot still holding the old
+                      // `popover` value selects the notch instead of leaving the select blank.
+                      value={displayStyle}
+                      onChange={(e) =>
+                        updateNotifications({
+                          displayStyle: e.target.value as NotificationDisplayStyle,
+                        })
+                      }
+                      aria-label={t('notifications.settings.displayStyle')}
+                      className="h-7 min-w-[150px] rounded border border-border bg-background px-2 text-[10px] font-medium text-foreground outline-none transition-colors hover:border-accent-foreground/30 focus:border-primary"
+                    >
+                      {DISPLAY_STYLE_OPTIONS.map(({ value, labelKey }) => (
+                        <option key={value} value={value}>
+                          {t(labelKey)}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </div>
+                  {/* The choice is not cosmetic — it decides how many notifications the app
+                      raises at all (see lib/notifications/notchDelivery.ts). Someone picking the
+                      macOS banner is also turning progress and background-task cards off, and
+                      that has to be readable from here rather than discovered later. */}
+                  <p
+                    data-testid="setting-notif-display-style-desc"
+                    className="font-sans text-[10px] leading-4 text-muted-foreground"
                   >
-                    {DISPLAY_STYLE_OPTIONS.map(({ value, labelKey }) => (
-                      <option key={value} value={value}>
-                        {t(labelKey)}
-                      </option>
-                    ))}
-                  </NativeSelect>
+                    {t(selectedStyleOption.descKey)}
+                  </p>
                 </div>
 
                 {/* The banner's lifetime belongs to Notification Centre, not to us — offering a
                     duration next to it would be a control that silently does nothing. */}
-                {(notifications.displayStyle ?? DEFAULT_DISPLAY_STYLE) === 'popover' && (
+                {resolveDisplayStyle(notifications) === 'notch' && (
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-muted-foreground">
                       {t('notifications.settings.displayDuration')}
@@ -300,43 +317,6 @@ export function NotificationSection() {
             </div>
           </FilterableSetting>
 
-          {/* Test notifications */}
-          <FilterableSetting
-            className="space-y-3"
-            testId="setting-notif-test"
-            match={`${t('notifications.settings.testTitle')} test tester notification`}
-          >
-            <Separator className="mb-3" />
-            <h4 className="text-xs font-semibold text-foreground">
-              <Highlight text={t('notifications.settings.testTitle')} />
-            </h4>
-            <p className="text-[10px] text-muted-foreground">
-              {t('notifications.settings.testDesc')}
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                const newNotif = useNotificationStore.getState().addNotification({
-                  type: 'review_requested',
-                  repo: 'git-manager',
-                  prNumber: 247,
-                  prTitle: t('notifications.settings.testPrTitle'),
-                  prId: 'test-pr-settings',
-                  author: 'antoine',
-                  url: 'https://github.com/Tlahey/git-manager/pull/247',
-                  authorAvatar: 'https://avatars.githubusercontent.com/u/1?v=4',
-                  targetTab: 'waiting',
-                })
-                // `notifyUser`, so the test shows whichever surface is selected above — testing
-                // the OS banner while the popover is the active style would prove nothing.
-                void notifyUser(newNotif, t)
-              }}
-              className="mt-1 flex items-center gap-2 rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/95"
-            >
-              <Bell className="h-3.5 w-3.5" />
-              <span>{t('notifications.settings.testButton')}</span>
-            </button>
-          </FilterableSetting>
         </>
       )}
     </div>

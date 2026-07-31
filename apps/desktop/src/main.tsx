@@ -5,8 +5,8 @@ import { ConflictMergeWindow } from './components/merge-editor/ConflictMergeWind
 import { FixupCommitWindow } from './components/git-graph/fixup/FixupCommitWindow'
 import { RebasingCommitWindow } from './components/rebase-editor/RebasingCommitWindow'
 import { ActionJournalWindow } from './app/action-journal/ActionJournalWindow'
-import { NotificationPopoverWindow } from './app/notification-popover/NotificationPopoverWindow'
-import type { NotificationPopoverPayload } from './lib/notificationPopoverWindow'
+import { NotchWindow } from './app/notch/NotchWindow'
+import type { NotchPayload } from './lib/notifications/notchWindow'
 import { initI18n } from '@git-manager/i18n'
 import { useSettingsStore } from './stores/settings.store'
 import { useRepoUIStore } from './stores/repoUI.store'
@@ -72,12 +72,11 @@ e2eSetup
     } else if (windowKind === 'actions') {
       // No parameter: the journal is app-wide, reading the activity log rather than a repository.
       content = <ActionJournalWindow />
-    } else if (windowKind === 'notification-popover' && payload) {
+    } else if (windowKind === 'notch' && payload) {
       try {
-        const { notif, restX, restY } = JSON.parse(payload) as NotificationPopoverPayload
-        content = <NotificationPopoverWindow notif={notif} restX={restX} restY={restY} />
+        content = <NotchWindow {...(JSON.parse(payload) as NotchPayload)} />
       } catch (e) {
-        console.error('Invalid notification popover payload:', e)
+        console.error('Invalid notch payload:', e)
         content = <App />
         isAppWindow = true
       }

@@ -23,6 +23,8 @@ import {
 } from '../api/github.api'
 import { useSettingsStore } from '../stores/settings.store'
 import { useNotificationStore } from '../stores/notification.store'
+import { DEV_FLAG_DEFAULTS, useDevFlagsStore } from '../stores/devFlags.store'
+import { useDevFixturesStore, resetDevFixturesLoad } from '../stores/devFixtures.store'
 import { useGitHubData } from './useGitHubData'
 import type { MockPR } from '../app/pull-requests/types'
 
@@ -92,8 +94,11 @@ function withToken() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  resetDevFixturesLoad()
+  useDevFixturesStore.setState({ loaded: false, issues: [], contributions: [] })
   useSettingsStore.setState({ settings: DEFAULT_SETTINGS })
   useNotificationStore.setState({ mockPRs: [] })
+  useDevFlagsStore.setState(DEV_FLAG_DEFAULTS)
   mocked.fetchGitHubPRs.mockResolvedValue([])
   mocked.fetchGitHubReviewRequestedPRs.mockResolvedValue([])
   mocked.fetchGitHubPRDetails.mockResolvedValue({})
@@ -105,8 +110,8 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('useGitHubData — no GitHub token (mock data mode)', () => {
-  it('returns mock data and never calls the GitHub API', () => {
+describe('useGitHubData — no GitHub token', () => {
+  it('returns the fixtures while the mock flag is on, and never calls the GitHub API', () => {
     const mockPr = pr({ id: 'mock-1' })
     useNotificationStore.setState({ mockPRs: [mockPr] })
     const { result } = renderHook(() => useGitHubData(), { wrapper })
@@ -116,6 +121,40 @@ describe('useGitHubData — no GitHub token (mock data mode)', () => {
     expect(result.current.loading).toBe(false)
     expect(result.current.username).toBeNull()
     expect(mocked.fetchGitHubPRs).not.toHaveBeenCalled()
+  })
+
+  it('returns nothing at all with the flag off — which is what a real user gets', () => {
+    // The fixtures used to be handed over to anyone without a token, so a user who had simply not
+    // connected GitHub yet saw ten invented pull requests, with invented authors and titles,
+    // rendered exactly like real ones. Fiction shown as fact is a worse first impression than the
+    // empty list the Launchpad already knows how to draw.
+    useDevFlagsStore.setState({ mockGitHub: false })
+    useNotificationStore.setState({ mockPRs: [pr({ id: 'mock-1' })] })
+    const { result } = renderHook(() => useGitHubData(), { wrapper })
+
+    expect(result.current.prs).toEqual([])
+    expect(result.current.hasToken).toBe(false)
+    expect(mocked.fetchGitHubPRs).not.toHaveBeenCalled()
+  })
+
+  it('withholds the invented contribution graph too, not just the PRs', () => {
+    useDevFlagsStore.setState({ mockGitHub: false })
+    const { result } = renderHook(() => useGitHubData(), { wrapper })
+
+    expect(result.current.yearDays).toEqual([])
+    expect(result.current.commitDays).toEqual([])
+    // No fabricated "last refreshed" either — nothing was.
+    expect(result.current.lastRefreshed).toBeNull()
+  })
+
+  it('draws the invented graph once the flag has fetched it', async () => {
+    // The history used to be generated at module scope, so a production start-up built a year of
+    // random days and never used one. It now arrives with the rest of the fixtures.
+    useDevFlagsStore.setState({ mockGitHub: true })
+    const { result } = renderHook(() => useGitHubData(), { wrapper })
+
+    await waitFor(() => expect(result.current.yearDays).toHaveLength(365))
+    expect(result.current.commitDays).toHaveLength(14)
   })
 })
 

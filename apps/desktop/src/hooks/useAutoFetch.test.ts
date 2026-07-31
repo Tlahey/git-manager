@@ -51,7 +51,9 @@ describe('useAutoFetch', () => {
 
     await advance(60_000)
     expect(apiFetchRemote).toHaveBeenCalledTimes(1)
-    expect(apiFetchRemote).toHaveBeenLastCalledWith('/repo', undefined, true)
+    expect(apiFetchRemote).toHaveBeenLastCalledWith('/repo', undefined, true, {
+      background: true,
+    })
 
     await advance(60_000)
     expect(apiFetchRemote).toHaveBeenCalledTimes(2)
@@ -62,7 +64,18 @@ describe('useAutoFetch', () => {
     renderHook(() => useAutoFetch())
 
     await advance(60_000)
-    expect(apiFetchRemote).toHaveBeenLastCalledWith('/repo', undefined, false)
+    expect(apiFetchRemote).toHaveBeenLastCalledWith('/repo', undefined, false, {
+      background: true,
+    })
+  })
+
+  it('marks the fetch as scheduled, so the notch keeps quiet about it', async () => {
+    // The hook is documented as silent, and the notch is part of that: a progress card here would
+    // fire on every focus change (see the focus test below) for a transfer nobody asked for.
+    renderHook(() => useAutoFetch())
+
+    await advance(60_000)
+    expect(apiFetchRemote.mock.lastCall?.[3]).toEqual({ background: true })
   })
 
   it('honours a custom interval', async () => {

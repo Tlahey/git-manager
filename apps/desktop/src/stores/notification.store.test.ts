@@ -1,7 +1,44 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { useNotificationStore } from './notification.store'
+import type { MockPR } from '../app/pull-requests/types'
 
-const INITIAL_MOCK_PRS = useNotificationStore.getState().mockPRs
+/**
+ * The store no longer seeds itself with the development fixtures — they are behind a dynamic
+ * import that a release build drops entirely (`lib/devFixtures.ts`), so its initial `mockPRs` is
+ * empty. These tests therefore bring their own pair, which is better anyway: what `simulateChange`
+ * does to a pull request has nothing to do with the shape of whatever fixture file ships.
+ */
+function mockPR(id: string, overrides: Partial<MockPR> = {}): MockPR {
+  return {
+    id,
+    number: 1,
+    title: 'feat: a thing',
+    repo: 'git-manager',
+    repoUrl: 'https://github.com/Tlahey/git-manager',
+    url: 'https://github.com/Tlahey/git-manager/pull/1',
+    status: 'open',
+    ciStatus: 'running',
+    author: 'antoine',
+    authorAvatar: '',
+    collaborators: [],
+    filesChanged: 1,
+    additions: 1,
+    deletions: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    reviewStatus: 'pending',
+    isDraft: false,
+    needsMyReview: false,
+    labels: [],
+    comments: 0,
+    ...overrides,
+  }
+}
+
+const INITIAL_MOCK_PRS: MockPR[] = [
+  mockPR('pr-1'),
+  mockPR('pr-2', { status: 'draft', ciStatus: 'skipped' }),
+]
 
 function notif(
   overrides: Partial<
@@ -26,8 +63,8 @@ beforeEach(() => {
     previousPRs: {},
     hasSessionInitialized: false,
     // Per-item spread, not JSON.parse(JSON.stringify(...)) — that round-trip turns
-    // createdAt/updatedAt's Date objects into plain strings, same bug the store's own
-    // initializer had (see notification.store.ts).
+    // createdAt/updatedAt's Date objects into plain strings, which crashes every consumer that
+    // sorts on `pr.updatedAt.getTime()`. `loadDevFixtures` copies them the same way.
     mockPRs: INITIAL_MOCK_PRS.map((pr) => ({ ...pr })),
   })
   localStorage.clear()
@@ -124,6 +161,17 @@ describe('useNotificationStore — simulateChange', () => {
     expect(prs).toHaveLength(before + 1)
     expect(prs[0].status).toBe('open')
     expect(prs[0].needsMyReview).toBe(true)
+    // Its own identity, not the template's — the watcher keys its poll-to-poll diff on the id.
+    expect(prs[0].id).not.toBe(prs[1].id)
+    expect(prs[0].number).not.toBe(prs[1].number)
+  })
+
+  it('new_pr does nothing when there is no fixture to clone', () => {
+    // A build with no fixtures. Unreachable in practice — the debug menu that calls this is
+    // development-only, and it hides itself when the list is empty.
+    useNotificationStore.setState({ mockPRs: [] })
+    useNotificationStore.getState().simulateChange('', 'new_pr')
+    expect(useNotificationStore.getState().mockPRs).toEqual([])
   })
 
   it("merge sets the matching PR's status to merged, leaving others untouched", () => {

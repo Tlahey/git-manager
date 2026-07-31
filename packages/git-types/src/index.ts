@@ -749,19 +749,29 @@ export interface NotificationSettings {
   /** Gates both CI outcomes: checks going green and checks failing. */
   notifyOnCi?: boolean
   /**
-   * How a notification is presented. `popover` is the app's own card, anchored under the menu
-   * bar; `native` is the standard OS banner. `popover` still falls back to `native` on its own
-   * whenever it can't be shown (no tray rect, window creation failure) — this setting is the
-   * user asking for the banner, not the automatic fallback.
+   * How a notification is presented — and, as a consequence, *how many* the app raises.
+   *
+   * `notch` is the app's own card, anchored at the top of the display where a MacBook's camera
+   * housing is. It queues, updates in place and dismisses itself, so it can carry things a banner
+   * cannot: live progress on a long operation, a git hook running, a background task finishing.
+   *
+   * `native` is the standard OS banner. It is one immutable line that lands in Notification
+   * Centre, so it only gets the key discrete events — anything live or ambient is dropped rather
+   * than turned into a stream of banners.
+   *
+   * `notch` still falls back to `native` on its own whenever the card can't be shown (no tray
+   * rect, window creation failure), under the same filter; this setting is the user asking for the
+   * banner, not the automatic fallback.
    */
   displayStyle?: NotificationDisplayStyle
-  /** How long the `popover` style stays on screen before dismissing itself, in milliseconds.
+  /** How long the `notch` style stays on screen before dismissing itself, in milliseconds.
    * `0` means it stays until the user closes it (or clicks away). Does not apply to `native`,
    * whose lifetime belongs to Notification Centre. */
   displayDurationMs?: number
 }
 
-export type NotificationDisplayStyle = 'popover' | 'native'
+/** `'popover'` was the previous spelling of `'notch'`; see `migrateDisplayStyle` in the app. */
+export type NotificationDisplayStyle = 'notch' | 'native'
 
 export interface GitSettings {
   defaultAuthorName: string

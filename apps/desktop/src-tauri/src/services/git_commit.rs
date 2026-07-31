@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::services::git_hooks;
 use crate::utils::{get_git_signature, short_oid};
 use git2::{Repository, RepositoryState};
 use serde::{Deserialize, Serialize};
@@ -225,12 +226,61 @@ fn read_merge_parents(repo: &Repository) -> Vec<git2::Oid> {
 /// A plain (non-amend) commit finishes an interrupted merge when there is one: it takes `MERGE_HEAD`
 /// as additional parents and then clears the merge state, which is what `git commit` itself does.
 /// See [`read_merge_parents`] for what skipping that would cost.
+/// Runs the two hooks that gate a commit, and returns the message to actually commit.
+///
+/// Mirrors what `git commit` does, in the same order:
+///
+/// 1. `pre-commit`, with no arguments. Non-zero stops everything, and nothing is written.
+/// 2. The message is written to `COMMIT_EDITMSG`, then `commit-msg` runs with that path. Non-zero
+///    stops everything; a zero exit means the file — which the hook is *allowed to rewrite*, and
+///    which is how `commitlint --fix` and sign-off hooks work — is the real message.
+///
+/// This is the part libgit2 does not do and never did, so every hook in every repository was
+/// silently skipped for commits made from this app.
+fn run_commit_hooks(repo: &Repository, message: &str) -> Result<String, AppError> {
+    let pre_commit = git_hooks::run_hook(repo, "pre-commit", &[])?;
+    if !pre_commit.success {
+        return Err(AppError::HookFailed {
+            name: pre_commit.name,
+            output: pre_commit.output,
+        });
+    }
+
+    let message_path = repo.path().join("COMMIT_EDITMSG");
+    std::fs::write(&message_path, message)?;
+
+    let commit_msg = git_hooks::run_hook(repo, "commit-msg", &[&message_path.to_string_lossy()])?;
+    if !commit_msg.success {
+        return Err(AppError::HookFailed {
+            name: commit_msg.name,
+            output: commit_msg.output,
+        });
+    }
+
+    // Only re-read when a hook actually ran: writing the file above is a formality otherwise, and
+    // reading it back would turn a filesystem hiccup into a lost commit message.
+    if !commit_msg.ran {
+        return Ok(message.to_string());
+    }
+    Ok(std::fs::read_to_string(&message_path).unwrap_or_else(|_| message.to_string()))
+}
+
 pub fn create_commit(
     repo: &Repository,
     message: &str,
     amend: bool,
     amend_oid: Option<&str>,
+    skip_hooks: bool,
 ) -> Result<CommitResult, AppError> {
+    // Before anything is written. `git commit --no-verify` is the escape hatch this mirrors: a
+    // hook that hangs or misfires must not be able to lock the user out of committing at all.
+    let message = if skip_hooks {
+        message.to_string()
+    } else {
+        run_commit_hooks(repo, message)?
+    };
+    let message = message.as_str();
+
     let sig = get_git_signature(repo)?;
 
     let mut index = repo.index().map_err(AppError::Git)?;
@@ -302,6 +352,12 @@ pub fn create_commit(
         new_oid
     };
 
+    // `post-commit` is purely informational — git ignores whatever it returns, and so does this.
+    // The commit exists; failing it now would be reporting an error for work that succeeded.
+    if !skip_hooks {
+        let _ = git_hooks::run_hook(repo, "post-commit", &[]);
+    }
+
     let full_sha = oid.to_string();
     Ok(CommitResult {
         short_oid: short_oid(&full_sha),
@@ -323,7 +379,7 @@ mod tests {
 
     /// Commits the current index with `message`, through the function under test.
     fn commit(repo: &Repository, message: &str) -> git2::Oid {
-        let result = create_commit(repo, message, false, None).unwrap();
+        let result = create_commit(repo, message, false, None, true).unwrap();
         git2::Oid::from_str(&result.oid).unwrap()
     }
 
@@ -333,6 +389,137 @@ mod tests {
         let mut index = repo.index().unwrap();
         index.add_path(Path::new(name)).unwrap();
         index.write().unwrap();
+    }
+
+    /// Installs an executable hook that exits with `code` after printing `output`.
+    fn write_hook(repo: &Repository, name: &str, code: i32, output: &str) {
+        let dir = repo.path().join("hooks");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join(name);
+        std::fs::write(&path, format!("#!/bin/sh\necho '{output}'\nexit {code}\n")).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+    }
+
+    fn head_message(repo: &Repository) -> String {
+        repo.head()
+            .unwrap()
+            .peel_to_commit()
+            .unwrap()
+            .message()
+            .unwrap()
+            .to_string()
+    }
+
+    // ─── Hooks ────────────────────────────────────────────────────────────────
+    // The behaviour libgit2 does not provide and this app therefore never had: every repository's
+    // hooks were silently skipped for commits made here, while the same commit from a terminal ran
+    // them.
+
+    #[cfg(unix)]
+    #[test]
+    fn a_failing_pre_commit_hook_stops_the_commit() {
+        let (dir, repo) = temp_repo("hook-pre-commit-fails");
+        write_and_stage(&repo, &dir, "a.txt", "one");
+        write_hook(&repo, "pre-commit", 1, "lint-staged failed");
+
+        let err = create_commit(&repo, "nope", false, None, false).unwrap_err();
+
+        match err {
+            AppError::HookFailed { name, output } => {
+                assert_eq!(name, "pre-commit");
+                assert!(output.iter().any(|l| l.contains("lint-staged failed")));
+            }
+            other => panic!("expected a hook failure, got {other:?}"),
+        }
+        // And nothing was written: HEAD still has no commit at all.
+        assert!(repo.head().is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_passing_pre_commit_hook_lets_the_commit_through() {
+        let (dir, repo) = temp_repo("hook-pre-commit-passes");
+        write_and_stage(&repo, &dir, "a.txt", "one");
+        write_hook(&repo, "pre-commit", 0, "all good");
+
+        create_commit(&repo, "first", false, None, false).unwrap();
+        assert_eq!(head_message(&repo), "first");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_failing_commit_msg_hook_stops_the_commit() {
+        let (dir, repo) = temp_repo("hook-commit-msg-fails");
+        write_and_stage(&repo, &dir, "a.txt", "one");
+        write_hook(&repo, "commit-msg", 1, "subject too long");
+
+        let err = create_commit(&repo, "nope", false, None, false).unwrap_err();
+        assert!(matches!(err, AppError::HookFailed { .. }));
+        assert!(repo.head().is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_commit_msg_hook_may_rewrite_the_message() {
+        // How `commitlint --fix` and sign-off hooks work: they edit the file they were handed, and
+        // git commits what is left in it.
+        let (dir, repo) = temp_repo("hook-commit-msg-rewrites");
+        write_and_stage(&repo, &dir, "a.txt", "one");
+
+        let hooks = repo.path().join("hooks");
+        std::fs::create_dir_all(&hooks).unwrap();
+        let path = hooks.join("commit-msg");
+        std::fs::write(
+            &path,
+            "#!/bin/sh\nprintf 'rewritten by the hook' > \"$1\"\n",
+        )
+        .unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+
+        create_commit(&repo, "original", false, None, false).unwrap();
+        assert_eq!(head_message(&repo), "rewritten by the hook");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn skip_hooks_is_the_no_verify_escape_hatch() {
+        // A hook that hangs or misfires must not be able to lock the user out of committing.
+        let (dir, repo) = temp_repo("hook-skipped");
+        write_and_stage(&repo, &dir, "a.txt", "one");
+        write_hook(&repo, "pre-commit", 1, "would have failed");
+
+        create_commit(&repo, "first", false, None, true).unwrap();
+        assert_eq!(head_message(&repo), "first");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_failing_post_commit_hook_does_not_undo_the_commit() {
+        // git ignores what `post-commit` returns, and so does this: the commit exists, and
+        // reporting an error for work that succeeded would be a lie.
+        let (dir, repo) = temp_repo("hook-post-commit-fails");
+        write_and_stage(&repo, &dir, "a.txt", "one");
+        write_hook(&repo, "post-commit", 1, "notification failed");
+
+        create_commit(&repo, "first", false, None, false).unwrap();
+        assert_eq!(head_message(&repo), "first");
+    }
+
+    #[test]
+    fn a_repository_with_no_hooks_commits_exactly_as_before() {
+        let (dir, repo) = temp_repo("hook-none");
+        write_and_stage(&repo, &dir, "a.txt", "one");
+
+        create_commit(&repo, "first", false, None, false).unwrap();
+        assert_eq!(head_message(&repo), "first");
     }
 
     /// The ordinary case stays exactly as it was: one parent, HEAD advanced.

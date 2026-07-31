@@ -1,42 +1,26 @@
-import { useEffect, useState } from 'react'
-import {
-  useNotificationStore,
-  type AppNotification,
-  type SimulatedChange,
-} from '../../stores/notification.store'
-import { useSettingsStore } from '../../stores/settings.store'
+import { useState } from 'react'
+import { useNotificationStore, type AppNotification } from '../../stores/notification.store'
 import { useTranslation } from '@git-manager/i18n'
-import { Bell, CheckCheck, Trash2, Play, Sparkles } from 'lucide-react'
+import { Bell, CheckCheck, Trash2 } from 'lucide-react'
 import { getNotificationIcon, getNotificationText } from './utils'
-import { notifyUser } from '../../hooks/useNotificationWatcher'
 import { buildNotificationRoute } from '../../lib/notifications/notificationRoute'
 import { routeNotification } from '../../lib/notifications/notificationRouting'
-import { Popover, PopoverTrigger, PopoverContent, Badge, NumberBadge, NativeSelect } from '@git-manager/ui'
+import { Popover, PopoverTrigger, PopoverContent, Badge, NumberBadge } from '@git-manager/ui'
 import { formatRelativeTimestamp } from '../../lib/relativeDate'
 
+/**
+ * The bell: what has already happened, and nothing else.
+ *
+ * It used to carry a simulator panel as well — four dev-only "Test …" buttons plus a mock-PR
+ * mutator — which is now in the footer's debug menu. Two reasons for the move: this component had
+ * grown to twice the size of the list it renders, and a trigger hidden inside the very surface it
+ * tests is only discoverable by whoever wrote it.
+ */
 export function NotificationDropdown() {
   const { t } = useTranslation('common')
-  const { notifications, markAllAsRead, clearNotifications, mockPRs, simulateChange } =
-    useNotificationStore()
-
-  const githubSettings = useSettingsStore((s) => s.settings.github)
-
-  const activeAccount =
-    githubSettings?.accounts?.find((a) => a.id === githubSettings.activeAccountId) ?? null
-  const hasToken = !!activeAccount?.token
-
-  // Simulator states
-  const [simPrId, setSimPrId] = useState('')
-  const [simAction, setSimAction] = useState<SimulatedChange>('merge')
+  const { notifications, markAllAsRead, clearNotifications } = useNotificationStore()
 
   const [menuOpen, setMenuOpen] = useState(false)
-
-  // Initialize simulator PR selection
-  useEffect(() => {
-    if (mockPRs.length > 0 && !simPrId) {
-      setSimPrId(mockPRs[0].id)
-    }
-  }, [mockPRs, simPrId])
 
   const unreadCount = notifications.filter((n) => !n.read).length
   const recentNotifications = notifications.slice(0, 5)
@@ -46,10 +30,6 @@ export function NotificationDropdown() {
   function handleNotificationClick(notif: AppNotification) {
     setMenuOpen(false)
     void routeNotification(buildNotificationRoute(notif))
-  }
-
-  function runSimulation() {
-    simulateChange(simPrId, simAction)
   }
 
   return (
@@ -155,151 +135,6 @@ export function NotificationDropdown() {
             </div>
           )}
         </div>
-
-        {/* Simulated actions panel (only when no github token) */}
-        {(import.meta.env.DEV || !hasToken) && (
-          <div className="border-t border-border bg-accent/20 p-2.5">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1 text-[10px] font-semibold text-amber-500/80">
-                <Sparkles className="h-3 w-3" />
-                <span>{t('notifications.simulator')}</span>
-              </div>
-              {import.meta.env.MODE === 'development' && (
-                <span className="py-0.2 rounded bg-primary/10 px-1 text-[8px] font-bold tracking-wide text-primary">
-                  DEV MODE
-                </span>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              {/* Test triggers visible only in development mode */}
-              {import.meta.env.MODE === 'development' && (
-                <div className="mb-1 grid grid-cols-2 gap-1.5">
-                  <button
-                    onClick={() => {
-                      const newNotif = useNotificationStore.getState().addNotification({
-                        type: 'review_requested',
-                        repo: 'git-manager',
-                        prNumber: 247,
-                        prTitle: 'feat: Add support for dev-mode test notifications',
-                        prId: 'test-pr-review',
-                        author: 'antoine',
-                        authorAvatar: 'https://avatars.githubusercontent.com/u/1?v=4',
-                        url: 'https://github.com/Tlahey/git-manager/pull/247',
-                        targetTab: 'waiting',
-                      })
-                      notifyUser(newNotif, t)
-                    }}
-                    className="h-5.5 flex items-center justify-center rounded border border-amber-500/20 bg-amber-500/5 text-[8px] font-semibold text-amber-400 transition-colors hover:bg-amber-500/10"
-                  >
-                    Test Review
-                  </button>
-                  <button
-                    onClick={() => {
-                      const newNotif = useNotificationStore.getState().addNotification({
-                        type: 'pr_merged',
-                        repo: 'git-manager',
-                        prNumber: 244,
-                        prTitle: 'fix: Memory leak in GraphRow',
-                        prId: 'test-pr-merge',
-                        author: 'marie',
-                        authorAvatar: 'https://avatars.githubusercontent.com/u/2?v=4',
-                        url: 'https://github.com/Tlahey/git-manager/pull/244',
-                        targetTab: 'prs',
-                      })
-                      notifyUser(newNotif, t)
-                    }}
-                    className="h-5.5 flex items-center justify-center rounded border border-purple-500/20 bg-purple-500/5 text-[8px] font-semibold text-purple-400 transition-colors hover:bg-purple-500/10"
-                  >
-                    Test Merge
-                  </button>
-                  {/* The two CI triggers deliberately carry no `authorAvatar`: a bot author is the
-                      realistic case with no face to show, so these also exercise the popover's
-                      initials fallback next to the two avatar-bearing triggers above. */}
-                  <button
-                    onClick={() => {
-                      const newNotif = useNotificationStore.getState().addNotification({
-                        type: 'ci_success',
-                        repo: 'git-manager',
-                        prNumber: 250,
-                        prTitle: 'ci: Add automatic lint and code style check',
-                        prId: 'test-pr-ci-green',
-                        author: 'github-actions',
-                        url: 'https://github.com/Tlahey/git-manager/pull/250',
-                        targetTab: 'prs',
-                      })
-                      notifyUser(newNotif, t)
-                    }}
-                    className="h-5.5 flex items-center justify-center rounded border border-emerald-500/20 bg-emerald-500/5 text-[8px] font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/10"
-                  >
-                    Test CI Green
-                  </button>
-                  <button
-                    onClick={() => {
-                      const newNotif = useNotificationStore.getState().addNotification({
-                        type: 'ci_failed',
-                        repo: 'git-manager',
-                        prNumber: 251,
-                        prTitle: 'test: Add integration tests for Tauri bridge',
-                        prId: 'test-pr-ci-red',
-                        author: 'github-actions',
-                        url: 'https://github.com/Tlahey/git-manager/pull/251',
-                        targetTab: 'prs',
-                      })
-                      notifyUser(newNotif, t)
-                    }}
-                    className="h-5.5 flex items-center justify-center rounded border border-rose-500/20 bg-rose-500/5 text-[8px] font-semibold text-rose-400 transition-colors hover:bg-rose-500/10"
-                  >
-                    Test CI Red
-                  </button>
-                </div>
-              )}
-
-              {/* PR State Mutator (only if using mock data/no token) */}
-              {!hasToken && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <NativeSelect
-                      value={simPrId}
-                      onChange={(e) => setSimPrId(e.target.value)}
-                      className="h-6 flex-1 rounded border border-border bg-background px-1.5 text-[9px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      {mockPRs.map((pr) => (
-                        <option key={pr.id} value={pr.id}>
-                          PR #{pr.number} ({pr.repo})
-                        </option>
-                      ))}
-                    </NativeSelect>
-
-                    <NativeSelect
-                      value={simAction}
-                      onChange={(e) => setSimAction(e.target.value as SimulatedChange)}
-                      className="h-6 rounded border border-border bg-background px-1.5 text-[9px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      <option value="merge">{t('notifications.sim.prMerged')}</option>
-                      <option value="close">{t('notifications.sim.prClosed')}</option>
-                      <option value="request_review">
-                        {t('notifications.sim.reviewRequested')}
-                      </option>
-                      <option value="approve">{t('notifications.sim.reviewApproved')}</option>
-                      <option value="new_pr">{t('notifications.sim.newPR')}</option>
-                      <option value="ci_success">{t('notifications.sim.ciSuccess')}</option>
-                      <option value="ci_failed">{t('notifications.sim.ciFailed')}</option>
-                      <option value="queue">{t('notifications.sim.prQueued')}</option>
-                    </NativeSelect>
-                  </div>
-                  <button
-                    onClick={runSimulation}
-                    className="flex h-6 items-center justify-center gap-1 rounded bg-primary text-[9px] font-medium text-primary-foreground transition-colors hover:bg-primary/95"
-                  >
-                    <Play className="h-2.5 w-2.5 fill-current" />
-                    <span>{t('notifications.runSim')}</span>
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
       </PopoverContent>
     </Popover>
   )

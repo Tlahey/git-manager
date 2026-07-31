@@ -19,6 +19,11 @@ import { TabBar } from './components/tab-bar'
 import { useTheme } from './hooks/useTheme'
 import { useMonacoTheme } from './hooks/useMonacoTheme'
 import { useNotificationWatcher } from './hooks/useNotificationWatcher'
+import { useNotchQueue } from './hooks/useNotchQueue'
+import { useNotchActionListener } from './hooks/useNotchActionListener'
+import { useRemoteProgressListener } from './hooks/useRemoteProgressListener'
+import { NotchRemoteOperations } from './components/notch/NotchRemoteOperations'
+import { NotchAiRuns } from './components/notch/NotchAiRuns'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useDevFixtureImport } from './hooks/useDevFixtureImport'
 import { useAiStatusCheck } from './hooks/useAiStatusCheck'
@@ -50,6 +55,12 @@ export default function App() {
   useTheme()
   useMonacoTheme()
   useNotificationWatcher()
+  // Turns the notch queue into a window. Separate from the watcher on purpose: the watcher decides
+  // *what* to notify about, these two decide what happens to a card once it exists — which is what
+  // lets a producer that has nothing to do with GitHub raise one.
+  useNotchQueue()
+  useNotchActionListener()
+  useRemoteProgressListener()
   useDevFixtureImport()
   useAppReadySplash()
   useAiStatusCheck()
@@ -194,6 +205,12 @@ export default function App() {
         <TrophyToast />
         <Toaster />
         <LoadingOverlay />
+        {/* Renders nothing — it holds one notch card per transfer in flight, which needs a
+            component instance each (hooks can't be called in a loop over a changing list). */}
+        <NotchRemoteOperations />
+        {/* Likewise — the model's own work, above all the file-by-file read that is where a long
+            generation actually spends its minutes. */}
+        <NotchAiRuns />
         {import.meta.env.VITE_E2E === 'true' && <E2ePathPickerDialog />}
       </div>
     </QueryClientProvider>

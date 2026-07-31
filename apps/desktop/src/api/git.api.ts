@@ -1,4 +1,4 @@
-import type { PullStrategy } from '../lib/tauri'
+import type { PullStrategy, RemoteOperation } from '../lib/tauri'
 import {
   stageFile,
   unstageFile,
@@ -91,7 +91,15 @@ import {
   openActivitySession,
   runActivity,
 } from '../lib/activityCorrelation'
+import { i18next, type TFunction } from '@git-manager/i18n'
 import { useUndoHistoryStore } from '../stores/undoHistory.store'
+import { useNotchQueueStore } from '../stores/notchQueue.store'
+import { hookFailureFrom, hookFailureNotchModel } from '../lib/notifications/hookNotch'
+import { repoNameOf } from '../lib/notifications/remoteNotch'
+import {
+  useRemoteProgressStore,
+  type RemoteOperationOutcome,
+} from '../stores/remoteProgress.store'
 import type { UndoAction } from '../lib/undoActions'
 
 // ─── Undo/Redo helpers ──────────────────────────────────────────────────────
@@ -177,6 +185,28 @@ async function settleRebase(path: string) {
   }
 }
 
+/**
+ * Puts a failed hook on the notch, if that is what the error was.
+ *
+ * Reads the translator off the i18n instance rather than a hook, because this runs from the API
+ * layer where there is no component in scope — the same reason `notificationRouting.ts` reaches
+ * for stores imperatively. Best-effort throughout: the caller is already on its way to rethrowing,
+ * and a card that fails to render must not replace the real error.
+ */
+function raiseHookFailureCard(repoPath: string, error: unknown): void {
+  try {
+    const failure = hookFailureFrom(error)
+    if (!failure) return
+    const t = i18next.getFixedT(null, 'git') as unknown as TFunction
+    useNotchQueueStore.getState().enqueue({
+      model: hookFailureNotchModel(failure, repoNameOf(repoPath), t),
+      importance: 'key',
+    })
+  } catch {
+    // Nothing here is worth losing the commit error over.
+  }
+}
+
 // ─── Clipboard ──────────────────────────────────────────────────────────────
 
 export async function apiCopyCommitSha(oid: string) {
@@ -203,7 +233,9 @@ export async function apiCreateCommit(
   path: string,
   message: string,
   amend = false,
-  amendOid?: string
+  amendOid?: string,
+  /** `git commit --no-verify` — the escape hatch for a hook that hangs or misfires. */
+  skipHooks?: boolean
 ) {
   return runActivity('git.commit', async () => {
     let previousOid: string | null = null
@@ -216,7 +248,19 @@ export async function apiCreateCommit(
       }
     }
 
-    const result = await callCommand('commit', () => createCommit(path, message, amend, amendOid))
+    let result
+    try {
+      result = await callCommand('commit', () =>
+        createCommit(path, message, amend, amendOid, skipHooks)
+      )
+    } catch (error) {
+      // A hook that refused is the one commit failure worth a card: the user pressed Commit,
+      // nothing happened, and the reason is three lines of output the toast has no room for.
+      // Raised here rather than at each call site because every commit in the app goes through
+      // this function, and there are several.
+      raiseHookFailureCard(path, error)
+      throw error
+    }
 
     if (amend) {
       // Amend is out of undo/redo's scope (only the initial commit is) — it already modifies a
@@ -1076,14 +1120,68 @@ export async function apiGetBranchWebUrl(path: string, branchName: string, remot
 
 // ─── Fetch / Pull / Push ───────────────────────────────────────────────────
 
-export async function apiFetchRemote(path: string, remote?: string, prune?: boolean) {
-  return runActivity('git.fetch', () => fetchRemote(path, remote, prune))
+/**
+ * Records a transfer's start and its outcome, around the call that performs it.
+ *
+ * The *progress* in between arrives on its own, pushed from Rust — but nothing on that channel can
+ * say "this began" (the first report only comes once the server answers) or "this is over", and a
+ * card with no end is worse than no card. So the two boundaries are taken here, at the one place
+ * every fetch, pull and push already goes through.
+ *
+ * Recording is best-effort by construction: it wraps the call rather than gating it, so a store
+ * that misbehaves cannot stop a push.
+ */
+async function trackTransfer<T>(
+  path: string,
+  operation: RemoteOperation,
+  run: () => Promise<T>,
+  summarise?: (result: T) => RemoteOperationOutcome,
+  background = false
+): Promise<T> {
+  useRemoteProgressStore.getState().start(path, operation, background)
+  try {
+    const result = await run()
+    useRemoteProgressStore
+      .getState()
+      .finish(path, operation, summarise?.(result) ?? { kind: 'success' })
+    return result
+  } catch (error) {
+    useRemoteProgressStore
+      .getState()
+      .finish(path, operation, { kind: 'error', message: String(error) })
+    throw error
+  }
+}
+
+/**
+ * @param options.background - This fetch was scheduled, not asked for. Kept off the notch's live
+ *   card; see `RemoteOperationEntry.background`.
+ */
+export async function apiFetchRemote(
+  path: string,
+  remote?: string,
+  prune?: boolean,
+  options?: { background?: boolean }
+) {
+  return trackTransfer(
+    path,
+    'fetch',
+    () => runActivity('git.fetch', () => fetchRemote(path, remote, prune)),
+    // The refs it moved are what make a finished fetch worth mentioning at all — one that changed
+    // nothing has nothing to say.
+    (result) => ({ kind: 'success', updatedRefs: result.updatedRefs }),
+    options?.background ?? false
+  )
 }
 
 export async function apiPullBranch(path: string, remote?: string, strategy?: PullStrategy) {
-  return runActivity('git.pull', () => pullBranch(path, remote, strategy))
+  return trackTransfer(path, 'pull', () =>
+    runActivity('git.pull', () => pullBranch(path, remote, strategy))
+  )
 }
 
 export async function apiPushBranch(path: string, remote?: string, force?: boolean) {
-  return runActivity('git.push', () => pushBranch(path, remote, force))
+  return trackTransfer(path, 'push', () =>
+    runActivity('git.push', () => pushBranch(path, remote, force))
+  )
 }

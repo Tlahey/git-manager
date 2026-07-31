@@ -3,19 +3,19 @@ import { useGitHubData } from './useGitHubData'
 import { useNotificationStore, type AppNotification } from '../stores/notification.store'
 import { useSettingsStore } from '../stores/settings.store'
 import { useTranslation } from '@git-manager/i18n'
-import { getNotificationText } from '../components/notification/utils'
 import {
   NOTIFICATION_TYPES,
-  getNotificationTypeDef,
   isNotificationTypeEnabled,
   resolveTargetTab,
 } from '../lib/notifications/notificationRegistry'
 import { buildPRSnapshotMap, snapshotMapsEqual } from '../lib/notifications/prSnapshots'
-import { buildNotificationRoute } from '../lib/notifications/notificationRoute'
-import { resolveDisplayStyle } from '../lib/notifications/notificationDisplay'
 import { routeNotification } from '../lib/notifications/notificationRouting'
 import { apiSendNativeNotification, apiOnNotificationActivated } from '../api/notification.api'
-import { openNotificationPopoverWindow } from '../lib/notificationPopoverWindow'
+import {
+  nativeSpecFromNotification,
+  notchRequestFromNotification,
+} from '../lib/notifications/notchModel'
+import { useNotchQueueStore } from '../stores/notchQueue.store'
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import type { TFunction } from '@git-manager/i18n'
 
@@ -29,39 +29,23 @@ import type { TFunction } from '@git-manager/i18n'
  * on desktop the plugin always reports it granted, so the check was pure ceremony.
  */
 export async function showNativeNotification(notif: AppNotification, t: TFunction) {
-  const { title, message } = getNotificationText(notif, t)
-  const settings = useSettingsStore.getState().settings
-  const soundEnabled = settings.notifications?.enableSound ?? false
-  const soundName = settings.notifications?.soundName ?? 'default'
-  const prefix = getNotificationTypeDef(notif.type)?.nativePrefix ?? 'ℹ️ '
-
-  await apiSendNativeNotification({
-    title: `${prefix}${title}`,
-    body: message,
-    ...(soundEnabled ? { sound: soundName } : {}),
-    route: buildNotificationRoute(notif),
-  })
+  await apiSendNativeNotification(nativeSpecFromNotification(notif, t))
 }
 
 /**
- * Shows a notification on whichever surface the user picked in Settings.
+ * Hands a bell notification to the notch queue.
  *
- * The `popover` style additionally falls back to the native banner on its own whenever the card
- * can't be shown — no tray rect available (e.g. Linux), or the secondary-window creation itself
- * throws. That fallback is automatic and distinct from the setting: `native` means "I want the OS
- * banner", the fallback means "the card was unavailable". Both decisions live here alone, so the
- * real watcher loop, the dev-mode simulator buttons and the Settings test button share them.
+ * That is the whole of it now: *which* surface it ends up on — the notch, a macOS banner, or
+ * nowhere at all — is decided by `useNotchQueue` when the card reaches the front, because that is
+ * the one point every card passes through whatever produced it. This function used to make that
+ * call itself, which meant the display-style setting only ever applied to GitHub notifications and
+ * was silently bypassed by every other producer.
+ *
+ * The notification is enqueued rather than shown directly for the same reason: a second one
+ * arriving while the first was still up used to destroy it, because the window has a fixed label.
  */
 export async function notifyUser(notif: AppNotification, t: TFunction) {
-  const settings = useSettingsStore.getState().settings
-  if (resolveDisplayStyle(settings.notifications) === 'popover') {
-    try {
-      if (await openNotificationPopoverWindow(notif)) return
-    } catch (e) {
-      console.warn('Notification popover failed, falling back to native notification:', e)
-    }
-  }
-  await showNativeNotification(notif, t)
+  useNotchQueueStore.getState().enqueue(notchRequestFromNotification(notif, t))
 }
 
 export function useNotificationWatcher() {

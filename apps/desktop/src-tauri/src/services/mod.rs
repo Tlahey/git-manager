@@ -21,6 +21,7 @@ pub mod git_diff;
 pub mod git_files;
 pub mod git_fixup;
 pub mod git_graph;
+pub mod git_hooks;
 pub mod git_interactive_rebase;
 pub mod git_merge_diff;
 pub mod git_merge_target;

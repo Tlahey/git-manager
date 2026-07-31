@@ -54,7 +54,7 @@ describe('NotificationSection — event toggles', () => {
     const user = userEvent.setup()
     render(<NotificationSection />)
 
-    await user.click(screen.getByRole('checkbox', { name: 'Automatic fetch' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Fetch' }))
     expect(useSettingsStore.getState().settings.notifications!.notifyOnFetch).toBe(false)
 
     await user.click(screen.getByRole('checkbox', { name: 'New pull requests' }))
@@ -104,10 +104,46 @@ describe('NotificationSection — sounds', () => {
 })
 
 describe('NotificationSection — display', () => {
-  it('defaults to the app popover, visible for 5 seconds', () => {
+  it('defaults to the app’s own notch card, visible for 5 seconds', () => {
     render(<NotificationSection />)
-    expect(screen.getByRole('combobox', { name: 'Style' })).toHaveValue('popover')
+    expect(screen.getByRole('combobox', { name: 'Style' })).toHaveValue('notch')
     expect(screen.getByRole('combobox', { name: 'Visible for' })).toHaveValue('5000')
+  })
+
+  it('still selects the notch for a snapshot holding the old "popover" value', () => {
+    // `settings.store` deep-merges what it rehydrates from localStorage, so this string keeps
+    // arriving from old installs. Left unmapped it would render as a blank select.
+    useSettingsStore.setState({
+      settings: {
+        ...INITIAL_SETTINGS.settings,
+        notifications: {
+          ...INITIAL_SETTINGS.settings.notifications!,
+          displayStyle: 'popover' as 'notch',
+        },
+      },
+    })
+    render(<NotificationSection />)
+    expect(screen.getByRole('combobox', { name: 'Style' })).toHaveValue('notch')
+  })
+
+  it('says what each style covers, because the choice changes how many notifications are raised', () => {
+    // Picking the macOS banner also turns progress and background-task cards off; that has to be
+    // readable here rather than discovered later.
+    const { rerender } = render(<NotificationSection />)
+    expect(screen.getByTestId('setting-notif-display-style-desc')).toHaveTextContent(
+      /long operations in progress/i
+    )
+
+    useSettingsStore.setState({
+      settings: {
+        ...INITIAL_SETTINGS.settings,
+        notifications: { ...INITIAL_SETTINGS.settings.notifications!, displayStyle: 'native' },
+      },
+    })
+    rerender(<NotificationSection />)
+    expect(screen.getByTestId('setting-notif-display-style-desc')).toHaveTextContent(
+      /key events only/i
+    )
   })
 
   it('binds the selected duration, including "until I close it"', async () => {
@@ -133,17 +169,12 @@ describe('NotificationSection — display', () => {
   })
 })
 
-describe('NotificationSection — test notification', () => {
-  it('adds a test notification and shows it on the selected surface', async () => {
-    const user = userEvent.setup()
+describe('NotificationSection — no test button', () => {
+  // "Send a test notification" moved to the footer's debug menu, with the rest of the app's test
+  // affordances. Settings is where a user configures the feature, not where a developer fires it.
+  it('offers no way to fire a notification from Settings', () => {
     render(<NotificationSection />)
-    await user.click(screen.getByText('Send a test notification'))
-
-    expect(useNotificationStore.getState().notifications).toHaveLength(1)
-    expect(useNotificationStore.getState().notifications[0]).toMatchObject({
-      type: 'review_requested',
-      prId: 'test-pr-settings',
-    })
-    expect(notifyUser).toHaveBeenCalledOnce()
+    expect(screen.queryByText('Send a test notification')).not.toBeInTheDocument()
+    expect(notifyUser).not.toHaveBeenCalled()
   })
 })

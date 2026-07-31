@@ -1,4 +1,5 @@
 import type { AppNotification } from '../../stores/notification.store'
+import type { AiPanelTarget } from '../../stores/repoUI.store'
 
 /**
  * Where a notification takes the user when it is clicked — the OS banner and the bell dropdown
@@ -29,6 +30,25 @@ export type NotificationRoute =
     }
   /** An unlocked achievement — the Rewards tab, which is where the trophy lives. */
   | { kind: 'rewards' }
+  /**
+   * Nowhere in particular — just bring the app forward.
+   *
+   * What a card about the app's *own* work routes to: a finished search, a rejected push, a dev
+   * server that came up. There is no page to open; the user was already somewhere, and coming back
+   * to it is the whole of what clicking meant. Raising the window is not this route's job either —
+   * `focus_main_window` in `commands/notification.rs` has already done it by the time this arrives,
+   * for every route.
+   */
+  | { kind: 'app' }
+  /**
+   * The panel an AI generation is running in.
+   *
+   * Carries the origin rather than a run id: a run is a live object that ends, and by the time a
+   * card about it is clicked the generation may well be over — but "the panel where the answer is"
+   * is still exactly where the user wants to land. `AiPanelTarget` is plain data, so it survives the
+   * trip through Rust like everything else here.
+   */
+  | { kind: 'ai-run'; repoPath: string; panel?: AiPanelTarget }
 
 /**
  * The route for a bell notification. Every kind in `notificationRegistry.ts` is about one pull

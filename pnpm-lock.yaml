@@ -128,6 +128,9 @@ importers:
       '@git-manager/mascot':
         specifier: workspace:*
         version: link:../../packages/mascot
+      '@git-manager/notch':
+        specifier: workspace:*
+        version: link:../../packages/notch
       '@git-manager/theme':
         specifier: workspace:*
         version: link:../../packages/theme
@@ -245,13 +248,13 @@ importers:
         version: 3.2.7(@vitest/browser@3.2.7)(supports-color@8.1.1)(vitest@3.2.7)
       '@wdio/tauri-plugin':
         specifier: ^1.2.0
-        version: 1.2.0(tsx@4.23.0)
+        version: 1.2.0(supports-color@8.1.1)(tsx@4.23.0)
       autoprefixer:
         specifier: 'catalog:'
         version: 10.5.0(postcss@8.5.15)
       jsdom:
         specifier: 'catalog:'
-        version: 25.0.1
+        version: 25.0.1(supports-color@8.1.1)
       postcss:
         specifier: 'catalog:'
         version: 8.5.15
@@ -269,7 +272,7 @@ importers:
         version: 1.1.0(monaco-editor@0.52.2)
       vitest:
         specifier: 'catalog:'
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@2.7.0)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(tsx@4.23.0)(yaml@2.9.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@1.21.7)(jsdom@25.0.1(supports-color@8.1.1))(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(supports-color@8.1.1)(tsx@4.23.0)(yaml@2.9.0)
 
   apps/docs:
     dependencies:
@@ -303,7 +306,7 @@ importers:
         version: 1.6.4(@algolia/client-search@5.56.0)(@types/node@26.0.0)(@types/react@18.3.31)(axios@1.18.1)(postcss@8.5.24)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(search-insights@2.17.3)(typescript@7.0.2)
       vitest:
         specifier: 'catalog:'
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@2.7.0)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(supports-color@8.1.1)(tsx@4.23.0)(yaml@2.9.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@2.7.0)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(tsx@4.23.0)(yaml@2.9.0)
       vue:
         specifier: ^3.5.13
         version: 3.5.40(typescript@7.0.2)
@@ -398,7 +401,7 @@ importers:
         version: 18.3.7(@types/react@18.3.31)
       jsdom:
         specifier: 'catalog:'
-        version: 25.0.1
+        version: 25.0.1(supports-color@8.1.1)
       react:
         specifier: 'catalog:'
         version: 18.3.1
@@ -486,7 +489,7 @@ importers:
         version: 10.5.0(postcss@8.5.15)
       jsdom:
         specifier: 'catalog:'
-        version: 25.0.1
+        version: 25.0.1(supports-color@8.1.1)
       monaco-editor:
         specifier: 'catalog:'
         version: 0.52.2
@@ -575,7 +578,7 @@ importers:
         version: 18.3.7(@types/react@18.3.31)
       jsdom:
         specifier: 'catalog:'
-        version: 25.0.1
+        version: 25.0.1(supports-color@8.1.1)
       react:
         specifier: 'catalog:'
         version: 18.3.1
@@ -588,6 +591,70 @@ importers:
       storybook:
         specifier: 'catalog:'
         version: 10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1)
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 6.4.3(@types/node@26.0.0)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@2.7.0)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(tsx@4.23.0)(yaml@2.9.0)
+
+  packages/notch:
+    dependencies:
+      '@git-manager/ui':
+        specifier: workspace:*
+        version: link:../ui
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.468.0(react@18.3.1)
+    devDependencies:
+      '@git-manager/config':
+        specifier: workspace:*
+        version: link:../config
+      '@storybook/react':
+        specifier: 'catalog:'
+        version: 10.4.6(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1))(typescript@7.0.2)
+      '@storybook/react-vite':
+        specifier: 'catalog:'
+        version: 10.4.6(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(esbuild@0.28.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rollup@4.62.2)(storybook@10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1))(typescript@7.0.2)(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))
+      '@testing-library/jest-dom':
+        specifier: 'catalog:'
+        version: 6.9.1
+      '@testing-library/react':
+        specifier: 'catalog:'
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@testing-library/user-event':
+        specifier: 'catalog:'
+        version: 14.6.1(@testing-library/dom@10.4.1)
+      '@types/react':
+        specifier: 'catalog:'
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 18.3.7(@types/react@18.3.31)
+      autoprefixer:
+        specifier: 'catalog:'
+        version: 10.5.0(postcss@8.5.15)
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1(supports-color@8.1.1)
+      postcss:
+        specifier: 'catalog:'
+        version: 8.5.15
+      react:
+        specifier: 'catalog:'
+        version: 18.3.1
+      react-dom:
+        specifier: 'catalog:'
+        version: 18.3.1(react@18.3.1)
+      storybook:
+        specifier: 'catalog:'
+        version: 10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1)
+      tailwindcss:
+        specifier: 'catalog:'
+        version: 3.4.19(tsx@4.23.0)(yaml@2.9.0)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -627,7 +694,7 @@ importers:
         version: 18.3.31
       jsdom:
         specifier: 'catalog:'
-        version: 25.0.1
+        version: 25.0.1(supports-color@8.1.1)
       react:
         specifier: 'catalog:'
         version: 18.3.1
@@ -663,7 +730,7 @@ importers:
         version: 18.3.7(@types/react@18.3.31)
       jsdom:
         specifier: 'catalog:'
-        version: 25.0.1
+        version: 25.0.1(supports-color@8.1.1)
       react:
         specifier: 'catalog:'
         version: 18.3.1
@@ -769,7 +836,7 @@ importers:
         version: 4.12.1
       jsdom:
         specifier: 'catalog:'
-        version: 25.0.1
+        version: 25.0.1(supports-color@8.1.1)
       playwright:
         specifier: ^1.48.0
         version: 1.61.1
@@ -793,7 +860,7 @@ importers:
         version: 6.4.3(@types/node@26.0.0)(jiti@1.21.7)(tsx@4.23.0)(yaml@2.9.0)
       vitest:
         specifier: 'catalog:'
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@1.21.7)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(tsx@4.23.0)(yaml@2.9.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@2.7.0)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(tsx@4.23.0)(yaml@2.9.0)
 
 packages:
 
@@ -9894,7 +9961,7 @@ snapshots:
       istanbul-lib-coverage: 3.2.2
       istanbul-lib-instrument: 6.0.3
       istanbul-lib-report: 3.0.1
-      istanbul-lib-source-maps: 5.0.6
+      istanbul-lib-source-maps: 5.0.6(supports-color@8.1.1)
       istanbul-reports: 3.2.0
       jest-message-util: 30.4.1
       jest-util: 30.4.1
@@ -10986,9 +11053,9 @@ snapshots:
       '@storybook/icons': 2.1.0(react@18.3.1)
       storybook: 10.4.6(@testing-library/dom@10.4.1)(@types/react@18.3.31)(prettier@3.8.4)(react@18.3.1)
     optionalDependencies:
-      '@vitest/browser': 3.2.7(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(playwright@1.61.1)(vite@6.4.3(@types/node@26.0.0)(jiti@1.21.7)(tsx@4.23.0)(yaml@2.9.0))(vitest@3.2.7)(webdriverio@9.29.1)
+      '@vitest/browser': 3.2.7(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(playwright@1.61.1)(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))(vitest@3.2.7)(webdriverio@9.29.1)
       '@vitest/runner': 3.2.7
-      vitest: 3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@1.21.7)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(tsx@4.23.0)(yaml@2.9.0)
+      vitest: 3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@2.7.0)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(tsx@4.23.0)(yaml@2.9.0)
     transitivePeerDependencies:
       - react
 
@@ -11843,7 +11910,7 @@ snapshots:
       magic-string: 0.30.21
       sirv: 3.0.2
       tinyrainbow: 2.0.0
-      vitest: 3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@1.21.7)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(tsx@4.23.0)(yaml@2.9.0)
+      vitest: 3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@1.21.7)(jsdom@25.0.1(supports-color@8.1.1))(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(supports-color@8.1.1)(tsx@4.23.0)(yaml@2.9.0)
       ws: 8.21.0
     optionalDependencies:
       playwright: 1.61.1
@@ -11863,7 +11930,7 @@ snapshots:
       magic-string: 0.30.21
       sirv: 3.0.2
       tinyrainbow: 2.0.0
-      vitest: 3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@2.7.0)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(supports-color@8.1.1)(tsx@4.23.0)(yaml@2.9.0)
+      vitest: 3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@2.7.0)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(tsx@4.23.0)(yaml@2.9.0)
       ws: 8.21.0
     optionalDependencies:
       playwright: 1.61.1
@@ -11882,14 +11949,14 @@ snapshots:
       debug: 4.4.3(supports-color@8.1.1)
       istanbul-lib-coverage: 3.2.2
       istanbul-lib-report: 3.0.1
-      istanbul-lib-source-maps: 5.0.6
+      istanbul-lib-source-maps: 5.0.6(supports-color@8.1.1)
       istanbul-reports: 3.2.0
       magic-string: 0.30.21
       magicast: 0.3.5
       std-env: 3.10.0
       test-exclude: 7.0.2
       tinyrainbow: 2.0.0
-      vitest: 3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@2.7.0)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(tsx@4.23.0)(yaml@2.9.0)
+      vitest: 3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@1.21.7)(jsdom@25.0.1(supports-color@8.1.1))(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(supports-color@8.1.1)(tsx@4.23.0)(yaml@2.9.0)
     optionalDependencies:
       '@vitest/browser': 3.2.7(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(playwright@1.61.1)(vite@6.4.3(@types/node@26.0.0)(jiti@1.21.7)(tsx@4.23.0)(yaml@2.9.0))(vitest@3.2.7)(webdriverio@9.29.1)
     transitivePeerDependencies:
@@ -12255,7 +12322,7 @@ snapshots:
     dependencies:
       '@wdio/logger': 9.18.0
       '@wdio/native-types': 2.3.1
-      '@wdio/native-utils': 2.5.0(tsx@4.23.0)
+      '@wdio/native-utils': 2.5.0(supports-color@8.1.1)(tsx@4.23.0)
       debug: 4.4.3(supports-color@8.1.1)
       get-port: 7.2.0
       tslib: 2.8.1
@@ -12269,7 +12336,7 @@ snapshots:
 
   '@wdio/native-types@2.4.0': {}
 
-  '@wdio/native-utils@2.5.0(tsx@4.23.0)':
+  '@wdio/native-utils@2.5.0(supports-color@8.1.1)(tsx@4.23.0)':
     dependencies:
       '@wdio/logger': 9.18.0
       debug: 4.4.3(supports-color@8.1.1)
@@ -12342,12 +12409,12 @@ snapshots:
       easy-table: 1.2.0
       pretty-ms: 9.3.0
 
-  '@wdio/tauri-plugin@1.2.0(tsx@4.23.0)':
+  '@wdio/tauri-plugin@1.2.0(supports-color@8.1.1)(tsx@4.23.0)':
     dependencies:
       '@tauri-apps/api': 2.11.0
       '@tauri-apps/plugin-log': 2.8.0
       '@wdio/native-spy': 1.1.0
-      '@wdio/native-utils': 2.5.0(tsx@4.23.0)
+      '@wdio/native-utils': 2.5.0(supports-color@8.1.1)(tsx@4.23.0)
     transitivePeerDependencies:
       - supports-color
       - tsx
@@ -12359,7 +12426,7 @@ snapshots:
       '@wdio/native-core': 1.0.0(supports-color@8.1.1)(tsx@4.23.0)
       '@wdio/native-spy': 1.1.0
       '@wdio/native-types': 2.4.0
-      '@wdio/native-utils': 2.5.0(tsx@4.23.0)
+      '@wdio/native-utils': 2.5.0(supports-color@8.1.1)(tsx@4.23.0)
       '@wdio/spec-reporter': 9.27.1
       '@wdio/types': 9.27.1
       debug: 4.4.3(supports-color@8.1.1)
@@ -13386,8 +13453,8 @@ snapshots:
       decamelize: 6.0.1
       edge-paths: 3.0.5
       fast-xml-parser: 5.10.0
-      http-proxy-agent: 7.0.2
-      https-proxy-agent: 7.0.6
+      http-proxy-agent: 7.0.2(supports-color@8.1.1)
+      https-proxy-agent: 7.0.6(supports-color@8.1.1)
       which: 6.0.1
     transitivePeerDependencies:
       - supports-color
@@ -13820,8 +13887,8 @@ snapshots:
       '@wdio/logger': 9.29.1
       '@zip.js/zip.js': 2.8.26
       decamelize: 6.0.1
-      http-proxy-agent: 7.0.2
-      https-proxy-agent: 7.0.6
+      http-proxy-agent: 7.0.2(supports-color@8.1.1)
+      https-proxy-agent: 7.0.6(supports-color@8.1.1)
       modern-tar: 0.7.6
     transitivePeerDependencies:
       - supports-color
@@ -14125,7 +14192,7 @@ snapshots:
       inherits: 2.0.4
       readable-stream: 3.6.2
 
-  http-proxy-agent@7.0.2:
+  http-proxy-agent@7.0.2(supports-color@8.1.1):
     dependencies:
       agent-base: 7.1.4
       debug: 4.4.3(supports-color@8.1.1)
@@ -14139,7 +14206,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  https-proxy-agent@7.0.6:
+  https-proxy-agent@7.0.6(supports-color@8.1.1):
     dependencies:
       agent-base: 7.1.4
       debug: 4.4.3(supports-color@8.1.1)
@@ -14337,7 +14404,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  istanbul-lib-source-maps@5.0.6:
+  istanbul-lib-source-maps@5.0.6(supports-color@8.1.1):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       debug: 4.4.3(supports-color@8.1.1)
@@ -14735,15 +14802,15 @@ snapshots:
       argparse: 1.0.10
       esprima: 4.0.1
 
-  jsdom@25.0.1:
+  jsdom@25.0.1(supports-color@8.1.1):
     dependencies:
       cssstyle: 4.6.0
       data-urls: 5.0.0
       decimal.js: 10.6.0
       form-data: 4.0.6
       html-encoding-sniffer: 4.0.0
-      http-proxy-agent: 7.0.2
-      https-proxy-agent: 7.0.6
+      http-proxy-agent: 7.0.2(supports-color@8.1.1)
+      https-proxy-agent: 7.0.6(supports-color@8.1.1)
       is-potential-custom-element-name: 1.0.1
       nwsapi: 2.2.24
       parse5: 7.3.0
@@ -15606,8 +15673,8 @@ snapshots:
       agent-base: 7.1.4
       debug: 4.4.3(supports-color@8.1.1)
       get-uri: 6.0.5
-      http-proxy-agent: 7.0.2
-      https-proxy-agent: 7.0.6
+      http-proxy-agent: 7.0.2(supports-color@8.1.1)
+      https-proxy-agent: 7.0.6(supports-color@8.1.1)
       pac-resolver: 7.0.1
       socks-proxy-agent: 8.0.5
     transitivePeerDependencies:
@@ -15848,8 +15915,8 @@ snapshots:
     dependencies:
       agent-base: 7.1.4
       debug: 4.4.3(supports-color@8.1.1)
-      http-proxy-agent: 7.0.2
-      https-proxy-agent: 7.0.6
+      http-proxy-agent: 7.0.2(supports-color@8.1.1)
+      https-proxy-agent: 7.0.6(supports-color@8.1.1)
       lru-cache: 7.18.3
       pac-proxy-agent: 7.2.0
       proxy-from-env: 1.1.0
@@ -16991,34 +17058,13 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite-node@3.2.4(@types/node@26.0.0)(jiti@1.21.7)(tsx@4.23.0)(yaml@2.9.0):
+  vite-node@3.2.4(@types/node@26.0.0)(jiti@1.21.7)(supports-color@8.1.1)(tsx@4.23.0)(yaml@2.9.0):
     dependencies:
       cac: 6.7.14
       debug: 4.4.3(supports-color@8.1.1)
       es-module-lexer: 1.7.0
       pathe: 2.0.3
       vite: 6.4.3(@types/node@26.0.0)(jiti@1.21.7)(tsx@4.23.0)(yaml@2.9.0)
-    transitivePeerDependencies:
-      - '@types/node'
-      - jiti
-      - less
-      - lightningcss
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
-      - tsx
-      - yaml
-
-  vite-node@3.2.4(@types/node@26.0.0)(jiti@2.7.0)(supports-color@8.1.1)(tsx@4.23.0)(yaml@2.9.0):
-    dependencies:
-      cac: 6.7.14
-      debug: 4.4.3(supports-color@8.1.1)
-      es-module-lexer: 1.7.0
-      pathe: 2.0.3
-      vite: 6.4.3(@types/node@26.0.0)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0)
     transitivePeerDependencies:
       - '@types/node'
       - jiti
@@ -17061,7 +17107,7 @@ snapshots:
   vite@5.4.21(@types/node@26.0.0):
     dependencies:
       esbuild: 0.21.5
-      postcss: 8.5.15
+      postcss: 8.5.24
       rollup: 4.62.2
     optionalDependencies:
       '@types/node': 26.0.0
@@ -17147,7 +17193,7 @@ snapshots:
       - typescript
       - universal-cookie
 
-  vitest@3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@1.21.7)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(tsx@4.23.0)(yaml@2.9.0):
+  vitest@3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@1.21.7)(jsdom@25.0.1(supports-color@8.1.1))(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(supports-color@8.1.1)(tsx@4.23.0)(yaml@2.9.0):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/expect': 3.2.7
@@ -17170,57 +17216,13 @@ snapshots:
       tinypool: 1.1.1
       tinyrainbow: 2.0.0
       vite: 6.4.3(@types/node@26.0.0)(jiti@1.21.7)(tsx@4.23.0)(yaml@2.9.0)
-      vite-node: 3.2.4(@types/node@26.0.0)(jiti@1.21.7)(tsx@4.23.0)(yaml@2.9.0)
+      vite-node: 3.2.4(@types/node@26.0.0)(jiti@1.21.7)(supports-color@8.1.1)(tsx@4.23.0)(yaml@2.9.0)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/debug': 4.1.13
       '@types/node': 26.0.0
       '@vitest/browser': 3.2.7(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(playwright@1.61.1)(vite@6.4.3(@types/node@26.0.0)(jiti@1.21.7)(tsx@4.23.0)(yaml@2.9.0))(vitest@3.2.7)(webdriverio@9.29.1)
-      jsdom: 25.0.1
-    transitivePeerDependencies:
-      - jiti
-      - less
-      - lightningcss
-      - msw
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
-      - tsx
-      - yaml
-
-  vitest@3.2.7(@types/debug@4.1.13)(@types/node@26.0.0)(@vitest/browser@3.2.7)(jiti@2.7.0)(jsdom@25.0.1)(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(supports-color@8.1.1)(tsx@4.23.0)(yaml@2.9.0):
-    dependencies:
-      '@types/chai': 5.2.3
-      '@vitest/expect': 3.2.7
-      '@vitest/mocker': 3.2.7(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))
-      '@vitest/pretty-format': 3.2.7
-      '@vitest/runner': 3.2.7
-      '@vitest/snapshot': 3.2.7
-      '@vitest/spy': 3.2.7
-      '@vitest/utils': 3.2.7
-      chai: 5.3.3
-      debug: 4.4.3(supports-color@8.1.1)
-      expect-type: 1.4.0
-      magic-string: 0.30.21
-      pathe: 2.0.3
-      picomatch: 4.0.4
-      std-env: 3.10.0
-      tinybench: 2.9.0
-      tinyexec: 0.3.2
-      tinyglobby: 0.2.17
-      tinypool: 1.1.1
-      tinyrainbow: 2.0.0
-      vite: 6.4.3(@types/node@26.0.0)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0)
-      vite-node: 3.2.4(@types/node@26.0.0)(jiti@2.7.0)(supports-color@8.1.1)(tsx@4.23.0)(yaml@2.9.0)
-      why-is-node-running: 2.3.0
-    optionalDependencies:
-      '@types/debug': 4.1.13
-      '@types/node': 26.0.0
-      '@vitest/browser': 3.2.7(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(playwright@1.61.1)(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))(vitest@3.2.7)(webdriverio@9.29.1)
-      jsdom: 25.0.1
+      jsdom: 25.0.1(supports-color@8.1.1)
     transitivePeerDependencies:
       - jiti
       - less
@@ -17264,7 +17266,7 @@ snapshots:
       '@types/debug': 4.1.13
       '@types/node': 26.0.0
       '@vitest/browser': 3.2.7(msw@2.14.7(@types/node@26.0.0)(typescript@7.0.2))(playwright@1.61.1)(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))(vitest@3.2.7)(webdriverio@9.29.1)
-      jsdom: 25.0.1
+      jsdom: 25.0.1(supports-color@8.1.1)
     transitivePeerDependencies:
       - jiti
       - less
@@ -17343,7 +17345,7 @@ snapshots:
       '@wdio/types': 9.29.1
       '@wdio/utils': 9.29.1
       deepmerge-ts: 7.1.5
-      https-proxy-agent: 7.0.6
+      https-proxy-agent: 7.0.6(supports-color@8.1.1)
       undici: 6.27.0
       ws: 8.21.0
     transitivePeerDependencies:

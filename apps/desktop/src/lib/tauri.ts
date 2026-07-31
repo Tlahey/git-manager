@@ -80,12 +80,28 @@ function toReadableError(err: unknown, rawMessage: string): unknown {
   try {
     const parsed = JSON.parse(rawMessage)
     if (parsed && typeof parsed.message === 'string') {
-      return new Error(parsed.message)
+      const error = new Error(parsed.message) as AppErrorLike
+      // `code` and `detail` used to be dropped here, which made them unreachable from any call
+      // site — the payload was flattened to its `message` and the rest thrown away. That was
+      // invisible until something needed the long version: a failed hook's own output, which *is*
+      // the error as far as the user is concerned ("pre-commit failed" says nothing; the three
+      // lines it printed say everything).
+      if (typeof parsed.code === 'string') error.code = parsed.code
+      if (typeof parsed.detail === 'string') error.detail = parsed.detail
+      return error
     }
   } catch {
     // Not JSON: not an AppError payload, nothing to unwrap.
   }
   return err
+}
+
+/** An `Error` carrying the rest of an `AppError` payload. See `toReadableError`. */
+export interface AppErrorLike extends Error {
+  /** The `AppError` variant's stable code, e.g. `HOOK_FAILED`. */
+  code?: string
+  /** The long form, when the variant has one. Newline-separated. */
+  detail?: string
 }
 
 function record(
@@ -571,8 +587,20 @@ export interface CommitResult {
   shortOid: string
 }
 
-export const createCommit = (path: string, message: string, amend = false, amendOid?: string) =>
-  invoke<CommitResult>('create_commit', { path, message, amend, amendOid })
+/**
+ * `skipHooks` is `git commit --no-verify`.
+ *
+ * Hooks run by default, which is the fix rather than the feature: libgit2 runs no hook of any
+ * kind, so a repository's `pre-commit` and `commit-msg` were silently skipped for every commit
+ * made from this app while the same commit from a terminal ran them.
+ */
+export const createCommit = (
+  path: string,
+  message: string,
+  amend = false,
+  amendOid?: string,
+  skipHooks?: boolean
+) => invoke<CommitResult>('create_commit', { path, message, amend, amendOid, skipHooks })
 
 export const getStagedDiff = (path: string) => invoke<GitDiff>('get_staged_diff', { path })
 
@@ -615,6 +643,38 @@ export const isCommitOnCurrentBranch = (path: string, oid: string) =>
   invoke<boolean>('is_commit_on_current_branch', { path, oid })
 
 // ─── Remote ───────────────────────────────────────────────────────────────────
+
+/**
+ * What a transfer is doing. Mirrors the Rust `RemoteProgressPhase`.
+ *
+ * A fetch downloads objects and then resolves deltas locally; a push uploads. Three phases rather
+ * than one bar because a single percentage that resets partway through reads as a bug.
+ */
+export type RemoteProgressPhase = 'receiving' | 'resolving' | 'writing'
+
+/** Which operation a progress report belongs to. A pull's transfer *is* a fetch's, so the
+ *  operation is carried explicitly rather than inferred. */
+export type RemoteOperation = 'fetch' | 'pull' | 'push'
+
+/** Payload of {@link REMOTE_PROGRESS_EVENT}. Mirrors the Rust `RemoteProgressEvent`. */
+export interface RemoteProgressEvent {
+  repoPath: string
+  operation: RemoteOperation
+  phase: RemoteProgressPhase
+  completed: number
+  /** `0` while the server hasn't announced a count — render that indeterminate, not as 0 %. */
+  total: number
+  bytes: number
+}
+
+/**
+ * Pushed by `commands/remote.rs` while a transfer runs, rate-limited to a few times a second.
+ *
+ * Pushed rather than polled because a network transfer has no await point to interrogate, and the
+ * command's own promise only settles when the whole thing is over — which on the transfers worth
+ * reporting is minutes away.
+ */
+export const REMOTE_PROGRESS_EVENT = 'remote-progress'
 
 export const fetchRemote = (path: string, remote?: string, prune?: boolean) =>
   invoke<{ remote: string; updatedRefs: string[] }>('fetch_remote', { path, remote, prune })

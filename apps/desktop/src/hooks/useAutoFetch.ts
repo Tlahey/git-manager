@@ -20,6 +20,11 @@ const MAX_INTERVAL_MINUTES = 60
  * a flaky network into a stream of notifications. The manual Fetch button
  * (`useActionToolbar.handleFetch`) is the one that reports.
  *
+ * That extends to the notch, which is why the call is marked `background`: a progress card for a
+ * transfer nobody asked for would light the notch up on every focus change (see below — returning
+ * to the app after more than one interval fetches immediately). What the fetch *found* still shows;
+ * the waiting does not.
+ *
  * It also never touches the undo/redo stacks, unlike the manual fetch: a background refresh that
  * silently cleared the redo stack every minute would eat work the user could still redo.
  *
@@ -49,7 +54,7 @@ export function useAutoFetch() {
     if (inFlightRef.current) return
     inFlightRef.current = true
     try {
-      await apiFetchRemote(repo, undefined, prune)
+      await apiFetchRemote(repo, undefined, prune, { background: true })
       // A fetch only moves remote refs: the branches' ahead/behind counts and the graph's remote
       // labels. The working tree is untouched, so `git-status` is left alone.
       queryClient.invalidateQueries({ queryKey: ['branches', repo] })
