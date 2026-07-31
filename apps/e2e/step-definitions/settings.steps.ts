@@ -279,3 +279,29 @@ Then(/^the GitHub login options are shown again$/, async () => {
   await expect($('[data-testid="github-login-pat-button"]')).toBeDisplayed()
   await expect($('[data-testid="github-device-flow-card"]')).not.toBeDisplayed()
 })
+
+When(/^I search settings for "([^"]*)"$/, async (query: string) => {
+  const input = $('[data-testid="settings-search"]')
+  await input.waitForDisplayed({ timeout: 10000 })
+  await input.setValue(query)
+})
+
+Then(/^the "([^"]*)" settings tab is shown$/, async (section: string) => {
+  await $(`[data-testid="settings-tab-${section}"]`).waitForDisplayed({ timeout: 10000 })
+})
+
+// The search filter removes non-matching tabs from the DOM entirely rather than hiding them
+// (SettingsPage.tsx's nav is built from the filtered list), so "not shown" means "not there".
+Then(/^the "([^"]*)" settings tab is not shown$/, async (section: string) => {
+  await expect($(`[data-testid="settings-tab-${section}"]`)).not.toBeExisting()
+})
+
+Then(/^the sponsor button is shown$/, async () => {
+  await $('[data-testid="support-sponsor-button"]').waitForDisplayed({ timeout: 10000 })
+})
+
+// "Unreleased" is always present (CHANGELOG.md's own convention, see ChangelogSection.tsx) —
+// asserting its testid rather than a specific version number keeps this stable across releases.
+Then(/^the changelog shows at least one release entry$/, async () => {
+  await $('[data-testid="changelog-entry-Unreleased"]').waitForDisplayed({ timeout: 10000 })
+})

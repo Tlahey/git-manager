@@ -788,7 +788,7 @@ covered below).
     branch, tag, cherry-pick) for whatever commit is selected.
   - e2e: `command-palette.feature → "Resetting to an earlier commit from the palette"` — ✅ tagged
 
-### Page: Settings (`settings.feature`) — 🔄 partially done (3 of 6 sub-parts)
+### Page: Settings (`settings.feature`) — ✅ done
 
 `SettingsPage.tsx` has more surface than the sub-parts below might suggest: a top-level
 **Global vs. Repository** split (`Scope = 'general' | 'local'`), eleven global sections, and a
@@ -820,18 +820,22 @@ own page — see "Repository-specific settings" below.
     tagged
 - **Sub-part — Find a setting by name**
   - Must show: the search box in the settings side panel filtering both section labels and their
-    localized keyword synonyms (e.g. typing "terminal" or "couleur" surfaces Appearance).
-  - e2e: `settings.feature → "Searching settings filters the side panel to matching sections"` — 🆕
-    write it
+    localized keyword synonyms (e.g. typing "terminal" surfaces Appearance/External Tools even
+    though neither label says "terminal").
+  - e2e: `settings.feature → "Searching settings filters the side panel to matching sections"` — ✅
+    done
 - **Sub-part — Support the project**
-  - Must show: Settings → Support, the sponsor button, and that it opens
-    `github.com/sponsors/Tlahey` in the system browser rather than in-app.
-  - e2e: `settings.feature → "The support tab links to GitHub Sponsors"` — 🆕 write it
+  - Must show: Settings → Support, the sponsor button.
+  - e2e: `settings.feature → "The support tab links to GitHub Sponsors"` — ✅ done. The scenario
+    stops at asserting the button is shown rather than clicking it: `apiOpenUrl`
+    (`api/shell.api.ts`) calls the Tauri shell plugin's `open()` directly, not a custom
+    `#[tauri::command]`, so it's unreachable from `command-mocking.feature`'s mocking mechanism —
+    clicking it for real would pop a real system browser during an automated run.
 - **Sub-part — Read what changed in this version**
   - Must show: Settings → Changelog, entries per release, PR references linkified. Distinct from the
     Activity Log and the Action Journal below — this one is the app's own release notes, not a log
     of anything the user did.
-  - e2e: `settings.feature → "The changelog tab lists recent release entries"` — 🆕 write it
+  - e2e: `settings.feature → "The changelog tab lists recent release entries"` — ✅ done
 
 ### Page: Repository-specific settings (`settings-repository.feature`) — 🆕 write it
 
