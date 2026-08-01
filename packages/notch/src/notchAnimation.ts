@@ -16,21 +16,27 @@
  * distance it needs to cover to be hidden — the fade is what hides it.
  */
 export const SLIDE_DISTANCE = 40
-export const ENTER_MS = 420
-export const EXIT_MS = 320
+export const ENTER_MS = 800
+export const EXIT_MS = 800
 
 /**
- * How far into the exit the card starts to fade, as a fraction of {@link EXIT_MS}.
+ * How long the card's *contents* take to fade.
  *
- * The fade deliberately *lags* the movement. Dropping the opacity the moment the card started
- * moving meant the two cancelled each other out: over a 180ms slide and a 200ms fade it was
- * already transparent before it had visibly gone anywhere, so it read as being switched off rather
- * than leaving. Letting it travel first, then fade on the way out, is what makes the exit an exit.
- *
- * Chosen so the fade *finishes* about when the slide does — at 0.35 of 320ms the 200ms CSS
- * transition lands at ~312ms — rather than being cut off mid-way by the surface closing.
+ * The shell — the black rectangle and its halo — does not fade at all: it slides, and that is the
+ * whole of its animation. Only what is drawn inside it fades, which is what keeps the movement
+ * legible. An earlier version faded the shell too, and the two cancelled each other out: the card
+ * went transparent before it had visibly gone anywhere, so a real slide read as the card simply
+ * being switched off.
  */
-export const EXIT_FADE_AT = 0.35
+export const CONTENT_FADE_MS = 300
+
+/**
+ * How far into the exit the contents start to fade, as a fraction of {@link EXIT_MS}.
+ *
+ * Chosen so the fade *finishes* as the slide does — 0.6 of 800ms leaves exactly the 300ms the fade
+ * needs — rather than emptying the card early and leaving a blank shell to slide away on its own.
+ */
+export const EXIT_FADE_AT = 0.6
 
 export function easeOutCubic(t: number): number {
   return 1 - (1 - t) ** 3

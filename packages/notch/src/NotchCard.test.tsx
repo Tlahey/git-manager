@@ -84,14 +84,35 @@ describe('NotchCard', () => {
     expect(halo.style.getPropertyValue('--notch-tone-rgb')).toBe(NOTCH_TONE_RGB.error)
   })
 
-  it('fades the card and stops the halo pulsing while hidden', () => {
+  // Only the contents fade. Fading the shell as well is what made a real slide read as the card
+  // being switched off: it went transparent before it had visibly moved, so the two cancelled out.
+  it('fades its contents while leaving the shell solid', () => {
     const { rerender } = render(
       <NotchCard tone="success" visible>
         <div />
       </NotchCard>
     )
-    expect(screen.getByTestId('notch-halo').style.opacity).toBe('1')
-    expect(screen.getByTestId('notch-card').className).toContain('opacity-100')
+    expect(screen.getByTestId('notch-content').style.opacity).toBe('1')
+
+    rerender(
+      <NotchCard tone="success" visible={false}>
+        <div />
+      </NotchCard>
+    )
+    expect(screen.getByTestId('notch-content').style.opacity).toBe('0')
+    // The shell carries no opacity of its own, in either state — it slides, and that is all.
+    const card = screen.getByTestId('notch-card')
+    expect(card.className).not.toContain('opacity-')
+    expect(card.style.opacity).toBe('')
+  })
+
+  it('keeps the halo glowing throughout, since it travels with the shell', () => {
+    const { rerender } = render(
+      <NotchCard tone="success" visible>
+        <div />
+      </NotchCard>
+    )
+    expect(screen.getByTestId('notch-halo').style.animation).not.toBe('')
 
     rerender(
       <NotchCard tone="success" visible={false}>
@@ -99,10 +120,8 @@ describe('NotchCard', () => {
       </NotchCard>
     )
     const halo = screen.getByTestId('notch-halo')
-    expect(halo.style.opacity).toBe('0')
-    // An invisible card that keeps animating its shadow is work nobody can see.
-    expect(halo.style.animation).toBe('')
-    expect(screen.getByTestId('notch-card').className).toContain('opacity-0')
+    expect(halo.style.opacity).toBe('')
+    expect(halo.style.animation).not.toBe('')
   })
 
   it('activates on a click anywhere on the card', async () => {

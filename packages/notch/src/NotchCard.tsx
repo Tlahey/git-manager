@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { cn } from '@git-manager/ui'
+import { CONTENT_FADE_MS } from './notchAnimation'
 import {
   bandSlotMaxWidth,
   HALO_MARGIN,
@@ -19,7 +20,12 @@ const HALO_PULSE_DURATION = '2s'
 
 export interface NotchCardProps {
   tone: NotchTone
-  /** Drives the fade. The presenter owns it — `false` before the entrance and during the exit. */
+  /**
+   * Drives the fade of the card's *contents* — the shell itself never fades, it only slides.
+   *
+   * The presenter owns it: `false` before the entrance, and again once the exit slide is far
+   * enough along that the fade will finish as the card leaves.
+   */
   visible: boolean
   /** Content for the left sliver of the reserved band. Capped so it can't run under the housing. */
   bandStart?: ReactNode
@@ -98,15 +104,14 @@ export function NotchCard({
       <div
         aria-hidden="true"
         data-testid="notch-halo"
-        className="absolute rounded-b-2xl transition-opacity duration-200"
+        className="absolute rounded-b-2xl"
         style={
           {
             ...inset,
             '--notch-tone-rgb': toneRgb,
-            opacity: visible ? 1 : 0,
-            animation: visible
-              ? `${HALO_PULSE_KEYFRAMES} ${HALO_PULSE_DURATION} ease-in-out infinite`
-              : undefined,
+            // No fade: the halo belongs to the shell, and the shell's entire animation is the
+            // slide. It travels with the card and glows the whole way.
+            animation: `${HALO_PULSE_KEYFRAMES} ${HALO_PULSE_DURATION} ease-in-out infinite`,
           } as CSSProperties
         }
       />
@@ -126,27 +131,40 @@ export function NotchCard({
           // margin around the card (a dark haze, and a frosted sample of the desktop) and stack
           // with the halo into something that reads as a pane of glass. The halo is the only thing
           // allowed to render outside the card's own rectangle.
-          'absolute flex flex-col overflow-hidden rounded-b-2xl border border-white/10 bg-black transition-opacity duration-200 ease-out',
-          onActivate && 'cursor-pointer',
-          visible ? 'opacity-100' : 'opacity-0'
+          // No opacity of its own: the shell slides, and that is all it does. Fading it as well
+          // used to cancel the movement out — see `CONTENT_FADE_MS`.
+          'absolute flex flex-col overflow-hidden rounded-b-2xl border border-white/10 bg-black',
+          onActivate && 'cursor-pointer'
         )}
       >
-        {/* ── Row 0: the reserved notch band ──────────────────────────────────────────────────
-            Only the two slivers either side of the camera housing hold anything. */}
+        {/* Everything drawn *inside* the shell fades as one, so the card arrives and leaves as a
+            solid object with its contents resolving in and out of it — rather than the whole
+            thing dissolving, which is indistinguishable from it never having moved. */}
         <div
-          data-testid="notch-band"
-          style={{ height: withRule(bandHeight) }}
-          className="flex shrink-0 items-center justify-between border-b border-white/5 pl-3 pr-2"
+          data-testid="notch-content"
+          className="flex min-h-0 flex-1 flex-col"
+          style={{
+            opacity: visible ? 1 : 0,
+            transition: `opacity ${CONTENT_FADE_MS}ms ease-out`,
+          }}
         >
-          <div style={slotStyle} className="min-w-0 truncate">
-            {bandStart}
+          {/* ── Row 0: the reserved notch band ────────────────────────────────────────────────
+              Only the two slivers either side of the camera housing hold anything. */}
+          <div
+            data-testid="notch-band"
+            style={{ height: withRule(bandHeight) }}
+            className="flex shrink-0 items-center justify-between border-b border-white/5 pl-3 pr-2"
+          >
+            <div style={slotStyle} className="min-w-0 truncate">
+              {bandStart}
+            </div>
+            <div style={slotStyle} className="flex min-w-0 shrink-0 items-center justify-end">
+              {bandEnd}
+            </div>
           </div>
-          <div style={slotStyle} className="flex min-w-0 shrink-0 items-center justify-end">
-            {bandEnd}
-          </div>
-        </div>
 
-        {children}
+          {children}
+        </div>
       </div>
     </div>
   )
