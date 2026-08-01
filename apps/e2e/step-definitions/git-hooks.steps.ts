@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
-import { browser, expect } from '@wdio/globals'
-import { Given, Then } from '@wdio/cucumber-framework'
+import { $, browser, expect } from '@wdio/globals'
+import { After, Given, Then, When } from '@wdio/cucumber-framework'
 import { getActiveRepoPath } from '../support/activeRepo'
 
 /**
@@ -141,4 +141,76 @@ Then(/^the notch reported the "([^"]*)" hook running$/, async (hookName: string)
     throw new Error(`no running-hook card was recorded (got: ${JSON.stringify(cards)})`)
   }
   expect(running.eyebrow).toContain(hookName)
+})
+
+/**
+ * Opens the caret beside Commit, where the "without hooks" escape hatch lives.
+ *
+ * Through a dispatched `pointerdown` rather than `click()`: Radix's dropdown trigger opens on
+ * pointerdown, and this provider's `click()` does not produce one — measured, the trigger stayed
+ * at `aria-expanded="false"` and the menu never appeared, which showed up as a screenshot of a
+ * closed menu rather than as a failure.
+ */
+When(/^I open the commit options$/, async () => {
+  const caret = $('[data-testid="commit-menu-btn"]')
+  await caret.waitForEnabled({ timeout: 10000 })
+  await browser.execute(() => {
+    const trigger = document.querySelector('[data-testid="commit-menu-btn"]')
+    trigger?.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        pointerType: 'mouse',
+      })
+    )
+  })
+})
+
+/**
+ * Waits for the menu's *contents*, which is also what makes the screenshot deterministic — an
+ * earlier version waited for the caret it had just clicked, so the capture raced the menu open and
+ * usually won.
+ */
+/**
+ * Waits for the menu's *contents*, which is also what makes the screenshot deterministic — an
+ * earlier version waited for the caret it had just clicked, so the capture raced the menu open and
+ * usually won.
+ */
+Then(/^the commit options offer to skip the hooks$/, async () => {
+  await browser.waitUntil(
+    async () =>
+      browser.execute(() => document.body.innerText.includes('without running hooks')),
+    { timeout: 5000, timeoutMsg: 'the commit options menu never offered to skip the hooks' }
+  )
+})
+
+/**
+ * Retires whatever card a scenario left up, and puts the driver back on the main window.
+ *
+ * These are the only scenarios in the suite that raise a notch card, and the card is a second OS
+ * window that closes on its own timer. Left to do that, it closes *during the next scenario* —
+ * invalidating the driver's window mid-command, which surfaces at that scenario's fixture-open
+ * step as "no such window" and reads as a broken fixture. Clearing the queue here closes it now,
+ * deterministically, while nothing else is in flight.
+ */
+After({ tags: '@hooks' }, async () => {
+  try {
+    const handles = await browser.getWindowHandles()
+    if (handles.includes('main')) await browser.switchToWindow('main')
+
+    await browser.execute(() => {
+      const store = (
+        window as unknown as { __e2eNotchQueueStore?: { getState: () => { clear: () => void } } }
+      ).__e2eNotchQueueStore
+      store?.getState().clear()
+    })
+
+    await browser.waitUntil(async () => (await browser.getWindowHandles()).length === 1, {
+      timeout: 5000,
+      timeoutMsg: 'the notch window was still open when the scenario ended',
+    })
+  } catch {
+    // A cleanup that cannot run is not worth failing a scenario that otherwise passed.
+  }
 })

@@ -1,14 +1,43 @@
+# Why these exist, which is test rationale rather than anything a reader of the
+# documentation needs: libgit2 runs no hooks at all, so every hook a repository
+# installed was silently skipped for anything done from this app — the same commit
+# passing in a terminal and passing here for entirely different reasons. The
+# fixtures below carry real, executable hooks, so what is asserted is that a
+# genuine script ran, refused, and had its own output carried back.
 @hooks @notch
-Feature: Repository hooks gate what the app writes
+Feature: Repository hooks
   As a user whose repository installs its own quality gates
   I want the app to run them exactly as the command line does
   So that a commit made here cannot bypass a check a commit made there would fail
 
-  libgit2 runs no hooks at all, so every hook a repository installed was silently
-  skipped for anything done from this app — the same commit passing in a terminal
-  and passing here for entirely different reasons. These scenarios use fixtures
-  carrying real, executable hooks, so what is asserted is that a genuine
-  `pre-commit` script ran, refused, and had its own output carried back.
+  A repository can install scripts that Git runs before it records or sends
+  anything, and that refuse the operation when they are not happy. They are how a
+  project keeps unformatted code, a bad commit message or a failing test suite
+  out of its history — and they apply here exactly as they do in a terminal.
+
+  @doc @screenshots
+  Scenario: Your repository's hooks run here exactly as they do in a terminal
+    `pre-commit` and `commit-msg` run on every commit you make here, and
+    `pre-push` on every push. When one refuses, nothing is written and nothing
+    reaches the remote — and the notification card that appears carries the
+    hook's own output, because "a hook refused" tells you nothing you can act on
+    while the lines it printed tell you exactly which file and which rule. A slow
+    one says so while it works, rather than leaving the app looking frozen.
+
+    A hook that hangs or misfires should not be able to lock you out, so the
+    caret beside Commit — and the one beside Push — offers to run the operation
+    without them. It is a choice you make once, for one commit, rather than a
+    setting you can leave switched on and forget: hooks quietly not running is
+    the thing this is here to prevent.
+    Given the app language is English
+    And AI features are turned off
+    And the "hooks-plain" fixture repository is opened
+    When I select the working-tree changes in the graph
+    And I stage the file "clean.txt"
+    And I enter the commit message "chore: tidy the sample config"
+    And I open the commit options
+    Then the commit options offer to skip the hooks
+    And a full-window screenshot is saved as "doc-git-hooks"
 
   Scenario: A pre-commit hook that refuses stops the commit and shows its output
     Given the "hooks-plain" fixture repository is opened

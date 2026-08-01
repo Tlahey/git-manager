@@ -20,6 +20,17 @@ const PERSIST_KEY = 'git-manager-repos-ui'
  * the main app, which then rehydrates from the seed.
  */
 async function seedAndReload(repoPath: string) {
+  // Everything below is about the main window, and the driver may not be on it: the app can raise
+  // a notch card, which is a second OS window that closes on its own timer — possibly in the
+  // middle of this step, leaving the active window invalid. Failing here reads as a broken
+  // fixture, which is the one thing this step should never be mistaken for.
+  try {
+    const handles = await browser.getWindowHandles()
+    if (handles.includes('main')) await browser.switchToWindow('main')
+  } catch {
+    // No handles to enumerate is not something this step can fix; let the navigation below report.
+  }
+
   const origin = await browser.execute(() => window.location.origin)
 
   await browser.execute(
@@ -76,11 +87,23 @@ Given(/^the "([^"]*)" fixture repository is opened$/, async (fixtureName: string
   // setItem and the navigation the reloaded app rehydrates the old repo. `repo-view` shows up
   // either way, so this step used to report success while every following step silently ran
   // against the wrong repository. Verify what the app rehydrated, and re-seed if it lost the race.
+  let lastError: unknown
   for (let attempt = 0; attempt < 3; attempt++) {
-    await seedAndReload(repoPath)
-    if ((await openedRepo()) === repoPath) return
+    try {
+      await seedAndReload(repoPath)
+      if ((await openedRepo()) === repoPath) return
+    } catch (e) {
+      // The other way this races, and the one that reads as a broken fixture rather than as a
+      // race: the app can have a second window up (a notch card), and it closes on its own timer.
+      // When that lands mid-navigation the provider drops the active window and every command
+      // here fails with "no such window". Retrying is the same answer the seed race already gets
+      // — by the next attempt the extra window is gone for good.
+      lastError = e
+    }
   }
   throw new Error(
-    `The app never opened ${repoPath} — the localStorage seed kept losing the race against the app's own persisted state (last opened: ${await openedRepo()})`
+    `The app never opened ${repoPath} — the localStorage seed kept losing the race against the app's own persisted state (last opened: ${await openedRepo().catch(() => 'unknown')})${
+      lastError ? `; last error: ${String(lastError).slice(0, 200)}` : ''
+    }`
   )
 })
