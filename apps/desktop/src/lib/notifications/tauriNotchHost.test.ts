@@ -48,25 +48,49 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
+/** A stand-in for the element the card is drawn in, which the host moves by transform. */
+function surfaceRef(): { current: HTMLElement | null } {
+  return { current: document.createElement('div') }
+}
+
 describe('createTauriNotchHost', () => {
   it('raises above the menu bar before clearing the backdrop', async () => {
     // Order matters: the raise is what lets the card emerge from behind the bar during the slide,
     // and it has to be in place before anything is painted.
-    const host = createTauriNotchHost({ windowX: 500, withSound: false })
+    const host = createTauriNotchHost({ restY: 0, surface: surfaceRef(), withSound: false })
     await host.prepare?.()
     expect(calls).toEqual(['raise', 'clearBackdrop'])
   })
 
-  it('moves the window vertically, holding its x still', async () => {
-    const host = createTauriNotchHost({ windowX: 500, withSound: false })
-    await host.setY(120)
-    const position = setPosition.mock.calls[0]![0]
-    expect(position.x).toBe(500)
-    expect(position.y).toBe(120)
+  // The card moves inside a window that stays put. Animating the window itself is what the notch
+  // used to do, and it could not survive the card having to travel its own full height: macOS
+  // refuses to place a window entirely above the top of the screen, so the card never appeared.
+  it('moves the card inside the window, as an offset from its resting spot', async () => {
+    const surface = surfaceRef()
+    const host = createTauriNotchHost({ restY: 100, surface, withSound: false })
+
+    await host.setY(100)
+    expect(surface.current!.style.transform).toBe('translateY(0px)')
+
+    await host.setY(40)
+    expect(surface.current!.style.transform).toBe('translateY(-60px)')
+  })
+
+  it('never moves the window itself', async () => {
+    const host = createTauriNotchHost({ restY: 100, surface: surfaceRef(), withSound: false })
+    await host.setY(40)
+    expect(setPosition).not.toHaveBeenCalled()
+  })
+
+  it('survives a frame that lands before the surface is mounted', async () => {
+    // The presenter parks the card before the first paint; a null ref must not throw and lose the
+    // whole entrance.
+    const host = createTauriNotchHost({ restY: 100, surface: { current: null }, withSound: false })
+    await expect(host.setY(40)).resolves.toBeUndefined()
   })
 
   it('delegates show and close to the window itself', async () => {
-    const host = createTauriNotchHost({ windowX: 0, withSound: false })
+    const host = createTauriNotchHost({ restY: 0, surface: surfaceRef(), withSound: false })
     await host.show()
     await host.close()
     expect(showWindow).toHaveBeenCalled()
@@ -74,14 +98,14 @@ describe('createTauriNotchHost', () => {
   })
 
   it('chimes with the fixed notch sound when the user enabled sound', () => {
-    const host = createTauriNotchHost({ windowX: 0, withSound: true })
+    const host = createTauriNotchHost({ restY: 0, surface: surfaceRef(), withSound: true })
     host.playSound?.()
     expect(playSound).toHaveBeenCalledWith(NOTCH_SOUND)
   })
 
   it('has no sound hook at all when the user turned sound off', () => {
     // Absent rather than a no-op, so the presenter can't chime by accident.
-    const host = createTauriNotchHost({ windowX: 0, withSound: false })
+    const host = createTauriNotchHost({ restY: 0, surface: surfaceRef(), withSound: false })
     expect(host.playSound).toBeUndefined()
   })
 })

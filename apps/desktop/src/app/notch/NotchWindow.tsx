@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { emit } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { useTranslation } from '@git-manager/i18n'
@@ -35,7 +35,8 @@ export function NotchWindow({
   iconId,
   route,
   externalUrl,
-  windowX,
+  // `windowX` is deliberately not read: the window is positioned once, at creation, and never
+  // moves again — the card slides inside it.
   windowY,
   bandHeight,
   housingHalfWidth,
@@ -53,20 +54,25 @@ export function NotchWindow({
   // would let a settings change restart the countdown under the user.
   const notifications = useMemo(() => useSettingsStore.getState().settings.notifications, [])
 
+  // The element the card is drawn in. The presenter moves *this*, not the OS window — see
+  // `tauriNotchHost`'s doc comment for why the window has to stay put.
+  const slideSurfaceRef = useRef<HTMLDivElement>(null)
+
   const host = useMemo(
     () =>
       createTauriNotchHost({
-        windowX,
+        restY: windowY,
+        surface: slideSurfaceRef,
         withSound: notifications?.enableSound ?? false,
       }),
-    [windowX, notifications]
+    [windowY, notifications]
   )
 
   // The whole OS window, halo margin included. Sliding by exactly this is what makes the card
-  // appear from nothing and leave to nothing: parked one window-height above its resting spot it
-  // is entirely off the top of the screen, so the movement alone does the appearing and the
-  // disappearing. A shorter nudge left it visible at both ends, which is why it used to look like
-  // the card was switched on and off rather than arriving and leaving.
+  // appear from nothing and leave to nothing: moved one window-height up inside the window it is
+  // entirely outside the clip, so the movement alone does the appearing and the disappearing. A
+  // shorter nudge left it visible at both ends, which is why it used to look like the card was
+  // switched on and off rather than arriving and leaving.
   const windowHeight = useMemo(
     () => measureCardHeight(model, bandHeight) + HALO_MARGIN * 2,
     [model, bandHeight]
@@ -156,22 +162,34 @@ export function NotchWindow({
   }
 
   return (
-    <div className="h-screen w-screen">
-      <NotchNotification
-        model={model}
-        visible={presenter.visible}
-        {...(iconId ? { icon: getNotificationIcon(iconId) } : {})}
-        // "Git Manager" is the product name — a proper noun, deliberately untranslated.
-        productName="Git Manager"
-        closeLabel={t('actions.close')}
-        onAction={(actionId) => void handleAction(actionId)}
-        onActivate={() => void activate()}
-        onDismiss={presenter.dismiss}
-        onPointerEnter={presenter.pauseAutoDismiss}
-        onPointerLeave={presenter.resumeAutoDismiss}
-        {...(bandHeight !== undefined ? { bandHeight } : {})}
-        {...(housingHalfWidth !== undefined ? { housingHalfWidth } : {})}
-      />
+    // The window's own bounds are the mask. The card is moved *inside* it and clipped by this
+    // element, which is what lets it travel a full height out of sight — see `slideSurfaceRef`.
+    <div className="h-screen w-screen overflow-hidden">
+      <div
+        ref={slideSurfaceRef}
+        className="h-full w-full"
+        // Parked out of sight for the very first paint, before the presenter has run at all. The
+        // window is created invisible and only shown once the presenter has parked it, so this is
+        // belt and braces — but a card that flashes at its resting spot before sliding in is
+        // exactly the kind of thing that only shows up on a slow machine.
+        style={{ transform: 'translateY(-100%)' }}
+      >
+        <NotchNotification
+          model={model}
+          visible={presenter.visible}
+          {...(iconId ? { icon: getNotificationIcon(iconId) } : {})}
+          // "Git Manager" is the product name — a proper noun, deliberately untranslated.
+          productName="Git Manager"
+          closeLabel={t('actions.close')}
+          onAction={(actionId) => void handleAction(actionId)}
+          onActivate={() => void activate()}
+          onDismiss={presenter.dismiss}
+          onPointerEnter={presenter.pauseAutoDismiss}
+          onPointerLeave={presenter.resumeAutoDismiss}
+          {...(bandHeight !== undefined ? { bandHeight } : {})}
+          {...(housingHalfWidth !== undefined ? { housingHalfWidth } : {})}
+        />
+      </div>
     </div>
   )
 }
