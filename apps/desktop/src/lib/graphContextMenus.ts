@@ -694,6 +694,9 @@ export interface TagMenuActions {
   onDeleteRemote: () => void
   onCopyName: () => void
   onCopyLink: () => void
+  /** Copies the SHA of the commit the tag points at — same action/icon as the commit and branch
+   * menus' own copy-SHA item. */
+  onCopySha: () => void
   /** Keep the tag's badge out of the graph (or bring it back). */
   onToggleHidden: () => void
   /** Isolate the graph on the branch carrying the tag's commit. */
@@ -745,6 +748,7 @@ export function buildTagMenuSpec(
     menuItem({ text: t('gitTree.tagMenu.deleteRemote', p), action: actions.onDeleteRemote }),
     menuSeparator(),
     menuItem({ text: t('gitTree.tagMenu.copyName'), action: actions.onCopyName }),
+    menuItem({ text: t('gitTree.contextMenu.copySha'), icon: 'copy_sha', action: actions.onCopySha }),
     menuSeparator(),
     menuItem({ text: t('gitTree.tagMenu.copyLink', p), action: actions.onCopyLink }),
     menuSeparator(),
