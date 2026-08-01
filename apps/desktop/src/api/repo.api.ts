@@ -3,6 +3,7 @@ import {
   scanRepos,
   getRepoSummary,
   openInEditor,
+  revealPathInFinder,
   getRepoReadme,
   cloneRepo,
   initRepo,
@@ -37,6 +38,12 @@ export async function apiGetRepoSummary(path: string) {
 
 export async function apiOpenInEditor(path: string, command: string) {
   return openInEditor(path, command)
+}
+
+/** Reveals an arbitrary filesystem path in the Finder — e.g. a linked worktree's directory, from
+ * the commit graph's `WIP:<path>` row context menu. */
+export async function apiRevealPathInFinder(path: string) {
+  return revealPathInFinder(path)
 }
 
 export async function apiGetRepoReadme(path: string) {

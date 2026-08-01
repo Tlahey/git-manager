@@ -1,8 +1,7 @@
 use crate::error::AppError;
-use crate::models::{GitDiff, GitDiffFile};
+use crate::models::GitDiff;
 use crate::services::{git_diff, git_graph};
-use git2::{DiffOptions, Oid, Repository, Sort};
-use std::cell::RefCell;
+use git2::{Oid, Repository, Sort};
 use std::collections::HashMap;
 
 pub use crate::services::git_graph::{LogGraphNode, LogRef};
@@ -298,69 +297,23 @@ pub async fn get_commits_merged_diff(
     .map_err(Into::into)
 }
 
-/// Returns the full diff of a commit vs. its first parent
+/// Returns the full diff of a commit vs. one of its parents — the first one unless `parent_index`
+/// (0-based) names another, which only a merge commit has. See `git_diff::commit_diff`.
 ///
 /// Runs on a blocking-pool thread — the diff scales with the size of the commit's change.
 #[tauri::command]
-pub async fn get_commit_diff(path: String, oid: String) -> Result<GitDiff, String> {
-    tauri::async_runtime::spawn_blocking(move || get_commit_diff_blocking(path, oid))
-        .await
-        .map_err(|e| format!("diff task failed to complete: {e}"))?
-}
-
-fn get_commit_diff_blocking(path: String, oid: String) -> Result<GitDiff, String> {
-    let mut repo = Repository::open(&path).map_err(AppError::Git)?;
-    let commit_oid = Oid::from_str(&oid).map_err(AppError::Git)?;
-
-    // Check if the commit is a stash commit
-    let mut is_stash = false;
-    let _ = repo.stash_foreach(|_index, _message, stash_oid| {
-        if *stash_oid == commit_oid {
-            is_stash = true;
-            false
-        } else {
-            true
-        }
-    });
-
-    let commit = repo.find_commit(commit_oid).map_err(AppError::Git)?;
-
-    let commit_tree = commit.tree().map_err(AppError::Git)?;
-    let parent_tree = if commit.parent_count() > 0 {
-        let parent = commit.parent(0).map_err(AppError::Git)?;
-        Some(parent.tree().map_err(AppError::Git)?)
-    } else {
-        None
-    };
-
-    let mut diff_opts = DiffOptions::new();
-    diff_opts.context_lines(3).ignore_whitespace_change(false);
-
-    let diff = repo
-        .diff_tree_to_tree(
-            parent_tree.as_ref(),
-            Some(&commit_tree),
-            Some(&mut diff_opts),
-        )
-        .map_err(AppError::Git)?;
-
-    let files: RefCell<Vec<GitDiffFile>> = RefCell::new(Vec::new());
-
-    git_diff::diff_foreach_files(&diff, &files, false).map_err(|e| AppError::Git(e).to_string())?;
-
-    if is_stash && commit.parent_count() == 3 {
-        if let Ok(untracked_parent) = commit.parent(2) {
-            if let Ok(untracked_tree) = untracked_parent.tree() {
-                if let Ok(untracked_diff) =
-                    repo.diff_tree_to_tree(None, Some(&untracked_tree), Some(&mut diff_opts))
-                {
-                    let _ = git_diff::diff_foreach_files(&untracked_diff, &files, true);
-                }
-            }
-        }
-    }
-
-    Ok(git_diff::finalize(files.into_inner()))
+pub async fn get_commit_diff(
+    path: String,
+    oid: String,
+    parent_index: Option<u32>,
+) -> Result<GitDiff, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_diff::commit_diff(&mut repo, &oid, parent_index)
+    })
+    .await
+    .map_err(|e| format!("diff task failed to complete: {e}"))?
+    .map_err(Into::into)
 }
 
 /// Diffs a commit's tree against the current working directory (not the index).
@@ -371,6 +324,26 @@ pub async fn compare_commit_to_workdir(path: String, oid: String) -> Result<GitD
     tauri::async_runtime::spawn_blocking(move || {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
         git_diff::diff_commit_to_workdir(&repo, &oid)
+    })
+    .await
+    .map_err(|e| format!("diff task failed to complete: {e}"))?
+    .map_err(Into::into)
+}
+
+/// Diffs two arbitrary refs against each other (branch vs branch, but also tags or SHAs) — the
+/// "compare two branches" view. See `git_diff::diff_refs` for why this is the direct two-dot diff
+/// and not a merge-base one.
+///
+/// Runs on a blocking-pool thread — the diff scales with how far apart the two refs have drifted.
+#[tauri::command]
+pub async fn compare_refs(
+    path: String,
+    base_ref: String,
+    head_ref: String,
+) -> Result<GitDiff, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_diff::diff_refs(&repo, &base_ref, &head_ref)
     })
     .await
     .map_err(|e| format!("diff task failed to complete: {e}"))?

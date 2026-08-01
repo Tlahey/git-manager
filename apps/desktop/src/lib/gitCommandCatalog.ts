@@ -356,6 +356,11 @@ const CATALOG: Record<string, GitCommandSpec> = {
     family: 'remote',
     render: (a) => [`git push ${remote(a)} :refs/tags/${str(a, 'tagName') ?? '<tag>'}`],
   },
+  delete_remote_branch: {
+    titleKey: 'gitCommand.deleteRemoteBranch',
+    family: 'remote',
+    render: (a) => [`git push ${remote(a)} :refs/heads/${str(a, 'branchName') ?? '<branch>'}`],
+  },
   add_remote: {
     titleKey: 'gitCommand.addRemote',
     family: 'remote',

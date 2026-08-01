@@ -7,9 +7,19 @@ import { normalizeMenuSpec, type MenuSpecNode } from '../../lib/nativeMenuSpec'
 const { apiOpenRepo } = vi.hoisted(() => ({ apiOpenRepo: vi.fn() }))
 vi.mock('../../api/repo.api', () => ({ apiOpenRepo }))
 
-const { apiDeleteBranch } = vi.hoisted(() => ({ apiDeleteBranch: vi.fn() }))
+const { apiDeleteBranch, apiDeleteRemoteBranch, apiCompareRefs, apiSetBranchUpstream } = vi.hoisted(
+  () => ({
+    apiDeleteBranch: vi.fn(),
+    apiDeleteRemoteBranch: vi.fn(),
+    apiCompareRefs: vi.fn(),
+    apiSetBranchUpstream: vi.fn(),
+  })
+)
 vi.mock('../../api/git.api', () => ({
   apiDeleteBranch,
+  apiDeleteRemoteBranch,
+  apiCompareRefs,
+  apiSetBranchUpstream,
   apiPullBranch: vi.fn(),
   apiPushBranch: vi.fn(),
   apiFastForwardBranch: vi.fn(),
@@ -32,9 +42,12 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   return { ...actual, useQueryClient: () => ({ invalidateQueries }) }
 })
 
-// Pulled in by the sidebar branch menu (AI explanation base resolution). Stubbed rather than
-// wrapped in a QueryClientProvider — this file renders RepoView without one on purpose.
-vi.mock('../../hooks/useBranches', () => ({ useBranches: () => ({ data: [] }) }))
+// Pulled in by the sidebar branch menu (AI explanation base resolution, and the "Set upstream"
+// default). Stubbed rather than wrapped in a QueryClientProvider — this file renders RepoView
+// without one on purpose. A controllable mock (not a fixed `{ data: [] }`) so the set-upstream
+// tests can feed a branch list without every other test having to care.
+const { useBranchesMock } = vi.hoisted(() => ({ useBranchesMock: vi.fn() }))
+vi.mock('../../hooks/useBranches', () => ({ useBranches: useBranchesMock }))
 
 vi.mock('../../components/git-graph/GitGraph', () => ({
   GitGraph: (props: { repoPath: string; branch?: string; searchQuery: string }) => (
@@ -170,6 +183,7 @@ beforeEach(() => {
   useRepoViewTabsStore.setState({ byPath: {} })
   apiOpenRepo.mockResolvedValue(repo())
   vi.spyOn(useUndoHistoryStore.getState(), 'validateAndPrune').mockResolvedValue(undefined)
+  useBranchesMock.mockReturnValue({ data: [] })
 })
 
 describe('RepoView — no active repo', () => {
@@ -303,7 +317,7 @@ describe('RepoView — branch context menu', () => {
     expect(menuItemByText('Delete local-branch')).toBeDefined()
   })
 
-  it('opens the menu for a remote branch too (checkout, no rename, disabled delete)', async () => {
+  it('opens the menu for a remote branch too (checkout, no rename, a real delete)', async () => {
     const user = userEvent.setup()
     useRepoUIStore.setState({ activeRepo: '/repo' })
     render(<RepoView />)
@@ -311,7 +325,7 @@ describe('RepoView — branch context menu', () => {
     expect(showNativeMenu).toHaveBeenCalledOnce()
     expect(menuItemByText('Checkout origin/main')).toBeDefined()
     expect(menuItemByText('Rename origin/main')).toBeUndefined()
-    expect(menuItemByText('Delete origin/main')?.enabled).toBe(false)
+    expect(menuItemByText('Delete origin/main')?.enabled).not.toBe(false)
   })
 
   it('the delete item deletes the branch and refreshes', async () => {
@@ -335,6 +349,91 @@ describe('RepoView — branch context menu', () => {
     await user.click(screen.getByText('context-menu-local'))
     await act(async () => menuItemByText('Rename local-branch')!.action!())
     expect(await screen.findByTestId('rename-branch-dialog')).toBeInTheDocument()
+  })
+
+  it('the delete item on a remote branch opens the confirm dialog instead of deleting outright', async () => {
+    const user = userEvent.setup()
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    render(<RepoView />)
+    await user.click(screen.getByText('context-menu-remote'))
+    await act(async () => menuItemByText('Delete origin/main')!.action!())
+
+    expect(apiDeleteRemoteBranch).not.toHaveBeenCalled()
+    expect(await screen.findByTestId('delete-remote-branch-dialog')).toBeInTheDocument()
+    expect(screen.getByText('Delete main from origin')).toBeInTheDocument()
+  })
+
+  it('confirming the remote delete dialog calls the remote-delete API', async () => {
+    const user = userEvent.setup()
+    apiDeleteRemoteBranch.mockResolvedValue(undefined)
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    render(<RepoView />)
+    await user.click(screen.getByText('context-menu-remote'))
+    await act(async () => menuItemByText('Delete origin/main')!.action!())
+    await screen.findByTestId('delete-remote-branch-dialog')
+
+    await user.click(screen.getByTestId('delete-remote-branch-confirm'))
+
+    expect(apiDeleteRemoteBranch).toHaveBeenCalledWith('/repo', 'main', 'origin')
+  })
+
+  // The comparison dialog is mounted here rather than in the graph, so that it opens from a sidebar
+  // row even while the graph is unmounted (file explorer open) — the whole reason it doesn't travel
+  // through the graph's pending-action bridge.
+  it('the compare item opens the branch comparison dialog on the row and the current branch', async () => {
+    const user = userEvent.setup()
+    apiCompareRefs.mockResolvedValue({ files: [], totalAdditions: 0, totalDeletions: 0 })
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    useRepoDataStore.setState({ repoCache: { '/repo': repo({ head: 'main' }) } })
+    render(<RepoView />)
+    await user.click(screen.getByText('context-menu-local'))
+    await act(async () => menuItemByText('Compare local-branch with…')!.action!())
+
+    expect(useRepoUIStore.getState().compareRefsTarget).toEqual({
+      baseRef: 'local-branch',
+      headRef: 'main',
+    })
+    expect(await screen.findByTestId('compare-branches-dialog')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(apiCompareRefs).toHaveBeenCalledWith('/repo', 'local-branch', 'main')
+    )
+  })
+
+  it('the set-upstream item opens the picker dialog when no default is unambiguous', async () => {
+    // Default mock (see beforeEach) has no branches at all, so there is nothing to default to.
+    const user = userEvent.setup()
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    render(<RepoView />)
+    await user.click(screen.getByText('context-menu-local'))
+    await act(async () => menuItemByText('Set upstream')!.action!())
+    expect(await screen.findByTestId('set-upstream-dialog')).toBeInTheDocument()
+    expect(apiSetBranchUpstream).not.toHaveBeenCalled()
+  })
+
+  it('the set-upstream item applies an unambiguous origin/<name> match directly, no dialog', async () => {
+    useBranchesMock.mockReturnValue({
+      data: [
+        {
+          name: 'origin/local-branch',
+          shortName: 'local-branch',
+          isHead: false,
+          isRemote: true,
+          commitOid: 'sha123',
+          commitMessage: 'msg',
+          commitTimestamp: 0,
+          aheadCount: 0,
+          behindCount: 0,
+        },
+      ],
+    })
+    apiSetBranchUpstream.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    render(<RepoView />)
+    await user.click(screen.getByText('context-menu-local'))
+    await act(async () => menuItemByText('Set upstream')!.action!())
+    expect(apiSetBranchUpstream).toHaveBeenCalledWith('/repo', 'local-branch', 'origin/local-branch')
+    expect(screen.queryByTestId('set-upstream-dialog')).not.toBeInTheDocument()
   })
 })
 

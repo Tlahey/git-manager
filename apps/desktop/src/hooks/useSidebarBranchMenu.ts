@@ -7,9 +7,11 @@ import type { GitBranch, GitRef } from '@git-manager/git-types'
 import { showNativeMenu } from '../api/nativeMenu.api'
 import {
   buildSidebarBranchMenuSpec,
+  remoteBranchTarget,
   type BranchMenuActions,
   type BranchTipCommitActions,
   type CommitCopyActions,
+  type PendingDeleteRemoteBranch,
 } from '../lib/graphContextMenus'
 import {
   apiPullBranch,
@@ -23,9 +25,11 @@ import {
   apiGetCommitWebUrl,
   apiGetBranchWebUrl,
   apiCreatePatch,
+  apiSetBranchUpstream,
 } from '../api/git.api'
 import { apiAddWorktree } from '../api/worktree.api'
 import { resolveExplanationBase } from '../lib/branchExplanationBase'
+import { resolveDefaultUpstream } from '../lib/branchUpstream'
 import { useRepoDataStore } from '../stores/repoData.store'
 import { useRepoUIStore } from '../stores/repoUI.store'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
@@ -75,9 +79,18 @@ export function useSidebarBranchMenu(repoPath: string) {
   const { checkoutBranchWithStashPrompt } = useBranchCheckout()
   // The branch whose rename dialog is open, or null. The caller renders `<RenameBranchDialog>`.
   const [renameTarget, setRenameTarget] = useState<string | null>(null)
+  // The remote branch awaiting its delete confirmation, or null. The caller renders
+  // `<DeleteRemoteBranchDialog>` — same "own it locally, caller renders it" split as rename above.
+  const [pendingDeleteRemoteBranch, setPendingDeleteRemoteBranch] =
+    useState<PendingDeleteRemoteBranch>(null)
+  // The branch whose "Set upstream" picker is open, or null — only reached when no default is
+  // unambiguous (see resolveDefaultUpstream). The caller renders `<SetUpstreamDialog>`.
+  const [setUpstreamTarget, setSetUpstreamTarget] = useState<string | null>(null)
   // The AI branch explanation opens a right panel driven by shared UI state, so — unlike the
   // rename dialog above — there is nothing for the caller to render: the graph already shows it.
   const setAiPanelTarget = useRepoUIStore((s) => s.setAiPanelTarget)
+  // The branch comparison dialog, mounted by `RepoView` from this shared state.
+  const setCompareRefsTarget = useRepoUIStore((s) => s.setCompareRefsTarget)
   // The commit-scoped items of the remote menu reuse the graph's own dialogs through the shared
   // "pending graph action" bridge — the same route the sidebar's tag menu and the command palette
   // take to act on a commit from outside the graph.
@@ -182,6 +195,19 @@ export function useSidebarBranchMenu(repoPath: string) {
     return {
       onPull: () => void run(() => apiPullBranch(repoPath), t('gitTree.branchMenu.pulled', rel(ref))),
       onPush: () => void run(() => apiPushBranch(repoPath), t('gitTree.branchMenu.pushed', rel(ref))),
+      // Mirrors the graph menu's own onSetUpstream: an unambiguous default applies directly,
+      // anything else opens the picker.
+      onSetUpstream: (r) => {
+        const target = resolveDefaultUpstream(r.shortName, branches ?? [])
+        if (target) {
+          void run(
+            () => apiSetBranchUpstream(repoPath, r.shortName, target),
+            t('gitTree.branchMenu.upstreamSet', { branch: r.shortName, upstream: target })
+          )
+        } else {
+          setSetUpstreamTarget(r.shortName)
+        }
+      },
       onFastForward: (r) =>
         void run(
           () => apiFastForwardBranch(repoPath, r.shortName, currentBranch as string),
@@ -203,14 +229,26 @@ export function useSidebarBranchMenu(repoPath: string) {
         const base = r.type === 'remote' ? r.shortName.split('/').slice(1).join('/') : r.shortName
         openPrCreateWith(currentBranch ?? '', base)
       },
+      // Same pair as the graph's menu: the row's branch on the left, the checked-out one on the
+      // right. Unlike the commit-scoped items above, this doesn't go through the graph bridge —
+      // the dialog is mounted by `RepoView`, so it also works while the graph is unmounted.
+      onCompareWithBranch: (r) =>
+        setCompareRefsTarget({ baseRef: r.shortName, headRef: currentBranch ?? r.shortName }),
       onExplainBranch: (r) => openBranchAiPanel(r, 'branch'),
       onReviewBranch: (r) => openBranchAiPanel(r, 'reviewBranch'),
       onRenameBranch: (r) => setRenameTarget(r.shortName),
-      onDeleteBranch: (r) =>
+      // Same split as the graph's own branch menu: a remote ref needs a real network push, so it
+      // goes through a confirmation dialog rather than deleting outright.
+      onDeleteBranch: (r) => {
+        if (r.type === 'remote') {
+          setPendingDeleteRemoteBranch(remoteBranchTarget(r))
+          return
+        }
         void run(
           () => apiDeleteBranch(repoPath, r.shortName, { targetOid: r.commitOid, upstream: branch.upstream }),
           t('gitTree.branchMenu.deleted', rel(r))
-        ),
+        )
+      },
       onCopyBranchName: (r) =>
         void navigator.clipboard
           .writeText(r.shortName)
@@ -299,5 +337,13 @@ export function useSidebarBranchMenu(repoPath: string) {
     ).catch(console.error)
   }
 
-  return { openBranchMenu, renameTarget, setRenameTarget }
+  return {
+    openBranchMenu,
+    renameTarget,
+    setRenameTarget,
+    pendingDeleteRemoteBranch,
+    setPendingDeleteRemoteBranch,
+    setUpstreamTarget,
+    setSetUpstreamTarget,
+  }
 }

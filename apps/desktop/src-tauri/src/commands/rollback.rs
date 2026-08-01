@@ -10,6 +10,9 @@ pub use crate::services::git_rollback::CommitSummary;
 /// If no_commit is false (default), creates a new "Revert" commit.
 /// Returns the short SHA of the new commit, or an empty string if no_commit = true.
 ///
+/// `mainline` is `git revert -m`: required for a merge commit, ignored otherwise — see
+/// `git_rollback::revert_commit` for why the service decides that rather than the caller.
+///
 /// Runs on a blocking-pool thread: applies the inverse diff to the whole working tree/index, so
 /// its cost scales with the size of the commit's change — see `fetch_remote`'s doc comment for why
 /// that shouldn't run directly on this command's async task.
@@ -18,10 +21,11 @@ pub async fn revert_commit(
     path: String,
     oid: String,
     no_commit: Option<bool>,
+    mainline: Option<u32>,
 ) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
-        git_rollback::revert_commit(&repo, &oid, no_commit.unwrap_or(false))
+        git_rollback::revert_commit(&repo, &oid, no_commit.unwrap_or(false), mainline)
     })
     .await
     .map_err(|e| format!("revert task failed to complete: {e}"))?

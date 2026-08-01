@@ -223,6 +223,7 @@
   "gitCommand.pushTo": "Push onto another branch",
   "gitCommand.pushTag": "Push a tag",
   "gitCommand.deleteRemoteTag": "Delete a tag on the remote",
+  "gitCommand.deleteRemoteBranch": "Delete a branch on the remote",
   "gitCommand.addRemote": "Add a remote",
   "gitCommand.removeRemote": "Remove a remote",
   "gitCommand.stashPush": "Stash the changes",

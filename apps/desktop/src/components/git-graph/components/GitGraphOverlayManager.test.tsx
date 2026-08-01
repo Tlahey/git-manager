@@ -30,8 +30,18 @@ vi.mock('../../rollback/ResetDialog', () => ({
   ),
 }))
 vi.mock('../../rollback/RevertDialog', () => ({
-  RevertDialog: (p: { commitOid: string; commitSubject: string; onClose: () => void }) => (
-    <div data-testid="revert-dialog" data-oid={p.commitOid} data-subject={p.commitSubject}>
+  RevertDialog: (p: {
+    commitOid: string
+    commitSubject: string
+    parents?: { oid: string; shortOid: string; subject: string }[]
+    onClose: () => void
+  }) => (
+    <div
+      data-testid="revert-dialog"
+      data-oid={p.commitOid}
+      data-subject={p.commitSubject}
+      data-parents={JSON.stringify(p.parents ?? [])}
+    >
       <button onClick={p.onClose}>close-revert</button>
     </div>
   ),
@@ -43,11 +53,37 @@ vi.mock('../CompareToWorkdirDialog', () => ({
     </div>
   ),
 }))
+vi.mock('../CompareToParentDialog', () => ({
+  CompareToParentDialog: (p: {
+    oid: string
+    shortOid: string
+    parentNumber: number
+    parentShortOid?: string
+    onClose: () => void
+  }) => (
+    <div
+      data-testid="compare-parent-dialog"
+      data-oid={p.oid}
+      data-parent-number={String(p.parentNumber)}
+      data-parent-short-oid={p.parentShortOid ?? ''}
+    >
+      <button onClick={p.onClose}>close-compare-parent</button>
+    </div>
+  ),
+}))
 
 vi.mock('../RenameBranchDialog', () => ({
   RenameBranchDialog: (p: { branch: string; onClose: () => void }) => (
     <div data-testid="rename-branch-dialog" data-branch={p.branch}>
       <button onClick={p.onClose}>close-rename</button>
+    </div>
+  ),
+}))
+
+vi.mock('../SetUpstreamDialog', () => ({
+  SetUpstreamDialog: (p: { branch: string; onClose: () => void }) => (
+    <div data-testid="set-upstream-dialog" data-branch={p.branch}>
+      <button onClick={p.onClose}>close-set-upstream</button>
     </div>
   ),
 }))
@@ -75,6 +111,9 @@ function node(oid: string, overrides: Partial<GitGraphNode['commit']> = {}): Git
 }
 
 const NODES = [node('aaa1111'), node('bbb2222')]
+
+/** A merge whose two parents are the nodes above, so the manager can resolve both from the page. */
+const MERGE_NODES = [node('mmm0000', { parentOids: ['aaa1111', 'bbb2222'] }), ...NODES]
 
 function renderManager(
   pendingAction: PendingAction,
@@ -134,6 +173,11 @@ describe('GitGraphOverlayManager — routing', () => {
     expect(screen.getByTestId('rename-branch-dialog').dataset.branch).toBe('feat')
   })
 
+  it('opens the set-upstream dialog with the branch carried by the action', () => {
+    renderManager({ kind: 'setUpstream', branch: 'feat' })
+    expect(screen.getByTestId('set-upstream-dialog').dataset.branch).toBe('feat')
+  })
+
   it('opens the revert dialog with the primary node oid/subject', () => {
     renderManager({ kind: 'revert' })
     const dialog = screen.getByTestId('revert-dialog')
@@ -144,6 +188,33 @@ describe('GitGraphOverlayManager — routing', () => {
   it('opens the compare dialog with the primary node oid/shortOid', () => {
     renderManager({ kind: 'compare' })
     expect(screen.getByTestId('compare-dialog')).toBeInTheDocument()
+  })
+
+  it('hands the revert dialog every parent of a merge, resolved from the loaded page', () => {
+    renderManager({ kind: 'revert' }, { nodes: MERGE_NODES, primaryOid: 'mmm0000' })
+    const parents = JSON.parse(screen.getByTestId('revert-dialog').dataset.parents as string)
+    expect(parents).toEqual([
+      { oid: 'aaa1111', shortOid: 'aaa1111', subject: 'Subject aaa1111' },
+      { oid: 'bbb2222', shortOid: 'bbb2222', subject: 'Subject bbb2222' },
+    ])
+  })
+
+  it('still lists a parent that scrolled out of the loaded page, by sha alone', () => {
+    const detached = [node('mmm0000', { parentOids: ['aaa1111', 'ccc3333cccc'] }), ...NODES]
+    renderManager({ kind: 'revert' }, { nodes: detached, primaryOid: 'mmm0000' })
+    const parents = JSON.parse(screen.getByTestId('revert-dialog').dataset.parents as string)
+    expect(parents[1]).toEqual({ oid: 'ccc3333cccc', shortOid: 'ccc3333', subject: '' })
+  })
+
+  it('opens the compare-against-parent dialog on the parent the action names', () => {
+    renderManager(
+      { kind: 'compareParent', parentNumber: 2 },
+      { nodes: MERGE_NODES, primaryOid: 'mmm0000' }
+    )
+    const dialog = screen.getByTestId('compare-parent-dialog')
+    expect(dialog.dataset.oid).toBe('mmm0000')
+    expect(dialog.dataset.parentNumber).toBe('2')
+    expect(dialog.dataset.parentShortOid).toBe('bbb2222')
   })
 
   it('ignores the tag action — inline tag creation is handled by the graph, not this overlay', () => {

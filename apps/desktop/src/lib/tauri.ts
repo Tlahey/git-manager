@@ -22,7 +22,6 @@ import type {
   BisectTerm,
   GitCommit,
   ThreeWayMergeView,
-  AppSettings,
   UserTheme,
   GitRepoSummary,
   BlameHunk,
@@ -223,8 +222,10 @@ export const getLog = (
   }
 ) => invoke<GitGraphNode[]>('get_log', { path, ...opts })
 
-export const getCommitDiff = (path: string, oid: string) =>
-  invoke<GitDiff>('get_commit_diff', { path, oid })
+/** A commit vs. one of its parents. `parentIndex` is 0-based and defaults to the first parent —
+ *  only a merge commit has another (see the Rust `git_diff::commit_diff`). */
+export const getCommitDiff = (path: string, oid: string, parentIndex?: number) =>
+  invoke<GitDiff>('get_commit_diff', { path, oid, parentIndex })
 
 /** Merged diff across a multi-commit selection: `baseOid^..headOid` (see the Rust command). */
 export const getCommitsMergedDiff = (path: string, baseOid: string, headOid: string) =>
@@ -232,6 +233,11 @@ export const getCommitsMergedDiff = (path: string, baseOid: string, headOid: str
 
 export const compareCommitToWorkdir = (path: string, oid: string) =>
   invoke<GitDiff>('compare_commit_to_workdir', { path, oid })
+
+/** Direct (two-dot) diff between two refs — `git diff <baseRef> <headRef>`. Either side can be a
+ *  branch, a remote branch, a tag or a SHA (see the Rust `compare_refs` command). */
+export const compareRefs = (path: string, baseRef: string, headRef: string) =>
+  invoke<GitDiff>('compare_refs', { path, baseRef, headRef })
 
 export const getCommitFile = (path: string, oid: string, filePath: string) =>
   invoke<string>('get_commit_file', { path, oid, filePath })
@@ -264,11 +270,20 @@ export const checkoutBranch = (path: string, refName: string, force = false) =>
 export const deleteBranch = (path: string, name: string, force = false, deleteRemote = false) =>
   invoke<void>('delete_branch', { path, name, force, deleteRemote })
 
+/** Deletes branch `branchName` on `remote` (default "origin") — `git push origin :refs/heads/<name>`. */
+export const deleteRemoteBranch = (path: string, branchName: string, remote?: string) =>
+  invoke<void>('delete_remote_branch', { path, branchName, remote })
+
 export const mergeBranch = (path: string, source: string, target: string) =>
   invoke<void>('merge_branch', { path, source, target })
 
 export const fastForwardBranch = (path: string, source: string, target: string) =>
   invoke<void>('fast_forward_branch', { path, source, target })
+
+/** Sets local branch `name`'s upstream to `upstream` (a remote-tracking branch's short name, e.g.
+ * `origin/main`) — `git branch --set-upstream-to`. */
+export const setBranchUpstream = (path: string, name: string, upstream: string) =>
+  invoke<void>('set_branch_upstream', { path, name, upstream })
 
 /** Relation between HEAD and the first of `candidates` that exists in the repo (merge simulated
  * in memory — nothing is written to the repository). */
@@ -808,13 +823,6 @@ export const unpinObject = (path: string, refName: string) =>
 export const objectsExist = (path: string, oids: string[]) =>
   invoke<boolean[]>('objects_exist', { path, oids })
 
-// ─── Settings ─────────────────────────────────────────────────────────────────
-
-export const getSettings = () => invoke<AppSettings>('get_settings')
-
-export const updateSettings = (settings: Partial<AppSettings>) =>
-  invoke<void>('update_settings', { settings })
-
 // ─── Rollback ─────────────────────────────────────────────────────────────────
 
 export interface CommitSummary {
@@ -825,8 +833,10 @@ export interface CommitSummary {
   timestamp: number
 }
 
-export const revertCommit = (path: string, oid: string, noCommit = false) =>
-  invoke<string>('revert_commit', { path, oid, noCommit })
+/** `mainline` is `git revert -m`: the 1-based parent a MERGE commit is reverted relative to. It is
+ *  required for a merge and ignored otherwise (see the Rust `git_rollback::revert_commit`). */
+export const revertCommit = (path: string, oid: string, noCommit = false, mainline?: number) =>
+  invoke<string>('revert_commit', { path, oid, noCommit, mainline })
 
 export const resetToCommit = (path: string, oid: string, mode: 'soft' | 'mixed' | 'hard') =>
   invoke<void>('reset_to_commit', { path, oid, mode })
@@ -1029,6 +1039,9 @@ export const getRepoSummary = (path: string) => invoke<GitRepoSummary>('get_repo
 
 export const openInEditor = (path: string, command: string) =>
   invoke<void>('open_in_editor', { path, command })
+
+/** Reveals an arbitrary filesystem path in the Finder — e.g. a linked worktree's directory. */
+export const revealPathInFinder = (path: string) => invoke<void>('reveal_path_in_finder', { path })
 
 export const getRepoReadme = (path: string) => invoke<string>('get_repo_readme', { path })
 
