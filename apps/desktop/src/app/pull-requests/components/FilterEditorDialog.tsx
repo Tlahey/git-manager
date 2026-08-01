@@ -156,7 +156,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                 <button
                   key={v}
                   onClick={() => set('type', v)}
-                  className={`h-8 flex-1 rounded-md border text-xs transition-colors ${
+                  className={`h-8 flex-1 cursor-pointer rounded-md border text-xs transition-colors ${
                     form.type === v
                       ? 'border-primary/30 bg-primary/10 text-primary'
                       : 'border-border text-muted-foreground hover:border-border/80 hover:text-foreground'
@@ -241,7 +241,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                         <button
                           key={s}
                           onClick={() => toggleStatus(s)}
-                          className={`flex items-center rounded border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide transition-colors ${
+                          className={`flex cursor-pointer items-center rounded border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide transition-colors ${
                             active
                               ? cfg.className + ' ring-1 ring-current ring-offset-0'
                               : 'border-border text-muted-foreground hover:text-foreground'
@@ -255,7 +255,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                     {(form.statuses ?? []).length > 0 && (
                       <button
                         onClick={() => set('statuses', [])}
-                        className="text-[9px] text-muted-foreground/60 underline hover:text-muted-foreground"
+                        className="cursor-pointer text-[9px] text-muted-foreground/60 underline hover:text-muted-foreground"
                       >
                         {t('filterEditor.clear')}
                       </button>
@@ -282,7 +282,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
                         key={lbl}
                         onClick={() => set('needsMyReview', val)}
                         data-testid={`filter-editor-needs-review-${key}`}
-                        className={`h-6 rounded border px-3 text-[10px] capitalize transition-colors ${
+                        className={`h-6 cursor-pointer rounded border px-3 text-[10px] capitalize transition-colors ${
                           form.needsMyReview === val
                             ? 'border-primary/30 bg-primary/10 text-primary'
                             : 'border-border text-muted-foreground hover:text-foreground'
@@ -302,7 +302,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
         <DialogFooter className="border-t border-border bg-muted/5 px-5 py-3 sm:justify-end">
           <button
             onClick={onClose}
-            className="h-8 rounded-lg border border-border px-3 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="h-8 cursor-pointer rounded-lg border border-border px-3 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             {t('filterEditor.cancel')}
           </button>
@@ -310,7 +310,7 @@ export function FilterEditorDialog({ initial, onSave, onClose }: FilterEditorDia
             onClick={handleSave}
             disabled={!isValid}
             data-testid="filter-editor-save-button"
-            className="flex h-8 items-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
+            className="flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors hover:enabled:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Save className="h-3 w-3" />{' '}
             {initial ? t('filterEditor.saveChanges') : t('filterEditor.createFilter')}

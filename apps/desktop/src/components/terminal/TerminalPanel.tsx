@@ -75,7 +75,7 @@ export function TerminalPanel({ path }: TerminalPanelProps) {
             <button
               type="button"
               onClick={() => setActiveTab(path, tab.id)}
-              className="flex items-center gap-1.5"
+              className="flex cursor-pointer items-center gap-1.5"
               data-testid={`terminal-tab-${tab.id}`}
             >
               <TerminalIcon className="h-3 w-3 text-emerald-400" />
@@ -87,7 +87,7 @@ export function TerminalPanel({ path }: TerminalPanelProps) {
               aria-label={t('terminal.closeTab')}
               title={t('terminal.closeTab')}
               data-testid={`terminal-close-tab-${tab.id}`}
-              className="rounded p-0.5 opacity-0 transition-opacity hover:bg-background group-hover:opacity-100"
+              className="cursor-pointer rounded p-0.5 opacity-0 transition-opacity hover:bg-background group-hover:opacity-100"
             >
               <X className="h-3 w-3" />
             </button>
@@ -99,7 +99,7 @@ export function TerminalPanel({ path }: TerminalPanelProps) {
           aria-label={t('terminal.newTab')}
           title={t('terminal.newTab')}
           data-testid="terminal-new-tab"
-          className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <Plus className="h-3.5 w-3.5" />
         </button>
@@ -111,7 +111,7 @@ export function TerminalPanel({ path }: TerminalPanelProps) {
             aria-label={t('terminal.hidePanel')}
             title={t('terminal.hidePanel')}
             data-testid="terminal-hide"
-            className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <ChevronDown className="h-4 w-4" />
           </button>
@@ -121,7 +121,7 @@ export function TerminalPanel({ path }: TerminalPanelProps) {
             aria-label={t('terminal.closePanel')}
             title={t('terminal.closePanel')}
             data-testid="terminal-close"
-            className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </button>

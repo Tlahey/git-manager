@@ -148,7 +148,7 @@ export function DependencyPatchPanel({ repoPath }: { repoPath: string }) {
                   type="button"
                   onClick={() => selectDep(dep)}
                   data-testid={`patch-dep-${dep.name}`}
-                  className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-accent ${
+                  className={`flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-accent ${
                     dep.installed ? '' : 'opacity-50'
                   }`}
                 >
@@ -176,13 +176,13 @@ export function DependencyPatchPanel({ repoPath }: { repoPath: string }) {
       className="flex h-full w-full min-w-0 flex-col border-l border-border bg-card"
       data-testid="dependency-patch-panel"
     >
-      {/* Zone du patch */}
+      {/* Patch zone */}
       <div className="space-y-2 border-b border-border p-2">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={back}
-            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="cursor-pointer rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
             aria-label={t('patch.cancel')}
             data-testid="patch-dep-back"
           >

@@ -118,7 +118,7 @@ export function IssueMetaSidebar({ repoPath, issueNumber, issue, onChanged }: Is
                   data-testid="issue-status-edit"
                   title={t('issue.side.editStatus')}
                   aria-label={t('issue.side.editStatus')}
-                  className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                  className="cursor-pointer rounded p-0.5 text-muted-foreground transition-colors hover:enabled:bg-accent hover:enabled:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {pending ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -237,7 +237,7 @@ export function IssueMetaSidebar({ repoPath, issueNumber, issue, onChanged }: Is
             onClick={createBranch}
             disabled={creatingBranch}
             data-testid="issue-create-branch"
-            className="flex w-full items-center justify-start gap-1.5 rounded border border-border px-2 py-1.5 text-left text-[11px] text-primary transition-colors hover:bg-accent disabled:opacity-50"
+            className="flex w-full cursor-pointer items-center justify-start gap-1.5 rounded border border-border px-2 py-1.5 text-left text-[11px] text-primary transition-colors hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             {creatingBranch ? (
               <Loader2 className="h-3 w-3 shrink-0 animate-spin" />

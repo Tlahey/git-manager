@@ -50,7 +50,7 @@ export function LoadingOverlay() {
       role="status"
       aria-live="polite"
       className={cn(
-        'fixed inset-0 z-[9998] flex flex-col items-center justify-center gap-4 bg-black/60 backdrop-blur-sm transition-opacity ease-out',
+        'fixed inset-0 z-[9998] flex cursor-wait flex-col items-center justify-center gap-4 bg-black/60 backdrop-blur-sm transition-opacity ease-out',
         visible ? 'opacity-100' : 'opacity-0'
       )}
       style={{ transitionDuration: `${FADE_MS}ms` }}

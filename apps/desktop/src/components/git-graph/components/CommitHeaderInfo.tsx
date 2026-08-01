@@ -136,7 +136,7 @@ export function CommitHeaderInfo({
             {onClose && (
               <button
                 onClick={onClose}
-                className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 title={t('actions.close')}
                 data-testid="commit-details-close-button"
               >
@@ -383,7 +383,7 @@ export function CommitHeaderInfo({
             {commitPr && (
               <button
                 onClick={() => apiOpenUrl(commitPr.url)}
-                className="flex w-full items-center gap-1.5 rounded-md border border-border/50 bg-muted/40 px-2 py-1 text-left transition-colors hover:border-primary/45 hover:bg-accent/40"
+                className="flex w-full cursor-pointer items-center gap-1.5 rounded-md border border-border/50 bg-muted/40 px-2 py-1 text-left transition-colors hover:border-primary/45 hover:bg-accent/40"
                 data-testid="commit-pr-label"
                 title={t('commitDetails.openPullRequest', { number: commitPr.number })}
               >
@@ -413,7 +413,7 @@ export function CommitHeaderInfo({
                     <button
                       key={p}
                       onClick={() => onSelectCommit?.(p)}
-                      className="rounded border border-border bg-accent/60 px-2 py-0.5 font-mono text-[10px] font-semibold transition-all hover:border-primary/45 hover:bg-primary/15 hover:text-primary"
+                      className="cursor-pointer rounded border border-border bg-accent/60 px-2 py-0.5 font-mono text-[10px] font-semibold transition-all hover:border-primary/45 hover:bg-primary/15 hover:text-primary"
                     >
                       {p.substring(0, 7)}
                     </button>

@@ -95,7 +95,7 @@ export function TimelineStepsPanel({
               aria-current={active}
               title={exactDate ?? undefined}
               className={cn(
-                'flex items-start gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition-colors',
+                'flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition-colors',
                 active ? 'bg-accent' : 'hover:bg-accent/40',
                 ahead && 'opacity-45'
               )}

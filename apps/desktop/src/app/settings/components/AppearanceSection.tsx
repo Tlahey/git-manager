@@ -249,7 +249,7 @@ export function AppearanceSection() {
               updateAppearance({ terminalBackground: '#000000', terminalForeground: '#e4e4e7' })
             }
             data-testid="appearance-terminal-reset"
-            className="h-7 rounded border border-border px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="h-7 cursor-pointer rounded border border-border px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             {t('settings.appearance.resetTerminalColors')}
           </button>

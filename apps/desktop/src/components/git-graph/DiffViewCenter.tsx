@@ -311,7 +311,7 @@ export function DiffViewCenter({ repoPath, file, onClose, onRefresh }: DiffViewC
                         data-testid="diff-version-sha"
                         onClick={handleCopySha}
                         title={t('fileHistory.copySha')}
-                        className="flex shrink-0 items-center gap-1 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary transition-colors hover:bg-accent"
+                        className="flex shrink-0 cursor-pointer items-center gap-1 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary transition-colors hover:bg-accent"
                       >
                         {effectiveOid.slice(0, 7)}
                         {shaCopied ? (

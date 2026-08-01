@@ -29,7 +29,7 @@ export function RunButton({ tasks, defaultTask, onRun }: RunButtonProps) {
         onClick={() => defaultTask && onRun(defaultTask)}
         title={defaultTask ? t('toolbar.runTask', { name: defaultTask.name }) : t('toolbar.run')}
         data-testid="toolbar-run-button-primary"
-        className="group flex min-w-[40px] flex-col items-center justify-center gap-0.5 rounded-l px-2 py-1 transition-colors hover:bg-accent"
+        className="group flex min-w-[40px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-l px-2 py-1 transition-colors hover:bg-accent"
       >
         <Play className="h-4 w-4 text-orange-400" />
         <span className="hidden text-[10px] leading-none text-muted-foreground transition-colors group-hover:text-foreground lg:inline">
@@ -43,7 +43,7 @@ export function RunButton({ tasks, defaultTask, onRun }: RunButtonProps) {
             type="button"
             aria-label={t('toolbar.run')}
             data-testid="toolbar-run-button-menu"
-            className="flex items-center rounded-r px-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="flex cursor-pointer items-center rounded-r px-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <ChevronDown className="h-3.5 w-3.5" />
           </button>

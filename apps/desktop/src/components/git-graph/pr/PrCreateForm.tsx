@@ -182,7 +182,7 @@ export function PrCreateForm({
             <button
               onClick={aiFill}
               disabled={isGenerating || !base}
-              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-primary hover:bg-accent disabled:opacity-50"
+              className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-primary hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
               data-testid="pr-create-ai"
             >
               {isGenerating ? <Spinner className="h-3 w-3" /> : <LlmIcon className="h-3 w-3" />}

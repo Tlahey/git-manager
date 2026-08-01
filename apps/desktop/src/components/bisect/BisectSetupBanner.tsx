@@ -36,7 +36,7 @@ function SlotButton({ kind, oid, active, label, placeholder, onClick }: SlotButt
       type="button"
       onClick={onClick}
       data-testid={`bisect-slot-${kind}`}
-      className={`flex min-w-[128px] items-center gap-2 rounded-full px-3 py-1.5 text-left transition-shadow ${tint} ${ring}`}
+      className={`flex min-w-[128px] cursor-pointer items-center gap-2 rounded-full px-3 py-1.5 text-left transition-shadow ${tint} ${ring}`}
     >
       <Icon className={`h-4 w-4 shrink-0 ${isBad ? 'text-red-500' : 'text-green-500'}`} />
       <span className="min-w-0">
@@ -52,7 +52,7 @@ function SlotButton({ kind, oid, active, label, placeholder, onClick }: SlotButt
 }
 
 /**
- * Floating setup card (styled after the Chronologie bar) for starting a bisect by picking commits
+ * Floating setup card (styled after the Timeline bar) for starting a bisect by picking commits
  * in the graph. Shows the bad and good slots side by side; either can be (re-)focused and picked.
  * The worktree is already clean by this point (any dirty changes were stashed up front, before this
  * card appears — see the tools-menu → stash dialog flow), so validate just checks the orientation

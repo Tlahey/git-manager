@@ -81,7 +81,7 @@ export function ActivityLogDetail({ entry, block, onTrace, onClose }: ActivityLo
           onClick={onClose}
           aria-label={t('activityLogs.detail.close')}
           data-testid="activity-detail-close"
-          className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+          className="cursor-pointer rounded p-0.5 text-muted-foreground hover:text-foreground"
         >
           <X className="h-4 w-4" />
         </button>
@@ -106,7 +106,7 @@ export function ActivityLogDetail({ entry, block, onTrace, onClose }: ActivityLo
                 onClick={() => onTrace(traceableId)}
                 title={t('activityLogs.detail.trace')}
                 data-testid="activity-detail-trace"
-                className="inline-flex items-center gap-1 text-primary hover:underline"
+                className="inline-flex cursor-pointer items-center gap-1 text-primary hover:underline"
               >
                 <GitBranch className="h-3 w-3" />
                 {correlationId}
@@ -169,7 +169,7 @@ export function ActivityLogDetail({ entry, block, onTrace, onClose }: ActivityLo
                 aria-label={t('activityLogs.detail.copyData')}
                 title={t('activityLogs.detail.copyData')}
                 data-testid="activity-detail-copy-data"
-                className="flex items-center gap-1 rounded px-1 py-0.5 text-[10px] text-muted-foreground/70 hover:text-foreground disabled:opacity-40"
+                className="flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-[10px] text-muted-foreground/70 enabled:hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {copiedData ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                 {copiedData ? t('activityLogs.copied') : t('activityLogs.detail.copyData')}
@@ -190,7 +190,7 @@ export function ActivityLogDetail({ entry, block, onTrace, onClose }: ActivityLo
                     aria-label={t('activityLogs.detail.copyError')}
                     title={t('activityLogs.detail.copyError')}
                     data-testid="activity-detail-copy-error"
-                    className="flex items-center gap-1 rounded px-1 py-0.5 text-[10px] text-muted-foreground/70 hover:text-foreground"
+                    className="flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-[10px] text-muted-foreground/70 hover:text-foreground"
                   >
                     {copiedError ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                     {copiedError ? t('activityLogs.copied') : t('activityLogs.detail.copyError')}

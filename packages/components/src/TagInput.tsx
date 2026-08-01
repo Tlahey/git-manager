@@ -42,7 +42,7 @@ export function TagInput({ tags, onChange, placeholder, testId }: TagInputProps)
           <button
             type="button"
             onClick={() => removeTag(i)}
-            className="text-xs leading-none opacity-60 hover:opacity-100"
+            className="cursor-pointer text-xs leading-none opacity-60 hover:opacity-100"
           >
             ×
           </button>

@@ -297,7 +297,7 @@ export function SidebarRowView({
         onSelectTag ? onSelectTag(row.tag.commitOid) : onSelectBranch(row.tag.name)
       return (
         <div
-          className={`group/tag relative flex items-center gap-1.5 py-[3px] pl-6 pr-6 text-xs transition-colors ${
+          className={`group/tag relative flex cursor-pointer items-center gap-1.5 py-[3px] pl-6 pr-6 text-xs transition-colors ${
             row.isSelected
               ? 'bg-sidebar-accent font-medium text-sidebar-foreground'
               : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'

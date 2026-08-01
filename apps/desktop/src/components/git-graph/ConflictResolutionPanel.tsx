@@ -99,7 +99,7 @@ export function ConflictResolutionPanel({
             )}
             <button
               onClick={onClose}
-              className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               title={t('actions.close')}
               data-testid="conflict-panel-close-button"
             >
@@ -160,7 +160,7 @@ export function ConflictResolutionPanel({
             type="button"
             onClick={() => setAmend((v) => !v)}
             data-testid="conflict-amend-toggle"
-            className="flex select-none items-center gap-1.5 text-[10px] font-medium text-muted-foreground"
+            className="flex cursor-pointer select-none items-center gap-1.5 text-[10px] font-medium text-muted-foreground"
           >
             <span
               className={cn(

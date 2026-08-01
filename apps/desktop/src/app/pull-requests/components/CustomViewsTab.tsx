@@ -114,7 +114,7 @@ function CustomViewResults({
           {search && (
             <button
               onClick={() => setSearch('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
             >
               <X className="h-3 w-3" />
             </button>
@@ -310,7 +310,7 @@ export function CustomViewsTab({
               setShowEditor(true)
             }}
             data-testid="launchpad-new-filter-button"
-            className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+            className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
             title={t('views.newFilter')}
           >
             <Plus className="h-3.5 w-3.5" />
@@ -358,7 +358,7 @@ export function CustomViewsTab({
                       setEditingFilter(f)
                       setShowEditor(true)
                     }}
-                    className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+                    className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
                     title={t('views.edit')}
                   >
                     <Pencil className="h-2.5 w-2.5" />
@@ -369,7 +369,7 @@ export function CustomViewsTab({
                         e.stopPropagation()
                         handleDelete(f.id)
                       }}
-                      className="flex h-5 items-center justify-center rounded bg-destructive/10 px-1 text-[9px] font-medium text-destructive"
+                      className="flex h-5 cursor-pointer items-center justify-center rounded bg-destructive/10 px-1 text-[9px] font-medium text-destructive"
                     >
                       {t('views.confirm')}
                     </button>
@@ -379,7 +379,7 @@ export function CustomViewsTab({
                         e.stopPropagation()
                         setConfirmDeleteId(f.id)
                       }}
-                      className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                       title={t('views.delete')}
                     >
                       <Trash2 className="h-2.5 w-2.5" />
@@ -482,7 +482,7 @@ export function CustomViewsTab({
                 setEditingFilter(null)
                 setShowEditor(true)
               }}
-              className="flex h-8 items-center gap-2 rounded-lg border border-dashed border-border px-4 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+              className="flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-4 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
             >
               <Plus className="h-3.5 w-3.5" /> {t('views.newFilter')}
             </button>

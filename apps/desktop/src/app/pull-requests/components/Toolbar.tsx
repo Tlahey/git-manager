@@ -74,7 +74,7 @@ export function Toolbar({
         {search && (
           <button
             onClick={() => onSearch('')}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
           >
             <X className="h-3 w-3" />
           </button>
@@ -117,7 +117,7 @@ export function Toolbar({
       {totalActiveFilters > 0 && (
         <button
           onClick={clearAll}
-          className="flex h-6 items-center gap-1 rounded-md border border-transparent px-2 text-[10px] text-muted-foreground transition-all hover:border-destructive/20 hover:bg-destructive/5 hover:text-destructive"
+          className="flex h-6 cursor-pointer items-center gap-1 rounded-md border border-transparent px-2 text-[10px] text-muted-foreground transition-all hover:border-destructive/20 hover:bg-destructive/5 hover:text-destructive"
         >
           <X className="h-2.5 w-2.5" /> {t('toolbar.clearAllCount', { count: totalActiveFilters })}
         </button>
@@ -132,7 +132,7 @@ export function Toolbar({
           <button
             key={k}
             onClick={() => onSort(k)}
-            className={`flex h-7 items-center gap-1 rounded border px-2 text-[10px] transition-colors ${
+            className={`flex h-7 cursor-pointer items-center gap-1 rounded border px-2 text-[10px] transition-colors ${
               sortKey === k
                 ? 'border-primary/30 bg-primary/10 text-primary'
                 : 'border-border text-muted-foreground hover:text-foreground'

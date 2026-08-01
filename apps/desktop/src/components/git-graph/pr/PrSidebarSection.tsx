@@ -33,7 +33,7 @@ export function PrSidebarSection({
             onClick={onEdit}
             data-testid={testId ? `${testId}-edit` : undefined}
             title={editTitle}
-            className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="cursor-pointer rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <Pencil className="h-3 w-3" />
           </button>

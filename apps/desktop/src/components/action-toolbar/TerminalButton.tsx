@@ -46,7 +46,7 @@ export function TerminalButton() {
         title={t('terminal.open')}
         disabled={!path}
         data-testid="toolbar-terminal-button-primary"
-        className="group flex min-w-[40px] flex-col items-center justify-center gap-0.5 rounded-l px-2 py-1 transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40"
+        className="group flex min-w-[40px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-l px-2 py-1 transition-colors hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
       >
         <TerminalIcon className="h-4 w-4 text-emerald-400" />
         <span className="hidden text-[10px] leading-none text-muted-foreground transition-colors group-hover:text-foreground lg:inline">
@@ -60,7 +60,7 @@ export function TerminalButton() {
             type="button"
             aria-label={t('terminal.externalHeader')}
             data-testid="toolbar-terminal-button-menu"
-            className="flex items-center rounded-r px-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="flex cursor-pointer items-center rounded-r px-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <ChevronDown className="h-3.5 w-3.5" />
           </button>

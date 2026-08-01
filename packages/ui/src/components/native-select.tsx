@@ -12,7 +12,7 @@ import { cn } from '../lib/utils'
 export type NativeSelectProps = React.SelectHTMLAttributes<HTMLSelectElement>
 
 const BASE =
-  'h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground outline-none transition-colors focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
+  'h-8 w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs text-foreground outline-none transition-colors focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
 
 const NativeSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
   ({ className, children, ...props }, ref) => (

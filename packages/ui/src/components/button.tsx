@@ -9,7 +9,11 @@ const buttonVariants = cva(
   // them full capsules — without a variant fork here. The size variants below
   // deliberately don't set their own radius: two competing rounded-* utilities
   // resolve by stylesheet order, not class order, so the winner would be arbitrary.
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--control-radius)] text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+  // `enabled:` gates every hover:* below rather than relying on disabled:pointer-events-none —
+  // pointer-events-none disables hit-testing, which silently defeats disabled:cursor-not-allowed
+  // (the cursor property never applies without hit-testing, so the "not-allowed" cursor would
+  // never actually paint).
+  'inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-[var(--control-radius)] text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
   {
     variants: {
       variant: {
@@ -19,17 +23,17 @@ const buttonVariants = cva(
         // outline/ghost have no solid fill (page surface + accent hover). link has no
         // fill either but its text rides --link (defaults to --primary) so a
         // light-content theme can darken it for AA without touching --primary.
-        default: 'bg-button text-button-foreground shadow hover:bg-button/90',
+        default: 'bg-button text-button-foreground shadow hover:enabled:bg-button/90',
         destructive:
-          'bg-button-destructive text-button-destructive-foreground shadow-sm hover:bg-button-destructive/90',
+          'bg-button-destructive text-button-destructive-foreground shadow-sm hover:enabled:bg-button-destructive/90',
         success:
-          'bg-button-success text-button-success-foreground shadow-sm hover:bg-button-success/90',
+          'bg-button-success text-button-success-foreground shadow-sm hover:enabled:bg-button-success/90',
         outline:
-          'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground',
+          'border border-input bg-background shadow-sm hover:enabled:bg-accent hover:enabled:text-accent-foreground',
         secondary:
-          'bg-button-secondary text-button-secondary-foreground shadow-sm hover:bg-button-secondary/80',
-        ghost: 'hover:bg-accent hover:text-accent-foreground',
-        link: 'text-link underline-offset-4 hover:underline',
+          'bg-button-secondary text-button-secondary-foreground shadow-sm hover:enabled:bg-button-secondary/80',
+        ghost: 'hover:enabled:bg-accent hover:enabled:text-accent-foreground',
+        link: 'text-link underline-offset-4 hover:enabled:underline',
       },
       size: {
         default: 'h-9 px-4 py-2',

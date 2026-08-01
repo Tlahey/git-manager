@@ -74,7 +74,7 @@ export function ActivityLogRow({ entry, selected, onSelect }: ActivityLogRowProp
         aria-label={t('activityLogs.copyLine')}
         title={t('activityLogs.copyLine')}
         data-testid="activity-copy-line"
-        className="shrink-0 rounded p-0.5 text-muted-foreground/70 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 group-hover/row:opacity-100"
+        className="shrink-0 cursor-pointer rounded p-0.5 text-muted-foreground/70 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 group-hover/row:opacity-100"
       >
         {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
       </button>

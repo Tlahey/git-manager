@@ -38,7 +38,7 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
         <button
           onClick={() => onTogglePin(issue.id)}
           title={pinned ? t('row.unpin') : t('row.pin')}
-          className={`shrink-0 transition-all ${
+          className={`shrink-0 cursor-pointer transition-all ${
             pinned
               ? 'text-amber-400'
               : 'text-muted-foreground/30 opacity-0 hover:text-amber-400 group-hover/pr:opacity-100'
@@ -72,7 +72,7 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
             }}
             title={t('row.openOnGitHub')}
             data-testid={`issue-number-link-${issue.id}`}
-            className="whitespace-nowrap font-mono text-[10px] text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
+            className="whitespace-nowrap cursor-pointer font-mono text-[10px] text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
           >
             #{issue.number}
           </button>
@@ -140,7 +140,7 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
             onClick={createBranch}
             disabled={creatingBranch}
             data-testid={`issue-create-branch-${issue.id}`}
-            className="mt-0.5 flex w-fit items-center gap-0.5 rounded border border-border/50 px-1 py-px text-[9px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50"
+            className="mt-0.5 flex w-fit cursor-pointer items-center gap-0.5 rounded border border-border/50 px-1 py-px text-[9px] text-muted-foreground transition-colors hover:enabled:border-primary/40 hover:enabled:text-primary disabled:cursor-not-allowed disabled:opacity-50"
           >
             {creatingBranch ? (
               <Loader2 className="h-2.5 w-2.5 animate-spin" />
@@ -171,7 +171,7 @@ export function IssueRow({ issue, pinned, onTogglePin, onChanged }: IssueRowProp
             title={t('row.openInApp')}
             aria-label={t('row.openInApp')}
             data-testid={`issue-open-in-app-${issue.id}`}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all hover:border-border hover:bg-accent hover:text-foreground group-hover/pr:opacity-100"
+            className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all hover:border-border hover:bg-accent hover:text-foreground group-hover/pr:opacity-100"
           >
             <PanelRight className="h-3.5 w-3.5" />
           </button>

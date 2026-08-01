@@ -34,7 +34,7 @@ export function LaunchpadToolbar() {
         {search && (
           <button
             onClick={() => setSearch('')}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
             title={t('toolbar.searchPlaceholder')}
           >
             <X className="h-3 w-3" />
@@ -45,14 +45,14 @@ export function LaunchpadToolbar() {
       <div className="ml-auto flex items-center gap-1">
         <button
           onClick={expandAll}
-          className="flex h-7 items-center gap-1.5 rounded-md border border-border px-2.5 text-[11px] text-muted-foreground transition-colors hover:border-border/80 hover:bg-accent/40 hover:text-foreground"
+          className="flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-[11px] text-muted-foreground transition-colors hover:border-border/80 hover:bg-accent/40 hover:text-foreground"
           data-testid="launchpad-expand-all"
         >
           <ChevronsUpDown className="h-3 w-3" /> {t('toolbar.expandAll')}
         </button>
         <button
           onClick={collapseAll}
-          className="flex h-7 items-center gap-1.5 rounded-md border border-border px-2.5 text-[11px] text-muted-foreground transition-colors hover:border-border/80 hover:bg-accent/40 hover:text-foreground"
+          className="flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-[11px] text-muted-foreground transition-colors hover:border-border/80 hover:bg-accent/40 hover:text-foreground"
           data-testid="launchpad-collapse-all"
         >
           <ChevronsDownUp className="h-3 w-3" /> {t('toolbar.collapseAll')}

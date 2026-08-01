@@ -90,7 +90,7 @@ export function IssueItem({ issue, filterQuery = '', onContextMenu, onOpen }: Is
             e.stopPropagation()
             onContextMenu?.(e, issue)
           }}
-          className="mt-0.5 shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/issue:opacity-100"
+          className="mt-0.5 shrink-0 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/issue:opacity-100"
           aria-label={t('sidebar.issueActions')}
           title={t('sidebar.issueActions')}
           data-testid={`issue-actions-button-${issue.number}`}

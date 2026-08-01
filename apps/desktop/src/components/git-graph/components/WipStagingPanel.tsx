@@ -103,7 +103,7 @@ export function WipStagingPanel({
         <button
           data-testid="batch-mode-toggle"
           onClick={() => setBatchMode((b) => !b)}
-          className="flex select-none items-center gap-1.5 text-xs font-bold text-primary hover:opacity-85"
+          className="flex cursor-pointer select-none items-center gap-1.5 text-xs font-bold text-primary hover:opacity-85"
         >
           <Layers className="h-3.5 w-3.5 text-primary" />
           <span>
@@ -290,7 +290,7 @@ export function WipStagingPanel({
                 data-testid="tab-commit"
                 onClick={() => setActiveTab('commit')}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-t-md px-2.5 py-1 text-xs font-semibold transition-colors',
+                  'flex cursor-pointer items-center gap-1.5 rounded-t-md px-2.5 py-1 text-xs font-semibold transition-colors',
                   activeTab === 'commit'
                     ? 'border border-b-0 border-border/60 bg-card text-foreground shadow-xs'
                     : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
@@ -309,7 +309,7 @@ export function WipStagingPanel({
                 data-testid="tab-stash"
                 onClick={() => setActiveTab('stash')}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-t-md px-2.5 py-1 text-xs font-semibold transition-colors',
+                  'flex cursor-pointer items-center gap-1.5 rounded-t-md px-2.5 py-1 text-xs font-semibold transition-colors',
                   activeTab === 'stash'
                     ? 'border border-b-0 border-border/60 bg-card text-foreground shadow-xs'
                     : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'

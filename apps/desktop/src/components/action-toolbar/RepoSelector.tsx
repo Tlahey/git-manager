@@ -45,7 +45,7 @@ export function RepoSelector() {
           <button
             type="button"
             title={activeRepo ?? t('toolbar.selectRepo')}
-            className="flex h-5 min-w-0 max-w-[200px] items-center gap-1 rounded px-1 text-sm font-bold transition-colors hover:bg-accent"
+            className="flex h-5 min-w-0 max-w-[200px] cursor-pointer items-center gap-1 rounded px-1 text-sm font-bold transition-colors hover:bg-accent"
           >
             <span className="min-w-0 flex-1 truncate text-left">{activeName}</span>
             <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -78,7 +78,7 @@ export function RepoSelector() {
                     key={repo.path}
                     type="button"
                     onClick={() => handleSelect(repo.path)}
-                    className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition-colors hover:bg-accent ${
+                    className={`flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left transition-colors hover:bg-accent ${
                       isActive ? 'bg-accent/60' : ''
                     }`}
                   >

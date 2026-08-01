@@ -103,7 +103,7 @@ export function TrophyToast() {
 
       <button
         onClick={() => setVisible(false)}
-        className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-black/10 hover:text-foreground"
+        className="shrink-0 cursor-pointer rounded p-0.5 text-muted-foreground hover:bg-black/10 hover:text-foreground"
       >
         <X className="h-3.5 w-3.5" />
       </button>

@@ -38,7 +38,7 @@ export function PrFileDiffCenter({ repoPath, prNumber, filename, onClose }: PrFi
         <button
           onClick={onClose}
           data-testid="pr-file-diff-back"
-          className="flex items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
           {t('pr.diff.back')}
@@ -78,7 +78,7 @@ export function PrFileDiffCenter({ repoPath, prNumber, filename, onClose }: PrFi
               onClick={() => setTab('diff')}
               data-testid="pr-file-diff-tab-diff"
               className={cn(
-                'flex items-center gap-1 px-2 py-1 text-[11px] transition-colors',
+                'flex cursor-pointer items-center gap-1 px-2 py-1 text-[11px] transition-colors',
                 tab === 'diff' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'
               )}
             >
@@ -89,7 +89,7 @@ export function PrFileDiffCenter({ repoPath, prNumber, filename, onClose }: PrFi
               onClick={() => setTab('file')}
               data-testid="pr-file-diff-tab-file"
               className={cn(
-                'flex items-center gap-1 px-2 py-1 text-[11px] transition-colors',
+                'flex cursor-pointer items-center gap-1 px-2 py-1 text-[11px] transition-colors',
                 tab === 'file' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'
               )}
             >

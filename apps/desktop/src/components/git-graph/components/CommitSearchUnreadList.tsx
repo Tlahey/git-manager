@@ -62,7 +62,7 @@ export function CommitSearchUnreadList({ unread, onOpenCommit }: CommitSearchUnr
               type="button"
               onClick={() => onOpenCommit(result.commit.oid)}
               aria-label={t('gitTree.commitSearch.viewCommit', { sha: result.commit.shortOid })}
-              className="flex max-w-full items-center gap-1 rounded border border-border bg-muted/20 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+              className="flex max-w-full cursor-pointer items-center gap-1 rounded border border-border bg-muted/20 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
               data-testid={`commit-search-unread-${result.commit.shortOid}`}
             >
               {result.commit.shortOid}
