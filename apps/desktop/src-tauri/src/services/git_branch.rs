@@ -386,6 +386,33 @@ pub fn rename_branch(repo: &Repository, old_name: &str, new_name: &str) -> Resul
     Ok(())
 }
 
+/// Sets local branch `branch_name`'s upstream to `upstream` — the git2 equivalent of
+/// `git branch --set-upstream-to=<upstream> <branch_name>`. `upstream` is a remote-tracking
+/// branch's short name (e.g. `origin/main`), matching what `Branch::set_upstream` expects (see
+/// `set_upstream_if_unset` in `services/git_remote.rs`, which calls the same git2 primitive
+/// automatically after a first push).
+///
+/// Errors if the local branch doesn't exist. `Branch::set_upstream` itself does not require the
+/// target ref to already exist — it only writes `branch.<name>.remote`/`.merge` config, so it
+/// would happily "succeed" against a typo or a not-yet-pushed name. That is surprising for a menu
+/// action the user expects to pick from what is actually there, so this checks the remote-tracking
+/// branch exists first and reports `BranchNotFound` instead of silently pointing the branch at
+/// nothing.
+pub fn set_branch_upstream(
+    repo: &Repository,
+    branch_name: &str,
+    upstream: &str,
+) -> Result<(), AppError> {
+    let mut branch = repo
+        .find_branch(branch_name, git2::BranchType::Local)
+        .map_err(AppError::Git)?;
+
+    repo.find_branch(upstream, git2::BranchType::Remote)
+        .map_err(|_| AppError::BranchNotFound(upstream.to_string()))?;
+
+    branch.set_upstream(Some(upstream)).map_err(AppError::Git)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -407,6 +434,29 @@ mod tests {
                 .unwrap();
         }
         (dir, repo)
+    }
+
+    /// Creates a bare `refs/remotes/<name>` reference at HEAD, standing in for a fetched
+    /// remote-tracking branch without needing an actual second repository + fetch.
+    ///
+    /// Also registers `name`'s leading path segment as an actual remote (if not already present) —
+    /// `Branch::set_upstream` resolves which remote owns a `refs/remotes/...` ref by walking the
+    /// repo's configured remotes, not by trusting the ref's own name, so a bare ref with no matching
+    /// remote makes it fail with "could not determine remote for '...'" even though the ref exists.
+    fn create_remote_ref(repo: &Repository, name: &str) {
+        let head_oid = repo.head().unwrap().peel_to_commit().unwrap().id();
+        repo.reference(
+            &format!("refs/remotes/{name}"),
+            head_oid,
+            false,
+            "test remote-tracking ref",
+        )
+        .unwrap();
+
+        let remote_name = name.split_once('/').map(|(r, _)| r).unwrap_or(name);
+        if repo.find_remote(remote_name).is_err() {
+            repo.remote(remote_name, "file:///dev/null").unwrap();
+        }
     }
 
     #[test]
@@ -528,6 +578,46 @@ mod tests {
             .unwrap();
         let upstream = renamed.upstream().unwrap();
         assert_eq!(upstream.name().unwrap(), Some("origin/feature-old"));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    // ─── set_branch_upstream ────────────────────────────────────────────────
+
+    #[test]
+    fn set_branch_upstream_points_local_branch_at_remote_tracking_branch() {
+        let (dir, repo) = init_repo_with_commit("set-upstream-ok");
+        create_branch(&repo, "feature", "HEAD").unwrap();
+        create_remote_ref(&repo, "origin/feature");
+
+        set_branch_upstream(&repo, "feature", "origin/feature").unwrap();
+
+        let branch = repo
+            .find_branch("feature", git2::BranchType::Local)
+            .unwrap();
+        let upstream = branch.upstream().unwrap();
+        assert_eq!(upstream.name().unwrap().unwrap(), "origin/feature");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn set_branch_upstream_errors_when_remote_branch_missing() {
+        let (dir, repo) = init_repo_with_commit("set-upstream-missing-remote");
+        create_branch(&repo, "feature", "HEAD").unwrap();
+
+        let err = set_branch_upstream(&repo, "feature", "origin/does-not-exist").unwrap_err();
+        assert!(matches!(err, AppError::BranchNotFound(_)));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn set_branch_upstream_errors_when_local_branch_missing() {
+        let (dir, repo) = init_repo_with_commit("set-upstream-missing-local");
+        create_remote_ref(&repo, "origin/main");
+
+        assert!(set_branch_upstream(&repo, "does-not-exist", "origin/main").is_err());
 
         std::fs::remove_dir_all(&dir).ok();
     }

@@ -14,8 +14,8 @@ type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
  * relevant builder; no Tauri code involved, and the result is directly unit-testable.
  *
  * Items shipped as VISIBLE BUT DISABLED are planned features without an implementation yet
- * (Set upstream, Explain branch changes, Solo, remote-branch deletion) — they keep the menu shape
- * stable so wiring one later is only an `enabled`/`action` change here.
+ * (remote-branch deletion, notably) — they keep the menu shape stable so wiring one later is only
+ * an `enabled`/`action` change here.
  */
 
 // ── Context ──────────────────────────────────────────────────────────────────
@@ -103,6 +103,8 @@ export interface CommitMenuActions extends BranchTipCommitActions {
 export interface BranchMenuActions {
   onPull: (ref: GitRef) => void
   onPush: (ref: GitRef) => void
+  /** Opens the "Set upstream" dialog (or applies the obvious default) for this local branch. */
+  onSetUpstream: (ref: GitRef) => void
   onFastForward: (ref: GitRef) => void
   onMergeInto: (ref: GitRef) => void
   onRebaseOntoBranch: (ref: GitRef) => void
@@ -186,9 +188,14 @@ function branchItemContext(ref: GitRef, ctx: GraphCommitMenuContext): BranchItem
 
 // ── Per-branch sections (shared by the submenu and the flat single-branch layout) ──
 
-/** Pull / Push / Set upstream — local branches only; pull/push act on HEAD, so they stay
- *  disabled on a non-current branch. Set upstream is not implemented yet. */
-function syncSection(b: BranchItemContext, actions: BranchMenuActions, t: TranslateFn): MenuSpecEntry[] {
+/** Pull / Push — local branches only, and only meaningful against HEAD, so both stay visible but
+ *  disabled on a non-current branch (see `setUpstreamSection` for why "Set upstream" doesn't share
+ *  that gate). */
+function pullPushSection(
+  b: BranchItemContext,
+  actions: BranchMenuActions,
+  t: TranslateFn
+): MenuSpecEntry[] {
   if (b.isRemote) return []
   return [
     menuItem({
@@ -201,8 +208,35 @@ function syncSection(b: BranchItemContext, actions: BranchMenuActions, t: Transl
       enabled: b.isCurrent,
       action: () => actions.onPush(b.ref),
     }),
-    menuItem({ text: t('gitTree.branchMenu.setUpstream'), enabled: false }),
   ]
+}
+
+/**
+ * Set upstream — local branches only, and always enabled: unlike pull/push it writes metadata on
+ * the branch actually clicked (`branch.<name>.remote`/`.merge`), not on HEAD. That is what lets the
+ * sidebar offer it on every local branch row instead of gating it to the trunk the way pull/push
+ * are (see `buildSidebarBranchMenuSpec`) — the item does exactly what its row says regardless of
+ * what is currently checked out.
+ */
+function setUpstreamSection(
+  b: BranchItemContext,
+  actions: BranchMenuActions,
+  t: TranslateFn
+): MenuSpecEntry[] {
+  if (b.isRemote) return []
+  return [
+    menuItem({
+      text: t('gitTree.branchMenu.setUpstream'),
+      action: () => actions.onSetUpstream(b.ref),
+    }),
+  ]
+}
+
+/** Pull / Push / Set upstream, as one section for the graph's branch submenu and flat layout —
+ *  the sidebar (`buildSidebarBranchMenuSpec`) uses the two halves separately instead, since only
+ *  the pull/push half needs to be gated to the trunk. */
+function syncSection(b: BranchItemContext, actions: BranchMenuActions, t: TranslateFn): MenuSpecEntry[] {
+  return [...pullPushSection(b, actions, t), ...setUpstreamSection(b, actions, t)]
 }
 
 /** Fast-forward / Merge / Rebase against the current branch — meaningless on the current branch
@@ -415,9 +449,11 @@ export function buildSidebarBranchMenuSpec(
   const b = branchItemContext(ref, ctx)
   const isTrunk = !b.isRemote && isMainBranchName(ref.shortName)
   return [
-    // Pull / push / set upstream act on HEAD rather than on the row that was right-clicked, so they
-    // are offered on the trunk — where they are what one actually runs — and nowhere else.
-    ...(isTrunk ? syncSection(b, actions, t) : []),
+    // Pull / push act on HEAD rather than on the row that was right-clicked, so they are offered
+    // on the trunk — where they are what one actually runs — and nowhere else. Set upstream acts on
+    // the row itself, so every local branch gets it, not just the trunk.
+    ...(isTrunk ? pullPushSection(b, actions, t) : []),
+    ...setUpstreamSection(b, actions, t),
     menuSeparator(),
     ...relationshipSection(b, actions, t),
     menuSeparator(),

@@ -231,3 +231,16 @@ pub async fn delete_branch(
     )
     .map_err(Into::into)
 }
+
+/// Sets local branch `name`'s upstream to `upstream` (a remote-tracking branch's short name, e.g.
+/// `origin/main`) — the branch menu's "Set upstream" action, equivalent to
+/// `git branch --set-upstream-to=<upstream> <name>`.
+#[tauri::command]
+pub async fn set_branch_upstream(
+    path: String,
+    name: String,
+    upstream: String,
+) -> Result<(), String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    git_branch::set_branch_upstream(&repo, &name, &upstream).map_err(Into::into)
+}

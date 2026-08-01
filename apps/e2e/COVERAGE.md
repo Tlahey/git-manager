@@ -378,6 +378,7 @@ actually moving.
 | --------------------------------------- | ------------- | ----------------- | -------- | ------------------------------------------------------------------------------------ |
 | Commit graph rendering                  | log/graph     | any fixture       | 📷       | ⬜ (volatile: shas/dates)                                                            |
 | Branches: create / checkout / rename / delete | branch  | any fixture       | —        | 🟡 (checkout ✅ via BranchContext; **create-from-commit ✅ via ⌘K palette**, asserted via `git log`; **rename ✅** (`branch-rename.feature`, see below); delete still native) |
+| Branches: set upstream                  | branch        | remote-ahead      | —        | ✅ (**dialog path**, driven through the repoUI `pendingGraphAction` store bridge — same technique `ai-commit-recompose.steps.ts` already uses for its own native-menu-only entry, see `branch-upstream.steps.ts` — asserted via `git config branch.<name>.remote`/`.merge`; the "unambiguous default, no dialog" direct-apply path (`resolveDefaultUpstream`) stays behind the native branch context menu and isn't e2e-driven, see notes below) |
 | Tags: create / shown in graph            | tag           | any fixture       | —        | ✅ (**create (lightweight + annotated) via ⌘K palette**, asserted via `git log`/`git cat-file -t`; **ref badge shown in the graph row ✅**, `ref-label-tag-<name>` testid added to `RefLabel.tsx`) |
 | Cherry-pick a commit                    | cherry-pick   | feature-branches  | —        | ✅ (**via ⌘K palette**, asserted via `git log` — picks a non-conflicting file addition from another branch) |
 | Interactive rebase (reword/squash/drop) | rebase        | fixup-chain       | —        | 🚫 (native commit menu + child window)                                               |
@@ -536,6 +537,24 @@ DOM value:
   drag-reorder in the rebase editor. Other non-menu entry points: branch checkout via
   `BranchContext` (undo-redo.feature), commit via the WIP panel buttons (commit.feature), undo/redo
   via keyboard.
+- **Branch-scoped dialog actions (rename, set upstream, …) have no command-palette entry at all** —
+  neither the graph's branch submenu nor the sidebar's branch row menu routes through it (the ⌘K
+  palette only offers commit/stash actions today, see `useCommitCommands.ts`/`useStashCommands.ts`).
+  But the
+  native handler for these still only calls `setPendingGraphAction({ kind: 'renameBranch' | ... })`
+  on the repoUI store the same way the palette's commit-scoped actions do — `ai-commit-recompose.
+  steps.ts` proved the pattern first for its own native-menu-only entry (`recompose`), and
+  `branch-upstream.steps.ts` reuses it for **Set upstream**: `window.__e2eRepoUIStore.getState()
+  .setPendingGraphAction(...)` after selecting any commit (`GitGraph.tsx`'s bridge effect requires
+  a non-null `primaryOid`, unrelated to which branch the action targets), which opens the real
+  `SetUpstreamDialog` exactly as a menu click would. **Not covered by this**: the "unambiguous
+  default" shortcut (`resolveDefaultUpstream` in `lib/branchUpstream.ts`) that applies the upstream
+  directly with *no* dialog when exactly one `origin/<branch>` exists — that branch of
+  `onSetUpstream` lives entirely inside the native-menu closure in `useGitGraphActions.ts`/
+  `useSidebarBranchMenu.ts` and is never reached without a real menu click, so it stays untested by
+  e2e (unit-tested instead, see `branchUpstream.test.ts`). The dialog path e2e drives calls the
+  identical `apiSetBranchUpstream` → `set_branch_upstream` backend command either way, which is what
+  actually needed proving (the command didn't exist before this feature).
 - **Multi-window: prefer navigate-in-place; when a real second window is unavoidable, expect
   WebKit click quirks.** The merge and rebase editors (`merge.steps.ts`) sidestep multi-window
   entirely by navigating the shared main window straight to `?window=merge`/`?window=rebase` —

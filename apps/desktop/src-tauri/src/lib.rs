@@ -21,7 +21,7 @@ use commands::blame::{get_file_history, git_blame_file};
 use commands::branch::{
     checkout_branch, create_branch, create_tag, delete_branch, delete_tag, fast_forward_branch,
     get_branches, get_tag_containing_commit, get_tags, is_commit_on_current_branch, merge_branch,
-    rename_branch,
+    rename_branch, set_branch_upstream,
 };
 use commands::cherry_pick::cherry_pick_commit;
 use commands::commit::{
@@ -241,6 +241,7 @@ pub fn run() {
             is_commit_on_current_branch,
             merge_branch,
             fast_forward_branch,
+            set_branch_upstream,
             get_merge_target_status,
             // Rebase
             get_rebase_state,

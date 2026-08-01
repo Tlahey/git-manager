@@ -49,6 +49,9 @@ export type GraphCommitAction =
   | { kind: 'revert' }
   | { kind: 'branch' }
   | { kind: 'renameBranch'; branch: string }
+  /** Opens the upstream picker for `branch` — reached only when no default is unambiguous (see
+   *  `resolveDefaultUpstream`); an unambiguous default is applied straight away, no dialog. */
+  | { kind: 'setUpstream'; branch: string }
   | { kind: 'tag'; annotated: boolean }
   | { kind: 'compare' }
   | { kind: 'fixup' }
