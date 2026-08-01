@@ -26,6 +26,18 @@ export interface UseNotchPresenterOptions {
   host: NotchHost
   /** The surface's resting top edge, in the host's coordinate space. */
   restY: number
+  /**
+   * How far the surface travels, in the host's coordinate space.
+   *
+   * Pass the surface's **full height** and the slide alone does all the appearing and
+   * disappearing: parked one of these above its resting spot the card is entirely off the top of
+   * the screen, so it emerges from nothing and leaves to nothing without anything having to fade
+   * it in or out. That is the whole point of the movement.
+   *
+   * Defaults to {@link SLIDE_DISTANCE}, a short nudge, which is all a host that cannot go
+   * off-screen (the Storybook harness, where the "window" is a div on a page) can do.
+   */
+  slideDistance?: number
   /** `null` for "stays until dismissed" — no timer at all, rather than a very long one, so
    *  nothing can retire the card behind the user's back. */
   autoDismissMs: number | null
@@ -86,7 +98,7 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
     dismissingRef.current = true
     clearTimer()
 
-    const { host, restY, scheduler, onDismissed } = latest.current
+    const { host, restY, scheduler, onDismissed, slideDistance = SLIDE_DISTANCE } = latest.current
     // Only animate out if it ever animated in — a card dismissed before its entrance finished
     // would otherwise slide from a position it never reached.
     if (slidInRef.current) {
@@ -96,7 +108,7 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
       let fading = false
       await animateValue({
         from: restY,
-        to: restY - SLIDE_DISTANCE,
+        to: restY - slideDistance,
         durationMs: EXIT_MS,
         ease: linear,
         onFrame: (y, progress) => {
@@ -114,7 +126,7 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
       // is visibly still travelling: the card vanishes before the slide finishes, which is exactly
       // what it must not do. This is the one point where waiting for a round trip buys something.
       try {
-        await host.setY(restY - SLIDE_DISTANCE)
+        await host.setY(restY - slideDistance)
       } catch (e) {
         console.warn('Notch: failed to settle the surface at the end of its slide:', e)
       }
@@ -165,7 +177,7 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
     cancelledRef.current = false
 
     async function enter() {
-      const { host, restY, scheduler } = latest.current
+      const { host, restY, scheduler, slideDistance = SLIDE_DISTANCE } = latest.current
       try {
         await host.prepare?.()
       } catch (e) {
@@ -174,7 +186,7 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
       // The surface starts one slide-step above its resting spot, before the first paint, so
       // nothing flashes at the wrong place on the way in.
       try {
-        await host.setY(restY - SLIDE_DISTANCE)
+        await host.setY(restY - slideDistance)
       } catch (e) {
         console.warn('Notch: failed to park the surface above its resting spot:', e)
       }
@@ -196,7 +208,7 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
 
       try {
         await animateValue({
-          from: restY - SLIDE_DISTANCE,
+          from: restY - slideDistance,
           to: restY,
           durationMs: ENTER_MS,
           ease: linear,

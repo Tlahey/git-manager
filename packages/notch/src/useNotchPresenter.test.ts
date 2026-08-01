@@ -192,6 +192,26 @@ describe('auto-dismiss', () => {
     expect(result.current.visible).toBe(false)
   })
 
+  // The real window passes its own full height here, which is what lets the movement alone do the
+  // appearing and the disappearing: parked one height above rest the card is entirely off the top
+  // of the screen. The short default nudge left it visible at both ends, so it read as being
+  // switched on and off rather than arriving and leaving.
+  it('travels the full distance it is given, at both ends', async () => {
+    const travel = 300
+    const { host } = setup({ slideDistance: travel, autoDismissMs: 1000 })
+    await flush()
+
+    // Parked a whole travel above rest before it is ever shown.
+    expect(host.positions[0]).toBe(REST_Y - travel)
+    expect(host.positions.at(-1)).toBe(REST_Y)
+
+    await act(async () => {
+      vi.advanceTimersByTime(1000)
+    })
+
+    expect(host.positions.at(-1)).toBe(REST_Y - travel)
+  })
+
   it('slides back up before closing', async () => {
     const { host } = setup({ autoDismissMs: 1000 })
     await flush()

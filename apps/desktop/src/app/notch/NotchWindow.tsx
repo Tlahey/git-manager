@@ -62,9 +62,20 @@ export function NotchWindow({
     [windowX, notifications]
   )
 
+  // The whole OS window, halo margin included. Sliding by exactly this is what makes the card
+  // appear from nothing and leave to nothing: parked one window-height above its resting spot it
+  // is entirely off the top of the screen, so the movement alone does the appearing and the
+  // disappearing. A shorter nudge left it visible at both ends, which is why it used to look like
+  // the card was switched on and off rather than arriving and leaving.
+  const windowHeight = useMemo(
+    () => measureCardHeight(model, bandHeight) + HALO_MARGIN * 2,
+    [model, bandHeight]
+  )
+
   const presenter = useNotchPresenter({
     host,
     restY: windowY,
+    slideDistance: windowHeight,
     // A live card has no business timing out: a clone at 40 % that vanishes after five seconds
     // has told the user nothing and taken away the only thing tracking the operation. It ends when
     // its producer says so — by replacing it with a `status` card, or by clearing the queue.
@@ -104,11 +115,8 @@ export function NotchWindow({
   // A replacement card can be a different height — a progress card that ends as a failure grows an
   // output block — and a window still sized for the old one would clip it.
   useEffect(() => {
-    void resizeNotchWindow(
-      NOTCH_CARD_WIDTH + HALO_MARGIN * 2,
-      measureCardHeight(model, bandHeight) + HALO_MARGIN * 2
-    )
-  }, [model, bandHeight])
+    void resizeNotchWindow(NOTCH_CARD_WIDTH + HALO_MARGIN * 2, windowHeight)
+  }, [windowHeight])
 
   /**
    * Brings the app forward, and — when the card knows where it belongs — navigates there.
