@@ -200,6 +200,27 @@ function raiseHookFailureCard(repoPath: string, error: unknown): void {
   }
 }
 
+/**
+ * Runs a push that has no transfer card of its own, putting a refused `pre-push` on the notch.
+ *
+ * The main Push button gets this for free: it goes through `trackTransfer`, whose failure card
+ * already renders a hook's output rather than the error's own text. Dragging a ref onto another,
+ * publishing a tag and deleting a remote tag do not go through it — their callers show
+ * `String(error)`, which for a hook failure is the serialized `AppError` JSON, not the three lines
+ * the hook actually printed. Until those paths get progress cards of their own, this is what keeps
+ * a hook that refused them readable.
+ *
+ * The error is rethrown untouched: every caller here has its own dialog or toast to drive.
+ */
+async function withHookFailureCard<T>(repoPath: string, run: () => Promise<T>): Promise<T> {
+  try {
+    return await run()
+  } catch (error) {
+    raiseHookFailureCard(repoPath, error)
+    throw error
+  }
+}
+
 // ─── Clipboard ──────────────────────────────────────────────────────────────
 
 export async function apiCopyCommitSha(oid: string) {
@@ -735,7 +756,7 @@ export async function apiPushBranchTo(
   remote?: string,
   force?: boolean
 ) {
-  await pushBranchTo(path, source, target, remote, force)
+  await withHookFailureCard(path, () => pushBranchTo(path, source, target, remote, force))
 }
 
 // ─── Delete branch ─────────────────────────────────────────────────────────
@@ -1080,12 +1101,12 @@ export async function apiAnnotateTag(path: string, name: string, oid: string, me
 
 /** Deletes a tag on the remote (default "origin"). A network op, so it pushes no undo entry. */
 export async function apiDeleteRemoteTag(path: string, tagName: string, remote?: string) {
-  return deleteRemoteTag(path, tagName, remote)
+  return withHookFailureCard(path, () => deleteRemoteTag(path, tagName, remote))
 }
 
 /** Publishes a tag to the remote (default "origin"). A network op, so it pushes no undo entry. */
 export async function apiPushTag(path: string, tagName: string, remote?: string) {
-  return pushTag(path, tagName, remote)
+  return withHookFailureCard(path, () => pushTag(path, tagName, remote))
 }
 
 /**

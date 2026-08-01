@@ -170,10 +170,19 @@ pub async fn push_branch_to(
     source: String,
     target: String,
     force: Option<bool>,
+    // `git push --no-verify`, as on every other push path.
+    skip_hooks: Option<bool>,
 ) -> Result<(), String> {
     let result = tauri::async_runtime::spawn_blocking(move || {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
-        git_remote::push_to(&repo, remote, &source, &target, force.unwrap_or(false))
+        git_remote::push_to(
+            &repo,
+            remote,
+            &source,
+            &target,
+            force.unwrap_or(false),
+            skip_hooks.unwrap_or(false),
+        )
     })
     .await
     .map_err(|e| format!("push task failed to complete: {e}"))?;
@@ -268,10 +277,12 @@ pub async fn push_tag(
     path: String,
     tag_name: String,
     remote: Option<String>,
+    // `git push --no-verify`, as on every other push path.
+    skip_hooks: Option<bool>,
 ) -> Result<(), String> {
     let result = tauri::async_runtime::spawn_blocking(move || {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
-        git_remote::push_tag(&repo, remote, &tag_name)
+        git_remote::push_tag(&repo, remote, &tag_name, skip_hooks.unwrap_or(false))
     })
     .await
     .map_err(|e| format!("push task failed to complete: {e}"))?;
@@ -290,10 +301,12 @@ pub async fn delete_remote_tag(
     path: String,
     tag_name: String,
     remote: Option<String>,
+    // `git push --no-verify`, as on every other push path.
+    skip_hooks: Option<bool>,
 ) -> Result<(), String> {
     let result = tauri::async_runtime::spawn_blocking(move || {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
-        git_remote::delete_remote_tag(&repo, remote, &tag_name)
+        git_remote::delete_remote_tag(&repo, remote, &tag_name, skip_hooks.unwrap_or(false))
     })
     .await
     .map_err(|e| format!("push task failed to complete: {e}"))?;
