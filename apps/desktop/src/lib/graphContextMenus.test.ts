@@ -725,6 +725,7 @@ describe('buildTagMenuSpec', () => {
     onDeleteLocal: vi.fn(),
     onDeleteRemote: vi.fn(),
     onCopyName: vi.fn(),
+    onCopySha: vi.fn(),
     onCopyLink: vi.fn(),
     onToggleHidden: vi.fn(),
     onSolo: vi.fn(),
@@ -760,6 +761,7 @@ describe('buildTagMenuSpec', () => {
       'Delete v1.0 from origin',
       '---',
       'Copy tag name',
+      'Copy SHA',
       '---',
       'Copy link to this tag on remote: origin',
       '---',
@@ -819,6 +821,15 @@ describe('buildTagMenuSpec', () => {
     expect(labels).toContain('Annotate v1.0')
     item(spec, 'Annotate v1.0')?.action?.()
     expect(actions.onAnnotate).toHaveBeenCalledOnce()
+  })
+
+  it('offers Copy SHA for the tagged commit, next to the copy_sha icon, and wires it', () => {
+    const actions = tagActions()
+    const spec = normalizeMenuSpec(buildTagMenuSpec(tagCtx(true), actions, t))
+    const copySha = item(spec, 'Copy SHA')
+    expect(copySha?.icon).toBe('copy_sha')
+    copySha?.action?.()
+    expect(actions.onCopySha).toHaveBeenCalledOnce()
   })
 })
 
