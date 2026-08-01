@@ -22,7 +22,6 @@ import type {
   BisectTerm,
   GitCommit,
   ThreeWayMergeView,
-  AppSettings,
   UserTheme,
   GitRepoSummary,
   BlameHunk,
@@ -807,13 +806,6 @@ export const unpinObject = (path: string, refName: string) =>
 
 export const objectsExist = (path: string, oids: string[]) =>
   invoke<boolean[]>('objects_exist', { path, oids })
-
-// ─── Settings ─────────────────────────────────────────────────────────────────
-
-export const getSettings = () => invoke<AppSettings>('get_settings')
-
-export const updateSettings = (settings: Partial<AppSettings>) =>
-  invoke<void>('update_settings', { settings })
 
 // ─── Rollback ─────────────────────────────────────────────────────────────────
 
