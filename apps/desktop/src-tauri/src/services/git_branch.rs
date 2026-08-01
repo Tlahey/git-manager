@@ -4,7 +4,7 @@ use crate::utils::get_git_signature;
 use git2::{Oid, Repository};
 use serde::{Deserialize, Serialize};
 
-// ─── Struct local pour GitRef avec le bon nom de champ "type" ────────────────
+// ─── Local struct for GitRef with the correct "type" field name ─────────────
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -16,10 +16,10 @@ pub struct BranchRef {
     pub commit_oid: String,
 }
 
-/// Retourne la liste des branches (locales et/ou distantes)
+/// Returns the list of branches (local and/or remote)
 pub fn list_branches(repo: &Repository, include_remote: bool) -> Result<Vec<GitBranch>, AppError> {
     let branch_filter = if include_remote {
-        None // toutes les branches (locales + distantes)
+        None // all branches (local + remote)
     } else {
         Some(git2::BranchType::Local)
     };
@@ -30,7 +30,7 @@ pub fn list_branches(repo: &Repository, include_remote: bool) -> Result<Vec<GitB
         let (branch, branch_type) = branch_result.map_err(AppError::Git)?;
         let is_remote = branch_type == git2::BranchType::Remote;
 
-        // Nom de la branche
+        // Branch name
         let name = branch
             .name()
             .map_err(AppError::Git)?
@@ -41,7 +41,7 @@ pub fn list_branches(repo: &Repository, include_remote: bool) -> Result<Vec<GitB
             continue;
         }
 
-        // Nom court (strip préfixe remote si applicable)
+        // Short name (strip the remote prefix, when applicable)
         let short_name = if is_remote {
             name.split_once('/')
                 .map(|(_, rest)| rest)
@@ -51,11 +51,11 @@ pub fn list_branches(repo: &Repository, include_remote: bool) -> Result<Vec<GitB
             name.clone()
         };
 
-        // OID du commit de tête de branche
+        // OID of the branch's tip commit
         let reference = branch.get();
         let commit_oid = match reference.target() {
             Some(oid) => oid,
-            None => continue, // référence symbolique sans target direct
+            None => continue, // symbolic reference with no direct target
         };
         let commit_oid_str = commit_oid.to_string();
 
@@ -75,7 +75,7 @@ pub fn list_branches(repo: &Repository, include_remote: bool) -> Result<Vec<GitB
         let commit_timestamp = commit.time().seconds();
         let is_head = branch.is_head();
 
-        // Ahead / Behind vs upstream (branches locales uniquement)
+        // Ahead / Behind vs upstream (local branches only)
         let (upstream_name, ahead_count, behind_count) = if !is_remote {
             match branch.upstream() {
                 Ok(upstream_branch) => {
@@ -111,7 +111,7 @@ pub fn list_branches(repo: &Repository, include_remote: bool) -> Result<Vec<GitB
         });
     }
 
-    // Trier : HEAD en premier, puis locales par nom, puis distantes
+    // Sort: HEAD first, then locals by name, then remotes
     branches.sort_by(|a, b| {
         b.is_head
             .cmp(&a.is_head)
@@ -122,7 +122,7 @@ pub fn list_branches(repo: &Repository, include_remote: bool) -> Result<Vec<GitB
     Ok(branches)
 }
 
-/// Retourne la liste de tous les tags du dépôt
+/// Returns the list of every tag in the repository
 pub fn list_tags(repo: &Repository) -> Result<Vec<BranchRef>, AppError> {
     let mut tags: Vec<BranchRef> = Vec::new();
 
@@ -135,7 +135,7 @@ pub fn list_tags(repo: &Repository) -> Result<Vec<BranchRef>, AppError> {
             Err(_) => continue,
         };
 
-        // Déréférencer les tags annotés pour obtenir l'OID du commit
+        // Dereference annotated tags to get the commit's OID
         let commit_oid = match reference.peel_to_commit() {
             Ok(c) => c.id(),
             Err(_) => match reference.target() {
@@ -152,7 +152,7 @@ pub fn list_tags(repo: &Repository) -> Result<Vec<BranchRef>, AppError> {
         });
     }
 
-    // Trier par nom de tag
+    // Sort by tag name
     tags.sort_by(|a, b| a.short_name.cmp(&b.short_name));
 
     Ok(tags)
@@ -203,9 +203,9 @@ pub fn first_tag_containing_commit(
     Ok(best.map(|(_, name)| name))
 }
 
-/// Indique si `target_oid` fait partie de l'historique de la branche courante,
-/// c.-à-d. si le commit est HEAD ou un de ses ancêtres. Sert à n'activer le
-/// fixup que sur des commits réellement rebasables depuis HEAD.
+/// Reports whether `target_oid` is part of the current branch's history, i.e. whether the commit
+/// is HEAD or one of its ancestors. Used to only enable fixup on commits that are actually
+/// rebasable from HEAD.
 pub fn is_commit_on_current_branch(repo: &Repository, target_oid: &str) -> Result<bool, AppError> {
     let target = Oid::from_str(target_oid)
         .map_err(|_| AppError::Unknown(format!("Invalid OID: {target_oid}")))?;
@@ -219,8 +219,8 @@ pub fn is_commit_on_current_branch(repo: &Repository, target_oid: &str) -> Resul
     Ok(repo.graph_descendant_of(head_oid, target).unwrap_or(false))
 }
 
-/// Crée une nouvelle branche locale pointant sur `from_ref`, sans la checkout.
-/// `from_ref` accepte tout revspec résolu par git2 (nom de branche, "HEAD", OID complet).
+/// Creates a new local branch pointing at `from_ref`, without checking it out.
+/// `from_ref` accepts any revspec git2 can resolve (branch name, "HEAD", full OID).
 pub fn create_branch(repo: &Repository, name: &str, from_ref: &str) -> Result<(), AppError> {
     let obj = repo
         .revparse_single(from_ref)
@@ -230,7 +230,7 @@ pub fn create_branch(repo: &Repository, name: &str, from_ref: &str) -> Result<()
     Ok(())
 }
 
-/// Crée un tag léger (lightweight) pointant sur `from_ref`.
+/// Creates a lightweight tag pointing at `from_ref`.
 pub fn create_tag_lightweight(
     repo: &Repository,
     name: &str,
@@ -247,7 +247,7 @@ pub fn create_tag_lightweight(
     Ok(())
 }
 
-/// Crée un tag annoté (avec message et signature) pointant sur `from_ref`.
+/// Creates an annotated tag (with a message and a signature) pointing at `from_ref`.
 pub fn create_tag_annotated(
     repo: &Repository,
     name: &str,
@@ -266,13 +266,13 @@ pub fn create_tag_annotated(
     Ok(())
 }
 
-/// Supprime un tag (léger ou annoté) par son nom court (sans le préfixe `refs/tags/`).
+/// Deletes a tag (lightweight or annotated) by its short name (without the `refs/tags/` prefix).
 pub fn delete_tag(repo: &Repository, name: &str) -> Result<(), AppError> {
     repo.tag_delete(name).map_err(AppError::Git)
 }
 
-/// Checkout d'une branche locale par son nom, ou d'un commit brut par OID (HEAD détaché).
-/// Le fallback OID permet de restaurer un HEAD détaché lors d'un undo de checkout.
+/// Checks out a local branch by name, or a raw commit by OID (detached HEAD). The OID fallback
+/// lets a checkout undo restore a detached HEAD.
 pub fn checkout_branch(repo: &Repository, ref_name: &str, force: bool) -> Result<(), AppError> {
     let mut checkout_opts = git2::build::CheckoutBuilder::new();
     if force {
@@ -293,7 +293,7 @@ pub fn checkout_branch(repo: &Repository, ref_name: &str, force: bool) -> Result
         return Ok(());
     }
 
-    // Pas une branche locale : tenter un OID brut (checkout détaché)
+    // Not a local branch: try a raw OID (detached checkout)
     let oid = Oid::from_str(ref_name)
         .map_err(|_| AppError::Unknown(format!("Branch not found: {ref_name}")))?;
     let commit = repo.find_commit(oid).map_err(AppError::Git)?;
@@ -303,9 +303,9 @@ pub fn checkout_branch(repo: &Repository, ref_name: &str, force: bool) -> Result
     Ok(())
 }
 
-/// Supprime une branche locale (et sa branche de tracking distante si demandé).
-/// `force = false` refuse la suppression si la branche n'est pas fusionnée dans HEAD
-/// (équivalent `git branch -d`) ; `force = true` supprime sans vérification (`-D`).
+/// Deletes a local branch (and its remote-tracking branch, if requested).
+/// `force = false` refuses the deletion if the branch isn't merged into HEAD (equivalent to
+/// `git branch -d`); `force = true` deletes without checking (`-D`).
 pub fn delete_branch(
     repo: &Repository,
     name: &str,
@@ -352,12 +352,73 @@ pub fn delete_branch(
     Ok(())
 }
 
+/// Mirrors the frontend's `isMainBranchName` (`apps/desktop/src/lib/graphContextMenus.ts`): the
+/// repo's protected primary branch, local `main`/`master`. Kept as its own small, hardcoded check
+/// here rather than threaded through IPC, because the frontend's `protectedBranches` setting is a
+/// per-repo, user-editable list that lives only in the frontend settings store and is never passed
+/// to Rust — this is the one guarantee the backend can enforce on its own, independent of whatever
+/// the dialog did or didn't check.
+fn is_protected_branch_name(short_name: &str) -> bool {
+    short_name == "main" || short_name == "master"
+}
+
+/// Renames a local branch (`git branch -m old new`). Refuses to rename `main`/`master` — see
+/// `is_protected_branch_name`.
+///
+/// Preserves the upstream tracking link unchanged: `Branch::rename` (`git_branch_move` in
+/// libgit2) renames the `branch.<old>.*` config section to `branch.<new>.*` as part of the same
+/// call, carrying `remote`/`merge` over to the new name — so the branch keeps tracking the exact
+/// remote-tracking branch it did before, matching `git branch -m`, which never touches the
+/// remote-tracking branch itself. No extra step is needed here; see
+/// `rename_branch_preserves_the_upstream_tracking_link` below for the regression test that pins
+/// this down.
+pub fn rename_branch(repo: &Repository, old_name: &str, new_name: &str) -> Result<(), AppError> {
+    if is_protected_branch_name(old_name) {
+        return Err(AppError::ProtectedBranch(old_name.to_string()));
+    }
+
+    let mut branch = repo
+        .find_branch(old_name, git2::BranchType::Local)
+        .map_err(AppError::Git)?;
+
+    branch.rename(new_name, false).map_err(AppError::Git)?;
+
+    Ok(())
+}
+
+/// Sets local branch `branch_name`'s upstream to `upstream` — the git2 equivalent of
+/// `git branch --set-upstream-to=<upstream> <branch_name>`. `upstream` is a remote-tracking
+/// branch's short name (e.g. `origin/main`), matching what `Branch::set_upstream` expects (see
+/// `set_upstream_if_unset` in `services/git_remote.rs`, which calls the same git2 primitive
+/// automatically after a first push).
+///
+/// Errors if the local branch doesn't exist. `Branch::set_upstream` itself does not require the
+/// target ref to already exist — it only writes `branch.<name>.remote`/`.merge` config, so it
+/// would happily "succeed" against a typo or a not-yet-pushed name. That is surprising for a menu
+/// action the user expects to pick from what is actually there, so this checks the remote-tracking
+/// branch exists first and reports `BranchNotFound` instead of silently pointing the branch at
+/// nothing.
+pub fn set_branch_upstream(
+    repo: &Repository,
+    branch_name: &str,
+    upstream: &str,
+) -> Result<(), AppError> {
+    let mut branch = repo
+        .find_branch(branch_name, git2::BranchType::Local)
+        .map_err(AppError::Git)?;
+
+    repo.find_branch(upstream, git2::BranchType::Remote)
+        .map_err(|_| AppError::BranchNotFound(upstream.to_string()))?;
+
+    branch.set_upstream(Some(upstream)).map_err(AppError::Git)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// Crée un dépôt temporaire avec un commit initial (repris du gabarit utilisé par
-    /// `git_interactive_rebase.rs` — pas de dépendance de test dédiée dans ce workspace).
+    /// Creates a temporary repository with an initial commit (borrowed from the template used by
+    /// `git_interactive_rebase.rs` — no dedicated test dependency in this workspace).
     fn init_repo_with_commit(name: &str) -> (std::path::PathBuf, Repository) {
         let dir =
             std::env::temp_dir().join(format!("gm-test-branch-{}-{}", name, std::process::id()));
@@ -365,14 +426,37 @@ mod tests {
         let repo = Repository::init(&dir).unwrap();
         let sig = get_git_signature(&repo).unwrap();
         {
-            // Le `Tree` emprunte `repo` et implémente `Drop` : sa portée doit se terminer avant
-            // de déplacer `repo` dans la valeur de retour ci-dessous.
+            // `Tree` borrows `repo` and implements `Drop`: its scope must end before `repo` is
+            // moved into the return value below.
             let tree_oid = repo.index().unwrap().write_tree().unwrap();
             let tree = repo.find_tree(tree_oid).unwrap();
             repo.commit(Some("HEAD"), &sig, &sig, "init", &tree, &[])
                 .unwrap();
         }
         (dir, repo)
+    }
+
+    /// Creates a bare `refs/remotes/<name>` reference at HEAD, standing in for a fetched
+    /// remote-tracking branch without needing an actual second repository + fetch.
+    ///
+    /// Also registers `name`'s leading path segment as an actual remote (if not already present) —
+    /// `Branch::set_upstream` resolves which remote owns a `refs/remotes/...` ref by walking the
+    /// repo's configured remotes, not by trusting the ref's own name, so a bare ref with no matching
+    /// remote makes it fail with "could not determine remote for '...'" even though the ref exists.
+    fn create_remote_ref(repo: &Repository, name: &str) {
+        let head_oid = repo.head().unwrap().peel_to_commit().unwrap().id();
+        repo.reference(
+            &format!("refs/remotes/{name}"),
+            head_oid,
+            false,
+            "test remote-tracking ref",
+        )
+        .unwrap();
+
+        let remote_name = name.split_once('/').map(|(r, _)| r).unwrap_or(name);
+        if repo.find_remote(remote_name).is_err() {
+            repo.remote(remote_name, "file:///dev/null").unwrap();
+        }
     }
 
     #[test]
@@ -403,6 +487,137 @@ mod tests {
         let (dir, repo) = init_repo_with_commit("delete-missing");
 
         assert!(delete_tag(&repo, "does-not-exist").is_err());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn rename_branch_moves_the_local_ref() {
+        let (dir, repo) = init_repo_with_commit("rename-success");
+        create_branch(&repo, "feature-old", "HEAD").unwrap();
+
+        rename_branch(&repo, "feature-old", "feature-new").unwrap();
+
+        assert!(repo
+            .find_branch("feature-old", git2::BranchType::Local)
+            .is_err());
+        assert!(repo
+            .find_branch("feature-new", git2::BranchType::Local)
+            .is_ok());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn rename_branch_errors_when_target_name_already_exists() {
+        let (dir, repo) = init_repo_with_commit("rename-conflict");
+        create_branch(&repo, "feature-a", "HEAD").unwrap();
+        create_branch(&repo, "feature-b", "HEAD").unwrap();
+
+        let err = rename_branch(&repo, "feature-a", "feature-b").unwrap_err();
+        assert!(matches!(err, AppError::Git(_)));
+        // Both branches are still there: the rejected rename touched neither.
+        assert!(repo
+            .find_branch("feature-a", git2::BranchType::Local)
+            .is_ok());
+        assert!(repo
+            .find_branch("feature-b", git2::BranchType::Local)
+            .is_ok());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn rename_branch_rejects_a_protected_branch() {
+        let (dir, repo) = init_repo_with_commit("rename-protected");
+        // `Repository::init` honours the host's `init.defaultBranch`, so force a "main" branch
+        // into existence rather than relying on it being the one the commit already landed on.
+        let head_commit = repo.head().unwrap().peel_to_commit().unwrap();
+        repo.branch("main", &head_commit, true).unwrap();
+
+        let err = rename_branch(&repo, "main", "renamed-main").unwrap_err();
+        assert!(matches!(err, AppError::ProtectedBranch(name) if name == "main"));
+        assert!(repo.find_branch("main", git2::BranchType::Local).is_ok());
+        assert!(repo
+            .find_branch("renamed-main", git2::BranchType::Local)
+            .is_err());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn rename_branch_preserves_the_upstream_tracking_link() {
+        let (dir, repo) = init_repo_with_commit("rename-upstream");
+        create_branch(&repo, "feature-old", "HEAD").unwrap();
+
+        // Fake a remote-tracking branch and point `feature-old` at it, mirroring what a real
+        // `git fetch` + `push -u` sets up. `set_upstream` below resolves the remote name from the
+        // remote's own fetch refspec, so a real (if unreachable) "origin" remote is required.
+        repo.remote("origin", "file:///dev/null").unwrap();
+        let head_commit = repo.head().unwrap().peel_to_commit().unwrap();
+        repo.reference(
+            "refs/remotes/origin/feature-old",
+            head_commit.id(),
+            true,
+            "test upstream",
+        )
+        .unwrap();
+        {
+            let mut branch = repo
+                .find_branch("feature-old", git2::BranchType::Local)
+                .unwrap();
+            branch.set_upstream(Some("origin/feature-old")).unwrap();
+        }
+
+        rename_branch(&repo, "feature-old", "feature-new").unwrap();
+
+        // The renamed branch still resolves an upstream, and it's still the same remote-tracking
+        // branch as before — the rename never touched `refs/remotes/origin/feature-old`, matching
+        // `git branch -m`.
+        let renamed = repo
+            .find_branch("feature-new", git2::BranchType::Local)
+            .unwrap();
+        let upstream = renamed.upstream().unwrap();
+        assert_eq!(upstream.name().unwrap(), Some("origin/feature-old"));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    // ─── set_branch_upstream ────────────────────────────────────────────────
+
+    #[test]
+    fn set_branch_upstream_points_local_branch_at_remote_tracking_branch() {
+        let (dir, repo) = init_repo_with_commit("set-upstream-ok");
+        create_branch(&repo, "feature", "HEAD").unwrap();
+        create_remote_ref(&repo, "origin/feature");
+
+        set_branch_upstream(&repo, "feature", "origin/feature").unwrap();
+
+        let branch = repo
+            .find_branch("feature", git2::BranchType::Local)
+            .unwrap();
+        let upstream = branch.upstream().unwrap();
+        assert_eq!(upstream.name().unwrap().unwrap(), "origin/feature");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn set_branch_upstream_errors_when_remote_branch_missing() {
+        let (dir, repo) = init_repo_with_commit("set-upstream-missing-remote");
+        create_branch(&repo, "feature", "HEAD").unwrap();
+
+        let err = set_branch_upstream(&repo, "feature", "origin/does-not-exist").unwrap_err();
+        assert!(matches!(err, AppError::BranchNotFound(_)));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn set_branch_upstream_errors_when_local_branch_missing() {
+        let (dir, repo) = init_repo_with_commit("set-upstream-missing-local");
+        create_remote_ref(&repo, "origin/main");
+
+        assert!(set_branch_upstream(&repo, "does-not-exist", "origin/main").is_err());
 
         std::fs::remove_dir_all(&dir).ok();
     }

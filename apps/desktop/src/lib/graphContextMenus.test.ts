@@ -9,12 +9,14 @@ import {
   buildWipMenuSpec,
   buildOtherWorktreeMenuSpec,
   buildStashMenuSpec,
+  buildConflictMenuSpec,
   buildRefDropMenuSpec,
   buildTagMenuSpec,
   buildSidebarBranchMenuSpec,
   isMainBranchName,
   type BranchMenuActions,
   type CommitMenuActions,
+  type ConflictMenuActions,
   type GraphCommitMenuContext,
   type OtherWorktreeMenuActions,
   type SidebarBranchMenuContext,
@@ -62,6 +64,7 @@ function ctx(overrides: Partial<GraphCommitMenuContext> = {}): GraphCommitMenuCo
 const branchActions = (): BranchMenuActions => ({
   onPull: vi.fn(),
   onPush: vi.fn(),
+  onSetUpstream: vi.fn(),
   onFastForward: vi.fn(),
   onMergeInto: vi.fn(),
   onRebaseOntoBranch: vi.fn(),
@@ -125,7 +128,7 @@ describe('buildBranchSubmenu — current local branch', () => {
     const labels = texts(nodes)
     expect(item(nodes, 'Pull (fast-forward if possible)')?.enabled).toBe(true)
     expect(item(nodes, 'Push')?.enabled).toBe(true)
-    expect(item(nodes, 'Set upstream')?.enabled).toBe(false)
+    expect(item(nodes, 'Set upstream')?.enabled).not.toBe(false)
     expect(labels.some((l) => l.startsWith('Merge '))).toBe(false)
     expect(labels.some((l) => l.startsWith('Checkout '))).toBe(false)
     expect(labels.some((l) => l.startsWith('Delete '))).toBe(false)
@@ -224,6 +227,17 @@ describe('buildBranchSubmenu — another local branch', () => {
     expect(labels.some((l) => l.startsWith('Copy link to branch'))).toBe(false)
   })
 
+  it('shows "Copy link to branch" when this non-main branch has a remote-tracking ref on the commit', () => {
+    const { items: nodes } = submenuFor(
+      ref({ shortName: 'feat' }),
+      ctx({
+        currentBranch: 'main',
+        refs: [ref({ shortName: 'feat' }), ref({ shortName: 'origin/feat', type: 'remote' })],
+      })
+    )
+    expect(texts(nodes)).toContain('Copy link to branch: origin/feat')
+  })
+
   it('drops the relationship actions when HEAD is detached', () => {
     const { items: nodes } = submenuFor(
       ref({ shortName: 'feat' }),
@@ -243,6 +257,15 @@ describe('buildBranchSubmenu — another local branch', () => {
     expect(actions.onOpenWorktreeFrom).toHaveBeenCalledWith(target)
     expect(actions.onPinToLeft).toHaveBeenCalledWith(target)
     expect(actions.onSolo).toHaveBeenCalledWith(target)
+  })
+
+  it('Set upstream is enabled and calls onSetUpstream with the branch ref', () => {
+    const target = ref({ shortName: 'feat' })
+    const { items: nodes, actions } = submenuFor(target, ctx({ currentBranch: 'main' }))
+    const setUpstream = item(nodes, 'Set upstream')
+    expect(setUpstream?.enabled).not.toBe(false)
+    setUpstream?.action?.()
+    expect(actions.onSetUpstream).toHaveBeenCalledWith(target)
   })
 })
 
@@ -386,6 +409,7 @@ describe('buildSidebarBranchMenuSpec — local branch', () => {
   // The same menu as a remote row's, told apart only by what the ref's own type allows.
   it('lists the branch, commit and row actions in order', () => {
     expect(texts(menu().nodes)).toEqual([
+      'Set upstream',
       'Fast-forward main to feat/login',
       'Merge feat/login into main',
       'Rebase main onto feat/login',
@@ -410,11 +434,12 @@ describe('buildSidebarBranchMenuSpec — local branch', () => {
   })
 
   // Pull and Push act on HEAD, not on the row: they belong to the toolbar, not to a branch's menu.
-  it('drops the sync section the graph shows for a local branch', () => {
+  // Set upstream is different — it writes metadata on the row's own branch, so it stays.
+  it('drops pull/push but keeps Set upstream, which acts on the row itself', () => {
     const labels = texts(menu().nodes)
     expect(labels).not.toContain('Pull (fast-forward if possible)')
     expect(labels).not.toContain('Push')
-    expect(labels).not.toContain('Set upstream')
+    expect(labels).toContain('Set upstream')
   })
 
   it('really deletes a local branch, unlike the disabled remote entry', () => {
@@ -449,6 +474,22 @@ describe('buildSidebarBranchMenuSpec — local branch', () => {
     expect(actions.onToggleVisibility).toHaveBeenCalledWith(
       expect.objectContaining({ shortName: 'feat/login' })
     )
+  })
+
+  it('shows "Copy link to branch" once this branch has a remote-tracking ref on the commit', () => {
+    // Unlike `menu()`, which always scopes `refs` to just the row's own ref, this needs the actual
+    // remote-tracking ref on the commit too, so it builds the spec directly.
+    const origin = ref({ shortName: 'origin/feat/login', type: 'remote' })
+    const nodes = normalizeMenuSpec(
+      buildSidebarBranchMenuSpec(
+        feat(),
+        { ...ctx({ currentBranch: 'main', refs: [feat(), origin] }), isHidden: false },
+        { ...branchActions(), onToggleVisibility: vi.fn() },
+        commitActions(),
+        t
+      )
+    )
+    expect(texts(nodes)).toContain('Copy link to branch: origin/feat/login')
   })
 })
 
@@ -719,6 +760,63 @@ describe('buildStashMenuSpec', () => {
   })
 })
 
+describe('buildConflictMenuSpec', () => {
+  const conflictActions = (): ConflictMenuActions => ({
+    onContinue: vi.fn(),
+    onSkip: vi.fn(),
+    onAbort: vi.fn(),
+  })
+
+  it('lists Continue, Skip, then Abort', () => {
+    const spec = normalizeMenuSpec(
+      buildConflictMenuSpec({ allResolved: false, noneResolved: true }, conflictActions(), t)
+    )
+    expect(texts(spec)).toEqual(['Continue Rebase', 'Skip commit', 'Abort Rebase'])
+  })
+
+  it('enables Continue once every conflict is resolved, and disables Skip', () => {
+    const spec = normalizeMenuSpec(
+      buildConflictMenuSpec({ allResolved: true, noneResolved: false }, conflictActions(), t)
+    )
+    expect(item(spec, 'Continue Rebase')?.enabled).toBe(true)
+    expect(item(spec, 'Skip commit')?.enabled).toBe(false)
+  })
+
+  it('enables Skip while nothing has been resolved yet, and disables Continue', () => {
+    const spec = normalizeMenuSpec(
+      buildConflictMenuSpec({ allResolved: false, noneResolved: true }, conflictActions(), t)
+    )
+    expect(item(spec, 'Continue Rebase')?.enabled).toBe(false)
+    expect(item(spec, 'Skip commit')?.enabled).toBe(true)
+  })
+
+  it('disables both Continue and Skip once resolution is under way (some files staged, some still conflicted)', () => {
+    const spec = normalizeMenuSpec(
+      buildConflictMenuSpec({ allResolved: false, noneResolved: false }, conflictActions(), t)
+    )
+    expect(item(spec, 'Continue Rebase')?.enabled).toBe(false)
+    expect(item(spec, 'Skip commit')?.enabled).toBe(false)
+  })
+
+  it('leaves Abort always enabled', () => {
+    const spec = normalizeMenuSpec(
+      buildConflictMenuSpec({ allResolved: false, noneResolved: false }, conflictActions(), t)
+    )
+    expect(item(spec, 'Abort Rebase')?.enabled).not.toBe(false)
+  })
+
+  it('wires each action', () => {
+    const actions = conflictActions()
+    const spec = normalizeMenuSpec(
+      buildConflictMenuSpec({ allResolved: true, noneResolved: false }, actions, t)
+    )
+    item(spec, 'Continue Rebase')?.action?.()
+    item(spec, 'Abort Rebase')?.action?.()
+    expect(actions.onContinue).toHaveBeenCalledOnce()
+    expect(actions.onAbort).toHaveBeenCalledOnce()
+  })
+})
+
 describe('buildRefDropMenuSpec', () => {
   const dropActions = () => ({
     onFastForward: vi.fn(),
@@ -768,6 +866,7 @@ describe('buildTagMenuSpec', () => {
     onDeleteLocal: vi.fn(),
     onDeleteRemote: vi.fn(),
     onCopyName: vi.fn(),
+    onCopySha: vi.fn(),
     onCopyLink: vi.fn(),
     onToggleHidden: vi.fn(),
     onSolo: vi.fn(),
@@ -803,6 +902,7 @@ describe('buildTagMenuSpec', () => {
       'Delete v1.0 from origin',
       '---',
       'Copy tag name',
+      'Copy SHA',
       '---',
       'Copy link to this tag on remote: origin',
       '---',
@@ -862,6 +962,15 @@ describe('buildTagMenuSpec', () => {
     expect(labels).toContain('Annotate v1.0')
     item(spec, 'Annotate v1.0')?.action?.()
     expect(actions.onAnnotate).toHaveBeenCalledOnce()
+  })
+
+  it('offers Copy SHA for the tagged commit, next to the copy_sha icon, and wires it', () => {
+    const actions = tagActions()
+    const spec = normalizeMenuSpec(buildTagMenuSpec(tagCtx(true), actions, t))
+    const copySha = item(spec, 'Copy SHA')
+    expect(copySha?.icon).toBe('copy_sha')
+    copySha?.action?.()
+    expect(actions.onCopySha).toHaveBeenCalledOnce()
   })
 })
 
@@ -1007,6 +1116,25 @@ describe('buildCommitMenuSpec', () => {
     // A plain local feature branch gets no branch link.
     const feat = build(ctx({ refs: [ref({ shortName: 'feat' })], currentBranch: 'main' }))
     expect(texts(feat).some((l) => l.startsWith('Copy link to branch'))).toBe(false)
+  })
+
+  it('gives ANY pushed local branch — not just main/master — "Copy link to branch"', () => {
+    // A non-main branch whose remote-tracking ref sits on the same commit now gets the item too,
+    // pointing at the actual remote ref's name.
+    const pushedFeat = build(
+      ctx({
+        refs: [
+          ref({ shortName: 'feat', type: 'branch' }),
+          ref({ shortName: 'origin/feat', type: 'remote' }),
+        ],
+        currentBranch: 'main',
+      })
+    )
+    expect(texts(pushedFeat)).toContain('Copy link to branch: origin/feat')
+
+    // Regression: a non-main branch with NO remote-tracking ref on the commit still hides it.
+    const unpushedFeat = build(ctx({ refs: [ref({ shortName: 'feat' })], currentBranch: 'main' }))
+    expect(texts(unpushedFeat).some((l) => l.startsWith('Copy link to branch'))).toBe(false)
   })
 
   it('keeps submenus when two DIFFERENT logical branches sit on the commit', () => {
