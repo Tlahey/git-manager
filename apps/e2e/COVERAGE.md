@@ -44,6 +44,7 @@ localStorage seed. `native` = needs a real OS dialog/window (see blockers).
 | Settings screen opens + **snapshot**                               | settings   | keyboard (Mod+,)         | 📷 ✅ (general + notifications)   | 🟡 (general & notifications snapshotted; row-height persistence ✅; **ssh key generation ✅ · AI provider test-connection ✅ · rewards toggle ✅ · AI preset dropdown ✅ · GitHub OAuth device code ✅**; appearance snapshot skipped on purpose, see below) |
 | **AI commit-message generation**: streaming + prompt-wiring + cancel | AI         | fake HTTP server         | —                                 | ✅ (see "6. AI commit-message generation" below)            |
 | **Worktree** list / add / remove (incl. dirty-remove force gate)  | worktree   | fixture:worktree-repo    | —                                 | ✅ (see "Worktree management" below)                        |
+| **Repo tab views**: switch Graph ↔ Terminal ↔ Settings            | navigation | fixture:feature-branches | 📷 (doc)                          | ✅ (see "Repo tab views" below)                              |
 
 ---
 
@@ -73,6 +74,31 @@ replayed / stopped-here / not-yet, with the base commit anchoring the top.
   2. clicking a row *wrapper* (`graph-row-<oid>`) doesn't reach the row's React `onClick` here; the
      inner cell has to be the target (`conflict-row-banner`), same as bisect.steps.ts does for
      picking commits.
+
+---
+
+## Repo tab views (Graph / Terminal / Settings) ✅ 📷
+
+The `role="tablist"` strip (`RepoViewTabs.tsx`, `data-testid="repo-view-tabs"`, built on
+`@git-manager/components`'s `InnerTab`) that lets one repo tab switch its whole content area
+between the commit graph, a full-height integrated terminal, and the app's own Settings page
+embedded in place — each mounted exclusively via a ternary in `RepoView.tsx`, backed by the
+session-only `repoViewTabs.store.ts` (one active view per repo-tab path, not persisted).
+
+- Setup: **`fixture:feature-branches`** — this feature doesn't depend on any particular git
+  history, so the simplest already-proven fixture was enough.
+- Covered (`repo-view-tabs.feature`): the graph view shown by default on a freshly opened repo
+  (`repo-view-tab-graph`'s `aria-selected="true"`); clicking the Terminal tab shows
+  `repo-terminal-view` and the graph (`repo-graph-view`) unmounts; clicking Settings shows the
+  embedded `repo-settings-view` (`SettingsPage` with `embedded`/`initialScope="local"`) and the
+  terminal unmounts; clicking back to Graph restores it; and — since `repoViewTabs.store.ts`'s own
+  doc comment states the selection is deliberately session-scoped, not persisted (a terminal view
+  restored onto dead PTY sessions after a relaunch would be a dead end) — a reload resets the tab
+  back to Graph, asserted directly rather than just trusted from the source comment.
+- **Doc scenario**: `InnerTab` is a plain `<button>`, not a Radix trigger, so the click-driven
+  scenario needed none of the pointerdown/`clickViaJs` workarounds worktree/fixup rows do — a
+  reminder that those exist because of the *specific* control, not because this suite's clicks are
+  generally unreliable. Placed under "Reading your repository" in `docs.config.ts` (`doc-repo-view-tabs.png`).
 
 ---
 
