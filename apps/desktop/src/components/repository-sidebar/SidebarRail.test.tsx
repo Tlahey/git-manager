@@ -123,7 +123,7 @@ describe('SidebarRail — expand', () => {
     const onExpand = vi.fn()
     const user = userEvent.setup()
     renderRail({ onExpand })
-    await user.click(screen.getByLabelText('Déplier la sidebar'))
+    await user.click(screen.getByLabelText('Expand sidebar'))
     await user.click(screen.getByLabelText('Local'))
     expect(onExpand).toHaveBeenCalledTimes(2)
   })

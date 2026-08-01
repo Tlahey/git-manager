@@ -52,7 +52,7 @@ export function IssueDescription({ repoPath, issueNumber, body }: IssueDescripti
           <button
             onClick={() => setEditing(true)}
             data-testid="issue-description-edit"
-            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <Pencil className="h-3 w-3" />
             {t('pr.action.edit')}

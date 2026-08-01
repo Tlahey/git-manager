@@ -80,7 +80,7 @@ export function PackageHealthPanel({ repoPath }: { repoPath: string }) {
               onClick={() => select({ kind: 'overview' })}
               data-testid="health-check-overview"
               aria-current={selection.kind === 'overview'}
-              className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-accent ${
+              className={`flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-accent ${
                 selection.kind === 'overview' ? 'bg-accent' : ''
               }`}
             >
@@ -95,7 +95,7 @@ export function PackageHealthPanel({ repoPath }: { repoPath: string }) {
               onClick={() => select({ kind: 'updates' })}
               data-testid="health-check-updates"
               aria-current={selection.kind === 'updates'}
-              className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-accent ${
+              className={`flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-accent ${
                 selection.kind === 'updates' ? 'bg-accent' : ''
               }`}
             >
@@ -114,7 +114,7 @@ export function PackageHealthPanel({ repoPath }: { repoPath: string }) {
                   onClick={() => select({ kind: 'check', id: check.id })}
                   data-testid={`health-check-${check.id}`}
                   aria-current={active}
-                  className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-accent ${
+                  className={`flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-accent ${
                     active ? 'bg-accent' : ''
                   }`}
                 >

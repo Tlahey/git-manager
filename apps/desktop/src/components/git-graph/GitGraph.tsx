@@ -898,7 +898,7 @@ export function GitGraph({
                 </span>
                 <button
                   onClick={clearSolo}
-                  className="flex items-center gap-1 rounded px-1.5 py-0.5 font-medium transition-colors hover:bg-primary/20"
+                  className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 font-medium transition-colors hover:bg-primary/20"
                   data-testid="graph-solo-clear"
                 >
                   <X className="h-3 w-3" />

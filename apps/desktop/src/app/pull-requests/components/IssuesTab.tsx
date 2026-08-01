@@ -134,7 +134,7 @@ export function IssuesTab({
             onClick={() => setMineOnly((v) => !v)}
             data-testid="issues-mine-toggle"
             aria-pressed={mineOnly}
-            className={`flex h-7 items-center gap-1 rounded border px-2 text-[10px] transition-colors ${
+            className={`flex h-7 cursor-pointer items-center gap-1 rounded border px-2 text-[10px] transition-colors ${
               mineOnly
                 ? 'border-primary/30 bg-primary/10 text-primary'
                 : 'border-border text-muted-foreground hover:text-foreground'

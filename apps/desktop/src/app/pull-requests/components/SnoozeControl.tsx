@@ -37,7 +37,7 @@ export function SnoozeControl({ prId }: SnoozeControlProps) {
   }
 
   const menuItem =
-    'flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-accent'
+    'flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-accent'
 
   return (
     <div
@@ -52,7 +52,7 @@ export function SnoozeControl({ prId }: SnoozeControlProps) {
         title={active ? t('snooze.unsnooze') : t('snooze.snooze')}
         aria-label={active ? t('snooze.unsnooze') : t('snooze.snooze')}
         data-testid={`snooze-trigger-${prId}`}
-        className={`shrink-0 transition-colors ${
+        className={`shrink-0 cursor-pointer transition-colors ${
           active ? 'text-amber-400' : 'text-muted-foreground/30 hover:text-amber-400'
         }`}
       >

@@ -624,6 +624,7 @@
   "sidebar.createPullRequest": "Créer une pull request",
   "sidebar.createBranch": "Créer une branche",
   "sidebar.collapse": "Réduire la sidebar",
+  "sidebar.expand": "Déplier la sidebar",
   "sidebar.filterBranches": "Filtrer les branches",
   "sidebar.filterBranchesPlaceholder": "Filtrer les branches…",
   "sidebar.clearFilter": "Effacer le filtre",

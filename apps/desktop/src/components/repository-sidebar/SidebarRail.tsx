@@ -9,6 +9,7 @@ import {
   Archive as ArchiveIcon,
 } from 'lucide-react'
 import { NumberBadge } from '@git-manager/ui'
+import { useTranslation } from '@git-manager/i18n'
 import type { GitRef, GitSubmodule } from '@git-manager/git-types'
 import { useBranches } from '../../hooks/useBranches'
 import { usePullRequests } from '../../hooks/usePullRequests'
@@ -36,7 +37,7 @@ function RailIcon({ icon, label, count, onClick }: RailIconProps) {
       onClick={onClick}
       title={count !== undefined ? `${label} (${count})` : label}
       aria-label={label}
-      className="group/rail relative flex h-10 w-full items-center justify-center text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+      className="group/rail relative flex h-10 w-full cursor-pointer items-center justify-center text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
     >
       {icon}
       <NumberBadge
@@ -75,20 +76,21 @@ export function SidebarRail({
   })
 
   const { data: stashes = [] } = useGitStashes(repoPath)
+  const { t } = useTranslation('git')
 
   return (
     <div className="flex h-full flex-col items-center">
-      {/* Bouton expand */}
+      {/* Expand button */}
       <button
         onClick={onExpand}
-        title="Déplier la sidebar"
-        aria-label="Déplier la sidebar"
-        className="flex h-9 w-full items-center justify-center border-b border-sidebar-border text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+        title={t('sidebar.expand')}
+        aria-label={t('sidebar.expand')}
+        className="flex h-9 w-full cursor-pointer items-center justify-center border-b border-sidebar-border text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
       >
         <PanelLeftOpen className="h-4 w-4" />
       </button>
 
-      {/* Icônes des sections */}
+      {/* Section icons */}
       <div className="flex w-full flex-1 flex-col py-1">
         <RailIcon
           icon={<HardDrive className="h-4 w-4" />}

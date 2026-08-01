@@ -50,7 +50,7 @@ export function GraphHeaderAuthorFilter({ authors }: GraphHeaderAuthorFilterProp
           title={t('gitTree.filterAuthor')}
           data-testid="author-filter-trigger"
           className={cn(
-            'flex h-5 shrink-0 items-center gap-1 rounded px-1 transition-colors',
+            'flex h-5 shrink-0 cursor-pointer items-center gap-1 rounded px-1 transition-colors',
             hasSelection
               ? 'bg-primary/15 text-primary'
               : 'text-muted-foreground/70 hover:bg-accent hover:text-foreground'
@@ -81,7 +81,7 @@ export function GraphHeaderAuthorFilter({ authors }: GraphHeaderAuthorFilterProp
               type="button"
               onClick={() => clear()}
               data-testid="author-filter-clear"
-              className="mb-2 flex w-full items-center gap-1.5 rounded px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="mb-2 flex w-full cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               <X className="h-3 w-3" />
               {t('gitTree.authorFilter.clear')}
@@ -100,7 +100,7 @@ export function GraphHeaderAuthorFilter({ authors }: GraphHeaderAuthorFilterProp
                     onClick={() => remove(a.email)}
                     aria-label={t('gitTree.authorFilter.remove', { name: a.name })}
                     data-testid={`author-filter-chip-remove-${a.email}`}
-                    className="shrink-0 rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                    className="shrink-0 cursor-pointer rounded-full text-muted-foreground transition-colors hover:text-foreground"
                   >
                     <X className="h-2.5 w-2.5" />
                   </button>

@@ -47,7 +47,7 @@ function TreeNode({
         type="button"
         aria-expanded={node.isDir ? expanded : undefined}
         className={cn(
-          'flex w-full items-center py-1 pr-2 text-left text-xs transition-colors',
+          'flex w-full cursor-pointer items-center py-1 pr-2 text-left text-xs transition-colors',
           'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
           isSelected
             ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'

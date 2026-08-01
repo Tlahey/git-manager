@@ -30,7 +30,7 @@ export function SectionHeader({
       <button
         data-testid={testId}
         onClick={onToggle}
-        className="flex flex-1 items-center gap-1.5 px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent/40"
+        className="flex flex-1 cursor-pointer items-center gap-1.5 px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent/40"
       >
         <span className="shrink-0 text-sidebar-muted-foreground/60">
           {isOpen ? (

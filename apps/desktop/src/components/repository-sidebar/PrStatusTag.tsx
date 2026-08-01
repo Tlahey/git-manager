@@ -73,7 +73,7 @@ export function PrStatusTag({ pr, onOpen }: PrStatusTagProps) {
         e.stopPropagation()
         onOpen?.(pr)
       }}
-      className={`inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium tabular-nums leading-none transition-colors hover:brightness-110 ${pill}`}
+      className={`inline-flex shrink-0 cursor-pointer items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium tabular-nums leading-none transition-colors hover:brightness-110 ${pill}`}
       aria-label={label}
       title={label}
       data-testid={`pr-status-tag-${pr.number}`}

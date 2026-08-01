@@ -26,7 +26,7 @@ function ChangelogItemText({ item }: { item: string }) {
         <button
           type="button"
           onClick={() => apiOpenUrl(url)}
-          className="text-primary hover:underline"
+          className="cursor-pointer text-primary hover:underline"
         >
           {label}
         </button>
@@ -44,7 +44,7 @@ function ChangelogItemText({ item }: { item: string }) {
             key={idx}
             type="button"
             onClick={() => apiOpenUrl(part)}
-            className="text-primary hover:underline"
+            className="cursor-pointer text-primary hover:underline"
           >
             {part}
           </button>

@@ -46,7 +46,7 @@ interface RepoSectionHeaderProps {
 }
 
 const GHOST =
-  'flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+  'flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
 const PULL_STRATEGIES: { strategy: PullStrategy; labelKey: string }[] = [
   { strategy: 'fast-forward-if-possible', labelKey: 'dashboard.pull.fastForwardIfPossible' },
@@ -110,7 +110,7 @@ export function RepoSectionHeader({
           aria-expanded={!isCollapsed}
           aria-label={isCollapsed ? t('dashboard.section.expand') : t('dashboard.section.collapse')}
           onClick={onToggleCollapse}
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {isCollapsed ? (
             <ChevronRight className="h-3.5 w-3.5" />

@@ -42,7 +42,7 @@ function PinnedTab({ icon, label, active, onClick, hideLabel }: PinnedTabProps) 
     <div className="group/tab relative flex items-end self-end">
       <button
         onClick={onClick}
-        className={`group relative flex h-7 items-center gap-2 rounded-md px-3 text-xs transition-colors ${
+        className={`group relative flex h-7 cursor-pointer items-center gap-2 rounded-md px-3 text-xs transition-colors ${
           active
             ? 'bg-sidebar-accent text-sidebar-foreground'
             : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/40 hover:text-sidebar-foreground'
@@ -154,7 +154,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
                   setOverIndex(null)
                 }}
                 onClick={() => setActiveTab(path)}
-                className={`group relative flex h-7 min-w-[120px] max-w-[200px] shrink-0 items-center gap-2 rounded-md px-3 text-xs transition-colors ${
+                className={`group relative flex h-7 min-w-[120px] max-w-[200px] shrink-0 cursor-pointer items-center gap-2 rounded-md px-3 text-xs transition-colors ${
                   isActive
                     ? 'bg-sidebar-accent text-sidebar-foreground'
                     : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/40 hover:text-sidebar-foreground'
@@ -173,7 +173,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
                 <span
                   role="button"
                   tabIndex={-1}
-                  className={`ml-auto rounded p-0.5 transition-opacity hover:bg-destructive/20 ${
+                  className={`ml-auto cursor-pointer rounded p-0.5 transition-opacity hover:bg-destructive/20 ${
                     isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                   }`}
                   onClick={(e) => {
@@ -195,7 +195,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
                 key={fixture.path}
                 title={fixture.description}
                 onClick={() => setActiveRepo(fixture.path)}
-                className={`group relative flex h-7 min-w-[120px] max-w-[200px] shrink-0 items-center gap-2 rounded-md border border-dashed border-amber-500/50 px-3 text-xs transition-colors ${
+                className={`group relative flex h-7 min-w-[120px] max-w-[200px] shrink-0 cursor-pointer items-center gap-2 rounded-md border border-dashed border-amber-500/50 px-3 text-xs transition-colors ${
                   isActive
                     ? 'bg-sidebar-accent text-sidebar-foreground'
                     : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/40 hover:text-sidebar-foreground'
@@ -206,7 +206,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
                 <span
                   role="button"
                   tabIndex={-1}
-                  className={`ml-auto rounded p-0.5 transition-opacity hover:bg-destructive/20 ${
+                  className={`ml-auto cursor-pointer rounded p-0.5 transition-opacity hover:bg-destructive/20 ${
                     isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                   }`}
                   onClick={(e) => {
@@ -233,7 +233,7 @@ export function TabBar({ onOpenSettings }: TabBarProps) {
           <NotificationDropdown />
           <button
             onClick={() => onOpenSettings('general')}
-            className="flex h-7 w-7 items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
             title="Réglages"
           >
             <Settings className="h-3.5 w-3.5" />

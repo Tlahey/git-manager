@@ -35,7 +35,7 @@ export function CommitSearchMatchList({ matches, onOpenCommit }: CommitSearchMat
           type="button"
           onClick={() => onOpenCommit(match.oid)}
           aria-label={t('gitTree.commitSearch.viewCommit', { sha: match.shortOid })}
-          className="flex w-full min-w-0 flex-col gap-1 rounded-md border border-border bg-muted/20 px-2 py-1.5 text-left transition-colors hover:border-primary/50 hover:bg-accent"
+          className="flex w-full min-w-0 cursor-pointer flex-col gap-1 rounded-md border border-border bg-muted/20 px-2 py-1.5 text-left transition-colors hover:border-primary/50 hover:bg-accent"
           data-testid={`commit-search-match-${match.shortOid}`}
         >
           <span className="flex min-w-0 items-baseline gap-1.5">

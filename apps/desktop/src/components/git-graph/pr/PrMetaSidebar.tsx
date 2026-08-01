@@ -86,7 +86,7 @@ export function PrMetaSidebar({ repoPath, prNumber }: PrMetaSidebarProps) {
         <button
           onClick={() => setReviewOpen((v) => !v)}
           data-testid="pr-review-toggle"
-          className="flex w-full items-center gap-1.5 rounded border border-border px-2 py-1.5 text-[11px] text-primary hover:bg-accent"
+          className="flex w-full cursor-pointer items-center gap-1.5 rounded border border-border px-2 py-1.5 text-[11px] text-primary hover:bg-accent"
         >
           <MessageSquarePlus className="h-3.5 w-3.5" />
           {t('pr.review.submit')}

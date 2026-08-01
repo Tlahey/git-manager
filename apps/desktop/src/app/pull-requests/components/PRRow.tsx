@@ -62,7 +62,7 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
         <button
           onClick={() => onTogglePin(pr.id)}
           title={pinned ? t('row.unpin') : t('row.pin')}
-          className={`shrink-0 transition-all ${
+          className={`shrink-0 cursor-pointer transition-all ${
             pinned
               ? 'text-amber-400'
               : 'text-muted-foreground/30 opacity-0 hover:text-amber-400 group-hover/pr:opacity-100'
@@ -137,7 +137,7 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
             }}
             title={t('row.openOnGitHub')}
             data-testid={`pr-number-link-${pr.id}`}
-            className="whitespace-nowrap font-mono text-[10px] text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
+            className="whitespace-nowrap cursor-pointer font-mono text-[10px] text-muted-foreground/60 transition-colors hover:text-primary hover:underline"
           >
             #{pr.number}
           </button>
@@ -224,7 +224,7 @@ export function PRRow({ pr, pinned, onTogglePin }: PRRowProps) {
             title={t('row.openInApp')}
             aria-label={t('row.openInApp')}
             data-testid={`pr-open-in-app-${pr.id}`}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all hover:border-border hover:bg-accent hover:text-foreground group-hover/pr:opacity-100"
+            className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded border border-transparent text-muted-foreground opacity-0 transition-all hover:border-border hover:bg-accent hover:text-foreground group-hover/pr:opacity-100"
           >
             <PanelRight className="h-3.5 w-3.5" />
           </button>

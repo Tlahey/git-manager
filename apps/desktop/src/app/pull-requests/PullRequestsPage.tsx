@@ -237,7 +237,7 @@ export function PullRequestsPage() {
               onClick={refresh}
               disabled={isValidating}
               data-testid="manual-refresh-button"
-              className="flex h-7 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs text-muted-foreground transition-colors hover:border-border/80 hover:bg-accent/40 hover:text-foreground disabled:opacity-40"
+              className="flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-xs text-muted-foreground transition-colors hover:enabled:border-border/80 hover:enabled:bg-accent/40 hover:enabled:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
               title={t('page.refreshNow')}
             >
               <RefreshCw className={`h-3 w-3 ${isValidating ? 'animate-spin' : ''}`} />{' '}

@@ -24,7 +24,7 @@ export function PrComments({ repoPath, prNumber }: PrCommentsProps) {
         <button
           onClick={refresh}
           data-testid="pr-comments-refresh"
-          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
           title={t('pr.comments.refresh')}
         >
           {isLoading ? <Spinner className="h-3 w-3" /> : <RefreshCw className="h-3 w-3" />}

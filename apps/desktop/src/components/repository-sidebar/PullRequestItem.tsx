@@ -148,7 +148,7 @@ export function PullRequestItem({
             e.stopPropagation()
             onContextMenu?.(e, pr)
           }}
-          className="mt-0.5 shrink-0 rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/pr:opacity-100"
+          className="mt-0.5 shrink-0 cursor-pointer rounded p-0.5 text-sidebar-muted-foreground opacity-0 transition-all hover:bg-sidebar-accent/80 hover:text-sidebar-foreground group-hover/pr:opacity-100"
           aria-label={t('sidebar.prActions')}
           title={t('sidebar.prActions')}
           data-testid={`pr-actions-button-${pr.number}`}

@@ -86,7 +86,7 @@ export function CommandAutocomplete({
                   onChange(s.command)
                   setOpen(false)
                 }}
-                className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs transition-colors hover:bg-accent"
+                className="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1 text-left text-xs transition-colors hover:bg-accent"
                 data-testid={testId ? `${testId}-option-${s.name}` : undefined}
               >
                 <Play className="h-3 w-3 shrink-0 text-orange-400/70" />

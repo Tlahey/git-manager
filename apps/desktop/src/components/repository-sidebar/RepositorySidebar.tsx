@@ -339,7 +339,7 @@ export function RepositorySidebar({
             aria-label={soloActive ? t('sidebar.solo.exit') : t('sidebar.solo.enable')}
             aria-pressed={soloActive}
             data-testid="sidebar-solo-toggle"
-            className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
+            className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded transition-colors ${
               soloActive
                 ? 'bg-primary/15 text-primary hover:bg-primary/25'
                 : 'text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground'
@@ -351,7 +351,7 @@ export function RepositorySidebar({
             onClick={collapse}
             title={t('sidebar.collapse')}
             aria-label={t('sidebar.collapse')}
-            className="flex h-6 w-6 items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
           >
             <PanelLeftClose className="h-4 w-4" />
           </button>
@@ -391,7 +391,7 @@ export function RepositorySidebar({
               <button
                 onClick={() => setBranchQuery('')}
                 aria-label={t('sidebar.clearFilter')}
-                className="flex h-4 w-4 items-center justify-center rounded text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                className="flex h-4 w-4 cursor-pointer items-center justify-center rounded text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -409,7 +409,7 @@ export function RepositorySidebar({
             </span>
             <button
               onClick={clearSolo}
-              className="flex items-center gap-0.5 rounded px-1 py-0.5 font-medium transition-colors hover:bg-primary/20"
+              className="flex cursor-pointer items-center gap-0.5 rounded px-1 py-0.5 font-medium transition-colors hover:bg-primary/20"
               data-testid="sidebar-solo-clear"
             >
               <X className="h-2.5 w-2.5" />
@@ -419,17 +419,15 @@ export function RepositorySidebar({
         )}
       </div>
 
-      {/* Sections repliables — chaque section ouverte est `flex-1` (poids égal, base 0%) : les
-          sections ouvertes se partagent toujours la hauteur disponible à parts strictement
-          égales, même une section clairsemée (ex: un seul worktree) — c'est voulu, pour que toutes
-          les sections ouvertes s'alignent sur la même hauteur. Chaque section ouverte a un
-          plancher (min-height) fixé explicitement en style inline plutôt que de compter sur la
-          taille minimale automatique dérivée du contenu (voir le commentaire de
-          `MIN_SECTION_HEIGHT` dans types.ts pour le pourquoi — c'est ce qui causait
-          l'agrandissement non borné puis le chevauchement des sections suivantes). Si la somme des
-          planchers des sections ouvertes dépasse la hauteur du panel, c'est la liste de sections
-          entière qui devient scrollable (un seul scrollbar global). Les sections fermées restent
-          `flex-none` (ne rétrécissent jamais sous leur en-tête). */}
+      {/* Collapsible sections — every open section is `flex-1` (equal weight, 0% basis): open
+          sections always split the available height in strictly equal shares, even a sparse
+          section (e.g. a single worktree) — that's intentional, so every open section lines up on
+          the same height. Each open section has a floor (min-height) set explicitly via inline
+          style rather than relying on the automatic minimum size derived from content (see the
+          `MIN_SECTION_HEIGHT` comment in types.ts for why — that's what caused unbounded growth
+          and then overlap with the following sections). If the sum of the open sections' floors
+          exceeds the panel's height, the whole section list becomes scrollable (a single global
+          scrollbar). Closed sections stay `flex-none` (never shrink below their header). */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
         {sections.map((section) => (
           <div

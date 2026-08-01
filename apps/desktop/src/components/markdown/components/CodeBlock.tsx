@@ -57,7 +57,7 @@ export function CodeBlock({ inline, className, children, ...props }: CodeBlockPr
         <Tooltip content={t('markdown.code.copyTooltip')}>
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             aria-label={t('markdown.code.copyTooltip')}
             data-testid="code-block-copy-button"
           >

@@ -187,7 +187,7 @@ export function GithubSection() {
                     type="button"
                     onClick={handleCancelFlow}
                     data-testid="github-back-to-choice-button"
-                    className="flex items-center gap-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+                    className="flex cursor-pointer items-center gap-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
                   >
                     <ArrowLeft className="h-2.5 w-2.5" />
                     {t('settings.github.backToAuthOptions')}
@@ -240,7 +240,7 @@ export function GithubSection() {
                     type="button"
                     onClick={handleCancelFlow}
                     data-testid="github-back-to-choice-button"
-                    className="flex items-center gap-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+                    className="flex cursor-pointer items-center gap-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
                   >
                     <ArrowLeft className="h-2.5 w-2.5" />
                     {t('settings.github.backToAuthOptions')}

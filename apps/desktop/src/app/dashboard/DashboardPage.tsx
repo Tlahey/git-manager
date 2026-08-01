@@ -227,7 +227,7 @@ export function DashboardPage({ onOpenSettings }: DashboardPageProps) {
                   type="button"
                   aria-label={t('dashboard.clearSearch')}
                   onClick={() => setFilterText('')}
-                  className="absolute right-2.5 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  className="absolute right-2.5 cursor-pointer rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
                   <X className="h-3 w-3" />
                 </button>

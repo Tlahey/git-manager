@@ -72,7 +72,7 @@ export function CommitSearchPanel({
         onClick={onPrevious}
         disabled={!hasResults}
         aria-label={t('toolbar.searchPrevious')}
-        className="shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+        className="shrink-0 cursor-pointer rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
         data-testid="commit-search-prev"
       >
         <ChevronUp className="h-3.5 w-3.5" />
@@ -82,7 +82,7 @@ export function CommitSearchPanel({
         onClick={onNext}
         disabled={!hasResults}
         aria-label={t('toolbar.searchNext')}
-        className="shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+        className="shrink-0 cursor-pointer rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
         data-testid="commit-search-next"
       >
         <ChevronDown className="h-3.5 w-3.5" />
@@ -91,7 +91,7 @@ export function CommitSearchPanel({
         type="button"
         onClick={closeSearch}
         aria-label={t('toolbar.cancel')}
-        className="shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        className="shrink-0 cursor-pointer rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         data-testid="commit-search-close"
       >
         <X className="h-3.5 w-3.5" />

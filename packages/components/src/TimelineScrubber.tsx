@@ -48,7 +48,7 @@ function RoundButton({
       title={label}
       data-testid={testId}
       className={cn(
-        'flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-[0_10px_24px_-4px_rgba(0,0,0,0.5)] transition-transform',
+        'flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-foreground shadow-[0_10px_24px_-4px_rgba(0,0,0,0.5)] transition-transform',
         'hover:enabled:scale-105 active:enabled:scale-95',
         'disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none'
       )}

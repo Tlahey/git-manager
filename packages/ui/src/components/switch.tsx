@@ -5,26 +5,24 @@ import { cn } from '../lib/utils'
 // `role="switch"` — so it exposes the correct on/off semantics to assistive tech
 // while keeping native keyboard operation (Space toggles, Tab focuses) and form
 // participation for free. The track + thumb are sibling elements driven by Tailwind
-// `peer-*` variants; the input is `sr-only` (focusable, never removed from the DOM).
+// `peer-*` variants; the input is transparent but stretched over the whole control
+// (mirrors Checkbox — see its comment for why this must never be `sr-only`: that
+// clips the input to 1px, and since the painted layers below are `pointer-events-none`,
+// a bare `<Switch>` outside a `<label>` would have nothing to click at all — clicks on
+// the visible track/thumb would land on the wrapper and be swallowed).
 // Replaces the ad-hoc `peer sr-only` toggle duplicated in NotificationSection /
 // DebugSection / AiSection.
 export interface SwitchProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {}
 
 const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
   ({ className, disabled, ...props }, ref) => (
-    <span
-      className={cn(
-        'relative inline-flex h-5 w-9 shrink-0 items-center',
-        disabled && 'cursor-not-allowed opacity-50',
-        className
-      )}
-    >
+    <span className={cn('relative inline-flex h-5 w-9 shrink-0 items-center', className)}>
       <input
         ref={ref}
         type="checkbox"
         role="switch"
         disabled={disabled}
-        className="peer sr-only"
+        className="peer absolute inset-0 m-0 h-full w-full cursor-pointer appearance-none opacity-0 disabled:cursor-not-allowed"
         {...props}
       />
       {/* Track. The "on" fill rides the `badge` component-token (deep, APCA-safe brand
@@ -36,7 +34,8 @@ const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
         className={cn(
           'pointer-events-none absolute inset-0 rounded-full bg-muted transition-colors',
           'peer-checked:bg-badge',
-          'peer-focus-visible:ring-1 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-1 peer-focus-visible:ring-offset-background'
+          'peer-focus-visible:ring-1 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-1 peer-focus-visible:ring-offset-background',
+          'peer-disabled:opacity-50'
         )}
       />
       {/* Thumb. It must contrast with WHATEVER track sits under it, and the track
@@ -51,7 +50,8 @@ const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
         data-contrast-mark="switch-thumb"
         className={cn(
           'pointer-events-none absolute left-[2px] h-4 w-4 rounded-full bg-muted-foreground transition-all',
-          'peer-checked:translate-x-4 peer-checked:bg-badge-foreground'
+          'peer-checked:translate-x-4 peer-checked:bg-badge-foreground',
+          'peer-disabled:opacity-50'
         )}
       />
     </span>

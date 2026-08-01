@@ -234,7 +234,7 @@ export function CommitFileList({
                   handleToggleFolder(node, allStaged)
                 }}
                 className={cn(
-                  'flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold transition-colors',
+                  'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded border text-[10px] font-bold transition-colors',
                   allStaged || someStaged
                     ? 'border-primary bg-primary text-white'
                     : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
@@ -289,7 +289,7 @@ export function CommitFileList({
                   handleHoverStageFolder(node)
                 }}
                 className={cn(
-                  'ml-2 shrink-0 rounded border p-0.5 opacity-0 transition-colors group-hover/folder:opacity-100',
+                  'ml-2 shrink-0 cursor-pointer rounded border p-0.5 opacity-0 transition-colors group-hover/folder:opacity-100',
                   hoverStage === 'add'
                     ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
                     : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
@@ -354,7 +354,7 @@ export function CommitFileList({
                 else handleStage(node.path)
               }}
               className={cn(
-                'flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold transition-colors',
+                'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded border text-[10px] font-bold transition-colors',
                 node.staged
                   ? 'border-primary bg-primary text-white'
                   : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
@@ -397,7 +397,7 @@ export function CommitFileList({
             <button
               onClick={() => handleDiscard(node.path)}
               className={cn(
-                'shrink-0 rounded border border-border p-0.5 text-destructive transition-colors hover:bg-destructive/10',
+                'shrink-0 cursor-pointer rounded border border-border p-0.5 text-destructive transition-colors hover:bg-destructive/10',
                 hoverStage && 'opacity-0 group-hover/file:opacity-100'
               )}
               title={t('actions.discardChanges')}
@@ -412,7 +412,7 @@ export function CommitFileList({
                 hoverStage === 'add' ? handleStage(node.path) : handleUnstage(node.path)
               }
               className={cn(
-                'shrink-0 rounded border p-0.5 opacity-0 transition-colors group-hover/file:opacity-100',
+                'shrink-0 cursor-pointer rounded border p-0.5 opacity-0 transition-colors group-hover/file:opacity-100',
                 hoverStage === 'add'
                   ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
                   : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
@@ -494,7 +494,7 @@ export function CommitFileList({
           {fileSearchQuery && (
             <button
               onClick={() => setFileSearchQuery('')}
-              className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+              className="absolute right-2.5 top-2.5 cursor-pointer text-muted-foreground hover:text-foreground"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -540,7 +540,7 @@ export function CommitFileList({
                   onBulkStage()
                 }}
                 className={cn(
-                  'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
+                  'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded border transition-colors',
                   hoverStage === 'add'
                     ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
                     : 'border-red-500/40 text-red-500 hover:bg-red-500/10'
@@ -565,7 +565,7 @@ export function CommitFileList({
                     e.stopPropagation()
                     handleToggleExpandAll()
                   }}
-                  className="text-[10px] font-semibold text-primary hover:underline"
+                  className="cursor-pointer text-[10px] font-semibold text-primary hover:underline"
                 >
                   {buttonState === 'expand'
                     ? t('commitDetails.expandAll')
@@ -654,7 +654,7 @@ export function CommitFileList({
                           else handleStage(file.path)
                         }}
                         className={cn(
-                          'mr-1.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold transition-colors',
+                          'mr-1.5 flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded border text-[10px] font-bold transition-colors',
                           file.staged
                             ? 'border-primary bg-primary text-white'
                             : 'border-border text-transparent hover:border-primary/60 hover:text-muted-foreground'
@@ -720,7 +720,7 @@ export function CommitFileList({
                       <button
                         onClick={() => handleDiscard(file.path)}
                         className={cn(
-                          'shrink-0 rounded border border-border p-0.5 text-destructive transition-colors hover:bg-destructive/10',
+                          'shrink-0 cursor-pointer rounded border border-border p-0.5 text-destructive transition-colors hover:bg-destructive/10',
                           hoverStage && 'opacity-0 group-hover/file:opacity-100'
                         )}
                         title={t('actions.discardChanges')}
@@ -735,7 +735,7 @@ export function CommitFileList({
                           hoverStage === 'add' ? handleStage(file.path) : handleUnstage(file.path)
                         }
                         className={cn(
-                          'shrink-0 rounded border p-0.5 opacity-0 transition-colors group-hover/file:opacity-100',
+                          'shrink-0 cursor-pointer rounded border p-0.5 opacity-0 transition-colors group-hover/file:opacity-100',
                           hoverStage === 'add'
                             ? 'border-green-500/40 text-green-500 hover:bg-green-500/10'
                             : 'border-red-500/40 text-red-500 hover:bg-red-500/10'

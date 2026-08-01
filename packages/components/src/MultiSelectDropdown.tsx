@@ -46,7 +46,7 @@ export function MultiSelectDropdown({
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-medium transition-all duration-150 ${
+        className={`flex h-7 cursor-pointer items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-medium transition-all duration-150 ${
           activeCount > 0
             ? 'border-primary/30 bg-primary/10 text-primary shadow-sm shadow-primary/5'
             : open
@@ -79,7 +79,7 @@ export function MultiSelectDropdown({
                   e.stopPropagation()
                   onClear()
                 }}
-                className="text-[9px] text-muted-foreground/60 underline transition-colors hover:text-primary"
+                className="cursor-pointer text-[9px] text-muted-foreground/60 underline transition-colors hover:text-primary"
               >
                 {clearAllLabel}
               </button>

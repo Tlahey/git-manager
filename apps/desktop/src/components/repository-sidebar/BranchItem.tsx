@@ -69,7 +69,7 @@ export function BranchItem({
   return (
     <div
       style={{ paddingLeft: `${1.5 + depth}rem` }}
-      className={`group/branch relative flex items-center gap-1.5 py-[3px] pr-1 text-xs transition-colors ${
+      className={`group/branch relative flex cursor-pointer items-center gap-1.5 py-[3px] pr-1 text-xs transition-colors ${
         isSelected
           ? 'bg-sidebar-accent text-sidebar-foreground'
           : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'

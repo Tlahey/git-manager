@@ -55,7 +55,7 @@ export function PushButton({
               disabled={disabled || loading}
               aria-label={t('remote.pushOptions')}
               data-testid="toolbar-push-menu-button"
-              className="flex items-center rounded-r px-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex cursor-pointer items-center rounded-r px-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ChevronDown className="h-3.5 w-3.5" />
             </button>

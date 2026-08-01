@@ -294,7 +294,7 @@ export function AddWorktreeDialog({
                   data-testid="worktree-default-files-save"
                   disabled={!canSaveDefaults}
                   onClick={saveAsProjectDefault}
-                  className="flex items-center gap-1 rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent disabled:cursor-default disabled:opacity-40"
+                  className="flex cursor-pointer items-center gap-1 rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:enabled:bg-accent disabled:cursor-default disabled:opacity-40"
                 >
                   <Save className="h-3 w-3" />
                   {t('worktree.defaultFiles.saveAsDefault')}

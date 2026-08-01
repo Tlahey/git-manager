@@ -29,7 +29,7 @@ export function PatchWorkspacePanel({ repoPath }: { repoPath: string }) {
         <button
           type="button"
           onClick={close}
-          className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           aria-label={t('patch.cancel')}
           data-testid="patch-workspace-close"
         >

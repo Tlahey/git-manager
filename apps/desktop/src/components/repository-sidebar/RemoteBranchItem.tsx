@@ -79,7 +79,7 @@ export function RemoteBranchItem({
   return (
     <div
       style={{ paddingLeft: rowIndent(depth) }}
-      className={`group/rbranch relative flex items-center gap-1.5 py-[3px] pr-2 text-xs transition-colors ${
+      className={`group/rbranch relative flex cursor-pointer items-center gap-1.5 py-[3px] pr-2 text-xs transition-colors ${
         isSelected
           ? 'bg-sidebar-accent text-sidebar-foreground'
           : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'

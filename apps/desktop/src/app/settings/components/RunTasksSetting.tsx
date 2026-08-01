@@ -249,7 +249,7 @@ export function RunTasksSetting({ repoPath }: RunTasksSettingProps) {
             type="button"
             disabled={anyEditing}
             onClick={() => addRow(t(`settings.repository.run.presets.${key}`))}
-            className="rounded border border-border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            className="cursor-pointer rounded border border-border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
             data-testid={`run-tasks-preset-${key}`}
           >
             {t(`settings.repository.run.presets.${key}`)}
