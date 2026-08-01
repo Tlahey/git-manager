@@ -50,12 +50,6 @@ export interface UseNotchPresenterOptions {
    * it forever. Announce first, then go.
    */
   onDismissed?: () => void | Promise<void>
-  /**
-   * Dismiss as soon as the surface loses focus, the way a native `NSPopover` does. Only the real
-   * window wants this: in Storybook the "window" is a div on a page the user keeps clicking around
-   * in, and every click would kill the card.
-   */
-  dismissOnBlur?: boolean
   scheduler?: FrameScheduler
 }
 
@@ -229,16 +223,12 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
     }
     void enter()
 
-    const { autoDismissMs, dismissOnBlur } = latest.current
+    const { autoDismissMs } = latest.current
     if (autoDismissMs !== null && autoDismissMs > 0) armTimer(autoDismissMs)
-
-    const handleBlur = () => void dismiss()
-    if (dismissOnBlur) window.addEventListener('blur', handleBlur)
 
     return () => {
       cancelledRef.current = true
       clearTimer()
-      if (dismissOnBlur) window.removeEventListener('blur', handleBlur)
     }
     // Mount-only: the card is created for one model and torn down with it.
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -379,33 +379,14 @@ describe('dismiss', () => {
   })
 })
 
-describe('blur', () => {
-  it('dismisses when the surface loses focus, if the host asked for it', async () => {
-    const { host } = setup({ autoDismissMs: null, dismissOnBlur: true })
-    await flush()
-
-    await act(async () => {
-      window.dispatchEvent(new Event('blur'))
-    })
-
-    expect(host.calls).toContain('close')
-  })
-
-  it('ignores blur by default, so a Storybook click elsewhere does not kill the card', async () => {
+// A card does NOT dismiss when focus leaves it. It used to, modelled on a native NSPopover, and
+// that is wrong for a notification: clicking anywhere else on screen — the editor, a browser, the
+// app's own window — made it vanish before it had been read. It leaves when its timer runs out, or
+// when the user closes it.
+describe('focus', () => {
+  it('stays put when the surface loses focus', async () => {
     const { host } = setup({ autoDismissMs: null })
     await flush()
-
-    await act(async () => {
-      window.dispatchEvent(new Event('blur'))
-    })
-
-    expect(host.calls).not.toContain('close')
-  })
-
-  it('unbinds its blur listener on unmount', async () => {
-    const { host, unmount } = setup({ autoDismissMs: null, dismissOnBlur: true })
-    await flush()
-    unmount()
 
     await act(async () => {
       window.dispatchEvent(new Event('blur'))

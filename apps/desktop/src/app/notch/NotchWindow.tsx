@@ -88,9 +88,6 @@ export function NotchWindow({
     // `null` is also what "until I close it" means for the other kinds; the presenter arms no
     // timer at all rather than a very long one.
     autoDismissMs: model.kind === 'progress' ? null : resolveDisplayDurationMs(notifications),
-    // Dismiss like a native NSPopover the moment focus leaves it — a click anywhere else on
-    // screen, not just on the main window.
-    dismissOnBlur: model.kind !== 'progress',
     // Returned, not fired and forgotten: the presenter awaits this before closing the window, and
     // closing the window destroys the webview this emit travels out of.
     onDismissed: () => apiEmitNotchDismissed({ notchId: model.id }),
