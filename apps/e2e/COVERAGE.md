@@ -349,6 +349,7 @@ test-connection button already established:
 | --------------------------------------- | ------------- | ----------------- | -------- | ------------------------------------------------------------------------------------ |
 | Commit graph rendering                  | log/graph     | any fixture       | 📷       | ⬜ (volatile: shas/dates)                                                            |
 | Branches: create / checkout / delete    | branch        | any fixture       | —        | 🟡 (checkout ✅ via BranchContext; **create-from-commit ✅ via ⌘K palette**, asserted via `git log`; delete still native) |
+| Compare two branches                    | branch        | remote-ahead      | —        | ✅ (**via the `__e2eRepoUIStore.setCompareRefsTarget` bypass** — the triggering "Compare with…" entry is a native context menu, no ⌘K equivalent exists, see gotchas; asserts the real `compare_refs` backend against known per-file differences, a swap reversing per-file add/delete counts, and re-picking a side through the dialog's own `NativeSelect` — see `compare-branches.feature`) |
 | Tags: create / shown in graph            | tag           | any fixture       | —        | ✅ (**create (lightweight + annotated) via ⌘K palette**, asserted via `git log`/`git cat-file -t`; **ref badge shown in the graph row ✅**, `ref-label-tag-<name>` testid added to `RefLabel.tsx`) |
 | Cherry-pick a commit                    | cherry-pick   | feature-branches  | —        | ✅ (**via ⌘K palette**, asserted via `git log` — picks a non-conflicting file addition from another branch) |
 | Interactive rebase (reword/squash/drop) | rebase        | fixup-chain       | —        | 🚫 (native commit menu + child window)                                               |
@@ -506,7 +507,14 @@ DOM value:
   palette command yet): interactive rebase, create-branch/tag from a *multi-selection*,
   drag-reorder in the rebase editor. Other non-menu entry points: branch checkout via
   `BranchContext` (undo-redo.feature), commit via the WIP panel buttons (commit.feature), undo/redo
-  via keyboard.
+  via keyboard. **"Compare `<branch>` with…"** (graph branch pill / sidebar branch row) is a fourth
+  shape: it has no ⌘K equivalent at all (it's about a *pair* of refs, not a commit/stash action the
+  palette's `pendingGraphAction` bridge is shaped for), so `compare-branches.feature` instead jumps
+  straight to `RepoView`'s mounted `CompareBranchesDialog` via
+  `__e2eRepoUIStore.getState().setCompareRefsTarget({ baseRef, headRef })` — the same "seed the
+  live store, skip the trigger" technique blame-history.steps.ts's `setActiveDiffFile` already uses
+  for a different native surface. Everything past that call is real: the real `compare_refs`
+  backend, the dialog's own `NativeSelect`s for re-picking either side, and its swap button.
 - **Multi-window: prefer navigate-in-place; when a real second window is unavoidable, expect
   WebKit click quirks.** The merge and rebase editors (`merge.steps.ts`) sidestep multi-window
   entirely by navigating the shared main window straight to `?window=merge`/`?window=rebase` —

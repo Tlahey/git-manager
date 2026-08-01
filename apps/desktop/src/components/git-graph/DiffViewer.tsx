@@ -30,8 +30,11 @@ export function DiffViewer({ file }: DiffViewerProps) {
   const displayPath = file.status === 'renamed' ? `${file.oldPath} → ${file.newPath}` : file.newPath
 
   return (
-    <div className="overflow-hidden rounded-md border border-border font-mono text-xs">
-      {/* Header fichier */}
+    <div
+      className="overflow-hidden rounded-md border border-border font-mono text-xs"
+      data-testid={`diff-viewer-file-${displayPath}`}
+    >
+      {/* File header */}
       <div className="flex items-center gap-2 border-b border-border bg-muted/50 px-3 py-1.5">
         <span className="flex-1 truncate text-foreground">{displayPath}</span>
         <Badge variant={STATUS_VARIANTS[file.status] ?? 'secondary'}>
@@ -45,7 +48,7 @@ export function DiffViewer({ file }: DiffViewerProps) {
         )}
       </div>
 
-      {/* Contenu diff */}
+      {/* Diff content */}
       {file.isBinary ? (
         <div className="px-3 py-2 italic text-muted-foreground">{t('diffViewer.binaryFile')}</div>
       ) : (
