@@ -8,12 +8,14 @@ import {
   buildMultiCommitMenuSpec,
   buildWipMenuSpec,
   buildStashMenuSpec,
+  buildConflictMenuSpec,
   buildRefDropMenuSpec,
   buildTagMenuSpec,
   buildSidebarBranchMenuSpec,
   isMainBranchName,
   type BranchMenuActions,
   type CommitMenuActions,
+  type ConflictMenuActions,
   type GraphCommitMenuContext,
   type SidebarBranchMenuContext,
   type WipMenuActions,
@@ -673,6 +675,63 @@ describe('buildStashMenuSpec', () => {
     item(spec, 'Delete stash')?.action?.()
     expect(actions.onApply).toHaveBeenCalledOnce()
     expect(actions.onDelete).toHaveBeenCalledOnce()
+  })
+})
+
+describe('buildConflictMenuSpec', () => {
+  const conflictActions = (): ConflictMenuActions => ({
+    onContinue: vi.fn(),
+    onSkip: vi.fn(),
+    onAbort: vi.fn(),
+  })
+
+  it('lists Continue, Skip, then Abort', () => {
+    const spec = normalizeMenuSpec(
+      buildConflictMenuSpec({ allResolved: false, noneResolved: true }, conflictActions(), t)
+    )
+    expect(texts(spec)).toEqual(['Continue Rebase', 'Skip commit', 'Abort Rebase'])
+  })
+
+  it('enables Continue once every conflict is resolved, and disables Skip', () => {
+    const spec = normalizeMenuSpec(
+      buildConflictMenuSpec({ allResolved: true, noneResolved: false }, conflictActions(), t)
+    )
+    expect(item(spec, 'Continue Rebase')?.enabled).toBe(true)
+    expect(item(spec, 'Skip commit')?.enabled).toBe(false)
+  })
+
+  it('enables Skip while nothing has been resolved yet, and disables Continue', () => {
+    const spec = normalizeMenuSpec(
+      buildConflictMenuSpec({ allResolved: false, noneResolved: true }, conflictActions(), t)
+    )
+    expect(item(spec, 'Continue Rebase')?.enabled).toBe(false)
+    expect(item(spec, 'Skip commit')?.enabled).toBe(true)
+  })
+
+  it('disables both Continue and Skip once resolution is under way (some files staged, some still conflicted)', () => {
+    const spec = normalizeMenuSpec(
+      buildConflictMenuSpec({ allResolved: false, noneResolved: false }, conflictActions(), t)
+    )
+    expect(item(spec, 'Continue Rebase')?.enabled).toBe(false)
+    expect(item(spec, 'Skip commit')?.enabled).toBe(false)
+  })
+
+  it('leaves Abort always enabled', () => {
+    const spec = normalizeMenuSpec(
+      buildConflictMenuSpec({ allResolved: false, noneResolved: false }, conflictActions(), t)
+    )
+    expect(item(spec, 'Abort Rebase')?.enabled).not.toBe(false)
+  })
+
+  it('wires each action', () => {
+    const actions = conflictActions()
+    const spec = normalizeMenuSpec(
+      buildConflictMenuSpec({ allResolved: true, noneResolved: false }, actions, t)
+    )
+    item(spec, 'Continue Rebase')?.action?.()
+    item(spec, 'Abort Rebase')?.action?.()
+    expect(actions.onContinue).toHaveBeenCalledOnce()
+    expect(actions.onAbort).toHaveBeenCalledOnce()
   })
 })
 

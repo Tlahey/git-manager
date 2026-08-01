@@ -26,12 +26,16 @@ import {
   apiMergeBranch,
   apiDeleteBranch,
   apiCreateTag,
+  apiRebaseContinue,
+  apiRebaseAbort,
+  apiRebaseSkip,
 } from '../api/git.api'
 import { apiAddWorktree } from '../api/worktree.api'
 import {
   buildCommitMenuSpec,
   buildWipMenuSpec,
   buildStashMenuSpec,
+  buildConflictMenuSpec,
   type BranchMenuActions,
 } from '../lib/graphContextMenus'
 import { resolveExplanationBase } from '../lib/branchExplanationBase'
@@ -266,9 +270,8 @@ export function useGitGraphActions({
     e?.preventDefault()
     e?.stopPropagation()
 
-    // The local WIP row gets its own menu (stash / stage / unstage the work in progress). The
-    // other synthetic rows (a worktree's `WIP:<path>`, the CONFLICT row) are not commit-action
-    // targets — no menu.
+    // The local WIP row gets its own menu (stash / stage / unstage the work in progress). A
+    // linked worktree's `WIP:<path>` row is not a commit-action target — no menu.
     if (oid === 'WIP') {
       async function runWip(fn: () => Promise<unknown>, successMsg?: string) {
         try {
@@ -304,7 +307,42 @@ export function useGitGraphActions({
       ).catch(console.error)
       return
     }
-    if (oid === 'CONFLICT' || oid.startsWith('WIP:')) return
+    // The CONFLICT row (a paused rebase/merge) gets a shortcut to the same Continue/Skip/Abort
+    // actions the conflict-resolution panel offers, gated on the same conditions (see
+    // `ConflictResolutionPanel`'s `allResolved`/`noneResolved`, derived here from the same
+    // `status` this hook already receives — `status.conflicted` is the paused rebase's remaining
+    // conflicts, `status.staged` is what has already been resolved).
+    if (oid === 'CONFLICT') {
+      const conflictedCount = status?.conflicted.length ?? 0
+      const allResolved = conflictedCount === 0
+      const noneResolved = (status?.staged.length ?? 0) === 0 && conflictedCount > 0
+
+      async function runRebaseControl(fn: () => Promise<unknown>) {
+        try {
+          await fn()
+          queryClient.invalidateQueries({ queryKey: ['rebase-state', repoPath] })
+          refreshLogAndStatus()
+          mutate(['conflicted-files', repoPath])
+          mutate(['rebase-state', repoPath])
+        } catch (err) {
+          toast.error(String(err))
+        }
+      }
+
+      void showNativeMenu(
+        buildConflictMenuSpec(
+          { allResolved, noneResolved },
+          {
+            onContinue: () => void runRebaseControl(() => apiRebaseContinue(repoPath)),
+            onSkip: () => void runRebaseControl(() => apiRebaseSkip(repoPath)),
+            onAbort: () => void runRebaseControl(() => apiRebaseAbort(repoPath)),
+          },
+          t
+        )
+      ).catch(console.error)
+      return
+    }
+    if (oid.startsWith('WIP:')) return
 
     // Check if this is a stash commit
     const clickedNode = nodes.find((n) => n.commit.oid === oid)
