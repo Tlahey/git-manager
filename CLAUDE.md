@@ -122,3 +122,7 @@ Zustand stores in `apps/desktop/src/stores/` hold client-side UI/app state (open
 - TypeScript strict mode, no `any`.
 - Naming: camelCase in TS, snake_case in Rust, kebab-case filenames.
 - PRs target `dev`, not `main` (per README; note the current default branch in this checkout is `main`).
+
+### Reporting problems found during analysis
+
+When a code review, security review, architecture review, or other exploratory task surfaces a genuine problem outside the current change's scope (a bug, security issue, or architecture violation), do not run `gh issue create` on your own initiative. Draft the issue — title, body with file/line references, severity — and show it to the user in chat; only create it after they explicitly confirm. Posting to the shared GitHub tracker is a public, side-effectful action like any other that needs confirmation, and auto-creating on every analysis pass would flood the tracker with unreviewed or duplicate reports. For problems that are just in-scope busywork rather than something worth escalating publicly, prefer flagging it with `spawn_task` (an internal Claude Code chip) instead of a GitHub issue.
