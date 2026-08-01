@@ -203,6 +203,15 @@ pub async fn fast_forward_branch(
     Ok(())
 }
 
+/// Renames a local branch (`git branch -m old new`). Refuses `main`/`master` — see
+/// `git_branch::rename_branch` for why the backend enforces this itself rather than trusting the
+/// dialog's own validation.
+#[tauri::command]
+pub async fn rename_branch(path: String, old_name: String, new_name: String) -> Result<(), String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    git_branch::rename_branch(&repo, &old_name, &new_name).map_err(Into::into)
+}
+
 /// Deletes a local branch (and its remote-tracking branch, if requested).
 /// `force = false` refuses the deletion if the branch isn't merged into HEAD
 /// (equivalent to `git branch -d`); `force = true` deletes without checking (`-D`).
