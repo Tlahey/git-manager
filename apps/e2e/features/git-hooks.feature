@@ -18,6 +18,7 @@ Feature: Repository hooks gate what the app writes
     And I enter the commit message "chore: this must not land"
     And I commit the staged changes
     Then the repository HEAD commit subject remains "chore: bulk payload so a push has something to transfer"
+    And the notch reported the "pre-commit" hook running
     And the notch shows the "pre-commit" hook's output
     And the notch output mentions "BREAK-PRECOMMIT"
 

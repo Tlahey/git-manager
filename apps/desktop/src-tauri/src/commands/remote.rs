@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::hook_progress;
 use crate::services::git_remote;
 use crate::utils::{github_branch_url, github_tag_url, github_web_url};
 use git2::Repository;
@@ -143,6 +144,9 @@ pub async fn push_branch(
     let repo_path = path.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
+        // On the thread the hook is waited on, not around the spawn — the observer is
+        // thread-scoped. A `pre-push` running a test suite is the slowest thing in this command.
+        let _hooks = hook_progress::report_hooks(app.clone(), repo_path.clone());
         git_remote::push(
             &repo,
             remote,

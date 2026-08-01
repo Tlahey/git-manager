@@ -208,6 +208,7 @@
   "hooks.notch.eyebrow": "Hook {{name}}",
   "hooks.notch.failed": "Le hook a refusé — rien n'a été committé",
   "hooks.notch.open": "Ouvrir",
+  "hooks.notch.running": "En cours — cela peut prendre un moment",
   "gitTree.commitSearch.working": "Recherche en cours…",
   "gitTree.commitSearch.asked": "Question : {{question}}",
   "gitTree.commitSearch.empty": "Posez une question sur ce qui a changé récemment dans ce dépôt. Chaque commit est lu fichier par fichier — un appel au modèle chacun, pour qu'aucun verdict ne repose sur une partie seulement — puis la réponse est rédigée à partir de ce que chacun a dit.",

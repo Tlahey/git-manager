@@ -22,7 +22,9 @@ import { useNotificationWatcher } from './hooks/useNotificationWatcher'
 import { useNotchQueue } from './hooks/useNotchQueue'
 import { useNotchActionListener } from './hooks/useNotchActionListener'
 import { useRemoteProgressListener } from './hooks/useRemoteProgressListener'
+import { useHookProgressListener } from './hooks/useHookProgressListener'
 import { NotchRemoteOperations } from './components/notch/NotchRemoteOperations'
+import { NotchRunningHooks } from './components/notch/NotchRunningHooks'
 import { NotchAiRuns } from './components/notch/NotchAiRuns'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useDevFixtureImport } from './hooks/useDevFixtureImport'
@@ -61,6 +63,7 @@ export default function App() {
   useNotchQueue()
   useNotchActionListener()
   useRemoteProgressListener()
+  useHookProgressListener()
   useDevFixtureImport()
   useAppReadySplash()
   useAiStatusCheck()
@@ -208,6 +211,7 @@ export default function App() {
         {/* Renders nothing — it holds one notch card per transfer in flight, which needs a
             component instance each (hooks can't be called in a loop over a changing list). */}
         <NotchRemoteOperations />
+        <NotchRunningHooks />
         {/* Likewise — the model's own work, above all the file-by-file read that is where a long
             generation actually spends its minutes. */}
         <NotchAiRuns />

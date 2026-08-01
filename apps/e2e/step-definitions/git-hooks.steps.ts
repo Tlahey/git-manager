@@ -129,3 +129,16 @@ Then(/^the notch raises no hook failure$/, async () => {
   // the hooks were going to raise has already had its chance.
   expect(await firstErrorCard()).toBeUndefined()
 })
+
+Then(/^the notch reported the "([^"]*)" hook running$/, async (hookName: string) => {
+  // The whole chain, end to end: the Rust side noticing a real hook process start, the event
+  // crossing IPC, the store, and a live card reaching the queue. Asserted from the recording
+  // rather than by polling, because this card is deliberately short-lived — it exists for exactly
+  // as long as the hook does, and a fast fixture hook is gone in milliseconds.
+  const cards = await recordedCards()
+  const running = cards.find((card) => card.tone === 'running')
+  if (!running) {
+    throw new Error(`no running-hook card was recorded (got: ${JSON.stringify(cards)})`)
+  }
+  expect(running.eyebrow).toContain(hookName)
+})

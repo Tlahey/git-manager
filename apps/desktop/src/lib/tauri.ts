@@ -687,6 +687,25 @@ export interface RemoteProgressEvent {
  */
 export const REMOTE_PROGRESS_EVENT = 'remote-progress'
 
+/** Payload of {@link HOOK_PROGRESS_EVENT}. Mirrors the Rust `HookProgressEvent`. */
+export interface HookProgressEvent {
+  repoPath: string
+  /** `pre-commit`, `commit-msg`, `pre-push`, … */
+  name: string
+  phase: 'started' | 'finished'
+  /** Only on `finished`. */
+  success?: boolean
+}
+
+/**
+ * Pushed by `hook_progress.rs` when a repository hook starts and again when it stops.
+ *
+ * A hook is the one part of a commit or a push whose duration belongs to the user rather than to
+ * this app — `lint-staged` over a large change, a test suite gating a push — and the command's own
+ * promise only settles once it is over. Only ever sent for a hook that actually exists.
+ */
+export const HOOK_PROGRESS_EVENT = 'hook-progress'
+
 export const fetchRemote = (path: string, remote?: string, prune?: boolean) =>
   invoke<{ remote: string; updatedRefs: string[] }>('fetch_remote', { path, remote, prune })
 

@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { i18next } from '@git-manager/i18n'
-import { hookFailureFrom, hookFailureNotchModel, hookNameFrom } from './hookNotch'
+import {
+  hookFailureFrom,
+  hookFailureNotchModel,
+  hookNameFrom,
+  runningHookNotchModel,
+} from './hookNotch'
 import type { AppErrorLike } from '../tauri'
 
 const t = i18next.getFixedT('en', 'git')
@@ -99,5 +104,31 @@ describe('hookFailureNotchModel', () => {
   it('offers a way back into the app', () => {
     const model = hookFailureNotchModel({ name: 'pre-commit', lines: [] }, 'repo', t)
     expect(model.actions?.map((a) => a.id)).toEqual(['activate'])
+  })
+})
+
+describe('runningHookNotchModel', () => {
+  it('names the hook and the repository, in real copy', () => {
+    const model = runningHookNotchModel('pre-commit', 'git-manager', t)
+    expect(model.eyebrow).toBe('pre-commit hook')
+    expect(model.context).toBe('git-manager')
+    expect(model.title).toBe('Running — this can take a moment')
+  })
+
+  // `progress` is doing real work here, not describing a bar. It is what stops the presenter
+  // arming a dismissal timer — a card that vanished while the hook was still going would be worse
+  // than none — and what stops the delivery policy flattening it into an OS banner.
+  it('is a live card with no ratio, since a hook reports no progress of its own', () => {
+    const model = runningHookNotchModel('pre-commit', 'repo', t)
+    expect(model.kind).toBe('progress')
+    expect(model.tone).toBe('running')
+    expect(model).not.toHaveProperty('ratio')
+  })
+
+  it('gives two repositories, and two hooks, their own card', () => {
+    const a = runningHookNotchModel('pre-commit', 'repo-a', t)
+    const b = runningHookNotchModel('pre-commit', 'repo-b', t)
+    const c = runningHookNotchModel('commit-msg', 'repo-a', t)
+    expect(new Set([a.id, b.id, c.id]).size).toBe(3)
   })
 })
