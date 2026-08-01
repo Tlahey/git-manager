@@ -294,6 +294,30 @@ pub async fn push_tag(
     result.map_err(Into::into)
 }
 
+// ─── delete_remote_branch ───────────────────────────────────────────────────────
+
+/// Deletes branch `branch_name` on `remote` (defaults to "origin") by pushing an empty-source
+/// refspec — the equivalent of `git push origin :refs/heads/<name>`.
+///
+/// Runs on a blocking-pool thread — see `fetch_remote`'s doc comment.
+#[tauri::command]
+pub async fn delete_remote_branch(
+    path: String,
+    branch_name: String,
+    remote: Option<String>,
+    // `git push --no-verify`, as on every other push path.
+    skip_hooks: Option<bool>,
+) -> Result<(), String> {
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        git_remote::delete_remote_branch(&repo, remote, &branch_name, skip_hooks.unwrap_or(false))
+    })
+    .await
+    .map_err(|e| format!("push task failed to complete: {e}"))?;
+
+    result.map_err(Into::into)
+}
+
 // ─── delete_remote_tag ─────────────────────────────────────────────────────────
 
 /// Deletes tag `tag_name` on `remote` (defaults to "origin") by pushing an empty-source

@@ -23,6 +23,7 @@ import {
   getBranches,
   checkoutBranch,
   deleteBranch,
+  deleteRemoteBranch,
   mergeBranch,
   fastForwardBranch,
   setBranchUpstream,
@@ -794,6 +795,11 @@ export async function apiDeleteBranch(
     targetOid: opts.targetOid,
     upstream: opts.upstream,
   })
+}
+
+/** Deletes branch `branchName` on `remote` (default "origin") — `git push origin :refs/heads/<name>`. */
+export async function apiDeleteRemoteBranch(path: string, branchName: string, remote?: string) {
+  return withHookFailureCard(path, () => deleteRemoteBranch(path, branchName, remote))
 }
 
 // ─── Remotes ───────────────────────────────────────────────────────────────

@@ -7,9 +7,11 @@ import type { GitBranch, GitRef } from '@git-manager/git-types'
 import { showNativeMenu } from '../api/nativeMenu.api'
 import {
   buildSidebarBranchMenuSpec,
+  remoteBranchTarget,
   type BranchMenuActions,
   type BranchTipCommitActions,
   type CommitCopyActions,
+  type PendingDeleteRemoteBranch,
 } from '../lib/graphContextMenus'
 import {
   apiPullBranch,
@@ -77,6 +79,10 @@ export function useSidebarBranchMenu(repoPath: string) {
   const { checkoutBranchWithStashPrompt } = useBranchCheckout()
   // The branch whose rename dialog is open, or null. The caller renders `<RenameBranchDialog>`.
   const [renameTarget, setRenameTarget] = useState<string | null>(null)
+  // The remote branch awaiting its delete confirmation, or null. The caller renders
+  // `<DeleteRemoteBranchDialog>` — same "own it locally, caller renders it" split as rename above.
+  const [pendingDeleteRemoteBranch, setPendingDeleteRemoteBranch] =
+    useState<PendingDeleteRemoteBranch>(null)
   // The branch whose "Set upstream" picker is open, or null — only reached when no default is
   // unambiguous (see resolveDefaultUpstream). The caller renders `<SetUpstreamDialog>`.
   const [setUpstreamTarget, setSetUpstreamTarget] = useState<string | null>(null)
@@ -231,11 +237,18 @@ export function useSidebarBranchMenu(repoPath: string) {
       onExplainBranch: (r) => openBranchAiPanel(r, 'branch'),
       onReviewBranch: (r) => openBranchAiPanel(r, 'reviewBranch'),
       onRenameBranch: (r) => setRenameTarget(r.shortName),
-      onDeleteBranch: (r) =>
+      // Same split as the graph's own branch menu: a remote ref needs a real network push, so it
+      // goes through a confirmation dialog rather than deleting outright.
+      onDeleteBranch: (r) => {
+        if (r.type === 'remote') {
+          setPendingDeleteRemoteBranch(remoteBranchTarget(r))
+          return
+        }
         void run(
           () => apiDeleteBranch(repoPath, r.shortName, { targetOid: r.commitOid, upstream: branch.upstream }),
           t('gitTree.branchMenu.deleted', rel(r))
-        ),
+        )
+      },
       onCopyBranchName: (r) =>
         void navigator.clipboard
           .writeText(r.shortName)
@@ -324,5 +337,13 @@ export function useSidebarBranchMenu(repoPath: string) {
     ).catch(console.error)
   }
 
-  return { openBranchMenu, renameTarget, setRenameTarget, setUpstreamTarget, setSetUpstreamTarget }
+  return {
+    openBranchMenu,
+    renameTarget,
+    setRenameTarget,
+    pendingDeleteRemoteBranch,
+    setPendingDeleteRemoteBranch,
+    setUpstreamTarget,
+    setSetUpstreamTarget,
+  }
 }

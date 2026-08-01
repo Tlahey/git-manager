@@ -811,16 +811,28 @@ describe('useGitGraphActions — per-branch submenus', () => {
     expect(toastSuccess).toHaveBeenCalledWith(expect.stringContaining('branchMenu.pinned'))
   })
 
-  it('a single remote branch flattens inline: branch-link copy works, Delete stays disabled', async () => {
+  it('a single remote branch flattens inline: branch-link copy works, Delete is a real item', async () => {
     mocked.apiGetBranchWebUrl.mockResolvedValue('https://github.com/o/r/tree/main')
     const { result } = renderHook(() => useGitGraphActions(baseParams({ nodes: [withRemote] })))
     await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
     // Single branch ⇒ no submenu — the branch items sit at the top level of the commit menu.
     expect(lastSpec().some((n) => n.kind === 'submenu' && n.text === 'origin/main')).toBe(false)
-    expect(getItem('gitTree.branchMenu.delete').enabled).toBe(false)
+    expect(getItem('gitTree.branchMenu.delete').enabled).not.toBe(false)
     await act(async () => getItem('gitTree.branchMenu.copyBranchLink').action!())
     expect(mocked.apiGetBranchWebUrl).toHaveBeenCalledWith(REPO, 'main')
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://github.com/o/r/tree/main')
+  })
+
+  it('onDeleteBranch on a remote ref opens the confirm dialog instead of deleting outright', async () => {
+    const { result } = renderHook(() => useGitGraphActions(baseParams({ nodes: [withRemote] })))
+    await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
+    act(() => getItem('gitTree.branchMenu.delete').action!())
+
+    expect(mocked.apiDeleteBranch).not.toHaveBeenCalled()
+    expect(result.current.pendingDeleteRemoteBranch).toEqual({
+      remote: 'origin',
+      branchName: 'main',
+    })
   })
 
   it('a local main tip exposes "Copy link to branch" wired to its remote counterpart', async () => {

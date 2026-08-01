@@ -13,9 +13,9 @@ type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
  * `api/nativeMenu.api.ts`. Adding a context-specific item = one predicate + one entry in the
  * relevant builder; no Tauri code involved, and the result is directly unit-testable.
  *
- * Items shipped as VISIBLE BUT DISABLED are planned features without an implementation yet
- * (remote-branch deletion, notably) — they keep the menu shape stable so wiring one later is only
- * an `enabled`/`action` change here.
+ * Items shipped as VISIBLE BUT DISABLED are planned features without an implementation yet —
+ * gating a real disabled placeholder on state (e.g. "nothing to act on") rather than hardcoding it
+ * off keeps the menu shape stable so wiring one later is only an `enabled`/`action` change here.
  */
 
 // ── Context ──────────────────────────────────────────────────────────────────
@@ -326,8 +326,9 @@ function prAndExplainSection(
   ]
 }
 
-/** Rename (local only) and Delete. Local: git refuses to delete the checked-out branch. Remote:
- *  real remote deletion needs its own confirmation flow — disabled until it exists. */
+/** Rename (local only) and Delete. Local: git refuses to delete the checked-out branch, and the
+ *  action runs straight away (undo/redo covers it). Remote: `onDeleteBranch` routes through its
+ *  own confirmation dialog rather than deleting outright — see `DeleteRemoteBranchDialog`. */
 function destructiveSection(
   b: BranchItemContext,
   actions: BranchMenuActions,
@@ -342,7 +343,6 @@ function destructiveSection(
     !b.isCurrent &&
       menuItem({
         text: t('gitTree.branchMenu.delete', b.params),
-        enabled: !b.isRemote,
         action: () => actions.onDeleteBranch(b.ref),
       }),
   ]
@@ -562,6 +562,27 @@ export function buildSidebarBranchMenuSpec(
 /** A branch ref's short name without the remote prefix (`origin/x` → `x`). */
 const logicalBranchName = (ref: GitRef): string =>
   ref.type === 'remote' ? ref.shortName.split('/').slice(1).join('/') : ref.shortName
+
+/**
+ * A remote ref's `{ remote, branchName }`, split from its remote-qualified short name
+ * (`origin/feature` → `{ remote: 'origin', branchName: 'feature' }`) — what the remote-branch
+ * delete confirmation needs to name the push (`git push <remote> :refs/heads/<branchName>`) it is
+ * about to run. Only meaningful for a `type: 'remote'` ref.
+ */
+export function remoteBranchTarget(ref: GitRef): { remote: string; branchName: string } {
+  const [remote, ...rest] = ref.shortName.split('/')
+  return { remote, branchName: rest.join('/') }
+}
+
+/**
+ * A remote branch awaiting its delete confirmation (the `destructiveSection`'s Delete item on a
+ * remote ref), or `null` for "no dialog open". Both the graph's and the sidebar's branch-menu
+ * hooks own one of these locally and render {@link DeleteRemoteBranchDialog} from it — unlike the
+ * graph's other menu-triggered dialogs, this one needs no clicked-commit node to exist in the
+ * loaded graph page (see `GitGraphOverlayManager`'s `activeNode` gate), only the ref itself, so it
+ * stays outside that shared union.
+ */
+export type PendingDeleteRemoteBranch = { branchName: string; remote: string } | null
 
 /**
  * The single logical branch a commit represents, or `null` when it has none or several. A local

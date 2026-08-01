@@ -1,6 +1,7 @@
 /**
- * The three push paths that do not go through `trackTransfer`, and therefore do not get its
- * hook-aware failure card for free: a ref drag, publishing a tag, and deleting a remote tag.
+ * The push paths that do not go through `trackTransfer`, and therefore do not get its hook-aware
+ * failure card for free: a ref drag, publishing a tag, deleting a remote tag, and deleting a
+ * remote branch.
  *
  * Their callers render `String(error)`, which for a refused hook is the serialized `AppError`
  * JSON rather than the lines the hook printed — so what is asserted here is that the card carrying
@@ -18,11 +19,12 @@ vi.mock('../lib/tauri', async () => {
     pushBranchTo: vi.fn(),
     pushTag: vi.fn(),
     deleteRemoteTag: vi.fn(),
+    deleteRemoteBranch: vi.fn(),
   }
 })
 
-import { apiDeleteRemoteTag, apiPushBranchTo, apiPushTag } from './git.api'
-import { deleteRemoteTag, pushBranchTo, pushTag } from '../lib/tauri'
+import { apiDeleteRemoteBranch, apiDeleteRemoteTag, apiPushBranchTo, apiPushTag } from './git.api'
+import { deleteRemoteBranch, deleteRemoteTag, pushBranchTo, pushTag } from '../lib/tauri'
 
 /** What a refused `pre-push` looks like once `AppError::HookFailed` has crossed the IPC boundary. */
 function hookRejection(): Error {
@@ -43,6 +45,7 @@ describe.each([
   ['a ref drag', () => apiPushBranchTo(REPO, 'main', 'release'), pushBranchTo],
   ['publishing a tag', () => apiPushTag(REPO, 'v1.0.0'), pushTag],
   ['deleting a remote tag', () => apiDeleteRemoteTag(REPO, 'v1.0.0'), deleteRemoteTag],
+  ['deleting a remote branch', () => apiDeleteRemoteBranch(REPO, 'feat/x'), deleteRemoteBranch],
 ])('%s refused by pre-push', (_label, call, mocked) => {
   it('puts the hook’s own output on the notch', async () => {
     vi.mocked(mocked).mockRejectedValue(hookRejection())

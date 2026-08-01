@@ -145,6 +145,12 @@ const cases: {
     args: { path: '/repo', name: 'feat', force: false, deleteRemote: false },
   },
   {
+    name: 'deleteRemoteBranch',
+    call: () => tauri.deleteRemoteBranch('/repo', 'feat', 'upstream'),
+    command: 'delete_remote_branch',
+    args: { path: '/repo', branchName: 'feat', remote: 'upstream' },
+  },
+  {
     name: 'renameBranch',
     call: () => tauri.renameBranch('/repo', 'old', 'new'),
     command: 'rename_branch',

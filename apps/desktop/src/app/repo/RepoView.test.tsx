@@ -7,13 +7,17 @@ import { normalizeMenuSpec, type MenuSpecNode } from '../../lib/nativeMenuSpec'
 const { apiOpenRepo } = vi.hoisted(() => ({ apiOpenRepo: vi.fn() }))
 vi.mock('../../api/repo.api', () => ({ apiOpenRepo }))
 
-const { apiDeleteBranch, apiCompareRefs, apiSetBranchUpstream } = vi.hoisted(() => ({
-  apiDeleteBranch: vi.fn(),
-  apiCompareRefs: vi.fn(),
-  apiSetBranchUpstream: vi.fn(),
-}))
+const { apiDeleteBranch, apiDeleteRemoteBranch, apiCompareRefs, apiSetBranchUpstream } = vi.hoisted(
+  () => ({
+    apiDeleteBranch: vi.fn(),
+    apiDeleteRemoteBranch: vi.fn(),
+    apiCompareRefs: vi.fn(),
+    apiSetBranchUpstream: vi.fn(),
+  })
+)
 vi.mock('../../api/git.api', () => ({
   apiDeleteBranch,
+  apiDeleteRemoteBranch,
   apiCompareRefs,
   apiSetBranchUpstream,
   apiPullBranch: vi.fn(),
@@ -300,7 +304,7 @@ describe('RepoView — branch context menu', () => {
     expect(menuItemByText('Delete local-branch')).toBeDefined()
   })
 
-  it('opens the menu for a remote branch too (checkout, no rename, disabled delete)', async () => {
+  it('opens the menu for a remote branch too (checkout, no rename, a real delete)', async () => {
     const user = userEvent.setup()
     useRepoUIStore.setState({ activeRepo: '/repo' })
     render(<RepoView />)
@@ -308,7 +312,7 @@ describe('RepoView — branch context menu', () => {
     expect(showNativeMenu).toHaveBeenCalledOnce()
     expect(menuItemByText('Checkout origin/main')).toBeDefined()
     expect(menuItemByText('Rename origin/main')).toBeUndefined()
-    expect(menuItemByText('Delete origin/main')?.enabled).toBe(false)
+    expect(menuItemByText('Delete origin/main')?.enabled).not.toBe(false)
   })
 
   it('the delete item deletes the branch and refreshes', async () => {
@@ -332,6 +336,32 @@ describe('RepoView — branch context menu', () => {
     await user.click(screen.getByText('context-menu-local'))
     await act(async () => menuItemByText('Rename local-branch')!.action!())
     expect(await screen.findByTestId('rename-branch-dialog')).toBeInTheDocument()
+  })
+
+  it('the delete item on a remote branch opens the confirm dialog instead of deleting outright', async () => {
+    const user = userEvent.setup()
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    render(<RepoView />)
+    await user.click(screen.getByText('context-menu-remote'))
+    await act(async () => menuItemByText('Delete origin/main')!.action!())
+
+    expect(apiDeleteRemoteBranch).not.toHaveBeenCalled()
+    expect(await screen.findByTestId('delete-remote-branch-dialog')).toBeInTheDocument()
+    expect(screen.getByText('Delete main from origin')).toBeInTheDocument()
+  })
+
+  it('confirming the remote delete dialog calls the remote-delete API', async () => {
+    const user = userEvent.setup()
+    apiDeleteRemoteBranch.mockResolvedValue(undefined)
+    useRepoUIStore.setState({ activeRepo: '/repo' })
+    render(<RepoView />)
+    await user.click(screen.getByText('context-menu-remote'))
+    await act(async () => menuItemByText('Delete origin/main')!.action!())
+    await screen.findByTestId('delete-remote-branch-dialog')
+
+    await user.click(screen.getByTestId('delete-remote-branch-confirm'))
+
+    expect(apiDeleteRemoteBranch).toHaveBeenCalledWith('/repo', 'main', 'origin')
   })
 
   // The comparison dialog is mounted here rather than in the graph, so that it opens from a sidebar
