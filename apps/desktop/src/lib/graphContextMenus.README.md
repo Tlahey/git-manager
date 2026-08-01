@@ -160,9 +160,11 @@ Ranked roughly by user impact.
    (mirror of the remote-tag deletion already shipped).
 
 ### Real functional gaps
-5. **Merge-commit–specific items** — `isMergeCommit` is threaded through the context but unused. No
-   "Revert merge (-m 1/2)", no "compare against parent 1/2". Reverting a merge currently uses the
-   plain revert path, which can fail on merges.
+5. ~~**Merge-commit–specific items**~~ — **shipped**. `isMergeCommit` now relabels the revert entry
+   ("Revert this merge commit" — the dialog then asks which parent is the mainline, i.e. `git revert
+   -m`) and adds "Compare against parent 1/2". The octopus case is deliberately partial: the compare
+   entries stop at the second parent, while the revert picker lists every parent, because `-m` has to
+   name the real one.
 6. **`WIP:<path>` (other worktree) row** — no menu. Could offer "Open worktree", "Stash there", etc.
 7. **CONFLICT row** — no menu. Abort/continue a paused rebase lives elsewhere; a right-click shortcut
    could help.

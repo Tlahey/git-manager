@@ -94,6 +94,7 @@ const commitActions = (): CommitMenuActions => ({
   onRebaseOntoCommit: vi.fn(),
   onCreatePatchSelection: vi.fn(),
   onCompareToWorkdir: vi.fn(),
+  onCompareToParent: vi.fn(),
 })
 
 /** A branch submenu is only ever built for a ref that sits on the clicked commit (see
@@ -1136,5 +1137,72 @@ describe('buildCommitMenuSpec — recompose', () => {
     expect(actions.onRecomposeCommit).toHaveBeenCalledWith(false)
     item(spec, 'Rewrite abc1234 and its 2 descendants (LLM)')?.action?.()
     expect(actions.onRecomposeCommit).toHaveBeenCalledWith(true)
+  })
+})
+
+describe('buildCommitMenuSpec — merge commits', () => {
+  const build = (context: GraphCommitMenuContext) =>
+    normalizeMenuSpec(buildCommitMenuSpec(context, commitActions(), branchActions(), t))
+
+  it('offers no merge-specific entry on an ordinary commit', () => {
+    const labels = texts(build(ctx()))
+    expect(labels).toContain('Revert this commit')
+    expect(labels).not.toContain('Revert this merge commit')
+    expect(labels.some((l) => l.startsWith('Compare against parent'))).toBe(false)
+  })
+
+  it('relabels the revert entry and offers both parents to compare against', () => {
+    const labels = texts(build(ctx({ isMergeCommit: true })))
+    expect(labels).toContain('Revert this merge commit')
+    expect(labels).not.toContain('Revert this commit')
+    expect(labels).toContain('Compare against parent 1')
+    expect(labels).toContain('Compare against parent 2')
+  })
+
+  it('keeps the merge entries in the flattened single-branch layout too', () => {
+    const labels = texts(
+      build(ctx({ isMergeCommit: true, refs: [ref({ shortName: 'main' })], currentBranch: 'main' }))
+    )
+    expect(labels).toContain('Revert this merge commit')
+    expect(labels).toContain('Compare against parent 2')
+  })
+
+  it('places the compare entries directly under the revert one', () => {
+    const labels = texts(build(ctx({ isMergeCommit: true })))
+    const revertAt = labels.indexOf('Revert this merge commit')
+    expect(labels[revertAt + 1]).toBe('Compare against parent 1')
+    expect(labels[revertAt + 2]).toBe('Compare against parent 2')
+  })
+
+  it('passes the 1-based parent number through to the action', () => {
+    const actions = commitActions()
+    const spec = normalizeMenuSpec(
+      buildCommitMenuSpec(ctx({ isMergeCommit: true }), actions, branchActions(), t)
+    )
+    item(spec, 'Compare against parent 1')?.action?.()
+    expect(actions.onCompareToParent).toHaveBeenCalledWith(1)
+    item(spec, 'Compare against parent 2')?.action?.()
+    expect(actions.onCompareToParent).toHaveBeenCalledWith(2)
+  })
+
+  it('drops the compare entries in a multi-selection, where "the merge" is ambiguous', () => {
+    const labels = texts(build(ctx({ isMergeCommit: true, isSingle: false, targetCount: 3 })))
+    expect(labels.some((l) => l.startsWith('Compare against parent'))).toBe(false)
+  })
+
+  it('never reaches the sidebar branch menu, whose context is never a merge', () => {
+    const labels = texts(
+      normalizeMenuSpec(
+        buildSidebarBranchMenuSpec(
+          ref({ shortName: 'main' }),
+          { ...ctx({ refs: [ref({ shortName: 'main' })] }), isHidden: false },
+          { ...branchActions(), onToggleVisibility: vi.fn() },
+          commitActions(),
+          t
+        )
+      )
+    )
+    expect(labels).toContain('Revert this commit')
+    expect(labels.some((l) => l.startsWith('Compare against parent'))).toBe(false)
   })
 })

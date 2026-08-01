@@ -25,8 +25,14 @@ export interface GraphCommitMenuContext {
   isSingle: boolean
   targetCount: number
   /**
-   * Merge commits currently share the regular commit menu; the flag is carried in the context so
-   * a future merge-specific rule is a one-line predicate in `buildCommitMenuSpec`.
+   * Whether the clicked commit has more than one parent. Two things depend on it, and both exist
+   * because a merge has no single "before" state: the revert entry is relabelled (it opens the same
+   * dialog, which then asks which parent is the mainline — `git revert -m`), and the "compare
+   * against parent N" entries appear.
+   *
+   * The compare entries cover the first TWO parents only, which is every merge a GUI realistically
+   * produces; an octopus merge's later sides stay unreachable from the menu (the revert dialog does
+   * enumerate all of them, because `-m` has to name the real one).
    */
   isMergeCommit: boolean
   /** Every ref on the clicked commit — each branch/remote ref gets its own submenu. */
@@ -97,6 +103,9 @@ export interface CommitMenuActions extends BranchTipCommitActions {
   onRebaseOntoCommit: () => void
   /** Write a single patch spanning all selected commits. */
   onCreatePatchSelection: () => void
+  // ── Merge commits only ──
+  /** Diff the merge commit against one of its parents; `parentNumber` is 1-based, as in `-m`. */
+  onCompareToParent: (parentNumber: number) => void
 }
 
 /** Per-branch actions; each receives the branch ref the item belongs to. */
@@ -779,8 +788,36 @@ function commitCoreSection(
         menuItem({ text: t('gitTree.contextMenu.resetHard'), action: () => actions.onReset('hard') }),
       ],
     }),
-    menuItem({ text: t('gitTree.contextMenu.revert'), icon: 'revert', enabled: isSingle, action: actions.onRevert }),
+    // Same entry and same dialog for a merge, only relabelled: the dialog is what asks which parent
+    // is the mainline, because that question has no answer until the user is looking at the commit.
+    menuItem({
+      text: t(ctx.isMergeCommit ? 'gitTree.contextMenu.revertMerge' : 'gitTree.contextMenu.revert'),
+      icon: 'revert',
+      enabled: isSingle,
+      action: actions.onRevert,
+    }),
   ]
+}
+
+/**
+ * "Compare against parent 1 / 2" — merge commits only, and only in the graph's own commit menu.
+ *
+ * A merge is the one commit whose diff is a question rather than a fact: it has one reading per
+ * parent and the details panel silently picks the first. These entries are how the second one is
+ * reachable at all. See {@link GraphCommitMenuContext.isMergeCommit} for why the list stops at two.
+ */
+function mergeCompareSection(
+  ctx: GraphCommitMenuContext,
+  actions: CommitMenuActions,
+  t: TranslateFn
+): MenuSpecEntry[] {
+  if (!ctx.isMergeCommit || !ctx.isSingle) return []
+  return [1, 2].map((parentNumber) =>
+    menuItem({
+      text: t('gitTree.contextMenu.compareToParent', { parent: parentNumber }),
+      action: () => actions.onCompareToParent(parentNumber),
+    })
+  )
 }
 
 /**
@@ -899,6 +936,9 @@ function buildFlatSingleBranchMenuSpec(
     }),
     menuSeparator(),
     ...commitCoreSection(ctx, actions, t),
+    // Directly under the (relabelled) revert entry, no separator: on a merge the two are the same
+    // subject — which side of the merge is being talked about.
+    ...mergeCompareSection(ctx, actions, t),
     menuSeparator(),
     // The two AI explanations, adjacent and unseparated.
     ...commitExplanationSection(ctx, actions, t),
@@ -955,6 +995,7 @@ export function buildCommitMenuSpec(
     menuItem({ text: t('gitTree.contextMenu.createWorktree'), action: actions.onCreateWorktree }),
     menuSeparator(),
     ...commitCoreSection(ctx, actions, t),
+    ...mergeCompareSection(ctx, actions, t),
     menuSeparator(),
     ...commitExplanationSection(ctx, actions, t),
     menuSeparator(),

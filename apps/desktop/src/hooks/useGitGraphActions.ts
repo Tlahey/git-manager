@@ -560,6 +560,10 @@ export function useGitGraphActions({
           onRebaseOntoCommit: () => void handleRebaseOntoCommit(),
           onCreatePatchSelection: () => void handleCreatePatchSelection(),
           onCompareToWorkdir: () => setPendingAction({ kind: 'compare' }),
+          // Merge commits only (the menu gates it): opens the same diff viewer scoped to one side
+          // of the merge. 1-based here, as in `git revert -m` and in the label the user just read.
+          onCompareToParent: (parentNumber) =>
+            setPendingAction({ kind: 'compareParent', parentNumber }),
           // Explains the clicked commit itself — the metadata travels with the target so the panel
           // can show a header before the diff has even been fetched.
           // Rewriting messages is gated in the menu (protected branch, detached HEAD, AI off); the
