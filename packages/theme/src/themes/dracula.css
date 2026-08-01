@@ -34,6 +34,11 @@
     --secondary-foreground: 60 30% 96%;
     --muted: 232 14% 26%;
     --muted-foreground: 232 35% 72%;
+    /* --description-foreground: this theme's own --muted-foreground lightness, fully
+       desaturated to a neutral gray (component token, see themes.css). Formula-derived, not
+       individually eyeballed against a live render like ocean's override — revisit if this
+       theme's merge-editor collapsed-region wave still looks off. */
+    --description-foreground: 0 0% 72%;
     --accent: 232 14% 31%;
     --accent-foreground: 60 30% 96%;
     --destructive: 0 100% 67%;
