@@ -32,6 +32,11 @@ describe('DiffViewer — header', () => {
     expect(screen.getByText("Modified")).toBeInTheDocument()
   })
 
+  it('carries a testid keyed by the displayed path, for deterministic per-file lookups', () => {
+    render(<DiffViewer file={file({ status: 'modified', newPath: 'src/a.ts' })} />)
+    expect(screen.getByTestId('diff-viewer-file-src/a.ts')).toBeInTheDocument()
+  })
+
   it('shows "old → new" for a renamed file', () => {
     render(<DiffViewer file={file({ status: 'renamed', oldPath: 'old.ts', newPath: 'new.ts' })} />)
     expect(screen.getByText('old.ts → new.ts')).toBeInTheDocument()

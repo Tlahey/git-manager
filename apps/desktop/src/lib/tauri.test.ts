@@ -75,7 +75,13 @@ const cases: {
     name: 'getCommitDiff',
     call: () => tauri.getCommitDiff('/repo', 'abc'),
     command: 'get_commit_diff',
-    args: { path: '/repo', oid: 'abc' },
+    args: { path: '/repo', oid: 'abc', parentIndex: undefined },
+  },
+  {
+    name: 'getCommitDiff (explicit parent)',
+    call: () => tauri.getCommitDiff('/repo', 'abc', 1),
+    command: 'get_commit_diff',
+    args: { path: '/repo', oid: 'abc', parentIndex: 1 },
   },
   {
     name: 'getCommitsMergedDiff',
@@ -88,6 +94,12 @@ const cases: {
     call: () => tauri.compareCommitToWorkdir('/repo', 'abc'),
     command: 'compare_commit_to_workdir',
     args: { path: '/repo', oid: 'abc' },
+  },
+  {
+    name: 'compareRefs',
+    call: () => tauri.compareRefs('/repo', 'main', 'feature'),
+    command: 'compare_refs',
+    args: { path: '/repo', baseRef: 'main', headRef: 'feature' },
   },
   {
     name: 'getCommitFile',
@@ -545,19 +557,18 @@ const cases: {
     args: { path: '/repo', oids: ['a', 'b'] },
   },
 
-  { name: 'getSettings', call: () => tauri.getSettings(), command: 'get_settings' },
-  {
-    name: 'updateSettings',
-    call: () => tauri.updateSettings({ language: 'fr' }),
-    command: 'update_settings',
-    args: { settings: { language: 'fr' } },
-  },
-
   {
     name: 'revertCommit (default noCommit)',
     call: () => tauri.revertCommit('/repo', 'abc'),
     command: 'revert_commit',
-    args: { path: '/repo', oid: 'abc', noCommit: false },
+    args: { path: '/repo', oid: 'abc', noCommit: false, mainline: undefined },
+  },
+  {
+    // `git revert -m 2` — a merge commit is the only one that carries a mainline.
+    name: 'revertCommit (merge mainline)',
+    call: () => tauri.revertCommit('/repo', 'abc', false, 2),
+    command: 'revert_commit',
+    args: { path: '/repo', oid: 'abc', noCommit: false, mainline: 2 },
   },
   {
     name: 'resetToCommit',

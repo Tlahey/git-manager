@@ -13,9 +13,9 @@ type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
  * `api/nativeMenu.api.ts`. Adding a context-specific item = one predicate + one entry in the
  * relevant builder; no Tauri code involved, and the result is directly unit-testable.
  *
- * Items shipped as VISIBLE BUT DISABLED are planned features without an implementation yet
- * (Set upstream, Explain branch changes, Solo) — they keep the menu shape stable so wiring one
- * later is only an `enabled`/`action` change here.
+ * Items shipped as VISIBLE BUT DISABLED are planned features without an implementation yet —
+ * gating a real disabled placeholder on state (e.g. "nothing to act on") rather than hardcoding it
+ * off keeps the menu shape stable so wiring one later is only an `enabled`/`action` change here.
  */
 
 // ── Context ──────────────────────────────────────────────────────────────────
@@ -25,8 +25,14 @@ export interface GraphCommitMenuContext {
   isSingle: boolean
   targetCount: number
   /**
-   * Merge commits currently share the regular commit menu; the flag is carried in the context so
-   * a future merge-specific rule is a one-line predicate in `buildCommitMenuSpec`.
+   * Whether the clicked commit has more than one parent. Two things depend on it, and both exist
+   * because a merge has no single "before" state: the revert entry is relabelled (it opens the same
+   * dialog, which then asks which parent is the mainline — `git revert -m`), and the "compare
+   * against parent N" entries appear.
+   *
+   * The compare entries cover the first TWO parents only, which is every merge a GUI realistically
+   * produces; an octopus merge's later sides stay unreachable from the menu (the revert dialog does
+   * enumerate all of them, because `-m` has to name the real one).
    */
   isMergeCommit: boolean
   /** Every ref on the clicked commit — each branch/remote ref gets its own submenu. */
@@ -97,12 +103,17 @@ export interface CommitMenuActions extends BranchTipCommitActions {
   onRebaseOntoCommit: () => void
   /** Write a single patch spanning all selected commits. */
   onCreatePatchSelection: () => void
+  // ── Merge commits only ──
+  /** Diff the merge commit against one of its parents; `parentNumber` is 1-based, as in `-m`. */
+  onCompareToParent: (parentNumber: number) => void
 }
 
 /** Per-branch actions; each receives the branch ref the item belongs to. */
 export interface BranchMenuActions {
   onPull: (ref: GitRef) => void
   onPush: (ref: GitRef) => void
+  /** Opens the "Set upstream" dialog (or applies the obvious default) for this local branch. */
+  onSetUpstream: (ref: GitRef) => void
   onFastForward: (ref: GitRef) => void
   onMergeInto: (ref: GitRef) => void
   onRebaseOntoBranch: (ref: GitRef) => void
@@ -110,6 +121,8 @@ export interface BranchMenuActions {
   onOpenWorktreeFrom: (ref: GitRef) => void
   /** Opens the PR-create flow with the current branch as head and this ref as base. */
   onStartPr: (ref: GitRef) => void
+  /** Opens the branch-vs-branch diff with this ref as the "from" side, the other side pickable. */
+  onCompareWithBranch: (ref: GitRef) => void
   /** Opens the AI explanation of everything this branch changes vs its merge target. */
   onExplainBranch: (ref: GitRef) => void
   /** Opens the AI review of everything this branch changes vs its merge target. */
@@ -140,9 +153,11 @@ interface BranchItemContext {
   hasCurrent: boolean
   /**
    * The name of the branch's canonical remote tree page, when it has one: the remote ref itself
-   * for a remote branch, and for the local `main`/`master` its remote counterpart (`origin/main`).
-   * A plain local feature branch has none — so only main/master exposes "Copy link to branch",
-   * matching the spec. `null` otherwise.
+   * for a remote branch, and for a local branch its remote-tracking counterpart present on the
+   * same commit (`origin/<name>`) — any pushed local branch, not just main/master. Local `main`/
+   * `master` additionally falls back to the conventional `origin/<name>` even when no matching
+   * remote ref is actually on the commit, since that pairing can be assumed. A local branch that
+   * has never been pushed has none. `null` otherwise.
    */
   remoteBranchLinkName: string | null
   params: { branch: string; current: string }
@@ -160,13 +175,16 @@ interface BranchItemContext {
 
 function branchItemContext(ref: GitRef, ctx: GraphCommitMenuContext): BranchItemContext {
   const isRemote = ref.type === 'remote'
+  // Any local branch whose remote-tracking ref is actually on the commit gets that ref's name;
+  // main/master additionally fall back to the conventional `origin/<name>` even without one
+  // present, since that pairing can be assumed. Any other local branch with no remote ref on the
+  // commit — i.e. never pushed — has none.
+  const remoteCounterpart = ctx.refs.find(
+    (r) => r.type === 'remote' && logicalBranchName(r) === ref.shortName
+  )?.shortName
   const remoteBranchLinkName = isRemote
     ? ref.shortName
-    : isMainBranchName(ref.shortName)
-      ? // Prefer the actual remote-tracking ref on the commit; fall back to `origin/<name>`.
-        (ctx.refs.find((r) => r.type === 'remote' && logicalBranchName(r) === ref.shortName)
-          ?.shortName ?? `origin/${ref.shortName}`)
-      : null
+    : (remoteCounterpart ?? (isMainBranchName(ref.shortName) ? `origin/${ref.shortName}` : null))
   return {
     ref,
     isRemote,
@@ -181,9 +199,14 @@ function branchItemContext(ref: GitRef, ctx: GraphCommitMenuContext): BranchItem
 
 // ── Per-branch sections (shared by the submenu and the flat single-branch layout) ──
 
-/** Pull / Push / Set upstream — local branches only; pull/push act on HEAD, so they stay
- *  disabled on a non-current branch. Set upstream is not implemented yet. */
-function syncSection(b: BranchItemContext, actions: BranchMenuActions, t: TranslateFn): MenuSpecEntry[] {
+/** Pull / Push — local branches only, and only meaningful against HEAD, so both stay visible but
+ *  disabled on a non-current branch (see `setUpstreamSection` for why "Set upstream" doesn't share
+ *  that gate). */
+function pullPushSection(
+  b: BranchItemContext,
+  actions: BranchMenuActions,
+  t: TranslateFn
+): MenuSpecEntry[] {
   if (b.isRemote) return []
   return [
     menuItem({
@@ -196,8 +219,35 @@ function syncSection(b: BranchItemContext, actions: BranchMenuActions, t: Transl
       enabled: b.isCurrent,
       action: () => actions.onPush(b.ref),
     }),
-    menuItem({ text: t('gitTree.branchMenu.setUpstream'), enabled: false }),
   ]
+}
+
+/**
+ * Set upstream — local branches only, and always enabled: unlike pull/push it writes metadata on
+ * the branch actually clicked (`branch.<name>.remote`/`.merge`), not on HEAD. That is what lets the
+ * sidebar offer it on every local branch row instead of gating it to the trunk the way pull/push
+ * are (see `buildSidebarBranchMenuSpec`) — the item does exactly what its row says regardless of
+ * what is currently checked out.
+ */
+function setUpstreamSection(
+  b: BranchItemContext,
+  actions: BranchMenuActions,
+  t: TranslateFn
+): MenuSpecEntry[] {
+  if (b.isRemote) return []
+  return [
+    menuItem({
+      text: t('gitTree.branchMenu.setUpstream'),
+      action: () => actions.onSetUpstream(b.ref),
+    }),
+  ]
+}
+
+/** Pull / Push / Set upstream, as one section for the graph's branch submenu and flat layout —
+ *  the sidebar (`buildSidebarBranchMenuSpec`) uses the two halves separately instead, since only
+ *  the pull/push half needs to be gated to the trunk. */
+function syncSection(b: BranchItemContext, actions: BranchMenuActions, t: TranslateFn): MenuSpecEntry[] {
+  return [...pullPushSection(b, actions, t), ...setUpstreamSection(b, actions, t)]
 }
 
 /** Fast-forward / Merge / Rebase against the current branch — meaningless on the current branch
@@ -220,6 +270,27 @@ function relationshipSection(
     menuItem({
       text: t('gitTree.branchMenu.rebaseOnto', b.params),
       action: () => actions.onRebaseOntoBranch(b.ref),
+    }),
+  ]
+}
+
+/**
+ * "Compare <branch> with…" — the branch-vs-branch diff, opened with this branch as the "from" side
+ * and the other one picked in the dialog.
+ *
+ * Always offered, on the current branch and on a remote one alike: unlike the relationship actions
+ * above, comparing changes nothing, so there is no state in which the question is meaningless. It
+ * needs no AI flag either — this reads the two trees, it does not ask a model about them.
+ */
+function comparisonSection(
+  b: BranchItemContext,
+  actions: BranchMenuActions,
+  t: TranslateFn
+): MenuSpecEntry[] {
+  return [
+    menuItem({
+      text: t('gitTree.branchMenu.compareWith', b.params),
+      action: () => actions.onCompareWithBranch(b.ref),
     }),
   ]
 }
@@ -354,6 +425,8 @@ export function buildBranchSubmenu(
         action: () => actions.onOpenWorktreeFrom(b.ref),
       }),
       menuSeparator(),
+      ...comparisonSection(b, actions, t),
+      menuSeparator(),
       ...prAndExplainSection(b, actions, t),
       menuSeparator(),
       ...destructiveSection(b, actions, t),
@@ -410,9 +483,11 @@ export function buildSidebarBranchMenuSpec(
   const b = branchItemContext(ref, ctx)
   const isTrunk = !b.isRemote && isMainBranchName(ref.shortName)
   return [
-    // Pull / push / set upstream act on HEAD rather than on the row that was right-clicked, so they
-    // are offered on the trunk — where they are what one actually runs — and nowhere else.
-    ...(isTrunk ? syncSection(b, actions, t) : []),
+    // Pull / push act on HEAD rather than on the row that was right-clicked, so they are offered
+    // on the trunk — where they are what one actually runs — and nowhere else. Set upstream acts on
+    // the row itself, so every local branch gets it, not just the trunk.
+    ...(isTrunk ? pullPushSection(b, actions, t) : []),
+    ...setUpstreamSection(b, actions, t),
     menuSeparator(),
     ...relationshipSection(b, actions, t),
     menuSeparator(),
@@ -470,8 +545,10 @@ export function buildSidebarBranchMenuSpec(
     }),
     ...tailSection(b, actions, t),
     menuSeparator(),
-    // Against the working directory — the question a remote tip raises ("what is on the server
-    // that I do not have?") and a local one does not, since it can simply be checked out.
+    // The two comparisons, side by side: against another branch, and — for a remote tip only —
+    // against the working directory. The latter is the question a remote tip raises ("what is on
+    // the server that I do not have?") and a local one does not, since it can simply be checked out.
+    ...comparisonSection(b, actions, t),
     b.isRemote &&
       menuItem({
         text: t('gitTree.contextMenu.compareToWorkdir'),
@@ -546,7 +623,8 @@ export interface WipMenuActions {
  * Right-click menu of the **local** WIP row (the current branch's uncommitted changes): stash the
  * work in progress, stage/unstage everything, and the AI summary of the work in progress.
  * Committing stays on the row's inline input; "Discard all changes" lives on the side panel, not
- * here. Other synthetic rows (`WIP:<path>`, CONFLICT) have no menu.
+ * here. The CONFLICT row has its own menu (see `buildConflictMenuSpec`); a linked worktree's
+ * `WIP:<path>` row still has none.
  */
 export function buildWipMenuSpec(
   ctx: WipMenuContext,
@@ -587,6 +665,52 @@ export function buildWipMenuSpec(
   ]
 }
 
+// ── Other-worktree WIP row menu ───────────────────────────────────────────────
+
+export interface OtherWorktreeMenuActions {
+  /** Switches the graph/sidebar to render this worktree's data in place of the active repo tab —
+   * the same view-switch the row's own "Open Worktree" button and the sidebar's worktree row use
+   * (`activeWorkspacePath`), so right-clicking and clicking the button agree on what "open" means. */
+  onOpenWorktree: () => void
+  /** Stashes the OTHER worktree's uncommitted changes — never the active repo's. Safe because the
+   * stash commands take an explicit path rather than reading `AppState`'s currently-open repo. */
+  onStash: (includeUntracked: boolean) => void
+  onRevealInFinder: () => void
+}
+
+/**
+ * Right-click menu of a **`WIP:<path>`** row — another linked worktree's uncommitted changes,
+ * rendered on its own lane in the graph. Every action targets that OTHER worktree's path, never the
+ * active repo: opening it switches the current view onto it, and stashing writes to its own working
+ * tree (the stash entry itself still lands in the shared `refs/stash`, so it also appears back in
+ * the active repo's own graph once written).
+ *
+ * Deliberately smaller than the local WIP row's menu ({@link buildWipMenuSpec}): stage/unstage and
+ * the AI summary/review both read the *active* repo's working tree today, so offering them here
+ * would either silently act on the wrong repo or need a second explicit-path variant of each — left
+ * out until there's a concrete need. Committing is not offered for the same reason the local row
+ * keeps it off its own menu (inline input only), and there is no inline input on this row at all.
+ */
+export function buildOtherWorktreeMenuSpec(
+  actions: OtherWorktreeMenuActions,
+  t: TranslateFn
+): MenuSpecEntry[] {
+  return [
+    menuItem({ text: t('gitTree.otherWorktreeMenu.openWorktree'), action: actions.onOpenWorktree }),
+    menuSeparator(),
+    menuItem({ text: t('gitTree.otherWorktreeMenu.stash'), action: () => actions.onStash(false) }),
+    menuItem({
+      text: t('gitTree.otherWorktreeMenu.stashIncludeUntracked'),
+      action: () => actions.onStash(true),
+    }),
+    menuSeparator(),
+    menuItem({
+      text: t('gitTree.otherWorktreeMenu.revealInFinder'),
+      action: actions.onRevealInFinder,
+    }),
+  ]
+}
+
 // ── Stash menu ─────────────────────────────────────────────────────────────
 
 export interface StashMenuContext {
@@ -617,6 +741,56 @@ export function buildStashMenuSpec(
     menuItem({
       text: t(ctx.isHidden ? 'gitTree.stashMenu.show' : 'gitTree.stashMenu.hide'),
       action: actions.onToggleVisibility,
+    }),
+  ]
+}
+
+// ── Conflict (paused rebase) row menu ────────────────────────────────────────
+
+export interface ConflictMenuContext {
+  /** No conflicted files remain — mirrors `ConflictResolutionPanel`'s `allResolved` and enables
+   *  "Continue". True for an `edit_pause` too, which never had conflicts to begin with. */
+  allResolved: boolean
+  /** Nothing has been staged yet and at least one file is still conflicted — mirrors the panel's
+   *  `noneResolved` and enables "Skip". Once any file has been resolved, neither this nor
+   *  `allResolved` holds and only "Abort" remains, exactly as in the panel: skipping
+   *  mid-resolution would discard work already staged, and continuing isn't possible while
+   *  conflicts are still open. */
+  noneResolved: boolean
+}
+
+export interface ConflictMenuActions {
+  onContinue: () => void
+  onSkip: () => void
+  onAbort: () => void
+}
+
+/**
+ * Right-click menu of the CONFLICT row (a paused rebase/merge): the same three ways out that
+ * `ConflictResolutionPanel` offers, as a shortcut that doesn't require opening the panel first.
+ * Enablement mirrors the panel's own gating exactly (see `ConflictMenuContext`), so the menu never
+ * offers something the panel wouldn't.
+ */
+export function buildConflictMenuSpec(
+  ctx: ConflictMenuContext,
+  actions: ConflictMenuActions,
+  t: TranslateFn
+): MenuSpecEntry[] {
+  return [
+    menuItem({
+      text: t('gitTree.conflictMenu.continueRebase'),
+      enabled: ctx.allResolved,
+      action: actions.onContinue,
+    }),
+    menuItem({
+      text: t('gitTree.conflictMenu.skipCommit'),
+      enabled: ctx.noneResolved,
+      action: actions.onSkip,
+    }),
+    menuSeparator(),
+    menuItem({
+      text: t('gitTree.conflictMenu.abortRebase'),
+      action: actions.onAbort,
     }),
   ]
 }
@@ -710,6 +884,9 @@ export interface TagMenuActions {
   onDeleteRemote: () => void
   onCopyName: () => void
   onCopyLink: () => void
+  /** Copies the SHA of the commit the tag points at — same action/icon as the commit and branch
+   * menus' own copy-SHA item. */
+  onCopySha: () => void
   /** Keep the tag's badge out of the graph (or bring it back). */
   onToggleHidden: () => void
   /** Isolate the graph on the branch carrying the tag's commit. */
@@ -761,6 +938,7 @@ export function buildTagMenuSpec(
     menuItem({ text: t('gitTree.tagMenu.deleteRemote', p), action: actions.onDeleteRemote }),
     menuSeparator(),
     menuItem({ text: t('gitTree.tagMenu.copyName'), action: actions.onCopyName }),
+    menuItem({ text: t('gitTree.contextMenu.copySha'), icon: 'copy_sha', action: actions.onCopySha }),
     menuSeparator(),
     menuItem({ text: t('gitTree.tagMenu.copyLink', p), action: actions.onCopyLink }),
     menuSeparator(),
@@ -800,8 +978,36 @@ function commitCoreSection(
         menuItem({ text: t('gitTree.contextMenu.resetHard'), action: () => actions.onReset('hard') }),
       ],
     }),
-    menuItem({ text: t('gitTree.contextMenu.revert'), icon: 'revert', enabled: isSingle, action: actions.onRevert }),
+    // Same entry and same dialog for a merge, only relabelled: the dialog is what asks which parent
+    // is the mainline, because that question has no answer until the user is looking at the commit.
+    menuItem({
+      text: t(ctx.isMergeCommit ? 'gitTree.contextMenu.revertMerge' : 'gitTree.contextMenu.revert'),
+      icon: 'revert',
+      enabled: isSingle,
+      action: actions.onRevert,
+    }),
   ]
+}
+
+/**
+ * "Compare against parent 1 / 2" — merge commits only, and only in the graph's own commit menu.
+ *
+ * A merge is the one commit whose diff is a question rather than a fact: it has one reading per
+ * parent and the details panel silently picks the first. These entries are how the second one is
+ * reachable at all. See {@link GraphCommitMenuContext.isMergeCommit} for why the list stops at two.
+ */
+function mergeCompareSection(
+  ctx: GraphCommitMenuContext,
+  actions: CommitMenuActions,
+  t: TranslateFn
+): MenuSpecEntry[] {
+  if (!ctx.isMergeCommit || !ctx.isSingle) return []
+  return [1, 2].map((parentNumber) =>
+    menuItem({
+      text: t('gitTree.contextMenu.compareToParent', { parent: parentNumber }),
+      action: () => actions.onCompareToParent(parentNumber),
+    })
+  )
 }
 
 /**
@@ -920,6 +1126,11 @@ function buildFlatSingleBranchMenuSpec(
     }),
     menuSeparator(),
     ...commitCoreSection(ctx, actions, t),
+    // Directly under the (relabelled) revert entry, no separator: on a merge the two are the same
+    // subject — which side of the merge is being talked about.
+    ...mergeCompareSection(ctx, actions, t),
+    menuSeparator(),
+    ...comparisonSection(b, branchActions, t),
     menuSeparator(),
     // The two AI explanations, adjacent and unseparated.
     ...commitExplanationSection(ctx, actions, t),
@@ -976,6 +1187,7 @@ export function buildCommitMenuSpec(
     menuItem({ text: t('gitTree.contextMenu.createWorktree'), action: actions.onCreateWorktree }),
     menuSeparator(),
     ...commitCoreSection(ctx, actions, t),
+    ...mergeCompareSection(ctx, actions, t),
     menuSeparator(),
     ...commitExplanationSection(ctx, actions, t),
     menuSeparator(),

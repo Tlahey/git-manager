@@ -12,6 +12,7 @@ import {
   apiGetTagWebUrl,
   apiPushTag,
   apiMoveTag,
+  apiCopyCommitSha,
 } from '../api/git.api'
 import { useBranchCheckout } from './useBranchCheckout'
 import { useRepoDataStore } from '../stores/repoData.store'
@@ -94,6 +95,11 @@ export function useTagContextMenu({
         toast.success(t('gitTree.tagMenu.nameCopied'))
       }
 
+      async function handleCopySha(oid: string) {
+        await apiCopyCommitSha(oid)
+        toast.success(t('gitTree.contextMenu.shaCopied'))
+      }
+
       async function handleCopyLink(name: string) {
         try {
           const url = await apiGetTagWebUrl(repoPath, name)
@@ -173,6 +179,7 @@ export function useTagContextMenu({
                 remote: 'origin',
               }),
             onCopyName: () => void handleCopyName(gitRef.shortName),
+            onCopySha: () => void handleCopySha(gitRef.commitOid),
             onCopyLink: () => void handleCopyLink(gitRef.shortName),
             onAnnotate: () =>
               setPendingTagAction({

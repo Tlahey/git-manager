@@ -492,6 +492,28 @@ pub async fn open_in_terminal(path: String, command: String) -> Result<(), Strin
         .map_err(|e| format!("Failed to open terminal: {e}"))
 }
 
+/// Reveals an arbitrary filesystem path in the Finder — e.g. a linked worktree's directory from the
+/// commit graph's `WIP:<path>` row context menu. Generic over `activity_log`'s/
+/// `daily_summary_archive`'s reveal commands: those always point at one of the app's own fixed
+/// directories, this one takes whatever path the caller already has in hand.
+#[tauri::command]
+pub async fn reveal_path_in_finder(path: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("Failed to reveal path: {e}"))
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = path;
+        Err("Revealing a path in the file manager is only supported on macOS".to_string())
+    }
+}
+
 /// Reads the system's zsh/bash history and extracts the commands starting with `git`.
 #[tauri::command]
 pub async fn get_terminal_commands() -> Result<Vec<String>, String> {

@@ -21,6 +21,7 @@ use commands::blame::{get_file_history, git_blame_file};
 use commands::branch::{
     checkout_branch, create_branch, create_tag, delete_branch, delete_tag, fast_forward_branch,
     get_branches, get_tag_containing_commit, get_tags, is_commit_on_current_branch, merge_branch,
+    rename_branch, set_branch_upstream,
 };
 use commands::cherry_pick::cherry_pick_commit;
 use commands::commit::{
@@ -43,7 +44,8 @@ use commands::github::{
 };
 use commands::interactive_rebase::{list_rebase_commits, run_interactive_rebase};
 use commands::log::{
-    compare_commit_to_workdir, get_commit_diff, get_commit_file, get_commits_merged_diff, get_log,
+    compare_commit_to_workdir, compare_refs, get_commit_diff, get_commit_file,
+    get_commits_merged_diff, get_log,
 };
 use commands::merge_target::get_merge_target_status;
 use commands::notification::{get_tray_icon_rect, play_system_sound, send_native_notification};
@@ -66,7 +68,7 @@ use commands::remote::{
 use commands::repo::{
     clone_repo, get_pending_operation, get_repo_files, get_repo_readme, get_repo_status,
     get_repo_summary, get_terminal_commands, init_repo, list_tracked_files, open_in_editor,
-    open_in_terminal, open_repo, scan_repos,
+    open_in_terminal, open_repo, reveal_path_in_finder, scan_repos,
 };
 use commands::rollback::{get_commits_between, reset_to_commit, revert_commit};
 use commands::ssh::{generate_ssh_key, read_ssh_public_key};
@@ -210,6 +212,7 @@ pub fn run() {
             get_repo_readme,
             open_in_terminal,
             get_terminal_commands,
+            reveal_path_in_finder,
             // Tasks
             run_task_in_terminal,
             get_project_commands,
@@ -224,6 +227,7 @@ pub fn run() {
             get_commits_merged_diff,
             get_commit_file,
             compare_commit_to_workdir,
+            compare_refs,
             // Blame / File history
             git_blame_file,
             get_file_history,
@@ -234,11 +238,13 @@ pub fn run() {
             create_tag,
             checkout_branch,
             delete_branch,
+            rename_branch,
             delete_tag,
             get_tag_containing_commit,
             is_commit_on_current_branch,
             merge_branch,
             fast_forward_branch,
+            set_branch_upstream,
             get_merge_target_status,
             // Rebase
             get_rebase_state,

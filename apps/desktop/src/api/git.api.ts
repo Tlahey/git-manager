@@ -26,6 +26,7 @@ import {
   deleteRemoteBranch,
   mergeBranch,
   fastForwardBranch,
+  setBranchUpstream,
   pushBranchTo,
   getRemotes,
   removeRemote,
@@ -63,6 +64,7 @@ import {
   pushBranch,
   cherryPickCommit,
   compareCommitToWorkdir,
+  compareRefs,
   getCommitWebUrl,
   rebaseOntoCommit,
   continueRebase,
@@ -393,7 +395,17 @@ export async function apiGetPendingFixups(path: string) {
   return getPendingFixups(path)
 }
 
-export async function apiRevertCommit(path: string, oid: string, noCommit = false) {
+/**
+ * `mainline` is `git revert -m` — which parent a MERGE commit is reverted relative to (1-based).
+ * The backend refuses a merge without it and ignores it everywhere else, so a caller that has no
+ * merge on its hands can keep leaving it out.
+ */
+export async function apiRevertCommit(
+  path: string,
+  oid: string,
+  noCommit = false,
+  mainline?: number
+) {
   let previousOid: string | null = null
   if (!noCommit) {
     try {
@@ -404,7 +416,7 @@ export async function apiRevertCommit(path: string, oid: string, noCommit = fals
     }
   }
 
-  const result = await revertCommit(path, oid, noCommit)
+  const result = await revertCommit(path, oid, noCommit, mainline)
 
   if (noCommit) {
     // With no commit, revert only modifies the index/working dir — no new commit to replay via
@@ -862,8 +874,10 @@ export async function apiGetBranches(path: string, includeRemote = true) {
   return getBranches(path, includeRemote)
 }
 
-export async function apiGetCommitDiff(path: string, oid: string) {
-  return getCommitDiff(path, oid)
+/** `parentIndex` is 0-based and defaults to the first parent — the graph's "Compare against
+ *  parent N" entries are the only callers that pass another, since only a merge commit has one. */
+export async function apiGetCommitDiff(path: string, oid: string, parentIndex?: number) {
+  return getCommitDiff(path, oid, parentIndex)
 }
 
 export async function apiGetCommitsMergedDiff(path: string, baseOid: string, headOid: string) {
@@ -872,6 +886,11 @@ export async function apiGetCommitsMergedDiff(path: string, baseOid: string, hea
 
 export async function apiCompareCommitToWorkdir(path: string, oid: string) {
   return compareCommitToWorkdir(path, oid)
+}
+
+/** Diff between two arbitrary refs (branch vs branch, tag or SHA) — the branch comparison view. */
+export async function apiCompareRefs(path: string, baseRef: string, headRef: string) {
+  return compareRefs(path, baseRef, headRef)
 }
 
 export async function apiGetFileDiff(
@@ -1033,6 +1052,16 @@ export async function apiCreateBranch(path: string, name: string, fromRef: strin
 /** Renames a local branch. Not snapshot-undoable (a rename back restores it), so only clears redo. */
 export async function apiRenameBranch(path: string, oldName: string, newName: string) {
   await renameBranch(path, oldName, newName)
+  clearRedo(path)
+}
+
+// ─── Set upstream ────────────────────────────────────────────────────────────
+
+/** Sets local branch `name`'s upstream to `upstream` (a remote-tracking branch's short name, e.g.
+ * `origin/main`). Metadata-only — nothing to snapshot, so it only clears redo like the branch's
+ * other non-rewriting relationship actions (rename, fast-forward). */
+export async function apiSetBranchUpstream(path: string, name: string, upstream: string) {
+  await setBranchUpstream(path, name, upstream)
   clearRedo(path)
 }
 

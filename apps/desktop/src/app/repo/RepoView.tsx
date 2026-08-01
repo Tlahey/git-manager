@@ -8,6 +8,8 @@ import { GitGraph } from '../../components/git-graph/GitGraph'
 import { RepositorySidebar } from '../../components/repository-sidebar'
 import { RenameBranchDialog } from '../../components/git-graph/RenameBranchDialog'
 import { DeleteRemoteBranchDialog } from '../../components/git-graph/DeleteRemoteBranchDialog'
+import { CompareBranchesDialog } from '../../components/git-graph/CompareBranchesDialog'
+import { SetUpstreamDialog } from '../../components/git-graph/SetUpstreamDialog'
 import { ActionToolbar } from '../../components/action-toolbar'
 import type { Section, Scope } from '../settings/SettingsPage'
 import { useSettingsStore } from '../../stores/settings.store'
@@ -42,6 +44,11 @@ export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
   // Solo mode: when active, the graph is isolated to the soloed branches (see soloMode.store.ts).
   const soloActive = useSoloModeStore((s) => s.active)
   const soloed = useSoloModeStore((s) => s.soloed)
+
+  // The two refs the branch comparison dialog is showing (set by the graph's and the sidebar's
+  // branch menus alike), or null when it is closed.
+  const compareRefsTarget = useRepoUIStore((s) => s.compareRefsTarget)
+  const setCompareRefsTarget = useRepoUIStore((s) => s.setCompareRefsTarget)
 
   const isFileExplorerOpen = useFileExplorerStore((s) => s.isOpen)
   const isSidebarOpen = useFileExplorerStore((s) => s.isSidebarOpen)
@@ -95,6 +102,8 @@ export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
     setRenameTarget,
     pendingDeleteRemoteBranch,
     setPendingDeleteRemoteBranch,
+    setUpstreamTarget,
+    setSetUpstreamTarget,
   } = useSidebarBranchMenu(branchMenuPath)
   // The sidebar's tag rows open the tag menu, mounted here rather than in the graph: the graph is
   // unmounted while the file explorer is open, and a tag row has to stay actionable there.
@@ -187,6 +196,29 @@ export function RepoView({ onOpenSettings }: RepoViewProps = {}) {
         />
       )}
 
+      {/* Branch comparison — mounted here rather than in the graph's overlay manager for the same
+          reason as the tag dialogs: it is about two refs, not about a selected commit, so it must
+          stay open (and openable) while the file explorer has the graph unmounted. */}
+      {compareRefsTarget && (
+        <CompareBranchesDialog
+          repoPath={branchMenuPath}
+          baseRef={compareRefsTarget.baseRef}
+          headRef={compareRefsTarget.headRef}
+          open
+          onChangeRefs={(baseRef, headRef) => setCompareRefsTarget({ baseRef, headRef })}
+          onClose={() => setCompareRefsTarget(null)}
+        />
+      )}
+
+      {setUpstreamTarget && (
+        <SetUpstreamDialog
+          key={setUpstreamTarget}
+          repoPath={branchMenuPath}
+          branch={setUpstreamTarget}
+          open
+          onClose={() => setSetUpstreamTarget(null)}
+        />
+      )}
     </div>
   )
 }
