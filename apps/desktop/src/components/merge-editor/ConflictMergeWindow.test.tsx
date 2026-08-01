@@ -66,37 +66,22 @@ describe('ConflictMergeWindow — loading/renderable content', () => {
     expect(screen.getByText('common:status.loading')).toBeInTheDocument()
   })
 
-  it('renders the three-way merge editor plus the remaining-conflicts count and auto-merge button', () => {
+  it('renders the three-way merge editor with no header/toolbar', () => {
     useMergeView.mockReturnValue({
       data: { renderable: true, isBinary: false, oursText: 'o', theirsText: 't' },
       isLoading: false,
     })
     renderWindow()
     expect(screen.getByTestId('three-way-merge-editor')).toBeInTheDocument()
-    expect(screen.getByTestId('merge-auto-merge-button')).toBeInTheDocument()
-    act(() => lastMergeEditorProps.current!.onPendingCountChange(3))
-    expect(screen.getByText('conflictEditor.conflictsRemaining:{"count":3}')).toBeInTheDocument()
-  })
-
-  it('applies non-conflicting hunks via the merge editor ref', async () => {
-    mergeEditorMock.applyAutoMerge.mockResolvedValue(undefined)
-    useMergeView.mockReturnValue({
-      data: { renderable: true, isBinary: false, oursText: 'o', theirsText: 't' },
-      isLoading: false,
-    })
-    const user = userEvent.setup()
-    renderWindow()
-    await user.click(screen.getByTestId('merge-auto-merge-button'))
-    expect(mergeEditorMock.applyAutoMerge).toHaveBeenCalledOnce()
+    expect(screen.queryByTestId('merge-auto-merge-button')).not.toBeInTheDocument()
   })
 })
 
 describe('ConflictMergeWindow — binary/delete/rename fallback', () => {
-  it('shows the binary-conflict message with keep-ours/keep-theirs, no toolbar', () => {
+  it('shows the binary-conflict message with keep-ours/keep-theirs', () => {
     useMergeView.mockReturnValue({ data: { renderable: false, isBinary: true }, isLoading: false })
     renderWindow()
     expect(screen.getByText('conflictEditor.binaryConflict')).toBeInTheDocument()
-    expect(screen.queryByTestId('merge-auto-merge-button')).not.toBeInTheDocument()
   })
 
   it('keeps "ours" for a binary conflict, emits, and closes the window', async () => {
