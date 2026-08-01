@@ -348,7 +348,7 @@ test-connection button already established:
 | Feature                                 | Area          | Setup             | Snapshot | Status                                                                               |
 | --------------------------------------- | ------------- | ----------------- | -------- | ------------------------------------------------------------------------------------ |
 | Commit graph rendering                  | log/graph     | any fixture       | 📷       | ⬜ (volatile: shas/dates)                                                            |
-| Branches: create / checkout / delete    | branch        | any fixture       | —        | 🟡 (checkout ✅ via BranchContext; **create-from-commit ✅ via ⌘K palette**, asserted via `git log`; delete still native) |
+| Branches: create / checkout / delete    | branch        | any fixture       | —        | 🟡 (checkout ✅ via BranchContext; **create-from-commit ✅ via ⌘K palette**, asserted via `git log`; delete still native — investigated for the remote-delete confirmation flow specifically and confirmed genuinely blocked, not just unattempted; see "Known blockers / gotchas" below) |
 | Tags: create / shown in graph            | tag           | any fixture       | —        | ✅ (**create (lightweight + annotated) via ⌘K palette**, asserted via `git log`/`git cat-file -t`; **ref badge shown in the graph row ✅**, `ref-label-tag-<name>` testid added to `RefLabel.tsx`) |
 | Cherry-pick a commit                    | cherry-pick   | feature-branches  | —        | ✅ (**via ⌘K palette**, asserted via `git log` — picks a non-conflicting file addition from another branch) |
 | Interactive rebase (reword/squash/drop) | rebase        | fixup-chain       | —        | 🚫 (native commit menu + child window)                                               |
@@ -504,9 +504,52 @@ DOM value:
   opening a **real second `WebviewWindow`** — see the multi-window gotcha below for why this one
   couldn't reuse the merge/rebase editors' navigate-in-place trick. Still native-menu-only (no
   palette command yet): interactive rebase, create-branch/tag from a *multi-selection*,
-  drag-reorder in the rebase editor. Other non-menu entry points: branch checkout via
-  `BranchContext` (undo-redo.feature), commit via the WIP panel buttons (commit.feature), undo/redo
-  via keyboard.
+  drag-reorder in the rebase editor, **branch delete (local and remote)**. Other non-menu entry
+  points: branch checkout via `BranchContext` (undo-redo.feature), commit via the WIP panel buttons
+  (commit.feature), undo/redo via keyboard.
+- **Remote branch delete: investigated specifically, confirmed genuinely not e2e-testable today —
+  not just "nobody wrote it yet".** Both entry points (the graph's per-commit branch menu in
+  `useGitGraphActions.ts` and the sidebar's branch-row menu in `useSidebarBranchMenu.ts`) are real
+  native context menus (see the bullet above), so the Delete item on a remote ref (`origin/x`) can't
+  be clicked at all. The question this investigation actually answered was narrower: *could the
+  confirmation dialog it opens (`DeleteRemoteBranchDialog.tsx`) still be reached by bypassing the
+  menu and writing state directly, the way `ai-commit-recompose.steps.ts` already does for
+  `recompose` (`window.__e2eRepoUIStore.getState().setPendingGraphAction({ kind: 'recompose', ... })`,
+  which `GitGraph.tsx` forwards into its own dialog)?* The answer is no, and not by omission:
+  - The pending state each hook owns (`pendingDeleteRemoteBranch` / `setPendingDeleteRemoteBranch`,
+    rendered as two separate `<DeleteRemoteBranchDialog>` instances — one in `GitGraph.tsx`, one in
+    `RepoView.tsx`) is **plain `useState`**, not a field on any Zustand store, so
+    `window.__e2eRepoUIStore` (or any other `__e2e*Store`, per `main.tsx`'s exposure list) simply
+    cannot reach it — confirmed by reading both hooks end to end, not by grepping for its absence.
+  - Unlike `recompose`, it is also **not** one of the `GraphCommitAction` kinds `repoUI.store.ts`'s
+    `pendingGraphAction` carries, and that is a deliberate exclusion the code already documents, not
+    a gap: `graphContextMenus.ts`'s doc comment on `PendingDeleteRemoteBranch` says plainly "unlike
+    the graph's other menu-triggered dialogs, this one needs no clicked-commit node to exist in the
+    loaded graph page … so it stays outside that shared union." Every kind that *is* in the union
+    flows through `GitGraph.tsx`'s `pendingGraphAction` effect — gated on `pendingGraphAction &&
+    primaryOid` — and, for the dialog-based kinds, a second gate in `GitGraphOverlayManager` that
+    requires the oid to resolve to a **loaded graph node** before rendering anything. A remote
+    branch's tip commit is not guaranteed to be inside the graph's loaded window (a remote-only
+    branch outside `initialGraphCommits` is a completely normal case, and is exactly the kind of
+    branch someone would want to delete from the sidebar without ever loading its commit locally) —
+    so routing delete-remote-branch through that gate the way `recompose` does would silently
+    no-op the dialog for precisely the branches most likely to need it. The exclusion prevents a
+    real bug; it isn't an oversight to "fix" for testability.
+  - Also checked and ruled out: no ⌘K command-palette entry exists for this action either, unlike
+    reset/revert/create-branch/create-tag (`grep -rn "deleteRemoteBranch\|DeleteRemoteBranchDialog"
+    apps/desktop/src` finds only the two menu hooks, the dialog component, and their own unit tests
+    — no `useCommitCommands.ts`/`useStashCommands.ts` wiring).
+  - Bridging it anyway would mean either forcing tests (and, if ever added, a real palette command)
+    to select an unrelated commit first just to satisfy a gate the dialog doesn't need, or
+    restructuring `GitGraph.tsx`'s shared bridge so one new kind skips a gate every other bridged
+    action relies on — past "trivial", and in tension with the documented reason the original author
+    kept this one out.
+  - **Conclusion**: native-context-menu-only with no e2e bypass in the current harness, same class
+    of gap as interactive rebase — a real architectural wall, not a missing test. The dialog and the
+    backend `delete_remote_branch` command it drives (`services/git_remote.rs`,
+    `commands/remote.rs`) are covered at the unit/component level instead
+    (`DeleteRemoteBranchDialog.test.tsx`, `RepoView.test.tsx`, `useGitGraphActions.test.ts`,
+    `useSidebarBranchMenu` via `graphContextMenus.test.ts`, `git.api.test.ts`).
 - **Multi-window: prefer navigate-in-place; when a real second window is unavoidable, expect
   WebKit click quirks.** The merge and rebase editors (`merge.steps.ts`) sidestep multi-window
   entirely by navigating the shared main window straight to `?window=merge`/`?window=rebase` —
