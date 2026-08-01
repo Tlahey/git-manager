@@ -62,6 +62,13 @@ describe('resolveDisplayDurationMs', () => {
     expect(resolveDisplayDurationMs(settings())).toBe(DEFAULT_DISPLAY_DURATION_MS)
   })
 
+  // Pinned to the number rather than the constant: this one is a product decision, not an
+  // implementation detail. A card can carry the tail of a failed hook's output, and the five
+  // seconds this used to be is not long enough to notice it, read it and take it in.
+  it('gives a card ten seconds by default', () => {
+    expect(DEFAULT_DISPLAY_DURATION_MS).toBe(10000)
+  })
+
   it('honours an explicit duration', () => {
     expect(resolveDisplayDurationMs(settings({ displayDurationMs: 12000 }))).toBe(12000)
   })

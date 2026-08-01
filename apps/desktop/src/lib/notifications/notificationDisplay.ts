@@ -11,7 +11,13 @@ import type { NotificationDisplayStyle, NotificationSettings } from '@git-manage
 
 /** The app's own card. The default: it's the surface this project actually designed. */
 export const DEFAULT_DISPLAY_STYLE: NotificationDisplayStyle = 'notch'
-export const DEFAULT_DISPLAY_DURATION_MS = 5000
+/**
+ * Ten seconds, not the five it started at: a card that carries the tail of a failed hook's output
+ * is something to *read*, and five seconds is not enough to find it, look at it and take it in
+ * before it leaves. Shorter values stay on offer below for anyone who wants them — this is the
+ * floor a user who never opens Settings gets.
+ */
+export const DEFAULT_DISPLAY_DURATION_MS = 10000
 
 /**
  * Module-level, so these hold i18n *keys* rather than copy — resolved through `t()` at render,
@@ -40,7 +46,7 @@ export const DISPLAY_STYLE_OPTIONS: Array<{
 ]
 
 /** `0` = stays until the user dismisses it; see `resolveDisplayDurationMs`. */
-export const DISPLAY_DURATION_OPTIONS_MS = [3000, 5000, 8000, 12000, 0]
+export const DISPLAY_DURATION_OPTIONS_MS = [3000, 5000, 8000, 10000, 12000, 0]
 
 /**
  * Maps a persisted value onto a current one.

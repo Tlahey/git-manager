@@ -3,6 +3,10 @@ import { persist } from 'zustand/middleware'
 import { migrateAiPresetId } from '@git-manager/ai'
 import { DEFAULT_GLASS_TRANSPARENCY } from '@git-manager/theme'
 import type { AppSettings, RepoScopedSettings } from '@git-manager/git-types'
+import {
+  DEFAULT_DISPLAY_DURATION_MS,
+  DEFAULT_DISPLAY_STYLE,
+} from '../lib/notifications/notificationDisplay'
 
 const DEFAULT_SETTINGS: AppSettings = {
   ai: {
@@ -77,8 +81,10 @@ const DEFAULT_SETTINGS: AppSettings = {
     notifyOnReviewRequested: true,
     notifyOnReviewStatusChanged: true,
     notifyOnNewPr: true,
-    displayStyle: 'notch',
-    displayDurationMs: 5000,
+    // Taken from `notificationDisplay` rather than restated: that module is where the two display
+    // defaults are decided, and a second copy here is exactly the drift its doc comment warns about.
+    displayStyle: DEFAULT_DISPLAY_STYLE,
+    displayDurationMs: DEFAULT_DISPLAY_DURATION_MS,
   },
   integrations: {
     gitlabAccounts: [],
@@ -157,6 +163,38 @@ export function mergeSettingsWithDefaults(persisted: Partial<AppSettings> | unde
   return merged
 }
 
+/**
+ * Bumps that must happen exactly once, unlike the remaps in `mergeSettingsWithDefaults`.
+ *
+ * Those are safe to re-run on every rehydration because the values they replace are no longer
+ * selectable — nothing can put `obsidian` back once it is gone. Raising a *still-valid* value is a
+ * different problem: 5s remains a perfectly good duration to choose, so remapping it in the merge
+ * would run again on the next launch and quietly make it impossible to pick at all. A version is
+ * what turns it into a one-off.
+ */
+export const SETTINGS_VERSION = 1
+
+export function migrateSettings(persisted: unknown, fromVersion: number): unknown {
+  const state = persisted as { settings?: Partial<AppSettings> } | undefined
+  if (!state?.settings) return persisted
+
+  let settings = state.settings
+  if (fromVersion < 1 && settings.notifications?.displayDurationMs === 5000) {
+    // The default card lifetime went 5s -> 10s. A snapshot still carrying the old default never
+    // *chose* five seconds — that is simply what the app handed out — so it is raised along with
+    // it. Indistinguishable from someone who picked 5s deliberately, which is the price of the
+    // value having been the default; from here on the version keeps their choice.
+    settings = {
+      ...settings,
+      notifications: {
+        ...settings.notifications,
+        displayDurationMs: DEFAULT_DISPLAY_DURATION_MS,
+      },
+    }
+  }
+  return { ...state, settings }
+}
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
@@ -223,6 +261,8 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'git-manager-settings',
+      version: SETTINGS_VERSION,
+      migrate: migrateSettings,
       merge: (persisted, current) => ({
         ...current,
         settings: mergeSettingsWithDefaults(
