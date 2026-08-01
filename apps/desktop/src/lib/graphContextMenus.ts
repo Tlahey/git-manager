@@ -110,6 +110,8 @@ export interface BranchMenuActions {
   onOpenWorktreeFrom: (ref: GitRef) => void
   /** Opens the PR-create flow with the current branch as head and this ref as base. */
   onStartPr: (ref: GitRef) => void
+  /** Opens the branch-vs-branch diff with this ref as the "from" side, the other side pickable. */
+  onCompareWithBranch: (ref: GitRef) => void
   /** Opens the AI explanation of everything this branch changes vs its merge target. */
   onExplainBranch: (ref: GitRef) => void
   /** Opens the AI review of everything this branch changes vs its merge target. */
@@ -220,6 +222,27 @@ function relationshipSection(
     menuItem({
       text: t('gitTree.branchMenu.rebaseOnto', b.params),
       action: () => actions.onRebaseOntoBranch(b.ref),
+    }),
+  ]
+}
+
+/**
+ * "Compare <branch> with…" — the branch-vs-branch diff, opened with this branch as the "from" side
+ * and the other one picked in the dialog.
+ *
+ * Always offered, on the current branch and on a remote one alike: unlike the relationship actions
+ * above, comparing changes nothing, so there is no state in which the question is meaningless. It
+ * needs no AI flag either — this reads the two trees, it does not ask a model about them.
+ */
+function comparisonSection(
+  b: BranchItemContext,
+  actions: BranchMenuActions,
+  t: TranslateFn
+): MenuSpecEntry[] {
+  return [
+    menuItem({
+      text: t('gitTree.branchMenu.compareWith', b.params),
+      action: () => actions.onCompareWithBranch(b.ref),
     }),
   ]
 }
@@ -354,6 +377,8 @@ export function buildBranchSubmenu(
         action: () => actions.onOpenWorktreeFrom(b.ref),
       }),
       menuSeparator(),
+      ...comparisonSection(b, actions, t),
+      menuSeparator(),
       ...prAndExplainSection(b, actions, t),
       menuSeparator(),
       ...destructiveSection(b, actions, t),
@@ -470,8 +495,10 @@ export function buildSidebarBranchMenuSpec(
     }),
     ...tailSection(b, actions, t),
     menuSeparator(),
-    // Against the working directory — the question a remote tip raises ("what is on the server
-    // that I do not have?") and a local one does not, since it can simply be checked out.
+    // The two comparisons, side by side: against another branch, and — for a remote tip only —
+    // against the working directory. The latter is the question a remote tip raises ("what is on
+    // the server that I do not have?") and a local one does not, since it can simply be checked out.
+    ...comparisonSection(b, actions, t),
     b.isRemote &&
       menuItem({
         text: t('gitTree.contextMenu.compareToWorkdir'),
@@ -899,6 +926,8 @@ function buildFlatSingleBranchMenuSpec(
     }),
     menuSeparator(),
     ...commitCoreSection(ctx, actions, t),
+    menuSeparator(),
+    ...comparisonSection(b, branchActions, t),
     menuSeparator(),
     // The two AI explanations, adjacent and unseparated.
     ...commitExplanationSection(ctx, actions, t),

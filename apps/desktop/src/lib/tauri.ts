@@ -233,6 +233,11 @@ export const getCommitsMergedDiff = (path: string, baseOid: string, headOid: str
 export const compareCommitToWorkdir = (path: string, oid: string) =>
   invoke<GitDiff>('compare_commit_to_workdir', { path, oid })
 
+/** Direct (two-dot) diff between two refs — `git diff <baseRef> <headRef>`. Either side can be a
+ *  branch, a remote branch, a tag or a SHA (see the Rust `compare_refs` command). */
+export const compareRefs = (path: string, baseRef: string, headRef: string) =>
+  invoke<GitDiff>('compare_refs', { path, baseRef, headRef })
+
 export const getCommitFile = (path: string, oid: string, filePath: string) =>
   invoke<string>('get_commit_file', { path, oid, filePath })
 

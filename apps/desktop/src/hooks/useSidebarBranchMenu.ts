@@ -78,6 +78,8 @@ export function useSidebarBranchMenu(repoPath: string) {
   // The AI branch explanation opens a right panel driven by shared UI state, so — unlike the
   // rename dialog above — there is nothing for the caller to render: the graph already shows it.
   const setAiPanelTarget = useRepoUIStore((s) => s.setAiPanelTarget)
+  // The branch comparison dialog, mounted by `RepoView` from this shared state.
+  const setCompareRefsTarget = useRepoUIStore((s) => s.setCompareRefsTarget)
   // The commit-scoped items of the remote menu reuse the graph's own dialogs through the shared
   // "pending graph action" bridge — the same route the sidebar's tag menu and the command palette
   // take to act on a commit from outside the graph.
@@ -203,6 +205,11 @@ export function useSidebarBranchMenu(repoPath: string) {
         const base = r.type === 'remote' ? r.shortName.split('/').slice(1).join('/') : r.shortName
         openPrCreateWith(currentBranch ?? '', base)
       },
+      // Same pair as the graph's menu: the row's branch on the left, the checked-out one on the
+      // right. Unlike the commit-scoped items above, this doesn't go through the graph bridge —
+      // the dialog is mounted by `RepoView`, so it also works while the graph is unmounted.
+      onCompareWithBranch: (r) =>
+        setCompareRefsTarget({ baseRef: r.shortName, headRef: currentBranch ?? r.shortName }),
       onExplainBranch: (r) => openBranchAiPanel(r, 'branch'),
       onReviewBranch: (r) => openBranchAiPanel(r, 'reviewBranch'),
       onRenameBranch: (r) => setRenameTarget(r.shortName),

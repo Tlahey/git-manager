@@ -117,6 +117,9 @@ export function useGitGraphActions({
   const setEditingOid = useRepoUIStore((s) => s.setEditingOid)
   const openPrCreateWith = useRepoUIStore((s) => s.openPrCreateWith)
   const setAiPanelTarget = useRepoUIStore((s) => s.setAiPanelTarget)
+  // The branch comparison dialog is mounted by `RepoView`, not by the graph's overlay manager: it
+  // is about two refs, not about the selected commit (see the store's `compareRefsTarget`).
+  const setCompareRefsTarget = useRepoUIStore((s) => s.setCompareRefsTarget)
   const setPin = usePinnedBranchesStore((s) => s.setPin)
   const enableSolo = useSoloModeStore((s) => s.enable)
   const { checkoutBranchWithStashPrompt } = useBranchCheckout()
@@ -494,6 +497,11 @@ export function useGitGraphActions({
           ref.type === 'remote' ? ref.shortName.split('/').slice(1).join('/') : ref.shortName
         openPrCreateWith(currentBranch ?? '', base)
       },
+      // Opens the branch-vs-branch diff from the clicked branch towards the checked-out one — the
+      // usual question ("what does my work change compared to that branch?"). Both sides stay
+      // re-pickable in the dialog, so a detached HEAD just starts on the same ref twice.
+      onCompareWithBranch: (ref) =>
+        setCompareRefsTarget({ baseRef: ref.shortName, headRef: currentBranch ?? ref.shortName }),
       // Both branch-scoped AI panels read the branch against the repo's merge target, resolved from
       // local refs only — they must open on a repo with no remote and no GitHub token.
       onExplainBranch: (ref) => openBranchAiPanel(ref, 'branch'),

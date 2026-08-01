@@ -62,6 +62,7 @@ import {
   pushBranch,
   cherryPickCommit,
   compareCommitToWorkdir,
+  compareRefs,
   getCommitWebUrl,
   rebaseOntoCommit,
   continueRebase,
@@ -866,6 +867,11 @@ export async function apiGetCommitsMergedDiff(path: string, baseOid: string, hea
 
 export async function apiCompareCommitToWorkdir(path: string, oid: string) {
   return compareCommitToWorkdir(path, oid)
+}
+
+/** Diff between two arbitrary refs (branch vs branch, tag or SHA) — the branch comparison view. */
+export async function apiCompareRefs(path: string, baseRef: string, headRef: string) {
+  return compareRefs(path, baseRef, headRef)
 }
 
 export async function apiGetFileDiff(
