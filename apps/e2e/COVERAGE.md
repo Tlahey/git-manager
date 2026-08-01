@@ -341,6 +341,35 @@ test-connection button already established:
   `github.rs` have no `#[serde(rename_all = "camelCase")]`, unlike their sibling commands) — the
   mocked payloads match that exactly.
 
+### 9. Branch rename ✅
+
+`RenameBranchDialog.tsx` is only reachable from a native macOS context menu — the graph's commit
+menu (`useGitGraphActions.ts`'s `onRenameBranch`) and the sidebar's branch menu
+(`useSidebarBranchMenu.ts`), both real OS menus WebDriver can't open (see the "Native context
+menus" gotcha below). Rather than faking a menu click, `branch-rename.feature` dispatches straight
+into the `pendingGraphAction` store bridge (`repoUI.store.ts`) the same way the ⌘K palette's own
+dialog-based commands (reset/revert/create-branch/tag) do:
+`window.__e2eRepoUIStore.getState().setPendingGraphAction({ kind: 'renameBranch', branch })` —
+`GitGraph.tsx`'s own effect picks it up and forwards it into `GitGraphOverlayManager`, which
+renders the *exact* `RenameBranchDialog` the native menu would have opened. That effect requires a
+commit already selected in the graph (`primaryOid`) — the dialog resolves its target node from
+`nodes`, not from the action payload — so each scenario selects one first via the shared "I select
+the `<ref>` commit in the graph" step. From the dialog opening onward everything driven is real:
+typing the new name, clicking confirm, the real `rename_branch` Tauri command, and the branch
+actually moving.
+
+- Setup: `fixture:feature-branches` (`main` + `feature/login`).
+- **Renaming a branch updates it on disk**: renames `feature/login` → `feature/authentication`,
+  asserted via `git branch --list` on both names (the old one gone, the new one present).
+- **Protected-branch guard**: `git_branch.rs`'s `rename_branch` refuses `main`/`master`
+  (`is_protected_branch_name`) before touching anything. Renaming `main` → `renamed-main` is
+  asserted to leave an inline error in the still-open dialog (`.text-destructive`, no dedicated
+  testid on the message itself) and `main` untouched on disk.
+- **Not covered** (out of scope for this pass, both native-menu-only): the sidebar branch menu's
+  own rename entry point (`RepoView.tsx`'s separate `renameTarget` local state, not routed through
+  the store bridge — a second, un-e2e-tested way to reach the same dialog) and delete (see the
+  table above).
+
 ---
 
 ## Rest of the surface (lower priority / smaller)
@@ -348,7 +377,8 @@ test-connection button already established:
 | Feature                                 | Area          | Setup             | Snapshot | Status                                                                               |
 | --------------------------------------- | ------------- | ----------------- | -------- | ------------------------------------------------------------------------------------ |
 | Commit graph rendering                  | log/graph     | any fixture       | 📷       | ⬜ (volatile: shas/dates)                                                            |
-| Branches: create / checkout / delete    | branch        | any fixture       | —        | 🟡 (checkout ✅ via BranchContext; **create-from-commit ✅ via ⌘K palette**, asserted via `git log`; delete still native) |
+| Branches: create / checkout / rename / delete | branch  | any fixture       | —        | 🟡 (checkout ✅ via BranchContext; **create-from-commit ✅ via ⌘K palette**, asserted via `git log`; **rename ✅** (`branch-rename.feature`, see below); delete still native) |
+| Branches: set upstream                  | branch        | remote-ahead      | —        | ✅ (**dialog path**, driven through the repoUI `pendingGraphAction` store bridge — same technique `ai-commit-recompose.steps.ts` already uses for its own native-menu-only entry, see `branch-upstream.steps.ts` — asserted via `git config branch.<name>.remote`/`.merge`; the "unambiguous default, no dialog" direct-apply path (`resolveDefaultUpstream`) stays behind the native branch context menu and isn't e2e-driven, see notes below) |
 | Tags: create / shown in graph            | tag           | any fixture       | —        | ✅ (**create (lightweight + annotated) via ⌘K palette**, asserted via `git log`/`git cat-file -t`; **ref badge shown in the graph row ✅**, `ref-label-tag-<name>` testid added to `RefLabel.tsx`) |
 | Cherry-pick a commit                    | cherry-pick   | feature-branches  | —        | ✅ (**via ⌘K palette**, asserted via `git log` — picks a non-conflicting file addition from another branch) |
 | Interactive rebase (reword/squash/drop) | rebase        | fixup-chain       | —        | 🚫 (native commit menu + child window)                                               |
@@ -507,6 +537,24 @@ DOM value:
   drag-reorder in the rebase editor. Other non-menu entry points: branch checkout via
   `BranchContext` (undo-redo.feature), commit via the WIP panel buttons (commit.feature), undo/redo
   via keyboard.
+- **Branch-scoped dialog actions (rename, set upstream, …) have no command-palette entry at all** —
+  neither the graph's branch submenu nor the sidebar's branch row menu routes through it (the ⌘K
+  palette only offers commit/stash actions today, see `useCommitCommands.ts`/`useStashCommands.ts`).
+  But the
+  native handler for these still only calls `setPendingGraphAction({ kind: 'renameBranch' | ... })`
+  on the repoUI store the same way the palette's commit-scoped actions do — `ai-commit-recompose.
+  steps.ts` proved the pattern first for its own native-menu-only entry (`recompose`), and
+  `branch-upstream.steps.ts` reuses it for **Set upstream**: `window.__e2eRepoUIStore.getState()
+  .setPendingGraphAction(...)` after selecting any commit (`GitGraph.tsx`'s bridge effect requires
+  a non-null `primaryOid`, unrelated to which branch the action targets), which opens the real
+  `SetUpstreamDialog` exactly as a menu click would. **Not covered by this**: the "unambiguous
+  default" shortcut (`resolveDefaultUpstream` in `lib/branchUpstream.ts`) that applies the upstream
+  directly with *no* dialog when exactly one `origin/<branch>` exists — that branch of
+  `onSetUpstream` lives entirely inside the native-menu closure in `useGitGraphActions.ts`/
+  `useSidebarBranchMenu.ts` and is never reached without a real menu click, so it stays untested by
+  e2e (unit-tested instead, see `branchUpstream.test.ts`). The dialog path e2e drives calls the
+  identical `apiSetBranchUpstream` → `set_branch_upstream` backend command either way, which is what
+  actually needed proving (the command didn't exist before this feature).
 - **Multi-window: prefer navigate-in-place; when a real second window is unavoidable, expect
   WebKit click quirks.** The merge and rebase editors (`merge.steps.ts`) sidestep multi-window
   entirely by navigating the shared main window straight to `?window=merge`/`?window=rebase` —

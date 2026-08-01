@@ -22,7 +22,6 @@ import type {
   BisectTerm,
   GitCommit,
   ThreeWayMergeView,
-  AppSettings,
   UserTheme,
   GitRepoSummary,
   BlameHunk,
@@ -269,6 +268,11 @@ export const mergeBranch = (path: string, source: string, target: string) =>
 
 export const fastForwardBranch = (path: string, source: string, target: string) =>
   invoke<void>('fast_forward_branch', { path, source, target })
+
+/** Sets local branch `name`'s upstream to `upstream` (a remote-tracking branch's short name, e.g.
+ * `origin/main`) — `git branch --set-upstream-to`. */
+export const setBranchUpstream = (path: string, name: string, upstream: string) =>
+  invoke<void>('set_branch_upstream', { path, name, upstream })
 
 /** Relation between HEAD and the first of `candidates` that exists in the repo (merge simulated
  * in memory — nothing is written to the repository). */
@@ -807,13 +811,6 @@ export const unpinObject = (path: string, refName: string) =>
 
 export const objectsExist = (path: string, oids: string[]) =>
   invoke<boolean[]>('objects_exist', { path, oids })
-
-// ─── Settings ─────────────────────────────────────────────────────────────────
-
-export const getSettings = () => invoke<AppSettings>('get_settings')
-
-export const updateSettings = (settings: Partial<AppSettings>) =>
-  invoke<void>('update_settings', { settings })
 
 // ─── Rollback ─────────────────────────────────────────────────────────────────
 

@@ -69,6 +69,7 @@ vi.mock('../api/git.api', () => ({
   apiRebaseContinue: vi.fn(),
   apiRebaseAbort: vi.fn(),
   apiRebaseSkip: vi.fn(),
+  apiSetBranchUpstream: vi.fn(),
 }))
 vi.mock('../api/worktree.api', () => ({ apiAddWorktree: vi.fn() }))
 
@@ -651,6 +652,26 @@ describe('useGitGraphActions — per-branch submenus', () => {
     const feat = normalizeMenuSpec(getSubmenu('feat').items)
     await act(async () => getItem('gitTree.branchMenu.fastForward', feat).action!())
     expect(mocked.apiFastForwardBranch).toHaveBeenCalledWith(REPO, 'feat', 'main')
+  })
+
+  it('onSetUpstream applies an unambiguous origin/<name> match directly, no dialog', async () => {
+    // The mocked branch list (see `branchList` above) carries `origin/main` but no `origin/feat`.
+    mocked.apiSetBranchUpstream.mockResolvedValue(undefined)
+    const { result } = renderHook(() => useGitGraphActions(baseParams({ nodes: [withBranches] })))
+    await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
+    const main = normalizeMenuSpec(getSubmenu('main').items)
+    await act(async () => getItem('gitTree.branchMenu.setUpstream', main).action!())
+    expect(mocked.apiSetBranchUpstream).toHaveBeenCalledWith(REPO, 'main', 'origin/main')
+    expect(result.current.pendingAction).toBeNull()
+  })
+
+  it('onSetUpstream opens the picker dialog when no default is unambiguous', async () => {
+    const { result } = renderHook(() => useGitGraphActions(baseParams({ nodes: [withBranches] })))
+    await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
+    const feat = normalizeMenuSpec(getSubmenu('feat').items)
+    act(() => getItem('gitTree.branchMenu.setUpstream', feat).action!())
+    expect(mocked.apiSetBranchUpstream).not.toHaveBeenCalled()
+    expect(result.current.pendingAction).toEqual({ kind: 'setUpstream', branch: 'feat' })
   })
 
   it('onDeleteBranch deletes the branch pinned to its commit', async () => {

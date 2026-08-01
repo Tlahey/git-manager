@@ -29,6 +29,7 @@ import {
   apiRebaseContinue,
   apiRebaseAbort,
   apiRebaseSkip,
+  apiSetBranchUpstream,
 } from '../api/git.api'
 import { apiAddWorktree } from '../api/worktree.api'
 import {
@@ -39,6 +40,7 @@ import {
   type BranchMenuActions,
 } from '../lib/graphContextMenus'
 import { resolveExplanationBase } from '../lib/branchExplanationBase'
+import { resolveDefaultUpstream } from '../lib/branchUpstream'
 import { useRepoUIStore, type GraphCommitAction } from '../stores/repoUI.store'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
 import { useSoloModeStore } from '../stores/soloMode.store'
@@ -504,6 +506,19 @@ export function useGitGraphActions({
         void run(() => apiPullBranch(repoPath), t('gitTree.branchMenu.pulled', relParams(ref))),
       onPush: (ref) =>
         void run(() => apiPushBranch(repoPath), t('gitTree.branchMenu.pushed', relParams(ref))),
+      // An unambiguous origin/<name> match (see resolveDefaultUpstream) applies straight away;
+      // anything else opens the picker dialog so the user chooses instead of the app guessing.
+      onSetUpstream: (ref) => {
+        const target = resolveDefaultUpstream(ref.shortName, branches ?? [])
+        if (target) {
+          void run(
+            () => apiSetBranchUpstream(repoPath, ref.shortName, target),
+            t('gitTree.branchMenu.upstreamSet', { branch: ref.shortName, upstream: target })
+          )
+        } else {
+          setPendingAction({ kind: 'setUpstream', branch: ref.shortName })
+        }
+      },
       onFastForward: (ref) =>
         void run(
           () => apiFastForwardBranch(repoPath, ref.shortName, currentBranch as string),
