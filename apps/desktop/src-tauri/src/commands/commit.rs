@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::hook_progress;
 use crate::models::{GitDiff, GitDiffFile};
 use crate::services::{git_commit, git_diff};
 use git2::{DiffOptions, Oid, Repository};
@@ -80,26 +81,42 @@ pub async fn unstage_all(path: String) -> Result<(), String> {
 // ─── create_commit ────────────────────────────────────────────────────────────
 
 /// Creates a commit from the staged files. Returns the full OID and the short OID.
+///
+/// Runs on a blocking-pool thread, which it did not have to before this app ran hooks at all: a
+/// `pre-commit` is arbitrary user code — `lint-staged` over a large change, a formatter, a test
+/// gate — and waiting for it on this command's async task would tie up one of the app's few Tokio
+/// workers for its whole duration, stalling the very IPC (status polling, the progress card below)
+/// that is supposed to show it is running.
 #[tauri::command]
 pub async fn create_commit(
+    app: tauri::AppHandle,
     path: String,
     message: String,
     amend: Option<bool>,
     amend_oid: Option<String>,
     skip_hooks: Option<bool>,
 ) -> Result<CommitResult, String> {
-    let repo = Repository::open(&path).map_err(AppError::Git)?;
-    git_commit::create_commit(
-        &repo,
-        &message,
-        amend.unwrap_or(false),
-        amend_oid.as_deref(),
-        // `git commit --no-verify`. Defaults to running them, which is the fix: libgit2 runs no
-        // hook of any kind, so every repository's `pre-commit` and `commit-msg` were skipped for
-        // commits made from this app.
-        skip_hooks.unwrap_or(false),
-    )
-    .map_err(Into::into)
+    let repo_path = path.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let repo = Repository::open(&path).map_err(AppError::Git)?;
+        // Installed inside the closure, on the thread the hooks will actually run on — the
+        // observer is thread-scoped, so installing it around the spawn would report nothing.
+        let _hooks = hook_progress::report_hooks(app, repo_path);
+        git_commit::create_commit(
+            &repo,
+            &message,
+            amend.unwrap_or(false),
+            amend_oid.as_deref(),
+            // `git commit --no-verify`. Defaults to running them, which is the fix: libgit2 runs no
+            // hook of any kind, so every repository's `pre-commit` and `commit-msg` were skipped for
+            // commits made from this app.
+            skip_hooks.unwrap_or(false),
+        )
+    })
+    .await
+    .map_err(|e| format!("commit task failed to complete: {e}"))?;
+
+    result.map_err(Into::into)
 }
 
 // ─── get_staged_diff ──────────────────────────────────────────────────────────

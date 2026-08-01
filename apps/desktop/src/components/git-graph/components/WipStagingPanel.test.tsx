@@ -169,7 +169,7 @@ describe('WipStagingPanel — classic commit form', () => {
 
   it('disables commit when nothing is staged, the message is blank, or a commit is in progress', () => {
     const { rerender } = renderPanel({ gitStatus: gitStatus({ staged: [] }) })
-    expect(screen.getByTestId('commit-button')).toBeDisabled()
+    expect(screen.getByTestId('commit-btn')).toBeDisabled()
 
     useWipCommitPanel.mockReturnValue(panelState({ commitMessage: '   ' }))
     rerender(
@@ -179,7 +179,7 @@ describe('WipStagingPanel — classic commit form', () => {
         allWipChanges={[]}
       />
     )
-    expect(screen.getByTestId('commit-button')).toBeDisabled()
+    expect(screen.getByTestId('commit-btn')).toBeDisabled()
 
     useWipCommitPanel.mockReturnValue(panelState({ commitMessage: 'ok', isCommitting: true }))
     rerender(
@@ -189,7 +189,7 @@ describe('WipStagingPanel — classic commit form', () => {
         allWipChanges={[]}
       />
     )
-    expect(screen.getByTestId('commit-button')).toBeDisabled()
+    expect(screen.getByTestId('commit-btn')).toBeDisabled()
   })
 
   it('commits when enabled', async () => {
@@ -197,7 +197,7 @@ describe('WipStagingPanel — classic commit form', () => {
     useWipCommitPanel.mockReturnValue(panelState({ commitMessage: 'ok', handleCommitWip }))
     const user = userEvent.setup()
     renderPanel({ gitStatus: gitStatus({ staged: [{ path: 'a', status: 'modified' }] }) })
-    await user.click(screen.getByTestId('commit-button'))
+    await user.click(screen.getByTestId('commit-btn'))
     expect(handleCommitWip).toHaveBeenCalledOnce()
   })
 })
@@ -215,7 +215,7 @@ describe('WipStagingPanel — AI gating', () => {
     expect(screen.queryByTestId('commit-generate-button')).not.toBeInTheDocument()
     expect(screen.queryByTestId('ai-batch-generate-button')).not.toBeInTheDocument()
     // The commit button remains, and now takes the full width on its own.
-    expect(screen.getByTestId('commit-button')).toBeInTheDocument()
+    expect(screen.getByTestId('commit-btn')).toBeInTheDocument()
   })
 })
 
@@ -403,5 +403,53 @@ describe('WipStagingPanel — no message history dropdown', () => {
     const generate = screen.getByTestId('commit-generate-button')
     expect(generate.className).not.toContain('rounded-r-none')
     expect(generate.className).not.toContain('border-r-0')
+  })
+})
+
+// The `--no-verify` escape hatch, which the backend has supported everywhere since hooks started
+// running but nothing exposed. Behind the caret rather than beside the button on purpose: a
+// repository's hooks being silently off is the exact bug this app spent a release fixing.
+describe('WipStagingPanel — committing without hooks', () => {
+  const staged = gitStatus({ staged: [{ path: 'a.ts', status: 'modified' }] })
+
+  it('keeps the escape hatch out of the way until the caret is opened', async () => {
+    useWipCommitPanel.mockReturnValue(panelState({ commitMessage: 'chore: something' }))
+    const user = userEvent.setup()
+    renderPanel({ gitStatus: staged })
+
+    expect(screen.queryByText('Commit without running hooks')).not.toBeInTheDocument()
+
+    await user.click(screen.getByTestId('commit-menu-btn'))
+
+    expect(await screen.findByText('Commit without running hooks')).toBeInTheDocument()
+  })
+
+  it('asks for hooks to be skipped when it is chosen', async () => {
+    const handleCommitWip = vi.fn()
+    useWipCommitPanel.mockReturnValue(
+      panelState({ commitMessage: 'chore: something', handleCommitWip })
+    )
+    const user = userEvent.setup()
+    renderPanel({ gitStatus: staged })
+
+    await user.click(screen.getByTestId('commit-menu-btn'))
+    await user.click(await screen.findByText('Commit without running hooks'))
+
+    expect(handleCommitWip).toHaveBeenCalledWith({ skipHooks: true })
+  })
+
+  it('runs the hooks for an ordinary commit', async () => {
+    const handleCommitWip = vi.fn()
+    useWipCommitPanel.mockReturnValue(
+      panelState({ commitMessage: 'chore: something', handleCommitWip })
+    )
+    const user = userEvent.setup()
+    renderPanel({ gitStatus: staged })
+
+    await user.click(screen.getByTestId('commit-btn'))
+
+    // No argument at all, rather than `{ skipHooks: false }`: the default has to be the hooks
+    // running, and an explicit `false` here would be a second way to spell it.
+    expect(handleCommitWip).toHaveBeenCalledWith()
   })
 })

@@ -148,7 +148,9 @@ describe('ActionToolbar — composition', () => {
   it('shows ahead/behind badges on the push/pull buttons when the branch has unpushed/unpulled commits', () => {
     useActionToolbarMock.mockReturnValue(hookState({ aheadCount: 3, behindCount: 2 }))
     render(<ActionToolbar />)
-    expect(screen.getByRole('button', { name: /Push/ })).toHaveTextContent('3')
+    // By test id, not by accessible name: Push now has a caret beside it whose label ("Push
+    // options") matches /Push/ too.
+    expect(screen.getByTestId('toolbar-push-button')).toHaveTextContent('3')
     expect(screen.getByRole('button', { name: /Pull/ })).toHaveTextContent('2')
     expect(screen.getAllByTestId('toolbar-button-badge')).toHaveLength(2)
   })

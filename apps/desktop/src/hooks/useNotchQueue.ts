@@ -127,7 +127,15 @@ export function useNotchQueue() {
   }, [current, dismissCurrent])
 
   // Leave no orphan window behind if the app tears the main window down while a card is up.
+  //
+  // The unmount half only covers an orderly teardown. A *reload* of the main window runs no React
+  // cleanup at all, and the notch is a separate OS window that survives it — so a card that was up
+  // at that moment stays on screen forever, owned by nobody: the fresh mount starts with an empty
+  // queue and a null `shownIdRef`, so the effect above never recognises it as something to close.
+  // Closing whatever is there on mount is the only thing that can reclaim it, and it is always
+  // safe: a card is only ever legitimate while the window that produced it is alive.
   useEffect(() => {
+    void closeNotchWindow()
     return () => {
       if (shownIdRef.current !== null) void closeNotchWindow()
     }

@@ -32,6 +32,14 @@ interface SplitButtonProps {
   /** Base id for `data-testid`s: `${testIdPrefix}-btn` / `${testIdPrefix}-menu-btn`. Omitted
    * entirely (no attribute) when not provided. */
   testIdPrefix?: string
+  /**
+   * Accessible name for the caret. Defaults to English, which is all a package with no `t()` of
+   * its own can do — pass a translated one from an app that has one.
+   */
+  menuLabel?: string
+  /** Fills the row it sits in, the primary segment taking the slack. For a panel footer where the
+   *  button spans the width rather than hugging its label. */
+  fullWidth?: boolean
 }
 
 /**
@@ -50,17 +58,19 @@ export function SplitButton({
   variant,
   size,
   testIdPrefix,
+  menuLabel = 'More options',
+  fullWidth,
 }: SplitButtonProps) {
   // A compact size keeps the caret segment from ballooning; `icon` sizing is squashed to a caret.
   const caretPadding = size === 'sm' ? 'px-1' : 'px-1.5'
   return (
-    <div className="flex items-stretch">
+    <div className={`flex items-stretch ${fullWidth ? 'w-full' : ''}`}>
       <Button
         variant={variant}
         size={size}
         data-testid={testIdPrefix ? `${testIdPrefix}-btn` : undefined}
         disabled={disabled || busy}
-        className="gap-1.5 rounded-r-none"
+        className={`gap-1.5 rounded-r-none ${fullWidth ? 'flex-1' : ''}`}
         onClick={onClick}
       >
         {icon}
@@ -75,7 +85,7 @@ export function SplitButton({
               data-testid={testIdPrefix ? `${testIdPrefix}-menu-btn` : undefined}
               disabled={disabled || busy}
               className={`border-primary-foreground/20 rounded-l-none border-l ${caretPadding}`}
-              aria-label="More options"
+              aria-label={menuLabel}
             >
               <ChevronDown className="h-3.5 w-3.5" />
             </Button>

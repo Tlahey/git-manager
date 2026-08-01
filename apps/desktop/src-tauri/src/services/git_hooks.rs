@@ -26,10 +26,72 @@
 use crate::error::AppError;
 use git2::Repository;
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
+
+/// A hook starting, or finishing.
+///
+/// Only ever reported for a hook that actually exists — a repository with no `pre-commit` has
+/// nothing to say about one, and a card announcing a hook that was never going to run is worse
+/// than silence.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "phase")]
+pub enum HookEvent {
+    Started { name: String },
+    Finished { name: String, success: bool },
+}
+
+thread_local! {
+    /// Who to tell about hooks running on *this* thread.
+    ///
+    /// A thread-local rather than a parameter threaded through `create_commit`, `push` and the two
+    /// private helpers between them: every one of those signatures — and the twenty-odd call sites
+    /// in their tests — would have to carry a callback that nothing but the progress card wants,
+    /// and `git_hooks` is the only place that knows when a hook actually starts.
+    ///
+    /// Scoped to a thread rather than global because that is exactly the lifetime a parameter
+    /// would have had. Every command that runs hooks does so inside one `spawn_blocking` closure,
+    /// and the hook is a child process waited on from that same thread, so "this thread, right
+    /// now" and "this operation" are the same span. Two concurrent commits on two blocking threads
+    /// cannot see each other's observer, and {@link ObserverGuard} clears it on the way out, so a
+    /// pooled thread never carries one into whatever it is reused for.
+    static OBSERVER: RefCell<Option<Box<dyn Fn(HookEvent)>>> = const { RefCell::new(None) };
+}
+
+/// Clears the thread's observer when it goes out of scope.
+///
+/// Returned rather than left to the caller to unset: a command that returns early on an error —
+/// which a refused hook always does — would otherwise leave its observer installed on a pooled
+/// thread.
+#[must_use = "the observer is uninstalled when this guard drops, so dropping it immediately makes the call pointless"]
+pub struct ObserverGuard;
+
+impl Drop for ObserverGuard {
+    fn drop(&mut self) {
+        OBSERVER.with(|observer| observer.borrow_mut().take());
+    }
+}
+
+/// Reports every hook run on this thread to `report`, until the returned guard drops.
+pub fn report_to(report: impl Fn(HookEvent) + 'static) -> ObserverGuard {
+    OBSERVER.with(|observer| *observer.borrow_mut() = Some(Box::new(report)));
+    ObserverGuard
+}
+
+fn notify(event: HookEvent) {
+    // A shared borrow is held across the call, which is safe for the one thing that could go wrong
+    // here: a `report` that somehow ran a hook itself would re-enter and take a second *shared*
+    // borrow, which `RefCell` allows. Only `report_to` takes a mutable one, and it cannot run
+    // while this thread is inside a hook.
+    OBSERVER.with(|observer| {
+        if let Some(report) = observer.borrow().as_ref() {
+            report(event);
+        }
+    });
+}
 
 /// What a hook did.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -203,6 +265,11 @@ pub fn run_hook_with_stdin(
     let Some(hook) = find_hook(repo, name) else {
         return Ok(HookOutcome::absent(name));
     };
+    // Only past this point: a repository that does not define the hook has nothing to report, and
+    // a "running pre-commit…" card for a hook that was never going to run is worse than silence.
+    notify(HookEvent::Started {
+        name: name.to_string(),
+    });
 
     let mut command = Command::new(&hook);
     command.args(args);
@@ -242,6 +309,11 @@ pub fn run_hook_with_stdin(
             output
         }
     };
+
+    notify(HookEvent::Finished {
+        name: name.to_string(),
+        success: output.status.success(),
+    });
 
     Ok(HookOutcome {
         name: name.to_string(),
@@ -329,6 +401,88 @@ mod tests {
                 "refs/heads/main abc123 refs/heads/main def456",
             ]
         );
+    }
+
+    // ─── reporting a hook while it runs ─────────────────────────────────────────
+    // What a "running pre-commit…" card is built on. Without it a slow hook (lint-staged over a
+    // big change) is a frozen app: nothing before, everything after.
+
+    /// Collects the events a body reports, with the observer torn down afterwards.
+    fn recording<T>(body: impl FnOnce() -> T) -> (T, Vec<HookEvent>) {
+        let events = std::rc::Rc::new(RefCell::new(Vec::new()));
+        let sink = std::rc::Rc::clone(&events);
+        let guard = report_to(move |event| sink.borrow_mut().push(event));
+        let value = body();
+        drop(guard);
+        let collected = events.borrow().clone();
+        (value, collected)
+    }
+
+    fn names(events: &[HookEvent]) -> Vec<(&str, Option<bool>)> {
+        events
+            .iter()
+            .map(|event| match event {
+                HookEvent::Started { name } => (name.as_str(), None),
+                HookEvent::Finished { name, success } => (name.as_str(), Some(*success)),
+            })
+            .collect()
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn reports_a_hook_starting_and_finishing() {
+        let (_dir, repo) = temp_repo("observer-runs");
+        write_hook(&repo, "pre-commit", "exit 0");
+
+        let (outcome, events) = recording(|| run_hook(&repo, "pre-commit", &[]).unwrap());
+
+        assert!(outcome.success);
+        assert_eq!(
+            names(&events),
+            vec![("pre-commit", None), ("pre-commit", Some(true))]
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn reports_a_hook_that_refused() {
+        let (_dir, repo) = temp_repo("observer-fails");
+        write_hook(&repo, "pre-commit", "exit 1");
+
+        let (_, events) = recording(|| run_hook(&repo, "pre-commit", &[]).unwrap());
+
+        assert_eq!(
+            names(&events),
+            vec![("pre-commit", None), ("pre-commit", Some(false))]
+        );
+    }
+
+    #[test]
+    fn says_nothing_at_all_about_a_hook_the_repository_does_not_define() {
+        // The distinction the card depends on: "running pre-commit…" for a hook that was never
+        // going to run is worse than silence, and most repositories define none of these.
+        let (_dir, repo) = temp_repo("observer-absent");
+
+        let (outcome, events) = recording(|| run_hook(&repo, "pre-commit", &[]).unwrap());
+
+        assert!(!outcome.ran);
+        assert!(events.is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn stops_reporting_once_the_guard_is_dropped() {
+        // The thread runs other commands afterwards — a pooled blocking thread must not carry an
+        // observer into whatever it is reused for.
+        let (_dir, repo) = temp_repo("observer-guard");
+        write_hook(&repo, "pre-commit", "exit 0");
+
+        let (_, events) = recording(|| run_hook(&repo, "pre-commit", &[]).unwrap());
+        assert_eq!(events.len(), 2);
+
+        // Same thread, no observer installed: this must not reach the sink above.
+        run_hook(&repo, "pre-commit", &[]).unwrap();
+        assert_eq!(events.len(), 2);
     }
 
     #[test]

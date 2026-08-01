@@ -502,19 +502,55 @@ pub fn get_notch_metrics() -> Result<Option<NotchMetrics>, String> {
 /// which panics the whole process the moment anything asks the array its length — including
 /// `objc2`'s own typed `.get()`, which reads `count` first to bounds-check the index. `firstObject`
 /// never calls `count` at all, so it never hits it.
+///
+/// ## Why the read is wrapped in `catch_unwind`
+///
+/// That panic was only ever *measured* on one machine, on a very recent macOS. Nobody knows
+/// whether the encoding it trips over is that build's or everyone's, and the app should not find
+/// out by disappearing on a user's desk: the card losing its exact alignment is a cosmetic
+/// problem, while the process going down over the geometry of a notification is not.
+///
+/// Not a thread, which would be the usual way to contain this: `NSScreen` is main-thread-only in
+/// AppKit's own terms, and every call below would panic on a worker. On the main thread,
+/// `catch_unwind` gives the same containment.
+///
+/// It matters in **debug builds specifically**, which is exactly where the panic lives:
+/// `objc2`'s encoding verification is `#[cfg(debug_assertions)]`, so a release build never runs
+/// the check that fired — and could not be caught here anyway, since the release profile is
+/// `panic = "abort"`. So this protects `pnpm dev` on an unfamiliar machine, which is the only
+/// place the failure has ever been seen.
 #[cfg(target_os = "macos")]
 fn notch_metrics_macos() -> Option<NotchMetrics> {
+    use objc2_foundation::MainThreadMarker;
+
+    MainThreadMarker::new()?;
+
+    // `AssertUnwindSafe` because the closure borrows nothing that could be left half-updated by a
+    // panic — it reads four numbers out of AppKit and touches no state of ours.
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(read_notch_metrics)) {
+        Ok(metrics) => metrics,
+        Err(_) => {
+            eprintln!(
+                "[notch] reading the screen's notch geometry panicked; falling back to the \
+                 frontend's default measurements"
+            );
+            None
+        }
+    }
+}
+
+/// The AppKit read itself, split out so the recovery above has something to wrap.
+#[cfg(target_os = "macos")]
+fn read_notch_metrics() -> Option<NotchMetrics> {
     use objc2::rc::Retained;
     use objc2::runtime::AnyObject;
-    use objc2_foundation::{MainThreadMarker, NSEdgeInsets, NSRect};
+    use objc2_foundation::{NSEdgeInsets, NSRect};
 
-    let _mtm = MainThreadMarker::new()?;
-
-    // SAFETY: every send below is read-only, and confined to the main thread the
-    // `MainThreadMarker` above proves this call is on. AppKit is already linked into this binary
-    // by the rest of this file's typed `objc2_app_kit` usage, so resolving `NSScreen` by name
-    // (rather than importing the crate's own binding, which is exactly what this function exists
-    // to avoid indexing into) is safe.
+    // SAFETY: every send below is read-only, and confined to the main thread the caller's
+    // `MainThreadMarker` proves this call is on. AppKit is already linked into this binary by the
+    // rest of this file's typed `objc2_app_kit` usage, so resolving `NSScreen` by name (rather
+    // than importing the crate's own binding, which is exactly what this exists to avoid indexing
+    // into) is safe.
     unsafe {
         let screens: Retained<AnyObject> = objc2::msg_send_id![objc2::class!(NSScreen), screens];
         let screen: Option<Retained<AnyObject>> = objc2::msg_send_id![&*screens, firstObject];

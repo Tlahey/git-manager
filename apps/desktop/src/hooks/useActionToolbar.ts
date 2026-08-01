@@ -146,9 +146,10 @@ export function useActionToolbar(t: TranslateFn) {
       invalidateRepo()
     })
 
-  const handlePush = () =>
+  /** `skipHooks` is `git push --no-verify` — see `handleCommitWip` for why it is not a setting. */
+  const handlePush = (options: { skipHooks?: boolean } = {}) =>
     runAction('push', async () => {
-      await apiPushBranch(activeRepo!)
+      await apiPushBranch(activeRepo!, undefined, undefined, options.skipHooks)
       toast.success(t('remote.pushSuccess'))
       clearRedoForActiveRepo()
       invalidateRepo()

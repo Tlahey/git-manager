@@ -11,6 +11,15 @@ export interface ToolbarButtonProps {
   /** Numbered pill overlaid on the icon (e.g. commits to push/pull). Hidden when ≤ 0. */
   badge?: number
   onClick?: () => void
+  /**
+   * A second segment attached to the right — a dropdown trigger, in practice.
+   *
+   * When present the button's right corners are squared and the two are wrapped together, so they
+   * read as one control rather than two buttons that happen to touch. Added rather than letting a
+   * caller hand-roll the pair: doing that means re-deriving the badge, the label fold and the
+   * disabled styling, and the one place that tried diverged from `NumberBadge` immediately.
+   */
+  trailing?: React.ReactNode
   'data-testid'?: string
 }
 
@@ -30,17 +39,20 @@ export function ToolbarButton({
   hideLabelOnNarrow = true,
   badge,
   onClick,
+  trailing,
   'data-testid': dataTestId,
 }: ToolbarButtonProps) {
   const showBadge = !loading && typeof badge === 'number' && badge > 0
-  return (
+  const button = (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled || loading}
       title={title ?? label}
       data-testid={dataTestId}
-      className="group relative flex min-w-[40px] shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded px-2 py-1 transition-colors hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+      className={`group relative flex min-w-[40px] shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 px-2 py-1 transition-colors hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-40 ${
+        trailing ? 'rounded-l' : 'rounded'
+      }`}
     >
       <span className="relative flex h-4 w-4 items-center justify-center">
         {loading ? <Spinner className="h-4 w-4 text-muted-foreground" /> : icon}
@@ -64,5 +76,14 @@ export function ToolbarButton({
         {label}
       </span>
     </button>
+  )
+
+  if (!trailing) return button
+
+  return (
+    <div className="flex shrink-0 items-stretch">
+      {button}
+      {trailing}
+    </div>
   )
 }

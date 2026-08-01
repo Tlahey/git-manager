@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::hook_progress;
 use crate::services::git_remote;
 use crate::utils::{github_branch_url, github_tag_url, github_web_url};
 use git2::Repository;
@@ -143,6 +144,9 @@ pub async fn push_branch(
     let repo_path = path.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
+        // On the thread the hook is waited on, not around the spawn — the observer is
+        // thread-scoped. A `pre-push` running a test suite is the slowest thing in this command.
+        let _hooks = hook_progress::report_hooks(app.clone(), repo_path.clone());
         git_remote::push(
             &repo,
             remote,
@@ -170,10 +174,19 @@ pub async fn push_branch_to(
     source: String,
     target: String,
     force: Option<bool>,
+    // `git push --no-verify`, as on every other push path.
+    skip_hooks: Option<bool>,
 ) -> Result<(), String> {
     let result = tauri::async_runtime::spawn_blocking(move || {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
-        git_remote::push_to(&repo, remote, &source, &target, force.unwrap_or(false))
+        git_remote::push_to(
+            &repo,
+            remote,
+            &source,
+            &target,
+            force.unwrap_or(false),
+            skip_hooks.unwrap_or(false),
+        )
     })
     .await
     .map_err(|e| format!("push task failed to complete: {e}"))?;
@@ -268,10 +281,12 @@ pub async fn push_tag(
     path: String,
     tag_name: String,
     remote: Option<String>,
+    // `git push --no-verify`, as on every other push path.
+    skip_hooks: Option<bool>,
 ) -> Result<(), String> {
     let result = tauri::async_runtime::spawn_blocking(move || {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
-        git_remote::push_tag(&repo, remote, &tag_name)
+        git_remote::push_tag(&repo, remote, &tag_name, skip_hooks.unwrap_or(false))
     })
     .await
     .map_err(|e| format!("push task failed to complete: {e}"))?;
@@ -290,10 +305,12 @@ pub async fn delete_remote_tag(
     path: String,
     tag_name: String,
     remote: Option<String>,
+    // `git push --no-verify`, as on every other push path.
+    skip_hooks: Option<bool>,
 ) -> Result<(), String> {
     let result = tauri::async_runtime::spawn_blocking(move || {
         let repo = Repository::open(&path).map_err(AppError::Git)?;
-        git_remote::delete_remote_tag(&repo, remote, &tag_name)
+        git_remote::delete_remote_tag(&repo, remote, &tag_name, skip_hooks.unwrap_or(false))
     })
     .await
     .map_err(|e| format!("push task failed to complete: {e}"))?;

@@ -1,5 +1,6 @@
 mod commands;
 mod error;
+mod hook_progress;
 mod models;
 mod services;
 mod state;

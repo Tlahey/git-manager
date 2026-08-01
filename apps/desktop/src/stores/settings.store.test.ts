@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { mergeSettingsWithDefaults, useSettingsStore } from './settings.store'
+import {
+  SETTINGS_VERSION,
+  mergeSettingsWithDefaults,
+  migrateSettings,
+  useSettingsStore,
+} from './settings.store'
 
 const DEFAULT_SETTINGS = useSettingsStore.getState().settings
 
@@ -192,5 +197,42 @@ describe('mergeSettingsWithDefaults', () => {
       appearance: { ...DEFAULT_SETTINGS.appearance, theme: 'dracula' },
     })
     expect(merged.appearance.theme).toBe('dracula')
+  })
+})
+
+describe('migrateSettings — the 5s -> 10s card lifetime', () => {
+  const snapshot = (displayDurationMs: number) => ({
+    settings: { notifications: { enabled: true, displayDurationMs } },
+  })
+
+  it('raises a snapshot still holding the old 5s default', () => {
+    const migrated = migrateSettings(snapshot(5000), 0) as {
+      settings: { notifications: { displayDurationMs: number; enabled: boolean } }
+    }
+    expect(migrated.settings.notifications.displayDurationMs).toBe(10000)
+    // The rest of the group rides through untouched.
+    expect(migrated.settings.notifications.enabled).toBe(true)
+  })
+
+  it('leaves a duration the user actually picked alone', () => {
+    const migrated = migrateSettings(snapshot(3000), 0) as {
+      settings: { notifications: { displayDurationMs: number } }
+    }
+    expect(migrated.settings.notifications.displayDurationMs).toBe(3000)
+  })
+
+  // The reason this is versioned rather than folded into `mergeSettingsWithDefaults`: 5s is still
+  // a valid choice, so a remap that ran on every rehydration would undo it on the next launch and
+  // make it impossible to select at all.
+  it('never runs again once the snapshot is at the current version', () => {
+    const migrated = migrateSettings(snapshot(5000), SETTINGS_VERSION) as {
+      settings: { notifications: { displayDurationMs: number } }
+    }
+    expect(migrated.settings.notifications.displayDurationMs).toBe(5000)
+  })
+
+  it('survives a snapshot with nothing in it', () => {
+    expect(migrateSettings(undefined, 0)).toBeUndefined()
+    expect(migrateSettings({}, 0)).toEqual({})
   })
 })

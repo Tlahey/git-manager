@@ -557,39 +557,104 @@ fn rebase_onto_remote(
 /// first push, in practice. Git's own hook contract uses this rather than omitting the ref.
 const PRE_PUSH_ZERO_OID: &str = "0000000000000000000000000000000000000000";
 
-/// Runs `pre-push`, mirroring what `git push` itself feeds the hook: one stdin line of the form
-/// `<local ref> SP <local oid> SP <remote ref> SP <remote oid>`, and the remote's name and URL as
-/// positional args. Non-zero stops the push before anything reaches the network.
+/// The local-ref name git uses for a ref being *deleted*, which has no local side to name.
+const PRE_PUSH_DELETE_REF: &str = "(delete)";
+
+/// One ref update, in the shape git's `pre-push` contract describes on stdin:
+/// `<local ref> SP <local oid> SP <remote ref> SP <remote oid>`.
 ///
-/// Only the one ref this call is about to push — unlike the git CLI, which can push several refs
-/// in a single invocation and therefore writes one line per ref, this app always pushes exactly
-/// one branch per call.
-fn run_pre_push_hook(
+/// A struct rather than four positional arguments because the four are easy to transpose and the
+/// hook is the only thing that would notice — and it would notice by making a *wrong* decision
+/// (refusing a push it should allow, or worse), not by failing loudly.
+struct PrePushUpdate {
+    local_ref: String,
+    local_oid: String,
+    remote_ref: String,
+    remote_oid: String,
+}
+
+impl PrePushUpdate {
+    /// A ref being created or updated. `remote_oid` is `None` for one the remote has never seen —
+    /// git's contract spells that as all zeros rather than by omitting the field.
+    fn update(
+        local_ref: String,
+        local_oid: git2::Oid,
+        remote_ref: String,
+        remote_oid: Option<git2::Oid>,
+    ) -> Self {
+        Self {
+            local_ref,
+            local_oid: local_oid.to_string(),
+            remote_ref,
+            remote_oid: oid_or_zero(remote_oid),
+        }
+    }
+
+    /// A ref being deleted. Git names no local ref for this case: the hook receives the literal
+    /// `(delete)` and an all-zero local oid, and the *remote* side carries what is going away.
+    fn delete(remote_ref: String, remote_oid: Option<git2::Oid>) -> Self {
+        Self {
+            local_ref: PRE_PUSH_DELETE_REF.to_string(),
+            local_oid: PRE_PUSH_ZERO_OID.to_string(),
+            remote_ref,
+            remote_oid: oid_or_zero(remote_oid),
+        }
+    }
+
+    fn stdin_line(&self) -> String {
+        format!(
+            "{} {} {} {}\n",
+            self.local_ref, self.local_oid, self.remote_ref, self.remote_oid
+        )
+    }
+}
+
+fn oid_or_zero(oid: Option<git2::Oid>) -> String {
+    oid.map(|oid| oid.to_string())
+        .unwrap_or_else(|| PRE_PUSH_ZERO_OID.to_string())
+}
+
+/// The oid a local ref points at, or `None` when this repository does not have it.
+fn ref_oid(repo: &Repository, name: &str) -> Option<git2::Oid> {
+    repo.find_reference(name).ok().and_then(|r| r.target())
+}
+
+/// What this repository last saw of a *branch* on the remote.
+///
+/// The remote-tracking ref rather than a fresh network round trip: that is what git itself feeds
+/// the hook, and asking the remote just to fill in this field would put a network call in front of
+/// a hook whose whole job may be to stop the push.
+fn last_known_remote_branch_oid(
     repo: &Repository,
     remote_name: &str,
     branch_name: &str,
-    local_oid: git2::Oid,
-) -> Result<(), AppError> {
-    // The remote-tracking ref reflects what this repository last saw of the remote branch — which
-    // is what the hook contract asks for, not a fresh network round trip just to answer it.
-    let remote_oid = repo
-        .find_reference(&format!("refs/remotes/{remote_name}/{branch_name}"))
-        .ok()
-        .and_then(|r| r.target())
-        .map(|oid| oid.to_string())
-        .unwrap_or_else(|| PRE_PUSH_ZERO_OID.to_string());
+) -> Option<git2::Oid> {
+    ref_oid(repo, &format!("refs/remotes/{remote_name}/{branch_name}"))
+}
 
+/// Runs `pre-push` for one ref update, mirroring what `git push` itself feeds the hook: the
+/// remote's name and URL as positional args, and the update's line on stdin. Non-zero stops the
+/// push before anything reaches the network.
+///
+/// One line, not several — unlike the git CLI, which can push many refs in a single invocation and
+/// writes one line each, every push path in this app moves exactly one ref per call.
+fn run_pre_push_hook(
+    repo: &Repository,
+    remote_name: &str,
+    update: &PrePushUpdate,
+) -> Result<(), AppError> {
     let url = repo
         .find_remote(remote_name)
         .ok()
         .and_then(|r| r.url().map(str::to_string))
         .unwrap_or_default();
 
-    let local_ref = format!("refs/heads/{branch_name}");
-    let stdin = format!("{local_ref} {local_oid} {local_ref} {remote_oid}\n");
-
-    let outcome =
-        git_hooks::run_hook_with_stdin(repo, "pre-push", &[remote_name, &url], Some(&stdin))?;
+    let outcome = git_hooks::run_hook_with_stdin(
+        repo,
+        "pre-push",
+        &[remote_name, &url],
+        Some(&update.stdin_line()),
+    )?;
     if !outcome.success {
         return Err(AppError::HookFailed {
             name: outcome.name,
@@ -623,7 +688,17 @@ pub fn push<F: FnMut(RemoteProgress)>(
     // Before anything reaches the network, mirroring `create_commit`'s `--no-verify` escape hatch:
     // a hook that hangs or misfires must not be able to lock the user out of pushing at all.
     if !skip_hooks {
-        run_pre_push_hook(repo, &remote_name, &branch_name, local_oid)?;
+        let local_ref = format!("refs/heads/{branch_name}");
+        run_pre_push_hook(
+            repo,
+            &remote_name,
+            &PrePushUpdate::update(
+                local_ref.clone(),
+                local_oid,
+                local_ref,
+                last_known_remote_branch_oid(repo, &remote_name, &branch_name),
+            ),
+        )?;
     }
 
     let prefix = if force { "+" } else { "" };
@@ -694,8 +769,28 @@ pub fn push_to(
     source: &str,
     target: &str,
     force: bool,
+    skip_hooks: bool,
 ) -> Result<(), AppError> {
     let remote_name = resolve_remote_name(repo, remote);
+
+    // The same gate the main Push button goes through. This path used to skip it, which made
+    // dragging one ref badge onto another a way around a `pre-push` hook — the hook was still
+    // installed, still passing on the command line, and silently not consulted here.
+    if !skip_hooks {
+        let local_ref = format!("refs/heads/{source}");
+        let local_oid = ref_oid(repo, &local_ref)
+            .ok_or_else(|| AppError::Unknown(format!("no such local branch: {source}")))?;
+        run_pre_push_hook(
+            repo,
+            &remote_name,
+            &PrePushUpdate::update(
+                local_ref,
+                local_oid,
+                format!("refs/heads/{target}"),
+                last_known_remote_branch_oid(repo, &remote_name, target),
+            ),
+        )?;
+    }
 
     let prefix = if force { "+" } else { "" };
     let refspec = format!("{prefix}refs/heads/{source}:refs/heads/{target}");
@@ -720,8 +815,23 @@ pub fn delete_remote_tag(
     repo: &Repository,
     remote: Option<String>,
     tag_name: &str,
+    skip_hooks: bool,
 ) -> Result<(), AppError> {
     let remote_name = resolve_remote_name(repo, remote);
+
+    // A deletion is a ref update like any other as far as the hook is concerned, and it is the one
+    // most worth being able to refuse. The remote oid is taken from this repository's own copy of
+    // the tag — the closest thing to "what is about to be removed" that does not cost a network
+    // round trip in front of a hook whose job may be to stop the push.
+    if !skip_hooks {
+        let remote_ref = format!("refs/tags/{tag_name}");
+        let remote_oid = ref_oid(repo, &remote_ref);
+        run_pre_push_hook(
+            repo,
+            &remote_name,
+            &PrePushUpdate::delete(remote_ref, remote_oid),
+        )?;
+    }
 
     let refspec = format!(":refs/tags/{tag_name}");
 
@@ -745,8 +855,29 @@ pub fn delete_remote_tag(
 /// sides and would therefore create a *branch* named after the tag on the remote. Never forced:
 /// re-pointing a tag that others have already fetched is the one thing tags are supposed not to
 /// do, so a rejected push should surface rather than be overwritten.
-pub fn push_tag(repo: &Repository, remote: Option<String>, tag_name: &str) -> Result<(), AppError> {
+pub fn push_tag(
+    repo: &Repository,
+    remote: Option<String>,
+    tag_name: &str,
+    skip_hooks: bool,
+) -> Result<(), AppError> {
     let remote_name = resolve_remote_name(repo, remote);
+
+    // Tags have no remote-tracking namespace to consult — `refs/tags/` is shared, not per-remote —
+    // so the remote side is reported as all zeros: "the remote does not have this ref". That is
+    // true for publishing a tag, which is what this path is for, and the alternative would be an
+    // `ls-remote` round trip in front of a hook whose job may be to stop the push. A hook that
+    // needs to tell a new tag from a moved one has to ask the remote itself.
+    if !skip_hooks {
+        let tag_ref = format!("refs/tags/{tag_name}");
+        let local_oid = ref_oid(repo, &tag_ref)
+            .ok_or_else(|| AppError::Unknown(format!("no such tag: {tag_name}")))?;
+        run_pre_push_hook(
+            repo,
+            &remote_name,
+            &PrePushUpdate::update(tag_ref.clone(), local_oid, tag_ref, None),
+        )?;
+    }
 
     let refspec = format!("refs/tags/{tag_name}:refs/tags/{tag_name}");
 
@@ -1405,5 +1536,200 @@ mod tests {
         push(&f.local, None, false, false, |_| {}).unwrap();
 
         assert_eq!(remote_head(&f.origin_dir, &branch), Some(new_oid));
+    }
+
+    // ─── pre-push on the other three push paths ───────────────────────────────
+    // `push` was the only one that consulted the hook, so dragging a ref badge onto another,
+    // publishing a tag and deleting a remote tag were three ways around a gate the user had
+    // installed — still passing on the command line, silently not consulted here.
+
+    /// A hook that records the stdin git handed it, so a test can assert the exact ref-update line.
+    fn recording_hook(repo: &Repository) {
+        write_hook(
+            repo,
+            "pre-push",
+            "cat > \"$(dirname \"$0\")/received-stdin\"",
+        );
+    }
+
+    fn recorded_stdin(repo: &Repository) -> String {
+        fs::read_to_string(repo.path().join("hooks/received-stdin")).unwrap()
+    }
+
+    fn remote_ref_oid(origin_dir: &Path, name: &str) -> Option<git2::Oid> {
+        fresh(origin_dir)
+            .find_reference(name)
+            .ok()
+            .and_then(|r| r.target())
+    }
+
+    /// Creates a lightweight tag on HEAD and returns the oid it points at.
+    fn tag_head(repo: &Repository, name: &str) -> git2::Oid {
+        let head = repo.head().unwrap().peel_to_commit().unwrap();
+        repo.tag_lightweight(name, head.as_object(), false).unwrap();
+        head.id()
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_failing_pre_push_hook_stops_a_ref_drag() {
+        let f = push_fixture("pre-push-drag-fails");
+        write_hook(&f.local, "pre-push", "echo 'no direct pushes' >&2\nexit 1");
+        let source = f.local.head().unwrap().shorthand().unwrap().to_string();
+
+        let err = push_to(&f.local, None, &source, "release", false, false).unwrap_err();
+
+        match err {
+            AppError::HookFailed { name, output } => {
+                assert_eq!(name, "pre-push");
+                assert!(output.iter().any(|l| l.contains("no direct pushes")));
+            }
+            other => panic!("expected a hook failure, got {other:?}"),
+        }
+        assert_eq!(
+            remote_ref_oid(&f.origin_dir, "refs/heads/release"),
+            None,
+            "nothing should have reached the remote"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_ref_drag_reports_both_ref_names_when_they_differ() {
+        // The one thing this path can express that a plain push cannot: a local ref pushed under a
+        // *different* name on the remote. Both sides have to reach the hook truthfully, or a hook
+        // gating "what may write to refs/heads/release" is reading the wrong name.
+        let f = push_fixture("pre-push-drag-stdin");
+        recording_hook(&f.local);
+        let source = f.local.head().unwrap().shorthand().unwrap().to_string();
+        let source_oid = f.local.head().unwrap().target().unwrap();
+
+        push_to(&f.local, None, &source, "release", false, false).unwrap();
+
+        assert_eq!(
+            recorded_stdin(&f.local),
+            format!("refs/heads/{source} {source_oid} refs/heads/release {PRE_PUSH_ZERO_OID}\n")
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn skip_hooks_is_the_no_verify_escape_hatch_for_a_ref_drag() {
+        let f = push_fixture("pre-push-drag-skipped");
+        write_hook(&f.local, "pre-push", "exit 1");
+        let source = f.local.head().unwrap().shorthand().unwrap().to_string();
+        let source_oid = f.local.head().unwrap().target().unwrap();
+
+        push_to(&f.local, None, &source, "release", false, true).unwrap();
+
+        assert_eq!(
+            remote_ref_oid(&f.origin_dir, "refs/heads/release"),
+            Some(source_oid)
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_failing_pre_push_hook_stops_a_tag_from_being_published() {
+        let f = push_fixture("pre-push-tag-fails");
+        tag_head(&f.local, "v1.0.0");
+        write_hook(&f.local, "pre-push", "echo 'tags are frozen' >&2\nexit 1");
+
+        let err = push_tag(&f.local, None, "v1.0.0", false).unwrap_err();
+
+        match err {
+            AppError::HookFailed { name, output } => {
+                assert_eq!(name, "pre-push");
+                assert!(output.iter().any(|l| l.contains("tags are frozen")));
+            }
+            other => panic!("expected a hook failure, got {other:?}"),
+        }
+        assert_eq!(
+            remote_ref_oid(&f.origin_dir, "refs/tags/v1.0.0"),
+            None,
+            "nothing should have reached the remote"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn publishing_a_tag_reports_it_as_a_tag_ref_the_remote_does_not_have() {
+        let f = push_fixture("pre-push-tag-stdin");
+        let tag_oid = tag_head(&f.local, "v1.0.0");
+        recording_hook(&f.local);
+
+        push_tag(&f.local, None, "v1.0.0", false).unwrap();
+
+        // Zeros on the remote side: `refs/tags/` is a shared namespace with no per-remote tracking
+        // ref to consult, so "the remote does not have this" is the honest answer without an
+        // ls-remote round trip in front of the hook.
+        assert_eq!(
+            recorded_stdin(&f.local),
+            format!("refs/tags/v1.0.0 {tag_oid} refs/tags/v1.0.0 {PRE_PUSH_ZERO_OID}\n")
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_failing_pre_push_hook_stops_a_remote_tag_deletion() {
+        let f = push_fixture("pre-push-tag-delete-fails");
+        let tag_oid = tag_head(&f.local, "v1.0.0");
+        push_tag(&f.local, None, "v1.0.0", true).unwrap();
+        write_hook(&f.local, "pre-push", "echo 'no untagging' >&2\nexit 1");
+
+        let err = delete_remote_tag(&f.local, None, "v1.0.0", false).unwrap_err();
+
+        match err {
+            AppError::HookFailed { name, output } => {
+                assert_eq!(name, "pre-push");
+                assert!(output.iter().any(|l| l.contains("no untagging")));
+            }
+            other => panic!("expected a hook failure, got {other:?}"),
+        }
+        assert_eq!(
+            remote_ref_oid(&f.origin_dir, "refs/tags/v1.0.0"),
+            Some(tag_oid),
+            "the tag should still be on the remote"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_deletion_reaches_the_hook_the_way_git_describes_one() {
+        // Git's own contract for a delete: no local ref to name, so the literal `(delete)` and an
+        // all-zero local oid, with the *remote* side carrying what is about to go away.
+        let f = push_fixture("pre-push-tag-delete-stdin");
+        let tag_oid = tag_head(&f.local, "v1.0.0");
+        push_tag(&f.local, None, "v1.0.0", true).unwrap();
+        recording_hook(&f.local);
+
+        delete_remote_tag(&f.local, None, "v1.0.0", false).unwrap();
+
+        assert_eq!(
+            recorded_stdin(&f.local),
+            format!("{PRE_PUSH_DELETE_REF} {PRE_PUSH_ZERO_OID} refs/tags/v1.0.0 {tag_oid}\n")
+        );
+        assert_eq!(remote_ref_oid(&f.origin_dir, "refs/tags/v1.0.0"), None);
+    }
+
+    #[test]
+    fn the_three_other_push_paths_are_unaffected_without_a_hook() {
+        // The whole point is that a repository with no `pre-push` behaves exactly as it did before
+        // any of this existed.
+        let f = push_fixture("pre-push-others-none");
+        let source = f.local.head().unwrap().shorthand().unwrap().to_string();
+        let tag_oid = tag_head(&f.local, "v1.0.0");
+
+        push_to(&f.local, None, &source, "release", false, false).unwrap();
+        push_tag(&f.local, None, "v1.0.0", false).unwrap();
+
+        assert!(remote_ref_oid(&f.origin_dir, "refs/heads/release").is_some());
+        assert_eq!(
+            remote_ref_oid(&f.origin_dir, "refs/tags/v1.0.0"),
+            Some(tag_oid)
+        );
+
+        delete_remote_tag(&f.local, None, "v1.0.0", false).unwrap();
+        assert_eq!(remote_ref_oid(&f.origin_dir, "refs/tags/v1.0.0"), None);
     }
 }

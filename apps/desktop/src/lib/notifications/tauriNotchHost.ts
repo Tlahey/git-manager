@@ -1,13 +1,28 @@
 /**
- * The Tauri implementation of `@git-manager/notch`'s host seam: the notch card's surface is a real
- * OS window, moved frame by frame.
+ * The Tauri implementation of `@git-manager/notch`'s host seam: the notch card's surface.
  *
- * Moving the *window* rather than transforming its content is what makes the card read as a native
- * banner emerging from behind the menu bar, the way the macOS notification and AirDrop HUDs do.
- * It is also why this can't live in the package: `setPosition` only exists inside a webview.
+ * ## Why the window does not move
+ *
+ * This used to animate the OS window itself, one `setPosition` per frame, so the card would read
+ * as a native banner emerging from behind the menu bar. That works only as long as the travel is
+ * a short nudge. The moment the card had to slide its own *full height* — which is what makes it
+ * appear from nothing and leave to nothing, rather than blinking on and off somewhere already on
+ * screen — the window has to spend part of the slide entirely above the top of the display, and
+ * macOS will not put it there: `constrainFrameRect:toScreen:` keeps a window within the screen,
+ * so the card simply never showed up.
+ *
+ * So the window now stays exactly where it was created, and the *card inside it* is what moves,
+ * as a CSS transform on a wrapper the window's own bounds clip. The card is still revealed by
+ * sliding out from under the menu bar — the clip does what moving off-screen was supposed to —
+ * and it comes with two things the old way could not have: the animation runs on the compositor
+ * instead of one IPC round trip per frame, and nothing about it can be overruled by the window
+ * server.
+ *
+ * The presenter is unchanged and still speaks in absolute Y coordinates; translating those into an
+ * offset from the resting position is this seam's job, which is exactly what the seam is for.
  */
 
-import { LogicalPosition, LogicalSize } from '@tauri-apps/api/dpi'
+import { LogicalSize } from '@tauri-apps/api/dpi'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import type { NotchHost } from '@git-manager/notch'
 import {
@@ -24,12 +39,18 @@ import {
 export const NOTCH_SOUND = 'Pop'
 
 export interface TauriNotchHostOptions {
-  /** The window's x, held constant while only its y is animated. */
-  windowX: number
+  /** The card's resting top edge — the Y the presenter slides *to*, and the zero of the offset. */
+  restY: number
+  /** The element the card is drawn in, moved by transform. Clipped by the window's own bounds. */
+  surface: { current: HTMLElement | null }
   withSound: boolean
 }
 
-export function createTauriNotchHost({ windowX, withSound }: TauriNotchHostOptions): NotchHost {
+export function createTauriNotchHost({
+  restY,
+  surface,
+  withSound,
+}: TauriNotchHostOptions): NotchHost {
   const host: NotchHost = {
     async prepare() {
       // Above the menu bar's own native z-order, so the card visually emerges from behind it
@@ -46,7 +67,12 @@ export function createTauriNotchHost({ windowX, withSound }: TauriNotchHostOptio
       return getCurrentWindow().show()
     },
     setY(y) {
-      return getCurrentWindow().setPosition(new LogicalPosition(windowX, y))
+      // Written straight to the node rather than through React state: this runs once per frame for
+      // the length of the slide, and re-rendering the whole card 48 times to move it is work the
+      // compositor is already doing for free.
+      const node = surface.current
+      if (node) node.style.transform = `translateY(${y - restY}px)`
+      return Promise.resolve()
     },
     close() {
       return getCurrentWindow().close()

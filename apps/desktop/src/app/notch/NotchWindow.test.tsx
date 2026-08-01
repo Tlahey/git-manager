@@ -33,7 +33,7 @@ const {
   openUrlMock: vi.fn(() => Promise.resolve()),
   resizeMock: vi.fn(() => Promise.resolve()),
   hostCalls: [] as string[],
-  hostOptions: { current: null as { windowX: number; withSound: boolean } | null },
+  hostOptions: { current: null as { restY: number; surface: { current: HTMLElement | null }; withSound: boolean } | null },
   updateHandlers: { current: [] as ((p: { model: NotchModel }) => void)[] },
 }))
 
@@ -50,7 +50,7 @@ vi.mock('../../lib/openUrl', () => ({ openUrl: openUrlMock }))
 vi.mock('../../lib/notifications/tauriNotchHost', () => ({
   NOTCH_SOUND: 'Pop',
   resizeNotchWindow: (...a: unknown[]) => resizeMock(...(a as [])),
-  createTauriNotchHost: (options: { windowX: number; withSound: boolean }) => {
+  createTauriNotchHost: (options: { restY: number; surface: { current: HTMLElement | null }; withSound: boolean }) => {
     hostOptions.current = options
     return {
       prepare: () => hostCalls.push('prepare'),
@@ -130,9 +130,14 @@ describe('NotchWindow', () => {
     expect(screen.getByText('#231')).toBeInTheDocument()
   })
 
-  it('hands the host the window x it was given, so the slide keeps a straight line', async () => {
+  // The window itself never moves — macOS refuses to place one entirely above the top of the
+  // screen, which is where a card sliding its own full height has to spend part of its travel. The
+  // host is given the resting Y so it can turn the presenter's absolute coordinates into an offset
+  // for the element it moves inside the window.
+  it('hands the host the resting Y and the surface it should move', async () => {
     await renderWindow()
-    expect(hostOptions.current?.windowX).toBe(510)
+    expect(hostOptions.current?.restY).toBe(payload.windowY)
+    expect(hostOptions.current?.surface).toBeDefined()
   })
 
   it('runs the entrance: prepare, park, reveal', async () => {

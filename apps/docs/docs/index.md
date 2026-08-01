@@ -68,3 +68,18 @@ site is built.
 
 If a page ever contradicts the app, the page is the bug — use the **Report a
 documentation issue** link at the bottom of any page to say where.
+
+## What is not covered yet
+
+**Where the notification card lands on a second display.** The card that slides
+down from the top of the screen is positioned against the camera housing of a
+MacBook's built-in display, from measurements the app asks macOS for. Those
+measurements have only ever been checked on one machine. On a Mac without a
+notch, or on an external monitor, the app falls back to default measurements —
+and that fallback has not been verified on real hardware, so the card may sit a
+few points off where it should.
+
+This is cosmetic. Nothing about *what* a notification says or does depends on it,
+and a card that cannot be measured is still shown. If you see one land somewhere
+obviously wrong, the **Report a documentation issue** link takes you to the right
+place to say so — including which Mac and which display.

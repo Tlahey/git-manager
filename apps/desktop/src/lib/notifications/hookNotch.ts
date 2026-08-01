@@ -7,7 +7,7 @@
  * which file and which rule.
  */
 
-import type { NotchStatusModel } from '@git-manager/notch'
+import type { NotchProgressModel, NotchStatusModel } from '@git-manager/notch'
 import { STATUS_OUTPUT_MAX_LINES } from '@git-manager/notch'
 import type { TFunction } from '@git-manager/i18n'
 import type { AppErrorLike } from '../tauri'
@@ -74,5 +74,34 @@ export function hookFailureNotchModel(
     title: t('hooks.notch.failed'),
     ...(failure.lines.length > 0 ? { outputLines: failure.lines } : {}),
     actions: [{ id: 'activate', label: t('hooks.notch.open'), variant: 'primary' }],
+  }
+}
+
+/**
+ * The card for a hook that is *running*, as opposed to one that already refused.
+ *
+ * A `progress` card with no ratio: a hook gives no progress of its own — it is somebody else's
+ * script, and all this app knows is that it started. That is deliberately enough. Before this
+ * existed there was nothing at all between pressing Commit and the commit landing, so a
+ * `lint-staged` over a large change was an app that looked frozen for however long it took.
+ *
+ * `progress` also earns it the two behaviours that matter here: the presenter arms no dismissal
+ * timer for a live card, so it cannot vanish while the hook is still going, and the delivery policy
+ * never flattens it into an OS banner, which would mean one banner per hook.
+ */
+export function runningHookNotchModel(
+  hookName: string,
+  repoName: string,
+  t: TFunction
+): NotchProgressModel {
+  return {
+    kind: 'progress',
+    // Per hook, per repository — the same shape as the failure card, so a hook that starts and then
+    // refuses does not leave two cards behind.
+    id: `hook-running:${repoName}:${hookName}`,
+    tone: 'running',
+    eyebrow: t('hooks.notch.eyebrow', { name: hookName }),
+    context: repoName,
+    title: t('hooks.notch.running'),
   }
 }

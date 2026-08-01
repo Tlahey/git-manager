@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   animateValue,
-  easeInCubic,
-  easeOutCubic,
   ENTER_MS,
+  EXIT_FADE_AT,
   EXIT_MS,
+  linear,
   SLIDE_DISTANCE,
   type FrameScheduler,
 } from './notchAnimation'
@@ -26,6 +26,18 @@ export interface UseNotchPresenterOptions {
   host: NotchHost
   /** The surface's resting top edge, in the host's coordinate space. */
   restY: number
+  /**
+   * How far the surface travels, in the host's coordinate space.
+   *
+   * Pass the surface's **full height** and the slide alone does all the appearing and
+   * disappearing: parked one of these above its resting spot the card is entirely off the top of
+   * the screen, so it emerges from nothing and leaves to nothing without anything having to fade
+   * it in or out. That is the whole point of the movement.
+   *
+   * Defaults to {@link SLIDE_DISTANCE}, a short nudge, which is all a host that cannot go
+   * off-screen (the Storybook harness, where the "window" is a div on a page) can do.
+   */
+  slideDistance?: number
   /** `null` for "stays until dismissed" — no timer at all, rather than a very long one, so
    *  nothing can retire the card behind the user's back. */
   autoDismissMs: number | null
@@ -38,12 +50,6 @@ export interface UseNotchPresenterOptions {
    * it forever. Announce first, then go.
    */
   onDismissed?: () => void | Promise<void>
-  /**
-   * Dismiss as soon as the surface loses focus, the way a native `NSPopover` does. Only the real
-   * window wants this: in Storybook the "window" is a div on a page the user keeps clicking around
-   * in, and every click would kill the card.
-   */
-  dismissOnBlur?: boolean
   scheduler?: FrameScheduler
 }
 
@@ -85,22 +91,43 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
     if (dismissingRef.current) return
     dismissingRef.current = true
     clearTimer()
-    setVisible(false)
 
-    const { host, restY, scheduler, onDismissed } = latest.current
+    const { host, restY, scheduler, onDismissed, slideDistance = SLIDE_DISTANCE } = latest.current
     // Only animate out if it ever animated in — a card dismissed before its entrance finished
     // would otherwise slide from a position it never reached.
     if (slidInRef.current) {
+      // The fade is started from inside the tween rather than before it, and rather than off a
+      // second timer: driven by the card's own travel it cannot desync from the movement, and it
+      // stays deterministic under the injected scheduler the tests step by hand.
+      let fading = false
       await animateValue({
         from: restY,
-        to: restY - SLIDE_DISTANCE,
+        to: restY - slideDistance,
         durationMs: EXIT_MS,
-        ease: easeInCubic,
-        onFrame: (y) => host.setY(y),
+        ease: linear,
+        onFrame: (y, progress) => {
+          host.setY(y)
+          if (fading || progress < EXIT_FADE_AT) return
+          fading = true
+          setVisible(false)
+        },
         ...(scheduler ? { scheduler } : {}),
         isCancelled: () => cancelledRef.current,
       })
+      // The tween's per-frame `setY` is fire-and-forget — deliberately, or the slide would run at
+      // IPC speed instead of frame speed. The cost is that the last positions can still be in
+      // flight when the tween resolves, and closing the surface right then tears it down while it
+      // is visibly still travelling: the card vanishes before the slide finishes, which is exactly
+      // what it must not do. This is the one point where waiting for a round trip buys something.
+      try {
+        await host.setY(restY - slideDistance)
+      } catch (e) {
+        console.warn('Notch: failed to settle the surface at the end of its slide:', e)
+      }
     }
+    // Whatever happened above — no entrance to reverse, or a tween cancelled before the card had
+    // travelled far enough to start fading — the card must not be left showing.
+    setVisible(false)
     // Announced before the surface is closed, and awaited — see `onDismissed`. Guarded on its own
     // so a failed announcement still lets the card go: an orphan surface stuck on screen is worse
     // than an owner that has to find out some other way.
@@ -144,7 +171,7 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
     cancelledRef.current = false
 
     async function enter() {
-      const { host, restY, scheduler } = latest.current
+      const { host, restY, scheduler, slideDistance = SLIDE_DISTANCE } = latest.current
       try {
         await host.prepare?.()
       } catch (e) {
@@ -153,7 +180,7 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
       // The surface starts one slide-step above its resting spot, before the first paint, so
       // nothing flashes at the wrong place on the way in.
       try {
-        await host.setY(restY - SLIDE_DISTANCE)
+        await host.setY(restY - slideDistance)
       } catch (e) {
         console.warn('Notch: failed to park the surface above its resting spot:', e)
       }
@@ -162,7 +189,12 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
       } catch (e) {
         console.warn('Notch: failed to reveal the surface:', e)
       }
-      if (cancelledRef.current) return
+      // `dismissing` as well as `cancelled`: the entrance is several awaited native calls long,
+      // and a dismissal can land in the middle of it (focus lost, or the queue dropping the card).
+      // Without this check the entrance carries on afterwards and reveals a card that has already
+      // been dismissed and closed — the exit, having found `slidIn` still false, has by then
+      // decided there was nothing to animate away.
+      if (cancelledRef.current || dismissingRef.current) return
 
       setVisible(true)
       slidInRef.current = true
@@ -170,13 +202,15 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
 
       try {
         await animateValue({
-          from: restY - SLIDE_DISTANCE,
+          from: restY - slideDistance,
           to: restY,
           durationMs: ENTER_MS,
-          ease: easeOutCubic,
+          ease: linear,
           onFrame: (y) => host.setY(y),
           ...(scheduler ? { scheduler } : {}),
-          isCancelled: () => cancelledRef.current,
+          // A dismissal mid-slide-in stops the entrance where it stands rather than fighting the
+          // exit for the same coordinate.
+          isCancelled: () => cancelledRef.current || dismissingRef.current,
         })
       } catch (e) {
         console.warn('Notch: slide-in failed, snapping to the resting spot:', e)
@@ -189,16 +223,12 @@ export function useNotchPresenter(options: UseNotchPresenterOptions): NotchPrese
     }
     void enter()
 
-    const { autoDismissMs, dismissOnBlur } = latest.current
+    const { autoDismissMs } = latest.current
     if (autoDismissMs !== null && autoDismissMs > 0) armTimer(autoDismissMs)
-
-    const handleBlur = () => void dismiss()
-    if (dismissOnBlur) window.addEventListener('blur', handleBlur)
 
     return () => {
       cancelledRef.current = true
       clearTimer()
-      if (dismissOnBlur) window.removeEventListener('blur', handleBlur)
     }
     // Mount-only: the card is created for one model and torn down with it.
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -104,10 +104,10 @@ describe('NotificationSection — sounds', () => {
 })
 
 describe('NotificationSection — display', () => {
-  it('defaults to the app’s own notch card, visible for 5 seconds', () => {
+  it('defaults to the app’s own notch card, visible for 10 seconds', () => {
     render(<NotificationSection />)
     expect(screen.getByRole('combobox', { name: 'Style' })).toHaveValue('notch')
-    expect(screen.getByRole('combobox', { name: 'Visible for' })).toHaveValue('5000')
+    expect(screen.getByRole('combobox', { name: 'Visible for' })).toHaveValue('10000')
   })
 
   it('still selects the notch for a snapshot holding the old "popover" value', () => {
