@@ -66,6 +66,9 @@ vi.mock('../api/git.api', () => ({
   apiMergeBranch: vi.fn(),
   apiDeleteBranch: vi.fn(),
   apiCreateTag: vi.fn(),
+  apiRebaseContinue: vi.fn(),
+  apiRebaseAbort: vi.fn(),
+  apiRebaseSkip: vi.fn(),
   apiSetBranchUpstream: vi.fn(),
 }))
 vi.mock('../api/worktree.api', () => ({ apiAddWorktree: vi.fn() }))
@@ -298,11 +301,87 @@ describe('useGitGraphActions — openMenuAt: WIP row', () => {
     expect(mocked.apiUnstageAll).toHaveBeenCalledWith(REPO)
   })
 
-  it('shows no menu for the CONFLICT row and a worktree WIP row', async () => {
+  it('shows no menu for a worktree WIP row', async () => {
     const { result } = renderHook(() => useGitGraphActions(baseParams()))
-    await act(async () => result.current.openMenuAt(clickEvent(), 'CONFLICT'))
     await act(async () => result.current.openMenuAt(clickEvent(), 'WIP:/some/worktree'))
     expect(showNativeMenu).not.toHaveBeenCalled()
+  })
+})
+
+describe('useGitGraphActions — openMenuAt: CONFLICT row', () => {
+  it('offers Continue once every conflict is resolved (nothing left in status.conflicted)', async () => {
+    const { result } = renderHook(() =>
+      useGitGraphActions(
+        baseParams({ status: status({ conflicted: [], staged: [{ path: 'a.ts' } as never] }) })
+      )
+    )
+    await act(async () => result.current.openMenuAt(clickEvent(), 'CONFLICT'))
+    expect(getItem('gitTree.conflictMenu.continueRebase').enabled).toBe(true)
+    expect(getItem('gitTree.conflictMenu.skipCommit').enabled).toBe(false)
+  })
+
+  it('offers Skip while nothing has been resolved yet', async () => {
+    const { result } = renderHook(() =>
+      useGitGraphActions(baseParams({ status: status({ conflicted: ['a.ts'], staged: [] }) }))
+    )
+    await act(async () => result.current.openMenuAt(clickEvent(), 'CONFLICT'))
+    expect(getItem('gitTree.conflictMenu.continueRebase').enabled).toBe(false)
+    expect(getItem('gitTree.conflictMenu.skipCommit').enabled).toBe(true)
+  })
+
+  it('disables both Continue and Skip once resolution is under way, and always allows Abort', async () => {
+    const { result } = renderHook(() =>
+      useGitGraphActions(
+        baseParams({
+          status: status({ conflicted: ['a.ts'], staged: [{ path: 'b.ts' } as never] }),
+        })
+      )
+    )
+    await act(async () => result.current.openMenuAt(clickEvent(), 'CONFLICT'))
+    expect(getItem('gitTree.conflictMenu.continueRebase').enabled).toBe(false)
+    expect(getItem('gitTree.conflictMenu.skipCommit').enabled).toBe(false)
+    expect(getItem('gitTree.conflictMenu.abortRebase').enabled).not.toBe(false)
+  })
+
+  it('Continue calls apiRebaseContinue and refreshes the rebase/status/log queries', async () => {
+    mocked.apiRebaseContinue.mockResolvedValue(undefined)
+    const { result } = renderHook(() =>
+      useGitGraphActions(baseParams({ status: status({ conflicted: [] }) }))
+    )
+    await act(async () => result.current.openMenuAt(clickEvent(), 'CONFLICT'))
+    await act(async () => getItem('gitTree.conflictMenu.continueRebase').action!())
+    expect(mocked.apiRebaseContinue).toHaveBeenCalledWith(REPO)
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rebase-state', REPO] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['git-status', REPO] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['git-log', REPO] })
+    expect(swrMutate).toHaveBeenCalledWith(['conflicted-files', REPO])
+    expect(swrMutate).toHaveBeenCalledWith(['rebase-state', REPO])
+  })
+
+  it('Skip calls apiRebaseSkip', async () => {
+    mocked.apiRebaseSkip.mockResolvedValue(undefined)
+    const { result } = renderHook(() =>
+      useGitGraphActions(baseParams({ status: status({ conflicted: ['a.ts'], staged: [] }) }))
+    )
+    await act(async () => result.current.openMenuAt(clickEvent(), 'CONFLICT'))
+    await act(async () => getItem('gitTree.conflictMenu.skipCommit').action!())
+    expect(mocked.apiRebaseSkip).toHaveBeenCalledWith(REPO)
+  })
+
+  it('Abort calls apiRebaseAbort', async () => {
+    mocked.apiRebaseAbort.mockResolvedValue(undefined)
+    const { result } = renderHook(() => useGitGraphActions(baseParams()))
+    await act(async () => result.current.openMenuAt(clickEvent(), 'CONFLICT'))
+    await act(async () => getItem('gitTree.conflictMenu.abortRebase').action!())
+    expect(mocked.apiRebaseAbort).toHaveBeenCalledWith(REPO)
+  })
+
+  it('toasts an error when a rebase control fails', async () => {
+    mocked.apiRebaseAbort.mockRejectedValue(new Error('abort failed'))
+    const { result } = renderHook(() => useGitGraphActions(baseParams()))
+    await act(async () => result.current.openMenuAt(clickEvent(), 'CONFLICT'))
+    await act(async () => getItem('gitTree.conflictMenu.abortRebase').action!())
+    expect(toastError).toHaveBeenCalledWith(expect.stringContaining('abort failed'))
   })
 })
 
