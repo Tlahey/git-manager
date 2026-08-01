@@ -25,6 +25,7 @@ import {
   deleteBranch,
   mergeBranch,
   fastForwardBranch,
+  setBranchUpstream,
   pushBranchTo,
   getRemotes,
   removeRemote,
@@ -1039,6 +1040,16 @@ export async function apiCreateBranch(path: string, name: string, fromRef: strin
 /** Renames a local branch. Not snapshot-undoable (a rename back restores it), so only clears redo. */
 export async function apiRenameBranch(path: string, oldName: string, newName: string) {
   await renameBranch(path, oldName, newName)
+  clearRedo(path)
+}
+
+// ─── Set upstream ────────────────────────────────────────────────────────────
+
+/** Sets local branch `name`'s upstream to `upstream` (a remote-tracking branch's short name, e.g.
+ * `origin/main`). Metadata-only — nothing to snapshot, so it only clears redo like the branch's
+ * other non-rewriting relationship actions (rename, fast-forward). */
+export async function apiSetBranchUpstream(path: string, name: string, upstream: string) {
+  await setBranchUpstream(path, name, upstream)
   clearRedo(path)
 }
 

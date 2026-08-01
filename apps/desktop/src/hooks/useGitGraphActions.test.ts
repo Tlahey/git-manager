@@ -66,8 +66,13 @@ vi.mock('../api/git.api', () => ({
   apiMergeBranch: vi.fn(),
   apiDeleteBranch: vi.fn(),
   apiCreateTag: vi.fn(),
+  apiRebaseContinue: vi.fn(),
+  apiRebaseAbort: vi.fn(),
+  apiRebaseSkip: vi.fn(),
+  apiSetBranchUpstream: vi.fn(),
 }))
 vi.mock('../api/worktree.api', () => ({ apiAddWorktree: vi.fn() }))
+vi.mock('../api/repo.api', () => ({ apiRevealPathInFinder: vi.fn() }))
 
 const webviewGetByLabel = vi.fn()
 const WebviewWindowCtor = vi.fn()
@@ -82,12 +87,14 @@ vi.mock('@tauri-apps/api/webviewWindow', () => ({
 
 import * as gitApi from '../api/git.api'
 import { apiAddWorktree } from '../api/worktree.api'
+import { apiRevealPathInFinder } from '../api/repo.api'
 import { useRepoUIStore } from '../stores/repoUI.store'
 import { usePinnedBranchesStore } from '../stores/pinned-branches.store'
 import { useGitGraphActions } from './useGitGraphActions'
 
 const mocked = gitApi as unknown as Record<string, ReturnType<typeof vi.fn>>
 const mockedAddWorktree = apiAddWorktree as unknown as ReturnType<typeof vi.fn>
+const mockedRevealPathInFinder = apiRevealPathInFinder as unknown as ReturnType<typeof vi.fn>
 
 const t = (key: string, opts?: Record<string, unknown>) =>
   opts ? `${key}:${JSON.stringify(opts)}` : key
@@ -180,7 +187,7 @@ function clickEvent() {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useRepoUIStore.setState({ editingOid: null, aiPanelTarget: null })
+  useRepoUIStore.setState({ editingOid: null, aiPanelTarget: null, activeWorkspacePath: null })
   usePinnedBranchesStore.setState({ overrides: {} })
   Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
   // clearAllMocks() also wipes .mockResolvedValue()-configured implementations, so these need
@@ -297,11 +304,135 @@ describe('useGitGraphActions — openMenuAt: WIP row', () => {
     expect(mocked.apiUnstageAll).toHaveBeenCalledWith(REPO)
   })
 
-  it('shows no menu for the CONFLICT row and a worktree WIP row', async () => {
+})
+
+describe('useGitGraphActions — openMenuAt: other-worktree WIP row', () => {
+  const OTHER_PATH = '/some/worktree'
+
+  it('opens the other-worktree menu with open/stash/reveal items', async () => {
+    const { result } = renderHook(() => useGitGraphActions(baseParams()))
+    await act(async () => result.current.openMenuAt(clickEvent(), `WIP:${OTHER_PATH}`))
+    expect(getItem('gitTree.otherWorktreeMenu.openWorktree')).toBeDefined()
+    expect(getItem('gitTree.otherWorktreeMenu.stash')).toBeDefined()
+    expect(getItem('gitTree.otherWorktreeMenu.stashIncludeUntracked')).toBeDefined()
+    expect(getItem('gitTree.otherWorktreeMenu.revealInFinder')).toBeDefined()
+  })
+
+  it('"Open worktree" switches the view to the OTHER worktree path, not the active repo', async () => {
+    const { result } = renderHook(() => useGitGraphActions(baseParams()))
+    await act(async () => result.current.openMenuAt(clickEvent(), `WIP:${OTHER_PATH}`))
+    await act(async () => getItem('gitTree.otherWorktreeMenu.openWorktree').action!())
+    expect(useRepoUIStore.getState().activeWorkspacePath).toBe(OTHER_PATH)
+  })
+
+  it('the stash items push a stash on the OTHER worktree path and refresh the active repo', async () => {
+    mocked.apiStashPush.mockResolvedValue(undefined)
+    const { result } = renderHook(() => useGitGraphActions(baseParams()))
+    await act(async () => result.current.openMenuAt(clickEvent(), `WIP:${OTHER_PATH}`))
+    await act(async () => getItem('gitTree.otherWorktreeMenu.stash').action!())
+    expect(mocked.apiStashPush).toHaveBeenCalledWith(OTHER_PATH, undefined, false)
+    await act(async () => getItem('gitTree.otherWorktreeMenu.stashIncludeUntracked').action!())
+    expect(mocked.apiStashPush).toHaveBeenCalledWith(OTHER_PATH, undefined, true)
+    // The active repo's own graph/stash list are refreshed — the new stash entry lands in the
+    // shared refs/stash and shows up there too.
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['git-log', REPO] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['git-status', REPO] })
+    expect(swrMutate).toHaveBeenCalledWith(['git-stashes', REPO])
+    expect(swrMutate).toHaveBeenCalledWith(['worktree-wip-statuses', REPO])
+    expect(toastSuccess).toHaveBeenCalledWith('gitTree.otherWorktreeMenu.stashed')
+  })
+
+  it('toasts an error when stashing the other worktree fails', async () => {
+    mocked.apiStashPush.mockRejectedValue(new Error('stash failed'))
+    const { result } = renderHook(() => useGitGraphActions(baseParams()))
+    await act(async () => result.current.openMenuAt(clickEvent(), `WIP:${OTHER_PATH}`))
+    await act(async () => getItem('gitTree.otherWorktreeMenu.stash').action!())
+    expect(toastError).toHaveBeenCalledWith(expect.stringContaining('stash failed'))
+  })
+
+  it('"Reveal in Finder" reveals the OTHER worktree path', async () => {
+    mockedRevealPathInFinder.mockResolvedValue(undefined)
+    const { result } = renderHook(() => useGitGraphActions(baseParams()))
+    await act(async () => result.current.openMenuAt(clickEvent(), `WIP:${OTHER_PATH}`))
+    await act(async () => getItem('gitTree.otherWorktreeMenu.revealInFinder').action!())
+    expect(mockedRevealPathInFinder).toHaveBeenCalledWith(OTHER_PATH)
+  })
+})
+
+describe('useGitGraphActions — openMenuAt: CONFLICT row', () => {
+  it('offers Continue once every conflict is resolved (nothing left in status.conflicted)', async () => {
+    const { result } = renderHook(() =>
+      useGitGraphActions(
+        baseParams({ status: status({ conflicted: [], staged: [{ path: 'a.ts' } as never] }) })
+      )
+    )
+    await act(async () => result.current.openMenuAt(clickEvent(), 'CONFLICT'))
+    expect(getItem('gitTree.conflictMenu.continueRebase').enabled).toBe(true)
+    expect(getItem('gitTree.conflictMenu.skipCommit').enabled).toBe(false)
+  })
+
+  it('offers Skip while nothing has been resolved yet', async () => {
+    const { result } = renderHook(() =>
+      useGitGraphActions(baseParams({ status: status({ conflicted: ['a.ts'], staged: [] }) }))
+    )
+    await act(async () => result.current.openMenuAt(clickEvent(), 'CONFLICT'))
+    expect(getItem('gitTree.conflictMenu.continueRebase').enabled).toBe(false)
+    expect(getItem('gitTree.conflictMenu.skipCommit').enabled).toBe(true)
+  })
+
+  it('disables both Continue and Skip once resolution is under way, and always allows Abort', async () => {
+    const { result } = renderHook(() =>
+      useGitGraphActions(
+        baseParams({
+          status: status({ conflicted: ['a.ts'], staged: [{ path: 'b.ts' } as never] }),
+        })
+      )
+    )
+    await act(async () => result.current.openMenuAt(clickEvent(), 'CONFLICT'))
+    expect(getItem('gitTree.conflictMenu.continueRebase').enabled).toBe(false)
+    expect(getItem('gitTree.conflictMenu.skipCommit').enabled).toBe(false)
+    expect(getItem('gitTree.conflictMenu.abortRebase').enabled).not.toBe(false)
+  })
+
+  it('Continue calls apiRebaseContinue and refreshes the rebase/status/log queries', async () => {
+    mocked.apiRebaseContinue.mockResolvedValue(undefined)
+    const { result } = renderHook(() =>
+      useGitGraphActions(baseParams({ status: status({ conflicted: [] }) }))
+    )
+    await act(async () => result.current.openMenuAt(clickEvent(), 'CONFLICT'))
+    await act(async () => getItem('gitTree.conflictMenu.continueRebase').action!())
+    expect(mocked.apiRebaseContinue).toHaveBeenCalledWith(REPO)
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rebase-state', REPO] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['git-status', REPO] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['git-log', REPO] })
+    expect(swrMutate).toHaveBeenCalledWith(['conflicted-files', REPO])
+    expect(swrMutate).toHaveBeenCalledWith(['rebase-state', REPO])
+  })
+
+  it('Skip calls apiRebaseSkip', async () => {
+    mocked.apiRebaseSkip.mockResolvedValue(undefined)
+    const { result } = renderHook(() =>
+      useGitGraphActions(baseParams({ status: status({ conflicted: ['a.ts'], staged: [] }) }))
+    )
+    await act(async () => result.current.openMenuAt(clickEvent(), 'CONFLICT'))
+    await act(async () => getItem('gitTree.conflictMenu.skipCommit').action!())
+    expect(mocked.apiRebaseSkip).toHaveBeenCalledWith(REPO)
+  })
+
+  it('Abort calls apiRebaseAbort', async () => {
+    mocked.apiRebaseAbort.mockResolvedValue(undefined)
     const { result } = renderHook(() => useGitGraphActions(baseParams()))
     await act(async () => result.current.openMenuAt(clickEvent(), 'CONFLICT'))
-    await act(async () => result.current.openMenuAt(clickEvent(), 'WIP:/some/worktree'))
-    expect(showNativeMenu).not.toHaveBeenCalled()
+    await act(async () => getItem('gitTree.conflictMenu.abortRebase').action!())
+    expect(mocked.apiRebaseAbort).toHaveBeenCalledWith(REPO)
+  })
+
+  it('toasts an error when a rebase control fails', async () => {
+    mocked.apiRebaseAbort.mockRejectedValue(new Error('abort failed'))
+    const { result } = renderHook(() => useGitGraphActions(baseParams()))
+    await act(async () => result.current.openMenuAt(clickEvent(), 'CONFLICT'))
+    await act(async () => getItem('gitTree.conflictMenu.abortRebase').action!())
+    expect(toastError).toHaveBeenCalledWith(expect.stringContaining('abort failed'))
   })
 })
 
@@ -591,6 +722,26 @@ describe('useGitGraphActions — per-branch submenus', () => {
     const feat = normalizeMenuSpec(getSubmenu('feat').items)
     await act(async () => getItem('gitTree.branchMenu.fastForward', feat).action!())
     expect(mocked.apiFastForwardBranch).toHaveBeenCalledWith(REPO, 'feat', 'main')
+  })
+
+  it('onSetUpstream applies an unambiguous origin/<name> match directly, no dialog', async () => {
+    // The mocked branch list (see `branchList` above) carries `origin/main` but no `origin/feat`.
+    mocked.apiSetBranchUpstream.mockResolvedValue(undefined)
+    const { result } = renderHook(() => useGitGraphActions(baseParams({ nodes: [withBranches] })))
+    await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
+    const main = normalizeMenuSpec(getSubmenu('main').items)
+    await act(async () => getItem('gitTree.branchMenu.setUpstream', main).action!())
+    expect(mocked.apiSetBranchUpstream).toHaveBeenCalledWith(REPO, 'main', 'origin/main')
+    expect(result.current.pendingAction).toBeNull()
+  })
+
+  it('onSetUpstream opens the picker dialog when no default is unambiguous', async () => {
+    const { result } = renderHook(() => useGitGraphActions(baseParams({ nodes: [withBranches] })))
+    await act(async () => result.current.openMenuAt(clickEvent(), 'a'))
+    const feat = normalizeMenuSpec(getSubmenu('feat').items)
+    act(() => getItem('gitTree.branchMenu.setUpstream', feat).action!())
+    expect(mocked.apiSetBranchUpstream).not.toHaveBeenCalled()
+    expect(result.current.pendingAction).toEqual({ kind: 'setUpstream', branch: 'feat' })
   })
 
   it('onDeleteBranch deletes the branch pinned to its commit', async () => {

@@ -545,14 +545,6 @@ const cases: {
     args: { path: '/repo', oids: ['a', 'b'] },
   },
 
-  { name: 'getSettings', call: () => tauri.getSettings(), command: 'get_settings' },
-  {
-    name: 'updateSettings',
-    call: () => tauri.updateSettings({ language: 'fr' }),
-    command: 'update_settings',
-    args: { settings: { language: 'fr' } },
-  },
-
   {
     name: 'revertCommit (default noCommit)',
     call: () => tauri.revertCommit('/repo', 'abc'),

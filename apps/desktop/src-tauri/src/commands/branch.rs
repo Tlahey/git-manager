@@ -203,6 +203,15 @@ pub async fn fast_forward_branch(
     Ok(())
 }
 
+/// Renames a local branch (`git branch -m old new`). Refuses `main`/`master` — see
+/// `git_branch::rename_branch` for why the backend enforces this itself rather than trusting the
+/// dialog's own validation.
+#[tauri::command]
+pub async fn rename_branch(path: String, old_name: String, new_name: String) -> Result<(), String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    git_branch::rename_branch(&repo, &old_name, &new_name).map_err(Into::into)
+}
+
 /// Deletes a local branch (and its remote-tracking branch, if requested).
 /// `force = false` refuses the deletion if the branch isn't merged into HEAD
 /// (equivalent to `git branch -d`); `force = true` deletes without checking (`-D`).
@@ -221,4 +230,17 @@ pub async fn delete_branch(
         delete_remote.unwrap_or(false),
     )
     .map_err(Into::into)
+}
+
+/// Sets local branch `name`'s upstream to `upstream` (a remote-tracking branch's short name, e.g.
+/// `origin/main`) — the branch menu's "Set upstream" action, equivalent to
+/// `git branch --set-upstream-to=<upstream> <name>`.
+#[tauri::command]
+pub async fn set_branch_upstream(
+    path: String,
+    name: String,
+    upstream: String,
+) -> Result<(), String> {
+    let repo = Repository::open(&path).map_err(AppError::Git)?;
+    git_branch::set_branch_upstream(&repo, &name, &upstream).map_err(Into::into)
 }

@@ -80,6 +80,14 @@ vi.mock('../RenameBranchDialog', () => ({
   ),
 }))
 
+vi.mock('../SetUpstreamDialog', () => ({
+  SetUpstreamDialog: (p: { branch: string; onClose: () => void }) => (
+    <div data-testid="set-upstream-dialog" data-branch={p.branch}>
+      <button onClick={p.onClose}>close-set-upstream</button>
+    </div>
+  ),
+}))
+
 import { GitGraphOverlayManager } from './GitGraphOverlayManager'
 
 function node(oid: string, overrides: Partial<GitGraphNode['commit']> = {}): GitGraphNode {
@@ -163,6 +171,11 @@ describe('GitGraphOverlayManager — routing', () => {
   it('opens the rename-branch dialog with the branch carried by the action', () => {
     renderManager({ kind: 'renameBranch', branch: 'feat' })
     expect(screen.getByTestId('rename-branch-dialog').dataset.branch).toBe('feat')
+  })
+
+  it('opens the set-upstream dialog with the branch carried by the action', () => {
+    renderManager({ kind: 'setUpstream', branch: 'feat' })
+    expect(screen.getByTestId('set-upstream-dialog').dataset.branch).toBe('feat')
   })
 
   it('opens the revert dialog with the primary node oid/subject', () => {

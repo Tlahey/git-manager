@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { CreateBranchHereDialog } from '../CreateBranchHereDialog'
 import { RenameBranchDialog } from '../RenameBranchDialog'
+import { SetUpstreamDialog } from '../SetUpstreamDialog'
 import { ResetDialog } from '../../rollback/ResetDialog'
 import { RevertDialog } from '../../rollback/RevertDialog'
 import { CompareToWorkdirDialog } from '../CompareToWorkdirDialog'
@@ -115,6 +116,17 @@ export function GitGraphOverlayManager({
       return (
         // Keyed on the branch so reopening for another branch resets the prefilled input.
         <RenameBranchDialog
+          key={activeDialog.branch}
+          repoPath={repoPath}
+          branch={activeDialog.branch}
+          open
+          onClose={closeDialog}
+        />
+      )
+    case 'setUpstream':
+      return (
+        // Keyed on the branch, same reasoning as the rename dialog above.
+        <SetUpstreamDialog
           key={activeDialog.branch}
           repoPath={repoPath}
           branch={activeDialog.branch}
