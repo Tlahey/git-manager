@@ -1,5 +1,4 @@
 import {
-  ArrowUpFromLine,
   ChevronRight,
   Command as CommandIcon,
   GitPullRequest,
@@ -28,6 +27,7 @@ import { BranchContext } from './BranchContext'
 import { MergeTargetIndicator } from './MergeTargetIndicator'
 import { StateTags } from './StateTags'
 import { FetchButton } from './FetchButton'
+import { PushButton } from './PushButton'
 import { BranchButton } from './BranchButton'
 import { RunButton } from './RunButton'
 import { TerminalButton } from './TerminalButton'
@@ -165,19 +165,12 @@ export function ActionToolbar({ onOpenSettings }: ActionToolbarProps = {}) {
           onClick={handlePull}
           data-testid="toolbar-pull-button"
         />
-        <ToolbarButton
-          icon={<ArrowUpFromLine className="h-4 w-4 text-green-400" />}
-          label={t('remote.push')}
-          title={
-            aheadCount > 0
-              ? t('remote.commitsToPush', { count: aheadCount })
-              : t('remote.push')
-          }
+        <PushButton
           loading={loading.push}
           disabled={disabled}
-          badge={aheadCount}
-          onClick={handlePush}
-          data-testid="toolbar-push-button"
+          aheadCount={aheadCount}
+          onPush={() => handlePush()}
+          onPushSkippingHooks={() => handlePush({ skipHooks: true })}
         />
 
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />

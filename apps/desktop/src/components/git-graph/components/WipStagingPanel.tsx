@@ -1,3 +1,4 @@
+import { SplitButton } from '@git-manager/components'
 import { useTranslation } from '@git-manager/i18n'
 import {
   Button,
@@ -10,14 +11,7 @@ import {
   Tooltip,
   LlmIcon,
 } from '@git-manager/ui'
-import {
-  Layers,
-  Check,
-  Square,
-  AlertTriangle,
-  GitCommitHorizontal,
-  Archive,
-} from 'lucide-react'
+import { AlertTriangle, Archive, Check, GitCommitHorizontal, Layers, ShieldOff, Square } from 'lucide-react'
 import type { GitStatus } from '@git-manager/git-types'
 import { useWipCommitPanel } from '../../../hooks/useWipCommitPanel'
 import { useCommitBatchReview } from '../../../hooks/useCommitBatchReview'
@@ -418,22 +412,34 @@ export function WipStagingPanel({
                   </Button>
                 )}
 
-                <Button
-                  size="sm"
-                  data-testid="commit-button"
-                  className="h-8 flex-1 text-xs"
-                  onClick={handleCommitWip}
-                  disabled={
-                    ((gitStatus?.staged?.length ?? 0) === 0 && !isAmend) ||
-                    !commitMessage.trim() ||
-                    isCommitting
-                  }
-                >
-                  {isCommitting ? <Spinner className="mr-1.5 h-3 w-3" /> : null}
-                  {isAmend
-                    ? t('commit.amend', { defaultValue: 'Amend' })
-                    : t('commit.commit')}
-                </Button>
+                <div className="flex-1">
+                  <SplitButton
+                    size="sm"
+                    fullWidth
+                    testIdPrefix="commit"
+                    label={
+                      isAmend
+                        ? t('commit.amend', { defaultValue: 'Amend' })
+                        : t('commit.commit')
+                    }
+                    {...(isCommitting ? { icon: <Spinner className="h-3 w-3" /> } : {})}
+                    onClick={() => void handleCommitWip()}
+                    busy={isCommitting}
+                    disabled={
+                      ((gitStatus?.staged?.length ?? 0) === 0 && !isAmend) ||
+                      !commitMessage.trim()
+                    }
+                    menuLabel={t('commit.options')}
+                    actions={[
+                      {
+                        key: 'skip-hooks',
+                        label: t('commit.skipHooks'),
+                        icon: <ShieldOff className="h-3.5 w-3.5 text-muted-foreground" />,
+                        onSelect: () => void handleCommitWip({ skipHooks: true }),
+                      },
+                    ]}
+                  />
+                </div>
               </div>
 
               {/* Commit + push + open a GitHub PR flow */}

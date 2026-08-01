@@ -273,11 +273,17 @@ export function useWipCommitPanel(
    * would break the normal workflow. `create_commit` reads `MERGE_HEAD` and produces a real merge
    * commit, and an unresolved index still fails on its own (`index.write_tree()` refuses it).
    */
-  async function handleCommitWip() {
+  /**
+   * `skipHooks` is `git commit --no-verify`, and deliberately a per-commit choice rather than a
+   * setting: a repository's hooks being off is the exact bug this app spent a release fixing, and
+   * a preference someone ticked once and forgot is indistinguishable from that. This is for the
+   * hook that hangs or misfires *right now*.
+   */
+  async function handleCommitWip(options: { skipHooks?: boolean } = {}) {
     if (!commitMessage.trim()) return
     setIsCommitting(true)
     try {
-      await apiCreateCommit(repoPath, commitMessage, isAmend)
+      await apiCreateCommit(repoPath, commitMessage, isAmend, undefined, options.skipHooks)
       setCommitMessage('')
       setIsAmend(false)
       onRefresh?.()

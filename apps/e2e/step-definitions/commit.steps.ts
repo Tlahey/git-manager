@@ -12,7 +12,9 @@ When(/^I enter the commit message "([^"]*)"$/, async (message: string) => {
 })
 
 When(/^I commit the staged changes$/, async () => {
-  const button = $('[data-testid="commit-button"]')
+  // `commit-btn` is the SplitButton's primary segment — the caret beside it holds the
+  // "commit without hooks" escape hatch, which no scenario here wants.
+  const button = $('[data-testid="commit-btn"]')
   // Enabled only once React sees a non-empty message + at least one staged file — wait for the
   // controlled-input state to settle before clicking rather than racing it.
   await button.waitForEnabled({ timeout: 10000 })

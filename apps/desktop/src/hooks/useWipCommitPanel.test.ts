@@ -117,7 +117,15 @@ describe('useWipCommitPanel — classic commit', () => {
     act(() => result.current.setCommitMessage('Add feature'))
     await act(async () => result.current.handleCommitWip())
 
-    expect(mocked.apiCreateCommit).toHaveBeenCalledWith('/repo', 'Add feature', false)
+    // The two trailing `undefined`s are `amendOid` and `skipHooks`: hooks run unless the user
+    // deliberately asks for them not to, and that default is worth pinning.
+    expect(mocked.apiCreateCommit).toHaveBeenCalledWith(
+      '/repo',
+      'Add feature',
+      false,
+      undefined,
+      undefined
+    )
     expect(result.current.commitMessage).toBe('')
     expect(result.current.isCommitting).toBe(false)
     expect(onRefresh).toHaveBeenCalledOnce()
@@ -132,7 +140,13 @@ describe('useWipCommitPanel — classic commit', () => {
     })
     await act(async () => result.current.handleCommitWip())
 
-    expect(mocked.apiCreateCommit).toHaveBeenCalledWith('/repo', 'Amended commit msg', true)
+    expect(mocked.apiCreateCommit).toHaveBeenCalledWith(
+      '/repo',
+      'Amended commit msg',
+      true,
+      undefined,
+      undefined
+    )
     expect(result.current.isAmend).toBe(false)
   })
 
@@ -208,7 +222,13 @@ describe('useWipCommitPanel — classic commit', () => {
 
     // Unlike the batch flows, the ordinary button does not refuse: `create_commit` reads MERGE_HEAD
     // and produces a real merge commit, so blocking here would break the normal workflow.
-    expect(mocked.apiCreateCommit).toHaveBeenCalledWith('/repo', 'merge branch feature', false)
+    expect(mocked.apiCreateCommit).toHaveBeenCalledWith(
+      '/repo',
+      'merge branch feature',
+      false,
+      undefined,
+      undefined
+    )
     expect(toastWarning).not.toHaveBeenCalled()
   })
 
@@ -491,5 +511,23 @@ describe('useWipCommitPanel — batch "all" sequences', () => {
     })
 
     expect(result.current.isCommittingAllBatches).toBe(false)
+  })
+})
+
+describe('useWipCommitPanel — skipping hooks', () => {
+  it('passes the no-verify flag through when asked', async () => {
+    mocked.apiCreateCommit.mockResolvedValue({ oid: 'new' })
+    const { result } = renderHook(() => useWipCommitPanel('/repo', status(), [], t))
+
+    act(() => result.current.setCommitMessage('chore: bypass'))
+    await act(async () => result.current.handleCommitWip({ skipHooks: true }))
+
+    expect(mocked.apiCreateCommit).toHaveBeenCalledWith(
+      '/repo',
+      'chore: bypass',
+      false,
+      undefined,
+      true
+    )
   })
 })
