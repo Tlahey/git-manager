@@ -36,7 +36,8 @@ Wiring (context → builder → render) is done in the hooks:
 | A **stash** commit row | Stash menu | `useGitGraphActions.openMenuAt` → `showStashNativeContextMenu` |
 | The local **WIP** row (uncommitted changes) | WIP menu | `buildWipMenuSpec` |
 | Any other **commit** row | Commit menu (3 layouts, below) | `buildCommitMenuSpec` |
-| A **`WIP:<path>`** (other worktree) or the **CONFLICT** row | _no menu_ | — |
+| A **`WIP:<path>`** row (another linked worktree) | Other-worktree menu | `buildOtherWorktreeMenuSpec` |
+| The **CONFLICT** row (a paused rebase/merge) | Conflict menu | `buildConflictMenuSpec` |
 | A **ref badge dropped onto another** | Ref-drop menu | `useRefDrop` → `showRefDropNativeContextMenu` |
 
 > A tag badge and a stash row are matched _before_ the commit menu. Right-clicking the **row** of a
@@ -122,13 +123,36 @@ offered.
 Stash changes / Stash changes (include untracked) | Stage all changes / Unstage all changes |
 Explain working changes (LLM) / Review changes (LLM)
 ```
-Only the **local** WIP row has a menu. Stage/unstage are enabled from the working-tree state
+Only the **local** WIP row has this menu. Stage/unstage are enabled from the working-tree state
 (`hasUnstaged` / `hasStaged`). The two AI items sit together with no separator — they answer the two
 halves of one moment ("what am I in the middle of?" then "is it alright to commit?") — and both
 disable for the same two reasons: a **clean tree** (nothing to read) or the **AI master switch off**.
 Committing is **not** in the menu — it stays on the row's inline input, and **"Discard
-all changes" lives on the side panel, not here**. Other synthetic rows (`WIP:<path>` for another
-worktree, and the CONFLICT row) have **no** menu.
+all changes" lives on the side panel, not here**.
+
+## Other-worktree WIP row menu (`WIP:<path>`)
+```
+Open worktree | Stash changes there / Stash changes there (include untracked) | Reveal in Finder
+```
+A linked worktree's own uncommitted changes get a smaller menu than the local WIP row's, because
+every action here targets the OTHER worktree's path, never the active repo. **Open worktree**
+switches the graph/sidebar's view onto it (`activeWorkspacePath`) — the same thing the row's own
+"Open Worktree" button and the sidebar's worktree row do, so there is exactly one meaning of "open" a
+worktree in the app. **Stash there** pushes a stash in that worktree's working tree (the stash
+commands take an explicit `path` rather than reading the active repo from `AppState`, so this is
+safe); since `refs/stash` is shared across a repository's worktrees, the new entry also shows up back
+in the active repo's own graph. Stage/unstage and the AI summary/review are deliberately **not**
+offered — they read the *active* repo's working tree today, and offering them here without an
+explicit-path variant of each would either act on the wrong repo or need new commands.
+
+## CONFLICT row menu (paused rebase/merge)
+```
+Continue | Skip | ─ | Abort
+```
+A shortcut to the same actions the conflict-resolution panel offers elsewhere, gated on the same
+state (`buildConflictMenuSpec`): **Continue** is enabled once every conflict is resolved
+(`status.conflicted` empty), **Skip** while nothing has been resolved yet, and **Abort** is always
+available.
 
 ## All menus are declarative
 
@@ -137,7 +161,8 @@ Every graph/sidebar menu is now composed by a pure `build*MenuSpec` builder in
 `show*NativeContextMenu` functions remain.
 
 - **Commit / multi-commit / single-branch / branch submenu** — see above.
-- **WIP** (`buildWipMenuSpec`), **Stash** (`buildStashMenuSpec`, reused by the graph and the sidebar
+- **WIP** (`buildWipMenuSpec`), **other-worktree WIP** (`buildOtherWorktreeMenuSpec`), **CONFLICT**
+  (`buildConflictMenuSpec`), **Stash** (`buildStashMenuSpec`, reused by the graph and the sidebar
   stash rows).
 - **Tag menu** (`buildTagMenuSpec`, `useTagContextMenu`): Push tag · Merge / Rebase / Interactive
   rebase (vs current branch) · Checkout · Create worktree · Create branch · Cherry-pick · Reset ▸ ·
@@ -165,9 +190,6 @@ Ranked roughly by user impact.
 5. **Merge-commit–specific items** — `isMergeCommit` is threaded through the context but unused. No
    "Revert merge (-m 1/2)", no "compare against parent 1/2". Reverting a merge currently uses the
    plain revert path, which can fail on merges.
-6. **`WIP:<path>` (other worktree) row** — no menu. Could offer "Open worktree", "Stash there", etc.
-7. **CONFLICT row** — no menu. Abort/continue a paused rebase lives elsewhere; a right-click shortcut
-   could help.
 
 ### Done since the first report
 - **Copy link to branch for any pushed branch** — no longer restricted to `main`/`master`; any
@@ -180,3 +202,6 @@ Ranked roughly by user impact.
 - Sidebar branch menu now **reuses the shared branch config** (was "Delete branch" only).
 - "Checkout a local branch (switch)" — now offered in the **sidebar** branch menu.
 - "Compare to working directory" — back in the **multi-selection** menu.
+- **`WIP:<path>` (other worktree) row** — now has a menu (`buildOtherWorktreeMenuSpec`): Open
+  worktree / Stash there / Reveal in Finder.
+- **CONFLICT row** — now has a menu (`buildConflictMenuSpec`, issue #132): Continue / Skip / Abort.

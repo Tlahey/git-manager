@@ -7,6 +7,7 @@ import {
   buildCommitMenuSpec,
   buildMultiCommitMenuSpec,
   buildWipMenuSpec,
+  buildOtherWorktreeMenuSpec,
   buildStashMenuSpec,
   buildConflictMenuSpec,
   buildRefDropMenuSpec,
@@ -17,6 +18,7 @@ import {
   type CommitMenuActions,
   type ConflictMenuActions,
   type GraphCommitMenuContext,
+  type OtherWorktreeMenuActions,
   type SidebarBranchMenuContext,
   type WipMenuActions,
 } from './graphContextMenus'
@@ -678,6 +680,47 @@ describe('buildWipMenuSpec', () => {
     expect(actions.onStash).toHaveBeenLastCalledWith(false)
     item(spec, 'Stash changes (include untracked)')?.action?.()
     expect(actions.onStash).toHaveBeenLastCalledWith(true)
+  })
+})
+
+describe('buildOtherWorktreeMenuSpec', () => {
+  const otherWorktreeActions = (): OtherWorktreeMenuActions => ({
+    onOpenWorktree: vi.fn(),
+    onStash: vi.fn(),
+    onRevealInFinder: vi.fn(),
+  })
+
+  it('lists open worktree, the two stash flavors, then reveal in Finder', () => {
+    const spec = normalizeMenuSpec(buildOtherWorktreeMenuSpec(otherWorktreeActions(), t))
+    expect(texts(spec)).toEqual([
+      'Open worktree',
+      'Stash changes there',
+      'Stash changes there (include untracked)',
+      'Reveal in Finder',
+    ])
+  })
+
+  it('wires "Open worktree"', () => {
+    const actions = otherWorktreeActions()
+    const spec = normalizeMenuSpec(buildOtherWorktreeMenuSpec(actions, t))
+    item(spec, 'Open worktree')?.action?.()
+    expect(actions.onOpenWorktree).toHaveBeenCalledOnce()
+  })
+
+  it('wires the stash items with and without untracked files', () => {
+    const actions = otherWorktreeActions()
+    const spec = normalizeMenuSpec(buildOtherWorktreeMenuSpec(actions, t))
+    item(spec, 'Stash changes there')?.action?.()
+    expect(actions.onStash).toHaveBeenLastCalledWith(false)
+    item(spec, 'Stash changes there (include untracked)')?.action?.()
+    expect(actions.onStash).toHaveBeenLastCalledWith(true)
+  })
+
+  it('wires "Reveal in Finder"', () => {
+    const actions = otherWorktreeActions()
+    const spec = normalizeMenuSpec(buildOtherWorktreeMenuSpec(actions, t))
+    item(spec, 'Reveal in Finder')?.action?.()
+    expect(actions.onRevealInFinder).toHaveBeenCalledOnce()
   })
 })
 
