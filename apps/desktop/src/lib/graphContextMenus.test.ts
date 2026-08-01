@@ -222,6 +222,17 @@ describe('buildBranchSubmenu — another local branch', () => {
     expect(labels.some((l) => l.startsWith('Copy link to branch'))).toBe(false)
   })
 
+  it('shows "Copy link to branch" when this non-main branch has a remote-tracking ref on the commit', () => {
+    const { items: nodes } = submenuFor(
+      ref({ shortName: 'feat' }),
+      ctx({
+        currentBranch: 'main',
+        refs: [ref({ shortName: 'feat' }), ref({ shortName: 'origin/feat', type: 'remote' })],
+      })
+    )
+    expect(texts(nodes)).toContain('Copy link to branch: origin/feat')
+  })
+
   it('drops the relationship actions when HEAD is detached', () => {
     const { items: nodes } = submenuFor(
       ref({ shortName: 'feat' }),
@@ -447,6 +458,22 @@ describe('buildSidebarBranchMenuSpec — local branch', () => {
     expect(actions.onToggleVisibility).toHaveBeenCalledWith(
       expect.objectContaining({ shortName: 'feat/login' })
     )
+  })
+
+  it('shows "Copy link to branch" once this branch has a remote-tracking ref on the commit', () => {
+    // Unlike `menu()`, which always scopes `refs` to just the row's own ref, this needs the actual
+    // remote-tracking ref on the commit too, so it builds the spec directly.
+    const origin = ref({ shortName: 'origin/feat/login', type: 'remote' })
+    const nodes = normalizeMenuSpec(
+      buildSidebarBranchMenuSpec(
+        feat(),
+        { ...ctx({ currentBranch: 'main', refs: [feat(), origin] }), isHidden: false },
+        { ...branchActions(), onToggleVisibility: vi.fn() },
+        commitActions(),
+        t
+      )
+    )
+    expect(texts(nodes)).toContain('Copy link to branch: origin/feat/login')
   })
 })
 
@@ -964,6 +991,25 @@ describe('buildCommitMenuSpec', () => {
     // A plain local feature branch gets no branch link.
     const feat = build(ctx({ refs: [ref({ shortName: 'feat' })], currentBranch: 'main' }))
     expect(texts(feat).some((l) => l.startsWith('Copy link to branch'))).toBe(false)
+  })
+
+  it('gives ANY pushed local branch — not just main/master — "Copy link to branch"', () => {
+    // A non-main branch whose remote-tracking ref sits on the same commit now gets the item too,
+    // pointing at the actual remote ref's name.
+    const pushedFeat = build(
+      ctx({
+        refs: [
+          ref({ shortName: 'feat', type: 'branch' }),
+          ref({ shortName: 'origin/feat', type: 'remote' }),
+        ],
+        currentBranch: 'main',
+      })
+    )
+    expect(texts(pushedFeat)).toContain('Copy link to branch: origin/feat')
+
+    // Regression: a non-main branch with NO remote-tracking ref on the commit still hides it.
+    const unpushedFeat = build(ctx({ refs: [ref({ shortName: 'feat' })], currentBranch: 'main' }))
+    expect(texts(unpushedFeat).some((l) => l.startsWith('Copy link to branch'))).toBe(false)
   })
 
   it('keeps submenus when two DIFFERENT logical branches sit on the commit', () => {

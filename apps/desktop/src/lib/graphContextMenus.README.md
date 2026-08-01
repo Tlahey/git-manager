@@ -109,11 +109,13 @@ Create tag / Create annotated tag
 | **Explain branch changes (LLM)** / **Review branch changes (LLM)** | Shown only when the clicked commit **actually carries that branch** (`isOnClickedCommit`) — on the current-branch fallback below, "the branch" would be whichever one is checked out, not what was pointed at. Disabled when the AI master switch is off, never hidden, so the capability stays discoverable. |
 | **Rename `<branch>`** | Local branches only. |
 | **Delete `<branch>`** | Hidden on the **current** branch; **disabled** on **remote** branches (no confirm flow yet); enabled on other local branches. |
-| **Copy link to branch** | Shown for a **remote** branch, or for the local **`main`/`master`** (→ `origin/<name>`). Not shown for other local branches. |
+| **Copy link to branch** | Shown for a **remote** branch, or for a **local** branch whose remote-tracking counterpart is present on the commit (→ that ref's name). Local **`main`/`master`** additionally falls back to `origin/<name>` even without one actually on the commit. Not shown for a local branch that has never been pushed. |
 | **Solo** | Always enabled. Isolates the branch in the graph via `useSoloModeStore` (`onSolo` → `enable([shortName])`), from both this menu and the sidebar's. |
 
-The **`main`/`master`** branch is the only local branch that gets **Copy link to branch**
-(`isMainBranchName`). Deletion of the current branch is never offered.
+Any local branch that has been pushed (its remote-tracking ref sits on the same commit) gets
+**Copy link to branch**; `main`/`master` are the only ones that get it even without an actual
+remote ref present, via the `origin/<name>` fallback. Deletion of the current branch is never
+offered.
 
 ## WIP row menu (local uncommitted changes)
 ```
@@ -168,11 +170,9 @@ Ranked roughly by user impact.
    could help.
 8. **Tag menu** has no "Push tag" and no "Copy commit SHA" (Copy tag name / Copy link only).
 
-### Nice-to-have
-9. **Copy link to branch for any pushed branch** — currently restricted to `main`/`master`; could
-   extend to any local branch that has a remote-tracking counterpart on the commit.
-
 ### Done since the first report
+- **Copy link to branch for any pushed branch** — no longer restricted to `main`/`master`; any
+  local branch with a remote-tracking counterpart present on the commit now shows the item too.
 - Multi-commit actions (cherry-pick / patch of a selection) — **implemented** (layout #4).
 - "Discard all changes" on WIP — intentionally lives on the **side panel** (confirmed).
 - Stash + branch-sidebar menus **internationalised** and **migrated** to the declarative layer.
