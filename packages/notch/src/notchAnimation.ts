@@ -1,23 +1,24 @@
 /**
  * The card's slide, as a plain number animation.
  *
- * The real popover moves the *OS window* rather than transforming its content, which is what makes
- * it read as a native banner emerging from behind the menu bar. That means the animation can't be
- * a CSS transition — it's a `setPosition` call per frame. Keeping the tween itself free of any
- * window API is what lets the same code drive a Tauri window in the app, a `top:` style in
- * Storybook, and a recorded array of values in a test.
+ * Deliberately a tween over numbers rather than a CSS transition, because what the numbers *mean*
+ * is the host's business, not this module's: in the app they become a transform on the element the
+ * card is drawn in, in Storybook a `top:` style, and in a test a recorded array of values. Keeping
+ * the tween free of any window or DOM API is what lets one sequence drive all three.
  */
 
 /**
- * How far the card travels while sliding in or out.
+ * How far the card travels, when the host does not say.
  *
- * Far enough that the movement is the thing you notice, rather than a hint of one. The card slides
- * out from behind the menu bar and back up under it, so this is travel the eye can follow, not
- * distance it needs to cover to be hidden — the fade is what hides it.
+ * Only a nudge, and only a fallback: a host that cannot hide the card by moving it — the Storybook
+ * harness, where the "window" is a div on a page — has nothing better to do. The real window
+ * passes its own full height instead (`slideDistance`), which is what lets the movement alone do
+ * the appearing and the disappearing, with the window's bounds clipping the card out of sight at
+ * both ends.
  */
 export const SLIDE_DISTANCE = 40
-export const ENTER_MS = 800
-export const EXIT_MS = 800
+export const ENTER_MS = 300
+export const EXIT_MS = 300
 
 /**
  * How long the card's *contents* take to fade.
@@ -28,13 +29,15 @@ export const EXIT_MS = 800
  * went transparent before it had visibly gone anywhere, so a real slide read as the card simply
  * being switched off.
  */
-export const CONTENT_FADE_MS = 300
+export const CONTENT_FADE_MS = 200
 
 /**
  * How far into the exit the contents start to fade, as a fraction of {@link EXIT_MS}.
  *
- * Chosen so the fade *finishes* as the slide does — 0.6 of 800ms leaves exactly the 300ms the fade
- * needs — rather than emptying the card early and leaving a blank shell to slide away on its own.
+ * Late on purpose: the card should be visibly leaving before it starts emptying, or the fade reads
+ * as the card being switched off rather than sliding away. It does not have to *finish* before the
+ * card goes — what actually hides the card is the window clipping it once it has travelled its own
+ * height, so a fade still in progress at that point is simply never seen.
  */
 export const EXIT_FADE_AT = 0.6
 
