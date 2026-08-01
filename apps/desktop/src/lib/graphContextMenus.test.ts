@@ -60,6 +60,7 @@ function ctx(overrides: Partial<GraphCommitMenuContext> = {}): GraphCommitMenuCo
 const branchActions = (): BranchMenuActions => ({
   onPull: vi.fn(),
   onPush: vi.fn(),
+  onSetUpstream: vi.fn(),
   onFastForward: vi.fn(),
   onMergeInto: vi.fn(),
   onRebaseOntoBranch: vi.fn(),
@@ -123,7 +124,7 @@ describe('buildBranchSubmenu — current local branch', () => {
     const labels = texts(nodes)
     expect(item(nodes, 'Pull (fast-forward if possible)')?.enabled).toBe(true)
     expect(item(nodes, 'Push')?.enabled).toBe(true)
-    expect(item(nodes, 'Set upstream')?.enabled).toBe(false)
+    expect(item(nodes, 'Set upstream')?.enabled).not.toBe(false)
     expect(labels.some((l) => l.startsWith('Merge '))).toBe(false)
     expect(labels.some((l) => l.startsWith('Checkout '))).toBe(false)
     expect(labels.some((l) => l.startsWith('Delete '))).toBe(false)
@@ -241,6 +242,15 @@ describe('buildBranchSubmenu — another local branch', () => {
     expect(actions.onOpenWorktreeFrom).toHaveBeenCalledWith(target)
     expect(actions.onPinToLeft).toHaveBeenCalledWith(target)
     expect(actions.onSolo).toHaveBeenCalledWith(target)
+  })
+
+  it('Set upstream is enabled and calls onSetUpstream with the branch ref', () => {
+    const target = ref({ shortName: 'feat' })
+    const { items: nodes, actions } = submenuFor(target, ctx({ currentBranch: 'main' }))
+    const setUpstream = item(nodes, 'Set upstream')
+    expect(setUpstream?.enabled).not.toBe(false)
+    setUpstream?.action?.()
+    expect(actions.onSetUpstream).toHaveBeenCalledWith(target)
   })
 })
 
@@ -384,6 +394,7 @@ describe('buildSidebarBranchMenuSpec — local branch', () => {
   // The same menu as a remote row's, told apart only by what the ref's own type allows.
   it('lists the branch, commit and row actions in order', () => {
     expect(texts(menu().nodes)).toEqual([
+      'Set upstream',
       'Fast-forward main to feat/login',
       'Merge feat/login into main',
       'Rebase main onto feat/login',
@@ -408,11 +419,12 @@ describe('buildSidebarBranchMenuSpec — local branch', () => {
   })
 
   // Pull and Push act on HEAD, not on the row: they belong to the toolbar, not to a branch's menu.
-  it('drops the sync section the graph shows for a local branch', () => {
+  // Set upstream is different — it writes metadata on the row's own branch, so it stays.
+  it('drops pull/push but keeps Set upstream, which acts on the row itself', () => {
     const labels = texts(menu().nodes)
     expect(labels).not.toContain('Pull (fast-forward if possible)')
     expect(labels).not.toContain('Push')
-    expect(labels).not.toContain('Set upstream')
+    expect(labels).toContain('Set upstream')
   })
 
   it('really deletes a local branch, unlike the disabled remote entry', () => {

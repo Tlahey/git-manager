@@ -270,6 +270,11 @@ export const mergeBranch = (path: string, source: string, target: string) =>
 export const fastForwardBranch = (path: string, source: string, target: string) =>
   invoke<void>('fast_forward_branch', { path, source, target })
 
+/** Sets local branch `name`'s upstream to `upstream` (a remote-tracking branch's short name, e.g.
+ * `origin/main`) — `git branch --set-upstream-to`. */
+export const setBranchUpstream = (path: string, name: string, upstream: string) =>
+  invoke<void>('set_branch_upstream', { path, name, upstream })
+
 /** Relation between HEAD and the first of `candidates` that exists in the repo (merge simulated
  * in memory — nothing is written to the repository). */
 export const getMergeTargetStatus = (path: string, candidates: string[]) =>

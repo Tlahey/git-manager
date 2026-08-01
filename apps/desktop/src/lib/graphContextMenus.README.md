@@ -100,8 +100,8 @@ Create tag / Create annotated tag
 
 | Item | Rule |
 | --- | --- |
-| **Pull / Push** | Enabled only when the branch **is the current branch** (backend pulls/pushes HEAD only). Always shown on a local branch. |
-| **Set upstream** | Always **disabled** (placeholder — no backend). |
+| **Pull / Push** | Enabled only when the branch **is the current branch** (backend pulls/pushes HEAD only). Always shown on a local branch — in the sidebar, only on the **trunk** row (see below), since both act on HEAD regardless of which row was clicked. |
+| **Set upstream** | Always **enabled** on a local branch — unlike pull/push it writes metadata (`branch.<name>.remote`/`.merge`) on the branch actually clicked, not on HEAD, so the sidebar offers it on **every** local branch row, not just the trunk. An unambiguous `origin/<name>` match (see `resolveDefaultUpstream` in `lib/branchUpstream.ts`) is applied immediately; otherwise `SetUpstreamDialog` opens and lists every remote-tracking branch in the repo to pick from. |
 | **Fast-forward / Merge / Rebase** | Shown only when the branch is **not** current **and** HEAD is not detached. |
 | **Checkout `<branch>`** | Graph submenu/flat: **remote** branches only (checks out its commit → detached); local branches offer only "Checkout this commit". Sidebar menu: shown for **both** (a local branch switches HEAD by name). |
 | **Open worktree from `<branch>`** | Always shown (opens from the branch tip). |
@@ -153,7 +153,7 @@ Every graph/sidebar menu is now composed by a pure `build*MenuSpec` builder in
 Ranked roughly by user impact.
 
 ### Known-disabled placeholders (backend/feature missing)
-1. **Set upstream** — needs a backend command to set a branch's upstream.
+1. ~~**Set upstream**~~ — **shipped**: `set_branch_upstream` command + `SetUpstreamDialog`.
 2. ~~**Explain branch changes** / **Explain working changes**~~ — **shipped**, along with their
    *Review* counterparts. See [docs/ai](../../../../docs/ai/README.md).
 3. **Delete a remote branch** — disabled; needs the confirm flow + `push :refs/heads/<name>` backend
