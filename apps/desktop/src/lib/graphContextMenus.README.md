@@ -109,11 +109,13 @@ Create tag / Create annotated tag
 | **Explain branch changes (LLM)** / **Review branch changes (LLM)** | Shown only when the clicked commit **actually carries that branch** (`isOnClickedCommit`) — on the current-branch fallback below, "the branch" would be whichever one is checked out, not what was pointed at. Disabled when the AI master switch is off, never hidden, so the capability stays discoverable. |
 | **Rename `<branch>`** | Local branches only. |
 | **Delete `<branch>`** | Hidden on the **current** branch; **disabled** on **remote** branches (no confirm flow yet); enabled on other local branches. |
-| **Copy link to branch** | Shown for a **remote** branch, or for the local **`main`/`master`** (→ `origin/<name>`). Not shown for other local branches. |
+| **Copy link to branch** | Shown for a **remote** branch, or for a **local** branch whose remote-tracking counterpart is present on the commit (→ that ref's name). Local **`main`/`master`** additionally falls back to `origin/<name>` even without one actually on the commit. Not shown for a local branch that has never been pushed. |
 | **Solo** | Always enabled. Isolates the branch in the graph via `useSoloModeStore` (`onSolo` → `enable([shortName])`), from both this menu and the sidebar's. |
 
-The **`main`/`master`** branch is the only local branch that gets **Copy link to branch**
-(`isMainBranchName`). Deletion of the current branch is never offered.
+Any local branch that has been pushed (its remote-tracking ref sits on the same commit) gets
+**Copy link to branch**; `main`/`master` are the only ones that get it even without an actual
+remote ref present, via the `origin/<name>` fallback. Deletion of the current branch is never
+offered.
 
 ## WIP row menu (local uncommitted changes)
 ```
@@ -137,10 +139,10 @@ Every graph/sidebar menu is now composed by a pure `build*MenuSpec` builder in
 - **Commit / multi-commit / single-branch / branch submenu** — see above.
 - **WIP** (`buildWipMenuSpec`), **Stash** (`buildStashMenuSpec`, reused by the graph and the sidebar
   stash rows).
-- **Tag menu** (`buildTagMenuSpec`, `useTagContextMenu`): Merge / Rebase / Interactive rebase (vs
-  current branch) · Checkout · Create worktree · Create branch · Cherry-pick · Reset ▸ · Revert ·
-  Delete locally · Delete from origin (real `git push origin :refs/tags/<name>`) · Copy tag name ·
-  Copy link to tag · Annotate.
+- **Tag menu** (`buildTagMenuSpec`, `useTagContextMenu`): Push tag · Merge / Rebase / Interactive
+  rebase (vs current branch) · Checkout · Create worktree · Create branch · Cherry-pick · Reset ▸ ·
+  Revert · Delete locally · Delete from origin (real `git push origin :refs/tags/<name>`) · Copy tag
+  name · Copy commit SHA · Copy link to tag · Annotate.
 - **Ref-drop menu** (`buildRefDropMenuSpec`, `useRefDrop` — drag a badge onto another): Fast-forward
   / Merge / Rebase / Interactive rebase · Push · Reset ▸ · Start a pull request.
 - **Sidebar branch menu** (`buildBranchMenuSpec`, `useSidebarBranchMenu`): reuses the **same** branch
@@ -166,17 +168,15 @@ Ranked roughly by user impact.
 6. **`WIP:<path>` (other worktree) row** — no menu. Could offer "Open worktree", "Stash there", etc.
 7. **CONFLICT row** — no menu. Abort/continue a paused rebase lives elsewhere; a right-click shortcut
    could help.
-8. **Tag menu** has no "Push tag" and no "Copy commit SHA" (Copy tag name / Copy link only).
-
-### Nice-to-have
-9. **Copy link to branch for any pushed branch** — currently restricted to `main`/`master`; could
-   extend to any local branch that has a remote-tracking counterpart on the commit.
 
 ### Done since the first report
+- **Copy link to branch for any pushed branch** — no longer restricted to `main`/`master`; any
+  local branch with a remote-tracking counterpart present on the commit now shows the item too.
 - Multi-commit actions (cherry-pick / patch of a selection) — **implemented** (layout #4).
 - "Discard all changes" on WIP — intentionally lives on the **side panel** (confirmed).
 - Stash + branch-sidebar menus **internationalised** and **migrated** to the declarative layer.
 - Tag / ref-drop / stash migrated to `showNativeMenu` — no bespoke menu functions remain.
+- Tag menu gained **Push tag** and **Copy commit SHA** (issue #133).
 - Sidebar branch menu now **reuses the shared branch config** (was "Delete branch" only).
 - "Checkout a local branch (switch)" — now offered in the **sidebar** branch menu.
 - "Compare to working directory" — back in the **multi-selection** menu.

@@ -142,9 +142,11 @@ interface BranchItemContext {
   hasCurrent: boolean
   /**
    * The name of the branch's canonical remote tree page, when it has one: the remote ref itself
-   * for a remote branch, and for the local `main`/`master` its remote counterpart (`origin/main`).
-   * A plain local feature branch has none — so only main/master exposes "Copy link to branch",
-   * matching the spec. `null` otherwise.
+   * for a remote branch, and for a local branch its remote-tracking counterpart present on the
+   * same commit (`origin/<name>`) — any pushed local branch, not just main/master. Local `main`/
+   * `master` additionally falls back to the conventional `origin/<name>` even when no matching
+   * remote ref is actually on the commit, since that pairing can be assumed. A local branch that
+   * has never been pushed has none. `null` otherwise.
    */
   remoteBranchLinkName: string | null
   params: { branch: string; current: string }
@@ -162,13 +164,16 @@ interface BranchItemContext {
 
 function branchItemContext(ref: GitRef, ctx: GraphCommitMenuContext): BranchItemContext {
   const isRemote = ref.type === 'remote'
+  // Any local branch whose remote-tracking ref is actually on the commit gets that ref's name;
+  // main/master additionally fall back to the conventional `origin/<name>` even without one
+  // present, since that pairing can be assumed. Any other local branch with no remote ref on the
+  // commit — i.e. never pushed — has none.
+  const remoteCounterpart = ctx.refs.find(
+    (r) => r.type === 'remote' && logicalBranchName(r) === ref.shortName
+  )?.shortName
   const remoteBranchLinkName = isRemote
     ? ref.shortName
-    : isMainBranchName(ref.shortName)
-      ? // Prefer the actual remote-tracking ref on the commit; fall back to `origin/<name>`.
-        (ctx.refs.find((r) => r.type === 'remote' && logicalBranchName(r) === ref.shortName)
-          ?.shortName ?? `origin/${ref.shortName}`)
-      : null
+    : (remoteCounterpart ?? (isMainBranchName(ref.shortName) ? `origin/${ref.shortName}` : null))
   return {
     ref,
     isRemote,
@@ -725,6 +730,9 @@ export interface TagMenuActions {
   onDeleteRemote: () => void
   onCopyName: () => void
   onCopyLink: () => void
+  /** Copies the SHA of the commit the tag points at — same action/icon as the commit and branch
+   * menus' own copy-SHA item. */
+  onCopySha: () => void
   /** Keep the tag's badge out of the graph (or bring it back). */
   onToggleHidden: () => void
   /** Isolate the graph on the branch carrying the tag's commit. */
@@ -776,6 +784,7 @@ export function buildTagMenuSpec(
     menuItem({ text: t('gitTree.tagMenu.deleteRemote', p), action: actions.onDeleteRemote }),
     menuSeparator(),
     menuItem({ text: t('gitTree.tagMenu.copyName'), action: actions.onCopyName }),
+    menuItem({ text: t('gitTree.contextMenu.copySha'), icon: 'copy_sha', action: actions.onCopySha }),
     menuSeparator(),
     menuItem({ text: t('gitTree.tagMenu.copyLink', p), action: actions.onCopyLink }),
     menuSeparator(),

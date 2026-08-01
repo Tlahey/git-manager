@@ -33,6 +33,7 @@ vi.mock('../api/git.api', () => ({
   apiRebaseOntoCommit: vi.fn().mockResolvedValue(undefined),
   apiDeleteTag: vi.fn().mockResolvedValue(undefined),
   apiGetTagWebUrl: vi.fn().mockResolvedValue('https://github.com/o/r/releases/tag/v1'),
+  apiCopyCommitSha: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock('../api/worktree.api', () => ({ apiAddWorktree: vi.fn().mockResolvedValue(undefined) }))
 
@@ -173,6 +174,14 @@ describe('useTagContextMenu', () => {
     act(() => result.current.openTagMenu(fakeEvent(), TAG))
     await act(async () => getItem('gitTree.tagMenu.copyName').action!())
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('v1'))
+  })
+
+  it('copies the tagged commit SHA to the clipboard', async () => {
+    const { result } = setup()
+    act(() => result.current.openTagMenu(fakeEvent(), TAG))
+    await act(async () => getItem('gitTree.contextMenu.copySha').action!())
+    await waitFor(() => expect(mocked.apiCopyCommitSha).toHaveBeenCalledWith(TAG.commitOid))
+    expect(toastSuccess).toHaveBeenCalledWith('gitTree.contextMenu.shaCopied')
   })
 
   it('copies the tag web link, warning when no remote URL is available', async () => {
