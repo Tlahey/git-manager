@@ -42,7 +42,7 @@ export const DOC_SECTIONS: DocSection[] = [
   },
   {
     title: 'Reading your repository',
-    features: ['commit-graph', 'blame-history', 'bisect', 'sidebar-navigation'],
+    features: ['commit-graph', 'blame-history', 'bisect', 'sidebar-navigation', 'repo-view-tabs'],
   },
   {
     title: 'Making changes',

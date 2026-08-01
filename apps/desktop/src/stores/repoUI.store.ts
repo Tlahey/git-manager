@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { MockIssue } from '../app/pull-requests/types'
 import { closeRepoScopedPanels } from './repoScopedPanels'
+import { useRepoViewTabsStore } from './repoViewTabs.store'
 
 /** Ids of the pinned special tabs (always present, not closeable). */
 export const DASHBOARD_TAB = 'dashboard'
@@ -548,6 +549,9 @@ export const useRepoUIStore = create<RepoUIState>()(
         // Only a close that moves the user elsewhere is a tab change; closing a
         // background tab must leave the panels of the one they are looking at alone.
         if (get().activeTab === path) closeRepoScopedPanels()
+        // The tab's graph/terminal/settings selection dies with it — a reopened tab starts on the
+        // graph rather than on the terminal view whose sessions were killed with the old tab.
+        useRepoViewTabsStore.getState().clearForPath(path)
         set((state) => {
           const newTabs = state.openTabs.filter((p) => p !== path)
           const wasActive = state.activeTab === path
@@ -577,6 +581,7 @@ export const useRepoUIStore = create<RepoUIState>()(
 
       clearTabStateForRemovedRepo: (path) => {
         if (get().activeTab === path) closeRepoScopedPanels()
+        useRepoViewTabsStore.getState().clearForPath(path)
         set((state) => {
           const wasActive = state.activeTab === path
           return {

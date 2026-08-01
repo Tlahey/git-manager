@@ -226,3 +226,21 @@ describe('SettingsPage — close', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 })
+
+describe('SettingsPage — embedded', () => {
+  it('drops the window header (title + back button) and sizes to its container', () => {
+    render(<SettingsPage embedded />)
+    expect(screen.queryByText('Back')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Settings' })).not.toBeInTheDocument()
+    const page = screen.getByTestId('settings-page')
+    expect(page).toHaveClass('h-full')
+    expect(page).not.toHaveClass('h-screen')
+  })
+
+  it('still renders the same nav and sections, and can open on the Repository scope', () => {
+    render(<SettingsPage embedded initialScope="local" />)
+    expect(screen.getByTestId('settings-group-repository')).toBeInTheDocument()
+    expect(screen.getByTestId('section-repository')).toBeInTheDocument()
+    expect(screen.getByTestId('settings-tab-general')).toBeInTheDocument()
+  })
+})

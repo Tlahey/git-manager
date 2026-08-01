@@ -9,15 +9,24 @@ import { XtermView } from './XtermView'
 interface TerminalPanelProps {
   /** The active repo/worktree path whose sessions this panel shows. */
   path: string
+  /**
+   * `dock` (the default) is the resizable strip docked at the bottom of the graph; `view` fills its
+   * container as the repo tab's Terminal view. The two differ only in chrome — same sessions, same
+   * store — so a shell opened in one is the very same shell in the other: `view` drops the resize
+   * handle and the "hide" button, both of which only mean something for a dock.
+   */
+  variant?: 'dock' | 'view'
 }
 
 /**
- * Bottom-docked integrated terminal: a resizable panel with a tab strip of PTY-backed zsh sessions
- * and the active session's xterm.js viewport. Only the active tab is mounted; inactive sessions keep
- * running in the registry (their scrollback survives tab switches and panel toggles).
+ * The integrated terminal: a tab strip of PTY-backed zsh sessions and the active session's xterm.js
+ * viewport. Only the active tab is mounted; inactive sessions keep running in the registry (their
+ * scrollback survives tab switches, panel toggles, and switching between the dock and the Terminal
+ * view).
  */
-export function TerminalPanel({ path }: TerminalPanelProps) {
+export function TerminalPanel({ path, variant = 'dock' }: TerminalPanelProps) {
   const { t } = useTranslation('git')
+  const isDock = variant === 'dock'
   const height = useTerminalStore((s) => s.height)
   const setHeight = useTerminalStore((s) => s.setHeight)
   const closePanel = useTerminalStore((s) => s.closePanel)
@@ -45,20 +54,26 @@ export function TerminalPanel({ path }: TerminalPanelProps) {
 
   return (
     <div
-      style={{ height }}
-      className="chrome-surface flex shrink-0 flex-col border-t border-border bg-card"
+      style={isDock ? { height } : undefined}
+      className={cn(
+        'chrome-surface flex flex-col bg-card',
+        isDock ? 'shrink-0 border-t border-border' : 'h-full min-h-0 flex-1'
+      )}
       data-testid="terminal-panel"
+      data-variant={variant}
     >
-      {/* Resize handle */}
-      <div
-        onPointerDown={onHandleDown}
-        onPointerMove={onHandleMove}
-        onPointerUp={onHandleUp}
-        className="h-1 shrink-0 cursor-row-resize bg-transparent transition-colors hover:bg-primary/40"
-        data-testid="terminal-resize-handle"
-        role="separator"
-        aria-orientation="horizontal"
-      />
+      {/* Resize handle — a dock is resizable against the graph above it; a view already fills its tab. */}
+      {isDock && (
+        <div
+          onPointerDown={onHandleDown}
+          onPointerMove={onHandleMove}
+          onPointerUp={onHandleUp}
+          className="h-1 shrink-0 cursor-row-resize bg-transparent transition-colors hover:bg-primary/40"
+          data-testid="terminal-resize-handle"
+          role="separator"
+          aria-orientation="horizontal"
+        />
+      )}
 
       {/* Tab strip */}
       <div className="flex h-8 shrink-0 items-center gap-1 border-b border-border px-2">
@@ -105,16 +120,18 @@ export function TerminalPanel({ path }: TerminalPanelProps) {
         </button>
 
         <div className="ml-auto flex items-center gap-1">
-          <button
-            type="button"
-            onClick={closePanel}
-            aria-label={t('terminal.hidePanel')}
-            title={t('terminal.hidePanel')}
-            data-testid="terminal-hide"
-            className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <ChevronDown className="h-4 w-4" />
-          </button>
+          {isDock && (
+            <button
+              type="button"
+              onClick={closePanel}
+              aria-label={t('terminal.hidePanel')}
+              title={t('terminal.hidePanel')}
+              data-testid="terminal-hide"
+              className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </button>
+          )}
           <button
             type="button"
             onClick={closeAllSessions}
